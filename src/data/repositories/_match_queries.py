@@ -85,7 +85,9 @@ class MatchQueriesMixin:
         if not self._xuid or self._xuid.strip() == "":
             match_table = self._get_match_table_name(conn)
             logger.debug(f"Mode v4/v3 (XUID vide) : requête via table locale {match_table}")
-            # Retourner avec alias AS match_stats pour compatibilité avec le reste de la requête
+            # Retourner le nom tel quel (alias uniquement si différent de "match_stats")
+            if match_table == "match_stats":
+                return match_table, []
             return f"{match_table} AS match_stats", []
 
         # Forcer mode local si tables shared absentes
@@ -97,7 +99,9 @@ class MatchQueriesMixin:
             # Mode v4/v3 local : déterminer la table de matchs disponible
             match_table = self._get_match_table_name(conn)
             logger.debug(f"Mode v4/v3 : requête via table locale {match_table}")
-            # Retourner avec alias AS match_stats pour compatibilité avec le reste de la requête
+            # Retourner le nom tel quel (alias uniquement si différent de "match_stats")
+            if match_table == "match_stats":
+                return match_table, []
             return f"{match_table} AS match_stats", []
 
         # Vérifier si la table match_stats locale existe (période de transition)
@@ -114,8 +118,10 @@ class MatchQueriesMixin:
             # Vérifier les colonnes optionnelles dans match_stats local
             has_is_ranked = self._has_column(conn, "match_stats", "is_ranked")
             has_is_firefight = self._has_column(conn, "match_stats", "is_firefight")
-            # Vérifier si match_participants a avg_life_seconds (migration v5.1)
+            # Vérifier si match_participants a les colonnes étendues (migration v5.1)
             has_p_avg_life = self._has_shared_mp_column(conn, "avg_life_seconds")
+            has_p_max_spree = self._has_shared_mp_column(conn, "max_killing_spree")
+            has_p_hs_kills = self._has_shared_mp_column(conn, "headshot_kills")
 
             kda_expr = (
                 "COALESCE(ms.kda, "
@@ -124,8 +130,14 @@ class MatchQueriesMixin:
                 "/ CAST(p.deaths AS FLOAT) "
                 "ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0 END)"
             )
-            spree_expr = "COALESCE(ms.max_killing_spree, 0)"
-            hs_expr = "COALESCE(ms.headshot_kills, 0)"
+            if has_p_max_spree:
+                spree_expr = "COALESCE(p.max_killing_spree, ms.max_killing_spree, 0)"
+            else:
+                spree_expr = "COALESCE(ms.max_killing_spree, 0)"
+            if has_p_hs_kills:
+                hs_expr = "COALESCE(p.headshot_kills, ms.headshot_kills, 0)"
+            else:
+                hs_expr = "COALESCE(ms.headshot_kills, 0)"
             if has_p_avg_life:
                 avg_life_expr = "COALESCE(ms.avg_life_seconds, p.avg_life_seconds, 0)"
             else:
@@ -158,16 +170,18 @@ class MatchQueriesMixin:
             is_rk = f"COALESCE(r.is_ranked, {'ms.is_ranked, ' if has_is_ranked else ''}FALSE)"
         else:
             ms_join = ""
-            # Vérifier si match_participants a avg_life_seconds (migration v5.1)
+            # Vérifier si match_participants a les colonnes étendues (migration v5.1)
             has_p_avg_life = self._has_shared_mp_column(conn, "avg_life_seconds")
+            has_p_max_spree = self._has_shared_mp_column(conn, "max_killing_spree")
+            has_p_hs_kills = self._has_shared_mp_column(conn, "headshot_kills")
             kda_expr = (
                 "CASE WHEN p.deaths > 0 "
                 "THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0) "
                 "/ CAST(p.deaths AS FLOAT) "
                 "ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0 END"
             )
-            spree_expr = "0"
-            hs_expr = "0"
+            spree_expr = "COALESCE(p.max_killing_spree, 0)" if has_p_max_spree else "0"
+            hs_expr = "COALESCE(p.headshot_kills, 0)" if has_p_hs_kills else "0"
             avg_life_expr = "COALESCE(p.avg_life_seconds, 0)" if has_p_avg_life else "0"
             mmr_team = "NULL"
             mmr_enemy = "NULL"
@@ -923,12 +937,26 @@ class MatchQueriesMixin:
         rank_join = ""
         rank_select = "NULL as rank"
         if my_xuid:
-            rank_join = f"""
-                LEFT JOIN match_participants mp_rank
-                ON match_stats.match_id = mp_rank.match_id
-                AND mp_rank.xuid = '{my_xuid}'
-            """
-            rank_select = "mp_rank.rank"
+            # En mode v5: utiliser shared.match_participants
+            # En mode v4: vérifier si match_participants existe localement
+            if is_shared:
+                mp_table = "shared.match_participants"
+                rank_join = f"""
+                    LEFT JOIN {mp_table} mp_rank
+                    ON match_stats.match_id = mp_rank.match_id
+                    AND mp_rank.xuid = '{my_xuid}'
+                """
+                rank_select = "mp_rank.rank"
+            elif self._has_shared_table("match_participants"):
+                # Mode v4 mais avec table match_participants locale
+                mp_table = "match_participants"
+                rank_join = f"""
+                    LEFT JOIN {mp_table} mp_rank
+                    ON match_stats.match_id = mp_rank.match_id
+                    AND mp_rank.xuid = '{my_xuid}'
+                """
+                rank_select = "mp_rank.rank"
+            # Sinon, rank reste NULL
 
         # Colonnes complètes avec alias standardisés
         all_select_exprs = f"""

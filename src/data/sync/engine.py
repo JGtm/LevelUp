@@ -170,6 +170,14 @@ CREATE TABLE IF NOT EXISTS match_participants (
     damage_dealt FLOAT,
     damage_taken FLOAT,
     avg_life_seconds FLOAT,
+    headshot_kills SMALLINT,
+    max_killing_spree SMALLINT,
+    kda FLOAT,
+    accuracy FLOAT,
+    time_played_seconds INTEGER,
+    grenade_kills SMALLINT,
+    melee_kills SMALLINT,
+    power_weapon_kills SMALLINT,
     PRIMARY KEY (match_id, xuid)
 );
 CREATE INDEX IF NOT EXISTS idx_participants_xuid ON match_participants(xuid);

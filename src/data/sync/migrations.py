@@ -181,6 +181,15 @@ def ensure_match_participants_columns(conn: duckdb.DuckDBPyConnection) -> None:
     - shots_hit (INTEGER)
     - damage_dealt (FLOAT)
     - damage_taken (FLOAT)
+    - avg_life_seconds (FLOAT)
+    - headshot_kills (SMALLINT)
+    - max_killing_spree (SMALLINT)
+    - kda (FLOAT)
+    - accuracy (FLOAT)
+    - time_played_seconds (INTEGER)
+    - grenade_kills (SMALLINT)
+    - melee_kills (SMALLINT)
+    - power_weapon_kills (SMALLINT)
     """
     if not table_exists(conn, "match_participants"):
         return
@@ -198,6 +207,14 @@ def ensure_match_participants_columns(conn: duckdb.DuckDBPyConnection) -> None:
         ("damage_dealt", "FLOAT"),
         ("damage_taken", "FLOAT"),
         ("avg_life_seconds", "FLOAT"),
+        ("headshot_kills", "SMALLINT"),
+        ("max_killing_spree", "SMALLINT"),
+        ("kda", "FLOAT"),
+        ("accuracy", "FLOAT"),
+        ("time_played_seconds", "INTEGER"),
+        ("grenade_kills", "SMALLINT"),
+        ("melee_kills", "SMALLINT"),
+        ("power_weapon_kills", "SMALLINT"),
     ]
 
     for col_name, col_type in migrations:
@@ -317,7 +334,9 @@ BACKFILL_FLAGS: dict[str, int] = {
     "participants_shots": 1 << 12,  # 4096
     "participants_damage": 1 << 13,  # 8192
     "aliases": 1 << 14,  # 16384
-    "participants_avg_life": 1 << 15,  # 32768
+    # Note: participants_avg_life (1 << 15) retiré car redondant avec "participants"
+    # Toutes les colonnes de match_participants (incluant avg_life_seconds et les
+    # colonnes étendues de Phase 1) sont couvertes par le flag "participants"
 }
 
 
