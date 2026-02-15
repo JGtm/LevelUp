@@ -345,6 +345,14 @@ class MatchParticipantRow:
     damage_dealt: float | None = None  # DamageDealt depuis CoreStats (API)
     damage_taken: float | None = None  # DamageTaken depuis CoreStats (API)
     avg_life_seconds: float | None = None  # AverageLifeSeconds depuis CoreStats (API)
+    headshot_kills: int | None = None  # HeadshotKills depuis CoreStats (API)
+    max_killing_spree: int | None = None  # MaxKillingSpree depuis CoreStats (API)
+    kda: float | None = None  # KDA calculé (API)
+    accuracy: float | None = None  # Précision calculée (shots_hit/shots_fired * 100)
+    time_played_seconds: int | None = None  # Durée de participation depuis TimePlayedStats (API)
+    grenade_kills: int | None = None  # GrenadeKills depuis CoreStats (API)
+    melee_kills: int | None = None  # MeleeKills depuis CoreStats (API)
+    power_weapon_kills: int | None = None  # PowerWeaponKills depuis CoreStats (API)
 
 
 # =============================================================================

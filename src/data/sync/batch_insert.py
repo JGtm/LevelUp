@@ -474,6 +474,14 @@ PARTICIPANT_COLUMNS = [
     "damage_dealt",
     "damage_taken",
     "avg_life_seconds",
+    "headshot_kills",
+    "max_killing_spree",
+    "kda",
+    "accuracy",
+    "time_played_seconds",
+    "grenade_kills",
+    "melee_kills",
+    "power_weapon_kills",
 ]
 
 ALIAS_COLUMNS = ["xuid", "gamertag", "last_seen", "source", "updated_at"]

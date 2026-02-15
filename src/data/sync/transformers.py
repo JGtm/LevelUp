@@ -1168,8 +1168,26 @@ def extract_participants(match_json: dict[str, Any]) -> list[MatchParticipantRow
         damage_dealt_val = _safe_float(stats_dict.get("DamageDealt")) if stats_dict else None
         damage_taken_val = _safe_float(stats_dict.get("DamageTaken")) if stats_dict else None
 
-        # AverageLifeSeconds depuis CoreStats (API)
-        avg_life_val, _ = _extract_life_time_stats(player, match_json)
+        # AverageLifeSeconds et TimePlayedSeconds depuis CoreStats (API)
+        avg_life_val, time_played_val = _extract_life_time_stats(player, match_json)
+
+        # KDA depuis CoreStats (API)
+        kda_val = _extract_kda(player)
+
+        # MaxKillingSpree et HeadshotKills depuis CoreStats (API)
+        max_spree_val, headshots_val = _extract_spree_headshots(player)
+
+        # GrenadeKills, MeleeKills, PowerWeaponKills depuis CoreStats (API)
+        grenade_kills_val = _safe_int(stats_dict.get("GrenadeKills")) if stats_dict else None
+        melee_kills_val = _safe_int(stats_dict.get("MeleeKills")) if stats_dict else None
+        power_weapon_kills_val = (
+            _safe_int(stats_dict.get("PowerWeaponKills")) if stats_dict else None
+        )
+
+        # Accuracy calculée (shots_hit / shots_fired * 100)
+        accuracy_val = None
+        if shots_fired_val and shots_fired_val > 0 and shots_hit_val is not None:
+            accuracy_val = round(shots_hit_val * 100.0 / shots_fired_val, 2)
 
         rows.append(
             MatchParticipantRow(
@@ -1188,6 +1206,14 @@ def extract_participants(match_json: dict[str, Any]) -> list[MatchParticipantRow
                 damage_dealt=damage_dealt_val,
                 damage_taken=damage_taken_val,
                 avg_life_seconds=avg_life_val,
+                headshot_kills=headshots_val,
+                max_killing_spree=max_spree_val,
+                kda=kda_val,
+                accuracy=accuracy_val,
+                time_played_seconds=time_played_val,
+                grenade_kills=grenade_kills_val,
+                melee_kills=melee_kills_val,
+                power_weapon_kills=power_weapon_kills_val,
             )
         )
 
