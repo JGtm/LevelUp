@@ -1,7 +1,7 @@
 """Tests pour scripts/backfill/core.py — fonctions d'insertion DuckDB.
 
 Utilise DuckDB :memory: pour chaque test.
-Couvre : insert_medal_rows, insert_event_rows, insert_skill_row,
+Couvre : insert_medal_rows, insert_event_rows,
          insert_personal_score_rows, insert_alias_rows, insert_participant_rows.
 """
 
@@ -44,24 +44,6 @@ def conn():
             gamertag VARCHAR,
             type_hint INTEGER,
             raw_json VARCHAR
-        )
-    """)
-
-    # player_match_stats
-    c.execute("""
-        CREATE TABLE player_match_stats (
-            match_id VARCHAR NOT NULL,
-            xuid VARCHAR NOT NULL,
-            team_id INTEGER,
-            team_mmr FLOAT,
-            enemy_mmr FLOAT,
-            kills_expected FLOAT,
-            kills_stddev FLOAT,
-            deaths_expected FLOAT,
-            deaths_stddev FLOAT,
-            assists_expected FLOAT,
-            assists_stddev FLOAT,
-            PRIMARY KEY (match_id, xuid)
         )
     """)
 
@@ -136,20 +118,6 @@ class EventRow:
     gamertag: str | None = None
     type_hint: int | None = None
     raw_json: str | None = None
-
-
-@dataclass
-class SkillRow:
-    match_id: str
-    team_id: int | None = None
-    team_mmr: float | None = None
-    enemy_mmr: float | None = None
-    kills_expected: float | None = None
-    kills_stddev: float | None = None
-    deaths_expected: float | None = None
-    deaths_stddev: float | None = None
-    assists_expected: float | None = None
-    assists_stddev: float | None = None
 
 
 @dataclass
@@ -273,46 +241,6 @@ class TestInsertEventRows:
         insert_event_rows(conn, rows2)
         result = conn.execute("SELECT COUNT(*) FROM highlight_events").fetchone()[0]
         assert result == 2
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Tests insert_skill_row
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-class TestInsertSkillRow:
-    def test_none_input(self, conn):
-        from scripts.backfill.core import insert_skill_row
-
-        assert insert_skill_row(conn, None, "xuid1") == 0
-
-    def test_insert_skill(self, conn):
-        from scripts.backfill.core import insert_skill_row
-
-        row = SkillRow(
-            match_id="m1",
-            team_id=0,
-            team_mmr=1200.0,
-            enemy_mmr=1150.0,
-            kills_expected=10.0,
-            kills_stddev=2.0,
-        )
-        n = insert_skill_row(conn, row, "xuid1")
-        assert n == 1
-        result = conn.execute(
-            "SELECT team_mmr FROM player_match_stats WHERE match_id='m1'"
-        ).fetchone()
-        assert result[0] == pytest.approx(1200.0)
-
-    def test_upsert_skill(self, conn):
-        from scripts.backfill.core import insert_skill_row
-
-        row1 = SkillRow(match_id="m1", team_mmr=1200.0)
-        insert_skill_row(conn, row1, "xuid1")
-        row2 = SkillRow(match_id="m1", team_mmr=1300.0)
-        insert_skill_row(conn, row2, "xuid1")
-        count = conn.execute("SELECT COUNT(*) FROM player_match_stats").fetchone()[0]
-        assert count == 1  # upsert, not duplicate
 
 
 # ─────────────────────────────────────────────────────────────────────────────

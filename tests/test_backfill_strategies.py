@@ -1,7 +1,7 @@
-"""Tests pour scripts/backfill/strategies.py.
+"""Tests pour scripts/backfill/strategies.py (V5).
 
 Couvre : backfill_end_time, backfill_killer_victim_pairs, compute_performance_score_for_match.
-Utilise DuckDB :memory:.
+Utilise DuckDB :memory: avec schéma V5 (shared_matches).
 """
 
 from __future__ import annotations
@@ -17,18 +17,25 @@ import pytest
 
 
 @pytest.fixture()
-def conn_with_match_stats():
-    """Connexion DuckDB in-memory avec table match_stats."""
+def shared_conn():
+    """Connexion DuckDB in-memory simulant shared_matches.duckdb (match_registry + match_participants)."""
     c = duckdb.connect(":memory:")
     c.execute("""
-        CREATE TABLE match_stats (
+        CREATE TABLE match_registry (
             match_id VARCHAR NOT NULL PRIMARY KEY,
             start_time TIMESTAMP,
             end_time TIMESTAMP,
             time_played_seconds INTEGER,
-            kills INTEGER DEFAULT 0,
-            deaths INTEGER DEFAULT 0,
-            assists INTEGER DEFAULT 0,
+            backfill_completed INTEGER DEFAULT 0
+        )
+    """)
+    c.execute("""
+        CREATE TABLE match_participants (
+            match_id VARCHAR NOT NULL,
+            xuid VARCHAR NOT NULL,
+            kills SMALLINT DEFAULT 0,
+            deaths SMALLINT DEFAULT 0,
+            assists SMALLINT DEFAULT 0,
             kda FLOAT,
             accuracy FLOAT,
             avg_life_seconds FLOAT,
@@ -36,9 +43,30 @@ def conn_with_match_stats():
             damage_dealt FLOAT,
             rank SMALLINT,
             team_mmr FLOAT,
-            enemy_mmr FLOAT,
+            time_played_seconds INTEGER,
+            PRIMARY KEY (match_id, xuid)
+        )
+    """)
+    yield c
+    c.close()
+
+
+@pytest.fixture()
+def player_conn():
+    """Connexion DuckDB in-memory simulant la DB joueur (player_match_enrichment)."""
+    c = duckdb.connect(":memory:")
+    c.execute("""
+        CREATE TABLE player_match_enrichment (
+            match_id VARCHAR PRIMARY KEY,
             performance_score FLOAT,
-            backfill_completed INTEGER DEFAULT 0
+            session_id VARCHAR,
+            session_label VARCHAR,
+            is_with_friends BOOLEAN,
+            teammates_signature VARCHAR,
+            known_teammates_count SMALLINT,
+            friends_xuids VARCHAR,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     yield c
@@ -71,64 +99,62 @@ def conn_with_events():
 
 
 class TestBackfillEndTime:
-    def test_updates_null_end_time(self, conn_with_match_stats):
+    def test_updates_null_end_time(self, shared_conn):
         from scripts.backfill.strategies import backfill_end_time
 
-        conn = conn_with_match_stats
         t = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
-        conn.execute(
-            "INSERT INTO match_stats (match_id, start_time, time_played_seconds, end_time) "
+        shared_conn.execute(
+            "INSERT INTO match_registry (match_id, start_time, time_played_seconds, end_time) "
             "VALUES (?, ?, ?, NULL)",
             ["m1", t, 600],
         )
-        n = backfill_end_time(conn)
+        n = backfill_end_time(None, shared_conn=shared_conn)
         assert n == 1
-        result = conn.execute("SELECT end_time FROM match_stats WHERE match_id='m1'").fetchone()
+        result = shared_conn.execute(
+            "SELECT end_time FROM match_registry WHERE match_id='m1'"
+        ).fetchone()
         assert result[0] is not None
 
-    def test_skips_already_set(self, conn_with_match_stats):
+    def test_skips_already_set(self, shared_conn):
         from scripts.backfill.strategies import backfill_end_time
 
-        conn = conn_with_match_stats
         t = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
         end = t + timedelta(seconds=600)
-        conn.execute(
-            "INSERT INTO match_stats (match_id, start_time, time_played_seconds, end_time) "
+        shared_conn.execute(
+            "INSERT INTO match_registry (match_id, start_time, time_played_seconds, end_time) "
             "VALUES (?, ?, ?, ?)",
             ["m1", t, 600, end],
         )
-        n = backfill_end_time(conn)
+        n = backfill_end_time(None, shared_conn=shared_conn)
         assert n == 0
 
-    def test_force_recalculates(self, conn_with_match_stats):
+    def test_force_recalculates(self, shared_conn):
         from scripts.backfill.strategies import backfill_end_time
 
-        conn = conn_with_match_stats
         t = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
         end_old = t + timedelta(seconds=300)  # wrong
-        conn.execute(
-            "INSERT INTO match_stats (match_id, start_time, time_played_seconds, end_time) "
+        shared_conn.execute(
+            "INSERT INTO match_registry (match_id, start_time, time_played_seconds, end_time) "
             "VALUES (?, ?, ?, ?)",
             ["m1", t, 600, end_old],
         )
-        n = backfill_end_time(conn, force=True)
+        n = backfill_end_time(None, force=True, shared_conn=shared_conn)
         assert n == 1
 
-    def test_no_matches(self, conn_with_match_stats):
+    def test_no_matches(self, shared_conn):
         from scripts.backfill.strategies import backfill_end_time
 
-        assert backfill_end_time(conn_with_match_stats) == 0
+        assert backfill_end_time(None, shared_conn=shared_conn) == 0
 
-    def test_null_start_time_skipped(self, conn_with_match_stats):
+    def test_null_start_time_skipped(self, shared_conn):
         from scripts.backfill.strategies import backfill_end_time
 
-        conn = conn_with_match_stats
-        conn.execute(
-            "INSERT INTO match_stats (match_id, start_time, time_played_seconds, end_time) "
+        shared_conn.execute(
+            "INSERT INTO match_registry (match_id, start_time, time_played_seconds, end_time) "
             "VALUES (?, NULL, ?, NULL)",
             ["m1", 600],
         )
-        n = backfill_end_time(conn)
+        n = backfill_end_time(None, shared_conn=shared_conn)
         assert n == 0
 
 
@@ -232,50 +258,71 @@ class TestBackfillKillerVictimPairs:
 
 
 class TestComputePerformanceScoreForMatch:
-    def test_score_already_exists(self, conn_with_match_stats):
-        """Retourne False si le score existe déjà."""
+    def test_score_already_exists(self, shared_conn, player_conn):
+        """Retourne False si le score existe déjà dans player_match_enrichment."""
         from scripts.backfill.strategies import compute_performance_score_for_match
 
-        conn = conn_with_match_stats
         t = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
-        conn.execute(
-            "INSERT INTO match_stats (match_id, start_time, performance_score, kills, deaths, assists, time_played_seconds) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            ["m1", t, 75.0, 10, 5, 3, 600],
+        shared_conn.execute(
+            "INSERT INTO match_registry (match_id, start_time) VALUES (?, ?)",
+            ["m1", t],
         )
-        result = compute_performance_score_for_match(conn, "m1")
+        shared_conn.execute(
+            "INSERT INTO match_participants (match_id, xuid, kills, deaths, assists, time_played_seconds) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            ["m1", "xuid1", 10, 5, 3, 600],
+        )
+        player_conn.execute(
+            "INSERT INTO player_match_enrichment (match_id, performance_score) VALUES (?, ?)",
+            ["m1", 75.0],
+        )
+        result = compute_performance_score_for_match(
+            player_conn, "m1", shared_conn=shared_conn, xuid="xuid1"
+        )
         assert result is False
 
-    def test_not_enough_history(self, conn_with_match_stats):
+    def test_not_enough_history(self, shared_conn, player_conn):
         """Retourne False si pas assez de matchs historiques."""
         from scripts.backfill.strategies import compute_performance_score_for_match
 
-        conn = conn_with_match_stats
         t = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
-        conn.execute(
-            "INSERT INTO match_stats (match_id, start_time, performance_score, kills, deaths, assists, time_played_seconds) "
-            "VALUES (?, ?, NULL, ?, ?, ?, ?)",
-            ["m1", t, 10, 5, 3, 600],
+        shared_conn.execute(
+            "INSERT INTO match_registry (match_id, start_time) VALUES (?, ?)",
+            ["m1", t],
         )
-        result = compute_performance_score_for_match(conn, "m1")
+        shared_conn.execute(
+            "INSERT INTO match_participants (match_id, xuid, kills, deaths, assists, time_played_seconds) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            ["m1", "xuid1", 10, 5, 3, 600],
+        )
+        result = compute_performance_score_for_match(
+            player_conn, "m1", shared_conn=shared_conn, xuid="xuid1"
+        )
         assert result is False
 
-    def test_match_not_found(self, conn_with_match_stats):
-        """Retourne False si le match n'existe pas."""
+    def test_match_not_found(self, shared_conn, player_conn):
+        """Retourne False si le match n'existe pas dans shared."""
         from scripts.backfill.strategies import compute_performance_score_for_match
 
-        result = compute_performance_score_for_match(conn_with_match_stats, "nonexistent")
+        result = compute_performance_score_for_match(
+            player_conn, "nonexistent", shared_conn=shared_conn, xuid="xuid1"
+        )
         assert result is False
 
-    def test_null_start_time(self, conn_with_match_stats):
-        """Retourne False si start_time est NULL."""
+    def test_null_start_time(self, shared_conn, player_conn):
+        """Retourne False si start_time est NULL dans match_registry."""
         from scripts.backfill.strategies import compute_performance_score_for_match
 
-        conn = conn_with_match_stats
-        conn.execute(
-            "INSERT INTO match_stats (match_id, start_time, performance_score, kills, deaths, assists, time_played_seconds) "
-            "VALUES (?, NULL, NULL, ?, ?, ?, ?)",
-            ["m1", 10, 5, 3, 600],
+        shared_conn.execute(
+            "INSERT INTO match_registry (match_id, start_time) VALUES (?, NULL)",
+            ["m1"],
         )
-        result = compute_performance_score_for_match(conn, "m1")
+        shared_conn.execute(
+            "INSERT INTO match_participants (match_id, xuid, kills, deaths, assists, time_played_seconds) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            ["m1", "xuid1", 10, 5, 3, 600],
+        )
+        result = compute_performance_score_for_match(
+            player_conn, "m1", shared_conn=shared_conn, xuid="xuid1"
+        )
         assert result is False

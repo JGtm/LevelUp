@@ -59,8 +59,85 @@ def _create_metadata_db(path: Path) -> None:
     conn.close()
 
 
+def _create_shared_db(path: Path) -> None:
+    """Crée shared_matches.duckdb avec match_registry, match_participants, medals_earned."""
+    conn = duckdb.connect(str(path))
+    conn.execute("""
+        CREATE TABLE match_registry (
+            match_id TEXT PRIMARY KEY,
+            start_time TIMESTAMP,
+            end_time TIMESTAMP,
+            map_name TEXT,
+            playlist TEXT,
+            game_variant TEXT,
+            match_start_date TEXT,
+            playlist_name TEXT,
+            game_variant_name TEXT,
+            pair_name TEXT,
+            backfill_completed INTEGER DEFAULT 0
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE match_participants (
+            match_id TEXT NOT NULL,
+            xuid TEXT NOT NULL,
+            gamertag TEXT,
+            kills SMALLINT DEFAULT 0,
+            deaths SMALLINT DEFAULT 0,
+            assists SMALLINT DEFAULT 0,
+            headshot_kills SMALLINT DEFAULT 0,
+            outcome SMALLINT DEFAULT 0,
+            kda FLOAT,
+            accuracy FLOAT,
+            time_played_seconds INTEGER,
+            avg_life_seconds FLOAT,
+            personal_score INTEGER,
+            damage_dealt FLOAT,
+            rank SMALLINT,
+            team_mmr FLOAT,
+            shots_fired INTEGER,
+            shots_hit INTEGER,
+            PRIMARY KEY (match_id, xuid)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE medals_earned (
+            match_id TEXT NOT NULL,
+            xuid TEXT NOT NULL,
+            medal_name_id BIGINT NOT NULL,
+            count INTEGER NOT NULL,
+            PRIMARY KEY (match_id, xuid, medal_name_id)
+        )
+    """)
+
+    # 3 matchs de test
+    conn.execute(
+        "INSERT INTO match_registry (match_id, start_time, end_time, map_name, playlist, "
+        "game_variant, match_start_date, playlist_name, game_variant_name) VALUES "
+        "('m1', '2026-01-01 12:00:00', '2026-01-01 12:10:00', 'LiveFire', "
+        "'Ranked Slayer', 'Slayer', '2026-01-01', 'Ranked Slayer', 'Slayer'),"
+        "('m2', '2026-01-02 14:00:00', '2026-01-02 14:10:00', 'Streets', "
+        "'Quick Play', 'CTF', '2026-01-02', 'Quick Play', 'CTF'),"
+        "('m3', '2026-01-03 16:00:00', '2026-01-03 16:10:00', 'Recharge', "
+        "'Quick Play', 'Oddball', '2026-01-03', 'Quick Play', 'Oddball')"
+    )
+    conn.execute(
+        "INSERT INTO match_participants (match_id, xuid, gamertag, kills, deaths, assists, "
+        "headshot_kills, outcome) VALUES "
+        "('m1', '12345', 'TestPlayer', 15, 5, 8, 3, 2),"
+        "('m2', '12345', 'TestPlayer', 10, 8, 12, 2, 2),"
+        "('m3', '12345', 'TestPlayer', 3, 10, 1, 0, 0)"
+    )
+    conn.execute(
+        "INSERT INTO medals_earned VALUES "
+        "('m1', '12345', 3169118333, 2), ('m1', '12345', 221693153, 1),"
+        "('m2', '12345', 3169118333, 1)"
+    )
+    conn.close()
+
+
 def _create_player_db(path: Path) -> None:
-    """Crée une DB joueur complète de test."""
+    """Crée une DB joueur V5 avec match_citations et personal_score_awards."""
     conn = duckdb.connect(str(path))
 
     conn.execute("""
@@ -77,29 +154,6 @@ def _create_player_db(path: Path) -> None:
     )
 
     conn.execute("""
-        CREATE TABLE match_stats (
-            match_id TEXT PRIMARY KEY,
-            kills INTEGER DEFAULT 0,
-            deaths INTEGER DEFAULT 0,
-            assists INTEGER DEFAULT 0,
-            headshot_kills INTEGER DEFAULT 0,
-            outcome INTEGER DEFAULT 0,
-            playlist_name TEXT,
-            game_variant_name TEXT,
-            start_time TIMESTAMP
-        )
-    """)
-
-    conn.execute("""
-        CREATE TABLE medals_earned (
-            match_id TEXT NOT NULL,
-            medal_name_id BIGINT NOT NULL,
-            count INTEGER NOT NULL,
-            PRIMARY KEY (match_id, medal_name_id)
-        )
-    """)
-
-    conn.execute("""
         CREATE TABLE personal_score_awards (
             match_id TEXT NOT NULL,
             award_name TEXT NOT NULL,
@@ -108,21 +162,8 @@ def _create_player_db(path: Path) -> None:
             award_score INTEGER DEFAULT 0
         )
     """)
-
-    # 3 matchs de test
     conn.execute(
-        "INSERT INTO match_stats VALUES "
-        "('m1', 15, 5, 8, 3, 2, 'Ranked Slayer', 'Slayer', '2026-01-01 12:00:00'),"
-        "('m2', 10, 8, 12, 2, 2, 'Quick Play', 'CTF', '2026-01-02 14:00:00'),"
-        "('m3', 3, 10, 1, 0, 0, 'Quick Play', 'Oddball', '2026-01-03 16:00:00')"
-    )
-    conn.execute(
-        "INSERT INTO medals_earned VALUES "
-        "('m1', 3169118333, 2), ('m1', 221693153, 1),"
-        "('m2', 3169118333, 1)"
-    )
-    conn.execute(
-        "INSERT INTO personal_score_awards VALUES " "('m1', 'Flag Defense', 'objective', 3, 150)"
+        "INSERT INTO personal_score_awards VALUES ('m1', 'Flag Defense', 'objective', 3, 150)"
     )
     conn.close()
 
@@ -141,6 +182,7 @@ def backfill_dir(tmp_path: Path) -> Path:
     player_dir.mkdir(parents=True)
 
     _create_metadata_db(warehouse / "metadata.duckdb")
+    _create_shared_db(warehouse / "shared_matches.duckdb")
     _create_player_db(player_dir / "stats.duckdb")
 
     return tmp_path
