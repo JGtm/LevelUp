@@ -376,10 +376,7 @@ class RosterLoaderMixin:
         self,
         teammate_xuid: str,
     ) -> list[str]:
-        """Retourne les match_id joués avec un coéquipier.
-
-        V5 : Utilise shared.match_participants si disponible.
-        Fallback : highlight_events locale.
+        """Retourne les match_id joués avec un coéquipier depuis shared.
 
         Args:
             teammate_xuid: XUID du coéquipier.
@@ -389,48 +386,21 @@ class RosterLoaderMixin:
         """
         conn = self._get_connection()
 
-        # V5 : shared.match_participants (roster complet)
-        if self._has_shared_table("match_participants"):
-            try:
-                result = conn.execute(
-                    """
-                    SELECT DISTINCT me.match_id
-                    FROM shared.match_participants me
-                    INNER JOIN shared.match_participants tm
-                        ON me.match_id = tm.match_id
-                    WHERE me.xuid = ? AND tm.xuid = ?
-                    ORDER BY me.match_id DESC
-                    """,
-                    [self._xuid, teammate_xuid],
-                )
-                match_ids = [row[0] for row in result.fetchall()]
-                if match_ids:
-                    return match_ids
-            except Exception:
-                pass
-
-        # Fallback V4 : highlight_events locale
         try:
-            # Vérifier si highlight_events existe
-            tables = conn.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main' AND table_name = 'highlight_events'"
-            ).fetchall()
-            if not tables:
-                return []
-
-            # Trouver les matchs où les deux joueurs apparaissent
             result = conn.execute(
                 """
                 SELECT DISTINCT me.match_id
-                FROM highlight_events me
-                INNER JOIN highlight_events tm ON me.match_id = tm.match_id
+                FROM shared.match_participants me
+                INNER JOIN shared.match_participants tm
+                    ON me.match_id = tm.match_id
                 WHERE me.xuid = ? AND tm.xuid = ?
                 ORDER BY me.match_id DESC
                 """,
                 [self._xuid, teammate_xuid],
             )
             return [row[0] for row in result.fetchall()]
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Erreur load_matches_with_teammate shared: {e}")
             return []
 
     def load_same_team_match_ids(
@@ -439,8 +409,7 @@ class RosterLoaderMixin:
     ) -> list[str]:
         """Retourne les match_id où les deux joueurs étaient dans la même équipe.
 
-        V5 : Utilise shared.match_participants si disponible (team_id fiable).
-        Fallback : match_participants locale puis highlight_events.
+        Utilise shared.match_participants (team_id fiable).
 
         Args:
             teammate_xuid: XUID du coéquipier.
@@ -450,87 +419,32 @@ class RosterLoaderMixin:
         """
         conn = self._get_connection()
 
-        # V5 : shared.match_participants (roster complet, team_id fiable)
-        if self._has_shared_table("match_participants"):
-            try:
-                result = conn.execute(
-                    """
-                    SELECT DISTINCT me.match_id
-                    FROM shared.match_participants me
-                    INNER JOIN shared.match_participants tm
-                        ON me.match_id = tm.match_id
-                        AND me.team_id = tm.team_id
-                    WHERE me.xuid = ? AND tm.xuid = ?
-                    ORDER BY me.match_id DESC
-                    """,
-                    [self._xuid, teammate_xuid],
-                )
-                match_ids = [row[0] for row in result.fetchall()]
-                if match_ids:
-                    return match_ids
-            except Exception as e:
-                logger.debug(f"Erreur shared.match_participants: {e}")
-
-        # Fallback V4 : match_participants locale
-        if self._has_table("match_participants"):
-            try:
-                result = conn.execute(
-                    """
-                    SELECT DISTINCT me.match_id
-                    FROM match_participants me
-                    INNER JOIN match_participants tm
-                        ON me.match_id = tm.match_id
-                        AND me.team_id = tm.team_id
-                    WHERE me.xuid = ? AND tm.xuid = ?
-                    ORDER BY me.match_id DESC
-                    """,
-                    [self._xuid, teammate_xuid],
-                )
-                match_ids = [row[0] for row in result.fetchall()]
-                if match_ids:
-                    return match_ids
-            except Exception as e:
-                logger.debug(f"Erreur match_participants: {e}")
-
-        # Fallback : highlight_events
         try:
             result = conn.execute(
                 """
-                SELECT DISTINCT ms.match_id
-                FROM match_stats ms
-                WHERE ms.match_id IN (
-                    SELECT DISTINCT match_id FROM highlight_events WHERE xuid = ?
-                )
-                AND ms.match_id IN (
-                    SELECT DISTINCT match_id FROM highlight_events WHERE xuid = ?
-                )
-                ORDER BY ms.match_id DESC
+                SELECT DISTINCT me.match_id
+                FROM shared.match_participants me
+                INNER JOIN shared.match_participants tm
+                    ON me.match_id = tm.match_id
+                    AND me.team_id = tm.team_id
+                WHERE me.xuid = ? AND tm.xuid = ?
+                ORDER BY me.match_id DESC
                 """,
                 [self._xuid, teammate_xuid],
             )
             return [row[0] for row in result.fetchall()]
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Erreur load_same_team_match_ids shared: {e}")
             return []
 
     def has_match_participants(self) -> bool:
-        """Vérifie si des données match_participants existent (shared ou locale)."""
-        # V5 : vérifier shared d'abord
-        if self._has_shared_table("match_participants"):
-            conn = self._get_connection()
-            try:
-                count = conn.execute(
-                    "SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?",
-                    [self._xuid],
-                ).fetchone()[0]
-                if count > 0:
-                    return True
-            except Exception:
-                pass
-
-        # Fallback V4 : table locale
+        """Vérifie si des données match_participants existent dans shared."""
         conn = self._get_connection()
         try:
-            count = conn.execute("SELECT COUNT(*) FROM match_participants").fetchone()[0]
+            count = conn.execute(
+                "SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?",
+                [self._xuid],
+            ).fetchone()[0]
             return count > 0
         except Exception:
             return False
@@ -771,8 +685,7 @@ class RosterLoaderMixin:
     def load_match_players_stats(self, match_id: str) -> list[dict[str, Any]]:
         """Charge les statistiques officielles de tous les joueurs d'un match.
 
-        Utilise shared.match_participants (v5) si disponible, sinon la table locale.
-        Le schéma shared est garanti d'avoir toutes les colonnes (rank, score, kda).
+        Utilise shared.match_participants (roster complet, toutes colonnes).
 
         Args:
             match_id: ID du match.
@@ -785,109 +698,41 @@ class RosterLoaderMixin:
 
         conn = self._get_connection()
 
-        # Stratégie : tenter shared.match_participants d'abord (roster complet)
-        # sinon fallback sur la table locale match_participants
         try:
-            # ---- V5 : shared.match_participants (roster complet, toutes colonnes) ----
-            if self._has_shared_table("match_participants"):
-                rows = conn.execute(
-                    """
-                    SELECT
-                        p.xuid,
-                        COALESCE(p.gamertag, a.gamertag, p.xuid) AS gamertag,
-                        p.team_id,
-                        p.rank,
-                        p.score,
-                        p.kills,
-                        p.deaths,
-                        p.assists
-                    FROM shared.match_participants p
-                    LEFT JOIN shared.xuid_aliases a ON a.xuid = p.xuid
-                    WHERE p.match_id = ?
-                    ORDER BY p.rank ASC NULLS LAST
-                    """,
-                    [match_id],
-                ).fetchall()
-
-                if rows:
-                    result = []
-                    for idx, row in enumerate(rows):
-                        result.append(
-                            {
-                                "xuid": str(row[0] or "").strip(),
-                                "gamertag": str(row[1] or row[0] or "").strip(),
-                                "team_id": int(row[2]) if row[2] is not None else None,
-                                "rank": int(row[3]) if row[3] is not None else idx + 1,
-                                "score": int(row[4]) if row[4] is not None else None,
-                                "kills": int(row[5]) if row[5] is not None else 0,
-                                "deaths": int(row[6]) if row[6] is not None else 0,
-                                "assists": int(row[7]) if row[7] is not None else 0,
-                            }
-                        )
-                    return result
-
-            # ---- Fallback V4 : match_participants locale ----
-            if not self._has_table("match_participants"):
-                return []
-
-            # Vérifier les colonnes disponibles (schéma local peut être incomplet)
-            has_rank = self._has_column(conn, "match_participants", "rank")
-            has_score = self._has_column(conn, "match_participants", "score")
-            has_kda = (
-                self._has_column(conn, "match_participants", "kills")
-                and self._has_column(conn, "match_participants", "deaths")
-                and self._has_column(conn, "match_participants", "assists")
-            )
-
-            columns = ["xuid", "gamertag", "team_id"]
-            if has_rank:
-                columns.append("rank")
-            if has_score:
-                columns.append("score")
-            if has_kda:
-                columns.extend(["kills", "deaths", "assists"])
-
-            query = f"""
-                SELECT {", ".join(columns)}
-                FROM match_participants
-                WHERE match_id = ?
-                ORDER BY {"rank" if has_rank else "score DESC NULLS LAST"}
-            """
-
-            rows = conn.execute(query, [match_id]).fetchall()
+            rows = conn.execute(
+                """
+                SELECT
+                    p.xuid,
+                    COALESCE(p.gamertag, a.gamertag, p.xuid) AS gamertag,
+                    p.team_id,
+                    p.rank,
+                    p.score,
+                    p.kills,
+                    p.deaths,
+                    p.assists
+                FROM shared.match_participants p
+                LEFT JOIN shared.xuid_aliases a ON a.xuid = p.xuid
+                WHERE p.match_id = ?
+                ORDER BY p.rank ASC NULLS LAST
+                """,
+                [match_id],
+            ).fetchall()
 
             result = []
             for idx, row in enumerate(rows):
-                d: dict[str, Any] = {
-                    "xuid": str(row[0] or "").strip(),
-                    "gamertag": str(row[1] or row[0] or "").strip(),
-                    "team_id": int(row[2]) if row[2] is not None else None,
-                    "rank": 0,
-                    "score": None,
-                    "kills": 0,
-                    "deaths": 0,
-                    "assists": 0,
-                }
-
-                col_idx = 3
-                if has_rank:
-                    d["rank"] = int(row[col_idx]) if row[col_idx] is not None else idx + 1
-                    col_idx += 1
-                else:
-                    d["rank"] = idx + 1
-
-                if has_score:
-                    d["score"] = int(row[col_idx]) if row[col_idx] is not None else None
-                    col_idx += 1
-
-                if has_kda:
-                    d["kills"] = int(row[col_idx]) if row[col_idx] is not None else 0
-                    d["deaths"] = int(row[col_idx + 1]) if row[col_idx + 1] is not None else 0
-                    d["assists"] = int(row[col_idx + 2]) if row[col_idx + 2] is not None else 0
-
-                result.append(d)
-
+                result.append(
+                    {
+                        "xuid": str(row[0] or "").strip(),
+                        "gamertag": str(row[1] or row[0] or "").strip(),
+                        "team_id": int(row[2]) if row[2] is not None else None,
+                        "rank": int(row[3]) if row[3] is not None else idx + 1,
+                        "score": int(row[4]) if row[4] is not None else None,
+                        "kills": int(row[5]) if row[5] is not None else 0,
+                        "deaths": int(row[6]) if row[6] is not None else 0,
+                        "assists": int(row[7]) if row[7] is not None else 0,
+                    }
+                )
             return result
         except Exception as e:
-            logger.debug(f"Erreur load_match_players_stats: {e}")
+            logger.debug(f"Erreur load_match_players_stats shared: {e}")
             return []

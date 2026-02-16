@@ -468,9 +468,14 @@ class DuckDBRepository(
         *,
         top_n: int | None = 25,
     ) -> list[tuple[int, int]]:
-        """Charge les médailles les plus fréquentes.
+        """Charge les médailles les plus fréquentes depuis shared.medals_earned.
 
-        V5 : Utilise shared.medals_earned si disponible (filtré par xuid).
+        Args:
+            match_ids: Liste des IDs de matchs.
+            top_n: Nombre max de médailles à retourner.
+
+        Returns:
+            Liste de (medal_name_id, total_count) triée par fréquence décroissante.
         """
         if not match_ids:
             return []
@@ -479,73 +484,41 @@ class DuckDBRepository(
         placeholders = ", ".join(["?" for _ in match_ids])
         limit_sql = f"LIMIT {top_n}" if top_n else ""
 
-        # V5 : shared.medals_earned
-        if self._has_shared_table("medals_earned"):
-            try:
-                sql = f"""
-                    SELECT medal_name_id, SUM(count) as total
-                    FROM shared.medals_earned
-                    WHERE match_id IN ({placeholders})
-                      AND xuid = ?
-                    GROUP BY medal_name_id
-                    ORDER BY total DESC
-                    {limit_sql}
-                """
-                result = conn.execute(sql, [*match_ids, self._xuid])
-                rows = [(row[0], row[1]) for row in result.fetchall()]
-                if rows:
-                    return rows
-            except Exception:
-                pass
-
-        # Fallback V4 : medals_earned locale (pas de colonne xuid)
         try:
-            count = conn.execute("SELECT COUNT(*) FROM medals_earned").fetchone()[0]
-            if count == 0:
-                return []
-        except Exception:
+            sql = f"""
+                SELECT medal_name_id, SUM(count) as total
+                FROM shared.medals_earned
+                WHERE match_id IN ({placeholders})
+                  AND xuid = ?
+                GROUP BY medal_name_id
+                ORDER BY total DESC
+                {limit_sql}
+            """
+            result = conn.execute(sql, [*match_ids, self._xuid])
+            return [(row[0], row[1]) for row in result.fetchall()]
+        except Exception as e:
+            logger.debug(f"Erreur load_top_medals shared: {e}")
             return []
 
-        sql = f"""
-            SELECT medal_name_id, SUM(count) as total
-            FROM medals_earned
-            WHERE match_id IN ({placeholders})
-            GROUP BY medal_name_id
-            ORDER BY total DESC
-            {limit_sql}
-        """
-
-        result = conn.execute(sql, match_ids)
-        return [(row[0], row[1]) for row in result.fetchall()]
-
     def load_match_medals(self, match_id: str) -> list[dict[str, int]]:
-        """Charge les médailles pour un match spécifique.
+        """Charge les médailles pour un match spécifique depuis shared.
 
-        V5 : Utilise shared.medals_earned (filtré par xuid du joueur principal).
+        Args:
+            match_id: ID du match.
+
+        Returns:
+            Liste de dicts {name_id, count}.
         """
         conn = self._get_connection()
 
-        # V5 : shared.medals_earned
-        if self._has_shared_table("medals_earned"):
-            try:
-                result = conn.execute(
-                    "SELECT medal_name_id, count FROM shared.medals_earned WHERE match_id = ? AND xuid = ?",
-                    [match_id, self._xuid],
-                )
-                rows = [{"name_id": row[0], "count": row[1]} for row in result.fetchall()]
-                if rows:
-                    return rows
-            except Exception:
-                pass
-
-        # Fallback V4 : medals_earned locale
         try:
             result = conn.execute(
-                "SELECT medal_name_id, count FROM medals_earned WHERE match_id = ?",
-                [match_id],
+                "SELECT medal_name_id, count FROM shared.medals_earned WHERE match_id = ? AND xuid = ?",
+                [match_id, self._xuid],
             )
             return [{"name_id": row[0], "count": row[1]} for row in result.fetchall()]
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Erreur load_match_medals shared: {e}")
             return []
 
     def count_medal_by_match(
@@ -553,9 +526,7 @@ class DuckDBRepository(
         match_ids: list[str],
         medal_name_id: int,
     ) -> dict[str, int]:
-        """Compte une médaille spécifique pour chaque match.
-
-        V5 : Utilise shared.medals_earned si disponible.
+        """Compte une médaille spécifique pour chaque match depuis shared.
 
         Args:
             match_ids: Liste des IDs de matchs.
@@ -570,38 +541,20 @@ class DuckDBRepository(
         conn = self._get_connection()
         placeholders = ", ".join(["?" for _ in match_ids])
 
-        # V5 : shared.medals_earned
-        if self._has_shared_table("medals_earned"):
-            try:
-                result = conn.execute(
-                    f"""
-                    SELECT match_id, count
-                    FROM shared.medals_earned
-                    WHERE match_id IN ({placeholders})
-                      AND medal_name_id = ?
-                      AND xuid = ?
-                    """,
-                    [*match_ids, medal_name_id, self._xuid],
-                )
-                shared_result = {str(row[0]): row[1] for row in result.fetchall()}
-                if shared_result:
-                    return shared_result
-            except Exception:
-                pass
-
-        # Fallback V4 : medals_earned locale
         try:
             result = conn.execute(
                 f"""
                 SELECT match_id, count
-                FROM medals_earned
+                FROM shared.medals_earned
                 WHERE match_id IN ({placeholders})
                   AND medal_name_id = ?
+                  AND xuid = ?
                 """,
-                [*match_ids, medal_name_id],
+                [*match_ids, medal_name_id, self._xuid],
             )
             return {str(row[0]): row[1] for row in result.fetchall()}
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Erreur count_medal_by_match shared: {e}")
             return {}
 
     def count_perfect_kills_by_match(
@@ -650,49 +603,24 @@ class DuckDBRepository(
         event_placeholders = ", ".join(["?" for _ in event_variants])
         placeholders = ", ".join(["?" for _ in match_ids])
 
-        # V5 : shared.highlight_events (killer_xuid/victim_xuid)
-        if self._has_shared_table("highlight_events"):
-            try:
-                # Pour un Kill, le joueur est le killer ; pour un Death, le joueur est la victime
-                xuid_column = "killer_xuid" if event_type.lower() == "kill" else "victim_xuid"
-                result = conn.execute(
-                    f"""
-                    SELECT match_id, MIN(time_ms) as first_time
-                    FROM shared.highlight_events
-                    WHERE match_id IN ({placeholders})
-                      AND event_type IN ({event_placeholders})
-                      AND {xuid_column} = ?
-                    GROUP BY match_id
-                    """,
-                    [*match_ids, *event_variants, self._xuid],
-                )
-                shared_result = {row[0]: row[1] for row in result.fetchall()}
-                if shared_result:
-                    return shared_result
-            except Exception:
-                pass
-
-        # Fallback V4 : highlight_events locale (xuid unique)
+        # Lecture depuis shared.highlight_events (killer_xuid/victim_xuid)
         try:
-            tables = conn.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main' AND table_name = 'highlight_events'"
-            ).fetchall()
-            if not tables:
-                return {}
-
+            # Pour un Kill, le joueur est le killer ; pour un Death, le joueur est la victime
+            xuid_column = "killer_xuid" if event_type.lower() == "kill" else "victim_xuid"
             result = conn.execute(
                 f"""
                 SELECT match_id, MIN(time_ms) as first_time
-                FROM highlight_events
+                FROM shared.highlight_events
                 WHERE match_id IN ({placeholders})
                   AND event_type IN ({event_placeholders})
-                  AND xuid = ?
+                  AND {xuid_column} = ?
                 GROUP BY match_id
                 """,
                 [*match_ids, *event_variants, self._xuid],
             )
             return {row[0]: row[1] for row in result.fetchall()}
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Erreur load_first_event_times shared: {e}")
             return {}
 
     def get_first_kill_death_times(
@@ -784,10 +712,10 @@ class DuckDBRepository(
     # =========================================================================
 
     def get_storage_info(self) -> dict[str, Any]:
-        """Retourne des informations sur le stockage."""
+        """Retourne des informations sur le stockage (local + shared)."""
         conn = self._get_connection()
 
-        # Taille des tables
+        # Taille des tables locales
         tables_info = {}
         for table in ["match_stats", "medals_earned", "antagonists"]:
             try:
@@ -796,10 +724,35 @@ class DuckDBRepository(
             except Exception:
                 tables_info[table] = 0
 
+        # Counts shared
+        shared_info = {}
+        if self.has_shared:
+            for table, xuid_col in [
+                ("match_participants", "xuid"),
+                ("medals_earned", "xuid"),
+                ("highlight_events", None),
+                ("match_registry", None),
+            ]:
+                try:
+                    if xuid_col:
+                        count = conn.execute(
+                            f"SELECT COUNT(*) FROM shared.{table} WHERE {xuid_col} = ?",
+                            [self._xuid],
+                        ).fetchone()[0]
+                    else:
+                        count = conn.execute(f"SELECT COUNT(*) FROM shared.{table}").fetchone()[0]
+                    shared_info[f"shared_{table}"] = count
+                except Exception:
+                    shared_info[f"shared_{table}"] = 0
+
         # Taille du fichier
         file_size_mb = 0
         if self._player_db_path.exists():
             file_size_mb = self._player_db_path.stat().st_size / (1024 * 1024)
+
+        shared_size_mb = 0
+        if self._shared_db_path.exists():
+            shared_size_mb = self._shared_db_path.stat().st_size / (1024 * 1024)
 
         return {
             "type": "duckdb",
@@ -809,7 +762,9 @@ class DuckDBRepository(
             "xuid": self._xuid,
             "gamertag": self._gamertag,
             "file_size_mb": round(file_size_mb, 2),
+            "shared_size_mb": round(shared_size_mb, 2),
             "tables": tables_info,
+            "shared_tables": shared_info,
             "has_metadata": "meta" in self._attached_dbs,
             "has_shared": "shared" in self._attached_dbs,
         }
@@ -1285,10 +1240,7 @@ class DuckDBRepository(
     # =========================================================================
 
     def load_highlight_events(self, match_id: str) -> list[dict[str, Any]]:
-        """Charge les highlight events pour un match.
-
-        V5 : Utilise shared.highlight_events si disponible (tous les events du match),
-        puis complète avec les events locaux si nécessaire.
+        """Charge les highlight events pour un match depuis shared.
 
         Args:
             match_id: ID du match.
@@ -1301,47 +1253,20 @@ class DuckDBRepository(
 
         conn = self._get_connection()
 
-        # V5 : shared.highlight_events (structure killer_xuid/victim_xuid)
-        if self._has_shared_table("highlight_events"):
-            try:
-                result = conn.execute(
-                    """
-                    SELECT event_type, time_ms,
-                           CASE WHEN event_type IN ('kill', 'Kill') THEN killer_xuid
-                                WHEN event_type IN ('death', 'Death') THEN victim_xuid
-                                ELSE COALESCE(killer_xuid, victim_xuid)
-                           END AS xuid,
-                           CASE WHEN event_type IN ('kill', 'Kill') THEN killer_gamertag
-                                WHEN event_type IN ('death', 'Death') THEN victim_gamertag
-                                ELSE COALESCE(killer_gamertag, victim_gamertag)
-                           END AS gamertag,
-                           type_hint
-                    FROM shared.highlight_events
-                    WHERE match_id = ?
-                    ORDER BY time_ms ASC NULLS LAST
-                    """,
-                    [match_id],
-                )
-                columns = ["event_type", "time_ms", "xuid", "gamertag", "type_hint"]
-                rows = result.fetchall()
-                if rows:
-                    return [dict(zip(columns, row, strict=False)) for row in rows]
-            except Exception as e:
-                logger.debug(f"Erreur shared.highlight_events: {e}")
-
-        # Fallback V4 : highlight_events locale
         try:
-            tables = conn.execute(
-                "SELECT table_name FROM information_schema.tables "
-                "WHERE table_schema = 'main' AND table_name = 'highlight_events'"
-            ).fetchall()
-            if not tables:
-                return []
-
             result = conn.execute(
                 """
-                SELECT event_type, time_ms, xuid, gamertag, type_hint
-                FROM highlight_events
+                SELECT event_type, time_ms,
+                       CASE WHEN event_type IN ('kill', 'Kill') THEN killer_xuid
+                            WHEN event_type IN ('death', 'Death') THEN victim_xuid
+                            ELSE COALESCE(killer_xuid, victim_xuid)
+                       END AS xuid,
+                       CASE WHEN event_type IN ('kill', 'Kill') THEN killer_gamertag
+                            WHEN event_type IN ('death', 'Death') THEN victim_gamertag
+                            ELSE COALESCE(killer_gamertag, victim_gamertag)
+                       END AS gamertag,
+                       type_hint
+                FROM shared.highlight_events
                 WHERE match_id = ?
                 ORDER BY time_ms ASC NULLS LAST
                 """,
@@ -1350,7 +1275,7 @@ class DuckDBRepository(
             columns = ["event_type", "time_ms", "xuid", "gamertag", "type_hint"]
             return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
         except Exception as e:
-            logger.debug(f"Erreur load_highlight_events: {e}")
+            logger.debug(f"Erreur load_highlight_events shared: {e}")
             return []
 
     def list_other_player_xuids(self, limit: int = 500) -> list[str]:
@@ -1430,6 +1355,9 @@ class DuckDBRepository(
     def get_match_session_info(self, match_id: str) -> dict[str, Any] | None:
         """Retourne les infos de session pour un match.
 
+        Cherche dans match_stats (local) puis player_match_enrichment (local).
+        session_id est une donnée d'enrichissement joueur qui reste locale.
+
         Args:
             match_id: ID du match.
 
@@ -1440,21 +1368,30 @@ class DuckDBRepository(
             return None
 
         conn = self._get_connection()
+
+        # 1. match_stats (local)
         try:
             row = conn.execute(
-                """
-                SELECT session_id
-                FROM match_stats
-                WHERE match_id = ?
-                """,
+                "SELECT session_id FROM match_stats WHERE match_id = ?",
                 [match_id],
             ).fetchone()
-
             if row and row[0]:
                 return {"session_id": row[0]}
-            return None
         except Exception:
-            return None
+            pass
+
+        # 2. player_match_enrichment (local)
+        try:
+            row = conn.execute(
+                "SELECT session_id FROM player_match_enrichment WHERE match_id = ?",
+                [match_id],
+            ).fetchone()
+            if row and row[0]:
+                return {"session_id": row[0]}
+        except Exception:
+            pass
+
+        return None
 
     def has_table(self, table_name: str) -> bool:
         """Vérifie si une table existe (alias public de _has_table).

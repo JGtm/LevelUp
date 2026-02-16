@@ -917,11 +917,9 @@ class MatchQueriesMixin:
     def load_match_mmr_batch(
         self, match_ids: list[str]
     ) -> dict[str, tuple[float | None, float | None]]:
-        """Charge le MMR pour plusieurs matchs en une seule requête.
+        """Charge le MMR pour plusieurs matchs depuis shared ou local.
 
-        Utilise match_stats avec fallback sur player_match_stats si les MMR
-        sont NULL dans match_stats (cas des anciens matchs synchronisés
-        avant l'extraction des MMR vers match_stats).
+        Priorité : shared.match_participants (v5) → match_stats + player_match_stats (local).
 
         Args:
             match_ids: Liste des match_id à charger.
@@ -933,40 +931,54 @@ class MatchQueriesMixin:
             return {}
 
         conn = self._get_connection()
-
         placeholders = ", ".join(["?" for _ in match_ids])
 
-        # Vérifier si player_match_stats existe pour le fallback
-        tables = conn.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema='main' AND table_name='player_match_stats'"
-        ).fetchall()
-        has_pms = len(tables) > 0
+        # V5 : shared.match_participants (colonnes team_mmr/enemy_mmr si disponibles)
+        if self._has_shared_table("match_participants"):
+            try:
+                result = conn.execute(
+                    f"""
+                    SELECT match_id, team_mmr, enemy_mmr
+                    FROM shared.match_participants
+                    WHERE match_id IN ({placeholders})
+                      AND xuid = ?
+                    """,
+                    [*match_ids, self._xuid],
+                )
+                shared_result = {row[0]: (row[1], row[2]) for row in result.fetchall()}
+                if shared_result:
+                    return shared_result
+            except Exception:
+                pass
 
-        if has_pms:
-            # Utiliser COALESCE pour fallback sur player_match_stats
-            result = conn.execute(
-                f"""
-                SELECT
-                    ms.match_id,
-                    COALESCE(ms.team_mmr, pms.team_mmr) as team_mmr,
-                    COALESCE(ms.enemy_mmr, pms.enemy_mmr) as enemy_mmr
-                FROM match_stats ms
-                LEFT JOIN player_match_stats pms ON ms.match_id = pms.match_id
-                WHERE ms.match_id IN ({placeholders})
-                """,
-                match_ids,
-            )
-        else:
-            result = conn.execute(
-                f"""
-                SELECT match_id, team_mmr, enemy_mmr
-                FROM match_stats
-                WHERE match_id IN ({placeholders})
-                """,
-                match_ids,
-            )
-
-        return {row[0]: (row[1], row[2]) for row in result.fetchall()}
+        # Fallback local : match_stats + player_match_stats (pour MMR historiques)
+        try:
+            has_pms = self._has_table_cached(conn, "player_match_stats")
+            if has_pms:
+                result = conn.execute(
+                    f"""
+                    SELECT
+                        ms.match_id,
+                        COALESCE(ms.team_mmr, pms.team_mmr) as team_mmr,
+                        COALESCE(ms.enemy_mmr, pms.enemy_mmr) as enemy_mmr
+                    FROM match_stats ms
+                    LEFT JOIN player_match_stats pms ON ms.match_id = pms.match_id
+                    WHERE ms.match_id IN ({placeholders})
+                    """,
+                    match_ids,
+                )
+            else:
+                result = conn.execute(
+                    f"""
+                    SELECT match_id, team_mmr, enemy_mmr
+                    FROM match_stats
+                    WHERE match_id IN ({placeholders})
+                    """,
+                    match_ids,
+                )
+            return {row[0]: (row[1], row[2]) for row in result.fetchall()}
+        except Exception:
+            return {}
 
     # =========================================================================
     # Chargement Polars zero-copy (Sprint 19 — hot path optimisé)
