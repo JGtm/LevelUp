@@ -448,8 +448,7 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
     catalog = None
     try:
         rows = conn.execute(
-            "SELECT database_name FROM duckdb_tables() "
-            "WHERE table_name = 'match_registry'"
+            "SELECT database_name FROM duckdb_tables() " "WHERE table_name = 'match_registry'"
         ).fetchall()
         for row in rows:
             db_name = row[0]
@@ -551,8 +550,7 @@ def ensure_performance_indexes(conn: duckdb.DuckDBPyConnection) -> None:
     catalog = None
     try:
         rows = conn.execute(
-            "SELECT database_name FROM duckdb_tables() "
-            "WHERE table_name = 'match_participants'"
+            "SELECT database_name FROM duckdb_tables() " "WHERE table_name = 'match_participants'"
         ).fetchall()
         for row in rows:
             db_name = row[0]

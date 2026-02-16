@@ -350,7 +350,7 @@ def get_cached_repository(
     xuid: str,
     *,
     read_only: bool = True,
-) -> "DuckDBRepository":
+) -> DuckDBRepository:
     """Retourne un DuckDBRepository avec connexion pré-initialisée.
 
     Centralise la création de repository pour éviter les instanciations
