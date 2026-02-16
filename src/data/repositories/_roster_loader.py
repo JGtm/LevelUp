@@ -513,18 +513,9 @@ class RosterLoaderMixin:
             except Exception:
                 pass
 
-        # 4. xuid_aliases locale
-        try:
-            result = conn.execute(
-                "SELECT gamertag FROM xuid_aliases WHERE xuid = ?",
-                [xuid],
-            ).fetchone()
-            if result and result[0]:
-                return result[0]
-        except Exception:
-            pass
+        # NOTE v5.1 : xuid_aliases locale supprimé — shared.xuid_aliases utilisé ci-dessus
 
-        # 5. highlight_events avec extraction ASCII
+        # 4. highlight_events avec extraction ASCII
         if match_id:
             try:
                 result = conn.execute(
@@ -649,33 +640,19 @@ class RosterLoaderMixin:
                     if xuid and gt and str(xuid) not in result:
                         result[str(xuid)] = str(gt)
 
-            # 4. Compléter depuis shared.xuid_aliases (v5) puis xuid_aliases locale
+            # 4. Compléter depuis shared.xuid_aliases (v5.1 — source unique)
             all_xuids_in_result = list(result.keys())
             missing = [x for x in all_xuids_in_result if not result.get(x)]
 
-            if missing:
-                # Essayer shared.xuid_aliases d'abord
-                if self._has_shared_table("xuid_aliases"):
-                    placeholders = ", ".join(["?" for _ in missing])
-                    rows = conn.execute(
-                        f"SELECT xuid, gamertag FROM shared.xuid_aliases WHERE xuid IN ({placeholders})",
-                        missing,
-                    ).fetchall()
-                    for xuid, gt in rows:
-                        if xuid and gt:
-                            result[str(xuid)] = str(gt)
-
-                # Fallback xuid_aliases locale
-                still_missing = [x for x in missing if not result.get(x)]
-                if still_missing and self._has_table("xuid_aliases"):
-                    placeholders = ", ".join(["?" for _ in still_missing])
-                    rows = conn.execute(
-                        f"SELECT xuid, gamertag FROM xuid_aliases WHERE xuid IN ({placeholders})",
-                        still_missing,
-                    ).fetchall()
-                    for xuid, gt in rows:
-                        if xuid and gt:
-                            result[str(xuid)] = str(gt)
+            if missing and self._has_shared_table("xuid_aliases"):
+                placeholders = ", ".join(["?" for _ in missing])
+                rows = conn.execute(
+                    f"SELECT xuid, gamertag FROM shared.xuid_aliases WHERE xuid IN ({placeholders})",
+                    missing,
+                ).fetchall()
+                for xuid, gt in rows:
+                    if xuid and gt:
+                        result[str(xuid)] = str(gt)
 
             return result
         except Exception as e:

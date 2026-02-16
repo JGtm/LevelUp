@@ -54,32 +54,35 @@ def load_aliases_from_db(db_path: str) -> dict[str, str]:
 
 
 def _get_shared_metadata_path(db_path: str) -> str | None:
-    """Retourne le chemin vers metadata.duckdb depuis un chemin de DB joueur."""
-    from pathlib import Path
+    """Retourne le chemin vers shared_matches.duckdb depuis un chemin de DB joueur.
 
-    db_path_obj = Path(db_path)
-    # data/players/{gamertag}/stats.duckdb -> data/warehouse/metadata.duckdb
-    if "players" in db_path_obj.parts:
-        data_idx = db_path_obj.parts.index("players")
-        data_root = Path(*db_path_obj.parts[:data_idx])
-        metadata_path = data_root / "warehouse" / "metadata.duckdb"
-        if metadata_path.exists():
-            return str(metadata_path)
+    NOTE v5.1 : xuid_aliases est centralisée dans shared_matches.duckdb (13 955 rows).
+    metadata.duckdb ne contient PAS cette table.
+    """
+    from src.utils.paths import get_shared_matches_path_from_player
+
+    shared_path = get_shared_matches_path_from_player(db_path)
+    if shared_path and shared_path.exists():
+        return str(shared_path)
     return None
 
 
 @lru_cache(maxsize=16)
 def _load_aliases_from_duckdb_cached(db_path: str, mtime: float | None) -> dict[str, str]:
-    """Version cachée pour DuckDB avec fallback sur shared metadata."""
+    """Version cachée pour DuckDB — lecture depuis shared_matches.duckdb uniquement.
+
+    NOTE v5.1 : Les aliases locaux (stats.duckdb) sont obsolètes.
+    Seule shared_matches.duckdb fait foi.
+    """
     import duckdb
 
     result: dict[str, str] = {}
 
-    # 1. Essayer metadata.duckdb d'abord (shared aliases)
-    metadata_path = _get_shared_metadata_path(db_path)
-    if metadata_path:
+    # V5.1 : Lire UNIQUEMENT depuis shared_matches.duckdb (source de vérité)
+    shared_path = _get_shared_metadata_path(db_path)
+    if shared_path:
         try:
-            con = duckdb.connect(metadata_path, read_only=True)
+            con = duckdb.connect(shared_path, read_only=True)
             tables = con.execute(
                 "SELECT table_name FROM information_schema.tables WHERE table_name = 'xuid_aliases'"
             ).fetchall()
@@ -91,22 +94,6 @@ def _load_aliases_from_duckdb_cached(db_path: str, mtime: float | None) -> dict[
             con.close()
         except Exception:
             pass
-
-    # 2. Merger avec les aliases locaux (priorité locale)
-    try:
-        con = duckdb.connect(db_path, read_only=True)
-        tables = con.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_name = 'xuid_aliases'"
-        ).fetchall()
-        if tables:
-            result_rows = con.execute(
-                "SELECT xuid, gamertag FROM xuid_aliases WHERE gamertag IS NOT NULL AND gamertag != ''"
-            ).fetchall()
-            local_result = {str(row[0]).strip(): str(row[1]).strip() for row in result_rows}
-            result.update(local_result)  # Local a priorité
-        con.close()
-    except Exception:
-        pass
 
     return result
 
