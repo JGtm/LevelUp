@@ -99,6 +99,14 @@ def temp_db(tmp_path):
                 grenade_kills SMALLINT,
                 melee_kills SMALLINT,
                 power_weapon_kills SMALLINT,
+                personal_score INTEGER,
+                team_mmr FLOAT,
+                kills_expected FLOAT,
+                kills_stddev FLOAT,
+                deaths_expected FLOAT,
+                deaths_stddev FLOAT,
+                assists_expected FLOAT,
+                assists_stddev FLOAT,
                 PRIMARY KEY (match_id, xuid)
             )
         """)

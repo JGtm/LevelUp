@@ -89,6 +89,28 @@ def conn():
         )
     """)
 
+    # match_participants (pour tests V5)
+    c.execute("""
+        CREATE TABLE match_participants (
+            match_id VARCHAR NOT NULL,
+            xuid VARCHAR NOT NULL,
+            team_id INTEGER,
+            outcome INTEGER,
+            gamertag VARCHAR,
+            rank SMALLINT,
+            score INTEGER,
+            kills SMALLINT,
+            deaths SMALLINT,
+            assists SMALLINT,
+            shots_fired INTEGER,
+            shots_hit INTEGER,
+            damage_dealt FLOAT,
+            damage_taken FLOAT,
+            avg_life_seconds FLOAT,
+            PRIMARY KEY (match_id, xuid)
+        )
+    """)
+
     yield c
     c.close()
 

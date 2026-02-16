@@ -190,6 +190,14 @@ def ensure_match_participants_columns(conn: duckdb.DuckDBPyConnection) -> None:
     - grenade_kills (SMALLINT)
     - melee_kills (SMALLINT)
     - power_weapon_kills (SMALLINT)
+    - personal_score (INTEGER) — V5 finale
+    - team_mmr (FLOAT) — V5 finale
+    - kills_expected (FLOAT) — V5 finale
+    - kills_stddev (FLOAT) — V5 finale
+    - deaths_expected (FLOAT) — V5 finale
+    - deaths_stddev (FLOAT) — V5 finale
+    - assists_expected (FLOAT) — V5 finale
+    - assists_stddev (FLOAT) — V5 finale
     """
     if not table_exists(conn, "match_participants"):
         return
@@ -215,6 +223,15 @@ def ensure_match_participants_columns(conn: duckdb.DuckDBPyConnection) -> None:
         ("grenade_kills", "SMALLINT"),
         ("melee_kills", "SMALLINT"),
         ("power_weapon_kills", "SMALLINT"),
+        # V5 finale - Colonnes MMR/Skill
+        ("personal_score", "INTEGER"),
+        ("team_mmr", "FLOAT"),
+        ("kills_expected", "FLOAT"),
+        ("kills_stddev", "FLOAT"),
+        ("deaths_expected", "FLOAT"),
+        ("deaths_stddev", "FLOAT"),
+        ("assists_expected", "FLOAT"),
+        ("assists_stddev", "FLOAT"),
     ]
 
     for col_name, col_type in migrations:
