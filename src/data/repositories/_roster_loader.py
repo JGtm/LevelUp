@@ -235,7 +235,7 @@ class RosterLoaderMixin:
                         SELECT event_type, xuid, raw_json
                         FROM highlight_events
                         WHERE match_id = ?
-                          AND LOWER(event_type) IN ('kill', 'death')
+                          AND event_type IN ('kill', 'Kill', 'death', 'Death')
                           AND xuid IS NOT NULL AND xuid != ''
                         """,
                         [match_id],

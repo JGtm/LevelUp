@@ -51,6 +51,7 @@ from src.data.sync.migrations import (
     BACKFILL_FLAGS,
     ensure_backfill_completed_column,
     ensure_highlight_events_autoincrement,
+    ensure_player_performance_indexes,
 )
 from src.data.sync.models import (
     CareerRankData,
@@ -355,6 +356,14 @@ class DuckDBSyncEngine:
         except Exception as e:
             logger.debug(f"Migration match_participants shared: {e}")
 
+        # Index de performance sur tables shared (v5.1 Étape 2)
+        try:
+            from src.data.sync.migrations import ensure_performance_indexes
+
+            ensure_performance_indexes(self._shared_connection)
+        except Exception as e:
+            logger.debug(f"Index performance shared: {e}")
+
         return self._shared_connection
 
     @property
@@ -390,6 +399,9 @@ class DuckDBSyncEngine:
 
         # Colonne bitmask backfill_completed (migration)
         ensure_backfill_completed_column(conn)
+
+        # Index de performance sur tables locales (v5.1 Étape 2)
+        ensure_player_performance_indexes(conn)
 
     def _ensure_match_stats_table(self) -> None:
         """V5 finale - Ne crée PLUS match_stats (table obsolète, données dans shared).

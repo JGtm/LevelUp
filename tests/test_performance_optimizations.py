@@ -19,6 +19,7 @@ from src.data.repositories.duckdb_repo import DuckDBRepository
 from src.data.sync.migrations import (
     ensure_mv_player_matches_view,
     ensure_performance_indexes,
+    ensure_player_performance_indexes,
 )
 
 # =============================================================================
@@ -83,6 +84,34 @@ def _create_shared_with_data(db_path: Path) -> None:
         )
     """)
 
+    conn.execute("""
+        CREATE SEQUENCE IF NOT EXISTS highlight_events_id_seq;
+        CREATE TABLE highlight_events (
+            id INTEGER PRIMARY KEY DEFAULT nextval('highlight_events_id_seq'),
+            match_id VARCHAR NOT NULL,
+            event_type VARCHAR NOT NULL,
+            time_ms INTEGER,
+            killer_xuid VARCHAR,
+            killer_gamertag VARCHAR,
+            victim_xuid VARCHAR,
+            victim_gamertag VARCHAR,
+            type_hint INTEGER,
+            raw_json VARCHAR,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        CREATE TABLE medals_earned (
+            match_id VARCHAR NOT NULL,
+            xuid VARCHAR NOT NULL,
+            medal_name_id BIGINT NOT NULL,
+            count SMALLINT DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (match_id, xuid, medal_name_id)
+        )
+    """)
+
     # Insérer des matchs de test
     for i, mid in enumerate(MATCH_IDS):
         conn.execute(f"""
@@ -107,6 +136,26 @@ def _create_shared_with_data(db_path: Path) -> None:
             VALUES ('{mid}', 'xuid_enemy', 'EnemyTest', 1, 3,
                 2, 1800, 8, 10, 2, 150, 60,
                 25.0, 2, 1)
+        """)
+
+        # Highlight events Kill/Death
+        conn.execute(f"""
+            INSERT INTO highlight_events (match_id, event_type, time_ms, killer_xuid,
+                killer_gamertag, victim_xuid, victim_gamertag)
+            VALUES ('{mid}', 'Kill', {1000 + i * 100}, '{PLAYER_XUID}',
+                'TestPerf', 'xuid_enemy', 'EnemyTest')
+        """)
+        conn.execute(f"""
+            INSERT INTO highlight_events (match_id, event_type, time_ms, killer_xuid,
+                killer_gamertag, victim_xuid, victim_gamertag)
+            VALUES ('{mid}', 'Death', {2000 + i * 100}, 'xuid_enemy',
+                'EnemyTest', '{PLAYER_XUID}', 'TestPerf')
+        """)
+
+        # Médailles
+        conn.execute(f"""
+            INSERT INTO medals_earned (match_id, xuid, medal_name_id, count)
+            VALUES ('{mid}', '{PLAYER_XUID}', 123456, 2)
         """)
 
     conn.close()
@@ -145,15 +194,25 @@ def _create_player_db(db_path: Path) -> None:
             enemy_mmr FLOAT,
             personal_score INTEGER,
             is_firefight BOOLEAN DEFAULT FALSE,
-            is_ranked BOOLEAN DEFAULT FALSE
+            is_ranked BOOLEAN DEFAULT FALSE,
+            session_id VARCHAR,
+            session_label VARCHAR
         )
     """)
     # Insérer un match de test avec MMR
     conn.execute("""
-        INSERT INTO match_stats VALUES (
+        INSERT INTO match_stats (
+            match_id, start_time, map_id, map_name, playlist_id, playlist_name,
+            pair_id, pair_name, game_variant_id, game_variant_name, outcome, team_id,
+            kda, max_killing_spree, headshot_kills, avg_life_seconds, time_played_seconds,
+            kills, deaths, assists, accuracy, my_team_score, enemy_team_score,
+            team_mmr, enemy_mmr, personal_score, is_firefight, is_ranked,
+            session_id, session_label
+        ) VALUES (
             'match_p01', '2025-01-15 10:00:00', 'map1', 'Aquarius', 'pl1',
             'Ranked Arena', 'pair1', 'Slayer', 'gv1', 'Slayer', 2, 0,
-            2.5, 5, 3, 30.0, 600, 15, 6, 4, 55.0, 50, 48, 1500.0, 1480.0, 2500, FALSE, TRUE
+            2.5, 5, 3, 30.0, 600, 15, 6, 4, 55.0, 50, 48, 1500.0, 1480.0, 2500,
+            FALSE, TRUE, 'session_01', 'Session du matin'
         )
     """)
     conn.close()
@@ -379,6 +438,59 @@ class TestPerformanceIndexes:
         conn = duckdb.connect(str(db_path))
         conn.execute("CREATE TABLE dummy (x INTEGER)")
         ensure_performance_indexes(conn)
+        conn.close()
+
+    def test_new_composite_indexes_created(self, shared_db: Path):
+        """Les nouveaux index composites (v5.1 Étape 2) sont créés."""
+        conn = duckdb.connect(str(shared_db))
+        ensure_performance_indexes(conn)
+
+        indexes = conn.execute("SELECT index_name FROM duckdb_indexes()").fetchall()
+        index_names = {row[0] for row in indexes}
+
+        # Index composites ajoutés en Étape 2
+        assert "idx_mp_xuid_team" in index_names, "Index xuid+team manquant"
+        assert "idx_events_match_type" in index_names, "Index events composite manquant"
+        assert "idx_medals_full" in index_names, "Index medals covering manquant"
+
+        conn.close()
+
+
+class TestPlayerPerformanceIndexes:
+    """Tests des index locaux sur match_stats (Étape 2)."""
+
+    def test_player_indexes_creation(self, player_db: Path):
+        """Les index sur match_stats sont créés sans erreur."""
+        conn = duckdb.connect(str(player_db))
+        ensure_player_performance_indexes(conn)
+
+        indexes = conn.execute(
+            "SELECT index_name FROM duckdb_indexes() " "WHERE database_name != 'system'"
+        ).fetchall()
+        index_names = {row[0] for row in indexes}
+
+        assert "idx_ms_start_time" in index_names
+        assert "idx_ms_session_id" in index_names
+        assert "idx_ms_playlist_id" in index_names
+        assert "idx_ms_map_id" in index_names
+        assert "idx_ms_outcome" in index_names
+        assert "idx_ms_is_firefight" in index_names
+
+        conn.close()
+
+    def test_player_indexes_idempotent(self, player_db: Path):
+        """Les index locaux peuvent être créés plusieurs fois."""
+        conn = duckdb.connect(str(player_db))
+        ensure_player_performance_indexes(conn)
+        ensure_player_performance_indexes(conn)  # 2e appel
+        conn.close()
+
+    def test_player_indexes_no_match_stats_skips(self, tmp_path: Path):
+        """Sans match_stats, aucune erreur."""
+        db_path = tmp_path / "empty_player.duckdb"
+        conn = duckdb.connect(str(db_path))
+        conn.execute("CREATE TABLE dummy (x INTEGER)")
+        ensure_player_performance_indexes(conn)
         conn.close()
 
 
