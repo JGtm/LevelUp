@@ -463,6 +463,7 @@ class TestListLocalDbs:
         assert list_local_dbs() == []
 
     def test_with_dbs(self, tmp_path, monkeypatch):
+        """list_local_dbs retourne toujours [] en architecture DuckDB v5."""
         monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
         base = tmp_path / "OpenSpartan.Workshop" / "data"
         base.mkdir(parents=True)
@@ -470,6 +471,7 @@ class TestListLocalDbs:
         (base / "b.DB").write_text("test")
         (base / "c.txt").write_text("test")
 
+        # En architecture DuckDB v5, list_local_dbs retourne toujours []
+        # car les bases SQLite legacy ne sont plus supportées
         result = list_local_dbs()
-        assert len(result) == 2
-        assert all(p.lower().endswith(".db") for p in result)
+        assert result == []

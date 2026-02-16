@@ -111,8 +111,8 @@ class TestRenderSettingsPage:
                 on_clear_caches_fn=lambda: None,
             )
 
-        # Au moins 3 toggles sont rendus (SPNKr, Médias, etc.)
-        assert ms.calls["toggle"].call_count >= 3
+        # 2 toggles sont rendus (backfill, refresh_clears_caches)
+        assert ms.calls["toggle"].call_count >= 2
 
     def test_custom_settings_values(self, mock_st) -> None:
         """Teste avec des settings non-default."""

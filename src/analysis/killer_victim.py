@@ -163,7 +163,11 @@ def validate_and_adjust_pairs(
         return [], True  # Pas de validation possible, on considère OK
 
     # Construire un mapping xuid → stats officielles
-    stats_by_xuid: dict[str, MatchPlayerStats] = {s["xuid"]: s for s in official_stats}
+    # Note: supporter à la fois TypedDict (dict) et Mock (obj) pour les tests
+    def get_xuid(s) -> str:
+        return s.xuid if hasattr(s, "xuid") else s["xuid"]
+
+    stats_by_xuid: dict[str, MatchPlayerStats] = {get_xuid(s): s for s in official_stats}
 
     # Compter les kills/deaths reconstitués par joueur
     kills_reconstituted: dict[str, int] = Counter()
@@ -213,9 +217,16 @@ def get_player_rank(xuid: str, official_stats: list[MatchPlayerStats]) -> int:
     Returns:
         Rang du joueur (1 = meilleur), ou 999 si non trouvé.
     """
+
+    def get_xuid(s) -> str:
+        return s.xuid if hasattr(s, "xuid") else s["xuid"]
+
+    def get_rank(s) -> int | None:
+        return s.rank if hasattr(s, "rank") else s["rank"]
+
     for s in official_stats:
-        if s["xuid"] == xuid:
-            return s["rank"]
+        if get_xuid(s) == xuid:
+            return get_rank(s)
     return 999  # Non trouvé → rang très bas
 
 
@@ -377,10 +388,16 @@ def compute_personal_antagonists(
         )
 
     # Construire un mapping xuid → rang (pour tie-breaker)
+    def get_xuid(s) -> str:
+        return s.xuid if hasattr(s, "xuid") else s["xuid"]
+
+    def get_rank(s) -> int:
+        return s.rank if hasattr(s, "rank") else s.get("rank", 99)
+
     rank_by_xuid: dict[str, int] = {}
     if official_stats:
         for s in official_stats:
-            rank_by_xuid[s["xuid"]] = s["rank"]
+            rank_by_xuid[get_xuid(s)] = get_rank(s)
 
     kills: list[tuple[int, str, str]] = []
     deaths: list[tuple[int, str, str]] = []
@@ -607,13 +624,21 @@ def compute_personal_antagonists(
     is_validated = False
     validation_notes = ""
 
+    def get_xuid(s) -> str:
+        return s.xuid if hasattr(s, "xuid") else s["xuid"]
+
+    def get_stat(s, key: str) -> int:
+        return getattr(s, key, 0) if hasattr(s, key) else s.get(key, 0)
+
     if official_stats:
         # Trouver mes stats officielles
-        my_official = next((s for s in official_stats if s["xuid"] == me), None)
+        my_official = next((s for s in official_stats if get_xuid(s) == me), None)
         if my_official:
             # Comparer mes kills/deaths reconstitués vs officiels
-            kills_diff = my_kills_assigned_total - my_official["kills"]
-            deaths_diff = my_deaths_assigned_total - my_official["deaths"]
+            off_kills = get_stat(my_official, "kills")
+            off_deaths = get_stat(my_official, "deaths")
+            kills_diff = my_kills_assigned_total - off_kills
+            deaths_diff = my_deaths_assigned_total - off_deaths
 
             if kills_diff == 0 and deaths_diff == 0:
                 is_validated = True
@@ -622,11 +647,11 @@ def compute_personal_antagonists(
                 notes = []
                 if kills_diff != 0:
                     notes.append(
-                        f"kills: {my_kills_assigned_total} vs {my_official.kills} ({kills_diff:+d})"
+                        f"kills: {my_kills_assigned_total} vs {off_kills} ({kills_diff:+d})"
                     )
                 if deaths_diff != 0:
                     notes.append(
-                        f"deaths: {my_deaths_assigned_total} vs {my_official.deaths} ({deaths_diff:+d})"
+                        f"deaths: {my_deaths_assigned_total} vs {off_deaths} ({deaths_diff:+d})"
                     )
                 validation_notes = "Écarts: " + ", ".join(notes)
         else:
