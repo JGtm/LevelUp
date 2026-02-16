@@ -183,6 +183,22 @@ CREATE TABLE IF NOT EXISTS match_participants (
 CREATE INDEX IF NOT EXISTS idx_participants_xuid ON match_participants(xuid);
 CREATE INDEX IF NOT EXISTS idx_participants_team ON match_participants(match_id, team_id);
 
+-- Table player_match_enrichment (V5 finale - Enrichissements personnels uniquement)
+-- Données spécifiques au POV du joueur, ne vont PAS dans shared
+CREATE TABLE IF NOT EXISTS player_match_enrichment (
+    match_id VARCHAR PRIMARY KEY,
+    performance_score FLOAT,
+    session_id VARCHAR,
+    session_label VARCHAR,
+    is_with_friends BOOLEAN,
+    teammates_signature VARCHAR,
+    known_teammates_count SMALLINT,
+    friends_xuids VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id);
+
 -- Table xuid_aliases (correspondances XUID → Gamertag)
 CREATE TABLE IF NOT EXISTS xuid_aliases (
     xuid VARCHAR PRIMARY KEY,
@@ -376,77 +392,27 @@ class DuckDBSyncEngine:
         ensure_backfill_completed_column(conn)
 
     def _ensure_match_stats_table(self) -> None:
-        """S'assure que la table match_stats existe avec toutes les colonnes nécessaires."""
+        """V5 finale - Ne crée PLUS match_stats (table obsolète, données dans shared).
+
+        La table match_stats locale est supprimée en V5 finale.
+        Les données sont désormais dans :
+        - shared.match_registry (métadonnées match)
+        - shared.match_participants (stats multijoue urs)
+        - player_match_enrichment (enrichissements personnels)
+
+        Mode legacy : pour les DBs v4 existantes, cette table peut encore exister
+        mais ne sera PLUS alimentée par le sync engine.
+        """
         conn = self._connection
         if conn is None:
             return
 
-        # Vérifier si la table existe
-        tables = conn.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_name = 'match_stats'"
-        ).fetchall()
+        # V5 finale : NE PLUS créer match_stats
+        # La table player_match_enrichment est créée via SYNC_SCHEMA_DDL
+        logger.debug("V5 finale - match_stats non créée (obsolète)")
 
-        if not tables:
-            # Créer la table complète
-            logger.info("Création de la table match_stats")
-            conn.execute("""
-                CREATE TABLE match_stats (
-                    match_id VARCHAR PRIMARY KEY,
-                    start_time TIMESTAMP,
-                    end_time TIMESTAMP,
-                    playlist_id VARCHAR,
-                    playlist_name VARCHAR,
-                    map_id VARCHAR,
-                    map_name VARCHAR,
-                    pair_id VARCHAR,
-                    pair_name VARCHAR,
-                    game_variant_id VARCHAR,
-                    game_variant_name VARCHAR,
-                    outcome TINYINT,
-                    team_id TINYINT,
-                    rank SMALLINT,
-                    kills SMALLINT,
-                    deaths SMALLINT,
-                    assists SMALLINT,
-                    kda FLOAT,
-                    accuracy FLOAT,
-                    headshot_kills SMALLINT,
-                    max_killing_spree SMALLINT,
-                    time_played_seconds INTEGER,
-                    avg_life_seconds FLOAT,
-                    my_team_score SMALLINT,
-                    enemy_team_score SMALLINT,
-                    team_mmr FLOAT,
-                    enemy_mmr FLOAT,
-                    damage_dealt FLOAT,
-                    damage_taken FLOAT,
-                    shots_fired INTEGER,
-                    shots_hit INTEGER,
-                    grenade_kills SMALLINT,
-                    melee_kills SMALLINT,
-                    power_weapon_kills SMALLINT,
-                    score INTEGER,
-                    personal_score INTEGER,
-                    mode_category VARCHAR,
-                    is_ranked BOOLEAN DEFAULT FALSE,
-                    is_firefight BOOLEAN DEFAULT FALSE,
-                    left_early BOOLEAN DEFAULT FALSE,
-                    session_id VARCHAR,
-                    session_label VARCHAR,
-                    performance_score FLOAT,
-                    teammates_signature VARCHAR,
-                    known_teammates_count SMALLINT,
-                    is_with_friends BOOLEAN,
-                    friends_xuids VARCHAR,
-                    created_at TIMESTAMP,
-                    updated_at TIMESTAMP
-                )
-            """)
-        else:
-            # Migrations centralisées
-            from src.data.sync.migrations import ensure_match_stats_columns
-
-            ensure_match_stats_columns(conn)
+        # Pour les DBs legacy v4 : si match_stats existe déjà, la laisser en l'état
+        # mais ne plus l'alimenter
 
     def _ensure_match_participants_rank_score(self) -> None:
         """Ajoute les colonnes rank, score et k/d/a à match_participants si absentes (migration)."""
@@ -521,54 +487,45 @@ class DuckDBSyncEngine:
         return ""
 
     def _load_existing_match_ids(self) -> set[str]:
-        """Charge les IDs des matchs existants depuis la DB.
+        """Charge les IDs des matchs existants depuis shared (V5 finale).
 
-        Stratégie de fallback :
-        1. match_stats (table créée par le sync engine)
-        2. player_match_stats (table legacy v3/v4/v5, toujours présente)
-        3. shared.match_participants WHERE xuid (si shared activé)
+        V5 finale : lecture UNIQUEMENT depuis shared.match_participants.
+        La table locale match_stats n'est plus alimentée.
+
+        Fallback legacy : si shared non disponible, tente player_match_stats.
         """
         if self._existing_match_ids is not None:
             return self._existing_match_ids
 
         ids: set[str] = set()
 
-        conn = self._get_connection()
-
-        # Stratégie 1 : match_stats (table sync engine)
-        try:
-            result = conn.execute(
-                "SELECT match_id FROM match_stats WHERE match_id IS NOT NULL"
-            ).fetchall()
-            ids = {str(r[0]) for r in result if r[0]}
-        except Exception:
-            pass
-
-        # Stratégie 2 : player_match_stats (table legacy, toujours peuplée)
-        if not ids:
+        # Priorité 1 : shared.match_participants (V5)
+        shared_conn = self._get_shared_connection()
+        if shared_conn is not None and self._xuid:
             try:
-                result = conn.execute(
-                    "SELECT DISTINCT match_id FROM player_match_stats WHERE match_id IS NOT NULL"
+                result = shared_conn.execute(
+                    "SELECT DISTINCT match_id FROM match_participants WHERE xuid = ?", [self._xuid]
                 ).fetchall()
                 ids = {str(r[0]) for r in result if r[0]}
-            except Exception:
-                pass
+                logger.debug(f"Chargé {len(ids)} match IDs depuis shared.match_participants")
+                self._existing_match_ids = ids
+                return ids
+            except Exception as e:
+                logger.debug(f"Impossible de lire shared.match_participants: {e}")
 
-        # Stratégie 3 : shared.match_participants (si XUID connu et shared activé)
-        if not ids and self._xuid:
-            try:
-                shared_conn = self._get_shared_connection()
-                if shared_conn:
-                    result = shared_conn.execute(
-                        "SELECT DISTINCT match_id FROM match_participants WHERE xuid = ?",
-                        (self._xuid,),
-                    ).fetchall()
-                    ids = {str(r[0]) for r in result if r[0]}
-            except Exception:
-                pass
+        # Fallback legacy : player_match_stats (V4)
+        conn = self._get_connection()
+        try:
+            result = conn.execute(
+                "SELECT DISTINCT match_id FROM player_match_stats WHERE xuid = ?", [self._xuid]
+            ).fetchall()
+            ids = {str(r[0]) for r in result if r[0]}
+            logger.debug(f"Fallback V4 : {len(ids)} match IDs depuis player_match_stats")
+        except Exception as e:
+            logger.warning(f"Impossible de charger les match IDs : {e}")
 
         self._existing_match_ids = ids
-        return self._existing_match_ids
+        return ids
 
     def _update_sync_meta(self, key: str, value: str) -> None:
         """Met à jour une entrée dans sync_meta."""
@@ -868,7 +825,15 @@ class DuckDBSyncEngine:
         match_id: str,
         options: SyncOptions,
     ) -> dict[str, Any]:
-        """Traite un match en mode legacy v4 (sans shared_matches)."""
+        """Traite un match en mode legacy v4 (sans shared_matches).
+
+        ⚠️ DÉPRÉCIÉ en V5 finale : Cette fonction ne devrait plus être appelée.
+        Utilisez _process_new_match() ou _process_known_match() avec shared_matches.
+
+        Conservée pour compatibilité avec les DBs v4 existantes lors de la transition.
+        """
+        logger.warning(f"Mode legacy v4 sans shared DB — données incomplètes pour {match_id}")
+
         result: dict[str, Any] = {
             "inserted": False,
             "events": 0,
@@ -1108,14 +1073,14 @@ class DuckDBSyncEngine:
                 result["error"] = f"Transformation échouée pour {match_id}"
                 return result
 
-            skill_row = None
+            _skill_row = None
             if skill_json:
-                skill_row = transform_skill_stats(skill_json, match_id, self._xuid)
+                _skill_row = transform_skill_stats(skill_json, match_id, self._xuid)
 
             # Extraire les médailles perso (player DB)
             from src.data.sync.transformers import extract_medals
 
-            medal_rows = extract_medals(stats_json, self._xuid)
+            _medal_rows = extract_medals(stats_json, self._xuid)
 
             # PersonalScores
             personal_scores = extract_personal_score_awards(stats_json, self._xuid)
@@ -1131,42 +1096,28 @@ class DuckDBSyncEngine:
             if options.with_aliases:
                 alias_rows = extract_aliases(stats_json)
 
-            participant_rows = []
+            _participant_rows = []
             if options.with_participants:
-                participant_rows = extract_participants(stats_json)
+                _participant_rows = extract_participants(stats_json)
 
-            # 3. Insérer dans la player DB (tout comme le legacy)
+            # 3. V5 finale : Insérer minimalement dans la player DB (seulement enrichissements)
             async with self._db_lock:
-                self._insert_match_row(match_row)
+                # ❌ SUPPRIMÉ : _insert_match_row (match_stats obsolète)
+                # ❌ SUPPRIMÉ : _insert_skill_row (player_match_stats obsolète)
+                # ❌ SUPPRIMÉ : _insert_medal_rows (medals_earned locale obsolète)
+                # ❌ SUPPRIMÉ : _insert_participant_rows (match_participants locale obsolète)
+                # ❌ SUPPRIMÉ : _insert_alias_rows (xuid_aliases locale obsolète)
 
-                if skill_row:
-                    self._insert_skill_row(skill_row)
-                    result["skill"] = 1
-
-                if medal_rows:
-                    self._insert_medal_rows(medal_rows)
-
+                # ✅ CONSERVÉ : personal_score_awards (enrichissement personnel)
                 if personal_score_rows:
                     self._insert_personal_score_rows(personal_score_rows)
 
-                if participant_rows:
-                    self._insert_participant_rows(participant_rows)
-
-                if alias_rows:
-                    self._insert_alias_rows(alias_rows)
-                    result["aliases"] = len(alias_rows)
-
+                # ✅ NOUVEAU : player_match_enrichment (performance_score, sessions, etc.)
+                self._insert_enrichment_row(match_id, match_row)
                 self._compute_and_update_performance_score(match_id, match_row)
 
-                # Bitmask backfill_completed
-                bf_mask = self._compute_backfill_mask(options)
-                conn = self._get_connection()
-                conn.execute(
-                    "UPDATE match_stats "
-                    "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
-                    "WHERE match_id = ?",
-                    [bf_mask, match_id],
-                )
+                # ❌ SUPPRIMÉ : UPDATE match_stats backfill_completed
+                # Le bitmask est dans shared.match_registry
 
             # 4. Backfill sélectif dans shared si des données manquent
             backfill_needed: list[str] = []
@@ -1341,13 +1292,13 @@ class DuckDBSyncEngine:
                 result["error"] = f"Transformation match_stats échouée pour {match_id}"
                 return result
 
-            skill_row = None
+            _skill_row = None
             if skill_json:
-                skill_row = transform_skill_stats(skill_json, match_id, self._xuid)
+                _skill_row = transform_skill_stats(skill_json, match_id, self._xuid)
 
             from src.data.sync.transformers import extract_medals
 
-            medal_rows_personal = extract_medals(stats_json, self._xuid)
+            _medal_rows_personal = extract_medals(stats_json, self._xuid)
 
             personal_scores = extract_personal_score_awards(stats_json, self._xuid)
             personal_score_rows = []
@@ -1358,40 +1309,29 @@ class DuckDBSyncEngine:
                     personal_scores,
                 )
 
-            participant_rows_player = []
+            _participant_rows_player = []
             if options.with_participants:
-                participant_rows_player = participants  # Réutiliser l'extraction
+                _participant_rows_player = participants  # Réutiliser l'extraction
 
+            # V5 finale : écriture minimale dans player DB (seulement enrichissements personnels)
             async with self._db_lock:
-                self._insert_match_row(match_row)
+                # ❌ SUPPRIMÉ : _insert_match_row (match_stats obsolète)
+                # ❌ SUPPRIMÉ : _insert_skill_row (player_match_stats obsolète)
+                # ❌ SUPPRIMÉ : _insert_medal_rows (medals_earned locale obsolète)
+                # ❌ SUPPRIMÉ : _insert_participant_rows (match_participants locale obsolète)
+                # ❌ SUPPRIMÉ : _insert_alias_rows (xuid_aliases locale obsolète)
 
-                if skill_row:
-                    self._insert_skill_row(skill_row)
-                    result["skill"] = 1
-
-                if medal_rows_personal:
-                    self._insert_medal_rows(medal_rows_personal)
-
+                # ✅ CONSERVÉ : personal_score_awards (enrichissement personnel)
                 if personal_score_rows:
                     self._insert_personal_score_rows(personal_score_rows)
 
-                if participant_rows_player:
-                    self._insert_participant_rows(participant_rows_player)
-
-                if alias_rows:
-                    self._insert_alias_rows(alias_rows)
-
+                # ✅ NOUVEAU : player_match_enrichment (performance_score, sessions, etc.)
+                self._insert_enrichment_row(match_id, match_row)
                 self._compute_and_update_performance_score(match_id, match_row)
 
-                # Bitmask backfill_completed
-                bf_mask = self._compute_backfill_mask(options)
-                conn = self._get_connection()
-                conn.execute(
-                    "UPDATE match_stats "
-                    "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
-                    "WHERE match_id = ?",
-                    [bf_mask, match_id],
-                )
+                # ❌ SUPPRIMÉ : UPDATE match_stats backfill_completed
+                # Le bitmask est maintenant dans shared.match_registry
+                # (déjà mis à jour dans le bloc shared ci-dessus)
 
             result["inserted"] = True
 
@@ -1562,11 +1502,16 @@ class DuckDBSyncEngine:
         batch_upsert_rows(shared_conn, "xuid_aliases", alias_dicts, ALIAS_COLUMNS)
 
     def _ensure_performance_score_column(self) -> None:
-        """S'assure que la colonne performance_score existe dans match_stats."""
-        from src.data.sync.migrations import ensure_performance_score_column
+        """V5 finale - Plus nécessaire (performance_score dans player_match_enrichment).
 
-        conn = self._get_connection()
-        ensure_performance_score_column(conn)
+        La colonne performance_score n'est plus dans match_stats (table obsolète)
+        mais dans player_match_enrichment (créée via SYNC_SCHEMA_DDL).
+
+        Cette fonction est conservée pour compatibilité mais ne fait plus rien.
+        """
+        # V5 finale : player_match_enrichment est créée via SYNC_SCHEMA_DDL
+        # La colonne performance_score y est définie par défaut
+        pass
 
     def _compute_and_update_performance_score(
         self, match_id: str, match_row: MatchStatsRow
@@ -1589,9 +1534,9 @@ class DuckDBSyncEngine:
             # S'assurer que la colonne existe
             self._ensure_performance_score_column()
 
-            # Vérifier si le score existe déjà
+            # Vérifier si le score existe déjà dans player_match_enrichment
             existing = conn.execute(
-                "SELECT performance_score FROM match_stats WHERE match_id = ?",
+                "SELECT performance_score FROM player_match_enrichment WHERE match_id = ?",
                 (match_id,),
             ).fetchone()
 
@@ -1612,21 +1557,32 @@ class DuckDBSyncEngine:
             else:
                 current_start_time_str = str(current_start_time)
 
-            # v4: inclure personal_score, damage_dealt, rank, team_mmr, enemy_mmr
-            history_df = conn.execute(
+            # V5 finale : lire depuis shared.match_participants + match_registry
+            shared_conn = self._get_shared_connection()
+            if shared_conn is None:
+                logger.debug("shared_connection indisponible pour calcul score")
+                return
+
+            # v5 : lire depuis shared avec xuid du joueur
+            history_df = shared_conn.execute(
                 """
                 SELECT
-                    match_id, start_time, kills, deaths, assists, kda, accuracy,
-                    time_played_seconds, avg_life_seconds,
-                    personal_score, damage_dealt,
-                    rank, team_mmr, enemy_mmr
-                FROM match_stats
-                WHERE match_id != ?
-                  AND start_time IS NOT NULL
-                  AND start_time < CAST(? AS TIMESTAMP)
-                ORDER BY start_time ASC
+                    mr.match_id, mr.start_time,
+                    mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
+                    mp.time_played_seconds, mp.avg_life_seconds,
+                    mp.personal_score, mp.damage_dealt,
+                    mp.rank, mp.team_mmr,
+                    (SELECT p2.team_mmr FROM match_participants p2
+                     WHERE p2.match_id = mr.match_id AND p2.team_id != mp.team_id LIMIT 1) AS enemy_mmr
+                FROM match_registry mr
+                JOIN match_participants mp ON mr.match_id = mp.match_id
+                WHERE mp.xuid = ?
+                  AND mr.match_id != ?
+                  AND mr.start_time IS NOT NULL
+                  AND mr.start_time < CAST(? AS TIMESTAMP)
+                ORDER BY mr.start_time ASC
                 """,
-                (match_id, current_start_time_str),
+                (self._xuid, match_id, current_start_time_str),
             ).pl()
 
             if history_df.is_empty() or len(history_df) < MIN_MATCHES_FOR_RELATIVE:
@@ -1654,9 +1610,16 @@ class DuckDBSyncEngine:
             score = compute_relative_performance_score(match_dict, history_df)
 
             if score is not None:
+                # V5 finale : écrire dans player_match_enrichment au lieu de match_stats
+                now = datetime.now(timezone.utc)
                 conn.execute(
-                    "UPDATE match_stats SET performance_score = ? WHERE match_id = ?",
-                    (score, match_id),
+                    """INSERT INTO player_match_enrichment (match_id, performance_score, updated_at)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT (match_id) DO UPDATE SET
+                        performance_score = EXCLUDED.performance_score,
+                        updated_at = EXCLUDED.updated_at
+                    """,
+                    (match_id, score, now),
                 )
                 # Sprint 6 : pas de commit individuel ici, le commit est géré
                 # par le batching dans _process_matches ou le commit final
@@ -1683,22 +1646,35 @@ class DuckDBSyncEngine:
             return 0
 
         try:
+            # V5 finale : lire depuis shared.match_participants + match_registry
+            shared_conn = self._get_shared_connection()
+            if shared_conn is None or not self._xuid:
+                logger.warning("shared_connection ou xuid manquant pour batch performance scores")
+                return 0
+
             conn = self._get_connection()
             self._ensure_performance_score_column()
 
-            # 1. Charger TOUS les matchs triés par date
-            all_matches_df = conn.execute(
+            # 1. Charger TOUS les matchs triés par date depuis shared
+            all_matches_df = shared_conn.execute(
                 """
                 SELECT
-                    match_id, start_time, kills, deaths, assists, kda, accuracy,
-                    time_played_seconds, avg_life_seconds,
-                    personal_score, damage_dealt,
-                    rank, team_mmr, enemy_mmr,
-                    performance_score
-                FROM match_stats
-                WHERE start_time IS NOT NULL
-                ORDER BY start_time ASC
-                """
+                    mr.match_id, mr.start_time,
+                    mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
+                    mp.time_played_seconds, mp.avg_life_seconds,
+                    mp.personal_score, mp.damage_dealt,
+                    mp.rank, mp.team_mmr,
+                    (SELECT p2.team_mmr FROM match_participants p2
+                     WHERE p2.match_id = mr.match_id AND p2.team_id != mp.team_id LIMIT 1) AS enemy_mmr,
+                    pme.performance_score
+                FROM match_registry mr
+                JOIN match_participants mp ON mr.match_id = mp.match_id
+                LEFT JOIN player_match_enrichment pme ON mr.match_id = pme.match_id
+                WHERE mp.xuid = ?
+                  AND mr.start_time IS NOT NULL
+                ORDER BY mr.start_time ASC
+                """,
+                [self._xuid],
             ).pl()
 
             if all_matches_df.is_empty():
@@ -1712,8 +1688,9 @@ class DuckDBSyncEngine:
 
             # 3. Calculer le score pour chaque match NULL
             #    en utilisant l'historique des matchs précédents
-            updates: list[tuple[float, str]] = []
+            updates: list[tuple[str, float, str]] = []
             match_ids = all_matches_df["match_id"].to_list()
+            now = datetime.now(timezone.utc)
 
             for i in range(len(all_matches_df)):
                 if not null_mask[i]:
@@ -1744,14 +1721,21 @@ class DuckDBSyncEngine:
 
                 score = compute_relative_performance_score(match_dict, history_df)
                 if score is not None:
-                    updates.append((score, match_ids[i]))
+                    # V5 finale : UPDATE player_match_enrichment
+                    updates.append((match_ids[i], score, str(now)))
 
-            # 4. Batch UPDATE
+            # 4. Batch UPSERT dans player_match_enrichment
             if updates:
-                conn.executemany(
-                    "UPDATE match_stats SET performance_score = ? WHERE match_id = ?",
-                    updates,
-                )
+                for match_id, score, updated_at in updates:
+                    conn.execute(
+                        """INSERT INTO player_match_enrichment (match_id, performance_score, updated_at)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT (match_id) DO UPDATE SET
+                            performance_score = EXCLUDED.performance_score,
+                            updated_at = EXCLUDED.updated_at
+                        """,
+                        (match_id, score, updated_at),
+                    )
                 conn.commit()
                 logger.info(f"Performance scores batch : {len(updates)} matchs mis à jour")
 
@@ -1762,7 +1746,17 @@ class DuckDBSyncEngine:
             return 0
 
     def _insert_match_row(self, row: MatchStatsRow) -> None:
-        """Insère une ligne match_stats."""
+        """❌ OBSOLÈTE V5 finale - Ne plus utiliser (table match_stats supprimée).
+
+        Cette fonction était utilisée pour insérer dans match_stats (table locale).
+        En V5 finale, les données sont dans:
+        - shared.match_registry (métadonnées match)
+        - shared.match_participants (stats multijoueurs)
+        - player_match_enrichment (enrichissements personnels)
+
+        Conservée uniquement pour le mode legacy (_process_single_match_legacy).
+        """
+        logger.debug("_insert_match_row appelée (obsolète, mode legacy)")
         conn = self._get_connection()
 
         # Construire la requête d'insertion
@@ -1815,7 +1809,12 @@ class DuckDBSyncEngine:
         )
 
     def _insert_skill_row(self, row: PlayerMatchStatsRow) -> None:
-        """Insère une ligne player_match_stats en batch (Sprint 15)."""
+        """❌ OBSOLÈTE V5 finale - Ne plus utiliser (table player_match_stats supprimée).
+
+        En V5 finale, les données MMR/skill sont dans shared.match_participants.
+        Conservée uniquement pour le mode legacy.
+        """
+        logger.debug("_insert_skill_row appelée (obsolète, mode legacy)")
         conn = self._get_connection()
         skill_dict = {
             "match_id": row.match_id,
@@ -1841,7 +1840,12 @@ class DuckDBSyncEngine:
         batch_insert_rows(conn, "highlight_events", rows, HIGHLIGHT_EVENT_COLUMNS)
 
     def _insert_alias_rows(self, rows: list) -> None:
-        """Insère des lignes xuid_aliases en batch avec upsert (Sprint 15)."""
+        """❌ OBSOLÈTE V5 finale - Ne plus utiliser (table xuid_aliases locale supprimée).
+
+        En V5 finale, les aliases sont dans shared.xuid_aliases.
+        Conservée uniquement pour le mode legacy.
+        """
+        logger.debug("_insert_alias_rows appelée (obsolète, mode legacy)")
         if not rows:
             return
         conn = self._get_connection()
@@ -1883,25 +1887,64 @@ class DuckDBSyncEngine:
         batch_insert_rows(conn, "personal_score_awards", score_dicts, PERSONAL_SCORE_COLUMNS)
 
     def _insert_medal_rows(self, rows: list) -> None:
-        """Insère les lignes medals_earned en batch (Sprint 15).
+        """❌ OBSOLÈTE V5 finale - Ne plus utiliser (table medals_earned locale supprimée).
 
-        medals_earned n'a pas de PK/UNIQUE → insert simple (pas upsert).
+        En V5 finale, les médailles sont dans shared.medals_earned.
+        Conservée uniquement pour le mode legacy.
         """
+        logger.debug("_insert_medal_rows appelée (obsolète, mode legacy)")
         if not rows:
             return
         conn = self._get_connection()
         batch_insert_rows(conn, "medals_earned", rows, MEDAL_COLUMNS)
 
     def _insert_participant_rows(self, rows: list) -> None:
-        """Insère les lignes match_participants en batch (Sprint 15).
+        """❌ OBSOLÈTE V5 finale - Ne plus utiliser (table match_participants locale supprimée).
 
-        Sprint Gamertag Roster Fix : stocke tous les joueurs avec team_id, outcome,
-        gamertag, score et rang dans le match (1 = meilleur).
+        En V5 finale, match_participants est dans shared uniquement.
+        Conservée uniquement pour le mode legacy.
         """
+        logger.debug("_insert_participant_rows appelée (obsolète, mode legacy)")
         if not rows:
             return
         conn = self._get_connection()
         batch_upsert_rows(conn, "match_participants", rows, PARTICIPANT_COLUMNS)
+
+    def _insert_enrichment_row(self, match_id: str, match_row: MatchStatsRow) -> None:
+        """Insère/met à jour une ligne dans player_match_enrichment (V5 finale).
+
+        Cette table contient les enrichissements personnels du joueur :
+        - performance_score (calculé par _compute_and_update_performance_score)
+        - session_id, session_label (calculé par backfill sessions)
+        - is_with_friends, teammates_signature, known_teammates_count, friends_xuids
+
+        Args:
+            match_id: ID du match
+            match_row: Données du match (pour extraire teammates_signature, etc.)
+        """
+        conn = self._get_connection()
+        now = datetime.now(timezone.utc)
+
+        # Extraire les champs pertinents de match_row
+        teammates_sig = getattr(match_row, "teammates_signature", None)
+        is_with_friends = getattr(match_row, "is_with_friends", None)
+        known_teammates = getattr(match_row, "known_teammates_count", None)
+        friends_xuids = getattr(match_row, "friends_xuids", None)
+
+        conn.execute(
+            """INSERT INTO player_match_enrichment
+                (match_id, teammates_signature, is_with_friends,
+                 known_teammates_count, friends_xuids, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (match_id) DO UPDATE SET
+                teammates_signature = COALESCE(EXCLUDED.teammates_signature, player_match_enrichment.teammates_signature),
+                is_with_friends = COALESCE(EXCLUDED.is_with_friends, player_match_enrichment.is_with_friends),
+                known_teammates_count = COALESCE(EXCLUDED.known_teammates_count, player_match_enrichment.known_teammates_count),
+                friends_xuids = COALESCE(EXCLUDED.friends_xuids, player_match_enrichment.friends_xuids),
+                updated_at = EXCLUDED.updated_at
+            """,
+            (match_id, teammates_sig, is_with_friends, known_teammates, friends_xuids, now, now),
+        )
 
     async def _refresh_aggregates_async(self) -> None:
         """Rafraîchit les agrégats après sync (async wrapper)."""
@@ -1948,10 +1991,15 @@ class DuckDBSyncEngine:
             Dict avec last_sync_at, total_matches, etc.
         """
         try:
-            conn = self._get_connection()
-
-            # Compter les matchs
-            match_count = conn.execute("SELECT COUNT(*) FROM match_stats").fetchone()[0]
+            # V5 finale : compter depuis shared.match_participants
+            shared_conn = self._get_shared_connection()
+            match_count = 0
+            if shared_conn is not None and self._xuid:
+                with contextlib.suppress(Exception):
+                    match_count = shared_conn.execute(
+                        "SELECT COUNT(DISTINCT match_id) FROM match_participants WHERE xuid = ?",
+                        [self._xuid],
+                    ).fetchone()[0]
 
             # Récupérer les métadonnées
             last_sync = self._get_sync_meta("last_sync_at")

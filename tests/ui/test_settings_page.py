@@ -50,8 +50,8 @@ class TestRenderSettingsPage:
         with (
             patch.object(mod, "render_source_section"),
             patch.object(mod, "get_default_db_path", return_value="dummy.duckdb"),
-            patch.object(mod, "directory_input", return_value=""),
-            patch.object(mod, "file_input", return_value=""),
+            patch("src.ui.path_picker.directory_input", return_value=""),
+            patch("src.ui.path_picker.file_input", return_value=""),
         ):
             result = mod.render_settings_page(
                 settings,
@@ -74,8 +74,8 @@ class TestRenderSettingsPage:
         with (
             patch.object(mod, "render_source_section"),
             patch.object(mod, "get_default_db_path", return_value="dummy.duckdb"),
-            patch.object(mod, "directory_input", return_value=""),
-            patch.object(mod, "file_input", return_value=""),
+            patch("src.ui.path_picker.directory_input", return_value=""),
+            patch("src.ui.path_picker.file_input", return_value=""),
         ):
             mod.render_settings_page(
                 settings,
@@ -102,8 +102,8 @@ class TestRenderSettingsPage:
         with (
             patch.object(mod, "render_source_section"),
             patch.object(mod, "get_default_db_path", return_value="dummy.duckdb"),
-            patch.object(mod, "directory_input", return_value=""),
-            patch.object(mod, "file_input", return_value=""),
+            patch("src.ui.path_picker.directory_input", return_value=""),
+            patch("src.ui.path_picker.file_input", return_value=""),
         ):
             mod.render_settings_page(
                 settings,
@@ -136,8 +136,8 @@ class TestRenderSettingsPage:
         with (
             patch.object(mod, "render_source_section"),
             patch.object(mod, "get_default_db_path", return_value="dummy.duckdb"),
-            patch.object(mod, "directory_input", return_value=""),
-            patch.object(mod, "file_input", return_value=""),
+            patch("src.ui.path_picker.directory_input", return_value=""),
+            patch("src.ui.path_picker.file_input", return_value=""),
         ):
             result = mod.render_settings_page(
                 settings,

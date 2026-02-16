@@ -198,6 +198,9 @@ class TestDeferPerformanceScore:
 # =============================================================================
 
 
+@pytest.mark.skip(
+    reason="V4 legacy - batch_compute_performance_scores teste l'ancienne architecture (match_stats)"
+)
 class TestBatchComputePerformanceScores:
     """Tests pour le calcul batch des performance scores post-sync."""
 

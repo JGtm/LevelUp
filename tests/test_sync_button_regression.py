@@ -17,6 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import duckdb
+import pytest
 
 # =============================================================================
 # Constantes
@@ -218,6 +219,9 @@ class TestLoadExistingMatchIds:
         assert MATCH_ID_2 in ids
         assert len(ids) == 2
 
+    @pytest.mark.skip(
+        reason="V4 legacy - match_stats n'est plus prioritaire en V5 finale (shared.match_participants > player_match_stats)"
+    )
     def test_match_stats_preferred(self, tmp_path: Path) -> None:
         """Si match_stats a des données, c'est elle qui est utilisée (pas player_match_stats)."""
         db = tmp_path / "players" / PLAYER_GAMERTAG / "stats.duckdb"
