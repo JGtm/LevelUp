@@ -67,12 +67,25 @@ def _create_shared_db(db_path: Path) -> None:
             xuid VARCHAR,
             team_id INTEGER,
             outcome INTEGER,
+            gamertag VARCHAR,
+            rank SMALLINT,
+            score INTEGER,
             kills INTEGER,
             deaths INTEGER,
             assists INTEGER,
-            score INTEGER,
             shots_fired INTEGER DEFAULT 0,
             shots_hit INTEGER DEFAULT 0,
+            damage_dealt FLOAT,
+            damage_taken FLOAT,
+            avg_life_seconds FLOAT,
+            headshot_kills SMALLINT,
+            max_killing_spree SMALLINT,
+            kda FLOAT,
+            accuracy FLOAT,
+            time_played_seconds INTEGER,
+            grenade_kills SMALLINT,
+            melee_kills SMALLINT,
+            power_weapon_kills SMALLINT,
             PRIMARY KEY (match_id, xuid)
         )
     """)
@@ -97,7 +110,8 @@ def _create_shared_db(db_path: Path) -> None:
             [mid, ts],
         )
         conn.execute(
-            "INSERT INTO match_participants VALUES (?, ?, 0, 2, ?, ?, 3, 2000, 100, 55)",
+            "INSERT INTO match_participants (match_id, xuid, team_id, outcome, kills, deaths, assists, score, shots_fired, shots_hit) "
+            "VALUES (?, ?, 0, 2, ?, ?, 3, 2000, 100, 55)",
             [mid, PLAYER_XUID, 10 + i, 5 + i],
         )
 
