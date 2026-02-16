@@ -345,6 +345,38 @@ def get_aliases_cache_key() -> int | None:
 # =============================================================================
 
 
+def get_cached_repository(
+    db_path: str,
+    xuid: str,
+    *,
+    read_only: bool = True,
+) -> "DuckDBRepository":
+    """Retourne un DuckDBRepository avec connexion pré-initialisée.
+
+    Centralise la création de repository pour éviter les instanciations
+    directes éparpillées dans les pages UI. La connexion est initialisée
+    immédiatement (warm-up) pour éviter le coût du premier ATTACH.
+
+    Note : Le cache Streamlit (@st.cache_resource) est géré dans
+    ``src/ui/cache_loaders.py::get_cached_repository_st`` pour les pages UI.
+    Cette fonction est le point d'entrée non-Streamlit.
+
+    Args:
+        db_path: Chemin vers stats.duckdb.
+        xuid: XUID du joueur.
+        read_only: Connexion en lecture seule.
+
+    Returns:
+        Instance DuckDBRepository avec connexion active.
+    """
+    from src.data.repositories.duckdb_repo import DuckDBRepository
+
+    repo = DuckDBRepository(db_path, xuid, read_only=read_only)
+    # Warm-up : forcer la connexion + ATTACH immédiatement
+    repo._get_connection()
+    return repo
+
+
 def load_match_data(db_path: str, xuid: str, db_key: tuple[int, int] | None) -> pl.DataFrame:
     """Charge les données de matchs depuis la DB.
 

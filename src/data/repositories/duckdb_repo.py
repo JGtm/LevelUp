@@ -97,6 +97,11 @@ class DuckDBRepository(
         self._connection: duckdb.DuckDBPyConnection | None = None
         self._attached_dbs: set[str] = set()
 
+        # Cache de schéma (v5.1 perf) — évite les requêtes information_schema répétées
+        self._schema_cache: dict[str, bool] = {}
+        self._table_cache: dict[str, bool] = {}
+        self._view_cache: dict[str, bool] = {}
+
     @property
     def xuid(self) -> str:
         """XUID du joueur principal."""
@@ -113,7 +118,7 @@ class DuckDBRepository(
         return "shared" in self._attached_dbs
 
     def _has_shared_table(self, table_name: str) -> bool:
-        """Vérifie si une table existe dans shared_matches.duckdb.
+        """Vérifie si une table existe dans shared_matches.duckdb (avec cache).
 
         Args:
             table_name: Nom de la table à vérifier (sans préfixe 'shared.').
@@ -121,8 +126,13 @@ class DuckDBRepository(
         Returns:
             True si la table existe dans le schema shared.
         """
+        cache_key = f"shared_table:{table_name}"
+        if cache_key in self._table_cache:
+            return self._table_cache[cache_key]
+
         conn = self._get_connection()
         if not self.has_shared:
+            self._table_cache[cache_key] = False
             return False
         try:
             result = conn.execute(
@@ -130,8 +140,71 @@ class DuckDBRepository(
                 "WHERE table_catalog = 'shared' AND table_name = ?",
                 [table_name],
             ).fetchone()
-            return result is not None
+            exists = result is not None
+            self._table_cache[cache_key] = exists
+            return exists
         except Exception:
+            self._table_cache[cache_key] = False
+            return False
+
+    def _has_shared_view(self, view_name: str) -> bool:
+        """Vérifie si une vue existe dans shared_matches.duckdb (avec cache).
+
+        Utilise ``duckdb_views()`` qui fonctionne bien avec les bases attachées,
+        contrairement à ``catalog.information_schema.views``.
+
+        Args:
+            view_name: Nom de la vue à vérifier (sans préfixe 'shared.').
+
+        Returns:
+            True si la vue existe dans le catalog shared.
+        """
+        cache_key = f"shared_view:{view_name}"
+        if cache_key in self._view_cache:
+            return self._view_cache[cache_key]
+
+        conn = self._get_connection()
+        if not self.has_shared:
+            self._view_cache[cache_key] = False
+            return False
+        try:
+            result = conn.execute(
+                "SELECT view_name FROM duckdb_views() "
+                "WHERE database_name = 'shared' AND view_name = ?",
+                [view_name],
+            ).fetchone()
+            exists = result is not None
+            self._view_cache[cache_key] = exists
+            return exists
+        except Exception:
+            self._view_cache[cache_key] = False
+            return False
+
+    def _has_table_cached(self, conn: duckdb.DuckDBPyConnection, table_name: str) -> bool:
+        """Vérifie si une table existe dans le schema main (avec cache).
+
+        Args:
+            conn: Connexion DuckDB.
+            table_name: Nom de la table.
+
+        Returns:
+            True si la table existe.
+        """
+        cache_key = f"main_table:{table_name}"
+        if cache_key in self._table_cache:
+            return self._table_cache[cache_key]
+
+        try:
+            result = conn.execute(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_schema = 'main' AND table_name = ?",
+                [table_name],
+            ).fetchone()
+            exists = bool(result and result[0] > 0)
+            self._table_cache[cache_key] = exists
+            return exists
+        except Exception:
+            self._table_cache[cache_key] = False
             return False
 
     def _get_connection(self) -> duckdb.DuckDBPyConnection:
@@ -206,28 +279,38 @@ class DuckDBRepository(
     def _has_column(
         self, conn: duckdb.DuckDBPyConnection, table_name: str, column_name: str
     ) -> bool:
-        """Retourne True si une colonne existe dans une table.
+        """Retourne True si une colonne existe dans une table (avec cache).
 
         Utile pour supporter des schémas historiques (colonnes ajoutées en v4).
         """
+        cache_key = f"{table_name}.{column_name}"
+        if cache_key in self._schema_cache:
+            return self._schema_cache[cache_key]
 
         try:
-            return (
+            exists = (
                 conn.execute(
                     "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = ? AND column_name = ?",
                     (table_name, column_name),
                 ).fetchone()[0]
                 > 0
             )
+            self._schema_cache[cache_key] = exists
+            return exists
         except Exception:
+            self._schema_cache[cache_key] = False
             return False
 
     def _has_shared_mp_column(self, conn: duckdb.DuckDBPyConnection, column_name: str) -> bool:
-        """Vérifie si match_participants (shared) possède une colonne.
+        """Vérifie si match_participants (shared) possède une colonne (avec cache).
 
         Consulte le catalog ``shared`` attaché en priorité, puis fallback
         sur le catalog principal (utile en tests unitaires).
         """
+        cache_key = f"shared_mp.{column_name}"
+        if cache_key in self._schema_cache:
+            return self._schema_cache[cache_key]
+
         for catalog in ("shared", "main"):
             try:
                 result = conn.execute(
@@ -236,9 +319,11 @@ class DuckDBRepository(
                     (column_name,),
                 ).fetchone()
                 if result and result[0] > 0:
+                    self._schema_cache[cache_key] = True
                     return True
             except Exception:
                 continue
+        self._schema_cache[cache_key] = False
         return False
 
     def _select_optional_column(
@@ -740,11 +825,14 @@ class DuckDBRepository(
     # =========================================================================
 
     def close(self) -> None:
-        """Ferme la connexion DuckDB."""
+        """Ferme la connexion DuckDB et vide les caches."""
         if self._connection is not None:
             self._connection.close()
             self._connection = None
             self._attached_dbs.clear()
+            self._schema_cache.clear()
+            self._table_cache.clear()
+            self._view_cache.clear()
 
     def __enter__(self) -> DuckDBRepository:
         return self

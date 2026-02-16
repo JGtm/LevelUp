@@ -70,13 +70,11 @@ class MatchQueriesMixin:
     def _get_match_source(self, conn) -> tuple[str, list[str]]:
         """Retourne l'expression FROM pour les matchs (v5 shared ou v4 local).
 
-        En mode v5, construit une sous-requête combinant shared.match_registry,
-        shared.match_participants et un LEFT JOIN vers match_stats local pour
-        les colonnes non disponibles dans shared (kda, spree, headshot_kills, etc.).
-        La sous-requête est aliasée ``match_stats`` pour que toutes les références
-        externes (jointures metadata, MMR, filtres) restent inchangées.
+        En mode v5, utilise la vue mv_player_matches si disponible (v5.1),
+        sinon construit une sous-requête combinant shared.match_registry,
+        shared.match_participants et un LEFT JOIN vers match_stats local.
 
-        En mode v4/v3, retourne le nom de la table locale directe (match_stats ou player_match_stats).
+        En mode v4/v3, retourne le nom de la table locale directe.
 
         Returns:
             Tuple (from_expression, params).
@@ -85,7 +83,6 @@ class MatchQueriesMixin:
         if not self._xuid or self._xuid.strip() == "":
             match_table = self._get_match_table_name(conn)
             logger.debug(f"Mode v4/v3 (XUID vide) : requête via table locale {match_table}")
-            # Retourner le nom tel quel (alias uniquement si différent de "match_stats")
             if match_table == "match_stats":
                 return match_table, []
             return f"{match_table} AS match_stats", []
@@ -96,13 +93,70 @@ class MatchQueriesMixin:
             and self._has_shared_table("match_registry")
             and self._has_shared_table("match_participants")
         ):
-            # Mode v4/v3 local : déterminer la table de matchs disponible
             match_table = self._get_match_table_name(conn)
             logger.debug(f"Mode v4/v3 : requête via table locale {match_table}")
-            # Retourner le nom tel quel (alias uniquement si différent de "match_stats")
             if match_table == "match_stats":
                 return match_table, []
             return f"{match_table} AS match_stats", []
+
+        # ── Mode v5 : essayer la vue mv_player_matches (v5.1 optimisé) ──
+        if self._has_shared_view("mv_player_matches"):
+            # Vérifier si match_stats locale existe pour enrichir MMR
+            has_ms = self._has_table_cached(conn, "match_stats")
+            if has_ms:
+                source = """(SELECT
+            mv.*,
+            COALESCE(mv.kda, ms.kda) AS kda_enriched,
+            COALESCE(ms.team_mmr, mv.team_mmr) AS team_mmr_enriched,
+            COALESCE(ms.enemy_mmr, mv.enemy_mmr) AS enemy_mmr_enriched
+        FROM shared.mv_player_matches mv
+        LEFT JOIN match_stats ms ON mv.match_id = ms.match_id
+        WHERE mv.xuid = ?
+        ) AS match_stats_raw"""
+                # Wrapper pour re-mapper les noms attendus
+                source = f"""(SELECT
+            match_id, start_time, map_id, map_name,
+            playlist_id, playlist_name, pair_id, pair_name,
+            game_variant_id, game_variant_name, outcome, team_id,
+            kda, max_killing_spree, headshot_kills, avg_life_seconds,
+            time_played_seconds, kills, deaths, assists, accuracy,
+            my_team_score, enemy_team_score,
+            team_mmr_enriched AS team_mmr,
+            enemy_mmr_enriched AS enemy_mmr,
+            personal_score, is_firefight, is_ranked
+        FROM (SELECT
+            mv.*,
+            COALESCE(ms.team_mmr, mv.team_mmr) AS team_mmr_enriched,
+            COALESCE(ms.enemy_mmr, mv.enemy_mmr) AS enemy_mmr_enriched
+        FROM shared.mv_player_matches mv
+        LEFT JOIN match_stats ms ON mv.match_id = ms.match_id
+        WHERE mv.xuid = ?
+        )) AS match_stats"""
+            else:
+                source = """(SELECT
+            match_id, start_time, map_id, map_name,
+            playlist_id, playlist_name, pair_id, pair_name,
+            game_variant_id, game_variant_name, outcome, team_id,
+            kda, max_killing_spree, headshot_kills, avg_life_seconds,
+            time_played_seconds, kills, deaths, assists, accuracy,
+            my_team_score, enemy_team_score,
+            team_mmr, enemy_mmr,
+            personal_score, is_firefight, is_ranked
+        FROM shared.mv_player_matches
+        WHERE xuid = ?
+        ) AS match_stats"""
+
+            logger.debug("Mode v5.1 : requête via vue mv_player_matches")
+            return source, [self._xuid]
+
+        # ── Fallback v5.0 : construction dynamique (legacy) ──
+        return self._get_match_source_v5_legacy(conn)
+
+    def _get_match_source_v5_legacy(self, conn) -> tuple[str, list[str]]:
+        """Construction dynamique v5.0 de la source matchs (fallback).
+
+        Utilisé quand la vue mv_player_matches n'existe pas encore.
+        """
 
         # Vérifier si la table match_stats locale existe (période de transition)
         has_ms = (

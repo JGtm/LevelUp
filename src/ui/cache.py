@@ -45,6 +45,7 @@ from src.ui.cache_loaders import (  # noqa: F401
     cached_same_team_match_ids_with_friend,
     clear_app_caches,
     db_cache_key,
+    get_cached_repository_st,
     load_df_optimized,
     top_medals_smart,
 )
