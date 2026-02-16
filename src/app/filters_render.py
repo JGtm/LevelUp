@@ -300,7 +300,7 @@ def _render_session_filter(
     aliases_key: int | None,
     base_for_filters: pl.DataFrame,
     build_friends_opts_map_fn: Callable,
-) -> tuple[int, list[str] | None, pl.DataFrame]:
+) -> tuple[int, list[str] | None, pl.DataFrame, tuple[str, ...] | None]:
     """Rend les contrôles en mode Sessions (gap fixé à 120 min, stockage en base)."""
     gap_minutes = GAP_MINUTES_FIXED
 

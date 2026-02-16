@@ -367,17 +367,13 @@ def render_session_filters(
     )
     # Tri par date du dernier match (robuste au type session_id et à la logique 4h Cas A/B)
     if (
-        not base_s_ui.empty
+        not base_s_ui.is_empty()
         and "start_time" in base_s_ui.columns
         and "session_label" in base_s_ui.columns
     ):
-        agg = (
-            base_s_ui.groupby(["session_id", "session_label"], dropna=False)["start_time"]
-            .max()
-            .reset_index()
-        )
-        agg = agg.sort_values("start_time", ascending=False)
-        options_ui = agg["session_label"].tolist()
+        agg = base_s_ui.group_by(["session_id", "session_label"]).agg(pl.col("start_time").max())
+        agg = agg.sort("start_time", descending=True)
+        options_ui = agg["session_label"].to_list()
     else:
         options_ui = []
     st.session_state["_latest_session_label"] = options_ui[0] if options_ui else None

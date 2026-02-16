@@ -229,12 +229,12 @@ cat .ai/PROCESSUS_QUALITE_V5.1.md
 **DoD** : PROCESSUS_QUALITE_V5.1.md § "Étape 6 : Migration Pandas→Polars"  
 **Durée** : 12h
 
-### Étape 7 : Bugs Critiques (Ph7-8)
+### Étape 7 : Bugs Critiques + Migration xuid_aliases (Ph7-8)
 
 **Plan** : RECONCILIATION_FINALE_V5.1.md § Étape 7  
 **Détails** : PHASES_6_10_COMPLETE.md § Phases 7-8  
 **DoD** : PROCESSUS_QUALITE_V5.1.md § "Étape 7 : Bugs Critiques"  
-**Durée** : 2-3h
+**Durée** : 4-5h
 
 ### Étape 8 : Cleanup Tables Legacy
 
