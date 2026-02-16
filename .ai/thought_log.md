@@ -7,6 +7,85 @@
 
 ## Journal
 
+### [2026-02-16] - Planification Éradication Architecture Legacy v5.1
+
+**Statut** : Planifié ✅
+
+**Objectif** : Créer un plan détaillé et exhaustif pour l'éradication complète des technologies et architectures legacy (SQLite, Pandas, modules obsolètes) sans fallback ni backward compatibility.
+
+**Documents produits** :
+
+**1. Plan détaillé d'éradication** (`.ai/PLAN_ERADICATION_LEGACY_V5.md`)
+- Inventaire complet des vestiges legacy (SQLite, Pandas, tables, scripts)
+- 6 phases d'exécution détaillées (28h total)
+- Risques et mitigations
+- Métriques de succès
+- Décisions architecturales clés
+
+**2. Manifeste architecture pure** (`docs/V5.1_PURE_ARCHITECTURE.md`)
+- Vision et principes architecturaux v5.1
+- Stack technique pure (100% DuckDB + Polars)
+- Guidelines développement et conventions
+- Anti-patterns à éviter
+- Checklist de conformité
+
+**3. Synthèse exécutive** (`.ai/SYNTHESE_EXECUTIVE_V5.1.md`)
+- Résumé du projet pour stakeholders
+- Planning 4 jours
+- KPIs et livrables
+- Processus de validation
+
+**Analyse réalisée** :
+
+**SQLite (à éradiquer)** :
+- 7 fichiers runtime avec imports `sqlite3` ou fallback SQLite
+- 5 scripts de migration légitimes (à marquer LEGACY)
+- 2 scripts utilitaires à auditer
+
+**Pandas (à éradiquer)** :
+- 7 fichiers métier utilisant Pandas (à migrer vers Polars)
+- 3 bridges de compatibilité (à conserver — frontières Plotly/Streamlit)
+- 2 modules de visualisation à refactoriser
+
+**Tables redondantes (à nettoyer)** :
+- 4 tables obsolètes par player DB (post-migration v5 shared matches)
+- 4 views de compatibilité par player DB
+- Script cleanup existant : `cleanup_player_dbs_v5.py`
+
+**Scripts archive (à organiser)** :
+- ~60+ scripts dans `scripts/_archive/` (R&D, migration, benchmarks)
+- Besoin de tri et documentation
+
+**Décisions clés** :
+
+1. **Zero Tolerance** : L'architecture v5.1 refuse de démarrer si SQLite détecté ou `metadata.duckdb` absent
+2. **Conservation bridges Pandas** : Modules `_compat.py`, `_arrow_bridge.py`, `streamlit_bridge.py` conservés (conversions frontières)
+3. **Scripts migration en archive** : Ne PAS supprimer, mais marquer clairement LEGACY avec bannières
+4. **Cleanup tables optionnel** : Recommandé pour espace disque mais pas obligatoire (fonctionnement identique)
+
+**Bénéfices attendus** :
+- Performance : -49% temps chargement (350ms → 180ms)
+- Stockage : -87% taille player DBs (30 MB → 4 MB)
+- Code : -16% lignes de code (~45,000 → ~38,000)
+- Qualité : +5% couverture tests (75% → 80%)
+
+**Planning** :
+- **Durée** : 28 heures (4 jours × 7h)
+- **Phases** : 6 phases (Préparation → SQLite → Scripts → Pandas → Cleanup → Validation)
+- **Criticité** : Phase 3 (Pandas→Polars) la plus longue (12h)
+
+**Next Steps** :
+- Exécuter Phase 0 (Préparation) : Backups, validation, snapshot
+- Puis Phase 1 (Éradication SQLite runtime)
+
+**Impact** :
+- ✅ Roadmap claire pour atteindre architecture pure v5.1
+- ✅ Documentation exhaustive (3 documents de référence)
+- ✅ Inventaire complet des vestiges legacy
+- ✅ Plan d'exécution méthodique et sécurisé
+
+---
+
 ### [2026-02-15] - Correction Blocages Tests d'Intégration
 
 **Statut** : Résolu ✅
