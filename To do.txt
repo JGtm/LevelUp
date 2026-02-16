@@ -11,4 +11,6 @@ Traductions :
 
 Citations qu'on peut ressortir avec les scores obtenus pendant le match ? -> vérifier que les citations et la logique est pas dispersée comme en legacy et que c'est bien documenté
 
-Médaille ange gardien ??
+Et banshee/apparition détruit ? Véhicule détruit ?
+
+Etapes fin de sprint
