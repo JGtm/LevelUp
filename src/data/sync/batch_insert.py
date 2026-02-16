@@ -482,6 +482,15 @@ PARTICIPANT_COLUMNS = [
     "grenade_kills",
     "melee_kills",
     "power_weapon_kills",
+    "personal_score",
+    # Stats MMR/Skill (V5 finale)
+    "team_mmr",
+    "kills_expected",
+    "kills_stddev",
+    "deaths_expected",
+    "deaths_stddev",
+    "assists_expected",
+    "assists_stddev",
 ]
 
 ALIAS_COLUMNS = ["xuid", "gamertag", "last_seen", "source", "updated_at"]

@@ -353,6 +353,34 @@ class MatchParticipantRow:
     grenade_kills: int | None = None  # GrenadeKills depuis CoreStats (API)
     melee_kills: int | None = None  # MeleeKills depuis CoreStats (API)
     power_weapon_kills: int | None = None  # PowerWeaponKills depuis CoreStats (API)
+    personal_score: int | None = None  # PersonalScore depuis CoreStats (API)
+    # Stats MMR/Skill (depuis API Skill pour TOUS les joueurs)
+    team_mmr: float | None = None  # MMR de l'équipe du joueur
+    kills_expected: float | None = None  # Kills attendus selon MMR
+    kills_stddev: float | None = None  # Écart-type kills
+    deaths_expected: float | None = None  # Deaths attendus selon MMR
+    deaths_stddev: float | None = None  # Écart-type deaths
+    assists_expected: float | None = None  # Assists attendus selon MMR
+    assists_stddev: float | None = None  # Écart-type assists
+
+
+@dataclass
+class SkillParticipantUpdate:
+    """Update de données skill pour un participant.
+
+    Utilisé pour mettre à jour les colonnes MMR dans shared.match_participants
+    après extraction des données Skill de TOUS les joueurs.
+    """
+
+    match_id: str
+    xuid: str
+    team_mmr: float | None = None
+    kills_expected: float | None = None
+    kills_stddev: float | None = None
+    deaths_expected: float | None = None
+    deaths_stddev: float | None = None
+    assists_expected: float | None = None
+    assists_stddev: float | None = None
 
 
 # =============================================================================
