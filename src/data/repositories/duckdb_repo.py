@@ -102,6 +102,11 @@ class DuckDBRepository(
         self._table_cache: dict[str, bool] = {}
         self._view_cache: dict[str, bool] = {}
 
+        # Cache des résolutions coûteuses (v5.1 perf — 1bis.3)
+        # Le schéma metadata et les tables locales ne changent pas en session.
+        self._metadata_resolution_cache: tuple[str, str, str, str] | None = None
+        self._mmr_fallback_cache: tuple[str, str, str] | None = None
+
     @property
     def xuid(self) -> str:
         """XUID du joueur principal."""
@@ -348,9 +353,14 @@ class DuckDBRepository(
         """
         Construit les expressions SQL et les jointures pour résoudre les métadonnées.
 
+        Le résultat est caché en instance car le schéma metadata ne change pas en session.
+
         Returns:
             Tuple (metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr)
         """
+        # Cache d'instance (v5.1 perf — 1bis.3)
+        if self._metadata_resolution_cache is not None:
+            return self._metadata_resolution_cache
         metadata_joins = ""
         map_name_expr = "match_stats.map_name"
         playlist_name_expr = "match_stats.playlist_name"
@@ -408,7 +418,9 @@ class DuckDBRepository(
             # Si erreur, utiliser les valeurs directes (déjà définies par défaut)
             logger.warning(f"Erreur lors de la construction des jointures métadonnées: {e}")
 
-        return metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr
+        result = (metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr)
+        self._metadata_resolution_cache = result
+        return result
 
     def _build_mmr_fallback(self, conn) -> tuple[str, str, str]:
         """Construit la jointure et les expressions pour le fallback MMR.
@@ -416,9 +428,14 @@ class DuckDBRepository(
         Si player_match_stats existe, utilise COALESCE pour récupérer les MMR
         depuis cette table si match_stats a des valeurs NULL.
 
+        Le résultat est caché en instance car les tables locales ne changent pas en session.
+
         Returns:
             Tuple (pms_join, team_mmr_expr, enemy_mmr_expr)
         """
+        # Cache d'instance (v5.1 perf — 1bis.3)
+        if self._mmr_fallback_cache is not None:
+            return self._mmr_fallback_cache
         pms_join = ""
         team_mmr_expr = "match_stats.team_mmr"
         enemy_mmr_expr = "match_stats.enemy_mmr"
@@ -437,7 +454,9 @@ class DuckDBRepository(
         except Exception:
             pass
 
-        return pms_join, team_mmr_expr, enemy_mmr_expr
+        result = (pms_join, team_mmr_expr, enemy_mmr_expr)
+        self._mmr_fallback_cache = result
+        return result
 
     # =========================================================================
     # Médailles
@@ -833,6 +852,9 @@ class DuckDBRepository(
             self._schema_cache.clear()
             self._table_cache.clear()
             self._view_cache.clear()
+            # Invalider les caches de résolution (v5.1 perf — 1bis.3)
+            self._metadata_resolution_cache = None
+            self._mmr_fallback_cache = None
 
     def __enter__(self) -> DuckDBRepository:
         return self

@@ -7,6 +7,56 @@
 
 ## Journal
 
+### [2026-02-16] - Sprint 1bis : Causes Racines Performance — TERMINÉ ✅
+
+**Statut** : Complété ✅
+
+**Objectif** : Corriger 5 causes racines de performance identifiées lors de l'audit post-Sprint 1.
+
+**Actions réalisées** :
+
+**1bis.1 RC1 — Migration cache_loaders (CRITIQUE)**
+- Migré 10+ fonctions de `DuckDBRepository(db_path, ...)` (connexion neuve à chaque appel) vers `get_cached_repository_st()` (singleton caché @st.cache_resource)
+- Fonctions migrées : `cached_same_team_match_ids_with_friend`, `cached_query_matches_with_friend`, `cached_load_player_match_result`, `cached_load_match_medals_for_player`, `cached_load_match_rosters`, `cached_load_top_medals`, `top_medals_smart`, `cached_list_top_teammates`, `cached_get_cache_stats`, `cached_load_match_player_gamertags`, `cached_list_other_xuids`
+- Impact : économise ~50-100ms × N appels (3× ATTACH DuckDB évités)
+
+**1bis.2 RC5 — Migration highlight_events (MINEUR)**
+- Remplacé `duckdb.connect(db_path)` brut par `repo.load_highlight_events()` via cache
+- Supprimé le parsing JSON manuel redondant
+
+**1bis.3 RC2 — Cache instance metadata/MMR (IMPORTANT)**
+- Ajouté `self._metadata_resolution_cache` et `self._mmr_fallback_cache` dans `DuckDBRepository.__init__`
+- Les fonctions `_build_metadata_resolution()` et `_build_mmr_fallback()` retournent le résultat caché après le premier appel
+- Invalidation dans `close()` pour éviter les données périmées
+- Impact : 0 requête `information_schema` après le premier appel
+
+**1bis.4 RC3 — Skip jointures metadata redondantes (MOYEN)**
+- `_get_match_source()` retourne maintenant un 3-tuple `(source, params, uses_mv)`
+- Quand `uses_mv=True`, les 5 méthodes de chargement (load_matches, load_matches_in_range, load_recent_matches, load_matches_paginated, load_matches_as_polars) skip `_build_metadata_resolution()` et utilisent directement `match_stats.map_name/playlist_name/pair_name`
+- Impact : 3 LEFT JOIN metadata + 1 LEFT JOIN pms en moins sur le chemin critique
+
+**1bis.5 RC4 — Skip jointures MMR redondantes (MOYEN)**
+- Combiné avec 1bis.4 : quand `uses_mv=True`, skip aussi `_build_mmr_fallback()`
+- Les colonnes MMR sont déjà COALESCE dans la sous-requête mv_player_matches
+
+**Corrections tests** :
+- 7 tests mis à jour pour le nouveau 3-tuple `_get_match_source()` (test_v5_match_queries.py, test_performance_optimizations.py)
+- 2 tests corrigés pour PermissionError — ajout `clear_app_caches()` avant suppression du fichier temp (test_last_match_fixes.py)
+
+**Fichiers modifiés** :
+- [src/ui/cache_loaders.py](src/ui/cache_loaders.py) — 10+ fonctions migrées vers get_cached_repository_st()
+- [src/data/repositories/duckdb_repo.py](src/data/repositories/duckdb_repo.py) — cache instance pour metadata_resolution et mmr_fallback
+- [src/data/repositories/_match_queries.py](src/data/repositories/_match_queries.py) — 3-tuple _get_match_source(), skip jointures conditionnelles
+- [tests/test_v5_match_queries.py](tests/test_v5_match_queries.py) — 3 tests pour 3-tuple
+- [tests/test_performance_optimizations.py](tests/test_performance_optimizations.py) — 4 tests pour 3-tuple
+- [tests/test_last_match_fixes.py](tests/test_last_match_fixes.py) — 2 tests PermissionError fix
+
+**Validation** : 2885 tests passed, 0 failed ✅
+
+**Prochaine étape** : Benchmark avant/après + validation UI manuelle → Go/No-Go humain
+
+---
+
 ### [2026-02-15] - Correction Blocages Tests d'Intégration
 
 **Statut** : Résolu ✅

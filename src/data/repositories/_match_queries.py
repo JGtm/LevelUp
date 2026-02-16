@@ -67,7 +67,7 @@ class MatchQueriesMixin:
         # Par défaut, retourner match_stats (va probablement échouer mais c'est attendu v4+)
         return "match_stats"
 
-    def _get_match_source(self, conn) -> tuple[str, list[str]]:
+    def _get_match_source(self, conn) -> tuple[str, list[str], bool]:
         """Retourne l'expression FROM pour les matchs (v5 shared ou v4 local).
 
         En mode v5, utilise la vue mv_player_matches si disponible (v5.1),
@@ -77,15 +77,17 @@ class MatchQueriesMixin:
         En mode v4/v3, retourne le nom de la table locale directe.
 
         Returns:
-            Tuple (from_expression, params).
+            Tuple (from_expression, params, uses_mv).
+            uses_mv est True quand mv_player_matches est utilisée (noms déjà résolus,
+            pas besoin de jointures metadata/MMR supplémentaires).
         """
         # Forcer mode local si XUID vide ou None (DBs v3/legacy)
         if not self._xuid or self._xuid.strip() == "":
             match_table = self._get_match_table_name(conn)
             logger.debug(f"Mode v4/v3 (XUID vide) : requête via table locale {match_table}")
             if match_table == "match_stats":
-                return match_table, []
-            return f"{match_table} AS match_stats", []
+                return match_table, [], False
+            return f"{match_table} AS match_stats", [], False
 
         # Forcer mode local si tables shared absentes
         if not (
@@ -96,8 +98,8 @@ class MatchQueriesMixin:
             match_table = self._get_match_table_name(conn)
             logger.debug(f"Mode v4/v3 : requête via table locale {match_table}")
             if match_table == "match_stats":
-                return match_table, []
-            return f"{match_table} AS match_stats", []
+                return match_table, [], False
+            return f"{match_table} AS match_stats", [], False
 
         # ── Mode v5 : essayer la vue mv_player_matches (v5.1 optimisé) ──
         if self._has_shared_view("mv_player_matches"):
@@ -114,7 +116,7 @@ class MatchQueriesMixin:
         WHERE mv.xuid = ?
         ) AS match_stats_raw"""
                 # Wrapper pour re-mapper les noms attendus
-                source = f"""(SELECT
+                source = """(SELECT
             match_id, start_time, map_id, map_name,
             playlist_id, playlist_name, pair_id, pair_name,
             game_variant_id, game_variant_name, outcome, team_id,
@@ -147,10 +149,11 @@ class MatchQueriesMixin:
         ) AS match_stats"""
 
             logger.debug("Mode v5.1 : requête via vue mv_player_matches")
-            return source, [self._xuid]
+            return source, [self._xuid], True
 
         # ── Fallback v5.0 : construction dynamique (legacy) ──
-        return self._get_match_source_v5_legacy(conn)
+        source_sql, source_params = self._get_match_source_v5_legacy(conn)
+        return source_sql, source_params, False
 
     def _get_match_source_v5_legacy(self, conn) -> tuple[str, list[str]]:
         """Construction dynamique v5.0 de la source matchs (fallback).
@@ -314,7 +317,7 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, uses_mv = self._get_match_source(conn)
         is_shared = bool(source_params)
 
         where_clauses = []
@@ -348,13 +351,22 @@ class MatchQueriesMixin:
         if offset is not None:
             pagination_sql += f" OFFSET {int(offset)}"
 
-        # Résoudre les métadonnées depuis meta.* si disponible
-        metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
-            self._build_metadata_resolution(conn)
-        )
-
-        # Fallback MMR depuis player_match_stats si disponible
-        pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
+        # v5.1 perf — skip jointures redondantes quand mv_player_matches est utilisée
+        if uses_mv:
+            metadata_joins = ""
+            map_name_expr = "match_stats.map_name"
+            playlist_name_expr = "match_stats.playlist_name"
+            pair_name_expr = "match_stats.pair_name"
+            pms_join = ""
+            team_mmr_expr = "match_stats.team_mmr"
+            enemy_mmr_expr = "match_stats.enemy_mmr"
+        else:
+            # Résoudre les métadonnées depuis meta.* si disponible
+            metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
+                self._build_metadata_resolution(conn)
+            )
+            # Fallback MMR depuis player_match_stats si disponible
+            pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
 
         # En mode shared, personal_score est toujours dans la sous-requête
         if is_shared:
@@ -502,16 +514,25 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, uses_mv = self._get_match_source(conn)
         is_shared = bool(source_params)
 
-        # Résoudre les métadonnées depuis meta.* si disponible
-        metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
-            self._build_metadata_resolution(conn)
-        )
-
-        # Fallback MMR depuis player_match_stats si disponible
-        pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
+        # v5.1 perf — skip jointures redondantes quand mv_player_matches est utilisée
+        if uses_mv:
+            metadata_joins = ""
+            map_name_expr = "match_stats.map_name"
+            playlist_name_expr = "match_stats.playlist_name"
+            pair_name_expr = "match_stats.pair_name"
+            pms_join = ""
+            team_mmr_expr = "match_stats.team_mmr"
+            enemy_mmr_expr = "match_stats.enemy_mmr"
+        else:
+            # Résoudre les métadonnées depuis meta.* si disponible
+            metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
+                self._build_metadata_resolution(conn)
+            )
+            # Fallback MMR depuis player_match_stats si disponible
+            pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
 
         if is_shared:
             personal_score_select = "match_stats.personal_score"
@@ -640,16 +661,25 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, uses_mv = self._get_match_source(conn)
         is_shared = bool(source_params)
 
-        # Résoudre les métadonnées depuis meta.* si disponible
-        metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
-            self._build_metadata_resolution(conn)
-        )
-
-        # Fallback MMR depuis player_match_stats si disponible
-        pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
+        # v5.1 perf — skip jointures redondantes quand mv_player_matches est utilisée
+        if uses_mv:
+            metadata_joins = ""
+            map_name_expr = "match_stats.map_name"
+            playlist_name_expr = "match_stats.playlist_name"
+            pair_name_expr = "match_stats.pair_name"
+            pms_join = ""
+            team_mmr_expr = "match_stats.team_mmr"
+            enemy_mmr_expr = "match_stats.enemy_mmr"
+        else:
+            # Résoudre les métadonnées depuis meta.* si disponible
+            metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
+                self._build_metadata_resolution(conn)
+            )
+            # Fallback MMR depuis player_match_stats si disponible
+            pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
 
         if is_shared:
             personal_score_select = "match_stats.personal_score"
@@ -769,16 +799,25 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, uses_mv = self._get_match_source(conn)
         is_shared = bool(source_params)
 
-        # Résoudre les métadonnées depuis meta.* si disponible
-        metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
-            self._build_metadata_resolution(conn)
-        )
-
-        # Fallback MMR depuis player_match_stats si disponible
-        pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
+        # v5.1 perf — skip jointures redondantes quand mv_player_matches est utilisée
+        if uses_mv:
+            metadata_joins = ""
+            map_name_expr = "match_stats.map_name"
+            playlist_name_expr = "match_stats.playlist_name"
+            pair_name_expr = "match_stats.pair_name"
+            pms_join = ""
+            team_mmr_expr = "match_stats.team_mmr"
+            enemy_mmr_expr = "match_stats.enemy_mmr"
+        else:
+            # Résoudre les métadonnées depuis meta.* si disponible
+            metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
+                self._build_metadata_resolution(conn)
+            )
+            # Fallback MMR depuis player_match_stats si disponible
+            pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
 
         if is_shared:
             personal_score_select = "match_stats.personal_score"
@@ -962,7 +1001,7 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, uses_mv = self._get_match_source(conn)
         is_shared = bool(source_params)
 
         where_clauses = []
@@ -970,11 +1009,21 @@ class MatchQueriesMixin:
             where_clauses.append("match_stats.is_firefight = FALSE")
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
-        # Résoudre les métadonnées
-        metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
-            self._build_metadata_resolution(conn)
-        )
-        pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
+        # v5.1 perf — skip jointures redondantes quand mv_player_matches est utilisée
+        if uses_mv:
+            metadata_joins = ""
+            map_name_expr = "match_stats.map_name"
+            playlist_name_expr = "match_stats.playlist_name"
+            pair_name_expr = "match_stats.pair_name"
+            pms_join = ""
+            team_mmr_expr = "match_stats.team_mmr"
+            enemy_mmr_expr = "match_stats.enemy_mmr"
+        else:
+            # Résoudre les métadonnées
+            metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
+                self._build_metadata_resolution(conn)
+            )
+            pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
         if is_shared:
             personal_score_select = "match_stats.personal_score"
         else:
@@ -1146,7 +1195,7 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, _uses_mv = self._get_match_source(conn)
 
         where_clauses = []
         params: list = []

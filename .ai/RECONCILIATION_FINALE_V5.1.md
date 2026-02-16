@@ -113,7 +113,7 @@ Ce document **RÉCONCILIE** et **CONSOLIDE** **TOUS** les plans de travail v5.1 
 
 ---
 
-## 📋 Plan Réconcilié Final : 10 Étapes (~115h)
+## 📋 Plan Réconcilié Final : 10 Étapes + 1bis (~100h, réduit de 115h)
 
 ### Étape 0 : Préparation (2h)
 
@@ -136,7 +136,7 @@ Ce document **RÉCONCILIE** et **CONSOLIDE** **TOUS** les plans de travail v5.1 
 
 ---
 
-### Étape 1 : Performance UI (2-3 jours) 🔴 PRIORITÉ CRITIQUE
+### Étape 1 : Performance UI (2-3 jours) — ✅ TERMINÉ + 1bis EN COURS
 
 **Sources** : Plan C (3 sprints Performance)
 
@@ -144,50 +144,45 @@ Ce document **RÉCONCILIE** et **CONSOLIDE** **TOUS** les plans de travail v5.1 
 
 **Rationale** : Impact utilisateur immédiat + validation technique + motivation équipe
 
-#### Sprint Perf 1 : Vue Matérialisée (1j)
+#### Sprint Perf 1 : Vue Matérialisée ✅ TERMINÉ
+- [x] Migration `ensure_mv_player_matches_view()` dans `migrations.py`
+- [x] `_get_match_source()` utilise la vue avec auto-détection + fallback legacy
+- [x] Tests dans `test_performance_optimizations.py`
 
-**Problème** : Requêtes SQL trop complexes (170 lignes, 20+ COALESCE)
+#### Sprint Perf 2 : Cache Repository ✅ TERMINÉ
+- [x] `get_cached_repository_st()` avec `@st.cache_resource(ttl=3600)` dans `cache_loaders.py`
+- [x] Pages UI principales utilisent le cache
 
-**Solution** : Créer `mv_player_matches` pré-calculée
+#### Sprint Perf 3 : Index + Schema Cache ✅ TERMINÉ
+- [x] 16+ index créés sur 9 tables
+- [x] `_has_column()` et `_has_shared_mp_column()` cachés
 
-**Actions** :
-- [ ] Créer migration `CREATE VIEW mv_player_matches AS ...`
-- [ ] Simplifier `_get_match_source()` : 170 lignes → 10 lignes
-- [ ] Mettre à jour sync pour alimenter la vue
-- [ ] Tests de non-régression
+#### 🆕 Étape 1bis : Causes Racines Performance (~4.5h) — ✅ TERMINÉ
 
-**Gain** : -70% parsing SQL (40ms → 10ms par match)
+**Origine** : Audit post-Étape 1 (2026-02-16) — malgré les optimisations, des lenteurs persistent.
 
-#### Sprint Perf 2 : Cache Repository (0.5j)
-
-**Problème** : Connexions DB répétées (3× ATTACH par page)
-
-**Solution** : Connexion persistante via `@st.cache_resource`
-
-**Actions** :
-- [ ] Wrapper `DuckDBRepository` dans cache resource
-- [ ] Réutilisation connexion entre pages
-- [ ] Tests invalidation cache
-
-**Gain** : -80% temps connexion (80ms → 15ms)
-
-#### Sprint Perf 3 : Index + Schema Cache (0.5j)
-
-**Problème** : Pas d'index DuckDB + vérifications schéma répétées
-
-**Solution** : Index sur colonnes clés + cache schéma
+| RC# | Cause racine | Impact | Fichier |
+|-----|-------------|--------|---------|
+| RC1 | 8 fonctions `cache_loaders` créent des connexions neuves au lieu d'utiliser le cache | **CRITIQUE** | `cache_loaders.py` |
+| RC2 | `_build_metadata_resolution()` et `_build_mmr_fallback()` non cachées | **IMPORTANT** | `duckdb_repo.py` |
+| RC3 | LEFT JOIN metadata redondants quand `mv_player_matches` est utilisé | **MOYEN** | `_match_queries.py` |
+| RC4 | Sous-requête imbriquée avec match_stats local — **no fallback legacy** | **MOYEN** | `_match_queries.py` |
+| RC5 | `cached_load_highlight_events_for_match()` ouvre connexion brute | **MINEUR** | `cache_loaders.py` |
 
 **Actions** :
-- [ ] `CREATE INDEX idx_player_matches ON match_participants(xuid, match_id)`
-- [ ] Cache vérifications schéma (éviter 5× par connexion)
-- [ ] Tests performance jointures
+- [x] 1bis.1 — Migrer 8+ fonctions cache_loaders vers `get_cached_repository_st()` ✅
+- [x] 1bis.2 — Migrer highlight_events vers repo caché ✅
+- [x] 1bis.3 — Cacher `_build_metadata_resolution()` et `_build_mmr_fallback()` ✅
+- [x] 1bis.4 — Supprimer jointures metadata redondantes en mode v5.1 ✅
+- [x] 1bis.5 — Supprimer LEFT JOIN match_stats local en mode v5.1 ✅
+- [ ] Benchmark avant/après (en attente validation humaine)
 
-**Gain** : -30% jointures + -10ms/requête
+**Détails** : voir `.ai/SUIVI_AVANCEMENT_V5.1.md` § Sprint 1bis
 
 **Métriques cibles** :
-- ✅ Connexion : 80ms → <20ms
-- ✅ load_matches(100) : 200ms → <80ms
-- ✅ Première page : 1500ms → <800ms
+- Connexion : 80ms → <20ms
+- load_matches(100) : 200ms → <80ms
+- Première page : 1500ms → <800ms
 
 **Documentation** : `.ai/diagnostics/PLAN_OPTIMISATION_V5.md`
 
@@ -198,6 +193,8 @@ Ce document **RÉCONCILIE** et **CONSOLIDE** **TOUS** les plans de travail v5.1 
 **Sources** : Plan A Sprint 1
 
 **Objectif** : Optimisations query planner + index supplémentaires
+
+**État de l'audit (2026-02-16)** : Les index de base sont créés (16+). Les optimisations restantes sont couvertes par l'Étape 1bis (RC2, RC3, RC4). Cette étape se concentre sur les optimisations EXPLAIN ANALYZE additionnelles post-1bis.
 
 **Actions** :
 - [ ] Index DuckDB supplémentaires (colonnes fréquentes)
@@ -273,51 +270,41 @@ Ce document **RÉCONCILIE** et **CONSOLIDE** **TOUS** les plans de travail v5.1 
 
 ---
 
-### Étape 4 : Éradication SQLite Runtime (4h) 🔴 CRITIQUE
+### Étape 4 : Éradication SQLite Runtime (3h réduit) 🔴 CRITIQUE
 
 **Sources** : Plan D Phase 1
 
 **Objectif** : Zéro SQLite en runtime
 
-**Inventaire exhaustif (7 fichiers)** :
+**État de l'audit (2026-02-16)** :
+> ✅ `import sqlite3` dans `src/` = **0 occurrence** (déjà nettoyé)
+> ⚠️ `metadata.db` encore référencé dans 3 fichiers (voir ci-dessous)
+> ⚠️ Méthode dépréciée `attach_sqlite` encore présente dans `duckdb_engine.py`
+> ✅ Fichiers 4-6 (sync.py, multiplayer.py, rag.py) : **nettoyés** (0 import sqlite3)
 
-1. `src/data/query/engine.py` (lignes 110-123)
-   - Fallback runtime `if not duckdb: fallback sqlite metadata.db`
+**Inventaire résiduel (3 fichiers)** :
+
+1. `src/data/query/engine.py` (ligne 112)
+   - Référence `metadata.db` dans fallback
    - **Action** : Supprimer fallback, `raise ValueError` si DuckDB absent
 
-2. `src/data/infrastructure/database/duckdb_engine.py` (lignes 92-112)
-   - Fallback SQLite dans `_create_connection()`
-   - **Action** : Supprimer fallback, DuckDB uniquement
+2. `src/data/infrastructure/database/duckdb_engine.py` (lignes 13, 92)
+   - Références `metadata.db` + méthode dépréciée `attach_sqlite`
+   - **Action** : Supprimer fallback + méthode dépréciée, DuckDB uniquement
 
-3. `src/utils/paths.py`
-   - Références `metadata.db` (constantes)
-   - **Action** : Nettoyer, utiliser `metadata.duckdb`
-
-4. `src/ui/sync.py`
-   - Possibles références SQLite
-   - **Action** : Auditer + nettoyer si nécessaire
-
-5. `src/ui/multiplayer.py`
-   - Possibles références SQLite
-   - **Action** : Auditer + nettoyer si nécessaire
-
-6. `src/ai/rag.py`
-   - Possibles références SQLite
-   - **Action** : Auditer + nettoyer si nécessaire
-
-7. `scripts/refetch_film_roster.py`
-   - `import sqlite3` direct
-   - **Action** : Supprimer ou porter en DuckDB
+3. `src/utils/paths.py` (ligne 62)
+   - Référence `metadata.db` (constante)
+   - **Action** : Nettoyer, utiliser `metadata.duckdb` uniquement
 
 **Actions** :
-- [ ] Supprimer fallbacks SQLite (fichiers 1-2)
-- [ ] Nettoyer références metadata.db (fichier 3)
-- [ ] Auditer UI/AI (fichiers 4-6)
-- [ ] Décision refetch_film_roster.py (fichier 7)
-- [ ] Supprimer tous `import sqlite3` dans `src/`
+- [x] ~~Supprimer tous `import sqlite3` dans `src/`~~ ✅ Déjà fait (0 occurrence)
+- [x] ~~Auditer UI/AI (sync.py, multiplayer.py, rag.py)~~ ✅ Propres
+- [ ] Supprimer fallback metadata.db dans engine.py (ligne 112)
+- [ ] Supprimer fallback + `attach_sqlite` dans duckdb_engine.py (lignes 13, 92)
+- [ ] Nettoyer référence metadata.db dans paths.py (ligne 62)
 - [ ] Tests de non-régression
 
-**Validation** : `grep -r "import sqlite3" src/ | grep -v "^#"` → zéro résultat
+**Validation** : `grep -r "metadata.db" src/` → zéro résultat
 
 **Documentation** : `.ai/PLAN_ERADICATION_LEGACY_V5.md` § Phase 1
 
@@ -353,18 +340,22 @@ Architecture cible : Pure DuckDB (v5.1+)
 
 ---
 
-### Étape 6 : Migration Pandas→Polars (12h) 🔴 CRITIQUE
+### Étape 6 : Migration Pandas→Polars (8h réduit) 🔴 CRITIQUE
 
 **Sources** : Plan D Phase 3, Plan A Sprint 3
 
 **Objectif** : Zéro Pandas dans code métier
 
+**État de l'audit (2026-02-16)** :
+> ✅ `src/analysis/` a **0 import pandas** — `performance_score.py` déjà migré Polars
+> ⚠️ `src/ui/pages/win_loss.py:8` : import pandas runtime (acceptable = frontière UI)
+> ⚠️ `src/ui/cache_filters.py:283` : utilise `.empty` (pattern Pandas — bug)
+> ℹ️ 4 fichiers avec `import pandas` en `TYPE_CHECKING` only — OK
+
 **Inventaire exhaustif (7 fichiers métier)** :
 
-1. **`src/analysis/performance_score.py`** (4h)
-   - Type : Logique métier
-   - Criticité : 🔴 CRITIQUE
-   - Effort : 🔨 MOYEN
+1. **`src/analysis/performance_score.py`** ✅ DÉJÀ MIGRÉ
+   - 0 import pandas dans `src/analysis/`
 
 2. **`src/data/services/win_loss_service.py`** (3h)
    - Type : Service
@@ -382,13 +373,13 @@ Architecture cible : Pure DuckDB (v5.1+)
    - Effort : 🔨 FAIBLE
 
 5. **`src/ui/pages/win_loss.py`** (1h)
-   - Type : Page UI
+   - Type : Page UI (garder `.to_pandas()` à la frontière Plotly/Streamlit)
    - Criticité : 🟡 MOYEN
    - Effort : 🔨 MOYEN
 
 6. **`src/ui/cache_filters.py`** (0.5h)
    - Type : Caching
-   - Criticité : 🟡 MOYEN
+   - Criticité : 🟡 MOYEN — **Bug** : `.empty` (L283) = pattern Pandas, corriger en `.is_empty()` ou `len(df) == 0`
    - Effort : 🔨 FAIBLE
 
 7. **`src/ui/components/duckdb_analytics.py`** (0.5h)
@@ -414,7 +405,7 @@ Architecture cible : Pure DuckDB (v5.1+)
 - `src/data/integration/streamlit_bridge.py` — Bridge Streamlit
 
 **Actions** :
-- [ ] Migrer performance_score.py (4h, priorité 1)
+- [x] ~~Migrer performance_score.py~~ ✅ Déjà fait
 - [ ] Migrer win_loss_service.py (3h, priorité 1)
 - [ ] Migrer objective_analysis.py (2h)
 - [ ] Migrer match_view_helpers.py (1h)
@@ -625,8 +616,9 @@ def cleanup_player_db(gamertag: str, dry_run: bool = True):
 | **Temps connexion DB** | 80ms | <20ms | <20ms | Ét.1 | 🎯 À valider |
 | **load_matches(100)** | 200ms | <80ms | <80ms | Ét.1 | 🎯 À valider |
 | **Première page UI** | 1500ms | <800ms | <800ms | Ét.1 | 🎯 À valider |
-| **Imports SQLite runtime** | 7 | 0 | 0 | Ét.4 | 🎯 À valider |
-| **Imports Pandas métier** | 7 | 0 | 0 | Ét.6 | 🎯 À valider |
+| **Imports SQLite runtime** | 7 | 0 | 0 | Ét.4 | ✅ Atteint |
+| **Refs metadata.db** | ? | 3 | 0 | Ét.4 | 🎯 À nettoyer |
+| **Imports Pandas métier** | 7 | ~5 | 0 | Ét.6 | 🎯 En cours |
 | **Tables obsolètes** | 8/joueur | 0 | 0 | Ét.8 | 🎯 À valider |
 | **Taille moyenne player DB** | ~30MB | ~4MB | <5MB | Ét.8 | 🎯 À valider |
 | **Couverture tests** | 75% | ≥80% | ≥80% | Ét.9 | 🎯 À valider |
@@ -702,7 +694,7 @@ python scripts/benchmark_performance.py --output baseline_v5.0.json
 
 ## 📊 Résumé Exécutif
 
-**Durée totale** : ~115 heures (~16 jours ouvrés)  
+**Durée totale** : ~100 heures (~14 jours ouvrés) — réduit de 115h grâce à tâches déjà complétées
 **Temps économisé** : ~10-12 jours (vs travail séquentiel non coordonné)  
 **Plans intégrés** : 4 plans sources  
 **Documents produits** : 1 plan maître réconcilié  

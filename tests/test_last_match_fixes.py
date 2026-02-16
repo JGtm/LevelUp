@@ -9,6 +9,7 @@ Ce module teste les corrections apportées pour :
 
 from __future__ import annotations
 
+import contextlib
 import json
 import tempfile
 from pathlib import Path
@@ -28,7 +29,7 @@ def temp_duckdb_with_match():
 
     # Supprimer le fichier temporaire s'il existe déjà (NamedTemporaryFile le crée vide)
     Path(db_path).unlink(missing_ok=True)
-    
+
     conn = duckdb.connect(db_path)
 
     # Créer les tables nécessaires
@@ -82,17 +83,71 @@ def temp_duckdb_with_match():
 
     events = [
         # Kill events : teammate tue enemy1
-        (1, match_id, "Kill", 1000, xuid_teammate, "Teammate", "kill", json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy1})),
+        (
+            1,
+            match_id,
+            "Kill",
+            1000,
+            xuid_teammate,
+            "Teammate",
+            "kill",
+            json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy1}),
+        ),
         # Death events : enemy1 meurt (tué par teammate)
-        (2, match_id, "Death", 1000, xuid_enemy1, "Enemy1", "death", json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy1})),
+        (
+            2,
+            match_id,
+            "Death",
+            1000,
+            xuid_enemy1,
+            "Enemy1",
+            "death",
+            json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy1}),
+        ),
         # Kill events : enemy1 tue le joueur principal
-        (3, match_id, "Kill", 2000, xuid_enemy1, "Enemy1", "kill", json.dumps({"killer_xuid": xuid_enemy1, "victim_xuid": xuid_player})),
+        (
+            3,
+            match_id,
+            "Kill",
+            2000,
+            xuid_enemy1,
+            "Enemy1",
+            "kill",
+            json.dumps({"killer_xuid": xuid_enemy1, "victim_xuid": xuid_player}),
+        ),
         # Death events : le joueur principal meurt (tué par enemy1)
-        (4, match_id, "Death", 2000, xuid_player, "Player", "death", json.dumps({"killer_xuid": xuid_enemy1, "victim_xuid": xuid_player})),
+        (
+            4,
+            match_id,
+            "Death",
+            2000,
+            xuid_player,
+            "Player",
+            "death",
+            json.dumps({"killer_xuid": xuid_enemy1, "victim_xuid": xuid_player}),
+        ),
         # Kill events : teammate tue enemy2
-        (5, match_id, "Kill", 3000, xuid_teammate, "Teammate", "kill", json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy2})),
+        (
+            5,
+            match_id,
+            "Kill",
+            3000,
+            xuid_teammate,
+            "Teammate",
+            "kill",
+            json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy2}),
+        ),
         # Death events : enemy2 meurt (tué par teammate)
-        (6, match_id, "Death", 3000, xuid_enemy2, "Enemy2", "death", json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy2})),
+        (
+            6,
+            match_id,
+            "Death",
+            3000,
+            xuid_enemy2,
+            "Enemy2",
+            "death",
+            json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy2}),
+        ),
     ]
 
     conn.executemany(
@@ -109,11 +164,8 @@ def temp_duckdb_with_match():
     yield db_path, match_id, xuid_player
 
     # Cleanup - fermer toutes les connexions avant de supprimer
-    try:
+    with contextlib.suppress(PermissionError):
         Path(db_path).unlink(missing_ok=True)
-    except PermissionError:
-        # Le fichier peut être verrouillé, on ignore l'erreur
-        pass
 
 
 class TestGamertagCleaning:
@@ -122,7 +174,7 @@ class TestGamertagCleaning:
     def test_clean_gamertag_removes_control_characters(self, temp_duckdb_with_match):
         """Test que les caractères de contrôle sont supprimés."""
         db_path, match_id, xuid = temp_duckdb_with_match
-        
+
         # Insérer un event avec un gamertag contenant des caractères de contrôle
         # Utiliser une nouvelle connexion pour éviter les problèmes de read-only
         conn = duckdb.connect(db_path)
@@ -131,7 +183,16 @@ class TestGamertagCleaning:
             INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag, type_hint, raw_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            [999, match_id, "Kill", 5000, "9999999999999999", "Test\x00\x1f\x7fPlayer", "kill", None],
+            [
+                999,
+                match_id,
+                "Kill",
+                5000,
+                "9999999999999999",
+                "Test\x00\x1f\x7fPlayer",
+                "kill",
+                None,
+            ],
         )
         conn.commit()
         conn.close()
@@ -140,7 +201,7 @@ class TestGamertagCleaning:
         repo = DuckDBRepository(db_path, xuid)
         result = repo.load_match_rosters(match_id)
         repo.close()
-        
+
         assert result is not None
 
         # Vérifier que le gamertag nettoyé ne contient pas de caractères de contrôle
@@ -155,7 +216,7 @@ class TestGamertagCleaning:
     def test_clean_gamertag_removes_unicode_replacement(self, temp_duckdb_with_match):
         """Test que le caractère de remplacement Unicode (�) est supprimé."""
         db_path, match_id, xuid = temp_duckdb_with_match
-        
+
         # Insérer un event avec un gamertag contenant le caractère de remplacement
         # Utiliser une nouvelle connexion pour éviter les problèmes de read-only
         conn = duckdb.connect(db_path)
@@ -173,7 +234,7 @@ class TestGamertagCleaning:
         repo = DuckDBRepository(db_path, xuid)
         result = repo.load_match_rosters(match_id)
         repo.close()
-        
+
         assert result is not None
 
         # Vérifier que le caractère de remplacement est supprimé
@@ -186,7 +247,7 @@ class TestGamertagCleaning:
     def test_clean_gamertag_handles_invalid_utf8(self, temp_duckdb_with_match):
         """Test que les séquences UTF-8 invalides sont gérées."""
         db_path, match_id, xuid = temp_duckdb_with_match
-        
+
         # Insérer un event avec un gamertag contenant des caractères invalides
         # Simuler des données corrompues
         # Utiliser une nouvelle connexion pour éviter les problèmes de read-only
@@ -198,7 +259,16 @@ class TestGamertagCleaning:
                 INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag, type_hint, raw_json)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                [997, match_id, "Kill", 7000, "7777777777777777", "Test\xc0\x80Player", "kill", None],
+                [
+                    997,
+                    match_id,
+                    "Kill",
+                    7000,
+                    "7777777777777777",
+                    "Test\xc0\x80Player",
+                    "kill",
+                    None,
+                ],
             )
             conn.commit()
             conn.close()
@@ -207,18 +277,16 @@ class TestGamertagCleaning:
             repo = DuckDBRepository(db_path, xuid)
             result = repo.load_match_rosters(match_id)
             repo.close()
-            
+
             assert result is not None
             # Le nettoyage ne doit pas faire planter la fonction
         except Exception:
             # Si l'insertion échoue à cause de l'encodage, c'est OK
             pass
         finally:
-            if 'conn' in locals():
-                try:
+            if "conn" in locals():
+                with contextlib.suppress(Exception):
                     conn.close()
-                except Exception:
-                    pass
 
 
 class TestTeamAssignment:
@@ -255,7 +323,7 @@ class TestTeamAssignment:
 
         # Supprimer le fichier temporaire s'il existe déjà
         Path(db_path).unlink(missing_ok=True)
-        
+
         conn = duckdb.connect(db_path)
 
         conn.execute("""
@@ -332,7 +400,7 @@ class TestMissingDataHandling:
 
         # Supprimer le fichier temporaire s'il existe déjà
         Path(db_path).unlink(missing_ok=True)
-        
+
         conn = duckdb.connect(db_path)
 
         conn.execute("""
@@ -363,7 +431,9 @@ class TestMissingDataHandling:
         # La fonction devrait retourner un dict même si les MMR sont None
         result = cached_load_player_match_result(db_path, match_id, xuid, db_key=None)
 
-        assert result is not None, "cached_load_player_match_result doit retourner un dict même sans MMR"
+        assert (
+            result is not None
+        ), "cached_load_player_match_result doit retourner un dict même sans MMR"
         assert isinstance(result, dict)
         assert result.get("team_mmr") is None
         assert result.get("enemy_mmr") is None
@@ -371,6 +441,10 @@ class TestMissingDataHandling:
         assert "deaths" in result
         assert "assists" in result
 
+        # Libérer la connexion cache_resource avant suppression du fichier
+        from src.ui.cache_loaders import clear_app_caches
+
+        clear_app_caches()
         Path(db_path).unlink(missing_ok=True)
 
     def test_cached_load_player_match_result_with_mmr(self):
@@ -380,7 +454,7 @@ class TestMissingDataHandling:
 
         # Supprimer le fichier temporaire s'il existe déjà
         Path(db_path).unlink(missing_ok=True)
-        
+
         conn = duckdb.connect(db_path)
 
         conn.execute("""
@@ -414,4 +488,8 @@ class TestMissingDataHandling:
         assert result.get("team_mmr") == 1500.0
         assert result.get("enemy_mmr") == 1520.0
 
+        # Libérer la connexion cache_resource avant suppression du fichier
+        from src.ui.cache_loaders import clear_app_caches
+
+        clear_app_caches()
         Path(db_path).unlink(missing_ok=True)
