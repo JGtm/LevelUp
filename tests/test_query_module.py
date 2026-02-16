@@ -11,7 +11,6 @@ Ces tests valident :
 
 from __future__ import annotations
 
-import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -88,35 +87,6 @@ class TestQueryEngine:
         assert isinstance(df, pl.DataFrame)
         assert len(df) == 2
         assert df["a"].to_list() == [1, 3]
-
-        engine.close()
-
-    @pytest.mark.skip(reason="SQLite attachment legacy - v4 utilise DuckDB uniquement")
-    def test_sqlite_attachment(self, tmp_path):
-        """Teste l'attachement d'une base SQLite (legacy, skip en v4)."""
-        from src.data.query.engine import QueryEngine
-
-        warehouse = tmp_path / "warehouse"
-        warehouse.mkdir()
-
-        # Créer une base SQLite avec des données
-        metadata_db = warehouse / "metadata.db"
-        con = sqlite3.connect(str(metadata_db))
-        con.execute("CREATE TABLE players (xuid TEXT, gamertag TEXT)")
-        con.execute("INSERT INTO players VALUES ('123', 'TestPlayer')")
-        con.commit()
-        con.close()
-
-        engine = QueryEngine(warehouse)
-
-        # Vérifier que la base est attachée
-        assert engine._metadata_attached
-
-        # Requête sur la base attachée
-        result = engine.execute("SELECT * FROM meta.players")
-
-        assert len(result) == 1
-        assert result[0]["gamertag"] == "TestPlayer"
 
         engine.close()
 

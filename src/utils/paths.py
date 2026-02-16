@@ -58,9 +58,6 @@ PLAYER_DB_FILENAME = "stats.duckdb"
 # Nom du fichier DB des référentiels partagés
 METADATA_DB_FILENAME = "metadata.duckdb"
 
-# Nom du fichier DB des référentiels (legacy SQLite)
-METADATA_DB_FILENAME_LEGACY = "metadata.db"
-
 # Nom du fichier d'index des archives
 ARCHIVE_INDEX_FILENAME = "archive_index.json"
 
@@ -94,29 +91,13 @@ def get_player_archive_dir(gamertag: str) -> Path:
     return PLAYERS_DIR / gamertag / "archive"
 
 
-def get_metadata_db_path(*, prefer_duckdb: bool = True) -> Path:
-    """Retourne le chemin vers la DB des métadonnées.
-
-    Args:
-        prefer_duckdb: Si True, préfère metadata.duckdb à metadata.db.
+def get_metadata_db_path() -> Path:
+    """Retourne le chemin vers la DB des métadonnées (metadata.duckdb).
 
     Returns:
-        Chemin absolu vers la DB des métadonnées.
+        Chemin absolu vers data/warehouse/metadata.duckdb
     """
-    duckdb_path = WAREHOUSE_DIR / METADATA_DB_FILENAME
-    legacy_path = WAREHOUSE_DIR / METADATA_DB_FILENAME_LEGACY
-
-    if prefer_duckdb:
-        if duckdb_path.exists():
-            return duckdb_path
-        if legacy_path.exists():
-            return legacy_path
-        return duckdb_path  # Par défaut, retourner le chemin DuckDB
-
-    # Préférer le legacy
-    if legacy_path.exists():
-        return legacy_path
-    return duckdb_path
+    return WAREHOUSE_DIR / METADATA_DB_FILENAME
 
 
 def list_player_gamertags() -> list[str]:

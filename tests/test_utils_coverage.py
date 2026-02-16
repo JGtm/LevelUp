@@ -293,15 +293,10 @@ class TestGetPlayerArchiveDir:
 
 
 class TestGetMetadataDbPath:
-    def test_prefer_duckdb(self):
-        """Par défaut, retourne le chemin DuckDB."""
-        path = get_metadata_db_path(prefer_duckdb=True)
+    def test_returns_duckdb_path(self):
+        """Retourne toujours le chemin metadata.duckdb."""
+        path = get_metadata_db_path()
         assert path.name == "metadata.duckdb"
-
-    def test_prefer_legacy(self):
-        path = get_metadata_db_path(prefer_duckdb=False)
-        # Retourne soit metadata.db si existe, soit metadata.duckdb
-        assert path.name in ("metadata.db", "metadata.duckdb")
 
 
 class TestListPlayerGamertags:
