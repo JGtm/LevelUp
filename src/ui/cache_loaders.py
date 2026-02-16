@@ -26,6 +26,37 @@ logger = logging.getLogger(__name__)
 # Timezone Paris pour les conversions
 PARIS_TZ_NAME = "Europe/Paris"
 
+
+# ─── Cache Repository (v5.1 perf) ──────────────────────────────────────────
+# Connexion persistante via @st.cache_resource pour éviter les reconnexions
+# coûteuses (ATTACH × 3 = 50-100ms par instanciation).
+
+
+@st.cache_resource(ttl=3600)
+def get_cached_repository_st(
+    db_path: str,
+    xuid: str,
+) -> "DuckDBRepository":
+    """Retourne un DuckDBRepository mis en cache avec connexion persistante.
+
+    Le repository est réutilisé entre les pages Streamlit pour éviter
+    les reconnexions coûteuses (3× ATTACH = 50-100ms).
+
+    Args:
+        db_path: Chemin vers stats.duckdb du joueur.
+        xuid: XUID du joueur.
+
+    Returns:
+        Instance DuckDBRepository mise en cache.
+    """
+    from src.data.repositories.duckdb_repo import DuckDBRepository
+
+    logger.info(f"Création d'un repository mis en cache pour {db_path}")
+    repo = DuckDBRepository(db_path, xuid, read_only=True)
+    # Warm-up : forcer la connexion + ATTACH immédiatement
+    repo._get_connection()
+    return repo
+
 # ─── Constantes de projection par page (Sprint 19 — tâche 19.3) ────────────
 # Colonnes effectivement utilisées par les pages principales.
 # Permet de réduire la mémoire en ne chargeant que le nécessaire.
@@ -163,18 +194,12 @@ def _load_matches_duckdb_v4(db_path: str, include_firefight: bool = True) -> lis
     """Charge les matchs depuis une DB DuckDB v4 (legacy — retourne MatchRow).
 
     Préférer _load_matches_duckdb_v4_polars() pour le chemin optimisé.
+    Utilise le repository caché (v5.1 perf) pour éviter les reconnexions.
     """
     try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
         player_xuid = _resolve_player_xuid(db_path)
-
-        repo = DuckDBRepository(db_path, xuid=player_xuid, read_only=True)
-        try:
-            matches = repo.load_matches(include_firefight=include_firefight)
-            return matches
-        finally:
-            repo.close()
+        repo = get_cached_repository_st(db_path, player_xuid)
+        return repo.load_matches(include_firefight=include_firefight)
     except Exception:
         return []
 
@@ -188,6 +213,7 @@ def _load_matches_duckdb_v4_polars(
 
     Chemin optimisé Sprint 19 : DuckDB → Arrow → Polars sans intermédiaire
     MatchRow. ~3× plus rapide que _load_matches_duckdb_v4 + reconstruction.
+    Utilise le repository caché (v5.1 perf) pour éviter les reconnexions.
 
     Args:
         db_path: Chemin vers la DB DuckDB.
@@ -198,18 +224,12 @@ def _load_matches_duckdb_v4_polars(
         DataFrame Polars. Vide en cas d'erreur.
     """
     try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
         player_xuid = _resolve_player_xuid(db_path)
-
-        repo = DuckDBRepository(db_path, xuid=player_xuid, read_only=True)
-        try:
-            return repo.load_matches_as_polars(
-                include_firefight=include_firefight,
-                columns=columns,
-            )
-        finally:
-            repo.close()
+        repo = get_cached_repository_st(db_path, player_xuid)
+        return repo.load_matches_as_polars(
+            include_firefight=include_firefight,
+            columns=columns,
+        )
     except Exception:
         logger.debug("load_matches_as_polars échoué, fallback MatchRow", exc_info=True)
         return pl.DataFrame()
@@ -553,11 +573,17 @@ def top_medals_smart(
 
 
 def clear_app_caches() -> None:
-    """Vide les caches Streamlit (utile si DB/alias/csv changent en dehors de l'app)."""
+    """Vide les caches Streamlit (utile si DB/alias/csv changent en dehors de l'app).
+
+    Invalide aussi le cache repository (v5.1) pour forcer une reconnexion
+    avec les données fraîches.
+    """
     import contextlib
 
     with contextlib.suppress(Exception):
         st.cache_data.clear()
+    with contextlib.suppress(Exception):
+        st.cache_resource.clear()
 
 
 @st.cache_data(show_spinner=False)

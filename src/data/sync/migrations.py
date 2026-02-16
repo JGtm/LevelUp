@@ -420,3 +420,178 @@ def ensure_medals_earned_bigint(conn: duckdb.DuckDBPyConnection) -> bool:
         logger.warning(f"Migration medals_earned échouée (continuation): {e}")
 
     return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# v5.1 — Vue mv_player_matches (optimisation performance)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ou met à jour la vue mv_player_matches dans shared_matches.duckdb.
+
+    Cette vue pré-calcule toutes les expressions COALESCE/CASE WHEN
+    qui étaient construites dynamiquement par _get_match_source(),
+    réduisant ~150 lignes de SQL dynamique à une simple référence.
+
+    La vue est créée dans le catalog 'shared' si disponible.
+    Idempotente : CREATE OR REPLACE VIEW.
+    """
+    # Vérifier que la table source existe dans le bon catalog
+    # duckdb_tables() fonctionne avec tous les catalogs (y compris attached)
+    # contrairement à {catalog}.information_schema.tables qui échoue en DuckDB 1.4.x
+    #
+    # Note : pour un fichier connecté directement, database_name = nom du fichier
+    # (ex: "shared_matches"), PAS "main". On n'utilise un prefix que si le catalog
+    # est exactement "shared" (ATTACH AS shared), sinon pas de prefix pour que la
+    # vue reste portable.
+    catalog = None
+    try:
+        rows = conn.execute(
+            "SELECT database_name FROM duckdb_tables() "
+            "WHERE table_name = 'match_registry'"
+        ).fetchall()
+        for row in rows:
+            db_name = row[0]
+            if db_name == "shared":
+                catalog = "shared"
+                break
+            elif catalog is None:
+                catalog = db_name
+    except Exception:
+        pass
+
+    if catalog is None:
+        logger.debug("match_registry non trouvée, vue mv_player_matches non créée")
+        return
+
+    # Seul "shared" (ATTACH) nécessite un prefix ; pour une connexion directe
+    # au fichier (database_name = nom du fichier), pas de prefix.
+    prefix = "shared." if catalog == "shared" else ""
+
+    conn.execute(f"""
+        CREATE OR REPLACE VIEW {prefix}mv_player_matches AS
+        SELECT
+            r.match_id,
+            r.start_time,
+            r.map_id,
+            r.map_name,
+            r.playlist_id,
+            r.playlist_name,
+            r.pair_id,
+            r.pair_name,
+            r.game_variant_id,
+            r.game_variant_name,
+            p.xuid,
+            p.outcome,
+            p.team_id,
+
+            -- KDA pré-calculé
+            CASE WHEN p.deaths > 0
+            THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
+                 / CAST(p.deaths AS FLOAT)
+            ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
+            END AS kda,
+
+            -- Stats de base
+            COALESCE(p.max_killing_spree, 0) AS max_killing_spree,
+            COALESCE(p.headshot_kills, 0) AS headshot_kills,
+            COALESCE(p.avg_life_seconds, 0) AS avg_life_seconds,
+            COALESCE(r.duration_seconds, 0) AS time_played_seconds,
+            COALESCE(p.kills, 0) AS kills,
+            COALESCE(p.deaths, 0) AS deaths,
+            COALESCE(p.assists, 0) AS assists,
+
+            -- Accuracy
+            CASE WHEN p.shots_fired > 0
+            THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT)
+            ELSE NULL
+            END AS accuracy,
+
+            -- Scores d'équipe
+            CASE WHEN p.team_id = 0 THEN r.team_0_score
+                 ELSE r.team_1_score END AS my_team_score,
+            CASE WHEN p.team_id = 0 THEN r.team_1_score
+                 ELSE r.team_0_score END AS enemy_team_score,
+
+            -- MMR (NULL par défaut, enrichi depuis match_stats local si dispo)
+            p.team_mmr,
+            NULL AS enemy_mmr,
+
+            -- Score personnel
+            p.score AS personal_score,
+
+            -- Flags
+            COALESCE(r.is_firefight, FALSE) AS is_firefight,
+            COALESCE(r.is_ranked, FALSE) AS is_ranked
+
+        FROM {prefix}match_registry r
+        JOIN {prefix}match_participants p
+            ON r.match_id = p.match_id
+    """)
+
+    logger.info("✅ Vue mv_player_matches créée/mise à jour")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# v5.1 — Index de performance
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_performance_indexes(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée les index pour optimiser les requêtes v5 sur shared_matches.
+
+    Index créés :
+    - idx_mp_xuid_match : match_participants(xuid, match_id) — filtre joueur
+    - idx_mp_match_xuid : match_participants(match_id, xuid) — jointures inversées
+    - idx_mr_start_time : match_registry(start_time DESC) — tri chronologique
+
+    Idempotente : CREATE INDEX IF NOT EXISTS.
+    """
+    catalog = None
+    try:
+        rows = conn.execute(
+            "SELECT database_name FROM duckdb_tables() "
+            "WHERE table_name = 'match_participants'"
+        ).fetchall()
+        for row in rows:
+            db_name = row[0]
+            if db_name == "shared":
+                catalog = "shared"
+                break
+            elif catalog is None:
+                catalog = db_name
+    except Exception:
+        pass
+
+    if catalog is None:
+        logger.debug("match_participants non trouvée, index non créés")
+        return
+
+    prefix = "shared." if catalog == "shared" else ""
+
+    try:
+        conn.execute(f"""
+            CREATE INDEX IF NOT EXISTS idx_mp_xuid_match
+            ON {prefix}match_participants(xuid, match_id)
+        """)
+    except Exception as e:
+        logger.debug(f"Index idx_mp_xuid_match non créé (lecture seule ?): {e}")
+
+    try:
+        conn.execute(f"""
+            CREATE INDEX IF NOT EXISTS idx_mp_match_xuid
+            ON {prefix}match_participants(match_id, xuid)
+        """)
+    except Exception as e:
+        logger.debug(f"Index idx_mp_match_xuid non créé: {e}")
+
+    try:
+        conn.execute(f"""
+            CREATE INDEX IF NOT EXISTS idx_mr_start_time
+            ON {prefix}match_registry(start_time DESC)
+        """)
+    except Exception as e:
+        logger.debug(f"Index idx_mr_start_time non créé: {e}")
+
+    logger.info("✅ Index de performance créés/vérifiés")

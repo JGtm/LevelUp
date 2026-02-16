@@ -12,12 +12,13 @@
 
 ```
 Sprint 0 : Préparation              [    ] 0/4 (0%)
-Sprint 1 : Performance              [    ] 0/4 (0%)
+Sprint 1 : Performance              [####] 3/3 (100%) ✅ TERMINÉ
+Sprint 1bis : Perf Root Causes      [    ] 0/5 (0%)
 Sprint 2 : Éradication SQLite       [    ] 0/6 (0%)
 Sprint 3 : Migration Pandas         [    ] 0/8 (0%)
-Sprint 4 : Cleanup & Validation     [    ] 0/4 (0%)
+Sprint 4 : Cleanup & Validation     [    ] 0/5 (0%)
 
-TOTAL : 0/26 (0%)
+TOTAL : 3/31 (10%)
 ```
 
 ### Temps Consommé vs Estimé
@@ -82,65 +83,103 @@ TOTAL : 0/26 (0%)
 
 ---
 
-## 📅 Sprint 1 : Optimisation Performance (8h) — PRIORITÉ 1
+## 📅 Sprint 1 : Optimisation Performance — ✅ TERMINÉ
 
 ### Objectif
 Rendre v5 UI 2× plus rapide que v3.
 
+### Tâches (toutes complétées)
+
+#### 1.1 Vue Matérialisée `mv_player_matches` ✅
+- [x] Migration `ensure_mv_player_matches_view()` dans `migrations.py`
+- [x] `_get_match_source()` utilise la vue avec auto-détection + fallback legacy
+- [x] Tests dans `test_performance_optimizations.py`
+
+#### 1.2 Cache Repository Streamlit ✅
+- [x] `get_cached_repository_st()` avec `@st.cache_resource(ttl=3600)` dans `cache_loaders.py`
+- [x] Pages UI principales utilisent le cache (0 usage direct de `RepositoryFactory` dans pages)
+
+#### 1.3 Index DuckDB ✅
+- [x] 16+ index créés sur 9 tables (dont `idx_mp_xuid_match`, `idx_mp_match_xuid`, `idx_mr_start_time`)
+
+---
+
+## 📅 Sprint 1bis : Causes Racines Performance (~4.5h) — PRIORITÉ 1
+
+### Origine
+Audit post-Sprint 1 (2026-02-16) : malgré les optimisations du Sprint 1, des lenteurs persistent. 5 causes racines identifiées par analyse du code.
+
+### Causes racines identifiées
+
+| RC# | Cause racine | Impact | Fichier principal |
+|-----|-------------|--------|-------------------|
+| RC1 | 8 fonctions `cache_loaders` créent des connexions neuves (3× ATTACH) au lieu d'utiliser `get_cached_repository_st()` | **CRITIQUE** — 50-100ms × N appels | `src/ui/cache_loaders.py` |
+| RC2 | `_build_metadata_resolution()` et `_build_mmr_fallback()` font des requêtes `information_schema` non cachées à chaque appel | **IMPORTANT** — 2 requêtes/appel | `src/data/repositories/duckdb_repo.py` |
+| RC3 | 3 LEFT JOIN metadata redondants quand `mv_player_matches` est utilisé (noms déjà résolus dans la vue) | **MOYEN** — jointures inutiles | `src/data/repositories/_match_queries.py` |
+| RC4 | Sous-requête imbriquée (mv + match_stats local + metadata + pms) = 5 tables jointes tant que match_stats local n'est pas nettoyé | **MOYEN** — résolu par Sprint 4.1 (cleanup tables) |
+| RC5 | `cached_load_highlight_events_for_match()` ouvre une connexion brute `duckdb.connect()` | **MINEUR** — bypass cache | `src/ui/cache_loaders.py` |
+
 ### Tâches
 
-#### 1.1 Vue Matérialisée `mv_player_matches` (2h)
-- [ ] Créer migration `migration_v5_1_create_mv_player_matches`
-- [ ] Adapter `_get_match_source()` pour utiliser la vue
-- [ ] Tests : vue existe + colonnes correctes
-- [ ] Tests : performance (<50ms pour 100 matchs)
-- [ ] Tests : calcul KDA correct
+#### 1bis.1 RC1 — Migrer 8 fonctions cache_loaders vers `get_cached_repository_st()` (1.5h)
+- [ ] `cached_same_team_match_ids_with_friend()` (L261) → remplacer `DuckDBRepository(db_path, ...)` par `get_cached_repository_st(db_path, xuid)`
+- [ ] `cached_load_match_medals_for_player()` (L358)
+- [ ] `cached_load_match_rosters()` (L384)
+- [ ] `cached_load_top_medals()` (L534)
+- [ ] `top_medals_smart()` (L565, branche >1500 matchs)
+- [ ] `cached_list_top_teammates()` (L637)
+- [ ] `cached_get_cache_stats()` (L678)
+- [ ] `cached_load_match_player_gamertags()` (L501)
 
-**Livrable** : Vue créée + tests verts
+**Livrable** : Zéro `DuckDBRepository(db_path, ...)` direct dans cache_loaders.py
 
-#### 1.2 Cache Repository Streamlit (3h)
-- [ ] Créer `src/ui/data_loader.py` avec `@st.cache_resource`
-- [ ] Fonction `get_cached_repository(gamertag, xuid)`
-- [ ] Fonction `clear_repository_cache()`
-- [ ] Migrer 24 pages UI (remplacer RepositoryFactory.create)
-- [ ] Tests : cache retourne même instance
-- [ ] Tests : joueurs différents = repos différents
+#### 1bis.2 RC5 — Migrer `cached_load_highlight_events_for_match()` (30min)
+- [ ] Remplacer `duckdb.connect(db_path)` brut (L410) par `get_cached_repository_st()` + `repo.load_highlight_events()`
+- [ ] Supprimer le parsing JSON manuel (déjà fait dans le repo)
 
-**Livrable** : 24 pages migrées + tests verts
+**Livrable** : Zéro `duckdb.connect()` brut dans cache_loaders.py
 
-#### 1.3 Index DuckDB (1h)
-- [ ] Créer migration `migration_v5_1_create_performance_indexes`
-- [ ] Index `idx_mp_xuid_match` sur (xuid, match_id)
-- [ ] Index `idx_mp_match_xuid` sur (match_id, xuid)
-- [ ] Tests : index existent
-- [ ] Validation : query plan utilise les index
+#### 1bis.3 RC2 — Cacher `_build_metadata_resolution()` et `_build_mmr_fallback()` (1h)
+- [ ] Cacher le résultat de `_build_metadata_resolution()` dans `self._metadata_resolution_cache` (le schéma meta ne change pas en session)
+- [ ] Cacher le résultat de `_build_mmr_fallback()` dans `self._mmr_fallback_cache`
+- [ ] Invalider ces caches dans `close()` et `clear_app_caches()`
 
-**Livrable** : Index créés
+**Livrable** : 0 requête `information_schema` après le premier appel
 
-#### 1.4 Tests & Validation Sprint 1 (2h)
+#### 1bis.4 RC3 — Supprimer jointures metadata redondantes en mode v5.1 (1h)
+- [ ] Dans `load_matches()` / `load_matches_as_polars()` : quand `_get_match_source()` utilise `mv_player_matches`, ne pas appeler `_build_metadata_resolution()` (la vue contient déjà les noms résolus)
+- [ ] Vérifier que `mv_player_matches` fournit bien `map_name`, `playlist_name`, `pair_name` non-NULL
+- [ ] Tests de non-régression sur les noms affichés
+
+**Livrable** : 3 LEFT JOIN en moins sur le chemin critique v5.1
+
+#### 1bis.5 RC4 — Supprimer le LEFT JOIN match_stats local en mode v5.1 (1h)
+
+Le chemin `_get_match_source()` (L106-134) vérifie si `match_stats` existe localement et, si oui, ajoute un `LEFT JOIN match_stats ms` pour enrichir MMR via `COALESCE(ms.team_mmr, mv.team_mmr)`. Cela crée une sous-requête imbriquée à 2 niveaux + les jointures metadata/pms par-dessus.
+
+**Principe : no fallback sur l'archi legacy.** Si `mv_player_matches` est disponible, on utilise exclusivement le chemin v5 sans toucher aux tables locales.
+
+- [ ] Modifier `_get_match_source()` : quand `mv_player_matches` existe, utiliser le chemin simple sans LEFT JOIN match_stats (L135-147 actuel)
+- [ ] Si le MMR est nécessaire depuis `match_stats` local, l'enrichir dans la vue `mv_player_matches` elle-même (migration) ou dans `player_match_enrichment`
+- [ ] Supprimer le bloc L106-134 (sous-requête imbriquée avec match_stats)
+- [ ] Vérifier que les MMR restent disponibles (source : `player_match_stats` via `_build_mmr_fallback()`, ou enrichissement dans la vue)
+- [ ] Tests de non-régression sur l'affichage MMR
+
+**Livrable** : En mode v5.1, `_get_match_source()` retourne une requête simple sans référence à `match_stats` local
+
+### Validation Sprint 1bis
+- [ ] Benchmark avant/après (connexion, load_matches, première page)
 - [ ] Suite de tests complète verte
-- [ ] Benchmark final Sprint 1
-- [ ] Comparaison avec baseline
 - [ ] Validation UI manuelle (5 pages)
-- [ ] Rapport de gains généré
+- [ ] **Go/No-Go humain**
 
-**Livrables** :
-- `.ai/reports/sprint1_final.json`
-- `.ai/reports/sprint1_gains.md`
+### Métriques cibles
 
-### Métriques Sprint 1
-
-| Métrique | Avant | Après | Objectif | Statut |
-|----------|-------|-------|----------|--------|
-| Temps connexion | 80ms | - | <20ms | ⏳ |
-| load_matches(100) | 200ms | - | <80ms | ⏳ |
-| Première page UI | 1500ms | - | <800ms | ⏳ |
-
-### Validation Sprint 1
-- [ ] **Go/No-Go humain** : Validation gains performance
-- [ ] Métriques atteintes (≥90% objectifs)
-- [ ] Aucune régression
-- [ ] UI réactive
+| Métrique | Actuel | Objectif |
+|----------|--------|----------|
+| Temps connexion | 80ms | <20ms |
+| load_matches(100) | 200ms | <80ms |
+| Première page UI | 1500ms | <800ms |
 
 **Date de validation** : _____________
 
@@ -310,12 +349,27 @@ Nettoyage final et validation complète.
 
 **Livrables** : 5 fichiers docs à jour + release notes
 
+#### 4.5 Release 5.1 & Changelog (30min)
+- [ ] Ajouter section `## [5.1.0] - YYYY-MM-DD` dans `CHANGELOG.md` (en haut, après le header, AVANT la section 5.0.0 existante — ne pas supprimer l'existant)
+  - [ ] Section `### Added` : vue matérialisée `mv_player_matches`, cache repository Streamlit, index DuckDB performance
+  - [ ] Section `### Changed` : 24 pages UI migrées vers cache, modules Pandas → Polars (performance_score, win_loss_service, objective_analysis, match_view_helpers, win_loss, cache_filters, duckdb_analytics)
+  - [ ] Section `### Removed` : fallbacks SQLite runtime (engine.py, duckdb_engine.py), imports `sqlite3` dans src/, références `.db` dans configs
+  - [ ] Section `### Performance` : métriques avant/après (connexion, load_matches, première page UI)
+- [ ] Bumper version dans `pyproject.toml` (5.0.0 → 5.1.0)
+- [ ] Créer tag git `v5.1.0`
+- [ ] Créer release GitHub via `gh release create v5.1.0` avec les release notes
+
+**Livrables** : `CHANGELOG.md` mis à jour + tag `v5.1.0` + release GitHub
+
 ### Validation Finale Sprint 4
 - [ ] **Go/No-Go humain** : Validation finale projet
 - [ ] Toutes les métriques atteintes
 - [ ] Tests verts (≥80% couverture)
 - [ ] Documentation complète
 - [ ] Release notes créées
+- [ ] CHANGELOG.md à jour avec section 5.1.0
+- [ ] Tag git v5.1.0 créé
+- [ ] Release GitHub publiée
 
 **Livrables** :
 - `.ai/reports/sprint4_final.md`
