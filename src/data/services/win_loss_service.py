@@ -4,6 +4,7 @@ Encapsule les calculs lourds : bucketing temporel, breakdown par carte,
 ratio global, et tableau de période.
 
 Contrat : les pages UI appellent ces fonctions, jamais de calcul inline.
+Pure Polars — aucun import pandas.
 """
 
 from __future__ import annotations
@@ -12,12 +13,6 @@ from dataclasses import dataclass
 
 import polars as pl
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None  # type: ignore[assignment]
-
-
 # ─── Dataclasses retour ────────────────────────────────────────────────
 
 
@@ -25,8 +20,8 @@ except ImportError:  # pragma: no cover
 class PeriodTable:
     """Tableau de victoires/défaites par période."""
 
-    table: pd.DataFrame
-    """DataFrame avec colonnes Victoires, Défaites, Égalités, etc."""
+    table: pl.DataFrame
+    """DataFrame Polars avec colonnes Victoires, Défaites, Égalités, etc."""
     bucket_label: str
     """Label du type de bucket (heure, jour, semaine, mois)."""
     is_empty: bool
@@ -65,14 +60,14 @@ class WinLossService:
 
     @staticmethod
     def compute_period_table(
-        dff: pd.DataFrame,
+        dff: pl.DataFrame,
         bucket_label: str,
         is_session_scope: bool = False,
     ) -> PeriodTable:
         """Construit le tableau de victoires/défaites par période.
 
         Args:
-            dff: DataFrame filtré des matchs.
+            dff: DataFrame Polars filtré des matchs.
             bucket_label: Label du bucket temporel (pour l'en-tête).
             is_session_scope: True si mode session actif.
 
@@ -81,57 +76,87 @@ class WinLossService:
         """
         from src.config import SESSION_CONFIG
 
-        if dff.empty or "outcome" not in dff.columns:
-            return PeriodTable(table=pd.DataFrame(), bucket_label=bucket_label, is_empty=True)
+        if dff.is_empty() or "outcome" not in dff.columns:
+            return PeriodTable(table=pl.DataFrame(), bucket_label=bucket_label, is_empty=True)
 
-        d = dff.dropna(subset=["outcome"]).copy()
-        if d.empty:
-            return PeriodTable(table=pd.DataFrame(), bucket_label=bucket_label, is_empty=True)
+        d = dff.drop_nulls(subset=["outcome"])
+        if d.is_empty():
+            return PeriodTable(table=pl.DataFrame(), bucket_label=bucket_label, is_empty=True)
+
+        # Calcul du bucket selon le scope et la plage temporelle
+        d = d.sort("start_time")
+        n_rows = len(d)
 
         if is_session_scope:
-            d = d.sort_values("start_time").reset_index(drop=True)
-            if len(d.index) <= 20:
-                d["bucket"] = d.index + 1
+            if n_rows <= 20:
+                d = d.with_row_index("bucket", offset=1)
             else:
-                t = pd.to_datetime(d["start_time"], errors="coerce")
-                d["bucket"] = t.dt.floor("h")
+                d = d.with_columns(pl.col("start_time").dt.truncate("1h").alias("bucket"))
         else:
-            tmin = pd.to_datetime(d["start_time"], errors="coerce").min()
-            tmax = pd.to_datetime(d["start_time"], errors="coerce").max()
-            dt_range = (tmax - tmin) if (tmin == tmin and tmax == tmax) else pd.Timedelta(days=999)
-            days = float(dt_range.total_seconds() / 86400.0) if dt_range is not None else 999.0
+            # Calcul de la plage temporelle
+            start_col = d.get_column("start_time").drop_nulls()
+            if start_col.is_empty():
+                return PeriodTable(table=pl.DataFrame(), bucket_label=bucket_label, is_empty=True)
+
+            tmin = start_col.min()
+            tmax = start_col.max()
+            if tmin is None or tmax is None:
+                days = 999.0
+            else:
+                dt_range = tmax - tmin
+                days = dt_range.total_seconds() / 86400.0 if dt_range else 0.0
+
             cfg = SESSION_CONFIG
             if days < cfg.bucket_threshold_hourly:
-                d = d.sort_values("start_time").reset_index(drop=True)
-                d["bucket"] = d.index + 1
+                d = d.with_row_index("bucket", offset=1)
             elif days <= cfg.bucket_threshold_daily:
-                d["bucket"] = d["start_time"].dt.floor("h")
+                d = d.with_columns(pl.col("start_time").dt.truncate("1h").alias("bucket"))
             elif days <= cfg.bucket_threshold_weekly:
-                d["bucket"] = d["start_time"].dt.to_period("D").astype(str)
+                d = d.with_columns(pl.col("start_time").dt.date().cast(pl.Utf8).alias("bucket"))
             elif days <= cfg.bucket_threshold_monthly:
-                d["bucket"] = d["start_time"].dt.to_period("W-MON").astype(str)
+                # Semaine ISO (début lundi)
+                d = d.with_columns(
+                    pl.col("start_time").dt.truncate("1w").dt.date().cast(pl.Utf8).alias("bucket")
+                )
             else:
-                d["bucket"] = d["start_time"].dt.to_period("M").astype(str)
+                # Par mois
+                d = d.with_columns(pl.col("start_time").dt.strftime("%Y-%m").alias("bucket"))
 
+        # Pivot: compter les outcomes par bucket
         pivot = (
-            d.pivot_table(index="bucket", columns="outcome", values="match_id", aggfunc="count")
-            .fillna(0)
-            .astype(int)
-            .sort_index()
+            d.group_by("bucket")
+            .agg(
+                [
+                    (pl.col("outcome") == 2).sum().alias("Victoires"),
+                    (pl.col("outcome") == 3).sum().alias("Défaites"),
+                    (pl.col("outcome") == 1).sum().alias("Égalités"),
+                    (pl.col("outcome") == 4).sum().alias("Non terminés"),
+                ]
+            )
+            .sort("bucket")
         )
-        out_tbl = pd.DataFrame(index=pivot.index)
-        out_tbl["Victoires"] = pivot[2] if 2 in pivot.columns else 0
-        out_tbl["Défaites"] = pivot[3] if 3 in pivot.columns else 0
-        out_tbl["Égalités"] = pivot[1] if 1 in pivot.columns else 0
-        out_tbl["Non terminés"] = pivot[4] if 4 in pivot.columns else 0
-        out_tbl["Total"] = out_tbl[["Victoires", "Défaites", "Égalités", "Non terminés"]].sum(
-            axis=1
-        )
-        out_tbl["Taux de victoires"] = (
-            100.0 * (out_tbl["Victoires"] / out_tbl["Total"].where(out_tbl["Total"] > 0))
-        ).fillna(0.0)
 
-        out_tbl = out_tbl.reset_index().rename(columns={"bucket": bucket_label.capitalize()})
+        # Calcul du total et du taux de victoires
+        out_tbl = pivot.with_columns(
+            [
+                (
+                    pl.col("Victoires")
+                    + pl.col("Défaites")
+                    + pl.col("Égalités")
+                    + pl.col("Non terminés")
+                ).alias("Total"),
+            ]
+        ).with_columns(
+            [
+                pl.when(pl.col("Total") > 0)
+                .then(100.0 * pl.col("Victoires") / pl.col("Total"))
+                .otherwise(0.0)
+                .alias("Taux de victoires")
+            ]
+        )
+
+        # Renommer la colonne bucket
+        out_tbl = out_tbl.rename({"bucket": bucket_label.capitalize()})
 
         return PeriodTable(table=out_tbl, bucket_label=bucket_label, is_empty=False)
 
