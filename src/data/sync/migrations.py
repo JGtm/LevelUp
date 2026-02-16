@@ -540,10 +540,19 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
 def ensure_performance_indexes(conn: duckdb.DuckDBPyConnection) -> None:
     """Crée les index pour optimiser les requêtes v5 sur shared_matches.
 
-    Index créés :
-    - idx_mp_xuid_match : match_participants(xuid, match_id) — filtre joueur
-    - idx_mp_match_xuid : match_participants(match_id, xuid) — jointures inversées
-    - idx_mr_start_time : match_registry(start_time DESC) — tri chronologique
+    Index créés (match_participants) :
+    - idx_mp_xuid_match : (xuid, match_id) — filtre joueur + jointure
+    - idx_mp_match_xuid : (match_id, xuid) — jointures inversées
+    - idx_mp_xuid_team : (xuid, team_id, match_id) — list_top_teammates
+
+    Index créés (match_registry) :
+    - idx_mr_start_time : start_time DESC — tri chronologique
+
+    Index créés (highlight_events) :
+    - idx_events_match_type : (match_id, event_type) — load_first_event_times
+
+    Index créés (medals_earned) :
+    - idx_medals_full : (match_id, xuid, medal_name_id) — count_medal_by_match
 
     Idempotente : CREATE INDEX IF NOT EXISTS.
     """
@@ -568,28 +577,129 @@ def ensure_performance_indexes(conn: duckdb.DuckDBPyConnection) -> None:
 
     prefix = "shared." if catalog == "shared" else ""
 
-    try:
-        conn.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_mp_xuid_match
-            ON {prefix}match_participants(xuid, match_id)
-        """)
-    except Exception as e:
-        logger.debug(f"Index idx_mp_xuid_match non créé (lecture seule ?): {e}")
+    # --- match_participants ---
+    _create_index_safe(
+        conn,
+        f"CREATE INDEX IF NOT EXISTS idx_mp_xuid_match "
+        f"ON {prefix}match_participants(xuid, match_id)",
+        "idx_mp_xuid_match",
+    )
+    _create_index_safe(
+        conn,
+        f"CREATE INDEX IF NOT EXISTS idx_mp_match_xuid "
+        f"ON {prefix}match_participants(match_id, xuid)",
+        "idx_mp_match_xuid",
+    )
+    _create_index_safe(
+        conn,
+        f"CREATE INDEX IF NOT EXISTS idx_mp_xuid_team "
+        f"ON {prefix}match_participants(xuid, team_id, match_id)",
+        "idx_mp_xuid_team",
+    )
 
-    try:
-        conn.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_mp_match_xuid
-            ON {prefix}match_participants(match_id, xuid)
-        """)
-    except Exception as e:
-        logger.debug(f"Index idx_mp_match_xuid non créé: {e}")
+    # --- match_registry ---
+    _create_index_safe(
+        conn,
+        f"CREATE INDEX IF NOT EXISTS idx_mr_start_time "
+        f"ON {prefix}match_registry(start_time DESC)",
+        "idx_mr_start_time",
+    )
 
-    try:
-        conn.execute(f"""
-            CREATE INDEX IF NOT EXISTS idx_mr_start_time
-            ON {prefix}match_registry(start_time DESC)
-        """)
-    except Exception as e:
-        logger.debug(f"Index idx_mr_start_time non créé: {e}")
+    # --- highlight_events (composite pour load_first_event_times) ---
+    _create_index_safe(
+        conn,
+        f"CREATE INDEX IF NOT EXISTS idx_events_match_type "
+        f"ON {prefix}highlight_events(match_id, event_type)",
+        "idx_events_match_type",
+    )
 
-    logger.info("✅ Index de performance créés/vérifiés")
+    # --- medals_earned (covering index pour count_medal_by_match) ---
+    _create_index_safe(
+        conn,
+        f"CREATE INDEX IF NOT EXISTS idx_medals_full "
+        f"ON {prefix}medals_earned(match_id, xuid, medal_name_id)",
+        "idx_medals_full",
+    )
+
+    logger.info("✅ Index de performance shared créés/vérifiés")
+
+
+def ensure_player_performance_indexes(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée les index de performance sur les tables locales du joueur (stats.duckdb).
+
+    Index créés (match_stats) :
+    - idx_ms_start_time : start_time — tri chronologique (ORDER BY universel)
+    - idx_ms_session_id : session_id — GROUP BY dans mv_session_stats
+    - idx_ms_playlist_id : playlist_id — filtre sidebar
+    - idx_ms_map_id : map_id — filtre sidebar
+    - idx_ms_outcome : outcome — agrégations win/loss
+    - idx_ms_is_firefight : is_firefight — filtre PvP/Firefight
+
+    Index créés (personal_score_awards) :
+    - idx_psa_match_xuid : (match_id, xuid) — filtre composite
+
+    Idempotente : CREATE INDEX IF NOT EXISTS.
+    """
+    if not table_exists(conn, "match_stats"):
+        logger.debug("match_stats non trouvée, index locaux non créés")
+        return
+
+    _create_index_safe(
+        conn,
+        "CREATE INDEX IF NOT EXISTS idx_ms_start_time ON match_stats(start_time)",
+        "idx_ms_start_time",
+    )
+    _create_index_safe(
+        conn,
+        "CREATE INDEX IF NOT EXISTS idx_ms_session_id ON match_stats(session_id)",
+        "idx_ms_session_id",
+    )
+    _create_index_safe(
+        conn,
+        "CREATE INDEX IF NOT EXISTS idx_ms_playlist_id ON match_stats(playlist_id)",
+        "idx_ms_playlist_id",
+    )
+    _create_index_safe(
+        conn,
+        "CREATE INDEX IF NOT EXISTS idx_ms_map_id ON match_stats(map_id)",
+        "idx_ms_map_id",
+    )
+    _create_index_safe(
+        conn,
+        "CREATE INDEX IF NOT EXISTS idx_ms_outcome ON match_stats(outcome)",
+        "idx_ms_outcome",
+    )
+    _create_index_safe(
+        conn,
+        "CREATE INDEX IF NOT EXISTS idx_ms_is_firefight ON match_stats(is_firefight)",
+        "idx_ms_is_firefight",
+    )
+
+    # Index composite sur personal_score_awards
+    if table_exists(conn, "personal_score_awards"):
+        _create_index_safe(
+            conn,
+            "CREATE INDEX IF NOT EXISTS idx_psa_match_xuid "
+            "ON personal_score_awards(match_id, xuid)",
+            "idx_psa_match_xuid",
+        )
+
+    logger.info("✅ Index de performance locaux créés/vérifiés")
+
+
+def _create_index_safe(conn: duckdb.DuckDBPyConnection, sql: str, index_name: str) -> None:
+    """Exécute une instruction CREATE INDEX de façon sûre (idempotente).
+
+    Args:
+        conn: Connexion DuckDB.
+        sql: Instruction SQL CREATE INDEX IF NOT EXISTS.
+        index_name: Nom de l'index (pour le log).
+    """
+    try:
+        conn.execute(sql)
+    except Exception as e:
+        err = str(e).lower()
+        if "already exists" in err or "read only" in err:
+            logger.debug(f"Index {index_name} ignoré: {e}")
+        else:
+            logger.warning(f"Index {index_name} non créé: {e}")

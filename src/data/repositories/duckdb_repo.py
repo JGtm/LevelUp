@@ -645,24 +645,26 @@ class DuckDBRepository(
             return {}
 
         conn = self._get_connection()
-        event_type_normalized = event_type.lower()
+        # Préparer les variantes de casse pour utiliser l'index sans LOWER()
+        event_variants = list({event_type, event_type.lower(), event_type.capitalize()})
+        event_placeholders = ", ".join(["?" for _ in event_variants])
         placeholders = ", ".join(["?" for _ in match_ids])
 
         # V5 : shared.highlight_events (killer_xuid/victim_xuid)
         if self._has_shared_table("highlight_events"):
             try:
                 # Pour un Kill, le joueur est le killer ; pour un Death, le joueur est la victime
-                xuid_column = "killer_xuid" if event_type_normalized == "kill" else "victim_xuid"
+                xuid_column = "killer_xuid" if event_type.lower() == "kill" else "victim_xuid"
                 result = conn.execute(
                     f"""
                     SELECT match_id, MIN(time_ms) as first_time
                     FROM shared.highlight_events
                     WHERE match_id IN ({placeholders})
-                      AND LOWER(event_type) = ?
+                      AND event_type IN ({event_placeholders})
                       AND {xuid_column} = ?
                     GROUP BY match_id
                     """,
-                    [*match_ids, event_type_normalized, self._xuid],
+                    [*match_ids, *event_variants, self._xuid],
                 )
                 shared_result = {row[0]: row[1] for row in result.fetchall()}
                 if shared_result:
@@ -683,11 +685,11 @@ class DuckDBRepository(
                 SELECT match_id, MIN(time_ms) as first_time
                 FROM highlight_events
                 WHERE match_id IN ({placeholders})
-                  AND LOWER(event_type) = ?
+                  AND event_type IN ({event_placeholders})
                   AND xuid = ?
                 GROUP BY match_id
                 """,
-                [*match_ids, event_type_normalized, self._xuid],
+                [*match_ids, *event_variants, self._xuid],
             )
             return {row[0]: row[1] for row in result.fetchall()}
         except Exception:
@@ -1305,12 +1307,12 @@ class DuckDBRepository(
                 result = conn.execute(
                     """
                     SELECT event_type, time_ms,
-                           CASE WHEN LOWER(event_type) = 'kill' THEN killer_xuid
-                                WHEN LOWER(event_type) = 'death' THEN victim_xuid
+                           CASE WHEN event_type IN ('kill', 'Kill') THEN killer_xuid
+                                WHEN event_type IN ('death', 'Death') THEN victim_xuid
                                 ELSE COALESCE(killer_xuid, victim_xuid)
                            END AS xuid,
-                           CASE WHEN LOWER(event_type) = 'kill' THEN killer_gamertag
-                                WHEN LOWER(event_type) = 'death' THEN victim_gamertag
+                           CASE WHEN event_type IN ('kill', 'Kill') THEN killer_gamertag
+                                WHEN event_type IN ('death', 'Death') THEN victim_gamertag
                                 ELSE COALESCE(killer_gamertag, victim_gamertag)
                            END AS gamertag,
                            type_hint
