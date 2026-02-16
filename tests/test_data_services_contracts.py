@@ -93,6 +93,11 @@ def _make_empty_df() -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def _make_empty_pl() -> pl.DataFrame:
+    """Construit un DataFrame Polars vide (pour compute_period_table)."""
+    return pl.DataFrame()
+
+
 def _make_minimal_df() -> pd.DataFrame:
     """Construit un DataFrame Pandas avec 3 matchs."""
     return _make_match_df(3)
@@ -201,24 +206,24 @@ class TestWinLossServiceContracts:
 
     def test_period_table_returns_dataclass(self) -> None:
         """Le service retourne un PeriodTable avec table non vide."""
-        dff = _make_match_df(20)
+        dff = _make_match_pl(20)
         result = WinLossService.compute_period_table(dff, "semaine")
         assert isinstance(result, PeriodTable)
         assert result.is_empty is False
-        assert isinstance(result.table, pd.DataFrame)
+        assert isinstance(result.table, pl.DataFrame)
         assert "Victoires" in result.table.columns
         assert "Défaites" in result.table.columns
         assert "Total" in result.table.columns
 
     def test_period_table_empty_df(self) -> None:
         """Retourne is_empty=True pour un DataFrame vide."""
-        dff = _make_empty_df()
+        dff = _make_empty_pl()
         result = WinLossService.compute_period_table(dff, "semaine")
         assert result.is_empty is True
 
     def test_period_table_session_scope(self) -> None:
         """Le bucketing session produit un tableau valide."""
-        dff = _make_match_df(10)
+        dff = _make_match_pl(10)
         result = WinLossService.compute_period_table(dff, "match", is_session_scope=True)
         assert result.is_empty is False
         assert len(result.table) > 0

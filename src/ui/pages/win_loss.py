@@ -296,12 +296,14 @@ def _render_period_section(
     """Affiche le tableau par période."""
     st.divider()
     st.subheader("Par période")
-    period = WinLossService.compute_period_table(dff.to_pandas(), bucket_label, is_session_scope)
+    # compute_period_table accepte directement un pl.DataFrame
+    period = WinLossService.compute_period_table(dff, bucket_label, is_session_scope)
     if period.is_empty:
         st.info("Aucune donnée pour construire le tableau.")
         return
 
-    out_tbl = period.table
+    # Conversion pandas à la frontière pour le styling .style
+    out_tbl = period.table.to_pandas()
 
     def _style_pct(v) -> str:
         try:
