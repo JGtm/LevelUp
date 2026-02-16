@@ -62,12 +62,13 @@ def get_friends_xuids_for_backfill(
         conn = duckdb.connect(str(path), read_only=True)
         own_conn = True
     try:
-        # V5: Essayer shared.xuid_aliases d'abord, fallback sur local
+        # V5.1: Utiliser shared.xuid_aliases UNIQUEMENT (plus de fallback local)
         alias_table = "xuid_aliases"
         try:
             conn.execute("SELECT 1 FROM shared.xuid_aliases LIMIT 1")
             alias_table = "shared.xuid_aliases"
         except Exception:
+            # Si shared non disponible, pas de xuid_aliases disponibles
             pass
 
         result = conn.execute(

@@ -287,13 +287,22 @@ def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:
                 except Exception:
                     pass
 
+            # V5.1 : Lire depuis shared_matches.duckdb (source unique)
             if not xuid:
                 try:
-                    result = con.execute(
-                        "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
-                    ).fetchone()
-                    if result and result[0] and str(result[0]).strip():
-                        xuid = str(result[0]).strip()
+                    from src.utils.paths import get_shared_matches_path_from_player
+
+                    shared_path = get_shared_matches_path_from_player(db_path)
+                    if shared_path and shared_path.exists():
+                        import duckdb
+
+                        shared_con = duckdb.connect(str(shared_path), read_only=True)
+                        result = shared_con.execute(
+                            "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
+                        ).fetchone()
+                        shared_con.close()
+                        if result and result[0] and str(result[0]).strip():
+                            xuid = str(result[0]).strip()
                 except Exception:
                     pass
             con.close()

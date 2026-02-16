@@ -81,6 +81,7 @@ logger = logging.getLogger(__name__)
 # Paths
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 PLAYERS_DIR = DATA_DIR / "players"
+SHARED_DB_PATH = DATA_DIR / "warehouse" / "shared_matches.duckdb"
 
 
 def is_valid_xuid(xuid: str) -> bool:
@@ -92,8 +93,13 @@ def is_valid_xuid(xuid: str) -> bool:
 
 
 def find_missing_xuids(db_path: Path, limit: int | None = None) -> list[str]:
-    """Trouve les XUIDs sans gamertag dans xuid_aliases."""
-    conn = duckdb.connect(str(db_path), read_only=True)
+    """Trouve les XUIDs sans gamertag dans xuid_aliases.
+
+    V5.1: Utilise shared_matches.duckdb comme source unique.
+    """
+    # V5.1: Toujours utiliser shared_matches.duckdb
+    actual_path = SHARED_DB_PATH if SHARED_DB_PATH.exists() else db_path
+    conn = duckdb.connect(str(actual_path), read_only=True)
 
     try:
         # XUIDs dans match_participants sans alias
@@ -175,11 +181,16 @@ async def resolve_xuids_batch(
 
 
 def insert_aliases(db_path: Path, aliases: dict[str, str], dry_run: bool = False) -> int:
-    """Insère les aliases résolus dans DuckDB."""
+    """Insère les aliases résolus dans DuckDB.
+
+    V5.1: Insère dans shared_matches.duckdb (source unique).
+    """
     if dry_run or not aliases:
         return len(aliases)
 
-    conn = duckdb.connect(str(db_path))
+    # V5.1: Toujours utiliser shared_matches.duckdb
+    actual_path = SHARED_DB_PATH if SHARED_DB_PATH.exists() else db_path
+    conn = duckdb.connect(str(actual_path))
     inserted = 0
 
     try:

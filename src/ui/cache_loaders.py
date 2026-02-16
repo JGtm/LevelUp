@@ -168,19 +168,25 @@ def _resolve_player_xuid(db_path: str) -> str:
         except Exception:
             pass
 
-        # Stratégie 3 : xuid_aliases via gamertag (dernier recours)
+        # Stratégie 3 : xuid_aliases via shared_matches.duckdb (v5.1)
         try:
             from pathlib import Path
 
+            from src.utils.paths import get_shared_matches_path_from_player
+
             gamertag = Path(db_path).parent.name
-            # Chercher dans la table locale xuid_aliases
-            result = conn.execute(
-                "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
-            ).fetchone()
-            if result and result[0] and str(result[0]).strip():
-                xuid = str(result[0]).strip()
-                conn.close()
-                return xuid
+            # V5.1 : Lire depuis shared_matches.duckdb (source unique)
+            shared_path = get_shared_matches_path_from_player(db_path)
+            if shared_path and shared_path.exists():
+                shared_con = duckdb.connect(str(shared_path), read_only=True)
+                result = shared_con.execute(
+                    "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
+                ).fetchone()
+                shared_con.close()
+                if result and result[0] and str(result[0]).strip():
+                    xuid = str(result[0]).strip()
+                    conn.close()
+                    return xuid
         except Exception:
             pass
 

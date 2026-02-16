@@ -477,18 +477,24 @@ class DuckDBSyncEngine:
             except Exception:
                 pass
 
-            # 3. xuid_aliases via gamertag
+            # 3. xuid_aliases via shared_matches.duckdb (v5.1)
             if self._gamertag:
                 try:
-                    r = conn.execute(
-                        "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1",
-                        [self._gamertag],
-                    ).fetchone()
-                    if r and r[0] and str(r[0]).strip():
-                        xuid = str(r[0]).strip()
-                        conn.close()
-                        logger.info(f"XUID résolu depuis xuid_aliases: {xuid}")
-                        return xuid
+                    from src.utils.paths import get_shared_matches_path_from_player
+
+                    shared_path = get_shared_matches_path_from_player(self._db_path)
+                    if shared_path and shared_path.exists():
+                        shared_conn = duckdb.connect(str(shared_path), read_only=True)
+                        r = shared_conn.execute(
+                            "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1",
+                            [self._gamertag],
+                        ).fetchone()
+                        shared_conn.close()
+                        if r and r[0] and str(r[0]).strip():
+                            xuid = str(r[0]).strip()
+                            conn.close()
+                            logger.info(f"XUID résolu depuis shared.xuid_aliases: {xuid}")
+                            return xuid
                 except Exception:
                     pass
 
