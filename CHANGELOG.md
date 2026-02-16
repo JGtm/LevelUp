@@ -8,6 +8,13 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Added
 
+- **Helpers `get_shared_matches_path()`** — Fonctions centralisées dans `src/utils/paths.py`
+  - `get_shared_matches_path()` : chemin absolu vers `shared_matches.duckdb`
+  - `get_shared_matches_path_from_player()` : déduction depuis path joueur
+- **Script `cleanup_legacy_tables.py`** — Suppression tables obsolètes
+  - 9 tables supprimées : `match_stats`, `medals_earned`, `highlight_events`, `player_stats`, `xuid_aliases`, + 4 vues `mv_*`
+  - Options : `--dry-run`, `--backup`, `--all`
+  - Backups automatiques dans `backups/pre_cleanup/`
 - **Vue matérialisée `mv_player_matches`** — Optimisation performance v5.1
   - Pré-calcul jointures match_participants + match_registry + metadata
   - Réduction parsing SQL de 170→10 lignes par requête
@@ -26,6 +33,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Changed
 
+- **Migration `xuid_aliases` → `shared_matches.duckdb`** — Source unique centralisée
+  - 9 fichiers migrés pour lire depuis `shared.xuid_aliases` (13 955 rows)
+  - Suppression fallbacks locaux `stats.duckdb`
+  - Fichiers : `aliases.py`, `xuid.py`, `multiplayer.py`, `cache_loaders.py`, `engine.py`, `_roster_loader.py`, `sessions_backfill.py`, `sync.py`, `resolve_missing_gamertags.py`
 - **`_get_match_source()`** retourne maintenant un 3-tuple `(source_sql, params, uses_mv)`
   - Permet skip jointures redondantes en mode v5.1
 - **8+ fonctions cache_loaders** migrées vers `get_cached_repository_st()`
@@ -35,6 +46,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Removed
 
+- **Tables legacy player DBs** — 9 tables par joueur, données centralisées
+  - `match_stats`, `medals_earned`, `highlight_events`, `player_stats`, `xuid_aliases`
+  - Vues obsolètes : `mv_match_stats_with_context`, `mv_recent_matches`, `mv_team_stats`, `mv_opponent_stats`
+  - 38 528 rows libérées sur 4 joueurs
 - **Références SQLite runtime** — 0 `import sqlite3` dans `src/`
 - **Références `metadata.db`** — Tout migré vers `metadata.duckdb`
 - **Méthode dépréciée `attach_sqlite`** — Supprimée de duckdb_engine.py
