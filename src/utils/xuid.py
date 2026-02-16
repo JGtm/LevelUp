@@ -155,9 +155,11 @@ def resolve_xuid_from_db(
     if not db_path or not os.path.exists(db_path):
         return None
 
-    # DuckDB v4 : utiliser la table xuid_aliases
+    # DuckDB v4 : utiliser la table xuid_aliases avec fallback shared
     if db_path.endswith(".duckdb"):
         try:
+            from pathlib import Path
+
             import duckdb
 
             conn = duckdb.connect(db_path, read_only=True)
@@ -168,6 +170,22 @@ def resolve_xuid_from_db(
             conn.close()
             if result and result[0]:
                 return str(result[0])
+
+            # Fallback: essayer metadata.duckdb (shared aliases)
+            db_path_obj = Path(db_path)
+            if "players" in db_path_obj.parts:
+                data_idx = db_path_obj.parts.index("players")
+                data_root = Path(*db_path_obj.parts[:data_idx])
+                metadata_path = data_root / "warehouse" / "metadata.duckdb"
+                if metadata_path.exists():
+                    conn = duckdb.connect(str(metadata_path), read_only=True)
+                    result = conn.execute(
+                        "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?)",
+                        [p],
+                    ).fetchone()
+                    conn.close()
+                    if result and result[0]:
+                        return str(result[0])
         except Exception:
             pass
 

@@ -187,7 +187,23 @@ def render_checkbox_filter(
                 st.session_state[session_key] = set(options)
                 st.rerun()
             if cols[1].button("✗ Aucun", key=f"{session_key}_none", width="stretch"):
+                if st.session_state.get(f"{session_key}_confirm_clear"):
+                    st.session_state[session_key] = set()
+                    st.session_state[f"{session_key}_confirm_clear"] = False
+                    st.rerun()
+                else:
+                    st.session_state[f"{session_key}_confirm_clear"] = True
+                    st.rerun()
+
+        # Confirmation message
+        if st.session_state.get(f"{session_key}_confirm_clear"):
+            st.warning("⚠️ Confirmer : vider toutes les sélections ?")
+            if st.button("Confirmer", key=f"{session_key}_confirm_btn"):
                 st.session_state[session_key] = set()
+                st.session_state[f"{session_key}_confirm_clear"] = False
+                st.rerun()
+            if st.button("Annuler", key=f"{session_key}_cancel_btn"):
+                st.session_state[f"{session_key}_confirm_clear"] = False
                 st.rerun()
 
         # Checkboxes
@@ -297,8 +313,25 @@ def render_hierarchical_checkbox_filter(
             st.session_state[session_key] = set(options)
             st.rerun()
         if cols[1].button("✗ Aucun", key=f"{session_key}_none", width="stretch"):
-            st.session_state[session_key] = set()
-            st.rerun()
+            if st.session_state.get(f"{session_key}_confirm_clear"):
+                st.session_state[session_key] = set()
+                st.session_state[f"{session_key}_confirm_clear"] = False
+                st.rerun()
+            else:
+                st.session_state[f"{session_key}_confirm_clear"] = True
+                st.rerun()
+
+        # Confirmation message
+        if st.session_state.get(f"{session_key}_confirm_clear"):
+            st.warning("⚠️ Confirmer : vider toutes les sélections ?")
+            cols_confirm = st.columns(2)
+            if cols_confirm[0].button("Confirmer", key=f"{session_key}_confirm_btn"):
+                st.session_state[session_key] = set()
+                st.session_state[f"{session_key}_confirm_clear"] = False
+                st.rerun()
+            if cols_confirm[1].button("Annuler", key=f"{session_key}_cancel_btn"):
+                st.session_state[f"{session_key}_confirm_clear"] = False
+                st.rerun()
 
         st.markdown("---")
 

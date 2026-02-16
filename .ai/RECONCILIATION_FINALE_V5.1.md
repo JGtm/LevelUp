@@ -402,53 +402,72 @@ Ce document **RÉCONCILIE** et **CONSOLIDE** **TOUS** les plans de travail v5.1 
 
 ---
 
-### Étape 7 : Bugs Critiques Polars + Metadata (2-3h)
+### Étape 7 : Bugs Critiques Polars + Migration xuid_aliases (4-5h)
 
 **Sources** : Plan B Phases 7-8
 
-#### Phase 7 : 3 Bugs Critiques Polars
+#### Phase 7A : 3 Bugs Critiques Polars (1h) ✅ FAIT
 
-**Bugs identifiés** :
+**Bugs corrigés** :
 
-1. **filters.py:370** 🔴 CRITIQUE
-   - Problème : Utilise `.empty` (Pandas) au lieu `.is_empty()` (Polars)
-   - Solution : `if df.empty:` → `if df.is_empty():`
+1. **filters.py:370** ✅ CORRIGÉ
+   - Problème : Utilisait `.empty` (Pandas) au lieu `.is_empty()` (Polars)
+   - Solution : Migration complète syntaxe Polars (`group_by`, `sort`, `to_list`)
 
-2. **filters_render.py:303** 🔴 CRITIQUE
-   - Problème : Type hint incomplet (retourne 4 valeurs mais type dit 3)
-   - Solution : Ajouter `friends_tuple` au type de retour
+2. **filters_render.py:303** ✅ CORRIGÉ
+   - Problème : Type hint incomplet (retournait 4 valeurs mais type disait 3)
+   - Solution : Ajouté `tuple[str, ...] | None` au type de retour
 
-3. **checkbox_filter.py** 🟡 UX
-   - Problème : Button "Aucun" vide sélections sans confirmation
-   - Solution : Ajouter confirmation dialog
+3. **checkbox_filter.py** ✅ CORRIGÉ
+   - Problème : Button "Aucun" vidait sélections sans confirmation
+   - Solution : Ajouté dialogue de confirmation avec boutons Confirmer/Annuler
+
+#### Phase 7B : Migration xuid_aliases → shared_matches.duckdb (3h)
+
+**Contexte** : La table `xuid_aliases` existe dans :
+- `shared_matches.duckdb` — **13 955 rows** (source de vérité v5)
+- `stats.duckdb` (local joueur) — **~4 875 rows** (obsolète, à supprimer)
+- `metadata.duckdb` — ❌ N'existe PAS
+
+**Objectif** : Tous les accès à `xuid_aliases` doivent lire depuis `shared_matches.duckdb`
+
+**Fichiers à migrer (9)** :
+
+| # | Fichier | Lignes | Action |
+|---|---------|--------|--------|
+| 1 | `src/ui/aliases.py` | 56-108 | → Lire `shared_matches.duckdb` uniquement |
+| 2 | `src/utils/xuid.py` | 158-190 | → Lire `shared_matches.duckdb` uniquement |
+| 3 | `src/ui/multiplayer.py` | 293 | → Lire `shared_matches.duckdb` |
+| 4 | `src/ui/cache_loaders.py` | 176-178 | → Lire `shared_matches.duckdb` |
+| 5 | `src/data/sync/engine.py` | 480-490 | → `_resolve_xuid_v5()` lire shared |
+| 6 | `src/data/repositories/_roster_loader.py` | 516-523, 668-677 | → Supprimer fallback local |
+| 7 | `src/data/sessions_backfill.py` | 65-69 | → Supprimer fallback local |
+| 8 | `scripts/sync.py` | 174 | → Lire `shared_matches.duckdb` |
+| 9 | `scripts/resolve_missing_gamertags.py` | 103, 189-195 | → Utiliser shared |
+
+**Helper à créer** :
+```python
+# src/utils/shared_db.py (nouveau)
+def get_shared_matches_path(player_db_path: str | Path) -> Path | None:
+    """Retourne le chemin vers shared_matches.duckdb depuis un path joueur."""
+    db_path = Path(player_db_path)
+    if "players" in db_path.parts:
+        idx = db_path.parts.index("players")
+        return Path(*db_path.parts[:idx]) / "warehouse" / "shared_matches.duckdb"
+    return None
+```
 
 **Actions** :
-- [ ] Corriger filters.py (15min)
-- [ ] Corriger filters_render.py (15min)
-- [ ] Ajouter confirmation checkbox_filter.py (30min)
-- [ ] Tests UI
+- [ ] Créer `src/utils/shared_db.py` helper (15min)
+- [ ] Migrer `src/ui/aliases.py` (30min)
+- [ ] Migrer `src/utils/xuid.py` (20min)
+- [ ] Migrer `src/ui/multiplayer.py` + `cache_loaders.py` (20min)
+- [ ] Migrer `src/data/sync/engine.py` (15min)
+- [ ] Supprimer fallbacks locaux dans `_roster_loader.py` + `sessions_backfill.py` (20min)
+- [ ] Migrer `scripts/sync.py` + `resolve_missing_gamertags.py` (20min)
+- [ ] Tests et validation (30min)
 
-#### Phase 8 : 3 Modules Critiques Metadata Fallback
-
-**Modules nécessitant fallback shared metadata** :
-
-1. **`src/ui/aliases.py`** 🔴 CRITIQUE
-   - Problème : Accès xuid_aliases sans fallback shared
-   - Solution : Ajouter fallback `metadata.duckdb` table `xuid_aliases`
-
-2. **`src/utils/xuid.py`** 🔴 CRITIQUE
-   - Problème : Résolution XUID sans fallback shared
-   - Solution : Ajouter fallback `metadata.duckdb` pour resolve_xuid()
-
-3. **`src/analysis/citations/engine.py`** 🔴 CRITIQUE
-   - Problème : Accès personal_score_awards sans fallback shared
-   - Solution : Ajouter fallback `metadata.duckdb` table `personal_score_awards`
-
-**Actions** :
-- [ ] Ajouter fallback aliases.py (30min)
-- [ ] Ajouter fallback xuid.py (30min)
-- [ ] Ajouter fallback citations/engine.py (30min)
-- [ ] Tests fallback metadata
+**Note** : `personal_score_awards` reste dans `stats.duckdb` local (pas dans shared).
 
 **Documentation** : `.ai/PHASES_6_10_COMPLETE.md` § Phases 7-8
 
@@ -460,16 +479,17 @@ Ce document **RÉCONCILIE** et **CONSOLIDE** **TOUS** les plans de travail v5.1 
 
 **Objectif** : Suppression brutale tables obsolètes
 
-**Tables à supprimer (8 par joueur)** :
+**Tables à supprimer (9 par joueur)** :
 
 1. `match_stats` — Remplacée par shared.match_participants
 2. `medals_earned` — Remplacée par shared.medals_earned
 3. `highlight_events` — Remplacée par shared.highlight_events
 4. `player_stats` — Obsolète (agrégats calculés à la volée)
-5. `mv_match_stats_with_context` — Vue obsolète
-6. `mv_recent_matches` — Vue obsolète
-7. `mv_team_stats` — Vue obsolète
-8. `mv_opponent_stats` — Vue obsolète
+5. `xuid_aliases` — Remplacée par shared.xuid_aliases (13 955 rows centralisées)
+6. `mv_match_stats_with_context` — Vue obsolète
+7. `mv_recent_matches` — Vue obsolète
+8. `mv_team_stats` — Vue obsolète
+9. `mv_opponent_stats` — Vue obsolète
 
 **Tables conservées (9)** :
 - `player_match_enrichment` — Enrichissements spécifiques joueur
@@ -487,7 +507,7 @@ def cleanup_player_db(gamertag: str, dry_run: bool = True):
     """Supprime tables legacy d'un joueur."""
     tables_to_drop = [
         'match_stats', 'medals_earned', 'highlight_events',
-        'player_stats',
+        'player_stats', 'xuid_aliases',  # Remplacée par shared.xuid_aliases
         'mv_match_stats_with_context', 'mv_recent_matches',
         'mv_team_stats', 'mv_opponent_stats'
     ]
