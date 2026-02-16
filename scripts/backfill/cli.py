@@ -16,7 +16,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
         Parser configuré avec tous les arguments.
     """
     parser = argparse.ArgumentParser(
-        description="Backfill des données manquantes pour DuckDB v4",
+        description="Backfill des données manquantes pour DuckDB",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=_get_usage_examples(),
     )
@@ -31,7 +31,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Traiter tous les joueurs DuckDB v4",
+        help="Traiter tous les joueurs DuckDB",
     )
 
     # ── Options générales ──
@@ -237,6 +237,18 @@ def create_argument_parser() -> argparse.ArgumentParser:
         "--force-citations",
         action="store_true",
         help="Recalculer les citations même si déjà présentes",
+    )
+
+    # ── Participants enrich (V5 final) ──
+    parser.add_argument(
+        "--participants-enrich",
+        action="store_true",
+        help="Backfill colonnes étendues (headshot_kills, kda, etc.) + MMR dans shared.match_participants",
+    )
+    parser.add_argument(
+        "--force-participants-enrich",
+        action="store_true",
+        help="Force le backfill des colonnes étendues même si déjà remplies",
     )
 
     return parser

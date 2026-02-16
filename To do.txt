@@ -10,4 +10,8 @@ Traductions :
 - First Blood (+1) : "Premier Sang".
 - Last Casualty (-1) : "Boulet"
 
-Citations qu'on peut ressortir avec les scores obtenus pendant le match ?
+Citations qu'on peut ressortir avec les scores obtenus pendant le match ? -> vérifier que les citations et la logique est pas dispersée comme en legacy et que c'est bien documenté
+
+Pas besoin d'adapter les tests V4 ou legacy, ça n'a pas de sens, on adapte à la V5 ou on supprime. On doit couper le cordon absolument partout
+
+On coupe le cordon V4/legacy partout : plus de fallbacks, plus de match_stats, plus de backward compatibility, plus de player_match_stats dans le code actif (et les tests). Tout V5.

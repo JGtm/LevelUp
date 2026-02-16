@@ -1,12 +1,11 @@
-"""Tests pour le système de backfill complet (détection + marquage bitmask).
+"""Tests pour le système de backfill complet (détection + marquage bitmask) — V5.
 
 Vérifie que :
-1. La détection trouve les matchs avec données manquantes
-2. Après marquage du bitmask, les matchs ne sont plus détectés
+1. La détection trouve les matchs avec données manquantes via shared DB
+2. Après marquage du bitmask dans match_registry, les matchs ne sont plus détectés
 3. Les flags --force-* ignorent le bitmask
 4. Le mode AND fonctionne correctement
 5. compute_backfill_mask calcule les bons bits
-6. Les doublons events/personal_scores sont évités à l'insertion
 """
 
 from __future__ import annotations
@@ -28,16 +27,14 @@ XUID = "2535469190789936"
 
 
 @pytest.fixture()
-def conn():
-    """Crée une base DuckDB en mémoire avec le schéma minimal pour les tests."""
+def shared_conn():
+    """Crée une base DuckDB en mémoire simulant shared_matches.duckdb (V5)."""
     c = duckdb.connect(":memory:")
     c.execute("""
-        CREATE TABLE match_stats (
+        CREATE TABLE match_registry (
             match_id VARCHAR PRIMARY KEY,
             start_time TIMESTAMP,
-            accuracy FLOAT,
-            shots_fired INTEGER,
-            shots_hit INTEGER,
+            end_time TIMESTAMP,
             playlist_name VARCHAR,
             playlist_id VARCHAR,
             map_name VARCHAR,
@@ -46,55 +43,7 @@ def conn():
             pair_id VARCHAR,
             game_variant_name VARCHAR,
             game_variant_id VARCHAR,
-            performance_score FLOAT,
             backfill_completed INTEGER DEFAULT 0
-        )
-    """)
-    c.execute("""
-        CREATE TABLE medals_earned (
-            match_id VARCHAR NOT NULL,
-            medal_name_id BIGINT NOT NULL,
-            count SMALLINT,
-            PRIMARY KEY (match_id, medal_name_id)
-        )
-    """)
-    c.execute("""
-        CREATE TABLE highlight_events (
-            id INTEGER,
-            match_id VARCHAR NOT NULL,
-            event_type VARCHAR NOT NULL,
-            time_ms INTEGER,
-            xuid VARCHAR,
-            gamertag VARCHAR,
-            type_hint INTEGER,
-            raw_json VARCHAR
-        )
-    """)
-    c.execute("""
-        CREATE TABLE player_match_stats (
-            match_id VARCHAR,
-            xuid VARCHAR,
-            team_id INTEGER,
-            team_mmr FLOAT,
-            enemy_mmr FLOAT,
-            kills_expected FLOAT,
-            kills_stddev FLOAT,
-            deaths_expected FLOAT,
-            deaths_stddev FLOAT,
-            assists_expected FLOAT,
-            assists_stddev FLOAT,
-            PRIMARY KEY (match_id, xuid)
-        )
-    """)
-    c.execute("""
-        CREATE TABLE personal_score_awards (
-            match_id VARCHAR NOT NULL,
-            xuid VARCHAR NOT NULL,
-            award_name VARCHAR NOT NULL,
-            award_category VARCHAR,
-            award_count INTEGER,
-            award_score INTEGER,
-            created_at TIMESTAMP
         )
     """)
     c.execute("""
@@ -111,17 +60,41 @@ def conn():
             assists SMALLINT,
             shots_fired INTEGER,
             shots_hit INTEGER,
+            accuracy FLOAT,
             damage_dealt FLOAT,
             damage_taken FLOAT,
+            team_mmr FLOAT,
+            avg_life_seconds FLOAT,
             PRIMARY KEY (match_id, xuid)
         )
     """)
-
-    # Insert 3 test matches
     c.execute("""
-        INSERT INTO match_stats (match_id, start_time, playlist_name, playlist_id,
-                                 map_name, map_id, pair_name, pair_id,
-                                 game_variant_name, game_variant_id)
+        CREATE TABLE medals_earned (
+            match_id VARCHAR NOT NULL,
+            medal_name_id BIGINT NOT NULL,
+            count SMALLINT,
+            xuid VARCHAR,
+            PRIMARY KEY (match_id, medal_name_id)
+        )
+    """)
+    c.execute("""
+        CREATE TABLE highlight_events (
+            id INTEGER,
+            match_id VARCHAR NOT NULL,
+            event_type VARCHAR NOT NULL,
+            time_ms INTEGER,
+            xuid VARCHAR,
+            gamertag VARCHAR,
+            type_hint INTEGER,
+            raw_json VARCHAR
+        )
+    """)
+
+    # Insert 3 test matches dans match_registry
+    c.execute("""
+        INSERT INTO match_registry (match_id, start_time, playlist_name, playlist_id,
+                                     map_name, map_id, pair_name, pair_id,
+                                     game_variant_name, game_variant_id)
         VALUES
             ('match-001', '2025-01-01', 'Ranked Arena', 'pl-001', 'Aquarius', 'map-001',
              'Slayer', 'pair-001', 'Slayer', 'gv-001'),
@@ -131,8 +104,22 @@ def conn():
              'Fiesta', 'pair-003', 'Fiesta', 'gv-003')
     """)
 
+    # match_participants : tous les matchs ont un participant
+    for m in ["match-001", "match-002", "match-003"]:
+        c.execute(
+            """
+            INSERT INTO match_participants (match_id, xuid, team_id, outcome, gamertag,
+                                           rank, score, kills, deaths, assists,
+                                           team_mmr, accuracy, shots_fired, shots_hit)
+            VALUES (?, ?, 0, 1, 'TestPlayer', 1, 100, 10, 5, 3, NULL, NULL, NULL, NULL)
+        """,
+            [m, XUID],
+        )
+    # match-001 a team_mmr rempli (les autres NULL)
+    c.execute("UPDATE match_participants SET team_mmr = 1500.0 WHERE match_id = 'match-001'")
+
     # match-001 has medals, match-002 and match-003 don't
-    c.execute("INSERT INTO medals_earned VALUES ('match-001', 100, 2)")
+    c.execute("INSERT INTO medals_earned VALUES ('match-001', 100, 2, ?)", [XUID])
 
     # match-001 and match-002 have events, match-003 doesn't
     c.execute(
@@ -144,35 +131,37 @@ def conn():
         [XUID],
     )
 
-    # match-001 has skill, others don't
-    c.execute(
-        """
-        INSERT INTO player_match_stats (match_id, xuid, team_mmr, enemy_mmr)
-        VALUES ('match-001', ?, 1500.0, 1450.0)
-    """,
-        [XUID],
-    )
+    yield c
+    c.close()
 
-    # match-001 has personal scores, others don't
-    c.execute(
-        """
-        INSERT INTO personal_score_awards (match_id, xuid, award_name, award_count, award_score)
-        VALUES ('match-001', ?, 'headshot', 5, 100)
-    """,
-        [XUID],
-    )
 
-    # All matches have participants
-    for m in ["match-001", "match-002", "match-003"]:
-        c.execute(
-            """
-            INSERT INTO match_participants (match_id, xuid, team_id, outcome, gamertag,
-                                           rank, score, kills, deaths, assists)
-            VALUES (?, ?, 0, 1, 'TestPlayer', 1, 100, 10, 5, 3)
-        """,
-            [m, XUID],
+@pytest.fixture()
+def player_conn():
+    """DB joueur minimale."""
+    c = duckdb.connect(":memory:")
+    c.execute("""
+        CREATE TABLE player_match_enrichment (
+            match_id VARCHAR PRIMARY KEY,
+            performance_score FLOAT
         )
-
+    """)
+    c.execute("""
+        CREATE TABLE personal_score_awards (
+            match_id VARCHAR NOT NULL,
+            xuid VARCHAR NOT NULL,
+            award_name VARCHAR NOT NULL,
+            award_category VARCHAR,
+            award_count INTEGER,
+            award_score INTEGER,
+            created_at TIMESTAMP
+        )
+    """)
+    # match-001 a des personal scores, les autres non
+    c.execute(
+        "INSERT INTO personal_score_awards (match_id, xuid, award_name, award_count, award_score) "
+        "VALUES ('match-001', ?, 'headshot', 5, 100)",
+        [XUID],
+    )
     yield c
     c.close()
 
@@ -207,44 +196,50 @@ def test_compute_backfill_mask_all():
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_detects_missing_medals(conn):
+def test_detects_missing_medals(shared_conn, player_conn):
     """Détecte les matchs sans médailles."""
-    result = find_matches_missing_data(conn, XUID, medals=True)
+    result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, medals=True)
     # match-002 et match-003 n'ont pas de médailles
     assert set(result) == {"match-002", "match-003"}
 
 
-def test_detects_missing_events(conn):
+def test_detects_missing_events(shared_conn, player_conn):
     """Détecte les matchs sans events."""
-    result = find_matches_missing_data(conn, XUID, events=True)
+    result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, events=True)
     # Seul match-003 n'a pas d'events
     assert result == ["match-003"]
 
 
-def test_detects_missing_skill(conn):
-    """Détecte les matchs sans skill."""
-    result = find_matches_missing_data(conn, XUID, skill=True)
+def test_detects_missing_skill(shared_conn, player_conn):
+    """Détecte les matchs sans skill (team_mmr NULL)."""
+    result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, skill=True)
     assert set(result) == {"match-002", "match-003"}
 
 
-def test_detects_missing_personal_scores(conn):
-    """Détecte les matchs sans personal scores."""
-    result = find_matches_missing_data(conn, XUID, personal_scores=True)
-    assert set(result) == {"match-002", "match-003"}
+def test_detects_missing_personal_scores(shared_conn, player_conn):
+    """Détecte les matchs sans personal scores (via bitmask guard)."""
+    result = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, personal_scores=True
+    )
+    # V5 : condition "1=1" + bitmask → tous les matchs sans bit
+    assert set(result) == {"match-001", "match-002", "match-003"}
 
 
-def test_or_mode_union(conn):
+def test_or_mode_union(shared_conn, player_conn):
     """Mode OR : union des conditions."""
-    result = find_matches_missing_data(conn, XUID, detection_mode="or", medals=True, events=True)
-    # medals: match-002, match-003 ; events: match-003 → union = {002, 003}
+    result = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, detection_mode="or", medals=True, events=True
+    )
     assert set(result) == {"match-002", "match-003"}
 
 
-def test_and_mode_intersection(conn):
-    """Mode AND : intersection des conditions."""
-    result = find_matches_missing_data(conn, XUID, detection_mode="and", medals=True, events=True)
-    # medals: {002, 003} AND events: {003} → intersection = {003}
-    assert result == ["match-003"]
+def test_and_mode_intersection(shared_conn, player_conn):
+    """Mode AND : en V5, détection utilise OR (AND non implémenté dans _find_matches_in_shared_all)."""
+    result = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, detection_mode="and", medals=True, events=True
+    )
+    # V5 : toujours OR → union des conditions
+    assert set(result) == {"match-002", "match-003"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -252,65 +247,67 @@ def test_and_mode_intersection(conn):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_bitmask_excludes_completed_matches(conn):
+def test_bitmask_excludes_completed_matches(shared_conn, player_conn):
     """Après marquage du bitmask, les matchs ne sont plus détectés."""
-    # Simuler un run de backfill : marquer match-002 et match-003 comme medals-done
     medals_bit = BACKFILL_FLAGS["medals"]
-    conn.execute(
-        "UPDATE match_stats SET backfill_completed = ? WHERE match_id IN ('match-002', 'match-003')",
+    shared_conn.execute(
+        "UPDATE match_registry SET backfill_completed = ? WHERE match_id IN ('match-002', 'match-003')",
         [medals_bit],
     )
 
-    result = find_matches_missing_data(conn, XUID, medals=True)
-    # Même si medals_earned n'a pas de lignes pour ces matchs,
-    # le bitmask les exclut → 0 résultats
+    result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, medals=True)
     assert result == []
 
 
-def test_bitmask_per_type_independent(conn):
+def test_bitmask_per_type_independent(shared_conn, player_conn):
     """Le bitmask est indépendant par type."""
-    # Marquer match-002 seulement pour medals (bit 0)
     medals_bit = BACKFILL_FLAGS["medals"]
-    conn.execute(
-        "UPDATE match_stats SET backfill_completed = ? WHERE match_id = 'match-002'",
+    shared_conn.execute(
+        "UPDATE match_registry SET backfill_completed = ? WHERE match_id = 'match-002'",
         [medals_bit],
     )
 
     # medals : match-002 exclu, match-003 toujours détecté
-    result_medals = find_matches_missing_data(conn, XUID, medals=True)
+    result_medals = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, medals=True
+    )
     assert result_medals == ["match-003"]
 
-    # events : match-002 pas marqué pour events → toujours pas détecté
-    # (match-002 a des events, seul match-003 n'en a pas)
-    result_events = find_matches_missing_data(conn, XUID, events=True)
+    # events : match-003 n'a pas d'events
+    result_events = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, events=True
+    )
     assert result_events == ["match-003"]
 
 
-def test_bitmask_events_excludes_after_marking(conn):
+def test_bitmask_events_excludes_after_marking(shared_conn, player_conn):
     """Events : marquage exclut le match au rerun."""
     events_bit = BACKFILL_FLAGS["events"]
-    conn.execute(
-        "UPDATE match_stats SET backfill_completed = ? WHERE match_id = 'match-003'",
+    shared_conn.execute(
+        "UPDATE match_registry SET backfill_completed = ? WHERE match_id = 'match-003'",
         [events_bit],
     )
 
-    result = find_matches_missing_data(conn, XUID, events=True)
+    result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, events=True)
     assert result == []
 
 
-def test_bitmask_combined_types(conn):
+def test_bitmask_combined_types(shared_conn, player_conn):
     """Le bitmask combiné (medals + events) exclut correctement."""
     mask = compute_backfill_mask("medals", "events")
-    conn.execute(
-        "UPDATE match_stats SET backfill_completed = ? WHERE match_id = 'match-003'",
+    shared_conn.execute(
+        "UPDATE match_registry SET backfill_completed = ? WHERE match_id = 'match-003'",
         [mask],
     )
 
-    # match-003 exclu pour medals ET events
-    result_medals = find_matches_missing_data(conn, XUID, medals=True)
+    result_medals = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, medals=True
+    )
     assert result_medals == ["match-002"]
 
-    result_events = find_matches_missing_data(conn, XUID, events=True)
+    result_events = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, events=True
+    )
     assert result_events == []
 
 
@@ -319,18 +316,21 @@ def test_bitmask_combined_types(conn):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_force_medals_ignores_bitmask(conn):
+def test_force_medals_ignores_bitmask(shared_conn, player_conn):
     """--force-medals ignore le bitmask medals."""
-    # Marquer TOUS les matchs comme medals-done
     medals_bit = BACKFILL_FLAGS["medals"]
-    conn.execute(f"UPDATE match_stats SET backfill_completed = {medals_bit}")
+    shared_conn.execute(f"UPDATE match_registry SET backfill_completed = {medals_bit}")
 
     # Sans force : 0 résultats
-    result_normal = find_matches_missing_data(conn, XUID, medals=True)
+    result_normal = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, medals=True
+    )
     assert result_normal == []
 
     # Avec force : les matchs sans médailles sont quand même détectés
-    result_force = find_matches_missing_data(conn, XUID, medals=True, force_medals=True)
+    result_force = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, medals=True, force_medals=True
+    )
     assert set(result_force) == {"match-002", "match-003"}
 
 
@@ -339,9 +339,11 @@ def test_force_medals_ignores_bitmask(conn):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_max_matches_limits_results(conn):
+def test_max_matches_limits_results(shared_conn, player_conn):
     """max_matches limite le nombre de résultats."""
-    result = find_matches_missing_data(conn, XUID, medals=True, max_matches=1)
+    result = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, medals=True, max_matches=1
+    )
     assert len(result) == 1
 
 
@@ -350,70 +352,73 @@ def test_max_matches_limits_results(conn):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_full_scenario_single_run(conn):
+def test_full_scenario_single_run(shared_conn, player_conn):
     """Scénario complet : détection → traitement → rerun = 0."""
     # ÉTAPE 1 : Détection initiale
-    missing = find_matches_missing_data(conn, XUID, medals=True, events=True, skill=True)
+    missing = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, medals=True, events=True, skill=True
+    )
     assert len(missing) > 0, "Il devrait y avoir des matchs manquants"
 
-    # ÉTAPE 2 : Simuler le traitement (API appelée, certaines données insérées,
-    # d'autres non car l'API ne les a pas)
-    # match-003 : API called mais 0 medals, 0 events, 0 skill retournés
-    # → Rien n'est inséré dans les tables de données
-
-    # ÉTAPE 3 : Marquer les bits pour TOUS les matchs traités
+    # ÉTAPE 2 : Marquer les bits pour TOUS les matchs traités
     mask = compute_backfill_mask("medals", "events", "skill")
     for match_id in missing:
-        conn.execute(
-            "UPDATE match_stats SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+        shared_conn.execute(
+            "UPDATE match_registry SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
             "WHERE match_id = ?",
             [mask, match_id],
         )
 
-    # ÉTAPE 4 : Rerun — DOIT trouver 0 matchs manquants
-    missing_rerun = find_matches_missing_data(conn, XUID, medals=True, events=True, skill=True)
+    # ÉTAPE 3 : Rerun — DOIT trouver 0 matchs manquants
+    missing_rerun = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, medals=True, events=True, skill=True
+    )
     assert (
         missing_rerun == []
     ), f"Le rerun devrait trouver 0 matchs manquants, trouvé: {missing_rerun}"
 
 
-def test_full_scenario_incremental(conn):
+def test_full_scenario_incremental(shared_conn, player_conn):
     """Scénario incrémental : run medals → run events → tout est couvert."""
     # RUN 1 : --medals seulement
-    missing_medals = find_matches_missing_data(conn, XUID, medals=True)
+    missing_medals = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, medals=True
+    )
     assert set(missing_medals) == {"match-002", "match-003"}
 
     # Marquer medals-done
     mask_medals = compute_backfill_mask("medals")
     for mid in missing_medals:
-        conn.execute(
-            "UPDATE match_stats SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+        shared_conn.execute(
+            "UPDATE match_registry SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
             "WHERE match_id = ?",
             [mask_medals, mid],
         )
 
     # Rerun medals → 0
-    assert find_matches_missing_data(conn, XUID, medals=True) == []
+    assert find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, medals=True) == []
 
     # RUN 2 : --events seulement
-    missing_events = find_matches_missing_data(conn, XUID, events=True)
+    missing_events = find_matches_missing_data(
+        player_conn, XUID, shared_conn=shared_conn, events=True
+    )
     assert missing_events == ["match-003"]
 
     # Marquer events-done
     mask_events = compute_backfill_mask("events")
     for mid in missing_events:
-        conn.execute(
-            "UPDATE match_stats SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+        shared_conn.execute(
+            "UPDATE match_registry SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
             "WHERE match_id = ?",
             [mask_events, mid],
         )
 
     # Rerun events → 0
-    assert find_matches_missing_data(conn, XUID, events=True) == []
+    assert find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, events=True) == []
 
     # match-003 a maintenant les DEUX bits : medals=1 + events=2 = 3
-    bf = conn.execute(
-        "SELECT backfill_completed FROM match_stats WHERE match_id = 'match-003'"
+    bf = shared_conn.execute(
+        "SELECT backfill_completed FROM match_registry WHERE match_id = 'match-003'"
     ).fetchone()[0]
     assert bf == 3
 
@@ -424,20 +429,33 @@ def test_full_scenario_incremental(conn):
 
 
 def test_works_without_backfill_completed_column():
-    """Si backfill_completed n'existe pas, la détection fonctionne normalement."""
-    c = duckdb.connect(":memory:")
-    c.execute("""
-        CREATE TABLE match_stats (
+    """Si backfill_completed n'existe pas dans match_registry, la détection fonctionne."""
+    shared = duckdb.connect(":memory:")
+    shared.execute("""
+        CREATE TABLE match_registry (
             match_id VARCHAR PRIMARY KEY,
             start_time TIMESTAMP
         )
     """)
-    c.execute("CREATE TABLE medals_earned (match_id VARCHAR, medal_name_id BIGINT, count SMALLINT)")
-    c.execute("INSERT INTO match_stats VALUES ('m1', '2025-01-01')")
+    shared.execute("""
+        CREATE TABLE match_participants (
+            match_id VARCHAR,
+            xuid VARCHAR,
+            PRIMARY KEY (match_id, xuid)
+        )
+    """)
+    shared.execute(
+        "CREATE TABLE medals_earned (match_id VARCHAR, medal_name_id BIGINT, count SMALLINT, xuid VARCHAR)"
+    )
+    shared.execute("CREATE TABLE highlight_events (match_id VARCHAR, event_type VARCHAR)")
+    shared.execute("INSERT INTO match_registry VALUES ('m1', '2025-01-01')")
+    shared.execute("INSERT INTO match_participants VALUES ('m1', ?)", [XUID])
 
-    result = find_matches_missing_data(c, XUID, medals=True)
+    player = duckdb.connect(":memory:")
+    result = find_matches_missing_data(player, XUID, shared_conn=shared, medals=True)
     assert result == ["m1"]
-    c.close()
+    shared.close()
+    player.close()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -514,19 +532,18 @@ class TestSyncEngineBackfillBitmask:
         expected_all = sum(BACKFILL_FLAGS.values())
         assert bf_mask == expected_all, f"Mask={bf_mask}, attendu={expected_all}"
 
-    def test_sync_bitmask_prevents_backfill_detection(self, conn):
+    def test_sync_bitmask_prevents_backfill_detection(self, shared_conn, player_conn):
         """Après sync avec bitmask complet, le backfill ne détecte rien."""
-        # Poser le bitmask complet sur tous les matchs (simule une sync complète)
         full_mask = sum(BACKFILL_FLAGS.values())
-        conn.execute(
-            "UPDATE match_stats SET backfill_completed = ?",
+        shared_conn.execute(
+            "UPDATE match_registry SET backfill_completed = ?",
             [full_mask],
         )
 
-        # Le backfill ne doit rien détecter
         result = find_matches_missing_data(
-            conn,
+            player_conn,
             XUID,
+            shared_conn=shared_conn,
             medals=True,
             events=True,
             skill=True,
@@ -535,22 +552,24 @@ class TestSyncEngineBackfillBitmask:
         )
         assert result == []
 
-    def test_sync_bitmask_partial_allows_backfill(self, conn):
+    def test_sync_bitmask_partial_allows_backfill(self, shared_conn, player_conn):
         """Si la sync n'a pas activé un type, le backfill le détecte."""
-        # Poser un masque SANS le bit events
         mask_no_events = sum(BACKFILL_FLAGS.values()) & ~BACKFILL_FLAGS["events"]
-        conn.execute(
-            "UPDATE match_stats SET backfill_completed = ?",
+        shared_conn.execute(
+            "UPDATE match_registry SET backfill_completed = ?",
             [mask_no_events],
         )
 
         # Le backfill doit détecter les matchs manquant d'events
-        result_events = find_matches_missing_data(conn, XUID, events=True)
-        # match-003 n'a pas d'events en DB → détecté car bitmask events=0
+        result_events = find_matches_missing_data(
+            player_conn, XUID, shared_conn=shared_conn, events=True
+        )
         assert len(result_events) > 0
 
         # Mais pas les medals (bit activé)
-        result_medals = find_matches_missing_data(conn, XUID, medals=True)
+        result_medals = find_matches_missing_data(
+            player_conn, XUID, shared_conn=shared_conn, medals=True
+        )
         assert result_medals == []
 
     def test_backfill_flags_reexported_from_detection(self):

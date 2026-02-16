@@ -1,8 +1,6 @@
 """Tests pour scripts/backfill/orchestrator.py — fonctions helpers pures et DuckDB.
 
-Couvre : _empty_result, _mark_backfill_completed, _apply_schema_migrations,
-         _update_accuracy_shots, _update_enemy_mmr, _update_participants_details,
-         _backfill_local_only, _resolve_xuid_fallback.
+Couvre : _empty_result, _update_accuracy_shots, _backfill_local_only, _resolve_xuid_fallback.
 """
 
 from __future__ import annotations
@@ -21,39 +19,18 @@ import pytest
 
 @pytest.fixture()
 def conn():
-    """Connexion DuckDB in-memory avec match_stats."""
+    """Connexion DuckDB in-memory (player DB V5)."""
     c = duckdb.connect(":memory:")
     c.execute("""
-        CREATE TABLE match_stats (
+        CREATE TABLE player_match_enrichment (
             match_id VARCHAR NOT NULL PRIMARY KEY,
-            start_time TIMESTAMP,
-            end_time TIMESTAMP,
-            time_played_seconds INTEGER,
-            kills INTEGER DEFAULT 0,
-            deaths INTEGER DEFAULT 0,
-            assists INTEGER DEFAULT 0,
-            accuracy FLOAT,
-            shots_fired INTEGER,
-            shots_hit INTEGER,
-            enemy_mmr FLOAT,
             performance_score FLOAT,
-            backfill_completed INTEGER DEFAULT 0
-        )
-    """)
-    c.execute("""
-        CREATE TABLE player_match_stats (
-            match_id VARCHAR NOT NULL,
-            xuid VARCHAR NOT NULL,
-            team_id INTEGER,
-            team_mmr FLOAT,
-            enemy_mmr FLOAT,
-            kills_expected FLOAT,
-            kills_stddev FLOAT,
-            deaths_expected FLOAT,
-            deaths_stddev FLOAT,
-            assists_expected FLOAT,
-            assists_stddev FLOAT,
-            PRIMARY KEY (match_id, xuid)
+            session_id VARCHAR,
+            session_label VARCHAR,
+            is_with_friends BOOLEAN,
+            teammates_signature VARCHAR,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     yield c
@@ -98,10 +75,12 @@ class TestEmptyResult:
             "participants_kda_updated",
             "participants_shots_updated",
             "participants_damage_updated",
+            "participants_avg_life_updated",
             "killer_victim_pairs_inserted",
             "end_time_updated",
             "sessions_updated",
             "citations_computed",
+            "participants_enriched",
         ]
         for key in expected_keys:
             assert key in result
@@ -117,82 +96,51 @@ class TestEmptyResult:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Tests _mark_backfill_completed
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-class TestMarkBackfillCompleted:
-    def test_sets_bitmask(self, conn):
-        from scripts.backfill.orchestrator import _mark_backfill_completed
-
-        conn.execute(
-            "INSERT INTO match_stats (match_id, backfill_completed) VALUES (?, ?)",
-            ["m1", 0],
-        )
-        _mark_backfill_completed(conn, "m1", mask=5)
-        result = conn.execute(
-            "SELECT backfill_completed FROM match_stats WHERE match_id='m1'"
-        ).fetchone()[0]
-        assert result == 5
-
-    def test_or_with_existing(self, conn):
-        from scripts.backfill.orchestrator import _mark_backfill_completed
-
-        conn.execute(
-            "INSERT INTO match_stats (match_id, backfill_completed) VALUES (?, ?)",
-            ["m1", 3],
-        )
-        _mark_backfill_completed(conn, "m1", mask=4)
-        result = conn.execute(
-            "SELECT backfill_completed FROM match_stats WHERE match_id='m1'"
-        ).fetchone()[0]
-        assert result == 7  # 3 | 4
-
-    def test_zero_mask_noop(self, conn):
-        from scripts.backfill.orchestrator import _mark_backfill_completed
-
-        conn.execute(
-            "INSERT INTO match_stats (match_id, backfill_completed) VALUES (?, ?)",
-            ["m1", 3],
-        )
-        _mark_backfill_completed(conn, "m1", mask=0)
-        result = conn.execute(
-            "SELECT backfill_completed FROM match_stats WHERE match_id='m1'"
-        ).fetchone()[0]
-        assert result == 3
-
-    def test_null_backfill_completed(self, conn):
-        from scripts.backfill.orchestrator import _mark_backfill_completed
-
-        conn.execute(
-            "INSERT INTO match_stats (match_id, backfill_completed) VALUES (?, NULL)",
-            ["m1"],
-        )
-        _mark_backfill_completed(conn, "m1", mask=5)
-        result = conn.execute(
-            "SELECT backfill_completed FROM match_stats WHERE match_id='m1'"
-        ).fetchone()[0]
-        assert result == 5
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Tests _update_accuracy_shots
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class TestUpdateAccuracyShots:
-    def test_update_accuracy_when_null(self, conn):
+    """Tests _update_accuracy_shots — écrit dans match_participants (V5)."""
+
+    @pytest.fixture()
+    def shared_conn(self):
+        """Connexion DuckDB in-memory avec match_participants (V5)."""
+        c = duckdb.connect(":memory:")
+        c.execute("""
+            CREATE TABLE match_participants (
+                match_id VARCHAR NOT NULL,
+                xuid VARCHAR NOT NULL,
+                team_id INTEGER,
+                outcome INTEGER,
+                gamertag VARCHAR,
+                rank SMALLINT,
+                score INTEGER,
+                kills SMALLINT,
+                deaths SMALLINT,
+                assists SMALLINT,
+                accuracy FLOAT,
+                shots_fired INTEGER,
+                shots_hit INTEGER,
+                PRIMARY KEY (match_id, xuid)
+            )
+        """)
+        yield c
+        c.close()
+
+    def test_update_accuracy_when_null(self, shared_conn):
         from scripts.backfill.orchestrator import _update_accuracy_shots
 
-        conn.execute(
-            "INSERT INTO match_stats (match_id, accuracy) VALUES (?, NULL)",
-            ["m1"],
+        shared_conn.execute(
+            "INSERT INTO match_participants (match_id, xuid, accuracy) VALUES (?, ?, NULL)",
+            ["m1", "xuid1"],
         )
         row = FakeMatchRow(accuracy=0.55)
         a, s = _update_accuracy_shots(
-            conn,
+            shared_conn,
             row,
             "m1",
+            "xuid1",
             accuracy=True,
             shots=False,
             force_accuracy=False,
@@ -200,21 +148,24 @@ class TestUpdateAccuracyShots:
         )
         assert a == 1
         assert s == 0
-        result = conn.execute("SELECT accuracy FROM match_stats WHERE match_id='m1'").fetchone()[0]
+        result = shared_conn.execute(
+            "SELECT accuracy FROM match_participants WHERE match_id='m1' AND xuid='xuid1'"
+        ).fetchone()[0]
         assert result == pytest.approx(0.55)
 
-    def test_skip_accuracy_when_already_set(self, conn):
+    def test_skip_accuracy_when_already_set(self, shared_conn):
         from scripts.backfill.orchestrator import _update_accuracy_shots
 
-        conn.execute(
-            "INSERT INTO match_stats (match_id, accuracy) VALUES (?, ?)",
-            ["m1", 0.40],
+        shared_conn.execute(
+            "INSERT INTO match_participants (match_id, xuid, accuracy) VALUES (?, ?, ?)",
+            ["m1", "xuid1", 0.40],
         )
         row = FakeMatchRow(accuracy=0.55)
         a, _ = _update_accuracy_shots(
-            conn,
+            shared_conn,
             row,
             "m1",
+            "xuid1",
             accuracy=True,
             shots=False,
             force_accuracy=False,
@@ -222,18 +173,19 @@ class TestUpdateAccuracyShots:
         )
         assert a == 0  # not updated
 
-    def test_force_accuracy(self, conn):
+    def test_force_accuracy(self, shared_conn):
         from scripts.backfill.orchestrator import _update_accuracy_shots
 
-        conn.execute(
-            "INSERT INTO match_stats (match_id, accuracy) VALUES (?, ?)",
-            ["m1", 0.40],
+        shared_conn.execute(
+            "INSERT INTO match_participants (match_id, xuid, accuracy) VALUES (?, ?, ?)",
+            ["m1", "xuid1", 0.40],
         )
         row = FakeMatchRow(accuracy=0.55)
         a, _ = _update_accuracy_shots(
-            conn,
+            shared_conn,
             row,
             "m1",
+            "xuid1",
             accuracy=True,
             shots=False,
             force_accuracy=True,
@@ -241,18 +193,20 @@ class TestUpdateAccuracyShots:
         )
         assert a == 1
 
-    def test_update_shots_when_null(self, conn):
+    def test_update_shots_when_null(self, shared_conn):
         from scripts.backfill.orchestrator import _update_accuracy_shots
 
-        conn.execute(
-            "INSERT INTO match_stats (match_id, shots_fired, shots_hit) VALUES (?, NULL, NULL)",
-            ["m1"],
+        shared_conn.execute(
+            "INSERT INTO match_participants (match_id, xuid, shots_fired, shots_hit) "
+            "VALUES (?, ?, NULL, NULL)",
+            ["m1", "xuid1"],
         )
         row = FakeMatchRow(shots_fired=200, shots_hit=110)
         _, s = _update_accuracy_shots(
-            conn,
+            shared_conn,
             row,
             "m1",
+            "xuid1",
             accuracy=False,
             shots=True,
             force_accuracy=False,
@@ -260,18 +214,20 @@ class TestUpdateAccuracyShots:
         )
         assert s == 1
 
-    def test_force_shots(self, conn):
+    def test_force_shots(self, shared_conn):
         from scripts.backfill.orchestrator import _update_accuracy_shots
 
-        conn.execute(
-            "INSERT INTO match_stats (match_id, shots_fired, shots_hit) VALUES (?, ?, ?)",
-            ["m1", 100, 50],
+        shared_conn.execute(
+            "INSERT INTO match_participants (match_id, xuid, shots_fired, shots_hit) "
+            "VALUES (?, ?, ?, ?)",
+            ["m1", "xuid1", 100, 50],
         )
         row = FakeMatchRow(shots_fired=200, shots_hit=110)
         _, s = _update_accuracy_shots(
-            conn,
+            shared_conn,
             row,
             "m1",
+            "xuid1",
             accuracy=False,
             shots=True,
             force_accuracy=False,
@@ -279,15 +235,19 @@ class TestUpdateAccuracyShots:
         )
         assert s == 1
 
-    def test_no_accuracy_value(self, conn):
+    def test_no_accuracy_value(self, shared_conn):
         from scripts.backfill.orchestrator import _update_accuracy_shots
 
-        conn.execute("INSERT INTO match_stats (match_id) VALUES (?)", ["m1"])
+        shared_conn.execute(
+            "INSERT INTO match_participants (match_id, xuid) VALUES (?, ?)",
+            ["m1", "xuid1"],
+        )
         row = FakeMatchRow(accuracy=None)
         a, _ = _update_accuracy_shots(
-            conn,
+            shared_conn,
             row,
             "m1",
+            "xuid1",
             accuracy=True,
             shots=False,
             force_accuracy=False,
@@ -324,22 +284,35 @@ class TestBackfillLocalOnly:
 
         from scripts.backfill.orchestrator import _backfill_local_only
 
+        # Créer une shared_conn in-memory avec match_registry
+        shared = duckdb.connect(":memory:")
+        shared.execute("""
+            CREATE TABLE match_registry (
+                match_id VARCHAR NOT NULL PRIMARY KEY,
+                start_time TIMESTAMP,
+                end_time TIMESTAMP,
+                time_played_seconds INTEGER,
+                backfill_completed INTEGER DEFAULT 0
+            )
+        """)
         t = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
-        conn.execute(
-            "INSERT INTO match_stats (match_id, start_time, time_played_seconds, end_time) "
+        shared.execute(
+            "INSERT INTO match_registry (match_id, start_time, time_played_seconds, end_time) "
             "VALUES (?, ?, ?, NULL)",
             ["m1", t, 600],
         )
-        result = _backfill_local_only(
-            conn,
-            Path("/fake"),
-            "xuid1",
-            killer_victim=False,
-            end_time=True,
-            sessions=False,
-            citations=False,
-        )
+        with patch("scripts.backfill.orchestrator._get_shared_connection", return_value=shared):
+            result = _backfill_local_only(
+                conn,
+                Path("/fake"),
+                "xuid1",
+                killer_victim=False,
+                end_time=True,
+                sessions=False,
+                citations=False,
+            )
         assert result["end_time_updated"] == 1
+        shared.close()
 
     def test_killer_victim(self, conn):
         from pathlib import Path

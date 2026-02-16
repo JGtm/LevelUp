@@ -123,6 +123,8 @@ def main() -> int:
                     force_sessions=args.force_sessions,
                     citations=args.citations,
                     force_citations=args.force_citations,
+                    participants_enrich=args.participants_enrich,
+                    force_participants_enrich=args.force_participants_enrich,
                     detection_mode=args.detection_mode,
                 )
             )
@@ -168,6 +170,8 @@ def main() -> int:
                     force_sessions=args.force_sessions,
                     citations=args.citations,
                     force_citations=args.force_citations,
+                    participants_enrich=args.participants_enrich,
+                    force_participants_enrich=args.force_participants_enrich,
                     detection_mode=args.detection_mode,
                 )
             )
@@ -241,6 +245,8 @@ def _print_totals(totals: dict, args: object) -> None:
         logger.info(f"Sessions mises à jour: {totals.get('sessions_updated', 0)}")
     if getattr(args, "citations", False):
         logger.info(f"Citations calculées: {totals.get('citations_computed', 0)}")
+    if getattr(args, "participants_enrich", False):
+        logger.info(f"Participants enrichis: {totals.get('participants_enriched', 0)}")
 
 
 if __name__ == "__main__":

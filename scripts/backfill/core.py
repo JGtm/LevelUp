@@ -80,52 +80,6 @@ def insert_event_rows(conn: Any, rows: list) -> int:
     return batch_insert_rows(conn, "highlight_events", rows, HIGHLIGHT_EVENT_COLUMNS)
 
 
-def insert_skill_row(conn: Any, row: Any, xuid: str) -> int:
-    """Insère les stats skill/MMR en batch (Sprint 15).
-
-    Args:
-        conn: Connexion DuckDB.
-        row: SkillStatsRow.
-        xuid: XUID du joueur.
-
-    Returns:
-        1 si inséré, 0 sinon.
-    """
-    if not row:
-        return 0
-    skill_dict = {
-        "match_id": row.match_id,
-        "xuid": xuid,
-        "team_id": row.team_id,
-        "team_mmr": row.team_mmr,
-        "enemy_mmr": row.enemy_mmr,
-        "kills_expected": row.kills_expected,
-        "kills_stddev": row.kills_stddev,
-        "deaths_expected": row.deaths_expected,
-        "deaths_stddev": row.deaths_stddev,
-        "assists_expected": row.assists_expected,
-        "assists_stddev": row.assists_stddev,
-    }
-    return batch_upsert_rows(
-        conn,
-        "player_match_stats",
-        [skill_dict],
-        [
-            "match_id",
-            "xuid",
-            "team_id",
-            "team_mmr",
-            "enemy_mmr",
-            "kills_expected",
-            "kills_stddev",
-            "deaths_expected",
-            "deaths_stddev",
-            "assists_expected",
-            "assists_stddev",
-        ],
-    )
-
-
 def insert_personal_score_rows(conn: Any, rows: list) -> int:
     """Insère les personal score awards en batch (Sprint 15).
 

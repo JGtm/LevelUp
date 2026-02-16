@@ -62,8 +62,16 @@ def get_friends_xuids_for_backfill(
         conn = duckdb.connect(str(path), read_only=True)
         own_conn = True
     try:
+        # V5: Essayer shared.xuid_aliases d'abord, fallback sur local
+        alias_table = "xuid_aliases"
+        try:
+            conn.execute("SELECT 1 FROM shared.xuid_aliases LIMIT 1")
+            alias_table = "shared.xuid_aliases"
+        except Exception:
+            pass
+
         result = conn.execute(
-            "SELECT xuid, gamertag FROM xuid_aliases WHERE xuid IS NOT NULL AND gamertag IS NOT NULL"
+            f"SELECT xuid, gamertag FROM {alias_table} WHERE xuid IS NOT NULL AND gamertag IS NOT NULL"
         ).fetchall()
         gamertag_to_xuid: dict[str, str] = {}
         for xuid, gamertag in result:
@@ -74,7 +82,7 @@ def get_friends_xuids_for_backfill(
         known_xuids = {
             str(r[0]).strip()
             for r in conn.execute(
-                "SELECT DISTINCT xuid FROM xuid_aliases WHERE xuid IS NOT NULL"
+                f"SELECT DISTINCT xuid FROM {alias_table} WHERE xuid IS NOT NULL"
             ).fetchall()
             if r[0]
         }
@@ -164,13 +172,14 @@ def backfill_sessions_for_player(
     force: bool = False,
     dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Backfill session_id et session_label pour une DB joueur.
+    """Backfill session_id et session_label dans player_match_enrichment (V5 final).
 
-    Appelé par scripts/backfill_data.py --sessions.
+    Lit les matchs depuis shared.match_participants + match_registry.
+    Écrit les sessions dans player_match_enrichment.
 
     Args:
         db_path: Chemin vers la DB joueur.
-        xuid: XUID du joueur (résolu depuis xuid_aliases si None).
+        xuid: XUID du joueur (résolu depuis shared.xuid_aliases si None).
         conn: Connexion existante (obligatoire si appelé depuis backfill_data.py qui a déjà une conn ouverte).
         gap_minutes, include_recent, force, dry_run: Options de backfill.
 
@@ -198,37 +207,71 @@ def backfill_sessions_for_player(
         own_conn = True
 
     try:
-        cols = conn.execute(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_schema = 'main' AND table_name = 'match_stats'"
-        ).fetchall()
-        col_names = {r[0] for r in cols} if cols else set()
-        if "session_id" not in col_names:
-            with contextlib.suppress(Exception):
-                conn.execute("ALTER TABLE match_stats ADD COLUMN session_id INTEGER")
-        if "session_label" not in col_names:
-            with contextlib.suppress(Exception):
-                conn.execute("ALTER TABLE match_stats ADD COLUMN session_label VARCHAR")
+        # S'assurer que player_match_enrichment existe avec les bonnes colonnes
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS player_match_enrichment (
+                match_id VARCHAR PRIMARY KEY,
+                performance_score FLOAT,
+                session_id VARCHAR,
+                session_label VARCHAR,
+                is_with_friends BOOLEAN,
+                teammates_signature VARCHAR,
+                known_teammates_count SMALLINT,
+                friends_xuids VARCHAR,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        with contextlib.suppress(Exception):
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id)"
+            )
+
+        # Attacher shared_matches.duckdb pour lire les matchs
+        shared_db = path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+        if not shared_db.exists():
+            # Fallback : chercher depuis la racine du projet
+            shared_db = (
+                Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
+            )
+        if not shared_db.exists():
+            results["errors"].append("shared_matches.duckdb introuvable")
+            return results
+
+        with contextlib.suppress(Exception):
+            conn.execute("ATTACH ? AS shared (READ_ONLY)", [str(shared_db)])
 
         if not xuid:
             row = conn.execute(
-                "SELECT DISTINCT xuid FROM xuid_aliases WHERE xuid IS NOT NULL LIMIT 1"
+                "SELECT DISTINCT xuid FROM shared.xuid_aliases WHERE xuid IS NOT NULL LIMIT 1"
             ).fetchone()
             xuid = str(row[0]).strip() if row and row[0] else None
         if not xuid:
             results["errors"].append("XUID non trouvé")
+            with contextlib.suppress(Exception):
+                conn.execute("DETACH shared")
             return results
 
         friends = get_friends_xuids_for_backfill(path, xuid, conn=conn)
         if not friends:
             friends = get_top_two_teammate_xuids(path, xuid, limit=2, conn=conn)
 
-        df = conn.execute("""
-            SELECT match_id, start_time, teammates_signature, session_id
-            FROM match_stats
-            WHERE start_time IS NOT NULL
-            ORDER BY start_time ASC
-        """).pl()
+        # Lire les matchs depuis shared + player_match_enrichment pour session_id existant
+        df = conn.execute(
+            """
+            SELECT mr.match_id, mr.start_time, pme.teammates_signature, pme.session_id
+            FROM shared.match_participants mp
+            JOIN shared.match_registry mr ON mr.match_id = mp.match_id
+            LEFT JOIN player_match_enrichment pme ON pme.match_id = mr.match_id
+            WHERE mp.xuid = ?
+            AND mr.start_time IS NOT NULL
+            ORDER BY mr.start_time ASC
+        """,
+            [xuid],
+        ).pl()
+
+        with contextlib.suppress(Exception):
+            conn.execute("DETACH shared")
 
         if df.is_empty():
             return results
@@ -273,8 +316,13 @@ def backfill_sessions_for_player(
 
             try:
                 conn.execute(
-                    "UPDATE match_stats SET session_id = ?, session_label = ? WHERE match_id = ?",
-                    [session_id, str(session_label) if session_label else None, match_id],
+                    "INSERT INTO player_match_enrichment (match_id, session_id, session_label, updated_at) "
+                    "VALUES (?, ?, ?, CURRENT_TIMESTAMP) "
+                    "ON CONFLICT (match_id) DO UPDATE SET "
+                    "session_id = EXCLUDED.session_id, "
+                    "session_label = EXCLUDED.session_label, "
+                    "updated_at = CURRENT_TIMESTAMP",
+                    [match_id, session_id, str(session_label) if session_label else None],
                 )
                 updated += 1
             except Exception as e:

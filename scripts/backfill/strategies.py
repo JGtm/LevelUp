@@ -50,16 +50,9 @@ def backfill_killer_victim_pairs(
     target_conn = shared_conn if shared_conn is not None else conn
     events_source = "highlight_events"  # même nom dans les deux DBs
 
-    # Déterminer le mapping colonnes pour highlight_events
-    # En v5 (shared), le schéma utilise killer_xuid/victim_xuid
-    # En v4 (local), le schéma utilise xuid/gamertag
-    # COALESCE permet de mapper vers le format attendu par compute_killer_victim_pairs
-    if shared_conn is not None:
-        events_xuid_expr = "COALESCE(killer_xuid, victim_xuid) AS xuid"
-        events_gt_expr = "COALESCE(killer_gamertag, victim_gamertag) AS gamertag"
-    else:
-        events_xuid_expr = "xuid"
-        events_gt_expr = "gamertag"
+    # highlight_events utilise les colonnes xuid/gamertag
+    events_xuid_expr = "xuid"
+    events_gt_expr = "gamertag"
 
     if force:
         target_conn.execute("DROP TABLE IF EXISTS killer_victim_pairs")
@@ -220,20 +213,17 @@ def backfill_killer_victim_pairs(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def backfill_end_time(conn: Any, force: bool = False) -> int:
-    """Met à jour end_time (start_time + time_played_seconds).
+def backfill_end_time(conn: Any, force: bool = False, *, shared_conn: Any) -> int:
+    """Met à jour end_time (start_time + time_played_seconds) dans shared.match_registry.
 
     Args:
-        conn: Connexion DuckDB.
+        conn: Connexion DuckDB joueur (non utilisée, conservée pour compatibilité de signature).
         force: Si True, recalcule pour tous les matchs.
+        shared_conn: Connexion shared_matches.duckdb (obligatoire).
 
     Returns:
         Nombre de lignes mises à jour.
     """
-    from src.data.sync.migrations import ensure_end_time_column
-
-    ensure_end_time_column(conn)
-
     try:
         where_clause = (
             "WHERE start_time IS NOT NULL AND time_played_seconds IS NOT NULL"
@@ -242,9 +232,9 @@ def backfill_end_time(conn: Any, force: bool = False) -> int:
             "AND start_time IS NOT NULL "
             "AND time_played_seconds IS NOT NULL"
         )
-        cursor = conn.execute(
+        cursor = shared_conn.execute(
             f"""
-            UPDATE match_stats
+            UPDATE match_registry
             SET end_time = start_time + (time_played_seconds * INTERVAL '1 SECOND')
             {where_clause}
             RETURNING match_id
@@ -276,12 +266,19 @@ except ImportError:
     MIN_MATCHES_FOR_RELATIVE = 10
 
 
-def compute_performance_score_for_match(conn: Any, match_id: str) -> bool:
+def compute_performance_score_for_match(
+    conn: Any, match_id: str, *, shared_conn: Any, xuid: str
+) -> bool:
     """Calcule et met à jour le score de performance pour un match.
 
+    Lit depuis shared.match_participants + match_registry,
+    écrit dans player_match_enrichment (player DB).
+
     Args:
-        conn: Connexion DuckDB.
+        conn: Connexion DuckDB (player DB pour player_match_enrichment).
         match_id: ID du match.
+        shared_conn: Connexion vers shared_matches.duckdb (obligatoire).
+        xuid: XUID du joueur (obligatoire).
 
     Returns:
         True si le score a été calculé, False sinon.
@@ -289,39 +286,42 @@ def compute_performance_score_for_match(conn: Any, match_id: str) -> bool:
     if not PERFORMANCE_SCORE_AVAILABLE:
         return False
 
-    from src.data.sync.migrations import ensure_performance_score_column, get_table_columns
-
     try:
-        existing_cols = get_table_columns(conn, "match_stats")
+        # S'assurer que player_match_enrichment existe
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS player_match_enrichment (
+                match_id VARCHAR PRIMARY KEY,
+                performance_score FLOAT,
+                session_id VARCHAR,
+                session_label VARCHAR,
+                is_with_friends BOOLEAN,
+                teammates_signature VARCHAR,
+                known_teammates_count SMALLINT,
+                friends_xuids VARCHAR,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-        optional_cols = ["personal_score", "damage_dealt", "rank", "team_mmr", "enemy_mmr"]
-
-        def _col_or_null(col: str) -> str:
-            return col if col in existing_cols else f"NULL AS {col}"
-
-        optional_select = ",\n                   ".join(_col_or_null(c) for c in optional_cols)
-
-        ensure_performance_score_column(conn)
-
-        # Vérifier si le score existe déjà
+        # Vérifier si le score existe déjà dans player_match_enrichment
         existing = conn.execute(
-            "SELECT performance_score FROM match_stats WHERE match_id = ?",
+            "SELECT performance_score FROM player_match_enrichment WHERE match_id = ?",
             (match_id,),
         ).fetchone()
-
         if existing and existing[0] is not None:
             return False
 
-        # Récupérer les données du match actuel
-        match_data = conn.execute(
-            f"""
-            SELECT match_id, start_time, kills, deaths, assists, kda, accuracy,
-                   time_played_seconds, avg_life_seconds,
-                   {optional_select}
-            FROM match_stats
-            WHERE match_id = ?
+        # Lire depuis shared.match_participants + match_registry
+        match_data = shared_conn.execute(
+            """
+            SELECT mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
+                   mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
+                   mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr
+            FROM match_participants mp
+            JOIN match_registry mr ON mr.match_id = mp.match_id
+            WHERE mp.match_id = ? AND mp.xuid = ?
             """,
-            (match_id,),
+            (match_id, xuid),
         ).fetchone()
 
         if not match_data:
@@ -331,21 +331,23 @@ def compute_performance_score_for_match(conn: Any, match_id: str) -> bool:
         if match_start_time is None:
             return False
 
-        # Charger l'historique directement en Polars
+        # Historique depuis shared
         try:
-            history_df = conn.execute(
-                f"""
+            history_df = shared_conn.execute(
+                """
                 SELECT
-                    match_id, start_time, kills, deaths, assists, kda, accuracy,
-                    time_played_seconds, avg_life_seconds,
-                    {optional_select}
-                FROM match_stats
-                WHERE match_id != ?
-                  AND start_time IS NOT NULL
-                  AND start_time < ?
-                ORDER BY start_time ASC
+                    mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
+                    mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
+                    mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr
+                FROM match_participants mp
+                JOIN match_registry mr ON mr.match_id = mp.match_id
+                WHERE mp.xuid = ?
+                  AND mp.match_id != ?
+                  AND mr.start_time IS NOT NULL
+                  AND mr.start_time < ?
+                ORDER BY mr.start_time ASC
                 """,
-                (match_id, match_start_time),
+                (xuid, match_id, match_start_time),
             ).pl()
         except Exception as e:
             logger.warning(f"Erreur chargement historique pour {match_id}: {e}")
@@ -354,7 +356,7 @@ def compute_performance_score_for_match(conn: Any, match_id: str) -> bool:
         if history_df.is_empty() or len(history_df) < MIN_MATCHES_FOR_RELATIVE:
             return False
 
-        # Dict au lieu de pd.Series
+        # Dict pour le calcul du score
         match_dict = {
             "kills": match_data[2] or 0,
             "deaths": match_data[3] or 0,
@@ -366,15 +368,20 @@ def compute_performance_score_for_match(conn: Any, match_id: str) -> bool:
             "damage_dealt": match_data[10],
             "rank": match_data[11],
             "team_mmr": match_data[12],
-            "enemy_mmr": match_data[13],
+            "enemy_mmr": match_data[13] if len(match_data) > 13 else None,
         }
 
         score = compute_relative_performance_score(match_dict, history_df)
 
         if score is not None:
+            # Écrire dans player_match_enrichment (player DB)
             conn.execute(
-                "UPDATE match_stats SET performance_score = ? WHERE match_id = ?",
-                (score, match_id),
+                "INSERT INTO player_match_enrichment (match_id, performance_score) "
+                "VALUES (?, ?) "
+                "ON CONFLICT (match_id) DO UPDATE SET "
+                "performance_score = EXCLUDED.performance_score, "
+                "updated_at = now()",
+                (match_id, score),
             )
             return True
 
@@ -383,6 +390,207 @@ def compute_performance_score_for_match(conn: Any, match_id: str) -> bool:
     except Exception as e:
         logger.warning(f"Erreur calcul score performance pour {match_id}: {e}")
         return False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Participants Enrich (V5)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def backfill_participants_enrich(
+    shared_conn: Any,
+    *,
+    max_matches: int | None = None,
+    force: bool = False,
+    requests_per_second: int = 5,
+) -> int:
+    """Backfill les colonnes étendues + MMR dans shared.match_participants.
+
+    Colonnes stats : headshot_kills, max_killing_spree, kda, accuracy,
+    time_played_seconds, grenade_kills, melee_kills, power_weapon_kills,
+    personal_score, shots_fired, shots_hit, damage_dealt, damage_taken,
+    avg_life_seconds, kills, deaths, assists.
+    Colonnes MMR : team_mmr, kills_expected, kills_stddev, deaths_expected,
+    deaths_stddev, assists_expected, assists_stddev.
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        max_matches: Nombre max de matchs à traiter.
+        force: Si True, recalcule même si les colonnes existent déjà.
+        requests_per_second: Rate limiting API.
+
+    Returns:
+        Nombre de matchs enrichis.
+    """
+    from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
+    from src.data.sync.transformers import (
+        extract_participants,
+        extract_xuids_from_match,
+        transform_skill_stats,
+    )
+
+    # Détection des matchs à enrichir
+    if force:
+        query = (
+            "SELECT DISTINCT mp.match_id "
+            "FROM match_participants mp "
+            "JOIN match_registry mr ON mp.match_id = mr.match_id "
+            "ORDER BY mr.start_time DESC"
+        )
+        params: list = []
+    else:
+        query = (
+            "SELECT DISTINCT mp.match_id "
+            "FROM match_participants mp "
+            "JOIN match_registry mr ON mp.match_id = mr.match_id "
+            "WHERE mp.headshot_kills IS NULL "
+            "   OR mp.kda IS NULL "
+            "   OR mp.team_mmr IS NULL "
+            "ORDER BY mr.start_time DESC"
+        )
+        params = []
+
+    if max_matches:
+        query += f" LIMIT {int(max_matches)}"
+
+    match_ids = [r[0] for r in shared_conn.execute(query, params).fetchall()]
+
+    if not match_ids:
+        logger.info("Aucun match à enrichir (participants-enrich)")
+        return 0
+
+    logger.info(f"Participants-enrich : {len(match_ids)} match(s) à traiter")
+
+    tokens = await get_tokens_from_env()
+    if not tokens:
+        logger.error("Tokens SPNKr non disponibles")
+        return 0
+
+    count = 0
+    async with SPNKrAPIClient(
+        tokens=tokens,
+        requests_per_second=requests_per_second,
+    ) as client:
+        for i, match_id in enumerate(match_ids, 1):
+            try:
+                logger.info(f"  [{i}/{len(match_ids)}] Enrichissement {match_id[:20]}...")
+
+                # 1. Récupérer les stats du match (pour extract_participants)
+                stats_json = await client.get_match_stats(match_id)
+                if not stats_json:
+                    logger.warning(f"  Impossible de récupérer {match_id}")
+                    continue
+
+                # 2. Extraire les participants avec toutes les colonnes étendues
+                participant_rows = extract_participants(stats_json)
+                if not participant_rows:
+                    continue
+
+                # 3. UPDATE match_participants pour chaque participant
+                for row in participant_rows:
+                    shared_conn.execute(
+                        "UPDATE match_participants SET "
+                        "kills = COALESCE(?, kills), "
+                        "deaths = COALESCE(?, deaths), "
+                        "assists = COALESCE(?, assists), "
+                        "shots_fired = COALESCE(?, shots_fired), "
+                        "shots_hit = COALESCE(?, shots_hit), "
+                        "damage_dealt = COALESCE(?, damage_dealt), "
+                        "damage_taken = COALESCE(?, damage_taken), "
+                        "avg_life_seconds = COALESCE(?, avg_life_seconds), "
+                        "headshot_kills = COALESCE(?, headshot_kills), "
+                        "max_killing_spree = COALESCE(?, max_killing_spree), "
+                        "kda = COALESCE(?, kda), "
+                        "accuracy = COALESCE(?, accuracy), "
+                        "time_played_seconds = COALESCE(?, time_played_seconds), "
+                        "grenade_kills = COALESCE(?, grenade_kills), "
+                        "melee_kills = COALESCE(?, melee_kills), "
+                        "power_weapon_kills = COALESCE(?, power_weapon_kills), "
+                        "personal_score = COALESCE(?, personal_score) "
+                        "WHERE match_id = ? AND xuid = ?",
+                        (
+                            row.kills,
+                            row.deaths,
+                            row.assists,
+                            row.shots_fired,
+                            row.shots_hit,
+                            row.damage_dealt,
+                            row.damage_taken,
+                            row.avg_life_seconds,
+                            row.headshot_kills,
+                            row.max_killing_spree,
+                            row.kda,
+                            row.accuracy,
+                            row.time_played_seconds,
+                            row.grenade_kills,
+                            row.melee_kills,
+                            row.power_weapon_kills,
+                            row.personal_score,
+                            row.match_id,
+                            row.xuid,
+                        ),
+                    )
+
+                # 4. Récupérer et appliquer les données skill/MMR
+                xuids = extract_xuids_from_match(stats_json)
+                if xuids:
+                    skill_json = await client.get_skill_stats(match_id, xuids)
+                    if skill_json:
+                        value = skill_json.get("Value")
+                        if isinstance(value, list):
+                            for player in value:
+                                if not isinstance(player, dict):
+                                    continue
+                                player_id = player.get("Id", "")
+                                if not isinstance(player_id, str):
+                                    continue
+                                # Extraire le xuid du player_id
+                                import re
+
+                                xuid_match = re.search(r"xuid\((\d+)\)", player_id)
+                                if not xuid_match:
+                                    continue
+                                p_xuid = xuid_match.group(1)
+                                p_skill = transform_skill_stats(skill_json, match_id, p_xuid)
+                                if p_skill and p_skill.team_mmr is not None:
+                                    shared_conn.execute(
+                                        "UPDATE match_participants SET "
+                                        "team_mmr = COALESCE(?, team_mmr), "
+                                        "enemy_mmr = COALESCE(?, enemy_mmr), "
+                                        "kills_expected = COALESCE(?, kills_expected), "
+                                        "kills_stddev = COALESCE(?, kills_stddev), "
+                                        "deaths_expected = COALESCE(?, deaths_expected), "
+                                        "deaths_stddev = COALESCE(?, deaths_stddev), "
+                                        "assists_expected = COALESCE(?, assists_expected), "
+                                        "assists_stddev = COALESCE(?, assists_stddev) "
+                                        "WHERE match_id = ? AND xuid = ?",
+                                        (
+                                            p_skill.team_mmr,
+                                            p_skill.enemy_mmr,
+                                            p_skill.kills_expected,
+                                            p_skill.kills_stddev,
+                                            p_skill.deaths_expected,
+                                            p_skill.deaths_stddev,
+                                            p_skill.assists_expected,
+                                            p_skill.assists_stddev,
+                                            match_id,
+                                            p_xuid,
+                                        ),
+                                    )
+
+                shared_conn.commit()
+                count += 1
+                logger.info(f"  ✅ Match {match_id[:20]}... enrichi")
+
+            except Exception as e:
+                logger.error(f"  Erreur enrichissement {match_id}: {e}")
+                import traceback
+
+                traceback.print_exc()
+                continue
+
+    logger.info(f"✅ Participants-enrich terminé : {count}/{len(match_ids)} matchs enrichis")
+    return count
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -424,21 +632,54 @@ def backfill_citations(
         logger.warning("Aucun mapping de citations trouvé")
         return 0
 
-    # Récupérer les match_ids à traiter via la connexion existante
+    # Récupérer les match_ids à traiter via shared.match_participants
+    shared_path = db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+    if not shared_path.exists():
+        logger.warning("shared_matches.duckdb introuvable pour les citations")
+        return 0
+    try:
+        conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
+    except Exception as e:
+        err = str(e).lower()
+        if "already" not in err and "conflict" not in err:
+            logger.debug(f"Attach shared pour citations: {e}")
+
+    # S'assurer que match_citations existe (table locale dans player DB)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS match_citations (
+            match_id VARCHAR NOT NULL,
+            citation_name_norm VARCHAR NOT NULL,
+            value INTEGER DEFAULT 0,
+            PRIMARY KEY (match_id, citation_name_norm)
+        )
+    """)
+
     if force:
         match_ids = [
             r[0]
-            for r in conn.execute("SELECT match_id FROM match_stats ORDER BY start_time").fetchall()
+            for r in conn.execute(
+                "SELECT DISTINCT mp.match_id "
+                "FROM shared.match_participants mp "
+                "JOIN shared.match_registry mr ON mp.match_id = mr.match_id "
+                "WHERE mp.xuid = ? "
+                "ORDER BY mr.start_time",
+                [xuid],
+            ).fetchall()
         ]
     else:
-        # Matchs sans aucune citation dans match_citations
         match_ids = [
             r[0]
             for r in conn.execute(
-                "SELECT ms.match_id FROM match_stats ms "
-                "WHERE NOT EXISTS ("
-                "  SELECT 1 FROM match_citations mc WHERE mc.match_id = ms.match_id"
-                ") ORDER BY ms.start_time"
+                "SELECT DISTINCT mp.match_id "
+                "FROM shared.match_participants mp "
+                "JOIN shared.match_registry mr ON mp.match_id = mr.match_id "
+                "WHERE mp.xuid = ? "
+                "  AND NOT EXISTS ("
+                "    SELECT 1 FROM match_citations mc "
+                "    WHERE mc.match_id = mp.match_id"
+                "  ) "
+                "ORDER BY mr.start_time",
+                [xuid],
             ).fetchall()
         ]
 
