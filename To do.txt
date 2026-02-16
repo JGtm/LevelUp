@@ -2,8 +2,7 @@ Correctifs :
 - Modes et playlists à revoir encore (surtout sur la BDD de Madina97294, les traductions ou la catégorisation ne sont pas respectées)
 
 Heatmap d'Impact & Cercle d'Amis :Périmètre : Ne prendre en compte que la liste de mes amis (exclure les joueurs inconnus/aléatoires des calculs de cette section).Graphique : Grille Joueurs (Y) vs Matchs (X) avec des icônes ou couleurs spécifiques :Vert (First Blood) : Le premier frag du match a été fait par cet ami.Or (Clutch Finisher) : Le match s'est fini sur une VICTOIRE et cet ami a fait le dernier frag.Rouge (Last Casualty) : Le match s'est fini sur une DÉFAITE et cet ami a été la dernière victime.Tableau de 'Taquinerie' (Impact Score) :Calcule le score ainsi : $+2$ pour un Clutch Finisher, $+1$ pour un First Blood, et $-1$ pour une Last Casualty.Affiche le classement final : "Le MVP de la soirée" (en haut) vs "Le Maillon Faible" (en bas).
-
-Dernier premier frag ? Première mort ?
+-> + Dernier premier frag pour savoir qui est le plus lent ? Première mort pour savoir qui est la première victime ?
 
 Traductions :
 - Clutch Finisher (+2) : "Finisseur".
@@ -12,6 +11,4 @@ Traductions :
 
 Citations qu'on peut ressortir avec les scores obtenus pendant le match ? -> vérifier que les citations et la logique est pas dispersée comme en legacy et que c'est bien documenté
 
-Pas besoin d'adapter les tests V4 ou legacy, ça n'a pas de sens, on adapte à la V5 ou on supprime. On doit couper le cordon absolument partout
-
-On coupe le cordon V4/legacy partout : plus de fallbacks, plus de match_stats, plus de backward compatibility, plus de player_match_stats dans le code actif (et les tests). Tout V5.
+Médaille ange gardien ??

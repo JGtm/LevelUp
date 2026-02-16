@@ -26,7 +26,8 @@
       "Bash(/c/msys64/ucrt64/bin/python3.12.exe:*)",
       "Bash(python3:*)",
       "Bash(pacman:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(grep:*)"
     ]
   }
 }
