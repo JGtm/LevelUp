@@ -534,7 +534,7 @@ class TestGetMatchSource:
     def test_v5_returns_subquery_with_params(self, repo_v5: DuckDBRepository):
         """En mode v5, retourne une sous-requête avec le xuid en paramètre."""
         conn = repo_v5._get_connection()
-        source, params = repo_v5._get_match_source(conn)
+        source, params, uses_mv = repo_v5._get_match_source(conn)
         assert "shared.match_registry" in source
         assert "shared.match_participants" in source
         assert len(params) == 1
@@ -543,14 +543,15 @@ class TestGetMatchSource:
     def test_v4_returns_match_stats(self, repo_v4: DuckDBRepository):
         """En mode v4, retourne 'match_stats' sans paramètres."""
         conn = repo_v4._get_connection()
-        source, params = repo_v4._get_match_source(conn)
+        source, params, uses_mv = repo_v4._get_match_source(conn)
         assert source == "match_stats"
         assert params == []
+        assert uses_mv is False
 
     def test_v5_no_ms_returns_subquery(self, repo_v5_no_ms: DuckDBRepository):
         """En mode v5 sans match_stats locale, retourne la sous-requête."""
         conn = repo_v5_no_ms._get_connection()
-        source, params = repo_v5_no_ms._get_match_source(conn)
+        source, params, uses_mv = repo_v5_no_ms._get_match_source(conn)
         assert "shared.match_registry" in source
         assert len(params) == 1
 

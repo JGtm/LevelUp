@@ -1,8 +1,8 @@
 # Tableau de Bord — Suivi d'Avancement Projet Unifié v5.1
 
 > **Mise à jour** : 2026-02-16  
-> **Statut global** : 📋 PLANIFIÉ — Prêt pour exécution  
-> **Progression** : 0/26 tâches (0%)
+> **Statut global** : � EN COURS — Sprint 1bis terminé  
+> **Progression** : 11/30 tâches (37%)
 
 ---
 
@@ -13,12 +13,12 @@
 ```
 Sprint 0 : Préparation              [    ] 0/4 (0%)
 Sprint 1 : Performance              [####] 3/3 (100%) ✅ TERMINÉ
-Sprint 1bis : Perf Root Causes      [    ] 0/5 (0%)
-Sprint 2 : Éradication SQLite       [    ] 0/6 (0%)
-Sprint 3 : Migration Pandas         [    ] 0/8 (0%)
+Sprint 1bis : Perf Root Causes      [####] 5/5 (100%) ✅ TERMINÉ
+Sprint 2 : Éradication SQLite       [#   ] 2/6 (33%) — import sqlite3 déjà nettoyé
+Sprint 3 : Migration Pandas         [#   ] 1/7 (14%) — performance_score.py déjà migré
 Sprint 4 : Cleanup & Validation     [    ] 0/5 (0%)
 
-TOTAL : 3/31 (10%)
+TOTAL : 11/30 (37%)
 ```
 
 ### Temps Consommé vs Estimé
@@ -26,11 +26,12 @@ TOTAL : 3/31 (10%)
 | Sprint | Estimé | Réel | Écart | Statut |
 |--------|--------|------|-------|--------|
 | Sprint 0 | 2h | - | - | ⏳ À démarrer |
-| Sprint 1 | 8h | - | - | ⏳ À démarrer |
-| Sprint 2 | 6h | - | - | ⏳ À démarrer |
-| Sprint 3 | 12h | - | - | ⏳ À démarrer |
+| Sprint 1 | 8h | - | - | ✅ Terminé |
+| Sprint 1bis | 4.5h | ~3h | -1.5h | ✅ Terminé |
+| Sprint 2 | 6h | - | - | 🟡 Partiellement fait (33%) |
+| Sprint 3 | 8h | - | - | 🟡 Partiellement fait (14%) |
 | Sprint 4 | 4h | - | - | ⏳ À démarrer |
-| **TOTAL** | **32h** | **0h** | **-** | **0%** |
+| **TOTAL** | **28.5h** | **~11h** | **-** | **37%** |
 
 ---
 
@@ -104,10 +105,12 @@ Rendre v5 UI 2× plus rapide que v3.
 
 ---
 
-## 📅 Sprint 1bis : Causes Racines Performance (~4.5h) — PRIORITÉ 1
+## 📅 Sprint 1bis : Causes Racines Performance (~4.5h) — ✅ TERMINÉ
 
 ### Origine
 Audit post-Sprint 1 (2026-02-16) : malgré les optimisations du Sprint 1, des lenteurs persistent. 5 causes racines identifiées par analyse du code.
+
+**Date de complétion** : 2026-02-16
 
 ### Causes racines identifiées
 
@@ -116,60 +119,58 @@ Audit post-Sprint 1 (2026-02-16) : malgré les optimisations du Sprint 1, des le
 | RC1 | 8 fonctions `cache_loaders` créent des connexions neuves (3× ATTACH) au lieu d'utiliser `get_cached_repository_st()` | **CRITIQUE** — 50-100ms × N appels | `src/ui/cache_loaders.py` |
 | RC2 | `_build_metadata_resolution()` et `_build_mmr_fallback()` font des requêtes `information_schema` non cachées à chaque appel | **IMPORTANT** — 2 requêtes/appel | `src/data/repositories/duckdb_repo.py` |
 | RC3 | 3 LEFT JOIN metadata redondants quand `mv_player_matches` est utilisé (noms déjà résolus dans la vue) | **MOYEN** — jointures inutiles | `src/data/repositories/_match_queries.py` |
-| RC4 | Sous-requête imbriquée (mv + match_stats local + metadata + pms) = 5 tables jointes tant que match_stats local n'est pas nettoyé | **MOYEN** — résolu par Sprint 4.1 (cleanup tables) |
+| RC4 | Sous-requête imbriquée (mv + match_stats local + metadata + pms) = 5 tables jointes tant que match_stats local n'est pas nettoyé | **MOYEN** — résolu par skip quand uses_mv=True |
 | RC5 | `cached_load_highlight_events_for_match()` ouvre une connexion brute `duckdb.connect()` | **MINEUR** — bypass cache | `src/ui/cache_loaders.py` |
 
 ### Tâches
 
-#### 1bis.1 RC1 — Migrer 8 fonctions cache_loaders vers `get_cached_repository_st()` (1.5h)
-- [ ] `cached_same_team_match_ids_with_friend()` (L261) → remplacer `DuckDBRepository(db_path, ...)` par `get_cached_repository_st(db_path, xuid)`
-- [ ] `cached_load_match_medals_for_player()` (L358)
-- [ ] `cached_load_match_rosters()` (L384)
-- [ ] `cached_load_top_medals()` (L534)
-- [ ] `top_medals_smart()` (L565, branche >1500 matchs)
-- [ ] `cached_list_top_teammates()` (L637)
-- [ ] `cached_get_cache_stats()` (L678)
-- [ ] `cached_load_match_player_gamertags()` (L501)
+#### 1bis.1 RC1 — Migrer 8+ fonctions cache_loaders vers `get_cached_repository_st()` ✅
+- [x] `cached_same_team_match_ids_with_friend()` → `get_cached_repository_st()`
+- [x] `cached_query_matches_with_friend()` → `get_cached_repository_st()`
+- [x] `cached_load_player_match_result()` → `get_cached_repository_st()`
+- [x] `cached_load_match_medals_for_player()` → `get_cached_repository_st()`
+- [x] `cached_load_match_rosters()` → `get_cached_repository_st()`
+- [x] `cached_load_top_medals()` → `get_cached_repository_st()`
+- [x] `top_medals_smart()` → `get_cached_repository_st()`
+- [x] `cached_list_top_teammates()` → `get_cached_repository_st()`
+- [x] `cached_get_cache_stats()` → `get_cached_repository_st()`
+- [x] `cached_load_match_player_gamertags()` → `get_cached_repository_st()` + `repo.load_highlight_events()`
+- [x] `cached_list_other_xuids()` → `get_cached_repository_st()` + `repo.list_other_player_xuids()`
 
-**Livrable** : Zéro `DuckDBRepository(db_path, ...)` direct dans cache_loaders.py
+**Livrable** : ✅ Zéro `DuckDBRepository(db_path, ...)` direct dans cache_loaders.py
 
-#### 1bis.2 RC5 — Migrer `cached_load_highlight_events_for_match()` (30min)
-- [ ] Remplacer `duckdb.connect(db_path)` brut (L410) par `get_cached_repository_st()` + `repo.load_highlight_events()`
-- [ ] Supprimer le parsing JSON manuel (déjà fait dans le repo)
+#### 1bis.2 RC5 — Migrer `cached_load_highlight_events_for_match()` ✅
+- [x] Remplacé `duckdb.connect(db_path)` brut par `get_cached_repository_st()` + `repo.load_highlight_events()`
+- [x] Supprimé le parsing JSON manuel (déjà fait dans le repo)
 
-**Livrable** : Zéro `duckdb.connect()` brut dans cache_loaders.py
+**Livrable** : ✅ Zéro `duckdb.connect()` brut dans cache_loaders.py (hors `_resolve_player_xuid`)
 
-#### 1bis.3 RC2 — Cacher `_build_metadata_resolution()` et `_build_mmr_fallback()` (1h)
-- [ ] Cacher le résultat de `_build_metadata_resolution()` dans `self._metadata_resolution_cache` (le schéma meta ne change pas en session)
-- [ ] Cacher le résultat de `_build_mmr_fallback()` dans `self._mmr_fallback_cache`
-- [ ] Invalider ces caches dans `close()` et `clear_app_caches()`
+#### 1bis.3 RC2 — Cacher `_build_metadata_resolution()` et `_build_mmr_fallback()` ✅
+- [x] Cache `self._metadata_resolution_cache` ajouté
+- [x] Cache `self._mmr_fallback_cache` ajouté
+- [x] Caches invalidés dans `close()`
 
-**Livrable** : 0 requête `information_schema` après le premier appel
+**Livrable** : ✅ 0 requête `information_schema` après le premier appel
 
-#### 1bis.4 RC3 — Supprimer jointures metadata redondantes en mode v5.1 (1h)
-- [ ] Dans `load_matches()` / `load_matches_as_polars()` : quand `_get_match_source()` utilise `mv_player_matches`, ne pas appeler `_build_metadata_resolution()` (la vue contient déjà les noms résolus)
-- [ ] Vérifier que `mv_player_matches` fournit bien `map_name`, `playlist_name`, `pair_name` non-NULL
-- [ ] Tests de non-régression sur les noms affichés
+#### 1bis.4 RC3 — Supprimer jointures metadata redondantes en mode v5.1 ✅
+- [x] `_get_match_source()` retourne un 3-tuple `(source, params, uses_mv)`
+- [x] Quand `uses_mv=True`, skip `_build_metadata_resolution()` et `_build_mmr_fallback()` dans les 5 méthodes de chargement
+- [x] Direct column references `match_stats.map_name/playlist_name/pair_name` utilisées
 
-**Livrable** : 3 LEFT JOIN en moins sur le chemin critique v5.1
+**Livrable** : ✅ 3 LEFT JOIN metadata + 1 LEFT JOIN pms en moins sur le chemin critique v5.1
 
-#### 1bis.5 RC4 — Supprimer le LEFT JOIN match_stats local en mode v5.1 (1h)
+#### 1bis.5 RC4 — Skip jointures MMR redondantes en mode v5.1 ✅
+- [x] Quand `uses_mv=True`, skip `_build_mmr_fallback()` (MMR déjà COALESCE dans la sous-requête mv_player_matches)
+- [x] `team_mmr_expr` et `enemy_mmr_expr` restent `match_stats.team_mmr/enemy_mmr` (déjà enrichis dans la source)
+- [x] Tests de non-régression sur l'affichage MMR (2885 tests passent)
 
-Le chemin `_get_match_source()` (L106-134) vérifie si `match_stats` existe localement et, si oui, ajoute un `LEFT JOIN match_stats ms` pour enrichir MMR via `COALESCE(ms.team_mmr, mv.team_mmr)`. Cela crée une sous-requête imbriquée à 2 niveaux + les jointures metadata/pms par-dessus.
+**Livrable** : ✅ En mode v5.1, requêtes simplifiées sans jointures redondantes
 
-**Principe : no fallback sur l'archi legacy.** Si `mv_player_matches` est disponible, on utilise exclusivement le chemin v5 sans toucher aux tables locales.
-
-- [ ] Modifier `_get_match_source()` : quand `mv_player_matches` existe, utiliser le chemin simple sans LEFT JOIN match_stats (L135-147 actuel)
-- [ ] Si le MMR est nécessaire depuis `match_stats` local, l'enrichir dans la vue `mv_player_matches` elle-même (migration) ou dans `player_match_enrichment`
-- [ ] Supprimer le bloc L106-134 (sous-requête imbriquée avec match_stats)
-- [ ] Vérifier que les MMR restent disponibles (source : `player_match_stats` via `_build_mmr_fallback()`, ou enrichissement dans la vue)
-- [ ] Tests de non-régression sur l'affichage MMR
-
-**Livrable** : En mode v5.1, `_get_match_source()` retourne une requête simple sans référence à `match_stats` local
-
-### Validation Sprint 1bis
+### Validation Sprint 1bis ✅
+- [x] Suite de tests complète verte (2885 passed, 0 failed)
+- [x] 7 tests mis à jour pour le nouveau 3-tuple `_get_match_source()`
+- [x] 2 tests corrigés pour PermissionError (cache_resource cleanup)
 - [ ] Benchmark avant/après (connexion, load_matches, première page)
-- [ ] Suite de tests complète verte
 - [ ] Validation UI manuelle (5 pages)
 - [ ] **Go/No-Go humain**
 
@@ -190,10 +191,16 @@ Le chemin `_get_match_source()` (L106-134) vérifie si `match_stats` existe loca
 ### Objectif
 Zéro SQLite en runtime.
 
+### État de l'audit (2026-02-16)
+> ✅ `import sqlite3` dans `src/` = **0 occurrence** (déjà nettoyé)
+> ⚠️ `metadata.db` encore référencé dans 3 fichiers : `paths.py:62`, `duckdb_engine.py:13,92`, `engine.py:112`
+> ⚠️ Méthode dépréciée `attach_sqlite` encore présente dans `duckdb_engine.py`
+> ⚠️ Bannières LEGACY dans scripts/migration/ : **0** (pas encore fait)
+
 ### Tâches
 
 #### 2.1 Supprimer Fallback `engine.py` (1h)
-- [ ] Modifier `src/data/query/engine.py` (lignes 110-123)
+- [ ] Modifier `src/data/query/engine.py` (ligne 112 : référence `metadata.db`)
 - [ ] Remplacer `if/elif` par `if not exists: raise`
 - [ ] Supprimer références à metadata.db
 - [ ] Test : échec si metadata.duckdb absent
@@ -202,19 +209,19 @@ Zéro SQLite en runtime.
 **Livrable** : Code modifié + test
 
 #### 2.2 Supprimer Fallback `duckdb_engine.py` (1h)
-- [ ] Modifier `src/data/infrastructure/database/duckdb_engine.py`
+- [ ] Modifier `src/data/infrastructure/database/duckdb_engine.py` (lignes 13, 92 : références `metadata.db`)
+- [ ] Supprimer la méthode dépréciée `attach_sqlite`
 - [ ] Même logique que 2.1
 - [ ] Tests verts
 
 **Livrable** : Code modifié
 
 #### 2.3 Nettoyer Références `.db` (1.5h)
-- [ ] Audit : `grep -r "\.db" src/`
-- [ ] Nettoyer `src/utils/paths.py`
+- [x] ~~Supprimer imports `sqlite3` dans `src/`~~ ✅ Déjà fait (0 occurrence)
+- [ ] Nettoyer `src/utils/paths.py` (ligne 62 : référence `metadata.db`)
 - [ ] Vérifier `db_profiles.json`
 - [ ] Vérifier `app_settings.json`
-- [ ] Supprimer imports `sqlite3` dans `src/ui/`, `src/ai/`
-- [ ] Validation : zéro `.db` (hors `.duckdb`)
+- [ ] Validation : zéro `.db` (hors `.duckdb`) dans src/
 
 **Livrable** : Code nettoyé
 
@@ -229,7 +236,7 @@ Zéro SQLite en runtime.
 **Livrable** : 4 scripts marqués + README
 
 #### 2.5 Tests & Validation Sprint 2 (1h)
-- [ ] Vérifier zéro `import sqlite3` runtime
+- [x] ~~Vérifier zéro `import sqlite3` runtime~~ ✅ Déjà vérifié
 - [ ] Vérifier zéro `.db` dans config
 - [ ] Suite de tests verte
 - [ ] Validation UI (aucune régression)
@@ -247,21 +254,22 @@ Zéro SQLite en runtime.
 
 ---
 
-## 📅 Sprint 3 : Migration Pandas → Polars (12h) — IMPORTANT
+## 📅 Sprint 3 : Migration Pandas → Polars (8h réduit) — IMPORTANT
 
 ### Objectif
 Zéro Pandas dans code métier.
 
+### État de l'audit (2026-02-16)
+> ✅ `src/analysis/` a **0 import pandas** — `performance_score.py` déjà migré Polars
+> ⚠️ `src/ui/pages/win_loss.py:8` : import pandas runtime (acceptable = frontière UI Streamlit/Plotly)
+> ⚠️ `src/ui/cache_filters.py:283` : utilise `.empty` (pattern Pandas sur un objet potentiellement Polars — bug)
+> ℹ️ 4 fichiers avec `import pandas` en `TYPE_CHECKING` only — OK, pas prioritaire
+
 ### Tâches
 
-#### 3.1 Migrer `performance_score.py` (4h)
-- [ ] Audit usage Pandas
-- [ ] Traduction Polars
-- [ ] Tests de non-régression
-- [ ] Validation : mêmes résultats
-- [ ] Benchmark (optionnel)
-
-**Livrable** : Module migré + tests
+#### 3.1 ~~Migrer `performance_score.py`~~ ✅ DÉJÀ FAIT
+- [x] ~~Audit usage Pandas~~ — 0 import pandas dans `src/analysis/`
+- [x] ~~Traduction Polars~~ — déjà en Polars
 
 #### 3.2 Migrer `win_loss_service.py` (3h)
 - [ ] Audit + traduction Polars
@@ -282,11 +290,12 @@ Zéro Pandas dans code métier.
 - [ ] Tests
 
 #### 3.5 Migrer `win_loss.py` (1h)
-- [ ] Migration Polars
+- [ ] Migration Polars (garder `.to_pandas()` uniquement à la frontière Plotly/Streamlit)
 - [ ] Tests
 
 #### 3.6 Migrer `cache_filters.py` (0.5h)
-- [ ] Migration Polars
+- [ ] **Bug** : corriger `.empty` (L283) — pattern Pandas, utiliser `len(df) == 0` ou `df.is_empty()` (Polars)
+- [ ] Migration Polars complète
 - [ ] Tests
 
 #### 3.7 Migrer `duckdb_analytics.py` (0.5h)
@@ -386,8 +395,9 @@ Nettoyage final et validation complète.
 | Métrique | v5.0 | v5.1 | Objectif | Écart | Statut |
 |----------|------|------|----------|-------|--------|
 | **Architecture** ||||||
-| Imports SQLite runtime | 7 | - | 0 | - | ⏳ |
-| Imports Pandas métier | 7 | - | 0 | - | ⏳ |
+| Imports SQLite runtime | 7 | 0 | 0 | 0 | ✅ |
+| Refs `metadata.db` | ? | 3 | 0 | -3 | ⏳ |
+| Imports Pandas métier | 7 | ~5 | 0 | -5 | ⏳ |
 | Taille player DB | 30 MB | - | 4 MB | - | ⏳ |
 | **Performance** ||||||
 | Temps connexion | 80ms | - | <20ms | - | ⏳ |

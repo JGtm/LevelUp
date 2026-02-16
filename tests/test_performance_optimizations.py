@@ -257,13 +257,35 @@ class TestMvPlayerMatchesView:
             col_names = [d[0] for d in row] if row else []
 
         expected = [
-            "match_id", "start_time", "map_id", "map_name",
-            "playlist_id", "playlist_name", "pair_id", "pair_name",
-            "game_variant_id", "game_variant_name", "xuid", "outcome", "team_id",
-            "kda", "max_killing_spree", "headshot_kills", "avg_life_seconds",
-            "time_played_seconds", "kills", "deaths", "assists", "accuracy",
-            "my_team_score", "enemy_team_score", "team_mmr", "enemy_mmr",
-            "personal_score", "is_firefight", "is_ranked",
+            "match_id",
+            "start_time",
+            "map_id",
+            "map_name",
+            "playlist_id",
+            "playlist_name",
+            "pair_id",
+            "pair_name",
+            "game_variant_id",
+            "game_variant_name",
+            "xuid",
+            "outcome",
+            "team_id",
+            "kda",
+            "max_killing_spree",
+            "headshot_kills",
+            "avg_life_seconds",
+            "time_played_seconds",
+            "kills",
+            "deaths",
+            "assists",
+            "accuracy",
+            "my_team_score",
+            "enemy_team_score",
+            "team_mmr",
+            "enemy_mmr",
+            "personal_score",
+            "is_firefight",
+            "is_ranked",
         ]
         for col in expected:
             assert col in col_names, f"Colonne {col} manquante dans mv_player_matches"
@@ -289,8 +311,7 @@ class TestMvPlayerMatchesView:
         ensure_mv_player_matches_view(conn)
 
         row = conn.execute(
-            "SELECT kda, kills, deaths, assists FROM mv_player_matches "
-            "WHERE xuid = ? LIMIT 1",
+            "SELECT kda, kills, deaths, assists FROM mv_player_matches " "WHERE xuid = ? LIMIT 1",
             [PLAYER_XUID],
         ).fetchone()
 
@@ -451,20 +472,22 @@ class TestGetMatchSourceOptimized:
     def test_uses_view_when_available(self, repo_with_view: DuckDBRepository):
         """_get_match_source utilise la vue quand elle est disponible."""
         conn = repo_with_view._get_connection()
-        source, params = repo_with_view._get_match_source(conn)
+        source, params, uses_mv = repo_with_view._get_match_source(conn)
 
         assert "mv_player_matches" in source
         assert len(params) == 1
         assert params[0] == PLAYER_XUID
+        assert uses_mv is True
 
     def test_fallback_v5_legacy_without_view(self, repo_without_view: DuckDBRepository):
         """_get_match_source fait le fallback v5.0 sans vue."""
         conn = repo_without_view._get_connection()
-        source, params = repo_without_view._get_match_source(conn)
+        source, params, uses_mv = repo_without_view._get_match_source(conn)
 
         # Devrait utiliser le chemin legacy (shared.match_registry + match_participants)
         assert "shared.match_registry" in source or "mv_player_matches" not in source
         assert len(params) == 1
+        assert uses_mv is False
 
     def test_load_matches_with_view(self, repo_with_view: DuckDBRepository):
         """load_matches fonctionne avec la vue."""
@@ -488,11 +511,12 @@ class TestGetMatchSourceOptimized:
             read_only=True,
         )
         conn = repo._get_connection()
-        source, params = repo._get_match_source(conn)
+        source, params, uses_mv = repo._get_match_source(conn)
 
         assert "match_stats" in source
         assert "mv_player_matches" not in source
         assert params == []
+        assert uses_mv is False
         repo.close()
 
     def test_empty_xuid_mode_unchanged(self, player_db: Path, shared_db: Path):
@@ -505,11 +529,12 @@ class TestGetMatchSourceOptimized:
             read_only=True,
         )
         conn = repo._get_connection()
-        source, params = repo._get_match_source(conn)
+        source, params, uses_mv = repo._get_match_source(conn)
 
         assert "match_stats" in source
         assert "mv_player_matches" not in source
         assert params == []
+        assert uses_mv is False
         repo.close()
 
     def test_match_data_consistency(self, repo_with_view: DuckDBRepository):
@@ -578,6 +603,6 @@ class TestPerformanceBenchmarks:
         time_cached = time.perf_counter() - start
 
         # Le cache devrait être significativement plus rapide
-        assert time_cached < time_no_cache, (
-            f"Cache pas plus rapide: {time_cached:.4f}s vs {time_no_cache:.4f}s"
-        )
+        assert (
+            time_cached < time_no_cache
+        ), f"Cache pas plus rapide: {time_cached:.4f}s vs {time_no_cache:.4f}s"
