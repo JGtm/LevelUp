@@ -523,6 +523,7 @@ class TestSyncEngineBackfillBitmask:
         bf_mask |= BACKFILL_FLAGS["participants_kda"]
         bf_mask |= BACKFILL_FLAGS["participants_shots"]
         bf_mask |= BACKFILL_FLAGS["participants_damage"]
+        bf_mask |= BACKFILL_FLAGS["participants_avg_life"]
         # with_aliases=True
         bf_mask |= BACKFILL_FLAGS["aliases"]
         # with_assets=True

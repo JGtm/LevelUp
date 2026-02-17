@@ -1011,6 +1011,15 @@ class DuckDBSyncEngine:
                     (match_id,),
                 )
 
+                # Marquer le bitmask backfill_completed avec les types syncés
+                bf_mask = self._compute_backfill_mask(options)
+                shared_conn.execute(
+                    "UPDATE match_registry "
+                    "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                    "WHERE match_id = ?",
+                    (bf_mask, match_id),
+                )
+
             if backfill_needed:
                 logger.info(f"Backfill shared pour {match_id}: {', '.join(backfill_needed)}")
 
@@ -1124,6 +1133,15 @@ class DuckDBSyncEngine:
                     ),
                 )
 
+                # Marquer le bitmask backfill_completed avec les types syncés
+                bf_mask = self._compute_backfill_mask(options)
+                shared_conn.execute(
+                    "UPDATE match_registry "
+                    "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                    "WHERE match_id = ?",
+                    (bf_mask, match_id),
+                )
+
             # 5. Insérer les données personnelles dans la player DB
             match_row = transform_match_stats(
                 stats_json,
@@ -1210,6 +1228,7 @@ class DuckDBSyncEngine:
             bf_mask |= BACKFILL_FLAGS["participants_kda"]
             bf_mask |= BACKFILL_FLAGS["participants_shots"]
             bf_mask |= BACKFILL_FLAGS["participants_damage"]
+            bf_mask |= BACKFILL_FLAGS["participants_avg_life"]
         if options.with_aliases:
             bf_mask |= BACKFILL_FLAGS["aliases"]
         if options.with_assets:
