@@ -36,21 +36,30 @@
 | Table | Description |
 |-------|-------------|
 | `match_registry` | Registre central (1 ligne par match unique) |
-| `match_participants` | Stats de tous les joueurs de tous les matchs |
+| `match_participants` | Stats de tous les joueurs de tous les matchs (31 colonnes, incl. MMR) |
 | `highlight_events` | Événements filmés de tous les matchs |
 | `medals_earned` | Médailles de tous les joueurs |
+| `killer_victim_pairs` | Paires killer→victim de tous les matchs |
 | `xuid_aliases` | Mapping global xuid→gamertag |
 
-### stats.duckdb (par joueur)
+### stats.duckdb (par joueur) — v5.1 allégée
+
+> **8 tables supprimées** lors du cleanup v5.1 : `match_stats`, `match_participants`,
+> `highlight_events`, `medals_earned`, `killer_victim_pairs`, `player_match_stats`,
+> `xuid_aliases`, `teammates_aggregate` — données centralisées dans shared.
 
 | Table | Description |
 |-------|-------------|
-| `player_match_enrichment` | performance_score, session_id, is_with_friends |
-| `teammates_aggregate` | Stats coéquipiers (POV joueur) |
-| `antagonists` | Top killers/victimes |
+| `player_match_enrichment` | performance_score, session_id, is_with_friends — **SEULE table match** |
+| `personal_score_awards` | Awards objectifs (PersonalScores API) |
+| `antagonists` | Top killers/victimes agrégés |
 | `match_citations` | Citations calculées par match |
 | `career_progression` | Historique rangs |
-| `mv_*` | Vues matérialisées |
+| `media_files` | Fichiers médias indexés |
+| `media_match_associations` | Associations médias↔matchs |
+| `sessions` | Sessions groupées |
+| `sync_meta` | Métadonnées sync |
+| `mv_*` | Vues matérialisées (mv_player_matches, mv_map_stats, etc.) |
 
 ## Environnement Python
 
@@ -130,6 +139,9 @@ python scripts/backfill_data.py --player MonGT --participants-shots --force-part
 6. Documenter les décisions dans `.ai/thought_log.md`
 7. **SQLite est PROSCRIT** - Aucun fallback SQLite, tout le code doit utiliser DuckDB v4 uniquement
 8. **Streamlit** : Ne jamais utiliser `use_container_width=True` (déprécié). Utiliser `width="stretch"` à la place (`width="content"` si besoin). Pour `st.button`, `st.image`, `st.plotly_chart`, etc.
+9. **Plotly** : Tout `st.plotly_chart` doit inclure `config=` (utiliser `PLOTLY_CLEAN_CONFIG` ou `PLOTLY_STATIC_CONFIG` de `src/ui/streamlit_modern.py`)
+10. **Fragments** : Préférer `@fragment_if_available` (de `src/ui/streamlit_modern.py`) pour les sections interactives multi-charts
+11. **Coéquipiers** : Charger les stats coéquipiers depuis `shared.match_participants` (pas les DBs individuelles)
 
 ## ⛔ Pandas interdit (règle critique)
 
@@ -148,16 +160,16 @@ python scripts/backfill_data.py --player MonGT --participants-shots --force-part
 - **Audit Pandas → Polars** : voir `.ai/PANDAS_TO_POLARS_AUDIT.md`.
 - **Synthèse consolidée** : `.ai/CONSOLIDATED_AUDITS_AND_ROADMAP.md`.
 
-## Architecture Multi-Joueurs (DuckDB v4)
+## Architecture Multi-Joueurs (v5.1)
 
-Chaque joueur a sa propre DB : `data/players/{gamertag}/stats.duckdb`
+Chaque joueur a sa propre DB : `data/players/{gamertag}/stats.duckdb` (enrichissements uniquement).
+
+**Données partagées** : Toutes les stats de matchs, médailles, events, killer/victim et xuid_aliases sont dans `shared_matches.duckdb`.
 
 **Pour afficher les stats d'un coéquipier** sur des matchs communs :
-1. Identifier les `match_id` communs via `teammates_aggregate` ou filtres
-2. Charger les stats du coéquipier depuis **SA propre DB** (pas celle du joueur principal)
-3. Utiliser `_load_teammate_stats_from_own_db(gamertag, match_ids, reference_db_path)`
-
-**Important** : Ne jamais passer le xuid d'un coéquipier à `load_df_optimized(db_path, xuid)` car le xuid est ignoré pour DuckDB v4. Il faut construire le chemin vers la DB du coéquipier.
+1. Identifier les `match_id` communs via `shared.match_participants`
+2. Charger les stats du coéquipier depuis `shared.match_participants` avec son xuid
+3. Le sync écrit dans player DBs : `player_match_enrichment` + `personal_score_awards` uniquement
 
 ## Stack Technique
 

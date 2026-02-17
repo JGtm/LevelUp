@@ -1,19 +1,35 @@
-# Schémas de Données - Architecture DuckDB Unifiée
+# Schémas de Données - Architecture DuckDB v5.1
 
-> Mis à jour : 2026-02-01
-> Migration vers DuckDB natif avec support Parquet intégré
+> Mis à jour : 2026-02-17
+> Architecture Shared Matches + Player Enrichments
 
 ---
 
 ## Vue d'ensemble
 
-L'architecture v4 utilise **DuckDB** comme moteur unique :
+L'architecture v5.1 utilise **DuckDB** avec une base partagée centralisée :
 
 | Fichier | Contenu | Scope |
 |---------|---------|-------|
 | `data/warehouse/metadata.duckdb` | Référentiels partagés | Global |
-| `data/players/{gamertag}/stats.duckdb` | Données du joueur | Par joueur |
+| `data/warehouse/shared_matches.duckdb` | Matchs centralisés (tous joueurs) | Global |
+| `data/players/{gamertag}/stats.duckdb` | Enrichissements personnels | Par joueur |
 | `data/archive/parquet/` | Cold storage (optionnel) | Backup |
+
+### Tables Supprimées des Player DBs (v5.1)
+
+Les 8 tables suivantes ont été supprimées des player DBs car centralisées dans `shared_matches.duckdb` :
+
+| Table supprimée | Remplacée par |
+|----------------|---------------|
+| `match_stats` | `shared.match_participants` + `shared.match_registry` |
+| `match_participants` | `shared.match_participants` |
+| `highlight_events` | `shared.highlight_events` |
+| `medals_earned` | `shared.medals_earned` |
+| `killer_victim_pairs` | `shared.killer_victim_pairs` |
+| `player_match_stats` | Colonnes MMR dans `shared.match_participants` |
+| `xuid_aliases` | `shared.xuid_aliases` |
+| `teammates_aggregate` | Calcul dynamique depuis `shared.match_participants` |
 
 ---
 
