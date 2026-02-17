@@ -1,6 +1,7 @@
 """Tests d'intégration: flux BDD -> repository -> analyse -> graphes.
 
 Valide un scénario minimal mais complet sur des données DuckDB temporaires.
+Architecture v5: player stats.duckdb + shared_matches.duckdb.
 """
 
 from __future__ import annotations
@@ -15,12 +16,107 @@ pytest.importorskip("polars")
 
 
 @pytest.fixture
-def app_flow_db(tmp_path):
-    """Crée une DB temporaire couvrant les domaines data principaux."""
-    db_path = tmp_path / "app_flow.duckdb"
-    conn = duckdb.connect(str(db_path))
+def app_flow_dbs(tmp_path):
+    """Crée une structure v5 avec player DB et shared_matches.duckdb."""
+    t0 = datetime.now(timezone.utc)
+
+    # ===== Shared DB =====
+    shared_path = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+    shared_path.parent.mkdir(parents=True, exist_ok=True)
+    conn_shared = duckdb.connect(str(shared_path))
     try:
-        conn.execute(
+        conn_shared.execute(
+            """
+            CREATE TABLE medals_earned (
+                match_id VARCHAR,
+                xuid VARCHAR,
+                medal_name_id INTEGER,
+                count INTEGER,
+                PRIMARY KEY (match_id, xuid, medal_name_id)
+            )
+            """
+        )
+        conn_shared.execute(
+            """
+            INSERT INTO medals_earned (match_id, xuid, medal_name_id, count) VALUES
+                ('m1', 'x_me', 1512363953, 1),
+                ('m1', 'x_me', 1512363954, 2),
+                ('m2', 'x_me', 1512363953, 1)
+            """
+        )
+        conn_shared.execute(
+            """
+            CREATE TABLE highlight_events (
+                match_id VARCHAR,
+                event_type VARCHAR,
+                time_ms INTEGER,
+                xuid VARCHAR,
+                gamertag VARCHAR
+            )
+            """
+        )
+        conn_shared.execute(
+            """
+            INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag) VALUES
+                ('m1', 'Kill', 1000, 'x_me', 'Me'),
+                ('m1', 'Kill', 2500, 'x_friend', 'Friend'),
+                ('m2', 'Death', 1800, 'x_friend', 'Friend'),
+                ('m2', 'Death', 3000, 'x_me', 'Me')
+            """
+        )
+        conn_shared.execute(
+            """
+            CREATE TABLE match_participants (
+                match_id VARCHAR,
+                xuid VARCHAR,
+                gamertag VARCHAR,
+                rank INTEGER,
+                score INTEGER,
+                kills INTEGER,
+                deaths INTEGER,
+                assists INTEGER,
+                shots_fired INTEGER,
+                shots_hit INTEGER,
+                damage_dealt INTEGER,
+                damage_taken INTEGER,
+                PRIMARY KEY (match_id, xuid)
+            )
+            """
+        )
+        conn_shared.execute(
+            """
+            INSERT INTO match_participants (
+                match_id, xuid, gamertag, rank, score, kills, deaths, assists,
+                shots_fired, shots_hit, damage_dealt, damage_taken
+            ) VALUES
+                ('m1', 'x_me', 'Me', 1, 1900, 15, 9, 6, 220, 100, 3200, 2600),
+                ('m1', 'x_friend', 'Friend', 2, 1700, 12, 11, 8, 210, 95, 2800, 2900),
+                ('m2', 'x_me', 'Me', 3, 1500, 10, 12, 5, 200, 78, 2500, 3000)
+            """
+        )
+        conn_shared.execute(
+            """
+            CREATE TABLE xuid_aliases (
+                xuid VARCHAR PRIMARY KEY,
+                gamertag VARCHAR
+            )
+            """
+        )
+        conn_shared.execute(
+            """
+            INSERT INTO xuid_aliases (xuid, gamertag)
+            VALUES ('x_me', 'Me'), ('x_friend', 'Friend')
+            """
+        )
+    finally:
+        conn_shared.close()
+
+    # ===== Player DB =====
+    player_path = tmp_path / "data" / "players" / "TestPlayer" / "stats.duckdb"
+    player_path.parent.mkdir(parents=True, exist_ok=True)
+    conn_player = duckdb.connect(str(player_path))
+    try:
+        conn_player.execute(
             """
             CREATE TABLE match_stats (
                 match_id VARCHAR PRIMARY KEY,
@@ -55,54 +151,6 @@ def app_flow_db(tmp_path):
             )
             """
         )
-        conn.execute(
-            """
-            CREATE TABLE medals_earned (
-                match_id VARCHAR,
-                medal_name_id INTEGER,
-                count INTEGER
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE highlight_events (
-                match_id VARCHAR,
-                event_type VARCHAR,
-                time_ms INTEGER,
-                xuid VARCHAR,
-                gamertag VARCHAR
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE match_participants (
-                match_id VARCHAR,
-                xuid VARCHAR,
-                gamertag VARCHAR,
-                rank INTEGER,
-                personal_score INTEGER,
-                kills INTEGER,
-                deaths INTEGER,
-                assists INTEGER,
-                shots_fired INTEGER,
-                shots_hit INTEGER,
-                damage_dealt INTEGER,
-                damage_taken INTEGER
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE xuid_aliases (
-                xuid VARCHAR,
-                gamertag VARCHAR
-            )
-            """
-        )
-
-        t0 = datetime.now(timezone.utc)
         rows_match_stats = [
             (
                 "m1",
@@ -167,7 +215,7 @@ def app_flow_db(tmp_path):
                 78,
             ),
         ]
-        conn.executemany(
+        conn_player.executemany(
             """
             INSERT INTO match_stats (
                 match_id, start_time, map_id, map_name, playlist_id, playlist_name,
@@ -181,56 +229,33 @@ def app_flow_db(tmp_path):
             rows_match_stats,
         )
 
-        conn.execute(
+        # Vue mv_player_matches requise par v5.1
+        conn_player.execute(
             """
-            INSERT INTO medals_earned (match_id, medal_name_id, count)
-            VALUES ('m1', 1512363953, 1), ('m1', 1512363954, 2), ('m2', 1512363953, 1)
-            """
-        )
-
-        conn.execute(
-            """
-            INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
-            VALUES
-                ('m1', 'Kill', 1000, 'x_me', 'Me'),
-                ('m1', 'Kill', 2500, 'x_friend', 'Friend'),
-                ('m2', 'Death', 1800, 'x_friend', 'Friend'),
-                ('m2', 'Death', 3000, 'x_me', 'Me')
-            """
-        )
-
-        conn.execute(
-            """
-            INSERT INTO match_participants (
-                match_id, xuid, gamertag, rank, personal_score, kills, deaths, assists,
-                shots_fired, shots_hit, damage_dealt, damage_taken
-            ) VALUES
-                ('m1', 'x_me', 'Me', 1, 1900, 15, 9, 6, 220, 100, 3200, 2600),
-                ('m1', 'x_friend', 'Friend', 2, 1700, 12, 11, 8, 210, 95, 2800, 2900),
-                ('m2', 'x_me', 'Me', 3, 1500, 10, 12, 5, 200, 78, 2500, 3000)
-            """
-        )
-
-        conn.execute(
-            """
-            INSERT INTO xuid_aliases (xuid, gamertag)
-            VALUES ('x_me', 'Me'), ('x_friend', 'Friend')
+            CREATE VIEW IF NOT EXISTS mv_player_matches AS
+            SELECT * FROM match_stats
             """
         )
     finally:
-        conn.close()
+        conn_player.close()
 
-    return db_path
+    return player_path, shared_path
 
 
-def test_app_data_to_chart_flow(app_flow_db) -> None:
+def test_app_data_to_chart_flow(app_flow_dbs) -> None:
     """Valide le flux complet depuis DuckDB jusqu'aux graphes."""
     from src.analysis.friends_impact import build_impact_matrix, get_all_impact_events
     from src.data.repositories.duckdb_repo import DuckDBRepository
     from src.visualization.distributions import plot_histogram, plot_win_ratio_heatmap
     from src.visualization.friends_impact_heatmap import plot_friends_impact_heatmap
 
-    repo = DuckDBRepository(str(app_flow_db), xuid="x_me", read_only=True)
+    player_path, shared_path = app_flow_dbs
+    repo = DuckDBRepository(
+        player_db_path=str(player_path),
+        xuid="x_me",
+        shared_db_path=str(shared_path),
+        read_only=True,
+    )
     try:
         # 1) Chargement repository (contrat data applicatif)
         stats_df = repo.load_match_stats_as_polars()
@@ -242,7 +267,7 @@ def test_app_data_to_chart_flow(app_flow_db) -> None:
 
         # 2) Domaine Timeseries/Distribution
         stats_pd = pd.DataFrame(stats_df.to_dicts())
-        conn = duckdb.connect(str(app_flow_db), read_only=True)
+        conn = duckdb.connect(str(player_path), read_only=True)
         try:
             score_rows = conn.execute(
                 "SELECT match_id, personal_score FROM match_stats ORDER BY start_time ASC"
@@ -269,11 +294,16 @@ def test_app_data_to_chart_flow(app_flow_db) -> None:
         assert len(fig_heat_win.data) >= 1
 
         # 3) Domaine Impact coéquipiers
-        conn = duckdb.connect(str(app_flow_db), read_only=True)
+        conn = duckdb.connect(str(shared_path), read_only=True)
         try:
             events_rows = conn.execute(
                 "SELECT match_id, xuid, gamertag, event_type, time_ms FROM highlight_events"
             ).fetchall()
+        finally:
+            conn.close()
+
+        conn = duckdb.connect(str(player_path), read_only=True)
+        try:
             match_rows = conn.execute("SELECT match_id, outcome FROM match_stats").fetchall()
         finally:
             conn.close()

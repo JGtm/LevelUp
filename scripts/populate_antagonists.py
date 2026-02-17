@@ -4,6 +4,9 @@
 Sprint 3.2 - Ce script parcourt les matchs d'un joueur, calcule les
 antagonistes (killers/victimes) et les persiste dans la table DuckDB.
 
+8bis.B2 (v5.1) - Réécrit pour utiliser DuckDBRepository au lieu des DBs legacy SQLite.
+Les highlight events sont maintenant dans shared.highlight_events.
+
 Usage:
     python scripts/populate_antagonists.py --gamertag JGtm
     python scripts/populate_antagonists.py --all
@@ -24,44 +27,11 @@ from src.analysis.antagonists import AggregationResult, aggregate_antagonists
 from src.analysis.killer_victim import compute_personal_antagonists
 from src.data.repositories.factory import get_repository_from_profile, load_db_profiles
 
-
-def load_highlight_events_for_match(db_path: str, match_id: str) -> list:
-    """DEPRECATED: Charge les highlight events depuis une DB legacy (SQLite supprimé)."""
-    raise NotImplementedError(
-        "SQLite legacy supprimé. Utilisez DuckDBRepository.load_highlight_events()."
-    )
-
-
-def load_match_players_stats(db_path: str, match_id: str) -> list:
-    """DEPRECATED: Charge les stats-joueurs depuis une DB legacy (SQLite supprimé)."""
-    raise NotImplementedError(
-        "SQLite legacy supprimé. Utilisez DuckDBRepository.load_match_players_stats()."
-    )
-
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-
-def get_legacy_db_path(gamertag: str) -> str | None:
-    """Trouve le chemin vers la DB legacy pour un joueur.
-
-    Les highlight events sont encore dans les DBs SQLite legacy.
-    """
-    # Chercher dans les chemins possibles
-    possible_paths = [
-        Path(f"data/spnkr_gt_{gamertag}.db"),
-        Path(f"spnkr_gt_{gamertag}.db"),
-    ]
-
-    for path in possible_paths:
-        if path.exists():
-            return str(path)
-
-    return None
 
 
 def process_player(
@@ -73,6 +43,9 @@ def process_player(
     min_encounters: int = 2,
 ) -> AggregationResult | None:
     """Calcule et persiste les antagonistes pour un joueur.
+
+    8bis.B2 (v5.1) - Réécrit pour utiliser DuckDBRepository.load_highlight_events()
+    au lieu des fonctions legacy SQLite.
 
     Args:
         gamertag: Nom du joueur.
@@ -97,15 +70,6 @@ def process_player(
     duckdb_path = Path(db_path)
     if not duckdb_path.exists():
         logger.error(f"Base DuckDB non trouvée: {duckdb_path}")
-        return None
-
-    # Chercher la DB legacy pour les highlight events
-    legacy_db_path = get_legacy_db_path(gamertag)
-    if not legacy_db_path:
-        logger.warning(
-            f"DB legacy non trouvée pour {gamertag}. "
-            "Les highlight events ne sont pas disponibles."
-        )
         return None
 
     # Obtenir le repository
@@ -149,21 +113,21 @@ def process_player(
             logger.info(f"{gamertag}: Traitement {i}/{len(matches)}...")
 
         try:
-            # Charger les highlight events depuis la DB legacy
-            events = load_highlight_events_for_match(legacy_db_path, match.match_id)
+            # 8bis.B2 : Charger les highlight events depuis shared.highlight_events
+            events_df = repo.load_highlight_events(match.match_id)
 
-            if not events:
+            if events_df.is_empty():
                 continue
 
-            # Charger les stats officielles pour validation
-            official_stats = load_match_players_stats(legacy_db_path, match.match_id)
+            # Convertir le DataFrame Polars en liste de dicts pour compute_personal_antagonists
+            events = events_df.to_dicts()
 
             # Calculer les antagonistes
             result = compute_personal_antagonists(
                 events,
                 me_xuid=xuid,
                 tolerance_ms=tolerance_ms,
-                official_stats=official_stats,
+                official_stats=None,  # Plus de stats officielles séparées en v5.1
             )
 
             if result.my_kills_total > 0 or result.my_deaths_total > 0:

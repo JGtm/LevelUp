@@ -109,19 +109,100 @@ def _create_shared_db(db_path: Path) -> None:
     conn = duckdb.connect(str(db_path))
 
     conn.execute("""
+        CREATE TABLE IF NOT EXISTS match_registry (
+            match_id VARCHAR PRIMARY KEY,
+            start_time TIMESTAMP,
+            map_id VARCHAR, map_name VARCHAR,
+            playlist_id VARCHAR, playlist_name VARCHAR,
+            pair_id VARCHAR, pair_name VARCHAR,
+            game_variant_id VARCHAR, game_variant_name VARCHAR,
+            duration_seconds INTEGER,
+            team_0_score SMALLINT, team_1_score SMALLINT,
+            is_firefight BOOLEAN DEFAULT FALSE,
+            is_ranked BOOLEAN DEFAULT FALSE
+        )
+    """)
+
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS match_participants (
             match_id VARCHAR,
             xuid VARCHAR,
-            gamertag VARCHAR
+            gamertag VARCHAR,
+            team_id INTEGER DEFAULT 0,
+            outcome INTEGER DEFAULT 0,
+            kills SMALLINT DEFAULT 0,
+            deaths SMALLINT DEFAULT 0,
+            assists SMALLINT DEFAULT 0,
+            score INTEGER DEFAULT 0
         )
     """)
 
     # Peupler avec les matchs du joueur
     for mid in (MATCH_ID_1, MATCH_ID_2, MATCH_ID_3):
         conn.execute(
+            "INSERT INTO match_registry (match_id, start_time) VALUES (?, CURRENT_TIMESTAMP)",
+            (mid,),
+        )
+        conn.execute(
             "INSERT INTO match_participants (match_id, xuid, gamertag) VALUES (?, ?, ?)",
             (mid, PLAYER_XUID, PLAYER_GAMERTAG),
         )
+
+    # 8bis.A5 : Création de mv_player_matches (requis en v5.1)
+    conn.execute("""
+        CREATE OR REPLACE VIEW mv_player_matches AS
+        SELECT
+            r.match_id,
+            r.start_time,
+            r.map_id,
+            r.map_name,
+            r.playlist_id,
+            r.playlist_name,
+            r.pair_id,
+            r.pair_name,
+            r.game_variant_id,
+            r.game_variant_name,
+            p.xuid,
+            p.outcome,
+            p.team_id,
+            CASE WHEN p.deaths > 0
+                THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
+                     / CAST(p.deaths AS FLOAT)
+                ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
+            END AS kda,
+            COALESCE(0, 0) AS max_killing_spree,
+            COALESCE(0, 0) AS headshot_kills,
+            COALESCE(0, 0) AS avg_life_seconds,
+            COALESCE(r.duration_seconds, 0) AS time_played_seconds,
+            COALESCE(p.kills, 0) AS kills,
+            COALESCE(p.deaths, 0) AS deaths,
+            COALESCE(p.assists, 0) AS assists,
+            NULL AS accuracy,
+            CASE WHEN p.team_id = 0 THEN r.team_0_score
+                 ELSE r.team_1_score END AS my_team_score,
+            CASE WHEN p.team_id = 0 THEN r.team_1_score
+                 ELSE r.team_0_score END AS enemy_team_score,
+            NULL AS team_mmr,
+            NULL AS enemy_mmr,
+            p.score AS personal_score,
+            COALESCE(r.is_firefight, FALSE) AS is_firefight,
+            COALESCE(r.is_ranked, FALSE) AS is_ranked
+        FROM match_registry r
+        JOIN match_participants p
+            ON r.match_id = p.match_id
+    """)
+
+    # xuid_aliases pour résolution (v5.1)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS xuid_aliases (
+            xuid VARCHAR PRIMARY KEY,
+            gamertag VARCHAR NOT NULL
+        )
+    """)
+    conn.execute(
+        "INSERT INTO xuid_aliases VALUES (?, ?)",
+        (PLAYER_XUID, PLAYER_GAMERTAG),
+    )
 
     conn.close()
 
@@ -163,8 +244,15 @@ class TestResolveXuidFromDb:
         assert engine._xuid == PLAYER_XUID
 
     def test_resolve_from_xuid_aliases(self, tmp_path: Path) -> None:
-        """Stratégie 3 : XUID depuis xuid_aliases via gamertag."""
-        db = tmp_path / "players" / PLAYER_GAMERTAG / "stats.duckdb"
+        """8bis: Stratégie 3 en v5.1 — XUID depuis shared.xuid_aliases via gamertag."""
+        # Structure v5.1 : créer shared_matches.duckdb avec xuid_aliases
+        warehouse = tmp_path / "data" / "warehouse"
+        warehouse.mkdir(parents=True, exist_ok=True)
+        shared_db = warehouse / "shared_matches.duckdb"
+        _create_shared_db(shared_db)  # Contient déjà l'alias
+
+        # Player DB sans xuid local
+        db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
         db.parent.mkdir(parents=True, exist_ok=True)
         conn = duckdb.connect(str(db))
         conn.execute("""
@@ -173,13 +261,6 @@ class TestResolveXuidFromDb:
         conn.execute("""
             CREATE TABLE player_match_stats (match_id VARCHAR, xuid VARCHAR)
         """)
-        conn.execute("""
-            CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR, last_seen VARCHAR)
-        """)
-        conn.execute(
-            "INSERT INTO xuid_aliases (xuid, gamertag) VALUES (?, ?)",
-            (PLAYER_XUID, PLAYER_GAMERTAG),
-        )
         conn.close()
 
         from src.data.sync.engine import DuckDBSyncEngine

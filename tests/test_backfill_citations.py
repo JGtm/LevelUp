@@ -133,6 +133,48 @@ def _create_shared_db(path: Path) -> None:
         "('m1', '12345', 3169118333, 2), ('m1', '12345', 221693153, 1),"
         "('m2', '12345', 3169118333, 1)"
     )
+
+    # 8bis.A5 : Création de mv_player_matches (requis en v5.1)
+    conn.execute("""
+        CREATE OR REPLACE VIEW mv_player_matches AS
+        SELECT
+            r.match_id,
+            r.start_time,
+            NULL AS map_id,
+            r.map_name,
+            NULL AS playlist_id,
+            r.playlist_name,
+            NULL AS pair_id,
+            r.pair_name,
+            NULL AS game_variant_id,
+            r.game_variant_name,
+            p.xuid,
+            p.outcome,
+            NULL AS team_id,
+            p.kda,
+            COALESCE(0, 0) AS max_killing_spree,
+            COALESCE(p.headshot_kills, 0) AS headshot_kills,
+            COALESCE(p.avg_life_seconds, 0) AS avg_life_seconds,
+            COALESCE(p.time_played_seconds, 0) AS time_played_seconds,
+            COALESCE(p.kills, 0) AS kills,
+            COALESCE(p.deaths, 0) AS deaths,
+            COALESCE(p.assists, 0) AS assists,
+            CASE WHEN p.shots_fired > 0
+                THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT)
+                ELSE NULL
+            END AS accuracy,
+            NULL AS my_team_score,
+            NULL AS enemy_team_score,
+            p.team_mmr,
+            NULL AS enemy_mmr,
+            p.personal_score,
+            FALSE AS is_firefight,
+            FALSE AS is_ranked
+        FROM match_registry r
+        JOIN match_participants p
+            ON r.match_id = p.match_id
+    """)
+
     conn.close()
 
 

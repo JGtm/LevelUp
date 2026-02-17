@@ -592,14 +592,12 @@ class TestGetMatchSourceOptimized:
         assert uses_mv is True
 
     def test_fallback_v5_legacy_without_view(self, repo_without_view: DuckDBRepository):
-        """_get_match_source fait le fallback v5.0 sans vue."""
+        """8bis.A5: _get_match_source raise RuntimeError si vue manquante (v5.1)."""
         conn = repo_without_view._get_connection()
-        source, params, uses_mv = repo_without_view._get_match_source(conn)
 
-        # Devrait utiliser le chemin legacy (shared.match_registry + match_participants)
-        assert "shared.match_registry" in source or "mv_player_matches" not in source
-        assert len(params) == 1
-        assert uses_mv is False
+        # En v5.1, absence de mv_player_matches déclenche une erreur
+        with pytest.raises(RuntimeError, match="mv_player_matches non trouvée"):
+            repo_without_view._get_match_source(conn)
 
     def test_load_matches_with_view(self, repo_with_view: DuckDBRepository):
         """load_matches fonctionne avec la vue."""

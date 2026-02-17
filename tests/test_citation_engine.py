@@ -610,6 +610,49 @@ class TestV5SharedSupport:
             "INSERT INTO match_registry VALUES "
             "('m-shared-1', 'Aquarius', 'Quick Play', 'Slayer', '2026-02-14 10:00:00')"
         )
+
+        # 8bis.A5 : Création de mv_player_matches (requis en v5.1)
+        conn.execute("""
+            CREATE OR REPLACE VIEW mv_player_matches AS
+            SELECT
+                r.match_id,
+                r.match_start_date AS start_time,
+                NULL AS map_id,
+                r.map_name,
+                NULL AS playlist_id,
+                r.playlist AS playlist_name,
+                NULL AS pair_id,
+                NULL AS pair_name,
+                NULL AS game_variant_id,
+                r.game_variant AS game_variant_name,
+                p.xuid,
+                NULL AS outcome,
+                NULL AS team_id,
+                CASE WHEN p.deaths > 0
+                    THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
+                         / CAST(p.deaths AS FLOAT)
+                    ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
+                END AS kda,
+                COALESCE(0, 0) AS max_killing_spree,
+                COALESCE(0, 0) AS headshot_kills,
+                COALESCE(0, 0) AS avg_life_seconds,
+                COALESCE(0, 0) AS time_played_seconds,
+                COALESCE(p.kills, 0) AS kills,
+                COALESCE(p.deaths, 0) AS deaths,
+                COALESCE(p.assists, 0) AS assists,
+                NULL AS accuracy,
+                NULL AS my_team_score,
+                NULL AS enemy_team_score,
+                NULL AS team_mmr,
+                NULL AS enemy_mmr,
+                p.score AS personal_score,
+                FALSE AS is_firefight,
+                FALSE AS is_ranked
+            FROM match_registry r
+            JOIN match_participants p
+                ON r.match_id = p.match_id
+        """)
+
         conn.close()
 
     def test_medals_from_shared(self, tmp_path: Path) -> None:
