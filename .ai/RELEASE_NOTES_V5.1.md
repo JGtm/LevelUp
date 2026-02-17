@@ -170,13 +170,32 @@ LevelUp v5.1 apporte une **modernisation en profondeur de l'interface Streamlit*
 
 ## Suite de Tests
 
-- **2877 tests passés**, 0 échec
+- **2913 tests passés**, 64 skipped, 0 échec
 - Couverture non-régression modernisation : 30 tests dédiés
 - Compatible Python 3.10+ / Streamlit ≥1.37.0
 
 ---
 
-## Prochaines Étapes
+## Documentation Mise à Jour (Étape 9)
 
-- **Étape 9** : Tests complémentaires + documentation exhaustive
-- **Étape 10** : Release finale v5.1.0 + tag Git
+13+ documents mis à jour pour refléter l'architecture v5.1 :
+
+| Document | Modifications |
+|----------|-------------|
+| `CLAUDE.md` | Tables player DB (8 supprimées, 10 conservées), règles Streamlit v5.1 |
+| `.ai/project_map.md` | Architecture v5.1, état final, tables shared |
+| `.ai/data_lineage.md` | Flux sync shared-only, plus de dual write |
+| `docs/ARCHITECTURE_V5.md` | 7 points critiques v5.1, métriques finales |
+| `docs/SQL_SCHEMA.md` | Tables supprimées vs conservées |
+| `docs/SYNC_GUIDE.md` | Diagramme sync shared + enrichissement |
+| `.github/copilot-instructions.md` | Tables + règles Streamlit v5.1 |
+| `CHANGELOG.md` | Entrée v5.1.0 finalisée |
+
+---
+
+## Release v5.1.0
+
+- **Tag Git** : `v5.1.0-final`
+- **Date** : 2026-02-17
+- **Commit** : Branch `copilot/prepare-phases-5-6-analysis`
+- **Statut** : Toutes métriques v5.1 atteintes

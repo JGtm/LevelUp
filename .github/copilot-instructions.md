@@ -57,16 +57,30 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 | `medals_earned` | Médailles de tous les joueurs |
 | `xuid_aliases` | Mapping global xuid→gamertag |
 
-#### stats.duckdb (par joueur)
+#### stats.duckdb (par joueur) — v5.1 allégée
+
+> 8 tables supprimées : match_stats, match_participants, highlight_events,
+> medals_earned, killer_victim_pairs, player_match_stats, xuid_aliases, teammates_aggregate
 
 | Table | Description |
 |-------|-------------|
-| `player_match_enrichment` | performance_score, session_id, is_with_friends |
-| `teammates_aggregate` | Stats coéquipiers (POV joueur) |
+| `player_match_enrichment` | performance_score, session_id, is_with_friends — **SEULE table match** |
+| `personal_score_awards` | Awards objectifs (PersonalScores API) |
 | `antagonists` | Rivalités (killers/victimes) |
 | `match_citations` | Citations calculées par match |
 | `career_progression` | Historique rangs |
+| `media_files` | Fichiers médias indexés |
+| `media_match_associations` | Associations médias↔matchs |
+| `sessions` | Sessions groupées |
+| `sync_meta` | Métadonnées sync |
 | `mv_*` | Vues matérialisées |
+
+### Règles Streamlit v5.1
+
+- Tout `st.plotly_chart` doit inclure `config=` (PLOTLY_CLEAN_CONFIG ou PLOTLY_STATIC_CONFIG)
+- Préférer `@fragment_if_available` pour les sections interactives multi-charts
+- Coéquipiers chargés depuis `shared.match_participants` (pas les DBs individuelles)
+- `width="stretch"` au lieu de `use_container_width=True` (déprécié)
 
 ---
 

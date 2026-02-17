@@ -7,6 +7,38 @@
 
 ## Journal
 
+### [2026-02-17] - Étapes 9 + 10 : Tests, Documentation, Release v5.1
+
+**Statut** : Complété ✅
+
+**Objectif** : Finaliser le projet v5.1 — validation, documentation complète, release, archivage.
+
+**Étape 9.0 — Vérification transversale** :
+- 8bis/8ter vérifiés complets (2913 tests passent, 0 échecs)
+- Audit automatisé 10/10 checks OK (map_elements, import duckdb, import sqlite3, etc.)
+
+**Étape 9 — Tests + Documentation** :
+- Suite complète : 2913 passed, 64 skipped, 0 failures
+- 13+ documents mis à jour : CLAUDE.md, project_map.md, data_lineage.md, ARCHITECTURE_V5.md,
+  copilot-instructions.md, CHANGELOG.md, SQL_SCHEMA.md, SYNC_GUIDE.md
+- 7 points critiques v5.1 documentés dans ARCHITECTURE_V5.md
+- Tables player DB mises à jour partout (8 supprimées, 10 conservées)
+
+**Étape 10 — Release v5.1** :
+- CHANGELOG.md finalisé (date 2026-02-17)
+- Release notes dans `.ai/RELEASE_NOTES_V5.1.md`
+- Tag Git `v5.1.0-final`
+
+**Fin de sprint** :
+- Rétrospective : migration v5.1 complète en ~15 jours
+- Décisions clés : architecture shared-only, modernisation Streamlit, éradication legacy complète
+
+**Fin de projet** :
+- Documentation archivée dans `.ai/archive/v5.1-completion/`
+- Sign-off final : toutes métriques v5.1 atteintes
+
+---
+
 ### [2026-02-17] - Audit couverture réelle 8bis + compléments 8ter (pré-9/10)
 
 **Statut** : Audit réalisé ✅
