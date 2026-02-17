@@ -444,13 +444,21 @@ async def backfill_participants_enrich(
             params.append(xuid)
         query += "ORDER BY mr.start_time DESC"
     else:
-        # On ne considère que headshot_kills et kda car team_mmr peut être NULL
-        # légitimement (API skill ne retourne pas toujours de données)
+        # Détecter les matchs avec colonnes essentielles NULL
+        # Note: team_mmr peut être NULL légitimement (API skill ne retourne pas toujours de données)
+        # Guard: ne pas retraiter les matchs déjà marqués dans backfill_completed
+        from src.data.sync.migrations import BACKFILL_FLAGS
+
+        participants_bit = BACKFILL_FLAGS.get("participants", 0)
+        avg_life_bit = BACKFILL_FLAGS.get("participants_avg_life", 0)
+        guard_mask = participants_bit | avg_life_bit
+
         query = (
             "SELECT DISTINCT mp.match_id "
             "FROM match_participants mp "
             "JOIN match_registry mr ON mp.match_id = mr.match_id "
-            "WHERE (mp.headshot_kills IS NULL OR mp.kda IS NULL) "
+            f"WHERE (mp.headshot_kills IS NULL OR mp.kda IS NULL OR mp.avg_life_seconds IS NULL) "
+            f"AND (COALESCE(mr.backfill_completed, 0) & {guard_mask} = 0) "
         )
         params = []
         if xuid:
@@ -586,6 +594,31 @@ async def backfill_participants_enrich(
 
                 shared_conn.commit()
                 count += 1
+
+                # Marquer le match comme traité dans backfill_completed
+                # Bits: participants (512), participants_avg_life (32768)
+                try:
+                    from src.data.sync.migrations import BACKFILL_FLAGS
+
+                    flags_to_mark = (
+                        BACKFILL_FLAGS.get("participants", 0)
+                        | BACKFILL_FLAGS.get("participants_scores", 0)
+                        | BACKFILL_FLAGS.get("participants_kda", 0)
+                        | BACKFILL_FLAGS.get("participants_shots", 0)
+                        | BACKFILL_FLAGS.get("participants_damage", 0)
+                        | BACKFILL_FLAGS.get("participants_avg_life", 0)
+                    )
+
+                    shared_conn.execute(
+                        "UPDATE match_registry SET "
+                        "backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                        "WHERE match_id = ?",
+                        (flags_to_mark, match_id),
+                    )
+                    shared_conn.commit()
+                except Exception as e:
+                    logger.warning(f"  Impossible de marquer backfill_completed: {e}")
+
                 logger.info(f"  ✅ Match {match_id[:20]}... enrichi")
 
             except Exception as e:
