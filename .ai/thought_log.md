@@ -7,6 +7,31 @@
 
 ## Journal
 
+### [2026-02-17] - Audit couverture réelle 8bis + compléments 8ter (pré-9/10)
+
+**Statut** : Audit réalisé ✅
+
+**Objectif** : Vérifier que l'étape 8bis couvre bien toute l'app, puis intégrer à 8ter les manques bloquants pour les étapes 9 (validation) et 10 (release).
+
+**Constats factuels (codebase réelle)** :
+- `@st.fragment` : 0 occurrence (8ter.2 non démarré)
+- `st.navigation(...)` : 0 occurrence (routing encore via `st.segmented_control`)
+- `st.plotly_chart(..., config=...)` : 0 occurrence (8ter.1 non démarré)
+- `streamlit>=1.37` : non (dépendance encore `streamlit>=1.28.0`)
+- `match_history` : tableau HTML + `unsafe_allow_html=True` (8ter.3 non démarré)
+- Restes 8bis app-wide : 40 `map_elements()`, 15 `duckdb.connect()` en UI, 28 `st.rerun()`, 32 `unsafe_allow_html=True`
+
+**Actions réalisées** :
+- Mise à jour de `.ai/INDEX_FINAL_V5.1.md` avec :
+   - statut réel 8ter.0→8ter.5
+   - écarts 8bis consolidés
+   - nouveaux ajouts 8ter.6/8ter.7/8ter.8 pour couvrir les prérequis étapes 9/10
+
+**Décision** :
+- Les points non couverts de 8bis et les prérequis de validation/release sont re-basculés explicitement dans 8ter pour éviter un faux “done” sur 9/10.
+
+---
+
 ### [2026-02-16] - Sprint 1bis : Causes Racines Performance — TERMINÉ ✅
 
 **Statut** : Complété ✅

@@ -265,16 +265,16 @@ cat .ai/PROCESSUS_QUALITE_V5.1.md
 - Correction bug `self._db_path` → `self._player_db_path`
 - Migration tests : création `mv_player_matches` obligatoire dans fixtures
 
-**⚠️ RESTE À FAIRE (audit 2026-02-17)** :
+**⚠️ RESTE À FAIRE (audit réel app 2026-02-17)** :
 
 | Sous-étape | Description | État |
 |------------|-------------|------|
-| A1 (élargi) | 33 `map_elements()` restants dans 14 fichiers (hors match_history) | ❌ Non fait |
-| A3 (élargi) | 17 `duckdb.connect()` directs dans src/ui/ (7 fichiers) | ❌ Non fait |
-| A4 (élargi) | 6 `@st.cache_data(ttl=)` dans 5 fichiers → supprimer TTL | ❌ Non fait |
-| A7 | `_load_teammate_stats_legacy()` → supprimer fallback | ❓ À vérifier |
-| A8 | 32 `st.rerun()` → réduire à ≤12 (16 dans checkbox_filter.py) | ❌ Non fait |
-| A9 (NOUVEAU) | 32 `unsafe_allow_html` → réduire à ≤20 | ❌ Non fait |
+| A1 (élargi) | 40 `map_elements()` restants dans `src/` (UI + app + data) | ❌ Non fait |
+| A3 (élargi) | 15 `duckdb.connect()` directs dans `src/ui/` (ex: `career.py`, `media_library.py`, `sync.py`) | ❌ Non fait |
+| A4 (élargi) | Revue TTL/cache incomplète (plusieurs caches historiques à harmoniser) | ⚠️ Partiel |
+| A7 | `_load_teammate_stats_legacy()` supprimé (trace commentaire uniquement) | ✅ Fait |
+| A8 | 28 `st.rerun()` encore présents (dont `checkbox_filter.py`, `media_library.py`) | ❌ Non fait |
+| A9 (NOUVEAU) | 32 `unsafe_allow_html=True` encore présents dans `src/ui` | ❌ Non fait |
 
 ### Étape 8ter : Modernisation Streamlit + Pré-calcul
 
@@ -288,6 +288,19 @@ cat .ai/PROCESSUS_QUALITE_V5.1.md
 - 8ter.3 : `st.dataframe(column_config)` remplace HTML custom match_history (2h)
 - 8ter.4 : Pré-calcul post-sync des agrégats (4h)
 - 8ter.5 : `st.navigation` lazy loading — **13 pages principales** + 10 sous-modules (2h)
+
+**🔎 Statut constaté (audit réel 2026-02-17)** :
+- 8ter.0 ❌ Non fait (`pyproject.toml` reste en `streamlit>=1.28.0`)
+- 8ter.1 ❌ Non fait (0 occurrence `st.plotly_chart(..., config=...)`)
+- 8ter.2 ❌ Non fait (0 occurrence `@st.fragment`)
+- 8ter.3 ❌ Non fait (`match_history.py` utilise encore `_render_history_table()` HTML + `unsafe_allow_html=True`)
+- 8ter.4 ⚠️ Partiel (`refresh_aggregates()` existe côté sync engine, mais pas de couverture complète orientée UI)
+- 8ter.5 ❌ Non fait (`streamlit_app.py` utilise encore `render_page_selector()` + `st.segmented_control`, pas `st.navigation`)
+
+**🧩 Ajouts à 8ter (issus des contrôles étapes 9 et 10)** :
+- 8ter.6 : Finaliser la modernisation app-wide restante de 8bis (A1/A3/A8/A9) pour éviter une validation 9 incomplète.
+- 8ter.7 : Ajouter les tests de non-régression ciblés modernisation (`config` Plotly, `@st.fragment`, `st.navigation`, `match_history` en `st.dataframe`) avant la phase 9.
+- 8ter.8 : Préparer les livrables release bloquants de la phase 10 (`.ai/RELEASE_NOTES_V5.1.md`, `docs/V5.1_PURE_ARCHITECTURE.md`, alignement `CHANGELOG` final hors "En cours").
 
 ### Étape 9 : Tests + Documentation
 
