@@ -25,6 +25,7 @@ from scripts.backfill.strategies import (
     backfill_killer_victim_pairs,
     compute_performance_score_for_match,
 )
+from src.data.sync.scope import SyncScope
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,8 @@ def _empty_result() -> dict[str, int]:
 async def backfill_player_data(
     gamertag: str,
     *,
+    scope: SyncScope | None = None,
+    # ── Rétro-compatibilité : kwargs individuels (ignorés si scope fourni) ──
     dry_run: bool = False,
     max_matches: int | None = None,
     requests_per_second: int = 5,
@@ -128,6 +131,7 @@ async def backfill_player_data(
 
     Args:
         gamertag: Gamertag du joueur.
+        scope: Périmètre de données (si fourni, les kwargs individuels sont ignorés).
         dry_run: Si True, ne fait que lister les matchs sans données.
         max_matches: Nombre maximum de matchs à traiter (None = tous).
         requests_per_second: Rate limiting API.
@@ -137,70 +141,95 @@ async def backfill_player_data(
     Returns:
         Dict avec les statistiques.
     """
-    # Si all_data, activer toutes les options
-    if all_data:
-        medals = events = skill = personal_scores = performance_scores = True
-        aliases = accuracy = enemy_mmr = assets = participants = True
-        shots = participants_scores = participants_kda = True
-        participants_shots = participants_damage = participants_avg_life = True
-        killer_victim = end_time = sessions = citations = True
-        participants_enrich = True
+    # ── Construire / résoudre le scope ──
+    if scope is None:
+        scope = SyncScope(
+            dry_run=dry_run,
+            max_matches=max_matches,
+            requests_per_second=requests_per_second,
+            detection_mode=detection_mode,
+            medals=medals,
+            events=events,
+            skill=skill,
+            personal_scores=personal_scores,
+            performance_scores=performance_scores,
+            aliases=aliases,
+            accuracy=accuracy,
+            enemy_mmr=enemy_mmr,
+            assets=assets,
+            participants=participants,
+            participants_scores=participants_scores,
+            participants_kda=participants_kda,
+            participants_shots=participants_shots,
+            participants_damage=participants_damage,
+            participants_avg_life=participants_avg_life,
+            killer_victim=killer_victim,
+            end_time=end_time,
+            sessions=sessions,
+            shots=shots,
+            citations=citations,
+            participants_enrich=participants_enrich,
+            all_data=all_data,
+            force_medals=force_medals,
+            force_accuracy=force_accuracy,
+            force_shots=force_shots,
+            force_participants_shots=force_participants_shots,
+            force_participants_damage=force_participants_damage,
+            force_participants_avg_life=force_participants_avg_life,
+            force_enemy_mmr=force_enemy_mmr,
+            force_aliases=force_aliases,
+            force_assets=force_assets,
+            force_participants=force_participants,
+            force_end_time=force_end_time,
+            force_sessions=force_sessions,
+            force_citations=force_citations,
+            force_participants_enrich=force_participants_enrich,
+        )
+    scope.resolve()
 
-    # Activer les dépendances force → option
-    if force_accuracy and not accuracy:
-        accuracy = True
-    if force_shots and not shots:
-        shots = True
-    if force_enemy_mmr and not enemy_mmr:
-        enemy_mmr = True
-    if force_aliases and not aliases:
-        aliases = True
-    if force_assets and not assets:
-        assets = True
-    if force_participants and not participants:
-        participants = True
-    if force_end_time and not end_time:
-        end_time = True
-    if force_sessions and not sessions:
-        sessions = True
-    if force_participants_shots and not participants_shots:
-        participants_shots = True
-    if force_participants_damage and not participants_damage:
-        participants_damage = True
-    if force_participants_avg_life and not participants_avg_life:
-        participants_avg_life = True
-    if force_citations and not citations:
-        citations = True
-    if force_participants_enrich and not participants_enrich:
-        participants_enrich = True
+    # Extraire les valeurs résolues en variables locales
+    dry_run = scope.dry_run
+    max_matches = scope.max_matches
+    requests_per_second = scope.requests_per_second
+    detection_mode = scope.detection_mode
+    medals = scope.medals
+    events = scope.events
+    skill = scope.skill
+    personal_scores = scope.personal_scores
+    performance_scores = scope.performance_scores
+    aliases = scope.aliases
+    accuracy = scope.accuracy
+    enemy_mmr = scope.enemy_mmr
+    assets = scope.assets
+    participants = scope.participants
+    participants_scores = scope.participants_scores
+    participants_kda = scope.participants_kda
+    participants_shots = scope.participants_shots
+    participants_damage = scope.participants_damage
+    participants_avg_life = scope.participants_avg_life
+    killer_victim = scope.killer_victim
+    end_time = scope.end_time
+    sessions = scope.sessions
+    shots = scope.shots
+    citations = scope.citations
+    participants_enrich = scope.participants_enrich
+    force_medals = scope.force_medals
+    force_accuracy = scope.force_accuracy
+    force_shots = scope.force_shots
+    force_participants_shots = scope.force_participants_shots
+    force_participants_damage = scope.force_participants_damage
+    force_participants_avg_life = scope.force_participants_avg_life
+    force_enemy_mmr = scope.force_enemy_mmr
+    force_aliases = scope.force_aliases
+    force_assets = scope.force_assets
+    force_participants = scope.force_participants
+    force_end_time = scope.force_end_time
+    force_sessions = scope.force_sessions
+    force_citations = scope.force_citations
+    force_participants_enrich = scope.force_participants_enrich
 
     # Vérifier qu'au moins une option est activée
-    if not any(
-        [
-            medals,
-            events,
-            skill,
-            personal_scores,
-            performance_scores,
-            aliases,
-            accuracy,
-            shots,
-            enemy_mmr,
-            assets,
-            participants,
-            participants_scores,
-            participants_kda,
-            participants_shots,
-            participants_damage,
-            participants_avg_life,
-            killer_victim,
-            end_time,
-            sessions,
-            citations,
-            participants_enrich,
-            force_aliases,
-        ]
-    ):
+    if not scope.has_any_option():
         logger.warning(
             "Aucune option de backfill activée. Utilisez --all ou spécifiez des options."
         )
@@ -280,34 +309,7 @@ async def backfill_player_data(
             conn,
             xuid,
             shared_conn=shared_conn_for_detection,
-            detection_mode=detection_mode,
-            medals=medals,
-            events=events,
-            skill=skill,
-            personal_scores=personal_scores,
-            performance_scores=performance_scores,
-            accuracy=accuracy,
-            enemy_mmr=enemy_mmr,
-            assets=assets,
-            participants=participants,
-            participants_scores=participants_scores,
-            participants_kda=participants_kda,
-            participants_shots=participants_shots,
-            participants_damage=participants_damage,
-            participants_avg_life=participants_avg_life,
-            force_participants_shots=force_participants_shots,
-            force_participants_damage=force_participants_damage,
-            force_participants_avg_life=force_participants_avg_life,
-            force_medals=force_medals,
-            force_accuracy=force_accuracy,
-            shots=shots,
-            force_shots=force_shots,
-            force_enemy_mmr=force_enemy_mmr,
-            force_aliases=force_aliases,
-            force_assets=force_assets,
-            force_participants=force_participants,
-            max_matches=max_matches,
-            all_data=all_data,
+            scope=scope,
         )
 
         logger.info(f"Matchs trouvés avec données manquantes: {len(match_ids)}")
@@ -369,39 +371,8 @@ async def backfill_player_data(
             db_path,
             xuid,
             match_ids,
-            requests_per_second=requests_per_second,
-            medals=medals,
-            events=events,
-            skill=skill,
-            personal_scores=personal_scores,
-            performance_scores=performance_scores,
-            aliases=aliases,
-            accuracy=accuracy,
-            enemy_mmr=enemy_mmr,
-            assets=assets,
-            participants=participants,
-            participants_scores=participants_scores,
-            participants_kda=participants_kda,
-            participants_shots=participants_shots,
-            participants_damage=participants_damage,
-            participants_avg_life=participants_avg_life,
-            killer_victim=killer_victim,
-            end_time=end_time,
-            sessions=sessions,
-            force_medals=force_medals,
-            force_accuracy=force_accuracy,
-            force_shots=force_shots,
-            force_enemy_mmr=force_enemy_mmr,
-            force_end_time=force_end_time,
-            force_sessions=force_sessions,
-            force_participants_shots=force_participants_shots,
-            force_participants_damage=force_participants_damage,
-            force_participants_avg_life=force_participants_avg_life,
-            shots=shots,
-            citations=citations,
-            force_citations=force_citations,
+            scope=scope,
             gamertag=gamertag,
-            dry_run=dry_run,
             existing_shared_conn=shared_conn_for_detection,
         )
 
@@ -416,6 +387,8 @@ async def backfill_player_data(
 
 async def backfill_all_players(
     *,
+    scope: SyncScope | None = None,
+    # ── Rétro-compatibilité : kwargs individuels (ignorés si scope fourni) ──
     dry_run: bool = False,
     max_matches: int | None = None,
     requests_per_second: int = 5,
@@ -458,6 +431,51 @@ async def backfill_all_players(
     detection_mode: str = "or",
 ) -> dict[str, Any]:
     """Backfill pour tous les joueurs DuckDB."""
+    # ── Construire le scope si non fourni ──
+    if scope is None:
+        scope = SyncScope(
+            dry_run=dry_run,
+            max_matches=max_matches,
+            requests_per_second=requests_per_second,
+            detection_mode=detection_mode,
+            medals=medals,
+            events=events,
+            skill=skill,
+            personal_scores=personal_scores,
+            performance_scores=performance_scores,
+            aliases=aliases,
+            accuracy=accuracy,
+            enemy_mmr=enemy_mmr,
+            assets=assets,
+            participants=participants,
+            participants_scores=participants_scores,
+            participants_kda=participants_kda,
+            participants_shots=participants_shots,
+            participants_damage=participants_damage,
+            participants_avg_life=participants_avg_life,
+            killer_victim=killer_victim,
+            end_time=end_time,
+            sessions=sessions,
+            shots=shots,
+            citations=citations,
+            participants_enrich=participants_enrich,
+            all_data=all_data,
+            force_medals=force_medals,
+            force_accuracy=force_accuracy,
+            force_shots=force_shots,
+            force_participants_shots=force_participants_shots,
+            force_participants_damage=force_participants_damage,
+            force_participants_avg_life=force_participants_avg_life,
+            force_enemy_mmr=force_enemy_mmr,
+            force_aliases=force_aliases,
+            force_assets=force_assets,
+            force_participants=force_participants,
+            force_end_time=force_end_time,
+            force_sessions=force_sessions,
+            force_citations=force_citations,
+            force_participants_enrich=force_participants_enrich,
+        )
+
     from src.ui.multiplayer import list_duckdb_v4_players
 
     players = list_duckdb_v4_players()
@@ -477,46 +495,7 @@ async def backfill_all_players(
 
         result = await backfill_player_data(
             player_info.gamertag,
-            dry_run=dry_run,
-            max_matches=max_matches,
-            requests_per_second=requests_per_second,
-            medals=medals,
-            events=events,
-            skill=skill,
-            personal_scores=personal_scores,
-            performance_scores=performance_scores,
-            aliases=aliases,
-            accuracy=accuracy,
-            enemy_mmr=enemy_mmr,
-            assets=assets,
-            participants=participants,
-            participants_scores=participants_scores,
-            participants_kda=participants_kda,
-            participants_shots=participants_shots,
-            participants_damage=participants_damage,
-            participants_avg_life=participants_avg_life,
-            killer_victim=killer_victim,
-            end_time=end_time,
-            sessions=sessions,
-            all_data=all_data,
-            force_medals=force_medals,
-            force_accuracy=force_accuracy,
-            shots=shots,
-            force_shots=force_shots,
-            force_participants_shots=force_participants_shots,
-            force_participants_damage=force_participants_damage,
-            force_participants_avg_life=force_participants_avg_life,
-            force_enemy_mmr=force_enemy_mmr,
-            force_aliases=force_aliases,
-            force_assets=force_assets,
-            force_participants=force_participants,
-            force_end_time=force_end_time,
-            force_sessions=force_sessions,
-            citations=citations,
-            force_citations=force_citations,
-            participants_enrich=participants_enrich,
-            force_participants_enrich=force_participants_enrich,
-            detection_mode=detection_mode,
+            scope=scope,
         )
 
         for key in total_results:
@@ -722,42 +701,112 @@ async def _backfill_with_api(
     xuid: str,
     match_ids: list[str],
     *,
-    requests_per_second: int,
-    medals: bool,
-    events: bool,
-    skill: bool,
-    personal_scores: bool,
-    performance_scores: bool,
-    aliases: bool,
-    accuracy: bool,
-    enemy_mmr: bool,
-    assets: bool,
-    participants: bool,
-    participants_scores: bool,
-    participants_kda: bool,
-    participants_shots: bool,
-    participants_damage: bool,
-    participants_avg_life: bool,
-    killer_victim: bool,
-    end_time: bool,
-    sessions: bool,
-    force_medals: bool,
-    force_accuracy: bool,
-    force_shots: bool,
-    force_enemy_mmr: bool,
-    force_end_time: bool,
-    force_sessions: bool,
-    force_participants_shots: bool,
-    force_participants_damage: bool,
-    force_participants_avg_life: bool,
-    shots: bool,
+    scope: SyncScope | None = None,
+    # ── Rétro-compatibilité : kwargs individuels (ignorés si scope fourni) ──
+    requests_per_second: int = 5,
+    medals: bool = False,
+    events: bool = False,
+    skill: bool = False,
+    personal_scores: bool = False,
+    performance_scores: bool = False,
+    aliases: bool = False,
+    accuracy: bool = False,
+    enemy_mmr: bool = False,
+    assets: bool = False,
+    participants: bool = False,
+    participants_scores: bool = False,
+    participants_kda: bool = False,
+    participants_shots: bool = False,
+    participants_damage: bool = False,
+    participants_avg_life: bool = False,
+    killer_victim: bool = False,
+    end_time: bool = False,
+    sessions: bool = False,
+    force_medals: bool = False,
+    force_accuracy: bool = False,
+    force_shots: bool = False,
+    force_enemy_mmr: bool = False,
+    force_end_time: bool = False,
+    force_sessions: bool = False,
+    force_participants_shots: bool = False,
+    force_participants_damage: bool = False,
+    force_participants_avg_life: bool = False,
+    shots: bool = False,
     citations: bool = False,
     force_citations: bool = False,
-    gamertag: str,
-    dry_run: bool,
+    gamertag: str = "",
+    dry_run: bool = False,
     existing_shared_conn: Any | None = None,
 ) -> dict[str, int]:
     """Traitement des matchs via l'API SPNKr."""
+    # ── Construire / résoudre le scope ──
+    if scope is None:
+        scope = SyncScope(
+            dry_run=dry_run,
+            requests_per_second=requests_per_second,
+            medals=medals,
+            events=events,
+            skill=skill,
+            personal_scores=personal_scores,
+            performance_scores=performance_scores,
+            aliases=aliases,
+            accuracy=accuracy,
+            enemy_mmr=enemy_mmr,
+            assets=assets,
+            participants=participants,
+            participants_scores=participants_scores,
+            participants_kda=participants_kda,
+            participants_shots=participants_shots,
+            participants_damage=participants_damage,
+            participants_avg_life=participants_avg_life,
+            killer_victim=killer_victim,
+            end_time=end_time,
+            sessions=sessions,
+            shots=shots,
+            citations=citations,
+            force_medals=force_medals,
+            force_accuracy=force_accuracy,
+            force_shots=force_shots,
+            force_participants_shots=force_participants_shots,
+            force_participants_damage=force_participants_damage,
+            force_participants_avg_life=force_participants_avg_life,
+            force_enemy_mmr=force_enemy_mmr,
+            force_end_time=force_end_time,
+            force_sessions=force_sessions,
+            force_citations=force_citations,
+        )
+    scope.resolve()
+
+    # Extraire les valeurs résolues en variables locales
+    requests_per_second = scope.requests_per_second
+    dry_run = scope.dry_run
+    medals = scope.medals
+    events = scope.events
+    skill = scope.skill
+    personal_scores = scope.personal_scores
+    performance_scores = scope.performance_scores
+    aliases = scope.aliases
+    accuracy = scope.accuracy
+    enemy_mmr = scope.enemy_mmr
+    assets = scope.assets
+    participants = scope.participants
+    participants_scores = scope.participants_scores
+    participants_kda = scope.participants_kda
+    participants_shots = scope.participants_shots
+    participants_damage = scope.participants_damage
+    participants_avg_life = scope.participants_avg_life
+    killer_victim = scope.killer_victim
+    end_time = scope.end_time
+    sessions = scope.sessions
+    shots = scope.shots
+    citations = scope.citations
+    force_medals = scope.force_medals
+    force_accuracy = scope.force_accuracy
+    force_shots = scope.force_shots
+    force_enemy_mmr = scope.force_enemy_mmr
+    force_end_time = scope.force_end_time
+    force_sessions = scope.force_sessions
+    force_citations = scope.force_citations
     from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
     from src.data.sync.migrations import ensure_match_participants_columns
     from src.data.sync.transformers import (
@@ -955,39 +1004,7 @@ async def _backfill_with_api(
                     totals["performance_scores_inserted"] += 1
 
                 # Marquer le bitmask backfill_completed pour tous les types demandés
-                requested_types: list[str] = []
-                if medals:
-                    requested_types.append("medals")
-                if events:
-                    requested_types.append("events")
-                if skill:
-                    requested_types.append("skill")
-                if personal_scores:
-                    requested_types.append("personal_scores")
-                if performance_scores:
-                    requested_types.append("performance_scores")
-                if aliases:
-                    requested_types.append("aliases")
-                if accuracy:
-                    requested_types.append("accuracy")
-                if shots:
-                    requested_types.append("shots")
-                if enemy_mmr:
-                    requested_types.append("enemy_mmr")
-                if assets:
-                    requested_types.append("assets")
-                if participants:
-                    requested_types.append("participants")
-                if participants_scores:
-                    requested_types.append("participants_scores")
-                if participants_kda:
-                    requested_types.append("participants_kda")
-                if participants_shots:
-                    requested_types.append("participants_shots")
-                if participants_damage:
-                    requested_types.append("participants_damage")
-                if participants_avg_life:
-                    requested_types.append("participants_avg_life")
+                requested_types = scope.requested_types
 
                 # Marquer backfill_completed
                 # V5 FINAL: TOUJOURS dans shared.match_registry, jamais dans match_stats

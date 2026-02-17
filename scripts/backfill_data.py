@@ -63,6 +63,7 @@ from scripts.backfill.orchestrator import (  # noqa: E402
     backfill_all_players,
     backfill_player_data,
 )
+from src.data.sync.scope import SyncScope  # noqa: E402
 
 # Configuration du logging
 logging.basicConfig(
@@ -82,100 +83,16 @@ def main() -> int:
     if not args.all and not args.player:
         parser.error("--player ou --all est requis")
 
+    # Construire le scope depuis les arguments CLI
+    scope = SyncScope.from_cli_args(args)
+
     try:
         if args.all:
-            result = asyncio.run(
-                backfill_all_players(
-                    dry_run=args.dry_run,
-                    max_matches=args.max_matches,
-                    requests_per_second=args.requests_per_second,
-                    medals=args.medals,
-                    events=args.events,
-                    skill=args.skill,
-                    personal_scores=args.personal_scores,
-                    performance_scores=args.performance_scores,
-                    aliases=args.aliases,
-                    accuracy=args.accuracy,
-                    enemy_mmr=args.enemy_mmr,
-                    assets=args.assets,
-                    participants=args.participants,
-                    participants_scores=args.participants_scores,
-                    participants_kda=args.participants_kda,
-                    participants_shots=args.participants_shots,
-                    participants_damage=args.participants_damage,
-                    participants_avg_life=args.participants_avg_life,
-                    killer_victim=args.killer_victim,
-                    end_time=args.end_time,
-                    all_data=args.all_data,
-                    force_medals=args.force_medals,
-                    force_accuracy=args.force_accuracy,
-                    shots=args.shots,
-                    force_shots=args.force_shots,
-                    force_participants_shots=args.force_participants_shots,
-                    force_participants_damage=args.force_participants_damage,
-                    force_participants_avg_life=args.force_participants_avg_life,
-                    force_enemy_mmr=args.force_enemy_mmr,
-                    force_aliases=args.force_aliases,
-                    force_assets=args.force_assets,
-                    force_participants=args.force_participants,
-                    force_end_time=args.force_end_time,
-                    sessions=args.sessions,
-                    force_sessions=args.force_sessions,
-                    citations=args.citations,
-                    force_citations=args.force_citations,
-                    participants_enrich=args.participants_enrich,
-                    force_participants_enrich=args.force_participants_enrich,
-                    detection_mode=args.detection_mode,
-                )
-            )
-            _print_summary_all(result, args)
+            result = asyncio.run(backfill_all_players(scope=scope))
+            _print_summary_all(result, scope)
         else:
-            result = asyncio.run(
-                backfill_player_data(
-                    args.player,
-                    dry_run=args.dry_run,
-                    max_matches=args.max_matches,
-                    requests_per_second=args.requests_per_second,
-                    medals=args.medals,
-                    events=args.events,
-                    skill=args.skill,
-                    personal_scores=args.personal_scores,
-                    performance_scores=args.performance_scores,
-                    aliases=args.aliases,
-                    accuracy=args.accuracy,
-                    enemy_mmr=args.enemy_mmr,
-                    assets=args.assets,
-                    participants=args.participants,
-                    participants_scores=args.participants_scores,
-                    participants_kda=args.participants_kda,
-                    participants_shots=args.participants_shots,
-                    participants_damage=args.participants_damage,
-                    participants_avg_life=args.participants_avg_life,
-                    killer_victim=args.killer_victim,
-                    end_time=args.end_time,
-                    all_data=args.all_data,
-                    force_medals=args.force_medals,
-                    force_accuracy=args.force_accuracy,
-                    shots=args.shots,
-                    force_shots=args.force_shots,
-                    force_participants_shots=args.force_participants_shots,
-                    force_participants_damage=args.force_participants_damage,
-                    force_participants_avg_life=args.force_participants_avg_life,
-                    force_enemy_mmr=args.force_enemy_mmr,
-                    force_aliases=args.force_aliases,
-                    force_assets=args.force_assets,
-                    force_participants=args.force_participants,
-                    force_end_time=args.force_end_time,
-                    sessions=args.sessions,
-                    force_sessions=args.force_sessions,
-                    citations=args.citations,
-                    force_citations=args.force_citations,
-                    participants_enrich=args.participants_enrich,
-                    force_participants_enrich=args.force_participants_enrich,
-                    detection_mode=args.detection_mode,
-                )
-            )
-            _print_summary_player(result, args)
+            result = asyncio.run(backfill_player_data(args.player, scope=scope))
+            _print_summary_player(result, scope)
 
         return 0
 
@@ -190,23 +107,23 @@ def main() -> int:
         return 1
 
 
-def _print_summary_all(result: dict, args: object) -> None:
+def _print_summary_all(result: dict, scope: object) -> None:
     """Affiche le résumé global pour tous les joueurs."""
     logger.info("\n" + "=" * 60)
     logger.info("=== RÉSUMÉ GLOBAL ===")
     logger.info("=" * 60)
     logger.info(f"Joueurs traités: {result['players_processed']}")
     totals = result["total_results"]
-    _print_totals(totals, args)
+    _print_totals(totals, scope)
 
 
-def _print_summary_player(result: dict, args: object) -> None:
+def _print_summary_player(result: dict, scope: object) -> None:
     """Affiche le résumé pour un joueur."""
     logger.info("\n=== Résumé ===")
-    _print_totals(result, args)
+    _print_totals(result, scope)
 
 
-def _print_totals(totals: dict, args: object) -> None:
+def _print_totals(totals: dict, scope: object) -> None:
     """Affiche les totaux du backfill."""
     logger.info(f"Matchs vérifiés: {totals.get('matches_checked', 0)}")
     logger.info(f"Matchs avec données manquantes: {totals.get('matches_missing_data', 0)}")
@@ -217,35 +134,35 @@ def _print_totals(totals: dict, args: object) -> None:
     logger.info(f"Scores de performance calculés: {totals.get('performance_scores_inserted', 0)}")
     logger.info(f"Aliases insérés: {totals.get('aliases_inserted', 0)}")
 
-    if getattr(args, "accuracy", False):
+    if getattr(scope, "accuracy", False):
         logger.info(f"Accuracy mis à jour: {totals.get('accuracy_updated', 0)}")
-    if getattr(args, "shots", False):
+    if getattr(scope, "shots", False):
         logger.info(f"Shots mis à jour: {totals.get('shots_updated', 0)}")
-    if getattr(args, "enemy_mmr", False):
+    if getattr(scope, "enemy_mmr", False):
         logger.info(f"Enemy MMR mis à jour: {totals.get('enemy_mmr_updated', 0)}")
-    if getattr(args, "assets", False):
+    if getattr(scope, "assets", False):
         logger.info(f"Noms assets mis à jour: {totals.get('assets_updated', 0)}")
-    if getattr(args, "participants", False):
+    if getattr(scope, "participants", False):
         logger.info(f"Participants insérés: {totals.get('participants_inserted', 0)}")
-    if getattr(args, "participants_scores", False):
+    if getattr(scope, "participants_scores", False):
         logger.info(f"Scores/rang participants: {totals.get('participants_scores_updated', 0)}")
-    if getattr(args, "participants_kda", False):
+    if getattr(scope, "participants_kda", False):
         logger.info(f"K/D/A participants: {totals.get('participants_kda_updated', 0)}")
-    if getattr(args, "participants_shots", False):
+    if getattr(scope, "participants_shots", False):
         logger.info(f"Shots participants: {totals.get('participants_shots_updated', 0)}")
-    if getattr(args, "participants_damage", False):
+    if getattr(scope, "participants_damage", False):
         logger.info(f"Damage participants: {totals.get('participants_damage_updated', 0)}")
-    if getattr(args, "participants_avg_life", False):
+    if getattr(scope, "participants_avg_life", False):
         logger.info(f"Durée de vie participants: {totals.get('participants_avg_life_updated', 0)}")
-    if getattr(args, "killer_victim", False):
+    if getattr(scope, "killer_victim", False):
         logger.info(f"Paires killer/victim: {totals.get('killer_victim_pairs_inserted', 0)}")
-    if getattr(args, "end_time", False):
+    if getattr(scope, "end_time", False):
         logger.info(f"End time mis à jour: {totals.get('end_time_updated', 0)}")
-    if getattr(args, "sessions", False):
+    if getattr(scope, "sessions", False):
         logger.info(f"Sessions mises à jour: {totals.get('sessions_updated', 0)}")
-    if getattr(args, "citations", False):
+    if getattr(scope, "citations", False):
         logger.info(f"Citations calculées: {totals.get('citations_computed', 0)}")
-    if getattr(args, "participants_enrich", False):
+    if getattr(scope, "participants_enrich", False):
         logger.info(f"Participants enrichis: {totals.get('participants_enriched', 0)}")
 
 

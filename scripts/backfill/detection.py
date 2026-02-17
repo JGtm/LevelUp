@@ -11,9 +11,12 @@ Le bitmask backfill_completed est stocké dans match_registry.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.data.sync.migrations import BACKFILL_FLAGS, compute_backfill_mask  # noqa: F401
+
+if TYPE_CHECKING:
+    from src.data.sync.scope import SyncScope
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,8 @@ def find_matches_missing_data(
     xuid: str,
     *,
     shared_conn: Any,
+    scope: SyncScope | None = None,
+    # ── Rétro-compatibilité : kwargs individuels (ignorés si scope fourni) ──
     detection_mode: str = "or",
     medals: bool = False,
     events: bool = False,
@@ -69,6 +74,7 @@ def find_matches_missing_data(
         conn: Connexion DuckDB (player DB).
         xuid: XUID du joueur.
         shared_conn: Connexion à shared_matches.duckdb (obligatoire).
+        scope: Périmètre de données (si fourni, les kwargs individuels sont ignorés).
         detection_mode: "or" (défaut) ou "and" (strict).
         max_matches: Limite de résultats.
         all_data: True si --all-data est actif.
@@ -76,7 +82,37 @@ def find_matches_missing_data(
     Returns:
         Liste des match_id manquants.
     """
-    _ = all_data  # compat signature
+    # ── Extraire les valeurs depuis le scope si fourni ──
+    if scope is not None:
+        medals = scope.medals
+        events = scope.events
+        skill = scope.skill
+        personal_scores = scope.personal_scores
+        performance_scores = scope.performance_scores
+        accuracy = scope.accuracy
+        enemy_mmr = scope.enemy_mmr
+        assets = scope.assets
+        participants = scope.participants
+        participants_scores = scope.participants_scores
+        participants_kda = scope.participants_kda
+        participants_shots = scope.participants_shots
+        participants_damage = scope.participants_damage
+        participants_avg_life = scope.participants_avg_life
+        force_participants_shots = scope.force_participants_shots
+        force_participants_damage = scope.force_participants_damage
+        force_participants_avg_life = scope.force_participants_avg_life
+        force_medals = scope.force_medals
+        force_accuracy = scope.force_accuracy
+        shots = scope.shots
+        force_shots = scope.force_shots
+        force_enemy_mmr = scope.force_enemy_mmr
+        force_aliases = scope.force_aliases
+        force_assets = scope.force_assets
+        force_participants = scope.force_participants
+        max_matches = scope.max_matches
+        all_data = scope.all_data
+    else:
+        _ = all_data  # compat signature
 
     # Détecter le type de flags demandés
     local_data_requested = any(
