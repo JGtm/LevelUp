@@ -267,7 +267,7 @@ except ImportError:
 
 
 def compute_performance_score_for_match(
-    conn: Any, match_id: str, *, shared_conn: Any, xuid: str
+    conn: Any, match_id: str, *, shared_conn: Any, xuid: str, force: bool = False
 ) -> bool:
     """Calcule et met à jour le score de performance pour un match.
 
@@ -279,6 +279,7 @@ def compute_performance_score_for_match(
         match_id: ID du match.
         shared_conn: Connexion vers shared_matches.duckdb (obligatoire).
         xuid: XUID du joueur (obligatoire).
+        force: Si True, recalcule même si le score existe déjà.
 
     Returns:
         True si le score a été calculé, False sinon.
@@ -303,13 +304,14 @@ def compute_performance_score_for_match(
             )
         """)
 
-        # Vérifier si le score existe déjà dans player_match_enrichment
-        existing = conn.execute(
-            "SELECT performance_score FROM player_match_enrichment WHERE match_id = ?",
-            (match_id,),
-        ).fetchone()
-        if existing and existing[0] is not None:
-            return False
+        # Vérifier si le score existe déjà dans player_match_enrichment (sauf si force)
+        if not force:
+            existing = conn.execute(
+                "SELECT performance_score FROM player_match_enrichment WHERE match_id = ?",
+                (match_id,),
+            ).fetchone()
+            if existing and existing[0] is not None:
+                return False
 
         # Lire depuis shared.match_participants + match_registry
         match_data = shared_conn.execute(

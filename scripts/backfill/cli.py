@@ -77,6 +77,11 @@ def create_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Calculer les scores de performance manquants",
     )
+    parser.add_argument(
+        "--force-performance-scores",
+        action="store_true",
+        help="Force le calcul des scores de performance pour TOUS les matchs",
+    )
     parser.add_argument("--aliases", action="store_true", help="Mettre à jour les aliases XUID")
     parser.add_argument(
         "--all-data",
