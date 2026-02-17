@@ -111,6 +111,101 @@ def compute_annexion_forcee(
     return zone_captures // 3
 
 
+def compute_flag_em_down(
+    df: pl.DataFrame | None = None, awards: dict[str, int] | None = None, **kwargs: Any
+) -> int:
+    """Compte les kills de porteur de drapeau ennemi.
+
+    Condition : Tuer un ennemi portant le drapeau.
+
+    Args:
+        df: DataFrame des matchs (non utilisé)
+        awards: Dict des compteurs d'awards
+        **kwargs: Arguments supplémentaires
+
+    Returns:
+        Nombre de Flag Carrier Kills
+    """
+    if awards is None:
+        return 0
+    return awards.get("Flag Carrier Kill", 0) + awards.get("Flag Carrier Killed", 0)
+
+
+def compute_hijack(
+    df: pl.DataFrame | None = None, awards: dict[str, int] | None = None, **kwargs: Any
+) -> int:
+    """Compte le nombre total de hijacks de véhicules.
+
+    Args:
+        df: DataFrame des matchs (non utilisé)
+        awards: Dict des compteurs d'awards
+        **kwargs: Arguments supplémentaires
+
+    Returns:
+        Nombre total de hijacks
+    """
+    if awards is None:
+        return 0
+
+    hijack_keywords = ["Hijacked", "Hijack", "Skyjack"]
+    total = 0
+    for key, val in awards.items():
+        if any(kw.lower() in key.lower() for kw in hijack_keywords):
+            total += val
+    return total
+
+
+def compute_vandalism(
+    df: pl.DataFrame | None = None, awards: dict[str, int] | None = None, **kwargs: Any
+) -> int:
+    """Compte le nombre de véhicules ennemis détruits.
+
+    Args:
+        df: DataFrame des matchs (non utilisé)
+        awards: Dict des compteurs d'awards
+        **kwargs: Arguments supplémentaires
+
+    Returns:
+        Nombre de véhicules détruits
+    """
+    if awards is None:
+        return 0
+
+    destroy_keywords = ["Destroyed", "Destruction"]
+    total = 0
+    for key, val in awards.items():
+        if any(kw.lower() in key.lower() for kw in destroy_keywords):
+            total += val
+    return total
+
+
+def compute_wraith_destroyer(
+    df: pl.DataFrame | None = None, awards: dict[str, int] | None = None, **kwargs: Any
+) -> int:
+    """Compte les Wraiths détruits."""
+    if awards is None:
+        return 0
+    return awards.get("Wraith Destroyed", 0) + awards.get("Apparition Destroyed", 0)
+
+
+def compute_mongoose_destroyer(
+    df: pl.DataFrame | None = None, awards: dict[str, int] | None = None, **kwargs: Any
+) -> int:
+    """Compte les Mongooses détruits."""
+    if awards is None:
+        return 0
+    return awards.get("Mongoose Destroyed", 0)
+
+
+def compute_warthog_destroyer(
+    df: pl.DataFrame | None = None, awards: dict[str, int] | None = None, **kwargs: Any
+) -> int:
+    """Compte les Warthogs détruits."""
+    if awards is None:
+        return 0
+    return awards.get("Warthog Destroyed", 0) + awards.get("Rocket Warthog Destroyed", 0)
+
+
 # Registry des fonctions custom pour utilisation dynamique
 CUSTOM_FUNCTIONS = {
     "compute_bulldozer": compute_bulldozer,
@@ -119,6 +214,12 @@ CUSTOM_FUNCTIONS = {
     "compute_wins_slayer": compute_wins_slayer,
     "compute_wins_strongholds": compute_wins_strongholds,
     "compute_annexion_forcee": compute_annexion_forcee,
+    "compute_flag_em_down": compute_flag_em_down,
+    "compute_hijack": compute_hijack,
+    "compute_vandalism": compute_vandalism,
+    "compute_wraith_destroyer": compute_wraith_destroyer,
+    "compute_mongoose_destroyer": compute_mongoose_destroyer,
+    "compute_warthog_destroyer": compute_warthog_destroyer,
 }
 
 

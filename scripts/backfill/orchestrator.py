@@ -363,6 +363,16 @@ async def backfill_player_data(
             return _empty_result()
 
         if not needs_api and needs_local_only:
+            # Fermer shared_conn_for_detection avant _backfill_local_only
+            # car sessions/citations ont besoin d'attacher le fichier à conn
+            if shared_conn_for_detection is not None:
+                try:
+                    shared_conn_for_detection.commit()
+                    shared_conn_for_detection.close()
+                    shared_conn_for_detection = None
+                except Exception:
+                    pass
+
             result = _backfill_local_only(
                 conn,
                 db_path,
@@ -1083,6 +1093,19 @@ async def _backfill_with_api(
         if n > 0:
             logger.info(f"✅ {n} match(s) avec end_time mis à jour")
 
+    # Fermer shared_conn AVANT sessions/citations pour libérer le verrou fichier
+    # car ces fonctions ont besoin d'attacher shared à la connexion player
+    # On ferme TOUJOURS (même si on ne l'a pas ouvert nous-même) car sessions/citations
+    # vont attacher le fichier à conn et ont besoin du verrou exclusif
+    if shared_conn is not None and (sessions or citations):
+        try:
+            shared_conn.commit()
+            shared_conn.close()
+            shared_conn = None
+            owns_shared_conn = False  # Marquer comme fermé
+        except Exception:
+            pass
+
     if sessions:
         n = _backfill_sessions(conn, db_path, xuid, force=force_sessions, dry_run=dry_run)
         totals["sessions_updated"] = n
@@ -1094,7 +1117,7 @@ async def _backfill_with_api(
         n = backfill_citations(conn, db_path, xuid, force=force_citations)
         totals["citations_computed"] = n
 
-    # Fermer la connexion shared uniquement si on l'a ouverte nous-même
+    # Fermer shared_conn si on l'a ouvert et pas encore fermé
     if shared_conn is not None and owns_shared_conn:
         try:
             shared_conn.commit()

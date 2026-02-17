@@ -25,7 +25,7 @@ def shared_conn():
             match_id VARCHAR NOT NULL PRIMARY KEY,
             start_time TIMESTAMP,
             end_time TIMESTAMP,
-            time_played_seconds INTEGER,
+            duration_seconds INTEGER,
             backfill_completed INTEGER DEFAULT 0
         )
     """)
@@ -104,7 +104,7 @@ class TestBackfillEndTime:
 
         t = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
         shared_conn.execute(
-            "INSERT INTO match_registry (match_id, start_time, time_played_seconds, end_time) "
+            "INSERT INTO match_registry (match_id, start_time, duration_seconds, end_time) "
             "VALUES (?, ?, ?, NULL)",
             ["m1", t, 600],
         )
@@ -121,7 +121,7 @@ class TestBackfillEndTime:
         t = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
         end = t + timedelta(seconds=600)
         shared_conn.execute(
-            "INSERT INTO match_registry (match_id, start_time, time_played_seconds, end_time) "
+            "INSERT INTO match_registry (match_id, start_time, duration_seconds, end_time) "
             "VALUES (?, ?, ?, ?)",
             ["m1", t, 600, end],
         )
@@ -134,7 +134,7 @@ class TestBackfillEndTime:
         t = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
         end_old = t + timedelta(seconds=300)  # wrong
         shared_conn.execute(
-            "INSERT INTO match_registry (match_id, start_time, time_played_seconds, end_time) "
+            "INSERT INTO match_registry (match_id, start_time, duration_seconds, end_time) "
             "VALUES (?, ?, ?, ?)",
             ["m1", t, 600, end_old],
         )
@@ -150,7 +150,7 @@ class TestBackfillEndTime:
         from scripts.backfill.strategies import backfill_end_time
 
         shared_conn.execute(
-            "INSERT INTO match_registry (match_id, start_time, time_played_seconds, end_time) "
+            "INSERT INTO match_registry (match_id, start_time, duration_seconds, end_time) "
             "VALUES (?, NULL, ?, NULL)",
             ["m1", 600],
         )
