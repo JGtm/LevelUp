@@ -32,6 +32,7 @@ from src.ui.filter_state import (
     load_filter_preferences,
     save_filter_preferences,
 )
+from src.ui.vectorize_helpers import build_mapping
 
 GAP_MINUTES_FIXED = 120  # Figé (sessions stockées en base, cf. SESSIONS_STOCKAGE_PLAN.md)
 
@@ -516,18 +517,25 @@ def _render_cascade_filters(
                 pl.col("match_id").cast(pl.Utf8).is_in(list(allowed_ids))
             )
 
+    # Vectorisation: build_mapping + replace_strict au lieu de map_elements
+    _pl_map = build_mapping(
+        dropdown_base["playlist_name"],
+        lambda x: translate_playlist_name(clean_asset_label_fn(x)),
+    )
+    _mode_map = build_mapping(dropdown_base["pair_name"], normalize_mode_label_fn)
+    _map_map = build_mapping(dropdown_base["map_name"], normalize_map_label_fn)
     dropdown_base = dropdown_base.with_columns(
         pl.col("playlist_name")
-        .map_elements(
-            lambda x: translate_playlist_name(clean_asset_label_fn(x)),
-            return_dtype=pl.Utf8,
-        )
+        .cast(pl.Utf8)
+        .replace_strict(_pl_map, default=None, return_dtype=pl.Utf8)
         .alias("playlist_ui"),
         pl.col("pair_name")
-        .map_elements(normalize_mode_label_fn, return_dtype=pl.Utf8)
+        .cast(pl.Utf8)
+        .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
         .alias("mode_ui"),
         pl.col("map_name")
-        .map_elements(normalize_map_label_fn, return_dtype=pl.Utf8)
+        .cast(pl.Utf8)
+        .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
         .alias("map_ui"),
     )
 
@@ -656,48 +664,59 @@ def apply_filters(
             dff = dff.clone()
 
         # Colonnes dérivées (nécessitent playlist_name, pair_name, map_name)
+        # Vectorisation: build_mapping + replace_strict au lieu de map_elements
         derived_exprs: list[pl.Expr] = []
         if "playlist_name" in dff.columns:
             if "playlist_fr" not in dff.columns:
+                _pfr_map = build_mapping(dff["playlist_name"], translate_playlist_name)
                 derived_exprs.append(
                     pl.col("playlist_name")
-                    .map_elements(translate_playlist_name, return_dtype=pl.Utf8)
+                    .cast(pl.Utf8)
+                    .replace_strict(_pfr_map, default=None, return_dtype=pl.Utf8)
                     .alias("playlist_fr")
                 )
             if "playlist_ui" not in dff.columns:
+                _pui_map = build_mapping(
+                    dff["playlist_name"],
+                    lambda x: translate_playlist_name(clean_asset_label_fn(x)),
+                )
                 derived_exprs.append(
                     pl.col("playlist_name")
-                    .map_elements(
-                        lambda x: translate_playlist_name(clean_asset_label_fn(x)),
-                        return_dtype=pl.Utf8,
-                    )
+                    .cast(pl.Utf8)
+                    .replace_strict(_pui_map, default=None, return_dtype=pl.Utf8)
                     .alias("playlist_ui")
                 )
         if "pair_name" in dff.columns:
             if "pair_fr" not in dff.columns:
+                _pair_map = build_mapping(dff["pair_name"], translate_pair_name)
                 derived_exprs.append(
                     pl.col("pair_name")
-                    .map_elements(translate_pair_name, return_dtype=pl.Utf8)
+                    .cast(pl.Utf8)
+                    .replace_strict(_pair_map, default=None, return_dtype=pl.Utf8)
                     .alias("pair_fr")
                 )
             if "mode_ui" not in dff.columns:
-                # Optimisation: si normalize_mode_label_fn est _identity, utiliser cast au lieu de map_elements
+                # Optimisation: si normalize_mode_label_fn est _identity, utiliser cast
                 if normalize_mode_label_fn is _identity:
                     derived_exprs.append(pl.col("pair_name").cast(pl.Utf8).alias("mode_ui"))
                 else:
+                    _mui_map = build_mapping(dff["pair_name"], normalize_mode_label_fn)
                     derived_exprs.append(
                         pl.col("pair_name")
-                        .map_elements(normalize_mode_label_fn, return_dtype=pl.Utf8)
+                        .cast(pl.Utf8)
+                        .replace_strict(_mui_map, default=None, return_dtype=pl.Utf8)
                         .alias("mode_ui")
                     )
         if "map_name" in dff.columns and "map_ui" not in dff.columns:
-            # Optimisation: si normalize_map_label_fn est _identity, utiliser cast au lieu de map_elements
+            # Optimisation: si normalize_map_label_fn est _identity, utiliser cast
             if normalize_map_label_fn is _identity:
                 derived_exprs.append(pl.col("map_name").cast(pl.Utf8).alias("map_ui"))
             else:
+                _mapui_map = build_mapping(dff["map_name"], normalize_map_label_fn)
                 derived_exprs.append(
                     pl.col("map_name")
-                    .map_elements(normalize_map_label_fn, return_dtype=pl.Utf8)
+                    .cast(pl.Utf8)
+                    .replace_strict(_mapui_map, default=None, return_dtype=pl.Utf8)
                     .alias("map_ui")
                 )
         if derived_exprs:

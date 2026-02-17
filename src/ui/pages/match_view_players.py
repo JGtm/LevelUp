@@ -389,7 +389,7 @@ def _render_antagonist_chart(
                     height=400,
                 )
                 if fig is not None:
-                    st.plotly_chart(fig, width="stretch")
+                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
                 else:
                     st.info("Données insuffisantes pour les interactions killer-victim.")
             except Exception as e:

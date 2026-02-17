@@ -216,8 +216,12 @@ def _index_all_media(settings: AppSettings) -> pl.DataFrame:
     df = df.with_columns(
         [
             pl.col("path").cast(pl.Utf8),
+            # Vectorisation: str ops au lieu de map_elements(os.path.basename)
             pl.col("path")
-            .map_elements(lambda p: os.path.basename(str(p)), return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .str.replace_all(r"\\", "/")
+            .str.split("/")
+            .list.last()
             .alias("basename"),
         ]
     ).drop_nulls(subset=["mtime"])

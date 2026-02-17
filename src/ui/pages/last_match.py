@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import polars as pl
 import streamlit as st
 
+from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 if TYPE_CHECKING:
@@ -154,15 +155,25 @@ def render_match_search_page(
 
     # Sélection rapide (sur les filtres actuels, triés du plus récent au plus ancien)
     quick_df = dff.sort("start_time", descending=True).head(200)
+    # Vectorisation: pré-calcul du mapping datetime → string formatée
+    _dt_vals = quick_df["start_time"].drop_nulls().unique().to_list()
+    _dt_str_map: dict[str, str] = {}
+    for _dtv in _dt_vals:
+        _formatted = format_datetime_fn(_dtv)
+        if _formatted:
+            _dt_str_map[str(_dtv)] = str(_formatted)
     quick_df = quick_df.with_columns(
         pl.col("start_time")
-        .map_elements(format_datetime_fn, return_dtype=pl.Utf8)
+        .cast(pl.Utf8)
+        .replace_strict(_dt_str_map, default="-", return_dtype=pl.Utf8)
         .alias("start_time_fr"),
     )
     if "mode_ui" not in quick_df.columns:
+        _mode_map = build_mapping(quick_df["pair_name"], normalize_mode_label_fn)
         quick_df = quick_df.with_columns(
             pl.col("pair_name")
-            .map_elements(normalize_mode_label_fn, return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
             .alias("mode_ui"),
         )
     quick_df = quick_df.with_columns(

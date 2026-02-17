@@ -835,13 +835,14 @@ class MediaIndexer:
             gamertag = Path(pdb).parent.name
             xuid_to_gamertag[str(xu)] = gamertag
 
-        def _gamertag(u: Any) -> str:
-            if u is None:
-                return ""
-            return xuid_to_gamertag.get(str(u), str(u))
-
         df = df.with_columns(
-            pl.col("xuid").map_elements(_gamertag, return_dtype=pl.Utf8).alias("gamertag")
+            pl.col("xuid")
+            .cast(pl.Utf8)
+            .replace_strict(
+                xuid_to_gamertag, default=pl.col("xuid").cast(pl.Utf8), return_dtype=pl.Utf8
+            )
+            .fill_null("")
+            .alias("gamertag")
         )
         # Section: unassigned si pas de match_id, sinon mine ou teammate
         # Mine = xuid match OU gamertag match (current_xuid peut être gamertag en DuckDB v4)

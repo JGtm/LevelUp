@@ -33,6 +33,7 @@ from src.ui.components import (
     render_checkbox_filter,
     render_hierarchical_checkbox_filter,
 )
+from src.ui.vectorize_helpers import build_mapping
 
 
 def _to_polars(df: object) -> pl.DataFrame:
@@ -208,30 +209,37 @@ def add_ui_columns(df: pl.DataFrame) -> pl.DataFrame:
     exprs: list[pl.Expr] = []
     if "playlist_ui" not in df.columns:
         if "playlist_name" in df.columns:
+            # Vectorisation: build_mapping + replace_strict au lieu de map_elements
+            _pl_map = build_mapping(
+                df["playlist_name"],
+                lambda x: translate_playlist_name(clean_asset_label(x)),
+            )
             exprs.append(
                 pl.col("playlist_name")
-                .map_elements(
-                    lambda x: translate_playlist_name(clean_asset_label(x)),
-                    return_dtype=pl.Utf8,
-                )
+                .cast(pl.Utf8)
+                .replace_strict(_pl_map, default=None, return_dtype=pl.Utf8)
                 .alias("playlist_ui")
             )
         else:
             exprs.append(pl.lit("").alias("playlist_ui"))
     if "mode_ui" not in df.columns:
         if "pair_name" in df.columns:
+            _mode_map = build_mapping(df["pair_name"], normalize_mode_label)
             exprs.append(
                 pl.col("pair_name")
-                .map_elements(normalize_mode_label, return_dtype=pl.Utf8)
+                .cast(pl.Utf8)
+                .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
                 .alias("mode_ui")
             )
         else:
             exprs.append(pl.lit("").alias("mode_ui"))
     if "map_ui" not in df.columns:
         if "map_name" in df.columns:
+            _map_map = build_mapping(df["map_name"], normalize_map_label)
             exprs.append(
                 pl.col("map_name")
-                .map_elements(normalize_map_label, return_dtype=pl.Utf8)
+                .cast(pl.Utf8)
+                .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
                 .alias("map_ui")
             )
         else:

@@ -141,7 +141,7 @@ def plot_cumulative_net_score(
     Example:
         >>> df = compute_cumulative_net_score_series_polars(match_stats)
         >>> fig = plot_cumulative_net_score(df)
-        >>> st.plotly_chart(fig)
+        >>> st.plotly_chart(fig, config={"displayModeBar": False})
     """
     fig = go.Figure()
 

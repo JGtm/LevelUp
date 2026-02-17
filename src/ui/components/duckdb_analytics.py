@@ -236,13 +236,9 @@ def render_performance_by_map(
             pl.col("total_matches").alias("Matchs"),
             pl.col("wins").alias("V"),
             pl.col("losses").alias("D"),
-            pl.col("win_rate")
-            .map_elements(lambda x: f"{x:.1f}%", return_dtype=pl.Utf8)
-            .alias("Win %"),
-            pl.col("avg_kda").map_elements(lambda x: f"{x:.2f}", return_dtype=pl.Utf8).alias("KDA"),
-            pl.col("kd_ratio")
-            .map_elements(lambda x: f"{x:.2f}", return_dtype=pl.Utf8)
-            .alias("K/D"),
+            (pl.col("win_rate").round(1).cast(pl.Utf8) + "%").alias("Win %"),
+            pl.col("avg_kda").round(2).cast(pl.Utf8).alias("KDA"),
+            pl.col("kd_ratio").round(2).cast(pl.Utf8).alias("K/D"),
         )
 
         st.dataframe(

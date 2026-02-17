@@ -11,6 +11,8 @@ from src.ui.components.performance import (
     render_metric_comparison_row,
     render_performance_score_card,
 )
+from src.ui.streamlit_modern import fragment_if_available
+from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import (
     DataFrameLike,
     ensure_polars,
@@ -39,7 +41,12 @@ def _infer_session_dominant_category(df_session: DataFrameLike) -> str:
 
     cats = (
         df_session.get_column("pair_name")
-        .map_elements(infer_custom_category_from_pair_name, return_dtype=pl.Utf8)
+        .cast(pl.Utf8)
+        .replace_strict(
+            build_mapping(df_session.get_column("pair_name"), infer_custom_category_from_pair_name),
+            default="Other",
+            return_dtype=pl.Utf8,
+        )
         .fill_null("Other")
         .alias("category")
     )
@@ -222,7 +229,12 @@ def _filter_candidate_sessions(
 
         df_candidates = df_candidates.with_columns(
             pl.col("pair_name")
-            .map_elements(infer_custom_category_from_pair_name, return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .replace_strict(
+                build_mapping(df_candidates["pair_name"], infer_custom_category_from_pair_name),
+                default="Other",
+                return_dtype=pl.Utf8,
+            )
             .alias("_cat")
         )
         dom_by_session: dict = {}
@@ -633,7 +645,7 @@ def _render_cumulative_section(
                     title="",
                 )
                 if fig_cumul is not None:
-                    st.plotly_chart(fig_cumul, width="stretch")
+                    st.plotly_chart(fig_cumul, width="stretch", config={"displayModeBar": False})
                 else:
                     st.info("Données insuffisantes pour le net score cumulé.")
             except Exception as e:
@@ -642,6 +654,7 @@ def _render_cumulative_section(
         pass
 
 
+@fragment_if_available
 def render_session_comparison_page(
     all_sessions_df: DataFrameLike,
     df_full: DataFrameLike | None = None,

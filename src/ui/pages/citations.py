@@ -8,7 +8,7 @@ import polars as pl
 import streamlit as st
 
 from src.ui.commendations import render_h5g_commendations_section
-from src.ui.medals import medal_label, render_medals_grid
+from src.ui.medals import load_medal_name_maps, medal_label, render_medals_grid
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.distributions import plot_medals_distribution
 
@@ -133,11 +133,18 @@ def render_citations_page(
         if not top:
             st.info("Aucune médaille trouvée (ou payload médailles absent).")
         else:
+            _fr_map, _en_map = load_medal_name_maps()
+            _medal_map = {
+                **{str(k): v for k, v in _en_map.items()},
+                **{str(k): v for k, v in _fr_map.items()},
+            }
             md = pl.DataFrame(
                 {"name_id": [t[0] for t in top], "count": [t[1] for t in top]}
             ).with_columns(
                 pl.col("name_id")
-                .map_elements(lambda x: medal_label(int(x)), return_dtype=pl.String)
+                .cast(pl.Utf8)
+                .replace_strict(_medal_map, default=None, return_dtype=pl.Utf8)
+                .fill_null(pl.lit("Médaille #") + pl.col("name_id").cast(pl.Utf8))
                 .alias("label")
             )
             md_desc = md.sort("count", descending=True)
@@ -155,7 +162,7 @@ def render_citations_page(
                     top_n=25,
                 )
                 if fig_medals is not None:
-                    st.plotly_chart(fig_medals, width="stretch")
+                    st.plotly_chart(fig_medals, width="stretch", config={"displayModeBar": False})
                 else:
                     st.info("Données insuffisantes pour la distribution des médailles.")
             except Exception as e:

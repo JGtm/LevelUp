@@ -88,7 +88,7 @@ def _render_radar_display(
                 height=380,
             )
             if fig is not None:
-                st.plotly_chart(fig, width="stretch")
+                st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Impossible de générer le radar de participation.")
         except Exception as e:

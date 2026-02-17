@@ -21,9 +21,9 @@ from src.analysis.performance_score import compute_performance_series
 from src.ui import translate_pair_name
 from src.ui.components.performance import get_score_class
 from src.ui.pages.session_compare import (
-    _format_date_with_weekday,
     _outcome_class,
 )
+from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import (
     DataFrameLike,
     ensure_polars,
@@ -75,9 +75,13 @@ def _build_history_dataframe(
 
     # Traduire le mode si non traduit
     if "pair_fr" not in df_sess.columns and "pair_name" in df_sess.columns:
+        _pair_map = build_mapping(df_sess["pair_name"], translate_pair_name)
         df_sess = df_sess.with_columns(
             pl.col("pair_name")
-            .map_elements(translate_pair_name, return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .replace_strict(
+                _pair_map, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8
+            )
             .alias("pair_fr")
         )
 
@@ -86,9 +90,16 @@ def _build_history_dataframe(
     col_map: dict[str, str] = {}
 
     if "start_time" in df_sess.columns:
+        _weekdays_fr = {1: "lun.", 2: "mar.", 3: "mer.", 4: "jeu.", 5: "ven.", 6: "sam.", 7: "dim."}
         df_sess = df_sess.with_columns(
-            pl.col("start_time")
-            .map_elements(_format_date_with_weekday, return_dtype=pl.Utf8)
+            (
+                pl.col("start_time")
+                .dt.weekday()
+                .replace_strict(_weekdays_fr, default="-", return_dtype=pl.Utf8)
+                + pl.lit(" ")
+                + pl.col("start_time").dt.strftime("%d/%m/%y %H:%M")
+            )
+            .fill_null("-")
             .alias("Heure")
         )
         display_cols.append("Heure")
@@ -97,9 +108,13 @@ def _build_history_dataframe(
         col_map["pair_fr"] = "Mode"
         display_cols.append("pair_fr")
     elif "pair_name" in df_sess.columns:
+        _pair_map2 = build_mapping(df_sess["pair_name"], translate_pair_name)
         df_sess = df_sess.with_columns(
             pl.col("pair_name")
-            .map_elements(translate_pair_name, return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .replace_strict(
+                _pair_map2, default=pl.col("pair_name").cast(pl.Utf8), return_dtype=pl.Utf8
+            )
             .alias("mode_traduit")
         )
         col_map["mode_traduit"] = "Mode"
@@ -319,7 +334,7 @@ def render_comparison_radar_chart(
 
     try:
         if fig_radar is not None:
-            st.plotly_chart(fig_radar, width="stretch")
+            st.plotly_chart(fig_radar, width="stretch", config={"displayModeBar": False})
         else:
             st.info("Impossible de générer le radar de comparaison.")
     except Exception as e:
@@ -545,7 +560,7 @@ def render_comparison_bar_chart(
     try:
         fig = _build_bar_chart_figure(metrics)
         if fig is not None:
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         else:
             st.info("Données insuffisantes pour le graphique comparatif.")
     except Exception as e:
@@ -669,7 +684,7 @@ def render_participation_trend_section(
             try:
                 fig = create_participation_profile_radar(profiles, title="", height=380)
                 if fig is not None:
-                    st.plotly_chart(fig, width="stretch")
+                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
                 else:
                     st.info("Impossible de générer le radar de participation.")
             except Exception as e:

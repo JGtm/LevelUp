@@ -26,7 +26,7 @@ from src.ui import (
     translate_playlist_name,
 )
 from src.ui.formatting import format_date_fr
-from src.ui.medals import medal_label, render_medals_grid
+from src.ui.medals import load_medal_name_maps, render_medals_grid
 from src.ui.pages.match_view_charts import render_expected_vs_actual
 
 # Imports depuis les sous-modules
@@ -294,9 +294,16 @@ def render_match_view(
         st.info("Médailles indisponibles pour ce match (ou aucune médaille).")
     else:
         md_df = pl.DataFrame(medals_last)
+        _fr_map, _en_map = load_medal_name_maps()
+        _medal_map = {
+            **{str(k): v for k, v in _en_map.items()},
+            **{str(k): v for k, v in _fr_map.items()},
+        }
         md_df = md_df.with_columns(
             pl.col("name_id")
-            .map_elements(lambda x: medal_label(int(x)), return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .replace_strict(_medal_map, default=None, return_dtype=pl.Utf8)
+            .fill_null(pl.lit("Médaille #") + pl.col("name_id").cast(pl.Utf8))
             .alias("label")
         )
         md_df = md_df.sort(["count", "label"], descending=[True, False])
