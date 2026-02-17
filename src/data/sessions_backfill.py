@@ -129,12 +129,9 @@ def get_top_two_teammate_xuids(
         conn = duckdb.connect(str(path), read_only=True)
         own_conn = True
     try:
-        # Attacher shared en read-only
+        # Attacher shared en read-only (DuckDB ne supporte pas ? pour ATTACH)
         with contextlib.suppress(Exception):
-            conn.execute(
-                "ATTACH ? AS shared_tmp (READ_ONLY)",
-                [str(shared_db)],
-            )
+            conn.execute(f"ATTACH '{shared_db}' AS shared_tmp (READ_ONLY)")
 
         result = conn.execute(
             """
@@ -223,6 +220,11 @@ def backfill_sessions_for_player(
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Migration : ajouter updated_at si manquante (anciennes tables)
+        with contextlib.suppress(Exception):
+            conn.execute(
+                "ALTER TABLE player_match_enrichment ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+            )
         with contextlib.suppress(Exception):
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id)"
@@ -239,18 +241,64 @@ def backfill_sessions_for_player(
             results["errors"].append("shared_matches.duckdb introuvable")
             return results
 
-        with contextlib.suppress(Exception):
-            conn.execute("ATTACH ? AS shared (READ_ONLY)", [str(shared_db)])
+        # Vérifier si shared est déjà attaché (sous n'importe quel alias)
+        # D'abord chercher via le nom de fichier ou via match_participants
+        shared_alias = None
+        owns_shared_attach = False  # True si on a attaché nous-mêmes
+        try:
+            dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
+            for db_name, db_path_val in dbs:
+                # Chercher par nom de fichier dans le path
+                if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
+                    shared_alias = db_name
+                    break
+                # Ou par nom de base contenant "shared"
+                if db_name and "shared" in db_name.lower():
+                    # Vérifier que cette DB a bien match_participants
+                    try:
+                        conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                        shared_alias = db_name
+                        break
+                    except Exception:
+                        continue
+        except Exception:
+            pass
 
+        # Si pas trouvé, chercher n'importe quelle DB avec match_participants
+        if not shared_alias:
+            try:
+                dbs = conn.execute("SELECT database_name FROM duckdb_databases()").fetchall()
+                for (db_name,) in dbs:
+                    if db_name not in ("memory", "temp", "main", "stats", "system"):
+                        try:
+                            conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                            shared_alias = db_name
+                            break
+                        except Exception:
+                            continue
+            except Exception:
+                pass
+
+        # En dernier recours, essayer d'attacher
+        if not shared_alias:
+            try:
+                # DuckDB ne supporte pas les placeholders ? pour ATTACH
+                conn.execute(f"ATTACH '{shared_db}' AS shared (READ_ONLY)")
+                shared_alias = "shared"
+                owns_shared_attach = True
+            except Exception as e:
+                results["errors"].append(f"Impossible d'attacher shared: {e}")
+                return results
         if not xuid:
             row = conn.execute(
-                "SELECT DISTINCT xuid FROM shared.xuid_aliases WHERE xuid IS NOT NULL LIMIT 1"
+                f"SELECT DISTINCT xuid FROM {shared_alias}.xuid_aliases WHERE xuid IS NOT NULL LIMIT 1"
             ).fetchone()
             xuid = str(row[0]).strip() if row and row[0] else None
         if not xuid:
             results["errors"].append("XUID non trouvé")
-            with contextlib.suppress(Exception):
-                conn.execute("DETACH shared")
+            if owns_shared_attach:
+                with contextlib.suppress(Exception):
+                    conn.execute(f"DETACH {shared_alias}")
             return results
 
         friends = get_friends_xuids_for_backfill(path, xuid, conn=conn)
@@ -259,10 +307,10 @@ def backfill_sessions_for_player(
 
         # Lire les matchs depuis shared + player_match_enrichment pour session_id existant
         df = conn.execute(
-            """
+            f"""
             SELECT mr.match_id, mr.start_time, pme.teammates_signature, pme.session_id
-            FROM shared.match_participants mp
-            JOIN shared.match_registry mr ON mr.match_id = mp.match_id
+            FROM {shared_alias}.match_participants mp
+            JOIN {shared_alias}.match_registry mr ON mr.match_id = mp.match_id
             LEFT JOIN player_match_enrichment pme ON pme.match_id = mr.match_id
             WHERE mp.xuid = ?
             AND mr.start_time IS NOT NULL
@@ -271,8 +319,9 @@ def backfill_sessions_for_player(
             [xuid],
         ).pl()
 
-        with contextlib.suppress(Exception):
-            conn.execute("DETACH shared")
+        if owns_shared_attach:
+            with contextlib.suppress(Exception):
+                conn.execute(f"DETACH {shared_alias}")
 
         if df.is_empty():
             return results
@@ -317,12 +366,12 @@ def backfill_sessions_for_player(
 
             try:
                 conn.execute(
-                    "INSERT INTO player_match_enrichment (match_id, session_id, session_label, updated_at) "
-                    "VALUES (?, ?, ?, CURRENT_TIMESTAMP) "
+                    "INSERT INTO player_match_enrichment (match_id, session_id, session_label) "
+                    "VALUES (?, ?, ?) "
                     "ON CONFLICT (match_id) DO UPDATE SET "
                     "session_id = EXCLUDED.session_id, "
                     "session_label = EXCLUDED.session_label, "
-                    "updated_at = CURRENT_TIMESTAMP",
+                    "updated_at = now()",
                     [match_id, session_id, str(session_label) if session_label else None],
                 )
                 updated += 1

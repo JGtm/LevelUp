@@ -214,7 +214,7 @@ def backfill_killer_victim_pairs(
 
 
 def backfill_end_time(conn: Any, force: bool = False, *, shared_conn: Any) -> int:
-    """Met à jour end_time (start_time + time_played_seconds) dans shared.match_registry.
+    """Met à jour end_time (start_time + duration_seconds) dans shared.match_registry.
 
     Args:
         conn: Connexion DuckDB joueur (non utilisée, conservée pour compatibilité de signature).
@@ -226,16 +226,16 @@ def backfill_end_time(conn: Any, force: bool = False, *, shared_conn: Any) -> in
     """
     try:
         where_clause = (
-            "WHERE start_time IS NOT NULL AND time_played_seconds IS NOT NULL"
+            "WHERE start_time IS NOT NULL AND duration_seconds IS NOT NULL"
             if force
             else "WHERE end_time IS NULL "
             "AND start_time IS NOT NULL "
-            "AND time_played_seconds IS NOT NULL"
+            "AND duration_seconds IS NOT NULL"
         )
         cursor = shared_conn.execute(
             f"""
             UPDATE match_registry
-            SET end_time = start_time + (time_played_seconds * INTERVAL '1 SECOND')
+            SET end_time = start_time + (duration_seconds * INTERVAL '1 SECOND')
             {where_clause}
             RETURNING match_id
             """
@@ -439,13 +439,14 @@ async def backfill_participants_enrich(
         )
         params: list = []
     else:
+        # On ne considère que headshot_kills et kda car team_mmr peut être NULL
+        # légitimement (API skill ne retourne pas toujours de données)
         query = (
             "SELECT DISTINCT mp.match_id "
             "FROM match_participants mp "
             "JOIN match_registry mr ON mp.match_id = mr.match_id "
             "WHERE mp.headshot_kills IS NULL "
             "   OR mp.kda IS NULL "
-            "   OR mp.team_mmr IS NULL "
             "ORDER BY mr.start_time DESC"
         )
         params = []
@@ -635,12 +636,55 @@ def backfill_citations(
     if not shared_path.exists():
         logger.warning("shared_matches.duckdb introuvable pour les citations")
         return 0
+
+    # Vérifier si shared est déjà attaché (sous n'importe quel alias)
+    # D'abord chercher via le nom de fichier ou via match_participants
+    shared_alias = None
     try:
-        conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
-    except Exception as e:
-        err = str(e).lower()
-        if "already" not in err and "conflict" not in err:
+        dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
+        for db_name, db_path_val in dbs:
+            # Chercher par nom de fichier dans le path
+            if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
+                shared_alias = db_name
+                break
+            # Ou par nom de base contenant "shared"
+            if db_name and "shared" in db_name.lower():
+                # Vérifier que cette DB a bien match_participants
+                try:
+                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                    shared_alias = db_name
+                    break
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+    # Si pas trouvé, chercher n'importe quelle DB avec match_participants
+    if not shared_alias:
+        try:
+            dbs = conn.execute("SELECT database_name FROM duckdb_databases()").fetchall()
+            for (db_name,) in dbs:
+                if db_name not in ("memory", "temp", "main", "stats", "system"):
+                    try:
+                        conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                        shared_alias = db_name
+                        break
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
+    # En dernier recours, essayer d'attacher
+    if not shared_alias:
+        try:
+            conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
+            shared_alias = "shared"
+        except Exception as e:
             logger.debug(f"Attach shared pour citations: {e}")
+
+    if not shared_alias:
+        logger.warning("Impossible de trouver la base shared pour les citations")
+        return 0
 
     # S'assurer que match_citations existe (table locale dans player DB)
     conn.execute("""
@@ -656,11 +700,11 @@ def backfill_citations(
         match_ids = [
             r[0]
             for r in conn.execute(
-                "SELECT DISTINCT mp.match_id "
-                "FROM shared.match_participants mp "
-                "JOIN shared.match_registry mr ON mp.match_id = mr.match_id "
-                "WHERE mp.xuid = ? "
-                "ORDER BY mr.start_time",
+                f"SELECT DISTINCT mp.match_id "
+                f"FROM {shared_alias}.match_participants mp "
+                f"JOIN {shared_alias}.match_registry mr ON mp.match_id = mr.match_id "
+                f"WHERE mp.xuid = ? "
+                f"ORDER BY mr.start_time",
                 [xuid],
             ).fetchall()
         ]
@@ -668,15 +712,15 @@ def backfill_citations(
         match_ids = [
             r[0]
             for r in conn.execute(
-                "SELECT DISTINCT mp.match_id "
-                "FROM shared.match_participants mp "
-                "JOIN shared.match_registry mr ON mp.match_id = mr.match_id "
-                "WHERE mp.xuid = ? "
-                "  AND NOT EXISTS ("
-                "    SELECT 1 FROM match_citations mc "
-                "    WHERE mc.match_id = mp.match_id"
-                "  ) "
-                "ORDER BY mr.start_time",
+                f"SELECT DISTINCT mp.match_id "
+                f"FROM {shared_alias}.match_participants mp "
+                f"JOIN {shared_alias}.match_registry mr ON mp.match_id = mr.match_id "
+                f"WHERE mp.xuid = ? "
+                f"  AND NOT EXISTS ("
+                f"    SELECT 1 FROM match_citations mc "
+                f"    WHERE mc.match_id = mp.match_id"
+                f"  ) "
+                f"ORDER BY mr.start_time",
                 [xuid],
             ).fetchall()
         ]
