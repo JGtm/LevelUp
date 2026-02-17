@@ -157,6 +157,43 @@ Pattern Factory pour créer des `DuckDBRepository` avec auto-détection des chem
 - `metadata_db_path` : Auto-détecté depuis `data/warehouse/metadata.duckdb`
 - Fallback v4 transparent si `shared_matches.duckdb` n'existe pas
 
+### 6. SyncScope (`src/data/sync/scope.py`)
+
+**Nouveau en v5.2** — Dataclass centralisant les 30+ flags de données partagés
+entre `sync.py`, `backfill_data.py` et leurs sous-modules (orchestrator, detection, engine).
+
+```python
+from src.data.sync.scope import SyncScope
+
+# Tout activer
+scope = SyncScope.make_all(max_matches=100)
+
+# Depuis argparse
+scope = SyncScope.from_cli_args(args)
+
+# Sélection fine
+scope = SyncScope(medals=True, events=True, force_medals=True)
+scope.resolve()  # force_medals → medals=True automatiquement
+```
+
+**Rôle** : Remplace la copie de 30+ kwargs à travers la chaîne
+`cli.py` → `backfill_data.py` → `orchestrator.py` → `detection.py` → `_backfill_with_api`.
+
+**Registres internes** :
+- `_ALL_DATA_FIELDS` : champs activés par `--all-data`
+- `_FORCE_MAP` : implications `force_X` → `X`
+- `_REQUESTED_TYPE_MAP` : mapping champ → clé bitmask `backfill_completed`
+
+**Pour ajouter un nouveau type de données** :
+1. Ajouter le champ booléen dans `SyncScope` + registres
+2. Ajouter l'argument CLI dans `scripts/backfill/cli.py`
+3. Implémenter la logique métier dans l'orchestrateur / engine
+
+> **Note legacy** : Les fonctions `backfill_player_data`, `backfill_all_players`,
+> `_backfill_with_api` et `find_matches_missing_data` conservent les 30+ kwargs
+> individuels pour rétro-compatibilité (marqués `LEGACY` dans le code).
+> Nouveau code : toujours passer `scope=SyncScope(...)`.
+
 ---
 
 ## Flux de Données
@@ -235,6 +272,7 @@ src/
 │   ├── sync/                     # Synchronisation API
 │   │   ├── api_client.py         # Client SPNKr
 │   │   ├── engine.py             # Moteur de sync (v5 shared)
+│   │   ├── scope.py              # SyncScope — flags sync/backfill centralisés
 │   │   ├── transformers.py       # Transformations JSON→DB
 │   │   ├── migrations.py         # Migrations de schéma
 │   │   └── models.py             # Modèles de sync
