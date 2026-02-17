@@ -761,6 +761,7 @@ async def _backfill_with_api(
     force_medals: bool = False,
     force_accuracy: bool = False,
     force_shots: bool = False,
+    force_performance_scores: bool = False,
     force_enemy_mmr: bool = False,
     force_end_time: bool = False,
     force_sessions: bool = False,
@@ -807,6 +808,7 @@ async def _backfill_with_api(
             force_medals=force_medals,
             force_accuracy=force_accuracy,
             force_shots=force_shots,
+            force_performance_scores=force_performance_scores,
             force_participants_shots=force_participants_shots,
             force_participants_damage=force_participants_damage,
             force_participants_avg_life=force_participants_avg_life,
@@ -843,6 +845,7 @@ async def _backfill_with_api(
     force_medals = scope.force_medals
     force_accuracy = scope.force_accuracy
     force_shots = scope.force_shots
+    force_performance_scores = scope.force_performance_scores
     force_enemy_mmr = scope.force_enemy_mmr
     force_end_time = scope.force_end_time
     force_sessions = scope.force_sessions
@@ -1039,7 +1042,11 @@ async def _backfill_with_api(
 
                 # ── Performance scores (V5: player_match_enrichment) ──
                 if performance_scores and compute_performance_score_for_match(
-                    conn, match_id, shared_conn=shared_conn, xuid=xuid
+                    conn,
+                    match_id,
+                    shared_conn=shared_conn,
+                    xuid=xuid,
+                    force=force_performance_scores,
                 ):
                     totals["performance_scores_inserted"] += 1
 

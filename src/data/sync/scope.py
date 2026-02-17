@@ -26,6 +26,7 @@ _FORCE_MAP: dict[str, str] = {
     "force_medals": "medals",
     "force_accuracy": "accuracy",
     "force_shots": "shots",
+    "force_performance_scores": "performance_scores",
     "force_participants_shots": "participants_shots",
     "force_participants_damage": "participants_damage",
     "force_participants_avg_life": "participants_avg_life",
@@ -135,6 +136,7 @@ class SyncScope:
     force_medals: bool = False
     force_accuracy: bool = False
     force_shots: bool = False
+    force_performance_scores: bool = False
     force_participants_shots: bool = False
     force_participants_damage: bool = False
     force_participants_avg_life: bool = False

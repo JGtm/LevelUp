@@ -68,6 +68,7 @@ def find_matches_missing_data(
     force_accuracy: bool = False,
     shots: bool = False,
     force_shots: bool = False,
+    force_performance_scores: bool = False,
     force_enemy_mmr: bool = False,
     force_aliases: bool = False,
     force_assets: bool = False,
@@ -116,6 +117,7 @@ def find_matches_missing_data(
         force_accuracy = scope.force_accuracy
         shots = scope.shots
         force_shots = scope.force_shots
+        force_performance_scores = scope.force_performance_scores
         force_enemy_mmr = scope.force_enemy_mmr
         force_aliases = scope.force_aliases
         force_assets = scope.force_assets
@@ -189,6 +191,7 @@ def find_matches_missing_data(
         force_medals=force_medals,
         force_accuracy=force_accuracy,
         force_shots=force_shots,
+        force_performance_scores=force_performance_scores,
         force_enemy_mmr=force_enemy_mmr,
         force_assets=force_assets,
         force_aliases=force_aliases,
@@ -257,6 +260,7 @@ def _find_matches_in_shared_all(
     force_medals: bool = False,
     force_accuracy: bool = False,
     force_shots: bool = False,
+    force_performance_scores: bool = False,
     force_enemy_mmr: bool = False,
     force_assets: bool = False,
     force_aliases: bool = False,
@@ -295,15 +299,14 @@ def _find_matches_in_shared_all(
         conditions.append("1=1" + _done_guard("personal_scores", has_bf_col))
 
     # Performance scores (player_match_enrichment)
+    # Note: La détection nécessite d'accéder à la player DB pour voir performance_score NULL
+    # On ne peut pas le faire depuis shared DB, donc on retourne tous les matchs et on filtrera
+    # pendant le traitement. Force permet d'ignorer le guard backfill_completed.
     if performance_scores:
-        try:
-            # Vérifier si player_match_enrichment existe dans player DB
-            conn.execute("SELECT 1 FROM player_match_enrichment LIMIT 0")
-            # Les matchs sans performance_score dans enrichment
-            # On doit passer par une sous-requête via ATTACH, mais plus simple: juste le guard
-            conditions.append("1=1" + _done_guard("performance_scores", has_bf_col))
-        except Exception:
+        if force_performance_scores:
             conditions.append("1=1")
+        else:
+            conditions.append("1=1" + _done_guard("performance_scores", has_bf_col))
 
     # Accuracy
     if accuracy:
