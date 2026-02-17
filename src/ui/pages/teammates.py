@@ -169,7 +169,7 @@ def render_teammates_page(
             st.caption("Compare ta performance en première vs seconde moitié des matchs affichés.")
             fig_trend = plot_session_trend(pl_dff)
             if fig_trend is not None:
-                st.plotly_chart(fig_trend, width="stretch", config={"displayModeBar": False})
+                st.plotly_chart(fig_trend, width="stretch", config={"staticPlot": True})
             else:
                 st.info("Données insuffisantes pour la tendance de session.")
         except Exception as e:

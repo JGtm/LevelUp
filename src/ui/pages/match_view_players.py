@@ -15,6 +15,7 @@ from src.analysis import compute_personal_antagonists
 from src.config import BOT_MAP, TEAM_MAP
 from src.ui import display_name_from_xuid
 from src.ui.pages.match_view_helpers import os_card
+from src.ui.streamlit_modern import fragment_if_available
 from src.utils import parse_xuid_input
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ def _load_match_players_stats(db_path: str, match_id: str) -> list[dict[str, Any
 # =============================================================================
 
 
+@fragment_if_available
 def render_nemesis_section(
     *,
     match_id: str,
@@ -389,7 +391,7 @@ def _render_antagonist_chart(
                     height=400,
                 )
                 if fig is not None:
-                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Données insuffisantes pour les interactions killer-victim.")
             except Exception as e:

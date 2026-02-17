@@ -27,17 +27,13 @@ logger = logging.getLogger(__name__)
 def _load_career_data(db_path: str, xuid: str) -> dict | None:
     """Charge les dernières données de rang carrière depuis DuckDB.
 
-    # TODO: Migrer vers DuckDBRepository au lieu de duckdb.connect() direct
-    # Dette architecture connue - le SQL est correctement paramétré donc pas de risque injection
-
     Returns:
         Dict avec rank, rank_name, rank_tier, current_xp, etc. ou None.
     """
     try:
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
-        conn = duckdb.connect(db_path, read_only=True)
-        try:
+        with duckdb_read_only(db_path) as conn:
             result = conn.execute(
                 """SELECT rank, rank_name, rank_tier, current_xp,
                           xp_for_next_rank, xp_total, is_max_rank,
@@ -61,8 +57,6 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
                     "adornment_path": result[7],
                     "recorded_at": result[8],
                 }
-        finally:
-            conn.close()
     except Exception as e:
         logger.debug(f"Impossible de charger career_progression: {e}")
 
@@ -72,17 +66,13 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
 def _load_career_history(db_path: str, xuid: str, limit: int = 50) -> list[dict]:
     """Charge l'historique de progression depuis DuckDB.
 
-    # TODO: Migrer vers DuckDBRepository au lieu de duckdb.connect() direct
-    # Dette architecture connue - le SQL est correctement paramétré donc pas de risque injection
-
     Returns:
         Liste de dicts ordonnés par date croissante.
     """
     try:
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
-        conn = duckdb.connect(db_path, read_only=True)
-        try:
+        with duckdb_read_only(db_path) as conn:
             rows = conn.execute(
                 """SELECT rank, rank_name, rank_tier, current_xp,
                           xp_for_next_rank, xp_total, is_max_rank,
@@ -107,8 +97,6 @@ def _load_career_history(db_path: str, xuid: str, limit: int = 50) -> list[dict]
                 }
                 for r in rows
             ]
-        finally:
-            conn.close()
     except Exception as e:
         logger.debug(f"Impossible de charger career_history: {e}")
         return []
@@ -233,11 +221,7 @@ def render_career_page(
             if icon_path and icon_path.exists():
                 st.image(str(icon_path), width=120)
             else:
-                st.markdown(
-                    f"<div style='text-align:center;font-size:48px;color:{THEME_COLORS.accent}'>"
-                    f"{rank_number}</div>",
-                    unsafe_allow_html=True,
-                )
+                st.markdown(f"### {rank_number}")
 
     with col_info:
         st.subheader(rank_label_fr)
@@ -266,7 +250,7 @@ def render_career_page(
             )
             if gauge_fig is not None:
                 st.plotly_chart(
-                    gauge_fig, key="career_gauge", width="stretch", config={"displayModeBar": False}
+                    gauge_fig, key="career_gauge", width="stretch", config={"staticPlot": True}
                 )
             else:
                 st.info("Impossible de générer la jauge de progression.")

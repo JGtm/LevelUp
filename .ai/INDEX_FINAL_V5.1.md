@@ -291,21 +291,23 @@ cat .ai/PROCESSUS_QUALITE_V5.1.md
 
 **✅ Statut final (2026-02-17) — Commit `012b52b`** :
 - 8ter.0 ✅ Fait — `streamlit>=1.37.0` dans pyproject.toml + requirements.txt + `src/ui/streamlit_modern.py` créé
-- 8ter.1 ✅ Fait — `config={"displayModeBar": False}` sur **69** `st.plotly_chart` (15 fichiers)
-- 8ter.2 ⚠️ Partiel — `@fragment_if_available` sur **5/7-8 pages** (timeseries, session_compare, win_loss, objective_analysis, career). Manquants : match_history, match_view_*, teammates_charts
+- 8ter.1 ✅ Fait — **30 charts → `staticPlot: true`** (14 fichiers). 33 charts interactifs conservés en `displayModeBar: false`. `PLOTLY_STATIC_CONFIG` ajouté dans `streamlit_modern.py`
+- 8ter.2 ✅ Fait — `@fragment_if_available` sur **8 pages** (26 décorateurs) : timeseries, session_compare, win_loss, objective_analysis, career, match_view_charts, match_view_participation, match_view_players, teammates_charts, session_compare_charts
 - 8ter.3 ✅ Fait — `match_history.py` modernisé (`st.dataframe` + `column_config`, dead code supprimé, 0 `unsafe_allow_html`)
-- 8ter.4 ⏭️ Reporté — Partiellement couvert par infrastructure existante (`--with-backfill`)
-- 8ter.5 ⏭️ Reporté — Migration routing complexe, breaking change potentiel
+- 8ter.4 ✅ Fait — `scripts/post_sync_compute.py` créé (3 tables pré-calculées : sessions, KDA trend, global stats) + hook dans `src/data/sync/engine.py`
+- 8ter.5 ✅ Fait — `st.navigation` lazy loading : 11 page closures dans `streamlit_app.py`, `build_navigation()` + `render_page_selector_nav()` dans `page_router.py`, fallback legacy pour Streamlit < 1.36
 - 8ter.6/A1 ✅ Fait — **28 `map_elements()` → 0** dans `src/` (15 fichiers). Nouveau module `src/ui/vectorize_helpers.py`
-- 8ter.6/A3 ⏭️ Reporté — 13 `duckdb.connect` directs (lecture seule, TODO markers existants)
-- 8ter.6/A8 ⏭️ Reporté — 32 `st.rerun` (usage intentionnel, pas de remplacement natif)
-- 8ter.6/A9 ⏭️ Reporté — 31 `unsafe_allow_html` (refactoring HTML→natif trop lourd)
+- 8ter.6/A3 ✅ Fait — `duckdb_read_only()` context manager dans `src/utils/db.py`. 14 → 4 `duckdb.connect` directs (7 fichiers migrés)
+- 8ter.6/A8 ✅ Fait — 32 → 14 `st.rerun()`. `checkbox_filter.py` : 16 → 0 via `on_click`/`on_change`. Trio button filters refactoré.
+- 8ter.6/A9 ✅ Fait — 30 → 27 `unsafe_allow_html`. `html.escape()` ajouté dans kpi.py/performance.py. Brand sidebar natif.
+- 8ter.7 ✅ Fait — 30 tests non-régression dans `tests/ui/test_8ter_modernisation.py` (staticPlot, fragments, navigation, duckdb_read_only, st.rerun, html.escape, post_sync_compute)
+- 8ter.8 ✅ Fait — `.ai/RELEASE_NOTES_V5.1.md` + `docs/V5.1_PURE_ARCHITECTURE.md` + `CHANGELOG.md` mis à jour
 - Tests : **2877 passés, 0 échec**
 
 **🧩 Ajouts à 8ter (issus des contrôles étapes 9 et 10)** :
-- 8ter.6 : Finaliser la modernisation app-wide restante de 8bis (A1/A3/A8/A9) pour éviter une validation 9 incomplète.
-- 8ter.7 : Ajouter les tests de non-régression ciblés modernisation (`config` Plotly, `@st.fragment`, `st.navigation`, `match_history` en `st.dataframe`) avant la phase 9.
-- 8ter.8 : Préparer les livrables release bloquants de la phase 10 (`.ai/RELEASE_NOTES_V5.1.md`, `docs/V5.1_PURE_ARCHITECTURE.md`, alignement `CHANGELOG` final hors "En cours").
+- 8ter.6 ✅ Terminé — Modernisation A1/A3/A8/A9 complète.
+- 8ter.7 ✅ Terminé — 30 tests non-régression modernisation.
+- 8ter.8 ✅ Terminé — Release notes + architecture docs + CHANGELOG aligné.
 
 ### Étape 9 : Tests + Documentation
 

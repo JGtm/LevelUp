@@ -6,6 +6,7 @@ des scores de performance pour les sessions de jeu.
 
 from __future__ import annotations
 
+import html as html_mod
 from collections.abc import Callable
 
 import polars as pl
@@ -127,7 +128,7 @@ def render_performance_score_card(
     st.markdown(
         f"""
         <div class="os-perf-card">
-            <div class="os-perf-card__label">{label}</div>
+            <div class="os-perf-card__label">{html_mod.escape(str(label))}</div>
             <div class="os-perf-card__score {score_class}">{score_display}{badge}</div>
             <div class="os-perf-card__status {score_class}">{score_label}</div>
             <div class="os-perf-card__meta">{perf.get('matches', 0)} parties</div>

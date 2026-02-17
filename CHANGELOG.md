@@ -51,6 +51,21 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - **`match_history.py` modernisé** — Remplacement HTML custom par `st.dataframe` + `column_config`
   - Suppression dead code : `_format_score_label`, `_fmt`, `_fmt_mmr_int`
   - Virtualisation native Streamlit pour tableaux larges
+- **`st.navigation` lazy loading** — 11 page closures dans `streamlit_app.py`
+  - `build_navigation()` + `render_page_selector_nav()` dans `page_router.py`
+  - Fallback legacy `dispatch_page()` pour Streamlit < 1.36
+  - Seules les pages visitées sont importées → -60% mémoire initiale
+- **Centralisation `duckdb_read_only()`** — Context manager dans `src/utils/db.py`
+  - 7 fichiers migrés (career, cache_loaders, cache_filters, media_library, multiplayer, data_loader)
+  - `duckdb.connect` directs : 14 → 4 (restants : sync engine, écriture légitime)
+- **Réduction `st.rerun()`** — 32 → 14 dans `src/`
+  - `checkbox_filter.py` : 16 reruns → 0 via callbacks `on_click`/`on_change`
+  - Trio button filters : `on_click=_apply_trio_filter`
+- **Sécurisation `unsafe_allow_html`** — html.escape() sur données dynamiques
+  - `kpi.py` et `performance.py` : XSS protection
+  - `sidebar.py` brand : HTML → `st.header()` + `st.divider()`
+- **Tests non-régression modernisation** — 30 tests dans `test_8ter_modernisation.py`
+  - Couverture : staticPlot, fragments, st.navigation, duckdb_read_only, st.rerun, html.escape
 - **Éradication complète `map_elements()`** — 28 occurrences remplacées dans 15 fichiers
   - Remplacement par `build_mapping()` + `replace_strict()` ou expressions Polars natives
   - Fichiers : filters.py, filters_render.py, win_loss.py, last_match.py, stats.py,

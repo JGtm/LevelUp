@@ -76,6 +76,12 @@ PLOTLY_CLEAN_CONFIG: dict[str, Any] = {
 }
 # Config Plotly pour masquer la barre d'outils en gardant le zoom/pan.
 
+PLOTLY_STATIC_CONFIG: dict[str, Any] = {
+    "staticPlot": True,
+}
+# Config Plotly pour les graphiques en lecture seule (barres, camemberts,
+# heatmaps, jauges, radars).  Désactive hover, zoom et toolbar.
+
 
 def plotly_chart(
     fig: Any,

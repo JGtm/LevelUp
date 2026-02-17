@@ -12,6 +12,7 @@ from plotly.subplots import make_subplots
 from src.analysis.stats import compute_mode_category_averages, extract_mode_category, format_mmss
 from src.config import HALO_COLORS
 from src.ui.pages.match_view_helpers import os_card
+from src.ui.streamlit_modern import fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
@@ -33,6 +34,7 @@ def _safe_numeric(value: Any) -> float:
 # =============================================================================
 
 
+@fragment_if_available
 def render_expected_vs_actual(
     row: dict[str, Any],
     pm: dict,
@@ -245,7 +247,7 @@ def render_expected_vs_actual(
     with chart_cols[0]:
         try:
             if exp_fig is not None:
-                st.plotly_chart(exp_fig, width="stretch", config={"displayModeBar": False})
+                st.plotly_chart(exp_fig, width="stretch", config={"staticPlot": True})
             else:
                 st.info("Données insuffisantes pour le graphique K/D/A.")
         except Exception as e:
@@ -377,7 +379,7 @@ def _render_spree_headshots(
         try:
             styled_fig = apply_halo_plot_style(fig_sh, height=260)
             if styled_fig is not None:
-                st.plotly_chart(styled_fig, width="stretch", config={"displayModeBar": False})
+                st.plotly_chart(styled_fig, width="stretch", config={"staticPlot": True})
             else:
                 st.info("Données insuffisantes pour le graphique Spree/Headshots.")
         except Exception as e:

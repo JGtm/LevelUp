@@ -422,15 +422,22 @@ def render_session_filters(
     )
     st.session_state["_trio_latest_session_label"] = trio_label
     disabled_trio = not isinstance(trio_label, str) or not trio_label
-    if st.button("Dernière session en trio", width="stretch", disabled=disabled_trio):
+
+    def _apply_trio_filter(tl: str | None = trio_label) -> None:
         st.session_state["_pending_filter_mode"] = "Sessions"
-        st.session_state["_pending_picked_session_label"] = trio_label
-        st.session_state["_pending_picked_sessions"] = [trio_label]
+        st.session_state["_pending_picked_session_label"] = tl
+        st.session_state["_pending_picked_sessions"] = [tl]
         st.session_state["min_matches_maps"] = 1
         st.session_state["_min_matches_maps_auto"] = True
         st.session_state["min_matches_maps_friends"] = 1
         st.session_state["_min_matches_maps_friends_auto"] = True
-        st.rerun()
+
+    st.button(
+        "Dernière session en trio",
+        width="stretch",
+        disabled=disabled_trio,
+        on_click=_apply_trio_filter,
+    )
     if not disabled_trio:
         st.caption(f"Trio : {trio_label}")
 

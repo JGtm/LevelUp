@@ -613,6 +613,7 @@ def _render_mmr_comparison(perf_a: dict, perf_b: dict) -> None:
     )
 
 
+@fragment_if_available
 def _render_cumulative_section(
     df_session_a: DataFrameLike,
     df_session_b: DataFrameLike,

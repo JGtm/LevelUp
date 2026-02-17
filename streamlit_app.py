@@ -10,6 +10,7 @@ import os
 import sys
 import threading
 import urllib.parse
+from collections.abc import Callable
 
 import streamlit as st
 
@@ -74,10 +75,12 @@ from src.app.main_helpers import (
 # Phase 4 refactoring: Page router
 from src.app.page_router import (
     build_match_view_params,
+    build_navigation,
     consume_pending_match_id,
     consume_pending_page,
     dispatch_page,
     render_page_selector,
+    render_page_selector_nav,
 )
 
 # Imports depuis la nouvelle architecture
@@ -119,20 +122,28 @@ from src.ui.multiplayer import (
     get_gamertag_from_duckdb_v4_path,
     render_player_selector_unified,
 )
-from src.ui.pages import (
-    render_career_page,
-    render_citations_page,
-    render_last_match_page,
-    render_match_history_page,
-    render_match_search_page,
-    render_match_view,
-    render_media_tab,
-    render_session_comparison_page,
-    render_settings_page,
-    render_teammates_page,
-    render_timeseries_page,
-    render_win_loss_page,
-)
+
+# render_match_view est toujours nécessaire pour build_match_view_params
+from src.ui.pages import render_match_view
+from src.ui.streamlit_modern import HAS_NAVIGATION
+
+# Sprint 8ter.5 : Imports page de rendu lazy (chargés à la demande via st.navigation)
+# Les fonctions sont importées au moment où la page est visitée, pas au démarrage.
+if not HAS_NAVIGATION:
+    # Fallback : imports eager pour les versions < 1.36
+    from src.ui.pages import (
+        render_career_page,
+        render_citations_page,
+        render_last_match_page,
+        render_match_history_page,
+        render_match_search_page,
+        render_media_tab,
+        render_session_comparison_page,
+        render_settings_page,
+        render_teammates_page,
+        render_timeseries_page,
+        render_win_loss_page,
+    )
 from src.ui.perf import perf_reset_run, perf_section
 from src.ui.sync import (
     cleanup_orphan_tmp_dbs,
@@ -593,9 +604,7 @@ def main() -> None:
     # Pages (navigation)
     # ==========================================================================
 
-    consume_pending_page()
     consume_pending_match_id()
-    page = render_page_selector()
 
     # Paramètres communs pour les pages de match
     _match_view_params = build_match_view_params(
@@ -618,43 +627,204 @@ def main() -> None:
         paris_tz=PARIS_TZ,
     )
 
-    # Dispatch vers la page appropriée
-    dispatch_page(
-        page=page,
-        dff=dff,
-        df=df,
-        base=base,
-        me_name=me_name,
-        xuid=xuid,
-        db_path=db_path,
-        db_key=db_key,
-        aliases_key=aliases_key,
-        settings=settings,
-        picked_session_labels=picked_session_labels,
-        waypoint_player=waypoint_player,
-        gap_minutes=gap_minutes,
-        match_view_params=_match_view_params,
-        # Fonctions de rendu
-        render_last_match_page_fn=render_last_match_page,
-        render_match_search_page_fn=render_match_search_page,
-        render_citations_page_fn=render_citations_page,
-        render_session_comparison_page_fn=render_session_comparison_page,
-        render_timeseries_page_fn=render_timeseries_page,
-        render_win_loss_page_fn=render_win_loss_page,
-        render_teammates_page_fn=render_teammates_page,
-        render_match_history_page_fn=render_match_history_page,
-        render_media_tab_fn=render_media_tab,
-        render_career_page_fn=render_career_page,
-        render_settings_page_fn=render_settings_page,
-        # Fonctions utilitaires
-        cached_compute_sessions_db_fn=cached_compute_sessions_db,
-        top_medals_fn=_top_medals,
-        build_friends_opts_map_fn=_build_friends_opts_map,
-        assign_player_colors_fn=_assign_player_colors,
-        plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
-        get_local_dbs_fn=cached_list_local_dbs,
-        clear_caches_fn=_clear_app_caches,
-    )
+    if HAS_NAVIGATION:
+        # ---- st.navigation : lazy loading des pages (8ter.5) ----------------
+
+        def _page_timeseries() -> None:
+            from src.ui.pages import render_timeseries_page
+
+            render_timeseries_page(dff, df_full=df, db_path=db_path, xuid=xuid)
+
+        def _page_session_compare() -> None:
+            from src.app.filters import get_friends_xuids_for_sessions
+            from src.app.page_router import _to_polars
+            from src.ui.pages import render_session_comparison_page
+
+            friends_tuple = get_friends_xuids_for_sessions(
+                db_path,
+                xuid.strip(),
+                db_key,
+                aliases_key,
+            )
+            all_sessions_df = cached_compute_sessions_db(
+                db_path,
+                xuid.strip(),
+                db_key,
+                True,
+                gap_minutes,
+                friends_xuids=friends_tuple,
+            )
+            all_sessions_pl = _to_polars(all_sessions_df)
+            df_pl = _to_polars(df)
+            if (
+                not all_sessions_pl.is_empty()
+                and "match_id" in df_pl.columns
+                and "match_id" in all_sessions_pl.columns
+            ):
+                sess_cols = ["match_id", "session_id", "session_label"]
+                drop_cols = [c for c in ("session_id", "session_label") if c in df_pl.columns]
+                df_for_merge = df_pl.drop(drop_cols) if drop_cols else df_pl
+                sessions_for_compare = df_for_merge.join(
+                    all_sessions_pl.select(sess_cols),
+                    on="match_id",
+                    how="inner",
+                )
+            else:
+                sessions_for_compare = all_sessions_pl
+            render_session_comparison_page(sessions_for_compare, df_full=df)
+
+        def _page_last_match() -> None:
+            from src.ui.pages import render_last_match_page
+
+            render_last_match_page(dff=dff, **_match_view_params)
+
+        def _page_match_search() -> None:
+            from src.ui.pages import render_match_search_page
+
+            render_match_search_page(df=df, dff=dff, **_match_view_params)
+
+        def _page_media() -> None:
+            from src.ui.pages import render_media_tab
+
+            render_media_tab(df_full=df, settings=settings)
+
+        def _page_citations() -> None:
+            from src.ui.pages import render_citations_page
+
+            render_citations_page(
+                dff=dff,
+                df_full=df,
+                xuid=xuid,
+                db_path=db_path,
+                db_key=db_key,
+                top_medals_fn=_top_medals,
+            )
+
+        def _page_win_loss() -> None:
+            from src.ui.pages import render_win_loss_page
+
+            render_win_loss_page(
+                dff=dff,
+                base=base,
+                picked_session_labels=picked_session_labels,
+                db_path=db_path,
+                xuid=xuid,
+                db_key=db_key,
+            )
+
+        def _page_teammates() -> None:
+            from src.ui.pages import render_teammates_page
+
+            render_teammates_page(
+                df=df,
+                dff=dff,
+                base=base,
+                me_name=me_name,
+                xuid=xuid,
+                db_path=db_path,
+                db_key=db_key,
+                aliases_key=aliases_key,
+                settings=settings,
+                picked_session_labels=picked_session_labels,
+                include_firefight=True,
+                waypoint_player=waypoint_player,
+                build_friends_opts_map_fn=_build_friends_opts_map,
+                assign_player_colors_fn=_assign_player_colors,
+                plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
+                top_medals_fn=_top_medals,
+            )
+
+        def _page_match_history() -> None:
+            from src.ui.pages import render_match_history_page
+
+            render_match_history_page(
+                dff=dff,
+                waypoint_player=waypoint_player,
+                db_path=db_path,
+                xuid=xuid,
+                db_key=db_key,
+                df_full=df,
+            )
+
+        def _page_career() -> None:
+            from src.ui.pages import render_career_page
+
+            render_career_page(db_path=db_path, xuid=xuid, db_key=db_key)
+
+        def _page_settings() -> None:
+            from src.ui.pages import render_settings_page
+
+            render_settings_page(
+                settings,
+                get_local_dbs_fn=cached_list_local_dbs,
+                on_clear_caches_fn=_clear_app_caches,
+            )
+
+        page_callables: dict[str, Callable] = {
+            "Séries temporelles": _page_timeseries,
+            "Comparaison de sessions": _page_session_compare,
+            "Dernier match": _page_last_match,
+            "Match": _page_match_search,
+            "Médias": _page_media,
+            "Citations": _page_citations,
+            "Victoires/Défaites": _page_win_loss,
+            "Mes coéquipiers": _page_teammates,
+            "Historique des parties": _page_match_history,
+            "Carrière": _page_career,
+            "Paramètres": _page_settings,
+        }
+
+        pg, pages = build_navigation(page_callables)
+
+        # Gérer les redirections en attente (liens depuis une autre page)
+        pending_page = st.session_state.pop("_pending_page", None)
+        if isinstance(pending_page, str):
+            target = next((p for p in pages if p.title == pending_page), None)
+            if target is not None and target != pg:
+                st.switch_page(target)
+
+        render_page_selector_nav(pages, pg)
+        pg.run()
+
+    else:
+        # ---- Fallback legacy (Streamlit < 1.36) -----------------------------
+        consume_pending_page()
+        page = render_page_selector()
+
+        dispatch_page(
+            page=page,
+            dff=dff,
+            df=df,
+            base=base,
+            me_name=me_name,
+            xuid=xuid,
+            db_path=db_path,
+            db_key=db_key,
+            aliases_key=aliases_key,
+            settings=settings,
+            picked_session_labels=picked_session_labels,
+            waypoint_player=waypoint_player,
+            gap_minutes=gap_minutes,
+            match_view_params=_match_view_params,
+            render_last_match_page_fn=render_last_match_page,
+            render_match_search_page_fn=render_match_search_page,
+            render_citations_page_fn=render_citations_page,
+            render_session_comparison_page_fn=render_session_comparison_page,
+            render_timeseries_page_fn=render_timeseries_page,
+            render_win_loss_page_fn=render_win_loss_page,
+            render_teammates_page_fn=render_teammates_page,
+            render_match_history_page_fn=render_match_history_page,
+            render_media_tab_fn=render_media_tab,
+            render_career_page_fn=render_career_page,
+            render_settings_page_fn=render_settings_page,
+            cached_compute_sessions_db_fn=cached_compute_sessions_db,
+            top_medals_fn=_top_medals,
+            build_friends_opts_map_fn=_build_friends_opts_map,
+            assign_player_colors_fn=_assign_player_colors,
+            plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
+            get_local_dbs_fn=cached_list_local_dbs,
+            clear_caches_fn=_clear_app_caches,
+        )
 
 
 if __name__ == "__main__":

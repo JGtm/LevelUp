@@ -52,25 +52,24 @@ def cached_compute_sessions_db(
         try:
             from datetime import datetime, timezone
 
-            import duckdb
+            from src.utils.db import duckdb_read_only
 
-            conn = duckdb.connect(db_path, read_only=True)
-            firefight_filter = "" if include_firefight else "AND is_firefight = FALSE"
+            with duckdb_read_only(db_path) as conn:
+                firefight_filter = "" if include_firefight else "AND is_firefight = FALSE"
 
-            query = f"""
-                SELECT
-                    match_id,
-                    start_time,
-                    teammates_signature,
-                    session_id,
-                    session_label
-                FROM match_stats
-                WHERE start_time IS NOT NULL
-                {firefight_filter}
-                ORDER BY start_time ASC
-            """
-            df_pl = conn.execute(query).pl()
-            conn.close()
+                query = f"""
+                    SELECT
+                        match_id,
+                        start_time,
+                        teammates_signature,
+                        session_id,
+                        session_label
+                    FROM match_stats
+                    WHERE start_time IS NOT NULL
+                    {firefight_filter}
+                    ORDER BY start_time ASC
+                """
+                df_pl = conn.execute(query).pl()
 
             if df_pl.is_empty():
                 return pl.DataFrame(

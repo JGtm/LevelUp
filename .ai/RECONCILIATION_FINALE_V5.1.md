@@ -1563,6 +1563,14 @@ def cleanup_player_db(gamertag: str, dry_run: bool = True):
 
 **Sources** : Plan D Phase 5, Plan B Phase 10, Plan A Sprint 4, **Étapes 8bis + 8ter**
 
+#### 9.0 — Vérification transversale des travaux précédents (activité + couverture + revue de code)
+
+**Actions** :
+- [ ] Vérifier l'exhaustivité des activités réalisées sur les étapes 8bis/8ter (fait/partiel/reporté documentés et justifiés)
+- [ ] Consolider les preuves de couverture : tests, métriques, non-régressions et seuil de couverture atteint
+- [ ] Finaliser la revue de code transversale (checklist complète, écarts corrigés ou tracés en TODO bloquant/non bloquant)
+- [ ] Valider la cohérence entre code, tests, docs et statuts annoncés avant passage à la release
+
 #### Tests (2.5h)
 
 **Actions** :
