@@ -87,28 +87,25 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:
     xuid = st.session_state.get("player_xuid")
     if db_path and xuid:
         try:
-            # Détection du type de DB (DuckDB vs SQLite)
+            # Utiliser le repo caché au lieu d'ouvrir une nouvelle connexion
+            # (8bis.A3 : gain ~200-400ms par visite de page)
             if db_path.endswith(".duckdb"):
-                # DuckDB : la table Friends peut ne pas exister
-                import duckdb
+                from src.ui.cache_loaders import get_cached_repository_st
 
-                con = duckdb.connect(db_path, read_only=True)
-                try:
-                    # Vérifier si la table existe
-                    tables = con.execute(
-                        "SELECT table_name FROM information_schema.tables WHERE table_name = 'friends'"
+                repo = get_cached_repository_st(db_path, xuid)
+                conn = repo._get_connection()
+                # Vérifier si la table existe
+                tables = conn.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_name = 'friends'"
+                ).fetchall()
+                if tables:
+                    result = conn.execute(
+                        "SELECT friend_xuid, friend_gamertag, nickname FROM friends WHERE owner_xuid = ?",
+                        (xuid,),
                     ).fetchall()
-                    if tables:
-                        result = con.execute(
-                            "SELECT friend_xuid, friend_gamertag, nickname FROM friends WHERE owner_xuid = ?",
-                            (xuid,),
-                        ).fetchall()
-                        for row in result:
-                            fxuid, gamertag, nickname = row
-                            friends_mapping[fxuid] = nickname or gamertag or fxuid
-                finally:
-                    con.close()
-            # SQLite legacy supprimé - DuckDB v4 uniquement
+                    for row in result:
+                        fxuid, gamertag, nickname = row
+                        friends_mapping[fxuid] = nickname or gamertag or fxuid
         except Exception:
             pass
 

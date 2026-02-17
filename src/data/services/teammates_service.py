@@ -128,11 +128,13 @@ class TeammatesService:
                     pass
 
             if not xuid:
-                logger.debug(f"XUID introuvable pour gamertag '{teammate_gamertag}'")
-                # Fallback legacy : essayer la DB individuelle du coéquipier
-                return TeammatesService._load_teammate_stats_legacy(
-                    teammate_gamertag, match_ids, reference_db_path
+                # 8bis.A7 : Plus de fallback legacy en v5.1
+                # Toutes les données sont dans shared_matches.duckdb
+                logger.warning(
+                    f"Coéquipier '{teammate_gamertag}' introuvable dans shared "
+                    f"(ni xuid_aliases ni match_participants)"
                 )
+                return TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
 
             # Charger les stats depuis shared.match_participants + match_registry
             match_ids_list = [str(mid) for mid in match_ids]
@@ -194,39 +196,8 @@ class TeammatesService:
             logger.debug(f"Erreur load_teammate_stats shared: {e}")
             return TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
 
-    @staticmethod
-    def _load_teammate_stats_legacy(
-        teammate_gamertag: str,
-        match_ids: set[str],
-        reference_db_path: str,
-    ) -> TeammateStats:
-        """Fallback : charge les stats depuis la DB individuelle du coéquipier.
-
-        Utilisé uniquement quand le xuid n'est pas résolu dans shared.
-        """
-        base_dir = Path(reference_db_path).parent.parent
-        teammate_db_path = base_dir / teammate_gamertag / "stats.duckdb"
-
-        if not teammate_db_path.exists():
-            return TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
-
-        try:
-            from src.ui.cache import load_df_optimized
-
-            df_pl = load_df_optimized(str(teammate_db_path), "", db_key=None)
-            if df_pl.is_empty():
-                return TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
-
-            df_filtered = df_pl.filter(
-                pl.col("match_id").cast(pl.Utf8).is_in([str(mid) for mid in match_ids])
-            )
-            return TeammateStats(
-                gamertag=teammate_gamertag,
-                df=df_filtered,
-                is_empty=df_filtered.is_empty(),
-            )
-        except Exception:
-            return TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
+    # 8bis.A7 : _load_teammate_stats_legacy supprimé (v5.1)
+    # Toutes les données coéquipiers sont dans shared_matches.duckdb
 
     @staticmethod
     def enrich_series_with_perfect_kills(

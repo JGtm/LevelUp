@@ -12,5 +12,18 @@ Traductions :
 Citations qu'on peut ressortir avec les scores obtenus pendant le match ? -> vérifier que les citations et la logique est pas dispersée comme en legacy et que c'est bien documenté
 
 Et banshee/apparition détruit ? Véhicule détruit ?
+-> 597066859	DESTROYED_BANSHEE	50 pts
+3472794399	DESTROYED_CHOPPER	50 pts
+395875864	DESTROYED_FALCON	75 pts
+4254982885	DESTROYED_GHOST	50 pts
+2107631925	DESTROYED_GUNGOOSE	25 pts
+1416267372	DESTROYED_MONGOOSE	25 pts
+2742351765	DESTROYED_PHANTOM	100 pts
+1661163286	DESTROYED_RAZORBACK	50 pts
+2008690931	DESTROYED_ROCKET_WARTHOG	50 pts
+3454330054	DESTROYED_SCORPION	100 pts
+3107879375	DESTROYED_WARTHOG	50 pts
+2106274556	DESTROYED_WASP	50 pts
+3243589708	DESTROYED_WRAITH	100 pts
 
 Etapes fin de sprint

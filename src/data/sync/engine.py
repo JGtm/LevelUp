@@ -40,10 +40,8 @@ from src.data.sync.api_client import (
 from src.data.sync.batch_insert import (
     ALIAS_COLUMNS,
     HIGHLIGHT_EVENT_COLUMNS,
-    MEDAL_COLUMNS,
     PARTICIPANT_COLUMNS,
     PERSONAL_SCORE_COLUMNS,
-    SKILL_COLUMNS,
     batch_insert_rows,
     batch_upsert_rows,
 )
@@ -56,7 +54,6 @@ from src.data.sync.migrations import (
 from src.data.sync.models import (
     CareerRankData,
     MatchStatsRow,
-    PlayerMatchStatsRow,
     SyncOptions,
     SyncResult,
 )
@@ -482,7 +479,7 @@ class DuckDBSyncEngine:
                 try:
                     from src.utils.paths import get_shared_matches_path_from_player
 
-                    shared_path = get_shared_matches_path_from_player(self._db_path)
+                    shared_path = get_shared_matches_path_from_player(self._player_db_path)
                     if shared_path and shared_path.exists():
                         shared_conn = duckdb.connect(str(shared_path), read_only=True)
                         r = shared_conn.execute(
@@ -830,192 +827,20 @@ class DuckDBSyncEngine:
                     options,
                 )
 
-        # ── Mode legacy v4 (pas de shared_matches) ─────────────────
-        return await self._process_single_match_legacy(
-            client,
-            match_id,
-            options,
+        # ── Mode legacy v4 non supporté en v5.1 (8bis.B1) ─────────────────
+        # shared_matches.duckdb est requis — pas de fallback
+        raise RuntimeError(
+            f"Mode legacy v4 non supporté en v5.1 — shared_matches.duckdb requis. "
+            f"Match {match_id} ne peut pas être traité sans shared DB. "
+            f"Exécutez 'python scripts/migrate_to_v5.py' pour créer la DB partagée."
         )
 
-    async def _process_single_match_legacy(
-        self,
-        client: SPNKrAPIClient,
-        match_id: str,
-        options: SyncOptions,
-    ) -> dict[str, Any]:
-        """Traite un match en mode legacy v4 (sans shared_matches).
-
-        ⚠️ DÉPRÉCIÉ en V5 finale : Cette fonction ne devrait plus être appelée.
-        Utilisez _process_new_match() ou _process_known_match() avec shared_matches.
-
-        Conservée pour compatibilité avec les DBs v4 existantes lors de la transition.
-        """
-        logger.warning(f"Mode legacy v4 sans shared DB — données incomplètes pour {match_id}")
-
-        result: dict[str, Any] = {
-            "inserted": False,
-            "events": 0,
-            "skill": 0,
-            "aliases": 0,
-            "error": None,
-        }
-
-        try:
-            # Récupérer les stats (obligatoire)
-            stats_json = await client.get_match_stats(match_id)
-            if stats_json is None:
-                result["error"] = f"Impossible de récupérer {match_id}"
-                return result
-
-            # Enrichir MatchInfo avec les PublicName depuis Discovery UGC (noms cartes/playlists)
-            if options.with_assets:
-                await enrich_match_info_with_assets(client, stats_json)
-
-            # Extraire les XUIDs pour l'appel skill
-            xuids = extract_xuids_from_match(stats_json)
-
-            # Récupérer skill et events en parallèle (Sprint 6 — asyncio.gather)
-            skill_json = None
-            highlight_events: list = []
-
-            api_tasks: list = []
-            task_keys: list[str] = []
-
-            if options.with_skill and xuids:
-                api_tasks.append(client.get_skill_stats(match_id, xuids))
-                task_keys.append("skill")
-            if options.with_highlight_events:
-                api_tasks.append(client.get_highlight_events(match_id))
-                task_keys.append("events")
-
-            if api_tasks:
-                api_results = await asyncio.gather(*api_tasks, return_exceptions=True)
-                for key, res in zip(task_keys, api_results, strict=False):
-                    if isinstance(res, Exception):
-                        logger.warning(f"Erreur API {key} pour {match_id}: {res}")
-                        continue
-                    if key == "skill":
-                        skill_json = res
-                    elif key == "events":
-                        highlight_events = res if res else []
-
-            # Transformer les données
-            match_row = transform_match_stats(
-                stats_json,
-                self._xuid,
-                skill_json=skill_json,
-                metadata_resolver=self._metadata_resolver,
-            )
-            if match_row is None:
-                result["error"] = f"Transformation échouée pour {match_id}"
-                return result
-
-            skill_row = None
-            if skill_json:
-                skill_row = transform_skill_stats(skill_json, match_id, self._xuid)
-
-            event_rows = []
-            if highlight_events:
-                event_rows = transform_highlight_events(highlight_events, match_id)
-
-            alias_rows = []
-            if options.with_aliases:
-                alias_rows = extract_aliases(stats_json)
-
-            # Sprint Gamertag Roster Fix: Extraire les participants (roster complet)
-            participant_rows = []
-            if options.with_participants:
-                participant_rows = extract_participants(stats_json)
-
-            # Sprint 8.2: Extraire PersonalScores
-            personal_scores = extract_personal_score_awards(stats_json, self._xuid)
-            personal_score_rows = []
-            if personal_scores:
-                personal_score_rows = transform_personal_score_awards(
-                    match_id, self._xuid, personal_scores
-                )
-
-            # Extraire les médailles
-            from src.data.sync.transformers import extract_medals
-
-            medal_rows = extract_medals(stats_json, self._xuid)
-
-            # Insérer dans DuckDB (protégé par lock)
-            async with self._db_lock:
-                self._insert_match_row(match_row)
-
-                if skill_row:
-                    self._insert_skill_row(skill_row)
-                    result["skill"] = 1
-
-                if event_rows:
-                    self._insert_event_rows(event_rows)
-                    result["events"] = len(event_rows)
-
-                if personal_score_rows:
-                    self._insert_personal_score_rows(personal_score_rows)
-                    result["personal_scores"] = len(personal_score_rows)
-
-                if medal_rows:
-                    self._insert_medal_rows(medal_rows)
-                    result["medals"] = len(medal_rows)
-
-                if participant_rows:
-                    self._insert_participant_rows(participant_rows)
-                    result["participants"] = len(participant_rows)
-
-                if alias_rows:
-                    self._insert_alias_rows(alias_rows)
-                    result["aliases"] = len(alias_rows)
-
-                # Calculer et mettre à jour le score de performance
-                # Sprint 6 : si defer_performance_score, on skip le calcul inline
-                # (sera fait en batch post-sync via batch_compute_performance_scores)
-                if not options.defer_performance_score:
-                    self._compute_and_update_performance_score(match_id, match_row)
-
-                # ── Bitmask backfill_completed ──────────────────────────
-                # Marquer les types de données effectivement traités lors
-                # de cette sync pour que le backfill ne les re-détecte pas.
-                bf_mask = 0
-                # Toujours extraits depuis match_stats JSON :
-                bf_mask |= BACKFILL_FLAGS["medals"]
-                bf_mask |= BACKFILL_FLAGS["personal_scores"]
-                bf_mask |= BACKFILL_FLAGS["performance_scores"]
-                bf_mask |= BACKFILL_FLAGS["accuracy"]
-                bf_mask |= BACKFILL_FLAGS["shots"]
-                # Conditionnels selon SyncOptions :
-                if options.with_skill:
-                    bf_mask |= BACKFILL_FLAGS["skill"]
-                    bf_mask |= BACKFILL_FLAGS["enemy_mmr"]
-                if options.with_highlight_events:
-                    bf_mask |= BACKFILL_FLAGS["events"]
-                if options.with_participants:
-                    bf_mask |= BACKFILL_FLAGS["participants"]
-                    bf_mask |= BACKFILL_FLAGS["participants_scores"]
-                    bf_mask |= BACKFILL_FLAGS["participants_kda"]
-                    bf_mask |= BACKFILL_FLAGS["participants_shots"]
-                    bf_mask |= BACKFILL_FLAGS["participants_damage"]
-                if options.with_aliases:
-                    bf_mask |= BACKFILL_FLAGS["aliases"]
-                if options.with_assets:
-                    bf_mask |= BACKFILL_FLAGS["assets"]
-                # UPDATE atomique (OR pour ne pas écraser les bits existants)
-                conn = self._get_connection()
-                conn.execute(
-                    "UPDATE match_stats "
-                    "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
-                    "WHERE match_id = ?",
-                    [bf_mask, match_id],
-                )
-
-            result["inserted"] = True
-
-        except Exception as e:
-            result["error"] = f"Erreur traitement {match_id}: {e}"
-            logger.warning(result["error"])
-
-        return result
+    # 8bis.B1 : _process_single_match_legacy supprimé (v5.1)
+    # En v5.1, shared_matches.duckdb est requis — pas de mode legacy.
+    # Les données sont stockées dans :
+    # - shared.match_registry (métadonnées match)
+    # - shared.match_participants (stats multijoueurs)
+    # - player_match_enrichment (enrichissements personnels)
 
     # =====================================================================
     # v5 Shared Matches — Process known / new match
@@ -1452,7 +1277,7 @@ class DuckDBSyncEngine:
         """
         if not participants:
             return
-        from src.data.sync.batch_insert import PARTICIPANT_COLUMNS, batch_upsert_rows
+        from src.data.sync.batch_insert import batch_upsert_rows
 
         batch_upsert_rows(shared_conn, "match_participants", participants, PARTICIPANT_COLUMNS)
 
@@ -1487,7 +1312,6 @@ class DuckDBSyncEngine:
         if not medals:
             return
         columns = ["match_id", "xuid", "medal_name_id", "count"]
-        from src.data.sync.batch_insert import batch_upsert_rows
 
         batch_upsert_rows(shared_conn, "medals_earned", medals, columns)
 
@@ -1504,7 +1328,6 @@ class DuckDBSyncEngine:
         """
         if not alias_rows:
             return
-        from src.data.sync.batch_insert import ALIAS_COLUMNS, batch_upsert_rows
 
         now = datetime.now(timezone.utc)
         alias_dicts = [
@@ -1763,92 +1586,13 @@ class DuckDBSyncEngine:
             logger.warning(f"Erreur batch calcul performance scores : {e}")
             return 0
 
-    def _insert_match_row(self, row: MatchStatsRow) -> None:
-        """❌ OBSOLÈTE V5 finale - Ne plus utiliser (table match_stats supprimée).
+    # 8bis.B1 : _insert_match_row supprimé (v5.1)
+    # Fonction obsolète — table match_stats locale supprimée.
+    # Les données sont dans shared.match_registry + shared.match_participants.
 
-        Cette fonction était utilisée pour insérer dans match_stats (table locale).
-        En V5 finale, les données sont dans:
-        - shared.match_registry (métadonnées match)
-        - shared.match_participants (stats multijoueurs)
-        - player_match_enrichment (enrichissements personnels)
-
-        Conservée uniquement pour le mode legacy (_process_single_match_legacy).
-        """
-        logger.debug("_insert_match_row appelée (obsolète, mode legacy)")
-        conn = self._get_connection()
-
-        # Construire la requête d'insertion
-        conn.execute(
-            """INSERT OR REPLACE INTO match_stats (
-                match_id, start_time, end_time, playlist_id, playlist_name,
-                map_id, map_name, pair_id, pair_name,
-                game_variant_id, game_variant_name,
-                outcome, team_id, kills, deaths, assists,
-                kda, accuracy, headshot_kills, max_killing_spree,
-                time_played_seconds, avg_life_seconds,
-                my_team_score, enemy_team_score,
-                team_mmr, enemy_mmr,
-                shots_fired, shots_hit,
-                is_firefight, teammates_signature, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                row.match_id,
-                row.start_time,
-                row.end_time,
-                row.playlist_id,
-                row.playlist_name,
-                row.map_id,
-                row.map_name,
-                row.pair_id,
-                row.pair_name,
-                row.game_variant_id,
-                row.game_variant_name,
-                row.outcome,
-                row.team_id,
-                row.kills,
-                row.deaths,
-                row.assists,
-                row.kda,
-                row.accuracy,
-                row.headshot_kills,
-                row.max_killing_spree,
-                row.time_played_seconds,
-                row.avg_life_seconds,
-                row.my_team_score,
-                row.enemy_team_score,
-                row.team_mmr,
-                row.enemy_mmr,
-                row.shots_fired,
-                row.shots_hit,
-                row.is_firefight,
-                row.teammates_signature,
-                datetime.now(timezone.utc),
-            ),
-        )
-
-    def _insert_skill_row(self, row: PlayerMatchStatsRow) -> None:
-        """❌ OBSOLÈTE V5 finale - Ne plus utiliser (table player_match_stats supprimée).
-
-        En V5 finale, les données MMR/skill sont dans shared.match_participants.
-        Conservée uniquement pour le mode legacy.
-        """
-        logger.debug("_insert_skill_row appelée (obsolète, mode legacy)")
-        conn = self._get_connection()
-        skill_dict = {
-            "match_id": row.match_id,
-            "xuid": row.xuid,
-            "team_id": row.team_id,
-            "team_mmr": row.team_mmr,
-            "enemy_mmr": row.enemy_mmr,
-            "kills_expected": row.kills_expected,
-            "kills_stddev": row.kills_stddev,
-            "deaths_expected": row.deaths_expected,
-            "deaths_stddev": row.deaths_stddev,
-            "assists_expected": row.assists_expected,
-            "assists_stddev": row.assists_stddev,
-            "created_at": datetime.now(timezone.utc),
-        }
-        batch_upsert_rows(conn, "player_match_stats", [skill_dict], SKILL_COLUMNS)
+    # 8bis.B1 : _insert_skill_row supprimé (v5.1)
+    # Fonction obsolète — table player_match_stats locale supprimée.
+    # Les données MMR/skill sont dans shared.match_participants.
 
     def _insert_event_rows(self, rows: list) -> None:
         """Insère des lignes highlight_events en batch (Sprint 15)."""
@@ -1857,30 +1601,7 @@ class DuckDBSyncEngine:
         conn = self._get_connection()
         batch_insert_rows(conn, "highlight_events", rows, HIGHLIGHT_EVENT_COLUMNS)
 
-    def _insert_alias_rows(self, rows: list) -> None:
-        """❌ OBSOLÈTE V5 finale - Ne plus utiliser (table xuid_aliases locale supprimée).
-
-        En V5 finale, les aliases sont dans shared.xuid_aliases.
-        Conservée uniquement pour le mode legacy.
-        """
-        logger.debug("_insert_alias_rows appelée (obsolète, mode legacy)")
-        if not rows:
-            return
-        conn = self._get_connection()
-        now = datetime.now(timezone.utc)
-        # Enrichir les rows avec updated_at avant l'upsert
-        alias_dicts = []
-        for row in rows:
-            alias_dicts.append(
-                {
-                    "xuid": row.xuid,
-                    "gamertag": row.gamertag,
-                    "last_seen": row.last_seen,
-                    "source": row.source,
-                    "updated_at": now,
-                }
-            )
-        batch_upsert_rows(conn, "xuid_aliases", alias_dicts, ALIAS_COLUMNS)
+    # 8bis.B3 : _insert_alias_rows supprimée (v5.1 — xuid_aliases dans shared uniquement)
 
     def _insert_personal_score_rows(self, rows: list) -> None:
         """Insère des lignes personal_score_awards en batch (Sprint 15)."""
@@ -1904,29 +1625,8 @@ class DuckDBSyncEngine:
             )
         batch_insert_rows(conn, "personal_score_awards", score_dicts, PERSONAL_SCORE_COLUMNS)
 
-    def _insert_medal_rows(self, rows: list) -> None:
-        """❌ OBSOLÈTE V5 finale - Ne plus utiliser (table medals_earned locale supprimée).
-
-        En V5 finale, les médailles sont dans shared.medals_earned.
-        Conservée uniquement pour le mode legacy.
-        """
-        logger.debug("_insert_medal_rows appelée (obsolète, mode legacy)")
-        if not rows:
-            return
-        conn = self._get_connection()
-        batch_insert_rows(conn, "medals_earned", rows, MEDAL_COLUMNS)
-
-    def _insert_participant_rows(self, rows: list) -> None:
-        """❌ OBSOLÈTE V5 finale - Ne plus utiliser (table match_participants locale supprimée).
-
-        En V5 finale, match_participants est dans shared uniquement.
-        Conservée uniquement pour le mode legacy.
-        """
-        logger.debug("_insert_participant_rows appelée (obsolète, mode legacy)")
-        if not rows:
-            return
-        conn = self._get_connection()
-        batch_upsert_rows(conn, "match_participants", rows, PARTICIPANT_COLUMNS)
+    # 8bis.B3 : _insert_medal_rows supprimée (v5.1 — medals_earned dans shared uniquement)
+    # 8bis.B3 : _insert_participant_rows supprimée (v5.1 — match_participants dans shared uniquement)
 
     def _insert_enrichment_row(self, match_id: str, match_row: MatchStatsRow) -> None:
         """Insère/met à jour une ligne dans player_match_enrichment (V5 finale).

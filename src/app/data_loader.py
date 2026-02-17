@@ -14,6 +14,7 @@ import subprocess
 import sys
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import polars as pl
 import streamlit as st
@@ -34,6 +35,9 @@ from src.utils import (
     parse_xuid_input,
     resolve_xuid_from_db,
 )
+
+if TYPE_CHECKING:
+    from src.data.repositories.duckdb_repo import DuckDBRepository
 
 # =============================================================================
 # Identité joueur depuis secrets/env
@@ -178,9 +182,10 @@ def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
 def init_source_state(default_db: str, settings: AppSettings) -> None:
     """Initialise l'état source (DB path, xuid, waypoint) en session_state.
 
-    Supporte:
-    - Architecture DuckDB v4: data/players/{gamertag}/stats.duckdb
-    - Legacy SQLite: halo_unified.db, spnkr*.db
+    Architecture DuckDB v5.1 uniquement :
+    - stats.duckdb par joueur : data/players/{gamertag}/stats.duckdb
+    - shared_matches.duckdb : data/warehouse/shared_matches.duckdb
+    - metadata.duckdb : data/warehouse/metadata.duckdb
 
     Args:
         default_db: Chemin par défaut de la DB.

@@ -37,11 +37,16 @@ class MatchQueriesMixin:
     # =========================================================================
 
     def _get_match_table_name(self, conn) -> str:
-        """Détecte la table de matchs disponible (fallback v4 → v3).
+        """Détecte la table de matchs disponible (avec cache).
 
         Returns:
-            Nom de la table : "match_stats" (v4) ou "player_match_stats" (v3 legacy)
+            Nom de la table : "match_stats" (v4)
         """
+        # Cache au niveau instance — évite les requêtes information_schema répétées
+        cache_key = "local_table:match_stats"
+        if hasattr(self, "_table_cache") and cache_key in self._table_cache:
+            return "match_stats" if self._table_cache[cache_key] else "match_stats"
+
         # Essayer match_stats (v4) en premier
         try:
             result = conn.execute(
@@ -49,22 +54,15 @@ class MatchQueriesMixin:
                 "WHERE table_schema = 'main' AND table_name = 'match_stats'"
             ).fetchone()
             if result and result[0] > 0:
+                if hasattr(self, "_table_cache"):
+                    self._table_cache[cache_key] = True
                 return "match_stats"
         except Exception:
             pass
 
-        # Fallback sur player_match_stats (v3 legacy)
-        try:
-            result = conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = 'main' AND table_name = 'player_match_stats'"
-            ).fetchone()
-            if result and result[0] > 0:
-                return "player_match_stats"
-        except Exception:
-            pass
-
-        # Par défaut, retourner match_stats (va probablement échouer mais c'est attendu v4+)
+        # Par défaut, retourner match_stats (va probablement échouer mais c'est attendu v5+)
+        if hasattr(self, "_table_cache"):
+            self._table_cache[cache_key] = False
         return "match_stats"
 
     def _get_match_source(self, conn) -> tuple[str, list[str], bool]:
@@ -101,41 +99,11 @@ class MatchQueriesMixin:
                 return match_table, [], False
             return f"{match_table} AS match_stats", [], False
 
-        # ── Mode v5 : essayer la vue mv_player_matches (v5.1 optimisé) ──
+        # ── Mode v5.1 : vue mv_player_matches (optimisé) ──
+        # 8bis.A5 : Simplification post-étape 8 (tables legacy supprimées)
+        # Plus de LEFT JOIN vers match_stats — toutes les données sont dans shared
         if self._has_shared_view("mv_player_matches"):
-            # Vérifier si match_stats locale existe pour enrichir MMR
-            has_ms = self._has_table_cached(conn, "match_stats")
-            if has_ms:
-                source = """(SELECT
-            mv.*,
-            COALESCE(mv.kda, ms.kda) AS kda_enriched,
-            COALESCE(ms.team_mmr, mv.team_mmr) AS team_mmr_enriched,
-            COALESCE(ms.enemy_mmr, mv.enemy_mmr) AS enemy_mmr_enriched
-        FROM shared.mv_player_matches mv
-        LEFT JOIN match_stats ms ON mv.match_id = ms.match_id
-        WHERE mv.xuid = ?
-        ) AS match_stats_raw"""
-                # Wrapper pour re-mapper les noms attendus
-                source = """(SELECT
-            match_id, start_time, map_id, map_name,
-            playlist_id, playlist_name, pair_id, pair_name,
-            game_variant_id, game_variant_name, outcome, team_id,
-            kda, max_killing_spree, headshot_kills, avg_life_seconds,
-            time_played_seconds, kills, deaths, assists, accuracy,
-            my_team_score, enemy_team_score,
-            team_mmr_enriched AS team_mmr,
-            enemy_mmr_enriched AS enemy_mmr,
-            personal_score, is_firefight, is_ranked
-        FROM (SELECT
-            mv.*,
-            COALESCE(ms.team_mmr, mv.team_mmr) AS team_mmr_enriched,
-            COALESCE(ms.enemy_mmr, mv.enemy_mmr) AS enemy_mmr_enriched
-        FROM shared.mv_player_matches mv
-        LEFT JOIN match_stats ms ON mv.match_id = ms.match_id
-        WHERE mv.xuid = ?
-        )) AS match_stats"""
-            else:
-                source = """(SELECT
+            source = """(SELECT
             match_id, start_time, map_id, map_name,
             playlist_id, playlist_name, pair_id, pair_name,
             game_variant_id, game_variant_name, outcome, team_id,
@@ -151,150 +119,12 @@ class MatchQueriesMixin:
             logger.debug("Mode v5.1 : requête via vue mv_player_matches")
             return source, [self._xuid], True
 
-        # ── Fallback v5.0 : construction dynamique (legacy) ──
-        source_sql, source_params = self._get_match_source_v5_legacy(conn)
-        return source_sql, source_params, False
-
-    def _get_match_source_v5_legacy(self, conn) -> tuple[str, list[str]]:
-        """Construction dynamique v5.0 de la source matchs (fallback).
-
-        Utilisé quand la vue mv_player_matches n'existe pas encore.
-        """
-
-        # Vérifier si la table match_stats locale existe (période de transition)
-        has_ms = (
-            conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = 'main' AND table_name = 'match_stats'"
-            ).fetchone()[0]
-            > 0
+        # ── Erreur v5.1 : vue mv_player_matches requise ──
+        # Post-étape 8, les tables legacy sont supprimées — pas de fallback
+        raise RuntimeError(
+            "Vue mv_player_matches non trouvée dans shared_matches.duckdb. "
+            "Exécutez 'python scripts/rebuild_shared_views.py' pour créer les vues."
         )
-
-        if has_ms:
-            ms_join = "LEFT JOIN match_stats ms ON r.match_id = ms.match_id"
-            # Vérifier les colonnes optionnelles dans match_stats local
-            has_is_ranked = self._has_column(conn, "match_stats", "is_ranked")
-            has_is_firefight = self._has_column(conn, "match_stats", "is_firefight")
-            # Vérifier si match_participants a les colonnes étendues (migration v5.1)
-            has_p_avg_life = self._has_shared_mp_column(conn, "avg_life_seconds")
-            has_p_max_spree = self._has_shared_mp_column(conn, "max_killing_spree")
-            has_p_hs_kills = self._has_shared_mp_column(conn, "headshot_kills")
-
-            kda_expr = (
-                "COALESCE(ms.kda, "
-                "CASE WHEN p.deaths > 0 "
-                "THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0) "
-                "/ CAST(p.deaths AS FLOAT) "
-                "ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0 END)"
-            )
-            if has_p_max_spree:
-                spree_expr = "COALESCE(p.max_killing_spree, ms.max_killing_spree, 0)"
-            else:
-                spree_expr = "COALESCE(ms.max_killing_spree, 0)"
-            if has_p_hs_kills:
-                hs_expr = "COALESCE(p.headshot_kills, ms.headshot_kills, 0)"
-            else:
-                hs_expr = "COALESCE(ms.headshot_kills, 0)"
-            if has_p_avg_life:
-                avg_life_expr = "COALESCE(ms.avg_life_seconds, p.avg_life_seconds, 0)"
-            else:
-                avg_life_expr = "COALESCE(ms.avg_life_seconds, 0)"
-            mmr_team = "ms.team_mmr"
-            mmr_enemy = "ms.enemy_mmr"
-            time_expr = "COALESCE(r.duration_seconds, ms.time_played_seconds)"
-            acc_expr = (
-                "COALESCE(ms.accuracy, "
-                "CASE WHEN p.shots_fired > 0 "
-                "THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT) "
-                "ELSE NULL END)"
-            )
-            my_score = (
-                "COALESCE(ms.my_team_score, "
-                "CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END)"
-            )
-            enemy_score = (
-                "COALESCE(ms.enemy_team_score, "
-                "CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END)"
-            )
-            pscore = "COALESCE(ms.personal_score, p.score)"
-            map_name = "COALESCE(r.map_name, ms.map_name)"
-            playlist_name = "COALESCE(r.playlist_name, ms.playlist_name)"
-            pair_name = "COALESCE(r.pair_name, ms.pair_name)"
-            gv_name = "COALESCE(r.game_variant_name, ms.game_variant_name)"
-            is_ff = (
-                f"COALESCE(r.is_firefight, {'ms.is_firefight, ' if has_is_firefight else ''}FALSE)"
-            )
-            is_rk = f"COALESCE(r.is_ranked, {'ms.is_ranked, ' if has_is_ranked else ''}FALSE)"
-        else:
-            ms_join = ""
-            # Vérifier si match_participants a les colonnes étendues (migration v5.1)
-            has_p_avg_life = self._has_shared_mp_column(conn, "avg_life_seconds")
-            has_p_max_spree = self._has_shared_mp_column(conn, "max_killing_spree")
-            has_p_hs_kills = self._has_shared_mp_column(conn, "headshot_kills")
-            kda_expr = (
-                "CASE WHEN p.deaths > 0 "
-                "THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0) "
-                "/ CAST(p.deaths AS FLOAT) "
-                "ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0 END"
-            )
-            spree_expr = "COALESCE(p.max_killing_spree, 0)" if has_p_max_spree else "0"
-            hs_expr = "COALESCE(p.headshot_kills, 0)" if has_p_hs_kills else "0"
-            avg_life_expr = "COALESCE(p.avg_life_seconds, 0)" if has_p_avg_life else "0"
-            mmr_team = "NULL"
-            mmr_enemy = "NULL"
-            time_expr = "r.duration_seconds"
-            acc_expr = (
-                "CASE WHEN p.shots_fired > 0 "
-                "THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT) "
-                "ELSE NULL END"
-            )
-            my_score = "CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END"
-            enemy_score = "CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END"
-            pscore = "p.score"
-            map_name = "r.map_name"
-            playlist_name = "r.playlist_name"
-            pair_name = "r.pair_name"
-            gv_name = "r.game_variant_name"
-            is_ff = "COALESCE(r.is_firefight, FALSE)"
-            is_rk = "COALESCE(r.is_ranked, FALSE)"
-
-        source = f"""(SELECT
-            r.match_id,
-            r.start_time,
-            r.map_id,
-            {map_name} AS map_name,
-            r.playlist_id,
-            {playlist_name} AS playlist_name,
-            r.pair_id,
-            {pair_name} AS pair_name,
-            r.game_variant_id,
-            {gv_name} AS game_variant_name,
-            p.outcome,
-            p.team_id,
-            {kda_expr} AS kda,
-            {spree_expr} AS max_killing_spree,
-            {hs_expr} AS headshot_kills,
-            {avg_life_expr} AS avg_life_seconds,
-            {time_expr} AS time_played_seconds,
-            COALESCE(p.kills, 0) AS kills,
-            COALESCE(p.deaths, 0) AS deaths,
-            COALESCE(p.assists, 0) AS assists,
-            {acc_expr} AS accuracy,
-            {my_score} AS my_team_score,
-            {enemy_score} AS enemy_team_score,
-            {mmr_team} AS team_mmr,
-            {mmr_enemy} AS enemy_mmr,
-            {pscore} AS personal_score,
-            {is_ff} AS is_firefight,
-            {is_rk} AS is_ranked
-        FROM shared.match_registry r
-        JOIN shared.match_participants p
-            ON r.match_id = p.match_id AND p.xuid = ?
-        {ms_join}
-        ) AS match_stats"""
-
-        logger.debug("Mode v5 : requête via shared.match_registry + match_participants")
-        return source, [self._xuid]
 
     # =========================================================================
     # Chargement des matchs

@@ -20,21 +20,21 @@ import polars as pl
 
 
 class TestFormatDatetimeFrHm:
-    """Tests pour _format_datetime_fr_hm."""
+    """Tests pour _format_datetime_fr_hm (déplacée vers teammates_helpers)."""
 
     def test_normal_date(self) -> None:
-        from src.ui.pages.match_history import _format_datetime_fr_hm
+        from src.ui.pages.teammates_helpers import _format_datetime_fr_hm
 
         result = _format_datetime_fr_hm(datetime(2025, 6, 15, 14, 30))
         assert result == "15/06/2025 14:30"
 
     def test_none(self) -> None:
-        from src.ui.pages.match_history import _format_datetime_fr_hm
+        from src.ui.pages.teammates_helpers import _format_datetime_fr_hm
 
         assert _format_datetime_fr_hm(None) == "-"
 
     def test_midnight(self) -> None:
-        from src.ui.pages.match_history import _format_datetime_fr_hm
+        from src.ui.pages.teammates_helpers import _format_datetime_fr_hm
 
         result = _format_datetime_fr_hm(datetime(2025, 1, 1, 0, 0))
         assert "00:00" in result
@@ -137,15 +137,15 @@ class TestFmtMmrInt:
 
 
 class TestNormalizeModeLabel:
-    """Tests pour _normalize_mode_label."""
+    """Tests pour _normalize_mode_label (déplacée vers teammates_helpers)."""
 
     def test_none(self) -> None:
-        from src.ui.pages.match_history import _normalize_mode_label
+        from src.ui.pages.teammates_helpers import _normalize_mode_label
 
         assert _normalize_mode_label(None) is None
 
     def test_string(self) -> None:
-        from src.ui.pages.match_history import _normalize_mode_label
+        from src.ui.pages.teammates_helpers import _normalize_mode_label
 
         result = _normalize_mode_label("Slayer")
         assert isinstance(result, str)

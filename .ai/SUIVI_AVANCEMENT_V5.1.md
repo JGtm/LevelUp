@@ -1,8 +1,8 @@
 # Tableau de Bord — Suivi d'Avancement Projet Unifié v5.1
 
-> **Mise à jour** : 2026-02-16  
-> **Statut global** : 🟢 EN COURS — Étapes 0-4 terminées  
-> **Progression** : 22/30 tâches (73%)
+> **Mise à jour** : 2026-02-17  
+> **Statut global** : 🟢 EN COURS — Étapes 0-4 + 8bis terminées  
+> **Progression** : 34/42 tâches (81%)
 
 ---
 
@@ -254,6 +254,49 @@ Zéro SQLite en runtime.
 
 ---
 
+## 📅 Sprint 8bis : Optimisation Réactivité + Éradication Legacy (~8h) — ✅ TERMINÉ
+
+### Origine
+Audit réactivité UI/DB/charts + Audit code legacy pre-v5.0 (2026-02-17)
+
+### Objectif
+- Partie A : Maximiser la réactivité des pages Streamlit (vectorisation, cache, downsampling)
+- Partie B : Supprimer ~500 lignes de code legacy pre-v5.0 (engine.py, populate_antagonists.py)
+
+### Tâches
+
+#### 8bis.A — Optimisation Réactivité ✅
+- [x] A1 : Vectorisation `_format_datetime_fr_hm()` avec `dt.strftime()` ✅
+- [x] A2 : Vectorisation `_normalize_mode_label()` avec `map_dict()` ✅
+- [x] A3 : Downsampling KDE sur top_weapons.py (n_kde=100) ✅
+- [x] A4 : Downsampling scatter charts (2000→1500 points) ✅
+- [x] A5 : Refactor `match_view_helpers.py` (~150 lignes supprimées) ✅
+- [x] A6 : Cache Streamlit optimisé avec TTL ajusté ✅
+- [x] A7 : Simplification requêtes SQL (uses_mv=True) ✅
+- [x] A8 : Validation performances (cibles < 100ms) ✅
+
+#### 8bis.B — Éradication Code Legacy ✅
+- [x] B1 : Suppression `_process_single_match_legacy()` (~255 lignes) ✅
+- [x] B2 : Réécriture `populate_antagonists.py` en pur DuckDB ✅
+- [x] B3 : Suppression fonctions obsolètes engine.py (`_insert_alias_rows`, `_insert_medal_rows`, `_insert_participant_rows`) ✅
+
+#### 8bis.C — Validation ✅
+- [x] Suite de tests complète verte ✅
+- [x] Correction bug `self._db_path` → `self._player_db_path` ✅
+- [x] Migration tests : création `mv_player_matches` obligatoire dans fixtures ✅
+
+### Résultats
+| Métrique | Avant | Après | Gain |
+|----------|-------|-------|------|
+| Code legacy | ~500 lignes | 0 lignes | -100% |
+| Fonctions deprecated | 4 fonctions | 0 fonctions | -100% |
+| Tests passants | ✅ | ✅ | maintenu |
+
+**Durée estimée** : 10-12h | **Durée réelle** : ~8h (-25%)
+**Date de validation** : 2026-02-17
+
+---
+
 ## 📅 Sprint 3 : Migration Pandas → Polars (8h réduit) — IMPORTANT
 
 ### Objectif
@@ -449,16 +492,19 @@ Résumé :
 - Sprint 1 (Performance UI) : Vue mv_player_matches, cache repository, 16+ index
 - Sprint 1bis (Root Causes) : 8 fonctions migrées, caches metadata/MMR, skip jointures redondantes
 - Sprint 2 (Éradication SQLite) : 0 import sqlite3, 0 metadata.db, 5 scripts + README bannières LEGACY
+- Sprint 8bis (Réactivité + Legacy) : ~500 lignes legacy supprimées, vectorisation Polars, tests à jour
 
 Problèmes rencontrés :
-- Aucun problème majeur
+- Terminal MSYS2/Git Bash envoie SIGINT durant tests longs → utiliser `runTests` tool
 
 Décisions prises :
 - Étape 2 intégrée dans 1bis (optimisations couvertes)
 - Étape 3 (Architecture Shared DB) reportée (phases 5-6 = travail futur)
+- `mv_player_matches` obligatoire (plus de fallback legacy)
 
 Next steps :
 - Sprint 3 : Migration Pandas→Polars (8h)
+- Sprint 8ter : Modernisation Streamlit + Pré-calcul (12h)
 
 ---
 
@@ -495,6 +541,6 @@ Next steps :
 
 ---
 
-**Dernière mise à jour** : 2026-02-16 — Sprints 0-2 validés ✅
+**Dernière mise à jour** : 2026-02-17 — Sprints 0-2 + 8bis validés ✅
 
-**Prochain sprint** : Sprint 3 (Migration Pandas→Polars)
+**Prochain sprint** : Sprint 3 (Migration Pandas→Polars) ou Sprint 8ter (Streamlit moderne)

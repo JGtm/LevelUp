@@ -42,7 +42,7 @@ def cached_compute_sessions_db(
 ) -> pl.DataFrame:
     """Compute sessions sur la base (cache) avec logique avancée (gap + coéquipiers).
 
-    Si friends_xuids est fourni, mode legacy V3 : seuls les amis déclenchent une
+    Si friends_xuids est fourni, mode amis : seuls les amis déclenchent une
     nouvelle session (randoms matchmaking ignorés).
     """
     friends_set = frozenset(friends_xuids) if friends_xuids else None
@@ -296,7 +296,8 @@ def load_df_hybrid(
         return load_df_optimized(db_path, xuid, db_key=db_key, include_firefight=include_firefight)
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
+@st.cache_data(show_spinner=False)
 def cached_get_global_stats_duckdb(
     db_path: str,
     xuid: str,
@@ -338,7 +339,8 @@ def cached_get_global_stats_duckdb(
         return None
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
+@st.cache_data(show_spinner=False)
 def cached_get_kda_trend_duckdb(
     db_path: str,
     xuid: str,
@@ -369,7 +371,8 @@ def cached_get_kda_trend_duckdb(
         return None
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
+@st.cache_data(show_spinner=False)
 def cached_get_performance_by_map_duckdb(
     db_path: str,
     xuid: str,
@@ -421,7 +424,8 @@ def cached_get_migration_status(
 # =============================================================================
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
+@st.cache_data(show_spinner=False)
 def cached_load_recent_matches(
     player_db_path: str,
     xuid: str,
@@ -520,7 +524,8 @@ def cached_load_recent_matches(
         return pl.DataFrame()
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
+@st.cache_data(show_spinner=False)
 def cached_load_matches_paginated(
     player_db_path: str,
     xuid: str,

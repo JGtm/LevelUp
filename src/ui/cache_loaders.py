@@ -242,7 +242,8 @@ def _load_matches_duckdb_v4_polars(
         return pl.DataFrame()
 
 
-@st.cache_data(show_spinner=False, ttl=30)
+# 8bis.A4 : TTL augmenté de 30s à 300s (le filesystem ne change pas en navigation)
+@st.cache_data(show_spinner=False, ttl=300)
 def cached_list_local_dbs(_refresh_token: int = 0) -> list[str]:
     """Liste des DB locales (TTL court pour éviter un scan disque trop fréquent)."""
     return list_local_dbs()
