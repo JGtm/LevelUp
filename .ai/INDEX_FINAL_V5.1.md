@@ -238,23 +238,69 @@ cat .ai/PROCESSUS_QUALITE_V5.1.md
 
 ### Étape 8 : Cleanup Tables Legacy
 
-**Plan** : RECONCILIATION_FINALE_V5.1.md § Étape 8  
-**Détails** : PLAN_ERADICATION_LEGACY_V5.md § Phase 4  
-**DoD** : PROCESSUS_QUALITE_V5.1.md § "Étape 8 : Cleanup Tables Legacy"  
+**Plan** : RECONCILIATION_FINALE_V5.1.md § Étape 8
+**Détails** : PLAN_ERADICATION_LEGACY_V5.md § Phase 4
+**DoD** : PROCESSUS_QUALITE_V5.1.md § "Étape 8 : Cleanup Tables Legacy"
 **Durée** : 6h
+
+### Étape 8bis : Optimisation Réactivité + Éradication Code Legacy Résiduel
+
+**Statut** : ⚠️ PARTIELLEMENT TERMINÉ (2026-02-17)
+**Plan** : RECONCILIATION_FINALE_V5.1.md § Étape 8bis
+**Origine** : Audit réactivité UI/DB/charts + Audit code legacy pre-v5.0 + Audit exhaustif codebase (2026-02-17)
+**Durée estimée** : 14-16h | **Durée réelle** : ~8h (partiel)
+**Parties** :
+- A : Optimisation réactivité — ⚠️ Partiellement fait (A1-match_history, A2, A5, A6 OK)
+- B : Éradication code legacy résiduel — ✅ 3 tâches terminées (~500 lignes supprimées)
+- C : Validation (tests) — ✅ Suite complète verte
+
+**Travaux réalisés** :
+- A1 (match_history seul) : Vectorisation Polars (`map_dict`, `concat_str`)
+- A2 : Cache `_get_match_table_name()`
+- A5 : Suppression LEFT JOIN legacy
+- A6 : Downsampling charts
+- B1 : Suppression `_process_single_match_legacy()` (~255 lignes)
+- B2 : Réécriture `populate_antagonists.py` en pur DuckDB
+- B3 : Suppression fonctions obsolètes engine.py (`_insert_*_rows`), nettoyage docstrings
+- Correction bug `self._db_path` → `self._player_db_path`
+- Migration tests : création `mv_player_matches` obligatoire dans fixtures
+
+**⚠️ RESTE À FAIRE (audit 2026-02-17)** :
+
+| Sous-étape | Description | État |
+|------------|-------------|------|
+| A1 (élargi) | 33 `map_elements()` restants dans 14 fichiers (hors match_history) | ❌ Non fait |
+| A3 (élargi) | 17 `duckdb.connect()` directs dans src/ui/ (7 fichiers) | ❌ Non fait |
+| A4 (élargi) | 6 `@st.cache_data(ttl=)` dans 5 fichiers → supprimer TTL | ❌ Non fait |
+| A7 | `_load_teammate_stats_legacy()` → supprimer fallback | ❓ À vérifier |
+| A8 | 32 `st.rerun()` → réduire à ≤12 (16 dans checkbox_filter.py) | ❌ Non fait |
+| A9 (NOUVEAU) | 32 `unsafe_allow_html` → réduire à ≤20 | ❌ Non fait |
+
+### Étape 8ter : Modernisation Streamlit + Pré-calcul
+
+**Plan** : RECONCILIATION_FINALE_V5.1.md § Étape 8ter
+**Origine** : Audit innovations technologiques + Audit exhaustif codebase (2026-02-17)
+**Durée** : 12h
+**Sous-étapes** :
+- 8ter.0 : Bump Streamlit ≥1.37.0 (15min)
+- 8ter.1 : Plotly `staticPlot`/`displayModeBar` sur **69 charts dans 17 fichiers** (1h)
+- 8ter.2 : `@st.fragment` sur **7-8 pages** multi-charts (4h) — incl. objective_analysis, match_view_*, career
+- 8ter.3 : `st.dataframe(column_config)` remplace HTML custom match_history (2h)
+- 8ter.4 : Pré-calcul post-sync des agrégats (4h)
+- 8ter.5 : `st.navigation` lazy loading — **13 pages principales** + 10 sous-modules (2h)
 
 ### Étape 9 : Tests + Documentation
 
-**Plan** : RECONCILIATION_FINALE_V5.1.md § Étape 9  
-**Détails** : PHASES_6_10_COMPLETE.md § Phase 10  
-**DoD** : PROCESSUS_QUALITE_V5.1.md § "Étape 9 : Tests + Documentation"  
-**Durée** : 3h
+**Plan** : RECONCILIATION_FINALE_V5.1.md § Étape 9
+**Détails** : PHASES_6_10_COMPLETE.md § Phase 10
+**DoD** : PROCESSUS_QUALITE_V5.1.md § "Étape 9 : Tests + Documentation"
+**Durée** : 5h (augmenté de 3h→5h pour intégrer validation 8bis+8ter)
 
 ### Étape 10 : Release v5.1
 
-**Plan** : RECONCILIATION_FINALE_V5.1.md § Étape 10  
-**DoD** : PROCESSUS_QUALITE_V5.1.md § "Étape 10 : Release v5.1"  
-**Procédures** : PROCESSUS_QUALITE_V5.1.md § "Procédures Fin de Projet"  
+**Plan** : RECONCILIATION_FINALE_V5.1.md § Étape 10
+**DoD** : PROCESSUS_QUALITE_V5.1.md § "Étape 10 : Release v5.1"
+**Procédures** : PROCESSUS_QUALITE_V5.1.md § "Procédures Fin de Projet"
 **Durée** : 1h + 8h fin de projet
 
 ---
