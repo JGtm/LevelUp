@@ -250,7 +250,7 @@ def render_multi_teammate_view(
                 title = f"Ratio global par carte — avec mes coéquipiers (min {min_matches_maps_friends} matchs)"
                 fig_map = plot_map_ratio_with_winloss(view_all, title=title)
                 if fig_map is not None:
-                    st.plotly_chart(fig_map, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig_map, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Données insuffisantes pour le ratio par carte.")
             except Exception as e:
@@ -634,7 +634,7 @@ def _render_per_minute_stats(
     fig_pm = apply_halo_plot_style(fig_pm, title=None, height=None)
     try:
         if fig_pm is not None:
-            st.plotly_chart(fig_pm, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig_pm, width="stretch", config={"staticPlot": True})
         else:
             st.info("Données insuffisantes pour les stats/min.")
     except Exception as e:

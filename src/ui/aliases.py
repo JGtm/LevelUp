@@ -74,7 +74,7 @@ def _load_aliases_from_duckdb_cached(db_path: str, mtime: float | None) -> dict[
     NOTE v5.1 : Les aliases locaux (stats.duckdb) sont obsolètes.
     Seule shared_matches.duckdb fait foi.
     """
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
     result: dict[str, str] = {}
 
@@ -82,16 +82,15 @@ def _load_aliases_from_duckdb_cached(db_path: str, mtime: float | None) -> dict[
     shared_path = _get_shared_metadata_path(db_path)
     if shared_path:
         try:
-            con = duckdb.connect(shared_path, read_only=True)
-            tables = con.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_name = 'xuid_aliases'"
-            ).fetchall()
-            if tables:
-                rows = con.execute(
-                    "SELECT xuid, gamertag FROM xuid_aliases WHERE gamertag IS NOT NULL AND gamertag != ''"
+            with duckdb_read_only(shared_path) as con:
+                tables = con.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_name = 'xuid_aliases'"
                 ).fetchall()
-                result = {str(row[0]).strip(): str(row[1]).strip() for row in rows}
-            con.close()
+                if tables:
+                    rows = con.execute(
+                        "SELECT xuid, gamertag FROM xuid_aliases WHERE gamertag IS NOT NULL AND gamertag != ''"
+                    ).fetchall()
+                    result = {str(row[0]).strip(): str(row[1]).strip() for row in rows}
         except Exception:
             pass
 

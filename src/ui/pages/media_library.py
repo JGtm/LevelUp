@@ -427,16 +427,14 @@ def _load_match_windows_from_db(db_path: str) -> pl.DataFrame:
         }
     )
     try:
-        import duckdb
-
+        from src.utils.db import duckdb_read_only
         from src.utils.paths import PLAYERS_DIR
 
         # --- V5 : requête unique via shared_matches.duckdb ---
         shared_db = PLAYERS_DIR.parent / "warehouse" / "shared_matches.duckdb"
         if shared_db.exists():
             try:
-                conn = duckdb.connect(str(shared_db), read_only=True)
-                try:
+                with duckdb_read_only(shared_db) as conn:
                     matches = conn.execute(
                         """
                         SELECT match_id, start_time, duration_seconds
@@ -444,8 +442,6 @@ def _load_match_windows_from_db(db_path: str) -> pl.DataFrame:
                         WHERE start_time IS NOT NULL
                         """
                     ).fetchall()
-                finally:
-                    conn.close()
 
                 if matches:
                     all_windows: list[dict[str, object]] = []
@@ -502,8 +498,7 @@ def _load_match_windows_from_db(db_path: str) -> pl.DataFrame:
                     continue
 
                 try:
-                    conn = duckdb.connect(str(player_db), read_only=True)
-                    try:
+                    with duckdb_read_only(player_db) as conn:
                         # Vérifier si la table existe
                         tables = conn.execute(
                             """
@@ -563,8 +558,6 @@ def _load_match_windows_from_db(db_path: str) -> pl.DataFrame:
                                     )
                                 except Exception:
                                     continue
-                    finally:
-                        conn.close()
                 except Exception:
                     continue
 
@@ -623,10 +616,9 @@ def _load_media_from_db(
         "xuid",
     ]
     try:
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
-        conn = duckdb.connect(db_path, read_only=True)
-        try:
+        with duckdb_read_only(db_path) as conn:
             # Vérifier si les tables existent
             tables = conn.execute(
                 """
@@ -707,9 +699,6 @@ def _load_media_from_db(
             # Construire un pl.DataFrame à partir des tuples
             rows = [dict(zip(_col_names, row, strict=False)) for row in result]
             return pl.DataFrame(rows)
-
-        finally:
-            conn.close()
 
     except Exception:
         return pl.DataFrame()

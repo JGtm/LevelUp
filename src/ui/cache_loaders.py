@@ -141,32 +141,27 @@ def _resolve_player_xuid(db_path: str) -> str:
     Returns:
         XUID en string, ou "" si introuvable.
     """
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
     try:
-        conn = duckdb.connect(db_path, read_only=True)
+        with duckdb_read_only(db_path) as conn:
+            # Stratégie 1 : sync_meta (source canonique v5)
+            try:
+                result = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
+                if result and result[0] and str(result[0]).strip():
+                    return str(result[0]).strip()
+            except Exception:
+                pass
 
-        # Stratégie 1 : sync_meta (source canonique v5)
-        try:
-            result = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
-            if result and result[0] and str(result[0]).strip():
-                xuid = str(result[0]).strip()
-                conn.close()
-                return xuid
-        except Exception:
-            pass
-
-        # Stratégie 2 : player_match_stats.xuid (legacy v3/v4)
-        try:
-            result = conn.execute(
-                "SELECT DISTINCT xuid FROM player_match_stats WHERE xuid IS NOT NULL LIMIT 1"
-            ).fetchone()
-            if result and result[0] and str(result[0]).strip():
-                xuid = str(result[0]).strip()
-                conn.close()
-                return xuid
-        except Exception:
-            pass
+            # Stratégie 2 : player_match_stats.xuid (legacy v3/v4)
+            try:
+                result = conn.execute(
+                    "SELECT DISTINCT xuid FROM player_match_stats WHERE xuid IS NOT NULL LIMIT 1"
+                ).fetchone()
+                if result and result[0] and str(result[0]).strip():
+                    return str(result[0]).strip()
+            except Exception:
+                pass
 
         # Stratégie 3 : xuid_aliases via shared_matches.duckdb (v5.1)
         try:
@@ -175,22 +170,17 @@ def _resolve_player_xuid(db_path: str) -> str:
             from src.utils.paths import get_shared_matches_path_from_player
 
             gamertag = Path(db_path).parent.name
-            # V5.1 : Lire depuis shared_matches.duckdb (source unique)
             shared_path = get_shared_matches_path_from_player(db_path)
             if shared_path and shared_path.exists():
-                shared_con = duckdb.connect(str(shared_path), read_only=True)
-                result = shared_con.execute(
-                    "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
-                ).fetchone()
-                shared_con.close()
-                if result and result[0] and str(result[0]).strip():
-                    xuid = str(result[0]).strip()
-                    conn.close()
-                    return xuid
+                with duckdb_read_only(shared_path) as shared_con:
+                    result = shared_con.execute(
+                        "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
+                    ).fetchone()
+                    if result and result[0] and str(result[0]).strip():
+                        return str(result[0]).strip()
         except Exception:
             pass
 
-        conn.close()
     except Exception:
         pass
 

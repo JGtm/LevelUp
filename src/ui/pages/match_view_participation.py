@@ -10,7 +10,10 @@ from typing import Any
 
 import streamlit as st
 
+from src.ui.streamlit_modern import fragment_if_available
 
+
+@fragment_if_available
 def render_participation_section(
     db_path: str,
     match_id: str,
@@ -84,7 +87,7 @@ def render_participation_section(
                 height=380,
             )
             if fig is not None:
-                st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+                st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
             else:
                 st.info("Impossible de générer le radar de participation.")
         except Exception as e:
@@ -167,7 +170,7 @@ def render_participation_comparison(
             try:
                 fig = create_participation_profile_radar(profiles, title="", height=400)
                 if fig is not None:
-                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Impossible de générer le radar de comparaison.")
             except Exception as e:

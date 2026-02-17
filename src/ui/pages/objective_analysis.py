@@ -247,7 +247,7 @@ def render_objective_analysis_page(
                     title="Points Totaux par Catégorie",
                 )
                 if fig_bars is not None:
-                    st.plotly_chart(fig_bars, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig_bars, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Données insuffisantes pour la répartition.")
             except Exception as e:
@@ -261,7 +261,7 @@ def render_objective_analysis_page(
                     title="% du score sur objectifs",
                 )
                 if fig_gauge is not None:
-                    st.plotly_chart(fig_gauge, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig_gauge, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Impossible de générer la jauge.")
             except Exception as e:
@@ -344,7 +344,7 @@ def render_objective_analysis_page(
                 breakdown,
                 title="Types d'Assistances",
             )
-            st.plotly_chart(fig_pie, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig_pie, width="stretch", config={"staticPlot": True})
 
         with col_table:
             st.markdown("### Détail par type")

@@ -141,6 +141,7 @@ def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str
         return "période"
 
 
+@fragment_if_available
 def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
     """Affiche les résultats par carte et mode (Sprint 5.4)."""
     st.divider()
@@ -160,7 +161,7 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     max_categories=12,
                 )
                 if fig_map is not None:
-                    st.plotly_chart(fig_map, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig_map, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Données insuffisantes pour les résultats par carte.")
             except Exception as e:
@@ -186,7 +187,7 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     max_categories=10,
                 )
                 if fig_mode is not None:
-                    st.plotly_chart(fig_mode, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig_mode, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Données insuffisantes pour les résultats par mode.")
             except Exception as e:
@@ -195,6 +196,7 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
             st.info("Données insuffisantes.")
 
 
+@fragment_if_available
 def _render_heatmap_section(dff: pl.DataFrame) -> None:
     """Affiche la heatmap Win Rate par jour et heure."""
     st.divider()
@@ -207,7 +209,7 @@ def _render_heatmap_section(dff: pl.DataFrame) -> None:
         try:
             fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=2)
             if fig_heat is not None:
-                st.plotly_chart(fig_heat, width="stretch", config={"displayModeBar": False})
+                st.plotly_chart(fig_heat, width="stretch", config={"staticPlot": True})
             else:
                 st.info("Données insuffisantes pour la heatmap win rate.")
         except Exception as e:
@@ -216,6 +218,7 @@ def _render_heatmap_section(dff: pl.DataFrame) -> None:
         st.info("Données temporelles manquantes.")
 
 
+@fragment_if_available
 def _render_top_by_week(dff: pl.DataFrame) -> None:
     """Affiche Matchs Top vs Total par semaine (Sprint 5.4.7)."""
     st.divider()
@@ -243,6 +246,7 @@ def _render_top_by_week(dff: pl.DataFrame) -> None:
         st.warning(f"Impossible d'afficher les matchs Top : {e}")
 
 
+@fragment_if_available
 def _render_streak_section(dff: pl.DataFrame) -> None:
     """Affiche les séries de victoires/défaites (Sprint 7.2)."""
     st.divider()
@@ -329,6 +333,7 @@ def _render_period_section(
     st.dataframe(out_styled, width="stretch", hide_index=True, column_config=col_cfg)
 
 
+@fragment_if_available
 def _render_ratio_by_map_section(
     dff: pl.DataFrame,
     base: pl.DataFrame,
@@ -401,7 +406,7 @@ def _render_ratio_by_map_section(
                 fig.update_xaxes(tickformat=".0%")
             if key in ("accuracy_avg",):
                 fig.update_xaxes(ticksuffix="%")
-            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
         else:
             st.info(f"Données insuffisantes pour {label}.")
     except Exception as e:

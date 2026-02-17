@@ -1675,6 +1675,7 @@ class DuckDBSyncEngine:
 
         Met à jour :
         - Vues matérialisées (mv_*)
+        - Tables pré-calculées (precomputed_sessions, precomputed_kda_trend, etc.)
 
         Returns:
             Dict table_name → rows_affected.
@@ -1696,6 +1697,15 @@ class DuckDBSyncEngine:
                 result["materialized_views"] = 1
             except Exception as e:
                 logger.debug(f"refresh_materialized_views non disponible: {e}")
+
+            # Sprint 8ter.4 : Pré-calcul post-sync des agrégats UI
+            try:
+                from scripts.post_sync_compute import post_sync_compute
+
+                precomp = post_sync_compute(str(self._player_db_path))
+                result.update(precomp)
+            except Exception as e:
+                logger.debug(f"post_sync_compute non disponible: {e}")
 
         except Exception as e:
             logger.warning(f"Erreur refresh_aggregates: {e}")

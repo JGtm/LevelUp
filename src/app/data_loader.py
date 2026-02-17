@@ -139,7 +139,7 @@ def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
     Returns:
         Tuple (db_path, gamertag) du joueur avec le plus de matchs, ou None.
     """
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
     players_dir = _get_duckdb_v4_players_dir()
     if not players_dir.exists():
@@ -158,12 +158,9 @@ def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
 
         gamertag = player_dir.name
         try:
-            con = duckdb.connect(str(db_path), read_only=True)
-            try:
+            with duckdb_read_only(db_path) as con:
                 result = con.execute("SELECT COUNT(*) FROM match_stats").fetchone()
                 count = result[0] if result else 0
-            finally:
-                con.close()
 
             if count > best_count:
                 best_count = count

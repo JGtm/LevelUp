@@ -244,7 +244,7 @@ def render_impact_taquinerie(
                 title=None,
                 max_matches=50,
             )
-            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
 
             # Tableau de ranking
             st.subheader("🏆 Classement Taquinerie")

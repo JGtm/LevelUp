@@ -162,7 +162,7 @@ def render_citations_page(
                     top_n=25,
                 )
                 if fig_medals is not None:
-                    st.plotly_chart(fig_medals, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig_medals, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Données insuffisantes pour la distribution des médailles.")
             except Exception as e:

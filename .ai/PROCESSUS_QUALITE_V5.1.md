@@ -564,6 +564,10 @@ python scripts/measure_db_size.py → ~4MB par joueur
 
 **Definition of Done** :
 
+- [ ] **9.0 — Vérification transversale avant clôture de l'étape** :
+  - [ ] Activités précédentes (notamment 8bis/8ter) vérifiées et statuts (fait/partiel/reporté) justifiés
+  - [ ] Couverture consolidée (tests, métriques, non-régressions) et seuil ≥80% confirmé
+  - [ ] Revue de code complète (checklist appliquée, écarts corrigés ou tracés)
 - [ ] **Tests** :
   - [ ] Suite tests intégration complète
   - [ ] Couverture ≥80% atteinte

@@ -10,6 +10,7 @@ import polars as pl
 import streamlit as st
 
 from src.config import HALO_COLORS
+from src.ui.streamlit_modern import fragment_if_available
 from src.visualization import (
     plot_average_life,
     plot_per_minute_timeseries,
@@ -20,6 +21,7 @@ from src.visualization import (
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 
+@fragment_if_available
 def render_comparison_charts(
     sub: DataFrameLike,
     friend_sub: DataFrameLike,
@@ -127,6 +129,7 @@ def render_comparison_charts(
             )
 
 
+@fragment_if_available
 def render_metric_bar_charts(
     series: list[tuple[str, DataFrameLike]],
     colors_by_name: dict[str, str],
@@ -232,9 +235,10 @@ def render_outcome_bar_chart(dfr: DataFrameLike) -> None:
         ]
     )
     fig.update_layout(height=300, margin={"l": 40, "r": 20, "t": 30, "b": 40})
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
 
 
+@fragment_if_available
 def render_trio_charts(
     d_self: DataFrameLike,
     d_f1: DataFrameLike,

@@ -39,10 +39,10 @@ def _is_duckdb_file(db_path: str) -> bool:
 
 
 def _get_duckdb_connection(db_path: str):
-    """Retourne une connexion DuckDB."""
-    import duckdb
+    """Retourne une connexion DuckDB (read-only)."""
+    from src.utils.db import duckdb_read_only
 
-    return duckdb.connect(db_path, read_only=True)
+    return duckdb_read_only(db_path).__enter__()
 
 
 @dataclass
@@ -294,15 +294,15 @@ def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:
 
                     shared_path = get_shared_matches_path_from_player(db_path)
                     if shared_path and shared_path.exists():
-                        import duckdb
+                        from src.utils.db import duckdb_read_only
 
-                        shared_con = duckdb.connect(str(shared_path), read_only=True)
-                        result = shared_con.execute(
-                            "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
-                        ).fetchone()
-                        shared_con.close()
-                        if result and result[0] and str(result[0]).strip():
-                            xuid = str(result[0]).strip()
+                        with duckdb_read_only(shared_path) as shared_con:
+                            result = shared_con.execute(
+                                "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1",
+                                [gamertag],
+                            ).fetchone()
+                            if result and result[0] and str(result[0]).strip():
+                                xuid = str(result[0]).strip()
                 except Exception:
                     pass
             con.close()

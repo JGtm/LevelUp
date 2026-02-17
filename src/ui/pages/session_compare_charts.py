@@ -23,6 +23,7 @@ from src.ui.components.performance import get_score_class
 from src.ui.pages.session_compare import (
     _outcome_class,
 )
+from src.ui.streamlit_modern import fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import (
     DataFrameLike,
@@ -254,6 +255,7 @@ def render_session_history_table(
 # ════════════════════════════════════════════════════════════════════════════
 
 
+@fragment_if_available
 def render_comparison_radar_chart(
     perf_a: dict,
     perf_b: dict,
@@ -334,7 +336,7 @@ def render_comparison_radar_chart(
 
     try:
         if fig_radar is not None:
-            st.plotly_chart(fig_radar, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig_radar, width="stretch", config={"staticPlot": True})
         else:
             st.info("Impossible de générer le radar de comparaison.")
     except Exception as e:
@@ -542,6 +544,7 @@ def _build_bar_chart_figure(metrics: dict) -> go.Figure:
     return fig_bar
 
 
+@fragment_if_available
 def render_comparison_bar_chart(
     perf_a: dict,
     perf_b: dict,
@@ -560,7 +563,7 @@ def render_comparison_bar_chart(
     try:
         fig = _build_bar_chart_figure(metrics)
         if fig is not None:
-            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
         else:
             st.info("Données insuffisantes pour le graphique comparatif.")
     except Exception as e:
@@ -572,6 +575,7 @@ def render_comparison_bar_chart(
 # ════════════════════════════════════════════════════════════════════════════
 
 
+@fragment_if_available
 def render_participation_trend_section(
     df_session_a: DataFrameLike,
     df_session_b: DataFrameLike,
@@ -684,7 +688,7 @@ def render_participation_trend_section(
             try:
                 fig = create_participation_profile_radar(profiles, title="", height=380)
                 if fig is not None:
-                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Impossible de générer le radar de participation.")
             except Exception as e:

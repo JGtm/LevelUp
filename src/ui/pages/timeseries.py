@@ -77,6 +77,7 @@ def _downsample_for_plot(df: pl.DataFrame, max_points: int = MAX_PLOT_POINTS) ->
 # =============================================================================
 
 
+@fragment_if_available
 def _render_kda_section(dff: pl.DataFrame) -> None:
     """Affiche le graphe KDA et sa distribution."""
     try:
@@ -100,13 +101,14 @@ def _render_kda_section(dff: pl.DataFrame) -> None:
         try:
             fig_dist = plot_kda_distribution(dff)
             if fig_dist is not None:
-                st.plotly_chart(fig_dist, width="stretch", config={"displayModeBar": False})
+                st.plotly_chart(fig_dist, width="stretch", config={"staticPlot": True})
             else:
                 st.info("Données insuffisantes pour la distribution FDA.")
         except Exception as e:
             st.warning(f"Impossible d'afficher la distribution FDA : {e}")
 
 
+@fragment_if_available
 def _render_cumulative_performance(dff: pl.DataFrame) -> None:
     """Affiche les graphes de performance cumulée et tendance (Sprint 6)."""
     st.divider()
@@ -139,7 +141,7 @@ def _render_cumulative_performance(dff: pl.DataFrame) -> None:
                 st.plotly_chart(
                     plot_session_trend(cumul.pl_df),
                     width="stretch",
-                    config={"displayModeBar": False},
+                    config={"staticPlot": True},
                 )
             else:
                 st.info("Tendance de session : au moins 4 matchs requis.")
@@ -149,6 +151,7 @@ def _render_cumulative_performance(dff: pl.DataFrame) -> None:
         st.info("Colonnes start_time, kills ou deaths manquantes pour la performance cumulée.")
 
 
+@fragment_if_available
 def _render_distributions(dff: pl.DataFrame) -> None:
     """Affiche les distributions statistiques (Sprint 5.4.3 + Sprint 6)."""
     st.divider()
@@ -220,7 +223,7 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict) -> None:
                 show_kde=True,
                 color=colors["amber"],
             )
-            st.plotly_chart(fig_spm, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig_spm, width="stretch", config={"staticPlot": True})
         elif "personal_score" not in dff.columns or "time_played_seconds" not in dff.columns:
             st.info("Colonnes score personnel ou time_played non disponibles.")
         else:
@@ -237,7 +240,7 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict) -> None:
                 show_kde=True,
                 color=colors["green"],
             )
-            st.plotly_chart(fig_wr, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig_wr, width="stretch", config={"staticPlot": True})
         elif wr_data.missing_column:
             st.info("Colonne outcome non disponible.")
         elif wr_data.not_enough_matches:
@@ -271,7 +274,7 @@ def _render_single_histogram(
             show_kde=True,
             color=color,
         )
-        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
     elif len(data) == 0:
         st.info("Aucune donnée disponible pour ce filtre.")
     else:
@@ -281,6 +284,7 @@ def _render_single_histogram(
         )
 
 
+@fragment_if_available
 def _render_correlations(dff: pl.DataFrame) -> None:
     """Affiche les graphes de corrélation (Sprint 5.4.5 + Sprint 6)."""
     st.divider()
@@ -397,6 +401,7 @@ def _render_scatter(
         st.warning(f"Erreur lors de l'affichage de la corrélation {title} : {e}")
 
 
+@fragment_if_available
 def _render_first_event_section(
     dff: pl.DataFrame,
     db_path: str | None,
@@ -421,7 +426,7 @@ def _render_first_event_section(
                 title=None,
             )
             if fig_events is not None:
-                st.plotly_chart(fig_events, width="stretch", config={"displayModeBar": False})
+                st.plotly_chart(fig_events, width="stretch", config={"staticPlot": True})
             else:
                 st.info("Données insuffisantes pour le premier événement.")
         except Exception as e:
@@ -435,6 +440,7 @@ def _render_first_event_section(
         )
 
 
+@fragment_if_available
 def _render_advanced_sections(
     dff: pl.DataFrame,
     df_full: pl.DataFrame | None,
