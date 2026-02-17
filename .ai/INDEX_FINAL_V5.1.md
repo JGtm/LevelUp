@@ -280,7 +280,7 @@ cat .ai/PROCESSUS_QUALITE_V5.1.md
 
 **Plan** : RECONCILIATION_FINALE_V5.1.md § Étape 8ter
 **Origine** : Audit innovations technologiques + Audit exhaustif codebase (2026-02-17)
-**Durée** : 12h
+**Durée estimée** : 12h | **Durée réelle** : ~5-6h (scope réduit)
 **Sous-étapes** :
 - 8ter.0 : Bump Streamlit ≥1.37.0 (15min)
 - 8ter.1 : Plotly `staticPlot`/`displayModeBar` sur **69 charts dans 17 fichiers** (1h)
@@ -289,13 +289,18 @@ cat .ai/PROCESSUS_QUALITE_V5.1.md
 - 8ter.4 : Pré-calcul post-sync des agrégats (4h)
 - 8ter.5 : `st.navigation` lazy loading — **13 pages principales** + 10 sous-modules (2h)
 
-**🔎 Statut constaté (audit réel 2026-02-17)** :
-- 8ter.0 ❌ Non fait (`pyproject.toml` reste en `streamlit>=1.28.0`)
-- 8ter.1 ❌ Non fait (0 occurrence `st.plotly_chart(..., config=...)`)
-- 8ter.2 ❌ Non fait (0 occurrence `@st.fragment`)
-- 8ter.3 ❌ Non fait (`match_history.py` utilise encore `_render_history_table()` HTML + `unsafe_allow_html=True`)
-- 8ter.4 ⚠️ Partiel (`refresh_aggregates()` existe côté sync engine, mais pas de couverture complète orientée UI)
-- 8ter.5 ❌ Non fait (`streamlit_app.py` utilise encore `render_page_selector()` + `st.segmented_control`, pas `st.navigation`)
+**✅ Statut final (2026-02-17) — Commit `012b52b`** :
+- 8ter.0 ✅ Fait — `streamlit>=1.37.0` dans pyproject.toml + requirements.txt + `src/ui/streamlit_modern.py` créé
+- 8ter.1 ✅ Fait — `config={"displayModeBar": False}` sur **69** `st.plotly_chart` (15 fichiers)
+- 8ter.2 ⚠️ Partiel — `@fragment_if_available` sur **5/7-8 pages** (timeseries, session_compare, win_loss, objective_analysis, career). Manquants : match_history, match_view_*, teammates_charts
+- 8ter.3 ✅ Fait — `match_history.py` modernisé (`st.dataframe` + `column_config`, dead code supprimé, 0 `unsafe_allow_html`)
+- 8ter.4 ⏭️ Reporté — Partiellement couvert par infrastructure existante (`--with-backfill`)
+- 8ter.5 ⏭️ Reporté — Migration routing complexe, breaking change potentiel
+- 8ter.6/A1 ✅ Fait — **28 `map_elements()` → 0** dans `src/` (15 fichiers). Nouveau module `src/ui/vectorize_helpers.py`
+- 8ter.6/A3 ⏭️ Reporté — 13 `duckdb.connect` directs (lecture seule, TODO markers existants)
+- 8ter.6/A8 ⏭️ Reporté — 32 `st.rerun` (usage intentionnel, pas de remplacement natif)
+- 8ter.6/A9 ⏭️ Reporté — 31 `unsafe_allow_html` (refactoring HTML→natif trop lourd)
+- Tests : **2877 passés, 0 échec**
 
 **🧩 Ajouts à 8ter (issus des contrôles étapes 9 et 10)** :
 - 8ter.6 : Finaliser la modernisation app-wide restante de 8bis (A1/A3/A8/A9) pour éviter une validation 9 incomplète.
