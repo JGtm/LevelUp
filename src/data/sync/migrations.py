@@ -226,6 +226,7 @@ def ensure_match_participants_columns(conn: duckdb.DuckDBPyConnection) -> None:
         # V5 finale - Colonnes MMR/Skill
         ("personal_score", "INTEGER"),
         ("team_mmr", "FLOAT"),
+        ("enemy_mmr", "FLOAT"),
         ("kills_expected", "FLOAT"),
         ("kills_stddev", "FLOAT"),
         ("deaths_expected", "FLOAT"),
@@ -370,7 +371,13 @@ def compute_backfill_mask(*types: str) -> int:
 
 
 def ensure_backfill_completed_column(conn: duckdb.DuckDBPyConnection) -> None:
-    """Ajoute la colonne backfill_completed (bitmask) à match_stats si absente."""
+    """Ajoute la colonne backfill_completed (bitmask) à match_stats si absente.
+
+    Note: En V5.1, match_stats n'existe plus dans les player DBs. Cette fonction
+    est conservée pour compatibilité avec les anciennes DBs en migration.
+    """
+    if not table_exists(conn, "match_stats"):
+        return
     _add_column_if_missing(conn, "match_stats", "backfill_completed", "INTEGER DEFAULT 0")
 
 
