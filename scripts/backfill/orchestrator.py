@@ -981,7 +981,7 @@ async def _backfill_with_api(
                 if medals:
                     medal_rows = extract_medals(stats_json, xuid)
                     if medal_rows:
-                        n = insert_medal_rows(shared_conn, medal_rows)
+                        n = insert_medal_rows(shared_conn, medal_rows, xuid)
                         totals["medals_inserted"] += n
 
                 # ── Events (V5: shared.highlight_events) ──
@@ -1350,14 +1350,13 @@ def _upsert_skill_to_participants(conn: Any, skill_row: Any, xuid: str) -> int:
     try:
         conn.execute(
             "UPDATE match_participants SET "
-            "team_mmr = ?, enemy_mmr = ?, "
+            "team_mmr = ?, "
             "kills_expected = ?, kills_stddev = ?, "
             "deaths_expected = ?, deaths_stddev = ?, "
             "assists_expected = ?, assists_stddev = ? "
             "WHERE match_id = ? AND xuid = ?",
             (
                 skill_row.team_mmr,
-                skill_row.enemy_mmr,
                 skill_row.kills_expected,
                 skill_row.kills_stddev,
                 skill_row.deaths_expected,
