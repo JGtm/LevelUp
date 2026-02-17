@@ -400,6 +400,7 @@ def compute_performance_score_for_match(
 async def backfill_participants_enrich(
     shared_conn: Any,
     *,
+    xuid: str | None = None,
     max_matches: int | None = None,
     force: bool = False,
     requests_per_second: int = 5,
@@ -415,6 +416,7 @@ async def backfill_participants_enrich(
 
     Args:
         shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        xuid: Si fourni, ne traiter que les matchs de ce joueur.
         max_matches: Nombre max de matchs à traiter.
         force: Si True, recalcule même si les colonnes existent déjà.
         requests_per_second: Rate limiting API.
@@ -435,9 +437,12 @@ async def backfill_participants_enrich(
             "SELECT DISTINCT mp.match_id "
             "FROM match_participants mp "
             "JOIN match_registry mr ON mp.match_id = mr.match_id "
-            "ORDER BY mr.start_time DESC"
         )
         params: list = []
+        if xuid:
+            query += "WHERE mp.xuid = ? "
+            params.append(xuid)
+        query += "ORDER BY mr.start_time DESC"
     else:
         # On ne considère que headshot_kills et kda car team_mmr peut être NULL
         # légitimement (API skill ne retourne pas toujours de données)
@@ -445,11 +450,13 @@ async def backfill_participants_enrich(
             "SELECT DISTINCT mp.match_id "
             "FROM match_participants mp "
             "JOIN match_registry mr ON mp.match_id = mr.match_id "
-            "WHERE mp.headshot_kills IS NULL "
-            "   OR mp.kda IS NULL "
-            "ORDER BY mr.start_time DESC"
+            "WHERE (mp.headshot_kills IS NULL OR mp.kda IS NULL) "
         )
         params = []
+        if xuid:
+            query += "AND mp.xuid = ? "
+            params.append(xuid)
+        query += "ORDER BY mr.start_time DESC"
 
     if max_matches:
         query += f" LIMIT {int(max_matches)}"

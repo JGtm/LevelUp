@@ -352,9 +352,7 @@ BACKFILL_FLAGS: dict[str, int] = {
     "participants_shots": 1 << 12,  # 4096
     "participants_damage": 1 << 13,  # 8192
     "aliases": 1 << 14,  # 16384
-    # Note: participants_avg_life (1 << 15) retiré car redondant avec "participants"
-    # Toutes les colonnes de match_participants (incluant avg_life_seconds et les
-    # colonnes étendues de Phase 1) sont couvertes par le flag "participants"
+    "participants_avg_life": 1 << 15,  # 32768 - Ajouté pour éviter détection infinie
 }
 
 

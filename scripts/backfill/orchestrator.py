@@ -347,6 +347,7 @@ async def backfill_player_data(
             logger.info("Backfill colonnes étendues + MMR (participants-enrich)...")
             n = await backfill_participants_enrich(
                 shared_conn_for_detection,
+                xuid=xuid,
                 max_matches=max_matches,
                 force=force_participants_enrich,
                 requests_per_second=requests_per_second,
