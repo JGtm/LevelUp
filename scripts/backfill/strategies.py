@@ -556,7 +556,6 @@ async def backfill_participants_enrich(
                                     shared_conn.execute(
                                         "UPDATE match_participants SET "
                                         "team_mmr = COALESCE(?, team_mmr), "
-                                        "enemy_mmr = COALESCE(?, enemy_mmr), "
                                         "kills_expected = COALESCE(?, kills_expected), "
                                         "kills_stddev = COALESCE(?, kills_stddev), "
                                         "deaths_expected = COALESCE(?, deaths_expected), "
@@ -566,7 +565,6 @@ async def backfill_participants_enrich(
                                         "WHERE match_id = ? AND xuid = ?",
                                         (
                                             p_skill.team_mmr,
-                                            p_skill.enemy_mmr,
                                             p_skill.kills_expected,
                                             p_skill.kills_stddev,
                                             p_skill.deaths_expected,

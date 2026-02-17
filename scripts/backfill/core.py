@@ -19,6 +19,7 @@ from src.data.sync.batch_insert import (
     MEDAL_COLUMNS,
     PARTICIPANT_COLUMNS,
     PERSONAL_SCORE_COLUMNS,
+    SHARED_MEDAL_COLUMNS,
     batch_insert_rows,
     batch_upsert_rows,
 )
@@ -31,18 +32,45 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def insert_medal_rows(conn: Any, rows: list) -> int:
+def insert_medal_rows(conn: Any, rows: list, xuid: str | None = None) -> int:
     """Insère les médailles dans la table medals_earned (batch Sprint 15).
 
     Args:
         conn: Connexion DuckDB.
-        rows: Liste de MedalRow.
+        rows: Liste de MedalRow (avec ou sans xuid).
+        xuid: XUID du joueur. Si fourni, sera ajouté à chaque row pour
+              insertion dans shared_matches.duckdb.
 
     Returns:
         Nombre de médailles insérées.
     """
     if not rows:
         return 0
+
+    # Si xuid fourni, convertir en SharedMedalEarnedRow format
+    if xuid:
+        shared_rows = []
+        for r in rows:
+            if hasattr(r, "match_id"):
+                shared_rows.append(
+                    {
+                        "match_id": r.match_id,
+                        "xuid": xuid,
+                        "medal_name_id": r.medal_name_id,
+                        "count": r.count,
+                    }
+                )
+            elif isinstance(r, dict):
+                shared_rows.append(
+                    {
+                        "match_id": r.get("match_id"),
+                        "xuid": xuid,
+                        "medal_name_id": r.get("medal_name_id"),
+                        "count": r.get("count"),
+                    }
+                )
+        return batch_upsert_rows(conn, "medals_earned", shared_rows, SHARED_MEDAL_COLUMNS)
+
     return batch_upsert_rows(conn, "medals_earned", rows, MEDAL_COLUMNS)
 
 
