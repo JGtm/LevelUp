@@ -14,6 +14,7 @@ from src.analysis.objective_participation import (
     compute_award_frequency_polars,
     compute_objective_summary_by_match_polars,
 )
+from src.ui.streamlit_modern import fragment_if_available
 from src.visualization.objective_charts import (
     plot_assist_breakdown_pie,
     plot_objective_breakdown_bars,
@@ -49,6 +50,7 @@ def _format_ratio(value: float | None) -> str:
     return f"{value * 100:.1f}%"
 
 
+@fragment_if_available
 def render_objective_analysis_page(
     repo: DuckDBRepository,
     xuid: str,
@@ -227,7 +229,7 @@ def render_objective_analysis_page(
                 title="Score Objectifs vs Frags par Match",
             )
             if fig_scatter is not None:
-                st.plotly_chart(fig_scatter, width="stretch")
+                st.plotly_chart(fig_scatter, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Données insuffisantes pour la corrélation objectifs/kills.")
         except Exception as e:
@@ -245,7 +247,7 @@ def render_objective_analysis_page(
                     title="Points Totaux par Catégorie",
                 )
                 if fig_bars is not None:
-                    st.plotly_chart(fig_bars, width="stretch")
+                    st.plotly_chart(fig_bars, width="stretch", config={"displayModeBar": False})
                 else:
                     st.info("Données insuffisantes pour la répartition.")
             except Exception as e:
@@ -259,7 +261,7 @@ def render_objective_analysis_page(
                     title="% du score sur objectifs",
                 )
                 if fig_gauge is not None:
-                    st.plotly_chart(fig_gauge, width="stretch")
+                    st.plotly_chart(fig_gauge, width="stretch", config={"displayModeBar": False})
                 else:
                     st.info("Impossible de générer la jauge.")
             except Exception as e:
@@ -285,7 +287,7 @@ def render_objective_analysis_page(
                     title="Score Objectifs au fil des matchs",
                 )
                 if fig_trend is not None:
-                    st.plotly_chart(fig_trend, width="stretch")
+                    st.plotly_chart(fig_trend, width="stretch", config={"displayModeBar": False})
                 else:
                     st.info("Données insuffisantes pour la tendance.")
             except Exception as e:
@@ -342,7 +344,7 @@ def render_objective_analysis_page(
                 breakdown,
                 title="Types d'Assistances",
             )
-            st.plotly_chart(fig_pie, width="stretch")
+            st.plotly_chart(fig_pie, width="stretch", config={"displayModeBar": False})
 
         with col_table:
             st.markdown("### Détail par type")

@@ -84,7 +84,7 @@ def render_participation_section(
                 height=380,
             )
             if fig is not None:
-                st.plotly_chart(fig, width="stretch")
+                st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Impossible de générer le radar de participation.")
         except Exception as e:
@@ -167,7 +167,7 @@ def render_participation_comparison(
             try:
                 fig = create_participation_profile_radar(profiles, title="", height=400)
                 if fig is not None:
-                    st.plotly_chart(fig, width="stretch")
+                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
                 else:
                     st.info("Impossible de générer le radar de comparaison.")
             except Exception as e:

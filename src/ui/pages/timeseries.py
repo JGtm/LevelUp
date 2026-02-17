@@ -12,6 +12,7 @@ import streamlit as st
 
 from src.config import HALO_COLORS
 from src.data.services.timeseries_service import TimeseriesService
+from src.ui.streamlit_modern import fragment_if_available
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.distributions import (
     plot_correlation_scatter,
@@ -83,7 +84,7 @@ def _render_kda_section(dff: pl.DataFrame) -> None:
         df_plot = _downsample_for_plot(dff)
         fig = plot_timeseries(df_plot)
         if fig is not None:
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         else:
             st.info("Données insuffisantes pour le graphique KDA.")
     except Exception as e:
@@ -99,7 +100,7 @@ def _render_kda_section(dff: pl.DataFrame) -> None:
         try:
             fig_dist = plot_kda_distribution(dff)
             if fig_dist is not None:
-                st.plotly_chart(fig_dist, width="stretch")
+                st.plotly_chart(fig_dist, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Données insuffisantes pour la distribution FDA.")
         except Exception as e:
@@ -122,19 +123,23 @@ def _render_cumulative_performance(dff: pl.DataFrame) -> None:
                     cumul.cumul_net, time_played_seconds=cumul.time_played_seconds
                 ),
                 width="stretch",
+                config={"displayModeBar": False},
             )
             st.plotly_chart(
                 plot_cumulative_kd(cumul.cumul_kd, time_played_seconds=cumul.time_played_seconds),
                 width="stretch",
+                config={"displayModeBar": False},
             )
             st.plotly_chart(
                 plot_rolling_kd(cumul.rolling_kd, window_size=5),
                 width="stretch",
+                config={"displayModeBar": False},
             )
             if cumul.has_enough_for_trend:
                 st.plotly_chart(
                     plot_session_trend(cumul.pl_df),
                     width="stretch",
+                    config={"displayModeBar": False},
                 )
             else:
                 st.info("Tendance de session : au moins 4 matchs requis.")
@@ -215,7 +220,7 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict) -> None:
                 show_kde=True,
                 color=colors["amber"],
             )
-            st.plotly_chart(fig_spm, width="stretch")
+            st.plotly_chart(fig_spm, width="stretch", config={"displayModeBar": False})
         elif "personal_score" not in dff.columns or "time_played_seconds" not in dff.columns:
             st.info("Colonnes score personnel ou time_played non disponibles.")
         else:
@@ -232,7 +237,7 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict) -> None:
                 show_kde=True,
                 color=colors["green"],
             )
-            st.plotly_chart(fig_wr, width="stretch")
+            st.plotly_chart(fig_wr, width="stretch", config={"displayModeBar": False})
         elif wr_data.missing_column:
             st.info("Colonne outcome non disponible.")
         elif wr_data.not_enough_matches:
@@ -266,7 +271,7 @@ def _render_single_histogram(
             show_kde=True,
             color=color,
         )
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     elif len(data) == 0:
         st.info("Aucune donnée disponible pour ce filtre.")
     else:
@@ -385,7 +390,7 @@ def _render_scatter(
             show_trendline=True,
         )
         if fig is not None:
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         else:
             st.info(f"Impossible de générer la corrélation {title}.")
     except Exception as e:
@@ -416,7 +421,7 @@ def _render_first_event_section(
                 title=None,
             )
             if fig_events is not None:
-                st.plotly_chart(fig_events, width="stretch")
+                st.plotly_chart(fig_events, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Données insuffisantes pour le premier événement.")
         except Exception as e:
@@ -442,7 +447,7 @@ def _render_advanced_sections(
     try:
         fig_perf = plot_performance_timeseries(dff, df_history=history)
         if fig_perf is not None:
-            st.plotly_chart(fig_perf, width="stretch")
+            st.plotly_chart(fig_perf, width="stretch", config={"displayModeBar": False})
         else:
             st.info("Données insuffisantes pour la performance.")
     except Exception as e:
@@ -452,7 +457,7 @@ def _render_advanced_sections(
     try:
         fig_assists = plot_assists_timeseries(dff)
         if fig_assists is not None:
-            st.plotly_chart(fig_assists, width="stretch")
+            st.plotly_chart(fig_assists, width="stretch", config={"displayModeBar": False})
         else:
             st.info("Données insuffisantes pour les assistances.")
     except Exception as e:
@@ -462,7 +467,7 @@ def _render_advanced_sections(
     try:
         fig_spm = plot_per_minute_timeseries(dff)
         if fig_spm is not None:
-            st.plotly_chart(fig_spm, width="stretch")
+            st.plotly_chart(fig_spm, width="stretch", config={"displayModeBar": False})
         else:
             st.info("Données insuffisantes pour les stats par minute.")
     except Exception as e:
@@ -475,7 +480,7 @@ def _render_advanced_sections(
         try:
             fig_life = plot_average_life(dff)
             if fig_life is not None:
-                st.plotly_chart(fig_life, width="stretch")
+                st.plotly_chart(fig_life, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Données insuffisantes pour la durée de vie.")
         except Exception as e:
@@ -501,7 +506,7 @@ def _render_spree_section(
     try:
         fig_spree = plot_spree_headshots_accuracy(dff, perfect_counts=pk_data.counts)
         if fig_spree is not None:
-            st.plotly_chart(fig_spree, width="stretch")
+            st.plotly_chart(fig_spree, width="stretch", config={"displayModeBar": False})
         else:
             st.info("Données insuffisantes pour folie meurtrière / tirs à la tête.")
     except Exception as e:
@@ -522,7 +527,7 @@ def _render_sprint7_sections(dff: pl.DataFrame) -> None:
         try:
             fig_shots = plot_shots_accuracy(dff, title=None)
             if fig_shots is not None:
-                st.plotly_chart(fig_shots, width="stretch")
+                st.plotly_chart(fig_shots, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Données insuffisantes pour les tirs et précision.")
         except Exception as e:
@@ -540,7 +545,7 @@ def _render_sprint7_sections(dff: pl.DataFrame) -> None:
         try:
             fig_damage = plot_damage_dealt_taken(dff, title=None)
             if fig_damage is not None:
-                st.plotly_chart(fig_damage, width="stretch")
+                st.plotly_chart(fig_damage, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Données insuffisantes pour les dégâts.")
         except Exception as e:
@@ -558,7 +563,7 @@ def _render_sprint7_sections(dff: pl.DataFrame) -> None:
         try:
             fig_rank = plot_rank_score(dff, title="Rang et score personnel")
             if fig_rank is not None:
-                st.plotly_chart(fig_rank, width="stretch")
+                st.plotly_chart(fig_rank, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Données insuffisantes pour le rang et score.")
         except Exception as e:
@@ -570,6 +575,7 @@ def _render_sprint7_sections(dff: pl.DataFrame) -> None:
 # =============================================================================
 
 
+@fragment_if_available
 def render_timeseries_page(
     dff: DataFrameLike,
     df_full: DataFrameLike | None = None,

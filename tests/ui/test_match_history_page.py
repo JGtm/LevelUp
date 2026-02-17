@@ -58,84 +58,6 @@ class TestAppUrl:
         assert "page=Historique" in url
 
 
-class TestFormatScoreLabel:
-    """Tests pour _format_score_label."""
-
-    def test_normal(self) -> None:
-        from src.ui.pages.match_history import _format_score_label
-
-        assert _format_score_label(50, 30) == "50 - 30"
-
-    def test_none_scores(self) -> None:
-        from src.ui.pages.match_history import _format_score_label
-
-        assert _format_score_label(None, None) == "- - -"
-
-    def test_nan_score(self) -> None:
-        from src.ui.pages.match_history import _format_score_label
-
-        result = _format_score_label(float("nan"), 30)
-        assert result == "- - 30"
-
-    def test_float_scores(self) -> None:
-        from src.ui.pages.match_history import _format_score_label
-
-        assert _format_score_label(50.6, 30.2) == "51 - 30"
-
-
-class TestFmt:
-    """Tests pour _fmt."""
-
-    def test_normal(self) -> None:
-        from src.ui.pages.match_history import _fmt
-
-        assert _fmt(42) == "42"
-
-    def test_none(self) -> None:
-        from src.ui.pages.match_history import _fmt
-
-        assert _fmt(None) == "-"
-
-    def test_nan(self) -> None:
-        from src.ui.pages.match_history import _fmt
-
-        assert _fmt(float("nan")) == "-"
-
-    def test_empty_string(self) -> None:
-        from src.ui.pages.match_history import _fmt
-
-        assert _fmt("") == "-"
-
-    def test_whitespace_string(self) -> None:
-        from src.ui.pages.match_history import _fmt
-
-        assert _fmt("   ") == "-"
-
-
-class TestFmtMmrInt:
-    """Tests pour _fmt_mmr_int."""
-
-    def test_normal(self) -> None:
-        from src.ui.pages.match_history import _fmt_mmr_int
-
-        assert _fmt_mmr_int(1500.6) == "1501"
-
-    def test_none(self) -> None:
-        from src.ui.pages.match_history import _fmt_mmr_int
-
-        assert _fmt_mmr_int(None) == "-"
-
-    def test_nan(self) -> None:
-        from src.ui.pages.match_history import _fmt_mmr_int
-
-        assert _fmt_mmr_int(float("nan")) == "-"
-
-    def test_int(self) -> None:
-        from src.ui.pages.match_history import _fmt_mmr_int
-
-        assert _fmt_mmr_int(1500) == "1500"
-
-
 class TestNormalizeModeLabel:
     """Tests pour _normalize_mode_label (déplacée vers teammates_helpers)."""
 
@@ -208,8 +130,8 @@ class TestRenderMatchHistoryPage:
             mock_perf.return_value = pl.Series("performance", [50.0] * 15)
             mod.render_match_history_page(dff, "TestPlayer", "dummy.duckdb", "100", None)
 
-        # Le tableau HTML est rendu via markdown
-        ms.calls["markdown"].assert_called()
+        # Le tableau est rendu via st.dataframe (8ter)
+        ms.calls["dataframe"].assert_called()
         ms.calls["subheader"].assert_called()
         # Le bouton de téléchargement CSV est affiché
         ms.calls["download_button"].assert_called_once()
@@ -228,4 +150,4 @@ class TestRenderMatchHistoryPage:
                 dff, "TestPlayer", "dummy.duckdb", "100", None, df_full=df_full
             )
 
-        ms.calls["markdown"].assert_called()
+        ms.calls["dataframe"].assert_called()

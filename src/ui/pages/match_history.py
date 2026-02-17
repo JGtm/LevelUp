@@ -14,13 +14,10 @@ Sprint 8bis : Vectorisation
 
 from __future__ import annotations
 
-import html as html_lib
-
 import polars as pl
 import streamlit as st
 
 from src.analysis.performance_score import compute_performance_series
-from src.ui.components.performance import get_score_class
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 
@@ -31,53 +28,6 @@ def _app_url(page: str, **params: str) -> str:
     base = "/"
     qp = {"page": page, **params}
     return base + "?" + urllib.parse.urlencode(qp)
-
-
-def _format_score_label(my_score: object, enemy_score: object) -> str:
-    """Formate le score du match."""
-
-    def _safe(v: object) -> str:
-        if v is None:
-            return "-"
-        try:
-            if v != v:  # NaN
-                return "-"
-        except Exception:
-            pass
-        try:
-            return str(int(round(float(v))))
-        except Exception:
-            return str(v)
-
-    return f"{_safe(my_score)} - {_safe(enemy_score)}"
-
-
-def _fmt(v) -> str:
-    """Formate une valeur pour affichage."""
-    if v is None:
-        return "-"
-    try:
-        if v != v:  # NaN
-            return "-"
-    except Exception:
-        pass
-    s = str(v)
-    return s if s.strip() else "-"
-
-
-def _fmt_mmr_int(v) -> str:
-    """Formate une valeur MMR en entier."""
-    if v is None:
-        return "-"
-    try:
-        if v != v:  # NaN
-            return "-"
-    except Exception:
-        pass
-    try:
-        return str(int(round(float(v))))
-    except Exception:
-        return _fmt(v)
 
 
 def render_match_history_page(
@@ -223,90 +173,67 @@ def render_match_history_page(
 
 
 def _render_history_table(dff_table: pl.DataFrame) -> None:
-    """Génère et affiche le tableau HTML de l'historique."""
-
-    def _outcome_class(label: str) -> str:
-        """Retourne la classe CSS pour un résultat."""
-        v = str(label or "").strip().casefold()
-        if v.startswith("victoire"):
-            return "text-win"
-        if v.startswith("défaite") or v.startswith("defaite"):
-            return "text-loss"
-        if v.startswith("égalité") or v.startswith("egalite"):
-            return "text-tie"
-        if v.startswith("non"):
-            return "text-nf"
-        return ""
-
-    cols = [
-        ("Match", "_app"),
-        ("HaloWaypoint", "match_url"),
-        ("Date de début", "start_time_fr"),
-        ("Carte", "map_name"),
-        ("Playlist", "playlist_fr"),
-        ("Mode", "mode_ui"),
-        ("Résultat", "outcome_label"),
-        ("Score", "score"),
-        ("Performance", "performance_display"),
-        ("MMR équipe", "team_mmr"),
-        ("MMR adverse", "enemy_mmr"),
-        ("Écart MMR", "delta_mmr"),
-        ("FDA", "kda"),
-        ("Frags", "kills"),
-        ("Morts", "deaths"),
-        ("Tuerie (max)", "max_killing_spree"),
-        ("Têtes", "headshot_kills"),
-        ("Durée vie", "average_life_mmss"),
-        ("Assists", "assists"),
-        ("Précision", "accuracy"),
-        ("Ratio", "ratio"),
-    ]
-
+    """Affiche le tableau de l'historique via `st.dataframe` modernisé."""
     view = dff_table.sort("start_time", descending=True).head(250)
 
-    head = "".join(f"<th>{html_lib.escape(h)}</th>" for h, _ in cols)
-    body_rows: list[str] = []
-    for r in view.iter_rows(named=True):
-        mid = str(r.get("match_id") or "").strip()
-        app = _app_url("Match", match_id=mid)
-        match_link = f"<a href='{html_lib.escape(app)}' target='_self'>Ouvrir</a>" if mid else "-"
-        hw = str(r.get("match_url") or "").strip()
-        hw_link = (
-            f"<a href='{html_lib.escape(hw)}' target='_blank' rel='noopener'>Ouvrir</a>"
-            if hw
-            else "-"
-        )
+    view = view.with_columns(
+        (pl.lit("/?page=Match&match_id=") + pl.col("match_id").cast(pl.Utf8).fill_null(pl.lit("")))
+        .alias("match_link")
+        .str.replace(r"\s+", "", literal=False)
+    )
 
-        tds: list[str] = []
-        for _h, key in cols:
-            if key == "_app":
-                tds.append(f"<td>{match_link}</td>")
-            elif key == "match_url":
-                tds.append(f"<td>{hw_link}</td>")
-            elif key == "outcome_label":
-                val = _fmt(r.get(key))
-                css_class = _outcome_class(val)
-                tds.append(f"<td class='{css_class}'>{html_lib.escape(val)}</td>")
-            elif key == "performance_display":
-                val = _fmt(r.get(key))
-                perf_val = r.get("performance")
-                css_class = get_score_class(perf_val)
-                tds.append(f"<td class='{css_class}'>{html_lib.escape(val)}</td>")
-            elif key in ("team_mmr", "enemy_mmr", "delta_mmr"):
-                val = _fmt_mmr_int(r.get(key))
-                tds.append(f"<td>{html_lib.escape(val)}</td>")
-            else:
-                val = _fmt(r.get(key))
-                tds.append(f"<td>{html_lib.escape(val)}</td>")
-        body_rows.append("<tr>" + "".join(tds) + "</tr>")
+    display = view.select(
+        [
+            pl.col("match_link").alias("Match"),
+            pl.col("match_url").alias("HaloWaypoint"),
+            pl.col("start_time_fr").alias("Date de début"),
+            pl.col("map_name").fill_null("-").alias("Carte"),
+            pl.col("playlist_fr").fill_null("-").alias("Playlist"),
+            pl.col("mode_ui").fill_null("-").alias("Mode"),
+            pl.col("outcome_label").fill_null("-").alias("Résultat"),
+            pl.col("score").fill_null("-").alias("Score"),
+            pl.col("performance_display").fill_null("-").alias("Performance"),
+            pl.col("team_mmr")
+            .cast(pl.Float64, strict=False)
+            .round(0)
+            .cast(pl.Int64, strict=False)
+            .cast(pl.Utf8)
+            .fill_null("-")
+            .alias("MMR équipe"),
+            pl.col("enemy_mmr")
+            .cast(pl.Float64, strict=False)
+            .round(0)
+            .cast(pl.Int64, strict=False)
+            .cast(pl.Utf8)
+            .fill_null("-")
+            .alias("MMR adverse"),
+            pl.col("delta_mmr")
+            .cast(pl.Float64, strict=False)
+            .round(0)
+            .cast(pl.Int64, strict=False)
+            .cast(pl.Utf8)
+            .fill_null("-")
+            .alias("Écart MMR"),
+            pl.col("kda").cast(pl.Utf8).fill_null("-").alias("FDA"),
+            pl.col("kills").cast(pl.Utf8).fill_null("-").alias("Frags"),
+            pl.col("deaths").cast(pl.Utf8).fill_null("-").alias("Morts"),
+            pl.col("max_killing_spree").cast(pl.Utf8).fill_null("-").alias("Tuerie (max)"),
+            pl.col("headshot_kills").cast(pl.Utf8).fill_null("-").alias("Têtes"),
+            pl.col("average_life_mmss").fill_null("-").alias("Durée vie"),
+            pl.col("assists").cast(pl.Utf8).fill_null("-").alias("Assists"),
+            pl.col("accuracy").cast(pl.Utf8).fill_null("-").alias("Précision"),
+            pl.col("ratio").cast(pl.Utf8).fill_null("-").alias("Ratio"),
+        ]
+    )
 
-    st.markdown(
-        "<div class='os-table-wrap'><table class='os-table'><thead><tr>"
-        + head
-        + "</tr></thead><tbody>"
-        + "".join(body_rows)
-        + "</tbody></table></div>",
-        unsafe_allow_html=True,
+    st.dataframe(
+        display,
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "Match": st.column_config.LinkColumn("Match", display_text="Ouvrir"),
+            "HaloWaypoint": st.column_config.LinkColumn("HaloWaypoint", display_text="Ouvrir"),
+        },
     )
 
 

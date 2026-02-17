@@ -18,6 +18,7 @@ from src.ui.career_ranks import (
 )
 from src.ui.components.career_progress_circle import create_career_progress_gauge
 from src.ui.player_assets import ensure_local_image_path
+from src.ui.streamlit_modern import fragment_if_available
 from src.visualization.theme import apply_halo_plot_style
 
 logger = logging.getLogger(__name__)
@@ -165,6 +166,7 @@ def _create_xp_history_chart(history: list[dict]) -> go.Figure | None:
     return fig
 
 
+@fragment_if_available
 def render_career_page(
     *,
     db_path: str,
@@ -263,7 +265,9 @@ def render_career_page(
                 is_max_rank=is_max,
             )
             if gauge_fig is not None:
-                st.plotly_chart(gauge_fig, key="career_gauge", width="stretch")
+                st.plotly_chart(
+                    gauge_fig, key="career_gauge", width="stretch", config={"displayModeBar": False}
+                )
             else:
                 st.info("Impossible de générer la jauge de progression.")
         except Exception as e:
@@ -278,7 +282,12 @@ def render_career_page(
         try:
             history_fig = _create_xp_history_chart(history)
             if history_fig:
-                st.plotly_chart(history_fig, key="career_xp_history", width="stretch")
+                st.plotly_chart(
+                    history_fig,
+                    key="career_xp_history",
+                    width="stretch",
+                    config={"displayModeBar": False},
+                )
             else:
                 st.info("Pas assez de données pour afficher l'historique.")
         except Exception as e:

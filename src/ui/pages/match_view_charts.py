@@ -12,6 +12,7 @@ from plotly.subplots import make_subplots
 from src.analysis.stats import compute_mode_category_averages, extract_mode_category, format_mmss
 from src.config import HALO_COLORS
 from src.ui.pages.match_view_helpers import os_card
+from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -244,7 +245,7 @@ def render_expected_vs_actual(
     with chart_cols[0]:
         try:
             if exp_fig is not None:
-                st.plotly_chart(exp_fig, width="stretch")
+                st.plotly_chart(exp_fig, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Données insuffisantes pour le graphique K/D/A.")
         except Exception as e:
@@ -303,8 +304,11 @@ def _render_spree_headshots(
                 perfect_current = counts.get(match_id, 0)
             # Moyenne historique par catégorie (même filtre que spree/headshots)
             if df_full is not None and hist_avgs.get("match_count", 0) >= 10:
+                _cat_map = build_mapping(df_full.get_column("pair_name"), extract_mode_category)
                 filtered = df_full.filter(
-                    pl.col("pair_name").map_elements(extract_mode_category, return_dtype=pl.Utf8)
+                    pl.col("pair_name")
+                    .cast(pl.Utf8)
+                    .replace_strict(_cat_map, default="Other", return_dtype=pl.Utf8)
                     == mode_category
                 )
                 if len(filtered) >= 10:
@@ -373,7 +377,7 @@ def _render_spree_headshots(
         try:
             styled_fig = apply_halo_plot_style(fig_sh, height=260)
             if styled_fig is not None:
-                st.plotly_chart(styled_fig, width="stretch")
+                st.plotly_chart(styled_fig, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Données insuffisantes pour le graphique Spree/Headshots.")
         except Exception as e:

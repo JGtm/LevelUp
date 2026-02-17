@@ -7,6 +7,7 @@ import polars as pl
 from src.analysis.mode_categories import infer_custom_category_from_pair_name
 from src.data.domain.models.stats import AggregatedStats, OutcomeRates
 from src.ui.formatting import format_mmss
+from src.ui.vectorize_helpers import build_mapping
 
 
 def _to_polars(df: pl.DataFrame) -> pl.DataFrame:
@@ -149,9 +150,13 @@ def compute_mode_category_averages(
     if df_pl.is_empty():
         return empty_result
 
-    # Filtrer par catégorie (alignée sidebar) - vectorisé pour performance
+    # Filtrer par catégorie (alignée sidebar) - vectorisé via build_mapping
+    _cat_map = build_mapping(df_pl.get_column("pair_name"), extract_mode_category)
     filtered = df_pl.filter(
-        pl.col("pair_name").map_elements(extract_mode_category, return_dtype=pl.Utf8) == category
+        pl.col("pair_name")
+        .cast(pl.Utf8)
+        .replace_strict(_cat_map, default="Other", return_dtype=pl.Utf8)
+        == category
     )
 
     if filtered.is_empty():

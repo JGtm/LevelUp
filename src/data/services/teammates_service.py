@@ -237,11 +237,13 @@ class TeammatesService:
                     repo = DuckDBRepository(use_path, "")
                     counts = repo.count_perfect_kills_by_match(match_ids)
                     _counts = counts  # bind for lambda closure (B023)
-                    df = df.with_columns(
-                        pl.col("match_id")
-                        .cast(pl.Utf8)
-                        .map_elements(lambda mid, _c=_counts: _c.get(mid, 0), return_dtype=pl.Int64)
-                        .alias("perfect_kills")
+                    _counts_series = pl.Series("match_id", list(_counts.keys()))
+                    _vals_series = pl.Series("perfect_kills", list(_counts.values()))
+                    _lookup = pl.DataFrame({"_mid": _counts_series, "_pk": _vals_series})
+                    df = df.with_columns(pl.col("match_id").cast(pl.Utf8).alias("_join_mid"))
+                    df = df.join(_lookup, left_on="_join_mid", right_on="_mid", how="left")
+                    df = df.with_columns(pl.col("_pk").fill_null(0).alias("perfect_kills")).drop(
+                        ["_join_mid", "_pk"]
                     )
                 except Exception:
                     df = df.with_columns(pl.lit(0).alias("perfect_kills"))
