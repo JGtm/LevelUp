@@ -8,6 +8,15 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Added
 
+- **Module `src/ui/streamlit_modern.py`** — Wrappers compatibilité Streamlit moderne
+  - `fragment_if_available` : décorateur graceful-degradation pour `@st.fragment`
+  - `PLOTLY_CLEAN_CONFIG` : config Plotly sans barre d'outils
+  - `plotly_chart` : wrapper avec config propre par défaut
+  - `HAS_FRAGMENT`, `HAS_NAVIGATION` : détection de version
+- **Module `src/ui/vectorize_helpers.py`** — Remplacement vectorisé de `map_elements()`
+  - `build_mapping()` : pré-calcul dict mapping sur valeurs distinctes
+  - `vectorized_apply()` : apply vectorisé via `replace_strict()`
+  - `safe_int_format()`, `format_score_pair()` : expressions Polars réutilisables
 - **Helpers `get_shared_matches_path()`** — Fonctions centralisées dans `src/utils/paths.py`
   - `get_shared_matches_path()` : chemin absolu vers `shared_matches.duckdb`
   - `get_shared_matches_path_from_player()` : déduction depuis path joueur
@@ -33,6 +42,21 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Changed
 
+- **Bump Streamlit ≥1.37.0** — Requis pour `@st.fragment` et futures migrations `st.navigation`
+- **Plotly `config={"displayModeBar": False}`** — Appliqué sur 69 `st.plotly_chart` (15 fichiers)
+  - Suppression barre d'outils Plotly pour une UI plus propre
+- **`@fragment_if_available`** — Décorateur appliqué sur 5 pages multi-charts
+  - timeseries, session_compare, win_loss, objective_analysis, career
+  - Réduit le re-render au fragment seul lors d'interactions filtre
+- **`match_history.py` modernisé** — Remplacement HTML custom par `st.dataframe` + `column_config`
+  - Suppression dead code : `_format_score_label`, `_fmt`, `_fmt_mmr_int`
+  - Virtualisation native Streamlit pour tableaux larges
+- **Éradication complète `map_elements()`** — 28 occurrences remplacées dans 15 fichiers
+  - Remplacement par `build_mapping()` + `replace_strict()` ou expressions Polars natives
+  - Fichiers : filters.py, filters_render.py, win_loss.py, last_match.py, stats.py,
+    match_view_charts.py, media_library.py, teammates_helpers.py, session_compare.py,
+    session_compare_charts.py, duckdb_analytics.py, match_view.py, citations.py,
+    teammates_service.py, media_indexer.py
 - **Migration `xuid_aliases` → `shared_matches.duckdb`** — Source unique centralisée
   - 9 fichiers migrés pour lire depuis `shared.xuid_aliases` (13 955 rows)
   - Suppression fallbacks locaux `stats.duckdb`

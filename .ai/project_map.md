@@ -86,6 +86,8 @@ data/
 ### UI
 - `src/ui/pages/` : Pages du dashboard (career.py ajouté Sprint 3B)
 - `src/ui/components/` : Composants réutilisables (career_progress_circle.py ajouté Sprint 3B)
+- `src/ui/streamlit_modern.py` : Wrappers compatibilité Streamlit moderne (fragment_if_available, PLOTLY_CLEAN_CONFIG) — Sprint 8ter
+- `src/ui/vectorize_helpers.py` : Helpers vectorisation Polars (build_mapping, replace map_elements) — Sprint 8ter
 - `src/visualization/` : Graphiques Plotly
 
 ## Tables DuckDB

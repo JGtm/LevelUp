@@ -2311,3 +2311,32 @@ docs/DATA_ARCHITECTURE.md        # MAJ
 ---
 
 <!-- Les nouvelles entrées sont ajoutées ici, les plus récentes en haut -->
+
+### 2026-02-17 — Sprint 8ter : Modernisation Streamlit + Éradication map_elements
+
+**Contexte** : Audit exhaustif révélant 28 `map_elements()`, 69 charts sans config Plotly, 0 `@st.fragment`, et un tableau HTML custom dans match_history.py. Streamlit contraint à ≥1.28.0 alors que 1.54.0 est installé.
+
+**Raisonnement** :
+- `map_elements()` est une anti-pattern Polars : exécution Python row-by-row, pas vectorisé. Remplacer par `build_mapping()` + `replace_strict()` — O(distinct_values) au lieu de O(n_rows).
+- `config={"displayModeBar": False}` sur tous les charts : supprime la barre d'outils Plotly qui pollue l'UI sans apport pour un dashboard read-only.
+- `@st.fragment` : isole le re-render aux parties interactives d'une page, évitant le recalcul de tous les charts quand un seul filtre change.
+- `st.dataframe(column_config)` dans match_history : virtualisation native (seules les lignes visibles sont rendues) vs HTML complet dans le DOM.
+
+**Décisions** :
+1. Créé `src/ui/streamlit_modern.py` — wrappers graceful-degradation (`fragment_if_available`, `PLOTLY_CLEAN_CONFIG`)
+2. Créé `src/ui/vectorize_helpers.py` — `build_mapping(series, fn)` construit un dict sur valeurs distinctes, utilisé avec `replace_strict(mapping)` pour vectoriser
+3. Pour les colonnes datetime : mapping via `str(dt_value)` → cast Utf8 → replace_strict (le cast Utf8 d'un Datetime Polars donne la même repr que `str()`)
+4. Pour `os.path.basename` (media_library) : remplacé par `str.replace_all("\\", "/").str.split("/").list.last()` — 100% Polars
+5. Reporté 8ter.4 (pré-calcul post-sync) et 8ter.5 (st.navigation) — ROI insuffisant vs complexité
+
+**Suivi** :
+- [x] 8ter.0 : streamlit_modern.py créé ✅
+- [x] 8ter.0b : Bump Streamlit ≥1.37.0 ✅
+- [x] 8ter.1 : config Plotly sur 69 charts ✅
+- [x] 8ter.2 : @fragment_if_available sur 5 pages ✅
+- [x] 8ter.3 : match_history modernisé ✅
+- [x] 8ter.6/A1 : 28 map_elements → 0 ✅
+- [ ] 8ter.4 : Pré-calcul post-sync (reporté)
+- [ ] 8ter.5 : st.navigation lazy loading (reporté)
+- [ ] Tests unitaires vectorize_helpers.py (à ajouter)
+- [x] Commit : `012b52b` — 2877 tests, 0 échec ✅
