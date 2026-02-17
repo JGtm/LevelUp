@@ -3,6 +3,12 @@
 Ce module contient la logique principale de backfill :
 - backfill_player_data  : traitement d'un joueur
 - backfill_all_players  : itération sur tous les joueurs DuckDB
+
+Note architecture (v5.2+) :
+    Les fonctions publiques acceptent un paramètre ``scope: SyncScope``
+    qui remplace les 30+ kwargs individuels.  Les kwargs sont conservés
+    temporairement pour rétro-compatibilité (marqués ``LEGACY``).
+    Nouveau code : toujours passer ``scope=SyncScope(...)``.
 """
 
 from __future__ import annotations
@@ -85,7 +91,12 @@ async def backfill_player_data(
     gamertag: str,
     *,
     scope: SyncScope | None = None,
-    # ── Rétro-compatibilité : kwargs individuels (ignorés si scope fourni) ──
+    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
+    # Ces kwargs individuels sont conservés pour rétro-compatibilité.
+    # Nouveau code : passer ``scope=SyncScope(...)`` à la place.
+    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
+    #   utilisent SyncScope (vérifier sync.py, tests, scripts).
+    # ─────────────────────────────────────────────────────────────────────
     dry_run: bool = False,
     max_matches: int | None = None,
     requests_per_second: int = 5,
@@ -129,14 +140,18 @@ async def backfill_player_data(
 ) -> dict[str, int]:
     """Remplit les données manquantes pour un joueur.
 
+    .. deprecated:: v5.2
+        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+        Les kwargs sont conservés temporairement pour rétro-compatibilité.
+
     Args:
         gamertag: Gamertag du joueur.
-        scope: Périmètre de données (si fourni, les kwargs individuels sont ignorés).
-        dry_run: Si True, ne fait que lister les matchs sans données.
-        max_matches: Nombre maximum de matchs à traiter (None = tous).
-        requests_per_second: Rate limiting API.
-        detection_mode: "or" (défaut) ou "and" (strict, évite re-téléchargement).
-        [autres flags]: Options de backfill activées.
+        scope: Périmètre de données — **méthode recommandée** (SyncScope).
+        dry_run: (legacy) Si True, ne fait que lister les matchs sans données.
+        max_matches: (legacy) Nombre maximum de matchs à traiter (None = tous).
+        requests_per_second: (legacy) Rate limiting API.
+        detection_mode: (legacy) "or" (défaut) ou "and" (strict).
+        **kwargs: (legacy) 30+ flags booléens — voir SyncScope pour la liste.
 
     Returns:
         Dict avec les statistiques.
@@ -388,7 +403,10 @@ async def backfill_player_data(
 async def backfill_all_players(
     *,
     scope: SyncScope | None = None,
-    # ── Rétro-compatibilité : kwargs individuels (ignorés si scope fourni) ──
+    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
+    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
+    #   utilisent SyncScope.
+    # ─────────────────────────────────────────────────────────────────────
     dry_run: bool = False,
     max_matches: int | None = None,
     requests_per_second: int = 5,
@@ -430,7 +448,11 @@ async def backfill_all_players(
     force_participants_enrich: bool = False,
     detection_mode: str = "or",
 ) -> dict[str, Any]:
-    """Backfill pour tous les joueurs DuckDB."""
+    """Backfill pour tous les joueurs DuckDB.
+
+    .. deprecated:: v5.2
+        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+    """
     # ── Construire le scope si non fourni ──
     if scope is None:
         scope = SyncScope(
@@ -702,7 +724,10 @@ async def _backfill_with_api(
     match_ids: list[str],
     *,
     scope: SyncScope | None = None,
-    # ── Rétro-compatibilité : kwargs individuels (ignorés si scope fourni) ──
+    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
+    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
+    #   utilisent SyncScope.
+    # ─────────────────────────────────────────────────────────────────────
     requests_per_second: int = 5,
     medals: bool = False,
     events: bool = False,
@@ -738,7 +763,11 @@ async def _backfill_with_api(
     dry_run: bool = False,
     existing_shared_conn: Any | None = None,
 ) -> dict[str, int]:
-    """Traitement des matchs via l'API SPNKr."""
+    """Traitement des matchs via l'API SPNKr.
+
+    .. deprecated:: v5.2
+        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+    """
     # ── Construire / résoudre le scope ──
     if scope is None:
         scope = SyncScope(

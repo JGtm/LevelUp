@@ -157,6 +157,43 @@ cursor.execute(f"SELECT * FROM match_stats WHERE match_id = '{match_id}'")
 
 ---
 
+## SyncScope (`src/data/sync/scope.py`)
+
+Dataclass centralisant **tous les flags de données** partagés entre sync et backfill.
+
+### Usage recommandé
+
+```python
+from src.data.sync.scope import SyncScope
+
+# Construction depuis CLI
+scope = SyncScope.from_cli_args(args)
+
+# Tout activer
+scope = SyncScope.make_all(max_matches=100)
+
+# Sélection fine
+scope = SyncScope(medals=True, force_medals=True)
+scope.resolve()
+
+# Passer aux fonctions
+await backfill_player_data(gamertag, scope=scope)
+```
+
+### Pour ajouter un nouveau type de données
+
+1. Ajouter le champ dans `SyncScope` + registres (`_ALL_DATA_FIELDS`, `_FORCE_MAP`, `_REQUESTED_TYPE_MAP`)
+2. Ajouter l'argument CLI dans `scripts/backfill/cli.py`
+3. Implémenter la logique métier dans l'orchestrateur / engine
+
+### Legacy
+
+Les fonctions `backfill_player_data`, `backfill_all_players`, `_backfill_with_api` et
+`find_matches_missing_data` conservent les 30+ kwargs individuels marqués `LEGACY` dans le code.
+**Nouveau code : toujours passer `scope=SyncScope(...)`.**
+
+---
+
 ## Synchronisation
 
 ### Mode Delta (incrémental)

@@ -8,6 +8,15 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Added
 
+- **Module `src/data/sync/scope.py`** — Dataclass **SyncScope** centralisant les flags
+  - Remplace les 30+ kwargs booléens copiés dans 6 fichiers (cli → backfill_data → orchestrator → detection → API)
+  - `SyncScope.from_cli_args(args)` : construction depuis argparse
+  - `SyncScope.make_all()` : factory pour `--all-data`
+  - `resolve()` : implications automatiques (`all_data` → champs, `force_X` → X)
+  - Propriétés : `has_any_option()`, `needs_api`, `needs_local_only`, `requested_types`
+  - Registres : `_ALL_DATA_FIELDS`, `_FORCE_MAP`, `_REQUESTED_TYPE_MAP`
+  - 98 tests unitaires dans `tests/test_sync_scope.py`
+  - **Ajouter un nouveau type** : 1 champ dans SyncScope + 1 arg CLI + implémentation métier
 - **Module `src/ui/streamlit_modern.py`** — Wrappers compatibilité Streamlit moderne
   - `fragment_if_available` : décorateur graceful-degradation pour `@st.fragment`
   - `PLOTLY_CLEAN_CONFIG` : config Plotly sans barre d'outils
@@ -42,6 +51,13 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Changed
 
+- **`backfill_data.py` refactoré** — `main()` utilise `SyncScope.from_cli_args()` (−90 lignes)
+  - Plus besoin de copier 30+ `args.X` deux fois pour `--all` et `--player`
+- **`orchestrator.py` refactoré** — `backfill_player_data`, `backfill_all_players`, `_backfill_with_api` acceptent `scope=SyncScope`
+  - Anciens kwargs conservés (marqués `LEGACY`) pour rétro-compatibilité
+  - `requested_types` construit via `scope.requested_types` au lieu de 16 `if/append`
+- **`detection.py` refactoré** — `find_matches_missing_data` accepte `scope=SyncScope`
+  - Anciens kwargs conservés (marqués `LEGACY`) pour rétro-compatibilité
 - **Bump Streamlit ≥1.37.0** — Requis pour `@st.fragment` et futures migrations `st.navigation`
 - **Plotly `config={"displayModeBar": False}`** — Appliqué sur 69 `st.plotly_chart` (15 fichiers)
   - Suppression barre d'outils Plotly pour une UI plus propre

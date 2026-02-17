@@ -6,6 +6,10 @@ Supporte deux modes de détection :
 
 V5 : La détection se fait via shared_matches.duckdb (match_registry + match_participants).
 Le bitmask backfill_completed est stocké dans match_registry.
+
+Note architecture (v5.2+) :
+    ``find_matches_missing_data`` accepte ``scope: SyncScope`` qui remplace
+    les 30+ kwargs individuels.  Les kwargs sont marqués ``LEGACY``.
 """
 
 from __future__ import annotations
@@ -38,7 +42,10 @@ def find_matches_missing_data(
     *,
     shared_conn: Any,
     scope: SyncScope | None = None,
-    # ── Rétro-compatibilité : kwargs individuels (ignorés si scope fourni) ──
+    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
+    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
+    #   utilisent SyncScope.
+    # ─────────────────────────────────────────────────────────────────────
     detection_mode: str = "or",
     medals: bool = False,
     events: bool = False,
@@ -70,14 +77,18 @@ def find_matches_missing_data(
 ) -> list[str]:
     """Trouve les matchs avec des données manquantes via shared DB (V5).
 
+    .. deprecated:: v5.2
+        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+
     Args:
         conn: Connexion DuckDB (player DB).
         xuid: XUID du joueur.
         shared_conn: Connexion à shared_matches.duckdb (obligatoire).
-        scope: Périmètre de données (si fourni, les kwargs individuels sont ignorés).
-        detection_mode: "or" (défaut) ou "and" (strict).
-        max_matches: Limite de résultats.
-        all_data: True si --all-data est actif.
+        scope: Périmètre de données — **méthode recommandée** (SyncScope).
+        detection_mode: (legacy) "or" (défaut) ou "and" (strict).
+        max_matches: (legacy) Limite de résultats.
+        all_data: (legacy) True si --all-data est actif.
+        **kwargs: (legacy) 30+ flags booléens — voir SyncScope.
 
     Returns:
         Liste des match_id manquants.

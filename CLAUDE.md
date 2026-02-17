@@ -142,6 +142,8 @@ python scripts/backfill_data.py --player MonGT --participants-shots --force-part
 9. **Plotly** : Tout `st.plotly_chart` doit inclure `config=` (utiliser `PLOTLY_CLEAN_CONFIG` ou `PLOTLY_STATIC_CONFIG` de `src/ui/streamlit_modern.py`)
 10. **Fragments** : Préférer `@fragment_if_available` (de `src/ui/streamlit_modern.py`) pour les sections interactives multi-charts
 11. **Coéquipiers** : Charger les stats coéquipiers depuis `shared.match_participants` (pas les DBs individuelles)
+12. **Backfill** : Pour tout backfill ou création de nouvelles fonctions de backfill, utiliser `scripts/backfill_data.py`. Ne pas créer de scripts backfill séparés ; ajouter une option dédiée (ex. `--sessions`, `--killer-victim`) dans `backfill_data.py`.
+13. **SyncScope** : Ne jamais passer 30+ kwargs individuels aux fonctions backfill/sync. Toujours construire un `SyncScope` et le passer via `scope=`. Les kwargs legacy sont marqués `LEGACY` et seront supprimés.
 
 ## ⛔ Pandas interdit (règle critique)
 
@@ -180,6 +182,42 @@ Chaque joueur a sa propre DB : `data/players/{gamertag}/stats.duckdb` (enrichiss
 | **Pydantic v2** | Validation des données |
 | **Streamlit** | Interface utilisateur |
 | **SPNKr** | API Halo Infinite |
+| **SyncScope** | Flags sync/backfill centralisés (`src/data/sync/scope.py`) |
+
+## SyncScope (`src/data/sync/scope.py`)
+
+Dataclass centralisant **tous les flags de données** partagés entre sync et backfill.
+
+### Usage recommandé
+
+```python
+from src.data.sync.scope import SyncScope
+
+# Construction depuis CLI
+scope = SyncScope.from_cli_args(args)
+
+# Tout activer
+scope = SyncScope.make_all(max_matches=100)
+
+# Sélection fine
+scope = SyncScope(medals=True, force_medals=True)
+scope.resolve()
+
+# Passer aux fonctions
+await backfill_player_data(gamertag, scope=scope)
+```
+
+### Pour ajouter un nouveau type de données
+
+1. Ajouter le champ dans `SyncScope` + registres (`_ALL_DATA_FIELDS`, `_FORCE_MAP`, `_REQUESTED_TYPE_MAP`)
+2. Ajouter l'argument CLI dans `scripts/backfill/cli.py`
+3. Implémenter la logique métier dans l'orchestrateur / engine
+
+### Legacy
+
+Les fonctions `backfill_player_data`, `backfill_all_players`, `_backfill_with_api` et
+`find_matches_missing_data` conservent les 30+ kwargs individuels marqués `LEGACY` dans le code.
+**Nouveau code : toujours passer `scope=SyncScope(...)`.**
 
 ## Modules Supprimés (v4.1)
 
