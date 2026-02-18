@@ -665,17 +665,16 @@ class DuckDBRepository(
         event_placeholders = ", ".join(["?" for _ in event_variants])
         placeholders = ", ".join(["?" for _ in match_ids])
 
-        # Lecture depuis shared.highlight_events (killer_xuid/victim_xuid)
+        # Lecture depuis shared.highlight_events (xuid = le joueur de l'event)
+        # Note v5.1 : xuid est le killer pour 'kill', la victime pour 'death'
         try:
-            # Pour un Kill, le joueur est le killer ; pour un Death, le joueur est la victime
-            xuid_column = "killer_xuid" if event_type.lower() == "kill" else "victim_xuid"
             result = conn.execute(
                 f"""
                 SELECT match_id, MIN(time_ms) as first_time
                 FROM shared.highlight_events
                 WHERE match_id IN ({placeholders})
                   AND event_type IN ({event_placeholders})
-                  AND {xuid_column} = ?
+                  AND xuid = ?
                 GROUP BY match_id
                 """,
                 [*match_ids, *event_variants, self._xuid],
