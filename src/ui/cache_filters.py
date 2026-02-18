@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import polars as pl
 import streamlit as st
 
-from src.analysis import compute_sessions, compute_sessions_with_context_polars, mark_firefight
+from src.analysis import compute_sessions_with_context_polars
 from src.config import SESSION_CONFIG
 from src.ui import translate_pair_name, translate_playlist_name
 from src.ui.cache_loaders import (
@@ -27,6 +27,8 @@ from src.ui.cache_loaders import (
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -91,31 +93,41 @@ def cached_compute_sessions_db(
                         except Exception:
                             pass
 
-                    query = f"""
-                        SELECT
-                            r.match_id,
-                            r.start_time,
-                            e.teammates_signature,
-                            e.session_id,
-                            e.session_label
-                        FROM shared.match_registry r
-                        INNER JOIN shared.match_participants p
-                            ON r.match_id = p.match_id
-                            AND p.xuid = ?
-                        LEFT JOIN player_match_enrichment e
-                            ON r.match_id = e.match_id
-                        WHERE r.start_time IS NOT NULL
-                        {firefight_filter}
-                        ORDER BY r.start_time ASC
-                    """
-                    try:
-                        df_pl = conn.execute(query, [player_xuid]).pl()
-                    except Exception:
-                        df_pl = None
+                    if not player_xuid:
+                        logger.warning(f"Impossible de résoudre XUID pour {db_path}")
+                    else:
+                        query = f"""
+                            SELECT
+                                r.match_id,
+                                r.start_time,
+                                e.teammates_signature,
+                                e.session_id,
+                                e.session_label
+                            FROM shared.match_registry r
+                            INNER JOIN shared.match_participants p
+                                ON r.match_id = p.match_id
+                                AND p.xuid = ?
+                            LEFT JOIN player_match_enrichment e
+                                ON r.match_id = e.match_id
+                            WHERE r.start_time IS NOT NULL
+                            {firefight_filter}
+                            ORDER BY r.start_time ASC
+                        """
+                        try:
+                            df_pl = conn.execute(query, [player_xuid]).pl()
+                            logger.debug(
+                                f"Chargé {len(df_pl) if df_pl is not None else 0} matchs pour xuid={player_xuid}"
+                            )
+                        except Exception as e:
+                            logger.warning(f"Erreur chargement matchs depuis shared: {e}")
+                            df_pl = None
+                else:
+                    logger.warning(f"shared_matches.duckdb non attaché pour {db_path}")
 
                 if df_pl is None:
                     # v5.1 : pas de fallback local (match_stats supprimée des DBs individuelles)
                     # Retourner un DataFrame vide si shared non disponible
+                    logger.debug("Aucune donnée chargée, retour DataFrame vide")
                     df_pl = pl.DataFrame(
                         schema={
                             "match_id": pl.Utf8,
@@ -127,6 +139,7 @@ def cached_compute_sessions_db(
                     )
 
             if df_pl is None or df_pl.is_empty():
+                logger.debug("DataFrame vide après chargement")
                 return pl.DataFrame(
                     schema={
                         "match_id": pl.Utf8,
@@ -159,52 +172,29 @@ def cached_compute_sessions_db(
             return df_pl.select(["match_id", "start_time", "session_id", "session_label"])
 
         except Exception as e:
-            logger.warning(f"Erreur calcul sessions Polars, fallback Pandas: {e}")
-            # Fallback sur l'ancienne méthode
-            pass
+            logger.warning(f"Erreur calcul sessions Polars: {e}")
+            # En cas d'erreur, retourner les données sans calcul de session si disponibles
+            if df_pl is not None and not df_pl.is_empty():
+                # Assurer que les colonnes session existent (même vides)
+                if "session_id" not in df_pl.columns:
+                    df_pl = df_pl.with_columns(
+                        [
+                            pl.lit(None).cast(pl.Utf8).alias("session_id"),
+                            pl.lit(None).cast(pl.Utf8).alias("session_label"),
+                        ]
+                    )
+                return df_pl.select(["match_id", "start_time", "session_id", "session_label"])
 
-    # Legacy SQLite ou fallback : utiliser Polars (load_df_optimized retourne maintenant Polars)
-    df0_pl = load_df_optimized(db_path, xuid, db_key=db_key, include_firefight=include_firefight)
-    if df0_pl.is_empty():
-        return pl.DataFrame(
-            schema={
-                "match_id": pl.Utf8,
-                "start_time": pl.Datetime,
-                "session_id": pl.Utf8,
-                "session_label": pl.Utf8,
-            }
-        )
-
-    df0_pl = mark_firefight(df0_pl)
-    if (not include_firefight) and ("is_firefight" in df0_pl.columns):
-        df0_pl = df0_pl.filter(~pl.col("is_firefight"))
-
-    # Essayer d'utiliser la logique avancée si teammates_signature est disponible
-    if "teammates_signature" in df0_pl.columns:
-        try:
-            df_sessions_pl = df0_pl.select(["match_id", "start_time", "teammates_signature"])
-            df_sessions_pl = compute_sessions_with_context_polars(
-                df_sessions_pl,
-                gap_minutes=gap_minutes,
-                teammates_column="teammates_signature",
-                friends_xuids=friends_set,
-            )
-            # Fusionner les résultats avec le DataFrame original
-            df_result_pl = df0_pl.join(
-                df_sessions_pl.select(["match_id", "session_id", "session_label"]),
-                on="match_id",
-                how="left",
-            )
-            # Convertir en Polars
-            return df_result_pl
-        except Exception:
-            # Fallback sur logique simple (utilise directement Polars)
-            df_result_pl = compute_sessions(df0_pl, gap_minutes=int(gap_minutes))
-            return df_result_pl
-
-    # Fallback sur logique simple (utilise directement Polars)
-    df_result_pl = compute_sessions(df0_pl, gap_minutes=int(gap_minutes))
-    return df_result_pl
+    # Si on arrive ici, c'est qu'on n'a pas de données v5
+    # Retourner un DataFrame vide plutôt que de risquer un conflit de connexion
+    return pl.DataFrame(
+        schema={
+            "match_id": pl.Utf8,
+            "start_time": pl.Datetime,
+            "session_id": pl.Utf8,
+            "session_label": pl.Utf8,
+        }
+    )
 
 
 @st.cache_data(show_spinner=False)

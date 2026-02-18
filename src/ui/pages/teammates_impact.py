@@ -227,10 +227,7 @@ def render_impact_taquinerie(
         st.warning("Aucun match à analyser.")
         return
 
-    st.caption(
-        "Qui fait le premier sang 🟢, finit les victoires (Finisseur) 🟡, "
-        "ou meurt en dernier lors des défaites (Boulet) 🔴 ?"
-    )
+    st.caption("⚡ Premier sang | 🎯 Finisseur | 💀 Boulet | 🐌 Plus lent | 🪦 Première victime")
 
     try:
         repo = DuckDBRepository(db_path, xuid.strip())
