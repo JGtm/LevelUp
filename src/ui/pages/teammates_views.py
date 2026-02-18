@@ -422,7 +422,13 @@ def render_trio_view(
 
     _render_trio_performance_charts(merged, me_name, f1_name, f2_name, f1_xuid, f2_xuid)
 
-    # Graphes de barres
+    # Graphes de barres - reconstruire series avec les DataFrames du trio
+    series = [(me_name, me_df)]
+    if not f1_df.is_empty():
+        series.append((f1_name, f1_df))
+    if not f2_df.is_empty():
+        series.append((f2_name, f2_df))
+    colors_by_name = assign_player_colors_fn([n for n, _ in series])
     series = enrich_series_fn(series, db_path)
     render_metric_bar_charts(
         series=series,
