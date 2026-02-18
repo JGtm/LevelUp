@@ -267,6 +267,33 @@ def render_match_view(
         match_row=row,
     )
 
+    # Section Timeline de Domination
+    try:
+        from src.data.repositories import DuckDBRepository
+        from src.visualization.match_dominance_timeline import create_match_dominance_timeline
+
+        st.subheader("Timeline de Domination")
+        st.caption("Évolution de la domination au cours du match selon le mode de jeu.")
+        
+        show_overlay = st.checkbox(
+            "Afficher les kills/deaths détaillés",
+            value=True,
+            key=f"timeline_overlay_{match_id}",
+            help="Ajouter un graphique détaillant les kills et deaths par fenêtres de 30 secondes"
+        )
+
+        with st.spinner("Génération de la timeline..."):
+            repo = DuckDBRepository(db_path, xuid.strip())
+            fig = create_match_dominance_timeline(
+                repo=repo,
+                match_id=match_id,
+                game_mode=row.get("game_variant_category"),
+                show_kills_overlay=show_overlay,
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.warning(f"⚠️ Timeline non disponible pour ce match : {e}")
+
     # Némésis / Souffre-douleur
     render_nemesis_section(
         match_id=match_id,
