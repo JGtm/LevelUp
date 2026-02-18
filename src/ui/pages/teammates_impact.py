@@ -296,8 +296,8 @@ def render_impact_taquinerie(
             gamertags=gamertags,
         )
 
-        # Métriques résumées
-        _render_impact_stats(first_bloods, clutch_finishers, last_casualties)
+        # Métriques résumées (masquées à la demande de l'utilisateur)
+        # _render_impact_stats(first_bloods, clutch_finishers, last_casualties)
 
         # Heatmap
         st.subheader("Heatmap d'Impact")
