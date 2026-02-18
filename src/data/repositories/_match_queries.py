@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
@@ -36,16 +36,16 @@ class MatchQueriesMixin:
     # Source de données matchs (v5 shared / v4 local)
     # =========================================================================
 
-    def _get_match_table_name(self, conn) -> str:
+    def _get_match_table_name(self, conn) -> str | None:
         """Détecte la table de matchs disponible (avec cache).
 
         Returns:
-            Nom de la table : "match_stats" (v4)
+            Nom de la table "match_stats" si elle existe localement, None sinon (v5.1+).
         """
         # Cache au niveau instance — évite les requêtes information_schema répétées
         cache_key = "local_table:match_stats"
         if hasattr(self, "_table_cache") and cache_key in self._table_cache:
-            return "match_stats" if self._table_cache[cache_key] else "match_stats"
+            return "match_stats" if self._table_cache[cache_key] else None
 
         # Essayer match_stats (v4) en premier
         try:
@@ -60,10 +60,10 @@ class MatchQueriesMixin:
         except Exception:
             pass
 
-        # Par défaut, retourner match_stats (va probablement échouer mais c'est attendu v5+)
+        # Table locale match_stats absente (v5.1+ : tables legacy supprimées)
         if hasattr(self, "_table_cache"):
             self._table_cache[cache_key] = False
-        return "match_stats"
+        return None
 
     def _get_match_source(self, conn) -> tuple[str, list[str], bool]:
         """Retourne l'expression FROM pour les matchs (v5 shared ou v4 local).
@@ -82,6 +82,11 @@ class MatchQueriesMixin:
         # Forcer mode local si XUID vide ou None (DBs v3/legacy)
         if not self._xuid or self._xuid.strip() == "":
             match_table = self._get_match_table_name(conn)
+            if match_table is None:
+                raise RuntimeError(
+                    "Table match_stats absente (v5.1+) et XUID vide. "
+                    "Impossible de charger les matchs."
+                )
             logger.debug(f"Mode v4/v3 (XUID vide) : requête via table locale {match_table}")
             if match_table == "match_stats":
                 return match_table, [], False
@@ -94,6 +99,12 @@ class MatchQueriesMixin:
             and self._has_shared_table("match_participants")
         ):
             match_table = self._get_match_table_name(conn)
+            if match_table is None:
+                raise RuntimeError(
+                    "shared_matches.duckdb indisponible (fichier verrouillé par un autre "
+                    "processus ?) et table locale match_stats absente (v5.1+). "
+                    "Fermez les scripts en cours (backfill, sync) puis relancez l'app."
+                )
             logger.debug(f"Mode v4/v3 : requête via table locale {match_table}")
             if match_table == "match_stats":
                 return match_table, [], False
@@ -809,6 +820,98 @@ class MatchQueriesMixin:
             return {row[0]: (row[1], row[2]) for row in result.fetchall()}
         except Exception:
             return {}
+
+    def load_match_skill_data(self, match_id: str) -> dict[str, Any] | None:
+        """Charge team_mmr, enemy_mmr et kills/deaths/assists expected/stddev.
+
+        Pipeline de lecture v5.1 :
+            1. shared.match_participants (source principale)
+            2. Fallback : player_match_stats locale (données historiques legacy)
+
+        Utilisé par cache_loaders.py pour alimenter l'UI (graphes
+        expected vs actual, affichage MMR).
+
+        ⚠️ Limitation API : assists.expected / assists.stddev sont
+        toujours NULL (API Halo StatPerformances ne fournit pas Assists).
+
+        Args:
+            match_id: ID du match.
+
+        Returns:
+            Dict avec team_mmr, enemy_mmr, kills, deaths, assists
+            (chacun {count, expected, stddev}). None si non trouvé.
+        """
+        conn = self._get_connection()
+
+        # V5 : shared.match_participants
+        if self._has_shared_table("match_participants"):
+            try:
+                row = conn.execute(
+                    """
+                    SELECT team_mmr, enemy_mmr,
+                           kills, kills_expected, kills_stddev,
+                           deaths, deaths_expected, deaths_stddev,
+                           assists, assists_expected, assists_stddev,
+                           team_id
+                    FROM shared.match_participants
+                    WHERE match_id = ? AND xuid = ?
+                    """,
+                    [match_id, self._xuid],
+                ).fetchone()
+                if row:
+                    return {
+                        "team_id": row[11],
+                        "team_mmr": row[0],
+                        "enemy_mmr": row[1],
+                        "kills": {
+                            "count": row[2],
+                            "expected": row[3],
+                            "stddev": row[4],
+                        },
+                        "deaths": {
+                            "count": row[5],
+                            "expected": row[6],
+                            "stddev": row[7],
+                        },
+                        "assists": {
+                            "count": row[8],
+                            "expected": row[9],
+                            "stddev": row[10],
+                        },
+                    }
+            except Exception:
+                pass
+
+        # Fallback local : player_match_stats (LEGACY — données historiques)
+        # Cette table n'est plus alimentée par le sync v5.1 mais peut contenir
+        # des données issues d'anciens backfills.
+        try:
+            has_pms = self._has_table_cached(conn, "player_match_stats")
+            if has_pms:
+                row = conn.execute(
+                    """
+                    SELECT team_mmr, enemy_mmr,
+                           kills_expected, kills_stddev,
+                           deaths_expected, deaths_stddev,
+                           assists_expected, assists_stddev
+                    FROM player_match_stats
+                    WHERE match_id = ?
+                    """,
+                    [match_id],
+                ).fetchone()
+                if row:
+                    return {
+                        "team_id": None,
+                        "team_mmr": row[0],
+                        "enemy_mmr": row[1],
+                        "kills": {"count": None, "expected": row[2], "stddev": row[3]},
+                        "deaths": {"count": None, "expected": row[4], "stddev": row[5]},
+                        "assists": {"count": None, "expected": row[6], "stddev": row[7]},
+                    }
+        except Exception:
+            pass
+
+        return None
 
     # =========================================================================
     # Chargement Polars zero-copy (Sprint 19 — hot path optimisé)

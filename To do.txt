@@ -12,3 +12,9 @@ Traductions :
 Je te tiens - Rapportez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau. (possiblement déjà mappé avec le personal score award)
 Player vs Everything - Win matches in Firefight (Gagner des parties en Baptême du feu zone de combat)
 Grand Theft - Hijack a vehicle or Skyjack a flying vehicle (Aborder un véhicule ou un véhicule aérien)
+
+Adornment manquant
+
+MMR adverse manquant -> normalement on s'en sert pour le score de performance donc à vérifier
+
+Score de performance prendre en compte les expected values ?

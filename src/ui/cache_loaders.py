@@ -299,24 +299,34 @@ def cached_load_player_match_result(
     """Charge le résultat d'un match pour un joueur (cache).
 
     Utilise DuckDBRepository pour .duckdb, sinon fallback legacy.
-    Note: DuckDB ne stocke pas les StatPerformances (expected/stddev).
+
+    Pipeline de lecture v5.1 :
+        1. repo.load_match_skill_data(match_id) — charge team_mmr, enemy_mmr,
+           kills/deaths/assists expected/stddev depuis shared.match_participants.
+        2. Fallback : repo.load_match_mmr_batch() — uniquement team_mmr/enemy_mmr.
+
+    ⚠️ assists expected/stddev : toujours NULL (limitation API Halo Infinite).
     """
     # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
             repo = get_cached_repository_st(db_path, str(xuid).strip())
+            # Charger skill data complet (MMR + expected/stddev)
+            skill_data = repo.load_match_skill_data(match_id)
+            if skill_data:
+                skill_data["team_mmrs"] = None  # Non disponible dans DuckDB v4
+                return skill_data
+            # Fallback: load_match_mmr_batch si load_match_skill_data ne retourne rien
             mmr_data = repo.load_match_mmr_batch([match_id])
             team_mmr = None
             enemy_mmr = None
             if match_id in mmr_data:
                 team_mmr, enemy_mmr = mmr_data[match_id]
-            # Toujours retourner un dict même si les MMR sont None
-            # Les valeurs kills/deaths/assists seront enrichies depuis row dans match_view.py
             return {
-                "team_id": None,  # Non disponible dans DuckDB v4
+                "team_id": None,
                 "team_mmr": team_mmr,
                 "enemy_mmr": enemy_mmr,
-                "team_mmrs": None,  # Non disponible dans DuckDB v4
+                "team_mmrs": None,
                 "kills": {"count": None, "expected": None, "stddev": None},
                 "deaths": {"count": None, "expected": None, "stddev": None},
                 "assists": {"count": None, "expected": None, "stddev": None},

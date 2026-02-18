@@ -67,6 +67,15 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--medals", action="store_true", help="Backfill les médailles")
     parser.add_argument("--events", action="store_true", help="Backfill les highlight events")
     parser.add_argument("--skill", action="store_true", help="Backfill les stats skill/MMR")
+    # --force-skill : ajouté v5.1 pour forcer le re-téléchargement des données
+    # skill/MMR (team_mmr, enemy_mmr, kills/deaths expected/stddev) de TOUS
+    # les matchs, y compris ceux déjà peuplés. Utile après correction du bug
+    # enemy_mmr (était ignoré avant v5.1).
+    parser.add_argument(
+        "--force-skill",
+        action="store_true",
+        help="Force le rescan skill/MMR pour TOUS les matchs",
+    )
     parser.add_argument(
         "--personal-scores",
         action="store_true",

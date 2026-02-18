@@ -68,6 +68,7 @@ def find_matches_missing_data(
     force_accuracy: bool = False,
     shots: bool = False,
     force_shots: bool = False,
+    force_skill: bool = False,
     force_performance_scores: bool = False,
     force_enemy_mmr: bool = False,
     force_aliases: bool = False,
@@ -117,6 +118,7 @@ def find_matches_missing_data(
         force_accuracy = scope.force_accuracy
         shots = scope.shots
         force_shots = scope.force_shots
+        force_skill = scope.force_skill
         force_performance_scores = scope.force_performance_scores
         force_enemy_mmr = scope.force_enemy_mmr
         force_aliases = scope.force_aliases
@@ -196,6 +198,7 @@ def find_matches_missing_data(
         force_assets=force_assets,
         force_aliases=force_aliases,
         force_participants=force_participants,
+        force_skill=force_skill,
     )
 
     # Fusionner résultats locaux + shared (dédoublonner, garder l'ordre)
@@ -265,11 +268,16 @@ def _find_matches_in_shared_all(
     force_assets: bool = False,
     force_aliases: bool = False,
     force_participants: bool = False,
+    force_skill: bool = False,  # Ajouté v5.1 : force le rescan skill pour tous les matchs
 ) -> list[str]:
     """Détection V5 FINALE : tous les flags via shared DB.
 
     Remplace la détection via match_stats quand celle-ci n'existe plus.
     Base : shared.match_participants + match_registry.
+
+    force_skill (v5.1) : quand True, utilise "1=1" au lieu de
+    "(mp.team_mmr IS NULL)" pour re-télécharger les données skill
+    de TOUS les matchs, y compris ceux déjà peuplés.
     """
     conditions: list[str] = []
     has_bf_col = _has_backfill_completed_column(shared_conn)
@@ -291,7 +299,10 @@ def _find_matches_in_shared_all(
 
     # Skill
     if skill:
-        conditions.append("(mp.team_mmr IS NULL)" + _done_guard("skill", has_bf_col))
+        if force_skill:
+            conditions.append("1=1")
+        else:
+            conditions.append("(mp.team_mmr IS NULL)" + _done_guard("skill", has_bf_col))
 
     # Personal scores (player DB)
     if personal_scores:
