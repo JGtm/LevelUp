@@ -196,7 +196,7 @@ def _render_ranking_table(
 
         summary_cols = st.columns(2)
         if mvp:
-            summary_cols[0].success(f"**🏆 MVP de la Soirée :** {mvp}")
+            summary_cols[0].success(f"**🏆 Brute de la Soirée :** {mvp}")
         if boulet:
             summary_cols[1].error(f"**🍌 Maillon Faible :** {boulet}")
 
@@ -265,9 +265,14 @@ def render_impact_taquinerie(
         all_friend_xuids.add(str(xuid).strip())
 
         # Calculer les événements d'impact
-        first_bloods, clutch_finishers, last_casualties, scores = get_all_impact_events(
-            events_df, matches_df, friend_xuids=all_friend_xuids
-        )
+        (
+            first_bloods,
+            clutch_finishers,
+            last_casualties,
+            last_group_kills,
+            first_group_deaths,
+            scores,
+        ) = get_all_impact_events(events_df, matches_df, friend_xuids=all_friend_xuids)
 
         if not scores:
             st.info("Aucun événement d'impact trouvé pour les joueurs sélectionnés.")
@@ -283,6 +288,8 @@ def render_impact_taquinerie(
                     list(first_bloods.keys())
                     + list(clutch_finishers.keys())
                     + list(last_casualties.keys())
+                    + list(last_group_kills.keys())
+                    + list(first_group_deaths.keys())
                 )
             }
         )
@@ -298,6 +305,8 @@ def render_impact_taquinerie(
             first_bloods,
             clutch_finishers,
             last_casualties,
+            last_group_kills,
+            first_group_deaths,
             match_ids=sorted_match_ids,
             gamertags=gamertags,
             match_outcomes=match_outcomes,

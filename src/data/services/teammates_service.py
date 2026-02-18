@@ -75,6 +75,29 @@ class TeammatesService:
     """
 
     @staticmethod
+    def _load_xuid_from_db(db_path: str) -> str:
+        """Charge le xuid depuis la table sync_meta de la DB.
+
+        Args:
+            db_path: Chemin vers la DB du joueur.
+
+        Returns:
+            Le xuid du joueur, ou chaîne vide si non trouvé.
+        """
+        import duckdb
+
+        try:
+            conn = duckdb.connect(db_path, read_only=True)
+            # Essayer de lire depuis sync_meta (table locale dans player DB)
+            result = conn.execute("SELECT xuid FROM sync_meta LIMIT 1").fetchone()
+            conn.close()
+            if result:
+                return str(result[0]).strip()
+        except Exception as e:
+            logger.debug(f"Impossible de charger le xuid depuis {db_path}: {e}")
+        return ""
+
+    @staticmethod
     def load_teammate_stats(
         teammate_gamertag: str,
         match_ids: set[str],
@@ -236,11 +259,28 @@ class TeammatesService:
                         if len(xuid_values) > 0:
                             player_xuid = str(xuid_values[0])
 
+                    # Fallback pour le joueur principal : charger le xuid depuis sync_meta
+                    if not player_xuid and idx == 0:
+                        player_xuid = TeammatesService._load_xuid_from_db(db_path)
+
                     if idx == 0:
                         use_path = db_path
                     else:
                         player_db = base_dir / name / "stats.duckdb"
                         use_path = str(player_db) if player_db.exists() else db_path
+                        # Fallback pour les coéquipiers : charger le xuid depuis leur DB
+                        if not player_xuid and player_db.exists():
+                            player_xuid = TeammatesService._load_xuid_from_db(str(player_db))
+
+                    if not player_xuid:
+                        # Si impossible de trouver le xuid, skip ce joueur
+                        logger.warning(
+                            f"Impossible de trouver le xuid pour {name}, skip perfect_kills"
+                        )
+                        df = df.with_columns(pl.lit(0).alias("perfect_kills"))
+                        enriched.append((name, df))
+                        continue
+
                     repo = DuckDBRepository(use_path, player_xuid)
                     counts = repo.count_perfect_kills_by_match(match_ids)
                     _counts = counts  # bind for lambda closure (B023)
@@ -252,7 +292,8 @@ class TeammatesService:
                     df = df.with_columns(pl.col("_pk").fill_null(0).alias("perfect_kills")).drop(
                         ["_join_mid", "_pk"]
                     )
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Erreur enrichissement perfect_kills pour {name}: {e}")
                     df = df.with_columns(pl.lit(0).alias("perfect_kills"))
             else:
                 df = df.with_columns(pl.lit(0).alias("perfect_kills"))
@@ -471,9 +512,14 @@ class TeammatesService:
 
             from src.analysis.friends_impact import get_all_impact_events
 
-            first_bloods, clutch_finishers, last_casualties, scores = get_all_impact_events(
-                events_df, matches_df, friend_xuids=all_friend_xuids
-            )
+            (
+                first_bloods,
+                clutch_finishers,
+                last_casualties,
+                last_group_kills,
+                first_group_deaths,
+                scores,
+            ) = get_all_impact_events(events_df, matches_df, friend_xuids=all_friend_xuids)
 
             if not scores:
                 return _empty
@@ -488,6 +534,8 @@ class TeammatesService:
                         list(first_bloods.keys())
                         + list(clutch_finishers.keys())
                         + list(last_casualties.keys())
+                        + list(last_group_kills.keys())
+                        + list(first_group_deaths.keys())
                     )
                 }
             )

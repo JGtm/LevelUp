@@ -247,11 +247,19 @@ def backfill_sessions_for_player(
         owns_shared_attach = False  # True si on a attaché nous-mêmes
         try:
             dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
+            # Normaliser le chemin cible pour la comparaison
+            shared_db_normalized = str(shared_db.resolve()).lower().replace("\\", "/")
             for db_name, db_path_val in dbs:
-                # Chercher par nom de fichier dans le path
-                if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
-                    shared_alias = db_name
-                    break
+                # Chercher par nom de fichier dans le path (normalisation robuste)
+                if db_path_val:
+                    db_path_normalized = str(db_path_val).lower().replace("\\", "/")
+                    # Comparaison par résolution de chemin
+                    if (
+                        shared_db_normalized in db_path_normalized
+                        or db_path_normalized in shared_db_normalized
+                    ):
+                        shared_alias = db_name
+                        break
                 # Ou par nom de base contenant "shared"
                 if db_name and "shared" in db_name.lower():
                     # Vérifier que cette DB a bien match_participants

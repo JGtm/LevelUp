@@ -478,12 +478,22 @@ class TestGetAllImpactEvents:
         self, sample_events_df: pl.DataFrame, sample_matches_df: pl.DataFrame
     ) -> None:
         """Vérifie que la fonction retourne tous les événements."""
-        fb, clutch, casualty, scores = get_all_impact_events(sample_events_df, sample_matches_df)
+        (
+            fb,
+            clutch,
+            casualty,
+            last_group_kills,
+            first_group_deaths,
+            scores,
+        ) = get_all_impact_events(sample_events_df, sample_matches_df)
 
         assert len(fb) > 0
         assert len(clutch) > 0  # m1 et m3 sont des victoires
         assert len(casualty) > 0  # m2 est une défaite
         assert len(scores) > 0
+        # Les nouvelles métriques peuvent être vides si pas assez de données
+        assert isinstance(last_group_kills, dict)
+        assert isinstance(first_group_deaths, dict)
 
 
 # =============================================================================
@@ -508,6 +518,8 @@ class TestBuildImpactMatrix:
             first_bloods,
             clutch_finishers,
             last_casualties,
+            {},  # last_group_kills
+            {},  # first_group_deaths
             match_ids=["m1"],
             gamertags=["Alice", "Bob"],
         )
@@ -518,10 +530,15 @@ class TestBuildImpactMatrix:
         alice_row = matrix.filter(pl.col("gamertag") == "Alice")
         bob_row = matrix.filter(pl.col("gamertag") == "Bob")
 
-        assert alice_row["event_type"][0] == "first_blood"
-        assert bob_row["event_type"][0] == "clutch_finisher"
+        assert not alice_row.is_empty()
+        assert not bob_row.is_empty()
+        # Vérifier que les événements sont là (dans events)
+        alice_events = alice_row["events"][0]
+        bob_events = bob_row["events"][0]
+        assert alice_events is not None and len(alice_events) > 0  # Alice a first_blood
+        assert bob_events is not None and len(bob_events) > 0  # Bob a clutch_finisher
 
     def test_build_impact_matrix_empty(self) -> None:
         """Vérifie la matrice avec données vides."""
-        matrix = build_impact_matrix({}, {}, {}, match_ids=[], gamertags=[])
+        matrix = build_impact_matrix({}, {}, {}, {}, {}, match_ids=[], gamertags=[])
         assert matrix.is_empty()

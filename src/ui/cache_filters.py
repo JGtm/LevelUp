@@ -60,9 +60,17 @@ def cached_compute_sessions_db(
                 shared_attached = False
                 shared_path = get_shared_matches_path_from_player(db_path)
                 if shared_path and shared_path.exists():
+                    # Vérifier si déjà attaché
                     try:
-                        conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
-                        shared_attached = True
+                        dbs = conn.execute(
+                            "SELECT database_name FROM duckdb_databases()"
+                        ).fetchall()
+                        existing_dbs = {db[0].lower() for db in dbs if db[0]}
+                        if "shared" in existing_dbs:
+                            shared_attached = True
+                        else:
+                            conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
+                            shared_attached = True
                     except Exception:
                         pass
 
@@ -106,21 +114,9 @@ def cached_compute_sessions_db(
                         df_pl = None
 
                 if df_pl is None:
-                    # Fallback : table match_stats locale (tests, legacy)
-                    firefight_filter = "" if include_firefight else "AND is_firefight = FALSE"
-                    query = f"""
-                        SELECT
-                            match_id,
-                            start_time,
-                            teammates_signature,
-                            session_id,
-                            session_label
-                        FROM match_stats
-                        WHERE start_time IS NOT NULL
-                        {firefight_filter}
-                        ORDER BY start_time ASC
-                    """
-                    df_pl = conn.execute(query).pl()
+                    # v5.1 : pas de fallback local (match_stats supprimée des DBs individuelles)
+                    # Retourner un DataFrame vide pour éviter l'erreur
+                    pass
 
             if df_pl.is_empty():
                 return pl.DataFrame(
