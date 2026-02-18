@@ -234,7 +234,7 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict) -> None:
         if wr_data.has_data:
             fig_wr = plot_histogram(
                 wr_data.values,
-                title="Distribution Win Rate Glissant (10 matchs)",
+                title="Distribution Win Rate Glissant (5 matchs)",
                 x_label="Taux de victoire (%)",
                 y_label="Fréquence",
                 show_kde=True,
@@ -244,11 +244,11 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict) -> None:
         elif wr_data.missing_column:
             st.info("Colonne outcome non disponible.")
         elif wr_data.not_enough_matches:
-            st.info("Au moins 10 matchs requis pour le win rate glissant.")
+            st.info("Au moins 5 matchs requis pour le win rate glissant.")
         else:
             st.info(
                 "Pas assez de données pour la distribution du win rate glissant "
-                "(10 matchs minimum par fenêtre)."
+                "(5 matchs minimum par fenêtre)."
             )
 
 

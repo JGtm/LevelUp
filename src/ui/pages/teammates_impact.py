@@ -1,4 +1,4 @@
-"""Onglet Impact & Taquinerie pour la page Coéquipiers.
+"""Onglet Impact pour la page Coéquipiers.
 
 Extrait de teammates.py (Sprint 16 — refactoring Phase A).
 Heatmap des événements clés + tableau de ranking MVP/Boulet.
@@ -14,6 +14,7 @@ from src.analysis.friends_impact import (
     get_all_impact_events,
 )
 from src.data.repositories import DuckDBRepository
+from src.utils.paths import get_shared_matches_path_from_player
 from src.visualization.friends_impact_heatmap import (
     build_impact_ranking_df,
     count_events_by_player,
@@ -22,27 +23,65 @@ from src.visualization.friends_impact_heatmap import (
 )
 
 
+def _ensure_shared_attached(conn, player_db_path: str) -> str | None:
+    """Attache shared_matches.duckdb si nécessaire.
+
+    Returns:
+        Nom de l'alias de la DB shared, ou None si échec.
+    """
+    # Chercher si shared est déjà attaché
+    try:
+        dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
+        for db_name, db_path_val in dbs:
+            if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
+                return db_name
+            if db_name and "shared" in db_name.lower():
+                # Vérifier que cette DB a bien match_participants
+                try:
+                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                    return db_name
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+    # Pas trouvé, attacher
+    shared_db = get_shared_matches_path_from_player(player_db_path)
+    if not shared_db or not shared_db.exists():
+        return None
+
+    try:
+        conn.execute(f"ATTACH '{shared_db}' AS shared (READ_ONLY)")
+        return "shared"
+    except Exception:
+        return None
+
+
 def _load_highlight_events(
     conn,
     match_ids: list[str],
+    shared_alias: str,
 ) -> pl.DataFrame | None:
-    """Charge les événements highlight depuis la connexion DuckDB.
+    """Charge les événements highlight depuis shared_matches.duckdb.
+
+    Args:
+        conn: Connexion DuckDB.
+        match_ids: Liste des match_id.
+        shared_alias: Alias de la DB shared attachée.
 
     Returns:
         DataFrame Polars des événements, ou None si indisponible.
     """
-    has_events_table = conn.execute(
-        "SELECT table_name FROM information_schema.tables "
-        "WHERE table_schema = 'main' AND table_name = 'highlight_events'"
-    ).fetchone()
-
-    if not has_events_table:
+    # V5 : highlight_events est dans shared_matches.duckdb
+    try:
+        conn.execute(f"SELECT 1 FROM {shared_alias}.highlight_events LIMIT 1")
+    except Exception:
         return None
 
-    events_query = """
+    events_query = f"""
         SELECT match_id, xuid::TEXT as xuid, gamertag, event_type, time_ms
-        FROM highlight_events
-        WHERE match_id IN ({})
+        FROM {shared_alias}.highlight_events
+        WHERE match_id IN ({{}})
     """.format(", ".join(["?" for _ in match_ids]))
 
     events_result = conn.execute(events_query, match_ids).fetchall()
@@ -64,15 +103,28 @@ def _load_highlight_events(
 def _load_match_outcomes(
     conn,
     match_ids: list[str],
+    xuid: str,
+    shared_alias: str,
 ) -> pl.DataFrame:
-    """Charge les outcomes des matchs depuis la connexion DuckDB."""
-    matches_query = """
+    """Charge les outcomes des matchs depuis shared.match_participants.
+
+    Args:
+        conn: Connexion DuckDB.
+        match_ids: Liste des match_id.
+        xuid: XUID du joueur principal.
+        shared_alias: Alias de la DB shared attachée.
+
+    Returns:
+        DataFrame avec match_id et outcome du joueur principal.
+    """
+    # V5 : match_stats n'existe plus, lire depuis shared.match_participants
+    matches_query = f"""
         SELECT match_id, outcome
-        FROM match_stats
-        WHERE match_id IN ({})
+        FROM {shared_alias}.match_participants
+        WHERE match_id IN ({{}}) AND xuid = ?
     """.format(", ".join(["?" for _ in match_ids]))
 
-    matches_result = conn.execute(matches_query, match_ids).fetchall()
+    matches_result = conn.execute(matches_query, match_ids + [xuid]).fetchall()
 
     return pl.DataFrame(
         {
@@ -156,7 +208,7 @@ def render_impact_taquinerie(
     friend_xuids: list[str],
     db_key: tuple[int, int] | None = None,
 ) -> None:
-    """Affiche l'onglet Impact & Taquinerie (Sprint 12).
+    """Affiche l'onglet Impact (Sprint 12).
 
     Args:
         db_path: Chemin vers la DB principale.
@@ -165,90 +217,100 @@ def render_impact_taquinerie(
         friend_xuids: Liste des XUIDs des coéquipiers sélectionnés.
         db_key: Clé de cache (optionnel).
     """
-    with st.expander("⚡ Impact & Taquinerie", expanded=False):
-        if len(friend_xuids) < 2:
-            st.info("Sélectionnez au moins 2 coéquipiers pour voir l'analyse d'impact.")
+    st.subheader("⚡ Impact")
+
+    if len(friend_xuids) < 2:
+        st.info("Sélectionnez au moins 2 coéquipiers pour voir l'analyse d'impact.")
+        return
+
+    if not match_ids:
+        st.warning("Aucun match à analyser.")
+        return
+
+    st.caption(
+        "Qui fait le premier sang 🟢, finit les victoires (Finisseur) 🟡, "
+        "ou meurt en dernier lors des défaites (Boulet) 🔴 ?"
+    )
+
+    try:
+        repo = DuckDBRepository(db_path, xuid.strip())
+        conn = repo._get_connection()
+
+        # Attacher shared_matches.duckdb
+        shared_alias = _ensure_shared_attached(conn, db_path)
+        if not shared_alias:
+            st.warning(
+                "Impossible d'accéder à shared_matches.duckdb. "
+                "Cette fonctionnalité nécessite l'architecture v5."
+            )
             return
 
-        if not match_ids:
-            st.warning("Aucun match à analyser.")
+        # Charger les événements depuis shared_matches
+        events_df = _load_highlight_events(conn, match_ids, shared_alias)
+        if events_df is None:
+            st.info(
+                "Les données d'événements (highlight_events) ne sont pas disponibles. "
+                "Cette fonctionnalité nécessite une synchronisation avec les détails de matchs."
+            )
+            return
+        if events_df.is_empty():
+            st.info("Aucun événement trouvé pour les matchs sélectionnés.")
             return
 
-        st.caption(
-            "Qui fait le premier sang 🟢, finit les victoires (Finisseur) 🟡, "
-            "ou meurt en dernier lors des défaites (Boulet) 🔴 ?"
+        # Charger les outcomes depuis shared_matches
+        matches_df = _load_match_outcomes(conn, match_ids, xuid, shared_alias)
+
+        # Inclure le joueur principal + tous les amis sélectionnés
+        all_friend_xuids = {str(x) for x in friend_xuids}
+        all_friend_xuids.add(str(xuid).strip())
+
+        # Calculer les événements d'impact
+        first_bloods, clutch_finishers, last_casualties, scores = get_all_impact_events(
+            events_df, matches_df, friend_xuids=all_friend_xuids
         )
 
-        try:
-            repo = DuckDBRepository(db_path, xuid.strip())
-            conn = repo._get_connection()
+        if not scores:
+            st.info("Aucun événement d'impact trouvé pour les joueurs sélectionnés.")
+            return
 
-            # Charger les événements
-            events_df = _load_highlight_events(conn, match_ids)
-            if events_df is None:
-                st.info(
-                    "Les données d'événements (highlight_events) ne sont pas disponibles. "
-                    "Cette fonctionnalité nécessite une synchronisation avec les détails de matchs."
+        gamertags = list(scores.keys())
+        sorted_match_ids = sorted(
+            {
+                m
+                for m in match_ids
+                if m
+                in set(
+                    list(first_bloods.keys())
+                    + list(clutch_finishers.keys())
+                    + list(last_casualties.keys())
                 )
-                return
-            if events_df.is_empty():
-                st.info("Aucun événement trouvé pour les matchs sélectionnés.")
-                return
+            }
+        )
 
-            # Charger les outcomes
-            matches_df = _load_match_outcomes(conn, match_ids)
+        # Construire la matrice d'impact
+        impact_matrix = build_impact_matrix(
+            first_bloods,
+            clutch_finishers,
+            last_casualties,
+            match_ids=sorted_match_ids[:50],
+            gamertags=gamertags,
+        )
 
-            # Inclure le joueur principal + tous les amis sélectionnés
-            all_friend_xuids = {str(x) for x in friend_xuids}
-            all_friend_xuids.add(str(xuid).strip())
+        # Métriques résumées
+        _render_impact_stats(first_bloods, clutch_finishers, last_casualties)
 
-            # Calculer les événements d'impact
-            first_bloods, clutch_finishers, last_casualties, scores = get_all_impact_events(
-                events_df, matches_df, friend_xuids=all_friend_xuids
-            )
+        # Heatmap
+        st.subheader("Heatmap d'Impact")
+        fig = plot_friends_impact_heatmap(
+            impact_matrix,
+            title=None,
+            max_matches=50,
+        )
+        st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
 
-            if not scores:
-                st.info("Aucun événement d'impact trouvé pour les joueurs sélectionnés.")
-                return
+        # Tableau de ranking
+        st.subheader("🏆 Classement")
+        _render_ranking_table(scores, first_bloods, clutch_finishers, last_casualties)
 
-            gamertags = list(scores.keys())
-            sorted_match_ids = sorted(
-                {
-                    m
-                    for m in match_ids
-                    if m
-                    in set(
-                        list(first_bloods.keys())
-                        + list(clutch_finishers.keys())
-                        + list(last_casualties.keys())
-                    )
-                }
-            )
-
-            # Construire la matrice d'impact
-            impact_matrix = build_impact_matrix(
-                first_bloods,
-                clutch_finishers,
-                last_casualties,
-                match_ids=sorted_match_ids[:50],
-                gamertags=gamertags,
-            )
-
-            # Métriques résumées
-            _render_impact_stats(first_bloods, clutch_finishers, last_casualties)
-
-            # Heatmap
-            st.subheader("Heatmap d'Impact")
-            fig = plot_friends_impact_heatmap(
-                impact_matrix,
-                title=None,
-                max_matches=50,
-            )
-            st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
-
-            # Tableau de ranking
-            st.subheader("🏆 Classement Taquinerie")
-            _render_ranking_table(scores, first_bloods, clutch_finishers, last_casualties)
-
-        except Exception as e:
-            st.warning(f"Impossible de charger les données d'impact : {e}")
+    except Exception as e:
+        st.warning(f"Impossible de charger les données d'impact : {e}")
