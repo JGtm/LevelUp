@@ -74,6 +74,12 @@ class FilterPreferences:
     """Préférences de filtres pour un joueur.
 
     Toutes les valeurs sont optionnelles pour permettre une migration progressive.
+    
+    Les champs *_mode permettent de sauvegarder l'intention de l'utilisateur :
+    - "exclude" : tout sauf les éléments listés (ex: "tout sauf Firefight")
+    - "include" : uniquement les éléments listés (ex: "seulement Arène classée")
+    
+    Pour backward compatibility, l'absence de *_mode est interprété comme "include".
     """
 
     # Mode de filtre ("Période" ou "Sessions")
@@ -91,6 +97,11 @@ class FilterPreferences:
     playlists_selected: list[str] | None = None
     modes_selected: list[str] | None = None
     maps_selected: list[str] | None = None
+    
+    # Modes de filtrage (intent-based persistence)
+    playlists_mode: str | None = None  # "exclude" ou "include"
+    modes_mode: str | None = None      # "exclude" ou "include"
+    maps_mode: str | None = None       # "exclude" ou "include"
 
     def to_dict(self) -> dict[str, Any]:
         """Convertit en dictionnaire pour sérialisation JSON."""
@@ -148,19 +159,64 @@ def _get_filter_file_path(player_key: str) -> Path:
     return filters_dir / f"{safe_key}.json"
 
 
+def _detect_filter_mode(selected: set | list, all_options: set | list) -> str:
+    """Détecte automatiquement le mode de filtrage (exclude vs include).
+    
+    Utilise un seuil avec zone d'hystérésis :
+    - > 70% sélectionné → mode "exclude" (tout sauf X)
+    - < 30% sélectionné → mode "include" (seulement Y)
+    - Entre 30% et 70% → garde le mode actuel ou par défaut "include"
+    
+    Args:
+        selected: Éléments sélectionnés.
+        all_options: Tous les éléments disponibles.
+        
+    Returns:
+        "exclude" ou "include"
+    """
+    if not all_options:
+        return "include"
+    
+    selected_set = set(selected) if isinstance(selected, list) else selected
+    all_set = set(all_options) if isinstance(all_options, list) else all_options
+    
+    if not selected_set:
+        # Rien de sélectionné → mode "include" (par défaut)
+        return "include"
+    
+    ratio = len(selected_set) / len(all_set)
+    
+    if ratio > 0.7:
+        # Plus de 70% sélectionné → intention d'exclusion
+        return "exclude"
+    elif ratio < 0.3:
+        # Moins de 30% sélectionné → intention d'inclusion
+        return "include"
+    else:
+        # Zone grise : garder le comportement par défaut
+        return "include"
+
+
 def save_filter_preferences(
     xuid: str,
     db_path: str | None = None,
     preferences: FilterPreferences | None = None,
+    all_playlists: list[str] | None = None,
+    all_modes: list[str] | None = None,
+    all_maps: list[str] | None = None,
 ) -> None:
     """Sauvegarde les préférences de filtres pour un joueur.
 
     Si preferences n'est pas fourni, lit depuis session_state.
+    Détecte automatiquement le mode (exclude/include) basé sur le ratio de sélection.
 
     Args:
         xuid: XUID ou gamertag du joueur.
         db_path: Chemin vers la base de données (optionnel).
         preferences: Préférences à sauvegarder (optionnel, lit depuis session_state si None).
+        all_playlists: Toutes les playlists disponibles (pour détection mode).
+        all_modes: Tous les modes disponibles (pour détection mode).
+        all_maps: Toutes les cartes disponibles (pour détection mode).
     """
     if preferences is None:
         preferences = FilterPreferences()
@@ -186,18 +242,59 @@ def save_filter_preferences(
         if isinstance(picked_session_label_val, str):
             preferences.picked_session_label = picked_session_label_val
 
-        # Filtres cascade
+        # Filtres cascade avec détection automatique du mode
         playlists = st.session_state.get("filter_playlists")
         if isinstance(playlists, (set, list)):  # noqa: UP038
-            preferences.playlists_selected = sorted(playlists)
+            playlists_set = set(playlists) if isinstance(playlists, list) else playlists
+            
+            # Détecter le mode si les options sont disponibles
+            if all_playlists:
+                mode = _detect_filter_mode(playlists_set, all_playlists)
+                preferences.playlists_mode = mode
+                
+                # Sauvegarder selon le mode détecté
+                if mode == "exclude":
+                    # Mode exclusion : sauvegarder ce qui est EXCLU (non sélectionné)
+                    excluded = set(all_playlists) - playlists_set
+                    preferences.playlists_selected = sorted(excluded)
+                else:
+                    # Mode inclusion : sauvegarder ce qui est INCLUS (sélectionné)
+                    preferences.playlists_selected = sorted(playlists_set)
+            else:
+                # Pas d'info sur les options → comportement legacy (include)
+                preferences.playlists_selected = sorted(playlists_set)
 
         modes = st.session_state.get("filter_modes")
         if isinstance(modes, (set, list)):  # noqa: UP038
-            preferences.modes_selected = sorted(modes)
+            modes_set = set(modes) if isinstance(modes, list) else modes
+            
+            if all_modes:
+                mode = _detect_filter_mode(modes_set, all_modes)
+                preferences.modes_mode = mode
+                
+                if mode == "exclude":
+                    excluded = set(all_modes) - modes_set
+                    preferences.modes_selected = sorted(excluded)
+                else:
+                    preferences.modes_selected = sorted(modes_set)
+            else:
+                preferences.modes_selected = sorted(modes_set)
 
         maps = st.session_state.get("filter_maps")
         if isinstance(maps, (set, list)):  # noqa: UP038
-            preferences.maps_selected = sorted(maps)
+            maps_set = set(maps) if isinstance(maps, list) else maps
+            
+            if all_maps:
+                mode = _detect_filter_mode(maps_set, all_maps)
+                preferences.maps_mode = mode
+                
+                if mode == "exclude":
+                    excluded = set(all_maps) - maps_set
+                    preferences.maps_selected = sorted(excluded)
+                else:
+                    preferences.maps_selected = sorted(maps_set)
+            else:
+                preferences.maps_selected = sorted(maps_set)
 
     # Sauvegarder dans le fichier
     player_key = _get_player_key(xuid, db_path)
@@ -243,15 +340,22 @@ def apply_filter_preferences(
     xuid: str,
     db_path: str | None = None,
     preferences: FilterPreferences | None = None,
+    all_playlists: list[str] | None = None,
+    all_modes: list[str] | None = None,
+    all_maps: list[str] | None = None,
 ) -> None:
     """Applique les préférences de filtres dans session_state.
 
     Si preferences n'est pas fourni, charge depuis le fichier.
+    Applique les préférences selon le mode (exclude/include) sauvegardé.
 
     Args:
         xuid: XUID ou gamertag du joueur.
         db_path: Chemin vers la base de données (optionnel).
         preferences: Préférences à appliquer (optionnel, charge depuis fichier si None).
+        all_playlists: Toutes les playlists disponibles (pour mode exclude).
+        all_modes: Tous les modes disponibles (pour mode exclude).
+        all_maps: Toutes les cartes disponibles (pour mode exclude).
     """
     if preferences is None:
         preferences = load_filter_preferences(xuid, db_path)
@@ -289,15 +393,48 @@ def apply_filter_preferences(
         else:
             st.session_state["picked_sessions"] = []
 
-    # Filtres cascade
+    # Filtres cascade avec gestion du mode exclude/include
     if preferences.playlists_selected is not None:
-        st.session_state["filter_playlists"] = set(preferences.playlists_selected)
+        saved_items = set(preferences.playlists_selected)
+        mode = preferences.playlists_mode or "include"  # Default: include (backward compat)
+        
+        if mode == "exclude" and all_playlists:
+            # Mode exclusion : appliquer tout sauf les éléments sauvegardés
+            st.session_state["filter_playlists"] = set(all_playlists) - saved_items
+        else:
+            # Mode inclusion : appliquer les éléments sauvegardés
+            # Si all_playlists fourni, filtrer pour ne garder que les valides
+            if all_playlists:
+                valid_items = saved_items & set(all_playlists)
+                st.session_state["filter_playlists"] = valid_items
+            else:
+                st.session_state["filter_playlists"] = saved_items
 
     if preferences.modes_selected is not None:
-        st.session_state["filter_modes"] = set(preferences.modes_selected)
+        saved_items = set(preferences.modes_selected)
+        mode = preferences.modes_mode or "include"
+        
+        if mode == "exclude" and all_modes:
+            st.session_state["filter_modes"] = set(all_modes) - saved_items
+        else:
+            if all_modes:
+                valid_items = saved_items & set(all_modes)
+                st.session_state["filter_modes"] = valid_items
+            else:
+                st.session_state["filter_modes"] = saved_items
 
     if preferences.maps_selected is not None:
-        st.session_state["filter_maps"] = set(preferences.maps_selected)
+        saved_items = set(preferences.maps_selected)
+        mode = preferences.maps_mode or "include"
+        
+        if mode == "exclude" and all_maps:
+            st.session_state["filter_maps"] = set(all_maps) - saved_items
+        else:
+            if all_maps:
+                valid_items = saved_items & set(all_maps)
+                st.session_state["filter_maps"] = valid_items
+            else:
+                st.session_state["filter_maps"] = saved_items
 
 
 def clear_filter_preferences(xuid: str, db_path: str | None = None) -> None:

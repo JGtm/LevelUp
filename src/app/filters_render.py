@@ -489,9 +489,15 @@ def _render_cascade_filters(
     normalize_mode_label_fn: Callable[[str], str],
     normalize_map_label_fn: Callable[[str], str],
 ) -> tuple[list[str], list[str], list[str]]:
-    """Rend les filtres cascade Playlists -> Modes -> Cartes."""
+    """Rend les filtres NON-CASCADE Playlists -> Modes -> Cartes.
+    
+    Les options sont pré-calculées depuis toutes les données disponibles (pas de cascade).
+    Le filtrage est appliqué aux données, pas aux options affichées.
+    Cela évite les reruns intempestifs lors de sélections multiples.
+    """
     dropdown_base = _to_polars(base_for_filters)
 
+    # Filtrer la base selon la période/session pour le pré-calcul
     if filter_mode == "Période":
         start_val = _safe_to_date(start_d)
         end_val = _safe_to_date(end_d)
@@ -532,6 +538,7 @@ def _render_cascade_filters(
     )
 
     # --- Playlists ---
+    # Pré-calculer TOUTES les options (pas de cascade)
     playlist_values = sorted(
         {
             str(x).strip()
@@ -553,14 +560,10 @@ def _render_cascade_filters(
         expanded=False,
     )
 
-    # Scope après filtre playlist
-    scope1 = dropdown_base
-    if playlists_selected and len(playlists_selected) < len(playlist_values):
-        scope1 = scope1.filter(pl.col("playlist_ui").fill_null("").is_in(playlists_selected))
-
     # --- Modes ---
+    # Pré-calculer TOUTES les options SANS filtrage par playlist (désactivation cascade)
     mode_values = sorted(
-        {str(x).strip() for x in scope1["mode_ui"].drop_nulls().to_list() if str(x).strip()}
+        {str(x).strip() for x in dropdown_base["mode_ui"].drop_nulls().to_list() if str(x).strip()}
     )
     modes_selected = render_hierarchical_checkbox_filter(
         label="Modes",
@@ -569,14 +572,10 @@ def _render_cascade_filters(
         expanded=False,
     )
 
-    # Scope après filtre mode
-    scope2 = scope1
-    if modes_selected and len(modes_selected) < len(mode_values):
-        scope2 = scope2.filter(pl.col("mode_ui").fill_null("").is_in(modes_selected))
-
     # --- Cartes ---
+    # Pré-calculer TOUTES les options SANS filtrage par playlist/mode (désactivation cascade)
     map_values = sorted(
-        {str(x).strip() for x in scope2["map_ui"].drop_nulls().to_list() if str(x).strip()}
+        {str(x).strip() for x in dropdown_base["map_ui"].drop_nulls().to_list() if str(x).strip()}
     )
     maps_selected = render_checkbox_filter(
         label="Cartes",
