@@ -205,10 +205,8 @@ def _create_shared_db(db_path: Path) -> None:
             match_id VARCHAR NOT NULL,
             event_type VARCHAR NOT NULL,
             time_ms INTEGER,
-            killer_xuid VARCHAR,
-            killer_gamertag VARCHAR,
-            victim_xuid VARCHAR,
-            victim_gamertag VARCHAR,
+            xuid VARCHAR,
+            gamertag VARCHAR,
             type_hint INTEGER,
             raw_json VARCHAR,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -282,18 +280,20 @@ def _create_shared_db(db_path: Path) -> None:
         ('{MATCH_ID_2}', '{PLAYER_XUID}', 100000001, 2)
     """)
 
-    # Highlight events (v5 structure: killer_xuid/victim_xuid)
+    # Highlight events (v5.1 structure: xuid/gamertag directly)
+    # Un kill = event_type='kill' avec xuid du killer
+    # Une death = event_type='death' avec xuid de la victime
     conn.execute(f"""
-        INSERT INTO highlight_events (match_id, event_type, time_ms, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag)
-        VALUES ('{MATCH_ID_1}', 'kill', 5000, '{PLAYER_XUID}', 'PlayerOne', 'xuid_enemy_1', 'EnemyAlpha')
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
+        VALUES ('{MATCH_ID_1}', 'kill', 5000, '{PLAYER_XUID}', 'PlayerOne')
     """)
     conn.execute(f"""
-        INSERT INTO highlight_events (match_id, event_type, time_ms, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag)
-        VALUES ('{MATCH_ID_1}', 'death', 8000, 'xuid_enemy_2', 'EnemyBeta', '{PLAYER_XUID}', 'PlayerOne')
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
+        VALUES ('{MATCH_ID_1}', 'death', 8000, '{PLAYER_XUID}', 'PlayerOne')
     """)
     conn.execute(f"""
-        INSERT INTO highlight_events (match_id, event_type, time_ms, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag)
-        VALUES ('{MATCH_ID_1}', 'kill', 12000, '{PLAYER_XUID}', 'PlayerOne', 'xuid_enemy_2', 'EnemyBeta')
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
+        VALUES ('{MATCH_ID_1}', 'kill', 12000, '{PLAYER_XUID}', 'PlayerOne')
     """)
 
     # xuid_aliases
@@ -559,14 +559,14 @@ class TestSharedHighlightEvents:
         """load_highlight_events lit depuis shared avec mapping xuid/gamertag."""
         events = repo_v5.load_highlight_events(MATCH_ID_1)
         assert len(events) == 3
-        # Vérifier le mapping xuid pour event_type='kill' → killer_xuid
+        # Vérifier les events kill — xuid du joueur qui fait le kill
         kill_events = [e for e in events if e["event_type"] == "kill"]
         assert len(kill_events) == 2
-        assert kill_events[0]["xuid"] == PLAYER_XUID
-        # Vérifier le mapping xuid pour event_type='death' → victim_xuid
+        assert all(e["xuid"] == PLAYER_XUID for e in kill_events)
+        # Vérifier les events death — xuid du joueur qui meurt
         death_events = [e for e in events if e["event_type"] == "death"]
         assert len(death_events) == 1
-        assert death_events[0]["xuid"] == PLAYER_XUID  # victim_xuid
+        assert death_events[0]["xuid"] == PLAYER_XUID
 
     def test_load_first_event_times_kill_shared(self, repo_v5: DuckDBRepository):
         """load_first_event_times('Kill') utilise shared.highlight_events."""
