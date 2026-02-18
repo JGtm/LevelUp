@@ -305,6 +305,25 @@ def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:
                                 xuid = str(result[0]).strip()
                 except Exception:
                     pass
+
+            # V5.1 : Si toujours 0, compter depuis shared (mv_player_matches ou match_participants)
+            if total_matches == 0 and xuid:
+                try:
+                    from src.utils.paths import get_shared_matches_path_from_player
+
+                    shared_path = get_shared_matches_path_from_player(db_path)
+                    if shared_path and shared_path.exists():
+                        from src.utils.db import duckdb_read_only
+
+                        with duckdb_read_only(shared_path) as shared_con:
+                            result = shared_con.execute(
+                                "SELECT COUNT(*) FROM match_participants WHERE xuid = ?",
+                                [xuid],
+                            ).fetchone()
+                            total_matches = result[0] if result else 0
+                except Exception:
+                    pass
+
             con.close()
         except Exception:
             pass

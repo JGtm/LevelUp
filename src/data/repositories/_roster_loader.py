@@ -16,6 +16,7 @@ de résolution XUID → Gamertag extraites de DuckDBRepository :
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import re
@@ -51,11 +52,25 @@ class RosterLoaderMixin:
         conn = self._get_connection()
 
         try:
-            # Obtenir le team_id du joueur principal depuis match_stats
-            match_info = conn.execute(
-                "SELECT team_id FROM match_stats WHERE match_id = ?",
-                [match_id],
-            ).fetchone()
+            # Obtenir le team_id du joueur principal depuis shared.match_participants (v5.1)
+            my_xuid_str = str(self._xuid).strip()
+            match_info = None
+
+            # V5.1 : shared.match_participants (source canonique)
+            if self._has_shared_table("match_participants"):
+                with contextlib.suppress(Exception):
+                    match_info = conn.execute(
+                        "SELECT team_id FROM shared.match_participants WHERE match_id = ? AND xuid = ?",
+                        [match_id, my_xuid_str],
+                    ).fetchone()
+
+            # Fallback : match_stats locale (legacy, peut ne plus exister en v5.1)
+            if not match_info:
+                with contextlib.suppress(Exception):
+                    match_info = conn.execute(
+                        "SELECT team_id FROM match_stats WHERE match_id = ?",
+                        [match_id],
+                    ).fetchone()
 
             if not match_info:
                 return None
@@ -63,8 +78,6 @@ class RosterLoaderMixin:
             my_team_id = match_info[0]
             if my_team_id is None:
                 return None
-
-            my_xuid_str = str(self._xuid).strip()
 
             # Fonction de nettoyage des gamertags
             def _clean_gamertag(value: Any) -> str | None:
@@ -188,10 +201,13 @@ class RosterLoaderMixin:
             # ======================================================================
             all_xuids: set[str] = set(gamertag_by_xuid.keys())
 
-            # Compléter avec highlight_events
+            # Compléter avec highlight_events (shared v5.1, fallback local)
+            he_table_ref = "highlight_events"
+            if self._has_shared_table("highlight_events"):
+                he_table_ref = "shared.highlight_events"
             try:
                 he_result = conn.execute(
-                    """
+                    f"""
                     SELECT xuid, gamertag
                     FROM (
                         SELECT xuid, gamertag,
@@ -199,7 +215,7 @@ class RosterLoaderMixin:
                                    PARTITION BY xuid
                                    ORDER BY LENGTH(COALESCE(gamertag, '')) DESC
                                ) as rn
-                        FROM highlight_events
+                        FROM {he_table_ref}
                         WHERE match_id = ? AND xuid IS NOT NULL AND xuid != ''
                     ) sub
                     WHERE rn = 1
@@ -231,9 +247,9 @@ class RosterLoaderMixin:
                 # Analyser les événements Kill/Death pour déterminer les équipes
                 try:
                     kill_events = conn.execute(
-                        """
+                        f"""
                         SELECT event_type, xuid, raw_json
-                        FROM highlight_events
+                        FROM {he_table_ref}
                         WHERE match_id = ?
                           AND event_type IN ('kill', 'Kill', 'death', 'Death')
                           AND xuid IS NOT NULL AND xuid != ''
@@ -515,19 +531,25 @@ class RosterLoaderMixin:
 
         # NOTE v5.1 : xuid_aliases locale supprimé — shared.xuid_aliases utilisé ci-dessus
 
-        # 4. highlight_events avec extraction ASCII
+        # 4. highlight_events avec extraction ASCII (shared d'abord, puis local)
         if match_id:
-            try:
-                result = conn.execute(
-                    "SELECT gamertag FROM highlight_events WHERE match_id = ? AND xuid = ? LIMIT 1",
-                    [match_id, xuid],
-                ).fetchone()
-                if result and result[0]:
-                    cleaned = self._extract_ascii_token(result[0])
-                    if cleaned:
-                        return cleaned
-            except Exception:
-                pass
+            he_sources = []
+            if self._has_shared_table("highlight_events"):
+                he_sources.append("shared.highlight_events")
+            if self._has_table("highlight_events"):
+                he_sources.append("highlight_events")
+            for he_src in he_sources:
+                try:
+                    result = conn.execute(
+                        f"SELECT gamertag FROM {he_src} WHERE match_id = ? AND xuid = ? LIMIT 1",
+                        [match_id, xuid],
+                    ).fetchone()
+                    if result and result[0]:
+                        cleaned = self._extract_ascii_token(result[0])
+                        if cleaned:
+                            return cleaned
+                except Exception:
+                    pass
 
         return None
 
@@ -626,7 +648,20 @@ class RosterLoaderMixin:
                     if xuid and gt and str(xuid) not in result:
                         result[str(xuid)] = str(gt)
 
-            # 3. Compléter depuis highlight_events (local)
+            # 3. Compléter depuis highlight_events (shared d'abord, puis local)
+            if self._has_shared_table("highlight_events"):
+                rows = conn.execute(
+                    """
+                    SELECT DISTINCT xuid, gamertag
+                    FROM shared.highlight_events
+                    WHERE match_id = ? AND xuid IS NOT NULL AND gamertag IS NOT NULL
+                    """,
+                    [match_id],
+                ).fetchall()
+                for xuid, gt in rows:
+                    if xuid and gt and str(xuid) not in result:
+                        result[str(xuid)] = str(gt)
+
             if self._has_table("highlight_events"):
                 rows = conn.execute(
                     """

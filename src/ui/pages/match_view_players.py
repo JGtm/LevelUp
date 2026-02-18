@@ -32,14 +32,15 @@ def _is_duckdb_v4_path(db_path: str) -> bool:
 
 
 def _has_table_duckdb(db_path: str, table_name: str) -> bool:
-    """Vérifie si une table existe dans une DB DuckDB."""
+    """Vérifie si une table existe dans une DB DuckDB (locale ou shared)."""
     if not _is_duckdb_v4_path(db_path):
         return False
     try:
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
         repo = DuckDBRepository(db_path, xuid="", read_only=True)
-        return repo.has_table(table_name)
+        # Vérifier la table locale puis shared (v5.1)
+        return repo.has_table(table_name) or repo._has_shared_table(table_name)
     except Exception:
         return False
 

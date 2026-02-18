@@ -1,11 +1,12 @@
-"""Tests pour le score de performance v4-relative.
+"""Tests pour le score de performance v5-relative.
 
 Ce fichier teste :
-- Les nouvelles métriques v4 : PSPM, DPM damage, Rank Performance
+- Les métriques v4 : PSPM, DPM damage, Rank Performance
+- Les métriques v5 : Kills vs Expected, Deaths vs Expected
 - La graceful degradation quand les nouvelles métriques sont absentes
-- La compatibilité avec les données v3 (sans les colonnes v4)
+- La compatibilité avec les données v3 (sans les colonnes v4/v5)
 - Le helper _compute_rank_performance()
-- Le helper _prepare_history_metrics() avec les nouvelles colonnes
+- Le helper _prepare_history_metrics() avec les colonnes v4+v5
 """
 
 from __future__ import annotations
@@ -46,7 +47,7 @@ def history_v3() -> pl.DataFrame:
 
 @pytest.fixture
 def history_v4() -> pl.DataFrame:
-    """Historique de matchs v4 (avec toutes les colonnes)."""
+    """Historique de matchs v4/v5 (avec toutes les colonnes)."""
     n = 20
     return pl.DataFrame(
         {
@@ -61,6 +62,8 @@ def history_v4() -> pl.DataFrame:
             "rank": [4 + (i % 5) for i in range(n)],
             "team_mmr": [1200.0 + i * 5 for i in range(n)],
             "enemy_mmr": [1200.0 + (n - i) * 5 for i in range(n)],
+            "kills_expected": [12.0 + i * 0.5 for i in range(n)],
+            "deaths_expected": [7.0 + i * 0.3 for i in range(n)],
         }
     )
 
@@ -80,7 +83,7 @@ def match_row_v3() -> dict:
 
 @pytest.fixture
 def match_row_v4() -> dict:
-    """Match courant avec les métriques v4."""
+    """Match courant avec les métriques v4/v5."""
     return {
         "kills": 15,
         "deaths": 6,
@@ -93,6 +96,8 @@ def match_row_v4() -> dict:
         "rank": 2,
         "team_mmr": 1250.0,
         "enemy_mmr": 1300.0,
+        "kills_expected": 11.0,
+        "deaths_expected": 8.5,
     }
 
 
@@ -102,19 +107,23 @@ def match_row_v4() -> dict:
 
 
 class TestVersionConfig:
-    """Tests sur la configuration v4."""
+    """Tests sur la configuration v5."""
 
-    def test_version_is_v4(self):
-        assert PERFORMANCE_SCORE_VERSION == "v4-relative"
+    def test_version_is_v5(self):
+        assert PERFORMANCE_SCORE_VERSION == "v5-relative"
 
-    def test_weights_have_8_metrics(self):
-        assert len(RELATIVE_WEIGHTS) == 8
+    def test_weights_have_10_metrics(self):
+        assert len(RELATIVE_WEIGHTS) == 10
 
     def test_weights_sum_to_one(self):
         total = sum(RELATIVE_WEIGHTS.values())
         assert abs(total - 1.0) < 1e-9, f"Total des poids = {total}, attendu 1.0"
 
-    def test_new_metrics_present(self):
+    def test_new_v5_metrics_present(self):
+        assert "kills_vs_expected" in RELATIVE_WEIGHTS
+        assert "deaths_vs_expected" in RELATIVE_WEIGHTS
+
+    def test_v4_metrics_present(self):
         assert "pspm" in RELATIVE_WEIGHTS
         assert "dpm_damage" in RELATIVE_WEIGHTS
         assert "rank_perf" in RELATIVE_WEIGHTS
@@ -131,9 +140,9 @@ class TestVersionConfig:
 
 
 class TestPrepareHistoryMetrics:
-    """Tests pour _prepare_history_metrics v4."""
+    """Tests pour _prepare_history_metrics v5."""
 
-    def test_returns_8_columns(self, history_v4: pl.DataFrame):
+    def test_returns_10_columns(self, history_v4: pl.DataFrame):
         result = _prepare_history_metrics(history_v4)
         expected_cols = {
             "kpm",
@@ -144,13 +153,15 @@ class TestPrepareHistoryMetrics:
             "pspm",
             "dpm_damage",
             "rank_perf_diff",
+            "kills_vs_expected",
+            "deaths_vs_expected",
         }
         assert set(result.columns) == expected_cols
 
     def test_empty_df_returns_empty_with_correct_schema(self):
         result = _prepare_history_metrics(pl.DataFrame())
         assert result.is_empty()
-        assert len(result.columns) == 8
+        assert len(result.columns) == 10
 
     def test_v3_data_has_null_new_columns(self, history_v3: pl.DataFrame):
         """Avec des données v3 (sans personal_score etc.), les nouvelles colonnes sont nulles."""
@@ -158,13 +169,17 @@ class TestPrepareHistoryMetrics:
         assert result.get_column("pspm").null_count() == len(result)
         assert result.get_column("dpm_damage").null_count() == len(result)
         assert result.get_column("rank_perf_diff").null_count() == len(result)
+        assert result.get_column("kills_vs_expected").null_count() == len(result)
+        assert result.get_column("deaths_vs_expected").null_count() == len(result)
 
     def test_v4_data_has_values(self, history_v4: pl.DataFrame):
-        """Avec des données v4, les nouvelles colonnes ont des valeurs."""
+        """Avec des données v4/v5, les nouvelles colonnes ont des valeurs."""
         result = _prepare_history_metrics(history_v4)
         assert result.get_column("pspm").null_count() == 0
         assert result.get_column("dpm_damage").null_count() == 0
         assert result.get_column("rank_perf_diff").null_count() == 0
+        assert result.get_column("kills_vs_expected").null_count() == 0
+        assert result.get_column("deaths_vs_expected").null_count() == 0
 
     def test_pspm_calculation(self):
         """PSPM = personal_score / minutes."""
@@ -266,7 +281,7 @@ class TestComputeRankPerformance:
 
 
 class TestComputeRelativePerformanceScoreV4:
-    """Tests pour le calcul de score v4."""
+    """Tests pour le calcul de score v5."""
 
     def test_returns_score_with_v4_data(self, match_row_v4: dict, history_v4: pl.DataFrame):
         """Avec toutes les données v4, un score est calculé."""
@@ -378,6 +393,81 @@ class TestComputeRelativePerformanceScoreV4:
         assert score_high is not None
         assert score_normal is not None
         assert score_high > score_normal
+
+    def test_high_kills_vs_expected_increases_score(self, history_v4: pl.DataFrame):
+        """Faire plus de kills que prévu devrait augmenter le score."""
+        # Match avec beaucoup plus de kills que prévu
+        high_row = {
+            "kills": 25,
+            "deaths": 6,
+            "assists": 4,
+            "kda": 3.0,
+            "accuracy": 0.55,
+            "time_played_seconds": 600,
+            "personal_score": 1500,
+            "damage_dealt": 3000.0,
+            "rank": 3,
+            "team_mmr": 1250.0,
+            "enemy_mmr": 1250.0,
+            "kills_expected": 10.0,  # ratio = 2.5
+            "deaths_expected": 8.0,
+        }
+        # Match avec kills = expected
+        normal_row = dict(high_row)
+        normal_row["kills"] = 10  # ratio = 1.0
+
+        score_high = compute_relative_performance_score(high_row, history_v4)
+        score_normal = compute_relative_performance_score(normal_row, history_v4)
+        assert score_high is not None
+        assert score_normal is not None
+        assert score_high > score_normal
+
+    def test_low_deaths_vs_expected_increases_score(self, history_v4: pl.DataFrame):
+        """Mourir moins que prévu devrait augmenter le score."""
+        # Match avec beaucoup moins de morts que prévu
+        low_deaths_row = {
+            "kills": 15,
+            "deaths": 3,  # ratio = 10/3 = 3.33
+            "assists": 4,
+            "kda": 3.0,
+            "accuracy": 0.55,
+            "time_played_seconds": 600,
+            "personal_score": 1500,
+            "damage_dealt": 3000.0,
+            "rank": 3,
+            "team_mmr": 1250.0,
+            "enemy_mmr": 1250.0,
+            "kills_expected": 12.0,
+            "deaths_expected": 10.0,
+        }
+        # Match avec plus de morts que prévu
+        high_deaths_row = dict(low_deaths_row)
+        high_deaths_row["deaths"] = 15  # ratio = 10/15 = 0.67
+
+        score_low = compute_relative_performance_score(low_deaths_row, history_v4)
+        score_high = compute_relative_performance_score(high_deaths_row, history_v4)
+        assert score_low is not None
+        assert score_high is not None
+        assert score_low > score_high
+
+    def test_kills_vs_expected_calculation(self):
+        """Vérifie le calcul du ratio kills_vs_expected dans l'historique."""
+        df = pl.DataFrame(
+            {
+                "kills": [20],
+                "deaths": [5],
+                "assists": [3],
+                "time_played_seconds": [600],
+                "kills_expected": [10.0],
+                "deaths_expected": [8.0],
+            }
+        )
+        result = _prepare_history_metrics(df)
+        kve = result.get_column("kills_vs_expected")[0]
+        assert abs(kve - 2.0) < 0.01  # 20 / 10 = 2.0
+
+        dve = result.get_column("deaths_vs_expected")[0]
+        assert abs(dve - 1.6) < 0.01  # 8.0 / 5 = 1.6
 
     def test_accepts_pandas_history(self, match_row_v3: dict, history_v3: pl.DataFrame):
         """Le score accepte un DataFrame Pandas (converti en Polars en interne)."""

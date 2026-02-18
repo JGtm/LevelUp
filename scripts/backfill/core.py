@@ -21,6 +21,7 @@ from src.data.sync.batch_insert import (
     PERSONAL_SCORE_COLUMNS,
     SHARED_MEDAL_COLUMNS,
     batch_insert_rows,
+    batch_upsert_participants,
     batch_upsert_rows,
 )
 
@@ -217,4 +218,4 @@ def insert_participant_rows(conn: Any, rows: list) -> int:
             "CREATE INDEX IF NOT EXISTS idx_participants_team ON match_participants(match_id, team_id)"
         )
 
-    return batch_upsert_rows(conn, "match_participants", rows, PARTICIPANT_COLUMNS)
+    return batch_upsert_participants(conn, rows, PARTICIPANT_COLUMNS)

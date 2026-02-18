@@ -772,6 +772,18 @@ def transform_all_skill_stats(
 ) -> list[SkillParticipantUpdate]:
     """Extrait les données skill de TOUS les joueurs (pas juste le joueur courant).
 
+    Pipeline v5.1 :
+        API Skill JSON → transform_all_skill_stats() → [SkillParticipantUpdate]
+        → engine.py : UPDATE shared.match_participants (COALESCE)
+
+    Corrigé v5.1 : enemy_mmr était ignoré (bug `team_mmr, _ = mmr_data`).
+    Désormais `team_mmr, enemy_mmr = mmr_data` extrait les deux MMR.
+
+    ⚠️ Limitation API Halo Infinite :
+        StatPerformances ne fournit Expected/StdDev que pour Kills et Deaths.
+        Les données Assists (assists_expected, assists_stddev) ne sont jamais
+        retournées par l'API et restent donc NULL en base.
+
     Args:
         skill_json: JSON de l'API skill.
         match_id: ID du match.
@@ -808,11 +820,12 @@ def transform_all_skill_stats(
 
         team_id = _safe_int(result.get("TeamId") or result.get("teamId"))
 
-        # Extraire team_mmr via la fonction existante
+        # Extraire team_mmr et enemy_mmr via la fonction existante
         mmr_data = _extract_mmr_from_skill(skill_json, xuid, team_id)
         team_mmr = None
+        enemy_mmr = None
         if mmr_data:
-            team_mmr, _ = mmr_data  # On ignore enemy_mmr ici
+            team_mmr, enemy_mmr = mmr_data
 
         # Extraire StatPerformances
         stat_performances = result.get("StatPerformances") or result.get("statPerformances")
@@ -860,6 +873,7 @@ def transform_all_skill_stats(
                 match_id=match_id,
                 xuid=xuid,
                 team_mmr=team_mmr,
+                enemy_mmr=enemy_mmr,
                 kills_expected=kills_expected,
                 kills_stddev=kills_stddev,
                 deaths_expected=deaths_expected,

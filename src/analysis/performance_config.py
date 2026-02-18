@@ -12,7 +12,7 @@ from dataclasses import dataclass
 # Version du score
 # =============================================================================
 
-PERFORMANCE_SCORE_VERSION = "v4-relative"
+PERFORMANCE_SCORE_VERSION = "v5-relative"
 # Version actuelle de l'algorithme de score.
 #
 # Historique:
@@ -20,6 +20,7 @@ PERFORMANCE_SCORE_VERSION = "v4-relative"
 # - v2: Score modulaire avec composantes et poids dynamiques
 # - v3-relative: Score relatif à l'historique personnel du joueur
 # - v4-relative: v3 + PSPM, DPM damage, Rank Performance (8 métriques)
+# - v5-relative: v4 + Kills vs Expected, Deaths vs Expected (10 métriques)
 
 
 # =============================================================================
@@ -28,16 +29,30 @@ PERFORMANCE_SCORE_VERSION = "v4-relative"
 
 MIN_MATCHES_FOR_RELATIVE = 10  # Nombre minimum de matchs pour activer le score relatif
 
-# Poids des métriques pour le score relatif v4
+# Poids des métriques pour le score relatif v5
 RELATIVE_WEIGHTS = {
-    "kpm": 0.22,  # Kills per minute
-    "dpm_deaths": 0.18,  # Deaths per minute (inversé)
-    "apm": 0.10,  # Assists per minute
-    "kda": 0.15,  # FDA
-    "accuracy": 0.08,  # Précision
-    "pspm": 0.12,  # Personal Score Per Minute (NOUVEAU v4)
-    "dpm_damage": 0.10,  # Damage Per Minute (NOUVEAU v4)
-    "rank_perf": 0.05,  # Rank vs Expected (NOUVEAU v4, optionnel)
+    "kpm": 0.17,  # Kills per minute
+    "dpm_deaths": 0.13,  # Deaths per minute (inversé)
+    "apm": 0.08,  # Assists per minute
+    "kda": 0.13,  # FDA
+    "accuracy": 0.06,  # Précision
+    "pspm": 0.12,  # Personal Score Per Minute (v4)
+    "dpm_damage": 0.09,  # Damage Per Minute (v4)
+    "rank_perf": 0.04,  # Rank vs Expected (v4, optionnel)
+    "kills_vs_expected": 0.10,  # Kills réels / Kills attendus (NOUVEAU v5)
+    "deaths_vs_expected": 0.08,  # Deaths attendus / Deaths réels (NOUVEAU v5, inversé)
+}
+
+# Anciens poids v4 (conservés pour référence)
+RELATIVE_WEIGHTS_V4 = {
+    "kpm": 0.22,
+    "dpm_deaths": 0.18,
+    "apm": 0.10,
+    "kda": 0.15,
+    "accuracy": 0.08,
+    "pspm": 0.12,
+    "dpm_damage": 0.10,
+    "rank_perf": 0.05,
 }
 
 # Anciens poids v3 (conservés pour référence)
@@ -83,14 +98,16 @@ ta performance sur un match à ton **historique personnel**.
 ### Métriques utilisées
 | Métrique | Poids | Description |
 |----------|-------|-------------|
-| KPM (Kills/min) | 22% | Frags par minute |
-| DPM Deaths (Deaths/min) | 18% | Morts par minute (inversé) |
-| FDA (KDA) | 15% | Ratio (Frags + Assists) / Morts |
+| KPM (Kills/min) | 17% | Frags par minute |
+| DPM Deaths (Deaths/min) | 13% | Morts par minute (inversé) |
+| FDA (KDA) | 13% | Ratio (Frags + Assists) / Morts |
 | PSPM (Score/min) | 12% | Score personnel par minute |
-| APM (Assists/min) | 10% | Assistances par minute |
-| DPM Damage (Damage/min) | 10% | Dégâts infligés par minute |
-| Précision | 8% | Pourcentage de tirs touchés |
-| Rang vs Attendu | 5% | Performance du rang ajustée par le MMR |
+| Kills vs Expected | 10% | Frags réels vs prédiction matchmaking |
+| DPM Damage (Damage/min) | 9% | Dégâts infligés par minute |
+| Deaths vs Expected | 8% | Morts réelles vs prédiction (inversé) |
+| APM (Assists/min) | 8% | Assistances par minute |
+| Précision | 6% | Pourcentage de tirs touchés |
+| Rang vs Attendu | 4% | Performance du rang ajustée par le MMR |
 
 ### Interprétation
 | Score | Signification |
@@ -118,7 +135,7 @@ ta performance sur un match à ton **historique personnel**.
 PERFORMANCE_SCORE_COMPACT_DESC = f"""
 **Score relatif (0-100)** comparant ce match à ton historique.
 - >=75: Exceptionnel | >=60: Bon | >=45: Normal | >=30: Sous ta moyenne | <30: Difficile
-- 8 métriques: KPM ({RELATIVE_WEIGHTS['kpm']:.0%}), DPM inversé ({RELATIVE_WEIGHTS['dpm_deaths']:.0%}), FDA ({RELATIVE_WEIGHTS['kda']:.0%}), PSPM ({RELATIVE_WEIGHTS['pspm']:.0%}), APM ({RELATIVE_WEIGHTS['apm']:.0%}), DPM Damage ({RELATIVE_WEIGHTS['dpm_damage']:.0%}), Précision ({RELATIVE_WEIGHTS['accuracy']:.0%}), Rang ({RELATIVE_WEIGHTS['rank_perf']:.0%})
+- 10 métriques: KPM ({RELATIVE_WEIGHTS['kpm']:.0%}), DPM inversé ({RELATIVE_WEIGHTS['dpm_deaths']:.0%}), FDA ({RELATIVE_WEIGHTS['kda']:.0%}), PSPM ({RELATIVE_WEIGHTS['pspm']:.0%}), Kills vs Expected ({RELATIVE_WEIGHTS['kills_vs_expected']:.0%}), DPM Damage ({RELATIVE_WEIGHTS['dpm_damage']:.0%}), Deaths vs Expected ({RELATIVE_WEIGHTS['deaths_vs_expected']:.0%}), APM ({RELATIVE_WEIGHTS['apm']:.0%}), Précision ({RELATIVE_WEIGHTS['accuracy']:.0%}), Rang ({RELATIVE_WEIGHTS['rank_perf']:.0%})
 - Minimum {MIN_MATCHES_FOR_RELATIVE} matchs requis
 """
 

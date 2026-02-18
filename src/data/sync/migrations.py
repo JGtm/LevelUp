@@ -328,6 +328,94 @@ def _recreate_highlight_events_with_sequence(conn: duckdb.DuckDBPyConnection, ma
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Migration career_progression : id DEFAULT nextval(séquence)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_career_progression_autoincrement(conn: duckdb.DuckDBPyConnection) -> None:
+    """Migre career_progression pour que id utilise nextval() comme DEFAULT.
+
+    Problème legacy : certaines DB ont été créées sans séquence, donc
+    INSERT sans spécifier id échoue avec NOT NULL constraint.
+    DuckDB ne supporte pas ALTER COLUMN SET DEFAULT, il faut recréer la table.
+
+    Cette migration est idempotente : si le DEFAULT est déjà correct, rien n'est fait.
+    """
+    if not table_exists(conn, "career_progression"):
+        return
+
+    # Vérifier si id a déjà le bon DEFAULT
+    try:
+        col_info = conn.execute(
+            "SELECT column_default FROM information_schema.columns "
+            "WHERE table_schema = 'main' AND table_name = 'career_progression' "
+            "AND column_name = 'id'"
+        ).fetchone()
+    except Exception:
+        return
+
+    has_nextval = col_info and col_info[0] and "nextval" in str(col_info[0]).lower()
+
+    if has_nextval:
+        # La colonne a déjà nextval, pas de migration nécessaire
+        return
+
+    # Récupérer le max id actuel pour initialiser la séquence
+    max_id_row = conn.execute("SELECT COALESCE(MAX(id), 0) FROM career_progression").fetchone()
+    max_id = max_id_row[0] if max_id_row else 0
+
+    # Pas de DEFAULT → recreation complète
+    logger.info(
+        f"Migration career_progression: ajout séquence auto-increment " f"(max_id={max_id})"
+    )
+    _recreate_career_progression_with_sequence(conn, max_id)
+
+
+def _recreate_career_progression_with_sequence(
+    conn: duckdb.DuckDBPyConnection, max_id: int
+) -> None:
+    """Recrée career_progression avec id DEFAULT nextval(séquence).
+
+    Copie toutes les données existantes, recrée les index.
+    """
+    # 1) Sauvegarder les données existantes avant tout DROP
+    conn.execute("DROP TABLE IF EXISTS career_progression_backup")
+    if table_exists(conn, "career_progression"):
+        conn.execute("CREATE TABLE career_progression_backup AS SELECT * FROM career_progression")
+        conn.execute("DROP TABLE career_progression CASCADE")
+
+    # 2) Nettoyer séquence/table résiduelle
+    conn.execute("DROP SEQUENCE IF EXISTS career_progression_id_seq CASCADE")
+
+    # 3) Créer la nouvelle séquence et table
+    conn.execute(f"CREATE SEQUENCE career_progression_id_seq START WITH {max_id + 1}")
+    conn.execute("""
+        CREATE TABLE career_progression (
+            id INTEGER PRIMARY KEY DEFAULT nextval('career_progression_id_seq'),
+            xuid VARCHAR NOT NULL,
+            rank INTEGER NOT NULL,
+            rank_name VARCHAR,
+            rank_tier VARCHAR,
+            current_xp INTEGER,
+            xp_for_next_rank INTEGER,
+            xp_total INTEGER,
+            is_max_rank BOOLEAN DEFAULT FALSE,
+            adornment_path VARCHAR,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # 4) Restaurer les données
+    if table_exists(conn, "career_progression_backup"):
+        conn.execute("INSERT INTO career_progression SELECT * FROM career_progression_backup")
+        conn.execute("DROP TABLE career_progression_backup")
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_career_date ON career_progression(recorded_at)")
+    logger.info(f"✅ career_progression migrée avec séquence auto-increment (start={max_id + 1})")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Migration medals_earned (INT32 → BIGINT)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -473,6 +561,23 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
     # au fichier (database_name = nom du fichier), pas de prefix.
     prefix = "shared." if catalog == "shared" else ""
 
+    # Vérifier si la colonne enemy_mmr existe dans match_participants
+    # (peut manquer dans les anciennes DBs ou les tests)
+    # Note v5.1 : enemy_mmr est désormais correctement peuplé par le pipeline
+    # skill (corrigé : était ignoré `_ = mmr_data` dans transform_all_skill_stats).
+    # La détection dynamique reste pour compatibilité avec les anciennes DBs.
+    has_enemy_mmr = False
+    try:
+        cols = conn.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'match_participants' AND column_name = 'enemy_mmr'"
+        ).fetchall()
+        has_enemy_mmr = len(cols) > 0
+    except Exception:
+        pass
+
+    enemy_mmr_expr = "p.enemy_mmr" if has_enemy_mmr else "NULL AS enemy_mmr"
+
     conn.execute(f"""
         CREATE OR REPLACE VIEW {prefix}mv_player_matches AS
         SELECT
@@ -518,9 +623,9 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             CASE WHEN p.team_id = 0 THEN r.team_1_score
                  ELSE r.team_0_score END AS enemy_team_score,
 
-            -- MMR (NULL par défaut, enrichi depuis match_stats local si dispo)
+            -- MMR (enrichi depuis skill API)
             p.team_mmr,
-            NULL AS enemy_mmr,
+            {enemy_mmr_expr},
 
             -- Score personnel
             p.score AS personal_score,

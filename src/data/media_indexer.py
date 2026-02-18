@@ -23,7 +23,7 @@ from typing import Any
 import duckdb
 import polars as pl
 
-from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR
+from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR, get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
 
@@ -182,8 +182,20 @@ class MediaIndexer:
             conn.close()
 
     def ensure_schema(self) -> None:
-        """Crée ou migre le schéma media_files et media_match_associations."""
-        conn = duckdb.connect(str(self.db_path), read_only=False)
+        """Crée ou migre le schéma media_files et media_match_associations.
+
+        Raises:
+            duckdb.IOException: Si le fichier DB est verrouillé par un autre processus.
+        """
+        try:
+            conn = duckdb.connect(str(self.db_path), read_only=False)
+        except duckdb.IOException as e:
+            logger.warning(
+                "Impossible d'ouvrir %s en écriture (verrouillé ?): %s",
+                self.db_path,
+                e,
+            )
+            raise
         try:
             tables = conn.execute(
                 """
@@ -654,27 +666,33 @@ class MediaIndexer:
         if not player_dbs:
             player_dbs = [(self.db_path, get_gamertag_from_db_path(self.db_path) or "")]
 
+        # v5.1 : récupérer les match infos depuis shared_matches.duckdb
         matches_by_xuid: dict[str, list[tuple[Any, ...]]] = {}
-        for db_path, xuid in player_dbs:
+        shared_path = get_shared_matches_path_from_player(self.db_path)
+        if shared_path and shared_path.exists():
             try:
-                with duckdb.connect(str(db_path), read_only=True) as c:
-                    try:
-                        rows = c.execute(
-                            """
-                            SELECT match_id, start_time, time_played_seconds,
-                                   COALESCE(map_id, ''), COALESCE(map_name, '')
-                            FROM match_stats WHERE start_time IS NOT NULL
-                            """
-                        ).fetchall()
-                    except Exception:
-                        rows = c.execute(
-                            """
-                            SELECT match_id, start_time, time_played_seconds, '', ''
-                            FROM match_stats WHERE start_time IS NOT NULL
-                            """
-                        ).fetchall()
-                    matches_by_xuid[str(xuid)] = rows
-            except Exception:
+                with duckdb.connect(str(shared_path), read_only=True) as c:
+                    for _db_path_iter, xuid in player_dbs:
+                        try:
+                            rows = c.execute(
+                                """
+                                SELECT mp.match_id, mr.start_time,
+                                       COALESCE(mr.duration_seconds, 720),
+                                       COALESCE(mr.map_id, ''), COALESCE(mr.map_name, '')
+                                FROM match_participants mp
+                                JOIN match_registry mr ON mp.match_id = mr.match_id
+                                WHERE mp.xuid = ? AND mr.start_time IS NOT NULL
+                                """,
+                                [str(xuid)],
+                            ).fetchall()
+                            matches_by_xuid[str(xuid)] = rows
+                        except Exception:
+                            matches_by_xuid[str(xuid)] = []
+            except Exception as e:
+                logger.warning("associate_with_matches shared_db: %s", e)
+        else:
+            # Fallback : pas de shared DB disponible
+            for _db_path, xuid in player_dbs:
                 matches_by_xuid[str(xuid)] = []
 
         tol_seconds = tolerance_minutes * 60
@@ -747,26 +765,52 @@ class MediaIndexer:
         db_path = Path(db_path)
         if not db_path.exists():
             return pl.DataFrame()
+        # Ne PAS appeler ensure_schema() ici : il ouvre en write et entre
+        # en conflit avec la connexion read-only déjà active de Streamlit.
+        # On vérifie simplement l'existence des tables en lecture seule.
         try:
-            MediaIndexer(db_path).ensure_schema()
+            with duckdb.connect(str(db_path), read_only=True) as _c:
+                _tables = {
+                    r[0]
+                    for r in _c.execute(
+                        "SELECT table_name FROM information_schema.tables "
+                        "WHERE table_schema = 'main' AND table_name IN ('media_files', 'media_match_associations')"
+                    ).fetchall()
+                }
+                if "media_files" not in _tables:
+                    return pl.DataFrame()
         except Exception as e:
-            logger.warning("load_media_for_ui ensure_schema: %s", e)
+            logger.warning("load_media_for_ui schema check: %s", e)
             return pl.DataFrame()
 
         cu = str(current_xuid or "")
         current_resolved = db_path.resolve()
         player_dbs = MediaIndexer._get_all_player_dbs()
 
-        # 1) Match_ids du joueur courant
+        # 1) Match_ids du joueur courant (v5.1 : player_match_enrichment + shared)
         match_ids_current: set[str] = set()
         try:
             with duckdb.connect(str(db_path), read_only=True) as c:
                 rows = c.execute(
-                    "SELECT DISTINCT match_id FROM match_stats WHERE match_id IS NOT NULL"
+                    "SELECT DISTINCT match_id FROM player_match_enrichment WHERE match_id IS NOT NULL"
                 ).fetchall()
                 match_ids_current = {str(r[0]).strip() for r in rows if r[0]}
         except Exception:
             pass
+        # Compléter avec shared_matches.duckdb si disponible
+        if not match_ids_current:
+            shared_path = get_shared_matches_path_from_player(db_path)
+            if shared_path and shared_path.exists() and cu:
+                try:
+                    with duckdb.connect(str(shared_path), read_only=True) as c:
+                        rows = c.execute(
+                            "SELECT DISTINCT mp.match_id FROM match_participants mp "
+                            "WHERE mp.xuid = ? AND mp.match_id IS NOT NULL",
+                            [cu],
+                        ).fetchall()
+                        match_ids_current = {str(r[0]).strip() for r in rows if r[0]}
+                except Exception:
+                    pass
 
         # 2) Charger médias DB courante (mine + unassigned)
         df_current = pl.DataFrame()

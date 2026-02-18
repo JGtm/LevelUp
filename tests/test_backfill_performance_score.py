@@ -67,6 +67,7 @@ def _create_shared_conn(
             team_mmr FLOAT,
             shots_fired INTEGER,
             shots_hit INTEGER,
+            enemy_mmr FLOAT,
             PRIMARY KEY (match_id, xuid)
         )
     """)
@@ -271,6 +272,7 @@ class TestComputePerformanceScoreForMatch:
                 time_played_seconds INTEGER, avg_life_seconds FLOAT,
                 personal_score INTEGER, damage_dealt FLOAT,
                 rank SMALLINT, team_mmr FLOAT,
+                enemy_mmr FLOAT,
                 PRIMARY KEY (match_id, xuid)
             )
         """)

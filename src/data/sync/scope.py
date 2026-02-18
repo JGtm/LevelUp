@@ -26,6 +26,7 @@ _FORCE_MAP: dict[str, str] = {
     "force_medals": "medals",
     "force_accuracy": "accuracy",
     "force_shots": "shots",
+    "force_skill": "skill",
     "force_performance_scores": "performance_scores",
     "force_participants_shots": "participants_shots",
     "force_participants_damage": "participants_damage",
@@ -133,7 +134,10 @@ class SyncScope:
     participants_enrich: bool = False
 
     # ── Flags force ──────────────────────────────────────────────────────
+    # Quand force_X = True, le backfill re-traite TOUS les matchs pour
+    # le type X, même ceux déjà peuplés. Utile après correction de bugs.
     force_medals: bool = False
+    force_skill: bool = False  # Ajouté v5.1 : force rescan MMR + expected/stddev
     force_accuracy: bool = False
     force_shots: bool = False
     force_performance_scores: bool = False

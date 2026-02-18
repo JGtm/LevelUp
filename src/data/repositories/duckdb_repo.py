@@ -14,9 +14,13 @@ Les archives Parquet peuvent être lues via `load_matches_from_archives()`.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import re
+import threading
+import time
+import weakref
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -31,6 +35,41 @@ from src.data.repositories._materialized_views import MaterializedViewsMixin
 from src.data.repositories._roster_loader import RosterLoaderMixin
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Registre global des instances DuckDBRepository (weakref)
+# Permet de fermer les connexions existantes lorsqu'un autre composant
+# (ex. MediaIndexer) a besoin d'ouvrir la même DB avec un mode différent.
+# ---------------------------------------------------------------------------
+_instances: weakref.WeakSet[DuckDBRepository] = weakref.WeakSet()  # type: ignore[name-defined]
+_instances_lock = threading.Lock()
+
+
+def release_db_connections(db_path: str | Path) -> int:
+    """Ferme toutes les connexions DuckDBRepository ouvertes vers *db_path*.
+
+    Les repositories concernés se reconnecteront paresseusement lors du
+    prochain appel à ``_get_connection()``.
+
+    Returns:
+        Nombre de connexions fermées.
+    """
+    target = str(Path(db_path).resolve())
+    closed = 0
+    with _instances_lock:
+        for repo in list(_instances):
+            try:
+                if str(repo._player_db_path.resolve()) == target and repo._connection is not None:
+                    with contextlib.suppress(Exception):
+                        repo._connection.close()
+                    repo._connection = None
+                    repo._attached_dbs.clear()
+                    closed += 1
+            except Exception:
+                pass
+    if closed:
+        logger.debug("release_db_connections: %d connexion(s) fermée(s) pour %s", closed, db_path)
+    return closed
 
 
 class DuckDBRepository(
@@ -96,6 +135,10 @@ class DuckDBRepository(
         # Connexion DuckDB (lazy loading)
         self._connection: duckdb.DuckDBPyConnection | None = None
         self._attached_dbs: set[str] = set()
+
+        # Enregistrement dans le registre global (weakref)
+        with _instances_lock:
+            _instances.add(self)
 
         # Cache de schéma (v5.1 perf) — évite les requêtes information_schema répétées
         self._schema_cache: dict[str, bool] = {}
@@ -216,6 +259,10 @@ class DuckDBRepository(
         """
         Retourne une connexion DuckDB vers la DB joueur.
         (Returns DuckDB connection to player DB)
+
+        Intègre un retry automatique si la DB est temporairement ouverte
+        par un autre composant avec un mode d'accès différent (ex. MediaIndexer
+        en read_write pendant que le repo est read_only).
         """
         if self._connection is None:
             if not self._player_db_path.exists():
@@ -223,11 +270,26 @@ class DuckDBRepository(
                     f"Base de données joueur non trouvée: {self._player_db_path}"
                 )
 
-            # Connexion à la DB joueur
-            self._connection = duckdb.connect(
-                str(self._player_db_path),
-                read_only=self._read_only,
-            )
+            # Connexion à la DB joueur — retry si conflit de configuration
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    self._connection = duckdb.connect(
+                        str(self._player_db_path),
+                        read_only=self._read_only,
+                    )
+                    break
+                except Exception as e:
+                    if "different configuration" in str(e).lower() and attempt < max_retries - 1:
+                        logger.debug(
+                            "DB %s occupée par un autre mode d'accès, retry %d/%d",
+                            self._player_db_path.name,
+                            attempt + 1,
+                            max_retries,
+                        )
+                        time.sleep(1.0)
+                        continue
+                    raise
 
             # Configuration
             self._connection.execute(f"SET memory_limit = '{self._memory_limit}'")
@@ -1256,16 +1318,7 @@ class DuckDBRepository(
         try:
             result = conn.execute(
                 """
-                SELECT event_type, time_ms,
-                       CASE WHEN event_type IN ('kill', 'Kill') THEN killer_xuid
-                            WHEN event_type IN ('death', 'Death') THEN victim_xuid
-                            ELSE COALESCE(killer_xuid, victim_xuid)
-                       END AS xuid,
-                       CASE WHEN event_type IN ('kill', 'Kill') THEN killer_gamertag
-                            WHEN event_type IN ('death', 'Death') THEN victim_gamertag
-                            ELSE COALESCE(killer_gamertag, victim_gamertag)
-                       END AS gamertag,
-                       type_hint
+                SELECT event_type, time_ms, xuid, gamertag, type_hint
                 FROM shared.highlight_events
                 WHERE match_id = ?
                 ORDER BY time_ms ASC NULLS LAST

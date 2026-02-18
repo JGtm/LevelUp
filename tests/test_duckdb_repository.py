@@ -8,10 +8,101 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import duckdb
 import pytest
 
 # Skip si DuckDB n'est pas disponible
 pytest.importorskip("duckdb")
+
+
+class TestReleaseDbConnections:
+    """Tests pour release_db_connections et le retry _get_connection."""
+
+    def test_release_closes_matching_connection(self, tmp_path: Path) -> None:
+        """release_db_connections ferme la connexion du repo ciblé."""
+        from src.data.repositories.duckdb_repo import (
+            DuckDBRepository,
+            release_db_connections,
+        )
+
+        db_file = tmp_path / "player.duckdb"
+        duckdb.connect(str(db_file)).close()  # créer le fichier
+
+        repo = DuckDBRepository(str(db_file), xuid="x1")
+        conn = repo._get_connection()
+        assert conn is not None
+
+        closed = release_db_connections(db_file)
+        assert closed == 1
+        assert repo._connection is None
+        assert len(repo._attached_dbs) == 0
+
+    def test_release_does_not_close_other_db(self, tmp_path: Path) -> None:
+        """release_db_connections n'affecte pas les connexions vers d'autres fichiers."""
+        from src.data.repositories.duckdb_repo import (
+            DuckDBRepository,
+            release_db_connections,
+        )
+
+        db_a = tmp_path / "a.duckdb"
+        db_b = tmp_path / "b.duckdb"
+        duckdb.connect(str(db_a)).close()
+        duckdb.connect(str(db_b)).close()
+
+        repo_a = DuckDBRepository(str(db_a), xuid="x1")
+        repo_b = DuckDBRepository(str(db_b), xuid="x2")
+        repo_a._get_connection()
+        repo_b._get_connection()
+
+        closed = release_db_connections(db_a)
+        assert closed == 1
+        assert repo_a._connection is None
+        # repo_b doit rester ouvert
+        assert repo_b._connection is not None
+
+    def test_repo_reconnects_after_release(self, tmp_path: Path) -> None:
+        """Le repo se reconnecte automatiquement après un release."""
+        from src.data.repositories.duckdb_repo import (
+            DuckDBRepository,
+            release_db_connections,
+        )
+
+        db_file = tmp_path / "player.duckdb"
+        duckdb.connect(str(db_file)).close()
+
+        repo = DuckDBRepository(str(db_file), xuid="x1")
+        repo._get_connection()
+
+        release_db_connections(db_file)
+        assert repo._connection is None
+
+        # Reconnexion automatique
+        new_conn = repo._get_connection()
+        assert new_conn is not None
+
+    def test_media_indexer_after_release(self, tmp_path: Path) -> None:
+        """Après release, un MediaIndexer peut ouvrir la même DB en écriture."""
+        from src.data.repositories.duckdb_repo import (
+            DuckDBRepository,
+            release_db_connections,
+        )
+
+        db_file = tmp_path / "player.duckdb"
+        duckdb.connect(str(db_file)).close()
+
+        # Ouvrir en read_only (comme le fait le cache Streamlit)
+        repo = DuckDBRepository(str(db_file), xuid="x1", read_only=True)
+        repo._get_connection()
+
+        # Sans release, ouvrir en read_write échoue
+        with pytest.raises(Exception, match="(?i)different configuration"):
+            duckdb.connect(str(db_file), read_only=False)
+
+        # Après release, ça fonctionne
+        release_db_connections(db_file)
+        write_conn = duckdb.connect(str(db_file), read_only=False)
+        write_conn.execute("CREATE TABLE IF NOT EXISTS test_t (id INT)")
+        write_conn.close()
 
 
 class TestDuckDBRepositoryImport:

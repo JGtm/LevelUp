@@ -48,6 +48,7 @@ from src.data.sync.batch_insert import (
 from src.data.sync.migrations import (
     BACKFILL_FLAGS,
     ensure_backfill_completed_column,
+    ensure_career_progression_autoincrement,
     ensure_highlight_events_autoincrement,
     ensure_player_performance_indexes,
 )
@@ -215,8 +216,9 @@ CREATE TABLE IF NOT EXISTS sync_meta (
 );
 
 -- Table career_progression (Phase 5 - Rang carrière)
+CREATE SEQUENCE IF NOT EXISTS career_progression_id_seq;
 CREATE TABLE IF NOT EXISTS career_progression (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT nextval('career_progression_id_seq'),
     xuid VARCHAR NOT NULL,
     rank INTEGER NOT NULL,
     rank_name VARCHAR,
@@ -394,6 +396,9 @@ class DuckDBSyncEngine:
         # S'assurer que la séquence pour highlight_events existe (migration)
         self._ensure_highlight_events_sequence()
 
+        # S'assurer que la séquence pour career_progression existe (migration)
+        self._ensure_career_progression_sequence()
+
         # Colonne bitmask backfill_completed (migration)
         ensure_backfill_completed_column(conn)
 
@@ -438,6 +443,13 @@ class DuckDBSyncEngine:
         if conn is None:
             return
         ensure_highlight_events_autoincrement(conn)
+
+    def _ensure_career_progression_sequence(self) -> None:
+        """S'assure que career_progression.id utilise une séquence auto-increment."""
+        conn = self._connection
+        if conn is None:
+            return
+        ensure_career_progression_autoincrement(conn)
 
     def _resolve_xuid_from_db(self) -> str:
         """Résout le XUID depuis la DB joueur (fallback si non fourni).
@@ -658,6 +670,18 @@ class DuckDBSyncEngine:
             ):
                 perf_count = self.batch_compute_performance_scores()
                 logger.info(f"Performance scores calculés en batch : {perf_count}")
+
+            # Sync du career rank (progression de rang) si activé
+            if options.with_career_rank:
+                try:
+                    career_data = await self.sync_career_rank()
+                    if career_data:
+                        logger.info(
+                            f"Career rank sync: {self._gamertag} → "
+                            f"Rang {career_data.current_rank}"
+                        )
+                except Exception as e:
+                    logger.warning(f"Career rank sync échoué (non bloquant): {e}")
 
             # Mettre à jour les métadonnées
             self._update_sync_meta("last_sync_at", datetime.now(timezone.utc).isoformat())
@@ -1002,6 +1026,39 @@ class DuckDBSyncEngine:
                 if alias_rows:
                     self._insert_shared_aliases(shared_conn, alias_rows)
 
+                # ✅ Écrire team_mmr/enemy_mmr + expected/stddev dans match_participants (V5.1)
+                # Pipeline skill complet : les 8 colonnes MMR/expected/stddev sont écrites
+                # avec COALESCE pour ne pas écraser les valeurs déjà présentes.
+                # enemy_mmr : corrigé v5.1 (était ignoré avant dans le transformer)
+                # assists_expected/stddev : toujours NULL (limitation API Halo)
+                if _skill_row and (
+                    _skill_row.team_mmr is not None or _skill_row.enemy_mmr is not None
+                ):
+                    shared_conn.execute(
+                        "UPDATE match_participants SET "
+                        "team_mmr = COALESCE(?, team_mmr), "
+                        "enemy_mmr = COALESCE(?, enemy_mmr), "
+                        "kills_expected = COALESCE(?, kills_expected), "
+                        "kills_stddev = COALESCE(?, kills_stddev), "
+                        "deaths_expected = COALESCE(?, deaths_expected), "
+                        "deaths_stddev = COALESCE(?, deaths_stddev), "
+                        "assists_expected = COALESCE(?, assists_expected), "
+                        "assists_stddev = COALESCE(?, assists_stddev) "
+                        "WHERE match_id = ? AND xuid = ?",
+                        (
+                            _skill_row.team_mmr,
+                            _skill_row.enemy_mmr,
+                            _skill_row.kills_expected,
+                            _skill_row.kills_stddev,
+                            _skill_row.deaths_expected,
+                            _skill_row.deaths_stddev,
+                            _skill_row.assists_expected,
+                            _skill_row.assists_stddev,
+                            match_id,
+                            self._xuid,
+                        ),
+                    )
+
                 # Incrémenter player_count
                 shared_conn.execute(
                     "UPDATE match_registry "
@@ -1157,6 +1214,38 @@ class DuckDBSyncEngine:
             if skill_json:
                 _skill_row = transform_skill_stats(skill_json, match_id, self._xuid)
 
+            # ✅ Écrire team_mmr/enemy_mmr + expected/stddev dans shared.match_participants (V5.1)
+            # Même pipeline que ci-dessus, deuxième chemin de code (match existant vs nouveau)
+            # COALESCE préserve les valeurs déjà présentes.
+            if _skill_row and (_skill_row.team_mmr is not None or _skill_row.enemy_mmr is not None):
+                async with self._shared_db_lock:
+                    shared_conn = self._get_shared_connection()
+                    if shared_conn:
+                        shared_conn.execute(
+                            "UPDATE match_participants SET "
+                            "team_mmr = COALESCE(?, team_mmr), "
+                            "enemy_mmr = COALESCE(?, enemy_mmr), "
+                            "kills_expected = COALESCE(?, kills_expected), "
+                            "kills_stddev = COALESCE(?, kills_stddev), "
+                            "deaths_expected = COALESCE(?, deaths_expected), "
+                            "deaths_stddev = COALESCE(?, deaths_stddev), "
+                            "assists_expected = COALESCE(?, assists_expected), "
+                            "assists_stddev = COALESCE(?, assists_stddev) "
+                            "WHERE match_id = ? AND xuid = ?",
+                            (
+                                _skill_row.team_mmr,
+                                _skill_row.enemy_mmr,
+                                _skill_row.kills_expected,
+                                _skill_row.kills_stddev,
+                                _skill_row.deaths_expected,
+                                _skill_row.deaths_stddev,
+                                _skill_row.assists_expected,
+                                _skill_row.assists_stddev,
+                                match_id,
+                                self._xuid,
+                            ),
+                        )
+
             from src.data.sync.transformers import extract_medals
 
             _medal_rows_personal = extract_medals(stats_json, self._xuid)
@@ -1290,15 +1379,20 @@ class DuckDBSyncEngine:
     ) -> None:
         """Insère les participants dans shared.match_participants.
 
+        Architecture v5.1 :
+            Utilise batch_upsert_participants() (ON CONFLICT DO UPDATE SET)
+            au lieu de l'ancien batch_upsert_rows() (INSERT OR REPLACE) qui
+            détruisait les colonnes MMR déjà peuplées par le pipeline skill.
+
         Args:
             shared_conn: Connexion vers shared_matches.duckdb.
             participants: Liste de MatchParticipantRow.
         """
         if not participants:
             return
-        from src.data.sync.batch_insert import batch_upsert_rows
+        from src.data.sync.batch_insert import batch_upsert_participants
 
-        batch_upsert_rows(shared_conn, "match_participants", participants, PARTICIPANT_COLUMNS)
+        batch_upsert_participants(shared_conn, participants, PARTICIPANT_COLUMNS)
 
     def _insert_shared_events(
         self,
@@ -1378,7 +1472,14 @@ class DuckDBSyncEngine:
     ) -> None:
         """Calcule et met à jour le score de performance pour un match.
 
-        Note: Chaque DB DuckDB est spécifique à un joueur, donc pas besoin de filtrer par xuid.
+        Architecture v5.1 :
+            Lit team_mmr et enemy_mmr directement depuis mp.enemy_mmr dans
+            shared.match_participants (corrigé : remplace l'ancienne sous-requête
+            corrélée qui calculait la moyenne de l'équipe adverse).
+            Écrit dans player_match_enrichment (player DB).
+
+        Note: Chaque DB DuckDB est spécifique à un joueur, donc pas besoin
+        de filtrer par xuid dans la player DB.
 
         Args:
             match_id: ID du match
@@ -1431,9 +1532,8 @@ class DuckDBSyncEngine:
                     mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
                     mp.time_played_seconds, mp.avg_life_seconds,
                     mp.personal_score, mp.damage_dealt,
-                    mp.rank, mp.team_mmr,
-                    (SELECT p2.team_mmr FROM match_participants p2
-                     WHERE p2.match_id = mr.match_id AND p2.team_id != mp.team_id LIMIT 1) AS enemy_mmr
+                    mp.rank, mp.team_mmr, mp.enemy_mmr,
+                    mp.kills_expected, mp.deaths_expected
                 FROM match_registry mr
                 JOIN match_participants mp ON mr.match_id = mp.match_id
                 WHERE mp.xuid = ?
@@ -1451,7 +1551,7 @@ class DuckDBSyncEngine:
                 )
                 return
 
-            # Convertir match_row en dict pour le calcul v4
+            # Convertir match_row en dict pour le calcul v5
             match_dict = {
                 "kills": match_row.kills or 0,
                 "deaths": match_row.deaths or 0,
@@ -1464,6 +1564,8 @@ class DuckDBSyncEngine:
                 "rank": getattr(match_row, "rank", None),
                 "team_mmr": getattr(match_row, "team_mmr", None),
                 "enemy_mmr": getattr(match_row, "enemy_mmr", None),
+                "kills_expected": getattr(match_row, "kills_expected", None),
+                "deaths_expected": getattr(match_row, "deaths_expected", None),
             }
 
             # Calculer le score
@@ -1498,6 +1600,11 @@ class DuckDBSyncEngine:
         Utilise le calcul vectorisé de compute_relative_performance_score()
         avec un chargement unique de l'historique complet.
 
+        Architecture v5.1 :
+            team_mmr et enemy_mmr sont lus directement depuis
+            shared.match_participants (mp.enemy_mmr). Corrigé v5.1 :
+            remplace l'ancienne sous-requête corrélée.
+
         Returns:
             Nombre de matchs mis à jour.
         """
@@ -1515,7 +1622,7 @@ class DuckDBSyncEngine:
             conn = self._get_connection()
             self._ensure_performance_score_column()
 
-            # 1. Charger TOUS les matchs triés par date depuis shared
+            # 1. Charger TOUS les matchs triés par date depuis shared (SANS le JOIN cross-DB)
             all_matches_df = shared_conn.execute(
                 """
                 SELECT
@@ -1523,13 +1630,10 @@ class DuckDBSyncEngine:
                     mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
                     mp.time_played_seconds, mp.avg_life_seconds,
                     mp.personal_score, mp.damage_dealt,
-                    mp.rank, mp.team_mmr,
-                    (SELECT p2.team_mmr FROM match_participants p2
-                     WHERE p2.match_id = mr.match_id AND p2.team_id != mp.team_id LIMIT 1) AS enemy_mmr,
-                    pme.performance_score
+                    mp.rank, mp.team_mmr, mp.enemy_mmr,
+                    mp.kills_expected, mp.deaths_expected
                 FROM match_registry mr
                 JOIN match_participants mp ON mr.match_id = mp.match_id
-                LEFT JOIN player_match_enrichment pme ON mr.match_id = pme.match_id
                 WHERE mp.xuid = ?
                   AND mr.start_time IS NOT NULL
                 ORDER BY mr.start_time ASC
@@ -1540,16 +1644,29 @@ class DuckDBSyncEngine:
             if all_matches_df.is_empty():
                 return 0
 
-            # 2. Identifier les matchs sans score
-            null_mask = all_matches_df["performance_score"].is_null()
-            if not null_mask.any():
+            # 2. Charger les performance_score existants depuis la DB joueur
+            try:
+                existing_scores_df = conn.execute(
+                    """SELECT match_id, performance_score
+                       FROM player_match_enrichment
+                       WHERE performance_score IS NOT NULL"""
+                ).pl()
+                existing_match_ids = set(existing_scores_df["match_id"].to_list())
+            except Exception:
+                # Table peut ne pas exister ou être vide
+                existing_match_ids = set()
+
+            # 3. Identifier les matchs sans score
+            match_ids = all_matches_df["match_id"].to_list()
+            null_mask = [mid not in existing_match_ids for mid in match_ids]
+
+            if not any(null_mask):
                 logger.info("Tous les matchs ont déjà un performance_score")
                 return 0
 
-            # 3. Calculer le score pour chaque match NULL
+            # 4. Calculer le score pour chaque match NULL
             #    en utilisant l'historique des matchs précédents
             updates: list[tuple[str, float, str]] = []
-            match_ids = all_matches_df["match_id"].to_list()
             now = datetime.now(timezone.utc)
 
             for i in range(len(all_matches_df)):
@@ -1561,7 +1678,7 @@ class DuckDBSyncEngine:
                     continue
 
                 # Historique = tous les matchs AVANT l'index i
-                history_df = all_matches_df.slice(0, i).drop("performance_score")
+                history_df = all_matches_df.slice(0, i)
 
                 # Match courant en dict
                 row = all_matches_df.row(i, named=True)
@@ -1577,6 +1694,8 @@ class DuckDBSyncEngine:
                     "rank": row.get("rank"),
                     "team_mmr": row.get("team_mmr"),
                     "enemy_mmr": row.get("enemy_mmr"),
+                    "kills_expected": row.get("kills_expected"),
+                    "deaths_expected": row.get("deaths_expected"),
                 }
 
                 score = compute_relative_performance_score(match_dict, history_df)
@@ -1584,7 +1703,7 @@ class DuckDBSyncEngine:
                     # V5 finale : UPDATE player_match_enrichment
                     updates.append((match_ids[i], score, str(now)))
 
-            # 4. Batch UPSERT dans player_match_enrichment
+            # 5. Batch UPSERT dans player_match_enrichment
             if updates:
                 for match_id, score, updated_at in updates:
                     conn.execute(

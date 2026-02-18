@@ -274,6 +274,13 @@ def compute_performance_score_for_match(
     Lit depuis shared.match_participants + match_registry,
     écrit dans player_match_enrichment (player DB).
 
+    Architecture v5.1 :
+        Le calcul utilise team_mmr et enemy_mmr directement depuis
+        mp.enemy_mmr (corrigé v5.1 : remplace l'ancienne sous-requête
+        corrélée qui calculait la moyenne de l'équipe adverse).
+        Le rank_perf (composante de rang) utilise le delta MMR pour
+        ajuster le score selon la difficulté de l'adversaire.
+
     Args:
         conn: Connexion DuckDB (player DB pour player_match_enrichment).
         match_id: ID du match.
@@ -318,7 +325,8 @@ def compute_performance_score_for_match(
             """
             SELECT mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
                    mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
-                   mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr
+                   mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr,
+                   mp.enemy_mmr, mp.kills_expected, mp.deaths_expected
             FROM match_participants mp
             JOIN match_registry mr ON mr.match_id = mp.match_id
             WHERE mp.match_id = ? AND mp.xuid = ?
@@ -340,7 +348,8 @@ def compute_performance_score_for_match(
                 SELECT
                     mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
                     mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
-                    mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr
+                    mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr,
+                    mp.enemy_mmr, mp.kills_expected, mp.deaths_expected
                 FROM match_participants mp
                 JOIN match_registry mr ON mr.match_id = mp.match_id
                 WHERE mp.xuid = ?
@@ -370,7 +379,9 @@ def compute_performance_score_for_match(
             "damage_dealt": match_data[10],
             "rank": match_data[11],
             "team_mmr": match_data[12],
-            "enemy_mmr": match_data[13] if len(match_data) > 13 else None,
+            "enemy_mmr": match_data[13],
+            "kills_expected": match_data[14],
+            "deaths_expected": match_data[15],
         }
 
         score = compute_relative_performance_score(match_dict, history_df)

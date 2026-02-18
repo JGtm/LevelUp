@@ -231,6 +231,7 @@ async def backfill_player_data(
     force_medals = scope.force_medals
     force_accuracy = scope.force_accuracy
     force_shots = scope.force_shots
+    # force_skill est utilisé via scope dans find_matches_missing_data()
     force_participants_shots = scope.force_participants_shots
     force_participants_damage = scope.force_participants_damage
     force_participants_avg_life = scope.force_participants_avg_life
@@ -845,6 +846,7 @@ async def _backfill_with_api(
     force_medals = scope.force_medals
     force_accuracy = scope.force_accuracy
     force_shots = scope.force_shots
+    # force_skill est utilisé via scope dans find_matches_missing_data()
     force_performance_scores = scope.force_performance_scores
     force_enemy_mmr = scope.force_enemy_mmr
     force_end_time = scope.force_end_time
@@ -1330,7 +1332,13 @@ def _update_enemy_mmr(
     xuid: str,
     force: bool,
 ) -> None:
-    """Met à jour enemy_mmr pour un match dans shared.match_participants (V5)."""
+    """Met à jour enemy_mmr pour un match dans shared.match_participants (V5).
+
+    Pipeline v5.1 : enemy_mmr est désormais correctement extrait par le
+    transformer (corrigé : était ignoré `_ = mmr_data`).
+    Cette fonction écrit aussi les 6 colonnes expected/stddev via
+    _upsert_skill_to_participants().
+    """
     from src.data.sync.transformers import transform_skill_stats
 
     skill_row = transform_skill_stats(skill_json, match_id, xuid)
@@ -1349,12 +1357,13 @@ def _update_enemy_mmr(
         elif existing[0] is None:
             # Mettre à jour les colonnes MMR dans match_participants
             shared_conn.execute(
-                "UPDATE match_participants SET team_mmr = ?, kills_expected = ?, "
+                "UPDATE match_participants SET team_mmr = ?, enemy_mmr = ?, kills_expected = ?, "
                 "kills_stddev = ?, deaths_expected = ?, deaths_stddev = ?, "
                 "assists_expected = ?, assists_stddev = ? "
                 "WHERE match_id = ? AND xuid = ?",
                 (
                     skill_row.team_mmr,
+                    getattr(skill_row, "enemy_mmr", None),
                     skill_row.kills_expected,
                     skill_row.kills_stddev,
                     skill_row.deaths_expected,
@@ -1370,8 +1379,15 @@ def _update_enemy_mmr(
 def _upsert_skill_to_participants(conn: Any, skill_row: Any, xuid: str) -> int:
     """Upsert les données skill/MMR dans match_participants (V5).
 
-    Remplace insert_skill_row (qui écrit dans player_match_stats) :
+    Remplace insert_skill_row (qui écrivait dans player_match_stats) :
     en V5, les colonnes MMR sont dans shared.match_participants.
+
+    Pipeline v5.1 complet :
+        team_mmr, enemy_mmr, kills_expected, kills_stddev,
+        deaths_expected, deaths_stddev, assists_expected, assists_stddev.
+
+    ⚠️ assists_expected/assists_stddev : toujours NULL (limitation API Halo,
+    StatPerformances ne fournit que Kills et Deaths).
 
     Returns:
         1 si mis à jour, 0 sinon.
@@ -1381,13 +1397,14 @@ def _upsert_skill_to_participants(conn: Any, skill_row: Any, xuid: str) -> int:
     try:
         conn.execute(
             "UPDATE match_participants SET "
-            "team_mmr = ?, "
+            "team_mmr = ?, enemy_mmr = ?, "
             "kills_expected = ?, kills_stddev = ?, "
             "deaths_expected = ?, deaths_stddev = ?, "
             "assists_expected = ?, assists_stddev = ? "
             "WHERE match_id = ? AND xuid = ?",
             (
                 skill_row.team_mmr,
+                getattr(skill_row, "enemy_mmr", None),
                 skill_row.kills_expected,
                 skill_row.kills_stddev,
                 skill_row.deaths_expected,

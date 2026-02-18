@@ -275,6 +275,25 @@ def _background_media_indexing(settings, db_path: str) -> None:
             from src.data.media_indexer import MediaIndexer
             from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR
 
+            def _index_media_for_player(
+                db_file: Path, gamertag: str, captures_dir: Path, tolerance: int
+            ) -> None:
+                """Indexe les médias d'un joueur (scan, association, thumbnails)."""
+                indexer = MediaIndexer(db_file)
+                result = indexer.scan_and_index(
+                    player_captures_dir=captures_dir,
+                    force_rescan=False,
+                )
+                n_associated = indexer.associate_with_matches(tolerance_minutes=tolerance)
+                n_thumb_gen, _n_thumb_err = indexer.generate_thumbnails_for_new(
+                    videos_dir=captures_dir,
+                    screens_dir=captures_dir,
+                )
+                logger.info(
+                    f"✅ {gamertag}: {result.n_new + result.n_updated} médias, "
+                    f"{n_associated} assoc., {n_thumb_gen} thumbs"
+                )
+
             tolerance = int(getattr(settings, "media_tolerance_minutes", 5) or 5)
             base_path = Path(base_dir) if base_dir else None
 
@@ -290,20 +309,52 @@ def _background_media_indexing(settings, db_path: str) -> None:
                     player_captures = base_path / gamertag
                     if not player_captures.exists():
                         continue
-                    indexer = MediaIndexer(db_file)
-                    result = indexer.scan_and_index(
-                        player_captures_dir=player_captures,
-                        force_rescan=False,
-                    )
-                    n_associated = indexer.associate_with_matches(tolerance_minutes=tolerance)
-                    n_thumb_gen, n_thumb_err = indexer.generate_thumbnails_for_new(
-                        videos_dir=player_captures,
-                        screens_dir=player_captures,
-                    )
-                    logger.info(
-                        f"✅ {gamertag}: {result.n_new + result.n_updated} médias, "
-                        f"{n_associated} assoc., {n_thumb_gen} thumbs"
-                    )
+                    try:
+                        _index_media_for_player(db_file, gamertag, player_captures, tolerance)
+                    except Exception as player_err:
+                        err_str = str(player_err).lower()
+                        if "different configuration" in err_str:
+                            # Conflit read_only vs read_write dans le même
+                            # processus (repo Streamlit read_only encore ouvert).
+                            # On ferme les connexions existantes et on réessaie.
+                            from src.data.repositories.duckdb_repo import (
+                                release_db_connections,
+                            )
+
+                            n_closed = release_db_connections(db_file)
+                            if n_closed > 0:
+                                logger.info(
+                                    "🔄 %d connexion(s) read_only fermée(s) pour %s, "
+                                    "réessai indexation médias",
+                                    n_closed,
+                                    gamertag,
+                                )
+                                try:
+                                    _index_media_for_player(
+                                        db_file,
+                                        gamertag,
+                                        player_captures,
+                                        tolerance,
+                                    )
+                                except Exception as retry_err:
+                                    logger.warning(
+                                        "⏭️ Indexation médias %s échouée après retry: %s",
+                                        gamertag,
+                                        retry_err,
+                                    )
+                            else:
+                                logger.warning(
+                                    "⏭️ Indexation médias %s ignorée (conflit DB): %s",
+                                    gamertag,
+                                    player_err,
+                                )
+                        else:
+                            # DB verrouillée par un autre processus (backfill, sync)
+                            logger.warning(
+                                "⏭️ Indexation médias %s ignorée (DB verrouillée ?): %s",
+                                gamertag,
+                                player_err,
+                            )
             else:
                 # Legacy : deux dossiers globaux, DB courante uniquement
                 videos_path = (
@@ -546,7 +597,11 @@ def main() -> None:
             key="page",
             label_visibility="collapsed",
         )
-        render_settings_page(
+        # Import lazy — nécessaire quand HAS_NAVIGATION=True (Streamlit >= 1.36)
+        # car l'import eager est conditionnel (if not HAS_NAVIGATION)
+        from src.ui.pages import render_settings_page as _render_settings_empty
+
+        _render_settings_empty(
             settings,
             get_local_dbs_fn=cached_list_local_dbs,
             on_clear_caches_fn=_clear_app_caches,
