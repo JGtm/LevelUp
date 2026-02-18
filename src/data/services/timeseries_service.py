@@ -188,7 +188,7 @@ class TimeseriesService:
 
     @staticmethod
     def compute_rolling_win_rate(dff: pl.DataFrame) -> RollingWinRateData:
-        """Calcule la distribution du taux de victoire glissant (fenêtre 10).
+        """Calcule la distribution du taux de victoire glissant (fenêtre 5).
 
         Args:
             dff: DataFrame Polars filtré avec outcome et start_time.
@@ -204,7 +204,7 @@ class TimeseriesService:
                 not_enough_matches=False,
             )
 
-        if len(dff) < 10:
+        if len(dff) < 5:
             return RollingWinRateData(
                 values=pl.Series(dtype=pl.Float64),
                 has_data=False,
@@ -214,7 +214,7 @@ class TimeseriesService:
 
         _wr_df = dff.sort("start_time") if "start_time" in dff.columns else dff
         _wins = (_wr_df["outcome"] == 1).cast(pl.Float64)
-        win_rate_rolling = _wins.rolling_mean(window_size=10, min_samples=10) * 100
+        win_rate_rolling = _wins.rolling_mean(window_size=5, min_samples=5) * 100
         win_rate_clean = win_rate_rolling.drop_nulls()
 
         return RollingWinRateData(

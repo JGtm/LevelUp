@@ -289,7 +289,7 @@ def render_multi_teammate_view(
             enrich_series_fn=enrich_series_fn,
         )
 
-    # Impact & Taquinerie (si ≥2 amis)
+    # Impact (si ≥2 amis)
     if len(picked_xuids) >= 2:
         impact_match_ids = list(all_match_ids) if all_match_ids else []
         render_impact_taquinerie(

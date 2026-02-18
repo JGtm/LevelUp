@@ -6,7 +6,7 @@ Ce module est le point d'entrée de la page. Les fonctions de rendu lourdes
 sont déléguées aux sous-modules :
 - teammates_views.py     : vues single / multi / trio
 - teammates_synergy.py   : radars de complémentarité
-- teammates_impact.py    : onglet Impact & Taquinerie
+- teammates_impact.py    : onglet Impact
 - teammates_charts.py    : graphes de comparaison
 - teammates_helpers.py   : helpers de rendu (cartes, tableaux)
 """

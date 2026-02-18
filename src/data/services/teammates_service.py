@@ -229,12 +229,19 @@ class TeammatesService:
             if "match_id" in df.columns and not df.is_empty():
                 match_ids = df["match_id"].cast(pl.Utf8).to_list()
                 try:
+                    # Extraire le xuid depuis le DataFrame (colonne 'xuid')
+                    player_xuid = ""
+                    if "xuid" in df.columns:
+                        xuid_values = df["xuid"].unique()
+                        if len(xuid_values) > 0:
+                            player_xuid = str(xuid_values[0])
+
                     if idx == 0:
                         use_path = db_path
                     else:
                         player_db = base_dir / name / "stats.duckdb"
                         use_path = str(player_db) if player_db.exists() else db_path
-                    repo = DuckDBRepository(use_path, "")
+                    repo = DuckDBRepository(use_path, player_xuid)
                     counts = repo.count_perfect_kills_by_match(match_ids)
                     _counts = counts  # bind for lambda closure (B023)
                     _counts_series = pl.Series("match_id", list(_counts.keys()))

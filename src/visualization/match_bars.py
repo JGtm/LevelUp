@@ -176,6 +176,14 @@ def plot_multi_metric_bars_by_match(
         elif st_dtype == pl.Date:
             d = d.with_columns(pl.col("start_time").cast(pl.Datetime))
         d = d.drop_nulls("start_time").sort("start_time")
+
+        # Dédoublonner par match_id (ou start_time si pas de match_id)
+        # pour éviter les boucles visuelles causées par des duplicates
+        if has_match_id:
+            d = d.unique(subset=["match_id"], keep="first")
+        else:
+            d = d.unique(subset=["start_time"], keep="first")
+
         if d.is_empty():
             continue
 
@@ -235,15 +243,6 @@ def plot_multi_metric_bars_by_match(
         if d.is_empty():
             continue
 
-        # Calculer la moyenne lissée dans l'ordre chronologique (avant réordonnancement)
-        if bool(show_smooth_lines):
-            if w and w > 1:
-                d = d.with_columns(
-                    pl.col("_y").rolling_mean(window_size=max(1, w), min_samples=1).alias("_smooth")
-                )
-            else:
-                d = d.with_columns(pl.col("_y").alias("_smooth"))
-
         # Ajouter la clé de match pour mapper vers l'axe X commun
         if has_match_id:
             d = d.with_columns(pl.col("match_id").cast(pl.String).alias("_match_key"))
@@ -259,6 +258,16 @@ def plot_multi_metric_bars_by_match(
 
         # Trier par _x pour garantir l'ordre correct (évite les boucles visuelles)
         d = d.sort("_x")
+
+        # Calculer la moyenne lissée APRÈS le tri par _x (ordre d'affichage)
+        # pour que les valeurs lissées correspondent au bon ordre chronologique visuel
+        if bool(show_smooth_lines):
+            if w and w > 1:
+                d = d.with_columns(
+                    pl.col("_y").rolling_mean(window_size=max(1, w), min_samples=1).alias("_smooth")
+                )
+            else:
+                d = d.with_columns(pl.col("_y").alias("_smooth"))
 
         x = d.get_column("_x").to_list()
         y2_sorted = d.get_column("_y").to_list()

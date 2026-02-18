@@ -16,7 +16,13 @@ from src.ui.career_ranks import (
     format_career_rank_label_fr,
     get_rank_icon_path,
 )
-from src.ui.components.career_progress_circle import create_career_progress_gauge
+from src.ui.components.career_progress_circle import (
+    RANK_MAX,
+    XP_HERO_TOTAL,
+    compute_hero_progress,
+    create_career_progress_gauge,
+    create_hero_progress_gauge,
+)
 from src.ui.player_assets import ensure_local_image_path
 from src.ui.streamlit_modern import fragment_if_available
 from src.visualization.theme import apply_halo_plot_style
@@ -256,6 +262,44 @@ def render_career_page(
                 st.info("Impossible de générer la jauge de progression.")
         except Exception as e:
             st.warning(f"Impossible d'afficher la jauge de progression : {e}")
+
+    # --- Progression vers Héros ---
+    st.divider()
+    st.subheader("Progression vers Héros")
+
+    hero_data = compute_hero_progress(xp_total=xp_total, rank=rank_number, is_max_rank=is_max)
+    hero_pct = hero_data["percentage"]
+    xp_remaining = hero_data["xp_remaining"]
+
+    col_hero_metrics, col_hero_gauge = st.columns([3, 2])
+
+    with col_hero_metrics:
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            st.metric("XP gagnée", f"{xp_total:,}")
+        with m2:
+            st.metric("XP restante", f"{xp_remaining:,}")
+        with m3:
+            st.metric("Total requis", f"{XP_HERO_TOTAL:,}")
+        with m4:
+            st.metric("Rang", f"{rank_number} / {RANK_MAX}")
+
+    with col_hero_gauge:
+        try:
+            hero_gauge = create_hero_progress_gauge(
+                hero_pct=hero_pct,
+                xp_total=xp_total,
+                xp_remaining=xp_remaining,
+                is_max_rank=is_max,
+            )
+            st.plotly_chart(
+                hero_gauge,
+                key="hero_progress_gauge",
+                width="stretch",
+                config={"staticPlot": True},
+            )
+        except Exception as e:
+            st.warning(f"Impossible d'afficher la progression vers Héros : {e}")
 
     # --- Historique de progression ---
     st.divider()
