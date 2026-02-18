@@ -43,6 +43,8 @@ EVENT_LABELS = {
     "first_blood": "⚡",  # Premier sang
     "clutch_finisher": "🎯",  # Finisseur
     "last_casualty": "💀",  # Boulet
+    "last_group_kill": "🐌",  # Dernier à tuer (plus lent)
+    "first_group_death": "🎯🔻",  # Première victime
 }
 
 
@@ -57,7 +59,7 @@ def plot_friends_impact_heatmap(
 
     Args:
         impact_matrix: DataFrame Polars avec colonnes :
-            - match_id, gamertag, event_type, event_value
+            - match_id, gamertag, events (liste de tuples), outcome
         title: Titre optionnel.
         max_matches: Nombre maximum de matchs à afficher.
         height: Hauteur optionnelle.
@@ -152,14 +154,21 @@ def plot_friends_impact_heatmap(
         for match_id in match_ids:
             match_event = player_events.filter(pl.col("match_id") == match_id)
 
-            if match_event.is_empty() or match_event["event_type"][0] is None:
+            if match_event.is_empty():
                 z_row.append(0)
                 text_row.append("")
             else:
-                event_type = match_event["event_type"][0]
-                event_value = match_event["event_value"][0]
-                z_row.append(event_value)
-                text_row.append(EVENT_LABELS.get(event_type, ""))
+                # Récupérer la liste d'événements (dicts avec "event" et "value")
+                events = match_event["events"][0]
+                if events is not None and len(events) > 0:
+                    # Concaténer tous les symboles
+                    symbols = [EVENT_LABELS.get(evt["event"], "") for evt in events]
+                    text_row.append(" ".join(symbols))
+                    # Utiliser la valeur du premier événement pour z (colorscale neutre)
+                    z_row.append(0)  # Toujours 0 pour les joueurs (fond neutre)
+                else:
+                    z_row.append(0)
+                    text_row.append("")
 
         z_matrix.append(z_row)
         text_matrix.append(text_row)
@@ -188,7 +197,7 @@ def plot_friends_impact_heatmap(
             y=y_labels,
             text=text_matrix,
             texttemplate="%{text}",
-            textfont={"size": 10},
+            textfont={"size": 25},  # Emojis 2.5x plus grands (10 → 25)
             colorscale=colorscale,
             zmin=-10,
             zmax=10,

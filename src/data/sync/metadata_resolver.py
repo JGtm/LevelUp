@@ -58,8 +58,13 @@ class MetadataResolver:
         # Se connecter si la base existe ou si on doit la créer
         if metadata_db_path.exists() or create_if_missing:
             try:
-                self._conn = duckdb.connect(str(metadata_db_path))
-                logger.debug(f"Connecté à metadata.duckdb: {metadata_db_path}")
+                # Ouvrir en READ_ONLY pour éviter les conflits de handle avec d'autres connexions
+                # qui ont attaché metadata.duckdb AS meta
+                read_only = metadata_db_path.exists() and not create_if_missing
+                self._conn = duckdb.connect(str(metadata_db_path), read_only=read_only)
+                logger.debug(
+                    f"Connecté à metadata.duckdb: {metadata_db_path} (read_only={read_only})"
+                )
             except Exception as e:
                 logger.warning(f"Impossible de se connecter à metadata.duckdb: {e}")
                 self._conn = None

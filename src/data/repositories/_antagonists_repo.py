@@ -346,11 +346,4 @@ class AntagonistsMixin:
                 row = conn.execute("SELECT 1 FROM shared.killer_victim_pairs LIMIT 1").fetchone()
                 return row is not None
             except Exception:
-                pass
-
-        # Fallback locale
-        try:
-            row = conn.execute("SELECT 1 FROM killer_victim_pairs LIMIT 1").fetchone()
-            return row is not None
-        except Exception:
-            return False
+                return False

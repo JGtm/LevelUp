@@ -594,9 +594,10 @@ def _detect_trio_session(
     trio_rows = base_s_trio.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(trio_ids_set)))
     latest_label = None
     if not trio_rows.is_empty():
-        latest_sid = int(trio_rows["session_id"].max())
+        # session_id peut être string ou int selon le contexte, comparer en string
+        latest_sid = trio_rows["session_id"].max()
         latest_labels = (
-            trio_rows.filter(pl.col("session_id") == latest_sid)
+            trio_rows.filter(pl.col("session_id").cast(pl.Utf8) == str(latest_sid))
             .select("session_label")
             .drop_nulls()
             .unique()

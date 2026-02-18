@@ -295,8 +295,18 @@ class DuckDBRepository(
             self._connection.execute(f"SET memory_limit = '{self._memory_limit}'")
             self._connection.execute("SET enable_object_cache = true")
 
+            # Vérifier les DBs déjà attachées en consultant DuckDB directement
+            # (au cas où la connexion est réutilisée par plusieurs instances de repo)
+            try:
+                attached_dbs = self._connection.execute(
+                    "SELECT database_name FROM duckdb_databases()"
+                ).fetchall()
+                attached_db_names = {db[0].lower() for db in attached_dbs if db[0]}
+            except Exception:
+                attached_db_names = set()
+
             # Attacher la DB metadata si elle existe et pas déjà attachée
-            if self._metadata_db_path.exists() and "meta" not in self._attached_dbs:
+            if self._metadata_db_path.exists() and "meta" not in attached_db_names:
                 try:
                     self._connection.execute(
                         f"ATTACH '{self._metadata_db_path}' AS meta (READ_ONLY)"
@@ -312,15 +322,18 @@ class DuckDBRepository(
                         or "unique file handle conflict" in err_str.lower()
                         or "already attached" in err_str.lower()
                     ):
+                        self._attached_dbs.add("meta")  # Marquer comme attaché même si erreur
                         logger.debug(
                             "metadata.duckdb déjà ouvert par une autre connexion, "
                             "résolution métadonnées désactivée pour cette instance"
                         )
                     else:
                         logger.warning(f"Impossible d'attacher metadata.duckdb: {e}")
+            elif "meta" in attached_db_names:
+                self._attached_dbs.add("meta")  # Synchroniser le tracker local
 
             # Attacher shared_matches.duckdb en lecture seule (v5)
-            if self._shared_db_path.exists() and "shared" not in self._attached_dbs:
+            if self._shared_db_path.exists() and "shared" not in attached_db_names:
                 try:
                     self._connection.execute(
                         f"ATTACH '{self._shared_db_path}' AS shared (READ_ONLY)"
@@ -334,12 +347,15 @@ class DuckDBRepository(
                         or "unique file handle conflict" in err_str.lower()
                         or "already attached" in err_str.lower()
                     ):
+                        self._attached_dbs.add("shared")  # Marquer comme attaché même si erreur
                         logger.debug(
                             "shared_matches.duckdb déjà ouvert par une autre connexion, "
                             "lecture partagée désactivée pour cette instance"
                         )
                     else:
                         logger.warning(f"Impossible d'attacher shared_matches.duckdb: {e}")
+            elif "shared" in attached_db_names:
+                self._attached_dbs.add("shared")  # Synchroniser le tracker local
 
         return self._connection
 

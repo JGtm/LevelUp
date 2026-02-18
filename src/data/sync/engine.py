@@ -1821,6 +1821,16 @@ class DuckDBSyncEngine:
         result: dict[str, int] = {}
 
         try:
+            # Fermer temporairement la connexion shared pour éviter les conflits
+            # quand DuckDBRepository tente de l'attacher
+            shared_was_open = self._shared_connection is not None
+            if shared_was_open:
+                try:
+                    self._shared_connection.close()
+                    self._shared_connection = None
+                except Exception:
+                    pass
+
             # Appeler refresh_materialized_views si disponible
             # (implémenté dans DuckDBRepository)
             try:
@@ -1833,6 +1843,7 @@ class DuckDBSyncEngine:
                 )
                 repo.refresh_materialized_views()
                 result["materialized_views"] = 1
+                repo.close()
             except Exception as e:
                 logger.debug(f"refresh_materialized_views non disponible: {e}")
 
@@ -1844,6 +1855,14 @@ class DuckDBSyncEngine:
                 result.update(precomp)
             except Exception as e:
                 logger.debug(f"post_sync_compute non disponible: {e}")
+
+            # Rouvrir la connexion shared si elle était ouverte avant
+            if shared_was_open:
+                self._shared_connection = None  # Force réouverture au prochain appel
+                try:
+                    self._get_shared_connection()
+                except Exception:
+                    pass
 
         except Exception as e:
             logger.warning(f"Erreur refresh_aggregates: {e}")
