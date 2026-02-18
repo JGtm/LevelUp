@@ -99,6 +99,14 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - **Jointures metadata/MMR** skippées en mode v5.1 quand `uses_mv=True`
   - RC3/RC4 : -3 LEFT JOIN sur chemin critique
 
+### Fixed
+
+- **Onglet Citations affichait 159 citations au lieu de 45** — Filtrage par `citation_mappings.enabled` réactivé
+  - Le JSON `halo5_commendations_fr.json` contient 159 citations (armes, Spartan Companies, etc.)
+  - Le filtrage avait été supprimé, affichant toutes les citations y compris celles sans mapping
+  - Correction : les items JSON sont maintenant filtrés par les noms normalisés des citations activées via `CitationEngine.load_mappings()`
+  - Fichier : `src/ui/commendations.py`
+
 ### Removed
 
 - **Tables legacy player DBs** — 9 tables par joueur, données centralisées
