@@ -291,7 +291,10 @@ def render_multi_teammate_view(
 
     # Impact (si ≥2 amis)
     if len(picked_xuids) >= 2:
-        impact_match_ids = list(all_match_ids) if all_match_ids else []
+        # Utiliser les match_ids du DataFrame filtré sub_all au lieu de all_match_ids
+        impact_match_ids = (
+            sub_all["match_id"].cast(pl.Utf8).unique().to_list() if not sub_all.is_empty() else []
+        )
         render_impact_taquinerie(
             db_path=db_path,
             xuid=xuid,
