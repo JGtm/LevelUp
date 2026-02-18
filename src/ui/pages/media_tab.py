@@ -66,10 +66,17 @@ def _render_media_grid(
                     label = (map_name or "—") + " · " + _format_short_date(capture_end)
                     st.caption(label)
                     # Thumbnail : ratio 16:9
-                    static_path = thumbnail_path or file_path
+                    # Priorité : thumbnail GIF > fichier original
+                    # Fallback sur file_path si le thumbnail n'existe pas (pas encore généré)
+                    thumb_ok = thumbnail_path and Path(thumbnail_path).exists()
+                    static_path = thumbnail_path if thumb_ok else file_path
                     if static_path and Path(static_path).exists():
                         hover_path = None
-                        if kind == "video" and str(thumbnail_path or "").lower().endswith(".gif"):
+                        if (
+                            kind == "video"
+                            and thumb_ok
+                            and str(thumbnail_path).lower().endswith(".gif")
+                        ):
                             hover_path = thumbnail_path
                         render_media_thumbnail(
                             static_path=Path(static_path),
