@@ -30,11 +30,19 @@ IMPACT_COLORS = {
     "none": "rgba(100, 100, 100, 0.1)",  # Gris transparent
 }
 
-# Labels d'événements (FR)
+# Couleurs pour les outcomes (Win/Loss/Tie)
+OUTCOME_COLORS = {
+    "win": "#10b981",  # Vert (victories)
+    "loss": "#ef4444",  # Rouge (defeats)
+    "tie": "#8b5cf6",  # Violet (ties)
+    "unknown": "rgba(100, 100, 100, 0.3)",  # Gris
+}
+
+# Labels d'événements (symboles simplifiés sans emoji redondant)
 EVENT_LABELS = {
-    "first_blood": "Premier Sang 🟢",
-    "clutch_finisher": "Finisseur 🟡",
-    "last_casualty": "Boulet 🔴",
+    "first_blood": "⚡",  # Premier sang
+    "clutch_finisher": "🎯",  # Finisseur
+    "last_casualty": "💀",  # Boulet
 }
 
 
@@ -74,8 +82,12 @@ def plot_friends_impact_heatmap(
         return apply_halo_plot_style(fig, title=title, height=height)
 
     # Récupérer les valeurs uniques
-    gamertags = sorted(impact_matrix["gamertag"].unique().to_list())
+    all_gamertags = sorted(impact_matrix["gamertag"].unique().to_list())
     match_ids = impact_matrix["match_id"].unique().to_list()
+
+    # Séparer la ligne "Résultat" des joueurs
+    has_outcome_row = "Résultat" in all_gamertags
+    gamertags = [g for g in all_gamertags if g != "Résultat"]
 
     # Limiter le nombre de matchs
     if len(match_ids) > max_matches:
@@ -84,19 +96,54 @@ def plot_friends_impact_heatmap(
         impact_matrix = impact_matrix.filter(pl.col("match_id").is_in(match_ids))
 
     n_matches = len(match_ids)
-    n_players = len(gamertags)
 
-    if n_matches == 0 or n_players == 0:
+    if n_matches == 0:
         fig = go.Figure()
         fig.update_layout(height=height or 300)
         return apply_halo_plot_style(fig, title=title, height=height)
 
     # Pivoter pour créer la matrice Z
-    # Créer une matrice 2D : gamertags (Y) × match_ids (X)
+    # Structure : ["Résultat", Joueur1, Joueur2, ...] × match_ids
     z_matrix = []
     text_matrix = []
+    y_labels = []
 
+    # Ligne 1 : Résultat (outcomes)
+    if has_outcome_row:
+        y_labels.append("Résultat")
+        z_row = []
+        text_row = []
+
+        outcome_events = impact_matrix.filter(pl.col("gamertag") == "Résultat")
+        for match_id in match_ids:
+            match_outcome = outcome_events.filter(pl.col("match_id") == match_id)
+
+            if not match_outcome.is_empty() and match_outcome["outcome"][0] is not None:
+                outcome = match_outcome["outcome"][0]
+                # Mapper outcome (2=Win, 3=Loss, 1=Tie) vers une valeur pour colorscale
+                # Win=10, Loss=-10, Tie=5 pour avoir une échelle séparée
+                if outcome == 2:  # Win
+                    z_row.append(10)
+                    text_row.append("")
+                elif outcome == 3:  # Loss
+                    z_row.append(-10)
+                    text_row.append("")
+                elif outcome == 1:  # Tie
+                    z_row.append(5)
+                    text_row.append("")
+                else:
+                    z_row.append(0)
+                    text_row.append("")
+            else:
+                z_row.append(0)
+                text_row.append("")
+
+        z_matrix.append(z_row)
+        text_matrix.append(text_row)
+
+    # Lignes joueurs
     for gamertag in gamertags:
+        y_labels.append(gamertag)
         z_row = []
         text_row = []
 
@@ -117,17 +164,18 @@ def plot_friends_impact_heatmap(
         z_matrix.append(z_row)
         text_matrix.append(text_row)
 
-    # Créer la colorscale custom pour -1, 0, 1, 2
-    # Normaliser sur l'échelle [-1, 2] -> [0, 1]
-    # -1 (boulet) = 0.0 -> rouge
-    # 0 (rien) = 0.33 -> gris
-    # 1 (FB) = 0.66 -> vert
-    # 2 (clutch) = 1.0 -> or
+    # Créer la colorscale custom
+    # Échelle pour outcomes : -10 (Loss), 0, 5 (Tie), 10 (Win)
+    # Échelle pour joueurs : -1 (Boulet), 0 (rien), 1 (FB), 2 (Clutch)
+    # On va normaliser sur [-10, 10] pour tout couvrir
     colorscale = [
-        [0.0, IMPACT_COLORS["last_casualty"]],  # -1
-        [0.33, IMPACT_COLORS["none"]],  # 0
-        [0.66, IMPACT_COLORS["first_blood"]],  # 1
-        [1.0, IMPACT_COLORS["clutch_finisher"]],  # 2
+        [0.0, OUTCOME_COLORS["loss"]],  # -10 = Loss (rouge)
+        [0.25, IMPACT_COLORS["none"]],  # -1 à 0 = Gris transparent
+        [0.5, IMPACT_COLORS["none"]],  # 0 = Gris transparent
+        [0.55, IMPACT_COLORS["first_blood"]],  # 1 = FB (vert)
+        [0.6, IMPACT_COLORS["clutch_finisher"]],  # 2 = Clutch (orange)
+        [0.75, OUTCOME_COLORS["tie"]],  # 5 = Tie (violet)
+        [1.0, OUTCOME_COLORS["win"]],  # 10 = Win (vert)
     ]
 
     # Labels des matchs (afficher index ou raccourci)
@@ -137,20 +185,21 @@ def plot_friends_impact_heatmap(
         data=go.Heatmap(
             z=z_matrix,
             x=match_labels,
-            y=gamertags,
+            y=y_labels,
             text=text_matrix,
             texttemplate="%{text}",
-            textfont={"size": 9},
+            textfont={"size": 10},
             colorscale=colorscale,
-            zmin=-1,
-            zmax=2,
+            zmin=-10,
+            zmax=10,
             showscale=False,
             hovertemplate=("<b>%{y}</b><br>" "Match %{x}<br>" "%{text}<extra></extra>"),
         )
     )
 
     # Calculer la hauteur dynamique
-    calc_height = height or max(300, 50 * n_players + 100)
+    n_rows = len(y_labels)
+    calc_height = height or max(300, 50 * n_rows + 100)
 
     fig.update_layout(
         height=calc_height,

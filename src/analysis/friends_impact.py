@@ -312,14 +312,16 @@ def build_impact_matrix(
     last_casualties: dict[str, ImpactEvent],
     match_ids: list[str],
     gamertags: list[str],
+    match_outcomes: dict[str, int] | None = None,
 ) -> pl.DataFrame:
     """Construit une matrice d'impact pour la heatmap.
 
     Crée un DataFrame avec les colonnes :
     - match_id : ID du match
-    - gamertag : Nom du joueur
+    - gamertag : Nom du joueur (ou "Résultat" pour la ligne d'outcome)
     - event_type : Type d'événement (ou null)
     - event_value : Valeur numérique pour la heatmap (1=FB, 2=Clutch, -1=Boulet)
+    - outcome : Outcome du match (2=Win, 3=Loss, 1=Tie, null pour les joueurs)
 
     Args:
         first_bloods: Dict des premiers kills.
@@ -327,6 +329,7 @@ def build_impact_matrix(
         last_casualties: Dict des boulets.
         match_ids: Liste ordonnée des IDs de matchs.
         gamertags: Liste des gamertags à inclure.
+        match_outcomes: Dict optionnel {match_id: outcome} pour afficher la ligne de résultat.
 
     Returns:
         DataFrame Polars avec la matrice d'impact.
@@ -359,6 +362,22 @@ def build_impact_matrix(
 
     # Construire le DataFrame
     rows = []
+
+    # Ajouter la ligne "Résultat" en premier si match_outcomes est fourni
+    if match_outcomes:
+        for match_id in match_ids:
+            outcome = match_outcomes.get(match_id, 0)
+            rows.append(
+                {
+                    "match_id": match_id,
+                    "gamertag": "Résultat",
+                    "event_type": None,
+                    "event_value": 0,
+                    "outcome": outcome,
+                }
+            )
+
+    # Ajouter les lignes des joueurs
     for (match_id, gamertag), events in events_map.items():
         if events:
             # Prendre l'événement le plus significatif (priorité: clutch > FB > boulet)
@@ -370,6 +389,7 @@ def build_impact_matrix(
                     "gamertag": gamertag,
                     "event_type": event_type,
                     "event_value": event_value,
+                    "outcome": None,
                 }
             )
         else:
@@ -379,6 +399,7 @@ def build_impact_matrix(
                     "gamertag": gamertag,
                     "event_type": None,
                     "event_value": 0,
+                    "outcome": None,
                 }
             )
 
@@ -390,6 +411,7 @@ def build_impact_matrix(
                 "gamertag": pl.Utf8,
                 "event_type": pl.Utf8,
                 "event_value": pl.Int64,
+                "outcome": pl.Int64,
             }
         )
 

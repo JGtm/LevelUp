@@ -52,7 +52,7 @@ class TestDistributionsOutcomesContracts:
                 "match_id": ["m1", "m2"],
             }
         )
-        fig = plot_win_ratio_heatmap(df)
+        fig = plot_win_ratio_heatmap(df, min_matches=1)
         assert fig is not None
 
     def test_plot_stacked_outcomes_by_category_empty(self) -> None:

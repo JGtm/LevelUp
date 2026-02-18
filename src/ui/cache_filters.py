@@ -53,23 +53,74 @@ def cached_compute_sessions_db(
             from datetime import datetime, timezone
 
             from src.utils.db import duckdb_read_only
+            from src.utils.paths import get_shared_matches_path_from_player
 
             with duckdb_read_only(db_path) as conn:
-                firefight_filter = "" if include_firefight else "AND is_firefight = FALSE"
+                # Attacher shared_matches.duckdb pour accéder aux données partagées
+                shared_attached = False
+                shared_path = get_shared_matches_path_from_player(db_path)
+                if shared_path and shared_path.exists():
+                    try:
+                        conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
+                        shared_attached = True
+                    except Exception:
+                        pass
 
-                query = f"""
-                    SELECT
-                        match_id,
-                        start_time,
-                        teammates_signature,
-                        session_id,
-                        session_label
-                    FROM match_stats
-                    WHERE start_time IS NOT NULL
-                    {firefight_filter}
-                    ORDER BY start_time ASC
-                """
-                df_pl = conn.execute(query).pl()
+                df_pl = None
+
+                if shared_attached:
+                    # Production v5 : données dans shared + player_match_enrichment
+                    firefight_filter = "" if include_firefight else "AND r.is_firefight = FALSE"
+
+                    player_xuid = xuid.strip()
+                    if not player_xuid:
+                        try:
+                            row = conn.execute(
+                                "SELECT value FROM sync_meta WHERE key = 'xuid'"
+                            ).fetchone()
+                            if row:
+                                player_xuid = str(row[0]).strip()
+                        except Exception:
+                            pass
+
+                    query = f"""
+                        SELECT
+                            r.match_id,
+                            r.start_time,
+                            e.teammates_signature,
+                            e.session_id,
+                            e.session_label
+                        FROM shared.match_registry r
+                        INNER JOIN shared.match_participants p
+                            ON r.match_id = p.match_id
+                            AND p.xuid = ?
+                        LEFT JOIN player_match_enrichment e
+                            ON r.match_id = e.match_id
+                        WHERE r.start_time IS NOT NULL
+                        {firefight_filter}
+                        ORDER BY r.start_time ASC
+                    """
+                    try:
+                        df_pl = conn.execute(query, [player_xuid]).pl()
+                    except Exception:
+                        df_pl = None
+
+                if df_pl is None:
+                    # Fallback : table match_stats locale (tests, legacy)
+                    firefight_filter = "" if include_firefight else "AND is_firefight = FALSE"
+                    query = f"""
+                        SELECT
+                            match_id,
+                            start_time,
+                            teammates_signature,
+                            session_id,
+                            session_label
+                        FROM match_stats
+                        WHERE start_time IS NOT NULL
+                        {firefight_filter}
+                        ORDER BY start_time ASC
+                    """
+                    df_pl = conn.execute(query).pl()
 
             if df_pl.is_empty():
                 return pl.DataFrame(

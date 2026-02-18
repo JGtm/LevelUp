@@ -176,9 +176,9 @@ def _render_ranking_table(
                         "Rang",
                         "Joueur",
                         "Score",
-                        "🟢 Premier Sang",
-                        "🟡 Finisseur",
-                        "🔴 Boulet",
+                        "⚡ Premier Sang",
+                        "🎯 Finisseur",
+                        "💀 Boulet",
                         "Badge",
                     ],
                     strict=False,
@@ -287,6 +287,12 @@ def render_impact_taquinerie(
             }
         )
 
+        # Créer un dict des outcomes pour la heatmap
+        match_outcomes = {}
+        if not matches_df.is_empty():
+            for row in matches_df.iter_rows(named=True):
+                match_outcomes[str(row["match_id"])] = int(row["outcome"])
+
         # Construire la matrice d'impact
         impact_matrix = build_impact_matrix(
             first_bloods,
@@ -294,6 +300,7 @@ def render_impact_taquinerie(
             last_casualties,
             match_ids=sorted_match_ids,
             gamertags=gamertags,
+            match_outcomes=match_outcomes,
         )
 
         # Métriques résumées (masquées à la demande de l'utilisateur)
