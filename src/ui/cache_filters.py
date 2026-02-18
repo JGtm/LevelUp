@@ -115,10 +115,18 @@ def cached_compute_sessions_db(
 
                 if df_pl is None:
                     # v5.1 : pas de fallback local (match_stats supprimée des DBs individuelles)
-                    # Retourner un DataFrame vide pour éviter l'erreur
-                    pass
+                    # Retourner un DataFrame vide si shared non disponible
+                    df_pl = pl.DataFrame(
+                        schema={
+                            "match_id": pl.Utf8,
+                            "start_time": pl.Datetime,
+                            "teammates_signature": pl.Utf8,
+                            "session_id": pl.Utf8,
+                            "session_label": pl.Utf8,
+                        }
+                    )
 
-            if df_pl.is_empty():
+            if df_pl is None or df_pl.is_empty():
                 return pl.DataFrame(
                     schema={
                         "match_id": pl.Utf8,

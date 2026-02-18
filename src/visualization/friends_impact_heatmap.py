@@ -44,7 +44,7 @@ EVENT_LABELS = {
     "clutch_finisher": "🎯",  # Finisseur
     "last_casualty": "💀",  # Boulet
     "last_group_kill": "🐌",  # Dernier à tuer (plus lent)
-    "first_group_death": "🎯🔻",  # Première victime
+    "first_group_death": "🪦",  # Première victime
 }
 
 
@@ -203,6 +203,8 @@ def plot_friends_impact_heatmap(
             zmax=10,
             showscale=False,
             hovertemplate=("<b>%{y}</b><br>" "Match %{x}<br>" "%{text}<extra></extra>"),
+            xgap=3,  # Bordures verticales entre les matchs
+            ygap=2,  # Bordures horizontales entre les joueurs
         )
     )
 
