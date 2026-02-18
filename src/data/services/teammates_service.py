@@ -88,8 +88,10 @@ class TeammatesService:
 
         try:
             conn = duckdb.connect(db_path, read_only=True)
-            # Essayer de lire depuis sync_meta (table locale dans player DB)
-            result = conn.execute("SELECT xuid FROM sync_meta LIMIT 1").fetchone()
+            # sync_meta est une table clé-valeur (key, value, updated_at)
+            result = conn.execute(
+                "SELECT value FROM sync_meta WHERE key = 'xuid' LIMIT 1"
+            ).fetchone()
             conn.close()
             if result:
                 return str(result[0]).strip()
@@ -258,10 +260,16 @@ class TeammatesService:
                         xuid_values = df["xuid"].unique()
                         if len(xuid_values) > 0:
                             player_xuid = str(xuid_values[0])
+                            logger.debug(
+                                f"[enrich] Extrait xuid depuis DataFrame pour {name}: {player_xuid}"
+                            )
 
                     # Fallback pour le joueur principal : charger le xuid depuis sync_meta
                     if not player_xuid and idx == 0:
                         player_xuid = TeammatesService._load_xuid_from_db(db_path)
+                        logger.debug(
+                            f"[enrich] Chargé xuid depuis sync_meta pour {name}: {player_xuid}"
+                        )
 
                     if idx == 0:
                         use_path = db_path
@@ -281,17 +289,32 @@ class TeammatesService:
                         enriched.append((name, df))
                         continue
 
+                    logger.debug(
+                        f"[enrich] Appel count_perfect_kills_by_match pour {name} "
+                        f"(xuid={player_xuid}, {len(match_ids)} matchs)"
+                    )
                     repo = DuckDBRepository(use_path, player_xuid)
                     counts = repo.count_perfect_kills_by_match(match_ids)
-                    _counts = counts  # bind for lambda closure (B023)
-                    _counts_series = pl.Series("match_id", list(_counts.keys()))
-                    _vals_series = pl.Series("perfect_kills", list(_counts.values()))
-                    _lookup = pl.DataFrame({"_mid": _counts_series, "_pk": _vals_series})
-                    df = df.with_columns(pl.col("match_id").cast(pl.Utf8).alias("_join_mid"))
-                    df = df.join(_lookup, left_on="_join_mid", right_on="_mid", how="left")
-                    df = df.with_columns(pl.col("_pk").fill_null(0).alias("perfect_kills")).drop(
-                        ["_join_mid", "_pk"]
+                    logger.debug(
+                        f"[enrich] Résultat pour {name}: {len(counts)} matchs avec Perfect"
                     )
+
+                    # Si aucun Perfect, mettre 0 pour tous les matchs
+                    if not counts:
+                        df = df.with_columns(pl.lit(0).alias("perfect_kills"))
+                    else:
+                        # Créer le lookup DataFrame avec types explicites
+                        _lookup = pl.DataFrame(
+                            {
+                                "_mid": pl.Series(list(counts.keys()), dtype=pl.Utf8),
+                                "_pk": pl.Series(list(counts.values()), dtype=pl.Int64),
+                            }
+                        )
+                        df = df.with_columns(pl.col("match_id").cast(pl.Utf8).alias("_join_mid"))
+                        df = df.join(_lookup, left_on="_join_mid", right_on="_mid", how="left")
+                        df = df.with_columns(
+                            pl.col("_pk").fill_null(0).alias("perfect_kills")
+                        ).drop(["_join_mid", "_pk"], strict=False)
                 except Exception as e:
                     logger.debug(f"Erreur enrichissement perfect_kills pour {name}: {e}")
                     df = df.with_columns(pl.lit(0).alias("perfect_kills"))
