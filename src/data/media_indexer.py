@@ -11,6 +11,7 @@ Chaque joueur a sa propre BDD : data/players/{gamertag}/stats.duckdb
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import logging
 import os
@@ -963,23 +964,33 @@ class MediaIndexer:
             return 0, 0
         if not check_ffmpeg():
             return 0, 0
-        self.ensure_schema()
+        # DB déjà ouverte par Streamlit en read-only — les tables existent déjà
+        with contextlib.suppress(Exception):
+            self.ensure_schema()
         conn = duckdb.connect(str(self.db_path), read_only=False)
         try:
+            # Inclure les vidéos sans thumbnail ET celles dont le GIF n'existe plus
             videos = conn.execute(
                 """
-                SELECT file_path, file_name FROM media_files
+                SELECT file_path, file_name, thumbnail_path FROM media_files
                 WHERE kind = 'video' AND status = 'active'
-                AND (thumbnail_path IS NULL OR thumbnail_path = '')
                 ORDER BY mtime DESC
                 """
             ).fetchall()
             if not videos:
                 return 0, 0
+            # Filtrer : garder celles sans thumbnail ou dont le fichier GIF est absent
+            to_process = [
+                (fp, fn)
+                for fp, fn, tp in videos
+                if not tp or not tp.strip() or not Path(tp).exists()
+            ]
+            if not to_process:
+                return 0, 0
             thumbs_dir = videos_dir / "thumbs"
             thumbs_dir.mkdir(exist_ok=True)
             generated = errors = 0
-            for path_str, _fname in videos:
+            for path_str, _fname in to_process:
                 p = Path(path_str)
                 if not p.exists():
                     continue

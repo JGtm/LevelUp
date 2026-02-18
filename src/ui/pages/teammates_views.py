@@ -100,6 +100,13 @@ def render_single_teammate_view(
         # Charger les stats du coéquipier depuis SA propre DB
         friend_sub = ensure_polars(load_teammate_stats_fn(name, shared_ids, db_path))
 
+        # Filtrer friend_sub pour ne garder que les match_ids présents dans sub (après filtres)
+        if not friend_sub.is_empty() and "match_id" in friend_sub.columns:
+            filtered_match_ids = sub["match_id"].cast(pl.Utf8).to_list()
+            friend_sub = friend_sub.filter(
+                pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids)
+            )
+
         # Graphes côte à côte
         render_comparison_charts(
             sub=sub,
@@ -225,6 +232,11 @@ def render_multi_teammate_view(
         )
 
         series: list[tuple[str, DataFrameLike]] = [(me_name, sub_all)]
+        # Récupérer les match_ids filtrés du joueur principal
+        filtered_match_ids = (
+            sub_all["match_id"].cast(pl.Utf8).to_list() if not sub_all.is_empty() else []
+        )
+
         with st.spinner("Chargement des stats des coéquipiers…"):
             for fx in picked_xuids:
                 ids = per_friend_ids.get(str(fx), set())
@@ -234,6 +246,13 @@ def render_multi_teammate_view(
                 fr_sub = ensure_polars(
                     load_teammate_stats_fn(fx_gamertag, {str(x) for x in ids}, db_path)
                 )
+                if fr_sub.is_empty():
+                    continue
+                # Filtrer fr_sub pour ne garder que les match_ids présents dans sub_all (après filtres)
+                if "match_id" in fr_sub.columns and filtered_match_ids:
+                    fr_sub = fr_sub.filter(
+                        pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids)
+                    )
                 if fr_sub.is_empty():
                     continue
                 series.append((fx_gamertag, fr_sub))
@@ -371,6 +390,13 @@ def render_trio_view(
     # Charger les stats des coéquipiers depuis LEURS propres DBs
     f1_df = ensure_polars(load_teammate_stats_fn(f1_name, trio_ids_set, db_path))
     f2_df = ensure_polars(load_teammate_stats_fn(f2_name, trio_ids_set, db_path))
+
+    # Filtrer les DataFrames des coéquipiers pour ne garder que les match_ids présents dans me_df (après filtres)
+    filtered_match_ids = me_df["match_id"].cast(pl.Utf8).to_list() if not me_df.is_empty() else []
+    if not f1_df.is_empty() and "match_id" in f1_df.columns and filtered_match_ids:
+        f1_df = f1_df.filter(pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids))
+    if not f2_df.is_empty() and "match_id" in f2_df.columns and filtered_match_ids:
+        f2_df = f2_df.filter(pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids))
 
     me_df = me_df.sort("start_time")
 
