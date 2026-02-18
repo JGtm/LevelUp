@@ -400,3 +400,235 @@ def get_timeline_summary(
         "first_capture_time_ms": timeline["estimated_time_ms"].min(),
         "last_capture_time_ms": timeline["estimated_time_ms"].max(),
     }
+
+
+# =============================================================================
+# Agrégation par équipe : Estimation du contrôle de bases
+# =============================================================================
+
+
+def estimate_team_base_control(
+    timeline: pl.DataFrame,
+    mode: Literal["CTF", "Strongholds", "Oddball"] = "Strongholds",
+    window_ms: int = 15000,
+) -> pl.DataFrame:
+    """Estime le nombre de bases contrôlées par équipe (agrégation).
+    
+    Problème : L'API ne fournit pas l'ID de la base capturée (A, B ou C).
+    On doit donc estimer combien de bases UNIQUES ont été capturées.
+    
+    Approche : Clustering temporel - Les captures proches temporellement
+    sont probablement la même base.
+    
+    Args:
+        timeline: DataFrame retourné par estimate_objective_captures_timeline().
+        mode: Mode de jeu pour limites ("CTF", "Strongholds", "Oddball").
+        window_ms: Fenêtre temporelle en ms pour grouper les captures (défaut: 15s).
+        
+    Returns:
+        DataFrame avec colonnes:
+        - team_id (int): ID de l'équipe
+        - total_captures (int): Nombre total de captures individuelles
+        - estimated_unique_bases (int): Estimation du nombre de bases uniques
+        - confidence (str): "high", "medium", "low"
+        - method (str): "temporal_clustering"
+        
+    Example:
+        >>> timeline = estimate_objective_captures_timeline(repo, match_id, "Strongholds")
+        >>> control = estimate_team_base_control(timeline, "Strongholds")
+        >>> print(control)
+        team_id  total_captures  estimated_unique_bases  confidence
+        0        8               3                       high
+        1        6               2                       medium
+        
+    Note:
+        Pour Strongholds, max 3 bases. Si estimated > 3, on plafonne à 3.
+    """
+    if timeline.is_empty():
+        return pl.DataFrame()
+    
+    # Limites par mode
+    max_bases = {
+        "Strongholds": 3,
+        "CTF": 1,  # 1 drapeau à la fois
+        "Oddball": 1,  # 1 balle
+    }
+    
+    mode_limit = max_bases.get(mode, 10)  # Défaut si mode inconnu
+    
+    # Grouper par équipe
+    results = []
+    
+    for team_id in timeline["team_id"].unique().sort():
+        team_data = timeline.filter(pl.col("team_id") == team_id).sort("estimated_time_ms")
+        
+        if team_data.is_empty():
+            continue
+        
+        # Détecter les clusters temporels
+        timestamps = team_data["estimated_time_ms"].to_list()
+        clusters = _detect_temporal_clusters(timestamps, window_ms)
+        
+        # Nombre de bases uniques = nombre de clusters
+        estimated_bases = min(len(clusters), mode_limit)
+        
+        # Calculer confiance basée sur la cohérence des clusters
+        confidence = _calculate_cluster_confidence(clusters, team_data.height)
+        
+        results.append({
+            "team_id": team_id,
+            "total_captures": team_data.height,
+            "estimated_unique_bases": estimated_bases,
+            "confidence": confidence,
+            "method": "temporal_clustering",
+        })
+    
+    return pl.DataFrame(results)
+
+
+def _detect_temporal_clusters(
+    timestamps: list[int],
+    window_ms: int,
+) -> list[list[int]]:
+    """Détecte les clusters temporels dans une liste de timestamps.
+    
+    Un cluster = groupe de timestamps espacés de moins de window_ms.
+    
+    Args:
+        timestamps: Liste de timestamps en ms (doit être triée).
+        window_ms: Fenêtre temporelle en ms.
+        
+    Returns:
+        Liste de clusters, chaque cluster est une liste de timestamps.
+        
+    Example:
+        >>> timestamps = [10000, 12000, 50000, 52000, 90000]
+        >>> clusters = _detect_temporal_clusters(timestamps, 15000)
+        >>> len(clusters)
+        3
+        >>> # Cluster 1: [10000, 12000]
+        >>> # Cluster 2: [50000, 52000]
+        >>> # Cluster 3: [90000]
+    """
+    if not timestamps:
+        return []
+    
+    clusters = []
+    current_cluster = [timestamps[0]]
+    
+    for i in range(1, len(timestamps)):
+        # Si le timestamp est proche du dernier du cluster actuel
+        if timestamps[i] - current_cluster[-1] <= window_ms:
+            current_cluster.append(timestamps[i])
+        else:
+            # Nouveau cluster
+            clusters.append(current_cluster)
+            current_cluster = [timestamps[i]]
+    
+    # Ajouter le dernier cluster
+    if current_cluster:
+        clusters.append(current_cluster)
+    
+    return clusters
+
+
+def _calculate_cluster_confidence(
+    clusters: list[list[int]],
+    total_captures: int,
+) -> str:
+    """Calcule la confiance de l'estimation basée sur les clusters.
+    
+    Args:
+        clusters: Liste de clusters temporels.
+        total_captures: Nombre total de captures individuelles.
+        
+    Returns:
+        "high", "medium", ou "low".
+        
+    Logic:
+        - high : Clusters bien définis (avg size >= 2)
+        - medium : Clusters moyens (avg size < 2 mais > 1)
+        - low : Pas de multi-captures (avg size = 1)
+    """
+    if not clusters:
+        return "low"
+    
+    # Taille moyenne des clusters
+    avg_cluster_size = total_captures / len(clusters)
+    
+    # Nombre de clusters avec multi-captures
+    multi_capture_clusters = sum(1 for c in clusters if len(c) >= 2)
+    multi_capture_ratio = multi_capture_clusters / len(clusters)
+    
+    # Calcul de confiance
+    if avg_cluster_size >= 2.0 and multi_capture_ratio >= 0.5:
+        return "high"
+    elif avg_cluster_size >= 1.5 or multi_capture_ratio >= 0.3:
+        return "medium"
+    else:
+        return "low"
+
+
+def get_base_control_summary(
+    timeline: pl.DataFrame,
+    mode: Literal["CTF", "Strongholds", "Oddball"] = "Strongholds",
+) -> dict[str, any]:
+    """Résumé du contrôle de bases par les deux équipes.
+    
+    Args:
+        timeline: DataFrame retourné par estimate_objective_captures_timeline().
+        mode: Mode de jeu.
+        
+    Returns:
+        Dictionnaire avec:
+        - team_0_bases (int): Bases contrôlées par équipe 0
+        - team_1_bases (int): Bases contrôlées par équipe 1
+        - team_0_confidence (str): Confiance estimation équipe 0
+        - team_1_confidence (str): Confiance estimation équipe 1
+        - dominant_team (int | None): Équipe dominante (ou None si égal)
+        - total_unique_bases (int): Total bases capturées (union des 2 équipes)
+        
+    Example:
+        >>> summary = get_base_control_summary(timeline, "Strongholds")
+        >>> print(f"Équipe {summary['dominant_team']} domine avec {summary['team_0_bases']} bases")
+        Équipe 0 domine avec 3 bases
+    """
+    if timeline.is_empty():
+        return {
+            "team_0_bases": 0,
+            "team_1_bases": 0,
+            "team_0_confidence": "low",
+            "team_1_confidence": "low",
+            "dominant_team": None,
+            "total_unique_bases": 0,
+        }
+    
+    # Calculer le contrôle par équipe
+    control = estimate_team_base_control(timeline, mode)
+    
+    # Extraire les valeurs par équipe
+    team_0 = control.filter(pl.col("team_id") == 0)
+    team_1 = control.filter(pl.col("team_id") == 1)
+    
+    team_0_bases = team_0["estimated_unique_bases"][0] if not team_0.is_empty() else 0
+    team_1_bases = team_1["estimated_unique_bases"][0] if not team_1.is_empty() else 0
+    
+    team_0_conf = team_0["confidence"][0] if not team_0.is_empty() else "low"
+    team_1_conf = team_1["confidence"][0] if not team_1.is_empty() else "low"
+    
+    # Équipe dominante
+    if team_0_bases > team_1_bases:
+        dominant = 0
+    elif team_1_bases > team_0_bases:
+        dominant = 1
+    else:
+        dominant = None
+    
+    return {
+        "team_0_bases": team_0_bases,
+        "team_1_bases": team_1_bases,
+        "team_0_confidence": team_0_conf,
+        "team_1_confidence": team_1_conf,
+        "dominant_team": dominant,
+        "total_unique_bases": team_0_bases + team_1_bases,  # Approximation
+    }

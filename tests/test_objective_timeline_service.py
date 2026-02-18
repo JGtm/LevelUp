@@ -339,3 +339,202 @@ def test_estimate_objective_captures_timeline_mocked():
         assert result.height == 2
         assert "estimated_time_ms" in result.columns
         assert "confidence" in result.columns
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_detect_temporal_clusters_single_cluster():
+    """Vérifie la détection de clusters avec timestamps proches."""
+    from src.data.services.objective_timeline_service import _detect_temporal_clusters
+
+    timestamps = [10000, 12000, 14000]  # Tous dans 15s
+    clusters = _detect_temporal_clusters(timestamps, 15000)
+
+    assert len(clusters) == 1
+    assert clusters[0] == [10000, 12000, 14000]
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_detect_temporal_clusters_multiple_clusters():
+    """Vérifie la détection de plusieurs clusters."""
+    from src.data.services.objective_timeline_service import _detect_temporal_clusters
+
+    # 3 clusters distincts
+    timestamps = [10000, 12000, 50000, 52000, 90000]
+    clusters = _detect_temporal_clusters(timestamps, 15000)
+
+    assert len(clusters) == 3
+    assert len(clusters[0]) == 2  # [10000, 12000]
+    assert len(clusters[1]) == 2  # [50000, 52000]
+    assert len(clusters[2]) == 1  # [90000]
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_detect_temporal_clusters_empty():
+    """Vérifie le comportement avec liste vide."""
+    from src.data.services.objective_timeline_service import _detect_temporal_clusters
+
+    clusters = _detect_temporal_clusters([], 15000)
+
+    assert clusters == []
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_calculate_cluster_confidence_high():
+    """Vérifie la confiance haute avec clusters bien définis."""
+    from src.data.services.objective_timeline_service import _calculate_cluster_confidence
+
+    # 2 clusters de 2 captures chacun
+    clusters = [[10000, 12000], [50000, 52000]]
+    confidence = _calculate_cluster_confidence(clusters, 4)
+
+    assert confidence == "high"
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_calculate_cluster_confidence_low():
+    """Vérifie la confiance basse avec captures isolées."""
+    from src.data.services.objective_timeline_service import _calculate_cluster_confidence
+
+    # 5 clusters de 1 capture chacun
+    clusters = [[10000], [30000], [50000], [70000], [90000]]
+    confidence = _calculate_cluster_confidence(clusters, 5)
+
+    assert confidence == "low"
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_estimate_team_base_control_strongholds():
+    """Vérifie l'estimation du contrôle de bases pour Strongholds."""
+    from src.data.services.objective_timeline_service import estimate_team_base_control
+
+    # Timeline avec 2 équipes
+    timeline = pl.DataFrame(
+        {
+            "team_id": [0, 0, 0, 1, 1],
+            "xuid": ["xuid1", "xuid2", "xuid3", "xuid4", "xuid5"],
+            "gamertag": ["P1", "P2", "P3", "P4", "P5"],
+            "award_name": ["Zone Captured 100%"] * 5,
+            "capture_index": [1, 1, 1, 1, 1],
+            "estimated_time_ms": [10000, 12000, 50000, 30000, 32000],
+            "confidence": ["high"] * 5,
+            "nearby_events_count": [5] * 5,
+        }
+    )
+
+    result = estimate_team_base_control(timeline, "Strongholds", window_ms=15000)
+
+    assert isinstance(result, pl.DataFrame)
+    assert result.height == 2  # 2 équipes
+    assert "estimated_unique_bases" in result.columns
+    
+    # Équipe 0 : 2 clusters ([10000, 12000], [50000]) = 2 bases
+    team_0 = result.filter(pl.col("team_id") == 0)
+    assert team_0["estimated_unique_bases"][0] == 2
+    
+    # Équipe 1 : 1 cluster ([30000, 32000]) = 1 base
+    team_1 = result.filter(pl.col("team_id") == 1)
+    assert team_1["estimated_unique_bases"][0] == 1
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_estimate_team_base_control_respects_mode_limit():
+    """Vérifie que le nombre de bases est plafonné selon le mode."""
+    from src.data.services.objective_timeline_service import estimate_team_base_control
+
+    # Timeline avec 5 captures espacées (5 clusters)
+    timeline = pl.DataFrame(
+        {
+            "team_id": [0] * 5,
+            "xuid": ["xuid1"] * 5,
+            "gamertag": ["P1"] * 5,
+            "award_name": ["Zone Captured 100%"] * 5,
+            "capture_index": [1, 2, 3, 4, 5],
+            "estimated_time_ms": [10000, 30000, 50000, 70000, 90000],
+            "confidence": ["high"] * 5,
+            "nearby_events_count": [5] * 5,
+        }
+    )
+
+    result = estimate_team_base_control(timeline, "Strongholds", window_ms=5000)
+
+    # Strongholds max 3 bases, donc plafonné à 3
+    assert result["estimated_unique_bases"][0] == 3
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_estimate_team_base_control_empty():
+    """Vérifie le comportement avec timeline vide."""
+    from src.data.services.objective_timeline_service import estimate_team_base_control
+
+    timeline = pl.DataFrame()
+    result = estimate_team_base_control(timeline, "Strongholds")
+
+    assert result.is_empty()
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_get_base_control_summary():
+    """Vérifie le résumé du contrôle de bases."""
+    from src.data.services.objective_timeline_service import get_base_control_summary
+
+    # Timeline avec 2 équipes
+    timeline = pl.DataFrame(
+        {
+            "team_id": [0, 0, 0, 1, 1],
+            "xuid": ["xuid1", "xuid2", "xuid3", "xuid4", "xuid5"],
+            "gamertag": ["P1", "P2", "P3", "P4", "P5"],
+            "award_name": ["Zone Captured 100%"] * 5,
+            "capture_index": [1, 1, 1, 1, 1],
+            "estimated_time_ms": [10000, 12000, 50000, 30000, 32000],
+            "confidence": ["high"] * 5,
+            "nearby_events_count": [5] * 5,
+        }
+    )
+
+    summary = get_base_control_summary(timeline, "Strongholds")
+
+    assert "team_0_bases" in summary
+    assert "team_1_bases" in summary
+    assert "dominant_team" in summary
+    assert summary["team_0_bases"] == 2
+    assert summary["team_1_bases"] == 1
+    assert summary["dominant_team"] == 0  # Équipe 0 domine
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_get_base_control_summary_tie():
+    """Vérifie le résumé avec égalité."""
+    from src.data.services.objective_timeline_service import get_base_control_summary
+
+    # Timeline avec égalité
+    timeline = pl.DataFrame(
+        {
+            "team_id": [0, 0, 1, 1],
+            "xuid": ["xuid1", "xuid2", "xuid3", "xuid4"],
+            "gamertag": ["P1", "P2", "P3", "P4"],
+            "award_name": ["Zone Captured 100%"] * 4,
+            "capture_index": [1, 1, 1, 1],
+            "estimated_time_ms": [10000, 12000, 30000, 32000],
+            "confidence": ["high"] * 4,
+            "nearby_events_count": [5] * 4,
+        }
+    )
+
+    summary = get_base_control_summary(timeline, "Strongholds")
+
+    assert summary["team_0_bases"] == 1
+    assert summary["team_1_bases"] == 1
+    assert summary["dominant_team"] is None  # Égalité
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="Polars non disponible")
+def test_get_base_control_summary_empty():
+    """Vérifie le résumé avec timeline vide."""
+    from src.data.services.objective_timeline_service import get_base_control_summary
+
+    timeline = pl.DataFrame()
+    summary = get_base_control_summary(timeline, "Strongholds")
+
+    assert summary["team_0_bases"] == 0
+    assert summary["team_1_bases"] == 0
+    assert summary["dominant_team"] is None
