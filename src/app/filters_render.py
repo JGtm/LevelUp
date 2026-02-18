@@ -186,7 +186,14 @@ def render_filters_sidebar(
         )
 
     # Filtres cascade
-    playlists_selected, modes_selected, maps_selected = _render_cascade_filters(
+    (
+        playlists_selected,
+        modes_selected,
+        maps_selected,
+        all_playlists,
+        all_modes,
+        all_maps,
+    ) = _render_cascade_filters(
         base_for_filters=base_for_filters,
         filter_mode=filter_mode,
         start_d=start_d,
@@ -204,7 +211,13 @@ def render_filters_sidebar(
     if last_saved_key not in st.session_state or st.session_state[last_saved_key] == player_key:
         # Sauvegarder les filtres actuels (sans bloquer si la sauvegarde échoue)
         try:
-            save_filter_preferences(xuid, db_path)
+            save_filter_preferences(
+                xuid,
+                db_path,
+                all_playlists=all_playlists,
+                all_modes=all_modes,
+                all_maps=all_maps,
+            )
             st.session_state[last_saved_key] = player_key
         except Exception:
             # Ne pas bloquer l'application si la sauvegarde échoue
@@ -488,12 +501,21 @@ def _render_cascade_filters(
     clean_asset_label_fn: Callable[[str], str],
     normalize_mode_label_fn: Callable[[str], str],
     normalize_map_label_fn: Callable[[str], str],
-) -> tuple[list[str], list[str], list[str]]:
+) -> tuple[list[str], list[str], list[str], list[str], list[str], list[str]]:
     """Rend les filtres NON-CASCADE Playlists -> Modes -> Cartes.
     
     Les options sont pré-calculées depuis toutes les données disponibles (pas de cascade).
     Le filtrage est appliqué aux données, pas aux options affichées.
     Cela évite les reruns intempestifs lors de sélections multiples.
+    
+    Returns:
+        Tuple de 6 éléments:
+        - playlists_selected: playlists sélectionnées
+        - modes_selected: modes sélectionnés
+        - maps_selected: cartes sélectionnées
+        - all_playlists: toutes les playlists disponibles
+        - all_modes: tous les modes disponibles
+        - all_maps: toutes les cartes disponibles
     """
     dropdown_base = _to_polars(base_for_filters)
 
@@ -584,7 +606,14 @@ def _render_cascade_filters(
         expanded=False,
     )
 
-    return playlists_selected, modes_selected, maps_selected
+    return (
+        playlists_selected,
+        modes_selected,
+        maps_selected,
+        playlist_values,  # all_playlists
+        mode_values,  # all_modes
+        map_values,  # all_maps
+    )
 
 
 def apply_filters(
