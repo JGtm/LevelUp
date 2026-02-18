@@ -176,8 +176,8 @@ def _render_ranking_table(
                         "Rang",
                         "Joueur",
                         "Score",
-                        "🟢 FB",
-                        "🟡 Clutch",
+                        "🟢 Premier Sang",
+                        "🟡 Finisseur",
                         "🔴 Boulet",
                         "Badge",
                     ],
@@ -292,7 +292,7 @@ def render_impact_taquinerie(
             first_bloods,
             clutch_finishers,
             last_casualties,
-            match_ids=sorted_match_ids[:50],
+            match_ids=sorted_match_ids,
             gamertags=gamertags,
         )
 
@@ -304,7 +304,7 @@ def render_impact_taquinerie(
         fig = plot_friends_impact_heatmap(
             impact_matrix,
             title=None,
-            max_matches=50,
+            max_matches=len(sorted_match_ids),
         )
         st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
 
