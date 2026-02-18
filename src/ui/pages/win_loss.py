@@ -207,7 +207,7 @@ def _render_heatmap_section(dff: pl.DataFrame) -> None:
     )
     if "start_time" in dff.columns and "outcome" in dff.columns:
         try:
-            fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=2)
+            fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=1)
             if fig_heat is not None:
                 st.plotly_chart(fig_heat, width="stretch", config={"staticPlot": True})
             else:

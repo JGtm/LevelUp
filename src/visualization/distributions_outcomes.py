@@ -353,19 +353,27 @@ def plot_win_ratio_heatmap(
     *,
     title: str | None = None,
     min_matches: int = 2,
-) -> go.Figure:
-    """Heatmap du Win Ratio par jour de la semaine et heure."""
+) -> go.Figure | None:
+    """Heatmap du Win Ratio par jour de la semaine et heure.
+
+    Retourne ``None`` si les données sont insuffisantes pour afficher
+    au moins une cellule avec un win rate significatif.
+    """
+    import numpy as np
+
     d = ensure_polars(df)
     colors = HALO_COLORS.as_dict()
     d = d.drop_nulls(subset=["start_time", "outcome"])
 
     if d.is_empty():
-        fig = go.Figure()
-        fig.update_layout(height=PLOT_CONFIG.default_height)
-        return apply_halo_plot_style(fig, title=title)
+        return None
 
     d = _ensure_datetime(d, "start_time")
     d = d.drop_nulls(subset=["start_time"])
+
+    if d.is_empty():
+        return None
+
     d = d.with_columns(
         (pl.col("start_time").dt.weekday() - 1).cast(pl.Int32).alias("day_of_week"),
         pl.col("start_time").dt.hour().cast(pl.Int32).alias("hour"),
@@ -386,6 +394,10 @@ def plot_win_ratio_heatmap(
         .alias("win_rate"),
     )
 
+    # Si aucun créneau n'atteint le seuil min_matches → données insuffisantes
+    if agg["win_rate"].drop_nulls().is_empty():
+        return None
+
     # Grille complète 7 jours × 24 heures
     all_hours = list(range(24))
     all_days = list(range(7))
@@ -404,6 +416,10 @@ def plot_win_ratio_heatmap(
     # Construire les matrices numpy 7×24
     win_rate_vals = merged["win_rate"].to_numpy().reshape(7, 24)
     count_vals = merged["total"].to_numpy().reshape(7, 24).astype(int)
+
+    # Vérification finale : si tout est NaN après reshape, pas de graphe
+    if np.all(np.isnan(win_rate_vals.astype(float))):
+        return None
 
     day_labels = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
     hour_labels = [f"{h:02d}h" for h in all_hours]

@@ -180,7 +180,8 @@ def test_plot_outcomes_over_time_has_represented_data() -> None:
 
 def test_plot_win_ratio_heatmap_has_represented_data() -> None:
     """La heatmap de win ratio contient des données exploitables."""
-    fig = plot_win_ratio_heatmap(_make_match_df())
+    fig = plot_win_ratio_heatmap(_make_match_df(), min_matches=1)
+    assert fig is not None
     _assert_has_represented_data(fig)
 
 

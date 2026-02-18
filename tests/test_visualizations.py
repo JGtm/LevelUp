@@ -332,15 +332,16 @@ class TestDistributions:
         """plot_win_ratio_heatmap retourne figure valide."""
         from src.visualization.distributions import plot_win_ratio_heatmap
 
-        fig = plot_win_ratio_heatmap(sample_match_df)
+        fig = plot_win_ratio_heatmap(sample_match_df, min_matches=1)
+        assert fig is not None
         assert_valid_figure(fig, min_traces=1)
 
     def test_plot_win_ratio_heatmap_empty(self, empty_df: pd.DataFrame) -> None:
-        """plot_win_ratio_heatmap gère DataFrame vide."""
+        """plot_win_ratio_heatmap retourne None sur DataFrame vide."""
         from src.visualization.distributions import plot_win_ratio_heatmap
 
         fig = plot_win_ratio_heatmap(empty_df)
-        assert_valid_figure(fig)
+        assert fig is None
 
     # --- plot_top_weapons ---
 
