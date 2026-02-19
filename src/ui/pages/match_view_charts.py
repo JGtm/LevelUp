@@ -152,20 +152,8 @@ def render_expected_vs_actual(
     exp_fig = make_subplots(specs=[[{"secondary_y": True}]])
 
     bar_colors = [HALO_COLORS.green, HALO_COLORS.red, HALO_COLORS.cyan]
-    exp_fig.add_trace(
-        go.Bar(
-            x=labels,
-            y=exp_vals,
-            name="Attendu (MMR)",
-            marker={
-                "color": bar_colors,
-                "pattern": {"shape": "/", "fgcolor": "rgba(255,255,255,0.75)", "solidity": 0.22},
-            },
-            opacity=0.50,
-            hovertemplate="%{x} (attendu): %{y:.1f}<extra></extra>",
-        ),
-        secondary_y=False,
-    )
+
+    # Barres "Réel" en premier (pleines)
     exp_fig.add_trace(
         go.Bar(
             x=labels,
@@ -177,6 +165,25 @@ def render_expected_vs_actual(
         ),
         secondary_y=False,
     )
+
+    # Barres "Attendu" uniquement si données disponibles
+    has_expected = any(v is not None for v in exp_vals)
+    if has_expected:
+        # Couleurs plus visibles pour les barres "Attendu" (bordure + remplissage)
+        exp_colors = ["rgba(0, 255, 128, 0.6)", "rgba(255, 80, 80, 0.6)", "rgba(0, 200, 255, 0.6)"]
+        exp_fig.add_trace(
+            go.Bar(
+                x=labels,
+                y=exp_vals,
+                name="Attendu",
+                marker={
+                    "color": exp_colors,
+                    "line": {"color": bar_colors, "width": 2},
+                },
+                hovertemplate="%{x} (attendu): %{y:.1f}<extra></extra>",
+            ),
+            secondary_y=False,
+        )
 
     # Moyenne historique par catégorie (si disponible) -> en barres
     if hist_avgs.get("match_count", 0) >= 10:
