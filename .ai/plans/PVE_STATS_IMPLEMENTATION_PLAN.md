@@ -1,9 +1,9 @@
 # Plan d'implémentation : Stats PvE (Firefight) en BDD
 
-> **Date** : 2026-02-18  
-> **Statut** : 📋 En attente de Phase 1 (capture JSON)  
-> **Auteur** : GitHub Copilot  
-> **Version** : 1.0
+> **Date** : 2026-02-18
+> **Statut** : 📋 En attente de Phase 1 (capture JSON)
+> **Auteur** : GitHub Copilot
+> **Version** : 1.1 (ajout section bitmask/backfill v5.2 — 2026-02-19)
 
 ---
 
@@ -16,10 +16,11 @@
 5. [Phase 3 : Modèles Python](#phase-3--modèles-python)
 6. [Phase 4 : Transformer](#phase-4--transformer)
 7. [Phase 5 : Pipeline Sync/Batch Insert](#phase-5--pipeline-syncbatch-insert)
-8. [Phase 6 : Backfill](#phase-6--backfill)
-9. [Phase 7 : Citations Covenant](#phase-7--citations-covenant)
-10. [Phase 8 : Tests](#phase-8--tests)
-11. [Résumé des fichiers](#résumé-des-fichiers)
+8. [Phase 5b : Architecture Bitmask PvE (v5.2)](#phase-5b--architecture-bitmask-pve-v52)
+9. [Phase 6 : Backfill](#phase-6--backfill)
+10. [Phase 7 : Citations Covenant](#phase-7--citations-covenant)
+11. [Phase 8 : Tests](#phase-8--tests)
+12. [Résumé des fichiers](#résumé-des-fichiers)
 
 ---
 
@@ -285,65 +286,59 @@ Créer `.ai/research/PVE_STATS_API_STRUCTURE.md` après analyse :
 
 ## Phase 2 : Schéma BDD
 
-### Nouvelle table `pve_match_stats` dans `shared_matches.duckdb`
+### Nouvelle table `pve_match_stats` dans `shared_pve.duckdb`
+
+> ⚠️ **Correction v1.1** : La table va dans `shared_pve.duckdb`, PAS dans `shared_matches.duckdb`.
+> Ne pas ajouter `pve_stats_loaded BOOLEAN` à `match_registry` — utiliser `BACKFILL_FLAGS["pve_stats"] = 65536` (voir Phase 5b).
 
 ```sql
--- À ajouter dans src/data/sync/migrations.py (section shared_matches)
+-- src/data/sync/migrations.py — dans PVE_SCHEMA_DDL (nouveau bloc, shared_pve.duckdb)
 
 CREATE TABLE IF NOT EXISTS pve_match_stats (
     match_id VARCHAR NOT NULL,
     xuid VARCHAR NOT NULL,
-    
+
     -- Stats globales PvE
-    waves_completed INTEGER,
-    max_wave_reached INTEGER,
-    boss_kills INTEGER,
-    mythic_boss_kills INTEGER,
-    total_enemy_kills INTEGER,
-    
+    waves_completed    INTEGER,
+    max_wave_reached   INTEGER,
+    boss_kills         INTEGER,
+    mythic_boss_kills  INTEGER,
+    total_enemy_kills  INTEGER,
+
     -- Kills par type d'ennemi (Banished)
-    grunt_kills INTEGER DEFAULT 0,
-    elite_kills INTEGER DEFAULT 0,
-    jackal_kills INTEGER DEFAULT 0,
-    brute_kills INTEGER DEFAULT 0,
-    hunter_kills INTEGER DEFAULT 0,
-    skimmer_kills INTEGER DEFAULT 0,
-    
+    grunt_kills    INTEGER DEFAULT 0,
+    elite_kills    INTEGER DEFAULT 0,
+    jackal_kills   INTEGER DEFAULT 0,
+    brute_kills    INTEGER DEFAULT 0,
+    hunter_kills   INTEGER DEFAULT 0,
+    skimmer_kills  INTEGER DEFAULT 0,
+
     -- Forerunners (si disponible dans l'API)
-    crawler_kills INTEGER DEFAULT 0,
-    soldier_kills INTEGER DEFAULT 0,
-    knight_kills INTEGER DEFAULT 0,
-    warden_kills INTEGER DEFAULT 0,
-    
-    -- Méta
+    crawler_kills  INTEGER DEFAULT 0,
+    soldier_kills  INTEGER DEFAULT 0,
+    knight_kills   INTEGER DEFAULT 0,
+    warden_kills   INTEGER DEFAULT 0,
+
+    -- Bitmask granulaire (v5.2) — quels champs ont été récupérés
+    pve_bits       INTEGER DEFAULT 0,
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     PRIMARY KEY (match_id, xuid)
 );
 
--- Index pour agrégations par joueur
-CREATE INDEX IF NOT EXISTS idx_pve_xuid ON pve_match_stats(xuid);
-
--- Index pour jointures avec match_registry
+CREATE INDEX IF NOT EXISTS idx_pve_xuid     ON pve_match_stats(xuid);
 CREATE INDEX IF NOT EXISTS idx_pve_match_id ON pve_match_stats(match_id);
 ```
 
-### Justification du stockage partagé
+### Justification de la BDD dédiée
 
-| Critère | Stockage partagé ✓ | Stockage par joueur ✗ |
-|---------|-------------------|----------------------|
-| **Duplication** | 1 entrée par (match, joueur) | 4× si 4 joueurs trackés |
-| **Coéquipiers** | Stats accessibles directement | Besoin de croiser les DBs |
-| **Cohérence** | Source unique | Risque de désync |
-| **Performance** | Jointure simple avec `match_registry` | Multi-ATTACH complexe |
-
-### Flag dans `match_registry`
-
-Ajouter colonne pour tracker le backfill PvE :
-
-```sql
-ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS pve_stats_loaded BOOLEAN DEFAULT FALSE;
-```
+| Critère | `shared_pve.duckdb` ✓ | Dans `shared_matches.duckdb` ✗ |
+|---------|----------------------|-------------------------------|
+| **Pertinence** | 100% des lignes sont PvE | ~10% des matchs seulement |
+| **Performance** | Petite DB, scans rapides | Colonne NULL sur 90% des matchs |
+| **Cohérence** | Schéma dédié évolutif | Pollue le schéma partagé |
+| **Coéquipiers** | Stats accessibles (même xuid) | Idem |
 
 ---
 
@@ -385,6 +380,9 @@ class PveMatchStatsRow:
     soldier_kills: int = 0
     knight_kills: int = 0
     warden_kills: int = 0
+
+    # Bitmask granulaire (v5.2) — posé par _update_match_pve_bits() après insertion
+    pve_bits: int = 0
 ```
 
 ⚠️ **Note** : Les noms de champs seront ajustés après validation de la structure API en Phase 1.
@@ -488,18 +486,51 @@ def _extract_enemy_kills_by_type(pve_dict: dict[str, Any]) -> dict[str, int]:
     return result
 ```
 
+#### `_is_firefight_match()` — détection du mode
+
+```python
+# Catégories connues pour Firefight dans GameVariantCategory
+# (à valider avec le JSON capturé en Phase 1)
+_FIREFIGHT_CATEGORY_IDS: frozenset[int] = frozenset({9, 24})  # Hypothétique
+
+def _is_firefight_match(match_info: dict[str, Any]) -> bool:
+    """Retourne True si le match est un mode Firefight/PvE.
+
+    Utilise GameVariantCategory en priorité (plus fiable que playlist_name),
+    puis playlist_name en fallback (cas des matchs custom sans catégorie).
+    Doit être cohérent avec la condition FIREFIGHT_CONDITION de detection.py.
+    """
+    # Priorité 1 : GameVariantCategory (ID numérique stable entre saisons)
+    category = match_info.get("GameVariantCategory")
+    if isinstance(category, int) and category in _FIREFIGHT_CATEGORY_IDS:
+        return True
+
+    # Priorité 2 : playlist_name (fallback texte)
+    playlist_name = (match_info.get("Playlist") or {}).get("PublicName", "") or ""
+    name_lower = playlist_name.lower()
+    return (
+        "firefight" in name_lower
+        or "baptême" in name_lower
+        or "survive" in name_lower
+    )
+```
+
+> **Note** : `_FIREFIGHT_CATEGORY_IDS` doit être validé avec le JSON capturé (Phase 1).
+> `GameVariantCategory` est plus fiable que `playlist_name` pour les cas edge (UUID bruts).
+> Cette fonction doit rester **cohérente** avec `FIREFIGHT_CONDITION` dans `detection.py`.
+
 #### Fonction principale d'extraction
 
 ```python
 def extract_pve_stats(match_json: dict[str, Any]) -> list[PveMatchStatsRow]:
     """Extrait les stats PvE de tous les joueurs d'un match Firefight.
-    
+
     Ne retourne des données que si le match est identifié comme Firefight.
     Extrait les stats pour TOUS les joueurs du match (pas seulement le joueur tracké).
-    
+
     Args:
         match_json: JSON brut du match (MatchStats).
-    
+
     Returns:
         Liste de PveMatchStatsRow pour chaque joueur, vide si pas un match PvE.
     """
@@ -576,7 +607,7 @@ def batch_insert_pve_stats(
     conn: duckdb.DuckDBPyConnection,
     rows: list[PveMatchStatsRow],
 ) -> int:
-    """Insère les stats PvE en batch dans shared_matches.duckdb.
+    """Insère les stats PvE en batch dans shared_pve.duckdb.
     
     Utilise INSERT OR REPLACE pour gérer les re-syncs.
     
@@ -616,25 +647,291 @@ def batch_insert_pve_stats(
 
 ### Fichier : `src/data/sync/engine.py`
 
-Intégrer dans la méthode de traitement des matchs :
+#### Connexion dédiée `shared_pve.duckdb` (nouveau attribut)
+
+`engine.py` suit le pattern lazy-init avec attribut `self._shared_connection`.
+Ajouter un troisième attribut `self._pve_connection` :
 
 ```python
-async def _process_match(self, match_id: str, ...):
-    """Traite un match et extrait toutes les données."""
-    
-    # ... extraction existante (participants, medals, etc.) ...
-    
-    # Extraction stats PvE pour les matchs Firefight
-    pve_rows = extract_pve_stats(match_json)
-    if pve_rows:
-        with self._get_shared_connection() as shared_conn:
-            batch_insert_pve_stats(shared_conn, pve_rows)
-            
-            # Marquer le match comme ayant les stats PvE
-            shared_conn.execute(
-                "UPDATE match_registry SET pve_stats_loaded = TRUE WHERE match_id = ?",
-                (match_id,)
-            )
+class DuckDBSyncEngine:
+    def __init__(self, ...):
+        # ... existants ...
+        self._pve_db_path: Path | None = _PROJECT_ROOT / "data" / "warehouse" / "shared_pve.duckdb"
+        self._pve_connection: duckdb.DuckDBPyConnection | None = None
+        self._pve_db_lock = asyncio.Lock()
+
+    def _get_pve_connection(self) -> duckdb.DuckDBPyConnection:
+        """Lazy init de shared_pve.duckdb + création du schéma si absent."""
+        if self._pve_connection is not None:
+            return self._pve_connection
+        self._pve_connection = duckdb.connect(str(self._pve_db_path), read_only=False)
+        # Initialiser le schéma PvE (idempotent)
+        self._pve_connection.execute(PVE_SCHEMA_DDL)  # défini dans migrations.py
+        return self._pve_connection
+
+    def close(self):
+        # ... existant ...
+        if self._pve_connection:
+            self._pve_connection.close()
+            self._pve_connection = None
+```
+
+#### Intégration dans `_process_new_match()` / `_process_known_match()`
+
+```python
+# Dans _process_new_match() ou _process_known_match(), après l'extraction principale :
+
+# Extraction stats PvE pour les matchs Firefight
+pve_rows = extract_pve_stats(match_json)
+pve_conn = self._get_pve_connection()
+if pve_rows:
+    async with self._pve_db_lock:
+        batch_insert_pve_stats(pve_conn, pve_rows)
+        self._update_match_pve_bits(pve_conn, match_id)
+        pve_conn.commit()
+else:
+    # Match non-Firefight : poser le bit guard quand même pour éviter re-détection
+    pass  # Le bit 65536 sera posé par _update_match_pve_bits ci-dessous
+
+# Toujours poser le bit guard (même si pas de données PvE)
+shared_conn = self._get_shared_connection()
+if shared_conn:
+    shared_conn.execute(
+        "UPDATE match_registry "
+        "SET backfill_completed = COALESCE(backfill_completed, 0) | 65536 "
+        "WHERE match_id = ?",
+        (match_id,),
+    )
+```
+
+---
+
+## Phase 5b : Architecture Bitmask PvE (v5.2)
+
+> **Contexte** : Le système bitmask v5.2 a été implémenté en session 2026-02-19
+> (`ParticipantBits` dans `src/data/sync/constants.py`, `backfill_bits` dans
+> `match_participants`). Les stats PvE doivent s'intégrer à cette architecture
+> pour éviter les re-détections infinies et permettre la vérification de cohérence.
+
+### Architecture BDD dédiée
+
+Les données PvE vivront dans une **base dédiée** `data/warehouse/shared_pve.duckdb`
+(séparation des données PvP et PvE) :
+
+```
+data/warehouse/
+├── shared_matches.duckdb   ← PvP : match_participants, medals, events, etc.
+├── shared_pve.duckdb       ← PvE : pve_match_stats, pve_backfill_registry
+└── metadata.duckdb         ← Référentiels
+```
+
+> **Pourquoi une DB séparée ?** Les stats PvE (waves, kills par ennemi) n'ont
+> aucun sens pour les matchs PvP. Séparer évite de polluer `shared_matches.duckdb`
+> avec des colonnes NULL pour 90%+ des matchs.
+
+### Deux niveaux de bitmask PvE
+
+#### Niveau 1 — Guard global dans `match_registry` (shared_matches.duckdb)
+
+Ajouter un bit `pve_stats` dans `BACKFILL_FLAGS` (`src/data/sync/migrations.py`) :
+
+```python
+# src/data/sync/migrations.py
+BACKFILL_FLAGS = {
+    # ... existants (medals=1 ... participants_avg_life=32768) ...
+    "pve_stats": 65536,   # bit 16 — PvE stats tenté pour ce match
+}
+```
+
+Ce bit sert de **guard rapide** dans la détection :
+- `0` → stats PvE jamais tentées pour ce match (à backfiller)
+- `1` → stats PvE déjà tentées (même si résultat vide — match non-Firefight)
+
+Cela évite une re-détection infinie pour les matchs PvP où `pve_match_stats`
+sera naturellement vide.
+
+#### Niveau 2 — Bitmask granulaire dans `pve_match_stats` (shared_pve.duckdb)
+
+Ajouter `pve_bits INTEGER DEFAULT 0` à la table `pve_match_stats` :
+
+```sql
+CREATE TABLE IF NOT EXISTS pve_match_stats (
+    match_id VARCHAR NOT NULL,
+    xuid VARCHAR NOT NULL,
+
+    -- Stats globales PvE
+    waves_completed    INTEGER,
+    max_wave_reached   INTEGER,
+    boss_kills         INTEGER,
+    mythic_boss_kills  INTEGER,
+    total_enemy_kills  INTEGER,
+
+    -- Kills par type d'ennemi (Banished)
+    grunt_kills    INTEGER DEFAULT 0,
+    elite_kills    INTEGER DEFAULT 0,
+    jackal_kills   INTEGER DEFAULT 0,
+    brute_kills    INTEGER DEFAULT 0,
+    hunter_kills   INTEGER DEFAULT 0,
+    skimmer_kills  INTEGER DEFAULT 0,
+
+    -- Forerunners (si disponible)
+    crawler_kills  INTEGER DEFAULT 0,
+    soldier_kills  INTEGER DEFAULT 0,
+    knight_kills   INTEGER DEFAULT 0,
+    warden_kills   INTEGER DEFAULT 0,
+
+    -- Bitmask granulaire (v5.2) — quels champs ont été récupérés
+    pve_bits       INTEGER DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (match_id, xuid)
+);
+```
+
+**Note** : Supprimer `pve_stats_loaded BOOLEAN` de `match_registry` — redondant
+avec `BACKFILL_FLAGS["pve_stats"]`.
+
+#### `PveBits` enum dans `src/data/sync/constants.py`
+
+```python
+class PveBits(IntFlag):
+    """Bitmask granulaire pour les champs pve_match_stats.
+
+    Stocké dans pve_match_stats.pve_bits (shared_pve.duckdb).
+    Permet de savoir précisément quels champs ont été récupérés par l'API.
+    """
+    WAVES        = 1        # waves_completed + max_wave_reached
+    BOSS_KILLS   = 2        # boss_kills + mythic_boss_kills
+    TOTAL_KILLS  = 4        # total_enemy_kills
+    GRUNT        = 8        # grunt_kills
+    ELITE        = 16       # elite_kills
+    JACKAL       = 32       # jackal_kills
+    BRUTE        = 64       # brute_kills
+    HUNTER       = 128      # hunter_kills
+    SKIMMER      = 256      # skimmer_kills
+    CRAWLER      = 512      # crawler_kills (Forerunner)
+    SOLDIER      = 1024     # soldier_kills (Forerunner)
+    KNIGHT       = 2048     # knight_kills  (Forerunner)
+    WARDEN       = 4096     # warden_kills  (Forerunner)
+
+    # Combinaisons utiles
+    BANISHED_FULL  = GRUNT | ELITE | JACKAL | BRUTE | HUNTER | SKIMMER
+    FORERUNNER_ANY = CRAWLER | SOLDIER | KNIGHT | WARDEN
+    FULL_PVE       = WAVES | BOSS_KILLS | TOTAL_KILLS | BANISHED_FULL
+```
+
+### Mise à jour `pve_bits` après insertion
+
+Dans `engine.py`, après chaque `batch_insert_pve_stats()`, mettre à jour
+`pve_bits` via un UPDATE vectorisé (même pattern que `_update_match_participant_bits()`) :
+
+```python
+def _update_match_pve_bits(self, pve_conn: duckdb.DuckDBPyConnection, match_id: str) -> None:
+    """Met à jour pve_bits pour tous les participants d'un match PvE (vectorisé)."""
+    from src.data.sync.constants import PveBits as PB
+    try:
+        pve_conn.execute(
+            """UPDATE pve_match_stats SET pve_bits = COALESCE(pve_bits, 0) | (
+                CASE WHEN waves_completed IS NOT NULL THEN ? ELSE 0 END |
+                CASE WHEN boss_kills IS NOT NULL THEN ? ELSE 0 END |
+                CASE WHEN total_enemy_kills IS NOT NULL THEN ? ELSE 0 END |
+                CASE WHEN grunt_kills  > 0 THEN ? ELSE 0 END |
+                CASE WHEN elite_kills  > 0 THEN ? ELSE 0 END |
+                CASE WHEN jackal_kills > 0 THEN ? ELSE 0 END |
+                CASE WHEN brute_kills  > 0 THEN ? ELSE 0 END |
+                CASE WHEN hunter_kills > 0 THEN ? ELSE 0 END |
+                CASE WHEN skimmer_kills > 0 THEN ? ELSE 0 END |
+                CASE WHEN crawler_kills > 0 THEN ? ELSE 0 END |
+                CASE WHEN soldier_kills > 0 THEN ? ELSE 0 END |
+                CASE WHEN knight_kills > 0 THEN ? ELSE 0 END |
+                CASE WHEN warden_kills > 0 THEN ? ELSE 0 END
+            ) WHERE match_id = ?""",
+            [PB.WAVES, PB.BOSS_KILLS, PB.TOTAL_KILLS,
+             PB.GRUNT, PB.ELITE, PB.JACKAL, PB.BRUTE,
+             PB.HUNTER, PB.SKIMMER, PB.CRAWLER, PB.SOLDIER,
+             PB.KNIGHT, PB.WARDEN, match_id],
+        )
+        # Mettre à jour le guard global dans shared_matches
+        self._shared_conn.execute(
+            "UPDATE match_registry "
+            "SET backfill_completed = COALESCE(backfill_completed, 0) | 65536 "
+            "WHERE match_id = ?",
+            (match_id,),
+        )
+    except Exception as e:
+        logger.debug(f"Mise à jour pve_bits match {match_id}: {e}")
+```
+
+> **Important** : Le bit `65536` (`pve_stats`) doit être posé dans
+> `backfill_completed` **même pour les matchs non-Firefight** (lors du sync,
+> après avoir vérifié qu'il ne s'agit pas d'un match PvE). Cela évite de
+> re-tenter la détection à chaque backfill.
+
+### Détection Firefight : identifier le mode sans `is_firefight`
+
+`match_registry` n'a **pas** de colonne `is_firefight`. La détection utilise
+`playlist_name` :
+
+```python
+# Dans detection.py, condition pour les matchs Firefight manquants
+FIREFIGHT_CONDITION = """
+    (
+        LOWER(mr.playlist_name) LIKE '%firefight%'
+        OR LOWER(mr.playlist_name) LIKE '%baptême%'
+        OR LOWER(mr.playlist_name) LIKE '%survive%'
+    )
+"""
+```
+
+> **Attention** : Certains matchs Firefight ont un UUID brut comme `playlist_name`
+> (ex : `dc4929de-216c-43bc-b207-1702253f4576`) — ces cas nécessitent que
+> `assets` soit d'abord backfillé pour résoudre le `playlist_name`.
+
+#### Pattern de détection double guard (comme le skill)
+
+```python
+# Dans detection.py — pve_stats
+if pve_stats:
+    if force_pve_stats:
+        conditions.append(FIREFIGHT_CONDITION)
+    else:
+        # Double guard :
+        # 1. Match Firefight (par playlist_name)
+        # 2. Guard backfill_completed : pve_stats bit (65536) jamais tenté
+        conditions.append(
+            FIREFIGHT_CONDITION
+            + " AND (COALESCE(mr.backfill_completed, 0) & 65536) = 0"
+        )
+```
+
+> **Pourquoi le double guard est indispensable ici ?**
+> Contrairement aux stats PvP, un match Firefight avec `pve_bits = 0` est
+> **toujours suspect** (les Firefight ont toujours des waves et des kills
+> d'ennemis). Mais le guard `backfill_completed & 65536` évite de re-tenter
+> si on sait que l'API n'a pas retourné ces données (bug API, match corrompu).
+
+### `migrate_bits` PvE
+
+Créer `scripts/backfill/migrate_pve_bits.py` sur le modèle de `migrate_bits.py` :
+
+```bash
+# Migration initiale des pve_bits depuis les colonnes existantes
+python scripts/backfill/migrate_pve_bits.py
+
+# Vérification de cohérence
+python scripts/backfill/migrate_pve_bits.py --verify
+```
+
+La logique `verify_pve_bits_coherence()` vérifie que chaque colonne `NOT NULL`
+a son bit correspondant posé dans `pve_bits` :
+
+```python
+checks = [
+    ("WAVES",       PveBits.WAVES,      "waves_completed IS NOT NULL"),
+    ("BOSS_KILLS",  PveBits.BOSS_KILLS, "boss_kills IS NOT NULL"),
+    ("GRUNT",       PveBits.GRUNT,      "grunt_kills > 0"),
+    # ...
+]
 ```
 
 ---
@@ -661,10 +958,19 @@ class SyncScope:
         # ... existants ...
         "pve_stats",
     )
-    
+
     _FORCE_MAP: ClassVar[dict[str, str]] = {
         # ... existants ...
         "force_pve_stats": "pve_stats",
+    }
+
+    # ⚠️ Ne pas oublier _REQUESTED_TYPE_MAP — utilisé par la propriété
+    # `requested_types` pour le routage bitmask backfill_completed.
+    # Sans cette entrée, `scope.requested_types` n'inclura pas "pve_stats"
+    # et le bit 65536 ne sera pas posé automatiquement.
+    _REQUESTED_TYPE_MAP: ClassVar[dict[str, str]] = {
+        # ... existants ...
+        "pve_stats": "pve_stats",
     }
 ```
 
@@ -687,16 +993,104 @@ parser.add_argument(
 
 ### Logique de détection des matchs à backfiller
 
+> ⚠️ Ne PAS utiliser `pve_stats_loaded BOOLEAN` ni `is_firefight` — ces colonnes
+> n'existent pas. Utiliser `backfill_completed & 65536` (bit `pve_stats`) et
+> `playlist_name LIKE '%firefight%'` (voir Phase 5b).
+
 ```python
-def find_matches_missing_pve_stats(conn: duckdb.DuckDBPyConnection) -> list[str]:
-    """Trouve les matchs Firefight sans stats PvE."""
-    return conn.execute("""
+def find_matches_missing_pve_stats(
+    shared_conn: duckdb.DuckDBPyConnection,
+    *,
+    force: bool = False,
+    max_matches: int | None = None,
+) -> list[str]:
+    """Trouve les matchs Firefight sans stats PvE (via shared_matches.duckdb).
+
+    Utilise le double guard bitmask (Phase 5b) :
+    - Filtre Firefight par playlist_name
+    - Guard backfill_completed & 65536 pour éviter la re-détection
+
+    Args:
+        shared_conn: Connexion à shared_matches.duckdb.
+        force: Si True, retourne tous les matchs Firefight (ignore le guard).
+        max_matches: Limite de résultats.
+
+    Returns:
+        Liste des match_id à backfiller.
+    """
+    firefight_cond = """(
+        LOWER(mr.playlist_name) LIKE '%firefight%'
+        OR LOWER(mr.playlist_name) LIKE '%baptême%'
+        OR LOWER(mr.playlist_name) LIKE '%survive%'
+    )"""
+    if force:
+        where = firefight_cond
+    else:
+        where = firefight_cond + " AND (COALESCE(mr.backfill_completed, 0) & 65536) = 0"
+
+    query = f"""
         SELECT mr.match_id
         FROM match_registry mr
-        WHERE mr.is_firefight = TRUE
-          AND (mr.pve_stats_loaded = FALSE OR mr.pve_stats_loaded IS NULL)
+        WHERE {where}
         ORDER BY mr.start_time DESC
-    """).fetchall()
+    """
+    if max_matches:
+        query += f" LIMIT {max_matches}"
+
+    try:
+        return [row[0] for row in shared_conn.execute(query).fetchall()]
+    except Exception as e:
+        logger.error(f"Erreur détection matchs PvE: {e}")
+        return []
+```
+
+#### Intégration dans `detection.py` / `_find_matches_in_shared_all()`
+
+Ajouter dans `_find_matches_in_shared_all()` le cas `pve_stats`, **après** la
+section `participants` (en bas de la liste des conditions) :
+
+```python
+# PvE stats — voir Phase 5b pour l'explication du double guard
+if pve_stats:
+    if force_pve_stats:
+        conditions.append(
+            "(LOWER(mr.playlist_name) LIKE '%firefight%' "
+            " OR LOWER(mr.playlist_name) LIKE '%baptême%' "
+            " OR LOWER(mr.playlist_name) LIKE '%survive%')"
+        )
+    else:
+        conditions.append(
+            "(LOWER(mr.playlist_name) LIKE '%firefight%' "
+            " OR LOWER(mr.playlist_name) LIKE '%baptême%' "
+            " OR LOWER(mr.playlist_name) LIKE '%survive%')"
+            " AND (COALESCE(mr.backfill_completed, 0) & 65536) = 0"
+        )
+```
+
+#### Orchestrateur : connexion à `shared_pve.duckdb`
+
+Les fonctions backfill PvE reçoivent **deux connexions** :
+- `shared_conn` → `shared_matches.duckdb` (pour `match_registry` et mise à jour du guard)
+- `pve_conn` → `shared_pve.duckdb` (pour `pve_match_stats`)
+
+```python
+# Dans orchestrator.py — backfill PvE
+async def _backfill_pve_for_match(
+    match_id: str,
+    shared_conn: duckdb.DuckDBPyConnection,
+    pve_conn: duckdb.DuckDBPyConnection,
+    scope: SyncScope,
+    api_client: Any,
+) -> int:
+    """Backfille les stats PvE d'un match Firefight.
+
+    1. Récupère le JSON du match via l'API
+    2. Extrait les stats PvE (extract_pve_stats)
+    3. Insère dans pve_match_stats (pve_conn)
+    4. Met à jour pve_bits (vectorisé)
+    5. Pose le bit 65536 dans match_registry.backfill_completed (shared_conn)
+    """
+    # ... implémentation ...
 ```
 
 ---
@@ -751,20 +1145,22 @@ def compute_citation_for_match(
 
 ### Chargement des stats PvE pour le calcul
 
-Dans `aggregate_for_display()`, charger les stats PvE depuis `shared_matches.duckdb` :
+Dans `aggregate_for_display()`, charger les stats PvE depuis `shared_pve.duckdb` :
 
 ```python
 def _load_pve_stats_for_matches(self, match_ids: list[str]) -> dict[str, dict[str, int]]:
-    """Charge les stats PvE pour une liste de matchs.
-    
+    """Charge les stats PvE pour une liste de matchs depuis shared_pve.duckdb.
+
     Returns:
         Dict {match_id: {grunt_kills: X, elite_kills: Y, ...}}
     """
     if not match_ids:
         return {}
-    
-    shared_path = get_shared_matches_path()
-    conn = duckdb.connect(str(shared_path), read_only=True)
+
+    pve_path = _PROJECT_ROOT / "data" / "warehouse" / "shared_pve.duckdb"
+    if not pve_path.exists():
+        return {}
+    conn = duckdb.connect(str(pve_path), read_only=True)
     try:
         placeholders = ",".join(["?"] * len(match_ids))
         rows = conn.execute(f"""
@@ -885,8 +1281,8 @@ from src.data.sync.models import PveMatchStatsRow
 
 @pytest.fixture
 def shared_db(tmp_path):
-    """Crée une DB partagée temporaire avec le schéma PvE."""
-    db_path = tmp_path / "shared_matches.duckdb"
+    """Crée une DB PvE temporaire avec le schéma PvE."""
+    db_path = tmp_path / "shared_pve.duckdb"
     conn = duckdb.connect(str(db_path))
     conn.execute("""
         CREATE TABLE pve_match_stats (
@@ -926,43 +1322,61 @@ def test_batch_insert_pve_stats(shared_db):
 
 ## Résumé des fichiers
 
+### Fichiers à modifier
+
+| Fichier | Modifications |
+|---------|---------------|
+| `src/data/sync/models.py` | Ajouter `PveMatchStatsRow` (avec champ `pve_bits`) |
+| `src/data/sync/transformers.py` | Ajouter `_find_pve_stats_dict()`, `_extract_enemy_kills_by_type()`, `extract_pve_stats()` |
+| `src/data/sync/batch_insert.py` | Ajouter `batch_insert_pve_stats()` |
+| `src/data/sync/constants.py` | Ajouter `PveBits` enum (après `ParticipantBits`, `MatchBits`) |
+| `src/data/sync/migrations.py` | DDL `pve_match_stats` dans **`shared_pve.duckdb`** ; bit `pve_stats=65536` dans `BACKFILL_FLAGS` |
+| `src/data/sync/engine.py` | Intégrer extraction PvE + `_update_match_pve_bits()` ; poser bit 65536 dans `backfill_completed` |
+| `src/data/sync/scope.py` | Ajouter champs `pve_stats`, `force_pve_stats` dans `SyncScope` |
+| `scripts/backfill/cli.py` | Ajouter `--pve-stats`, `--force-pve-stats` |
+| `scripts/backfill/detection.py` | Ajouter condition `pve_stats` avec double guard dans `_find_matches_in_shared_all()` |
+| `scripts/backfill/orchestrator.py` | Ajouter `_backfill_pve_for_match()` avec connexion `pve_conn` |
+| `scripts/create_citation_mappings_table.py` | Ajouter citations Covenant |
+| `src/analysis/citations/engine.py` | Supporter `pve_stat` mapping_type |
+| `docs/SHARED_MATCHES_SCHEMA.md` | Documenter `shared_pve.duckdb` + `pve_match_stats` |
+
 ### Fichiers à créer
 
 | Fichier | Description |
 |---------|-------------|
+| `scripts/backfill/migrate_pve_bits.py` | Migration initiale `pve_bits` + `--verify` (cohérence) |
 | `.ai/research/PVE_STATS_API_STRUCTURE.md` | Documentation structure API (après Phase 1) |
 | `.ai/research/samples/*.json` | Samples JSON Firefight capturés |
 | `tests/test_pve_transformers.py` | Tests unitaires extraction PvE |
 | `tests/integration/test_pve_sync.py` | Tests intégration pipeline PvE |
 
-### Fichiers à modifier
+### Points d'attention v5.2
 
-| Fichier | Modifications |
-|---------|---------------|
-| `src/data/sync/models.py` | Ajouter `PveMatchStatsRow` |
-| `src/data/sync/transformers.py` | Ajouter `_find_pve_stats_dict()`, `_extract_enemy_kills_by_type()`, `extract_pve_stats()` |
-| `src/data/sync/batch_insert.py` | Ajouter `batch_insert_pve_stats()` |
-| `src/data/sync/migrations.py` | Ajouter DDL `pve_match_stats` + flag `pve_stats_loaded` |
-| `src/data/sync/engine.py` | Intégrer extraction PvE dans pipeline sync |
-| `src/data/sync/scope.py` | Ajouter flags `pve_stats`, `force_pve_stats` |
-| `scripts/backfill/cli.py` | Ajouter `--pve-stats`, `--force-pve-stats` |
-| `scripts/create_citation_mappings_table.py` | Ajouter citations Covenant |
-| `src/analysis/citations/engine.py` | Supporter `pve_stat` mapping_type |
-| `docs/SHARED_MATCHES_SCHEMA.md` | Documenter nouvelle table |
+| Sujet | Règle |
+|-------|-------|
+| **BDD séparée** | `shared_pve.duckdb` — ne pas polluer `shared_matches.duckdb` |
+| **Pas de colonne booléenne** | Utiliser `BACKFILL_FLAGS["pve_stats"] = 65536` au lieu de `pve_stats_loaded BOOLEAN` |
+| **Détection Firefight** | `playlist_name LIKE '%firefight%'` — pas de colonne `is_firefight` |
+| **Guard double** | `playlist + (backfill_completed & 65536) = 0` — même pattern que skill |
+| **UUID playlist** | Certains matchs Firefight ont UUID brut → backfiller `assets` d'abord |
+| **Modes non-ranked** | Firefight = toujours non-ranked → `team_mmr = NULL` normal, ne pas utiliser `backfill_bits & TEAM_MMR` pour détecter les Firefight |
+| **`migrate_pve_bits.py`** | À lancer UNE SEULE FOIS après la première insertion de données PvE |
 
 ---
 
 ## Checklist d'implémentation
 
 - [ ] **Phase 1** : Capturer JSON Firefight et documenter structure API
-- [ ] **Phase 2** : Créer schéma SQL dans migrations.py
+- [ ] **Phase 2** : Créer schéma SQL (`shared_pve.duckdb` + `pve_bits` + **pas** de `pve_stats_loaded BOOLEAN`)
 - [ ] **Phase 3** : Ajouter `PveMatchStatsRow` dans models.py
 - [ ] **Phase 4** : Implémenter transformer `extract_pve_stats()`
 - [ ] **Phase 5** : Implémenter `batch_insert_pve_stats()` et intégrer dans engine
-- [ ] **Phase 6** : Ajouter flags SyncScope et arguments CLI
+- [ ] **Phase 5b** : Ajouter `PveBits` dans `constants.py`, bit `pve_stats=65536` dans `BACKFILL_FLAGS`, `_update_match_pve_bits()` dans engine
+- [ ] **Phase 6** : Ajouter flags SyncScope + CLI + `find_matches_missing_pve_stats()` + intégration `detection.py`
+- [ ] **Phase 6b** : Créer `scripts/backfill/migrate_pve_bits.py` (migration initiale + `--verify`)
 - [ ] **Phase 7** : Ajouter citations Covenant et support `pve_stat`
 - [ ] **Phase 8** : Écrire et valider les tests
-- [ ] **Documentation** : Mettre à jour SHARED_MATCHES_SCHEMA.md
+- [ ] **Documentation** : Mettre à jour SHARED_MATCHES_SCHEMA.md + ajouter `shared_pve.duckdb`
 - [ ] **CHANGELOG** : Ajouter entrée pour la feature
 
 ---
@@ -976,10 +1390,11 @@ def test_batch_insert_pve_stats(shared_db):
 | Phase 3 (Modèles) | 0.25h | Phase 1 |
 | Phase 4 (Transformer) | 1h | Phase 1, 3 |
 | Phase 5 (Pipeline) | 1h | Phase 2, 4 |
-| Phase 6 (Backfill) | 0.5h | Phase 5 |
+| Phase 5b (Bitmask PvE) | 0.75h | Phase 2, constants.py existant |
+| Phase 6 (Backfill + detection) | 0.75h | Phase 5, 5b |
 | Phase 7 (Citations) | 0.5h | Phase 5 |
-| Phase 8 (Tests) | 1h | Phase 4, 5 |
-| **Total** | **~5h** | |
+| Phase 8 (Tests) | 1h | Phase 4, 5, 5b |
+| **Total** | **~6.25h** | |
 
 ---
 
@@ -991,3 +1406,6 @@ def test_batch_insert_pve_stats(shared_db):
 | Pas de stats par type d'ennemi dans l'API | Moyen | Peut-être disponible via médailles ou awards à la place |
 | Matchs Firefight historiques sans re-fetch possible | Moyen | Rate limit API à respecter, prioriser matchs récents |
 | Changement d'API lors d'une mise à jour Halo | Faible | Extraction récursive flexible, logging des erreurs |
+| `GameVariantCategory` inconnu pour Firefight | Moyen | Valider l'ID en Phase 1 ; `_is_firefight_match()` a un fallback `playlist_name` |
+| Incohérence détection `_is_firefight_match()` vs `FIREFIGHT_CONDITION` | Élevé | Les deux doivent utiliser les mêmes critères — tester avec un Firefight + un match social |
+| Concurrence sur `shared_pve.duckdb` | Faible | Utiliser `self._pve_db_lock` (même pattern que `_db_lock` et `_shared_db_lock`) |
