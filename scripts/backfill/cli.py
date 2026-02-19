@@ -397,6 +397,18 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--force-kda-recalc", action="store_true")
     parser.add_argument("--force-time-played", action="store_true")
 
+    # ── Team scores (match_registry) ──────────────────────────────────────
+    parser.add_argument(
+        "--team-scores",
+        action="store_true",
+        help="Peuple team_0_score/team_1_score dans match_registry où NULL",
+    )
+    parser.add_argument(
+        "--force-team-scores",
+        action="store_true",
+        help="Force le rechargement des team scores même s'ils sont déjà présents",
+    )
+
     # ── Groupe Core Stats (v5.2) ───────────────────────────────────────────
     parser.add_argument(
         "--core-stats",
