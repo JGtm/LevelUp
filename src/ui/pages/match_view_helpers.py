@@ -142,14 +142,32 @@ def index_media_dir(dir_path: str, exts: tuple[str, ...]) -> pl.DataFrame:
 # =============================================================================
 
 
+def _filter_media_by_gamertag(df: pl.DataFrame, gamertag: str | None) -> pl.DataFrame:
+    """Filtre les médias pour ne garder que ceux appartenant au joueur.
+
+    L'appartenance est déterminée par la présence du gamertag dans le chemin du fichier.
+    """
+    if df.is_empty() or not gamertag:
+        return df
+    gt_lower = gamertag.lower()
+    # Filtrer : le gamertag doit être dans le chemin (nom de dossier)
+    return df.filter(pl.col("path").str.to_lowercase().str.contains(gt_lower))
+
+
 def render_media_section(
     *,
     row: dict[str, Any],
     settings: AppSettings,
     format_datetime_fn: Callable[[datetime | None], str],
     paris_tz,
+    gamertag: str | None = None,
 ) -> None:
-    """Rend la section médias (captures/vidéos) pour un match."""
+    """Rend la section médias (captures/vidéos) pour un match.
+
+    La section est masquée entièrement s'il n'y a aucun média correspondant.
+    Les médias sont filtrés par gamertag : seuls ceux dont le chemin contient
+    le gamertag sont affichés.
+    """
     if not bool(getattr(settings, "media_enabled", True)):
         return
 
@@ -164,13 +182,6 @@ def render_media_section(
     if not screens_dir and not videos_dir:
         return
 
-    st.subheader("Médias")
-    # Afficher la fenêtre avec indication si durée exacte ou estimée
-    window_info = f"Fenêtre: {format_datetime_fn(t0)} → {format_datetime_fn(t1)}"
-    if not duration_known:
-        window_info += " *(durée estimée)*"
-    st.caption(window_info)
-
     try:
         t0_epoch = t0.timestamp() if t0 else None
         t1_epoch = t1.timestamp() if t1 else None
@@ -180,52 +191,68 @@ def render_media_section(
     if t0_epoch is None or t1_epoch is None:
         return
 
-    found_any = False
+    # Collecter les médias AVANT d'afficher quoi que ce soit
+    img_hits: pl.DataFrame | None = None
+    vid_hits: pl.DataFrame | None = None
 
     if screens_dir and os.path.isdir(screens_dir):
         img_df = index_media_dir(screens_dir, ("png", "jpg", "jpeg", "webp"))
         if not img_df.is_empty():
-            hits = img_df.filter(
+            img_df = _filter_media_by_gamertag(img_df, gamertag)
+            img_hits = img_df.filter(
                 (pl.col("mtime") >= t0_epoch) & (pl.col("mtime") <= t1_epoch)
             ).head(24)
-            if not hits.is_empty():
-                found_any = True
-                st.caption("Captures")
-                for p in hits["path"].to_list():
-                    try:
-                        st.image(p, caption=str(p))
-                    except Exception:
-                        st.write(str(p))
+            if img_hits.is_empty():
+                img_hits = None
 
     if videos_dir and os.path.isdir(videos_dir):
         vid_df = index_media_dir(videos_dir, ("mp4", "webm", "mkv", "mov"))
         if not vid_df.is_empty():
-            hits = vid_df.filter(
+            vid_df = _filter_media_by_gamertag(vid_df, gamertag)
+            vid_hits = vid_df.filter(
                 (pl.col("mtime") >= t0_epoch) & (pl.col("mtime") <= t1_epoch)
             ).head(10)
-            if not hits.is_empty():
-                found_any = True
-                st.caption("Vidéos")
-                paths = [str(p) for p in hits["path"].to_list() if p]
-                if paths:
-                    labels = [os.path.basename(p) for p in paths]
-                    picked = st.selectbox(
-                        "Vidéo",
-                        options=list(range(len(paths))),
-                        format_func=lambda i: labels[i],
-                        index=0,
-                        key=f"media_video_pick_{row.get('match_id','')}",
-                        label_visibility="collapsed",
-                    )
-                    p = paths[int(picked)]
-                    try:
-                        st.video(p)
-                        st.caption(str(p))
-                    except Exception:
-                        st.write(str(p))
+            if vid_hits.is_empty():
+                vid_hits = None
 
-    if not found_any:
-        st.info("Aucun média trouvé pour ce match.")
+    # Masquer la section entièrement s'il n'y a aucun média
+    if img_hits is None and vid_hits is None:
+        return
+
+    # Afficher la section seulement s'il y a des médias
+    st.subheader("Médias")
+    window_info = f"Fenêtre: {format_datetime_fn(t0)} → {format_datetime_fn(t1)}"
+    if not duration_known:
+        window_info += " *(durée estimée)*"
+    st.caption(window_info)
+
+    if img_hits is not None:
+        st.caption("Captures")
+        for p in img_hits["path"].to_list():
+            try:
+                st.image(p, caption=str(p))
+            except Exception:
+                st.write(str(p))
+
+    if vid_hits is not None:
+        st.caption("Vidéos")
+        paths = [str(p) for p in vid_hits["path"].to_list() if p]
+        if paths:
+            labels = [os.path.basename(p) for p in paths]
+            picked = st.selectbox(
+                "Vidéo",
+                options=list(range(len(paths))),
+                format_func=lambda i: labels[i],
+                index=0,
+                key=f"media_video_pick_{row.get('match_id','')}",
+                label_visibility="collapsed",
+            )
+            p = paths[int(picked)]
+            try:
+                st.video(p)
+                st.caption(str(p))
+            except Exception:
+                st.write(str(p))
 
 
 # =============================================================================

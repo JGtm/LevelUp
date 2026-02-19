@@ -237,11 +237,9 @@ def render_media_tab(
             "capture_end_utc", descending=True, nulls_last=True
         )
 
-    # Section « Mes captures » (ratio 16:9) – du plus récent au plus vieux
-    st.markdown("### Mes captures")
-    if mine.is_empty():
-        st.info("Aucune capture détectée.")
-    else:
+    # Section « Mes captures » (ratio 16:9) – du plus récent au plus vieux (masquée si vide)
+    if not mine.is_empty():
+        st.markdown("### Mes captures")
         _render_media_grid(
             mine,
             cols_per_row=cols_per_row,
@@ -266,11 +264,12 @@ def render_media_tab(
                 thumb_height=MEDIA_THUMB_RATIO_H,
             )
 
-    # Section « Sans correspondance »
-    st.markdown("### Sans correspondance")
-    _render_media_grid(
-        unassigned,
-        cols_per_row=cols_per_row,
-        thumb_width=MEDIA_THUMB_RATIO_W,
-        thumb_height=MEDIA_THUMB_RATIO_H,
-    )
+    # Section « Sans correspondance » (masquée si vide)
+    if not unassigned.is_empty():
+        st.markdown("### Sans correspondance")
+        _render_media_grid(
+            unassigned,
+            cols_per_row=cols_per_row,
+            thumb_width=MEDIA_THUMB_RATIO_W,
+            thumb_height=MEDIA_THUMB_RATIO_H,
+        )

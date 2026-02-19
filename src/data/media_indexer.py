@@ -40,6 +40,28 @@ def get_gamertag_from_db_path(db_path: Path | str) -> str | None:
     return None
 
 
+@contextlib.contextmanager
+def _connect_db_flexible(db_path: str | Path):
+    """Ouvre une connexion DuckDB, préférant read_only mais avec fallback.
+
+    Si une connexion write est déjà ouverte sur ce fichier (ex: par Streamlit cache),
+    on utilise le même mode pour éviter l'erreur 'different configuration'.
+    """
+    conn = None
+    for ro in (True, False):
+        try:
+            conn = duckdb.connect(str(db_path), read_only=ro)
+            break
+        except Exception:
+            if not ro:
+                raise
+    try:
+        yield conn
+    finally:
+        if conn:
+            conn.close()
+
+
 # Extensions supportées
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 VIDEO_EXTENSIONS = {".mp4", ".webm", ".mkv", ".mov", ".avi"}
@@ -769,19 +791,26 @@ class MediaIndexer:
         # Ne PAS appeler ensure_schema() ici : il ouvre en write et entre
         # en conflit avec la connexion read-only déjà active de Streamlit.
         # On vérifie simplement l'existence des tables en lecture seule.
-        try:
-            with duckdb.connect(str(db_path), read_only=True) as _c:
-                _tables = {
-                    r[0]
-                    for r in _c.execute(
-                        "SELECT table_name FROM information_schema.tables "
-                        "WHERE table_schema = 'main' AND table_name IN ('media_files', 'media_match_associations')"
-                    ).fetchall()
-                }
-                if "media_files" not in _tables:
-                    return pl.DataFrame()
-        except Exception as e:
-            logger.warning("load_media_for_ui schema check: %s", e)
+        # Note: si une connexion write est déjà ouverte ailleurs, on tente sans read_only.
+        _tables: set[str] = set()
+        for ro in (True, False):
+            try:
+                with duckdb.connect(str(db_path), read_only=ro) as _c:
+                    _tables = {
+                        r[0]
+                        for r in _c.execute(
+                            "SELECT table_name FROM information_schema.tables "
+                            "WHERE table_schema = 'main' AND table_name IN ('media_files', 'media_match_associations')"
+                        ).fetchall()
+                    }
+                break  # succès
+            except Exception as e:
+                if ro:
+                    # Réessayer sans read_only
+                    continue
+                logger.warning("load_media_for_ui schema check: %s", e)
+                return pl.DataFrame()
+        if "media_files" not in _tables:
             return pl.DataFrame()
 
         cu = str(current_xuid or "")
@@ -791,7 +820,7 @@ class MediaIndexer:
         # 1) Match_ids du joueur courant (v5.1 : player_match_enrichment + shared)
         match_ids_current: set[str] = set()
         try:
-            with duckdb.connect(str(db_path), read_only=True) as c:
+            with _connect_db_flexible(db_path) as c:
                 rows = c.execute(
                     "SELECT DISTINCT match_id FROM player_match_enrichment WHERE match_id IS NOT NULL"
                 ).fetchall()
@@ -803,7 +832,7 @@ class MediaIndexer:
             shared_path = get_shared_matches_path_from_player(db_path)
             if shared_path and shared_path.exists() and cu:
                 try:
-                    with duckdb.connect(str(shared_path), read_only=True) as c:
+                    with _connect_db_flexible(shared_path) as c:
                         rows = c.execute(
                             "SELECT DISTINCT mp.match_id FROM match_participants mp "
                             "WHERE mp.xuid = ? AND mp.match_id IS NOT NULL",
@@ -816,7 +845,7 @@ class MediaIndexer:
         # 2) Charger médias DB courante (mine + unassigned)
         df_current = pl.DataFrame()
         try:
-            with duckdb.connect(str(db_path), read_only=True) as c:
+            with _connect_db_flexible(db_path) as c:
                 tables = c.execute(
                     """
                     SELECT table_name FROM information_schema.tables
@@ -844,7 +873,7 @@ class MediaIndexer:
             if not match_ids_current:
                 continue
             try:
-                with duckdb.connect(str(pdb), read_only=True) as c:
+                with _connect_db_flexible(pdb) as c:
                     tables = c.execute(
                         """
                         SELECT table_name FROM information_schema.tables
@@ -874,11 +903,13 @@ class MediaIndexer:
         dfs = [df_current] + dfs_teammate
         df = pl.concat(dfs) if len(dfs) > 1 else dfs[0]
 
-        # xuid → gamertag
+        # xuid → gamertag (pour référence)
         xuid_to_gamertag: dict[str, str] = {}
+        known_gamertags: set[str] = set()
         for pdb, xu in player_dbs:
             gamertag = Path(pdb).parent.name
             xuid_to_gamertag[str(xu)] = gamertag
+            known_gamertags.add(gamertag.lower())
 
         df = df.with_columns(
             pl.col("xuid")
@@ -889,20 +920,53 @@ class MediaIndexer:
             .fill_null("")
             .alias("gamertag")
         )
+
+        # Déterminer le propriétaire du média depuis le chemin du fichier
+        # Le gamertag est le nom du dossier parent qui correspond à un joueur connu
+        current_gamertag = get_gamertag_from_db_path(db_path) or ""
+        current_gamertag_lower = current_gamertag.lower()
+
+        def _extract_owner_from_path(file_path: str) -> str:
+            """Extrait le gamertag propriétaire depuis le chemin du fichier."""
+            if not file_path:
+                return ""
+            path_lower = file_path.lower().replace("\\", "/")
+            for gt in known_gamertags:
+                # Chercher le gamertag comme nom de dossier dans le chemin
+                if f"/{gt}/" in path_lower or path_lower.endswith(f"/{gt}"):
+                    # Retourner la casse originale
+                    for pdb, _ in player_dbs:
+                        orig_gt = Path(pdb).parent.name
+                        if orig_gt.lower() == gt:
+                            return orig_gt
+            return ""
+
+        # Appliquer l'extraction du propriétaire
+        owners = [_extract_owner_from_path(p) for p in df["file_path"].to_list()]
+        df = df.with_columns(pl.Series("owner_gamertag", owners))
+
         # Section: unassigned si pas de match_id, sinon mine ou teammate
-        # Mine = xuid match OU gamertag match (current_xuid peut être gamertag en DuckDB v4)
-        current_gamertag = get_gamertag_from_db_path(db_path) or cu
+        # Mine = le fichier est dans un dossier du joueur courant
         df = df.with_columns(
             pl.when(
                 pl.col("match_id").is_null()
                 | (pl.col("match_id").cast(pl.Utf8).str.strip_chars() == "")
             )
             .then(pl.lit("unassigned"))
-            .when((pl.col("xuid").cast(pl.Utf8) == cu) | (pl.col("gamertag") == current_gamertag))
+            .when(pl.col("owner_gamertag").str.to_lowercase() == current_gamertag_lower)
             .then(pl.lit("mine"))
             .otherwise(pl.lit("teammate"))
             .alias("section")
         )
+
+        # Utiliser owner_gamertag comme gamertag pour l'affichage des sections teammate
+        df = df.with_columns(
+            pl.when(pl.col("owner_gamertag") != "")
+            .then(pl.col("owner_gamertag"))
+            .otherwise(pl.col("gamertag"))
+            .alias("gamertag")
+        )
+        df = df.drop("owner_gamertag")
         # Une seule ligne par média : priorité mine > teammate > unassigned
         df = df.with_columns(
             pl.when(pl.col("section") == "mine")
