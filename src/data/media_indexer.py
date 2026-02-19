@@ -657,7 +657,7 @@ class MediaIndexer:
         others = [(p, x) for p, x in all_dbs if p.resolve() != current]
         return current_first + others
 
-    def associate_with_matches(self, tolerance_minutes: int = 20) -> int:
+    def associate_with_matches(self, tolerance_minutes: int = 1) -> int:
         """Associe les médias actifs avec les matchs (multi-joueurs).
 
         Pour chaque média actif, on cherche le match le plus proche (dans la tolérance)
@@ -673,7 +673,7 @@ class MediaIndexer:
         try:
             media_rows = conn_read.execute(
                 """
-                SELECT mf.file_path, COALESCE(epoch(mf.capture_end_utc), mf.mtime_paris_epoch, mf.mtime)
+                SELECT mf.file_path, COALESCE(epoch(mf.capture_start_utc), epoch(mf.capture_end_utc), mf.mtime_paris_epoch, mf.mtime)
                 FROM media_files mf
                 WHERE mf.status = 'active'
                 ORDER BY mf.mtime DESC
