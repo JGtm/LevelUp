@@ -396,7 +396,7 @@ def _background_media_indexing(settings, db_path: str) -> None:
 
 def main() -> None:
     """Point d'entrée principal de l'application Streamlit."""
-    st.set_page_config(page_title="LevelUp", layout="wide")
+    st.set_page_config(page_title="LevelUp", page_icon="🎯", layout="wide")
 
     perf_reset_run()
 
