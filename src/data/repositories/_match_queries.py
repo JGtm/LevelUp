@@ -859,10 +859,36 @@ class MatchQueriesMixin:
                     [match_id, self._xuid],
                 ).fetchone()
                 if row:
+                    team_mmr = row[0]
+                    enemy_mmr = row[1]
+                    team_id = row[11]
+
+                    # Fallback MMR: si le joueur n'a pas de MMR, chercher depuis un coéquipier
+                    # Les MMR d'équipe sont identiques pour tous les joueurs de la même équipe
+                    if (team_mmr is None or enemy_mmr is None) and team_id is not None:
+                        try:
+                            teammate_row = conn.execute(
+                                """
+                                SELECT team_mmr, enemy_mmr
+                                FROM shared.match_participants
+                                WHERE match_id = ?
+                                  AND team_id = ?
+                                  AND team_mmr IS NOT NULL
+                                  AND enemy_mmr IS NOT NULL
+                                LIMIT 1
+                                """,
+                                [match_id, team_id],
+                            ).fetchone()
+                            if teammate_row:
+                                team_mmr = teammate_row[0]
+                                enemy_mmr = teammate_row[1]
+                        except Exception:
+                            pass
+
                     return {
-                        "team_id": row[11],
-                        "team_mmr": row[0],
-                        "enemy_mmr": row[1],
+                        "team_id": team_id,
+                        "team_mmr": team_mmr,
+                        "enemy_mmr": enemy_mmr,
                         "kills": {
                             "count": row[2],
                             "expected": row[3],
@@ -882,35 +908,8 @@ class MatchQueriesMixin:
             except Exception:
                 pass
 
-        # Fallback local : player_match_stats (LEGACY — données historiques)
-        # Cette table n'est plus alimentée par le sync v5.1 mais peut contenir
-        # des données issues d'anciens backfills.
-        try:
-            has_pms = self._has_table_cached(conn, "player_match_stats")
-            if has_pms:
-                row = conn.execute(
-                    """
-                    SELECT team_mmr, enemy_mmr,
-                           kills_expected, kills_stddev,
-                           deaths_expected, deaths_stddev,
-                           assists_expected, assists_stddev
-                    FROM player_match_stats
-                    WHERE match_id = ?
-                    """,
-                    [match_id],
-                ).fetchone()
-                if row:
-                    return {
-                        "team_id": None,
-                        "team_mmr": row[0],
-                        "enemy_mmr": row[1],
-                        "kills": {"count": None, "expected": row[2], "stddev": row[3]},
-                        "deaths": {"count": None, "expected": row[4], "stddev": row[5]},
-                        "assists": {"count": None, "expected": row[6], "stddev": row[7]},
-                    }
-        except Exception:
-            pass
-
+        # NOTE v5.1 : player_match_stats supprimée, match_participants est la
+        # source unique. Pas de fallback legacy.
         return None
 
     # =========================================================================

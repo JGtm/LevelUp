@@ -134,7 +134,7 @@ def _get_duckdb_v4_players_dir() -> Path:
 
 
 def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
-    """Détecte le meilleur joueur DuckDB v4 disponible.
+    """Détecte le meilleur joueur DuckDB v5.1 disponible.
 
     Returns:
         Tuple (db_path, gamertag) du joueur avec le plus de matchs, ou None.
@@ -159,8 +159,23 @@ def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
         gamertag = player_dir.name
         try:
             with duckdb_read_only(db_path) as con:
-                result = con.execute("SELECT COUNT(*) FROM match_stats").fetchone()
-                count = result[0] if result else 0
+                # V5.1: player_match_enrichment est la seule table match locale
+                # Fallback sur v_match_stats (vue vers shared) si enrichment absente
+                result = con.execute(
+                    """
+                    SELECT COUNT(*) FROM (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_name = 'player_match_enrichment'
+                    )
+                    """
+                ).fetchone()
+                if result and result[0] > 0:
+                    count_result = con.execute(
+                        "SELECT COUNT(*) FROM player_match_enrichment"
+                    ).fetchone()
+                else:
+                    count_result = con.execute("SELECT COUNT(*) FROM v_match_stats").fetchone()
+                count = count_result[0] if count_result else 0
 
             if count > best_count:
                 best_count = count

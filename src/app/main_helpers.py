@@ -314,6 +314,7 @@ def render_profile_hero(
             _needs_halo_auth(backdrop_value)
             or _needs_halo_auth(rank_icon_value)
             or _needs_halo_auth(nameplate_value)
+            or _needs_halo_auth(adornment_value)
         )
     ):
         ensure_spnkr_tokens(timeout_seconds=12)
