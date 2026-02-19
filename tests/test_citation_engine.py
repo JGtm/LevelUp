@@ -582,7 +582,11 @@ class TestV5SharedSupport:
                 xuid TEXT NOT NULL,
                 kills INTEGER, deaths INTEGER, assists INTEGER,
                 score INTEGER, damage_dealt INTEGER,
-                playlist TEXT, game_variant TEXT,
+                melee_kills INTEGER DEFAULT 0,
+                headshot_kills INTEGER DEFAULT 0,
+                grenade_kills INTEGER DEFAULT 0,
+                power_weapon_kills INTEGER DEFAULT 0,
+                max_killing_spree INTEGER DEFAULT 0,
                 PRIMARY KEY (match_id, xuid)
             )
         """)
@@ -590,9 +594,9 @@ class TestV5SharedSupport:
             CREATE TABLE match_registry (
                 match_id TEXT PRIMARY KEY,
                 map_name TEXT,
-                playlist TEXT,
-                game_variant TEXT,
-                match_start_date TIMESTAMP
+                playlist_name TEXT,
+                game_variant_name TEXT,
+                start_time TIMESTAMP
             )
         """)
         # Données test
@@ -603,8 +607,8 @@ class TestV5SharedSupport:
         )
         conn.execute(
             "INSERT INTO match_participants VALUES "
-            "('m-shared-1', '12345', 20, 5, 8, 1500, 3000, 'Quick Play', 'Slayer'), "
-            "('m-shared-1', '99999', 15, 10, 3, 1000, 2000, 'Quick Play', 'Slayer')"
+            "('m-shared-1', '12345', 20, 5, 8, 1500, 3000, 3, 5, 1, 2, 4), "
+            "('m-shared-1', '99999', 15, 10, 3, 1000, 2000, 1, 3, 0, 1, 2)"
         )
         conn.execute(
             "INSERT INTO match_registry VALUES "
@@ -616,15 +620,15 @@ class TestV5SharedSupport:
             CREATE OR REPLACE VIEW mv_player_matches AS
             SELECT
                 r.match_id,
-                r.match_start_date AS start_time,
+                r.start_time AS start_time,
                 NULL AS map_id,
                 r.map_name,
                 NULL AS playlist_id,
-                r.playlist AS playlist_name,
+                r.playlist_name AS playlist_name,
                 NULL AS pair_id,
                 NULL AS pair_name,
                 NULL AS game_variant_id,
-                r.game_variant AS game_variant_name,
+                r.game_variant_name AS game_variant_name,
                 p.xuid,
                 NULL AS outcome,
                 NULL AS team_id,

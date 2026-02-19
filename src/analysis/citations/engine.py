@@ -9,6 +9,7 @@ Ce module fournit ``CitationEngine``, classe responsable de :
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from pathlib import Path
 from typing import Any
@@ -214,6 +215,7 @@ class CitationEngine:
         match_stats: dict[str, Any] | None = None,
         match_awards: dict[str, int] | None = None,
         df_match: pl.DataFrame | None = None,
+        highlight_events: list[tuple[int, str]] | None = None,
     ) -> int:
         """Calcule la valeur d'une citation pour un match.
 
@@ -230,6 +232,17 @@ class CitationEngine:
         mtype = mapping.get("mapping_type", "")
 
         if mtype == "medal":
+            # Support multi-médailles via medal_ids (comma-separated)
+            medal_ids_str = mapping.get("medal_ids")
+            if medal_ids_str and match_medals:
+                total = 0
+                for mid_str in str(medal_ids_str).split(","):
+                    mid_str = mid_str.strip()
+                    if mid_str:
+                        with contextlib.suppress(ValueError):
+                            total += match_medals.get(int(mid_str), 0)
+                return total
+            # Fallback: single medal_id
             medal_id = mapping.get("medal_id")
             if medal_id is not None and match_medals:
                 return match_medals.get(int(medal_id), 0)
@@ -257,7 +270,7 @@ class CitationEngine:
                 logger.warning("Fonction custom introuvable : %s", func_name)
                 return 0
             try:
-                return func(df=df_match, awards=match_awards)
+                return func(df=df_match, awards=match_awards, highlight_events=highlight_events)
             except TypeError:
                 # Certaines fonctions n'acceptent que df
                 try:
@@ -275,6 +288,7 @@ class CitationEngine:
         match_stats: dict[str, Any] | None = None,
         match_awards: dict[str, int] | None = None,
         df_match: pl.DataFrame | None = None,
+        highlight_events: list[tuple[int, str]] | None = None,
     ) -> dict[str, int]:
         """Calcule toutes les citations pour un match.
 
@@ -291,6 +305,7 @@ class CitationEngine:
                 match_stats=match_stats,
                 match_awards=match_awards,
                 df_match=df_match,
+                highlight_events=highlight_events,
             )
             if value > 0:
                 results[norm_name] = value
@@ -415,8 +430,8 @@ class CitationEngine:
             shared_alias = self._get_shared_alias(conn)
             if shared_alias and self._shared_has_table(conn, "match_participants"):
                 result = conn.execute(
-                    f"SELECT p.*, r.map_name, r.playlist, r.game_variant, "
-                    f"r.match_start_date "
+                    f"SELECT p.*, r.map_name, r.playlist_name, r.game_variant_name, "
+                    f"r.start_time "
                     f"FROM {shared_alias}.match_participants p "
                     f"LEFT JOIN {shared_alias}.match_registry r ON p.match_id = r.match_id "
                     f"WHERE p.match_id = ? AND p.xuid = ?",
@@ -491,8 +506,8 @@ class CitationEngine:
             shared_alias = self._get_shared_alias(conn)
             if shared_alias and self._shared_has_table(conn, "match_participants"):
                 result = conn.execute(
-                    f"SELECT p.*, r.map_name, r.playlist, r.game_variant, "
-                    f"r.match_start_date "
+                    f"SELECT p.*, r.map_name, r.playlist_name, r.game_variant_name, "
+                    f"r.start_time "
                     f"FROM {shared_alias}.match_participants p "
                     f"LEFT JOIN {shared_alias}.match_registry r ON p.match_id = r.match_id "
                     f"WHERE p.match_id = ? AND p.xuid = ?",
@@ -531,6 +546,39 @@ class CitationEngine:
             if owned:
                 conn.close()
 
+    def load_match_highlight_events(self, match_id: str) -> list[tuple[int, str]]:
+        """Charge les highlight_events (mode + death) pour un match.
+
+        Retourne une liste de tuples ``(time_ms, event_type)`` triés par temps,
+        filtré par le xuid du joueur. Utilisé par les citations custom qui
+        nécessitent un séquencement temporel (ex: Annexion forcée).
+
+        Returns:
+            Liste de ``(time_ms, event_type)`` triée.
+        """
+        if not self._db_path.exists() and self._shared_conn is None:
+            return []
+
+        conn, owned = self._read_conn()
+        try:
+            shared_alias = self._get_shared_alias(conn)
+            if shared_alias and self._shared_has_table(conn, "highlight_events"):
+                rows = conn.execute(
+                    f"SELECT time_ms, event_type "
+                    f"FROM {shared_alias}.highlight_events "
+                    f"WHERE match_id = ? AND xuid = ? "
+                    f"  AND event_type IN ('mode', 'death') "
+                    f"ORDER BY time_ms",
+                    [match_id, self._xuid],
+                ).fetchall()
+                return [(int(r[0]), str(r[1])) for r in rows]
+            return []
+        except Exception:
+            return []
+        finally:
+            if owned:
+                conn.close()
+
     # ------------------------------------------------------------------
     # Méthode haut-niveau : calcul complet pour un match
     # ------------------------------------------------------------------
@@ -555,6 +603,7 @@ class CitationEngine:
         match_stats = self.load_match_stats(match_id)
         match_awards = self.load_match_awards(match_id)
         df_match = self.load_match_df(match_id)
+        highlight_events = self.load_match_highlight_events(match_id)
 
         # Calculer les citations
         citations = self.compute_all_for_match(
@@ -563,6 +612,7 @@ class CitationEngine:
             match_stats=match_stats,
             match_awards=match_awards,
             df_match=df_match,
+            highlight_events=highlight_events,
         )
 
         # Insérer dans match_citations (même si vide, on marque comme traité)
