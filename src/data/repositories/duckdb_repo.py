@@ -72,6 +72,36 @@ def release_db_connections(db_path: str | Path) -> int:
     return closed
 
 
+def release_all_db_connections() -> int:
+    """Ferme toutes les connexions DuckDBRepository actives (tous joueurs confondus).
+
+    Nécessaire avant d'ouvrir shared_matches.duckdb directement (ex. sync),
+    car DuckDB interdit qu'un même fichier soit utilisé sous deux noms différents
+    dans le même processus : les ATTACH 'shared_matches.duckdb' AS shared existants
+    entreraient en conflit avec l'ouverture directe qui lui donne le nom 'shared_matches'.
+
+    Les repositories se reconnecteront paresseusement au prochain accès.
+
+    Returns:
+        Nombre de connexions fermées.
+    """
+    closed = 0
+    with _instances_lock:
+        for repo in list(_instances):
+            try:
+                if repo._connection is not None:
+                    with contextlib.suppress(Exception):
+                        repo._connection.close()
+                    repo._connection = None
+                    repo._attached_dbs.clear()
+                    closed += 1
+            except Exception:
+                pass
+    if closed:
+        logger.debug("release_all_db_connections: %d connexion(s) fermée(s)", closed)
+    return closed
+
+
 class DuckDBRepository(
     MatchQueriesMixin,
     RosterLoaderMixin,
