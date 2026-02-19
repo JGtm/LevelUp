@@ -6,3 +6,5 @@ Problème de sync dans l'app et avec les médailles
 Par match, drapeau, qui menait le match sur la durée
 
 Revoir les logiques de filtres
+
+Match pas bien alifnés, reduire tolerances ? et regenerer l'index
