@@ -662,15 +662,6 @@ class DuckDBSyncEngine:
             if result.matches_inserted > 0:
                 await self._refresh_aggregates_async()
 
-            # Sprint 6 : Calcul batch des performance scores post-sync
-            if (
-                result.matches_inserted > 0
-                and options.defer_performance_score
-                and _PERF_SCORE_AVAILABLE
-            ):
-                perf_count = self.batch_compute_performance_scores()
-                logger.info(f"Performance scores calculés en batch : {perf_count}")
-
             # Sync du career rank (progression de rang) si activé
             if options.with_career_rank:
                 try:
@@ -697,6 +688,21 @@ class DuckDBSyncEngine:
             # Commit final
             conn = self._get_connection()
             conn.commit()
+
+            # Sprint 6 bis : Calcul batch des performance scores en tout dernier
+            # Fermer d'abord la connexion shared pour éviter les conflits d'ATTACH
+            if (
+                result.matches_inserted > 0
+                and options.defer_performance_score
+                and _PERF_SCORE_AVAILABLE
+            ):
+                if self._shared_connection is not None:
+                    with contextlib.suppress(Exception):
+                        self._shared_connection.close()
+                    self._shared_connection = None
+
+                perf_count = self.batch_compute_performance_scores()
+                logger.info(f"Performance scores calculés en batch : {perf_count}")
 
         except Exception as e:
             result.errors.append(str(e))
@@ -1859,10 +1865,8 @@ class DuckDBSyncEngine:
             # Rouvrir la connexion shared si elle était ouverte avant
             if shared_was_open:
                 self._shared_connection = None  # Force réouverture au prochain appel
-                try:
+                with contextlib.suppress(Exception):
                     self._get_shared_connection()
-                except Exception:
-                    pass
 
         except Exception as e:
             logger.warning(f"Erreur refresh_aggregates: {e}")
