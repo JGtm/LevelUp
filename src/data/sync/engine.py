@@ -66,6 +66,7 @@ from src.data.sync.transformers import (
     extract_participants,
     extract_personal_score_awards,
     extract_xuids_from_match,
+    transform_all_skill_stats,
     transform_highlight_events,
     transform_match_stats,
     transform_personal_score_awards,
@@ -1037,33 +1038,35 @@ class DuckDBSyncEngine:
                 # avec COALESCE pour ne pas écraser les valeurs déjà présentes.
                 # enemy_mmr : corrigé v5.1 (était ignoré avant dans le transformer)
                 # assists_expected/stddev : toujours NULL (limitation API Halo)
-                if _skill_row and (
-                    _skill_row.team_mmr is not None or _skill_row.enemy_mmr is not None
-                ):
-                    shared_conn.execute(
-                        "UPDATE match_participants SET "
-                        "team_mmr = COALESCE(?, team_mmr), "
-                        "enemy_mmr = COALESCE(?, enemy_mmr), "
-                        "kills_expected = COALESCE(?, kills_expected), "
-                        "kills_stddev = COALESCE(?, kills_stddev), "
-                        "deaths_expected = COALESCE(?, deaths_expected), "
-                        "deaths_stddev = COALESCE(?, deaths_stddev), "
-                        "assists_expected = COALESCE(?, assists_expected), "
-                        "assists_stddev = COALESCE(?, assists_stddev) "
-                        "WHERE match_id = ? AND xuid = ?",
-                        (
-                            _skill_row.team_mmr,
-                            _skill_row.enemy_mmr,
-                            _skill_row.kills_expected,
-                            _skill_row.kills_stddev,
-                            _skill_row.deaths_expected,
-                            _skill_row.deaths_stddev,
-                            _skill_row.assists_expected,
-                            _skill_row.assists_stddev,
-                            match_id,
-                            self._xuid,
-                        ),
-                    )
+                # V5.2 : Mise à jour de TOUS les participants (pas juste le joueur principal)
+                if skill_json:
+                    all_skill_updates = transform_all_skill_stats(skill_json, match_id)
+                    for skill_update in all_skill_updates:
+                        if skill_update.team_mmr is not None or skill_update.enemy_mmr is not None:
+                            shared_conn.execute(
+                                "UPDATE match_participants SET "
+                                "team_mmr = COALESCE(?, team_mmr), "
+                                "enemy_mmr = COALESCE(?, enemy_mmr), "
+                                "kills_expected = COALESCE(?, kills_expected), "
+                                "kills_stddev = COALESCE(?, kills_stddev), "
+                                "deaths_expected = COALESCE(?, deaths_expected), "
+                                "deaths_stddev = COALESCE(?, deaths_stddev), "
+                                "assists_expected = COALESCE(?, assists_expected), "
+                                "assists_stddev = COALESCE(?, assists_stddev) "
+                                "WHERE match_id = ? AND xuid = ?",
+                                (
+                                    skill_update.team_mmr,
+                                    skill_update.enemy_mmr,
+                                    skill_update.kills_expected,
+                                    skill_update.kills_stddev,
+                                    skill_update.deaths_expected,
+                                    skill_update.deaths_stddev,
+                                    skill_update.assists_expected,
+                                    skill_update.assists_stddev,
+                                    match_id,
+                                    skill_update.xuid,
+                                ),
+                            )
 
                 # Incrémenter player_count
                 shared_conn.execute(
@@ -1082,6 +1085,9 @@ class DuckDBSyncEngine:
                     "WHERE match_id = ?",
                     (bf_mask, match_id),
                 )
+
+                # Mettre à jour backfill_bits par participant (v5.2)
+                self._update_match_participant_bits(shared_conn, match_id)
 
             if backfill_needed:
                 logger.info(f"Backfill shared pour {match_id}: {', '.join(backfill_needed)}")
@@ -1204,6 +1210,9 @@ class DuckDBSyncEngine:
                     "WHERE match_id = ?",
                     (bf_mask, match_id),
                 )
+
+                # Mettre à jour backfill_bits par participant (v5.2)
+                self._update_match_participant_bits(shared_conn, match_id)
 
             # 5. Insérer les données personnelles dans la player DB
             match_row = transform_match_stats(
@@ -1399,6 +1408,81 @@ class DuckDBSyncEngine:
         from src.data.sync.batch_insert import batch_upsert_participants
 
         batch_upsert_participants(shared_conn, participants, PARTICIPANT_COLUMNS)
+
+    def _update_match_participant_bits(
+        self,
+        shared_conn: duckdb.DuckDBPyConnection,
+        match_id: str,
+    ) -> None:
+        """Met à jour ``backfill_bits`` pour tous les participants d'un match (vectorisé).
+
+        Lit l'état réel des colonnes NOT NULL dans match_participants et pose
+        les bits correspondants via une requête SQL unique (sans boucle Python).
+        Appelé après chaque insertion/mise à jour de participants pendant le sync.
+
+        Args:
+            shared_conn: Connexion vers shared_matches.duckdb.
+            match_id: ID du match à mettre à jour.
+        """
+        from src.data.sync.constants import ParticipantBits as PB
+
+        try:
+            shared_conn.execute(
+                """UPDATE match_participants SET backfill_bits = COALESCE(backfill_bits, 0) | (
+                    CASE WHEN team_mmr IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN enemy_mmr IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN kills_expected IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN deaths_expected IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN assists_expected IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN accuracy IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN shots_fired IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN damage_dealt IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN avg_life_seconds IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN grenade_kills IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN melee_kills IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN power_weapon_kills IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN personal_score IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN headshot_kills IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN max_killing_spree IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN kda IS NOT NULL THEN ? ELSE 0 END |
+                    CASE WHEN time_played_seconds IS NOT NULL THEN ? ELSE 0 END
+                )
+                WHERE match_id = ?""",
+                [
+                    PB.TEAM_MMR,
+                    PB.ENEMY_MMR,
+                    PB.KILLS_EXP,
+                    PB.DEATHS_EXP,
+                    PB.ASSISTS_EXP,
+                    PB.ACCURACY,
+                    PB.SHOTS,
+                    PB.DAMAGE,
+                    PB.AVG_LIFE,
+                    PB.GRENADE_KILLS,
+                    PB.MELEE_KILLS,
+                    PB.POWER_WEAPON,
+                    PB.PERSONAL_SCORE,
+                    PB.HEADSHOT_KILLS,
+                    PB.MAX_SPREE,
+                    PB.KDA,
+                    PB.TIME_PLAYED,
+                    match_id,
+                ],
+            )
+            # Médailles : table séparée, requête dédiée
+            shared_conn.execute(
+                """UPDATE match_participants
+                   SET backfill_bits = COALESCE(backfill_bits, 0) | ?
+                   WHERE match_id = ?
+                   AND EXISTS (
+                       SELECT 1 FROM medals_earned me
+                       WHERE me.match_id = match_participants.match_id
+                         AND me.xuid = match_participants.xuid
+                   )""",
+                [PB.MEDALS, match_id],
+            )
+        except Exception as e:
+            logger.debug(f"Mise à jour backfill_bits match {match_id}: {e}")
 
     def _insert_shared_events(
         self,

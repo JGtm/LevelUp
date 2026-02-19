@@ -16,7 +16,10 @@ from __future__ import annotations
 import contextlib
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.data.sync.scope import SyncScope
 
 from scripts.backfill.core import (
     insert_alias_rows,
@@ -618,6 +621,7 @@ def _apply_schema_migrations(
     from src.data.sync.migrations import (
         ensure_backfill_completed_column,
         ensure_highlight_events_autoincrement,
+        ensure_match_participants_backfill_bits,
         ensure_match_participants_columns,
         ensure_medals_earned_bigint,
     )
@@ -633,6 +637,10 @@ def _apply_schema_migrations(
     # Colonnes match_participants (shared)
     with contextlib.suppress(Exception):
         ensure_match_participants_columns(shared_conn)
+
+    # Colonne backfill_bits (v5.2 — bitmask granulaire par joueur)
+    with contextlib.suppress(Exception):
+        ensure_match_participants_backfill_bits(shared_conn)
 
     # Colonne backfill_completed dans match_registry (shared)
     with contextlib.suppress(Exception):
@@ -1052,6 +1060,16 @@ async def _backfill_with_api(
                 ):
                     totals["performance_scores_inserted"] += 1
 
+                # ── Mise à jour backfill_bits (v5.2 — granulaire par joueur) ──
+                _update_participant_backfill_bits(
+                    shared_conn,
+                    match_id,
+                    xuid,
+                    scope,
+                    skill_inserted=bool(skill and skill_json),
+                    medals_inserted=bool(medals and totals.get("medals_inserted", 0) > 0),
+                )
+
                 # Marquer le bitmask backfill_completed pour tous les types demandés
                 requested_types = scope.requested_types
 
@@ -1142,6 +1160,112 @@ async def _backfill_with_api(
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers de traitement par match
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def _update_participant_backfill_bits(
+    shared_conn: Any,
+    match_id: str,
+    xuid: str,
+    scope: SyncScope,
+    *,
+    skill_inserted: bool = False,
+    medals_inserted: bool = False,
+) -> None:
+    """Met à jour ``backfill_bits`` dans ``match_participants`` après un backfill.
+
+    Lit l'état réel de TOUTES les colonnes du participant dans la DB et pose
+    les bits correspondants (OR incrémental). Approche inconditionnelle : pas
+    besoin de lister les champs scope — on se base sur ce qui est NOT NULL.
+
+    Args:
+        shared_conn: Connexion à shared_matches.duckdb.
+        match_id: ID du match.
+        xuid: XUID du joueur.
+        scope: Périmètre de données (conservé pour compatibilité de signature).
+        skill_inserted: Inutilisé (conservé pour compatibilité).
+        medals_inserted: Inutilisé (conservé pour compatibilité).
+    """
+    if shared_conn is None:
+        return
+
+    from src.data.sync.constants import ParticipantBits
+
+    bits = 0
+
+    # ── Scan inconditionnel : toutes les colonnes en une seule requête ──
+    # On ne conditionne PAS sur scope : on lit ce qui est réellement NOT NULL.
+    # Cela couvre correctement tous les champs granulaires (team_mmr, grenade_kills…)
+    # quel que soit le sous-ensemble demandé.
+    try:
+        row = shared_conn.execute(
+            "SELECT team_mmr, enemy_mmr, kills_expected, deaths_expected, assists_expected, "
+            "accuracy, shots_fired, damage_dealt, avg_life_seconds, "
+            "grenade_kills, melee_kills, power_weapon_kills, personal_score, "
+            "headshot_kills, max_killing_spree, kda, time_played_seconds "
+            "FROM match_participants WHERE match_id = ? AND xuid = ?",
+            (match_id, xuid),
+        ).fetchone()
+        if row:
+            if row[0] is not None:
+                bits |= ParticipantBits.TEAM_MMR
+            if row[1] is not None:
+                bits |= ParticipantBits.ENEMY_MMR
+            if row[2] is not None:
+                bits |= ParticipantBits.KILLS_EXP
+            if row[3] is not None:
+                bits |= ParticipantBits.DEATHS_EXP
+            if row[4] is not None:
+                bits |= ParticipantBits.ASSISTS_EXP
+            if row[5] is not None:
+                bits |= ParticipantBits.ACCURACY
+            if row[6] is not None:
+                bits |= ParticipantBits.SHOTS
+            if row[7] is not None:
+                bits |= ParticipantBits.DAMAGE
+            if row[8] is not None:
+                bits |= ParticipantBits.AVG_LIFE
+            if row[9] is not None:
+                bits |= ParticipantBits.GRENADE_KILLS
+            if row[10] is not None:
+                bits |= ParticipantBits.MELEE_KILLS
+            if row[11] is not None:
+                bits |= ParticipantBits.POWER_WEAPON
+            if row[12] is not None:
+                bits |= ParticipantBits.PERSONAL_SCORE
+            if row[13] is not None:
+                bits |= ParticipantBits.HEADSHOT_KILLS
+            if row[14] is not None:
+                bits |= ParticipantBits.MAX_SPREE
+            if row[15] is not None:
+                bits |= ParticipantBits.KDA
+            if row[16] is not None:
+                bits |= ParticipantBits.TIME_PLAYED
+    except Exception as e:
+        logger.debug(f"Lecture participant bits pour {xuid}/{match_id}: {e}")
+
+    # ── Médailles (table séparée) ──
+    try:
+        count = shared_conn.execute(
+            "SELECT COUNT(*) FROM medals_earned WHERE match_id = ? AND xuid = ?",
+            (match_id, xuid),
+        ).fetchone()
+        if count and count[0] > 0:
+            bits |= ParticipantBits.MEDALS
+    except Exception as e:
+        logger.debug(f"Lecture medals bits pour {xuid}/{match_id}: {e}")
+
+    if bits == 0:
+        return
+
+    try:
+        shared_conn.execute(
+            "UPDATE match_participants "
+            "SET backfill_bits = COALESCE(backfill_bits, 0) | ? "
+            "WHERE match_id = ? AND xuid = ?",
+            (bits, match_id, xuid),
+        )
+    except Exception as e:
+        logger.debug(f"Mise à jour backfill_bits pour {xuid}/{match_id}: {e}")
 
 
 def _update_participants_details(

@@ -39,6 +39,25 @@ _FORCE_MAP: dict[str, str] = {
     "force_sessions": "sessions",
     "force_citations": "citations",
     "force_participants_enrich": "participants_enrich",
+    # ── Granulaires v5.2 ──
+    "force_team_mmr": "team_mmr",
+    "force_kills_expected": "kills_expected",
+    "force_deaths_expected": "deaths_expected",
+    "force_assists_expected": "assists_expected",
+    "force_avg_life": "avg_life",
+    "force_damage": "damage",
+    "force_grenade_kills": "grenade_kills",
+    "force_melee_kills": "melee_kills",
+    "force_power_weapon_kills": "power_weapon_kills",
+    "force_headshot_kills": "headshot_kills",
+    "force_max_spree": "max_spree",
+    "force_kda_recalc": "kda_recalc",
+    "force_time_played": "time_played",
+    "force_mmr": "mmr",
+    "force_expected": "expected",
+    "force_combat": "combat",
+    "force_kills_detail": "kills_detail",
+    "force_core_stats": "core_stats",
 }
 
 # Champs activés par ``all_data``.  Listés explicitement pour ne pas
@@ -65,6 +84,25 @@ _ALL_DATA_FIELDS: tuple[str, ...] = (
     "sessions",
     "citations",
     "participants_enrich",
+    # ── Granulaires v5.2 ──
+    "team_mmr",
+    "kills_expected",
+    "deaths_expected",
+    "assists_expected",
+    "avg_life",
+    "damage",
+    "grenade_kills",
+    "melee_kills",
+    "power_weapon_kills",
+    "headshot_kills",
+    "max_spree",
+    "kda_recalc",
+    "time_played",
+    "mmr",
+    "expected",
+    "combat",
+    "kills_detail",
+    "core_stats",
 )
 
 # Mapping champ → clé pour ``requested_types`` (bitmask backfill_completed).
@@ -133,6 +171,38 @@ class SyncScope:
     citations: bool = False
     participants_enrich: bool = False
 
+    # ── Types granulaires v5.2 (nouveaux champs bitmask) ─────────────────
+    # Skill / MMR
+    team_mmr: bool = False  # Backfill team_mmr si NULL
+    # enemy_mmr conservé (legacy) — active les deux via --mmr
+    kills_expected: bool = False  # Backfill kills_expected/stddev
+    deaths_expected: bool = False  # Backfill deaths_expected/stddev
+    assists_expected: bool = False  # Backfill assists_expected/stddev
+
+    # Combat
+    damage: bool = False  # Backfill damage_dealt/damage_taken
+    avg_life: bool = False  # Backfill avg_life_seconds
+
+    # Kills détaillés
+    grenade_kills: bool = False
+    melee_kills: bool = False
+    power_weapon_kills: bool = False
+    headshot_kills: bool = False
+    max_spree: bool = False  # Backfill max_killing_spree
+
+    # Divers
+    kda_recalc: bool = False  # Recalculer kda si NULL
+    time_played: bool = False  # Backfill time_played_seconds
+
+    # Groupes (alias résolus dans resolve())
+    mmr: bool = False  # = team_mmr + enemy_mmr
+    expected: bool = False  # = kills_expected + deaths_expected + assists_expected
+    combat: bool = False  # = accuracy + shots + damage
+    kills_detail: bool = (
+        False  # = grenade_kills + melee_kills + power_weapon_kills + headshot_kills
+    )
+    core_stats: bool = False  # = combat + avg_life + kills_detail + kda_recalc + time_played
+
     # ── Flags force ──────────────────────────────────────────────────────
     # Quand force_X = True, le backfill re-traite TOUS les matchs pour
     # le type X, même ceux déjà peuplés. Utile après correction de bugs.
@@ -152,6 +222,26 @@ class SyncScope:
     force_sessions: bool = False
     force_citations: bool = False
     force_participants_enrich: bool = False
+
+    # ── Flags force granulaires v5.2 ─────────────────────────────────────
+    force_team_mmr: bool = False
+    force_kills_expected: bool = False
+    force_deaths_expected: bool = False
+    force_assists_expected: bool = False
+    force_avg_life: bool = False
+    force_damage: bool = False
+    force_grenade_kills: bool = False
+    force_melee_kills: bool = False
+    force_power_weapon_kills: bool = False
+    force_headshot_kills: bool = False
+    force_max_spree: bool = False
+    force_kda_recalc: bool = False
+    force_time_played: bool = False
+    force_mmr: bool = False
+    force_expected: bool = False
+    force_combat: bool = False
+    force_kills_detail: bool = False
+    force_core_stats: bool = False
 
     # ── Méta-flag ────────────────────────────────────────────────────────
     all_data: bool = False
@@ -190,13 +280,59 @@ class SyncScope:
         """Applique les implications ``all_data`` → champs et ``force_X`` → X.
 
         Doit être appelé une seule fois après construction.
+
+        Ordre critique des groupes v5.2 (extérieur → intérieur) :
+        1. core_stats  → combat, kills_detail, avg_life, kda_recalc, time_played
+        2. combat      → accuracy, shots, damage
+        3. kills_detail → grenade_kills, melee_kills, power_weapon_kills, headshot_kills
+        4. mmr         → team_mmr, enemy_mmr
+        5. expected    → kills_expected, deaths_expected, assists_expected
+        6. _FORCE_MAP  (toujours en dernier)
         """
         # all_data active tous les champs data
         if self.all_data:
             for field_name in _ALL_DATA_FIELDS:
                 setattr(self, field_name, True)
 
-        # force_X implique X
+        # ── 1. Groupes de haut niveau ──
+        if self.core_stats:
+            self.combat = True
+            self.avg_life = True
+            self.kills_detail = True
+            self.kda_recalc = True
+            self.time_played = True
+
+        # ── 2. Groupes intermédiaires ──
+        if self.combat:
+            self.accuracy = True
+            self.shots = True
+            self.damage = True
+
+        if self.kills_detail:
+            self.grenade_kills = True
+            self.melee_kills = True
+            self.power_weapon_kills = True
+            self.headshot_kills = True
+
+        # ── 3. Groupes skill ──
+        if self.mmr:
+            self.team_mmr = True
+            self.enemy_mmr = True
+
+        if self.expected:
+            self.kills_expected = True
+            self.deaths_expected = True
+            self.assists_expected = True
+
+        # --skill active aussi les champs granulaires (rétrocompatibilité)
+        if self.skill:
+            self.team_mmr = True
+            self.enemy_mmr = True
+            self.kills_expected = True
+            self.deaths_expected = True
+            self.assists_expected = True
+
+        # ── 4. force_X implique X (toujours en dernier) ──
         for force_field, data_field in _FORCE_MAP.items():
             if getattr(self, force_field, False) and not getattr(self, data_field, False):
                 setattr(self, data_field, True)

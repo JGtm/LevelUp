@@ -64,7 +64,15 @@ def shared_conn():
             damage_dealt FLOAT,
             damage_taken FLOAT,
             team_mmr FLOAT,
+            enemy_mmr FLOAT,
+            kills_expected FLOAT,
+            kills_stddev FLOAT,
+            deaths_expected FLOAT,
+            deaths_stddev FLOAT,
+            assists_expected FLOAT,
+            assists_stddev FLOAT,
             avg_life_seconds FLOAT,
+            backfill_bits INTEGER DEFAULT 0,
             PRIMARY KEY (match_id, xuid)
         )
     """)
@@ -115,8 +123,11 @@ def shared_conn():
         """,
             [m, XUID],
         )
-    # match-001 a team_mmr rempli (les autres NULL)
-    c.execute("UPDATE match_participants SET team_mmr = 1500.0 WHERE match_id = 'match-001'")
+    # match-001 a team_mmr + kills_expected remplis (données skill complètes)
+    c.execute(
+        "UPDATE match_participants SET team_mmr = 1500.0, kills_expected = 0.8, "
+        "deaths_expected = 0.5, assists_expected = 0.2 WHERE match_id = 'match-001'"
+    )
 
     # match-001 has medals, match-002 and match-003 don't
     c.execute("INSERT INTO medals_earned VALUES ('match-001', 100, 2, ?)", [XUID])
@@ -360,9 +371,16 @@ def test_full_scenario_single_run(shared_conn, player_conn):
     )
     assert len(missing) > 0, "Il devrait y avoir des matchs manquants"
 
-    # ÉTAPE 2 : Marquer les bits pour TOUS les matchs traités
+    # ÉTAPE 2 : Simuler le traitement (remplir les données + marquer le bitmask)
     mask = compute_backfill_mask("medals", "events", "skill")
     for match_id in missing:
+        # Simuler l'écriture des données skill (kills_expected, team_mmr)
+        # La détection skill vérifie les colonnes directement (pas le bitmask)
+        shared_conn.execute(
+            "UPDATE match_participants SET team_mmr = 1400.0, kills_expected = 0.7 "
+            "WHERE match_id = ? AND xuid = ?",
+            [match_id, XUID],
+        )
         shared_conn.execute(
             "UPDATE match_registry SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
             "WHERE match_id = ?",
@@ -539,6 +557,13 @@ class TestSyncEngineBackfillBitmask:
         shared_conn.execute(
             "UPDATE match_registry SET backfill_completed = ?",
             [full_mask],
+        )
+        # La détection skill ignore le bitmask et vérifie les colonnes directement →
+        # simuler les données skill remplies pour tous les participants
+        shared_conn.execute(
+            "UPDATE match_participants SET team_mmr = 1400.0, kills_expected = 0.7 "
+            "WHERE xuid = ?",
+            [XUID],
         )
 
         result = find_matches_missing_data(
