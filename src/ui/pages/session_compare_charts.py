@@ -130,7 +130,7 @@ def _build_history_dataframe(
 
     for c in ["kills", "deaths", "assists"]:
         if c in df_sess.columns:
-            col_map[c] = {"kills": "Frags", "deaths": "Morts", "assists": "Assists"}[c]
+            col_map[c] = {"kills": "Frags", "deaths": "Morts", "assists": "Assistances"}[c]
             display_cols.append(c)
 
     if "outcome" in df_sess.columns:
@@ -268,10 +268,10 @@ def render_comparison_radar_chart(
         perf_b: Métriques de la session B.
         hist_avg: Moyenne historique des sessions similaires (optionnel).
     """
-    categories = ["K/D", "Victoire %", "Précision"]
+    categories = ["F/M", "Victoire %", "Précision"]
 
     def _normalize_for_radar(kd, wr, acc):
-        kd_norm = min(100, (kd or 0) * 50)  # K/D 2.0 = 100
+        kd_norm = min(100, (kd or 0) * 50)  # F/M 2.0 = 100
         wr_norm = wr or 0  # Déjà en %
         acc_norm = acc if acc is not None else 50  # Déjà en %
         return [kd_norm, wr_norm, acc_norm]

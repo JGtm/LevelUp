@@ -374,7 +374,7 @@ def plot_duel_history(
             x=matches,
             y=my_kills,
             marker={"color": COLORS["kills"]},
-            hovertemplate=f"<b>{me_gamertag}</b><br>Kills: %{{y}}<extra></extra>",
+            hovertemplate=f"<b>{me_gamertag}</b><br>Frags: %{{y}}<extra></extra>",
         )
     )
 
@@ -384,7 +384,7 @@ def plot_duel_history(
             x=matches,
             y=opponent_kills,
             marker={"color": COLORS["deaths"]},
-            hovertemplate=f"<b>{opponent_gamertag}</b><br>Kills: %{{y}}<extra></extra>",
+            hovertemplate=f"<b>{opponent_gamertag}</b><br>Frags: %{{y}}<extra></extra>",
         )
     )
 
@@ -585,7 +585,7 @@ def plot_killer_victim_heatmap(
                 [1, "#ff6b6b"],
             ],
             hoverongaps=False,
-            hovertemplate="<b>%{y}</b> → <b>%{x}</b><br>Kills: %{z}<extra></extra>",
+            hovertemplate="<b>%{y}</b> → <b>%{x}</b><br>Frags: %{z}<extra></extra>",
         )
     )
 

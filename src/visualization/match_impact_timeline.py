@@ -240,10 +240,10 @@ def plot_match_kill_death_timeline(
                 x=kill_times,
                 y=kill_cum,
                 mode="lines+markers",
-                name="Kills",
+                name="Frags",
                 line={"color": kill_color, "width": 2.5},
                 marker={"size": 5, "color": kill_color},
-                hovertemplate="<b>Kill #%{y}</b><br>%{text}<extra></extra>",
+                hovertemplate="<b>Frag #%{y}</b><br>%{text}<extra></extra>",
                 text=kill_labels,
             )
         )

@@ -87,9 +87,9 @@ def _render_kda_section(dff: pl.DataFrame) -> None:
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         else:
-            st.info("Données insuffisantes pour le graphique KDA.")
+            st.info("Données insuffisantes pour le graphique FDA.")
     except Exception as e:
-        st.warning(f"Impossible d'afficher le graphique KDA : {e}")
+        st.warning(f"Impossible d'afficher le graphique FDA : {e}")
 
     st.subheader("FDA")
     valid = dff.drop_nulls(subset=["kda"]) if "kda" in dff.columns else pl.DataFrame()
@@ -97,7 +97,7 @@ def _render_kda_section(dff: pl.DataFrame) -> None:
         st.info("FDA indisponible sur ce filtre.")
     else:
         m = st.columns(1)
-        m[0].metric("KDA moyen", f"{valid['kda'].mean():.2f}", label_visibility="collapsed")
+        m[0].metric("FDA moyen", f"{valid['kda'].mean():.2f}", label_visibility="collapsed")
         try:
             fig_dist = plot_kda_distribution(dff)
             if fig_dist is not None:
@@ -114,7 +114,7 @@ def _render_cumulative_performance(dff: pl.DataFrame) -> None:
     st.divider()
     st.subheader("Performance cumulée & tendance")
     st.caption(
-        "Net score et K/D cumulés au fil des matchs, K/D glissant, "
+        "Net score et F/M cumulé au fil des matchs, F/M glissant, "
         "et tendance (début vs fin de période)."
     )
     cumul = TimeseriesService.compute_cumulative_metrics(dff)
@@ -297,7 +297,7 @@ def _render_correlations(dff: pl.DataFrame) -> None:
 
 
 def _render_correlation_row1(dff: pl.DataFrame) -> None:
-    """Durée de vie vs Kills + Précision vs KDA."""
+    """Durée de vie vs Frags + Précision vs FDA."""
     col1, col2 = st.columns(2)
     life_col = "avg_life_seconds" if "avg_life_seconds" in dff.columns else "average_life_seconds"
     with col1:
@@ -323,7 +323,7 @@ def _render_correlation_row1(dff: pl.DataFrame) -> None:
 
 
 def _render_correlation_row2(dff: pl.DataFrame) -> None:
-    """Durée de vie vs Morts + Kills vs Deaths (Sprint 6)."""
+    """Durée de vie vs Morts + Frags vs Morts (Sprint 6)."""
     col3, col4 = st.columns(2)
     life_col = "avg_life_seconds" if "avg_life_seconds" in dff.columns else "average_life_seconds"
     with col3:

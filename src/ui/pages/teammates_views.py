@@ -638,7 +638,7 @@ def _render_per_minute_stats(
     f2_stats = compute_aggregated_stats(f2_df)
     st.subheader("Stats par minute")
 
-    _pm_metrics = ["Frags/min", "Morts/min", "Assists/min"]
+    _pm_metrics = ["Frags/min", "Morts/min", "Assistances/min"]
     _pm_players = [
         (me_name, me_stats, colors_by_name.get(me_name, "#636EFA")),
         (f1_name, f1_stats, colors_by_name.get(f1_name, "#EF553B")),

@@ -287,7 +287,7 @@ def render_trio_charts(
             metric="assists",
             names=names,
             title="Assistances",
-            y_title="Assists",
+            y_title="Assistances",
         ),
         width="stretch",
         key=f"trio_assists_{f1_xuid}_{f2_xuid}",

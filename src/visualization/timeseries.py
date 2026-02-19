@@ -435,7 +435,7 @@ def plot_accuracy_last_n(df: DataFrameLike, n: int) -> go.Figure:
                 x=d["start_time"].to_list(),
                 y=d["accuracy"].to_list(),
                 mode="lines",
-                name="Accuracy",
+                name="Précision",
                 line={"width": PLOT_CONFIG.line_width, "color": colors["violet"]},
                 hovertemplate="précision=%{y:.2f}%<extra></extra>",
             )

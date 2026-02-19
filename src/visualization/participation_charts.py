@@ -32,7 +32,7 @@ CATEGORY_COLORS: dict[str, str] = {
 
 CATEGORY_LABELS: dict[str, str] = {
     "kill": "Frags",
-    "assist": "Assists",
+    "assist": "Assistances",
     "objective": "Objectifs",
     "vehicle": "Véhicules",
     "penalty": "Pénalités",
@@ -384,7 +384,7 @@ def create_participation_indicator(
             mode="number",
             value=assists["count"],
             title={
-                "text": f"Assists<br><span style='font-size:0.7em;color:gray'>{assists['score']:,} pts</span>"
+                "text": f"Assistances<br><span style='font-size:0.7em;color:gray'>{assists['score']:,} pts</span>"
             },
             domain={"x": [0.25, 0.5], "y": [0, 1]},
             number={"font": {"color": CATEGORY_COLORS["assist"], "size": 48}},
