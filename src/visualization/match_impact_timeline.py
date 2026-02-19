@@ -268,8 +268,28 @@ def plot_match_kill_death_timeline(
         )
 
     # --- Annotations d'impact ---
+    # Préparer les données d'annotations, triées par temps pour éviter superposition
+    sorted_impacts = sorted(impact_events, key=lambda e: e.time_ms)
+
+    # Calcul des décalages verticaux pour éviter superposition
+    # Seuil de proximité temporelle (30 secondes)
+    PROXIMITY_THRESHOLD_MS = 30_000
+    ay_levels = [-40, -90, -140]  # Niveaux de décalage vertical
+
+    annotation_data: list[tuple[MatchImpactEvent, int]] = []
+    for ie in sorted_impacts:
+        # Trouver le niveau de décalage approprié
+        ay_level_idx = 0
+        for prev_ie, prev_ay_idx in annotation_data:
+            # Si proche du précédent, monter d'un niveau
+            if abs(ie.time_ms - prev_ie.time_ms) < PROXIMITY_THRESHOLD_MS:
+                ay_level_idx = max(ay_level_idx, prev_ay_idx + 1)
+        # Boucler si on dépasse les niveaux disponibles
+        ay_level_idx = ay_level_idx % len(ay_levels)
+        annotation_data.append((ie, ay_level_idx))
+
     annotations = []
-    for ie in impact_events:
+    for ie, ay_level_idx in annotation_data:
         label_info = IMPACT_LABELS.get(ie.event_type)
         if not label_info:
             continue
@@ -307,6 +327,9 @@ def plot_match_kill_death_timeline(
         ann_bg = "rgba(61, 255, 181, 0.15)" if ie.is_me else "rgba(255, 183, 3, 0.15)"
         ann_border = kill_color if ie.is_me else annotation_color
 
+        # Décalage vertical selon le niveau attribué
+        ay_offset = ay_levels[ay_level_idx]
+
         annotations.append(
             {
                 "x": t_ms,
@@ -318,7 +341,7 @@ def plot_match_kill_death_timeline(
                 "arrowwidth": 1.5,
                 "arrowcolor": ann_border,
                 "ax": 0,
-                "ay": -40,
+                "ay": ay_offset,
                 "bordercolor": ann_border,
                 "borderwidth": 1,
                 "borderpad": 4,

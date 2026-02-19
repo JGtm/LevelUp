@@ -233,6 +233,14 @@ def render_media_section(
 # =============================================================================
 
 
+def _is_valid_css_color(val: str | None) -> bool:
+    """Vérifie si une valeur est une couleur CSS valide (hex ou var())."""
+    if not val:
+        return False
+    s = str(val).strip()
+    return s.startswith("#") or s.startswith("var(")
+
+
 def os_card(
     title: str,
     kpi: str,
@@ -248,11 +256,13 @@ def os_card(
     k = html.escape(str(kpi or "-"))
     s = "" if not sub_html else str(sub_html)
     style = "min-height:" + str(int(min_h)) + "px; margin-bottom:10px;"
-    if accent and str(accent).startswith("#"):
-        style += f"border-color:{accent}66;"
-    kpi_style = (
-        "" if not (kpi_color and str(kpi_color).startswith("#")) else f" style='color:{kpi_color}'"
-    )
+    if accent and _is_valid_css_color(accent):
+        # Pour les couleurs hex, ajouter transparence; pour var(), utiliser directement
+        if str(accent).startswith("#"):
+            style += f"border-color:{accent}66;"
+        else:
+            style += f"border-color:{accent};"
+    kpi_style = "" if not _is_valid_css_color(kpi_color) else f" style='color:{kpi_color}'"
     sub_style_attr = (
         "" if not sub_style else ' style="' + html.escape(str(sub_style), quote=True) + '"'
     )
@@ -279,7 +289,11 @@ def map_thumb_path(row: dict[str, Any], map_id: str | None) -> str | None:
         return s
 
     repo = Path(get_repo_root(__file__))
-    base_dirs = [repo / "static" / "maps" / "thumbs", repo / "thumbs"]
+    base_dirs = [
+        repo / "static" / "maps" / "thumbs",
+        repo / "static" / "maps",  # Images présentes ici
+        repo / "thumbs",
+    ]
 
     candidates: list[str] = []
     mid = str(map_id or "").strip()
