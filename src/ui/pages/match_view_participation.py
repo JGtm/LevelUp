@@ -85,6 +85,7 @@ def render_participation_section(
                 [profile],
                 title="Profil de participation",
                 height=380,
+                radial_range=(0, 0.75),  # Échelle réduite pour agrandir le graphe
             )
             if fig is not None:
                 st.plotly_chart(fig, width="stretch", config={"staticPlot": True})

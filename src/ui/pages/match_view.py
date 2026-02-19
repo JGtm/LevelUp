@@ -37,6 +37,7 @@ from src.ui.pages.match_view_helpers import (
 )
 from src.ui.pages.match_view_participation import render_participation_section
 from src.ui.pages.match_view_players import (
+    render_match_impact_section,
     render_nemesis_section,
     render_roster_section,
 )
@@ -267,6 +268,17 @@ def render_match_view(
         match_row=row,
     )
 
+    # Impact & Timeline (kills/deaths cumulées + badges)
+    render_match_impact_section(
+        match_id=match_id,
+        db_path=db_path,
+        xuid=xuid,
+        db_key=db_key,
+        outcome=outcome_code,
+        load_highlight_events_fn=load_highlight_events_fn,
+        load_match_gamertags_fn=load_match_gamertags_fn,
+    )
+
     # Némésis / Souffre-douleur
     render_nemesis_section(
         match_id=match_id,
@@ -355,6 +367,9 @@ from src.ui.pages.match_view_helpers import (
     to_paris_naive_local as _to_paris_naive_local,
 )
 from src.ui.pages.match_view_players import (
+    render_match_impact_section as _render_match_impact_section,
+)
+from src.ui.pages.match_view_players import (
     render_nemesis_section as _render_nemesis_section,
 )
 from src.ui.pages.match_view_players import (
@@ -373,6 +388,7 @@ __all__ = [
     "_os_card",
     "_map_thumb_path",
     "_render_expected_vs_actual",
+    "_render_match_impact_section",
     "_render_nemesis_section",
     "_render_roster_section",
 ]
