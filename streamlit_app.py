@@ -552,12 +552,16 @@ def main() -> None:
     # Résolution du XUID
     xuid = resolve_xuid_from_input(xuid, db_path)
 
-    me_name = display_name_from_xuid(xuid.strip()) if str(xuid or "").strip() else "(joueur)"
+    me_name = (
+        display_name_from_xuid(xuid.strip(), db_path=db_path)
+        if str(xuid or "").strip()
+        else "(joueur)"
+    )
     aliases_key = _aliases_cache_key()
 
     # Auto-profil (SPNKr) et rendu du hero
     api_app, _api_err = load_profile_api(xuid, settings)
-    render_profile_hero(xuid, settings, api_app)
+    render_profile_hero(xuid, settings, api_app, db_path=db_path)
 
     # ==========================================================================
     # Chargement des données

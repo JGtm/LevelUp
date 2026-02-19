@@ -269,9 +269,14 @@ def render_profile_hero(
     xuid: str,
     settings: AppSettings,
     api_app: object | None,
+    db_path: str | None = None,
 ) -> None:
     """Rend le hero/header du profil joueur."""
-    me_name = display_name_from_xuid(xuid.strip()) if str(xuid or "").strip() else "(joueur)"
+    me_name = (
+        display_name_from_xuid(xuid.strip(), db_path=db_path)
+        if str(xuid or "").strip()
+        else "(joueur)"
+    )
 
     dl_enabled = bool(getattr(settings, "profile_assets_download_enabled", False)) or bool(
         getattr(settings, "profile_api_enabled", False)
