@@ -168,6 +168,29 @@ def ensure_end_time_column(conn: duckdb.DuckDBPyConnection) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def ensure_match_participants_backfill_bits(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute ``backfill_bits`` à ``match_participants`` si absent.
+
+    Cette colonne est le nouveau système granulaire de tracking par joueur.
+    Elle remplace progressivement l'utilisation de ``match_registry.backfill_completed``
+    pour les données per-participant.
+
+    Valeur par défaut : NULL (les anciens enregistrements n'ont pas encore été migrés).
+    Utiliser toujours ``COALESCE(backfill_bits, 0)`` dans les requêtes.
+    """
+    if not table_exists(conn, "match_participants"):
+        return
+    _add_column_if_missing(conn, "match_participants", "backfill_bits", "INTEGER DEFAULT 0")
+    # Index pour détection rapide des participants avec données manquantes
+    try:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_mp_backfill "
+            "ON match_participants(xuid, backfill_bits)"
+        )
+    except Exception as e:
+        logger.debug(f"Index idx_mp_backfill ignoré: {e}")
+
+
 def ensure_match_participants_columns(conn: duckdb.DuckDBPyConnection) -> None:
     """Ajoute rank, score, kills, deaths, assists, shots, damage à match_participants si absents.
 
@@ -233,6 +256,8 @@ def ensure_match_participants_columns(conn: duckdb.DuckDBPyConnection) -> None:
         ("deaths_stddev", "FLOAT"),
         ("assists_expected", "FLOAT"),
         ("assists_stddev", "FLOAT"),
+        # v5.2 — Bitmask granulaire par joueur
+        ("backfill_bits", "INTEGER DEFAULT 0"),
     ]
 
     for col_name, col_type in migrations:

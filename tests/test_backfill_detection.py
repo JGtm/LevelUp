@@ -58,6 +58,9 @@ def shared_conn():
             damage_taken DOUBLE,
             avg_life_seconds DOUBLE,
             team_mmr DOUBLE,
+            kills_expected DOUBLE,
+            deaths_expected DOUBLE,
+            assists_expected DOUBLE,
             PRIMARY KEY (match_id, xuid)
         )
     """)
@@ -92,14 +95,15 @@ def shared_conn():
     """,
         [_M2_BACKFILL_BITS],
     )
-    # match_participants : m1 + m3 NULLs, m2 complet
+    # match_participants : m1 + m3 NULLs, m2 complet (y compris kills_expected)
     c.execute("""
         INSERT INTO match_participants (match_id, xuid, accuracy, shots_fired, shots_hit,
-            kills, deaths, assists, rank, score, damage_dealt, damage_taken, team_mmr)
+            kills, deaths, assists, rank, score, damage_dealt, damage_taken, team_mmr,
+            kills_expected, deaths_expected, assists_expected)
         VALUES
-            ('m1', '1234567890123456', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-            ('m2', '1234567890123456', 0.5, 100, 50, 10, 5, 3, 1, 100, 1000.0, 800.0, 1500.0),
-            ('m3', '1234567890123456', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+            ('m1', '1234567890123456', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+            ('m2', '1234567890123456', 0.5, 100, 50, 10, 5, 3, 1, 100, 1000.0, 800.0, 1500.0, 0.8, 0.4, 0.2),
+            ('m3', '1234567890123456', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
     """)
     # m2 has medals, events
     c.execute("INSERT INTO medals_earned VALUES ('m2', 'double_kill', 1, '1234567890123456')")
