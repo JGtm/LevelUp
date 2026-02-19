@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -23,12 +24,14 @@ from src.ui.cache import cached_load_player_match_result
 
 @pytest.fixture
 def temp_duckdb_with_match():
-    """Crée une base DuckDB temporaire avec un match et des highlight events."""
-    with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as f:
-        db_path = f.name
+    """Crée une base DuckDB temporaire avec un match et des highlight events.
 
-    # Supprimer le fichier temporaire s'il existe déjà (NamedTemporaryFile le crée vide)
-    Path(db_path).unlink(missing_ok=True)
+    v5.1: inclut aussi shared.match_participants avec les team_ids.
+    """
+    # Créer un répertoire temporaire pour les deux DBs
+    temp_dir = tempfile.mkdtemp()
+    db_path = os.path.join(temp_dir, "player.duckdb")
+    shared_db_path = os.path.join(temp_dir, "shared.duckdb")
 
     conn = duckdb.connect(db_path)
 
@@ -161,11 +164,37 @@ def temp_duckdb_with_match():
     conn.commit()
     conn.close()
 
-    yield db_path, match_id, xuid_player
+    # v5.1: Créer shared.match_participants avec les team_ids
+    shared_conn = duckdb.connect(shared_db_path)
+    shared_conn.execute("""
+        CREATE TABLE match_participants (
+            match_id VARCHAR,
+            xuid VARCHAR,
+            gamertag VARCHAR,
+            team_id INTEGER,
+            PRIMARY KEY (match_id, xuid)
+        )
+    """)
+    participants = [
+        (match_id, xuid_player, "Player", 0),
+        (match_id, xuid_teammate, "Teammate", 0),
+        (match_id, xuid_enemy1, "Enemy1", 1),
+        (match_id, xuid_enemy2, "Enemy2", 1),
+    ]
+    shared_conn.executemany(
+        "INSERT INTO match_participants VALUES (?, ?, ?, ?)",
+        participants,
+    )
+    shared_conn.commit()
+    shared_conn.close()
+
+    yield db_path, match_id, xuid_player, shared_db_path
 
     # Cleanup - fermer toutes les connexions avant de supprimer
-    with contextlib.suppress(PermissionError):
-        Path(db_path).unlink(missing_ok=True)
+    import shutil
+
+    with contextlib.suppress(PermissionError, OSError):
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 class TestGamertagCleaning:
@@ -173,7 +202,7 @@ class TestGamertagCleaning:
 
     def test_clean_gamertag_removes_control_characters(self, temp_duckdb_with_match):
         """Test que les caractères de contrôle sont supprimés."""
-        db_path, match_id, xuid = temp_duckdb_with_match
+        db_path, match_id, xuid, shared_db_path = temp_duckdb_with_match
 
         # Insérer un event avec un gamertag contenant des caractères de contrôle
         # Utiliser une nouvelle connexion pour éviter les problèmes de read-only
@@ -197,8 +226,8 @@ class TestGamertagCleaning:
         conn.commit()
         conn.close()
 
-        # Créer le repository et charger les rosters
-        repo = DuckDBRepository(db_path, xuid)
+        # Créer le repository et charger les rosters (v5.1: shared_db_path requis)
+        repo = DuckDBRepository(db_path, xuid, shared_db_path=shared_db_path)
         result = repo.load_match_rosters(match_id)
         repo.close()
 
@@ -215,7 +244,7 @@ class TestGamertagCleaning:
 
     def test_clean_gamertag_removes_unicode_replacement(self, temp_duckdb_with_match):
         """Test que le caractère de remplacement Unicode (�) est supprimé."""
-        db_path, match_id, xuid = temp_duckdb_with_match
+        db_path, match_id, xuid, shared_db_path = temp_duckdb_with_match
 
         # Insérer un event avec un gamertag contenant le caractère de remplacement
         # Utiliser une nouvelle connexion pour éviter les problèmes de read-only
@@ -230,8 +259,17 @@ class TestGamertagCleaning:
         conn.commit()
         conn.close()
 
-        # Créer le repository et charger les rosters
-        repo = DuckDBRepository(db_path, xuid)
+        # v5.1: Ajouter le joueur dans shared.match_participants
+        shared_conn = duckdb.connect(shared_db_path)
+        shared_conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, ?, ?)",
+            [match_id, "8888888888888888", "Test\ufffdPlayer", 1],
+        )
+        shared_conn.commit()
+        shared_conn.close()
+
+        # Créer le repository et charger les rosters (v5.1: shared_db_path requis)
+        repo = DuckDBRepository(db_path, xuid, shared_db_path=shared_db_path)
         result = repo.load_match_rosters(match_id)
         repo.close()
 
@@ -246,7 +284,7 @@ class TestGamertagCleaning:
 
     def test_clean_gamertag_handles_invalid_utf8(self, temp_duckdb_with_match):
         """Test que les séquences UTF-8 invalides sont gérées."""
-        db_path, match_id, xuid = temp_duckdb_with_match
+        db_path, match_id, xuid, shared_db_path = temp_duckdb_with_match
 
         # Insérer un event avec un gamertag contenant des caractères invalides
         # Simuler des données corrompues
@@ -273,8 +311,8 @@ class TestGamertagCleaning:
             conn.commit()
             conn.close()
 
-            # Créer le repository et charger les rosters
-            repo = DuckDBRepository(db_path, xuid)
+            # Créer le repository et charger les rosters (v5.1: shared_db_path requis)
+            repo = DuckDBRepository(db_path, xuid, shared_db_path=shared_db_path)
             result = repo.load_match_rosters(match_id)
             repo.close()
 
@@ -290,12 +328,12 @@ class TestGamertagCleaning:
 
 
 class TestTeamAssignment:
-    """Tests pour l'attribution améliorée des équipes."""
+    """Tests pour l'attribution améliorée des équipes (v5.1: match_participants.team_id)."""
 
     def test_team_assignment_based_on_kill_patterns(self, temp_duckdb_with_match):
-        """Test que l'attribution des équipes utilise les patterns de kills."""
-        db_path, match_id, xuid_player = temp_duckdb_with_match
-        repo = DuckDBRepository(db_path, xuid_player)
+        """Test que l'attribution des équipes utilise match_participants.team_id."""
+        db_path, match_id, xuid_player, shared_db_path = temp_duckdb_with_match
+        repo = DuckDBRepository(db_path, xuid_player, shared_db_path=shared_db_path)
 
         result = repo.load_match_rosters(match_id)
         assert result is not None
@@ -316,16 +354,14 @@ class TestTeamAssignment:
 
         repo.close()
 
-    def test_team_assignment_fallback_when_no_kill_data(self):
-        """Test que le fallback fonctionne quand il n'y a pas de données de kills."""
-        with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as f:
-            db_path = f.name
-
-        # Supprimer le fichier temporaire s'il existe déjà
-        Path(db_path).unlink(missing_ok=True)
+    def test_team_assignment_requires_match_participants_v51(self):
+        """Test v5.1: load_match_rosters retourne None sans match_participants."""
+        # Créer une DB sans shared.match_participants
+        temp_dir = tempfile.mkdtemp()
+        db_path = os.path.join(temp_dir, "player.duckdb")
+        shared_db_path = os.path.join(temp_dir, "shared.duckdb")
 
         conn = duckdb.connect(db_path)
-
         conn.execute("""
             CREATE TABLE match_stats (
                 match_id VARCHAR PRIMARY KEY,
@@ -333,61 +369,30 @@ class TestTeamAssignment:
                 team_id INTEGER
             )
         """)
-
-        conn.execute("""
-            CREATE TABLE highlight_events (
-                id INTEGER PRIMARY KEY,
-                match_id VARCHAR,
-                event_type VARCHAR,
-                time_ms INTEGER,
-                xuid VARCHAR,
-                gamertag VARCHAR,
-                type_hint VARCHAR,
-                raw_json VARCHAR
-            )
-        """)
-
         match_id = "test_match_2"
         xuid_player = "1234567890123456"
-
         conn.execute(
-            """
-            INSERT INTO match_stats (match_id, start_time, team_id)
-            VALUES (?, ?, ?)
-            """,
+            "INSERT INTO match_stats VALUES (?, ?, ?)",
             [match_id, "2026-02-05 10:00:00", 0],
         )
-
-        # Insérer seulement des joueurs sans événements de kills
-        conn.execute(
-            """
-            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag, type_hint, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [1, match_id, "Unknown", 1000, xuid_player, "Player", None, None],
-        )
-
-        conn.execute(
-            """
-            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag, type_hint, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            [2, match_id, "Unknown", 1000, "9999999999999999", "Other", None, None],
-        )
-
         conn.commit()
         conn.close()
 
-        repo = DuckDBRepository(db_path, xuid_player)
+        # Créer shared_db VIDE (sans match_participants)
+        shared_conn = duckdb.connect(shared_db_path)
+        shared_conn.close()
+
+        repo = DuckDBRepository(db_path, xuid_player, shared_db_path=shared_db_path)
         result = repo.load_match_rosters(match_id)
         repo.close()
 
-        # Le fallback devrait fonctionner : le joueur principal dans my_team, les autres dans enemy_team
-        assert result is not None
-        my_team_xuids = {p["xuid"] for p in result["my_team"]}
-        assert xuid_player in my_team_xuids
+        # v5.1: Sans match_participants, retourne None
+        assert result is None
 
-        Path(db_path).unlink(missing_ok=True)
+        import shutil
+
+        with contextlib.suppress(PermissionError, OSError):
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 class TestMissingDataHandling:

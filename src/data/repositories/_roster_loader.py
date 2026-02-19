@@ -17,7 +17,6 @@ de résolution XUID → Gamertag extraites de DuckDBRepository :
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
 import re
 from typing import TYPE_CHECKING, Any
@@ -26,6 +25,30 @@ if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
+
+
+def _clean_gamertag_static(value: Any) -> str | None:
+    """Nettoie un gamertag en supprimant les caractères invalides.
+
+    Fonction utilitaire au niveau du module pour éviter les duplications.
+    """
+    if value is None:
+        return None
+    try:
+        s = str(value)
+        s = s.encode("utf-8", errors="ignore").decode("utf-8", errors="ignore")
+        s = s.replace("\ufffd", "")
+        s = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", s)
+        s = re.sub(r"[\ufffe\uffff]", "", s)
+        s = re.sub(r"[\s\t]+", " ", s).strip()
+        s = s.strip("\u200b\u200c\u200d\ufeff")
+        if not s or s == "?" or s.isdigit() or s.lower().startswith("xuid("):
+            return None
+        if not any(c.isprintable() for c in s):
+            return None
+        return s
+    except Exception:
+        return None
 
 
 class RosterLoaderMixin:
@@ -52,11 +75,10 @@ class RosterLoaderMixin:
         conn = self._get_connection()
 
         try:
-            # Obtenir le team_id du joueur principal depuis shared.match_participants (v5.1)
+            # V5.1 : shared.match_participants est la source canonique du team_id
             my_xuid_str = str(self._xuid).strip()
             match_info = None
 
-            # V5.1 : shared.match_participants (source canonique)
             if self._has_shared_table("match_participants"):
                 with contextlib.suppress(Exception):
                     match_info = conn.execute(
@@ -64,14 +86,7 @@ class RosterLoaderMixin:
                         [match_id, my_xuid_str],
                     ).fetchone()
 
-            # Fallback : match_stats locale (legacy, peut ne plus exister en v5.1)
-            if not match_info:
-                with contextlib.suppress(Exception):
-                    match_info = conn.execute(
-                        "SELECT team_id FROM match_stats WHERE match_id = ?",
-                        [match_id],
-                    ).fetchone()
-
+            # NOTE v5.1 : match_stats supprimée, pas de fallback legacy
             if not match_info:
                 return None
 
@@ -79,260 +94,113 @@ class RosterLoaderMixin:
             if my_team_id is None:
                 return None
 
-            # Fonction de nettoyage des gamertags
-            def _clean_gamertag(value: Any) -> str | None:
-                """Nettoie un gamertag en supprimant les caractères invalides."""
-                if value is None:
-                    return None
-                try:
-                    s = str(value)
-                    s = s.encode("utf-8", errors="ignore").decode("utf-8", errors="ignore")
-                    s = s.replace("\ufffd", "")
-                    s = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", s)
-                    s = re.sub(r"[\ufffe\uffff]", "", s)
-                    s = re.sub(r"[\s\t]+", " ", s).strip()
-                    s = s.strip("\u200b\u200c\u200d\ufeff")
-                    if not s or s == "?" or s.isdigit() or s.lower().startswith("xuid("):
-                        return None
-                    if not any(c.isprintable() for c in s):
-                        return None
-                    return s
-                except Exception:
-                    return None
+            # Alias local pour la fonction de nettoyage module-level
+            _clean_gamertag = _clean_gamertag_static
 
             # ======================================================================
-            # MÉTHODE 1 : Utiliser killer_victim_pairs si disponible (source fiable)
-            # Cherche dans shared (v5) puis locale (compat)
+            # MÉTHODE 0 (PRIORITAIRE) : Utiliser match_participants.team_id
+            # C'est la source la plus fiable car elle vient directement de l'API
             # ======================================================================
-            has_kvp = False
-            kvp_table_ref = "killer_victim_pairs"
-            if self._has_shared_table("killer_victim_pairs"):
-                has_kvp = True
-                kvp_table_ref = "shared.killer_victim_pairs"
-            else:
-                try:
-                    kvp_check = conn.execute(
-                        "SELECT 1 FROM information_schema.tables "
-                        "WHERE table_schema = 'main' AND table_name = 'killer_victim_pairs'"
-                    ).fetchone()
-                    has_kvp = kvp_check is not None
-                except Exception:
-                    pass
-
             team_by_xuid: dict[str, int | None] = {}
             gamertag_by_xuid: dict[str, str | None] = {}
+            mp_success = False
 
-            if has_kvp:
-                # Utiliser killer_victim_pairs pour déterminer les équipes
-                # Logique : si je tue quelqu'un → adversaire, si quelqu'un me tue → adversaire
-                # Si quelqu'un tue mes adversaires → coéquipier
+            if self._has_shared_table("match_participants"):
                 try:
-                    kvp_result = conn.execute(
-                        f"""
-                        SELECT killer_xuid, killer_gamertag, victim_xuid, victim_gamertag, kill_count
-                        FROM {kvp_table_ref}
+                    # Requête de base : match_participants seul (toujours présent en v5.1)
+                    mp_result = conn.execute(
+                        """
+                        SELECT xuid, team_id, gamertag
+                        FROM shared.match_participants
                         WHERE match_id = ?
                         """,
                         [match_id],
                     ).fetchall()
 
-                    enemies: set[str] = set()
-                    allies: set[str] = set()
+                    if mp_result and len(mp_result) > 0:
+                        for xuid, team_id, mp_gt in mp_result:
+                            xu = str(xuid).strip()
+                            if not xu:
+                                continue
 
-                    for killer_xuid, killer_gt, victim_xuid, victim_gt, _ in kvp_result:
-                        k_xu = str(killer_xuid or "").strip()
-                        v_xu = str(victim_xuid or "").strip()
+                            # Stocker le team_id (source fiable)
+                            team_by_xuid[xu] = team_id
 
-                        # Stocker les gamertags (préférer le plus long)
-                        if k_xu:
-                            k_gt = _clean_gamertag(killer_gt)
-                            if k_gt and (
-                                k_xu not in gamertag_by_xuid
-                                or len(k_gt) > len(gamertag_by_xuid.get(k_xu) or "")
-                            ):
-                                gamertag_by_xuid[k_xu] = k_gt
-                        if v_xu:
-                            v_gt = _clean_gamertag(victim_gt)
-                            if v_gt and (
-                                v_xu not in gamertag_by_xuid
-                                or len(v_gt) > len(gamertag_by_xuid.get(v_xu) or "")
-                            ):
-                                gamertag_by_xuid[v_xu] = v_gt
+                            # Gamertag depuis match_participants
+                            gt = _clean_gamertag(mp_gt)
+                            if gt:
+                                gamertag_by_xuid[xu] = gt
 
-                        if not k_xu or not v_xu:
-                            continue
+                        # Enrichir les gamertags depuis xuid_aliases (optionnel)
+                        if self._has_shared_table("xuid_aliases"):
+                            try:
+                                alias_result = conn.execute(
+                                    """
+                                    SELECT xuid, gamertag
+                                    FROM shared.xuid_aliases
+                                    WHERE xuid IN (SELECT xuid FROM shared.match_participants WHERE match_id = ?)
+                                    """,
+                                    [match_id],
+                                ).fetchall()
+                                for xuid, alias_gt in alias_result:
+                                    xu = str(xuid).strip()
+                                    gt = _clean_gamertag(alias_gt)
+                                    if gt and (
+                                        xu not in gamertag_by_xuid
+                                        or len(gt) > len(gamertag_by_xuid.get(xu) or "")
+                                    ):
+                                        gamertag_by_xuid[xu] = gt
+                            except Exception:
+                                pass
 
-                        # Si je suis le killer → la victime est un adversaire
-                        if k_xu == my_xuid_str:
-                            enemies.add(v_xu)
-                        # Si je suis la victime → le killer est un adversaire
-                        elif v_xu == my_xuid_str:
-                            enemies.add(k_xu)
+                        # Enrichir les gamertags depuis highlight_events (optionnel)
+                        if self._has_shared_table("highlight_events"):
+                            try:
+                                he_result = conn.execute(
+                                    """
+                                    SELECT xuid, gamertag
+                                    FROM (
+                                        SELECT xuid, gamertag,
+                                               ROW_NUMBER() OVER (
+                                                   PARTITION BY xuid
+                                                   ORDER BY LENGTH(COALESCE(gamertag, '')) DESC
+                                               ) as rn
+                                        FROM shared.highlight_events
+                                        WHERE match_id = ? AND xuid IS NOT NULL AND xuid != ''
+                                    ) sub
+                                    WHERE rn = 1
+                                    """,
+                                    [match_id],
+                                ).fetchall()
+                                for xuid, he_gt in he_result:
+                                    xu = str(xuid).strip()
+                                    gt = _clean_gamertag(he_gt)
+                                    if gt and (
+                                        xu not in gamertag_by_xuid
+                                        or len(gt) > len(gamertag_by_xuid.get(xu) or "")
+                                    ):
+                                        gamertag_by_xuid[xu] = gt
+                            except Exception:
+                                pass
 
-                    # Deuxième passe : si quelqu'un tue un adversaire confirmé → allié
-                    # Si quelqu'un est tué par un adversaire confirmé → allié
-                    for killer_xuid, _, victim_xuid, _, _ in kvp_result:
-                        k_xu = str(killer_xuid or "").strip()
-                        v_xu = str(victim_xuid or "").strip()
-                        if not k_xu or not v_xu:
-                            continue
-
-                        # Si le killer tue un adversaire confirmé → le killer est un allié
-                        if v_xu in enemies and k_xu != my_xuid_str:
-                            allies.add(k_xu)
-                        # Si la victime est tuée par un adversaire confirmé → la victime est un alliée
-                        if k_xu in enemies and v_xu != my_xuid_str:
-                            allies.add(v_xu)
-
-                    # Assigner les équipes
-                    team_by_xuid[my_xuid_str] = my_team_id
-                    for xu in enemies:
-                        if xu != my_xuid_str:
-                            team_by_xuid[xu] = None  # Adversaire
-                    for xu in allies:
-                        if xu != my_xuid_str and xu not in enemies:
-                            team_by_xuid[xu] = my_team_id  # Allié
+                        mp_success = len(team_by_xuid) >= 1
+                        logger.debug(
+                            f"MÉTHODE 0: {len(team_by_xuid)} participants chargés depuis match_participants"
+                        )
 
                 except Exception as e:
-                    logger.debug(f"Erreur lecture killer_victim_pairs: {e}")
+                    logger.debug(f"Erreur lecture match_participants: {e}")
 
             # ======================================================================
-            # Extraire tous les joueurs uniques (depuis kvp ou highlight_events)
+            # V5.1 : match_participants.team_id est la source canonique.
+            # Pas de fallback killer_victim_pairs/highlight_events (obsolète).
             # ======================================================================
-            all_xuids: set[str] = set(gamertag_by_xuid.keys())
-
-            # Compléter avec highlight_events (shared v5.1, fallback local)
-            he_table_ref = "highlight_events"
-            if self._has_shared_table("highlight_events"):
-                he_table_ref = "shared.highlight_events"
-            try:
-                he_result = conn.execute(
-                    f"""
-                    SELECT xuid, gamertag
-                    FROM (
-                        SELECT xuid, gamertag,
-                               ROW_NUMBER() OVER (
-                                   PARTITION BY xuid
-                                   ORDER BY LENGTH(COALESCE(gamertag, '')) DESC
-                               ) as rn
-                        FROM {he_table_ref}
-                        WHERE match_id = ? AND xuid IS NOT NULL AND xuid != ''
-                    ) sub
-                    WHERE rn = 1
-                    """,
-                    [match_id],
-                ).fetchall()
-
-                for xuid, gamertag in he_result:
-                    xu = str(xuid).strip()
-                    if xu:
-                        all_xuids.add(xu)
-                        # Préférer le gamertag le plus long
-                        gt = _clean_gamertag(gamertag)
-                        if gt and (
-                            xu not in gamertag_by_xuid
-                            or len(gt) > len(gamertag_by_xuid.get(xu) or "")
-                        ):
-                            gamertag_by_xuid[xu] = gt
-            except Exception:
-                pass
-
-            if not all_xuids:
+            if not mp_success:
+                # En v5.1, match_participants devrait toujours être disponible
+                logger.warning(f"match_participants manquant pour {match_id}")
                 return None
 
-            # ======================================================================
-            # MÉTHODE 2 : Fallback sur highlight_events si kvp n'a pas donné de résultats
-            # ======================================================================
-            if not team_by_xuid or len(team_by_xuid) <= 1:
-                # Analyser les événements Kill/Death pour déterminer les équipes
-                try:
-                    kill_events = conn.execute(
-                        f"""
-                        SELECT event_type, xuid, raw_json
-                        FROM {he_table_ref}
-                        WHERE match_id = ?
-                          AND event_type IN ('kill', 'Kill', 'death', 'Death')
-                          AND xuid IS NOT NULL AND xuid != ''
-                        """,
-                        [match_id],
-                    ).fetchall()
-
-                    # Analyser les relations killer→victim depuis raw_json
-                    killed_by_me: set[str] = set()
-                    killed_me: set[str] = set()
-
-                    for _event_type, xuid, raw_json in kill_events:
-                        xuid_str = str(xuid).strip()
-                        if not raw_json:
-                            continue
-
-                        try:
-                            event_data = (
-                                json.loads(raw_json) if isinstance(raw_json, str) else raw_json
-                            )
-
-                            # Extraire killer et victim
-                            killer = (
-                                event_data.get("killer_xuid")
-                                or event_data.get("KillerXuid")
-                                or str(
-                                    event_data.get("Killer", {}).get("Xuid", "")
-                                    if isinstance(event_data.get("Killer"), dict)
-                                    else ""
-                                )
-                            )
-                            victim = (
-                                event_data.get("victim_xuid")
-                                or event_data.get("VictimXuid")
-                                or str(
-                                    event_data.get("Victim", {}).get("Xuid", "")
-                                    if isinstance(event_data.get("Victim"), dict)
-                                    else ""
-                                )
-                            )
-
-                            killer = str(killer).strip() if killer else ""
-                            victim = str(victim).strip() if victim else ""
-
-                            # Si je suis le killer
-                            if killer == my_xuid_str and victim:
-                                killed_by_me.add(victim)
-                            # Si je suis la victime
-                            elif victim == my_xuid_str and killer:
-                                killed_me.add(killer)
-                        except Exception:
-                            pass
-
-                    # Les joueurs que j'ai tués ou qui m'ont tué sont des adversaires
-                    team_by_xuid[my_xuid_str] = my_team_id
-                    for xu in killed_by_me | killed_me:
-                        if xu != my_xuid_str:
-                            team_by_xuid[xu] = None
-
-                    # Les joueurs non classés qui ne sont pas adversaires sont probablement alliés
-                    for xu in all_xuids:
-                        if xu not in team_by_xuid:
-                            # Par défaut, les non-classés sont considérés comme adversaires
-                            # pour éviter le bug "tous dans mon équipe"
-                            team_by_xuid[xu] = None
-
-                except Exception as e:
-                    logger.debug(f"Erreur analyse highlight_events: {e}")
-
-            # ======================================================================
-            # FALLBACK FINAL : Si toujours pas d'équipes, répartir 50/50
-            # ======================================================================
-            if not team_by_xuid or len([x for x in team_by_xuid.values() if x is None]) == 0:
-                # Tous dans mon équipe → problème! Répartir aléatoirement
-                others = [xu for xu in all_xuids if xu != my_xuid_str]
-                team_by_xuid[my_xuid_str] = my_team_id
-                # Mettre la moitié dans l'équipe adverse
-                half = len(others) // 2
-                for i, xu in enumerate(sorted(others)):
-                    if i < half:
-                        team_by_xuid[xu] = None  # Adversaire
-                    else:
-                        team_by_xuid[xu] = my_team_id  # Allié
+            all_xuids: set[str] = set(team_by_xuid.keys())
 
             # ======================================================================
             # Construire les listes d'équipes
@@ -501,7 +369,9 @@ class RosterLoaderMixin:
                     [match_id, xuid],
                 ).fetchone()
                 if result and result[0]:
-                    return result[0]
+                    cleaned = _clean_gamertag_static(result[0])
+                    if cleaned:
+                        return cleaned
             except Exception:
                 pass
 
@@ -513,7 +383,9 @@ class RosterLoaderMixin:
                     [xuid],
                 ).fetchone()
                 if result and result[0]:
-                    return result[0]
+                    cleaned = _clean_gamertag_static(result[0])
+                    if cleaned:
+                        return cleaned
             except Exception:
                 pass
 
@@ -525,7 +397,9 @@ class RosterLoaderMixin:
                     [match_id, xuid],
                 ).fetchone()
                 if result and result[0]:
-                    return result[0]
+                    cleaned = _clean_gamertag_static(result[0])
+                    if cleaned:
+                        return cleaned
             except Exception:
                 pass
 
