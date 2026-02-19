@@ -194,7 +194,7 @@ def render_teammates_page(
                     pass
 
         st.subheader("Tendance de session")
-        st.caption("K/D 1ère moitié → 2nde moitié des matchs affichés.")
+        st.caption("F/M 1ère moitié → 2nde moitié des matchs affichés.")
         _trend_cols = st.columns(len(players_trend))
         for _col, (_pname, _td) in zip(_trend_cols, players_trend, strict=False):
             with _col:
@@ -210,7 +210,7 @@ def render_teammates_page(
                     )
                     st.metric(
                         label=f"{_trend_icon} {_pname}",
-                        value=f"{_second:.2f} K/D",
+                        value=f"{_second:.2f} F/M",
                         delta=f"{_pct:+.1f}%",
                         delta_color="normal" if _tr != "stable" else "off",
                     )

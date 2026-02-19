@@ -220,7 +220,7 @@ def _render_history_table(dff_table: pl.DataFrame) -> None:
             pl.col("max_killing_spree").cast(pl.Utf8).fill_null("-").alias("Tuerie (max)"),
             pl.col("headshot_kills").cast(pl.Utf8).fill_null("-").alias("Têtes"),
             pl.col("average_life_mmss").fill_null("-").alias("Durée vie"),
-            pl.col("assists").cast(pl.Utf8).fill_null("-").alias("Assists"),
+            pl.col("assists").cast(pl.Utf8).fill_null("-").alias("Assistances"),
             pl.col("accuracy").cast(pl.Utf8).fill_null("-").alias("Précision"),
             pl.col("ratio").cast(pl.Utf8).fill_null("-").alias("Ratio"),
         ]

@@ -113,7 +113,7 @@ def create_stats_per_minute_radar(
         Figure Plotly.
     """
     if categories is None:
-        categories = ["Frags/min", "Morts/min", "Assists/min"]
+        categories = ["Frags/min", "Morts/min", "Assistances/min"]
 
     # Gestion du cas vide
     if not players:
@@ -212,7 +212,7 @@ def create_performance_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["Objectif", "Frags", "Survie", "Assists"]
+    categories = ["Objectif", "Frags", "Survie", "Assistances"]
 
     # Gestion du cas vide
     if not players:
@@ -325,7 +325,7 @@ def create_participation_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["Frags", "Assists", "Objectifs", "Survie"]
+    categories = ["Frags", "Assistances", "Objectifs", "Survie"]
 
     if not participation_data:
         fig = go.Figure()
@@ -612,7 +612,7 @@ def create_teammate_synergy_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["Frags %", "Assists %", "Objectifs %", "K/D", "Précision"]
+    categories = ["Frags %", "Assistances %", "Objectifs %", "F/M", "Précision"]
 
     fig = go.Figure()
 
@@ -706,7 +706,7 @@ def create_session_trend_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["K/D", "Win Rate", "Précision", "Objectifs", "Score moy."]
+    categories = ["F/M", "Taux victoires", "Précision", "Objectifs", "Score moy."]
 
     if not sessions:
         fig = go.Figure()

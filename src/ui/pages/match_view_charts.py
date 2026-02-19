@@ -169,7 +169,7 @@ def render_expected_vs_actual(
     # Barres "Attendu" uniquement si données disponibles
     has_expected = any(v is not None for v in exp_vals)
     if has_expected:
-        # Couleurs plus visibles pour les barres "Attendu" (bordure + remplissage)
+        # Couleurs plus visibles pour les barres "Attendu" (bordure + remplissage + hachuré)
         exp_colors = ["rgba(0, 255, 128, 0.6)", "rgba(255, 80, 80, 0.6)", "rgba(0, 200, 255, 0.6)"]
         exp_fig.add_trace(
             go.Bar(
@@ -179,6 +179,7 @@ def render_expected_vs_actual(
                 marker={
                     "color": exp_colors,
                     "line": {"color": bar_colors, "width": 2},
+                    "pattern": {"shape": "/", "solidity": 0.4, "fgcolor": bar_colors},
                 },
                 hovertemplate="%{x} (attendu): %{y:.1f}<extra></extra>",
             ),
@@ -232,7 +233,7 @@ def render_expected_vs_actual(
                 "y": 1.05,  # Au-dessus du graphique
                 "xref": "paper",
                 "yref": "paper",
-                "text": f"Ratio K/D/A: <b>{real_ratio_f:.2f}</b>",
+                "text": f"Ratio F/M/A: <b>{real_ratio_f:.2f}</b>",
                 "showarrow": False,
                 "font": {"size": 14, "color": HALO_COLORS.amber},
                 "bgcolor": "rgba(0,0,0,0.5)",
@@ -256,9 +257,9 @@ def render_expected_vs_actual(
             if exp_fig is not None:
                 st.plotly_chart(exp_fig, width="stretch", config={"staticPlot": True})
             else:
-                st.info("Données insuffisantes pour le graphique K/D/A.")
+                st.info("Données insuffisantes pour le graphique F/M/A.")
         except Exception as e:
-            st.warning(f"Impossible d'afficher le graphique K/D/A : {e}")
+            st.warning(f"Impossible d'afficher le graphique F/M/A : {e}")
     with chart_cols[1]:
         _render_spree_headshots(
             row,

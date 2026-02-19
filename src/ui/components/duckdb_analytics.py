@@ -74,11 +74,11 @@ def render_global_stats_card(
             f"{stats['total_matches']:,}",
         )
         col2.metric(
-            "Win Rate",
+            "Taux victoires",
             f"{stats['win_rate']:.1f}%",
         )
         col3.metric(
-            "KDA moyen",
+            "FDA moyen",
             f"{stats['avg_kda']:.2f}",
         )
         col4.metric(
@@ -93,11 +93,11 @@ def render_global_stats_card(
             f"{stats['total_kills']:,}",
         )
         col6.metric(
-            "Deaths",
+            "Morts",
             f"{stats['total_deaths']:,}",
         )
         col7.metric(
-            "Assists",
+            "Assistances",
             f"{stats['total_assists']:,}",
         )
         col8.metric(
@@ -237,8 +237,8 @@ def render_performance_by_map(
             pl.col("wins").alias("V"),
             pl.col("losses").alias("D"),
             (pl.col("win_rate").round(1).cast(pl.Utf8) + "%").alias("Win %"),
-            pl.col("avg_kda").round(2).cast(pl.Utf8).alias("KDA"),
-            pl.col("kd_ratio").round(2).cast(pl.Utf8).alias("K/D"),
+            pl.col("avg_kda").round(2).cast(pl.Utf8).alias("FDA"),
+            pl.col("kd_ratio").round(2).cast(pl.Utf8).alias("F/M"),
         )
 
         st.dataframe(

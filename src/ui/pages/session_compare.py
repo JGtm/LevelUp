@@ -635,7 +635,7 @@ def _render_cumulative_section(
         if not pl_a.is_empty() and not pl_b.is_empty():
             st.markdown("#### Net score cumulé par session")
             st.caption(
-                "Évolution du net score (Frags − Deaths) au fil des matchs de chaque session."
+                "Évolution du net score (Frags − Morts) au fil des matchs de chaque session."
             )
             try:
                 fig_cumul = plot_cumulative_comparison(
@@ -681,9 +681,8 @@ def render_session_comparison_page(
     # Liste des sessions triées (plus récente en premier)
     session_info = (
         all_sessions_df.group_by(["session_id", "session_label"])
-        .len()
-        .rename({"len": "count"})
-        .sort("session_id", descending=True)
+        .agg(pl.col("start_time").max().alias("last_match_time"), pl.len().alias("count"))
+        .sort("last_match_time", descending=True)
     )
     session_labels = session_info.get_column("session_label").to_list()
 

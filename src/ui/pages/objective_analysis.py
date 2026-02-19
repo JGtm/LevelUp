@@ -177,7 +177,7 @@ def render_objective_analysis_page(
 
     with col3:
         st.metric(
-            label="Score Assists",
+            label="Score Assistances",
             value=_format_score(total_assist),
             help="Points gagnés avec les assistances",
         )
@@ -210,7 +210,7 @@ def render_objective_analysis_page(
 
     tab_scatter, tab_breakdown, tab_trend = st.tabs(
         [
-            "Objectifs vs Kills",
+            "Objectifs vs Frags",
             "Répartition du Score",
             "Évolution",
         ]
