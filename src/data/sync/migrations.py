@@ -642,7 +642,7 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             ELSE NULL
             END AS accuracy,
 
-            -- Scores d'équipe
+            -- Scores d'équipe (depuis match_registry uniquement)
             CASE WHEN p.team_id = 0 THEN r.team_0_score
                  ELSE r.team_1_score END AS my_team_score,
             CASE WHEN p.team_id = 0 THEN r.team_1_score

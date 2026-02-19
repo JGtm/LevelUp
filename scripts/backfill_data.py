@@ -58,12 +58,21 @@ sys.path.insert(0, str(REPO_ROOT))
 #   from scripts.backfill_data import _find_matches_missing_data
 #   etc.
 # ─────────────────────────────────────────────────────────────────────────────
+import duckdb  # noqa: E402
+
 from scripts.backfill.cli import create_argument_parser  # noqa: E402
 from scripts.backfill.orchestrator import (  # noqa: E402
     backfill_all_players,
     backfill_player_data,
 )
 from src.data.sync.scope import SyncScope  # noqa: E402
+
+_SHARED_DB = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+
+
+def _open_shared_conn() -> duckdb.DuckDBPyConnection:
+    return duckdb.connect(str(_SHARED_DB))
+
 
 # Configuration du logging
 logging.basicConfig(
@@ -78,6 +87,29 @@ def main() -> int:
     """Point d'entrée principal."""
     parser = create_argument_parser()
     args = parser.parse_args()
+
+    # --team-scores est global (pas besoin de --player / --all)
+    team_scores = getattr(args, "team_scores", False)
+    force_team_scores = getattr(args, "force_team_scores", False)
+    if team_scores:
+        try:
+            from scripts.backfill.strategies import backfill_team_scores
+
+            max_matches = getattr(args, "max_matches", None)
+            n = asyncio.run(
+                backfill_team_scores(
+                    _open_shared_conn(),
+                    max_matches=max_matches,
+                    force=force_team_scores,
+                )
+            )
+            logger.info(f"Team scores : {n} match(s) mis à jour")
+        except Exception as e:
+            logger.error(f"Erreur --team-scores : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
 
     # Validation
     if not args.all and not args.player:
@@ -164,6 +196,8 @@ def _print_totals(totals: dict, scope: object) -> None:
         logger.info(f"Citations calculées: {totals.get('citations_computed', 0)}")
     if getattr(scope, "participants_enrich", False):
         logger.info(f"Participants enrichis: {totals.get('participants_enriched', 0)}")
+    if getattr(scope, "team_scores", False):
+        logger.info(f"Team scores mis à jour: {totals.get('team_scores_updated', 0)}")
 
 
 if __name__ == "__main__":

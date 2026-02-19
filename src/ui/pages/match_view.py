@@ -327,10 +327,12 @@ def render_match_view(
         settings=settings,
         format_datetime_fn=format_datetime_fn,
         paris_tz=paris_tz,
+        gamertag=waypoint_player,
     )
 
     # Lien Waypoint
     if match_url:
+        st.write("")
         st.link_button("Ouvrir sur HaloWaypoint", match_url, width="stretch")
 
 

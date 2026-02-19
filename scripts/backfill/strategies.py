@@ -646,6 +646,84 @@ async def backfill_participants_enrich(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Team scores (match_registry)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def backfill_team_scores(
+    shared_conn: Any,
+    *,
+    max_matches: int | None = None,
+    force: bool = False,
+    requests_per_second: int = 5,
+) -> int:
+    """Peuple team_0_score / team_1_score dans shared.match_registry via l'API.
+
+    Ces colonnes sont NULL pour les matchs insérés avant le correctif
+    d'extraction (TotalPoints / Stats.CoreStats.Score).
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        max_matches: Nombre max de matchs à traiter.
+        force: Si True, recalcule même si les scores sont déjà présents.
+        requests_per_second: Rate limiting API.
+
+    Returns:
+        Nombre de matchs mis à jour.
+    """
+    from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
+    from src.data.sync.transformers import _extract_team_scores_by_id
+
+    where_clause = "" if force else "WHERE team_0_score IS NULL OR team_1_score IS NULL"
+    query = f"SELECT match_id FROM match_registry {where_clause} ORDER BY start_time DESC"
+    if max_matches:
+        query += f" LIMIT {int(max_matches)}"
+
+    match_ids = [r[0] for r in shared_conn.execute(query).fetchall()]
+
+    if not match_ids:
+        logger.info("Aucun match avec team scores manquants")
+        return 0
+
+    logger.info(f"Team scores : {len(match_ids)} match(s) à traiter")
+
+    tokens = await get_tokens_from_env()
+    if not tokens:
+        logger.error("Tokens SPNKr non disponibles")
+        return 0
+
+    count = 0
+    async with SPNKrAPIClient(tokens=tokens, requests_per_second=requests_per_second) as client:
+        for i, match_id in enumerate(match_ids, 1):
+            try:
+                logger.info(f"  [{i}/{len(match_ids)}] {match_id[:20]}...")
+                stats_json = await client.get_match_stats(match_id)
+                if not stats_json:
+                    logger.warning(f"  Impossible de récupérer {match_id}")
+                    continue
+
+                t0, t1 = _extract_team_scores_by_id(stats_json)
+                if t0 is None and t1 is None:
+                    logger.debug(f"  Scores toujours NULL pour {match_id} (mode sans équipes ?)")
+                    continue
+
+                shared_conn.execute(
+                    "UPDATE match_registry SET team_0_score = ?, team_1_score = ? WHERE match_id = ?",
+                    (t0, t1, match_id),
+                )
+                shared_conn.commit()
+                count += 1
+                logger.info(f"  ✅ team_0={t0}, team_1={t1}")
+
+            except Exception as e:
+                logger.error(f"  Erreur {match_id}: {e}")
+                continue
+
+    logger.info(f"✅ Team scores terminé : {count}/{len(match_ids)} matchs mis à jour")
+    return count
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Citations
 # ─────────────────────────────────────────────────────────────────────────────
 

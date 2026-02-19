@@ -266,6 +266,31 @@ def _parse_duration_to_seconds(duration_str: str) -> int | None:
     return int(hours * 3600 + minutes * 60 + seconds)
 
 
+def _extract_team_score_value(team: dict[str, Any]) -> int | None:
+    """Extrait le score d'une entrée team du JSON Halo Infinite.
+
+    L'API peut stocker le score à plusieurs endroits selon la version :
+    - team["Score"] ou team["TotalPoints"] (format simplifié/legacy)
+    - team["Stats"]["CoreStats"]["Score"] (format réel de l'API)
+    """
+    # Format direct (fixtures de test ou anciennes réponses)
+    v = _safe_int(team.get("TotalPoints"))
+    if v is not None:
+        return v
+    v = _safe_int(team.get("Score"))
+    if v is not None:
+        return v
+    # Format réel : Stats.CoreStats.Score
+    stats = team.get("Stats")
+    if isinstance(stats, dict):
+        core = stats.get("CoreStats")
+        if isinstance(core, dict):
+            v = _safe_int(core.get("Score"))
+            if v is not None:
+                return v
+    return None
+
+
 def _extract_team_scores(
     match_obj: dict[str, Any], team_id: int | None
 ) -> tuple[int | None, int | None]:
@@ -281,7 +306,7 @@ def _extract_team_scores(
         if not isinstance(team, dict):
             continue
         tid = team.get("TeamId")
-        score = _safe_int(team.get("TotalPoints")) or _safe_int(team.get("Score"))
+        score = _extract_team_score_value(team)
 
         if tid == team_id:
             my_score = score
@@ -1853,7 +1878,6 @@ def _extract_team_scores_by_id(
             continue
         tid = team.get("TeamId")
         if tid is not None:
-            score = _safe_int(team.get("TotalPoints")) or _safe_int(team.get("Score"))
-            team_scores[tid] = score
+            team_scores[tid] = _extract_team_score_value(team)
 
     return team_scores.get(0), team_scores.get(1)
