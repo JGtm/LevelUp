@@ -270,22 +270,44 @@ def _sync_duckdb_player(
         if not tokens:
             return False, "Tokens SPNKr manquants."
 
-        # Libérer toutes les connexions DuckDBRepository avant d'ouvrir shared_matches en R/W.
-        # DuckDB interdit qu'un même fichier soit attaché sous deux noms différents dans le
-        # même processus : les ATTACH AS shared existants conflicteraient avec l'ouverture
-        # directe du DuckDBSyncEngine (qui lui donne le nom interne 'shared_matches').
+        # Préparer l'ouverture exclusive de shared_matches.duckdb en R/W par le DuckDBSyncEngine.
+        # DuckDB interdit qu'un même fichier soit ouvert sous deux noms différents dans le même
+        # processus. Stratégie en 3 étapes :
+        #   1. Activer le flag global _sync_mode → les futurs DuckDBRepository n'attacheront plus
+        #      shared_matches (protection contre les threads Streamlit concurrents).
+        #   2. Invalider le cache @st.cache_resource pour détruire les repositories existants.
+        #   3. Fermer toutes les connexions DuckDBRepository actives (libère les ATTACH AS shared).
+        _sync_log = logging.getLogger(__name__)
+        try:
+            from src.data.repositories.duckdb_repo import begin_sync_mode
+
+            begin_sync_mode()
+            _sync_log.debug("Sync: mode sync activé (ATTACH shared suspendu)")
+        except Exception:
+            pass
+
+        try:
+            from src.ui.cache_loaders import get_cached_repository_st
+
+            get_cached_repository_st.clear()
+            _sync_log.debug("Sync: cache @st.cache_resource get_cached_repository_st invalidé")
+        except Exception:
+            pass
+
         try:
             from src.data.repositories.duckdb_repo import release_all_db_connections
 
             n_closed = release_all_db_connections()
             if n_closed:
-                logging.getLogger(__name__).debug(
+                _sync_log.debug(
                     "Sync: %d connexion(s) repo fermée(s) avant ouverture shared R/W", n_closed
                 )
         except Exception:
             pass
 
         # Créer le moteur de sync
+        _sync_error: Exception | None = None
+        _sync_result = None
         try:
             engine = DuckDBSyncEngine(
                 player_db_path=db_file,
@@ -304,15 +326,29 @@ def _sync_duckdb_player(
             )
 
             if delta:
-                result = await engine.sync_delta(options)
+                _sync_result = await engine.sync_delta(options)
             else:
-                result = await engine.sync_full(options)
-
-            if result.errors:
-                return False, f"Erreur: {'; '.join(result.errors)}"
+                _sync_result = await engine.sync_full(options)
 
         except Exception as e:
-            return False, f"Erreur sync: {e}"
+            _sync_error = e
+        finally:
+            # Toujours désactiver le mode sync (même en cas d'erreur) pour que les
+            # DuckDBRepository puissent r'attacher shared_matches normalement.
+            try:
+                from src.data.repositories.duckdb_repo import end_sync_mode
+
+                end_sync_mode()
+                _sync_log.debug("Sync: mode sync désactivé (ATTACH shared rétabli)")
+            except Exception:
+                pass
+
+        if _sync_error is not None:
+            return False, f"Erreur sync: {_sync_error}"
+
+        result = _sync_result
+        if result is not None and result.errors:
+            return False, f"Erreur: {'; '.join(result.errors)}"
 
         # Compter les matchs après (même logique que avant)
         matches_after = 0

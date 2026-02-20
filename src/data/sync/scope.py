@@ -58,6 +58,8 @@ _FORCE_MAP: dict[str, str] = {
     "force_combat": "combat",
     "force_kills_detail": "kills_detail",
     "force_core_stats": "core_stats",
+    # ── PVE v5.2 ──
+    "force_pve_stats": "pve_stats",
 }
 
 # Champs activés par ``all_data``.  Listés explicitement pour ne pas
@@ -103,6 +105,8 @@ _ALL_DATA_FIELDS: tuple[str, ...] = (
     "combat",
     "kills_detail",
     "core_stats",
+    # ── PVE v5.2 ──
+    "pve_stats",
 )
 
 # Mapping champ → clé pour ``requested_types`` (bitmask backfill_completed).
@@ -124,6 +128,8 @@ _REQUESTED_TYPE_MAP: dict[str, str] = {
     "participants_shots": "participants_shots",
     "participants_damage": "participants_damage",
     "participants_avg_life": "participants_avg_life",
+    # ── PVE stats (v5.2) ──
+    "pve_stats": "pve_stats",
 }
 
 
@@ -242,6 +248,12 @@ class SyncScope:
     force_combat: bool = False
     force_kills_detail: bool = False
     force_core_stats: bool = False
+
+    # ── PVE (Firefight) — v5.2 ───────────────────────────────────────────
+    pve_stats: bool = False  # Stats PVE → shared_pve.duckdb
+
+    # ── Flags force PVE ──────────────────────────────────────────────────
+    force_pve_stats: bool = False  # Re-traiter même si MatchBits.PVE_STATS déjà posé
 
     # ── Méta-flag ────────────────────────────────────────────────────────
     all_data: bool = False

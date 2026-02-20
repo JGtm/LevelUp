@@ -1,9 +1,17 @@
-# Schéma shared_matches.duckdb — Architecture v5.0
+# Schéma Bases Partagées — Architecture v5.2
 
-> **Date** : 2026-02-14  
-> **Version schéma** : 1  
-> **Fichier DDL** : `scripts/migration/schema_v5.sql`  
+> **Date** : 2026-02-14 (mis à jour 2026-02-20 — v5.2 shared_pve.duckdb)
+> **Version schéma** : 2 (v5.2 — ajout shared_pve.duckdb)
+> **Fichier DDL principal** : `scripts/migration/schema_v5.sql`
 > **Script de création** : `scripts/migration/create_shared_matches_db.py`
+
+## Bases de données partagées
+
+| Base | Chemin | Contenu |
+|------|--------|---------|
+| `shared_matches.duckdb` | `data/warehouse/shared_matches.duckdb` | Matchs PvP + Firefight (registry, participants, medals, events) |
+| `shared_pve.duckdb` | `data/warehouse/shared_pve.duckdb` | Stats spécifiques Firefight/PvE (waves, kills par ennemi) — v5.2 |
+| `metadata.duckdb` | `data/warehouse/metadata.duckdb` | Référentiels (maps, playlists, médailles, variantes) |
 
 ---
 
@@ -257,6 +265,67 @@ python -m pytest tests/migration/test_shared_schema.py -v
 
 ## Changelog
 
+## Base `shared_pve.duckdb` (v5.2)
+
+> **Chemin** : `data/warehouse/shared_pve.duckdb`
+> **DDL** : `src/data/sync/migrations.py` — `PVE_SCHEMA_DDL` + `ensure_pve_schema()`
+> **Raison** : Stats PvE présentes uniquement sur les matchs Firefight (~10%). Séparées pour éviter des colonnes NULL sur 90%+ des lignes de `shared_matches.duckdb`.
+
+### Table `pve_match_stats`
+
+Une ligne par `(match_id, xuid)`. Stocke les stats Firefight de chaque joueur.
+
+| Colonne | Type | Contrainte | Description |
+|---------|------|-----------|-------------|
+| `match_id` | VARCHAR | PK, NOT NULL | ID du match (FK → match_registry) |
+| `xuid` | VARCHAR | PK, NOT NULL | Xbox User ID du joueur |
+| `waves_completed` | INTEGER | | Waves terminées |
+| `max_wave_reached` | INTEGER | | Dernière wave atteinte |
+| `boss_kills` | INTEGER | | Boss éliminés |
+| `mythic_boss_kills` | INTEGER | | Boss mythiques |
+| `total_enemy_kills` | INTEGER | | Total ennemis tués |
+| `grunt_kills` | INTEGER | DEFAULT 0 | Grunts (Banished) |
+| `elite_kills` | INTEGER | DEFAULT 0 | Elites (Banished) |
+| `jackal_kills` | INTEGER | DEFAULT 0 | Jackals (Banished) |
+| `brute_kills` | INTEGER | DEFAULT 0 | Brutes (Banished) |
+| `hunter_kills` | INTEGER | DEFAULT 0 | Hunters (Banished) |
+| `skimmer_kills` | INTEGER | DEFAULT 0 | Skimmers (Banished) |
+| `crawler_kills` | INTEGER | DEFAULT 0 | Crawlers (Forerunner) |
+| `soldier_kills` | INTEGER | DEFAULT 0 | Soldiers (Forerunner) |
+| `knight_kills` | INTEGER | DEFAULT 0 | Knights (Forerunner) |
+| `warden_kills` | INTEGER | DEFAULT 0 | Wardens (Forerunner) |
+| `pve_bits` | INTEGER | DEFAULT 0 | Bitmask `PveBits` — champs récupérés |
+| `created_at` | TIMESTAMP | DEFAULT NOW | Date d'insertion |
+
+**Index** : `idx_pve_xuid (xuid)`, `idx_pve_match_id (match_id)`
+
+### Guard dans `match_registry`
+
+`MatchBits.PVE_STATS = 1 << 20` est posé dans `match_registry.backfill_completed` pour **tout match traité** (Firefight ou non), évitant la re-détection infinie lors des backfills.
+
+### Intégration Sync / Backfill / Citations
+
+| Opération | Qui | Comment |
+|-----------|-----|---------|
+| Sync nouveau match | `engine._try_insert_pve_stats()` | Automatique lors du sync |
+| Backfill | `orchestrator._backfill_pve_for_match()` | Via `--pve-stats` / `--force-pve-stats` |
+| Détection | `detection._find_matches_in_shared_all()` | `is_firefight = TRUE AND (backfill_completed & PVE_STATS) = 0` |
+| Citations | `CitationEngine.load_match_pve_stats()` | Lecture filtrée par `xuid` pour `pve_stat` mapping_type |
+
+### Helper chemin
+
+```python
+from src.utils.paths import get_pve_db_path, get_pve_db_path_from_player
+
+pve_path = get_pve_db_path()  # Depuis la racine du projet
+pve_path = get_pve_db_path_from_player(player_db_path)  # Depuis un path joueur
+```
+
+---
+
+## Changelog
+
 | Version | Date | Description |
 |---------|------|-------------|
 | 1 | 2026-02-14 | Création initiale (Sprint 1) |
+| 2 | 2026-02-20 | Ajout `shared_pve.duckdb` + table `pve_match_stats` (v5.2 PVE) |

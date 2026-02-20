@@ -129,6 +129,9 @@ def find_matches_missing_data(
     else:
         _ = all_data  # compat signature
 
+    pve_stats = getattr(scope, "pve_stats", False) if scope is not None else False
+    force_pve_stats = getattr(scope, "force_pve_stats", False) if scope is not None else False
+
     # Détecter le type de flags demandés
     local_data_requested = any(
         [
@@ -142,6 +145,7 @@ def find_matches_missing_data(
             enemy_mmr,
             assets,
             participants,
+            pve_stats,
         ]
     )
     participants_data_requested = any(
@@ -190,6 +194,7 @@ def find_matches_missing_data(
         enemy_mmr=enemy_mmr,
         assets=assets,
         participants=participants,
+        pve_stats=pve_stats,
         force_medals=force_medals,
         force_accuracy=force_accuracy,
         force_shots=force_shots,
@@ -199,6 +204,7 @@ def find_matches_missing_data(
         force_aliases=force_aliases,
         force_participants=force_participants,
         force_skill=force_skill,
+        force_pve_stats=force_pve_stats,
     )
 
     # Fusionner résultats locaux + shared (dédoublonner, garder l'ordre)
@@ -260,6 +266,7 @@ def _find_matches_in_shared_all(
     enemy_mmr: bool = False,
     assets: bool = False,
     participants: bool = False,
+    pve_stats: bool = False,
     force_medals: bool = False,
     force_accuracy: bool = False,
     force_shots: bool = False,
@@ -269,6 +276,7 @@ def _find_matches_in_shared_all(
     force_aliases: bool = False,
     force_participants: bool = False,
     force_skill: bool = False,  # Ajouté v5.1 : force le rescan skill pour tous les matchs
+    force_pve_stats: bool = False,  # v5.2 : force le rescan PVE pour tous les Firefight
 ) -> list[str]:
     """Détection V5 FINALE : tous les flags via shared DB.
 
@@ -380,6 +388,20 @@ def _find_matches_in_shared_all(
             conditions.append("1=1")
         else:
             conditions.append("1=1" + _done_guard("participants", has_bf_col))
+
+    # PVE stats (Firefight uniquement) — v5.2
+    # Double guard : is_firefight = TRUE ET PVE_STATS bit non posé
+    if pve_stats:
+        from src.data.sync.constants import MatchBits
+
+        pve_bit = MatchBits.PVE_STATS
+        if force_pve_stats:
+            conditions.append("mr.is_firefight = TRUE")
+        else:
+            conditions.append(
+                f"mr.is_firefight = TRUE"
+                f" AND (COALESCE(mr.backfill_completed, 0) & {pve_bit}) = 0"
+            )
 
     if not conditions:
         return []
@@ -694,5 +716,7 @@ def compute_bits_needed_from_scope(scope: SyncScope) -> tuple[int, int]:
         m_bits |= MatchBits.ASSETS
     if scope.aliases:
         m_bits |= MatchBits.ALIASES
+    if getattr(scope, "pve_stats", False):
+        m_bits |= MatchBits.PVE_STATS
 
     return p_bits, m_bits

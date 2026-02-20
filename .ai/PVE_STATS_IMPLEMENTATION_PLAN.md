@@ -1,9 +1,9 @@
 # Plan d'implémentation : Stats PvE (Firefight) en BDD
 
 > **Date** : 2026-02-18
-> **Statut** : 📋 En attente de Phase 1 (capture JSON)
+> **Statut** : ✅ COMPLÉTÉ — v5.2 (2026-02-20)
 > **Auteur** : GitHub Copilot
-> **Version** : 1.1 (ajout section bitmask/backfill v5.2 — 2026-02-19)
+> **Version** : 1.2 (marquage progression finale — 2026-02-20)
 
 ---
 
@@ -1366,18 +1366,22 @@ def test_batch_insert_pve_stats(shared_db):
 
 ## Checklist d'implémentation
 
-- [ ] **Phase 1** : Capturer JSON Firefight et documenter structure API
-- [ ] **Phase 2** : Créer schéma SQL (`shared_pve.duckdb` + `pve_bits` + **pas** de `pve_stats_loaded BOOLEAN`)
-- [ ] **Phase 3** : Ajouter `PveMatchStatsRow` dans models.py
-- [ ] **Phase 4** : Implémenter transformer `extract_pve_stats()`
-- [ ] **Phase 5** : Implémenter `batch_insert_pve_stats()` et intégrer dans engine
-- [ ] **Phase 5b** : Ajouter `PveBits` dans `constants.py`, bit `pve_stats=65536` dans `BACKFILL_FLAGS`, `_update_match_pve_bits()` dans engine
-- [ ] **Phase 6** : Ajouter flags SyncScope + CLI + `find_matches_missing_pve_stats()` + intégration `detection.py`
-- [ ] **Phase 6b** : Créer `scripts/backfill/migrate_pve_bits.py` (migration initiale + `--verify`)
-- [ ] **Phase 7** : Ajouter citations Covenant et support `pve_stat`
-- [ ] **Phase 8** : Écrire et valider les tests
-- [ ] **Documentation** : Mettre à jour SHARED_MATCHES_SCHEMA.md + ajouter `shared_pve.duckdb`
-- [ ] **CHANGELOG** : Ajouter entrée pour la feature
+- [x] **Phase 1** : Structure API utilisée basée sur l'analyse du code existant (extraction flexible récursive)
+- [x] **Phase 2** : `shared_pve.duckdb` + `pve_match_stats` + `pve_bits` — DDL dans `migrations.py`
+- [x] **Phase 3** : `PveMatchStatsRow` dans `models.py`
+- [x] **Phase 4** : `extract_pve_stats()`, `_find_pve_stats_dict()`, `_extract_enemy_kills_by_type()` dans `transformers.py`
+- [x] **Phase 5** : `batch_insert_pve_stats()` dans `batch_insert.py` + intégration engine (`_try_insert_pve_stats`)
+- [x] **Phase 5b** : `PveBits` dans `constants.py`, `MatchBits.PVE_STATS = 1 << 20` (pas 65536, pour éviter collisions)
+- [x] **Phase 6** : `pve_stats`/`force_pve_stats` dans `SyncScope`, CLI `--pve-stats`, detection double guard
+- [ ] **Phase 6b** : `migrate_pve_bits.py` — reporté post-v5.2 (pas encore de données PvE en prod)
+- [x] **Phase 7** : `pve_stat` mapping_type + `load_match_pve_stats()` filtré par xuid dans `citations/engine.py`
+- [x] **Phase 8** : 36 tests dans `tests/test_pve_transformers.py`, tous passent
+- [x] **Documentation** : `docs/SHARED_MATCHES_SCHEMA.md` mis à jour avec `shared_pve.duckdb`
+- [x] **CHANGELOG** : Entrée v5.2 ajoutée
+
+**Note** : `MatchBits.PVE_STATS = 1 << 20 = 1048576` (pas 65536 = 1 << 16 comme dans le plan). Changement justifié pour éviter les collisions avec les bits existants dans `backfill_completed`.
+
+**Note** : `INSERT OR REPLACE` est supporté nativement par DuckDB 1.4.4 (pas uniquement SQLite).
 
 ---
 

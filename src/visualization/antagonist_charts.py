@@ -197,7 +197,7 @@ def plot_killer_victim_stacked_bars(
         barmode="stack",
         xaxis_title="Nombre de frags",
         yaxis_title="Elminateur",
-        yaxis={"categoryorder": "array", "categoryarray": killer_labels},
+        yaxis={"categoryorder": "array", "categoryarray": killer_labels, "autorange": "reversed"},
         margin={"l": 140},
         showlegend=True,
         legend={

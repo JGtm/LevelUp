@@ -7,6 +7,49 @@
 
 ## Journal
 
+### [2026-02-20] — v5.2 : Filtres intent-based + Stats PvE Firefight
+
+**Statut** : Complété ✅
+
+**Objectif** : Implémenter les deux plans v5.2 sur la branche `feature/v5.2`.
+
+#### Bloc A — Filtres v5.2
+
+- `src/ui/filter_state.py` : `FilterPreferences` intent-based (`*_mode` + exclusions), `_detect_filter_mode()` (heuristique 70/30), `reconcile_filter_prefs()` (auto-réconciliation nouvelles options)
+- `src/app/filters_render.py` : sélecteur "Type d'expérience" (PVP non classé / PVP classé / PVE), cascade suppression correcte depuis `dropdown_base` complet
+- 45 tests dans `tests/test_filter_state.py`
+- Revue de code : APPROUVÉ (manque tests unitaires `_reconcile_filter_options`, mineur)
+
+#### Bloc B — Stats PvE Firefight
+
+- `src/data/sync/constants.py` : `PveBits(IntFlag)` + `MatchBits.PVE_STATS = 1 << 20`
+- `src/data/sync/migrations.py` : `PVE_SCHEMA_DDL` + `ensure_pve_schema()`
+- `src/data/sync/models.py` : `PveMatchStatsRow`
+- `src/data/sync/transformers.py` : `extract_pve_stats()`, `_find_pve_stats_dict()`, `_extract_enemy_kills_by_type()`, `_is_firefight_match()` fusionnée (suppr. dupliqué)
+- `src/data/sync/batch_insert.py` : `batch_insert_pve_stats()`
+- `src/data/sync/engine.py` : `_pve_connection` lazy-init, `_pve_db_lock`, `_try_insert_pve_stats()`
+- `src/data/sync/scope.py` : `pve_stats`/`force_pve_stats` + `_REQUESTED_TYPE_MAP`
+- `scripts/backfill/detection.py` : double guard `is_firefight + PVE_STATS bit`
+- `scripts/backfill/cli.py` : `--pve-stats`/`--force-pve-stats`
+- `scripts/backfill/orchestrator.py` : `_backfill_pve_for_match()`
+- `src/analysis/citations/engine.py` : `load_match_pve_stats()` (filtré par xuid), `pve_stat` mapping_type
+- `src/utils/paths.py` : `get_pve_db_path()`, `get_pve_db_path_from_player()` (chemin centralisé)
+- 36 tests dans `tests/test_pve_transformers.py`
+- Revue de code : APPROUVÉ AVEC RÉSERVES → 5 corrections appliquées :
+  1. `load_match_pve_stats` : filtre xuid ajouté
+  2. Commentaire `pve_bits` : suppression référence inexistante `_update_match_pve_bits()`
+  3. `pve_stats` ajouté à `_REQUESTED_TYPE_MAP`
+  4. `FULL_PVE` inclut désormais `FORERUNNER_ANY`
+  5. Chemin `shared_pve.duckdb` centralisé via `get_pve_db_path_from_player()`
+
+**Tests finaux** : 3152 passed, 19 failed (pré-existants), 64 skipped
+
+**Décisions clés** :
+- `shared_pve.duckdb` séparé pour éviter NULL sur 90% matchs PvP
+- `MatchBits.PVE_STATS = 1 << 20` (pas 65536 comme dans le plan) pour éviter collision avec les bits existants
+- Double guard détection : `is_firefight = TRUE AND (backfill_completed & PVE_STATS) = 0`
+- `INSERT OR REPLACE` validé DuckDB 1.4.4 (pas une syntaxe SQLite uniquement)
+
 ### [2026-02-17] - Étapes 9 + 10 : Tests, Documentation, Release v5.1
 
 **Statut** : Complété ✅

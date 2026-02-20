@@ -838,3 +838,72 @@ def _create_index_safe(conn: duckdb.DuckDBPyConnection, sql: str, index_name: st
             logger.debug(f"Index {index_name} ignoré: {e}")
         else:
             logger.warning(f"Index {index_name} non créé: {e}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Schéma PvE — shared_pve.duckdb (v5.2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+PVE_SCHEMA_DDL = """
+CREATE TABLE IF NOT EXISTS pve_match_stats (
+    match_id VARCHAR NOT NULL,
+    xuid VARCHAR NOT NULL,
+
+    -- Stats globales PvE (à valider avec JSON réel en Phase 1)
+    waves_completed    INTEGER,
+    max_wave_reached   INTEGER,
+    boss_kills         INTEGER,
+    mythic_boss_kills  INTEGER,
+    total_enemy_kills  INTEGER,
+
+    -- Kills par type d'ennemi — Banished
+    grunt_kills    INTEGER DEFAULT 0,
+    elite_kills    INTEGER DEFAULT 0,
+    jackal_kills   INTEGER DEFAULT 0,
+    brute_kills    INTEGER DEFAULT 0,
+    hunter_kills   INTEGER DEFAULT 0,
+    skimmer_kills  INTEGER DEFAULT 0,
+
+    -- Kills par type d'ennemi — Forerunners (si disponible dans l'API)
+    crawler_kills  INTEGER DEFAULT 0,
+    soldier_kills  INTEGER DEFAULT 0,
+    knight_kills   INTEGER DEFAULT 0,
+    warden_kills   INTEGER DEFAULT 0,
+
+    -- Bitmask granulaire (v5.2) — quels champs ont été récupérés
+    -- Voir PveBits dans src/data/sync/constants.py
+    pve_bits       INTEGER DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (match_id, xuid)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pve_xuid     ON pve_match_stats(xuid);
+CREATE INDEX IF NOT EXISTS idx_pve_match_id ON pve_match_stats(match_id);
+"""
+
+
+def ensure_pve_schema(conn: duckdb.DuckDBPyConnection) -> None:
+    """Initialise le schéma PvE dans shared_pve.duckdb (idempotent).
+
+    Crée la table ``pve_match_stats`` et ses index si absents.
+    À appeler au démarrage de toute connexion vers shared_pve.duckdb.
+
+    Args:
+        conn: Connexion DuckDB vers shared_pve.duckdb.
+    """
+    try:
+        # DDL complet (idempotent via IF NOT EXISTS)
+        for stmt in PVE_SCHEMA_DDL.strip().split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                try:
+                    conn.execute(stmt)
+                except Exception as e:
+                    err = str(e).lower()
+                    if "already exists" not in err:
+                        logger.warning(f"Erreur DDL PvE : {e}")
+        logger.debug("Schéma PvE initialisé (shared_pve.duckdb)")
+    except Exception as e:
+        logger.error(f"Impossible d'initialiser le schéma PvE : {e}")
