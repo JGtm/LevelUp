@@ -386,7 +386,11 @@ class MediaIndexer:
                 return None
 
             mtime = float(stat.st_mtime)
-            capture_end_utc = datetime.fromtimestamp(mtime, tz=timezone.utc)
+            # IMPORTANT: DuckDB TIMESTAMP (sans TZ) stocke le datetime tel quel.
+            # Si on passe un datetime tz-aware (UTC), DuckDB le convertit en heure
+            # locale (CET = UTC+1) avant stockage → epoch() retourne mtime+3600.
+            # Solution: passer des datetimes NAÏFS (= UTC implicite).
+            capture_end_utc = datetime.fromtimestamp(mtime, tz=timezone.utc).replace(tzinfo=None)
             capture_start_utc: datetime | None = None
             duration_seconds: float | None = None
             title: str | None = None
@@ -396,14 +400,15 @@ class MediaIndexer:
                 if duration_seconds is not None and duration_seconds > 0:
                     capture_start_utc = datetime.fromtimestamp(
                         mtime - duration_seconds, tz=timezone.utc
-                    )
+                    ).replace(tzinfo=None)
                 else:
                     capture_start_utc = capture_end_utc
             else:
                 exif_dt = _get_image_exif_datetime(file_path)
                 if exif_dt:
-                    if exif_dt.tzinfo is None:
-                        exif_dt = exif_dt.replace(tzinfo=timezone.utc)
+                    # Retirer tzinfo pour stockage TIMESTAMP naïf
+                    if exif_dt.tzinfo is not None:
+                        exif_dt = exif_dt.astimezone(timezone.utc).replace(tzinfo=None)
                     capture_end_utc = exif_dt
                     capture_start_utc = exif_dt
                 else:
@@ -673,7 +678,7 @@ class MediaIndexer:
         try:
             media_rows = conn_read.execute(
                 """
-                SELECT mf.file_path, COALESCE(epoch(mf.capture_start_utc), epoch(mf.capture_end_utc), mf.mtime_paris_epoch, mf.mtime)
+                SELECT mf.file_path, mf.mtime
                 FROM media_files mf
                 WHERE mf.status = 'active'
                 ORDER BY mf.mtime DESC
@@ -980,6 +985,100 @@ class MediaIndexer:
             subset=["file_path"], keep="first"
         )
         df = df.drop("_section_rank")
+        return df.sort("capture_end_utc", descending=True, nulls_last=True)
+
+    @staticmethod
+    def load_media_for_match(
+        db_path: Path | str,
+        match_id: str,
+        current_xuid: str | None = None,  # noqa: ARG004
+    ) -> pl.DataFrame:
+        """Charge tous les médias associés à un match spécifique (toutes les DBs joueurs).
+
+        Interroge chaque DB joueur pour récupérer les médias liés au match_id donné
+        via media_match_associations, puis détermine le propriétaire depuis le chemin
+        du fichier (nom de dossier = gamertag).
+
+        Returns:
+            Polars DataFrame avec colonnes: file_path, file_name, kind, thumbnail_path,
+            capture_end_utc, map_name, match_id, xuid, gamertag, section.
+            section ∈ {'mine', 'teammate'}.
+        """
+        db_path = Path(db_path)
+        if not db_path.exists() or not match_id:
+            return pl.DataFrame()
+
+        player_dbs = MediaIndexer._get_all_player_dbs()
+        if not player_dbs:
+            return pl.DataFrame()
+
+        current_gamertag = get_gamertag_from_db_path(db_path) or ""
+        current_gamertag_lower = current_gamertag.lower()
+        known_gamertags: set[str] = {Path(pdb).parent.name.lower() for pdb, _ in player_dbs}
+
+        def _extract_owner(fp: str) -> str:
+            if not fp:
+                return ""
+            path_lower = fp.lower().replace("\\", "/")
+            for gt in known_gamertags:
+                if f"/{gt}/" in path_lower or path_lower.endswith(f"/{gt}"):
+                    for pdb, _ in player_dbs:
+                        orig = Path(pdb).parent.name
+                        if orig.lower() == gt:
+                            return orig
+            return ""
+
+        dfs: list[pl.DataFrame] = []
+        for pdb, _xuid in player_dbs:
+            try:
+                with _connect_db_flexible(pdb) as c:
+                    tables = {
+                        r[0]
+                        for r in c.execute(
+                            "SELECT table_name FROM information_schema.tables "
+                            "WHERE table_schema = 'main' "
+                            "AND table_name IN ('media_files', 'media_match_associations')"
+                        ).fetchall()
+                    }
+                    if "media_files" not in tables or "media_match_associations" not in tables:
+                        continue
+                    df_p = c.execute(
+                        """
+                        SELECT mf.file_path, mf.file_name, mf.kind, mf.thumbnail_path,
+                               mf.capture_end_utc, mma.map_name, mma.match_id, mma.xuid
+                        FROM media_files mf
+                        JOIN media_match_associations mma ON mf.file_path = mma.media_path
+                        WHERE mf.status = 'active' AND mma.match_id = ?
+                        """,
+                        [match_id],
+                    ).pl()
+                    if not df_p.is_empty():
+                        dfs.append(df_p)
+            except Exception as e:
+                logger.debug("load_media_for_match db %s: %s", pdb, e)
+
+        if not dfs:
+            return pl.DataFrame()
+
+        df = pl.concat(dfs) if len(dfs) > 1 else dfs[0]
+        df = df.unique(subset=["file_path"], keep="first")
+
+        owners = [_extract_owner(p) for p in df["file_path"].to_list()]
+        df = df.with_columns(pl.Series("owner_gamertag", owners))
+
+        df = df.with_columns(
+            pl.when(pl.col("owner_gamertag").str.to_lowercase() == current_gamertag_lower)
+            .then(pl.lit("mine"))
+            .otherwise(pl.lit("teammate"))
+            .alias("section")
+        )
+        df = df.with_columns(
+            pl.when(pl.col("owner_gamertag") != "")
+            .then(pl.col("owner_gamertag"))
+            .otherwise(pl.col("xuid").cast(pl.Utf8))
+            .alias("gamertag")
+        )
+        df = df.drop("owner_gamertag")
         return df.sort("capture_end_utc", descending=True, nulls_last=True)
 
     def generate_thumbnails_for_new(
