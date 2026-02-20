@@ -31,6 +31,7 @@ from src.data.sync.models import (
     MatchStatsRow,
     MedalEarnedRow,
     PlayerMatchStatsRow,
+    PveMatchStatsRow,
     SharedMedalEarnedRow,
     SkillParticipantUpdate,
     XuidAliasRow,
@@ -362,25 +363,6 @@ def _is_ranked_playlist(match_info: dict[str, Any]) -> bool:
         name = playlist.get("PublicName", "")
         if isinstance(name, str) and "ranked" in name.lower():
             return True
-    return False
-
-
-def _is_firefight_match(match_info: dict[str, Any]) -> bool:
-    """Détermine si le match est un Firefight."""
-    # Vérifier le game mode ou le nom
-    game_variant = match_info.get("UgcGameVariant", {})
-    if isinstance(game_variant, dict):
-        name = game_variant.get("PublicName", "")
-        if isinstance(name, str) and "firefight" in name.lower():
-            return True
-
-    # Vérifier la playlist
-    playlist = match_info.get("Playlist", {})
-    if isinstance(playlist, dict):
-        name = playlist.get("PublicName", "")
-        if isinstance(name, str) and "firefight" in name.lower():
-            return True
-
     return False
 
 
@@ -1881,3 +1863,218 @@ def _extract_team_scores_by_id(
             team_scores[tid] = _extract_team_score_value(team)
 
     return team_scores.get(0), team_scores.get(1)
+
+
+# =============================================================================
+# Extraction stats PvE / Firefight (v5.2)
+# =============================================================================
+
+# IDs GameVariantCategory pour Firefight (à valider avec JSON réel en Phase 1)
+# ⚠️ Ces valeurs sont HYPOTHÉTIQUES — mettre à jour après capture d'un JSON Firefight réel.
+_FIREFIGHT_CATEGORY_IDS: frozenset[int] = frozenset({9, 24})
+
+
+def _is_firefight_match(match_info: dict[str, Any]) -> bool:
+    """Retourne True si le match est un mode Firefight/PvE.
+
+    Vérifie dans l'ordre :
+    1. GameVariantCategory (int, le plus fiable si l'ID est confirmé)
+    2. UgcGameVariant.PublicName (nom du mode de jeu)
+    3. Playlist.PublicName (nom de la playlist)
+
+    ⚠️ _FIREFIGHT_CATEGORY_IDS doit être validé avec un JSON réel (Phase 1).
+
+    Args:
+        match_info: Dict MatchInfo du JSON API (ou dict racine).
+
+    Returns:
+        True si détecté comme match Firefight/PvE.
+    """
+    # 1. GameVariantCategory (le plus fiable)
+    category = match_info.get("GameVariantCategory")
+    if isinstance(category, int) and category in _FIREFIGHT_CATEGORY_IDS:
+        return True
+
+    # 2. UgcGameVariant.PublicName (rétrocompat avec l'ancienne implémentation)
+    game_variant = match_info.get("UgcGameVariant", {})
+    if isinstance(game_variant, dict):
+        name = game_variant.get("PublicName", "")
+        if isinstance(name, str) and "firefight" in name.lower():
+            return True
+
+    # 3. Playlist.PublicName
+    playlist_name = (match_info.get("Playlist") or {}).get("PublicName", "") or ""
+    if not playlist_name:
+        playlist_name = str(match_info.get("PlaylistName", "") or "")
+    name_lower = playlist_name.lower()
+    return "firefight" in name_lower or "baptême" in name_lower or "survive" in name_lower
+
+
+def _find_pve_stats_dict(player_obj: dict[str, Any]) -> dict[str, Any] | None:
+    """Trouve le dictionnaire contenant les stats PvE dans PlayerTeamStats.
+
+    Parcourt récursivement PlayerTeamStats pour trouver le bloc de stats PvE.
+    Cherche les clés connues (EliminationStats, PveStats, FirefightStats) en
+    priorité, puis détecte par présence de clés caractéristiques.
+
+    ⚠️ Les noms de blocs sont hypothétiques — à valider avec un JSON réel (Phase 1).
+
+    Args:
+        player_obj: Objet joueur du JSON API (Players[]).
+
+    Returns:
+        Dict des stats PvE ou None si non trouvé.
+    """
+    _pve_keys = {"WavesCompleted", "BossKills", "TotalEnemyKills", "MaxWaveReached"}
+    _known_block_names = {"EliminationStats", "PveStats", "FirefightStats", "SurvivalStats"}
+
+    def _find(x: Any) -> dict[str, Any] | None:
+        if isinstance(x, dict):
+            # Chemin direct par nom de bloc connu
+            for key in _known_block_names:
+                if key in x:
+                    val = x[key]
+                    if isinstance(val, dict):
+                        return val
+            # Détection par clés PvE caractéristiques
+            if any(k in x for k in _pve_keys):
+                return x
+            # Recherche récursive
+            for v in x.values():
+                r = _find(v)
+                if r is not None:
+                    return r
+        elif isinstance(x, list):
+            for v in x:
+                r = _find(v)
+                if r is not None:
+                    return r
+        return None
+
+    return _find(player_obj.get("PlayerTeamStats"))
+
+
+def _extract_enemy_kills_by_type(pve_dict: dict[str, Any]) -> dict[str, int]:
+    """Extrait les kills par type d'ennemi depuis le bloc PvE.
+
+    Gère deux structures possibles :
+    - Champs directs : GruntKills, EliteKills, etc.
+    - Sous-dict : EnemyKillsByType.{Grunt, Elite, ...}
+
+    ⚠️ Les noms de champs sont hypothétiques — à valider avec un JSON réel (Phase 1).
+
+    Args:
+        pve_dict: Dictionnaire des stats PvE.
+
+    Returns:
+        Dict {enemy_type: kill_count}.
+    """
+    result: dict[str, int] = {}
+
+    # Structure 1 : champs directs (GruntKills, EliteKills, etc.)
+    direct_mappings: dict[str, list[str]] = {
+        "grunt": ["GruntKills", "Grunts"],
+        "elite": ["EliteKills", "Elites"],
+        "jackal": ["JackalKills", "Jackals"],
+        "brute": ["BruteKills", "Brutes"],
+        "hunter": ["HunterKills", "Hunters"],
+        "skimmer": ["SkimmerKills", "Skimmers"],
+        "crawler": ["CrawlerKills", "Crawlers"],
+        "soldier": ["SoldierKills", "Soldiers"],
+        "knight": ["KnightKills", "Knights"],
+        "warden": ["WardenKills", "Wardens"],
+    }
+
+    for enemy_type, api_keys in direct_mappings.items():
+        for key in api_keys:
+            val = pve_dict.get(key)
+            if val is not None:
+                result[enemy_type] = _safe_int(val) or 0
+                break
+
+    # Structure 2 : sous-dictionnaire EnemyKillsByType / KillsByEnemyType
+    by_type = pve_dict.get("EnemyKillsByType") or pve_dict.get("KillsByEnemyType")
+    if isinstance(by_type, dict):
+        for enemy_type in direct_mappings:
+            if enemy_type not in result:  # Ne pas écraser ce qu'on a déjà trouvé
+                for key in [enemy_type.capitalize(), enemy_type.upper(), enemy_type]:
+                    val = by_type.get(key)
+                    if val is not None:
+                        result[enemy_type] = _safe_int(val) or 0
+                        break
+
+    return result
+
+
+def extract_pve_stats(match_json: dict[str, Any]) -> list[PveMatchStatsRow]:
+    """Extrait les stats PvE de tous les joueurs d'un match Firefight.
+
+    Ne retourne des données que si le match est identifié comme Firefight.
+    Extrait les stats pour TOUS les joueurs du match (partage cohérent).
+
+    Args:
+        match_json: JSON brut du match (MatchStats API).
+
+    Returns:
+        Liste de PveMatchStatsRow pour chaque joueur, vide si pas un match PvE.
+    """
+    match_info = match_json.get("MatchInfo") or {}
+    if not _is_firefight_match(match_info):
+        return []
+
+    match_id = match_json.get("MatchId")
+    if not isinstance(match_id, str) or not match_id:
+        return []
+
+    players = match_json.get("Players")
+    if not isinstance(players, list):
+        return []
+
+    rows: list[PveMatchStatsRow] = []
+
+    for player in players:
+        if not isinstance(player, dict):
+            continue
+
+        # Extraire le XUID depuis PlayerId (format: "xuid(123456789)")
+        pid = player.get("PlayerId")
+        xuid: str | None = None
+        if isinstance(pid, str):
+            m = XUID_RE.search(pid)
+            if m:
+                xuid = m.group(1)
+
+        if not xuid:
+            continue
+
+        # Trouver le bloc de stats PvE
+        pve_dict = _find_pve_stats_dict(player)
+        if pve_dict is None:
+            # Pas de stats PvE (bot, spectateur, ou structure non reconnue)
+            continue
+
+        enemy_kills = _extract_enemy_kills_by_type(pve_dict)
+
+        rows.append(
+            PveMatchStatsRow(
+                match_id=match_id,
+                xuid=xuid,
+                waves_completed=_safe_int(pve_dict.get("WavesCompleted")),
+                max_wave_reached=_safe_int(pve_dict.get("MaxWaveReached")),
+                boss_kills=_safe_int(pve_dict.get("BossKills")),
+                mythic_boss_kills=_safe_int(pve_dict.get("MythicBossKills")),
+                total_enemy_kills=_safe_int(pve_dict.get("TotalEnemyKills")),
+                grunt_kills=enemy_kills.get("grunt", 0),
+                elite_kills=enemy_kills.get("elite", 0),
+                jackal_kills=enemy_kills.get("jackal", 0),
+                brute_kills=enemy_kills.get("brute", 0),
+                hunter_kills=enemy_kills.get("hunter", 0),
+                skimmer_kills=enemy_kills.get("skimmer", 0),
+                crawler_kills=enemy_kills.get("crawler", 0),
+                soldier_kills=enemy_kills.get("soldier", 0),
+                knight_kills=enemy_kills.get("knight", 0),
+                warden_kills=enemy_kills.get("warden", 0),
+            )
+        )
+
+    return rows

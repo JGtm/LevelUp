@@ -744,3 +744,69 @@ def audit_all_tables(conn: Any) -> dict[str, list[dict[str, str]]]:
         if issues:
             results[table_name] = issues
     return results
+
+
+# =============================================================================
+# Insertion batch PvE — shared_pve.duckdb (v5.2)
+# =============================================================================
+
+
+def batch_insert_pve_stats(
+    conn: Any,
+    rows: list,
+) -> int:
+    """Insère les stats PvE en batch dans shared_pve.duckdb.
+
+    Utilise INSERT OR REPLACE pour gérer les re-syncs et les doublons.
+
+    Args:
+        conn: Connexion DuckDB vers shared_pve.duckdb (PAS shared_matches).
+        rows: Liste de PveMatchStatsRow à insérer.
+
+    Returns:
+        Nombre de lignes insérées/remplacées.
+    """
+    if not rows:
+        return 0
+
+    values = [
+        (
+            r.match_id,
+            r.xuid,
+            r.waves_completed,
+            r.max_wave_reached,
+            r.boss_kills,
+            r.mythic_boss_kills,
+            r.total_enemy_kills,
+            r.grunt_kills,
+            r.elite_kills,
+            r.jackal_kills,
+            r.brute_kills,
+            r.hunter_kills,
+            r.skimmer_kills,
+            r.crawler_kills,
+            r.soldier_kills,
+            r.knight_kills,
+            r.warden_kills,
+        )
+        for r in rows
+    ]
+
+    try:
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO pve_match_stats (
+                match_id, xuid,
+                waves_completed, max_wave_reached,
+                boss_kills, mythic_boss_kills, total_enemy_kills,
+                grunt_kills, elite_kills, jackal_kills, brute_kills,
+                hunter_kills, skimmer_kills,
+                crawler_kills, soldier_kills, knight_kills, warden_kills
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+            values,
+        )
+        return len(rows)
+    except Exception as e:
+        logger.warning(f"Erreur batch_insert_pve_stats: {e}")
+        return 0

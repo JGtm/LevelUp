@@ -37,6 +37,7 @@ from src.ui.pages.match_view_helpers import (
 )
 from src.ui.pages.match_view_participation import render_participation_section
 from src.ui.pages.match_view_players import (
+    render_kd_timeline_section,
     render_match_impact_section,
     render_match_scoreboard,
     render_nemesis_section,
@@ -297,6 +298,16 @@ def render_match_view(
         xuid=xuid,
         db_key=db_key,
         colors=colors,
+        load_highlight_events_fn=load_highlight_events_fn,
+        load_match_gamertags_fn=load_match_gamertags_fn,
+    )
+
+    # Évolution K/D de tous les joueurs
+    render_kd_timeline_section(
+        match_id=match_id,
+        db_path=db_path,
+        xuid=xuid,
+        db_key=db_key,
         load_highlight_events_fn=load_highlight_events_fn,
         load_match_gamertags_fn=load_match_gamertags_fn,
     )

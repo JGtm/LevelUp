@@ -421,6 +421,18 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Force rechargement de tous les core-stats",
     )
 
+    # ── PVE / Firefight (v5.2) ─────────────────────────────────────────────
+    parser.add_argument(
+        "--pve-stats",
+        action="store_true",
+        help="Backfill stats PVE (Firefight) → shared_pve.duckdb (v5.2)",
+    )
+    parser.add_argument(
+        "--force-pve-stats",
+        action="store_true",
+        help="Force le backfill PVE même si déjà tenté (MatchBits.PVE_STATS ignoré)",
+    )
+
     return parser
 
 

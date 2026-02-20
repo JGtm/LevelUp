@@ -87,6 +87,7 @@ def _empty_result() -> dict[str, int]:
         "sessions_updated": 0,
         "citations_computed": 0,
         "participants_enriched": 0,
+        "pve_stats_inserted": 0,
     }
 
 
@@ -860,6 +861,8 @@ async def _backfill_with_api(
     force_end_time = scope.force_end_time
     force_sessions = scope.force_sessions
     force_citations = scope.force_citations
+    pve_stats = getattr(scope, "pve_stats", False)
+    force_pve_stats = getattr(scope, "force_pve_stats", False)
     from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
     from src.data.sync.migrations import ensure_match_participants_columns
     from src.data.sync.transformers import (
@@ -1070,6 +1073,17 @@ async def _backfill_with_api(
                     medals_inserted=bool(medals and totals.get("medals_inserted", 0) > 0),
                 )
 
+                # ── PVE stats → shared_pve.duckdb (v5.2) ──
+                if pve_stats:
+                    n = await _backfill_pve_for_match(
+                        stats_json,
+                        match_id,
+                        shared_conn,
+                        db_path,
+                        force=force_pve_stats,
+                    )
+                    totals["pve_stats_inserted"] += n
+
                 # Marquer le bitmask backfill_completed pour tous les types demandés
                 requested_types = scope.requested_types
 
@@ -1266,6 +1280,69 @@ def _update_participant_backfill_bits(
         )
     except Exception as e:
         logger.debug(f"Mise à jour backfill_bits pour {xuid}/{match_id}: {e}")
+
+
+async def _backfill_pve_for_match(
+    stats_json: dict,
+    match_id: str,
+    shared_conn: Any,
+    db_path: Path,
+    *,
+    force: bool = False,
+) -> int:
+    """Backfill les stats PVE pour un match Firefight → shared_pve.duckdb.
+
+    Pose ``MatchBits.PVE_STATS`` dans ``match_registry.backfill_completed``
+    même si le match n'est pas un Firefight (guard anti-boucle infinie).
+
+    Args:
+        stats_json: JSON brut du match.
+        match_id: ID du match.
+        shared_conn: Connexion vers shared_matches.duckdb (pour le guard).
+        db_path: Chemin de la DB joueur (pour dériver shared_pve.duckdb).
+        force: Si True, insert même si PVE_STATS déjà posé.
+
+    Returns:
+        Nombre de lignes insérées (0 si pas un Firefight).
+    """
+    import duckdb
+
+    from src.data.sync.batch_insert import batch_insert_pve_stats
+    from src.data.sync.constants import MatchBits
+    from src.data.sync.migrations import ensure_pve_schema
+    from src.data.sync.transformers import extract_pve_stats
+
+    try:
+        pve_rows = extract_pve_stats(stats_json)
+
+        from src.utils.paths import get_pve_db_path_from_player
+
+        pve_path = get_pve_db_path_from_player(db_path)
+        pve_path.parent.mkdir(parents=True, exist_ok=True)
+        pve_conn = duckdb.connect(str(pve_path), read_only=False)
+        try:
+            ensure_pve_schema(pve_conn)
+            inserted = batch_insert_pve_stats(pve_conn, pve_rows) if pve_rows else 0
+            pve_conn.commit()
+        finally:
+            pve_conn.close()
+
+        # Poser le guard dans match_registry (même si 0 lignes insérées)
+        if shared_conn is not None:
+            try:
+                shared_conn.execute(
+                    "UPDATE match_registry "
+                    "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                    "WHERE match_id = ?",
+                    (MatchBits.PVE_STATS, match_id),
+                )
+            except Exception as e:
+                logger.debug(f"Guard PVE_STATS pour {match_id}: {e}")
+
+        return inserted
+    except Exception as e:
+        logger.warning(f"Backfill PVE échoué pour {match_id}: {e}")
+        return 0
 
 
 def _update_participants_details(

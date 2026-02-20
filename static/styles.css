@@ -1561,6 +1561,17 @@ div[data-testid="stNumberInput"] input:focus {
     color: #ff9e6b;
 }
 
+/* MVP / LVP row highlight (bordure sur la cellule gamertag uniquement) */
+.os-table.os-scoreboard tr.os-sb-row--mvp td.os-sb-td:first-child {
+    border: 2px solid rgba(0, 158, 115, 0.75);
+    border-left: 4px solid rgba(0, 158, 115, 0.85);
+}
+
+.os-table.os-scoreboard tr.os-sb-row--lvp td.os-sb-td:first-child {
+    border: 2px solid rgba(213, 94, 0, 0.75);
+    border-left: 4px solid rgba(213, 94, 0, 0.85);
+}
+
 /* Citations (Halo 5) */
 .os-citation-top-gap {
     height: 10px;

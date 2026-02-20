@@ -466,3 +466,46 @@ class CareerRankRow:
     is_max_rank: bool
     adornment_path: str | None = None
     recorded_at: datetime | None = None
+
+
+@dataclass
+class PveMatchStatsRow:
+    """Ligne pour la table pve_match_stats dans shared_pve.duckdb (v5.2).
+
+    Stocke les stats spécifiques aux matchs Firefight/PvE pour chaque joueur.
+
+    Note sur les noms de champs :
+        Les noms des blocs API et des champs exacts (WavesCompleted, GruntKills, etc.)
+        sont hypothétiques et devront être validés avec un JSON réel de match Firefight
+        (Phase 1 du plan PVE_STATS_IMPLEMENTATION_PLAN.md).
+        La logique d'extraction est flexible (recherche récursive) pour s'adapter
+        aux noms réels une fois validés.
+    """
+
+    match_id: str
+    xuid: str
+
+    # Stats globales PvE
+    waves_completed: int | None = None
+    max_wave_reached: int | None = None
+    boss_kills: int | None = None
+    mythic_boss_kills: int | None = None
+    total_enemy_kills: int | None = None
+
+    # Kills par type d'ennemi — Banished
+    grunt_kills: int = 0
+    elite_kills: int = 0
+    jackal_kills: int = 0
+    brute_kills: int = 0
+    hunter_kills: int = 0
+    skimmer_kills: int = 0
+
+    # Kills par type d'ennemi — Forerunners
+    crawler_kills: int = 0
+    soldier_kills: int = 0
+    knight_kills: int = 0
+    warden_kills: int = 0
+
+    # Bitmask granulaire (v5.2) — voir PveBits dans src/data/sync/constants.py
+    # Réservé pour une mise à jour future via UPDATE vectorisé post-insertion.
+    pve_bits: int = 0

@@ -44,6 +44,30 @@ logger = logging.getLogger(__name__)
 _instances: weakref.WeakSet[DuckDBRepository] = weakref.WeakSet()  # type: ignore[name-defined]
 _instances_lock = threading.Lock()
 
+# ---------------------------------------------------------------------------
+# Flag global de mode sync
+# Lorsqu'actif, DuckDBRepository ne tente PAS d'attacher shared_matches.duckdb.
+# Le DuckDBSyncEngine ouvre cette base en R/W (connexion directe) ; DuckDB
+# interdit qu'un même fichier soit ouvert sous deux noms différents dans le
+# même processus. Le flag empêche tout conflit avec les threads Streamlit.
+# ---------------------------------------------------------------------------
+_sync_mode = threading.Event()
+
+
+def begin_sync_mode() -> None:
+    """Active le mode sync : les DuckDBRepository n'attacheront plus shared_matches.
+
+    À appeler avant que le DuckDBSyncEngine ouvre shared_matches.duckdb en R/W.
+    """
+    _sync_mode.set()
+    logger.debug("begin_sync_mode: ATTACH shared_matches suspendu")
+
+
+def end_sync_mode() -> None:
+    """Désactive le mode sync : les futurs DuckDBRepository peuvent attacher shared_matches."""
+    _sync_mode.clear()
+    logger.debug("end_sync_mode: ATTACH shared_matches rétabli")
+
 
 def release_db_connections(db_path: str | Path) -> int:
     """Ferme toutes les connexions DuckDBRepository ouvertes vers *db_path*.
@@ -363,27 +387,36 @@ class DuckDBRepository(
                 self._attached_dbs.add("meta")  # Synchroniser le tracker local
 
             # Attacher shared_matches.duckdb en lecture seule (v5)
+            # Skip si le mode sync est actif : le DuckDBSyncEngine détient shared_matches
+            # en R/W (connexion directe) et DuckDB interdit deux noms différents pour le
+            # même fichier dans un même processus.
             if self._shared_db_path.exists() and "shared" not in attached_db_names:
-                try:
-                    self._connection.execute(
-                        f"ATTACH '{self._shared_db_path}' AS shared (READ_ONLY)"
+                if _sync_mode.is_set():
+                    logger.debug(
+                        "Sync en cours : ATTACH shared_matches.duckdb différé pour cette instance"
                     )
-                    self._attached_dbs.add("shared")
-                    logger.debug(f"Shared matches DB attachée: {self._shared_db_path}")
-                except Exception as e:
-                    err_str = str(e)
-                    if (
-                        "already exists" in err_str.lower()
-                        or "unique file handle conflict" in err_str.lower()
-                        or "already attached" in err_str.lower()
-                    ):
-                        self._attached_dbs.add("shared")  # Marquer comme attaché même si erreur
-                        logger.debug(
-                            "shared_matches.duckdb déjà ouvert par une autre connexion, "
-                            "lecture partagée désactivée pour cette instance"
+                else:
+                    try:
+                        self._connection.execute(
+                            f"ATTACH '{self._shared_db_path}' AS shared (READ_ONLY)"
                         )
-                    else:
-                        logger.warning(f"Impossible d'attacher shared_matches.duckdb: {e}")
+                        self._attached_dbs.add("shared")
+                        logger.debug(f"Shared matches DB attachée: {self._shared_db_path}")
+                    except Exception as e:
+                        err_str = str(e)
+                        if (
+                            "already exists" in err_str.lower()
+                            or "unique file handle conflict" in err_str.lower()
+                            or "already attached" in err_str.lower()
+                        ):
+                            # Ne PAS marquer comme attaché : l'ATTACH a échoué, shared.* n'est
+                            # pas accessible depuis cette connexion. L'appelant gérera l'absence.
+                            logger.debug(
+                                "shared_matches.duckdb conflit de handle lors de l'ATTACH "
+                                "(sync probablement en cours) — shared non disponible pour cette instance"
+                            )
+                        else:
+                            logger.warning(f"Impossible d'attacher shared_matches.duckdb: {e}")
             elif "shared" in attached_db_names:
                 self._attached_dbs.add("shared")  # Synchroniser le tracker local
 

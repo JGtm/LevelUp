@@ -11,6 +11,7 @@ from src.ui.filter_state import (
     FILTER_DATA_KEYS,
     FILTER_WIDGET_KEY_PREFIXES,
     FilterPreferences,
+    _detect_filter_mode,
     apply_filter_preferences,
     clear_filter_preferences,
     get_all_filter_keys_to_clear,
@@ -68,6 +69,99 @@ class TestFilterPreferences:
         # Vérifier que unknown_key n'a pas créé d'attribut
         assert not hasattr(prefs, "unknown_key")
 
+    def test_v52_mode_fields_present(self):
+        """Les nouveaux champs *_mode v5.2 sont présents dans FilterPreferences."""
+        prefs = FilterPreferences(
+            playlists_selected=["Firefight"],
+            playlists_mode="exclude",
+            modes_selected=["PVP"],
+            modes_mode="include",
+            maps_selected=[],
+            maps_mode=None,
+        )
+        assert prefs.playlists_mode == "exclude"
+        assert prefs.modes_mode == "include"
+        assert prefs.maps_mode is None
+
+    def test_experience_types_fields_present(self):
+        """Les champs experience_types v5.2 sont présents."""
+        prefs = FilterPreferences(
+            experience_types=["PVE"],
+            experience_types_mode="include",
+        )
+        assert prefs.experience_types == ["PVE"]
+        assert prefs.experience_types_mode == "include"
+
+    def test_to_dict_includes_mode_fields(self):
+        """to_dict() inclut les champs *_mode si non-None."""
+        prefs = FilterPreferences(
+            playlists_selected=["Firefight"],
+            playlists_mode="exclude",
+        )
+        d = prefs.to_dict()
+        assert d["playlists_mode"] == "exclude"
+        assert "modes_mode" not in d  # None → omis
+
+    def test_backward_compat_no_mode_field(self):
+        """JSON legacy sans *_mode → *_mode=None (backward compat)."""
+        data = {
+            "filter_mode": "Période",
+            "playlists_selected": ["Partie rapide", "Arène classée"],
+        }
+        prefs = FilterPreferences.from_dict(data)
+        assert prefs.playlists_mode is None  # Pas de mode dans le JSON legacy
+        assert prefs.playlists_selected == ["Partie rapide", "Arène classée"]
+
+
+class TestDetectFilterMode:
+    """Tests pour _detect_filter_mode (heuristique intent-based)."""
+
+    def test_majority_checked_returns_exclude(self):
+        """Plus de 70% cochés → mode exclude."""
+        all_options = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+        selected = ["A", "B", "C", "D", "E", "F", "G", "H"]  # 80%
+        assert _detect_filter_mode(selected, all_options) == "exclude"
+
+    def test_minority_checked_returns_include(self):
+        """Moins de 30% cochés → mode include."""
+        all_options = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+        selected = ["A", "B"]  # 20%
+        assert _detect_filter_mode(selected, all_options) == "include"
+
+    def test_grey_zone_keeps_current_mode_include(self):
+        """Entre 30-70% cochés → garde le mode actuel (include)."""
+        all_options = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+        selected = ["A", "B", "C", "D", "E"]  # 50%
+        assert _detect_filter_mode(selected, all_options, "include") == "include"
+
+    def test_grey_zone_keeps_current_mode_exclude(self):
+        """Entre 30-70% cochés → garde le mode actuel (exclude)."""
+        all_options = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+        selected = ["A", "B", "C", "D", "E"]  # 50%
+        assert _detect_filter_mode(selected, all_options, "exclude") == "exclude"
+
+    def test_empty_all_options_returns_include(self):
+        """all_options vide → fallback include."""
+        assert _detect_filter_mode(["A"], [], "exclude") == "include"
+
+    def test_all_options_is_set(self):
+        """Fonctionne avec des set()."""
+        all_options = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"}
+        selected = {"A", "B", "C", "D", "E", "F", "G", "H"}  # 80%
+        assert _detect_filter_mode(selected, all_options) == "exclude"
+
+    def test_exact_70_percent_grey_zone(self):
+        """Exactement 70% → zone grise → garde mode actuel."""
+        all_options = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+        selected = ["A", "B", "C", "D", "E", "F", "G"]  # 70% exactement (pas > 0.7)
+        assert _detect_filter_mode(selected, all_options, "include") == "include"
+
+    def test_exact_30_percent_grey_zone(self):
+        """Exactement 30% → zone grise → garde mode actuel."""
+        all_options = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+        selected = ["A", "B", "C"]  # 30% exactement (pas < 0.3)
+        assert _detect_filter_mode(selected, all_options, "exclude") == "exclude"
+
 
 class TestFilterPersistence:
     """Tests pour la persistance des filtres."""
@@ -109,6 +203,66 @@ class TestFilterPersistence:
         assert loaded.playlists_selected == ["Partie rapide", "Arène classée"]
         assert loaded.modes_selected == ["Assassin"]
         assert loaded.maps_selected == ["Carte 1"]
+
+    def test_save_include_mode(self, temp_filters_dir):
+        """Save une sélection faible → stocké en mode include."""
+        prefs = FilterPreferences(
+            playlists_selected=["Arène classée"],  # 1 seul → include
+            playlists_mode="include",
+        )
+        save_filter_preferences("test_player", preferences=prefs)
+        loaded = load_filter_preferences("test_player")
+        assert loaded is not None
+        assert loaded.playlists_mode == "include"
+        assert loaded.playlists_selected == ["Arène classée"]
+
+    def test_save_exclude_mode(self, temp_filters_dir):
+        """Save 'tout sauf FF' → JSON stocke les exclusions en mode exclude."""
+        prefs = FilterPreferences(
+            playlists_selected=["Firefight"],  # exclusions
+            playlists_mode="exclude",
+        )
+        save_filter_preferences("test_player", preferences=prefs)
+        loaded = load_filter_preferences("test_player")
+        assert loaded is not None
+        assert loaded.playlists_mode == "exclude"
+        assert loaded.playlists_selected == ["Firefight"]  # Exclusions stockées
+
+    def test_cycle_complet_save_json_load_apply(self, temp_filters_dir, monkeypatch):
+        """Cycle complet : save → JSON sur disque → load → apply → session_state cohérent."""
+        import streamlit as st
+
+        session_state: dict = {}
+        monkeypatch.setattr(st, "session_state", session_state)
+
+        all_playlists = ["Partie rapide", "Arène classée", "Assassin classé", "Firefight", "Ranked"]
+
+        # Simuler : l'utilisateur coche tout sauf Firefight
+        session_state["filter_playlists"] = {
+            "Partie rapide",
+            "Arène classée",
+            "Assassin classé",
+            "Ranked",
+        }
+        session_state["_playlists_filter_mode"] = "include"
+
+        # Save intent-based
+        save_filter_preferences("p1", all_playlists=all_playlists)
+        loaded = load_filter_preferences("p1")
+        assert loaded is not None
+        # 4/5 = 80% → exclude → exclusions = ["Firefight"]
+        assert loaded.playlists_mode == "exclude"
+        assert loaded.playlists_selected == ["Firefight"]
+
+        # Apply avec all_playlists : résultat = all - {Firefight}
+        session_state.clear()
+        apply_filter_preferences("p1", preferences=loaded, all_playlists=all_playlists)
+        assert session_state["filter_playlists"] == {
+            "Partie rapide",
+            "Arène classée",
+            "Assassin classé",
+            "Ranked",
+        }
 
     def test_load_nonexistent_preferences(self, temp_filters_dir):
         """Test chargement de préférences inexistantes."""
@@ -166,17 +320,9 @@ class TestApplyFilterPreferences:
 
     def test_apply_preferences(self, monkeypatch):
         """Test application des préférences dans session_state."""
-        # Mock streamlit.session_state
-        session_state = {}
-
-        def mock_getattr(obj, name):
-            if name == "session_state":
-                return session_state
-            return getattr(obj, name)
-
-        # Mock st.session_state
         import streamlit as st
 
+        session_state = {}
         original_session_state = getattr(st, "session_state", None)
         monkeypatch.setattr(st, "session_state", session_state)
 
@@ -206,6 +352,105 @@ class TestApplyFilterPreferences:
         finally:
             if original_session_state is not None:
                 monkeypatch.setattr(st, "session_state", original_session_state)
+
+    def test_apply_exclude_with_all_playlists(self, monkeypatch):
+        """Apply exclude + all_playlists → session_state = all - exclusions."""
+        import streamlit as st
+
+        session_state = {}
+        monkeypatch.setattr(st, "session_state", session_state)
+
+        all_playlists = ["Partie rapide", "Arène classée", "Firefight", "Ranked"]
+        prefs = FilterPreferences(
+            playlists_selected=["Firefight"],  # exclusion
+            playlists_mode="exclude",
+        )
+
+        apply_filter_preferences("p1", preferences=prefs, all_playlists=all_playlists)
+
+        # session_state doit contenir all - {Firefight}
+        assert session_state["filter_playlists"] == {"Partie rapide", "Arène classée", "Ranked"}
+        assert session_state["_playlists_filter_mode"] == "exclude"
+        assert session_state["_playlists_exclusions"] == {"Firefight"}
+
+    def test_apply_exclude_without_all_playlists_fallback(self, monkeypatch):
+        """Apply exclude sans all_playlists → fallback inclusions (les exclusions)."""
+        import streamlit as st
+
+        session_state = {}
+        monkeypatch.setattr(st, "session_state", session_state)
+
+        prefs = FilterPreferences(
+            playlists_selected=["Firefight"],
+            playlists_mode="exclude",
+        )
+
+        # Sans all_playlists, on ne peut pas calculer all - exclusions
+        # → on prend playlists_selected comme inclusions directes
+        apply_filter_preferences("p1", preferences=prefs, all_playlists=None)
+
+        # Sans all_playlists, apply interprète les stored comme inclusions directes
+        assert session_state["filter_playlists"] == {"Firefight"}
+
+    def test_backward_compat_no_mode_in_json(self, monkeypatch):
+        """JSON legacy sans *_mode → traité comme include (backward compat)."""
+        import streamlit as st
+
+        session_state = {}
+        monkeypatch.setattr(st, "session_state", session_state)
+
+        # Simuler un FilterPreferences chargé depuis JSON legacy (sans playlists_mode)
+        prefs = FilterPreferences(
+            playlists_selected=["Partie rapide", "Arène classée"],
+            playlists_mode=None,  # Legacy : pas de mode → include
+        )
+
+        all_playlists = ["Partie rapide", "Arène classée", "Firefight"]
+        apply_filter_preferences("p1", preferences=prefs, all_playlists=all_playlists)
+
+        # Mode None → traité comme include → on restaure les inclusions telles quelles
+        assert session_state["filter_playlists"] == {"Partie rapide", "Arène classée"}
+        assert session_state["_playlists_filter_mode"] == "include"
+
+    def test_new_playlist_auto_included_in_exclude_mode(self, monkeypatch):
+        """Exclude "Firefight" + nouvelle playlist "Slayer" dans all → Slayer cochée."""
+        import streamlit as st
+
+        session_state = {}
+        monkeypatch.setattr(st, "session_state", session_state)
+
+        # JSON sauvegardé : mode exclude, Firefight exclu
+        prefs = FilterPreferences(
+            playlists_selected=["Firefight"],
+            playlists_mode="exclude",
+        )
+
+        # Au chargement, all_playlists contient maintenant une nouvelle "Slayer"
+        all_playlists = ["Partie rapide", "Arène classée", "Firefight", "Slayer"]
+        apply_filter_preferences("p1", preferences=prefs, all_playlists=all_playlists)
+
+        # Slayer non dans les exclusions → auto-cochée ✓
+        assert "Slayer" in session_state["filter_playlists"]
+        assert "Firefight" not in session_state["filter_playlists"]
+
+    def test_new_playlist_not_included_in_include_mode(self, monkeypatch):
+        """Include "Ranked" + nouvelle playlist "Slayer" → Slayer pas cochée."""
+        import streamlit as st
+
+        session_state = {}
+        monkeypatch.setattr(st, "session_state", session_state)
+
+        prefs = FilterPreferences(
+            playlists_selected=["Arène classée"],
+            playlists_mode="include",
+        )
+
+        all_playlists = ["Partie rapide", "Arène classée", "Firefight", "Slayer"]
+        apply_filter_preferences("p1", preferences=prefs, all_playlists=all_playlists)
+
+        # Mode include → seul ce qui est dans la liste est coché
+        assert session_state["filter_playlists"] == {"Arène classée"}
+        assert "Slayer" not in session_state["filter_playlists"]
 
     def test_apply_preferences_with_toutes_session(self, monkeypatch):
         """Test application avec session '(toutes)'."""
@@ -363,10 +608,24 @@ class TestGetAllFilterKeysToClear:
         for k in FILTER_DATA_KEYS:
             assert k in result
 
+    def test_intent_keys_in_filter_data_keys(self):
+        """Les clés intent-based v5.2 sont dans FILTER_DATA_KEYS."""
+        intent_keys = [
+            "_playlists_filter_mode",
+            "_modes_filter_mode",
+            "_maps_filter_mode",
+            "_playlists_exclusions",
+            "_modes_exclusions",
+            "_maps_exclusions",
+            "_experience_types_filter_mode",
+            "_experience_types_exclusions",
+            "filter_experience_types",
+        ]
+        for k in intent_keys:
+            assert k in FILTER_DATA_KEYS, f"Clé intent manquante dans FILTER_DATA_KEYS: {k}"
+
     def test_no_duplicate_keys(self):
         """Pas de doublons si une clé est à la fois dans DATA_KEYS et commence par un préfixe."""
-        # filter_playlists est dans DATA_KEYS et commence par "filter_playlists_" ? Non.
-        # Mais filter_playlists_ est un prefix, et "filter_playlists" ne commence pas par "filter_playlists_"
         session_state = {"filter_playlists": {"a"}, "filter_playlists_cb_x_v1": True}
         result = get_all_filter_keys_to_clear(session_state)
         assert len(result) == len(set(result))  # Pas de doublons
@@ -381,6 +640,9 @@ class TestGetAllFilterKeysToClear:
             "filter_playlists": {"Partie rapide"},
             "filter_modes": {"Assassin"},
             "filter_maps": {"Recharge"},
+            "filter_experience_types": {"PVP non classé"},
+            "_playlists_filter_mode": "exclude",
+            "_playlists_exclusions": {"Firefight"},
             "min_matches_maps": 1,
             "_min_matches_maps_auto": True,
             "_latest_session_label": "Session 5",
@@ -390,6 +652,7 @@ class TestGetAllFilterKeysToClear:
             "filter_modes_cb_Assassin_v2": True,
             "filter_maps_cb_Recharge_v2": True,
             "filter_maps_cb_Aquarius_v2": True,
+            "filter_experience_types_cb_PVE_v1": False,
             # Clés non liées aux filtres (ne doivent pas être supprimées)
             "db_path": "/some/path.duckdb",
             "xuid_input": "player1",
@@ -407,4 +670,6 @@ class TestGetAllFilterKeysToClear:
         # Aucune clé de filtre ne subsiste
         assert "filter_mode" not in session_state
         assert "filter_playlists" not in session_state
+        assert "filter_experience_types" not in session_state
+        assert "_playlists_filter_mode" not in session_state
         assert not any(k.startswith(p) for k in session_state for p in FILTER_WIDGET_KEY_PREFIXES)

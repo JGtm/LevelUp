@@ -99,7 +99,52 @@ class MatchBits:
     EVENTS = 1 << 16  # 65536   — highlight_events chargés
     ASSETS = 1 << 17  # 131072  — map_name, playlist_name résolus
     ALIASES = 1 << 18  # 262144  — xuid_aliases extraits
-    KILLER_VICTIM_LOADED = 1 << 19  # 524288 — killer_victim_pairs chargés (global)
+    KILLER_VICTIM_LOADED = 1 << 19  # 524288  — killer_victim_pairs chargés (global)
+    PVE_STATS = 1 << 20  # 1048576 — stats PvE tentées pour ce match (v5.2)
+    # Guard : posé même si match non-Firefight (évite re-détection infinie)
+    # Valeur dans pve_match_stats : utiliser PveBits dans shared_pve.duckdb
+
+
+class PveBits:
+    """Bitmask granulaire pour ``pve_match_stats.pve_bits`` (shared_pve.duckdb).
+
+    Indique précisément quels champs PvE ont été récupérés par l'API
+    pour chaque joueur × match Firefight.
+
+    Usage :
+        pve_conn.execute(
+            "UPDATE pve_match_stats SET pve_bits = COALESCE(pve_bits, 0) | ?"
+            " WHERE match_id = ?",
+            (PveBits.WAVES | PveBits.BOSS_KILLS, match_id),
+        )
+
+    Note : Ce bitmask est indépendant de ``MatchBits.PVE_STATS`` qui est
+    un guard global dans ``match_registry.backfill_completed``.
+    """
+
+    # ── Stats globales PvE ──────────────────────────────────────────────────
+    WAVES = 1 << 0  # 1    — waves_completed + max_wave_reached
+    BOSS_KILLS = 1 << 1  # 2    — boss_kills + mythic_boss_kills
+    TOTAL_KILLS = 1 << 2  # 4    — total_enemy_kills
+
+    # ── Banished (kills par type d'ennemi) ──────────────────────────────────
+    GRUNT = 1 << 3  # 8    — grunt_kills
+    ELITE = 1 << 4  # 16   — elite_kills
+    JACKAL = 1 << 5  # 32   — jackal_kills
+    BRUTE = 1 << 6  # 64   — brute_kills
+    HUNTER = 1 << 7  # 128  — hunter_kills
+    SKIMMER = 1 << 8  # 256  — skimmer_kills
+
+    # ── Forerunners ─────────────────────────────────────────────────────────
+    CRAWLER = 1 << 9  # 512  — crawler_kills
+    SOLDIER = 1 << 10  # 1024 — soldier_kills
+    KNIGHT = 1 << 11  # 2048 — knight_kills
+    WARDEN = 1 << 12  # 4096 — warden_kills
+
+    # ── Combinaisons utiles ──────────────────────────────────────────────────
+    BANISHED_FULL = GRUNT | ELITE | JACKAL | BRUTE | HUNTER | SKIMMER
+    FORERUNNER_ANY = CRAWLER | SOLDIER | KNIGHT | WARDEN
+    FULL_PVE = WAVES | BOSS_KILLS | TOTAL_KILLS | BANISHED_FULL | FORERUNNER_ANY
 
 
 def compute_participant_bits_from_data(data: dict) -> int:

@@ -93,6 +93,93 @@ class FilterState:
     maps_selected: list[str]
     base_s_ui: pl.DataFrame | None  # DataFrame sessions (mode Sessions)
     friends_tuple: tuple[str, ...] | None = None  # Amis pour calcul sessions (mode Sessions)
+    experience_types_selected: list[str] | None = None  # Types d'expérience (v5.2)
+
+
+# ---------------------------------------------------------------------------
+# Sélecteur Type d'expérience — liste statique (v5.2)
+# ---------------------------------------------------------------------------
+
+_EXPERIENCE_TYPES_OPTIONS: list[str] = ["PVP non classé", "PVP classé", "PVE"]
+
+
+def _apply_experience_filter(
+    dropdown_base: pl.DataFrame,
+    experience_selected: list[str],
+    all_playlist_values: list[str],
+) -> pl.DataFrame:
+    """Pré-filtre dropdown_base selon les types d'expérience sélectionnés.
+
+    Doit être appelé AVANT le calcul de playlist_values, mode_values, map_values.
+    Les playlists Firefight sont détectées via get_firefight_playlists().
+
+    Args:
+        dropdown_base: DataFrame base avec colonnes playlist_ui (déjà traduit).
+        experience_selected: Types cochés parmi _EXPERIENCE_TYPES_OPTIONS.
+        all_playlist_values: Toutes les playlist_ui disponibles (pour détecter firefight).
+
+    Returns:
+        DataFrame filtré.
+    """
+    if not experience_selected or len(experience_selected) >= len(_EXPERIENCE_TYPES_OPTIONS):
+        return dropdown_base  # Tout coché → pas de filtre
+
+    firefight_pls = set(get_firefight_playlists(all_playlist_values))
+    pve_cond = pl.col("playlist_ui").cast(pl.Utf8).fill_null("").is_in(list(firefight_pls))
+    ranked_cond = (
+        pl.col("playlist_ui").cast(pl.Utf8).fill_null("").str.to_lowercase().str.contains("class")
+        & ~pve_cond
+    )
+
+    conds: list[pl.Expr] = []
+    for t in experience_selected:
+        if t == "PVE":
+            conds.append(pve_cond)
+        elif t == "PVP classé":
+            conds.append(ranked_cond)
+        elif t == "PVP non classé":
+            conds.append(~pve_cond & ~ranked_cond)
+
+    if not conds:
+        return dropdown_base
+
+    combined = conds[0]
+    for c in conds[1:]:
+        combined = combined | c
+    return dropdown_base.filter(combined)
+
+
+def _reconcile_filter_options(
+    filter_key: str,
+    options: list[str],
+    mode_key: str,
+    exclusions_key: str,
+) -> None:
+    """Auto-coche les options vraiment nouvelles en mode exclude.
+
+    "Vraiment nouvelle" = dans `options`, absente de session_state[filter_key]
+    ET absente des exclusions explicites. Cela garantit que :
+    - Les nouvelles playlists/modes/cartes ajoutés par un sync sont auto-cochés ✓
+    - Les options que l'utilisateur a délibérément décochées restent décochées ✓
+    - En mode include, rien ne change (nouvelles options restent décochées) ✓
+
+    Doit être appelé AVANT render_checkbox_filter.
+
+    Args:
+        filter_key: Clé session_state du filtre (ex: "filter_playlists").
+        options: Toutes les options disponibles actuellement.
+        mode_key: Clé session_state du mode intent (ex: "_playlists_filter_mode").
+        exclusions_key: Clé session_state des exclusions (ex: "_playlists_exclusions").
+    """
+    if filter_key not in st.session_state:
+        return  # Pas encore initialisé → render_checkbox_filter s'en charge
+    if st.session_state.get(mode_key, "include") != "exclude":
+        return
+    exclusions: set[str] = st.session_state.get(exclusions_key, set())
+    current: set[str] = st.session_state[filter_key]
+    truly_new = set(options) - current - exclusions
+    if truly_new:
+        st.session_state[filter_key] = current | truly_new
 
 
 def render_filters_sidebar(
@@ -124,11 +211,56 @@ def render_filters_sidebar(
     player_key = _get_player_key(xuid, db_path)
     filters_loaded_key = f"_filters_loaded_{player_key}"
 
+    # Pré-calcul des options larges (base complète, hors fenêtre temporelle)
+    # Nécessaire pour apply_filter_preferences intent-based (v5.2)
+    _all_playlists = (
+        sorted(
+            {
+                str(translate_playlist_name(clean_asset_label_fn(x))).strip()
+                for x in base_for_filters.get_column("playlist_name").drop_nulls().to_list()
+                if str(x).strip()
+            }
+        )
+        if "playlist_name" in base_for_filters.columns
+        else []
+    )
+    _all_modes = (
+        sorted(
+            {
+                str(normalize_mode_label_fn(x)).strip()
+                for x in base_for_filters.get_column("pair_name").drop_nulls().to_list()
+                if str(x).strip()
+            }
+        )
+        if "pair_name" in base_for_filters.columns
+        else []
+    )
+    _all_maps = (
+        sorted(
+            {
+                str(normalize_map_label_fn(x)).strip()
+                for x in base_for_filters.get_column("map_name").drop_nulls().to_list()
+                if str(x).strip()
+            }
+        )
+        if "map_name" in base_for_filters.columns
+        else []
+    )
+    _all_exp_types = _EXPERIENCE_TYPES_OPTIONS
+
     if filters_loaded_key not in st.session_state:
         try:
             prefs = load_filter_preferences(xuid, db_path)
             if prefs is not None:
-                apply_filter_preferences(xuid, db_path, preferences=prefs)
+                apply_filter_preferences(
+                    xuid,
+                    db_path,
+                    preferences=prefs,
+                    all_playlists=_all_playlists,
+                    all_modes=_all_modes,
+                    all_maps=_all_maps,
+                    all_experience_types=_all_exp_types,
+                )
             else:
                 # Aucun filtre en mémoire → charger par défaut la dernière session du joueur
                 _apply_default_last_session(db_path, xuid, db_key, aliases_key)
@@ -186,8 +318,17 @@ def render_filters_sidebar(
             build_friends_opts_map_fn,
         )
 
-    # Filtres cascade
-    playlists_selected, modes_selected, maps_selected = _render_cascade_filters(
+    # Filtres cascade (v5.2 : retourne selected + all_options)
+    (
+        playlists_selected,
+        modes_selected,
+        maps_selected,
+        experience_selected,
+        playlist_values,
+        mode_values,
+        map_values,
+        _,
+    ) = _render_cascade_filters(
         base_for_filters=base_for_filters,
         filter_mode=filter_mode,
         start_d=start_d,
@@ -200,15 +341,19 @@ def render_filters_sidebar(
     )
 
     # Sauvegarder automatiquement les filtres si le joueur n'a pas changé depuis le dernier rendu
-    # Cela permet de persister les modifications de filtres sans intervention manuelle
     last_saved_key = f"_last_saved_player_{player_key}"
     if last_saved_key not in st.session_state or st.session_state[last_saved_key] == player_key:
-        # Sauvegarder les filtres actuels (sans bloquer si la sauvegarde échoue)
         try:
-            save_filter_preferences(xuid, db_path)
+            save_filter_preferences(
+                xuid,
+                db_path,
+                all_playlists=playlist_values,
+                all_modes=mode_values,
+                all_maps=map_values,
+                all_experience_types=_EXPERIENCE_TYPES_OPTIONS,
+            )
             st.session_state[last_saved_key] = player_key
         except Exception:
-            # Ne pas bloquer l'application si la sauvegarde échoue
             pass
 
     return FilterState(
@@ -222,6 +367,7 @@ def render_filters_sidebar(
         maps_selected=maps_selected,
         base_s_ui=base_s_ui,
         friends_tuple=friends_tuple,
+        experience_types_selected=experience_selected,
     )
 
 
@@ -496,8 +642,25 @@ def _render_cascade_filters(
     clean_asset_label_fn: Callable[[str], str],
     normalize_mode_label_fn: Callable[[str], str],
     normalize_map_label_fn: Callable[[str], str],
-) -> tuple[list[str], list[str], list[str]]:
-    """Rend les filtres cascade Playlists -> Modes -> Cartes."""
+) -> tuple[
+    list[str],
+    list[str],
+    list[str],
+    list[str],  # selected: playlists, modes, maps, exp
+    list[str],
+    list[str],
+    list[str],
+    list[str],  # all: playlist_values, mode_values, map_values, exp_values
+]:
+    """Rend les filtres Type d'expérience + Playlists + Modes + Cartes (v5.2).
+
+    Changements v5.2 :
+    - Ajout sélecteur "Type d'expérience" comme pré-filtre sur dropdown_base
+    - Suppression de la cascade scope1/scope2 : modes et cartes calculés depuis
+      dropdown_base complet (après fenêtre temporelle), pas depuis la sélection playlist
+    - Réconciliation mid-session via _reconcile_filter_options avant chaque render
+    - Retour 8-tuple : (selected x4, all_values x4) pour intent-based save
+    """
     dropdown_base = _to_polars(base_for_filters)
 
     if filter_mode == "Période":
@@ -509,8 +672,7 @@ def _render_cascade_filters(
                 & (pl.col("date").cast(pl.Date) <= end_val)
             )
     else:
-        # En mode Sessions, base_s_ui n'a que session_id/session_label (pas playlist_name, etc.)
-        # On restreint base_for_filters aux match_id des sessions sélectionnées.
+        # En mode Sessions, restreindre aux match_id des sessions sélectionnées
         if base_s_ui is not None:
             s_ui = _to_polars(base_s_ui)
             if picked_session_labels:
@@ -524,33 +686,79 @@ def _render_cascade_filters(
                 pl.col("match_id").cast(pl.Utf8).is_in(list(allowed_ids))
             )
 
-    # Vectorisation: build_mapping + replace_strict au lieu de map_elements
-    _pl_map = build_mapping(
-        dropdown_base["playlist_name"],
-        lambda x: translate_playlist_name(clean_asset_label_fn(x)),
-    )
-    _mode_map = build_mapping(dropdown_base["pair_name"], normalize_mode_label_fn)
-    _map_map = build_mapping(dropdown_base["map_name"], normalize_map_label_fn)
-    dropdown_base = dropdown_base.with_columns(
-        pl.col("playlist_name")
-        .cast(pl.Utf8)
-        .replace_strict(_pl_map, default=None, return_dtype=pl.Utf8)
-        .alias("playlist_ui"),
-        pl.col("pair_name")
-        .cast(pl.Utf8)
-        .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
-        .alias("mode_ui"),
-        pl.col("map_name")
-        .cast(pl.Utf8)
-        .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
-        .alias("map_ui"),
-    )
+    # Vectorisation: build_mapping + replace_strict
+    if "playlist_name" in dropdown_base.columns:
+        _pl_map = build_mapping(
+            dropdown_base["playlist_name"],
+            lambda x: translate_playlist_name(clean_asset_label_fn(x)),
+        )
+        pl_expr = (
+            pl.col("playlist_name")
+            .cast(pl.Utf8)
+            .replace_strict(_pl_map, default=None, return_dtype=pl.Utf8)
+            .alias("playlist_ui")
+        )
+    else:
+        pl_expr = pl.lit(None).cast(pl.Utf8).alias("playlist_ui")
 
-    # --- Playlists ---
-    playlist_values = sorted(
+    if "pair_name" in dropdown_base.columns:
+        _mode_map = build_mapping(dropdown_base["pair_name"], normalize_mode_label_fn)
+        mode_expr = (
+            pl.col("pair_name")
+            .cast(pl.Utf8)
+            .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
+            .alias("mode_ui")
+        )
+    else:
+        mode_expr = pl.lit(None).cast(pl.Utf8).alias("mode_ui")
+
+    if "map_name" in dropdown_base.columns:
+        _map_map = build_mapping(dropdown_base["map_name"], normalize_map_label_fn)
+        map_expr = (
+            pl.col("map_name")
+            .cast(pl.Utf8)
+            .replace_strict(_map_map, default=None, return_dtype=pl.Utf8)
+            .alias("map_ui")
+        )
+    else:
+        map_expr = pl.lit(None).cast(pl.Utf8).alias("map_ui")
+
+    dropdown_base = dropdown_base.with_columns([pl_expr, mode_expr, map_expr])
+
+    # ── Sélecteur Type d'expérience (pré-filtre, v5.2) ──────────────────────
+    # Calculer playlist_values pour détecter les firefight AVANT le pré-filtre
+    playlist_values_all = sorted(
         {
             str(x).strip()
             for x in dropdown_base["playlist_ui"].drop_nulls().to_list()
+            if str(x).strip()
+        }
+    )
+    exp_values = _EXPERIENCE_TYPES_OPTIONS
+
+    _reconcile_filter_options(
+        "filter_experience_types",
+        exp_values,
+        "_experience_types_filter_mode",
+        "_experience_types_exclusions",
+    )
+    experience_selected = render_checkbox_filter(
+        label="Type d'expérience",
+        options=exp_values,
+        session_key="filter_experience_types",
+        expanded=False,
+    )
+
+    # Appliquer le pré-filtre expérience sur dropdown_base
+    dropdown_base_filtered = _apply_experience_filter(
+        dropdown_base, experience_selected, playlist_values_all
+    )
+
+    # ── Playlists ─────────────────────────────────────────────────────────────
+    playlist_values = sorted(
+        {
+            str(x).strip()
+            for x in dropdown_base_filtered["playlist_ui"].drop_nulls().to_list()
             if str(x).strip()
         }
     )
@@ -560,6 +768,14 @@ def _render_cascade_filters(
     ]
 
     firefight_playlists = get_firefight_playlists(playlist_values)
+
+    # Réconciliation mid-session avant rendu
+    _reconcile_filter_options(
+        "filter_playlists",
+        playlist_values,
+        "_playlists_filter_mode",
+        "_playlists_exclusions",
+    )
     playlists_selected = render_checkbox_filter(
         label="Playlists",
         options=playlist_values,
@@ -568,14 +784,20 @@ def _render_cascade_filters(
         expanded=False,
     )
 
-    # Scope après filtre playlist
-    scope1 = dropdown_base
-    if playlists_selected and len(playlists_selected) < len(playlist_values):
-        scope1 = scope1.filter(pl.col("playlist_ui").fill_null("").is_in(playlists_selected))
-
-    # --- Modes ---
+    # ── Modes (depuis dropdown_base_filtered complet, sans cascade playlist) ──
     mode_values = sorted(
-        {str(x).strip() for x in scope1["mode_ui"].drop_nulls().to_list() if str(x).strip()}
+        {
+            str(x).strip()
+            for x in dropdown_base_filtered["mode_ui"].drop_nulls().to_list()
+            if str(x).strip()
+        }
+    )
+
+    _reconcile_filter_options(
+        "filter_modes",
+        mode_values,
+        "_modes_filter_mode",
+        "_modes_exclusions",
     )
     modes_selected = render_hierarchical_checkbox_filter(
         label="Modes",
@@ -584,14 +806,20 @@ def _render_cascade_filters(
         expanded=False,
     )
 
-    # Scope après filtre mode
-    scope2 = scope1
-    if modes_selected and len(modes_selected) < len(mode_values):
-        scope2 = scope2.filter(pl.col("mode_ui").fill_null("").is_in(modes_selected))
-
-    # --- Cartes ---
+    # ── Cartes (depuis dropdown_base_filtered complet, sans cascade mode) ─────
     map_values = sorted(
-        {str(x).strip() for x in scope2["map_ui"].drop_nulls().to_list() if str(x).strip()}
+        {
+            str(x).strip()
+            for x in dropdown_base_filtered["map_ui"].drop_nulls().to_list()
+            if str(x).strip()
+        }
+    )
+
+    _reconcile_filter_options(
+        "filter_maps",
+        map_values,
+        "_maps_filter_mode",
+        "_maps_exclusions",
     )
     maps_selected = render_checkbox_filter(
         label="Cartes",
@@ -600,7 +828,16 @@ def _render_cascade_filters(
         expanded=False,
     )
 
-    return playlists_selected, modes_selected, maps_selected
+    return (
+        playlists_selected,
+        modes_selected,
+        maps_selected,
+        experience_selected,
+        playlist_values,
+        mode_values,
+        map_values,
+        exp_values,
+    )
 
 
 def apply_filters(
@@ -760,6 +997,23 @@ def apply_filters(
                 )
 
     # Application des filtres checkboxes
+    # Filtre type d'expérience (pré-filtre, v5.2)
+    if filter_state.experience_types_selected and len(filter_state.experience_types_selected) < len(
+        _EXPERIENCE_TYPES_OPTIONS
+    ):
+        _exp_all_pls = (
+            sorted(
+                {
+                    str(x).strip()
+                    for x in dff.get_column("playlist_ui").drop_nulls().to_list()
+                    if str(x).strip()
+                }
+            )
+            if "playlist_ui" in dff.columns
+            else []
+        )
+        dff = _apply_experience_filter(dff, filter_state.experience_types_selected, _exp_all_pls)
+
     if filter_state.playlists_selected:
         before = len(dff)
         dff = dff.filter(pl.col("playlist_ui").fill_null("").is_in(filter_state.playlists_selected))

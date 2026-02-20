@@ -18,6 +18,7 @@ import duckdb
 import polars as pl
 
 from src.analysis.citations.custom_rules import CUSTOM_FUNCTIONS
+from src.utils.paths import get_pve_db_path_from_player
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,10 @@ class CitationEngine:
         self._mappings: dict[str, dict[str, Any]] | None = None
         self._attached_shared: bool = False
         self._cached_shared_alias: str | None = None  # Cache pour l'alias shared
+
+        # PVE DB (v5.2)
+        pve_candidate = get_pve_db_path_from_player(self._db_path)
+        self._pve_db_path: Path | None = pve_candidate if pve_candidate.exists() else None
 
     # ------------------------------------------------------------------
     # Connexion helper
@@ -248,7 +253,7 @@ class CitationEngine:
                 return match_medals.get(int(medal_id), 0)
             return 0
 
-        if mtype == "stat":
+        if mtype in ("stat", "pve_stat"):
             stat_name = mapping.get("stat_name", "")
             if stat_name and match_stats:
                 try:
@@ -458,6 +463,34 @@ class CitationEngine:
             if owned:
                 conn.close()
 
+    def load_match_pve_stats(self, match_id: str) -> dict[str, Any]:
+        """Charge les stats PVE du joueur pour un match depuis ``shared_pve.duckdb`` (v5.2).
+
+        Filtre par ``xuid`` pour retourner les stats du joueur courant uniquement
+        (pas celles d'un coéquipier aléatoire).
+
+        Returns:
+            Dict ``{column_name: value}`` pour ce match ou ``{}`` si absent.
+        """
+        if self._pve_db_path is None:
+            return {}
+        try:
+            pve_conn = duckdb.connect(str(self._pve_db_path), read_only=True)
+            try:
+                result = pve_conn.execute(
+                    "SELECT * FROM pve_match_stats WHERE match_id = ? AND xuid = ? LIMIT 1",
+                    [match_id, self._xuid],
+                )
+                row = result.fetchone()
+                if row is None:
+                    return {}
+                columns = [desc[0] for desc in result.description]
+                return dict(zip(columns, row, strict=False))
+            finally:
+                pve_conn.close()
+        except Exception:
+            return {}
+
     def load_match_awards(self, match_id: str) -> dict[str, int]:
         """Charge les awards d'un match depuis ``personal_score_awards``.
 
@@ -604,6 +637,11 @@ class CitationEngine:
         match_awards = self.load_match_awards(match_id)
         df_match = self.load_match_df(match_id)
         highlight_events = self.load_match_highlight_events(match_id)
+
+        # Fusionner les stats PVE dans match_stats (v5.2) pour les citations pve_stat
+        pve_stats = self.load_match_pve_stats(match_id)
+        if pve_stats:
+            match_stats = {**match_stats, **pve_stats}
 
         # Calculer les citations
         citations = self.compute_all_for_match(

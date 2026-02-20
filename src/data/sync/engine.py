@@ -72,6 +72,7 @@ from src.data.sync.transformers import (
     transform_personal_score_awards,
     transform_skill_stats,
 )
+from src.utils.paths import get_pve_db_path_from_player
 
 logger = logging.getLogger(__name__)
 
@@ -305,6 +306,11 @@ class DuckDBSyncEngine:
         self._shared_db_lock = asyncio.Lock()
         self._existing_match_ids: set[str] | None = None
 
+        # Base PVE séparée (shared_pve.duckdb) — v5.2
+        self._pve_db_path: Path = get_pve_db_path_from_player(self._player_db_path)
+        self._pve_connection: duckdb.DuckDBPyConnection | None = None
+        self._pve_db_lock = asyncio.Lock()
+
         # Créer le resolver pour les métadonnées
         self._metadata_resolver = create_metadata_resolver(self._metadata_db_path)
 
@@ -342,10 +348,36 @@ class DuckDBSyncEngine:
             logger.debug("shared_matches.duckdb absent, mode legacy v4")
             return None
 
-        self._shared_connection = duckdb.connect(
-            str(self._shared_db_path),
-            read_only=False,
-        )
+        def _open_shared() -> duckdb.DuckDBPyConnection:
+            return duckdb.connect(str(self._shared_db_path), read_only=False)
+
+        try:
+            self._shared_connection = _open_shared()
+        except Exception as e:
+            err = str(e).lower()
+            if "unique file handle conflict" in err or "already attached" in err:
+                # Conflit résiduel : shared_matches.duckdb est encore ouvert sous l'alias
+                # "shared" par un DuckDBRepository qui n'a pas encore été GC. Libérer
+                # toutes les connexions actives, forcer le GC Python, et réessayer.
+                logger.warning(
+                    "shared_matches.duckdb conflit de handle, libération et retry… (%s)", e
+                )
+                import gc
+                import time as _time
+
+                try:
+                    from src.data.repositories.duckdb_repo import release_all_db_connections
+
+                    release_all_db_connections()
+                except Exception:
+                    pass
+                gc.collect()
+                _time.sleep(0.15)
+                # Deuxième tentative (lève l'exception si ça échoue encore)
+                self._shared_connection = _open_shared()
+            else:
+                raise
+
         self._shared_connection.execute("SET enable_object_cache = true")
 
         # Appliquer les migrations de colonnes sur les tables shared (v5)
@@ -365,6 +397,30 @@ class DuckDBSyncEngine:
             logger.debug(f"Index performance shared: {e}")
 
         return self._shared_connection
+
+    def _get_pve_connection(self) -> duckdb.DuckDBPyConnection:
+        """Retourne (lazy) la connexion vers shared_pve.duckdb.
+
+        Crée la base et applique le schéma PVE si elle n'existe pas encore.
+
+        Returns:
+            Connexion DuckDB R/W vers shared_pve.duckdb.
+        """
+        if self._pve_connection is not None:
+            return self._pve_connection
+
+        self._pve_db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._pve_connection = duckdb.connect(str(self._pve_db_path), read_only=False)
+        self._pve_connection.execute("SET enable_object_cache = true")
+
+        try:
+            from src.data.sync.migrations import ensure_pve_schema
+
+            ensure_pve_schema(self._pve_connection)
+        except Exception as e:
+            logger.warning(f"ensure_pve_schema: {e}")
+
+        return self._pve_connection
 
     @property
     def shared_enabled(self) -> bool:
@@ -704,6 +760,25 @@ class DuckDBSyncEngine:
 
                 perf_count = self.batch_compute_performance_scores()
                 logger.info(f"Performance scores calculés en batch : {perf_count}")
+
+            # Recalculer les sessions dans player_match_enrichment après chaque sync.
+            # On passe la connexion player R/W existante pour éviter tout conflit de lock.
+            if result.matches_inserted > 0:
+                try:
+                    from src.data.sessions_backfill import backfill_sessions_for_player
+
+                    sess_result = backfill_sessions_for_player(
+                        db_path=self._player_db_path,
+                        xuid=self._xuid,
+                        conn=self._get_connection(),
+                    )
+                    updated = sess_result.get("sessions_updated", 0)
+                    created = sess_result.get("sessions_created", 0)
+                    logger.info(
+                        f"Sessions recalculées post-sync : {created} créées, {updated} mises à jour"
+                    )
+                except Exception as e:
+                    logger.warning(f"Erreur recalcul sessions post-sync : {e}")
 
         except Exception as e:
             result.errors.append(str(e))
@@ -1089,6 +1164,9 @@ class DuckDBSyncEngine:
                 # Mettre à jour backfill_bits par participant (v5.2)
                 self._update_match_participant_bits(shared_conn, match_id)
 
+            # Stats PVE → shared_pve.duckdb (Firefight uniquement) — v5.2
+            await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
+
             if backfill_needed:
                 logger.info(f"Backfill shared pour {match_id}: {', '.join(backfill_needed)}")
 
@@ -1214,6 +1292,9 @@ class DuckDBSyncEngine:
                 # Mettre à jour backfill_bits par participant (v5.2)
                 self._update_match_participant_bits(shared_conn, match_id)
 
+            # 4b. Stats PVE → shared_pve.duckdb (Firefight uniquement) — v5.2
+            await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
+
             # 5. Insérer les données personnelles dans la player DB
             match_row = transform_match_stats(
                 stats_json,
@@ -1305,6 +1386,45 @@ class DuckDBSyncEngine:
             logger.warning(result["error"])
 
         return result
+
+    async def _try_insert_pve_stats(
+        self,
+        stats_json: dict,
+        match_id: str,
+        shared_conn: duckdb.DuckDBPyConnection | None,
+    ) -> None:
+        """Extrait et insère les stats PVE dans shared_pve.duckdb si c'est un Firefight.
+
+        Pose ``MatchBits.PVE_STATS`` dans ``match_registry.backfill_completed`` même si
+        le match n'est pas un Firefight (guard pour éviter la re-détection infinie).
+
+        Args:
+            stats_json: JSON brut du match (get_match_stats).
+            match_id: ID du match.
+            shared_conn: Connexion vers shared_matches.duckdb (pour le bitmask guard).
+        """
+        from src.data.sync.batch_insert import batch_insert_pve_stats
+        from src.data.sync.constants import MatchBits
+        from src.data.sync.transformers import extract_pve_stats
+
+        try:
+            pve_rows = extract_pve_stats(stats_json)
+            async with self._pve_db_lock:
+                pve_conn = self._get_pve_connection()
+                if pve_rows:
+                    inserted = batch_insert_pve_stats(pve_conn, pve_rows)
+                    logger.debug(f"PVE stats insérées pour {match_id}: {inserted} lignes")
+
+            # Poser le guard dans match_registry.backfill_completed (même si 0 lignes)
+            if shared_conn is not None:
+                shared_conn.execute(
+                    "UPDATE match_registry "
+                    "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                    "WHERE match_id = ?",
+                    (MatchBits.PVE_STATS, match_id),
+                )
+        except Exception as e:
+            logger.debug(f"PVE stats non insérées pour {match_id}: {e}")
 
     def _compute_backfill_mask(self, options: SyncOptions) -> int:
         """Calcule le bitmask backfill_completed pour un match.
@@ -2110,7 +2230,7 @@ class DuckDBSyncEngine:
         return history[0] if history else None
 
     def close(self) -> None:
-        """Ferme les connexions DuckDB (player + shared)."""
+        """Ferme les connexions DuckDB (player + shared + pve)."""
         if self._connection:
             with contextlib.suppress(Exception):
                 self._connection.close()
@@ -2119,3 +2239,7 @@ class DuckDBSyncEngine:
             with contextlib.suppress(Exception):
                 self._shared_connection.close()
             self._shared_connection = None
+        if self._pve_connection:
+            with contextlib.suppress(Exception):
+                self._pve_connection.close()
+            self._pve_connection = None
