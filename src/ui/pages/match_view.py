@@ -38,8 +38,8 @@ from src.ui.pages.match_view_helpers import (
 from src.ui.pages.match_view_participation import render_participation_section
 from src.ui.pages.match_view_players import (
     render_match_impact_section,
+    render_match_scoreboard,
     render_nemesis_section,
-    render_roster_section,
     render_team_dominance_section,
 )
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -301,13 +301,12 @@ def render_match_view(
         load_match_gamertags_fn=load_match_gamertags_fn,
     )
 
-    # Roster
-    render_roster_section(
+    # Tableau des scores par équipe
+    render_match_scoreboard(
         match_id=match_id,
         db_path=db_path,
         xuid=xuid,
         db_key=db_key,
-        load_match_rosters_fn=load_match_rosters_fn,
         load_match_gamertags_fn=load_match_gamertags_fn,
     )
 
@@ -385,10 +384,10 @@ from src.ui.pages.match_view_players import (
     render_match_impact_section as _render_match_impact_section,
 )
 from src.ui.pages.match_view_players import (
-    render_nemesis_section as _render_nemesis_section,
+    render_match_scoreboard as _render_match_scoreboard,
 )
 from src.ui.pages.match_view_players import (
-    render_roster_section as _render_roster_section,
+    render_nemesis_section as _render_nemesis_section,
 )
 from src.ui.pages.match_view_players import (
     render_team_dominance_section as _render_team_dominance_section,
@@ -408,6 +407,6 @@ __all__ = [
     "_render_expected_vs_actual",
     "_render_match_impact_section",
     "_render_nemesis_section",
-    "_render_roster_section",
     "_render_team_dominance_section",
+    "_render_match_scoreboard",
 ]

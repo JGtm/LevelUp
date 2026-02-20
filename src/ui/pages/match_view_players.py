@@ -68,6 +68,19 @@ def _load_match_players_stats(db_path: str, match_id: str) -> list[dict[str, Any
         return []
 
 
+def _load_match_scoreboard(db_path: str, match_id: str) -> list[dict[str, Any]]:
+    """Charge le tableau de bord complet (toutes stats + frags parfaits) d'un match."""
+    if not _is_duckdb_v4_path(db_path):
+        return []
+    try:
+        from src.data.repositories.duckdb_repo import DuckDBRepository
+
+        repo = DuckDBRepository(db_path, xuid="", read_only=True)
+        return repo.load_match_scoreboard(match_id)
+    except Exception:
+        return []
+
+
 # =============================================================================
 # Section Dynamique du match (frise de dominance d'équipe)
 # =============================================================================
@@ -495,17 +508,223 @@ def _render_antagonist_chart(
                     match_id=match_id,
                     me_xuid=me_xuid,
                     rank_by_xuid=rank_by_xuid,
-                    title="Interactions Killer-Victim (match)",
+                    title="Eliminateur-Victime",
                     height=400,
                 )
                 if fig is not None:
                     st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
                 else:
-                    st.info("Données insuffisantes pour les interactions killer-victim.")
+                    st.info("Données insuffisantes pour les interactions eliminateur-victime.")
             except Exception as e:
-                st.warning(f"Impossible d'afficher les interactions killer-victim : {e}")
+                st.warning(f"Impossible d'afficher les interactions eliminateur-victime : {e}")
         except Exception:
             pass
+
+
+# =============================================================================
+# Section Tableau des scores par équipe
+# =============================================================================
+
+_SCOREBOARD_COLS: list[tuple[str, str]] = [
+    ("Joueur", "gamertag"),
+    ("Rang", "rank"),
+    ("Score", "score"),
+    ("Frags", "kills"),
+    ("Morts", "deaths"),
+    ("Assist.", "assists"),
+    ("FDA", "kda"),
+    ("Folie meurtrière", "max_killing_spree"),
+    ("Tirs à la tête", "headshot_kills"),
+    ("Frags parfaits", "perfect_kills"),
+    ("Tirs", "shots_fired"),
+    ("Tirs au but", "shots_hit"),
+    ("Précision", "accuracy"),
+    ("Corps à corps", "melee_kills"),
+    ("Armes lourdes", "power_weapon_kills"),
+    ("Dégâts infligés", "damage_dealt"),
+    ("Dégâts subis", "damage_taken"),
+    ("Durée de vie moy.", "avg_life_seconds"),
+]
+
+
+def _fmt_scoreboard_cell(key: str, value: Any) -> str:
+    """Formate une valeur selon son type pour l'affichage dans le scoreboard."""
+    if value is None:
+        return "—"
+    if key == "gamertag":
+        s = str(value).strip()
+        # Masquer les XUIDs bruts : si tout numérique ou format xuid(…)
+        if not s or s.isdigit() or s.lower().startswith("xuid(") or s == "?":
+            return "—"
+        return s
+    if key == "kda":
+        return f"{float(value):.2f}"
+    if key == "accuracy":
+        v = float(value)
+        # Si la valeur est déjà en fraction (0–1), convertir en %
+        if v <= 1.0:
+            v *= 100.0
+        return f"{v:.1f}\u202f%"
+    if key == "avg_life_seconds":
+        secs = int(float(value))
+        return f"{secs // 60}:{secs % 60:02d}"
+    if key in ("damage_dealt", "damage_taken"):
+        return str(int(round(float(value))))
+    return str(value)
+
+
+def render_match_scoreboard(
+    *,
+    match_id: str,
+    db_path: str,
+    xuid: str,
+    db_key: tuple[int, int] | None,
+    load_match_gamertags_fn: Callable,
+) -> None:
+    """Rend les tableaux de scores par équipe pour un match.
+
+    Affiche un tableau par équipe présente dans le match, avec 18 colonnes
+    de statistiques. La ligne du joueur principal est mise en évidence.
+
+    Args:
+        match_id: Identifiant du match.
+        db_path: Chemin vers la base de données.
+        xuid: XUID du joueur principal.
+        db_key: Clé de cache (conservée pour cohérence d'API).
+        load_match_gamertags_fn: Fonction injectée de résolution gamertags —
+            doit être la même que celle passée à render_roster_section.
+            Interroge shared.match_participants + highlight_events + xuid_aliases
+            (source de vérité v5.1). NE PAS utiliser display_name_from_xuid
+            ni get_xuid_aliases (src/ui/aliases.py) qui sont obsolètes pour
+            ce contexte et ignorent les données fraîches de la session.
+    """
+    st.subheader("Tableau des scores")
+
+    players = _load_match_scoreboard(db_path, match_id.strip())
+    if not players:
+        st.info("Statistiques des joueurs indisponibles pour ce match.")
+        return
+
+    # Normaliser le xuid du joueur principal
+    me_xu = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
+
+    # Charger le mapping gamertag (même source que render_roster_section)
+    # SOURCE DE VÉRITÉ : shared.match_participants → highlight_events → shared.xuid_aliases
+    # Ne pas substituer par display_name_from_xuid / get_xuid_aliases (obsolètes ici)
+    gt_map: dict[str, str] = load_match_gamertags_fn(db_path, match_id.strip(), db_key=db_key) or {}
+
+    # Résoudre les gamertags manquants dans les données du scoreboard
+    for p in players:
+        xu = str(
+            parse_xuid_input(str(p.get("xuid") or "").strip()) or str(p.get("xuid") or "").strip()
+        ).strip()
+
+        # Priorité 1 : bots (bid(...))
+        if xu.lower().startswith("bid("):
+            bot_name = BOT_MAP.get(xu)
+            if isinstance(bot_name, str) and bot_name.strip():
+                p["gamertag"] = bot_name.strip()
+                continue
+
+        # Priorité 2 : gt_map issu de load_match_gamertags_fn (source fraîche DuckDB v5)
+        if xu and isinstance(gt_map, dict):
+            mapped = gt_map.get(xu)
+            if isinstance(mapped, str) and mapped.strip():
+                p["gamertag"] = mapped.strip()
+                continue
+
+        # Priorité 3 : gamertag déjà présent dans les données (COALESCE SQL)
+        gt = str(p.get("gamertag") or "").strip()
+        if gt and gt != "?" and not gt.isdigit() and not gt.lower().startswith("xuid("):
+            continue  # gamertag valide, on garde
+
+        # Aucune résolution possible — afficher le XUID court ou "—"
+        p["gamertag"] = None
+
+    # Déterminer l'équipe du joueur principal (après résolution gamertags)
+    my_team_id: Any = None
+    for p in players:
+        p_xu = str(
+            parse_xuid_input(str(p.get("xuid") or "").strip()) or str(p.get("xuid") or "").strip()
+        ).strip()
+        if me_xu and p_xu and p_xu == me_xu:
+            my_team_id = p.get("team_id")
+            break
+
+    # Grouper par team_id (ordre croissant). Les joueurs sans team_id connu sont regroupés en dernier.
+    teams: dict[Any, list[dict[str, Any]]] = {}
+    unknown_team: list[dict[str, Any]] = []
+    for p in players:
+        tid = p.get("team_id")
+        if tid is None:
+            unknown_team.append(p)
+        else:
+            teams.setdefault(tid, []).append(p)
+
+    # Ajouter les joueurs sans team_id en dernier si présents
+    if unknown_team:
+        teams[None] = unknown_team
+
+    # Comptage des équipes réelles (team_id non None)
+    n_real_teams = len([t for t in teams if t is not None])
+
+    for tid, team_players in teams.items():
+        # Nom de l'équipe via TEAM_MAP
+        try:
+            raw_name = (
+                TEAM_MAP.get(int(tid), f"Équipe {tid}") if tid is not None else "Équipe inconnue"
+            )
+        except (ValueError, TypeError):
+            raw_name = f"Équipe {tid}" if tid is not None else "Équipe inconnue"
+
+        # Détecter si c'est l'équipe du joueur pour la couleur Okabe-Ito
+        is_my_team = tid == my_team_id
+        team_css_mod = "os-sb-team--mine" if is_my_team else "os-sb-team--enemy"
+        team_label = f"Équipe {html.escape(raw_name)}"
+
+        # En-têtes colonnes
+        th_cells = "".join(
+            f"<th class='os-sb-th'>{html.escape(label)}</th>" for label, _ in _SCOREBOARD_COLS
+        )
+        n_cols = len(_SCOREBOARD_COLS)
+        thead = (
+            f"<thead>"
+            f"<tr><th class='os-sb-team {team_css_mod}' colspan='{n_cols}'>{team_label}</th></tr>"
+            f"<tr>{th_cells}</tr>"
+            f"</thead>"
+        )
+
+        # Lignes joueurs
+        body_rows = []
+        for p in team_players:
+            p_xu = str(
+                parse_xuid_input(str(p.get("xuid") or "").strip())
+                or str(p.get("xuid") or "").strip()
+            ).strip()
+            is_me = bool(me_xu and p_xu and p_xu == me_xu)
+            row_class = " os-sb-row--me" if is_me else ""
+            cells = "".join(
+                f"<td class='os-sb-td'>{html.escape(_fmt_scoreboard_cell(key, p.get(key)))}</td>"
+                for _, key in _SCOREBOARD_COLS
+            )
+            body_rows.append(f"<tr class='os-sb-row{row_class}'>{cells}</tr>")
+
+        table_html = (
+            "<div class='os-table-wrap os-sb-wrap'>"
+            "<table class='os-table os-scoreboard'>"
+            f"{thead}"
+            "<tbody>" + "".join(body_rows) + "</tbody>"
+            "</table>"
+            "</div>"
+        )
+        st.markdown(table_html, unsafe_allow_html=True)
+
+    # Note sur le rang : en mode équipe, le rang est individuel au sein de l'équipe
+    if n_real_teams > 1:
+        st.caption(
+            "ℹ️ Le rang est individuel au sein de chaque équipe — "
+            "plusieurs joueurs peuvent partager le même rang (ex. : tous les membres d'une équipe vaincue)."
+        )
 
 
 # =============================================================================
@@ -738,4 +957,5 @@ __all__ = [
     "render_nemesis_section",
     "render_roster_section",
     "render_match_impact_section",
+    "render_match_scoreboard",
 ]

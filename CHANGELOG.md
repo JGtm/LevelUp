@@ -74,6 +74,16 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - `tests/test_filter_state.py` : 45 tests — `FilterPreferences`, `_detect_filter_mode()`, `reconcile_filter_prefs()`, save/load
   - `tests/test_pve_transformers.py` : 36 tests — `_is_firefight_match()`, `_extract_enemy_kills_by_type()`, `extract_pve_stats()`, schéma DuckDB, batch insert, `PveMatchStatsRow`, `PveBits`, `SyncScope.pve_stats`
 
+- **Scoreboard "Dernier match"** (`src/ui/pages/match_view_players.py`, `src/data/repositories/_roster_loader.py`)
+  - `load_match_scoreboard(match_id)` : requête DuckDB joignant `match_participants` + `xuid_aliases` + sous-requête `medals_earned` (Perfect Kill, ID 1512363953). 20 champs par joueur, trié par `(team_id, rank)`.
+  - `render_match_scoreboard()` : tableau HTML par équipe avec 18 colonnes — Gamertag, Rang, Score, Frags, Morts, Assist., FDA, Folie meurtrière, Tirs à la tête, Frags parfaits, Tirs, Tirs au but, Précision, Corps à corps, Armes lourdes, Dégâts infligés, Dégâts subis, Durée de vie moy.
+  - Gestion N équipes + joueurs sans `team_id` (NULL → groupe séparé en fin)
+  - En-têtes couleur Okabe-Ito : bleu `#0072B2` pour l'équipe du joueur, vermillon `#D55E00` pour les adversaires
+  - Ligne du joueur surlignée (cyan `#00e5ff`)
+  - Résolution gamertags via `load_match_gamertags_fn` (même pipeline que l'ancien roster)
+  - CSS `.os-scoreboard` / `.os-sb-*` avec wrapping colonnes (`max-width: 80px`, `word-break`)
+  - Remplace la section "Joueurs" (roster) supprimée
+
 ### Changed
 
 - **Accessibilité daltonisme — Migration palette Okabe-Ito** (`src/visualization/`)
@@ -83,6 +93,14 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - Chaque palette documentée avec les anciens hex et la justification dans un bloc de commentaires
 
 - **`_is_firefight_match()`** — Fusion des deux définitions dupliquées en une seule fonction unifiée couvrant les 3 critères (GameVariantCategory + UgcGameVariant.PublicName + Playlist.PublicName)
+
+### Deprecated
+
+- **`display_name_from_xuid()` et `get_xuid_aliases()`** (`src/ui/aliases.py`) — Marquées `.. deprecated::`. Utiliser `load_match_gamertags_fn` pour le contexte match. Conservées pour scripts/migration/export.
+
+### Removed
+
+- **Section "Joueurs" (roster)** de la page Dernier match — Remplacée par le scoreboard. `render_roster_section` n'est plus appelée depuis `match_view.py`.
 
 ### Fixed
 
