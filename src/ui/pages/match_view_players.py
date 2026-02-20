@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import html
 import logging
 import os
@@ -20,6 +21,7 @@ from src.utils import parse_xuid_input
 from src.visualization.match_impact_timeline import (
     IMPACT_LABELS,
     compute_single_match_impact,
+    plot_all_players_frags_timeline,
     plot_match_kill_death_timeline,
 )
 from src.visualization.team_dominance_timeline import (
@@ -636,6 +638,50 @@ def _fmt_scoreboard_cell(key: str, value: Any) -> str:
     return str(value)
 
 
+def render_kd_timeline_section(
+    *,
+    match_id: str,
+    db_path: str,
+    xuid: str,
+    db_key: tuple[int, int] | None,
+    load_highlight_events_fn: Callable,
+    load_match_gamertags_fn: Callable,
+) -> None:
+    """Affiche le graphe des frags cumulés de tous les joueurs au fil du match.
+
+    Utilise les highlight_events (kills avec time_ms) pour tracer
+    une courbe de frags par joueur. Même palette PLAYER_COLORS que le graphe
+    éliminateur-victime.
+    """
+    if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
+        return
+
+    try:
+        he = load_highlight_events_fn(db_path, match_id.strip(), db_key=db_key)
+    except Exception:
+        he = None
+
+    if not he:
+        return
+
+    me_xu = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
+
+    # Charger le mapping gamertag (source fraîche)
+    gt_map: dict[str, str] = {}
+    with contextlib.suppress(Exception):
+        gt_map = load_match_gamertags_fn(db_path, match_id.strip(), db_key=db_key) or {}
+
+    fig = plot_all_players_frags_timeline(
+        he,
+        me_xu,
+        gt_map=gt_map,
+        height=380,
+    )
+    if fig is not None:
+        st.subheader("Frags au fil du match")
+        st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+
+
 def render_match_scoreboard(
     *,
     match_id: str,
@@ -734,6 +780,57 @@ def render_match_scoreboard(
     # Min/max par colonne (toutes équipes confondues) pour highlight vert/rouge
     extremes = _compute_scoreboard_extremes(players)
 
+    # Compter best/worst par joueur pour highlight ligne MVP/LVP
+    player_best_count: dict[int, int] = {}  # index dans players → nb best
+    player_worst_count: dict[int, int] = {}  # index dans players → nb worst
+    for i, p in enumerate(players):
+        best = 0
+        worst = 0
+        for _, key in _SCOREBOARD_COLS:
+            cls = _sb_cell_class(key, p.get(key), extremes)
+            if "best" in cls:
+                best += 1
+            elif "worst" in cls:
+                worst += 1
+        player_best_count[i] = best
+        player_worst_count[i] = worst
+
+    # Le joueur avec le plus de "best" = MVP, le plus de "worst" = LVP
+    # Egalité MVP : moins de "worst" gagne, puis meilleur rang (plus bas)
+    # Egalité LVP : moins de "best" gagne, puis pire rang (plus haut)
+    # (au moins 2 colonnes pour éviter un highlight sur un seul stat)
+    mvp_idx = (
+        max(
+            player_best_count,
+            key=lambda i: (
+                player_best_count[i],
+                -player_worst_count.get(i, 0),
+                -(players[i].get("rank") or 999),
+            ),
+        )
+        if player_best_count
+        else -1
+    )
+    lvp_idx = (
+        max(
+            player_worst_count,
+            key=lambda i: (
+                player_worst_count[i],
+                -player_best_count.get(i, 0),
+                (players[i].get("rank") or 0),
+            ),
+        )
+        if player_worst_count
+        else -1
+    )
+    if player_best_count.get(mvp_idx, 0) < 2:
+        mvp_idx = -1
+    if player_worst_count.get(lvp_idx, 0) < 2:
+        lvp_idx = -1
+    # Construire un set de xuids MVP/LVP pour lookup rapide
+    mvp_xuid = str(players[mvp_idx].get("xuid", "")).strip() if mvp_idx >= 0 else ""
+    lvp_xuid = str(players[lvp_idx].get("xuid", "")).strip() if lvp_idx >= 0 else ""
+
     for tid, team_players in teams.items():
         # Nom de l'équipe via TEAM_MAP
         try:
@@ -769,6 +866,11 @@ def render_match_scoreboard(
             ).strip()
             is_me = bool(me_xu and p_xu and p_xu == me_xu)
             row_class = " os-sb-row--me" if is_me else ""
+            # MVP / LVP row highlight (s'applique aussi au joueur principal)
+            if p_xu and p_xu == mvp_xuid:
+                row_class += " os-sb-row--mvp"
+            elif p_xu and p_xu == lvp_xuid:
+                row_class += " os-sb-row--lvp"
             cells = "".join(
                 f"<td class='os-sb-td{_sb_cell_class(key, p.get(key), extremes)}'>"
                 f"{html.escape(_fmt_scoreboard_cell(key, p.get(key)))}</td>"
@@ -1024,5 +1126,6 @@ __all__ = [
     "render_nemesis_section",
     "render_roster_section",
     "render_match_impact_section",
+    "render_kd_timeline_section",
     "render_match_scoreboard",
 ]
