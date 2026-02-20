@@ -328,6 +328,8 @@ def render_match_view(
         format_datetime_fn=format_datetime_fn,
         paris_tz=paris_tz,
         gamertag=waypoint_player,
+        db_path=db_path,
+        current_xuid=xuid,
     )
 
     # Lien Waypoint
