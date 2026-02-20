@@ -2,7 +2,7 @@
 
 Deux panneaux liés par l'axe X (temps du match) :
 1. Barres de dominance : répartition des frags par tranche de 30s (tug-of-war).
-2. Kill feed : événements individuels avec streaks annotées.
+2. Kill feed : événements individuels avec séries annotées.
 
 Usage typique
 -------------
@@ -73,7 +73,7 @@ class DominanceBucket:
 
 @dataclass
 class KillStreak:
-    """Streak individuelle détectée dans un match."""
+    """Série de kills individuelle détectée dans un match."""
 
     xuid: str
     gamertag: str
@@ -156,7 +156,7 @@ def compute_dominance_buckets(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Détection : streaks individuelles
+# Détection : séries individuelles
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -167,16 +167,16 @@ def detect_streaks(
     min_kills: int = 3,
     gap_s: float = 60.0,
 ) -> list[KillStreak]:
-    """Détecte les streaks individuelles dans un match.
+    """Détecte les séries de kills individuelles dans un match.
 
-    Une streak est une série de kills par le même joueur sans qu'il meure
+    Une série est une succession de kills par le même joueur sans qu'il meure
     entre deux kills consécutifs, et sans pause de plus de `gap_s` secondes.
 
     Args:
         events: Liste d'events highlight_events (kill + death).
         xuid_to_team: Mapping xuid → team_id.
         xuid_to_gamertag: Mapping xuid → gamertag résolu.
-        min_kills: Nombre minimum de kills pour constituer une streak.
+        min_kills: Nombre minimum de kills pour constituer une série.
         gap_s: Fenêtre temporelle max entre deux kills consécutifs (secondes).
 
     Returns:
@@ -298,7 +298,7 @@ def plot_dominance_chart(
       Cercles positionnés sur l'axe temps. Deux voies :
         y=1 → kills de mon équipe (vert)
         y=0 → kills adverses (rouge)
-      Les streaks sont mises en valeur : cercles plus grands, ligne de liaison,
+      Les séries sont mises en valeur : cercles plus grands, ligne de liaison,
       label flottant avec gamertag et nombre de kills.
 
     Returns:
@@ -326,7 +326,7 @@ def plot_dominance_chart(
             colors_my.append(_MY_TEAM_RGBA)
 
     # ── Données panneau 2 : kill feed ────────────────────────────────────────
-    # Timestamps appartenant à une streak → points agrandis, pas dans le scatter normal
+    # Timestamps appartenant à une série → points agrandis, pas dans le scatter normal
     streak_times_my: set[int] = set()
     streak_times_enemy: set[int] = set()
     for s in streaks:
@@ -465,7 +465,7 @@ def plot_dominance_chart(
             col=1,
         )
 
-    # ── Panneau 2 : streaks (ligne + marqueurs larges + label) ───────────────
+    # ── Panneau 2 : séries (ligne + marqueurs larges + label) ────────────────
     for streak in streaks:
         is_mine = streak.team_id == my_team_id
         color = _MY_TEAM_COLOR if is_mine else _ENEMY_COLOR
@@ -486,7 +486,7 @@ def plot_dominance_chart(
                     "line": {"color": "rgba(255,255,255,0.6)", "width": 1.5},
                 },
                 hovertemplate=(
-                    f"<b>{streak.gamertag}</b> — streak ×{streak.kills_count}"
+                    f"<b>{streak.gamertag}</b> — série ×{streak.kills_count}"
                     "<br>%{x:.0f}s<extra></extra>"
                 ),
                 showlegend=False,
@@ -495,7 +495,7 @@ def plot_dominance_chart(
             col=1,
         )
 
-        # Label flottant centré sur la streak
+        # Label flottant centré sur la série
         fig.add_annotation(
             x=streak.t_center_s,
             y=label_y,
