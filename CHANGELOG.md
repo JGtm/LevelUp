@@ -4,6 +4,92 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [5.2.0] - 2026-02-20
+
+### Added
+
+- **Filtres v5.2 — Persistance intent-based** (`src/ui/filter_state.py`)
+  - `FilterPreferences` : dataclass sauvegardée en JSON par joueur
+  - Modes persistés : `playlist_mode`, `mode_mode`, `map_mode` (`"exclude"` / `"include"`)
+  - Listes d'exclusions : `excluded_playlists`, `excluded_modes`, `excluded_maps`
+  - `_detect_filter_mode()` : heuristique 70/30 — si > 70% des options sont cochées, mode "exclude" ; sinon "include"
+  - `reconcile_filter_prefs()` : auto-réconciliation lors de l'apparition de nouvelles options — nouvelles playlists/modes/cartes incluses par défaut sans reset des préférences existantes
+  - 45 tests unitaires dans `tests/test_filter_state.py`
+
+- **Filtres v5.2 — Sélecteur "Type d'expérience"** (`src/app/filters_render.py`)
+  - Pré-filtre statique : "PVP non classé", "PVP classé", "PVE (Firefight)" activant le filtre `is_firefight`
+  - Cascade suppression correcte : modes/cartes calculés depuis `dropdown_base` complet (avant filtre playlist)
+  - Intégration des `FilterPreferences` dans le rendu des filtres cascades
+
+- **Stats PvE / Firefight v5.2 — Base dédiée `shared_pve.duckdb`**
+  - Nouvelle base `data/warehouse/shared_pve.duckdb` séparée de `shared_matches.duckdb` (évite les colonnes NULL sur 90%+ des matchs PvP)
+  - Table `pve_match_stats` : stats par joueur par match Firefight — waves, boss kills, kills par type d'ennemi (Banished : Grunt, Elite, Jackal, Brute, Hunter, Skimmer ; Forerunner : Crawler, Soldier, Knight, Warden)
+  - `ensure_pve_schema()` dans `src/data/sync/migrations.py` — création idempotente du schéma
+  - `PVE_SCHEMA_DDL` : DDL complet + index `idx_pve_xuid` + `idx_pve_match_id`
+
+- **Stats PvE — Modèles Python** (`src/data/sync/models.py`)
+  - `PveMatchStatsRow` : dataclass avec 20 colonnes (waves, boss, ennemi par type, pve_bits)
+
+- **Stats PvE — Transformer** (`src/data/sync/transformers.py`)
+  - `extract_pve_stats(match_json)` : extraction pour tous les joueurs d'un match Firefight
+  - `_find_pve_stats_dict(player)` : recherche récursive du bloc PvE (EliminationStats / PveStats / FirefightStats / détection par clés)
+  - `_extract_enemy_kills_by_type(pve_dict)` : support double structure (champs directs `GruntKills` + sous-dict `EnemyKillsByType`)
+  - `_is_firefight_match()` enrichie : 3 critères — `GameVariantCategory` (IDs 9, 24), `UgcGameVariant.PublicName`, `Playlist.PublicName` (firefight/baptême/survive)
+
+- **Stats PvE — Pipeline insertion** (`src/data/sync/batch_insert.py`)
+  - `batch_insert_pve_stats(conn, rows)` : insertion batch avec `INSERT OR REPLACE`
+
+- **Stats PvE — Bitmask** (`src/data/sync/constants.py`)
+  - `PveBits(IntFlag)` : bitmask granulaire pour `pve_match_stats.pve_bits` — WAVES, BOSS_KILLS, TOTAL_KILLS, GRUNT, ELITE, JACKAL, BRUTE, HUNTER, SKIMMER, CRAWLER, SOLDIER, KNIGHT, WARDEN + combinaisons BANISHED_FULL, FORERUNNER_ANY, FULL_PVE
+  - `MatchBits.PVE_STATS = 1 << 20` : guard global dans `match_registry.backfill_completed` — posé pour tout match traité (Firefight ou non) pour éviter la re-détection infinie
+
+- **Stats PvE — Sync Engine** (`src/data/sync/engine.py`)
+  - `_pve_connection` : connexion lazy-init vers `shared_pve.duckdb`
+  - `_pve_db_lock` : verrou asyncio dédié
+  - `_get_pve_connection()` : lazy init + `ensure_pve_schema` au premier accès
+  - `_try_insert_pve_stats(stats_json, match_id, shared_conn)` : extraction + insertion + pose du bit `MatchBits.PVE_STATS` — appelé dans `_process_new_match` et `_process_known_match`
+
+- **Stats PvE — SyncScope** (`src/data/sync/scope.py`)
+  - Champs `pve_stats: bool` et `force_pve_stats: bool` dans `SyncScope`
+  - Registrés dans `_FORCE_MAP` et `_ALL_DATA_FIELDS`
+
+- **Stats PvE — Détection backfill** (`scripts/backfill/detection.py`)
+  - Double guard : `mr.is_firefight = TRUE AND (COALESCE(mr.backfill_completed, 0) & PVE_STATS) = 0`
+  - `force_pve_stats` : ignore le guard, retourne tous les matchs Firefight
+  - `MatchBits.PVE_STATS` ajouté à `compute_bits_needed_from_scope`
+
+- **Stats PvE — CLI backfill** (`scripts/backfill/cli.py`)
+  - Arguments `--pve-stats` et `--force-pve-stats`
+
+- **Stats PvE — Orchestrateur backfill** (`scripts/backfill/orchestrator.py`)
+  - `_backfill_pve_for_match()` : ouverture `shared_pve.duckdb`, `ensure_pve_schema`, `batch_insert_pve_stats`, pose du bit guard dans `match_registry`
+  - Compteur `pve_stats_inserted` dans `_empty_result()`
+
+- **Citations PvE** (`src/analysis/citations/engine.py`)
+  - `load_match_pve_stats(match_id)` : lecture depuis `shared_pve.duckdb`
+  - Fusion des stats PvE dans `match_stats` avant calcul des citations
+  - `pve_stat` reconnu comme `mapping_type` (traité identiquement à `stat`)
+
+- **81 nouveaux tests** :
+  - `tests/test_filter_state.py` : 45 tests — `FilterPreferences`, `_detect_filter_mode()`, `reconcile_filter_prefs()`, save/load
+  - `tests/test_pve_transformers.py` : 36 tests — `_is_firefight_match()`, `_extract_enemy_kills_by_type()`, `extract_pve_stats()`, schéma DuckDB, batch insert, `PveMatchStatsRow`, `PveBits`, `SyncScope.pve_stats`
+
+### Changed
+
+- **Accessibilité daltonisme — Migration palette Okabe-Ito** (`src/visualization/`)
+  - 7 fichiers de visualisation mis à jour : `antagonist_charts.py`, `performance.py`, `objective_charts.py`, `participation_charts.py`, `team_dominance_timeline.py`, `match_impact_timeline.py`, `friends_impact_heatmap.py`
+  - Remplacement des couples rouge/vert néon saturés (incompatibles deuteranopie et protanopie) par la palette **Okabe-Ito** (Wong 2011), référence internationale pour les graphiques accessibles
+  - Correspondances principales : vert néon `#00ff00` → vert bleuté `#009E73` · rouge `#ff4444` → vermillon `#D55E00` · magenta `#ff66ff` → rose mauve `#CC79A7` · couleurs équipe `#3DFFB5`/`#FF4D6D` → bleu `#0072B2`/vermillon `#D55E00`
+  - Chaque palette documentée avec les anciens hex et la justification dans un bloc de commentaires
+
+- **`_is_firefight_match()`** — Fusion des deux définitions dupliquées en une seule fonction unifiée couvrant les 3 critères (GameVariantCategory + UgcGameVariant.PublicName + Playlist.PublicName)
+
+### Fixed
+
+- **Duplication `_is_firefight_match()`** — Deux définitions coexistaient dans `transformers.py`. La deuxième écrasait silencieusement la première, rendant inopérante la détection via `UgcGameVariant`. Fusion en une seule définition complète.
+
+---
+
 ## [5.1.0] - 2026-02-17
 
 ### Added
