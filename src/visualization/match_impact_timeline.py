@@ -222,10 +222,14 @@ def plot_match_kill_death_timeline(
     if not my_kills and not my_deaths:
         return None
 
-    # Couleurs
-    kill_color = "#3DFFB5"  # Vert Halo
-    death_color = "#FF4D6D"  # Rouge
-    annotation_color = "#FFB703"  # Ambre pour les annotations
+    # Couleurs mises à jour pour respecter la palette Okabe-Ito (accessibilité daltonisme).
+    # Anciens code hexadécimaux (deuteranopie/protanopie-incompatibles) :
+    #   kill_color:        #3DFFB5 (vert néon Halo) → #0072B2 (bleu Okabe-Ito)
+    #   death_color:       #FF4D6D (rose-rouge)      → #D55E00 (vermillon Okabe-Ito)
+    #   annotation_color:  #FFB703 (ambre chaud)     → #E69F00 (orange Okabe-Ito)
+    kill_color = "#0072B2"   # Bleu Okabe-Ito — kills
+    death_color = "#D55E00"   # Vermillon Okabe-Ito — morts
+    annotation_color = "#E69F00"  # Orange Okabe-Ito — annotations
 
     fig = go.Figure()
 

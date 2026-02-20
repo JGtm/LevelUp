@@ -21,13 +21,20 @@ if TYPE_CHECKING:
 # Constantes de couleurs
 # =============================================================================
 
+# Couleurs mises à jour pour respecter la palette Okabe-Ito (accessibilité daltonisme).
+# Anciens code hexadécimaux (deuteranopie/protanopie-incompatibles) :
+#   kill:      #FF6B6B (rouge clair)   → #D55E00 (vermillon)
+#   assist:    #4ECDC4 (turquoise)     → #E69F00 (orange Okabe-Ito)
+#   objective: #45B7D1 (bleu clair)   → #0072B2 (bleu Okabe-Ito)
+#   vehicle:   #96CEB4 (vert pâle)    → #009E73 (vert bleuté)
+#   penalty:   #2C3E50 (gris foncé)   → #CC79A7 (rose mauve)
 CATEGORY_COLORS: dict[str, str] = {
-    "kill": "#FF6B6B",  # Rouge - kills
-    "assist": "#4ECDC4",  # Turquoise - assists
-    "objective": "#45B7D1",  # Bleu - objectifs
-    "vehicle": "#96CEB4",  # Vert - véhicules
-    "penalty": "#2C3E50",  # Gris foncé - pénalités
-    "other": "#95A5A6",  # Gris - autre
+    "kill": "#D55E00",  # Vermillon Okabe-Ito - kills
+    "assist": "#E69F00",  # Orange Okabe-Ito - assists
+    "objective": "#0072B2",  # Bleu Okabe-Ito - objectifs
+    "vehicle": "#009E73",  # Vert bleuté Okabe-Ito - véhicules
+    "penalty": "#CC79A7",  # Rose mauve Okabe-Ito - pénalités
+    "other": "#999999",  # Gris neutre
 }
 
 CATEGORY_LABELS: dict[str, str] = {

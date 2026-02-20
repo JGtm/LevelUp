@@ -25,10 +25,14 @@ from plotly.subplots import make_subplots
 # Constantes visuelles (palette HALO_COLORS)
 # ─────────────────────────────────────────────────────────────────────────────
 
-_MY_TEAM_COLOR = "#3DFFB5"
-_ENEMY_COLOR = "#FF4D6D"
-_MY_TEAM_RGBA = "rgba(61, 255, 181, 0.80)"
-_ENEMY_RGBA = "rgba(255, 77, 109, 0.80)"
+# Couleurs mises à jour pour respecter la palette Okabe-Ito (accessibilité daltonisme).
+# Anciens code hexadécimaux (deuteranopie/protanopie-incompatibles) :
+#   _MY_TEAM_COLOR: #3DFFB5 (vert néon Halo) → #0072B2 (bleu Okabe-Ito)
+#   _ENEMY_COLOR:   #FF4D6D (rose-rouge)      → #D55E00 (vermillon Okabe-Ito)
+_MY_TEAM_COLOR = "#0072B2"   # Bleu Okabe-Ito — mon équipe
+_ENEMY_COLOR = "#D55E00"     # Vermillon Okabe-Ito — équipe adverse
+_MY_TEAM_RGBA = "rgba(0, 114, 178, 0.80)"
+_ENEMY_RGBA = "rgba(213, 94, 0, 0.80)"
 _NEUTRAL_RGBA = "rgba(255, 255, 255, 0.10)"
 _BG_TRANSPARENT = "rgba(0,0,0,0)"
 

@@ -29,16 +29,26 @@ if TYPE_CHECKING:
 # Configuration des couleurs
 # =============================================================================
 
+# Couleurs mises à jour pour respecter la palette Okabe-Ito (accessibilité daltonisme).
+# Anciens code hexadécimaux (deuteranopie/protanopie-incompatibles) :
+#   objective: #00ffcc (cyan néon)   → #56B4E9 (bleu ciel)
+#   kill:      #ff4444 (rouge néon)  → #D55E00 (vermillon)
+#   assist:    #ffaa00 (orange chaud) → #E69F00 (orange Okabe-Ito)
+#   mode:      #aa66ff (violet)       → #CC79A7 (rose mauve)
+#   highlight: #00ff00 (vert néon)   → #F0E442 (jaune)
+#   bar_1:     #00aaff (bleu vif)    → #0072B2 (bleu Okabe-Ito)
+#   bar_2:     #ff6666 (rouge clair) → #D55E00 (vermillon)
+#   bar_3:     #66ff66 (vert clair)  → #009E73 (vert bleuté)
 OBJECTIVE_COLORS = {
-    "objective": "#00ffcc",  # Cyan pour objectifs
-    "kill": "#ff4444",  # Rouge pour kills
-    "assist": "#ffaa00",  # Orange pour assists
-    "mode": "#aa66ff",  # Violet pour mode
-    "other": "#888888",  # Gris pour autres
-    "highlight": "#00ff00",  # Vert néon pour highlights
-    "bar_1": "#00aaff",  # Bleu
-    "bar_2": "#ff6666",  # Rouge clair
-    "bar_3": "#66ff66",  # Vert clair
+    "objective": "#56B4E9",  # Bleu ciel Okabe-Ito pour objectifs
+    "kill": "#D55E00",  # Vermillon Okabe-Ito pour kills
+    "assist": "#E69F00",  # Orange Okabe-Ito pour assists
+    "mode": "#CC79A7",  # Rose mauve Okabe-Ito pour mode
+    "other": "#999999",  # Gris neutre
+    "highlight": "#F0E442",  # Jaune Okabe-Ito pour highlights
+    "bar_1": "#0072B2",  # Bleu Okabe-Ito
+    "bar_2": "#D55E00",  # Vermillon Okabe-Ito
+    "bar_3": "#009E73",  # Vert bleuté Okabe-Ito
 }
 
 

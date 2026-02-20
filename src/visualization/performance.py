@@ -30,18 +30,27 @@ if TYPE_CHECKING:
 # Configuration des couleurs
 # =============================================================================
 
+# Couleurs mises à jour pour respecter la palette Okabe-Ito (accessibilité daltonisme).
+# Anciens code hexadécimaux (deuteranopie/protanopie-incompatibles) :
+#   kills:      #00ff00 (vert néon)   → #009E73 (vert bleuté)
+#   deaths:     #ff4444 (rouge néon)  → #D55E00 (vermillon)
+#   kd_line:    #ffaa00 (orange chaud) → #E69F00 (orange Okabe-Ito)
+#   cumulative: #00ccff (cyan)         → #56B4E9 (bleu ciel)
+#   rolling:    #ff66ff (magenta)      → #CC79A7 (rose mauve)
+#   trend_up:   #00ff88 (vert clair)   → #009E73 (vert bleuté)
+#   trend_down: #ff6666 (rouge clair)  → #D55E00 (vermillon)
 PERFORMANCE_COLORS = {
     "positive": HALO_COLORS.green,  # Vert néon pour positif
     "negative": HALO_COLORS.red,  # Rouge pour négatif
     "neutral": HALO_COLORS.cyan,  # Cyan pour neutre
-    "kills": "#00ff00",  # Vert
-    "deaths": "#ff4444",  # Rouge
-    "kd_line": "#ffaa00",  # Orange pour K/D
-    "cumulative": "#00ccff",  # Cyan pour cumulatif
-    "rolling": "#ff66ff",  # Magenta pour rolling
-    "trend_up": "#00ff88",  # Vert clair pour amélioration
-    "trend_down": "#ff6666",  # Rouge clair pour dégradation
-    "baseline": "#888888",  # Gris pour ligne de base
+    "kills": "#009E73",  # Vert bleuté Okabe-Ito (visible deuteranopes)
+    "deaths": "#D55E00",  # Vermillon Okabe-Ito (distinct du vert bleuté)
+    "kd_line": "#E69F00",  # Orange Okabe-Ito pour K/D
+    "cumulative": "#56B4E9",  # Bleu ciel Okabe-Ito pour cumulatif
+    "rolling": "#CC79A7",  # Rose mauve Okabe-Ito pour rolling
+    "trend_up": "#009E73",  # Vert bleuté Okabe-Ito pour amélioration
+    "trend_down": "#D55E00",  # Vermillon Okabe-Ito pour dégradation
+    "baseline": "#999999",  # Gris neutre
 }
 
 

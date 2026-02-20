@@ -22,19 +22,26 @@ from src.visualization.theme import apply_halo_plot_style
 if TYPE_CHECKING:
     pass
 
-# Couleurs pour les événements d'impact
+# Couleurs mises à jour pour respecter la palette Okabe-Ito (accessibilité daltonisme).
+# Anciens code hexadécimaux (deuteranopie/protanopie-incompatibles) :
+#   first_blood:    #2ecc71 (vert)      → #009E73 (vert bleuté Okabe-Ito)
+#   clutch_finisher:#f39c12 (or/orange) → #E69F00 (orange Okabe-Ito)
+#   last_casualty:  #e74c3c (rouge)     → #D55E00 (vermillon Okabe-Ito)
+#   win:            #10b981 (vert)      → #009E73 (vert bleuté Okabe-Ito)
+#   loss:           #ef4444 (rouge)     → #D55E00 (vermillon Okabe-Ito)
+#   tie:            #8b5cf6 (violet)    → #CC79A7 (rose mauve Okabe-Ito)
 IMPACT_COLORS = {
-    "first_blood": "#2ecc71",  # Vert
-    "clutch_finisher": "#f39c12",  # Or/Orange
-    "last_casualty": "#e74c3c",  # Rouge
+    "first_blood": "#009E73",  # Vert bleuté Okabe-Ito
+    "clutch_finisher": "#E69F00",  # Orange Okabe-Ito
+    "last_casualty": "#D55E00",  # Vermillon Okabe-Ito
     "none": "rgba(100, 100, 100, 0.1)",  # Gris transparent
 }
 
-# Couleurs pour les outcomes (Win/Loss/Tie)
+# Couleurs pour les outcomes (Win/Loss/Tie) — palette Okabe-Ito
 OUTCOME_COLORS = {
-    "win": "#10b981",  # Vert (victories)
-    "loss": "#ef4444",  # Rouge (defeats)
-    "tie": "#8b5cf6",  # Violet (ties)
+    "win": "#009E73",   # Vert bleuté Okabe-Ito (victories)
+    "loss": "#D55E00",  # Vermillon Okabe-Ito (defeats)
+    "tie": "#CC79A7",  # Rose mauve Okabe-Ito (ties)
     "unknown": "rgba(100, 100, 100, 0.3)",  # Gris
 }
 
