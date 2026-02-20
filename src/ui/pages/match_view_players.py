@@ -87,7 +87,7 @@ def render_team_dominance_section(
 
     Affiche deux panneaux liés par l'axe temps :
     - Barres de dominance (tug-of-war) par tranche de 30s.
-    - Kill feed individuel avec streaks annotées.
+    - Kill feed individuel avec séries annotées.
     """
     if is_firefight:
         return
