@@ -1537,6 +1537,30 @@ div[data-testid="stNumberInput"] input:focus {
     box-shadow: inset 3px 0 0 rgba(51, 214, 255, 0.55);
 }
 
+/* Highlight min/max du scoreboard (palette Okabe-Ito) */
+.os-table.os-scoreboard td.os-sb-td--best {
+    background: rgba(0, 158, 115, 0.22);
+    color: #33ffbf;
+    font-weight: 700;
+}
+
+.os-table.os-scoreboard td.os-sb-td--worst {
+    background: rgba(213, 94, 0, 0.22);
+    color: #ff9e6b;
+    font-weight: 700;
+}
+
+/* Le highlight du joueur (cyan) est prioritaire sur best/worst */
+.os-table.os-scoreboard tr.os-sb-row--me td.os-sb-td--best {
+    background: rgba(0, 158, 115, 0.28);
+    color: #33ffbf;
+}
+
+.os-table.os-scoreboard tr.os-sb-row--me td.os-sb-td--worst {
+    background: rgba(213, 94, 0, 0.28);
+    color: #ff9e6b;
+}
+
 /* Citations (Halo 5) */
 .os-citation-top-gap {
     height: 10px;

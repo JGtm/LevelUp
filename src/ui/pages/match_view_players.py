@@ -546,6 +546,69 @@ _SCOREBOARD_COLS: list[tuple[str, str]] = [
     ("Durée de vie moy.", "avg_life_seconds"),
 ]
 
+# Colonnes non comparables (texte / ordinal) : pas de highlight min/max
+_SB_SKIP_HIGHLIGHT: set[str] = {"gamertag", "rank"}
+
+# Colonnes inversées : moins = mieux (vert), plus = pire (rouge)
+_SB_INVERTED: set[str] = {"deaths", "damage_taken"}
+
+
+def _sb_numeric_value(key: str, value: Any) -> float | None:
+    """Extrait la valeur numérique comparable d'une cellule du scoreboard."""
+    if value is None:
+        return None
+    try:
+        v = float(value)
+        # accuracy stockée en fraction 0-1 : normaliser pour comparaison
+        if key == "accuracy" and v <= 1.0:
+            v *= 100.0
+        return v
+    except (ValueError, TypeError):
+        return None
+
+
+def _compute_scoreboard_extremes(
+    players: list[dict[str, Any]],
+) -> dict[str, tuple[float, float]]:
+    """Calcule le min et max de chaque colonne numérique sur tous les joueurs.
+
+    Returns:
+        Dict {key: (min_val, max_val)} pour les colonnes ayant au moins
+        2 valeurs distinctes.
+    """
+    extremes: dict[str, tuple[float, float]] = {}
+    for _, key in _SCOREBOARD_COLS:
+        if key in _SB_SKIP_HIGHLIGHT:
+            continue
+        vals = [v for p in players if (v := _sb_numeric_value(key, p.get(key))) is not None]
+        if len(vals) < 2:
+            continue
+        mn, mx = min(vals), max(vals)
+        if mn == mx:
+            continue  # toutes les valeurs identiques → pas de highlight
+        extremes[key] = (mn, mx)
+    return extremes
+
+
+def _sb_cell_class(
+    key: str,
+    value: Any,
+    extremes: dict[str, tuple[float, float]],
+) -> str:
+    """Retourne la classe CSS de highlight pour une cellule du scoreboard."""
+    if key in _SB_SKIP_HIGHLIGHT or key not in extremes:
+        return ""
+    v = _sb_numeric_value(key, value)
+    if v is None:
+        return ""
+    mn, mx = extremes[key]
+    inverted = key in _SB_INVERTED
+    if v == mx:
+        return " os-sb-td--worst" if inverted else " os-sb-td--best"
+    if v == mn:
+        return " os-sb-td--best" if inverted else " os-sb-td--worst"
+    return ""
+
 
 def _fmt_scoreboard_cell(key: str, value: Any) -> str:
     """Formate une valeur selon son type pour l'affichage dans le scoreboard."""
@@ -668,6 +731,9 @@ def render_match_scoreboard(
     # Comptage des équipes réelles (team_id non None)
     n_real_teams = len([t for t in teams if t is not None])
 
+    # Min/max par colonne (toutes équipes confondues) pour highlight vert/rouge
+    extremes = _compute_scoreboard_extremes(players)
+
     for tid, team_players in teams.items():
         # Nom de l'équipe via TEAM_MAP
         try:
@@ -704,7 +770,8 @@ def render_match_scoreboard(
             is_me = bool(me_xu and p_xu and p_xu == me_xu)
             row_class = " os-sb-row--me" if is_me else ""
             cells = "".join(
-                f"<td class='os-sb-td'>{html.escape(_fmt_scoreboard_cell(key, p.get(key)))}</td>"
+                f"<td class='os-sb-td{_sb_cell_class(key, p.get(key), extremes)}'>"
+                f"{html.escape(_fmt_scoreboard_cell(key, p.get(key)))}</td>"
                 for _, key in _SCOREBOARD_COLS
             )
             body_rows.append(f"<tr class='os-sb-row{row_class}'>{cells}</tr>")
