@@ -19,15 +19,31 @@ from src.ui.cache import (
 
 @pytest.fixture
 def temp_duckdb(tmp_path):
-    """Crée une base DuckDB temporaire avec des données de test."""
+    """Crée une base DuckDB temporaire avec des données de test.
+
+    Structure de répertoires compatible avec l'auto-détection shared_matches :
+    {tmp_path}/data/players/test/stats.duckdb  (player DB)
+    {tmp_path}/data/warehouse/shared_matches.duckdb  (shared DB)
+    """
     import gc
-    import uuid
 
-    db_path = tmp_path / f"test_stats_{uuid.uuid4().hex[:8]}.duckdb"
+    # Créer la structure de répertoires pour l'auto-détection shared
+    player_dir = tmp_path / "data" / "players" / "test"
+    player_dir.mkdir(parents=True, exist_ok=True)
+    warehouse_dir = tmp_path / "data" / "warehouse"
+    warehouse_dir.mkdir(parents=True, exist_ok=True)
+
+    db_path = player_dir / "stats.duckdb"
+    shared_db_path = warehouse_dir / "shared_matches.duckdb"
+
+    xuid_self = "2533274823110022"
+    xuid_friend = "2533274823110023"
+    match_id_1 = "test_match_1"
+    match_id_2 = "test_match_2"
+
+    # ── Player DB (local) ──
     conn = duckdb.connect(str(db_path))
-
     try:
-        # Créer les tables nécessaires
         conn.execute("""
             CREATE TABLE match_stats (
                 match_id VARCHAR PRIMARY KEY,
@@ -53,13 +69,6 @@ def temp_duckdb(tmp_path):
             )
         """)
 
-        # Insérer des données de test
-        xuid_self = "2533274823110022"
-        xuid_friend = "2533274823110023"
-        match_id_1 = "test_match_1"
-        match_id_2 = "test_match_2"
-
-        # Matchs
         conn.execute(
             """
             INSERT INTO match_stats (match_id, start_time, team_id, accuracy, kills, deaths, assists)
@@ -76,7 +85,6 @@ def temp_duckdb(tmp_path):
             [match_id_2, datetime.now(timezone.utc), 0, 50.0, 15, 4, 5],
         )
 
-        # Highlight events pour match_id_1 (les deux joueurs présents)
         conn.execute(
             """
             INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag)
@@ -93,7 +101,6 @@ def temp_duckdb(tmp_path):
             [2, match_id_1, "Kill", 2000, xuid_friend, "PlayerFriend"],
         )
 
-        # Highlight events pour match_id_2 (seulement self)
         conn.execute(
             """
             INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag)
@@ -104,6 +111,36 @@ def temp_duckdb(tmp_path):
     finally:
         conn.close()
         del conn
+        gc.collect()
+
+    # ── Shared DB (match_participants) ──
+    shared_conn = duckdb.connect(str(shared_db_path))
+    try:
+        shared_conn.execute("""
+            CREATE TABLE match_participants (
+                match_id VARCHAR,
+                xuid VARCHAR,
+                gamertag VARCHAR,
+                team_id INTEGER
+            )
+        """)
+        # match_id_1 : les deux joueurs, même équipe (team 0)
+        shared_conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, ?, ?)",
+            [match_id_1, xuid_self, "PlayerSelf", 0],
+        )
+        shared_conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, ?, ?)",
+            [match_id_1, xuid_friend, "PlayerFriend", 0],
+        )
+        # match_id_2 : seulement self
+        shared_conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, ?, ?)",
+            [match_id_2, xuid_self, "PlayerSelf", 0],
+        )
+    finally:
+        shared_conn.close()
+        del shared_conn
         gc.collect()
 
     yield str(db_path), xuid_self, xuid_friend, match_id_1, match_id_2

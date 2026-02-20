@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import html
+import logging
 import os
 import re
 from collections.abc import Callable
@@ -12,6 +13,8 @@ from typing import Any
 
 import polars as pl
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 from src.config import get_repo_root
 from src.ui import AppSettings
@@ -93,7 +96,7 @@ def paris_epoch_seconds_local(dt: datetime | None, paris_tz) -> float | None:
 
 
 # =============================================================================
-# Indexation des médias
+# Indexation des médias (legacy – fallback si BDD non indexée)
 # =============================================================================
 
 
@@ -137,22 +140,111 @@ def index_media_dir(dir_path: str, exts: tuple[str, ...]) -> pl.DataFrame:
     return df.sort("mtime", descending=True)
 
 
+def _filter_media_by_gamertag(df: pl.DataFrame, gamertag: str | None) -> pl.DataFrame:
+    """Filtre les médias pour ne garder que ceux appartenant au joueur (chemin du fichier)."""
+    if df.is_empty() or not gamertag:
+        return df
+    gt_lower = gamertag.lower()
+    return df.filter(pl.col("path").str.to_lowercase().str.contains(gt_lower))
+
+
 # =============================================================================
 # Rendu de la section médias
 # =============================================================================
 
 
-def render_media_section(
+def _show_media_group(
+    df_group: pl.DataFrame,
+    label: str,
+    match_id: str,
+) -> None:
+    """Affiche un groupe de médias (images en grille + vidéos en selectbox)."""
+    imgs = df_group.filter(pl.col("kind") == "image")
+    vids = df_group.filter(pl.col("kind") == "video")
+    if imgs.is_empty() and vids.is_empty():
+        return
+
+    st.caption(label)
+
+    if not imgs.is_empty():
+        n_cols = min(len(imgs), 4)
+        cols = st.columns(n_cols)
+        for i, r in enumerate(imgs.iter_rows(named=True)):
+            with cols[i % n_cols]:
+                fp = r.get("file_path")
+                tp = r.get("thumbnail_path")
+                display_path = (tp if tp and Path(tp).exists() else fp) if fp else None
+                if display_path and Path(display_path).exists():
+                    st.image(display_path)
+
+    if not vids.is_empty():
+        paths = [str(r["file_path"]) for r in vids.iter_rows(named=True) if r.get("file_path")]
+        valid = [p for p in paths if Path(p).exists()]
+        if valid:
+            lv = [os.path.basename(p) for p in valid]
+            key = f"media_vid_{label}_{match_id}"
+            picked = st.selectbox(
+                "Vidéo",
+                options=list(range(len(valid))),
+                format_func=lambda i, _lv=lv: _lv[i],
+                index=0,
+                key=key,
+                label_visibility="collapsed",
+            )
+            try:
+                st.video(valid[int(picked)])
+            except Exception:
+                st.write(valid[int(picked)])
+
+
+def _render_media_from_indexed_db(
+    *,
+    db_path: str,
+    match_id: str,
+    current_xuid: str | None,
+) -> bool:
+    """Tente d'afficher les médias depuis la BDD indexée (media_match_associations).
+
+    Returns:
+        True si des médias ont été trouvés et affichés, False sinon.
+    """
+    try:
+        from src.data.media_indexer import MediaIndexer
+
+        media_df = MediaIndexer.load_media_for_match(Path(str(db_path)), match_id, current_xuid)
+        if media_df.is_empty():
+            return False
+    except Exception as e:
+        logger.debug("_render_media_from_indexed_db: %s", e)
+        return False
+
+    mine = media_df.filter(pl.col("section") == "mine")
+    teammates = media_df.filter(pl.col("section") == "teammate")
+
+    st.subheader("Médias")
+
+    if not mine.is_empty():
+        _show_media_group(mine, "Mes captures", match_id)
+
+    if not teammates.is_empty():
+        for gt in sorted(teammates["gamertag"].unique().to_list()):
+            if not gt or not str(gt).strip():
+                continue
+            sub = teammates.filter(pl.col("gamertag") == gt)
+            _show_media_group(sub, f"Captures de {gt}", match_id)
+
+    return True
+
+
+def _render_media_legacy(
     *,
     row: dict[str, Any],
     settings: AppSettings,
     format_datetime_fn: Callable[[datetime | None], str],
     paris_tz,
+    gamertag: str | None,
 ) -> None:
-    """Rend la section médias (captures/vidéos) pour un match."""
-    if not bool(getattr(settings, "media_enabled", True)):
-        return
-
+    """Rendu legacy : scan de dossiers par fenêtre temporelle du match."""
     tol = int(getattr(settings, "media_tolerance_minutes", 0) or 0)
     t0, t1, duration_known = match_time_window(row, tolerance_minutes=tol, paris_tz=paris_tz)
     if t0 is None or t1 is None:
@@ -164,13 +256,6 @@ def render_media_section(
     if not screens_dir and not videos_dir:
         return
 
-    st.subheader("Médias")
-    # Afficher la fenêtre avec indication si durée exacte ou estimée
-    window_info = f"Fenêtre: {format_datetime_fn(t0)} → {format_datetime_fn(t1)}"
-    if not duration_known:
-        window_info += " *(durée estimée)*"
-    st.caption(window_info)
-
     try:
         t0_epoch = t0.timestamp() if t0 else None
         t1_epoch = t1.timestamp() if t1 else None
@@ -180,57 +265,119 @@ def render_media_section(
     if t0_epoch is None or t1_epoch is None:
         return
 
-    found_any = False
+    img_hits: pl.DataFrame | None = None
+    vid_hits: pl.DataFrame | None = None
 
     if screens_dir and os.path.isdir(screens_dir):
         img_df = index_media_dir(screens_dir, ("png", "jpg", "jpeg", "webp"))
         if not img_df.is_empty():
-            hits = img_df.filter(
+            img_df = _filter_media_by_gamertag(img_df, gamertag)
+            img_hits = img_df.filter(
                 (pl.col("mtime") >= t0_epoch) & (pl.col("mtime") <= t1_epoch)
             ).head(24)
-            if not hits.is_empty():
-                found_any = True
-                st.caption("Captures")
-                for p in hits["path"].to_list():
-                    try:
-                        st.image(p, caption=str(p))
-                    except Exception:
-                        st.write(str(p))
+            if img_hits.is_empty():
+                img_hits = None
 
     if videos_dir and os.path.isdir(videos_dir):
         vid_df = index_media_dir(videos_dir, ("mp4", "webm", "mkv", "mov"))
         if not vid_df.is_empty():
-            hits = vid_df.filter(
+            vid_df = _filter_media_by_gamertag(vid_df, gamertag)
+            vid_hits = vid_df.filter(
                 (pl.col("mtime") >= t0_epoch) & (pl.col("mtime") <= t1_epoch)
             ).head(10)
-            if not hits.is_empty():
-                found_any = True
-                st.caption("Vidéos")
-                paths = [str(p) for p in hits["path"].to_list() if p]
-                if paths:
-                    labels = [os.path.basename(p) for p in paths]
-                    picked = st.selectbox(
-                        "Vidéo",
-                        options=list(range(len(paths))),
-                        format_func=lambda i: labels[i],
-                        index=0,
-                        key=f"media_video_pick_{row.get('match_id','')}",
-                        label_visibility="collapsed",
-                    )
-                    p = paths[int(picked)]
-                    try:
-                        st.video(p)
-                        st.caption(str(p))
-                    except Exception:
-                        st.write(str(p))
+            if vid_hits.is_empty():
+                vid_hits = None
 
-    if not found_any:
-        st.info("Aucun média trouvé pour ce match.")
+    if img_hits is None and vid_hits is None:
+        return
+
+    st.subheader("Médias")
+    window_info = f"Fenêtre: {format_datetime_fn(t0)} → {format_datetime_fn(t1)}"
+    if not duration_known:
+        window_info += " *(durée estimée)*"
+    st.caption(window_info)
+
+    if img_hits is not None:
+        st.caption("Captures")
+        for p in img_hits["path"].to_list():
+            try:
+                st.image(p, caption=str(p))
+            except Exception:
+                st.write(str(p))
+
+    if vid_hits is not None:
+        st.caption("Vidéos")
+        paths = [str(p) for p in vid_hits["path"].to_list() if p]
+        if paths:
+            labels = [os.path.basename(p) for p in paths]
+            picked = st.selectbox(
+                "Vidéo",
+                options=list(range(len(paths))),
+                format_func=lambda i: labels[i],
+                index=0,
+                key=f"media_video_pick_{row.get('match_id', '')}",
+                label_visibility="collapsed",
+            )
+            p = paths[int(picked)]
+            try:
+                st.video(p)
+                st.caption(str(p))
+            except Exception:
+                st.write(str(p))
+
+
+def render_media_section(
+    *,
+    row: dict[str, Any],
+    settings: AppSettings,
+    format_datetime_fn: Callable[[datetime | None], str],
+    paris_tz,
+    gamertag: str | None = None,
+    db_path: str | None = None,
+    current_xuid: str | None = None,
+) -> None:
+    """Rend la section médias pour un match.
+
+    Utilise en priorité la BDD indexée (media_match_associations) pour afficher
+    les captures de tous les joueurs avec indication du propriétaire.
+    Si la BDD ne retourne rien, fallback sur le scan de dossiers (legacy).
+    """
+    if not bool(getattr(settings, "media_enabled", True)):
+        return
+
+    match_id = str(row.get("match_id") or "").strip()
+
+    if (
+        db_path
+        and match_id
+        and _render_media_from_indexed_db(
+            db_path=db_path,
+            match_id=match_id,
+            current_xuid=current_xuid,
+        )
+    ):
+        return
+
+    _render_media_legacy(
+        row=row,
+        settings=settings,
+        format_datetime_fn=format_datetime_fn,
+        paris_tz=paris_tz,
+        gamertag=gamertag,
+    )
 
 
 # =============================================================================
 # Composants UI
 # =============================================================================
+
+
+def _is_valid_css_color(val: str | None) -> bool:
+    """Vérifie si une valeur est une couleur CSS valide (hex ou var())."""
+    if not val:
+        return False
+    s = str(val).strip()
+    return s.startswith("#") or s.startswith("var(")
 
 
 def os_card(
@@ -248,11 +395,13 @@ def os_card(
     k = html.escape(str(kpi or "-"))
     s = "" if not sub_html else str(sub_html)
     style = "min-height:" + str(int(min_h)) + "px; margin-bottom:10px;"
-    if accent and str(accent).startswith("#"):
-        style += f"border-color:{accent}66;"
-    kpi_style = (
-        "" if not (kpi_color and str(kpi_color).startswith("#")) else f" style='color:{kpi_color}'"
-    )
+    if accent and _is_valid_css_color(accent):
+        # Pour les couleurs hex, ajouter transparence; pour var(), utiliser directement
+        if str(accent).startswith("#"):
+            style += f"border-color:{accent}66;"
+        else:
+            style += f"border-color:{accent};"
+    kpi_style = "" if not _is_valid_css_color(kpi_color) else f" style='color:{kpi_color}'"
     sub_style_attr = (
         "" if not sub_style else ' style="' + html.escape(str(sub_style), quote=True) + '"'
     )
@@ -279,7 +428,11 @@ def map_thumb_path(row: dict[str, Any], map_id: str | None) -> str | None:
         return s
 
     repo = Path(get_repo_root(__file__))
-    base_dirs = [repo / "static" / "maps" / "thumbs", repo / "thumbs"]
+    base_dirs = [
+        repo / "static" / "maps" / "thumbs",
+        repo / "static" / "maps",  # Images présentes ici
+        repo / "thumbs",
+    ]
 
     candidates: list[str] = []
     mid = str(map_id or "").strip()

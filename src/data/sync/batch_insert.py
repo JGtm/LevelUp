@@ -417,6 +417,79 @@ def batch_upsert_rows(
     return inserted
 
 
+def batch_upsert_participants(
+    conn: Any,
+    rows: list[Any],
+    columns: list[str] | None = None,
+) -> int:
+    """Upsert participants en préservant les colonnes MMR/skill existantes.
+
+    Utilise INSERT ... ON CONFLICT (match_id, xuid) DO UPDATE SET
+    pour ne mettre à jour que les colonnes non-MMR. Les colonnes MMR/skill
+    ne sont jamais écrasées par cette fonction — elles sont gérées
+    exclusivement par le pipeline skill (engine.py et backfill --skill).
+
+    Architecture v5.1 :
+        Cette fonction remplace l'ancien batch_upsert_rows() pour match_participants.
+        L'ancien INSERT OR REPLACE détruisait toutes les colonnes non mentionnées
+        (DELETE + INSERT), causant la perte des données MMR déjà backfillées.
+        ON CONFLICT DO UPDATE ne modifie que les colonnes spécifiées.
+
+    Args:
+        conn: Connexion DuckDB.
+        rows: Liste de MatchParticipantRow dataclass ou dicts.
+        columns: Colonnes à insérer (défaut: PARTICIPANT_COLUMNS).
+
+    Returns:
+        Nombre de rows upsertées.
+    """
+    if not rows:
+        return 0
+
+    if columns is None:
+        columns = PARTICIPANT_COLUMNS
+
+    # Convertir les rows en tuples de valeurs
+    values_list: list[tuple] = []
+    for row in rows:
+        if hasattr(row, "__dataclass_fields__"):
+            row_dict = {f.name: getattr(row, f.name, None) for f in fields(row)}
+        elif isinstance(row, dict):
+            row_dict = row
+        else:
+            row_dict = {col: getattr(row, col, None) for col in columns}
+
+        row_dict = coerce_row_types(row_dict, "match_participants")
+        values_list.append(tuple(row_dict.get(col) for col in columns))
+
+    # Colonnes à mettre à jour (exclure les clés primaires)
+    pk_cols = {"match_id", "xuid"}
+    update_cols = [c for c in columns if c not in pk_cols]
+    update_set = ", ".join(f"{c} = EXCLUDED.{c}" for c in update_cols)
+
+    placeholders = ", ".join(["?"] * len(columns))
+    col_list = ", ".join(columns)
+    sql = (
+        f"INSERT INTO match_participants ({col_list}) VALUES ({placeholders}) "
+        f"ON CONFLICT (match_id, xuid) DO UPDATE SET {update_set}"
+    )
+
+    inserted = 0
+    try:
+        conn.executemany(sql, values_list)
+        inserted = len(values_list)
+    except Exception as e:
+        logger.debug(f"Batch upsert participants ON CONFLICT échoué, fallback row-by-row: {e}")
+        for values in values_list:
+            try:
+                conn.execute(sql, values)
+                inserted += 1
+            except Exception as row_err:
+                logger.warning(f"Upsert participant échoué: {row_err}")
+
+    return inserted
+
+
 # =============================================================================
 # Colonnes par table (utilisées pour les insertions batch)
 # =============================================================================
@@ -483,8 +556,24 @@ PARTICIPANT_COLUMNS = [
     "melee_kills",
     "power_weapon_kills",
     "personal_score",
-    # Stats MMR/Skill (V5 finale)
+]
+
+# Colonnes MMR/Skill — écrites UNIQUEMENT par le pipeline skill (sync engine
+# ou backfill --skill), JAMAIS par l'upsert participants.
+#
+# Architecture v5.1 :
+#   - batch_upsert_participants() utilise ON CONFLICT DO UPDATE SET
+#     qui ne met à jour que PARTICIPANT_COLUMNS (stats de jeu), préservant
+#     les colonnes MMR déjà peuplées.
+#   - INSERT OR REPLACE (batch_upsert_rows) est INTERDIT pour match_participants
+#     car il détruit toutes les colonnes non mentionnées (y compris MMR).
+#   - Les colonnes MMR sont écrites par des UPDATE ciblés avec COALESCE dans
+#     engine.py et orchestrator.py.
+#
+# ⚠️ assists_expected / assists_stddev : toujours NULL (limitation API Halo).
+PARTICIPANT_MMR_COLUMNS = [
     "team_mmr",
+    "enemy_mmr",
     "kills_expected",
     "kills_stddev",
     "deaths_expected",
@@ -492,6 +581,9 @@ PARTICIPANT_COLUMNS = [
     "assists_expected",
     "assists_stddev",
 ]
+
+# Toutes les colonnes (INSERT initiale uniquement, pas les upserts)
+PARTICIPANT_ALL_COLUMNS = PARTICIPANT_COLUMNS + PARTICIPANT_MMR_COLUMNS
 
 ALIAS_COLUMNS = ["xuid", "gamertag", "last_seen", "source", "updated_at"]
 

@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import polars as pl
 import streamlit as st
 
-from src.analysis import compute_sessions, compute_sessions_with_context_polars, mark_firefight
+from src.analysis import compute_sessions_with_context_polars
 from src.config import SESSION_CONFIG
 from src.ui import translate_pair_name, translate_playlist_name
 from src.ui.cache_loaders import (
@@ -27,6 +27,8 @@ from src.ui.cache_loaders import (
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,7 @@ def cached_compute_sessions_db(
 ) -> pl.DataFrame:
     """Compute sessions sur la base (cache) avec logique avancée (gap + coéquipiers).
 
-    Si friends_xuids est fourni, mode legacy V3 : seuls les amis déclenchent une
+    Si friends_xuids est fourni, mode amis : seuls les amis déclenchent une
     nouvelle session (randoms matchmaking ignorés).
     """
     friends_set = frozenset(friends_xuids) if friends_xuids else None
@@ -52,27 +54,92 @@ def cached_compute_sessions_db(
         try:
             from datetime import datetime, timezone
 
-            import duckdb
+            from src.utils.db import duckdb_read_only
+            from src.utils.paths import get_shared_matches_path_from_player
 
-            conn = duckdb.connect(db_path, read_only=True)
-            firefight_filter = "" if include_firefight else "AND is_firefight = FALSE"
+            with duckdb_read_only(db_path) as conn:
+                # Attacher shared_matches.duckdb pour accéder aux données partagées
+                shared_attached = False
+                shared_path = get_shared_matches_path_from_player(db_path)
+                if shared_path and shared_path.exists():
+                    # Vérifier si déjà attaché
+                    try:
+                        dbs = conn.execute(
+                            "SELECT database_name FROM duckdb_databases()"
+                        ).fetchall()
+                        existing_dbs = {db[0].lower() for db in dbs if db[0]}
+                        if "shared" in existing_dbs:
+                            shared_attached = True
+                        else:
+                            conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
+                            shared_attached = True
+                    except Exception:
+                        pass
 
-            query = f"""
-                SELECT
-                    match_id,
-                    start_time,
-                    teammates_signature,
-                    session_id,
-                    session_label
-                FROM match_stats
-                WHERE start_time IS NOT NULL
-                {firefight_filter}
-                ORDER BY start_time ASC
-            """
-            df_pl = conn.execute(query).pl()
-            conn.close()
+                df_pl = None
 
-            if df_pl.is_empty():
+                if shared_attached:
+                    # Production v5 : données dans shared + player_match_enrichment
+                    firefight_filter = "" if include_firefight else "AND r.is_firefight = FALSE"
+
+                    player_xuid = xuid.strip()
+                    if not player_xuid:
+                        try:
+                            row = conn.execute(
+                                "SELECT value FROM sync_meta WHERE key = 'xuid'"
+                            ).fetchone()
+                            if row:
+                                player_xuid = str(row[0]).strip()
+                        except Exception:
+                            pass
+
+                    if not player_xuid:
+                        logger.warning(f"Impossible de résoudre XUID pour {db_path}")
+                    else:
+                        query = f"""
+                            SELECT
+                                r.match_id,
+                                r.start_time,
+                                e.teammates_signature,
+                                e.session_id,
+                                e.session_label
+                            FROM shared.match_registry r
+                            INNER JOIN shared.match_participants p
+                                ON r.match_id = p.match_id
+                                AND p.xuid = ?
+                            LEFT JOIN player_match_enrichment e
+                                ON r.match_id = e.match_id
+                            WHERE r.start_time IS NOT NULL
+                            {firefight_filter}
+                            ORDER BY r.start_time ASC
+                        """
+                        try:
+                            df_pl = conn.execute(query, [player_xuid]).pl()
+                            logger.debug(
+                                f"Chargé {len(df_pl) if df_pl is not None else 0} matchs pour xuid={player_xuid}"
+                            )
+                        except Exception as e:
+                            logger.warning(f"Erreur chargement matchs depuis shared: {e}")
+                            df_pl = None
+                else:
+                    logger.warning(f"shared_matches.duckdb non attaché pour {db_path}")
+
+                if df_pl is None:
+                    # v5.1 : pas de fallback local (match_stats supprimée des DBs individuelles)
+                    # Retourner un DataFrame vide si shared non disponible
+                    logger.debug("Aucune donnée chargée, retour DataFrame vide")
+                    df_pl = pl.DataFrame(
+                        schema={
+                            "match_id": pl.Utf8,
+                            "start_time": pl.Datetime,
+                            "teammates_signature": pl.Utf8,
+                            "session_id": pl.Utf8,
+                            "session_label": pl.Utf8,
+                        }
+                    )
+
+            if df_pl is None or df_pl.is_empty():
+                logger.debug("DataFrame vide après chargement")
                 return pl.DataFrame(
                     schema={
                         "match_id": pl.Utf8,
@@ -105,52 +172,29 @@ def cached_compute_sessions_db(
             return df_pl.select(["match_id", "start_time", "session_id", "session_label"])
 
         except Exception as e:
-            logger.warning(f"Erreur calcul sessions Polars, fallback Pandas: {e}")
-            # Fallback sur l'ancienne méthode
-            pass
+            logger.warning(f"Erreur calcul sessions Polars: {e}")
+            # En cas d'erreur, retourner les données sans calcul de session si disponibles
+            if df_pl is not None and not df_pl.is_empty():
+                # Assurer que les colonnes session existent (même vides)
+                if "session_id" not in df_pl.columns:
+                    df_pl = df_pl.with_columns(
+                        [
+                            pl.lit(None).cast(pl.Utf8).alias("session_id"),
+                            pl.lit(None).cast(pl.Utf8).alias("session_label"),
+                        ]
+                    )
+                return df_pl.select(["match_id", "start_time", "session_id", "session_label"])
 
-    # Legacy SQLite ou fallback : utiliser Polars (load_df_optimized retourne maintenant Polars)
-    df0_pl = load_df_optimized(db_path, xuid, db_key=db_key, include_firefight=include_firefight)
-    if df0_pl.is_empty():
-        return pl.DataFrame(
-            schema={
-                "match_id": pl.Utf8,
-                "start_time": pl.Datetime,
-                "session_id": pl.Utf8,
-                "session_label": pl.Utf8,
-            }
-        )
-
-    df0_pl = mark_firefight(df0_pl)
-    if (not include_firefight) and ("is_firefight" in df0_pl.columns):
-        df0_pl = df0_pl.filter(~pl.col("is_firefight"))
-
-    # Essayer d'utiliser la logique avancée si teammates_signature est disponible
-    if "teammates_signature" in df0_pl.columns:
-        try:
-            df_sessions_pl = df0_pl.select(["match_id", "start_time", "teammates_signature"])
-            df_sessions_pl = compute_sessions_with_context_polars(
-                df_sessions_pl,
-                gap_minutes=gap_minutes,
-                teammates_column="teammates_signature",
-                friends_xuids=friends_set,
-            )
-            # Fusionner les résultats avec le DataFrame original
-            df_result_pl = df0_pl.join(
-                df_sessions_pl.select(["match_id", "session_id", "session_label"]),
-                on="match_id",
-                how="left",
-            )
-            # Convertir en Polars
-            return df_result_pl
-        except Exception:
-            # Fallback sur logique simple (utilise directement Polars)
-            df_result_pl = compute_sessions(df0_pl, gap_minutes=int(gap_minutes))
-            return df_result_pl
-
-    # Fallback sur logique simple (utilise directement Polars)
-    df_result_pl = compute_sessions(df0_pl, gap_minutes=int(gap_minutes))
-    return df_result_pl
+    # Si on arrive ici, c'est qu'on n'a pas de données v5
+    # Retourner un DataFrame vide plutôt que de risquer un conflit de connexion
+    return pl.DataFrame(
+        schema={
+            "match_id": pl.Utf8,
+            "start_time": pl.Datetime,
+            "session_id": pl.Utf8,
+            "session_label": pl.Utf8,
+        }
+    )
 
 
 @st.cache_data(show_spinner=False)
@@ -296,7 +340,8 @@ def load_df_hybrid(
         return load_df_optimized(db_path, xuid, db_key=db_key, include_firefight=include_firefight)
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
+@st.cache_data(show_spinner=False)
 def cached_get_global_stats_duckdb(
     db_path: str,
     xuid: str,
@@ -338,7 +383,8 @@ def cached_get_global_stats_duckdb(
         return None
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
+@st.cache_data(show_spinner=False)
 def cached_get_kda_trend_duckdb(
     db_path: str,
     xuid: str,
@@ -369,7 +415,8 @@ def cached_get_kda_trend_duckdb(
         return None
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
+@st.cache_data(show_spinner=False)
 def cached_get_performance_by_map_duckdb(
     db_path: str,
     xuid: str,
@@ -421,7 +468,8 @@ def cached_get_migration_status(
 # =============================================================================
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
+@st.cache_data(show_spinner=False)
 def cached_load_recent_matches(
     player_db_path: str,
     xuid: str,
@@ -520,7 +568,8 @@ def cached_load_recent_matches(
         return pl.DataFrame()
 
 
-@st.cache_data(show_spinner=False, ttl=300)
+# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
+@st.cache_data(show_spinner=False)
 def cached_load_matches_paginated(
     player_db_path: str,
     xuid: str,

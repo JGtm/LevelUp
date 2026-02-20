@@ -9,6 +9,7 @@ Ce module fournit ``CitationEngine``, classe responsable de :
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from pathlib import Path
 from typing import Any
@@ -73,6 +74,7 @@ class CitationEngine:
 
         self._mappings: dict[str, dict[str, Any]] | None = None
         self._attached_shared: bool = False
+        self._cached_shared_alias: str | None = None  # Cache pour l'alias shared
 
     # ------------------------------------------------------------------
     # Connexion helper
@@ -104,24 +106,39 @@ class CitationEngine:
         return self._shared_db_path is not None and self._shared_db_path.exists()
 
     def _conn_has_shared(self, conn: duckdb.DuckDBPyConnection) -> bool:
-        """Vérifie si la connexion a le catalog 'shared' attaché."""
+        """Vérifie si la connexion a une base shared attachée (détection dynamique)."""
+        return self._get_shared_alias(conn) is not None
+
+    def _get_shared_alias(self, conn: duckdb.DuckDBPyConnection) -> str | None:
+        """Retourne l'alias de la base shared attachée (avec cache)."""
+        if self._cached_shared_alias is not None:
+            return self._cached_shared_alias
         try:
-            result = conn.execute(
-                "SELECT COUNT(*) FROM information_schema.schemata " "WHERE catalog_name = 'shared'"
-            ).fetchone()
-            return bool(result and result[0] > 0)
+            dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
+            for db_name, db_path_val in dbs:
+                if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
+                    self._cached_shared_alias = db_name
+                    return db_name
+                if db_name and "shared" in db_name.lower():
+                    # Vérifier que cette DB a match_participants
+                    try:
+                        conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                        self._cached_shared_alias = db_name
+                        return db_name
+                    except Exception:
+                        continue
+            return None
         except Exception:
-            return False
+            return None
 
     def _shared_has_table(self, conn: duckdb.DuckDBPyConnection, table_name: str) -> bool:
-        """Vérifie si une table existe dans le catalog shared."""
+        """Vérifie si une table existe dans le catalog shared (alias dynamique)."""
+        shared_alias = self._get_shared_alias(conn)
+        if not shared_alias:
+            return False
         try:
-            result = conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_catalog = 'shared' AND table_name = ?",
-                [table_name],
-            ).fetchone()
-            return bool(result and result[0] > 0)
+            conn.execute(f"SELECT 1 FROM {shared_alias}.{table_name} LIMIT 1")
+            return True
         except Exception:
             return False
 
@@ -198,6 +215,7 @@ class CitationEngine:
         match_stats: dict[str, Any] | None = None,
         match_awards: dict[str, int] | None = None,
         df_match: pl.DataFrame | None = None,
+        highlight_events: list[tuple[int, str]] | None = None,
     ) -> int:
         """Calcule la valeur d'une citation pour un match.
 
@@ -214,6 +232,17 @@ class CitationEngine:
         mtype = mapping.get("mapping_type", "")
 
         if mtype == "medal":
+            # Support multi-médailles via medal_ids (comma-separated)
+            medal_ids_str = mapping.get("medal_ids")
+            if medal_ids_str and match_medals:
+                total = 0
+                for mid_str in str(medal_ids_str).split(","):
+                    mid_str = mid_str.strip()
+                    if mid_str:
+                        with contextlib.suppress(ValueError):
+                            total += match_medals.get(int(mid_str), 0)
+                return total
+            # Fallback: single medal_id
             medal_id = mapping.get("medal_id")
             if medal_id is not None and match_medals:
                 return match_medals.get(int(medal_id), 0)
@@ -241,7 +270,7 @@ class CitationEngine:
                 logger.warning("Fonction custom introuvable : %s", func_name)
                 return 0
             try:
-                return func(df=df_match, awards=match_awards)
+                return func(df=df_match, awards=match_awards, highlight_events=highlight_events)
             except TypeError:
                 # Certaines fonctions n'acceptent que df
                 try:
@@ -259,6 +288,7 @@ class CitationEngine:
         match_stats: dict[str, Any] | None = None,
         match_awards: dict[str, int] | None = None,
         df_match: pl.DataFrame | None = None,
+        highlight_events: list[tuple[int, str]] | None = None,
     ) -> dict[str, int]:
         """Calcule toutes les citations pour un match.
 
@@ -275,6 +305,7 @@ class CitationEngine:
                 match_stats=match_stats,
                 match_awards=match_awards,
                 df_match=df_match,
+                highlight_events=highlight_events,
             )
             if value > 0:
                 results[norm_name] = value
@@ -360,9 +391,10 @@ class CitationEngine:
         conn, owned = self._read_conn()
         try:
             # V5 : lire depuis shared.medals_earned si disponible
-            if self._conn_has_shared(conn) and self._shared_has_table(conn, "medals_earned"):
+            shared_alias = self._get_shared_alias(conn)
+            if shared_alias and self._shared_has_table(conn, "medals_earned"):
                 rows = conn.execute(
-                    "SELECT medal_name_id, count FROM shared.medals_earned "
+                    f"SELECT medal_name_id, count FROM {shared_alias}.medals_earned "
                     "WHERE match_id = ? AND xuid = ?",
                     [match_id, self._xuid],
                 ).fetchall()
@@ -395,13 +427,14 @@ class CitationEngine:
         conn, owned = self._read_conn()
         try:
             # V5 : lire depuis shared.match_participants + match_registry
-            if self._conn_has_shared(conn) and self._shared_has_table(conn, "match_participants"):
+            shared_alias = self._get_shared_alias(conn)
+            if shared_alias and self._shared_has_table(conn, "match_participants"):
                 result = conn.execute(
-                    "SELECT p.*, r.map_name, r.playlist, r.game_variant, "
-                    "r.match_start_date "
-                    "FROM shared.match_participants p "
-                    "LEFT JOIN shared.match_registry r ON p.match_id = r.match_id "
-                    "WHERE p.match_id = ? AND p.xuid = ?",
+                    f"SELECT p.*, r.map_name, r.playlist_name, r.game_variant_name, "
+                    f"r.start_time "
+                    f"FROM {shared_alias}.match_participants p "
+                    f"LEFT JOIN {shared_alias}.match_registry r ON p.match_id = r.match_id "
+                    f"WHERE p.match_id = ? AND p.xuid = ?",
                     [match_id, self._xuid],
                 )
                 row = result.fetchone()
@@ -470,13 +503,14 @@ class CitationEngine:
         conn, owned = self._read_conn()
         try:
             # V5 : lire depuis shared
-            if self._conn_has_shared(conn) and self._shared_has_table(conn, "match_participants"):
+            shared_alias = self._get_shared_alias(conn)
+            if shared_alias and self._shared_has_table(conn, "match_participants"):
                 result = conn.execute(
-                    "SELECT p.*, r.map_name, r.playlist, r.game_variant, "
-                    "r.match_start_date "
-                    "FROM shared.match_participants p "
-                    "LEFT JOIN shared.match_registry r ON p.match_id = r.match_id "
-                    "WHERE p.match_id = ? AND p.xuid = ?",
+                    f"SELECT p.*, r.map_name, r.playlist_name, r.game_variant_name, "
+                    f"r.start_time "
+                    f"FROM {shared_alias}.match_participants p "
+                    f"LEFT JOIN {shared_alias}.match_registry r ON p.match_id = r.match_id "
+                    f"WHERE p.match_id = ? AND p.xuid = ?",
                     [match_id, self._xuid],
                 )
                 try:
@@ -512,6 +546,39 @@ class CitationEngine:
             if owned:
                 conn.close()
 
+    def load_match_highlight_events(self, match_id: str) -> list[tuple[int, str]]:
+        """Charge les highlight_events (mode + death) pour un match.
+
+        Retourne une liste de tuples ``(time_ms, event_type)`` triés par temps,
+        filtré par le xuid du joueur. Utilisé par les citations custom qui
+        nécessitent un séquencement temporel (ex: Annexion forcée).
+
+        Returns:
+            Liste de ``(time_ms, event_type)`` triée.
+        """
+        if not self._db_path.exists() and self._shared_conn is None:
+            return []
+
+        conn, owned = self._read_conn()
+        try:
+            shared_alias = self._get_shared_alias(conn)
+            if shared_alias and self._shared_has_table(conn, "highlight_events"):
+                rows = conn.execute(
+                    f"SELECT time_ms, event_type "
+                    f"FROM {shared_alias}.highlight_events "
+                    f"WHERE match_id = ? AND xuid = ? "
+                    f"  AND event_type IN ('mode', 'death') "
+                    f"ORDER BY time_ms",
+                    [match_id, self._xuid],
+                ).fetchall()
+                return [(int(r[0]), str(r[1])) for r in rows]
+            return []
+        except Exception:
+            return []
+        finally:
+            if owned:
+                conn.close()
+
     # ------------------------------------------------------------------
     # Méthode haut-niveau : calcul complet pour un match
     # ------------------------------------------------------------------
@@ -529,13 +596,14 @@ class CitationEngine:
             conn: Connexion ouverte en écriture (optionnelle, en crée une sinon).
 
         Returns:
-            Nombre de citations insérées.
+            Nombre de citations insérées (inclut le marqueur _processed).
         """
         # Charger les données nécessaires
         match_medals = self.load_match_medals(match_id)
         match_stats = self.load_match_stats(match_id)
         match_awards = self.load_match_awards(match_id)
         df_match = self.load_match_df(match_id)
+        highlight_events = self.load_match_highlight_events(match_id)
 
         # Calculer les citations
         citations = self.compute_all_for_match(
@@ -544,12 +612,10 @@ class CitationEngine:
             match_stats=match_stats,
             match_awards=match_awards,
             df_match=df_match,
+            highlight_events=highlight_events,
         )
 
-        if not citations:
-            return 0
-
-        # Insérer dans match_citations
+        # Insérer dans match_citations (même si vide, on marque comme traité)
         own_conn = conn is None
         if own_conn:
             if self._shared_conn is not None:
@@ -559,13 +625,21 @@ class CitationEngine:
                 conn = duckdb.connect(str(self._db_path))
 
         try:
+            # Insérer les citations calculées
             for norm_name, value in citations.items():
                 conn.execute(
                     "INSERT OR REPLACE INTO match_citations "
                     "(match_id, citation_name_norm, value) VALUES (?, ?, ?)",
                     [match_id, norm_name, value],
                 )
-            return len(citations)
+
+            # Marquer le match comme traité (même si 0 citations)
+            conn.execute(
+                "INSERT OR REPLACE INTO match_citations "
+                "(match_id, citation_name_norm, value) VALUES (?, '_processed', 1)",
+                [match_id],
+            )
+            return len(citations) + 1  # +1 pour le marqueur
         finally:
             if own_conn:
                 conn.close()

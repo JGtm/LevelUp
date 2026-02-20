@@ -14,6 +14,7 @@ import subprocess
 import sys
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import polars as pl
 import streamlit as st
@@ -34,6 +35,9 @@ from src.utils import (
     parse_xuid_input,
     resolve_xuid_from_db,
 )
+
+if TYPE_CHECKING:
+    from src.data.repositories.duckdb_repo import DuckDBRepository
 
 # =============================================================================
 # Identité joueur depuis secrets/env
@@ -130,12 +134,12 @@ def _get_duckdb_v4_players_dir() -> Path:
 
 
 def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
-    """Détecte le meilleur joueur DuckDB v4 disponible.
+    """Détecte le meilleur joueur DuckDB v5.1 disponible.
 
     Returns:
         Tuple (db_path, gamertag) du joueur avec le plus de matchs, ou None.
     """
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
     players_dir = _get_duckdb_v4_players_dir()
     if not players_dir.exists():
@@ -154,12 +158,24 @@ def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
 
         gamertag = player_dir.name
         try:
-            con = duckdb.connect(str(db_path), read_only=True)
-            try:
-                result = con.execute("SELECT COUNT(*) FROM match_stats").fetchone()
-                count = result[0] if result else 0
-            finally:
-                con.close()
+            with duckdb_read_only(db_path) as con:
+                # V5.1: player_match_enrichment est la seule table match locale
+                # Fallback sur v_match_stats (vue vers shared) si enrichment absente
+                result = con.execute(
+                    """
+                    SELECT COUNT(*) FROM (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_name = 'player_match_enrichment'
+                    )
+                    """
+                ).fetchone()
+                if result and result[0] > 0:
+                    count_result = con.execute(
+                        "SELECT COUNT(*) FROM player_match_enrichment"
+                    ).fetchone()
+                else:
+                    count_result = con.execute("SELECT COUNT(*) FROM v_match_stats").fetchone()
+                count = count_result[0] if count_result else 0
 
             if count > best_count:
                 best_count = count
@@ -178,9 +194,10 @@ def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
 def init_source_state(default_db: str, settings: AppSettings) -> None:
     """Initialise l'état source (DB path, xuid, waypoint) en session_state.
 
-    Supporte:
-    - Architecture DuckDB v4: data/players/{gamertag}/stats.duckdb
-    - Legacy SQLite: halo_unified.db, spnkr*.db
+    Architecture DuckDB v5.1 uniquement :
+    - stats.duckdb par joueur : data/players/{gamertag}/stats.duckdb
+    - shared_matches.duckdb : data/warehouse/shared_matches.duckdb
+    - metadata.duckdb : data/warehouse/metadata.duckdb
 
     Args:
         default_db: Chemin par défaut de la DB.
@@ -343,6 +360,38 @@ def get_aliases_cache_key() -> int | None:
 # =============================================================================
 # Chargement des données
 # =============================================================================
+
+
+def get_cached_repository(
+    db_path: str,
+    xuid: str,
+    *,
+    read_only: bool = True,
+) -> DuckDBRepository:
+    """Retourne un DuckDBRepository avec connexion pré-initialisée.
+
+    Centralise la création de repository pour éviter les instanciations
+    directes éparpillées dans les pages UI. La connexion est initialisée
+    immédiatement (warm-up) pour éviter le coût du premier ATTACH.
+
+    Note : Le cache Streamlit (@st.cache_resource) est géré dans
+    ``src/ui/cache_loaders.py::get_cached_repository_st`` pour les pages UI.
+    Cette fonction est le point d'entrée non-Streamlit.
+
+    Args:
+        db_path: Chemin vers stats.duckdb.
+        xuid: XUID du joueur.
+        read_only: Connexion en lecture seule.
+
+    Returns:
+        Instance DuckDBRepository avec connexion active.
+    """
+    from src.data.repositories.duckdb_repo import DuckDBRepository
+
+    repo = DuckDBRepository(db_path, xuid, read_only=read_only)
+    # Warm-up : forcer la connexion + ATTACH immédiatement
+    repo._get_connection()
+    return repo
 
 
 def load_match_data(db_path: str, xuid: str, db_key: tuple[int, int] | None) -> pl.DataFrame:

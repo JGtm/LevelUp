@@ -16,8 +16,15 @@ from src.ui.career_ranks import (
     format_career_rank_label_fr,
     get_rank_icon_path,
 )
-from src.ui.components.career_progress_circle import create_career_progress_gauge
+from src.ui.components.career_progress_circle import (
+    RANK_MAX,
+    XP_HERO_TOTAL,
+    compute_hero_progress,
+    create_career_progress_gauge,
+    create_hero_progress_gauge,
+)
 from src.ui.player_assets import ensure_local_image_path
+from src.ui.streamlit_modern import fragment_if_available
 from src.visualization.theme import apply_halo_plot_style
 
 logger = logging.getLogger(__name__)
@@ -26,17 +33,13 @@ logger = logging.getLogger(__name__)
 def _load_career_data(db_path: str, xuid: str) -> dict | None:
     """Charge les dernières données de rang carrière depuis DuckDB.
 
-    # TODO: Migrer vers DuckDBRepository au lieu de duckdb.connect() direct
-    # Dette architecture connue - le SQL est correctement paramétré donc pas de risque injection
-
     Returns:
         Dict avec rank, rank_name, rank_tier, current_xp, etc. ou None.
     """
     try:
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
-        conn = duckdb.connect(db_path, read_only=True)
-        try:
+        with duckdb_read_only(db_path) as conn:
             result = conn.execute(
                 """SELECT rank, rank_name, rank_tier, current_xp,
                           xp_for_next_rank, xp_total, is_max_rank,
@@ -60,8 +63,6 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
                     "adornment_path": result[7],
                     "recorded_at": result[8],
                 }
-        finally:
-            conn.close()
     except Exception as e:
         logger.debug(f"Impossible de charger career_progression: {e}")
 
@@ -71,17 +72,13 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
 def _load_career_history(db_path: str, xuid: str, limit: int = 50) -> list[dict]:
     """Charge l'historique de progression depuis DuckDB.
 
-    # TODO: Migrer vers DuckDBRepository au lieu de duckdb.connect() direct
-    # Dette architecture connue - le SQL est correctement paramétré donc pas de risque injection
-
     Returns:
         Liste de dicts ordonnés par date croissante.
     """
     try:
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
-        conn = duckdb.connect(db_path, read_only=True)
-        try:
+        with duckdb_read_only(db_path) as conn:
             rows = conn.execute(
                 """SELECT rank, rank_name, rank_tier, current_xp,
                           xp_for_next_rank, xp_total, is_max_rank,
@@ -106,8 +103,6 @@ def _load_career_history(db_path: str, xuid: str, limit: int = 50) -> list[dict]
                 }
                 for r in rows
             ]
-        finally:
-            conn.close()
     except Exception as e:
         logger.debug(f"Impossible de charger career_history: {e}")
         return []
@@ -165,6 +160,7 @@ def _create_xp_history_chart(history: list[dict]) -> go.Figure | None:
     return fig
 
 
+@fragment_if_available
 def render_career_page(
     *,
     db_path: str,
@@ -231,11 +227,7 @@ def render_career_page(
             if icon_path and icon_path.exists():
                 st.image(str(icon_path), width=120)
             else:
-                st.markdown(
-                    f"<div style='text-align:center;font-size:48px;color:{THEME_COLORS.accent}'>"
-                    f"{rank_number}</div>",
-                    unsafe_allow_html=True,
-                )
+                st.markdown(f"### {rank_number}")
 
     with col_info:
         st.subheader(rank_label_fr)
@@ -263,11 +255,51 @@ def render_career_page(
                 is_max_rank=is_max,
             )
             if gauge_fig is not None:
-                st.plotly_chart(gauge_fig, key="career_gauge", width="stretch")
+                st.plotly_chart(
+                    gauge_fig, key="career_gauge", width="stretch", config={"staticPlot": True}
+                )
             else:
                 st.info("Impossible de générer la jauge de progression.")
         except Exception as e:
             st.warning(f"Impossible d'afficher la jauge de progression : {e}")
+
+    # --- Progression vers Héros ---
+    st.divider()
+    st.subheader("Progression vers Héros")
+
+    hero_data = compute_hero_progress(xp_total=xp_total, rank=rank_number, is_max_rank=is_max)
+    hero_pct = hero_data["percentage"]
+    xp_remaining = hero_data["xp_remaining"]
+
+    col_hero_metrics, col_hero_gauge = st.columns([3, 2])
+
+    with col_hero_metrics:
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            st.metric("XP gagnée", f"{xp_total:,}")
+        with m2:
+            st.metric("XP restante", f"{xp_remaining:,}")
+        with m3:
+            st.metric("Total requis", f"{XP_HERO_TOTAL:,}")
+        with m4:
+            st.metric("Rang", f"{rank_number} / {RANK_MAX}")
+
+    with col_hero_gauge:
+        try:
+            hero_gauge = create_hero_progress_gauge(
+                hero_pct=hero_pct,
+                xp_total=xp_total,
+                xp_remaining=xp_remaining,
+                is_max_rank=is_max,
+            )
+            st.plotly_chart(
+                hero_gauge,
+                key="hero_progress_gauge",
+                width="stretch",
+                config={"staticPlot": True},
+            )
+        except Exception as e:
+            st.warning(f"Impossible d'afficher la progression vers Héros : {e}")
 
     # --- Historique de progression ---
     st.divider()
@@ -278,7 +310,12 @@ def render_career_page(
         try:
             history_fig = _create_xp_history_chart(history)
             if history_fig:
-                st.plotly_chart(history_fig, key="career_xp_history", width="stretch")
+                st.plotly_chart(
+                    history_fig,
+                    key="career_xp_history",
+                    width="stretch",
+                    config={"displayModeBar": False},
+                )
             else:
                 st.info("Pas assez de données pour afficher l'historique.")
         except Exception as e:

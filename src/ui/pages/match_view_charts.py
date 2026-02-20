@@ -12,6 +12,8 @@ from plotly.subplots import make_subplots
 from src.analysis.stats import compute_mode_category_averages, extract_mode_category, format_mmss
 from src.config import HALO_COLORS
 from src.ui.pages.match_view_helpers import os_card
+from src.ui.streamlit_modern import fragment_if_available
+from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -32,6 +34,7 @@ def _safe_numeric(value: Any) -> float:
 # =============================================================================
 
 
+@fragment_if_available
 def render_expected_vs_actual(
     row: dict[str, Any],
     pm: dict,
@@ -149,20 +152,8 @@ def render_expected_vs_actual(
     exp_fig = make_subplots(specs=[[{"secondary_y": True}]])
 
     bar_colors = [HALO_COLORS.green, HALO_COLORS.red, HALO_COLORS.cyan]
-    exp_fig.add_trace(
-        go.Bar(
-            x=labels,
-            y=exp_vals,
-            name="Attendu (MMR)",
-            marker={
-                "color": bar_colors,
-                "pattern": {"shape": "/", "fgcolor": "rgba(255,255,255,0.75)", "solidity": 0.22},
-            },
-            opacity=0.50,
-            hovertemplate="%{x} (attendu): %{y:.1f}<extra></extra>",
-        ),
-        secondary_y=False,
-    )
+
+    # Barres "Réel" en premier (pleines)
     exp_fig.add_trace(
         go.Bar(
             x=labels,
@@ -174,6 +165,26 @@ def render_expected_vs_actual(
         ),
         secondary_y=False,
     )
+
+    # Barres "Attendu" uniquement si données disponibles
+    has_expected = any(v is not None for v in exp_vals)
+    if has_expected:
+        # Couleurs plus visibles pour les barres "Attendu" (bordure + remplissage + hachuré)
+        exp_colors = ["rgba(0, 255, 128, 0.6)", "rgba(255, 80, 80, 0.6)", "rgba(0, 200, 255, 0.6)"]
+        exp_fig.add_trace(
+            go.Bar(
+                x=labels,
+                y=exp_vals,
+                name="Attendu",
+                marker={
+                    "color": exp_colors,
+                    "line": {"color": bar_colors, "width": 2},
+                    "pattern": {"shape": "/", "solidity": 0.4, "fgcolor": bar_colors},
+                },
+                hovertemplate="%{x} (attendu): %{y:.1f}<extra></extra>",
+            ),
+            secondary_y=False,
+        )
 
     # Moyenne historique par catégorie (si disponible) -> en barres
     if hist_avgs.get("match_count", 0) >= 10:
@@ -222,7 +233,7 @@ def render_expected_vs_actual(
                 "y": 1.05,  # Au-dessus du graphique
                 "xref": "paper",
                 "yref": "paper",
-                "text": f"Ratio K/D/A: <b>{real_ratio_f:.2f}</b>",
+                "text": f"Ratio F/M/A: <b>{real_ratio_f:.2f}</b>",
                 "showarrow": False,
                 "font": {"size": 14, "color": HALO_COLORS.amber},
                 "bgcolor": "rgba(0,0,0,0.5)",
@@ -244,11 +255,11 @@ def render_expected_vs_actual(
     with chart_cols[0]:
         try:
             if exp_fig is not None:
-                st.plotly_chart(exp_fig, width="stretch")
+                st.plotly_chart(exp_fig, width="stretch", config={"staticPlot": True})
             else:
-                st.info("Données insuffisantes pour le graphique K/D/A.")
+                st.info("Données insuffisantes pour le graphique F/M/A.")
         except Exception as e:
-            st.warning(f"Impossible d'afficher le graphique K/D/A : {e}")
+            st.warning(f"Impossible d'afficher le graphique F/M/A : {e}")
     with chart_cols[1]:
         _render_spree_headshots(
             row,
@@ -303,8 +314,11 @@ def _render_spree_headshots(
                 perfect_current = counts.get(match_id, 0)
             # Moyenne historique par catégorie (même filtre que spree/headshots)
             if df_full is not None and hist_avgs.get("match_count", 0) >= 10:
+                _cat_map = build_mapping(df_full.get_column("pair_name"), extract_mode_category)
                 filtered = df_full.filter(
-                    pl.col("pair_name").map_elements(extract_mode_category, return_dtype=pl.Utf8)
+                    pl.col("pair_name")
+                    .cast(pl.Utf8)
+                    .replace_strict(_cat_map, default="Other", return_dtype=pl.Utf8)
                     == mode_category
                 )
                 if len(filtered) >= 10:
@@ -373,7 +387,7 @@ def _render_spree_headshots(
         try:
             styled_fig = apply_halo_plot_style(fig_sh, height=260)
             if styled_fig is not None:
-                st.plotly_chart(styled_fig, width="stretch")
+                st.plotly_chart(styled_fig, width="stretch", config={"staticPlot": True})
             else:
                 st.info("Données insuffisantes pour le graphique Spree/Headshots.")
         except Exception as e:

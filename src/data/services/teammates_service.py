@@ -8,11 +8,14 @@ Contrat : les pages UI appellent ces fonctions, jamais de calcul inline.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import polars as pl
+
+logger = logging.getLogger(__name__)
 
 # ─── Dataclasses retour ────────────────────────────────────────────────
 
@@ -72,15 +75,40 @@ class TeammatesService:
     """
 
     @staticmethod
+    def _load_xuid_from_db(db_path: str) -> str:
+        """Charge le xuid depuis la table sync_meta de la DB.
+
+        Args:
+            db_path: Chemin vers la DB du joueur.
+
+        Returns:
+            Le xuid du joueur, ou chaîne vide si non trouvé.
+        """
+        import duckdb
+
+        try:
+            conn = duckdb.connect(db_path, read_only=True)
+            # sync_meta est une table clé-valeur (key, value, updated_at)
+            result = conn.execute(
+                "SELECT value FROM sync_meta WHERE key = 'xuid' LIMIT 1"
+            ).fetchone()
+            conn.close()
+            if result:
+                return str(result[0]).strip()
+        except Exception as e:
+            logger.debug(f"Impossible de charger le xuid depuis {db_path}: {e}")
+        return ""
+
+    @staticmethod
     def load_teammate_stats(
         teammate_gamertag: str,
         match_ids: set[str],
         reference_db_path: str,
     ) -> TeammateStats:
-        """Charge les stats d'un coéquipier depuis sa propre DB.
+        """Charge les stats d'un coéquipier depuis shared.match_participants.
 
-        Dans l'architecture DuckDB v4, chaque joueur a sa propre DB :
-        data/players/{gamertag}/stats.duckdb
+        Architecture V5 : lit directement depuis shared_matches.duckdb
+        au lieu de charger la DB individuelle du coéquipier.
 
         Args:
             teammate_gamertag: Gamertag du coéquipier.
@@ -90,29 +118,111 @@ class TeammatesService:
         Returns:
             TeammateStats avec le DataFrame filtré ou vide.
         """
-        base_dir = Path(reference_db_path).parent.parent
-        teammate_db_path = base_dir / teammate_gamertag / "stats.duckdb"
+        from src.data.repositories.duckdb_repo import DuckDBRepository
 
-        if not teammate_db_path.exists():
+        if not match_ids or not reference_db_path:
             return TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
 
         try:
-            from src.ui.cache import load_df_optimized
+            # Utiliser DuckDBRepository pour accéder aux données shared
+            repo = DuckDBRepository(reference_db_path, "")
+            conn = repo._get_connection()
 
-            df_pl = load_df_optimized(str(teammate_db_path), "", db_key=None)
-            if df_pl.is_empty():
+            # Résoudre gamertag → xuid via shared.xuid_aliases ou shared.match_participants
+            xuid = None
+            try:
+                row = conn.execute(
+                    "SELECT xuid FROM shared.xuid_aliases WHERE gamertag = ?",
+                    [teammate_gamertag],
+                ).fetchone()
+                if row:
+                    xuid = str(row[0]).strip()
+            except Exception:
+                pass
+
+            if not xuid:
+                # Fallback : chercher dans match_participants
+                try:
+                    row = conn.execute(
+                        "SELECT DISTINCT xuid FROM shared.match_participants WHERE gamertag = ? LIMIT 1",
+                        [teammate_gamertag],
+                    ).fetchone()
+                    if row:
+                        xuid = str(row[0]).strip()
+                except Exception:
+                    pass
+
+            if not xuid:
+                # 8bis.A7 : Plus de fallback legacy en v5.1
+                # Toutes les données sont dans shared_matches.duckdb
+                logger.warning(
+                    f"Coéquipier '{teammate_gamertag}' introuvable dans shared "
+                    f"(ni xuid_aliases ni match_participants)"
+                )
                 return TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
 
-            df_filtered = df_pl.filter(
-                pl.col("match_id").cast(pl.Utf8).is_in([str(mid) for mid in match_ids])
-            )
+            # Charger les stats depuis shared.match_participants + match_registry
+            match_ids_list = [str(mid) for mid in match_ids]
+            placeholders = ", ".join(["?" for _ in match_ids_list])
+
+            query = f"""
+                SELECT
+                    p.match_id,
+                    r.start_time,
+                    r.map_id,
+                    COALESCE(r.map_name, '') AS map_name,
+                    r.playlist_id,
+                    COALESCE(r.playlist_name, '') AS playlist_name,
+                    r.pair_id,
+                    COALESCE(r.pair_name, '') AS pair_name,
+                    r.game_variant_id,
+                    COALESCE(r.game_variant_name, '') AS game_variant_name,
+                    p.outcome,
+                    p.team_id,
+                    CASE WHEN p.deaths > 0
+                        THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0) / CAST(p.deaths AS FLOAT)
+                        ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
+                    END AS ratio,
+                    COALESCE(p.max_killing_spree, 0) AS max_killing_spree,
+                    COALESCE(p.headshot_kills, 0) AS headshot_kills,
+                    COALESCE(p.avg_life_seconds, 0) AS average_life_seconds,
+                    COALESCE(r.duration_seconds, 0) AS time_played_seconds,
+                    COALESCE(p.kills, 0) AS kills,
+                    COALESCE(p.deaths, 0) AS deaths,
+                    COALESCE(p.assists, 0) AS assists,
+                    CASE WHEN p.shots_fired > 0
+                        THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT)
+                        ELSE NULL
+                    END AS accuracy,
+                    CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
+                    CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+                    p.score AS personal_score,
+                    COALESCE(r.is_firefight, FALSE) AS is_firefight,
+                    COALESCE(r.is_ranked, FALSE) AS is_ranked,
+                    p.xuid
+                FROM shared.match_participants p
+                JOIN shared.match_registry r ON p.match_id = r.match_id
+                WHERE p.xuid = ?
+                  AND p.match_id IN ({placeholders})
+                ORDER BY r.start_time DESC
+            """
+
+            from src.data.repositories._arrow_bridge import result_to_polars
+
+            result = conn.execute(query, [xuid, *match_ids_list])
+            df_filtered = result_to_polars(result)
+
             return TeammateStats(
                 gamertag=teammate_gamertag,
                 df=df_filtered,
                 is_empty=df_filtered.is_empty(),
             )
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Erreur load_teammate_stats shared: {e}")
             return TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
+
+    # 8bis.A7 : _load_teammate_stats_legacy supprimé (v5.1)
+    # Toutes les données coéquipiers sont dans shared_matches.duckdb
 
     @staticmethod
     def enrich_series_with_perfect_kills(
@@ -144,21 +254,69 @@ class TeammatesService:
             if "match_id" in df.columns and not df.is_empty():
                 match_ids = df["match_id"].cast(pl.Utf8).to_list()
                 try:
+                    # Extraire le xuid depuis le DataFrame (colonne 'xuid')
+                    player_xuid = ""
+                    if "xuid" in df.columns:
+                        xuid_values = df["xuid"].unique()
+                        if len(xuid_values) > 0:
+                            player_xuid = str(xuid_values[0])
+                            logger.debug(
+                                f"[enrich] Extrait xuid depuis DataFrame pour {name}: {player_xuid}"
+                            )
+
+                    # Fallback pour le joueur principal : charger le xuid depuis sync_meta
+                    if not player_xuid and idx == 0:
+                        player_xuid = TeammatesService._load_xuid_from_db(db_path)
+                        logger.debug(
+                            f"[enrich] Chargé xuid depuis sync_meta pour {name}: {player_xuid}"
+                        )
+
                     if idx == 0:
                         use_path = db_path
                     else:
                         player_db = base_dir / name / "stats.duckdb"
                         use_path = str(player_db) if player_db.exists() else db_path
-                    repo = DuckDBRepository(use_path, "")
-                    counts = repo.count_perfect_kills_by_match(match_ids)
-                    _counts = counts  # bind for lambda closure (B023)
-                    df = df.with_columns(
-                        pl.col("match_id")
-                        .cast(pl.Utf8)
-                        .map_elements(lambda mid, _c=_counts: _c.get(mid, 0), return_dtype=pl.Int64)
-                        .alias("perfect_kills")
+                        # Fallback pour les coéquipiers : charger le xuid depuis leur DB
+                        if not player_xuid and player_db.exists():
+                            player_xuid = TeammatesService._load_xuid_from_db(str(player_db))
+
+                    if not player_xuid:
+                        # Si impossible de trouver le xuid, skip ce joueur
+                        logger.warning(
+                            f"Impossible de trouver le xuid pour {name}, skip perfect_kills"
+                        )
+                        df = df.with_columns(pl.lit(0).alias("perfect_kills"))
+                        enriched.append((name, df))
+                        continue
+
+                    logger.debug(
+                        f"[enrich] Appel count_perfect_kills_by_match pour {name} "
+                        f"(xuid={player_xuid}, {len(match_ids)} matchs)"
                     )
-                except Exception:
+                    repo = DuckDBRepository(use_path, player_xuid)
+                    counts = repo.count_perfect_kills_by_match(match_ids)
+                    logger.debug(
+                        f"[enrich] Résultat pour {name}: {len(counts)} matchs avec Perfect"
+                    )
+
+                    # Si aucun Perfect, mettre 0 pour tous les matchs
+                    if not counts:
+                        df = df.with_columns(pl.lit(0).alias("perfect_kills"))
+                    else:
+                        # Créer le lookup DataFrame avec types explicites
+                        _lookup = pl.DataFrame(
+                            {
+                                "_mid": pl.Series(list(counts.keys()), dtype=pl.Utf8),
+                                "_pk": pl.Series(list(counts.values()), dtype=pl.Int64),
+                            }
+                        )
+                        df = df.with_columns(pl.col("match_id").cast(pl.Utf8).alias("_join_mid"))
+                        df = df.join(_lookup, left_on="_join_mid", right_on="_mid", how="left")
+                        df = df.with_columns(
+                            pl.col("_pk").fill_null(0).alias("perfect_kills")
+                        ).drop(["_join_mid", "_pk"], strict=False)
+                except Exception as e:
+                    logger.debug(f"Erreur enrichissement perfect_kills pour {name}: {e}")
                     df = df.with_columns(pl.lit(0).alias("perfect_kills"))
             else:
                 df = df.with_columns(pl.lit(0).alias("perfect_kills"))
@@ -275,7 +433,9 @@ class TeammatesService:
         match_ids: list[str],
         friend_xuids: list[str],
     ) -> ImpactData:
-        """Charge les données d'impact et taquinerie depuis la DB.
+        """Charge les données d'impact et taquinerie depuis shared.
+
+        V5 : Lit shared.highlight_events et shared.match_registry (outcome).
 
         Args:
             db_path: Chemin vers la DB.
@@ -288,57 +448,48 @@ class TeammatesService:
         """
         from src.data.repositories import DuckDBRepository
 
+        _empty = ImpactData(
+            first_bloods={},
+            clutch_finishers={},
+            last_casualties={},
+            scores={},
+            gamertags=[],
+            match_ids=[],
+            available=False,
+        )
+
         if len(friend_xuids) < 2 or not match_ids:
-            return ImpactData(
-                first_bloods={},
-                clutch_finishers={},
-                last_casualties={},
-                scores={},
-                gamertags=[],
-                match_ids=[],
-                available=False,
-            )
+            return _empty
 
         try:
             repo = DuckDBRepository(db_path, xuid.strip())
             conn = repo._get_connection()
 
-            # Vérifier présence table highlight_events
-            has_events_table = conn.execute(
-                "SELECT table_name FROM information_schema.tables "
-                "WHERE table_schema = 'main' AND table_name = 'highlight_events'"
-            ).fetchone()
+            placeholders = ", ".join(["?" for _ in match_ids])
 
-            if not has_events_table:
-                return ImpactData(
-                    first_bloods={},
-                    clutch_finishers={},
-                    last_casualties={},
-                    scores={},
-                    gamertags=[],
-                    match_ids=[],
-                    available=False,
-                )
-
-            # Charger les événements
-            events_query = """
-                SELECT match_id, xuid::TEXT as xuid, gamertag, event_type, time_ms
-                FROM highlight_events
-                WHERE match_id IN ({})
-            """.format(", ".join(["?" for _ in match_ids]))
+            # Charger les événements depuis shared.highlight_events
+            # Schéma v5 : killer_xuid/victim_xuid → construire xuid/gamertag
+            events_query = f"""
+                SELECT
+                    match_id,
+                    CASE WHEN event_type IN ('kill', 'Kill') THEN killer_xuid::TEXT
+                         WHEN event_type IN ('death', 'Death') THEN victim_xuid::TEXT
+                         ELSE COALESCE(killer_xuid, victim_xuid)::TEXT
+                    END AS xuid,
+                    CASE WHEN event_type IN ('kill', 'Kill') THEN COALESCE(killer_gamertag, killer_xuid::TEXT)
+                         WHEN event_type IN ('death', 'Death') THEN COALESCE(victim_gamertag, victim_xuid::TEXT)
+                         ELSE COALESCE(killer_gamertag, victim_gamertag, 'Unknown')
+                    END AS gamertag,
+                    event_type,
+                    COALESCE(time_ms, 0) AS time_ms
+                FROM shared.highlight_events
+                WHERE match_id IN ({placeholders})
+            """
 
             events_result = conn.execute(events_query, match_ids).fetchall()
 
             if not events_result:
-                return ImpactData(
-                    first_bloods={},
-                    clutch_finishers={},
-                    last_casualties={},
-                    scores={},
-                    gamertags=[],
-                    match_ids=[],
-                    available=False,
-                )
+                return _empty
 
             events_df = pl.DataFrame(
                 {
@@ -350,14 +501,27 @@ class TeammatesService:
                 }
             )
 
-            # Charger les outcomes
-            matches_query = """
+            # Charger les outcomes depuis shared.match_registry
+            matches_query = f"""
                 SELECT match_id, outcome
-                FROM match_stats
-                WHERE match_id IN ({})
-            """.format(", ".join(["?" for _ in match_ids]))
+                FROM shared.match_participants
+                WHERE match_id IN ({placeholders})
+                  AND xuid = ?
+            """
 
-            matches_result = conn.execute(matches_query, match_ids).fetchall()
+            matches_result = conn.execute(matches_query, [*match_ids, xuid.strip()]).fetchall()
+
+            if not matches_result:
+                # Fallback : essayer match_stats local
+                try:
+                    fallback_query = f"""
+                        SELECT match_id, outcome
+                        FROM match_stats
+                        WHERE match_id IN ({placeholders})
+                    """
+                    matches_result = conn.execute(fallback_query, match_ids).fetchall()
+                except Exception:
+                    matches_result = []
 
             matches_df = pl.DataFrame(
                 {
@@ -371,20 +535,17 @@ class TeammatesService:
 
             from src.analysis.friends_impact import get_all_impact_events
 
-            first_bloods, clutch_finishers, last_casualties, scores = get_all_impact_events(
-                events_df, matches_df, friend_xuids=all_friend_xuids
-            )
+            (
+                first_bloods,
+                clutch_finishers,
+                last_casualties,
+                last_group_kills,
+                first_group_deaths,
+                scores,
+            ) = get_all_impact_events(events_df, matches_df, friend_xuids=all_friend_xuids)
 
             if not scores:
-                return ImpactData(
-                    first_bloods={},
-                    clutch_finishers={},
-                    last_casualties={},
-                    scores={},
-                    gamertags=[],
-                    match_ids=[],
-                    available=False,
-                )
+                return _empty
 
             gamertags = list(scores.keys())
             sorted_match_ids = sorted(
@@ -396,6 +557,8 @@ class TeammatesService:
                         list(first_bloods.keys())
                         + list(clutch_finishers.keys())
                         + list(last_casualties.keys())
+                        + list(last_group_kills.keys())
+                        + list(first_group_deaths.keys())
                     )
                 }
             )

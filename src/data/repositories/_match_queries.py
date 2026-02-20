@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
@@ -36,12 +36,17 @@ class MatchQueriesMixin:
     # Source de données matchs (v5 shared / v4 local)
     # =========================================================================
 
-    def _get_match_table_name(self, conn) -> str:
-        """Détecte la table de matchs disponible (fallback v4 → v3).
+    def _get_match_table_name(self, conn) -> str | None:
+        """Détecte la table de matchs disponible (avec cache).
 
         Returns:
-            Nom de la table : "match_stats" (v4) ou "player_match_stats" (v3 legacy)
+            Nom de la table "match_stats" si elle existe localement, None sinon (v5.1+).
         """
+        # Cache au niveau instance — évite les requêtes information_schema répétées
+        cache_key = "local_table:match_stats"
+        if hasattr(self, "_table_cache") and cache_key in self._table_cache:
+            return "match_stats" if self._table_cache[cache_key] else None
+
         # Essayer match_stats (v4) en premier
         try:
             result = conn.execute(
@@ -49,46 +54,43 @@ class MatchQueriesMixin:
                 "WHERE table_schema = 'main' AND table_name = 'match_stats'"
             ).fetchone()
             if result and result[0] > 0:
+                if hasattr(self, "_table_cache"):
+                    self._table_cache[cache_key] = True
                 return "match_stats"
         except Exception:
             pass
 
-        # Fallback sur player_match_stats (v3 legacy)
-        try:
-            result = conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = 'main' AND table_name = 'player_match_stats'"
-            ).fetchone()
-            if result and result[0] > 0:
-                return "player_match_stats"
-        except Exception:
-            pass
+        # Table locale match_stats absente (v5.1+ : tables legacy supprimées)
+        if hasattr(self, "_table_cache"):
+            self._table_cache[cache_key] = False
+        return None
 
-        # Par défaut, retourner match_stats (va probablement échouer mais c'est attendu v4+)
-        return "match_stats"
-
-    def _get_match_source(self, conn) -> tuple[str, list[str]]:
+    def _get_match_source(self, conn) -> tuple[str, list[str], bool]:
         """Retourne l'expression FROM pour les matchs (v5 shared ou v4 local).
 
-        En mode v5, construit une sous-requête combinant shared.match_registry,
-        shared.match_participants et un LEFT JOIN vers match_stats local pour
-        les colonnes non disponibles dans shared (kda, spree, headshot_kills, etc.).
-        La sous-requête est aliasée ``match_stats`` pour que toutes les références
-        externes (jointures metadata, MMR, filtres) restent inchangées.
+        En mode v5, utilise la vue mv_player_matches si disponible (v5.1),
+        sinon construit une sous-requête combinant shared.match_registry,
+        shared.match_participants et un LEFT JOIN vers match_stats local.
 
-        En mode v4/v3, retourne le nom de la table locale directe (match_stats ou player_match_stats).
+        En mode v4/v3, retourne le nom de la table locale directe.
 
         Returns:
-            Tuple (from_expression, params).
+            Tuple (from_expression, params, uses_mv).
+            uses_mv est True quand mv_player_matches est utilisée (noms déjà résolus,
+            pas besoin de jointures metadata/MMR supplémentaires).
         """
         # Forcer mode local si XUID vide ou None (DBs v3/legacy)
         if not self._xuid or self._xuid.strip() == "":
             match_table = self._get_match_table_name(conn)
+            if match_table is None:
+                raise RuntimeError(
+                    "Table match_stats absente (v5.1+) et XUID vide. "
+                    "Impossible de charger les matchs."
+                )
             logger.debug(f"Mode v4/v3 (XUID vide) : requête via table locale {match_table}")
-            # Retourner le nom tel quel (alias uniquement si différent de "match_stats")
             if match_table == "match_stats":
-                return match_table, []
-            return f"{match_table} AS match_stats", []
+                return match_table, [], False
+            return f"{match_table} AS match_stats", [], False
 
         # Forcer mode local si tables shared absentes
         if not (
@@ -96,148 +98,44 @@ class MatchQueriesMixin:
             and self._has_shared_table("match_registry")
             and self._has_shared_table("match_participants")
         ):
-            # Mode v4/v3 local : déterminer la table de matchs disponible
             match_table = self._get_match_table_name(conn)
+            if match_table is None:
+                raise RuntimeError(
+                    "shared_matches.duckdb indisponible (fichier verrouillé par un autre "
+                    "processus ?) et table locale match_stats absente (v5.1+). "
+                    "Fermez les scripts en cours (backfill, sync) puis relancez l'app."
+                )
             logger.debug(f"Mode v4/v3 : requête via table locale {match_table}")
-            # Retourner le nom tel quel (alias uniquement si différent de "match_stats")
             if match_table == "match_stats":
-                return match_table, []
-            return f"{match_table} AS match_stats", []
+                return match_table, [], False
+            return f"{match_table} AS match_stats", [], False
 
-        # Vérifier si la table match_stats locale existe (période de transition)
-        has_ms = (
-            conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = 'main' AND table_name = 'match_stats'"
-            ).fetchone()[0]
-            > 0
-        )
-
-        if has_ms:
-            ms_join = "LEFT JOIN match_stats ms ON r.match_id = ms.match_id"
-            # Vérifier les colonnes optionnelles dans match_stats local
-            has_is_ranked = self._has_column(conn, "match_stats", "is_ranked")
-            has_is_firefight = self._has_column(conn, "match_stats", "is_firefight")
-            # Vérifier si match_participants a les colonnes étendues (migration v5.1)
-            has_p_avg_life = self._has_shared_mp_column(conn, "avg_life_seconds")
-            has_p_max_spree = self._has_shared_mp_column(conn, "max_killing_spree")
-            has_p_hs_kills = self._has_shared_mp_column(conn, "headshot_kills")
-
-            kda_expr = (
-                "COALESCE(ms.kda, "
-                "CASE WHEN p.deaths > 0 "
-                "THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0) "
-                "/ CAST(p.deaths AS FLOAT) "
-                "ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0 END)"
-            )
-            if has_p_max_spree:
-                spree_expr = "COALESCE(p.max_killing_spree, ms.max_killing_spree, 0)"
-            else:
-                spree_expr = "COALESCE(ms.max_killing_spree, 0)"
-            if has_p_hs_kills:
-                hs_expr = "COALESCE(p.headshot_kills, ms.headshot_kills, 0)"
-            else:
-                hs_expr = "COALESCE(ms.headshot_kills, 0)"
-            if has_p_avg_life:
-                avg_life_expr = "COALESCE(ms.avg_life_seconds, p.avg_life_seconds, 0)"
-            else:
-                avg_life_expr = "COALESCE(ms.avg_life_seconds, 0)"
-            mmr_team = "ms.team_mmr"
-            mmr_enemy = "ms.enemy_mmr"
-            time_expr = "COALESCE(r.duration_seconds, ms.time_played_seconds)"
-            acc_expr = (
-                "COALESCE(ms.accuracy, "
-                "CASE WHEN p.shots_fired > 0 "
-                "THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT) "
-                "ELSE NULL END)"
-            )
-            my_score = (
-                "COALESCE(ms.my_team_score, "
-                "CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END)"
-            )
-            enemy_score = (
-                "COALESCE(ms.enemy_team_score, "
-                "CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END)"
-            )
-            pscore = "COALESCE(ms.personal_score, p.score)"
-            map_name = "COALESCE(r.map_name, ms.map_name)"
-            playlist_name = "COALESCE(r.playlist_name, ms.playlist_name)"
-            pair_name = "COALESCE(r.pair_name, ms.pair_name)"
-            gv_name = "COALESCE(r.game_variant_name, ms.game_variant_name)"
-            is_ff = (
-                f"COALESCE(r.is_firefight, {'ms.is_firefight, ' if has_is_firefight else ''}FALSE)"
-            )
-            is_rk = f"COALESCE(r.is_ranked, {'ms.is_ranked, ' if has_is_ranked else ''}FALSE)"
-        else:
-            ms_join = ""
-            # Vérifier si match_participants a les colonnes étendues (migration v5.1)
-            has_p_avg_life = self._has_shared_mp_column(conn, "avg_life_seconds")
-            has_p_max_spree = self._has_shared_mp_column(conn, "max_killing_spree")
-            has_p_hs_kills = self._has_shared_mp_column(conn, "headshot_kills")
-            kda_expr = (
-                "CASE WHEN p.deaths > 0 "
-                "THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0) "
-                "/ CAST(p.deaths AS FLOAT) "
-                "ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0 END"
-            )
-            spree_expr = "COALESCE(p.max_killing_spree, 0)" if has_p_max_spree else "0"
-            hs_expr = "COALESCE(p.headshot_kills, 0)" if has_p_hs_kills else "0"
-            avg_life_expr = "COALESCE(p.avg_life_seconds, 0)" if has_p_avg_life else "0"
-            mmr_team = "NULL"
-            mmr_enemy = "NULL"
-            time_expr = "r.duration_seconds"
-            acc_expr = (
-                "CASE WHEN p.shots_fired > 0 "
-                "THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT) "
-                "ELSE NULL END"
-            )
-            my_score = "CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END"
-            enemy_score = "CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END"
-            pscore = "p.score"
-            map_name = "r.map_name"
-            playlist_name = "r.playlist_name"
-            pair_name = "r.pair_name"
-            gv_name = "r.game_variant_name"
-            is_ff = "COALESCE(r.is_firefight, FALSE)"
-            is_rk = "COALESCE(r.is_ranked, FALSE)"
-
-        source = f"""(SELECT
-            r.match_id,
-            r.start_time,
-            r.map_id,
-            {map_name} AS map_name,
-            r.playlist_id,
-            {playlist_name} AS playlist_name,
-            r.pair_id,
-            {pair_name} AS pair_name,
-            r.game_variant_id,
-            {gv_name} AS game_variant_name,
-            p.outcome,
-            p.team_id,
-            {kda_expr} AS kda,
-            {spree_expr} AS max_killing_spree,
-            {hs_expr} AS headshot_kills,
-            {avg_life_expr} AS avg_life_seconds,
-            {time_expr} AS time_played_seconds,
-            COALESCE(p.kills, 0) AS kills,
-            COALESCE(p.deaths, 0) AS deaths,
-            COALESCE(p.assists, 0) AS assists,
-            {acc_expr} AS accuracy,
-            {my_score} AS my_team_score,
-            {enemy_score} AS enemy_team_score,
-            {mmr_team} AS team_mmr,
-            {mmr_enemy} AS enemy_mmr,
-            {pscore} AS personal_score,
-            {is_ff} AS is_firefight,
-            {is_rk} AS is_ranked
-        FROM shared.match_registry r
-        JOIN shared.match_participants p
-            ON r.match_id = p.match_id AND p.xuid = ?
-        {ms_join}
+        # ── Mode v5.1 : vue mv_player_matches (optimisé) ──
+        # 8bis.A5 : Simplification post-étape 8 (tables legacy supprimées)
+        # Plus de LEFT JOIN vers match_stats — toutes les données sont dans shared
+        if self._has_shared_view("mv_player_matches"):
+            source = """(SELECT
+            match_id, start_time, map_id, map_name,
+            playlist_id, playlist_name, pair_id, pair_name,
+            game_variant_id, game_variant_name, outcome, team_id,
+            kda, max_killing_spree, headshot_kills, avg_life_seconds,
+            time_played_seconds, kills, deaths, assists, accuracy,
+            my_team_score, enemy_team_score,
+            team_mmr, enemy_mmr,
+            personal_score, is_firefight, is_ranked
+        FROM shared.mv_player_matches
+        WHERE xuid = ?
         ) AS match_stats"""
 
-        logger.debug("Mode v5 : requête via shared.match_registry + match_participants")
-        return source, [self._xuid]
+            logger.debug("Mode v5.1 : requête via vue mv_player_matches")
+            return source, [self._xuid], True
+
+        # ── Erreur v5.1 : vue mv_player_matches requise ──
+        # Post-étape 8, les tables legacy sont supprimées — pas de fallback
+        raise RuntimeError(
+            "Vue mv_player_matches non trouvée dans shared_matches.duckdb. "
+            "Exécutez 'python scripts/rebuild_shared_views.py' pour créer les vues."
+        )
 
     # =========================================================================
     # Chargement des matchs
@@ -260,7 +158,7 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, uses_mv = self._get_match_source(conn)
         is_shared = bool(source_params)
 
         where_clauses = []
@@ -294,13 +192,22 @@ class MatchQueriesMixin:
         if offset is not None:
             pagination_sql += f" OFFSET {int(offset)}"
 
-        # Résoudre les métadonnées depuis meta.* si disponible
-        metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
-            self._build_metadata_resolution(conn)
-        )
-
-        # Fallback MMR depuis player_match_stats si disponible
-        pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
+        # v5.1 perf — skip jointures redondantes quand mv_player_matches est utilisée
+        if uses_mv:
+            metadata_joins = ""
+            map_name_expr = "match_stats.map_name"
+            playlist_name_expr = "match_stats.playlist_name"
+            pair_name_expr = "match_stats.pair_name"
+            pms_join = ""
+            team_mmr_expr = "match_stats.team_mmr"
+            enemy_mmr_expr = "match_stats.enemy_mmr"
+        else:
+            # Résoudre les métadonnées depuis meta.* si disponible
+            metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
+                self._build_metadata_resolution(conn)
+            )
+            # Fallback MMR depuis player_match_stats si disponible
+            pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
 
         # En mode shared, personal_score est toujours dans la sous-requête
         if is_shared:
@@ -448,16 +355,25 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, uses_mv = self._get_match_source(conn)
         is_shared = bool(source_params)
 
-        # Résoudre les métadonnées depuis meta.* si disponible
-        metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
-            self._build_metadata_resolution(conn)
-        )
-
-        # Fallback MMR depuis player_match_stats si disponible
-        pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
+        # v5.1 perf — skip jointures redondantes quand mv_player_matches est utilisée
+        if uses_mv:
+            metadata_joins = ""
+            map_name_expr = "match_stats.map_name"
+            playlist_name_expr = "match_stats.playlist_name"
+            pair_name_expr = "match_stats.pair_name"
+            pms_join = ""
+            team_mmr_expr = "match_stats.team_mmr"
+            enemy_mmr_expr = "match_stats.enemy_mmr"
+        else:
+            # Résoudre les métadonnées depuis meta.* si disponible
+            metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
+                self._build_metadata_resolution(conn)
+            )
+            # Fallback MMR depuis player_match_stats si disponible
+            pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
 
         if is_shared:
             personal_score_select = "match_stats.personal_score"
@@ -586,16 +502,25 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, uses_mv = self._get_match_source(conn)
         is_shared = bool(source_params)
 
-        # Résoudre les métadonnées depuis meta.* si disponible
-        metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
-            self._build_metadata_resolution(conn)
-        )
-
-        # Fallback MMR depuis player_match_stats si disponible
-        pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
+        # v5.1 perf — skip jointures redondantes quand mv_player_matches est utilisée
+        if uses_mv:
+            metadata_joins = ""
+            map_name_expr = "match_stats.map_name"
+            playlist_name_expr = "match_stats.playlist_name"
+            pair_name_expr = "match_stats.pair_name"
+            pms_join = ""
+            team_mmr_expr = "match_stats.team_mmr"
+            enemy_mmr_expr = "match_stats.enemy_mmr"
+        else:
+            # Résoudre les métadonnées depuis meta.* si disponible
+            metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
+                self._build_metadata_resolution(conn)
+            )
+            # Fallback MMR depuis player_match_stats si disponible
+            pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
 
         if is_shared:
             personal_score_select = "match_stats.personal_score"
@@ -715,16 +640,25 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, uses_mv = self._get_match_source(conn)
         is_shared = bool(source_params)
 
-        # Résoudre les métadonnées depuis meta.* si disponible
-        metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
-            self._build_metadata_resolution(conn)
-        )
-
-        # Fallback MMR depuis player_match_stats si disponible
-        pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
+        # v5.1 perf — skip jointures redondantes quand mv_player_matches est utilisée
+        if uses_mv:
+            metadata_joins = ""
+            map_name_expr = "match_stats.map_name"
+            playlist_name_expr = "match_stats.playlist_name"
+            pair_name_expr = "match_stats.pair_name"
+            pms_join = ""
+            team_mmr_expr = "match_stats.team_mmr"
+            enemy_mmr_expr = "match_stats.enemy_mmr"
+        else:
+            # Résoudre les métadonnées depuis meta.* si disponible
+            metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
+                self._build_metadata_resolution(conn)
+            )
+            # Fallback MMR depuis player_match_stats si disponible
+            pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
 
         if is_shared:
             personal_score_select = "match_stats.personal_score"
@@ -824,11 +758,9 @@ class MatchQueriesMixin:
     def load_match_mmr_batch(
         self, match_ids: list[str]
     ) -> dict[str, tuple[float | None, float | None]]:
-        """Charge le MMR pour plusieurs matchs en une seule requête.
+        """Charge le MMR pour plusieurs matchs depuis shared ou local.
 
-        Utilise match_stats avec fallback sur player_match_stats si les MMR
-        sont NULL dans match_stats (cas des anciens matchs synchronisés
-        avant l'extraction des MMR vers match_stats).
+        Priorité : shared.match_participants (v5) → match_stats + player_match_stats (local).
 
         Args:
             match_ids: Liste des match_id à charger.
@@ -840,40 +772,145 @@ class MatchQueriesMixin:
             return {}
 
         conn = self._get_connection()
-
         placeholders = ", ".join(["?" for _ in match_ids])
 
-        # Vérifier si player_match_stats existe pour le fallback
-        tables = conn.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema='main' AND table_name='player_match_stats'"
-        ).fetchall()
-        has_pms = len(tables) > 0
+        # V5 : shared.match_participants (colonnes team_mmr/enemy_mmr si disponibles)
+        if self._has_shared_table("match_participants"):
+            try:
+                result = conn.execute(
+                    f"""
+                    SELECT match_id, team_mmr, enemy_mmr
+                    FROM shared.match_participants
+                    WHERE match_id IN ({placeholders})
+                      AND xuid = ?
+                    """,
+                    [*match_ids, self._xuid],
+                )
+                shared_result = {row[0]: (row[1], row[2]) for row in result.fetchall()}
+                if shared_result:
+                    return shared_result
+            except Exception:
+                pass
 
-        if has_pms:
-            # Utiliser COALESCE pour fallback sur player_match_stats
-            result = conn.execute(
-                f"""
-                SELECT
-                    ms.match_id,
-                    COALESCE(ms.team_mmr, pms.team_mmr) as team_mmr,
-                    COALESCE(ms.enemy_mmr, pms.enemy_mmr) as enemy_mmr
-                FROM match_stats ms
-                LEFT JOIN player_match_stats pms ON ms.match_id = pms.match_id
-                WHERE ms.match_id IN ({placeholders})
-                """,
-                match_ids,
-            )
-        else:
-            result = conn.execute(
-                f"""
-                SELECT match_id, team_mmr, enemy_mmr
-                FROM match_stats
-                WHERE match_id IN ({placeholders})
-                """,
-                match_ids,
-            )
+        # Fallback local : match_stats + player_match_stats (pour MMR historiques)
+        try:
+            has_pms = self._has_table_cached(conn, "player_match_stats")
+            if has_pms:
+                result = conn.execute(
+                    f"""
+                    SELECT
+                        ms.match_id,
+                        COALESCE(ms.team_mmr, pms.team_mmr) as team_mmr,
+                        COALESCE(ms.enemy_mmr, pms.enemy_mmr) as enemy_mmr
+                    FROM match_stats ms
+                    LEFT JOIN player_match_stats pms ON ms.match_id = pms.match_id
+                    WHERE ms.match_id IN ({placeholders})
+                    """,
+                    match_ids,
+                )
+            else:
+                result = conn.execute(
+                    f"""
+                    SELECT match_id, team_mmr, enemy_mmr
+                    FROM match_stats
+                    WHERE match_id IN ({placeholders})
+                    """,
+                    match_ids,
+                )
+            return {row[0]: (row[1], row[2]) for row in result.fetchall()}
+        except Exception:
+            return {}
 
-        return {row[0]: (row[1], row[2]) for row in result.fetchall()}
+    def load_match_skill_data(self, match_id: str) -> dict[str, Any] | None:
+        """Charge team_mmr, enemy_mmr et kills/deaths/assists expected/stddev.
+
+        Pipeline de lecture v5.1 :
+            1. shared.match_participants (source principale)
+            2. Fallback : player_match_stats locale (données historiques legacy)
+
+        Utilisé par cache_loaders.py pour alimenter l'UI (graphes
+        expected vs actual, affichage MMR).
+
+        ⚠️ Limitation API : assists.expected / assists.stddev sont
+        toujours NULL (API Halo StatPerformances ne fournit pas Assists).
+
+        Args:
+            match_id: ID du match.
+
+        Returns:
+            Dict avec team_mmr, enemy_mmr, kills, deaths, assists
+            (chacun {count, expected, stddev}). None si non trouvé.
+        """
+        conn = self._get_connection()
+
+        # V5 : shared.match_participants
+        if self._has_shared_table("match_participants"):
+            try:
+                row = conn.execute(
+                    """
+                    SELECT team_mmr, enemy_mmr,
+                           kills, kills_expected, kills_stddev,
+                           deaths, deaths_expected, deaths_stddev,
+                           assists, assists_expected, assists_stddev,
+                           team_id
+                    FROM shared.match_participants
+                    WHERE match_id = ? AND xuid = ?
+                    """,
+                    [match_id, self._xuid],
+                ).fetchone()
+                if row:
+                    team_mmr = row[0]
+                    enemy_mmr = row[1]
+                    team_id = row[11]
+
+                    # Fallback MMR: si le joueur n'a pas de MMR, chercher depuis un coéquipier
+                    # Les MMR d'équipe sont identiques pour tous les joueurs de la même équipe
+                    if (team_mmr is None or enemy_mmr is None) and team_id is not None:
+                        try:
+                            teammate_row = conn.execute(
+                                """
+                                SELECT team_mmr, enemy_mmr
+                                FROM shared.match_participants
+                                WHERE match_id = ?
+                                  AND team_id = ?
+                                  AND team_mmr IS NOT NULL
+                                  AND enemy_mmr IS NOT NULL
+                                LIMIT 1
+                                """,
+                                [match_id, team_id],
+                            ).fetchone()
+                            if teammate_row:
+                                team_mmr = teammate_row[0]
+                                enemy_mmr = teammate_row[1]
+                        except Exception:
+                            pass
+
+                    return {
+                        "team_id": team_id,
+                        "team_mmr": team_mmr,
+                        "enemy_mmr": enemy_mmr,
+                        "kills": {
+                            "count": row[2],
+                            "expected": row[3],
+                            "stddev": row[4],
+                        },
+                        "deaths": {
+                            "count": row[5],
+                            "expected": row[6],
+                            "stddev": row[7],
+                        },
+                        "assists": {
+                            "count": row[8],
+                            "expected": row[9],
+                            "stddev": row[10],
+                        },
+                    }
+            except Exception:
+                pass
+
+        # NOTE v5.1 : player_match_stats supprimée, match_participants est la
+        # source unique. Pas de fallback legacy.
+        return None
 
     # =========================================================================
     # Chargement Polars zero-copy (Sprint 19 — hot path optimisé)
@@ -908,7 +945,7 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, uses_mv = self._get_match_source(conn)
         is_shared = bool(source_params)
 
         where_clauses = []
@@ -916,11 +953,21 @@ class MatchQueriesMixin:
             where_clauses.append("match_stats.is_firefight = FALSE")
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
-        # Résoudre les métadonnées
-        metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
-            self._build_metadata_resolution(conn)
-        )
-        pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
+        # v5.1 perf — skip jointures redondantes quand mv_player_matches est utilisée
+        if uses_mv:
+            metadata_joins = ""
+            map_name_expr = "match_stats.map_name"
+            playlist_name_expr = "match_stats.playlist_name"
+            pair_name_expr = "match_stats.pair_name"
+            pms_join = ""
+            team_mmr_expr = "match_stats.team_mmr"
+            enemy_mmr_expr = "match_stats.enemy_mmr"
+        else:
+            # Résoudre les métadonnées
+            metadata_joins, map_name_expr, playlist_name_expr, pair_name_expr = (
+                self._build_metadata_resolution(conn)
+            )
+            pms_join, team_mmr_expr, enemy_mmr_expr = self._build_mmr_fallback(conn)
         if is_shared:
             personal_score_select = "match_stats.personal_score"
         else:
@@ -1092,7 +1139,7 @@ class MatchQueriesMixin:
         conn = self._get_connection()
 
         # Source v5 (shared) ou v4 (locale)
-        source_sql, source_params = self._get_match_source(conn)
+        source_sql, source_params, _uses_mv = self._get_match_source(conn)
 
         where_clauses = []
         params: list = []

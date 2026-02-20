@@ -103,7 +103,8 @@ def _prepare_history_metrics(df_history: pl.DataFrame) -> pl.DataFrame:
     Returns:
         DataFrame Polars avec colonnes:
         - kpm, dpm_deaths, apm, kda, accuracy (existants, dpm renommé en dpm_deaths)
-        - pspm, dpm_damage, rank_perf_diff (nouveaux v4)
+        - pspm, dpm_damage, rank_perf_diff (v4)
+        - kills_vs_expected, deaths_vs_expected (v5)
     """
     output_cols = [
         "kpm",
@@ -114,6 +115,8 @@ def _prepare_history_metrics(df_history: pl.DataFrame) -> pl.DataFrame:
         "pspm",
         "dpm_damage",
         "rank_perf_diff",
+        "kills_vs_expected",
+        "deaths_vs_expected",
     ]
 
     if df_history.is_empty():
@@ -187,6 +190,38 @@ def _prepare_history_metrics(df_history: pl.DataFrame) -> pl.DataFrame:
     else:
         df = df.with_columns(pl.lit(None).cast(pl.Float64).alias("rank_perf_diff"))
 
+    # Kills vs Expected (v5) — ratio kills réels / kills attendus
+    # > 1.0 = plus de kills que prévu par le matchmaking
+    has_kills_expected = "kills_expected" in df.columns
+    if has_kills_expected:
+        kills_col = _safe_col(df, "kills")
+        kills_exp_col = pl.col("kills_expected").cast(pl.Float64, strict=False)
+        df = df.with_columns(
+            pl.when(kills_exp_col.is_not_null() & (kills_exp_col > 0.0))
+            .then(kills_col / kills_exp_col)
+            .otherwise(pl.lit(None))
+            .alias("kills_vs_expected")
+        )
+    else:
+        df = df.with_columns(pl.lit(None).cast(pl.Float64).alias("kills_vs_expected"))
+
+    # Deaths vs Expected (v5) — ratio deaths attendus / deaths réels (inversé)
+    # > 1.0 = moins de morts que prévu = mieux
+    has_deaths_expected = "deaths_expected" in df.columns
+    if has_deaths_expected:
+        deaths_col = (
+            pl.when(_safe_col(df, "deaths") < 1.0).then(1.0).otherwise(_safe_col(df, "deaths"))
+        )
+        deaths_exp_col = pl.col("deaths_expected").cast(pl.Float64, strict=False)
+        df = df.with_columns(
+            pl.when(deaths_exp_col.is_not_null() & (deaths_exp_col > 0.0))
+            .then(deaths_exp_col / deaths_col)
+            .otherwise(pl.lit(None))
+            .alias("deaths_vs_expected")
+        )
+    else:
+        df = df.with_columns(pl.lit(None).cast(pl.Float64).alias("deaths_vs_expected"))
+
     return df.select(output_cols)
 
 
@@ -235,12 +270,12 @@ def compute_relative_performance_score(
     """Calcule le score de performance RELATIF d'un match (v4).
 
     Compare le match à l'historique personnel du joueur.
-    Utilise 8 métriques avec graceful degradation si certaines sont absentes.
+    Utilise 10 métriques avec graceful degradation si certaines sont absentes.
 
     Args:
         row: Dict du match avec kills, deaths, assists, kda, accuracy,
              time_played_seconds, personal_score, damage_dealt, rank,
-             team_mmr, enemy_mmr.
+             team_mmr, enemy_mmr, kills_expected, deaths_expected.
         df_history: DataFrame (Polars ou Pandas) de l'historique complet du joueur.
 
     Returns:
@@ -312,6 +347,19 @@ def compute_relative_performance_score(
         team_mmr = _safe_float(row.get("team_mmr"))
         enemy_mmr = _safe_float(row.get("enemy_mmr"))
 
+        # v5: Kills/Deaths vs Expected
+        kills_expected = _safe_float(row.get("kills_expected"))
+        deaths_expected = _safe_float(row.get("deaths_expected"))
+
+        # Ratios actual/expected
+        kills_vs_expected = None
+        if kills_expected is not None and kills_expected > 0:
+            kills_vs_expected = kills / kills_expected
+
+        deaths_vs_expected = None
+        if deaths_expected is not None and deaths_expected > 0:
+            deaths_vs_expected = deaths_expected / max(1.0, deaths)
+
     except Exception:
         return None
 
@@ -370,6 +418,20 @@ def compute_relative_performance_score(
         if rank_perf is not None:
             percentiles["rank_perf"] = rank_perf
             weights_used["rank_perf"] = RELATIVE_WEIGHTS["rank_perf"]
+
+    # v5: Kills vs Expected — plus le ratio est haut, mieux c'est
+    if kills_vs_expected is not None:
+        kve_series = history_metrics.get_column("kills_vs_expected").drop_nulls()
+        if not kve_series.is_empty():
+            percentiles["kills_vs_expected"] = _percentile_rank(kills_vs_expected, kve_series)
+            weights_used["kills_vs_expected"] = RELATIVE_WEIGHTS["kills_vs_expected"]
+
+    # v5: Deaths vs Expected — plus le ratio est haut, mieux c'est (inversé déjà)
+    if deaths_vs_expected is not None:
+        dve_series = history_metrics.get_column("deaths_vs_expected").drop_nulls()
+        if not dve_series.is_empty():
+            percentiles["deaths_vs_expected"] = _percentile_rank(deaths_vs_expected, dve_series)
+            weights_used["deaths_vs_expected"] = RELATIVE_WEIGHTS["deaths_vs_expected"]
 
     if not percentiles:
         return None

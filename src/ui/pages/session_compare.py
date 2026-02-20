@@ -11,6 +11,8 @@ from src.ui.components.performance import (
     render_metric_comparison_row,
     render_performance_score_card,
 )
+from src.ui.streamlit_modern import fragment_if_available
+from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import (
     DataFrameLike,
     ensure_polars,
@@ -39,7 +41,12 @@ def _infer_session_dominant_category(df_session: DataFrameLike) -> str:
 
     cats = (
         df_session.get_column("pair_name")
-        .map_elements(infer_custom_category_from_pair_name, return_dtype=pl.Utf8)
+        .cast(pl.Utf8)
+        .replace_strict(
+            build_mapping(df_session.get_column("pair_name"), infer_custom_category_from_pair_name),
+            default="Other",
+            return_dtype=pl.Utf8,
+        )
         .fill_null("Other")
         .alias("category")
     )
@@ -87,28 +94,25 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:
     xuid = st.session_state.get("player_xuid")
     if db_path and xuid:
         try:
-            # Détection du type de DB (DuckDB vs SQLite)
+            # Utiliser le repo caché au lieu d'ouvrir une nouvelle connexion
+            # (8bis.A3 : gain ~200-400ms par visite de page)
             if db_path.endswith(".duckdb"):
-                # DuckDB : la table Friends peut ne pas exister
-                import duckdb
+                from src.ui.cache_loaders import get_cached_repository_st
 
-                con = duckdb.connect(db_path, read_only=True)
-                try:
-                    # Vérifier si la table existe
-                    tables = con.execute(
-                        "SELECT table_name FROM information_schema.tables WHERE table_name = 'friends'"
+                repo = get_cached_repository_st(db_path, xuid)
+                conn = repo._get_connection()
+                # Vérifier si la table existe
+                tables = conn.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_name = 'friends'"
+                ).fetchall()
+                if tables:
+                    result = conn.execute(
+                        "SELECT friend_xuid, friend_gamertag, nickname FROM friends WHERE owner_xuid = ?",
+                        (xuid,),
                     ).fetchall()
-                    if tables:
-                        result = con.execute(
-                            "SELECT friend_xuid, friend_gamertag, nickname FROM friends WHERE owner_xuid = ?",
-                            (xuid,),
-                        ).fetchall()
-                        for row in result:
-                            fxuid, gamertag, nickname = row
-                            friends_mapping[fxuid] = nickname or gamertag or fxuid
-                finally:
-                    con.close()
-            # SQLite legacy supprimé - DuckDB v4 uniquement
+                    for row in result:
+                        fxuid, gamertag, nickname = row
+                        friends_mapping[fxuid] = nickname or gamertag or fxuid
         except Exception:
             pass
 
@@ -225,7 +229,12 @@ def _filter_candidate_sessions(
 
         df_candidates = df_candidates.with_columns(
             pl.col("pair_name")
-            .map_elements(infer_custom_category_from_pair_name, return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .replace_strict(
+                build_mapping(df_candidates["pair_name"], infer_custom_category_from_pair_name),
+                default="Other",
+                return_dtype=pl.Utf8,
+            )
             .alias("_cat")
         )
         dom_by_session: dict = {}
@@ -604,6 +613,7 @@ def _render_mmr_comparison(perf_a: dict, perf_b: dict) -> None:
     )
 
 
+@fragment_if_available
 def _render_cumulative_section(
     df_session_a: DataFrameLike,
     df_session_b: DataFrameLike,
@@ -625,7 +635,7 @@ def _render_cumulative_section(
         if not pl_a.is_empty() and not pl_b.is_empty():
             st.markdown("#### Net score cumulé par session")
             st.caption(
-                "Évolution du net score (Frags − Deaths) au fil des matchs de chaque session."
+                "Évolution du net score (Frags − Morts) au fil des matchs de chaque session."
             )
             try:
                 fig_cumul = plot_cumulative_comparison(
@@ -636,7 +646,7 @@ def _render_cumulative_section(
                     title="",
                 )
                 if fig_cumul is not None:
-                    st.plotly_chart(fig_cumul, width="stretch")
+                    st.plotly_chart(fig_cumul, width="stretch", config={"displayModeBar": False})
                 else:
                     st.info("Données insuffisantes pour le net score cumulé.")
             except Exception as e:
@@ -645,6 +655,7 @@ def _render_cumulative_section(
         pass
 
 
+@fragment_if_available
 def render_session_comparison_page(
     all_sessions_df: DataFrameLike,
     df_full: DataFrameLike | None = None,
@@ -670,9 +681,8 @@ def render_session_comparison_page(
     # Liste des sessions triées (plus récente en premier)
     session_info = (
         all_sessions_df.group_by(["session_id", "session_label"])
-        .len()
-        .rename({"len": "count"})
-        .sort("session_id", descending=True)
+        .agg(pl.col("start_time").max().alias("last_match_time"), pl.len().alias("count"))
+        .sort("last_match_time", descending=True)
     )
     session_labels = session_info.get_column("session_label").to_list()
 

@@ -214,7 +214,7 @@ def backfill_killer_victim_pairs(
 
 
 def backfill_end_time(conn: Any, force: bool = False, *, shared_conn: Any) -> int:
-    """Met à jour end_time (start_time + time_played_seconds) dans shared.match_registry.
+    """Met à jour end_time (start_time + duration_seconds) dans shared.match_registry.
 
     Args:
         conn: Connexion DuckDB joueur (non utilisée, conservée pour compatibilité de signature).
@@ -226,16 +226,16 @@ def backfill_end_time(conn: Any, force: bool = False, *, shared_conn: Any) -> in
     """
     try:
         where_clause = (
-            "WHERE start_time IS NOT NULL AND time_played_seconds IS NOT NULL"
+            "WHERE start_time IS NOT NULL AND duration_seconds IS NOT NULL"
             if force
             else "WHERE end_time IS NULL "
             "AND start_time IS NOT NULL "
-            "AND time_played_seconds IS NOT NULL"
+            "AND duration_seconds IS NOT NULL"
         )
         cursor = shared_conn.execute(
             f"""
             UPDATE match_registry
-            SET end_time = start_time + (time_played_seconds * INTERVAL '1 SECOND')
+            SET end_time = start_time + (duration_seconds * INTERVAL '1 SECOND')
             {where_clause}
             RETURNING match_id
             """
@@ -267,18 +267,26 @@ except ImportError:
 
 
 def compute_performance_score_for_match(
-    conn: Any, match_id: str, *, shared_conn: Any, xuid: str
+    conn: Any, match_id: str, *, shared_conn: Any, xuid: str, force: bool = False
 ) -> bool:
     """Calcule et met à jour le score de performance pour un match.
 
     Lit depuis shared.match_participants + match_registry,
     écrit dans player_match_enrichment (player DB).
 
+    Architecture v5.1 :
+        Le calcul utilise team_mmr et enemy_mmr directement depuis
+        mp.enemy_mmr (corrigé v5.1 : remplace l'ancienne sous-requête
+        corrélée qui calculait la moyenne de l'équipe adverse).
+        Le rank_perf (composante de rang) utilise le delta MMR pour
+        ajuster le score selon la difficulté de l'adversaire.
+
     Args:
         conn: Connexion DuckDB (player DB pour player_match_enrichment).
         match_id: ID du match.
         shared_conn: Connexion vers shared_matches.duckdb (obligatoire).
         xuid: XUID du joueur (obligatoire).
+        force: Si True, recalcule même si le score existe déjà.
 
     Returns:
         True si le score a été calculé, False sinon.
@@ -303,20 +311,22 @@ def compute_performance_score_for_match(
             )
         """)
 
-        # Vérifier si le score existe déjà dans player_match_enrichment
-        existing = conn.execute(
-            "SELECT performance_score FROM player_match_enrichment WHERE match_id = ?",
-            (match_id,),
-        ).fetchone()
-        if existing and existing[0] is not None:
-            return False
+        # Vérifier si le score existe déjà dans player_match_enrichment (sauf si force)
+        if not force:
+            existing = conn.execute(
+                "SELECT performance_score FROM player_match_enrichment WHERE match_id = ?",
+                (match_id,),
+            ).fetchone()
+            if existing and existing[0] is not None:
+                return False
 
         # Lire depuis shared.match_participants + match_registry
         match_data = shared_conn.execute(
             """
             SELECT mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
                    mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
-                   mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr
+                   mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr,
+                   mp.enemy_mmr, mp.kills_expected, mp.deaths_expected
             FROM match_participants mp
             JOIN match_registry mr ON mr.match_id = mp.match_id
             WHERE mp.match_id = ? AND mp.xuid = ?
@@ -338,7 +348,8 @@ def compute_performance_score_for_match(
                 SELECT
                     mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
                     mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
-                    mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr
+                    mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr,
+                    mp.enemy_mmr, mp.kills_expected, mp.deaths_expected
                 FROM match_participants mp
                 JOIN match_registry mr ON mr.match_id = mp.match_id
                 WHERE mp.xuid = ?
@@ -368,7 +379,9 @@ def compute_performance_score_for_match(
             "damage_dealt": match_data[10],
             "rank": match_data[11],
             "team_mmr": match_data[12],
-            "enemy_mmr": match_data[13] if len(match_data) > 13 else None,
+            "enemy_mmr": match_data[13],
+            "kills_expected": match_data[14],
+            "deaths_expected": match_data[15],
         }
 
         score = compute_relative_performance_score(match_dict, history_df)
@@ -400,6 +413,7 @@ def compute_performance_score_for_match(
 async def backfill_participants_enrich(
     shared_conn: Any,
     *,
+    xuid: str | None = None,
     max_matches: int | None = None,
     force: bool = False,
     requests_per_second: int = 5,
@@ -415,6 +429,7 @@ async def backfill_participants_enrich(
 
     Args:
         shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        xuid: Si fourni, ne traiter que les matchs de ce joueur.
         max_matches: Nombre max de matchs à traiter.
         force: Si True, recalcule même si les colonnes existent déjà.
         requests_per_second: Rate limiting API.
@@ -435,20 +450,34 @@ async def backfill_participants_enrich(
             "SELECT DISTINCT mp.match_id "
             "FROM match_participants mp "
             "JOIN match_registry mr ON mp.match_id = mr.match_id "
-            "ORDER BY mr.start_time DESC"
         )
         params: list = []
+        if xuid:
+            query += "WHERE mp.xuid = ? "
+            params.append(xuid)
+        query += "ORDER BY mr.start_time DESC"
     else:
+        # Détecter les matchs avec colonnes essentielles NULL
+        # Note: team_mmr peut être NULL légitimement (API skill ne retourne pas toujours de données)
+        # Guard: ne pas retraiter les matchs déjà marqués dans backfill_completed
+        from src.data.sync.migrations import BACKFILL_FLAGS
+
+        participants_bit = BACKFILL_FLAGS.get("participants", 0)
+        avg_life_bit = BACKFILL_FLAGS.get("participants_avg_life", 0)
+        guard_mask = participants_bit | avg_life_bit
+
         query = (
             "SELECT DISTINCT mp.match_id "
             "FROM match_participants mp "
             "JOIN match_registry mr ON mp.match_id = mr.match_id "
-            "WHERE mp.headshot_kills IS NULL "
-            "   OR mp.kda IS NULL "
-            "   OR mp.team_mmr IS NULL "
-            "ORDER BY mr.start_time DESC"
+            f"WHERE (mp.headshot_kills IS NULL OR mp.kda IS NULL OR mp.avg_life_seconds IS NULL) "
+            f"AND (COALESCE(mr.backfill_completed, 0) & {guard_mask} = 0) "
         )
         params = []
+        if xuid:
+            query += "AND mp.xuid = ? "
+            params.append(xuid)
+        query += "ORDER BY mr.start_time DESC"
 
     if max_matches:
         query += f" LIMIT {int(max_matches)}"
@@ -556,7 +585,6 @@ async def backfill_participants_enrich(
                                     shared_conn.execute(
                                         "UPDATE match_participants SET "
                                         "team_mmr = COALESCE(?, team_mmr), "
-                                        "enemy_mmr = COALESCE(?, enemy_mmr), "
                                         "kills_expected = COALESCE(?, kills_expected), "
                                         "kills_stddev = COALESCE(?, kills_stddev), "
                                         "deaths_expected = COALESCE(?, deaths_expected), "
@@ -566,7 +594,6 @@ async def backfill_participants_enrich(
                                         "WHERE match_id = ? AND xuid = ?",
                                         (
                                             p_skill.team_mmr,
-                                            p_skill.enemy_mmr,
                                             p_skill.kills_expected,
                                             p_skill.kills_stddev,
                                             p_skill.deaths_expected,
@@ -580,6 +607,31 @@ async def backfill_participants_enrich(
 
                 shared_conn.commit()
                 count += 1
+
+                # Marquer le match comme traité dans backfill_completed
+                # Bits: participants (512), participants_avg_life (32768)
+                try:
+                    from src.data.sync.migrations import BACKFILL_FLAGS
+
+                    flags_to_mark = (
+                        BACKFILL_FLAGS.get("participants", 0)
+                        | BACKFILL_FLAGS.get("participants_scores", 0)
+                        | BACKFILL_FLAGS.get("participants_kda", 0)
+                        | BACKFILL_FLAGS.get("participants_shots", 0)
+                        | BACKFILL_FLAGS.get("participants_damage", 0)
+                        | BACKFILL_FLAGS.get("participants_avg_life", 0)
+                    )
+
+                    shared_conn.execute(
+                        "UPDATE match_registry SET "
+                        "backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                        "WHERE match_id = ?",
+                        (flags_to_mark, match_id),
+                    )
+                    shared_conn.commit()
+                except Exception as e:
+                    logger.warning(f"  Impossible de marquer backfill_completed: {e}")
+
                 logger.info(f"  ✅ Match {match_id[:20]}... enrichi")
 
             except Exception as e:
@@ -590,6 +642,84 @@ async def backfill_participants_enrich(
                 continue
 
     logger.info(f"✅ Participants-enrich terminé : {count}/{len(match_ids)} matchs enrichis")
+    return count
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Team scores (match_registry)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def backfill_team_scores(
+    shared_conn: Any,
+    *,
+    max_matches: int | None = None,
+    force: bool = False,
+    requests_per_second: int = 5,
+) -> int:
+    """Peuple team_0_score / team_1_score dans shared.match_registry via l'API.
+
+    Ces colonnes sont NULL pour les matchs insérés avant le correctif
+    d'extraction (TotalPoints / Stats.CoreStats.Score).
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        max_matches: Nombre max de matchs à traiter.
+        force: Si True, recalcule même si les scores sont déjà présents.
+        requests_per_second: Rate limiting API.
+
+    Returns:
+        Nombre de matchs mis à jour.
+    """
+    from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
+    from src.data.sync.transformers import _extract_team_scores_by_id
+
+    where_clause = "" if force else "WHERE team_0_score IS NULL OR team_1_score IS NULL"
+    query = f"SELECT match_id FROM match_registry {where_clause} ORDER BY start_time DESC"
+    if max_matches:
+        query += f" LIMIT {int(max_matches)}"
+
+    match_ids = [r[0] for r in shared_conn.execute(query).fetchall()]
+
+    if not match_ids:
+        logger.info("Aucun match avec team scores manquants")
+        return 0
+
+    logger.info(f"Team scores : {len(match_ids)} match(s) à traiter")
+
+    tokens = await get_tokens_from_env()
+    if not tokens:
+        logger.error("Tokens SPNKr non disponibles")
+        return 0
+
+    count = 0
+    async with SPNKrAPIClient(tokens=tokens, requests_per_second=requests_per_second) as client:
+        for i, match_id in enumerate(match_ids, 1):
+            try:
+                logger.info(f"  [{i}/{len(match_ids)}] {match_id[:20]}...")
+                stats_json = await client.get_match_stats(match_id)
+                if not stats_json:
+                    logger.warning(f"  Impossible de récupérer {match_id}")
+                    continue
+
+                t0, t1 = _extract_team_scores_by_id(stats_json)
+                if t0 is None and t1 is None:
+                    logger.debug(f"  Scores toujours NULL pour {match_id} (mode sans équipes ?)")
+                    continue
+
+                shared_conn.execute(
+                    "UPDATE match_registry SET team_0_score = ?, team_1_score = ? WHERE match_id = ?",
+                    (t0, t1, match_id),
+                )
+                shared_conn.commit()
+                count += 1
+                logger.info(f"  ✅ team_0={t0}, team_1={t1}")
+
+            except Exception as e:
+                logger.error(f"  Erreur {match_id}: {e}")
+                continue
+
+    logger.info(f"✅ Team scores terminé : {count}/{len(match_ids)} matchs mis à jour")
     return count
 
 
@@ -637,12 +767,55 @@ def backfill_citations(
     if not shared_path.exists():
         logger.warning("shared_matches.duckdb introuvable pour les citations")
         return 0
+
+    # Vérifier si shared est déjà attaché (sous n'importe quel alias)
+    # D'abord chercher via le nom de fichier ou via match_participants
+    shared_alias = None
     try:
-        conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
-    except Exception as e:
-        err = str(e).lower()
-        if "already" not in err and "conflict" not in err:
+        dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
+        for db_name, db_path_val in dbs:
+            # Chercher par nom de fichier dans le path
+            if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
+                shared_alias = db_name
+                break
+            # Ou par nom de base contenant "shared"
+            if db_name and "shared" in db_name.lower():
+                # Vérifier que cette DB a bien match_participants
+                try:
+                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                    shared_alias = db_name
+                    break
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+    # Si pas trouvé, chercher n'importe quelle DB avec match_participants
+    if not shared_alias:
+        try:
+            dbs = conn.execute("SELECT database_name FROM duckdb_databases()").fetchall()
+            for (db_name,) in dbs:
+                if db_name not in ("memory", "temp", "main", "stats", "system"):
+                    try:
+                        conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                        shared_alias = db_name
+                        break
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
+    # En dernier recours, essayer d'attacher
+    if not shared_alias:
+        try:
+            conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
+            shared_alias = "shared"
+        except Exception as e:
             logger.debug(f"Attach shared pour citations: {e}")
+
+    if not shared_alias:
+        logger.warning("Impossible de trouver la base shared pour les citations")
+        return 0
 
     # S'assurer que match_citations existe (table locale dans player DB)
     conn.execute("""
@@ -658,11 +831,11 @@ def backfill_citations(
         match_ids = [
             r[0]
             for r in conn.execute(
-                "SELECT DISTINCT mp.match_id "
-                "FROM shared.match_participants mp "
-                "JOIN shared.match_registry mr ON mp.match_id = mr.match_id "
-                "WHERE mp.xuid = ? "
-                "ORDER BY mr.start_time",
+                f"SELECT DISTINCT mp.match_id "
+                f"FROM {shared_alias}.match_participants mp "
+                f"JOIN {shared_alias}.match_registry mr ON mp.match_id = mr.match_id "
+                f"WHERE mp.xuid = ? "
+                f"ORDER BY mr.start_time",
                 [xuid],
             ).fetchall()
         ]
@@ -670,15 +843,15 @@ def backfill_citations(
         match_ids = [
             r[0]
             for r in conn.execute(
-                "SELECT DISTINCT mp.match_id "
-                "FROM shared.match_participants mp "
-                "JOIN shared.match_registry mr ON mp.match_id = mr.match_id "
-                "WHERE mp.xuid = ? "
-                "  AND NOT EXISTS ("
-                "    SELECT 1 FROM match_citations mc "
-                "    WHERE mc.match_id = mp.match_id"
-                "  ) "
-                "ORDER BY mr.start_time",
+                f"SELECT DISTINCT mp.match_id "
+                f"FROM {shared_alias}.match_participants mp "
+                f"JOIN {shared_alias}.match_registry mr ON mp.match_id = mr.match_id "
+                f"WHERE mp.xuid = ? "
+                f"  AND NOT EXISTS ("
+                f"    SELECT 1 FROM match_citations mc "
+                f"    WHERE mc.match_id = mp.match_id"
+                f"  ) "
+                f"ORDER BY mr.start_time",
                 [xuid],
             ).fetchall()
         ]

@@ -138,7 +138,7 @@ def get_hero_html(
         safe_rank_label = html.escape(rank_label or "") if rank_label else ""
         safe_rank_subtitle = html.escape(rank_subtitle or "") if rank_subtitle else ""
 
-        # Adornment prioritaire: si disponible, remplace l'icône de rang
+        # Priorité : adornment > rank_icon (fallback si adornment non dispo)
         adornment_html = ""
         rank_icon_html = ""
         if adornment_data:

@@ -15,7 +15,13 @@ from src.analysis import compute_personal_antagonists
 from src.config import BOT_MAP, TEAM_MAP
 from src.ui import display_name_from_xuid
 from src.ui.pages.match_view_helpers import os_card
+from src.ui.streamlit_modern import fragment_if_available
 from src.utils import parse_xuid_input
+from src.visualization.match_impact_timeline import (
+    IMPACT_LABELS,
+    compute_single_match_impact,
+    plot_match_kill_death_timeline,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,14 +37,15 @@ def _is_duckdb_v4_path(db_path: str) -> bool:
 
 
 def _has_table_duckdb(db_path: str, table_name: str) -> bool:
-    """Vérifie si une table existe dans une DB DuckDB."""
+    """Vérifie si une table existe dans une DB DuckDB (locale ou shared)."""
     if not _is_duckdb_v4_path(db_path):
         return False
     try:
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
         repo = DuckDBRepository(db_path, xuid="", read_only=True)
-        return repo.has_table(table_name)
+        # Vérifier la table locale puis shared (v5.1)
+        return repo.has_table(table_name) or repo._has_shared_table(table_name)
     except Exception:
         return False
 
@@ -61,6 +68,7 @@ def _load_match_players_stats(db_path: str, match_id: str) -> list[dict[str, Any
 # =============================================================================
 
 
+@fragment_if_available
 def render_nemesis_section(
     *,
     match_id: str,
@@ -389,7 +397,7 @@ def _render_antagonist_chart(
                     height=400,
                 )
                 if fig is not None:
-                    st.plotly_chart(fig, width="stretch")
+                    st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Données insuffisantes pour les interactions killer-victim.")
             except Exception as e:
@@ -520,10 +528,111 @@ def render_roster_section(
 
 
 # =============================================================================
+# Section Impact & Timeline
+# =============================================================================
+
+
+@fragment_if_available
+def render_match_impact_section(
+    *,
+    match_id: str,
+    db_path: str,
+    xuid: str,
+    db_key: tuple[int, int] | None,
+    outcome: int | None,
+    load_highlight_events_fn: Callable,
+    load_match_gamertags_fn: Callable,
+) -> None:
+    """Rend la section Impact & Timeline pour un match unique.
+
+    Affiche un graphe chronologique kills/deaths cumulées du joueur,
+    avec annotations des événements d'impact (premier sang, finisseur,
+    plus lent, première victime).
+    """
+    st.subheader("Impact du match")
+
+    if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
+        st.caption("Données d'impact indisponibles (highlight events manquants).")
+        return
+
+    with st.spinner("Analyse de la timeline…"):
+        he = load_highlight_events_fn(db_path, match_id.strip(), db_key=db_key)
+
+    if not he:
+        st.info("Aucun événement enregistré pour ce match.")
+        return
+
+    me_xuid = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
+    gt_map = load_match_gamertags_fn(db_path, match_id.strip(), db_key=db_key)
+
+    # Identifier les événements d'impact
+    impact_events = compute_single_match_impact(he, me_xuid, outcome=outcome)
+
+    # Enrichir les gamertags via gt_map
+    if gt_map and isinstance(gt_map, dict):
+        enriched = []
+        for ie in impact_events:
+            resolved = gt_map.get(ie.xuid, ie.gamertag)
+            if resolved and resolved != ie.gamertag:
+                from src.visualization.match_impact_timeline import MatchImpactEvent
+
+                ie = MatchImpactEvent(
+                    event_type=ie.event_type,
+                    xuid=ie.xuid,
+                    gamertag=resolved,
+                    time_ms=ie.time_ms,
+                    is_me=ie.is_me,
+                )
+            enriched.append(ie)
+        impact_events = enriched
+
+    # Badges d'impact en colonnes
+    if impact_events:
+        badge_cols = st.columns(len(impact_events))
+        for i, ie in enumerate(impact_events):
+            label_info = IMPACT_LABELS.get(ie.event_type)
+            if not label_info:
+                continue
+            icon, label_fr = label_info
+            display_name = "Toi" if ie.is_me else ie.gamertag
+            accent = "#3DFFB5" if ie.is_me else "#FFB703"  # vert si moi, ambre sinon
+            with badge_cols[i]:
+                os_card(
+                    f"{icon} {label_fr}",
+                    display_name,
+                    _format_time(ie.time_ms),
+                    accent=accent,
+                    kpi_color=accent,
+                    min_h=80,
+                )
+
+    # Graphe timeline kills/deaths
+    fig = plot_match_kill_death_timeline(
+        he,
+        me_xuid,
+        impact_events,
+        height=340,
+    )
+    if fig is not None:
+        st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
+    else:
+        st.info("Pas assez de données pour afficher la timeline.")
+
+
+def _format_time(ms: int) -> str:
+    """Formate un timestamp ms en M:SS."""
+    total_sec = max(0, ms // 1000)
+    minutes = total_sec // 60
+    seconds = total_sec % 60
+    return f"{minutes}:{seconds:02d}"
+
+
+# =============================================================================
 # Exports publics
 # =============================================================================
 
 __all__ = [
     "render_nemesis_section",
     "render_roster_section",
+    "render_match_impact_section",
 ]

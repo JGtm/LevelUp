@@ -234,24 +234,58 @@ def test_associate_with_matches(temp_db: Path, temp_media_dir: Path) -> None:
         conn.close()
 
 
+def _create_shared_db(shared_path: Path, matches: list[tuple]) -> None:
+    """Helper : crée une shared_matches.duckdb v5.1 de test.
+
+    matches: [(match_id, start_time_str, duration_seconds, map_id, map_name, xuid), ...]
+    """
+    shared_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = duckdb.connect(str(shared_path))
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS match_registry (
+            match_id VARCHAR PRIMARY KEY,
+            start_time TIMESTAMP,
+            duration_seconds INTEGER,
+            map_id VARCHAR,
+            map_name VARCHAR
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS match_participants (
+            match_id VARCHAR NOT NULL,
+            xuid VARCHAR NOT NULL,
+            PRIMARY KEY (match_id, xuid)
+        )
+    """)
+    for m in matches:
+        match_id, start_time, dur, map_id, map_name, xuid = m
+        conn.execute(
+            "INSERT OR IGNORE INTO match_registry (match_id, start_time, duration_seconds, map_id, map_name) "
+            "VALUES (?, ?::TIMESTAMP, ?, ?, ?)",
+            [match_id, start_time, dur, map_id, map_name],
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO match_participants (match_id, xuid) VALUES (?, ?)",
+            [match_id, xuid],
+        )
+    conn.commit()
+    conn.close()
+
+
 def test_associate_with_matches_explicit_timestamps(tmp_path: Path) -> None:
     """Test l'association avec des timestamps explicits (epoch UTC)."""
     db_path = tmp_path / "stats.duckdb"
-    conn = duckdb.connect(str(db_path))
-    conn.execute("""
-        CREATE TABLE match_stats (
-            match_id VARCHAR PRIMARY KEY,
-            start_time TIMESTAMP,
-            time_played_seconds INTEGER
-        )
-    """)
-    conn.execute(
-        """
-        INSERT INTO match_stats (match_id, start_time, time_played_seconds)
-        VALUES (?, ?::TIMESTAMP, ?)
-        """,
-        ["match_1", "2026-02-03 17:00:00", 720],
+    shared_path = tmp_path / "shared_matches.duckdb"
+
+    # Créer la shared DB v5.1
+    _create_shared_db(
+        shared_path,
+        [
+            ("match_1", "2026-02-03 17:00:00", 720, "", "", "test_xuid"),
+        ],
     )
+
+    conn = duckdb.connect(str(db_path))
     conn.execute("""
         CREATE TABLE media_files (
             file_path VARCHAR PRIMARY KEY,
@@ -311,7 +345,12 @@ def test_associate_with_matches_explicit_timestamps(tmp_path: Path) -> None:
     conn.close()
 
     indexer = MediaIndexer(db_path)
-    with patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs:
+    with (
+        patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs,
+        patch(
+            "src.data.media_indexer.get_shared_matches_path_from_player", return_value=shared_path
+        ),
+    ):
         mock_dbs.return_value = [(db_path, "test_xuid")]
         n = indexer.associate_with_matches(tolerance_minutes=5)
 
@@ -357,24 +396,18 @@ def test_get_file_metadata(temp_db: Path, tmp_path: Path) -> None:
 def test_association_closest_match_when_multiple_candidates(tmp_path: Path) -> None:
     """Test que l'association choisit le match LE PLUS PROCHE quand plusieurs candidats."""
     db_path = tmp_path / "stats.duckdb"
-    conn = duckdb.connect(str(db_path))
+    shared_path = tmp_path / "shared_matches.duckdb"
+
     # 2 matchs : match_A à 17:00, match_B à 17:10 (10 min plus tard)
-    conn.execute("""
-        CREATE TABLE match_stats (
-            match_id VARCHAR PRIMARY KEY,
-            start_time TIMESTAMP,
-            time_played_seconds INTEGER,
-            map_id VARCHAR,
-            map_name VARCHAR
-        )
-    """)
-    conn.execute(
-        """
-        INSERT INTO match_stats (match_id, start_time, time_played_seconds, map_id, map_name)
-        VALUES ('match_A', '2026-02-03 17:00:00', 720, 'map1', 'Aquarius'),
-               ('match_B', '2026-02-03 17:10:00', 720, 'map2', 'Live Fire')
-        """,
+    _create_shared_db(
+        shared_path,
+        [
+            ("match_A", "2026-02-03 17:00:00", 720, "map1", "Aquarius", "xuid_1"),
+            ("match_B", "2026-02-03 17:10:00", 720, "map2", "Live Fire", "xuid_1"),
+        ],
     )
+
+    conn = duckdb.connect(str(db_path))
     conn.execute("""
         CREATE TABLE media_files (
             file_path VARCHAR PRIMARY KEY, file_hash VARCHAR NOT NULL, file_name VARCHAR,
@@ -419,7 +452,12 @@ def test_association_closest_match_when_multiple_candidates(tmp_path: Path) -> N
     conn.close()
 
     indexer = MediaIndexer(db_path)
-    with patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs:
+    with (
+        patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs,
+        patch(
+            "src.data.media_indexer.get_shared_matches_path_from_player", return_value=shared_path
+        ),
+    ):
         mock_dbs.return_value = [(db_path, "xuid_1")]
         indexer.associate_with_matches(tolerance_minutes=10)
 
@@ -440,25 +478,23 @@ def test_association_multi_players_same_media(tmp_path: Path) -> None:
     db_b = tmp_path / "player_b" / "stats.duckdb"
     db_a.parent.mkdir(parents=True)
     db_b.parent.mkdir(parents=True)
+    shared_path = tmp_path / "shared_matches.duckdb"
 
     epoch = datetime(2026, 2, 3, 17, 0, 0, tzinfo=timezone.utc).timestamp()
     media_epoch = epoch + 60
     media_path = str(tmp_path / "shared" / "clip.mp4")
 
+    # Shared DB v5.1 : 2 matchs, un par joueur
+    _create_shared_db(
+        shared_path,
+        [
+            ("match_a", "2026-02-03 17:00:00", 720, "m1", "Aquarius", "xuid_a"),
+            ("match_b", "2026-02-03 17:00:00", 720, "m1", "Aquarius", "xuid_b"),
+        ],
+    )
+
     # db_a = BDD médias du joueur actuel (contient media_files + associations)
     conn = duckdb.connect(str(db_a))
-    conn.execute("""
-        CREATE TABLE match_stats (
-            match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP,
-            time_played_seconds INTEGER, map_id VARCHAR, map_name VARCHAR
-        )
-    """)
-    conn.execute(
-        """
-        INSERT INTO match_stats (match_id, start_time, time_played_seconds, map_id, map_name)
-        VALUES ('match_a', '2026-02-03 17:00:00', 720, 'm1', 'Aquarius')
-        """,
-    )
     conn.execute("""
         CREATE TABLE media_files (
             file_path VARCHAR PRIMARY KEY, file_hash VARCHAR NOT NULL, file_name VARCHAR,
@@ -499,26 +535,14 @@ def test_association_multi_players_same_media(tmp_path: Path) -> None:
     conn.commit()
     conn.close()
 
-    # db_b = BDD autre joueur (match_stats seulement)
-    conn = duckdb.connect(str(db_b))
-    conn.execute("""
-        CREATE TABLE match_stats (
-            match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP,
-            time_played_seconds INTEGER, map_id VARCHAR, map_name VARCHAR
-        )
-    """)
-    conn.execute(
-        """
-        INSERT INTO match_stats (match_id, start_time, time_played_seconds, map_id, map_name)
-        VALUES ('match_b', '2026-02-03 17:00:00', 720, 'm1', 'Aquarius')
-        """,
-    )
-    conn.commit()
-    conn.close()
-
     # Utiliser db_a comme BDD médias ; les associations seront stockées ici
     indexer = MediaIndexer(db_a)
-    with patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs:
+    with (
+        patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs,
+        patch(
+            "src.data.media_indexer.get_shared_matches_path_from_player", return_value=shared_path
+        ),
+    ):
         mock_dbs.return_value = [(db_a, "xuid_a"), (db_b, "xuid_b")]
         n = indexer.associate_with_matches(tolerance_minutes=5)
 
@@ -536,19 +560,16 @@ def test_association_multi_players_same_media(tmp_path: Path) -> None:
 def test_association_map_id_map_name_stored(tmp_path: Path) -> None:
     """Test que map_id et map_name sont bien stockés dans les associations."""
     db_path = tmp_path / "stats.duckdb"
-    conn = duckdb.connect(str(db_path))
-    conn.execute("""
-        CREATE TABLE match_stats (
-            match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP,
-            time_played_seconds INTEGER, map_id VARCHAR, map_name VARCHAR
-        )
-    """)
-    conn.execute(
-        """
-        INSERT INTO match_stats (match_id, start_time, time_played_seconds, map_id, map_name)
-        VALUES ('m1', '2026-02-03 17:00:00', 720, 'uuid-aquarius', 'Aquarius')
-        """,
+    shared_path = tmp_path / "shared_matches.duckdb"
+
+    _create_shared_db(
+        shared_path,
+        [
+            ("m1", "2026-02-03 17:00:00", 720, "uuid-aquarius", "Aquarius", "u1"),
+        ],
     )
+
+    conn = duckdb.connect(str(db_path))
     conn.execute("""
         CREATE TABLE media_files (
             file_path VARCHAR PRIMARY KEY, file_hash VARCHAR NOT NULL, file_name VARCHAR,
@@ -591,7 +612,12 @@ def test_association_map_id_map_name_stored(tmp_path: Path) -> None:
     conn.close()
 
     indexer = MediaIndexer(db_path)
-    with patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs:
+    with (
+        patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs,
+        patch(
+            "src.data.media_indexer.get_shared_matches_path_from_player", return_value=shared_path
+        ),
+    ):
         mock_dbs.return_value = [(db_path, "u1")]
         indexer.associate_with_matches(tolerance_minutes=5)
 
@@ -690,15 +716,21 @@ def test_association_search_all_player_dbs(tmp_path: Path) -> None:
     db_other = tmp_path / "other" / "stats.duckdb"
     db_current.parent.mkdir(parents=True)
     db_other.parent.mkdir(parents=True)
+    shared_path = tmp_path / "shared_matches.duckdb"
 
     epoch = datetime(2026, 2, 3, 17, 0, 0, tzinfo=timezone.utc).timestamp()
     media_epoch = epoch + 120
 
-    # BDD courante : media + associations, match_stats VIDE (pas de match pour ce joueur)
-    conn = duckdb.connect(str(db_current))
-    conn.execute(
-        "CREATE TABLE match_stats (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP, time_played_seconds INTEGER)"
+    # Shared DB : seul xuid_other a un match
+    _create_shared_db(
+        shared_path,
+        [
+            ("match_other", "2026-02-03 17:00:00", 720, "", "", "xuid_other"),
+        ],
     )
+
+    # BDD courante : media + associations, pas de match pour ce joueur
+    conn = duckdb.connect(str(db_current))
     conn.execute("""
         CREATE TABLE media_files (
             file_path VARCHAR PRIMARY KEY, file_hash VARCHAR NOT NULL, file_name VARCHAR,
@@ -740,24 +772,13 @@ def test_association_search_all_player_dbs(tmp_path: Path) -> None:
     conn.commit()
     conn.close()
 
-    # BDD autre joueur : a un match qui correspond
-    conn = duckdb.connect(str(db_other))
-    conn.execute("""
-        CREATE TABLE match_stats (
-            match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP, time_played_seconds INTEGER
-        )
-    """)
-    conn.execute(
-        """
-        INSERT INTO match_stats (match_id, start_time, time_played_seconds)
-        VALUES ('match_other', '2026-02-03 17:00:00', 720)
-        """,
-    )
-    conn.commit()
-    conn.close()
-
     indexer = MediaIndexer(db_current)
-    with patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs:
+    with (
+        patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs,
+        patch(
+            "src.data.media_indexer.get_shared_matches_path_from_player", return_value=shared_path
+        ),
+    ):
         mock_dbs.return_value = [(db_current, "xuid_current"), (db_other, "xuid_other")]
         n = indexer.associate_with_matches(tolerance_minutes=5)
 

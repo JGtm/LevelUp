@@ -1,9 +1,9 @@
-"""Routage des pages extraits de main() pour simplification.
+"""Routage des pages avec st.navigation (8ter.5).
 
-Ce module centralise:
+Ce module centralise :
 - La liste des pages disponibles
 - La construction des paramètres pour les pages de match
-- Le dispatch vers les différentes pages
+- Le routage via st.navigation (lazy loading)
 """
 
 from __future__ import annotations
@@ -97,13 +97,103 @@ def consume_pending_match_id() -> None:
 
 
 def render_page_selector() -> str:
-    """Rend le sélecteur de page et retourne la page choisie."""
+    """Rend le sélecteur de page et retourne la page choisie.
+
+    Note: Conservé pour compatibilité. Avec st.navigation, utiliser
+    ``build_navigation`` + ``run_selected_page`` à la place.
+    """
     return st.segmented_control(
         "Onglets",
         options=PAGES,
         key="page",
         label_visibility="collapsed",
     )
+
+
+# ---------------------------------------------------------------------------
+# st.navigation — routing moderne (8ter.5)
+# ---------------------------------------------------------------------------
+
+# Mapping titre de page → url_path (slugs URL-friendly)
+_PAGE_URL_PATHS: dict[str, str] = {
+    "Séries temporelles": "timeseries",
+    "Comparaison de sessions": "session-compare",
+    "Dernier match": "last-match",
+    "Match": "match",
+    "Médias": "medias",
+    "Citations": "citations",
+    "Victoires/Défaites": "win-loss",
+    "Mes coéquipiers": "teammates",
+    "Historique des parties": "history",
+    "Carrière": "career",
+    "Paramètres": "settings",
+}
+
+_PAGE_ICONS: dict[str, str] = {
+    "Séries temporelles": "📈",
+    "Comparaison de sessions": "🔄",
+    "Dernier match": "🎯",
+    "Match": "🔍",
+    "Médias": "🎬",
+    "Citations": "🏅",
+    "Victoires/Défaites": "📊",
+    "Mes coéquipiers": "👥",
+    "Historique des parties": "📋",
+    "Carrière": "⭐",
+    "Paramètres": "⚙️",
+}
+
+
+def build_navigation(
+    page_callables: dict[str, Callable[[], None]],
+) -> tuple[st.Page, list[st.Page]]:
+    """Construit les pages st.navigation et retourne (page sélectionnée, toutes les pages).
+
+    Args:
+        page_callables: Mapping titre_page → callback sans argument.
+
+    Returns:
+        Tuple (page_courante, liste_pages) prêt pour ``pg.run()``.
+    """
+    pages: list[st.Page] = []
+    for title in PAGES:
+        cb = page_callables.get(title)
+        if cb is None:
+            continue
+        url_path = _PAGE_URL_PATHS.get(title, title.lower().replace(" ", "-"))
+        icon = _PAGE_ICONS.get(title)
+        pages.append(
+            st.Page(cb, title=title, icon=icon, url_path=url_path),
+        )
+
+    pg = st.navigation(pages, position="hidden")
+    return pg, pages
+
+
+def render_page_selector_nav(
+    pages: list[st.Page],
+    current_page: st.Page,
+) -> None:
+    """Sélecteur de page visuel compatible st.navigation.
+
+    Affiche un ``st.segmented_control`` et appelle ``st.switch_page``
+    si l'utilisateur clique sur un onglet différent.
+    """
+    titles = [p.title for p in pages]
+    current_title = current_page.title if current_page else titles[0]
+
+    # Le segmented_control avec default= pour refléter la page courante
+    selected = st.segmented_control(
+        "Onglets",
+        options=titles,
+        default=current_title,
+        label_visibility="collapsed",
+    )
+
+    if selected and selected != current_title:
+        target = next((p for p in pages if p.title == selected), None)
+        if target is not None:
+            st.switch_page(target)
 
 
 def dispatch_page(

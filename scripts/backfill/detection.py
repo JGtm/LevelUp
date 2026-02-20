@@ -6,14 +6,21 @@ Supporte deux modes de détection :
 
 V5 : La détection se fait via shared_matches.duckdb (match_registry + match_participants).
 Le bitmask backfill_completed est stocké dans match_registry.
+
+Note architecture (v5.2+) :
+    ``find_matches_missing_data`` accepte ``scope: SyncScope`` qui remplace
+    les 30+ kwargs individuels.  Les kwargs sont marqués ``LEGACY``.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.data.sync.migrations import BACKFILL_FLAGS, compute_backfill_mask  # noqa: F401
+
+if TYPE_CHECKING:
+    from src.data.sync.scope import SyncScope
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +41,11 @@ def find_matches_missing_data(
     xuid: str,
     *,
     shared_conn: Any,
+    scope: SyncScope | None = None,
+    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
+    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
+    #   utilisent SyncScope.
+    # ─────────────────────────────────────────────────────────────────────
     detection_mode: str = "or",
     medals: bool = False,
     events: bool = False,
@@ -56,6 +68,8 @@ def find_matches_missing_data(
     force_accuracy: bool = False,
     shots: bool = False,
     force_shots: bool = False,
+    force_skill: bool = False,
+    force_performance_scores: bool = False,
     force_enemy_mmr: bool = False,
     force_aliases: bool = False,
     force_assets: bool = False,
@@ -65,18 +79,55 @@ def find_matches_missing_data(
 ) -> list[str]:
     """Trouve les matchs avec des données manquantes via shared DB (V5).
 
+    .. deprecated:: v5.2
+        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+
     Args:
         conn: Connexion DuckDB (player DB).
         xuid: XUID du joueur.
         shared_conn: Connexion à shared_matches.duckdb (obligatoire).
-        detection_mode: "or" (défaut) ou "and" (strict).
-        max_matches: Limite de résultats.
-        all_data: True si --all-data est actif.
+        scope: Périmètre de données — **méthode recommandée** (SyncScope).
+        detection_mode: (legacy) "or" (défaut) ou "and" (strict).
+        max_matches: (legacy) Limite de résultats.
+        all_data: (legacy) True si --all-data est actif.
+        **kwargs: (legacy) 30+ flags booléens — voir SyncScope.
 
     Returns:
         Liste des match_id manquants.
     """
-    _ = all_data  # compat signature
+    # ── Extraire les valeurs depuis le scope si fourni ──
+    if scope is not None:
+        medals = scope.medals
+        events = scope.events
+        skill = scope.skill
+        personal_scores = scope.personal_scores
+        performance_scores = scope.performance_scores
+        accuracy = scope.accuracy
+        enemy_mmr = scope.enemy_mmr
+        assets = scope.assets
+        participants = scope.participants
+        participants_scores = scope.participants_scores
+        participants_kda = scope.participants_kda
+        participants_shots = scope.participants_shots
+        participants_damage = scope.participants_damage
+        participants_avg_life = scope.participants_avg_life
+        force_participants_shots = scope.force_participants_shots
+        force_participants_damage = scope.force_participants_damage
+        force_participants_avg_life = scope.force_participants_avg_life
+        force_medals = scope.force_medals
+        force_accuracy = scope.force_accuracy
+        shots = scope.shots
+        force_shots = scope.force_shots
+        force_skill = scope.force_skill
+        force_performance_scores = scope.force_performance_scores
+        force_enemy_mmr = scope.force_enemy_mmr
+        force_aliases = scope.force_aliases
+        force_assets = scope.force_assets
+        force_participants = scope.force_participants
+        max_matches = scope.max_matches
+        all_data = scope.all_data
+    else:
+        _ = all_data  # compat signature
 
     # Détecter le type de flags demandés
     local_data_requested = any(
@@ -142,10 +193,12 @@ def find_matches_missing_data(
         force_medals=force_medals,
         force_accuracy=force_accuracy,
         force_shots=force_shots,
+        force_performance_scores=force_performance_scores,
         force_enemy_mmr=force_enemy_mmr,
         force_assets=force_assets,
         force_aliases=force_aliases,
         force_participants=force_participants,
+        force_skill=force_skill,
     )
 
     # Fusionner résultats locaux + shared (dédoublonner, garder l'ordre)
@@ -210,15 +263,21 @@ def _find_matches_in_shared_all(
     force_medals: bool = False,
     force_accuracy: bool = False,
     force_shots: bool = False,
+    force_performance_scores: bool = False,
     force_enemy_mmr: bool = False,
     force_assets: bool = False,
     force_aliases: bool = False,
     force_participants: bool = False,
+    force_skill: bool = False,  # Ajouté v5.1 : force le rescan skill pour tous les matchs
 ) -> list[str]:
     """Détection V5 FINALE : tous les flags via shared DB.
 
     Remplace la détection via match_stats quand celle-ci n'existe plus.
     Base : shared.match_participants + match_registry.
+
+    force_skill (v5.1) : quand True, utilise "1=1" au lieu de
+    "(mp.team_mmr IS NULL)" pour re-télécharger les données skill
+    de TOUS les matchs, y compris ceux déjà peuplés.
     """
     conditions: list[str] = []
     has_bf_col = _has_backfill_completed_column(shared_conn)
@@ -239,8 +298,27 @@ def _find_matches_in_shared_all(
         )
 
     # Skill
+    # NOTE V5.2 : Condition composite pour éviter la re-détection infinie des modes
+    # non-classés (Firefight, Rumble Pit, social…).
+    #
+    # Problème : kills_expected / team_mmr sont NULL par DESIGN pour les modes sans
+    # CSR (non-ranked). Un simple NULL-check causerait une boucle infinie.
+    #
+    # Solution : double guard
+    #   1. backfill_bits & 1 = 0 → le bit TEAM_MMR n'est pas posé (données absentes)
+    #   2. backfill_completed & 4 = 0 → le skill n'a JAMAIS été tenté pour ce match
+    #
+    # Si backfill_completed & 4 != 0 : skill tenté → team_mmr NULL = normal pour
+    # les modes non-ranked → on n'essaie pas de re-télécharger.
     if skill:
-        conditions.append("(mp.team_mmr IS NULL)" + _done_guard("skill", has_bf_col))
+        if force_skill:
+            conditions.append("1=1")
+        else:
+            # bit TEAM_MMR = 1 dans ParticipantBits ; skill = 4 dans BACKFILL_FLAGS
+            conditions.append(
+                "(COALESCE(mp.backfill_bits, 0) & 1) = 0"
+                " AND (COALESCE(mr.backfill_completed, 0) & 4) = 0"
+            )
 
     # Personal scores (player DB)
     if personal_scores:
@@ -248,15 +326,14 @@ def _find_matches_in_shared_all(
         conditions.append("1=1" + _done_guard("personal_scores", has_bf_col))
 
     # Performance scores (player_match_enrichment)
+    # Note: La détection nécessite d'accéder à la player DB pour voir performance_score NULL
+    # On ne peut pas le faire depuis shared DB, donc on retourne tous les matchs et on filtrera
+    # pendant le traitement. Force permet d'ignorer le guard backfill_completed.
     if performance_scores:
-        try:
-            # Vérifier si player_match_enrichment existe dans player DB
-            conn.execute("SELECT 1 FROM player_match_enrichment LIMIT 0")
-            # Les matchs sans performance_score dans enrichment
-            # On doit passer par une sous-requête via ATTACH, mais plus simple: juste le guard
-            conditions.append("1=1" + _done_guard("performance_scores", has_bf_col))
-        except Exception:
+        if force_performance_scores:
             conditions.append("1=1")
+        else:
+            conditions.append("1=1" + _done_guard("performance_scores", has_bf_col))
 
     # Accuracy
     if accuracy:
@@ -432,3 +509,190 @@ def _find_matches_in_shared_db(
     except Exception as e:
         logger.error(f"Erreur lors de la détection dans shared DB: {e}")
         return []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Détection v5.2 — Bitmask granulaire par participant
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def find_matches_missing_participant_bits(
+    shared_conn: Any,
+    xuid: str,
+    *,
+    bits_required: int,
+    force: bool = False,
+    max_matches: int | None = None,
+) -> list[str]:
+    """Trouve les matchs où ce joueur a des bits ``backfill_bits`` manquants.
+
+    Utilise le bitmask granulaire ``match_participants.backfill_bits``
+    pour identifier précisément quelles données sont absentes.
+
+    Args:
+        shared_conn: Connexion à shared_matches.duckdb.
+        xuid: XUID du joueur.
+        bits_required: Masque des bits requis (ex: ``ParticipantBits.SKILL``).
+        force: Si True, retourne tous les matchs (ignore le bitmask).
+        max_matches: Limite de résultats.
+
+    Returns:
+        Liste des match_id nécessitant un backfill.
+
+    Note:
+        ``COALESCE(backfill_bits, 0)`` est obligatoire — les enregistrements
+        antérieurs à la migration ont ``backfill_bits IS NULL``.
+        Sans COALESCE, NULL & bits_required = NULL != bits_required, ce qui
+        forcerait un backfill pour tous les anciens matchs.
+    """
+    if force:
+        condition = "1=1"
+    else:
+        condition = f"(COALESCE(mp.backfill_bits, 0) & {bits_required}) != {bits_required}"
+
+    query = f"""
+        SELECT mp.match_id
+        FROM match_participants mp
+        JOIN match_registry mr ON mr.match_id = mp.match_id
+        WHERE mp.xuid = ? AND {condition}
+        ORDER BY mr.start_time DESC
+    """
+    if max_matches:
+        query += f" LIMIT {max_matches}"
+
+    try:
+        return [row[0] for row in shared_conn.execute(query, [xuid]).fetchall()]
+    except Exception as e:
+        logger.error(f"Erreur détection bits participants (xuid={xuid}): {e}")
+        return []
+
+
+def find_matches_missing_match_bits(
+    shared_conn: Any,
+    *,
+    bits_required: int,
+    force: bool = False,
+    max_matches: int | None = None,
+) -> list[str]:
+    """Trouve les matchs où des données au niveau match sont manquantes.
+
+    Utilise ``match_registry.backfill_completed`` avec les bits ``MatchBits``
+    (bits ≥ 16). Pas de filtre xuid — les données match sont globales.
+
+    Args:
+        shared_conn: Connexion à shared_matches.duckdb.
+        bits_required: Masque des bits requis (ex: ``MatchBits.EVENTS``).
+        force: Si True, retourne tous les matchs.
+        max_matches: Limite de résultats.
+
+    Returns:
+        Liste des match_id nécessitant un backfill.
+    """
+    if force:
+        condition = "1=1"
+    else:
+        condition = f"(COALESCE(mr.backfill_completed, 0) & {bits_required}) != {bits_required}"
+
+    query = f"""
+        SELECT mr.match_id
+        FROM match_registry mr
+        WHERE {condition}
+        ORDER BY mr.start_time DESC
+    """
+    if max_matches:
+        query += f" LIMIT {max_matches}"
+
+    try:
+        return [row[0] for row in shared_conn.execute(query).fetchall()]
+    except Exception as e:
+        logger.error(f"Erreur détection bits match: {e}")
+        return []
+
+
+def compute_bits_needed_from_scope(scope: SyncScope) -> tuple[int, int]:
+    """Calcule les masques de bits requis depuis un SyncScope.
+
+    Args:
+        scope: Périmètre de synchronisation.
+
+    Returns:
+        Tuple (participant_bits, match_bits) pour la détection.
+    """
+    from src.data.sync.constants import MatchBits, ParticipantBits
+
+    p_bits = 0  # bits participant (match_participants.backfill_bits)
+    m_bits = 0  # bits match (match_registry.backfill_completed, bits ≥ 16)
+
+    # ── Skill / MMR ──
+    if getattr(scope, "team_mmr", False) or getattr(scope, "mmr", False):
+        p_bits |= ParticipantBits.TEAM_MMR
+    if scope.enemy_mmr or getattr(scope, "mmr", False):
+        p_bits |= ParticipantBits.ENEMY_MMR
+    if getattr(scope, "kills_expected", False) or getattr(scope, "expected", False):
+        p_bits |= ParticipantBits.KILLS_EXP
+    if getattr(scope, "deaths_expected", False) or getattr(scope, "expected", False):
+        p_bits |= ParticipantBits.DEATHS_EXP
+    if getattr(scope, "assists_expected", False) or getattr(scope, "expected", False):
+        p_bits |= ParticipantBits.ASSISTS_EXP
+    if scope.skill:
+        p_bits |= ParticipantBits.SKILL
+
+    # ── Combat ──
+    if scope.accuracy or getattr(scope, "combat", False) or getattr(scope, "core_stats", False):
+        p_bits |= ParticipantBits.ACCURACY
+    if scope.shots or getattr(scope, "combat", False) or getattr(scope, "core_stats", False):
+        p_bits |= ParticipantBits.SHOTS
+    if (
+        getattr(scope, "damage", False)
+        or getattr(scope, "combat", False)
+        or getattr(scope, "core_stats", False)
+    ):
+        p_bits |= ParticipantBits.DAMAGE
+    if getattr(scope, "avg_life", False) or getattr(scope, "core_stats", False):
+        p_bits |= ParticipantBits.AVG_LIFE
+
+    # ── Kills détaillés ──
+    if (
+        getattr(scope, "grenade_kills", False)
+        or getattr(scope, "kills_detail", False)
+        or getattr(scope, "core_stats", False)
+    ):
+        p_bits |= ParticipantBits.GRENADE_KILLS
+    if (
+        getattr(scope, "melee_kills", False)
+        or getattr(scope, "kills_detail", False)
+        or getattr(scope, "core_stats", False)
+    ):
+        p_bits |= ParticipantBits.MELEE_KILLS
+    if (
+        getattr(scope, "power_weapon_kills", False)
+        or getattr(scope, "kills_detail", False)
+        or getattr(scope, "core_stats", False)
+    ):
+        p_bits |= ParticipantBits.POWER_WEAPON
+    if (
+        getattr(scope, "headshot_kills", False)
+        or getattr(scope, "kills_detail", False)
+        or getattr(scope, "core_stats", False)
+    ):
+        p_bits |= ParticipantBits.HEADSHOT_KILLS
+    if getattr(scope, "max_spree", False) or getattr(scope, "core_stats", False):
+        p_bits |= ParticipantBits.MAX_SPREE
+    if getattr(scope, "kda_recalc", False) or getattr(scope, "core_stats", False):
+        p_bits |= ParticipantBits.KDA
+    if getattr(scope, "time_played", False) or getattr(scope, "core_stats", False):
+        p_bits |= ParticipantBits.TIME_PLAYED
+
+    # ── Médailles ──
+    if scope.medals:
+        p_bits |= ParticipantBits.MEDALS
+
+    # ── Match-level ──
+    if scope.events:
+        m_bits |= MatchBits.EVENTS
+    if scope.assets:
+        m_bits |= MatchBits.ASSETS
+    if scope.aliases:
+        m_bits |= MatchBits.ALIASES
+
+    return p_bits, m_bits

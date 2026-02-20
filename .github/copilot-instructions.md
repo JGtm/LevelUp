@@ -57,16 +57,30 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 | `medals_earned` | Médailles de tous les joueurs |
 | `xuid_aliases` | Mapping global xuid→gamertag |
 
-#### stats.duckdb (par joueur)
+#### stats.duckdb (par joueur) — v5.1 allégée
+
+> 8 tables supprimées : match_stats, match_participants, highlight_events,
+> medals_earned, killer_victim_pairs, player_match_stats, xuid_aliases, teammates_aggregate
 
 | Table | Description |
 |-------|-------------|
-| `player_match_enrichment` | performance_score, session_id, is_with_friends |
-| `teammates_aggregate` | Stats coéquipiers (POV joueur) |
+| `player_match_enrichment` | performance_score, session_id, is_with_friends — **SEULE table match** |
+| `personal_score_awards` | Awards objectifs (PersonalScores API) |
 | `antagonists` | Rivalités (killers/victimes) |
 | `match_citations` | Citations calculées par match |
 | `career_progression` | Historique rangs |
+| `media_files` | Fichiers médias indexés |
+| `media_match_associations` | Associations médias↔matchs |
+| `sessions` | Sessions groupées |
+| `sync_meta` | Métadonnées sync |
 | `mv_*` | Vues matérialisées |
+
+### Règles Streamlit v5.1
+
+- Tout `st.plotly_chart` doit inclure `config=` (PLOTLY_CLEAN_CONFIG ou PLOTLY_STATIC_CONFIG)
+- Préférer `@fragment_if_available` pour les sections interactives multi-charts
+- Coéquipiers chargés depuis `shared.match_participants` (pas les DBs individuelles)
+- `width="stretch"` au lieu de `use_container_width=True` (déprécié)
 
 ---
 
@@ -140,6 +154,43 @@ cursor.execute("SELECT * FROM match_stats WHERE match_id = ?", (match_id,))
 # Mauvais - Injection SQL
 cursor.execute(f"SELECT * FROM match_stats WHERE match_id = '{match_id}'")
 ```
+
+---
+
+## SyncScope (`src/data/sync/scope.py`)
+
+Dataclass centralisant **tous les flags de données** partagés entre sync et backfill.
+
+### Usage recommandé
+
+```python
+from src.data.sync.scope import SyncScope
+
+# Construction depuis CLI
+scope = SyncScope.from_cli_args(args)
+
+# Tout activer
+scope = SyncScope.make_all(max_matches=100)
+
+# Sélection fine
+scope = SyncScope(medals=True, force_medals=True)
+scope.resolve()
+
+# Passer aux fonctions
+await backfill_player_data(gamertag, scope=scope)
+```
+
+### Pour ajouter un nouveau type de données
+
+1. Ajouter le champ dans `SyncScope` + registres (`_ALL_DATA_FIELDS`, `_FORCE_MAP`, `_REQUESTED_TYPE_MAP`)
+2. Ajouter l'argument CLI dans `scripts/backfill/cli.py`
+3. Implémenter la logique métier dans l'orchestrateur / engine
+
+### Legacy
+
+Les fonctions `backfill_player_data`, `backfill_all_players`, `_backfill_with_api` et
+`find_matches_missing_data` conservent les 30+ kwargs individuels marqués `LEGACY` dans le code.
+**Nouveau code : toujours passer `scope=SyncScope(...)`.**
 
 ---
 

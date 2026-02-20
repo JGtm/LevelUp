@@ -405,10 +405,10 @@ def render_h5g_commendations_section(
     # Détermine si on est en mode filtré
     is_filtered = filtered_match_ids is not None and all_match_ids is not None
 
-    # SUPPRIMÉ : Ne plus filtrer les citations par mapping
-    # On affiche toutes les citations du JSON, même si elles n'ont pas de valeur
-    # mapped_norms = set(citation_mappings.keys())
-    # items = [it for it in items if _has_mapping(it)]
+    # Filtrer les citations du JSON pour n'afficher que celles activées dans citation_mappings
+    if engine is not None:
+        enabled_norms = set(engine.load_mappings().keys())
+        items = [it for it in items if _normalize_name(str(it.get("name") or "")) in enabled_norms]
 
     # Filtres UI
     cats = sorted(
