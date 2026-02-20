@@ -234,6 +234,121 @@ def identify_last_casualty(
     return result
 
 
+def identify_last_group_kill(
+    events_df: pl.DataFrame, friend_xuids: set[str] | None = None
+) -> dict[str, ImpactEvent]:
+    """Identifie le joueur le plus lent à obtenir son premier kill dans chaque match.
+
+    Pour chaque match, trouve le joueur (parmi le groupe) dont le premier kill
+    a le time_ms le plus élevé (le plus lent à "démarrer").
+
+    Args:
+        events_df: DataFrame des événements highlight (avec gamertag).
+        friend_xuids: Set d'XUIDs des amis à filtrer (optionnel).
+
+    Returns:
+        Dict {match_id: ImpactEvent} du dernier à tuer dans chaque match.
+    """
+    if events_df.is_empty():
+        return {}
+
+    # Filtrer les kills
+    kills = events_df.filter(pl.col("event_type") == "kill")
+
+    if kills.is_empty():
+        return {}
+
+    # Filtrer par amis si spécifié
+    if friend_xuids:
+        friend_xuids_str = {str(x) for x in friend_xuids}
+        kills = kills.filter(pl.col("xuid").cast(pl.Utf8).is_in(friend_xuids_str))
+
+    if kills.is_empty():
+        return {}
+
+    # Pour chaque joueur dans chaque match, trouver son premier kill
+    first_kills_per_player = kills.group_by(["match_id", "xuid", "gamertag"]).agg(
+        pl.col("time_ms").min().alias("first_kill_time")
+    )
+
+    # Pour chaque match, trouver le joueur avec le temps le plus élevé
+    slowest_kills = (
+        first_kills_per_player.group_by("match_id")
+        .agg(pl.col("first_kill_time").max().alias("max_time"))
+        .join(first_kills_per_player, on="match_id")
+        .filter(pl.col("first_kill_time") == pl.col("max_time"))
+        .unique(subset=["match_id"])
+    )
+
+    result = {}
+    for row in slowest_kills.iter_rows(named=True):
+        match_id = str(row["match_id"])
+        result[match_id] = ImpactEvent(
+            match_id=match_id,
+            xuid=str(row["xuid"]),
+            gamertag=str(row.get("gamertag", "Unknown")),
+            time_ms=int(row["first_kill_time"]),
+            event_type="last_group_kill",
+        )
+
+    return result
+
+
+def identify_first_group_death(
+    events_df: pl.DataFrame, friend_xuids: set[str] | None = None
+) -> dict[str, ImpactEvent]:
+    """Identifie le premier joueur à mourir dans chaque match.
+
+    Pour chaque match, trouve le joueur (parmi le groupe) avec la première mort
+    (time_ms le plus bas).
+
+    Args:
+        events_df: DataFrame des événements highlight (avec gamertag).
+        friend_xuids: Set d'XUIDs des amis à filtrer (optionnel).
+
+    Returns:
+        Dict {match_id: ImpactEvent} de la première victime dans chaque match.
+    """
+    if events_df.is_empty():
+        return {}
+
+    # Filtrer les morts
+    deaths = events_df.filter(pl.col("event_type") == "death")
+
+    if deaths.is_empty():
+        return {}
+
+    # Filtrer par amis si spécifié
+    if friend_xuids:
+        friend_xuids_str = {str(x) for x in friend_xuids}
+        deaths = deaths.filter(pl.col("xuid").cast(pl.Utf8).is_in(friend_xuids_str))
+
+    if deaths.is_empty():
+        return {}
+
+    # Trouver la première mort par match (min time_ms)
+    first_deaths = (
+        deaths.group_by("match_id")
+        .agg(pl.col("time_ms").min().alias("min_time"))
+        .join(deaths, on="match_id")
+        .filter(pl.col("time_ms") == pl.col("min_time"))
+        .unique(subset=["match_id"])
+    )
+
+    result = {}
+    for row in first_deaths.iter_rows(named=True):
+        match_id = str(row["match_id"])
+        result[match_id] = ImpactEvent(
+            match_id=match_id,
+            xuid=str(row["xuid"]),
+            gamertag=str(row.get("gamertag", "Unknown")),
+            time_ms=int(row["time_ms"]),
+            event_type="first_group_death",
+        )
+
+    return result
+
+
 def compute_impact_scores(
     first_bloods: dict[str, ImpactEvent],
     clutch_finishers: dict[str, ImpactEvent],
@@ -283,11 +398,13 @@ def get_all_impact_events(
     dict[str, ImpactEvent],
     dict[str, ImpactEvent],
     dict[str, ImpactEvent],
+    dict[str, ImpactEvent],
+    dict[str, ImpactEvent],
     dict[str, int],
 ]:
     """Récupère tous les événements d'impact et calcule les scores.
 
-    Fonction de convenance qui appelle les 3 fonctions d'identification
+    Fonction de convenance qui appelle les 5 fonctions d'identification
     puis calcule les scores.
 
     Args:
@@ -296,37 +413,53 @@ def get_all_impact_events(
         friend_xuids: Set d'XUIDs des amis à filtrer.
 
     Returns:
-        Tuple (first_bloods, clutch_finishers, last_casualties, scores).
+        Tuple (first_bloods, clutch_finishers, last_casualties,
+               last_group_kills, first_group_deaths, scores).
     """
     first_bloods = identify_first_blood(events_df, friend_xuids)
     clutch_finishers = identify_clutch_finisher(events_df, matches_df, friend_xuids)
     last_casualties = identify_last_casualty(events_df, matches_df, friend_xuids)
+    last_group_kills = identify_last_group_kill(events_df, friend_xuids)
+    first_group_deaths = identify_first_group_death(events_df, friend_xuids)
     scores = compute_impact_scores(first_bloods, clutch_finishers, last_casualties)
 
-    return first_bloods, clutch_finishers, last_casualties, scores
+    return (
+        first_bloods,
+        clutch_finishers,
+        last_casualties,
+        last_group_kills,
+        first_group_deaths,
+        scores,
+    )
 
 
 def build_impact_matrix(
     first_bloods: dict[str, ImpactEvent],
     clutch_finishers: dict[str, ImpactEvent],
     last_casualties: dict[str, ImpactEvent],
+    last_group_kills: dict[str, ImpactEvent],
+    first_group_deaths: dict[str, ImpactEvent],
     match_ids: list[str],
     gamertags: list[str],
+    match_outcomes: dict[str, int] | None = None,
 ) -> pl.DataFrame:
     """Construit une matrice d'impact pour la heatmap.
 
     Crée un DataFrame avec les colonnes :
     - match_id : ID du match
-    - gamertag : Nom du joueur
-    - event_type : Type d'événement (ou null)
-    - event_value : Valeur numérique pour la heatmap (1=FB, 2=Clutch, -1=Boulet)
+    - gamertag : Nom du joueur (ou "Résultat" pour la ligne d'outcome)
+    - events : Liste d'événements [(event_type, value), ...]
+    - outcome : Outcome du match (2=Win, 3=Loss, 1=Tie, null pour les joueurs)
 
     Args:
         first_bloods: Dict des premiers kills.
         clutch_finishers: Dict des finisseurs.
         last_casualties: Dict des boulets.
+        last_group_kills: Dict des derniers à tuer (plus lent).
+        first_group_deaths: Dict des premières victimes.
         match_ids: Liste ordonnée des IDs de matchs.
         gamertags: Liste des gamertags à inclure.
+        match_outcomes: Dict optionnel {match_id: outcome} pour afficher la ligne de résultat.
 
     Returns:
         DataFrame Polars avec la matrice d'impact.
@@ -343,54 +476,71 @@ def build_impact_matrix(
     for match_id, event in first_bloods.items():
         key = (match_id, event.gamertag)
         if key in events_map:
-            events_map[key].append(("first_blood", 1))
+            events_map[key].append({"event": "first_blood", "value": 1})
 
     # Ajouter les Clutch Finishers
     for match_id, event in clutch_finishers.items():
         key = (match_id, event.gamertag)
         if key in events_map:
-            events_map[key].append(("clutch_finisher", 2))
+            events_map[key].append({"event": "clutch_finisher", "value": 2})
 
     # Ajouter les Last Casualties
     for match_id, event in last_casualties.items():
         key = (match_id, event.gamertag)
         if key in events_map:
-            events_map[key].append(("last_casualty", -1))
+            events_map[key].append({"event": "last_casualty", "value": -1})
+
+    # Ajouter les Last Group Kills (dernier à tuer)
+    for match_id, event in last_group_kills.items():
+        key = (match_id, event.gamertag)
+        if key in events_map:
+            events_map[key].append({"event": "last_group_kill", "value": 3})
+
+    # Ajouter les First Group Deaths (première victime)
+    for match_id, event in first_group_deaths.items():
+        key = (match_id, event.gamertag)
+        if key in events_map:
+            events_map[key].append({"event": "first_group_death", "value": -2})
 
     # Construire le DataFrame
     rows = []
+
+    # Ajouter la ligne "Résultat" en premier si match_outcomes est fourni
+    if match_outcomes:
+        for match_id in match_ids:
+            outcome = match_outcomes.get(match_id, 0)
+            rows.append(
+                {
+                    "match_id": match_id,
+                    "gamertag": "Résultat",
+                    "events": [],
+                    "outcome": outcome,
+                }
+            )
+
+    # Ajouter les lignes des joueurs
     for (match_id, gamertag), events in events_map.items():
-        if events:
-            # Prendre l'événement le plus significatif (priorité: clutch > FB > boulet)
-            sorted_events = sorted(events, key=lambda x: abs(x[1]), reverse=True)
-            event_type, event_value = sorted_events[0]
-            rows.append(
-                {
-                    "match_id": match_id,
-                    "gamertag": gamertag,
-                    "event_type": event_type,
-                    "event_value": event_value,
-                }
-            )
-        else:
-            rows.append(
-                {
-                    "match_id": match_id,
-                    "gamertag": gamertag,
-                    "event_type": None,
-                    "event_value": 0,
-                }
-            )
+        rows.append(
+            {
+                "match_id": match_id,
+                "gamertag": gamertag,
+                "events": events,  # Garder TOUS les événements
+                "outcome": None,
+            }
+        )
 
     if not rows:
         # DataFrame vide avec le bon schéma
         return pl.DataFrame(
+            [],
             schema={
                 "match_id": pl.Utf8,
                 "gamertag": pl.Utf8,
-                "event_type": pl.Utf8,
-                "event_value": pl.Int64,
-            }
+                "events": pl.List(
+                    pl.Struct([pl.Field("event", pl.Utf8), pl.Field("value", pl.Int64)])
+                ),
+                "outcome": pl.Int64,
+            },
         )
 
     return pl.DataFrame(rows)

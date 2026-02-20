@@ -1,4 +1,14 @@
-"""Migre les données d'un joueur vers shared_matches.duckdb.
+"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 🚨 SCRIPT DE MIGRATION — HORS SERVICE POST-V5.1                             ║
+║                                                                              ║
+║ Ce script est destiné UNIQUEMENT à la migration DuckDB v4 → v5             ║
+║ (shared matches). NE PAS UTILISER pour le flux applicatif normal            ║
+║ (architecture v5 pure).                                                     ║
+║ Conservé pour référence historique et cas exceptionnels de recovery.        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Migre les données d'un joueur vers shared_matches.duckdb.
 
 Logique :
 1. Lire tous les matchs de data/players/{gamertag}/stats.duckdb

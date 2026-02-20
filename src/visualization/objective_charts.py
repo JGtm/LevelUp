@@ -126,7 +126,7 @@ def plot_objective_vs_kills_scatter(
             customdata=[[d.get("start_time", ""), d.get("match_id", "")] for d in data],
             hovertemplate=(
                 "<b>%{text}</b><br>"
-                "Kills: %{x}<br>"
+                "Frags: %{x}<br>"
                 "Score Objectifs: %{y}<br>"
                 "<extra>%{customdata[0]}</extra>"
             ),
@@ -449,7 +449,7 @@ def plot_assist_breakdown_pie(
         )
         return apply_halo_plot_style(fig, title=title, height=height)
 
-    labels = ["Kill Assists", "Mark Assists", "EMP Assists", "Autres"]
+    labels = ["Frags assistées", "Marquages assistés", "Assistances EMP", "Autres"]
     values = [kill_assists, mark_assists, emp_assists, other_assists]
     colors = [
         OBJECTIVE_COLORS["kill"],

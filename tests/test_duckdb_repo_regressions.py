@@ -15,6 +15,7 @@ from src.data.repositories.duckdb_repo import DuckDBRepository
 def repo_with_data(tmp_path):
     """Crée un repository DuckDB avec des données de test."""
     db_path = tmp_path / "test_repo.duckdb"
+    shared_db_path = tmp_path / "shared_matches.duckdb"
     conn = duckdb.connect(str(db_path))
 
     # Créer les tables
@@ -97,7 +98,43 @@ def repo_with_data(tmp_path):
     conn.commit()
     conn.close()
 
-    repo = DuckDBRepository(str(db_path), xuid_self)
+    # ── Shared DB (match_participants) ──
+    shared_conn = duckdb.connect(str(shared_db_path))
+    shared_conn.execute("""
+        CREATE TABLE match_participants (
+            match_id VARCHAR,
+            xuid VARCHAR,
+            gamertag VARCHAR,
+            team_id INTEGER
+        )
+    """)
+    # match_1 : self + friend, même équipe (team 0)
+    shared_conn.execute(
+        "INSERT INTO match_participants VALUES (?, ?, ?, ?)",
+        [match_id_1, xuid_self, "PlayerSelf", 0],
+    )
+    shared_conn.execute(
+        "INSERT INTO match_participants VALUES (?, ?, ?, ?)",
+        [match_id_1, xuid_friend, "PlayerFriend", 0],
+    )
+    # match_2 : self + friend, même équipe (team 0)
+    shared_conn.execute(
+        "INSERT INTO match_participants VALUES (?, ?, ?, ?)",
+        [match_id_2, xuid_self, "PlayerSelf", 0],
+    )
+    shared_conn.execute(
+        "INSERT INTO match_participants VALUES (?, ?, ?, ?)",
+        [match_id_2, xuid_friend, "PlayerFriend", 0],
+    )
+    # match_3 : self seul (team 1), friend absent
+    shared_conn.execute(
+        "INSERT INTO match_participants VALUES (?, ?, ?, ?)",
+        [match_id_3, xuid_self, "PlayerSelf", 1],
+    )
+    shared_conn.commit()
+    shared_conn.close()
+
+    repo = DuckDBRepository(str(db_path), xuid_self, shared_db_path=str(shared_db_path))
 
     yield repo, xuid_self, xuid_friend, xuid_enemy, match_id_1, match_id_2, match_id_3
 

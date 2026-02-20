@@ -1,9 +1,9 @@
 # Data Lineage - Traçabilité des Données Halo
 
 > Ce fichier trace l'origine, les transformations et la destination de chaque flux de données.
-> Mis à jour : 2026-02-01
+> Mis à jour : 2026-02-17
 
-## Architecture v4 - DuckDB Unifié
+## Architecture v5.1 - Shared Matches + Player Enrichments
 
 ```
 ┌─────────────────┐      ┌─────────────────────────────────────────────┐
@@ -13,49 +13,54 @@
          │               │  │  metadata.duckdb (global)           │   │
          ▼               │  │  - playlists, maps, game_modes      │   │
 ┌─────────────────┐      │  │  - medal_definitions, career_ranks  │   │
-│  Pydantic v2    │      │  │  - players                          │   │
-│  Validation     │      │  └─────────────────────────────────────┘   │
-└────────┬────────┘      │                                             │
-         │               │  ┌─────────────────────────────────────┐   │
-         ▼               │  │  players/{gt}/stats.duckdb          │   │
-┌─────────────────┐      │  │  - match_stats                      │   │
-│ DuckDBSyncEngine│──────│  │  - player_match_stats               │   │
-│  Transformers   │      │  │  - highlight_events                 │   │
-└─────────────────┘      │  │  - xuid_aliases                     │   │
-                         │  │  - teammates_aggregate              │   │
-                         │  │  - antagonists                      │   │
-                         │  │  - career_progression               │   │
+│  Pydantic v2    │      │  └─────────────────────────────────────┘   │
+│  Validation     │      │                                             │
+└────────┬────────┘      │  ┌─────────────────────────────────────┐   │
+         │               │  │  shared_matches.duckdb (centralisée)│   │
+         ▼               │  │  - match_registry (1 ligne/match)   │   │
+┌─────────────────┐      │  │  - match_participants (31 col, MMR) │   │
+│ DuckDBSyncEngine│──────│  │  - highlight_events                 │   │
+│  Transformers   │      │  │  - medals_earned                    │   │
+└────────┬────────┘      │  │  - killer_victim_pairs              │   │
+         │               │  │  - xuid_aliases                     │   │
+         │               │  └─────────────────────────────────────┘   │
+         │               │                                             │
+         └───────────────│  ┌─────────────────────────────────────┐   │
+                         │  │  players/{gt}/stats.duckdb          │   │
+                         │  │  - player_match_enrichment (SEULE)  │   │
+                         │  │  - personal_score_awards             │   │
+                         │  │  - antagonists, match_citations      │   │
+                         │  │  - career_progression, sessions      │   │
+                         │  │  - media_files, media_match_assoc    │   │
                          │  │  - mv_* (vues matérialisées)        │   │
-                         │  └─────────────────────────────────────┘   │
-                         │                                             │
-                         │  ┌─────────────────────────────────────┐   │
-                         │  │  players/{gt}/archive/ (Parquet)    │   │
-                         │  │  - matches_*.parquet                │   │
-                         │  │  - archive_index.json               │   │
                          │  └─────────────────────────────────────┘   │
                          └─────────────────────────────────────────────┘
                                             │
                                             ▼
                                    ┌─────────────────┐
                                    │   Streamlit UI  │
-                                   │   (DataFrames)  │
+                                   │  (Polars DFs)   │
                                    └─────────────────┘
 ```
 
 ## Flux de Données Principaux
 
-### 1. API Halo → DuckDB (Synchronisation)
+### 1. API Halo → DuckDB (Synchronisation v5.1)
 
 ```
 Source: API Halo Infinite (via SPNKr)
      ↓
 Client: SPNKrAPIClient (src/data/sync/api_client.py)
      ↓
-Transformers: transform_match_stats(), transform_skill_stats(), etc.
+Transformers: transform_match_stats(), extract_participants(), etc.
      ↓
 Engine: DuckDBSyncEngine (src/data/sync/engine.py)
+     ├─→ Match connu → enrichissement personnel uniquement (player_match_enrichment)
+     └─→ Match nouveau → shared (registry + participants + events + medals)
      ↓
-Destination: data/players/{gamertag}/stats.duckdb
+Destinations:
+  - shared_matches.duckdb : matchs, participants, events, médailles, xuid_aliases
+  - players/{gamertag}/stats.duckdb : enrichissements, awards uniquement
 ```
 
 ### 2. JSON → DuckDB (Référentiels)
@@ -117,22 +122,33 @@ Lancement : thread en arrière-plan au démarrage de l’app (`_background_media
 | `career_ranks` | 273 | Rangs (0-272) |
 | `players` | Variable | Joueurs connus |
 
-### Données Joueur (stats.duckdb)
+### shared_matches.duckdb (centralisée)
 
 | Table | Cardinalité | Description |
 |-------|-------------|-------------|
-| `match_stats` | 1:N par joueur | Faits des matchs |
-| `match_participants` | 1:N par match | Tous les joueurs du match (xuid, team_id, rank, score, kills, deaths, assists). Identifiant = xuid ; nom = JOIN xuid_aliases. |
-| `medals_earned` | M:N | Médailles par match |
-| `player_match_stats` | 1:1 | Données MMR par match |
-| `highlight_events` | 1:N | Événements par match |
-| `teammates_aggregate` | 1:N | Stats coéquipiers |
-| `antagonists` | 1:N | Rivalités |
-| `xuid_aliases` | 1:1 | Mapping XUID→Gamertag |
+| `match_registry` | 1:1 par match | Registre central (données communes du match) |
+| `match_participants` | N:1 par match | Stats de tous les joueurs (31 col, incl. MMR) |
+| `highlight_events` | N:1 par match | Événements filmés |
+| `medals_earned` | M:N | Médailles de tous les joueurs |
+| `killer_victim_pairs` | N:1 par match | Paires killer→victim |
+| `xuid_aliases` | 1:1 | Mapping global XUID→Gamertag |
+
+### Données Joueur stats.duckdb (v5.1 — enrichissements uniquement)
+
+> 8 tables supprimées : match_stats, match_participants, highlight_events,
+> medals_earned, killer_victim_pairs, player_match_stats, xuid_aliases, teammates_aggregate
+
+| Table | Cardinalité | Description |
+|-------|-------------|-------------|
+| `player_match_enrichment` | 1:N par joueur | performance_score, session_id, is_with_friends (**SEULE table match**) |
+| `personal_score_awards` | M:N | Awards objectifs (PersonalScores API) |
+| `antagonists` | 1:N | Rivalités agrégées |
+| `match_citations` | 1:N | Citations calculées par match |
 | `career_progression` | 1:N | Historique rangs |
+| `sessions` | 1:N | Sessions groupées |
 | `sync_meta` | 1:1 | Métadonnées sync |
 | `media_files` | 1:N | Fichiers médias indexés (captures/vidéos), status active/deleted |
-| `media_match_associations` | M:N | Association média ↔ match ↔ xuid (map_name, match_start_time) |
+| `media_match_associations` | M:N | Association média ↔ match ↔ xuid |
 
 ### Vues Matérialisées
 
@@ -178,46 +194,19 @@ Détail : `.ai/DATA_MATCH_RANK.md`.
 - Index sur colonnes fréquemment filtrées (`start_time`, `playlist_id`)
 - Colonnes GENERATED pour les calculs (`net_kills`, `accuracy`)
 
-## ⚠️ RÈGLE CRITIQUE : Chargement Stats Multi-Joueurs
+## Architecture Multi-Joueurs (v5.1)
 
-Dans l'architecture DuckDB v4, **chaque joueur a sa propre DB**.
-
-### ❌ Erreur fréquente
-
-```python
-# FAUX - le xuid est IGNORÉ pour DuckDB v4
-teammate_df = load_df_optimized(db_path, teammate_xuid, db_key=db_key)
-# → Charge toujours depuis db_path (joueur principal) !
-```
-
-### ✅ Bonne pratique
-
-```python
-# CORRECT - Charger depuis la DB du coéquipier
-from pathlib import Path
-
-def _load_teammate_stats_from_own_db(gamertag, match_ids, reference_db_path):
-    base_dir = Path(reference_db_path).parent.parent
-    teammate_db = base_dir / gamertag / "stats.duckdb"
-    if not teammate_db.exists():
-        return pd.DataFrame()
-    df = load_df_optimized(str(teammate_db), "", db_key=None)
-    return df[df["match_id"].isin(match_ids)]
-```
-
-### Flux correct pour afficher stats coéquipier
+En v5.1, les stats coéquipiers sont chargées depuis `shared.match_participants` :
 
 ```
-1. Identifier match_id communs (teammates_aggregate)
+1. Identifier match_id communs via shared.match_participants
       ↓
-2. Obtenir gamertag coéquipier (display_name_from_xuid)
+2. Charger stats coéquipier depuis shared.match_participants (xuid)
       ↓
-3. Construire chemin: data/players/{gamertag}/stats.duckdb
-      ↓
-4. Charger depuis cette DB
-      ↓
-5. Filtrer sur match_id communs
+3. Pas besoin d'accéder aux DBs individuelles des coéquipiers
 ```
+
+Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score_awards` uniquement.
 
 ## Problèmes Connus
 

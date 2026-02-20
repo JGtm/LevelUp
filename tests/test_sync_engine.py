@@ -769,20 +769,8 @@ class TestEngineBatchInsertMethods:
         return engine
 
     def test_batch_insert_medals_via_engine(self, engine_with_db):
-        """Les médailles sont insérées en batch."""
-        from src.data.sync.models import MedalEarnedRow
-
-        engine = engine_with_db
-        rows = [
-            MedalEarnedRow(match_id="m1", medal_name_id=1001, count=2),
-            MedalEarnedRow(match_id="m1", medal_name_id=1002, count=1),
-        ]
-        engine._insert_medal_rows(rows)
-
-        conn = engine._get_connection()
-        result = conn.execute("SELECT COUNT(*) FROM medals_earned").fetchone()[0]
-        assert result == 2
-        engine.close()
+        """8bis.B3: Test supprimé — _insert_medal_rows obsolète (medals dans shared)."""
+        pytest.skip("8bis.B3 : méthode _insert_medal_rows supprimée en v5.1")
 
     def test_batch_insert_events_via_engine(self, engine_with_db):
         """Les events sont insérés en batch."""
@@ -805,69 +793,16 @@ class TestEngineBatchInsertMethods:
         engine.close()
 
     def test_batch_insert_participants_via_engine(self, engine_with_db):
-        """Les participants sont insérés en batch."""
-        from src.data.sync.models import MatchParticipantRow
-
-        engine = engine_with_db
-        rows = [
-            MatchParticipantRow(
-                match_id="m1",
-                xuid="x1",
-                team_id=0,
-                outcome=2,
-                gamertag="Player1",
-                rank=1,
-                score=1500,
-                kills=15,
-                deaths=8,
-                assists=5,
-            ),
-        ]
-        engine._insert_participant_rows(rows)
-
-        conn = engine._get_connection()
-        result = conn.execute("SELECT gamertag FROM match_participants").fetchone()
-        assert result[0] == "Player1"
-        engine.close()
+        """8bis.B3: Test supprimé — _insert_participant_rows obsolète (dans shared)."""
+        pytest.skip("8bis.B3 : méthode _insert_participant_rows supprimée en v5.1")
 
     def test_batch_insert_aliases_via_engine(self, engine_with_db):
-        """Les aliases sont insérés en batch."""
-        from src.data.sync.models import XuidAliasRow
-
-        engine = engine_with_db
-        rows = [
-            XuidAliasRow(xuid="x1", gamertag="Player1", source="sync"),
-            XuidAliasRow(xuid="x2", gamertag="Player2", source="sync"),
-        ]
-        engine._insert_alias_rows(rows)
-
-        conn = engine._get_connection()
-        result = conn.execute("SELECT COUNT(*) FROM xuid_aliases").fetchone()[0]
-        assert result == 2
-        engine.close()
+        """8bis.B3: Test supprimé — _insert_alias_rows obsolète (dans shared)."""
+        pytest.skip("8bis.B3 : méthode _insert_alias_rows supprimée en v5.1")
 
     def test_batch_insert_skill_via_engine(self, engine_with_db):
-        """Les données skill sont insérées en batch."""
-        from src.data.sync.models import PlayerMatchStatsRow
-
-        engine = engine_with_db
-        row = PlayerMatchStatsRow(
-            match_id="m1",
-            xuid="x1",
-            team_id=0,
-            team_mmr=1500.0,
-            enemy_mmr=1480.0,
-            kills_expected=12.5,
-            kills_stddev=3.2,
-        )
-        engine._insert_skill_row(row)
-
-        conn = engine._get_connection()
-        result = conn.execute(
-            "SELECT team_mmr FROM player_match_stats WHERE match_id = 'm1'"
-        ).fetchone()
-        assert result[0] == pytest.approx(1500.0, abs=1.0)
-        engine.close()
+        """8bis.B3: Test supprimé — _insert_skill_row obsolète (dans shared)."""
+        pytest.skip("8bis.B3 : méthode _insert_skill_row supprimée en v5.1")
 
     def test_batch_insert_personal_scores_via_engine(self, engine_with_db):
         """Les personal scores sont insérés en batch."""

@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
-"""Script de migration des donnees joueur SQLite vers DuckDB.
+"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 🚨 SCRIPT DE MIGRATION — HORS SERVICE POST-V5.1                             ║
+║                                                                              ║
+║ Ce script est destiné UNIQUEMENT à la migration SQLite → DuckDB (v4).       ║
+║ NE PAS UTILISER pour le flux applicatif normal (architecture v5 pure).      ║
+║ Conservé pour référence historique et cas exceptionnels de recovery.        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 
-⚠️ SCRIPT DE MIGRATION UNIQUEMENT - SQLite en lecture pour migration.
-Ne pas utiliser pour le flux applicatif normal (DuckDB uniquement).
+Script de migration des donnees joueur SQLite vers DuckDB.
 
 Ce script migre spnkr_gt_{gamertag}.db (SQLite legacy) vers
 data/players/{gamertag}/stats.duckdb (DuckDB).

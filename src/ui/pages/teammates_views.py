@@ -100,6 +100,13 @@ def render_single_teammate_view(
         # Charger les stats du coéquipier depuis SA propre DB
         friend_sub = ensure_polars(load_teammate_stats_fn(name, shared_ids, db_path))
 
+        # Filtrer friend_sub pour ne garder que les match_ids présents dans sub (après filtres)
+        if not friend_sub.is_empty() and "match_id" in friend_sub.columns:
+            filtered_match_ids = sub["match_id"].cast(pl.Utf8).to_list()
+            friend_sub = friend_sub.filter(
+                pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids)
+            )
+
         # Graphes côte à côte
         render_comparison_charts(
             sub=sub,
@@ -225,6 +232,11 @@ def render_multi_teammate_view(
         )
 
         series: list[tuple[str, DataFrameLike]] = [(me_name, sub_all)]
+        # Récupérer les match_ids filtrés du joueur principal
+        filtered_match_ids = (
+            sub_all["match_id"].cast(pl.Utf8).to_list() if not sub_all.is_empty() else []
+        )
+
         with st.spinner("Chargement des stats des coéquipiers…"):
             for fx in picked_xuids:
                 ids = per_friend_ids.get(str(fx), set())
@@ -234,6 +246,13 @@ def render_multi_teammate_view(
                 fr_sub = ensure_polars(
                     load_teammate_stats_fn(fx_gamertag, {str(x) for x in ids}, db_path)
                 )
+                if fr_sub.is_empty():
+                    continue
+                # Filtrer fr_sub pour ne garder que les match_ids présents dans sub_all (après filtres)
+                if "match_id" in fr_sub.columns and filtered_match_ids:
+                    fr_sub = fr_sub.filter(
+                        pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids)
+                    )
                 if fr_sub.is_empty():
                     continue
                 series.append((fx_gamertag, fr_sub))
@@ -250,7 +269,7 @@ def render_multi_teammate_view(
                 title = f"Ratio global par carte — avec mes coéquipiers (min {min_matches_maps_friends} matchs)"
                 fig_map = plot_map_ratio_with_winloss(view_all, title=title)
                 if fig_map is not None:
-                    st.plotly_chart(fig_map, width="stretch")
+                    st.plotly_chart(fig_map, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Données insuffisantes pour le ratio par carte.")
             except Exception as e:
@@ -289,9 +308,12 @@ def render_multi_teammate_view(
             enrich_series_fn=enrich_series_fn,
         )
 
-    # Impact & Taquinerie (si ≥2 amis)
+    # Impact (si ≥2 amis)
     if len(picked_xuids) >= 2:
-        impact_match_ids = list(all_match_ids) if all_match_ids else []
+        # Utiliser les match_ids du DataFrame filtré sub_all au lieu de all_match_ids
+        impact_match_ids = (
+            sub_all["match_id"].cast(pl.Utf8).unique().to_list() if not sub_all.is_empty() else []
+        )
         render_impact_taquinerie(
             db_path=db_path,
             xuid=xuid,
@@ -369,6 +391,13 @@ def render_trio_view(
     f1_df = ensure_polars(load_teammate_stats_fn(f1_name, trio_ids_set, db_path))
     f2_df = ensure_polars(load_teammate_stats_fn(f2_name, trio_ids_set, db_path))
 
+    # Filtrer les DataFrames des coéquipiers pour ne garder que les match_ids présents dans me_df (après filtres)
+    filtered_match_ids = me_df["match_id"].cast(pl.Utf8).to_list() if not me_df.is_empty() else []
+    if not f1_df.is_empty() and "match_id" in f1_df.columns and filtered_match_ids:
+        f1_df = f1_df.filter(pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids))
+    if not f2_df.is_empty() and "match_id" in f2_df.columns and filtered_match_ids:
+        f2_df = f2_df.filter(pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids))
+
     me_df = me_df.sort("start_time")
 
     _render_per_minute_stats(me_df, f1_df, f2_df, me_name, f1_name, f2_name, colors_by_name)
@@ -393,7 +422,13 @@ def render_trio_view(
 
     _render_trio_performance_charts(merged, me_name, f1_name, f2_name, f1_xuid, f2_xuid)
 
-    # Graphes de barres
+    # Graphes de barres - reconstruire series avec les DataFrames du trio
+    series = [(me_name, me_df)]
+    if not f1_df.is_empty():
+        series.append((f1_name, f1_df))
+    if not f2_df.is_empty():
+        series.append((f2_name, f2_df))
+    colors_by_name = assign_player_colors_fn([n for n, _ in series])
     series = enrich_series_fn(series, db_path)
     render_metric_bar_charts(
         series=series,
@@ -565,9 +600,10 @@ def _detect_trio_session(
     trio_rows = base_s_trio.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(trio_ids_set)))
     latest_label = None
     if not trio_rows.is_empty():
-        latest_sid = int(trio_rows["session_id"].max())
+        # session_id peut être string ou int selon le contexte, comparer en string
+        latest_sid = trio_rows["session_id"].max()
         latest_labels = (
-            trio_rows.filter(pl.col("session_id") == latest_sid)
+            trio_rows.filter(pl.col("session_id").cast(pl.Utf8) == str(latest_sid))
             .select("session_label")
             .drop_nulls()
             .unique()
@@ -602,7 +638,7 @@ def _render_per_minute_stats(
     f2_stats = compute_aggregated_stats(f2_df)
     st.subheader("Stats par minute")
 
-    _pm_metrics = ["Frags/min", "Morts/min", "Assists/min"]
+    _pm_metrics = ["Frags/min", "Morts/min", "Assistances/min"]
     _pm_players = [
         (me_name, me_stats, colors_by_name.get(me_name, "#636EFA")),
         (f1_name, f1_stats, colors_by_name.get(f1_name, "#EF553B")),
@@ -634,7 +670,7 @@ def _render_per_minute_stats(
     fig_pm = apply_halo_plot_style(fig_pm, title=None, height=None)
     try:
         if fig_pm is not None:
-            st.plotly_chart(fig_pm, width="stretch")
+            st.plotly_chart(fig_pm, width="stretch", config={"staticPlot": True})
         else:
             st.info("Données insuffisantes pour les stats/min.")
     except Exception as e:

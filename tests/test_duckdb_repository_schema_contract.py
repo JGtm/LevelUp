@@ -207,11 +207,58 @@ def test_repository_critical_schema_contract(temp_repo_contract_db) -> None:
         conn.close()
 
 
-def test_repository_methods_still_work_with_expected_schema(temp_repo_contract_db) -> None:
+def test_repository_methods_still_work_with_expected_schema(
+    temp_repo_contract_db, tmp_path
+) -> None:
     """Les méthodes repository clés restent fonctionnelles sur le schéma contractuel."""
     from src.data.repositories.duckdb_repo import DuckDBRepository
 
-    repo = DuckDBRepository(str(temp_repo_contract_db), xuid="x_me", read_only=True)
+    # Créer une shared DB avec medals_earned et highlight_events
+    # car ces méthodes lisent désormais exclusivement depuis shared (v5.1)
+    shared_path = tmp_path / "shared_contract.duckdb"
+    conn = duckdb.connect(str(shared_path))
+    try:
+        conn.execute("""
+            CREATE TABLE medals_earned (
+                match_id VARCHAR,
+                xuid VARCHAR,
+                medal_name_id INTEGER,
+                count INTEGER
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE highlight_events (
+                match_id VARCHAR,
+                event_type VARCHAR,
+                time_ms INTEGER,
+                killer_xuid VARCHAR,
+                killer_gamertag VARCHAR,
+                victim_xuid VARCHAR,
+                victim_gamertag VARCHAR,
+                type_hint INTEGER
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE match_participants (
+                match_id VARCHAR,
+                xuid VARCHAR,
+                gamertag VARCHAR,
+                team_id INTEGER
+            )
+        """)
+        conn.execute("INSERT INTO medals_earned VALUES ('m1', 'x_me', 1512363953, 1)")
+        conn.execute(
+            "INSERT INTO highlight_events VALUES ('m1', 'Kill', 1000, 'x_me', 'Me', NULL, NULL, 50)"
+        )
+    finally:
+        conn.close()
+
+    repo = DuckDBRepository(
+        str(temp_repo_contract_db),
+        xuid="x_me",
+        read_only=True,
+        shared_db_path=str(shared_path),
+    )
     try:
         matches = repo.load_matches()
         assert len(matches) == 1

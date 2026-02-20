@@ -4,7 +4,7 @@ Moteur de requête DuckDB unifié.
 
 HOW IT WORKS:
 Ce moteur encapsule toutes les opérations DuckDB et fournit :
-1. Attachement automatique de la base SQLite metadata
+1. Attachement automatique de metadata.duckdb
 2. Construction de chemins Parquet avec partitionnement
 3. Exécution de requêtes SQL avec retour typé
 4. Gestion du cache et des optimisations
@@ -12,10 +12,10 @@ Ce moteur encapsule toutes les opérations DuckDB et fournit :
 Le moteur peut être utilisé directement pour des requêtes ad-hoc
 ou via les classes de haut niveau (AnalyticsQueries, TrendAnalyzer).
 
-Exemple de requête avec jointure SQLite + Parquet:
+Exemple de requête avec jointure metadata + Parquet:
     engine = QueryEngine("data/warehouse")
 
-    # DuckDB joint automatiquement SQLite (meta.players) et Parquet (match_facts)
+    # DuckDB joint automatiquement metadata (meta.players) et Parquet (match_facts)
     result = engine.execute('''
         SELECT
             p.gamertag,
@@ -45,12 +45,12 @@ logger = logging.getLogger(__name__)
 
 class QueryEngine:
     """
-    Moteur de requête DuckDB pour l'architecture hybride.
-    (DuckDB query engine for hybrid architecture)
+    Moteur de requête DuckDB pour l'architecture v5.
+    (DuckDB query engine for v5 architecture)
 
     Fournit une interface unifiée pour :
     - Requêtes SQL sur Parquet
-    - Jointures avec SQLite (metadata)
+    - Jointures avec metadata.duckdb
     - Agrégations analytiques haute performance
     """
 
@@ -106,21 +106,13 @@ class QueryEngine:
         conn.execute("SET enable_object_cache = true")
         conn.execute("SET enable_progress_bar = false")
 
-        # Attacher la base metadata (DuckDB uniquement)
-        # SQLite n'est plus supporté en runtime (migration v4+)
+        # Attacher metadata.duckdb (v5 — DuckDB uniquement)
         metadata_duckdb = self.warehouse_path / "metadata.duckdb"
-        metadata_sqlite = self.warehouse_path / "metadata.db"
 
         if metadata_duckdb.exists():
             conn.execute(f"ATTACH '{metadata_duckdb}' AS meta (READ_ONLY)")
             self._metadata_attached = True
-            logger.debug(f"DuckDB metadata attachée: {metadata_duckdb}")
-        elif metadata_sqlite.exists():
-            # SQLite n'est plus supporté en runtime depuis la migration v4
-            raise RuntimeError(
-                f"Base metadata SQLite détectée ({metadata_sqlite}), mais SQLite n'est plus supporté en runtime. "
-                "Veuillez migrer vers DuckDB avec les scripts de migration disponibles dans scripts/migration/."
-            )
+            logger.debug(f"metadata.duckdb attachée: {metadata_duckdb}")
 
         return conn
 
@@ -353,15 +345,15 @@ class QueryEngine:
         params: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
-        Requête avec jointure automatique sur les métadonnées SQLite.
-        (Query with automatic join on SQLite metadata)
+        Requête avec jointure automatique sur les métadonnées DuckDB.
+        (Query with automatic join on DuckDB metadata)
 
         Placeholders disponibles:
         - {match_facts} : Table des faits de match
         - {medals} : Table des médailles
-        - {players} : meta.players (SQLite)
-        - {playlists} : meta.playlists (SQLite)
-        - {maps} : meta.maps (SQLite)
+        - {players} : meta.players
+        - {playlists} : meta.playlists
+        - {maps} : meta.maps
 
         Exemple:
             result = engine.query_with_metadata_join('''
@@ -376,7 +368,7 @@ class QueryEngine:
             ''', xuid="123")
         """
         if not self._metadata_attached:
-            logger.warning("SQLite metadata non attachée, jointures limitées")
+            logger.warning("metadata.duckdb non attachée, jointures limitées")
 
         # Remplacer les placeholders
         sql = sql_template
@@ -396,7 +388,7 @@ class QueryEngine:
             else:
                 sql = sql.replace("{medals}", "(SELECT NULL as match_id LIMIT 0)")
 
-        # Placeholders SQLite
+        # Placeholders metadata DuckDB
         sql = sql.replace("{players}", "meta.players")
         sql = sql.replace("{playlists}", "meta.playlists")
         sql = sql.replace("{maps}", "meta.maps")

@@ -162,14 +162,13 @@ def _resolve_player_in_db(db_path: str, player_query: str) -> tuple[str, str | N
     if xuid_from_profiles:
         return xuid_from_profiles, xuid_from_profiles, player_query.strip()
 
-    # Essayer depuis la DB DuckDB du joueur si elle existe (pour DuckDB v4)
-    player_db_path = REPO_ROOT / "data" / "players" / player_query / "stats.duckdb"
-    if player_db_path.exists():
+    # V5.1 : Chercher dans shared_matches.duckdb (source unique)
+    shared_path = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+    if shared_path.exists():
         try:
             import duckdb
 
-            conn = duckdb.connect(str(player_db_path), read_only=True)
-            # Chercher dans xuid_aliases
+            conn = duckdb.connect(str(shared_path), read_only=True)
             result = conn.execute(
                 "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
                 [player_query],

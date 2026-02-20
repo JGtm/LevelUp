@@ -1,28 +1,36 @@
-# Architecture LevelUp v5.0 — Shared Matches
+# Architecture LevelUp v5.1 — Pure Architecture DuckDB + Polars
 
-> **Date** : 2026-02-15
-> **Version** : 5.0.0
-> **Migration depuis** : v4.5 (DuckDB unifié, 1 DB par joueur)
+> **Date** : 2026-02-17
+> **Version** : 5.1.0
+> **Migration depuis** : v5.0 (Shared Matches initial)
 
 ---
 
 ## Vue d'Ensemble
 
-LevelUp v5 introduit une architecture **Shared Matches** qui centralise les données de matchs
-dans une base partagée unique (`shared_matches.duckdb`), éliminant la duplication massive
-entre joueurs partageant des parties communes.
+LevelUp v5.1 est l'aboutissement de l'architecture **Shared Matches** avec cleanup complet des tables legacy, modernisation Streamlit et optimisation des performances.
 
-### Problématique résolue
+### Gains mesurés
 
-En v4, chaque joueur avait sa propre copie complète de chaque match (stats, médailles, events).
-Pour 4 joueurs partageant 95% de matchs, cela signifiait 4× les mêmes données.
+| Métrique | v4 | v5.0 | v5.1 | Gain total |
+|----------|----|----|------|------|
+| Stockage par joueur | 200 MB | 30 MB | ~4 MB | **-98%** |
+| Connexion DB | - | 80ms | <20ms | **-75%** |
+| Première page UI | - | 1500ms | <800ms | **-47%** |
+| SQLite runtime | 7 | 0 | 0 | **-100%** |
+| Pandas métier | 7 | 7 | 0 | **-100%** |
+| Tables obsolètes/joueur | 13 | 8 | 0 | **-100%** |
+| Tests | 1065 | 2768 | 2913 | **+173%** |
 
-| Métrique | v4 | v5 | Gain |
-|----------|----|----|------|
-| Stockage (4 joueurs) | 800 MB | 250 MB | **-69%** |
-| DB size par joueur | 200 MB | 30 MB | **-85%** |
-| Appels API (sync 4 joueurs) | 12 000 | 3 300 | **-72%** |
-| Temps sync (100 matchs) | 45 min | 12 min | **-73%** |
+### 7 Points Critiques v5.1
+
+1. **`match_stats` n'existe plus** dans les player DBs
+2. **`player_match_stats` n'existe plus** — colonnes MMR dans `shared.match_participants`
+3. **`xuid_aliases` est dans shared uniquement**
+4. **`player_match_enrichment` est la SEULE table match** dans les player DBs
+5. **Coéquipiers chargés depuis shared**, pas les DBs individuelles
+6. **Cleanup brutal intentionnel** : erreurs explicites si code résiduel accède aux tables supprimées
+7. **Sync écrit dans player DBs** : `player_match_enrichment` + `personal_score_awards` uniquement
 
 ---
 
@@ -149,6 +157,43 @@ Pattern Factory pour créer des `DuckDBRepository` avec auto-détection des chem
 - `metadata_db_path` : Auto-détecté depuis `data/warehouse/metadata.duckdb`
 - Fallback v4 transparent si `shared_matches.duckdb` n'existe pas
 
+### 6. SyncScope (`src/data/sync/scope.py`)
+
+**Nouveau en v5.2** — Dataclass centralisant les 30+ flags de données partagés
+entre `sync.py`, `backfill_data.py` et leurs sous-modules (orchestrator, detection, engine).
+
+```python
+from src.data.sync.scope import SyncScope
+
+# Tout activer
+scope = SyncScope.make_all(max_matches=100)
+
+# Depuis argparse
+scope = SyncScope.from_cli_args(args)
+
+# Sélection fine
+scope = SyncScope(medals=True, events=True, force_medals=True)
+scope.resolve()  # force_medals → medals=True automatiquement
+```
+
+**Rôle** : Remplace la copie de 30+ kwargs à travers la chaîne
+`cli.py` → `backfill_data.py` → `orchestrator.py` → `detection.py` → `_backfill_with_api`.
+
+**Registres internes** :
+- `_ALL_DATA_FIELDS` : champs activés par `--all-data`
+- `_FORCE_MAP` : implications `force_X` → `X`
+- `_REQUESTED_TYPE_MAP` : mapping champ → clé bitmask `backfill_completed`
+
+**Pour ajouter un nouveau type de données** :
+1. Ajouter le champ booléen dans `SyncScope` + registres
+2. Ajouter l'argument CLI dans `scripts/backfill/cli.py`
+3. Implémenter la logique métier dans l'orchestrateur / engine
+
+> **Note legacy** : Les fonctions `backfill_player_data`, `backfill_all_players`,
+> `_backfill_with_api` et `find_matches_missing_data` conservent les 30+ kwargs
+> individuels pour rétro-compatibilité (marqués `LEGACY` dans le code).
+> Nouveau code : toujours passer `scope=SyncScope(...)`.
+
 ---
 
 ## Flux de Données
@@ -227,6 +272,7 @@ src/
 │   ├── sync/                     # Synchronisation API
 │   │   ├── api_client.py         # Client SPNKr
 │   │   ├── engine.py             # Moteur de sync (v5 shared)
+│   │   ├── scope.py              # SyncScope — flags sync/backfill centralisés
 │   │   ├── transformers.py       # Transformations JSON→DB
 │   │   ├── migrations.py         # Migrations de schéma
 │   │   └── models.py             # Modèles de sync

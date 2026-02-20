@@ -183,12 +183,37 @@ def render_checkbox_filter(
         # Boutons Tout / Aucun
         if show_select_buttons and len(options) > 1:
             cols = st.columns(2)
-            if cols[0].button("✓ Tout", key=f"{session_key}_all", width="stretch"):
-                st.session_state[session_key] = set(options)
-                st.rerun()
-            if cols[1].button("✗ Aucun", key=f"{session_key}_none", width="stretch"):
-                st.session_state[session_key] = set()
-                st.rerun()
+
+            def _select_all(sk: str = session_key, opts: list[str] = options) -> None:
+                st.session_state[sk] = set(opts)
+
+            def _select_none(sk: str = session_key) -> None:
+                if st.session_state.get(f"{sk}_confirm_clear"):
+                    st.session_state[sk] = set()
+                    st.session_state[f"{sk}_confirm_clear"] = False
+                else:
+                    st.session_state[f"{sk}_confirm_clear"] = True
+
+            cols[0].button(
+                "✓ Tout", key=f"{session_key}_all", width="stretch", on_click=_select_all
+            )
+            cols[1].button(
+                "✗ Aucun", key=f"{session_key}_none", width="stretch", on_click=_select_none
+            )
+
+        # Confirmation message
+        if st.session_state.get(f"{session_key}_confirm_clear"):
+            st.warning("⚠️ Confirmer : vider toutes les sélections ?")
+
+            def _confirm_clear(sk: str = session_key) -> None:
+                st.session_state[sk] = set()
+                st.session_state[f"{sk}_confirm_clear"] = False
+
+            def _cancel_clear(sk: str = session_key) -> None:
+                st.session_state[f"{sk}_confirm_clear"] = False
+
+            st.button("Confirmer", key=f"{session_key}_confirm_btn", on_click=_confirm_clear)
+            st.button("Annuler", key=f"{session_key}_cancel_btn", on_click=_cancel_clear)
 
         # Checkboxes
         for opt in options:
@@ -293,12 +318,40 @@ def render_hierarchical_checkbox_filter(
     with st.expander(title, expanded=expanded):
         # Boutons globaux Tout / Aucun
         cols = st.columns(2)
-        if cols[0].button("✓ Tout", key=f"{session_key}_all", width="stretch"):
-            st.session_state[session_key] = set(options)
-            st.rerun()
-        if cols[1].button("✗ Aucun", key=f"{session_key}_none", width="stretch"):
-            st.session_state[session_key] = set()
-            st.rerun()
+
+        def _select_all_g(sk: str = session_key, opts: list[str] = options) -> None:
+            st.session_state[sk] = set(opts)
+
+        def _select_none_g(sk: str = session_key) -> None:
+            if st.session_state.get(f"{sk}_confirm_clear"):
+                st.session_state[sk] = set()
+                st.session_state[f"{sk}_confirm_clear"] = False
+            else:
+                st.session_state[f"{sk}_confirm_clear"] = True
+
+        cols[0].button("✓ Tout", key=f"{session_key}_all", width="stretch", on_click=_select_all_g)
+        cols[1].button(
+            "✗ Aucun", key=f"{session_key}_none", width="stretch", on_click=_select_none_g
+        )
+
+        # Confirmation message
+        if st.session_state.get(f"{session_key}_confirm_clear"):
+            st.warning("⚠️ Confirmer : vider toutes les sélections ?")
+            cols_confirm = st.columns(2)
+
+            def _confirm_clear_g(sk: str = session_key) -> None:
+                st.session_state[sk] = set()
+                st.session_state[f"{sk}_confirm_clear"] = False
+
+            def _cancel_clear_g(sk: str = session_key) -> None:
+                st.session_state[f"{sk}_confirm_clear"] = False
+
+            cols_confirm[0].button(
+                "Confirmer", key=f"{session_key}_confirm_btn", on_click=_confirm_clear_g
+            )
+            cols_confirm[1].button(
+                "Annuler", key=f"{session_key}_cancel_btn", on_click=_cancel_clear_g
+            )
 
         st.markdown("---")
 
@@ -313,7 +366,6 @@ def render_hierarchical_checkbox_filter(
             # Compter les sélections dans cette catégorie
             cat_selected = [m for m in all_cat_options if m in st.session_state[session_key]]
             all_selected = len(cat_selected) == len(all_cat_options)
-            none_selected = len(cat_selected) == 0
 
             # Nombre de modes uniques (après fusion)
             unique_modes_count = len(cat_modes)
@@ -326,17 +378,22 @@ def render_hierarchical_checkbox_filter(
                 # Le mode est coché si TOUS les full_modes sont cochés
                 checked = all(fm in st.session_state[session_key] for fm in full_modes)
 
-                new_val = st.checkbox(
+                cb_key = f"{session_key}_cat_{cat}"
+
+                def _on_cat_single_change(
+                    sk: str = session_key, fms: list[str] = full_modes, k: str = cb_key
+                ) -> None:
+                    if st.session_state[k]:
+                        st.session_state[sk] = st.session_state[sk] | set(fms)
+                    else:
+                        st.session_state[sk] = st.session_state[sk] - set(fms)
+
+                st.checkbox(
                     f"{cat_fr}",
                     value=checked,
-                    key=f"{session_key}_cat_{cat}",
+                    key=cb_key,
+                    on_change=_on_cat_single_change,
                 )
-                if new_val and not checked:
-                    st.session_state[session_key] = st.session_state[session_key] | set(full_modes)
-                    st.rerun()
-                elif not new_val and checked:
-                    st.session_state[session_key] = st.session_state[session_key] - set(full_modes)
-                    st.rerun()
             else:
                 # Plusieurs modes dans la catégorie
                 # Compter les modes uniques sélectionnés
@@ -348,24 +405,24 @@ def render_hierarchical_checkbox_filter(
 
                 cat_label = f"{cat_fr} ({modes_selected_count}/{unique_modes_count})"
 
-                # Checkbox pour toute la catégorie
-                cat_checkbox_val = st.checkbox(
+                cat_cb_key = f"{session_key}_cat_{cat}"
+
+                def _on_cat_change(
+                    sk: str = session_key,
+                    opts: list[str] = all_cat_options,
+                    k: str = cat_cb_key,
+                ) -> None:
+                    if st.session_state[k]:
+                        st.session_state[sk] = st.session_state[sk] | set(opts)
+                    else:
+                        st.session_state[sk] = st.session_state[sk] - set(opts)
+
+                st.checkbox(
                     cat_label,
                     value=all_selected,
-                    key=f"{session_key}_cat_{cat}",
+                    key=cat_cb_key,
+                    on_change=_on_cat_change,
                 )
-
-                # Si l'utilisateur a cliqué sur la checkbox catégorie
-                if cat_checkbox_val and not all_selected:
-                    st.session_state[session_key] = st.session_state[session_key] | set(
-                        all_cat_options
-                    )
-                    st.rerun()
-                elif not cat_checkbox_val and not none_selected:
-                    st.session_state[session_key] = st.session_state[session_key] - set(
-                        all_cat_options
-                    )
-                    st.rerun()
 
                 # Sous-expander pour les modes individuels
                 with st.expander("", expanded=False):
@@ -374,21 +431,24 @@ def render_hierarchical_checkbox_filter(
                         # Le mode est coché si TOUS les full_modes sont cochés
                         checked = all(fm in st.session_state[session_key] for fm in full_modes)
 
-                        new_val = st.checkbox(
+                        mode_cb_key = f"{session_key}_mode_{cat}_{mode_name}"
+
+                        def _on_mode_change(
+                            sk: str = session_key,
+                            fms: list[str] = full_modes,
+                            k: str = mode_cb_key,
+                        ) -> None:
+                            if st.session_state[k]:
+                                st.session_state[sk] = st.session_state[sk] | set(fms)
+                            else:
+                                st.session_state[sk] = st.session_state[sk] - set(fms)
+
+                        st.checkbox(
                             mode_name,
                             value=checked,
-                            key=f"{session_key}_mode_{cat}_{mode_name}",
+                            key=mode_cb_key,
+                            on_change=_on_mode_change,
                         )
-                        if new_val and not checked:
-                            st.session_state[session_key] = st.session_state[session_key] | set(
-                                full_modes
-                            )
-                            st.rerun()
-                        elif not new_val and checked:
-                            st.session_state[session_key] = st.session_state[session_key] - set(
-                                full_modes
-                            )
-                            st.rerun()
 
     return st.session_state[session_key]
 

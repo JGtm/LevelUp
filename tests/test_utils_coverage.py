@@ -162,16 +162,26 @@ class TestResolveXuidFromDb:
         assert result is None
 
     def test_resolve_from_duckdb(self, tmp_path):
-        """Teste la résolution depuis une vraie DB DuckDB."""
+        """8bis: En v5.1, résolution depuis shared_matches.duckdb."""
         import duckdb
 
-        db_path = str(tmp_path / "stats.duckdb")
-        conn = duckdb.connect(db_path)
+        # Structure v5.1 : créer shared_matches.duckdb avec xuid_aliases
+        warehouse = tmp_path / "data" / "warehouse"
+        warehouse.mkdir(parents=True, exist_ok=True)
+        shared_db = str(warehouse / "shared_matches.duckdb")
+        conn = duckdb.connect(shared_db)
         conn.execute("CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)")
         conn.execute("INSERT INTO xuid_aliases VALUES ('2533274823110022', 'Chocoboflor')")
         conn.close()
 
-        result = resolve_xuid_from_db(db_path, "Chocoboflor")
+        # Player DB pour le chemin
+        player_db = tmp_path / "data" / "players" / "Chocoboflor" / "stats.duckdb"
+        player_db.parent.mkdir(parents=True, exist_ok=True)
+        conn = duckdb.connect(str(player_db))
+        conn.execute("CREATE TABLE sync_meta (key VARCHAR, value VARCHAR)")
+        conn.close()
+
+        result = resolve_xuid_from_db(str(player_db), "Chocoboflor")
         assert result == "2533274823110022"
 
 
@@ -293,15 +303,10 @@ class TestGetPlayerArchiveDir:
 
 
 class TestGetMetadataDbPath:
-    def test_prefer_duckdb(self):
-        """Par défaut, retourne le chemin DuckDB."""
-        path = get_metadata_db_path(prefer_duckdb=True)
+    def test_returns_duckdb_path(self):
+        """Retourne toujours le chemin metadata.duckdb."""
+        path = get_metadata_db_path()
         assert path.name == "metadata.duckdb"
-
-    def test_prefer_legacy(self):
-        path = get_metadata_db_path(prefer_duckdb=False)
-        # Retourne soit metadata.db si existe, soit metadata.duckdb
-        assert path.name in ("metadata.db", "metadata.duckdb")
 
 
 class TestListPlayerGamertags:

@@ -11,6 +11,8 @@ import streamlit as st
 
 from src.config import HALO_COLORS
 from src.data.services.win_loss_service import WinLossService
+from src.ui.streamlit_modern import fragment_if_available
+from src.ui.vectorize_helpers import build_mapping
 from src.visualization import (
     plot_map_comparison,
     plot_map_ratio_with_winloss,
@@ -82,6 +84,7 @@ def _style_map_table_row(row: pd.Series) -> pd.Series:
     return pd.Series(styles)
 
 
+@fragment_if_available
 def render_win_loss_page(
     dff: DataFrameLike,
     base: DataFrameLike,
@@ -129,7 +132,7 @@ def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str
             "victoires/défaites (et autres statuts) pour suivre l'évolution."
         )
         if fig_out is not None:
-            st.plotly_chart(fig_out, width="stretch")
+            st.plotly_chart(fig_out, width="stretch", config={"displayModeBar": False})
         else:
             st.info("Données insuffisantes pour afficher l'évolution des résultats.")
         return bucket_label
@@ -138,6 +141,7 @@ def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str
         return "période"
 
 
+@fragment_if_available
 def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
     """Affiche les résultats par carte et mode (Sprint 5.4)."""
     st.divider()
@@ -157,7 +161,7 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     max_categories=12,
                 )
                 if fig_map is not None:
-                    st.plotly_chart(fig_map, width="stretch")
+                    st.plotly_chart(fig_map, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Données insuffisantes pour les résultats par carte.")
             except Exception as e:
@@ -183,7 +187,7 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     max_categories=10,
                 )
                 if fig_mode is not None:
-                    st.plotly_chart(fig_mode, width="stretch")
+                    st.plotly_chart(fig_mode, width="stretch", config={"staticPlot": True})
                 else:
                     st.info("Données insuffisantes pour les résultats par mode.")
             except Exception as e:
@@ -192,6 +196,7 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
             st.info("Données insuffisantes.")
 
 
+@fragment_if_available
 def _render_heatmap_section(dff: pl.DataFrame) -> None:
     """Affiche la heatmap Win Rate par jour et heure."""
     st.divider()
@@ -202,9 +207,9 @@ def _render_heatmap_section(dff: pl.DataFrame) -> None:
     )
     if "start_time" in dff.columns and "outcome" in dff.columns:
         try:
-            fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=2)
+            fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=1)
             if fig_heat is not None:
-                st.plotly_chart(fig_heat, width="stretch")
+                st.plotly_chart(fig_heat, width="stretch", config={"staticPlot": True})
             else:
                 st.info("Données insuffisantes pour la heatmap win rate.")
         except Exception as e:
@@ -213,6 +218,7 @@ def _render_heatmap_section(dff: pl.DataFrame) -> None:
         st.info("Données temporelles manquantes.")
 
 
+@fragment_if_available
 def _render_top_by_week(dff: pl.DataFrame) -> None:
     """Affiche Matchs Top vs Total par semaine (Sprint 5.4.7)."""
     st.divider()
@@ -233,13 +239,14 @@ def _render_top_by_week(dff: pl.DataFrame) -> None:
             top_n_ranks=1,
         )
         if fig_top is not None:
-            st.plotly_chart(fig_top, width="stretch")
+            st.plotly_chart(fig_top, width="stretch", config={"displayModeBar": False})
         else:
             st.info("Données insuffisantes pour les matchs Top.")
     except Exception as e:
         st.warning(f"Impossible d'afficher les matchs Top : {e}")
 
 
+@fragment_if_available
 def _render_streak_section(dff: pl.DataFrame) -> None:
     """Affiche les séries de victoires/défaites (Sprint 7.2)."""
     st.divider()
@@ -253,7 +260,7 @@ def _render_streak_section(dff: pl.DataFrame) -> None:
         try:
             fig_streak = plot_streak_chart(dff, title=None)
             if fig_streak is not None:
-                st.plotly_chart(fig_streak, width="stretch")
+                st.plotly_chart(fig_streak, width="stretch", config={"displayModeBar": False})
             else:
                 st.info("Données insuffisantes pour les séries.")
         except Exception as e:
@@ -283,7 +290,7 @@ def _render_personal_score_section(dff: pl.DataFrame) -> None:
         smooth_window=10,
     )
     if fig_ps is not None:
-        st.plotly_chart(fig_ps, width="stretch")
+        st.plotly_chart(fig_ps, width="stretch", config={"displayModeBar": False})
     else:
         st.info("Données de score personnel insuffisantes.")
 
@@ -296,12 +303,14 @@ def _render_period_section(
     """Affiche le tableau par période."""
     st.divider()
     st.subheader("Par période")
-    period = WinLossService.compute_period_table(dff.to_pandas(), bucket_label, is_session_scope)
+    # compute_period_table accepte directement un pl.DataFrame
+    period = WinLossService.compute_period_table(dff, bucket_label, is_session_scope)
     if period.is_empty:
         st.info("Aucune donnée pour construire le tableau.")
         return
 
-    out_tbl = period.table
+    # Conversion pandas à la frontière pour le styling .style
+    out_tbl = period.table.to_pandas()
 
     def _style_pct(v) -> str:
         try:
@@ -324,6 +333,7 @@ def _render_period_section(
     st.dataframe(out_styled, width="stretch", hide_index=True, column_config=col_cfg)
 
 
+@fragment_if_available
 def _render_ratio_by_map_section(
     dff: pl.DataFrame,
     base: pl.DataFrame,
@@ -396,7 +406,7 @@ def _render_ratio_by_map_section(
                 fig.update_xaxes(tickformat=".0%")
             if key in ("accuracy_avg",):
                 fig.update_xaxes(ticksuffix="%")
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
         else:
             st.info(f"Données insuffisantes pour {label}.")
     except Exception as e:
@@ -453,10 +463,15 @@ def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None
     if "playlist_ui" in base_scope.columns:
         playlist_ctx = _single_or_multi_label(base_scope["playlist_ui"].drop_nulls().to_list())
     else:
+        # Vectorisation: build_mapping + replace_strict au lieu de map_elements
+        def _clean_then_translate(s: str | None) -> str | None:
+            return translate_playlist_name(_clean_asset_label(s))
+
+        _pl_map = build_mapping(base_scope["playlist_name"], _clean_then_translate)
         playlist_vals = (
             base_scope["playlist_name"]
-            .map_elements(_clean_asset_label, return_dtype=pl.Utf8)
-            .map_elements(translate_playlist_name, return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .replace_strict(_pl_map, default=None, return_dtype=pl.Utf8)
             .drop_nulls()
             .to_list()
         )
@@ -465,9 +480,12 @@ def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None
     if "mode_ui" in base_scope.columns:
         mode_ctx = _single_or_multi_label(base_scope["mode_ui"].drop_nulls().to_list())
     else:
+        # Vectorisation: build_mapping + replace_strict au lieu de map_elements
+        _mode_map = build_mapping(base_scope["pair_name"], _normalize_mode_label)
         mode_vals = (
             base_scope["pair_name"]
-            .map_elements(_normalize_mode_label, return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
             .drop_nulls()
             .to_list()
         )
