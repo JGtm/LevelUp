@@ -51,20 +51,26 @@ COLORS = {
     "highlight": "#ffd700",  # Or - Highlight
 }
 
-# Palette de couleurs pour les joueurs (jusqu'à 12)
+# Couleurs mises à jour pour respecter la palette Okabe-Ito (accessibilité daltonisme).
+# Anciens code hexadécimaux (deuteranopie/protanopie-incompatibles) :
+#   #00ff00 (vert néon), #ff4444 (rouge néon), #00aaff (bleu vif), #ff6600 (orange vif),
+#   #aa00ff (violet), #ffff00 (jaune saturé), #00ffaa (cyan-vert), #ff00aa (fuchsia),
+#   #aaffaa (vert pâle), #ffaaaa (rose pâle), #aaaaff (lavande), #ffaaff (orchidée)
+# Palette de couleurs daltonien-friendly pour les joueurs (jusqu'à 12)
+# Basée sur la palette Okabe-Ito + extensions accessibles (Wong 2011)
 PLAYER_COLORS = [
-    "#00ff00",
-    "#ff4444",
-    "#00aaff",
-    "#ff6600",
-    "#aa00ff",
-    "#ffff00",
-    "#00ffaa",
-    "#ff00aa",
-    "#aaffaa",
-    "#ffaaaa",
-    "#aaaaff",
-    "#ffaaff",
+    "#0072B2",  # Bleu
+    "#E69F00",  # Orange
+    "#009E73",  # Vert bleuté
+    "#D55E00",  # Vermillon
+    "#56B4E9",  # Bleu ciel
+    "#CC79A7",  # Rose mauve
+    "#F0E442",  # Jaune
+    "#999999",  # Gris
+    "#332288",  # Indigo
+    "#44AA99",  # Sarcelle
+    "#DDCC77",  # Sable
+    "#AA4499",  # Violet
 ]
 
 
@@ -79,7 +85,7 @@ def plot_killer_victim_stacked_bars(
     *,
     me_xuid: str | None = None,
     rank_by_xuid: dict[str, int] | None = None,
-    title: str = "Interactions Killer-Victim",
+    title: str = "Eliminateur-Victime",
     height: int = 400,
 ) -> go.Figure:
     """Graphique barres empilées : une ligne par tueur, segments = victimes (plus tuée en premier), lignes triées par rang.
@@ -190,7 +196,7 @@ def plot_killer_victim_stacked_bars(
     fig.update_layout(
         barmode="stack",
         xaxis_title="Nombre de frags",
-        yaxis_title="Tueur (rang)",
+        yaxis_title="Elminateur",
         yaxis={"categoryorder": "array", "categoryarray": killer_labels},
         margin={"l": 140},
         showlegend=True,
