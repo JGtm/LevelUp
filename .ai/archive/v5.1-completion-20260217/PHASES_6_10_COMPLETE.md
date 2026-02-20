@@ -536,4 +536,3 @@ def test_phase9_no_forbidden_tables_in_player_db():
 ---
 
 **Fin des analyses Phase 6-10**
-
