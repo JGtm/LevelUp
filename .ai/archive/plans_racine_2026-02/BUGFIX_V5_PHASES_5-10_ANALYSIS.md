@@ -1066,4 +1066,3 @@ def load_match_rosters_v5(
    - CHANGELOG: "Profils radar: joueur principal uniquement (V5)"
 
 ---
-
