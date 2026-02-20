@@ -15,12 +15,17 @@ from src.analysis import compute_personal_antagonists
 from src.config import BOT_MAP, TEAM_MAP
 from src.ui import display_name_from_xuid
 from src.ui.pages.match_view_helpers import os_card
-from src.ui.streamlit_modern import fragment_if_available
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, fragment_if_available
 from src.utils import parse_xuid_input
 from src.visualization.match_impact_timeline import (
     IMPACT_LABELS,
     compute_single_match_impact,
     plot_match_kill_death_timeline,
+)
+from src.visualization.team_dominance_timeline import (
+    compute_dominance_buckets,
+    detect_streaks,
+    plot_dominance_chart,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,6 +66,103 @@ def _load_match_players_stats(db_path: str, match_id: str) -> list[dict[str, Any
         return repo.load_match_players_stats(match_id)
     except Exception:
         return []
+
+
+# =============================================================================
+# Section Dynamique du match (frise de dominance d'équipe)
+# =============================================================================
+
+
+@fragment_if_available
+def render_team_dominance_section(
+    *,
+    match_id: str,
+    db_path: str,
+    xuid: str,
+    db_key: tuple[int, int] | None,
+    is_firefight: bool,
+    load_highlight_events_fn: Callable,
+) -> None:
+    """Rend la frise chronologique de dominance d'équipe (PvP uniquement).
+
+    Affiche deux panneaux liés par l'axe temps :
+    - Barres de dominance (tug-of-war) par tranche de 30s.
+    - Kill feed individuel avec streaks annotées.
+    """
+    if is_firefight:
+        return
+
+    if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
+        return
+
+    st.subheader("Dynamique du match")
+
+    with st.spinner("Analyse de la dynamique…"):
+        he = load_highlight_events_fn(db_path, match_id.strip(), db_key=db_key)
+
+    if not he:
+        st.info("Données insuffisantes pour afficher la dynamique du match.")
+        return
+
+    # Mapping xuid → team_id + gamertag depuis match_participants
+    all_players = _load_match_players_stats(db_path, match_id.strip())
+    if not all_players:
+        st.info("Roster introuvable — frise de dominance indisponible.")
+        return
+
+    me_xuid = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
+
+    xuid_to_team: dict[str, int] = {
+        str(p.get("xuid", "")).strip(): int(p["team_id"])
+        for p in all_players
+        if p.get("team_id") is not None and p.get("xuid")
+    }
+    xuid_to_gamertag: dict[str, str] = {}
+    for _p in all_players:
+        _xu = str(_p.get("xuid", "")).strip()
+        _gt = str(_p.get("gamertag") or "").strip()
+        # Exclure les gamertags non résolus (XUID brut stocké à la place du nom)
+        if _xu and _gt and _gt != _xu and not _gt.isdigit() and not _gt.lower().startswith("xuid("):
+            xuid_to_gamertag[_xu] = _gt
+
+    # Vérification : au moins 2 équipes distinctes (PvP)
+    if len(set(xuid_to_team.values())) < 2:
+        return
+
+    my_team_id = xuid_to_team.get(me_xuid)
+    if my_team_id is None:
+        st.info("Équipe introuvable pour ce joueur — frise de dominance indisponible.")
+        return
+
+    kill_events = [
+        e
+        for e in he
+        if str(e.get("event_type", "")).lower() == "kill" and e.get("time_ms") is not None
+    ]
+    if not kill_events:
+        st.info("Aucun kill enregistré pour ce match.")
+        return
+
+    # Durée inférée depuis les events (+ buffer pour la dernière tranche)
+    duration_s = max(int(e["time_ms"]) for e in kill_events) / 1000.0 + 20.0
+
+    buckets = compute_dominance_buckets(he, xuid_to_team, my_team_id, duration_s)
+    streaks = detect_streaks(he, xuid_to_team, xuid_to_gamertag)
+
+    fig = plot_dominance_chart(
+        buckets=buckets,
+        streaks=streaks,
+        kill_events=kill_events,
+        xuid_to_team=xuid_to_team,
+        my_team_id=my_team_id,
+        duration_s=duration_s,
+        height=360,
+    )
+
+    if fig is not None:
+        st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+    else:
+        st.info("Données insuffisantes pour la frise de dominance.")
 
 
 # =============================================================================
@@ -632,6 +734,7 @@ def _format_time(ms: int) -> str:
 # =============================================================================
 
 __all__ = [
+    "render_team_dominance_section",
     "render_nemesis_section",
     "render_roster_section",
     "render_match_impact_section",
