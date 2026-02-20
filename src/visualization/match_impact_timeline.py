@@ -227,8 +227,8 @@ def plot_match_kill_death_timeline(
     #   kill_color:        #3DFFB5 (vert néon Halo) → #0072B2 (bleu Okabe-Ito)
     #   death_color:       #FF4D6D (rose-rouge)      → #D55E00 (vermillon Okabe-Ito)
     #   annotation_color:  #FFB703 (ambre chaud)     → #E69F00 (orange Okabe-Ito)
-    kill_color = "#0072B2"   # Bleu Okabe-Ito — kills
-    death_color = "#D55E00"   # Vermillon Okabe-Ito — morts
+    kill_color = "#0072B2"  # Bleu Okabe-Ito — kills
+    death_color = "#D55E00"  # Vermillon Okabe-Ito — morts
     annotation_color = "#E69F00"  # Orange Okabe-Ito — annotations
 
     fig = go.Figure()
@@ -408,6 +408,191 @@ def plot_match_kill_death_timeline(
 
 
 # =============================================================================
+# K/D cumulé de tous les joueurs (timeline match)
+# =============================================================================
+
+
+def plot_all_players_frags_timeline(
+    highlight_events: list[dict[str, Any]],
+    me_xuid: str,
+    *,
+    gt_map: dict[str, str] | None = None,
+    player_color_map: dict[str, str] | None = None,
+    height: int = 380,
+) -> go.Figure | None:
+    """Graphe chronologique des frags cumulés de tous les joueurs d'un match.
+
+    Compte uniquement les kills (frags) au fil du temps pour chaque joueur.
+
+    Args:
+        highlight_events: Events {event_type, time_ms, xuid, gamertag, ...}.
+        me_xuid: XUID du joueur principal (ligne mise en avant).
+        gt_map: Mapping xuid → gamertag résolu.
+        player_color_map: Mapping xuid → couleur hex.  Si fourni, les
+            couleurs seront cohérentes avec d'autres graphes du même match.
+        height: Hauteur du graphe en pixels.
+
+    Returns:
+        Figure Plotly ou None si données insuffisantes.
+    """
+    if not highlight_events:
+        return None
+
+    from src.config import BOT_MAP
+    from src.visualization.antagonist_charts import PLAYER_COLORS
+
+    me_xuid = str(me_xuid).strip()
+
+    # Collecter uniquement les events kill/death avec time_ms
+    events: list[tuple[int, str, str, str | None]] = []  # (time_ms, event_type, xuid, gamertag)
+    for e in highlight_events:
+        etype = str(e.get("event_type", "")).lower()
+        if etype not in ("kill", "death"):
+            continue
+        t = e.get("time_ms")
+        if t is None:
+            continue
+        xu = str(e.get("xuid", "")).strip()
+        if not xu:
+            continue
+        events.append((int(t), etype, xu, e.get("gamertag")))
+
+    if not events:
+        return None
+
+    events.sort(key=lambda x: x[0])
+
+    # Accumuler les frags (kills uniquement) par joueur au fil du temps
+    player_kills: dict[str, int] = {}
+    # Stocker (time_ms, frags_cumulés) par joueur
+    player_series: dict[str, list[tuple[int, int]]] = {}
+    player_gt: dict[str, str] = {}  # xuid → meilleur gamertag connu
+
+    for t_ms, etype, xu, gt_raw in events:
+        if etype != "kill":
+            # Garder le gamertag même sur les deaths
+            if gt_raw and str(gt_raw).strip():
+                player_gt.setdefault(xu, str(gt_raw).strip())
+            continue
+
+        player_kills.setdefault(xu, 0)
+        player_series.setdefault(xu, [])
+
+        player_kills[xu] += 1
+        player_series[xu].append((t_ms, player_kills[xu]))
+
+        # Garder le gamertag le plus récent
+        if gt_raw and str(gt_raw).strip():
+            player_gt[xu] = str(gt_raw).strip()
+
+    if not player_series:
+        return None
+
+    # Résolution des noms d'affichage
+    def _resolve_gt(xu: str) -> str:
+        # gt_map (source fraîche)
+        if gt_map and xu in gt_map:
+            g = str(gt_map[xu]).strip()
+            if g and g != "?" and not g.isdigit():
+                return g
+        # Bots
+        if xu.lower().startswith("bid("):
+            bot = BOT_MAP.get(xu)
+            if isinstance(bot, str) and bot.strip():
+                return bot.strip()
+        # Gamertag de l'event
+        if xu in player_gt:
+            g = player_gt[xu]
+            if g and g != "?" and not g.isdigit() and not g.lower().startswith("xuid("):
+                return g
+        return xu[:8] + "…"
+
+    # Trier les joueurs pour l'assignation des couleurs :
+    # joueur principal en premier, puis par nombre total d'events décroissant
+    sorted_xuids = sorted(
+        player_series.keys(),
+        key=lambda xu: (xu != me_xuid, -len(player_series[xu])),
+    )
+
+    # Construire le color_map si non fourni
+    if player_color_map is None:
+        player_color_map = {}
+        for idx, xu in enumerate(sorted_xuids):
+            player_color_map[xu] = PLAYER_COLORS[idx % len(PLAYER_COLORS)]
+
+    fig = go.Figure()
+
+    for xu in sorted_xuids:
+        series = player_series[xu]
+        if not series:
+            continue
+
+        times = [s[0] for s in series]
+        kds = [s[1] for s in series]
+        labels = [_format_time(t) for t in times]
+        name = _resolve_gt(xu)
+        color = player_color_map.get(xu, "#999999")
+        is_me = xu == me_xuid
+
+        fig.add_trace(
+            go.Scatter(
+                x=times,
+                y=kds,
+                mode="lines+markers",
+                name=name,
+                line={
+                    "color": color,
+                    "width": 4.5 if is_me else 2.8,
+                },
+                marker={
+                    "size": 7 if is_me else 4,
+                    "color": color,
+                },
+                opacity=1.0 if is_me else 0.65,
+                hovertemplate=(f"<b>{name}</b><br>" "Frags: %{y:.0f}<br>" "%{text}<extra></extra>"),
+                text=labels,
+            )
+        )
+
+    fig.update_layout(
+        **get_default_layout_kwargs(height),
+        xaxis_title="",
+        yaxis_title="Frags cumulés",
+        showlegend=True,
+        legend={
+            "orientation": "h",
+            "yanchor": "top",
+            "y": -0.15,
+            "xanchor": "left",
+            "x": 0,
+            "font": {"size": 10},
+        },
+    )
+
+    # Figer l'axe Y pour que le toggle de légende ne change pas l'échelle
+    all_frags = [f for xu in player_series for _, f in player_series[xu]]
+    if all_frags:
+        y_max = max(all_frags)
+        margin = max(1, round(y_max * 0.1))
+        fig.update_yaxes(
+            range=[0, y_max + margin],
+            fixedrange=True,
+        )
+
+    # Formater l'axe X en MM:SS
+    all_times = [t for xu in player_series for t, _ in player_series[xu]]
+    if all_times:
+        max_t = max(all_times)
+        tick_interval = 60_000
+        tick_vals = list(range(0, max_t + tick_interval, tick_interval))
+        tick_texts = [_format_time(t) for t in tick_vals]
+        fig.update_xaxes(tickmode="array", tickvals=tick_vals, ticktext=tick_texts)
+
+    apply_halo_plot_style(fig)
+    return fig
+
+
+# =============================================================================
 # Exports
 # =============================================================================
 
@@ -416,4 +601,5 @@ __all__ = [
     "IMPACT_LABELS",
     "compute_single_match_impact",
     "plot_match_kill_death_timeline",
+    "plot_all_players_frags_timeline",
 ]
