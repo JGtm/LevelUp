@@ -158,13 +158,28 @@ def save_aliases_file(aliases: dict[str, str], path: str | None = None) -> None:
 def get_xuid_aliases(db_path: str | None = None) -> dict[str, str]:
     """Retourne les alias fusionnés (DB > fichier > défaut).
 
-    L'ordre de priorité est:
-    1. Table XuidAliases de la DB (si db_path fourni et table existe)
+    .. deprecated::
+        OBSOLÈTE pour la résolution de gamertags dans le contexte d'un match.
+        Cette fonction lit shared_matches.duckdb via un cache LRU indirect et ignore
+        les données fraîches de match_participants / highlight_events.
+
+        **NE PAS UTILISER** dans les vues de match (render_match_scoreboard,
+        render_roster_section, etc.).
+
+        Utiliser à la place :
+            load_match_gamertags_fn(db_path, match_id, db_key=db_key)
+        qui appelle repo.load_match_player_gamertags() — source de vérité v5.1.
+
+        Utilisation encore acceptable : scripts de migration, export CSV,
+        contextes hors-match où aucun match_id n'est disponible.
+
+    L'ordre de priorité est :
+    1. Table xuid_aliases de shared_matches.duckdb (si db_path fourni)
     2. Fichier xuid_aliases.json
     3. Constantes XUID_ALIASES_DEFAULT
 
     Args:
-        db_path: Chemin optionnel vers une DB SQLite avec table XuidAliases.
+        db_path: Chemin optionnel vers une DB DuckDB joueur.
 
     Returns:
         Dictionnaire {xuid: gamertag}.
@@ -182,9 +197,23 @@ def get_xuid_aliases(db_path: str | None = None) -> dict[str, str]:
 def display_name_from_xuid(xuid: str, db_path: str | None = None) -> str:
     """Convertit un XUID en nom d'affichage.
 
+    .. deprecated::
+        OBSOLÈTE pour la résolution de gamertags dans le contexte d'un match.
+        Passe par get_xuid_aliases() → cache LRU → shared_matches.duckdb et ignore
+        les données fraîches de match_participants / highlight_events.
+
+        **NE PAS APPELER** depuis les sections de vue de match.
+
+        Utiliser à la place :
+            gt_map = load_match_gamertags_fn(db_path, match_id, db_key=db_key)
+            gamertag = gt_map.get(xuid)
+        (même approche que render_roster_section, qui fonctionne correctement).
+
+        Utilisation encore acceptable : scripts, contextes hors-match.
+
     Args:
         xuid: XUID du joueur.
-        db_path: Chemin optionnel vers une DB SQLite avec table XuidAliases.
+        db_path: Chemin optionnel vers une DB DuckDB.
 
     Returns:
         Gamertag si un alias existe, sinon le XUID tel quel.

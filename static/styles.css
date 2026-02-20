@@ -1450,6 +1450,93 @@ div[data-testid="stNumberInput"] input:focus {
     color: rgba(182, 196, 214, 0.72);
 }
 
+/* =============================================================================
+   Scoreboard (tableau des scores par équipe)
+   ============================================================================= */
+
+.os-sb-wrap {
+    overflow-x: auto;
+    max-height: none;
+    margin-bottom: 1.25rem;
+}
+
+.os-table.os-scoreboard {
+    min-width: 900px;
+    font-size: 0.8rem;
+}
+
+/* Header équipe du joueur — Okabe-Ito Blue #0072B2 */
+.os-table.os-scoreboard th.os-sb-team.os-sb-team--mine {
+    background: linear-gradient(90deg, rgba(0, 114, 178, 0.38), rgba(10, 14, 20, 0.88));
+    color: #a8d4f5;
+    border-bottom: 2px solid rgba(0, 114, 178, 0.55);
+}
+
+/* Header équipes adverses — Okabe-Ito Vermillion #D55E00 */
+.os-table.os-scoreboard th.os-sb-team.os-sb-team--enemy {
+    background: linear-gradient(90deg, rgba(213, 94, 0, 0.32), rgba(10, 14, 20, 0.88));
+    color: #f5c8a8;
+    border-bottom: 2px solid rgba(213, 94, 0, 0.50);
+}
+
+/* Fallback si équipe indéterminée */
+.os-table.os-scoreboard th.os-sb-team {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align: left;
+    padding: 8px 12px;
+}
+
+.os-table.os-scoreboard th.os-sb-th {
+    background: rgba(10, 14, 20, 0.80);
+    color: rgba(182, 196, 214, 0.80);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 5px 8px;
+    white-space: normal;
+    word-break: break-word;
+    max-width: 80px;
+    vertical-align: bottom;
+    line-height: 1.2;
+}
+
+.os-table.os-scoreboard th.os-sb-th:first-child {
+    text-align: left;
+    min-width: 120px;
+    max-width: none;
+    white-space: nowrap;
+}
+
+.os-table.os-scoreboard td.os-sb-td {
+    text-align: center;
+    padding: 5px 8px;
+    white-space: nowrap;
+    color: rgba(220, 232, 246, 0.92);
+}
+
+.os-table.os-scoreboard td.os-sb-td:first-child {
+    text-align: left;
+    font-weight: 700;
+    color: #dce8ff;
+    white-space: nowrap;
+}
+
+.os-table.os-scoreboard tr.os-sb-row--me td.os-sb-td {
+    background: rgba(51, 214, 255, 0.08);
+    color: #33d6ff;
+}
+
+.os-table.os-scoreboard tr.os-sb-row--me td.os-sb-td:first-child {
+    color: #33d6ff;
+    font-weight: 800;
+}
+
+.os-table.os-scoreboard tr.os-sb-row--me {
+    box-shadow: inset 3px 0 0 rgba(51, 214, 255, 0.55);
+}
+
 /* Citations (Halo 5) */
 .os-citation-top-gap {
     height: 10px;
