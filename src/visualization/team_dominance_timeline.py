@@ -29,8 +29,8 @@ from plotly.subplots import make_subplots
 # Anciens code hexadécimaux (deuteranopie/protanopie-incompatibles) :
 #   _MY_TEAM_COLOR: #3DFFB5 (vert néon Halo) → #0072B2 (bleu Okabe-Ito)
 #   _ENEMY_COLOR:   #FF4D6D (rose-rouge)      → #D55E00 (vermillon Okabe-Ito)
-_MY_TEAM_COLOR = "#0072B2"   # Bleu Okabe-Ito — mon équipe
-_ENEMY_COLOR = "#D55E00"     # Vermillon Okabe-Ito — équipe adverse
+_MY_TEAM_COLOR = "#0072B2"  # Bleu Okabe-Ito — mon équipe
+_ENEMY_COLOR = "#D55E00"  # Vermillon Okabe-Ito — équipe adverse
 _MY_TEAM_RGBA = "rgba(0, 114, 178, 0.80)"
 _ENEMY_RGBA = "rgba(213, 94, 0, 0.80)"
 _NEUTRAL_RGBA = "rgba(255, 255, 255, 0.10)"
@@ -39,6 +39,10 @@ _BG_TRANSPARENT = "rgba(0,0,0,0)"
 _STREAK_MARKER_SIZE = 12
 _NORMAL_MARKER_SIZE = 7
 _STREAK_LINE_WIDTH = 2
+
+_LEAD_MY_COLOR = "#009E73"  # Vert Okabe-Ito — avantage cumulé mon équipe
+_LEAD_MY_BG = "rgba(0, 158, 115, 0.22)"
+_LEAD_ENEMY_BG = "rgba(213, 94, 0, 0.22)"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -361,7 +365,18 @@ def plot_dominance_chart(
                 enemy_xs.append(t_s)
                 enemy_tips.append(tip)
 
-    # ── Construction figure ──────────────────────────────────────────────────
+    # ── Frags cumulés par tranche ────────────────────────────────────────────
+    cumul_my = 0
+    cumul_enemy = 0
+    cumul_my_list: list[int] = []
+    cumul_enemy_list: list[int] = []
+    for b in buckets:
+        cumul_my += b.my_kills
+        cumul_enemy += b.enemy_kills
+        cumul_my_list.append(cumul_my)
+        cumul_enemy_list.append(cumul_enemy)
+
+    # ── Construction figure (2 panneaux liés par l'axe X) ───────────────────
     fig = make_subplots(
         rows=2,
         cols=1,
@@ -438,6 +453,55 @@ def plot_dominance_chart(
         xref="x",
         yref="y",
     )
+
+    # ── Frags cumulés : annotations à l'extérieur avec highlight conditionnel ──
+    for i, t in enumerate(t_centers):
+        my_val = cumul_my_list[i]
+        en_val = cumul_enemy_list[i]
+        my_lead = my_val > en_val
+        enemy_lead = en_val > my_val
+
+        # Mon équipe — au-dessus (y=110)
+        fig.add_annotation(
+            x=t,
+            y=110.0,
+            text=f"<b>{my_val}</b>",
+            font={
+                "color": _LEAD_MY_COLOR if my_lead else _MY_TEAM_COLOR,
+                "size": 12,
+                "family": "Arial Black, Arial, sans-serif",
+            },
+            showarrow=False,
+            xanchor="center",
+            yanchor="middle",
+            bgcolor=_LEAD_MY_BG if my_lead else "rgba(0,0,0,0)",
+            bordercolor=_LEAD_MY_COLOR if my_lead else "rgba(0,0,0,0)",
+            borderwidth=2 if my_lead else 0,
+            borderpad=3,
+            xref="x",
+            yref="y",
+        )
+
+        # Adversaires — en dessous (y=-10)
+        fig.add_annotation(
+            x=t,
+            y=-10.0,
+            text=f"<b>{en_val}</b>",
+            font={
+                "color": _ENEMY_COLOR,
+                "size": 12,
+                "family": "Arial Black, Arial, sans-serif",
+            },
+            showarrow=False,
+            xanchor="center",
+            yanchor="middle",
+            bgcolor=_LEAD_ENEMY_BG if enemy_lead else "rgba(0,0,0,0)",
+            bordercolor=_ENEMY_COLOR if enemy_lead else "rgba(0,0,0,0)",
+            borderwidth=2 if enemy_lead else 0,
+            borderpad=3,
+            xref="x",
+            yref="y",
+        )
 
     # ── Panneau 2 : kill feed (points normaux) ───────────────────────────────
     if my_xs:
@@ -531,9 +595,9 @@ def plot_dominance_chart(
         hovermode="closest",
     )
 
-    # Y panneau 1
+    # Y panneau 1 — plage élargie pour accueillir les labels extérieurs
     fig.update_yaxes(
-        range=[0, 100],
+        range=[-18, 118],
         showgrid=False,
         zeroline=False,
         showticklabels=False,
