@@ -40,6 +40,7 @@ from src.ui.pages.match_view_players import (
     render_match_impact_section,
     render_nemesis_section,
     render_roster_section,
+    render_team_dominance_section,
 )
 from src.visualization._compat import DataFrameLike, ensure_polars
 
@@ -279,6 +280,16 @@ def render_match_view(
         load_match_gamertags_fn=load_match_gamertags_fn,
     )
 
+    # Dynamique du match (frise de dominance — PvP uniquement)
+    render_team_dominance_section(
+        match_id=match_id,
+        db_path=db_path,
+        xuid=xuid,
+        db_key=db_key,
+        is_firefight=bool(row.get("is_firefight")),
+        load_highlight_events_fn=load_highlight_events_fn,
+    )
+
     # Némésis / Souffre-douleur
     render_nemesis_section(
         match_id=match_id,
@@ -379,6 +390,9 @@ from src.ui.pages.match_view_players import (
 from src.ui.pages.match_view_players import (
     render_roster_section as _render_roster_section,
 )
+from src.ui.pages.match_view_players import (
+    render_team_dominance_section as _render_team_dominance_section,
+)
 
 __all__ = [
     "render_match_view",
@@ -395,4 +409,5 @@ __all__ = [
     "_render_match_impact_section",
     "_render_nemesis_section",
     "_render_roster_section",
+    "_render_team_dominance_section",
 ]
