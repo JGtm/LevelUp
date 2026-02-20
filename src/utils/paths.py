@@ -58,8 +58,8 @@ PLAYER_DB_FILENAME = "stats.duckdb"
 # Nom du fichier DB des référentiels partagés
 METADATA_DB_FILENAME = "metadata.duckdb"
 
-# Nom du fichier DB des référentiels (legacy SQLite)
-METADATA_DB_FILENAME_LEGACY = "metadata.db"
+# Nom du fichier DB des matchs partagés (v5)
+SHARED_MATCHES_DB_FILENAME = "shared_matches.duckdb"
 
 # Nom du fichier d'index des archives
 ARCHIVE_INDEX_FILENAME = "archive_index.json"
@@ -94,29 +94,42 @@ def get_player_archive_dir(gamertag: str) -> Path:
     return PLAYERS_DIR / gamertag / "archive"
 
 
-def get_metadata_db_path(*, prefer_duckdb: bool = True) -> Path:
-    """Retourne le chemin vers la DB des métadonnées.
-
-    Args:
-        prefer_duckdb: Si True, préfère metadata.duckdb à metadata.db.
+def get_metadata_db_path() -> Path:
+    """Retourne le chemin vers la DB des métadonnées (metadata.duckdb).
 
     Returns:
-        Chemin absolu vers la DB des métadonnées.
+        Chemin absolu vers data/warehouse/metadata.duckdb
     """
-    duckdb_path = WAREHOUSE_DIR / METADATA_DB_FILENAME
-    legacy_path = WAREHOUSE_DIR / METADATA_DB_FILENAME_LEGACY
+    return WAREHOUSE_DIR / METADATA_DB_FILENAME
 
-    if prefer_duckdb:
-        if duckdb_path.exists():
-            return duckdb_path
-        if legacy_path.exists():
-            return legacy_path
-        return duckdb_path  # Par défaut, retourner le chemin DuckDB
 
-    # Préférer le legacy
-    if legacy_path.exists():
-        return legacy_path
-    return duckdb_path
+def get_shared_matches_path() -> Path:
+    """Retourne le chemin vers la DB des matchs partagés (shared_matches.duckdb).
+
+    Returns:
+        Chemin absolu vers data/warehouse/shared_matches.duckdb
+    """
+    return WAREHOUSE_DIR / SHARED_MATCHES_DB_FILENAME
+
+
+def get_shared_matches_path_from_player(player_db_path: str | Path) -> Path | None:
+    """Retourne le chemin vers shared_matches.duckdb depuis un path joueur.
+
+    Args:
+        player_db_path: Chemin vers une DB joueur (stats.duckdb).
+
+    Returns:
+        Chemin vers shared_matches.duckdb ou None si impossible à déduire.
+    """
+    db_path = Path(player_db_path)
+    # data/players/{gamertag}/stats.duckdb -> data/warehouse/shared_matches.duckdb
+    if "players" in db_path.parts:
+        idx = db_path.parts.index("players")
+        data_root = Path(*db_path.parts[:idx])
+        shared_path = data_root / "warehouse" / SHARED_MATCHES_DB_FILENAME
+        if shared_path.exists():
+            return shared_path
+    return None
 
 
 def list_player_gamertags() -> list[str]:

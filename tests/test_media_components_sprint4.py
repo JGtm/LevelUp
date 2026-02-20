@@ -102,7 +102,7 @@ def test_build_thumbnail_html_contains_static_and_lightbox() -> None:
     )
     assert "media-thumb-t1" in html
     assert "thumb-static-t1" in html
-    assert "media-lightbox-t1" in html
+    assert "levelup-open-lightbox" in html
     assert "200" in html
     assert "mouseenter" in html
     assert "mouseleave" in html
@@ -156,5 +156,5 @@ def test_render_media_thumbnail_with_real_file(tmp_path: Path) -> None:
         call_args = m_html.call_args
         html = call_args[0][0]
         assert "media-thumb-test-render" in html
-        assert "media-lightbox-test-render" in html
+        assert "levelup-open-lightbox" in html
         assert "data:image/png;base64," in html

@@ -180,7 +180,8 @@ def test_plot_outcomes_over_time_has_represented_data() -> None:
 
 def test_plot_win_ratio_heatmap_has_represented_data() -> None:
     """La heatmap de win ratio contient des données exploitables."""
-    fig = plot_win_ratio_heatmap(_make_match_df())
+    fig = plot_win_ratio_heatmap(_make_match_df(), min_matches=1)
+    assert fig is not None
     _assert_has_represented_data(fig)
 
 
@@ -223,13 +224,28 @@ def test_plot_map_comparison_has_represented_data() -> None:
 
 def test_plot_friends_impact_heatmap_has_represented_data() -> None:
     """La heatmap d'impact coéquipiers représente bien des cellules."""
+    # Créer le DataFrame avec le schéma explicite (dicts, pas tuples)
     impact_matrix = pl.DataFrame(
-        {
-            "match_id": ["m1", "m1", "m2"],
-            "gamertag": ["Ami1", "Ami2", "Ami1"],
-            "event_type": ["first_blood", "last_casualty", "clutch_finisher"],
-            "event_value": [1, -1, 2],
-        }
+        [
+            {
+                "match_id": "m1",
+                "gamertag": "Ami1",
+                "events": [{"event": "first_blood", "value": 1}],
+                "outcome": None,
+            },
+            {
+                "match_id": "m1",
+                "gamertag": "Ami2",
+                "events": [{"event": "last_casualty", "value": -1}],
+                "outcome": None,
+            },
+            {
+                "match_id": "m2",
+                "gamertag": "Ami1",
+                "events": [{"event": "clutch_finisher", "value": 2}],
+                "outcome": None,
+            },
+        ]
     )
     fig = plot_friends_impact_heatmap(impact_matrix)
     _assert_has_represented_data(fig)

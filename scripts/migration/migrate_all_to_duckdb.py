@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 """
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 🚨 SCRIPT DE MIGRATION — HORS SERVICE POST-V5.1                             ║
+║                                                                              ║
+║ Ce script est destiné UNIQUEMENT à la migration SQLite → DuckDB (v4).       ║
+║ NE PAS UTILISER pour le flux applicatif normal (architecture v5 pure).      ║
+║ Conservé pour référence historique et cas exceptionnels de recovery.        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
 Script unifié de migration complète vers DuckDB.
 
 Ce script exécute toutes les migrations nécessaires pour passer

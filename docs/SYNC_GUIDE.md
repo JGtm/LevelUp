@@ -4,7 +4,7 @@
 
 ## Architecture de Synchronisation
 
-LevelUp utilise une architecture DuckDB unifiée où les données sont synchronisées directement depuis l'API Halo vers votre base de données locale.
+LevelUp v5.1 utilise une architecture **Shared Matches** : les données de matchs sont centralisées dans une base partagée, les enrichissements personnels restent dans la base du joueur.
 
 ```
 API SPNKr (Halo Infinite)
@@ -15,13 +15,17 @@ DuckDBSyncEngine
 ├── transformers.py    # JSON → DuckDB rows
 └── engine.py          # Orchestrateur
         │
-        ▼
-data/players/{gamertag}/stats.duckdb
-├── match_stats
-├── player_match_stats
-├── highlight_events
-├── xuid_aliases
-└── sync_meta
+        ├─→ Match nouveau → shared_matches.duckdb
+        │   ├── match_registry         (données communes du match)
+        │   ├── match_participants     (tous joueurs, 31 colonnes incl. MMR)
+        │   ├── highlight_events       (événements filmés)
+        │   ├── medals_earned          (médailles)
+        │   └── xuid_aliases           (mapping xuid→gamertag)
+        │
+        └─→ Enrichissement → players/{gamertag}/stats.duckdb
+            ├── player_match_enrichment (performance_score, session_id)
+            ├── personal_score_awards   (awards objectifs)
+            └── sync_meta              (état sync)
 ```
 
 ---

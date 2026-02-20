@@ -113,7 +113,7 @@ def create_stats_per_minute_radar(
         Figure Plotly.
     """
     if categories is None:
-        categories = ["Frags/min", "Morts/min", "Assists/min"]
+        categories = ["Frags/min", "Morts/min", "Assistances/min"]
 
     # Gestion du cas vide
     if not players:
@@ -212,7 +212,7 @@ def create_performance_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["Objectif", "Frags", "Survie", "Assists"]
+    categories = ["Objectif", "Frags", "Survie", "Assistances"]
 
     # Gestion du cas vide
     if not players:
@@ -325,7 +325,7 @@ def create_participation_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["Frags", "Assists", "Objectifs", "Survie"]
+    categories = ["Frags", "Assistances", "Objectifs", "Survie"]
 
     if not participation_data:
         fig = go.Figure()
@@ -438,6 +438,9 @@ def create_participation_profile_radar(
     *,
     title: str = "Profil de participation",
     height: int = 400,
+    fill_opacity: float = 1.0,
+    show_fill: bool = True,
+    radial_range: tuple[float, float] = (0, 1.1),
 ) -> go.Figure:
     """Crée un radar à 6 axes : Objectifs, Combat, Support, Score, Impact, Survie.
 
@@ -464,6 +467,9 @@ def create_participation_profile_radar(
             ]
         title: Titre du graphe.
         height: Hauteur en pixels.
+        fill_opacity: Opacité du remplissage (0-1, défaut 1.0 = opaque).
+        show_fill: Si True, remplit la zone ; False = lignes uniquement.
+        radial_range: Tuple (min, max) pour l'échelle radiale.
 
     Returns:
         Figure Plotly.
@@ -513,15 +519,27 @@ def create_participation_profile_radar(
             [f"{int(obj_r):,} pts"],
         ]
 
+        # Gestion du remplissage et de l'opacité
+        fill_mode = "toself" if show_fill else "none"
+        if show_fill and color:
+            # Convertir la couleur hex en rgba avec l'opacité demandée
+            fc = color.lstrip("#")
+            if len(fc) == 6:
+                r_c, g_c, b_c = int(fc[0:2], 16), int(fc[2:4], 16), int(fc[4:6], 16)
+                fill_color = f"rgba({r_c},{g_c},{b_c},{fill_opacity})"
+            else:
+                fill_color = color
+        else:
+            fill_color = None
+
         fig.add_trace(
             go.Scatterpolar(
                 r=values,
                 theta=theta,
                 name=name,
-                fill="toself",
-                line={"width": 2, "color": color} if color else {"width": 2},
-                fillcolor=color,
-                opacity=0.3,
+                fill=fill_mode,
+                line={"width": 3, "color": color} if color else {"width": 3},
+                fillcolor=fill_color,
                 customdata=customdata,
                 hovertemplate="%{theta}: %{customdata[0]}<extra>%{fullData.name}</extra>",
             )
@@ -531,7 +549,7 @@ def create_participation_profile_radar(
         polar={
             "radialaxis": {
                 "visible": True,
-                "range": [0, 1.1],
+                "range": list(radial_range),
                 "showticklabels": False,
                 "gridcolor": "rgba(255,255,255,0.12)",
                 "tickfont": {"color": THEME_COLORS.text_primary},
@@ -594,7 +612,7 @@ def create_teammate_synergy_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["Frags %", "Assists %", "Objectifs %", "K/D", "Précision"]
+    categories = ["Frags %", "Assistances %", "Objectifs %", "F/M", "Précision"]
 
     fig = go.Figure()
 
@@ -688,7 +706,7 @@ def create_session_trend_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["K/D", "Win Rate", "Précision", "Objectifs", "Score moy."]
+    categories = ["F/M", "Taux victoires", "Précision", "Objectifs", "Score moy."]
 
     if not sessions:
         fig = go.Figure()

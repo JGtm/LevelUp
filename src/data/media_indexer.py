@@ -11,6 +11,7 @@ Chaque joueur a sa propre BDD : data/players/{gamertag}/stats.duckdb
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import logging
 import os
@@ -23,7 +24,7 @@ from typing import Any
 import duckdb
 import polars as pl
 
-from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR
+from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR, get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,28 @@ def get_gamertag_from_db_path(db_path: Path | str) -> str | None:
     except Exception:
         pass
     return None
+
+
+@contextlib.contextmanager
+def _connect_db_flexible(db_path: str | Path):
+    """Ouvre une connexion DuckDB, préférant read_only mais avec fallback.
+
+    Si une connexion write est déjà ouverte sur ce fichier (ex: par Streamlit cache),
+    on utilise le même mode pour éviter l'erreur 'different configuration'.
+    """
+    conn = None
+    for ro in (True, False):
+        try:
+            conn = duckdb.connect(str(db_path), read_only=ro)
+            break
+        except Exception:
+            if not ro:
+                raise
+    try:
+        yield conn
+    finally:
+        if conn:
+            conn.close()
 
 
 # Extensions supportées
@@ -182,8 +205,20 @@ class MediaIndexer:
             conn.close()
 
     def ensure_schema(self) -> None:
-        """Crée ou migre le schéma media_files et media_match_associations."""
-        conn = duckdb.connect(str(self.db_path), read_only=False)
+        """Crée ou migre le schéma media_files et media_match_associations.
+
+        Raises:
+            duckdb.IOException: Si le fichier DB est verrouillé par un autre processus.
+        """
+        try:
+            conn = duckdb.connect(str(self.db_path), read_only=False)
+        except duckdb.IOException as e:
+            logger.warning(
+                "Impossible d'ouvrir %s en écriture (verrouillé ?): %s",
+                self.db_path,
+                e,
+            )
+            raise
         try:
             tables = conn.execute(
                 """
@@ -351,7 +386,11 @@ class MediaIndexer:
                 return None
 
             mtime = float(stat.st_mtime)
-            capture_end_utc = datetime.fromtimestamp(mtime, tz=timezone.utc)
+            # IMPORTANT: DuckDB TIMESTAMP (sans TZ) stocke le datetime tel quel.
+            # Si on passe un datetime tz-aware (UTC), DuckDB le convertit en heure
+            # locale (CET = UTC+1) avant stockage → epoch() retourne mtime+3600.
+            # Solution: passer des datetimes NAÏFS (= UTC implicite).
+            capture_end_utc = datetime.fromtimestamp(mtime, tz=timezone.utc).replace(tzinfo=None)
             capture_start_utc: datetime | None = None
             duration_seconds: float | None = None
             title: str | None = None
@@ -361,14 +400,15 @@ class MediaIndexer:
                 if duration_seconds is not None and duration_seconds > 0:
                     capture_start_utc = datetime.fromtimestamp(
                         mtime - duration_seconds, tz=timezone.utc
-                    )
+                    ).replace(tzinfo=None)
                 else:
                     capture_start_utc = capture_end_utc
             else:
                 exif_dt = _get_image_exif_datetime(file_path)
                 if exif_dt:
-                    if exif_dt.tzinfo is None:
-                        exif_dt = exif_dt.replace(tzinfo=timezone.utc)
+                    # Retirer tzinfo pour stockage TIMESTAMP naïf
+                    if exif_dt.tzinfo is not None:
+                        exif_dt = exif_dt.astimezone(timezone.utc).replace(tzinfo=None)
                     capture_end_utc = exif_dt
                     capture_start_utc = exif_dt
                 else:
@@ -622,7 +662,7 @@ class MediaIndexer:
         others = [(p, x) for p, x in all_dbs if p.resolve() != current]
         return current_first + others
 
-    def associate_with_matches(self, tolerance_minutes: int = 20) -> int:
+    def associate_with_matches(self, tolerance_minutes: int = 1) -> int:
         """Associe les médias actifs avec les matchs (multi-joueurs).
 
         Pour chaque média actif, on cherche le match le plus proche (dans la tolérance)
@@ -638,7 +678,7 @@ class MediaIndexer:
         try:
             media_rows = conn_read.execute(
                 """
-                SELECT mf.file_path, COALESCE(epoch(mf.capture_end_utc), mf.mtime_paris_epoch, mf.mtime)
+                SELECT mf.file_path, mf.mtime
                 FROM media_files mf
                 WHERE mf.status = 'active'
                 ORDER BY mf.mtime DESC
@@ -654,27 +694,33 @@ class MediaIndexer:
         if not player_dbs:
             player_dbs = [(self.db_path, get_gamertag_from_db_path(self.db_path) or "")]
 
+        # v5.1 : récupérer les match infos depuis shared_matches.duckdb
         matches_by_xuid: dict[str, list[tuple[Any, ...]]] = {}
-        for db_path, xuid in player_dbs:
+        shared_path = get_shared_matches_path_from_player(self.db_path)
+        if shared_path and shared_path.exists():
             try:
-                with duckdb.connect(str(db_path), read_only=True) as c:
-                    try:
-                        rows = c.execute(
-                            """
-                            SELECT match_id, start_time, time_played_seconds,
-                                   COALESCE(map_id, ''), COALESCE(map_name, '')
-                            FROM match_stats WHERE start_time IS NOT NULL
-                            """
-                        ).fetchall()
-                    except Exception:
-                        rows = c.execute(
-                            """
-                            SELECT match_id, start_time, time_played_seconds, '', ''
-                            FROM match_stats WHERE start_time IS NOT NULL
-                            """
-                        ).fetchall()
-                    matches_by_xuid[str(xuid)] = rows
-            except Exception:
+                with duckdb.connect(str(shared_path), read_only=True) as c:
+                    for _db_path_iter, xuid in player_dbs:
+                        try:
+                            rows = c.execute(
+                                """
+                                SELECT mp.match_id, mr.start_time,
+                                       COALESCE(mr.duration_seconds, 720),
+                                       COALESCE(mr.map_id, ''), COALESCE(mr.map_name, '')
+                                FROM match_participants mp
+                                JOIN match_registry mr ON mp.match_id = mr.match_id
+                                WHERE mp.xuid = ? AND mr.start_time IS NOT NULL
+                                """,
+                                [str(xuid)],
+                            ).fetchall()
+                            matches_by_xuid[str(xuid)] = rows
+                        except Exception:
+                            matches_by_xuid[str(xuid)] = []
+            except Exception as e:
+                logger.warning("associate_with_matches shared_db: %s", e)
+        else:
+            # Fallback : pas de shared DB disponible
+            for _db_path, xuid in player_dbs:
                 matches_by_xuid[str(xuid)] = []
 
         tol_seconds = tolerance_minutes * 60
@@ -747,31 +793,64 @@ class MediaIndexer:
         db_path = Path(db_path)
         if not db_path.exists():
             return pl.DataFrame()
-        try:
-            MediaIndexer(db_path).ensure_schema()
-        except Exception as e:
-            logger.warning("load_media_for_ui ensure_schema: %s", e)
+        # Ne PAS appeler ensure_schema() ici : il ouvre en write et entre
+        # en conflit avec la connexion read-only déjà active de Streamlit.
+        # On vérifie simplement l'existence des tables en lecture seule.
+        # Note: si une connexion write est déjà ouverte ailleurs, on tente sans read_only.
+        _tables: set[str] = set()
+        for ro in (True, False):
+            try:
+                with duckdb.connect(str(db_path), read_only=ro) as _c:
+                    _tables = {
+                        r[0]
+                        for r in _c.execute(
+                            "SELECT table_name FROM information_schema.tables "
+                            "WHERE table_schema = 'main' AND table_name IN ('media_files', 'media_match_associations')"
+                        ).fetchall()
+                    }
+                break  # succès
+            except Exception as e:
+                if ro:
+                    # Réessayer sans read_only
+                    continue
+                logger.warning("load_media_for_ui schema check: %s", e)
+                return pl.DataFrame()
+        if "media_files" not in _tables:
             return pl.DataFrame()
 
         cu = str(current_xuid or "")
         current_resolved = db_path.resolve()
         player_dbs = MediaIndexer._get_all_player_dbs()
 
-        # 1) Match_ids du joueur courant
+        # 1) Match_ids du joueur courant (v5.1 : player_match_enrichment + shared)
         match_ids_current: set[str] = set()
         try:
-            with duckdb.connect(str(db_path), read_only=True) as c:
+            with _connect_db_flexible(db_path) as c:
                 rows = c.execute(
-                    "SELECT DISTINCT match_id FROM match_stats WHERE match_id IS NOT NULL"
+                    "SELECT DISTINCT match_id FROM player_match_enrichment WHERE match_id IS NOT NULL"
                 ).fetchall()
                 match_ids_current = {str(r[0]).strip() for r in rows if r[0]}
         except Exception:
             pass
+        # Compléter avec shared_matches.duckdb si disponible
+        if not match_ids_current:
+            shared_path = get_shared_matches_path_from_player(db_path)
+            if shared_path and shared_path.exists() and cu:
+                try:
+                    with _connect_db_flexible(shared_path) as c:
+                        rows = c.execute(
+                            "SELECT DISTINCT mp.match_id FROM match_participants mp "
+                            "WHERE mp.xuid = ? AND mp.match_id IS NOT NULL",
+                            [cu],
+                        ).fetchall()
+                        match_ids_current = {str(r[0]).strip() for r in rows if r[0]}
+                except Exception:
+                    pass
 
         # 2) Charger médias DB courante (mine + unassigned)
         df_current = pl.DataFrame()
         try:
-            with duckdb.connect(str(db_path), read_only=True) as c:
+            with _connect_db_flexible(db_path) as c:
                 tables = c.execute(
                     """
                     SELECT table_name FROM information_schema.tables
@@ -799,7 +878,7 @@ class MediaIndexer:
             if not match_ids_current:
                 continue
             try:
-                with duckdb.connect(str(pdb), read_only=True) as c:
+                with _connect_db_flexible(pdb) as c:
                     tables = c.execute(
                         """
                         SELECT table_name FROM information_schema.tables
@@ -829,34 +908,70 @@ class MediaIndexer:
         dfs = [df_current] + dfs_teammate
         df = pl.concat(dfs) if len(dfs) > 1 else dfs[0]
 
-        # xuid → gamertag
+        # xuid → gamertag (pour référence)
         xuid_to_gamertag: dict[str, str] = {}
+        known_gamertags: set[str] = set()
         for pdb, xu in player_dbs:
             gamertag = Path(pdb).parent.name
             xuid_to_gamertag[str(xu)] = gamertag
-
-        def _gamertag(u: Any) -> str:
-            if u is None:
-                return ""
-            return xuid_to_gamertag.get(str(u), str(u))
+            known_gamertags.add(gamertag.lower())
 
         df = df.with_columns(
-            pl.col("xuid").map_elements(_gamertag, return_dtype=pl.Utf8).alias("gamertag")
+            pl.col("xuid")
+            .cast(pl.Utf8)
+            .replace_strict(
+                xuid_to_gamertag, default=pl.col("xuid").cast(pl.Utf8), return_dtype=pl.Utf8
+            )
+            .fill_null("")
+            .alias("gamertag")
         )
+
+        # Déterminer le propriétaire du média depuis le chemin du fichier
+        # Le gamertag est le nom du dossier parent qui correspond à un joueur connu
+        current_gamertag = get_gamertag_from_db_path(db_path) or ""
+        current_gamertag_lower = current_gamertag.lower()
+
+        def _extract_owner_from_path(file_path: str) -> str:
+            """Extrait le gamertag propriétaire depuis le chemin du fichier."""
+            if not file_path:
+                return ""
+            path_lower = file_path.lower().replace("\\", "/")
+            for gt in known_gamertags:
+                # Chercher le gamertag comme nom de dossier dans le chemin
+                if f"/{gt}/" in path_lower or path_lower.endswith(f"/{gt}"):
+                    # Retourner la casse originale
+                    for pdb, _ in player_dbs:
+                        orig_gt = Path(pdb).parent.name
+                        if orig_gt.lower() == gt:
+                            return orig_gt
+            return ""
+
+        # Appliquer l'extraction du propriétaire
+        owners = [_extract_owner_from_path(p) for p in df["file_path"].to_list()]
+        df = df.with_columns(pl.Series("owner_gamertag", owners))
+
         # Section: unassigned si pas de match_id, sinon mine ou teammate
-        # Mine = xuid match OU gamertag match (current_xuid peut être gamertag en DuckDB v4)
-        current_gamertag = get_gamertag_from_db_path(db_path) or cu
+        # Mine = le fichier est dans un dossier du joueur courant
         df = df.with_columns(
             pl.when(
                 pl.col("match_id").is_null()
                 | (pl.col("match_id").cast(pl.Utf8).str.strip_chars() == "")
             )
             .then(pl.lit("unassigned"))
-            .when((pl.col("xuid").cast(pl.Utf8) == cu) | (pl.col("gamertag") == current_gamertag))
+            .when(pl.col("owner_gamertag").str.to_lowercase() == current_gamertag_lower)
             .then(pl.lit("mine"))
             .otherwise(pl.lit("teammate"))
             .alias("section")
         )
+
+        # Utiliser owner_gamertag comme gamertag pour l'affichage des sections teammate
+        df = df.with_columns(
+            pl.when(pl.col("owner_gamertag") != "")
+            .then(pl.col("owner_gamertag"))
+            .otherwise(pl.col("gamertag"))
+            .alias("gamertag")
+        )
+        df = df.drop("owner_gamertag")
         # Une seule ligne par média : priorité mine > teammate > unassigned
         df = df.with_columns(
             pl.when(pl.col("section") == "mine")
@@ -870,6 +985,100 @@ class MediaIndexer:
             subset=["file_path"], keep="first"
         )
         df = df.drop("_section_rank")
+        return df.sort("capture_end_utc", descending=True, nulls_last=True)
+
+    @staticmethod
+    def load_media_for_match(
+        db_path: Path | str,
+        match_id: str,
+        current_xuid: str | None = None,  # noqa: ARG004
+    ) -> pl.DataFrame:
+        """Charge tous les médias associés à un match spécifique (toutes les DBs joueurs).
+
+        Interroge chaque DB joueur pour récupérer les médias liés au match_id donné
+        via media_match_associations, puis détermine le propriétaire depuis le chemin
+        du fichier (nom de dossier = gamertag).
+
+        Returns:
+            Polars DataFrame avec colonnes: file_path, file_name, kind, thumbnail_path,
+            capture_end_utc, map_name, match_id, xuid, gamertag, section.
+            section ∈ {'mine', 'teammate'}.
+        """
+        db_path = Path(db_path)
+        if not db_path.exists() or not match_id:
+            return pl.DataFrame()
+
+        player_dbs = MediaIndexer._get_all_player_dbs()
+        if not player_dbs:
+            return pl.DataFrame()
+
+        current_gamertag = get_gamertag_from_db_path(db_path) or ""
+        current_gamertag_lower = current_gamertag.lower()
+        known_gamertags: set[str] = {Path(pdb).parent.name.lower() for pdb, _ in player_dbs}
+
+        def _extract_owner(fp: str) -> str:
+            if not fp:
+                return ""
+            path_lower = fp.lower().replace("\\", "/")
+            for gt in known_gamertags:
+                if f"/{gt}/" in path_lower or path_lower.endswith(f"/{gt}"):
+                    for pdb, _ in player_dbs:
+                        orig = Path(pdb).parent.name
+                        if orig.lower() == gt:
+                            return orig
+            return ""
+
+        dfs: list[pl.DataFrame] = []
+        for pdb, _xuid in player_dbs:
+            try:
+                with _connect_db_flexible(pdb) as c:
+                    tables = {
+                        r[0]
+                        for r in c.execute(
+                            "SELECT table_name FROM information_schema.tables "
+                            "WHERE table_schema = 'main' "
+                            "AND table_name IN ('media_files', 'media_match_associations')"
+                        ).fetchall()
+                    }
+                    if "media_files" not in tables or "media_match_associations" not in tables:
+                        continue
+                    df_p = c.execute(
+                        """
+                        SELECT mf.file_path, mf.file_name, mf.kind, mf.thumbnail_path,
+                               mf.capture_end_utc, mma.map_name, mma.match_id, mma.xuid
+                        FROM media_files mf
+                        JOIN media_match_associations mma ON mf.file_path = mma.media_path
+                        WHERE mf.status = 'active' AND mma.match_id = ?
+                        """,
+                        [match_id],
+                    ).pl()
+                    if not df_p.is_empty():
+                        dfs.append(df_p)
+            except Exception as e:
+                logger.debug("load_media_for_match db %s: %s", pdb, e)
+
+        if not dfs:
+            return pl.DataFrame()
+
+        df = pl.concat(dfs) if len(dfs) > 1 else dfs[0]
+        df = df.unique(subset=["file_path"], keep="first")
+
+        owners = [_extract_owner(p) for p in df["file_path"].to_list()]
+        df = df.with_columns(pl.Series("owner_gamertag", owners))
+
+        df = df.with_columns(
+            pl.when(pl.col("owner_gamertag").str.to_lowercase() == current_gamertag_lower)
+            .then(pl.lit("mine"))
+            .otherwise(pl.lit("teammate"))
+            .alias("section")
+        )
+        df = df.with_columns(
+            pl.when(pl.col("owner_gamertag") != "")
+            .then(pl.col("owner_gamertag"))
+            .otherwise(pl.col("xuid").cast(pl.Utf8))
+            .alias("gamertag")
+        )
+        df = df.drop("owner_gamertag")
         return df.sort("capture_end_utc", descending=True, nulls_last=True)
 
     def generate_thumbnails_for_new(
@@ -918,23 +1127,33 @@ class MediaIndexer:
             return 0, 0
         if not check_ffmpeg():
             return 0, 0
-        self.ensure_schema()
+        # DB déjà ouverte par Streamlit en read-only — les tables existent déjà
+        with contextlib.suppress(Exception):
+            self.ensure_schema()
         conn = duckdb.connect(str(self.db_path), read_only=False)
         try:
+            # Inclure les vidéos sans thumbnail ET celles dont le GIF n'existe plus
             videos = conn.execute(
                 """
-                SELECT file_path, file_name FROM media_files
+                SELECT file_path, file_name, thumbnail_path FROM media_files
                 WHERE kind = 'video' AND status = 'active'
-                AND (thumbnail_path IS NULL OR thumbnail_path = '')
                 ORDER BY mtime DESC
                 """
             ).fetchall()
             if not videos:
                 return 0, 0
+            # Filtrer : garder celles sans thumbnail ou dont le fichier GIF est absent
+            to_process = [
+                (fp, fn)
+                for fp, fn, tp in videos
+                if not tp or not tp.strip() or not Path(tp).exists()
+            ]
+            if not to_process:
+                return 0, 0
             thumbs_dir = videos_dir / "thumbs"
             thumbs_dir.mkdir(exist_ok=True)
             generated = errors = 0
-            for path_str, _fname in videos:
+            for path_str, _fname in to_process:
                 p = Path(path_str)
                 if not p.exists():
                     continue

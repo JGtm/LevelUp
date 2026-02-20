@@ -20,6 +20,7 @@ from src.ui import (
 )
 from src.ui.cache import cached_load_player_match_result
 from src.ui.player_assets import ensure_local_image_path
+from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 
@@ -176,9 +177,13 @@ def render_friends_history_table(
         pl.col("start_time").dt.strftime("%d/%m/%Y %H:%M").fill_null("-").alias("start_time_fr")
     )
     if "playlist_fr" not in friends_table.columns:
+        _playlist_map = build_mapping(friends_table["playlist_name"], translate_playlist_name)
         friends_table = friends_table.with_columns(
             pl.col("playlist_name")
-            .map_elements(translate_playlist_name, return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .replace_strict(
+                _playlist_map, default=pl.col("playlist_name").cast(pl.Utf8), return_dtype=pl.Utf8
+            )
             .alias("playlist_fr")
         )
     if "mode_ui" in friends_table.columns:
@@ -194,13 +199,13 @@ def render_friends_history_table(
     else:
         friends_table = friends_table.with_columns(pl.lit(None).cast(pl.Utf8).alias("mode"))
     if friends_table["mode"].is_null().any() and "pair_name" in friends_table.columns:
+        _mode_map = build_mapping(friends_table["pair_name"], _normalize_mode_label)
         friends_table = friends_table.with_columns(
             pl.when(pl.col("mode").is_null())
             .then(
-                pl.col("pair_name").map_elements(
-                    lambda p: _normalize_mode_label(str(p) if p is not None else None),
-                    return_dtype=pl.Utf8,
-                )
+                pl.col("pair_name")
+                .cast(pl.Utf8)
+                .replace_strict(_mode_map, default=None, return_dtype=pl.Utf8)
             )
             .otherwise(pl.col("mode"))
             .alias("mode")
@@ -218,13 +223,18 @@ def render_friends_history_table(
     # Calcul du score
     score_cols = ["my_team_score", "enemy_team_score"]
     if all(c in friends_table.columns for c in score_cols):
-        friends_table = friends_table.with_columns(
-            pl.struct(score_cols)
-            .map_elements(
-                lambda r: _format_score_label(r["my_team_score"], r["enemy_team_score"]),
-                return_dtype=pl.Utf8,
+
+        def _safe_score(c: str) -> pl.Expr:
+            return (
+                pl.when(pl.col(c).is_null() | pl.col(c).is_nan())
+                .then(pl.lit("-"))
+                .otherwise(pl.col(c).round(0).cast(pl.Int64).cast(pl.Utf8))
             )
-            .alias("score")
+
+        friends_table = friends_table.with_columns(
+            (_safe_score("my_team_score") + pl.lit(" - ") + _safe_score("enemy_team_score")).alias(
+                "score"
+            )
         )
     else:
         friends_table = friends_table.with_columns(pl.lit("-").alias("score"))

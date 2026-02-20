@@ -6,12 +6,14 @@ des cartes KPI et résumés statistiques.
 
 from __future__ import annotations
 
+import html as html_mod
+
 import streamlit as st
 
 
 def render_kpi_cards(cards: list[tuple[str, str]], *, dense: bool = True) -> None:
     """Affiche une grille de cartes KPI.
-    
+
     Args:
         cards: Liste de tuples (label, valeur) à afficher.
         dense: Mode compact (défaut: True).
@@ -20,7 +22,8 @@ def render_kpi_cards(cards: list[tuple[str, str]], *, dense: bool = True) -> Non
         return
     grid_class = "os-kpi-grid os-kpi-grid--dense" if dense else "os-kpi-grid"
     items = "".join(
-        f"<div class='os-kpi'><div class='os-kpi__label'>{label}</div><div class='os-kpi__value'>{value}</div></div>"
+        f"<div class='os-kpi'><div class='os-kpi__label'>{html_mod.escape(str(label))}</div>"
+        f"<div class='os-kpi__value'>{html_mod.escape(str(value))}</div></div>"
         for (label, value) in cards
     )
     st.markdown(f"<div class='{grid_class}'>{items}</div>", unsafe_allow_html=True)
@@ -28,7 +31,7 @@ def render_kpi_cards(cards: list[tuple[str, str]], *, dense: bool = True) -> Non
 
 def render_top_summary(total_matches: int, rates) -> None:
     """Affiche le résumé des parties sélectionnées avec les résultats.
-    
+
     Args:
         total_matches: Nombre total de matchs sélectionnés.
         rates: Objet avec attributs wins, losses, ties, no_finish.

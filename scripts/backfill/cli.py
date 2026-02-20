@@ -67,6 +67,15 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--medals", action="store_true", help="Backfill les médailles")
     parser.add_argument("--events", action="store_true", help="Backfill les highlight events")
     parser.add_argument("--skill", action="store_true", help="Backfill les stats skill/MMR")
+    # --force-skill : ajouté v5.1 pour forcer le re-téléchargement des données
+    # skill/MMR (team_mmr, enemy_mmr, kills/deaths expected/stddev) de TOUS
+    # les matchs, y compris ceux déjà peuplés. Utile après correction du bug
+    # enemy_mmr (était ignoré avant v5.1).
+    parser.add_argument(
+        "--force-skill",
+        action="store_true",
+        help="Force le rescan skill/MMR pour TOUS les matchs",
+    )
     parser.add_argument(
         "--personal-scores",
         action="store_true",
@@ -76,6 +85,11 @@ def create_argument_parser() -> argparse.ArgumentParser:
         "--performance-scores",
         action="store_true",
         help="Calculer les scores de performance manquants",
+    )
+    parser.add_argument(
+        "--force-performance-scores",
+        action="store_true",
+        help="Force le calcul des scores de performance pour TOUS les matchs",
     )
     parser.add_argument("--aliases", action="store_true", help="Mettre à jour les aliases XUID")
     parser.add_argument(
@@ -249,6 +263,162 @@ def create_argument_parser() -> argparse.ArgumentParser:
         "--force-participants-enrich",
         action="store_true",
         help="Force le backfill des colonnes étendues même si déjà remplies",
+    )
+
+    # ── Granulaire MMR (v5.2) ──────────────────────────────────────────────
+    parser.add_argument(
+        "--team-mmr",
+        action="store_true",
+        help="Backfill team_mmr si NULL (granulaire v5.2)",
+    )
+    parser.add_argument(
+        "--force-team-mmr",
+        action="store_true",
+        help="Force rechargement team_mmr pour TOUS les matchs",
+    )
+    parser.add_argument(
+        "--mmr",
+        action="store_true",
+        help="= --team-mmr + --enemy-mmr (group MMR)",
+    )
+    parser.add_argument(
+        "--force-mmr",
+        action="store_true",
+        help="= --force-team-mmr + --force-enemy-mmr",
+    )
+
+    # ── Granulaire Expected (v5.2) ─────────────────────────────────────────
+    parser.add_argument(
+        "--kills-expected",
+        action="store_true",
+        help="Backfill kills_expected/stddev si NULL",
+    )
+    parser.add_argument(
+        "--deaths-expected",
+        action="store_true",
+        help="Backfill deaths_expected/stddev si NULL",
+    )
+    parser.add_argument(
+        "--assists-expected",
+        action="store_true",
+        help="Backfill assists_expected/stddev si NULL",
+    )
+    parser.add_argument(
+        "--expected",
+        action="store_true",
+        help="= --kills-expected + --deaths-expected + --assists-expected",
+    )
+    parser.add_argument("--force-kills-expected", action="store_true")
+    parser.add_argument("--force-deaths-expected", action="store_true")
+    parser.add_argument("--force-assists-expected", action="store_true")
+    parser.add_argument(
+        "--force-expected",
+        action="store_true",
+        help="Force rechargement de toutes les expected values",
+    )
+
+    # ── Combat granulaire (v5.2) ───────────────────────────────────────────
+    parser.add_argument(
+        "--damage",
+        action="store_true",
+        help="Backfill damage_dealt/damage_taken si NULL",
+    )
+    parser.add_argument(
+        "--avg-life",
+        action="store_true",
+        help="Backfill avg_life_seconds si NULL",
+    )
+    parser.add_argument(
+        "--combat",
+        action="store_true",
+        help="= --accuracy + --shots + --damage",
+    )
+    parser.add_argument("--force-damage", action="store_true")
+    parser.add_argument("--force-avg-life", action="store_true")
+    parser.add_argument(
+        "--force-combat",
+        action="store_true",
+        help="= --force-accuracy + --force-shots + --force-damage",
+    )
+
+    # ── Kills détaillés (v5.2) ─────────────────────────────────────────────
+    parser.add_argument(
+        "--grenade-kills",
+        action="store_true",
+        help="Backfill grenade_kills si NULL",
+    )
+    parser.add_argument(
+        "--melee-kills",
+        action="store_true",
+        help="Backfill melee_kills si NULL",
+    )
+    parser.add_argument(
+        "--power-weapon-kills",
+        action="store_true",
+        help="Backfill power_weapon_kills si NULL",
+    )
+    parser.add_argument(
+        "--headshot-kills",
+        action="store_true",
+        help="Backfill headshot_kills si NULL",
+    )
+    parser.add_argument(
+        "--max-spree",
+        action="store_true",
+        help="Backfill max_killing_spree si NULL",
+    )
+    parser.add_argument(
+        "--kills-detail",
+        action="store_true",
+        help="= --grenade-kills + --melee-kills + --power-weapon-kills + --headshot-kills",
+    )
+    parser.add_argument("--force-grenade-kills", action="store_true")
+    parser.add_argument("--force-melee-kills", action="store_true")
+    parser.add_argument("--force-power-weapon-kills", action="store_true")
+    parser.add_argument("--force-headshot-kills", action="store_true")
+    parser.add_argument("--force-max-spree", action="store_true")
+    parser.add_argument(
+        "--force-kills-detail",
+        action="store_true",
+        help="Force rechargement de tous les kills détaillés",
+    )
+
+    # ── Divers granulaires (v5.2) ──────────────────────────────────────────
+    parser.add_argument(
+        "--kda-recalc",
+        action="store_true",
+        help="Recalcule kda si NULL",
+    )
+    parser.add_argument(
+        "--time-played",
+        action="store_true",
+        help="Backfill time_played_seconds si NULL",
+    )
+    parser.add_argument("--force-kda-recalc", action="store_true")
+    parser.add_argument("--force-time-played", action="store_true")
+
+    # ── Team scores (match_registry) ──────────────────────────────────────
+    parser.add_argument(
+        "--team-scores",
+        action="store_true",
+        help="Peuple team_0_score/team_1_score dans match_registry où NULL",
+    )
+    parser.add_argument(
+        "--force-team-scores",
+        action="store_true",
+        help="Force le rechargement des team scores même s'ils sont déjà présents",
+    )
+
+    # ── Groupe Core Stats (v5.2) ───────────────────────────────────────────
+    parser.add_argument(
+        "--core-stats",
+        action="store_true",
+        help="= accuracy, shots, damage, avg-life, kills-detail, kda-recalc, time-played",
+    )
+    parser.add_argument(
+        "--force-core-stats",
+        action="store_true",
+        help="Force rechargement de tous les core-stats",
     )
 
     return parser

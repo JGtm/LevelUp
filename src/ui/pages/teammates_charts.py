@@ -10,6 +10,7 @@ import polars as pl
 import streamlit as st
 
 from src.config import HALO_COLORS
+from src.ui.streamlit_modern import fragment_if_available
 from src.visualization import (
     plot_average_life,
     plot_per_minute_timeseries,
@@ -20,6 +21,7 @@ from src.visualization import (
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 
+@fragment_if_available
 def render_comparison_charts(
     sub: DataFrameLike,
     friend_sub: DataFrameLike,
@@ -46,6 +48,7 @@ def render_comparison_charts(
             plot_timeseries(sub, title=f"{me_name} — matchs avec {friend_name}"),
             width="stretch",
             key=f"friend_ts_me_{friend_xuid}",
+            config={"displayModeBar": False},
         )
     with c2:
         if friend_sub.is_empty():
@@ -55,6 +58,7 @@ def render_comparison_charts(
                 plot_timeseries(friend_sub, title=f"{friend_name} — matchs avec {me_name}"),
                 width="stretch",
                 key=f"friend_ts_fr_{friend_xuid}",
+                config={"displayModeBar": False},
             )
 
     c3, c4 = st.columns(2)
@@ -63,6 +67,7 @@ def render_comparison_charts(
             plot_per_minute_timeseries(sub, title=f"{me_name} — stats/min (avec {friend_name})"),
             width="stretch",
             key=f"friend_pm_me_{friend_xuid}",
+            config={"displayModeBar": False},
         )
     with c4:
         if not friend_sub.is_empty():
@@ -73,6 +78,7 @@ def render_comparison_charts(
                 ),
                 width="stretch",
                 key=f"friend_pm_fr_{friend_xuid}",
+                config={"displayModeBar": False},
             )
 
     c5, c6 = st.columns(2)
@@ -82,6 +88,7 @@ def render_comparison_charts(
                 plot_average_life(sub, title=f"{me_name} — Durée de vie (avec {friend_name})"),
                 width="stretch",
                 key=f"friend_life_me_{friend_xuid}",
+                config={"displayModeBar": False},
             )
     with c6:
         if (
@@ -94,6 +101,7 @@ def render_comparison_charts(
                 ),
                 width="stretch",
                 key=f"friend_life_fr_{friend_xuid}",
+                config={"displayModeBar": False},
             )
 
     # Graphes de performance
@@ -105,6 +113,7 @@ def render_comparison_charts(
             ),
             width="stretch",
             key=f"friend_perf_me_{friend_xuid}",
+            config={"displayModeBar": False},
         )
     with c8:
         if not friend_sub.is_empty():
@@ -116,9 +125,11 @@ def render_comparison_charts(
                 ),
                 width="stretch",
                 key=f"friend_perf_fr_{friend_xuid}",
+                config={"displayModeBar": False},
             )
 
 
+@fragment_if_available
 def render_metric_bar_charts(
     series: list[tuple[str, DataFrameLike]],
     colors_by_name: dict[str, str],
@@ -148,7 +159,12 @@ def render_metric_bar_charts(
     if fig_spree is None:
         st.info("Aucune donnée de folie meurtrière (max) sur ces matchs.")
     else:
-        st.plotly_chart(fig_spree, width="stretch", key=f"friend_spree_multi_{key_suffix}")
+        st.plotly_chart(
+            fig_spree,
+            width="stretch",
+            key=f"friend_spree_multi_{key_suffix}",
+            config={"displayModeBar": False},
+        )
 
     fig_hs = plot_fn(
         series,
@@ -163,7 +179,12 @@ def render_metric_bar_charts(
     if fig_hs is None:
         st.info("Aucune donnée de tirs à la tête sur ces matchs.")
     else:
-        st.plotly_chart(fig_hs, width="stretch", key=f"friend_hs_multi_{key_suffix}")
+        st.plotly_chart(
+            fig_hs,
+            width="stretch",
+            key=f"friend_hs_multi_{key_suffix}",
+            config={"displayModeBar": False},
+        )
 
     fig_pk = plot_fn(
         series,
@@ -178,7 +199,12 @@ def render_metric_bar_charts(
     if fig_pk is None:
         st.info("Aucune donnée de frags parfaits sur ces matchs.")
     else:
-        st.plotly_chart(fig_pk, width="stretch", key=f"friend_pk_multi_{key_suffix}")
+        st.plotly_chart(
+            fig_pk,
+            width="stretch",
+            key=f"friend_pk_multi_{key_suffix}",
+            config={"displayModeBar": False},
+        )
 
 
 def render_outcome_bar_chart(dfr: DataFrameLike) -> None:
@@ -209,9 +235,10 @@ def render_outcome_bar_chart(dfr: DataFrameLike) -> None:
         ]
     )
     fig.update_layout(height=300, margin={"l": 40, "r": 20, "t": 30, "b": 40})
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
 
 
+@fragment_if_available
 def render_trio_charts(
     d_self: DataFrameLike,
     d_f1: DataFrameLike,
@@ -242,6 +269,7 @@ def render_trio_charts(
         ),
         width="stretch",
         key=f"trio_kills_{f1_xuid}_{f2_xuid}",
+        config={"displayModeBar": False},
     )
     st.plotly_chart(
         plot_trio_metric(
@@ -249,6 +277,7 @@ def render_trio_charts(
         ),
         width="stretch",
         key=f"trio_deaths_{f1_xuid}_{f2_xuid}",
+        config={"displayModeBar": False},
     )
     st.plotly_chart(
         plot_trio_metric(
@@ -258,10 +287,11 @@ def render_trio_charts(
             metric="assists",
             names=names,
             title="Assistances",
-            y_title="Assists",
+            y_title="Assistances",
         ),
         width="stretch",
         key=f"trio_assists_{f1_xuid}_{f2_xuid}",
+        config={"displayModeBar": False},
     )
     st.plotly_chart(
         plot_trio_metric(
@@ -276,6 +306,7 @@ def render_trio_charts(
         ),
         width="stretch",
         key=f"trio_ratio_{f1_xuid}_{f2_xuid}",
+        config={"displayModeBar": False},
     )
     st.plotly_chart(
         plot_trio_metric(
@@ -291,6 +322,7 @@ def render_trio_charts(
         ),
         width="stretch",
         key=f"trio_accuracy_{f1_xuid}_{f2_xuid}",
+        config={"displayModeBar": False},
     )
     st.plotly_chart(
         plot_trio_metric(
@@ -305,6 +337,7 @@ def render_trio_charts(
         ),
         width="stretch",
         key=f"trio_life_{f1_xuid}_{f2_xuid}",
+        config={"displayModeBar": False},
     )
     st.plotly_chart(
         plot_trio_metric(
@@ -319,4 +352,5 @@ def render_trio_charts(
         ),
         width="stretch",
         key=f"trio_performance_{f1_xuid}_{f2_xuid}",
+        config={"displayModeBar": False},
     )

@@ -156,15 +156,15 @@ def plot_top_weapons(
             x=kills,
             y=names,
             orientation="h",
-            name="Kills",
+            name="Frags",
             marker_color=colors["cyan"],
             opacity=0.85,
-            text=[f"{k} kills" for k in kills],
+            text=[f"{k} frags" for k in kills],
             textposition="outside",
             customdata=list(zip(hs_rates, accuracies, strict=False)),
             hovertemplate=(
                 "%{y}<br>"
-                "Kills: %{x}<br>"
+                "Frags: %{x}<br>"
                 "Headshot: %{customdata[0]:.1f}%<br>"
                 "Précision: %{customdata[1]:.1f}%<extra></extra>"
             ),
@@ -177,7 +177,7 @@ def plot_top_weapons(
         height=height,
         margin={"l": 120, "r": 60, "t": 60 if title else 30, "b": 40},
     )
-    fig.update_xaxes(title_text="Kills")
+    fig.update_xaxes(title_text="Frags")
     fig.update_yaxes(title_text="")
 
     return apply_halo_plot_style(fig, title=title, height=height)

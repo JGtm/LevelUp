@@ -66,10 +66,17 @@ def _render_media_grid(
                     label = (map_name or "—") + " · " + _format_short_date(capture_end)
                     st.caption(label)
                     # Thumbnail : ratio 16:9
-                    static_path = thumbnail_path or file_path
+                    # Priorité : thumbnail GIF > fichier original
+                    # Fallback sur file_path si le thumbnail n'existe pas (pas encore généré)
+                    thumb_ok = thumbnail_path and Path(thumbnail_path).exists()
+                    static_path = thumbnail_path if thumb_ok else file_path
                     if static_path and Path(static_path).exists():
                         hover_path = None
-                        if kind == "video" and str(thumbnail_path or "").lower().endswith(".gif"):
+                        if (
+                            kind == "video"
+                            and thumb_ok
+                            and str(thumbnail_path).lower().endswith(".gif")
+                        ):
                             hover_path = thumbnail_path
                         render_media_thumbnail(
                             static_path=Path(static_path),
@@ -230,11 +237,9 @@ def render_media_tab(
             "capture_end_utc", descending=True, nulls_last=True
         )
 
-    # Section « Mes captures » (ratio 16:9) – du plus récent au plus vieux
-    st.markdown("### Mes captures")
-    if mine.is_empty():
-        st.info("Aucune capture détectée.")
-    else:
+    # Section « Mes captures » (ratio 16:9) – du plus récent au plus vieux (masquée si vide)
+    if not mine.is_empty():
+        st.markdown("### Mes captures")
         _render_media_grid(
             mine,
             cols_per_row=cols_per_row,
@@ -259,11 +264,12 @@ def render_media_tab(
                 thumb_height=MEDIA_THUMB_RATIO_H,
             )
 
-    # Section « Sans correspondance »
-    st.markdown("### Sans correspondance")
-    _render_media_grid(
-        unassigned,
-        cols_per_row=cols_per_row,
-        thumb_width=MEDIA_THUMB_RATIO_W,
-        thumb_height=MEDIA_THUMB_RATIO_H,
-    )
+    # Section « Sans correspondance » (masquée si vide)
+    if not unassigned.is_empty():
+        st.markdown("### Sans correspondance")
+        _render_media_grid(
+            unassigned,
+            cols_per_row=cols_per_row,
+            thumb_width=MEDIA_THUMB_RATIO_W,
+            thumb_height=MEDIA_THUMB_RATIO_H,
+        )

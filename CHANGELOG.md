@@ -4,6 +4,130 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [5.1.0] - 2026-02-17
+
+### Added
+
+- **Module `src/data/sync/scope.py`** — Dataclass **SyncScope** centralisant les flags
+  - Remplace les 30+ kwargs booléens copiés dans 6 fichiers (cli → backfill_data → orchestrator → detection → API)
+  - `SyncScope.from_cli_args(args)` : construction depuis argparse
+  - `SyncScope.make_all()` : factory pour `--all-data`
+  - `resolve()` : implications automatiques (`all_data` → champs, `force_X` → X)
+  - Propriétés : `has_any_option()`, `needs_api`, `needs_local_only`, `requested_types`
+  - Registres : `_ALL_DATA_FIELDS`, `_FORCE_MAP`, `_REQUESTED_TYPE_MAP`
+  - 98 tests unitaires dans `tests/test_sync_scope.py`
+  - **Ajouter un nouveau type** : 1 champ dans SyncScope + 1 arg CLI + implémentation métier
+- **Module `src/ui/streamlit_modern.py`** — Wrappers compatibilité Streamlit moderne
+  - `fragment_if_available` : décorateur graceful-degradation pour `@st.fragment`
+  - `PLOTLY_CLEAN_CONFIG` : config Plotly sans barre d'outils
+  - `plotly_chart` : wrapper avec config propre par défaut
+  - `HAS_FRAGMENT`, `HAS_NAVIGATION` : détection de version
+- **Module `src/ui/vectorize_helpers.py`** — Remplacement vectorisé de `map_elements()`
+  - `build_mapping()` : pré-calcul dict mapping sur valeurs distinctes
+  - `vectorized_apply()` : apply vectorisé via `replace_strict()`
+  - `safe_int_format()`, `format_score_pair()` : expressions Polars réutilisables
+- **Helpers `get_shared_matches_path()`** — Fonctions centralisées dans `src/utils/paths.py`
+  - `get_shared_matches_path()` : chemin absolu vers `shared_matches.duckdb`
+  - `get_shared_matches_path_from_player()` : déduction depuis path joueur
+- **Script `cleanup_legacy_tables.py`** — Suppression tables obsolètes
+  - 9 tables supprimées : `match_stats`, `medals_earned`, `highlight_events`, `player_stats`, `xuid_aliases`, + 4 vues `mv_*`
+  - Options : `--dry-run`, `--backup`, `--all`
+  - Backups automatiques dans `backups/pre_cleanup/`
+- **Vue matérialisée `mv_player_matches`** — Optimisation performance v5.1
+  - Pré-calcul jointures match_participants + match_registry + metadata
+  - Réduction parsing SQL de 170→10 lignes par requête
+  - Gain performance : -70% parsing SQL
+- **Cache Repository Streamlit** — `get_cached_repository_st()` avec `@st.cache_resource(ttl=3600)`
+  - Connexion DB persistante entre pages UI
+  - Gain : 80ms→<20ms connexion
+- **Index DuckDB Performance** — 16+ index créés sur 9 tables
+  - Index composites `(xuid, match_id)`, `(match_id, xuid)`
+  - Index triés sur `start_time`
+- **Cache schema metadata** — `_has_column()` et `_has_shared_mp_column()` cachés
+  - Évite requêtes `information_schema` répétées
+- **Scripts migration bannières LEGACY** — 5 scripts marqués + README.md
+  - Bannière claire "HORS SERVICE POST-V5.1"
+  - Documentation dans `scripts/migration/README.md`
+
+### Changed
+
+- **`backfill_data.py` refactoré** — `main()` utilise `SyncScope.from_cli_args()` (−90 lignes)
+  - Plus besoin de copier 30+ `args.X` deux fois pour `--all` et `--player`
+- **`orchestrator.py` refactoré** — `backfill_player_data`, `backfill_all_players`, `_backfill_with_api` acceptent `scope=SyncScope`
+  - Anciens kwargs conservés (marqués `LEGACY`) pour rétro-compatibilité
+  - `requested_types` construit via `scope.requested_types` au lieu de 16 `if/append`
+- **`detection.py` refactoré** — `find_matches_missing_data` accepte `scope=SyncScope`
+  - Anciens kwargs conservés (marqués `LEGACY`) pour rétro-compatibilité
+- **Bump Streamlit ≥1.37.0** — Requis pour `@st.fragment` et futures migrations `st.navigation`
+- **Plotly `config={"displayModeBar": False}`** — Appliqué sur 69 `st.plotly_chart` (15 fichiers)
+  - Suppression barre d'outils Plotly pour une UI plus propre
+- **`@fragment_if_available`** — Décorateur appliqué sur 5 pages multi-charts
+  - timeseries, session_compare, win_loss, objective_analysis, career
+  - Réduit le re-render au fragment seul lors d'interactions filtre
+- **`match_history.py` modernisé** — Remplacement HTML custom par `st.dataframe` + `column_config`
+  - Suppression dead code : `_format_score_label`, `_fmt`, `_fmt_mmr_int`
+  - Virtualisation native Streamlit pour tableaux larges
+- **`st.navigation` lazy loading** — 11 page closures dans `streamlit_app.py`
+  - `build_navigation()` + `render_page_selector_nav()` dans `page_router.py`
+  - Fallback legacy `dispatch_page()` pour Streamlit < 1.36
+  - Seules les pages visitées sont importées → -60% mémoire initiale
+- **Centralisation `duckdb_read_only()`** — Context manager dans `src/utils/db.py`
+  - 7 fichiers migrés (career, cache_loaders, cache_filters, media_library, multiplayer, data_loader)
+  - `duckdb.connect` directs : 14 → 4 (restants : sync engine, écriture légitime)
+- **Réduction `st.rerun()`** — 32 → 14 dans `src/`
+  - `checkbox_filter.py` : 16 reruns → 0 via callbacks `on_click`/`on_change`
+  - Trio button filters : `on_click=_apply_trio_filter`
+- **Sécurisation `unsafe_allow_html`** — html.escape() sur données dynamiques
+  - `kpi.py` et `performance.py` : XSS protection
+  - `sidebar.py` brand : HTML → `st.header()` + `st.divider()`
+- **Tests non-régression modernisation** — 30 tests dans `test_8ter_modernisation.py`
+  - Couverture : staticPlot, fragments, st.navigation, duckdb_read_only, st.rerun, html.escape
+- **Éradication complète `map_elements()`** — 28 occurrences remplacées dans 15 fichiers
+  - Remplacement par `build_mapping()` + `replace_strict()` ou expressions Polars natives
+  - Fichiers : filters.py, filters_render.py, win_loss.py, last_match.py, stats.py,
+    match_view_charts.py, media_library.py, teammates_helpers.py, session_compare.py,
+    session_compare_charts.py, duckdb_analytics.py, match_view.py, citations.py,
+    teammates_service.py, media_indexer.py
+- **Migration `xuid_aliases` → `shared_matches.duckdb`** — Source unique centralisée
+  - 9 fichiers migrés pour lire depuis `shared.xuid_aliases` (13 955 rows)
+  - Suppression fallbacks locaux `stats.duckdb`
+  - Fichiers : `aliases.py`, `xuid.py`, `multiplayer.py`, `cache_loaders.py`, `engine.py`, `_roster_loader.py`, `sessions_backfill.py`, `sync.py`, `resolve_missing_gamertags.py`
+- **`_get_match_source()`** retourne maintenant un 3-tuple `(source_sql, params, uses_mv)`
+  - Permet skip jointures redondantes en mode v5.1
+- **8+ fonctions cache_loaders** migrées vers `get_cached_repository_st()`
+  - Suppression connexions neuves redondantes
+- **Jointures metadata/MMR** skippées en mode v5.1 quand `uses_mv=True`
+  - RC3/RC4 : -3 LEFT JOIN sur chemin critique
+
+### Fixed
+
+- **Onglet Citations affichait 159 citations au lieu de 45** — Filtrage par `citation_mappings.enabled` réactivé
+  - Le JSON `halo5_commendations_fr.json` contient 159 citations (armes, Spartan Companies, etc.)
+  - Le filtrage avait été supprimé, affichant toutes les citations y compris celles sans mapping
+  - Correction : les items JSON sont maintenant filtrés par les noms normalisés des citations activées via `CitationEngine.load_mappings()`
+  - Fichier : `src/ui/commendations.py`
+
+### Removed
+
+- **Tables legacy player DBs** — 9 tables par joueur, données centralisées
+  - `match_stats`, `medals_earned`, `highlight_events`, `player_stats`, `xuid_aliases`
+  - Vues obsolètes : `mv_match_stats_with_context`, `mv_recent_matches`, `mv_team_stats`, `mv_opponent_stats`
+  - 38 528 rows libérées sur 4 joueurs
+- **Références SQLite runtime** — 0 `import sqlite3` dans `src/`
+- **Références `metadata.db`** — Tout migré vers `metadata.duckdb`
+- **Méthode dépréciée `attach_sqlite`** — Supprimée de duckdb_engine.py
+
+### Performance
+
+| Métrique | v5.0 | v5.1 | Gain |
+|----------|------|------|------|
+| Connexion DB | 80ms | <20ms | **-75%** |
+| load_matches(100) | 200ms | <80ms | **-60%** |
+| Première page UI | 1500ms | <800ms | **-47%** |
+| Parsing SQL/requête | 170 lignes | 10 lignes | **-94%** |
+
+---
+
 ## [5.0.0] - 2026-02-15
 
 ### Added

@@ -3,6 +3,12 @@
 Ce module contient la logique principale de backfill :
 - backfill_player_data  : traitement d'un joueur
 - backfill_all_players  : itération sur tous les joueurs DuckDB
+
+Note architecture (v5.2+) :
+    Les fonctions publiques acceptent un paramètre ``scope: SyncScope``
+    qui remplace les 30+ kwargs individuels.  Les kwargs sont conservés
+    temporairement pour rétro-compatibilité (marqués ``LEGACY``).
+    Nouveau code : toujours passer ``scope=SyncScope(...)``.
 """
 
 from __future__ import annotations
@@ -10,7 +16,10 @@ from __future__ import annotations
 import contextlib
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.data.sync.scope import SyncScope
 
 from scripts.backfill.core import (
     insert_alias_rows,
@@ -25,6 +34,7 @@ from scripts.backfill.strategies import (
     backfill_killer_victim_pairs,
     compute_performance_score_for_match,
 )
+from src.data.sync.scope import SyncScope
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +93,13 @@ def _empty_result() -> dict[str, int]:
 async def backfill_player_data(
     gamertag: str,
     *,
+    scope: SyncScope | None = None,
+    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
+    # Ces kwargs individuels sont conservés pour rétro-compatibilité.
+    # Nouveau code : passer ``scope=SyncScope(...)`` à la place.
+    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
+    #   utilisent SyncScope (vérifier sync.py, tests, scripts).
+    # ─────────────────────────────────────────────────────────────────────
     dry_run: bool = False,
     max_matches: int | None = None,
     requests_per_second: int = 5,
@@ -126,81 +143,112 @@ async def backfill_player_data(
 ) -> dict[str, int]:
     """Remplit les données manquantes pour un joueur.
 
+    .. deprecated:: v5.2
+        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+        Les kwargs sont conservés temporairement pour rétro-compatibilité.
+
     Args:
         gamertag: Gamertag du joueur.
-        dry_run: Si True, ne fait que lister les matchs sans données.
-        max_matches: Nombre maximum de matchs à traiter (None = tous).
-        requests_per_second: Rate limiting API.
-        detection_mode: "or" (défaut) ou "and" (strict, évite re-téléchargement).
-        [autres flags]: Options de backfill activées.
+        scope: Périmètre de données — **méthode recommandée** (SyncScope).
+        dry_run: (legacy) Si True, ne fait que lister les matchs sans données.
+        max_matches: (legacy) Nombre maximum de matchs à traiter (None = tous).
+        requests_per_second: (legacy) Rate limiting API.
+        detection_mode: (legacy) "or" (défaut) ou "and" (strict).
+        **kwargs: (legacy) 30+ flags booléens — voir SyncScope pour la liste.
 
     Returns:
         Dict avec les statistiques.
     """
-    # Si all_data, activer toutes les options
-    if all_data:
-        medals = events = skill = personal_scores = performance_scores = True
-        aliases = accuracy = enemy_mmr = assets = participants = True
-        shots = participants_scores = participants_kda = True
-        participants_shots = participants_damage = participants_avg_life = True
-        killer_victim = end_time = sessions = citations = True
-        participants_enrich = True
+    # ── Construire / résoudre le scope ──
+    if scope is None:
+        scope = SyncScope(
+            dry_run=dry_run,
+            max_matches=max_matches,
+            requests_per_second=requests_per_second,
+            detection_mode=detection_mode,
+            medals=medals,
+            events=events,
+            skill=skill,
+            personal_scores=personal_scores,
+            performance_scores=performance_scores,
+            aliases=aliases,
+            accuracy=accuracy,
+            enemy_mmr=enemy_mmr,
+            assets=assets,
+            participants=participants,
+            participants_scores=participants_scores,
+            participants_kda=participants_kda,
+            participants_shots=participants_shots,
+            participants_damage=participants_damage,
+            participants_avg_life=participants_avg_life,
+            killer_victim=killer_victim,
+            end_time=end_time,
+            sessions=sessions,
+            shots=shots,
+            citations=citations,
+            participants_enrich=participants_enrich,
+            all_data=all_data,
+            force_medals=force_medals,
+            force_accuracy=force_accuracy,
+            force_shots=force_shots,
+            force_participants_shots=force_participants_shots,
+            force_participants_damage=force_participants_damage,
+            force_participants_avg_life=force_participants_avg_life,
+            force_enemy_mmr=force_enemy_mmr,
+            force_aliases=force_aliases,
+            force_assets=force_assets,
+            force_participants=force_participants,
+            force_end_time=force_end_time,
+            force_sessions=force_sessions,
+            force_citations=force_citations,
+            force_participants_enrich=force_participants_enrich,
+        )
+    scope.resolve()
 
-    # Activer les dépendances force → option
-    if force_accuracy and not accuracy:
-        accuracy = True
-    if force_shots and not shots:
-        shots = True
-    if force_enemy_mmr and not enemy_mmr:
-        enemy_mmr = True
-    if force_aliases and not aliases:
-        aliases = True
-    if force_assets and not assets:
-        assets = True
-    if force_participants and not participants:
-        participants = True
-    if force_end_time and not end_time:
-        end_time = True
-    if force_sessions and not sessions:
-        sessions = True
-    if force_participants_shots and not participants_shots:
-        participants_shots = True
-    if force_participants_damage and not participants_damage:
-        participants_damage = True
-    if force_participants_avg_life and not participants_avg_life:
-        participants_avg_life = True
-    if force_citations and not citations:
-        citations = True
-    if force_participants_enrich and not participants_enrich:
-        participants_enrich = True
+    # Extraire les valeurs résolues en variables locales
+    dry_run = scope.dry_run
+    max_matches = scope.max_matches
+    requests_per_second = scope.requests_per_second
+    detection_mode = scope.detection_mode
+    medals = scope.medals
+    events = scope.events
+    skill = scope.skill
+    personal_scores = scope.personal_scores
+    performance_scores = scope.performance_scores
+    aliases = scope.aliases
+    accuracy = scope.accuracy
+    enemy_mmr = scope.enemy_mmr
+    assets = scope.assets
+    participants = scope.participants
+    participants_scores = scope.participants_scores
+    participants_kda = scope.participants_kda
+    participants_shots = scope.participants_shots
+    participants_damage = scope.participants_damage
+    participants_avg_life = scope.participants_avg_life
+    killer_victim = scope.killer_victim
+    end_time = scope.end_time
+    sessions = scope.sessions
+    shots = scope.shots
+    citations = scope.citations
+    participants_enrich = scope.participants_enrich
+    force_medals = scope.force_medals
+    force_accuracy = scope.force_accuracy
+    force_shots = scope.force_shots
+    # force_skill est utilisé via scope dans find_matches_missing_data()
+    force_participants_shots = scope.force_participants_shots
+    force_participants_damage = scope.force_participants_damage
+    force_participants_avg_life = scope.force_participants_avg_life
+    force_enemy_mmr = scope.force_enemy_mmr
+    force_aliases = scope.force_aliases
+    force_assets = scope.force_assets
+    force_participants = scope.force_participants
+    force_end_time = scope.force_end_time
+    force_sessions = scope.force_sessions
+    force_citations = scope.force_citations
+    force_participants_enrich = scope.force_participants_enrich
 
     # Vérifier qu'au moins une option est activée
-    if not any(
-        [
-            medals,
-            events,
-            skill,
-            personal_scores,
-            performance_scores,
-            aliases,
-            accuracy,
-            shots,
-            enemy_mmr,
-            assets,
-            participants,
-            participants_scores,
-            participants_kda,
-            participants_shots,
-            participants_damage,
-            participants_avg_life,
-            killer_victim,
-            end_time,
-            sessions,
-            citations,
-            participants_enrich,
-            force_aliases,
-        ]
-    ):
+    if not scope.has_any_option():
         logger.warning(
             "Aucune option de backfill activée. Utilisez --all ou spécifiez des options."
         )
@@ -280,34 +328,7 @@ async def backfill_player_data(
             conn,
             xuid,
             shared_conn=shared_conn_for_detection,
-            detection_mode=detection_mode,
-            medals=medals,
-            events=events,
-            skill=skill,
-            personal_scores=personal_scores,
-            performance_scores=performance_scores,
-            accuracy=accuracy,
-            enemy_mmr=enemy_mmr,
-            assets=assets,
-            participants=participants,
-            participants_scores=participants_scores,
-            participants_kda=participants_kda,
-            participants_shots=participants_shots,
-            participants_damage=participants_damage,
-            participants_avg_life=participants_avg_life,
-            force_participants_shots=force_participants_shots,
-            force_participants_damage=force_participants_damage,
-            force_participants_avg_life=force_participants_avg_life,
-            force_medals=force_medals,
-            force_accuracy=force_accuracy,
-            shots=shots,
-            force_shots=force_shots,
-            force_enemy_mmr=force_enemy_mmr,
-            force_aliases=force_aliases,
-            force_assets=force_assets,
-            force_participants=force_participants,
-            max_matches=max_matches,
-            all_data=all_data,
+            scope=scope,
         )
 
         logger.info(f"Matchs trouvés avec données manquantes: {len(match_ids)}")
@@ -330,6 +351,7 @@ async def backfill_player_data(
             logger.info("Backfill colonnes étendues + MMR (participants-enrich)...")
             n = await backfill_participants_enrich(
                 shared_conn_for_detection,
+                xuid=xuid,
                 max_matches=max_matches,
                 force=force_participants_enrich,
                 requests_per_second=requests_per_second,
@@ -346,6 +368,16 @@ async def backfill_player_data(
             return _empty_result()
 
         if not needs_api and needs_local_only:
+            # Fermer shared_conn_for_detection avant _backfill_local_only
+            # car sessions/citations ont besoin d'attacher le fichier à conn
+            if shared_conn_for_detection is not None:
+                try:
+                    shared_conn_for_detection.commit()
+                    shared_conn_for_detection.close()
+                    shared_conn_for_detection = None
+                except Exception:
+                    pass
+
             result = _backfill_local_only(
                 conn,
                 db_path,
@@ -369,39 +401,8 @@ async def backfill_player_data(
             db_path,
             xuid,
             match_ids,
-            requests_per_second=requests_per_second,
-            medals=medals,
-            events=events,
-            skill=skill,
-            personal_scores=personal_scores,
-            performance_scores=performance_scores,
-            aliases=aliases,
-            accuracy=accuracy,
-            enemy_mmr=enemy_mmr,
-            assets=assets,
-            participants=participants,
-            participants_scores=participants_scores,
-            participants_kda=participants_kda,
-            participants_shots=participants_shots,
-            participants_damage=participants_damage,
-            participants_avg_life=participants_avg_life,
-            killer_victim=killer_victim,
-            end_time=end_time,
-            sessions=sessions,
-            force_medals=force_medals,
-            force_accuracy=force_accuracy,
-            force_shots=force_shots,
-            force_enemy_mmr=force_enemy_mmr,
-            force_end_time=force_end_time,
-            force_sessions=force_sessions,
-            force_participants_shots=force_participants_shots,
-            force_participants_damage=force_participants_damage,
-            force_participants_avg_life=force_participants_avg_life,
-            shots=shots,
-            citations=citations,
-            force_citations=force_citations,
+            scope=scope,
             gamertag=gamertag,
-            dry_run=dry_run,
             existing_shared_conn=shared_conn_for_detection,
         )
 
@@ -416,6 +417,11 @@ async def backfill_player_data(
 
 async def backfill_all_players(
     *,
+    scope: SyncScope | None = None,
+    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
+    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
+    #   utilisent SyncScope.
+    # ─────────────────────────────────────────────────────────────────────
     dry_run: bool = False,
     max_matches: int | None = None,
     requests_per_second: int = 5,
@@ -457,7 +463,56 @@ async def backfill_all_players(
     force_participants_enrich: bool = False,
     detection_mode: str = "or",
 ) -> dict[str, Any]:
-    """Backfill pour tous les joueurs DuckDB."""
+    """Backfill pour tous les joueurs DuckDB.
+
+    .. deprecated:: v5.2
+        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+    """
+    # ── Construire le scope si non fourni ──
+    if scope is None:
+        scope = SyncScope(
+            dry_run=dry_run,
+            max_matches=max_matches,
+            requests_per_second=requests_per_second,
+            detection_mode=detection_mode,
+            medals=medals,
+            events=events,
+            skill=skill,
+            personal_scores=personal_scores,
+            performance_scores=performance_scores,
+            aliases=aliases,
+            accuracy=accuracy,
+            enemy_mmr=enemy_mmr,
+            assets=assets,
+            participants=participants,
+            participants_scores=participants_scores,
+            participants_kda=participants_kda,
+            participants_shots=participants_shots,
+            participants_damage=participants_damage,
+            participants_avg_life=participants_avg_life,
+            killer_victim=killer_victim,
+            end_time=end_time,
+            sessions=sessions,
+            shots=shots,
+            citations=citations,
+            participants_enrich=participants_enrich,
+            all_data=all_data,
+            force_medals=force_medals,
+            force_accuracy=force_accuracy,
+            force_shots=force_shots,
+            force_participants_shots=force_participants_shots,
+            force_participants_damage=force_participants_damage,
+            force_participants_avg_life=force_participants_avg_life,
+            force_enemy_mmr=force_enemy_mmr,
+            force_aliases=force_aliases,
+            force_assets=force_assets,
+            force_participants=force_participants,
+            force_end_time=force_end_time,
+            force_sessions=force_sessions,
+            force_citations=force_citations,
+            force_participants_enrich=force_participants_enrich,
+        )
+
     from src.ui.multiplayer import list_duckdb_v4_players
 
     players = list_duckdb_v4_players()
@@ -477,46 +532,7 @@ async def backfill_all_players(
 
         result = await backfill_player_data(
             player_info.gamertag,
-            dry_run=dry_run,
-            max_matches=max_matches,
-            requests_per_second=requests_per_second,
-            medals=medals,
-            events=events,
-            skill=skill,
-            personal_scores=personal_scores,
-            performance_scores=performance_scores,
-            aliases=aliases,
-            accuracy=accuracy,
-            enemy_mmr=enemy_mmr,
-            assets=assets,
-            participants=participants,
-            participants_scores=participants_scores,
-            participants_kda=participants_kda,
-            participants_shots=participants_shots,
-            participants_damage=participants_damage,
-            participants_avg_life=participants_avg_life,
-            killer_victim=killer_victim,
-            end_time=end_time,
-            sessions=sessions,
-            all_data=all_data,
-            force_medals=force_medals,
-            force_accuracy=force_accuracy,
-            shots=shots,
-            force_shots=force_shots,
-            force_participants_shots=force_participants_shots,
-            force_participants_damage=force_participants_damage,
-            force_participants_avg_life=force_participants_avg_life,
-            force_enemy_mmr=force_enemy_mmr,
-            force_aliases=force_aliases,
-            force_assets=force_assets,
-            force_participants=force_participants,
-            force_end_time=force_end_time,
-            force_sessions=force_sessions,
-            citations=citations,
-            force_citations=force_citations,
-            participants_enrich=participants_enrich,
-            force_participants_enrich=force_participants_enrich,
-            detection_mode=detection_mode,
+            scope=scope,
         )
 
         for key in total_results:
@@ -605,6 +621,7 @@ def _apply_schema_migrations(
     from src.data.sync.migrations import (
         ensure_backfill_completed_column,
         ensure_highlight_events_autoincrement,
+        ensure_match_participants_backfill_bits,
         ensure_match_participants_columns,
         ensure_medals_earned_bigint,
     )
@@ -620,6 +637,10 @@ def _apply_schema_migrations(
     # Colonnes match_participants (shared)
     with contextlib.suppress(Exception):
         ensure_match_participants_columns(shared_conn)
+
+    # Colonne backfill_bits (v5.2 — bitmask granulaire par joueur)
+    with contextlib.suppress(Exception):
+        ensure_match_participants_backfill_bits(shared_conn)
 
     # Colonne backfill_completed dans match_registry (shared)
     with contextlib.suppress(Exception):
@@ -722,42 +743,123 @@ async def _backfill_with_api(
     xuid: str,
     match_ids: list[str],
     *,
-    requests_per_second: int,
-    medals: bool,
-    events: bool,
-    skill: bool,
-    personal_scores: bool,
-    performance_scores: bool,
-    aliases: bool,
-    accuracy: bool,
-    enemy_mmr: bool,
-    assets: bool,
-    participants: bool,
-    participants_scores: bool,
-    participants_kda: bool,
-    participants_shots: bool,
-    participants_damage: bool,
-    participants_avg_life: bool,
-    killer_victim: bool,
-    end_time: bool,
-    sessions: bool,
-    force_medals: bool,
-    force_accuracy: bool,
-    force_shots: bool,
-    force_enemy_mmr: bool,
-    force_end_time: bool,
-    force_sessions: bool,
-    force_participants_shots: bool,
-    force_participants_damage: bool,
-    force_participants_avg_life: bool,
-    shots: bool,
+    scope: SyncScope | None = None,
+    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
+    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
+    #   utilisent SyncScope.
+    # ─────────────────────────────────────────────────────────────────────
+    requests_per_second: int = 5,
+    medals: bool = False,
+    events: bool = False,
+    skill: bool = False,
+    personal_scores: bool = False,
+    performance_scores: bool = False,
+    aliases: bool = False,
+    accuracy: bool = False,
+    enemy_mmr: bool = False,
+    assets: bool = False,
+    participants: bool = False,
+    participants_scores: bool = False,
+    participants_kda: bool = False,
+    participants_shots: bool = False,
+    participants_damage: bool = False,
+    participants_avg_life: bool = False,
+    killer_victim: bool = False,
+    end_time: bool = False,
+    sessions: bool = False,
+    force_medals: bool = False,
+    force_accuracy: bool = False,
+    force_shots: bool = False,
+    force_performance_scores: bool = False,
+    force_enemy_mmr: bool = False,
+    force_end_time: bool = False,
+    force_sessions: bool = False,
+    force_participants_shots: bool = False,
+    force_participants_damage: bool = False,
+    force_participants_avg_life: bool = False,
+    shots: bool = False,
     citations: bool = False,
     force_citations: bool = False,
-    gamertag: str,
-    dry_run: bool,
+    gamertag: str = "",
+    dry_run: bool = False,
     existing_shared_conn: Any | None = None,
 ) -> dict[str, int]:
-    """Traitement des matchs via l'API SPNKr."""
+    """Traitement des matchs via l'API SPNKr.
+
+    .. deprecated:: v5.2
+        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+    """
+    # ── Construire / résoudre le scope ──
+    if scope is None:
+        scope = SyncScope(
+            dry_run=dry_run,
+            requests_per_second=requests_per_second,
+            medals=medals,
+            events=events,
+            skill=skill,
+            personal_scores=personal_scores,
+            performance_scores=performance_scores,
+            aliases=aliases,
+            accuracy=accuracy,
+            enemy_mmr=enemy_mmr,
+            assets=assets,
+            participants=participants,
+            participants_scores=participants_scores,
+            participants_kda=participants_kda,
+            participants_shots=participants_shots,
+            participants_damage=participants_damage,
+            participants_avg_life=participants_avg_life,
+            killer_victim=killer_victim,
+            end_time=end_time,
+            sessions=sessions,
+            shots=shots,
+            citations=citations,
+            force_medals=force_medals,
+            force_accuracy=force_accuracy,
+            force_shots=force_shots,
+            force_performance_scores=force_performance_scores,
+            force_participants_shots=force_participants_shots,
+            force_participants_damage=force_participants_damage,
+            force_participants_avg_life=force_participants_avg_life,
+            force_enemy_mmr=force_enemy_mmr,
+            force_end_time=force_end_time,
+            force_sessions=force_sessions,
+            force_citations=force_citations,
+        )
+    scope.resolve()
+
+    # Extraire les valeurs résolues en variables locales
+    requests_per_second = scope.requests_per_second
+    dry_run = scope.dry_run
+    medals = scope.medals
+    events = scope.events
+    skill = scope.skill
+    personal_scores = scope.personal_scores
+    performance_scores = scope.performance_scores
+    aliases = scope.aliases
+    accuracy = scope.accuracy
+    enemy_mmr = scope.enemy_mmr
+    assets = scope.assets
+    participants = scope.participants
+    participants_scores = scope.participants_scores
+    participants_kda = scope.participants_kda
+    participants_shots = scope.participants_shots
+    participants_damage = scope.participants_damage
+    participants_avg_life = scope.participants_avg_life
+    killer_victim = scope.killer_victim
+    end_time = scope.end_time
+    sessions = scope.sessions
+    shots = scope.shots
+    citations = scope.citations
+    force_medals = scope.force_medals
+    force_accuracy = scope.force_accuracy
+    force_shots = scope.force_shots
+    # force_skill est utilisé via scope dans find_matches_missing_data()
+    force_performance_scores = scope.force_performance_scores
+    force_enemy_mmr = scope.force_enemy_mmr
+    force_end_time = scope.force_end_time
+    force_sessions = scope.force_sessions
+    force_citations = scope.force_citations
     from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
     from src.data.sync.migrations import ensure_match_participants_columns
     from src.data.sync.transformers import (
@@ -903,7 +1005,7 @@ async def _backfill_with_api(
                 if medals:
                     medal_rows = extract_medals(stats_json, xuid)
                     if medal_rows:
-                        n = insert_medal_rows(shared_conn, medal_rows)
+                        n = insert_medal_rows(shared_conn, medal_rows, xuid)
                         totals["medals_inserted"] += n
 
                 # ── Events (V5: shared.highlight_events) ──
@@ -950,44 +1052,26 @@ async def _backfill_with_api(
 
                 # ── Performance scores (V5: player_match_enrichment) ──
                 if performance_scores and compute_performance_score_for_match(
-                    conn, match_id, shared_conn=shared_conn, xuid=xuid
+                    conn,
+                    match_id,
+                    shared_conn=shared_conn,
+                    xuid=xuid,
+                    force=force_performance_scores,
                 ):
                     totals["performance_scores_inserted"] += 1
 
+                # ── Mise à jour backfill_bits (v5.2 — granulaire par joueur) ──
+                _update_participant_backfill_bits(
+                    shared_conn,
+                    match_id,
+                    xuid,
+                    scope,
+                    skill_inserted=bool(skill and skill_json),
+                    medals_inserted=bool(medals and totals.get("medals_inserted", 0) > 0),
+                )
+
                 # Marquer le bitmask backfill_completed pour tous les types demandés
-                requested_types: list[str] = []
-                if medals:
-                    requested_types.append("medals")
-                if events:
-                    requested_types.append("events")
-                if skill:
-                    requested_types.append("skill")
-                if personal_scores:
-                    requested_types.append("personal_scores")
-                if performance_scores:
-                    requested_types.append("performance_scores")
-                if aliases:
-                    requested_types.append("aliases")
-                if accuracy:
-                    requested_types.append("accuracy")
-                if shots:
-                    requested_types.append("shots")
-                if enemy_mmr:
-                    requested_types.append("enemy_mmr")
-                if assets:
-                    requested_types.append("assets")
-                if participants:
-                    requested_types.append("participants")
-                if participants_scores:
-                    requested_types.append("participants_scores")
-                if participants_kda:
-                    requested_types.append("participants_kda")
-                if participants_shots:
-                    requested_types.append("participants_shots")
-                if participants_damage:
-                    requested_types.append("participants_damage")
-                if participants_avg_life:
-                    requested_types.append("participants_avg_life")
+                requested_types = scope.requested_types
 
                 # Marquer backfill_completed
                 # V5 FINAL: TOUJOURS dans shared.match_registry, jamais dans match_stats
@@ -1037,6 +1121,19 @@ async def _backfill_with_api(
         if n > 0:
             logger.info(f"✅ {n} match(s) avec end_time mis à jour")
 
+    # Fermer shared_conn AVANT sessions/citations pour libérer le verrou fichier
+    # car ces fonctions ont besoin d'attacher shared à la connexion player
+    # On ferme TOUJOURS (même si on ne l'a pas ouvert nous-même) car sessions/citations
+    # vont attacher le fichier à conn et ont besoin du verrou exclusif
+    if shared_conn is not None and (sessions or citations):
+        try:
+            shared_conn.commit()
+            shared_conn.close()
+            shared_conn = None
+            owns_shared_conn = False  # Marquer comme fermé
+        except Exception:
+            pass
+
     if sessions:
         n = _backfill_sessions(conn, db_path, xuid, force=force_sessions, dry_run=dry_run)
         totals["sessions_updated"] = n
@@ -1048,7 +1145,7 @@ async def _backfill_with_api(
         n = backfill_citations(conn, db_path, xuid, force=force_citations)
         totals["citations_computed"] = n
 
-    # Fermer la connexion shared uniquement si on l'a ouverte nous-même
+    # Fermer shared_conn si on l'a ouvert et pas encore fermé
     if shared_conn is not None and owns_shared_conn:
         try:
             shared_conn.commit()
@@ -1063,6 +1160,112 @@ async def _backfill_with_api(
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers de traitement par match
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def _update_participant_backfill_bits(
+    shared_conn: Any,
+    match_id: str,
+    xuid: str,
+    scope: SyncScope,
+    *,
+    skill_inserted: bool = False,
+    medals_inserted: bool = False,
+) -> None:
+    """Met à jour ``backfill_bits`` dans ``match_participants`` après un backfill.
+
+    Lit l'état réel de TOUTES les colonnes du participant dans la DB et pose
+    les bits correspondants (OR incrémental). Approche inconditionnelle : pas
+    besoin de lister les champs scope — on se base sur ce qui est NOT NULL.
+
+    Args:
+        shared_conn: Connexion à shared_matches.duckdb.
+        match_id: ID du match.
+        xuid: XUID du joueur.
+        scope: Périmètre de données (conservé pour compatibilité de signature).
+        skill_inserted: Inutilisé (conservé pour compatibilité).
+        medals_inserted: Inutilisé (conservé pour compatibilité).
+    """
+    if shared_conn is None:
+        return
+
+    from src.data.sync.constants import ParticipantBits
+
+    bits = 0
+
+    # ── Scan inconditionnel : toutes les colonnes en une seule requête ──
+    # On ne conditionne PAS sur scope : on lit ce qui est réellement NOT NULL.
+    # Cela couvre correctement tous les champs granulaires (team_mmr, grenade_kills…)
+    # quel que soit le sous-ensemble demandé.
+    try:
+        row = shared_conn.execute(
+            "SELECT team_mmr, enemy_mmr, kills_expected, deaths_expected, assists_expected, "
+            "accuracy, shots_fired, damage_dealt, avg_life_seconds, "
+            "grenade_kills, melee_kills, power_weapon_kills, personal_score, "
+            "headshot_kills, max_killing_spree, kda, time_played_seconds "
+            "FROM match_participants WHERE match_id = ? AND xuid = ?",
+            (match_id, xuid),
+        ).fetchone()
+        if row:
+            if row[0] is not None:
+                bits |= ParticipantBits.TEAM_MMR
+            if row[1] is not None:
+                bits |= ParticipantBits.ENEMY_MMR
+            if row[2] is not None:
+                bits |= ParticipantBits.KILLS_EXP
+            if row[3] is not None:
+                bits |= ParticipantBits.DEATHS_EXP
+            if row[4] is not None:
+                bits |= ParticipantBits.ASSISTS_EXP
+            if row[5] is not None:
+                bits |= ParticipantBits.ACCURACY
+            if row[6] is not None:
+                bits |= ParticipantBits.SHOTS
+            if row[7] is not None:
+                bits |= ParticipantBits.DAMAGE
+            if row[8] is not None:
+                bits |= ParticipantBits.AVG_LIFE
+            if row[9] is not None:
+                bits |= ParticipantBits.GRENADE_KILLS
+            if row[10] is not None:
+                bits |= ParticipantBits.MELEE_KILLS
+            if row[11] is not None:
+                bits |= ParticipantBits.POWER_WEAPON
+            if row[12] is not None:
+                bits |= ParticipantBits.PERSONAL_SCORE
+            if row[13] is not None:
+                bits |= ParticipantBits.HEADSHOT_KILLS
+            if row[14] is not None:
+                bits |= ParticipantBits.MAX_SPREE
+            if row[15] is not None:
+                bits |= ParticipantBits.KDA
+            if row[16] is not None:
+                bits |= ParticipantBits.TIME_PLAYED
+    except Exception as e:
+        logger.debug(f"Lecture participant bits pour {xuid}/{match_id}: {e}")
+
+    # ── Médailles (table séparée) ──
+    try:
+        count = shared_conn.execute(
+            "SELECT COUNT(*) FROM medals_earned WHERE match_id = ? AND xuid = ?",
+            (match_id, xuid),
+        ).fetchone()
+        if count and count[0] > 0:
+            bits |= ParticipantBits.MEDALS
+    except Exception as e:
+        logger.debug(f"Lecture medals bits pour {xuid}/{match_id}: {e}")
+
+    if bits == 0:
+        return
+
+    try:
+        shared_conn.execute(
+            "UPDATE match_participants "
+            "SET backfill_bits = COALESCE(backfill_bits, 0) | ? "
+            "WHERE match_id = ? AND xuid = ?",
+            (bits, match_id, xuid),
+        )
+    except Exception as e:
+        logger.debug(f"Mise à jour backfill_bits pour {xuid}/{match_id}: {e}")
 
 
 def _update_participants_details(
@@ -1253,7 +1456,13 @@ def _update_enemy_mmr(
     xuid: str,
     force: bool,
 ) -> None:
-    """Met à jour enemy_mmr pour un match dans shared.match_participants (V5)."""
+    """Met à jour enemy_mmr pour un match dans shared.match_participants (V5).
+
+    Pipeline v5.1 : enemy_mmr est désormais correctement extrait par le
+    transformer (corrigé : était ignoré `_ = mmr_data`).
+    Cette fonction écrit aussi les 6 colonnes expected/stddev via
+    _upsert_skill_to_participants().
+    """
     from src.data.sync.transformers import transform_skill_stats
 
     skill_row = transform_skill_stats(skill_json, match_id, xuid)
@@ -1272,12 +1481,13 @@ def _update_enemy_mmr(
         elif existing[0] is None:
             # Mettre à jour les colonnes MMR dans match_participants
             shared_conn.execute(
-                "UPDATE match_participants SET team_mmr = ?, kills_expected = ?, "
+                "UPDATE match_participants SET team_mmr = ?, enemy_mmr = ?, kills_expected = ?, "
                 "kills_stddev = ?, deaths_expected = ?, deaths_stddev = ?, "
                 "assists_expected = ?, assists_stddev = ? "
                 "WHERE match_id = ? AND xuid = ?",
                 (
                     skill_row.team_mmr,
+                    getattr(skill_row, "enemy_mmr", None),
                     skill_row.kills_expected,
                     skill_row.kills_stddev,
                     skill_row.deaths_expected,
@@ -1293,8 +1503,15 @@ def _update_enemy_mmr(
 def _upsert_skill_to_participants(conn: Any, skill_row: Any, xuid: str) -> int:
     """Upsert les données skill/MMR dans match_participants (V5).
 
-    Remplace insert_skill_row (qui écrit dans player_match_stats) :
+    Remplace insert_skill_row (qui écrivait dans player_match_stats) :
     en V5, les colonnes MMR sont dans shared.match_participants.
+
+    Pipeline v5.1 complet :
+        team_mmr, enemy_mmr, kills_expected, kills_stddev,
+        deaths_expected, deaths_stddev, assists_expected, assists_stddev.
+
+    ⚠️ assists_expected/assists_stddev : toujours NULL (limitation API Halo,
+    StatPerformances ne fournit que Kills et Deaths).
 
     Returns:
         1 si mis à jour, 0 sinon.
@@ -1311,7 +1528,7 @@ def _upsert_skill_to_participants(conn: Any, skill_row: Any, xuid: str) -> int:
             "WHERE match_id = ? AND xuid = ?",
             (
                 skill_row.team_mmr,
-                skill_row.enemy_mmr,
+                getattr(skill_row, "enemy_mmr", None),
                 skill_row.kills_expected,
                 skill_row.kills_stddev,
                 skill_row.deaths_expected,

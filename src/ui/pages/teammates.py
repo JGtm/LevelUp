@@ -6,13 +6,14 @@ Ce module est le point d'entrée de la page. Les fonctions de rendu lourdes
 sont déléguées aux sous-modules :
 - teammates_views.py     : vues single / multi / trio
 - teammates_synergy.py   : radars de complémentarité
-- teammates_impact.py    : onglet Impact & Taquinerie
+- teammates_impact.py    : onglet Impact
 - teammates_charts.py    : graphes de comparaison
 - teammates_helpers.py   : helpers de rendu (cartes, tableaux)
 """
 
 from __future__ import annotations
 
+import polars as pl
 import streamlit as st
 
 from src.data.services.teammates_service import TeammatesService
@@ -24,7 +25,6 @@ from src.ui.pages.teammates_views import (
 )
 from src.ui.perf import perf_section
 from src.visualization._compat import DataFrameLike, ensure_polars
-from src.visualization.performance import plot_session_trend
 
 # =============================================================================
 # Helpers légers — chargement et enrichissement
@@ -160,20 +160,61 @@ def render_teammates_page(
     with perf_section("teammates/render_cards"):
         render_teammate_cards(picked_xuids, settings)
 
-    # Tendance de session (matchs affichés) — Sprint 6
+    # Tendance de session (matchs affichés) — multi-joueurs
     _req_trend = ["start_time", "kills", "deaths"]
     if len(dff) >= 4 and all(c in dff.columns for c in _req_trend):
-        try:
-            pl_dff = dff.sort("start_time").select(_req_trend)
-            st.subheader("Tendance de session (matchs affichés)")
-            st.caption("Compare ta performance en première vs seconde moitié des matchs affichés.")
-            fig_trend = plot_session_trend(pl_dff)
-            if fig_trend is not None:
-                st.plotly_chart(fig_trend, width="stretch")
-            else:
-                st.info("Données insuffisantes pour la tendance de session.")
-        except Exception as e:
-            st.warning(f"Impossible d'afficher la tendance de session : {e}")
+        from src.analysis.cumulative import compute_session_trend_polars
+        from src.ui import display_name_from_xuid
+
+        players_trend: list[tuple[str, dict]] = []
+
+        # Joueur principal
+        pl_dff = dff.sort("start_time").select(_req_trend)
+        players_trend.append((me_name, compute_session_trend_polars(pl_dff)))
+
+        # Coéquipiers sélectionnés
+        if picked_xuids and "match_id" in dff.columns:
+            _match_ids = set(dff["match_id"].cast(pl.Utf8).to_list())
+            for _friend_xuid in picked_xuids:
+                _friend_name = display_name_from_xuid(_friend_xuid)
+                try:
+                    _friend_df = ensure_polars(
+                        _load_teammate_stats_from_own_db(_friend_name, _match_ids, db_path)
+                    )
+                    if (
+                        not _friend_df.is_empty()
+                        and len(_friend_df) >= 4
+                        and all(c in _friend_df.columns for c in _req_trend)
+                    ):
+                        _friend_pl = _friend_df.sort("start_time").select(_req_trend)
+                        players_trend.append(
+                            (_friend_name, compute_session_trend_polars(_friend_pl))
+                        )
+                except Exception:
+                    pass
+
+        st.subheader("Tendance de session")
+        st.caption("F/M 1ère moitié → 2nde moitié des matchs affichés.")
+        _trend_cols = st.columns(len(players_trend))
+        for _col, (_pname, _td) in zip(_trend_cols, players_trend, strict=False):
+            with _col:
+                _first = _td.get("first_half_kd")
+                _second = _td.get("second_half_kd")
+                _pct = _td.get("kd_change_pct", 0) or 0
+                _tr = _td.get("trend", "stable")
+                if _first is None or _second is None:
+                    st.metric(_pname, "N/A")
+                else:
+                    _trend_icon = (
+                        "▲" if _tr == "improving" else ("▼" if _tr == "declining" else "◆")
+                    )
+                    st.metric(
+                        label=f"{_trend_icon} {_pname}",
+                        value=f"{_second:.2f} F/M",
+                        delta=f"{_pct:+.1f}%",
+                        delta_color="normal" if _tr != "stable" else "off",
+                    )
+                    st.caption(f"{_first:.2f} → {_second:.2f}")
 
     if len(picked_xuids) < 1:
         st.info("Sélectionne au moins un coéquipier.")

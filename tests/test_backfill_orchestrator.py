@@ -291,13 +291,13 @@ class TestBackfillLocalOnly:
                 match_id VARCHAR NOT NULL PRIMARY KEY,
                 start_time TIMESTAMP,
                 end_time TIMESTAMP,
-                time_played_seconds INTEGER,
+                duration_seconds INTEGER,
                 backfill_completed INTEGER DEFAULT 0
             )
         """)
         t = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
         shared.execute(
-            "INSERT INTO match_registry (match_id, start_time, time_played_seconds, end_time) "
+            "INSERT INTO match_registry (match_id, start_time, duration_seconds, end_time) "
             "VALUES (?, ?, ?, NULL)",
             ["m1", t, 600],
         )

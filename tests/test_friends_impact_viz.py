@@ -56,19 +56,34 @@ pytestmark = pytest.mark.skipif(
 def sample_impact_matrix() -> pl.DataFrame:
     """Matrice d'impact pour les tests."""
     return pl.DataFrame(
-        {
-            "match_id": ["m1", "m1", "m2", "m2", "m3", "m3"],
-            "gamertag": ["Alice", "Bob", "Alice", "Bob", "Alice", "Bob"],
-            "event_type": [
-                "first_blood",
-                "clutch_finisher",
-                None,
-                "last_casualty",
-                "clutch_finisher",
-                None,
-            ],
-            "event_value": [1, 2, 0, -1, 2, 0],
-        }
+        [
+            {
+                "match_id": "m1",
+                "gamertag": "Alice",
+                "events": [{"event": "first_blood", "value": 1}],
+                "outcome": None,
+            },
+            {
+                "match_id": "m1",
+                "gamertag": "Bob",
+                "events": [{"event": "clutch_finisher", "value": 2}],
+                "outcome": None,
+            },
+            {"match_id": "m2", "gamertag": "Alice", "events": [], "outcome": None},
+            {
+                "match_id": "m2",
+                "gamertag": "Bob",
+                "events": [{"event": "last_casualty", "value": -1}],
+                "outcome": None,
+            },
+            {
+                "match_id": "m3",
+                "gamertag": "Alice",
+                "events": [{"event": "clutch_finisher", "value": 2}],
+                "outcome": None,
+            },
+            {"match_id": "m3", "gamertag": "Bob", "events": [], "outcome": None},
+        ]
     )
 
 
@@ -76,12 +91,13 @@ def sample_impact_matrix() -> pl.DataFrame:
 def empty_impact_matrix() -> pl.DataFrame:
     """Matrice d'impact vide."""
     return pl.DataFrame(
+        [],
         schema={
             "match_id": pl.Utf8,
             "gamertag": pl.Utf8,
-            "event_type": pl.Utf8,
-            "event_value": pl.Int64,
-        }
+            "events": pl.List(pl.Struct([pl.Field("event", pl.Utf8), pl.Field("value", pl.Int64)])),
+            "outcome": pl.Int64,
+        },
     )
 
 

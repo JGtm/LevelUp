@@ -270,6 +270,21 @@ def _sync_duckdb_player(
         if not tokens:
             return False, "Tokens SPNKr manquants."
 
+        # Libérer toutes les connexions DuckDBRepository avant d'ouvrir shared_matches en R/W.
+        # DuckDB interdit qu'un même fichier soit attaché sous deux noms différents dans le
+        # même processus : les ATTACH AS shared existants conflicteraient avec l'ouverture
+        # directe du DuckDBSyncEngine (qui lui donne le nom interne 'shared_matches').
+        try:
+            from src.data.repositories.duckdb_repo import release_all_db_connections
+
+            n_closed = release_all_db_connections()
+            if n_closed:
+                logging.getLogger(__name__).debug(
+                    "Sync: %d connexion(s) repo fermée(s) avant ouverture shared R/W", n_closed
+                )
+        except Exception:
+            pass
+
         # Créer le moteur de sync
         try:
             engine = DuckDBSyncEngine(

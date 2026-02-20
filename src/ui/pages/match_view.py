@@ -26,7 +26,7 @@ from src.ui import (
     translate_playlist_name,
 )
 from src.ui.formatting import format_date_fr
-from src.ui.medals import medal_label, render_medals_grid
+from src.ui.medals import load_medal_name_maps, render_medals_grid
 from src.ui.pages.match_view_charts import render_expected_vs_actual
 
 # Imports depuis les sous-modules
@@ -37,6 +37,7 @@ from src.ui.pages.match_view_helpers import (
 )
 from src.ui.pages.match_view_participation import render_participation_section
 from src.ui.pages.match_view_players import (
+    render_match_impact_section,
     render_nemesis_section,
     render_roster_section,
 )
@@ -267,6 +268,17 @@ def render_match_view(
         match_row=row,
     )
 
+    # Impact & Timeline (kills/deaths cumulées + badges)
+    render_match_impact_section(
+        match_id=match_id,
+        db_path=db_path,
+        xuid=xuid,
+        db_key=db_key,
+        outcome=outcome_code,
+        load_highlight_events_fn=load_highlight_events_fn,
+        load_match_gamertags_fn=load_match_gamertags_fn,
+    )
+
     # Némésis / Souffre-douleur
     render_nemesis_section(
         match_id=match_id,
@@ -294,9 +306,16 @@ def render_match_view(
         st.info("Médailles indisponibles pour ce match (ou aucune médaille).")
     else:
         md_df = pl.DataFrame(medals_last)
+        _fr_map, _en_map = load_medal_name_maps()
+        _medal_map = {
+            **{str(k): v for k, v in _en_map.items()},
+            **{str(k): v for k, v in _fr_map.items()},
+        }
         md_df = md_df.with_columns(
             pl.col("name_id")
-            .map_elements(lambda x: medal_label(int(x)), return_dtype=pl.Utf8)
+            .cast(pl.Utf8)
+            .replace_strict(_medal_map, default=None, return_dtype=pl.Utf8)
+            .fill_null(pl.lit("Médaille #") + pl.col("name_id").cast(pl.Utf8))
             .alias("label")
         )
         md_df = md_df.sort(["count", "label"], descending=[True, False])
@@ -308,10 +327,14 @@ def render_match_view(
         settings=settings,
         format_datetime_fn=format_datetime_fn,
         paris_tz=paris_tz,
+        gamertag=waypoint_player,
+        db_path=db_path,
+        current_xuid=xuid,
     )
 
     # Lien Waypoint
     if match_url:
+        st.write("")
         st.link_button("Ouvrir sur HaloWaypoint", match_url, width="stretch")
 
 
@@ -348,6 +371,9 @@ from src.ui.pages.match_view_helpers import (
     to_paris_naive_local as _to_paris_naive_local,
 )
 from src.ui.pages.match_view_players import (
+    render_match_impact_section as _render_match_impact_section,
+)
+from src.ui.pages.match_view_players import (
     render_nemesis_section as _render_nemesis_section,
 )
 from src.ui.pages.match_view_players import (
@@ -366,6 +392,7 @@ __all__ = [
     "_os_card",
     "_map_thumb_path",
     "_render_expected_vs_actual",
+    "_render_match_impact_section",
     "_render_nemesis_section",
     "_render_roster_section",
 ]

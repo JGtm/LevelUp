@@ -121,6 +121,46 @@ def _create_shared_db(db_path: Path) -> None:
         [PLAYER_XUID, PLAYER_GAMERTAG],
     )
 
+    # 8bis.A5 : Création de mv_player_matches (requis en v5.1)
+    conn.execute("""
+        CREATE OR REPLACE VIEW mv_player_matches AS
+        SELECT
+            r.match_id,
+            r.start_time,
+            r.map_id,
+            r.map_name,
+            r.playlist_id,
+            r.playlist_name,
+            r.pair_id,
+            r.pair_name,
+            r.game_variant_id,
+            r.game_variant_name,
+            p.xuid,
+            p.outcome,
+            p.team_id,
+            COALESCE(p.kda, 0) AS kda,
+            COALESCE(p.max_killing_spree, 0) AS max_killing_spree,
+            COALESCE(p.headshot_kills, 0) AS headshot_kills,
+            COALESCE(p.avg_life_seconds, 0) AS avg_life_seconds,
+            COALESCE(p.time_played_seconds, r.duration_seconds, 0) AS time_played_seconds,
+            COALESCE(p.kills, 0) AS kills,
+            COALESCE(p.deaths, 0) AS deaths,
+            COALESCE(p.assists, 0) AS assists,
+            p.accuracy,
+            CASE WHEN p.team_id = 0 THEN r.team_0_score
+                 ELSE r.team_1_score END AS my_team_score,
+            CASE WHEN p.team_id = 0 THEN r.team_1_score
+                 ELSE r.team_0_score END AS enemy_team_score,
+            NULL AS team_mmr,
+            NULL AS enemy_mmr,
+            p.score AS personal_score,
+            COALESCE(r.is_firefight, FALSE) AS is_firefight,
+            COALESCE(r.is_ranked, FALSE) AS is_ranked
+        FROM match_registry r
+        JOIN match_participants p
+            ON r.match_id = p.match_id
+    """)
+
     conn.close()
 
 
@@ -289,11 +329,21 @@ class TestResolvePlayerXuid:
         assert result == PLAYER_XUID
 
     def test_strategy_3_xuid_aliases(self, tmp_path: Path) -> None:
-        """Ni sync_meta.xuid ni player_match_stats → fallback xuid_aliases."""
+        """8bis: v5.1 — Stratégie 3 utilise shared.xuid_aliases (pas locale).
+
+        Ce test crée le shared_matches.duckdb avec xuid_aliases pour
+        valider la résolution via shared.
+        """
         from src.ui.cache_loaders import _resolve_player_xuid
 
-        db_path = tmp_path / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        _create_player_db(db_path, with_xuid_aliases=True)
+        # Structure v5.1 : le shared doit exister avec xuid_aliases
+        warehouse_path = tmp_path / "data" / "warehouse"
+        warehouse_path.mkdir(parents=True, exist_ok=True)
+        shared_db_path = warehouse_path / "shared_matches.duckdb"
+        _create_shared_db(shared_db_path)  # Contient déjà l'alias
+
+        db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
+        _create_player_db(db_path)  # Pas de xuid local
 
         result = _resolve_player_xuid(str(db_path))
         assert result == PLAYER_XUID
@@ -646,7 +696,7 @@ class TestGetMatchTableName:
         assert table == "match_stats"
 
     def test_fallback_to_player_match_stats(self, tmp_path: Path) -> None:
-        """Sans match_stats, fallback sur player_match_stats (v3)."""
+        """8bis: En v5.1, plus de fallback vers player_match_stats — toujours match_stats."""
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
         _create_player_db(
             player_db,
@@ -662,7 +712,8 @@ class TestGetMatchTableName:
         table = repo._get_match_table_name(conn)
         repo.close()
 
-        assert table == "player_match_stats"
+        # v5.1 : toujours match_stats (pas de fallback legacy)
+        assert table == "match_stats"
 
     def test_no_table_defaults_to_match_stats(self, tmp_path: Path) -> None:
         """Aucune table de matchs → retourne match_stats (défaut v4+)."""

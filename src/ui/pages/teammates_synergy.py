@@ -71,8 +71,18 @@ def _compute_player_profile(
 def _render_radar_display(
     profiles: list[dict],
     title: str = "🤝 Complémentarité",
+    *,
+    show_fill: bool = True,
+    static_plot: bool = True,
 ) -> None:
-    """Affiche le radar et la légende des axes."""
+    """Affiche le radar et la légende des axes.
+
+    Args:
+        profiles: Liste de profils de participation.
+        title: Titre de la section.
+        show_fill: Si True, remplit les zones ; False = lignes uniquement.
+        static_plot: Si True, désactive l'interactivité (pas de légende cliquable).
+    """
     if not profiles:
         st.subheader(title)
         st.info("Données de participation indisponibles (PersonalScores manquants).")
@@ -86,9 +96,11 @@ def _render_radar_display(
                 profiles,
                 title="Profil de participation",
                 height=380,
+                show_fill=show_fill,
             )
             if fig is not None:
-                st.plotly_chart(fig, width="stretch")
+                config = {"staticPlot": True} if static_plot else {"displayModeBar": False}
+                st.plotly_chart(fig, width="stretch", config=config)
             else:
                 st.info("Impossible de générer le radar de participation.")
         except Exception as e:
@@ -240,4 +252,10 @@ def render_trio_synergy_radar(
         except Exception:
             pass
 
-    _render_radar_display(profiles, title="Complémentarité trio")
+    # Trio : lignes uniquement (show_fill=False) + légende cliquable (static_plot=False)
+    _render_radar_display(
+        profiles,
+        title="Complémentarité trio",
+        show_fill=False,
+        static_plot=False,
+    )

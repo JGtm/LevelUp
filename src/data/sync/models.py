@@ -43,6 +43,7 @@ class SyncOptions:
     with_aliases: bool = True
     with_participants: bool = True  # Sprint Gamertag Roster Fix
     with_assets: bool = True
+    with_career_rank: bool = True  # Sync progression de rang carrière
     requests_per_second: int = 10  # Sprint 6: augmenté de 5 à 10
     parallel_matches: int = 5  # Sprint 6: augmenté de 3 à 5
     defer_performance_score: bool = True  # Sprint 6: calcul batch post-sync
@@ -217,7 +218,21 @@ class MatchStatsRow:
 
 @dataclass
 class PlayerMatchStatsRow:
-    """Ligne pour la table player_match_stats (MMR/skill)."""
+    """Ligne pour la table player_match_stats (MMR/skill).
+
+    LEGACY (v5.1) : Cette table existe encore dans les player DBs pour
+    compatibilité, mais les données skill/MMR sont désormais centralisées
+    dans shared.match_participants. Utilisée uniquement comme fallback
+    de lecture par load_match_skill_data().
+
+    Pipeline de peuplement (v5.1+) :
+        API Skill → transform_skill_stats() → PlayerMatchStatsRow
+        → engine.py UPDATE shared.match_participants (colonnes MMR + expected/stddev)
+
+    Limitation API Halo Infinite :
+        assists_expected / assists_stddev sont TOUJOURS NULL car l'API
+        StatPerformances ne fournit que Kills et Deaths, jamais Assists.
+    """
 
     match_id: str
     xuid: str
@@ -228,6 +243,8 @@ class PlayerMatchStatsRow:
     kills_stddev: float | None = None
     deaths_expected: float | None = None
     deaths_stddev: float | None = None
+    # ⚠️ LIMITATION API : L'API Halo StatPerformances ne fournit jamais
+    # les données Assists (Expected/StdDev). Ces champs restent toujours NULL.
     assists_expected: float | None = None
     assists_stddev: float | None = None
 
@@ -354,14 +371,23 @@ class MatchParticipantRow:
     melee_kills: int | None = None  # MeleeKills depuis CoreStats (API)
     power_weapon_kills: int | None = None  # PowerWeaponKills depuis CoreStats (API)
     personal_score: int | None = None  # PersonalScore depuis CoreStats (API)
-    # Stats MMR/Skill (depuis API Skill pour TOUS les joueurs)
+    # ─── Stats MMR/Skill (depuis API Skill pour TOUS les joueurs) ──────────
+    # Pipeline v5.1 : API Skill → transform_all_skill_stats() → SkillParticipantUpdate
+    #   → engine.py UPDATE shared.match_participants (COALESCE pour ne pas écraser)
+    # Backfill : --skill / --force-skill via backfill_data.py
     team_mmr: float | None = None  # MMR de l'équipe du joueur
+    # enemy_mmr est peuplé depuis v5.1 (corrigé : était ignoré avant)
+    # Absent de MatchParticipantRow car non disponible au moment de l'extraction
+    # des participants — ajouté ensuite par le pipeline skill.
     kills_expected: float | None = None  # Kills attendus selon MMR
     kills_stddev: float | None = None  # Écart-type kills
     deaths_expected: float | None = None  # Deaths attendus selon MMR
     deaths_stddev: float | None = None  # Écart-type deaths
-    assists_expected: float | None = None  # Assists attendus selon MMR
-    assists_stddev: float | None = None  # Écart-type assists
+    # ⚠️ LIMITATION API : L'API Halo StatPerformances ne fournit jamais les
+    # données Assists (Expected/StdDev). Ces champs sont extraits si présents
+    # mais restent toujours NULL en pratique.
+    assists_expected: float | None = None  # Assists attendus selon MMR (toujours NULL)
+    assists_stddev: float | None = None  # Écart-type assists (toujours NULL)
 
 
 @dataclass
@@ -370,15 +396,26 @@ class SkillParticipantUpdate:
 
     Utilisé pour mettre à jour les colonnes MMR dans shared.match_participants
     après extraction des données Skill de TOUS les joueurs.
+
+    Pipeline v5.1 :
+        API Skill → transform_all_skill_stats() → [SkillParticipantUpdate]
+        → engine.py : UPDATE shared.match_participants SET team_mmr, enemy_mmr,
+          kills_expected, kills_stddev, deaths_expected, deaths_stddev,
+          assists_expected, assists_stddev (via COALESCE).
+
+    Note : enemy_mmr est correctement extrait depuis v5.1 (était ignoré avant
+    par un bug dans transform_all_skill_stats : team_mmr, _ = mmr_data).
     """
 
     match_id: str
     xuid: str
     team_mmr: float | None = None
+    enemy_mmr: float | None = None  # Corrigé v5.1 : était ignoré (bug _ = mmr_data)
     kills_expected: float | None = None
     kills_stddev: float | None = None
     deaths_expected: float | None = None
     deaths_stddev: float | None = None
+    # ⚠️ LIMITATION API : toujours NULL (API ne fournit pas Assists)
     assists_expected: float | None = None
     assists_stddev: float | None = None
 

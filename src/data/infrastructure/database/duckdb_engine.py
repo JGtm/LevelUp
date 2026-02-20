@@ -4,15 +4,12 @@ Moteur de requête DuckDB.
 
 HOW IT WORKS:
 1. DuckDB est utilisé comme moteur de requête principal (read-only sur les faits)
-2. Il peut "attacher" une base SQLite pour joindre les métadonnées
-3. Il lit directement les fichiers Parquet partitionnés
-4. Les requêtes SQL peuvent combiner SQLite et Parquet de manière transparente
+2. Il lit directement les fichiers Parquet partitionnés
+3. Les requêtes SQL exploitent DuckDB nativement
 
 Exemple d'utilisation:
     engine = DuckDBEngine(warehouse_path="data/warehouse")
-    engine.attach_sqlite("data/warehouse/metadata.db", "meta")
 
-    # Jointure entre SQLite (players) et Parquet (match_facts)
     df = engine.query('''
         SELECT p.gamertag, AVG(m.kda) as avg_kda
         FROM read_parquet('data/warehouse/match_facts/**/*.parquet') m
@@ -33,13 +30,12 @@ from src.data.domain.models.stats import MatchRow
 
 class DuckDBEngine:
     """
-    Moteur de requête DuckDB pour l'architecture hybride.
-    (DuckDB query engine for hybrid architecture)
+    Moteur de requête DuckDB pour l'architecture v5.
+    (DuckDB query engine for v5 architecture)
 
     Permet :
     - Requêtes SQL sur fichiers Parquet
-    - Attachement de bases SQLite
-    - Jointures entre Parquet et SQLite
+    - Jointures avec metadata.duckdb
     - Agrégations haute performance
     """
 
@@ -88,42 +84,6 @@ class DuckDBEngine:
             self._connection.execute("SET enable_object_cache = true")
 
         return self._connection
-
-    def attach_sqlite(self, db_path: str | Path, alias: str = "meta") -> None:
-        """
-        [DEPRECATED] Attache une base SQLite pour les jointures.
-        (Attach a SQLite database for joins)
-
-        AVERTISSEMENT: Cette méthode est dépréciée depuis la migration v4.
-        SQLite n'est plus supporté en runtime applicatif.
-        Utiliser uniquement pour scripts de migration/legacy explicites.
-
-        Args:
-            db_path: Chemin vers le fichier SQLite
-            alias: Alias pour accéder aux tables (ex: meta.players)
-        """
-        import warnings
-
-        warnings.warn(
-            "attach_sqlite est dépréciée. SQLite n'est plus supporté en runtime (migration v4+). "
-            "Utiliser DuckDB uniquement.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        db_path = Path(db_path)
-        if not db_path.exists():
-            raise FileNotFoundError(f"SQLite database not found: {db_path}")
-
-        conn = self._get_connection()
-
-        # Détacher si déjà attaché
-        if alias in self._attached_dbs:
-            conn.execute(f"DETACH DATABASE {alias}")
-
-        # Attacher la base SQLite
-        conn.execute(f"ATTACH DATABASE '{db_path}' AS {alias} (TYPE SQLITE, READ_ONLY)")
-        self._attached_dbs[alias] = str(db_path)
 
     def query(self, sql: str, params: tuple | None = None) -> list[dict[str, Any]]:
         """

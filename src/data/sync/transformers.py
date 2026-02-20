@@ -266,6 +266,31 @@ def _parse_duration_to_seconds(duration_str: str) -> int | None:
     return int(hours * 3600 + minutes * 60 + seconds)
 
 
+def _extract_team_score_value(team: dict[str, Any]) -> int | None:
+    """Extrait le score d'une entrée team du JSON Halo Infinite.
+
+    L'API peut stocker le score à plusieurs endroits selon la version :
+    - team["Score"] ou team["TotalPoints"] (format simplifié/legacy)
+    - team["Stats"]["CoreStats"]["Score"] (format réel de l'API)
+    """
+    # Format direct (fixtures de test ou anciennes réponses)
+    v = _safe_int(team.get("TotalPoints"))
+    if v is not None:
+        return v
+    v = _safe_int(team.get("Score"))
+    if v is not None:
+        return v
+    # Format réel : Stats.CoreStats.Score
+    stats = team.get("Stats")
+    if isinstance(stats, dict):
+        core = stats.get("CoreStats")
+        if isinstance(core, dict):
+            v = _safe_int(core.get("Score"))
+            if v is not None:
+                return v
+    return None
+
+
 def _extract_team_scores(
     match_obj: dict[str, Any], team_id: int | None
 ) -> tuple[int | None, int | None]:
@@ -281,7 +306,7 @@ def _extract_team_scores(
         if not isinstance(team, dict):
             continue
         tid = team.get("TeamId")
-        score = _safe_int(team.get("TotalPoints")) or _safe_int(team.get("Score"))
+        score = _extract_team_score_value(team)
 
         if tid == team_id:
             my_score = score
@@ -772,6 +797,18 @@ def transform_all_skill_stats(
 ) -> list[SkillParticipantUpdate]:
     """Extrait les données skill de TOUS les joueurs (pas juste le joueur courant).
 
+    Pipeline v5.1 :
+        API Skill JSON → transform_all_skill_stats() → [SkillParticipantUpdate]
+        → engine.py : UPDATE shared.match_participants (COALESCE)
+
+    Corrigé v5.1 : enemy_mmr était ignoré (bug `team_mmr, _ = mmr_data`).
+    Désormais `team_mmr, enemy_mmr = mmr_data` extrait les deux MMR.
+
+    ⚠️ Limitation API Halo Infinite :
+        StatPerformances ne fournit Expected/StdDev que pour Kills et Deaths.
+        Les données Assists (assists_expected, assists_stddev) ne sont jamais
+        retournées par l'API et restent donc NULL en base.
+
     Args:
         skill_json: JSON de l'API skill.
         match_id: ID du match.
@@ -808,11 +845,12 @@ def transform_all_skill_stats(
 
         team_id = _safe_int(result.get("TeamId") or result.get("teamId"))
 
-        # Extraire team_mmr via la fonction existante
+        # Extraire team_mmr et enemy_mmr via la fonction existante
         mmr_data = _extract_mmr_from_skill(skill_json, xuid, team_id)
         team_mmr = None
+        enemy_mmr = None
         if mmr_data:
-            team_mmr, _ = mmr_data  # On ignore enemy_mmr ici
+            team_mmr, enemy_mmr = mmr_data
 
         # Extraire StatPerformances
         stat_performances = result.get("StatPerformances") or result.get("statPerformances")
@@ -860,6 +898,7 @@ def transform_all_skill_stats(
                 match_id=match_id,
                 xuid=xuid,
                 team_mmr=team_mmr,
+                enemy_mmr=enemy_mmr,
                 kills_expected=kills_expected,
                 kills_stddev=kills_stddev,
                 deaths_expected=deaths_expected,
@@ -1839,7 +1878,6 @@ def _extract_team_scores_by_id(
             continue
         tid = team.get("TeamId")
         if tid is not None:
-            score = _safe_int(team.get("TotalPoints")) or _safe_int(team.get("Score"))
-            team_scores[tid] = score
+            team_scores[tid] = _extract_team_score_value(team)
 
     return team_scores.get(0), team_scores.get(1)

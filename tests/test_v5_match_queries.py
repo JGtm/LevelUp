@@ -187,6 +187,53 @@ def _create_shared_db(db_path: Path) -> None:
             VALUES ('{match_id}', '{TEAMMATE_XUID}', 'TeammateTwo', {team_id}, {outcome}, 2, 2200, 12, 7, 5, 80, 40)
         """)
 
+    # 8bis.A5 : Création de mv_player_matches (requis en v5.1)
+    conn.execute("""
+        CREATE OR REPLACE VIEW mv_player_matches AS
+        SELECT
+            r.match_id,
+            r.start_time,
+            r.map_id,
+            r.map_name,
+            r.playlist_id,
+            r.playlist_name,
+            r.pair_id,
+            r.pair_name,
+            r.game_variant_id,
+            r.game_variant_name,
+            p.xuid,
+            p.outcome,
+            p.team_id,
+            CASE WHEN p.deaths > 0
+                THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
+                     / CAST(p.deaths AS FLOAT)
+                ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
+            END AS kda,
+            COALESCE(0, 0) AS max_killing_spree,
+            COALESCE(0, 0) AS headshot_kills,
+            COALESCE(p.avg_life_seconds, 0) AS avg_life_seconds,
+            COALESCE(r.duration_seconds, 0) AS time_played_seconds,
+            COALESCE(p.kills, 0) AS kills,
+            COALESCE(p.deaths, 0) AS deaths,
+            COALESCE(p.assists, 0) AS assists,
+            CASE WHEN p.shots_fired > 0
+                THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT)
+                ELSE NULL
+            END AS accuracy,
+            CASE WHEN p.team_id = 0 THEN r.team_0_score
+                 ELSE r.team_1_score END AS my_team_score,
+            CASE WHEN p.team_id = 0 THEN r.team_1_score
+                 ELSE r.team_0_score END AS enemy_team_score,
+            NULL AS team_mmr,
+            NULL AS enemy_mmr,
+            p.score AS personal_score,
+            COALESCE(r.is_firefight, FALSE) AS is_firefight,
+            COALESCE(r.is_ranked, FALSE) AS is_ranked
+        FROM match_registry r
+        JOIN match_participants p
+            ON r.match_id = p.match_id
+    """)
+
     conn.close()
 
 
@@ -532,27 +579,31 @@ class TestGetMatchSource:
     """Tests de la méthode interne _get_match_source."""
 
     def test_v5_returns_subquery_with_params(self, repo_v5: DuckDBRepository):
-        """En mode v5, retourne une sous-requête avec le xuid en paramètre."""
+        """8bis.A5: En mode v5.1, retourne une sous-requête basée sur mv_player_matches."""
         conn = repo_v5._get_connection()
-        source, params = repo_v5._get_match_source(conn)
-        assert "shared.match_registry" in source
-        assert "shared.match_participants" in source
+        source, params, uses_mv = repo_v5._get_match_source(conn)
+        # v5.1 : utilise la vue mv_player_matches
+        assert "shared.mv_player_matches" in source or "mv_player_matches" in source
         assert len(params) == 1
         assert params[0] == PLAYER_XUID
+        assert uses_mv is True
 
     def test_v4_returns_match_stats(self, repo_v4: DuckDBRepository):
         """En mode v4, retourne 'match_stats' sans paramètres."""
         conn = repo_v4._get_connection()
-        source, params = repo_v4._get_match_source(conn)
+        source, params, uses_mv = repo_v4._get_match_source(conn)
         assert source == "match_stats"
         assert params == []
+        assert uses_mv is False
 
     def test_v5_no_ms_returns_subquery(self, repo_v5_no_ms: DuckDBRepository):
-        """En mode v5 sans match_stats locale, retourne la sous-requête."""
+        """8bis.A5: En mode v5.1 sans match_stats locale, utilise mv_player_matches."""
         conn = repo_v5_no_ms._get_connection()
-        source, params = repo_v5_no_ms._get_match_source(conn)
-        assert "shared.match_registry" in source
+        source, params, uses_mv = repo_v5_no_ms._get_match_source(conn)
+        # v5.1 : utilise la vue mv_player_matches
+        assert "shared.mv_player_matches" in source or "mv_player_matches" in source
         assert len(params) == 1
+        assert uses_mv is True
 
 
 # =============================================================================

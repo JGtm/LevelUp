@@ -39,10 +39,10 @@ def _is_duckdb_file(db_path: str) -> bool:
 
 
 def _get_duckdb_connection(db_path: str):
-    """Retourne une connexion DuckDB."""
-    import duckdb
+    """Retourne une connexion DuckDB (read-only)."""
+    from src.utils.db import duckdb_read_only
 
-    return duckdb.connect(db_path, read_only=True)
+    return duckdb_read_only(db_path).__enter__()
 
 
 @dataclass
@@ -287,15 +287,43 @@ def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:
                 except Exception:
                     pass
 
+            # V5.1 : Lire depuis shared_matches.duckdb (source unique)
             if not xuid:
                 try:
-                    result = con.execute(
-                        "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
-                    ).fetchone()
-                    if result and result[0] and str(result[0]).strip():
-                        xuid = str(result[0]).strip()
+                    from src.utils.paths import get_shared_matches_path_from_player
+
+                    shared_path = get_shared_matches_path_from_player(db_path)
+                    if shared_path and shared_path.exists():
+                        from src.utils.db import duckdb_read_only
+
+                        with duckdb_read_only(shared_path) as shared_con:
+                            result = shared_con.execute(
+                                "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1",
+                                [gamertag],
+                            ).fetchone()
+                            if result and result[0] and str(result[0]).strip():
+                                xuid = str(result[0]).strip()
                 except Exception:
                     pass
+
+            # V5.1 : Si toujours 0, compter depuis shared (mv_player_matches ou match_participants)
+            if total_matches == 0 and xuid:
+                try:
+                    from src.utils.paths import get_shared_matches_path_from_player
+
+                    shared_path = get_shared_matches_path_from_player(db_path)
+                    if shared_path and shared_path.exists():
+                        from src.utils.db import duckdb_read_only
+
+                        with duckdb_read_only(shared_path) as shared_con:
+                            result = shared_con.execute(
+                                "SELECT COUNT(*) FROM match_participants WHERE xuid = ?",
+                                [xuid],
+                            ).fetchone()
+                            total_matches = result[0] if result else 0
+                except Exception:
+                    pass
+
             con.close()
         except Exception:
             pass

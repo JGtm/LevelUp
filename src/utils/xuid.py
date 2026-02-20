@@ -155,19 +155,24 @@ def resolve_xuid_from_db(
     if not db_path or not os.path.exists(db_path):
         return None
 
-    # DuckDB v4 : utiliser la table xuid_aliases
+    # DuckDB v5.1 : utiliser shared_matches.duckdb comme source unique
     if db_path.endswith(".duckdb"):
         try:
             import duckdb
 
-            conn = duckdb.connect(db_path, read_only=True)
-            result = conn.execute(
-                "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?)",
-                [p],
-            ).fetchone()
-            conn.close()
-            if result and result[0]:
-                return str(result[0])
+            from src.utils.paths import get_shared_matches_path_from_player
+
+            # V5.1 : Lire UNIQUEMENT depuis shared_matches.duckdb
+            shared_path = get_shared_matches_path_from_player(db_path)
+            if shared_path and shared_path.exists():
+                conn = duckdb.connect(str(shared_path), read_only=True)
+                result = conn.execute(
+                    "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?)",
+                    [p],
+                ).fetchone()
+                conn.close()
+                if result and result[0]:
+                    return str(result[0])
         except Exception:
             pass
 

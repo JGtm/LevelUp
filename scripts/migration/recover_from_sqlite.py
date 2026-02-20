@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Récupère les données depuis les anciennes bases SQLite vers DuckDB v4.
+"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 🚨 SCRIPT DE MIGRATION — HORS SERVICE POST-V5.1                             ║
+║                                                                              ║
+║ Ce script est destiné UNIQUEMENT à la migration SQLite → DuckDB (v4).       ║
+║ NE PAS UTILISER pour le flux applicatif normal (architecture v5 pure).      ║
+║ Conservé pour référence historique et cas exceptionnels de recovery.        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 
-⚠️ SCRIPT DE MIGRATION UNIQUEMENT - SQLite en lecture seule.
-Ce script est la SEULE exception autorisée à utiliser sqlite3.
-Ne pas utiliser pour le flux applicatif normal (DuckDB uniquement).
+Récupère les données depuis les anciennes bases SQLite vers DuckDB v4.
 
 Ce script extrait :
 1. match_participants : XUID, team_id, outcome pour TOUS les matchs

@@ -53,29 +53,48 @@ def load_aliases_from_db(db_path: str) -> dict[str, str]:
     return dict(_load_aliases_from_duckdb_cached(db_path, mtime))
 
 
+def _get_shared_metadata_path(db_path: str) -> str | None:
+    """Retourne le chemin vers shared_matches.duckdb depuis un chemin de DB joueur.
+
+    NOTE v5.1 : xuid_aliases est centralisée dans shared_matches.duckdb (13 955 rows).
+    metadata.duckdb ne contient PAS cette table.
+    """
+    from src.utils.paths import get_shared_matches_path_from_player
+
+    shared_path = get_shared_matches_path_from_player(db_path)
+    if shared_path and shared_path.exists():
+        return str(shared_path)
+    return None
+
+
 @lru_cache(maxsize=16)
 def _load_aliases_from_duckdb_cached(db_path: str, mtime: float | None) -> dict[str, str]:
-    """Version cachée pour DuckDB."""
-    try:
-        import duckdb
+    """Version cachée pour DuckDB — lecture depuis shared_matches.duckdb uniquement.
 
-        con = duckdb.connect(db_path, read_only=True)
-        # Vérifie si la table existe
-        tables = con.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_name = 'xuid_aliases'"
-        ).fetchall()
-        if not tables:
-            con.close()
-            return {}
+    NOTE v5.1 : Les aliases locaux (stats.duckdb) sont obsolètes.
+    Seule shared_matches.duckdb fait foi.
+    """
+    from src.utils.db import duckdb_read_only
 
-        result_rows = con.execute(
-            "SELECT xuid, gamertag FROM xuid_aliases WHERE gamertag IS NOT NULL AND gamertag != ''"
-        ).fetchall()
-        result = {str(row[0]).strip(): str(row[1]).strip() for row in result_rows}
-        con.close()
-        return result
-    except Exception:
-        return {}
+    result: dict[str, str] = {}
+
+    # V5.1 : Lire UNIQUEMENT depuis shared_matches.duckdb (source de vérité)
+    shared_path = _get_shared_metadata_path(db_path)
+    if shared_path:
+        try:
+            with duckdb_read_only(shared_path) as con:
+                tables = con.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_name = 'xuid_aliases'"
+                ).fetchall()
+                if tables:
+                    rows = con.execute(
+                        "SELECT xuid, gamertag FROM xuid_aliases WHERE gamertag IS NOT NULL AND gamertag != ''"
+                    ).fetchall()
+                    result = {str(row[0]).strip(): str(row[1]).strip() for row in rows}
+        except Exception:
+            pass
+
+    return result
 
 
 def clear_db_aliases_cache() -> None:

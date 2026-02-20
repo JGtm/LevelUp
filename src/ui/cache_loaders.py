@@ -19,12 +19,44 @@ import streamlit as st
 from src.utils.profiles import list_local_dbs
 
 if TYPE_CHECKING:
-    pass
+    from src.data.repositories.duckdb_repo import DuckDBRepository
 
 logger = logging.getLogger(__name__)
 
 # Timezone Paris pour les conversions
 PARIS_TZ_NAME = "Europe/Paris"
+
+
+# ─── Cache Repository (v5.1 perf) ──────────────────────────────────────────
+# Connexion persistante via @st.cache_resource pour éviter les reconnexions
+# coûteuses (ATTACH × 3 = 50-100ms par instanciation).
+
+
+@st.cache_resource(ttl=3600)
+def get_cached_repository_st(
+    db_path: str,
+    xuid: str,
+) -> DuckDBRepository:
+    """Retourne un DuckDBRepository mis en cache avec connexion persistante.
+
+    Le repository est réutilisé entre les pages Streamlit pour éviter
+    les reconnexions coûteuses (3× ATTACH = 50-100ms).
+
+    Args:
+        db_path: Chemin vers stats.duckdb du joueur.
+        xuid: XUID du joueur.
+
+    Returns:
+        Instance DuckDBRepository mise en cache.
+    """
+    from src.data.repositories.duckdb_repo import DuckDBRepository
+
+    logger.info(f"Création d'un repository mis en cache pour {db_path}")
+    repo = DuckDBRepository(db_path, xuid, read_only=True)
+    # Warm-up : forcer la connexion + ATTACH immédiatement
+    repo._get_connection()
+    return repo
+
 
 # ─── Constantes de projection par page (Sprint 19 — tâche 19.3) ────────────
 # Colonnes effectivement utilisées par les pages principales.
@@ -109,50 +141,46 @@ def _resolve_player_xuid(db_path: str) -> str:
     Returns:
         XUID en string, ou "" si introuvable.
     """
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
     try:
-        conn = duckdb.connect(db_path, read_only=True)
+        with duckdb_read_only(db_path) as conn:
+            # Stratégie 1 : sync_meta (source canonique v5)
+            try:
+                result = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
+                if result and result[0] and str(result[0]).strip():
+                    return str(result[0]).strip()
+            except Exception:
+                pass
 
-        # Stratégie 1 : sync_meta (source canonique v5)
-        try:
-            result = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
-            if result and result[0] and str(result[0]).strip():
-                xuid = str(result[0]).strip()
-                conn.close()
-                return xuid
-        except Exception:
-            pass
+            # Stratégie 2 : player_match_stats.xuid (legacy v3/v4)
+            try:
+                result = conn.execute(
+                    "SELECT DISTINCT xuid FROM player_match_stats WHERE xuid IS NOT NULL LIMIT 1"
+                ).fetchone()
+                if result and result[0] and str(result[0]).strip():
+                    return str(result[0]).strip()
+            except Exception:
+                pass
 
-        # Stratégie 2 : player_match_stats.xuid (legacy v3/v4)
-        try:
-            result = conn.execute(
-                "SELECT DISTINCT xuid FROM player_match_stats WHERE xuid IS NOT NULL LIMIT 1"
-            ).fetchone()
-            if result and result[0] and str(result[0]).strip():
-                xuid = str(result[0]).strip()
-                conn.close()
-                return xuid
-        except Exception:
-            pass
-
-        # Stratégie 3 : xuid_aliases via gamertag (dernier recours)
+        # Stratégie 3 : xuid_aliases via shared_matches.duckdb (v5.1)
         try:
             from pathlib import Path
 
+            from src.utils.paths import get_shared_matches_path_from_player
+
             gamertag = Path(db_path).parent.name
-            # Chercher dans la table locale xuid_aliases
-            result = conn.execute(
-                "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
-            ).fetchone()
-            if result and result[0] and str(result[0]).strip():
-                xuid = str(result[0]).strip()
-                conn.close()
-                return xuid
+            shared_path = get_shared_matches_path_from_player(db_path)
+            if shared_path and shared_path.exists():
+                with duckdb_read_only(shared_path) as shared_con:
+                    result = shared_con.execute(
+                        "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
+                    ).fetchone()
+                    if result and result[0] and str(result[0]).strip():
+                        return str(result[0]).strip()
         except Exception:
             pass
 
-        conn.close()
     except Exception:
         pass
 
@@ -163,18 +191,12 @@ def _load_matches_duckdb_v4(db_path: str, include_firefight: bool = True) -> lis
     """Charge les matchs depuis une DB DuckDB v4 (legacy — retourne MatchRow).
 
     Préférer _load_matches_duckdb_v4_polars() pour le chemin optimisé.
+    Utilise le repository caché (v5.1 perf) pour éviter les reconnexions.
     """
     try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
         player_xuid = _resolve_player_xuid(db_path)
-
-        repo = DuckDBRepository(db_path, xuid=player_xuid, read_only=True)
-        try:
-            matches = repo.load_matches(include_firefight=include_firefight)
-            return matches
-        finally:
-            repo.close()
+        repo = get_cached_repository_st(db_path, player_xuid)
+        return repo.load_matches(include_firefight=include_firefight)
     except Exception:
         return []
 
@@ -188,6 +210,7 @@ def _load_matches_duckdb_v4_polars(
 
     Chemin optimisé Sprint 19 : DuckDB → Arrow → Polars sans intermédiaire
     MatchRow. ~3× plus rapide que _load_matches_duckdb_v4 + reconstruction.
+    Utilise le repository caché (v5.1 perf) pour éviter les reconnexions.
 
     Args:
         db_path: Chemin vers la DB DuckDB.
@@ -198,24 +221,19 @@ def _load_matches_duckdb_v4_polars(
         DataFrame Polars. Vide en cas d'erreur.
     """
     try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
         player_xuid = _resolve_player_xuid(db_path)
-
-        repo = DuckDBRepository(db_path, xuid=player_xuid, read_only=True)
-        try:
-            return repo.load_matches_as_polars(
-                include_firefight=include_firefight,
-                columns=columns,
-            )
-        finally:
-            repo.close()
+        repo = get_cached_repository_st(db_path, player_xuid)
+        return repo.load_matches_as_polars(
+            include_firefight=include_firefight,
+            columns=columns,
+        )
     except Exception:
         logger.debug("load_matches_as_polars échoué, fallback MatchRow", exc_info=True)
         return pl.DataFrame()
 
 
-@st.cache_data(show_spinner=False, ttl=30)
+# 8bis.A4 : TTL augmenté de 30s à 300s (le filesystem ne change pas en navigation)
+@st.cache_data(show_spinner=False, ttl=300)
 def cached_list_local_dbs(_refresh_token: int = 0) -> list[str]:
     """Liste des DB locales (TTL court pour éviter un scan disque trop fréquent)."""
     return list_local_dbs()
@@ -233,12 +251,10 @@ def cached_same_team_match_ids_with_friend(
     Utilise DuckDBRepository pour DuckDB v4, sinon fallback legacy.
     """
     _ = db_key
-    # DuckDB v4 : utiliser le repository
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            repo = DuckDBRepository(db_path, str(self_xuid).strip())
+            repo = get_cached_repository_st(db_path, str(self_xuid).strip())
             match_ids = repo.load_same_team_match_ids(str(friend_xuid).strip())
             return tuple(sorted(match_ids))
         except Exception:
@@ -260,16 +276,11 @@ def cached_query_matches_with_friend(
     Utilise DuckDBRepository pour DuckDB v4, sinon fallback legacy.
     """
     _ = db_key
-    # DuckDB v4 : utiliser le repository
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            repo = DuckDBRepository(db_path, str(self_xuid).strip())
+            repo = get_cached_repository_st(db_path, str(self_xuid).strip())
             match_ids = repo.load_matches_with_teammate(str(friend_xuid).strip())
-            # Convertir en format compatible avec l'ancien code
-            # L'ancien code retourne une liste de MatchRow, mais ici on retourne juste les IDs
-            # Les pages qui utilisent cette fonction devront adapter leur code
             return match_ids
         except Exception:
             return []
@@ -288,26 +299,34 @@ def cached_load_player_match_result(
     """Charge le résultat d'un match pour un joueur (cache).
 
     Utilise DuckDBRepository pour .duckdb, sinon fallback legacy.
-    Note: DuckDB ne stocke pas les StatPerformances (expected/stddev).
+
+    Pipeline de lecture v5.1 :
+        1. repo.load_match_skill_data(match_id) — charge team_mmr, enemy_mmr,
+           kills/deaths/assists expected/stddev depuis shared.match_participants.
+        2. Fallback : repo.load_match_mmr_batch() — uniquement team_mmr/enemy_mmr.
+
+    ⚠️ assists expected/stddev : toujours NULL (limitation API Halo Infinite).
     """
-    # DuckDB v4 : utiliser le repository
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            repo = DuckDBRepository(db_path, str(xuid).strip())
+            repo = get_cached_repository_st(db_path, str(xuid).strip())
+            # Charger skill data complet (MMR + expected/stddev)
+            skill_data = repo.load_match_skill_data(match_id)
+            if skill_data:
+                skill_data["team_mmrs"] = None  # Non disponible dans DuckDB v4
+                return skill_data
+            # Fallback: load_match_mmr_batch si load_match_skill_data ne retourne rien
             mmr_data = repo.load_match_mmr_batch([match_id])
             team_mmr = None
             enemy_mmr = None
             if match_id in mmr_data:
                 team_mmr, enemy_mmr = mmr_data[match_id]
-            # Toujours retourner un dict même si les MMR sont None
-            # Les valeurs kills/deaths/assists seront enrichies depuis row dans match_view.py
             return {
-                "team_id": None,  # Non disponible dans DuckDB v4
+                "team_id": None,
                 "team_mmr": team_mmr,
                 "enemy_mmr": enemy_mmr,
-                "team_mmrs": None,  # Non disponible dans DuckDB v4
+                "team_mmrs": None,
                 "kills": {"count": None, "expected": None, "stddev": None},
                 "deaths": {"count": None, "expected": None, "stddev": None},
                 "assists": {"count": None, "expected": None, "stddev": None},
@@ -330,12 +349,10 @@ def cached_load_match_medals_for_player(
 
     Utilise DuckDBRepository pour .duckdb, sinon fallback legacy.
     """
-    # DuckDB v4 : utiliser le repository
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            repo = DuckDBRepository(db_path, str(xuid).strip())
+            repo = get_cached_repository_st(db_path, str(xuid).strip())
             return repo.load_match_medals(match_id)
         except Exception:
             return []
@@ -356,12 +373,10 @@ def cached_load_match_rosters(
     Utilise DuckDBRepository pour DuckDB v4, sinon fallback legacy.
     """
     _ = db_key
-    # DuckDB v4 : utiliser le repository
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            repo = DuckDBRepository(db_path, str(xuid).strip())
+            repo = get_cached_repository_st(db_path, str(xuid).strip())
             return repo.load_match_rosters(match_id)
         except Exception:
             return None
@@ -379,54 +394,15 @@ def cached_load_highlight_events_for_match(
 ):
     """Charge les événements highlight d'un match (cache).
 
-    Utilise DuckDBRepository pour .duckdb, sinon fallback legacy.
+    Utilise DuckDBRepository caché pour .duckdb, sinon fallback legacy.
     """
     _ = db_key
-    # DuckDB v4 : charger depuis la table highlight_events
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
-            import duckdb
-
-            conn = duckdb.connect(db_path, read_only=True)
-            # Vérifier si la table existe (DuckDB utilise information_schema)
-            tables = conn.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main' AND table_name = 'highlight_events'"
-            ).fetchall()
-            if not tables:
-                conn.close()
-                return []
-
-            result = conn.execute(
-                """
-                SELECT event_type, time_ms, xuid, gamertag, type_hint, raw_json
-                FROM highlight_events
-                WHERE match_id = ?
-                ORDER BY time_ms ASC
-                """,
-                [match_id],
-            ).fetchall()
-            conn.close()
-
-            import json
-
-            events = []
-            for row in result:
-                event = {
-                    "event_type": row[0],
-                    "time_ms": row[1],
-                    "xuid": row[2],
-                    "gamertag": row[3],
-                    "type_hint": row[4],
-                }
-                # Parser raw_json si présent
-                if row[5]:
-                    try:
-                        extra = json.loads(row[5]) if isinstance(row[5], str) else {}
-                        event.update(extra)
-                    except Exception:
-                        pass
-                events.append(event)
-            return events
+            player_xuid = _resolve_player_xuid(db_path)
+            repo = get_cached_repository_st(db_path, player_xuid)
+            return repo.load_highlight_events(match_id)
         except Exception:
             return []
     # Legacy SQLite non supporté depuis v4.8
@@ -450,43 +426,22 @@ def cached_load_match_player_gamertags(
     # DuckDB v4 : utiliser le repository pour résolution centralisée
     if _is_duckdb_v4_path(db_path):
         try:
-            import duckdb
+            # Utiliser le repo caché pour récupérer les XUIDs et résoudre les gamertags
+            # Résolution XUID : on utilise un xuid temporaire, resolve_gamertags_batch
+            # ne dépend pas du xuid du repo
+            repo = get_cached_repository_st(db_path, "")
 
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            conn = duckdb.connect(db_path, read_only=True)
-
-            # Récupérer tous les XUIDs du match depuis highlight_events
-            try:
-                result = conn.execute(
-                    """
-                    SELECT DISTINCT xuid
-                    FROM highlight_events
-                    WHERE match_id = ?
-                      AND xuid IS NOT NULL
-                      AND xuid != ''
-                    """,
-                    [match_id],
-                ).fetchall()
-                xuids = [str(row[0]) for row in result if row[0]]
-                conn.close()
-
-                if not xuids:
-                    return {}
-
-                # Utiliser le repository pour la résolution centralisée
-                # Note: on a besoin du xuid du joueur principal pour le repo,
-                # mais on peut utiliser un XUID factice car resolve_gamertags_batch
-                # ne dépend pas du xuid du repo
-                repo = DuckDBRepository(db_path, xuids[0] if xuids else "")
-                return {
-                    xuid: gt
-                    for xuid, gt in repo.resolve_gamertags_batch(xuids, match_id=match_id).items()
-                    if gt
-                }
-            except Exception:
-                conn.close()
+            # Récupérer tous les XUIDs du match via le repo (highlight_events)
+            events = repo.load_highlight_events(match_id)
+            xuids = list({str(e["xuid"]) for e in events if e.get("xuid")})
+            if not xuids:
                 return {}
+
+            return {
+                xuid: gt
+                for xuid, gt in repo.resolve_gamertags_batch(xuids, match_id=match_id).items()
+                if gt
+            }
         except Exception:
             return {}
     # Legacy SQLite non supporté depuis v4.8
@@ -506,12 +461,10 @@ def cached_load_top_medals(
 
     Utilise DuckDBRepository pour les bases .duckdb, sinon fallback legacy.
     """
-    # DuckDB v4 : utiliser le repository
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            repo = DuckDBRepository(db_path, str(xuid).strip())
+            repo = get_cached_repository_st(db_path, str(xuid).strip())
             return repo.load_top_medals(
                 list(match_ids),
                 top_n=(int(top_n) if top_n is not None else None),
@@ -536,13 +489,11 @@ def top_medals_smart(
     Évite de stocker d'immenses tuples en cache pour les grandes listes.
     Utilise DuckDBRepository pour les bases .duckdb.
     """
-    # DuckDB v4 : utiliser le repository directement (pas de cache pour les grandes listes)
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         if len(match_ids) > 1500:
             try:
-                from src.data.repositories.duckdb_repo import DuckDBRepository
-
-                repo = DuckDBRepository(db_path, str(xuid).strip())
+                repo = get_cached_repository_st(db_path, str(xuid).strip())
                 return repo.load_top_medals(match_ids, top_n=top_n)
             except Exception:
                 return []
@@ -553,11 +504,17 @@ def top_medals_smart(
 
 
 def clear_app_caches() -> None:
-    """Vide les caches Streamlit (utile si DB/alias/csv changent en dehors de l'app)."""
+    """Vide les caches Streamlit (utile si DB/alias/csv changent en dehors de l'app).
+
+    Invalide aussi le cache repository (v5.1) pour forcer une reconnexion
+    avec les données fraîches.
+    """
     import contextlib
 
     with contextlib.suppress(Exception):
         st.cache_data.clear()
+    with contextlib.suppress(Exception):
+        st.cache_resource.clear()
 
 
 @st.cache_data(show_spinner=False)
@@ -568,25 +525,11 @@ def cached_list_other_xuids(
 
     DuckDB v4 utilise xuid_aliases. En v5, shared.match_participants.
     """
-    # DuckDB v4 : utiliser la table xuid_aliases ou teammates
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
-            import duckdb
-
-            conn = duckdb.connect(db_path, read_only=True)
-            # Essayer depuis xuid_aliases (tous les joueurs rencontrés)
-            try:
-                result = conn.execute(
-                    f"SELECT DISTINCT xuid FROM xuid_aliases WHERE xuid != ? LIMIT {limit}",
-                    [self_xuid],
-                ).fetchall()
-                if result:
-                    conn.close()
-                    return [str(row[0]) for row in result if row[0]]
-            except Exception:
-                pass
-            conn.close()
-            return []
+            repo = get_cached_repository_st(db_path, str(self_xuid).strip())
+            return repo.list_other_player_xuids(limit=limit)
         except Exception:
             return []
     # Legacy SQLite non supporté depuis v4.8
@@ -603,12 +546,10 @@ def cached_list_top_teammates(
     Utilise DuckDBRepository pour .duckdb, sinon TeammatesAggregate (cache DB),
     sinon fallback sur la requête JSON lente (list_top_teammates).
     """
-    # DuckDB v4 : utiliser le repository
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            repo = DuckDBRepository(db_path, str(self_xuid).strip())
+            repo = get_cached_repository_st(db_path, str(self_xuid).strip())
             return repo.list_top_teammates(limit=limit)
         except Exception:
             return []
@@ -644,12 +585,10 @@ def cached_get_cache_stats(db_path: str, xuid: str, db_key: tuple[int, int] | No
     DuckDB v4 retourne des stats depuis le repository.
     """
     _ = db_key
-    # DuckDB v4 : utiliser le repository
+    # DuckDB v4 : utiliser le repository caché (v5.1 perf)
     if _is_duckdb_v4_path(db_path):
         try:
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            repo = DuckDBRepository(db_path, str(xuid).strip())
+            repo = get_cached_repository_st(db_path, str(xuid).strip())
             storage = repo.get_storage_info()
             return {
                 "has_cache": True,

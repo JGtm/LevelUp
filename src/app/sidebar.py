@@ -48,11 +48,8 @@ def render_sidebar(
     """
     with st.sidebar:
         # Brand
-        st.markdown(
-            "<div class='os-sidebar-brand' style='font-size: 2.5em;'>LevelUp</div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown("<div class='os-sidebar-divider'></div>", unsafe_allow_html=True)
+        st.header("LevelUp")
+        st.divider()
 
         # Indicateur de dernière synchronisation
         if db_path and os.path.exists(db_path):
