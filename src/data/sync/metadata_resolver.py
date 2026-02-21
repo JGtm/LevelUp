@@ -115,7 +115,7 @@ class MetadataResolver:
 
         # Déterminer la table selon le type
         table_map = {
-            "playlist": ["playlists"],
+            "playlist": ["playlists", "playlist_translations"],
             "map": ["maps"],
             "pair": [
                 "map_mode_pairs",
@@ -135,22 +135,43 @@ class MetadataResolver:
             ).fetchall()
             tables = {row[0] for row in tables_result}
 
-            # Trouver la première table candidate qui existe
-            table_name = None
-            for candidate in table_candidates:
-                if candidate in tables:
-                    table_name = candidate
-                    break
+            # Collecter les tables candidates qui existent (ordre = priorité)
+            existing_candidates = [c for c in table_candidates if c in tables]
 
-            if not table_name:
+            if not existing_candidates:
                 logger.debug(f"Aucune table trouvée pour {asset_type} parmi {table_candidates}")
                 return None
 
+            # Essayer chaque table candidate dans l'ordre de priorité
+            for table_name in existing_candidates:
+                result = self._resolve_from_table(table_name, asset_id)
+                if result:
+                    return result
+
+            return None
+
+        except Exception as e:
+            logger.debug(f"Erreur résolution {asset_type} {asset_id}: {e}")
+            return None
+
+    def _resolve_from_table(self, table_name: str, asset_id: str) -> str | None:
+        """Résout un asset_id depuis une table spécifique.
+
+        Args:
+            table_name: Nom de la table à interroger.
+            asset_id: ID de l'asset.
+
+        Returns:
+            Nom résolu ou None.
+        """
+        if not self._conn:
+            return None
+
+        try:
             # Détecter dynamiquement la colonne ID (asset_id ou uuid)
             id_column = None
             for col_candidate in ["asset_id", "uuid"]:
                 try:
-                    # Tester si la colonne existe
                     self._conn.execute(
                         f"SELECT {col_candidate} FROM {table_name} LIMIT 1"
                     ).fetchone()
@@ -167,7 +188,6 @@ class MetadataResolver:
             name_column = None
             for col_candidate in ["public_name", "name_fr", "name_en", "name"]:
                 try:
-                    # Tester si la colonne existe
                     self._conn.execute(
                         f"SELECT {col_candidate} FROM {table_name} LIMIT 1"
                     ).fetchone()
@@ -188,15 +208,13 @@ class MetadataResolver:
 
             if result and result[0]:
                 name = str(result[0])
-                logger.debug(
-                    f"Résolu {asset_type} {asset_id} → {name} depuis {table_name}.{name_column}"
-                )
+                logger.debug(f"Résolu {asset_id} → {name} depuis {table_name}.{name_column}")
                 return name
 
             return None
 
         except Exception as e:
-            logger.debug(f"Erreur résolution {asset_type} {asset_id}: {e}")
+            logger.debug(f"Erreur résolution depuis {table_name}: {e}")
             return None
 
     def close(self) -> None:
