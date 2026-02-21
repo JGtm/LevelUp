@@ -24,7 +24,6 @@ COPY streamlit_app.py launcher.py /app/
 
 # Données de référence embarquées (petits fichiers nécessaires à l'UI)
 COPY data/Playlist_modes_translations.json /app/data/
-COPY data/wiki /app/data/wiki
 
 # Fichiers de config par défaut (écrasés au runtime par les volumes)
 # On utilise un RUN shell pour être robuste si un fichier manque au build.

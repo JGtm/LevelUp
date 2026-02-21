@@ -69,7 +69,6 @@ nul
 app_settings.json
 data/xuid_aliases.json
 GT-XUID.txt
-data/wiki/*.html
 data/*.db
 data/*.db-journal
 data/investigation/

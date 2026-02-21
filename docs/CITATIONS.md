@@ -123,8 +123,8 @@ python scripts/backfill_data.py --all --citations
    python scripts/backfill_data.py --all --citations --force-citations
    ```
 
-5. **Retirer de la blacklist** si nécessaire :
-   Éditer `data/wiki/halo5_commendations_exclude.json`.
+5. **Désactiver/activer une citation** :
+   Modifier le champ `enabled` dans la table `citation_mappings` de `metadata.duckdb`.
 
 ## API Python
 
