@@ -728,6 +728,8 @@ Le pattern est identique pour n'importe quel nouveau filtre checkbox :
 
 ---
 
+---
+
 ## Critères de succès
 
 - [ ] Test "tout sauf Firefight" : fermer/rouvrir l'app → Firefight décoché, nouvelles playlists cochées
