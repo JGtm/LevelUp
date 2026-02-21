@@ -25,7 +25,7 @@ _XUID_D = "100000000000999"
 
 def _make_firefight_json(
     match_id: str = "ff-match-001",
-    category_id: int = 9,
+    category_id: int = 41,
     player_xuid: str = _XUID_A,
     boss_kills: int = 2,
     grunt_kills: int = 10,
@@ -79,16 +79,16 @@ def _make_pvp_json(match_id: str = "pvp-match-001") -> dict:
 
 
 class TestIsFirefightMatch:
-    def test_detection_by_category_id_9(self):
+    def test_detection_by_category_id_41(self):
         from src.data.sync.transformers import _is_firefight_match
 
-        match_info = {"GameVariantCategory": 9}
+        match_info = {"GameVariantCategory": 41}
         assert _is_firefight_match(match_info) is True
 
-    def test_detection_by_category_id_24(self):
+    def test_detection_by_category_id_42(self):
         from src.data.sync.transformers import _is_firefight_match
 
-        match_info = {"GameVariantCategory": 24}
+        match_info = {"GameVariantCategory": 42}
         assert _is_firefight_match(match_info) is True
 
     def test_not_firefight_pvp_category(self):
@@ -254,7 +254,7 @@ class TestExtractPveStats:
 
         match_json = {
             "MatchId": "ff-multi",
-            "MatchInfo": {"GameVariantCategory": 9},
+            "MatchInfo": {"GameVariantCategory": 41},
             "Players": [
                 {
                     "PlayerId": f"xuid({_XUID_A})",
@@ -277,7 +277,7 @@ class TestExtractPveStats:
 
         match_json = {
             "MatchId": "ff-partial",
-            "MatchInfo": {"GameVariantCategory": 9},
+            "MatchInfo": {"GameVariantCategory": 41},
             "Players": [
                 {
                     "PlayerId": f"xuid({_XUID_A})",
