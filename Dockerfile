@@ -28,8 +28,7 @@ COPY streamlit_app.py launcher.py /app/
 # Fichiers de config par défaut (écrasés au runtime par les volumes)
 # On utilise un RUN shell pour être robuste si un fichier manque au build.
 COPY db_profiles.json /app/db_profiles.json
-RUN if [ ! -f /app/app_settings.json ]; then echo '{}' > /app/app_settings.json; fi \
-    && if [ ! -f /app/data/xuid_aliases.json ]; then echo '{}' > /app/data/xuid_aliases.json; fi
+RUN if [ ! -f /app/app_settings.json ]; then echo '{}' > /app/app_settings.json; fi
 
 # Dossiers attendus par le runtime
 RUN mkdir -p /app/data/players /app/data/warehouse

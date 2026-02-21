@@ -336,6 +336,7 @@ def render_profile_header(
     xuid: str,
     settings: AppSettings,
     assets: ProfileAssets,
+    db_path: str | None = None,
 ) -> None:
     """Rend le header/hero du profil joueur.
 
@@ -343,8 +344,13 @@ def render_profile_header(
         xuid: XUID du joueur.
         settings: Paramètres de l'application.
         assets: Assets du profil.
+        db_path: Chemin vers la DB joueur pour résolution du gamertag.
     """
-    me_name = display_name_from_xuid(xuid.strip()) if str(xuid or "").strip() else "(joueur)"
+    me_name = (
+        display_name_from_xuid(xuid.strip(), db_path=db_path)
+        if str(xuid or "").strip()
+        else "(joueur)"
+    )
 
     st.markdown(
         get_hero_html(

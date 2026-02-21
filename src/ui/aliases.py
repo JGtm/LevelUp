@@ -1,21 +1,19 @@
 """Gestion des alias XUID -> Gamertag.
 
-Ce module gère les alias XUID->Gamertag depuis plusieurs sources :
-- Table XuidAliases dans les DBs legacy SQLite
-- Fichier xuid_aliases.json
-- Constantes par défaut
+Ce module gère les alias XUID->Gamertag depuis shared_matches.duckdb
+(table xuid_aliases — source unique de vérité depuis v5.1).
 
-NOTE: Dans l'architecture v4 (DuckDB), les alias peuvent être stockés
-dans metadata.duckdb ou dans le fichier JSON.
+NOTE: Le fichier xuid_aliases.json et les fonctions associées
+(load_aliases_file, save_aliases_file) ont été supprimés en v5.2.
+Seuls les scripts de migration legacy peuvent encore lire ce JSON.
 """
 
 from __future__ import annotations
 
-import json
 import os
 from functools import lru_cache
 
-from src.config import XUID_ALIASES_DEFAULT, get_aliases_file_path
+from src.config import XUID_ALIASES_DEFAULT
 from src.utils import parse_xuid_input
 
 
@@ -102,61 +100,8 @@ def clear_db_aliases_cache() -> None:
     _load_aliases_from_duckdb_cached.cache_clear()
 
 
-def load_aliases_file(path: str | None = None) -> dict[str, str]:
-    """Charge les alias depuis un fichier JSON.
-
-    Args:
-        path: Chemin du fichier (default: xuid_aliases.json à la racine).
-
-    Returns:
-        Dictionnaire {xuid: gamertag}.
-    """
-    if path is None:
-        path = get_aliases_file_path()
-
-    return dict(_load_aliases_cached(path, _safe_mtime(path)))
-
-
-@lru_cache(maxsize=16)
-def _load_aliases_cached(path: str, mtime: float | None) -> dict[str, str]:
-    try:
-        if not os.path.exists(path):
-            return {}
-        with open(path, encoding="utf-8") as f:
-            raw = json.load(f)
-        if not isinstance(raw, dict):
-            return {}
-        cleaned: dict[str, str] = {}
-        for k, v in raw.items():
-            kk = str(k).strip()
-            vv = str(v).strip()
-            if kk and vv:
-                cleaned[kk] = vv
-        return cleaned
-    except Exception:
-        return {}
-
-
-def save_aliases_file(aliases: dict[str, str], path: str | None = None) -> None:
-    """Sauvegarde les alias dans un fichier JSON.
-
-    Args:
-        aliases: Dictionnaire {xuid: gamertag}.
-        path: Chemin du fichier (default: xuid_aliases.json à la racine).
-    """
-    if path is None:
-        path = get_aliases_file_path()
-
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(dict(sorted(aliases.items())), f, ensure_ascii=False, indent=2)
-
-    # Invalide le cache (le contenu a changé)
-    _load_aliases_cached.cache_clear()
-
-
 def get_xuid_aliases(db_path: str | None = None) -> dict[str, str]:
-    """Retourne les alias fusionnés (DB > fichier > défaut).
+    """Retourne les alias (DB > défaut).
 
     .. deprecated::
         OBSOLÈTE pour la résolution de gamertags dans le contexte d'un match.
@@ -175,8 +120,7 @@ def get_xuid_aliases(db_path: str | None = None) -> dict[str, str]:
 
     L'ordre de priorité est :
     1. Table xuid_aliases de shared_matches.duckdb (si db_path fourni)
-    2. Fichier xuid_aliases.json
-    3. Constantes XUID_ALIASES_DEFAULT
+    2. Constantes XUID_ALIASES_DEFAULT
 
     Args:
         db_path: Chemin optionnel vers une DB DuckDB joueur.
@@ -185,7 +129,6 @@ def get_xuid_aliases(db_path: str | None = None) -> dict[str, str]:
         Dictionnaire {xuid: gamertag}.
     """
     merged = dict(XUID_ALIASES_DEFAULT)
-    merged.update(load_aliases_file())
 
     # Les aliases de la DB ont la priorité (plus récents)
     if db_path:
