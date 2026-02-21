@@ -706,6 +706,12 @@ def _merge_trio_dataframes(
         "average_life_seconds",
         "time_played_seconds",
     ]
+    # Vérifier que tous les DataFrames ont les colonnes requises
+    missing_me = [c for c in me_cols if c not in me_df.columns]
+    missing_f1 = [c for c in friend_cols if c not in f1_df.columns]
+    missing_f2 = [c for c in friend_cols if c not in f2_df.columns]
+    if missing_me or missing_f1 or missing_f2 or me_df.is_empty() or f1_df.is_empty() or f2_df.is_empty():
+        return pl.DataFrame()
     f1_sel = f1_df.select(friend_cols).rename({c: f"f1_{c}" for c in friend_cols})
     f2_sel = f2_df.select(friend_cols).rename({c: f"f2_{c}" for c in friend_cols})
     return (

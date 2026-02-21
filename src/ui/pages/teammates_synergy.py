@@ -206,10 +206,13 @@ def render_trio_synergy_radar(
     if db_path is None:
         db_path = st.session_state.get("db_path", "")
 
+    def _match_ids_set(df: pl.DataFrame) -> set[str]:
+        if df.is_empty() or "match_id" not in df.columns:
+            return set()
+        return set(df["match_id"].cast(pl.Utf8).to_list())
+
     shared_match_ids = list(
-        set(me_df["match_id"].cast(pl.Utf8).to_list())
-        & set(f1_df["match_id"].cast(pl.Utf8).to_list())
-        & set(f2_df["match_id"].cast(pl.Utf8).to_list())
+        _match_ids_set(me_df) & _match_ids_set(f1_df) & _match_ids_set(f2_df)
     )
     if not shared_match_ids:
         return
