@@ -4,8 +4,8 @@ Ici on centralise les mappings de libellés (playlist, mode/pair) afin de:
 - réduire la liste de valeurs distinctes dans l'UI
 - afficher des labels en français quand on les connaît
 
-Ce fichier est généré automatiquement depuis data/Playlist_modes_translations.json
-puis peut être ajusté manuellement si besoin.
+Source de vérité : tables playlist_translations et mode_translations dans metadata.duckdb.
+Ce fichier contient les mappings hardcodés historiques pour l'UI.
 """
 
 from __future__ import annotations
