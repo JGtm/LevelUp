@@ -299,7 +299,7 @@ def plot_match_kill_death_timeline(
             continue
 
         icon, label_fr = label_info
-        display_name = ie.gamertag if not ie.is_me else "Toi"
+        display_name = ie.gamertag
         annotation_text = f"{icon} {label_fr}"
 
         # Trouver la position Y correspondante sur la courbe
