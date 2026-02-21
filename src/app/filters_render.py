@@ -127,7 +127,7 @@ def _apply_experience_filter(
     firefight_pls = set(get_firefight_playlists(all_playlist_values))
     pve_cond = pl.col("playlist_ui").cast(pl.Utf8).fill_null("").is_in(list(firefight_pls))
     ranked_cond = (
-        pl.col("playlist_ui").cast(pl.Utf8).fill_null("").str.to_lowercase().str.contains("class")
+        pl.col("playlist_ui").cast(pl.Utf8).fill_null("").str.to_lowercase().str.contains("classé")
         & ~pve_cond
     )
 
@@ -272,7 +272,10 @@ def render_filters_sidebar(
                     and prefs.picked_session_label is not None
                     and (
                         prefs.picked_session_label == prefs.latest_session_label
-                        or prefs.latest_session_label is None  # rétrocompat : anciennes prefs
+                        or prefs.latest_session_label is None  # rétrocompat : anciennes prefs v5.1
+                        # ⚠️ Edge case connu : si l'utilisateur avait épinglé une vieille session
+                        # avant la v5.2, elle sera réinitialisée sur la dernière session au
+                        # premier démarrage post-upgrade (une seule fois, puis latest est sauvegardé)
                     )
                 ):
                     _apply_default_last_session(db_path, xuid, db_key, aliases_key)

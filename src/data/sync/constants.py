@@ -14,6 +14,8 @@ Architecture :
 
 from __future__ import annotations
 
+from enum import IntFlag
+
 
 class ParticipantBits:
     """Bitmask pour ``match_participants.backfill_bits`` (données par joueur × match).
@@ -105,7 +107,7 @@ class MatchBits:
     # Valeur dans pve_match_stats : utiliser PveBits dans shared_pve.duckdb
 
 
-class PveBits:
+class PveBits(IntFlag):
     """Bitmask granulaire pour ``pve_match_stats.pve_bits`` (shared_pve.duckdb).
 
     Indique précisément quels champs PvE ont été récupérés par l'API

@@ -1937,7 +1937,9 @@ def _find_pve_stats_dict(player_obj: dict[str, Any]) -> dict[str, Any] | None:
     # quand les deux coexistent dans Stats (confirmé sur matchs Firefight 2025).
     _known_block_names = ["PveStats", "FirefightStats", "SurvivalStats", "EliminationStats"]
 
-    def _find(x: Any) -> dict[str, Any] | None:
+    def _find(x: Any, depth: int = 0) -> dict[str, Any] | None:
+        if depth > 10:
+            return None  # Protection contre la récursion infinie sur JSON malformé
         if isinstance(x, dict):
             # Chemin direct par nom de bloc connu
             for key in _known_block_names:
@@ -1950,12 +1952,12 @@ def _find_pve_stats_dict(player_obj: dict[str, Any]) -> dict[str, Any] | None:
                 return x
             # Recherche récursive
             for v in x.values():
-                r = _find(v)
+                r = _find(v, depth + 1)
                 if r is not None:
                     return r
         elif isinstance(x, list):
             for v in x:
-                r = _find(v)
+                r = _find(v, depth + 1)
                 if r is not None:
                     return r
         return None

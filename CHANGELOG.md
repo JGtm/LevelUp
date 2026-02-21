@@ -34,13 +34,13 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - `extract_pve_stats(match_json)` : extraction pour tous les joueurs d'un match Firefight
   - `_find_pve_stats_dict(player)` : recherche récursive du bloc PvE (EliminationStats / PveStats / FirefightStats / détection par clés)
   - `_extract_enemy_kills_by_type(pve_dict)` : support double structure (champs directs `GruntKills` + sous-dict `EnemyKillsByType`)
-  - `_is_firefight_match()` enrichie : 3 critères — `GameVariantCategory` (IDs 9, 24), `UgcGameVariant.PublicName`, `Playlist.PublicName` (firefight/baptême/survive)
+  - `_is_firefight_match()` enrichie : 3 critères — `GameVariantCategory` (IDs 41, 42 validés sur JSON API réels), `UgcGameVariant.PublicName`, `Playlist.PublicName` (firefight/baptême/survive)
 
 - **Stats PvE — Pipeline insertion** (`src/data/sync/batch_insert.py`)
   - `batch_insert_pve_stats(conn, rows)` : insertion batch avec `INSERT OR REPLACE`
 
 - **Stats PvE — Bitmask** (`src/data/sync/constants.py`)
-  - `PveBits(IntFlag)` : bitmask granulaire pour `pve_match_stats.pve_bits` — WAVES, BOSS_KILLS, TOTAL_KILLS, GRUNT, ELITE, JACKAL, BRUTE, HUNTER, SKIMMER, CRAWLER, SOLDIER, KNIGHT, WARDEN + combinaisons BANISHED_FULL, FORERUNNER_ANY, FULL_PVE
+  - `PveBits(IntFlag)` : bitmask granulaire pour `pve_match_stats.pve_bits` — TOTAL_KILLS, BOSS_KILLS, GRUNT, ELITE, JACKAL, BRUTE, HUNTER, SKIMMER, SENTINEL, MARINE + combinaisons ALL_ENEMIES, FULL_PVE
   - `MatchBits.PVE_STATS = 1 << 20` : guard global dans `match_registry.backfill_completed` — posé pour tout match traité (Firefight ou non) pour éviter la re-détection infinie
 
 - **Stats PvE — Sync Engine** (`src/data/sync/engine.py`)
