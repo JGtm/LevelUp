@@ -849,26 +849,19 @@ CREATE TABLE IF NOT EXISTS pve_match_stats (
     match_id VARCHAR NOT NULL,
     xuid VARCHAR NOT NULL,
 
-    -- Stats globales PvE (à valider avec JSON réel en Phase 1)
-    waves_completed    INTEGER,
-    max_wave_reached   INTEGER,
-    boss_kills         INTEGER,
-    mythic_boss_kills  INTEGER,
-    total_enemy_kills  INTEGER,
+    -- Stats globales PvE (validées depuis interface PveStats API)
+    total_enemy_kills  INTEGER,          -- API: Kills
+    boss_kills         INTEGER,          -- API: BossKills
 
-    -- Kills par type d'ennemi — Banished
-    grunt_kills    INTEGER DEFAULT 0,
-    elite_kills    INTEGER DEFAULT 0,
-    jackal_kills   INTEGER DEFAULT 0,
-    brute_kills    INTEGER DEFAULT 0,
-    hunter_kills   INTEGER DEFAULT 0,
-    skimmer_kills  INTEGER DEFAULT 0,
-
-    -- Kills par type d'ennemi — Forerunners (si disponible dans l'API)
-    crawler_kills  INTEGER DEFAULT 0,
-    soldier_kills  INTEGER DEFAULT 0,
-    knight_kills   INTEGER DEFAULT 0,
-    warden_kills   INTEGER DEFAULT 0,
+    -- Kills par type d'ennemi (API confirmée)
+    grunt_kills    INTEGER DEFAULT 0,    -- API: GruntKills
+    elite_kills    INTEGER DEFAULT 0,    -- API: EliteKills
+    jackal_kills   INTEGER DEFAULT 0,    -- API: JackalKills
+    brute_kills    INTEGER DEFAULT 0,    -- API: BruteKills
+    hunter_kills   INTEGER DEFAULT 0,    -- API: HunterKills
+    skimmer_kills  INTEGER DEFAULT 0,    -- API: SkimmerKills
+    sentinel_kills INTEGER DEFAULT 0,    -- API: SentinelKills
+    marine_kills   INTEGER DEFAULT 0,    -- API: MarineKills
 
     -- Bitmask granulaire (v5.2) — quels champs ont été récupérés
     -- Voir PveBits dans src/data/sync/constants.py
@@ -888,6 +881,8 @@ def ensure_pve_schema(conn: duckdb.DuckDBPyConnection) -> None:
     """Initialise le schéma PvE dans shared_pve.duckdb (idempotent).
 
     Crée la table ``pve_match_stats`` et ses index si absents.
+    Applique aussi les migrations de colonnes manquantes si la table existait
+    avec une ancienne version du schéma.
     À appeler au démarrage de toute connexion vers shared_pve.duckdb.
 
     Args:
@@ -904,6 +899,27 @@ def ensure_pve_schema(conn: duckdb.DuckDBPyConnection) -> None:
                     err = str(e).lower()
                     if "already exists" not in err:
                         logger.warning(f"Erreur DDL PvE : {e}")
+
+        # Migration v5.2 : ajout des colonnes manquantes si ancienne version du schéma
+        _pve_migrations = [
+            ("sentinel_kills", "INTEGER DEFAULT 0"),
+            ("marine_kills", "INTEGER DEFAULT 0"),
+        ]
+        existing_cols = {
+            row[0]
+            for row in conn.execute(
+                "SELECT column_name FROM information_schema.columns"
+                " WHERE table_name = 'pve_match_stats'"
+            ).fetchall()
+        }
+        for col_name, col_def in _pve_migrations:
+            if col_name not in existing_cols:
+                try:
+                    conn.execute(f"ALTER TABLE pve_match_stats ADD COLUMN {col_name} {col_def}")
+                    logger.info(f"Migration PvE : colonne '{col_name}' ajoutée à pve_match_stats")
+                except Exception as e:
+                    logger.warning(f"Migration PvE '{col_name}': {e}")
+
         logger.debug("Schéma PvE initialisé (shared_pve.duckdb)")
     except Exception as e:
         logger.error(f"Impossible d'initialiser le schéma PvE : {e}")

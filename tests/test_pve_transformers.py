@@ -27,7 +27,6 @@ def _make_firefight_json(
     match_id: str = "ff-match-001",
     category_id: int = 9,
     player_xuid: str = _XUID_A,
-    waves: int = 3,
     boss_kills: int = 2,
     grunt_kills: int = 10,
     elite_kills: int = 5,
@@ -45,11 +44,8 @@ def _make_firefight_json(
                     {
                         "Stats": {
                             "PveStats": {
-                                "WavesCompleted": waves,
-                                "MaxWaveReached": waves,
+                                "Kills": grunt_kills + elite_kills,
                                 "BossKills": boss_kills,
-                                "MythicBossKills": 0,
-                                "TotalEnemyKills": grunt_kills + elite_kills,
                                 "GruntKills": grunt_kills,
                                 "EliteKills": elite_kills,
                             }
@@ -160,22 +156,16 @@ class TestExtractEnemyKillsByType:
         assert result["brute"] == 2
         assert result["hunter"] == 1
 
-    def test_sub_dict_structure(self):
+    def test_sentinel_and_marine(self):
         from src.data.sync.transformers import _extract_enemy_kills_by_type
 
         pve_dict = {
-            "EnemyKillsByType": {
-                "Grunt": 8,
-                "Elite": 4,
-                "Crawler": 12,
-                "Knight": 1,
-            }
+            "SentinelKills": 6,
+            "MarineKills": 2,
         }
         result = _extract_enemy_kills_by_type(pve_dict)
-        assert result["grunt"] == 8
-        assert result["elite"] == 4
-        assert result["crawler"] == 12
-        assert result["knight"] == 1
+        assert result["sentinel"] == 6
+        assert result["marine"] == 2
 
     def test_empty_dict(self):
         from src.data.sync.transformers import _extract_enemy_kills_by_type
@@ -190,16 +180,24 @@ class TestExtractEnemyKillsByType:
         result = _extract_enemy_kills_by_type(pve_dict)
         assert result["grunt"] == 5
 
-    def test_direct_overrides_sub_dict(self):
-        """Les champs directs ont priorité sur le sous-dictionnaire."""
+    def test_all_eight_enemy_types(self):
+        """Vérifie les 8 types d'ennemis reconnus."""
         from src.data.sync.transformers import _extract_enemy_kills_by_type
 
         pve_dict = {
-            "GruntKills": 20,
-            "EnemyKillsByType": {"Grunt": 5},  # Ignoré si direct trouvé
+            "GruntKills": 10,
+            "EliteKills": 5,
+            "JackalKills": 3,
+            "BruteKills": 2,
+            "HunterKills": 1,
+            "SkimmerKills": 4,
+            "SentinelKills": 6,
+            "MarineKills": 8,
         }
         result = _extract_enemy_kills_by_type(pve_dict)
-        assert result["grunt"] == 20
+        assert len(result) == 8
+        assert result["grunt"] == 10
+        assert result["marine"] == 8
 
 
 # =============================================================================
@@ -214,7 +212,6 @@ class TestExtractPveStats:
         match_json = _make_firefight_json(
             match_id="ff-001",
             player_xuid=_XUID_A,
-            waves=3,
             boss_kills=2,
             grunt_kills=10,
             elite_kills=5,
@@ -225,10 +222,10 @@ class TestExtractPveStats:
         row = rows[0]
         assert row.match_id == "ff-001"
         assert row.xuid == _XUID_A
-        assert row.waves_completed == 3
         assert row.boss_kills == 2
         assert row.grunt_kills == 10
         assert row.elite_kills == 5
+        assert row.total_enemy_kills == 15  # grunt + elite
 
     def test_pvp_match_returns_empty(self):
         from src.data.sync.transformers import extract_pve_stats
@@ -261,15 +258,11 @@ class TestExtractPveStats:
             "Players": [
                 {
                     "PlayerId": f"xuid({_XUID_A})",
-                    "PlayerTeamStats": [
-                        {"Stats": {"PveStats": {"WavesCompleted": 2, "GruntKills": 8}}}
-                    ],
+                    "PlayerTeamStats": [{"Stats": {"PveStats": {"GruntKills": 8}}}],
                 },
                 {
                     "PlayerId": f"xuid({_XUID_B})",
-                    "PlayerTeamStats": [
-                        {"Stats": {"PveStats": {"WavesCompleted": 2, "EliteKills": 3}}}
-                    ],
+                    "PlayerTeamStats": [{"Stats": {"PveStats": {"EliteKills": 3}}}],
                 },
             ],
         }
@@ -288,7 +281,7 @@ class TestExtractPveStats:
             "Players": [
                 {
                     "PlayerId": f"xuid({_XUID_A})",
-                    "PlayerTeamStats": [{"Stats": {"PveStats": {"WavesCompleted": 2}}}],
+                    "PlayerTeamStats": [{"Stats": {"PveStats": {"GruntKills": 2}}}],
                 },
                 {
                     "PlayerId": f"xuid({_XUID_B})",
@@ -314,9 +307,7 @@ class TestExtractPveStats:
             "Players": [
                 {
                     "PlayerId": f"xuid({_XUID_C})",
-                    "PlayerTeamStats": [
-                        {"Stats": {"PveStats": {"WavesCompleted": 1, "TotalEnemyKills": 20}}}
-                    ],
+                    "PlayerTeamStats": [{"Stats": {"PveStats": {"Kills": 20, "GruntKills": 15}}}],
                 }
             ],
         }
@@ -384,14 +375,14 @@ class TestPveSchemaAndInsert:
         row = PveMatchStatsRow(
             match_id="ff-persist",
             xuid=_XUID_D,
-            waves_completed=4,
             boss_kills=3,
             grunt_kills=15,
+            total_enemy_kills=18,
         )
         batch_insert_pve_stats(pve_conn, [row])
 
         result = pve_conn.execute(
-            "SELECT match_id, xuid, waves_completed, boss_kills, grunt_kills "
+            "SELECT match_id, xuid, boss_kills, grunt_kills, total_enemy_kills "
             "FROM pve_match_stats WHERE match_id = ?",
             ["ff-persist"],
         ).fetchone()
@@ -399,9 +390,9 @@ class TestPveSchemaAndInsert:
         assert result is not None
         assert result[0] == "ff-persist"
         assert result[1] == _XUID_D
-        assert result[2] == 4
-        assert result[3] == 3
-        assert result[4] == 15
+        assert result[2] == 3
+        assert result[3] == 15
+        assert result[4] == 18
 
     def test_batch_insert_pve_stats_insert_or_replace(self, pve_conn):
         """Un second insert avec même (match_id, xuid) doit remplacer."""
@@ -437,8 +428,11 @@ class TestPveMatchStatsRow:
         row = PveMatchStatsRow(match_id="m1", xuid="u1")
         assert row.match_id == "m1"
         assert row.xuid == "u1"
-        assert row.waves_completed is None  # Optional field (None par défaut)
-        assert row.grunt_kills == 0  # Kills default à 0 (pas None)
+        assert row.total_enemy_kills is None
+        assert row.boss_kills is None
+        assert row.grunt_kills == 0
+        assert row.sentinel_kills == 0
+        assert row.marine_kills == 0
         assert row.pve_bits == 0
 
     def test_all_fields(self):
@@ -447,26 +441,23 @@ class TestPveMatchStatsRow:
         row = PveMatchStatsRow(
             match_id="m2",
             xuid="u2",
-            waves_completed=5,
-            max_wave_reached=5,
-            boss_kills=3,
-            mythic_boss_kills=1,
             total_enemy_kills=100,
+            boss_kills=3,
             grunt_kills=40,
             elite_kills=20,
             jackal_kills=10,
             brute_kills=8,
             hunter_kills=2,
             skimmer_kills=5,
-            crawler_kills=6,
-            soldier_kills=4,
-            knight_kills=3,
-            warden_kills=2,
+            sentinel_kills=6,
+            marine_kills=4,
             pve_bits=7,
         )
-        assert row.waves_completed == 5
+        assert row.total_enemy_kills == 100
+        assert row.boss_kills == 3
+        assert row.sentinel_kills == 6
+        assert row.marine_kills == 4
         assert row.pve_bits == 7
-        assert row.warden_kills == 2
 
 
 # =============================================================================
@@ -478,30 +469,26 @@ class TestPveBitsConstants:
     def test_pve_bits_values(self):
         from src.data.sync.constants import PveBits
 
-        assert PveBits.WAVES == 1
+        assert PveBits.TOTAL_KILLS == 1
         assert PveBits.BOSS_KILLS == 2
-        assert PveBits.TOTAL_KILLS == 4
-        assert PveBits.GRUNT == 8
-        assert PveBits.WARDEN == 4096
+        assert PveBits.GRUNT == 4
+        assert PveBits.SENTINEL == 256
+        assert PveBits.MARINE == 512
 
     def test_pve_bits_combinations(self):
         from src.data.sync.constants import PveBits
 
-        assert PveBits.BANISHED_FULL == (
+        assert PveBits.ALL_ENEMIES == (
             PveBits.GRUNT
             | PveBits.ELITE
             | PveBits.JACKAL
             | PveBits.BRUTE
             | PveBits.HUNTER
             | PveBits.SKIMMER
+            | PveBits.SENTINEL
+            | PveBits.MARINE
         )
-        assert PveBits.FULL_PVE == (
-            PveBits.WAVES
-            | PveBits.BOSS_KILLS
-            | PveBits.TOTAL_KILLS
-            | PveBits.BANISHED_FULL
-            | PveBits.FORERUNNER_ANY
-        )
+        assert PveBits.FULL_PVE == (PveBits.TOTAL_KILLS | PveBits.BOSS_KILLS | PveBits.ALL_ENEMIES)
 
     def test_match_bits_pve_stats(self):
         from src.data.sync.constants import MatchBits
