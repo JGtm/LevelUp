@@ -347,3 +347,5 @@ class AntagonistsMixin:
                 return row is not None
             except Exception:
                 return False
+
+        return False
