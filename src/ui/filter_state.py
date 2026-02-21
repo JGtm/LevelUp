@@ -111,6 +111,10 @@ class FilterPreferences:
     # Mode Sessions
     gap_minutes: int | None = None
     picked_session_label: str | None = None
+    # Label de la dernière session au moment de la sauvegarde.
+    # Si picked_session_label == latest_session_label, l'utilisateur suivait
+    # la session la plus récente → on réinitialise sur la vraie dernière au prochain chargement.
+    latest_session_label: str | None = None
 
     # Filtres cascade (listes de strings)
     # En mode "exclude" : contient ce qui est DÉCOCHÉ
@@ -282,14 +286,31 @@ def save_filter_preferences(
         picked_session_label_val = st.session_state.get("picked_session_label")
         if isinstance(picked_session_label_val, str):
             preferences.picked_session_label = picked_session_label_val
+        # Sauvegarder aussi la "vraie dernière session" pour détecter le tracking
+        latest_session_label_val = st.session_state.get("_latest_session_label")
+        if isinstance(latest_session_label_val, str):
+            preferences.latest_session_label = latest_session_label_val
 
         # Filtres cascade — logique intent-based
+        # Mapping session_key → exclusions_key pour mise à jour mid-session
+        _EXCLUSIONS_KEY_MAP: dict[str, str] = {
+            "filter_playlists": "_playlists_exclusions",
+            "filter_modes": "_modes_exclusions",
+            "filter_maps": "_maps_exclusions",
+            "filter_experience_types": "_experience_types_exclusions",
+        }
+
         def _save_filter(
             ss_key: str,
             mode_ss_key: str,
             all_opts: list[str] | None,
         ) -> tuple[list[str] | None, str | None]:
-            """Retourne (stored_list, mode) pour un filtre donné."""
+            """Retourne (stored_list, mode) pour un filtre donné.
+
+            Met aussi à jour la clé d'exclusions dans session_state pour que
+            ``_reconcile_filter_options`` distingue les options délibérément
+            décochées des options vraiment nouvelles.
+            """
             val = st.session_state.get(ss_key)
             if not isinstance(val, set | list):
                 return None, None
@@ -297,7 +318,15 @@ def save_filter_preferences(
             if all_opts:
                 mode = _detect_filter_mode(val, all_opts, current_mode)
                 st.session_state[mode_ss_key] = mode
-                stored = sorted(set(all_opts) - set(val)) if mode == "exclude" else sorted(val)
+                exclusions = set(all_opts) - set(val)
+                stored = sorted(exclusions) if mode == "exclude" else sorted(val)
+                # --- FIX: propager les exclusions dans session_state ---
+                # Sans cette mise à jour, _reconcile_filter_options considère
+                # les items décochés mid-session comme "truly new" et les
+                # re-coche automatiquement.
+                excl_key = _EXCLUSIONS_KEY_MAP.get(ss_key)
+                if excl_key:
+                    st.session_state[excl_key] = exclusions
             else:
                 mode = "include"
                 stored = sorted(val)

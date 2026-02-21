@@ -186,11 +186,18 @@ def render_checkbox_filter(
 
             def _select_all(sk: str = session_key, opts: list[str] = options) -> None:
                 st.session_state[sk] = set(opts)
+                # Synchroniser les widget keys individuels pour éviter
+                # que les checkboxes précédemment décochées n'annulent le "Tout"
+                for o in opts:
+                    st.session_state[f"{sk}_cb_{o}"] = True
 
-            def _select_none(sk: str = session_key) -> None:
+            def _select_none(sk: str = session_key, opts: list[str] = options) -> None:
                 if st.session_state.get(f"{sk}_confirm_clear"):
                     st.session_state[sk] = set()
                     st.session_state[f"{sk}_confirm_clear"] = False
+                    # Synchroniser les widget keys individuels
+                    for o in opts:
+                        st.session_state[f"{sk}_cb_{o}"] = False
                 else:
                     st.session_state[f"{sk}_confirm_clear"] = True
 
@@ -205,9 +212,12 @@ def render_checkbox_filter(
         if st.session_state.get(f"{session_key}_confirm_clear"):
             st.warning("⚠️ Confirmer : vider toutes les sélections ?")
 
-            def _confirm_clear(sk: str = session_key) -> None:
+            def _confirm_clear(sk: str = session_key, opts: list[str] = options) -> None:
                 st.session_state[sk] = set()
                 st.session_state[f"{sk}_confirm_clear"] = False
+                # Synchroniser les widget keys individuels
+                for o in opts:
+                    st.session_state[f"{sk}_cb_{o}"] = False
 
             def _cancel_clear(sk: str = session_key) -> None:
                 st.session_state[f"{sk}_confirm_clear"] = False
@@ -321,11 +331,21 @@ def render_hierarchical_checkbox_filter(
 
         def _select_all_g(sk: str = session_key, opts: list[str] = options) -> None:
             st.session_state[sk] = set(opts)
+            # Synchroniser les widget keys pour que les checkboxes reflètent le "Tout"
+            # Les clés de catégorie et de mode individuel seront recréées au prochain render
+            # mais on force les widgets existants à True pour éviter qu'ils n'annulent le set
+            for wk in list(st.session_state.keys()):
+                if wk.startswith(f"{sk}_cat_") or wk.startswith(f"{sk}_mode_"):
+                    st.session_state[wk] = True
 
-        def _select_none_g(sk: str = session_key) -> None:
+        def _select_none_g(sk: str = session_key, opts: list[str] = options) -> None:
             if st.session_state.get(f"{sk}_confirm_clear"):
                 st.session_state[sk] = set()
                 st.session_state[f"{sk}_confirm_clear"] = False
+                # Synchroniser les widget keys
+                for wk in list(st.session_state.keys()):
+                    if wk.startswith(f"{sk}_cat_") or wk.startswith(f"{sk}_mode_"):
+                        st.session_state[wk] = False
             else:
                 st.session_state[f"{sk}_confirm_clear"] = True
 
@@ -342,6 +362,10 @@ def render_hierarchical_checkbox_filter(
             def _confirm_clear_g(sk: str = session_key) -> None:
                 st.session_state[sk] = set()
                 st.session_state[f"{sk}_confirm_clear"] = False
+                # Synchroniser les widget keys
+                for wk in list(st.session_state.keys()):
+                    if wk.startswith(f"{sk}_cat_") or wk.startswith(f"{sk}_mode_"):
+                        st.session_state[wk] = False
 
             def _cancel_clear_g(sk: str = session_key) -> None:
                 st.session_state[f"{sk}_confirm_clear"] = False

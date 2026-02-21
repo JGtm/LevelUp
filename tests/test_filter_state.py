@@ -264,6 +264,55 @@ class TestFilterPersistence:
             "Ranked",
         }
 
+    def test_save_updates_exclusions_in_session_state(self, temp_filters_dir, monkeypatch):
+        """Save met à jour _*_exclusions dans session_state pour la réconciliation mid-session."""
+        import streamlit as st
+
+        session_state: dict = {}
+        monkeypatch.setattr(st, "session_state", session_state)
+
+        all_maps = ["Map1", "Map2", "Map3", "Map4", "Map5"]
+
+        # Utilisateur coche tout sauf Map2 (4/5 = 80% → exclude)
+        session_state["filter_maps"] = {"Map1", "Map3", "Map4", "Map5"}
+        session_state["_maps_filter_mode"] = "include"
+
+        save_filter_preferences("p1", all_maps=all_maps)
+
+        # Vérifier que les exclusions sont mises à jour dans session_state
+        assert session_state["_maps_exclusions"] == {"Map2"}
+        assert session_state["_maps_filter_mode"] == "exclude"
+
+    def test_mid_session_uncheck_not_reverted_by_reconcile(self, temp_filters_dir, monkeypatch):
+        """Décocher une carte mid-session ne doit PAS être annulé par _reconcile_filter_options."""
+        import streamlit as st
+
+        from src.app.filters_render import _reconcile_filter_options
+
+        session_state: dict = {}
+        monkeypatch.setattr(st, "session_state", session_state)
+
+        all_maps = ["Map1", "Map2", "Map3", "Map4", "Map5"]
+
+        # Simuler : utilisateur a tout coché sauf Map2 (exclude mode)
+        session_state["filter_maps"] = {"Map1", "Map3", "Map4", "Map5"}
+        session_state["_maps_filter_mode"] = "exclude"
+        session_state["_maps_exclusions"] = {"Map2"}
+
+        # Utilisateur décoche Map3 mid-session
+        session_state["filter_maps"] = {"Map1", "Map4", "Map5"}
+
+        # Save met à jour les exclusions (Map2 + Map3)
+        save_filter_preferences("p1", all_maps=all_maps)
+        assert session_state["_maps_exclusions"] == {"Map2", "Map3"}
+
+        # Réconciliation NE DOIT PAS recocher Map3
+        _reconcile_filter_options("filter_maps", all_maps, "_maps_filter_mode", "_maps_exclusions")
+
+        # Map3 doit rester décochée
+        assert "Map3" not in session_state["filter_maps"]
+        assert session_state["filter_maps"] == {"Map1", "Map4", "Map5"}
+
     def test_load_nonexistent_preferences(self, temp_filters_dir):
         """Test chargement de préférences inexistantes."""
         loaded = load_filter_preferences("nonexistent_player")
