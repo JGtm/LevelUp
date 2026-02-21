@@ -773,21 +773,16 @@ def batch_insert_pve_stats(
         (
             r.match_id,
             r.xuid,
-            r.waves_completed,
-            r.max_wave_reached,
-            r.boss_kills,
-            r.mythic_boss_kills,
             r.total_enemy_kills,
+            r.boss_kills,
             r.grunt_kills,
             r.elite_kills,
             r.jackal_kills,
             r.brute_kills,
             r.hunter_kills,
             r.skimmer_kills,
-            r.crawler_kills,
-            r.soldier_kills,
-            r.knight_kills,
-            r.warden_kills,
+            r.sentinel_kills,
+            r.marine_kills,
         )
         for r in rows
     ]
@@ -797,12 +792,10 @@ def batch_insert_pve_stats(
             """
             INSERT OR REPLACE INTO pve_match_stats (
                 match_id, xuid,
-                waves_completed, max_wave_reached,
-                boss_kills, mythic_boss_kills, total_enemy_kills,
+                total_enemy_kills, boss_kills,
                 grunt_kills, elite_kills, jackal_kills, brute_kills,
-                hunter_kills, skimmer_kills,
-                crawler_kills, soldier_kills, knight_kills, warden_kills
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                hunter_kills, skimmer_kills, sentinel_kills, marine_kills
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             values,
         )

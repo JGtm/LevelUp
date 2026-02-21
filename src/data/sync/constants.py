@@ -111,11 +111,16 @@ class PveBits:
     Indique précisément quels champs PvE ont été récupérés par l'API
     pour chaque joueur × match Firefight.
 
+    Champs validés depuis l'interface PveStats de l'API Halo Infinite :
+        Kills, Deaths, Assists, KDA, MarineKills, GruntKills, JackalKills,
+        EliteKills, BruteKills, HunterKills, SkimmerKills, SentinelKills,
+        BossKills.
+
     Usage :
         pve_conn.execute(
             "UPDATE pve_match_stats SET pve_bits = COALESCE(pve_bits, 0) | ?"
             " WHERE match_id = ?",
-            (PveBits.WAVES | PveBits.BOSS_KILLS, match_id),
+            (PveBits.BOSS_KILLS | PveBits.TOTAL_KILLS, match_id),
         )
 
     Note : Ce bitmask est indépendant de ``MatchBits.PVE_STATS`` qui est
@@ -123,28 +128,22 @@ class PveBits:
     """
 
     # ── Stats globales PvE ──────────────────────────────────────────────────
-    WAVES = 1 << 0  # 1    — waves_completed + max_wave_reached
-    BOSS_KILLS = 1 << 1  # 2    — boss_kills + mythic_boss_kills
-    TOTAL_KILLS = 1 << 2  # 4    — total_enemy_kills
+    TOTAL_KILLS = 1 << 0  # 1    — total_enemy_kills (API: Kills)
+    BOSS_KILLS = 1 << 1  # 2    — boss_kills (API: BossKills)
 
-    # ── Banished (kills par type d'ennemi) ──────────────────────────────────
-    GRUNT = 1 << 3  # 8    — grunt_kills
-    ELITE = 1 << 4  # 16   — elite_kills
-    JACKAL = 1 << 5  # 32   — jackal_kills
-    BRUTE = 1 << 6  # 64   — brute_kills
-    HUNTER = 1 << 7  # 128  — hunter_kills
-    SKIMMER = 1 << 8  # 256  — skimmer_kills
-
-    # ── Forerunners ─────────────────────────────────────────────────────────
-    CRAWLER = 1 << 9  # 512  — crawler_kills
-    SOLDIER = 1 << 10  # 1024 — soldier_kills
-    KNIGHT = 1 << 11  # 2048 — knight_kills
-    WARDEN = 1 << 12  # 4096 — warden_kills
+    # ── Kills par type d'ennemi (API confirmée) ─────────────────────────────
+    GRUNT = 1 << 2  # 4    — grunt_kills
+    ELITE = 1 << 3  # 8    — elite_kills
+    JACKAL = 1 << 4  # 16   — jackal_kills
+    BRUTE = 1 << 5  # 32   — brute_kills
+    HUNTER = 1 << 6  # 64   — hunter_kills
+    SKIMMER = 1 << 7  # 128  — skimmer_kills
+    SENTINEL = 1 << 8  # 256  — sentinel_kills
+    MARINE = 1 << 9  # 512  — marine_kills
 
     # ── Combinaisons utiles ──────────────────────────────────────────────────
-    BANISHED_FULL = GRUNT | ELITE | JACKAL | BRUTE | HUNTER | SKIMMER
-    FORERUNNER_ANY = CRAWLER | SOLDIER | KNIGHT | WARDEN
-    FULL_PVE = WAVES | BOSS_KILLS | TOTAL_KILLS | BANISHED_FULL | FORERUNNER_ANY
+    ALL_ENEMIES = GRUNT | ELITE | JACKAL | BRUTE | HUNTER | SKIMMER | SENTINEL | MARINE
+    FULL_PVE = TOTAL_KILLS | BOSS_KILLS | ALL_ENEMIES
 
 
 def compute_participant_bits_from_data(data: dict) -> int:

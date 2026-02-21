@@ -772,6 +772,62 @@ class TestIsFirefightMatch:
 
         assert _is_firefight_match({}) is False
 
+    def test_fiesta_not_firefight(self):
+        """Régression : les modes Fiesta ne doivent PAS être détectés comme Firefight."""
+        from src.data.sync.transformers import _is_firefight_match
+
+        # Arena Super Fiesta
+        info = {
+            "Playlist": {"PublicName": "Quick Play"},
+            "UgcGameVariant": {"PublicName": "Slayer:Arena Super Fiesta"},
+        }
+        assert _is_firefight_match(info) is False
+
+        # BTB Fiesta Slayer
+        info2 = {
+            "Playlist": {"PublicName": "Big Team Battle"},
+            "UgcGameVariant": {"PublicName": "BTB:Fiesta Slayer"},
+        }
+        assert _is_firefight_match(info2) is False
+
+        # BTB Fiesta CTF
+        info3 = {
+            "Playlist": {"PublicName": "Big Team Battle"},
+            "UgcGameVariant": {"PublicName": "BTB:Fiesta CTF"},
+        }
+        assert _is_firefight_match(info3) is False
+
+    def test_firefight_category_42_validated(self):
+        """Category 42 est le vrai ID Firefight (validé sur match réel 8c12fd58, avr 2025)."""
+        from src.data.sync.transformers import _is_firefight_match
+
+        info = {"GameVariantCategory": 42}
+        assert _is_firefight_match(info) is True
+
+    def test_firefight_category_41_validated(self):
+        """Category 41 est un autre ID Firefight (validé sur match réel edc5daf6, nov 2025)."""
+        from src.data.sync.transformers import _is_firefight_match
+
+        # Firefight:Battle of the Academy — category 41, Playlist/Variant sans PublicName
+        info = {
+            "GameVariantCategory": 41,
+            "Playlist": {"AssetKind": 0, "AssetId": "xxx", "VersionId": "yyy"},
+            "UgcGameVariant": {"AssetKind": 0, "AssetId": "xxx", "VersionId": "yyy"},
+        }
+        assert _is_firefight_match(info) is True
+
+    def test_firefight_category_9_not_firefight(self):
+        """Category 9 (anciennement hypothétique) ne doit PAS être détecté comme Firefight."""
+        from src.data.sync.transformers import _is_firefight_match
+
+        # Category 9 seule, playlist non-Firefight
+        info = {
+            "GameVariantCategory": 9,
+            "Playlist": {"PublicName": "Quick Play"},
+            "UgcGameVariant": {"PublicName": "Slayer:Arena Super Fiesta"},
+        }
+        assert _is_firefight_match(info) is False
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Tests _extract_mmr_from_skill

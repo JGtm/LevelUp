@@ -1869,9 +1869,16 @@ def _extract_team_scores_by_id(
 # Extraction stats PvE / Firefight (v5.2)
 # =============================================================================
 
-# IDs GameVariantCategory pour Firefight (à valider avec JSON réel en Phase 1)
-# ⚠️ Ces valeurs sont HYPOTHÉTIQUES — mettre à jour après capture d'un JSON Firefight réel.
-_FIREFIGHT_CATEGORY_IDS: frozenset[int] = frozenset({9, 24})
+# IDs GameVariantCategory pour Firefight — VALIDÉS sur JSON API réels.
+# 42 = Firefight (confirmé sur match 8c12fd58, Gruntpocalypse:Heroic KOTH, avr 2025).
+# Les anciens IDs {9, 24} ont été retirés car hypothétiques et causaient des
+# faux positifs (Fiesta, BTB Flood Gulch marqués Firefight).
+_FIREFIGHT_CATEGORY_IDS: frozenset[int] = frozenset(
+    {
+        41,  # Firefight (Battle of the Academy, confirmé match edc5daf6 Nov 2025)
+        42,  # Gruntpocalypse / Firefight KOTH (confirmé match 8c12fd58 Apr 2025)
+    }
+)
 
 
 def _is_firefight_match(match_info: dict[str, Any]) -> bool:
@@ -1914,10 +1921,9 @@ def _find_pve_stats_dict(player_obj: dict[str, Any]) -> dict[str, Any] | None:
     """Trouve le dictionnaire contenant les stats PvE dans PlayerTeamStats.
 
     Parcourt récursivement PlayerTeamStats pour trouver le bloc de stats PvE.
-    Cherche les clés connues (EliminationStats, PveStats, FirefightStats) en
-    priorité, puis détecte par présence de clés caractéristiques.
-
-    ⚠️ Les noms de blocs sont hypothétiques — à valider avec un JSON réel (Phase 1).
+    Cherche les clés connues (PveStats, EliminationStats, FirefightStats) en
+    priorité, puis détecte par présence de clés caractéristiques de l'API
+    PveStats (Kills, BossKills, GruntKills, etc.).
 
     Args:
         player_obj: Objet joueur du JSON API (Players[]).
@@ -1925,8 +1931,11 @@ def _find_pve_stats_dict(player_obj: dict[str, Any]) -> dict[str, Any] | None:
     Returns:
         Dict des stats PvE ou None si non trouvé.
     """
-    _pve_keys = {"WavesCompleted", "BossKills", "TotalEnemyKills", "MaxWaveReached"}
-    _known_block_names = {"EliminationStats", "PveStats", "FirefightStats", "SurvivalStats"}
+    # Clés confirmées de l'interface PveStats de l'API
+    _pve_keys = {"BossKills", "GruntKills", "EliteKills", "SentinelKills", "MarineKills"}
+    # Liste ordonnée — PveStats en premier pour éviter de retourner EliminationStats
+    # quand les deux coexistent dans Stats (confirmé sur matchs Firefight 2025).
+    _known_block_names = ["PveStats", "FirefightStats", "SurvivalStats", "EliminationStats"]
 
     def _find(x: Any) -> dict[str, Any] | None:
         if isinstance(x, dict):
@@ -1957,11 +1966,9 @@ def _find_pve_stats_dict(player_obj: dict[str, Any]) -> dict[str, Any] | None:
 def _extract_enemy_kills_by_type(pve_dict: dict[str, Any]) -> dict[str, int]:
     """Extrait les kills par type d'ennemi depuis le bloc PvE.
 
-    Gère deux structures possibles :
-    - Champs directs : GruntKills, EliteKills, etc.
-    - Sous-dict : EnemyKillsByType.{Grunt, Elite, ...}
-
-    ⚠️ Les noms de champs sont hypothétiques — à valider avec un JSON réel (Phase 1).
+    Champs validés depuis l'interface PveStats de l'API Halo Infinite :
+        GruntKills, EliteKills, JackalKills, BruteKills, HunterKills,
+        SkimmerKills, SentinelKills, MarineKills.
 
     Args:
         pve_dict: Dictionnaire des stats PvE.
@@ -1969,9 +1976,7 @@ def _extract_enemy_kills_by_type(pve_dict: dict[str, Any]) -> dict[str, int]:
     Returns:
         Dict {enemy_type: kill_count}.
     """
-    result: dict[str, int] = {}
-
-    # Structure 1 : champs directs (GruntKills, EliteKills, etc.)
+    # Mapping interne → clé(s) API possibles
     direct_mappings: dict[str, list[str]] = {
         "grunt": ["GruntKills", "Grunts"],
         "elite": ["EliteKills", "Elites"],
@@ -1979,29 +1984,17 @@ def _extract_enemy_kills_by_type(pve_dict: dict[str, Any]) -> dict[str, int]:
         "brute": ["BruteKills", "Brutes"],
         "hunter": ["HunterKills", "Hunters"],
         "skimmer": ["SkimmerKills", "Skimmers"],
-        "crawler": ["CrawlerKills", "Crawlers"],
-        "soldier": ["SoldierKills", "Soldiers"],
-        "knight": ["KnightKills", "Knights"],
-        "warden": ["WardenKills", "Wardens"],
+        "sentinel": ["SentinelKills", "Sentinels"],
+        "marine": ["MarineKills", "Marines"],
     }
 
+    result: dict[str, int] = {}
     for enemy_type, api_keys in direct_mappings.items():
         for key in api_keys:
             val = pve_dict.get(key)
             if val is not None:
                 result[enemy_type] = _safe_int(val) or 0
                 break
-
-    # Structure 2 : sous-dictionnaire EnemyKillsByType / KillsByEnemyType
-    by_type = pve_dict.get("EnemyKillsByType") or pve_dict.get("KillsByEnemyType")
-    if isinstance(by_type, dict):
-        for enemy_type in direct_mappings:
-            if enemy_type not in result:  # Ne pas écraser ce qu'on a déjà trouvé
-                for key in [enemy_type.capitalize(), enemy_type.upper(), enemy_type]:
-                    val = by_type.get(key)
-                    if val is not None:
-                        result[enemy_type] = _safe_int(val) or 0
-                        break
 
     return result
 
@@ -2059,21 +2052,16 @@ def extract_pve_stats(match_json: dict[str, Any]) -> list[PveMatchStatsRow]:
             PveMatchStatsRow(
                 match_id=match_id,
                 xuid=xuid,
-                waves_completed=_safe_int(pve_dict.get("WavesCompleted")),
-                max_wave_reached=_safe_int(pve_dict.get("MaxWaveReached")),
+                total_enemy_kills=_safe_int(pve_dict.get("Kills")),
                 boss_kills=_safe_int(pve_dict.get("BossKills")),
-                mythic_boss_kills=_safe_int(pve_dict.get("MythicBossKills")),
-                total_enemy_kills=_safe_int(pve_dict.get("TotalEnemyKills")),
                 grunt_kills=enemy_kills.get("grunt", 0),
                 elite_kills=enemy_kills.get("elite", 0),
                 jackal_kills=enemy_kills.get("jackal", 0),
                 brute_kills=enemy_kills.get("brute", 0),
                 hunter_kills=enemy_kills.get("hunter", 0),
                 skimmer_kills=enemy_kills.get("skimmer", 0),
-                crawler_kills=enemy_kills.get("crawler", 0),
-                soldier_kills=enemy_kills.get("soldier", 0),
-                knight_kills=enemy_kills.get("knight", 0),
-                warden_kills=enemy_kills.get("warden", 0),
+                sentinel_kills=enemy_kills.get("sentinel", 0),
+                marine_kills=enemy_kills.get("marine", 0),
             )
         )
 
