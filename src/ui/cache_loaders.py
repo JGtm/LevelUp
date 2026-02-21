@@ -110,17 +110,40 @@ def _to_polars(df: object) -> pl.DataFrame:
         return pl.DataFrame()
 
 
-def db_cache_key(db_path: str) -> tuple[int, int] | None:
-    """Retourne une signature stable de la DB pour invalider les caches.
+def db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
+    """Retourne une signature stable des DBs pour invalider les caches.
 
-    On utilise (mtime_ns, size) : rapide et suffisamment fiable pour détecter
-    les mises à jour de la DB OpenSpartan.
+    Surveille à la fois *stats.duckdb* (player) ET *shared_matches.duckdb*
+    (matchs partagés v5) : les nouveaux matchs sont écrits dans shared, pas
+    dans stats. Sans ce second composant, le cache @st.cache_data ne voit
+    pas les matchs ajoutés après la dernière lecture.
+
+    Returns:
+        (mtime_ns_player, size_player, mtime_ns_shared, size_shared) ou None.
     """
     try:
         st_ = os.stat(db_path)
     except OSError:
         return None
-    return int(getattr(st_, "st_mtime_ns", int(st_.st_mtime * 1e9))), int(st_.st_size)
+
+    mtime_player = int(getattr(st_, "st_mtime_ns", int(st_.st_mtime * 1e9)))
+    size_player = int(st_.st_size)
+
+    # Chemin shared_matches.duckdb déduit du chemin joueur
+    mtime_shared = 0
+    size_shared = 0
+    try:
+        from src.utils.paths import get_shared_matches_path_from_player
+
+        shared_path = get_shared_matches_path_from_player(db_path)
+        if shared_path and shared_path.exists():
+            st_shared = os.stat(shared_path)
+            mtime_shared = int(getattr(st_shared, "st_mtime_ns", int(st_shared.st_mtime * 1e9)))
+            size_shared = int(st_shared.st_size)
+    except Exception:
+        pass
+
+    return mtime_player, size_player, mtime_shared, size_shared
 
 
 def _is_duckdb_v4_path(db_path: str) -> bool:
