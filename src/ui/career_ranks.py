@@ -1,19 +1,19 @@
 """Helper pour gérer les Career Ranks Halo Infinite.
 
-Ce module charge les métadonnées des rangs depuis le cache local
+Ce module charge les métadonnées des rangs depuis metadata.duckdb
 et fournit des fonctions pour afficher le rang d'un joueur.
 
 Données requises:
-- data/cache/career_ranks_metadata.json (métadonnées des 272 rangs)
+- data/warehouse/metadata.duckdb (table career_ranks, 272 rangs)
 - data/cache/career_ranks/ (icônes PNG optionnelles)
 
 Usage:
     from src.ui.career_ranks import get_rank_info, get_rank_icon_path
-    
+
     # Si on connaît le numéro de rang du joueur (1-272):
     info = get_rank_info(150)
     print(f"{info.full_label_fr}: {info.xp_required} XP")
-    
+
     # Récupérer le chemin local de l'icône:
     icon_path = get_rank_icon_path(150)
     if icon_path:
@@ -22,11 +22,10 @@ Usage:
 
 from __future__ import annotations
 
-import json
+import logging
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
 
 
 _CAREER_RANK_TIER_FR: dict[str, str] = {
@@ -146,59 +145,54 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _get_metadata_path() -> Path:
-    return _repo_root() / "data" / "cache" / "career_ranks_metadata.json"
-
-
 def _get_icons_dir() -> Path:
     return _repo_root() / "data" / "cache" / "career_ranks"
 
 
-@lru_cache(maxsize=1)
-def _load_ranks_metadata() -> dict[str, Any]:
-    """Charge les métadonnées des rangs depuis le cache."""
-    path = _get_metadata_path()
-    if not path.exists():
-        return {}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
 def _build_ranks_lookup() -> dict[int, CareerRankInfo]:
-    """Construit un dict de lookup rank_number -> CareerRankInfo."""
-    metadata = _load_ranks_metadata()
-    ranks = metadata.get("Ranks", [])
-    
+    """Construit le lookup depuis metadata.duckdb (table career_ranks)."""
+    import duckdb
+
+    db_path = _repo_root() / "data" / "warehouse" / "metadata.duckdb"
+    if not db_path.exists():
+        logger.warning("metadata.duckdb introuvable : %s", db_path)
+        return {}
+
+    conn = duckdb.connect(str(db_path), read_only=True)
+    try:
+        # Vérifier que la table existe
+        tables = {
+            row[0]
+            for row in conn.execute(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'main'"
+            ).fetchall()
+        }
+        if "career_ranks" not in tables:
+            logger.warning("Table career_ranks absente de metadata.duckdb")
+            return {}
+
+        rows = conn.execute(
+            "SELECT rank_id, title_en, subtitle_en, tier, xp_required, large_icon_path "
+            "FROM career_ranks ORDER BY rank_id"
+        ).fetchall()
+    finally:
+        conn.close()
+
     lookup: dict[int, CareerRankInfo] = {}
-    
-    for rank_data in ranks:
-        rank_num = rank_data.get("Rank", 0)
-        
-        title_obj = rank_data.get("RankTitle", {})
-        title = title_obj.get("value", "") if isinstance(title_obj, dict) else str(title_obj or "")
-        
-        subtitle_obj = rank_data.get("RankSubTitle", {})
-        subtitle = subtitle_obj.get("value", "") if isinstance(subtitle_obj, dict) else str(subtitle_obj or "")
-        
-        tier_obj = rank_data.get("RankTier", {})
-        tier = tier_obj.get("value", "") if isinstance(tier_obj, dict) else str(tier_obj or "")
-        
-        icon_large = rank_data.get("RankLargeIcon", "")
-        xp_required = rank_data.get("XpRequiredForRank", 0)
-        
-        info = CareerRankInfo(
-            rank_number=rank_num,
+    for rank_id, title, subtitle, tier, xp_req, large_icon in rows:
+        lookup[rank_id] = CareerRankInfo(
+            rank_number=rank_id,
             title=title,
-            subtitle=subtitle if subtitle else None,
-            tier=tier if tier else None,
-            xp_required=xp_required,
-            icon_path_remote=icon_large,
+            subtitle=subtitle or None,
+            tier=tier or None,
+            xp_required=xp_req,
+            icon_path_remote=large_icon or "",
         )
-        lookup[rank_num] = info
-    
     return lookup
 
 
@@ -284,5 +278,21 @@ def count_cached_icons() -> int:
 
 
 def is_metadata_available() -> bool:
-    """Vérifie si les métadonnées des rangs sont disponibles."""
-    return _get_metadata_path().exists()
+    """Vérifie si les métadonnées des rangs sont disponibles dans metadata.duckdb."""
+    import duckdb
+
+    db_path = _repo_root() / "data" / "warehouse" / "metadata.duckdb"
+    if not db_path.exists():
+        return False
+    try:
+        conn = duckdb.connect(str(db_path), read_only=True)
+        try:
+            count = conn.execute(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_name = 'career_ranks'"
+            ).fetchone()[0]
+            return count > 0
+        finally:
+            conn.close()
+    except Exception:
+        return False
