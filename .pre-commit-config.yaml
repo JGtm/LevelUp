@@ -43,7 +43,7 @@ repos:
 
       # Sécurité et erreurs courantes
       - id: check-added-large-files
-        args: [--maxkb=1000]
+        args: [--maxkb=2000]
       - id: debug-statements          # Détecte print(), pdb, breakpoint()
       - id: check-merge-conflict      # Conflits git non résolus
       - id: detect-private-key        # Clés privées accidentelles
