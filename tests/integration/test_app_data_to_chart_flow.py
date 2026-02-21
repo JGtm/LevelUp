@@ -326,7 +326,7 @@ def test_app_data_to_chart_flow(app_flow_dbs) -> None:
             }
         )
 
-        fb, clutch, casualty, scores = get_all_impact_events(
+        fb, clutch, casualty, _last_group_kills, _first_group_deaths, scores = get_all_impact_events(
             events_df,
             matches_df,
             friend_xuids={"x_me", "x_friend"},
@@ -337,6 +337,8 @@ def test_app_data_to_chart_flow(app_flow_dbs) -> None:
             fb,
             clutch,
             casualty,
+            _last_group_kills,
+            _first_group_deaths,
             match_ids=["m1", "m2"],
             gamertags=sorted(scores.keys()),
         )
