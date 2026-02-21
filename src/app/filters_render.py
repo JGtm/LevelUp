@@ -261,6 +261,21 @@ def render_filters_sidebar(
                     all_maps=_all_maps,
                     all_experience_types=_all_exp_types,
                 )
+                # Si l'utilisateur suivait la dernière session (tracking), on ré-applique
+                # _apply_default_last_session pour pointer vers la vraie dernière session
+                # (au cas où de nouvelles sessions ont été créées depuis la sauvegarde).
+                # Deux cas :
+                #   1. Prefs récentes : picked == latest → l'utilisateur était sur la dernière
+                #   2. Prefs anciennes (latest=None) : on assume "suivre la dernière" par défaut
+                if (
+                    prefs.filter_mode == "Sessions"
+                    and prefs.picked_session_label is not None
+                    and (
+                        prefs.picked_session_label == prefs.latest_session_label
+                        or prefs.latest_session_label is None  # rétrocompat : anciennes prefs
+                    )
+                ):
+                    _apply_default_last_session(db_path, xuid, db_key, aliases_key)
             else:
                 # Aucun filtre en mémoire → charger par défaut la dernière session du joueur
                 _apply_default_last_session(db_path, xuid, db_key, aliases_key)
@@ -754,7 +769,7 @@ def _render_cascade_filters(
         dropdown_base, experience_selected, playlist_values_all
     )
 
-    # ── Playlists ─────────────────────────────────────────────────────────────
+    # ── Options complètes (base pour réconciliation + sauvegarde) ────────────
     playlist_values = sorted(
         {
             str(x).strip()
@@ -767,24 +782,6 @@ def _render_cascade_filters(
         p for p in playlist_values if p not in preferred_order
     ]
 
-    firefight_playlists = get_firefight_playlists(playlist_values)
-
-    # Réconciliation mid-session avant rendu
-    _reconcile_filter_options(
-        "filter_playlists",
-        playlist_values,
-        "_playlists_filter_mode",
-        "_playlists_exclusions",
-    )
-    playlists_selected = render_checkbox_filter(
-        label="Playlists",
-        options=playlist_values,
-        session_key="filter_playlists",
-        default_unchecked=firefight_playlists,
-        expanded=False,
-    )
-
-    # ── Modes (depuis dropdown_base_filtered complet, sans cascade playlist) ──
     mode_values = sorted(
         {
             str(x).strip()
@@ -793,20 +790,6 @@ def _render_cascade_filters(
         }
     )
 
-    _reconcile_filter_options(
-        "filter_modes",
-        mode_values,
-        "_modes_filter_mode",
-        "_modes_exclusions",
-    )
-    modes_selected = render_hierarchical_checkbox_filter(
-        label="Modes",
-        options=mode_values,
-        session_key="filter_modes",
-        expanded=False,
-    )
-
-    # ── Cartes (depuis dropdown_base_filtered complet, sans cascade mode) ─────
     map_values = sorted(
         {
             str(x).strip()
@@ -815,27 +798,127 @@ def _render_cascade_filters(
         }
     )
 
+    # Réconciliation mid-session avec options COMPLÈTES (détecte les vraiment nouvelles)
+    _reconcile_filter_options(
+        "filter_playlists",
+        playlist_values,
+        "_playlists_filter_mode",
+        "_playlists_exclusions",
+    )
+    _reconcile_filter_options(
+        "filter_modes",
+        mode_values,
+        "_modes_filter_mode",
+        "_modes_exclusions",
+    )
     _reconcile_filter_options(
         "filter_maps",
         map_values,
         "_maps_filter_mode",
         "_maps_exclusions",
     )
-    maps_selected = render_checkbox_filter(
+
+    # ── Filtrage facetté (v5.3) ───────────────────────────────────────────────
+    # Chaque dimension n'affiche que les options ayant ≥1 match dans le contexte
+    # des sélections actives dans les AUTRES dimensions.
+    # None = sentinelle "dimension non encore initialisée" → aucun filtre appliqué.
+    _sel_modes = st.session_state.get("filter_modes")
+    _sel_maps = st.session_state.get("filter_maps")
+    _sel_playlists = st.session_state.get("filter_playlists")
+
+    # Playlists facettées : filtré par modes + cartes actuels
+    _base_pl = dropdown_base_filtered
+    if _sel_modes is not None and "mode_ui" in _base_pl.columns:
+        _base_pl = _base_pl.filter(
+            pl.col("mode_ui").is_in(list(_sel_modes)) | pl.col("mode_ui").is_null()
+        )
+    if _sel_maps is not None and "map_ui" in _base_pl.columns:
+        _base_pl = _base_pl.filter(
+            pl.col("map_ui").is_in(list(_sel_maps)) | pl.col("map_ui").is_null()
+        )
+    playlist_values_faceted = sorted(
+        {str(x).strip() for x in _base_pl["playlist_ui"].drop_nulls().to_list() if str(x).strip()}
+    )
+    playlist_values_faceted = [p for p in preferred_order if p in playlist_values_faceted] + [
+        p for p in playlist_values_faceted if p not in preferred_order
+    ]
+
+    # Modes facettés : filtré par playlists + cartes actuels
+    _base_mo = dropdown_base_filtered
+    if _sel_playlists is not None and "playlist_ui" in _base_mo.columns:
+        _base_mo = _base_mo.filter(
+            pl.col("playlist_ui").is_in(list(_sel_playlists)) | pl.col("playlist_ui").is_null()
+        )
+    if _sel_maps is not None and "map_ui" in _base_mo.columns:
+        _base_mo = _base_mo.filter(
+            pl.col("map_ui").is_in(list(_sel_maps)) | pl.col("map_ui").is_null()
+        )
+    mode_values_faceted = sorted(
+        {str(x).strip() for x in _base_mo["mode_ui"].drop_nulls().to_list() if str(x).strip()}
+    )
+
+    # Cartes facettées : filtré par playlists + modes actuels
+    _base_ma = dropdown_base_filtered
+    if _sel_playlists is not None and "playlist_ui" in _base_ma.columns:
+        _base_ma = _base_ma.filter(
+            pl.col("playlist_ui").is_in(list(_sel_playlists)) | pl.col("playlist_ui").is_null()
+        )
+    if _sel_modes is not None and "mode_ui" in _base_ma.columns:
+        _base_ma = _base_ma.filter(
+            pl.col("mode_ui").is_in(list(_sel_modes)) | pl.col("mode_ui").is_null()
+        )
+    map_values_faceted = sorted(
+        {str(x).strip() for x in _base_ma["map_ui"].drop_nulls().to_list() if str(x).strip()}
+    )
+
+    # ── Playlists — rendu facetté avec Save-Render-Restore ────────────────────
+    # render_checkbox_filter fait current & set(options) : sans restauration, les
+    # items temporairement cachés seraient perdus de session_state.
+    _hidden_playlists = st.session_state.get("filter_playlists", set()) - set(
+        playlist_values_faceted
+    )
+    render_checkbox_filter(
+        label="Playlists",
+        options=playlist_values_faceted,
+        session_key="filter_playlists",
+        default_unchecked=get_firefight_playlists(playlist_values_faceted),
+        expanded=False,
+    )
+    st.session_state["filter_playlists"] = (
+        st.session_state.get("filter_playlists", set()) | _hidden_playlists
+    )
+    playlists_selected = st.session_state["filter_playlists"]
+
+    # ── Modes — rendu facetté avec Save-Render-Restore ────────────────────────
+    _hidden_modes = st.session_state.get("filter_modes", set()) - set(mode_values_faceted)
+    render_hierarchical_checkbox_filter(
+        label="Modes",
+        options=mode_values_faceted,
+        session_key="filter_modes",
+        expanded=False,
+    )
+    st.session_state["filter_modes"] = st.session_state.get("filter_modes", set()) | _hidden_modes
+    modes_selected = st.session_state["filter_modes"]
+
+    # ── Cartes — rendu facetté avec Save-Render-Restore ──────────────────────
+    _hidden_maps = st.session_state.get("filter_maps", set()) - set(map_values_faceted)
+    render_checkbox_filter(
         label="Cartes",
-        options=map_values,
+        options=map_values_faceted,
         session_key="filter_maps",
         expanded=False,
     )
+    st.session_state["filter_maps"] = st.session_state.get("filter_maps", set()) | _hidden_maps
+    maps_selected = st.session_state["filter_maps"]
 
     return (
         playlists_selected,
         modes_selected,
         maps_selected,
         experience_selected,
-        playlist_values,
-        mode_values,
-        map_values,
+        playlist_values,  # COMPLET — utilisé pour save_filter_preferences
+        mode_values,  # COMPLET
+        map_values,  # COMPLET
         exp_values,
     )
 
