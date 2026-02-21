@@ -19,7 +19,6 @@ from src.config import (
     DEFAULT_PLAYER_GAMERTAG,
     DEFAULT_PLAYER_XUID,
     DEFAULT_WAYPOINT_PLAYER,
-    get_aliases_file_path,
 )
 from src.utils import guess_xuid_from_db_path, infer_spnkr_player_from_db_path
 
@@ -195,17 +194,17 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
         st.session_state["waypoint_player"] = identity.waypoint_player
 
 
-def get_db_cache_key(db_path: str) -> tuple[int, int] | None:
+def get_db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
     """Retourne une signature stable de la DB pour invalider les caches.
 
-    Sprint 19 : délègue à db_cache_key() canonique (cache_loaders.py)
-    pour éviter la duplication de logique.
+    Délègue à db_cache_key() canonique (cache_loaders.py).
+    Surveille player DB + shared_matches.duckdb.
 
     Args:
-        db_path: Chemin vers la base de données.
+        db_path: Chemin vers la base de données joueur.
 
     Returns:
-        Tuple (mtime_ns, size) ou None si fichier inexistant.
+        Tuple (mtime_ns_player, size_player, mtime_ns_shared, size_shared) ou None.
     """
     from src.ui.cache_loaders import db_cache_key
 
@@ -213,17 +212,12 @@ def get_db_cache_key(db_path: str) -> tuple[int, int] | None:
 
 
 def get_aliases_cache_key() -> int | None:
-    """Retourne une clé de cache basée sur le fichier d'alias.
+    """Retourne toujours None depuis v5.2 (plus de fichier xuid_aliases.json).
 
-    Returns:
-        mtime_ns du fichier ou None si inexistant.
+    Les aliases sont désormais exclusivement dans shared_matches.duckdb.
+    L'invalidation de cache se fait via db_cache_key() sur la DB.
     """
-    try:
-        p = get_aliases_file_path()
-        st_ = os.stat(p)
-        return int(getattr(st_, "st_mtime_ns", int(st_.st_mtime * 1e9)))
-    except OSError:
-        return None
+    return None
 
 
 def propagate_env_defaults() -> None:

@@ -85,7 +85,6 @@ from src.app.page_router import (
 
 # Imports depuis la nouvelle architecture
 from src.config import (
-    get_aliases_file_path,
     get_default_db_path,
 )
 from src.ui import (
@@ -222,12 +221,8 @@ _clear_app_caches = clear_app_caches
 
 
 def _aliases_cache_key() -> int | None:
-    try:
-        p = get_aliases_file_path()
-        st_ = os.stat(p)
-        return int(getattr(st_, "st_mtime_ns", int(st_.st_mtime * 1e9)))
-    except OSError:
-        return None
+    """Retourne toujours None depuis v5.2 (plus de fichier xuid_aliases.json)."""
+    return None
 
 
 def _background_media_indexing(settings, db_path: str) -> None:

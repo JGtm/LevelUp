@@ -137,7 +137,9 @@ def build_friends_opts_map(
             ordered.append(xx)
             seen.add(xx)
 
-    opts_map = build_xuid_option_map(ordered, display_name_fn=display_name_from_xuid)
+    opts_map = build_xuid_option_map(
+        ordered, display_name_fn=lambda x: display_name_from_xuid(x, db_path=db_path)
+    )
 
     # Defaults: top 2, ou override local.
     default_xuids = list(default_two)
@@ -145,7 +147,9 @@ def build_friends_opts_map(
         overrides = _load_local_friends_defaults().get(str(self_xuid).strip())
         if overrides:
             name_to_xuid = {
-                str(display_name_from_xuid(xu) or "").strip().casefold(): str(xu).strip()
+                str(display_name_from_xuid(xu, db_path=db_path) or "").strip().casefold(): str(
+                    xu
+                ).strip()
                 for xu in ordered
             }
             ordered_xuids = [str(xu).strip() for xu in ordered]

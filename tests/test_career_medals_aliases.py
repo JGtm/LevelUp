@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 from unittest.mock import patch
 
@@ -147,8 +146,7 @@ from src.ui.aliases import (
 from src.ui.aliases import (
     _safe_mtime,
     display_name_from_xuid,
-    load_aliases_file,
-    save_aliases_file,
+    get_xuid_aliases,
 )
 
 
@@ -171,71 +169,53 @@ class TestSafeMtime:
         assert isinstance(result, float)
 
 
-class TestLoadAliasesFile:
-    def test_load_from_file(self, tmp_path):
-        alias_file = tmp_path / "aliases.json"
-        alias_file.write_text(json.dumps({"123": "TestGT", "456": "OtherGT"}))
-        result = load_aliases_file(str(alias_file))
-        assert result["123"] == "TestGT"
-        assert result["456"] == "OtherGT"
+class TestGetXuidAliasesDbOnly:
+    """Vérifie que get_xuid_aliases n'utilise plus xuid_aliases.json (v5.2)."""
 
-    def test_nonexistent_file(self, tmp_path):
-        result = load_aliases_file(str(tmp_path / "nope.json"))
+    def test_uses_db_when_db_path_given(self):
+        """Quand db_path est fourni, la DB est consultée."""
+        with patch("src.ui.aliases.load_aliases_from_db", return_value={"xuid1": "GT_From_DB"}):
+            result = get_xuid_aliases(db_path="some.duckdb")
+        assert result.get("xuid1") == "GT_From_DB"
+
+    def test_returns_only_default_when_no_db_path(self, monkeypatch):
+        """Sans db_path, seuls XUID_ALIASES_DEFAULT sont retournés."""
+        monkeypatch.setattr("src.ui.aliases.XUID_ALIASES_DEFAULT", {})
+        result = get_xuid_aliases()
         assert result == {}
 
-    def test_invalid_json(self, tmp_path):
-        alias_file = tmp_path / "bad.json"
-        alias_file.write_text("not json")
-        result = load_aliases_file(str(alias_file))
-        assert result == {}
+    def test_json_file_has_no_effect(self, tmp_path, monkeypatch):
+        """Un fichier JSON présent dans le répertoire est complètement ignoré."""
+        json_file = tmp_path / "xuid_aliases.json"
+        json_file.write_text('{"json_xuid": "JSON_Gamertag"}')
+        monkeypatch.setattr("src.ui.aliases.XUID_ALIASES_DEFAULT", {})
+        # Pas de db_path → seul DEFAULT est utilisé, pas le JSON
+        result = get_xuid_aliases()
+        assert "json_xuid" not in result
 
-    def test_not_dict(self, tmp_path):
-        alias_file = tmp_path / "arr.json"
-        alias_file.write_text(json.dumps([1, 2, 3]))
-        result = load_aliases_file(str(alias_file))
-        assert result == {}
-
-
-class TestSaveAliasesFile:
-    def test_save_and_load(self, tmp_path):
-        alias_file = tmp_path / "aliases.json"
-        data = {"111": "Player1", "222": "Player2"}
-        save_aliases_file(data, str(alias_file))
-        assert alias_file.exists()
-        loaded = json.loads(alias_file.read_text(encoding="utf-8"))
-        assert loaded == {"111": "Player1", "222": "Player2"}
+    def test_db_has_priority_over_default(self, monkeypatch):
+        """La DB écrase XUID_ALIASES_DEFAULT si la même clé existe."""
+        monkeypatch.setattr("src.ui.aliases.XUID_ALIASES_DEFAULT", {"shared_xuid": "Default_GT"})
+        with patch("src.ui.aliases.load_aliases_from_db", return_value={"shared_xuid": "DB_GT"}):
+            result = get_xuid_aliases(db_path="some.duckdb")
+        assert result["shared_xuid"] == "DB_GT"
 
 
 class TestDisplayNameFromXuid:
-    def test_known_xuid(self, tmp_path):
-        alias_file = tmp_path / "aliases.json"
-        alias_file.write_text(json.dumps({"1234567890": "KnownGT"}))
-        with patch("src.ui.aliases.get_aliases_file_path", return_value=str(alias_file)):
-            # Invalider le cache avant le test
-            from src.ui.aliases import _load_aliases_cached
-
-            _load_aliases_cached.cache_clear()
+    def test_known_xuid(self):
+        """Résolution via get_xuid_aliases (mocké)."""
+        with patch("src.ui.aliases.get_xuid_aliases", return_value={"1234567890": "KnownGT"}):
             result = display_name_from_xuid("1234567890")
-            assert result == "KnownGT"
+        assert result == "KnownGT"
 
-    def test_unknown_xuid(self, tmp_path):
-        alias_file = tmp_path / "empty_aliases.json"
-        alias_file.write_text(json.dumps({}))
-        with patch("src.ui.aliases.get_aliases_file_path", return_value=str(alias_file)):
-            from src.ui.aliases import _load_aliases_cached
-
-            _load_aliases_cached.cache_clear()
-            # Doit retourner le xuid brut
+    def test_unknown_xuid(self):
+        """XUID inconnu → retourne le XUID brut."""
+        with patch("src.ui.aliases.get_xuid_aliases", return_value={}):
             result = display_name_from_xuid("9999999999")
-            assert result == "9999999999"
+        assert result == "9999999999"
 
-    def test_xuid_format_normalization(self, tmp_path):
+    def test_xuid_format_normalization(self):
         """Le format xuid(123) est normalisé avant lookup."""
-        alias_file = tmp_path / "norm_aliases.json"
-        alias_file.write_text(json.dumps({"123": "NormGT"}))
-        with patch("src.ui.aliases.get_aliases_file_path", return_value=str(alias_file)):
-            from src.ui.aliases import _load_aliases_cached
-
-            _load_aliases_cached.cache_clear()
+        with patch("src.ui.aliases.get_xuid_aliases", return_value={"123": "NormGT"}):
             result = display_name_from_xuid("xuid(123)")
-            assert result == "NormGT"
+        assert result == "NormGT"

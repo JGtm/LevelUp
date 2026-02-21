@@ -3,8 +3,6 @@
 from src.ui.aliases import (
     display_name_from_xuid,
     get_xuid_aliases,
-    load_aliases_file,
-    save_aliases_file,
 )
 from src.ui.formatting import format_date_fr, format_mmss
 from src.ui.medals import (
@@ -25,8 +23,6 @@ from src.ui.translations import translate_pair_name, translate_playlist_name
 
 __all__ = [
     # aliases
-    "load_aliases_file",
-    "save_aliases_file",
     "get_xuid_aliases",
     "display_name_from_xuid",
     # styles

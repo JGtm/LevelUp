@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import MagicMock, patch
-
-from src.app.state import (
-    PlayerIdentity,
-    AppState,
-    get_db_cache_key,
-    get_aliases_cache_key,
-)
 from src.app.routing import (
     Page,
     build_app_url,
+)
+from src.app.state import (
+    AppState,
+    PlayerIdentity,
+    get_db_cache_key,
 )
 
 
@@ -133,10 +129,11 @@ class TestGetDbCacheKey:
         """Test avec fichier existant."""
         db_file = tmp_path / "test.db"
         db_file.write_text("test content")
-        
+
         result = get_db_cache_key(str(db_file))
         assert result is not None
         assert isinstance(result, tuple)
-        assert len(result) == 2
-        assert isinstance(result[0], int)  # mtime_ns
-        assert isinstance(result[1], int)  # size
+        # Depuis v5 : (mtime_ns_player, size_player, mtime_ns_shared, size_shared)
+        assert len(result) == 4
+        assert isinstance(result[0], int)  # mtime_ns_player
+        assert isinstance(result[1], int)  # size_player

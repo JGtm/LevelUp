@@ -10,8 +10,6 @@ Ce module gère :
 from __future__ import annotations
 
 import os
-import subprocess
-import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -23,7 +21,6 @@ from src.config import (
     DEFAULT_PLAYER_GAMERTAG,
     DEFAULT_PLAYER_XUID,
     DEFAULT_WAYPOINT_PLAYER,
-    get_aliases_file_path,
     get_repo_root,
 )
 from src.ui import AppSettings
@@ -331,30 +328,25 @@ def validate_db_path(db_path: str, default_db: str) -> str:
 # =============================================================================
 
 
-def get_db_cache_key(db_path: str) -> tuple[int, int] | None:
-    """Retourne une clé de cache basée sur (mtime, size) du fichier DB.
+def get_db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
+    """Retourne une clé de cache basée sur player DB + shared_matches.duckdb.
 
     Args:
-        db_path: Chemin vers la base de données.
+        db_path: Chemin vers la base de données joueur.
 
     Returns:
-        Tuple (mtime_ns, size) ou None si le fichier n'existe pas.
+        Tuple (mtime_ns_player, size_player, mtime_ns_shared, size_shared) ou None.
     """
     return db_cache_key(db_path)
 
 
 def get_aliases_cache_key() -> int | None:
-    """Retourne une clé de cache pour le fichier d'alias.
+    """Retourne toujours None depuis v5.2 (plus de fichier xuid_aliases.json).
 
-    Returns:
-        Timestamp de modification ou None.
+    Les aliases sont désormais exclusivement dans shared_matches.duckdb.
+    L'invalidation de cache se fait via db_cache_key() sur la DB.
     """
-    try:
-        p = get_aliases_file_path()
-        st_ = os.stat(p)
-        return int(getattr(st_, "st_mtime_ns", int(st_.st_mtime * 1e9)))
-    except OSError:
-        return None
+    return None
 
 
 # =============================================================================

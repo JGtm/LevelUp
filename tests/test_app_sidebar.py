@@ -174,7 +174,8 @@ class TestGetDbCacheKey:
         result = get_db_cache_key(str(db_file))
         assert result is not None
         assert isinstance(result, tuple)
-        assert len(result) == 2
+        # Depuis v5 : (mtime_ns_player, size_player, mtime_ns_shared, size_shared)
+        assert len(result) == 4
 
     def test_returns_none_for_nonexistent(self):
         from src.app.data_loader import get_db_cache_key
@@ -184,13 +185,14 @@ class TestGetDbCacheKey:
 
 
 class TestGetAliasesCacheKey:
-    """Tests pour get_aliases_cache_key."""
+    """Tests pour get_aliases_cache_key (v5.2 — retourne toujours None)."""
 
-    def test_returns_int_or_none(self):
+    def test_returns_none(self):
+        """Depuis v5.2, plus de fichier JSON → toujours None."""
         from src.app.data_loader import get_aliases_cache_key
 
         result = get_aliases_cache_key()
-        assert result is None or isinstance(result, int)
+        assert result is None
 
 
 # ═══════════════════════════════════════════════════════════════════
