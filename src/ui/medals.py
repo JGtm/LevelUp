@@ -169,6 +169,7 @@ def render_medals_grid(
     medals: list[dict[str, int]],
     cols_per_row: int = 8,
     deltas: dict[int, int] | None = None,
+    center: bool = False,
 ) -> None:
     """Affiche une grille de médailles dans Streamlit.
 
@@ -176,6 +177,7 @@ def render_medals_grid(
         medals: Liste de dicts avec 'name_id' et 'count'.
         cols_per_row: Nombre de colonnes (3-12, défaut 8).
         deltas: Dict {medal_id: delta_count} pour afficher +XXX à côté du compteur.
+        center: Si True et que le nombre de médailles < cols_per_row, centre la grille.
     """
     if not medals:
         st.info("Aucune médaille.")
@@ -196,9 +198,17 @@ def render_medals_grid(
         )
 
     cols_per_row = max(3, min(int(cols_per_row), 12))
-    cols = st.columns(cols_per_row)
+    n = len(medals)
+    actual_cols = cols_per_row
+    if center and 0 < n < cols_per_row:
+        _pad = max(1, (cols_per_row - n) // 2)
+        _all_cols = st.columns([_pad] + [1] * n + [_pad])
+        cols = _all_cols[1 : 1 + n]
+        actual_cols = n
+    else:
+        cols = st.columns(cols_per_row)
     for i, m in enumerate(medals):
-        col = cols[i % cols_per_row]
+        col = cols[i % actual_cols]
         nid = int(m.get("name_id", 0))
         cnt = int(m.get("count", 0))
         name = medal_label(nid)
