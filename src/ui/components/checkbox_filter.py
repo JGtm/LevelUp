@@ -6,47 +6,7 @@ plus pratiques quand il y a beaucoup de valeurs à filtrer.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import streamlit as st
-
-# Cache pour les catégories de modes
-_MODE_CATEGORIES_CACHE: dict[str, str] | None = None
-
-
-def _load_mode_categories() -> dict[str, str]:
-    """Charge le mapping mode -> catégorie depuis le JSON.
-
-    Returns:
-        Dict {mode_fr: category} ex: {"Arène : Assassin": "Arena"}
-    """
-    global _MODE_CATEGORIES_CACHE
-    if _MODE_CATEGORIES_CACHE is not None:
-        return _MODE_CATEGORIES_CACHE
-
-    json_path = (
-        Path(__file__).parent.parent.parent.parent / "data" / "Playlist_modes_translations.json"
-    )
-    if not json_path.exists():
-        _MODE_CATEGORIES_CACHE = {}
-        return _MODE_CATEGORIES_CACHE
-
-    try:
-        with open(json_path, encoding="utf-8") as f:
-            data = json.load(f)
-
-        _MODE_CATEGORIES_CACHE = {}
-        for mode in data.get("modes", []):
-            fr_name = mode.get("fr", "")
-            category = mode.get("category", "Autre")
-            if fr_name and fr_name not in _MODE_CATEGORIES_CACHE:
-                _MODE_CATEGORIES_CACHE[fr_name] = category
-        return _MODE_CATEGORIES_CACHE
-    except Exception:
-        _MODE_CATEGORIES_CACHE = {}
-        return _MODE_CATEGORIES_CACHE
-
 
 # Mapping préfixe -> catégorie pour inférer la catégorie des modes non traduits
 # Catégories simplifiées: Assassin, Fiesta, BTB, Ranked, Firefight, Other
