@@ -388,7 +388,7 @@ def render_profile_hero(
 
 def load_match_dataframe(
     db_path: str, xuid: str, cache_buster: int = 0
-) -> tuple[pl.DataFrame, tuple[int, int] | None]:
+) -> tuple[pl.DataFrame, tuple[int, ...] | None]:
     """Charge le DataFrame des matchs.
 
     Args:
