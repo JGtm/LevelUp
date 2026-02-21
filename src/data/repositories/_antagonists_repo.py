@@ -348,4 +348,9 @@ class AntagonistsMixin:
             except Exception:
                 return False
 
-        return False
+        # Fallback table locale (compat v4)
+        try:
+            row = conn.execute("SELECT 1 FROM killer_victim_pairs LIMIT 1").fetchone()
+            return row is not None
+        except Exception:
+            return False
