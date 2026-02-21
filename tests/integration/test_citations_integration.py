@@ -32,11 +32,16 @@ def _setup_full_player_db(db_path: Path, meta_path: Path, *, n_matches: int = 20
             award_name TEXT,
             award_category TEXT,
             custom_function TEXT,
+            composite_children TEXT,
             confidence TEXT,
             notes TEXT,
             enabled BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            image_path TEXT,
+            category TEXT,
+            description TEXT,
+            tier_targets TEXT
         )
     """)
     meta_conn.executemany(

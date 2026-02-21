@@ -28,11 +28,16 @@ def metadata_conn(tmp_path: Path):
             award_name TEXT,
             award_category TEXT,
             custom_function TEXT,
+            composite_children TEXT,
             confidence TEXT,
             notes TEXT,
             enabled BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            image_path TEXT,
+            category TEXT,
+            description TEXT,
+            tier_targets TEXT
         )
     """)
     conn.execute("""
@@ -98,11 +103,16 @@ class TestCitationMappingsTable:
             "award_name",
             "award_category",
             "custom_function",
+            "composite_children",
             "confidence",
             "notes",
             "enabled",
             "created_at",
             "updated_at",
+            "image_path",
+            "category",
+            "description",
+            "tier_targets",
         ]
         assert col_names == expected
 

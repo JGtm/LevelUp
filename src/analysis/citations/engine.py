@@ -10,6 +10,7 @@ Ce module fournit ``CitationEngine``, classe responsable de :
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -181,7 +182,8 @@ class CitationEngine:
             rows = conn.execute(
                 "SELECT citation_name_norm, citation_name_display, mapping_type, "
                 "medal_id, medal_ids, stat_name, award_name, award_category, "
-                "custom_function, confidence, notes "
+                "custom_function, composite_children, confidence, notes, "
+                "image_path, category, description, tier_targets "
                 "FROM citation_mappings "
                 "WHERE enabled IS NOT FALSE"
             ).fetchall()
@@ -196,8 +198,13 @@ class CitationEngine:
                 "award_name",
                 "award_category",
                 "custom_function",
+                "composite_children",
                 "confidence",
                 "notes",
+                "image_path",
+                "category",
+                "description",
+                "tier_targets",
             ]
             self._mappings = {}
             for row in rows:
@@ -235,6 +242,10 @@ class CitationEngine:
             Valeur calculée (0 si non applicable).
         """
         mtype = mapping.get("mapping_type", "")
+
+        # Les composites ne sont pas calculées par match
+        if mtype == "composite":
+            return 0
 
         if mtype == "medal":
             # Support multi-médailles via medal_ids (comma-separated)
@@ -692,7 +703,8 @@ class CitationEngine:
     ) -> dict[str, int]:
         """Agrège toutes les citations pour affichage UI.
 
-        Wrapper simplifié de ``aggregate_citations`` sans filtrage par nom.
+        Calcule aussi les citations composites (évaluation de la maîtrise
+        des sous-citations).
 
         Args:
             match_ids: Filtrer par matchs. ``None`` = tous.
@@ -700,4 +712,28 @@ class CitationEngine:
         Returns:
             ``{citation_name_norm: total}``.
         """
-        return self.aggregate_citations(citation_names=None, match_ids=match_ids)
+        result = self.aggregate_citations(citation_names=None, match_ids=match_ids)
+
+        # Calculer les citations composites
+        mappings = self.load_mappings()
+        for norm_name, mapping in mappings.items():
+            if mapping.get("mapping_type") != "composite":
+                continue
+            children_raw = mapping.get("composite_children")
+            if not children_raw:
+                continue
+            try:
+                children = json.loads(children_raw) if isinstance(children_raw, str) else children_raw
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(children, list):
+                continue
+
+            # Compter les sous-citations qui ont atteint la maîtrise
+            # (pour l'instant on stocke la somme brute des valeurs enfants
+            # pour que l'UI puisse afficher "X/N" via les tiers du JSON H5G)
+            total = sum(result.get(child, 0) for child in children if child in mappings)
+            if total > 0:
+                result[norm_name] = total
+
+        return result

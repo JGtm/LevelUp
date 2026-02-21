@@ -412,58 +412,15 @@ def load_match_data(db_path: str, xuid: str, db_key: tuple[int, int] | None) -> 
 
 
 # =============================================================================
-# Génération automatique des références
+
+# =============================================================================
+# Génération automatique des références (LEGACY — désormais via metadata.duckdb)
 # =============================================================================
 
 
 def ensure_h5g_commendations_repo() -> None:
-    """Génère automatiquement le référentiel Citations s'il est absent.
+    """No-op : les citations sont désormais stockées dans ``citation_mappings``
+    de ``metadata.duckdb``, peuplé par ``scripts/populate_citation_mappings.py``.
 
-    Ne fait rien si :
-    - Déjà généré dans cette session
-    - Le fichier JSON existe déjà
-    - Les fichiers source (HTML, script) n'existent pas
+    Conservé pour compatibilité d'appel (ne fait plus rien).
     """
-    if st.session_state.get("_h5g_repo_ensured") is True:
-        return
-    st.session_state["_h5g_repo_ensured"] = True
-
-    try:
-        repo_root = get_repo_root(__file__)
-    except Exception:
-        repo_root = os.path.abspath(os.path.dirname(__file__))
-
-    json_path = os.path.join(repo_root, "data", "wiki", "halo5_commendations_fr.json")
-    html_path = os.path.join(repo_root, "data", "wiki", "halo5_citations_printable.html")
-    script_path = os.path.join(repo_root, "scripts", "extract_h5g_commendations_fr.py")
-
-    if os.path.exists(json_path):
-        return
-    if not (os.path.exists(html_path) and os.path.exists(script_path)):
-        return
-
-    with st.spinner("Génération du référentiel Citations (offline)…"):
-        try:
-            subprocess.run(
-                [
-                    sys.executable,
-                    script_path,
-                    "--input-html",
-                    html_path,
-                    "--clean-output",
-                    "--exclude",
-                    os.path.join(repo_root, "data", "wiki", "halo5_commendations_exclude.json"),
-                ],
-                check=True,
-                cwd=repo_root,
-                capture_output=True,
-                text=True,
-            )
-            try:
-                from src.ui.commendations import load_h5g_commendations_json
-
-                load_h5g_commendations_json.clear()
-            except Exception:
-                pass
-        except Exception:
-            return

@@ -28,11 +28,16 @@ def _create_metadata_db(path: Path) -> None:
             award_name TEXT,
             award_category TEXT,
             custom_function TEXT,
+            composite_children TEXT,
             confidence TEXT,
             notes TEXT,
             enabled BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            image_path TEXT,
+            category TEXT,
+            description TEXT,
+            tier_targets TEXT
         )
     """)
     conn.executemany(

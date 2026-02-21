@@ -1,0 +1,346 @@
+#!/usr/bin/env python3
+"""Peuple la table citation_mappings dans metadata.duckdb.
+
+Ce script est idempotent : il crée la table si absente, ajoute les colonnes
+manquantes si besoin, et insère/met à jour toutes les citations
+(PVP + PVE + composites) avec leurs métadonnées UI (image, category, tiers…).
+
+Usage :
+    python scripts/populate_citation_mappings.py
+    python scripts/populate_citation_mappings.py --reset   # DROP + recréation
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+import duckdb
+
+# ── Chemin vers metadata.duckdb ─────────────────────────────────────────────
+METADATA_DB = Path("data/warehouse/metadata.duckdb")
+
+# ── DDL ─────────────────────────────────────────────────────────────────────
+CREATE_TABLE_DDL = """
+CREATE TABLE IF NOT EXISTS citation_mappings (
+    citation_name_norm    VARCHAR PRIMARY KEY,
+    citation_name_display VARCHAR NOT NULL,
+    mapping_type          VARCHAR NOT NULL,
+    medal_id              BIGINT,
+    medal_ids             VARCHAR,
+    stat_name             VARCHAR,
+    award_name            VARCHAR,
+    award_category        VARCHAR,
+    custom_function       VARCHAR,
+    composite_children    VARCHAR,
+    confidence            VARCHAR,
+    notes                 VARCHAR,
+    enabled               BOOLEAN DEFAULT TRUE,
+    created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    image_path            VARCHAR,
+    category              VARCHAR,
+    description           VARCHAR,
+    tier_targets          VARCHAR
+);
+"""
+
+# ── Citations PVP (45) ──────────────────────────────────────────────────────
+# Tuple: (norm, display, type, medal_id, medal_ids, stat_name, award_name,
+#          award_cat, custom_fn, composite_children, confidence, notes, enabled,
+#          image_path, category, description, tier_targets)
+# fmt: off
+PVP_CITATIONS: list[tuple] = [
+    # ── GROUPE 1 : Mode de jeu (11) ────────────────────────────────────────
+    ("a la charge", "À la charge", "award", None, None, None, "Zone capturée", "objective", None, None, "high", "Mode de jeu — Zone capturée", True,
+     "static/commendations/h5g/H5G_citation_%C3%80_la_charge.png", "Mode de jeu", "Prenez le contrôle d'une base dans n'importe quelle partie matchmaking Bases.", "10,20,30,50,100"),
+    ("annexion forcee", "Annexion forcée", "custom", None, None, None, None, None, "compute_annexion_forcee", None, "medium", "Mode de jeu — 3 Zone Capture consécutives", True,
+     "static/commendations/h5g/H5G_citation_Annexion_forc%C3%A9e.png", "Mode de jeu", "Prenez le contrôle de 3 bases sans mourir dans n'importe quelle partie matchmaking Bases.", "3,6,9,15,30"),
+    ("assistant", "Assistant", "stat", None, None, "assists", None, None, None, None, "high", "Mode de jeu — Total assists", True,
+     "static/commendations/h5g/H5G_citation_Assistant.png", "Mode de jeu", "Remportez n'importe quelle médaille d'assistance en Zone de combat.", "25,50,75,125,250"),
+    ("bulldozer", "Bulldozer", "custom", None, None, None, None, None, "compute_bulldozer", None, "high", "Mode de jeu — Parties Assassin KD > 8", True,
+     "static/commendations/h5g/H5G_citation_Bulldozer.png", "Mode de jeu", "Terminez n'importe quelle partie matchmaking Assassin avec un FDA supérieur à 8.", "3,6,9,15,30"),
+    ("defenseur du drapeau", "Défenseur du drapeau", "award", None, None, None, "Porteur tué", "objective", None, None, "high", "Mode de jeu — Porteur tué", True,
+     "static/commendations/h5g/H5G_citation_D%C3%A9fenseur_du_drapeau.png", "Mode de jeu", "Protégez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.", "10,20,30,50,100"),
+    ("je te tiens !", "Je te tiens !", "award", None, None, None, "Drapeau ramené", "objective", None, None, "high", "Mode de jeu — Drapeau ramené", True,
+     "static/commendations/h5g/H5G_citation_Je_te_tiens_%21.png", "Mode de jeu", "Rapportez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.", "10,20,30,50,100"),
+    ("partie prenante", "Partie prenante", "award", None, None, None, "Zone sécurisée", "objective", None, None, "high", "Mode de jeu — Zone sécurisée", True,
+     "static/commendations/h5g/H5G_citation_Partie_prenante.png", "Mode de jeu", "Défendez une base appartenant à votre équipe dans n'importe quelle partie matchmaking Bases.", "10,20,30,50,100"),
+    ("sus au porteur du drapeau", "Sus au porteur du drapeau", "award", None, None, None, "Porteur tué", "objective", None, None, "high", "Mode de jeu — Porteur tué", True,
+     "static/commendations/h5g/H5G_citation_Sus_au_porteur_du_drapeau.png", "Mode de jeu", "Tuez un porte-drapeau ennemi dans n'importe quelle partie matchmaking Capture du drapeau.", "10,20,30,50,100"),
+    ("victoire au drapeau", "Victoire au drapeau", "custom", None, None, None, None, None, "compute_wins_ctf", None, "high", "Mode de jeu — Victoires CTF", True,
+     "static/commendations/h5g/H5G_citation_Victoire_au_drapeau.png", "Mode de jeu", "Remportez n'importe quelle partie matchmaking Capture du drapeau.", "5,10,15,25,50"),
+    ("victoire en assassin", "Victoire en assassin", "custom", None, None, None, None, None, "compute_wins_slayer", None, "high", "Mode de jeu — Victoires Slayer", True,
+     "static/commendations/h5g/H5G_citation_Victoire_en_Assassin.png", "Mode de jeu", "Remportez une partie d'Assassin en équipe.", "5,10,15,25,50"),
+    ("victoire en bases", "Victoire en bases", "custom", None, None, None, None, None, "compute_wins_strongholds", None, "high", "Mode de jeu — Victoires Strongholds", True,
+     "static/commendations/h5g/H5G_citation_Victoire_en_Bases.png", "Mode de jeu", "Remportez n'importe quelle partie matchmaking Bases.", "5,10,15,25,50"),
+    # ── GROUPE 2 : Arme (2) ────────────────────────────────────────────────
+    ("ecrasement", "Écrasement", "medal", 221693153, None, None, None, None, None, None, "high", "Arme — Médaille Splatter/Écrasement", True,
+     "static/commendations/h5g/H5G_citation_%C3%89crasement.png", "Arme", "Écrasez un Spartan adverse avec un véhicule.", "10,20,30,50,100"),
+    ("pilote", "Pilote", "medal", 3169118333, None, None, None, None, None, None, "high", "Arme — Médaille Violence routière", True,
+     "static/commendations/h5g/H5G_citation_Pilote.png", "Arme", "Décrochez des médailles de pilote.", "10,20,30,50,100"),
+    # ── GROUPE 3 : Multijoueur (9) ─────────────────────────────────────────
+    ("assassin", "Assassin", "medal", 548533137, None, None, None, None, None, None, "high", "Multijoueur — Médaille Par derrière", True,
+     "static/commendations/h5g/H5G_citation_Assassin.png", "Multijoueur", "Assassinez des Spartans adverses.", "5,10,15,25,50"),
+    ("carnage de spartans", "Carnage de Spartans", "stat", None, None, "max_killing_spree", None, None, None, None, "high", "Multijoueur — max killing spree", True,
+     "static/commendations/h5g/H5G_citation_Carnage_de_Spartans.png", "Multijoueur", "Tuez plusieurs Spartans adverses sans mourir.", "3,6,9,15,30"),
+    ("combat rapproche", "Combat rapproché", "stat", None, None, "melee_kills", None, None, None, None, "high", "Multijoueur — melee kills", True,
+     "static/commendations/h5g/H5G_citation_Combat_rapproch%C3%A9.png", "Multijoueur", "Remportez n'importe quelle médaille de combat rapproché.", "10,20,30,50,100"),
+    ("combattant opportuniste", "Combattant opportuniste", "medal", None, "622331684,2063152177,4261842076,2137071619,1486797009,1430343434,2242633421", None, None, None, None, None, "high", "Multijoueur — Somme multi-kill medals", True,
+     "static/commendations/h5g/H5G_citation_Combattant_opportuniste.png", "Multijoueur", "Remportez n'importe quelle médaille d'aptitude au combat.", "10,20,30,50,100"),
+    ("multifrag", "Multifrag", "medal", 622331684, None, None, None, None, None, None, "high", "Multijoueur — Médaille Double frag", True,
+     "static/commendations/h5g/H5G_citation_Multifrag.png", "Multijoueur", "Tuez rapidement plusieurs Spartans adverses.", "3,6,9,15,30"),
+    ("pugilat", "Pugilat", "stat", None, None, "melee_kills", None, None, None, None, "high", "Multijoueur — melee kills", True,
+     "static/commendations/h5g/H5G_citation_Pugilat.png", "Multijoueur", "Tuez un Spartan ennemi d'une attaque rapprochée.", "5,10,15,25,50"),
+    ("tir a la tete", "Tir à la tête", "stat", None, None, "headshot_kills", None, None, None, None, "high", "Multijoueur — headshot kills", True,
+     "static/commendations/h5g/H5G_citation_Tir_%C3%A0_la_t%C3%AAte.png", "Multijoueur", "Tuez un Spartan ennemi d'un tir à la tête.", "10,20,30,50,100"),
+    ("tueur de spartans", "Tueur de Spartans", "stat", None, None, "kills", None, None, None, None, "high", "Multijoueur — total kills", True,
+     "static/commendations/h5g/H5G_citation_Tueur_de_Spartans.png", "Multijoueur", "Éliminez les Spartans ennemis.", "20,40,60,100,200"),
+    ("\u0153il de lynx", "\u0152il de lynx", "medal", 1512363953, None, None, None, None, None, None, "high", "Multijoueur — Médaille Parfait", True,
+     "static/commendations/h5g/H5G_citation_%C5%92il_de_lynx.png", "Multijoueur", "Tuez un Spartan adverse en pleine santé à l'aide d'une arme de précision sans manquer un seul coup.", "10,20,30,50,100"),
+    # ── GROUPE 4 : Spartan Companies (16) ───────────────────────────────────
+    ("flag 'em down", "Sors les drapeaux", "custom", None, None, None, None, None, "compute_flag_em_down", None, "high", "SC — Combine CTF awards", True,
+     "static/commendations/h5g/H5G_citation_Flag_%27em_down.png", "Spartan Companies", "Obtenir une des médailles suivantes : Interception, Bataille de drapeaux, Frag du porteur, Retour du drapeau, Défense du drapeau", "1000,2000,3000,4800,9700"),
+    ("grand theft", "Vol à la tire", "custom", None, None, None, None, None, "compute_hijack", None, "high", "SC — Combine HIJACKED_* awards", True,
+     "static/commendations/h5g/H5G_citation_Grand_Theft.png", "Spartan Companies", "Aborder un véhicule ou un véhicule aérien", "200,400,600,960,1940"),
+    ("helping hand", "Coup de main", "stat", None, None, "assists", None, None, None, None, "high", "SC — Total assists", True,
+     "static/commendations/h5g/H5G_citation_Helping_Hand.png", "Spartan Companies", "Obtenir n'importe quelle assistance", "20000,40000,60000,96000,194400"),
+    ("i'm just perfect", "Zéro défaut", "medal", 1512363953, None, None, None, None, None, None, "high", "SC — Médaille Parfait", True,
+     "static/commendations/h5g/H5G_citation_I%27m_just_perfect.png", "Spartan Companies", "Tuer un joueur avec une arme de précision sans manquer un tir", "2000,4000,6000,9600,19400"),
+    ("lawnmower", "Tondeuse", "medal", 221693153, None, None, None, None, None, None, "high", "SC — Médaille Écrasement", True,
+     "static/commendations/h5g/H5G_citation_Lawnmower.png", "Spartan Companies", "Tuer un adversaire en l'écrasant avec un véhicule", "500,1000,1500,2400,4900"),
+    ("look ma no pin", "Regarde maman, sans goupille", "stat", None, None, "grenade_kills", None, None, None, None, "high", "SC — grenade kills", True,
+     "static/commendations/h5g/H5G_citation_Look_ma_no_pin.png", "Spartan Companies", "Tuer un Spartan ennemi avec n'importe quelle grenade", "4000,8000,12000,19200,38900"),
+    ("lucky", "Lucky", "medal", None, "3905838030,3091261182", None, None, None, None, None, "high", "SC — Médailles La chance + Chargeur vide", True,
+     "static/commendations/h5g/H5G_citation_Lucky.png", "Spartan Companies", "Obtenir les médailles La chance, Chargeur vide, Sayonara ou Boulet de canon", "400,800,1200,1920,3880"),
+    ("no hard feelings", "Sans rancune", "stat", None, None, "kills", None, None, None, None, "high", "SC — total kills", True,
+     "static/commendations/h5g/H5G_citation_No_Hard_Feelings.png", "Spartan Companies", "Tuer des Spartans ennemis", "50000,100000,150000,240000,486000"),
+    ("positive contribution", "Positive contribution", "custom", None, None, None, None, None, "compute_bulldozer", None, "high", "SC — KD > 8 en Assassin", True,
+     "static/commendations/h5g/H5G_citation_Positive_contribution.png", "Spartan Companies", "Finir avec FDA supérieur à 8 dans n'importe quelle partie Assassin en matchmaking", "300,600,900,1440,2960"),
+    ("power play", "Coup de force", "stat", None, None, "power_weapon_kills", None, None, None, None, "high", "SC — power weapon kills", True,
+     "static/commendations/h5g/H5G_citation_Power_play.png", "Spartan Companies", "Tuer un Spartan ennemi avec une arme puissante", "10000,20000,30000,48000,97200"),
+    ("road trip", "Virée sur la route", "medal", 3169118333, None, None, None, None, None, None, "high", "SC — Médaille Violence routière", True,
+     "static/commendations/h5g/H5G_citation_Road_Trip.png", "Spartan Companies", "Tuer un Spartan ennemi avec un véhicule terrestre", "3000,6000,9000,14400,29200"),
+    ("sting like a bee", "Pique comme une abeille", "stat", None, None, "melee_kills", None, None, None, None, "high", "SC — melee kills", True,
+     "static/commendations/h5g/H5G_citation_Sting_like_a_bee.png", "Spartan Companies", "Tuer un Spartan ennemi en combat rapproché", "5000,10000,15000,24000,48600"),
+    ("the reaper", "Le faucheur", "medal", 2625820422, None, None, None, None, None, None, "high", "SC — Médaille Frag d'outre-tombe", True,
+     "static/commendations/h5g/H5G_citation_The_Reaper.png", "Spartan Companies", "Tuer un adversaire d'outre-tombe", "500,1000,1500,2400,4850"),
+    ("too fast for you", "Trop rapide pour toi", "medal", 2123530881, None, None, None, None, None, None, "high", "SC — Médaille Revirement", True,
+     "static/commendations/h5g/H5G_citation_Too_fast_for_you.png", "Spartan Companies", "Tuer un adversaire qui vous a tiré dessus en premier", "2000,4000,6000,9600,19400"),
+    ("vandalisme", "Vandalisme", "custom", None, None, None, None, None, "compute_vandalism", None, "high", "SC — Somme DESTROYED_* awards", True,
+     "static/commendations/h5g/H5G_citation_Vandalism.png", "Spartan Companies", "Détruire un véhicule ennemi", "1200,2400,3600,5760,11640"),
+    # ── GROUPE 5 : Véhicules (7) ───────────────────────────────────────────
+    ("destructeur d'apparitions", "Destructeur d'apparitions", "custom", None, None, None, None, None, "compute_wraith_destroyer", None, "high", "Arme — Wraith (Master: 30)", True,
+     "static/commendations/h5g/H5G_citation_Destructeur_d%27apparitions.png", "Arme", "Détruisez les apparitions occupées par l'adversaire.", "3,6,9,15,30"),
+    ("destructeur de banshees", "Destructeur de banshees", "award", None, None, None, "DESTROYED_BANSHEE", "vehicle", None, None, "high", "Arme — (Master: 30)", True,
+     "static/commendations/h5g/H5G_citation_Destructeur_de_banshees.png", "Arme", "Détruisez les banshees occupés par l'adversaire.", "3,6,9,15,30"),
+    ("destructeur de ghosts", "Destructeur de ghosts", "award", None, None, None, "DESTROYED_GHOST", "vehicle", None, None, "high", "Arme — (Master: 50)", True,
+     "static/commendations/h5g/H5G_citation_Destructeur_de_ghosts.png", "Arme", "Détruisez les ghosts occupés par l'adversaire.", "5,10,15,25,50"),
+    ("destructeur de mongooses", "Destructeur de mongooses", "custom", None, None, None, None, None, "compute_mongoose_destroyer", None, "high", "Arme — Mongoose + Gungoose (Master: 50)", True,
+     "static/commendations/h5g/H5G_citation_Destructeur_de_mongooses.png", "Arme", "Détruisez les mongooses occupées par l'adversaire.", "5,10,15,25,50"),
+    ("destructeur de scorpions", "Destructeur de scorpions", "award", None, None, None, "DESTROYED_SCORPION", "vehicle", None, None, "high", "Arme — (Master: 10)", True,
+     "static/commendations/h5g/H5G_citation_Destructeur_de_scorpions.png", "Arme", "Détruisez les scorpions occupés par l'adversaire.", "1,3,5,7,10"),
+    ("destructeur de warthogs", "Destructeur de warthogs", "custom", None, None, None, None, None, "compute_warthog_destroyer", None, "high", "Arme — Warthog + Rocket Warthog (Master: 50)", True,
+     "static/commendations/h5g/H5G_citation_Destructeur_de_warthogs.png", "Arme", "Détruisez les warthogs occupés par l'adversaire.", "5,10,15,25,50"),
+    ("destructeur de wasps", "Destructeur de wasps", "award", None, None, None, "DESTROYED_WASP", "vehicle", None, None, "high", "Arme — (Master: 30)", True,
+     "static/commendations/h5g/H5G_citation_Destructeur_de_wasps.png", "Arme", "Détruisez les wasps occupés par l'adversaire.", "3,6,9,15,30"),
+]
+# fmt: on
+
+# ── Citations PVE unitaires ────────────────────────────────────────────────
+# fmt: off
+PVE_CITATIONS: list[tuple] = [
+    ("tueur de grognards", "Tueur de Grognards", "pve_stat", None, None, "grunt_kills", None, None, None, None, "high", "Kills Grunt en Firefight", True,
+     "static/commendations/h5g/H5G_citation_Tueur_de_Grognards.png", "Ennemi", "Tuez des Grognards.", "10,20,30,50,100"),
+    ("tueur d'elites", "Tueur d'Élites", "pve_stat", None, None, "elite_kills", None, None, None, None, "high", "Kills Élite en Firefight", True,
+     "static/commendations/h5g/H5G_citation_Tueur_d%27%C3%89lites.png", "Ennemi", "Tuez des Élites.", "10,20,30,50,100"),
+    ("tueur de rapaces", "Tueur de Rapaces", "pve_stat", None, None, "jackal_kills", None, None, None, None, "high", "Kills Jackal en Firefight", True,
+     "static/commendations/h5g/H5G_citation_Tueur_de_Rapaces.png", "Ennemi", "Tuez des Rapaces.", "5,10,15,25,50"),
+    ("tueur de chasseurs", "Tueur de Chasseurs", "pve_stat", None, None, "hunter_kills", None, None, None, None, "high", "Kills Hunter en Firefight", True,
+     "static/commendations/h5g/H5G_citation_Tueur_de_Chasseurs.png", "Ennemi", "Tuez des Chasseurs.", "2,4,6,10,20"),
+    ("tueur de sentinelles", "Tueur de sentinelles", "pve_stat", None, None, "sentinel_kills", None, None, None, None, "high", "Kills Sentinelle en Firefight — désactivé", False,
+     "static/commendations/h5g/H5G_citation_Tueur_de_sentinelles.png", "Ennemi", "Tuez des sentinelles.", "5,10,15,25,50"),
+    ("like a boss", "Comme un Boss", "pve_stat", None, None, "boss_kills", None, None, None, None, "high", "Boss kills en Firefight", True,
+     "static/commendations/h5g/H5G_citation_Like_a_boss.png", "Spartan Companies", "Tuer un boss dans une partie Baptême du feu zone de combat", "250,500,750,1200,2400"),
+    ("player vs everything", "Éliminations Firefight", "pve_stat", None, None, "total_enemy_kills", None, None, None, None, "high", "Total kills en Firefight", True,
+     "static/commendations/h5g/H5G_citation_Player_vs_Everything.png", "Spartan Companies", "Gagner des parties en Baptême du feu", "200,400,600,960,1940"),
+    # Désactivées (pas d'image H5G / pertinence douteuse)
+    ("tueur de brutes", "Tueur de Brutes", "pve_stat", None, None, "brute_kills", None, None, None, None, "high", "Kills Brute en Firefight — pas d'image H5G", False,
+     None, "Ennemi", "Tuez des Brutes.", None),
+    ("tueur de skimmers", "Tueur de Skimmers", "pve_stat", None, None, "skimmer_kills", None, None, None, None, "high", "Kills Skimmer en Firefight — pas d'image H5G", False,
+     None, "Ennemi", "Tuez des Skimmers.", None),
+    ("tueur de marines", "Tueur de Marines", "pve_stat", None, None, "marine_kills", None, None, None, None, "high", "Kills Marine en Firefight — désactivé (alliés)", False,
+     "static/commendations/h5g/H5G_citation_Tueur_de_r%C3%A9pliques_de_Marines.png", "Ennemi", "Tuez les Marines ennemis.", "20,40,60,100,200"),
+]
+# fmt: on
+
+# ── Citation composite : Destructeur de Covenants ──────────────────────────
+_DESTRUCTEUR_CHILDREN = [
+    "tueur de grognards",
+    "tueur d'elites",
+    "tueur de rapaces",
+    "tueur de chasseurs",
+    "like a boss",
+    "tueur de brutes",
+    "tueur de skimmers",
+]
+
+# fmt: off
+COMPOSITE_CITATIONS: list[tuple] = [
+    ("destructeur de covenants", "Destructeur de Covenants", "composite", None, None, None, None, None, None,
+     "[" + ", ".join(f'"{c}"' for c in _DESTRUCTEUR_CHILDREN) + "]",
+     "high", "Obtenez toutes les citations d'élimination de Covenants", True,
+     "static/commendations/h5g/H5G_ma\u00eetrise_Destructeur_de_Covenants.png", "Ennemi", "Obtenez toutes les citations d'élimination de Covenants", None),
+]
+# fmt: on
+
+ALL_CITATIONS = PVP_CITATIONS + PVE_CITATIONS + COMPOSITE_CITATIONS
+
+UPSERT_SQL = """
+    INSERT INTO citation_mappings (
+        citation_name_norm, citation_name_display, mapping_type,
+        medal_id, medal_ids, stat_name, award_name, award_category,
+        custom_function, composite_children, confidence, notes, enabled,
+        image_path, category, description, tier_targets
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (citation_name_norm)
+    DO UPDATE SET
+        citation_name_display = EXCLUDED.citation_name_display,
+        mapping_type = EXCLUDED.mapping_type,
+        medal_id = EXCLUDED.medal_id,
+        medal_ids = EXCLUDED.medal_ids,
+        stat_name = EXCLUDED.stat_name,
+        award_name = EXCLUDED.award_name,
+        award_category = EXCLUDED.award_category,
+        custom_function = EXCLUDED.custom_function,
+        composite_children = EXCLUDED.composite_children,
+        confidence = EXCLUDED.confidence,
+        notes = EXCLUDED.notes,
+        enabled = EXCLUDED.enabled,
+        image_path = EXCLUDED.image_path,
+        category = EXCLUDED.category,
+        description = EXCLUDED.description,
+        tier_targets = EXCLUDED.tier_targets,
+        updated_at = now()
+"""
+
+
+def ensure_schema(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée la table et ajoute les colonnes manquantes (idempotent)."""
+    conn.execute(CREATE_TABLE_DDL)
+
+    cols = {
+        row[0]
+        for row in conn.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'citation_mappings'"
+        ).fetchall()
+    }
+    migrations = {
+        "composite_children": "VARCHAR",
+        "image_path": "VARCHAR",
+        "category": "VARCHAR",
+        "description": "VARCHAR",
+        "tier_targets": "VARCHAR",
+    }
+    for col_name, col_type in migrations.items():
+        if col_name not in cols:
+            conn.execute(
+                f"ALTER TABLE citation_mappings ADD COLUMN {col_name} {col_type}"
+            )
+            print(f"  ✅ Colonne {col_name} ajoutée")
+
+
+def populate(conn: duckdb.DuckDBPyConnection) -> int:
+    """Insère/met à jour toutes les citations. Retourne le nombre total."""
+    conn.executemany(UPSERT_SQL, ALL_CITATIONS)
+    return len(ALL_CITATIONS)
+
+
+def cleanup_obsolete(conn: duckdb.DuckDBPyConnection) -> int:
+    """Supprime les citations qui ne font plus partie du référentiel."""
+    known_norms = {c[0] for c in ALL_CITATIONS}
+    existing = {
+        row[0]
+        for row in conn.execute(
+            "SELECT citation_name_norm FROM citation_mappings"
+        ).fetchall()
+    }
+    obsolete = existing - known_norms
+    if obsolete:
+        placeholders = ", ".join(["?"] * len(obsolete))
+        conn.execute(
+            f"DELETE FROM citation_mappings WHERE citation_name_norm IN ({placeholders})",
+            list(obsolete),
+        )
+    return len(obsolete)
+
+
+def main() -> None:
+    """Point d'entrée principal."""
+    parser = argparse.ArgumentParser(
+        description="Peuple citation_mappings dans metadata.duckdb"
+    )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="DROP la table et la recrée from scratch",
+    )
+    args = parser.parse_args()
+
+    if not METADATA_DB.exists():
+        print(f"❌ metadata.duckdb introuvable : {METADATA_DB}")
+        sys.exit(1)
+
+    conn = duckdb.connect(str(METADATA_DB))
+    try:
+        if args.reset:
+            conn.execute("DROP TABLE IF EXISTS citation_mappings")
+            print("🗑️  Table citation_mappings supprimée")
+
+        ensure_schema(conn)
+
+        total = populate(conn)
+        n_obsolete = cleanup_obsolete(conn)
+
+        enabled = conn.execute(
+            "SELECT COUNT(*) FROM citation_mappings WHERE enabled IS NOT FALSE"
+        ).fetchone()[0]
+        disabled = conn.execute(
+            "SELECT COUNT(*) FROM citation_mappings WHERE enabled = FALSE"
+        ).fetchone()[0]
+        with_image = conn.execute(
+            "SELECT COUNT(*) FROM citation_mappings WHERE image_path IS NOT NULL"
+        ).fetchone()[0]
+        with_tiers = conn.execute(
+            "SELECT COUNT(*) FROM citation_mappings WHERE tier_targets IS NOT NULL"
+        ).fetchone()[0]
+
+        print(f"✅ {total} citations insérées/mises à jour")
+        print(f"   → {enabled} activées, {disabled} désactivées")
+        print(f"   → {with_image} avec image, {with_tiers} avec tiers")
+        if n_obsolete:
+            print(f"   → {n_obsolete} obsolètes supprimées")
+
+        print("\n📋 Résumé par type :")
+        for row in conn.execute(
+            "SELECT mapping_type, COUNT(*), SUM(CASE WHEN enabled THEN 1 ELSE 0 END) "
+            "FROM citation_mappings GROUP BY mapping_type ORDER BY mapping_type"
+        ).fetchall():
+            print(f"   {row[0]:12s} : {row[1]:2d} total, {row[2]:2d} activées")
+
+        print("\n📋 Résumé par catégorie :")
+        for row in conn.execute(
+            "SELECT category, COUNT(*) "
+            "FROM citation_mappings WHERE category IS NOT NULL "
+            "GROUP BY category ORDER BY category"
+        ).fetchall():
+            print(f"   {row[0]:20s} : {row[1]:2d}")
+
+    finally:
+        conn.close()
+
+
+if __name__ == "__main__":
+    main()
