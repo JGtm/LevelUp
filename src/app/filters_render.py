@@ -761,7 +761,7 @@ def _render_cascade_filters(
         "_experience_types_exclusions",
     )
     experience_selected = render_checkbox_filter(
-        label="Type d'expérience",
+        label="Type",
         options=exp_values,
         session_key="filter_experience_types",
         expanded=False,
