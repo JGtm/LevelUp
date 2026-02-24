@@ -249,7 +249,9 @@ def count_new_matches(xuid: str, gamertag: str, since: datetime) -> int:
 def count_matches_missing_data(xuid: str) -> int:
     """Compte les matchs avec données incomplètes pour ce joueur.
 
-    Un match est considéré incomplet si medals_loaded=FALSE ou events_loaded=FALSE.
+    Un match est considéré incomplet si ses médailles ET ses événements highlight
+    n'ont été chargés ni par le sync (medals_loaded / events_loaded) ni par le
+    backfill (backfill_completed bitmask : bit 0 = medals, bit 1 = events).
 
     Args:
         xuid: XUID du joueur.
@@ -270,8 +272,13 @@ def count_matches_missing_data(xuid: str) -> int:
             JOIN match_participants mp ON mr.match_id = mp.match_id
             WHERE mp.xuid = ?
               AND (
-                  COALESCE(mr.medals_loaded, FALSE) = FALSE
-                  OR COALESCE(mr.events_loaded, FALSE) = FALSE
+                  -- médailles absentes : ni sync ni backfill (bit 0) ne les a chargées
+                  (COALESCE(mr.medals_loaded, FALSE) = FALSE
+                   AND (COALESCE(mr.backfill_completed, 0) & 1) = 0)
+                  OR
+                  -- events absents : ni sync ni backfill (bit 1) ne les a chargés
+                  (COALESCE(mr.events_loaded, FALSE) = FALSE
+                   AND (COALESCE(mr.backfill_completed, 0) & 2) = 0)
               )
             """,
             [xuid],
