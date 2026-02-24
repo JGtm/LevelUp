@@ -22,8 +22,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from src.utils.discord_notifier import (
     DiscordPlayerResult,
     LastMatchInfo,
@@ -31,6 +29,7 @@ from src.utils.discord_notifier import (
     _format_player_field,
     _load_app_settings,
     build_embed_payload,
+    count_matches_missing_data,
     notify_operation_done,
     send_discord_notification,
 )
@@ -363,7 +362,7 @@ class TestSendDiscordNotification:
     def test_sends_post_request(self):
         """Vérifie qu'un POST est bien émis (pas GET ni autre)."""
         with patch("urllib.request.urlopen") as mock_open:
-            mock_open.return_value.__enter__ = lambda s: _mock_urlopen_ok(204)
+            mock_open.return_value.__enter__ = lambda _: _mock_urlopen_ok(204)
             mock_open.return_value.__exit__ = MagicMock(return_value=False)
             captured_req: list[urllib.request.Request] = []
 
@@ -399,9 +398,9 @@ class TestSendDiscordNotification:
             f"User-Agent Python générique détecté : '{ua}'. "
             "Cloudflare bloque ces requêtes avec 403."
         )
-        assert "LevelUp" in ua or "levelup" in ua.lower() or "bot" in ua.lower(), (
-            f"User-Agent doit identifier l'application, obtenu : '{ua}'"
-        )
+        assert (
+            "LevelUp" in ua or "levelup" in ua.lower() or "bot" in ua.lower()
+        ), f"User-Agent doit identifier l'application, obtenu : '{ua}'"
 
     def test_content_type_is_json(self):
         """Content-Type doit être application/json."""
@@ -419,12 +418,16 @@ class TestSendDiscordNotification:
         assert "application/json" in ct
 
     def test_returns_true_on_204(self):
-        with patch("urllib.request.urlopen", side_effect=lambda r, timeout=None: _mock_urlopen_ok(204)):
+        with patch(
+            "urllib.request.urlopen", side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204)
+        ):
             result = send_discord_notification(self.SIMPLE_PAYLOAD, _WEBHOOK)
         assert result is True
 
     def test_returns_true_on_200(self):
-        with patch("urllib.request.urlopen", side_effect=lambda r, timeout=None: _mock_urlopen_ok(200)):
+        with patch(
+            "urllib.request.urlopen", side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(200)
+        ):
             result = send_discord_notification(self.SIMPLE_PAYLOAD, _WEBHOOK)
         assert result is True
 
@@ -494,7 +497,10 @@ class TestNotifyOperationDone:
         with (
             patch("src.utils.discord_notifier._load_app_settings", return_value=mock_settings),
             patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": webhook}),
-            patch("urllib.request.urlopen", side_effect=lambda r, timeout=None: _mock_urlopen_ok(204)) as mock_http,
+            patch(
+                "urllib.request.urlopen",
+                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+            ) as mock_http,
         ):
             notify_operation_done("sync_delta", t0, t1, players, success, disabled=disabled)
             return mock_http
@@ -556,7 +562,10 @@ class TestNotifyOperationDone:
         with (
             patch("src.utils.discord_notifier._load_app_settings", return_value=mock_settings),
             patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
-            patch("src.utils.discord_notifier.build_embed_payload", side_effect=ValueError("bug interne")),
+            patch(
+                "src.utils.discord_notifier.build_embed_payload",
+                side_effect=ValueError("bug interne"),
+            ),
         ):
             notify_operation_done("sync_delta", t0, t1, [_player()], success=True)
 
@@ -569,7 +578,6 @@ class TestNotifyOperationDone:
 class TestLoadAppSettings:
     def test_returns_empty_dict_when_file_missing(self, tmp_path):
         with patch("src.utils.discord_notifier._APP_SETTINGS", tmp_path / "missing.json"):
-            from src.utils.discord_notifier import _load_app_settings
             result = _load_app_settings()
         assert result == {}
 
@@ -577,7 +585,6 @@ class TestLoadAppSettings:
         bad = tmp_path / "bad.json"
         bad.write_text("{ not valid json }", encoding="utf-8")
         with patch("src.utils.discord_notifier._APP_SETTINGS", bad):
-            from src.utils.discord_notifier import _load_app_settings
             result = _load_app_settings()
         assert result == {}
 
@@ -585,7 +592,6 @@ class TestLoadAppSettings:
         good = tmp_path / "settings.json"
         good.write_text(json.dumps({"discord_notifications_enabled": True}), encoding="utf-8")
         with patch("src.utils.discord_notifier._APP_SETTINGS", good):
-            from src.utils.discord_notifier import _load_app_settings
             result = _load_app_settings()
         assert result["discord_notifications_enabled"] is True
 
@@ -601,6 +607,7 @@ class TestGetWebhookUrl:
         settings.write_text(json.dumps({"discord_notifications_enabled": False}), encoding="utf-8")
         with patch("src.utils.discord_notifier._APP_SETTINGS", settings):
             from src.utils.discord_notifier import _get_webhook_url
+
             assert _get_webhook_url() is None
 
     def test_returns_url_from_env_var(self, tmp_path):
@@ -609,9 +616,14 @@ class TestGetWebhookUrl:
         with (
             patch("src.utils.discord_notifier._APP_SETTINGS", settings),
             patch.dict(os.environ, {"DISCORD_WEBHOOK_URL": _WEBHOOK}, clear=False),
-            patch("src.utils.discord_notifier._load_dotenv_if_present_safe", return_value=None, create=True),
+            patch(
+                "src.utils.discord_notifier._load_dotenv_if_present_safe",
+                return_value=None,
+                create=True,
+            ),
         ):
             from src.utils.discord_notifier import _get_webhook_url
+
             result = _get_webhook_url()
         assert result == _WEBHOOK
 
@@ -619,7 +631,9 @@ class TestGetWebhookUrl:
         other_webhook = "https://discord.com/api/webhooks/999/other"
         settings = tmp_path / "s.json"
         settings.write_text(
-            json.dumps({"discord_notifications_enabled": True, "discord_webhook_url": other_webhook}),
+            json.dumps(
+                {"discord_notifications_enabled": True, "discord_webhook_url": other_webhook}
+            ),
             encoding="utf-8",
         )
         with (
@@ -627,6 +641,7 @@ class TestGetWebhookUrl:
             patch.dict(os.environ, {"DISCORD_WEBHOOK_URL": _WEBHOOK}, clear=False),
         ):
             from src.utils.discord_notifier import _get_webhook_url
+
             # L'env var doit primer sur app_settings.json
             result = _get_webhook_url()
         assert result == _WEBHOOK
@@ -644,13 +659,19 @@ class TestGetWebhookUrl:
             patch.dict(os.environ, env_without_discord, clear=True),
         ):
             from src.utils.discord_notifier import _get_webhook_url
+
             result = _get_webhook_url()
         assert result == _WEBHOOK
 
     def test_returns_none_for_invalid_url(self, tmp_path):
         settings = tmp_path / "s.json"
         settings.write_text(
-            json.dumps({"discord_notifications_enabled": True, "discord_webhook_url": "https://example.com/bad"}),
+            json.dumps(
+                {
+                    "discord_notifications_enabled": True,
+                    "discord_webhook_url": "https://example.com/bad",
+                }
+            ),
             encoding="utf-8",
         )
         env_without_discord = {k: v for k, v in os.environ.items() if k != "DISCORD_WEBHOOK_URL"}
@@ -660,6 +681,7 @@ class TestGetWebhookUrl:
             patch.dict(os.environ, env_without_discord, clear=True),
         ):
             from src.utils.discord_notifier import _get_webhook_url
+
             result = _get_webhook_url()
         assert result is None
 
@@ -676,5 +698,191 @@ class TestGetWebhookUrl:
             patch.dict(os.environ, env_without_discord, clear=True),
         ):
             from src.utils.discord_notifier import _get_webhook_url
+
             result = _get_webhook_url()
         assert result is None
+
+
+# =============================================================================
+# Tests — count_matches_missing_data
+# =============================================================================
+
+
+class TestCountMatchesMissingData:
+    """Vérifie que le compteur de données incomplètes tient compte à la fois des
+    flags booléens (medals_loaded / events_loaded) ET du bitmask backfill_completed.
+
+    Logique attendue :
+    - medals manquants  : medals_loaded=FALSE  ET (backfill_completed & 1) = 0
+    - events manquants  : events_loaded=FALSE   ET (backfill_completed & 2) = 0
+    Un match est complet dès que medals ET events sont couverts par l'une ou
+    l'autre source.
+    """
+
+    XUID = "2533274823110022"
+    MATCH_A = "match-alpha-0001"
+    MATCH_B = "match-bravo-0002"
+    MATCH_C = "match-charlie-003"
+
+    def _setup_db(self, tmp_path: Path, rows: list[dict]) -> Path:
+        """Crée un shared_matches.duckdb minimal avec les lignes fournies.
+
+        Chaque dict dans rows contient :
+            match_id, medals_loaded, events_loaded, backfill_completed
+        """
+        import duckdb
+
+        db = tmp_path / "shared_matches.duckdb"
+        conn = duckdb.connect(str(db))
+        conn.execute(
+            """
+            CREATE TABLE match_registry (
+                match_id VARCHAR PRIMARY KEY,
+                backfill_completed INTEGER DEFAULT 0,
+                participants_loaded BOOLEAN DEFAULT FALSE,
+                events_loaded BOOLEAN DEFAULT FALSE,
+                medals_loaded BOOLEAN DEFAULT FALSE,
+                player_count INTEGER DEFAULT 0
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE match_participants (
+                match_id VARCHAR,
+                xuid VARCHAR
+            )
+            """
+        )
+        for r in rows:
+            conn.execute(
+                "INSERT INTO match_registry VALUES (?, ?, FALSE, ?, ?, 2)",
+                [
+                    r["match_id"],
+                    r.get("backfill_completed", 0),
+                    r.get("events_loaded", False),
+                    r.get("medals_loaded", False),
+                ],
+            )
+            conn.execute(
+                "INSERT INTO match_participants VALUES (?, ?)",
+                [r["match_id"], self.XUID],
+            )
+        conn.close()
+        return db
+
+    def test_returns_zero_when_all_loaded_by_sync(self, tmp_path):
+        """medals_loaded=TRUE et events_loaded=TRUE → sync a tout chargé → 0 incomplets."""
+        db = self._setup_db(
+            tmp_path,
+            [{"match_id": self.MATCH_A, "medals_loaded": True, "events_loaded": True}],
+        )
+        with patch("src.utils.discord_notifier._SHARED_DB", db):
+            assert count_matches_missing_data(self.XUID) == 0
+
+    def test_returns_zero_when_backfilled_via_bitmask(self, tmp_path):
+        """medals_loaded=FALSE mais backfill_completed & 3 = 3 (médailles + events) → 0."""
+        db = self._setup_db(
+            tmp_path,
+            [
+                {
+                    "match_id": self.MATCH_A,
+                    "medals_loaded": False,
+                    "events_loaded": False,
+                    "backfill_completed": 3,  # bit 0 (medals) + bit 1 (events)
+                }
+            ],
+        )
+        with patch("src.utils.discord_notifier._SHARED_DB", db):
+            assert count_matches_missing_data(self.XUID) == 0
+
+    def test_counts_match_with_no_medals_and_no_backfill(self, tmp_path):
+        """medals_loaded=FALSE, backfill_completed & 1 = 0 → medals réellement manquantes → 1."""
+        db = self._setup_db(
+            tmp_path,
+            [
+                {
+                    "match_id": self.MATCH_A,
+                    "medals_loaded": False,
+                    "events_loaded": True,  # events OK
+                    "backfill_completed": 0,
+                }
+            ],
+        )
+        with patch("src.utils.discord_notifier._SHARED_DB", db):
+            assert count_matches_missing_data(self.XUID) == 1
+
+    def test_counts_match_with_no_events_and_no_backfill(self, tmp_path):
+        """events_loaded=FALSE, backfill_completed & 2 = 0 → events réellement manquants → 1."""
+        db = self._setup_db(
+            tmp_path,
+            [
+                {
+                    "match_id": self.MATCH_A,
+                    "medals_loaded": True,  # medals OK
+                    "events_loaded": False,
+                    "backfill_completed": 0,
+                }
+            ],
+        )
+        with patch("src.utils.discord_notifier._SHARED_DB", db):
+            assert count_matches_missing_data(self.XUID) == 1
+
+    def test_medals_backfilled_but_events_still_missing(self, tmp_path):
+        """backfill_completed = 1 (medals seulement) mais events absents → 1 incomplet."""
+        db = self._setup_db(
+            tmp_path,
+            [
+                {
+                    "match_id": self.MATCH_A,
+                    "medals_loaded": False,
+                    "events_loaded": False,
+                    "backfill_completed": 1,  # bit 0 seul, events (bit 1) manquants
+                }
+            ],
+        )
+        with patch("src.utils.discord_notifier._SHARED_DB", db):
+            assert count_matches_missing_data(self.XUID) == 1
+
+    def test_mixed_matches_counts_only_truly_missing(self, tmp_path):
+        """3 matchs : 1 complet via sync, 1 via backfill, 1 vraiment manquant → 1."""
+        db = self._setup_db(
+            tmp_path,
+            [
+                # complet via sync
+                {
+                    "match_id": self.MATCH_A,
+                    "medals_loaded": True,
+                    "events_loaded": True,
+                    "backfill_completed": 0,
+                },
+                # complet via backfill (bits 0+1)
+                {
+                    "match_id": self.MATCH_B,
+                    "medals_loaded": False,
+                    "events_loaded": False,
+                    "backfill_completed": 3,
+                },
+                # réellement incomplet
+                {
+                    "match_id": self.MATCH_C,
+                    "medals_loaded": False,
+                    "events_loaded": False,
+                    "backfill_completed": 0,
+                },
+            ],
+        )
+        with patch("src.utils.discord_notifier._SHARED_DB", db):
+            assert count_matches_missing_data(self.XUID) == 1
+
+    def test_returns_zero_for_empty_xuid(self, tmp_path):
+        """XUID vide → 0 sans planter."""
+        db = self._setup_db(tmp_path, [])
+        with patch("src.utils.discord_notifier._SHARED_DB", db):
+            assert count_matches_missing_data("") == 0
+
+    def test_returns_zero_when_db_missing(self, tmp_path):
+        """DB absente → 0 sans planter."""
+        missing_db = tmp_path / "nope.duckdb"
+        with patch("src.utils.discord_notifier._SHARED_DB", missing_db):
+            assert count_matches_missing_data(self.XUID) == 0
