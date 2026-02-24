@@ -445,7 +445,10 @@ def send_discord_notification(
     req = urllib.request.Request(
         webhook_url,
         data=data,
-        headers={"Content-Type": "application/json; charset=utf-8"},
+        headers={
+            "Content-Type": "application/json; charset=utf-8",
+            "User-Agent": "LevelUp-HaloBot/1.0 (+https://github.com/levelup)",
+        },
         method="POST",
     )
     try:
