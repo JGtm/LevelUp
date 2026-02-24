@@ -45,6 +45,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Ajouter le répertoire parent au path pour les imports
@@ -86,6 +87,12 @@ logger = logging.getLogger(__name__)
 def main() -> int:
     """Point d'entrée principal."""
     parser = create_argument_parser()
+    parser.add_argument(
+        "--no-discord",
+        action="store_true",
+        default=False,
+        help="Désactive la notification Discord pour cette exécution",
+    )
     args = parser.parse_args()
 
     # --team-scores est global (pas besoin de --player / --all)
@@ -117,14 +124,101 @@ def main() -> int:
 
     # Construire le scope depuis les arguments CLI
     scope = SyncScope.from_cli_args(args)
+    backfill_started_at = datetime.now(timezone.utc)
 
     try:
         if args.all:
             result = asyncio.run(backfill_all_players(scope=scope))
             _print_summary_all(result, scope)
+            # ── Notification Discord (tous joueurs) ────────────────────
+            try:
+                import json as _json
+
+                from src.ui.multiplayer import list_duckdb_v4_players
+                from src.utils.discord_notifier import (
+                    DiscordPlayerResult,
+                    count_matches_missing_data,
+                    fetch_last_match_info,
+                    notify_operation_done,
+                )
+
+                _profiles_path = REPO_ROOT / "db_profiles.json"
+                _xuid_map: dict[str, str] = {}
+                if _profiles_path.exists():
+                    _pdata = _json.loads(_profiles_path.read_text(encoding="utf-8"))
+                    for _k, _v in _pdata.get("profiles", {}).items():
+                        if isinstance(_v, dict) and _v.get("xuid"):
+                            _xuid_map[_k.lower()] = str(_v["xuid"])
+
+                _totals = result.get("total_results", {})
+                _n_players = result.get("players_processed", 0)
+                _all_players_list = list_duckdb_v4_players()
+                _discord_players = []
+                for _pinfo in _all_players_list:
+                    _xuid_bf = _xuid_map.get(_pinfo.gamertag.lower())
+                    _missing_bf = count_matches_missing_data(_xuid_bf or "") if _xuid_bf else 0
+                    _last_bf = fetch_last_match_info(_xuid_bf or "") if _xuid_bf else None
+                    _discord_players.append(
+                        DiscordPlayerResult(
+                            gamertag=_pinfo.gamertag,
+                            xuid=_xuid_bf,
+                            matches_synced=0,
+                            missing_data_count=_missing_bf,
+                            last_match=_last_bf,
+                        )
+                    )
+                notify_operation_done(
+                    operation="backfill",
+                    started_at=backfill_started_at,
+                    finished_at=datetime.now(timezone.utc),
+                    players=_discord_players,
+                    success=True,
+                    disabled=getattr(args, "no_discord", False),
+                )
+            except Exception as _de:
+                logger.debug(f"[Discord] Notification ignorée : {_de}")
         else:
             result = asyncio.run(backfill_player_data(args.player, scope=scope))
             _print_summary_player(result, scope)
+            # ── Notification Discord (joueur unique) ────────────────────
+            try:
+                import json as _json
+
+                from src.utils.discord_notifier import (
+                    DiscordPlayerResult,
+                    count_matches_missing_data,
+                    fetch_last_match_info,
+                    notify_operation_done,
+                )
+
+                _profiles_path = REPO_ROOT / "db_profiles.json"
+                _xuid_bf = None
+                if _profiles_path.exists():
+                    _pdata = _json.loads(_profiles_path.read_text(encoding="utf-8"))
+                    for _k, _v in _pdata.get("profiles", {}).items():
+                        if _k.lower() == args.player.lower() and isinstance(_v, dict):
+                            _xuid_bf = str(_v.get("xuid", "") or "") or None
+                            break
+                _missing_bf = count_matches_missing_data(_xuid_bf or "") if _xuid_bf else 0
+                _last_bf = fetch_last_match_info(_xuid_bf or "") if _xuid_bf else None
+                notify_operation_done(
+                    operation="backfill",
+                    started_at=backfill_started_at,
+                    finished_at=datetime.now(timezone.utc),
+                    players=[
+                        DiscordPlayerResult(
+                            gamertag=args.player,
+                            xuid=_xuid_bf,
+                            matches_synced=result.get("matches_missing_data", 0),
+                            missing_data_count=_missing_bf,
+                            last_match=_last_bf,
+                        )
+                    ],
+                    success=True,
+                    disabled=getattr(args, "no_discord", False),
+                )
+            except Exception as _de:
+                logger.debug(f"[Discord] Notification ignorée : {_de}")
 
         return 0
 

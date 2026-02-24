@@ -1152,6 +1152,11 @@ Exemples:
         action="store_true",
         help="Mode verbeux",
     )
+    parser.add_argument(
+        "--no-discord",
+        action="store_true",
+        help="Désactive la notification Discord pour cette exécution",
+    )
 
     args = parser.parse_args()
 
@@ -1248,6 +1253,8 @@ Exemples:
     if duckdb_players and not args.player and (args.delta or args.full):
         logger.info(f"Sync de {len(duckdb_players)} joueur(s) DuckDB v4")
         success = True
+        _sync_all_started_at = datetime.now(timezone.utc)
+        _sync_all_player_ok: dict[str, bool] = {}
         for i, pinfo in enumerate(duckdb_players, 1):
             logger.info(f"[{i}/{len(duckdb_players)}] {pinfo.gamertag}")
             ok, msg = (
@@ -1269,6 +1276,7 @@ Exemples:
                     with_aliases=True,
                 )
             )
+            _sync_all_player_ok[pinfo.gamertag] = ok
             if not ok:
                 success = False
                 logger.error(f"  {msg}")
@@ -1277,6 +1285,48 @@ Exemples:
         if args.stats:
             for pinfo in duckdb_players:
                 print_stats(str(pinfo.db_path), player=pinfo.gamertag)
+        # ── Notification Discord (sync tous joueurs) ─────────────────────────
+        try:
+            from src.utils.discord_notifier import (
+                DiscordPlayerResult,
+                count_matches_missing_data,
+                count_new_matches,
+                fetch_last_match_info,
+                notify_operation_done,
+            )
+
+            _discord_players = []
+            _op_type = "sync_delta" if args.delta else "sync_full"
+            for _pinfo in duckdb_players:
+                _xuid = _get_xuid_for_gamertag(_pinfo.gamertag)
+                _ok = _sync_all_player_ok.get(_pinfo.gamertag, False)
+                _new = (
+                    count_new_matches(_xuid or "", _pinfo.gamertag, _sync_all_started_at)
+                    if _xuid
+                    else 0
+                )
+                _missing = count_matches_missing_data(_xuid or "") if _xuid else 0
+                _last_match = fetch_last_match_info(_xuid or "") if _xuid else None
+                _discord_players.append(
+                    DiscordPlayerResult(
+                        gamertag=_pinfo.gamertag,
+                        xuid=_xuid,
+                        matches_synced=_new,
+                        missing_data_count=_missing,
+                        last_match=_last_match,
+                        error=None if _ok else "Échec de la synchronisation",
+                    )
+                )
+            notify_operation_done(
+                operation=_op_type,
+                started_at=_sync_all_started_at,
+                finished_at=datetime.now(timezone.utc),
+                players=_discord_players,
+                success=success,
+                disabled=getattr(args, "no_discord", False),
+            )
+        except Exception as _discord_exc:
+            logger.debug(f"[Discord] Notification ignorée : {_discord_exc}")
         return 0 if success else 1
 
     if not db_path:
@@ -1329,6 +1379,7 @@ Exemples:
 
     # Synchronisation
     # Toutes les données sont toujours récupérées (highlights, skill, aliases)
+    _sync_started_at = datetime.now(timezone.utc)
     if args.delta:
         ok, msg = sync_delta(
             db_path,
@@ -1438,6 +1489,45 @@ Exemples:
     # Afficher les stats finales
     if args.delta or args.full or args.rebuild_cache:
         print_stats(db_path, player=args.player)
+
+    # ── Notification Discord (joueur unique) ─────────────────────────────────
+    if args.delta or args.full:
+        try:
+            from src.utils.discord_notifier import (
+                DiscordPlayerResult,
+                count_matches_missing_data,
+                count_new_matches,
+                fetch_last_match_info,
+                notify_operation_done,
+            )
+
+            _gt = args.player or ""
+            _xuid_discord = _get_xuid_for_gamertag(_gt) if _gt else None
+            _new_discord = (
+                count_new_matches(_xuid_discord, _gt, _sync_started_at) if _xuid_discord else 0
+            )
+            _missing_discord = count_matches_missing_data(_xuid_discord) if _xuid_discord else 0
+            _last_discord = fetch_last_match_info(_xuid_discord) if _xuid_discord else None
+            _op_discord = "sync_delta" if args.delta else "sync_full"
+            notify_operation_done(
+                operation=_op_discord,
+                started_at=_sync_started_at,
+                finished_at=datetime.now(timezone.utc),
+                players=[
+                    DiscordPlayerResult(
+                        gamertag=_gt or "(inconnu)",
+                        xuid=_xuid_discord,
+                        matches_synced=_new_discord,
+                        missing_data_count=_missing_discord,
+                        last_match=_last_discord,
+                        error=None if success else "Échec de la synchronisation",
+                    )
+                ],
+                success=success,
+                disabled=getattr(args, "no_discord", False),
+            )
+        except Exception as _discord_exc:
+            logger.debug(f"[Discord] Notification ignorée : {_discord_exc}")
 
     return 0 if success else 1
 
