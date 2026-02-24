@@ -381,7 +381,7 @@ def plot_dominance_chart(
         rows=2,
         cols=1,
         shared_xaxes=True,
-        row_heights=[0.62, 0.38],
+        row_heights=[0.68, 0.32],
         vertical_spacing=0.03,
     )
 
@@ -503,26 +503,28 @@ def plot_dominance_chart(
             yref="y",
         )
 
-    # ── Panneau 2 : kill feed (points normaux) ───────────────────────────────
+    # ── Kill feed : points normaux ────────────────────────────────────────────
+    # Mon équipe → panneau 1 (au-dessus des barres, couplé aux séries)
     if my_xs:
         fig.add_trace(
             go.Scatter(
                 x=my_xs,
-                y=[1.0] * len(my_xs),
+                y=[143.0] * len(my_xs),
                 mode="markers",
                 marker={"color": _MY_TEAM_COLOR, "size": _NORMAL_MARKER_SIZE, "opacity": 0.65},
                 text=my_tips,
                 hovertemplate="%{text}<extra></extra>",
                 showlegend=False,
             ),
-            row=2,
+            row=1,
             col=1,
         )
+    # Adversaires → panneau 2
     if enemy_xs:
         fig.add_trace(
             go.Scatter(
                 x=enemy_xs,
-                y=[0.0] * len(enemy_xs),
+                y=[0.65] * len(enemy_xs),
                 mode="markers",
                 marker={"color": _ENEMY_COLOR, "size": _NORMAL_MARKER_SIZE, "opacity": 0.65},
                 text=enemy_tips,
@@ -533,13 +535,25 @@ def plot_dominance_chart(
             col=1,
         )
 
-    # ── Panneau 2 : séries (ligne + marqueurs larges + label) ────────────────
+    # ── Séries (ligne + marqueurs larges + label) ────────────────────────────
+    # Mon équipe → au-dessus du graphique de dominance (panneau 1)
+    # Adversaires → dans le kill feed (panneau 2)
     for streak in streaks:
         is_mine = streak.team_id == my_team_id
         color = _MY_TEAM_COLOR if is_mine else _ENEMY_COLOR
-        y_lane = 1.0 if is_mine else 0.0
-        label_y = 1.50 if is_mine else -0.50
+        if is_mine:
+            y_lane = 143.0
+            label_y = 160.0
+            target_row = 1
+            yref_annot = "y"
+        else:
+            y_lane = 0.65
+            label_y = 1.25
+            target_row = 2
+            yref_annot = "y2"
+
         x_pts = [t / 1000.0 for t in streak.kill_times_ms]
+        formatted_pts = [_fmt_s(t / 1000.0) for t in streak.kill_times_ms]
 
         # Ligne + marqueurs agrandis
         fig.add_trace(
@@ -553,13 +567,14 @@ def plot_dominance_chart(
                     "size": _STREAK_MARKER_SIZE,
                     "line": {"color": "rgba(255,255,255,0.6)", "width": 1.5},
                 },
+                customdata=formatted_pts,
                 hovertemplate=(
                     f"<b>{streak.gamertag}</b> — série ×{streak.kills_count}"
-                    "<br>%{x:.0f}s<extra></extra>"
+                    "<br>%{customdata}<extra></extra>"
                 ),
                 showlegend=False,
             ),
-            row=2,
+            row=target_row,
             col=1,
         )
 
@@ -575,7 +590,7 @@ def plot_dominance_chart(
             bgcolor="rgba(15, 20, 35, 0.88)",
             borderpad=3,
             xref="x",
-            yref="y2",
+            yref=yref_annot,
         )
 
     # ── Layout global ────────────────────────────────────────────────────────
@@ -595,9 +610,9 @@ def plot_dominance_chart(
         hovermode="closest",
     )
 
-    # Y panneau 1 — plage élargie pour accueillir les labels extérieurs
+    # Y panneau 1 — plage élargie pour accueillir labels extérieurs + kill feed équipe
     fig.update_yaxes(
-        range=[-18, 118],
+        range=[-18, 170],
         showgrid=False,
         zeroline=False,
         showticklabels=False,
@@ -616,7 +631,7 @@ def plot_dominance_chart(
 
     # Y panneau 2
     fig.update_yaxes(
-        range=[-0.85, 1.85],
+        range=[-0.5, 1.7],
         showgrid=False,
         zeroline=False,
         showticklabels=False,
@@ -630,7 +645,7 @@ def plot_dominance_chart(
         showgrid=False,
         zeroline=False,
         range=[-bucket_s * 0.5, duration_s + bucket_s * 0.5],
-        tickfont={"size": 10, "color": "rgba(245,248,255,0.5)"},
+        tickfont={"size": 13, "color": "rgba(245,248,255,0.75)"},
         row=2,
         col=1,
     )
