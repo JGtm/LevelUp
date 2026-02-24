@@ -158,7 +158,7 @@ def render_teammates_page(
 
     # Spartan ID cards des coéquipiers sélectionnés
     with perf_section("teammates/render_cards"):
-        render_teammate_cards(picked_xuids, settings)
+        render_teammate_cards(picked_xuids, settings, db_path=db_path)
 
     # Tendance de session (matchs affichés) — multi-joueurs
     _req_trend = ["start_time", "kills", "deaths"]
@@ -176,7 +176,7 @@ def render_teammates_page(
         if picked_xuids and "match_id" in dff.columns:
             _match_ids = set(dff["match_id"].cast(pl.Utf8).to_list())
             for _friend_xuid in picked_xuids:
-                _friend_name = display_name_from_xuid(_friend_xuid)
+                _friend_name = display_name_from_xuid(_friend_xuid, db_path=db_path)
                 try:
                     _friend_df = ensure_polars(
                         _load_teammate_stats_from_own_db(_friend_name, _match_ids, db_path)

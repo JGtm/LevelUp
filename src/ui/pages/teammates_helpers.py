@@ -76,13 +76,14 @@ def _clear_min_matches_maps_friends_auto() -> None:
 def _get_teammate_card_data(
     t_xuid: str,
     api_refresh_h: int,
+    db_path: str = "",
 ) -> dict:
     """Récupère les données de carte d'un coéquipier (caché 5min).
 
     Cette fonction est cachée car get_profile_appearance peut être lente
     si les données ne sont pas en cache disque.
     """
-    t_name = display_name_from_xuid(t_xuid)
+    t_name = display_name_from_xuid(t_xuid, db_path=db_path or None)
     t_app, _ = get_profile_appearance(
         xuid=t_xuid,
         enabled=True,
@@ -97,12 +98,13 @@ def _get_teammate_card_data(
     }
 
 
-def render_teammate_cards(picked_xuids: list[str], settings: object) -> None:
+def render_teammate_cards(picked_xuids: list[str], settings: object, db_path: str = "") -> None:
     """Affiche les cartes Spartan des coéquipiers sélectionnés.
 
     Args:
         picked_xuids: Liste des XUIDs des coéquipiers.
         settings: Paramètres de l'application.
+        db_path: Chemin vers la DB joueur (pour résolution gamertag).
 
     Note: Optimisé avec cache TTL pour éviter les appels API répétés.
     """
@@ -118,7 +120,7 @@ def render_teammate_cards(picked_xuids: list[str], settings: object) -> None:
 
     for t_xuid in picked_xuids:
         # Utiliser la fonction cachée pour les données de profil
-        card_data = _get_teammate_card_data(t_xuid, api_refresh_h)
+        card_data = _get_teammate_card_data(t_xuid, api_refresh_h, db_path=db_path)
 
         t_emblem_path = ensure_local_image_path(
             card_data["emblem_url"],

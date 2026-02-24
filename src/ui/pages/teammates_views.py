@@ -93,7 +93,7 @@ def render_single_teammate_view(
             )
             return
 
-        name = display_name_from_xuid(friend_xuid)
+        name = display_name_from_xuid(friend_xuid, db_path=db_path)
 
         _render_shared_stats_metrics(sub)
 
@@ -241,7 +241,7 @@ def render_multi_teammate_view(
                 ids = per_friend_ids.get(str(fx), set())
                 if not ids:
                     continue
-                fx_gamertag = display_name_from_xuid(str(fx))
+                fx_gamertag = display_name_from_xuid(str(fx), db_path=db_path)
                 fr_sub = ensure_polars(
                     load_teammate_stats_fn(fx_gamertag, {str(x) for x in ids}, db_path)
                 )
@@ -358,8 +358,8 @@ def render_trio_view(
     dff = ensure_polars(dff)
     base = ensure_polars(base)
     f1_xuid, f2_xuid = picked_xuids[0], picked_xuids[1]
-    f1_name = display_name_from_xuid(f1_xuid)
-    f2_name = display_name_from_xuid(f2_xuid)
+    f1_name = display_name_from_xuid(f1_xuid, db_path=db_path)
+    f2_name = display_name_from_xuid(f2_xuid, db_path=db_path)
     st.subheader(f"Tous les trois — {f1_name} + {f2_name}")
 
     ids_m = set(
