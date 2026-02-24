@@ -248,6 +248,28 @@ def render_filters_sidebar(
     )
     _all_exp_types = _EXPERIENCE_TYPES_OPTIONS
 
+    # ── Robustesse Streamlit 1.54 : restauration depuis les clés shadow ──────
+    # Avec st.navigation + st.switch_page, Streamlit peut effacer les clés de
+    # widgets lors d'un changement de page (radio, selectbox, date_input...).
+    # Les clés "_*_shadow" (non liées à un widget) survivent à ces cycles et
+    # permettent de restaurer l'état exact de l'utilisateur.
+    _SHADOW_RESTORATIONS: list[tuple[str, str]] = [
+        ("filter_mode", "_filter_mode_shadow"),
+        ("picked_session_label", "_picked_session_label_shadow"),
+        ("start_date_cal", "_start_date_cal_shadow"),
+        ("end_date_cal", "_end_date_cal_shadow"),
+    ]
+    for _widget_key, _shadow_key in _SHADOW_RESTORATIONS:
+        if _widget_key not in st.session_state:
+            _shadow_val = st.session_state.get(_shadow_key)
+            if _shadow_val is not None:
+                st.session_state[_widget_key] = _shadow_val
+    # Restaurer picked_sessions depuis shadow (clé non-widget mais peut être lost)
+    if "picked_sessions" not in st.session_state:
+        _ps_shadow = st.session_state.get("_picked_sessions_shadow")
+        if isinstance(_ps_shadow, list):
+            st.session_state["picked_sessions"] = _ps_shadow
+
     if filters_loaded_key not in st.session_state:
         try:
             prefs = load_filter_preferences(xuid, db_path)
@@ -308,6 +330,8 @@ def render_filters_sidebar(
         horizontal=True,
         key="filter_mode",
     )
+    # Persister filter_mode dans la clé shadow (Streamlit 1.54+)
+    st.session_state["_filter_mode_shadow"] = filter_mode
 
     # UX: reset min_matches_maps en mode Période
     if filter_mode == "Période" and bool(st.session_state.get("_min_matches_maps_auto")):
@@ -373,6 +397,17 @@ def render_filters_sidebar(
             st.session_state[last_saved_key] = player_key
         except Exception:
             pass
+
+    # ── Mise à jour des clés shadow en fin de rendu ────────────────────────
+    # Capture l'état actuel pour le cycle de navigation suivant.
+    if "start_date_cal" in st.session_state:
+        st.session_state["_start_date_cal_shadow"] = st.session_state["start_date_cal"]
+    if "end_date_cal" in st.session_state:
+        st.session_state["_end_date_cal_shadow"] = st.session_state["end_date_cal"]
+    if "picked_session_label" in st.session_state:
+        st.session_state["_picked_session_label_shadow"] = st.session_state["picked_session_label"]
+    if "picked_sessions" in st.session_state:
+        st.session_state["_picked_sessions_shadow"] = st.session_state["picked_sessions"]
 
     return FilterState(
         filter_mode=filter_mode,
@@ -484,11 +519,29 @@ def _render_session_filter(
     st.session_state["_latest_session_label"] = options_ui[0] if options_ui else None
 
     def _set_session_selection(label: str) -> None:
+        prev_label = st.session_state.get("picked_session_label", "(toutes)")
         st.session_state.picked_session_label = label
         if label == "(toutes)":
             st.session_state.picked_sessions = []
         elif label in options_ui:
             st.session_state.picked_sessions = [label]
+        # Réinitialiser les filtres cascade si la session change.
+        # Sans ça, le pattern Save-Render-Restore réinjecte les valeurs de l'ancienne
+        # session dans filter_playlists/modes/maps, filtrant tous les matchs de la
+        # nouvelle session dont les playlists/modes/maps ne se chevauchent pas.
+        if label != prev_label:
+            for _k in (
+                "filter_playlists",
+                "filter_modes",
+                "filter_maps",
+                "_playlists_exclusions",
+                "_modes_exclusions",
+                "_maps_exclusions",
+                "_playlists_filter_mode",
+                "_modes_filter_mode",
+                "_maps_filter_mode",
+            ):
+                st.session_state.pop(_k, None)
 
     if "picked_session_label" not in st.session_state:
         _set_session_selection(options_ui[0] if options_ui else "(toutes)")
