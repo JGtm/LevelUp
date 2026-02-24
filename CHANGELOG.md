@@ -4,6 +4,30 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [5.3.0] - Unreleased
+
+### Added
+
+- **Notifications Discord post-sync/backfill** (`src/utils/discord_notifier.py`)
+  - Nouveau module failsafe — aucune dépendance externe (stdlib `urllib.request` uniquement)
+  - Envoi d'un Rich Embed Discord à la fin de chaque `sync.py` et `backfill_data.py`
+  - Contenu de l'embed : opération, heure début/fin, durée totale, nombre de joueurs et matchs traités
+  - Par joueur : matchs synchronisés (ou traités par backfill), complétude des données (médailles + events), dernier match (carte, mode, FDA, résultat, playlist)
+  - Couleur de la barre : vert ✅ (tout OK), jaune ⚠️ (données incomplètes), rouge ❌ (erreur)
+  - Flag `--no-discord` sur `sync.py` et `backfill_data.py` pour désactiver ponctuellement
+  - `notify_operation_done()` : entrypoint public — `disabled=True` court-circuite immédiatement
+  - `fetch_last_match_info(xuid)` : SQL sur `shared_matches.duckdb` (JOIN `match_registry` + `match_participants`)
+  - `count_new_matches(xuid, gamertag, since)` : compte les matchs avec `first_sync_at >= since`
+  - `count_matches_missing_data(xuid)` : compte les matchs avec `medals_loaded=FALSE OR events_loaded=FALSE`
+
+- **Configuration webhook Discord sécurisée**
+  - Toggle `discord_notifications_enabled: false` dans `app_settings.json` (pas de secrets dans ce fichier)
+  - URL webhook lue depuis `DISCORD_WEBHOOK_URL` dans `.env.local` (gitignored) via `_load_dotenv_if_present()`
+  - Fallback rétrocompatible sur la clé `discord_webhook_url` dans `app_settings.json`
+  - Section documentée dans `.env.local.example`
+
+---
+
 ## [5.2.0] - 2026-02-20
 
 ### Added
