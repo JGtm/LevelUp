@@ -176,6 +176,12 @@ def render_team_dominance_section(
 
     if fig is not None:
         st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+        st.markdown(
+            "- **Barres ** : % des frags par tranche de 30 s — bleu = mon équipe, orange = adversaires\n"
+            "- **Chiffres encadrés** : score cumulé de chaque équipe à l'instant T (encadré si en tête)\n"
+            "- **Points ** : chaque point = un kill individuel\n"
+            "- **Lignes reliées** : série d'un même joueur (≥ 3 kills consécutifs sans mourir)"
+        )
     else:
         st.info("Données insuffisantes pour la frise de dominance.")
 
