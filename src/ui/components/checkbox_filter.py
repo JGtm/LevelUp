@@ -408,31 +408,33 @@ def render_hierarchical_checkbox_filter(
                     on_change=_on_cat_change,
                 )
 
-                # Sous-expander pour les modes individuels
-                with st.expander("", expanded=False):
-                    for mode_name in sorted(cat_modes.keys()):
-                        full_modes = cat_modes[mode_name]
-                        # Le mode est coché si TOUS les full_modes sont cochés
-                        checked = all(fm in st.session_state[session_key] for fm in full_modes)
+                # Modes individuels affichés directement (sans expander)
+                for mode_name in sorted(cat_modes.keys()):
+                    full_modes = cat_modes[mode_name]
+                    # Le mode est coché si TOUS les full_modes sont cochés
+                    checked = all(fm in st.session_state[session_key] for fm in full_modes)
 
-                        mode_cb_key = f"{session_key}_mode_{cat}_{mode_name}"
+                    mode_cb_key = f"{session_key}_mode_{cat}_{mode_name}"
 
-                        def _on_mode_change(
-                            sk: str = session_key,
-                            fms: list[str] = full_modes,
-                            k: str = mode_cb_key,
-                        ) -> None:
-                            if st.session_state[k]:
-                                st.session_state[sk] = st.session_state[sk] | set(fms)
-                            else:
-                                st.session_state[sk] = st.session_state[sk] - set(fms)
+                    def _on_mode_change(
+                        sk: str = session_key,
+                        fms: list[str] = full_modes,
+                        k: str = mode_cb_key,
+                    ) -> None:
+                        if st.session_state[k]:
+                            st.session_state[sk] = st.session_state[sk] | set(fms)
+                        else:
+                            st.session_state[sk] = st.session_state[sk] - set(fms)
 
-                        st.checkbox(
-                            mode_name,
-                            value=checked,
-                            key=mode_cb_key,
-                            on_change=_on_mode_change,
-                        )
+                    with st.container():
+                        _, cb_col = st.columns([0.05, 0.95])
+                        with cb_col:
+                            st.checkbox(
+                                mode_name,
+                                value=checked,
+                                key=mode_cb_key,
+                                on_change=_on_mode_change,
+                            )
 
     return st.session_state[session_key]
 
