@@ -55,6 +55,13 @@ FILTER_DATA_KEYS: list[str] = [
     "_modes_exclusions",
     "_maps_exclusions",
     "_experience_types_exclusions",
+    # Clé shadow non-widget pour résistance au widget-state clearing de Streamlit 1.54+
+    # (st.navigation + st.switch_page peut effacer les clés de widgets comme filter_mode)
+    "_filter_mode_shadow",
+    "_picked_session_label_shadow",
+    "_picked_sessions_shadow",
+    "_start_date_cal_shadow",
+    "_end_date_cal_shadow",
 ]
 
 FILTER_WIDGET_KEY_PREFIXES: tuple[str, ...] = (
