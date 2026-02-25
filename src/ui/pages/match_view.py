@@ -46,6 +46,116 @@ from src.ui.pages.match_view_players import (
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 # =============================================================================
+# Section Rang LUSR / CSR
+# =============================================================================
+
+
+def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
+    """Affiche l'onglet 🏅 Rang pour un match (LUSR ou CSR).
+
+    Charge depuis ``match_skill_rank`` (stats.duckdb du joueur) et affiche :
+    - Image du rang (120px-HINF-CSR_*.png)
+    - Label du tier (ex: « Or III », « Onyx »)
+    - Barre de progression dans le sous-tier avec delta coloré
+
+    Args:
+        match_id: Identifiant du match.
+        db_path: Chemin vers stats.duckdb du joueur.
+    """
+    try:
+        import duckdb
+        from pathlib import Path
+
+        from src.analysis.skill_rating_config import (
+            UNRANKED_COLOR,
+            UNRANKED_LABEL,
+            get_rank_image_path,
+            get_sub_tier_start,
+            get_tier_for_rating,
+            get_tier_size,
+        )
+        from src.data.sync.migrations import ensure_match_skill_rank_table
+    except ImportError:
+        st.info("Modules LUSR non disponibles.")
+        return
+
+    try:
+        conn = duckdb.connect(str(db_path), read_only=True)
+        ensure_match_skill_rank_table(conn)
+        row_rank = conn.execute(
+            "SELECT rating_type, rating_value, rating_deviation, tier_label, "
+            "       sub_tier, tier, tier_fr, rating_delta, playlist_group "
+            "FROM match_skill_rank WHERE match_id = ?",
+            [match_id],
+        ).fetchone()
+        conn.close()
+    except Exception:
+        st.info("Aucun rating disponible pour ce match.")
+        return
+
+    if row_rank is None:
+        st.info(
+            "Aucun rating LUSR/CSR calculé pour ce match. "
+            "Lancez `--lusr` (non classé) ou `--csr` (classé) pour calculer."
+        )
+        return
+
+    (
+        rating_type, rating_value, rating_deviation,
+        tier_label, sub_tier, tier_name, tier_fr, rating_delta, playlist_group,
+    ) = row_rank
+
+    # ── Affichage centré ──
+    col_img, col_info = st.columns([1, 2])
+
+    with col_img:
+        # Image du rang
+        img_path_rel = get_rank_image_path(rating_value) if rating_value else None
+        if img_path_rel:
+            img_full = Path(__file__).resolve().parents[3] / img_path_rel
+            if img_full.exists():
+                st.image(str(img_full), width=120)
+            else:
+                st.markdown(f"<span style='color:{UNRANKED_COLOR}'>◆</span>", unsafe_allow_html=True)
+
+    with col_info:
+        # Label du tier
+        tier_display = tier_label or UNRANKED_LABEL
+        rating_type_badge = "CSR" if rating_type == "CSR" else "LUSR"
+        st.markdown(
+            f"<h3 style='margin:0'>{tier_display}</h3>"
+            f"<small style='color:#888'>{rating_type_badge} • {rating_value:.0f}</small>",
+            unsafe_allow_html=True,
+        )
+
+        # Delta
+        if rating_delta is not None:
+            delta_color = "#50C878" if rating_delta >= 0 else "#FF4444"
+            delta_sign = "+" if rating_delta >= 0 else ""
+            st.markdown(
+                f"<span style='color:{delta_color};font-size:1.1em'>"
+                f"{delta_sign}{rating_delta:.0f} pts</span>",
+                unsafe_allow_html=True,
+            )
+
+        # Barre de progression dans le sous-tier
+        if rating_value is not None:
+            tier_obj, sub = get_tier_for_rating(rating_value)
+            if tier_obj and tier_obj.sub_tiers > 1:
+                tier_size = get_tier_size(rating_value)
+                sub_start = get_sub_tier_start(rating_value)
+                progress_val = min(1.0, max(0.0, (rating_value - sub_start) / tier_size))
+                st.progress(progress_val)
+                st.caption(
+                    f"{rating_value - sub_start:.0f} / {tier_size:.0f} pts "
+                    f"dans {tier_fr or tier_name or ''} {sub}"
+                )
+
+        if playlist_group:
+            st.caption(f"Groupe : {playlist_group.capitalize()}")
+
+
+# =============================================================================
 # Section Citations (progressées dans un match)
 # =============================================================================
 
@@ -97,9 +207,16 @@ def _render_match_citations_section(
             continue
         tiers = _parse_tier_targets(cit.get("tier_targets"))
         current_full = full_map.get(norm, 0)
+        delta = delta_map.get(norm, 0)
         _, _, is_master, _ = _compute_mastery_display(current_full, tiers)
+        # Si on est maître ACTUELLEMENT, vérifier si on le was AVANT ce match.
+        # Si on ne l'était pas avant (count_before < seuil maître), c'est que
+        # ce match a fait atteindre le niveau maître → on l'affiche quand même.
         if is_master:
-            continue
+            count_before = current_full - delta
+            _, _, was_master_before, _ = _compute_mastery_display(count_before, tiers)
+            if was_master_before:
+                continue  # Déjà maître avant ce match → on ne l'affiche pas
         items.append(
             {
                 "name": cit["citation_name_display"],
@@ -108,7 +225,7 @@ def _render_match_citations_section(
                 "image_path": cit.get("image_path"),
                 "tiers": tiers,
                 "current_full": current_full,
-                "delta": delta_map.get(norm, 0),
+                "delta": delta,
             }
         )
 
@@ -374,15 +491,24 @@ def render_match_view(
     row_cols[1].metric(" ", playlist_display)
     row_cols[2].metric(" ", mode_display)
 
-    # Miniature de la carte
+    # Miniature de la carte + onglet Rang (LUSR/CSR)
     map_id = row.get("map_id")
     thumb = map_thumb_path(row, str(map_id) if map_id else None)
-    if thumb:
-        import contextlib
 
-        c = st.columns([1, 2, 1])
-        with c[1], contextlib.suppress(Exception):
-            st.image(thumb, width=400)
+    tab_map, tab_rank = st.tabs(["🗺️ Carte", "🏅 Rang"])
+
+    with tab_map:
+        if thumb:
+            import contextlib
+
+            c = st.columns([1, 2, 1])
+            with c[1], contextlib.suppress(Exception):
+                st.image(thumb, width=400)
+        else:
+            st.info("Miniature de carte indisponible.")
+
+    with tab_rank:
+        _render_match_rank_tab(match_id=match_id, db_path=db_path)
 
     # Stats détaillées
     with st.spinner("Lecture des stats détaillées (attendu vs réel, médailles)…"):
