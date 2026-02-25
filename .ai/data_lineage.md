@@ -1,7 +1,7 @@
 # Data Lineage - Traçabilité des Données Halo
 
 > Ce fichier trace l'origine, les transformations et la destination de chaque flux de données.
-> Mis à jour : 2026-02-17
+> Mis à jour : 2026-02-25
 
 ## Architecture v5.1 - Shared Matches + Player Enrichments
 
@@ -93,7 +93,40 @@ Script: scripts/restore_player.py
 Destination: data/players/{gamertag}/stats.duckdb
 ```
 
-### 5. Dossiers médias → DuckDB (Onglet Médias)
+### 5. LUSR — Backfill local (shared_matches → stats.duckdb) — v5.3
+
+```
+Source: shared_matches.duckdb (match_participants + match_registry)
+     ↓
+scripts/backfill_data.py --lusr [--force-lusr]
+     → scripts/backfill/strategies.compute_lusr_for_player()
+     ↓
+src/analysis/skill_rating.compute_skill_ratings_batch()
+  - Séquentiel (match i dépend de match i-1)
+  - PlayerState par playlist_group (ranked/arena/btb/tactical/social/fun)
+  - composite_score [0,1] : kills 31% + deaths 28% + damage 23% + accuracy 13% + win 5%
+  - delta_mu = K_ELO × (composite − 0.5) × weight_factor  (Elo-style)
+  - sigma : TrueSkill réduction à t=0
+     ↓
+Destination: players/{gamertag}/stats.duckdb → match_skill_rank
+  (PK=match_id — exclusif : un match = LUSR OU CSR, jamais les deux)
+```
+
+### 6. CSR — Sync API (RankRecap → stats.duckdb) — v5.3
+
+```
+Source: API Halo Infinite → Result.RankRecap.PreMatchCsr / PostMatchCsr
+     ↓
+src/data/sync/transformers.transform_all_skill_stats()
+  → SkillParticipantUpdate.post_match_csr, .pre_match_csr, .csr_tier, .csr_sub_tier
+     ↓
+src/data/sync/engine._upsert_csr_rating()
+  → Si is_ranked=True et post_match_csr non-null
+     ↓
+Destination: players/{gamertag}/stats.duckdb → match_skill_rank (rating_type='CSR')
+```
+
+### 7. Dossiers médias → DuckDB (Onglet Médias)
 
 ```
 Source: Dossiers configurés (Paramètres → media_screens_dir, media_videos_dir)
@@ -133,9 +166,9 @@ Lancement : thread en arrière-plan au démarrage de l’app (`_background_media
 | `killer_victim_pairs` | N:1 par match | Paires killer→victim |
 | `xuid_aliases` | 1:1 | Mapping global XUID→Gamertag |
 
-### Données Joueur stats.duckdb (v5.1 — enrichissements uniquement)
+### Données Joueur stats.duckdb (v5.3 — enrichissements uniquement)
 
-> 8 tables supprimées : match_stats, match_participants, highlight_events,
+> 8 tables supprimées (v5.1) : match_stats, match_participants, highlight_events,
 > medals_earned, killer_victim_pairs, player_match_stats, xuid_aliases, teammates_aggregate
 
 | Table | Cardinalité | Description |
@@ -149,6 +182,7 @@ Lancement : thread en arrière-plan au démarrage de l’app (`_background_media
 | `sync_meta` | 1:1 | Métadonnées sync |
 | `media_files` | 1:N | Fichiers médias indexés (captures/vidéos), status active/deleted |
 | `media_match_associations` | M:N | Association média ↔ match ↔ xuid |
+| `match_skill_rank` | 1:1 par match | Rating LUSR ou CSR (exclusif), tier, delta, playlist_group — **v5.3** |
 
 ### Vues Matérialisées
 
@@ -164,6 +198,9 @@ Lancement : thread en arrière-plan au démarrage de l’app (`_background_media
 | Donnée | Source | Formule |
 |--------|--------|---------|
 | `kda` | match_stats | `(kills + assists/3) / max(deaths, 1)` |
+| `rating_value` (LUSR) | match_participants | TrueSkill 2 Elo-style : `mu += K_ELO × (composite − 0.5) × wf` (K=32, wf par groupe) |
+| `composite_score` | match_participants | `kills_vs_exp×0.31 + deaths_vs_exp×0.28 + dmg_eff×0.23 + acc_delta×0.13 + win×0.05` |
+| `rating_delta` | match_skill_rank | `rating_value[i] − rating_value[i-1]` pour le même `playlist_group` |
 | `shots_fired` / `shots_hit` | API → match_stats, match_participants | `Players[].PlayerTeamStats[].Stats.CoreStats.ShotsFired` / `ShotsHit` ; joueur propriétaire dans match_stats, tous les joueurs dans match_participants. |
 | `accuracy` | match_stats | `shots_hit / shots_fired * 100` (ou API si fourni) |
 | `net_kills` | antagonists | `times_killed - times_killed_by` |
