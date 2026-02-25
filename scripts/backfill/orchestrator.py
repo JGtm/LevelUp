@@ -1035,6 +1035,15 @@ async def _backfill_with_api(
                     if medal_rows:
                         n = insert_medal_rows(shared_conn, medal_rows, xuid)
                         totals["medals_inserted"] += n
+                    # Marquer medals_loaded=TRUE MÊME si 0 médailles insérées :
+                    # certains modes (Assassin, events custom) ne donnent pas de médailles.
+                    # Ne pas le faire ici causerait une boucle infinie de re-tentatives.
+                    # Cohérent avec le comportement de engine.py lors du sync initial.
+                    if shared_conn is not None:
+                        shared_conn.execute(
+                            "UPDATE match_registry SET medals_loaded = TRUE WHERE match_id = ?",
+                            (match_id,),
+                        )
 
                 # ── Events (V5: shared.highlight_events) ──
                 if events and highlight_events:
