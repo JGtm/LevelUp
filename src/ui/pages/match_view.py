@@ -242,7 +242,7 @@ def _render_match_citations_section(
         )
 
     if not items:
-        st.info("Aucune citation n'a progressé dans ce match.")
+        st.info(t("citations_no_progress"))
         return
 
     # Grille centrée : padding symétrique si moins de 8 éléments

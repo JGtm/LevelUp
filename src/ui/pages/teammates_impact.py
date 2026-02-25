@@ -229,7 +229,7 @@ def render_impact_taquinerie(
         st.warning(t("tm_impact_no_matches"))
         return
 
-    st.caption("⚡ Premier sang | 🎯 Finisseur | 💀 Boulet | 🐌 Plus lent | 🪦 Première victime")
+    st.caption(t("tm_impact_legend"))
 
     try:
         repo = DuckDBRepository(db_path, xuid.strip())

@@ -554,7 +554,7 @@ def _render_detailed_metrics(perf_a: dict, perf_b: dict) -> None:
     # En-têtes
     col_h1, col_h2, col_h3 = st.columns([2, 1, 1])
     with col_h1:
-        st.markdown("**Métrique**")
+        st.markdown(t("sc_metric_label"))
     with col_h2:
         st.markdown("**Session A**")
     with col_h3:
@@ -594,7 +594,7 @@ def _render_mmr_comparison(perf_a: dict, perf_b: dict) -> None:
 
     col_mmr1, col_mmr2, col_mmr3 = st.columns([2, 1, 1])
     with col_mmr1:
-        st.markdown("**Métrique MMR**")
+        st.markdown(t("sc_mmr_metric_label"))
     with col_mmr2:
         st.markdown("**Session A**")
     with col_mmr3:
