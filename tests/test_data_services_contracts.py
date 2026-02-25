@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-import pandas as pd
 import polars as pl
 
 from src.data.services.teammates_service import (
@@ -34,32 +33,6 @@ from src.data.services.win_loss_service import (
 )
 
 # ─── Fixtures ──────────────────────────────────────────────────────────
-
-
-def _make_match_df(n: int = 20) -> pd.DataFrame:
-    """Construit un DataFrame Pandas synthétique de matchs (pour compute_period_table)."""
-    base_time = datetime(2026, 1, 1, 20, 0, 0)
-    return pd.DataFrame(
-        {
-            "match_id": [f"m{i}" for i in range(n)],
-            "start_time": pd.to_datetime([base_time + timedelta(hours=i * 2) for i in range(n)]),
-            "kills": [10 + i % 5 for i in range(n)],
-            "deaths": [8 + i % 3 for i in range(n)],
-            "assists": [3 + i % 4 for i in range(n)],
-            "accuracy": [48.0 + i * 0.5 for i in range(n)],
-            "ratio": [1.0 + (i % 5) * 0.1 for i in range(n)],
-            "kda": [5.0 + i * 0.3 for i in range(n)],
-            "outcome": [2 if i % 3 != 0 else 3 for i in range(n)],
-            "time_played_seconds": [600 + i * 10 for i in range(n)],
-            "average_life_seconds": [25.0 + i for i in range(n)],
-            "personal_score": [1000 + i * 50 for i in range(n)],
-            "map_name": [f"Map{i % 4}" for i in range(n)],
-            "playlist_name": ["Ranked" if i % 2 == 0 else "Quick Play" for i in range(n)],
-            "pair_name": ["Slayer" if i % 2 == 0 else "CTF" for i in range(n)],
-            "team_mmr": [1500 + i * 10 for i in range(n)],
-            "enemy_mmr": [1510 + i * 8 for i in range(n)],
-        }
-    )
 
 
 def _make_match_pl(n: int = 20) -> pl.DataFrame:
@@ -88,19 +61,10 @@ def _make_match_pl(n: int = 20) -> pl.DataFrame:
     )
 
 
-def _make_empty_df() -> pd.DataFrame:
-    """Construit un DataFrame Pandas vide (pour compute_period_table)."""
-    return pd.DataFrame()
-
-
 def _make_empty_pl() -> pl.DataFrame:
     """Construit un DataFrame Polars vide (pour compute_period_table)."""
     return pl.DataFrame()
 
-
-def _make_minimal_df() -> pd.DataFrame:
-    """Construit un DataFrame Pandas avec 3 matchs."""
-    return _make_match_df(3)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -394,3 +358,209 @@ class TestPageServiceIntegration:
         assert TimeseriesService is not None
         assert WinLossService is not None
         assert TeammatesService is not None
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# PlayerState — Tests seed CSR v5.3
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestPlayerStateFromCSR:
+    """Tests pour PlayerState.from_csr() (seed depuis le CSR Halo)."""
+
+    def test_from_csr_zero_gives_initial_mu(self) -> None:
+        """CSR 0 → mu attendu 1000 (Bronze I)."""
+        from src.analysis.skill_rating import PlayerState
+
+        state = PlayerState.from_csr(0)
+        assert state.mu == 1000.0
+
+    def test_from_csr_1500_gives_higher_mu(self) -> None:
+        """CSR 1500 (Onyx) → mu > 1000 (ancrage plus haut)."""
+        from src.analysis.skill_rating import PlayerState
+
+        state_low = PlayerState.from_csr(0)
+        state_high = PlayerState.from_csr(1500)
+        assert state_high.mu > state_low.mu
+
+    def test_from_csr_negative_clamped(self) -> None:
+        """CSR négatif → mu identique à CSR=0 (clamp)."""
+        from src.analysis.skill_rating import PlayerState
+
+        state_zero = PlayerState.from_csr(0)
+        state_neg = PlayerState.from_csr(-100)
+        assert state_neg.mu == state_zero.mu
+
+    def test_from_csr_sigma_is_min_sigma(self) -> None:
+        """Sigma doit être MIN_SIGMA (état stable, ancrage fort)."""
+        from src.analysis.skill_rating import PlayerState
+        from src.analysis.skill_rating_config import MIN_SIGMA
+
+        state = PlayerState.from_csr(800)
+        assert state.sigma == MIN_SIGMA
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# _split_participants — contrat FFA / Team
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestSplitParticipantsFFA:
+    """Tests pour _split_participants avec player_team_id=None (FFA)."""
+
+    def test_none_team_id_returns_empty_teammates(self) -> None:
+        """player_team_id=None → teammates vide, enemies = tous les participants."""
+        from src.analysis.skill_rating import _split_participants
+
+        participants = [
+            {"xuid": "1", "team_id": 0, "kills_expected": 5.0},
+            {"xuid": "2", "team_id": 1, "kills_expected": 4.5},
+        ]
+        teammates, enemies = _split_participants(None, participants)
+        assert teammates == []
+        assert len(enemies) == 2
+
+    def test_team_split_separates_correctly(self) -> None:
+        """player_team_id=0 → teammates équipe 0, enemies équipe 1."""
+        from src.analysis.skill_rating import _split_participants
+
+        participants = [
+            {"xuid": "1", "team_id": 0, "kills_expected": 5.0},
+            {"xuid": "2", "team_id": 0, "kills_expected": 4.0},
+            {"xuid": "3", "team_id": 1, "kills_expected": 4.5},
+        ]
+        teammates, enemies = _split_participants(0, participants)
+        assert len(teammates) == 2
+        assert len(enemies) == 1
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# compute_skill_ratings_batch — paramètre weights thread-safe
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestComputeSkillRatingsBatchWeights:
+    """Tests que le paramètre weights= ne mute pas le global COMPOSITE_WEIGHTS."""
+
+    def test_global_weights_unchanged_after_custom_call(self) -> None:
+        """COMPOSITE_WEIGHTS global ne doit pas être muté par compute_skill_ratings_batch."""
+        from src.analysis.skill_rating import compute_skill_ratings_batch
+        from src.analysis.skill_rating_config import COMPOSITE_WEIGHTS
+
+        original_kills_weight = COMPOSITE_WEIGHTS["kills_vs_expected"]
+
+        df_matches = _make_match_pl(3).with_columns(
+            [
+                pl.lit(None).cast(pl.Float64).alias("kills_expected"),
+                pl.lit(None).cast(pl.Float64).alias("deaths_expected"),
+                pl.lit(None).cast(pl.Float64).alias("damage_dealt"),
+                pl.lit(None).cast(pl.Float64).alias("damage_taken"),
+                pl.lit(0).cast(pl.Int32).alias("team_id"),
+                pl.lit(False).alias("is_ranked"),
+            ]
+        )
+        custom_weights = {**COMPOSITE_WEIGHTS, "kills_vs_expected": 99.0}
+        # Appel avec poids personnalisés — ne doit pas muter le global
+        try:
+            compute_skill_ratings_batch(df_matches, pl.DataFrame(), weights=custom_weights)
+        except Exception:
+            pass  # On teste uniquement la non-mutation, pas le résultat
+
+        assert COMPOSITE_WEIGHTS["kills_vs_expected"] == original_kills_weight
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# migrations — ensure_match_skill_rank_table
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestEnsureMatchSkillRankTable:
+    """Tests pour ensure_match_skill_rank_table (idempotence & schéma)."""
+
+    def test_idempotent_double_call(self) -> None:
+        """Appeler deux fois ne doit pas lever d'exception."""
+        import duckdb
+
+        from src.data.sync.migrations import ensure_match_skill_rank_table
+
+        conn = duckdb.connect(":memory:")
+        ensure_match_skill_rank_table(conn)
+        ensure_match_skill_rank_table(conn)  # ne doit pas lever
+        tables = conn.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_name = 'match_skill_rank'"
+        ).fetchall()
+        assert len(tables) == 1
+        conn.close()
+
+    def test_schema_has_required_columns(self) -> None:
+        """La table doit avoir match_id, rating_type, rating_value."""
+        import duckdb
+
+        from src.data.sync.migrations import ensure_match_skill_rank_table
+
+        conn = duckdb.connect(":memory:")
+        ensure_match_skill_rank_table(conn)
+        cols = {
+            row[0]
+            for row in conn.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'match_skill_rank'"
+            ).fetchall()
+        }
+        assert "match_id" in cols
+        assert "rating_type" in cols
+        assert "rating_value" in cols
+        conn.close()
+
+    def test_match_id_is_primary_key(self) -> None:
+        """match_id PRIMARY KEY → INSERT en double doit lever une erreur."""
+        import duckdb
+
+        from src.data.sync.migrations import ensure_match_skill_rank_table
+
+        conn = duckdb.connect(":memory:")
+        ensure_match_skill_rank_table(conn)
+        conn.execute(
+            "INSERT INTO match_skill_rank (match_id, rating_type, rating_value) "
+            "VALUES ('m1', 'LUSR', 1200.0)"
+        )
+        import pytest
+
+        with pytest.raises(Exception):
+            conn.execute(
+                "INSERT INTO match_skill_rank (match_id, rating_type, rating_value) "
+                "VALUES ('m1', 'CSR', 900)"
+            )
+        conn.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# playlist_groups — insensibilité à la casse
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestGetPlaylistGroupCaseInsensitive:
+    """Tests pour get_playlist_group() — insensibilité à la casse."""
+
+    def test_ranked_prefix_lowercase(self) -> None:
+        """pair_name 'ranked:slayer on...' (minuscules) → groupe 'ranked'."""
+        from src.analysis.playlist_groups import get_playlist_group
+
+        group = get_playlist_group(None, "ranked:slayer on aquarius")
+        assert group == "ranked"
+
+    def test_ranked_prefix_uppercase(self) -> None:
+        """pair_name 'RANKED:Slayer on...' (majuscules) → groupe 'ranked'."""
+        from src.analysis.playlist_groups import get_playlist_group
+
+        group = get_playlist_group(None, "RANKED:Slayer on Aquarius")
+        assert group == "ranked"
+
+    def test_playlist_name_case_insensitive(self) -> None:
+        """playlist_name 'Quick Play' vs 'quick play' → même groupe."""
+        from src.analysis.playlist_groups import get_playlist_group
+
+        result_upper = get_playlist_group("Quick Play", None)
+        result_lower = get_playlist_group("quick play", None)
+        assert result_upper == result_lower
