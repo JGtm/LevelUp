@@ -495,7 +495,7 @@ BACKFILL_FLAGS: dict[str, int] = {
     "participants_damage": 1 << 13,  # 8192
     "aliases": 1 << 14,  # 16384
     "participants_avg_life": 1 << 15,  # 32768 - Ajouté pour éviter détection infinie
-    # ── LUSR / CSR (v5.2) ──
+    # ── LUSR / CSR (v5.3) ──
     "lusr": 1 << 16,  # 65536  — LUSR calculé localement (non classé)
     "csr": 1 << 17,  # 131072 — CSR récupéré via API (classé)
 }
@@ -983,6 +983,33 @@ _MATCH_SKILL_RANK_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type)",
     "CREATE INDEX IF NOT EXISTS idx_msr_playlist    ON match_skill_rank(playlist_group)",
 ]
+
+
+def ensure_skill_history_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée la table ``skill_history`` si elle n'existe pas (idempotente).
+
+    Stocke les snapshots CSR du joueur récupérés via get_playlist_csr
+    ainsi que l'historique all_time_max par playlist.
+
+    À appeler dans la DB ``stats.duckdb`` du joueur concerné.
+
+    Args:
+        conn: Connexion DuckDB vers stats.duckdb du joueur.
+    """
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS skill_history (
+                playlist_id    VARCHAR,
+                recorded_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                csr            INTEGER,
+                tier           VARCHAR,
+                division       INTEGER,
+                matches_played INTEGER
+            )
+        """)
+        logger.debug("Table skill_history initialisée (stats.duckdb)")
+    except Exception as e:
+        logger.error(f"Impossible d'initialiser skill_history : {e}")
 
 
 def ensure_match_skill_rank_table(conn: duckdb.DuckDBPyConnection) -> None:
