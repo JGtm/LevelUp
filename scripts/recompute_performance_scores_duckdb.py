@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Script de recalcul des scores de performance v4 pour DuckDB.
 
-Recalcule tous les performance_score dans match_stats en utilisant la formule v4
+Recalcule tous les performance_score dans player_match_enrichment en utilisant la formule v4
 (8 métriques : KPM, DPM deaths, APM, KDA, accuracy, PSPM, DPM damage, rank_perf).
 
 Usage:
@@ -46,24 +46,65 @@ logger = logging.getLogger(__name__)
 
 # Colonnes requises pour le calcul v4
 HISTORY_COLUMNS = """
-    match_id, start_time, kills, deaths, assists, kda, accuracy,
-    time_played_seconds, avg_life_seconds,
-    personal_score, damage_dealt,
-    rank, team_mmr, enemy_mmr,
-    performance_score
+    mp.match_id, r.start_time,
+    mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
+    mp.time_played_seconds, mp.avg_life_seconds,
+    mp.personal_score, mp.damage_dealt,
+    mp.rank, mp.team_mmr, mp.enemy_mmr,
+    pme.performance_score
 """
 
 
 def load_player_matches(db_path: Path) -> pl.DataFrame:
-    """Charge tous les matchs d'un joueur depuis DuckDB."""
+    """Charge tous les matchs d'un joueur depuis DuckDB (architecture v5.1).
+
+    Les stats sont dans shared.match_participants, les enrichissements
+    (performance_score) dans player_match_enrichment.
+    """
+    shared_path = db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+    if not shared_path.exists():
+        raise FileNotFoundError(f"shared_matches.duckdb introuvable : {shared_path}")
+
+    # Le gamertag est le nom du répertoire parent
+    gamertag = db_path.parent.name
+
     conn = duckdb.connect(str(db_path), read_only=True)
     try:
-        df = conn.execute(f"""
-            SELECT {HISTORY_COLUMNS}
-            FROM match_stats
-            WHERE start_time IS NOT NULL
-            ORDER BY start_time ASC
-        """).pl()
+        conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
+        # Résoudre le xuid depuis shared.xuid_aliases (par gamertag, insensible à la casse)
+        xuid_row = conn.execute(
+            "SELECT xuid FROM shared.xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
+            [gamertag],
+        ).fetchone()
+        if not xuid_row:
+            # Fallback : chercher parmi les participants pour trouver l'xuid du joueur
+            xuid_row = conn.execute(
+                """SELECT DISTINCT mp.xuid
+                   FROM shared.match_participants mp
+                   JOIN player_match_enrichment pme ON mp.match_id = pme.match_id
+                   WHERE LOWER(mp.gamertag) = LOWER(?)
+                   LIMIT 1""",
+                [gamertag],
+            ).fetchone()
+        if not xuid_row:
+            raise ValueError(f"XUID introuvable pour {gamertag}")
+        xuid = xuid_row[0]
+
+        df = conn.execute("""
+            SELECT
+                mp.match_id, r.start_time,
+                mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
+                mp.time_played_seconds, mp.avg_life_seconds,
+                mp.personal_score, mp.damage_dealt,
+                mp.rank, mp.team_mmr, mp.enemy_mmr,
+                pme.performance_score
+            FROM shared.match_participants mp
+            JOIN shared.match_registry r ON mp.match_id = r.match_id
+            LEFT JOIN player_match_enrichment pme ON mp.match_id = pme.match_id
+            WHERE mp.xuid = ?
+              AND r.start_time IS NOT NULL
+            ORDER BY r.start_time ASC
+        """, [xuid]).pl()
         return df
     finally:
         conn.close()
@@ -87,7 +128,7 @@ def recompute_scores_for_player(
     Returns:
         Dict avec les statistiques de traitement.
     """
-    stats = {"total": 0, "computed": 0, "skipped": 0, "errors": 0, "insufficient": 0}
+    stats = {"total": 0, "computed": 0, "skipped": 0, "errors": 0, "insufficient": 0, "sessions_updated": 0}
 
     # Charger tous les matchs
     df = load_player_matches(db_path)
@@ -132,7 +173,7 @@ def recompute_scores_for_player(
                         # Commit par batch
                         if len(batch_updates) >= batch_size:
                             conn.executemany(
-                                "UPDATE match_stats SET performance_score = ? WHERE match_id = ?",
+                                "UPDATE player_match_enrichment SET performance_score = ? WHERE match_id = ?",
                                 batch_updates,
                             )
                             conn.commit()
@@ -146,13 +187,43 @@ def recompute_scores_for_player(
         # Commit restant
         if batch_updates and not dry_run and conn:
             conn.executemany(
-                "UPDATE match_stats SET performance_score = ? WHERE match_id = ?",
+                "UPDATE player_match_enrichment SET performance_score = ? WHERE match_id = ?",
                 batch_updates,
             )
             conn.commit()
     finally:
         if conn:
             conn.close()
+
+    # ── Recalculer sessions.performance_score = AVG(pme.performance_score) ──
+    # Fait dans une connexion séparée en écriture car la connexion principale
+    # peut être fermée (dry_run = pas de conn).
+    if not dry_run:
+        conn2 = duckdb.connect(str(db_path), read_only=False)
+        try:
+            sessions_updated = conn2.execute("""
+                UPDATE sessions s
+                SET performance_score = (
+                    SELECT AVG(pme.performance_score)
+                    FROM player_match_enrichment pme
+                    WHERE pme.session_id = s.session_id
+                      AND pme.performance_score IS NOT NULL
+                )
+                WHERE EXISTS (
+                    SELECT 1 FROM player_match_enrichment pme
+                    WHERE pme.session_id = s.session_id
+                      AND pme.performance_score IS NOT NULL
+                )
+            """).fetchone()
+            conn2.commit()
+            n_sessions = conn2.execute(
+                "SELECT COUNT(*) FROM sessions WHERE performance_score IS NOT NULL"
+            ).fetchone()[0]
+            stats["sessions_updated"] = n_sessions
+        except Exception as e:
+            logger.warning(f"Impossible de mettre à jour sessions.performance_score: {e}")
+        finally:
+            conn2.close()
 
     return stats
 
@@ -225,7 +296,7 @@ def main() -> None:
         print("Mode : FORCE (recalcul de tous les scores)")
     print()
 
-    total_stats = {"total": 0, "computed": 0, "skipped": 0, "errors": 0, "insufficient": 0}
+    total_stats = {"total": 0, "computed": 0, "skipped": 0, "errors": 0, "insufficient": 0, "sessions_updated": 0}
 
     for gamertag, db_path in player_dbs:
         print(f"  {gamertag} ({db_path.name})... ", end="", flush=True)
@@ -242,7 +313,8 @@ def main() -> None:
             f"{stats['computed']} calculés, "
             f"{stats['skipped']} skippés, "
             f"{stats['insufficient']} insuffisants, "
-            f"{stats['errors']} erreurs"
+            f"{stats['errors']} erreurs, "
+            f"{stats['sessions_updated']} sessions mises à jour"
         )
 
         for k in total_stats:
@@ -254,6 +326,7 @@ def main() -> None:
     print(f"Skippés (déjà présents) : {total_stats['skipped']}")
     print(f"Historique insuffisant : {total_stats['insufficient']}")
     print(f"Erreurs : {total_stats['errors']}")
+    print(f"Sessions mises à jour : {total_stats['sessions_updated']}")
 
     if args.dry_run:
         print("\n(Mode dry-run — aucune modification effectuée)")
