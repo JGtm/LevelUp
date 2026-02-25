@@ -22,8 +22,8 @@ Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score
 ### Historique des versions
 
 - **v5.1** : Architecture Shared DB, éradication SQLite/Pandas, cleanup tables legacy ✅
-- **v5.2** : Notifications Discord post-sync/backfill ✅
-- **v5.3** : LUSR/CSR — système de rating TrueSkill 2 per-groupe (2026-02-25) ✅
+- **v5.2** : Filtres intent-based, Stats PvE Firefight (`shared_pve.duckdb`), Scoreboard, palette Okabe-Ito ✅
+- **v5.3** : LUSR/CSR TrueSkill 2 per-groupe, Notifications Discord, 20 tests corrigés ✅
 
 ### Architecture v5.3
 
@@ -36,7 +36,8 @@ data/
 │       └── archive/           # Archives temporelles
 ├── warehouse/
 │   ├── metadata.duckdb        # Référentiels (playlists, maps, medals, ranks)
-│   └── shared_matches.duckdb  # Matchs centralisés (registry, participants, events, medals)
+│   ├── shared_matches.duckdb  # Matchs centralisés (registry, participants, events, medals)
+│   └── shared_pve.duckdb      # Stats PvE Firefight (pve_match_stats) — v5.2
 └── backups/                   # Backups Parquet
 ```
 
@@ -63,7 +64,9 @@ data/
 - `src/ui/components/` : Composants réutilisables (career_progress_circle.py ajouté Sprint 3B)
 - `src/ui/streamlit_modern.py` : Wrappers compatibilité Streamlit moderne (fragment_if_available, PLOTLY_CLEAN_CONFIG) — Sprint 8ter
 - `src/ui/vectorize_helpers.py` : Helpers vectorisation Polars (build_mapping, replace map_elements) — Sprint 8ter
-- `src/visualization/` : Graphiques Plotly
+- `src/ui/filter_state.py` : Filtres intent-based v5.2 (`FilterPreferences`, `_detect_filter_mode()`, `reconcile_filter_prefs()`, persist JSON)
+- `src/utils/discord_notifier.py` : Notifications Discord post-sync/backfill (failsafe, stdlib uniquement) — v5.3
+- `src/visualization/` : Graphiques Plotly (palette Okabe-Ito v5.2, `plot_lusr_timeseries()` v5.3)
 
 ## Tables DuckDB
 
@@ -155,10 +158,10 @@ data/
 
 Aucun problème bloquant connu.
 
-## État technique final (v5.1)
+## État technique final (v5.3)
 
-- **2913 tests** passent, 0 échecs
-- **Architecture DuckDB v5.1** : shared_matches + player enrichments
+- **3323 tests** passent, 0 échecs
+- **Architecture DuckDB v5.3** : shared_matches + shared_pve + player enrichments
 - **Polars** comme moteur DataFrame (0 Pandas dans code métier)
 - **0 SQLite** dans le code runtime
 - **Streamlit ≥1.37** avec @st.fragment, st.navigation, column_config
@@ -184,8 +187,6 @@ Consulter ce fichier pour une cartographie exhaustive ; le présent `project_map
 
 ## Dernière Mise à Jour
 
+**2026-02-25** : **v5.3.0** — LUSR/CSR TrueSkill 2 per-groupe, Notifications Discord, 3323 tests
+**2026-02-20** : **v5.2.0** — Filtres intent-based, Stats PvE shared_pve.duckdb, Scoreboard, Okabe-Ito
 **2026-02-17** : **v5.1.0 Release** — Documentation finale, archivage, release tag
-**2026-02-17** : Étape 8ter complétée (modernisation Streamlit, 2913 tests)
-**2026-02-16** : Étape 8bis complétée (éradication code legacy, optimisations réactivité)
-**2026-02-15** : Migration v5.0 shared_matches + cleanup tables legacy
-**2026-02-12** : v4.1 Release — Sprints 11-12 livrés

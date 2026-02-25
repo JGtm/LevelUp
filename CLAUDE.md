@@ -25,9 +25,10 @@
 |------|----------|--------|
 | Référentiels | DuckDB | `data/warehouse/metadata.duckdb` |
 | Matchs partagés | DuckDB | `data/warehouse/shared_matches.duckdb` |
+| Stats PvE Firefight | DuckDB | `data/warehouse/shared_pve.duckdb` |
 | Enrichissements joueur | DuckDB | `data/players/{gamertag}/stats.duckdb` |
 | Archives | Parquet | `data/players/{gamertag}/archive/` |
-| Config | JSON | `db_profiles.json`, `app_settings.json` |
+| Config | JSON | `db_profiles.json`, `app_settings.json`, `.env.local` |
 
 ## Tables DuckDB Principales
 
@@ -41,6 +42,12 @@
 | `medals_earned` | Médailles de tous les joueurs |
 | `killer_victim_pairs` | Paires killer→victim de tous les matchs |
 | `xuid_aliases` | Mapping global xuid→gamertag |
+
+### shared_pve.duckdb (stats Firefight) — v5.2
+
+| Table | Description |
+|-------|-------------|
+| `pve_match_stats` | Stats par joueur par match Firefight (waves, boss, kills par type d'ennemi : Grunt/Elite/Jackal/Brute/Hunter/Skimmer/Crawler/Soldier/Knight/Warden) |
 
 ### stats.duckdb (par joueur) — v5.1 allégée
 
@@ -59,6 +66,7 @@
 | `media_match_associations` | Associations médias↔matchs |
 | `sessions` | Sessions groupées |
 | `sync_meta` | Métadonnées sync |
+| `match_skill_rank` | Rating LUSR ou CSR par match (PK=match_id, exclusif) — **v5.3** |
 | `mv_*` | Vues matérialisées (mv_player_matches, mv_map_stats, etc.) |
 
 ## Environnement Python
