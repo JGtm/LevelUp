@@ -2,7 +2,7 @@
 
 > **Analysez vos performances Halo Infinite avec des visualisations avancées et une architecture DuckDB v5 ultra-rapide.**
 
-[![Version](https://img.shields.io/badge/Version-5.0.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.0.0)
+[![Version](https://img.shields.io/badge/Version-5.3.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.3.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -11,14 +11,12 @@
 
 ---
 
-## Nouveautés v5.0
+## Dernières nouveautés
 
-- **Architecture Shared Matches** — Base partagée `shared_matches.duckdb` centralisant les matchs de tous les joueurs (-69% stockage, -72% appels API, -73% temps de sync)
-- **Sync Engine v5** — Détection des matchs partagés, sync allégée pour les matchs connus, parallélisation API
-- **ATTACH multi-DB** — Lecture transparente depuis la base partagée via DuckDB ATTACH
-- **Citations DuckDB-first** — Moteur SQL de calcul et agrégation des citations (14 règles, +6 objectives réintégrées)
-- **Optimisations Sync** — Parallélisation `asyncio.gather`, batching DB, performance scores en batch post-sync
-- **2768 tests unitaires** — Suite verte, 0 failure, modules métier couverts à 70%+
+- **v5.3 — LUSR/CSR** — Système de rating TrueSkill 2 per-groupe (ranked/arena/btb/tactical/social/fun) avec calibration empirique. Notifications Discord post-sync/backfill.
+- **v5.2 — Stats PvE** — Base dédiée `shared_pve.duckdb` pour les matchs Firefight. Filtres intent-based persistants. Scoreboard complet "Dernier match". Palette Okabe-Ito (accessibilité daltonisme).
+- **v5.1 — Architecture optimisée** — Streamlit moderne (`@st.fragment`, `st.navigation`), éradication SQLite/Pandas, `SyncScope` centralisé, -75% temps de connexion DB.
+- **v5.0 — Shared Matches** — `shared_matches.duckdb` centralise tous les matchs (-69% stockage, -72% appels API). **3323 tests**, 0 failure.
 
 ---
 
@@ -38,14 +36,13 @@
 - **Corrélations** - Scatter plots durée de vie vs kills
 - **Top armes** - Statistiques par arme avec headshot rate
 
-### Architecture v5.0 - DuckDB Shared Matches
-- **Shared Matches** — Base partagée `shared_matches.duckdb` centralisant tous les matchs
+### Architecture v5.3 - DuckDB Multi-DB
+- **Shared Matches** — `shared_matches.duckdb` centralise tous les matchs (registry, participants, events, médailles)
+- **PvE Firefight** — `shared_pve.duckdb` isole les stats Firefight (waves, boss, ennemis par type)
 - **ATTACH multi-DB** — DuckDB ATTACH pour lecture transparente cross-DB
-- **Performance** — Requêtes DuckDB < 30ms (warm), DataFrame Polars natifs
-- **Vues matérialisées** — Agrégations instantanées (carte, mode, global)
-- **Lazy loading** — Chargement à la demande par page
-- **Zéro legacy** — Plus de SQLite, plus de `src.db`, Pandas uniquement aux frontières Plotly/Streamlit
-- **Backup Parquet** — Export/restore avec compression Zstd
+- **LUSR/CSR** — Ratings TrueSkill 2 per-groupe stockés dans `match_skill_rank` (player DB)
+- **Performance** — Requêtes DuckDB < 30ms (warm), DataFrame Polars natifs, vues matérialisées
+- **Zéro legacy** — 0 SQLite, 0 Pandas dans le code métier, Backup Parquet Zstd
 
 ---
 
@@ -141,44 +138,37 @@ python scripts/restore_player.py --gamertag MonGamertag --backup ./backups/MonGa
 
 ## Architecture
 
-### Structure des Données (v5)
+### Structure des Données (v5.3)
 
 ```
 data/
 ├── warehouse/
-│   ├── metadata.duckdb            # Référentiels partagés
-│   └── shared_matches.duckdb      # Base partagée (tous les matchs)
-│       ├── match_registry         # Registre central (1 ligne/match)
-│       ├── match_participants     # Tous les joueurs de tous les matchs
-│       ├── highlight_events       # Tous les événements filmés
-│       ├── medals_earned          # Médailles de tous les joueurs
-│       └── xuid_aliases           # Mapping xuid→gamertag
-├── players/                       # Données par joueur
+│   ├── metadata.duckdb            # Référentiels partagés (maps, playlists, médailles)
+│   ├── shared_matches.duckdb      # Tous les matchs (registry, participants, events, médailles)
+│   └── shared_pve.duckdb          # Stats PvE Firefight (pve_match_stats) — v5.2
+├── players/                       # Enrichissements personnels (~4 MB/joueur)
 │   └── {gamertag}/
-│       ├── stats.duckdb           # Enrichissements personnels
-│       │   ├── player_match_enrichment  # performance_score, session_id
-│       │   ├── teammates_aggregate      # Stats coéquipiers (POV joueur)
-│       │   ├── antagonists              # Rivalités (POV joueur)
-│       │   └── match_citations          # Citations par match
-│       └── archive/               # Archives Parquet temporelles
+│       ├── stats.duckdb
+│       │   ├── player_match_enrichment  # performance_score, session_id (SEULE table match)
+│       │   ├── antagonists, match_citations, career_progression
+│       │   └── match_skill_rank         # Rating LUSR ou CSR par match — v5.3
+│       └── archive/               # Archives Parquet
 └── backups/                       # Backups Parquet
 ```
 
-### Tables DuckDB
+### Tables DuckDB principales
 
-| Table | Description |
-|-------|-------------|
-| `match_stats` | Statistiques des matchs |
-| `medals_earned` | Médailles par match |
-| `teammates_aggregate` | Stats coéquipiers agrégées |
-| `antagonists` | Top killers/victimes (rivalités) |
-| `highlight_events` | Événements marquants |
-| `career_progression` | Progression de rang |
-| `mv_map_stats` | Vue matérialisée par carte |
-| `mv_mode_category_stats` | Vue matérialisée par mode |
-| `mv_global_stats` | Statistiques globales |
+| Base | Table | Description |
+|------|-------|-------------|
+| `shared_matches` | `match_registry` | Registre central (1 ligne/match) |
+| `shared_matches` | `match_participants` | Stats de tous les joueurs (31 col, MMR) |
+| `shared_matches` | `medals_earned`, `highlight_events` | Médailles et événements filmés |
+| `shared_pve` | `pve_match_stats` | Stats Firefight par joueur/match |
+| player `stats` | `player_match_enrichment` | performance_score, session_id |
+| player `stats` | `match_skill_rank` | Rating LUSR/CSR par match |
+| player `stats` | `mv_map_stats`, `mv_global_stats` | Vues matérialisées |
 
-**Documentation technique** : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+**Documentation technique** : [docs/ARCHITECTURE_V5.md](docs/ARCHITECTURE_V5.md)
 
 ---
 
@@ -289,9 +279,9 @@ pytest
 
 ## Limitations connues
 
-- **Pandas résiduel** : ~10 fichiers conservent Pandas aux frontières Plotly/Streamlit (conversion obligatoire). Polars est le standard pour tout le code métier.
-- **Couverture tests** : ~43% global — les modules UI Streamlit (pages, renderers) tirent la moyenne vers le bas. Les modules métier (sync, repositories, analysis) dépassent individuellement 70%.
-- **API Halo** : Dépend de l'API Grunt/SPNKr — certains endpoints peuvent être instables ou limités en débit.
+- **Pandas résiduel** : Pandas conservé uniquement aux frontières Plotly/Streamlit (conversion `.to_pandas()` au dernier moment). Polars est le standard pour tout le code métier.
+- **Couverture tests** : ~43% global — les modules UI Streamlit tirent la moyenne vers le bas. Les modules métier (sync, repositories, analysis) dépassent individuellement 70%.
+- **API Halo** : Dépend de l'API SPNKr — certains endpoints peuvent être instables ou limités en débit. Les stats par arme ne sont pas disponibles via l'API (vérifié 2026-02-02).
 
 ---
 

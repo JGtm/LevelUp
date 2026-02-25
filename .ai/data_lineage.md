@@ -25,6 +25,12 @@
          │               │  │  - xuid_aliases                     │   │
          │               │  └─────────────────────────────────────┘   │
          │               │                                             │
+         │               │  ┌─────────────────────────────────────┐   │
+         ├───────────────│  │  shared_pve.duckdb (Firefight) v5.2 │   │
+         │               │  │  - pve_match_stats (waves, boss,    │   │
+         │               │  │    kills par type d'ennemi)         │   │
+         │               │  └─────────────────────────────────────┘   │
+         │               │                                             │
          └───────────────│  ┌─────────────────────────────────────┐   │
                          │  │  players/{gt}/stats.duckdb          │   │
                          │  │  - player_match_enrichment (SEULE)  │   │
@@ -32,6 +38,7 @@
                          │  │  - antagonists, match_citations      │   │
                          │  │  - career_progression, sessions      │   │
                          │  │  - media_files, media_match_assoc    │   │
+                         │  │  - match_skill_rank (LUSR/CSR) v5.3 │   │
                          │  │  - mv_* (vues matérialisées)        │   │
                          │  └─────────────────────────────────────┘   │
                          └─────────────────────────────────────────────┘
@@ -126,7 +133,24 @@ src/data/sync/engine._upsert_csr_rating()
 Destination: players/{gamertag}/stats.duckdb → match_skill_rank (rating_type='CSR')
 ```
 
-### 7. Dossiers médias → DuckDB (Onglet Médias)
+### 7. PvE Stats Firefight — Sync/Backfill → shared_pve.duckdb — v5.2
+
+```
+Source: API Halo Infinite (match JSON) ou shared_matches.duckdb (backfill)
+     ↓
+_is_firefight_match() → True (GameVariantCategory 41/42, PublicName firefight/baptême)
+     ↓
+extract_pve_stats(match_json) → list[PveMatchStatsRow]
+  - waves_completed, boss_kills, kills par type d'ennemi (Banished + Forerunner)
+  - pve_bits : bitmask granulaire PveBits(IntFlag)
+     ↓
+batch_insert_pve_stats(pve_conn, rows)
+     ↓
+Destination: data/warehouse/shared_pve.duckdb → pve_match_stats
+  + bit guard MatchBits.PVE_STATS (1 << 20) dans match_registry.backfill_completed
+```
+
+### 8. Dossiers médias → DuckDB (Onglet Médias)
 
 ```
 Source: Dossiers configurés (Paramètres → media_screens_dir, media_videos_dir)
@@ -141,6 +165,12 @@ UI: media_tab.py (load_media_for_ui → sections Mes captures / Captures de XXX 
 ```
 
 Lancement : thread en arrière-plan au démarrage de l’app (`_background_media_indexing` dans streamlit_app.py).
+
+## Tables PvE (shared_pve.duckdb)
+
+| Table | Cardinalité | Description |
+|-------|-------------|-------------|
+| `pve_match_stats` | N:1 par match | Stats par joueur par match Firefight (waves, boss, kills Grunt/Elite/Jackal/Brute/Hunter/Skimmer/Crawler/Soldier/Knight/Warden, `pve_bits`) |
 
 ## Tables et Cardinalité
 

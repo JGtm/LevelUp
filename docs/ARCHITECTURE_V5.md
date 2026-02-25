@@ -1,7 +1,7 @@
 # Architecture LevelUp v5.1 — Pure Architecture DuckDB + Polars
 
-> **Date** : 2026-02-17
-> **Version** : 5.1.0
+> **Date** : 2026-02-25
+> **Version** : 5.3.0
 > **Migration depuis** : v5.0 (Shared Matches initial)
 
 ---
@@ -20,7 +20,7 @@ LevelUp v5.1 est l'aboutissement de l'architecture **Shared Matches** avec clean
 | SQLite runtime | 7 | 0 | 0 | **-100%** |
 | Pandas métier | 7 | 7 | 0 | **-100%** |
 | Tables obsolètes/joueur | 13 | 8 | 0 | **-100%** |
-| Tests | 1065 | 2768 | 2913 | **+173%** |
+| Tests | 1065 | 2768 | 3323 | **+212%** |
 
 ### 7 Points Critiques v5.1
 
@@ -80,24 +80,27 @@ LevelUp v5.1 est l'aboutissement de l'architecture **Shared Matches** avec clean
 data/
 ├── warehouse/
 │   ├── metadata.duckdb            # Référentiels (maps, playlists, medals, citations)
-│   └── shared_matches.duckdb      # Base partagée - TOUS les matchs
-│       ├── match_registry         # Registre central (1 ligne par match unique)
-│       ├── match_participants     # Stats de TOUS les joueurs de TOUS les matchs
-│       ├── highlight_events       # TOUS les événements filmés
-│       ├── medals_earned          # Médailles de TOUS les joueurs
-│       ├── xuid_aliases           # Mapping global xuid→gamertag
-│       └── schema_version        # Versioning du schéma
+│   ├── shared_matches.duckdb      # Base partagée - TOUS les matchs
+│   │   ├── match_registry         # Registre central (1 ligne par match unique)
+│   │   ├── match_participants     # Stats de TOUS les joueurs de TOUS les matchs
+│   │   ├── highlight_events       # TOUS les événements filmés
+│   │   ├── medals_earned          # Médailles de TOUS les joueurs
+│   │   ├── xuid_aliases           # Mapping global xuid→gamertag
+│   │   └── schema_version         # Versioning du schéma
+│   └── shared_pve.duckdb          # Stats PvE Firefight — v5.2
+│       └── pve_match_stats        # Waves, boss, kills par type d'ennemi (par joueur/match)
 │
 ├── players/
 │   └── {gamertag}/
 │       ├── stats.duckdb           # Enrichissements PERSONNELS uniquement
 │       │   ├── player_match_enrichment  # performance_score, session_id, is_with_friends
-│       │   ├── teammates_aggregate      # Stats coéquipiers (point de vue joueur)
+│       │   ├── personal_score_awards    # Awards objectifs (PersonalScores API)
 │       │   ├── antagonists              # Rivalités (top killers/victimes)
 │       │   ├── match_citations          # Citations calculées par match
 │       │   ├── career_progression       # Historique rangs
 │       │   ├── media_files              # Fichiers médias
-│       │   └── media_match_associations # Associations média↔match
+│       │   ├── media_match_associations # Associations média↔match
+│       │   └── match_skill_rank         # Rating LUSR ou CSR par match — v5.3
 │       └── archive/               # Archives Parquet (saisons)
 │
 └── cache/                         # Cache temporaire (thumbnails, etc.)
@@ -289,26 +292,33 @@ src/
 │   ├── antagonists.py            # Agrégation rivalités
 │   ├── sessions.py               # Détection sessions
 │   ├── stats.py                  # Calculs statistiques
-│   └── performance_score.py      # Score de performance
+│   ├── performance_score.py      # Score de performance
+│   ├── playlist_groups.py        # 6 groupes Halo (ranked/arena/btb/tactical/social/fun) — v5.3
+│   ├── skill_rating_config.py    # Constantes TrueSkill 2, tiers Bronze→Onyx — v5.3
+│   ├── skill_rating.py           # Algorithme LUSR (PlayerState, Elo-style mu, batch) — v5.3
+│   └── skill_rating_calibration.py # Calibration COMPOSITE_WEIGHTS (grid search) — v5.3
 │
 ├── ui/                           # Interface utilisateur
 │   ├── cache.py                  # Cache Streamlit
 │   ├── medals.py                 # Affichage médailles
 │   ├── translations.py           # Traductions FR
 │   ├── sync.py                   # UI de synchronisation
+│   ├── filter_state.py           # Filtres intent-based, persist JSON par joueur — v5.2
 │   ├── components/               # Composants réutilisables
 │   └── pages/                    # Pages du dashboard (23 pages)
 │
 ├── visualization/                # Graphiques Plotly (15 modules)
 │
-└── utils/                        # Utilitaires (paths, xuid, profiles)
+├── utils/                        # Utilitaires (paths, xuid, profiles)
+│   └── discord_notifier.py       # Notifications Discord post-sync/backfill (failsafe) — v5.3
+└── visualization/                # Graphiques Plotly (palette Okabe-Ito v5.2, LUSR timeseries v5.3)
 ```
 
 ---
 
 ## Tests
 
-La suite de tests v5 comprend **2768 tests** répartis en :
+La suite de tests v5 comprend **3323 tests** répartis en :
 
 | Catégorie | Tests | Couverture |
 |-----------|-------|-----------|
