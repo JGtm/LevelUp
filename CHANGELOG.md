@@ -8,6 +8,43 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Added
 
+- **LUSR (LevelUp Skill Rank) — Système de rating TrueSkill 2 per-groupe** (`src/analysis/`)
+  - `skill_rating_config.py` : constantes TrueSkill 2, tiers Bronze→Onyx I-VI, score composite 5 composantes
+  - `playlist_groups.py` : 6 groupes Halo Infinite isolés (ranked 1.00, arena 0.80, tactical 0.70, btb 0.60, social 0.40, fun 0.15) avec détection par `pair_name` prefix ou `playlist_name`
+  - `skill_rating.py` : algorithme complet — `PlayerState` par groupe, `compute_composite_score()`, `trueskill_update()`, `compute_enemy_strength()`, inactivité par groupe, `compute_skill_ratings_batch()` séquentiel
+  - `skill_rating_calibration.py` : module de calibration des poids COMPOSITE_WEIGHTS par comparaison avec `team_mmr` API (grid search aléatoire, métrique MAE ou corrélation Pearson)
+  - 68 tests unitaires couvrant l'algorithme, les groupes, l'inactivité, les tiers et la calibration
+
+- **LUSR per-groupe : état TrueSkill indépendant par contexte**
+  - `existing_states: dict[str, PlayerState]` remplace `existing_state: PlayerState` — un match ranked n'affecte plus le rating arena
+  - `states.setdefault(group, PlayerState())` crée un état au premier match de chaque groupe
+  - Inactivité, historique précision et σ decay sont désormais par-groupe
+
+- **Backfill LUSR/CSR** (`scripts/backfill_data.py`, `scripts/backfill/`)
+  - `--lusr` / `--force-lusr` : calcul local du LUSR depuis `shared.match_participants` (séquentiel, incrémental)
+  - `--csr` / `--force-csr` : récupération CSR depuis l'API Halo pour les matchs ranked
+  - `compute_lusr_for_player()` dans `strategies.py` : UPSERT dans `match_skill_rank` avec `rating_delta`, tier et tier_label
+  - Table `match_skill_rank` créée automatiquement par `ensure_match_skill_rank_table()` dans `migrations.py`
+  - Bits backfill : `lusr = 1 << 16` (65536), `csr = 1 << 17` (131072) dans `BACKFILL_FLAGS`
+
+- **Flags SyncScope** : `lusr`, `force_lusr`, `csr`, `force_csr` dans `src/data/sync/scope.py`
+
+- **Modèle de données CSR** (`src/data/sync/models.py`, `src/data/sync/transformers.py`)
+  - `SkillParticipantUpdate` étendu : `pre_match_csr`, `post_match_csr`, `csr_tier`, `csr_sub_tier`
+  - Extraction `RankRecap.PreMatchCsr` / `PostMatchCsr` dans `transform_all_skill_stats()`
+
+- **Visualisation LUSR** (`src/visualization/timeseries_combat.py`)
+  - `plot_lusr_timeseries()` : zones de tier semi-transparentes, bande de confiance `rating ± deviation`, tendance lissée 20 matchs
+
+- **UI — Page Carrière et Vue Match** (`src/ui/pages/`)
+  - `career.py` : cartes visuelles par groupe (image rang 90px centrée, badge LUSR/CSR, delta ▲/▼) + sélecteur de groupe (`st.selectbox`) pour le graphe d'évolution — remplace le tableau en expander et les onglets
+  - `match_view.py` : onglet 🏅 Rang avec badge rang, barre de progression colorée, delta vert/rouge
+
+- **Calibration CLI**
+  - `python -m src.analysis.skill_rating_calibration --player <GT> [--n-samples 300] [--metric corr]`
+  - Grid search sur le simplexe des poids (distribution Dirichlet uniforme, graine reproductible)
+  - Affiche les poids optimaux prêts à copier dans `skill_rating_config.py`
+
 - **Notifications Discord post-sync/backfill** (`src/utils/discord_notifier.py`)
   - Nouveau module failsafe — aucune dépendance externe (stdlib `urllib.request` uniquement)
   - Envoi d'un Rich Embed Discord à la fin de chaque `sync.py` et `backfill_data.py`
@@ -25,6 +62,29 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - URL webhook lue depuis `DISCORD_WEBHOOK_URL` dans `.env.local` (gitignored) via `_load_dotenv_if_present()`
   - Fallback rétrocompatible sur la clé `discord_webhook_url` dans `app_settings.json`
   - Section documentée dans `.env.local.example`
+
+### Changed
+
+- **Algorithme LUSR — mise à jour Elo-style (`K_ELO = 32`)** remplace la zone draw TrueSkill
+  - Cause racine de la divergence : `v_draw(t > 0)` donnait des deltas positifs même sur composite=0.5, créant un drift infini quand `state.mu > INITIAL_MU` ou quand le joueur sur-fragait ses `kills_expected`
+  - Nouvelle formule mu : `delta_mu = K_ELO × (composite − 0.5) × weight_factor` → ZÉRO exact à composite=0.5, indépendant de `mu_opp`
+  - Sigma conserve la réduction TrueSkill évaluée à t=0 (symétrique, `mu_opp` influence `c²` uniquement)
+  - Résultat : ratings stabilisés — Madina (Diamant V) → Platine IV BTB / Platine VI Arena / Diamant IV Ranked, Chocoboflor/JGtm → Or II-IV selon mode
+- **Score composite calibré sur 1765 matchs** (Madina, JGtm, Chocoboflor — Argent → Diamant)
+  - Signal cible : `individual_mmr = team_mmr × (kills_expected / ke_avg_match)`
+  - Pondération par `nb_matchs × amélioration_MAE` : Madina 36.7%, JGtm 40.0%, Chocobo 13.3%
+  - Nouveaux poids : kills_vs_expected=31%, deaths_vs_expected=28%, damage_efficiency=23%, accuracy_delta=13%, win_factor=5%
+- **Élimination du biais damage_efficiency** : `PlayerState.damage_eff_history` per-groupe — le composant damage utilise un delta vs historique personnel (comme accuracy_delta) au lieu de la valeur brute
+- **Ancrage mu_opp sur `state.mu`** : `compute_enemy_strength` utilise `player_mu=state.mu` comme base d'estimation des adversaires (matchmaking met des joueurs de niveau similaire)
+- **Paramètres d'inactivité réduits** : `INACTIVITY_SIGMA_PER_DAY` 3.5→1.0, `MAX_INACTIVITY_DAYS` 30→14 — évite les swings de ±200 pts après une longue pause
+- **Seed sigma CSR réduit** : `PlayerState.from_csr()` démarre à `sigma=MIN_SIGMA` (60) au lieu de `INITIAL_SIGMA × 0.6` (210) — le CSR est un ancrage fort, démarrer en état stable évite la volatilité initiale
+
+### Fixed
+
+- **20 tests pré-existants corrigés** suite à la migration v5.1 (architecture shared)
+  - Groupe A (assertions/fixtures) : `test_backfill_bitmask`, `test_backfill_detection`, `test_xuid_resolution_regression` (×2), `test_post_refactor_perf_contracts`, `test_data_services_contracts`, `test_media_components_sprint4` (×2), `test_media_improvements`, `test_legacy_free_global`
+  - Groupe B (mocks v4→v5) : `test_lazy_loading` (×5 — `_get_match_source` v5.1), `test_data_contract_sessions` (réécriture fixture v5 shared + player_match_enrichment)
+  - Groupe C (source + mocks) : `test_sessions_integration` (fallback DB production masqué par `__file__` patch), `test_duckdb_repository_schema_contract` (schéma `xuid/gamertag` dans shared fixture), `test_teammates_impact_tab` (×2 — mock `_ensure_shared_attached` + `_load_highlight_events`)
 
 ---
 

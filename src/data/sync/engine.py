@@ -50,6 +50,7 @@ from src.data.sync.migrations import (
     ensure_backfill_completed_column,
     ensure_career_progression_autoincrement,
     ensure_highlight_events_autoincrement,
+    ensure_match_skill_rank_table,
     ensure_player_performance_indexes,
 )
 from src.data.sync.models import (
@@ -89,6 +90,23 @@ except ImportError:
     compute_relative_performance_score = None
     MIN_MATCHES_FOR_RELATIVE = 10
     _PERF_SCORE_AVAILABLE = False
+
+# Import pour le calcul du LUSR (LevelUp Skill Rank)
+try:
+    from src.analysis.skill_rating import compute_skill_ratings_batch
+    from src.analysis.skill_rating_config import (
+        SKILL_TIERS,
+        format_tier_label,
+        get_tier_for_rating,
+    )
+
+    _LUSR_AVAILABLE = True
+except ImportError:
+    compute_skill_ratings_batch = None  # type: ignore[assignment]
+    SKILL_TIERS = []  # type: ignore[assignment]
+    format_tier_label = None  # type: ignore[assignment]
+    get_tier_for_rating = None  # type: ignore[assignment]
+    _LUSR_AVAILABLE = False
 
 
 # =============================================================================
@@ -310,6 +328,9 @@ class DuckDBSyncEngine:
         self._pve_db_path: Path = get_pve_db_path_from_player(self._player_db_path)
         self._pve_connection: duckdb.DuckDBPyConnection | None = None
         self._pve_db_lock = asyncio.Lock()
+
+        # Cache des XUIDs amis (chargé lazily depuis friends_defaults.json)
+        self._friends_xuids: frozenset[str] | None = None
 
         # Créer le resolver pour les métadonnées
         self._metadata_resolver = create_metadata_resolver(self._metadata_db_path)
@@ -1065,6 +1086,10 @@ class DuckDBSyncEngine:
                 self._insert_enrichment_row(match_id, match_row)
                 self._compute_and_update_performance_score(match_id, match_row)
 
+                # ✅ CSR (v5.2) : écrire le CSR dans match_skill_rank si match classé
+                if _skill_row is not None and match_row.is_ranked:
+                    self._upsert_csr_rating(match_id, _skill_row)
+
                 # ❌ SUPPRIMÉ : UPDATE match_stats backfill_completed
                 # Le bitmask est dans shared.match_registry
 
@@ -1374,6 +1399,10 @@ class DuckDBSyncEngine:
                 # ✅ NOUVEAU : player_match_enrichment (performance_score, sessions, etc.)
                 self._insert_enrichment_row(match_id, match_row)
                 self._compute_and_update_performance_score(match_id, match_row)
+
+                # ✅ CSR (v5.2) : écrire le CSR dans match_skill_rank si match classé
+                if _skill_row is not None and match_row.is_ranked:
+                    self._upsert_csr_rating(match_id, _skill_row)
 
                 # ❌ SUPPRIMÉ : UPDATE match_stats backfill_completed
                 # Le bitmask est maintenant dans shared.match_registry
@@ -1934,6 +1963,257 @@ class DuckDBSyncEngine:
             logger.warning(f"Erreur batch calcul performance scores : {e}")
             return 0
 
+    def _upsert_csr_rating(
+        self,
+        match_id: str,
+        skill_row: Any,
+    ) -> None:
+        """Écrit le CSR dans ``match_skill_rank`` pour un match classé.
+
+        Appelé lors du sync d'un match classé avec un ``SkillParticipantUpdate``
+        contenant des données CSR (``post_match_csr`` non-null).
+
+        Aucune action si ``post_match_csr`` est None ou si les modules LUSR
+        ne sont pas disponibles.
+
+        Args:
+            match_id: ID du match.
+            skill_row: ``SkillParticipantUpdate`` du joueur suivi.
+        """
+        post_csr = getattr(skill_row, "post_match_csr", None)
+        if post_csr is None:
+            return
+
+        conn = self._get_connection()
+        try:
+            ensure_match_skill_rank_table(conn)
+
+            pre_csr = getattr(skill_row, "pre_match_csr", None)
+            csr_tier_name = getattr(skill_row, "csr_tier", None)
+            csr_sub_tier = getattr(skill_row, "csr_sub_tier", None) or 0
+
+            # Calcul delta intra-match (post - pre)
+            delta: float | None = None
+            if pre_csr is not None:
+                delta = post_csr - pre_csr
+
+            # Tier FR + label depuis SKILL_TIERS si disponibles
+            tier_fr: str | None = None
+            tier_label: str | None = None
+            if _LUSR_AVAILABLE and csr_tier_name:
+                tier_obj = next(
+                    (t for t in SKILL_TIERS if t.name.lower() == csr_tier_name.lower()),
+                    None,
+                )
+                if tier_obj:
+                    tier_fr = tier_obj.name_fr
+                    _roman = {1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI"}
+                    tier_label = (
+                        f"{tier_fr} {_roman[csr_sub_tier]}"
+                        if csr_sub_tier and csr_sub_tier in _roman
+                        else tier_fr
+                    )
+
+            now = datetime.now(timezone.utc)
+            conn.execute(
+                """
+                INSERT INTO match_skill_rank
+                    (match_id, rating_type, rating_value, tier, tier_fr,
+                     sub_tier, tier_label, rating_delta, playlist_group,
+                     created_at, updated_at)
+                VALUES (?, 'CSR', ?, ?, ?, ?, ?, ?, 'ranked', ?, ?)
+                ON CONFLICT (match_id) DO UPDATE SET
+                    rating_type   = 'CSR',
+                    rating_value  = EXCLUDED.rating_value,
+                    tier          = EXCLUDED.tier,
+                    tier_fr       = EXCLUDED.tier_fr,
+                    sub_tier      = EXCLUDED.sub_tier,
+                    tier_label    = EXCLUDED.tier_label,
+                    rating_delta  = EXCLUDED.rating_delta,
+                    playlist_group = 'ranked',
+                    updated_at    = EXCLUDED.updated_at
+                """,
+                (
+                    match_id,
+                    post_csr,
+                    csr_tier_name,
+                    tier_fr,
+                    csr_sub_tier,
+                    tier_label,
+                    delta,
+                    now,
+                    now,
+                ),
+            )
+            logger.debug(f"CSR écrit dans match_skill_rank pour {match_id} : {post_csr}")
+        except Exception as e:
+            logger.warning(f"Erreur écriture CSR pour {match_id}: {e}")
+
+    def batch_compute_lusr(self, *, force: bool = False) -> int:
+        """Calcule le LUSR pour tous les matchs non classés sans rating LUSR.
+
+        Traitement **séquentiel** (TrueSkill 2) : chaque match dépend du précédent.
+        En mode incrémental, calcule tout mais n'écrit que les matchs sans entrée.
+        En mode force, recalcule et écrase tout.
+
+        Seuls les matchs non classés, non-Firefight sont traités.
+        Les matchs classés utilisent le CSR de l'API (géré par _upsert_csr_rating).
+
+        Args:
+            force: Si True, recalcule et réécrit tous les matchs LUSR.
+
+        Returns:
+            Nombre de matchs mis à jour.
+        """
+        if not _LUSR_AVAILABLE:
+            logger.debug("Modules LUSR non disponibles, skip batch_compute_lusr")
+            return 0
+
+        try:
+            shared_conn = self._get_shared_connection()
+            if shared_conn is None or not self._xuid:
+                logger.warning("shared_connection ou xuid manquant pour batch_compute_lusr")
+                return 0
+
+            conn = self._get_connection()
+            ensure_match_skill_rank_table(conn)
+
+            # 1. Charger tous les matchs non classés, non-Firefight du joueur (ordre ASC)
+            df_matches = shared_conn.execute(
+                """
+                SELECT
+                    mr.match_id, mr.start_time, mr.playlist_name, mr.pair_name,
+                    mp.outcome, mp.kills, mp.deaths,
+                    mp.kills_expected, mp.deaths_expected,
+                    mp.damage_dealt, mp.damage_taken, mp.accuracy,
+                    mp.team_id
+                FROM match_registry mr
+                JOIN match_participants mp ON mr.match_id = mp.match_id
+                WHERE mp.xuid = ?
+                  AND COALESCE(mr.is_ranked, FALSE) = FALSE
+                  AND COALESCE(mr.is_firefight, FALSE) = FALSE
+                  AND mr.start_time IS NOT NULL
+                ORDER BY mr.start_time ASC
+                """,
+                [self._xuid],
+            ).pl()
+
+            if df_matches.is_empty():
+                logger.info("batch_compute_lusr : aucun match non classé trouvé")
+                return 0
+
+            match_ids = df_matches["match_id"].to_list()
+
+            # 2. Charger tous les participants de ces matchs (pour estimation μ)
+            # Utiliser placeholders DuckDB ($1, $2…) via liste IN
+            df_participants = shared_conn.execute(
+                f"""
+                SELECT match_id, xuid, team_id, kills_expected, deaths_expected
+                FROM match_participants
+                WHERE match_id IN ({",".join("?" * len(match_ids))})
+                """,
+                match_ids,
+            ).pl()
+
+            # 3. En mode incrémental, identifier les match_ids déjà dans match_skill_rank
+            existing_lusr_ids: set[str] = set()
+            if not force:
+                try:
+                    existing_df = conn.execute(
+                        "SELECT match_id FROM match_skill_rank WHERE rating_type = 'LUSR'"
+                    ).pl()
+                    existing_lusr_ids = set(existing_df["match_id"].to_list())
+                except Exception:
+                    existing_lusr_ids = set()
+
+            # 4. Calculer les ratings via TrueSkill 2 batch (séquentiel complet)
+            ratings_df = compute_skill_ratings_batch(df_matches, df_participants)
+            if ratings_df.is_empty():
+                return 0
+
+            # 5. Préparer les upserts
+            now = datetime.now(timezone.utc)
+            updates = 0
+
+            # Map match_id → start_time (pour stocker dans match_skill_rank)
+            start_time_map: dict[str, Any] = {}
+            if "match_id" in df_matches.columns and "start_time" in df_matches.columns:
+                for m_row in df_matches.select(["match_id", "start_time"]).iter_rows(named=True):
+                    start_time_map[m_row["match_id"]] = m_row["start_time"]
+
+            # Tracker le rating précédent par playlist_group (pour rating_delta)
+            prev_rating: dict[str, float] = {}
+
+            for row in ratings_df.iter_rows(named=True):
+                mid = row["match_id"]
+                rating_value: float = row["rating_value"]
+                rating_dev: float | None = row.get("rating_deviation")
+                pg: str = row.get("playlist_group") or "social"
+
+                # Delta vs match précédent dans le même playlist_group
+                delta: float | None = None
+                if pg in prev_rating:
+                    delta = rating_value - prev_rating[pg]
+                prev_rating[pg] = rating_value
+
+                # Mode incrémental : sauter si déjà présent
+                if not force and mid in existing_lusr_ids:
+                    continue
+
+                # Tier / label
+                tier_obj, sub = get_tier_for_rating(rating_value)
+                tier_name = tier_obj.name if tier_obj else None
+                tier_fr = tier_obj.name_fr if tier_obj else None
+                tier_label = format_tier_label(rating_value) if tier_obj else None
+
+                match_start_time = start_time_map.get(mid)
+                conn.execute(
+                    """
+                    INSERT INTO match_skill_rank
+                        (match_id, rating_type, rating_value, rating_deviation,
+                         tier, tier_fr, sub_tier, tier_label,
+                         rating_delta, playlist_group, start_time, created_at, updated_at)
+                    VALUES (?, 'LUSR', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (match_id) DO UPDATE SET
+                        rating_type       = 'LUSR',
+                        rating_value      = EXCLUDED.rating_value,
+                        rating_deviation  = EXCLUDED.rating_deviation,
+                        tier              = EXCLUDED.tier,
+                        tier_fr           = EXCLUDED.tier_fr,
+                        sub_tier          = EXCLUDED.sub_tier,
+                        tier_label        = EXCLUDED.tier_label,
+                        rating_delta      = EXCLUDED.rating_delta,
+                        playlist_group    = EXCLUDED.playlist_group,
+                        start_time        = COALESCE(match_skill_rank.start_time, EXCLUDED.start_time),
+                        updated_at        = EXCLUDED.updated_at
+                    """,
+                    (
+                        mid,
+                        rating_value,
+                        rating_dev,
+                        tier_name,
+                        tier_fr,
+                        sub or 0,
+                        tier_label,
+                        delta,
+                        pg,
+                        match_start_time,
+                        now,
+                        now,
+                    ),
+                )
+                updates += 1
+
+            if updates:
+                conn.commit()
+                logger.info(f"LUSR batch : {updates} matchs mis à jour")
+
+            return updates
+
+        except Exception as e:
+            logger.warning(f"Erreur batch_compute_lusr : {e}")
+            return 0
+
     # 8bis.B1 : _insert_match_row supprimé (v5.1)
     # Fonction obsolète — table match_stats locale supprimée.
     # Les données sont dans shared.match_registry + shared.match_participants.
@@ -1976,6 +2256,26 @@ class DuckDBSyncEngine:
     # 8bis.B3 : _insert_medal_rows supprimée (v5.1 — medals_earned dans shared uniquement)
     # 8bis.B3 : _insert_participant_rows supprimée (v5.1 — match_participants dans shared uniquement)
 
+    def _load_friends_lazy(self) -> frozenset[str]:
+        """Charge les XUIDs des amis depuis friends_defaults.json (cache interne).
+
+        Returns:
+            Set des XUIDs amis. Vide si pas de config disponible.
+        """
+        if self._friends_xuids is None:
+            try:
+                from src.data.sessions_backfill import get_friends_xuids_for_backfill
+
+                conn = self._get_connection()
+                self._friends_xuids = get_friends_xuids_for_backfill(
+                    self._player_db_path,
+                    self._xuid or "",
+                    conn=conn,
+                )
+            except Exception:
+                self._friends_xuids = frozenset()
+        return self._friends_xuids
+
     def _insert_enrichment_row(self, match_id: str, match_row: MatchStatsRow) -> None:
         """Insère/met à jour une ligne dans player_match_enrichment (V5 finale).
 
@@ -1991,11 +2291,29 @@ class DuckDBSyncEngine:
         conn = self._get_connection()
         now = datetime.now(timezone.utc)
 
-        # Extraire les champs pertinents de match_row
+        # Extraire la signature des coéquipiers
         teammates_sig = getattr(match_row, "teammates_signature", None)
-        is_with_friends = getattr(match_row, "is_with_friends", None)
-        known_teammates = getattr(match_row, "known_teammates_count", None)
-        friends_xuids = getattr(match_row, "friends_xuids", None)
+
+        # Calculer les colonnes amis depuis teammates_signature + friends_defaults.json
+        try:
+            from src.analysis.sessions import _parse_teammates_signature
+
+            friends = self._load_friends_lazy()
+            if friends:
+                team_set = _parse_teammates_signature(teammates_sig)
+                common = team_set & friends
+                is_with_friends: bool | None = bool(common)
+                known_teammates: int | None = len(common)
+                friends_xuids: str | None = ",".join(sorted(common)) if common else None
+            else:
+                # Pas de config amis disponible → NULL (inconnu)
+                is_with_friends = None
+                known_teammates = None
+                friends_xuids = None
+        except Exception:
+            is_with_friends = None
+            known_teammates = None
+            friends_xuids = None
 
         conn.execute(
             """INSERT INTO player_match_enrichment

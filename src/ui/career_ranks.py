@@ -27,7 +27,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-
 _CAREER_RANK_TIER_FR: dict[str, str] = {
     "Bronze": "Bronze",
     "Silver": "Argent",
@@ -102,14 +101,14 @@ def format_career_rank_label_fr(*, tier: str | None, title: str | None, grade: s
 @dataclass(frozen=True)
 class CareerRankInfo:
     """Informations sur un rang Career."""
-    
+
     rank_number: int
     title: str
     subtitle: str | None
     tier: str | None
     xp_required: int
     icon_path_remote: str  # Chemin relatif pour l'API CMS
-    
+
     @property
     def full_label(self) -> str:
         """Retourne le label complet du rang (ex: 'Gold Lance Corporal 3')."""
@@ -125,7 +124,7 @@ class CareerRankInfo:
     def full_label_fr(self) -> str:
         """Retourne le label complet du rang en français (ex: 'Or Caporal suppléant 1')."""
         return format_career_rank_label_fr(tier=self.subtitle, title=self.title, grade=self.tier)
-    
+
     @property
     def display_label(self) -> str:
         """Retourne un label compact (ex: 'Lance Corporal Gold 3')."""
@@ -168,8 +167,7 @@ def _build_ranks_lookup() -> dict[int, CareerRankInfo]:
         tables = {
             row[0]
             for row in conn.execute(
-                "SELECT table_name FROM information_schema.tables "
-                "WHERE table_schema = 'main'"
+                "SELECT table_name FROM information_schema.tables " "WHERE table_schema = 'main'"
             ).fetchall()
         }
         if "career_ranks" not in tables:
@@ -198,10 +196,10 @@ def _build_ranks_lookup() -> dict[int, CareerRankInfo]:
 
 def get_rank_info(rank_number: int) -> CareerRankInfo | None:
     """Retourne les informations d'un rang par son numéro (1-272).
-    
+
     Args:
         rank_number: Numéro du rang (1 = Recruit, 272 = Hero)
-    
+
     Returns:
         CareerRankInfo ou None si le rang n'existe pas
     """
@@ -217,16 +215,16 @@ def get_all_ranks() -> list[CareerRankInfo]:
 
 def get_rank_icon_path(rank_number: int) -> Path | None:
     """Retourne le chemin local de l'icône d'un rang si elle existe.
-    
+
     Args:
         rank_number: Numéro du rang (1-272)
-    
+
     Returns:
         Path vers le fichier PNG ou None si non téléchargé
     """
     icons_dir = _get_icons_dir()
     icon_path = icons_dir / f"rank_{rank_number:03d}_large.png"
-    
+
     if icon_path.exists():
         return icon_path
     return None
@@ -234,38 +232,38 @@ def get_rank_icon_path(rank_number: int) -> Path | None:
 
 def get_rank_icon_url(rank_number: int) -> str | None:
     """Retourne l'URL CMS pour télécharger l'icône d'un rang.
-    
+
     Args:
         rank_number: Numéro du rang (1-272)
-    
+
     Returns:
         URL complète ou None si le rang n'existe pas
     """
     info = get_rank_info(rank_number)
     if not info or not info.icon_path_remote:
         return None
-    
+
     return f"https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/{info.icon_path_remote}"
 
 
 def get_rank_for_xp(total_xp: int) -> CareerRankInfo | None:
     """Détermine le rang correspondant à un total d'XP.
-    
+
     Args:
         total_xp: Total d'XP Career du joueur
-    
+
     Returns:
         Le rang le plus élevé atteint avec cet XP
     """
     ranks = get_all_ranks()
-    
+
     current_rank = None
     for rank in ranks:
         if total_xp >= rank.xp_required:
             current_rank = rank
         else:
             break
-    
+
     return current_rank
 
 

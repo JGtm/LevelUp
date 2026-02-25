@@ -18,4 +18,4 @@ def test_media_tab_keeps_lightbox_and_empty_message() -> None:
 
     source = inspect.getsource(media_tab)
     assert "Voir en grand" in source
-    assert "Aucune capture" in source
+    assert "Aucun média indexé" in source

@@ -52,6 +52,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+
+def _to_local(dt: datetime) -> datetime:
+    """Convertit un datetime UTC vers l'heure locale du système."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone()
+
+
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -307,6 +315,28 @@ _OP_LABELS: dict[str, str] = {
     "backfill": "Backfill",
 }
 
+# Traductions des noms de playlists : délégué à src.ui.translations (translate_playlist_name).
+# Pas de dict local — source unique de vérité.
+
+
+def _localize_playlist(name: str) -> str:
+    """Retourne la traduction française du nom de playlist via le module translations."""
+    try:
+        from src.ui.translations import translate_playlist_name
+
+        result = translate_playlist_name(name)
+        return result if result is not None else name
+    except Exception:
+        return name
+
+
+def _clean_game_variant(name: str) -> str:
+    """Supprime le préfixe 'Type:' des noms de variantes (ex: 'Slayer:Arena Fiesta' → 'Arena Fiesta')."""
+    if ":" in name:
+        _, _, after = name.partition(":")
+        return after.strip() or name
+    return name
+
 
 def _format_duration(started_at: datetime, finished_at: datetime) -> str:
     """Formate la durée entre deux datetimes en chaîne lisible."""
@@ -351,13 +381,16 @@ def _format_player_field(
         lm = player.last_match
         outcome_icon, outcome_label = _OUTCOME_LABELS.get(lm.outcome, ("❓", "—"))
         ranked_tag = " · 🏅 Classé" if lm.is_ranked else ""
-        kda = f"{lm.kills}K / {lm.deaths}D / {lm.assists}A"
-        time_str = lm.start_time.strftime("%d/%m %H:%M") if lm.start_time else "—"
+        fda = f"{lm.kills}F / {lm.deaths}D / {lm.assists}A"
+        _st = _to_local(lm.start_time) if lm.start_time else None
+        time_str = _st.strftime("%d/%m %H:%M") if _st else "—"
+        variant = _clean_game_variant(lm.game_variant_name)
+        playlist = _localize_playlist(lm.playlist_name)
         lines.append(
             f"**Dernier match** ({time_str}){ranked_tag}\n"
-            f"🗺️  **{lm.map_name}**  ·  🎮 {lm.game_variant_name}\n"
-            f"📋  {lm.playlist_name}\n"
-            f"📊  {kda}  ·  {outcome_icon} {outcome_label}"
+            f"🗺️  **{lm.map_name}**  ·  🎮 {variant}\n"
+            f"📋  {playlist}\n"
+            f"📊  {fda}  ·  {outcome_icon} {outcome_label}"
         )
 
     return name[:256], "\n".join(lines)[:1024]
@@ -399,8 +432,8 @@ def build_embed_payload(
         color = 0x57F287  # Vert Discord
         status_icon = "✅"
 
-    t_start = started_at.strftime("%H:%M:%S")
-    t_end = finished_at.strftime("%H:%M:%S")
+    t_start = _to_local(started_at).strftime("%H:%M:%S")
+    t_end = _to_local(finished_at).strftime("%H:%M:%S")
     total_new = sum(p.matches_synced for p in players)
 
     description = (

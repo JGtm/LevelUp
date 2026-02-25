@@ -126,6 +126,9 @@ class TestLoadMatchesPagination:
                 # Forcer mode v4 : connexion déjà établie, sans shared attaché
                 repo._connection = mock_conn
                 repo._attached_dbs = set()
+                # v5.1 : _get_match_source lève RuntimeError si shared absent + match_stats absent
+                # → mocker pour simuler la présence de match_stats en local
+                repo._get_match_source = lambda _conn: ("match_stats", [], False)
                 repo.load_matches(limit=10)
 
             # Vérifier que LIMIT est dans la requête
@@ -149,6 +152,7 @@ class TestLoadMatchesPagination:
                 repo = DuckDBRepository(Path("/fake/path.duckdb"), "12345")
                 repo._connection = mock_conn
                 repo._attached_dbs = set()
+                repo._get_match_source = lambda _conn: ("match_stats", [], False)
                 repo.load_matches(limit=10, offset=20)
 
             calls = mock_conn.execute.call_args_list
@@ -171,6 +175,7 @@ class TestLoadMatchesPagination:
                 repo = DuckDBRepository(Path("/fake/path.duckdb"), "12345")
                 repo._connection = mock_conn
                 repo._attached_dbs = set()
+                repo._get_match_source = lambda _conn: ("match_stats", [], False)
                 repo.load_matches()
 
             # La requête ne devrait pas contenir LIMIT (sauf si None est interpolé)
@@ -208,6 +213,7 @@ class TestLoadRecentMatches:
                 repo = DuckDBRepository(Path("/fake/path.duckdb"), "12345")
                 repo._connection = mock_conn
                 repo._attached_dbs = set()
+                repo._get_match_source = lambda _conn: ("match_stats", [], False)
                 repo.load_recent_matches()
 
             calls = mock_conn.execute.call_args_list
@@ -242,6 +248,7 @@ class TestLoadRecentMatches:
                 repo = DuckDBRepository(Path("/fake/path.duckdb"), "12345")
                 repo._connection = mock_conn
                 repo._attached_dbs = set()
+                repo._get_match_source = lambda _conn: ("match_stats", [], False)
                 repo.load_recent_matches(limit=10)
 
             calls = mock_conn.execute.call_args_list

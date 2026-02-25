@@ -231,10 +231,8 @@ def test_repository_methods_still_work_with_expected_schema(
                 match_id VARCHAR,
                 event_type VARCHAR,
                 time_ms INTEGER,
-                killer_xuid VARCHAR,
-                killer_gamertag VARCHAR,
-                victim_xuid VARCHAR,
-                victim_gamertag VARCHAR,
+                xuid VARCHAR,
+                gamertag VARCHAR,
                 type_hint INTEGER
             )
         """)
@@ -247,9 +245,7 @@ def test_repository_methods_still_work_with_expected_schema(
             )
         """)
         conn.execute("INSERT INTO medals_earned VALUES ('m1', 'x_me', 1512363953, 1)")
-        conn.execute(
-            "INSERT INTO highlight_events VALUES ('m1', 'Kill', 1000, 'x_me', 'Me', NULL, NULL, 50)"
-        )
+        conn.execute("INSERT INTO highlight_events VALUES ('m1', 'Kill', 1000, 'x_me', 'Me', 50)")
     finally:
         conn.close()
 

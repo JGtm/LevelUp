@@ -63,7 +63,7 @@ def _patch_streamlit(monkeypatch):
 
     metric_cols = [MagicMock(), MagicMock(), MagicMock(), MagicMock()]
     summary_cols = [MagicMock(), MagicMock()]
-    columns = MagicMock(side_effect=[metric_cols, summary_cols])
+    columns = MagicMock(return_value=summary_cols)
 
     monkeypatch.setattr(teammates.st, "expander", _fake_expander)
     monkeypatch.setattr(teammates.st, "info", info)
@@ -121,22 +121,27 @@ def test_impact_tab_warns_when_no_matches(monkeypatch) -> None:
 def test_impact_tab_handles_missing_highlight_table(monkeypatch) -> None:
     """Affiche un message si highlight_events n'existe pas."""
 
-    class _FakeConnNoEvents:
-        def execute(self, query, _params=None):
-            normalized_query = " ".join(str(query).split()).lower()
-            if "information_schema.tables" in normalized_query:
-                return _FakeResult([])
-            return _FakeResult([])
+    class _MinimalRepo:
+        """Repo minimal : ne valide pas l'existence du fichier."""
 
-    class _FakeRepoNoEvents:
         def __init__(self, *_args, **_kwargs):
-            self._conn = _FakeConnNoEvents()
+            pass
 
         def _get_connection(self):
-            return self._conn
+            return MagicMock()
 
     st_mocks = _patch_streamlit(monkeypatch)
-    monkeypatch.setattr("src.ui.pages.teammates_impact.DuckDBRepository", _FakeRepoNoEvents)
+    monkeypatch.setattr("src.ui.pages.teammates_impact.DuckDBRepository", _MinimalRepo)
+    # Mocker _ensure_shared_attached pour simuler que shared est attaché
+    monkeypatch.setattr(
+        "src.ui.pages.teammates_impact._ensure_shared_attached",
+        lambda _conn, _db_path: "shared",
+    )
+    # Mocker _load_highlight_events pour simuler l'absence de la table
+    monkeypatch.setattr(
+        "src.ui.pages.teammates_impact._load_highlight_events",
+        lambda _conn, _match_ids, _alias: None,
+    )
 
     teammates.render_impact_taquinerie(
         db_path="dummy.duckdb",
@@ -153,17 +158,59 @@ def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:
     """Parcours nominal : rendu heatmap + tableau + résumé MVP/Boulet."""
     st_mocks = _patch_streamlit(monkeypatch)
 
-    monkeypatch.setattr("src.ui.pages.teammates_impact.DuckDBRepository", _FakeRepo)
+    class _MinimalRepo:
+        """Repo minimal : ne valide pas l'existence du fichier."""
+
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def _get_connection(self):
+            return MagicMock()
+
+    monkeypatch.setattr("src.ui.pages.teammates_impact.DuckDBRepository", _MinimalRepo)
+    # Mocker _ensure_shared_attached pour simuler que shared est attaché
+    monkeypatch.setattr(
+        "src.ui.pages.teammates_impact._ensure_shared_attached",
+        lambda _conn, _db_path: "shared",
+    )
+    # Mocker _load_highlight_events pour retourner des événements
+    monkeypatch.setattr(
+        "src.ui.pages.teammates_impact._load_highlight_events",
+        lambda _conn, _match_ids, _alias: pl.DataFrame(
+            {
+                "match_id": ["m1", "m2"],
+                "xuid": ["200", "300"],
+                "gamertag": ["Alice", "Bob"],
+                "event_type": ["Kill", "Kill"],
+                "time_ms": [1000, 1500],
+            }
+        ),
+    )
+    # Mocker _load_match_outcomes pour retourner des outcomes
+    monkeypatch.setattr(
+        "src.ui.pages.teammates_impact._load_match_outcomes",
+        lambda _conn, _match_ids, _xuid, _alias: pl.DataFrame(
+            {"match_id": ["m1", "m2"], "outcome": [2, 3]}
+        ),
+    )
 
     first_bloods = {"m1": object()}
     clutch_finishers = {"m2": object()}
     last_casualties = {"m2": object()}
     scores = {"Alice": 3, "Bob": -1}
 
+    # get_all_impact_events retourne un 6-tuple (last_group_kills + first_group_deaths ajoutés)
     monkeypatch.setattr(
         teammates,
         "get_all_impact_events",
-        lambda *_args, **_kwargs: (first_bloods, clutch_finishers, last_casualties, scores),
+        lambda *_args, **_kwargs: (
+            first_bloods,
+            clutch_finishers,
+            last_casualties,
+            {},
+            {},
+            scores,
+        ),
     )
     monkeypatch.setattr(
         teammates,
@@ -176,16 +223,6 @@ def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:
                 "event_value": [1, -1],
             }
         ),
-    )
-    monkeypatch.setattr(
-        teammates,
-        "render_impact_summary_stats",
-        lambda *_args, **_kwargs: {
-            "total_fb": 1,
-            "total_clutch": 1,
-            "total_casualty": 1,
-            "total_matches": 2,
-        },
     )
     monkeypatch.setattr(
         teammates, "plot_friends_impact_heatmap", lambda *_args, **_kwargs: object()
@@ -218,9 +255,7 @@ def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:
 
     assert st_mocks["plotly_chart"].called
     assert st_mocks["dataframe"].called
-    assert st_mocks["columns"].call_count == 2
-
-    metric_calls = sum(col.metric.call_count for col in st_mocks["metric_cols"])
-    assert metric_calls == 4
+    # st.columns est appelé 1 fois (render_impact_stats est désactivé dans la source)
+    assert st_mocks["columns"].call_count == 1
     st_mocks["summary_cols"][0].success.assert_called_once()
     st_mocks["summary_cols"][1].error.assert_called_once()

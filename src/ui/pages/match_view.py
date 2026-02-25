@@ -63,8 +63,9 @@ def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
         db_path: Chemin vers stats.duckdb du joueur.
     """
     try:
-        import duckdb
         from pathlib import Path
+
+        import duckdb
 
         from src.analysis.skill_rating_config import (
             UNRANKED_COLOR,
@@ -101,8 +102,15 @@ def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
         return
 
     (
-        rating_type, rating_value, rating_deviation,
-        tier_label, sub_tier, tier_name, tier_fr, rating_delta, playlist_group,
+        rating_type,
+        rating_value,
+        rating_deviation,
+        tier_label,
+        sub_tier,
+        tier_name,
+        tier_fr,
+        rating_delta,
+        playlist_group,
     ) = row_rank
 
     # ── Affichage centré ──
@@ -116,7 +124,9 @@ def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
             if img_full.exists():
                 st.image(str(img_full), width=120)
             else:
-                st.markdown(f"<span style='color:{UNRANKED_COLOR}'>◆</span>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<span style='color:{UNRANKED_COLOR}'>◆</span>", unsafe_allow_html=True
+                )
 
     with col_info:
         # Label du tier

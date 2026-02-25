@@ -8,10 +8,10 @@ from __future__ import annotations
 
 def _to_image_url(path: str | None) -> str | None:
     """Convertit un chemin d'asset en URL d'image complète.
-    
+
     Args:
         path: Chemin relatif ou URL de l'image.
-        
+
     Returns:
         URL complète vers l'image, ou None si le chemin est vide.
     """
@@ -36,13 +36,15 @@ def _to_image_url(path: str | None) -> str | None:
     return f"{host}/hi/Images/file/{rel}"
 
 
-def _inventory_emblem_to_waypoint_png(emblem_path: str | None, configuration_id: int | None) -> str | None:
+def _inventory_emblem_to_waypoint_png(
+    emblem_path: str | None, configuration_id: int | None
+) -> str | None:
     """Best-effort: convertit un chemin Inventory/Spartan/Emblems/<name>.json vers une image PNG Waypoint.
 
     Pattern observé:
     - Inventory/Spartan/Emblems/<stem>.json + configuration_id ->
       /hi/Waypoint/file/images/emblems/<stem>_<configuration_id>.png
-    
+
     Note: Ce pattern ne fonctionne pas pour tous les emblèmes (ex: ranked, certains events).
     Dans ces cas, il faut appeler l'API progression pour récupérer le PNG via DisplayPath.
     """
@@ -71,33 +73,35 @@ def _inventory_emblem_to_waypoint_png(emblem_path: str | None, configuration_id:
 
 def _inventory_json_to_cms_url(inventory_path: str | None) -> str | None:
     """Construit l'URL vers le fichier JSON CMS pour un chemin d'inventaire.
-    
+
     Ex: Inventory/Spartan/Emblems/104-001-olympus-stuck-3d208338.json
       -> https://gamecms-hacs.svc.halowaypoint.com/hi/progression/file/Inventory/Spartan/Emblems/104-001-olympus-stuck-3d208338.json
     """
     p = str(inventory_path or "").strip()
     if not p:
         return None
-    
+
     # Normaliser le chemin
     if p.startswith("/"):
         p = p[1:]
-    
+
     # Vérifier que c'est un chemin d'inventaire
     p_lower = p.lower()
     if not (p_lower.startswith("inventory/") or "/inventory/" in p_lower):
         return None
-    
+
     host = "https://gamecms-hacs.svc.halowaypoint.com"
     return f"{host}/hi/progression/file/{p}"
 
 
-def _waypoint_nameplate_png_from_emblem(emblem_path: str | None, configuration_id: int | None) -> str | None:
+def _waypoint_nameplate_png_from_emblem(
+    emblem_path: str | None, configuration_id: int | None
+) -> str | None:
     """Best-effort: construit une URL nameplate Waypoint basée sur l'emblem.
 
     Pattern observé:
     - /hi/Waypoint/file/images/nameplates/<emblem_stem>_<configuration_id>.png
-    
+
     Note: Le configuration_id est un entier 32 bits signé dans l'API.
     Nous utilisons la valeur signée directement car c'est ce que Waypoint attend.
     Certaines combinaisons emblem + configuration_id n'ont pas de nameplate générée.
@@ -131,11 +135,11 @@ def _inventory_backdrop_to_waypoint_png(backdrop_path: str | None) -> str | None
     Pattern observé:
     - Inventory/Spartan/BackdropImages/<stem>.json ->
       /hi/Waypoint/file/images/backdrops/<stem>.png
-    
+
     ATTENTION: Ce pattern ne fonctionne PAS pour la majorité des backdrops !
     Les backdrops utilisent généralement des chemins comme `progression/backgrounds/...`
     qui ne sont pas dans le mapping Waypoint.
-    
+
     Cette fonction ne retourne une URL que si le backdrop est déjà un chemin PNG direct.
     Pour les autres cas, utiliser _resolve_inventory_png_via_api().
     """
@@ -161,9 +165,9 @@ async def resolve_inventory_png_via_api(
     clearance_token: str,
 ) -> str | None:
     """Résout un chemin Inventory/*.json vers l'URL du PNG réel via l'API progression.
-    
+
     Endpoint: GET https://gamecms-hacs.svc.halowaypoint.com/hi/progression/file/{inventory_path}
-    
+
     Cette API retourne un JSON avec la structure :
     ```json
     {
@@ -178,21 +182,21 @@ async def resolve_inventory_png_via_api(
       }
     }
     ```
-    
+
     L'URL finale du PNG est : /hi/images/file/{Path}
-    
+
     Retourne l'URL complète vers le PNG, ou None si non résolu.
     """
     cms_url = _inventory_json_to_cms_url(inventory_path)
     if not cms_url:
         return None
-    
+
     headers = {
         "Accept": "application/json",
         "X-343-Authorization-Spartan": spartan_token,
         "343-Clearance": clearance_token,
     }
-    
+
     try:
         async with session.get(cms_url, headers=headers) as resp:
             if resp.status != 200:
@@ -200,31 +204,31 @@ async def resolve_inventory_png_via_api(
             data = await resp.json()
     except Exception:
         return None
-    
+
     # Extraire CommonData.DisplayPath.Media.MediaUrl.Path
     common_data = data.get("CommonData", {})
     display_path = common_data.get("DisplayPath", {})
     media = display_path.get("Media", {})
     media_url = media.get("MediaUrl", {})
     png_path = media_url.get("Path", "")
-    
+
     if not png_path:
         # Fallback 1: essayer FolderPath + FileName dans DisplayPath
         folder = display_path.get("FolderPath", "")
         filename = display_path.get("FileName", "")
         if folder and filename:
             png_path = f"{folder}/{filename}"
-    
+
     if not png_path:
         # Fallback 2: essayer ImagePath.Media.MediaUrl.Path (structure Grunt/Backdrop)
         image_path = data.get("ImagePath", {})
         img_media = image_path.get("Media", {})
         img_media_url = img_media.get("MediaUrl", {})
         png_path = img_media_url.get("Path", "")
-    
+
     if not png_path:
         return None
-    
+
     # Construire l'URL complète
     png_path = png_path.lstrip("/")
     host = "https://gamecms-hacs.svc.halowaypoint.com"

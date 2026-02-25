@@ -419,6 +419,14 @@ class SkillParticipantUpdate:
     assists_expected: float | None = None
     assists_stddev: float | None = None
 
+    # ── CSR (Competitive Skill Rating) — matchs classés uniquement ──────────
+    # Extrait depuis Result.RankRecap de l'endpoint /skill (v5.2 LUSR).
+    # NULL pour les matchs non classés.
+    pre_match_csr: float | None = None  # CSR avant le match
+    post_match_csr: float | None = None  # CSR après le match
+    csr_tier: str | None = None  # Tier anglais (ex: "Gold", "Platinum")
+    csr_sub_tier: int | None = None  # Sous-tier 1-6 (0 pour Onyx)
+
 
 # =============================================================================
 # Données Career Rank (Phase 5)

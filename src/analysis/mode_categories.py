@@ -14,7 +14,6 @@ from typing import Final
 
 from src.ui.translations import translate_pair_name
 
-
 _LABEL_SUFFIX_RE: Final[re.Pattern[str]] = re.compile(
     r"^(.*?)(?:\s*[\-–—]\s*[0-9A-Za-z]{8,})$", re.IGNORECASE
 )

@@ -6,12 +6,12 @@ import pandas as pd
 import pytest
 
 from src.app.helpers import (
-    clean_asset_label,
-    normalize_mode_label,
-    normalize_map_label,
-    is_uuid_like,
-    compute_total_play_seconds,
     avg_match_duration_seconds,
+    clean_asset_label,
+    compute_total_play_seconds,
+    is_uuid_like,
+    normalize_map_label,
+    normalize_mode_label,
 )
 from src.app.kpis import (
     KPIStats,
@@ -155,20 +155,22 @@ class TestKPIStats:
     @pytest.fixture
     def sample_df(self):
         """DataFrame de test."""
-        return pd.DataFrame({
-            "outcome": [2, 2, 3, 1],  # 2 wins, 1 loss, 1 tie
-            "kills": [10, 15, 8, 12],
-            "deaths": [5, 7, 10, 6],
-            "assists": [3, 5, 2, 4],
-            "accuracy": [45.5, 52.3, 38.0, 48.2],
-            "average_life_seconds": [45, 52, 35, 48],
-            "time_played_seconds": [600, 720, 540, 660],
-        })
+        return pd.DataFrame(
+            {
+                "outcome": [2, 2, 3, 1],  # 2 wins, 1 loss, 1 tie
+                "kills": [10, 15, 8, 12],
+                "deaths": [5, 7, 10, 6],
+                "assists": [3, 5, 2, 4],
+                "accuracy": [45.5, 52.3, 38.0, 48.2],
+                "average_life_seconds": [45, 52, 35, 48],
+                "time_played_seconds": [600, 720, 540, 660],
+            }
+        )
 
     def test_compute_kpi_stats(self, sample_df):
         """Calcule les KPIs correctement."""
         kpis = compute_kpi_stats(sample_df)
-        
+
         assert isinstance(kpis, KPIStats)
         assert kpis.total_matches == 4
         assert kpis.wins == 2
@@ -179,17 +181,19 @@ class TestKPIStats:
 
     def test_empty_df(self):
         """Gère un DataFrame vide."""
-        df = pd.DataFrame({
-            "outcome": [],
-            "kills": [],
-            "deaths": [],
-            "assists": [],
-            "accuracy": [],
-            "average_life_seconds": [],
-            "time_played_seconds": [],
-        })
+        df = pd.DataFrame(
+            {
+                "outcome": [],
+                "kills": [],
+                "deaths": [],
+                "assists": [],
+                "accuracy": [],
+                "average_life_seconds": [],
+                "time_played_seconds": [],
+            }
+        )
         kpis = compute_kpi_stats(df)
-        
+
         assert kpis.total_matches == 0
         assert kpis.kills_per_game is None
 

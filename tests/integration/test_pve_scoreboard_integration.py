@@ -21,7 +21,6 @@ from pathlib import Path
 import duckdb
 import pytest
 
-
 # =============================================================================
 # Helpers de setup
 # =============================================================================
@@ -101,8 +100,8 @@ def _create_pve_env(tmp_path: Path) -> tuple[Path, Path, Path]:
     meta.close()
 
     # --- shared_pve.duckdb avec données ---
-    from src.data.sync.migrations import ensure_pve_schema
     from src.data.sync.batch_insert import batch_insert_pve_stats
+    from src.data.sync.migrations import ensure_pve_schema
     from src.data.sync.models import PveMatchStatsRow
 
     pve_conn = duckdb.connect(str(pve_path))
@@ -221,12 +220,117 @@ def _create_shared_for_scoreboard(tmp_path: Path) -> tuple[Path, Path, Path]:
     # Joueurs du match-sc01
     players = [
         # (match_id, xuid, gamertag,   team_id, rank, score, kills, deaths, assists, kda, spree, hs, sf, sh, acc, melee, pw, dd, dt, avg_life)
-        ("match-sc01", "xuid_a", "Alpha",   0, 1, 1200, 12, 4, 3, 2.5, 3, 4, 200, 150, 75.0, 1, 2, 5000, 2000, 30.0),
-        ("match-sc01", "xuid_b", "Bravo",   0, 2, 900,  8,  6, 2, 1.3, 2, 2, 180, 100, 55.5, 0, 1, 3500, 3000, 20.0),
-        ("match-sc01", "xuid_c", "Charlie", 1, 1, 1000, 10, 5, 1, 2.0, 4, 5, 220, 180, 81.8, 2, 3, 4500, 2500, 25.0),
-        ("match-sc01", "xuid_d", None,      1, 2, 700,  6,  8, 0, 0.75,1, 1, 160, 80,  50.0, 0, 0, 2000, 4000, 15.0),
+        (
+            "match-sc01",
+            "xuid_a",
+            "Alpha",
+            0,
+            1,
+            1200,
+            12,
+            4,
+            3,
+            2.5,
+            3,
+            4,
+            200,
+            150,
+            75.0,
+            1,
+            2,
+            5000,
+            2000,
+            30.0,
+        ),
+        (
+            "match-sc01",
+            "xuid_b",
+            "Bravo",
+            0,
+            2,
+            900,
+            8,
+            6,
+            2,
+            1.3,
+            2,
+            2,
+            180,
+            100,
+            55.5,
+            0,
+            1,
+            3500,
+            3000,
+            20.0,
+        ),
+        (
+            "match-sc01",
+            "xuid_c",
+            "Charlie",
+            1,
+            1,
+            1000,
+            10,
+            5,
+            1,
+            2.0,
+            4,
+            5,
+            220,
+            180,
+            81.8,
+            2,
+            3,
+            4500,
+            2500,
+            25.0,
+        ),
+        (
+            "match-sc01",
+            "xuid_d",
+            None,
+            1,
+            2,
+            700,
+            6,
+            8,
+            0,
+            0.75,
+            1,
+            1,
+            160,
+            80,
+            50.0,
+            0,
+            0,
+            2000,
+            4000,
+            15.0,
+        ),
         # Joueur sans team_id (classé dernier)
-        ("match-sc01", "xuid_e", "Echo",    None, 5, 300, 2, 10, 0, 0.2, 0, 0, 100, 30, 30.0, 0, 0, 800, 5000, 10.0),
+        (
+            "match-sc01",
+            "xuid_e",
+            "Echo",
+            None,
+            5,
+            300,
+            2,
+            10,
+            0,
+            0.2,
+            0,
+            0,
+            100,
+            30,
+            30.0,
+            0,
+            0,
+            800,
+            5000,
+            10.0,
+        ),
     ]
     sh.executemany(
         "INSERT INTO match_participants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -237,13 +341,9 @@ def _create_shared_for_scoreboard(tmp_path: Path) -> tuple[Path, Path, Path]:
     sh.execute("INSERT INTO xuid_aliases VALUES ('xuid_d', 'Delta')")
 
     # Perfect Kills pour xuid_a : 2 médailles
-    sh.execute(
-        "INSERT INTO medals_earned VALUES ('match-sc01', 'xuid_a', 1512363953, 2)"
-    )
+    sh.execute("INSERT INTO medals_earned VALUES ('match-sc01', 'xuid_a', 1512363953, 2)")
     # Autre médaille (non Perfect Kill) pour xuid_a → ne doit PAS être comptée
-    sh.execute(
-        "INSERT INTO medals_earned VALUES ('match-sc01', 'xuid_a', 9999999999, 5)"
-    )
+    sh.execute("INSERT INTO medals_earned VALUES ('match-sc01', 'xuid_a', 9999999999, 5)")
 
     sh.close()
     return stats_path, shared_path, meta_path
@@ -406,11 +506,26 @@ class TestScoreboardIntegration:
         result = repo.load_match_scoreboard("match-sc01")
 
         expected_keys = {
-            "xuid", "gamertag", "team_id", "rank", "score",
-            "kills", "deaths", "assists", "kda", "max_killing_spree",
-            "headshot_kills", "shots_fired", "shots_hit", "accuracy",
-            "melee_kills", "power_weapon_kills", "damage_dealt",
-            "damage_taken", "avg_life_seconds", "perfect_kills",
+            "xuid",
+            "gamertag",
+            "team_id",
+            "rank",
+            "score",
+            "kills",
+            "deaths",
+            "assists",
+            "kda",
+            "max_killing_spree",
+            "headshot_kills",
+            "shots_fired",
+            "shots_hit",
+            "accuracy",
+            "melee_kills",
+            "power_weapon_kills",
+            "damage_dealt",
+            "damage_taken",
+            "avg_life_seconds",
+            "perfect_kills",
         }
         assert len(result) == 5
         for entry in result:
@@ -437,7 +552,9 @@ class TestScoreboardIntegration:
 
         repo.close()
 
-    def test_gamertag_resolu_depuis_xuid_aliases(self, scoreboard_env: tuple[Path, Path, Path]) -> None:
+    def test_gamertag_resolu_depuis_xuid_aliases(
+        self, scoreboard_env: tuple[Path, Path, Path]
+    ) -> None:
         """xuid_d n'a pas de gamertag dans match_participants → résolu via xuid_aliases."""
         stats_path, shared_path, meta_path = scoreboard_env
         repo = self._make_repo(stats_path, shared_path, meta_path)
@@ -449,7 +566,9 @@ class TestScoreboardIntegration:
 
         repo.close()
 
-    def test_perfect_kills_aggreages_correctement(self, scoreboard_env: tuple[Path, Path, Path]) -> None:
+    def test_perfect_kills_aggreages_correctement(
+        self, scoreboard_env: tuple[Path, Path, Path]
+    ) -> None:
         """xuid_a a 2 Perfect Kills. Les autres médailles ne doivent pas être comptées."""
         stats_path, shared_path, meta_path = scoreboard_env
         repo = self._make_repo(stats_path, shared_path, meta_path)
@@ -463,7 +582,9 @@ class TestScoreboardIntegration:
 
         repo.close()
 
-    def test_match_inexistant_retourne_liste_vide(self, scoreboard_env: tuple[Path, Path, Path]) -> None:
+    def test_match_inexistant_retourne_liste_vide(
+        self, scoreboard_env: tuple[Path, Path, Path]
+    ) -> None:
         """Un match_id inconnu retourne une liste vide."""
         stats_path, shared_path, meta_path = scoreboard_env
         repo = self._make_repo(stats_path, shared_path, meta_path)
@@ -489,7 +610,9 @@ class TestScoreboardIntegration:
 
         repo.close()
 
-    def test_score_et_stats_numeriques_corrects(self, scoreboard_env: tuple[Path, Path, Path]) -> None:
+    def test_score_et_stats_numeriques_corrects(
+        self, scoreboard_env: tuple[Path, Path, Path]
+    ) -> None:
         """Les champs numériques sont bien castés en int/float (pas de strings)."""
         stats_path, shared_path, meta_path = scoreboard_env
         repo = self._make_repo(stats_path, shared_path, meta_path)

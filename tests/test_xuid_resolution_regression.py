@@ -696,7 +696,7 @@ class TestGetMatchTableName:
         assert table == "match_stats"
 
     def test_fallback_to_player_match_stats(self, tmp_path: Path) -> None:
-        """8bis: En v5.1, plus de fallback vers player_match_stats — toujours match_stats."""
+        """8bis: En v5.1, player_match_stats n'est plus reconnu — retourne None."""
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
         _create_player_db(
             player_db,
@@ -712,11 +712,11 @@ class TestGetMatchTableName:
         table = repo._get_match_table_name(conn)
         repo.close()
 
-        # v5.1 : toujours match_stats (pas de fallback legacy)
-        assert table == "match_stats"
+        # v5.1 : match_stats absent (données dans shared) → None
+        assert table is None
 
     def test_no_table_defaults_to_match_stats(self, tmp_path: Path) -> None:
-        """Aucune table de matchs → retourne match_stats (défaut v4+)."""
+        """Aucune table de matchs → retourne None (v5.1 — données dans shared)."""
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
         _create_player_db(player_db)
 
@@ -729,4 +729,5 @@ class TestGetMatchTableName:
         table = repo._get_match_table_name(conn)
         repo.close()
 
-        assert table == "match_stats"
+        # v5.1 : plus de match_stats locale → None
+        assert table is None

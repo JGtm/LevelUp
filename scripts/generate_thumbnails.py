@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import shutil
@@ -196,10 +197,8 @@ def generate_thumbnail_gif(
     finally:
         # Nettoyer la palette temporaire
         if palette_path.exists():
-            try:
+            with contextlib.suppress(Exception):
                 palette_path.unlink()
-            except Exception:
-                pass
 
 
 def get_thumbnail_path(video_path: Path, thumbs_dir: Path) -> Path:
@@ -287,8 +286,8 @@ def daemon_mode(videos_dir: Path) -> None:
         videos_dir: Dossier à surveiller.
     """
     try:
+        from watchdog.events import FileCreatedEvent, FileSystemEventHandler
         from watchdog.observers import Observer
-        from watchdog.events import FileSystemEventHandler, FileCreatedEvent
     except ImportError:
         print("ERREUR: watchdog n'est pas installé.")
         print("Installez-le avec: pip install watchdog")
@@ -316,7 +315,7 @@ def daemon_mode(videos_dir: Path) -> None:
 
             # Vérifier que le fichier existe toujours et a une taille > 0
             if not file_path.exists() or file_path.stat().st_size == 0:
-                print(f"  Fichier incomplet ou supprimé, ignoré.")
+                print("  Fichier incomplet ou supprimé, ignoré.")
                 return
 
             thumb_path = get_thumbnail_path(file_path, thumbs_dir)
@@ -324,7 +323,7 @@ def daemon_mode(videos_dir: Path) -> None:
                 print(f"  Thumbnail existe déjà: {thumb_path.name}")
                 return
 
-            print(f"  Génération du thumbnail...")
+            print("  Génération du thumbnail...")
             if generate_thumbnail_gif(file_path, thumb_path):
                 print(f"  OK: {thumb_path.name}")
             else:

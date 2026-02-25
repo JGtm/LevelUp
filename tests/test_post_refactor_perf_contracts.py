@@ -253,15 +253,14 @@ class TestCacheInvalidation:
     """Vérifie que l'invalidation cache est cohérente."""
 
     def test_db_cache_key_returns_tuple(self, sample_duckdb):
-        """db_cache_key retourne (mtime_ns, size)."""
+        """db_cache_key retourne un tuple non-vide."""
         from src.ui.cache_loaders import db_cache_key
 
         key = db_cache_key(sample_duckdb)
         assert key is not None
         assert isinstance(key, tuple)
-        assert len(key) == 2
-        assert key[0] > 0  # mtime_ns
-        assert key[1] > 0  # size
+        assert len(key) >= 2  # v5 : 4-tuple (mtime_player, size_player, mtime_shared, size_shared)
+        assert key[0] > 0  # mtime_ns player DB
 
     def test_db_cache_key_none_for_missing(self):
         """db_cache_key retourne None pour un fichier inexistant."""

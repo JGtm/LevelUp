@@ -88,6 +88,8 @@ def _empty_result() -> dict[str, int]:
         "citations_computed": 0,
         "participants_enriched": 0,
         "pve_stats_inserted": 0,
+        "lusr_computed": 0,
+        "csr_fetched": 0,
     }
 
 
@@ -247,6 +249,9 @@ async def backfill_player_data(
     force_sessions = scope.force_sessions
     force_citations = scope.force_citations
     force_participants_enrich = scope.force_participants_enrich
+    lusr = scope.lusr
+    force_lusr = scope.force_lusr
+    fetch_csr = scope.fetch_csr
 
     # Vérifier qu'au moins une option est activée
     if not scope.has_any_option():
@@ -342,8 +347,8 @@ async def backfill_player_data(
             return result
 
         # Cas : pas de matchs API mais backfill local à faire
-        needs_local_only = killer_victim or end_time or sessions or citations
-        needs_api = bool(match_ids)
+        needs_local_only = killer_victim or end_time or sessions or citations or lusr
+        needs_api = bool(match_ids) or fetch_csr
 
         # Participants-enrich : mode autonome sur shared (pas besoin de match_ids détectés)
         if participants_enrich:
@@ -387,9 +392,11 @@ async def backfill_player_data(
                 end_time=end_time,
                 sessions=sessions,
                 citations=citations,
+                lusr=lusr,
                 force_end_time=force_end_time,
                 force_sessions=force_sessions,
                 force_citations=force_citations,
+                force_lusr=force_lusr,
                 dry_run=dry_run,
             )
             if participants_enrich:
@@ -657,9 +664,11 @@ def _backfill_local_only(
     end_time: bool,
     sessions: bool,
     citations: bool = False,
+    lusr: bool = False,
     force_end_time: bool = False,
     force_sessions: bool = False,
     force_citations: bool = False,
+    force_lusr: bool = False,
     dry_run: bool = False,
 ) -> dict[str, int]:
     """Backfill local uniquement (pas d'API nécessaire)."""
@@ -701,6 +710,17 @@ def _backfill_local_only(
         logger.info("Backfill des citations...")
         n = backfill_citations(conn, db_path, xuid, force=force_citations)
         result["citations_computed"] = n
+
+    if lusr:
+        from scripts.backfill.strategies import compute_lusr_for_player
+
+        logger.info("Calcul du LUSR (LevelUp Skill Rank) pour les matchs non classés...")
+        n = compute_lusr_for_player(conn, db_path, xuid, force=force_lusr)
+        result["lusr_computed"] = n
+        if n > 0:
+            logger.info(f"✅ LUSR calculé pour {n} match(s)")
+        else:
+            logger.info("Aucun nouveau match à calculer pour le LUSR")
 
     return result
 
@@ -1158,6 +1178,21 @@ async def _backfill_with_api(
         logger.info("Backfill des citations...")
         n = backfill_citations(conn, db_path, xuid, force=force_citations)
         totals["citations_computed"] = n
+
+    # ── Snapshot CSR (fetch_csr) ─────────────────────────────────────────────
+    fetch_csr_flag = getattr(scope, "fetch_csr", False)
+    if fetch_csr_flag:
+        from scripts.backfill.strategies import fetch_current_csr_for_player
+
+        logger.info(f"Récupération snapshot CSR pour {gamertag} ({xuid})...")
+        async with SPNKrAPIClient(
+            tokens=tokens,
+            requests_per_second=requests_per_second,
+        ) as csr_client:
+            csr_results = await fetch_current_csr_for_player(conn, xuid, csr_client)
+        totals["csr_fetched"] = len(csr_results)
+        for pl_name, info in csr_results.items():
+            logger.info(f"  {pl_name}: {info['tier']} {info['sub_tier']} (CSR {info['csr']})")
 
     # Fermer shared_conn si on l'a ouvert et pas encore fermé
     if shared_conn is not None and owns_shared_conn:

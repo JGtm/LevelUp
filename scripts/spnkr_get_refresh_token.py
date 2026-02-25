@@ -16,10 +16,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import os
-from pathlib import Path
 import re
-from typing import Optional
+from pathlib import Path
 from urllib.parse import parse_qs, quote_plus, urlparse
 
 
@@ -148,7 +148,7 @@ def _extract_code(value: str) -> str:
     return v
 
 
-def _extract_oauth_error(value: str) -> tuple[Optional[str], Optional[str]]:
+def _extract_oauth_error(value: str) -> tuple[str | None, str | None]:
     """Extrait (error, error_description) depuis une URL de redirection OAuth."""
     v = (value or "").strip()
     if not v:
@@ -230,7 +230,12 @@ async def main(argv: list[str]) -> int:
 
     # Diagnostic (sans afficher de secret): utile quand Azure renvoie unauthorized_client.
     secret_len = len(client_secret)
-    is_uuidish = bool(re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", client_secret.strip()))
+    is_uuidish = bool(
+        re.fullmatch(
+            r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+            client_secret.strip(),
+        )
+    )
     print("\n[Config Azure]")
     print(f"- SPNKR_AZURE_CLIENT_ID: {client_id}")
     print(f"- SPNKR_AZURE_REDIRECT_URI: {redirect_uri}")
@@ -314,7 +319,9 @@ async def main(argv: list[str]) -> int:
     async with ClientSession() as session:
         try:
             if args.oauth_endpoint == "v2":
-                refresh_token = await _oauth2_token_request_v2(session, app=app, authorization_code=auth_code)
+                refresh_token = await _oauth2_token_request_v2(
+                    session, app=app, authorization_code=auth_code
+                )
             else:
                 refresh_token = await authenticate_player(session, app)
         except Exception as e:
@@ -328,10 +335,16 @@ async def main(argv: list[str]) -> int:
                     if isinstance(raw, dict):
                         err2 = raw.get("error")
                         desc2 = raw.get("error_description")
-                        if err2 == "invalid_client" and isinstance(desc2, str) and "client_secret" in desc2:
+                        if (
+                            err2 == "invalid_client"
+                            and isinstance(desc2, str)
+                            and "client_secret" in desc2
+                        ):
                             if args.oauth_endpoint == "auto":
                                 # Tentative de fallback: endpoint v2 (consumers)
-                                refresh_token = await _oauth2_token_request_v2(session, app=app, authorization_code=auth_code)
+                                refresh_token = await _oauth2_token_request_v2(
+                                    session, app=app, authorization_code=auth_code
+                                )
                                 print(
                                     "\nInfo: `login.live.com` a refusé le client_secret (invalid_client). "
                                     "Fallback réussi via endpoint OAuth v2 (consumers)."
@@ -355,14 +368,16 @@ async def main(argv: list[str]) -> int:
             if not handled:
                 raise
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 builtins.input = original_input
-            except Exception:
-                pass
 
     # Si on est passé par un fallback, refresh_token est déjà défini.
 
-    env_path = Path(args.env_file) if args.env_file else (Path(__file__).resolve().parent.parent / ".env.local")
+    env_path = (
+        Path(args.env_file)
+        if args.env_file
+        else (Path(__file__).resolve().parent.parent / ".env.local")
+    )
     if not args.no_write_env_local:
         _upsert_env_key(env_path, "SPNKR_OAUTH_REFRESH_TOKEN", refresh_token)
         print(f"\nOK: refresh token écrit dans {env_path}")
