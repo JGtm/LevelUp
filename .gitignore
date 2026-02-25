@@ -106,3 +106,5 @@ data/spnkr_gt_XxDaemonGamerxX.db
 To do.txt
 To do.txt
 *.backup
+# Outils IA locaux (non trackés)
+.claude/
