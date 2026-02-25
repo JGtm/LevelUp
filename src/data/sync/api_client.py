@@ -137,6 +137,82 @@ async def get_tokens_from_env() -> Tokens:
     return Tokens(spartan_token=spartan, clearance_token=clearance)
 
 
+def _normalize_gamertag_for_env(gamertag: str) -> str:
+    """Normalise un gamertag en clé d'env valide.
+
+    Transforme en majuscules et remplace tout caractère non alphanumérique par
+    un underscore, afin d'obtenir un identifiant utilisable comme suffixe de
+    variable d'environnement.
+
+    Exemples :
+        "JGtm"        → "JGTM"
+        "Mon GT 2"    → "MON_GT_2"
+        "Spartan#42"  → "SPARTAN_42"
+    """
+    return re.sub(r"[^A-Za-z0-9]", "_", gamertag.strip()).upper()
+
+
+def get_player_token_env_key(gamertag: str) -> str:
+    """Retourne le nom de la variable d'env du refresh token propre au joueur.
+
+    Args:
+        gamertag: Gamertag du joueur (ex: « JGtm »).
+
+    Returns:
+        Nom de la variable (ex: « SPNKR_OAUTH_REFRESH_TOKEN_JGTM »).
+    """
+    return f"SPNKR_OAUTH_REFRESH_TOKEN_{_normalize_gamertag_for_env(gamertag)}"
+
+
+async def get_tokens_for_player(gamertag: str) -> Tokens | None:
+    """Récupère les tokens SPNKr propres à un joueur depuis l'env.
+
+    Cherche la variable ``SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_NORMALISÉ>``
+    dans ``.env.local`` / ``.env``.  Si elle est présente, génère les tokens
+    via OAuth Azure (requiert ``SPNKR_AZURE_CLIENT_ID`` +
+    ``SPNKR_AZURE_CLIENT_SECRET`` globaux).
+
+    Utilisation recommandée pour les endpoints player-gated (economy/*) :
+    career rank, customisation privée, etc.
+
+    Args:
+        gamertag: Gamertag du joueur (``JGtm``, ``Mon GT``, …).
+
+    Returns:
+        ``Tokens`` si le token joueur est trouvé et valide, ``None`` sinon.
+    """
+    _load_dotenv_if_present()
+
+    key = get_player_token_env_key(gamertag)
+    player_refresh_token = (os.environ.get(key) or "").strip()
+
+    if not player_refresh_token:
+        return None
+
+    azure_client_id = (os.environ.get("SPNKR_AZURE_CLIENT_ID") or "").strip()
+    azure_client_secret = (os.environ.get("SPNKR_AZURE_CLIENT_SECRET") or "").strip()
+    azure_redirect_uri = (
+        os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "https://localhost"
+    )
+
+    if not azure_client_id or not azure_client_secret:
+        logger.warning(
+            "Token joueur '%s' trouvé (%s) mais SPNKR_AZURE_CLIENT_ID/SECRET "
+            "manquants dans .env.local — token ignoré.",
+            gamertag,
+            key,
+        )
+        return None
+
+    logger.debug("Utilisation du token joueur '%s' (%s)", gamertag, key)
+    return await _get_tokens_via_oauth(
+        azure_client_id,
+        azure_client_secret,
+        azure_redirect_uri,
+        player_refresh_token,
+    )
+
+
 async def _get_tokens_via_oauth(
     client_id: str,
     client_secret: str,

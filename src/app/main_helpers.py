@@ -207,7 +207,31 @@ def render_sidebar_header(db_path: str, xuid: str, settings: AppSettings) -> str
     return xuid
 
 
-def load_profile_api(xuid: str, settings: AppSettings) -> tuple[object | None, str | None]:
+def _load_spartan_id_from_db(db_path: str, xuid: str) -> str | None:
+    """Charge le dernier spartan_id depuis career_progression.
+
+    Retourne None si la colonne n'existe pas, la table est vide, ou toute erreur.
+    """
+    try:
+        from src.utils.db import duckdb_read_only
+
+        with duckdb_read_only(db_path) as conn:
+            row = conn.execute(
+                """
+                SELECT spartan_id FROM career_progression
+                WHERE xuid = ?
+                ORDER BY recorded_at DESC LIMIT 1
+                """,
+                (xuid,),
+            ).fetchone()
+            if row:
+                return str(row[0]).strip() or None
+    except Exception:
+        pass
+    return None
+
+
+def load_profile_api(xuid: str, settings: AppSettings, *, db_path: str | None = None) -> tuple[object | None, str | None]:
     """Charge le profil depuis le cache ou l'API SPNKr.
 
     Tente toujours le cache disque d'abord (même si l'API est désactivée).
@@ -224,6 +248,12 @@ def load_profile_api(xuid: str, settings: AppSettings) -> tuple[object | None, s
     xu = str(xuid or "").strip()
     if not xu:
         return None, None
+
+    # Résoudre le gamertag pour les tokens per-player (endpoints economy player-gated)
+    gamertag: str | None = None
+    if db_path and os.path.exists(db_path):
+        with contextlib.suppress(Exception):
+            gamertag = display_name_from_xuid(xu, db_path=db_path) or None
 
     # Toujours essayer le cache d'abord, même si l'API est désactivée
     if not api_enabled:
@@ -242,6 +272,7 @@ def load_profile_api(xuid: str, settings: AppSettings) -> tuple[object | None, s
             xuid=xu,
             enabled=True,
             refresh_hours=api_refresh_h,
+            gamertag=gamertag,
         )
     except Exception as e:
         api_app, api_err = None, str(e)
@@ -306,6 +337,22 @@ def render_profile_hero(
     rank_icon_value = (getattr(api_app, "rank_image_url", None) if api_app else "") or ""
     adornment_value = (getattr(api_app, "adornment_image_url", None) if api_app else "") or ""
 
+    # Fallback : adornment_path issu de la dernière sync career rank (DB)
+    # Utile quand l'API profile est désactivée ou le cache froid.
+    if not adornment_value and db_path and str(xuid or "").strip():
+        with contextlib.suppress(Exception):
+            from src.utils.db import duckdb_read_only
+
+            with duckdb_read_only(db_path) as _conn:
+                _row = _conn.execute(
+                    "SELECT adornment_path FROM career_progression "
+                    "WHERE xuid = ? AND adornment_path IS NOT NULL "
+                    "ORDER BY recorded_at DESC LIMIT 1",
+                    (str(xuid).strip(),),
+                ).fetchone()
+                if _row and _row[0]:
+                    adornment_value = str(_row[0]).strip()
+
     # Tokens Halo si nécessaire
     if (
         dl_enabled
@@ -365,6 +412,12 @@ def render_profile_hero(
     _warn_asset("backdrop", backdrop_value, backdrop_path)
     _warn_asset("rank", rank_icon_value, rank_icon_path)
 
+    # Spartan ID depuis la DB (sync player-gated, source de vérité)
+    spartan_id_value: str | None = None
+    if db_path and str(xuid or "").strip():
+        with contextlib.suppress(Exception):
+            spartan_id_value = _load_spartan_id_from_db(str(db_path), str(xuid).strip())
+
     st.markdown(
         get_hero_html(
             player_name=me_name,
@@ -381,6 +434,7 @@ def render_profile_hero(
             ).strip()
             or None,
             emblem_path=emblem_path,
+            spartan_id=spartan_id_value,
         ),
         unsafe_allow_html=True,
     )

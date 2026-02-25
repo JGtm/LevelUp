@@ -219,6 +219,31 @@ Error: Authentication failed
 python scripts/spnkr_get_refresh_token.py
 ```
 
+### Career Rank / Adornment non synchronisé (Avertissement "player-gated")
+
+Certains endpoints Halo Waypoint (career rank, customisation) retournent 403 si le token
+Spartan n'appartient pas au joueur ciblé. Symptôme dans les logs :
+
+```
+WARNING — Aucun token joueur pour 'MonGamertag' — career rank skippé.
+Définir SPNKR_OAUTH_REFRESH_TOKEN_MONGAMERTAG dans .env.local pour activer la sync.
+```
+
+**Solution :** ajouter un token per-player dans `.env.local` :
+
+```env
+# Gamertag "MonGamertag" → clé MONGAMERTAG (normalisation : uppercase + non-alphanumérique → _)
+SPNKR_OAUTH_REFRESH_TOKEN_MONGAMERTAG=votre_refresh_token_xbox_live
+```
+
+Obtenir le token :
+```bash
+python scripts/spnkr_get_refresh_token.py
+```
+
+Le token global `SPNKR_OAUTH_REFRESH_TOKEN` reste utilisé pour les endpoints publics.
+Sans token per-player, la sync du career rank est skippée (pas d'erreur fatale).
+
 ### Match Introuvable
 
 Certains matchs très anciens peuvent ne plus être disponibles sur les serveurs Halo.

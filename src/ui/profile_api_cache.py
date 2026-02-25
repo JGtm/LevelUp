@@ -25,6 +25,7 @@ class ProfileAppearance:
     rank_subtitle: str | None = None
     rank_image_url: str | None = None
     adornment_image_url: str | None = None
+    spartan_id: str | None = None
 
 
 def _repo_root() -> Path:
@@ -109,6 +110,7 @@ def load_cached_appearance(xuid: str, *, refresh_hours: int) -> ProfileAppearanc
         rank_subtitle=(str(data.get("rank_subtitle") or "").strip() or None),
         rank_image_url=(str(data.get("rank_image_url") or "").strip() or None),
         adornment_image_url=(str(data.get("adornment_image_url") or "").strip() or None),
+        spartan_id=(str(data.get("spartan_id") or "").strip() or None),
     )
 
 
@@ -125,6 +127,7 @@ def save_cached_appearance(xuid: str, appearance: ProfileAppearance) -> None:
         "rank_subtitle": appearance.rank_subtitle,
         "rank_image_url": appearance.rank_image_url,
         "adornment_image_url": appearance.adornment_image_url,
+        "spartan_id": appearance.spartan_id,
     }
     _safe_write_json(cp, data)
 

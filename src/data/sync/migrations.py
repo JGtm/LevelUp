@@ -426,13 +426,21 @@ def _recreate_career_progression_with_sequence(
             xp_total INTEGER,
             is_max_rank BOOLEAN DEFAULT FALSE,
             adornment_path VARCHAR,
+            spartan_id VARCHAR,
             recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
-    # 4) Restaurer les données
+    # 4) Restaurer les données (colonnes explicites pour tolérer un backup sans spartan_id)
     if table_exists(conn, "career_progression_backup"):
-        conn.execute("INSERT INTO career_progression SELECT * FROM career_progression_backup")
+        conn.execute("""
+            INSERT INTO career_progression
+                (id, xuid, rank, rank_name, rank_tier, current_xp,
+                 xp_for_next_rank, xp_total, is_max_rank, adornment_path, recorded_at)
+            SELECT id, xuid, rank, rank_name, rank_tier, current_xp,
+                   xp_for_next_rank, xp_total, is_max_rank, adornment_path, recorded_at
+            FROM career_progression_backup
+        """)
         conn.execute("DROP TABLE career_progression_backup")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid)")
@@ -441,7 +449,28 @@ def _recreate_career_progression_with_sequence(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Migration medals_earned (INT32 → BIGINT)
+# Migration career_progression : colonne spartan_id
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def add_spartan_id_to_career_progression(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute la colonne spartan_id à career_progression si elle est absente.
+
+    Migration non-destructive : utilise ``ALTER TABLE ... ADD COLUMN IF NOT EXISTS``
+    (supporté nativement par DuckDB).
+    Les lignes existantes auront ``spartan_id = NULL``.
+    """
+    if not table_exists(conn, "career_progression"):
+        return
+    try:
+        conn.execute(
+            "ALTER TABLE career_progression ADD COLUMN IF NOT EXISTS spartan_id VARCHAR"
+        )
+        logger.debug("✅ career_progression : colonne spartan_id présente")
+    except Exception as e:
+        # DuckDB peut lever une erreur si la syntaxe IF NOT EXISTS n'est pas reconnue
+        # dans certaines versions anciennes — on ignore silencieusement.
+        logger.debug("Colonne spartan_id déjà existante ou erreur non fatale : %s", e)
 # ─────────────────────────────────────────────────────────────────────────────
 
 

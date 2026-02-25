@@ -34,7 +34,10 @@ import duckdb
 from src.data.sync.api_client import (
     SPNKrAPIClient,
     Tokens,
+    _normalize_gamertag_for_env,
     enrich_match_info_with_assets,
+    get_player_token_env_key,
+    get_tokens_for_player,
     get_tokens_from_env,
 )
 from src.data.sync.batch_insert import (
@@ -47,6 +50,7 @@ from src.data.sync.batch_insert import (
 )
 from src.data.sync.migrations import (
     BACKFILL_FLAGS,
+    add_spartan_id_to_career_progression,
     ensure_backfill_completed_column,
     ensure_career_progression_autoincrement,
     ensure_highlight_events_autoincrement,
@@ -477,6 +481,9 @@ class DuckDBSyncEngine:
         # S'assurer que la séquence pour career_progression existe (migration)
         self._ensure_career_progression_sequence()
 
+        # Colonne spartan_id sur career_progression (migration v5.3+)
+        self._ensure_career_progression_spartan_id()
+
         # Colonne bitmask backfill_completed (migration)
         ensure_backfill_completed_column(conn)
 
@@ -528,6 +535,13 @@ class DuckDBSyncEngine:
         if conn is None:
             return
         ensure_career_progression_autoincrement(conn)
+
+    def _ensure_career_progression_spartan_id(self) -> None:
+        """Ajoute la colonne spartan_id à career_progression si absente."""
+        conn = self._connection
+        if conn is None:
+            return
+        add_spartan_id_to_career_progression(conn)
 
     def _resolve_xuid_from_db(self) -> str:
         """Résout le XUID depuis la DB joueur (fallback si non fourni).
@@ -2435,36 +2449,46 @@ class DuckDBSyncEngine:
     async def sync_career_rank(self) -> CareerRankData | None:
         """Synchronise la progression du rang carrière.
 
-        Récupère les données depuis l'API et les sauvegarde en BDD.
-        Crée un snapshot historique pour suivre la progression.
+        Utilise le token propre au joueur (``SPNKR_OAUTH_REFRESH_TOKEN_<GT>``
+        dans ``.env.local``) pour les endpoints economy player-gated.
+        Si aucun token joueur n'est défini, la sync est sautée proprement.
 
         Returns:
-            CareerRankData ou None si erreur.
+            CareerRankData ou None si token absent ou erreur.
         """
         try:
-            # Récupérer les tokens si nécessaire
-            if self._tokens is None:
-                self._tokens = await get_tokens_from_env()
+            # Priorité : token propre au joueur (endpoint economy player-gated)
+            player_tokens = await get_tokens_for_player(self._gamertag)
+            if player_tokens is None:
+                logger.warning(
+                    "Aucun token joueur pour '%s' — career rank skippé. "
+                    "Définir %s dans .env.local pour activer la sync.",
+                    self._gamertag,
+                    get_player_token_env_key(self._gamertag),
+                )
+                return None
 
-            async with SPNKrAPIClient(tokens=self._tokens) as client:
+            async with SPNKrAPIClient(tokens=player_tokens) as client:
                 career_data = await client.get_career_rank_progression(self._xuid)
 
                 if career_data is None:
-                    logger.warning(f"Career rank non disponible pour {self._gamertag}")
+                    logger.warning("Career rank non disponible pour %s", self._gamertag)
                     return None
 
                 # Sauvegarder en BDD
                 self._save_career_rank(career_data)
 
                 logger.info(
-                    f"Career rank sync: {self._gamertag} → "
-                    f"Rang {career_data.current_rank} ({career_data.current_rank_name})"
+                    "Career rank sync: %s → Rang %d (%s)",
+                    self._gamertag,
+                    career_data.current_rank,
+                    career_data.current_rank_name,
                 )
 
                 return career_data
 
         except Exception as e:
-            logger.error(f"Erreur sync_career_rank: {e}")
+            logger.error("Erreur sync_career_rank: %s", e)
             return None
 
     def _save_career_rank(self, data: CareerRankData) -> None:
@@ -2476,8 +2500,8 @@ class DuckDBSyncEngine:
             """INSERT INTO career_progression (
                 xuid, rank, rank_name, rank_tier,
                 current_xp, xp_for_next_rank, xp_total,
-                is_max_rank, adornment_path, recorded_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                is_max_rank, adornment_path, spartan_id, recorded_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 data.xuid,
                 data.current_rank,
@@ -2488,6 +2512,7 @@ class DuckDBSyncEngine:
                 data.xp_total,
                 data.is_max_rank,
                 data.adornment_path,
+                data.spartan_id,
                 now,
             ),
         )
@@ -2511,7 +2536,7 @@ class DuckDBSyncEngine:
             result = conn.execute(
                 """SELECT rank, rank_name, rank_tier, current_xp,
                           xp_for_next_rank, xp_total, is_max_rank,
-                          adornment_path, recorded_at
+                          adornment_path, spartan_id, recorded_at
                    FROM career_progression
                    WHERE xuid = ?
                    ORDER BY recorded_at DESC
@@ -2529,7 +2554,8 @@ class DuckDBSyncEngine:
                     "xp_total": r[5],
                     "is_max_rank": r[6],
                     "adornment_path": r[7],
-                    "recorded_at": r[8],
+                    "spartan_id": r[8],
+                    "recorded_at": r[9],
                 }
                 for r in result
             ]

@@ -555,7 +555,7 @@ def main() -> None:
     aliases_key = _aliases_cache_key()
 
     # Auto-profil (SPNKr) et rendu du hero
-    api_app, _api_err = load_profile_api(xuid, settings)
+    api_app, _api_err = load_profile_api(xuid, settings, db_path=db_path)
     render_profile_hero(xuid, settings, api_app, db_path=db_path)
 
     # ==========================================================================

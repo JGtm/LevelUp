@@ -46,6 +46,7 @@ FULL_APPEARANCE = ProfileAppearance(
     rank_subtitle="XP 15000/20000",
     rank_image_url="https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/career/rank_272_large.png",
     adornment_image_url="https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/career/rank_272_adornment.png",
+    spartan_id="XY7B",
 )
 
 
@@ -68,6 +69,7 @@ class TestCacheRoundTrip:
         assert loaded.rank_subtitle == FULL_APPEARANCE.rank_subtitle
         assert loaded.rank_image_url == FULL_APPEARANCE.rank_image_url
         assert loaded.adornment_image_url == FULL_APPEARANCE.adornment_image_url
+        assert loaded.spartan_id == FULL_APPEARANCE.spartan_id
 
     def test_adornment_image_url_persisted_in_json(self, _clean_cache: Path) -> None:
         """Vérifie que adornment_image_url est physiquement présent dans le JSON."""
@@ -81,6 +83,8 @@ class TestCacheRoundTrip:
         data = json.loads(cache_file.read_text(encoding="utf-8"))
         assert "adornment_image_url" in data
         assert data["adornment_image_url"] == FULL_APPEARANCE.adornment_image_url
+        assert "spartan_id" in data
+        assert data["spartan_id"] == FULL_APPEARANCE.spartan_id
 
     def test_none_fields_handled(self, _clean_cache: Path) -> None:
         """Un ProfileAppearance avec tous les champs None se sauvegarde/charge sans erreur."""
@@ -103,6 +107,89 @@ class TestCacheRoundTrip:
         assert loaded is None
 
 
+class TestGetProfileAppearanceStaleOnError:
+    """get_profile_appearance retombe sur le cache périmé si l'API échoue (stale-on-error)."""
+
+    def test_stale_cache_returned_on_api_failure(
+        self, _clean_cache: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Quand l'API lève une exception, le cache périmé est retourné sans erreur."""
+        from unittest.mock import patch
+
+        from src.ui.profile_api import get_profile_appearance
+
+        xuid = "8888888881"
+        saved = ProfileAppearance(
+            service_tag="STALE",
+            backdrop_image_url="https://example.com/backdrop.png",
+            emblem_image_url="https://example.com/emblem.png",
+        )
+        save_cached_appearance(xuid, saved)
+
+        with patch(
+            "src.ui.profile_api.fetch_appearance_via_spnkr",
+            side_effect=RuntimeError("Token expiré (401)"),
+        ):
+            result, err = get_profile_appearance(
+                xuid=xuid,
+                enabled=True,
+                refresh_hours=0,  # cache jamais "frais" → appel API tenté
+            )
+
+        assert result is not None, "Le cache périmé aurait dû être retourné"
+        assert err is None, "Pas d'erreur si le cache stale couvre"
+        assert result.service_tag == "STALE"
+        assert result.backdrop_image_url == "https://example.com/backdrop.png"
+
+    def test_none_when_no_stale_cache_and_api_fails(
+        self, _clean_cache: Path
+    ) -> None:
+        """Sans aucun cache et API en échec → (None, message d'erreur)."""
+        from unittest.mock import patch
+
+        from src.ui.profile_api import get_profile_appearance
+
+        with patch(
+            "src.ui.profile_api.fetch_appearance_via_spnkr",
+            side_effect=RuntimeError("Connection timeout"),
+        ):
+            result, err = get_profile_appearance(
+                xuid="8888888882",
+                enabled=True,
+                refresh_hours=0,
+            )
+
+        assert result is None
+        assert err is not None
+        assert "Connection timeout" in err
+
+    def test_import_error_propagated_even_with_stale_cache(
+        self, _clean_cache: Path
+    ) -> None:
+        """ImportError (dépendance manquante) génère un message d'erreur dédié."""
+        from unittest.mock import patch
+
+        from src.ui.profile_api import get_profile_appearance
+
+        xuid = "8888888883"
+        save_cached_appearance(xuid, ProfileAppearance(service_tag="STALE"))
+
+        with patch(
+            "src.ui.profile_api.fetch_appearance_via_spnkr",
+            side_effect=ImportError("spnkr manquant"),
+        ):
+            result, err = get_profile_appearance(
+                xuid=xuid,
+                enabled=True,
+                refresh_hours=0,
+            )
+
+        # L'ImportError doit déclencher le message "Module manquant"
+        assert result is None
+        assert err is not None
+        assert "manquant" in err.lower() or "Module" in err
+
+
 class TestProfileAppearanceDataclass:
     """Vérifie la structure du contrat Spartan ID (10C.1)."""
 
@@ -116,6 +203,7 @@ class TestProfileAppearanceDataclass:
             "rank_label",
             "rank_subtitle",
             "adornment_image_url",
+            "spartan_id",
         }
         actual_fields = {f.name for f in ProfileAppearance.__dataclass_fields__.values()}
         missing = required_fields - actual_fields

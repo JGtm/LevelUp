@@ -473,6 +473,7 @@ class CareerRankRow:
     xp_total: int
     is_max_rank: bool
     adornment_path: str | None = None
+    spartan_id: str | None = None
     recorded_at: datetime | None = None
 
 
