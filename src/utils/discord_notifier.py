@@ -305,29 +305,27 @@ def count_matches_missing_data(xuid: str) -> int:
 # Construction du message Discord (Rich Embeds)
 # =============================================================================
 
-_OUTCOME_LABELS: dict[int, tuple[str, str]] = {
-    1: ("⚖️", "Égalité"),
-    2: ("🏆", "Victoire"),
-    3: ("💀", "Défaite"),
-    4: ("🚶", "Abandon"),
-}
 
-_OP_LABELS: dict[str, str] = {
-    "sync_delta": "Sync delta",
-    "sync_full": "Sync complète",
-    "backfill": "Backfill",
-}
+def _get_discord_lang() -> str:
+    """Retourne la langue Discord configurée dans app_settings.json."""
+    try:
+        with open(_APP_SETTINGS, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data.get("discord_lang", "fr")
+    except Exception:
+        return "fr"
 
-# Traductions des noms de playlists : délégué à src.ui.translations (translate_playlist_name).
+
+# Traductions des noms de playlists : délégué à src.ui.translations.
 # Pas de dict local — source unique de vérité.
 
 
-def _localize_playlist(name: str) -> str:
-    """Retourne la traduction française du nom de playlist via le module translations."""
+def _localize_playlist(name: str, lang: str = "fr") -> str:
+    """Retourne la traduction du nom de playlist via le module translations."""
     try:
         from src.ui.translations import translate_playlist_name
 
-        result = translate_playlist_name(name)
+        result = translate_playlist_name(name, lang=lang)
         return result if result is not None else name
     except Exception:
         return name
@@ -341,18 +339,13 @@ def _clean_game_variant(name: str) -> str:
     return name
 
 
-def _resolve_mode_label(pair_name: str, game_variant_name: str) -> str:
-    """Résout le libellé du mode de jeu depuis pair_name (prioritaire) ou game_variant_name.
-
-    Utilise normalize_pair_name_to_mode_ui pour traduire le pair_name en libellé
-    lisible (ex: "Arena:Slayer on Bazaar" → "Arène : Assassin").
-    Fallback sur game_variant_name nettoyé si le pair_name ne peut pas être résolu.
-    """
+def _resolve_mode_label(pair_name: str, game_variant_name: str, lang: str = "fr") -> str:
+    """Résout le libellé du mode de jeu dans la langue demandée."""
     if pair_name and pair_name != "—":
         try:
             from src.analysis.mode_categories import normalize_pair_name_to_mode_ui
 
-            mode = normalize_pair_name_to_mode_ui(pair_name)
+            mode = normalize_pair_name_to_mode_ui(pair_name, lang=lang)
             if mode:
                 return mode
         except Exception:
@@ -381,44 +374,57 @@ def _format_player_field(
     Returns:
         Tuple (name, value) limités aux contraintes Discord (<= 256 / 1024 chars).
     """
+    from src.ui.i18n.cli import discord_t
+
+    lang = _get_discord_lang()
     name = f"👤  {player.gamertag}"
     lines: list[str] = []
 
     # ── Résultat de l'opération ──────────────────────────────────────────────
     if op_type.startswith("sync"):
         if player.matches_synced == 0:
-            lines.append("Déjà à jour")
+            lines.append(discord_t("discord_up_to_date_sync"))
         else:
-            lines.append(f"**+{player.matches_synced}** match(s) synchronisé(s)")
+            lines.append(discord_t("discord_matches_synced", count=player.matches_synced))
     else:
         if player.matches_synced == 0:
-            lines.append("Aucun match à retraiter")
+            lines.append(discord_t("discord_no_matches_to_reprocess"))
         else:
-            lines.append(f"**{player.matches_synced}** match(s) retraité(s)")
+            lines.append(discord_t("discord_matches_processed", count=player.matches_synced))
 
     # ── Complétude des données ───────────────────────────────────────────────
     if player.error:
-        lines.append(f"⛔  Erreur : {player.error[:80]}")
+        lines.append(discord_t("discord_error_field", error=player.error[:80]))
     elif player.missing_data_count == 0:
-        lines.append("✅  Données complètes")
+        lines.append(discord_t("discord_data_complete"))
     else:
-        lines.append(f"⚠️   **{player.missing_data_count}** match(s) avec données incomplètes")
+        lines.append(discord_t("discord_data_incomplete", count=player.missing_data_count))
 
     # ── Dernier match ────────────────────────────────────────────────────────
     if player.last_match:
         lm = player.last_match
-        outcome_icon, outcome_label = _OUTCOME_LABELS.get(lm.outcome, ("❓", "—"))
-        ranked_tag = " · 🏅 Classé" if lm.is_ranked else ""
-        fda = f"{lm.kills}F / {lm.deaths}D / {lm.assists}A"
+        _OUTCOME_KEYS: dict[int, str] = {
+            1: "discord_outcome_draw",
+            2: "discord_outcome_win",
+            3: "discord_outcome_loss",
+            4: "discord_outcome_quit",
+        }
+        _OUTCOME_ICONS: dict[int, str] = {1: "⚖️", 2: "🏆", 3: "💀", 4: "🚶"}
+        outcome_key = _OUTCOME_KEYS.get(lm.outcome)
+        outcome_icon = _OUTCOME_ICONS.get(lm.outcome, "❓")
+        outcome_label = discord_t(outcome_key) if outcome_key else "—"
+        ranked_tag = f" · 🏅 {discord_t('discord_ranked_tag')}" if lm.is_ranked else ""
+        kda = discord_t("discord_kda", k=lm.kills, d=lm.deaths, a=lm.assists)
         _st = _to_local(lm.start_time) if lm.start_time else None
         time_str = _st.strftime("%d/%m %H:%M") if _st else "—"
-        variant = _resolve_mode_label(lm.pair_name, lm.game_variant_name)
-        playlist = _localize_playlist(lm.playlist_name)
+        variant = _resolve_mode_label(lm.pair_name, lm.game_variant_name, lang=lang)
+        playlist = _localize_playlist(lm.playlist_name, lang=lang)
+        last_match_label = discord_t("discord_last_match")
         lines.append(
-            f"**Dernier match** ({time_str}){ranked_tag}\n"
+            f"**{last_match_label}** ({time_str}){ranked_tag}\n"
             f"🗺️  **{lm.map_name}**  ·  🎮 {variant}\n"
             f"📋  {playlist}\n"
-            f"📊  {fda}  ·  {outcome_icon} {outcome_label}"
+            f"📊  {kda}  ·  {outcome_icon} {outcome_label}"
         )
 
     return name[:256], "\n".join(lines)[:1024]
@@ -443,7 +449,14 @@ def build_embed_payload(
     Returns:
         Dict prêt à sérialiser en JSON pour l'API Discord.
     """
-    op_label = _OP_LABELS.get(operation, operation)
+    from src.ui.i18n.cli import discord_t
+
+    _OP_KEYS: dict[str, str] = {
+        "sync_delta": "discord_op_sync_delta",
+        "sync_full":  "discord_op_sync_full",
+        "backfill":   "discord_op_backfill",
+    }
+    op_label = discord_t(_OP_KEYS.get(operation, operation))
     duration = _format_duration(started_at, finished_at)
 
     has_errors = any(p.error for p in players)
@@ -465,17 +478,20 @@ def build_embed_payload(
     total_new = sum(p.matches_synced for p in players)
 
     if operation.startswith("sync"):
-        matches_str = (
-            f"+{total_new} match(s) synchronisé(s)" if total_new > 0 else "Aucun nouveau match"
-        )
+        if total_new > 0:
+            matches_str = discord_t("discord_matches_synced", count=total_new)
+        else:
+            matches_str = discord_t("discord_no_new_matches")
     else:
-        matches_str = f"{total_new} match(s) retraité(s)" if total_new > 0 else "Tout déjà à jour"
+        if total_new > 0:
+            matches_str = discord_t("discord_matches_processed", count=total_new)
+        else:
+            matches_str = discord_t("discord_all_up_to_date")
 
-    description = (
-        f"**{status_icon}  {op_label}** terminée en **{duration}**\n"
-        f"🕐  `{t_start}`  →  `{t_end}`\n"
-        f"👥  {len(players)} joueur(s)  ·  {matches_str}"
-    )
+    completed_line = discord_t("discord_completed_in", status=status_icon, op=op_label, duration=duration)
+    time_line = discord_t("discord_time_range", t_start=t_start, t_end=t_end)
+    players_line = discord_t("discord_player_count", count=len(players)) + "  ·  " + matches_str
+    description = f"{completed_line}\n{time_line}\n{players_line}"
 
     # Champs par joueur (max 25 selon l'API Discord)
     fields: list[dict[str, Any]] = []
@@ -485,11 +501,11 @@ def build_embed_payload(
             fields.append({"name": fname, "value": fvalue, "inline": False})
 
     embed: dict[str, Any] = {
-        "title": f"🎮  LevelUp — {op_label}",
+        "title": discord_t("discord_title", op=op_label),
         "description": description,
         "color": color,
         "fields": fields,
-        "footer": {"text": "LevelUp · Halo Infinite Stats"},
+        "footer": {"text": discord_t("discord_footer")},
         "timestamp": finished_at.replace(tzinfo=timezone.utc).isoformat()
         if finished_at.tzinfo is None
         else finished_at.isoformat(),

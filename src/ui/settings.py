@@ -82,6 +82,11 @@ class AppSettings:
     # Activer les analytics DuckDB (requêtes haute performance)
     enable_duckdb_analytics: bool = False
 
+    # Internationalisation
+    lang: str = "fr"         # Langue de l'UI ("fr" ou "en")
+    discord_lang: str = "fr" # Langue des messages Discord
+    cli_lang: str = "fr"     # Langue des scripts CLI
+
 
 def _coerce_bool(v: Any, default: bool) -> bool:
     if isinstance(v, bool):
@@ -224,6 +229,18 @@ def load_settings() -> AppSettings:
     s.enable_duckdb_analytics = _coerce_bool(
         obj.get("enable_duckdb_analytics"), s.enable_duckdb_analytics
     )
+
+    # Internationalisation
+    _lang = str(obj.get("lang") or s.lang).strip().lower()
+    if _lang in {"fr", "en"}:
+        s.lang = _lang
+    _discord_lang = str(obj.get("discord_lang") or s.discord_lang).strip().lower()
+    if _discord_lang in {"fr", "en"}:
+        s.discord_lang = _discord_lang
+    _cli_lang = str(obj.get("cli_lang") or s.cli_lang).strip().lower()
+    if _cli_lang in {"fr", "en"}:
+        s.cli_lang = _cli_lang
+
     return s
 
 

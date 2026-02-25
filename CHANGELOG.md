@@ -63,6 +63,19 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - Fallback rétrocompatible sur la clé `discord_webhook_url` dans `app_settings.json`
   - Section documentée dans `.env.local.example`
 
+- **Internationalisation FR/EN complète (i18n)** (`src/ui/i18n/`)
+  - Package i18n dédié avec modules spécialisés : `common.py`, `pages.py`, `widgets.py`, `viz.py`, `cli.py`
+  - Fonctions : `t(key, lang=None)` (UI Streamlit), `viz_t(key, lang)` (Plotly), `discord_t(key, **kwargs)` (Discord), `ct(key, **kwargs)` (CLI/scripts)
+  - Langue stockée dans `st.session_state["lang"]` (Streamlit) ou variable d'env `LEVELUP_LANG` (scripts)
+  - Sélecteur de langue 🇫🇷/🇬🇧 dans la sidebar (`_render_lang_selector()` dans `src/app/sidebar.py`)
+  - Trois champs dans `AppSettings` : `lang`, `discord_lang`, `cli_lang` (défaut `"fr"`)
+  - `src/ui/translations.py` bilingue : `translate_playlist_name(name, lang)` et `translate_pair_name(name, lang)` — conserve le regroupement `" on Map"` et les préfixes Halo (Arena, BTB, Ranked)
+  - `src/analysis/mode_categories.py` : `normalize_pair_name_to_mode_ui(pair_name, lang)` bilingue
+  - `src/utils/discord_notifier.py` entièrement bilingue : `_format_player_field`, `build_embed_payload`, outcomes (🏆/💀/⚖️/🚶), KDA (`{k}K / {d}D / {a}A` vs `{k}F / {d}D / {a}A`), labels opération, footer
+  - `src/visualization/distributions_outcomes.py` bilingue : traces Wins/Losses/Ties/Unfinished, buckets temporels (match/hour/day/week/month), heatmap win rate (jours EN/FR), `plot_matches_at_top_by_week` (Others/Top Rate)
+  - `src/visualization/antagonist_charts.py` bilingue : `plot_duel_history` traduit Win/Loss/Tie dans l'annotation de duel
+  - `src/ui/pages/win_loss.py` : tous les appels viz passent `lang=get_lang()`
+
 ### Changed
 
 - **Algorithme LUSR — mise à jour Elo-style (`K_ELO = 32`)** remplace la zone draw TrueSkill
@@ -167,6 +180,27 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - Résolution gamertags via `load_match_gamertags_fn` (même pipeline que l'ancien roster)
   - CSS `.os-scoreboard` / `.os-sb-*` avec wrapping colonnes (`max-width: 80px`, `word-break`)
   - Remplace la section "Joueurs" (roster) supprimée
+
+- **Tokens per-player pour endpoints player-gated** (`src/data/sync/api_client.py`, `src/ui/profile_api_tokens.py`)
+  - `SPNKR_OAUTH_REFRESH_TOKEN_<GT_NORMALISÉ>` dans `.env.local` pour chaque joueur (ex: `_JGTM`, `_MON_GT_2`)
+  - Normalisation : `re.sub(r"[^A-Za-z0-9]", "_", gt.strip()).upper()`
+  - `get_tokens_for_player(gamertag)` : async, retourne `Tokens | None` — skip + warning si absent (pas de fallback global sur endpoint restreint)
+  - `get_player_token_env_key(gamertag)` : retourne la clé env normalisée
+  - `profile_api_tokens.get_tokens()` enrichi : param `gamertag` optionnel — priorité token joueur > token global (fallback naturel pour endpoints publics)
+  - `profile_api.py`, `get_profile_appearance()` : param `gamertag` propagé jusqu'au fetch SPNKr
+  - `load_profile_api()` : dérive le gamertag depuis la DB et le passe à `get_profile_appearance()` — corrige l'adornment/career rank pour les joueurs non-propriétaire du token global
+
+- **Sync Career Rank player-gated** (`src/data/sync/engine.py`)
+  - `sync_career_rank()` utilise `get_tokens_for_player()` — skip silencieux + warning si absent
+  - Persiste `spartan_id` dans `career_progression` (colonne ajoutée via migration `add_spartan_id_to_career_progression()`)
+  - `CareerRankRow.spartan_id` dans `src/data/sync/models.py`
+
+- **Spartan ID dans le hero banner** (`src/ui/styles.py`, `src/app/main_helpers.py`)
+  - `get_hero_html()` : nouveau paramètre `spartan_id` — affiché dans la section career-rank sous le label de rang (`.career-rank__spartan-id`)
+  - `render_profile_hero()` : charge `spartan_id` depuis `career_progression` (DB, source de vérité) et le passe au hero HTML
+  - CSS `.career-rank__spartan-id` : style compact, semi-transparent, lettres espacées
+
+- **32 nouveaux tests** (`tests/test_player_tokens.py`)
 
 ### Changed
 

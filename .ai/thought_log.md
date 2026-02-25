@@ -127,8 +127,28 @@ La zone draw TrueSkill classique (`v_draw(t, eps/c)` avec `t = (mu - mu_opp)/c`)
 - Décisions clés : architecture shared-only, modernisation Streamlit, éradication legacy complète
 
 **Fin de projet** :
-- Documentation archivée dans `.ai/archive/v5.1-completion/`
-- Sign-off final : toutes métriques v5.1 atteintes
+
+
+### [2026-02-25] — i18n FR/EN : Phase 1b (traductions EN des registres)
+
+**Statut** : Complété ✅
+
+**Objectif** : Remplir toutes les valeurs `"en": "TODO"` dans les registres i18n sans modifier les valeurs FR, en gardant le vocabulaire Halo Infinite (ex. *Killing Spree*, *Headshots*, *Perfect Kills*) et en préservant `LUSR` comme nom propre.
+
+**Changements** :
+- Traductions EN complètes pour les modules :
+   - `src/ui/i18n/common.py`
+   - `src/ui/i18n/pages.py`
+   - `src/ui/i18n/widgets.py`
+   - `src/ui/i18n/viz.py`
+   - `src/ui/i18n/cli.py`
+- Placeholders conservés (ex. `{count}`, `{error}`, `{r2:.2f}`) pour compatibilité `.format()`.
+
+**Validation rapide** :
+- Import + rendu d'un échantillon de clés en EN via `t()` (hors `streamlit run`) — OK. Les warnings Streamlit hors contexte sont attendus.
+
+**Note** :
+- Cette étape ne câble pas encore `t()` dans l'UI Streamlit ni ne modifie `src/ui/translations.py` (ce sera une phase suivante).
 
 ---
 

@@ -312,7 +312,8 @@ class TestBuildEmbedPayload:
     def test_description_contains_total_synced(self):
         players = [_player(matches_synced=5), _player(gamertag="B", matches_synced=3)]
         embed = self._build(players)["embeds"][0]
-        assert "8 match" in embed["description"]
+        # Le total est affiché en markdown bold : "**+8** match(s)..."
+        assert "+8" in embed["description"]
 
     def test_description_zero_sync_shows_aucun_nouveau(self):
         players = [_player(matches_synced=0)]

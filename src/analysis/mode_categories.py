@@ -19,7 +19,7 @@ _LABEL_SUFFIX_RE: Final[re.Pattern[str]] = re.compile(
 )
 
 
-def normalize_pair_name_to_mode_ui(pair_name: str | None) -> str | None:
+def normalize_pair_name_to_mode_ui(pair_name: str | None, lang: str = "fr") -> str | None:
     """Normalise un `pair_name` (DB) vers le libellé UI de mode.
 
     Aligne le comportement avec `src.app.helpers.normalize_mode_label`:
@@ -29,9 +29,10 @@ def normalize_pair_name_to_mode_ui(pair_name: str | None) -> str | None:
 
     Args:
         pair_name: Nom du pair (mode + carte), ex: "Arena:Slayer on Aquarius".
+        lang:      ``"fr"`` (défaut) ou ``"en"``.
 
     Returns:
-        Libellé UI, ex: "Arène : Assassin", ou None.
+        Libellé UI, ex: "Arène : Assassin" (FR) / "Arena: Slayer" (EN), ou None.
     """
     if pair_name is None:
         return None
@@ -44,7 +45,7 @@ def normalize_pair_name_to_mode_ui(pair_name: str | None) -> str | None:
     if m:
         raw = (m.group(1) or "").strip()
 
-    translated = translate_pair_name(raw)
+    translated = translate_pair_name(raw, lang=lang)
     if translated is None:
         return None
 

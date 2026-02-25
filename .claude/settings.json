@@ -27,7 +27,10 @@
       "Bash(RUFF=\"/c/Users/Gsit/.cache/pre-commit/repot4p3dzm_/py_env-python3/Scripts/ruff.exe\")",
       "Bash(\"$RUFF\" check --select W293 --fix \"src/data/domain/models/medal.py\" \"src/data/domain/models/player.py\" \"src/data/query/__init__.py\" \"src/ui/career_ranks.py\" \"src/ui/profile_api_tokens.py\" \"src/ui/profile_api_urls.py\")",
       "Bash(\"$RUFF\" check --select SIM105,SIM108,UP038 --fix \"scripts/generate_thumbnails.py\" \"scripts/spnkr_get_refresh_token.py\" \"src/app/routing.py\")",
-      "Bash(\"$RUFF\" check --select SIM105,SIM108,UP038 --unsafe-fixes --fix \"scripts/generate_thumbnails.py\" \"scripts/spnkr_get_refresh_token.py\" \"src/app/routing.py\")"
+      "Bash(\"$RUFF\" check --select SIM105,SIM108,UP038 --unsafe-fixes --fix \"scripts/generate_thumbnails.py\" \"scripts/spnkr_get_refresh_token.py\" \"src/app/routing.py\")",
+      "Bash(git add .ai/project_map.md .ai/data_lineage.md)",
+      "Bash(git add CLAUDE.md README.md docs/ARCHITECTURE_V5.md .ai/data_lineage.md .ai/project_map.md)",
+      "Bash(git add src/utils/discord_notifier.py tests/test_discord_notifier.py)"
     ]
   }
 }

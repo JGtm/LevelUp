@@ -152,7 +152,24 @@ python scripts/sync.py --gamertag NouveauJoueur --full
 | `SPNKR_AZURE_CLIENT_ID` | ID de l'application Azure | Oui |
 | `SPNKR_AZURE_CLIENT_SECRET` | Secret client Azure | Oui |
 | `SPNKR_AZURE_REDIRECT_URI` | URI de redirection | Oui |
-| `SPNKR_OAUTH_REFRESH_TOKEN` | Token de rafraîchissement | Oui |
+| `SPNKR_OAUTH_REFRESH_TOKEN` | Token de rafraîchissement global | Oui |
+| `SPNKR_OAUTH_REFRESH_TOKEN_<GT>` | Token per-player (endpoints player-gated) | Non |
+
+> **Tokens per-player** : certains endpoints Halo Waypoint (career rank, customisation)
+> retournent 403 si le token Spartan n'appartient pas au joueur ciblé. Pour synchroniser
+> ces données pour plusieurs joueurs, déclarez un token per-player dans `.env.local` :
+>
+> ```env
+> # Gamertag "JGtm" → clé normalisée JGTM
+> SPNKR_OAUTH_REFRESH_TOKEN_JGTM=votre_refresh_token
+> # Gamertag "Mon GT 2" → clé normalisée MON_GT_2
+> SPNKR_OAUTH_REFRESH_TOKEN_MON_GT_2=autre_refresh_token
+> ```
+>
+> Normalisation : `re.sub(r"[^A-Za-z0-9]", "_", gamertag.strip()).upper()`
+>
+> Sans token per-player, la sync du career rank est skippée (warning dans les logs)
+> et l'adornment du hero banner ne s'affiche pas pour ce joueur.
 
 #### Application
 

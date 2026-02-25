@@ -98,3 +98,36 @@ class TestHeroAdornmentPriority:
         html = get_hero_html(player_name="")
         assert "LevelUp" in html
         assert "career-rank" not in html
+
+
+class TestHeroSpartanId:
+    """Affichage du spartan_id dans la section career-rank du hero."""
+
+    def test_spartan_id_displayed_when_provided(self) -> None:
+        """spartan_id visible dans le HTML quand fourni."""
+        html = get_hero_html(
+            player_name="Spartan",
+            rank_label="Héros",
+            spartan_id="XY7B",
+        )
+        assert "career-rank__spartan-id" in html
+        assert "XY7B" in html
+
+    def test_spartan_id_not_rendered_when_none(self) -> None:
+        """Pas de balise spartan-id si spartan_id=None."""
+        html = get_hero_html(
+            player_name="Spartan",
+            rank_label="Sergent",
+            spartan_id=None,
+        )
+        assert "career-rank__spartan-id" not in html
+
+    def test_spartan_id_escaped(self) -> None:
+        """Les caractères spéciaux du spartan_id sont échappés."""
+        html = get_hero_html(
+            player_name="Spartan",
+            rank_label="Héros",
+            spartan_id="<script>XSS</script>",
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html

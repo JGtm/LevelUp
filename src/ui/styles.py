@@ -54,6 +54,7 @@ def get_hero_html(
     nameplate_path: str | None = None,
     id_badge_text_color: str | None = None,
     emblem_path: str | None = None,
+    spartan_id: str | None = None,
     grid_mode: bool = False,
 ) -> str:
     """Retourne le HTML du banner hero (Spartan ID card style).
@@ -69,6 +70,7 @@ def get_hero_html(
 
     Args:
         adornment_path: Chemin vers l'image d'adornement (badge du rang).
+        spartan_id: Identifiant Spartan du joueur (ex: "XY7B"), affiché dans la section rang.
         grid_mode: Si True, utilise un style compact pour les grilles (sans margin-top, centré).
     """
 
@@ -137,6 +139,7 @@ def get_hero_html(
     if adornment_data or rank_icon_data or rank_label:
         safe_rank_label = html.escape(rank_label or "") if rank_label else ""
         safe_rank_subtitle = html.escape(rank_subtitle or "") if rank_subtitle else ""
+        safe_spartan_id = html.escape(str(spartan_id).strip()) if spartan_id else ""
 
         # Priorité : adornment > rank_icon (fallback si adornment non dispo)
         adornment_html = ""
@@ -154,6 +157,10 @@ def get_hero_html(
         if safe_rank_subtitle:
             rank_subtitle_html = f"<div class='career-rank__subtitle'>{safe_rank_subtitle}</div>"
 
+        spartan_id_html = ""
+        if safe_spartan_id:
+            spartan_id_html = f"<div class='career-rank__spartan-id'>{safe_spartan_id}</div>"
+
         rank_html = (
             "<div class='career-rank'>"
             f"  {adornment_html}"
@@ -161,6 +168,7 @@ def get_hero_html(
             "  <div class='career-rank__text'>"
             f"    {rank_label_html}"
             f"    {rank_subtitle_html}"
+            f"    {spartan_id_html}"
             "  </div>"
             "</div>"
         )

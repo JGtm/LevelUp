@@ -49,12 +49,18 @@ from src.ui.profile_api_urls import (
 def fetch_appearance_via_spnkr(
     *,
     xuid: str,
+    gamertag: str | None = None,
     spartan_token: str | None = None,
     clearance_token: str | None = None,
     requests_per_second: int = 3,
     timeout_seconds: int = 12,
 ) -> ProfileAppearance:
-    """Appelle l'API Halo Waypoint via SPNKr pour récupérer l'apparence."""
+    """Appelle l'API Halo Waypoint via SPNKr pour récupérer l'apparence.
+
+    Si ``gamertag`` est fourni, utilise en priorité le refresh token propre
+    au joueur (``SPNKR_OAUTH_REFRESH_TOKEN_<GT>`` dans ``.env.local``) pour
+    les endpoints economy player-gated (customisation, career rank).
+    """
 
     def _run_sync(coro):
         try:
@@ -116,6 +122,7 @@ def fetch_appearance_via_spnkr(
                 spartan_token=spartan_token,
                 clearance_token=clearance_token,
                 timeout_seconds=timeout_seconds,
+                gamertag=gamertag,
             )
 
             try:
@@ -134,6 +141,7 @@ def fetch_appearance_via_spnkr(
                         spartan_token=None,
                         clearance_token=None,
                         timeout_seconds=timeout_seconds,
+                        gamertag=gamertag,
                     )
                     (
                         customization,
@@ -192,6 +200,8 @@ def fetch_appearance_via_spnkr(
                 rank_subtitle=(str(rank_subtitle or "").strip() or None),
                 rank_image_url=(str(rank_image_url or "").strip() or None),
                 adornment_image_url=(str(adornment_image_url or "").strip() or None),
+                # spartan_id : récupéré depuis la DB career_progression (sync player-gated)
+                spartan_id=None,
             )
 
     return _run_sync(_run())
@@ -495,11 +505,22 @@ def get_profile_appearance(
     requests_per_second: int = 3,
     timeout_seconds: int = 12,
     force_refresh: bool = False,
+    gamertag: str | None = None,
 ) -> tuple[ProfileAppearance | None, str | None]:
     """Retourne (appearance, error_message).
 
-    - Tente d'abord le cache disque.
-    - Sinon, appelle l'API si enabled et tokens présents.
+    Stratégie cache :
+    1. Cache frais (< refresh_hours) → retourné immédiatement.
+    2. API activée et cache périmé → appel API.
+       - Succès : met à jour le cache, retourne la nouvelle donnée.
+       - Échec (token expiré, réseau…) : retombe sur le cache périmé si disponible
+         ("stale-on-error") pour conserver les assets déjà téléchargés.
+    3. API désactivée et cache absent → retourne None.
+
+    Args:
+        gamertag: Gamertag du joueur. Si fourni, utilise en priorité le token
+            joueur (``SPNKR_OAUTH_REFRESH_TOKEN_<GT>``) pour les endpoints
+            economy player-gated (customisation, career rank).
     """
 
     xu = str(xuid or "").strip()
@@ -517,22 +538,26 @@ def get_profile_appearance(
     try:
         appearance = fetch_appearance_via_spnkr(
             xuid=xu,
+            gamertag=gamertag,
             spartan_token=str(os.environ.get("SPNKR_SPARTAN_TOKEN") or "").strip() or None,
             clearance_token=str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip() or None,
             requests_per_second=requests_per_second,
             timeout_seconds=timeout_seconds,
         )
     except ImportError as e:
-        # Erreur de dépendances manquantes
+        # Erreur de dépendances manquantes — pas de fallback cache (dépend du libelle)
         return (
             None,
             f"Échec récupération profil via SPNKr: {e}",
         )
     except Exception as e:
-        # Autres erreurs (tokens manquants, erreur API, etc.)
+        # Erreur API (token expiré, réseau, 403…) — on retourne le cache périmé si disponible
+        # plutôt que de perdre les assets déjà récupérés.
+        stale = load_cached_appearance(xu, refresh_hours=999_999)
+        if stale is not None:
+            return stale, None
         error_msg = str(e)
         if "Module" in error_msg and "manquant" in error_msg:
-            # C'est déjà un message d'erreur de dépendances
             return None, f"Échec récupération profil via SPNKr: {error_msg}"
         return (
             None,

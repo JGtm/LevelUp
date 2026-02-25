@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import os
+import re
 from pathlib import Path
 
 
@@ -51,6 +52,11 @@ def _load_dotenv_if_present() -> None:
                 os.environ[key] = value
 
 
+def _normalize_gamertag_for_env(gamertag: str) -> str:
+    """Normalise un gamertag en cl\u00e9 d'env valide (majuscules, non-alphanum \u2192 underscore)."""
+    return re.sub(r"[^A-Za-z0-9]", "_", gamertag.strip()).upper()
+
+
 def _is_probable_auth_error(err: Exception) -> bool:
     """Détecte si une erreur est probablement due à un problème d'authentification."""
     msg = str(err or "")
@@ -65,14 +71,21 @@ async def get_tokens(
     spartan_token: str | None,
     clearance_token: str | None,
     timeout_seconds: int,
+    gamertag: str | None = None,
 ) -> tuple[str, str]:
     """Récupère ou rafraîchit les tokens SPNKr.
+
+    Si ``gamertag`` est fourni, cherche d'abord le refresh token propre au
+    joueur (``SPNKR_OAUTH_REFRESH_TOKEN_<GT_NORMALISÉ>``) avant d'utiliser le
+    token global.  Ceci est nécessaire pour les endpoints economy player-gated
+    (career rank, customisation privée).
 
     Args:
         session: Session aiohttp.
         spartan_token: Token Spartan existant (ou None pour en obtenir un nouveau).
         clearance_token: Token Clearance existant (ou None pour en obtenir un nouveau).
         timeout_seconds: Timeout pour les appels réseau.
+        gamertag: Gamertag du joueur pour résolution du token per-player (optionnel).
 
     Returns:
         Tuple (spartan_token, clearance_token).
@@ -89,13 +102,21 @@ async def get_tokens(
         os.environ["SPNKR_CLEARANCE_TOKEN"] = ct
         return st, ct
 
-    # Fallback: récupère via Azure refresh token (opt-in)
     azure_client_id = str(os.environ.get("SPNKR_AZURE_CLIENT_ID") or "").strip()
     azure_client_secret = str(os.environ.get("SPNKR_AZURE_CLIENT_SECRET") or "").strip()
     azure_redirect_uri = (
         str(os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "").strip() or "https://localhost"
     )
-    oauth_refresh_token = str(os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN") or "").strip()
+
+    # Priorité : refresh token propre au joueur si gamertag fourni
+    oauth_refresh_token = ""
+    if gamertag:
+        player_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{_normalize_gamertag_for_env(gamertag)}"
+        oauth_refresh_token = str(os.environ.get(player_key) or "").strip()
+
+    # Fallback : refresh token global
+    if not oauth_refresh_token:
+        oauth_refresh_token = str(os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN") or "").strip()
 
     if not (azure_client_id and azure_client_secret and oauth_refresh_token):
         raise RuntimeError(

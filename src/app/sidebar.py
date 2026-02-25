@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
+from src.ui.i18n import get_lang, set_lang, t
 from src.ui.multiplayer import (
     render_player_selector,
 )
@@ -24,6 +25,31 @@ from src.ui.sync import (
 
 if TYPE_CHECKING:
     from src.ui.settings import AppSettings
+
+
+def _render_lang_selector(settings: "AppSettings") -> bool:
+    """Affiche le sélecteur de langue et retourne True si la langue a changé."""
+    _LANG_OPTIONS = {"fr": "🇫🇷 Français", "en": "🇬🇧 English"}
+    current = st.session_state.get("lang", settings.lang or "fr")
+    option_keys = list(_LANG_OPTIONS.keys())
+    current_idx = option_keys.index(current) if current in option_keys else 0
+
+    selected_label = st.selectbox(
+        t("lang_selector_label"),
+        options=list(_LANG_OPTIONS.values()),
+        index=current_idx,
+        key="_lang_selector_widget",
+    )
+    selected_lang = next(k for k, v in _LANG_OPTIONS.items() if v == selected_label)
+
+    if selected_lang != current:
+        set_lang(selected_lang)
+        settings.lang = selected_lang
+        from src.ui.settings import save_settings
+
+        save_settings(settings)
+        return True
+    return False
 
 
 def render_sidebar(
@@ -49,6 +75,15 @@ def render_sidebar(
     with st.sidebar:
         # Brand
         st.header("LevelUp")
+        st.divider()
+
+        # Sélecteur de langue (initialise aussi st.session_state["lang"])
+        if "lang" not in st.session_state:
+            st.session_state["lang"] = settings.lang or "fr"
+        lang_changed = _render_lang_selector(settings)
+        if lang_changed:
+            st.rerun()
+
         st.divider()
 
         # Indicateur de dernière synchronisation
