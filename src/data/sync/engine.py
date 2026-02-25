@@ -1549,6 +1549,22 @@ class DuckDBSyncEngine:
                 data["team_1_score"],
             ),
         )
+        # Si le match existait déjà avec mode_category NULL (anciens matchs insérés
+        # avant le calcul de _determine_mode_category), on le patche maintenant.
+        # pair_name est aussi mis à jour si absent (UUID brut → nom résolu).
+        if data.get("mode_category"):
+            shared_conn.execute(
+                """UPDATE match_registry
+                   SET mode_category  = ?,
+                       pair_name      = COALESCE(pair_name, ?),
+                       updated_at     = CURRENT_TIMESTAMP
+                   WHERE match_id = ? AND mode_category IS NULL""",
+                (
+                    data["mode_category"],
+                    data["pair_name"],
+                    data["match_id"],
+                ),
+            )
 
     def _insert_shared_participants(
         self,
