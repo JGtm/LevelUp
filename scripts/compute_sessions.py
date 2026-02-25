@@ -61,8 +61,9 @@ def compute_sessions_for_db(
     gap_minutes: int = 120,
     force: bool = False,
     dry_run: bool = False,
+    shared_db_path: str | None = None,
 ) -> dict[str, Any]:
-    """Calcule et persiste les sessions dans match_stats avec logique avancée (gap + coéquipiers).
+    """Calcule et persiste les sessions dans player_match_enrichment avec logique avancée (gap + coéquipiers).
 
     Args:
         conn: Connexion DuckDB.
@@ -83,7 +84,7 @@ def compute_sessions_for_db(
 
     # Vérifier si des sessions existent déjà
     existing_sessions = conn.execute(
-        "SELECT COUNT(*) FROM match_stats WHERE session_id IS NOT NULL"
+        "SELECT COUNT(*) FROM player_match_enrichment WHERE session_id IS NOT NULL"
     ).fetchone()[0]
 
     if existing_sessions > 0:
@@ -96,14 +97,20 @@ def compute_sessions_for_db(
             return results
 
     # Charger les matchs depuis DuckDB en DataFrame Polars
+    # V5.1 : start_time vient de shared.match_registry, teammates_signature de player_match_enrichment
+    if shared_db_path:
+        import contextlib
+        with contextlib.suppress(Exception):
+            conn.execute(f"ATTACH '{shared_db_path}' AS shared (READ_ONLY)")
     df = conn.execute("""
         SELECT
-            match_id,
-            start_time,
-            teammates_signature
-        FROM match_stats
-        WHERE start_time IS NOT NULL
-        ORDER BY start_time ASC
+            pme.match_id,
+            mr.start_time AS start_time,
+            pme.teammates_signature
+        FROM player_match_enrichment pme
+        JOIN shared.match_registry mr ON pme.match_id = mr.match_id
+        WHERE mr.start_time IS NOT NULL
+        ORDER BY mr.start_time ASC
     """).pl()
 
     results["total_matches"] = len(df)
@@ -145,7 +152,7 @@ def compute_sessions_for_db(
 
     # Réinitialiser les sessions existantes si force
     if force:
-        conn.execute("UPDATE match_stats SET session_id = NULL, session_label = NULL")
+        conn.execute("UPDATE player_match_enrichment SET session_id = NULL, session_label = NULL")
 
     # Mettre à jour chaque match avec son session_id et session_label
     updates = 0
@@ -154,7 +161,7 @@ def compute_sessions_for_db(
     ):
         conn.execute(
             """
-            UPDATE match_stats
+            UPDATE player_match_enrichment
             SET session_id = ?, session_label = ?
             WHERE match_id = ?
             """,
@@ -169,11 +176,12 @@ def compute_sessions_for_db(
     return results
 
 
-def refresh_session_stats(conn: duckdb.DuckDBPyConnection) -> int:
+def refresh_session_stats(conn: duckdb.DuckDBPyConnection, xuid: str | None = None) -> int:
     """Rafraîchit la vue matérialisée mv_session_stats.
 
     Args:
         conn: Connexion DuckDB.
+        xuid: XUID du joueur pour filtrer les stats dans shared.match_participants.
 
     Returns:
         Nombre de sessions dans la vue.
@@ -207,29 +215,51 @@ def refresh_session_stats(conn: duckdb.DuckDBPyConnection) -> int:
 
         # Vider et recalculer
         conn.execute("DELETE FROM mv_session_stats")
-        conn.execute("""
-            INSERT INTO mv_session_stats
-            SELECT
-                session_id,
-                COUNT(*) as match_count,
-                MIN(start_time) as start_time,
-                MAX(start_time) as end_time,
-                SUM(kills) as total_kills,
-                SUM(deaths) as total_deaths,
-                SUM(assists) as total_assists,
-                CASE WHEN SUM(deaths) > 0
-                     THEN CAST(SUM(kills) AS DOUBLE) / SUM(deaths)
-                     ELSE SUM(kills) END as kd_ratio,
-                CASE WHEN COUNT(*) > 0
-                     THEN SUM(CASE WHEN outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
-                     ELSE 0 END as win_rate,
-                AVG(accuracy) as avg_accuracy,
-                AVG(avg_life_seconds) as avg_life_seconds,
-                CURRENT_TIMESTAMP as updated_at
-            FROM match_stats
-            WHERE session_id IS NOT NULL
-            GROUP BY session_id
-        """)
+        if xuid:
+            conn.execute("""
+                INSERT INTO mv_session_stats
+                SELECT
+                    pme.session_id,
+                    COUNT(*) as match_count,
+                    MIN(mr.start_time) as start_time,
+                    MAX(mr.start_time) as end_time,
+                    SUM(mp.kills) as total_kills,
+                    SUM(mp.deaths) as total_deaths,
+                    SUM(mp.assists) as total_assists,
+                    CASE WHEN SUM(mp.deaths) > 0
+                         THEN CAST(SUM(mp.kills) AS DOUBLE) / SUM(mp.deaths)
+                         ELSE SUM(mp.kills) END as kd_ratio,
+                    CASE WHEN COUNT(*) > 0
+                         THEN SUM(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
+                         ELSE 0 END as win_rate,
+                    AVG(mp.accuracy) as avg_accuracy,
+                    AVG(mp.avg_life_seconds) as avg_life_seconds,
+                    CURRENT_TIMESTAMP as updated_at
+                FROM player_match_enrichment pme
+                JOIN shared.match_registry mr ON pme.match_id = mr.match_id
+                JOIN shared.match_participants mp ON pme.match_id = mp.match_id AND mp.xuid = ?
+                WHERE pme.session_id IS NOT NULL
+                GROUP BY pme.session_id
+            """, [xuid])
+        else:
+            conn.execute("""
+                INSERT INTO mv_session_stats
+                SELECT
+                    pme.session_id,
+                    COUNT(*) as match_count,
+                    MIN(mr.started_at) as start_time,
+                    MAX(mr.started_at) as end_time,
+                    MIN(mr.start_time) as start_time,
+                    MAX(mr.start_time) as end_time,
+                    NULL as total_kills, NULL as total_deaths, NULL as total_assists,
+                    NULL as kd_ratio, NULL as win_rate, NULL as avg_accuracy,
+                    NULL as avg_life_seconds,
+                    CURRENT_TIMESTAMP as updated_at
+                FROM player_match_enrichment pme
+                JOIN shared.match_registry mr ON pme.match_id = mr.match_id
+                WHERE pme.session_id IS NOT NULL
+                GROUP BY pme.session_id
+            """)
 
         count = conn.execute("SELECT COUNT(*) FROM mv_session_stats").fetchone()[0]
         logger.info(f"mv_session_stats rafraîchie: {count} sessions")
@@ -240,11 +270,12 @@ def refresh_session_stats(conn: duckdb.DuckDBPyConnection) -> int:
         return 0
 
 
-def populate_sessions_table(conn: duckdb.DuckDBPyConnection) -> int:
-    """Peuple la table sessions depuis match_stats.
+def populate_sessions_table(conn: duckdb.DuckDBPyConnection, xuid: str | None = None) -> int:
+    """Peuple la table sessions depuis player_match_enrichment.
 
     Args:
         conn: Connexion DuckDB.
+        xuid: XUID du joueur pour filtrer dans shared.match_participants.
 
     Returns:
         Nombre de sessions insérées.
@@ -276,29 +307,51 @@ def populate_sessions_table(conn: duckdb.DuckDBPyConnection) -> int:
 
         # Vider et recalculer
         conn.execute("DELETE FROM sessions")
-        conn.execute("""
-            INSERT INTO sessions (
-                session_id, start_time, end_time, match_count,
-                total_kills, total_deaths, total_assists,
-                avg_kda, avg_accuracy, performance_score
-            )
-            SELECT
-                session_id,
-                MIN(start_time) as start_time,
-                MAX(start_time) as end_time,
-                COUNT(*) as match_count,
-                SUM(kills) as total_kills,
-                SUM(deaths) as total_deaths,
-                SUM(assists) as total_assists,
-                CASE WHEN SUM(deaths) > 0
-                     THEN CAST(SUM(kills) + SUM(assists) AS DOUBLE) / SUM(deaths)
-                     ELSE SUM(kills) + SUM(assists) END as avg_kda,
-                AVG(accuracy) as avg_accuracy,
-                AVG(performance_score) as performance_score
-            FROM match_stats
-            WHERE session_id IS NOT NULL
-            GROUP BY session_id
-        """)
+        if xuid:
+            conn.execute("""
+                INSERT INTO sessions (
+                    session_id, start_time, end_time, match_count,
+                    total_kills, total_deaths, total_assists,
+                    avg_kda, avg_accuracy, performance_score
+                )
+                SELECT
+                    pme.session_id,
+                    MIN(mr.start_time) as start_time,
+                    MAX(mr.start_time) as end_time,
+                    COUNT(*) as match_count,
+                    SUM(mp.kills) as total_kills,
+                    SUM(mp.deaths) as total_deaths,
+                    SUM(mp.assists) as total_assists,
+                    CASE WHEN SUM(mp.deaths) > 0
+                         THEN CAST(SUM(mp.kills) + SUM(mp.assists) AS DOUBLE) / SUM(mp.deaths)
+                         ELSE SUM(mp.kills) + SUM(mp.assists) END as avg_kda,
+                    AVG(mp.accuracy) as avg_accuracy,
+                    AVG(pme.performance_score) as performance_score
+                FROM player_match_enrichment pme
+                JOIN shared.match_registry mr ON pme.match_id = mr.match_id
+                JOIN shared.match_participants mp ON pme.match_id = mp.match_id AND mp.xuid = ?
+                WHERE pme.session_id IS NOT NULL
+                GROUP BY pme.session_id
+            """, [xuid])
+        else:
+            conn.execute("""
+                INSERT INTO sessions (
+                    session_id, start_time, end_time, match_count,
+                    total_kills, total_deaths, total_assists,
+                    avg_kda, avg_accuracy, performance_score
+                )
+                SELECT
+                    pme.session_id,
+                    MIN(mr.started_at) as start_time,
+                    MAX(mr.started_at) as end_time,
+                    COUNT(*) as match_count,
+                    NULL, NULL, NULL, NULL, NULL,
+                    AVG(pme.performance_score) as performance_score
+                FROM player_match_enrichment pme
+                JOIN shared.match_registry mr ON pme.match_id = mr.match_id
+                WHERE pme.session_id IS NOT NULL
+                GROUP BY pme.session_id
+            """)
 
         count = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
         logger.info(f"Table sessions peuplée: {count} sessions")
@@ -339,19 +392,35 @@ def process_player(
 
     results = {"gamertag": gamertag}
 
+    # Résoudre le xuid depuis db_profiles.json
+    import json
+    xuid: str | None = None
+    profiles_path = REPO_ROOT / "db_profiles.json"
+    if profiles_path.exists():
+        with open(profiles_path) as _f:
+            _profiles = json.load(_f)
+        _player_profiles = _profiles.get("profiles", {})
+        for _gt, _p in _player_profiles.items():
+            if _gt.lower() == gamertag.lower():
+                xuid = str(_p.get("xuid", "")) or None
+                break
+
+    shared_db_path = str(REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb")
+
     try:
         conn = duckdb.connect(str(db_path))
 
         # Calculer les sessions
         session_results = compute_sessions_for_db(
-            conn, gap_minutes=gap_minutes, force=force, dry_run=dry_run
+            conn, gap_minutes=gap_minutes, force=force, dry_run=dry_run,
+            shared_db_path=shared_db_path,
         )
         results.update(session_results)
 
         if not dry_run and session_results.get("matches_updated", 0) > 0:
             # Rafraîchir les vues matérialisées
-            results["mv_session_stats"] = refresh_session_stats(conn)
-            results["sessions_table"] = populate_sessions_table(conn)
+            results["mv_session_stats"] = refresh_session_stats(conn, xuid=xuid)
+            results["sessions_table"] = populate_sessions_table(conn, xuid=xuid)
 
         conn.close()
 

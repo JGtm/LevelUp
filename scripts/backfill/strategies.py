@@ -1498,8 +1498,18 @@ def cleanup_player_dbs_legacy(players_dir: str | Any = "data/players") -> dict[s
         "v_match_stats",
         "v_medals_earned",
     ]
-    # Tables legacy présentes dans les stats.duckdb mais centralisées dans shared
-    legacy_tables = ["match_participants"]
+    # Tables legacy présentes dans les stats.duckdb mais centralisées dans shared (v5.1)
+    # Source : CLAUDE.md § "8 tables supprimées lors du cleanup v5.1"
+    legacy_tables = [
+        "match_participants",
+        "match_stats",
+        "highlight_events",
+        "medals_earned",
+        "killer_victim_pairs",
+        "player_match_stats",
+        "xuid_aliases",
+        "teammates_aggregate",
+    ]
 
     results: dict[str, int] = {}
 
