@@ -17,6 +17,8 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.analysis.performance_score import compute_performance_series
 from src.visualization._compat import DataFrameLike, ensure_polars
 
@@ -52,7 +54,7 @@ def render_match_history_page(
 
     # Protection contre les DataFrames vides
     if dff.is_empty():
-        st.warning("Aucun match à afficher. Vérifiez vos filtres ou synchronisez les données.")
+        st.warning(t("no_matches"))
         return
 
     st.subheader("Historique des parties")

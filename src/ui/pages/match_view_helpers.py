@@ -223,7 +223,7 @@ def _render_media_from_indexed_db(
     mine = media_df.filter(pl.col("section") == "mine")
     teammates = media_df.filter(pl.col("section") == "teammate")
 
-    st.subheader("Médias")
+    st.subheader(t("mv_media_title"))
 
     if not mine.is_empty():
         _show_media_group(mine, "Mes captures", match_id)
@@ -293,7 +293,7 @@ def _render_media_legacy(
     if img_hits is None and vid_hits is None:
         return
 
-    st.subheader("Médias")
+    st.subheader(t("mv_media_title"))
     window_info = f"Fenêtre: {format_datetime_fn(t0)} → {format_datetime_fn(t1)}"
     if not duration_known:
         window_info += " *(durée estimée)*"
@@ -308,7 +308,7 @@ def _render_media_legacy(
                 st.write(str(p))
 
     if vid_hits is not None:
-        st.caption("Vidéos")
+        st.caption(t("mv_videos_title"))
         paths = [str(p) for p in vid_hits["path"].to_list() if p]
         if paths:
             labels = [os.path.basename(p) for p in paths]

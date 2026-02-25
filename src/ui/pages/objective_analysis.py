@@ -129,7 +129,7 @@ def render_objective_analysis_page(
     )
 
     if my_awards_df.is_empty():
-        st.warning(f"⚠️ Aucune donnée pour le joueur (XUID: {xuid}).")
+        st.warning(t("obj_no_player_data", xuid=xuid))
         return
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -202,13 +202,13 @@ def render_objective_analysis_page(
         profile = "🎯 Joueur Slayer"
         profile_desc = "Vous excellez dans les éliminations."
 
-    st.info(f"**Profil détecté:** {profile}\n\n{profile_desc}")
+    st.info(f"**{t('obj_profile_label')}:** {profile}\n\n{profile_desc}")
 
     # ══════════════════════════════════════════════════════════════════════════
     # Section 2: Graphiques principaux
     # ══════════════════════════════════════════════════════════════════════════
     st.markdown("---")
-    st.markdown("## 📈 Analyse détaillée")
+    st.markdown(f"## {t('obj_analysis_detailed')}")
 
     tab_scatter, tab_breakdown, tab_trend = st.tabs(
         [
@@ -219,7 +219,7 @@ def render_objective_analysis_page(
     )
 
     with tab_scatter:
-        st.markdown("### Corrélation Objectifs / Kills")
+        st.markdown(f"### {t('obj_correlation_title')}")
         st.caption(
             "Chaque point représente un match. "
             "Les points au-dessus de la tendance indiquent une meilleure contribution aux objectifs."
@@ -241,7 +241,7 @@ def render_objective_analysis_page(
         col_bars, col_gauge = st.columns([2, 1])
 
         with col_bars:
-            st.markdown("### Répartition par Catégorie")
+            st.markdown(f"### {t('obj_breakdown_title')}")
             try:
                 fig_bars = plot_objective_breakdown_bars(
                     my_awards_df,
@@ -270,7 +270,7 @@ def render_objective_analysis_page(
                 st.warning(t("error_chart", error=e))
 
     with tab_trend:
-        st.markdown("### Évolution dans le temps")
+        st.markdown(f"### {t('obj_trend_title')}")
 
         # Calculer le résumé par match
         summary_df = compute_objective_summary_by_match_polars(my_awards_df, xuid)
@@ -349,7 +349,7 @@ def render_objective_analysis_page(
             st.plotly_chart(fig_pie, width="stretch", config={"staticPlot": True})
 
         with col_table:
-            st.markdown("### Détail par type")
+            st.markdown(f"### {t('obj_assist_detail')}")
             if not assist_by_type.is_empty():
                 # Convertir en pandas pour affichage
                 assist_table = assist_by_type.to_pandas()
@@ -366,7 +366,7 @@ def render_objective_analysis_page(
     # Section 4: Awards les plus fréquents
     # ══════════════════════════════════════════════════════════════════════════
     st.markdown("---")
-    st.markdown("## 🏅 Awards les plus fréquents")
+    st.markdown(f"## {t('obj_awards_frequent')}")
 
     col_obj_awards, col_all_awards = st.columns(2)
 
@@ -417,7 +417,7 @@ def render_objective_analysis_page(
     # Section 6: Conseils personnalisés
     # ══════════════════════════════════════════════════════════════════════════
     st.markdown("---")
-    st.markdown("## 💡 Conseils personnalisés")
+    st.markdown(f"## {t('obj_tips')}")
 
     if objective_ratio < 0.15:
         st.warning(
@@ -451,7 +451,7 @@ def render_objective_analysis_page_from_session_state() -> None:
     xuid = st.session_state.get("player_xuid")
 
     if not db_path or not xuid:
-        st.error("⚠️ Veuillez d'abord sélectionner un profil joueur.")
+        st.error(t("obj_no_player_selected"))
         return
 
     # Créer le repository

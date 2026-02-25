@@ -890,4 +890,71 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Renseigne un MatchId ou utilise la sélection/recherche ci-dessus.",
         "en": "Enter a MatchId or use the selection/search above.",
     },
+    # ── Objective Analysis (sections) ─────────────────────────────────────────
+    "settings_index_reset": {
+        "fr": "Index médias réinitialisé (joueur courant).",
+        "en": "Media index reset (current player).",
+    },
+    "obj_no_player_data": {
+        "fr": "⚠️ Aucune donnée pour le joueur (XUID: {xuid}).",
+        "en": "⚠️ No data for this player (XUID: {xuid}).",
+    },
+    "obj_profile_label": {
+        "fr": "Profil détecté",
+        "en": "Detected profile",
+    },
+    "obj_analysis_detailed": {
+        "fr": "📈 Analyse détaillée",
+        "en": "📈 Detailed analysis",
+    },
+    "obj_correlation_title": {
+        "fr": "Corrélation Objectifs / Kills",
+        "en": "Objective / Kill correlation",
+    },
+    "obj_breakdown_title": {
+        "fr": "Répartition par Catégorie",
+        "en": "Category breakdown",
+    },
+    "obj_trend_title": {
+        "fr": "Évolution dans le temps",
+        "en": "Timeline",
+    },
+    "obj_assist_detail": {
+        "fr": "Détail par type",
+        "en": "Detail by type",
+    },
+    "obj_awards_frequent": {
+        "fr": "🏅 Awards les plus fréquents",
+        "en": "🏅 Most frequent awards",
+    },
+    "obj_tips": {
+        "fr": "💡 Conseils personnalisés",
+        "en": "💡 Personalized tips",
+    },
+    "obj_no_player_selected": {
+        "fr": "⚠️ Veuillez d'abord sélectionner un profil joueur.",
+        "en": "⚠️ Please select a player profile first.",
+    },
+    # ── Teammates ─────────────────────────────────────────────────────────────
+    "tm_kd_half_caption": {
+        "fr": "F/M 1ère moitié → 2nde moitié des matchs affichés.",
+        "en": "K/D first half → second half of displayed matches.",
+    },
+    "tm_select_teammate": {
+        "fr": "Sélectionne au moins un coéquipier.",
+        "en": "Select at least one teammate.",
+    },
+    # ── Match View ────────────────────────────────────────────────────────────
+    "mv_vs_expected": {
+        "fr": "Réel vs attendu",
+        "en": "Actual vs expected",
+    },
+    "mv_media_title": {
+        "fr": "Médias",
+        "en": "Media",
+    },
+    "mv_videos_title": {
+        "fr": "Vidéos",
+        "en": "Videos",
+    },
 }

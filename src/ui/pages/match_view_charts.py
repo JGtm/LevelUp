@@ -7,6 +7,8 @@ from typing import Any
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
+
+from src.ui.i18n import t
 from plotly.subplots import make_subplots
 
 from src.analysis.stats import compute_mode_category_averages, extract_mode_category, format_mmss
@@ -100,7 +102,7 @@ def render_expected_vs_actual(
     perf_d = pm.get("deaths") or {}
     perf_a = pm.get("assists") or {}
 
-    st.subheader("Réel vs attendu")
+    st.subheader(t("mv_vs_expected"))
     av_cols = st.columns(3)
     with av_cols[0]:
         _ev_card("Frags", perf_k, mode="normal")
@@ -257,7 +259,7 @@ def render_expected_vs_actual(
             if exp_fig is not None:
                 st.plotly_chart(exp_fig, width="stretch", config={"staticPlot": True})
             else:
-                st.info("Données insuffisantes pour le graphique F/M/A.")
+                st.info(t("insufficient_data_chart"))
         except Exception as e:
             st.warning(f"Impossible d'afficher le graphique F/M/A : {e}")
     with chart_cols[1]:
@@ -331,7 +333,7 @@ def _render_spree_headshots(
 
     has_spree_or_hs = (spree_v == spree_v) or (headshots_v == headshots_v)
     if has_spree_or_hs or (db_path and xuid):
-        st.subheader("Folie meurtrière / Tirs à la tête / Frags parfaits")
+        st.subheader(t("ts_spree"))
         fig_sh = go.Figure()
 
         x_labels = ["Folie meurtrière (max)", "Tirs à la tête", "Frags parfaits"]
@@ -389,7 +391,7 @@ def _render_spree_headshots(
             if styled_fig is not None:
                 st.plotly_chart(styled_fig, width="stretch", config={"staticPlot": True})
             else:
-                st.info("Données insuffisantes pour le graphique Spree/Headshots.")
+                st.info(t("insufficient_data_chart"))
         except Exception as e:
             st.warning(f"Impossible d'afficher le graphique Spree/Headshots : {e}")
 

@@ -196,7 +196,7 @@ def render_teammates_page(
                     pass
 
         st.subheader("Tendance de session")
-        st.caption("F/M 1ère moitié → 2nde moitié des matchs affichés.")
+        st.caption(t("tm_kd_half_caption"))
         _trend_cols = st.columns(len(players_trend))
         for _col, (_pname, _td) in zip(_trend_cols, players_trend, strict=False):
             with _col:
@@ -219,7 +219,7 @@ def render_teammates_page(
                     st.caption(f"{_first:.2f} → {_second:.2f}")
 
     if len(picked_xuids) < 1:
-        st.info("Sélectionne au moins un coéquipier.")
+        st.info(t("tm_select_teammate"))
     elif len(picked_xuids) == 1:
         render_single_teammate_view(
             df=df,

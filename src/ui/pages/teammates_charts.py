@@ -9,6 +9,8 @@ import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.config import HALO_COLORS
 from src.ui.streamlit_modern import fragment_if_available
 from src.visualization import (
@@ -52,7 +54,7 @@ def render_comparison_charts(
         )
     with c2:
         if friend_sub.is_empty():
-            st.warning("Impossible de charger les stats du coéquipier sur les matchs partagés.")
+            st.warning(t("error_chart", error="charger les stats du coéquipier"))
         else:
             st.plotly_chart(
                 plot_timeseries(friend_sub, title=f"{friend_name} — matchs avec {me_name}"),
@@ -157,7 +159,7 @@ def render_metric_bar_charts(
         show_smooth_lines=show_smooth,
     )
     if fig_spree is None:
-        st.info("Aucune donnée de folie meurtrière (max) sur ces matchs.")
+        st.info(t("insufficient_data_chart"))
     else:
         st.plotly_chart(
             fig_spree,
@@ -177,7 +179,7 @@ def render_metric_bar_charts(
         show_smooth_lines=show_smooth,
     )
     if fig_hs is None:
-        st.info("Aucune donnée de tirs à la tête sur ces matchs.")
+        st.info(t("insufficient_data_chart"))
     else:
         st.plotly_chart(
             fig_hs,
@@ -197,7 +199,7 @@ def render_metric_bar_charts(
         show_smooth_lines=show_smooth,
     )
     if fig_pk is None:
-        st.info("Aucune donnée de frags parfaits sur ces matchs.")
+        st.info(t("insufficient_data_chart"))
     else:
         st.plotly_chart(
             fig_pk,

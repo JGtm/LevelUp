@@ -259,7 +259,7 @@ def _render_single_histogram(
 ) -> None:
     """Affiche un histogramme simple pour une colonne donnée."""
     if column not in dff.columns:
-        st.info(f"Colonne {column} non disponible dans les données.")
+        st.info(t("cannot_display"))
         return
     data = dff[column].drop_nulls()
     if len(data) > min_data - 1:

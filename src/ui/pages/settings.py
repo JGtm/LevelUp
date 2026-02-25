@@ -105,7 +105,7 @@ def render_settings_page(
             help="Remplit automatiquement les données manquantes après chaque sync",
         )
 
-        st.markdown("**Données à backfill :**")
+        st.markdown(f"**{t('settings_backfill_data_label')}**")
         backfill_all = st.checkbox(
             "Toutes les données",
             value=False,
@@ -188,7 +188,7 @@ def render_settings_page(
                 try:
                     idx = MediaIndexer(Path(db_path))
                     idx.reset_media_tables()
-                    st.success("Index médias réinitialisé (joueur courant).")
+                    st.success(t("settings_index_reset"))
                 except Exception as e:
                     st.error(t("error_loading", error=e))
 
@@ -275,7 +275,7 @@ def render_settings_page(
         )
         ok, err = save_settings(new_settings)
         if ok:
-            st.success("Paramètres enregistrés.")
+            st.success(t("settings_save_ok"))
             st.session_state["app_settings"] = new_settings
             st.rerun()
         else:

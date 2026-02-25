@@ -120,7 +120,7 @@ def render_media_tab(
     settings: AppSettings | None = None,
 ) -> None:
     """Rend la page Médias : sections Mes captures, Captures de XXX, Sans correspondance."""
-    st.subheader("Médias")
+    st.subheader(t("mv_media_title"))
 
     # Lightbox « Voir en grand » : traiter en premier pour que le dialog s'ouvre bien après rerun
     _path = st.session_state.pop("_lightbox_media_path", None)

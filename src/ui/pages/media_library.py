@@ -320,7 +320,7 @@ def _render_media_grid(
         return
     items = ensure_polars(items)
     if items.is_empty():
-        st.info("Aucun média à afficher avec ces filtres.")
+        st.info(t("media_no_filter_result"))
         return
 
     cols_per_row = int(cols_per_row)

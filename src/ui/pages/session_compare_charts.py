@@ -339,7 +339,7 @@ def render_comparison_radar_chart(
         if fig_radar is not None:
             st.plotly_chart(fig_radar, width="stretch", config={"staticPlot": True})
         else:
-            st.info("Impossible de générer le radar de comparaison.")
+            st.info(t("insufficient_data_chart"))
     except Exception as e:
         st.warning(f"Impossible d'afficher le radar de comparaison : {e}")
 
@@ -566,7 +566,7 @@ def render_comparison_bar_chart(
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
         else:
-            st.info("Données insuffisantes pour le graphique comparatif.")
+            st.info(t("insufficient_data_chart"))
     except Exception as e:
         st.warning(f"Impossible d'afficher le graphique comparatif : {e}")
 
@@ -691,7 +691,7 @@ def render_participation_trend_section(
                 if fig is not None:
                     st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
                 else:
-                    st.info("Impossible de générer le radar de participation.")
+                    st.info(t("insufficient_data_chart"))
             except Exception as e:
                 st.warning(f"Impossible d'afficher le radar de participation : {e}")
         with col_legend:
