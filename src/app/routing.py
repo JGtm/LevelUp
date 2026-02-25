@@ -8,10 +8,11 @@ Ce module centralise :
 
 from __future__ import annotations
 
+import contextlib
 import urllib.parse
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable
 
 import streamlit as st
 
@@ -33,7 +34,7 @@ class Page(str, Enum):
     MATCH_VIEW = "match_view"  # Page interne (non listée dans nav)
 
     @classmethod
-    def from_string(cls, value: str) -> "Page":
+    def from_string(cls, value: str) -> Page:
         """Convertit une chaîne en Page (case insensitive)."""
         value_lower = value.lower().strip()
         for page in cls:
@@ -42,7 +43,7 @@ class Page(str, Enum):
         return cls.ACCUEIL
 
     @classmethod
-    def navigable_pages(cls) -> list["Page"]:
+    def navigable_pages(cls) -> list[Page]:
         """Retourne les pages affichées dans la navigation."""
         return [
             cls.ACCUEIL,
@@ -105,7 +106,7 @@ class Router:
             st.warning(f"Page non implémentée: {self.current_page.value}")
 
     @classmethod
-    def from_session(cls) -> "Router":
+    def from_session(cls) -> Router:
         """Charge le routeur depuis session_state."""
         current_str = str(st.session_state.get("current_page", "Accueil") or "Accueil")
         pending_str = st.session_state.get("_pending_page")
@@ -204,10 +205,7 @@ def build_app_url(page: Page | str, **params: str) -> str:
     Returns:
         URL relative avec query params.
     """
-    if isinstance(page, Page):
-        page_str = page.value
-    else:
-        page_str = str(page)
+    page_str = page.value if isinstance(page, Page) else str(page)
 
     qp: dict[str, str] = {"page": page_str}
     for k, v in params.items():
@@ -224,7 +222,7 @@ def _qp_first(value) -> str | None:
     """Extrait la première valeur d'un query param."""
     if value is None:
         return None
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         return str(value[0]) if value else None
     s = str(value)
     return s if s.strip() else None
@@ -235,10 +233,8 @@ def _clear_query_params() -> None:
     try:
         st.query_params.clear()
     except Exception:
-        try:
+        with contextlib.suppress(Exception):
             st.experimental_set_query_params()
-        except Exception:
-            pass
 
 
 def _set_query_params(**kwargs: str) -> None:
@@ -251,7 +247,5 @@ def _set_query_params(**kwargs: str) -> None:
         for k, v in clean.items():
             st.query_params[k] = v
     except Exception:
-        try:
+        with contextlib.suppress(Exception):
             st.experimental_set_query_params(**clean)
-        except Exception:
-            pass

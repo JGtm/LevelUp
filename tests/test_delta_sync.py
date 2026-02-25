@@ -1,22 +1,17 @@
 """Tests pour les nouvelles fonctionnalités: delta sync, aliases, sync metadata."""
 
-import json
 import sqlite3
 import tempfile
-from pathlib import Path
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from pathlib import Path
 
-import pytest
-
-from src.ui.translations import (
-    translate_playlist_name,
-    translate_pair_name,
-    PLAYLIST_FR,
-    PAIR_FR,
-)
 from src.analysis.filters import is_allowed_playlist_name
-
+from src.ui.translations import (
+    PAIR_FR,
+    PLAYLIST_FR,
+    translate_pair_name,
+    translate_playlist_name,
+)
 
 # =============================================================================
 # Tests Translations
@@ -138,7 +133,7 @@ class TestDeltaSyncLogic:
             now = datetime.now(timezone.utc).isoformat()
             cur.execute(
                 "INSERT INTO SyncMeta (key, value, updated_at) VALUES (?, ?, ?)",
-                ("last_sync", now, now)
+                ("last_sync", now, now),
             )
             con.commit()
 
@@ -173,7 +168,12 @@ class TestDeltaSyncLogic:
             # Insérer un alias
             cur.execute(
                 "INSERT INTO XuidAliases (xuid, gamertag, source, updated_at) VALUES (?, ?, ?, ?)",
-                ("xuid:123456", "TestPlayer", "match_roster", datetime.now(timezone.utc).isoformat())
+                (
+                    "xuid:123456",
+                    "TestPlayer",
+                    "match_roster",
+                    datetime.now(timezone.utc).isoformat(),
+                ),
             )
             con.commit()
 

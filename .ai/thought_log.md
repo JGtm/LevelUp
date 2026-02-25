@@ -7,6 +7,56 @@
 
 ## Journal
 
+### [2026-02-25] — v5.3 : LUSR stabilisation + UI Carrière
+
+**Statut** : Complété ✅
+
+**Objectif** : Corriger la divergence du LUSR (ratings explosant à 3000+ ou crashant à 200), calibrer les poids COMPOSITE_WEIGHTS, finaliser l'UI.
+
+#### Diagnostic divergence TrueSkill
+
+La zone draw TrueSkill classique (`v_draw(t, eps/c)` avec `t = (mu - mu_opp)/c`) est fondamentalement incompatible avec un système one-sided :
+- Quand `state.mu > INITIAL_MU`, les adversaires estimés à `INITIAL_MU` donnent `t > 0` → `v_draw > 0` même à composite=0.5 → inflation systématique
+- Deuxième biais : les joueurs qui sur-fragmentent leurs `kills_expected` font que `mu_opp < state.mu` → même problème
+- `damage_efficiency` toujours > 0.5 pour les bons joueurs (ils dealent plus qu'ils prennent) → biais positif systématique dans le composite
+
+#### Corrections appliquées
+
+1. **Elo-style mu** (`K_ELO = 32`) : `delta_mu = K × (composite − 0.5) × wf` → ZÉRO à composite=0.5 quel que soit mu_opp
+2. **damage_eff_history per-groupe** dans `PlayerState` + delta vs historique dans `compute_composite_score`
+3. **mu_opp anchoring** : `compute_enemy_strength(player_mu=state.mu)` — matchmaking ≈ équivalent
+4. **Inactivité réduite** : sigma_per_day 3.5→1.0, max_days 30→14 — max additionnel = 13 pts
+5. **Seed sigma** : `MIN_SIGMA` (60) au lieu de 210 — CSR est un ancrage fort
+6. **Calibration COMPOSITE_WEIGHTS** sur 1765 matchs — win_factor 20%→5%, damage_efficiency 10%→23%
+
+#### Tests adaptés
+
+- `test_strong_opponent_win_bigger_gain` → `test_same_composite_same_delta_regardless_of_opponent` (propriété Elo)
+- `test_with_participants_data` → teste surperformance kills (pas mu_opp)
+- `test_sequential_order_matters` → utilise accuracy croissante/décroissante (accuracy_delta history)
+- **Résultat** : 68/68 tests skill_rating, 3323/3323 suite complète
+
+#### Résultats finaux
+
+| Joueur | Seed CSR | Ranked | Arena | BTB | Social |
+|--------|----------|--------|-------|-----|--------|
+| Madina97294 | Diamant V (1933) | 1930 Dia IV | 1770 Plat VI | 1701 Plat IV | 1904 Dia IV |
+| Chocoboflor | Or III (1474) | 1461 Or II | 1449 Or II | 1471 Or III | 1474 Or III |
+| JGtm | Or III (1474) | 1446 Or II | 1523 Or IV | 1438 Or II | 1441 Or II |
+
+#### UI Carrière redessinée
+
+- Cartes visuelles par groupe (image 90px centrée, badge LUSR/CSR, delta ▲/▼ coloré)
+- Sélecteur `st.selectbox` pour le graphe d'évolution (remplace `st.tabs()`)
+- Ordre d'affichage : ranked → arena → btb → tactical → social → fun
+
+**Décisions clés** :
+- K_ELO=32 calibré empiriquement : Madina BTB composite_avg=0.476 → -232 pts sur 497 matchs (cohérent pour BTB)
+- TrueSkill sigma conservé à t=0 (réduction d'incertitude symétrique après chaque match) — mu_opp influence c² uniquement
+- Un seul `match_skill_rank` record par match_id (PK) garantit l'exclusivité LUSR/CSR
+
+---
+
 ### [2026-02-20] — v5.2 : Filtres intent-based + Stats PvE Firefight
 
 **Statut** : Complété ✅

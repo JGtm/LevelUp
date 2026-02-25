@@ -67,16 +67,16 @@ async def get_tokens(
     timeout_seconds: int,
 ) -> tuple[str, str]:
     """Récupère ou rafraîchit les tokens SPNKr.
-    
+
     Args:
         session: Session aiohttp.
         spartan_token: Token Spartan existant (ou None pour en obtenir un nouveau).
         clearance_token: Token Clearance existant (ou None pour en obtenir un nouveau).
         timeout_seconds: Timeout pour les appels réseau.
-        
+
     Returns:
         Tuple (spartan_token, clearance_token).
-        
+
     Raises:
         RuntimeError: Si les tokens ne peuvent pas être obtenus.
     """
@@ -92,7 +92,9 @@ async def get_tokens(
     # Fallback: récupère via Azure refresh token (opt-in)
     azure_client_id = str(os.environ.get("SPNKR_AZURE_CLIENT_ID") or "").strip()
     azure_client_secret = str(os.environ.get("SPNKR_AZURE_CLIENT_SECRET") or "").strip()
-    azure_redirect_uri = str(os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "").strip() or "https://localhost"
+    azure_redirect_uri = (
+        str(os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "").strip() or "https://localhost"
+    )
     oauth_refresh_token = str(os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN") or "").strip()
 
     if not (azure_client_id and azure_client_secret and oauth_refresh_token):
@@ -137,9 +139,9 @@ async def get_tokens(
             raise
 
         # Fallback: endpoint OAuth v2 (consumers) -> chain Xbox/XSTS/Halo
-        from spnkr.auth.xbox import request_user_token, request_xsts_token
         from spnkr.auth.core import XSTS_V3_HALO_AUDIENCE, XSTS_V3_XBOX_AUDIENCE
-        from spnkr.auth.halo import request_spartan_token, request_clearance_token
+        from spnkr.auth.halo import request_clearance_token, request_spartan_token
+        from spnkr.auth.xbox import request_user_token, request_xsts_token
 
         access_token = await _refresh_oauth_access_token_v2(oauth_refresh_token, app)
         user_token = await request_user_token(session, access_token)

@@ -105,7 +105,7 @@ def _load_citations_from_db() -> list[dict[str, Any]]:
             "tier_targets",
             "composite_children",
         ]
-        return [dict(zip(columns, row)) for row in rows]
+        return [dict(zip(columns, row, strict=False)) for row in rows]
     except Exception:
         logger.exception("Erreur chargement citation_mappings")
         return []
@@ -273,9 +273,7 @@ def render_h5g_commendations_section(
                 children = _json.loads(composite_children)
             except Exception:
                 children = []
-            n_enabled = sum(
-                1 for c in children if _normalize_name(c) in enabled_norms
-            )
+            n_enabled = sum(1 for c in children if _normalize_name(c) in enabled_norms)
             tiers = [{"tier": i + 1, "target_count": i + 1} for i in range(n_enabled)]
         else:
             tiers = _parse_tier_targets(tier_targets)
@@ -297,9 +295,7 @@ def render_h5g_commendations_section(
     with c1:
         picked_cat = st.selectbox("Catégorie", options=["(toutes)"] + cats, index=0)
     with c2:
-        q = st.text_input(
-            "Recherche", value="", placeholder="ex: assassin, pilote, multifrag…"
-        )
+        q = st.text_input("Recherche", value="", placeholder="ex: assassin, pilote, multifrag…")
 
     filtered = items
     if picked_cat != "(toutes)":
@@ -325,21 +321,15 @@ def render_h5g_commendations_section(
         tiers = item["tiers"]
 
         current_full = citations_full.get(norm_name, 0)
-        current_filtered = (
-            citations_filtered.get(norm_name, 0) if is_filtered else current_full
-        )
-        delta_citation = (
-            current_filtered if (is_filtered and current_filtered > 0) else 0
-        )
+        current_filtered = citations_filtered.get(norm_name, 0) if is_filtered else current_full
+        delta_citation = current_filtered if (is_filtered and current_filtered > 0) else 0
 
-        level_label, counter_label, is_master, progress_ratio = (
-            _compute_mastery_display(current_full, tiers)
+        level_label, counter_label, is_master, progress_ratio = _compute_mastery_display(
+            current_full, tiers
         )
 
         with col:
-            st.markdown(
-                "<div class='os-citation-top-gap'></div>", unsafe_allow_html=True
-            )
+            st.markdown("<div class='os-citation-top-gap'></div>", unsafe_allow_html=True)
 
             img = _img_src(item["image_path"])
             data_uri = None
@@ -354,9 +344,7 @@ def render_h5g_commendations_section(
 
             if data_uri:
                 ring_class = (
-                    "os-citation-ring os-citation-ring--master"
-                    if is_master
-                    else "os-citation-ring"
+                    "os-citation-ring os-citation-ring--master" if is_master else "os-citation-ring"
                 )
                 ring_color = "#d6b35a" if is_master else "#41d6ff"
                 st.markdown(
@@ -381,17 +369,11 @@ def render_h5g_commendations_section(
                 )
 
             st.markdown(
-                "<div class='os-citation-name' title='"
-                + tip
-                + "'>"
-                + html.escape(name)
-                + "</div>",
+                "<div class='os-citation-name' title='" + tip + "'>" + html.escape(name) + "</div>",
                 unsafe_allow_html=True,
             )
             level_class = (
-                "os-citation-level os-citation-level--master"
-                if is_master
-                else "os-citation-level"
+                "os-citation-level os-citation-level--master" if is_master else "os-citation-level"
             )
             st.markdown(
                 f"<div class='{level_class}'>{html.escape(level_label)}</div>",

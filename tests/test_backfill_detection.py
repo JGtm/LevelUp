@@ -61,6 +61,7 @@ def shared_conn():
             kills_expected DOUBLE,
             deaths_expected DOUBLE,
             assists_expected DOUBLE,
+            backfill_bits INTEGER DEFAULT 0,
             PRIMARY KEY (match_id, xuid)
         )
     """)

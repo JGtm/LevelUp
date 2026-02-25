@@ -60,6 +60,9 @@ _FORCE_MAP: dict[str, str] = {
     "force_core_stats": "core_stats",
     # ── PVE v5.2 ──
     "force_pve_stats": "pve_stats",
+    # ── LUSR / CSR v5.2 ──
+    "force_lusr": "lusr",
+    "force_csr": "csr",
 }
 
 # Champs activés par ``all_data``.  Listés explicitement pour ne pas
@@ -107,6 +110,10 @@ _ALL_DATA_FIELDS: tuple[str, ...] = (
     "core_stats",
     # ── PVE v5.2 ──
     "pve_stats",
+    # ── LUSR / CSR v5.2 ──
+    "lusr",
+    "csr",
+    "fetch_csr",
 )
 
 # Mapping champ → clé pour ``requested_types`` (bitmask backfill_completed).
@@ -130,6 +137,8 @@ _REQUESTED_TYPE_MAP: dict[str, str] = {
     "participants_avg_life": "participants_avg_life",
     # ── PVE stats (v5.2) ──
     "pve_stats": "pve_stats",
+    # ── CSR (v5.2) — bitmask backfill_completed sur match_registry ──
+    "csr": "csr",
 }
 
 
@@ -255,6 +264,13 @@ class SyncScope:
     # ── Flags force PVE ──────────────────────────────────────────────────
     force_pve_stats: bool = False  # Re-traiter même si MatchBits.PVE_STATS déjà posé
 
+    # ── LUSR / CSR — v5.2 ────────────────────────────────────────────────
+    lusr: bool = False  # Calculer le LUSR pour les matchs non classés (local-only)
+    force_lusr: bool = False  # Recalculer le LUSR depuis zéro
+    csr: bool = False  # Backfill CSR depuis l'API pour les matchs classés
+    force_csr: bool = False  # Forcer le re-fetch CSR pour tous les matchs classés
+    fetch_csr: bool = False  # Snapshot CSR actuel via get_playlist_csr → skill_history
+
     # ── Méta-flag ────────────────────────────────────────────────────────
     all_data: bool = False
 
@@ -378,13 +394,17 @@ class SyncScope:
             "participants_damage",
             "participants_avg_life",
             "participants_enrich",
+            "csr",  # re-fetch CSR nécessite l'API skill
+            "fetch_csr",  # snapshot CSR via get_playlist_csr
         }
         return any(getattr(self, f) for f in api_fields)
 
     @property
     def needs_local_only(self) -> bool:
         """True si des traitements locaux (sans API) sont demandés."""
-        return any(getattr(self, f) for f in ("killer_victim", "end_time", "sessions", "citations"))
+        return any(
+            getattr(self, f) for f in ("killer_victim", "end_time", "sessions", "citations", "lusr")
+        )
 
     @property
     def requested_types(self) -> list[str]:

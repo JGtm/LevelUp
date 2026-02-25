@@ -14,7 +14,6 @@ import duckdb
 import polars as pl
 import pytest
 
-
 # =============================================================================
 # Helpers communs
 # =============================================================================
@@ -49,9 +48,7 @@ def _create_shared_db(path: Path) -> None:
         )
         """
     )
-    conn.execute(
-        "CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)"
-    )
+    conn.execute("CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)")
     conn.execute(
         "CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER)"
     )
@@ -99,21 +96,34 @@ def _insert_participant(
         )
         """,
         [
-            match_id, xuid, defaults["gamertag"],
-            defaults["team_id"], defaults["rank"], defaults["score"],
-            defaults["kills"], defaults["deaths"], defaults["assists"],
-            defaults["kda"], defaults["max_killing_spree"],
-            defaults["headshot_kills"], defaults["shots_fired"],
-            defaults["shots_hit"], defaults["accuracy"],
-            defaults["melee_kills"], defaults["power_weapon_kills"],
-            defaults["damage_dealt"], defaults["damage_taken"],
+            match_id,
+            xuid,
+            defaults["gamertag"],
+            defaults["team_id"],
+            defaults["rank"],
+            defaults["score"],
+            defaults["kills"],
+            defaults["deaths"],
+            defaults["assists"],
+            defaults["kda"],
+            defaults["max_killing_spree"],
+            defaults["headshot_kills"],
+            defaults["shots_fired"],
+            defaults["shots_hit"],
+            defaults["accuracy"],
+            defaults["melee_kills"],
+            defaults["power_weapon_kills"],
+            defaults["damage_dealt"],
+            defaults["damage_taken"],
             defaults["avg_life_seconds"],
         ],
     )
     conn.close()
 
 
-def _insert_medal(shared_path: Path, match_id: str, xuid: str, medal_name_id: int, count: int) -> None:
+def _insert_medal(
+    shared_path: Path, match_id: str, xuid: str, medal_name_id: int, count: int
+) -> None:
     conn = duckdb.connect(str(shared_path))
     conn.execute(
         "INSERT INTO medals_earned VALUES (?, ?, ?, ?)",
@@ -153,7 +163,7 @@ class TestApplyExperienceFilter:
 
     def test_all_selected_no_filter(self) -> None:
         """Les 3 options sélectionnées → aucun filtre (identité)."""
-        from src.app.filters_render import _apply_experience_filter, _EXPERIENCE_TYPES_OPTIONS
+        from src.app.filters_render import _EXPERIENCE_TYPES_OPTIONS, _apply_experience_filter
 
         df = self._df(["Partie rapide", "Arène classée", "Firefight Standard"])
         result = _apply_experience_filter(
@@ -271,10 +281,18 @@ class TestLoadMatchScoreboard:
 
     def test_single_player_all_fields(self, repo, shared_path: Path) -> None:
         _insert_participant(
-            shared_path, "m001", "111",
-            gamertag="SpartanX", team_id=0, rank=1,
-            score=2500, kills=15, deaths=5, assists=3,
-            kda=3.2, headshot_kills=7,
+            shared_path,
+            "m001",
+            "111",
+            gamertag="SpartanX",
+            team_id=0,
+            rank=1,
+            score=2500,
+            kills=15,
+            deaths=5,
+            assists=3,
+            kda=3.2,
+            headshot_kills=7,
         )
         rows = repo.load_match_scoreboard("m001")
         assert len(rows) == 1
@@ -319,18 +337,33 @@ class TestLoadMatchScoreboard:
 
         rows = repo.load_match_scoreboard("m005")
         assert len(rows) == 2
-        assert rows[0]["xuid"] == "TEAM"   # team_id=0 en premier
-        assert rows[1]["xuid"] == "SOLO"   # NULL via NULLS LAST
+        assert rows[0]["xuid"] == "TEAM"  # team_id=0 en premier
+        assert rows[1]["xuid"] == "SOLO"  # NULL via NULLS LAST
 
     def test_result_contains_all_expected_keys(self, repo, shared_path: Path) -> None:
         _insert_participant(shared_path, "m006", "555", team_id=0, rank=1)
         rows = repo.load_match_scoreboard("m006")
         expected_keys = {
-            "xuid", "gamertag", "team_id", "rank", "score", "kills", "deaths",
-            "assists", "kda", "max_killing_spree", "headshot_kills",
-            "shots_fired", "shots_hit", "accuracy", "melee_kills",
-            "power_weapon_kills", "damage_dealt", "damage_taken",
-            "avg_life_seconds", "perfect_kills",
+            "xuid",
+            "gamertag",
+            "team_id",
+            "rank",
+            "score",
+            "kills",
+            "deaths",
+            "assists",
+            "kda",
+            "max_killing_spree",
+            "headshot_kills",
+            "shots_fired",
+            "shots_hit",
+            "accuracy",
+            "melee_kills",
+            "power_weapon_kills",
+            "damage_dealt",
+            "damage_taken",
+            "avg_life_seconds",
+            "perfect_kills",
         }
         assert expected_keys == set(rows[0].keys())
 
@@ -380,16 +413,19 @@ class TestLoadMatchPveStats:
         from src.data.sync.models import PveMatchStatsRow
 
         conn = duckdb.connect(str(pve_db_path))
-        batch_insert_pve_stats(conn, [
-            PveMatchStatsRow(
-                match_id="ff-001",
-                xuid="100000000000001",
-                grunt_kills=10,
-                elite_kills=5,
-                boss_kills=2,
-                total_enemy_kills=15,
-            )
-        ])
+        batch_insert_pve_stats(
+            conn,
+            [
+                PveMatchStatsRow(
+                    match_id="ff-001",
+                    xuid="100000000000001",
+                    grunt_kills=10,
+                    elite_kills=5,
+                    boss_kills=2,
+                    total_enemy_kills=15,
+                )
+            ],
+        )
         conn.close()
 
         engine = self._engine(tmp_path, pve_db_path)
@@ -408,10 +444,13 @@ class TestLoadMatchPveStats:
         from src.data.sync.models import PveMatchStatsRow
 
         conn = duckdb.connect(str(pve_db_path))
-        batch_insert_pve_stats(conn, [
-            PveMatchStatsRow(match_id="ff-multi", xuid="100000000000001", grunt_kills=8),
-            PveMatchStatsRow(match_id="ff-multi", xuid="100000000000002", grunt_kills=3),
-        ])
+        batch_insert_pve_stats(
+            conn,
+            [
+                PveMatchStatsRow(match_id="ff-multi", xuid="100000000000001", grunt_kills=8),
+                PveMatchStatsRow(match_id="ff-multi", xuid="100000000000002", grunt_kills=3),
+            ],
+        )
         conn.close()
 
         engine = self._engine(tmp_path, pve_db_path)

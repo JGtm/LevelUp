@@ -209,6 +209,347 @@ def backfill_killer_victim_pairs(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# CSR — snapshot via get_playlist_csr (v5.3)
+# ─────────────────────────────────────────────────────────────────────────────
+
+#: Playlists classées Halo Infinite (Ranked Arena + Ranked Slayer)
+_RANKED_PLAYLISTS: dict[str, str] = {
+    "Ranked Arena": "edfef3ac-9cbe-4fa2-b949-8f29deafd483",
+    "Ranked Slayer": "dcb2e24e-05fb-4390-8076-32a0cdb4326e",
+}
+
+
+async def fetch_current_csr_for_player(
+    conn: Any,
+    xuid: str,
+    api_client: Any,
+) -> dict[str, Any]:
+    """Récupère le CSR actuel du joueur via l'API et le stocke dans skill_history.
+
+    Appelle ``get_playlist_csr`` pour Ranked Arena et Ranked Slayer.
+    Stocke le ``all_time_max`` de chaque playlist comme snapshot dans
+    ``skill_history`` (recorded_at = now()).
+
+    Args:
+        conn: Connexion DuckDB vers stats.duckdb du joueur.
+        xuid: XUID du joueur.
+        api_client: Instance ``SPNKrAPIClient`` déjà authentifiée.
+
+    Returns:
+        Dict ``{playlist_name: {csr, tier, sub_tier, value}}`` pour
+        les playlists où le joueur a un historique (all_time_max > 0).
+    """
+    from datetime import datetime, timezone
+
+    results: dict[str, Any] = {}
+
+    # S'assurer que skill_history existe
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS skill_history (
+            playlist_id    VARCHAR,
+            recorded_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            csr            INTEGER,
+            tier           VARCHAR,
+            division       INTEGER,
+            matches_played INTEGER
+        )
+    """)
+
+    now = datetime.now(timezone.utc)
+
+    for playlist_name, playlist_id in _RANKED_PLAYLISTS.items():
+        try:
+            resp = await api_client.client.skill.get_playlist_csr(playlist_id, [xuid])
+            data = await resp.parse()
+
+            for entry in data.value:
+                if not hasattr(entry, "result") or entry.result is None:
+                    continue
+                atm = entry.result.all_time_max
+                if atm is None or getattr(atm, "value", -1) <= 0:
+                    continue
+
+                csr_value = atm.value
+                tier_name = atm.tier.value if hasattr(atm.tier, "value") else str(atm.tier)
+                sub_tier_raw = atm.sub_tier
+                # SubTier enum: I=0, II=1, … VI=5  → division affichée : 1-6
+                division = (sub_tier_raw.value + 1) if hasattr(sub_tier_raw, "value") else 1
+
+                conn.execute(
+                    """
+                    INSERT INTO skill_history
+                        (playlist_id, recorded_at, csr, tier, division, matches_played)
+                    VALUES (?, ?, ?, ?, ?, 0)
+                    """,
+                    [playlist_id, now, csr_value, tier_name, division],
+                )
+
+                results[playlist_name] = {
+                    "csr": csr_value,
+                    "tier": tier_name,
+                    "sub_tier": division,
+                    "playlist_id": playlist_id,
+                }
+                logger.info(
+                    f"CSR snapshot {playlist_name}: {tier_name} {division} "
+                    f"({csr_value}) pour xuid={xuid}"
+                )
+        except Exception as e:
+            logger.warning(f"fetch_current_csr_for_player {playlist_name}: {e}")
+
+    if results:
+        conn.commit()
+
+    return results
+
+
+def get_best_csr_for_player(conn: Any) -> float | None:
+    """Retourne le meilleur CSR historique du joueur depuis skill_history.
+
+    Cherche le MAX(csr) sur toutes les playlists et tous les snapshots.
+    Retourne None si aucun CSR n'est disponible.
+    """
+    try:
+        row = conn.execute("SELECT MAX(csr) FROM skill_history WHERE csr > 0").fetchone()
+        return float(row[0]) if row and row[0] is not None else None
+    except Exception:
+        return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LUSR — LevelUp Skill Rank (v5.2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def compute_lusr_for_player(
+    conn: Any,
+    db_path: Any,
+    xuid: str,
+    *,
+    force: bool = False,
+    shared_conn: Any | None = None,
+) -> int:
+    """Calcule et stocke le LUSR pour tous les matchs non classés du joueur.
+
+    Traitement **séquentiel** (TrueSkill 2) : les matchs sont traités dans
+    l'ordre chronologique et chaque résultat dépend du précédent.
+    En mode incrémental, calcule tout mais n'écrit que les matchs sans LUSR.
+    En mode force, recalcule et réécrit tous les matchs LUSR.
+
+    Seuls les matchs non classés et non-Firefight sont traités.
+    Les matchs classés utilisent le CSR fourni par l'API.
+
+    Args:
+        conn: Connexion DuckDB vers stats.duckdb du joueur.
+        db_path: Chemin vers la DB joueur (utilisé pour dériver shared si shared_conn=None).
+        xuid: XUID du joueur.
+        force: Si True, recalcule et réécrit tous les matchs LUSR.
+        shared_conn: Connexion vers shared_matches.duckdb (ouverte si None).
+
+    Returns:
+        Nombre de matchs mis à jour dans match_skill_rank.
+    """
+    try:
+        from src.analysis.skill_rating import compute_skill_ratings_batch
+        from src.analysis.skill_rating_config import format_tier_label, get_tier_for_rating
+        from src.data.sync.migrations import ensure_match_skill_rank_table
+    except ImportError as e:
+        logger.warning(f"Modules LUSR non disponibles (skip): {e}")
+        return 0
+
+    # Ouvrir shared_conn si non fournie
+    _owned_shared = False
+    if shared_conn is None:
+        try:
+            from pathlib import Path
+
+            import duckdb
+
+            shared_path = (
+                Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
+            )
+            if not shared_path.exists():
+                logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
+                return 0
+            shared_conn = duckdb.connect(str(shared_path), read_only=False)
+            _owned_shared = True
+        except Exception as e:
+            logger.warning(f"Impossible d'ouvrir shared_matches.duckdb: {e}")
+            return 0
+
+    try:
+        ensure_match_skill_rank_table(conn)
+
+        # 1. Charger tous les matchs non classés, non-Firefight du joueur (ordre ASC)
+        try:
+            import polars as pl  # noqa: F401
+        except ImportError:
+            logger.warning("Polars non disponible, skip LUSR")
+            return 0
+
+        df_matches = shared_conn.execute(
+            """
+            SELECT
+                mr.match_id, mr.start_time, mr.playlist_name, mr.pair_name,
+                mp.outcome, mp.kills, mp.deaths,
+                mp.kills_expected, mp.deaths_expected,
+                mp.damage_dealt, mp.damage_taken, mp.accuracy,
+                mp.team_id
+            FROM match_registry mr
+            JOIN match_participants mp ON mr.match_id = mp.match_id
+            WHERE mp.xuid = ?
+              AND COALESCE(mr.is_ranked, FALSE) = FALSE
+              AND COALESCE(mr.is_firefight, FALSE) = FALSE
+              AND mr.start_time IS NOT NULL
+            ORDER BY mr.start_time ASC
+            """,
+            [xuid],
+        ).pl()
+
+        if df_matches.is_empty():
+            logger.info("compute_lusr_for_player : aucun match non classé trouvé")
+            return 0
+
+        match_ids_list = df_matches["match_id"].to_list()
+
+        # 2. Charger tous les participants de ces matchs (pour estimation μ opposants)
+        placeholders = ",".join("?" * len(match_ids_list))
+        df_participants = shared_conn.execute(
+            f"""
+            SELECT match_id, xuid, team_id, kills_expected, deaths_expected
+            FROM match_participants
+            WHERE match_id IN ({placeholders})
+            """,
+            match_ids_list,
+        ).pl()
+
+        # 3. Identifier les matchs déjà traités (mode incrémental)
+        existing_lusr_ids: set[str] = set()
+        if not force:
+            try:
+                existing_df = conn.execute(
+                    "SELECT match_id FROM match_skill_rank WHERE rating_type = 'LUSR'"
+                ).pl()
+                existing_lusr_ids = set(existing_df["match_id"].to_list())
+            except Exception:
+                existing_lusr_ids = set()
+
+        # 4. Seed depuis CSR si disponible et aucun LUSR existant
+        existing_states_seed: dict | None = None
+        if not existing_lusr_ids:
+            best_csr = get_best_csr_for_player(conn)
+            if best_csr is not None:
+                from src.analysis.skill_rating import PlayerState
+
+                seeded = PlayerState.from_csr(best_csr)
+                # Seed tous les groupes depuis le même CSR (légère variance sur sigma)
+                existing_states_seed = {
+                    group: PlayerState(mu=seeded.mu, sigma=seeded.sigma)
+                    for group in ("ranked", "arena", "btb", "tactical", "social", "fun")
+                }
+                logger.info(
+                    f"LUSR seed depuis CSR={best_csr:.0f} → mu={seeded.mu:.1f} "
+                    f"sigma={seeded.sigma:.1f}"
+                )
+
+        # 5. Calcul TrueSkill 2 batch (séquentiel complet sur tout l'historique)
+        ratings_df = compute_skill_ratings_batch(
+            df_matches, df_participants, existing_states=existing_states_seed
+        )
+        if ratings_df.is_empty():
+            return 0
+
+        # Map match_id → start_time depuis df_matches
+        start_time_map: dict[str, object] = {}
+        if "match_id" in df_matches.columns and "start_time" in df_matches.columns:
+            for m_row in df_matches.select(["match_id", "start_time"]).iter_rows(named=True):
+                start_time_map[m_row["match_id"]] = m_row["start_time"]
+
+        # 5. UPSERT dans match_skill_rank
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        prev_rating: dict[str, float] = {}
+        updates = 0
+
+        for row in ratings_df.iter_rows(named=True):
+            mid = row["match_id"]
+            rating_value: float = row["rating_value"]
+            rating_dev: float | None = row.get("rating_deviation")
+            pg: str = row.get("playlist_group") or "social"
+
+            # Delta vs match précédent dans le même groupe
+            delta: float | None = None
+            if pg in prev_rating:
+                delta = rating_value - prev_rating[pg]
+            prev_rating[pg] = rating_value
+
+            # Mode incrémental : sauter si déjà présent
+            if not force and mid in existing_lusr_ids:
+                continue
+
+            # Tier info
+            tier_obj, sub = get_tier_for_rating(rating_value)
+            tier_name = tier_obj.name if tier_obj else None
+            tier_fr = tier_obj.name_fr if tier_obj else None
+            tier_label = format_tier_label(rating_value) if tier_obj else None
+
+            match_start_time = start_time_map.get(mid)
+
+            conn.execute(
+                """
+                INSERT INTO match_skill_rank
+                    (match_id, rating_type, rating_value, rating_deviation,
+                     tier, tier_fr, sub_tier, tier_label,
+                     rating_delta, playlist_group,
+                     start_time, created_at, updated_at)
+                VALUES (?, 'LUSR', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (match_id) DO UPDATE SET
+                    rating_type      = 'LUSR',
+                    rating_value     = EXCLUDED.rating_value,
+                    rating_deviation = EXCLUDED.rating_deviation,
+                    tier             = EXCLUDED.tier,
+                    tier_fr          = EXCLUDED.tier_fr,
+                    sub_tier         = EXCLUDED.sub_tier,
+                    tier_label       = EXCLUDED.tier_label,
+                    rating_delta     = EXCLUDED.rating_delta,
+                    playlist_group   = EXCLUDED.playlist_group,
+                    start_time       = COALESCE(match_skill_rank.start_time, EXCLUDED.start_time),
+                    updated_at       = EXCLUDED.updated_at
+                """,
+                (
+                    mid,
+                    rating_value,
+                    rating_dev,
+                    tier_name,
+                    tier_fr,
+                    sub or 0,
+                    tier_label,
+                    delta,
+                    pg,
+                    match_start_time,
+                    now,
+                    now,
+                ),
+            )
+            updates += 1
+
+        if updates:
+            conn.commit()
+            logger.info(f"LUSR : {updates} matchs mis à jour dans match_skill_rank")
+
+        return updates
+
+    except Exception as e:
+        logger.warning(f"Erreur compute_lusr_for_player : {e}")
+        return 0
+    finally:
+        if _owned_shared and shared_conn is not None:
+            with contextlib.suppress(Exception):
+                shared_conn.close()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # End time
 # ─────────────────────────────────────────────────────────────────────────────
 

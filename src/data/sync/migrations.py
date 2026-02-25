@@ -466,6 +466,9 @@ BACKFILL_FLAGS: dict[str, int] = {
     "participants_damage": 1 << 13,  # 8192
     "aliases": 1 << 14,  # 16384
     "participants_avg_life": 1 << 15,  # 32768 - Ajouté pour éviter détection infinie
+    # ── LUSR / CSR (v5.2) ──
+    "lusr": 1 << 16,  # 65536  — LUSR calculé localement (non classé)
+    "csr": 1 << 17,  # 131072 — CSR récupéré via API (classé)
 }
 
 
@@ -923,3 +926,57 @@ def ensure_pve_schema(conn: duckdb.DuckDBPyConnection) -> None:
         logger.debug("Schéma PvE initialisé (shared_pve.duckdb)")
     except Exception as e:
         logger.error(f"Impossible d'initialiser le schéma PvE : {e}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Schéma LUSR / CSR — match_skill_rank (v5.2, stats.duckdb par joueur)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_MATCH_SKILL_RANK_DDL = """
+CREATE TABLE IF NOT EXISTS match_skill_rank (
+    match_id         VARCHAR PRIMARY KEY,
+    rating_type      VARCHAR  NOT NULL,          -- 'LUSR' ou 'CSR'
+    rating_value     FLOAT    NOT NULL,           -- Valeur du rating
+    rating_deviation FLOAT,                       -- Déviation σ (NULL pour CSR)
+    tier             VARCHAR,                     -- 'Gold', 'Platinum', 'Onyx', etc.
+    tier_fr          VARCHAR,                     -- 'Or', 'Platine', 'Onyx', etc.
+    sub_tier         SMALLINT DEFAULT 0,          -- 1-6 pour non-Onyx, 0 pour Onyx/CSR
+    tier_label       VARCHAR,                     -- 'Or III', 'Onyx', etc.
+    rating_delta     FLOAT,                       -- Delta vs match précédent du même type
+    playlist_group   VARCHAR,                     -- 'ranked','competitive','social','fun'
+    start_time       TIMESTAMP,                   -- Copie de match_registry.start_time (tri chronologique)
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
+_MATCH_SKILL_RANK_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type)",
+    "CREATE INDEX IF NOT EXISTS idx_msr_playlist    ON match_skill_rank(playlist_group)",
+]
+
+
+def ensure_match_skill_rank_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée la table ``match_skill_rank`` si elle n'existe pas (idempotente).
+
+    Cette table stocke le rating LUSR calculé localement pour les matchs
+    non classés, et le CSR fourni par l'API pour les matchs classés.
+    Un match ne peut avoir qu'un seul rating (PRIMARY KEY sur match_id).
+
+    À appeler dans la DB ``stats.duckdb`` du joueur concerné.
+
+    Args:
+        conn: Connexion DuckDB vers stats.duckdb du joueur.
+    """
+    try:
+        conn.execute(_MATCH_SKILL_RANK_DDL)
+        for idx_sql in _MATCH_SKILL_RANK_INDEXES:
+            try:
+                conn.execute(idx_sql)
+            except Exception as e:
+                err = str(e).lower()
+                if "already exists" not in err:
+                    logger.warning(f"Index match_skill_rank non créé : {e}")
+        logger.debug("Table match_skill_rank initialisée (stats.duckdb)")
+    except Exception as e:
+        logger.error(f"Impossible d'initialiser match_skill_rank : {e}")

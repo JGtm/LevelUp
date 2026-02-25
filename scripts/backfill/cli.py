@@ -233,12 +233,19 @@ def create_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--sessions",
         action="store_true",
-        help="Backfill session_id et session_label (matchs stables ≥ 4h)",
+        help=(
+            "Backfill session_id, session_label ET colonnes amis "
+            "(is_with_friends, known_teammates_count, friends_xuids) pour les matchs stables ≥ 4h. "
+            "Requiert friends_defaults.json pour is_with_friends."
+        ),
     )
     parser.add_argument(
         "--force-sessions",
         action="store_true",
-        help="Recalculer les sessions même si session_id déjà rempli",
+        help=(
+            "Recalculer sessions + colonnes amis même si session_id déjà rempli "
+            "(utile pour rétro-remplir is_with_friends sur les anciens matchs)"
+        ),
     )
 
     # ── Citations ──
@@ -433,6 +440,42 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Force le backfill PVE même si déjà tenté (MatchBits.PVE_STATS ignoré)",
     )
 
+    # ── LUSR / CSR — LevelUp Skill Rank (v5.2) ────────────────────────────
+    parser.add_argument(
+        "--lusr",
+        action="store_true",
+        help=(
+            "Calculer le LUSR (LevelUp Skill Rank) pour les matchs non classés "
+            "sans rating (calcul local TrueSkill 2, pas d'API)"
+        ),
+    )
+    parser.add_argument(
+        "--force-lusr",
+        action="store_true",
+        help="Recalculer et réécrire le LUSR pour TOUS les matchs non classés depuis zéro",
+    )
+    parser.add_argument(
+        "--csr",
+        action="store_true",
+        help=(
+            "Backfill le CSR (Competitive Skill Rating) depuis l'API pour les matchs classés "
+            "(nécessite un appel API skill)"
+        ),
+    )
+    parser.add_argument(
+        "--force-csr",
+        action="store_true",
+        help="Forcer le re-fetch CSR pour tous les matchs classés même si déjà présents",
+    )
+    parser.add_argument(
+        "--fetch-csr",
+        action="store_true",
+        help=(
+            "Récupère le CSR actuel du joueur via get_playlist_csr (Ranked Arena + Slayer) "
+            "et le stocke dans skill_history. Utilisé pour seeder le LUSR initial."
+        ),
+    )
+
     return parser
 
 
@@ -451,6 +494,15 @@ Exemples:
 
     # Calculer les scores de performance manquants
     python scripts/backfill_data.py --player JGtm --performance-scores
+
+    # Calculer le LUSR (local, sans API)
+    python scripts/backfill_data.py --player JGtm --lusr
+
+    # Recalculer le LUSR depuis zéro
+    python scripts/backfill_data.py --player JGtm --force-lusr
+
+    # Backfill le CSR depuis l'API (matchs classés)
+    python scripts/backfill_data.py --player JGtm --csr
 
     # Backfill pour tous les joueurs
     python scripts/backfill_data.py --all --all-data

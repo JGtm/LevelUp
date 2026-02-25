@@ -202,7 +202,7 @@ class TestFormatPlayerField:
         _, value = _format_player_field(p, "sync_delta")
         assert "Bazaar" in value
         assert "🏆" in value
-        assert "10K / 4D / 2A" in value
+        assert "10F / 4D / 2A" in value
 
     def test_last_match_loss_shows_skull(self):
         p = _player(last_match=_last_match(outcome=3))
@@ -419,14 +419,14 @@ class TestSendDiscordNotification:
 
     def test_returns_true_on_204(self):
         with patch(
-            "urllib.request.urlopen", side_effect=lambda _r, timeout=None: _mock_urlopen_ok(204)
+            "urllib.request.urlopen", side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204)
         ):
             result = send_discord_notification(self.SIMPLE_PAYLOAD, _WEBHOOK)
         assert result is True
 
     def test_returns_true_on_200(self):
         with patch(
-            "urllib.request.urlopen", side_effect=lambda _r, timeout=None: _mock_urlopen_ok(200)
+            "urllib.request.urlopen", side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(200)
         ):
             result = send_discord_notification(self.SIMPLE_PAYLOAD, _WEBHOOK)
         assert result is True

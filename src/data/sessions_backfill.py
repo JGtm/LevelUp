@@ -184,7 +184,10 @@ def backfill_sessions_for_player(
     Returns:
         Dict avec updated, skipped_recent, errors.
     """
-    from src.analysis.sessions import compute_sessions_with_context_polars
+    from src.analysis.sessions import (
+        _parse_teammates_signature,
+        compute_sessions_with_context_polars,
+    )
     from src.config import SESSION_CONFIG
 
     path = Path(db_path)
@@ -358,6 +361,10 @@ def backfill_sessions_for_player(
             results["updated"] = len(to_update)
             return results
 
+        # Préparer le set d'amis pour le calcul is_with_friends
+        friends_set: frozenset[str] = frozenset(friends) if friends else frozenset()
+        has_friends_config = len(friends_set) > 0
+
         updated = 0
         skipped = 0
         for row in df_sessions.iter_rows(named=True):
@@ -372,15 +379,39 @@ def backfill_sessions_for_player(
                 skipped += 1
                 continue
 
+            # Calculer les colonnes amis pour ce match
+            if has_friends_config:
+                sig = row.get("teammates_signature")
+                team_set = _parse_teammates_signature(sig)
+                common = team_set & friends_set
+                iwf: bool | None = bool(common)
+                ktc: int | None = len(common)
+                fx: str | None = ",".join(sorted(common)) if common else None
+            else:
+                iwf = None
+                ktc = None
+                fx = None
+
             try:
                 conn.execute(
-                    "INSERT INTO player_match_enrichment (match_id, session_id, session_label) "
-                    "VALUES (?, ?, ?) "
+                    "INSERT INTO player_match_enrichment "
+                    "(match_id, session_id, session_label, is_with_friends, known_teammates_count, friends_xuids) "
+                    "VALUES (?, ?, ?, ?, ?, ?) "
                     "ON CONFLICT (match_id) DO UPDATE SET "
                     "session_id = EXCLUDED.session_id, "
                     "session_label = EXCLUDED.session_label, "
+                    "is_with_friends = COALESCE(EXCLUDED.is_with_friends, player_match_enrichment.is_with_friends), "
+                    "known_teammates_count = COALESCE(EXCLUDED.known_teammates_count, player_match_enrichment.known_teammates_count), "
+                    "friends_xuids = COALESCE(EXCLUDED.friends_xuids, player_match_enrichment.friends_xuids), "
                     "updated_at = now()",
-                    [match_id, session_id, str(session_label) if session_label else None],
+                    [
+                        match_id,
+                        session_id,
+                        str(session_label) if session_label else None,
+                        iwf,
+                        ktc,
+                        fx,
+                    ],
                 )
                 updated += 1
             except Exception as e:

@@ -178,8 +178,8 @@ class TestTimeseriesServiceContracts:
         assert result.missing_column is True
 
     def test_rolling_win_rate_not_enough_matches(self) -> None:
-        """Retourne not_enough_matches=True avec < 10 matchs."""
-        dff = _make_match_pl(5)
+        """Retourne not_enough_matches=True avec < 5 matchs."""
+        dff = _make_match_pl(4)  # seuil du code : < 5
         result = TimeseriesService.compute_rolling_win_rate(dff)
         assert result.not_enough_matches is True
 

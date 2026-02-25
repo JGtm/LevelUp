@@ -153,6 +153,8 @@ def main() -> int:
                 _totals = result.get("total_results", {})
                 _n_players = result.get("players_processed", 0)
                 _all_players_list = list_duckdb_v4_players()
+                _matches_checked_total = _totals.get("matches_checked", 0)
+                _n_ref = max(1, _n_players or len(_all_players_list))
                 _discord_players = []
                 for _pinfo in _all_players_list:
                     _xuid_bf = _xuid_map.get(_pinfo.gamertag.lower())
@@ -162,7 +164,7 @@ def main() -> int:
                         DiscordPlayerResult(
                             gamertag=_pinfo.gamertag,
                             xuid=_xuid_bf,
-                            matches_synced=0,
+                            matches_synced=_matches_checked_total // _n_ref,
                             missing_data_count=_missing_bf,
                             last_match=_last_bf,
                         )
@@ -209,7 +211,7 @@ def main() -> int:
                         DiscordPlayerResult(
                             gamertag=args.player,
                             xuid=_xuid_bf,
-                            matches_synced=result.get("matches_missing_data", 0),
+                            matches_synced=result.get("matches_checked", 0),
                             missing_data_count=_missing_bf,
                             last_match=_last_bf,
                         )

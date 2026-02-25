@@ -663,3 +663,192 @@ def plot_rank_score(
     fig.update_yaxes(title_text="Rang", autorange="reversed", rangemode="tozero", secondary_y=True)
 
     return apply_halo_plot_style(fig, height=400)
+
+
+def plot_lusr_timeseries(
+    df: DataFrameLike,
+    title: str = "LUSR — LevelUp Skill Rank",
+    show_confidence: bool = True,
+    show_smooth: bool = True,
+    playlist_group: str | None = None,
+) -> go.Figure:
+    """Graphique d'évolution du LUSR (ou CSR) dans le temps.
+
+    Affiche la courbe du rating avec zones de tier en arrière-plan,
+    bande de confiance (± σ) et tendance lissée optionnelle.
+
+    Args:
+        df: DataFrame avec colonnes : ``rating_value``, ``start_time``,
+            optionnel : ``rating_deviation``, ``tier_label``, ``rating_type``,
+            ``playlist_group``.
+        title: Titre du graphique.
+        show_confidence: Afficher la bande de confiance (± rating_deviation).
+        show_smooth: Afficher la courbe de tendance lissée (rolling mean 20).
+        playlist_group: Filtrer sur un groupe spécifique (None = tous).
+
+    Returns:
+        Figure Plotly.
+    """
+    from src.analysis.skill_rating_config import SKILL_TIERS
+
+    d = _normalize_df(df)
+
+    # Filtre groupe de playlist
+    if playlist_group and "playlist_group" in d.columns:
+        d = d.filter(pl.col("playlist_group") == playlist_group)
+
+    if d.is_empty():
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+
+    d = d.sort("start_time")
+    x_idx = list(range(d.height))
+    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    step = max(1, len(labels) // 10) if len(labels) > 1 else 1
+    colors = HALO_COLORS.as_dict()
+
+    rating_values = d["rating_value"].cast(pl.Float64, strict=False).to_list()
+
+    # Calcul des bornes Y (pour les zones de tier)
+    y_min = max(
+        0.0, (min(v for v in rating_values if v is not None) - 100) if rating_values else 800.0
+    )
+    y_max = max(v for v in rating_values if v is not None) + 200 if rating_values else 2400.0
+    y_max = max(y_max, 2200.0)
+
+    fig = go.Figure()
+
+    # ── Zones de tier (arrière-plan) ──
+    _tier_alphas = {
+        "Bronze": "rgba(205,127,50,0.08)",
+        "Silver": "rgba(192,192,192,0.08)",
+        "Gold": "rgba(255,215,0,0.10)",
+        "Platinum": "rgba(0,206,209,0.08)",
+        "Diamond": "rgba(185,242,255,0.10)",
+        "Onyx": "rgba(28,28,28,0.12)",
+    }
+    for tier in SKILL_TIERS:
+        band_y0 = max(tier.min_rating, y_min)
+        band_y1 = min(tier.max_rating, y_max)
+        if band_y1 <= band_y0:
+            continue
+        fill_color = _tier_alphas.get(tier.name, "rgba(128,128,128,0.06)")
+        fig.add_hrect(
+            y0=band_y0,
+            y1=band_y1,
+            fillcolor=fill_color,
+            line_width=0,
+            annotation_text=tier.name_fr,
+            annotation_position="top right",
+            annotation_font={"size": 10, "color": tier.color},
+        )
+
+    # ── Bande de confiance (± rating_deviation) ──
+    if show_confidence and "rating_deviation" in d.columns:
+        dev_values = d["rating_deviation"].cast(pl.Float64, strict=False).to_list()
+        upper = [
+            (rv + dv) if (rv is not None and dv is not None) else None
+            for rv, dv in zip(rating_values, dev_values, strict=False)
+        ]
+        lower = [
+            (rv - dv) if (rv is not None and dv is not None) else None
+            for rv, dv in zip(rating_values, dev_values, strict=False)
+        ]
+        # Trace supérieure
+        fig.add_trace(
+            smart_scatter(
+                x=x_idx,
+                y=upper,
+                mode="lines",
+                name="Confiance (σ)",
+                line={"width": 0},
+                showlegend=True,
+                hoverinfo="skip",
+            )
+        )
+        # Trace inférieure avec fill
+        fig.add_trace(
+            smart_scatter(
+                x=x_idx,
+                y=lower,
+                mode="lines",
+                fill="tonexty",
+                fillcolor="rgba(0,183,235,0.12)",
+                line={"width": 0},
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+
+    # ── Courbe principale (LUSR/CSR) ──
+    has_csr = "rating_type" in d.columns and "CSR" in (d["rating_type"].to_list())
+    has_lusr = "rating_type" in d.columns and "LUSR" in (d["rating_type"].to_list())
+
+    tier_labels = d["tier_label"].to_list() if "tier_label" in d.columns else [""] * len(x_idx)
+
+    hover_tpl = (
+        "Rating=%{y:.0f}<br>" "Rang=%{customdata[0]}<br>" "Date=%{customdata[1]}<extra></extra>"
+    )
+    customdata = list(
+        zip(tier_labels, d["start_time"].dt.strftime("%d/%m/%Y %H:%M").to_list(), strict=False)
+    )
+
+    # Couleur selon type dominant
+    main_color = colors.get("cyan", "#00B7EB") if has_lusr else colors.get("gold", "#FFD700")
+    main_name = "LUSR" if has_lusr else "CSR"
+    if has_lusr and has_csr:
+        main_name = "LUSR / CSR"
+
+    fig.add_trace(
+        smart_scatter(
+            x=x_idx,
+            y=rating_values,
+            mode="lines+markers",
+            name=main_name,
+            line={"width": PLOT_CONFIG.line_width, "color": main_color},
+            marker={"size": 5, "color": main_color},
+            customdata=customdata,
+            hovertemplate=hover_tpl,
+        )
+    )
+
+    # ── Tendance lissée (rolling mean 20) ──
+    if show_smooth and len(x_idx) >= 5:
+        rating_series = pl.Series("rating", rating_values)
+        smooth = _rolling_mean(rating_series, window=min(20, max(3, len(x_idx) // 5)))
+        fig.add_trace(
+            smart_scatter(
+                x=x_idx,
+                y=smooth.to_list(),
+                mode="lines",
+                name="Tendance (lissée)",
+                line={
+                    "width": PLOT_CONFIG.line_width,
+                    "color": colors.get("violet", "#8B5CF6"),
+                    "dash": "dashdot",
+                },
+                hovertemplate="tendance=%{y:.0f}<extra></extra>",
+            )
+        )
+
+    # ── Mise en forme ──
+    fig.update_layout(
+        title=title,
+        margin={"l": 40, "r": 20, "t": 60, "b": 90},
+        hovermode="x unified",
+        legend=get_legend_horizontal_bottom(),
+    )
+    fig.update_yaxes(
+        title_text="Rating LUSR / CSR",
+        range=[y_min, y_max],
+    )
+    fig.update_xaxes(
+        title_text="Match (chronologique)",
+        tickmode="array",
+        tickvals=x_idx[::step],
+        ticktext=labels[::step],
+        type="category",
+    )
+
+    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)

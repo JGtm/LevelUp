@@ -160,6 +160,274 @@ def _create_xp_history_chart(history: list[dict]) -> go.Figure | None:
     return fig
 
 
+def _load_lusr_snapshot(db_path: str) -> list[dict]:
+    """Charge le dernier rating LUSR/CSR par playlist_group depuis match_skill_rank.
+
+    Returns:
+        Liste de dicts : rating_type, rating_value, tier_label, rating_delta, playlist_group.
+        Triée par playlist_group alphabétique.
+    """
+    try:
+        from src.utils.db import duckdb_read_only
+
+        with duckdb_read_only(db_path) as conn:
+            # Dernier rating par playlist_group = ligne avec start_time la plus récente
+            rows = conn.execute(
+                """
+                WITH ranked AS (
+                    SELECT
+                        msr.match_id, msr.rating_type, msr.rating_value,
+                        msr.tier_label, msr.sub_tier, msr.tier, msr.tier_fr,
+                        msr.rating_delta, msr.playlist_group,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY msr.playlist_group
+                            ORDER BY COALESCE(msr.start_time, msr.updated_at) DESC
+                        ) AS rn
+                    FROM match_skill_rank msr
+                )
+                SELECT rating_type, rating_value, tier_label, sub_tier,
+                       tier, tier_fr, rating_delta, playlist_group
+                FROM ranked
+                WHERE rn = 1
+                ORDER BY playlist_group
+                """
+            ).fetchall()
+
+            if not rows:
+                return []
+            return [
+                {
+                    "rating_type": r[0],
+                    "rating_value": r[1],
+                    "tier_label": r[2],
+                    "sub_tier": r[3] or 0,
+                    "tier": r[4],
+                    "tier_fr": r[5],
+                    "rating_delta": r[6],
+                    "playlist_group": r[7],
+                }
+                for r in rows
+            ]
+    except Exception as e:
+        logger.debug(f"Impossible de charger match_skill_rank: {e}")
+        return []
+
+
+def _load_lusr_history(db_path: str, playlist_group: str | None = None) -> list[dict]:
+    """Charge l'historique LUSR/CSR pour le graphe d'évolution.
+
+    Args:
+        db_path: Chemin vers stats.duckdb.
+        playlist_group: Filtrer par groupe (None = tous).
+
+    Returns:
+        Liste de dicts avec : match_id, rating_value, rating_deviation,
+        rating_type, playlist_group, start_time, tier_label.
+    """
+    try:
+        from src.utils.db import duckdb_read_only
+
+        pg_filter = "AND msr.playlist_group = ?" if playlist_group else ""
+        params: list = [playlist_group] if playlist_group else []
+
+        with duckdb_read_only(db_path) as conn:
+            rows = conn.execute(
+                f"""
+                SELECT msr.match_id, msr.rating_value, msr.rating_deviation,
+                       msr.rating_type, msr.playlist_group, msr.tier_label,
+                       COALESCE(msr.start_time, msr.created_at) AS start_time
+                FROM match_skill_rank msr
+                WHERE 1=1 {pg_filter}
+                ORDER BY COALESCE(msr.start_time, msr.created_at) ASC
+                """,
+                params,
+            ).fetchall()
+
+            return [
+                {
+                    "match_id": r[0],
+                    "rating_value": r[1],
+                    "rating_deviation": r[2],
+                    "rating_type": r[3],
+                    "playlist_group": r[4],
+                    "tier_label": r[5],
+                    "start_time": r[6],
+                }
+                for r in rows
+            ]
+    except Exception as e:
+        logger.debug(f"Impossible de charger l'historique LUSR: {e}")
+        return []
+
+
+_PG_LABELS: dict[str, str] = {
+    "ranked": "Classé",
+    "arena": "Arena",
+    "btb": "Big Team Battle",
+    "tactical": "Tactique",
+    "social": "Social",
+    "fun": "Fun",
+}
+_PG_ICONS: dict[str, str] = {
+    "ranked": "🏆",
+    "arena": "⚔️",
+    "btb": "💥",
+    "tactical": "🎯",
+    "social": "🎮",
+    "fun": "🎉",
+}
+# Ordre d'affichage des groupes (du plus compétitif au plus détendu)
+_PG_ORDER = ["ranked", "arena", "btb", "tactical", "social", "fun"]
+
+
+def _render_lusr_section(*, db_path: str, xuid: str) -> None:
+    """Rend la section LUSR/CSR sur la page Carrière.
+
+    Affiche :
+    1. Cartes visuelles par groupe (rang, image, delta)
+    2. Graphe d'évolution avec sélecteur de groupe
+    """
+    from pathlib import Path
+
+    try:
+        import polars as pl
+
+        from src.analysis.skill_rating_config import LUSR_SUBTITLE, LUSR_TITLE, get_rank_image_path
+        from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG
+        from src.visualization.timeseries_combat import plot_lusr_timeseries
+    except ImportError:
+        logger.debug("Modules LUSR non disponibles pour career.py")
+        return
+
+    st.subheader(f"🏅 {LUSR_TITLE} — {LUSR_SUBTITLE}")
+
+    snapshot = _load_lusr_snapshot(db_path)
+    if not snapshot:
+        st.info(
+            "Aucun rating LUSR/CSR calculé. "
+            "Utilisez `--lusr` (non classé) ou `--csr` (classé) pour calculer."
+        )
+        return
+
+    # ── Cartes visuelles — triées par ordre de compétitivité ──
+    snap_by_group = {s["playlist_group"]: s for s in snapshot}
+    ordered = [snap_by_group[g] for g in _PG_ORDER if g in snap_by_group]
+    # Groupes non listés dans _PG_ORDER (futur) en queue
+    ordered += [s for s in snapshot if s["playlist_group"] not in _PG_ORDER]
+
+    project_root = Path(db_path).parents[2]
+    n_per_row = 3
+    for row_start in range(0, len(ordered), n_per_row):
+        batch = ordered[row_start : row_start + n_per_row]
+        cols = st.columns(len(batch))
+        for col, snap in zip(cols, batch, strict=False):
+            pg = snap["playlist_group"] or "?"
+            tier_label = snap["tier_label"] or "Non classé"
+            r_value = float(snap["rating_value"] or 0.0)
+            delta = snap["rating_delta"]
+            r_type = snap["rating_type"] or "LUSR"
+
+            with col:
+                # ── En-tête du groupe ──
+                pg_label = _PG_LABELS.get(pg, pg.capitalize())
+                pg_icon = _PG_ICONS.get(pg, "🎮")
+                st.markdown(
+                    f"<div style='text-align:center;font-weight:600;margin-bottom:4px'>"
+                    f"{pg_icon} {pg_label}</div>",
+                    unsafe_allow_html=True,
+                )
+
+                # ── Image du rang (centrée) ──
+                img_path_rel = get_rank_image_path(r_value)
+                if img_path_rel:
+                    img_full = project_root / img_path_rel
+                    if img_full.exists():
+                        # Centrage via colonnes vides
+                        _, c_img, _ = st.columns([1, 2, 1])
+                        c_img.image(str(img_full), width=90)
+
+                # ── Tier label ──
+                st.markdown(
+                    f"<div style='text-align:center;font-size:1.05em;font-weight:700;"
+                    f"margin:4px 0'>{tier_label}</div>",
+                    unsafe_allow_html=True,
+                )
+
+                # ── Badge type + rating ──
+                badge_bg = "#00B7EB" if r_type == "LUSR" else "#FFD700"
+                badge_fg = "#000"
+                st.markdown(
+                    f"<div style='text-align:center;margin:2px 0'>"
+                    f"<span style='background:{badge_bg};color:{badge_fg};"
+                    f"padding:1px 7px;border-radius:10px;font-size:0.72em;"
+                    f"font-weight:600'>{r_type}</span>"
+                    f"&nbsp;<span style='font-size:1.1em;font-weight:700'>"
+                    f"{r_value:.0f}</span></div>",
+                    unsafe_allow_html=True,
+                )
+
+                # ── Delta (dernier match) ──
+                if delta is not None:
+                    d_color = "#00C853" if delta >= 0 else "#FF5252"
+                    d_arrow = "▲" if delta >= 0 else "▼"
+                    d_sign = "+" if delta >= 0 else ""
+                    st.markdown(
+                        f"<div style='text-align:center;color:{d_color};"
+                        f"font-size:0.95em'>{d_arrow} {d_sign}{delta:.0f}</div>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        "<div style='text-align:center;color:#888;font-size:0.9em'>—</div>",
+                        unsafe_allow_html=True,
+                    )
+
+    # ── Graphe d'évolution avec sélecteur de groupe ──
+    history_all = _load_lusr_history(db_path)
+    if not history_all:
+        return
+
+    df_all = pl.DataFrame(history_all)
+    available_groups = sorted(df_all["playlist_group"].drop_nulls().unique().to_list())
+    if not available_groups:
+        return
+
+    st.markdown("#### 📈 Évolution du rating")
+
+    # Sélecteur de groupe : "Tous" + un par groupe disponible
+    group_options: dict[str, str | None] = {"Tous les groupes": None}
+    for g in _PG_ORDER:
+        if g in available_groups:
+            group_options[f"{_PG_ICONS.get(g, '🎮')} {_PG_LABELS.get(g, g.capitalize())}"] = g
+    # Groupes hors _PG_ORDER en queue
+    for g in available_groups:
+        if g not in _PG_ORDER:
+            group_options[f"🎮 {g.capitalize()}"] = g
+
+    selected_label = st.selectbox(
+        "Groupe :",
+        options=list(group_options.keys()),
+        key="lusr_group_select",
+    )
+    selected_group = group_options[selected_label]
+
+    chart_title = f"LUSR / CSR — {selected_label}"
+    try:
+        fig = plot_lusr_timeseries(
+            df_all,
+            title=chart_title,
+            playlist_group=selected_group,
+        )
+        st.plotly_chart(
+            fig,
+            key=f"lusr_chart_{selected_label}",
+            width="stretch",
+            config=PLOTLY_CLEAN_CONFIG,
+        )
+    except Exception as e:
+        st.warning(f"Impossible d'afficher le graphe : {e}")
+
+
 @fragment_if_available
 def render_career_page(
     *,
@@ -338,3 +606,7 @@ def render_career_page(
         st.info(
             "Pas encore d'historique de progression. Les données seront collectées à chaque synchronisation."
         )
+
+    # --- LUSR / CSR — LevelUp Skill Rank ---
+    st.divider()
+    _render_lusr_section(db_path=db_path, xuid=xuid)

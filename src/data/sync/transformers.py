@@ -875,6 +875,27 @@ def transform_all_skill_stats(
                     elif stat_name and stat_name.lower() == "assists":
                         assists_expected, assists_stddev = expected, stddev
 
+        # ── CSR (Competitive Skill Rating) depuis RankRecap — matchs classés ──
+        rank_recap = result.get("RankRecap") or result.get("rankRecap")
+        pre_match_csr: float | None = None
+        post_match_csr: float | None = None
+        csr_tier: str | None = None
+        csr_sub_tier: int | None = None
+        if isinstance(rank_recap, dict):
+            pre = rank_recap.get("PreMatchCsr") or rank_recap.get("preMatchCsr") or {}
+            post = rank_recap.get("PostMatchCsr") or rank_recap.get("postMatchCsr") or {}
+            if isinstance(pre, dict):
+                pre_match_csr = _safe_float(pre.get("Value") or pre.get("value"))
+            if isinstance(post, dict):
+                post_match_csr = _safe_float(post.get("Value") or post.get("value"))
+                csr_tier = post.get("Tier") or post.get("tier")
+                if csr_tier is None and isinstance(pre, dict):
+                    csr_tier = pre.get("Tier") or pre.get("tier")
+                raw_sub = post.get("SubTier") or post.get("subTier")
+                if raw_sub is None and isinstance(pre, dict):
+                    raw_sub = pre.get("SubTier") or pre.get("subTier")
+                csr_sub_tier = _safe_int(raw_sub)
+
         results.append(
             SkillParticipantUpdate(
                 match_id=match_id,
@@ -887,6 +908,10 @@ def transform_all_skill_stats(
                 deaths_stddev=deaths_stddev,
                 assists_expected=assists_expected,
                 assists_stddev=assists_stddev,
+                pre_match_csr=pre_match_csr,
+                post_match_csr=post_match_csr,
+                csr_tier=csr_tier,
+                csr_sub_tier=csr_sub_tier,
             )
         )
 

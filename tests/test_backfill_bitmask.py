@@ -128,6 +128,8 @@ def shared_conn():
         "UPDATE match_participants SET team_mmr = 1500.0, kills_expected = 0.8, "
         "deaths_expected = 0.5, assists_expected = 0.2 WHERE match_id = 'match-001'"
     )
+    # match-001 a le bit skill (bit 1) marqué dans backfill_bits → plus détecté comme manquant
+    c.execute("UPDATE match_participants SET backfill_bits = 1 WHERE match_id = 'match-001'")
 
     # match-001 has medals, match-002 and match-003 don't
     c.execute("INSERT INTO medals_earned VALUES ('match-001', 100, 2, ?)", [XUID])
@@ -546,8 +548,12 @@ class TestSyncEngineBackfillBitmask:
         bf_mask |= BACKFILL_FLAGS["aliases"]
         # with_assets=True
         bf_mask |= BACKFILL_FLAGS["assets"]
+        # backfill-only : LUSR calculé via --lusr (non écrit par le sync engine)
+        bf_mask |= BACKFILL_FLAGS["lusr"]
+        # backfill-only : CSR écrit lors du sync pour les matchs classés
+        bf_mask |= BACKFILL_FLAGS["csr"]
 
-        # Tous les 15 bits doivent être activés
+        # Tous les 17 bits doivent être activés
         expected_all = sum(BACKFILL_FLAGS.values())
         assert bf_mask == expected_all, f"Mask={bf_mask}, attendu={expected_all}"
 

@@ -3,7 +3,31 @@
     "allow": [
       "Bash(du:*)",
       "Bash(ls:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(git stash)",
+      "Bash(git stash pop)",
+      "Bash(for player in Madina97294 Chocoboflor JGtm XxDaemonGamerxX)",
+      "Bash(do echo \"=== $player ===\")",
+      "Bash(done)",
+      "Bash(do .venv/Scripts/python.exe scripts/backfill_data.py --player $player --lusr --force-lusr)",
+      "Bash(git add src/analysis/playlist_groups.py src/analysis/skill_rating.py src/analysis/skill_rating_config.py src/analysis/skill_rating_calibration.py tests/test_skill_rating.py)",
+      "Bash(git add scripts/backfill/cli.py scripts/backfill/orchestrator.py scripts/backfill/strategies.py)",
+      "Bash(git add src/data/sync/engine.py src/data/sync/migrations.py src/data/sync/models.py src/data/sync/scope.py src/data/sync/transformers.py)",
+      "Bash(git add src/ui/pages/career.py src/visualization/timeseries_combat.py)",
+      "Bash(git add tests/test_backfill_bitmask.py tests/test_backfill_detection.py tests/test_data_contract_sessions.py tests/test_data_services_contracts.py tests/test_lazy_loading.py tests/test_legacy_free_global.py tests/test_media_components_sprint4.py tests/test_media_improvements.py tests/test_post_refactor_perf_contracts.py tests/test_sessions_integration.py tests/test_teammates_impact_tab.py tests/test_xuid_resolution_regression.py tests/test_duckdb_repository_schema_contract.py)",
+      "Bash(git add CHANGELOG.md .ai/thought_log.md scripts/backfill_data.py src/data/sessions_backfill.py src/utils/discord_notifier.py tests/test_discord_notifier.py)",
+      "Bash(git commit:*)",
+      "Bash(.venv/Scripts/ruff.exe check src/visualization/timeseries_combat.py tests/test_discord_notifier.py tests/test_lazy_loading.py tests/test_teammates_impact_tab.py --select SIM108,ARG005)",
+      "Bash(pre-commit run ruff --all-files)",
+      "Bash(git add -u)",
+      "Bash(.venv/Scripts/ruff.exe check --select W293 --fix \"src/data/domain/models/medal.py\" \"src/data/domain/models/player.py\" \"src/data/query/__init__.py\" \"src/ui/career_ranks.py\" \"src/ui/profile_api_tokens.py\" \"src/ui/profile_api_urls.py\")",
+      "Bash(command -v ruff)",
+      "Read(//c/Users/Gsit/.cache/pre-commit/**)",
+      "Read(//c/Users/Gsit/**)",
+      "Bash(RUFF=\"/c/Users/Gsit/.cache/pre-commit/repot4p3dzm_/py_env-python3/Scripts/ruff.exe\")",
+      "Bash(\"$RUFF\" check --select W293 --fix \"src/data/domain/models/medal.py\" \"src/data/domain/models/player.py\" \"src/data/query/__init__.py\" \"src/ui/career_ranks.py\" \"src/ui/profile_api_tokens.py\" \"src/ui/profile_api_urls.py\")",
+      "Bash(\"$RUFF\" check --select SIM105,SIM108,UP038 --fix \"scripts/generate_thumbnails.py\" \"scripts/spnkr_get_refresh_token.py\" \"src/app/routing.py\")",
+      "Bash(\"$RUFF\" check --select SIM105,SIM108,UP038 --unsafe-fixes --fix \"scripts/generate_thumbnails.py\" \"scripts/spnkr_get_refresh_token.py\" \"src/app/routing.py\")"
     ]
   }
 }

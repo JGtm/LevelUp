@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 import pytest
 
@@ -83,16 +84,72 @@ def test_sessions_columns_are_non_empty_for_loaded_rows(sessions_contract_db) ->
         conn.close()
 
 
-def test_cached_compute_sessions_db_returns_expected_contract(sessions_contract_db) -> None:
-    """Le calcul de sessions doit fournir les colonnes attendues et des labels cohérents."""
-    result = cached_compute_sessions_db(
-        db_path=str(sessions_contract_db),
-        xuid="x_me",
-        db_key=None,
-        include_firefight=True,
-        gap_minutes=120,
-        friends_xuids=None,
-    )
+def test_cached_compute_sessions_db_returns_expected_contract(tmp_path) -> None:
+    """Le calcul de sessions doit fournir les colonnes attendues et des labels cohérents (v5)."""
+    # Crée la structure v5 : shared_matches.duckdb + player stats.duckdb
+    shared_path = tmp_path / "shared_matches.duckdb"
+    t0 = datetime.now(timezone.utc) - timedelta(days=3)
+    shared_conn = duckdb.connect(str(shared_path))
+    try:
+        shared_conn.execute("""
+            CREATE TABLE match_registry (
+                match_id VARCHAR PRIMARY KEY,
+                start_time TIMESTAMPTZ,
+                is_firefight BOOLEAN DEFAULT FALSE
+            )
+        """)
+        shared_conn.execute("""
+            CREATE TABLE match_participants (
+                match_id VARCHAR NOT NULL,
+                xuid VARCHAR NOT NULL,
+                PRIMARY KEY (match_id, xuid)
+            )
+        """)
+        for mid, ts in [
+            ("m1", t0),
+            ("m2", t0 + timedelta(minutes=18)),
+            ("m3", t0 + timedelta(hours=6)),
+        ]:
+            shared_conn.execute("INSERT INTO match_registry VALUES (?, ?, FALSE)", [mid, ts])
+            shared_conn.execute("INSERT INTO match_participants VALUES (?, ?)", [mid, "x_me"])
+    finally:
+        shared_conn.close()
+
+    db_path = tmp_path / "stats.duckdb"
+    player_conn = duckdb.connect(str(db_path))
+    try:
+        player_conn.execute("""
+            CREATE TABLE player_match_enrichment (
+                match_id VARCHAR PRIMARY KEY,
+                teammates_signature VARCHAR,
+                session_id VARCHAR,
+                session_label VARCHAR
+            )
+        """)
+        for mid, sig, sid, slabel in [
+            ("m1", "a;b;c", "s1", "Session 1"),
+            ("m2", "a;b;c", "s1", "Session 1"),
+            ("m3", "a;d;e", "s2", "Session 2"),
+        ]:
+            player_conn.execute(
+                "INSERT INTO player_match_enrichment VALUES (?, ?, ?, ?)",
+                [mid, sig, sid, slabel],
+            )
+    finally:
+        player_conn.close()
+
+    with patch(
+        "src.utils.paths.get_shared_matches_path_from_player",
+        return_value=shared_path,
+    ):
+        result = cached_compute_sessions_db(
+            db_path=str(db_path),
+            xuid="x_me",
+            db_key=None,
+            include_firefight=True,
+            gap_minutes=120,
+            friends_xuids=None,
+        )
 
     assert not result.is_empty()
     assert ["match_id", "start_time", "session_id", "session_label"] == result.columns
