@@ -174,16 +174,16 @@ def get_playlist_group(playlist_name: str | None, pair_name: str | None) -> str:
     Returns:
         Clé du groupe (ex: "ranked", "arena", "tactical", "btb", "social", "fun").
     """
-    pn = (pair_name or "").strip()
-    pl = (playlist_name or "").strip()
+    pn = (pair_name or "").strip().lower()
+    pl = (playlist_name or "").strip().lower()
 
     for group_key, cfg in PLAYLIST_GROUPS.items():
-        # 1. Vérification des préfixes de pair_name (prioritaire)
+        # 1. Vérification des préfixes de pair_name (prioritaire) — insensible à la casse
         for prefix in cfg.pairs_prefixes:
-            if pn.startswith(prefix):
+            if pn.startswith(prefix.lower()):
                 return group_key
-        # 2. Vérification des noms de playlist exacts
-        if pl in cfg.playlist_names:
+        # 2. Vérification des noms de playlist exacts — insensible à la casse
+        if any(pl == pn_cfg.lower() for pn_cfg in cfg.playlist_names):
             return group_key
 
     return DEFAULT_PLAYLIST_GROUP

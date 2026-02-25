@@ -355,23 +355,20 @@ def calibrate_lusr_weights(
     is_better = (lambda s: s < best_score) if is_mae else (lambda s: s > best_score)
 
     weight_candidates = _generate_candidates(n_samples, rng_seed=rng_seed)
-    original_weights = _sr.COMPOSITE_WEIGHTS
 
     for i, weights in enumerate(weight_candidates):
         if verbose and i > 0 and i % 50 == 0:
             print(f"  [{i}/{len(weight_candidates)}] ...")
 
         try:
-            # Patch temporaire des poids dans le module skill_rating
-            _sr.COMPOSITE_WEIGHTS = weights
-
-            df_ratings = _sr.compute_skill_ratings_batch(df_matches, df_participants)
+            # Passer les poids directement sans muter le global (thread-safe)
+            df_ratings = _sr.compute_skill_ratings_batch(
+                df_matches, df_participants, weights=weights
+            )
 
         except Exception as exc:
             logger.debug("Erreur avec poids #%d: %s", i, exc)
             continue
-        finally:
-            _sr.COMPOSITE_WEIGHTS = original_weights
 
         if df_ratings.is_empty():
             continue
@@ -391,9 +388,6 @@ def calibrate_lusr_weights(
                 if is_mae
                 else (lambda s, ref=best_score: s > ref)
             )
-
-    # Garantir que les poids par défaut sont restaurés en cas d'exception
-    _sr.COMPOSITE_WEIGHTS = original_weights
 
     # Trier par score
     results.sort(key=lambda x: x["score"], reverse=not is_mae)

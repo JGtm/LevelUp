@@ -38,6 +38,7 @@ from src.analysis.skill_rating_config import (
     MIN_MATCHES_FOR_ACCURACY_DELTA,
     MIN_RATING,
     MIN_SIGMA,
+    PLAYLIST_GROUPS,
     TAU,
     get_playlist_group,
 )
@@ -165,8 +166,13 @@ def _w_win(t: float, eps: float) -> float:
     return v * (v + x)
 
 
-def _v_draw(t: float, eps: float) -> float:
-    """Facteur v pour le cas égalité."""
+def _v_draw(t: float, eps: float) -> float:  # pragma: no cover — non utilisé (v5.3)
+    """Facteur v pour le cas égalité — conservé comme référence TrueSkill 2.
+
+    .. deprecated::
+        Non appelé dans le calcul courant (Halo Infinite n'a pas de matchs
+        nuls vrais en compétitif). Archivé pour référence algorithmique.
+    """
     abs_t = abs(t)
     num = _standard_normal_pdf(eps - abs_t) - _standard_normal_pdf(-eps - abs_t)
     denom = _standard_normal_cdf(eps - abs_t) - _standard_normal_cdf(-eps - abs_t)
@@ -177,8 +183,12 @@ def _v_draw(t: float, eps: float) -> float:
     return num / denom
 
 
-def _w_draw(t: float, eps: float) -> float:
-    """Facteur w pour le cas égalité."""
+def _w_draw(t: float, eps: float) -> float:  # pragma: no cover — non utilisé (v5.3)
+    """Facteur w pour le cas égalité — conservé comme référence TrueSkill 2.
+
+    .. deprecated::
+        Non appelé dans le calcul courant. Archivé pour référence algorithmique.
+    """
     abs_t = abs(t)
     eps_m = eps - abs_t
     eps_p = -eps - abs_t
@@ -211,6 +221,8 @@ def compute_composite_score(
     teammate_avg_ke: float | None,
     enemy_avg_ke: float | None,
     avg_damage_eff: float | None = None,
+    *,
+    weights: dict[str, float] | None = None,
 ) -> float:
     """Calcule le score composite continu [0, 1] d'un match.
 
@@ -239,6 +251,9 @@ def compute_composite_score(
     """
     components: dict[str, float] = {}
     weights_used: dict[str, float] = {}
+    # Poids effectifs : permet à la calibration de passer ses propres poids
+    # sans muter le global COMPOSITE_WEIGHTS (thread-safe).
+    _w = weights if weights is not None else COMPOSITE_WEIGHTS
 
     # ── 1. Kills vs Expected ──
     kills = _safe_float(row.get("kills"))
@@ -254,7 +269,7 @@ def compute_composite_score(
             carry_adj = _clamp(carry_ratio, 0.5, 2.0)
             score = _clamp(score * (1.0 / carry_adj) + 0.5 * (1.0 - 1.0 / carry_adj), 0.0, 1.0)
         components["kills_vs_expected"] = score
-        weights_used["kills_vs_expected"] = COMPOSITE_WEIGHTS["kills_vs_expected"]
+        weights_used["kills_vs_expected"] = _w["kills_vs_expected"]
 
     # ── 2. Deaths vs Expected (inversé) ──
     deaths = _safe_float(row.get("deaths"))
@@ -263,7 +278,7 @@ def compute_composite_score(
         deaths_safe = max(1.0, deaths)
         score = _sigmoid_ratio(deaths_expected, deaths_safe)
         components["deaths_vs_expected"] = score
-        weights_used["deaths_vs_expected"] = COMPOSITE_WEIGHTS["deaths_vs_expected"]
+        weights_used["deaths_vs_expected"] = _w["deaths_vs_expected"]
 
     # ── 3. Win factor ──
     outcome = row.get("outcome")
@@ -276,7 +291,7 @@ def compute_composite_score(
         win_score = win_map.get(outcome_int)
         if win_score is not None:
             components["win_factor"] = win_score
-            weights_used["win_factor"] = COMPOSITE_WEIGHTS["win_factor"]
+            weights_used["win_factor"] = _w["win_factor"]
 
     # ── 4. Damage efficiency ──
     # Si avg_damage_eff fourni : delta vs historique personnel (élimine le biais
@@ -294,14 +309,14 @@ def compute_composite_score(
             else:
                 score_eff = raw_eff
             components["damage_efficiency"] = score_eff
-            weights_used["damage_efficiency"] = COMPOSITE_WEIGHTS["damage_efficiency"]
+            weights_used["damage_efficiency"] = _w["damage_efficiency"]
 
     # ── 5. Accuracy delta ──
     accuracy = _safe_float(row.get("accuracy"))
     if accuracy is not None and avg_accuracy is not None and avg_accuracy > 0:
         score = _sigmoid_ratio(accuracy, avg_accuracy)
         components["accuracy_delta"] = score
-        weights_used["accuracy_delta"] = COMPOSITE_WEIGHTS["accuracy_delta"]
+        weights_used["accuracy_delta"] = _w["accuracy_delta"]
 
     if not components:
         return 0.5  # Aucune donnée → résultat neutre
@@ -512,7 +527,9 @@ def _split_participants(
         match_participants: Tous les participants du match.
 
     Returns:
-        Tuple (teammates, enemies) — le joueur lui-même est exclu des coéquipiers.
+        Tuple (teammates, enemies).
+        Note : le joueur principal n'est PAS filtré des coéquipiers
+        (son xuid n'est pas connu ici).
     """
     if player_team_id is None:
         return [], match_participants
@@ -532,6 +549,7 @@ def compute_skill_ratings_batch(
     df_all_participants: pl.DataFrame,
     *,
     existing_states: dict[str, PlayerState] | None = None,
+    weights: dict[str, float] | None = None,
 ) -> pl.DataFrame:
     """Calcule skill_rating et skill_deviation pour chaque match du joueur.
 
@@ -569,6 +587,10 @@ def compute_skill_ratings_batch(
             }
         )
 
+    # Tri défensif : garantit l'ordre chronologique même si l'appelant ne l'a pas fait.
+    if "start_time" in df_matches.columns:
+        df_matches = df_matches.sort("start_time")
+
     # États par groupe — créés à la première occurrence via setdefault()
     states: dict[str, PlayerState] = existing_states or {}
 
@@ -584,8 +606,6 @@ def compute_skill_ratings_batch(
     ratings: list[float] = []
     deviations: list[float] = []
     groups: list[str] = []
-
-    from src.analysis.skill_rating_config import PLAYLIST_GROUPS
 
     for row in df_matches.iter_rows(named=True):
         match_id = row.get("match_id", "")
@@ -661,6 +681,7 @@ def compute_skill_ratings_batch(
             teammate_avg_ke,
             enemy_avg_ke,
             avg_damage_eff=avg_damage_eff,
+            weights=weights,
         )
 
         # ── Mise à jour TrueSkill (per-groupe) ──
