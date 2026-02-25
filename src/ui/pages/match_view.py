@@ -132,8 +132,8 @@ def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
 
     with col_info:
         # Label du tier
-        tier_display = tier_label or UNRANKED_LABEL
-        rating_type_badge = "CSR" if rating_type == "CSR" else "LUSR"
+        tier_display = html.escape(tier_label or UNRANKED_LABEL)
+        rating_type_badge = html.escape("CSR" if rating_type == "CSR" else "LUSR")
         st.markdown(
             f"<h3 style='margin:0'>{tier_display}</h3>"
             f"<small style='color:#888'>{rating_type_badge} • {rating_value:.0f}</small>",
@@ -156,12 +156,13 @@ def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
             if tier_obj and tier_obj.sub_tiers > 1:
                 tier_size = get_tier_size(rating_value)
                 sub_start = get_sub_tier_start(rating_value)
-                progress_val = min(1.0, max(0.0, (rating_value - sub_start) / tier_size))
-                st.progress(progress_val)
-                st.caption(
-                    f"{rating_value - sub_start:.0f} / {tier_size:.0f} pts "
-                    f"dans {tier_fr or tier_name or ''} {sub}"
-                )
+                if tier_size > 0:
+                    progress_val = min(1.0, max(0.0, (rating_value - sub_start) / tier_size))
+                    st.progress(progress_val)
+                    st.caption(
+                        f"{rating_value - sub_start:.0f} / {tier_size:.0f} pts "
+                        f"dans {tier_fr or tier_name or ''} {sub}"
+                    )
 
         if playlist_group:
             st.caption(t("mv_playlist_group_caption", group=playlist_group.capitalize()))
