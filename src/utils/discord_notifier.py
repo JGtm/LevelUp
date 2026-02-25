@@ -80,6 +80,7 @@ class LastMatchInfo:
     map_name: str = "—"
     playlist_name: str = "—"
     game_variant_name: str = "—"
+    pair_name: str = "—"
     is_ranked: bool = False
     start_time: datetime | None = None
     kills: int = 0
@@ -180,7 +181,8 @@ def fetch_last_match_info(xuid: str) -> LastMatchInfo | None:
                 mr.match_id,
                 COALESCE(mr.map_name,          mr.map_id,       '—') AS map_name,
                 COALESCE(mr.playlist_name,     '—')                  AS playlist_name,
-                COALESCE(mr.game_variant_name, mr.pair_name,    '—') AS game_variant_name,
+                COALESCE(mr.game_variant_name, '—')                  AS game_variant_name,
+                COALESCE(mr.pair_name,         '—')                  AS pair_name,
                 COALESCE(mr.is_ranked,         FALSE)                AS is_ranked,
                 mr.start_time,
                 COALESCE(mp.kills,   0) AS kills,
@@ -204,13 +206,14 @@ def fetch_last_match_info(xuid: str) -> LastMatchInfo | None:
             map_name=str(row[1] or "—"),
             playlist_name=str(row[2] or "—"),
             game_variant_name=str(row[3] or "—"),
-            is_ranked=bool(row[4]),
-            start_time=row[5],
-            kills=int(row[6] or 0),
-            deaths=int(row[7] or 0),
-            assists=int(row[8] or 0),
-            outcome=int(row[9] or 0),
-            score=int(row[10] or 0),
+            pair_name=str(row[4] or "—"),
+            is_ranked=bool(row[5]),
+            start_time=row[6],
+            kills=int(row[7] or 0),
+            deaths=int(row[8] or 0),
+            assists=int(row[9] or 0),
+            outcome=int(row[10] or 0),
+            score=int(row[11] or 0),
         )
     except Exception as exc:
         logger.debug(f"[Discord] fetch_last_match_info({xuid}): {exc}")
@@ -338,6 +341,25 @@ def _clean_game_variant(name: str) -> str:
     return name
 
 
+def _resolve_mode_label(pair_name: str, game_variant_name: str) -> str:
+    """Résout le libellé du mode de jeu depuis pair_name (prioritaire) ou game_variant_name.
+
+    Utilise normalize_pair_name_to_mode_ui pour traduire le pair_name en libellé
+    lisible (ex: "Arena:Slayer on Bazaar" → "Arène : Assassin").
+    Fallback sur game_variant_name nettoyé si le pair_name ne peut pas être résolu.
+    """
+    if pair_name and pair_name != "—":
+        try:
+            from src.analysis.mode_categories import normalize_pair_name_to_mode_ui
+
+            mode = normalize_pair_name_to_mode_ui(pair_name)
+            if mode:
+                return mode
+        except Exception:
+            pass
+    return _clean_game_variant(game_variant_name)
+
+
 def _format_duration(started_at: datetime, finished_at: datetime) -> str:
     """Formate la durée entre deux datetimes en chaîne lisible."""
     total_secs = max(0, int((finished_at - started_at).total_seconds()))
@@ -364,9 +386,15 @@ def _format_player_field(
 
     # ── Résultat de l'opération ──────────────────────────────────────────────
     if op_type.startswith("sync"):
-        lines.append(f"**+{player.matches_synced}** match(s) synchronisé(s)")
+        if player.matches_synced == 0:
+            lines.append("Déjà à jour")
+        else:
+            lines.append(f"**+{player.matches_synced}** match(s) synchronisé(s)")
     else:
-        lines.append(f"**{player.matches_synced}** match(s) traité(s)")
+        if player.matches_synced == 0:
+            lines.append("Aucun match à retraiter")
+        else:
+            lines.append(f"**{player.matches_synced}** match(s) retraité(s)")
 
     # ── Complétude des données ───────────────────────────────────────────────
     if player.error:
@@ -384,7 +412,7 @@ def _format_player_field(
         fda = f"{lm.kills}F / {lm.deaths}D / {lm.assists}A"
         _st = _to_local(lm.start_time) if lm.start_time else None
         time_str = _st.strftime("%d/%m %H:%M") if _st else "—"
-        variant = _clean_game_variant(lm.game_variant_name)
+        variant = _resolve_mode_label(lm.pair_name, lm.game_variant_name)
         playlist = _localize_playlist(lm.playlist_name)
         lines.append(
             f"**Dernier match** ({time_str}){ranked_tag}\n"
@@ -436,10 +464,17 @@ def build_embed_payload(
     t_end = _to_local(finished_at).strftime("%H:%M:%S")
     total_new = sum(p.matches_synced for p in players)
 
+    if operation.startswith("sync"):
+        matches_str = (
+            f"+{total_new} match(s) synchronisé(s)" if total_new > 0 else "Aucun nouveau match"
+        )
+    else:
+        matches_str = f"{total_new} match(s) retraité(s)" if total_new > 0 else "Tout déjà à jour"
+
     description = (
         f"**{status_icon}  {op_label}** terminée en **{duration}**\n"
         f"🕐  `{t_start}`  →  `{t_end}`\n"
-        f"👥  {len(players)} joueur(s)  ·  {total_new} match(s) traité(s)"
+        f"👥  {len(players)} joueur(s)  ·  {matches_str}"
     )
 
     # Champs par joueur (max 25 selon l'API Discord)

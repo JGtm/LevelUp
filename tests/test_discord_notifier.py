@@ -177,8 +177,20 @@ class TestFormatPlayerField:
         p = _player(matches_synced=8)
         name, value = _format_player_field(p, "backfill")
         assert "8" in value
-        assert "traité" in value
+        assert "retraité" in value
         assert "+8" not in value
+
+    def test_sync_zero_matches_shows_up_to_date(self):
+        p = _player(matches_synced=0)
+        _, value = _format_player_field(p, "sync_delta")
+        assert "Déjà à jour" in value
+        assert "+0" not in value
+
+    def test_backfill_zero_matches_shows_nothing_to_do(self):
+        p = _player(matches_synced=0)
+        _, value = _format_player_field(p, "backfill")
+        assert "Aucun match à retraiter" in value
+        assert "0 match" not in value
 
     def test_complete_data_shows_checkmark(self):
         p = _player(missing=0)
@@ -302,6 +314,16 @@ class TestBuildEmbedPayload:
         embed = self._build(players)["embeds"][0]
         assert "8 match" in embed["description"]
 
+    def test_description_zero_sync_shows_aucun_nouveau(self):
+        players = [_player(matches_synced=0)]
+        embed = self._build(players, operation="sync_delta")["embeds"][0]
+        assert "Aucun nouveau match" in embed["description"]
+
+    def test_description_zero_backfill_shows_tout_a_jour(self):
+        players = [_player(matches_synced=0)]
+        embed = self._build(players, operation="backfill")["embeds"][0]
+        assert "Tout déjà à jour" in embed["description"]
+
     def test_fields_one_per_player(self):
         players = [_player(), _player(gamertag="B"), _player(gamertag="C")]
         embed = self._build(players)["embeds"][0]
@@ -419,14 +441,16 @@ class TestSendDiscordNotification:
 
     def test_returns_true_on_204(self):
         with patch(
-            "urllib.request.urlopen", side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204)
+            "urllib.request.urlopen",
+            side_effect=lambda _r, timeout=None: _mock_urlopen_ok(204),  # noqa: ARG005
         ):
             result = send_discord_notification(self.SIMPLE_PAYLOAD, _WEBHOOK)
         assert result is True
 
     def test_returns_true_on_200(self):
         with patch(
-            "urllib.request.urlopen", side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(200)
+            "urllib.request.urlopen",
+            side_effect=lambda _r, timeout=None: _mock_urlopen_ok(200),  # noqa: ARG005
         ):
             result = send_discord_notification(self.SIMPLE_PAYLOAD, _WEBHOOK)
         assert result is True
