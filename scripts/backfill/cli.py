@@ -416,6 +416,32 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Force le rechargement des team scores même s'ils sont déjà présents",
     )
 
+    # ── Mode category (match_registry — local, sans API) ──────────────────
+    parser.add_argument(
+        "--mode-category",
+        action="store_true",
+        help=(
+            "Recalcule mode_category dans match_registry depuis pair_name "
+            "(local, sans appel API). Corrige les ~1289 matchs avec mode_category=NULL."
+        ),
+    )
+    parser.add_argument(
+        "--force-mode-category",
+        action="store_true",
+        help="Force le recalcul de mode_category pour TOUS les matchs (même déjà renseignés)",
+    )
+
+    # ── Nettoyage structurel des DBs joueurs ──────────────────────────────
+    parser.add_argument(
+        "--cleanup-player-dbs",
+        action="store_true",
+        help=(
+            "Supprime les vues cassées (v_highlight_events, v_match_participants, "
+            "v_match_stats, v_medals_earned) et tables legacy (match_participants) "
+            "dans chaque stats.duckdb joueur. Opération locale, sans API."
+        ),
+    )
+
     # ── Groupe Core Stats (v5.2) ───────────────────────────────────────────
     parser.add_argument(
         "--core-stats",
@@ -504,11 +530,29 @@ Exemples:
     # Backfill le CSR depuis l'API (matchs classés)
     python scripts/backfill_data.py --player JGtm --csr
 
+    # LUSR + CSR en une seule commande (option recommandée)
+    python scripts/backfill_data.py --player JGtm --skill-rank
+
+    # Tout recalculer depuis zéro (LUSR + CSR)
+    python scripts/backfill_data.py --player JGtm --force-skill-rank
+
     # Backfill pour tous les joueurs
     python scripts/backfill_data.py --all --all-data
 
     # Mode dry-run (liste seulement)
     python scripts/backfill_data.py --player JGtm --dry-run
+
+    # Recalculer mode_category dans match_registry (local, sans API — ~1289 matchs)
+    python scripts/backfill_data.py --mode-category
+
+    # Recalculer mode_category pour TOUS les matchs
+    python scripts/backfill_data.py --force-mode-category
+
+    # Nettoyer vues cassées et tables legacy dans les DBs joueurs
+    python scripts/backfill_data.py --cleanup-player-dbs
+
+    # Backfill participants avec stats NULL (274 matchs, besoin API)
+    python scripts/backfill_data.py --all --participants --force-participants
 
 Workaround OR — Exécution par étapes:
     python scripts/backfill_data.py --player JGtm --medals

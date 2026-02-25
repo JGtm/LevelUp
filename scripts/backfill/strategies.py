@@ -240,20 +240,12 @@ async def fetch_current_csr_for_player(
         les playlists où le joueur a un historique (all_time_max > 0).
     """
     from datetime import datetime, timezone
+    from src.data.sync.migrations import ensure_skill_history_table
 
     results: dict[str, Any] = {}
 
-    # S'assurer que skill_history existe
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS skill_history (
-            playlist_id    VARCHAR,
-            recorded_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            csr            INTEGER,
-            tier           VARCHAR,
-            division       INTEGER,
-            matches_played INTEGER
-        )
-    """)
+    # S'assurer que skill_history existe (DDL centralisé dans migrations.py)
+    ensure_skill_history_table(conn)
 
     now = datetime.now(timezone.utc)
 
@@ -542,6 +534,213 @@ def compute_lusr_for_player(
 
     except Exception as e:
         logger.warning(f"Erreur compute_lusr_for_player : {e}")
+        return 0
+    finally:
+        if _owned_shared and shared_conn is not None:
+            with contextlib.suppress(Exception):
+                shared_conn.close()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CSR par match — backfill depuis l'API skill (v5.3)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def backfill_csr_for_player(
+    conn: Any,
+    db_path: Any,
+    xuid: str,
+    api_client: Any,
+    *,
+    force: bool = False,
+    shared_conn: Any | None = None,
+) -> int:
+    """Backfill le CSR (Competitive Skill Rating) match par match depuis l'API skill.
+
+    Pour chaque match classé du joueur, appelle ``get_skill_stats`` et extrait
+    ``PostMatchCsr`` depuis ``RankRecap``. Écrit dans ``match_skill_rank`` avec
+    ``rating_type = 'CSR'``.
+
+    Un match ne peut avoir qu'un seul rating (PK ``match_id`` exclusive). Si le match
+    a déjà un LUSR, il sera remplacé par le CSR (plus fiable car fourni par Halo).
+
+    Args:
+        conn: Connexion DuckDB vers stats.duckdb du joueur.
+        db_path: Chemin vers la DB joueur (utilisé pour dériver shared si shared_conn=None).
+        xuid: XUID du joueur.
+        api_client: Instance ``SPNKrAPIClient`` déjà authentifiée.
+        force: Si True, re-fetche le CSR même si déjà présent.
+        shared_conn: Connexion vers shared_matches.duckdb (ouverte si None).
+
+    Returns:
+        Nombre de matchs écrits dans match_skill_rank.
+    """
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    import duckdb
+
+    from src.analysis.skill_rating_config import format_tier_label, get_playlist_group, get_tier_for_rating
+    from src.data.sync.migrations import ensure_match_skill_rank_table
+    from src.data.sync.transformers import transform_all_skill_stats
+
+    # Ouvrir shared_conn si non fournie
+    _owned_shared = False
+    if shared_conn is None:
+        try:
+            shared_path = (
+                Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
+            )
+            if not shared_path.exists():
+                logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
+                return 0
+            shared_conn = duckdb.connect(str(shared_path), read_only=True)
+            _owned_shared = True
+        except Exception as e:
+            logger.warning(f"Impossible d'ouvrir shared_matches.duckdb: {e}")
+            return 0
+
+    try:
+        ensure_match_skill_rank_table(conn)
+
+        # 1. Charger les matchs classés du joueur
+        df_ranked = shared_conn.execute(
+            """
+            SELECT mr.match_id, mr.start_time, mr.playlist_name, mr.pair_name
+            FROM match_registry mr
+            JOIN match_participants mp ON mr.match_id = mp.match_id
+            WHERE mp.xuid = ?
+              AND COALESCE(mr.is_ranked, FALSE) = TRUE
+              AND mr.start_time IS NOT NULL
+            ORDER BY mr.start_time ASC
+            """,
+            [xuid],
+        ).fetchall()
+
+        if not df_ranked:
+            logger.info("backfill_csr_for_player : aucun match classé trouvé")
+            return 0
+
+        # 2. Identifier les matchs déjà traités (mode incrémental)
+        existing_csr_ids: set[str] = set()
+        if not force:
+            try:
+                rows = conn.execute(
+                    "SELECT match_id FROM match_skill_rank WHERE rating_type = 'CSR'"
+                ).fetchall()
+                existing_csr_ids = {r[0] for r in rows}
+            except Exception:
+                existing_csr_ids = set()
+
+        xuid_int: list[int] = []
+        try:
+            xuid_int = [int(xuid)]
+        except (ValueError, TypeError):
+            pass
+        if not xuid_int:
+            logger.warning(f"XUID invalide pour CSR backfill: {xuid!r}")
+            return 0
+
+        now = datetime.now(timezone.utc)
+        updates = 0
+        prev_csr: float | None = None
+
+        for match_id, start_time, playlist_name, pair_name in df_ranked:
+            if not force and match_id in existing_csr_ids:
+                continue
+
+            # 3. Appel API skill pour ce match
+            try:
+                skill_json = await api_client.get_skill_stats(match_id, xuid_int)
+            except Exception as e:
+                logger.debug(f"CSR API error match {match_id}: {e}")
+                continue
+
+            if not skill_json:
+                logger.debug(f"Pas de skill_json pour match {match_id}")
+                continue
+
+            # 4. Extraire le CSR du joueur depuis transform_all_skill_stats
+            skill_updates = transform_all_skill_stats(skill_json, match_id)
+            player_skill = next(
+                (u for u in skill_updates if u.xuid == xuid), None
+            )
+
+            if player_skill is None or player_skill.post_match_csr is None:
+                logger.debug(f"Pas de CSR dans skill_json pour match {match_id} xuid={xuid}")
+                continue
+
+            csr_value: float = player_skill.post_match_csr
+            csr_tier_raw: str | None = player_skill.csr_tier
+            csr_sub_raw: int | None = player_skill.csr_sub_tier
+
+            # 5. Tier label depuis config
+            tier_obj, sub = get_tier_for_rating(csr_value)
+            tier_name = csr_tier_raw or (tier_obj.name if tier_obj else None)
+            tier_fr = tier_obj.name_fr if tier_obj else None
+            tier_label = format_tier_label(csr_value) if tier_obj else None
+            sub_tier = csr_sub_raw if csr_sub_raw is not None else (sub or 0)
+
+            # Delta CSR vs match précédent
+            delta: float | None = None
+            if prev_csr is not None:
+                delta = csr_value - prev_csr
+            prev_csr = csr_value
+
+            pg = get_playlist_group(
+                str(playlist_name) if playlist_name else None,
+                str(pair_name) if pair_name else None,
+            )
+
+            # 6. UPSERT dans match_skill_rank (rating_type = 'CSR')
+            conn.execute(
+                """
+                INSERT INTO match_skill_rank
+                    (match_id, rating_type, rating_value, rating_deviation,
+                     tier, tier_fr, sub_tier, tier_label,
+                     rating_delta, playlist_group,
+                     start_time, created_at, updated_at)
+                VALUES (?, 'CSR', ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (match_id) DO UPDATE SET
+                    rating_type    = 'CSR',
+                    rating_value   = EXCLUDED.rating_value,
+                    tier           = EXCLUDED.tier,
+                    tier_fr        = EXCLUDED.tier_fr,
+                    sub_tier       = EXCLUDED.sub_tier,
+                    tier_label     = EXCLUDED.tier_label,
+                    rating_delta   = EXCLUDED.rating_delta,
+                    playlist_group = EXCLUDED.playlist_group,
+                    start_time     = COALESCE(match_skill_rank.start_time, EXCLUDED.start_time),
+                    updated_at     = EXCLUDED.updated_at
+                """,
+                (
+                    match_id,
+                    csr_value,
+                    tier_name,
+                    tier_fr,
+                    sub_tier,
+                    tier_label,
+                    delta,
+                    pg,
+                    start_time,
+                    now,
+                    now,
+                ),
+            )
+            updates += 1
+            delta_str = f"{delta:.0f}" if delta is not None else "None"
+            logger.debug(
+                f"CSR match {match_id}: {tier_name} {sub_tier} ({csr_value:.0f}) delta={delta_str}"
+            )
+
+        if updates:
+            conn.commit()
+            logger.info(f"CSR : {updates} matchs écrits dans match_skill_rank")
+
+        return updates
+
+    except Exception as e:
+        logger.warning(f"Erreur backfill_csr_for_player : {e}")
         return 0
     finally:
         if _owned_shared and shared_conn is not None:
@@ -1217,3 +1416,135 @@ def backfill_citations(
 
     logger.info(f"✅ {count} match(s) traités pour les citations")
     return count
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mode category (match_registry — local, sans API)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def backfill_mode_category(shared_conn: Any, *, force: bool = False) -> int:
+    """Recalcule ``mode_category`` dans ``match_registry`` depuis ``pair_name``.
+
+    Opération purement locale : aucun appel API. Utilise
+    ``infer_custom_category_from_pair_name`` sur les ``pair_name`` déjà
+    stockés en base.
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        force: Si True, recalcule pour TOUS les matchs (même ceux déjà renseignés).
+
+    Returns:
+        Nombre de matchs mis à jour.
+    """
+    from src.analysis.mode_categories import infer_custom_category_from_pair_name
+
+    where = "" if force else "WHERE mode_category IS NULL"
+    rows = shared_conn.execute(
+        f"SELECT match_id, pair_name FROM match_registry {where} ORDER BY start_time DESC"
+    ).fetchall()
+
+    if not rows:
+        logger.info("Aucun match avec mode_category manquant")
+        return 0
+
+    logger.info(f"mode_category : {len(rows)} match(s) à recalculer (force={force})")
+    count = 0
+    for match_id, pair_name in rows:
+        category = infer_custom_category_from_pair_name(pair_name)
+        if not category:
+            continue
+        shared_conn.execute(
+            "UPDATE match_registry SET mode_category = ?, updated_at = CURRENT_TIMESTAMP WHERE match_id = ?",
+            (category, match_id),
+        )
+        count += 1
+
+    shared_conn.commit()
+    logger.info(f"✅ mode_category : {count}/{len(rows)} matchs mis à jour")
+    return count
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Nettoyage structurel des DBs joueurs (vues cassées + tables legacy)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def cleanup_player_dbs_legacy(players_dir: str | Any = "data/players") -> dict[str, int]:
+    """Supprime les vues cassées et tables legacy dans chaque stats.duckdb joueur.
+
+    Problèmes corrigés :
+    - 4 vues (``v_highlight_events``, ``v_match_participants``, ``v_match_stats``,
+      ``v_medals_earned``) référencent des tables supprimées lors de la migration v5.1.
+    - Table ``match_participants`` legacy encore présente dans certains joueurs
+      (données centralisées dans shared_matches.duckdb depuis v5.1).
+
+    Args:
+        players_dir: Dossier racine des joueurs (``data/players/``).
+
+    Returns:
+        Dict ``{gamertag: nb_ops}`` avec le nombre d'objets supprimés par joueur.
+    """
+    import os
+
+    import duckdb
+
+    from pathlib import Path
+
+    players_dir = Path(players_dir)
+    broken_views = [
+        "v_highlight_events",
+        "v_match_participants",
+        "v_match_stats",
+        "v_medals_earned",
+    ]
+    # Tables legacy présentes dans les stats.duckdb mais centralisées dans shared
+    legacy_tables = ["match_participants"]
+
+    results: dict[str, int] = {}
+
+    for gt in sorted(os.listdir(players_dir)):
+        db_path = players_dir / gt / "stats.duckdb"
+        if not db_path.exists():
+            continue
+        ops = 0
+        try:
+            con = duckdb.connect(str(db_path), read_only=False)
+            existing_tables = {
+                r[0]
+                for r in con.execute(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema='main'"
+                ).fetchall()
+            }
+            existing_views = {
+                r[0]
+                for r in con.execute(
+                    "SELECT table_name FROM information_schema.views WHERE table_schema='main'"
+                ).fetchall()
+            }
+
+            for view in broken_views:
+                if view in existing_views:
+                    con.execute(f"DROP VIEW IF EXISTS {view}")
+                    logger.info(f"  [{gt}] DROP VIEW {view}")
+                    ops += 1
+
+            for table in legacy_tables:
+                if table in existing_tables:
+                    row_count = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                    con.execute(f"DROP TABLE IF EXISTS {table}")
+                    logger.info(f"  [{gt}] DROP TABLE {table} ({row_count} lignes legacy supprimées)")
+                    ops += 1
+
+            con.commit()
+            con.close()
+            results[gt] = ops
+            if ops:
+                logger.info(f"  ✅ {gt}: {ops} objet(s) nettoyé(s)")
+            else:
+                logger.debug(f"  {gt}: rien à nettoyer")
+        except Exception as e:
+            logger.error(f"  Erreur cleanup {gt}: {e}")
+            results[gt] = -1
+
+    return results

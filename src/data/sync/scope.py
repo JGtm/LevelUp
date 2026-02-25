@@ -60,9 +60,10 @@ _FORCE_MAP: dict[str, str] = {
     "force_core_stats": "core_stats",
     # ── PVE v5.2 ──
     "force_pve_stats": "pve_stats",
-    # ── LUSR / CSR v5.2 ──
+    # ── LUSR / CSR / Skill Rank v5.3 ──
     "force_lusr": "lusr",
     "force_csr": "csr",
+    "force_skill_rank": "skill_rank",
 }
 
 # Champs activés par ``all_data``.  Listés explicitement pour ne pas
@@ -110,10 +111,11 @@ _ALL_DATA_FIELDS: tuple[str, ...] = (
     "core_stats",
     # ── PVE v5.2 ──
     "pve_stats",
-    # ── LUSR / CSR v5.2 ──
+    # ── LUSR / CSR / Skill Rank v5.3 ──
     "lusr",
     "csr",
-    "fetch_csr",
+    "skill_rank",
+    # Note : fetch_csr est un snapshot one-shot, non activé par --all-data
 )
 
 # Mapping champ → clé pour ``requested_types`` (bitmask backfill_completed).
@@ -137,7 +139,8 @@ _REQUESTED_TYPE_MAP: dict[str, str] = {
     "participants_avg_life": "participants_avg_life",
     # ── PVE stats (v5.2) ──
     "pve_stats": "pve_stats",
-    # ── CSR (v5.2) — bitmask backfill_completed sur match_registry ──
+    # ── LUSR / CSR (v5.3) — bitmask backfill_completed sur match_registry ──
+    "lusr": "lusr",
     "csr": "csr",
 }
 
@@ -264,12 +267,14 @@ class SyncScope:
     # ── Flags force PVE ──────────────────────────────────────────────────
     force_pve_stats: bool = False  # Re-traiter même si MatchBits.PVE_STATS déjà posé
 
-    # ── LUSR / CSR — v5.2 ────────────────────────────────────────────────
+    # ── LUSR / CSR / Skill Rank — v5.3 ──────────────────────────────
     lusr: bool = False  # Calculer le LUSR pour les matchs non classés (local-only)
     force_lusr: bool = False  # Recalculer le LUSR depuis zéro
     csr: bool = False  # Backfill CSR depuis l'API pour les matchs classés
     force_csr: bool = False  # Forcer le re-fetch CSR pour tous les matchs classés
     fetch_csr: bool = False  # Snapshot CSR actuel via get_playlist_csr → skill_history
+    skill_rank: bool = False  # Alias unifié : lusr=True + csr=True (v5.3)
+    force_skill_rank: bool = False  # force_lusr=True + force_csr=True (v5.3)
 
     # ── Méta-flag ────────────────────────────────────────────────────────
     all_data: bool = False
@@ -360,6 +365,14 @@ class SyncScope:
             self.deaths_expected = True
             self.assists_expected = True
 
+        # ── 3b. skill_rank = lusr + csr ──
+        if self.skill_rank:
+            self.lusr = True
+            self.csr = True
+        if self.force_skill_rank:
+            self.force_lusr = True
+            self.force_csr = True
+
         # ── 4. force_X implique X (toujours en dernier) ──
         for force_field, data_field in _FORCE_MAP.items():
             if getattr(self, force_field, False) and not getattr(self, data_field, False):
@@ -396,6 +409,7 @@ class SyncScope:
             "participants_enrich",
             "csr",  # re-fetch CSR nécessite l'API skill
             "fetch_csr",  # snapshot CSR via get_playlist_csr
+            "skill_rank",  # skill_rank implique csr (côté API)
         }
         return any(getattr(self, f) for f in api_fields)
 
@@ -403,7 +417,8 @@ class SyncScope:
     def needs_local_only(self) -> bool:
         """True si des traitements locaux (sans API) sont demandés."""
         return any(
-            getattr(self, f) for f in ("killer_victim", "end_time", "sessions", "citations", "lusr")
+            getattr(self, f)
+            for f in ("killer_victim", "end_time", "sessions", "citations", "lusr", "skill_rank")
         )
 
     @property

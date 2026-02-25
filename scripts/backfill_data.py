@@ -118,6 +118,41 @@ def main() -> int:
             traceback.print_exc()
         return 0
 
+    # --mode-category est global (local, sans API)
+    mode_category = getattr(args, "mode_category", False)
+    force_mode_category = getattr(args, "force_mode_category", False)
+    if mode_category or force_mode_category:
+        try:
+            from scripts.backfill.strategies import backfill_mode_category
+
+            n = backfill_mode_category(_open_shared_conn(), force=force_mode_category)
+            logger.info(f"mode_category : {n} match(s) mis à jour")
+        except Exception as e:
+            logger.error(f"Erreur --mode-category : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
+    # --cleanup-player-dbs est global (local, sans API)
+    cleanup_player_dbs = getattr(args, "cleanup_player_dbs", False)
+    if cleanup_player_dbs:
+        try:
+            from scripts.backfill.strategies import cleanup_player_dbs_legacy
+
+            results = cleanup_player_dbs_legacy()
+            total = sum(v for v in results.values() if v > 0)
+            logger.info(f"Nettoyage DBs joueurs : {total} objet(s) supprimé(s) au total")
+            for gt, ops in results.items():
+                if ops > 0:
+                    logger.info(f"  {gt}: {ops} objet(s)")
+        except Exception as e:
+            logger.error(f"Erreur --cleanup-player-dbs : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
     # Validation
     if not args.all and not args.player:
         parser.error("--player ou --all est requis")

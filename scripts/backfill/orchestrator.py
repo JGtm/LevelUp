@@ -90,6 +90,7 @@ def _empty_result() -> dict[str, int]:
         "pve_stats_inserted": 0,
         "lusr_computed": 0,
         "csr_fetched": 0,
+        "csr_backfilled": 0,
     }
 
 
@@ -251,7 +252,11 @@ async def backfill_player_data(
     force_participants_enrich = scope.force_participants_enrich
     lusr = scope.lusr
     force_lusr = scope.force_lusr
+    csr = scope.csr
+    force_csr = scope.force_csr
     fetch_csr = scope.fetch_csr
+    skill_rank = scope.skill_rank
+    force_skill_rank = scope.force_skill_rank
 
     # Vérifier qu'au moins une option est activée
     if not scope.has_any_option():
@@ -347,8 +352,8 @@ async def backfill_player_data(
             return result
 
         # Cas : pas de matchs API mais backfill local à faire
-        needs_local_only = killer_victim or end_time or sessions or citations or lusr
-        needs_api = bool(match_ids) or fetch_csr
+        needs_local_only = killer_victim or end_time or sessions or citations or lusr or skill_rank
+        needs_api = bool(match_ids) or fetch_csr or csr or skill_rank
 
         # Participants-enrich : mode autonome sur shared (pas besoin de match_ids détectés)
         if participants_enrich:
@@ -392,11 +397,11 @@ async def backfill_player_data(
                 end_time=end_time,
                 sessions=sessions,
                 citations=citations,
-                lusr=lusr,
+                lusr=lusr or skill_rank,
                 force_end_time=force_end_time,
                 force_sessions=force_sessions,
                 force_citations=force_citations,
-                force_lusr=force_lusr,
+                force_lusr=force_lusr or force_skill_rank,
                 dry_run=dry_run,
             )
             if participants_enrich:
@@ -1179,6 +1184,25 @@ async def _backfill_with_api(
         n = backfill_citations(conn, db_path, xuid, force=force_citations)
         totals["citations_computed"] = n
 
+    # ── LUSR (calcul local, possible après API) ───────────────────────────────
+    lusr_flag = getattr(scope, "lusr", False) or getattr(scope, "skill_rank", False)
+    force_lusr_flag = getattr(scope, "force_lusr", False) or getattr(scope, "force_skill_rank", False)
+    if lusr_flag:
+        from scripts.backfill.strategies import compute_lusr_for_player
+
+        logger.info("Calcul du LUSR (LevelUp Skill Rank) pour les matchs non classés...")
+        # Ouvrir shared_conn si fermé (citations l'a peut-être fermé)
+        _lusr_shared = _get_shared_connection(db_path) if shared_conn is None else shared_conn
+        n = compute_lusr_for_player(
+            conn, db_path, xuid, force=force_lusr_flag, shared_conn=_lusr_shared
+        )
+        if _lusr_shared is not shared_conn:
+            with contextlib.suppress(Exception):
+                _lusr_shared.close()
+        totals["lusr_computed"] = n
+        if n > 0:
+            logger.info(f"✅ LUSR calculé pour {n} match(s)")
+
     # ── Snapshot CSR (fetch_csr) ─────────────────────────────────────────────
     fetch_csr_flag = getattr(scope, "fetch_csr", False)
     if fetch_csr_flag:
@@ -1193,6 +1217,29 @@ async def _backfill_with_api(
         totals["csr_fetched"] = len(csr_results)
         for pl_name, info in csr_results.items():
             logger.info(f"  {pl_name}: {info['tier']} {info['sub_tier']} (CSR {info['csr']})")
+
+    # ── Backfill CSR par match (csr) ─────────────────────────────────────────
+    csr_flag = getattr(scope, "csr", False)
+    force_csr_flag = getattr(scope, "force_csr", False)
+    if csr_flag:
+        from scripts.backfill.strategies import backfill_csr_for_player
+
+        logger.info(f"Backfill CSR par match pour {gamertag} ({xuid})...")
+        async with SPNKrAPIClient(
+            tokens=tokens,
+            requests_per_second=requests_per_second,
+        ) as csr_api:
+            n_csr = await backfill_csr_for_player(
+                conn,
+                db_path,
+                xuid,
+                csr_api,
+                force=force_csr_flag,
+                shared_conn=shared_conn if shared_conn is not None else None,
+            )
+        totals["csr_backfilled"] = n_csr
+        if n_csr > 0:
+            logger.info(f"✅ CSR backfill : {n_csr} match(s) écrits dans match_skill_rank")
 
     # Fermer shared_conn si on l'a ouvert et pas encore fermé
     if shared_conn is not None and owns_shared_conn:
