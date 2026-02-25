@@ -6,6 +6,7 @@ de progression dans le temps.
 
 from __future__ import annotations
 
+import html
 import logging
 
 import plotly.graph_objects as go
@@ -25,7 +26,7 @@ from src.ui.components.career_progress_circle import (
     create_hero_progress_gauge,
 )
 from src.ui.player_assets import ensure_local_image_path
-from src.ui.streamlit_modern import fragment_if_available
+from src.ui.streamlit_modern import fragment_if_available, PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
 from src.visualization.theme import apply_halo_plot_style
 
 logger = logging.getLogger(__name__)
@@ -332,7 +333,7 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
                 pg_icon = _PG_ICONS.get(pg, "🎮")
                 st.markdown(
                     f"<div style='text-align:center;font-weight:600;margin-bottom:4px'>"
-                    f"{pg_icon} {pg_label}</div>",
+                    f"{html.escape(pg_icon)} {html.escape(pg_label)}</div>",
                     unsafe_allow_html=True,
                 )
 
@@ -348,7 +349,7 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
                 # ── Tier label ──
                 st.markdown(
                     f"<div style='text-align:center;font-size:1.05em;font-weight:700;"
-                    f"margin:4px 0'>{tier_label}</div>",
+                    f"margin:4px 0'>{html.escape(tier_label)}</div>",
                     unsafe_allow_html=True,
                 )
 
@@ -359,7 +360,7 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
                     f"<div style='text-align:center;margin:2px 0'>"
                     f"<span style='background:{badge_bg};color:{badge_fg};"
                     f"padding:1px 7px;border-radius:10px;font-size:0.72em;"
-                    f"font-weight:600'>{r_type}</span>"
+                    f"font-weight:600'>{html.escape(r_type)}</span>"
                     f"&nbsp;<span style='font-size:1.1em;font-weight:700'>"
                     f"{r_value:.0f}</span></div>",
                     unsafe_allow_html=True,
@@ -500,14 +501,14 @@ def render_career_page(
         # Métriques
         m1, m2 = st.columns(2)
         with m1:
-            st.metric("Rang", f"{rank_number} / 272")
-            st.metric("XP total", f"{xp_total:,}")
+            st.metric(t("career_metric_rank"), f"{rank_number} / 272")
+            st.metric(t("career_metric_xp_total"), f"{xp_total:,}")
         with m2:
             if is_max:
                 st.metric(t("career_rank_max"), t("career_rank_max"))
             else:
-                st.metric("XP actuel", f"{current_xp:,}")
-                st.metric("XP prochain rang", f"{xp_for_next:,}")
+                st.metric(t("career_metric_current_xp"), f"{current_xp:,}")
+                st.metric(t("career_metric_next_rank_xp"), f"{xp_for_next:,}")
 
     with col_gauge:
         # Gauge de progression
@@ -521,7 +522,7 @@ def render_career_page(
             )
             if gauge_fig is not None:
                 st.plotly_chart(
-                    gauge_fig, key="career_gauge", width="stretch", config={"staticPlot": True}
+                    gauge_fig, key="career_gauge", width="stretch", config=PLOTLY_STATIC_CONFIG
                 )
             else:
                 st.info(t("career_gauge_generate_error"))
@@ -541,13 +542,13 @@ def render_career_page(
     with col_hero_metrics:
         m1, m2, m3, m4 = st.columns(4)
         with m1:
-            st.metric("XP gagnée", f"{xp_total:,}")
+            st.metric(t("career_metric_xp_earned"), f"{xp_total:,}")
         with m2:
-            st.metric("XP restante", f"{xp_remaining:,}")
+            st.metric(t("career_metric_xp_remaining"), f"{xp_remaining:,}")
         with m3:
-            st.metric("Total requis", f"{XP_HERO_TOTAL:,}")
+            st.metric(t("career_metric_xp_required"), f"{XP_HERO_TOTAL:,}")
         with m4:
-            st.metric("Rang", f"{rank_number} / {RANK_MAX}")
+            st.metric(t("career_metric_rank"), f"{rank_number} / {RANK_MAX}")
 
     with col_hero_gauge:
         try:
@@ -561,7 +562,7 @@ def render_career_page(
                 hero_gauge,
                 key="hero_progress_gauge",
                 width="stretch",
-                config={"staticPlot": True},
+                config=PLOTLY_STATIC_CONFIG,
             )
         except Exception as e:
             st.warning(t("career_hero_progress_error", error=e))
@@ -579,7 +580,7 @@ def render_career_page(
                     history_fig,
                     key="career_xp_history",
                     width="stretch",
-                    config={"displayModeBar": False},
+                    config=PLOTLY_CLEAN_CONFIG,
                 )
             else:
                 st.info(t("career_rank_history_no_data"))

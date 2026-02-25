@@ -150,6 +150,35 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Impossible d'afficher le graphe : {error}",
         "en": "Unable to display the chart: {error}",
     },
+    # ── Métriques carrière (v5.3) ────────────────────────────────────────────
+    "career_metric_rank": {
+        "fr": "Rang",
+        "en": "Rank",
+    },
+    "career_metric_xp_total": {
+        "fr": "XP total",
+        "en": "Total XP",
+    },
+    "career_metric_current_xp": {
+        "fr": "XP actuel",
+        "en": "Current XP",
+    },
+    "career_metric_next_rank_xp": {
+        "fr": "XP prochain rang",
+        "en": "Next rank XP",
+    },
+    "career_metric_xp_earned": {
+        "fr": "XP gagnée",
+        "en": "XP earned",
+    },
+    "career_metric_xp_remaining": {
+        "fr": "XP restante",
+        "en": "XP remaining",
+    },
+    "career_metric_xp_required": {
+        "fr": "Total requis",
+        "en": "Required total",
+    },
     # ── Page Timeseries ──────────────────────────────────────────────────────
     "ts_fda": {
         "fr": "FDA",
