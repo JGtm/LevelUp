@@ -17,28 +17,22 @@ En v5.1, les stats coéquipiers sont chargées depuis `shared.match_participants
 
 Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score_awards` uniquement.
 
-## État Actuel (2026-02-17) — v5.1 Release
+## État Actuel (2026-02-25) — v5.3 Release
 
-### Migration v5.1 Complétée
+### Historique des versions
 
-- **Étapes 1-2** : Performance UI + Données ✅
-- **Étape 3** : Architecture Shared DB ✅
-- **Étapes 4-5** : Éradication SQLite + Scripts Migration ✅
-- **Étape 6** : Migration Pandas→Polars complète ✅
-- **Étape 7** : Bugs Critiques + Migration xuid_aliases ✅
-- **Étape 8** : Cleanup Tables Legacy ✅
-- **Étape 8bis** : Optimisation Réactivité + Éradication Code Legacy ✅
-- **Étape 8ter** : Modernisation Streamlit (@st.fragment, st.navigation, column_config) ✅
-- **Étape 9** : Tests + Documentation ✅
-- **Étape 10** : Release v5.1 ✅
+- **v5.1** : Architecture Shared DB, éradication SQLite/Pandas, cleanup tables legacy ✅
+- **v5.2** : Notifications Discord post-sync/backfill ✅
+- **v5.3** : LUSR/CSR — système de rating TrueSkill 2 per-groupe (2026-02-25) ✅
 
-### Architecture v5.1
+### Architecture v5.3
 
 ```
 data/
 ├── players/                    # Enrichissements uniquement (~4 MB/joueur)
 │   └── {gamertag}/
-│       ├── stats.duckdb       # player_match_enrichment, awards, antagonists, citations
+│       ├── stats.duckdb       # player_match_enrichment, awards, antagonists, citations,
+│       │                      #   match_skill_rank (LUSR/CSR par match)
 │       └── archive/           # Archives temporelles
 ├── warehouse/
 │   ├── metadata.duckdb        # Référentiels (playlists, maps, medals, ranks)
@@ -58,7 +52,11 @@ data/
 - `src/analysis/killer_victim.py` : Calcul antagonistes
 - `src/analysis/antagonists.py` : Agrégation rivalités
 - `src/analysis/sessions.py` : Détection sessions
-- `src/analysis/performance_score.py` : Score de performance
+- `src/analysis/performance_score.py` : Score de performance (percentile 0-100)
+- `src/analysis/playlist_groups.py` : 6 groupes Halo Infinite (ranked/arena/btb/tactical/social/fun), détection par `pair_name`/`playlist_name` — v5.3
+- `src/analysis/skill_rating_config.py` : Constantes TrueSkill 2 (K_ELO, tiers Bronze→Onyx, COMPOSITE_WEIGHTS, get_tier_for_rating) — v5.3
+- `src/analysis/skill_rating.py` : Algorithme LUSR — `PlayerState` par groupe, `compute_composite_score()`, `trueskill_update()` Elo-style, `compute_skill_ratings_batch()` séquentiel — v5.3
+- `src/analysis/skill_rating_calibration.py` : Calibration des poids COMPOSITE_WEIGHTS via grid search vs `team_mmr` API — v5.3
 
 ### UI
 - `src/ui/pages/` : Pages du dashboard (career.py ajouté Sprint 3B)
@@ -80,9 +78,9 @@ data/
 | `killer_victim_pairs` | Paires killer→victim |
 | `xuid_aliases` | Mapping global XUID→Gamertag |
 
-### Base Joueur stats.duckdb (v5.1 — enrichissements uniquement)
+### Base Joueur stats.duckdb (v5.3 — enrichissements uniquement)
 
-> 8 tables supprimées : match_stats, match_participants, highlight_events,
+> 8 tables supprimées (v5.1) : match_stats, match_participants, highlight_events,
 > medals_earned, killer_victim_pairs, player_match_stats, xuid_aliases, teammates_aggregate
 
 | Table | Description |
@@ -96,6 +94,7 @@ data/
 | `media_match_associations` | Média ↔ match ↔ xuid (map_name, match_id) |
 | `sessions` | Sessions groupées |
 | `sync_meta` | Métadonnées sync |
+| `match_skill_rank` | Rating LUSR/CSR par match (PK=match_id — exclusif LUSR ou CSR) — **v5.3** |
 | `mv_*` | Vues matérialisées (mv_player_matches, mv_map_stats, etc.) |
 
 ### Base Métadonnées (metadata.duckdb)
