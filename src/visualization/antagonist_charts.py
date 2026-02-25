@@ -38,18 +38,20 @@ if TYPE_CHECKING:
 # Configuration des couleurs
 # =============================================================================
 
-# Couleurs Halo pour les graphiques d'antagonistes
+# Couleurs accessibles (palette Okabe-Ito) pour les graphiques d'antagonistes.
+# Remplacement des couleurs néon précédentes (#00ff00, #ff4444) non accessibles
+# aux daltoniens (deuteranopie/protanopie).
 COLORS = {
-    "kills": "#00ff00",  # Vert néon - Mes kills
-    "deaths": "#ff4444",  # Rouge - Mes morts
-    "nemesis": "#ff6600",  # Orange - Némésis
-    "victim": "#00aaff",  # Bleu - Victime
-    "neutral": "#888888",  # Gris - Neutre
-    "positive_kd": "#00ff00",  # Vert - K/D positif
-    "negative_kd": "#ff4444",  # Rouge - K/D négatif
-    "team_alpha": "#00aaff",  # Bleu équipe
-    "team_bravo": "#ff6600",  # Orange équipe
-    "highlight": "#ffd700",  # Or - Highlight
+    "kills": "#009E73",      # Vert bleuté Okabe-Ito — Mes kills
+    "deaths": "#D55E00",     # Vermillon Okabe-Ito — Mes morts
+    "nemesis": "#E69F00",    # Orange Okabe-Ito — Némésis
+    "victim": "#0072B2",     # Bleu Okabe-Ito — Victime
+    "neutral": "#888888",    # Gris — Neutre
+    "positive_kd": "#009E73",  # Vert bleuté Okabe-Ito — K/D positif
+    "negative_kd": "#D55E00",  # Vermillon Okabe-Ito — K/D négatif
+    "team_alpha": "#0072B2",   # Bleu Okabe-Ito — équipe alpha
+    "team_bravo": "#E69F00",   # Orange Okabe-Ito — équipe bravo
+    "highlight": "#F0E442",    # Jaune Okabe-Ito — Highlight
 }
 
 # Couleurs mises à jour pour respecter la palette Okabe-Ito (accessibilité daltonisme).
