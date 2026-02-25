@@ -10,6 +10,8 @@ from typing import Any
 
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.ui.streamlit_modern import fragment_if_available
 
 
@@ -90,9 +92,9 @@ def render_participation_section(
             if fig is not None:
                 st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
             else:
-                st.info("Impossible de générer le radar de participation.")
+                st.info(t("insufficient_data_chart"))
         except Exception as e:
-            st.warning(f"Impossible d'afficher le radar de participation : {e}")
+            st.warning(t("error_chart", error=e))
     with col_legend:
         st.markdown("**Axes**")
         for line in RADAR_AXIS_LINES:
@@ -173,9 +175,9 @@ def render_participation_comparison(
                 if fig is not None:
                     st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
                 else:
-                    st.info("Impossible de générer le radar de comparaison.")
+                    st.info(t("insufficient_data_chart"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher le radar de comparaison : {e}")
+                st.warning(t("error_chart", error=e))
         with col_legend:
             st.markdown("**Axes**")
             for line in RADAR_AXIS_LINES:

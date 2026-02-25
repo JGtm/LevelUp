@@ -8,6 +8,8 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.analysis import (
     compute_aggregated_stats,
     compute_global_ratio,
@@ -65,7 +67,7 @@ def render_single_teammate_view(
     df = ensure_polars(df)
     dff = ensure_polars(dff)
     friend_xuid = picked_xuids[0]
-    with st.spinner("Chargement des matchs avec ce coéquipier…"):
+    with st.spinner(t("tm_computing_teammate")):
         dfr = ensure_polars(
             cached_friend_matches_df(
                 db_path,
@@ -76,7 +78,7 @@ def render_single_teammate_view(
             )
         )
         if dfr.is_empty():
-            st.warning("Aucun match trouvé avec ce coéquipier (selon le filtre).")
+            st.warning(t("tm_no_matches_teammate"))
             return
 
         render_outcome_bar_chart(dfr)
@@ -180,8 +182,8 @@ def render_multi_teammate_view(
     df = ensure_polars(df)
     dff = ensure_polars(dff)
     base = ensure_polars(base)
-    st.subheader("Par carte — avec mes coéquipiers")
-    with st.spinner("Calcul du ratio par carte (coéquipiers)…"):
+    st.subheader(t("tm_by_map"))
+    with st.spinner(t("tm_computing_map")):
         current_mode = st.session_state.get("filter_mode")
         latest_session_label = st.session_state.get("_latest_session_label")
         trio_latest_label = st.session_state.get("_trio_latest_session_label")
@@ -236,7 +238,7 @@ def render_multi_teammate_view(
             sub_all["match_id"].cast(pl.Utf8).to_list() if not sub_all.is_empty() else []
         )
 
-        with st.spinner("Chargement des stats des coéquipiers…"):
+        with st.spinner(t("tm_computing_stats")):
             for fx in picked_xuids:
                 ids = per_friend_ids.get(str(fx), set())
                 if not ids:
@@ -261,7 +263,7 @@ def render_multi_teammate_view(
         breakdown_all = breakdown_all.filter(pl.col("matches") >= int(min_matches_maps_friends))
 
         if breakdown_all.is_empty():
-            st.info("Pas assez de matchs avec tes coéquipiers (selon le filtre actuel).")
+            st.info(t("tm_not_enough_matches"))
         else:
             try:
                 view_all = breakdown_all.head(20).reverse()
@@ -270,14 +272,14 @@ def render_multi_teammate_view(
                 if fig_map is not None:
                     st.plotly_chart(fig_map, width="stretch", config={"staticPlot": True})
                 else:
-                    st.info("Données insuffisantes pour le ratio par carte.")
+                    st.info(t("insufficient_data_chart"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher le ratio par carte : {e}")
+                st.warning(t("error_chart", error=e))
 
-            st.subheader("Historique — matchs avec mes coéquipiers")
+            st.subheader(t("tm_history"))
 
         if sub_all.is_empty():
-            st.info("Aucun match trouvé avec tes coéquipiers (selon le filtre actuel).")
+            st.info(t("tm_no_matches_filter"))
         else:
             render_friends_history_table(sub_all, db_path, xuid, db_key, waypoint_player)
 
@@ -360,7 +362,7 @@ def render_trio_view(
     f1_xuid, f2_xuid = picked_xuids[0], picked_xuids[1]
     f1_name = display_name_from_xuid(f1_xuid, db_path=db_path)
     f2_name = display_name_from_xuid(f2_xuid, db_path=db_path)
-    st.subheader(f"Tous les trois — {f1_name} + {f2_name}")
+    st.subheader(t("tm_trio_header", f1=f1_name, f2=f2_name))
 
     ids_m = set(
         cached_same_team_match_ids_with_friend(db_path, xuid.strip(), f1_xuid, db_key=db_key)
@@ -416,7 +418,7 @@ def render_trio_view(
     # Merge et performance
     merged = _merge_trio_dataframes(me_df, f1_df, f2_df)
     if merged.is_empty():
-        st.warning("Impossible d'aligner les stats des 3 joueurs sur ces matchs.")
+        st.warning(t("tm_trio_warning"))
         return False
 
     _render_trio_performance_charts(merged, me_name, f1_name, f2_name, f1_xuid, f2_xuid)
@@ -522,13 +524,13 @@ def _render_shared_medals(
     top_medals_fn,
 ) -> None:
     """Affiche la section médailles partagées (single view)."""
-    st.subheader("Médailles (matchs partagés)")
+    st.subheader(t("tm_medals"))
     shared_list = sorted({str(x) for x in shared_ids if str(x).strip()})
     if not shared_list:
-        st.info("Aucun match partagé pour calculer les médailles.")
+        st.info(t("tm_no_shared_medals"))
         return
 
-    with st.spinner("Agrégation des médailles (moi + coéquipier)…"):
+    with st.spinner(t("tm_computing_medals")):
         my_top = top_medals_fn(db_path, xuid.strip(), shared_list, top_n=12, db_key=db_key)
         fr_top = top_medals_fn(db_path, friend_xuid, shared_list, top_n=12, db_key=db_key)
 
@@ -613,9 +615,9 @@ def _detect_trio_session(
 
     st.session_state["_trio_latest_session_label"] = latest_label
     if latest_label:
-        st.caption(f"Dernière session trio détectée : {latest_label}.")
+        st.caption(t("tm_trio_session", label=latest_label))
     else:
-        st.caption("Impossible de déterminer une session trio (données insuffisantes).")
+        st.caption(t("tm_trio_session_unknown"))
 
 
 def _render_per_minute_stats(
@@ -635,7 +637,7 @@ def _render_per_minute_stats(
     me_stats = compute_aggregated_stats(me_df)
     f1_stats = compute_aggregated_stats(f1_df)
     f2_stats = compute_aggregated_stats(f2_df)
-    st.subheader("Stats par minute")
+    st.subheader(t("tm_per_minute"))
 
     _pm_metrics = ["Frags/min", "Morts/min", "Assistances/min"]
     _pm_players = [
@@ -671,9 +673,9 @@ def _render_per_minute_stats(
         if fig_pm is not None:
             st.plotly_chart(fig_pm, width="stretch", config={"staticPlot": True})
         else:
-            st.info("Données insuffisantes pour les stats/min.")
+            st.info(t("insufficient_data_chart"))
     except Exception as e:
-        st.warning(f"Impossible d'afficher les stats/min : {e}")
+        st.warning(t("error_chart", error=e))
 
 
 def _merge_trio_dataframes(
@@ -810,15 +812,15 @@ def _render_trio_medals(
     top_medals_fn,
 ) -> None:
     """Affiche la section médailles du trio."""
-    st.subheader("Médailles")
+    st.subheader(t("tm_medals_all"))
     trio_match_ids = (
         ensure_polars(merged).select("match_id").drop_nulls().to_series().cast(pl.Utf8).to_list()
     )
     if not trio_match_ids:
-        st.info("Impossible de déterminer la liste des matchs pour l'agrégation des médailles.")
+        st.info(t("tm_no_medals_aggregate"))
         return
 
-    with st.spinner("Agrégation des médailles…"):
+    with st.spinner(t("tm_computing_medals_all")):
         top_self = top_medals_fn(db_path, xuid.strip(), trio_match_ids, top_n=12, db_key=db_key)
         top_f1 = top_medals_fn(db_path, f1_xuid, trio_match_ids, top_n=12, db_key=db_key)
         top_f2 = top_medals_fn(db_path, f2_xuid, trio_match_ids, top_n=12, db_key=db_key)

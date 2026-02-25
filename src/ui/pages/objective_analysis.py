@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.analysis.objective_participation import (
     compute_award_frequency_polars,
     compute_objective_summary_by_match_polars,
@@ -70,19 +72,19 @@ def render_objective_analysis_page(
         xuid: XUID du joueur principal.
         match_ids: Liste optionnelle de match_ids à analyser (sinon tous).
     """
-    st.title("📊 Analyse des Objectifs")
+    st.title(t("obj_analysis_title"))
     st.caption(
         "Analysez votre contribution aux objectifs de jeu et découvrez votre profil de joueur."
     )
 
     if not POLARS_AVAILABLE:
-        st.error("⚠️ Cette page nécessite Polars. " "Installez-le avec: `pip install polars`")
+        st.error(t("obj_polars_missing"))
         return
 
     # ══════════════════════════════════════════════════════════════════════════
     # Chargement des données
     # ══════════════════════════════════════════════════════════════════════════
-    with st.spinner("Chargement des données..."):
+    with st.spinner(t("obj_loading")):
         # Charger les personal_score_awards
         try:
             if match_ids:
@@ -105,7 +107,7 @@ def render_objective_analysis_page(
                 awards_df = repo.query_df(awards_query)
                 match_stats_df = repo.query_df(match_query)
         except Exception as e:
-            st.error(f"Erreur lors du chargement des données: {e}")
+            st.error(t("error_loading", error=e))
             st.info(
                 "💡 Les tables `personal_score_awards` peuvent ne pas exister. "
                 "Lancez une synchronisation pour les créer."
@@ -231,9 +233,9 @@ def render_objective_analysis_page(
             if fig_scatter is not None:
                 st.plotly_chart(fig_scatter, width="stretch", config={"displayModeBar": False})
             else:
-                st.info("Données insuffisantes pour la corrélation objectifs/kills.")
+                st.info(t("insufficient_data_chart"))
         except Exception as e:
-            st.warning(f"Impossible d'afficher la corrélation objectifs/kills : {e}")
+            st.warning(t("error_chart", error=e))
 
     with tab_breakdown:
         col_bars, col_gauge = st.columns([2, 1])
@@ -249,9 +251,9 @@ def render_objective_analysis_page(
                 if fig_bars is not None:
                     st.plotly_chart(fig_bars, width="stretch", config={"staticPlot": True})
                 else:
-                    st.info("Données insuffisantes pour la répartition.")
+                    st.info(t("insufficient_data_chart"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher la répartition : {e}")
+                st.warning(t("error_chart", error=e))
 
         with col_gauge:
             st.markdown("### Ratio Objectifs")
@@ -263,9 +265,9 @@ def render_objective_analysis_page(
                 if fig_gauge is not None:
                     st.plotly_chart(fig_gauge, width="stretch", config={"staticPlot": True})
                 else:
-                    st.info("Impossible de générer la jauge.")
+                    st.info(t("insufficient_data_chart"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher le ratio objectifs : {e}")
+                st.warning(t("error_chart", error=e))
 
     with tab_trend:
         st.markdown("### Évolution dans le temps")
@@ -289,18 +291,18 @@ def render_objective_analysis_page(
                 if fig_trend is not None:
                     st.plotly_chart(fig_trend, width="stretch", config={"displayModeBar": False})
                 else:
-                    st.info("Données insuffisantes pour la tendance.")
+                    st.info(t("insufficient_data_chart"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher la tendance : {e}")
+                st.warning(t("error_chart", error=e))
         else:
-            st.info("Pas assez de données pour afficher la tendance.")
+            st.info(t("insufficient_data_chart"))
 
     # ══════════════════════════════════════════════════════════════════════════
     # Section 3: Analyse des assistances
     # ══════════════════════════════════════════════════════════════════════════
     st.markdown("---")
     st.markdown("## 🤝 Analyse des Assistances")
-    st.caption("Décomposition des différents types d'assistances.")
+    st.caption(t("obj_assists_caption"))
 
     # Calculer la décomposition des assistances globale
     assist_awards = my_awards_df.filter(pl.col("score_category") == "assist")
@@ -358,7 +360,7 @@ def render_objective_analysis_page(
                     hide_index=True,
                 )
     else:
-        st.info("Aucune donnée d'assistance disponible.")
+        st.info(t("obj_no_assists"))
 
     # ══════════════════════════════════════════════════════════════════════════
     # Section 4: Awards les plus fréquents
@@ -379,7 +381,7 @@ def render_objective_analysis_page(
             freq_table.columns = ["Award", "Points", "Occurrences"]
             st.dataframe(freq_table, width="stretch", hide_index=True)
         else:
-            st.info("Aucun award objectif enregistré.")
+            st.info(t("obj_no_awards"))
 
     with col_all_awards:
         st.markdown("### Tous les Awards")
@@ -389,18 +391,18 @@ def render_objective_analysis_page(
             all_table.columns = ["Award", "Points", "Occurrences"]
             st.dataframe(all_table, width="stretch", hide_index=True)
         else:
-            st.info("Aucun award enregistré.")
+            st.info(t("obj_no_awards_generic"))
 
     # ══════════════════════════════════════════════════════════════════════════
     # Section 5: Comparaison avec les autres joueurs
     # ══════════════════════════════════════════════════════════════════════════
     st.markdown("---")
     st.markdown("## 👥 Comparaison avec les Adversaires")
-    st.caption("Top joueurs rencontrés par contribution aux objectifs.")
+    st.caption(t("obj_top_opponents_caption"))
 
     # Note: Cette fonctionnalité nécessite d'avoir les awards de tous les joueurs
     # Pour l'instant, on affiche un placeholder
-    with st.expander("🔜 Comparaison (à venir)", expanded=False):
+    with st.expander(t("obj_comparison_coming_soon"), expanded=False):
         st.info(
             "Cette fonctionnalité nécessite d'avoir synchronisé les données de tous les joueurs "
             "d'un match. Elle sera disponible dans une prochaine version."
@@ -459,4 +461,4 @@ def render_objective_analysis_page_from_session_state() -> None:
         repo = DuckDBRepository(db_path, xuid)
         render_objective_analysis_page(repo, xuid)
     except Exception as e:
-        st.error(f"Erreur lors de l'ouverture de la base: {e}")
+        st.error(t("error_loading", error=e))

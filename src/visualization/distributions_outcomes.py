@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from src.config import HALO_COLORS, OUTCOME_CODES, PLOT_CONFIG, SESSION_CONFIG
+from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import (
     apply_halo_plot_style,
@@ -42,16 +43,18 @@ def _safe_col(df: pl.DataFrame, col_name: str, default: int = 0) -> list:
 # ---------------------------------------------------------------------------
 
 
-def _compute_outcome_buckets(d: pl.DataFrame, *, session_style: bool) -> tuple[pl.DataFrame, str]:
+def _compute_outcome_buckets(
+    d: pl.DataFrame, *, session_style: bool, lang: str = "fr"
+) -> tuple[pl.DataFrame, str]:
     """Détermine le bucket temporel et retourne (df_avec_bucket, bucket_label)."""
     if session_style:
         d = d.sort("start_time")
         if d.height <= 20:
             d = d.with_row_index("bucket").with_columns((pl.col("bucket") + 1).cast(pl.Int64))
-            return d, "partie"
+            return d, viz_t("bucket_match", lang)
         d = _ensure_datetime(d, "start_time")
         d = d.with_columns(pl.col("start_time").dt.truncate("1h").alias("bucket"))
-        return d, "heure"
+        return d, viz_t("bucket_hour", lang)
 
     d = _ensure_datetime(d, "start_time")
     ts = d["start_time"].drop_nulls()
@@ -65,24 +68,24 @@ def _compute_outcome_buckets(d: pl.DataFrame, *, session_style: bool) -> tuple[p
     if days < cfg.bucket_threshold_hourly:
         d = d.sort("start_time")
         d = d.with_row_index("bucket").with_columns((pl.col("bucket") + 1).cast(pl.Int64))
-        return d, "partie"
+        return d, viz_t("bucket_match", lang)
     if days <= cfg.bucket_threshold_daily:
         d = d.with_columns(pl.col("start_time").dt.truncate("1h").alias("bucket"))
-        return d, "heure"
+        return d, viz_t("bucket_hour", lang)
     if days <= cfg.bucket_threshold_weekly:
         d = d.with_columns(pl.col("start_time").dt.strftime("%Y-%m-%d").alias("bucket"))
-        return d, "jour"
+        return d, viz_t("bucket_day", lang)
     if days <= cfg.bucket_threshold_monthly:
         d = d.with_columns(
             pl.col("start_time").dt.truncate("1w").dt.strftime("%Y-%m-%d").alias("bucket")
         )
-        return d, "semaine"
+        return d, viz_t("bucket_week", lang)
     d = d.with_columns(pl.col("start_time").dt.strftime("%Y-%m").alias("bucket"))
-    return d, "mois"
+    return d, viz_t("bucket_month", lang)
 
 
 def plot_outcomes_over_time(
-    df: DataFrameLike, *, session_style: bool = False
+    df: DataFrameLike, *, session_style: bool = False, lang: str = "fr"
 ) -> tuple[go.Figure, str]:
     """Graphique d'évolution des victoires/défaites dans le temps.
 
@@ -98,10 +101,10 @@ def plot_outcomes_over_time(
         fig.update_layout(
             height=PLOT_CONFIG.default_height, margin={"l": 40, "r": 20, "t": 30, "b": 40}
         )
-        fig.update_yaxes(title_text="Nombre")
-        return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height), "période"
+        fig.update_yaxes(title_text=viz_t("axis_count", lang))
+        return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height), viz_t("bucket_period", lang)
 
-    d, bucket_label = _compute_outcome_buckets(d, session_style=session_style)
+    d, bucket_label = _compute_outcome_buckets(d, session_style=session_style, lang=lang)
 
     # Pivot : bucket × outcome → count
     pivot = (
@@ -120,38 +123,43 @@ def plot_outcomes_over_time(
     nofin = _safe_col(pivot, str(OUTCOME_CODES.NO_FINISH))
     losses_neg = [-v for v in losses]
 
+    _wins_lbl = viz_t("trace_wins", lang)
+    _losses_lbl = viz_t("trace_losses", lang)
+    _ties_lbl = viz_t("trace_ties", lang)
+    _unfinished_lbl = viz_t("trace_unfinished", lang)
+
     fig = go.Figure()
     fig.add_bar(
         x=buckets,
         y=wins,
-        name="Victoires",
+        name=_wins_lbl,
         marker_color=colors["green"],
-        hovertemplate="%{x}<br>Victoires: %{y}<extra></extra>",
+        hovertemplate=f"%{{x}}<br>{_wins_lbl}: %{{y}}<extra></extra>",
     )
     fig.add_bar(
         x=buckets,
         y=losses_neg,
-        name="Défaites",
+        name=_losses_lbl,
         marker_color=colors["red"],
         customdata=losses,
-        hovertemplate="%{x}<br>Défaites: %{customdata}<extra></extra>",
+        hovertemplate=f"%{{x}}<br>{_losses_lbl}: %{{customdata}}<extra></extra>",
     )
 
     if sum(ties) > 0:
         fig.add_bar(
             x=buckets,
             y=ties,
-            name="Égalités",
+            name=_ties_lbl,
             marker_color=colors["violet"],
-            hovertemplate="%{x}<br>Égalités: %{y}<extra></extra>",
+            hovertemplate=f"%{{x}}<br>{_ties_lbl}: %{{y}}<extra></extra>",
         )
     if sum(nofin) > 0:
         fig.add_bar(
             x=buckets,
             y=nofin,
-            name="Non terminés",
+            name=_unfinished_lbl,
             marker_color=colors["violet"],
-            hovertemplate="%{x}<br>Non terminés: %{y}<extra></extra>",
+            hovertemplate=f"%{{x}}<br>{_unfinished_lbl}: %{{y}}<extra></extra>",
         )
 
     fig.update_layout(
@@ -159,9 +167,9 @@ def plot_outcomes_over_time(
         height=PLOT_CONFIG.default_height,
         margin={"l": 40, "r": 20, "t": 30, "b": 40},
     )
-    fig.update_yaxes(title_text="Nombre", zeroline=True)
+    fig.update_yaxes(title_text=viz_t("axis_count", lang), zeroline=True)
 
-    if bucket_label == "partie" and len(buckets) > 30:
+    if bucket_label == viz_t("bucket_match", lang) and len(buckets) > 30:
         fig.update_xaxes(showticklabels=False, title_text="")
 
     return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height), bucket_label
@@ -228,19 +236,26 @@ def _add_outcome_traces(
     colors: dict,
     *,
     category_col: str,
+    lang: str = "fr",
 ) -> None:
     """Ajoute les traces Victoires / Défaites / Égalités / Non terminés."""
     cats = pivot[category_col].to_list()
+    _wins_lbl = viz_t("trace_wins", lang)
+    _losses_lbl = viz_t("trace_losses", lang)
+    _ties_lbl = viz_t("trace_ties", lang)
+    _unfinished_lbl = viz_t("trace_unfinished", lang)
+    _win_rate_lbl = viz_t("hover_win_rate", lang)
+
     fig.add_trace(
         go.Bar(
             x=cats,
             y=pivot["wins"].to_list(),
-            name="Victoires",
+            name=_wins_lbl,
             marker_color=colors["green"],
             opacity=0.85,
             text=pivot["wins"].to_list(),
             textposition="inside",
-            hovertemplate="%{x}<br>Victoires: %{y}<br>Win Rate: %{customdata:.1%}<extra></extra>",
+            hovertemplate=f"%{{x}}<br>{_wins_lbl}: %{{y}}<br>{_win_rate_lbl}: %{{customdata:.1%}}<extra></extra>",
             customdata=pivot["win_rate"].to_list(),
         )
     )
@@ -248,12 +263,12 @@ def _add_outcome_traces(
         go.Bar(
             x=cats,
             y=pivot["losses"].to_list(),
-            name="Défaites",
+            name=_losses_lbl,
             marker_color=colors["red"],
             opacity=0.75,
             text=pivot["losses"].to_list(),
             textposition="inside",
-            hovertemplate="%{x}<br>Défaites: %{y}<extra></extra>",
+            hovertemplate=f"%{{x}}<br>{_losses_lbl}: %{{y}}<extra></extra>",
         )
     )
     if pivot["ties"].sum() > 0:
@@ -270,12 +285,12 @@ def _add_outcome_traces(
             go.Bar(
                 x=cats,
                 y=pivot["ties"].to_list(),
-                name="Égalités",
+                name=_ties_lbl,
                 marker_color=colors["amber"],
                 opacity=0.70,
                 text=text_ties,
                 textposition="inside",
-                hovertemplate="%{x}<br>Égalités: %{y}<extra></extra>",
+                hovertemplate=f"%{{x}}<br>{_ties_lbl}: %{{y}}<extra></extra>",
             )
         )
     if pivot["left"].sum() > 0:
@@ -292,12 +307,12 @@ def _add_outcome_traces(
             go.Bar(
                 x=cats,
                 y=pivot["left"].to_list(),
-                name="Non terminés",
+                name=_unfinished_lbl,
                 marker_color=colors["violet"],
                 opacity=0.60,
                 text=text_left,
                 textposition="inside",
-                hovertemplate="%{x}<br>Non terminés: %{y}<extra></extra>",
+                hovertemplate=f"%{{x}}<br>{_unfinished_lbl}: %{{y}}<extra></extra>",
             )
         )
 
@@ -310,6 +325,7 @@ def plot_stacked_outcomes_by_category(
     min_matches: int = 1,
     sort_by: str = "total",
     max_categories: int = 20,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique de colonnes empilées Win/Loss/Tie/Left par catégorie."""
     d = ensure_polars(df)
@@ -328,7 +344,7 @@ def plot_stacked_outcomes_by_category(
         return apply_halo_plot_style(fig, title=title)
 
     fig = go.Figure()
-    _add_outcome_traces(fig, pivot, colors, category_col=category_col)
+    _add_outcome_traces(fig, pivot, colors, category_col=category_col, lang=lang)
 
     height = PLOT_CONFIG.tall_height if pivot.height > 10 else PLOT_CONFIG.default_height
     fig.update_layout(
@@ -339,7 +355,7 @@ def plot_stacked_outcomes_by_category(
         legend=get_legend_horizontal_bottom(),
     )
     fig.update_xaxes(tickangle=45, title_text="")
-    fig.update_yaxes(title_text="Matchs")
+    fig.update_yaxes(title_text=viz_t("trace_matches", lang))
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
@@ -353,6 +369,7 @@ def plot_win_ratio_heatmap(
     *,
     title: str | None = None,
     min_matches: int = 2,
+    lang: str = "fr",
 ) -> go.Figure | None:
     """Heatmap du Win Ratio par jour de la semaine et heure.
 
@@ -421,10 +438,15 @@ def plot_win_ratio_heatmap(
     if np.all(np.isnan(win_rate_vals.astype(float))):
         return None
 
-    day_labels = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+    if lang == "en":
+        day_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    else:
+        day_labels = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
     hour_labels = [f"{h:02d}h" for h in all_hours]
     text_matrix = count_vals.astype(str)
     text_matrix[count_vals == 0] = ""
+    _matches_lbl = viz_t("trace_matches", lang)
+    _win_rate_lbl = viz_t("hover_win_rate", lang)
 
     fig = go.Figure(
         data=go.Heatmap(
@@ -437,16 +459,16 @@ def plot_win_ratio_heatmap(
             text=text_matrix,
             texttemplate="%{text}",
             textfont={"size": 10},
-            hovertemplate="%{y} %{x}<br>Win Rate: %{z:.1%}<br>Matchs: %{text}<extra></extra>",
-            colorbar={"title": "Win Rate", "tickformat": ".0%"},
+            hovertemplate=f"%{{y}} %{{x}}<br>{_win_rate_lbl}: %{{z:.1%}}<br>{_matches_lbl}: %{{text}}<extra></extra>",
+            colorbar={"title": _win_rate_lbl, "tickformat": ".0%"},
         )
     )
     fig.update_layout(
         height=PLOT_CONFIG.default_height,
         margin={"l": 60, "r": 20, "t": 60 if title else 30, "b": 40},
     )
-    fig.update_xaxes(title_text="Heure", side="bottom")
-    fig.update_yaxes(title_text="Jour", autorange="reversed")
+    fig.update_xaxes(title_text=viz_t("axis_hour_label", lang), side="bottom")
+    fig.update_yaxes(title_text=viz_t("axis_day_label", lang), autorange="reversed")
     return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
 
 
@@ -455,7 +477,9 @@ def plot_win_ratio_heatmap(
 # ---------------------------------------------------------------------------
 
 
-def _determine_top_period(d: pl.DataFrame) -> tuple[pl.DataFrame, str]:
+def _determine_top_period(
+    d: pl.DataFrame, lang: str = "fr"
+) -> tuple[pl.DataFrame, str]:
     """Ajoute une colonne 'period' et retourne (df, period_label)."""
     d = _ensure_datetime(d, "start_time")
     d = d.drop_nulls(subset=["start_time"])
@@ -469,14 +493,14 @@ def _determine_top_period(d: pl.DataFrame) -> tuple[pl.DataFrame, str]:
     if days < 2:
         d = d.sort("start_time")
         d = d.with_row_index("period").with_columns(pl.col("period").cast(pl.String))
-        return d, "Match"
+        return d, viz_t("bucket_cap_match", lang)
     if days < 7:
         d = d.with_columns(pl.col("start_time").dt.strftime("%Y-%m-%d").alias("period"))
-        return d, "Jour"
+        return d, viz_t("bucket_cap_day", lang)
     d = d.with_columns(
         pl.col("start_time").dt.truncate("1w").dt.strftime("%Y-%m-%d").alias("period")
     )
-    return d, "Semaine"
+    return d, viz_t("bucket_cap_week", lang)
 
 
 def plot_matches_at_top_by_week(
@@ -485,6 +509,7 @@ def plot_matches_at_top_by_week(
     title: str | None = None,
     rank_col: str = "rank",
     top_n_ranks: int = 1,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique comparant les matchs 'Top' vs Total par période."""
     d = ensure_polars(df)
@@ -496,7 +521,7 @@ def plot_matches_at_top_by_week(
         fig.update_layout(height=PLOT_CONFIG.default_height)
         return apply_halo_plot_style(fig, title=title)
 
-    d, period_label = _determine_top_period(d)
+    d, period_label = _determine_top_period(d, lang=lang)
 
     if rank_col in d.columns:
         d = d.with_columns(
@@ -538,6 +563,9 @@ def plot_matches_at_top_by_week(
     )
 
     fig = go.Figure()
+    _others_lbl = viz_t("trace_others", lang)
+    _top_rate_lbl = viz_t("trace_top_rate", lang)
+
     fig.add_trace(
         go.Bar(
             x=periods,
@@ -547,7 +575,7 @@ def plot_matches_at_top_by_week(
             opacity=0.85,
             text=top_counts,
             textposition="inside",
-            hovertemplate="%{x}<br>Top: %{y}<br>Taux: %{customdata:.1f}%<extra></extra>",
+            hovertemplate=f"%{{x}}<br>Top: %{{y}}<br>{viz_t('trace_top_rate', lang)}: %{{customdata:.1f}}%<extra></extra>",
             customdata=top_rates,
         )
     )
@@ -555,12 +583,12 @@ def plot_matches_at_top_by_week(
         go.Bar(
             x=periods,
             y=other_counts,
-            name="Autres",
+            name=_others_lbl,
             marker_color=colors["slate"],
             opacity=0.55,
             text=text_other,
             textposition="inside",
-            hovertemplate="%{x}<br>Autres: %{y}<extra></extra>",
+            hovertemplate=f"%{{x}}<br>{_others_lbl}: %{{y}}<extra></extra>",
         )
     )
     fig.add_trace(
@@ -568,11 +596,11 @@ def plot_matches_at_top_by_week(
             x=periods,
             y=top_rates,
             mode="lines+markers",
-            name="Taux Top (%)",
+            name=_top_rate_lbl,
             yaxis="y2",
             line={"color": colors["amber"], "width": 2},
             marker={"size": 6},
-            hovertemplate="%{x}<br>Taux Top: %{y:.1f}%<extra></extra>",
+            hovertemplate=f"%{{x}}<br>{_top_rate_lbl}: %{{y:.1f}}%<extra></extra>",
         )
     )
 
@@ -583,7 +611,7 @@ def plot_matches_at_top_by_week(
         margin={"l": 40, "r": 60, "t": 60 if title else 30, "b": 80},
         legend=get_legend_horizontal_bottom(),
         yaxis2={
-            "title": "Taux (%)",
+            "title": viz_t("axis_rate_pct", lang),
             "overlaying": "y",
             "side": "right",
             "range": [0, 100],
@@ -591,5 +619,5 @@ def plot_matches_at_top_by_week(
         },
     )
     fig.update_xaxes(tickangle=45, title_text=period_label)
-    fig.update_yaxes(title_text="Matchs")
+    fig.update_yaxes(title_text=viz_t("trace_matches", lang))
     return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)

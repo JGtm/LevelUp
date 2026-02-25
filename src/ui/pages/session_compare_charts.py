@@ -17,6 +17,7 @@ import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
 from src.analysis.performance_score import compute_performance_series
 from src.ui import translate_pair_name
 from src.ui.components.performance import get_score_class
@@ -680,7 +681,7 @@ def render_participation_trend_section(
             return
 
         st.markdown("---")
-        st.markdown("#### 🎯 Évolution du profil de participation")
+        st.markdown(t("sc_participation_profile"))
         st.caption("Comparaison de la contribution au score entre les deux sessions")
 
         col_radar, col_legend = st.columns([2, 1])

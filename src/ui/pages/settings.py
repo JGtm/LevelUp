@@ -7,6 +7,8 @@ from pathlib import Path
 
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.config import get_default_db_path
 from src.ui import (
     AppSettings,
@@ -39,7 +41,7 @@ def render_settings_page(
     AppSettings
         Paramètres (modifiés ou non).
     """
-    st.subheader("Paramètres")
+    st.subheader(t("settings_title"))
 
     with st.expander("Source", expanded=False):
         st.caption(
@@ -188,7 +190,7 @@ def render_settings_page(
                     idx.reset_media_tables()
                     st.success("Index médias réinitialisé (joueur courant).")
                 except Exception as e:
-                    st.error(f"Erreur: {e}")
+                    st.error(t("error_loading", error=e))
 
     with st.expander("Expérience", expanded=True):
         refresh_clears_caches = st.toggle(

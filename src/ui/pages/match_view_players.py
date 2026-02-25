@@ -12,6 +12,8 @@ from typing import Any
 
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.analysis import compute_personal_antagonists
 from src.config import BOT_MAP, TEAM_MAP
 from src.ui import display_name_from_xuid
@@ -110,19 +112,19 @@ def render_team_dominance_section(
     if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
         return
 
-    st.subheader("Dynamique du match")
+    st.subheader(t("mv_match_dynamics"))
 
-    with st.spinner("Analyse de la dynamique…"):
+    with st.spinner(t("mv_dynamics_computing")):
         he = load_highlight_events_fn(db_path, match_id.strip(), db_key=db_key)
 
     if not he:
-        st.info("Données insuffisantes pour afficher la dynamique du match.")
+        st.info(t("mv_dynamics_no_data"))
         return
 
     # Mapping xuid → team_id + gamertag depuis match_participants
     all_players = _load_match_players_stats(db_path, match_id.strip())
     if not all_players:
-        st.info("Roster introuvable — frise de dominance indisponible.")
+        st.info(t("mv_dynamics_no_roster"))
         return
 
     me_xuid = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
@@ -146,7 +148,7 @@ def render_team_dominance_section(
 
     my_team_id = xuid_to_team.get(me_xuid)
     if my_team_id is None:
-        st.info("Équipe introuvable pour ce joueur — frise de dominance indisponible.")
+        st.info(t("mv_dynamics_no_team"))
         return
 
     kill_events = [
@@ -155,7 +157,7 @@ def render_team_dominance_section(
         if str(e.get("event_type", "")).lower() == "kill" and e.get("time_ms") is not None
     ]
     if not kill_events:
-        st.info("Aucun kill enregistré pour ce match.")
+        st.info(t("mv_dynamics_no_kills"))
         return
 
     # Durée inférée depuis les events (+ buffer pour la dernière tranche)
@@ -183,7 +185,7 @@ def render_team_dominance_section(
             "- **Lignes reliées** : série d'un même joueur (≥ 3 kills consécutifs sans mourir)"
         )
     else:
-        st.info("Données insuffisantes pour la frise de dominance.")
+        st.info(t("mv_dynamics_no_dominance"))
 
 
 # =============================================================================
@@ -203,7 +205,7 @@ def render_nemesis_section(
     load_match_gamertags_fn: Callable,
 ) -> None:
     """Rend la section Némésis / Souffre-douleur."""
-    st.subheader("Antagonistes du match")
+    st.subheader(t("mv_antagonists_title"))
     if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
         st.caption(
             "Indisponible: la DB ne contient pas les highlight events. "
@@ -211,7 +213,7 @@ def render_nemesis_section(
         )
         return
 
-    with st.spinner("Chargement des highlight events (film)…"):
+    with st.spinner(t("mv_highlight_loading")):
         he = load_highlight_events_fn(db_path, match_id.strip(), db_key=db_key)
 
     match_gt_map = load_match_gamertags_fn(db_path, match_id.strip(), db_key=db_key)
@@ -225,7 +227,7 @@ def render_nemesis_section(
         he, me_xuid=me_xuid, tolerance_ms=5, official_stats=official_stats
     )
     if (res.nemesis is None) and (res.bully is None):
-        st.info("Impossible de déterminer Némésis/Souffre-douleur (timeline insuffisante).")
+        st.info(t("mv_nemesis_no_data"))
         # On continue pour afficher le graphique Killer-Victim si des données existent
 
     def _debug_enabled() -> bool:
@@ -522,9 +524,9 @@ def _render_antagonist_chart(
                 if fig is not None:
                     st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
                 else:
-                    st.info("Données insuffisantes pour les interactions eliminateur-victime.")
+                    st.info(t("mv_interactions_no_data"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher les interactions eliminateur-victime : {e}")
+                st.warning(t("error_chart", error=e))
         except Exception:
             pass
 
@@ -684,7 +686,7 @@ def render_kd_timeline_section(
         height=380,
     )
     if fig is not None:
-        st.subheader("Frags au fil du match")
+        st.subheader(t("mv_kills_over_time"))
         st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
 
 
@@ -713,11 +715,11 @@ def render_match_scoreboard(
             ni get_xuid_aliases (src/ui/aliases.py) qui sont obsolètes pour
             ce contexte et ignorent les données fraîches de la session.
     """
-    st.subheader("Tableau des scores")
+    st.subheader(t("mv_scoreboard"))
 
     players = _load_match_scoreboard(db_path, match_id.strip())
     if not players:
-        st.info("Statistiques des joueurs indisponibles pour ce match.")
+        st.info(t("mv_scoreboard_no_data"))
         return
 
     # Normaliser le xuid du joueur principal
@@ -917,7 +919,7 @@ def render_roster_section(
     load_match_gamertags_fn: Callable,
 ) -> None:
     """Rend la section Joueurs (roster)."""
-    st.subheader("Joueurs")
+    st.subheader(t("mv_players_title"))
     rosters = load_match_rosters_fn(db_path, match_id.strip(), xuid.strip(), db_key=db_key)
     if not rosters:
         st.info(
@@ -1045,17 +1047,17 @@ def render_match_impact_section(
     avec annotations des événements d'impact (premier sang, finisseur,
     plus lent, première victime).
     """
-    st.subheader("Impact du match")
+    st.subheader(t("mv_impact_title"))
 
     if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
-        st.caption("Données d'impact indisponibles (highlight events manquants).")
+        st.caption(t("mv_impact_no_events"))
         return
 
-    with st.spinner("Analyse de la timeline…"):
+    with st.spinner(t("mv_impact_computing")):
         he = load_highlight_events_fn(db_path, match_id.strip(), db_key=db_key)
 
     if not he:
-        st.info("Aucun événement enregistré pour ce match.")
+        st.info(t("mv_impact_no_events_match"))
         return
 
     me_xuid = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
@@ -1112,7 +1114,7 @@ def render_match_impact_section(
     if fig is not None:
         st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
     else:
-        st.info("Pas assez de données pour afficher la timeline.")
+        st.info(t("mv_impact_too_few"))
 
 
 def _format_time(ms: int) -> str:

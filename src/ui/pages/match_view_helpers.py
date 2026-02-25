@@ -14,6 +14,8 @@ from typing import Any
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 logger = logging.getLogger(__name__)
 
 from src.config import get_repo_root

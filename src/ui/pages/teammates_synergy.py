@@ -10,6 +10,8 @@ from pathlib import Path
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.data.repositories import DuckDBRepository
 from src.ui.components.radar_chart import create_participation_profile_radar
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -85,7 +87,7 @@ def _render_radar_display(
     """
     if not profiles:
         st.subheader(title)
-        st.info("Données de participation indisponibles (PersonalScores manquants).")
+        st.info(t("insufficient_data_chart"))
         return
 
     st.subheader(title)
@@ -102,9 +104,9 @@ def _render_radar_display(
                 config = {"staticPlot": True} if static_plot else {"displayModeBar": False}
                 st.plotly_chart(fig, width="stretch", config=config)
             else:
-                st.info("Impossible de générer le radar de participation.")
+                st.info(t("insufficient_data_chart"))
         except Exception as e:
-            st.warning(f"Impossible d'afficher le radar de participation : {e}")
+            st.warning(t("error_chart", error=e))
     with col_legend:
         st.markdown("**Axes**")
         for line in RADAR_AXIS_LINES:

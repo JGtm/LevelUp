@@ -5,6 +5,8 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.analysis.mode_categories import infer_custom_category_from_pair_name
 from src.ui.components.performance import (
     compute_session_performance_score_v2_ui,
@@ -531,7 +533,7 @@ def _render_score_cards(perf_a: dict, perf_b: dict) -> None:
         elif score_b < score_a:
             is_b_better = False
 
-    st.markdown("### 🏆 Score de performance")
+    st.markdown(t("sc_performance_score"))
     col_score_a, col_score_b = st.columns(2)
     with col_score_a:
         render_performance_score_card(
@@ -547,7 +549,7 @@ def _render_score_cards(perf_a: dict, perf_b: dict) -> None:
 
 def _render_detailed_metrics(perf_a: dict, perf_b: dict) -> None:
     """Affiche la section des métriques détaillées."""
-    st.markdown("### 📊 Métriques détaillées")
+    st.markdown(t("sc_detailed_metrics"))
 
     # En-têtes
     col_h1, col_h2, col_h3 = st.columns([2, 1, 1])
@@ -588,7 +590,7 @@ def _render_detailed_metrics(perf_a: dict, perf_b: dict) -> None:
 def _render_mmr_comparison(perf_a: dict, perf_b: dict) -> None:
     """Affiche la section de comparaison MMR."""
     st.markdown("---")
-    st.markdown("### 🎯 Comparaison MMR")
+    st.markdown(t("sc_mmr_comparison"))
 
     col_mmr1, col_mmr2, col_mmr3 = st.columns([2, 1, 1])
     with col_mmr1:
@@ -633,7 +635,7 @@ def _render_cumulative_section(
         pl_a = df_session_a.sort("start_time").select(_req)
         pl_b = df_session_b.sort("start_time").select(_req)
         if not pl_a.is_empty() and not pl_b.is_empty():
-            st.markdown("#### Net score cumulé par session")
+            st.markdown(t("sc_net_score_cumul"))
             st.caption(
                 "Évolution du net score (Frags − Morts) au fil des matchs de chaque session."
             )
@@ -648,9 +650,9 @@ def _render_cumulative_section(
                 if fig_cumul is not None:
                     st.plotly_chart(fig_cumul, width="stretch", config={"displayModeBar": False})
                 else:
-                    st.info("Données insuffisantes pour le net score cumulé.")
+                    st.info(t("insufficient_data_chart"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher le net score cumulé : {e}")
+                st.warning(t("error_chart", error=e))
     except Exception:
         pass
 
@@ -672,10 +674,10 @@ def render_session_comparison_page(
         db_path = st.session_state.get("db_path", "")
     if xuid is None:
         xuid = st.session_state.get("xuid", "")
-    st.caption("Compare les performances entre deux sessions de jeu.")
+    st.caption(t("sc_loading_caption"))
 
     if all_sessions_df.is_empty():
-        st.info("Aucune session disponible.")
+        st.info(t("sc_no_sessions"))
         return
 
     # Liste des sessions triées (plus récente en premier)
@@ -687,7 +689,7 @@ def render_session_comparison_page(
     session_labels = session_info.get_column("session_label").to_list()
 
     if len(session_labels) < 2:
-        st.warning("Il faut au moins 2 sessions pour comparer.")
+        st.warning(t("sc_need_two_sessions"))
         return
 
     # Sélecteurs de sessions
@@ -740,18 +742,18 @@ def render_session_comparison_page(
     st.markdown("---")
     if hist_avg and hist_avg.get("session_count", 0) >= 1:
         st.markdown(
-            f"### 📈 Graphiques comparatifs\n"
+            f"{t('sc_comparative_charts')}\n"
             f"*Session {session_type_label} — Moyenne historique : {compare_label}*"
         )
     else:
-        st.markdown(f"### 📈 Graphiques comparatifs\n*Session {session_type_label}*")
+        st.markdown(f"{t('sc_comparative_charts')}\n*Session {session_type_label}*")
 
     col_radar, col_bars = st.columns(2)
     with col_radar:
-        st.markdown("#### Vue radar")
+        st.markdown(t("sc_radar_view"))
         render_comparison_radar_chart(perf_a, perf_b, hist_avg=hist_avg)
     with col_bars:
-        st.markdown("#### Comparaison par métrique")
+        st.markdown(t("sc_metric_comparison"))
         render_comparison_bar_chart(perf_a, perf_b, hist_avg=hist_avg)
 
     # Net score cumulé
@@ -767,7 +769,7 @@ def render_session_comparison_page(
 
     # Tableau historique des parties
     st.markdown("---")
-    st.markdown("### 📋 Historique des parties")
+    st.markdown(t("sc_match_history"))
     tab_hist_a, tab_hist_b = st.tabs(["Session A", "Session B"])
     with tab_hist_a:
         render_session_history_table(df_session_a, "Session A", df_full=df_full)

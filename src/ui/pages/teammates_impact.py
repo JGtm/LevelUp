@@ -9,6 +9,8 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.analysis.friends_impact import (
     build_impact_matrix,
     get_all_impact_events,
@@ -217,14 +219,14 @@ def render_impact_taquinerie(
         friend_xuids: Liste des XUIDs des coéquipiers sélectionnés.
         db_key: Clé de cache (optionnel).
     """
-    st.subheader("⚡ Impact")
+    st.subheader(t("tm_impact_header"))
 
     if len(friend_xuids) < 2:
-        st.info("Sélectionnez au moins 2 coéquipiers pour voir l'analyse d'impact.")
+        st.info(t("tm_impact_select_two"))
         return
 
     if not match_ids:
-        st.warning("Aucun match à analyser.")
+        st.warning(t("tm_impact_no_matches"))
         return
 
     st.caption("⚡ Premier sang | 🎯 Finisseur | 💀 Boulet | 🐌 Plus lent | 🪦 Première victime")
@@ -251,7 +253,7 @@ def render_impact_taquinerie(
             )
             return
         if events_df.is_empty():
-            st.info("Aucun événement trouvé pour les matchs sélectionnés.")
+            st.info(t("tm_impact_no_events_matches"))
             return
 
         # Charger les outcomes depuis shared_matches
@@ -272,7 +274,7 @@ def render_impact_taquinerie(
         ) = get_all_impact_events(events_df, matches_df, friend_xuids=all_friend_xuids)
 
         if not scores:
-            st.info("Aucun événement d'impact trouvé pour les joueurs sélectionnés.")
+            st.info(t("tm_impact_no_events_players"))
             return
 
         gamertags = list(scores.keys())
@@ -313,7 +315,7 @@ def render_impact_taquinerie(
         # _render_impact_stats(first_bloods, clutch_finishers, last_casualties)
 
         # Heatmap
-        st.subheader("Heatmap d'Impact")
+        st.subheader(t("tm_impact_heatmap"))
         fig = plot_friends_impact_heatmap(
             impact_matrix,
             title=None,
@@ -322,8 +324,8 @@ def render_impact_taquinerie(
         st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
 
         # Tableau de ranking
-        st.subheader("🏆 Classement")
+        st.subheader(t("tm_impact_ranking"))
         _render_ranking_table(scores, first_bloods, clutch_finishers, last_casualties)
 
     except Exception as e:
-        st.warning(f"Impossible de charger les données d'impact : {e}")
+        st.warning(t("error_chart", error=e))

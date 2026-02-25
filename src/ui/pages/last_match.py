@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 
@@ -67,11 +69,11 @@ def render_last_match_page(
         load_match_rosters_fn: Fonction de chargement des rosters.
         paris_tz: Timezone Paris.
     """
-    st.caption("Dernière partie selon la sélection/filtres actuels.")
+    st.caption(t("last_match_caption"))
 
     dff = ensure_polars(dff)
     if dff.is_empty():
-        st.info("Aucun match disponible avec les filtres actuels.")
+        st.info(t("no_data_filter"))
         return
 
     last_row = dff.sort("start_time").row(-1, named=True)
@@ -145,7 +147,7 @@ def render_match_search_page(
         load_match_rosters_fn: Fonction de chargement des rosters.
         paris_tz: Timezone Paris.
     """
-    st.caption("Afficher un match précis via un MatchId, une date/heure, ou une sélection.")
+    st.caption(t("last_match_select_caption"))
 
     df = ensure_polars(df)
     dff = ensure_polars(dff)
@@ -219,7 +221,7 @@ def render_match_search_page(
                 )
             all_df = all_df.drop_nulls(subset=["_dt"])
             if all_df.is_empty():
-                st.warning("Aucune date exploitable dans la DB.")
+                st.warning(t("last_match_no_date"))
                 return
 
             all_df = all_df.with_columns(
@@ -238,11 +240,11 @@ def render_match_search_page(
 
     mid = str(match_id_input or "").strip()
     if not mid:
-        st.info("Renseigne un MatchId ou utilise la sélection/recherche ci-dessus.")
+        st.info(t("last_match_enter_id"))
     else:
         rows = df.filter(pl.col("match_id").cast(pl.Utf8) == mid)
         if rows.is_empty():
-            st.warning("MatchId introuvable dans la DB actuelle.")
+            st.warning(t("last_match_not_found"))
         else:
             match_row = rows.sort("start_time").row(-1, named=True)
             render_match_view_fn(
