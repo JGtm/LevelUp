@@ -30,6 +30,8 @@ from datetime import datetime, timedelta
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.ui.formatting import PARIS_TZ, format_datetime_fr_hm
 from src.ui.pages.match_view_helpers import index_media_dir
 from src.ui.settings import AppSettings
@@ -66,7 +68,7 @@ def _open_match_button(match_id: str, *, unique_suffix: str | None = None) -> No
     """
     mid = str(match_id or "").strip()
     if not mid:
-        st.caption("Match inconnu")
+        st.caption(t("media_unknown_match"))
         return
 
     # Rendre la clé unique en incluant le suffixe si fourni
@@ -314,7 +316,7 @@ def _render_media_grid(
 ) -> None:
     """Affiche une grille de médias Streamlit."""
     if items is None:
-        st.info("Aucun média à afficher avec ces filtres.")
+        st.info(t("media_no_filter_result"))
         return
     items = ensure_polars(items)
     if items.is_empty():
@@ -383,7 +385,7 @@ def _render_media_grid(
                                     st.session_state[thumb_key] = True
                                     st.rerun()
                             else:
-                                st.caption("(pas de miniature générée)")
+                                st.caption(t("media_no_thumbnail"))
                         if path:
                             preview_key = f"media_preview::{path_hash}::{match_id_part}::{render_context}::{stable_id}"
                             if st.button("Aperçu", key=preview_key, width="stretch"):
@@ -409,7 +411,7 @@ def _render_media_grid(
                         # Dans un groupe de match, le bouton est déjà affiché avant la grille
                         pass
                     else:
-                        st.caption("Match: non associé")
+                        st.caption(t("media_unassociated_match"))
 
 
 def _load_match_windows_from_db(db_path: str) -> pl.DataFrame:
@@ -706,15 +708,15 @@ def _load_media_from_db(
 
 def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) -> None:
     """Rend la page Bibliothèque médias."""
-    st.subheader("Bibliothèque médias")
+    st.subheader(t("media_library_title"))
 
     if not bool(getattr(settings, "media_enabled", True)):
-        st.info("Les médias sont désactivés dans Paramètres → Médias.")
+        st.info(t("media_disabled"))
         return
 
     dirs = _coerce_dirs(settings)
     if not dirs.screens_dir and not dirs.videos_dir:
-        st.info("Configure au moins un dossier dans Paramètres → Médias (captures et/ou vidéos).")
+        st.info(t("media_no_folder"))
         return
 
     # Récupérer le XUID du joueur actuel
@@ -774,7 +776,7 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
                         )
 
                         if videos_path or screens_path:
-                            with st.spinner("Indexation en cours..."):
+                            with st.spinner(t("media_scanning")):
                                 indexer = MediaIndexer(Path(db_path))
                                 result = indexer.scan_and_index(
                                     videos_dir=videos_path,
@@ -800,7 +802,7 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
                                     msg += f" — {n_thumb_gen} thumbnail(s), {n_thumb_err} erreur(s)"
                                 st.success(msg)
                     except Exception as e:
-                        st.error(f"Erreur lors de l'indexation: {e}")
+                        st.error(t("media_error_indexing", error=e))
 
                 st.rerun()
 
@@ -821,7 +823,7 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
 
                         from src.data.media_indexer import MediaIndexer
 
-                        with st.spinner("Génération des thumbnails..."):
+                        with st.spinner(t("media_generating_thumbnails")):
                             indexer = MediaIndexer(Path(db_path))
                             n_gen, n_err = indexer.generate_thumbnails_for_new(
                                 Path(dirs.videos_dir)
@@ -831,10 +833,10 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
                                 + (f", {n_err} erreur(s)" if n_err else "")
                             )
                     except Exception as e:
-                        st.error(f"Erreur: {e}")
+                        st.error(t("error_loading", error=e))
                     st.rerun()
                 else:
-                    st.warning("Configure un dossier vidéos dans Paramètres → Médias.")
+                    st.warning(t("media_configure_video"))
 
     # Charger depuis BDD si disponible
     media_df = pl.DataFrame()
@@ -877,7 +879,7 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
             )
 
     if assoc_df.is_empty():
-        st.info("Aucun média trouvé.")
+        st.info(t("media_no_files"))
         return
 
     assoc_df = assoc_df.head(int(max_items))
@@ -964,5 +966,5 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
 
     if show_unassigned and not unassigned.is_empty():
         st.divider()
-        st.subheader("Non associés")
+        st.subheader(t("media_unassociated"))
         _render_media_grid(unassigned, cols_per_row=int(cols_per_row), render_context="unassigned")

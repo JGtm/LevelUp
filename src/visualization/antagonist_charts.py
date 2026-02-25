@@ -27,6 +27,7 @@ except ImportError:
     POLARS_AVAILABLE = False
     pl = None  # type: ignore
 
+from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style
 
 if TYPE_CHECKING:
@@ -334,6 +335,7 @@ def plot_duel_history(
     *,
     title: str | None = None,
     height: int = 300,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique de l'historique des duels entre deux joueurs.
 
@@ -413,7 +415,10 @@ def plot_duel_history(
     total_net = total_my_kills - total_opponent_kills
 
     # Ajouter annotation avec les totaux
-    win_status = "Victoire" if total_net > 0 else ("Égalité" if total_net == 0 else "Défaite")
+    win_status = (
+        viz_t("label_win", lang) if total_net > 0
+        else (viz_t("label_tie", lang) if total_net == 0 else viz_t("label_loss", lang))
+    )
     annotation_text = f"Total: {total_my_kills}-{total_opponent_kills} ({win_status})"
 
     fig.add_annotation(

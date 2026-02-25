@@ -11,6 +11,7 @@ import streamlit as st
 
 from src.config import HALO_COLORS
 from src.data.services.win_loss_service import WinLossService
+from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization import (
@@ -106,10 +107,10 @@ def render_win_loss_page(
     dff = ensure_polars(dff)
     base = ensure_polars(base)
     if dff.is_empty():
-        st.warning("Aucun match à afficher. Vérifiez vos filtres ou synchronisez les données.")
+        st.warning(t("no_matches"))
         return
 
-    with st.spinner("Calcul des victoires/défaites…"):
+    with st.spinner(t("wl_computing")):
         current_mode = st.session_state.get("filter_mode")
         is_session_scope = bool(current_mode == "Sessions" and picked_session_labels)
 
@@ -126,30 +127,29 @@ def render_win_loss_page(
 def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str:
     """Affiche le graphe outcomes over time. Retourne le bucket_label."""
     try:
-        fig_out, bucket_label = plot_outcomes_over_time(dff, session_style=is_session_scope)
-        st.markdown(
-            f"Par **{bucket_label}** : on regroupe les parties par {bucket_label} et on compte le nombre de "
-            "victoires/défaites (et autres statuts) pour suivre l'évolution."
+        fig_out, bucket_label = plot_outcomes_over_time(
+            dff, session_style=is_session_scope, lang=get_lang()
         )
+        st.markdown(t("wl_bucket_intro", bucket=bucket_label))
         if fig_out is not None:
             st.plotly_chart(fig_out, width="stretch", config={"displayModeBar": False})
         else:
-            st.info("Données insuffisantes pour afficher l'évolution des résultats.")
+            st.info(t("wl_insufficient_evolution"))
         return bucket_label
     except Exception as e:
-        st.warning(f"Impossible d'afficher l'évolution des résultats : {e}")
-        return "période"
+        st.warning(t("wl_cannot_display_evolution", error=e))
+        return t("wl_period_default")
 
 
 @fragment_if_available
 def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
     """Affiche les résultats par carte et mode (Sprint 5.4)."""
     st.divider()
-    st.subheader("Résultats par carte et mode")
+    st.subheader(t("wl_results_by_map_mode"))
     col_by_map, col_by_mode = st.columns(2)
 
     with col_by_map:
-        st.markdown("##### Par carte")
+        st.markdown(f"##### {t('wl_by_map')}")
         if "map_name" in dff.columns and "outcome" in dff.columns:
             try:
                 fig_map = plot_stacked_outcomes_by_category(
@@ -159,18 +159,19 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     min_matches=2,
                     sort_by="total",
                     max_categories=12,
+                    lang=get_lang(),
                 )
                 if fig_map is not None:
                     st.plotly_chart(fig_map, width="stretch", config={"staticPlot": True})
                 else:
-                    st.info("Données insuffisantes pour les résultats par carte.")
+                    st.info(t("insufficient_data_chart"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher les résultats par carte : {e}")
+                st.warning(t("error_chart", error=e))
         else:
-            st.info("Données insuffisantes.")
+            st.info(t("insufficient_data_chart"))
 
     with col_by_mode:
-        st.markdown("##### Par mode")
+        st.markdown(f"##### {t('wl_by_mode')}")
         mode_col = (
             "mode_ui"
             if "mode_ui" in dff.columns
@@ -185,50 +186,45 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     min_matches=2,
                     sort_by="total",
                     max_categories=10,
+                    lang=get_lang(),
                 )
                 if fig_mode is not None:
                     st.plotly_chart(fig_mode, width="stretch", config={"staticPlot": True})
                 else:
-                    st.info("Données insuffisantes pour les résultats par mode.")
+                    st.info(t("insufficient_data_chart"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher les résultats par mode : {e}")
+                st.warning(t("error_chart", error=e))
         else:
-            st.info("Données insuffisantes.")
+            st.info(t("insufficient_data_chart"))
 
 
 @fragment_if_available
 def _render_heatmap_section(dff: pl.DataFrame) -> None:
     """Affiche la heatmap Win Rate par jour et heure."""
     st.divider()
-    st.subheader("Win Rate par jour et heure")
-    st.caption(
-        "Identifie les créneaux horaires où tu performes le mieux. "
-        "Les cellules affichent le nombre de matchs."
-    )
+    st.subheader(t("wl_heatmap_title"))
+    st.caption(t("wl_heatmap_caption"))
     if "start_time" in dff.columns and "outcome" in dff.columns:
         try:
-            fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=1)
+            fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=1, lang=get_lang())
             if fig_heat is not None:
                 st.plotly_chart(fig_heat, width="stretch", config={"staticPlot": True})
             else:
-                st.info("Données insuffisantes pour la heatmap win rate.")
+                st.info(t("insufficient_data_chart"))
         except Exception as e:
-            st.warning(f"Impossible d'afficher la heatmap win rate : {e}")
+            st.warning(t("error_chart", error=e))
     else:
-        st.info("Données temporelles manquantes.")
+        st.info(t("missing_time_data"))
 
 
 @fragment_if_available
 def _render_top_by_week(dff: pl.DataFrame) -> None:
     """Affiche Matchs Top vs Total par semaine (Sprint 5.4.7)."""
     st.divider()
-    st.subheader("Matchs Top vs Total par semaine")
-    st.caption(
-        "Compare le nombre de matchs où tu as terminé en tête (rang 1) par rapport au total. "
-        'La ligne indique le taux de "Top 1".'
-    )
+    st.subheader(t("wl_top_by_week"))
+    st.caption(t("wl_top_by_week_caption"))
     if "start_time" not in dff.columns:
-        st.info("Données temporelles manquantes.")
+        st.info(t("missing_time_data"))
         return
     try:
         rank_col = "rank" if "rank" in dff.columns else "outcome"
@@ -237,36 +233,33 @@ def _render_top_by_week(dff: pl.DataFrame) -> None:
             title=None,
             rank_col=rank_col,
             top_n_ranks=1,
+            lang=get_lang(),
         )
         if fig_top is not None:
             st.plotly_chart(fig_top, width="stretch", config={"displayModeBar": False})
         else:
-            st.info("Données insuffisantes pour les matchs Top.")
+            st.info(t("insufficient_data_chart"))
     except Exception as e:
-        st.warning(f"Impossible d'afficher les matchs Top : {e}")
+        st.warning(t("error_chart", error=e))
 
 
 @fragment_if_available
 def _render_streak_section(dff: pl.DataFrame) -> None:
     """Affiche les séries de victoires/défaites (Sprint 7.2)."""
     st.divider()
-    st.subheader("Séries de victoires / défaites")
-    st.caption(
-        "Visualise les séries consécutives de victoires (barres positives) "
-        "et de défaites (barres négatives). Les séries longues indiquent "
-        "les phases de momentum positif ou négatif."
-    )
+    st.subheader(t("wl_streaks"))
+    st.caption(t("wl_streaks_caption"))
     if "outcome" in dff.columns and "start_time" in dff.columns:
         try:
             fig_streak = plot_streak_chart(dff, title=None)
             if fig_streak is not None:
                 st.plotly_chart(fig_streak, width="stretch", config={"displayModeBar": False})
             else:
-                st.info("Données insuffisantes pour les séries.")
+                st.info(t("insufficient_data_chart"))
         except Exception as e:
-            st.warning(f"Impossible d'afficher les séries de victoires/défaites : {e}")
+            st.warning(t("error_chart", error=e))
     else:
-        st.info("Données de résultat manquantes.")
+        st.info(t("missing_outcome_data"))
 
 
 def _render_personal_score_section(dff: pl.DataFrame) -> None:
@@ -274,17 +267,15 @@ def _render_personal_score_section(dff: pl.DataFrame) -> None:
     if "personal_score" not in dff.columns:
         return
     st.divider()
-    st.subheader("Score personnel par match")
-    st.caption(
-        "Barres colorées du score personnel pour chaque match, " "avec courbe de moyenne lissée."
-    )
+    st.subheader(t("wl_personal_score"))
+    st.caption(t("wl_personal_score_caption"))
     colors = HALO_COLORS.as_dict()
     fig_ps = plot_metric_bars_by_match(
         dff,
         metric_col="personal_score",
         title=None,
-        y_axis_title="Score personnel",
-        hover_label="Score",
+        y_axis_title=t("wl_personal_score_y_axis"),
+        hover_label=t("wl_personal_score_hover"),
         bar_color=colors["amber"],
         smooth_color=colors["violet"],
         smooth_window=10,
@@ -292,7 +283,7 @@ def _render_personal_score_section(dff: pl.DataFrame) -> None:
     if fig_ps is not None:
         st.plotly_chart(fig_ps, width="stretch", config={"displayModeBar": False})
     else:
-        st.info("Données de score personnel insuffisantes.")
+        st.info(t("insufficient_data_chart"))
 
 
 def _render_period_section(
@@ -302,11 +293,11 @@ def _render_period_section(
 ) -> None:
     """Affiche le tableau par période."""
     st.divider()
-    st.subheader("Par période")
+    st.subheader(t("wl_period"))
     # compute_period_table accepte directement un pl.DataFrame
     period = WinLossService.compute_period_table(dff, bucket_label, is_session_scope)
     if period.is_empty:
-        st.info("Aucune donnée pour construire le tableau.")
+        st.info(t("wl_no_period_data"))
         return
 
     # Conversion pandas à la frontière pour le styling .style
@@ -343,21 +334,26 @@ def _render_ratio_by_map_section(
 ) -> None:
     """Affiche le ratio par cartes avec sélection du scope."""
     st.divider()
-    st.subheader("Ratio par cartes")
-    st.caption("Compare tes performances par map.")
+    st.subheader(t("wl_ratio_by_map"))
+    st.caption(t("wl_ratio_caption"))
 
+    _scope_labels: dict[str, str] = {
+        "Moi (filtres actuels)": t("wl_scope_me_filtered"),
+        "Moi (toutes les parties)": t("wl_scope_me_all"),
+    }
     scope = st.radio(
-        "Scope",
+        t("wl_scope_label"),
         options=[
             "Moi (filtres actuels)",
             "Moi (toutes les parties)",
             "Avec Madina972",
             "Avec Chocoboflor",
         ],
+        format_func=lambda k: _scope_labels.get(k, k),
         horizontal=True,
     )
     min_matches = st.slider(
-        "Minimum de matchs par carte",
+        t("wl_min_matches_map_slider"),
         1,
         30,
         1,
@@ -375,20 +371,20 @@ def _render_ratio_by_map_section(
         db_key,
     )
 
-    with st.spinner("Calcul des stats par carte\u2026"):
+    with st.spinner(t("wl_computing_map")):
         map_result = WinLossService.compute_map_breakdown(base_scope_pl, min_matches)
         breakdown = map_result.breakdown if not map_result.is_empty else pl.DataFrame()
 
     if map_result.is_empty:
-        st.warning("Pas assez de matchs par map avec ces filtres.")
+        st.warning(t("wl_not_enough_map"))
         return
 
     metric = st.selectbox(
-        "Métrique",
+        t("wl_metric_label"),
         options=[
-            ("ratio_global", "Ratio Victoire/défaite"),
-            ("win_rate", "Taux de victoires"),
-            ("accuracy_avg", "Précision moyenne"),
+            ("ratio_global", t("wl_metric_ratio")),
+            ("win_rate", t("wl_metric_win_rate")),
+            ("accuracy_avg", t("wl_metric_accuracy")),
         ],
         format_func=lambda x: x[1],
     )
@@ -408,9 +404,9 @@ def _render_ratio_by_map_section(
                 fig.update_xaxes(ticksuffix="%")
             st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
         else:
-            st.info(f"Données insuffisantes pour {label}.")
+            st.info(t("insufficient_data_chart"))
     except Exception as e:
-        st.warning(f"Impossible d'afficher le graphique {label} : {e}")
+        st.warning(t("error_chart", error=e))
 
     base_scope = base_scope_pl
     _render_map_table(breakdown, base_scope)

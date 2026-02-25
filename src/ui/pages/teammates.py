@@ -16,6 +16,8 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.data.services.teammates_service import TeammatesService
 from src.ui.cache import cached_has_cache_tables
 from src.ui.pages.teammates_helpers import render_teammate_cards
@@ -113,7 +115,7 @@ def render_teammates_page(
 
     # Protection contre les DataFrames vides
     if dff.is_empty():
-        st.warning("Aucun match à afficher. Vérifiez vos filtres ou synchronisez les données.")
+        st.warning(t("no_matches"))
         return
 
     # Vérification du cache pour performance

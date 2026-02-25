@@ -16,6 +16,8 @@ from typing import Any
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.analysis.performance_score import compute_relative_performance_score
 from src.app.helpers import normalize_map_label
@@ -77,7 +79,7 @@ def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
         )
         from src.data.sync.migrations import ensure_match_skill_rank_table
     except ImportError:
-        st.info("Modules LUSR non disponibles.")
+        st.info(t("mv_lusr_modules_missing"))
         return
 
     try:
@@ -91,7 +93,7 @@ def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
         ).fetchone()
         conn.close()
     except Exception:
-        st.info("Aucun rating disponible pour ce match.")
+        st.info(t("mv_lusr_no_data"))
         return
 
     if row_rank is None:
@@ -162,7 +164,7 @@ def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
                 )
 
         if playlist_group:
-            st.caption(f"Groupe : {playlist_group.capitalize()}")
+            st.caption(t("mv_playlist_group_caption", group=playlist_group.capitalize()))
 
 
 # =============================================================================
@@ -190,19 +192,19 @@ def _render_match_citations_section(
 
     citations_db = _load_citations_from_db()
     if not citations_db:
-        st.caption("Référentiel Citations indisponible.")
+        st.caption(t("mv_citations_unavailable"))
         return
 
     try:
         engine = CitationEngine(db_path, xuid)
         delta_map = engine.aggregate_for_display(match_ids=[match_id])
     except Exception:
-        st.caption("Citations indisponibles pour ce match.")
+        st.caption(t("mv_citations_no_data"))
         return
 
     active_norms = {norm for norm, val in delta_map.items() if val > 0}
     if not active_norms:
-        st.info("Aucune citation n'a progressé dans ce match.")
+        st.info(t("citations_no_progress"))
         return
 
     try:
@@ -388,7 +390,7 @@ def render_match_view(
 
     match_id = str(match_id or "").strip()
     if not match_id:
-        st.info("MatchId manquant.")
+        st.info(t("mv_match_id_missing"))
         return
 
     last_time = row.get("start_time")
@@ -521,7 +523,7 @@ def render_match_view(
         _render_match_rank_tab(match_id=match_id, db_path=db_path)
 
     # Stats détaillées
-    with st.spinner("Lecture des stats détaillées (attendu vs réel, médailles)…"):
+    with st.spinner(t("mv_loading")):
         pm = load_player_match_result_fn(db_path, match_id, xuid.strip(), db_key=db_key)
         medals_last = load_match_medals_fn(db_path, match_id, xuid.strip(), db_key=db_key)
 
@@ -613,7 +615,7 @@ def render_match_view(
     )
 
     # Citations (progressées dans ce match)
-    st.subheader("Citations")
+    st.subheader(t("mv_citations"))
     _render_match_citations_section(
         match_id=match_id,
         db_path=db_path,
@@ -621,9 +623,9 @@ def render_match_view(
     )
 
     # Médailles
-    st.subheader("Médailles")
+    st.subheader(t("mv_medals"))
     if not medals_last:
-        st.info("Médailles indisponibles pour ce match (ou aucune médaille).")
+        st.info(t("mv_medals_no_data"))
     else:
         md_df = pl.DataFrame(medals_last)
         _fr_map, _en_map = load_medal_name_maps()

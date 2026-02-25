@@ -9,6 +9,8 @@ from pathlib import Path
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.data.media_indexer import MediaIndexer
 from src.ui.components.media_thumbnail import render_media_thumbnail
 from src.ui.settings import AppSettings
@@ -152,7 +154,7 @@ def render_media_tab(
     if not settings:
         settings = AppSettings()
     if not getattr(settings, "media_enabled", True):
-        st.info("Les médias sont désactivés dans Paramètres → Médias.")
+        st.info(t("media_disabled"))
         return
 
     db_path = st.session_state.get("db_path", "")
@@ -175,7 +177,7 @@ def render_media_tab(
         )
 
     if not db_path or not str(db_path).endswith(".duckdb"):
-        st.info("Sélectionne un profil joueur (DB DuckDB) pour afficher les médias.")
+        st.info(t("no_data_filter"))
         return
 
     media_df = MediaIndexer.load_media_for_ui(Path(db_path), current_xuid)

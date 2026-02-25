@@ -11,6 +11,7 @@ import logging
 import plotly.graph_objects as go
 import streamlit as st
 
+from src.ui.i18n import t
 from src.config import THEME_COLORS
 from src.ui.career_ranks import (
     format_career_rank_label_fr,
@@ -43,7 +44,7 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
             result = conn.execute(
                 """SELECT rank, rank_name, rank_tier, current_xp,
                           xp_for_next_rank, xp_total, is_max_rank,
-                          adornment_path, recorded_at
+                          adornment_path, spartan_id, recorded_at
                    FROM career_progression
                    WHERE xuid = ?
                    ORDER BY recorded_at DESC
@@ -61,7 +62,8 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
                     "xp_total": result[5],
                     "is_max_rank": bool(result[6]),
                     "adornment_path": result[7],
-                    "recorded_at": result[8],
+                    "spartan_id": result[8],
+                    "recorded_at": result[9],
                 }
     except Exception as e:
         logger.debug(f"Impossible de charger career_progression: {e}")
@@ -303,10 +305,7 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
 
     snapshot = _load_lusr_snapshot(db_path)
     if not snapshot:
-        st.info(
-            "Aucun rating LUSR/CSR calculé. "
-            "Utilisez `--lusr` (non classé) ou `--csr` (classé) pour calculer."
-        )
+        st.info(t("career_lusr_no_rating"))
         return
 
     # ── Cartes visuelles — triées par ordre de compétitivité ──
@@ -392,10 +391,10 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
     if not available_groups:
         return
 
-    st.markdown("#### 📈 Évolution du rating")
+    st.markdown(f"#### {t('career_lusr_rating_evolution')}")
 
     # Sélecteur de groupe : "Tous" + un par groupe disponible
-    group_options: dict[str, str | None] = {"Tous les groupes": None}
+    group_options: dict[str, str | None] = {t("career_lusr_all_groups"): None}
     for g in _PG_ORDER:
         if g in available_groups:
             group_options[f"{_PG_ICONS.get(g, '🎮')} {_PG_LABELS.get(g, g.capitalize())}"] = g
@@ -405,7 +404,7 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
             group_options[f"🎮 {g.capitalize()}"] = g
 
     selected_label = st.selectbox(
-        "Groupe :",
+        t("career_lusr_group_select"),
         options=list(group_options.keys()),
         key="lusr_group_select",
     )
@@ -425,7 +424,7 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
             config=PLOTLY_CLEAN_CONFIG,
         )
     except Exception as e:
-        st.warning(f"Impossible d'afficher le graphe : {e}")
+        st.warning(t("career_lusr_group_error", error=e))
 
 
 @fragment_if_available
@@ -436,16 +435,13 @@ def render_career_page(
     db_key: str | None = None,
 ) -> None:
     """Rend la page Carrière avec rang actuel, gauge et historique."""
-    st.header("Carrière")
+    st.header(t("career_header"))
 
     # Charger les données
     career_data = _load_career_data(db_path, xuid)
 
     if career_data is None:
-        st.info(
-            "Aucune donnée de carrière disponible. "
-            "Synchronisez vos données pour voir votre progression de rang."
-        )
+        st.info(t("career_no_data"))
         return
 
     rank_number = career_data.get("rank", 0)
@@ -500,6 +496,7 @@ def render_career_page(
     with col_info:
         st.subheader(rank_label_fr)
 
+
         # Métriques
         m1, m2 = st.columns(2)
         with m1:
@@ -507,7 +504,7 @@ def render_career_page(
             st.metric("XP total", f"{xp_total:,}")
         with m2:
             if is_max:
-                st.metric("Statut", "Rang maximum")
+                st.metric(t("career_rank_max"), t("career_rank_max"))
             else:
                 st.metric("XP actuel", f"{current_xp:,}")
                 st.metric("XP prochain rang", f"{xp_for_next:,}")
@@ -527,13 +524,13 @@ def render_career_page(
                     gauge_fig, key="career_gauge", width="stretch", config={"staticPlot": True}
                 )
             else:
-                st.info("Impossible de générer la jauge de progression.")
+                st.info(t("career_gauge_generate_error"))
         except Exception as e:
-            st.warning(f"Impossible d'afficher la jauge de progression : {e}")
+            st.warning(t("career_gauge_error", error=e))
 
     # --- Progression vers Héros ---
     st.divider()
-    st.subheader("Progression vers Héros")
+    st.subheader(t("career_progression_to_hero"))
 
     hero_data = compute_hero_progress(xp_total=xp_total, rank=rank_number, is_max_rank=is_max)
     hero_pct = hero_data["percentage"]
@@ -567,7 +564,7 @@ def render_career_page(
                 config={"staticPlot": True},
             )
         except Exception as e:
-            st.warning(f"Impossible d'afficher la progression vers Héros : {e}")
+            st.warning(t("career_hero_progress_error", error=e))
 
     # --- Historique de progression ---
     st.divider()
@@ -585,12 +582,12 @@ def render_career_page(
                     config={"displayModeBar": False},
                 )
             else:
-                st.info("Pas assez de données pour afficher l'historique.")
+                st.info(t("career_rank_history_no_data"))
         except Exception as e:
-            st.warning(f"Impossible d'afficher l'historique de progression : {e}")
+            st.warning(t("career_history_error", error=e))
 
         # Tableau récapitulatif des derniers snapshots
-        with st.expander("Historique détaillé", expanded=False):
+        with st.expander(t("career_rank_history_title"), expanded=False):
             # Afficher les 10 derniers snapshots (du plus récent au plus ancien)
             recent = list(reversed(history[-10:]))
             for snap in recent:
@@ -603,9 +600,7 @@ def render_career_page(
                 xp_t = snap.get("xp_total", 0) or 0
                 st.text(f"{date_str}  |  Rang {snap['rank']}: {snap_label}  |  XP: {xp_t:,}")
     else:
-        st.info(
-            "Pas encore d'historique de progression. Les données seront collectées à chaque synchronisation."
-        )
+        st.info(t("career_computing"))
 
     # --- LUSR / CSR — LevelUp Skill Rank ---
     st.divider()

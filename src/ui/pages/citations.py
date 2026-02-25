@@ -7,6 +7,8 @@ from collections.abc import Callable
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
+
 from src.ui.commendations import render_h5g_commendations_section
 from src.ui.medals import load_medal_name_maps, medal_label, render_medals_grid
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -46,7 +48,7 @@ def render_citations_page(
     df_full = ensure_polars(df_full)
     # Protection contre les DataFrames vides
     if dff.is_empty():
-        st.warning("Aucun match à afficher. Vérifiez vos filtres ou synchronisez les données.")
+        st.warning(t("no_matches"))
         return
 
     xuid_clean = str(xuid or "").strip()
@@ -66,7 +68,7 @@ def render_citations_page(
             )
 
     # 1) Commendations Halo 5 (via CitationEngine + match_citations)
-    st.subheader("Citations (Commendations Halo 5)")
+    st.subheader(t("citations_halo5_title"))
 
     # Compter les citations totales
     total_citations_count = 0
@@ -101,7 +103,7 @@ def render_citations_page(
         match_ids = (
             dff.select(pl.col("match_id").drop_nulls().cast(pl.String)).to_series().to_list()
         )
-        with st.spinner("Agrégation des médailles…"):
+        with st.spinner(t("tm_computing_medals_all")):
             top_all = top_medals_fn(db_path, xuid_clean, match_ids, top_n=None, db_key=db_key)
         try:
             counts_by_medal = {int(nid): int(cnt) for nid, cnt in (top_all or [])}
@@ -109,7 +111,7 @@ def render_citations_page(
             counts_by_medal = {}
 
     # 2) Médailles (Halo Infinite) - Affiche TOUJOURS toutes les médailles.
-    st.subheader("Médailles (Halo Infinite)")
+    st.subheader(t("citations_medals_title"))
 
     # Calculer les totaux pour les médailles
     total_medals_distinct = len(counts_by_medal)
@@ -124,14 +126,14 @@ def render_citations_page(
     with cols_medals[2]:
         st.metric("Matchs analysés", len(dff) if not dff.is_empty() else 0)
 
-    st.caption("Médailles sur la sélection/filtres actuels.")
+    st.caption(t("citations_medals_caption"))
     if dff.is_empty():
-        st.info("Aucun match disponible avec les filtres actuels.")
+        st.info(t("no_data_filter"))
     else:
         top = sorted(counts_by_medal.items(), key=lambda kv: kv[1], reverse=True)
 
         if not top:
-            st.info("Aucune médaille trouvée (ou payload médailles absent).")
+            st.info(t("citations_no_medals"))
         else:
             _fr_map, _en_map = load_medal_name_maps()
             _medal_map = {
@@ -150,7 +152,7 @@ def render_citations_page(
             md_desc = md.sort("count", descending=True)
 
             # === Graphique de distribution des médailles (Sprint 5.4.9) ===
-            st.subheader("Distribution des médailles")
+            st.subheader(t("citations_medals_distribution"))
 
             # Préparer les données pour le graphique
             try:
@@ -164,12 +166,12 @@ def render_citations_page(
                 if fig_medals is not None:
                     st.plotly_chart(fig_medals, width="stretch", config={"staticPlot": True})
                 else:
-                    st.info("Données insuffisantes pour la distribution des médailles.")
+                    st.info(t("insufficient_data_chart"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher la distribution des médailles : {e}")
+                st.warning(t("error_chart", error=e))
 
             st.divider()
-            st.subheader("Grille de médailles")
+            st.subheader(t("citations_medals_grid"))
 
             # Passer les deltas par médaille si filtré
             deltas = None
