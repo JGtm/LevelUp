@@ -5,6 +5,7 @@ Chaque section correspond à une page ou un sous-groupe de sections.
 ⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO" ci-dessous.
    Règles : voir le prompt de la Phase 1b dans le plan i18n.
 """
+
 from __future__ import annotations
 
 STRINGS: dict[str, dict[str, str]] = {
@@ -711,6 +712,23 @@ STRINGS: dict[str, dict[str, str]] = {
     "mv_playlist_group_caption": {
         "fr": "Groupe : {group}",
         "en": "Group: {group}",
+    },
+    # Nouveau format "LUSR Arena : 1528" — inclut type, groupe traduit et valeur
+    "mv_playlist_group_rating_label": {
+        "fr": "{type} {group} : {value}",
+        "en": "{type} {group}: {value}",
+    },
+    # Noms traduits des groupes de playlist
+    "mv_pg_ranked": {"fr": "Classé", "en": "Ranked"},
+    "mv_pg_arena": {"fr": "Arena", "en": "Arena"},
+    "mv_pg_btb": {"fr": "Grand Combat", "en": "Big Team Battle"},
+    "mv_pg_tactical": {"fr": "Tactique", "en": "Tactical"},
+    "mv_pg_social": {"fr": "Social", "en": "Social"},
+    "mv_pg_fun": {"fr": "Fun", "en": "Fun"},
+    # Barre de progression dans le sous-tier
+    "mv_sub_tier_progress": {
+        "fr": "Progression dans {tier_name} {sub_tier} : {pts_earned} / {tier_size} pts",
+        "en": "Progress in {tier_name} {sub_tier}: {pts_earned} / {tier_size} pts",
     },
     "mv_citations_unavailable": {
         "fr": "Référentiel Citations indisponible.",

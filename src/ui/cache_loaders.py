@@ -610,6 +610,9 @@ def cached_get_match_skill_rank(
     """Retourne le rating LUSR/CSR d'un match depuis match_skill_rank (read-only, mis en cache).
 
     N'exécute aucun DDL : si la table n'existe pas, retourne None silencieusement.
+    Le ``rating_delta`` est calculé dynamiquement via ``LAG`` sur les ``rating_value``
+    stockés pour garantir la cohérence avec les valeurs affichés (corrige l'incohérence
+    du delta stocké lors d'un recalcul avec seed différent).
 
     Args:
         db_path: Chemin vers stats.duckdb du joueur.
@@ -627,9 +630,24 @@ def cached_get_match_skill_rank(
     try:
         with duckdb.connect(str(db_path), read_only=True) as conn:
             row = conn.execute(
-                "SELECT rating_type, rating_value, rating_deviation, tier_label, "
-                "       sub_tier, tier, tier_fr, rating_delta, playlist_group "
-                "FROM match_skill_rank WHERE match_id = ?",
+                """
+                WITH cte AS (
+                    SELECT
+                        msr.match_id,
+                        msr.rating_type, msr.rating_value, msr.rating_deviation,
+                        msr.tier_label, msr.sub_tier, msr.tier, msr.tier_fr,
+                        msr.playlist_group,
+                        msr.rating_value - LAG(msr.rating_value) OVER (
+                            PARTITION BY msr.playlist_group
+                            ORDER BY COALESCE(msr.start_time, msr.updated_at)
+                        ) AS computed_delta
+                    FROM match_skill_rank msr
+                )
+                SELECT rating_type, rating_value, rating_deviation, tier_label,
+                       sub_tier, tier, tier_fr, computed_delta, playlist_group
+                FROM cte
+                WHERE match_id = ?
+                """,
                 [match_id],
             ).fetchone()
         return row

@@ -8,6 +8,7 @@ Ce module a été refactorisé en sous-modules :
 
 from __future__ import annotations
 
+import contextlib
 import html
 from collections.abc import Callable
 from datetime import datetime
@@ -51,20 +52,13 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 # =============================================================================
 
 
-def _render_match_rank_tab(
+def _build_match_rank_html(
     *, match_id: str, db_path: str, db_key: tuple[int, int] | None = None
-) -> None:
-    """Affiche l'onglet 🏅 Rang pour un match (LUSR ou CSR).
+) -> str | None:
+    """Construit le HTML du bloc rang LUSR/CSR pour un match.
 
-    Charge depuis ``match_skill_rank`` (stats.duckdb du joueur) et affiche :
-    - Image du rang (120px-HINF-CSR_*.png)
-    - Label du tier (ex: « Or III », « Onyx »)
-    - Barre de progression dans le sous-tier avec delta coloré
-
-    Args:
-        match_id: Identifiant du match.
-        db_path: Chemin vers stats.duckdb du joueur.
-        db_key: Clé d'invalidation du cache (mtime, size).
+    Returns:
+        Chaîne HTML prête à injecter, ou None si pas de données.
     """
     try:
         from pathlib import Path
@@ -79,17 +73,11 @@ def _render_match_rank_tab(
         )
         from src.ui.cache_loaders import cached_get_match_skill_rank
     except ImportError:
-        st.info(t("mv_lusr_modules_missing"))
-        return
+        return None
 
     row_rank = cached_get_match_skill_rank(db_path, match_id, db_key=db_key)
-
     if row_rank is None:
-        st.info(
-            "Aucun rating LUSR/CSR calculé pour ce match. "
-            "Lancez `--lusr` (non classé) ou `--csr` (classé) pour calculer."
-        )
-        return
+        return None
 
     (
         rating_type,
@@ -103,57 +91,100 @@ def _render_match_rank_tab(
         playlist_group,
     ) = row_rank
 
-    # ── Affichage centré ──
-    col_img, col_info = st.columns([1, 2])
+    from src.ui.player_assets import file_to_data_url
 
-    with col_img:
-        # Image du rang
-        img_path_rel = get_rank_image_path(rating_value) if rating_value else None
-        if img_path_rel:
-            img_full = Path(__file__).resolve().parents[3] / img_path_rel
-            if img_full.exists():
-                st.image(str(img_full), width=120)
-            else:
-                st.markdown(
-                    f"<span style='color:{UNRANKED_COLOR}'>◆</span>", unsafe_allow_html=True
+    tier_display = html.escape(tier_label or UNRANKED_LABEL)
+    rating_type_badge = html.escape("CSR" if rating_type == "CSR" else "LUSR")
+    rating_val_str = f"{rating_value:.0f}" if rating_value is not None else "-"
+
+    # Groupe traduit
+    group_translated = ""
+    if playlist_group:
+        group_key = f"mv_pg_{playlist_group.lower()}"
+        group_translated = t(group_key)
+        if group_translated == group_key:
+            group_translated = playlist_group.capitalize()
+
+    rating_line = html.escape(
+        f"{rating_type_badge} {group_translated} : {rating_val_str}"
+        if group_translated
+        else f"{rating_type_badge} • {rating_val_str}"
+    )
+
+    # Image du rang en data URI
+    img_html = f"<span style='color:{UNRANKED_COLOR};font-size:3em'>◆</span>"
+    img_path_rel = get_rank_image_path(rating_value) if rating_value else None
+    if img_path_rel:
+        img_full = Path(__file__).resolve().parents[3] / img_path_rel
+        if img_full.exists():
+            data_url = file_to_data_url(str(img_full))
+            if data_url:
+                img_html = (
+                    f"<img src='{data_url}' "
+                    f"style='width:110px;height:110px;object-fit:contain'>"
                 )
 
-    with col_info:
-        # Label du tier
-        tier_display = html.escape(tier_label or UNRANKED_LABEL)
-        rating_type_badge = html.escape("CSR" if rating_type == "CSR" else "LUSR")
-        st.markdown(
-            f"<h3 style='margin:0'>{tier_display}</h3>"
-            f"<small style='color:#888'>{rating_type_badge} • {rating_value:.0f}</small>",
-            unsafe_allow_html=True,
-        )
-
-        # Delta
-        if rating_delta is not None:
-            delta_color = "#50C878" if rating_delta >= 0 else "#FF4444"
-            delta_sign = "+" if rating_delta >= 0 else ""
-            st.markdown(
-                f"<span style='color:{delta_color};font-size:1.1em'>"
-                f"{delta_sign}{rating_delta:.0f} pts</span>",
-                unsafe_allow_html=True,
+    # Delta
+    delta_html = ""
+    if rating_delta is not None:
+        _rd = round(rating_delta)
+        if _rd == 0:
+            delta_html = "<div style='color:#888888;font-size:1.05em;margin-top:4px'>= 0 pts</div>"
+        else:
+            delta_color = "#50C878" if _rd > 0 else "#FF4444"
+            delta_sign = "+" if _rd > 0 else "-"
+            delta_html = (
+                f"<div style='color:{delta_color};font-size:1.05em;margin-top:4px'>"
+                f"{delta_sign}{abs(_rd)} pts</div>"
             )
 
-        # Barre de progression dans le sous-tier
-        if rating_value is not None:
-            tier_obj, sub = get_tier_for_rating(rating_value)
-            if tier_obj and tier_obj.sub_tiers > 1:
-                tier_size = get_tier_size(rating_value)
-                sub_start = get_sub_tier_start(rating_value)
-                if tier_size > 0:
-                    progress_val = min(1.0, max(0.0, (rating_value - sub_start) / tier_size))
-                    st.progress(progress_val)
-                    st.caption(
-                        f"{rating_value - sub_start:.0f} / {tier_size:.0f} pts "
-                        f"dans {tier_fr or tier_name or ''} {sub}"
-                    )
+    # Barre de progression
+    progress_html = ""
+    if rating_value is not None:
+        tier_obj, sub = get_tier_for_rating(rating_value)
+        if tier_obj and tier_obj.sub_tiers > 1:
+            tier_size = get_tier_size(rating_value)
+            sub_start = get_sub_tier_start(rating_value)
+            if tier_size > 0:
+                pct = min(100.0, max(0.0, (rating_value - sub_start) / tier_size * 100))
+                tier_sz = f"{tier_size:.0f}"
+                progress_html = f"""
+<div style='display:flex;align-items:center;gap:6px;margin-top:8px'>
+  <span style='font-size:0.75em;color:#888;min-width:14px;text-align:right'>0</span>
+  <div style='flex:1;height:8px;background:rgba(255,255,255,0.12);border-radius:4px;overflow:hidden'>
+    <div style='width:{pct:.1f}%;height:8px;background:#33d6ff;border-radius:4px'></div>
+  </div>
+  <span style='font-size:0.75em;color:#888;min-width:14px'>{tier_sz}</span>
+</div>"""
 
-        if playlist_group:
-            st.caption(t("mv_playlist_group_caption", group=playlist_group.capitalize()))
+    return (
+        f"<div style='display:flex;align-items:center;gap:16px'>"
+        f"{img_html}"
+        f"<div style='flex:1;min-width:0'>"
+        f"<div style='font-size:1.4em;font-weight:700;line-height:1.2'>{tier_display}</div>"
+        f"<div style='color:#ffffff;font-size:1.2em;font-weight:bold;margin-top:4px'>{rating_line}</div>"
+        f"{delta_html}"
+        f"{progress_html}"
+        f"</div>"
+        f"</div>"
+    )
+
+
+def _render_match_rank_tab(
+    *, match_id: str, db_path: str, db_key: tuple[int, int] | None = None
+) -> None:
+    """Affiche l'onglet 🏅 Rang pour un match (LUSR ou CSR).
+
+    Wrapper qui appelle ``_build_match_rank_html`` et rend le résultat.
+    """
+    rank_html = _build_match_rank_html(match_id=match_id, db_path=db_path, db_key=db_key)
+    if rank_html is None:
+        st.info(
+            "Aucun rating LUSR/CSR calculé pour ce match. "
+            "Lancez `--lusr` (non classé) ou `--csr` (classé) pour calculer."
+        )
+        return
+    st.markdown(rank_html, unsafe_allow_html=True)
 
 
 # =============================================================================
@@ -492,24 +523,44 @@ def render_match_view(
     row_cols[1].metric(" ", playlist_display)
     row_cols[2].metric(" ", mode_display)
 
-    # Miniature de la carte + onglet Rang (LUSR/CSR)
+    # Miniature de la carte + Rang (LUSR/CSR) côte à côte
     map_id = row.get("map_id")
     thumb = map_thumb_path(row, str(map_id) if map_id else None)
 
-    tab_map, tab_rank = st.tabs(["🗺️ Carte", "🏅 Rang"])
+    # Convertir la miniature en data URI pour l'intégrer au HTML
+    from src.ui.player_assets import file_to_data_url as _f2du
 
-    with tab_map:
-        if thumb:
-            import contextlib
+    thumb_data_url = None
+    if thumb:
+        with contextlib.suppress(Exception):
+            thumb_data_url = _f2du(str(thumb))
 
-            c = st.columns([1, 2, 1])
-            with c[1], contextlib.suppress(Exception):
-                st.image(thumb, width=400)
-        else:
-            st.info("Miniature de carte indisponible.")
+    # Construire le HTML du rang
+    rank_html = _build_match_rank_html(match_id=match_id, db_path=db_path, db_key=db_key)
 
-    with tab_rank:
-        _render_match_rank_tab(match_id=match_id, db_path=db_path, db_key=db_key)
+    # Assembler carte + rang dans un seul bloc HTML centré verticalement
+    map_img_html = ""
+    if thumb_data_url:
+        map_img_html = (
+            f"<img src='{thumb_data_url}' "
+            f"style='width:100%;max-width:480px;height:auto;border-radius:4px;object-fit:cover'>"
+        )
+    else:
+        map_img_html = (
+            "<div style='padding:16px;color:#888;font-style:italic'>"
+            "Miniature de carte indisponible.</div>"
+        )
+
+    if rank_html:
+        st.markdown(
+            f"""<div style='display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:1.5rem'>
+  <div style='flex:1;min-width:250px'>{map_img_html}</div>
+  <div style='flex:1;min-width:250px'>{rank_html}</div>
+</div>""",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(map_img_html, unsafe_allow_html=True)
 
     # Stats détaillées
     with st.spinner(t("mv_loading")):
