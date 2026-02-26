@@ -137,15 +137,23 @@ data/
 
 ## Documentation
 
+> Convention :
+> - `docs/` = documentation EN (publique)
+> - `docs/FR/` = sources FR
+> - `docs/archive/` = docs conservées mais non traduites
+
 | Document | Contenu |
 |----------|---------|
 | `docs/INSTALL.md` | Installation |
 | `docs/CONFIGURATION.md` | Configuration |
-| `docs/ARCHITECTURE.md` | Architecture technique |
-| `docs/DATA_ARCHITECTURE.md` | Architecture données |
+| `docs/COMMANDS.md` | Commandes usuelles |
+| `docs/ARCHITECTURE_V5.md` | Architecture DuckDB v5 |
 | `docs/SYNC_GUIDE.md` | Guide synchronisation |
 | `docs/BACKUP_RESTORE.md` | Backup/Restore |
+| `docs/TESTING_V5.md` | Tests (v5) |
 | `docs/FAQ.md` | Questions fréquentes |
+| `docs/COMMENDATIONS.md` | Commendations (ex "citations") |
+| `docs/COMMENDATIONS_REFERENCE.md` | Référentiel complet des commendations |
 
 ### Documentation IA (.ai/)
 
