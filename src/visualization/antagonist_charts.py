@@ -42,16 +42,16 @@ if TYPE_CHECKING:
 # Remplacement des couleurs néon précédentes (#00ff00, #ff4444) non accessibles
 # aux daltoniens (deuteranopie/protanopie).
 COLORS = {
-    "kills": "#009E73",      # Vert bleuté Okabe-Ito — Mes kills
-    "deaths": "#D55E00",     # Vermillon Okabe-Ito — Mes morts
-    "nemesis": "#E69F00",    # Orange Okabe-Ito — Némésis
-    "victim": "#0072B2",     # Bleu Okabe-Ito — Victime
-    "neutral": "#888888",    # Gris — Neutre
+    "kills": "#009E73",  # Vert bleuté Okabe-Ito — Mes kills
+    "deaths": "#D55E00",  # Vermillon Okabe-Ito — Mes morts
+    "nemesis": "#E69F00",  # Orange Okabe-Ito — Némésis
+    "victim": "#0072B2",  # Bleu Okabe-Ito — Victime
+    "neutral": "#888888",  # Gris — Neutre
     "positive_kd": "#009E73",  # Vert bleuté Okabe-Ito — K/D positif
     "negative_kd": "#D55E00",  # Vermillon Okabe-Ito — K/D négatif
-    "team_alpha": "#0072B2",   # Bleu Okabe-Ito — équipe alpha
-    "team_bravo": "#E69F00",   # Orange Okabe-Ito — équipe bravo
-    "highlight": "#F0E442",    # Jaune Okabe-Ito — Highlight
+    "team_alpha": "#0072B2",  # Bleu Okabe-Ito — équipe alpha
+    "team_bravo": "#E69F00",  # Orange Okabe-Ito — équipe bravo
+    "highlight": "#F0E442",  # Jaune Okabe-Ito — Highlight
 }
 
 # Couleurs mises à jour pour respecter la palette Okabe-Ito (accessibilité daltonisme).
@@ -90,6 +90,7 @@ def plot_killer_victim_stacked_bars(
     rank_by_xuid: dict[str, int] | None = None,
     title: str = "Eliminateur-Victime",
     height: int = 400,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique barres empilées : une ligne par tueur, segments = victimes (plus tuée en premier), lignes triées par rang.
 
@@ -112,7 +113,7 @@ def plot_killer_victim_stacked_bars(
 
     if pairs_df.is_empty():
         fig.add_annotation(
-            text="Aucune donnée disponible",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -128,7 +129,7 @@ def plot_killer_victim_stacked_bars(
 
     if filtered_df.is_empty():
         fig.add_annotation(
-            text="Aucune donnée pour ce match",
+            text=viz_t("empty_no_match_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -198,8 +199,8 @@ def plot_killer_victim_stacked_bars(
 
     fig.update_layout(
         barmode="stack",
-        xaxis_title="Nombre de frags",
-        yaxis_title="Elminateur",
+        xaxis_title=viz_t("axis_frag_count", lang),
+        yaxis_title=viz_t("axis_killer", lang),
         yaxis={"categoryorder": "array", "categoryarray": killer_labels, "autorange": "reversed"},
         margin={"l": 140},
         showlegend=True,
@@ -220,9 +221,10 @@ def plot_killer_victim_stacked_bars(
 def plot_kd_timeseries(
     timeseries_df: pl.DataFrame,
     *,
-    title: str = "K/D par minute",
+    title: str | None = None,
     show_cumulative: bool = True,
     height: int = 350,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique timeseries du K/D par minute.
 
@@ -241,11 +243,12 @@ def plot_kd_timeseries(
     if not POLARS_AVAILABLE:
         raise ImportError("Polars requis pour cette fonction")
 
+    title = title or viz_t("title_kd_per_min", lang)
     fig = go.Figure()
 
     if timeseries_df.is_empty():
         fig.add_annotation(
-            text="Aucune donnée disponible",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -263,7 +266,7 @@ def plot_kd_timeseries(
     # Barres pour kills par minute
     fig.add_trace(
         go.Bar(
-            name="Frags",
+            name=viz_t("trace_kills", lang),
             x=minutes,
             y=kills,
             marker={"color": COLORS["kills"], "opacity": 0.7},
@@ -274,7 +277,7 @@ def plot_kd_timeseries(
     # Barres pour morts par minute (négatif)
     fig.add_trace(
         go.Bar(
-            name="Morts",
+            name=viz_t("trace_deaths", lang),
             x=minutes,
             y=[-d for d in deaths],
             marker={"color": COLORS["deaths"], "opacity": 0.7},
@@ -292,7 +295,7 @@ def plot_kd_timeseries(
 
         fig.add_trace(
             go.Scatter(
-                name="K/D Cumulé",
+                name=viz_t("trace_kd_cumul", lang),
                 x=minutes,
                 y=cumulative,
                 mode="lines+markers",
@@ -306,10 +309,10 @@ def plot_kd_timeseries(
     # Mise en forme avec axe Y secondaire
     fig.update_layout(
         barmode="relative",
-        xaxis_title="Minute",
-        yaxis_title="Frags / Morts",
+        xaxis_title=viz_t("axis_minute", lang),
+        yaxis_title=viz_t("axis_kills_deaths", lang),
         yaxis2={
-            "title": "K/D cumulé",
+            "title": viz_t("trace_kd_cumul", lang),
             "overlaying": "y",
             "side": "right",
             "showgrid": False,
@@ -362,7 +365,7 @@ def plot_duel_history(
 
     if duel_df.is_empty():
         fig.add_annotation(
-            text="Aucun duel trouvé",
+            text=viz_t("empty_no_duel", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -401,7 +404,7 @@ def plot_duel_history(
     # Ligne de net
     fig.add_trace(
         go.Scatter(
-            name="Net",
+            name=viz_t("label_net", lang),
             x=matches,
             y=net_values,
             mode="lines+markers",
@@ -418,7 +421,8 @@ def plot_duel_history(
 
     # Ajouter annotation avec les totaux
     win_status = (
-        viz_t("label_win", lang) if total_net > 0
+        viz_t("label_win", lang)
+        if total_net > 0
         else (viz_t("label_tie", lang) if total_net == 0 else viz_t("label_loss", lang))
     )
     annotation_text = f"Total: {total_my_kills}-{total_opponent_kills} ({win_status})"
@@ -439,10 +443,10 @@ def plot_duel_history(
 
     fig.update_layout(
         barmode="group",
-        xaxis_title="Match #",
-        yaxis_title="Frags",
+        xaxis_title=viz_t("axis_match_number", lang),
+        yaxis_title=viz_t("axis_frag_count", lang),
         yaxis2={
-            "title": "Net",
+            "title": viz_t("label_balance", lang),
             "overlaying": "y",
             "side": "right",
             "showgrid": False,
@@ -475,6 +479,7 @@ def plot_nemesis_victim_summary(
     *,
     title: str = "Némésis et Souffre-douleur",
     height: int = 250,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique résumé du némésis et souffre-douleur.
 
@@ -492,7 +497,7 @@ def plot_nemesis_victim_summary(
     fig = make_subplots(
         rows=1,
         cols=2,
-        subplot_titles=("Némésis", "Souffre-douleur"),
+        subplot_titles=(viz_t("label_nemesis", lang), viz_t("label_punching_bag", lang)),
         specs=[[{"type": "indicator"}, {"type": "indicator"}]],
     )
 
@@ -505,7 +510,7 @@ def plot_nemesis_victim_summary(
             mode="number",
             value=nemesis_count,
             number={
-                "suffix": " morts",
+                "suffix": f" {viz_t('suffix_deaths', lang)}",
                 "font": {"size": 36, "color": COLORS["nemesis"]},
             },
             title={
@@ -526,7 +531,7 @@ def plot_nemesis_victim_summary(
             mode="number",
             value=victim_count,
             number={
-                "suffix": " kills",
+                "suffix": f" {viz_t('suffix_kills', lang)}",
                 "font": {"size": 36, "color": COLORS["victim"]},
             },
             title={
@@ -546,6 +551,7 @@ def plot_killer_victim_heatmap(
     *,
     title: str = "Matrice Killer-Victim",
     height: int = 500,
+    lang: str = "fr",
 ) -> go.Figure:
     """Heatmap de la matrice killer-victim.
 
@@ -565,7 +571,7 @@ def plot_killer_victim_heatmap(
 
     if matrix_df.is_empty():
         fig.add_annotation(
-            text="Aucune donnée disponible",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -603,8 +609,8 @@ def plot_killer_victim_heatmap(
     )
 
     fig.update_layout(
-        xaxis_title="Victime",
-        yaxis_title="Tueur",
+        xaxis_title=viz_t("axis_victim", lang),
+        yaxis_title=viz_t("axis_killer", lang),
         xaxis={"side": "bottom"},
     )
 
@@ -618,6 +624,7 @@ def plot_top_antagonists_bars(
     top_n: int = 5,
     title: str = "Top Antagonistes",
     height: int = 400,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique barres horizontales des top antagonistes.
 
@@ -634,7 +641,10 @@ def plot_top_antagonists_bars(
     fig = make_subplots(
         rows=1,
         cols=2,
-        subplot_titles=(f"Top {top_n} Némésis", f"Top {top_n} Victimes"),
+        subplot_titles=(
+            f"Top {top_n} {viz_t('label_nemesis', lang)}",
+            f"Top {top_n} {viz_t('label_punching_bag', lang)}",
+        ),
         horizontal_spacing=0.15,
     )
 
@@ -650,7 +660,7 @@ def plot_top_antagonists_bars(
                 x=nem_counts,
                 orientation="h",
                 marker={"color": COLORS["nemesis"]},
-                name="Morts",
+                name=viz_t("trace_deaths", lang),
                 hovertemplate="<b>%{y}</b><br>M'a tué: %{x} fois<extra></extra>",
             ),
             row=1,
@@ -669,7 +679,7 @@ def plot_top_antagonists_bars(
                 x=vic_counts,
                 orientation="h",
                 marker={"color": COLORS["victim"]},
-                name="Frags",
+                name=viz_t("trace_kills", lang),
                 hovertemplate="<b>%{y}</b><br>Tué: %{x} fois<extra></extra>",
             ),
             row=1,
@@ -680,8 +690,8 @@ def plot_top_antagonists_bars(
         showlegend=False,
     )
 
-    fig.update_xaxes(title_text="Fois tué par", row=1, col=1)
-    fig.update_xaxes(title_text="Fois tué", row=1, col=2)
+    fig.update_xaxes(title_text=viz_t("axis_deaths", lang), row=1, col=1)
+    fig.update_xaxes(title_text=viz_t("axis_kills", lang), row=1, col=2)
 
     return apply_halo_plot_style(fig, title=title, height=height)
 

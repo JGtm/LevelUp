@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from src.config import HALO_COLORS, PLOT_CONFIG
+from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars, to_pandas_for_plotly
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -56,7 +57,9 @@ def plot_map_comparison(df_breakdown: DataFrameLike, metric: str, title: str) ->
     return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.tall_height)
 
 
-def plot_map_ratio_with_winloss(df_breakdown: DataFrameLike, title: str) -> go.Figure:
+def plot_map_ratio_with_winloss(
+    df_breakdown: DataFrameLike, title: str, lang: str = "fr"
+) -> go.Figure:
     """Graphique de ratio par carte avec taux de victoire/défaite.
 
     Args:
@@ -91,7 +94,7 @@ def plot_map_ratio_with_winloss(df_breakdown: DataFrameLike, title: str) -> go.F
             x=d["win_rate"],
             y=d["map_name"],
             orientation="h",
-            name="Taux de victoire",
+            name=viz_t("trace_wins", lang),
             marker_color=colors["green"],
             opacity=0.70,
             customdata=d[["matches"]].values,
@@ -103,7 +106,7 @@ def plot_map_ratio_with_winloss(df_breakdown: DataFrameLike, title: str) -> go.F
             x=d["loss_rate"],
             y=d["map_name"],
             orientation="h",
-            name="Taux de défaite",
+            name=viz_t("trace_losses", lang),
             marker_color=colors["red"],
             opacity=0.55,
             customdata=d[["matches"]].values,
@@ -116,7 +119,7 @@ def plot_map_ratio_with_winloss(df_breakdown: DataFrameLike, title: str) -> go.F
             x=d["other_rate"],
             y=d["map_name"],
             orientation="h",
-            name="Autres (égalité / non terminé)",
+            name=viz_t("trace_others_tie_unfinished", lang),
             marker_color=colors["violet"],
             opacity=0.35,
             customdata=d[["matches"]].values,
@@ -132,6 +135,6 @@ def plot_map_ratio_with_winloss(df_breakdown: DataFrameLike, title: str) -> go.F
         bargap=0.18,
         legend=get_legend_horizontal_bottom(),
     )
-    fig.update_xaxes(title_text="Win / Loss", tickformat=".0%", range=[0, 1])
+    fig.update_xaxes(title_text=viz_t("axis_win_rate", lang), tickformat=".0%", range=[0, 1])
 
     return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.tall_height)

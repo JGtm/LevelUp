@@ -17,10 +17,10 @@ import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
 from src.analysis.performance_score import compute_performance_series
 from src.ui import translate_pair_name
 from src.ui.components.performance import get_score_class
+from src.ui.i18n import t
 from src.ui.pages.session_compare import (
     _outcome_class,
 )
@@ -242,7 +242,7 @@ def render_session_history_table(
     """
     df_sess = ensure_polars(df_sess)
     if df_sess.is_empty():
-        st.info(f"Aucune partie dans {session_name}.")
+        st.info(t("sc_no_matches_in_session", session_name=session_name))
         return
 
     if df_full is not None:
@@ -341,7 +341,7 @@ def render_comparison_radar_chart(
         else:
             st.info(t("insufficient_data_chart"))
     except Exception as e:
-        st.warning(f"Impossible d'afficher le radar de comparaison : {e}")
+        st.warning(t("error_chart", error=e))
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -568,7 +568,7 @@ def render_comparison_bar_chart(
         else:
             st.info(t("insufficient_data_chart"))
     except Exception as e:
-        st.warning(f"Impossible d'afficher le graphique comparatif : {e}")
+        st.warning(t("error_chart", error=e))
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -682,7 +682,7 @@ def render_participation_trend_section(
 
         st.markdown("---")
         st.markdown(t("sc_participation_profile"))
-        st.caption("Comparaison de la contribution au score entre les deux sessions")
+        st.caption(t("sc_participation_comparison"))
 
         col_radar, col_legend = st.columns([2, 1])
         with col_radar:
@@ -693,9 +693,9 @@ def render_participation_trend_section(
                 else:
                     st.info(t("insufficient_data_chart"))
             except Exception as e:
-                st.warning(f"Impossible d'afficher le radar de participation : {e}")
+                st.warning(t("error_chart", error=e))
         with col_legend:
-            st.markdown("**Axes**")
+            st.markdown(f"**{t('mvp_axes_label')}**")
             for line in RADAR_AXIS_LINES:
                 st.markdown(line)
 

@@ -491,6 +491,121 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Net Score Cumulé",
         "en": "Cumulative Net Score",
     },
+    # ── Axes supplémentaires ─────────────────────────────────────────────────
+    "axis_kills": {"fr": "Frags", "en": "Kills"},
+    "axis_deaths": {"fr": "Morts", "en": "Deaths"},
+    "axis_kills_deaths": {"fr": "Frags / Morts", "en": "Kills / Deaths"},
+    "axis_ratio": {"fr": "Ratio K/D", "en": "K/D Ratio"},
+    "axis_fda": {"fr": "FDA", "en": "FDA"},
+    "axis_per_min": {"fr": "Par minute", "en": "Per Minute"},
+    "axis_time_seconds": {"fr": "Durée (secondes)", "en": "Duration (seconds)"},
+    "axis_match_count": {"fr": "Nombre de matchs", "en": "Number of Matches"},
+    "axis_cumul": {"fr": "Cumulé", "en": "Cumulative"},
+    "axis_frag_count": {"fr": "Nombre de frags", "en": "Frag Count"},
+    "axis_minute": {"fr": "Minute", "en": "Minute"},
+    "axis_points": {"fr": "Points", "en": "Points"},
+    "axis_category": {"fr": "Catégorie", "en": "Category"},
+    "axis_total_points": {"fr": "Points totaux", "en": "Total Points"},
+    "axis_killer": {"fr": "Tueur", "en": "Killer"},
+    "axis_victim": {"fr": "Victime", "en": "Victim"},
+    "axis_kills_deaths_ratio": {"fr": "Frags — Morts", "en": "Kills — Deaths"},
+    # ── Titres supplémentaires ────────────────────────────────────────────────
+    "title_kda": {"fr": "Frags / Morts / Assists", "en": "Kills / Deaths / Assists"},
+    "title_assists": {"fr": "Assists par match", "en": "Assists per Match"},
+    "title_permin": {"fr": "Frags / Morts par minute", "en": "Kills / Deaths per Minute"},
+    "title_killer_victim": {"fr": "Duels — Killer vs Victime", "en": "Duels — Killer vs Victim"},
+    "title_kd_per_min": {"fr": "K/D par minute", "en": "K/D per Minute"},
+    "title_score_breakdown": {"fr": "Score par catégorie", "en": "Score Breakdown"},
+    "title_action_detail": {"fr": "Détail des actions", "en": "Action Detail"},
+    "title_participation": {"fr": "Participation par match", "en": "Participation per Match"},
+    "title_participation_by_match": {
+        "fr": "Participation par match",
+        "en": "Participation by Match",
+    },
+    "title_participation_detail": {
+        "fr": "Détail de la participation",
+        "en": "Participation Detail",
+    },
+    "title_participation_profile": {"fr": "Profil de participation", "en": "Participation Profile"},
+    "title_obj_vs_kills": {"fr": "Objectifs vs Frags", "en": "Objectives vs Kills"},
+    "title_obj_vs_kills_per_match": {
+        "fr": "Objectifs vs Frags par match",
+        "en": "Objectives vs Kills per Match",
+    },
+    "title_score_by_category": {"fr": "Score par catégorie", "en": "Score by Category"},
+    "title_total_points_by_cat": {
+        "fr": "Points totaux par catégorie",
+        "en": "Total Points by Category",
+    },
+    "title_obj_ratio": {"fr": "Ratio objectifs", "en": "Objective Ratio"},
+    "title_obj_ratio_pct": {"fr": "Ratio objectifs (%)", "en": "Objective Ratio (%)"},
+    "title_assist_breakdown": {"fr": "Détail des assists", "en": "Assist Breakdown"},
+    "title_assist_types": {"fr": "Types d'assists", "en": "Assist Types"},
+    "title_obj_trend": {"fr": "Tendance objectifs", "en": "Objective Trend"},
+    "title_obj_trend_per_match": {
+        "fr": "Tendance objectifs par match",
+        "en": "Objective Trend per Match",
+    },
+    "title_top_players_obj": {"fr": "Top joueurs — objectifs", "en": "Top Players — Objectives"},
+    # ── Traces supplémentaires ────────────────────────────────────────────────
+    "trace_win_rate": {"fr": "Victoires", "en": "Win Rate"},
+    "trace_loss_rate": {"fr": "Défaites", "en": "Loss Rate"},
+    "trace_others_tie_unfinished": {"fr": "Égalités / Non terminés", "en": "Ties / Unfinished"},
+    "trace_actual": {"fr": "Réel", "en": "Actual"},
+    "trace_expected": {"fr": "Attendu", "en": "Expected"},
+    "trace_obj_score": {"fr": "Score objectif", "en": "Objective Score"},
+    "trace_total_score": {"fr": "Score total", "en": "Total Score"},
+    # ── Hover supplémentaires ─────────────────────────────────────────────────
+    "hover_kda": {
+        "fr": "Frags: %{customdata[0]}<br>Morts: %{customdata[1]}<br>Assists: %{customdata[2]}",
+        "en": "Kills: %{customdata[0]}<br>Deaths: %{customdata[1]}<br>Assists: %{customdata[2]}",
+    },
+    "hover_kill_ordinal": {"fr": "Frag n°%{x}", "en": "Kill #%{x}"},
+    "hover_death_ordinal": {"fr": "Mort n°%{x}", "en": "Death #%{x}"},
+    # ── Labels supplémentaires ────────────────────────────────────────────────
+    "label_nemesis": {"fr": "Némésis", "en": "Nemesis"},
+    "label_punching_bag": {"fr": "Punching bag", "en": "Punching Bag"},
+    "label_session_a": {"fr": "Session A", "en": "Session A"},
+    "label_session_b": {"fr": "Session B", "en": "Session B"},
+    "label_this_match": {"fr": "Ce match", "en": "This Match"},
+    # ── Catégories de participation ────────────────────────────────────────────
+    "cat_label_kill": {"fr": "Frags", "en": "Kills"},
+    "cat_label_assist": {"fr": "Assists", "en": "Assists"},
+    "cat_label_objective": {"fr": "Objectifs", "en": "Objectives"},
+    "cat_label_vehicle": {"fr": "Véhicules", "en": "Vehicles"},
+    "cat_label_penalty": {"fr": "Pénalités", "en": "Penalties"},
+    "cat_label_other": {"fr": "Autre", "en": "Other"},
+    # ── Impact timeline ────────────────────────────────────────────────────────
+    "impact_first_blood": {"fr": "Premier sang", "en": "First Blood"},
+    "impact_clutch_finisher": {"fr": "Clutch Finisher", "en": "Clutch Finisher"},
+    "impact_last_group_kill": {"fr": "Dernier du groupe", "en": "Last Group Kill"},
+    "impact_first_group_death": {"fr": "Premier mort du groupe", "en": "First Group Death"},
+    # ── Messages vides ────────────────────────────────────────────────────────
+    "empty_no_data": {"fr": "Aucune donnée disponible.", "en": "No data available."},
+    "empty_no_duel": {"fr": "Aucun duel trouvé.", "en": "No duel found."},
+    "empty_no_match_data": {
+        "fr": "Aucune donnée de match disponible.",
+        "en": "No match data available.",
+    },
+    "empty_no_impact_events": {
+        "fr": "Aucun événement d'impact détecté.",
+        "en": "No impact events detected.",
+    },
+    # ── Labels assists ────────────────────────────────────────────────────────
+    "label_kill_assists": {"fr": "Kill Assists", "en": "Kill Assists"},
+    "label_mark_assists": {"fr": "Mark Assists", "en": "Mark Assists"},
+    "label_emp_assists": {"fr": "EMP Assists", "en": "EMP Assists"},
+    "axis_assists": {"fr": "Assistances", "en": "Assists"},
+    "axis_per_minute": {"fr": "Par minute", "en": "Per minute"},
+    # ── Labels duels / net ────────────────────────────────────────────────────
+    "label_net": {"fr": "Net", "en": "Net"},
+    "label_cumul": {"fr": "Cumul", "en": "Cumul"},
+    # ── Axe temps du match ────────────────────────────────────────────────────
+    "axis_match_time": {"fr": "Temps du match", "en": "Match time"},
+    # ── Suffixes indicateurs ──────────────────────────────────────────────────
+    "suffix_deaths": {"fr": "morts", "en": "deaths"},
+    "suffix_kills": {"fr": "kills", "en": "kills"},
+    "suffix_smoothed": {"fr": "(moy. lissée)", "en": "(smoothed)"},
 }
 
 

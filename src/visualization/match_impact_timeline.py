@@ -15,6 +15,7 @@ from typing import Any
 
 import plotly.graph_objects as go
 
+from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style, get_default_layout_kwargs
 
 # =============================================================================
@@ -34,12 +35,14 @@ class MatchImpactEvent:
 
 
 # Mapping événement -> icône + label FR
-IMPACT_LABELS: dict[str, tuple[str, str]] = {
-    "first_blood": ("⚡", "Premier sang"),
-    "clutch_finisher": ("🎯", "Finisseur"),
-    "last_group_kill": ("🐌", "Plus lent"),
-    "first_group_death": ("🪦", "Première victime"),
-}
+def get_impact_labels(lang: str = "fr") -> dict[str, tuple[str, str]]:
+    """Retourne le mapping événement → (icône, label traduit)."""
+    return {
+        "first_blood": ("⚡", viz_t("impact_first_blood", lang)),
+        "clutch_finisher": ("🎯", viz_t("impact_clutch_finisher", lang)),
+        "last_group_kill": ("🐌", viz_t("impact_last_group_kill", lang)),
+        "first_group_death": ("🪦", viz_t("impact_first_group_death", lang)),
+    }
 
 
 # =============================================================================
@@ -177,6 +180,7 @@ def plot_match_kill_death_timeline(
     impact_events: list[MatchImpactEvent],
     *,
     height: int = 340,
+    lang: str = "fr",
 ) -> go.Figure | None:
     """Crée un graphe timeline des kills/deaths cumulés avec annotations d'impact.
 
@@ -244,7 +248,7 @@ def plot_match_kill_death_timeline(
                 x=kill_times,
                 y=kill_cum,
                 mode="lines+markers",
-                name="Frags",
+                name=viz_t("trace_kills", lang),
                 line={"color": kill_color, "width": 2.5},
                 marker={"size": 5, "color": kill_color},
                 hovertemplate="<b>Frag #%{y}</b><br>%{text}<extra></extra>",
@@ -263,7 +267,7 @@ def plot_match_kill_death_timeline(
                 x=death_times,
                 y=death_cum,
                 mode="lines+markers",
-                name="Morts",
+                name=viz_t("trace_deaths", lang),
                 line={"color": death_color, "width": 2.5, "dash": "dot"},
                 marker={"size": 5, "color": death_color},
                 hovertemplate="<b>Mort #%{y}</b><br>%{text}<extra></extra>",
@@ -292,9 +296,10 @@ def plot_match_kill_death_timeline(
         ay_level_idx = ay_level_idx % len(ay_levels)
         annotation_data.append((ie, ay_level_idx))
 
+    impact_labels = get_impact_labels(lang)
     annotations = []
     for ie, ay_level_idx in annotation_data:
-        label_info = IMPACT_LABELS.get(ie.event_type)
+        label_info = impact_labels.get(ie.event_type)
         if not label_info:
             continue
 
@@ -361,14 +366,14 @@ def plot_match_kill_death_timeline(
     fig.update_layout(
         **layout_kwargs,
         xaxis={
-            "title": "Temps du match",
+            "title": viz_t("axis_match_time", lang),
             "tickmode": "auto",
             "nticks": 10,
             "tickformat": "d",
             "ticksuffix": "",
         },
         yaxis={
-            "title": "Cumul",
+            "title": viz_t("label_cumul", lang),
             "dtick": 1,
         },
         legend={
@@ -419,6 +424,7 @@ def plot_all_players_frags_timeline(
     gt_map: dict[str, str] | None = None,
     player_color_map: dict[str, str] | None = None,
     height: int = 380,
+    lang: str = "fr",
 ) -> go.Figure | None:
     """Graphe chronologique des frags cumulés de tous les joueurs d'un match.
 
@@ -557,7 +563,7 @@ def plot_all_players_frags_timeline(
     fig.update_layout(
         **get_default_layout_kwargs(height),
         xaxis_title="",
-        yaxis_title="Frags cumulés",
+        yaxis_title=viz_t("axis_kills", lang),
         showlegend=True,
         legend={
             "orientation": "h",
@@ -598,7 +604,7 @@ def plot_all_players_frags_timeline(
 
 __all__ = [
     "MatchImpactEvent",
-    "IMPACT_LABELS",
+    "get_impact_labels",
     "compute_single_match_impact",
     "plot_match_kill_death_timeline",
     "plot_all_players_frags_timeline",

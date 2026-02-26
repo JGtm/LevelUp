@@ -9,6 +9,7 @@ from __future__ import annotations
 import plotly.graph_objects as go
 import polars as pl
 
+from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -23,6 +24,7 @@ def plot_metric_bars_by_match(
     bar_color: str,
     smooth_color: str,
     smooth_window: int = 10,
+    lang: str = "fr",
 ) -> go.Figure | None:
     """Graphique en barres d'une métrique par match avec courbe de moyenne lissée.
 
@@ -89,7 +91,7 @@ def plot_metric_bars_by_match(
             x=x_idx,
             y=smooth,
             mode="lines",
-            name="Moyenne (lissée)",
+            name=viz_t("trace_avg_smoothed", lang),
             line={"width": 3, "color": smooth_color},
             hovertemplate="moyenne=%{y:.2f}<extra></extra>",
         )
@@ -102,7 +104,7 @@ def plot_metric_bars_by_match(
     )
     fig.update_yaxes(title_text=y_axis_title, rangemode="tozero")
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_match_number", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -122,6 +124,7 @@ def plot_multi_metric_bars_by_match(
     colors: dict[str, str] | list[str] | None,
     smooth_window: int = 10,
     show_smooth_lines: bool = True,
+    lang: str = "fr",
 ) -> go.Figure | None:
     """Graphique en barres multi-joueurs d'une métrique par match.
 
@@ -295,7 +298,7 @@ def plot_multi_metric_bars_by_match(
                     x=x,
                     y=smooth_sorted,
                     mode="lines",
-                    name=f"{name} — moyenne lissée",
+                    name=f"{name} — {viz_t('trace_avg_smoothed', lang)}",
                     line={"width": 3, "color": color},
                     opacity=0.95,
                     hovertemplate=f"{name}<br>moyenne=%{{y:.2f}}<extra></extra>",
@@ -315,7 +318,7 @@ def plot_multi_metric_bars_by_match(
     )
     fig.update_yaxes(title_text=y_axis_title, rangemode="tozero")
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_match_number", lang),
         tickmode="array",
         tickvals=list(range(len(labels)))[::step],
         ticktext=labels[::step],

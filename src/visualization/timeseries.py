@@ -8,6 +8,7 @@ from plotly.subplots import make_subplots
 
 from src.config import HALO_COLORS, PLOT_CONFIG
 from src.ui.components.chart_annotations import add_extreme_annotations
+from src.ui.i18n.viz import viz_t
 from src.visualization._compat import (
     DataFrameLike,
     ensure_polars,
@@ -72,13 +73,14 @@ def _add_kda_traces(
     customdata: list,
     common_hover: str,
     colors: dict,
+    lang: str = "fr",
 ) -> None:
     """Ajoute les traces Kills/Deaths/Ratio au subplot KDA."""
     fig.add_trace(
         go.Bar(
             x=x_idx,
             y=d["kills"].to_list(),
-            name="Frags",
+            name=viz_t("trace_kills", lang),
             marker_color=colors["cyan"],
             opacity=PLOT_CONFIG.bar_opacity,
             alignmentgroup="kda_main",
@@ -93,7 +95,7 @@ def _add_kda_traces(
         go.Bar(
             x=x_idx,
             y=d["deaths"].to_list(),
-            name="Morts",
+            name=viz_t("trace_deaths", lang),
             marker_color=colors["red"],
             opacity=PLOT_CONFIG.bar_opacity_secondary,
             alignmentgroup="kda_main",
@@ -109,7 +111,7 @@ def _add_kda_traces(
             x=x_idx,
             y=d["ratio"].to_list(),
             mode="lines",
-            name="Ratio",
+            name=viz_t("trace_ratio", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["green"]},
             customdata=customdata,
             hovertemplate=common_hover,
@@ -118,10 +120,11 @@ def _add_kda_traces(
     )
 
 
-def plot_timeseries(df: DataFrameLike, title: str = "Frags / Morts / Ratio") -> go.Figure:
+def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr") -> go.Figure:
     """Graphique principal: Kills/Deaths/Ratio dans le temps."""
     df_pl = pl.DataFrame() if df is None else ensure_polars(df)
 
+    title = title or viz_t("title_kda", lang)
     if df_pl.is_empty():
         fig = go.Figure()
         fig.add_annotation(
@@ -141,7 +144,7 @@ def plot_timeseries(df: DataFrameLike, title: str = "Frags / Morts / Ratio") -> 
     x_idx = list(range(len(d)))
 
     customdata, common_hover = _build_kda_customdata(d)
-    _add_kda_traces(fig, x_idx, d, customdata, common_hover, colors)
+    _add_kda_traces(fig, x_idx, d, customdata, common_hover, colors, lang=lang)
 
     fig.update_layout(
         title=title,
@@ -153,13 +156,15 @@ def plot_timeseries(df: DataFrameLike, title: str = "Frags / Morts / Ratio") -> 
         bargroupgap=0.06,
     )
     fig.update_xaxes(type="category")
-    fig.update_yaxes(title_text="Frags / Morts", rangemode="tozero", secondary_y=False)
-    fig.update_yaxes(title_text="Ratio", secondary_y=True)
+    fig.update_yaxes(
+        title_text=viz_t("axis_kills_deaths", lang), rangemode="tozero", secondary_y=False
+    )
+    fig.update_yaxes(title_text=viz_t("axis_ratio", lang), secondary_y=True)
 
     labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_match_number", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -179,7 +184,9 @@ def plot_timeseries(df: DataFrameLike, title: str = "Frags / Morts / Ratio") -> 
     return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.tall_height)
 
 
-def plot_assists_timeseries(df: DataFrameLike, title: str = "Assistances") -> go.Figure:
+def plot_assists_timeseries(
+    df: DataFrameLike, title: str | None = None, lang: str = "fr"
+) -> go.Figure:
     """Graphique des assistances dans le temps.
 
     Args:
@@ -191,6 +198,7 @@ def plot_assists_timeseries(df: DataFrameLike, title: str = "Assistances") -> go
     """
     df_pl = ensure_polars(df)
 
+    title = title or viz_t("title_assists", lang)
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
     x_idx = list(range(len(d)))
@@ -222,7 +230,7 @@ def plot_assists_timeseries(df: DataFrameLike, title: str = "Assistances") -> go
         go.Bar(
             x=x_idx,
             y=d["assists"].to_list(),
-            name="Assistances",
+            name=viz_t("trace_assists", lang),
             marker_color=colors["violet"],
             opacity=PLOT_CONFIG.bar_opacity,
             customdata=customdata,
@@ -237,7 +245,7 @@ def plot_assists_timeseries(df: DataFrameLike, title: str = "Assistances") -> go
             x=x_idx,
             y=smooth.to_list(),
             mode="lines",
-            name="Moyenne (lissée)",
+            name=viz_t("trace_avg_smoothed", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["green"]},
             hovertemplate="moyenne=%{y:.2f}<extra></extra>",
         )
@@ -249,9 +257,9 @@ def plot_assists_timeseries(df: DataFrameLike, title: str = "Assistances") -> go
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
     )
-    fig.update_yaxes(title_text="Assistances", rangemode="tozero")
+    fig.update_yaxes(title_text=viz_t("axis_assists", lang), rangemode="tozero")
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_match_number", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -268,6 +276,7 @@ def _add_permin_rolling_lines(
     dpm: pl.Series,
     apm: pl.Series,
     colors: dict[str, str],
+    lang: str = "fr",
 ) -> None:
     """Ajoute les 3 courbes de moyenne mobile par minute (frags, morts, assistances).
 
@@ -284,7 +293,7 @@ def _add_permin_rolling_lines(
             x=x_idx,
             y=_rolling_mean(kpm, window=10).to_list(),
             mode="lines",
-            name="Moy. frags/min",
+            name=viz_t("trace_avg_kills_per_min", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["cyan"]},
             hovertemplate="moy=%{y:.2f}<extra></extra>",
         )
@@ -294,7 +303,7 @@ def _add_permin_rolling_lines(
             x=x_idx,
             y=_rolling_mean(dpm, window=10).to_list(),
             mode="lines",
-            name="Moy. morts/min",
+            name=viz_t("trace_avg_deaths_per_min", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["red"], "dash": "dot"},
             hovertemplate="moy=%{y:.2f}<extra></extra>",
         )
@@ -304,7 +313,7 @@ def _add_permin_rolling_lines(
             x=x_idx,
             y=_rolling_mean(apm, window=10).to_list(),
             mode="lines",
-            name="Moy. assist./min",
+            name=viz_t("trace_avg_assists_per_min", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["violet"], "dash": "dot"},
             hovertemplate="moy=%{y:.2f}<extra></extra>",
         )
@@ -312,7 +321,7 @@ def _add_permin_rolling_lines(
 
 
 def plot_per_minute_timeseries(
-    df: DataFrameLike, title: str = "Frags / Morts / Assistances par minute"
+    df: DataFrameLike, title: str | None = None, lang: str = "fr"
 ) -> go.Figure:
     """Graphique des stats par minute.
 
@@ -325,6 +334,7 @@ def plot_per_minute_timeseries(
     """
     df_pl = ensure_polars(df)
 
+    title = title or viz_t("title_permin", lang)
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
     x_idx = list(range(len(d)))
@@ -346,13 +356,12 @@ def plot_per_minute_timeseries(
     kpm = d["kills_per_min"].cast(pl.Float64, strict=False)
     dpm = d["deaths_per_min"].cast(pl.Float64, strict=False)
     apm = d["assists_per_min"].cast(pl.Float64, strict=False)
-
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
             x=x_idx,
             y=kpm.to_list(),
-            name="Frags/min",
+            name=viz_t("trace_kills_per_min", lang),
             marker_color=colors["cyan"],
             opacity=PLOT_CONFIG.bar_opacity,
             customdata=customdata,
@@ -366,7 +375,7 @@ def plot_per_minute_timeseries(
         go.Bar(
             x=x_idx,
             y=dpm.to_list(),
-            name="Morts/min",
+            name=viz_t("trace_deaths_per_min", lang),
             marker_color=colors["red"],
             opacity=PLOT_CONFIG.bar_opacity_secondary,
             customdata=customdata,
@@ -380,7 +389,7 @@ def plot_per_minute_timeseries(
         go.Bar(
             x=x_idx,
             y=apm.to_list(),
-            name="Assist./min",
+            name=viz_t("trace_assists_per_min", lang),
             marker_color=colors["violet"],
             opacity=PLOT_CONFIG.bar_opacity_secondary,
             customdata=customdata,
@@ -391,7 +400,7 @@ def plot_per_minute_timeseries(
         )
     )
 
-    _add_permin_rolling_lines(fig, x_idx, kpm, dpm, apm, colors)
+    _add_permin_rolling_lines(fig, x_idx, kpm, dpm, apm, colors, lang=lang)
 
     fig.update_layout(
         title=title,
@@ -402,9 +411,9 @@ def plot_per_minute_timeseries(
         bargap=0.15,
         bargroupgap=0.06,
     )
-    fig.update_yaxes(title_text="Par minute", rangemode="tozero")
+    fig.update_yaxes(title_text=viz_t("axis_per_minute", lang), rangemode="tozero")
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_match_number", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -414,7 +423,7 @@ def plot_per_minute_timeseries(
     return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
 
 
-def plot_accuracy_last_n(df: DataFrameLike, n: int) -> go.Figure:
+def plot_accuracy_last_n(df: DataFrameLike, n: int, lang: str = "fr") -> go.Figure:
     """Graphique de précision sur les N derniers matchs.
 
     Args:
@@ -435,7 +444,7 @@ def plot_accuracy_last_n(df: DataFrameLike, n: int) -> go.Figure:
                 x=d["start_time"].to_list(),
                 y=d["accuracy"].to_list(),
                 mode="lines",
-                name="Précision",
+                name=viz_t("trace_accuracy", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors["violet"]},
                 hovertemplate="précision=%{y:.2f}%<extra></extra>",
             )

@@ -1004,4 +1004,44 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Vidéos",
         "en": "Videos",
     },
+    # ── Coéquipiers — titres graphiques ──────────────────────────────────────
+    "tm_killing_spree": {"fr": "Folie meurtrière (max)", "en": "Killing Spree (max)"},
+    "tm_headshots": {"fr": "Tirs à la tête", "en": "Headshots"},
+    "tm_perfect_kills": {"fr": "Frags parfaits", "en": "Perfect Kills"},
+    "tm_kills": {"fr": "Frags", "en": "Kills"},
+    "tm_deaths": {"fr": "Morts", "en": "Deaths"},
+    "tm_assists": {"fr": "Assists", "en": "Assists"},
+    # ── Match View Participation ──────────────────────────────────────────────
+    "mvp_participation_title": {"fr": "Participation au match", "en": "Match Participation"},
+    "mvp_comparison_title": {
+        "fr": "Comparaison de participation",
+        "en": "Participation Comparison",
+    },
+    "mvp_axes_label": {"fr": "Axes", "en": "Axes"},
+    # ── Session Compare ────────────────────────────────────────────────────────
+    "sc_no_matches_in_session": {
+        "fr": "Aucune partie dans {session_name}.",
+        "en": "No matches in {session_name}.",
+    },
+    "sc_participation_comparison": {
+        "fr": "Comparaison de la contribution au score entre les deux sessions.",
+        "en": "Comparison of score contribution between the two sessions.",
+    },
+    # ── Analyse d'objectifs — labels métriques ────────────────────────────────
+    "obj_overview_title": {"fr": "Vue d'ensemble", "en": "Overview"},
+    "obj_score_label": {"fr": "Score Objectifs", "en": "Objective Score"},
+    "obj_frag_score_label": {"fr": "Score Frags", "en": "Kill Score"},
+    "obj_assist_score_label": {"fr": "Score Assistances", "en": "Assist Score"},
+    "obj_ratio_label": {"fr": "Ratio Objectifs", "en": "Objective Ratio"},
+    # ── Objective Analysis — onglets ─────────────────────────────────────────
+    "obj_tab_scatter": {"fr": "Objectifs vs Frags", "en": "Objectives vs Kills"},
+    "obj_tab_breakdown": {"fr": "Répartition du Score", "en": "Score Breakdown"},
+    "obj_tab_trend": {"fr": "Évolution", "en": "Trend"},
+    # ── Coéquipiers — métriques supplémentaires ──────────────────────────────
+    "tm_kda": {"fr": "FDA", "en": "KDA"},
+    "tm_accuracy": {"fr": "Précision", "en": "Accuracy"},
+    "tm_avg_life": {"fr": "Durée de vie moyenne", "en": "Average Lifespan"},
+    "tm_performance": {"fr": "Performance", "en": "Performance"},
+    "tm_score": {"fr": "Score", "en": "Score"},
+    "tm_seconds": {"fr": "Secondes", "en": "Seconds"},
 }

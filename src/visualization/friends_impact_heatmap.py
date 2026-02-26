@@ -17,6 +17,7 @@ import polars as pl
 
 from src.analysis.friends_impact import ImpactEvent
 from src.config import HALO_COLORS
+from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style
 
 if TYPE_CHECKING:
@@ -39,7 +40,7 @@ IMPACT_COLORS = {
 
 # Couleurs pour les outcomes (Win/Loss/Tie) — palette Okabe-Ito
 OUTCOME_COLORS = {
-    "win": "#009E73",   # Vert bleuté Okabe-Ito (victories)
+    "win": "#009E73",  # Vert bleuté Okabe-Ito (victories)
     "loss": "#D55E00",  # Vermillon Okabe-Ito (defeats)
     "tie": "#CC79A7",  # Rose mauve Okabe-Ito (ties)
     "unknown": "rgba(100, 100, 100, 0.3)",  # Gris
@@ -61,6 +62,7 @@ def plot_friends_impact_heatmap(
     title: str | None = None,
     max_matches: int = 50,
     height: int | None = None,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée une heatmap des événements d'impact par joueur et match.
 
@@ -222,7 +224,7 @@ def plot_friends_impact_heatmap(
     fig.update_layout(
         height=calc_height,
         margin={"l": 120, "r": 40, "t": 60 if title else 30, "b": 50},
-        xaxis_title="Matchs récents →",
+        xaxis_title=viz_t("axis_matches", lang),
         yaxis_title="",
         plot_bgcolor="rgba(245, 245, 245, 0.5)",  # Background clair
     )
