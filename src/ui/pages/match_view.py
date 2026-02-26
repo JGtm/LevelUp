@@ -162,9 +162,9 @@ def _build_match_rank_html(
         f"{img_html}"
         f"<div style='flex:1;min-width:0'>"
         f"<div style='font-size:1.4em;font-weight:700;line-height:1.2'>{tier_display}</div>"
+        f"{progress_html}"
         f"<div style='color:#ffffff;font-size:1.2em;font-weight:bold;margin-top:4px'>{rating_line}</div>"
         f"{delta_html}"
-        f"{progress_html}"
         f"</div>"
         f"</div>"
     )
