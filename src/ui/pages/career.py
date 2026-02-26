@@ -12,7 +12,6 @@ import logging
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.ui.i18n import t
 from src.config import THEME_COLORS
 from src.ui.career_ranks import (
     format_career_rank_label_fr,
@@ -25,8 +24,9 @@ from src.ui.components.career_progress_circle import (
     create_career_progress_gauge,
     create_hero_progress_gauge,
 )
+from src.ui.i18n import t
 from src.ui.player_assets import ensure_local_image_path
-from src.ui.streamlit_modern import fragment_if_available, PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization.theme import apply_halo_plot_style
 
 logger = logging.getLogger(__name__)
@@ -42,10 +42,34 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
         from src.utils.db import duckdb_read_only
 
         with duckdb_read_only(db_path) as conn:
-            result = conn.execute(
-                """SELECT rank, rank_name, rank_tier, current_xp,
+            # Vérifier si la colonne spartan_id est présente (migration v5.3+)
+            has_spartan_id = False
+            try:
+                cols = conn.execute(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'career_progression' AND column_name = 'spartan_id'"
+                ).fetchone()
+                has_spartan_id = cols is not None
+            except Exception:
+                pass
+
+            if has_spartan_id:
+                select_cols = """rank, rank_name, rank_tier, current_xp,
                           xp_for_next_rank, xp_total, is_max_rank,
-                          adornment_path, spartan_id, recorded_at
+                          adornment_path, spartan_id, recorded_at"""
+            else:
+                # Migration spartan_id non encore appliquée (lancez une sync pour l'appliquer)
+                logger.warning(
+                    "Colonne spartan_id absente de career_progression dans %s — "
+                    "lancez une synchronisation pour appliquer la migration.",
+                    db_path,
+                )
+                select_cols = """rank, rank_name, rank_tier, current_xp,
+                          xp_for_next_rank, xp_total, is_max_rank,
+                          adornment_path, NULL AS spartan_id, recorded_at"""
+
+            result = conn.execute(
+                f"""SELECT {select_cols}
                    FROM career_progression
                    WHERE xuid = ?
                    ORDER BY recorded_at DESC
@@ -315,7 +339,15 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
     # Groupes non listés dans _PG_ORDER (futur) en queue
     ordered += [s for s in snapshot if s["playlist_group"] not in _PG_ORDER]
 
-    project_root = Path(db_path).parents[2]
+    # Racine projet depuis l'emplacement du fichier source (parents[3] = LevelUp/)
+    project_root = Path(__file__).parents[3]
+
+    # Angles droits sur les bordures des cartes LUSR
+    st.markdown(
+        "<style>[data-testid='stVerticalBlockBorderWrapper']" "{border-radius:0!important}</style>",
+        unsafe_allow_html=True,
+    )
+
     n_per_row = 3
     for row_start in range(0, len(ordered), n_per_row):
         batch = ordered[row_start : row_start + n_per_row]
@@ -327,60 +359,73 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
             delta = snap["rating_delta"]
             r_type = snap["rating_type"] or "LUSR"
 
-            with col:
+            with col, st.container(border=True):
                 # ── En-tête du groupe ──
                 pg_label = _PG_LABELS.get(pg, pg.capitalize())
                 pg_icon = _PG_ICONS.get(pg, "🎮")
-                st.markdown(
-                    f"<div style='text-align:center;font-weight:600;margin-bottom:4px'>"
-                    f"{html.escape(pg_icon)} {html.escape(pg_label)}</div>",
-                    unsafe_allow_html=True,
-                )
 
-                # ── Image du rang (centrée) ──
+                # ── Image du rang encodée en base64 ──
+                img_b64 = ""
                 img_path_rel = get_rank_image_path(r_value)
                 if img_path_rel:
                     img_full = project_root / img_path_rel
                     if img_full.exists():
-                        # Centrage via colonnes vides
-                        _, c_img, _ = st.columns([1, 2, 1])
-                        c_img.image(str(img_full), width=90)
+                        import base64
 
-                # ── Tier label ──
-                st.markdown(
-                    f"<div style='text-align:center;font-size:1.05em;font-weight:700;"
-                    f"margin:4px 0'>{html.escape(tier_label)}</div>",
-                    unsafe_allow_html=True,
+                        img_b64 = base64.b64encode(img_full.read_bytes()).decode()
+
+                img_html = (
+                    f"<img src='data:image/png;base64,{img_b64}' "
+                    f"style='width:90px;height:90px;object-fit:contain' />"
+                    if img_b64
+                    else "<div style='width:90px;height:90px'></div>"
                 )
 
-                # ── Badge type + rating ──
+                # ── Badge type ──
                 badge_bg = "#00B7EB" if r_type == "LUSR" else "#FFD700"
                 badge_fg = "#000"
-                st.markdown(
-                    f"<div style='text-align:center;margin:2px 0'>"
-                    f"<span style='background:{badge_bg};color:{badge_fg};"
-                    f"padding:1px 7px;border-radius:10px;font-size:0.72em;"
-                    f"font-weight:600'>{html.escape(r_type)}</span>"
-                    f"&nbsp;<span style='font-size:1.1em;font-weight:700'>"
-                    f"{r_value:.0f}</span></div>",
-                    unsafe_allow_html=True,
-                )
 
-                # ── Delta (dernier match) ──
+                # ── Delta ──
                 if delta is not None:
                     d_color = "#00C853" if delta >= 0 else "#FF5252"
                     d_arrow = "▲" if delta >= 0 else "▼"
                     d_sign = "+" if delta >= 0 else ""
-                    st.markdown(
-                        f"<div style='text-align:center;color:{d_color};"
-                        f"font-size:0.95em'>{d_arrow} {d_sign}{delta:.0f}</div>",
-                        unsafe_allow_html=True,
+                    delta_html = (
+                        f"<div style='color:{d_color};font-size:0.9em;margin-top:4px'>"
+                        f"{d_arrow} {d_sign}{delta:.0f}</div>"
                     )
                 else:
-                    st.markdown(
-                        "<div style='text-align:center;color:#888;font-size:0.9em'>—</div>",
-                        unsafe_allow_html=True,
-                    )
+                    delta_html = "<div style='color:#888;font-size:0.9em;margin-top:4px'>—</div>"
+
+                st.markdown(
+                    f"""<div style='display:flex;flex-direction:column;
+                                    align-items:center;justify-content:center;
+                                    text-align:center;padding:4px 0;gap:4px'>
+                        <div style='font-size:1.25em;font-weight:700;
+                                    letter-spacing:0.02em;line-height:1.2'>
+                            {html.escape(pg_icon)} {html.escape(pg_label)}
+                        </div>
+                        <div style='display:flex;align-items:center;
+                                    justify-content:center;height:96px'>
+                            {img_html}
+                        </div>
+                        <div style='font-size:1.05em;font-weight:700'>
+                            {html.escape(tier_label)}
+                        </div>
+                        <div>
+                            <span style='background:{badge_bg};color:{badge_fg};
+                                         padding:1px 7px;border-radius:10px;
+                                         font-size:0.72em;font-weight:600'>
+                                {html.escape(r_type)}
+                            </span>
+                            &nbsp;<span style='font-size:1.1em;font-weight:700'>
+                                {r_value:.0f}
+                            </span>
+                        </div>
+                        {delta_html}
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
 
     # ── Graphe d'évolution avec sélecteur de groupe ──
     history_all = _load_lusr_history(db_path)
@@ -496,7 +541,6 @@ def render_career_page(
 
     with col_info:
         st.subheader(rank_label_fr)
-
 
         # Métriques
         m1, m2 = st.columns(2)
