@@ -92,6 +92,7 @@ from src.ui import (
     display_name_from_xuid,
     load_css,
     load_settings,
+    save_settings,
 )
 from src.ui.cache import (
     cached_compute_sessions_db,
@@ -117,6 +118,7 @@ from src.ui.formatting import (
     format_score_label,
     score_css_color,
 )
+from src.ui.i18n import get_lang, set_lang
 from src.ui.multiplayer import (
     get_gamertag_from_duckdb_v4_path,
     render_player_selector_unified,
@@ -410,6 +412,10 @@ def main() -> None:
     settings: AppSettings = load_settings()
     st.session_state["app_settings"] = settings
 
+    # Langue UI (persistée) : session_state prime, sinon app_settings.json.
+    if "lang" not in st.session_state:
+        st.session_state["lang"] = getattr(settings, "lang", "fr") or "fr"
+
     # Propage les defaults depuis secrets vers l'env et applique les overrides de chemins
     propagate_identity_to_env()
     apply_settings_overrides_main(settings)
@@ -453,6 +459,30 @@ def main() -> None:
     waypoint_player = str(st.session_state.get("waypoint_player", "") or "").strip()
 
     with st.sidebar:
+        # Sélecteur de langue (discret) — au-dessus du logo
+        _LANG_OPTIONS = {"fr": "FR", "en": "EN"}
+        current_lang = str(get_lang() or "fr").strip().lower()
+        if current_lang not in _LANG_OPTIONS:
+            current_lang = "fr"
+
+        lang_keys = list(_LANG_OPTIONS.keys())
+        lang_idx = lang_keys.index(current_lang)
+        picked = st.radio(
+            "Langue",
+            options=list(_LANG_OPTIONS.values()),
+            index=lang_idx,
+            key="_sidebar_lang_selector",
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+
+        selected_lang = next(k for k, v in _LANG_OPTIONS.items() if v == picked)
+        if selected_lang != current_lang:
+            set_lang(selected_lang)
+            settings.lang = selected_lang
+            save_settings(settings)
+            st.rerun()
+
         # Logo en haut de la sidebar
         logo_path = os.path.join(os.path.dirname(__file__), "static", "logo.png")
         if os.path.exists(logo_path):
