@@ -124,21 +124,23 @@ def _build_match_rank_html(
                     f"style='width:110px;height:110px;object-fit:contain'>"
                 )
 
-    # Delta
+    # Delta — formatage avec 1 décimale si |delta| < 5, entier sinon
     delta_html = ""
     if rating_delta is not None:
-        _rd = round(rating_delta)
-        if _rd == 0:
+        _abs = abs(rating_delta)
+        if _abs < 0.05:
             delta_html = "<div style='color:#888888;font-size:1.05em;margin-top:4px'>= 0 pts</div>"
         else:
-            delta_color = "#50C878" if _rd > 0 else "#FF4444"
-            delta_sign = "+" if _rd > 0 else "-"
+            _delta_color = "#50C878" if rating_delta > 0 else "#FF4444"
+            _delta_sign = "+" if rating_delta > 0 else "-"
+            # 1 décimale si petit delta (< 5 pts), entier sinon
+            _delta_fmt = f"{_abs:.1f}" if _abs < 5 else f"{round(_abs)}"
             delta_html = (
-                f"<div style='color:{delta_color};font-size:1.05em;margin-top:4px'>"
-                f"{delta_sign}{abs(_rd)} pts</div>"
+                f"<div style='color:{_delta_color};font-size:1.05em;margin-top:4px'>"
+                f"{_delta_sign}{_delta_fmt} pts</div>"
             )
 
-    # Barre de progression
+    # Barre de progression avec marqueur de delta
     progress_html = ""
     if rating_value is not None:
         tier_obj, sub = get_tier_for_rating(rating_value)
@@ -148,11 +150,44 @@ def _build_match_rank_html(
             if tier_size > 0:
                 pct = min(100.0, max(0.0, (rating_value - sub_start) / tier_size * 100))
                 tier_sz = f"{tier_size:.0f}"
+
+                # Calcul du marqueur delta sur la barre
+                bar_inner = ""
+                if rating_delta is not None and abs(rating_delta) >= 0.05:
+                    # Largeur min garantie de 1 % pour qu'1 pixel soit visible
+                    _MIN_PCT = 1.0
+                    delta_pct = abs(rating_delta) / tier_size * 100
+                    delta_width = max(_MIN_PCT, min(delta_pct, 100.0))
+                    _band_color = "#50C878" if rating_delta > 0 else "#FF4444"
+                    if rating_delta > 0:
+                        # Gain : remplissage bleu jusqu'à (pct - delta), puis bande verte
+                        base_pct = max(0.0, pct - delta_pct)
+                        bar_inner = (
+                            f"<div style='position:absolute;left:0;top:0;"
+                            f"width:{base_pct:.2f}%;height:8px;background:#33d6ff'></div>"
+                            f"<div style='position:absolute;left:{base_pct:.2f}%;top:0;"
+                            f"width:{delta_width:.2f}%;height:8px;background:{_band_color}'></div>"
+                        )
+                    else:
+                        # Perte : remplissage bleu jusqu'à pct, puis bande rouge
+                        bar_inner = (
+                            f"<div style='position:absolute;left:0;top:0;"
+                            f"width:{pct:.2f}%;height:8px;background:#33d6ff'></div>"
+                            f"<div style='position:absolute;left:{pct:.2f}%;top:0;"
+                            f"width:{delta_width:.2f}%;height:8px;background:{_band_color}'></div>"
+                        )
+                else:
+                    # Pas de delta : barre simple
+                    bar_inner = (
+                        f"<div style='position:absolute;left:0;top:0;"
+                        f"width:{pct:.2f}%;height:8px;background:#33d6ff'></div>"
+                    )
+
                 progress_html = f"""
 <div style='display:flex;align-items:center;gap:6px;margin-top:8px'>
   <span style='font-size:0.75em;color:#888;min-width:14px;text-align:right'>0</span>
-  <div style='flex:1;height:8px;background:rgba(255,255,255,0.12);border-radius:4px;overflow:hidden'>
-    <div style='width:{pct:.1f}%;height:8px;background:#33d6ff;border-radius:4px'></div>
+  <div style='position:relative;flex:1;height:8px;background:rgba(255,255,255,0.12);border-radius:4px;overflow:hidden'>
+    {bar_inner}
   </div>
   <span style='font-size:0.75em;color:#888;min-width:14px'>{tier_sz}</span>
 </div>"""
@@ -163,8 +198,8 @@ def _build_match_rank_html(
         f"<div style='flex:1;min-width:0'>"
         f"<div style='font-size:1.4em;font-weight:700;line-height:1.2'>{tier_display}</div>"
         f"{progress_html}"
-        f"<div style='color:#ffffff;font-size:1.2em;font-weight:bold;margin-top:4px'>{rating_line}</div>"
         f"{delta_html}"
+        f"<div style='color:#ffffff;font-size:1.2em;font-weight:bold;margin-top:4px'>{rating_line}</div>"
         f"</div>"
         f"</div>"
     )
