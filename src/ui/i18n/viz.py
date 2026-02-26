@@ -7,7 +7,10 @@ et appelent ``viz_t(key, lang)`` pour résoudre la chaîne.
 ⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO" ci-dessous.
    Règles : voir le prompt de la Phase 1b dans le plan i18n.
 """
+
 from __future__ import annotations
+
+import contextlib
 
 STRINGS: dict[str, dict[str, str]] = {
     # ── Traces communes ──────────────────────────────────────────────────────
@@ -353,6 +356,141 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Jour",
         "en": "Day",
     },
+    # ── Axes combat séries temporelles ───────────────────────────────────────
+    "axis_seconds": {
+        "fr": "Durée (s)",
+        "en": "Duration (s)",
+    },
+    "axis_chronological": {
+        "fr": "Match (chronologique)",
+        "en": "Match (chronological)",
+    },
+    "axis_spree_headshots": {
+        "fr": "Folie meurtrière / Tirs à la tête",
+        "en": "Killing Spree / Headshots",
+    },
+    "axis_damage": {
+        "fr": "Dégâts",
+        "en": "Damage",
+    },
+    "axis_shots": {
+        "fr": "Tirs",
+        "en": "Shots",
+    },
+    "axis_streak": {
+        "fr": "Série",
+        "en": "Streak",
+    },
+    # ── Titres graphiques combat ──────────────────────────────────────────────
+    "title_avg_life": {
+        "fr": "Durée de vie moyenne",
+        "en": "Average life span",
+    },
+    "title_performance": {
+        "fr": "Score de performance",
+        "en": "Performance score",
+    },
+    "title_streaks": {
+        "fr": "Séries de victoires / défaites",
+        "en": "Win / loss streaks",
+    },
+    "title_damage": {
+        "fr": "Dégâts infligés et subis",
+        "en": "Damage dealt and taken",
+    },
+    "title_shots": {
+        "fr": "Tirs et précision",
+        "en": "Shots and accuracy",
+    },
+    "title_rank_score": {
+        "fr": "Rang et score personnel",
+        "en": "Rank and personal score",
+    },
+    "empty_no_streak_data": {
+        "fr": "Aucune donnée de série disponible",
+        "en": "No streak data available",
+    },
+    # ── Performance cumulée ───────────────────────────────────────────────────
+    "trace_net_score_cumul": {
+        "fr": "Net Score Cumulé",
+        "en": "Cumulative Net Score",
+    },
+    "trace_net_score_match": {
+        "fr": "Net Score du Match",
+        "en": "Match Net Score",
+    },
+    "label_balance": {
+        "fr": "Équilibre",
+        "en": "Balance",
+    },
+    "axis_net_score": {
+        "fr": "Net Score (Frags - Morts)",
+        "en": "Net Score (Kills - Deaths)",
+    },
+    "trace_kd_cumul": {
+        "fr": "K/D Cumulé",
+        "en": "Cumulative K/D",
+    },
+    "trace_kd_match": {
+        "fr": "K/D du Match",
+        "en": "Match K/D",
+    },
+    "label_target": {
+        "fr": "Cible : {value}",
+        "en": "Target: {value}",
+    },
+    "axis_kd_ratio": {
+        "fr": "K/D Ratio",
+        "en": "K/D Ratio",
+    },
+    "trace_kd_rolling": {
+        "fr": "K/D Glissant ({window})",
+        "en": "Rolling K/D ({window})",
+    },
+    "label_improving": {
+        "fr": "En progression",
+        "en": "Improving",
+    },
+    "label_declining": {
+        "fr": "En régression",
+        "en": "Declining",
+    },
+    "label_stable": {
+        "fr": "Stable",
+        "en": "Stable",
+    },
+    "label_session_start": {
+        "fr": "Début de session",
+        "en": "Session start",
+    },
+    "label_session_end": {
+        "fr": "Fin de session",
+        "en": "Session end",
+    },
+    "label_kd_fm": {
+        "fr": "F/M",
+        "en": "K/D",
+    },
+    "label_kd_ref": {
+        "fr": "K/D = 1.0",
+        "en": "K/D = 1.0",
+    },
+    "title_rolling_kd": {
+        "fr": "K/D Glissant ({window} matchs)",
+        "en": "Rolling K/D ({window} matches)",
+    },
+    "title_session_comparison": {
+        "fr": "Comparaison des Sessions",
+        "en": "Session Comparison",
+    },
+    "axis_match_number": {
+        "fr": "Match #",
+        "en": "Match #",
+    },
+    "axis_cumul_net_score": {
+        "fr": "Net Score Cumulé",
+        "en": "Cumulative Net Score",
+    },
 }
 
 
@@ -372,8 +510,6 @@ def viz_t(key: str, lang: str = "fr", **kwargs: object) -> str:
         return f"[{key}]"
     text = entry.get(lang) or entry.get("fr") or f"[{key}]"
     if kwargs:
-        try:
+        with contextlib.suppress(KeyError, ValueError):
             text = text.format(**kwargs)
-        except (KeyError, ValueError):
-            pass
     return text
