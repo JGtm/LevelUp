@@ -396,6 +396,8 @@ def render_hierarchical_checkbox_filter(
                     opts: list[str] = all_cat_options,
                     k: str = cat_cb_key,
                 ) -> None:
+                    if k not in st.session_state or sk not in st.session_state:
+                        return
                     if st.session_state[k]:
                         st.session_state[sk] = st.session_state[sk] | set(opts)
                     else:
@@ -421,6 +423,8 @@ def render_hierarchical_checkbox_filter(
                         fms: list[str] = full_modes,
                         k: str = mode_cb_key,
                     ) -> None:
+                        if k not in st.session_state or sk not in st.session_state:
+                            return
                         if st.session_state[k]:
                             st.session_state[sk] = st.session_state[sk] | set(fms)
                         else:

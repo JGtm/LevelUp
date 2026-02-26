@@ -102,7 +102,7 @@ def paris_epoch_seconds_local(dt: datetime | None, paris_tz) -> float | None:
 # =============================================================================
 
 
-@st.cache_data(show_spinner=False, ttl=120)
+@st.cache_data(show_spinner=False, ttl=600)
 def index_media_dir(dir_path: str, exts: tuple[str, ...]) -> pl.DataFrame:
     """Indexe un répertoire de médias par extension et date de modification."""
     _empty = pl.DataFrame(schema={"path": pl.Utf8, "mtime": pl.Float64, "ext": pl.Utf8})

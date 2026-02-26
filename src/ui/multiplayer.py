@@ -214,8 +214,12 @@ class DuckDBPlayerInfo:
         return f"{self.gamertag} (0 matchs)"
 
 
+@st.cache_data(ttl=1800, show_spinner=False)
 def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:
     """Liste les joueurs depuis data/players/*/stats.duckdb.
+
+    Résultat mis en cache 60 secondes pour éviter les reconnexions répétées
+    à chaque rerun Streamlit (coûteux sur petite machine).
 
     Returns:
         Liste triée par nombre de matchs (décroissant).

@@ -7,6 +7,49 @@
 
 ## Journal
 
+### [2026-02-26] — Perf UI : quick wins + roadmap optimisations profondes
+
+**Statut** : Quick wins appliqués ✅ | Gains architecturaux : 📋 À planifier
+
+#### Quick wins appliqués (feature/v5.2)
+
+- `checkbox_filter.py` : guard `k not in st.session_state` dans `_on_cat_change` / `_on_mode_change` → fix `KeyError` au changement de DB
+- `match_view.py` : suppression de `ensure_match_skill_rank_table` sur connexion `read_only` (causait "Invalid Input Error") → remplacé par `cached_get_match_skill_rank` (`@st.cache_data ttl=300`)
+- `career_ranks.py` : `@lru_cache(maxsize=1)` sur `is_metadata_available` → évite reconnexion à `metadata.duckdb` à chaque call
+- `multiplayer.py` : `@st.cache_data(ttl=1800)` sur `list_duckdb_v4_players` → évite N connexions DuckDB/heure pour le sélecteur joueur
+- Ajustements TTL : `cached_get_migration_status` 60s→3600s, `index_media_dir` 120s→600s
+
+#### Roadmap optimisations profondes (gains réels sur petite machine)
+
+> À planifier selon priorité. Contexte : ROG Ally (Ryzen Z1), DuckDB CPU-bound, Streamlit re-renders.
+
+**1. Vues matérialisées DuckDB pour les stats globales** 📋
+- Problème : `mv_map_stats`, `mv_mode_category_stats`, `mv_session_stats` sont reconstruites à chaque rafraîchissement sur full-table scan `match_participants`.
+- Gain estimé : -70% sur le temps d'affichage des pages stats si les MVs sont pré-calculées au moment du sync et non à la demande.
+- Approche : déclencher la reconstruction des MVs uniquement dans `engine.py` post-sync, pas dans l'UI.
+
+**2. Lazy-loading des pages lourdes (match_view)** 📋
+- Problème : `match_view.py` charge toutes les sections (scoreboard, nemesis, KD timeline, médailles, roster) même si l'utilisateur ne les consulte pas.
+- Gain estimé : -40% sur le premier rendu d'un match.
+- Approche : charger les sections sous `st.tabs` uniquement quand l'onglet est sélectionné (via `@fragment` + session state par onglet actif).
+
+**3. Pagination / virtualisation de la liste de matchs** 📋
+- Problème : si un joueur a 2000+ matchs, `mv_player_matches` charge tout en mémoire Polars avant filtrage côté Python.
+- Gain estimé : -50% RAM + temps de chargement initial sur grosse bibliothèque.
+- Approche : pousser les filtres (map, mode, outcome, date range) dans la requête SQL DuckDB avec LIMIT/OFFSET, au lieu de filtrer en Polars après chargement.
+
+**4. Pré-calcul des `performance_score` au sync** 📋
+- Problème : `compute_relative_performance_score` est appelé à l'affichage pour chaque match affiché.
+- Gain : score déjà dans `player_match_enrichment.performance_score` mais recalculé en UI pour certains contextes.
+- Approche : vérifier les call sites et s'assurer que l'UI lit toujours depuis la colonne persistée.
+
+**5. Compression Polars : éviter les colonnes inutiles dans les DataFrames chargés** 📋
+- Problème : `load_df_optimized` charge `COLUMNS_COMMON` (30+ colonnes) même pour des pages qui n'en utilisent que 5-8.
+- Gain estimé : -30% mémoire, moins de bande passante DuckDB→Python.
+- Approche : étendre les projections par page déjà définies dans `cache_loaders.py` (`COLUMNS_COMMON`, `COLUMNS_TIMESERIES`, etc.) aux pages qui n'ont pas encore leur projection fine.
+
+---
+
 ### [2026-02-25] — v5.3 : LUSR stabilisation + UI Carrière
 
 **Statut** : Complété ✅

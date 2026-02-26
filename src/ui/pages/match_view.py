@@ -16,8 +16,6 @@ from typing import Any
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.analysis.performance_score import compute_relative_performance_score
 from src.app.helpers import normalize_map_label
@@ -28,6 +26,7 @@ from src.ui import (
     translate_playlist_name,
 )
 from src.ui.formatting import format_date_fr
+from src.ui.i18n import t
 from src.ui.medals import load_medal_name_maps, render_medals_grid
 from src.ui.pages.match_view_charts import render_expected_vs_actual
 
@@ -52,7 +51,9 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 # =============================================================================
 
 
-def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
+def _render_match_rank_tab(
+    *, match_id: str, db_path: str, db_key: tuple[int, int] | None = None
+) -> None:
     """Affiche l'onglet 🏅 Rang pour un match (LUSR ou CSR).
 
     Charge depuis ``match_skill_rank`` (stats.duckdb du joueur) et affiche :
@@ -63,11 +64,10 @@ def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
     Args:
         match_id: Identifiant du match.
         db_path: Chemin vers stats.duckdb du joueur.
+        db_key: Clé d'invalidation du cache (mtime, size).
     """
     try:
         from pathlib import Path
-
-        import duckdb
 
         from src.analysis.skill_rating_config import (
             UNRANKED_COLOR,
@@ -77,24 +77,12 @@ def _render_match_rank_tab(*, match_id: str, db_path: str) -> None:
             get_tier_for_rating,
             get_tier_size,
         )
-        from src.data.sync.migrations import ensure_match_skill_rank_table
+        from src.ui.cache_loaders import cached_get_match_skill_rank
     except ImportError:
         st.info(t("mv_lusr_modules_missing"))
         return
 
-    try:
-        conn = duckdb.connect(str(db_path), read_only=True)
-        ensure_match_skill_rank_table(conn)
-        row_rank = conn.execute(
-            "SELECT rating_type, rating_value, rating_deviation, tier_label, "
-            "       sub_tier, tier, tier_fr, rating_delta, playlist_group "
-            "FROM match_skill_rank WHERE match_id = ?",
-            [match_id],
-        ).fetchone()
-        conn.close()
-    except Exception:
-        st.info(t("mv_lusr_no_data"))
-        return
+    row_rank = cached_get_match_skill_rank(db_path, match_id, db_key=db_key)
 
     if row_rank is None:
         st.info(
@@ -521,7 +509,7 @@ def render_match_view(
             st.info("Miniature de carte indisponible.")
 
     with tab_rank:
-        _render_match_rank_tab(match_id=match_id, db_path=db_path)
+        _render_match_rank_tab(match_id=match_id, db_path=db_path, db_key=db_key)
 
     # Stats détaillées
     with st.spinner(t("mv_loading")):
