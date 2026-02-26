@@ -442,7 +442,7 @@ def cached_get_performance_by_map_duckdb(
         return None
 
 
-@st.cache_data(show_spinner=False, ttl=60)
+@st.cache_data(show_spinner=False, ttl=3600)
 def cached_get_migration_status(
     db_path: str,
     xuid: str,

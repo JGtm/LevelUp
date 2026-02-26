@@ -601,6 +601,45 @@ def cached_has_cache_tables(db_path: str, db_key: tuple[int, int] | None = None)
     return False
 
 
+@st.cache_data(show_spinner=False, ttl=300)
+def cached_get_match_skill_rank(
+    db_path: str,
+    match_id: str,
+    db_key: tuple[int, int] | None = None,
+) -> tuple | None:
+    """Retourne le rating LUSR/CSR d'un match depuis match_skill_rank (read-only, mis en cache).
+
+    N'exécute aucun DDL : si la table n'existe pas, retourne None silencieusement.
+
+    Args:
+        db_path: Chemin vers stats.duckdb du joueur.
+        match_id: Identifiant du match.
+        db_key: Clé d'invalidation (mtime, size) de la DB.
+
+    Returns:
+        Tuple (rating_type, rating_value, rating_deviation, tier_label,
+               sub_tier, tier, tier_fr, rating_delta, playlist_group)
+        ou None si absent.
+    """
+    _ = db_key
+    import duckdb
+
+    try:
+        with duckdb.connect(str(db_path), read_only=True) as conn:
+            row = conn.execute(
+                "SELECT rating_type, rating_value, rating_deviation, tier_label, "
+                "       sub_tier, tier, tier_fr, rating_delta, playlist_group "
+                "FROM match_skill_rank WHERE match_id = ?",
+                [match_id],
+            ).fetchone()
+        return row
+    except duckdb.CatalogException:
+        # Table match_skill_rank absente (joueur sans LUSR/CSR calculé)
+        return None
+    except Exception:
+        return None
+
+
 @st.cache_data(show_spinner=False)
 def cached_get_cache_stats(db_path: str, xuid: str, db_key: tuple[int, int] | None = None) -> dict:
     """Retourne les stats du cache DB pour un joueur.

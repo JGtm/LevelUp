@@ -275,6 +275,7 @@ def count_cached_icons() -> int:
     return len(list(icons_dir.glob("rank_*_large.png")))
 
 
+@lru_cache(maxsize=1)
 def is_metadata_available() -> bool:
     """Vérifie si les métadonnées des rangs sont disponibles dans metadata.duckdb."""
     import duckdb
