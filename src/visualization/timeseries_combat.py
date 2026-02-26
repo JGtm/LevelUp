@@ -12,12 +12,13 @@ from plotly.subplots import make_subplots
 from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.config import HALO_COLORS, PLOT_CONFIG
 from src.ui.components.chart_annotations import add_extreme_annotations  # noqa: F401
+from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars, smart_scatter  # noqa: F401
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 from src.visualization.timeseries import _normalize_df, _rolling_mean
 
 
-def plot_average_life(df: DataFrameLike, title: str = "Durée de vie moyenne") -> go.Figure:
+def plot_average_life(df: DataFrameLike, title: str | None = None, lang: str = "fr") -> go.Figure:
     """Graphique de la durée de vie moyenne.
 
     Args:
@@ -29,6 +30,8 @@ def plot_average_life(df: DataFrameLike, title: str = "Durée de vie moyenne") -
     """
     # Normaliser en Polars
     d = _normalize_df(df)
+    if title is None:
+        title = viz_t("title_avg_life", lang)
 
     colors = HALO_COLORS.as_dict()
     d = d.filter(pl.col("average_life_seconds").is_not_null()).sort("start_time")
@@ -51,7 +54,7 @@ def plot_average_life(df: DataFrameLike, title: str = "Durée de vie moyenne") -
         go.Bar(
             x=x_idx,
             y=y.to_list(),
-            name="Durée de vie (s)",
+            name=viz_t("trace_lifespan", lang),
             marker_color=colors["green"],
             opacity=PLOT_CONFIG.bar_opacity,
             customdata=custom,
@@ -68,7 +71,7 @@ def plot_average_life(df: DataFrameLike, title: str = "Durée de vie moyenne") -
             x=x_idx,
             y=_rolling_mean(y, window=10).to_list(),
             mode="lines",
-            name="Moyenne (lissée)",
+            name=viz_t("trace_avg_smoothed", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["cyan"]},
             hovertemplate="moyenne=%{y:.2f}s<extra></extra>",
         )
@@ -80,9 +83,9 @@ def plot_average_life(df: DataFrameLike, title: str = "Durée de vie moyenne") -
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
     )
-    fig.update_yaxes(title_text="Secondes", rangemode="tozero")
+    fig.update_yaxes(title_text=viz_t("axis_seconds", lang), rangemode="tozero")
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_chronological", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -95,6 +98,7 @@ def plot_average_life(df: DataFrameLike, title: str = "Durée de vie moyenne") -
 def plot_spree_headshots_accuracy(
     df: DataFrameLike,
     perfect_counts: dict[str, int] | None = None,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique combiné: Spree, Tirs à la tête, Précision et Perfect kills.
 
@@ -123,7 +127,7 @@ def plot_spree_headshots_accuracy(
         go.Bar(
             x=x_idx,
             y=spree,
-            name="Folie meurtrière (max)",
+            name=viz_t("trace_killing_spree", lang),
             marker_color=colors["amber"],
             opacity=PLOT_CONFIG.bar_opacity,
             alignmentgroup="spree_hs",
@@ -138,7 +142,7 @@ def plot_spree_headshots_accuracy(
         go.Bar(
             x=x_idx,
             y=d["headshot_kills"].to_list(),
-            name="Tirs à la tête",
+            name=viz_t("trace_headshots", lang),
             marker_color=colors["red"],
             opacity=0.70,
             alignmentgroup="spree_hs",
@@ -159,7 +163,7 @@ def plot_spree_headshots_accuracy(
         go.Bar(
             x=x_idx,
             y=perfect_series,
-            name="Frags parfaits",
+            name=viz_t("trace_perfect_kills", lang),
             marker_color=colors["green"],
             opacity=0.65,
             alignmentgroup="spree_hs",
@@ -173,7 +177,7 @@ def plot_spree_headshots_accuracy(
     labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
     step = max(1, len(labels) // 10) if labels else 1
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_chronological", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -189,7 +193,9 @@ def plot_spree_headshots_accuracy(
         bargroupgap=0.06,
     )
 
-    fig.update_yaxes(title_text="Spree / Tirs à la tête", rangemode="tozero", secondary_y=False)
+    fig.update_yaxes(
+        title_text=viz_t("axis_spree_headshots", lang), rangemode="tozero", secondary_y=False
+    )
 
     return apply_halo_plot_style(fig, height=420)
 
@@ -197,8 +203,9 @@ def plot_spree_headshots_accuracy(
 def plot_performance_timeseries(
     df: DataFrameLike,
     df_history: DataFrameLike | None = None,
-    title: str = "Score de performance",
+    title: str | None = None,
     show_smooth: bool = True,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique du score de performance dans le temps.
 
@@ -215,6 +222,8 @@ def plot_performance_timeseries(
 
     # Normaliser en Polars
     d = _normalize_df(df)
+    if title is None:
+        title = viz_t("title_performance", lang)
     history_pl: pl.DataFrame | None = None
     if df_history is not None:
         history_pl = _normalize_df(df_history)
@@ -264,7 +273,7 @@ def plot_performance_timeseries(
         go.Bar(
             x=x_idx,
             y=performance.to_list(),
-            name="Performance",
+            name=viz_t("trace_performance", lang),
             marker_color=bar_colors,
             opacity=PLOT_CONFIG.bar_opacity,
             customdata=customdata,
@@ -279,7 +288,7 @@ def plot_performance_timeseries(
                 x=x_idx,
                 y=smooth.to_list(),
                 mode="lines",
-                name="Moyenne (lissée)",
+                name=viz_t("trace_avg_smoothed", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors.get("violet", "#8B5CF6")},
                 hovertemplate="moyenne=%{y:.1f}<extra></extra>",
             )
@@ -291,9 +300,11 @@ def plot_performance_timeseries(
         hovermode="x unified",
         legend=get_legend_horizontal_bottom(),
     )
-    fig.update_yaxes(title_text="Score de performance", rangemode="tozero", range=[0, 100])
+    fig.update_yaxes(
+        title_text=viz_t("title_performance", lang), rangemode="tozero", range=[0, 100]
+    )
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_chronological", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -310,7 +321,8 @@ def plot_performance_timeseries(
 
 def plot_streak_chart(
     df: DataFrameLike,
-    title: str = "Séries de victoires / défaites",
+    title: str | None = None,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique des séries de victoires et défaites dans le temps.
 
@@ -325,6 +337,8 @@ def plot_streak_chart(
         Figure Plotly.
     """
     d = _normalize_df(df)
+    if title is None:
+        title = viz_t("title_streaks", lang)
     colors = HALO_COLORS.as_dict()
 
     d = d.sort("start_time")
@@ -334,7 +348,7 @@ def plot_streak_chart(
     if d.height == 0:
         fig = go.Figure()
         fig.add_annotation(
-            text="Aucune donnée de victoires/défaites",
+            text=viz_t("empty_no_streak_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -389,9 +403,9 @@ def plot_streak_chart(
         margin={"l": 40, "r": 20, "t": 40, "b": 90},
         hovermode="x unified",
     )
-    fig.update_yaxes(title_text="Série (+ victoires / − défaites)", zeroline=True)
+    fig.update_yaxes(title_text=viz_t("axis_streak", lang), zeroline=True)
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_chronological", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -403,7 +417,8 @@ def plot_streak_chart(
 
 def plot_damage_dealt_taken(
     df: DataFrameLike,
-    title: str = "Dégâts infligés vs subis",
+    title: str | None = None,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique des dégâts infligés et subis par match.
 
@@ -417,6 +432,8 @@ def plot_damage_dealt_taken(
         Figure Plotly.
     """
     d = _normalize_df(df)
+    if title is None:
+        title = viz_t("title_damage", lang)
     colors = HALO_COLORS.as_dict()
 
     d = d.sort("start_time")
@@ -432,7 +449,7 @@ def plot_damage_dealt_taken(
             go.Bar(
                 x=x_idx,
                 y=dealt.to_list(),
-                name="Dégâts infligés",
+                name=viz_t("trace_dmg_dealt", lang),
                 marker_color=colors["cyan"],
                 opacity=0.80,
                 hovertemplate="infligés=%{y:.0f}<extra></extra>",
@@ -443,7 +460,7 @@ def plot_damage_dealt_taken(
                 x=x_idx,
                 y=_rolling_mean(dealt, window=10).to_list(),
                 mode="lines",
-                name="Moy. infligés",
+                name=viz_t("trace_dmg_dealt_avg", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors["cyan"]},
                 hovertemplate="moy=%{y:.0f}<extra></extra>",
             )
@@ -455,7 +472,7 @@ def plot_damage_dealt_taken(
             go.Bar(
                 x=x_idx,
                 y=taken.to_list(),
-                name="Dégâts subis",
+                name=viz_t("trace_dmg_taken", lang),
                 marker_color=colors["red"],
                 opacity=0.65,
                 hovertemplate="subis=%{y:.0f}<extra></extra>",
@@ -466,7 +483,7 @@ def plot_damage_dealt_taken(
                 x=x_idx,
                 y=_rolling_mean(taken, window=10).to_list(),
                 mode="lines",
-                name="Moy. subis",
+                name=viz_t("trace_dmg_taken_avg", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors["red"], "dash": "dot"},
                 hovertemplate="moy=%{y:.0f}<extra></extra>",
             )
@@ -481,9 +498,9 @@ def plot_damage_dealt_taken(
         bargap=0.15,
         bargroupgap=0.06,
     )
-    fig.update_yaxes(title_text="Dégâts", rangemode="tozero")
+    fig.update_yaxes(title_text=viz_t("axis_damage", lang), rangemode="tozero")
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_chronological", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -495,7 +512,8 @@ def plot_damage_dealt_taken(
 
 def plot_shots_accuracy(
     df: DataFrameLike,
-    title: str = "Tirs et précision",
+    title: str | None = None,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique des tirs (tirés/touchés) en barres groupées avec courbe de précision.
 
@@ -507,6 +525,8 @@ def plot_shots_accuracy(
         Figure Plotly avec axe Y secondaire pour la précision.
     """
     d = _normalize_df(df)
+    if title is None:
+        title = viz_t("title_shots", lang)
     colors = HALO_COLORS.as_dict()
 
     d = d.sort("start_time")
@@ -522,7 +542,7 @@ def plot_shots_accuracy(
             go.Bar(
                 x=x_idx,
                 y=fired.to_list(),
-                name="Tirs tirés",
+                name=viz_t("trace_shots_fired", lang),
                 marker_color=colors["amber"],
                 opacity=0.70,
                 alignmentgroup="shots",
@@ -539,7 +559,7 @@ def plot_shots_accuracy(
             go.Bar(
                 x=x_idx,
                 y=hit.to_list(),
-                name="Tirs touchés",
+                name=viz_t("trace_shots_hit", lang),
                 marker_color=colors["green"],
                 opacity=0.70,
                 alignmentgroup="shots",
@@ -557,7 +577,7 @@ def plot_shots_accuracy(
                 x=x_idx,
                 y=accuracy.to_list(),
                 mode="lines",
-                name="Précision (%)",
+                name=viz_t("trace_accuracy", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors["violet"]},
                 hovertemplate="précision=%{y:.2f}%<extra></extra>",
             ),
@@ -565,7 +585,7 @@ def plot_shots_accuracy(
         )
 
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_chronological", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -582,9 +602,12 @@ def plot_shots_accuracy(
         bargroupgap=0.06,
     )
 
-    fig.update_yaxes(title_text="Tirs", rangemode="tozero", secondary_y=False)
+    fig.update_yaxes(title_text=viz_t("axis_shots", lang), rangemode="tozero", secondary_y=False)
     fig.update_yaxes(
-        title_text="Précision (%)", ticksuffix="%", rangemode="tozero", secondary_y=True
+        title_text=viz_t("trace_accuracy", lang),
+        ticksuffix="%",
+        rangemode="tozero",
+        secondary_y=True,
     )
 
     return apply_halo_plot_style(fig, height=420)
@@ -592,7 +615,8 @@ def plot_shots_accuracy(
 
 def plot_rank_score(
     df: DataFrameLike,
-    title: str = "Rang et score personnel",
+    title: str | None = None,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique du rang et du score personnel par match.
 
@@ -606,6 +630,8 @@ def plot_rank_score(
         Figure Plotly avec axe Y secondaire pour le rang.
     """
     d = _normalize_df(df)
+    if title is None:
+        title = viz_t("title_rank_score", lang)
     colors = HALO_COLORS.as_dict()
 
     d = d.sort("start_time")
@@ -621,7 +647,7 @@ def plot_rank_score(
             go.Bar(
                 x=x_idx,
                 y=score.to_list(),
-                name="Score personnel",
+                name=viz_t("trace_personal_score", lang),
                 marker_color=colors["amber"],
                 opacity=0.75,
                 hovertemplate="score=%{y:.0f}<extra></extra>",
@@ -636,7 +662,7 @@ def plot_rank_score(
                 x=x_idx,
                 y=rank.to_list(),
                 mode="lines+markers",
-                name="Rang",
+                name=viz_t("trace_rank", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors["cyan"]},
                 marker={"size": 4},
                 hovertemplate="rang=%{y}<extra></extra>",
@@ -645,7 +671,7 @@ def plot_rank_score(
         )
 
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_chronological", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
@@ -659,18 +685,26 @@ def plot_rank_score(
         hovermode="x unified",
     )
 
-    fig.update_yaxes(title_text="Score personnel", rangemode="tozero", secondary_y=False)
-    fig.update_yaxes(title_text="Rang", autorange="reversed", rangemode="tozero", secondary_y=True)
+    fig.update_yaxes(
+        title_text=viz_t("trace_personal_score", lang), rangemode="tozero", secondary_y=False
+    )
+    fig.update_yaxes(
+        title_text=viz_t("trace_rank", lang),
+        autorange="reversed",
+        rangemode="tozero",
+        secondary_y=True,
+    )
 
     return apply_halo_plot_style(fig, height=400)
 
 
 def plot_lusr_timeseries(
     df: DataFrameLike,
-    title: str = "LUSR — LevelUp Skill Rank",
+    title: str | None = None,
     show_confidence: bool = True,
     show_smooth: bool = True,
     playlist_group: str | None = None,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique d'évolution du LUSR (ou CSR) dans le temps.
 
@@ -692,6 +726,8 @@ def plot_lusr_timeseries(
     from src.analysis.skill_rating_config import SKILL_TIERS
 
     d = _normalize_df(df)
+    if title is None:
+        title = viz_t("trace_lusr_default_title", lang)
 
     # Filtre groupe de playlist
     if playlist_group and "playlist_group" in d.columns:
@@ -761,7 +797,7 @@ def plot_lusr_timeseries(
                 x=x_idx,
                 y=upper,
                 mode="lines",
-                name="Confiance (σ)",
+                name=viz_t("trace_confidence", lang),
                 line={"width": 0},
                 showlegend=True,
                 hoverinfo="skip",
@@ -822,7 +858,7 @@ def plot_lusr_timeseries(
                 x=x_idx,
                 y=smooth.to_list(),
                 mode="lines",
-                name="Tendance (lissée)",
+                name=viz_t("trace_trend", lang),
                 line={
                     "width": PLOT_CONFIG.line_width,
                     "color": colors.get("violet", "#8B5CF6"),
@@ -840,11 +876,11 @@ def plot_lusr_timeseries(
         legend=get_legend_horizontal_bottom(),
     )
     fig.update_yaxes(
-        title_text="Rating LUSR / CSR",
+        title_text=viz_t("trace_lusr_axis", lang),
         range=[y_min, y_max],
     )
     fig.update_xaxes(
-        title_text="Match (chronologique)",
+        title_text=viz_t("axis_chronological", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],

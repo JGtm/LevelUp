@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from src.config import HALO_COLORS, THEME_COLORS
+from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style
 
 # Import conditionnel de Polars
@@ -130,6 +131,7 @@ def plot_cumulative_net_score(
     show_zero_line: bool = True,
     time_played_seconds: list[int | float] | None = None,
     duration_marker_minutes: float = 8.0,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un graphique du net score cumulé au fil des matchs.
 
@@ -185,7 +187,7 @@ def plot_cumulative_net_score(
             x=x_values,
             y=y_cumulative,
             mode="lines+markers",
-            name="Net Score Cumulé",
+            name=viz_t("trace_net_score_cumul", lang),
             line={"color": line_color, "width": 3},
             marker={"size": 8, "color": line_color},
             hovertemplate="<b>%{x}</b><br>Cumulé: %{y:+d}<extra></extra>",
@@ -201,7 +203,7 @@ def plot_cumulative_net_score(
         go.Bar(
             x=x_values,
             y=y_match,
-            name="Net Score du Match",
+            name=viz_t("trace_net_score_match", lang),
             marker_color=bar_colors,
             opacity=0.5,
             hovertemplate="<b>%{x}</b><br>Match: %{y:+d}<extra></extra>",
@@ -214,13 +216,13 @@ def plot_cumulative_net_score(
             y=0,
             line_dash="dash",
             line_color=PERFORMANCE_COLORS["baseline"],
-            annotation_text="Équilibre",
+            annotation_text=viz_t("label_balance", lang),
             annotation_position="right",
         )
 
     # Layout
     fig.update_layout(
-        yaxis_title="Net Score (Frags - Morts)",
+        yaxis_title=viz_t("axis_net_score", lang),
         xaxis_title="Match",
         hovermode="x unified",
         showlegend=True,
@@ -241,6 +243,7 @@ def plot_cumulative_kd(
     show_target: float | None = 1.0,
     time_played_seconds: list[int | float] | None = None,
     duration_marker_minutes: float = 8.0,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un graphique du K/D cumulé au fil des matchs.
 
@@ -281,7 +284,7 @@ def plot_cumulative_kd(
             x=x_values,
             y=y_cumulative,
             mode="lines+markers",
-            name="K/D Cumulé",
+            name=viz_t("trace_kd_cumul", lang),
             line={"color": PERFORMANCE_COLORS["kd_line"], "width": 3},
             marker={"size": 8, "color": PERFORMANCE_COLORS["kd_line"]},
             hovertemplate="<b>%{x}</b><br>K/D Cumulé: %{y:.2f}<extra></extra>",
@@ -294,7 +297,7 @@ def plot_cumulative_kd(
             x=x_values,
             y=y_match,
             mode="markers",
-            name="K/D du Match",
+            name=viz_t("trace_kd_match", lang),
             marker={
                 "size": 10,
                 "color": PERFORMANCE_COLORS["neutral"],
@@ -311,13 +314,13 @@ def plot_cumulative_kd(
             y=show_target,
             line_dash="dash",
             line_color=PERFORMANCE_COLORS["baseline"],
-            annotation_text=f"Cible: {show_target}",
+            annotation_text=viz_t("label_target", lang, value=show_target),
             annotation_position="right",
         )
 
     # Layout
     fig.update_layout(
-        yaxis_title="K/D Ratio",
+        yaxis_title=viz_t("axis_kd_ratio", lang),
         xaxis_title="Match",
         hovermode="x unified",
         showlegend=True,
@@ -336,6 +339,7 @@ def plot_rolling_kd(
     window_size: int = 5,
     title: str | None = None,
     height: int = 400,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un graphique du K/D glissant.
 
@@ -349,7 +353,7 @@ def plot_rolling_kd(
         Figure Plotly avec le graphique.
     """
     if title is None:
-        title = f"K/D Glissant ({window_size} matchs)"
+        title = viz_t("title_rolling_kd", lang, window=window_size)
 
     fig = go.Figure()
 
@@ -377,7 +381,7 @@ def plot_rolling_kd(
             x=x_values,
             y=y_match,
             mode="lines",
-            name="K/D du Match",
+            name=viz_t("trace_kd_match", lang),
             line={"color": PERFORMANCE_COLORS["neutral"], "width": 1},
             opacity=0.4,
             hovertemplate="<b>%{x}</b><br>K/D Match: %{y:.2f}<extra></extra>",
@@ -390,7 +394,7 @@ def plot_rolling_kd(
             x=x_values,
             y=y_rolling,
             mode="lines+markers",
-            name=f"K/D Glissant ({window_size})",
+            name=viz_t("trace_kd_rolling", lang, window=window_size),
             line={"color": PERFORMANCE_COLORS["rolling"], "width": 3},
             marker={"size": 6, "color": PERFORMANCE_COLORS["rolling"]},
             hovertemplate="<b>%{x}</b><br>K/D Glissant: %{y:.2f}<extra></extra>",
@@ -402,12 +406,12 @@ def plot_rolling_kd(
         y=1.0,
         line_dash="dash",
         line_color=PERFORMANCE_COLORS["baseline"],
-        annotation_text="K/D = 1.0",
+        annotation_text=viz_t("label_kd_ref", lang),
         annotation_position="right",
     )
 
     fig.update_layout(
-        yaxis_title="K/D Ratio",
+        yaxis_title=viz_t("axis_kd_ratio", lang),
         xaxis_title="Match",
         hovermode="x unified",
         showlegend=True,
@@ -422,6 +426,7 @@ def plot_session_trend(
     *,
     title: str = "Tendance de la Session",
     height: int = 350,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un graphique montrant la tendance de la session.
 
@@ -465,22 +470,26 @@ def plot_session_trend(
     if trend == "improving":
         delta_color = PERFORMANCE_COLORS["trend_up"]
         trend_symbol = "▲"
-        trend_text = "En progression"
+        trend_text = viz_t("label_improving", lang)
     elif trend == "declining":
         delta_color = PERFORMANCE_COLORS["trend_down"]
         trend_symbol = "▼"
-        trend_text = "En déclin"
+        trend_text = viz_t("label_declining", lang)
     else:
         delta_color = PERFORMANCE_COLORS["baseline"]
         trend_symbol = "◆"
-        trend_text = "Stable"
+        trend_text = viz_t("label_stable", lang)
 
     # Créer les indicateurs côte à côte
     fig = make_subplots(
         rows=1,
         cols=3,
         specs=[[{"type": "indicator"}, {"type": "indicator"}, {"type": "indicator"}]],
-        subplot_titles=["Début de session", "Fin de session", "Tendance"],
+        subplot_titles=[
+            viz_t("label_session_start", lang),
+            viz_t("label_session_end", lang),
+            viz_t("trace_trend", lang),
+        ],
     )
 
     # Indicateur première moitié
@@ -547,8 +556,9 @@ def plot_cumulative_comparison(
     *,
     label_a: str = "Session A",
     label_b: str = "Session B",
-    title: str = "Comparaison des Sessions",
+    title: str | None = None,
     height: int = 400,
+    lang: str = "fr",
 ) -> go.Figure:
     """Compare deux sessions avec leurs courbes de net score cumulé.
 
@@ -575,6 +585,9 @@ def plot_cumulative_comparison(
             showarrow=False,
         )
         return apply_halo_plot_style(fig, title=title, height=height)
+
+    if title is None:
+        title = viz_t("title_session_comparison", lang)
 
     # Import local
     from src.analysis.cumulative import compute_cumulative_net_score_series_polars
@@ -613,13 +626,13 @@ def plot_cumulative_comparison(
         y=0,
         line_dash="dash",
         line_color=PERFORMANCE_COLORS["baseline"],
-        annotation_text="Équilibre",
+        annotation_text=viz_t("label_balance", lang),
         annotation_position="right",
     )
 
     fig.update_layout(
-        xaxis_title="Match #",
-        yaxis_title="Net Score Cumulé",
+        xaxis_title=viz_t("axis_match_number", lang),
+        yaxis_title=viz_t("axis_cumul_net_score", lang),
         hovermode="x unified",
         showlegend=True,
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
@@ -638,6 +651,7 @@ def create_cumulative_metrics_indicator(
     *,
     show_trend: bool = True,
     height: int = 150,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un indicateur compact des métriques cumulées.
 
@@ -653,7 +667,12 @@ def create_cumulative_metrics_indicator(
         rows=1,
         cols=4,
         specs=[[{"type": "indicator"}] * 4],
-        subplot_titles=["Frags", "Morts", "Net Score", "F/M"],
+        subplot_titles=[
+            viz_t("trace_kills", lang),
+            viz_t("trace_deaths", lang),
+            viz_t("trace_net_score_match", lang),
+            viz_t("label_kd_fm", lang),
+        ],
     )
 
     # Kills
