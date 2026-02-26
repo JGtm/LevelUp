@@ -21,6 +21,8 @@ from typing import Any
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from src.ui.i18n.viz import viz_t
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Constantes visuelles (palette HALO_COLORS)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -295,6 +297,7 @@ def plot_dominance_chart(
     duration_s: float,
     bucket_s: int = 30,
     height: int = 360,
+    lang: str = "fr",
 ) -> go.Figure | None:
     """Construit la figure Plotly avec deux panneaux liés par l'axe temps.
 
@@ -395,9 +398,11 @@ def plot_dominance_chart(
             width=bar_widths,
             marker_color=colors_enemy,
             marker_line_width=0,
-            name="Adversaires",
+            name=viz_t("trace_opponents", lang),
             customdata=formatted_times,
-            hovertemplate="<b>%{customdata}</b><br>Adversaires : %{y:.0f}%<extra></extra>",
+            hovertemplate="<b>%{customdata}</b><br>"
+            + viz_t("trace_opponents", lang)
+            + " : %{y:.0f}%<extra></extra>",
             showlegend=False,
         ),
         row=1,
@@ -410,9 +415,11 @@ def plot_dominance_chart(
             width=bar_widths,
             marker_color=colors_my,
             marker_line_width=0,
-            name="Mon équipe",
+            name=viz_t("trace_my_team", lang),
             customdata=formatted_times,
-            hovertemplate="<b>%{customdata}</b><br>Mon équipe : %{y:.0f}%<extra></extra>",
+            hovertemplate="<b>%{customdata}</b><br>"
+            + viz_t("trace_my_team", lang)
+            + " : %{y:.0f}%<extra></extra>",
             showlegend=False,
         ),
         row=1,
@@ -434,7 +441,7 @@ def plot_dominance_chart(
     fig.add_annotation(
         x=_x_label,
         y=82,
-        text="Mon équipe",
+        text=viz_t("trace_my_team", lang),
         font={"color": _MY_TEAM_COLOR, "size": 10},
         showarrow=False,
         xanchor="left",

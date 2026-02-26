@@ -7,12 +7,11 @@ from typing import Any
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
-
-from src.ui.i18n import t
 from plotly.subplots import make_subplots
 
 from src.analysis.stats import compute_mode_category_averages, extract_mode_category, format_mmss
 from src.config import HALO_COLORS
+from src.ui.i18n import t
 from src.ui.pages.match_view_helpers import os_card
 from src.ui.streamlit_modern import fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
@@ -105,9 +104,9 @@ def render_expected_vs_actual(
     st.subheader(t("mv_vs_expected"))
     av_cols = st.columns(3)
     with av_cols[0]:
-        _ev_card("Frags", perf_k, mode="normal")
+        _ev_card(t("tm_kills"), perf_k, mode="normal")
     with av_cols[1]:
-        _ev_card("Morts", perf_d, mode="inverse")
+        _ev_card(t("tm_deaths"), perf_d, mode="inverse")
     with av_cols[2]:
         avg_life_last = row.get("average_life_seconds")
         os_card("Durée de vie moyenne", format_mmss(avg_life_last), "")
@@ -261,7 +260,7 @@ def render_expected_vs_actual(
             else:
                 st.info(t("insufficient_data_chart"))
         except Exception as e:
-            st.warning(f"Impossible d'afficher le graphique F/M/A : {e}")
+            st.warning(t("error_chart", error=e))
     with chart_cols[1]:
         _render_spree_headshots(
             row,
@@ -336,7 +335,7 @@ def _render_spree_headshots(
         st.subheader(t("ts_spree"))
         fig_sh = go.Figure()
 
-        x_labels = ["Folie meurtrière (max)", "Tirs à la tête", "Frags parfaits"]
+        x_labels = [t("tm_killing_spree"), t("tm_headshots"), t("tm_perfect_kills")]
         bar_colors = [HALO_COLORS.violet, HALO_COLORS.cyan, HALO_COLORS.green]
         real_vals = [
             float(spree_v) if (spree_v == spree_v) else 0.0,
@@ -393,7 +392,7 @@ def _render_spree_headshots(
             else:
                 st.info(t("insufficient_data_chart"))
         except Exception as e:
-            st.warning(f"Impossible d'afficher le graphique Spree/Headshots : {e}")
+            st.warning(t("error_chart", error=e))
 
 
 # =============================================================================

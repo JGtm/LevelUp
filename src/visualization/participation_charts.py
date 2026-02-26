@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import plotly.express as px
 import plotly.graph_objects as go
 
+from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style
 
 if TYPE_CHECKING:
@@ -37,14 +38,17 @@ CATEGORY_COLORS: dict[str, str] = {
     "other": "#999999",  # Gris neutre
 }
 
-CATEGORY_LABELS: dict[str, str] = {
-    "kill": "Frags",
-    "assist": "Assistances",
-    "objective": "Objectifs",
-    "vehicle": "Véhicules",
-    "penalty": "Pénalités",
-    "other": "Autre",
-}
+
+def get_category_labels(lang: str = "fr") -> dict[str, str]:
+    """Retourne le mapping catégorie → label traduit."""
+    return {
+        "kill": viz_t("cat_label_kill", lang),
+        "assist": viz_t("cat_label_assist", lang),
+        "objective": viz_t("cat_label_objective", lang),
+        "vehicle": viz_t("cat_label_vehicle", lang),
+        "penalty": viz_t("cat_label_penalty", lang),
+        "other": viz_t("cat_label_other", lang),
+    }
 
 
 def get_participation_colors() -> dict[str, str]:
@@ -60,8 +64,9 @@ def get_participation_colors() -> dict[str, str]:
 def plot_participation_pie(
     df: pl.DataFrame,
     *,
-    title: str = "Répartition du score",
+    title: str | None = None,
     show_values: bool = True,
+    lang: str = "fr",
 ) -> go.Figure:
     """Pie chart de la contribution au score par catégorie.
 
@@ -75,6 +80,8 @@ def plot_participation_pie(
     """
     import polars as pl
 
+    title = title or viz_t("title_participation_profile", lang)
+    cat_labels = get_category_labels(lang)
     # Agréger par catégorie
     agg = (
         df.group_by("award_category")
@@ -87,7 +94,7 @@ def plot_participation_pie(
 
     # Mapper les labels et couleurs
     pdf["label"] = pdf["award_category"].map(
-        lambda x: CATEGORY_LABELS.get(x, x.capitalize() if x else "Autre")
+        lambda x: cat_labels.get(x, x.capitalize() if x else viz_t("cat_label_other", lang))
     )
     pdf["color"] = pdf["award_category"].map(
         lambda x: CATEGORY_COLORS.get(x, CATEGORY_COLORS["other"])
@@ -159,9 +166,10 @@ def plot_participation_pie(
 def plot_participation_bars(
     df: pl.DataFrame,
     *,
-    title: str = "Détail des actions",
+    title: str | None = None,
     top_n: int = 10,
     orientation: str = "h",
+    lang: str = "fr",
 ) -> go.Figure:
     """Bar chart horizontal des actions par type.
 
@@ -174,6 +182,7 @@ def plot_participation_bars(
     Returns:
         Figure Plotly.
     """
+    title = title or viz_t("title_action_detail", lang)
     import polars as pl
 
     # Agréger par action
@@ -193,7 +202,7 @@ def plot_participation_bars(
     if pdf.empty:
         fig = go.Figure()
         fig.add_annotation(
-            text="Aucune donnée",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -229,7 +238,7 @@ def plot_participation_bars(
             )
         )
         fig.update_layout(
-            xaxis_title="Points",
+            xaxis_title=viz_t("axis_points", lang),
             yaxis_title="",
         )
     else:
@@ -245,7 +254,7 @@ def plot_participation_bars(
         )
         fig.update_layout(
             xaxis_title="",
-            yaxis_title="Points",
+            yaxis_title=viz_t("axis_points", lang),
             xaxis_tickangle=-45,
         )
 
@@ -266,8 +275,9 @@ def plot_participation_bars(
 def plot_participation_by_match(
     df: pl.DataFrame,
     *,
-    title: str = "Participation par match",
+    title: str | None = None,
     last_n: int = 20,
+    lang: str = "fr",
 ) -> go.Figure:
     """Stacked bar chart de la participation par match.
 
@@ -279,6 +289,8 @@ def plot_participation_by_match(
     Returns:
         Figure Plotly.
     """
+    title = title or viz_t("title_participation_by_match", lang)
+    cat_labels = get_category_labels(lang)
     import polars as pl
 
     # Agréger par match et catégorie
@@ -307,13 +319,14 @@ def plot_participation_by_match(
 
     for cat in categories_order:
         if cat in pdf.columns:
+            cat_labels = get_category_labels(lang)
             fig.add_trace(
                 go.Bar(
-                    name=CATEGORY_LABELS.get(cat, cat.capitalize()),
+                    name=cat_labels.get(cat, cat.capitalize()),
                     x=pdf["match_id"],
                     y=pdf[cat],
                     marker={"color": CATEGORY_COLORS.get(cat, CATEGORY_COLORS["other"])},
-                    hovertemplate=f"<b>{CATEGORY_LABELS.get(cat, cat)}</b><br>"
+                    hovertemplate=f"<b>{cat_labels.get(cat, cat)}</b><br>"
                     + "%{y:,.0f} pts<extra></extra>",
                 )
             )
@@ -321,8 +334,8 @@ def plot_participation_by_match(
     fig.update_layout(
         title={"text": title, "x": 0.5},
         barmode="relative",  # Permet les valeurs négatives
-        xaxis_title="Match",
-        yaxis_title="Points",
+        xaxis_title=viz_t("axis_match_number", lang),
+        yaxis_title=viz_t("axis_points", lang),
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02},
         xaxis={"tickangle": -45, "showticklabels": False},  # Masquer les IDs longs
     )
@@ -338,7 +351,8 @@ def plot_participation_by_match(
 def create_participation_indicator(
     df: pl.DataFrame,
     *,
-    title: str = "Participation",
+    title: str | None = None,
+    lang: str = "fr",
 ) -> go.Figure:
     """Indicateur multi-valeurs de participation.
 
@@ -351,6 +365,7 @@ def create_participation_indicator(
     Returns:
         Figure Plotly avec indicateurs.
     """
+    title = title or viz_t("title_participation", lang)
     import polars as pl
 
     # Agréger par catégorie
@@ -379,7 +394,7 @@ def create_participation_indicator(
             mode="number",
             value=kills["count"],
             title={
-                "text": f"Frags<br><span style='font-size:0.7em;color:gray'>{kills['score']:,} pts</span>"
+                "text": f"{viz_t('cat_label_kill', lang)}<br><span style='font-size:0.7em;color:gray'>{kills['score']:,} pts</span>"
             },
             domain={"x": [0, 0.25], "y": [0, 1]},
             number={"font": {"color": CATEGORY_COLORS["kill"], "size": 48}},
@@ -391,7 +406,7 @@ def create_participation_indicator(
             mode="number",
             value=assists["count"],
             title={
-                "text": f"Assistances<br><span style='font-size:0.7em;color:gray'>{assists['score']:,} pts</span>"
+                "text": f"{viz_t('cat_label_assist', lang)}<br><span style='font-size:0.7em;color:gray'>{assists['score']:,} pts</span>"
             },
             domain={"x": [0.25, 0.5], "y": [0, 1]},
             number={"font": {"color": CATEGORY_COLORS["assist"], "size": 48}},
@@ -403,7 +418,7 @@ def create_participation_indicator(
             mode="number",
             value=objectives["count"],
             title={
-                "text": f"Objectifs<br><span style='font-size:0.7em;color:gray'>{objectives['score']:,} pts</span>"
+                "text": f"{viz_t('cat_label_objective', lang)}<br><span style='font-size:0.7em;color:gray'>{objectives['score']:,} pts</span>"
             },
             domain={"x": [0.5, 0.75], "y": [0, 1]},
             number={"font": {"color": CATEGORY_COLORS["objective"], "size": 48}},
@@ -417,7 +432,7 @@ def create_participation_indicator(
             mode="number",
             value=penalty_display,
             title={
-                "text": f"Pénalités<br><span style='font-size:0.7em;color:gray'>{penalties['score']:,} pts</span>"
+                "text": f"{viz_t('cat_label_penalty', lang)}<br><span style='font-size:0.7em;color:gray'>{penalties['score']:,} pts</span>"
             },
             domain={"x": [0.75, 1], "y": [0, 1]},
             number={"font": {"color": CATEGORY_COLORS["penalty"], "size": 48}},
@@ -441,7 +456,8 @@ def create_participation_indicator(
 def plot_participation_sunburst(
     df: pl.DataFrame,
     *,
-    title: str = "Détail de la participation",
+    title: str | None = None,
+    lang: str = "fr",
 ) -> go.Figure:
     """Sunburst chart hiérarchique catégorie → action.
 
@@ -452,6 +468,8 @@ def plot_participation_sunburst(
     Returns:
         Figure Plotly.
     """
+    title = title or viz_t("title_participation_detail", lang)
+    cat_labels = get_category_labels(lang)
     import polars as pl
 
     # Agréger par catégorie et action
@@ -467,7 +485,7 @@ def plot_participation_sunburst(
     if pdf.empty:
         fig = go.Figure()
         fig.add_annotation(
-            text="Aucune donnée positive",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -478,13 +496,13 @@ def plot_participation_sunburst(
 
     # Mapper les labels de catégorie
     pdf["category_label"] = pdf["award_category"].map(
-        lambda x: CATEGORY_LABELS.get(x, x.capitalize() if x else "Autre")
+        lambda x: cat_labels.get(x, x.capitalize() if x else viz_t("cat_label_other", lang))
     )
 
     # Mapper les couleurs
     color_map = {}
     for cat, color in CATEGORY_COLORS.items():
-        label = CATEGORY_LABELS.get(cat, cat.capitalize())
+        label = cat_labels.get(cat, cat.capitalize())
         color_map[label] = color
 
     fig = px.sunburst(

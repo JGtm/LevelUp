@@ -10,12 +10,11 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.analysis.objective_participation import (
     compute_award_frequency_polars,
     compute_objective_summary_by_match_polars,
 )
+from src.ui.i18n import t
 from src.ui.streamlit_modern import fragment_if_available
 from src.visualization.objective_charts import (
     plot_assist_breakdown_pie,
@@ -136,7 +135,7 @@ def render_objective_analysis_page(
     # Section 1: Vue d'ensemble
     # ══════════════════════════════════════════════════════════════════════════
     st.markdown("---")
-    st.markdown("## 🎯 Vue d'ensemble")
+    st.markdown(f"## 🎯 {t('obj_overview_title')}")
 
     # Calculer les métriques globales
     total_objective = (
@@ -165,28 +164,28 @@ def render_objective_analysis_page(
 
     with col1:
         st.metric(
-            label="Score Objectifs",
+            label=t("obj_score_label"),
             value=_format_score(total_objective),
             help="Points gagnés sur les objectifs de jeu",
         )
 
     with col2:
         st.metric(
-            label="Score Frags",
+            label=t("obj_frag_score_label"),
             value=_format_score(total_kill),
             help="Points gagnés avec les éliminations",
         )
 
     with col3:
         st.metric(
-            label="Score Assistances",
+            label=t("obj_assist_score_label"),
             value=_format_score(total_assist),
             help="Points gagnés avec les assistances",
         )
 
     with col4:
         st.metric(
-            label="Ratio Objectifs",
+            label=t("obj_ratio_label"),
             value=_format_ratio(objective_ratio),
             help="Part des objectifs dans le score total",
         )
@@ -212,9 +211,9 @@ def render_objective_analysis_page(
 
     tab_scatter, tab_breakdown, tab_trend = st.tabs(
         [
-            "Objectifs vs Frags",
-            "Répartition du Score",
-            "Évolution",
+            t("obj_tab_scatter"),
+            t("obj_tab_breakdown"),
+            t("obj_tab_trend"),
         ]
     )
 
@@ -228,7 +227,7 @@ def render_objective_analysis_page(
             fig_scatter = plot_objective_vs_kills_scatter(
                 my_awards_df,
                 match_stats_df,
-                title="Score Objectifs vs Frags par Match",
+                title=None,
             )
             if fig_scatter is not None:
                 st.plotly_chart(fig_scatter, width="stretch", config={"displayModeBar": False})
@@ -246,7 +245,7 @@ def render_objective_analysis_page(
                 fig_bars = plot_objective_breakdown_bars(
                     my_awards_df,
                     xuid=xuid,
-                    title="Points Totaux par Catégorie",
+                    title=None,
                 )
                 if fig_bars is not None:
                     st.plotly_chart(fig_bars, width="stretch", config={"staticPlot": True})
@@ -256,7 +255,7 @@ def render_objective_analysis_page(
                 st.warning(t("error_chart", error=e))
 
         with col_gauge:
-            st.markdown("### Ratio Objectifs")
+            st.markdown(f"### {t('obj_ratio_label')}")
             try:
                 fig_gauge = plot_objective_ratio_gauge(
                     objective_ratio,
@@ -286,7 +285,7 @@ def render_objective_analysis_page(
             try:
                 fig_trend = plot_objective_trend_over_time(
                     summary_with_time,
-                    title="Score Objectifs au fil des matchs",
+                    title=None,
                 )
                 if fig_trend is not None:
                     st.plotly_chart(fig_trend, width="stretch", config={"displayModeBar": False})

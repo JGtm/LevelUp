@@ -9,9 +9,8 @@ import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.config import HALO_COLORS
+from src.ui.i18n import t
 from src.ui.streamlit_modern import fragment_if_available
 from src.visualization import (
     plot_average_life,
@@ -151,9 +150,9 @@ def render_metric_bar_charts(
     fig_spree = plot_fn(
         series,
         metric_col="max_killing_spree",
-        title="Folie meurtrière (max)",
-        y_axis_title="Folie meurtrière (max)",
-        hover_label="folie meurtrière",
+        title=t("tm_killing_spree"),
+        y_axis_title=t("tm_killing_spree"),
+        hover_label=t("tm_killing_spree"),
         colors=colors_by_name,
         smooth_window=10,
         show_smooth_lines=show_smooth,
@@ -171,9 +170,9 @@ def render_metric_bar_charts(
     fig_hs = plot_fn(
         series,
         metric_col="headshot_kills",
-        title="Tirs à la tête",
-        y_axis_title="Tirs à la tête",
-        hover_label="tirs à la tête",
+        title=t("tm_headshots"),
+        y_axis_title=t("tm_headshots"),
+        hover_label=t("tm_headshots"),
         colors=colors_by_name,
         smooth_window=10,
         show_smooth_lines=show_smooth,
@@ -191,9 +190,9 @@ def render_metric_bar_charts(
     fig_pk = plot_fn(
         series,
         metric_col="perfect_kills",
-        title="Frags parfaits",
-        y_axis_title="Frags parfaits",
-        hover_label="frags parfaits",
+        title=t("tm_perfect_kills"),
+        y_axis_title=t("tm_perfect_kills"),
+        hover_label=t("tm_perfect_kills"),
         colors=colors_by_name,
         smooth_window=10,
         show_smooth_lines=show_smooth,
@@ -267,7 +266,13 @@ def render_trio_charts(
 
     st.plotly_chart(
         plot_trio_metric(
-            d_self, d_f1, d_f2, metric="kills", names=names, title="Frags", y_title="Frags"
+            d_self,
+            d_f1,
+            d_f2,
+            metric="kills",
+            names=names,
+            title=t("tm_kills"),
+            y_title=t("tm_kills"),
         ),
         width="stretch",
         key=f"trio_kills_{f1_xuid}_{f2_xuid}",
@@ -275,7 +280,13 @@ def render_trio_charts(
     )
     st.plotly_chart(
         plot_trio_metric(
-            d_self, d_f1, d_f2, metric="deaths", names=names, title="Morts", y_title="Morts"
+            d_self,
+            d_f1,
+            d_f2,
+            metric="deaths",
+            names=names,
+            title=t("tm_deaths"),
+            y_title=t("tm_deaths"),
         ),
         width="stretch",
         key=f"trio_deaths_{f1_xuid}_{f2_xuid}",
@@ -288,8 +299,8 @@ def render_trio_charts(
             d_f2,
             metric="assists",
             names=names,
-            title="Assistances",
-            y_title="Assistances",
+            title=t("tm_assists"),
+            y_title=t("tm_assists"),
         ),
         width="stretch",
         key=f"trio_assists_{f1_xuid}_{f2_xuid}",
@@ -302,8 +313,8 @@ def render_trio_charts(
             d_f2,
             metric="ratio",
             names=names,
-            title="FDA",
-            y_title="FDA",
+            title=t("tm_kda"),
+            y_title=t("tm_kda"),
             y_format=".3f",
         ),
         width="stretch",
@@ -317,7 +328,7 @@ def render_trio_charts(
             d_f2,
             metric="accuracy",
             names=names,
-            title="Précision",
+            title=t("tm_accuracy"),
             y_title="%",
             y_suffix="%",
             y_format=".2f",
@@ -333,8 +344,8 @@ def render_trio_charts(
             d_f2,
             metric="average_life_seconds",
             names=names,
-            title="Durée de vie moyenne",
-            y_title="Secondes",
+            title=t("tm_avg_life"),
+            y_title=t("tm_seconds"),
             y_format=".1f",
         ),
         width="stretch",
@@ -348,8 +359,8 @@ def render_trio_charts(
             d_f2,
             metric="performance",
             names=names,
-            title="Performance",
-            y_title="Score",
+            title=t("tm_performance"),
+            y_title=t("tm_score"),
             y_format=".1f",
         ),
         width="stretch",

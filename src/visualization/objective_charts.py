@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 import plotly.graph_objects as go
 
 from src.config import THEME_COLORS
+from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style
 
 # Import conditionnel de Polars
@@ -61,8 +62,9 @@ def plot_objective_vs_kills_scatter(
     awards_df: pl.DataFrame,
     match_stats_df: pl.DataFrame,
     *,
-    title: str = "Score Objectifs vs Frags",
+    title: str | None = None,
     height: int = 450,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un scatter plot comparant score objectifs et kills par match.
 
@@ -78,11 +80,12 @@ def plot_objective_vs_kills_scatter(
     Returns:
         Figure Plotly avec le scatter plot.
     """
+    title = title or viz_t("title_obj_vs_kills", lang)
     fig = go.Figure()
 
     if not POLARS_AVAILABLE or awards_df.is_empty() or match_stats_df.is_empty():
         fig.add_annotation(
-            text="Aucune donnée disponible",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -109,7 +112,7 @@ def plot_objective_vs_kills_scatter(
 
     if combined.is_empty():
         fig.add_annotation(
-            text="Aucune donnée à afficher",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -140,7 +143,7 @@ def plot_objective_vs_kills_scatter(
                 "Score Objectifs: %{y}<br>"
                 "<extra>%{customdata[0]}</extra>"
             ),
-            name="Matchs",
+            name=viz_t("trace_matches", lang),
         )
     )
 
@@ -170,14 +173,14 @@ def plot_objective_vs_kills_scatter(
                     y=y_trend,
                     mode="lines",
                     line={"color": OBJECTIVE_COLORS["highlight"], "dash": "dash"},
-                    name="Tendance",
+                    name=viz_t("trace_trend", lang),
                     showlegend=True,
                 )
             )
 
     fig.update_layout(
-        xaxis_title="Frags",
-        yaxis_title="Score Objectifs",
+        xaxis_title=viz_t("axis_kills", lang),
+        yaxis_title=viz_t("trace_obj_score", lang),
         hovermode="closest",
     )
 
@@ -188,8 +191,9 @@ def plot_objective_breakdown_bars(
     awards_df: pl.DataFrame,
     *,
     xuid: str | None = None,
-    title: str = "Répartition du Score par Catégorie",
+    title: str | None = None,
     height: int = 400,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un graphique en barres de la répartition du score par catégorie.
 
@@ -202,11 +206,12 @@ def plot_objective_breakdown_bars(
     Returns:
         Figure Plotly avec les barres.
     """
+    title = title or viz_t("title_score_by_category", lang)
     fig = go.Figure()
 
     if not POLARS_AVAILABLE or awards_df.is_empty():
         fig.add_annotation(
-            text="Aucune donnée disponible",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -234,7 +239,7 @@ def plot_objective_breakdown_bars(
 
     if by_category.is_empty():
         fig.add_annotation(
-            text="Aucune donnée à afficher",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -275,8 +280,8 @@ def plot_objective_breakdown_bars(
     )
 
     fig.update_layout(
-        xaxis_title="Catégorie",
-        yaxis_title="Points Totaux",
+        xaxis_title=viz_t("axis_category", lang),
+        yaxis_title=viz_t("axis_total_points", lang),
         showlegend=False,
     )
 
@@ -287,8 +292,9 @@ def plot_top_players_objective_bars(
     rankings: list[Any],  # list[PlayerObjectiveRanking]
     *,
     top_n: int = 10,
-    title: str = "Top Joueurs par Contribution aux Objectifs",
+    title: str | None = None,
     height: int = 450,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un graphique des top joueurs par contribution aux objectifs.
 
@@ -301,11 +307,12 @@ def plot_top_players_objective_bars(
     Returns:
         Figure Plotly avec les barres horizontales.
     """
+    title = title or viz_t("title_top_players_obj", lang)
     fig = go.Figure()
 
     if not rankings:
         fig.add_annotation(
-            text="Aucun joueur à afficher",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -361,7 +368,7 @@ def plot_top_players_objective_bars(
     )
 
     fig.update_layout(
-        xaxis_title="Score Objectifs Total",
+        xaxis_title=viz_t("trace_obj_score", lang),
         yaxis_title="",
         showlegend=False,
     )
@@ -372,8 +379,9 @@ def plot_top_players_objective_bars(
 def plot_objective_ratio_gauge(
     ratio: float,
     *,
-    title: str = "Ratio Objectifs/Total",
+    title: str | None = None,
     height: int = 250,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un indicateur gauge pour le ratio objectifs/total.
 
@@ -385,6 +393,7 @@ def plot_objective_ratio_gauge(
     Returns:
         Figure Plotly avec l'indicateur.
     """
+    title = title or viz_t("title_obj_ratio_pct", lang)
     # Convertir en pourcentage
     percentage = ratio * 100
 
@@ -422,8 +431,9 @@ def plot_objective_ratio_gauge(
 def plot_assist_breakdown_pie(
     assist_breakdown: Any,  # AssistBreakdownResult
     *,
-    title: str = "Répartition des Assistances",
+    title: str | None = None,
     height: int = 350,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un camembert de la répartition des assistances.
 
@@ -435,6 +445,7 @@ def plot_assist_breakdown_pie(
     Returns:
         Figure Plotly avec le camembert.
     """
+    title = title or viz_t("title_assist_breakdown", lang)
     fig = go.Figure()
 
     # Extraire les données selon le type
@@ -450,7 +461,7 @@ def plot_assist_breakdown_pie(
         other_assists = assist_breakdown.get("other_assists", 0)
     else:
         fig.add_annotation(
-            text="Format de données non reconnu",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -459,7 +470,12 @@ def plot_assist_breakdown_pie(
         )
         return apply_halo_plot_style(fig, title=title, height=height)
 
-    labels = ["Frags assistées", "Marquages assistés", "Assistances EMP", "Autres"]
+    labels = [
+        viz_t("label_kill_assists", lang),
+        viz_t("label_mark_assists", lang),
+        viz_t("label_emp_assists", lang),
+        viz_t("cat_label_other", lang),
+    ]
     values = [kill_assists, mark_assists, emp_assists, other_assists]
     colors = [
         OBJECTIVE_COLORS["kill"],
@@ -472,7 +488,7 @@ def plot_assist_breakdown_pie(
     filtered = [(lbl, v, c) for lbl, v, c in zip(labels, values, colors, strict=False) if v > 0]
     if not filtered:
         fig.add_annotation(
-            text="Aucune assistance enregistrée",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -501,8 +517,9 @@ def plot_assist_breakdown_pie(
 def plot_objective_trend_over_time(
     summary_df: pl.DataFrame,
     *,
-    title: str = "Évolution du Score Objectifs",
+    title: str | None = None,
     height: int = 400,
+    lang: str = "fr",
 ) -> go.Figure:
     """Crée un graphique de l'évolution du score objectifs dans le temps.
 
@@ -514,11 +531,12 @@ def plot_objective_trend_over_time(
     Returns:
         Figure Plotly avec la timeseries.
     """
+    title = title or viz_t("title_obj_trend", lang)
     fig = go.Figure()
 
     if not POLARS_AVAILABLE or summary_df.is_empty():
         fig.add_annotation(
-            text="Aucune donnée disponible",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -541,7 +559,7 @@ def plot_objective_trend_over_time(
             x=x_values,
             y=obj_scores,
             mode="lines+markers",
-            name="Score Objectifs",
+            name=viz_t("trace_obj_score", lang),
             line={"color": OBJECTIVE_COLORS["objective"], "width": 2},
             marker={"size": 6},
             hovertemplate="<b>%{x}</b><br>Objectifs: %{y}<extra></extra>",
@@ -556,15 +574,15 @@ def plot_objective_trend_over_time(
                 x=x_values,
                 y=total_scores,
                 mode="lines",
-                name="Score Total",
+                name=viz_t("trace_total_score", lang),
                 line={"color": OBJECTIVE_COLORS["other"], "width": 1, "dash": "dot"},
                 hovertemplate="<b>%{x}</b><br>Total: %{y}<extra></extra>",
             )
         )
 
     fig.update_layout(
-        xaxis_title="Match",
-        yaxis_title="Score",
+        xaxis_title=viz_t("axis_match_number", lang),
+        yaxis_title=viz_t("axis_score", lang),
         hovermode="x unified",
         showlegend=True,
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},

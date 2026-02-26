@@ -11,7 +11,6 @@ from typing import Any
 import streamlit as st
 
 from src.ui.i18n import t
-
 from src.ui.streamlit_modern import fragment_if_available
 
 
@@ -78,14 +77,14 @@ def render_participation_section(
         thresholds=thresholds,
     )
 
-    st.subheader("🎯 Participation au match")
+    st.subheader(f"🎯 {t('mvp_participation_title')}")
 
     col_radar, col_legend = st.columns([2, 1])
     with col_radar:
         try:
             fig = create_participation_profile_radar(
                 [profile],
-                title="Profil de participation",
+                title=t("mvp_participation_title"),
                 height=380,
                 radial_range=(0, 0.75),  # Échelle réduite pour agrandir le graphe
             )
@@ -96,7 +95,7 @@ def render_participation_section(
         except Exception as e:
             st.warning(t("error_chart", error=e))
     with col_legend:
-        st.markdown("**Axes**")
+        st.markdown(f"**{t('mvp_axes_label')}**")
         for line in RADAR_AXIS_LINES:
             st.markdown(line)
 
@@ -167,7 +166,7 @@ def render_participation_comparison(
         if not profiles:
             return
 
-        st.subheader("📊 Comparaison de participation")
+        st.subheader(f"📊 {t('mvp_comparison_title')}")
         col_radar, col_legend = st.columns([2, 1])
         with col_radar:
             try:
@@ -179,7 +178,7 @@ def render_participation_comparison(
             except Exception as e:
                 st.warning(t("error_chart", error=e))
         with col_legend:
-            st.markdown("**Axes**")
+            st.markdown(f"**{t('mvp_axes_label')}**")
             for line in RADAR_AXIS_LINES:
                 st.markdown(line)
 

@@ -12,17 +12,16 @@ from typing import Any
 
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.analysis import compute_personal_antagonists
 from src.config import BOT_MAP, TEAM_MAP
 from src.ui import display_name_from_xuid
+from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_helpers import os_card
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, fragment_if_available
 from src.utils import parse_xuid_input
 from src.visualization.match_impact_timeline import (
-    IMPACT_LABELS,
     compute_single_match_impact,
+    get_impact_labels,
     plot_all_players_frags_timeline,
     plot_match_kill_death_timeline,
 )
@@ -1086,9 +1085,10 @@ def render_match_impact_section(
 
     # Badges d'impact en colonnes
     if impact_events:
+        _impact_labels = get_impact_labels(get_lang())
         badge_cols = st.columns(len(impact_events))
         for i, ie in enumerate(impact_events):
-            label_info = IMPACT_LABELS.get(ie.event_type)
+            label_info = _impact_labels.get(ie.event_type)
             if not label_info:
                 continue
             icon, label_fr = label_info

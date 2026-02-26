@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from src.config import HALO_COLORS, PLOT_CONFIG
+from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
@@ -20,6 +21,7 @@ def plot_trio_metric(
     y_suffix: str = "",
     y_format: str = "",
     smooth_window: int = 7,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique comparant une métrique entre 3 joueurs.
 
@@ -109,7 +111,7 @@ def plot_trio_metric(
                 x=xs,
                 y=_roll(s_col),
                 mode="lines",
-                name=f"{name} (moy. lissée)",
+                name=f"{name} {viz_t('suffix_smoothed', lang)}",
                 line={"width": 3, "color": color},
                 customdata=ticktext,
                 hovertemplate=hover_format,
@@ -126,7 +128,7 @@ def plot_trio_metric(
             x=xs,
             y=_roll(avg_all),
             mode="lines",
-            name="Moyenne (3) lissée",
+            name=viz_t("trace_avg_3_smoothed", lang),
             line={"width": 3, "color": avg_color, "dash": "dot"},
             customdata=ticktext,
             hovertemplate=hover_format_avg,

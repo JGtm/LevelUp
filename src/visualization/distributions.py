@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from src.config import HALO_COLORS, OUTCOME_CODES, PLOT_CONFIG
+from src.ui.i18n.viz import viz_t
 from src.visualization._compat import (
     DataFrameLike,
     ensure_polars,
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
-def plot_kda_distribution(df: DataFrameLike) -> go.Figure:
+def plot_kda_distribution(df: DataFrameLike, lang: str = "fr") -> go.Figure:
     """Graphique de distribution du KDA (FDA) avec KDE.
 
     Args:
@@ -48,8 +49,8 @@ def plot_kda_distribution(df: DataFrameLike) -> go.Figure:
         fig.update_layout(
             height=PLOT_CONFIG.default_height, margin={"l": 40, "r": 20, "t": 30, "b": 40}
         )
-        fig.update_xaxes(title_text="FDA")
-        fig.update_yaxes(title_text="Densité")
+        fig.update_xaxes(title_text=viz_t("axis_fda", lang))
+        fig.update_yaxes(title_text=viz_t("trace_density_short", lang))
         return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
     # KDE gaussien (règle de Silverman)
@@ -75,7 +76,7 @@ def plot_kda_distribution(df: DataFrameLike) -> go.Figure:
             x=grid,
             y=dens,
             mode="lines",
-            name="Densité (KDE)",
+            name=viz_t("trace_density", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["cyan"]},
             fill="tozeroy",
             fillcolor="rgba(53,208,255,0.18)",
@@ -89,7 +90,7 @@ def plot_kda_distribution(df: DataFrameLike) -> go.Figure:
             x=x,
             y=np.zeros_like(x),
             mode="markers",
-            name="Matchs",
+            name=viz_t("trace_matches", lang),
             marker={"symbol": "line-ns-open", "size": 10, "color": "rgba(255,255,255,0.45)"},
             hovertemplate="FDA=%{x:.2f}<extra></extra>",
         )
@@ -112,8 +113,8 @@ def plot_kda_distribution(df: DataFrameLike) -> go.Figure:
     fig.update_layout(
         height=PLOT_CONFIG.default_height, margin={"l": 40, "r": 20, "t": 30, "b": 40}
     )
-    fig.update_xaxes(title_text="FDA", zeroline=True)
-    fig.update_yaxes(title_text="Densité", rangemode="tozero")
+    fig.update_xaxes(title_text=viz_t("axis_fda", lang), zeroline=True)
+    fig.update_yaxes(title_text=viz_t("trace_density_short", lang), rangemode="tozero")
 
     return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
@@ -123,6 +124,7 @@ def plot_top_weapons(
     *,
     title: str | None = None,
     top_n: int = 10,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique des armes les plus utilisées.
 
@@ -156,7 +158,7 @@ def plot_top_weapons(
             x=kills,
             y=names,
             orientation="h",
-            name="Frags",
+            name=viz_t("trace_kills", lang),
             marker_color=colors["cyan"],
             opacity=0.85,
             text=[f"{k} frags" for k in kills],
@@ -177,7 +179,7 @@ def plot_top_weapons(
         height=height,
         margin={"l": 120, "r": 60, "t": 60 if title else 30, "b": 40},
     )
-    fig.update_xaxes(title_text="Frags")
+    fig.update_xaxes(title_text=viz_t("axis_kills", lang))
     fig.update_yaxes(title_text="")
 
     return apply_halo_plot_style(fig, title=title, height=height)
@@ -188,10 +190,11 @@ def plot_histogram(
     *,
     title: str | None = None,
     x_label: str = "Valeur",
-    y_label: str = "Fréquence",
+    y_label: str | None = None,
     bins: int | str = "auto",
     color: str | None = None,
     show_kde: bool = False,
+    lang: str = "fr",
 ) -> go.Figure:
     """Histogramme générique avec option KDE.
 
@@ -209,6 +212,8 @@ def plot_histogram(
     """
     colors = HALO_COLORS.as_dict()
     bar_color = color or colors["cyan"]
+    if y_label is None:
+        y_label = viz_t("axis_frequency", lang)
 
     if isinstance(values, np.ndarray):
         x = values[~np.isnan(values)].astype(float)
@@ -261,7 +266,7 @@ def plot_histogram(
                     x=grid,
                     y=dens_scaled,
                     mode="lines",
-                    name="Densité",
+                    name=viz_t("trace_density_short", lang),
                     line={"color": colors["amber"], "width": 2},
                     hoverinfo="skip",
                 )
@@ -296,6 +301,7 @@ def plot_medals_distribution(
     *,
     title: str | None = None,
     top_n: int = 20,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique de distribution des médailles (barres horizontales).
 
@@ -345,7 +351,7 @@ def plot_medals_distribution(
         height=height,
         margin={"l": 40, "r": 60, "t": 60 if title else 30, "b": 40},
     )
-    fig.update_xaxes(title_text="Nombre")
+    fig.update_xaxes(title_text=viz_t("axis_count", lang))
     fig.update_yaxes(title_text="")
 
     return apply_halo_plot_style(fig, title=title, height=height)
@@ -361,6 +367,7 @@ def plot_correlation_scatter(
     x_label: str | None = None,
     y_label: str | None = None,
     show_trendline: bool = True,
+    lang: str = "fr",
 ) -> go.Figure:
     """Scatter plot pour visualiser les corrélations.
 
@@ -464,7 +471,7 @@ def plot_correlation_scatter(
                                 x=x_range,
                                 y=y_trend,
                                 mode="lines",
-                                name=f"Tendance (R²={r_squared:.2f})",
+                                name=viz_t("trace_trend_r2", lang, r2=r_squared),
                                 line={"color": colors["amber"], "width": 2, "dash": "dash"},
                                 hoverinfo="skip",
                             )
@@ -489,6 +496,7 @@ def plot_first_event_distribution(
     first_deaths: dict[str, int | None],
     *,
     title: str | None = None,
+    lang: str = "fr",
 ) -> go.Figure:
     """Graphique de distribution des timestamps du premier kill/death.
 
@@ -517,7 +525,7 @@ def plot_first_event_distribution(
         fig.add_trace(
             go.Histogram(
                 x=kills_sec,
-                name="Premier frag",
+                name=viz_t("trace_first_kill", lang),
                 marker_color=colors["green"],
                 opacity=0.7,
                 nbinsx=20,
@@ -529,7 +537,7 @@ def plot_first_event_distribution(
         fig.add_trace(
             go.Histogram(
                 x=deaths_sec,
-                name="Première mort",
+                name=viz_t("trace_first_death", lang),
                 marker_color=colors["red"],
                 opacity=0.6,
                 nbinsx=20,
@@ -587,8 +595,8 @@ def plot_first_event_distribution(
         margin={"l": 40, "r": 20, "t": 60 if title else 30, "b": 40},
         legend=get_legend_horizontal_bottom(),
     )
-    fig.update_xaxes(title_text="Temps (secondes)")
-    fig.update_yaxes(title_text="Nombre de matchs")
+    fig.update_xaxes(title_text=viz_t("axis_time_seconds", lang))
+    fig.update_yaxes(title_text=viz_t("axis_match_count", lang))
 
     return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
 

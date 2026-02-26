@@ -98,7 +98,9 @@ def _render_kda_section(dff: pl.DataFrame) -> None:
         st.info(t("ts_fda_unavailable"))
     else:
         m = st.columns(1)
-        m[0].metric(t("ts_kda_mean_label"), f"{valid['kda'].mean():.2f}", label_visibility="collapsed")
+        m[0].metric(
+            t("ts_kda_mean_label"), f"{valid['kda'].mean():.2f}", label_visibility="collapsed"
+        )
         try:
             fig_dist = plot_kda_distribution(dff)
             if fig_dist is not None:
@@ -114,9 +116,7 @@ def _render_cumulative_performance(dff: pl.DataFrame) -> None:
     """Affiche les graphes de performance cumulée et tendance (Sprint 6)."""
     st.divider()
     st.subheader(t("ts_cumulative"))
-    st.caption(
-        t("ts_cumulative_caption")
-    )
+    st.caption(t("ts_cumulative_caption"))
     cumul = TimeseriesService.compute_cumulative_metrics(dff)
     if cumul is not None:
         try:
@@ -219,7 +219,7 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict) -> None:
                 spm_data.values,
                 title=t("ts_dist_score_per_min_title"),
                 x_label=t("ts_score_per_min_label"),
-                y_label="Matchs",
+                y_label=t("ts_frequency_label"),
                 show_kde=True,
                 color=colors["amber"],
             )
@@ -267,7 +267,7 @@ def _render_single_histogram(
             data,
             title=title,
             x_label=x_label,
-            y_label="Matchs",
+            y_label=t("ts_frequency_label"),
             show_kde=True,
             color=color,
         )
