@@ -7,8 +7,6 @@ from pathlib import Path
 
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.config import get_default_db_path
 from src.ui import (
     AppSettings,
@@ -16,6 +14,7 @@ from src.ui import (
     load_settings,
     save_settings,
 )
+from src.ui.i18n import t
 from src.ui.sections import render_source_section
 
 
@@ -272,6 +271,10 @@ def render_settings_page(
             profile_rank_subtitle=str(profile_rank_subtitle or "").strip(),
             repository_mode=str(repository_mode_val),
             enable_duckdb_analytics=bool(enable_duckdb_val),
+            # Internationalisation (préserver les valeurs actuelles)
+            lang=str(getattr(settings, "lang", "fr") or "fr"),
+            discord_lang=str(getattr(settings, "discord_lang", "fr") or "fr"),
+            cli_lang=str(getattr(settings, "cli_lang", "fr") or "fr"),
         )
         ok, err = save_settings(new_settings)
         if ok:
