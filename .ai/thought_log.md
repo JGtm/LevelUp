@@ -7,6 +7,26 @@
 
 ## Journal
 
+### [2026-02-26] — Centralisation des TODO dans `.ai/BACKLOG.md`
+
+**Statut** : Complété ✅
+
+**Objectif** : Centraliser tous les TODO/FIXME/📋 dispersés dans le projet en un document de référence unique.
+
+**Sources analysées** :
+- `thought_log.md` (entrées 📋 non planifiées, dettes techniques mentionnées)
+- `src/**/*.py` (grep TODO/FIXME)
+- `scripts/**/*.py` (grep TODO/FIXME)
+- `.ai/START_HERE.md`, `project_map.md`
+
+**Résultat** : `.ai/BACKLOG.md` créé avec 4 catégories :
+1. **Dette technique** (4 fichiers, kwargs legacy SyncScope + career.py bypass + custom_rules + traduction FR migration)
+2. **Performance UI** (5 optimisations profondes issue du [2026-02-26])
+3. **i18n** (câblage `t()` Streamlit + nettoyage commentaires)
+4. **CI/CD** (pre-commit + workflow GitHub Actions)
+
+---
+
 ### [2026-02-26] — Perf UI : quick wins + roadmap optimisations profondes
 
 **Statut** : Quick wins appliqués ✅ | Gains architecturaux : 📋 À planifier
