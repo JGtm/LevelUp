@@ -27,6 +27,24 @@
 
 ---
 
+### [2026-02-26] — Docs publiques EN + archivage FR
+
+**Statut** : En cours ✅ (réorganisation + premières traductions)
+
+**Objectif** : Ouvrir le projet à un public anglophone, sans perdre l'historique FR.
+
+**Décisions** :
+- **Docs EN** : restent dans `docs/` (liens stables depuis le README public)
+- **Docs FR** : déplacées dans `docs/FR/` (versions sources)
+- **Docs non traduites** : déplacées dans `docs/archive/` (conservées, mais hors parcours principal)
+- **Citations → Commendations** : les docs EN s'appellent `COMMENDATIONS*.md` (stubs `CITATIONS*.md` conservés)
+
+**Impact** :
+- README racine en anglais, table Documentation alignée sur les nouveaux chemins
+- Correction de liens internes évidents (éviter `docs/docs/...`)
+
+---
+
 ### [2026-02-26] — Perf UI : quick wins + roadmap optimisations profondes
 
 **Statut** : Quick wins appliqués ✅ | Gains architecturaux : 📋 À planifier

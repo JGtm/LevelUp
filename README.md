@@ -1,6 +1,6 @@
-# LevelUp - Dashboard Halo Infinite
+# LevelUp - Halo Infinite Dashboard
 
-> **Analysez vos performances Halo Infinite avec des visualisations avancées et une architecture DuckDB v5 ultra-rapide.**
+> **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB v5 architecture.**
 
 [![Version](https://img.shields.io/badge/Version-5.3.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.3.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
@@ -11,293 +11,192 @@
 
 ---
 
-## Dernières nouveautés
+## What’s new
 
-- **v5.3 — LUSR/CSR** — Système de rating TrueSkill 2 per-groupe (ranked/arena/btb/tactical/social/fun) avec calibration empirique. Notifications Discord post-sync/backfill.
-- **v5.2 — Stats PvE** — Base dédiée `shared_pve.duckdb` pour les matchs Firefight. Filtres intent-based persistants. Scoreboard complet "Dernier match". Palette Okabe-Ito (accessibilité daltonisme).
-- **v5.1 — Architecture optimisée** — Streamlit moderne (`@st.fragment`, `st.navigation`), éradication SQLite/Pandas, `SyncScope` centralisé, -75% temps de connexion DB.
-- **v5.0 — Shared Matches** — `shared_matches.duckdb` centralise tous les matchs (-69% stockage, -72% appels API). **3323 tests**, 0 failure.
-
----
-
-## Fonctionnalités
-
-### Statistiques Avancées
-- **Dashboard interactif** - Visualisez vos stats en temps réel
-- **Graphiques détaillés** - Évolution K/D, précision, durée de vie, séries de frags
-- **Analyse par carte** - Performance détaillée sur chaque map avec heatmaps
-- **Coéquipiers** - Statistiques avec vos amis (même équipe ou adversaires)
-- **Sessions de jeu** - Détection automatique avec métriques de performance
-
-### Visualisations
-- **Graphes radar** - Stats par minute et performance globale
-- **Heatmaps** - Win rate par jour/heure de la semaine
-- **Distributions** - Histogrammes précision, kills, scores
-- **Corrélations** - Scatter plots durée de vie vs kills
-- **Top armes** - Statistiques par arme avec headshot rate
-
-### Architecture v5.3 - DuckDB Multi-DB
-- **Shared Matches** — `shared_matches.duckdb` centralise tous les matchs (registry, participants, events, médailles)
-- **PvE Firefight** — `shared_pve.duckdb` isole les stats Firefight (waves, boss, ennemis par type)
-- **ATTACH multi-DB** — DuckDB ATTACH pour lecture transparente cross-DB
-- **LUSR/CSR** — Ratings TrueSkill 2 per-groupe stockés dans `match_skill_rank` (player DB)
-- **Performance** — Requêtes DuckDB < 30ms (warm), DataFrame Polars natifs, vues matérialisées
-- **Zéro legacy** — 0 SQLite, 0 Pandas dans le code métier, Backup Parquet Zstd
+- **v5.3 — LUSR/CSR** — TrueSkill 2 rating system per playlist group (ranked/arena/btb/tactical/social/fun) with empirical calibration. Discord notifications after sync/backfill.
+- **v5.2 — PvE stats** — Dedicated `shared_pve.duckdb` database for Firefight matches. Persistent intent-based filters. Full “Last match” scoreboard. Okabe–Ito palette (color-blind friendly).
+- **v5.1 — Optimized architecture** — Modern Streamlit (`@st.fragment`, `st.navigation`), no SQLite/Pandas, centralized `SyncScope`, -75% DB connection time.
+- **v5.0 — Shared Matches** — `shared_matches.duckdb` centralizes all matches (-69% storage, -72% API calls). **3323 tests**, 0 failures.
 
 ---
 
-## Installation Rapide
+## Features
 
-**Prérequis** : Python 3.12+ recommandé (3.10 minimum). Note Windows : évitez Python 3.14 si vous constatez des crashes natifs pendant `pytest`.
+### Advanced stats
+- **Interactive dashboard** - Explore your stats in real time
+- **Detailed charts** - K/D trend, accuracy, time alive, kill streaks
+- **Map analysis** - Per-map performance with heatmaps
+- **Teammates** - Stats with your friends (same team or opponents)
+- **Play sessions** - Automatic session detection with performance metrics
+
+### Visualizations
+- **Radar charts** - Per-minute stats and overall performance
+- **Heatmaps** - Win rate by day/time of week
+- **Distributions** - Histograms for accuracy, kills, scores
+- **Correlations** - Scatter plots (time alive vs kills)
+- **Top weapons** - Weapon stats with headshot rate
+
+### v5.3 architecture — DuckDB Multi-DB
+- **Shared Matches** — `shared_matches.duckdb` centralizes all matches (registry, participants, events, medals)
+- **PvE Firefight** — `shared_pve.duckdb` isolates Firefight stats (waves, bosses, enemies by type)
+- **Multi-DB ATTACH** — DuckDB `ATTACH` for seamless cross-DB reads
+- **LUSR/CSR** — TrueSkill 2 ratings per group stored in `match_skill_rank` (player DB)
+- **Performance** — DuckDB queries < 30ms (warm), native Polars DataFrames, materialized views
+
+---
+
+## Quick start
+
+**Prerequisites**: Python 3.12+ recommended (3.10 minimum). Windows note: avoid Python 3.14 if you hit native crashes during `pytest`.
 
 ```bash
-# Cloner le projet
+# Clone the repo
 git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
 cd LevelUp_with_SPNKr
 
-# Créer l'environnement virtuel
+# Create a virtual environment
 python -m venv .venv
 
-# Activer (Windows)
+# Activate (Windows)
 .venv\Scripts\activate
 
-# Activer (Linux/macOS)
+# Activate (Linux/macOS)
 source .venv/bin/activate
 
-# Installer les dépendances
+# Install dependencies
 pip install -e .
 ```
 
-**Documentation détaillée** : [docs/INSTALL.md](docs/INSTALL.md)
+**Detailed docs**: [docs/INSTALL.md](docs/INSTALL.md)
+
+**French README (archived)**: [docs/FR/README.md](docs/FR/README.md)
 
 ---
 
 ## Configuration
 
-### 1. Copier le fichier d'environnement
+### 1. Copy the environment file
 
 ```bash
 cp .env.example .env.local
 ```
 
-### 2. Configurer les tokens Azure
+### 2. Configure Azure tokens
 
 ```env
-SPNKR_AZURE_CLIENT_ID=votre_client_id
-SPNKR_AZURE_CLIENT_SECRET=votre_secret
+SPNKR_AZURE_CLIENT_ID=your_client_id
+SPNKR_AZURE_CLIENT_SECRET=your_secret
 SPNKR_AZURE_REDIRECT_URI=https://localhost
-SPNKR_OAUTH_REFRESH_TOKEN=votre_refresh_token
+SPNKR_OAUTH_REFRESH_TOKEN=your_refresh_token
 ```
 
-### 3. Récupérer le refresh token
+### 3. Get your refresh token
 
 ```bash
 python scripts/spnkr_get_refresh_token.py
 ```
 
-**Documentation détaillée** : [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
-
----
-
-## Utilisation
-
-### Lancer le Dashboard
-
-```bash
-# Mode interactif
-python launcher.py
-
-# Lancer directement
-python launcher.py run
-
-# Avec synchronisation
-python launcher.py run+refresh --player MonGamertag --delta
-```
-
-### Synchronisation des Données
-
-```bash
-# Sync incrémentale (nouveaux matchs uniquement)
-python scripts/sync.py --delta --gamertag MonGamertag
-
-# Sync complète
-python scripts/sync.py --full --gamertag MonGamertag --max-matches 500
-```
-
-### Backup et Restore
-
-```bash
-# Backup d'un joueur
-python scripts/backup_player.py --gamertag MonGamertag
-
-# Restauration
-python scripts/restore_player.py --gamertag MonGamertag --backup ./backups/MonGamertag
-```
+**Detailed docs**: [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 
 ---
 
 ## Architecture
 
-### Structure des Données (v5.3)
+### Data layout (v5.3)
 
 ```
 data/
 ├── warehouse/
-│   ├── metadata.duckdb            # Référentiels partagés (maps, playlists, médailles)
-│   ├── shared_matches.duckdb      # Tous les matchs (registry, participants, events, médailles)
-│   └── shared_pve.duckdb          # Stats PvE Firefight (pve_match_stats) — v5.2
-├── players/                       # Enrichissements personnels (~4 MB/joueur)
+│   ├── metadata.duckdb            # Shared reference data (maps, playlists, medals)
+│   ├── shared_matches.duckdb      # All matches (registry, participants, events, medals)
+│   └── shared_pve.duckdb          # PvE Firefight stats (pve_match_stats) — v5.2
+├── players/                       # Per-player enrichments (~4 MB/player)
 │   └── {gamertag}/
 │       ├── stats.duckdb
-│       │   ├── player_match_enrichment  # performance_score, session_id (SEULE table match)
+│       │   ├── player_match_enrichment  # performance_score, session_id (ONLY match table)
 │       │   ├── antagonists, match_citations, career_progression
-│       │   └── match_skill_rank         # Rating LUSR ou CSR par match — v5.3
-│       └── archive/               # Archives Parquet
-└── backups/                       # Backups Parquet
+│       │   └── match_skill_rank         # LUSR or CSR rating per match — v5.3
+│       └── archive/               # Parquet archives
+└── backups/                       # Parquet backups
 ```
 
-### Tables DuckDB principales
+### Main DuckDB tables
 
-| Base | Table | Description |
-|------|-------|-------------|
-| `shared_matches` | `match_registry` | Registre central (1 ligne/match) |
-| `shared_matches` | `match_participants` | Stats de tous les joueurs (31 col, MMR) |
-| `shared_matches` | `medals_earned`, `highlight_events` | Médailles et événements filmés |
-| `shared_pve` | `pve_match_stats` | Stats Firefight par joueur/match |
+| Database | Table | Description |
+|----------|-------|-------------|
+| `shared_matches` | `match_registry` | Central registry (1 row per match) |
+| `shared_matches` | `match_participants` | All player stats (31 cols, incl. MMR) |
+| `shared_matches` | `medals_earned`, `highlight_events` | Medals and recorded highlight events |
+| `shared_pve` | `pve_match_stats` | Firefight stats per player/match |
 | player `stats` | `player_match_enrichment` | performance_score, session_id |
-| player `stats` | `match_skill_rank` | Rating LUSR/CSR par match |
-| player `stats` | `mv_map_stats`, `mv_global_stats` | Vues matérialisées |
+| player `stats` | `match_skill_rank` | LUSR/CSR rating per match |
+| player `stats` | `mv_map_stats`, `mv_global_stats` | Materialized views |
 
-**Documentation technique** : [docs/ARCHITECTURE_V5.md](docs/ARCHITECTURE_V5.md)
+**Technical docs**: [docs/ARCHITECTURE_V5.md](docs/ARCHITECTURE_V5.md)
 
 ---
 
 ## Documentation
 
-| Document | Contenu |
+| Document | Content |
 |----------|---------|
-| [INSTALL.md](docs/INSTALL.md) | Guide d'installation détaillé |
-| [CONFIGURATION.md](docs/CONFIGURATION.md) | Configuration des tokens et profils |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture technique (v4 legacy) |
-| [ARCHITECTURE_V5.md](docs/ARCHITECTURE_V5.md) | Architecture v5 (shared matches) |
-| [DATA_ARCHITECTURE.md](docs/DATA_ARCHITECTURE.md) | Architecture des données |
-| [SHARED_MATCHES_SCHEMA.md](docs/SHARED_MATCHES_SCHEMA.md) | Schéma shared_matches.duckdb |
-| [SQL_SCHEMA.md](docs/SQL_SCHEMA.md) | Schémas DuckDB complets |
-| [SYNC_GUIDE.md](docs/SYNC_GUIDE.md) | Guide de synchronisation |
-| [SYNC_OPTIMIZATIONS_V5.md](docs/SYNC_OPTIMIZATIONS_V5.md) | Optimisations sync v5 |
-| [MIGRATION_V4_TO_V5.md](docs/MIGRATION_V4_TO_V5.md) | Guide de migration v4→v5 |
-| [CLEANUP_V5.md](docs/CLEANUP_V5.md) | Nettoyage post-migration v5 |
-| [BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md) | Backup et restauration |
-| [TESTING_V5.md](docs/TESTING_V5.md) | Stratégie de tests v5 |
-| [FAQ.md](docs/FAQ.md) | Questions fréquentes |
+| [INSTALL.md](docs/INSTALL.md) | Detailed installation guide |
+| [CONFIGURATION.md](docs/CONFIGURATION.md) | Tokens and profiles configuration |
+| [COMMANDS.md](docs/COMMANDS.md) | Common commands cheat sheet |
+| [ARCHITECTURE_V5.md](docs/ARCHITECTURE_V5.md) | v5 architecture (shared matches) |
+| [SYNC_GUIDE.md](docs/SYNC_GUIDE.md) | Sync guide |
+| [BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md) | Backup and restore |
+| [TESTING_V5.md](docs/TESTING_V5.md) | v5 testing strategy |
+| [FAQ.md](docs/FAQ.md) | Frequently asked questions |
+| [COMMENDATIONS.md](docs/COMMENDATIONS.md) | Commendations system (architecture & usage) |
+| [COMMENDATIONS_REFERENCE.md](docs/COMMENDATIONS_REFERENCE.md) | Full commendations reference |
+
+French docs: [docs/FR/](docs/FR/)
+
+Archived docs (not translated): [docs/archive/](docs/archive/)
 
 ---
 
-## Tests
+## Contributing
 
-```bash
-# Suite complète (inclut les tests smoke pages/filtres/visualisations)
-python -m pytest
-
-# Suite stable hors intégration (recommandé au quotidien)
-python -m pytest -q --ignore=tests/integration
-
-# Avec couverture
-python -m pytest --cov=src --cov-report=html
-
-# Tests spécifiques
-python -m pytest tests/test_duckdb_repository.py -v
-
-# E2E navigateur réel (optionnel, Playwright)
-# Désactivé par défaut ; activation explicite avec --run-e2e-browser
-python -m pytest tests/e2e/test_streamlit_browser_e2e.py -v --run-e2e-browser
-```
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-## Docker
+## Tech stack
 
-```bash
-# Construire et démarrer
-docker compose up --build
-
-# En arrière-plan
-docker compose up -d
-
-# Arrêter
-docker compose down
-```
-
-Le dashboard est accessible sur `http://localhost:8501`.
-
-L'image installe toutes les dépendances via `pyproject.toml` (y compris SPNKr pour la synchronisation API). Au runtime, `docker-compose.yml` monte :
-- `./data` → `/app/data` — données DuckDB v4 (lecture/écriture)
-- `./db_profiles.json` → `/app/db_profiles.json` — profils joueurs
-- `./app_settings.json` → `/app/app_settings.json` — paramètres
-
-Pour forcer une base précise, décommentez dans `docker-compose.yml` :
-
-```yaml
-environment:
-  - OPENSPARTAN_DB=/app/data/players/MonGamertag/stats.duckdb
-```
-
-**Documentation Docker détaillée** : [docs/INSTALL.md](docs/INSTALL.md#installation-docker)
+| Technology | Usage |
+|------------|-------|
+| **Python 3.12+** | Main language |
+| **Streamlit** | UI |
+| **DuckDB 1.4** | OLAP query engine |
+| **Polars 1.38** | High-performance DataFrames |
+| **PyArrow 23** | Data interoperability |
+| **Pydantic v2** | Data validation |
+| **Plotly** | Interactive charts |
+| **SPNKr** | Halo Infinite API |
 
 ---
 
-## Contribution
+## Known limitations
 
-Les contributions sont les bienvenues ! Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour les guidelines.
-
-```bash
-# Format du code
-ruff check --fix .
-black .
-isort .
-
-# Avant de commiter
-pytest
-```
+- **Halo API**: Depends on SPNKr — some endpoints can be unstable or rate-limited. Weapon stats are not available via the API (verified 2026-02-02).
 
 ---
 
-## Stack Technique
+## License
 
-| Technologie | Usage |
-|-------------|-------|
-| **Python 3.12+** | Langage principal |
-| **Streamlit** | Interface utilisateur |
-| **DuckDB 1.4** | Moteur de requêtes OLAP |
-| **Polars 1.38** | DataFrames haute performance |
-| **PyArrow 23** | Passerelle données |
-| **Pydantic v2** | Validation des données |
-| **Plotly** | Visualisations interactives |
-| **SPNKr** | API Halo Infinite |
+This project is licensed under MIT. See [LICENSE](LICENSE) for details.
 
 ---
 
-## Limitations connues
+## Acknowledgements
 
-- **Pandas résiduel** : Pandas conservé uniquement aux frontières Plotly/Streamlit (conversion `.to_pandas()` au dernier moment). Polars est le standard pour tout le code métier.
-- **Couverture tests** : ~43% global — les modules UI Streamlit tirent la moyenne vers le bas. Les modules métier (sync, repositories, analysis) dépassent individuellement 70%.
-- **API Halo** : Dépend de l'API SPNKr — certains endpoints peuvent être instables ou limités en débit. Les stats par arme ne sont pas disponibles via l'API (vérifié 2026-02-02).
+- **Andy Curtis** ([acurtis166](https://github.com/acurtis166)) for [SPNKr](https://github.com/acurtis166/SPNKr)
+- **Den Delimarsky** ([dend](https://github.com/dend)) for [Grunt](https://github.com/dend/grunt) and [OpenSpartan](https://github.com/OpenSpartan)
 
----
-
-## Licence
-
-Ce projet est sous licence MIT. Voir [LICENSE](LICENSE) pour plus de détails.
+See also [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
 
 ---
 
-## Remerciements
-
-- **Andy Curtis** ([acurtis166](https://github.com/acurtis166)) pour [SPNKr](https://github.com/acurtis166/SPNKr)
-- **Den Delimarsky** ([dend](https://github.com/dend)) pour [Grunt](https://github.com/dend/grunt) et [OpenSpartan](https://github.com/OpenSpartan)
-
-Voir aussi [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
-
----
-
-**Fait avec passion pour la communauté Halo**
+**Made with passion for the Halo community**
