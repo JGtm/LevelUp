@@ -2,6 +2,8 @@
 
 > Ce fichier est la cartographie vivante du projet. L'agent IA doit le consulter et le mettre à jour.
 
+> 📋 **Tâches et TODO centralisés** : voir `.ai/BACKLOG.md`
+
 ## ⚠️ Limitations Connues
 
 **IMPORTANT** : Consulter `.ai/API_LIMITATIONS.md` avant d'implémenter des fonctionnalités liées aux armes.
