@@ -6,7 +6,6 @@ de progression dans le temps.
 
 from __future__ import annotations
 
-import contextlib
 import html
 import logging
 
@@ -40,40 +39,13 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
         Dict avec rank, rank_name, rank_tier, current_xp, etc. ou None.
     """
     try:
-        import duckdb
-
         from src.utils.db import duckdb_read_only
 
-        # Appliquer la migration spartan_id si la colonne est absente (v5.3+)
-        # On tente en écriture ; si la DB est verrouillée on continue en lecture seule.
-        with contextlib.suppress(Exception), duckdb.connect(db_path) as w:
-            w.execute("ALTER TABLE career_progression ADD COLUMN IF NOT EXISTS spartan_id VARCHAR")
-            w.commit()
-
         with duckdb_read_only(db_path) as conn:
-            # Vérifier si la colonne spartan_id est disponible après tentative de migration
-            has_spartan_id = False
-            with contextlib.suppress(Exception):
-                has_spartan_id = (
-                    conn.execute(
-                        "SELECT column_name FROM information_schema.columns "
-                        "WHERE table_name = 'career_progression' AND column_name = 'spartan_id'"
-                    ).fetchone()
-                    is not None
-                )
-
-            select_cols = (
-                """rank, rank_name, rank_tier, current_xp,
-                          xp_for_next_rank, xp_total, is_max_rank,
-                          adornment_path, spartan_id, recorded_at"""
-                if has_spartan_id
-                else """rank, rank_name, rank_tier, current_xp,
-                          xp_for_next_rank, xp_total, is_max_rank,
-                          adornment_path, NULL AS spartan_id, recorded_at"""
-            )
-
             result = conn.execute(
-                f"""SELECT {select_cols}
+                """SELECT rank, rank_name, rank_tier, current_xp,
+                          xp_for_next_rank, xp_total, is_max_rank,
+                          adornment_path, recorded_at
                    FROM career_progression
                    WHERE xuid = ?
                    ORDER BY recorded_at DESC
@@ -91,8 +63,7 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
                     "xp_total": result[5],
                     "is_max_rank": bool(result[6]),
                     "adornment_path": result[7],
-                    "spartan_id": result[8],
-                    "recorded_at": result[9],
+                    "recorded_at": result[8],
                 }
     except Exception as e:
         logger.debug(f"Impossible de charger career_progression: {e}")
@@ -194,6 +165,11 @@ def _create_xp_history_chart(history: list[dict]) -> go.Figure | None:
 def _load_lusr_snapshot(db_path: str) -> list[dict]:
     """Charge le dernier rating LUSR/CSR par playlist_group depuis match_skill_rank.
 
+    Le ``rating_delta`` est calculé dynamiquement via une window function ``LAG``
+    sur les ``rating_value`` stockés, garantissant la cohérence avec les valeurs
+    affichées (évite le delta stocké périmé si le backfill a utilisé un seed
+    différent entre deux exécutions).
+
     Returns:
         Liste de dicts : rating_type, rating_value, tier_label, rating_delta, playlist_group.
         Triée par playlist_group alphabétique.
@@ -202,14 +178,22 @@ def _load_lusr_snapshot(db_path: str) -> list[dict]:
         from src.utils.db import duckdb_read_only
 
         with duckdb_read_only(db_path) as conn:
-            # Dernier rating par playlist_group = ligne avec start_time la plus récente
+            # Dernier rating par playlist_group = ligne avec start_time la plus récente.
+            # Le delta est recalculé dynamiquement via LAG pour garantir la cohérence
+            # avec les rating_value stockés (évite le delta stocké potentiellement
+            # périmé en cas de recalcul avec seed différent).
             rows = conn.execute(
                 """
-                WITH ranked AS (
+                WITH history AS (
                     SELECT
                         msr.match_id, msr.rating_type, msr.rating_value,
                         msr.tier_label, msr.sub_tier, msr.tier, msr.tier_fr,
-                        msr.rating_delta, msr.playlist_group,
+                        msr.playlist_group,
+                        COALESCE(msr.start_time, msr.updated_at) AS sort_time,
+                        msr.rating_value - LAG(msr.rating_value) OVER (
+                            PARTITION BY msr.playlist_group
+                            ORDER BY COALESCE(msr.start_time, msr.updated_at)
+                        ) AS rating_delta,
                         ROW_NUMBER() OVER (
                             PARTITION BY msr.playlist_group
                             ORDER BY COALESCE(msr.start_time, msr.updated_at) DESC
@@ -218,7 +202,7 @@ def _load_lusr_snapshot(db_path: str) -> list[dict]:
                 )
                 SELECT rating_type, rating_value, tier_label, sub_tier,
                        tier, tier_fr, rating_delta, playlist_group
-                FROM ranked
+                FROM history
                 WHERE rn = 1
                 ORDER BY playlist_group
                 """
@@ -391,13 +375,19 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
 
                 # ── Delta ──
                 if delta is not None:
-                    d_color = "#00C853" if delta >= 0 else "#FF5252"
-                    d_arrow = "▲" if delta >= 0 else "▼"
-                    d_sign = "+" if delta >= 0 else ""
-                    delta_html = (
-                        f"<div style='color:{d_color};font-size:0.9em;margin-top:4px'>"
-                        f"{d_arrow} {d_sign}{delta:.0f}</div>"
-                    )
+                    _d = round(delta)
+                    if _d == 0:
+                        delta_html = (
+                            "<div style='color:#888888;font-size:0.9em;margin-top:4px'>= 0</div>"
+                        )
+                    else:
+                        d_color = "#00C853" if _d > 0 else "#FF5252"
+                        d_arrow = "▲" if _d > 0 else "▼"
+                        d_sign = "+" if _d > 0 else "-"
+                        delta_html = (
+                            f"<div style='color:{d_color};font-size:0.9em;margin-top:4px'>"
+                            f"{d_arrow} {d_sign}{abs(_d)}</div>"
+                        )
                 else:
                     delta_html = "<div style='color:#888;font-size:0.9em;margin-top:4px'>—</div>"
 

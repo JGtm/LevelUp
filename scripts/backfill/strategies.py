@@ -240,6 +240,7 @@ async def fetch_current_csr_for_player(
         les playlists où le joueur a un historique (all_time_max > 0).
     """
     from datetime import datetime, timezone
+
     from src.data.sync.migrations import ensure_skill_history_table
 
     results: dict[str, Any] = {}
@@ -477,6 +478,8 @@ def compute_lusr_for_player(
             prev_rating[pg] = rating_value
 
             # Mode incrémental : sauter si déjà présent
+            # NOTE : prev_rating est mis à jour AVANT le skip pour que le prochain
+            # match nouveau hérite du bon rating précédent (sinon delta=None)
             if not force and mid in existing_lusr_ids:
                 continue
 
@@ -580,7 +583,11 @@ async def backfill_csr_for_player(
 
     import duckdb
 
-    from src.analysis.skill_rating_config import format_tier_label, get_playlist_group, get_tier_for_rating
+    from src.analysis.skill_rating_config import (
+        format_tier_label,
+        get_playlist_group,
+        get_tier_for_rating,
+    )
     from src.data.sync.migrations import ensure_match_skill_rank_table
     from src.data.sync.transformers import transform_all_skill_stats
 
@@ -633,10 +640,8 @@ async def backfill_csr_for_player(
                 existing_csr_ids = set()
 
         xuid_int: list[int] = []
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             xuid_int = [int(xuid)]
-        except (ValueError, TypeError):
-            pass
         if not xuid_int:
             logger.warning(f"XUID invalide pour CSR backfill: {xuid!r}")
             return 0
@@ -662,9 +667,7 @@ async def backfill_csr_for_player(
 
             # 4. Extraire le CSR du joueur depuis transform_all_skill_stats
             skill_updates = transform_all_skill_stats(skill_json, match_id)
-            player_skill = next(
-                (u for u in skill_updates if u.xuid == xuid), None
-            )
+            player_skill = next((u for u in skill_updates if u.xuid == xuid), None)
 
             if player_skill is None or player_skill.post_match_csr is None:
                 logger.debug(f"Pas de CSR dans skill_json pour match {match_id} xuid={xuid}")
@@ -1486,10 +1489,9 @@ def cleanup_player_dbs_legacy(players_dir: str | Any = "data/players") -> dict[s
         Dict ``{gamertag: nb_ops}`` avec le nombre d'objets supprimés par joueur.
     """
     import os
+    from pathlib import Path
 
     import duckdb
-
-    from pathlib import Path
 
     players_dir = Path(players_dir)
     broken_views = [
@@ -1543,7 +1545,9 @@ def cleanup_player_dbs_legacy(players_dir: str | Any = "data/players") -> dict[s
                 if table in existing_tables:
                     row_count = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
                     con.execute(f"DROP TABLE IF EXISTS {table}")
-                    logger.info(f"  [{gt}] DROP TABLE {table} ({row_count} lignes legacy supprimées)")
+                    logger.info(
+                        f"  [{gt}] DROP TABLE {table} ({row_count} lignes legacy supprimées)"
+                    )
                     ops += 1
 
             con.commit()
