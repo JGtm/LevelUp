@@ -6,6 +6,7 @@ de progression dans le temps.
 
 from __future__ import annotations
 
+import contextlib
 import html
 import logging
 
@@ -39,34 +40,37 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
         Dict avec rank, rank_name, rank_tier, current_xp, etc. ou None.
     """
     try:
+        import duckdb
+
         from src.utils.db import duckdb_read_only
 
-        with duckdb_read_only(db_path) as conn:
-            # Vérifier si la colonne spartan_id est présente (migration v5.3+)
-            has_spartan_id = False
-            try:
-                cols = conn.execute(
-                    "SELECT column_name FROM information_schema.columns "
-                    "WHERE table_name = 'career_progression' AND column_name = 'spartan_id'"
-                ).fetchone()
-                has_spartan_id = cols is not None
-            except Exception:
-                pass
+        # Appliquer la migration spartan_id si la colonne est absente (v5.3+)
+        # On tente en écriture ; si la DB est verrouillée on continue en lecture seule.
+        with contextlib.suppress(Exception), duckdb.connect(db_path) as w:
+            w.execute("ALTER TABLE career_progression ADD COLUMN IF NOT EXISTS spartan_id VARCHAR")
+            w.commit()
 
-            if has_spartan_id:
-                select_cols = """rank, rank_name, rank_tier, current_xp,
+        with duckdb_read_only(db_path) as conn:
+            # Vérifier si la colonne spartan_id est disponible après tentative de migration
+            has_spartan_id = False
+            with contextlib.suppress(Exception):
+                has_spartan_id = (
+                    conn.execute(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'career_progression' AND column_name = 'spartan_id'"
+                    ).fetchone()
+                    is not None
+                )
+
+            select_cols = (
+                """rank, rank_name, rank_tier, current_xp,
                           xp_for_next_rank, xp_total, is_max_rank,
                           adornment_path, spartan_id, recorded_at"""
-            else:
-                # Migration spartan_id non encore appliquée (lancez une sync pour l'appliquer)
-                logger.warning(
-                    "Colonne spartan_id absente de career_progression dans %s — "
-                    "lancez une synchronisation pour appliquer la migration.",
-                    db_path,
-                )
-                select_cols = """rank, rank_name, rank_tier, current_xp,
+                if has_spartan_id
+                else """rank, rank_name, rank_tier, current_xp,
                           xp_for_next_rank, xp_total, is_max_rank,
                           adornment_path, NULL AS spartan_id, recorded_at"""
+            )
 
             result = conn.execute(
                 f"""SELECT {select_cols}
