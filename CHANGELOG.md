@@ -1,103 +1,105 @@
 # Changelog
 
-Toutes les modifications notables de ce projet sont documentées ici.
+All notable changes to this project are documented here.
 
-Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+> French version: [docs/FR/CHANGELOG.md](docs/FR/CHANGELOG.md)
 
 ## [5.3.0] - Unreleased
 
 ### Added
 
-- **LUSR (LevelUp Skill Rank) — Système de rating TrueSkill 2 per-groupe** (`src/analysis/`)
-  - `skill_rating_config.py` : constantes TrueSkill 2, tiers Bronze→Onyx I-VI, score composite 5 composantes
-  - `playlist_groups.py` : 6 groupes Halo Infinite isolés (ranked 1.00, arena 0.80, tactical 0.70, btb 0.60, social 0.40, fun 0.15) avec détection par `pair_name` prefix ou `playlist_name`
-  - `skill_rating.py` : algorithme complet — `PlayerState` par groupe, `compute_composite_score()`, `trueskill_update()`, `compute_enemy_strength()`, inactivité par groupe, `compute_skill_ratings_batch()` séquentiel
-  - `skill_rating_calibration.py` : module de calibration des poids COMPOSITE_WEIGHTS par comparaison avec `team_mmr` API (grid search aléatoire, métrique MAE ou corrélation Pearson)
-  - 68 tests unitaires couvrant l'algorithme, les groupes, l'inactivité, les tiers et la calibration
+- **LUSR (LevelUp Skill Rank) — TrueSkill 2 per-group rating system** (`src/analysis/`)
+  - `skill_rating_config.py`: TrueSkill 2 constants, Bronze→Onyx I-VI tiers, 5-component composite score
+  - `playlist_groups.py`: 6 isolated Halo Infinite groups (ranked 1.00, arena 0.80, tactical 0.70, btb 0.60, social 0.40, fun 0.15) with detection by `pair_name` prefix or `playlist_name`
+  - `skill_rating.py`: full algorithm — `PlayerState` per group, `compute_composite_score()`, `trueskill_update()`, `compute_enemy_strength()`, per-group inactivity, sequential `compute_skill_ratings_batch()`
+  - `skill_rating_calibration.py`: COMPOSITE_WEIGHTS calibration module by comparison with `team_mmr` API (random grid search, MAE or Pearson correlation metric)
+  - 68 unit tests covering the algorithm, groups, inactivity, tiers, and calibration
 
-- **LUSR per-groupe : état TrueSkill indépendant par contexte**
-  - `existing_states: dict[str, PlayerState]` remplace `existing_state: PlayerState` — un match ranked n'affecte plus le rating arena
-  - `states.setdefault(group, PlayerState())` crée un état au premier match de chaque groupe
-  - Inactivité, historique précision et σ decay sont désormais par-groupe
+- **Per-group LUSR: independent TrueSkill state per context**
+  - `existing_states: dict[str, PlayerState]` replaces `existing_state: PlayerState` — a ranked match no longer affects the arena rating
+  - `states.setdefault(group, PlayerState())` creates a state on the first match of each group
+  - Inactivity, accuracy history, and σ decay are now per-group
 
-- **Backfill LUSR/CSR** (`scripts/backfill_data.py`, `scripts/backfill/`)
-  - `--lusr` / `--force-lusr` : calcul local du LUSR depuis `shared.match_participants` (séquentiel, incrémental)
-  - `--csr` / `--force-csr` : récupération CSR depuis l'API Halo pour les matchs ranked
-  - `compute_lusr_for_player()` dans `strategies.py` : UPSERT dans `match_skill_rank` avec `rating_delta`, tier et tier_label
-  - Table `match_skill_rank` créée automatiquement par `ensure_match_skill_rank_table()` dans `migrations.py`
-  - Bits backfill : `lusr = 1 << 16` (65536), `csr = 1 << 17` (131072) dans `BACKFILL_FLAGS`
+- **LUSR/CSR Backfill** (`scripts/backfill_data.py`, `scripts/backfill/`)
+  - `--lusr` / `--force-lusr`: local LUSR computation from `shared.match_participants` (sequential, incremental)
+  - `--csr` / `--force-csr`: CSR retrieval from the Halo API for ranked matches
+  - `compute_lusr_for_player()` in `strategies.py`: UPSERT into `match_skill_rank` with `rating_delta`, tier, and tier_label
+  - `match_skill_rank` table auto-created by `ensure_match_skill_rank_table()` in `migrations.py`
+  - Backfill bits: `lusr = 1 << 16` (65536), `csr = 1 << 17` (131072) in `BACKFILL_FLAGS`
 
-- **Flags SyncScope** : `lusr`, `force_lusr`, `csr`, `force_csr` dans `src/data/sync/scope.py`
+- **SyncScope flags**: `lusr`, `force_lusr`, `csr`, `force_csr` in `src/data/sync/scope.py`
 
-- **Modèle de données CSR** (`src/data/sync/models.py`, `src/data/sync/transformers.py`)
-  - `SkillParticipantUpdate` étendu : `pre_match_csr`, `post_match_csr`, `csr_tier`, `csr_sub_tier`
-  - Extraction `RankRecap.PreMatchCsr` / `PostMatchCsr` dans `transform_all_skill_stats()`
+- **CSR data model** (`src/data/sync/models.py`, `src/data/sync/transformers.py`)
+  - `SkillParticipantUpdate` extended: `pre_match_csr`, `post_match_csr`, `csr_tier`, `csr_sub_tier`
+  - `RankRecap.PreMatchCsr` / `PostMatchCsr` extraction in `transform_all_skill_stats()`
 
-- **Visualisation LUSR** (`src/visualization/timeseries_combat.py`)
-  - `plot_lusr_timeseries()` : zones de tier semi-transparentes, bande de confiance `rating ± deviation`, tendance lissée 20 matchs
+- **LUSR visualization** (`src/visualization/timeseries_combat.py`)
+  - `plot_lusr_timeseries()`: semi-transparent tier zones, `rating ± deviation` confidence band, 20-match smoothed trend
 
-- **UI — Page Carrière et Vue Match** (`src/ui/pages/`)
-  - `career.py` : cartes visuelles par groupe (image rang 90px centrée, badge LUSR/CSR, delta ▲/▼) + sélecteur de groupe (`st.selectbox`) pour le graphe d'évolution — remplace le tableau en expander et les onglets
-  - `match_view.py` : onglet 🏅 Rang avec badge rang, barre de progression colorée, delta vert/rouge
+- **UI — Career page and Match View** (`src/ui/pages/`)
+  - `career.py`: visual cards per group (90px centered rank image, LUSR/CSR badge, ▲/▼ delta) + group selector (`st.selectbox`) for the progression graph — replaces the expander table and tabs
+  - `match_view.py`: ��� Rank tab with rank badge, colored progress bar, green/red delta
 
 - **Calibration CLI**
   - `python -m src.analysis.skill_rating_calibration --player <GT> [--n-samples 300] [--metric corr]`
-  - Grid search sur le simplexe des poids (distribution Dirichlet uniforme, graine reproductible)
-  - Affiche les poids optimaux prêts à copier dans `skill_rating_config.py`
+  - Grid search over the weight simplex (uniform Dirichlet distribution, reproducible seed)
+  - Displays optimal weights ready to copy into `skill_rating_config.py`
 
-- **Notifications Discord post-sync/backfill** (`src/utils/discord_notifier.py`)
-  - Nouveau module failsafe — aucune dépendance externe (stdlib `urllib.request` uniquement)
-  - Envoi d'un Rich Embed Discord à la fin de chaque `sync.py` et `backfill_data.py`
-  - Contenu de l'embed : opération, heure début/fin, durée totale, nombre de joueurs et matchs traités
-  - Par joueur : matchs synchronisés (ou traités par backfill), complétude des données (médailles + events), dernier match (carte, mode, FDA, résultat, playlist)
-  - Couleur de la barre : vert ✅ (tout OK), jaune ⚠️ (données incomplètes), rouge ❌ (erreur)
-  - Flag `--no-discord` sur `sync.py` et `backfill_data.py` pour désactiver ponctuellement
-  - `notify_operation_done()` : entrypoint public — `disabled=True` court-circuite immédiatement
-  - `fetch_last_match_info(xuid)` : SQL sur `shared_matches.duckdb` (JOIN `match_registry` + `match_participants`)
-  - `count_new_matches(xuid, gamertag, since)` : compte les matchs avec `first_sync_at >= since`
-  - `count_matches_missing_data(xuid)` : compte les matchs avec `medals_loaded=FALSE OR events_loaded=FALSE`
+- **Post-sync/backfill Discord notifications** (`src/utils/discord_notifier.py`)
+  - New failsafe module — no external dependencies (stdlib `urllib.request` only)
+  - Sends a Rich Embed to Discord at the end of each `sync.py` and `backfill_data.py` run
+  - Embed content: operation, start/end time, total duration, number of players and matches processed
+  - Per player: synced matches (or backfill-processed), data completeness (medals + events), last match (map, mode, KDA, result, playlist)
+  - Bar color: green ✅ (all OK), yellow ⚠️ (incomplete data), red ❌ (error)
+  - `--no-discord` flag on `sync.py` and `backfill_data.py` to disable on demand
+  - `notify_operation_done()`: public entrypoint — `disabled=True` short-circuits immediately
+  - `fetch_last_match_info(xuid)`: SQL on `shared_matches.duckdb` (JOIN `match_registry` + `match_participants`)
+  - `count_new_matches(xuid, gamertag, since)`: counts matches with `first_sync_at >= since`
+  - `count_matches_missing_data(xuid)`: counts matches with `medals_loaded=FALSE OR events_loaded=FALSE`
 
-- **Configuration webhook Discord sécurisée**
-  - Toggle `discord_notifications_enabled: false` dans `app_settings.json` (pas de secrets dans ce fichier)
-  - URL webhook lue depuis `DISCORD_WEBHOOK_URL` dans `.env.local` (gitignored) via `_load_dotenv_if_present()`
-  - Fallback rétrocompatible sur la clé `discord_webhook_url` dans `app_settings.json`
-  - Section documentée dans `.env.local.example`
+- **Secure Discord webhook configuration**
+  - `discord_notifications_enabled: false` toggle in `app_settings.json` (no secrets in this file)
+  - Webhook URL read from `DISCORD_WEBHOOK_URL` in `.env.local` (gitignored) via `_load_dotenv_if_present()`
+  - Backwards-compatible fallback on the `discord_webhook_url` key in `app_settings.json`
+  - Documented section in `.env.local.example`
 
-- **Internationalisation FR/EN complète (i18n)** (`src/ui/i18n/`)
-  - Package i18n dédié avec modules spécialisés : `common.py`, `pages.py`, `widgets.py`, `viz.py`, `cli.py`
-  - Fonctions : `t(key, lang=None)` (UI Streamlit), `viz_t(key, lang)` (Plotly), `discord_t(key, **kwargs)` (Discord), `ct(key, **kwargs)` (CLI/scripts)
-  - Langue stockée dans `st.session_state["lang"]` (Streamlit) ou variable d'env `LEVELUP_LANG` (scripts)
-  - Sélecteur de langue 🇫🇷/🇬🇧 dans la sidebar (`_render_lang_selector()` dans `src/app/sidebar.py`)
-  - Trois champs dans `AppSettings` : `lang`, `discord_lang`, `cli_lang` (défaut `"fr"`)
-  - `src/ui/translations.py` bilingue : `translate_playlist_name(name, lang)` et `translate_pair_name(name, lang)` — conserve le regroupement `" on Map"` et les préfixes Halo (Arena, BTB, Ranked)
-  - `src/analysis/mode_categories.py` : `normalize_pair_name_to_mode_ui(pair_name, lang)` bilingue
-  - `src/utils/discord_notifier.py` entièrement bilingue : `_format_player_field`, `build_embed_payload`, outcomes (🏆/💀/⚖️/🚶), KDA (`{k}K / {d}D / {a}A` vs `{k}F / {d}D / {a}A`), labels opération, footer
-  - `src/visualization/distributions_outcomes.py` bilingue : traces Wins/Losses/Ties/Unfinished, buckets temporels (match/hour/day/week/month), heatmap win rate (jours EN/FR), `plot_matches_at_top_by_week` (Others/Top Rate)
-  - `src/visualization/antagonist_charts.py` bilingue : `plot_duel_history` traduit Win/Loss/Tie dans l'annotation de duel
-  - `src/ui/pages/win_loss.py` : tous les appels viz passent `lang=get_lang()`
+- **Full FR/EN internationalization (i18n)** (`src/ui/i18n/`)
+  - Dedicated i18n package with specialized modules: `common.py`, `pages.py`, `widgets.py`, `viz.py`, `cli.py`
+  - Functions: `t(key, lang=None)` (Streamlit UI), `viz_t(key, lang)` (Plotly), `discord_t(key, **kwargs)` (Discord), `ct(key, **kwargs)` (CLI/scripts)
+  - Language stored in `st.session_state["lang"]` (Streamlit) or `LEVELUP_LANG` env variable (scripts)
+  - ������/������ language selector in the sidebar (`_render_lang_selector()` in `src/app/sidebar.py`)
+  - Three fields in `AppSettings`: `lang`, `discord_lang`, `cli_lang` (default `"fr"`)
+  - `src/ui/translations.py` bilingual: `translate_playlist_name(name, lang)` and `translate_pair_name(name, lang)` — preserves `" on Map"` grouping and Halo prefixes (Arena, BTB, Ranked)
+  - `src/analysis/mode_categories.py`: bilingual `normalize_pair_name_to_mode_ui(pair_name, lang)`
+  - `src/utils/discord_notifier.py` fully bilingual: `_format_player_field`, `build_embed_payload`, outcomes (���/���/⚖️/���), KDA (`{k}K / {d}D / {a}A` vs `{k}F / {d}D / {a}A`), operation labels, footer
+  - `src/visualization/distributions_outcomes.py` bilingual: Wins/Losses/Ties/Unfinished traces, time buckets (match/hour/day/week/month), win rate heatmap (EN/FR days), `plot_matches_at_top_by_week` (Others/Top Rate)
+  - `src/visualization/antagonist_charts.py` bilingual: `plot_duel_history` translates Win/Loss/Tie in duel annotation
+  - `src/ui/pages/win_loss.py`: all viz calls pass `lang=get_lang()`
 
 ### Changed
 
-- **Algorithme LUSR — mise à jour Elo-style (`K_ELO = 32`)** remplace la zone draw TrueSkill
-  - Cause racine de la divergence : `v_draw(t > 0)` donnait des deltas positifs même sur composite=0.5, créant un drift infini quand `state.mu > INITIAL_MU` ou quand le joueur sur-fragait ses `kills_expected`
-  - Nouvelle formule mu : `delta_mu = K_ELO × (composite − 0.5) × weight_factor` → ZÉRO exact à composite=0.5, indépendant de `mu_opp`
-  - Sigma conserve la réduction TrueSkill évaluée à t=0 (symétrique, `mu_opp` influence `c²` uniquement)
-  - Résultat : ratings stabilisés — Madina (Diamant V) → Platine IV BTB / Platine VI Arena / Diamant IV Ranked, Chocoboflor/JGtm → Or II-IV selon mode
-- **Score composite calibré sur 1765 matchs** (Madina, JGtm, Chocoboflor — Argent → Diamant)
-  - Signal cible : `individual_mmr = team_mmr × (kills_expected / ke_avg_match)`
-  - Pondération par `nb_matchs × amélioration_MAE` : Madina 36.7%, JGtm 40.0%, Chocobo 13.3%
-  - Nouveaux poids : kills_vs_expected=31%, deaths_vs_expected=28%, damage_efficiency=23%, accuracy_delta=13%, win_factor=5%
-- **Élimination du biais damage_efficiency** : `PlayerState.damage_eff_history` per-groupe — le composant damage utilise un delta vs historique personnel (comme accuracy_delta) au lieu de la valeur brute
-- **Ancrage mu_opp sur `state.mu`** : `compute_enemy_strength` utilise `player_mu=state.mu` comme base d'estimation des adversaires (matchmaking met des joueurs de niveau similaire)
-- **Paramètres d'inactivité réduits** : `INACTIVITY_SIGMA_PER_DAY` 3.5→1.0, `MAX_INACTIVITY_DAYS` 30→14 — évite les swings de ±200 pts après une longue pause
-- **Seed sigma CSR réduit** : `PlayerState.from_csr()` démarre à `sigma=MIN_SIGMA` (60) au lieu de `INITIAL_SIGMA × 0.6` (210) — le CSR est un ancrage fort, démarrer en état stable évite la volatilité initiale
+- **LUSR algorithm — Elo-style update (`K_ELO = 32`)** replaces TrueSkill draw zone
+  - Root cause of divergence: `v_draw(t > 0)` gave positive deltas even at composite=0.5, creating infinite drift when `state.mu > INITIAL_MU` or when the player over-fragged their `kills_expected`
+  - New mu formula: `delta_mu = K_ELO × (composite − 0.5) × weight_factor` → exact ZERO at composite=0.5, independent of `mu_opp`
+  - Sigma retains TrueSkill reduction evaluated at t=0 (symmetric, `mu_opp` only influences `c²`)
+  - Result: stabilized ratings — Madina (Diamond V) → Platinum IV BTB / Platinum VI Arena / Diamond IV Ranked, Chocoboflor/JGtm → Gold II-IV depending on mode
+- **Composite score calibrated on 1765 matches** (Madina, JGtm, Chocoboflor — Silver → Diamond)
+  - Target signal: `individual_mmr = team_mmr × (kills_expected / ke_avg_match)`
+  - Weighting by `nb_matches × MAE_improvement`: Madina 36.7%, JGtm 40.0%, Chocobo 13.3%
+  - New weights: kills_vs_expected=31%, deaths_vs_expected=28%, damage_efficiency=23%, accuracy_delta=13%, win_factor=5%
+- **damage_efficiency bias elimination**: `PlayerState.damage_eff_history` per-group — the damage component now uses a delta vs personal history (like accuracy_delta) instead of the raw value
+- **mu_opp anchored on `state.mu`**: `compute_enemy_strength` uses `player_mu=state.mu` as the base estimate for opponents (matchmaking pairs players of similar level)
+- **Reduced inactivity params**: `INACTIVITY_SIGMA_PER_DAY` 3.5→1.0, `MAX_INACTIVITY_DAYS` 30→14 — avoids ±200 pt swings after a long break
+- **Reduced CSR seed sigma**: `PlayerState.from_csr()` starts at `sigma=MIN_SIGMA` (60) instead of `INITIAL_SIGMA × 0.6` (210) — CSR is a strong anchor; starting in a stable state avoids initial volatility
 
 ### Fixed
 
-- **20 tests pré-existants corrigés** suite à la migration v5.1 (architecture shared)
-  - Groupe A (assertions/fixtures) : `test_backfill_bitmask`, `test_backfill_detection`, `test_xuid_resolution_regression` (×2), `test_post_refactor_perf_contracts`, `test_data_services_contracts`, `test_media_components_sprint4` (×2), `test_media_improvements`, `test_legacy_free_global`
-  - Groupe B (mocks v4→v5) : `test_lazy_loading` (×5 — `_get_match_source` v5.1), `test_data_contract_sessions` (réécriture fixture v5 shared + player_match_enrichment)
-  - Groupe C (source + mocks) : `test_sessions_integration` (fallback DB production masqué par `__file__` patch), `test_duckdb_repository_schema_contract` (schéma `xuid/gamertag` dans shared fixture), `test_teammates_impact_tab` (×2 — mock `_ensure_shared_attached` + `_load_highlight_events`)
+- **20 pre-existing tests fixed** following the v5.1 migration (shared architecture)
+  - Group A (assertions/fixtures): `test_backfill_bitmask`, `test_backfill_detection`, `test_xuid_resolution_regression` (×2), `test_post_refactor_perf_contracts`, `test_data_services_contracts`, `test_media_components_sprint4` (×2), `test_media_improvements`, `test_legacy_free_global`
+  - Group B (v4→v5 mocks): `test_lazy_loading` (×5 — `_get_match_source` v5.1), `test_data_contract_sessions` (v5 shared + player_match_enrichment fixture rewrite)
+  - Group C (source + mocks): `test_sessions_integration` (production DB fallback hidden by `__file__` patch), `test_duckdb_repository_schema_contract` (`xuid/gamertag` schema in shared fixture), `test_teammates_impact_tab` (×2 — mock `_ensure_shared_attached` + `_load_highlight_events`)
 
 ---
 
@@ -105,124 +107,124 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Added
 
-- **Filtres v5.2 — Persistance intent-based** (`src/ui/filter_state.py`)
-  - `FilterPreferences` : dataclass sauvegardée en JSON par joueur
-  - Modes persistés : `playlist_mode`, `mode_mode`, `map_mode` (`"exclude"` / `"include"`)
-  - Listes d'exclusions : `excluded_playlists`, `excluded_modes`, `excluded_maps`
-  - `_detect_filter_mode()` : heuristique 70/30 — si > 70% des options sont cochées, mode "exclude" ; sinon "include"
-  - `reconcile_filter_prefs()` : auto-réconciliation lors de l'apparition de nouvelles options — nouvelles playlists/modes/cartes incluses par défaut sans reset des préférences existantes
-  - 45 tests unitaires dans `tests/test_filter_state.py`
+- **v5.2 Filters — Intent-based persistence** (`src/ui/filter_state.py`)
+  - `FilterPreferences`: dataclass saved as JSON per player
+  - Persisted modes: `playlist_mode`, `mode_mode`, `map_mode` (`"exclude"` / `"include"`)
+  - Exclusion lists: `excluded_playlists`, `excluded_modes`, `excluded_maps`
+  - `_detect_filter_mode()`: 70/30 heuristic — if > 70% of options are checked, use "exclude" mode; otherwise "include"
+  - `reconcile_filter_prefs()`: auto-reconciliation when new options appear — new playlists/modes/maps included by default without resetting existing preferences
+  - 45 unit tests in `tests/test_filter_state.py`
 
-- **Filtres v5.2 — Sélecteur "Type d'expérience"** (`src/app/filters_render.py`)
-  - Pré-filtre statique : "PVP non classé", "PVP classé", "PVE (Firefight)" activant le filtre `is_firefight`
-  - Cascade suppression correcte : modes/cartes calculés depuis `dropdown_base` complet (avant filtre playlist)
-  - Intégration des `FilterPreferences` dans le rendu des filtres cascades
+- **v5.2 Filters — "Experience Type" selector** (`src/app/filters_render.py`)
+  - Static pre-filter: "Unranked PVP", "Ranked PVP", "PVE (Firefight)" enabling the `is_firefight` filter
+  - Correct cascade deletion: modes/maps computed from full `dropdown_base` (before playlist filter)
+  - `FilterPreferences` integrated into cascade filter rendering
 
-- **Stats PvE / Firefight v5.2 — Base dédiée `shared_pve.duckdb`**
-  - Nouvelle base `data/warehouse/shared_pve.duckdb` séparée de `shared_matches.duckdb` (évite les colonnes NULL sur 90%+ des matchs PvP)
-  - Table `pve_match_stats` : stats par joueur par match Firefight — waves, boss kills, kills par type d'ennemi (Banished : Grunt, Elite, Jackal, Brute, Hunter, Skimmer ; Forerunner : Crawler, Soldier, Knight, Warden)
-  - `ensure_pve_schema()` dans `src/data/sync/migrations.py` — création idempotente du schéma
-  - `PVE_SCHEMA_DDL` : DDL complet + index `idx_pve_xuid` + `idx_pve_match_id`
+- **PvE / Firefight v5.2 stats — Dedicated `shared_pve.duckdb` database**
+  - New `data/warehouse/shared_pve.duckdb` database separate from `shared_matches.duckdb` (avoids NULL columns on 90%+ of PvP matches)
+  - `pve_match_stats` table: per-player per-match Firefight stats — waves, boss kills, kills by enemy type (Banished: Grunt, Elite, Jackal, Brute, Hunter, Skimmer; Forerunner: Crawler, Soldier, Knight, Warden)
+  - `ensure_pve_schema()` in `src/data/sync/migrations.py` — idempotent schema creation
+  - `PVE_SCHEMA_DDL`: full DDL + `idx_pve_xuid` + `idx_pve_match_id` indexes
 
-- **Stats PvE — Modèles Python** (`src/data/sync/models.py`)
-  - `PveMatchStatsRow` : dataclass avec 20 colonnes (waves, boss, ennemi par type, pve_bits)
+- **PvE stats — Python models** (`src/data/sync/models.py`)
+  - `PveMatchStatsRow`: dataclass with 20 columns (waves, boss, enemy by type, pve_bits)
 
-- **Stats PvE — Transformer** (`src/data/sync/transformers.py`)
-  - `extract_pve_stats(match_json)` : extraction pour tous les joueurs d'un match Firefight
-  - `_find_pve_stats_dict(player)` : recherche récursive du bloc PvE (EliminationStats / PveStats / FirefightStats / détection par clés)
-  - `_extract_enemy_kills_by_type(pve_dict)` : support double structure (champs directs `GruntKills` + sous-dict `EnemyKillsByType`)
-  - `_is_firefight_match()` enrichie : 3 critères — `GameVariantCategory` (IDs 41, 42 validés sur JSON API réels), `UgcGameVariant.PublicName`, `Playlist.PublicName` (firefight/baptême/survive)
+- **PvE stats — Transformer** (`src/data/sync/transformers.py`)
+  - `extract_pve_stats(match_json)`: extraction for all players of a Firefight match
+  - `_find_pve_stats_dict(player)`: recursive search for the PvE block (EliminationStats / PveStats / FirefightStats / key detection)
+  - `_extract_enemy_kills_by_type(pve_dict)`: dual-structure support (direct `GruntKills` fields + `EnemyKillsByType` sub-dict)
+  - `_is_firefight_match()` enhanced: 3 criteria — `GameVariantCategory` (IDs 41, 42 validated on real API JSON), `UgcGameVariant.PublicName`, `Playlist.PublicName` (firefight/baptême/survive)
 
-- **Stats PvE — Pipeline insertion** (`src/data/sync/batch_insert.py`)
-  - `batch_insert_pve_stats(conn, rows)` : insertion batch avec `INSERT OR REPLACE`
+- **PvE stats — Insert pipeline** (`src/data/sync/batch_insert.py`)
+  - `batch_insert_pve_stats(conn, rows)`: batch insert with `INSERT OR REPLACE`
 
-- **Stats PvE — Bitmask** (`src/data/sync/constants.py`)
-  - `PveBits(IntFlag)` : bitmask granulaire pour `pve_match_stats.pve_bits` — TOTAL_KILLS, BOSS_KILLS, GRUNT, ELITE, JACKAL, BRUTE, HUNTER, SKIMMER, SENTINEL, MARINE + combinaisons ALL_ENEMIES, FULL_PVE
-  - `MatchBits.PVE_STATS = 1 << 20` : guard global dans `match_registry.backfill_completed` — posé pour tout match traité (Firefight ou non) pour éviter la re-détection infinie
+- **PvE stats — Bitmask** (`src/data/sync/constants.py`)
+  - `PveBits(IntFlag)`: granular bitmask for `pve_match_stats.pve_bits` — TOTAL_KILLS, BOSS_KILLS, GRUNT, ELITE, JACKAL, BRUTE, HUNTER, SKIMMER, SENTINEL, MARINE + ALL_ENEMIES, FULL_PVE combinations
+  - `MatchBits.PVE_STATS = 1 << 20`: global guard in `match_registry.backfill_completed` — set for every processed match (Firefight or not) to avoid infinite re-detection
 
-- **Stats PvE — Sync Engine** (`src/data/sync/engine.py`)
-  - `_pve_connection` : connexion lazy-init vers `shared_pve.duckdb`
-  - `_pve_db_lock` : verrou asyncio dédié
-  - `_get_pve_connection()` : lazy init + `ensure_pve_schema` au premier accès
-  - `_try_insert_pve_stats(stats_json, match_id, shared_conn)` : extraction + insertion + pose du bit `MatchBits.PVE_STATS` — appelé dans `_process_new_match` et `_process_known_match`
+- **PvE stats — Sync Engine** (`src/data/sync/engine.py`)
+  - `_pve_connection`: lazy-init connection to `shared_pve.duckdb`
+  - `_pve_db_lock`: dedicated asyncio lock
+  - `_get_pve_connection()`: lazy init + `ensure_pve_schema` on first access
+  - `_try_insert_pve_stats(stats_json, match_id, shared_conn)`: extraction + insert + set `MatchBits.PVE_STATS` bit — called in `_process_new_match` and `_process_known_match`
 
-- **Stats PvE — SyncScope** (`src/data/sync/scope.py`)
-  - Champs `pve_stats: bool` et `force_pve_stats: bool` dans `SyncScope`
-  - Registrés dans `_FORCE_MAP` et `_ALL_DATA_FIELDS`
+- **PvE stats — SyncScope** (`src/data/sync/scope.py`)
+  - `pve_stats: bool` and `force_pve_stats: bool` fields in `SyncScope`
+  - Registered in `_FORCE_MAP` and `_ALL_DATA_FIELDS`
 
-- **Stats PvE — Détection backfill** (`scripts/backfill/detection.py`)
-  - Double guard : `mr.is_firefight = TRUE AND (COALESCE(mr.backfill_completed, 0) & PVE_STATS) = 0`
-  - `force_pve_stats` : ignore le guard, retourne tous les matchs Firefight
-  - `MatchBits.PVE_STATS` ajouté à `compute_bits_needed_from_scope`
+- **PvE stats — Backfill detection** (`scripts/backfill/detection.py`)
+  - Double guard: `mr.is_firefight = TRUE AND (COALESCE(mr.backfill_completed, 0) & PVE_STATS) = 0`
+  - `force_pve_stats`: ignores the guard, returns all Firefight matches
+  - `MatchBits.PVE_STATS` added to `compute_bits_needed_from_scope`
 
-- **Stats PvE — CLI backfill** (`scripts/backfill/cli.py`)
-  - Arguments `--pve-stats` et `--force-pve-stats`
+- **PvE stats — Backfill CLI** (`scripts/backfill/cli.py`)
+  - `--pve-stats` and `--force-pve-stats` arguments
 
-- **Stats PvE — Orchestrateur backfill** (`scripts/backfill/orchestrator.py`)
-  - `_backfill_pve_for_match()` : ouverture `shared_pve.duckdb`, `ensure_pve_schema`, `batch_insert_pve_stats`, pose du bit guard dans `match_registry`
-  - Compteur `pve_stats_inserted` dans `_empty_result()`
+- **PvE stats — Backfill orchestrator** (`scripts/backfill/orchestrator.py`)
+  - `_backfill_pve_for_match()`: opens `shared_pve.duckdb`, `ensure_pve_schema`, `batch_insert_pve_stats`, sets guard bit in `match_registry`
+  - `pve_stats_inserted` counter in `_empty_result()`
 
-- **Citations PvE** (`src/analysis/citations/engine.py`)
-  - `load_match_pve_stats(match_id)` : lecture depuis `shared_pve.duckdb`
-  - Fusion des stats PvE dans `match_stats` avant calcul des citations
-  - `pve_stat` reconnu comme `mapping_type` (traité identiquement à `stat`)
+- **PvE citations** (`src/analysis/citations/engine.py`)
+  - `load_match_pve_stats(match_id)`: reads from `shared_pve.duckdb`
+  - PvE stats merged into `match_stats` before citation computation
+  - `pve_stat` recognized as `mapping_type` (handled identically to `stat`)
 
-- **81 nouveaux tests** :
-  - `tests/test_filter_state.py` : 45 tests — `FilterPreferences`, `_detect_filter_mode()`, `reconcile_filter_prefs()`, save/load
-  - `tests/test_pve_transformers.py` : 36 tests — `_is_firefight_match()`, `_extract_enemy_kills_by_type()`, `extract_pve_stats()`, schéma DuckDB, batch insert, `PveMatchStatsRow`, `PveBits`, `SyncScope.pve_stats`
+- **81 new tests**:
+  - `tests/test_filter_state.py`: 45 tests — `FilterPreferences`, `_detect_filter_mode()`, `reconcile_filter_prefs()`, save/load
+  - `tests/test_pve_transformers.py`: 36 tests — `_is_firefight_match()`, `_extract_enemy_kills_by_type()`, `extract_pve_stats()`, DuckDB schema, batch insert, `PveMatchStatsRow`, `PveBits`, `SyncScope.pve_stats`
 
-- **Scoreboard "Dernier match"** (`src/ui/pages/match_view_players.py`, `src/data/repositories/_roster_loader.py`)
-  - `load_match_scoreboard(match_id)` : requête DuckDB joignant `match_participants` + `xuid_aliases` + sous-requête `medals_earned` (Perfect Kill, ID 1512363953). 20 champs par joueur, trié par `(team_id, rank)`.
-  - `render_match_scoreboard()` : tableau HTML par équipe avec 18 colonnes — Gamertag, Rang, Score, Frags, Morts, Assist., FDA, Folie meurtrière, Tirs à la tête, Frags parfaits, Tirs, Tirs au but, Précision, Corps à corps, Armes lourdes, Dégâts infligés, Dégâts subis, Durée de vie moy.
-  - Gestion N équipes + joueurs sans `team_id` (NULL → groupe séparé en fin)
-  - En-têtes couleur Okabe-Ito : bleu `#0072B2` pour l'équipe du joueur, vermillon `#D55E00` pour les adversaires
-  - Ligne du joueur surlignée (cyan `#00e5ff`)
-  - Résolution gamertags via `load_match_gamertags_fn` (même pipeline que l'ancien roster)
-  - CSS `.os-scoreboard` / `.os-sb-*` avec wrapping colonnes (`max-width: 80px`, `word-break`)
-  - Remplace la section "Joueurs" (roster) supprimée
+- **"Last match" scoreboard** (`src/ui/pages/match_view_players.py`, `src/data/repositories/_roster_loader.py`)
+  - `load_match_scoreboard(match_id)`: DuckDB query joining `match_participants` + `xuid_aliases` + `medals_earned` sub-query (Perfect Kill, ID 1512363953). 20 fields per player, sorted by `(team_id, rank)`.
+  - `render_match_scoreboard()`: per-team HTML table with 18 columns — Gamertag, Rank, Score, Kills, Deaths, Assists, KDA, Killing Spree, Headshots, Perfect Kills, Shots, Shots Hit, Accuracy, Melee, Power Weapons, Damage Dealt, Damage Taken, Avg Lifetime
+  - Handles N teams + players without `team_id` (NULL → separate group at the end)
+  - Okabe-Ito color headers: blue `#0072B2` for the player's team, vermillion `#D55E00` for opponents
+  - Player row highlighted (cyan `#00e5ff`)
+  - Gamertag resolution via `load_match_gamertags_fn` (same pipeline as the former roster)
+  - CSS `.os-scoreboard` / `.os-sb-*` with column wrapping (`max-width: 80px`, `word-break`)
+  - Replaces the removed "Players" (roster) section
 
-- **Tokens per-player pour endpoints player-gated** (`src/data/sync/api_client.py`, `src/ui/profile_api_tokens.py`)
-  - `SPNKR_OAUTH_REFRESH_TOKEN_<GT_NORMALISÉ>` dans `.env.local` pour chaque joueur (ex: `_JGTM`, `_MON_GT_2`)
-  - Normalisation : `re.sub(r"[^A-Za-z0-9]", "_", gt.strip()).upper()`
-  - `get_tokens_for_player(gamertag)` : async, retourne `Tokens | None` — skip + warning si absent (pas de fallback global sur endpoint restreint)
-  - `get_player_token_env_key(gamertag)` : retourne la clé env normalisée
-  - `profile_api_tokens.get_tokens()` enrichi : param `gamertag` optionnel — priorité token joueur > token global (fallback naturel pour endpoints publics)
-  - `profile_api.py`, `get_profile_appearance()` : param `gamertag` propagé jusqu'au fetch SPNKr
-  - `load_profile_api()` : dérive le gamertag depuis la DB et le passe à `get_profile_appearance()` — corrige l'adornment/career rank pour les joueurs non-propriétaire du token global
+- **Per-player tokens for player-gated endpoints** (`src/data/sync/api_client.py`, `src/ui/profile_api_tokens.py`)
+  - `SPNKR_OAUTH_REFRESH_TOKEN_<NORMALIZED_GT>` in `.env.local` per player (e.g.: `_JGTM`, `_MON_GT_2`)
+  - Normalization: `re.sub(r"[^A-Za-z0-9]", "_", gt.strip()).upper()`
+  - `get_tokens_for_player(gamertag)`: async, returns `Tokens | None` — skip + warning if absent (no global fallback on restricted endpoint)
+  - `get_player_token_env_key(gamertag)`: returns the normalized env key
+  - `profile_api_tokens.get_tokens()` extended: optional `gamertag` param — priority player token > global token (natural fallback for public endpoints)
+  - `profile_api.py`, `get_profile_appearance()`: `gamertag` param propagated to SPNKr fetch
+  - `load_profile_api()`: derives the gamertag from the DB and passes it to `get_profile_appearance()` — fixes adornment/career rank for players who do not own the global token
 
-- **Sync Career Rank player-gated** (`src/data/sync/engine.py`)
-  - `sync_career_rank()` utilise `get_tokens_for_player()` — skip silencieux + warning si absent
-  - Persiste `spartan_id` dans `career_progression` (colonne ajoutée via migration `add_spartan_id_to_career_progression()`)
-  - `CareerRankRow.spartan_id` dans `src/data/sync/models.py`
+- **Player-gated Career Rank sync** (`src/data/sync/engine.py`)
+  - `sync_career_rank()` uses `get_tokens_for_player()` — silent skip + warning if absent
+  - Persists `spartan_id` in `career_progression` (column added via `add_spartan_id_to_career_progression()` migration)
+  - `CareerRankRow.spartan_id` in `src/data/sync/models.py`
 
-- **Spartan ID dans le hero banner** (`src/ui/styles.py`, `src/app/main_helpers.py`)
-  - `get_hero_html()` : nouveau paramètre `spartan_id` — affiché dans la section career-rank sous le label de rang (`.career-rank__spartan-id`)
-  - `render_profile_hero()` : charge `spartan_id` depuis `career_progression` (DB, source de vérité) et le passe au hero HTML
-  - CSS `.career-rank__spartan-id` : style compact, semi-transparent, lettres espacées
+- **Spartan ID in the hero banner** (`src/ui/styles.py`, `src/app/main_helpers.py`)
+  - `get_hero_html()`: new `spartan_id` parameter — displayed in the career-rank section under the rank label (`.career-rank__spartan-id`)
+  - `render_profile_hero()`: loads `spartan_id` from `career_progression` (DB, source of truth) and passes it to the hero HTML
+  - CSS `.career-rank__spartan-id`: compact, semi-transparent, letter-spaced style
 
-- **32 nouveaux tests** (`tests/test_player_tokens.py`)
+- **32 new tests** (`tests/test_player_tokens.py`)
 
 ### Changed
 
-- **Accessibilité daltonisme — Migration palette Okabe-Ito** (`src/visualization/`)
-  - 7 fichiers de visualisation mis à jour : `antagonist_charts.py`, `performance.py`, `objective_charts.py`, `participation_charts.py`, `team_dominance_timeline.py`, `match_impact_timeline.py`, `friends_impact_heatmap.py`
-  - Remplacement des couples rouge/vert néon saturés (incompatibles deuteranopie et protanopie) par la palette **Okabe-Ito** (Wong 2011), référence internationale pour les graphiques accessibles
-  - Correspondances principales : vert néon `#00ff00` → vert bleuté `#009E73` · rouge `#ff4444` → vermillon `#D55E00` · magenta `#ff66ff` → rose mauve `#CC79A7` · couleurs équipe `#3DFFB5`/`#FF4D6D` → bleu `#0072B2`/vermillon `#D55E00`
-  - Chaque palette documentée avec les anciens hex et la justification dans un bloc de commentaires
+- **Colorblind accessibility — Okabe-Ito palette migration** (`src/visualization/`)
+  - 7 visualization files updated: `antagonist_charts.py`, `performance.py`, `objective_charts.py`, `participation_charts.py`, `team_dominance_timeline.py`, `match_impact_timeline.py`, `friends_impact_heatmap.py`
+  - Replaced saturated neon red/green pairs (incompatible with deuteranopia and protanopia) with the **Okabe-Ito** palette (Wong 2011), the international reference for accessible charts
+  - Main mappings: neon green `#00ff00` → blue-green `#009E73` · red `#ff4444` → vermillion `#D55E00` · magenta `#ff66ff` → mauve pink `#CC79A7` · team colors `#3DFFB5`/`#FF4D6D` → blue `#0072B2`/vermillion `#D55E00`
+  - Each palette documented with previous hex values and justification in a comment block
 
-- **`_is_firefight_match()`** — Fusion des deux définitions dupliquées en une seule fonction unifiée couvrant les 3 critères (GameVariantCategory + UgcGameVariant.PublicName + Playlist.PublicName)
+- **`_is_firefight_match()`** — Merging of the two duplicated definitions into a single unified function covering all 3 criteria (GameVariantCategory + UgcGameVariant.PublicName + Playlist.PublicName)
 
 ### Deprecated
 
-- **`display_name_from_xuid()` et `get_xuid_aliases()`** (`src/ui/aliases.py`) — Marquées `.. deprecated::`. Utiliser `load_match_gamertags_fn` pour le contexte match. Conservées pour scripts/migration/export.
+- **`display_name_from_xuid()` and `get_xuid_aliases()`** (`src/ui/aliases.py`) — Marked `.. deprecated::`. Use `load_match_gamertags_fn` for match context. Kept for scripts/migration/export.
 
 ### Removed
 
-- **Section "Joueurs" (roster)** de la page Dernier match — Remplacée par le scoreboard. `render_roster_section` n'est plus appelée depuis `match_view.py`.
+- **"Players" (roster) section** from the Last Match page — Replaced by the scoreboard. `render_roster_section` is no longer called from `match_view.py`.
 
 ### Fixed
 
-- **Duplication `_is_firefight_match()`** — Deux définitions coexistaient dans `transformers.py`. La deuxième écrasait silencieusement la première, rendant inopérante la détection via `UgcGameVariant`. Fusion en une seule définition complète.
+- **`_is_firefight_match()` duplication** — Two definitions coexisted in `transformers.py`. The second silently overrode the first, making detection via `UgcGameVariant` inoperative. Merged into a single complete definition.
 
 ---
 
@@ -230,123 +232,123 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Added
 
-- **Module `src/data/sync/scope.py`** — Dataclass **SyncScope** centralisant les flags
-  - Remplace les 30+ kwargs booléens copiés dans 6 fichiers (cli → backfill_data → orchestrator → detection → API)
-  - `SyncScope.from_cli_args(args)` : construction depuis argparse
-  - `SyncScope.make_all()` : factory pour `--all-data`
-  - `resolve()` : implications automatiques (`all_data` → champs, `force_X` → X)
-  - Propriétés : `has_any_option()`, `needs_api`, `needs_local_only`, `requested_types`
-  - Registres : `_ALL_DATA_FIELDS`, `_FORCE_MAP`, `_REQUESTED_TYPE_MAP`
-  - 98 tests unitaires dans `tests/test_sync_scope.py`
-  - **Ajouter un nouveau type** : 1 champ dans SyncScope + 1 arg CLI + implémentation métier
-- **Module `src/ui/streamlit_modern.py`** — Wrappers compatibilité Streamlit moderne
-  - `fragment_if_available` : décorateur graceful-degradation pour `@st.fragment`
-  - `PLOTLY_CLEAN_CONFIG` : config Plotly sans barre d'outils
-  - `plotly_chart` : wrapper avec config propre par défaut
-  - `HAS_FRAGMENT`, `HAS_NAVIGATION` : détection de version
-- **Module `src/ui/vectorize_helpers.py`** — Remplacement vectorisé de `map_elements()`
-  - `build_mapping()` : pré-calcul dict mapping sur valeurs distinctes
-  - `vectorized_apply()` : apply vectorisé via `replace_strict()`
-  - `safe_int_format()`, `format_score_pair()` : expressions Polars réutilisables
-- **Helpers `get_shared_matches_path()`** — Fonctions centralisées dans `src/utils/paths.py`
-  - `get_shared_matches_path()` : chemin absolu vers `shared_matches.duckdb`
-  - `get_shared_matches_path_from_player()` : déduction depuis path joueur
-- **Script `cleanup_legacy_tables.py`** — Suppression tables obsolètes
-  - 9 tables supprimées : `match_stats`, `medals_earned`, `highlight_events`, `player_stats`, `xuid_aliases`, + 4 vues `mv_*`
-  - Options : `--dry-run`, `--backup`, `--all`
-  - Backups automatiques dans `backups/pre_cleanup/`
-- **Vue matérialisée `mv_player_matches`** — Optimisation performance v5.1
-  - Pré-calcul jointures match_participants + match_registry + metadata
-  - Réduction parsing SQL de 170→10 lignes par requête
-  - Gain performance : -70% parsing SQL
-- **Cache Repository Streamlit** — `get_cached_repository_st()` avec `@st.cache_resource(ttl=3600)`
-  - Connexion DB persistante entre pages UI
-  - Gain : 80ms→<20ms connexion
-- **Index DuckDB Performance** — 16+ index créés sur 9 tables
-  - Index composites `(xuid, match_id)`, `(match_id, xuid)`
-  - Index triés sur `start_time`
-- **Cache schema metadata** — `_has_column()` et `_has_shared_mp_column()` cachés
-  - Évite requêtes `information_schema` répétées
-- **Scripts migration bannières LEGACY** — 5 scripts marqués + README.md
-  - Bannière claire "HORS SERVICE POST-V5.1"
-  - Documentation dans `scripts/migration/README.md`
+- **`src/data/sync/scope.py` module** — **SyncScope** dataclass centralizing flags
+  - Replaces 30+ boolean kwargs copied across 6 files (cli → backfill_data → orchestrator → detection → API)
+  - `SyncScope.from_cli_args(args)`: construction from argparse
+  - `SyncScope.make_all()`: factory for `--all-data`
+  - `resolve()`: automatic implications (`all_data` → fields, `force_X` → X)
+  - Properties: `has_any_option()`, `needs_api`, `needs_local_only`, `requested_types`
+  - Registries: `_ALL_DATA_FIELDS`, `_FORCE_MAP`, `_REQUESTED_TYPE_MAP`
+  - 98 unit tests in `tests/test_sync_scope.py`
+  - **Add a new type**: 1 field in SyncScope + 1 CLI arg + business logic implementation
+- **`src/ui/streamlit_modern.py` module** — Modern Streamlit compatibility wrappers
+  - `fragment_if_available`: graceful-degradation decorator for `@st.fragment`
+  - `PLOTLY_CLEAN_CONFIG`: Plotly config without toolbar
+  - `plotly_chart`: wrapper with clean config by default
+  - `HAS_FRAGMENT`, `HAS_NAVIGATION`: version detection
+- **`src/ui/vectorize_helpers.py` module** — Vectorized replacement for `map_elements()`
+  - `build_mapping()`: pre-computed dict mapping on distinct values
+  - `vectorized_apply()`: vectorized apply via `replace_strict()`
+  - `safe_int_format()`, `format_score_pair()`: reusable Polars expressions
+- **`get_shared_matches_path()` helpers** — Centralized functions in `src/utils/paths.py`
+  - `get_shared_matches_path()`: absolute path to `shared_matches.duckdb`
+  - `get_shared_matches_path_from_player()`: deduction from player path
+- **`cleanup_legacy_tables.py` script** — Obsolete table removal
+  - 9 tables removed: `match_stats`, `medals_earned`, `highlight_events`, `player_stats`, `xuid_aliases`, + 4 `mv_*` views
+  - Options: `--dry-run`, `--backup`, `--all`
+  - Automatic backups in `backups/pre_cleanup/`
+- **`mv_player_matches` materialized view** — v5.1 performance optimization
+  - Pre-computed joins on match_participants + match_registry + metadata
+  - SQL parsing reduced from 170→10 lines per query
+  - Performance gain: -70% SQL parsing
+- **Streamlit Repository Cache** — `get_cached_repository_st()` with `@st.cache_resource(ttl=3600)`
+  - Persistent DB connection between UI pages
+  - Gain: 80ms→<20ms connection
+- **DuckDB Performance Indexes** — 16+ indexes created on 9 tables
+  - Composite indexes `(xuid, match_id)`, `(match_id, xuid)`
+  - Sorted indexes on `start_time`
+- **Metadata schema cache** — `_has_column()` and `_has_shared_mp_column()` cached
+  - Avoids repeated `information_schema` queries
+- **LEGACY banner migration scripts** — 5 scripts flagged + README.md
+  - Clear "OUT OF SERVICE POST-V5.1" banner
+  - Documentation in `scripts/migration/README.md`
 
 ### Changed
 
-- **`backfill_data.py` refactoré** — `main()` utilise `SyncScope.from_cli_args()` (−90 lignes)
-  - Plus besoin de copier 30+ `args.X` deux fois pour `--all` et `--player`
-- **`orchestrator.py` refactoré** — `backfill_player_data`, `backfill_all_players`, `_backfill_with_api` acceptent `scope=SyncScope`
-  - Anciens kwargs conservés (marqués `LEGACY`) pour rétro-compatibilité
-  - `requested_types` construit via `scope.requested_types` au lieu de 16 `if/append`
-- **`detection.py` refactoré** — `find_matches_missing_data` accepte `scope=SyncScope`
-  - Anciens kwargs conservés (marqués `LEGACY`) pour rétro-compatibilité
-- **Bump Streamlit ≥1.37.0** — Requis pour `@st.fragment` et futures migrations `st.navigation`
-- **Plotly `config={"displayModeBar": False}`** — Appliqué sur 69 `st.plotly_chart` (15 fichiers)
-  - Suppression barre d'outils Plotly pour une UI plus propre
-- **`@fragment_if_available`** — Décorateur appliqué sur 5 pages multi-charts
+- **`backfill_data.py` refactored** — `main()` uses `SyncScope.from_cli_args()` (−90 lines)
+  - No longer need to copy 30+ `args.X` twice for `--all` and `--player`
+- **`orchestrator.py` refactored** — `backfill_player_data`, `backfill_all_players`, `_backfill_with_api` accept `scope=SyncScope`
+  - Old kwargs preserved (marked `LEGACY`) for backward compatibility
+  - `requested_types` built via `scope.requested_types` instead of 16 `if/append`
+- **`detection.py` refactored** — `find_matches_missing_data` accepts `scope=SyncScope`
+  - Old kwargs preserved (marked `LEGACY`) for backward compatibility
+- **Bumped Streamlit ≥1.37.0** — Required for `@st.fragment` and future `st.navigation` migration
+- **Plotly `config={"displayModeBar": False}`** — Applied to 69 `st.plotly_chart` calls (15 files)
+  - Removes Plotly toolbar for a cleaner UI
+- **`@fragment_if_available`** — Decorator applied to 5 multi-chart pages
   - timeseries, session_compare, win_loss, objective_analysis, career
-  - Réduit le re-render au fragment seul lors d'interactions filtre
-- **`match_history.py` modernisé** — Remplacement HTML custom par `st.dataframe` + `column_config`
-  - Suppression dead code : `_format_score_label`, `_fmt`, `_fmt_mmr_int`
-  - Virtualisation native Streamlit pour tableaux larges
-- **`st.navigation` lazy loading** — 11 page closures dans `streamlit_app.py`
-  - `build_navigation()` + `render_page_selector_nav()` dans `page_router.py`
-  - Fallback legacy `dispatch_page()` pour Streamlit < 1.36
-  - Seules les pages visitées sont importées → -60% mémoire initiale
-- **Centralisation `duckdb_read_only()`** — Context manager dans `src/utils/db.py`
-  - 7 fichiers migrés (career, cache_loaders, cache_filters, media_library, multiplayer, data_loader)
-  - `duckdb.connect` directs : 14 → 4 (restants : sync engine, écriture légitime)
-- **Réduction `st.rerun()`** — 32 → 14 dans `src/`
-  - `checkbox_filter.py` : 16 reruns → 0 via callbacks `on_click`/`on_change`
-  - Trio button filters : `on_click=_apply_trio_filter`
-- **Sécurisation `unsafe_allow_html`** — html.escape() sur données dynamiques
-  - `kpi.py` et `performance.py` : XSS protection
-  - `sidebar.py` brand : HTML → `st.header()` + `st.divider()`
-- **Tests non-régression modernisation** — 30 tests dans `test_8ter_modernisation.py`
-  - Couverture : staticPlot, fragments, st.navigation, duckdb_read_only, st.rerun, html.escape
-- **Éradication complète `map_elements()`** — 28 occurrences remplacées dans 15 fichiers
-  - Remplacement par `build_mapping()` + `replace_strict()` ou expressions Polars natives
-  - Fichiers : filters.py, filters_render.py, win_loss.py, last_match.py, stats.py,
+  - Reduces re-renders to the fragment only on filter interactions
+- **`match_history.py` modernized** — Replaced custom HTML with `st.dataframe` + `column_config`
+  - Dead code removed: `_format_score_label`, `_fmt`, `_fmt_mmr_int`
+  - Native Streamlit virtualization for wide tables
+- **`st.navigation` lazy loading** — 11 page closures in `streamlit_app.py`
+  - `build_navigation()` + `render_page_selector_nav()` in `page_router.py`
+  - Legacy fallback `dispatch_page()` for Streamlit < 1.36
+  - Only visited pages are imported → -60% initial memory
+- **Centralized `duckdb_read_only()`** — Context manager in `src/utils/db.py`
+  - 7 files migrated (career, cache_loaders, cache_filters, media_library, multiplayer, data_loader)
+  - Direct `duckdb.connect` calls: 14 → 4 (remaining: sync engine, legitimate writes)
+- **Reduced `st.rerun()`** — 32 → 14 in `src/`
+  - `checkbox_filter.py`: 16 reruns → 0 via `on_click`/`on_change` callbacks
+  - Trio button filters: `on_click=_apply_trio_filter`
+- **`unsafe_allow_html` hardening** — `html.escape()` on dynamic data
+  - `kpi.py` and `performance.py`: XSS protection
+  - `sidebar.py` brand: HTML → `st.header()` + `st.divider()`
+- **Modernization regression tests** — 30 tests in `test_8ter_modernisation.py`
+  - Coverage: staticPlot, fragments, st.navigation, duckdb_read_only, st.rerun, html.escape
+- **Complete `map_elements()` eradication** — 28 occurrences replaced in 15 files
+  - Replaced with `build_mapping()` + `replace_strict()` or native Polars expressions
+  - Files: filters.py, filters_render.py, win_loss.py, last_match.py, stats.py,
     match_view_charts.py, media_library.py, teammates_helpers.py, session_compare.py,
     session_compare_charts.py, duckdb_analytics.py, match_view.py, citations.py,
     teammates_service.py, media_indexer.py
-- **Migration `xuid_aliases` → `shared_matches.duckdb`** — Source unique centralisée
-  - 9 fichiers migrés pour lire depuis `shared.xuid_aliases` (13 955 rows)
-  - Suppression fallbacks locaux `stats.duckdb`
-  - Fichiers : `aliases.py`, `xuid.py`, `multiplayer.py`, `cache_loaders.py`, `engine.py`, `_roster_loader.py`, `sessions_backfill.py`, `sync.py`, `resolve_missing_gamertags.py`
-- **`_get_match_source()`** retourne maintenant un 3-tuple `(source_sql, params, uses_mv)`
-  - Permet skip jointures redondantes en mode v5.1
-- **8+ fonctions cache_loaders** migrées vers `get_cached_repository_st()`
-  - Suppression connexions neuves redondantes
-- **Jointures metadata/MMR** skippées en mode v5.1 quand `uses_mv=True`
-  - RC3/RC4 : -3 LEFT JOIN sur chemin critique
+- **`xuid_aliases` migration → `shared_matches.duckdb`** — Single centralized source
+  - 9 files migrated to read from `shared.xuid_aliases` (13,955 rows)
+  - Local `stats.duckdb` fallbacks removed
+  - Files: `aliases.py`, `xuid.py`, `multiplayer.py`, `cache_loaders.py`, `engine.py`, `_roster_loader.py`, `sessions_backfill.py`, `sync.py`, `resolve_missing_gamertags.py`
+- **`_get_match_source()`** now returns a 3-tuple `(source_sql, params, uses_mv)`
+  - Enables skipping redundant joins in v5.1 mode
+- **8+ cache_loaders functions** migrated to `get_cached_repository_st()`
+  - Redundant new connections removed
+- **metadata/MMR joins** skipped in v5.1 mode when `uses_mv=True`
+  - RC3/RC4: -3 LEFT JOINs on the critical path
 
 ### Fixed
 
-- **Onglet Citations affichait 159 citations au lieu de 45** — Filtrage par `citation_mappings.enabled` réactivé
-  - Le JSON `halo5_commendations_fr.json` contient 159 citations (armes, Spartan Companies, etc.)
-  - Le filtrage avait été supprimé, affichant toutes les citations y compris celles sans mapping
-  - Correction : les items JSON sont maintenant filtrés par les noms normalisés des citations activées via `CitationEngine.load_mappings()`
-  - Fichier : `src/ui/commendations.py`
+- **Citations tab showed 159 citations instead of 45** — Filtering by `citation_mappings.enabled` re-enabled
+  - The `halo5_commendations_fr.json` JSON contains 159 citations (weapons, Spartan Companies, etc.)
+  - Filtering had been removed, displaying all citations including those without mapping
+  - Fix: JSON items are now filtered by normalized names of enabled citations via `CitationEngine.load_mappings()`
+  - File: `src/ui/commendations.py`
 
 ### Removed
 
-- **Tables legacy player DBs** — 9 tables par joueur, données centralisées
+- **Legacy player DB tables** — 9 tables per player, data centralized
   - `match_stats`, `medals_earned`, `highlight_events`, `player_stats`, `xuid_aliases`
-  - Vues obsolètes : `mv_match_stats_with_context`, `mv_recent_matches`, `mv_team_stats`, `mv_opponent_stats`
-  - 38 528 rows libérées sur 4 joueurs
-- **Références SQLite runtime** — 0 `import sqlite3` dans `src/`
-- **Références `metadata.db`** — Tout migré vers `metadata.duckdb`
-- **Méthode dépréciée `attach_sqlite`** — Supprimée de duckdb_engine.py
+  - Obsolete views: `mv_match_stats_with_context`, `mv_recent_matches`, `mv_team_stats`, `mv_opponent_stats`
+  - 38,528 rows freed across 4 players
+- **SQLite runtime references** — 0 `import sqlite3` in `src/`
+- **`metadata.db` references** — Everything migrated to `metadata.duckdb`
+- **Deprecated `attach_sqlite` method** — Removed from duckdb_engine.py
 
 ### Performance
 
-| Métrique | v5.0 | v5.1 | Gain |
-|----------|------|------|------|
-| Connexion DB | 80ms | <20ms | **-75%** |
+| Metric | v5.0 | v5.1 | Gain |
+|--------|------|------|------|
+| DB connection | 80ms | <20ms | **-75%** |
 | load_matches(100) | 200ms | <80ms | **-60%** |
-| Première page UI | 1500ms | <800ms | **-47%** |
-| Parsing SQL/requête | 170 lignes | 10 lignes | **-94%** |
+| First UI page | 1500ms | <800ms | **-47%** |
+| SQL parsing/query | 170 lines | 10 lines | **-94%** |
 
 ---
 
@@ -354,89 +356,89 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Added
 
-- **Architecture shared_matches.duckdb** — Base de données partagée centralisant les matchs de tous les joueurs
-  - 6 tables : `match_registry`, `match_participants`, `highlight_events`, `medals_earned`, `xuid_aliases`, séquence `highlight_events_id_seq`
-  - 14 index optimisés (match_id, xuid, start_time, composites)
-  - Schéma DDL complet : `scripts/migration/schema_v5.sql`
-  - Documentation : `docs/SHARED_MATCHES_SCHEMA.md`
-- **Migration v4 → v5** — Scripts de migration incrémentale par joueur
-  - `scripts/migration/create_shared_matches_db.py` : création de la DB partagée
-  - `scripts/migration/migrate_player_to_shared.py` : migration par joueur
-  - Résultat : 1289 matchs migrés, 285 partagés (22.1%), 0 orphelins
-- **Détection matchs partagés dans Sync Engine** — Sync allégée pour matchs déjà connus
-  - `_process_known_match()` : enrichissement personnel uniquement (économie 1-2 appels API/match)
-  - `_process_new_match()` : sync complète vers shared (registry + participants + events + medals)
-  - `extract_all_medals()` : extraction des médailles de TOUS les joueurs du match
-  - `extract_match_registry_data()` : extraction données communes du match
-- **ATTACH multi-DB dans DuckDBRepository** — Lecture transparente depuis `shared_matches.duckdb`
-  - `shared_db_path` auto-détecté ou configurable
-  - Queries natives `shared.match_participants`, `shared.match_registry`, `shared.medals_earned`
-  - Propagation dans la factory repository
-- **Sous-requête `_get_match_source()`** — Abstraction permettant à toutes les pages UI de lire depuis shared sans modification
-- **Optimisations API Sync v5**
-  - Parallélisation appels API skill + events (`asyncio.gather`)
-  - Batching des insertions DB (commit tous les 10 matchs)
-  - Performance scores calculés en batch post-sync
-  - Rate limit optimisé (10 req/s, parallel_matches=5)
-- **Citations DuckDB-first** — Nouveau système de citations stockées par match
-  - `CitationEngine` : moteur de calcul et agrégation SQL
-  - Table `citation_mappings` dans `metadata.duckdb` : 14 règles (8 existantes + 6 réintégrées)
-  - Table `match_citations` dans chaque `stats.duckdb` joueur
-  - Backfill CLI : `--citations` / `--force-citations` dans `scripts/backfill_data.py`
-  - 6 citations objectives réintégrées : Défenseur du drapeau, Je te tiens !, Sus au porteur du drapeau, Partie prenante, À la charge, Annexion forcée
-  - Colonne `enabled` dans `citation_mappings` pour désactivation sans suppression
-  - Support V5 (shared_matches) dans `CitationEngine` avec fallback V4
-  - Documentation : `docs/CITATIONS.md`
-- **Framework de test MockStreamlit** — Fixture `MockStreamlit` dans `conftest.py` pour tester les pages UI en mode headless
-- **+946 tests** ajoutés (S1→S7ter) — total 2768 passed, 0 failed, 38 skipped
-- **Script de nettoyage post-migration** — `scripts/cleanup_player_dbs_v5.py`
-  - Supprime les tables redondantes des player DBs après migration v5 (match_stats, match_participants, highlight_events, medals_earned)
-  - Mode --dry-run pour simulation sans modification
-  - Backup optionnel avant nettoyage
-  - Validation automatique de l'existence de shared_matches.duckdb
-  - VACUUM automatique pour récupération d'espace disque (-85% de taille en moyenne)
-  - Documentation : `docs/CLEANUP_V5.md`
-- **Documentation** : `docs/SHARED_MATCHES_SCHEMA.md`, `docs/SYNC_OPTIMIZATIONS_V5.md`, `docs/TESTING_V5.md`, `docs/ARCHITECTURE_V5.md`, `docs/MIGRATION_V4_TO_V5.md`, `docs/CLEANUP_V5.md`
+- **shared_matches.duckdb architecture** — Shared database centralizing matches for all players
+  - 6 tables: `match_registry`, `match_participants`, `highlight_events`, `medals_earned`, `xuid_aliases`, `highlight_events_id_seq` sequence
+  - 14 optimized indexes (match_id, xuid, start_time, composites)
+  - Full DDL schema: `scripts/migration/schema_v5.sql`
+  - Documentation: `docs/SHARED_MATCHES_SCHEMA.md`
+- **v4 → v5 Migration** — Incremental per-player migration scripts
+  - `scripts/migration/create_shared_matches_db.py`: shared DB creation
+  - `scripts/migration/migrate_player_to_shared.py`: per-player migration
+  - Result: 1289 matches migrated, 285 shared (22.1%), 0 orphans
+- **Shared match detection in Sync Engine** — Lightweight sync for already-known matches
+  - `_process_known_match()`: personal enrichment only (saves 1-2 API calls/match)
+  - `_process_new_match()`: full sync to shared (registry + participants + events + medals)
+  - `extract_all_medals()`: medal extraction for ALL players in the match
+  - `extract_match_registry_data()`: common match data extraction
+- **Multi-DB ATTACH in DuckDBRepository** — Transparent reads from `shared_matches.duckdb`
+  - `shared_db_path` auto-detected or configurable
+  - Native queries on `shared.match_participants`, `shared.match_registry`, `shared.medals_earned`
+  - Propagation in the repository factory
+- **`_get_match_source()` sub-query** — Abstraction allowing all UI pages to read from shared without modification
+- **v5 Sync API optimizations**
+  - Parallelized skill + events API calls (`asyncio.gather`)
+  - DB insert batching (commit every 10 matches)
+  - Performance scores computed in batch post-sync
+  - Optimized rate limit (10 req/s, parallel_matches=5)
+- **DuckDB-first citations** — New per-match stored citations system
+  - `CitationEngine`: computation and SQL aggregation engine
+  - `citation_mappings` table in `metadata.duckdb`: 14 rules (8 existing + 6 reintegrated)
+  - `match_citations` table in each player's `stats.duckdb`
+  - Backfill CLI: `--citations` / `--force-citations` in `scripts/backfill_data.py`
+  - 6 reintegrated objective citations: Flag Defender, Got Your Back!, Flag Stalker, Stake a Claim, Charge!, Forced Annexation
+  - `enabled` column in `citation_mappings` for disabling without deletion
+  - V5 (shared_matches) support in `CitationEngine` with V4 fallback
+  - Documentation: `docs/CITATIONS.md`
+- **MockStreamlit test framework** — `MockStreamlit` fixture in `conftest.py` for headless UI page testing
+- **+946 tests** added (S1→S7ter) — total 2768 passed, 0 failed, 38 skipped
+- **Post-migration cleanup script** — `scripts/cleanup_player_dbs_v5.py`
+  - Removes redundant tables from player DBs after v5 migration (match_stats, match_participants, highlight_events, medals_earned)
+  - `--dry-run` mode for simulation without modification
+  - Optional backup before cleanup
+  - Automatic `shared_matches.duckdb` existence validation
+  - Automatic VACUUM for disk space recovery (-85% average size reduction)
+  - Documentation: `docs/CLEANUP_V5.md`
+- **Documentation**: `docs/SHARED_MATCHES_SCHEMA.md`, `docs/SYNC_OPTIMIZATIONS_V5.md`, `docs/TESTING_V5.md`, `docs/ARCHITECTURE_V5.md`, `docs/MIGRATION_V4_TO_V5.md`, `docs/CLEANUP_V5.md`
 
 ### Changed
 
-- **`DuckDBSyncEngine`** refactoré pour écrire dans `shared_matches.duckdb` (matchs, participants, events, médailles)
-- **`DuckDBRepository`** refactoré avec ATTACH `shared_matches.duckdb` en read-only
-  - `load_match_participants()` → lecture depuis `shared.match_participants`
-  - `load_highlight_events()` → lecture depuis `shared.highlight_events`
-  - `load_medals_for_match()` → lecture depuis `shared.medals_earned`
+- **`DuckDBSyncEngine`** refactored to write to `shared_matches.duckdb` (matches, participants, events, medals)
+- **`DuckDBRepository`** refactored with ATTACH `shared_matches.duckdb` in read-only
+  - `load_match_participants()` → reads from `shared.match_participants`
+  - `load_highlight_events()` → reads from `shared.highlight_events`
+  - `load_medals_for_match()` → reads from `shared.medals_earned`
   - `load_matches()` → JOIN `shared.match_participants` + `shared.match_registry` + `player_match_enrichment`
-- **Toutes les pages UI** utilisent `_get_match_source()` au lieu de `match_stats` directement
-- **`render_h5g_commendations_section()`** utilise `CitationEngine` (agrégation SQL, ~90% plus rapide)
-- **`render_citations_page()`** simplifié — ne pré-agrège plus les médailles/stats pour les citations
-- **Filtrage des citations** piloté par `citation_mappings.enabled` (plus besoin du JSON d'exclusion)
-- **Version `pyproject.toml`** bumpée de 3.0.0 à 5.0.0
-- **Statut projet** : Development Status 4-Beta → 5-Production/Stable
+- **All UI pages** use `_get_match_source()` instead of `match_stats` directly
+- **`render_h5g_commendations_section()`** uses `CitationEngine` (SQL aggregation, ~90% faster)
+- **`render_citations_page()`** simplified — no longer pre-aggregates medals/stats for citations
+- **Citation filtering** driven by `citation_mappings.enabled` (no longer needs the exclusion JSON)
+- **`pyproject.toml` version** bumped from 3.0.0 to 5.0.0
+- **Project status**: Development Status 4-Beta → 5-Production/Stable
 
 ### Removed
 
-- **VIEWs de compatibilité v4** supprimées (`scripts/migration/remove_compat_views.py`)
-- **Données dupliquées** dans les player DBs : `match_participants`, `highlight_events`, `medals_earned` centralisés dans shared
-- **Shim `src/db/migrations.py`** — déprécié, supprimé en faveur de `src.data.sync.migrations`
-- `CUSTOM_CITATION_RULES` dict (ancien `commendations.py`)
-- `_compute_custom_citation_value()` (itérations lentes, remplacé par SQL)
-- `load_h5g_commendations_tracking_rules()` (remplacé par `citation_mappings` DuckDB)
-- Constantes `DEFAULT_H5G_TRACKING_ASSUMED_PATH` / `DEFAULT_H5G_TRACKING_UNMATCHED_PATH`
-- Dépendance aux fichiers JSON de tracking commendations
-- Logique d'exclusion JSON dans `render_h5g_commendations_section()`
+- **v4 compatibility VIEWs** removed (`scripts/migration/remove_compat_views.py`)
+- **Duplicated data** in player DBs: `match_participants`, `highlight_events`, `medals_earned` centralized in shared
+- **`src/db/migrations.py` shim** — deprecated, removed in favor of `src.data.sync.migrations`
+- `CUSTOM_CITATION_RULES` dict (old `commendations.py`)
+- `_compute_custom_citation_value()` (slow iterations, replaced by SQL)
+- `load_h5g_commendations_tracking_rules()` (replaced by `citation_mappings` DuckDB)
+- `DEFAULT_H5G_TRACKING_ASSUMED_PATH` / `DEFAULT_H5G_TRACKING_UNMATCHED_PATH` constants
+- Dependency on commendation tracking JSON files
+- JSON exclusion logic in `render_h5g_commendations_section()`
 
 ### Fixed
 
-- **Tests flaky Windows** : `tmp_dir` → `tmp_path` pour éviter DuckDB `WinError 32` (file locking)
-- **Tests lazy_loading** : mode v4 forcé pour compatibilité
+- **Flaky Windows tests**: `tmp_dir` → `tmp_path` to avoid DuckDB `WinError 32` (file locking)
+- **`lazy_loading` tests**: v4 mode forced for compatibility
 
 ### Performance
 
-| Métrique | v4 | v5 | Gain |
-|----------|----|----|------|
-| Stockage (4 joueurs) | 800 MB | 250 MB | **-69%** |
-| DB size par joueur | 200 MB | 30 MB | **-85%** |
-| Appels API (sync 4 joueurs) | 12 000 | 3 300 | **-72%** |
-| Temps sync (100 matchs) | 45 min | 12 min | **-73%** |
-| Temps/match (partagé) | 16s | 0.5s | **-97%** |
-| Temps/match (nouveau) | 16s | 2-3s | **-81%** |
+| Metric | v4 | v5 | Gain |
+|--------|----|----|------|
+| Storage (4 players) | 800 MB | 250 MB | **-69%** |
+| DB size per player | 200 MB | 30 MB | **-85%** |
+| API calls (sync 4 players) | 12,000 | 3,300 | **-72%** |
+| Sync time (100 matches) | 45 min | 12 min | **-73%** |
+| Time/match (shared) | 16s | 0.5s | **-97%** |
+| Time/match (new) | 16s | 2-3s | **-81%** |
