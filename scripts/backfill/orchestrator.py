@@ -253,7 +253,6 @@ async def backfill_player_data(
     lusr = scope.lusr
     force_lusr = scope.force_lusr
     csr = scope.csr
-    force_csr = scope.force_csr
     fetch_csr = scope.fetch_csr
     skill_rank = scope.skill_rank
     force_skill_rank = scope.force_skill_rank
@@ -1046,11 +1045,19 @@ async def _backfill_with_api(
                         )
 
                 # ── Events (V5: shared.highlight_events) ──
-                if events and highlight_events:
-                    event_rows = transform_highlight_events(highlight_events, match_id)
-                    if event_rows:
-                        n = insert_event_rows(shared_conn, event_rows)
-                        totals["events_inserted"] += n
+                if events:
+                    if highlight_events:
+                        event_rows = transform_highlight_events(highlight_events, match_id)
+                        if event_rows:
+                            n = insert_event_rows(shared_conn, event_rows)
+                            totals["events_inserted"] += n
+                    # Fix v5.4: marquer events_loaded=TRUE quoi qu'il arrive (même si
+                    # l'API retourne [] pour les modes sans events type BTB), pour éviter
+                    # la re-détection infinie. events_loaded est la source de vérité.
+                    shared_conn.execute(
+                        "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = ?",
+                        (match_id,),
+                    )
 
                 # ── Skill (V5: UPDATE shared.match_participants pour TOUS les joueurs) ──
                 if skill and skill_json:
@@ -1123,7 +1130,10 @@ async def _backfill_with_api(
 
                 # Marquer backfill_completed
                 # V5 FINAL: TOUJOURS dans shared.match_registry, jamais dans match_stats
-                mask = compute_backfill_mask(*requested_types)
+                # Fix v5.4: exclure "events" du mask global — events_loaded est la source
+                # de vérité et est géré directement ci-dessus. Le bit events dans
+                # backfill_completed était la cause des faux positifs silencieux.
+                mask = compute_backfill_mask(*(t for t in requested_types if t != "events"))
                 if mask > 0:
                     try:
                         shared_conn.execute(
@@ -1195,7 +1205,9 @@ async def _backfill_with_api(
 
     # ── LUSR (calcul local, possible après API) ───────────────────────────────
     lusr_flag = getattr(scope, "lusr", False) or getattr(scope, "skill_rank", False)
-    force_lusr_flag = getattr(scope, "force_lusr", False) or getattr(scope, "force_skill_rank", False)
+    force_lusr_flag = getattr(scope, "force_lusr", False) or getattr(
+        scope, "force_skill_rank", False
+    )
     if lusr_flag:
         from scripts.backfill.strategies import compute_lusr_for_player
 
