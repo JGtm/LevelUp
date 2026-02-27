@@ -27,10 +27,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Utiliser ce match",
         "en": "Use this match",
     },
-    "btn_search": {
-        "fr": "Rechercher",
-        "en": "Search",
-    },
+    # btn_search : défini dans common.py
     "btn_view_fullscreen": {
         "fr": "Voir en grand",
         "en": "View fullscreen",
@@ -59,14 +56,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Lancer OpenSpartan Workshop",
         "en": "Launch OpenSpartan Workshop",
     },
-    "btn_confirm": {
-        "fr": "Confirmer",
-        "en": "Confirm",
-    },
-    "btn_cancel": {
-        "fr": "Annuler",
-        "en": "Cancel",
-    },
+    # btn_confirm, btn_cancel : définis dans common.py
     # ── Confirmations ────────────────────────────────────────────────────────
     "confirm_clear_selection": {
         "fr": "⚠️ Confirmer : vider toutes les sélections ?",
@@ -317,9 +307,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "kpi_losses": {"fr": "Défaites", "en": "Losses"},
     "kpi_ties": {"fr": "Égalités", "en": "Ties"},
     "kpi_no_finish": {"fr": "Non terminés", "en": "Unfinished"},
-    # ── Sidebar — boutons sélection ──────────────────────────────────────────
-    "btn_select_all": {"fr": "✓ Tout", "en": "✓ All"},
-    "btn_select_none": {"fr": "✗ Aucun", "en": "✗ None"},
+    # btn_select_all, btn_select_none : définis dans common.py
     # ── Durée ────────────────────────────────────────────────────────────────
     "dur_day_abbr": {"fr": "j", "en": "d"},
     # ── Métriques DuckDB analytics ───────────────────────────────────────────

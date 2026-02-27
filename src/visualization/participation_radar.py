@@ -407,15 +407,19 @@ def compute_participation_profile(
 
 
 # Légende des axes (une ligne par axe, pour affichage à côté du radar)
-def get_radar_axis_lines() -> list[str]:
-    """Retourne les descriptions des axes radar dans la langue active."""
+def get_radar_axis_lines(lang: str | None = None) -> list[str]:
+    """Retourne les descriptions des axes radar dans la langue active.
+
+    Args:
+        lang: Langue cible (``"fr"`` / ``"en"``). Si None, utilise ``get_lang()``.
+    """
     return [
-        t("radar_desc_objectives"),
-        t("radar_desc_combat"),
-        t("radar_desc_support"),
-        t("radar_desc_score"),
-        t("radar_desc_impact"),
-        t("radar_desc_survival"),
+        t("radar_desc_objectives", lang=lang),
+        t("radar_desc_combat", lang=lang),
+        t("radar_desc_support", lang=lang),
+        t("radar_desc_score", lang=lang),
+        t("radar_desc_impact", lang=lang),
+        t("radar_desc_survival", lang=lang),
     ]
 
 

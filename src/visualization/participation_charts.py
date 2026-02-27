@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import plotly.express as px
 import plotly.graph_objects as go
 
+from src.ui.i18n.data_labels import label as i18n_label
 from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style
 
@@ -199,6 +200,9 @@ def plot_participation_bars(
     # Convertir en pandas
     pdf = agg.to_pandas()
 
+    # Traduire les award_name techniques en labels localisés
+    pdf["award_label"] = pdf["award_name"].map(lambda x: i18n_label("awards", x, lang=lang) or x)
+
     if pdf.empty:
         fig = go.Figure()
         fig.add_annotation(
@@ -225,7 +229,7 @@ def plot_participation_bars(
     if orientation == "h":
         fig.add_trace(
             go.Bar(
-                y=pdf["award_name"],
+                y=pdf["award_label"],
                 x=pdf["score"],
                 orientation="h",
                 marker={"color": pdf["color"].tolist()},
@@ -244,7 +248,7 @@ def plot_participation_bars(
     else:
         fig.add_trace(
             go.Bar(
-                x=pdf["award_name"],
+                x=pdf["award_label"],
                 y=pdf["score"],
                 marker={"color": pdf["color"].tolist()},
                 text=[f"{int(s):,}" for s in pdf["score"]],
@@ -482,6 +486,9 @@ def plot_participation_sunburst(
 
     pdf = agg.to_pandas()
 
+    # Traduire les award_name techniques en labels localisés
+    pdf["award_label"] = pdf["award_name"].map(lambda x: i18n_label("awards", x, lang=lang) or x)
+
     if pdf.empty:
         fig = go.Figure()
         fig.add_annotation(
@@ -507,7 +514,7 @@ def plot_participation_sunburst(
 
     fig = px.sunburst(
         pdf,
-        path=["category_label", "award_name"],
+        path=["category_label", "award_label"],
         values="score",
         color="category_label",
         color_discrete_map=color_map,

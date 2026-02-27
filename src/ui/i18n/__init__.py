@@ -20,16 +20,66 @@ _REGISTRY: dict[str, dict[str, dict[str, str]]] | None = None
 
 
 def _build_registry() -> dict[str, dict[str, dict[str, str]]]:
-    """Construit le registre global en fusionnant tous les fichiers de chaînes."""
+    """Construit le registre global en fusionnant tous les fichiers de chaînes.
+
+    Supporte les **alias** : si la valeur d'une clé est un ``str`` au lieu
+    d'un ``dict``, elle est traitée comme un pointeur vers une autre clé.
+    Exemple dans un module STRINGS::
+
+        "ts_kills_label": "col_kills",   # alias → résolu vers common.col_kills
+
+    Les alias sont résolus après la fusion de tous les modules.
+    """
+    import logging
+
     from src.ui.i18n import cli, common, pages, viz, widgets
 
+    logger = logging.getLogger(__name__)
     registry: dict[str, dict[str, dict[str, str]]] = {}
+    aliases: dict[str, str] = {}  # clé alias → clé cible
+    # Ordre de priorité : common > pages > widgets > viz > cli
+    _module_names = {
+        id(common.STRINGS): "common",
+        id(pages.STRINGS): "pages",
+        id(widgets.STRINGS): "widgets",
+        id(viz.STRINGS): "viz",
+        id(cli.STRINGS): "cli",
+    }
     for module in (common, pages, widgets, viz, cli):
+        mod_name = _module_names.get(id(module.STRINGS), "?")
         for key, translations in module.STRINGS.items():
+            # Alias : valeur est un str → pointer vers une autre clé
+            if isinstance(translations, str):
+                if key not in registry:
+                    aliases[key] = translations
+                continue
+
             if key in registry:
-                # Collision de clé entre modules — la première déclaration gagne
+                # Collision — la première déclaration gagne.
+                # Warning si les valeurs diffèrent (bug potentiel).
+                existing = registry[key]
+                if existing != translations:
+                    logger.warning(
+                        "i18n: collision de clé '%s' entre modules "
+                        "(gardé=%s, ignoré=%s avec valeurs différentes)",
+                        key,
+                        "earlier",
+                        mod_name,
+                    )
                 continue
             registry[key] = translations
+
+    # Résolution des alias
+    for alias_key, target_key in aliases.items():
+        if target_key in registry:
+            registry[alias_key] = registry[target_key]
+        else:
+            logger.warning(
+                "i18n: alias '%s' → '%s' : clé cible introuvable",
+                alias_key,
+                target_key,
+            )
+
     return registry
 
 
@@ -80,10 +130,10 @@ def t(key: str, lang: str | None = None, **kwargs: object) -> str:
 
     text = translations.get(resolved_lang) or translations.get("fr") or f"[{key}]"
     if kwargs:
-        try:
+        import contextlib
+
+        with contextlib.suppress(KeyError, ValueError):
             text = text.format(**kwargs)
-        except (KeyError, ValueError):
-            pass
     return text
 
 

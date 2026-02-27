@@ -1,10 +1,10 @@
 {
-    "a la charge": {
+    "charge": {
         "name": "À la charge",
         "description": "Prenez le contrôle d'une base dans n'importe quelle partie matchmaking Bases.",
         "category": "Mode de jeu"
     },
-    "annexion forcee": {
+    "forced_annexation": {
         "name": "Annexion forcée",
         "description": "Prenez le contrôle de 3 bases sans mourir dans n'importe quelle partie matchmaking Bases.",
         "category": "Mode de jeu"
@@ -19,47 +19,47 @@
         "description": "Terminez n'importe quelle partie matchmaking Assassin avec un FDA supérieur à 8.",
         "category": "Mode de jeu"
     },
-    "defenseur du drapeau": {
+    "flag_defender": {
         "name": "Défenseur du drapeau",
         "description": "Protégez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.",
         "category": "Mode de jeu"
     },
-    "je te tiens !": {
+    "got_you": {
         "name": "Je te tiens !",
         "description": "Rapportez le drapeau de votre équipe dans n'importe quelle partie matchmaking Capture du drapeau.",
         "category": "Mode de jeu"
     },
-    "partie prenante": {
+    "stakeholder": {
         "name": "Partie prenante",
         "description": "Défendez une base appartenant à votre équipe dans n'importe quelle partie matchmaking Bases.",
         "category": "Mode de jeu"
     },
-    "sus au porteur du drapeau": {
+    "flag_carrier_hunter": {
         "name": "Sus au porteur du drapeau",
         "description": "Tuez un porte-drapeau ennemi dans n'importe quelle partie matchmaking Capture du drapeau.",
         "category": "Mode de jeu"
     },
-    "victoire au drapeau": {
+    "flag_victory": {
         "name": "Victoire au drapeau",
         "description": "Remportez n'importe quelle partie matchmaking Capture du drapeau.",
         "category": "Mode de jeu"
     },
-    "victoire en assassin": {
+    "slayer_victory": {
         "name": "Victoire en assassin",
         "description": "Remportez une partie d'Assassin en équipe.",
         "category": "Mode de jeu"
     },
-    "victoire en bases": {
+    "strongholds_victory": {
         "name": "Victoire en bases",
         "description": "Remportez n'importe quelle partie matchmaking Bases.",
         "category": "Mode de jeu"
     },
-    "ecrasement": {
+    "splatter": {
         "name": "Écrasement",
         "description": "Écrasez un Spartan adverse avec un véhicule.",
         "category": "Arme"
     },
-    "pilote": {
+    "driver": {
         "name": "Pilote",
         "description": "Décrochez des médailles de pilote.",
         "category": "Arme"
@@ -69,62 +69,62 @@
         "description": "Assassinez des Spartans adverses.",
         "category": "Multijoueur"
     },
-    "carnage de spartans": {
+    "spartan_carnage": {
         "name": "Carnage de Spartans",
         "description": "Tuez plusieurs Spartans adverses sans mourir.",
         "category": "Multijoueur"
     },
-    "combat rapproche": {
+    "close_combat": {
         "name": "Combat rapproché",
         "description": "Remportez n'importe quelle médaille de combat rapproché.",
         "category": "Multijoueur"
     },
-    "combattant opportuniste": {
+    "opportunist": {
         "name": "Combattant opportuniste",
         "description": "Remportez n'importe quelle médaille d'aptitude au combat.",
         "category": "Multijoueur"
     },
-    "multifrag": {
+    "multikill": {
         "name": "Multifrag",
         "description": "Tuez rapidement plusieurs Spartans adverses.",
         "category": "Multijoueur"
     },
-    "pugilat": {
+    "melee_fighter": {
         "name": "Pugilat",
         "description": "Tuez un Spartan ennemi d'une attaque rapprochée.",
         "category": "Multijoueur"
     },
-    "tir a la tete": {
+    "headshot": {
         "name": "Tir à la tête",
         "description": "Tuez un Spartan ennemi d'un tir à la tête.",
         "category": "Multijoueur"
     },
-    "tueur de spartans": {
+    "spartan_killer": {
         "name": "Tueur de Spartans",
         "description": "Éliminez les Spartans ennemis.",
         "category": "Multijoueur"
     },
-    "\u0153il de lynx": {
+    "eagle_eye": {
         "name": "Œil de lynx",
         "description": "Tuez un Spartan adverse en pleine santé à l'aide d'une arme de précision sans manquer un seul coup.",
         "category": "Multijoueur"
     },
-    "flag 'em down": {
+    "flag_em_down": {
         "name": "Sors les drapeaux",
         "description": "Obtenir une des médailles suivantes : Interception, Bataille de drapeaux, Frag du porteur, Retour du drapeau, Défense du drapeau",
         "category": "Spartan Companies"
     },
-    "grand theft": {
+    "grand_theft": {
         "name": "Vol à la tire",
         "description": "Aborder un véhicule ou un véhicule aérien",
         "category": "Spartan Companies"
     },
-    "helping hand": {
+    "helping_hand": {
         "name": "Coup de main",
         "description": "Obtenir n'importe quelle assistance",
         "category": "Spartan Companies"
     },
-    "i'm just perfect": {
+    "im_just_perfect": {
         "name": "Zéro défaut",
         "description": "Tuer un joueur avec une arme de précision sans manquer un tir",
         "category": "Spartan Companies"
@@ -134,7 +134,7 @@
         "description": "Tuer un adversaire en l'écrasant avec un véhicule",
         "category": "Spartan Companies"
     },
-    "look ma no pin": {
+    "look_ma_no_pin": {
         "name": "Regarde maman, sans goupille",
         "description": "Tuer un Spartan ennemi avec n'importe quelle grenade",
         "category": "Spartan Companies"
@@ -144,137 +144,137 @@
         "description": "Obtenir les médailles La chance, Chargeur vide, Sayonara ou Boulet de canon",
         "category": "Spartan Companies"
     },
-    "no hard feelings": {
+    "no_hard_feelings": {
         "name": "Sans rancune",
         "description": "Tuer des Spartans ennemis",
         "category": "Spartan Companies"
     },
-    "positive contribution": {
+    "positive_contribution": {
         "name": "Positive contribution",
         "description": "Finir avec FDA supérieur à 8 dans n'importe quelle partie Assassin en matchmaking",
         "category": "Spartan Companies"
     },
-    "power play": {
+    "power_play": {
         "name": "Coup de force",
         "description": "Tuer un Spartan ennemi avec une arme puissante",
         "category": "Spartan Companies"
     },
-    "road trip": {
+    "road_trip": {
         "name": "Virée sur la route",
         "description": "Tuer un Spartan ennemi avec un véhicule terrestre",
         "category": "Spartan Companies"
     },
-    "sting like a bee": {
+    "sting_like_a_bee": {
         "name": "Pique comme une abeille",
         "description": "Tuer un Spartan ennemi en combat rapproché",
         "category": "Spartan Companies"
     },
-    "the reaper": {
+    "the_reaper": {
         "name": "Le faucheur",
         "description": "Tuer un adversaire d'outre-tombe",
         "category": "Spartan Companies"
     },
-    "too fast for you": {
+    "too_fast_for_you": {
         "name": "Trop rapide pour toi",
         "description": "Tuer un adversaire qui vous a tiré dessus en premier",
         "category": "Spartan Companies"
     },
-    "vandalisme": {
+    "vandalism": {
         "name": "Vandalisme",
         "description": "Détruire un véhicule ennemi",
         "category": "Spartan Companies"
     },
-    "destructeur d'apparitions": {
+    "wraith_destroyer": {
         "name": "Destructeur d'apparitions",
         "description": "Détruisez les apparitions occupées par l'adversaire.",
         "category": "Arme"
     },
-    "destructeur de banshees": {
+    "banshee_destroyer": {
         "name": "Destructeur de banshees",
         "description": "Détruisez les banshees occupés par l'adversaire.",
         "category": "Arme"
     },
-    "destructeur de ghosts": {
+    "ghost_destroyer": {
         "name": "Destructeur de ghosts",
         "description": "Détruisez les ghosts occupés par l'adversaire.",
         "category": "Arme"
     },
-    "destructeur de mongooses": {
+    "mongoose_destroyer": {
         "name": "Destructeur de mongooses",
         "description": "Détruisez les mongooses occupées par l'adversaire.",
         "category": "Arme"
     },
-    "destructeur de scorpions": {
+    "scorpion_destroyer": {
         "name": "Destructeur de scorpions",
         "description": "Détruisez les scorpions occupés par l'adversaire.",
         "category": "Arme"
     },
-    "destructeur de warthogs": {
+    "warthog_destroyer": {
         "name": "Destructeur de warthogs",
         "description": "Détruisez les warthogs occupés par l'adversaire.",
         "category": "Arme"
     },
-    "destructeur de wasps": {
+    "wasp_destroyer": {
         "name": "Destructeur de wasps",
         "description": "Détruisez les wasps occupés par l'adversaire.",
         "category": "Arme"
     },
-    "tueur de grognards": {
+    "grunt_slayer": {
         "name": "Tueur de Grognards",
         "description": "Tuez des Grognards.",
         "category": "Ennemi"
     },
-    "tueur d'elites": {
+    "elite_slayer": {
         "name": "Tueur d'Élites",
         "description": "Tuez des Élites.",
         "category": "Ennemi"
     },
-    "tueur de rapaces": {
+    "jackal_slayer": {
         "name": "Tueur de Rapaces",
         "description": "Tuez des Rapaces.",
         "category": "Ennemi"
     },
-    "tueur de chasseurs": {
+    "hunter_slayer": {
         "name": "Tueur de Chasseurs",
         "description": "Tuez des Chasseurs.",
         "category": "Ennemi"
     },
-    "tueur de sentinelles": {
+    "sentinel_slayer": {
         "name": "Tueur de sentinelles",
         "description": "Tuez des sentinelles.",
         "category": "Ennemi"
     },
-    "like a boss": {
+    "like_a_boss": {
         "name": "Comme un Boss",
         "description": "Tuer un boss dans une partie Baptême du feu zone de combat",
         "category": "Spartan Companies"
     },
-    "player vs everything": {
+    "player_vs_everything": {
         "name": "Éliminations Firefight",
         "description": "Gagner des parties en Baptême du feu",
         "category": "Spartan Companies"
     },
-    "tueur de brutes": {
+    "brute_slayer": {
         "name": "Tueur de Brutes",
         "description": "Tuez des Brutes.",
         "category": "Ennemi"
     },
-    "tueur de skimmers": {
+    "skimmer_slayer": {
         "name": "Tueur de Skimmers",
         "description": "Tuez des Skimmers.",
         "category": "Ennemi"
     },
-    "tueur de marines": {
+    "marine_slayer": {
         "name": "Tueur de Marines",
         "description": "Tuez les Marines ennemis.",
         "category": "Ennemi"
     },
-    "destructeur de covenants": {
+    "covenant_destroyer": {
         "name": "Destructeur de Covenants",
         "description": "Obtenez toutes les citations d'élimination de Covenants",
         "category": "Ennemi"
     },
-    "seul contre tous": {
+    "lone_wolf": {
         "name": "Seul contre tous",
         "description": "Remportez une partie en Mêlée générale.",
         "category": "Mode de jeu"

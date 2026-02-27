@@ -14,7 +14,8 @@ from src.analysis.objective_participation import (
     compute_award_frequency_polars,
     compute_objective_summary_by_match_polars,
 )
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
+from src.ui.i18n.data_labels import label as i18n_label
 from src.ui.streamlit_modern import fragment_if_available
 from src.visualization.objective_charts import (
     plot_assist_breakdown_pie,
@@ -341,6 +342,9 @@ def render_objective_analysis_page(
             if not assist_by_type.is_empty():
                 # Convertir en pandas pour affichage
                 assist_table = assist_by_type.to_pandas()
+                assist_table["award_name"] = assist_table["award_name"].map(
+                    lambda x: i18n_label("awards", x, lang=get_lang()) or x
+                )
                 assist_table.columns = ["Type d'assistance", "Points", "Nombre"]
                 st.dataframe(
                     assist_table,
@@ -366,6 +370,9 @@ def render_objective_analysis_page(
         )
         if not obj_freq.is_empty():
             freq_table = obj_freq.to_pandas()
+            freq_table.iloc[:, 0] = freq_table.iloc[:, 0].map(
+                lambda x: i18n_label("awards", x, lang=get_lang()) or x
+            )
             freq_table.columns = ["Award", "Points", "Occurrences"]
             st.dataframe(freq_table, width="stretch", hide_index=True)
         else:
@@ -376,6 +383,9 @@ def render_objective_analysis_page(
         all_freq = compute_award_frequency_polars(my_awards_df, top_n=10)
         if not all_freq.is_empty():
             all_table = all_freq.to_pandas()
+            all_table.iloc[:, 0] = all_table.iloc[:, 0].map(
+                lambda x: i18n_label("awards", x, lang=get_lang()) or x
+            )
             all_table.columns = ["Award", "Points", "Occurrences"]
             st.dataframe(all_table, width="stretch", hide_index=True)
         else:
