@@ -606,6 +606,166 @@ STRINGS: dict[str, dict[str, str]] = {
     "suffix_deaths": {"fr": "morts", "en": "deaths"},
     "suffix_kills": {"fr": "kills", "en": "kills"},
     "suffix_smoothed": {"fr": "(moy. lissée)", "en": "(smoothed)"},
+    # ── Titres supplémentaires (Phase 3) ─────────────────────────────────────
+    "title_cumul_net_score": {"fr": "Net Score Cumulé", "en": "Cumulative Net Score"},
+    "title_cumul_kd": {"fr": "K/D Cumulé", "en": "Cumulative K/D"},
+    "title_session_trend": {"fr": "Tendance de la Session", "en": "Session Trend"},
+    "title_nemesis_victim": {"fr": "Némésis et Souffre-douleur", "en": "Nemesis & Punching Bag"},
+    "title_killer_victim_matrix": {"fr": "Matrice Killer-Victim", "en": "Killer-Victim Matrix"},
+    "title_top_antagonists": {"fr": "Top Antagonistes", "en": "Top Antagonists"},
+    "title_kd_timeline": {"fr": "K/D", "en": "K/D"},
+    "title_elim_victim": {"fr": "Eliminateur-Victime", "en": "Eliminator-Victim"},
+    # ── Hovertemplates (Phase 3) ───────────────────────────────────────────────
+    "hover_kda_combined": {
+        "fr": "frags=%{customdata[0]} morts=%{customdata[1]} assistances=%{customdata[2]}<br>précision=%{customdata[3]}% ratio=%{customdata[4]:.3f}<extra></extra>",
+        "en": "kills=%{customdata[0]} deaths=%{customdata[1]} assists=%{customdata[2]}<br>accuracy=%{customdata[3]}% ratio=%{customdata[4]:.3f}<extra></extra>",
+    },
+    "hover_assists_combined": {
+        "fr": "assistances=%{y}<br>frags=%{customdata[0]} morts=%{customdata[1]}<br>précision=%{customdata[3]}% ratio=%{customdata[4]:.3f}<extra></extra>",
+        "en": "assists=%{y}<br>kills=%{customdata[0]} deaths=%{customdata[1]}<br>accuracy=%{customdata[3]}% ratio=%{customdata[4]:.3f}<extra></extra>",
+    },
+    "hover_avg_smoothed": {
+        "fr": "moyenne=%{y:.2f}<extra></extra>",
+        "en": "average=%{y:.2f}<extra></extra>",
+    },
+    "hover_avg_smoothed_s": {
+        "fr": "moyenne=%{y:.2f}s<extra></extra>",
+        "en": "average=%{y:.2f}s<extra></extra>",
+    },
+    "hover_avg_s1": {
+        "fr": "moyenne=%{y:.1f}<extra></extra>",
+        "en": "average=%{y:.1f}<extra></extra>",
+    },
+    "hover_avg": {
+        "fr": "moy=%{y:.2f}<extra></extra>",
+        "en": "avg=%{y:.2f}<extra></extra>",
+    },
+    "hover_avg0": {
+        "fr": "moy=%{y:.0f}<extra></extra>",
+        "en": "avg=%{y:.0f}<extra></extra>",
+    },
+    "hover_kpm": {
+        "fr": "frags/min=%{y:.2f}<br>temps joué=%{customdata[0]:.0f}s (frags=%{customdata[1]:.0f})<extra></extra>",
+        "en": "kills/min=%{y:.2f}<br>time played=%{customdata[0]:.0f}s (kills=%{customdata[1]:.0f})<extra></extra>",
+    },
+    "hover_dpm": {
+        "fr": "morts/min=%{y:.2f}<br>temps joué=%{customdata[0]:.0f}s (morts=%{customdata[2]:.0f})<extra></extra>",
+        "en": "deaths/min=%{y:.2f}<br>time played=%{customdata[0]:.0f}s (deaths=%{customdata[2]:.0f})<extra></extra>",
+    },
+    "hover_apm": {
+        "fr": "assist./min=%{y:.2f}<br>temps joué=%{customdata[0]:.0f}s (assistances=%{customdata[3]:.0f})<extra></extra>",
+        "en": "assists/min=%{y:.2f}<br>time played=%{customdata[0]:.0f}s (assists=%{customdata[3]:.0f})<extra></extra>",
+    },
+    "hover_accuracy_pct": {
+        "fr": "précision=%{y:.2f}%<extra></extra>",
+        "en": "accuracy=%{y:.2f}%<extra></extra>",
+    },
+    "hover_lifespan": {
+        "fr": "durée de vie moy.=%{y:.1f}s<br>morts=%{customdata[0]}<br>temps joué=%{customdata[1]:.0f}s<extra></extra>",
+        "en": "avg lifespan=%{y:.1f}s<br>deaths=%{customdata[0]}<br>time played=%{customdata[1]:.0f}s<extra></extra>",
+    },
+    "hover_killing_spree": {
+        "fr": "folie meurtrière=%{y}<extra></extra>",
+        "en": "killing spree=%{y}<extra></extra>",
+    },
+    "hover_headshots": {
+        "fr": "tirs à la tête=%{y}<extra></extra>",
+        "en": "headshots=%{y}<extra></extra>",
+    },
+    "hover_streak": {
+        "fr": "série=%{y}<br>date=%{customdata}<extra></extra>",
+        "en": "streak=%{y}<br>date=%{customdata}<extra></extra>",
+    },
+    "hover_dmg_dealt": {
+        "fr": "infligés=%{y:.0f}<extra></extra>",
+        "en": "dealt=%{y:.0f}<extra></extra>",
+    },
+    "hover_dmg_taken": {
+        "fr": "subis=%{y:.0f}<extra></extra>",
+        "en": "taken=%{y:.0f}<extra></extra>",
+    },
+    "hover_shots_fired": {
+        "fr": "tirés=%{y:.0f}<extra></extra>",
+        "en": "fired=%{y:.0f}<extra></extra>",
+    },
+    "hover_shots_hit": {
+        "fr": "touchés=%{y:.0f}<extra></extra>",
+        "en": "hit=%{y:.0f}<extra></extra>",
+    },
+    "hover_net_kd_cumul": {
+        "fr": "Min %{x}<br>Net K/D cumulé: %{y:+d}<extra></extra>",
+        "en": "Round %{x}<br>Net K/D cumul: %{y:+d}<extra></extra>",
+    },
+    "hover_killed_by": {
+        "fr": "<b>%{y}</b><br>M'a tué: %{x} fois<extra></extra>",
+        "en": "<b>%{y}</b><br>Killed me: %{x} times<extra></extra>",
+    },
+    "hover_i_killed": {
+        "fr": "<b>%{y}</b><br>Tué: %{x} fois<extra></extra>",
+        "en": "<b>%{y}</b><br>Killed: %{x} times<extra></extra>",
+    },
+    "hover_kde": {
+        "fr": "FDA=%{x:.2f}<br>densité=%{y:.3f}<extra></extra>",
+        "en": "CDF=%{x:.2f}<br>density=%{y:.3f}<extra></extra>",
+    },
+    "hover_first_event": {
+        "fr": "Temps: %{x:.0f}s<br>Matchs: %{y}<extra></extra>",
+        "en": "Time: %{x:.0f}s<br>Matches: %{y}<extra></extra>",
+    },
+    "hover_weapons": {
+        "fr": "%{y}<br>Frags: %{x}<br>Headshot: %{customdata[0]:.1f}%<br>Précision: %{customdata[1]:.1f}%<extra></extra>",
+        "en": "%{y}<br>Kills: %{x}<br>Headshot: %{customdata[0]:.1f}%<br>Accuracy: %{customdata[1]:.1f}%<extra></extra>",
+    },
+    "hover_cumul_score": {
+        "fr": "<b>%{x}</b><br>Cumulé: %{y:+d}<extra></extra>",
+        "en": "<b>%{x}</b><br>Cumul: %{y:+d}<extra></extra>",
+    },
+    "hover_kd_cumul_line": {
+        "fr": "<b>%{x}</b><br>K/D Cumulé: %{y:.2f}<extra></extra>",
+        "en": "<b>%{x}</b><br>K/D Cumul: %{y:.2f}<extra></extra>",
+    },
+    "hover_kd_rolling_line": {
+        "fr": "<b>%{x}</b><br>K/D Glissant: %{y:.2f}<extra></extra>",
+        "en": "<b>%{x}</b><br>Rolling K/D: %{y:.2f}<extra></extra>",
+    },
+    "hover_match_cumul": {
+        "fr": "<b>{label}</b><br>Match #%{{x}}<br>Cumulé: %{{y:+d}}<extra></extra>",
+        "en": "<b>{label}</b><br>Match #%{{x}}<br>Cumul: %{{y:+d}}<extra></extra>",
+    },
+    "text_kills_count": {
+        "fr": "{k} frags",
+        "en": "{k} kills",
+    },
+    # ── Annotations (Phase 3) ─────────────────────────────────────────────────
+    "annot_median": {
+        "fr": "Médiane: {val}",
+        "en": "Median: {val}",
+    },
+    "annot_avg_kill": {
+        "fr": "Moy. frag: {val}s",
+        "en": "Avg kill: {val}s",
+    },
+    "annot_avg_death": {
+        "fr": "Moy. mort: {val}s",
+        "en": "Avg death: {val}s",
+    },
+    "annot_med_kill": {
+        "fr": "Méd. frag: {val}s",
+        "en": "Med. kill: {val}s",
+    },
+    "annot_med_death": {
+        "fr": "Méd. mort: {val}s",
+        "en": "Med. death: {val}s",
+    },
+    "annot_penalties": {
+        "fr": "Pénalités: {pts} pts",
+        "en": "Penalties: {pts} pts",
+    },
+    # ── Messages vides supplémentaires (Phase 3) ──────────────────────────────
+    "empty_not_enough_matches": {
+        "fr": "Pas assez de matchs pour analyser la tendance (min: 4)",
+        "en": "Not enough matches to analyze trend (min: 4)",
+    },
 }
 
 

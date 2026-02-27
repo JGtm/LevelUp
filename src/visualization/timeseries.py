@@ -39,19 +39,17 @@ def _rolling_mean(series: pl.Series, window: int = 10) -> pl.Series:
     return series.rolling_mean(window_size=w, min_samples=1)
 
 
-def _build_kda_customdata(d: pl.DataFrame) -> tuple[list, str]:
+def _build_kda_customdata(d: pl.DataFrame, lang: str = "fr") -> tuple[list, str]:
     """Construit le customdata et le template hover commun pour graphiques KDA.
 
     Args:
         d: DataFrame trié avec colonnes kills, deaths, assists, accuracy, ratio.
+        lang: Langue ("fr" ou "en").
 
     Returns:
         Tuple (customdata, common_hover).
     """
-    common_hover = (
-        "frags=%{customdata[0]} morts=%{customdata[1]} assistances=%{customdata[2]}<br>"
-        "précision=%{customdata[3]}% ratio=%{customdata[4]:.3f}<extra></extra>"
-    )
+    common_hover = viz_t("hover_kda_combined", lang)
     accuracy = d["accuracy"].cast(pl.Float64, strict=False).fill_null(0).round(2)
     customdata = list(
         zip(
@@ -128,7 +126,7 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
     if df_pl.is_empty():
         fig = go.Figure()
         fig.add_annotation(
-            text="Aucune donnée disponible",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -143,7 +141,7 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
     d = df_pl.sort("start_time")
     x_idx = list(range(len(d)))
 
-    customdata, common_hover = _build_kda_customdata(d)
+    customdata, common_hover = _build_kda_customdata(d, lang=lang)
     _add_kda_traces(fig, x_idx, d, customdata, common_hover, colors, lang=lang)
 
     fig.update_layout(
@@ -219,11 +217,7 @@ def plot_assists_timeseries(
             strict=False,
         )
     )
-    hover = (
-        "assistances=%{y}<br>"
-        "frags=%{customdata[0]} morts=%{customdata[1]}<br>"
-        "précision=%{customdata[3]}% ratio=%{customdata[4]:.3f}<extra></extra>"
-    )
+    hover = viz_t("hover_assists_combined", lang)
 
     fig = go.Figure()
     fig.add_trace(
@@ -247,7 +241,7 @@ def plot_assists_timeseries(
             mode="lines",
             name=viz_t("trace_avg_smoothed", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["green"]},
-            hovertemplate="moyenne=%{y:.2f}<extra></extra>",
+            hovertemplate=viz_t("hover_avg_smoothed", lang),
         )
     )
 
@@ -295,7 +289,7 @@ def _add_permin_rolling_lines(
             mode="lines",
             name=viz_t("trace_avg_kills_per_min", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["cyan"]},
-            hovertemplate="moy=%{y:.2f}<extra></extra>",
+            hovertemplate=viz_t("hover_avg", lang),
         )
     )
     fig.add_trace(
@@ -305,7 +299,7 @@ def _add_permin_rolling_lines(
             mode="lines",
             name=viz_t("trace_avg_deaths_per_min", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["red"], "dash": "dot"},
-            hovertemplate="moy=%{y:.2f}<extra></extra>",
+            hovertemplate=viz_t("hover_avg", lang),
         )
     )
     fig.add_trace(
@@ -315,7 +309,7 @@ def _add_permin_rolling_lines(
             mode="lines",
             name=viz_t("trace_avg_assists_per_min", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["violet"], "dash": "dot"},
-            hovertemplate="moy=%{y:.2f}<extra></extra>",
+            hovertemplate=viz_t("hover_avg", lang),
         )
     )
 
@@ -365,10 +359,7 @@ def plot_per_minute_timeseries(
             marker_color=colors["cyan"],
             opacity=PLOT_CONFIG.bar_opacity,
             customdata=customdata,
-            hovertemplate=(
-                "frags/min=%{y:.2f}<br>"
-                "temps joué=%{customdata[0]:.0f}s (frags=%{customdata[1]:.0f})<extra></extra>"
-            ),
+            hovertemplate=viz_t("hover_kpm", lang),
         )
     )
     fig.add_trace(
@@ -379,10 +370,7 @@ def plot_per_minute_timeseries(
             marker_color=colors["red"],
             opacity=PLOT_CONFIG.bar_opacity_secondary,
             customdata=customdata,
-            hovertemplate=(
-                "morts/min=%{y:.2f}<br>"
-                "temps joué=%{customdata[0]:.0f}s (morts=%{customdata[2]:.0f})<extra></extra>"
-            ),
+            hovertemplate=viz_t("hover_dpm", lang),
         )
     )
     fig.add_trace(
@@ -393,10 +381,7 @@ def plot_per_minute_timeseries(
             marker_color=colors["violet"],
             opacity=PLOT_CONFIG.bar_opacity_secondary,
             customdata=customdata,
-            hovertemplate=(
-                "assist./min=%{y:.2f}<br>"
-                "temps joué=%{customdata[0]:.0f}s (assistances=%{customdata[3]:.0f})<extra></extra>"
-            ),
+            hovertemplate=viz_t("hover_apm", lang),
         )
     )
 
@@ -446,7 +431,7 @@ def plot_accuracy_last_n(df: DataFrameLike, n: int, lang: str = "fr") -> go.Figu
                 mode="lines",
                 name=viz_t("trace_accuracy", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors["violet"]},
-                hovertemplate="précision=%{y:.2f}%<extra></extra>",
+                hovertemplate=viz_t("hover_accuracy_pct", lang),
             )
         ]
     )

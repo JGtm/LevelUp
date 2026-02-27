@@ -86,7 +86,7 @@ def render_comparison_charts(
     with c5:
         if not sub.drop_nulls(subset=["average_life_seconds"]).is_empty():
             st.plotly_chart(
-                plot_average_life(sub, title=f"{me_name} — Durée de vie (avec {friend_name})"),
+                plot_average_life(sub, title=t("tm_lifespan_with", player=me_name, partner=friend_name)),
                 width="stretch",
                 key=f"friend_life_me_{friend_xuid}",
                 config={"displayModeBar": False},
@@ -98,7 +98,7 @@ def render_comparison_charts(
         ):
             st.plotly_chart(
                 plot_average_life(
-                    friend_sub, title=f"{friend_name} — Durée de vie (avec {me_name})"
+                    friend_sub, title=t("tm_lifespan_with", player=friend_name, partner=me_name)
                 ),
                 width="stretch",
                 key=f"friend_life_fr_{friend_xuid}",
@@ -215,13 +215,24 @@ def render_outcome_bar_chart(dfr: DataFrameLike) -> None:
         dfr: DataFrame avec colonne 'my_outcome'.
     """
     dfr = ensure_polars(dfr)
-    outcome_map = {2: "Victoire", 3: "Défaite", 1: "Égalité", 4: "Non terminé"}
+    outcome_map = {
+        2: t("outcome_win"),
+        3: t("outcome_loss"),
+        1: t("outcome_draw"),
+        4: t("outcome_dnf"),
+    }
     dfr = dfr.with_columns(
         pl.col("my_outcome")
-        .replace_strict(outcome_map, default="?", return_dtype=pl.Utf8)
+        .replace_strict(outcome_map, default=t("outcome_unknown"), return_dtype=pl.Utf8)
         .alias("my_outcome_label")
     )
-    ordered_labels = ["Victoire", "Défaite", "Égalité", "Non terminé", "?"]
+    ordered_labels = [
+        t("outcome_win"),
+        t("outcome_loss"),
+        t("outcome_draw"),
+        t("outcome_dnf"),
+        t("outcome_unknown"),
+    ]
     counts_df = dfr.group_by("my_outcome_label").len().rename({"len": "count"})
     all_labels = pl.DataFrame({"my_outcome_label": ordered_labels})
     counts_df = all_labels.join(counts_df, on="my_outcome_label", how="left").fill_null(0)

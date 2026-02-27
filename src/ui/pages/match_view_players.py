@@ -367,12 +367,25 @@ def render_nemesis_section(
         validation_icon = "✓" if res.is_validated else "⚠"
         validation_label = t("lbl_validated") if res.is_validated else t("lbl_not_validated")
 
+        deaths_part = t(
+            "mvp_attribution_deaths",
+            assigned=res.my_deaths_assigned_total,
+            total=res.my_deaths_total,
+            certain=res.my_deaths_assigned_certain,
+            estimated=deaths_est,
+            missing=deaths_missing,
+        )
+        kills_part = t(
+            "mvp_attribution_kills",
+            assigned=res.my_kills_assigned_total,
+            total=res.my_kills_total,
+            certain=res.my_kills_assigned_certain,
+            estimated=kills_est,
+            missing=kills_missing,
+        )
         st.caption(
             f"Debug antagonistes {validation_icon} {validation_label} — "
-            f"Morts attribuées {res.my_deaths_assigned_total}/{res.my_deaths_total} "
-            f"(certain {res.my_deaths_assigned_certain}, estimé {deaths_est}, manquantes {deaths_missing}) · "
-            f"Kills attribués {res.my_kills_assigned_total}/{res.my_kills_total} "
-            f"(certain {res.my_kills_assigned_certain}, estimé {kills_est}, manquants {kills_missing})"
+            f"{deaths_part} · {kills_part}"
         )
 
         # Sprint 3.3: Afficher validation_notes si présentes
