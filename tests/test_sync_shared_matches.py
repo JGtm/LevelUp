@@ -1128,10 +1128,15 @@ class TestComputeBackfillMask:
         engine_with_shared.close()
 
     def test_with_events_option(self, engine_with_shared: DuckDBSyncEngine) -> None:
-        """L'option with_highlight_events ajoute le flag events."""
+        """Fix v5.4 : le bit events n'est plus dans le masque _compute_backfill_mask.
+
+        Il est posé en dehors du masque, uniquement quand des events sont réellement
+        insérés (cf. _sync_single_match_shared), pour ne pas marquer comme «complet»
+        les matchs où l'API retourne highlight_events=[].
+        """
         from src.data.sync.migrations import BACKFILL_FLAGS
 
         options = SyncOptions(with_highlight_events=True)
         mask = engine_with_shared._compute_backfill_mask(options)
-        assert mask & BACKFILL_FLAGS["events"]
+        assert not (mask & BACKFILL_FLAGS["events"])
         engine_with_shared.close()

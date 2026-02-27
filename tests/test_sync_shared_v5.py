@@ -291,10 +291,15 @@ class TestComputeBackfillMask:
         assert not (mask & BACKFILL_FLAGS["enemy_mmr"])
 
     def test_with_events_adds_events_flag(self, engine_with_shared: DuckDBSyncEngine) -> None:
-        """with_highlight_events=True ajoute le flag events."""
+        """Fix v5.4 : with_highlight_events=True ne pose PAS le bit events dans le masque.
+
+        Le bit est posé uniquement lors de l'insertion effective des events,
+        hors du masque global, pour éviter les faux positifs sur les matchs
+        sans events API.
+        """
         opts = SyncOptions(with_highlight_events=True)
         mask = engine_with_shared._compute_backfill_mask(opts)
-        assert mask & BACKFILL_FLAGS["events"]
+        assert not (mask & BACKFILL_FLAGS["events"])
 
     def test_with_participants_adds_multi_flags(self, engine_with_shared: DuckDBSyncEngine) -> None:
         """with_participants=True ajoute plusieurs flags participants."""
