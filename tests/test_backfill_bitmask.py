@@ -43,7 +43,8 @@ def shared_conn():
             pair_id VARCHAR,
             game_variant_name VARCHAR,
             game_variant_id VARCHAR,
-            backfill_completed INTEGER DEFAULT 0
+            backfill_completed INTEGER DEFAULT 0,
+            events_loaded BOOLEAN DEFAULT FALSE
         )
     """)
     c.execute("""
@@ -134,7 +135,7 @@ def shared_conn():
     # match-001 has medals, match-002 and match-003 don't
     c.execute("INSERT INTO medals_earned VALUES ('match-001', 100, 2, ?)", [XUID])
 
-    # match-001 and match-002 have events, match-003 doesn't
+    # match-001 and match-002 have events (events_loaded=TRUE), match-003 doesn't
     c.execute(
         "INSERT INTO highlight_events VALUES (1, 'match-001', 'kill', 1000, ?, 'Test', 0, NULL)",
         [XUID],
@@ -142,6 +143,9 @@ def shared_conn():
     c.execute(
         "INSERT INTO highlight_events VALUES (2, 'match-002', 'kill', 2000, ?, 'Test', 0, NULL)",
         [XUID],
+    )
+    c.execute(
+        "UPDATE match_registry SET events_loaded = TRUE WHERE match_id IN ('match-001', 'match-002')"
     )
 
     yield c
@@ -294,11 +298,10 @@ def test_bitmask_per_type_independent(shared_conn, player_conn):
 
 
 def test_bitmask_events_excludes_after_marking(shared_conn, player_conn):
-    """Events : marquage exclut le match au rerun."""
-    events_bit = BACKFILL_FLAGS["events"]
+    """Events : après backfill (events_loaded=TRUE), le match n'est plus détecté."""
+    # Fix v5.4 : la détection utilise events_loaded (source de vérité), pas le bitmask
     shared_conn.execute(
-        "UPDATE match_registry SET backfill_completed = ? WHERE match_id = 'match-003'",
-        [events_bit],
+        "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = 'match-003'"
     )
 
     result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, events=True)
@@ -306,11 +309,15 @@ def test_bitmask_events_excludes_after_marking(shared_conn, player_conn):
 
 
 def test_bitmask_combined_types(shared_conn, player_conn):
-    """Le bitmask combiné (medals + events) exclut correctement."""
-    mask = compute_backfill_mask("medals", "events")
+    """Bitmask medals + events_loaded excluent correctement."""
+    # Fix v5.4 : medals reste via bitmask, events via events_loaded
+    medals_bit = compute_backfill_mask("medals")
     shared_conn.execute(
         "UPDATE match_registry SET backfill_completed = ? WHERE match_id = 'match-003'",
-        [mask],
+        [medals_bit],
+    )
+    shared_conn.execute(
+        "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = 'match-003'"
     )
 
     result_medals = find_matches_missing_data(
@@ -388,6 +395,11 @@ def test_full_scenario_single_run(shared_conn, player_conn):
             "WHERE match_id = ?",
             [mask, match_id],
         )
+        # Fix v5.4 : la détection events utilise events_loaded, pas le bitmask
+        shared_conn.execute(
+            "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = ?",
+            [match_id],
+        )
 
     # ÉTAPE 3 : Rerun — DOIT trouver 0 matchs manquants
     missing_rerun = find_matches_missing_data(
@@ -431,6 +443,11 @@ def test_full_scenario_incremental(shared_conn, player_conn):
             "UPDATE match_registry SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
             "WHERE match_id = ?",
             [mask_events, mid],
+        )
+        # Fix v5.4 : la détection events utilise events_loaded, pas le bitmask
+        shared_conn.execute(
+            "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = ?",
+            [mid],
         )
 
     # Rerun events → 0
@@ -564,6 +581,8 @@ class TestSyncEngineBackfillBitmask:
             "UPDATE match_registry SET backfill_completed = ?",
             [full_mask],
         )
+        # Fix v5.4 : la détection events utilise events_loaded (source de vérité)
+        shared_conn.execute("UPDATE match_registry SET events_loaded = TRUE")
         # La détection skill ignore le bitmask et vérifie les colonnes directement →
         # simuler les données skill remplies pour tous les participants
         shared_conn.execute(
