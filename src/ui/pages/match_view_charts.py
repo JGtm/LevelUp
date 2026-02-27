@@ -193,7 +193,7 @@ def render_expected_vs_actual(
             go.Bar(
                 x=labels,
                 y=hist_vals,
-                name=f"Moyenne hist. {mode_category} ({hist_avgs['match_count']} matchs)",
+                name=t("mvc_hist_avg", category=mode_category, n=hist_avgs["match_count"]),
                 marker={
                     "color": bar_colors,
                     "pattern": {
@@ -203,7 +203,7 @@ def render_expected_vs_actual(
                     },
                 },
                 opacity=0.35,
-                hovertemplate=f"%{{x}} (moy. hist. {mode_category}): %{{y:.1f}}<extra></extra>",
+                hovertemplate=f"%{{x}} ({t('mvc_hist_avg', category=mode_category, n=hist_avgs['match_count'])}): %{{y:.1f}}<extra></extra>",
             ),
             secondary_y=False,
         )

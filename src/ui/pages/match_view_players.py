@@ -1119,7 +1119,7 @@ def render_match_impact_section(
             if not label_info:
                 continue
             icon, label_fr = label_info
-            display_name = t("lbl_you") if ie.is_me else ie.gamertag
+            display_name = ie.gamertag
             accent = "#3DFFB5" if ie.is_me else "#FFB703"  # vert si moi, ambre sinon
             with badge_cols[i]:
                 os_card(
