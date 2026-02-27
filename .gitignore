@@ -83,6 +83,7 @@ data/rag/
 data/players/
 data/warehouse/match_facts/
 data/warehouse/*.duckdb
+data/warehouse/*.wal
 !data/warehouse/metadata.duckdb
 data/warehouse/metadata.db
 
