@@ -195,7 +195,7 @@ def plot_killer_victim_stacked_bars(
                 x=x_vals,
                 orientation="h",
                 marker={"color": color},
-                hovertemplate=f"<b>%{{y}}</b> → <b>{safe_v}</b><br>Frags: %{{x}}<extra></extra>",
+                hovertemplate=f"<b>%{{y}}</b> → <b>{safe_v}</b><br>{viz_t('axis_kills', lang)}: %{{x}}<extra></extra>",
             )
         )
 
@@ -272,7 +272,7 @@ def plot_kd_timeseries(
             x=minutes,
             y=kills,
             marker={"color": COLORS["kills"], "opacity": 0.7},
-            hovertemplate="Min %{x}<br>Frags: %{y}<extra></extra>",
+            hovertemplate=viz_t("hover_kills_per_min", lang),
         )
     )
 
@@ -283,7 +283,7 @@ def plot_kd_timeseries(
             x=minutes,
             y=[-d for d in deaths],
             marker={"color": COLORS["deaths"], "opacity": 0.7},
-            hovertemplate="Min %{x}<br>Morts: %{customdata}<extra></extra>",
+            hovertemplate=viz_t("hover_deaths_per_min", lang),
             customdata=deaths,
         )
     )
@@ -389,7 +389,7 @@ def plot_duel_history(
             x=matches,
             y=my_kills,
             marker={"color": COLORS["kills"]},
-            hovertemplate=f"<b>{me_gamertag}</b><br>Frags: %{{y}}<extra></extra>",
+            hovertemplate=f"<b>{me_gamertag}</b><br>{viz_t('axis_kills', lang)}: %{{y}}<extra></extra>",
         )
     )
 
@@ -399,7 +399,7 @@ def plot_duel_history(
             x=matches,
             y=opponent_kills,
             marker={"color": COLORS["deaths"]},
-            hovertemplate=f"<b>{opponent_gamertag}</b><br>Frags: %{{y}}<extra></extra>",
+            hovertemplate=f"<b>{opponent_gamertag}</b><br>{viz_t('axis_kills', lang)}: %{{y}}<extra></extra>",
         )
     )
 
@@ -610,7 +610,7 @@ def plot_killer_victim_heatmap(
                 [1, "#ff6b6b"],
             ],
             hoverongaps=False,
-            hovertemplate="<b>%{y}</b> → <b>%{x}</b><br>Frags: %{z}<extra></extra>",
+            hovertemplate=viz_t("hover_heatmap_kills", lang),
         )
     )
 

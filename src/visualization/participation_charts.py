@@ -238,7 +238,7 @@ def plot_participation_bars(
                     for s, c in zip(pdf["score"], pdf["count"], strict=False)
                 ],
                 textposition="outside",
-                hovertemplate="<b>%{y}</b><br>Score: %{x:,.0f} pts<extra></extra>",
+                hovertemplate=viz_t("hover_score_pts_h", lang),
             )
         )
         fig.update_layout(
@@ -253,7 +253,7 @@ def plot_participation_bars(
                 marker={"color": pdf["color"].tolist()},
                 text=[f"{int(s):,}" for s in pdf["score"]],
                 textposition="outside",
-                hovertemplate="<b>%{x}</b><br>Score: %{y:,.0f} pts<extra></extra>",
+                hovertemplate=viz_t("hover_score_pts_v", lang),
             )
         )
         fig.update_layout(

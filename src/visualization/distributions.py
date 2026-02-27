@@ -92,7 +92,7 @@ def plot_kda_distribution(df: DataFrameLike, lang: str = "fr") -> go.Figure:
             mode="markers",
             name=viz_t("trace_matches", lang),
             marker={"symbol": "line-ns-open", "size": 10, "color": "rgba(255,255,255,0.45)"},
-            hovertemplate="FDA=%{x:.2f}<extra></extra>",
+            hovertemplate=viz_t("hover_kda_rug", lang),
         )
     )
 
