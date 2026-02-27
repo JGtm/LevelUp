@@ -54,6 +54,68 @@
 
 ---
 
+## Screenshots
+
+### Overview
+
+![Main dashboard](docs/screenshots/main.png)
+
+*Main dashboard: multi-page navigation, session/period filters, and real-time interactive charts.*
+
+![Sidebar, Time to First Kill & Performance](docs/screenshots/Sidebar-first-kill-performance.png)
+
+*Advanced filters (type, playlist, mode, map), Time-to-First-Kill vs First Death distribution, and per-match performance score.*
+
+---
+
+### Performance & Combat
+
+| KDA & Accuracy | Impact & Dominance |
+|:-:|:-:|
+| ![KDA](docs/screenshots/kda.png) | ![Impact & Dominance](docs/screenshots/impact-dominance.png) |
+
+*K/D ratio with trend, per-weapon accuracy, kill streaks — impact and dominance over your opponents.*
+
+---
+
+### Distributions & Correlations
+
+| Distributions | Correlations |
+|:-:|:-:|
+| ![Distributions](docs/screenshots/distributions.png) | ![Correlations](docs/screenshots/correlations.png) |
+
+*Histograms for accuracy/kills/scores with means and medians — scatter plots (time alive vs kills, etc.).*
+
+---
+
+### Activity by day & time
+
+![Heatmap Top Week](docs/screenshots/heatmap-top-week.png)
+
+*Win rate and activity heatmap by day of week and time slot.*
+
+---
+
+### Last match & Commendations
+
+| Last match | Commendations |
+|:-:|:-:|
+| ![Last match](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/Scorebard-commendations.png) |
+
+*Full scoreboard for your latest game (searchable by match ID) — commendations grid with medal distributions.*
+
+---
+
+### Career progression & Rivalries
+
+| Career | Antagonists |
+|:-:|:-:|
+| ![Career](docs/screenshots/career.png) | ![Antagonists](docs/screenshots/antagonist.png) |
+
+*Rank history, progression to Hero, LUSR/CSR per playlist group — and your most formidable rivals.*
+
+---
+
 ## Quick start
 
 **Prerequisites**: Python 3.12+ recommended (3.10 minimum). Windows note: avoid Python 3.14 if you hit native crashes during `pytest`.
