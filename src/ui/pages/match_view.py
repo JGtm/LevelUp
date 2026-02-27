@@ -27,7 +27,7 @@ from src.ui import (
     translate_playlist_name,
 )
 from src.ui.formatting import format_date_fr
-from src.ui.i18n import get_outcome_map, t
+from src.ui.i18n import get_lang, get_outcome_map, t
 from src.ui.medals import load_medal_name_maps, render_medals_grid
 from src.ui.pages.match_view_charts import render_expected_vs_actual
 
@@ -452,8 +452,8 @@ def render_match_view(
     last_mode = row.get("game_variant_name")
     last_outcome = row.get("outcome")
 
-    last_playlist_fr = translate_playlist_name(str(last_playlist)) if last_playlist else None
-    last_pair_fr = translate_pair_name(str(last_pair)) if last_pair else None
+    last_playlist_fr = translate_playlist_name(str(last_playlist), lang=get_lang()) if last_playlist else None
+    last_pair_fr = translate_pair_name(str(last_pair), lang=get_lang()) if last_pair else None
 
     outcome_map = get_outcome_map()
     try:
@@ -505,7 +505,7 @@ def render_match_view(
     # Cartes KPI - Date, Résultat, Performance
     top_cols = st.columns(3)
     with top_cols[0]:
-        os_card(t("col_date"), format_date_fr(last_time))
+        os_card(t("col_date"), format_date_fr(last_time, lang=get_lang()))
     with top_cols[1]:
         outcome_class = (
             "text-win"
@@ -539,7 +539,7 @@ def render_match_view(
 
     playlist_display = (
         last_playlist_fr
-        or (translate_playlist_name(str(last_playlist)) if last_playlist else None)
+        or (translate_playlist_name(str(last_playlist), lang=get_lang()) if last_playlist else None)
         or "-"
     )
     mode_display = (

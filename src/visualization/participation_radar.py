@@ -18,6 +18,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from src.ui.i18n import t
+
 if TYPE_CHECKING:
     import polars as pl
 
@@ -405,18 +407,21 @@ def compute_participation_profile(
 
 
 # Légende des axes (une ligne par axe, pour affichage à côté du radar)
-RADAR_AXIS_LINES: list[str] = [
-    "**Objectifs** : contribution à la victoire (objectifs ou frags selon le mode)",
-    "**Combat** : éliminations directes",
-    "**Support** : assists",
-    "**Score** : points totaux",
-    "**Impact** : intensité (pts/min)",
-    "**Survie** : moins de morts + durée de vie moyenne",
-]
+def get_radar_axis_lines() -> list[str]:
+    """Retourne les descriptions des axes radar dans la langue active."""
+    return [
+        t("radar_desc_objectives"),
+        t("radar_desc_combat"),
+        t("radar_desc_support"),
+        t("radar_desc_score"),
+        t("radar_desc_impact"),
+        t("radar_desc_survival"),
+    ]
+
 
 __all__ = [
     "RADAR_THRESHOLDS",
-    "RADAR_AXIS_LINES",
+    "get_radar_axis_lines",
     "compute_participation_profile",
     "compute_global_radar_thresholds",
     "get_radar_thresholds",

@@ -104,6 +104,11 @@ class FilterState:
 _EXPERIENCE_TYPES_OPTIONS: list[str] = ["PVP non classé", "PVP classé", "PVE"]
 
 
+def _get_experience_type_options() -> list[str]:
+    """Retourne les options de type d'expérience dans la langue active."""
+    return [t("exp_pvp_unranked"), t("exp_pvp_ranked"), t("exp_pve")]
+
+
 def _apply_experience_filter(
     dropdown_base: pl.DataFrame,
     experience_selected: list[str],
@@ -116,13 +121,13 @@ def _apply_experience_filter(
 
     Args:
         dropdown_base: DataFrame base avec colonnes playlist_ui (déjà traduit).
-        experience_selected: Types cochés parmi _EXPERIENCE_TYPES_OPTIONS.
+        experience_selected: Types cochés parmi _get_experience_type_options().
         all_playlist_values: Toutes les playlist_ui disponibles (pour détecter firefight).
 
     Returns:
         DataFrame filtré.
     """
-    if not experience_selected or len(experience_selected) >= len(_EXPERIENCE_TYPES_OPTIONS):
+    if not experience_selected or len(experience_selected) >= len(_get_experience_type_options()):
         return dropdown_base  # Tout coché → pas de filtre
 
     firefight_pls = set(get_firefight_playlists(all_playlist_values))
@@ -134,11 +139,11 @@ def _apply_experience_filter(
 
     conds: list[pl.Expr] = []
     for exp_type in experience_selected:
-        if exp_type == "PVE":
+        if exp_type == t("exp_pve"):
             conds.append(pve_cond)
-        elif exp_type == "PVP classé":
+        elif exp_type == t("exp_pvp_ranked"):
             conds.append(ranked_cond)
-        elif exp_type == "PVP non classé":
+        elif exp_type == t("exp_pvp_unranked"):
             conds.append(~pve_cond & ~ranked_cond)
 
     if not conds:
@@ -247,7 +252,7 @@ def render_filters_sidebar(
         if "map_name" in base_for_filters.columns
         else []
     )
-    _all_exp_types = _EXPERIENCE_TYPES_OPTIONS
+    _all_exp_types = _get_experience_type_options()
 
     # ── Robustesse Streamlit 1.54 : restauration depuis les clés shadow ──────
     # Avec st.navigation + st.switch_page, Streamlit peut effacer les clés de
@@ -394,7 +399,7 @@ def render_filters_sidebar(
                 all_playlists=playlist_values,
                 all_modes=mode_values,
                 all_maps=map_values,
-                all_experience_types=_EXPERIENCE_TYPES_OPTIONS,
+                all_experience_types=_get_experience_type_options(),
             )
             st.session_state[last_saved_key] = player_key
         except Exception:
@@ -810,7 +815,7 @@ def _render_cascade_filters(
             if str(x).strip()
         }
     )
-    exp_values = _EXPERIENCE_TYPES_OPTIONS
+    exp_values = _get_experience_type_options()
 
     _reconcile_filter_options(
         "filter_experience_types",
@@ -838,7 +843,7 @@ def _render_cascade_filters(
             if str(x).strip()
         }
     )
-    preferred_order = ["Partie rapide", "Arène classée", "Assassin classé"]
+    preferred_order = [t("playlist_quick_play"), t("playlist_ranked_arena"), t("playlist_ranked_assassin")]
     playlist_values = [p for p in preferred_order if p in playlist_values] + [
         p for p in playlist_values if p not in preferred_order
     ]
@@ -1143,7 +1148,7 @@ def apply_filters(
     # Application des filtres checkboxes
     # Filtre type d'expérience (pré-filtre, v5.2)
     if filter_state.experience_types_selected and len(filter_state.experience_types_selected) < len(
-        _EXPERIENCE_TYPES_OPTIONS
+        _get_experience_type_options()
     ):
         _exp_all_pls = (
             sorted(

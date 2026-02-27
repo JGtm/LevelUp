@@ -766,6 +766,17 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Pas assez de matchs pour analyser la tendance (min: 4)",
         "en": "Not enough matches to analyze trend (min: 4)",
     },
+    # ── Team dominance timeline ───────────────────────────────────────────────
+    "label_streak": {"fr": "série", "en": "streak"},
+    # ── Impact timeline hovertemplates ───────────────────────────────────────
+    "hover_kill_cumul": {
+        "fr": "<b>Frag #%{y}</b><br>%{text}<extra></extra>",
+        "en": "<b>Kill #%{y}</b><br>%{text}<extra></extra>",
+    },
+    "hover_death_cumul": {
+        "fr": "<b>Mort #%{y}</b><br>%{text}<extra></extra>",
+        "en": "<b>Death #%{y}</b><br>%{text}<extra></extra>",
+    },
 }
 
 

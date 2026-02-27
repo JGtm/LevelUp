@@ -15,8 +15,8 @@ from src.ui.components.radar_chart import create_participation_profile_radar
 from src.ui.i18n import t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.participation_radar import (
-    RADAR_AXIS_LINES,
     compute_participation_profile,
+    get_radar_axis_lines,
     get_radar_thresholds,
 )
 
@@ -108,7 +108,7 @@ def _render_radar_display(
             st.warning(t("error_chart", error=e))
     with col_legend:
         st.markdown(t("tms_axes"))
-        for line in RADAR_AXIS_LINES:
+        for line in get_radar_axis_lines():
             st.markdown(line)
 
 

@@ -26,6 +26,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import streamlit as st
+from src.ui.i18n import t
 
 if TYPE_CHECKING:
     pass
@@ -70,38 +71,38 @@ def render_global_stats_card(
         col1, col2, col3, col4 = st.columns(4)
 
         col1.metric(
-            "Matchs",
+            t("metric_matches"),
             f"{stats['total_matches']:,}",
         )
         col2.metric(
-            "Taux victoires",
+            t("metric_win_rate"),
             f"{stats['win_rate']:.1f}%",
         )
         col3.metric(
-            "FDA moyen",
+            t("metric_avg_kda"),
             f"{stats['avg_kda']:.2f}",
         )
         col4.metric(
-            "Précision",
+            t("metric_accuracy"),
             f"{stats['avg_accuracy']:.1f}%",
         )
 
         col5, col6, col7, col8 = st.columns(4)
 
         col5.metric(
-            "Frags",
+            t("metric_kills"),
             f"{stats['total_kills']:,}",
         )
         col6.metric(
-            "Morts",
+            t("metric_deaths"),
             f"{stats['total_deaths']:,}",
         )
         col7.metric(
-            "Assistances",
+            t("metric_assists"),
             f"{stats['total_assists']:,}",
         )
         col8.metric(
-            "Temps joué",
+            t("metric_time_played"),
             f"{stats['total_time_hours']:.0f}h",
         )
 

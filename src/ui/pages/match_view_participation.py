@@ -39,8 +39,8 @@ def render_participation_section(
     from src.data.repositories import DuckDBRepository
     from src.ui.components.radar_chart import create_participation_profile_radar
     from src.visualization.participation_radar import (
-        RADAR_AXIS_LINES,
         compute_participation_profile,
+        get_radar_axis_lines,
         get_radar_thresholds,
     )
 
@@ -96,7 +96,7 @@ def render_participation_section(
             st.warning(t("error_chart", error=e))
     with col_legend:
         st.markdown(f"**{t('mvp_axes_label')}**")
-        for line in RADAR_AXIS_LINES:
+        for line in get_radar_axis_lines():
             st.markdown(line)
 
 
@@ -122,8 +122,8 @@ def render_participation_comparison(
     from src.data.repositories import DuckDBRepository
     from src.ui.components.radar_chart import create_participation_profile_radar
     from src.visualization.participation_radar import (
-        RADAR_AXIS_LINES,
         compute_participation_profile,
+        get_radar_axis_lines,
         get_radar_thresholds,
     )
 
@@ -179,7 +179,7 @@ def render_participation_comparison(
                 st.warning(t("error_chart", error=e))
         with col_legend:
             st.markdown(f"**{t('mvp_axes_label')}**")
-            for line in RADAR_AXIS_LINES:
+            for line in get_radar_axis_lines():
                 st.markdown(line)
 
     except Exception:

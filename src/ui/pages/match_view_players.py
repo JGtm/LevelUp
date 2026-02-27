@@ -692,6 +692,7 @@ def render_kd_timeline_section(
         me_xu,
         gt_map=gt_map,
         height=380,
+        lang=get_lang(),
     )
     if fig is not None:
         st.subheader(t("mv_kills_over_time"))
@@ -1135,6 +1136,7 @@ def render_match_impact_section(
         me_xuid,
         impact_events,
         height=340,
+        lang=get_lang(),
     )
     if fig is not None:
         st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
