@@ -6,6 +6,7 @@ Usage :
     st.warning(t("no_matches"))
     fig = plot_kda(lang=get_lang())
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -92,4 +93,27 @@ def reset_registry() -> None:
     _REGISTRY = None
 
 
-__all__ = ["t", "get_lang", "set_lang", "reset_registry"]
+__all__ = ["t", "get_lang", "set_lang", "reset_registry", "get_outcome_map", "get_weekdays"]
+
+
+def get_outcome_map(lang: str | None = None) -> dict[int, str]:
+    """Retourne le mapping code résultat → label traduit."""
+    return {
+        2: t("outcome_win", lang=lang),
+        3: t("outcome_loss", lang=lang),
+        1: t("outcome_draw", lang=lang),
+        4: t("outcome_dnf", lang=lang),
+    }
+
+
+def get_weekdays(lang: str | None = None) -> dict[int, str]:
+    """Retourne les noms de jours abrégés traduits (1=lundi … 7=dimanche)."""
+    return {
+        1: t("day_mon", lang=lang),
+        2: t("day_tue", lang=lang),
+        3: t("day_wed", lang=lang),
+        4: t("day_thu", lang=lang),
+        5: t("day_fri", lang=lang),
+        6: t("day_sat", lang=lang),
+        7: t("day_sun", lang=lang),
+    }

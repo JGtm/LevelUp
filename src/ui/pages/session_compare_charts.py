@@ -20,7 +20,7 @@ import streamlit as st
 from src.analysis.performance_score import compute_performance_series
 from src.ui import translate_pair_name
 from src.ui.components.performance import get_score_class
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, get_outcome_map, get_weekdays, t
 from src.ui.pages.session_compare import (
     _outcome_class,
 )
@@ -92,22 +92,23 @@ def _build_history_dataframe(
     col_map: dict[str, str] = {}
 
     if "start_time" in df_sess.columns:
-        _weekdays_fr = {1: "lun.", 2: "mar.", 3: "mer.", 4: "jeu.", 5: "ven.", 6: "sam.", 7: "dim."}
+        _lang = get_lang()
+        _weekdays = get_weekdays(_lang)
         df_sess = df_sess.with_columns(
             (
                 pl.col("start_time")
                 .dt.weekday()
-                .replace_strict(_weekdays_fr, default="-", return_dtype=pl.Utf8)
+                .replace_strict(_weekdays, default="-", return_dtype=pl.Utf8)
                 + pl.lit(" ")
                 + pl.col("start_time").dt.strftime("%d/%m/%y %H:%M")
             )
             .fill_null("-")
-            .alias("Heure")
+            .alias(t("col_time"))
         )
-        display_cols.append("Heure")
+        display_cols.append(t("col_time"))
 
     if "pair_fr" in df_sess.columns:
-        col_map["pair_fr"] = "Mode"
+        col_map["pair_fr"] = t("col_mode")
         display_cols.append("pair_fr")
     elif "pair_name" in df_sess.columns:
         _pair_map2 = build_mapping(df_sess["pair_name"], translate_pair_name)
@@ -119,33 +120,38 @@ def _build_history_dataframe(
             )
             .alias("mode_traduit")
         )
-        col_map["mode_traduit"] = "Mode"
+        col_map["mode_traduit"] = t("col_mode")
         display_cols.append("mode_traduit")
 
     if "map_ui" in df_sess.columns:
-        col_map["map_ui"] = "Carte"
+        col_map["map_ui"] = t("col_map")
         display_cols.append("map_ui")
     elif "map_name" in df_sess.columns:
-        col_map["map_name"] = "Carte"
+        col_map["map_name"] = t("col_map")
         display_cols.append("map_name")
 
     for c in ["kills", "deaths", "assists"]:
         if c in df_sess.columns:
-            col_map[c] = {"kills": "Frags", "deaths": "Morts", "assists": "Assistances"}[c]
+            col_map[c] = {
+                "kills": t("col_kills"),
+                "deaths": t("col_deaths"),
+                "assists": t("col_assists"),
+            }[c]
             display_cols.append(c)
 
     if "outcome" in df_sess.columns:
+        _outcome_map = get_outcome_map()
         df_sess = df_sess.with_columns(
             pl.col("outcome")
             .replace_strict(
-                {2: "Victoire", 3: "Défaite", 1: "Égalité", 4: "Non terminé"},
+                _outcome_map,
                 default="-",
                 return_dtype=pl.Utf8,
             )
             .fill_null("-")
-            .alias("Résultat")
+            .alias(t("col_result"))
         )
-        display_cols.append("Résultat")
+        display_cols.append(t("col_result"))
 
     # Colonne Performance RELATIVE (après Résultat)
     history_df = df_full if df_full is not None else df_sess
@@ -158,25 +164,25 @@ def _build_history_dataframe(
         .alias("Perf_display")
     )
     display_cols.append("Perf_display")
-    col_map["Perf_display"] = "Performance"
+    col_map["Perf_display"] = t("col_performance")
 
     if "team_mmr" in df_sess.columns:
         df_sess = df_sess.with_columns(
             pl.when(pl.col("team_mmr").is_not_null())
             .then(pl.col("team_mmr").round(0).cast(pl.Int64).cast(pl.Utf8))
             .otherwise(pl.lit("-"))
-            .alias("MMR Équipe")
+            .alias(t("scc_mmr_team"))
         )
-        display_cols.append("MMR Équipe")
+        display_cols.append(t("scc_mmr_team"))
 
     if "enemy_mmr" in df_sess.columns:
         df_sess = df_sess.with_columns(
             pl.when(pl.col("enemy_mmr").is_not_null())
             .then(pl.col("enemy_mmr").round(0).cast(pl.Int64).cast(pl.Utf8))
             .otherwise(pl.lit("-"))
-            .alias("MMR Adverse")
+            .alias(t("scc_mmr_enemy"))
         )
-        display_cols.append("MMR Adverse")
+        display_cols.append(t("scc_mmr_enemy"))
 
     # Sélectionner et renommer les colonnes
     df_display = df_sess.select(display_cols).rename(col_map)
@@ -202,10 +208,10 @@ def _render_history_html(
         cells: list[str] = []
         for col in df_display.columns:
             val = row[col]
-            if col == "Résultat":
+            if col == t("col_result"):
                 css_class = _outcome_class(str(val))
                 cells.append(f"<td class='{css_class}'>{html_lib.escape(str(val))}</td>")
-            elif col == "Performance":
+            elif col == t("col_performance"):
                 # Coloration selon le score
                 perf_val = perf_scores[idx] if perf_scores is not None else None
                 css_class = get_score_class(perf_val)
@@ -269,7 +275,7 @@ def render_comparison_radar_chart(
         perf_b: Métriques de la session B.
         hist_avg: Moyenne historique des sessions similaires (optionnel).
     """
-    categories = ["F/M", "Victoire %", "Précision"]
+    categories = [t("sc_radar_kd"), t("sc_radar_win"), t("col_accuracy")]
 
     def _normalize_for_radar(kd, wr, acc):
         kd_norm = min(100, (kd or 0) * 50)  # F/M 2.0 = 100
@@ -294,7 +300,7 @@ def render_comparison_radar_chart(
                 r=values_hist + [values_hist[0]],
                 theta=categories + [categories[0]],
                 fill="toself",
-                name=f"Moy. historique ({hist_n} sessions){suffix}",
+                name=t("sc_hist_avg_trace", n=hist_n, suffix=suffix),
                 line_color=SESSION_COLORS["historical"],
                 fillcolor=SESSION_COLORS["historical_fill"],
                 line={"dash": "dot"},
@@ -374,8 +380,8 @@ def _prepare_bar_metrics(
         except Exception:
             return 0.0
 
-    left_metrics = ["Frags / partie", "Morts / partie", "Ratio F/D"]
-    right_metric = "Victoire (%)"
+    left_metrics = [t("sc_kills_per_match"), t("sc_deaths_per_match"), t("sc_kd_ratio")]
+    right_metric = t("sc_radar_win")
 
     a_left = [
         _per_match(perf_a.get("kills"), perf_a.get("matches")),
@@ -408,7 +414,7 @@ def _prepare_bar_metrics(
                 float(hist_avg.get("kd_ratio", 0) or 0.0),
             ],
             "h_wr": float(hist_avg.get("win_rate", 0) or 0.0),
-            "name": f"Moy. historique ({hist_n} sessions)" + (" ⚠️" if hist_n < 3 else ""),
+            "name": t("sc_hist_avg_trace", n=hist_n, suffix=(" ⚠️" if hist_n < 3 else "")),
         }
 
     return result
@@ -530,10 +536,10 @@ def _build_bar_chart_figure(metrics: dict) -> go.Figure:
         yaxis={
             "showgrid": True,
             "gridcolor": "rgba(255,255,255,0.1)",
-            "title": "Par partie / Ratio",
+            "title": t("sc_per_match_ratio"),
         },
         yaxis2={
-            "title": "Victoire (%)",
+            "title": t("sc_radar_win"),
             "overlaying": "y",
             "side": "right",
             "showgrid": False,

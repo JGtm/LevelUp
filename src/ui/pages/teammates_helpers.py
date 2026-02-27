@@ -19,6 +19,7 @@ from src.ui import (
     translate_playlist_name,
 )
 from src.ui.cache import cached_load_player_match_result
+from src.ui.i18n import t
 from src.ui.player_assets import ensure_local_image_path
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -216,7 +217,12 @@ def render_friends_history_table(
     friends_table = friends_table.with_columns(
         pl.col("outcome")
         .replace_strict(
-            {2: "Victoire", 3: "Défaite", 1: "Égalité", 4: "Non terminé"},
+            {
+                2: t("tmh_outcome_win"),
+                3: t("tmh_outcome_loss"),
+                1: t("tmh_outcome_draw"),
+                4: t("tmh_outcome_unfinished"),
+            },
             default="-",
             return_dtype=pl.Utf8,
         )
@@ -315,28 +321,28 @@ def render_friends_history_table(
 
     def _outcome_style(label: str) -> str:
         v = str(label or "").strip().casefold()
-        if v.startswith("victoire"):
+        if v.startswith("victoire") or v == "win":
             return f"color:{colors['green']}; font-weight:800"
-        if v.startswith("défaite") or v.startswith("defaite"):
+        if v.startswith("défaite") or v.startswith("defaite") or v == "loss":
             return f"color:{colors['red']}; font-weight:800"
-        if v.startswith("égalité") or v.startswith("egalite"):
+        if v.startswith("égalité") or v.startswith("egalite") or v == "draw":
             return f"color:{colors['violet']}; font-weight:800"
-        if v.startswith("non"):
+        if v.startswith("non") or v.startswith("did"):
             return f"color:{colors['violet']}; font-weight:800"
         return "opacity:0.92"
 
     cols = [
-        ("Match", "_app"),
-        ("HaloWaypoint", "match_url"),
-        ("Date", "start_time_fr"),
-        ("Carte", "map_name"),
-        ("Playlist", "playlist_fr"),
-        ("Mode", "mode"),
-        ("Résultat", "outcome_label"),
-        ("Score", "score"),
-        ("MMR équipe", "team_mmr"),
-        ("MMR adverse", "enemy_mmr"),
-        ("Écart MMR", "delta_mmr"),
+        (t("tmh_col_match"), "_app"),
+        (t("tmh_waypoint"), "match_url"),
+        (t("tmh_col_date"), "start_time_fr"),
+        (t("tmh_col_map"), "map_name"),
+        (t("tmh_col_playlist"), "playlist_fr"),
+        (t("tmh_col_mode"), "mode"),
+        (t("tmh_col_result"), "outcome_label"),
+        (t("tmh_col_score"), "score"),
+        (t("tmh_col_team_mmr"), "team_mmr"),
+        (t("tmh_col_enemy_mmr"), "enemy_mmr"),
+        (t("tmh_col_delta_mmr"), "delta_mmr"),
     ]
 
     head = "".join(f"<th>{html_lib.escape(h)}</th>" for h, _ in cols)
@@ -344,10 +350,14 @@ def render_friends_history_table(
     for r in view.to_dicts():
         mid = str(r.get("match_id") or "").strip()
         app = _app_url("Match", match_id=mid)
-        match_link = f"<a href='{html_lib.escape(app)}' target='_self'>Ouvrir</a>" if mid else "-"
+        match_link = (
+            f"<a href='{html_lib.escape(app)}' target='_self'>{html_lib.escape(t('tmh_link_open'))}</a>"
+            if mid
+            else "-"
+        )
         hw = str(r.get("match_url") or "").strip()
         hw_link = (
-            f"<a href='{html_lib.escape(hw)}' target='_blank' rel='noopener'>Ouvrir</a>"
+            f"<a href='{html_lib.escape(hw)}' target='_blank' rel='noopener'>{html_lib.escape(t('tmh_link_open'))}</a>"
             if hw
             else "-"
         )

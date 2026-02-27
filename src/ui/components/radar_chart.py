@@ -10,6 +10,7 @@ from typing import Any
 import plotly.graph_objects as go
 
 from src.config import THEME_COLORS
+from src.ui.i18n import t
 from src.visualization.theme import apply_halo_plot_style
 
 
@@ -87,7 +88,7 @@ def create_radar_chart(
 def create_stats_per_minute_radar(
     players: list[dict[str, Any]],
     *,
-    title: str = "Stats par minute",
+    title: str | None = None,
     categories: list[str] | None = None,
     height: int = 350,
 ) -> go.Figure:
@@ -113,7 +114,9 @@ def create_stats_per_minute_radar(
         Figure Plotly.
     """
     if categories is None:
-        categories = ["Frags/min", "Morts/min", "Assistances/min"]
+        categories = [t("radar_kpm"), t("radar_dpm"), t("radar_apm")]
+    if title is None:
+        title = t("radar_stats_per_min")
 
     # Gestion du cas vide
     if not players:
@@ -188,7 +191,7 @@ def create_stats_per_minute_radar(
 def create_performance_radar(
     players: list[dict[str, Any]],
     *,
-    title: str = "Profil de performance",
+    title: str | None = None,
     height: int = 400,
 ) -> go.Figure:
     """Crée un graphe radar pour le profil de performance (objectif/frags/morts/assists).
@@ -212,12 +215,20 @@ def create_performance_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["Objectif", "Frags", "Survie", "Assistances"]
+    categories = [
+        t("radar_objectives"),
+        t("radar_kills_label"),
+        t("radar_survival"),
+        t("radar_assists_label"),
+    ]
 
     # Gestion du cas vide
     if not players:
         fig = go.Figure()
-        fig.update_layout(title={"text": title, "x": 0.5, "xanchor": "center"}, height=height)
+        fig.update_layout(
+            title={"text": title or t("radar_perf_profile"), "x": 0.5, "xanchor": "center"},
+            height=height,
+        )
         return fig
 
     # Calculer les max pour normalisation
@@ -252,7 +263,7 @@ def create_performance_radar(
         customdata = [
             [f"{orig_obj:.1f}"],
             [f"{orig_kills}"],
-            [f"{orig_deaths} morts"],
+            [f"{orig_deaths} {t('radar_hover_deaths')}"],
             [f"{orig_assists}"],
             [f"{orig_obj:.1f}"],
         ]
@@ -280,7 +291,7 @@ def create_performance_radar(
             },
         },
         showlegend=True,
-        title={"text": title, "x": 0.5, "xanchor": "center"},
+        title={"text": title or t("radar_perf_profile"), "x": 0.5, "xanchor": "center"},
         height=height,
         margin={"l": 60, "r": 60, "t": 50, "b": 40},
     )
@@ -296,7 +307,7 @@ def create_performance_radar(
 def create_participation_radar(
     participation_data: list[dict[str, Any]],
     *,
-    title: str = "Profil de participation",
+    title: str | None = None,
     height: int = 400,
     show_values: bool = True,
 ) -> go.Figure:
@@ -325,12 +336,21 @@ def create_participation_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["Frags", "Assistances", "Objectifs", "Survie"]
+    categories = [
+        t("radar_kills_label"),
+        t("radar_assists_label"),
+        t("radar_objectives"),
+        t("radar_survival"),
+    ]
 
     if not participation_data:
         fig = go.Figure()
         fig.update_layout(
-            title={"text": title, "x": 0.5, "xanchor": "center"},
+            title={
+                "text": title or t("radar_participation_profile"),
+                "x": 0.5,
+                "xanchor": "center",
+            },
             height=height,
         )
         return fig
@@ -393,7 +413,7 @@ def create_participation_radar(
             [f"{int(kill_raw):,} pts"],
             [f"{int(assist_raw):,} pts"],
             [f"{int(obj_raw):,} pts"],
-            [f"{int(penalty_raw):,} pts" if penalty_raw else "Aucune"],
+            [f"{int(penalty_raw):,} pts" if penalty_raw else t("radar_hover_no_penalty")],
             [f"{int(kill_raw):,} pts"],
         ]
 
@@ -474,12 +494,23 @@ def create_participation_profile_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["Objectifs", "Combat", "Support", "Score", "Impact", "Survie"]
+    categories = [
+        t("radar_objectives"),
+        t("radar_combat"),
+        t("radar_support"),
+        t("col_score"),
+        t("radar_impact"),
+        t("radar_survival"),
+    ]
 
     if not profiles:
         fig = go.Figure()
         fig.update_layout(
-            title={"text": title, "x": 0.5, "xanchor": "center"},
+            title={
+                "text": title or t("radar_participation_profile"),
+                "x": 0.5,
+                "xanchor": "center",
+            },
             height=height,
         )
         return fig
@@ -515,7 +546,7 @@ def create_participation_profile_radar(
             [f"{int(support_r):,} pts"],
             [f"{int(score_r):,} pts"],
             [f"{impact_r:.1f} pts/min"],
-            [f"{survie_pct:.0f}% survie"],
+            [f"{survie_pct:.0f}% {t('radar_hover_survival_pct')}"],
             [f"{int(obj_r):,} pts"],
         ]
 
@@ -571,7 +602,7 @@ def create_participation_profile_radar(
             "font": {"color": THEME_COLORS.text_primary},
         },
         title={
-            "text": title,
+            "text": title or t("radar_participation_profile"),
             "x": 0.5,
             "xanchor": "center",
             "font": {"color": THEME_COLORS.text_primary},
@@ -587,7 +618,7 @@ def create_teammate_synergy_radar(
     me_data: dict[str, Any],
     teammate_data: dict[str, Any],
     *,
-    title: str = "Complémentarité",
+    title: str | None = None,
     height: int = 400,
 ) -> go.Figure:
     """Crée un radar comparant le profil de jeu entre moi et un coéquipier.
@@ -612,7 +643,13 @@ def create_teammate_synergy_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["Frags %", "Assistances %", "Objectifs %", "F/M", "Précision"]
+    categories = [
+        t("radar_kills_pct"),
+        t("radar_assists_pct"),
+        t("radar_obj_pct"),
+        t("radar_kd"),
+        t("col_accuracy"),
+    ]
 
     fig = go.Figure()
 
@@ -670,7 +707,7 @@ def create_teammate_synergy_radar(
         },
         showlegend=True,
         legend={"orientation": "h", "yanchor": "bottom", "y": -0.15, "x": 0.5, "xanchor": "center"},
-        title={"text": title, "x": 0.5, "xanchor": "center"},
+        title={"text": title or t("radar_complementarity"), "x": 0.5, "xanchor": "center"},
         height=height,
         margin={"l": 70, "r": 70, "t": 60 if title else 30, "b": 70},
     )
@@ -681,7 +718,7 @@ def create_teammate_synergy_radar(
 def create_session_trend_radar(
     sessions: list[dict[str, Any]],
     *,
-    title: str = "Évolution du profil",
+    title: str | None = None,
     height: int = 400,
 ) -> go.Figure:
     """Crée un radar montrant l'évolution du profil entre plusieurs sessions.
@@ -706,12 +743,18 @@ def create_session_trend_radar(
     Returns:
         Figure Plotly.
     """
-    categories = ["F/M", "Taux victoires", "Précision", "Objectifs", "Score moy."]
+    categories = [
+        t("radar_kd"),
+        t("radar_win_rate"),
+        t("col_accuracy"),
+        t("radar_objectives"),
+        t("radar_avg_score"),
+    ]
 
     if not sessions:
         fig = go.Figure()
         fig.update_layout(
-            title={"text": title, "x": 0.5, "xanchor": "center"},
+            title={"text": title or t("radar_session_evolution"), "x": 0.5, "xanchor": "center"},
             height=height,
         )
         return fig
@@ -775,7 +818,7 @@ def create_session_trend_radar(
             },
         },
         showlegend=True,
-        title={"text": title, "x": 0.5, "xanchor": "center"},
+        title={"text": title or t("radar_session_evolution"), "x": 0.5, "xanchor": "center"},
         height=height,
         margin={"l": 70, "r": 70, "t": 60 if title else 30, "b": 50},
     )

@@ -9,10 +9,9 @@ from pathlib import Path
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.data.media_indexer import MediaIndexer
 from src.ui.components.media_thumbnail import render_media_thumbnail
+from src.ui.i18n import t
 from src.ui.settings import AppSettings
 
 
@@ -91,13 +90,15 @@ def _render_media_grid(
                             height_iframe=MEDIA_THUMB_IFRAME_H,
                         )
                     else:
-                        st.caption(f"Fichier absent : {file_name}")
+                        st.caption(t("media_file_missing", file_name=file_name))
                     # Bouton « Voir en grand » (lightbox en dialog Streamlit, le clic dans l'iframe ne pouvant pas ouvrir en plein écran)
                     if static_path and Path(static_path).exists():
                         lb_key = hashlib.md5(f"lightbox_{file_path}_{i}_{j}".encode()).hexdigest()[
                             :16
                         ]
-                        if st.button("Voir en grand", key=f"media_lb_{lb_key}", width="stretch"):
+                        if st.button(
+                            t("media_view_full"), key=f"media_lb_{lb_key}", width="stretch"
+                        ):
                             st.session_state["_lightbox_media_path"] = file_path
                             st.session_state["_lightbox_media_kind"] = kind
                             st.rerun()
@@ -109,7 +110,7 @@ def _render_media_grid(
                             f'<a href="{match_url}" target="_blank" rel="noopener noreferrer" '
                             'style="display:block;width:100%;text-align:center;padding:0.35em 0.75em;margin-top:4px;'
                             "background:#1a73e8;color:#fff;text-decoration:none;border-radius:4px;"
-                            'font-size:0.9em;">Ouvrir le match</a>',
+                            f'font-size:0.9em;">{t("ml_open_match")}</a>',
                             unsafe_allow_html=True,
                         )
 
@@ -182,32 +183,29 @@ def render_media_tab(
 
     media_df = MediaIndexer.load_media_for_ui(Path(db_path), current_xuid)
     if media_df.is_empty():
-        st.info(
-            "Aucun média indexé. Configure les dossiers dans Paramètres → Médias "
-            "et lance un scan (ou utilise l’ancien onglet pour indexer)."
-        )
+        st.info(t("media_no_indexed"))
         return
 
     # Filtres
-    with st.expander("Filtres", expanded=False):
+    with st.expander(t("media_filters"), expanded=False):
         c1, c2, c3 = st.columns(3)
         with c1:
             kinds = st.multiselect(
-                "Type",
+                t("media_type"),
                 options=["image", "video"],
                 default=["image", "video"],
                 key="media_tab_kind",
             )
         with c2:
             name_filter = st.text_input(
-                "Nom de fichier",
+                t("media_filename"),
                 value="",
                 placeholder="ex: 2026-01",
                 key="media_tab_name",
             )
         with c3:
             cols_per_row = st.slider(
-                "Colonnes",
+                t("media_columns"),
                 min_value=2,
                 max_value=6,
                 value=4,
@@ -241,7 +239,7 @@ def render_media_tab(
 
     # Section « Mes captures » (ratio 16:9) – du plus récent au plus vieux (masquée si vide)
     if not mine.is_empty():
-        st.markdown("### Mes captures")
+        st.markdown(f"### {t('media_my_captures')}")
         _render_media_grid(
             mine,
             cols_per_row=cols_per_row,
@@ -254,7 +252,7 @@ def render_media_tab(
         for gamertag in teammate["gamertag"].unique().to_list():
             if not gamertag or (isinstance(gamertag, str) and not gamertag.strip()):
                 continue
-            st.markdown(f"### Captures de {gamertag}")
+            st.markdown(f"### {t('media_captures_of', gamertag=gamertag)}")
             sub = teammate.filter(pl.col("gamertag") == gamertag)
             sub = sub.unique(subset=["file_path"], keep="first").sort(
                 "capture_end_utc", descending=True, nulls_last=True
@@ -268,7 +266,7 @@ def render_media_tab(
 
     # Section « Sans correspondance » (masquée si vide)
     if not unassigned.is_empty():
-        st.markdown("### Sans correspondance")
+        st.markdown(f"### {t('media_unmatched')}")
         _render_media_grid(
             unassigned,
             cols_per_row=cols_per_row,

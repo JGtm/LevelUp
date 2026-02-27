@@ -15,7 +15,6 @@ import polars as pl
 import streamlit as st
 
 from src.ui.i18n import t
-
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 
@@ -189,8 +188,8 @@ def render_match_search_page(
     )
     opts = {row["label"]: str(row["match_id"]) for row in quick_df.iter_rows(named=True)}
     st.selectbox(
-        "Sélection rapide (filtres actuels)",
-        options=["(aucun)"] + list(opts.keys()),
+        t("lm_quick_select"),
+        options=[t("sel_none")] + list(opts.keys()),
         index=0,
         key="match_quick_pick_label",
     )
@@ -200,13 +199,13 @@ def render_match_search_page(
         if isinstance(picked, str) and picked in opts:
             st.session_state["match_id_input"] = opts[picked]
 
-    st.button("Utiliser ce match", width="stretch", on_click=_on_use_quick_match)
+    st.button(t("btn_use_match"), width="stretch", on_click=_on_use_quick_match)
 
     # Recherche par date/heure
-    with st.expander("Recherche par date/heure", expanded=False):
-        dd = st.date_input("Date", value=date.today(), format="DD/MM/YYYY")
-        tt = st.time_input("Heure", value=time(20, 0))
-        tol_min = st.slider("Tolérance (minutes)", 0, 30, 10, 1)
+    with st.expander(t("lm_search_datetime"), expanded=False):
+        dd = st.date_input(t("lm_date"), value=date.today(), format="DD/MM/YYYY")
+        tt = st.time_input(t("lm_time"), value=time(20, 0))
+        tol_min = st.slider(t("lm_tolerance"), 0, 30, 10, 1)
 
         def _on_search_by_datetime() -> None:
             target = datetime.combine(dd, tt)
@@ -232,11 +231,9 @@ def render_match_search_page(
             if diff_min <= float(tol_min):
                 st.session_state["match_id_input"] = str(best.get("match_id") or "").strip()
             else:
-                st.warning(
-                    f"Aucun match trouvé dans ±{tol_min} min (le plus proche est à {diff_min:.1f} min)."
-                )
+                st.warning(t("lm_no_match_tol", tol=tol_min, diff=f"{diff_min:.1f}"))
 
-        st.button("Rechercher", width="stretch", on_click=_on_search_by_datetime)
+        st.button(t("btn_search"), width="stretch", on_click=_on_search_by_datetime)
 
     mid = str(match_id_input or "").strip()
     if not mid:

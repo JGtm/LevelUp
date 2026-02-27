@@ -303,4 +303,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Configure les paramètres de synchronisation avec l'API Halo.",
         "en": "Configure sync settings with the Halo API.",
     },
+    # ── Experience types ────────────────────────────────────────────────────
+    "exp_pvp_unranked": {"fr": "PVP non classé", "en": "Unranked PVP"},
+    "exp_pvp_ranked": {"fr": "PVP classé", "en": "Ranked PVP"},
+    "exp_pve": {"fr": "PVE", "en": "PVE"},
 }

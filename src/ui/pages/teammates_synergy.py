@@ -10,10 +10,9 @@ from pathlib import Path
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.data.repositories import DuckDBRepository
 from src.ui.components.radar_chart import create_participation_profile_radar
+from src.ui.i18n import t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.participation_radar import (
     RADAR_AXIS_LINES,
@@ -96,7 +95,7 @@ def _render_radar_display(
         try:
             fig = create_participation_profile_radar(
                 profiles,
-                title="Profil de participation",
+                title=t("tms_participation_title"),
                 height=380,
                 show_fill=show_fill,
             )
@@ -108,7 +107,7 @@ def _render_radar_display(
         except Exception as e:
             st.warning(t("error_chart", error=e))
     with col_legend:
-        st.markdown("**Axes**")
+        st.markdown(t("tms_axes"))
         for line in RADAR_AXIS_LINES:
             st.markdown(line)
 
@@ -213,9 +212,7 @@ def render_trio_synergy_radar(
             return set()
         return set(df["match_id"].cast(pl.Utf8).to_list())
 
-    shared_match_ids = list(
-        _match_ids_set(me_df) & _match_ids_set(f1_df) & _match_ids_set(f2_df)
-    )
+    shared_match_ids = list(_match_ids_set(me_df) & _match_ids_set(f1_df) & _match_ids_set(f2_df))
     if not shared_match_ids:
         return
 
@@ -260,7 +257,7 @@ def render_trio_synergy_radar(
     # Trio : lignes uniquement (show_fill=False) + légende cliquable (static_plot=False)
     _render_radar_display(
         profiles,
-        title="Complémentarité trio",
+        title=t("tms_trio_title"),
         show_fill=False,
         static_plot=False,
     )

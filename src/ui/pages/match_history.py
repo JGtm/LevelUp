@@ -17,9 +17,8 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.analysis.performance_score import compute_performance_series
+from src.ui.i18n import get_outcome_map, t
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 
@@ -57,7 +56,7 @@ def render_match_history_page(
         st.warning(t("no_matches"))
         return
 
-    st.subheader("Historique des parties")
+    st.subheader(t("mh_title"))
 
     dff_table = dff.clone()
     if "playlist_fr" not in dff_table.columns:
@@ -88,7 +87,7 @@ def render_match_history_page(
     )
 
     # Vectorisation outcome_label: replace_strict() pour éviter dépréciation
-    outcome_map = {2: "Victoire", 3: "Défaite", 1: "Égalité", 4: "Non terminé"}
+    outcome_map = get_outcome_map()
     dff_table = dff_table.with_columns(
         pl.col("outcome").replace_strict(outcome_map, default=pl.lit("-")).alias("outcome_label")
     )
@@ -188,43 +187,43 @@ def _render_history_table(dff_table: pl.DataFrame) -> None:
         [
             pl.col("match_link").alias("Match"),
             pl.col("match_url").alias("HaloWaypoint"),
-            pl.col("start_time_fr").alias("Date de début"),
-            pl.col("map_name").fill_null("-").alias("Carte"),
-            pl.col("playlist_fr").fill_null("-").alias("Playlist"),
-            pl.col("mode_ui").fill_null("-").alias("Mode"),
-            pl.col("outcome_label").fill_null("-").alias("Résultat"),
-            pl.col("score").fill_null("-").alias("Score"),
-            pl.col("performance_display").fill_null("-").alias("Performance"),
+            pl.col("start_time_fr").alias(t("col_start_date")),
+            pl.col("map_name").fill_null("-").alias(t("col_map")),
+            pl.col("playlist_fr").fill_null("-").alias(t("col_playlist")),
+            pl.col("mode_ui").fill_null("-").alias(t("col_mode")),
+            pl.col("outcome_label").fill_null("-").alias(t("col_result")),
+            pl.col("score").fill_null("-").alias(t("col_score")),
+            pl.col("performance_display").fill_null("-").alias(t("mv_performance")),
             pl.col("team_mmr")
             .cast(pl.Float64, strict=False)
             .round(0)
             .cast(pl.Int64, strict=False)
             .cast(pl.Utf8)
             .fill_null("-")
-            .alias("MMR équipe"),
+            .alias(t("col_mmr_team")),
             pl.col("enemy_mmr")
             .cast(pl.Float64, strict=False)
             .round(0)
             .cast(pl.Int64, strict=False)
             .cast(pl.Utf8)
             .fill_null("-")
-            .alias("MMR adverse"),
+            .alias(t("col_mmr_enemy")),
             pl.col("delta_mmr")
             .cast(pl.Float64, strict=False)
             .round(0)
             .cast(pl.Int64, strict=False)
             .cast(pl.Utf8)
             .fill_null("-")
-            .alias("Écart MMR"),
-            pl.col("kda").cast(pl.Utf8).fill_null("-").alias("FDA"),
-            pl.col("kills").cast(pl.Utf8).fill_null("-").alias("Frags"),
-            pl.col("deaths").cast(pl.Utf8).fill_null("-").alias("Morts"),
-            pl.col("max_killing_spree").cast(pl.Utf8).fill_null("-").alias("Tuerie (max)"),
-            pl.col("headshot_kills").cast(pl.Utf8).fill_null("-").alias("Têtes"),
-            pl.col("average_life_mmss").fill_null("-").alias("Durée vie"),
-            pl.col("assists").cast(pl.Utf8).fill_null("-").alias("Assistances"),
-            pl.col("accuracy").cast(pl.Utf8).fill_null("-").alias("Précision"),
-            pl.col("ratio").cast(pl.Utf8).fill_null("-").alias("Ratio"),
+            .alias(t("col_mmr_gap")),
+            pl.col("kda").cast(pl.Utf8).fill_null("-").alias(t("col_kda")),
+            pl.col("kills").cast(pl.Utf8).fill_null("-").alias(t("col_kills")),
+            pl.col("deaths").cast(pl.Utf8).fill_null("-").alias(t("col_deaths")),
+            pl.col("max_killing_spree").cast(pl.Utf8).fill_null("-").alias(t("col_max_spree")),
+            pl.col("headshot_kills").cast(pl.Utf8).fill_null("-").alias(t("col_headshots")),
+            pl.col("average_life_mmss").fill_null("-").alias(t("col_avg_life")),
+            pl.col("assists").cast(pl.Utf8).fill_null("-").alias(t("col_assists")),
+            pl.col("accuracy").cast(pl.Utf8).fill_null("-").alias(t("col_accuracy")),
+            pl.col("ratio").cast(pl.Utf8).fill_null("-").alias(t("col_ratio")),
         ]
     )
 
@@ -233,8 +232,8 @@ def _render_history_table(dff_table: pl.DataFrame) -> None:
         width="stretch",
         hide_index=True,
         column_config={
-            "Match": st.column_config.LinkColumn("Match", display_text="Ouvrir"),
-            "HaloWaypoint": st.column_config.LinkColumn("HaloWaypoint", display_text="Ouvrir"),
+            "Match": st.column_config.LinkColumn("Match", display_text=t("btn_open")),
+            "HaloWaypoint": st.column_config.LinkColumn("HaloWaypoint", display_text=t("btn_open")),
         },
     )
 
@@ -268,10 +267,10 @@ def _render_csv_download(dff_table: pl.DataFrame) -> None:
         .select(show_cols)
     )
 
-    csv_table = table.rename({"start_time_fr": "Date de début"})
+    csv_table = table.rename({"start_time_fr": t("col_start_date")})
     csv = csv_table.write_csv().encode("utf-8")
     st.download_button(
-        "Télécharger CSV",
+        t("btn_download_csv"),
         data=csv,
         file_name="openspartan_matches.csv",
         mime="text/csv",

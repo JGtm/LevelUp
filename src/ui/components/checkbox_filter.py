@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import streamlit as st
 
+from src.ui.i18n import t
+
 # Mapping préfixe -> catégorie pour inférer la catégorie des modes non traduits
 # Catégories simplifiées: Assassin, Fiesta, BTB, Ranked, Firefight, Other
 PREFIX_TO_CATEGORY: dict[str, str] = {
@@ -75,19 +77,21 @@ def _infer_category(mode_name: str) -> str:
 
 
 # Traduction des catégories en français
-CATEGORY_FR: dict[str, str] = {
-    "Assassin": "Assassin",
-    "Fiesta": "Fiesta",
-    "BTB": "Grande bataille en équipe",
-    "Ranked": "Classé",
-    "Firefight": "Baptême du feu",
-    "Other": "Autre",
-}
+def _get_category_labels() -> dict[str, str]:
+    """Retourne le mapping catégorie → label traduit."""
+    return {
+        "Assassin": "Assassin",
+        "Fiesta": "Fiesta",
+        "BTB": t("cat_btb"),
+        "Ranked": t("cat_ranked"),
+        "Firefight": t("cat_firefight"),
+        "Other": t("cat_other"),
+    }
 
 
 def _translate_category(cat: str) -> str:
-    """Traduit une catégorie en français."""
-    return CATEGORY_FR.get(cat, cat)
+    """Traduit une catégorie dans la langue courante."""
+    return _get_category_labels().get(cat, cat)
 
 
 def render_checkbox_filter(
@@ -133,9 +137,9 @@ def render_checkbox_filter(
 
     # Titre avec compteur
     if selected_count == total_count:
-        title = f"{label} (tous)"
+        title = f"{label} {t('cbf_suffix_all')}"
     elif selected_count == 0:
-        title = f"{label} (aucun)"
+        title = f"{label} {t('cbf_suffix_none')}"
     else:
         title = f"{label} ({selected_count}/{total_count})"
 
@@ -170,7 +174,7 @@ def render_checkbox_filter(
 
         # Confirmation message
         if st.session_state.get(f"{session_key}_confirm_clear"):
-            st.warning("⚠️ Confirmer : vider toutes les sélections ?")
+            st.warning(t("cbf_confirm_clear"))
 
             def _confirm_clear(sk: str = session_key, opts: list[str] = options) -> None:
                 st.session_state[sk] = set()
@@ -182,8 +186,8 @@ def render_checkbox_filter(
             def _cancel_clear(sk: str = session_key) -> None:
                 st.session_state[f"{sk}_confirm_clear"] = False
 
-            st.button("Confirmer", key=f"{session_key}_confirm_btn", on_click=_confirm_clear)
-            st.button("Annuler", key=f"{session_key}_cancel_btn", on_click=_cancel_clear)
+            st.button(t("btn_confirm"), key=f"{session_key}_confirm_btn", on_click=_confirm_clear)
+            st.button(t("btn_cancel"), key=f"{session_key}_cancel_btn", on_click=_cancel_clear)
 
         # Checkboxes
         for opt in options:
@@ -279,9 +283,9 @@ def render_hierarchical_checkbox_filter(
 
     # Titre principal avec compteur
     if selected_count == total_count:
-        title = f"{label} (tous)"
+        title = f"{label} {t('cbf_suffix_all')}"
     elif selected_count == 0:
-        title = f"{label} (aucun)"
+        title = f"{label} {t('cbf_suffix_none')}"
     else:
         title = f"{label} ({selected_count}/{total_count})"
 
@@ -316,7 +320,7 @@ def render_hierarchical_checkbox_filter(
 
         # Confirmation message
         if st.session_state.get(f"{session_key}_confirm_clear"):
-            st.warning("⚠️ Confirmer : vider toutes les sélections ?")
+            st.warning(t("cbf_confirm_clear"))
             cols_confirm = st.columns(2)
 
             def _confirm_clear_g(sk: str = session_key) -> None:
@@ -331,10 +335,10 @@ def render_hierarchical_checkbox_filter(
                 st.session_state[f"{sk}_confirm_clear"] = False
 
             cols_confirm[0].button(
-                "Confirmer", key=f"{session_key}_confirm_btn", on_click=_confirm_clear_g
+                t("btn_confirm"), key=f"{session_key}_confirm_btn", on_click=_confirm_clear_g
             )
             cols_confirm[1].button(
-                "Annuler", key=f"{session_key}_cancel_btn", on_click=_cancel_clear_g
+                t("cancel"), key=f"{session_key}_cancel_btn", on_click=_cancel_clear_g
             )
 
         st.markdown("---")

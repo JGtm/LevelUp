@@ -7,9 +7,8 @@ from collections.abc import Callable
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.ui.commendations import render_h5g_commendations_section
+from src.ui.i18n import t
 from src.ui.medals import load_medal_name_maps, medal_label, render_medals_grid
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.distributions import plot_medals_distribution
@@ -85,9 +84,9 @@ def render_citations_page(
     # Afficher les metrics
     cols_metrics = st.columns(3)
     with cols_metrics[0]:
-        st.metric("Citations obtenues", f"{total_citations_count:,}")
+        st.metric(t("cit_obtained"), f"{total_citations_count:,}")
     with cols_metrics[1]:
-        st.metric("Matchs analysés", len(dff) if not dff.is_empty() else 0)
+        st.metric(t("cit_matches_analyzed"), len(dff) if not dff.is_empty() else 0)
 
     render_h5g_commendations_section(
         db_path=db_path,
@@ -120,11 +119,11 @@ def render_citations_page(
     # Afficher les metrics
     cols_medals = st.columns(3)
     with cols_medals[0]:
-        st.metric("Médailles distinctes", total_medals_distinct)
+        st.metric(t("cit_distinct_medals"), total_medals_distinct)
     with cols_medals[1]:
-        st.metric("Total médailles", f"{total_medals_count:,}")
+        st.metric(t("cit_total_medals"), f"{total_medals_count:,}")
     with cols_medals[2]:
-        st.metric("Matchs analysés", len(dff) if not dff.is_empty() else 0)
+        st.metric(t("cit_matches_analyzed"), len(dff) if not dff.is_empty() else 0)
 
     st.caption(t("citations_medals_caption"))
     if dff.is_empty():
@@ -146,7 +145,9 @@ def render_citations_page(
                 pl.col("name_id")
                 .cast(pl.Utf8)
                 .replace_strict(_medal_map, default=None, return_dtype=pl.Utf8)
-                .fill_null(pl.lit("Médaille #") + pl.col("name_id").cast(pl.Utf8))
+                .fill_null(
+                    pl.lit(t("mv_medal_fallback", n="") + " ") + pl.col("name_id").cast(pl.Utf8)
+                )
                 .alias("label")
             )
             md_desc = md.sort("count", descending=True)

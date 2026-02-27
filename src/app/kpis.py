@@ -17,6 +17,7 @@ from src.analysis import compute_aggregated_stats, compute_global_ratio, compute
 from src.analysis.stats import format_mmss
 from src.ui.components import render_kpi_cards, render_top_summary
 from src.ui.formatting import format_duration_dhm, format_duration_hms
+from src.ui.i18n import t
 
 # =============================================================================
 # Helpers
@@ -182,12 +183,12 @@ def render_matches_summary(df: pl.DataFrame, kpis: KPIStats) -> None:
     avg_match_txt = format_duration_hms(kpis.avg_match_seconds)
     total_play_txt = format_duration_dhm(kpis.total_play_seconds)
 
-    st.subheader("Parties")
+    st.subheader(t("kpi_section_matches"))
     render_top_summary(len(df_pl), rates)
     render_kpi_cards(
         [
-            ("Durée moyenne / match", avg_match_txt),
-            ("Durée totale", total_play_txt),
+            (t("kpi_avg_duration"), avg_match_txt),
+            (t("kpi_total_duration"), total_play_txt),
         ]
     )
 
@@ -200,20 +201,20 @@ def render_career_kpis(kpis: KPIStats) -> None:
     """
     avg_match_txt = format_duration_hms(kpis.avg_match_seconds)
 
-    st.subheader("Carrière")
+    st.subheader(t("kpi_section_career"))
     render_kpi_cards(
         [
-            ("Durée moyenne / match", avg_match_txt),
+            (t("kpi_avg_duration"), avg_match_txt),
             (
-                "Frags par partie",
+                t("kpi_kills_per_match"),
                 f"{kpis.kills_per_game:.2f}" if kpis.kills_per_game is not None else "-",
             ),
             (
-                "Morts par partie",
+                t("kpi_deaths_per_match"),
                 f"{kpis.deaths_per_game:.2f}" if kpis.deaths_per_game is not None else "-",
             ),
             (
-                "Assistances par partie",
+                t("kpi_assists_per_match"),
                 f"{kpis.assists_per_game:.2f}" if kpis.assists_per_game is not None else "-",
             ),
         ],
@@ -221,20 +222,26 @@ def render_career_kpis(kpis: KPIStats) -> None:
     )
     render_kpi_cards(
         [
-            ("Frags / min", f"{kpis.kills_per_minute:.2f}" if kpis.kills_per_minute else "-"),
-            ("Morts / min", f"{kpis.deaths_per_minute:.2f}" if kpis.deaths_per_minute else "-"),
             (
-                "Assistances / min",
+                t("kpi_kills_per_min"),
+                f"{kpis.kills_per_minute:.2f}" if kpis.kills_per_minute else "-",
+            ),
+            (
+                t("kpi_deaths_per_min"),
+                f"{kpis.deaths_per_minute:.2f}" if kpis.deaths_per_minute else "-",
+            ),
+            (
+                t("kpi_assists_per_min"),
                 f"{kpis.assists_per_minute:.2f}" if kpis.assists_per_minute else "-",
             ),
             (
-                "Précision moyenne",
+                t("kpi_avg_accuracy"),
                 f"{kpis.avg_accuracy:.2f}%" if kpis.avg_accuracy is not None else "-",
             ),
-            ("Durée de vie moyenne", format_mmss(kpis.avg_life_seconds)),
-            ("Taux de victoire", f"{kpis.win_rate*100:.1f}%" if kpis.total_matches else "-"),
-            ("Taux de défaite", f"{kpis.loss_rate*100:.1f}%" if kpis.total_matches else "-"),
-            ("Ratio", f"{kpis.global_ratio:.2f}" if kpis.global_ratio is not None else "-"),
+            (t("kpi_avg_lifespan"), format_mmss(kpis.avg_life_seconds)),
+            (t("kpi_win_rate"), f"{kpis.win_rate*100:.1f}%" if kpis.total_matches else "-"),
+            (t("kpi_loss_rate"), f"{kpis.loss_rate*100:.1f}%" if kpis.total_matches else "-"),
+            (t("kpi_ratio"), f"{kpis.global_ratio:.2f}" if kpis.global_ratio is not None else "-"),
         ],
         dense=False,
     )

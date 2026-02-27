@@ -57,30 +57,34 @@ def _style_map_table_row(row: pd.Series) -> pd.Series:
     red = str(getattr(HALO_COLORS, "red", "#E74C3C"))
     violet = "#8E6CFF"
 
-    win_pct = _to_float(row.get("Taux victoire (%)"))
-    loss_pct = _to_float(row.get("Taux défaite (%)"))
-    ratio_val = _to_float(row.get("Ratio global"))
+    col_win = t("wl_col_win_rate")
+    col_loss = t("wl_col_loss_rate")
+    col_ratio = t("wl_col_ratio")
+
+    win_pct = _to_float(row.get(col_win))
+    loss_pct = _to_float(row.get(col_loss))
+    ratio_val = _to_float(row.get(col_ratio))
 
     styles: dict[str, str] = {str(c): "" for c in row.index}
 
     if win_pct is not None and loss_pct is not None:
         if win_pct > loss_pct:
-            styles["Taux victoire (%)"] = f"color: {green}; font-weight: 800;"
-            styles["Taux défaite (%)"] = f"color: {red}; font-weight: 800;"
+            styles[col_win] = f"color: {green}; font-weight: 800;"
+            styles[col_loss] = f"color: {red}; font-weight: 800;"
         elif win_pct < loss_pct:
-            styles["Taux victoire (%)"] = f"color: {red}; font-weight: 800;"
-            styles["Taux défaite (%)"] = f"color: {green}; font-weight: 800;"
+            styles[col_win] = f"color: {red}; font-weight: 800;"
+            styles[col_loss] = f"color: {green}; font-weight: 800;"
         else:
-            styles["Taux victoire (%)"] = f"color: {violet}; font-weight: 800;"
-            styles["Taux défaite (%)"] = f"color: {violet}; font-weight: 800;"
+            styles[col_win] = f"color: {violet}; font-weight: 800;"
+            styles[col_loss] = f"color: {violet}; font-weight: 800;"
 
     if ratio_val is not None:
         if ratio_val > 1.0:
-            styles["Ratio global"] = f"color: {green}; font-weight: 800;"
+            styles[col_ratio] = f"color: {green}; font-weight: 800;"
         elif ratio_val < 1.0:
-            styles["Ratio global"] = f"color: {red}; font-weight: 800;"
+            styles[col_ratio] = f"color: {red}; font-weight: 800;"
         else:
-            styles["Ratio global"] = f"color: {violet}; font-weight: 800;"
+            styles[col_ratio] = f"color: {violet}; font-weight: 800;"
 
     return pd.Series(styles)
 
@@ -494,28 +498,37 @@ def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None
         ]
     )
     rename_map = {
-        "map_name": "Carte",
-        "matches": "Parties",
-        "accuracy_avg": "Précision moy. (%)",
-        "performance_avg": "Performance moy.",
-        "win_rate": "Taux victoire (%)",
-        "loss_rate": "Taux défaite (%)",
-        "ratio_global": "Ratio global",
-        "playlist_ctx": "Playlist",
-        "mode_ctx": "Mode",
+        "map_name": t("wl_col_map"),
+        "matches": t("wl_col_matches"),
+        "accuracy_avg": t("wl_col_accuracy_avg"),
+        "performance_avg": t("wl_col_performance_avg"),
+        "win_rate": t("wl_col_win_rate"),
+        "loss_rate": t("wl_col_loss_rate"),
+        "ratio_global": t("wl_col_ratio"),
+        "playlist_ctx": t("wl_col_playlist"),
+        "mode_ctx": t("wl_col_mode"),
     }
     tbl = tbl.rename({k: v for k, v in rename_map.items() if k in tbl.columns})
 
+    _col_map = t("wl_col_map")
+    _col_playlist = t("wl_col_playlist")
+    _col_mode = t("wl_col_mode")
+    _col_matches = t("wl_col_matches")
+    _col_acc = t("wl_col_accuracy_avg")
+    _col_perf = t("wl_col_performance_avg")
+    _col_win = t("wl_col_win_rate")
+    _col_loss = t("wl_col_loss_rate")
+    _col_ratio = t("wl_col_ratio")
     ordered_cols = [
-        "Carte",
-        "Playlist",
-        "Mode",
-        "Parties",
-        "Précision moy. (%)",
-        "Performance moy.",
-        "Taux victoire (%)",
-        "Taux défaite (%)",
-        "Ratio global",
+        _col_map,
+        _col_playlist,
+        _col_mode,
+        _col_matches,
+        _col_acc,
+        _col_perf,
+        _col_win,
+        _col_loss,
+        _col_ratio,
     ]
     tbl = tbl.select([c for c in ordered_cols if c in tbl.columns])
 
@@ -527,13 +540,11 @@ def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None
         width="stretch",
         hide_index=True,
         column_config={
-            "Parties": st.column_config.NumberColumn("Parties", format="%d"),
-            "Précision moy. (%)": st.column_config.NumberColumn(
-                "Précision moy. (%)", format="%.2f"
-            ),
-            "Performance moy.": st.column_config.NumberColumn("Performance moy.", format="%.1f"),
-            "Taux victoire (%)": st.column_config.NumberColumn("Taux victoire (%)", format="%.1f"),
-            "Taux défaite (%)": st.column_config.NumberColumn("Taux défaite (%)", format="%.1f"),
-            "Ratio global": st.column_config.NumberColumn("Ratio global", format="%.2f"),
+            _col_matches: st.column_config.NumberColumn(_col_matches, format="%d"),
+            _col_acc: st.column_config.NumberColumn(_col_acc, format="%.2f"),
+            _col_perf: st.column_config.NumberColumn(_col_perf, format="%.1f"),
+            _col_win: st.column_config.NumberColumn(_col_win, format="%.1f"),
+            _col_loss: st.column_config.NumberColumn(_col_loss, format="%.1f"),
+            _col_ratio: st.column_config.NumberColumn(_col_ratio, format="%.2f"),
         },
     )

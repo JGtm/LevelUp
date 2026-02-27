@@ -43,11 +43,7 @@ def render_settings_page(
     st.subheader(t("settings_title"))
 
     with st.expander("Source", expanded=False):
-        st.caption(
-            "Gestion de la base de données et des caches. "
-            "Cette section permet de vider les caches et rafraîchir la liste des joueurs disponibles. "
-            "La sélection du joueur actif se fait via le sélecteur dans la sidebar principale."
-        )
+        st.caption(t("set_db_mgmt"))
         default_db = get_default_db_path()
         render_source_section(
             default_db,
@@ -55,12 +51,8 @@ def render_settings_page(
             on_clear_caches=on_clear_caches_fn,
         )
 
-    with st.expander("Synchronisation", expanded=False):
-        st.caption(
-            "Configuration de la synchronisation via scripts/sync.py. "
-            "Le bouton 🔄 Actualiser dans la sidebar lance une sync complète "
-            "(matchs, highlights, médailles, aliases, skill)."
-        )
+    with st.expander(t("set_sync_title"), expanded=False):
+        st.caption(t("settings_sync_help"))
 
         st.info(
             "ℹ️ **Architecture v5** : La synchronisation récupère automatiquement TOUTES les données :\n"
@@ -74,24 +66,22 @@ def render_settings_page(
         )
 
         max_matches = st.number_input(
-            "Max matchs par sync",
+            t("set_sync_max_matches"),
             min_value=10,
             max_value=5000,
             value=int(getattr(settings, "spnkr_refresh_max_matches", 500) or 500),
             step=10,
-            help="Nombre maximum de matchs récents à vérifier lors d'une sync",
         )
 
         rps = st.number_input(
-            "Requêtes API / seconde",
+            t("set_sync_rate"),
             min_value=1,
             max_value=50,
             value=int(getattr(settings, "spnkr_refresh_rps", 3) or 3),
             step=1,
-            help="Attention : des valeurs trop élevées peuvent entraîner un bannissement API. Recommandé : 3-10.",
         )
 
-    with st.expander("Options du bouton Actualiser", expanded=False):
+    with st.expander(t("set_refresh_options"), expanded=False):
         st.caption(
             "Configurez ce que fait le bouton 🔄 Synchroniser dans la sidebar. "
             "Le backfill remplit les données manquantes pour les matchs existants."
@@ -99,14 +89,13 @@ def render_settings_page(
 
         # Option pour activer le backfill complet
         backfill_enabled = st.toggle(
-            "Activer le backfill après synchronisation",
+            t("settings_backfill_enable"),
             value=bool(getattr(settings, "spnkr_refresh_with_backfill", False)),
-            help="Remplit automatiquement les données manquantes après chaque sync",
         )
 
         st.markdown(f"**{t('settings_backfill_data_label')}**")
         backfill_all = st.checkbox(
-            "Toutes les données",
+            t("backfill_all_data"),
             value=False,
             help="Cochez pour backfill toutes les données, ou choisissez individuellement ci-dessous",
             disabled=not backfill_enabled,
@@ -123,46 +112,46 @@ def render_settings_page(
             col1, col2 = st.columns(2)
             with col1:
                 backfill_medals = st.checkbox(
-                    "Médailles",
+                    t("set_backfill_medals"),
                     value=bool(getattr(settings, "spnkr_refresh_backfill_medals", False)),
                     disabled=not backfill_enabled,
                 )
                 backfill_events = st.checkbox(
-                    "Highlight events",
+                    t("set_backfill_events"),
                     value=bool(getattr(settings, "spnkr_refresh_backfill_events", False)),
                     disabled=not backfill_enabled,
                 )
                 backfill_skill = st.checkbox(
-                    "Stats skill/MMR",
+                    t("set_backfill_skill"),
                     value=bool(getattr(settings, "spnkr_refresh_backfill_skill", False)),
                     disabled=not backfill_enabled,
                 )
             with col2:
                 backfill_personal_scores = st.checkbox(
-                    "Personal score awards",
+                    t("set_backfill_personal_scores"),
                     value=bool(getattr(settings, "spnkr_refresh_backfill_personal_scores", False)),
                     disabled=not backfill_enabled,
                 )
                 backfill_performance_scores = st.checkbox(
-                    "Scores de performance",
+                    t("set_backfill_scores"),
                     value=bool(
                         getattr(settings, "spnkr_refresh_backfill_performance_scores", True)
                     ),
                     help="Calcule les scores de performance manquants (peut être activé même sans backfill général)",
                 )
                 backfill_aliases = st.checkbox(
-                    "Aliases XUID",
+                    t("set_backfill_aliases"),
                     value=bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
                     disabled=not backfill_enabled,
                 )
 
-    with st.expander("Médias", expanded=True):
+    with st.expander(t("set_media_title"), expanded=True):
         st.info(
             "ℹ️ **Architecture v5** : La section Médias est toujours active. "
             "Configurez le dossier de base et la tolérance temporelle."
         )
         media_captures_base_dir = directory_input(
-            "Dossier de base des captures",
+            t("set_media_screenshots"),
             value=str(getattr(settings, "media_captures_base_dir", "") or ""),
             key="settings_media_captures_base_dir",
             help=(
@@ -172,14 +161,14 @@ def render_settings_page(
             placeholder="Ex: D:/Captures",
         )
         media_tolerance_minutes = st.slider(
-            "Tolérance (minutes) autour du match",
+            t("set_media_tolerance"),
             min_value=0,
             max_value=30,
             value=int(settings.media_tolerance_minutes or 0),
             step=1,
         )
         # Bouton reset index médias
-        if st.button("Réinitialiser l'index médias", key="settings_reset_media_index"):
+        if st.button(t("ml_rescan"), key="settings_reset_media_index"):
             from src.data.media_indexer import MediaIndexer
 
             db_path = st.session_state.get("db_path") or get_default_db_path()
@@ -191,9 +180,9 @@ def render_settings_page(
                 except Exception as e:
                     st.error(t("error_loading", error=e))
 
-    with st.expander("Expérience", expanded=True):
+    with st.expander(t("set_experience_title"), expanded=True):
         refresh_clears_caches = st.toggle(
-            "Le bouton Actualiser vide aussi les caches",
+            t("set_clear_cache_title"),
             value=bool(getattr(settings, "refresh_clears_caches", False)),
             help="Utile si la DB change en dehors de l'app (NAS / import externe).",
         )
@@ -232,7 +221,7 @@ def render_settings_page(
     # Section "Profil joueur (avancé)" masquée - valeurs conservées depuis settings
 
     cols = st.columns(2)
-    if cols[0].button("Enregistrer", width="stretch"):
+    if cols[0].button(t("btn_save"), width="stretch"):
         new_settings = AppSettings(
             media_enabled=True,  # Toujours activé en v5
             media_screens_dir="",  # Legacy - non utilisé en v5
@@ -285,7 +274,7 @@ def render_settings_page(
             st.error(err)
         return new_settings
 
-    if cols[1].button("Recharger depuis fichier", width="stretch"):
+    if cols[1].button(t("btn_reload"), width="stretch"):
         reloaded = load_settings()
         st.session_state["app_settings"] = reloaded
         st.rerun()

@@ -9,6 +9,7 @@ from __future__ import annotations
 import plotly.graph_objects as go
 
 from src.config import THEME_COLORS
+from src.ui.i18n import t
 
 # Constantes de progression vers le rang Héros (rang 272)
 XP_HERO_TOTAL: int = 9_319_350  # XP cumulée pour atteindre le rang 272 (officiel)
@@ -39,7 +40,7 @@ def create_career_progress_gauge(
     """
     if is_max_rank:
         progress_pct = 100.0
-        subtitle = "Rang maximum atteint"
+        subtitle = t("career_max_rank")
     else:
         subtitle = f"{current_xp:,} / {xp_for_next_rank:,} XP"
 
@@ -154,7 +155,7 @@ def create_hero_progress_gauge(
     """
     if is_max_rank:
         hero_pct = 100.0
-        subtitle = "Rang Héros atteint !"
+        subtitle = t("career_hero_rank")
     else:
         subtitle = f"{xp_total:,} / {XP_HERO_TOTAL:,} XP"
 
@@ -178,7 +179,7 @@ def create_hero_progress_gauge(
             number={"suffix": "%", "font": {"size": 36, "color": "white"}},
             title={
                 "text": (
-                    "<b>Progression vers Héros</b><br>"
+                    f"<b>{t('career_progression_to_hero')}</b><br>"
                     f"<span style='font-size:12px;color:#aaa'>{subtitle}</span>"
                 ),
                 "font": {"size": 16, "color": "white"},

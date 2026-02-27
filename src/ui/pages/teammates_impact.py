@@ -9,13 +9,12 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.analysis.friends_impact import (
     build_impact_matrix,
     get_all_impact_events,
 )
 from src.data.repositories import DuckDBRepository
+from src.ui.i18n import t
 from src.utils.paths import get_shared_matches_path_from_player
 from src.visualization.friends_impact_heatmap import (
     build_impact_ranking_df,
@@ -144,10 +143,10 @@ def _render_impact_stats(
     """Affiche les métriques résumées d'impact."""
     stats = render_impact_summary_stats(first_bloods, clutch_finishers, last_casualties)
     cols = st.columns(4)
-    cols[0].metric("🟢 Premier Sang", stats["total_fb"])
-    cols[1].metric("🟡 Finisseur", stats["total_clutch"])
-    cols[2].metric("🔴 Boulet", stats["total_casualty"])
-    cols[3].metric("📊 Matchs analysés", stats["total_matches"])
+    cols[0].metric(t("tmi_first_blood"), stats["total_fb"])
+    cols[1].metric(t("tmi_finisher"), stats["total_clutch"])
+    cols[2].metric(t("tmi_liability"), stats["total_casualty"])
+    cols[3].metric(t("tmi_matches_analyzed"), stats["total_matches"])
 
 
 def _render_ranking_table(
@@ -175,13 +174,13 @@ def _render_ranking_table(
                 zip(
                     ranking_df.columns,
                     [
-                        "Rang",
-                        "Joueur",
-                        "Score",
-                        "⚡ Premier Sang",
-                        "🎯 Finisseur",
-                        "💀 Boulet",
-                        "Badge",
+                        t("tmi_col_rank"),
+                        t("tmi_col_player"),
+                        t("tmi_col_score"),
+                        t("tmi_col_first_blood"),
+                        t("tmi_col_finisher"),
+                        t("tmi_col_casualty"),
+                        t("tmi_badge"),
                     ],
                     strict=False,
                 )
@@ -198,9 +197,9 @@ def _render_ranking_table(
 
         summary_cols = st.columns(2)
         if mvp:
-            summary_cols[0].success(f"**🏆 Brute de la Soirée :** {mvp}")
+            summary_cols[0].success(t("tmi_mvp_label", mvp=mvp))
         if boulet:
-            summary_cols[1].error(f"**🍌 Maillon Faible :** {boulet}")
+            summary_cols[1].error(t("tmi_boulet_label", boulet=boulet))
 
 
 def render_impact_taquinerie(
@@ -238,19 +237,13 @@ def render_impact_taquinerie(
         # Attacher shared_matches.duckdb
         shared_alias = _ensure_shared_attached(conn, db_path)
         if not shared_alias:
-            st.warning(
-                "Impossible d'accéder à shared_matches.duckdb. "
-                "Cette fonctionnalité nécessite l'architecture v5."
-            )
+            st.warning(t("tmi_no_shared_db"))
             return
 
         # Charger les événements depuis shared_matches
         events_df = _load_highlight_events(conn, match_ids, shared_alias)
         if events_df is None:
-            st.info(
-                "Les données d'événements (highlight_events) ne sont pas disponibles. "
-                "Cette fonctionnalité nécessite une synchronisation avec les détails de matchs."
-            )
+            st.info(t("tmi_no_events"))
             return
         if events_df.is_empty():
             st.info(t("tm_impact_no_events_matches"))

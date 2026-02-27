@@ -55,12 +55,12 @@ def render_expected_vs_actual(
 
     mmr_cols = st.columns(3)
     with mmr_cols[0]:
-        os_card("MMR d'équipe", f"{team_mmr:.1f}" if team_mmr is not None else "-")
+        os_card(t("mvc_mmr_team"), f"{team_mmr:.1f}" if team_mmr is not None else "-")
     with mmr_cols[1]:
-        os_card("MMR adverse", f"{enemy_mmr:.1f}" if enemy_mmr is not None else "-")
+        os_card(t("mvc_mmr_enemy"), f"{enemy_mmr:.1f}" if enemy_mmr is not None else "-")
     with mmr_cols[2]:
         if delta_mmr is None:
-            os_card("Écart MMR", "-")
+            os_card(t("mvc_mmr_gap"), "-")
         else:
             dm = float(delta_mmr)
             col = (
@@ -68,7 +68,7 @@ def render_expected_vs_actual(
                 if dm > 0
                 else ("var(--color-loss)" if dm < 0 else "var(--color-tie)")
             )
-            os_card("Écart MMR", f"{dm:+.1f}", "équipe - adverse", accent=col, kpi_color=col)
+            os_card(t("mvc_mmr_gap"), f"{dm:+.1f}", t("mvc_mmr_gap_sub"), accent=col, kpi_color=col)
 
     def _ev_card(title: str, perf: dict, *, mode: str) -> None:
         count = perf.get("count")
@@ -81,7 +81,7 @@ def render_expected_vs_actual(
 
         # Si expected est None, afficher seulement la valeur réelle sans comparaison
         if expected is None:
-            os_card(title, f"{float(count):.0f}", "Valeur réelle (comparaison indisponible)")
+            os_card(title, f"{float(count):.0f}", t("mvc_actual_only"))
             return
 
         delta = float(count) - float(expected)
@@ -109,7 +109,7 @@ def render_expected_vs_actual(
         _ev_card(t("tm_deaths"), perf_d, mode="inverse")
     with av_cols[2]:
         avg_life_last = row.get("average_life_seconds")
-        os_card("Durée de vie moyenne", format_mmss(avg_life_last), "")
+        os_card(t("col_avg_life_long"), format_mmss(avg_life_last), "")
 
     # Calculer la moyenne historique par catégorie de mode
     mode_category = extract_mode_category(row.get("pair_name"))
@@ -124,7 +124,7 @@ def render_expected_vs_actual(
         hist_avgs = compute_mode_category_averages(df_full, mode_category)
 
     # Graphique F / D / A
-    labels = ["F", "D", "A"]
+    labels = [t("mvc_lbl_k"), t("mvc_lbl_d"), t("mvc_lbl_a")]
     actual_vals = [
         float(row.get("kills") or 0.0),
         float(row.get("deaths") or 0.0),
@@ -159,10 +159,10 @@ def render_expected_vs_actual(
         go.Bar(
             x=labels,
             y=actual_vals,
-            name="Réel",
+            name=t("lbl_actual"),
             marker_color=bar_colors,
             opacity=0.90,
-            hovertemplate="%{x} (réel): %{y:.0f}<extra></extra>",
+            hovertemplate=f"%{{x}} ({t('lbl_actual')}): %{{y:.0f}}<extra></extra>",
         ),
         secondary_y=False,
     )
@@ -176,13 +176,13 @@ def render_expected_vs_actual(
             go.Bar(
                 x=labels,
                 y=exp_vals,
-                name="Attendu",
+                name=t("lbl_expected"),
                 marker={
                     "color": exp_colors,
                     "line": {"color": bar_colors, "width": 2},
                     "pattern": {"shape": "/", "solidity": 0.4, "fgcolor": bar_colors},
                 },
-                hovertemplate="%{x} (attendu): %{y:.1f}<extra></extra>",
+                hovertemplate=f"%{{x}} ({t('lbl_expected')}): %{{y:.1f}}<extra></extra>",
             ),
             secondary_y=False,
         )
@@ -216,9 +216,9 @@ def render_expected_vs_actual(
                 x=labels,
                 y=[hist_ratio] * len(labels),
                 mode="lines",
-                name=f"Ratio moy. {mode_category}",
+                name=t("mvc_ratio_avg", category=mode_category),
                 line={"color": HALO_COLORS.violet, "width": 2, "dash": "dash"},
-                hovertemplate=f"ratio moy. {mode_category}: %{{y:.2f}}<extra></extra>",
+                hovertemplate=f"{t('mvc_ratio_avg', category=mode_category)}: %{{y:.2f}}<extra></extra>",
             ),
             secondary_y=True,
         )
@@ -234,7 +234,7 @@ def render_expected_vs_actual(
                 "y": 1.05,  # Au-dessus du graphique
                 "xref": "paper",
                 "yref": "paper",
-                "text": f"Ratio F/M/A: <b>{real_ratio_f:.2f}</b>",
+                "text": f"{t('mvc_fda_ratio')}: <b>{real_ratio_f:.2f}</b>",
                 "showarrow": False,
                 "font": {"size": 14, "color": HALO_COLORS.amber},
                 "bgcolor": "rgba(0,0,0,0.5)",
@@ -244,12 +244,12 @@ def render_expected_vs_actual(
             }
         ],
     )
-    exp_fig.update_yaxes(title_text="F / D / A", rangemode="tozero", secondary_y=False)
+    exp_fig.update_yaxes(title_text=t("mvc_fda_title"), rangemode="tozero", secondary_y=False)
     # Masquer l'axe secondaire si pas de ratio historique (pour éviter confusion)
     if hist_ratio is None:
         exp_fig.update_yaxes(visible=False, secondary_y=True)
     else:
-        exp_fig.update_yaxes(title_text="Ratio", secondary_y=True)
+        exp_fig.update_yaxes(title_text=t("mvc_ratio_title"), secondary_y=True)
 
     # K/D/A et Folie meurtrière sur la même rangée
     chart_cols = st.columns(2)
@@ -346,10 +346,10 @@ def _render_spree_headshots(
             go.Bar(
                 x=x_labels,
                 y=real_vals,
-                name="Réel",
+                name=t("lbl_actual"),
                 marker_color=bar_colors,
                 opacity=0.85,
-                hovertemplate="%{x} (réel): %{y:.0f}<extra></extra>",
+                hovertemplate=f"%{{x}} ({t('lbl_actual')}): %{{y:.0f}}<extra></extra>",
             )
         )
 
@@ -364,7 +364,7 @@ def _render_spree_headshots(
                 go.Bar(
                     x=x_labels,
                     y=hist_vals,
-                    name=f"Moyenne hist. {mode_category} ({hist_avgs['match_count']} matchs)",
+                    name=t("mvc_hist_avg", category=mode_category, n=hist_avgs["match_count"]),
                     marker={
                         "color": bar_colors,
                         "pattern": {
@@ -374,7 +374,7 @@ def _render_spree_headshots(
                         },
                     },
                     opacity=0.35,
-                    hovertemplate=f"%{{x}} (moy. hist. {mode_category}): %{{y:.1f}}<extra></extra>",
+                    hovertemplate=f"%{{x}} ({t('mvc_hist_avg', category=mode_category, n=hist_avgs['match_count'])}): %{{y:.1f}}<extra></extra>",
                 )
             )
 

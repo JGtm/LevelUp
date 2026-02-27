@@ -16,10 +16,9 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.data.services.teammates_service import TeammatesService
 from src.ui.cache import cached_has_cache_tables
+from src.ui.i18n import t
 from src.ui.pages.teammates_helpers import render_teammate_cards
 from src.ui.pages.teammates_views import (
     render_multi_teammate_view,
@@ -122,28 +121,23 @@ def render_teammates_page(
     if not st.session_state.get("_cache_warning_shown"):
         has_cache = cached_has_cache_tables(db_path, db_key)
         if not has_cache:
-            st.warning(
-                "⚠️ **Performance** : Les tables de cache ne sont pas initialisées. "
-                "Le chargement sera plus lent. Exécutez `python scripts/migrate_to_cache.py` "
-                "pour accélérer significativement cette page.",
-                icon="⚠️",
-            )
+            st.warning(t("tm_loading_slow"), icon="⚠️")
             st.session_state["_cache_warning_shown"] = True
 
     apply_current_filters_teammates = st.toggle(
-        "Appliquer les filtres actuels (période/sessions + map/playlist)",
+        t("tm_apply_filters"),
         value=True,
         key="apply_current_filters_teammates",
     )
     same_team_only_teammates = st.checkbox(
-        "Même équipe", value=True, key="teammates_same_team_only"
+        t("tm_same_team"), value=True, key="teammates_same_team_only"
     )
 
     show_smooth_teammates = st.toggle(
-        "Afficher les courbes lissées",
+        t("tm_show_smoothed"),
         value=bool(st.session_state.get("teammates_show_smooth", True)),
         key="teammates_show_smooth",
-        help="Active/désactive les courbes de moyenne lissée sur les graphes de cette section.",
+        help=t("tm_smoothed_help"),
     )
 
     with perf_section("teammates/build_friends_opts_map"):
@@ -151,7 +145,7 @@ def render_teammates_page(
             db_path, xuid.strip(), db_key, aliases_key
         )
     picked_labels = st.multiselect(
-        "Coéquipiers",
+        t("tm_select_teammates"),
         options=list(opts_map.keys()),
         default=default_labels,
         key="teammates_picked_labels",
@@ -195,7 +189,7 @@ def render_teammates_page(
                 except Exception:
                     pass
 
-        st.subheader("Tendance de session")
+        st.subheader(t("tm_session_trend"))
         st.caption(t("tm_kd_half_caption"))
         _trend_cols = st.columns(len(players_trend))
         for _col, (_pname, _td) in zip(_trend_cols, players_trend, strict=False):

@@ -226,14 +226,14 @@ def _render_media_from_indexed_db(
     st.subheader(t("mv_media_title"))
 
     if not mine.is_empty():
-        _show_media_group(mine, "Mes captures", match_id)
+        _show_media_group(mine, t("mvh_my_captures"), match_id)
 
     if not teammates.is_empty():
         for gt in sorted(teammates["gamertag"].unique().to_list()):
             if not gt or not str(gt).strip():
                 continue
             sub = teammates.filter(pl.col("gamertag") == gt)
-            _show_media_group(sub, f"Captures de {gt}", match_id)
+            _show_media_group(sub, t("mvh_captures_of", gt=gt), match_id)
 
     return True
 
@@ -300,7 +300,7 @@ def _render_media_legacy(
     st.caption(window_info)
 
     if img_hits is not None:
-        st.caption("Captures")
+        st.caption(t("mvh_my_captures"))
         for p in img_hits["path"].to_list():
             try:
                 st.image(p, caption=str(p))
