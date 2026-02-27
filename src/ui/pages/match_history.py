@@ -215,15 +215,15 @@ def _render_history_table(dff_table: pl.DataFrame) -> None:
             .cast(pl.Utf8)
             .fill_null("-")
             .alias(t("col_mmr_gap")),
-            pl.col("kda").cast(pl.Utf8).fill_null("-").alias(t("col_kda")),
+            pl.col("kda").cast(pl.Float64, strict=False).round(2).cast(pl.Utf8).fill_null("-").alias(t("col_kda")),
             pl.col("kills").cast(pl.Utf8).fill_null("-").alias(t("col_kills")),
             pl.col("deaths").cast(pl.Utf8).fill_null("-").alias(t("col_deaths")),
             pl.col("max_killing_spree").cast(pl.Utf8).fill_null("-").alias(t("col_max_spree")),
             pl.col("headshot_kills").cast(pl.Utf8).fill_null("-").alias(t("col_headshots")),
             pl.col("average_life_mmss").fill_null("-").alias(t("col_avg_life")),
             pl.col("assists").cast(pl.Utf8).fill_null("-").alias(t("col_assists")),
-            pl.col("accuracy").cast(pl.Utf8).fill_null("-").alias(t("col_accuracy")),
-            pl.col("ratio").cast(pl.Utf8).fill_null("-").alias(t("col_ratio")),
+            pl.col("accuracy").cast(pl.Float64, strict=False).round(2).cast(pl.Utf8).fill_null("-").alias(t("col_accuracy")),
+            pl.col("ratio").cast(pl.Float64, strict=False).round(2).cast(pl.Utf8).fill_null("-").alias(t("col_ratio")),
         ]
     )
 

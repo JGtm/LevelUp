@@ -1,0 +1,34 @@
+{
+    "_titles": {
+        "Recruit": "Recrue",
+        "Cadet": "Cadet",
+        "Private": "Soldat",
+        "Lance Corporal": "Caporal suppléant",
+        "Corporal": "Caporal",
+        "Sergeant": "Sergent",
+        "Staff Sergeant": "Sergent-chef",
+        "Gunnery Sergeant": "Sergent d'artillerie",
+        "Master Sergeant": "Adjudant",
+        "Lieutenant": "Lieutenant",
+        "Captain": "Capitaine",
+        "Major": "Lieutenant-major",
+        "Lt Colonel": "Lieutenant-colonel",
+        "Colonel": "Colonel",
+        "Brigadier General": "Général de brigade",
+        "General": "Général",
+        "Hero": "Héros"
+    },
+    "_tiers": {
+        "Bronze": "Bronze",
+        "Silver": "Argent",
+        "Gold": "Or",
+        "Platinum": "Platine",
+        "Diamond": "Diamant",
+        "Onyx": "Onyx"
+    },
+    "_grades": {
+        "1": "I",
+        "2": "II",
+        "3": "III"
+    }
+}

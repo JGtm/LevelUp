@@ -63,6 +63,7 @@ class WinLossService:
         dff: pl.DataFrame,
         bucket_label: str,
         is_session_scope: bool = False,
+        lang: str = "fr",
     ) -> PeriodTable:
         """Construit le tableau de victoires/défaites par période.
 
@@ -70,11 +71,20 @@ class WinLossService:
             dff: DataFrame Polars filtré des matchs.
             bucket_label: Label du bucket temporel (pour l'en-tête).
             is_session_scope: True si mode session actif.
+            lang: Langue cible ("fr" ou "en").
 
         Returns:
             PeriodTable avec le tableau formaté.
         """
         from src.config import SESSION_CONFIG
+
+        # Noms de colonnes selon la langue
+        _col_wins = "Victoires" if lang == "fr" else "Wins"
+        _col_losses = "Défaites" if lang == "fr" else "Losses"
+        _col_draws = "Égalités" if lang == "fr" else "Draws"
+        _col_unfinished = "Non terminés" if lang == "fr" else "Unfinished"
+        _col_total = "Total"
+        _col_winrate = "Taux de victoires" if lang == "fr" else "Win rate"
 
         if dff.is_empty() or "outcome" not in dff.columns:
             return PeriodTable(table=pl.DataFrame(), bucket_label=bucket_label, is_empty=True)
@@ -127,10 +137,10 @@ class WinLossService:
             d.group_by("bucket")
             .agg(
                 [
-                    (pl.col("outcome") == 2).sum().alias("Victoires"),
-                    (pl.col("outcome") == 3).sum().alias("Défaites"),
-                    (pl.col("outcome") == 1).sum().alias("Égalités"),
-                    (pl.col("outcome") == 4).sum().alias("Non terminés"),
+                    (pl.col("outcome") == 2).sum().alias(_col_wins),
+                    (pl.col("outcome") == 3).sum().alias(_col_losses),
+                    (pl.col("outcome") == 1).sum().alias(_col_draws),
+                    (pl.col("outcome") == 4).sum().alias(_col_unfinished),
                 ]
             )
             .sort("bucket")
@@ -140,18 +150,18 @@ class WinLossService:
         out_tbl = pivot.with_columns(
             [
                 (
-                    pl.col("Victoires")
-                    + pl.col("Défaites")
-                    + pl.col("Égalités")
-                    + pl.col("Non terminés")
-                ).alias("Total"),
+                    pl.col(_col_wins)
+                    + pl.col(_col_losses)
+                    + pl.col(_col_draws)
+                    + pl.col(_col_unfinished)
+                ).alias(_col_total),
             ]
         ).with_columns(
             [
-                pl.when(pl.col("Total") > 0)
-                .then(100.0 * pl.col("Victoires") / pl.col("Total"))
+                pl.when(pl.col(_col_total) > 0)
+                .then(100.0 * pl.col(_col_wins) / pl.col(_col_total))
                 .otherwise(0.0)
-                .alias("Taux de victoires")
+                .alias(_col_winrate)
             ]
         )
 

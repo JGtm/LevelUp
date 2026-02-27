@@ -599,7 +599,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "axis_per_minute": {"fr": "Par minute", "en": "Per minute"},
     # ── Labels duels / net ────────────────────────────────────────────────────
     "label_net": {"fr": "Net", "en": "Net"},
-    "label_cumul": {"fr": "Cumul", "en": "Cumul"},
+    "label_cumul": {"fr": "Cumul", "en": "Count"},
     # ── Axe temps du match ────────────────────────────────────────────────────
     "axis_match_time": {"fr": "Temps du match", "en": "Match time"},
     # ── Suffixes indicateurs ──────────────────────────────────────────────────
@@ -635,6 +635,10 @@ STRINGS: dict[str, dict[str, str]] = {
     "hover_avg_s1": {
         "fr": "moyenne=%{y:.1f}<extra></extra>",
         "en": "average=%{y:.1f}<extra></extra>",
+    },
+    "hover_perfect_sprees": {
+        "fr": "frags parfaits=%{y}<extra></extra>",
+        "en": "perfect sprees=%{y}<extra></extra>",
     },
     "hover_avg": {
         "fr": "moy=%{y:.2f}<extra></extra>",

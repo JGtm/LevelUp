@@ -165,7 +165,7 @@ def plot_spree_headshots_accuracy(
             alignmentgroup="spree_hs",
             offsetgroup="perfect",
             width=0.28,
-            hovertemplate="frags parfaits=%{y}<extra></extra>",
+            hovertemplate=viz_t("hover_perfect_sprees", lang),
         ),
         secondary_y=False,
     )

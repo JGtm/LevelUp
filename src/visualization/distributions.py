@@ -317,7 +317,10 @@ def plot_medals_distribution(
     # Trier et limiter
     sorted_medals = sorted(medals_data, key=lambda x: x[1], reverse=True)[:top_n]
 
-    names = [medal_names.get(m[0], f"Médaille #{m[0]}") for m in sorted_medals]
+    names = [
+        medal_names.get(m[0], f"Medal #{m[0]}" if lang == "en" else f"Médaille #{m[0]}")
+        for m in sorted_medals
+    ]
     counts = [m[1] for m in sorted_medals]
 
     # Inverser pour afficher du plus grand au plus petit (haut -> bas)

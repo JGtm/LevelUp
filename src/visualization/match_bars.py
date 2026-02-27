@@ -93,7 +93,7 @@ def plot_metric_bars_by_match(
             mode="lines",
             name=viz_t("trace_avg_smoothed", lang),
             line={"width": 3, "color": smooth_color},
-            hovertemplate="moyenne=%{y:.2f}<extra></extra>",
+            hovertemplate=viz_t("hover_avg_smoothed", lang),
         )
     )
     fig.update_layout(
@@ -301,7 +301,7 @@ def plot_multi_metric_bars_by_match(
                     name=f"{name} — {viz_t('trace_avg_smoothed', lang)}",
                     line={"width": 3, "color": color},
                     opacity=0.95,
-                    hovertemplate=f"{name}<br>moyenne=%{{y:.2f}}<extra></extra>",
+                    hovertemplate=f"{name}<br>{viz_t('hover_avg_smoothed', lang)}",
                     legendgroup=name,
                 )
             )
