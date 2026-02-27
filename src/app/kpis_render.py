@@ -18,7 +18,6 @@ from src.analysis import (
     compute_global_ratio,
     compute_outcome_rates,
 )
-from src.analysis.performance_config import PERFORMANCE_SCORE_FULL_DESC
 from src.analysis.stats import format_mmss
 from src.app.helpers import (
     avg_match_duration_seconds,
@@ -32,6 +31,7 @@ from src.ui.formatting import (
     format_duration_dhm,
     format_duration_hms,
 )
+from src.ui.i18n import get_lang, t
 
 if TYPE_CHECKING:
     pass
@@ -83,23 +83,23 @@ def render_kpis_section(dff: pl.DataFrame) -> None:
     apg = dff_pl.select(pl.col("assists").mean()).item() if not dff_pl.is_empty() else None
 
     # Rendu des sections
-    st.subheader("Parties")
+    st.subheader(t("kpi_matches_header"))
     render_top_summary(len(dff_pl), rates)
     render_kpi_cards(
         [
-            ("Durée moyenne / match", avg_match_txt),
-            ("Durée totale", total_play_txt),
+            (t("kpi_avg_duration"), avg_match_txt),
+            (t("kpi_total_duration"), total_play_txt),
         ]
     )
 
-    st.subheader("Carrière")
+    st.subheader(t("kpi_career_header"))
     render_kpi_cards(
         [
-            ("Durée moyenne / match", avg_match_txt),
-            ("Frags par partie", f"{kpg:.2f}" if kpg is not None else "-"),
-            ("Morts par partie", f"{dpg:.2f}" if dpg is not None else "-"),
+            (t("kpi_avg_duration"), avg_match_txt),
+            (t("kpi_kills_per_match"), f"{kpg:.2f}" if kpg is not None else "-"),
+            (t("kpi_deaths_per_match"), f"{dpg:.2f}" if dpg is not None else "-"),
             (
-                "Assistances par partie",
+                t("kpi_assists_per_match"),
                 f"{apg:.2f}" if apg is not None else "-",
             ),
         ],
@@ -107,17 +107,23 @@ def render_kpis_section(dff: pl.DataFrame) -> None:
     )
     render_kpi_cards(
         [
-            ("Frags / min", f"{stats.kills_per_minute:.2f}" if stats.kills_per_minute else "-"),
-            ("Morts / min", f"{stats.deaths_per_minute:.2f}" if stats.deaths_per_minute else "-"),
             (
-                "Assistances / min",
+                t("kpi_kills_per_min"),
+                f"{stats.kills_per_minute:.2f}" if stats.kills_per_minute else "-",
+            ),
+            (
+                t("kpi_deaths_per_min"),
+                f"{stats.deaths_per_minute:.2f}" if stats.deaths_per_minute else "-",
+            ),
+            (
+                t("kpi_assists_per_min"),
                 f"{stats.assists_per_minute:.2f}" if stats.assists_per_minute else "-",
             ),
-            ("Précision moyenne", f"{avg_acc:.2f}%" if avg_acc is not None else "-"),
-            ("Durée de vie moyenne", format_mmss(avg_life)),
-            ("Taux de victoire", f"{win_rate*100:.1f}%" if rates.total else "-"),
-            ("Taux de défaite", f"{loss_rate*100:.1f}%" if rates.total else "-"),
-            ("Ratio", f"{global_ratio:.2f}" if global_ratio is not None else "-"),
+            (t("kpi_avg_accuracy"), f"{avg_acc:.2f}%" if avg_acc is not None else "-"),
+            (t("kpi_avg_lifespan"), format_mmss(avg_life)),
+            (t("kpi_win_rate"), f"{win_rate*100:.1f}%" if rates.total else "-"),
+            (t("kpi_loss_rate"), f"{loss_rate*100:.1f}%" if rates.total else "-"),
+            (t("kpi_ratio"), f"{global_ratio:.2f}" if global_ratio is not None else "-"),
         ],
         dense=False,
     )
@@ -125,5 +131,8 @@ def render_kpis_section(dff: pl.DataFrame) -> None:
 
 def render_performance_info() -> None:
     """Rend l'expander d'explication du score de performance."""
-    with st.expander("ℹ️ À propos du score de performance", expanded=False):
-        st.markdown(PERFORMANCE_SCORE_FULL_DESC)
+    from src.analysis.performance_config import get_performance_full_desc
+
+    lang = get_lang()
+    with st.expander(t("exp_perf_score_info"), expanded=False):
+        st.markdown(get_performance_full_desc(lang))

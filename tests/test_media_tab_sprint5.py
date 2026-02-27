@@ -55,7 +55,14 @@ def test_render_media_tab_no_db_path() -> None:
         m_st.info.assert_called()
         calls = [c[0][0] for c in m_st.info.call_args_list]
         assert any(
-            c and ("profil" in c.lower() or "duckdb" in c.lower() or "sélectionne" in c.lower())
+            c
+            and (
+                "profil" in c.lower()
+                or "duckdb" in c.lower()
+                or "sélectionne" in c.lower()
+                or "filtre" in c.lower()
+                or "no data" in c.lower()
+            )
             for c in calls
         )
 

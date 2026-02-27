@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from src.app.page_router import PAGES, dispatch_page
+from src.app.page_router import PAGE_KEYS, PAGES, dispatch_page
 from src.ui.settings import AppSettings
 
 
@@ -118,17 +118,17 @@ def dispatch_context() -> dict[str, object]:
 @pytest.mark.parametrize(
     ("page", "expected_renderer"),
     [
-        ("Dernier match", "render_last_match_page_fn"),
-        ("Match", "render_match_search_page_fn"),
-        ("Citations", "render_citations_page_fn"),
-        ("Comparaison de sessions", "render_session_comparison_page_fn"),
-        ("Séries temporelles", "render_timeseries_page_fn"),
-        ("Victoires/Défaites", "render_win_loss_page_fn"),
-        ("Mes coéquipiers", "render_teammates_page_fn"),
-        ("Historique des parties", "render_match_history_page_fn"),
-        ("Médias", "render_media_tab_fn"),
-        ("Carrière", "render_career_page_fn"),
-        ("Paramètres", "render_settings_page_fn"),
+        ("last_match", "render_last_match_page_fn"),
+        ("match", "render_match_search_page_fn"),
+        ("citations", "render_citations_page_fn"),
+        ("session_compare", "render_session_comparison_page_fn"),
+        ("timeseries", "render_timeseries_page_fn"),
+        ("win_loss", "render_win_loss_page_fn"),
+        ("teammates", "render_teammates_page_fn"),
+        ("match_history", "render_match_history_page_fn"),
+        ("media", "render_media_tab_fn"),
+        ("career", "render_career_page_fn"),
+        ("settings", "render_settings_page_fn"),
     ],
 )
 def test_dispatch_page_routes_to_expected_renderer(
@@ -140,7 +140,7 @@ def test_dispatch_page_routes_to_expected_renderer(
     """Vérifie qu'une page donnée appelle exactement le renderer attendu."""
     monkeypatch.setattr(
         "src.app.filters.get_friends_xuids_for_sessions",
-        lambda *_args, **_kwargs: tuple(),
+        lambda *_args, **_kwargs: (),
     )
 
     dispatch_page(
@@ -192,18 +192,20 @@ def test_dispatch_page_routes_to_expected_renderer(
 
 
 def test_pages_constant_matches_expected_navigation() -> None:
-    """Valide la liste canonique des pages navigables affichées dans l'app."""
+    """Valide la liste canonique des slugs de pages navigables."""
     expected_pages = [
-        "Séries temporelles",
-        "Comparaison de sessions",
-        "Dernier match",
-        "Match",
-        "Médias",
-        "Citations",
-        "Victoires/Défaites",
-        "Mes coéquipiers",
-        "Historique des parties",
-        "Carrière",
-        "Paramètres",
+        "timeseries",
+        "session_compare",
+        "last_match",
+        "match",
+        "media",
+        "citations",
+        "win_loss",
+        "teammates",
+        "match_history",
+        "career",
+        "settings",
     ]
-    assert expected_pages == PAGES
+    assert expected_pages == PAGE_KEYS
+    # PAGES reste un alias de PAGE_KEYS pour compat
+    assert PAGES == PAGE_KEYS

@@ -36,6 +36,15 @@
 - **Correlations** - Scatter plots (time alive vs kills)
 - **Top weapons** - Weapon stats with headshot rate
 
+### Pages & navigation
+- **Last match** - Full scoreboard for your latest game, searchable by match ID
+- **Match history** - Filterable and sortable match log
+- **Session comparison** - Side-by-side analysis of two play sessions
+- **Career progression** - Rank history, progression to Hero, LUSR rating per playlist group
+- **Commendations** - Track your commendations with medal distributions and grids
+- **Media library** - Index and browse clips/screenshots linked to their matches
+- **Discord notifications** - Automatic alerts after sync and backfill operations
+
 ### v5.3 architecture — DuckDB Multi-DB
 - **Shared Matches** — `shared_matches.duckdb` centralizes all matches (registry, participants, events, medals)
 - **PvE Firefight** — `shared_pve.duckdb` isolates Firefight stats (waves, bosses, enemies by type)

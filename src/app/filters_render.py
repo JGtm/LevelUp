@@ -32,6 +32,7 @@ from src.ui.filter_state import (
     load_filter_preferences,
     save_filter_preferences,
 )
+from src.ui.i18n import t
 from src.ui.vectorize_helpers import build_mapping
 
 GAP_MINUTES_FIXED = 120  # Figé (sessions stockées en base, cf. SESSIONS_STOCKAGE_PLAN.md)
@@ -132,12 +133,12 @@ def _apply_experience_filter(
     )
 
     conds: list[pl.Expr] = []
-    for t in experience_selected:
-        if t == "PVE":
+    for exp_type in experience_selected:
+        if exp_type == "PVE":
             conds.append(pve_cond)
-        elif t == "PVP classé":
+        elif exp_type == "PVP classé":
             conds.append(ranked_cond)
-        elif t == "PVP non classé":
+        elif exp_type == "PVP non classé":
             conds.append(~pve_cond & ~ranked_cond)
 
     if not conds:
@@ -201,7 +202,7 @@ def render_filters_sidebar(
     """
     df = _to_polars(df)
 
-    st.header("Filtres")
+    st.header(t("filter_header"))
 
     base_for_filters = df.clone()
     dmin, dmax = date_range_fn(base_for_filters)
@@ -325,8 +326,9 @@ def render_filters_sidebar(
     if "filter_mode" not in st.session_state:
         st.session_state["filter_mode"] = "Période"
     filter_mode = st.radio(
-        "Sélection",
+        t("filter_selection"),
         options=["Période", "Sessions"],
+        format_func=lambda x: t("filter_period") if x == "Période" else t("filter_sessions"),
         horizontal=True,
         key="filter_mode",
     )
@@ -466,7 +468,7 @@ def _render_period_filter(dmin: date, dmax: date) -> tuple[date, date]:
             if not isinstance(cur, date) or cur < start_default_date or cur > end_limit_date:
                 st.session_state["start_date_cal"] = start_default_date
         start_date = st.date_input(
-            "Début",
+            t("filter_start"),
             min_value=start_default_date,
             max_value=end_limit_date,
             format="DD/MM/YYYY",
@@ -482,14 +484,14 @@ def _render_period_filter(dmin: date, dmax: date) -> tuple[date, date]:
             if not isinstance(cur, date) or cur < start_limit_date or cur > end_default_date:
                 st.session_state["end_date_cal"] = end_default_date
         end_date = st.date_input(
-            "Fin",
+            t("filter_end"),
             min_value=start_limit_date,
             max_value=end_default_date,
             format="DD/MM/YYYY",
             key="end_date_cal",
         )
     if start_date > end_date:
-        st.warning("La date de début est après la date de fin.")
+        st.warning(t("filter_date_error"))
     return start_date, end_date
 
 
@@ -550,13 +552,13 @@ def _render_session_filter(
 
     # Boutons de navigation
     cols = st.columns(2)
-    if cols[0].button("Dernière session", width="stretch"):
+    if cols[0].button(t("filter_last_session"), width="stretch"):
         _set_session_selection(options_ui[0] if options_ui else "(toutes)")
         st.session_state["min_matches_maps"] = 1
         st.session_state["_min_matches_maps_auto"] = True
         st.session_state["min_matches_maps_friends"] = 1
         st.session_state["_min_matches_maps_friends_auto"] = True
-    if cols[1].button("Session précédente", width="stretch"):
+    if cols[1].button(t("filter_prev_session"), width="stretch"):
         current = st.session_state.get("picked_session_label", "(toutes)")
         if not options_ui:
             _set_session_selection("(toutes)")
@@ -582,7 +584,10 @@ def _render_session_filter(
 
     # Sélecteur de session
     picked_one = st.selectbox(
-        "Session", options=["(toutes)"] + options_ui, key="picked_session_label"
+        t("filter_session_label"),
+        options=["(toutes)"] + options_ui,
+        format_func=lambda x: t("sel_all_categories") if x == "(toutes)" else x,
+        key="picked_session_label",
     )
     picked_session_labels = None if picked_one == "(toutes)" else [picked_one]
 
@@ -694,7 +699,7 @@ def _render_trio_button(trio_label: str | None) -> None:
         st.session_state["_min_matches_maps_friends_auto"] = True
 
     st.button(
-        "Dernière session en trio",
+        t("filter_last_trio_session"),
         width="stretch",
         disabled=disabled_trio,
         on_click=_apply_trio_filter,
@@ -934,7 +939,7 @@ def _render_cascade_filters(
         playlist_values_faceted
     )
     render_checkbox_filter(
-        label="Playlists",
+        label=t("filter_playlists"),
         options=playlist_values_faceted,
         session_key="filter_playlists",
         default_unchecked=get_firefight_playlists(playlist_values_faceted),
@@ -948,7 +953,7 @@ def _render_cascade_filters(
     # ── Modes — rendu facetté avec Save-Render-Restore ────────────────────────
     _hidden_modes = st.session_state.get("filter_modes", set()) - set(mode_values_faceted)
     render_hierarchical_checkbox_filter(
-        label="Modes",
+        label=t("filter_modes"),
         options=mode_values_faceted,
         session_key="filter_modes",
         expanded=False,
@@ -959,7 +964,7 @@ def _render_cascade_filters(
     # ── Cartes — rendu facetté avec Save-Render-Restore ──────────────────────
     _hidden_maps = st.session_state.get("filter_maps", set()) - set(map_values_faceted)
     render_checkbox_filter(
-        label="Cartes",
+        label=t("filter_maps"),
         options=map_values_faceted,
         session_key="filter_maps",
         expanded=False,

@@ -12,7 +12,7 @@ from collections.abc import Callable
 import polars as pl
 import streamlit as st
 
-from src.analysis.performance_config import SCORE_LABELS, SCORE_THRESHOLDS
+from src.analysis.performance_config import SCORE_THRESHOLDS, get_score_labels
 from src.analysis.performance_score import (
     compute_session_performance_score_v1,
     compute_session_performance_score_v2,
@@ -86,19 +86,20 @@ def get_score_class(score: float | None) -> str:
     return "text-bad"
 
 
-def get_score_label(score: float | None) -> str:
-    """Retourne le label textuel selon le score."""
+def get_score_label(score: float | None, lang: str | None = None) -> str:
+    """Retourne le label textuel traduit selon le score."""
     if score is None:
         return "N/A"
+    labels = get_score_labels(lang)
     if score >= SCORE_THRESHOLDS["excellent"]:
-        return SCORE_LABELS["excellent"]
+        return labels["excellent"]
     if score >= SCORE_THRESHOLDS["good"]:
-        return SCORE_LABELS["good"]
+        return labels["good"]
     if score >= SCORE_THRESHOLDS["average"]:
-        return SCORE_LABELS["average"]
+        return labels["average"]
     if score >= SCORE_THRESHOLDS["below_average"]:
-        return SCORE_LABELS["below_average"]
-    return SCORE_LABELS["bad"]
+        return labels["below_average"]
+    return labels["bad"]
 
 
 def render_performance_score_card(
@@ -113,9 +114,12 @@ def render_performance_score_card(
         perf: Dict retourné par compute_session_performance_score.
         is_better: True si cette session est meilleure, False si pire, None si pas de comparaison.
     """
+    from src.ui.i18n import get_lang, t
+
+    lang = get_lang()
     score = perf.get("score")
     score_class = get_score_class(score)
-    score_label = get_score_label(score)
+    score_label = get_score_label(score, lang=lang)
     score_display = f"{score:.0f}" if score is not None else "—"
 
     # Indicateur de comparaison
@@ -125,13 +129,15 @@ def render_performance_score_card(
     elif is_better is False:
         badge = "<span class='text-negative text-lg' style='margin-left: 8px;'>▼</span>"
 
+    matches_label = t("perf_matches_count", lang=lang)
+
     st.markdown(
         f"""
         <div class="os-perf-card">
             <div class="os-perf-card__label">{html_mod.escape(str(label))}</div>
             <div class="os-perf-card__score {score_class}">{score_display}{badge}</div>
             <div class="os-perf-card__status {score_class}">{score_label}</div>
-            <div class="os-perf-card__meta">{perf.get('matches', 0)} parties</div>
+            <div class="os-perf-card__meta">{perf.get('matches', 0)} {matches_label}</div>
         </div>
         """,
         unsafe_allow_html=True,
