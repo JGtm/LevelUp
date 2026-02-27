@@ -308,7 +308,7 @@ def plot_cumulative_kd(
                 "opacity": 0.6,
                 "symbol": "circle-open",
             },
-            hovertemplate="<b>%{x}</b><br>K/D Match: %{y:.2f}<extra></extra>",
+            hovertemplate=viz_t("hover_kd_match", lang),
         )
     )
 
@@ -388,7 +388,7 @@ def plot_rolling_kd(
             name=viz_t("trace_kd_match", lang),
             line={"color": PERFORMANCE_COLORS["neutral"], "width": 1},
             opacity=0.4,
-            hovertemplate="<b>%{x}</b><br>K/D Match: %{y:.2f}<extra></extra>",
+            hovertemplate=viz_t("hover_kd_match", lang),
         )
     )
 

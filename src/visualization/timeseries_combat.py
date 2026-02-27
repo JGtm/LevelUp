@@ -860,7 +860,7 @@ def plot_lusr_timeseries(
                     "color": colors.get("violet", "#8B5CF6"),
                     "dash": "dashdot",
                 },
-                hovertemplate="tendance=%{y:.0f}<extra></extra>",
+                hovertemplate=viz_t("hover_trend_smooth", lang),
             )
         )
 

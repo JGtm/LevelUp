@@ -648,6 +648,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "<b>%{x}</b><br>K/D Glissant: %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>Rolling K/D: %{y:.2f}<extra></extra>",
     },
+    "hover_kd_match": {
+        "fr": "<b>%{x}</b><br>K/D Match: %{y:.2f}<extra></extra>",
+        "en": "<b>%{x}</b><br>Match K/D: %{y:.2f}<extra></extra>",
+    },
+    "hover_trend_smooth": {
+        "fr": "tendance=%{y:.0f}<extra></extra>",
+        "en": "trend=%{y:.0f}<extra></extra>",
+    },
     "hover_match_cumul": {
         "fr": "<b>{label}</b><br>Match #%{{x}}<br>Cumulé: %{{y:+d}}<extra></extra>",
         "en": "<b>{label}</b><br>Match #%{{x}}<br>Cumul: %{{y:+d}}<extra></extra>",
@@ -696,6 +704,50 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "hover_death_cumul": {
         "fr": "<b>Mort #%{y}</b><br>%{text}<extra></extra>",
         "en": "<b>Death #%{y}</b><br>%{text}<extra></extra>",
+    },
+    # ── Hovertemplates Distributions ─────────────────────────────────────────
+    "hover_kda_rug": {
+        "fr": "FDA=%{x:.2f}<extra></extra>",
+        "en": "KDA=%{x:.2f}<extra></extra>",
+    },
+    # ── Hovertemplates Antagonistes ───────────────────────────────────────────
+    "hover_kills_per_min": {
+        "fr": "Min %{x}<br>Frags: %{y}<extra></extra>",
+        "en": "Min %{x}<br>Kills: %{y}<extra></extra>",
+    },
+    "hover_deaths_per_min": {
+        "fr": "Min %{x}<br>Morts: %{customdata}<extra></extra>",
+        "en": "Min %{x}<br>Deaths: %{customdata}<extra></extra>",
+    },
+    "hover_heatmap_kills": {
+        "fr": "<b>%{y}</b> → <b>%{x}</b><br>Frags: %{z}<extra></extra>",
+        "en": "<b>%{y}</b> → <b>%{x}</b><br>Kills: %{z}<extra></extra>",
+    },
+    # ── Hovertemplates Objectifs ──────────────────────────────────────────────
+    "hover_obj_kills_score": {
+        "fr": "<b>%{text}</b><br>Frags: %{x}<br>Score Objectifs: %{y}<br><extra>%{customdata[0]}</extra>",
+        "en": "<b>%{text}</b><br>Kills: %{x}<br>Objective Score: %{y}<br><extra>%{customdata[0]}</extra>",
+    },
+    "hover_obj_leaderboard": {
+        "fr": "<b>%{y}</b><br>Score Total: %{x:,.0f}<br>Matchs: %{customdata}<extra></extra>",
+        "en": "<b>%{y}</b><br>Total Score: %{x:,.0f}<br>Matches: %{customdata}<extra></extra>",
+    },
+    "hover_obj_score_line": {
+        "fr": "<b>%{x}</b><br>Objectifs: %{y}<extra></extra>",
+        "en": "<b>%{x}</b><br>Objectives: %{y}<extra></extra>",
+    },
+    "hover_obj_total_line": {
+        "fr": "<b>%{x}</b><br>Total: %{y}<extra></extra>",
+        "en": "<b>%{x}</b><br>Total: %{y}<extra></extra>",
+    },
+    # ── Hovertemplates Participation ──────────────────────────────────────────
+    "hover_score_pts_h": {
+        "fr": "<b>%{y}</b><br>Score: %{x:,.0f} pts<extra></extra>",
+        "en": "<b>%{y}</b><br>Score: %{x:,.0f} pts<extra></extra>",
+    },
+    "hover_score_pts_v": {
+        "fr": "<b>%{x}</b><br>Score: %{y:,.0f} pts<extra></extra>",
+        "en": "<b>%{x}</b><br>Score: %{y:,.0f} pts<extra></extra>",
     },
 }
 

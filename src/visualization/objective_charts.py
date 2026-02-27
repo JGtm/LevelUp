@@ -137,12 +137,7 @@ def plot_objective_vs_kills_scatter(
             },
             text=[d.get("map_name", "?") for d in data],
             customdata=[[d.get("start_time", ""), d.get("match_id", "")] for d in data],
-            hovertemplate=(
-                "<b>%{text}</b><br>"
-                "Frags: %{x}<br>"
-                "Score Objectifs: %{y}<br>"
-                "<extra>%{customdata[0]}</extra>"
-            ),
+            hovertemplate=viz_t("hover_obj_kills_score", lang),
             name=viz_t("trace_matches", lang),
         )
     )
@@ -359,11 +354,7 @@ def plot_top_players_objective_bars(
             text=[f"{s:,.0f}" for s in scores],
             textposition="outside",
             customdata=matches,
-            hovertemplate=(
-                "<b>%{y}</b><br>"
-                "Score Total: %{x:,.0f}<br>"
-                "Matchs: %{customdata}<extra></extra>"
-            ),
+            hovertemplate=viz_t("hover_obj_leaderboard", lang),
         )
     )
 
@@ -562,7 +553,7 @@ def plot_objective_trend_over_time(
             name=viz_t("trace_obj_score", lang),
             line={"color": OBJECTIVE_COLORS["objective"], "width": 2},
             marker={"size": 6},
-            hovertemplate="<b>%{x}</b><br>Objectifs: %{y}<extra></extra>",
+            hovertemplate=viz_t("hover_obj_score_line", lang),
         )
     )
 
@@ -576,7 +567,7 @@ def plot_objective_trend_over_time(
                 mode="lines",
                 name=viz_t("trace_total_score", lang),
                 line={"color": OBJECTIVE_COLORS["other"], "width": 1, "dash": "dot"},
-                hovertemplate="<b>%{x}</b><br>Total: %{y}<extra></extra>",
+                hovertemplate=viz_t("hover_obj_total_line", lang),
             )
         )
 

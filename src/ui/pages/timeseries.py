@@ -102,7 +102,7 @@ def _render_kda_section(dff: pl.DataFrame, lang: str = "fr") -> None:
             t("ts_kda_mean_label"), f"{valid['kda'].mean():.2f}", label_visibility="collapsed"
         )
         try:
-            fig_dist = plot_kda_distribution(dff)
+            fig_dist = plot_kda_distribution(dff, lang=lang)
             if fig_dist is not None:
                 st.plotly_chart(fig_dist, width="stretch", config={"staticPlot": True})
             else:
@@ -112,7 +112,7 @@ def _render_kda_section(dff: pl.DataFrame, lang: str = "fr") -> None:
 
 
 @fragment_if_available
-def _render_cumulative_performance(dff: pl.DataFrame) -> None:
+def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche les graphes de performance cumulée et tendance (Sprint 6)."""
     st.divider()
     st.subheader(t("ts_cumulative"))
@@ -122,24 +122,26 @@ def _render_cumulative_performance(dff: pl.DataFrame) -> None:
         try:
             st.plotly_chart(
                 plot_cumulative_net_score(
-                    cumul.cumul_net, time_played_seconds=cumul.time_played_seconds
+                    cumul.cumul_net, time_played_seconds=cumul.time_played_seconds, lang=lang
                 ),
                 width="stretch",
                 config={"displayModeBar": False},
             )
             st.plotly_chart(
-                plot_cumulative_kd(cumul.cumul_kd, time_played_seconds=cumul.time_played_seconds),
+                plot_cumulative_kd(
+                    cumul.cumul_kd, time_played_seconds=cumul.time_played_seconds, lang=lang
+                ),
                 width="stretch",
                 config={"displayModeBar": False},
             )
             st.plotly_chart(
-                plot_rolling_kd(cumul.rolling_kd, window_size=5),
+                plot_rolling_kd(cumul.rolling_kd, window_size=5, lang=lang),
                 width="stretch",
                 config={"displayModeBar": False},
             )
             if cumul.has_enough_for_trend:
                 st.plotly_chart(
-                    plot_session_trend(cumul.pl_df),
+                    plot_session_trend(cumul.pl_df, lang=lang),
                     width="stretch",
                     config={"staticPlot": True},
                 )
@@ -152,19 +154,19 @@ def _render_cumulative_performance(dff: pl.DataFrame) -> None:
 
 
 @fragment_if_available
-def _render_distributions(dff: pl.DataFrame) -> None:
+def _render_distributions(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche les distributions statistiques (Sprint 5.4.3 + Sprint 6)."""
     st.divider()
     st.subheader(t("ts_distributions"))
     st.caption(t("ts_distributions_caption"))
 
     colors = HALO_COLORS.as_dict()
-    _render_distribution_row1(dff, colors)
-    _render_distribution_row2(dff, colors)
-    _render_distribution_row3(dff, colors)
+    _render_distribution_row1(dff, colors, lang=lang)
+    _render_distribution_row2(dff, colors, lang=lang)
+    _render_distribution_row3(dff, colors, lang=lang)
 
 
-def _render_distribution_row1(dff: pl.DataFrame, colors: dict) -> None:
+def _render_distribution_row1(dff: pl.DataFrame, colors: dict, lang: str = "fr") -> None:
     """Ligne 1 : précision + kills."""
     col1, col2 = st.columns(2)
     with col1:
@@ -174,6 +176,7 @@ def _render_distribution_row1(dff: pl.DataFrame, colors: dict) -> None:
             t("ts_dist_accuracy_title"),
             t("ts_accuracy_label"),
             colors["cyan"],
+            lang=lang,
         )
     with col2:
         _render_single_histogram(
@@ -182,10 +185,11 @@ def _render_distribution_row1(dff: pl.DataFrame, colors: dict) -> None:
             t("ts_dist_kills_title"),
             t("ts_kills_label"),
             colors["green"],
+            lang=lang,
         )
 
 
-def _render_distribution_row2(dff: pl.DataFrame, colors: dict) -> None:
+def _render_distribution_row2(dff: pl.DataFrame, colors: dict, lang: str = "fr") -> None:
     """Ligne 2 : durée de vie + score de performance."""
     col3, col4 = st.columns(2)
     with col3:
@@ -198,6 +202,7 @@ def _render_distribution_row2(dff: pl.DataFrame, colors: dict) -> None:
             t("ts_dist_life_title"),
             t("ts_life_label"),
             colors["amber"],
+            lang=lang,
         )
     with col4:
         _render_single_histogram(
@@ -206,10 +211,11 @@ def _render_distribution_row2(dff: pl.DataFrame, colors: dict) -> None:
             t("ts_dist_perf_title"),
             t("ts_score_label"),
             colors["violet"],
+            lang=lang,
         )
 
 
-def _render_distribution_row3(dff: pl.DataFrame, colors: dict) -> None:
+def _render_distribution_row3(dff: pl.DataFrame, colors: dict, lang: str = "fr") -> None:
     """Ligne 3 : score/min + win rate glissant (Sprint 6)."""
     col5, col6 = st.columns(2)
     with col5:
@@ -222,6 +228,7 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict) -> None:
                 y_label=t("ts_frequency_label"),
                 show_kde=True,
                 color=colors["amber"],
+                lang=lang,
             )
             st.plotly_chart(fig_spm, width="stretch", config={"staticPlot": True})
         elif "personal_score" not in dff.columns or "time_played_seconds" not in dff.columns:
@@ -239,6 +246,7 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict) -> None:
                 y_label=t("ts_frequency_label"),
                 show_kde=True,
                 color=colors["green"],
+                lang=lang,
             )
             st.plotly_chart(fig_wr, width="stretch", config={"staticPlot": True})
         elif wr_data.missing_column:
@@ -256,6 +264,7 @@ def _render_single_histogram(
     x_label: str,
     color: str,
     min_data: int = 6,
+    lang: str = "fr",
 ) -> None:
     """Affiche un histogramme simple pour une colonne donnée."""
     if column not in dff.columns:
@@ -270,6 +279,7 @@ def _render_single_histogram(
             y_label=t("ts_frequency_label"),
             show_kde=True,
             color=color,
+            lang=lang,
         )
         st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
     elif len(data) == 0:
@@ -279,18 +289,18 @@ def _render_single_histogram(
 
 
 @fragment_if_available
-def _render_correlations(dff: pl.DataFrame) -> None:
+def _render_correlations(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche les graphes de corrélation (Sprint 5.4.5 + Sprint 6)."""
     st.divider()
     st.subheader(t("ts_correlations"))
     st.caption(t("ts_correlations_caption"))
 
-    _render_correlation_row1(dff)
-    _render_correlation_row2(dff)
-    _render_mmr_correlation(dff)
+    _render_correlation_row1(dff, lang=lang)
+    _render_correlation_row2(dff, lang=lang)
+    _render_mmr_correlation(dff, lang=lang)
 
 
-def _render_correlation_row1(dff: pl.DataFrame) -> None:
+def _render_correlation_row1(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Durée de vie vs Frags + Précision vs FDA."""
     col1, col2 = st.columns(2)
     life_col = "avg_life_seconds" if "avg_life_seconds" in dff.columns else "average_life_seconds"
@@ -303,6 +313,7 @@ def _render_correlation_row1(dff: pl.DataFrame) -> None:
             t("ts_lifespan_vs_kills"),
             t("ts_lifespan_s"),
             t("ts_kills_label"),
+            lang=lang,
         )
     with col2:
         _render_scatter(
@@ -313,10 +324,11 @@ def _render_correlation_row1(dff: pl.DataFrame) -> None:
             t("ts_accuracy_vs_kda"),
             t("ts_accuracy_label"),
             t("ts_fda"),
+            lang=lang,
         )
 
 
-def _render_correlation_row2(dff: pl.DataFrame) -> None:
+def _render_correlation_row2(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Durée de vie vs Morts + Frags vs Morts (Sprint 6)."""
     col3, col4 = st.columns(2)
     life_col = "avg_life_seconds" if "avg_life_seconds" in dff.columns else "average_life_seconds"
@@ -329,6 +341,7 @@ def _render_correlation_row2(dff: pl.DataFrame) -> None:
             t("ts_lifespan_vs_deaths"),
             t("ts_lifespan_s"),
             t("ts_deaths_label"),
+            lang=lang,
         )
     with col4:
         _render_scatter(
@@ -339,10 +352,11 @@ def _render_correlation_row2(dff: pl.DataFrame) -> None:
             t("ts_kills_vs_deaths"),
             t("ts_kills_label"),
             t("ts_deaths_label"),
+            lang=lang,
         )
 
 
-def _render_mmr_correlation(dff: pl.DataFrame) -> None:
+def _render_mmr_correlation(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Team MMR vs Enemy MMR (Sprint 6)."""
     _render_scatter(
         dff,
@@ -352,6 +366,7 @@ def _render_mmr_correlation(dff: pl.DataFrame) -> None:
         t("ts_mmr_team_vs_enemy"),
         t("ts_mmr_team"),
         t("ts_mmr_enemy"),
+        lang=lang,
     )
 
 
@@ -364,6 +379,7 @@ def _render_scatter(
     x_label: str,
     y_label: str,
     min_data: int = 6,
+    lang: str = "fr",
 ) -> None:
     """Affiche un scatter de corrélation avec validation des données."""
     if x_col not in dff.columns or y_col not in dff.columns:
@@ -383,6 +399,7 @@ def _render_scatter(
             x_label=x_label,
             y_label=y_label,
             show_trendline=True,
+            lang=lang,
         )
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
@@ -397,6 +414,7 @@ def _render_first_event_section(
     dff: pl.DataFrame,
     db_path: str | None,
     xuid: str | None,
+    lang: str = "fr",
 ) -> None:
     """Affiche la distribution du premier frag / première mort (Sprint 5.4.4)."""
     st.divider()
@@ -412,6 +430,7 @@ def _render_first_event_section(
                 first_event.first_kills,
                 first_event.first_deaths,
                 title=None,
+                lang=lang,
             )
             if fig_events is not None:
                 st.plotly_chart(fig_events, width="stretch", config={"staticPlot": True})
@@ -588,8 +607,8 @@ def render_timeseries_page(
     lang = get_lang()
     with st.spinner(t("ts_computing")):
         _render_kda_section(dff, lang=lang)
-        _render_cumulative_performance(dff)
-        _render_distributions(dff)
-        _render_correlations(dff)
-        _render_first_event_section(dff, db_path, xuid)
+        _render_cumulative_performance(dff, lang=lang)
+        _render_distributions(dff, lang=lang)
+        _render_correlations(dff, lang=lang)
+        _render_first_event_section(dff, db_path, xuid, lang=lang)
         _render_advanced_sections(dff, df_full, db_path, xuid, lang=lang)
