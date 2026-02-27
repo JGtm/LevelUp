@@ -12,6 +12,7 @@ import streamlit as st
 
 from src.config import HALO_COLORS
 from src.ui import translate_pair_name
+from src.ui.i18n import t
 
 
 def _to_polars(df: pl.DataFrame) -> pl.DataFrame:
@@ -101,7 +102,7 @@ def normalize_map_label(map_name: str | None) -> str | None:
     if base is None:
         return None
     if is_uuid_like(base):
-        return "Carte inconnue"
+        return t("unknown_map")
     if " - " in base:
         base = base.split(" - ")[0].strip()
     return base or None

@@ -13,9 +13,9 @@ def test_media_tab_module_imports() -> None:
 
 
 def test_media_tab_keeps_lightbox_and_empty_message() -> None:
-    """Les marqueurs UX Sprint 4 doivent rester présents."""
+    """Les marqueurs UX Sprint 4 doivent rester présents (via appels t())."""
     from src.ui.pages import media_tab
 
     source = inspect.getsource(media_tab)
-    assert "Voir en grand" in source
-    assert "Aucun média indexé" in source
+    assert "media_view_full" in source
+    assert "media_no_indexed" in source

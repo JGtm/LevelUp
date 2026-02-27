@@ -33,6 +33,7 @@ from src.ui.components import (
     render_checkbox_filter,
     render_hierarchical_checkbox_filter,
 )
+from src.ui.i18n import t
 from src.ui.vectorize_helpers import build_mapping
 
 
@@ -330,7 +331,7 @@ def render_date_filters(
             if not isinstance(cur, date) or cur < start_default_date or cur > end_limit_date:
                 st.session_state["start_date_cal"] = start_default_date
         start_date = st.date_input(
-            "Début",
+            t("flt_date_start"),
             min_value=start_default_date,
             max_value=end_limit_date,
             format="DD/MM/YYYY",
@@ -346,7 +347,7 @@ def render_date_filters(
             if not isinstance(cur, date) or cur < start_limit_date or cur > end_default_date:
                 st.session_state["end_date_cal"] = end_default_date
         end_date = st.date_input(
-            "Fin",
+            t("flt_date_end"),
             min_value=start_limit_date,
             max_value=end_default_date,
             format="DD/MM/YYYY",
@@ -392,28 +393,28 @@ def render_session_filters(
 
     def _set_session_selection(label: str) -> None:
         st.session_state.picked_session_label = label
-        if label == "(toutes)":
+        if label == t("flt_session_all"):
             st.session_state.picked_sessions = []
         elif label in options_ui:
             st.session_state.picked_sessions = [label]
 
     if "picked_session_label" not in st.session_state:
-        _set_session_selection(options_ui[0] if options_ui else "(toutes)")
+        _set_session_selection(options_ui[0] if options_ui else t("flt_session_all"))
     if "picked_sessions" not in st.session_state:
         st.session_state.picked_sessions = options_ui[:1] if options_ui else []
 
     cols = st.columns(2)
-    if cols[0].button("Dernière session", width="stretch"):
-        _set_session_selection(options_ui[0] if options_ui else "(toutes)")
+    if cols[0].button(t("flt_session_last"), width="stretch"):
+        _set_session_selection(options_ui[0] if options_ui else t("flt_session_all"))
         st.session_state["min_matches_maps"] = 1
         st.session_state["_min_matches_maps_auto"] = True
         st.session_state["min_matches_maps_friends"] = 1
         st.session_state["_min_matches_maps_friends_auto"] = True
-    if cols[1].button("Session précédente", width="stretch"):
-        current = st.session_state.get("picked_session_label", "(toutes)")
+    if cols[1].button(t("flt_session_prev"), width="stretch"):
+        current = st.session_state.get("picked_session_label", t("flt_session_all"))
         if not options_ui:
-            _set_session_selection("(toutes)")
-        elif current == "(toutes)" or current not in options_ui:
+            _set_session_selection(t("flt_session_all"))
+        elif current == t("flt_session_all") or current not in options_ui:
             _set_session_selection(options_ui[0])
         else:
             idx = options_ui.index(current)
@@ -437,18 +438,20 @@ def render_session_filters(
         st.session_state["_min_matches_maps_friends_auto"] = True
 
     st.button(
-        "Dernière session en trio",
+        t("flt_session_trio"),
         width="stretch",
         disabled=disabled_trio,
         on_click=_apply_trio_filter,
     )
     if not disabled_trio:
-        st.caption(f"Trio : {trio_label}")
+        st.caption(t("flt_trio_caption", label=trio_label))
 
     picked_one = st.selectbox(
-        "Session", options=["(toutes)"] + options_ui, key="picked_session_label"
+        t("flt_session_select"),
+        options=[t("flt_session_all")] + options_ui,
+        key="picked_session_label",
     )
-    picked_session_labels = None if picked_one == "(toutes)" else [picked_one]
+    picked_session_labels = None if picked_one == t("flt_session_all") else [picked_one]
 
     return gap_minutes, picked_session_labels
 
@@ -531,7 +534,7 @@ def render_cascade_filters(
 
     firefight_playlists = get_firefight_playlists(playlist_values)
     playlists_selected = render_checkbox_filter(
-        label="Playlists",
+        label=t("col_playlists"),
         options=playlist_values,
         session_key="filter_playlists",
         default_unchecked=firefight_playlists,
@@ -548,7 +551,7 @@ def render_cascade_filters(
         {str(x).strip() for x in scope1["mode_ui"].drop_nulls().to_list() if str(x).strip()}
     )
     modes_selected = render_hierarchical_checkbox_filter(
-        label="Modes",
+        label=t("col_modes"),
         options=mode_values,
         session_key="filter_modes",
         expanded=False,
@@ -564,7 +567,7 @@ def render_cascade_filters(
         {str(x).strip() for x in scope2["map_ui"].drop_nulls().to_list() if str(x).strip()}
     )
     maps_selected = render_checkbox_filter(
-        label="Cartes",
+        label=t("col_maps"),
         options=map_values,
         session_key="filter_maps",
         expanded=False,

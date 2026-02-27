@@ -124,7 +124,9 @@ def _create_xp_history_chart(history: list[dict]) -> go.Figure | None:
         name = h.get("rank_name", "")
         tier = h.get("rank_tier", "")
         label = format_career_rank_label_fr(tier=tier, title=name, grade=None)
-        hover_texts.append(f"Rang {h['rank']}: {label}<br>XP total: {h['xp_total']:,}")
+        hover_texts.append(
+            t("career_rank_hover", rank=h["rank"], label=label, xp=f"{h['xp_total']:,}")
+        )
 
     bg_rgb = THEME_COLORS.bg_plot
     bg_color = f"rgb({bg_rgb[0]}, {bg_rgb[1]}, {bg_rgb[2]})"
@@ -136,7 +138,7 @@ def _create_xp_history_chart(history: list[dict]) -> go.Figure | None:
             x=dates,
             y=xp_totals,
             mode="lines+markers",
-            name="XP total",
+            name=t("career_xp_total"),
             line={"color": THEME_COLORS.accent, "width": 2},
             marker={"size": 6, "color": THEME_COLORS.accent},
             hovertext=hover_texts,
@@ -145,9 +147,9 @@ def _create_xp_history_chart(history: list[dict]) -> go.Figure | None:
     )
 
     fig.update_layout(
-        title="Progression XP",
-        xaxis_title="Date",
-        yaxis_title="XP total",
+        title=t("career_xp_progress"),
+        xaxis_title=t("col_date"),
+        yaxis_title=t("career_xp_total"),
         paper_bgcolor=bg_color,
         plot_bgcolor=bg_color,
         font={"color": "white"},
@@ -275,14 +277,18 @@ def _load_lusr_history(db_path: str, playlist_group: str | None = None) -> list[
         return []
 
 
-_PG_LABELS: dict[str, str] = {
-    "ranked": "Classé",
-    "arena": "Arena",
-    "btb": "Big Team Battle",
-    "tactical": "Tactique",
-    "social": "Social",
-    "fun": "Fun",
-}
+def _get_pg_labels() -> dict[str, str]:
+    """Retourne les labels traduits des groupes de playlist."""
+    return {
+        "ranked": t("career_ranked"),
+        "arena": "Arena",
+        "btb": "Big Team Battle",
+        "tactical": t("career_tactical"),
+        "social": "Social",
+        "fun": "Fun",
+    }
+
+
 _PG_ICONS: dict[str, str] = {
     "ranked": "🏆",
     "arena": "⚔️",
@@ -342,14 +348,14 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
         cols = st.columns(len(batch))
         for col, snap in zip(cols, batch, strict=False):
             pg = snap["playlist_group"] or "?"
-            tier_label = snap["tier_label"] or "Non classé"
+            tier_label = snap["tier_label"] or t("unranked")
             r_value = float(snap["rating_value"] or 0.0)
             delta = snap["rating_delta"]
             r_type = snap["rating_type"] or "LUSR"
 
             with col, st.container(border=True):
                 # ── En-tête du groupe ──
-                pg_label = _PG_LABELS.get(pg, pg.capitalize())
+                pg_label = _get_pg_labels().get(pg, pg.capitalize())
                 pg_icon = _PG_ICONS.get(pg, "🎮")
 
                 # ── Image du rang encodée en base64 ──
@@ -503,7 +509,7 @@ def render_career_page(
     # Label FR du rang
     rank_label_fr = format_career_rank_label_fr(tier=rank_tier, title=rank_name, grade=None)
     if not rank_label_fr:
-        rank_label_fr = rank_name or f"Rang {rank_number}"
+        rank_label_fr = rank_name or t("career_rank_n", n=rank_number)
 
     # --- Header avec icone + metriques ---
     col_icon, col_info, col_gauge = st.columns([1, 2, 2])
@@ -637,7 +643,9 @@ def render_career_page(
                 )
                 date_str = str(snap.get("recorded_at", ""))[:19]
                 xp_t = snap.get("xp_total", 0) or 0
-                st.text(f"{date_str}  |  Rang {snap['rank']}: {snap_label}  |  XP: {xp_t:,}")
+                st.text(
+                    f"{date_str}  |  {t('career_rank_n', n=snap['rank'])}: {snap_label}  |  XP: {xp_t:,}"
+                )
     else:
         st.info(t("career_computing"))
 

@@ -180,7 +180,7 @@ def _render_distribution_row1(dff: pl.DataFrame, colors: dict) -> None:
             dff,
             "kills",
             t("ts_dist_kills_title"),
-            "Frags",
+            t("ts_kills_label"),
             colors["green"],
         )
 
@@ -204,7 +204,7 @@ def _render_distribution_row2(dff: pl.DataFrame, colors: dict) -> None:
             dff,
             "performance_score",
             t("ts_dist_perf_title"),
-            "Score",
+            t("ts_score_label"),
             colors["violet"],
         )
 
@@ -275,10 +275,7 @@ def _render_single_histogram(
     elif len(data) == 0:
         st.info(t("no_data_filter"))
     else:
-        st.info(
-            f"Pas assez de données ({len(data)} matchs). "
-            f"Il en faut au moins {min_data} pour afficher la distribution."
-        )
+        st.info(t("ts_not_enough_dist", count=len(data), min=min_data))
 
 
 @fragment_if_available
@@ -303,9 +300,9 @@ def _render_correlation_row1(dff: pl.DataFrame) -> None:
             life_col,
             "kills",
             "outcome",
-            "Durée de vie vs frags",
-            "Durée de vie (s)",
-            "Frags",
+            t("ts_lifespan_vs_kills"),
+            t("ts_lifespan_s"),
+            t("ts_kills_label"),
         )
     with col2:
         _render_scatter(
@@ -313,9 +310,9 @@ def _render_correlation_row1(dff: pl.DataFrame) -> None:
             "accuracy",
             "kda",
             "outcome",
-            "Précision vs FDA",
-            "Précision (%)",
-            "FDA",
+            t("ts_accuracy_vs_kda"),
+            t("ts_accuracy_label"),
+            t("ts_fda"),
         )
 
 
@@ -329,9 +326,9 @@ def _render_correlation_row2(dff: pl.DataFrame) -> None:
             life_col,
             "deaths",
             "outcome",
-            "Durée de vie vs morts",
-            "Durée de vie (s)",
-            "Morts",
+            t("ts_lifespan_vs_deaths"),
+            t("ts_lifespan_s"),
+            t("ts_deaths_label"),
         )
     with col4:
         _render_scatter(
@@ -339,9 +336,9 @@ def _render_correlation_row2(dff: pl.DataFrame) -> None:
             "kills",
             "deaths",
             "outcome",
-            "Frags vs morts",
-            "Frags",
-            "Morts",
+            t("ts_kills_vs_deaths"),
+            t("ts_kills_label"),
+            t("ts_deaths_label"),
         )
 
 
@@ -352,9 +349,9 @@ def _render_mmr_correlation(dff: pl.DataFrame) -> None:
         "team_mmr",
         "enemy_mmr",
         "outcome",
-        "MMR Équipe vs MMR Adversaire",
-        "MMR Équipe",
-        "MMR Adversaire",
+        t("ts_mmr_team_vs_enemy"),
+        t("ts_mmr_team"),
+        t("ts_mmr_enemy"),
     )
 
 
@@ -374,10 +371,7 @@ def _render_scatter(
         return
     valid = dff.drop_nulls(subset=[x_col, y_col])
     if len(valid) <= min_data - 1:
-        st.info(
-            f"Pas assez de données ({len(valid)} matchs). "
-            f"Il en faut au moins {min_data} pour la corrélation."
-        )
+        st.info(t("ts_not_enough_corr", count=len(valid), min=min_data))
         return
     try:
         fig = plot_correlation_scatter(
@@ -426,12 +420,7 @@ def _render_first_event_section(
         except Exception as e:
             st.warning(t("error_chart", error=e))
     else:
-        st.info(
-            "Données d'événements non disponibles (premier frag / première mort). "
-            "L'**Actualiser** récupère déjà ces données pour les **nouveaux** matchs. "
-            "Pour les matchs déjà en base sans événements film, active dans **Paramètres** "
-            "→ **Options du bouton Actualiser** l'option **Backfill events**, puis **Actualiser**."
-        )
+        st.info(t("ts_first_event_no_data"))
 
 
 @fragment_if_available
@@ -552,7 +541,7 @@ def _render_sprint7_sections(dff: pl.DataFrame) -> None:
         st.subheader(t("ts_rank_score"))
         st.caption(t("ts_rank_score_caption"))
         try:
-            fig_rank = plot_rank_score(dff, title="Rang et score personnel")
+            fig_rank = plot_rank_score(dff, title=t("ts_rank_score"))
             if fig_rank is not None:
                 st.plotly_chart(fig_rank, width="stretch", config={"displayModeBar": False})
             else:

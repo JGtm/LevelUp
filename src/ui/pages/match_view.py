@@ -27,7 +27,7 @@ from src.ui import (
     translate_playlist_name,
 )
 from src.ui.formatting import format_date_fr
-from src.ui.i18n import t
+from src.ui.i18n import get_outcome_map, t
 from src.ui.medals import load_medal_name_maps, render_medals_grid
 from src.ui.pages.match_view_charts import render_expected_vs_actual
 
@@ -214,10 +214,7 @@ def _render_match_rank_tab(
     """
     rank_html = _build_match_rank_html(match_id=match_id, db_path=db_path, db_key=db_key)
     if rank_html is None:
-        st.info(
-            "Aucun rating LUSR/CSR calculé pour ce match. "
-            "Lancez `--lusr` (non classé) ou `--csr` (classé) pour calculer."
-        )
+        st.info(t("mv_no_rating"))
         return
     st.markdown(rank_html, unsafe_allow_html=True)
 
@@ -458,7 +455,7 @@ def render_match_view(
     last_playlist_fr = translate_playlist_name(str(last_playlist)) if last_playlist else None
     last_pair_fr = translate_pair_name(str(last_pair)) if last_pair else None
 
-    outcome_map = {2: "Victoire", 3: "Défaite", 1: "Égalité", 4: "Non terminé"}
+    outcome_map = get_outcome_map()
     try:
         outcome_code = int(last_outcome) if last_outcome == last_outcome else None
     except Exception:
@@ -508,15 +505,15 @@ def render_match_view(
     # Cartes KPI - Date, Résultat, Performance
     top_cols = st.columns(3)
     with top_cols[0]:
-        os_card("Date", format_date_fr(last_time))
+        os_card(t("col_date"), format_date_fr(last_time))
     with top_cols[1]:
         outcome_class = (
             "text-win"
-            if "victoire" in str(outcome_label).lower()
-            else ("text-loss" if "défaite" in str(outcome_label).lower() else "text-tie")
+            if outcome_code == OUTCOME_CODES.WIN
+            else ("text-loss" if outcome_code == OUTCOME_CODES.LOSS else "text-tie")
         )
         os_card(
-            "Résultats",
+            t("mv_results"),
             str(outcome_label),
             f"<span class='{outcome_class} fw-bold'>{html.escape(str(score_label))}</span>",
             accent=str(outcome_color),
@@ -524,9 +521,9 @@ def render_match_view(
         )
     with top_cols[2]:
         os_card(
-            "Performance",
+            t("mv_performance"),
             perf_display,
-            "Relatif à ton historique" if perf_score is not None else "Historique insuffisant",
+            t("mv_relative_history") if perf_score is not None else t("mv_insufficient_history"),
             accent=perf_color,
             kpi_color=perf_color,
         )
@@ -583,7 +580,7 @@ def render_match_view(
     else:
         map_img_html = (
             "<div style='padding:16px;color:#888;font-style:italic'>"
-            "Miniature de carte indisponible.</div>"
+            f"{t('mv_thumbnail_unavailable')}</div>"
         )
 
     if rank_html:
@@ -603,9 +600,7 @@ def render_match_view(
         medals_last = load_match_medals_fn(db_path, match_id, xuid.strip(), db_key=db_key)
 
     if not pm:
-        st.info(
-            "Stats détaillées indisponibles pour ce match (PlayerMatchStats manquant ou format inattendu)."
-        )
+        st.info(t("mv_stats_unavailable"))
     else:
         # Enrichir pm avec les valeurs réelles depuis row si elles sont manquantes (DuckDB v4)
         if pm.get("kills", {}).get("count") is None:
@@ -712,7 +707,7 @@ def render_match_view(
             pl.col("name_id")
             .cast(pl.Utf8)
             .replace_strict(_medal_map, default=None, return_dtype=pl.Utf8)
-            .fill_null(pl.lit("Médaille #") + pl.col("name_id").cast(pl.Utf8))
+            .fill_null(pl.lit(t("mv_medal_fallback", n="") + " ") + pl.col("name_id").cast(pl.Utf8))
             .alias("label")
         )
         md_df = md_df.sort(["count", "label"], descending=[True, False])
@@ -734,7 +729,7 @@ def render_match_view(
     # Lien Waypoint
     if match_url:
         st.write("")
-        st.link_button("Ouvrir sur HaloWaypoint", match_url, width="stretch")
+        st.link_button(t("mv_open_waypoint"), match_url, width="stretch")
 
 
 # =============================================================================

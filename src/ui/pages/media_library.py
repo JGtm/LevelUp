@@ -30,9 +30,8 @@ from datetime import datetime, timedelta
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.ui.formatting import PARIS_TZ, format_datetime_fr_hm
+from src.ui.i18n import t
 from src.ui.pages.match_view_helpers import index_media_dir
 from src.ui.settings import AppSettings
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -78,7 +77,7 @@ def _open_match_button(match_id: str, *, unique_suffix: str | None = None) -> No
     # Utiliser _pending_page au lieu de modifier directement "page"
     # car le widget segmented_control avec key="page" est déjà instancié
     # consume_pending_page() s'occupera de mettre à jour "page" au prochain rendu
-    if st.button("Ouvrir le match", key=button_key, width="stretch"):
+    if st.button(t("ml_open_match"), key=button_key, width="stretch"):
         st.session_state["_pending_page"] = "Match"
         st.session_state["_pending_match_id"] = mid
         st.rerun()
@@ -300,8 +299,10 @@ def _associate_media_to_matches(media_df: pl.DataFrame, windows_df: pl.DataFrame
     return joined.sort("mtime", descending=True)
 
 
-def _placeholder_html(base: str, hint: str = "Cliquer pour afficher la miniature") -> str:
+def _placeholder_html(base: str, hint: str | None = None) -> str:
     """HTML du placeholder vidéo (sans charger la miniature)."""
+    if hint is None:
+        hint = t("ml_click_thumbnail")
     return (
         "<div style='padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);'>"
         "<div style='font-size:34px;line-height:1'>🎬</div>"
@@ -372,23 +373,23 @@ def _render_media_grid(
                                 st.image(thumb_path, width="stretch")
                             except Exception:
                                 st.markdown(_placeholder_html(base), unsafe_allow_html=True)
-                            if st.button("Masquer miniature", key=thumb_key + "::btn"):
+                            if st.button(t("ml_hide_thumbnail"), key=thumb_key + "::btn"):
                                 st.session_state[thumb_key] = False
                                 st.rerun()
                         else:
                             st.markdown(
-                                _placeholder_html(base, "Cliquer pour afficher la miniature"),
+                                _placeholder_html(base),
                                 unsafe_allow_html=True,
                             )
                             if thumb_path and os.path.exists(thumb_path):
-                                if st.button("Afficher miniature", key=thumb_key + "::btn"):
+                                if st.button(t("ml_show_thumbnail"), key=thumb_key + "::btn"):
                                     st.session_state[thumb_key] = True
                                     st.rerun()
                             else:
                                 st.caption(t("media_no_thumbnail"))
                         if path:
                             preview_key = f"media_preview::{path_hash}::{match_id_part}::{render_context}::{stable_id}"
-                            if st.button("Aperçu", key=preview_key, width="stretch"):
+                            if st.button(t("ml_preview"), key=preview_key, width="stretch"):
                                 st.session_state[preview_key + "::open"] = True
                             if st.session_state.get(preview_key + "::open"):
                                 try:
@@ -734,23 +735,23 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
         or identity.xuid_fallback
     )
 
-    with st.expander("Options", expanded=True):
+    with st.expander(t("ml_options"), expanded=True):
         c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
-        group_by_match = c1.toggle("Grouper par match", value=True)
-        show_unassigned = c2.toggle("Afficher non associés", value=True)
-        cols_per_row = c3.slider("Colonnes", min_value=2, max_value=6, value=4, step=1)
-        max_items = c4.slider("Max médias", min_value=50, max_value=2000, value=400, step=50)
+        group_by_match = c1.toggle(t("ml_group_by_match"), value=True)
+        show_unassigned = c2.toggle(t("ml_show_unassociated"), value=True)
+        cols_per_row = c3.slider(t("media_columns"), min_value=2, max_value=6, value=4, step=1)
+        max_items = c4.slider(t("ml_max_media"), min_value=50, max_value=2000, value=400, step=50)
 
         kinds = st.multiselect(
-            "Types",
+            t("ml_types"),
             options=["image", "video"],
             default=["image", "video"],
         )
-        name_filter = st.text_input("Filtre nom de fichier", value="", placeholder="ex: 2026-01")
+        name_filter = st.text_input(t("ml_filter_filename"), value="", placeholder="ex: 2026-01")
 
         col_scan, col_thumbs = st.columns(2)
         with col_scan:
-            if st.button("Re-scanner les dossiers", width="stretch"):
+            if st.button(t("ml_rescan"), width="stretch"):
                 with contextlib.suppress(Exception):
                     index_media_dir.clear()
                 # Forcer re-indexation en BDD
@@ -794,12 +795,18 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
                                     n_thumb_gen, n_thumb_err = indexer.generate_thumbnails_for_new(
                                         videos_path
                                     )
-                                msg = (
-                                    f"Indexation terminée: {result.n_new} nouveaux, "
-                                    f"{result.n_updated} mis à jour, {n_associated} association(s)"
+                                msg = t(
+                                    "ml_indexing_done",
+                                    n_new=result.n_new,
+                                    n_updated=result.n_updated,
+                                    n_associated=n_associated,
                                 )
                                 if n_thumb_gen or n_thumb_err:
-                                    msg += f" — {n_thumb_gen} thumbnail(s), {n_thumb_err} erreur(s)"
+                                    msg += t(
+                                        "ml_indexing_thumbnails",
+                                        n_gen=n_thumb_gen,
+                                        n_err=n_thumb_err,
+                                    )
                                 st.success(msg)
                     except Exception as e:
                         st.error(t("media_error_indexing", error=e))
@@ -808,9 +815,9 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
 
         with col_thumbs:
             if st.button(
-                "Générer les thumbnails",
+                t("ml_generate_thumbnails"),
                 width="stretch",
-                help="Génère les miniatures pour les vidéos sans thumbnail (indépendant des associations)",
+                help=t("ml_generate_help"),
             ):
                 if (
                     db_path
@@ -829,8 +836,12 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
                                 Path(dirs.videos_dir)
                             )
                             st.success(
-                                f"{n_gen} thumbnail(s) généré(s)"
-                                + (f", {n_err} erreur(s)" if n_err else "")
+                                t("ml_thumbnails_generated", n_gen=n_gen)
+                                + (
+                                    t("ml_indexing_thumbnails", n_gen=0, n_err=n_err)
+                                    if n_err
+                                    else ""
+                                )
                             )
                     except Exception as e:
                         st.error(t("error_loading", error=e))
@@ -873,10 +884,7 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
     if using_db and not assoc_df.is_empty():
         unassigned_count = assoc_df["match_id"].is_null().sum()
         if unassigned_count > 0:
-            st.info(
-                f"ℹ️ {unassigned_count} média(s) non associé(s) depuis la BDD. "
-                "Cliquez sur 'Re-scanner les dossiers' pour forcer l'indexation et l'association."
-            )
+            st.info(t("ml_unassigned_from_db", count=unassigned_count))
 
     if assoc_df.is_empty():
         st.info(t("media_no_files"))
@@ -905,33 +913,12 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
 
     # Diagnostic unifié : afficher un seul message informatif
     if not using_db:
-        # Si on utilise le scan disque (fallback), informer l'utilisateur
-        st.info(
-            "ℹ️ Les médias sont chargés depuis le scan disque (pas encore indexés en BDD). "
-            "Cliquez sur 'Re-scanner les dossiers' pour indexer en BDD et associer automatiquement."
-        )
+        st.info(t("ml_disk_fallback"))
     elif windows_df.is_empty() and assigned.is_empty():
-        # Afficher le warning seulement si on n'a AUCUNE association ET que windows_df est vide
-        # (si on a déjà des associations, pas besoin d'afficher ce message)
-        st.warning(
-            "⚠️ Aucune fenêtre temporelle de match disponible pour l'association.\n\n"
-            "**Causes possibles :**\n"
-            "- Aucun match avec `start_time` valide dans les DBs joueurs\n"
-            "- Les matchs n'ont pas été synchronisés correctement\n"
-            "- Problème de conversion de dates/timezone\n\n"
-            "**Solution :**\n"
-            "1. Vérifier que les matchs ont bien des dates de départ (`start_time`)\n"
-            "2. Cliquer sur 'Re-scanner les dossiers' pour forcer l'association\n"
-            "3. Vérifier les logs pour plus de détails"
-        )
+        st.warning(t("ml_no_match_windows"))
     elif assigned.is_empty() and not unassigned.is_empty() and using_db:
-        # Seulement afficher ce message si windows_df n'est pas vide et qu'on utilise la BDD
         tolerance = int(getattr(settings, "media_tolerance_minutes", 5) or 5)
-        st.warning(
-            f"⚠️ Aucun média n'a pu être associé à un match depuis la BDD. "
-            f"Tolérance actuelle: {tolerance} min. "
-            "Essayez d'augmenter la tolérance dans Paramètres → Médias ou vérifiez que les dates des matchs correspondent."
-        )
+        st.warning(t("ml_no_associations", tol=tolerance))
 
     # Affichage
     if not group_by_match:

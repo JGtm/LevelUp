@@ -177,12 +177,7 @@ def render_team_dominance_section(
 
     if fig is not None:
         st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-        st.markdown(
-            "- **Barres ** : % des frags par tranche de 30 s — bleu = mon équipe, orange = adversaires\n"
-            "- **Chiffres encadrés** : score cumulé de chaque équipe à l'instant T (encadré si en tête)\n"
-            "- **Points ** : chaque point = un kill individuel\n"
-            "- **Lignes reliées** : série d'un même joueur (≥ 3 kills consécutifs sans mourir)"
-        )
+        st.markdown(t("mv_dominance_legend"))
     else:
         st.info(t("mv_dynamics_no_dominance"))
 
@@ -206,10 +201,7 @@ def render_nemesis_section(
     """Rend la section Némésis / Souffre-douleur."""
     st.subheader(t("mv_antagonists_title"))
     if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
-        st.caption(
-            "Indisponible: la DB ne contient pas les highlight events. "
-            "Si tu utilises une DB SPNKr, relance l'import avec `--with-highlight-events`."
-        )
+        st.caption(t("mv_nemesis_unavailable"))
         return
 
     with st.spinner(t("mv_highlight_loading")):
@@ -328,8 +320,8 @@ def render_nemesis_section(
                 return "-"
             prefix = "≈ " if approx else ""
             if label == "deaths":
-                return f"{prefix}{int(value)} morts"
-            return f"{prefix}Tué {int(value)} fois"
+                return t("mv_deaths_count", prefix=prefix, n=int(value))
+            return t("mv_killed_count", prefix=prefix, n=int(value))
 
         def _fmt_two_lines(
             deaths_: int | None, deaths_approx: bool, kills_: int | None, kills_approx: bool
@@ -341,7 +333,7 @@ def render_nemesis_section(
         c = st.columns(2)
         with c[0]:
             os_card(
-                "Némésis",
+                t("lbl_nemesis"),
                 nemesis_name,
                 _fmt_two_lines(
                     nemesis_killed_me,
@@ -355,7 +347,7 @@ def render_nemesis_section(
             )
         with c[1]:
             os_card(
-                "Souffre-douleur",
+                t("lbl_victim"),
                 bully_name,
                 _fmt_two_lines(
                     bully_killed_me, bully_killed_me_approx, me_killed_bully, me_killed_bully_approx
@@ -373,7 +365,7 @@ def render_nemesis_section(
 
         # Sprint 3.3: Indicateur visuel de confiance
         validation_icon = "✓" if res.is_validated else "⚠"
-        validation_label = "Validé" if res.is_validated else "Non validé"
+        validation_label = t("lbl_validated") if res.is_validated else t("lbl_not_validated")
 
         st.caption(
             f"Debug antagonistes {validation_icon} {validation_label} — "
@@ -517,7 +509,7 @@ def _render_antagonist_chart(
                     match_id=match_id,
                     me_xuid=me_xuid,
                     rank_by_xuid=rank_by_xuid,
-                    title="Eliminateur-Victime",
+                    title=t("mv_killer_victim_title"),
                     height=400,
                 )
                 if fig is not None:
@@ -534,26 +526,30 @@ def _render_antagonist_chart(
 # Section Tableau des scores par équipe
 # =============================================================================
 
-_SCOREBOARD_COLS: list[tuple[str, str]] = [
-    ("Joueur", "gamertag"),
-    ("Rang", "rank"),
-    ("Score", "score"),
-    ("Frags", "kills"),
-    ("Morts", "deaths"),
-    ("Assist.", "assists"),
-    ("FDA", "kda"),
-    ("Folie meurtrière", "max_killing_spree"),
-    ("Tirs à la tête", "headshot_kills"),
-    ("Frags parfaits", "perfect_kills"),
-    ("Tirs", "shots_fired"),
-    ("Tirs au but", "shots_hit"),
-    ("Précision", "accuracy"),
-    ("Corps à corps", "melee_kills"),
-    ("Armes lourdes", "power_weapon_kills"),
-    ("Dégâts infligés", "damage_dealt"),
-    ("Dégâts subis", "damage_taken"),
-    ("Durée de vie moy.", "avg_life_seconds"),
-]
+
+def _get_scoreboard_cols() -> list[tuple[str, str]]:
+    """Retourne les colonnes du scoreboard traduites."""
+    return [
+        (t("col_player"), "gamertag"),
+        (t("col_rank"), "rank"),
+        (t("col_score"), "score"),
+        (t("col_kills"), "kills"),
+        (t("col_deaths"), "deaths"),
+        (t("col_assists_short"), "assists"),
+        (t("col_kda"), "kda"),
+        (t("col_killing_spree"), "max_killing_spree"),
+        (t("col_headshots"), "headshot_kills"),
+        (t("col_perfect_kills"), "perfect_kills"),
+        (t("col_shots_fired_short"), "shots_fired"),
+        (t("col_shots_hit"), "shots_hit"),
+        (t("col_accuracy"), "accuracy"),
+        (t("col_melee"), "melee_kills"),
+        (t("col_power_weapon"), "power_weapon_kills"),
+        (t("col_dmg_dealt"), "damage_dealt"),
+        (t("col_dmg_taken"), "damage_taken"),
+        (t("mv_scoreboard_avg_life"), "avg_life_seconds"),
+    ]
+
 
 # Colonnes non comparables (texte / ordinal) : pas de highlight min/max
 _SB_SKIP_HIGHLIGHT: set[str] = {"gamertag", "rank"}
@@ -586,7 +582,7 @@ def _compute_scoreboard_extremes(
         2 valeurs distinctes.
     """
     extremes: dict[str, tuple[float, float]] = {}
-    for _, key in _SCOREBOARD_COLS:
+    for _, key in _get_scoreboard_cols():
         if key in _SB_SKIP_HIGHLIGHT:
             continue
         vals = [v for p in players if (v := _sb_numeric_value(key, p.get(key))) is not None]
@@ -793,7 +789,7 @@ def render_match_scoreboard(
     for i, p in enumerate(players):
         best = 0
         worst = 0
-        for _, key in _SCOREBOARD_COLS:
+        for _, key in _get_scoreboard_cols():
             cls = _sb_cell_class(key, p.get(key), extremes)
             if "best" in cls:
                 best += 1
@@ -842,21 +838,24 @@ def render_match_scoreboard(
         # Nom de l'équipe via TEAM_MAP
         try:
             raw_name = (
-                TEAM_MAP.get(int(tid), f"Équipe {tid}") if tid is not None else "Équipe inconnue"
+                TEAM_MAP.get(int(tid), t("mv_team_n", n=tid))
+                if tid is not None
+                else t("mv_team_unknown")
             )
         except (ValueError, TypeError):
-            raw_name = f"Équipe {tid}" if tid is not None else "Équipe inconnue"
+            raw_name = t("mv_team_n", n=tid) if tid is not None else t("mv_team_unknown")
 
         # Détecter si c'est l'équipe du joueur pour la couleur Okabe-Ito
         is_my_team = tid == my_team_id
         team_css_mod = "os-sb-team--mine" if is_my_team else "os-sb-team--enemy"
-        team_label = f"Équipe {html.escape(raw_name)}"
+        team_label = t("mv_team_label", name=html.escape(raw_name))
 
         # En-têtes colonnes
+        sb_cols = _get_scoreboard_cols()
         th_cells = "".join(
-            f"<th class='os-sb-th'>{html.escape(label)}</th>" for label, _ in _SCOREBOARD_COLS
+            f"<th class='os-sb-th'>{html.escape(label)}</th>" for label, _ in sb_cols
         )
-        n_cols = len(_SCOREBOARD_COLS)
+        n_cols = len(sb_cols)
         thead = (
             f"<thead>"
             f"<tr><th class='os-sb-team {team_css_mod}' colspan='{n_cols}'>{team_label}</th></tr>"
@@ -881,7 +880,7 @@ def render_match_scoreboard(
             cells = "".join(
                 f"<td class='os-sb-td{_sb_cell_class(key, p.get(key), extremes)}'>"
                 f"{html.escape(_fmt_scoreboard_cell(key, p.get(key)))}</td>"
-                for _, key in _SCOREBOARD_COLS
+                for _, key in sb_cols
             )
             body_rows.append(f"<tr class='os-sb-row{row_class}'>{cells}</tr>")
 
@@ -897,10 +896,7 @@ def render_match_scoreboard(
 
     # Note sur le rang : en mode équipe, le rang est individuel au sein de l'équipe
     if n_real_teams > 1:
-        st.caption(
-            "ℹ️ Le rang est individuel au sein de chaque équipe — "
-            "plusieurs joueurs peuvent partager le même rang (ex. : tous les membres d'une équipe vaincue)."
-        )
+        st.caption(t("mv_scoreboard_rank_note"))
 
 
 # =============================================================================
@@ -921,9 +917,7 @@ def render_roster_section(
     st.subheader(t("mv_players_title"))
     rosters = load_match_rosters_fn(db_path, match_id.strip(), xuid.strip(), db_key=db_key)
     if not rosters:
-        st.info(
-            "Roster indisponible pour ce match (payload MatchStats manquant ou équipe introuvable)."
-        )
+        st.info(t("mv_roster_unavailable"))
         return
 
     gt_map = load_match_gamertags_fn(db_path, match_id.strip(), db_key=db_key)
@@ -1010,12 +1004,30 @@ def render_roster_section(
             "</tr>"
         )
 
+    _my_team_display = html.escape(str(my_team_name or _team_label(my_team_id)))
+    _my_count = len([n for n, _ in my_names if n])
+    _enemy_raw = (
+        enemy_team_names[0]
+        if (
+            isinstance(enemy_team_names, list)
+            and len(enemy_team_names) == 1
+            and enemy_team_names[0]
+        )
+        else (
+            " / ".join([_team_label(t_id) for t_id in enemy_team_ids])
+            if enemy_team_ids
+            else t("mv_roster_opponents")
+        )
+    )
+    _enemy_display = html.escape(str(_enemy_raw))
+    _enemy_count = len([n for n, _ in en_names if n])
+
     st.markdown(
         "<div class='os-table-wrap os-roster-wrap'>"
         "<table class='os-table os-roster'>"
         "<thead><tr>"
-        f"<th class='os-roster-th os-roster-th--me'>Mon équipe — {html.escape(str(my_team_name or _team_label(my_team_id)))} ({len([n for n, _ in my_names if n])})</th>"
-        f"<th class='os-roster-th os-roster-th--enemy'>Équipe adverse — {html.escape(str(enemy_team_names[0] if (isinstance(enemy_team_names, list) and len(enemy_team_names)==1 and enemy_team_names[0]) else (' / '.join([_team_label(t) for t in enemy_team_ids]) if enemy_team_ids else 'Adversaires')))} ({len([n for n, _ in en_names if n])})</th>"
+        f"<th class='os-roster-th os-roster-th--me'>{t('mv_roster_my_team', name=_my_team_display, n=_my_count)}</th>"
+        f"<th class='os-roster-th os-roster-th--enemy'>{t('mv_roster_enemy_team', name=_enemy_display, n=_enemy_count)}</th>"
         "</tr></thead>"
         "<tbody>" + "".join(body_rows) + "</tbody>"
         "</table>"
@@ -1092,7 +1104,7 @@ def render_match_impact_section(
             if not label_info:
                 continue
             icon, label_fr = label_info
-            display_name = "Toi" if ie.is_me else ie.gamertag
+            display_name = t("lbl_you") if ie.is_me else ie.gamertag
             accent = "#3DFFB5" if ie.is_me else "#FFB703"  # vert si moi, ambre sinon
             with badge_cols[i]:
                 os_card(

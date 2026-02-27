@@ -21,6 +21,7 @@ from src.ui import (
     get_profile_appearance,
 )
 from src.ui.cache import clear_app_caches, db_cache_key, load_df_optimized
+from src.ui.i18n import t
 from src.ui.multiplayer import render_player_selector
 from src.ui.player_assets import download_image_to_cache, ensure_local_image_path
 from src.ui.sync import (
@@ -82,9 +83,7 @@ def validate_and_fix_db_path(db_path: str, default_db: str) -> str:
     if db_path and os.path.exists(db_path):
         try:
             if os.path.getsize(db_path) <= 0:
-                st.warning(
-                    "La base sélectionnée est vide (0 octet). Basculement automatique vers une DB valide si possible."
-                )
+                st.warning(t("hlp_db_empty_warning"))
                 fallback = ""
                 if is_spnkr_db_path(db_path):
                     fallback = pick_latest_spnkr_db_if_any()
@@ -95,7 +94,7 @@ def validate_and_fix_db_path(db_path: str, default_db: str) -> str:
                     if not (fallback and os.path.exists(fallback)):
                         fallback = ""
                 if fallback and fallback != db_path:
-                    st.info(f"DB utilisée: {fallback}")
+                    st.info(t("hlp_db_fallback_info", path=fallback))
                     st.session_state["db_path"] = fallback
                     return fallback
                 return ""
@@ -178,13 +177,13 @@ def render_sidebar_header(db_path: str, xuid: str, settings: AppSettings) -> str
         and is_spnkr_db_path(db_path)
         and os.path.exists(db_path)
         and st.button(
-            "🔄 Synchroniser",
+            t("hlp_btn_sync"),
             key="sidebar_sync_button",
-            help="Synchronise tous les joueurs (nouveaux matchs, highlights, aliases).",
+            help=t("hlp_btn_sync_help"),
             width="stretch",
         )
     ):
-        with st.spinner("Synchronisation en cours..."):
+        with st.spinner(t("syncing")):
             ok, msg = sync_all_players(
                 db_path=db_path,
                 match_type=str(
@@ -231,7 +230,9 @@ def _load_spartan_id_from_db(db_path: str, xuid: str) -> str | None:
     return None
 
 
-def load_profile_api(xuid: str, settings: AppSettings, *, db_path: str | None = None) -> tuple[object | None, str | None]:
+def load_profile_api(
+    xuid: str, settings: AppSettings, *, db_path: str | None = None
+) -> tuple[object | None, str | None]:
     """Charge le profil depuis le cache ou l'API SPNKr.
 
     Tente toujours le cache disque d'abord (même si l'API est désactivée).
@@ -277,7 +278,7 @@ def load_profile_api(xuid: str, settings: AppSettings, *, db_path: str | None = 
     except Exception as e:
         api_app, api_err = None, str(e)
     if api_err:
-        st.caption(f"Profil auto (SPNKr): {api_err}")
+        st.caption(t("app_profile_api_err", err=api_err))
 
     return api_app, api_err
 
@@ -306,7 +307,7 @@ def render_profile_hero(
     me_name = (
         display_name_from_xuid(xuid.strip(), db_path=db_path)
         if str(xuid or "").strip()
-        else "(joueur)"
+        else t("app_player_default")
     )
 
     dl_enabled = bool(getattr(settings, "profile_assets_download_enabled", False)) or bool(
@@ -407,9 +408,8 @@ def render_profile_hero(
         st.session_state[key] = True
         ok, err, _out = download_image_to_cache(u, prefix=prefix, timeout_seconds=12)
         if not ok:
-            st.caption(f"Asset '{prefix}' non téléchargé: {err}")
+            st.caption(t("app_asset_error", prefix=prefix, err=err))
 
-    _warn_asset("backdrop", backdrop_value, backdrop_path)
     _warn_asset("rank", rank_icon_value, rank_icon_path)
 
     # Spartan ID depuis la DB (sync player-gated, source de vérité)
@@ -464,9 +464,9 @@ def load_match_dataframe(
         with perf_section("db/load_df_optimized"):
             df = load_df_optimized(db_path, xuid.strip(), db_key=db_key, cache_buster=cache_buster)
         if df.is_empty():
-            st.warning("Aucun match trouvé.")
+            st.warning(t("app_no_match"))
     else:
-        st.info("Configure une DB et un joueur dans Paramètres.")
+        st.info(t("hlp_configure_db"))
 
     if not df.is_empty():
         with perf_section("analysis/mark_firefight"):

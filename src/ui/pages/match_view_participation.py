@@ -71,7 +71,7 @@ def render_participation_section(
     profile = compute_participation_profile(
         df,
         match_row=row_dict,
-        name="Ce match",
+        name=t("mvc_this_match"),
         color="#636EFA",
         pair_name=row_dict.get("pair_name") if row_dict else None,
         thresholds=thresholds,

@@ -5,14 +5,13 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.analysis.mode_categories import infer_custom_category_from_pair_name
 from src.ui.components.performance import (
     compute_session_performance_score_v2_ui,
     render_metric_comparison_row,
     render_performance_score_card,
 )
+from src.ui.i18n import get_weekdays, t
 from src.ui.streamlit_modern import fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import (
@@ -21,14 +20,17 @@ from src.visualization._compat import (
 )
 from src.visualization.performance import plot_cumulative_comparison
 
-_CATEGORY_FR: dict[str, str] = {
-    "Assassin": "Assassin",
-    "Fiesta": "Fiesta",
-    "BTB": "Grande bataille en équipe",
-    "Ranked": "Classé",
-    "Firefight": "Baptême du feu",
-    "Other": "Autre",
-}
+
+def _get_category_fr() -> dict[str, str]:
+    """Retourne les labels de catégories traduits."""
+    return {
+        "Assassin": "Assassin",
+        "Fiesta": "Fiesta",
+        "BTB": t("cat_btb"),
+        "Ranked": t("cat_ranked"),
+        "Firefight": t("cat_firefight"),
+        "Other": t("cat_other"),
+    }
 
 
 def _infer_session_dominant_category(df_session: DataFrameLike) -> str:
@@ -364,8 +366,8 @@ def _format_date_with_weekday(dt) -> str:
         return "-"
     try:
         # Jours en français
-        weekdays_fr = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
-        wd = weekdays_fr[dt.weekday()]
+        weekdays = get_weekdays()
+        wd = weekdays[dt.weekday()]
         return f"{wd} {dt.strftime('%d/%m/%y %H:%M')}"
     except Exception:
         return "-"
@@ -374,13 +376,18 @@ def _format_date_with_weekday(dt) -> str:
 def _outcome_class(label: str) -> str:
     """Retourne la classe CSS pour un résultat."""
     v = str(label or "").strip().casefold()
-    if v.startswith("victoire"):
+    if v.startswith("victoire") or v.startswith("victory") or v == "win":
         return "text-win"
-    if v.startswith("défaite") or v.startswith("defaite"):
+    if v.startswith("défaite") or v.startswith("defaite") or v.startswith("defeat") or v == "loss":
         return "text-loss"
-    if v.startswith("égalité") or v.startswith("egalite"):
+    if (
+        v.startswith("égalité")
+        or v.startswith("egalite")
+        or v.startswith("draw")
+        or v.startswith("tie")
+    ):
         return "text-tie"
-    if v.startswith("non"):
+    if v.startswith("non") or v.startswith("did not") or v.startswith("dnf"):
         return "text-nf"
     return ""
 
@@ -392,7 +399,7 @@ def _select_sessions(session_labels: list[str]) -> tuple[str, str]:
         # Session A = avant-dernière par défaut
         default_a = session_labels[1] if len(session_labels) > 1 else session_labels[0]
         session_a_label = st.selectbox(
-            "Session A (référence)",
+            t("sc_session_a_ref"),
             options=session_labels,
             index=session_labels.index(default_a) if default_a in session_labels else 1,
             key="compare_session_a",
@@ -400,7 +407,7 @@ def _select_sessions(session_labels: list[str]) -> tuple[str, str]:
     with col_sel_b:
         # Session B = dernière par défaut
         session_b_label = st.selectbox(
-            "Session B (à comparer)",
+            t("sc_session_b_cmp"),
             options=session_labels,
             index=0,
             key="compare_session_b",
@@ -485,39 +492,31 @@ def _build_session_labels(
     session_b_friends = (
         get_session_friends_signature(df_session_b) if has_with_friends_col else set()
     )
-    cat_label = _CATEGORY_FR.get(session_b_category, session_b_category)
+    cat_label = _get_category_fr().get(session_b_category, session_b_category)
 
     if not has_with_friends_col:
-        session_type_label = "(amis indisponibles) 🎮"
-        compare_label = (
-            f"toutes sessions ({hist_avg.get('session_count', 0)} sessions)"
-            f" — catégorie {cat_label}"
-        )
+        session_type_label = t("sc_friends_unavailable")
+        compare_label = t("sc_compare_all", n=hist_avg.get("session_count", 0), cat=cat_label)
     elif session_b_with_friends and len(session_b_friends) > 0:
         # Récupérer les gamertags des amis (depuis la table Friends si possible)
         friends_names = _get_friends_names(df_session_b)
         if friends_names:
             friends_display = ", ".join(sorted(friends_names))
-            session_type_label = f"avec {friends_display} 👥"
+            session_type_label = t("sc_with_friends", names=friends_display)
         else:
-            session_type_label = f"avec {len(session_b_friends)} ami(s) 👥"
+            session_type_label = t("sc_with_n_friends", n=len(session_b_friends))
 
         if compare_mode == "same_friends":
-            compare_label = (
-                f"mêmes amis ({hist_avg.get('session_count', 0)} sessions)"
-                f" — catégorie {cat_label}"
+            compare_label = t(
+                "sc_compare_same_friends", n=hist_avg.get("session_count", 0), cat=cat_label
             )
         else:
-            compare_label = (
-                f"sessions avec amis ({hist_avg.get('session_count', 0)} sessions)"
-                f" — catégorie {cat_label}"
+            compare_label = t(
+                "sc_compare_with_friends", n=hist_avg.get("session_count", 0), cat=cat_label
             )
     else:
-        session_type_label = "solo 🎮"
-        compare_label = (
-            f"sessions solo ({hist_avg.get('session_count', 0)} sessions)"
-            f" — catégorie {cat_label}"
-        )
+        session_type_label = t("sc_solo")
+        compare_label = t("sc_compare_solo", n=hist_avg.get("session_count", 0), cat=cat_label)
 
     return session_type_label, compare_label
 
@@ -556,21 +555,19 @@ def _render_detailed_metrics(perf_a: dict, perf_b: dict) -> None:
     with col_h1:
         st.markdown(t("sc_metric_label"))
     with col_h2:
-        st.markdown("**Session A**")
+        st.markdown(f"**{t('sc_session_a')}**")
     with col_h3:
-        st.markdown("**Session B**")
+        st.markdown(f"**{t('sc_session_b')}**")
 
     st.markdown("---")
 
-    render_metric_comparison_row("Nombre de parties", perf_a["matches"], perf_b["matches"], "{}")
+    render_metric_comparison_row(t("sc_match_count"), perf_a["matches"], perf_b["matches"], "{}")
+    render_metric_comparison_row(t("sc_kda_label"), perf_a["kda"], perf_b["kda"], "{:.2f}")
     render_metric_comparison_row(
-        "FDA (Frags-Décès-Assists)", perf_a["kda"], perf_b["kda"], "{:.2f}"
+        t("sc_win_rate"), perf_a["win_rate"], perf_b["win_rate"], "{:.1f}%"
     )
     render_metric_comparison_row(
-        "Taux de victoire", perf_a["win_rate"], perf_b["win_rate"], "{:.1f}%"
-    )
-    render_metric_comparison_row(
-        "Durée de vie moyenne",
+        t("sc_avg_life"),
         perf_a["avg_life_seconds"],
         perf_b["avg_life_seconds"],
         _format_seconds_to_mmss,
@@ -578,13 +575,11 @@ def _render_detailed_metrics(perf_a: dict, perf_b: dict) -> None:
 
     st.markdown("---")
 
-    render_metric_comparison_row("Total des frags", perf_a["kills"], perf_b["kills"], "{}")
+    render_metric_comparison_row(t("sc_total_kills"), perf_a["kills"], perf_b["kills"], "{}")
     render_metric_comparison_row(
-        "Total des morts", perf_a["deaths"], perf_b["deaths"], "{}", higher_is_better=False
+        t("sc_total_deaths"), perf_a["deaths"], perf_b["deaths"], "{}", higher_is_better=False
     )
-    render_metric_comparison_row(
-        "Total des assistances", perf_a["assists"], perf_b["assists"], "{}"
-    )
+    render_metric_comparison_row(t("sc_total_assists"), perf_a["assists"], perf_b["assists"], "{}")
 
 
 def _render_mmr_comparison(perf_a: dict, perf_b: dict) -> None:
@@ -596,22 +591,22 @@ def _render_mmr_comparison(perf_a: dict, perf_b: dict) -> None:
     with col_mmr1:
         st.markdown(t("sc_mmr_metric_label"))
     with col_mmr2:
-        st.markdown("**Session A**")
+        st.markdown(f"**{t('sc_session_a')}**")
     with col_mmr3:
-        st.markdown("**Session B**")
+        st.markdown(f"**{t('sc_session_b')}**")
 
     render_metric_comparison_row(
-        "MMR équipe (moy)", perf_a["team_mmr_avg"], perf_b["team_mmr_avg"], "{:.1f}"
+        t("sc_mmr_team_avg"), perf_a["team_mmr_avg"], perf_b["team_mmr_avg"], "{:.1f}"
     )
     render_metric_comparison_row(
-        "MMR adverse (moy)",
+        t("sc_mmr_enemy_avg"),
         perf_a["enemy_mmr_avg"],
         perf_b["enemy_mmr_avg"],
         "{:.1f}",
         higher_is_better=False,
     )
     render_metric_comparison_row(
-        "Écart MMR (moy)", perf_a["delta_mmr_avg"], perf_b["delta_mmr_avg"], "{:+.1f}"
+        t("sc_mmr_gap_avg"), perf_a["delta_mmr_avg"], perf_b["delta_mmr_avg"], "{:+.1f}"
     )
 
 
@@ -636,9 +631,7 @@ def _render_cumulative_section(
         pl_b = df_session_b.sort("start_time").select(_req)
         if not pl_a.is_empty() and not pl_b.is_empty():
             st.markdown(t("sc_net_score_cumul"))
-            st.caption(
-                "Évolution du net score (Frags − Morts) au fil des matchs de chaque session."
-            )
+            st.caption(t("sc_net_score_desc"))
             try:
                 fig_cumul = plot_cumulative_comparison(
                     pl_a,
@@ -770,7 +763,7 @@ def render_session_comparison_page(
     # Tableau historique des parties
     st.markdown("---")
     st.markdown(t("sc_match_history"))
-    tab_hist_a, tab_hist_b = st.tabs(["Session A", "Session B"])
+    tab_hist_a, tab_hist_b = st.tabs([t("sc_session_a"), t("sc_session_b")])
     with tab_hist_a:
         render_session_history_table(df_session_a, "Session A", df_full=df_full)
     with tab_hist_b:

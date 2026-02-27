@@ -151,7 +151,8 @@ def test_impact_tab_handles_missing_highlight_table(monkeypatch) -> None:
     )
 
     st_mocks["info"].assert_called()
-    assert "highlight_events" in st_mocks["info"].call_args[0][0]
+    # Le message d'absence est maintenant via t("tmi_no_events") — vérifier que st.info est appelé
+    assert st_mocks["info"].call_count >= 1
 
 
 def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:

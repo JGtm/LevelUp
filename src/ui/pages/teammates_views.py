@@ -8,8 +8,6 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
-from src.ui.i18n import t
-
 from src.analysis import (
     compute_aggregated_stats,
     compute_global_ratio,
@@ -23,6 +21,7 @@ from src.ui.cache import (
     cached_query_matches_with_friend,
     cached_same_team_match_ids_with_friend,
 )
+from src.ui.i18n import t
 from src.ui.medals import render_medals_grid
 from src.ui.pages.teammates_charts import (
     render_comparison_charts,
@@ -90,9 +89,7 @@ def render_single_teammate_view(
         sub = base_for_friend.filter(pl.col("match_id").cast(pl.Utf8).is_in(shared_ids))
 
         if sub.is_empty():
-            st.info(
-                "Aucun match à afficher avec les filtres actuels (période/sessions + map/playlist)."
-            )
+            st.info(t("tm_no_matches_filters"))
             return
 
         name = display_name_from_xuid(friend_xuid, db_path=db_path)
@@ -211,7 +208,7 @@ def render_multi_teammate_view(
                 st.session_state["_friends_min_matches_last_session_label"] = selected_session
 
         min_matches_maps_friends = st.slider(
-            "Minimum de matchs par carte",
+            t("tm_min_matches_map"),
             1,
             30,
             step=1,
@@ -267,7 +264,7 @@ def render_multi_teammate_view(
         else:
             try:
                 view_all = breakdown_all.head(20).reverse()
-                title = f"Ratio global par carte — avec mes coéquipiers (min {min_matches_maps_friends} matchs)"
+                title = t("tm_ratio_map_header", n=min_matches_maps_friends)
                 fig_map = plot_map_ratio_with_winloss(view_all, title=title)
                 if fig_map is not None:
                     st.plotly_chart(fig_map, width="stretch", config={"staticPlot": True})
@@ -376,10 +373,7 @@ def render_trio_view(
     trio_ids = trio_ids & set(base_for_trio["match_id"].cast(pl.Utf8).to_list())
 
     if not trio_ids:
-        st.warning(
-            "Aucun match trouvé où vous êtes tous les trois dans la même équipe "
-            "(avec les filtres actuels)."
-        )
+        st.warning(t("tm_no_trio_matches"))
         return False
 
     trio_ids_set = {str(x) for x in trio_ids}
@@ -464,7 +458,7 @@ def render_trio_view(
 def _render_match_details_expander(dfr: DataFrameLike) -> None:
     """Affiche l'expander avec détails des matchs joueur vs joueur."""
     dfr = ensure_polars(dfr)
-    with st.expander("Détails des matchs (joueur vs joueur)", expanded=False):
+    with st.expander(t("tm_match_details_title"), expanded=False):
         st.dataframe(
             to_pandas_for_st(
                 dfr.select(
@@ -493,22 +487,25 @@ def _render_shared_stats_metrics(sub: DataFrameLike) -> None:
     global_ratio_sub = compute_global_ratio(sub)
 
     k = st.columns(3)
-    k[0].metric("Matchs", f"{len(sub)}")
-    k[1].metric("Win/Loss", f"{win_rate_sub*100:.1f}% / {loss_rate_sub*100:.1f}%")
-    k[2].metric("Ratio global", f"{global_ratio_sub:.2f}" if global_ratio_sub is not None else "-")
+    k[0].metric(t("tm_metric_matches"), f"{len(sub)}")
+    k[1].metric(t("tm_win_loss"), f"{win_rate_sub*100:.1f}% / {loss_rate_sub*100:.1f}%")
+    k[2].metric(
+        t("tm_metric_global_ratio"),
+        f"{global_ratio_sub:.2f}" if global_ratio_sub is not None else "-",
+    )
 
     stats_sub = compute_aggregated_stats(sub)
     per_min = st.columns(3)
     per_min[0].metric(
-        "Frags / min",
+        t("tm_metric_frags_min"),
         f"{stats_sub.kills_per_minute:.2f}" if stats_sub.kills_per_minute else "-",
     )
     per_min[1].metric(
-        "Morts / min",
+        t("tm_metric_deaths_min"),
         f"{stats_sub.deaths_per_minute:.2f}" if stats_sub.deaths_per_minute else "-",
     )
     per_min[2].metric(
-        "Assistances / min",
+        t("tm_metric_assists_min"),
         f"{stats_sub.assists_per_minute:.2f}" if stats_sub.assists_per_minute else "-",
     )
 
@@ -639,7 +636,7 @@ def _render_per_minute_stats(
     f2_stats = compute_aggregated_stats(f2_df)
     st.subheader(t("tm_per_minute"))
 
-    _pm_metrics = ["Frags/min", "Morts/min", "Assistances/min"]
+    _pm_metrics = [t("tm_metric_frags_min"), t("tm_metric_deaths_min"), t("tm_metric_assists_min")]
     _pm_players = [
         (me_name, me_stats, colors_by_name.get(me_name, "#636EFA")),
         (f1_name, f1_stats, colors_by_name.get(f1_name, "#EF553B")),
