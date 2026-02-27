@@ -307,4 +307,14 @@ STRINGS: dict[str, dict[str, str]] = {
     "exp_pvp_unranked": {"fr": "PVP non classé", "en": "Unranked PVP"},
     "exp_pvp_ranked": {"fr": "PVP classé", "en": "Ranked PVP"},
     "exp_pve": {"fr": "PVE", "en": "PVE"},
+    # ── Sidebar — sélecteur joueur ───────────────────────────────────────────
+    "sidebar_player_heading": {"fr": "👥 Joueur", "en": "👥 Player"},
+    "sidebar_player_label": {"fr": "Joueur", "en": "Player"},
+    # ── KPI — résumé parties sélectionnées ──────────────────────────────────
+    "kpi_no_matches": {"fr": "Aucun match sélectionné", "en": "No match selected"},
+    "kpi_selected_matches": {"fr": "Parties sélectionnées", "en": "Selected matches"},
+    "kpi_wins": {"fr": "Victoires", "en": "Wins"},
+    "kpi_losses": {"fr": "Défaites", "en": "Losses"},
+    "kpi_ties": {"fr": "Égalités", "en": "Ties"},
+    "kpi_no_finish": {"fr": "Non terminés", "en": "Unfinished"},
 }

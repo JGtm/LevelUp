@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
+from src.ui.i18n import t
 from src.utils.paths import PLAYERS_DIR
 
 if TYPE_CHECKING:
@@ -156,9 +157,9 @@ def render_player_selector(
         current_idx = 0
 
     # Afficher le sélecteur
-    st.markdown("#### 👥 Joueur")
+    st.markdown(f"#### {t('sidebar_player_heading')}")
     selected_label = st.selectbox(
-        "Joueur",
+        t("sidebar_player_label"),
         options=labels,
         index=current_idx,
         key=key,
@@ -421,9 +422,9 @@ def render_duckdb_v4_player_selector(
         current_idx = 0
 
     # Afficher le sélecteur
-    st.markdown("#### 👥 Joueur")
+    st.markdown(f"#### {t('sidebar_player_heading')}")
     selected_label = st.selectbox(
-        "Joueur",
+        t("sidebar_player_label"),
         options=labels,
         index=current_idx,
         key=key,
