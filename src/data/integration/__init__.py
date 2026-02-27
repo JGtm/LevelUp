@@ -20,7 +20,7 @@ Usage:
     )
 
     # Méthode recommandée : via gamertag (auto-détection du mode)
-    repo = get_repository_for_player("JGtm")
+    repo = get_repository_for_player("SpartanC")
     matches = repo.load_matches()
 
     # DataFrame Pandas (UI existante)

@@ -16,7 +16,7 @@ Ce script extrait :
 
 Usage:
     # Récupérer pour un joueur
-    python scripts/recover_from_sqlite.py --gamertag Madina97294
+    python scripts/recover_from_sqlite.py --gamertag SpartanA
 
     # Récupérer pour tous les joueurs
     python scripts/recover_from_sqlite.py --all

@@ -126,10 +126,10 @@ ORDER BY start DESC
 
 **Cas d’usage** : Afficher le rang, le score et les kills/deaths/assists de chaque joueur pour un match. L’identifiant des joueurs est **xuid** ; le nom s’obtient via **xuid_aliases** (la colonne `gamertag` de `match_participants` est souvent NULL).
 
-**Dernier match d’un joueur (ex. Madina97294)** :
+**Dernier match d'un joueur (ex. SpartanA)** :
 
 ```sql
--- Connexion : data/players/Madina97294/stats.duckdb
+-- Connexion : data/players/SpartanA/stats.duckdb
 SELECT
   p.match_id,
   p.xuid,

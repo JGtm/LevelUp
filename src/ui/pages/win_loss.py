@@ -299,7 +299,9 @@ def _render_period_section(
     st.divider()
     st.subheader(t("wl_period"))
     # compute_period_table accepte directement un pl.DataFrame
-    period = WinLossService.compute_period_table(dff, bucket_label, is_session_scope, lang=get_lang())
+    period = WinLossService.compute_period_table(
+        dff, bucket_label, is_session_scope, lang=get_lang()
+    )
     if period.is_empty:
         st.info(t("wl_no_period_data"))
         return
@@ -314,7 +316,9 @@ def _render_period_section(
             return ""
         return "color: #E0E0E0; font-weight: 700;"
 
-    win_rate_col = t("wl_period_col_win_rate") if t("wl_period_col_win_rate") in out_tbl.columns else None
+    win_rate_col = (
+        t("wl_period_col_win_rate") if t("wl_period_col_win_rate") in out_tbl.columns else None
+    )
     if win_rate_col:
         out_styled = _styler_map(out_tbl.style, _style_pct, subset=[win_rate_col])
         col_cfg = {win_rate_col: st.column_config.NumberColumn(win_rate_col, format="%.1f%%")}
@@ -347,8 +351,8 @@ def _render_ratio_by_map_section(
         options=[
             "Moi (filtres actuels)",
             "Moi (toutes les parties)",
-            "Avec Madina972",
-            "Avec Chocoboflor",
+            "Avec SpartanA",
+            "Avec SpartanB",
         ],
         format_func=lambda k: _scope_labels.get(k, k),
         horizontal=True,

@@ -631,7 +631,7 @@ class TestZeroMatchesRegression:
             repo.close()
 
     def test_player_match_enrichment_empty_but_shared_has_data(self, tmp_path: Path) -> None:
-        """Cas XxDaemonGamerxX : enrichment=0 mais shared a des données."""
+        """Cas SpartanD : enrichment=0 mais shared a des données."""
         from src.ui.cache_loaders import _resolve_player_xuid
 
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
@@ -660,8 +660,7 @@ class TestZeroMatchesRegression:
         try:
             matches = repo.load_matches()
             assert len(matches) == 3, (
-                f"Cas XxDaemonGamerxX : enrichment vide mais shared a 3 matchs, "
-                f"obtenu {len(matches)}"
+                f"Cas SpartanD : enrichment vide mais shared a 3 matchs, " f"obtenu {len(matches)}"
             )
         finally:
             repo.close()

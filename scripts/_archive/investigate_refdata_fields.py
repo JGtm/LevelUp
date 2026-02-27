@@ -58,7 +58,7 @@ async def main():
 
     # Arguments
     match_id = sys.argv[1] if len(sys.argv) > 1 else None
-    gamertag = sys.argv[2] if len(sys.argv) > 2 else "JGtm"
+    gamertag = sys.argv[2] if len(sys.argv) > 2 else "SpartanC"
 
     tokens = await get_tokens_from_env()
     if not tokens:

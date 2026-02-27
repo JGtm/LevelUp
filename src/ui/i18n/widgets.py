@@ -8,7 +8,7 @@ Boutons, selectbox, expander, checkbox, radio, multiselect, captions de widgets.
 
 from __future__ import annotations
 
-STRINGS: dict[str, dict[str, str]] = {
+STRINGS: dict[str, dict[str, str] | str] = {
     # ── Sélecteur de langue ──────────────────────────────────────────────────
     "lang_selector_label": {
         "fr": "🌐 Langue",
@@ -23,10 +23,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Ouvrir le match",
         "en": "Open match",
     },
-    "btn_use_this_match": {
-        "fr": "Utiliser ce match",
-        "en": "Use this match",
-    },
+    "btn_use_this_match": "btn_use_match",  # alias → common
     # btn_search : défini dans common.py
     "btn_view_fullscreen": {
         "fr": "Voir en grand",
@@ -153,10 +150,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Catégorie",
         "en": "Category",
     },
-    "sel_all_categories": {
-        "fr": "(toutes)",
-        "en": "(all)",
-    },
+    "sel_all_categories": "sel_all",  # alias → common
     "sel_group": {
         "fr": "Groupe :",
         "en": "Group:",
@@ -222,10 +216,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Session trend",
     },
     # ── Match history ─────────────────────────────────────────────────────────
-    "mh_no_matches": {
-        "fr": "Aucun match à afficher. Vérifiez vos filtres ou synchronisez les données.",
-        "en": "No matches to display. Check your filters or sync your data.",
-    },
+    "mh_no_matches": "no_matches",  # alias → common
     # ── Sidebar — sync ──────────────────────────────────────────────────────
     "sidebar_sync_btn": {"fr": "🔄 Synchroniser", "en": "🔄 Sync"},
     "sidebar_sync_help": {
@@ -255,9 +246,9 @@ STRINGS: dict[str, dict[str, str]] = {
     "filter_sessions": {"fr": "Sessions", "en": "Sessions"},
     "filter_start": {"fr": "Début", "en": "Start"},
     "filter_end": {"fr": "Fin", "en": "End"},
-    "filter_playlists": {"fr": "Playlists", "en": "Playlists"},
-    "filter_modes": {"fr": "Modes", "en": "Modes"},
-    "filter_maps": {"fr": "Cartes", "en": "Maps"},
+    "filter_playlists": "col_playlists",  # alias → common
+    "filter_modes": "col_modes",  # alias → common
+    "filter_maps": "col_maps",  # alias → common
     "filter_last_session": {"fr": "Dernière session", "en": "Last session"},
     "filter_prev_session": {"fr": "Session précédente", "en": "Previous session"},
     "filter_session_label": {"fr": "Session", "en": "Session"},
@@ -266,7 +257,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "filter_pvp_ranked": {"fr": "PVP classé", "en": "Ranked PVP"},
     "filter_pve": {"fr": "PVE", "en": "PVE"},
     # ── Settings — labels supplémentaires ───────────────────────────────────
-    "settings_save": {"fr": "Enregistrer", "en": "Save"},
+    "settings_save": "btn_save",  # alias → common
     "settings_backfill_enable": {
         "fr": "Activer le backfill après synchronisation",
         "en": "Enable backfill after sync",
@@ -299,7 +290,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "exp_pve": {"fr": "PVE", "en": "PVE"},
     # ── Sidebar — sélecteur joueur ───────────────────────────────────────────
     "sidebar_player_heading": {"fr": "👥 Joueur", "en": "👥 Player"},
-    "sidebar_player_label": {"fr": "Joueur", "en": "Player"},
+    "sidebar_player_label": "col_player",  # alias → common
     # ── KPI — résumé parties sélectionnées ──────────────────────────────────
     "kpi_no_matches": {"fr": "Aucun match sélectionné", "en": "No match selected"},
     "kpi_selected_matches": {"fr": "Parties sélectionnées", "en": "Selected matches"},
@@ -311,14 +302,14 @@ STRINGS: dict[str, dict[str, str]] = {
     # ── Durée ────────────────────────────────────────────────────────────────
     "dur_day_abbr": {"fr": "j", "en": "d"},
     # ── Métriques DuckDB analytics ───────────────────────────────────────────
-    "metric_matches": {"fr": "Matchs", "en": "Matches"},
+    "metric_matches": "col_matches",  # alias → common
     "metric_win_rate": {"fr": "Taux victoires", "en": "Win rate"},
     "metric_avg_kda": {"fr": "FDA moyen", "en": "Avg KDA"},
-    "metric_accuracy": {"fr": "Précision", "en": "Accuracy"},
-    "metric_kills": {"fr": "Frags", "en": "Kills"},
-    "metric_deaths": {"fr": "Morts", "en": "Deaths"},
-    "metric_assists": {"fr": "Assistances", "en": "Assists"},
-    "metric_time_played": {"fr": "Temps joué", "en": "Time played"},
+    "metric_accuracy": "col_accuracy",  # alias → common
+    "metric_kills": "col_kills",  # alias → common
+    "metric_deaths": "col_deaths",  # alias → common
+    "metric_assists": "col_assists",  # alias → common
+    "metric_time_played": "col_total_time",  # alias → common
     # ── Filtres — playlists preferred order ──────────────────────────────────
     "playlist_quick_play": {"fr": "Partie rapide", "en": "Quick Play"},
     "playlist_ranked_arena": {"fr": "Arène classée", "en": "Ranked Arena"},

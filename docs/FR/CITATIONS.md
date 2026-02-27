@@ -131,7 +131,7 @@ python scripts/backfill_data.py --all --citations
 ```python
 from src.analysis.citations.engine import CitationEngine
 
-engine = CitationEngine(db_path="data/players/JGtm/stats.duckdb", xuid="12345")
+engine = CitationEngine(db_path="data/players/SpartanC/stats.duckdb", xuid="12345")
 
 # Charger les mappings
 mappings = engine.load_mappings()

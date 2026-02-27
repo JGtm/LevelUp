@@ -13,14 +13,14 @@ Usage recommandé:
     from src.data.repositories.factory import get_repository_from_profile
 
     # Auto-détection depuis db_profiles.json (recommandé)
-    repo = get_repository_from_profile("JGtm")
+    repo = get_repository_from_profile("SpartanC")
 
 Usage explicite:
     from src.data import get_repository
 
     # DuckDB natif (architecture v4)
     repo = get_repository(
-        "data/players/JGtm/stats.duckdb",
+        "data/players/SpartanC/stats.duckdb",
         xuid,
     )
 """
@@ -82,7 +82,7 @@ def get_repository(
     Exemple:
         # Mode DuckDB natif (v4)
         repo = get_repository(
-            "data/players/JGtm/stats.duckdb",
+            "data/players/SpartanC/stats.duckdb",
             "1234567890",
         )
     """
@@ -153,7 +153,7 @@ def get_repository_from_profile(
         Instance de DuckDBRepository configurée
 
     Exemple:
-        repo = get_repository_from_profile("JGtm")
+        repo = get_repository_from_profile("SpartanC")
     """
     profiles = load_db_profiles(profiles_path)
 

@@ -5,9 +5,9 @@ Restaure les données d'un backup Parquet vers une DB DuckDB.
 Supporte la restauration complète ou sélective.
 
 Usage:
-    python scripts/restore_player.py --gamertag Chocoboflor --backup ./backups/Chocoboflor
-    python scripts/restore_player.py --gamertag JGtm --backup ./backups/JGtm --tables match_stats,medals_earned
-    python scripts/restore_player.py --gamertag Chocoboflor --backup ./backups/Chocoboflor --dry-run
+    python scripts/restore_player.py --gamertag SpartanB --backup ./backups/SpartanB
+    python scripts/restore_player.py --gamertag SpartanC --backup ./backups/SpartanC --tables match_stats,medals_earned
+    python scripts/restore_player.py --gamertag SpartanB --backup ./backups/SpartanB --dry-run
 """
 
 from __future__ import annotations
@@ -213,10 +213,10 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemples:
-  python scripts/restore_player.py --gamertag Chocoboflor --backup ./data/backups/Chocoboflor
-  python scripts/restore_player.py --gamertag JGtm --backup ./backups/JGtm --dry-run
-  python scripts/restore_player.py --gamertag JGtm --backup ./backups/JGtm --tables match_stats,medals_earned
-  python scripts/restore_player.py --gamertag JGtm --backup ./backups/JGtm --replace
+  python scripts/restore_player.py --gamertag SpartanB --backup ./data/backups/SpartanB
+  python scripts/restore_player.py --gamertag SpartanC --backup ./backups/SpartanC --dry-run
+  python scripts/restore_player.py --gamertag SpartanC --backup ./backups/SpartanC --tables match_stats,medals_earned
+  python scripts/restore_player.py --gamertag SpartanC --backup ./backups/SpartanC --replace
 
 Notes:
   - Par défaut, si la table existe déjà, les données sont ajoutées (pas de remplacement)

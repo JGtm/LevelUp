@@ -6,7 +6,7 @@ les XUIDs qui n'ont pas de gamertag dans xuid_aliases.
 
 Usage:
     # Pour un joueur
-    python scripts/resolve_missing_gamertags.py --gamertag Madina97294
+    python scripts/resolve_missing_gamertags.py --gamertag SpartanA
 
     # Pour tous les joueurs
     python scripts/resolve_missing_gamertags.py --all

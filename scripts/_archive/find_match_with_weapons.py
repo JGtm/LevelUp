@@ -11,7 +11,7 @@ from src.data.sync.api_client import SPNKrAPIClient
 
 
 async def main():
-    gamertag = sys.argv[1] if len(sys.argv) > 1 else "JGtm"
+    gamertag = sys.argv[1] if len(sys.argv) > 1 else "SpartanC"
 
     async with SPNKrAPIClient() as client:
         # Récupérer les 25 derniers matchs

@@ -19,9 +19,9 @@ d'une architecture SQLite legacy à l'architecture DuckDB v4 :
 4. XuidAliases → xuid_aliases
 
 Usage:
-    python scripts/migrate_all_to_duckdb.py --gamertag JGtm
+    python scripts/migrate_all_to_duckdb.py --gamertag SpartanC
     python scripts/migrate_all_to_duckdb.py --all
-    python scripts/migrate_all_to_duckdb.py --gamertag JGtm --dry-run
+    python scripts/migrate_all_to_duckdb.py --gamertag SpartanC --dry-run
     python scripts/migrate_all_to_duckdb.py --all --skip-matchcache  # Si déjà migré
 """
 

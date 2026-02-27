@@ -940,7 +940,7 @@ class TestExtractAllMedals:
             "Players": [
                 {
                     "PlayerId": "xuid(2533274823110022)",
-                    "PlayerGamertag": "JGtm",
+                    "PlayerGamertag": "SpartanC",
                     "PlayerTeamStats": [
                         {
                             "Stats": {
@@ -956,7 +956,7 @@ class TestExtractAllMedals:
                 },
                 {
                     "PlayerId": "xuid(2535469190789936)",
-                    "PlayerGamertag": "Chocoboflor",
+                    "PlayerGamertag": "SpartanB",
                     "PlayerTeamStats": [
                         {
                             "Stats": {

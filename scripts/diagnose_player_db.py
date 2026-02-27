@@ -5,8 +5,8 @@ Ce module fournit :
 - audit_player_db_types() : audit des types incohérents (Sprint 15)
 
 Usage CLI :
-    python scripts/diagnose_player_db.py --player Chocoboflor
-    python scripts/diagnose_player_db.py --player Chocoboflor --audit-types
+    python scripts/diagnose_player_db.py --player SpartanB
+    python scripts/diagnose_player_db.py --player SpartanB --audit-types
     python scripts/diagnose_player_db.py --all --audit-types
 """
 

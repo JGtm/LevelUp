@@ -1,8 +1,8 @@
 """Debug: trouve un match via une liste de gamertags, puis inspecte les HighlightEvents.
 
 Usage:
-  python scripts/debug_highlight_gamertags.py --db data/spnkr_gt_JGtm.db \
-    --players "SouLsRipP,Chrisbaba73,got a bot9883,EROK KRUEL,GoingScissors25,JGtm,Alexa Nuggets,Fizzle3412" \
+  python scripts/debug_highlight_gamertags.py --db data/spnkr_gt_SpartanC.db \
+    --players "SouLsRipP,Chrisbaba73,got a bot9883,EROK KRUEL,GoingScissors25,SpartanC,Alexa Nuggets,Fizzle3412" \
     --limit 500
 
 Si le match est trouvé, affiche:

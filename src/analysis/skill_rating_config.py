@@ -94,7 +94,7 @@ INACTIVITY_THRESHOLD_DAYS: float = 1.0
 COMPOSITE_WEIGHTS: dict[str, float] = {
     # Calibration individuelle sur 1765 matchs (3 joueurs, niveaux Argent→Diamant).
     # Signal cible : individual_mmr = team_mmr × (kills_expected / ke_avg_match).
-    # Pondération : nb_matchs × amélioration_MAE (Madina 36.7%, JGtm 40.0%, Chocobo 13.3%).
+    # Pondération : nb_matchs × amélioration_MAE (SpartanA 36.7%, SpartanC 40.0%, SpartanB 13.3%).
     "kills_vs_expected": 0.31,  # actual_kills / kills_expected (sigmoid)
     "deaths_vs_expected": 0.28,  # deaths_expected / actual_deaths (sigmoid, inversé)
     "win_factor": 0.05,  # victoire=1.0, égalité=0.5, défaite=0.0 — faible impact en social

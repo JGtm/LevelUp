@@ -13,7 +13,7 @@ Usage recommandé:
     from src.data import get_repository_from_profile
 
     # Via gamertag
-    repo = get_repository_from_profile("JGtm")
+    repo = get_repository_from_profile("SpartanC")
     matches = repo.load_matches()
 
 Usage explicite:
@@ -21,7 +21,7 @@ Usage explicite:
 
     # Mode DuckDB natif (v4)
     repo = get_repository(
-        "data/players/JGtm/stats.duckdb",
+        "data/players/SpartanC/stats.duckdb",
         xuid,
     )
 """

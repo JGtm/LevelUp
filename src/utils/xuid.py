@@ -237,7 +237,7 @@ def guess_xuid_from_db_path(
     if m:
         return m.group(1)
 
-    # Ex: spnkr_gt_Chocoboflor.db -> Chocoboflor
+    # Ex: spnkr_gt_SpartanB.db -> SpartanB
     gt_guess = stem
     if gt_guess.lower().startswith("spnkr_gt_"):
         gt_guess = gt_guess[len("spnkr_gt_") :]

@@ -3,7 +3,7 @@
 Script utilitaire pour obtenir un match ID depuis la base de données.
 
 Usage:
-    python scripts/get_match_id.py --gamertag JGtm --limit 5
+    python scripts/get_match_id.py --gamertag SpartanC --limit 5
 """
 
 from __future__ import annotations

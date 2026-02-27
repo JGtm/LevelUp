@@ -24,8 +24,8 @@ Usage:
     python scripts/sync.py --rebuild-cache            # Reconstruit MatchCache
     python scripts/sync.py --apply-indexes            # Applique les index optimisés
     python scripts/sync.py --delta --with-assets      # Sync + assets
-    python scripts/sync.py --delta --player JGtm --with-backfill  # Sync + backfill complet
-    python scripts/sync.py --delta --player JGtm --backfill-performance-scores  # Sync + scores performance
+    python scripts/sync.py --delta --player SpartanC --with-backfill  # Sync + backfill complet
+    python scripts/sync.py --delta --player SpartanC --backfill-performance-scores  # Sync + scores performance
 """
 
 from __future__ import annotations
@@ -337,7 +337,7 @@ def _get_xuid_for_gamertag(gamertag: str) -> str | None:
         with open(profiles_path) as f:
             data = json.load(f)
 
-        # db_profiles.json a la structure: {"profiles": {"JGtm": {"xuid": "...", ...}}}
+        # db_profiles.json a la structure: {"profiles": {"SpartanC": {"xuid": "...", ...}}}
         profiles_dict = data.get("profiles", {})
         if not isinstance(profiles_dict, dict):
             return None
@@ -1036,16 +1036,16 @@ def main() -> int:
         epilog="""
 Exemples:
   python scripts/sync.py --delta                    # Sync incrémentale
-    python scripts/sync.py --delta --player Chocoboflor # Sync delta d'un seul joueur
-    python scripts/sync.py --add-player JGtm          # Ajoute/MAJ un profil joueur (gamertag)
+    python scripts/sync.py --delta --player SpartanB # Sync delta d'un seul joueur
+    python scripts/sync.py --add-player SpartanC          # Ajoute/MAJ un profil joueur (gamertag)
     python scripts/sync.py --add-player 2533...       # Ajoute/MAJ un profil joueur (XUID)
   python scripts/sync.py --full --max-matches 500   # Sync complète (500 matchs)
-    python scripts/sync.py --full --player Madina97294 # Sync full d'un seul joueur
+    python scripts/sync.py --full --player SpartanA # Sync full d'un seul joueur
   python scripts/sync.py --rebuild-cache            # Reconstruit le cache
   python scripts/sync.py --apply-indexes            # Applique les index
   python scripts/sync.py --delta --with-assets      # Sync + téléchargement assets
-  python scripts/sync.py --delta --player JGtm --with-backfill  # Sync + backfill complet (toutes données)
-  python scripts/sync.py --delta --player JGtm --backfill-performance-scores  # Sync + calcul scores performance
+  python scripts/sync.py --delta --player SpartanC --with-backfill  # Sync + backfill complet (toutes données)
+  python scripts/sync.py --delta --player SpartanC --backfill-performance-scores  # Sync + calcul scores performance
   python scripts/sync.py --stats                    # Affiche les statistiques
         """,
     )

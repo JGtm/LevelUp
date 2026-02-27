@@ -7,7 +7,7 @@ les lacunes potentielles par rapport au système legacy SQLite.
 
 Usage:
     python scripts/diagnose_migration_gaps.py
-    python scripts/diagnose_migration_gaps.py --gamertag JGtm
+    python scripts/diagnose_migration_gaps.py --gamertag SpartanC
     python scripts/diagnose_migration_gaps.py --all --verbose
 """
 

@@ -10,7 +10,7 @@ Ce script effectue 3 opérations NON DESTRUCTIVES :
 Usage :
     python scripts/migration/migrate_to_v5_final.py
     python scripts/migration/migrate_to_v5_final.py --dry-run
-    python scripts/migration/migrate_to_v5_final.py --player Chocoboflor
+    python scripts/migration/migrate_to_v5_final.py --player SpartanB
 """
 
 from __future__ import annotations
@@ -690,7 +690,7 @@ def main() -> None:
 Exemples :
   python scripts/migration/migrate_to_v5_final.py --dry-run
   python scripts/migration/migrate_to_v5_final.py
-  python scripts/migration/migrate_to_v5_final.py --player Chocoboflor
+  python scripts/migration/migrate_to_v5_final.py --player SpartanB
   python scripts/migration/migrate_to_v5_final.py --verify-only
         """,
     )

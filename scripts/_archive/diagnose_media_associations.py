@@ -2,7 +2,7 @@
 """Script de diagnostic pour l'indexation et l'association des médias.
 
 Usage:
-    python scripts/diagnose_media_associations.py --db-path data/players/JGtm/stats.duckdb
+    python scripts/diagnose_media_associations.py --db-path data/players/SpartanC/stats.duckdb
 """
 
 from __future__ import annotations

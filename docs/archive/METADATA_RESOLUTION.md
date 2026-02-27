@@ -101,9 +101,9 @@ Lors de la synchronisation normale, les métadonnées sont automatiquement réso
 from src.data.sync.engine import DuckDBSyncEngine, SyncOptions
 
 engine = DuckDBSyncEngine(
-    player_db_path="data/players/JGtm/stats.duckdb",
+    player_db_path="data/players/SpartanC/stats.duckdb",
     xuid="2533274792546123",
-    gamertag="JGtm",
+    gamertag="SpartanC",
 )
 
 # Sync avec assets (par défaut: with_assets=True)
@@ -123,16 +123,16 @@ Si vous avez déjà des matchs synchronisés sans métadonnées, utilisez le scr
 
 ```bash
 # Backfill pour un joueur spécifique
-python scripts/backfill_metadata.py --player JGtm
+python scripts/backfill_metadata.py --player SpartanC
 
 # Backfill pour tous les joueurs
 python scripts/backfill_metadata.py --all-players
 
 # Limiter le nombre de matchs traités
-python scripts/backfill_metadata.py --player JGtm --limit 100
+python scripts/backfill_metadata.py --player SpartanC --limit 100
 
 # Dry-run pour voir ce qui sera fait
-python scripts/backfill_metadata.py --player JGtm --dry-run
+python scripts/backfill_metadata.py --player SpartanC --dry-run
 ```
 
 **Ce que fait le script** :
@@ -281,7 +281,7 @@ python scripts/populate_metadata_from_discovery.py --all-players
 result = await engine.sync_full(SyncOptions(with_assets=True))
 
 # 3. Backfill les matchs existants
-python scripts/backfill_metadata.py --player JGtm
+python scripts/backfill_metadata.py --player SpartanC
 ```
 
 ### Problème : Les noms sont des UUIDs
@@ -291,7 +291,7 @@ python scripts/backfill_metadata.py --player JGtm
 **Solution** :
 ```bash
 # Backfill pour résoudre les UUIDs
-python scripts/backfill_metadata.py --player JGtm
+python scripts/backfill_metadata.py --player SpartanC
 ```
 
 ### Problème : metadata.duckdb n'est pas utilisé

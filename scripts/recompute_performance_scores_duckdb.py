@@ -6,16 +6,16 @@ Recalcule tous les performance_score dans player_match_enrichment en utilisant l
 
 Usage:
     # Simulation pour un joueur (affiche les stats sans modifier la DB)
-    python scripts/recompute_performance_scores_duckdb.py --player JGtm --dry-run
+    python scripts/recompute_performance_scores_duckdb.py --player SpartanC --dry-run
 
     # Recalcul pour un joueur spécifique
-    python scripts/recompute_performance_scores_duckdb.py --player JGtm
+    python scripts/recompute_performance_scores_duckdb.py --player SpartanC
 
     # Recalcul pour tous les joueurs
     python scripts/recompute_performance_scores_duckdb.py --all
 
     # Forcer le recalcul même pour les matchs qui ont déjà un score
-    python scripts/recompute_performance_scores_duckdb.py --player JGtm --force
+    python scripts/recompute_performance_scores_duckdb.py --player SpartanC --force
 
     # Spécifier la taille des batches de commit
     python scripts/recompute_performance_scores_duckdb.py --all --batch-size 200
@@ -90,7 +90,8 @@ def load_player_matches(db_path: Path) -> pl.DataFrame:
             raise ValueError(f"XUID introuvable pour {gamertag}")
         xuid = xuid_row[0]
 
-        df = conn.execute("""
+        df = conn.execute(
+            """
             SELECT
                 mp.match_id, r.start_time,
                 mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
@@ -104,7 +105,9 @@ def load_player_matches(db_path: Path) -> pl.DataFrame:
             WHERE mp.xuid = ?
               AND r.start_time IS NOT NULL
             ORDER BY r.start_time ASC
-        """, [xuid]).pl()
+        """,
+            [xuid],
+        ).pl()
         return df
     finally:
         conn.close()
@@ -128,7 +131,14 @@ def recompute_scores_for_player(
     Returns:
         Dict avec les statistiques de traitement.
     """
-    stats = {"total": 0, "computed": 0, "skipped": 0, "errors": 0, "insufficient": 0, "sessions_updated": 0}
+    stats = {
+        "total": 0,
+        "computed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "insufficient": 0,
+        "sessions_updated": 0,
+    }
 
     # Charger tous les matchs
     df = load_player_matches(db_path)
@@ -296,7 +306,14 @@ def main() -> None:
         print("Mode : FORCE (recalcul de tous les scores)")
     print()
 
-    total_stats = {"total": 0, "computed": 0, "skipped": 0, "errors": 0, "insufficient": 0, "sessions_updated": 0}
+    total_stats = {
+        "total": 0,
+        "computed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "insufficient": 0,
+        "sessions_updated": 0,
+    }
 
     for gamertag, db_path in player_dbs:
         print(f"  {gamertag} ({db_path.name})... ", end="", flush=True)

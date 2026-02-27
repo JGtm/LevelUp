@@ -24,7 +24,7 @@ Usage:
     python scripts/extract_binary_events.py --chunks-dir data/investigation/chunks_xxx/
 
     # Filtrer par gamertag
-    python scripts/extract_binary_events.py --chunks-dir ... --gamertag XxDaemonGamerxX
+    python scripts/extract_binary_events.py --chunks-dir ... --gamertag SpartanD
 
 Références :
 - https://den.dev/blog/extracting-stats-film-files-halo-infinite/

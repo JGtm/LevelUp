@@ -8,7 +8,7 @@ Ce module encapsule HaloInfiniteClient de SPNKr avec :
 
 Usage:
     async with SPNKrAPIClient() as client:
-        history = await client.get_match_history("Chocoboflor")
+        history = await client.get_match_history("SpartanB")
         for item in history:
             data = await client.get_match_data(item.match_id, xuids)
 """
@@ -145,7 +145,7 @@ def _normalize_gamertag_for_env(gamertag: str) -> str:
     variable d'environnement.
 
     Exemples :
-        "JGtm"        → "JGTM"
+        "SpartanC"        → "SPARTANC"
         "Mon GT 2"    → "MON_GT_2"
         "Spartan#42"  → "SPARTAN_42"
     """
@@ -156,10 +156,10 @@ def get_player_token_env_key(gamertag: str) -> str:
     """Retourne le nom de la variable d'env du refresh token propre au joueur.
 
     Args:
-        gamertag: Gamertag du joueur (ex: « JGtm »).
+        gamertag: Gamertag du joueur (ex: « SpartanC »).
 
     Returns:
-        Nom de la variable (ex: « SPNKR_OAUTH_REFRESH_TOKEN_JGTM »).
+        Nom de la variable (ex: « SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC »).
     """
     return f"SPNKR_OAUTH_REFRESH_TOKEN_{_normalize_gamertag_for_env(gamertag)}"
 
@@ -176,7 +176,7 @@ async def get_tokens_for_player(gamertag: str) -> Tokens | None:
     career rank, customisation privée, etc.
 
     Args:
-        gamertag: Gamertag du joueur (``JGtm``, ``Mon GT``, …).
+        gamertag: Gamertag du joueur (``SpartanC``, ``Mon GT``, …).
 
     Returns:
         ``Tokens`` si le token joueur est trouvé et valide, ``None`` sinon.
@@ -191,9 +191,7 @@ async def get_tokens_for_player(gamertag: str) -> Tokens | None:
 
     azure_client_id = (os.environ.get("SPNKR_AZURE_CLIENT_ID") or "").strip()
     azure_client_secret = (os.environ.get("SPNKR_AZURE_CLIENT_SECRET") or "").strip()
-    azure_redirect_uri = (
-        os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "https://localhost"
-    )
+    azure_redirect_uri = os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "https://localhost"
 
     if not azure_client_id or not azure_client_secret:
         logger.warning(
@@ -359,7 +357,7 @@ class SPNKrAPIClient:
 
     Usage:
         async with SPNKrAPIClient() as client:
-            history = await client.get_match_history("Chocoboflor")
+            history = await client.get_match_history("SpartanB")
     """
 
     def __init__(

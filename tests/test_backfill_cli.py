@@ -244,7 +244,7 @@ class TestCombinations:
         args = parser.parse_args(
             [
                 "--player",
-                "JGtm",
+                "SpartanC",
                 "--medals",
                 "--events",
                 "--skill",
@@ -257,7 +257,7 @@ class TestCombinations:
                 "--dry-run",
             ]
         )
-        assert args.player == "JGtm"
+        assert args.player == "SpartanC"
         assert args.medals is True
         assert args.events is True
         assert args.skill is True

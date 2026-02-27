@@ -71,7 +71,7 @@ class AppSettings:
     profile_emblem: str = ""  # URL https://... ou chemin local
     profile_backdrop: str = ""  # URL https://... ou chemin local
     profile_nameplate: str = ""  # URL https://... ou chemin local
-    profile_service_tag: str = ""  # ex: "JGTM"
+    profile_service_tag: str = ""  # ex: "SPTA"
     profile_id_badge_text_color: str = ""  # ex: "#FFFFFF"
     profile_rank_label: str = ""  # ex: "Diamond III" / "Héros" / etc.
     profile_rank_subtitle: str = ""  # ex: "CSR 1540" / "Saison 5" / etc.
@@ -83,9 +83,9 @@ class AppSettings:
     enable_duckdb_analytics: bool = False
 
     # Internationalisation
-    lang: str = "fr"         # Langue de l'UI ("fr" ou "en")
-    discord_lang: str = "fr" # Langue des messages Discord
-    cli_lang: str = "fr"     # Langue des scripts CLI
+    lang: str = "fr"  # Langue de l'UI ("fr" ou "en")
+    discord_lang: str = "fr"  # Langue des messages Discord
+    cli_lang: str = "fr"  # Langue des scripts CLI
 
 
 def _coerce_bool(v: Any, default: bool) -> bool:

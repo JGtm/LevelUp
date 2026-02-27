@@ -510,37 +510,37 @@ def _get_usage_examples() -> str:
     return """
 Exemples:
     # Backfill toutes les données pour un joueur
-    python scripts/backfill_data.py --player JGtm --all-data
+    python scripts/backfill_data.py --player SpartanC --all-data
 
     # Mode strict (pas de re-téléchargement si partiellement rempli)
-    python scripts/backfill_data.py --player JGtm --all-data --detection-mode and
+    python scripts/backfill_data.py --player SpartanC --all-data --detection-mode and
 
     # Backfill uniquement les médailles
-    python scripts/backfill_data.py --player JGtm --medals
+    python scripts/backfill_data.py --player SpartanC --medals
 
     # Calculer les scores de performance manquants
-    python scripts/backfill_data.py --player JGtm --performance-scores
+    python scripts/backfill_data.py --player SpartanC --performance-scores
 
     # Calculer le LUSR (local, sans API)
-    python scripts/backfill_data.py --player JGtm --lusr
+    python scripts/backfill_data.py --player SpartanC --lusr
 
     # Recalculer le LUSR depuis zéro
-    python scripts/backfill_data.py --player JGtm --force-lusr
+    python scripts/backfill_data.py --player SpartanC --force-lusr
 
     # Backfill le CSR depuis l'API (matchs classés)
-    python scripts/backfill_data.py --player JGtm --csr
+    python scripts/backfill_data.py --player SpartanC --csr
 
     # LUSR + CSR en une seule commande (option recommandée)
-    python scripts/backfill_data.py --player JGtm --skill-rank
+    python scripts/backfill_data.py --player SpartanC --skill-rank
 
     # Tout recalculer depuis zéro (LUSR + CSR)
-    python scripts/backfill_data.py --player JGtm --force-skill-rank
+    python scripts/backfill_data.py --player SpartanC --force-skill-rank
 
     # Backfill pour tous les joueurs
     python scripts/backfill_data.py --all --all-data
 
     # Mode dry-run (liste seulement)
-    python scripts/backfill_data.py --player JGtm --dry-run
+    python scripts/backfill_data.py --player SpartanC --dry-run
 
     # Recalculer mode_category dans match_registry (local, sans API — ~1289 matchs)
     python scripts/backfill_data.py --mode-category
@@ -555,7 +555,7 @@ Exemples:
     python scripts/backfill_data.py --all --participants --force-participants
 
 Workaround OR — Exécution par étapes:
-    python scripts/backfill_data.py --player JGtm --medals
-    python scripts/backfill_data.py --player JGtm --sessions
-    python scripts/backfill_data.py --player JGtm --participants-kda
+    python scripts/backfill_data.py --player SpartanC --medals
+    python scripts/backfill_data.py --player SpartanC --sessions
+    python scripts/backfill_data.py --player SpartanC --participants-kda
     """

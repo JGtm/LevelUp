@@ -96,7 +96,7 @@ def cleanup_orphan_tmp_dbs(repo_root: Path | None = None) -> None:
         now = time_module.time()
         one_hour_ago = now - 3600  # 1 heure
 
-        # Pattern: *.tmp.*.db (ex: spnkr_gt_Madina.db.tmp.1234567890.12345.db)
+        # Pattern: *.tmp.*.db (ex: spnkr_gt_SpartanA.db.tmp.1234567890.12345.db)
         for tmp_file in data_dir.glob("*.tmp.*.db"):
             try:
                 if tmp_file.stat().st_mtime < one_hour_ago:

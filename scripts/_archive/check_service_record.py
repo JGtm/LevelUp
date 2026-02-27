@@ -35,7 +35,7 @@ async def main():
 
     tokens = await get_tokens_from_env()
 
-    gamertag = sys.argv[1] if len(sys.argv) > 1 else "JGtm"
+    gamertag = sys.argv[1] if len(sys.argv) > 1 else "SpartanC"
 
     headers = {
         "x-343-authorization-spartan": tokens.spartan_token,

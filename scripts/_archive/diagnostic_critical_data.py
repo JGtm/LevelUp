@@ -9,7 +9,7 @@ from pathlib import Path
 import duckdb
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PLAYER_DB = PROJECT_ROOT / "data" / "players" / "XxDaemonGamerxX" / "stats.duckdb"
+PLAYER_DB = PROJECT_ROOT / "data" / "players" / "SpartanD" / "stats.duckdb"
 METADATA_DB = PROJECT_ROOT / "data" / "warehouse" / "metadata.duckdb"
 
 

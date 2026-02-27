@@ -114,7 +114,7 @@ Backup avant nettoyage : Non
 Supprimer views compatibilité : Non
 ==============================================================
 
-📊 Chocoboflor
+📊 SpartanB
 ------------------------------------------------------------
   📁 Taille : 28,456 KB
   📋 Tables à supprimer :
@@ -320,10 +320,10 @@ Vous pouvez les supprimer avec `--remove-compat-views`.
 
 | Joueur | Avant | Après | Gain |
 |--------|-------|-------|------|
-| Chocoboflor | 28 MB | 3 MB | -89% |
-| JGtm | 32 MB | 4 MB | -87% |
-| Madina97294 | 25 MB | 3 MB | -88% |
-| XxDaemonGamerxX | 2 MB | 0.5 MB | -75% |
+| SpartanB | 28 MB | 3 MB | -89% |
+| SpartanC | 32 MB | 4 MB | -87% |
+| SpartanA | 25 MB | 3 MB | -88% |
+| SpartanD | 2 MB | 0.5 MB | -75% |
 
 **Total** : -86% en moyenne.
 

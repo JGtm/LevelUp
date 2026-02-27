@@ -49,21 +49,21 @@ LevelUp utilise une architecture DuckDB unifiée (v4) qui remplace l'ancienne ar
 ```
 data/
 ├── players/                        # Données par joueur
-│   ├── Chocoboflor/
+│   ├── SpartanB/
 │   │   ├── stats.duckdb           # DB principale
 │   │   └── archive/
 │   │       ├── matches_2023.parquet
 │   │       └── archive_index.json
-│   ├── JGtm/
+│   ├── SpartanC/
 │   │   └── stats.duckdb
-│   └── Madina97294/
+│   └── SpartanA/
 │       └── stats.duckdb
 │
 ├── warehouse/
 │   └── metadata.duckdb            # Référentiels partagés
 │
 └── backups/                       # Backups Parquet
-    └── Chocoboflor_2026-02-01/
+    └── SpartanB_2026-02-01/
 ```
 
 ---

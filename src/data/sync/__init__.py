@@ -14,9 +14,9 @@ Usage:
     from src.data.sync import DuckDBSyncEngine, SyncOptions
 
     engine = DuckDBSyncEngine(
-        player_db_path="data/players/Chocoboflor/stats.duckdb",
+        player_db_path="data/players/SpartanB/stats.duckdb",
         xuid="123456789",
-        gamertag="Chocoboflor",
+        gamertag="SpartanB",
     )
 
     result = await engine.sync_delta()

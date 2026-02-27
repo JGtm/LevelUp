@@ -8,7 +8,7 @@ antagonistes (killers/victimes) et les persiste dans la table DuckDB.
 Les highlight events sont maintenant dans shared.highlight_events.
 
 Usage:
-    python scripts/populate_antagonists.py --gamertag JGtm
+    python scripts/populate_antagonists.py --gamertag SpartanC
     python scripts/populate_antagonists.py --all
     python scripts/populate_antagonists.py --all --force
 """

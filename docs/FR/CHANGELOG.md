@@ -84,10 +84,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - Cause racine de la divergence : `v_draw(t > 0)` donnait des deltas positifs même sur composite=0.5, créant un drift infini quand `state.mu > INITIAL_MU` ou quand le joueur sur-fragait ses `kills_expected`
   - Nouvelle formule mu : `delta_mu = K_ELO × (composite − 0.5) × weight_factor` → ZÉRO exact à composite=0.5, indépendant de `mu_opp`
   - Sigma conserve la réduction TrueSkill évaluée à t=0 (symétrique, `mu_opp` influence `c²` uniquement)
-  - Résultat : ratings stabilisés — Madina (Diamant V) → Platine IV BTB / Platine VI Arena / Diamant IV Ranked, Chocoboflor/JGtm → Or II-IV selon mode
-- **Score composite calibré sur 1765 matchs** (Madina, JGtm, Chocoboflor — Argent → Diamant)
+  - Résultat : ratings stabilisés — SpartanA (Diamant V) → Platine IV BTB / Platine VI Arena / Diamant IV Ranked, SpartanB/SpartanC → Or II-IV selon mode
+- **Score composite calibré sur 1765 matchs** (SpartanA, SpartanC, SpartanB — Argent → Diamant)
   - Signal cible : `individual_mmr = team_mmr × (kills_expected / ke_avg_match)`
-  - Pondération par `nb_matchs × amélioration_MAE` : Madina 36.7%, JGtm 40.0%, Chocobo 13.3%
+  - Pondération par `nb_matchs × amélioration_MAE` : SpartanA 36.7%, SpartanC 40.0%, SpartanB 13.3%
   - Nouveaux poids : kills_vs_expected=31%, deaths_vs_expected=28%, damage_efficiency=23%, accuracy_delta=13%, win_factor=5%
 - **Élimination du biais damage_efficiency** : `PlayerState.damage_eff_history` per-groupe — le composant damage utilise un delta vs historique personnel (comme accuracy_delta) au lieu de la valeur brute
 - **Ancrage mu_opp sur `state.mu`** : `compute_enemy_strength` utilise `player_mu=state.mu` comme base d'estimation des adversaires (matchmaking met des joueurs de niveau similaire)
@@ -184,7 +184,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - Remplace la section "Joueurs" (roster) supprimée
 
 - **Tokens per-player pour endpoints player-gated** (`src/data/sync/api_client.py`, `src/ui/profile_api_tokens.py`)
-  - `SPNKR_OAUTH_REFRESH_TOKEN_<GT_NORMALISÉ>` dans `.env.local` pour chaque joueur (ex: `_JGTM`, `_MON_GT_2`)
+  - `SPNKR_OAUTH_REFRESH_TOKEN_<GT_NORMALISÉ>` dans `.env.local` pour chaque joueur (ex: `_SPARTANC`, `_MON_GT_2`)
   - Normalisation : `re.sub(r"[^A-Za-z0-9]", "_", gt.strip()).upper()`
   - `get_tokens_for_player(gamertag)` : async, retourne `Tokens | None` — skip + warning si absent (pas de fallback global sur endpoint restreint)
   - `get_player_token_env_key(gamertag)` : retourne la clé env normalisée
