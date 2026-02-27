@@ -28,6 +28,7 @@ from src.ui import (
 )
 from src.ui.formatting import format_date_fr
 from src.ui.i18n import get_lang, get_outcome_map, t
+from src.ui.i18n.data_labels import label_obj
 from src.ui.medals import load_medal_name_maps, render_medals_grid
 from src.ui.pages.match_view_charts import render_expected_vs_actual
 
@@ -281,11 +282,14 @@ def _render_match_citations_section(
             _, _, was_master_before, _ = _compute_mastery_display(count_before, tiers)
             if was_master_before:
                 continue  # Déjà maître avant ce match → on ne l'affiche pas
+        # Résolution i18n du nom de citation
+        lang = get_lang()
+        i18n = label_obj("citations", norm, lang=lang) or {}
         items.append(
             {
-                "name": cit["citation_name_display"],
+                "name": i18n.get("name", cit["citation_name_display"]),
                 "norm": norm,
-                "description": cit.get("description") or "",
+                "description": i18n.get("description", cit.get("description") or ""),
                 "image_path": cit.get("image_path"),
                 "tiers": tiers,
                 "current_full": current_full,
@@ -452,7 +456,9 @@ def render_match_view(
     last_mode = row.get("game_variant_name")
     last_outcome = row.get("outcome")
 
-    last_playlist_fr = translate_playlist_name(str(last_playlist), lang=get_lang()) if last_playlist else None
+    last_playlist_fr = (
+        translate_playlist_name(str(last_playlist), lang=get_lang()) if last_playlist else None
+    )
     last_pair_fr = translate_pair_name(str(last_pair), lang=get_lang()) if last_pair else None
 
     outcome_map = get_outcome_map()
@@ -712,7 +718,10 @@ def render_match_view(
         )
         md_df = md_df.sort(["count", "label"], descending=[True, False])
         render_medals_grid(
-            md_df.select(["name_id", "count"]).to_dicts(), cols_per_row=8, center=True, lang=get_lang()
+            md_df.select(["name_id", "count"]).to_dicts(),
+            cols_per_row=8,
+            center=True,
+            lang=get_lang(),
         )
 
     # Médias

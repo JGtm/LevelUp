@@ -27,6 +27,9 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from src.ui.i18n.data_labels import load_domain
+
+# Legacy dicts conservés comme fallback — source de vérité = JSON
 _CAREER_RANK_TIER_FR: dict[str, str] = {
     "Bronze": "Bronze",
     "Silver": "Argent",
@@ -65,37 +68,69 @@ _GRADE_TO_ROMAN: dict[str, str] = {
 }
 
 
-def format_career_rank_label_fr(*, tier: str | None, title: str | None, grade: str | None) -> str:
-    """Formate un libellé de rang Career en français.
+def _get_rank_translations(lang: str) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    """Charge les traductions de rangs depuis les JSON i18n.
+
+    Returns:
+        (titles, tiers, grades) — dicts de traduction.
+    """
+    data = load_domain("ranks", lang)
+    titles = data.get("_titles", {})
+    tiers = data.get("_tiers", {})
+    grades = data.get("_grades", {})
+    if not titles:
+        # Fallback sur les dicts legacy FR
+        titles = _CAREER_RANK_TITLE_FR
+        tiers = _CAREER_RANK_TIER_FR
+        grades = _GRADE_TO_ROMAN
+    return titles, tiers, grades
+
+
+def format_career_rank_label(
+    *, tier: str | None, title: str | None, grade: str | None, lang: str = "fr"
+) -> str:
+    """Formate un libellé de rang Career dans la langue demandée.
 
     Args:
         tier: Tier/type de rang (ex: "Silver", "Gold")
         title: Titre du rang (ex: "Private", "Lt Colonel")
         grade: Sous-grade ("1"/"2"/"3") ou None
+        lang: Code langue ("fr", "en").
 
     Returns:
-        Libellé FR (ex: "Soldat - Argent II", "Lieutenant-colonel - Or I", "Héros").
+        Libellé localisé (ex: "Soldat - Argent II", "Private - Silver II").
     """
+    titles, tiers, grades = _get_rank_translations(lang)
+
     raw_title = (title or "").strip()
     raw_tier = (tier or "").strip()
     raw_grade = (grade or "").strip()
 
-    title_fr = _CAREER_RANK_TITLE_FR.get(raw_title, raw_title)
-    tier_fr = _CAREER_RANK_TIER_FR.get(raw_tier, raw_tier)
+    title_loc = titles.get(raw_title, raw_title)
+    tier_loc = tiers.get(raw_tier, raw_tier)
 
     # Cas spéciaux: grade initial et grade final
-    if title_fr in ("Recrue", "Héros"):
-        return title_fr
+    # Recruit/Recrue et Hero/Héros n'ont pas de tier
+    if raw_title in ("Recruit", "Hero"):
+        return title_loc
 
     # Format: "Titre - Tier Grade" (ex: "Général de brigade - Or III")
-    if title_fr and tier_fr and raw_grade:
-        grade_roman = _GRADE_TO_ROMAN.get(raw_grade, raw_grade)
-        return f"{title_fr} - {tier_fr} {grade_roman}"
-    elif title_fr and tier_fr:
-        return f"{title_fr} - {tier_fr}"
-    elif title_fr:
-        return title_fr
+    if title_loc and tier_loc and raw_grade:
+        grade_roman = grades.get(raw_grade, raw_grade)
+        return f"{title_loc} - {tier_loc} {grade_roman}"
+    elif title_loc and tier_loc:
+        return f"{title_loc} - {tier_loc}"
+    elif title_loc:
+        return title_loc
     return ""
+
+
+def format_career_rank_label_fr(*, tier: str | None, title: str | None, grade: str | None) -> str:
+    """Formate un libellé de rang Career en français (compatibilité).
+
+    Wrapper autour de ``format_career_rank_label(lang="fr")``.
+    """
+    return format_career_rank_label(tier=tier, title=title, grade=grade, lang="fr")
 
 
 @dataclass(frozen=True)
@@ -111,7 +146,7 @@ class CareerRankInfo:
 
     @property
     def full_label(self) -> str:
-        """Retourne le label complet du rang (ex: 'Gold Lance Corporal 3')."""
+        """Retourne le label complet du rang EN (ex: 'Gold Lance Corporal 3')."""
         parts = []
         if self.subtitle:
             parts.append(self.subtitle)
@@ -122,12 +157,20 @@ class CareerRankInfo:
 
     @property
     def full_label_fr(self) -> str:
-        """Retourne le label complet du rang en français (ex: 'Or Caporal suppléant 1')."""
-        return format_career_rank_label_fr(tier=self.subtitle, title=self.title, grade=self.tier)
+        """Retourne le label complet du rang en français (compatibilité)."""
+        return format_career_rank_label(
+            tier=self.subtitle, title=self.title, grade=self.tier, lang="fr"
+        )
+
+    def full_label_localized(self, lang: str = "fr") -> str:
+        """Retourne le label complet du rang dans la langue demandée."""
+        return format_career_rank_label(
+            tier=self.subtitle, title=self.title, grade=self.tier, lang=lang
+        )
 
     @property
     def display_label(self) -> str:
-        """Retourne un label compact (ex: 'Lance Corporal Gold 3')."""
+        """Retourne un label compact EN (ex: 'Lance Corporal Gold 3')."""
         if self.subtitle and self.tier:
             return f"{self.title} {self.subtitle} {self.tier}"
         elif self.subtitle:
@@ -136,8 +179,16 @@ class CareerRankInfo:
 
     @property
     def display_label_fr(self) -> str:
-        """Retourne un label compact en français (ex: 'Caporal suppléant - Bronze I')."""
-        return format_career_rank_label_fr(tier=self.subtitle, title=self.title, grade=self.tier)
+        """Retourne un label compact en français (compatibilité)."""
+        return format_career_rank_label(
+            tier=self.subtitle, title=self.title, grade=self.tier, lang="fr"
+        )
+
+    def display_label_localized(self, lang: str = "fr") -> str:
+        """Retourne un label compact dans la langue demandée."""
+        return format_career_rank_label(
+            tier=self.subtitle, title=self.title, grade=self.tier, lang=lang
+        )
 
 
 def _repo_root() -> Path:

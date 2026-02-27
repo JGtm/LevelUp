@@ -1727,7 +1727,7 @@ def transform_personal_score_awards(
     Returns:
         Liste de PersonalScoreAwardRow.
     """
-    from src.data.domain.refdata import get_personal_score_display_name
+    from src.data.domain.refdata import get_personal_score_technical_id
     from src.data.sync.models import PersonalScoreAwardRow
 
     rows = []
@@ -1737,13 +1737,13 @@ def transform_personal_score_awards(
             continue
 
         category = categorize_personal_score(name_id)
-        display_name = get_personal_score_display_name(name_id)
+        technical_id = get_personal_score_technical_id(name_id)
 
         rows.append(
             PersonalScoreAwardRow(
                 match_id=match_id,
                 xuid=xuid,
-                award_name=display_name,
+                award_name=technical_id,
                 award_category=category,
                 award_count=ps.get("count", 1),
                 award_score=ps.get("total_score", 0),

@@ -1,10 +1,10 @@
 {
-    "a la charge": {
+    "charge": {
         "name": "Charge",
         "description": "Take control of a base in any matchmaking Strongholds game.",
         "category": "Game mode"
     },
-    "annexion forcee": {
+    "forced_annexation": {
         "name": "Forced Annexation",
         "description": "Take control of 3 bases without dying in any matchmaking Strongholds game.",
         "category": "Game mode"
@@ -19,47 +19,47 @@
         "description": "Finish any matchmaking Slayer game with a KDA above 8.",
         "category": "Game mode"
     },
-    "defenseur du drapeau": {
+    "flag_defender": {
         "name": "Flag Defender",
         "description": "Protect your team's flag in any matchmaking Capture the Flag game.",
         "category": "Game mode"
     },
-    "je te tiens !": {
+    "got_you": {
         "name": "Got You!",
         "description": "Return your team's flag in any matchmaking Capture the Flag game.",
         "category": "Game mode"
     },
-    "partie prenante": {
+    "stakeholder": {
         "name": "Stakeholder",
         "description": "Defend a base belonging to your team in any matchmaking Strongholds game.",
         "category": "Game mode"
     },
-    "sus au porteur du drapeau": {
+    "flag_carrier_hunter": {
         "name": "Flag Carrier Hunter",
         "description": "Kill an enemy flag carrier in any matchmaking Capture the Flag game.",
         "category": "Game mode"
     },
-    "victoire au drapeau": {
+    "flag_victory": {
         "name": "Flag Victory",
         "description": "Win any matchmaking Capture the Flag game.",
         "category": "Game mode"
     },
-    "victoire en assassin": {
+    "slayer_victory": {
         "name": "Slayer Victory",
         "description": "Win a Team Slayer game.",
         "category": "Game mode"
     },
-    "victoire en bases": {
+    "strongholds_victory": {
         "name": "Strongholds Victory",
         "description": "Win any matchmaking Strongholds game.",
         "category": "Game mode"
     },
-    "ecrasement": {
+    "splatter": {
         "name": "Splatter",
         "description": "Splatter an enemy Spartan with a vehicle.",
         "category": "Weapon"
     },
-    "pilote": {
+    "driver": {
         "name": "Driver",
         "description": "Earn driver medals.",
         "category": "Weapon"
@@ -69,62 +69,62 @@
         "description": "Assassinate enemy Spartans.",
         "category": "Multiplayer"
     },
-    "carnage de spartans": {
+    "spartan_carnage": {
         "name": "Spartan Carnage",
         "description": "Kill multiple enemy Spartans without dying.",
         "category": "Multiplayer"
     },
-    "combat rapproche": {
+    "close_combat": {
         "name": "Close Combat",
         "description": "Earn any close combat medal.",
         "category": "Multiplayer"
     },
-    "combattant opportuniste": {
+    "opportunist": {
         "name": "Opportunistic Fighter",
         "description": "Earn any combat proficiency medal.",
         "category": "Multiplayer"
     },
-    "multifrag": {
+    "multikill": {
         "name": "Multikill",
         "description": "Rapidly kill multiple enemy Spartans.",
         "category": "Multiplayer"
     },
-    "pugilat": {
+    "melee_fighter": {
         "name": "Melee Fighter",
         "description": "Kill an enemy Spartan with a melee attack.",
         "category": "Multiplayer"
     },
-    "tir a la tete": {
+    "headshot": {
         "name": "Headshot",
         "description": "Kill an enemy Spartan with a headshot.",
         "category": "Multiplayer"
     },
-    "tueur de spartans": {
+    "spartan_killer": {
         "name": "Spartan Killer",
         "description": "Eliminate enemy Spartans.",
         "category": "Multiplayer"
     },
-    "\u0153il de lynx": {
+    "eagle_eye": {
         "name": "Eagle Eye",
         "description": "Kill a full-health enemy Spartan with a precision weapon without missing a single shot.",
         "category": "Multiplayer"
     },
-    "flag 'em down": {
+    "flag_em_down": {
         "name": "Flag 'Em Down",
         "description": "Earn one of the following medals: Interception, Flag Joust, Carrier Kill, Flag Return, Flag Defense",
         "category": "Spartan Companies"
     },
-    "grand theft": {
+    "grand_theft": {
         "name": "Grand Theft",
         "description": "Hijack a vehicle or aircraft",
         "category": "Spartan Companies"
     },
-    "helping hand": {
+    "helping_hand": {
         "name": "Helping Hand",
         "description": "Earn any assist",
         "category": "Spartan Companies"
     },
-    "i'm just perfect": {
+    "im_just_perfect": {
         "name": "I'm Just Perfect",
         "description": "Kill a player with a precision weapon without missing a shot",
         "category": "Spartan Companies"
@@ -134,7 +134,7 @@
         "description": "Kill an opponent by running them over with a vehicle",
         "category": "Spartan Companies"
     },
-    "look ma no pin": {
+    "look_ma_no_pin": {
         "name": "Look Ma, No Pin",
         "description": "Kill an enemy Spartan with any grenade",
         "category": "Spartan Companies"
@@ -144,137 +144,137 @@
         "description": "Earn Lucky, Empty Mag, Sayonara or Cannonball medals",
         "category": "Spartan Companies"
     },
-    "no hard feelings": {
+    "no_hard_feelings": {
         "name": "No Hard Feelings",
         "description": "Kill enemy Spartans",
         "category": "Spartan Companies"
     },
-    "positive contribution": {
+    "positive_contribution": {
         "name": "Positive Contribution",
         "description": "Finish with KDA above 8 in any matchmaking Slayer game",
         "category": "Spartan Companies"
     },
-    "power play": {
+    "power_play": {
         "name": "Power Play",
         "description": "Kill an enemy Spartan with a power weapon",
         "category": "Spartan Companies"
     },
-    "road trip": {
+    "road_trip": {
         "name": "Road Trip",
         "description": "Kill an enemy Spartan with a ground vehicle",
         "category": "Spartan Companies"
     },
-    "sting like a bee": {
+    "sting_like_a_bee": {
         "name": "Sting Like a Bee",
         "description": "Kill an enemy Spartan in close combat",
         "category": "Spartan Companies"
     },
-    "the reaper": {
+    "the_reaper": {
         "name": "The Reaper",
         "description": "Kill an opponent from beyond the grave",
         "category": "Spartan Companies"
     },
-    "too fast for you": {
+    "too_fast_for_you": {
         "name": "Too Fast For You",
         "description": "Kill an opponent who shot you first",
         "category": "Spartan Companies"
     },
-    "vandalisme": {
+    "vandalism": {
         "name": "Vandalism",
         "description": "Destroy an enemy vehicle",
         "category": "Spartan Companies"
     },
-    "destructeur d'apparitions": {
+    "wraith_destroyer": {
         "name": "Wraith Destroyer",
         "description": "Destroy occupied enemy Wraiths.",
         "category": "Weapon"
     },
-    "destructeur de banshees": {
+    "banshee_destroyer": {
         "name": "Banshee Destroyer",
         "description": "Destroy occupied enemy Banshees.",
         "category": "Weapon"
     },
-    "destructeur de ghosts": {
+    "ghost_destroyer": {
         "name": "Ghost Destroyer",
         "description": "Destroy occupied enemy Ghosts.",
         "category": "Weapon"
     },
-    "destructeur de mongooses": {
+    "mongoose_destroyer": {
         "name": "Mongoose Destroyer",
         "description": "Destroy occupied enemy Mongooses.",
         "category": "Weapon"
     },
-    "destructeur de scorpions": {
+    "scorpion_destroyer": {
         "name": "Scorpion Destroyer",
         "description": "Destroy occupied enemy Scorpions.",
         "category": "Weapon"
     },
-    "destructeur de warthogs": {
+    "warthog_destroyer": {
         "name": "Warthog Destroyer",
         "description": "Destroy occupied enemy Warthogs.",
         "category": "Weapon"
     },
-    "destructeur de wasps": {
+    "wasp_destroyer": {
         "name": "Wasp Destroyer",
         "description": "Destroy occupied enemy Wasps.",
         "category": "Weapon"
     },
-    "tueur de grognards": {
+    "grunt_slayer": {
         "name": "Grunt Killer",
         "description": "Kill Grunts.",
         "category": "Enemy"
     },
-    "tueur d'elites": {
+    "elite_slayer": {
         "name": "Elite Killer",
         "description": "Kill Elites.",
         "category": "Enemy"
     },
-    "tueur de rapaces": {
+    "jackal_slayer": {
         "name": "Jackal Killer",
         "description": "Kill Jackals.",
         "category": "Enemy"
     },
-    "tueur de chasseurs": {
+    "hunter_slayer": {
         "name": "Hunter Killer",
         "description": "Kill Hunters.",
         "category": "Enemy"
     },
-    "tueur de sentinelles": {
+    "sentinel_slayer": {
         "name": "Sentinel Killer",
         "description": "Kill Sentinels.",
         "category": "Enemy"
     },
-    "like a boss": {
+    "like_a_boss": {
         "name": "Like a Boss",
         "description": "Kill a boss in a Firefight Warzone game",
         "category": "Spartan Companies"
     },
-    "player vs everything": {
+    "player_vs_everything": {
         "name": "Player vs Everything",
         "description": "Win Firefight games",
         "category": "Spartan Companies"
     },
-    "tueur de brutes": {
+    "brute_slayer": {
         "name": "Brute Killer",
         "description": "Kill Brutes.",
         "category": "Enemy"
     },
-    "tueur de skimmers": {
+    "skimmer_slayer": {
         "name": "Skimmer Killer",
         "description": "Kill Skimmers.",
         "category": "Enemy"
     },
-    "tueur de marines": {
+    "marine_slayer": {
         "name": "Marine Killer",
         "description": "Kill enemy Marines.",
         "category": "Enemy"
     },
-    "destructeur de covenants": {
+    "covenant_destroyer": {
         "name": "Covenant Destroyer",
         "description": "Earn all Covenant elimination commendations",
         "category": "Enemy"
     },
-    "seul contre tous": {
+    "lone_wolf": {
         "name": "Lone Wolf",
         "description": "Win a Free-For-All game.",
         "category": "Game mode"

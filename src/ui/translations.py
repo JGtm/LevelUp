@@ -602,11 +602,12 @@ def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:
     """Traduit un nom de mode/pair dans la langue demandée.
 
     Stratégie de fallback:
-    1. Match exact dans PAIR_FR (FR) ou formatage EN propre
-    2. Normalisation de la casse et retry
-    3. Match par préfixe (mode sans carte, logique d'agrégation préservée)
-    4. Fallback générique avec dictionnaires localisés
-    5. Si UUID non résolu -> "Mode inconnu" / "Unknown mode"
+    1. JSON i18n (modes)
+    2. Match exact dans PAIR_FR (FR)
+    3. Normalisation de la casse et retry
+    4. Match par préfixe (mode sans carte, logique d'agrégation préservée)
+    5. Fallback générique avec dictionnaires JSON localisés
+    6. Si UUID non résolu -> "Mode inconnu" / "Unknown mode"
 
     Args:
         name: Nom de pair brut (peut être ``None``).
@@ -620,10 +621,10 @@ def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:
 
     # Détection précoce des UUIDs non résolus
     if _is_uuid_like(s):
-        return "Mode inconnu" if lang == "fr" else "Unknown mode"
+        return label("modes", "_unknown", lang=lang)
 
     # EN : pas de PAIR_EN exhaustif — on passe directement à la logique de normalisation
-    # FR : 1) Match exact
+    # FR : 1) Match exact hardcodé (legacy, PAIR_FR a ~300 entrées)
     if lang == "fr" and s in PAIR_FR:
         return PAIR_FR[s]
 
@@ -662,75 +663,28 @@ def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:
     if " on " in base:
         mode_without_map = base.split(" on ", 1)[0].strip()
 
-    # Chercher le mode sans carte dans les fallbacks génériques (FR uniquement)
+    # Chercher le mode sans carte dans les fallbacks génériques (FR uniquement, legacy)
     if lang == "fr" and mode_without_map in PAIR_FR:
         return PAIR_FR[mode_without_map]
 
-    # 4) Fallback générique avec dictionnaires localisés
-    if lang == "en":
-        generic_mode_translations = _EN_GENERIC_MODES
-        prefix_translations = _EN_PREFIXES
-        separator = ": "
-    else:
-        generic_mode_translations = {
-            "Slayer": "Assassin",
-            "Team Slayer": "Assassin en équipe",
-            "FFA Slayer": "Chacun pour soi",
-            "Fiesta Slayer": "Fiesta",
-            "Fiesta CTF": "Fiesta CDD",
-            "Fiesta Total Control": "Fiesta Contrôle total",
-            "Oddball": "Oddball",
-            "CTF": "Capture du drapeau",
-            "CTF 3 Captures": "CDD 3 captures",
-            "Neutral Flag CTF": "Drapeau neutre",
-            "One Flag CTF": "Drapeau neutre",
-            "King of the Hill": "Roi de la colline",
-            "Heroic King of the Hill": "Roi de la colline héroïque",
-            "Legendary King of the Hill": "Roi de la colline légendaire",
-            "Heroic KOTH": "Roi de la colline héroïque",
-            "Strongholds": "Bases",
-            "Attrition": "Attrition",
-            "Escalation Slayer": "Escalade",
-            "Team Snipers": "Snipers en équipe",
-            "Shotty Snipes Slayer": "Fusils snipers à grenaille",
-            "Shotty Snipe Slayer FFA": "Fusils snipers à grenaille FFA",
-            "Total Control": "Contrôle total",
-            "Stockpile": "Stockage",
-            "Extraction": "Extraction",
-            "Land Grab": "Bases",
-            "VIP": "VIP",
-            "Sentry Defense": "Défense sentinelle",
-            "Assault": "Assaut",
-            "Neutral Bomb": "Bombe neutre",
-            "Neutral Bomb Squad": "Escouade bombe neutre",
-            "One Bomb": "Bombe neutre",
-        }
-        prefix_translations = {
-            "Arena": "Arène",
-            "BTB": "Grande bataille en équipe",
-            "BTB Heavies": "Grande bataille en équipe Heavies",
-            "Ranked": "Classé",
-            "Tactical": "Tactique",
-            "Community": "Communauté",
-            "Event": "Événement",
-            "Fiesta": "Fiesta",
-            "Super Fiesta": "Super Fiesta",
-            "Firefight": "Baptême du feu",
-            "Gruntpocalypse": "Gruntpocalypse",
-            "Husky Raid": "Husky Raid",
-            "Super Husky Raid": "Super Husky Raid",
-            "Assault": "Assaut",
-        }
-        separator = " : "
+    # 4) Fallback générique avec JSON i18n (modes_{lang}.json)
+    modes_data = load_domain("modes", lang)
+    prefixes = modes_data.get("_prefixes", {})
+    separator = modes_data.get("_separator", ": ")
 
     if ":" in mode_without_map:
         prefix, mode_part = mode_without_map.split(":", 1)
         prefix = prefix.strip()
         mode_part = mode_part.strip()
 
-        prefix_loc = prefix_translations.get(prefix, prefix)
-        mode_loc = generic_mode_translations.get(mode_part, mode_part)
+        prefix_loc = prefixes.get(prefix, prefix)
+        mode_loc = modes_data.get(mode_part, mode_part)
 
         return f"{prefix_loc}{separator}{mode_loc}"
+
+    # Fallback dernière chance : mode seul
+    mode_loc = modes_data.get(mode_without_map)
+    if mode_loc and not isinstance(mode_loc, dict):
+        return str(mode_loc)
 
     return s

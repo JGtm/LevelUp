@@ -271,6 +271,86 @@ PERSONAL_SCORE_DISPLAY_NAMES: Final[dict[int, str]] = {
     PersonalScoreNameId.CUSTOM: "Personnalisé",
 }
 
+# IDs techniques snake_case pour stockage / i18n (clés = PersonalScoreNameId).
+# Couvre TOUS les IDs, y compris DESTROYED_*/HIJACKED_* absents de l'ancien dict.
+PERSONAL_SCORE_TECHNICAL_IDS: Final[dict[int, str]] = {
+    # Combat
+    PersonalScoreNameId.KILLED_PLAYER: "killed_player",
+    PersonalScoreNameId.BETRAYED_PLAYER: "betrayed_player",
+    PersonalScoreNameId.SELF_DESTRUCTION: "self_destruction",
+    PersonalScoreNameId.ELIMINATED_PLAYER: "eliminated_player",
+    PersonalScoreNameId.REVIVED_PLAYER: "revived_player",
+    PersonalScoreNameId.REVIVE_DENIED: "revive_denied",
+    # Assistances
+    PersonalScoreNameId.KILL_ASSIST: "kill_assist",
+    PersonalScoreNameId.MARK_ASSIST: "mark_assist",
+    PersonalScoreNameId.SENSOR_ASSIST: "sensor_assist",
+    PersonalScoreNameId.EMP_ASSIST: "emp_assist",
+    PersonalScoreNameId.DRIVER_ASSIST: "driver_assist",
+    # CTF
+    PersonalScoreNameId.FLAG_CAPTURED: "flag_captured",
+    PersonalScoreNameId.FLAG_STOLEN: "flag_stolen",
+    PersonalScoreNameId.FLAG_RETURNED: "flag_returned",
+    PersonalScoreNameId.FLAG_TAKEN: "flag_taken",
+    PersonalScoreNameId.FLAG_CAPTURE_ASSIST: "flag_capture_assist",
+    PersonalScoreNameId.RUNNER_STOPPED: "runner_stopped",
+    # Oddball
+    PersonalScoreNameId.BALL_CONTROL: "ball_control",
+    PersonalScoreNameId.BALL_TAKEN: "ball_taken",
+    PersonalScoreNameId.CARRIER_STOPPED: "carrier_stopped",
+    # KOTH
+    PersonalScoreNameId.HILL_CONTROL: "hill_control",
+    PersonalScoreNameId.HILL_SCORED: "hill_scored",
+    # Zones (3 variantes → une seule clé technique)
+    PersonalScoreNameId.ZONE_CAPTURED_50: "zone_captured",
+    PersonalScoreNameId.ZONE_CAPTURED_75: "zone_captured",
+    PersonalScoreNameId.ZONE_CAPTURED_100: "zone_captured",
+    PersonalScoreNameId.ZONE_SECURED: "zone_secured",
+    # Stockpile
+    PersonalScoreNameId.POWER_SEED_SECURED: "power_seed_secured",
+    PersonalScoreNameId.POWER_SEED_STOLEN: "power_seed_stolen",
+    PersonalScoreNameId.CARRIER_KILLED: "carrier_killed",
+    PersonalScoreNameId.STOCKPILE_SCORED: "stockpile_scored",
+    # Extraction
+    PersonalScoreNameId.EXTRACTION_INITIATED: "extraction_initiated",
+    PersonalScoreNameId.EXTRACTION_CONVERTED: "extraction_converted",
+    PersonalScoreNameId.EXTRACTION_COMPLETED: "extraction_completed",
+    PersonalScoreNameId.EXTRACTION_DENIED: "extraction_denied",
+    # Infection
+    PersonalScoreNameId.CONVERSION_DENIED: "conversion_denied",
+    # LSS
+    PersonalScoreNameId.COLLECTED_BONUS_XP: "collected_bonus_xp",
+    # Hacking
+    PersonalScoreNameId.HACKED_TERMINAL: "hacked_terminal",
+    # Destruction de véhicules
+    PersonalScoreNameId.DESTROYED_BANSHEE: "destroyed_banshee",
+    PersonalScoreNameId.DESTROYED_CHOPPER: "destroyed_chopper",
+    PersonalScoreNameId.DESTROYED_FALCON: "destroyed_falcon",
+    PersonalScoreNameId.DESTROYED_GHOST: "destroyed_ghost",
+    PersonalScoreNameId.DESTROYED_GUNGOOSE: "destroyed_gungoose",
+    PersonalScoreNameId.DESTROYED_MONGOOSE: "destroyed_mongoose",
+    PersonalScoreNameId.DESTROYED_PHANTOM: "destroyed_phantom",
+    PersonalScoreNameId.DESTROYED_RAZORBACK: "destroyed_razorback",
+    PersonalScoreNameId.DESTROYED_ROCKET_WARTHOG: "destroyed_rocket_warthog",
+    PersonalScoreNameId.DESTROYED_SCORPION: "destroyed_scorpion",
+    PersonalScoreNameId.DESTROYED_WARTHOG: "destroyed_warthog",
+    PersonalScoreNameId.DESTROYED_WASP: "destroyed_wasp",
+    PersonalScoreNameId.DESTROYED_WRAITH: "destroyed_wraith",
+    # Hijacks
+    PersonalScoreNameId.HIJACKED_BANSHEE: "hijacked_banshee",
+    PersonalScoreNameId.HIJACKED_CHOPPER: "hijacked_chopper",
+    PersonalScoreNameId.HIJACKED_FALCON: "hijacked_falcon",
+    PersonalScoreNameId.HIJACKED_GHOST: "hijacked_ghost",
+    PersonalScoreNameId.HIJACKED_GUNGOOSE: "hijacked_gungoose",
+    PersonalScoreNameId.HIJACKED_MONGOOSE: "hijacked_mongoose",
+    PersonalScoreNameId.HIJACKED_RAZORBACK: "hijacked_razorback",
+    PersonalScoreNameId.HIJACKED_ROCKET_WARTHOG: "hijacked_rocket_warthog",
+    PersonalScoreNameId.HIJACKED_WARTHOG: "hijacked_warthog",
+    PersonalScoreNameId.HIJACKED_WASP: "hijacked_wasp",
+    # Custom
+    PersonalScoreNameId.CUSTOM: "custom",
+}
+
 # =============================================================================
 # Points par type de score
 # =============================================================================
@@ -536,7 +616,10 @@ def get_outcome_name_fr(outcome: int | Outcome) -> str:
 
 
 def get_personal_score_display_name(name_id: int | PersonalScoreNameId) -> str:
-    """Retourne le nom d'affichage d'un type de score personnel.
+    """Retourne le nom d'affichage français (legacy) d'un type de score personnel.
+
+    .. deprecated:: Utiliser ``get_personal_score_technical_id()`` pour les nouvelles
+       insertions en DB. Ce helper reste utile pour l'affichage FR direct.
 
     Args:
         name_id: Valeur de PersonalScoreNameId (int ou enum).
@@ -546,6 +629,30 @@ def get_personal_score_display_name(name_id: int | PersonalScoreNameId) -> str:
     """
     id_value = int(name_id) if isinstance(name_id, PersonalScoreNameId) else name_id
     return PERSONAL_SCORE_DISPLAY_NAMES.get(id_value, "Score")
+
+
+def get_personal_score_technical_id(name_id: int | PersonalScoreNameId) -> str:
+    """Retourne l'identifiant technique snake_case d'un type de score personnel.
+
+    Couvre TOUS les types y compris DESTROYED_*/HIJACKED_* (corrige le bug
+    où ces types étaient stockés comme ``"Score"``).
+
+    Args:
+        name_id: Valeur de PersonalScoreNameId (int ou enum).
+
+    Returns:
+        Identifiant technique (ex: ``"killed_player"``, ``"destroyed_banshee"``),
+        ou ``name_id.name.lower()`` si l'enum est connu, ``"score"`` sinon.
+    """
+    id_value = int(name_id) if isinstance(name_id, PersonalScoreNameId) else name_id
+    tech_id = PERSONAL_SCORE_TECHNICAL_IDS.get(id_value)
+    if tech_id is not None:
+        return tech_id
+    # Fallback : essayer le nom de l'enum
+    try:
+        return PersonalScoreNameId(id_value).name.lower()
+    except ValueError:
+        return "score"
 
 
 def get_personal_score_points(name_id: int | PersonalScoreNameId) -> int:

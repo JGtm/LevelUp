@@ -880,14 +880,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Unable to align stats for 3 players on these matches.",
     },
     # ── Media ─────────────────────────────────────────────────────────────────
-    "media_disabled": {
-        "fr": "Les médias sont désactivés dans Paramètres → Médias.",
-        "en": "Media is disabled in Settings → Media.",
-    },
-    "media_no_folder": {
-        "fr": "Configure au moins un dossier dans Paramètres → Médias (captures et/ou vidéos).",
-        "en": "Configure at least one folder in Settings → Media (screenshots and/or videos).",
-    },
+    # media_disabled, media_no_folder : définis dans common.py
     "media_no_files": {
         "fr": "Aucun média trouvé.",
         "en": "No media found.",
@@ -1546,10 +1539,16 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "**Objectifs** : contribution à la victoire (objectifs ou frags selon le mode)",
         "en": "**Objectives** : contribution to victory (objectives or kills depending on mode)",
     },
-    "radar_desc_combat": {"fr": "**Combat** : éliminations directes", "en": "**Combat** : direct eliminations"},
+    "radar_desc_combat": {
+        "fr": "**Combat** : éliminations directes",
+        "en": "**Combat** : direct eliminations",
+    },
     "radar_desc_support": {"fr": "**Support** : assists", "en": "**Support** : assists"},
     "radar_desc_score": {"fr": "**Score** : points totaux", "en": "**Score** : total points"},
-    "radar_desc_impact": {"fr": "**Impact** : intensité (pts/min)", "en": "**Impact** : intensity (pts/min)"},
+    "radar_desc_impact": {
+        "fr": "**Impact** : intensité (pts/min)",
+        "en": "**Impact** : intensity (pts/min)",
+    },
     "radar_desc_survival": {
         "fr": "**Survie** : moins de morts + durée de vie moyenne",
         "en": "**Survival** : fewer deaths + average lifespan",

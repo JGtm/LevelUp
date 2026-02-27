@@ -126,7 +126,7 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "media_disabled": {
         "fr": "Les médias sont désactivés dans Paramètres → Médias.",
-        "en": "Media are disabled in Settings → Media.",
+        "en": "Media is disabled in Settings → Media.",
     },
     "media_no_folder": {
         "fr": "Configure au moins un dossier dans Paramètres → Médias (captures et/ou vidéos).",
@@ -239,8 +239,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "lbl_not_validated": {"fr": "Non validé", "en": "Not verified"},
     "sel_all": {"fr": "(toutes)", "en": "(all)"},
     "sel_none": {"fr": "(aucun)", "en": "(none)"},
-    "col_killing_spree": {"fr": "Folie meurtrière", "en": "Killing spree"},
-    "col_shots_hit": {"fr": "Tirs au but", "en": "Shots hit"},
+    # col_killing_spree, col_shots_hit : déjà définis plus haut (L193/L199)
     "col_shots_fired_short": {"fr": "Tirs", "en": "Shots"},
     "col_assists_short": {"fr": "Assist.", "en": "Assists"},
     "lbl_you": {"fr": "Toi", "en": "You"},

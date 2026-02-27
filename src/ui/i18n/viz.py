@@ -12,28 +12,13 @@ from __future__ import annotations
 
 import contextlib
 
-STRINGS: dict[str, dict[str, str]] = {
-    # ── Traces communes ──────────────────────────────────────────────────────
-    "trace_kills": {
-        "fr": "Frags",
-        "en": "Kills",
-    },
-    "trace_deaths": {
-        "fr": "Morts",
-        "en": "Deaths",
-    },
-    "trace_ratio": {
-        "fr": "Ratio",
-        "en": "Ratio",
-    },
-    "trace_assists": {
-        "fr": "Assistances",
-        "en": "Assists",
-    },
-    "trace_matches": {
-        "fr": "Matchs",
-        "en": "Matches",
-    },
+STRINGS: dict[str, dict[str, str] | str] = {
+    # ── Traces communes (alias → common.py) ──────────────────────────────────
+    "trace_kills": "col_kills",
+    "trace_deaths": "col_deaths",
+    "trace_ratio": "col_ratio",
+    "trace_assists": "col_assists",
+    "trace_matches": "col_matches",
     "trace_density": {
         "fr": "Densité (KDE)",
         "en": "Density (KDE)",
@@ -83,26 +68,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Tirs à la tête",
         "en": "Headshots",
     },
-    "trace_perfect_kills": {
-        "fr": "Frags parfaits",
-        "en": "Perfect kills",
-    },
-    "trace_performance": {
-        "fr": "Performance",
-        "en": "Performance",
-    },
-    "trace_dmg_dealt": {
-        "fr": "Dégâts infligés",
-        "en": "Damage dealt",
-    },
+    "trace_perfect_kills": "col_perfect_kills",
+    "trace_performance": "col_performance",
+    "trace_dmg_dealt": "col_dmg_dealt",
     "trace_dmg_dealt_avg": {
         "fr": "Moy. infligés",
         "en": "Avg. dealt",
     },
-    "trace_dmg_taken": {
-        "fr": "Dégâts subis",
-        "en": "Damage taken",
-    },
+    "trace_dmg_taken": "col_dmg_taken",
     "trace_dmg_taken_avg": {
         "fr": "Moy. subis",
         "en": "Avg. taken",
@@ -115,18 +88,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Tirs touchés",
         "en": "Shots hit",
     },
-    "trace_accuracy": {
-        "fr": "Précision (%)",
-        "en": "Accuracy (%)",
-    },
+    "trace_accuracy": "col_accuracy_pct",
     "trace_personal_score": {
         "fr": "Score personnel",
         "en": "Personal score",
     },
-    "trace_rank": {
-        "fr": "Rang",
-        "en": "Rank",
-    },
+    "trace_rank": "col_rank",
     # ── Stats par minute ─────────────────────────────────────────────────────
     "trace_kills_per_min": {
         "fr": "Frags/min",
@@ -170,23 +137,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Adversaires",
         "en": "Opponents",
     },
-    # ── Axes génériques ──────────────────────────────────────────────────────
-    "axis_matches": {
-        "fr": "Matchs",
-        "en": "Matches",
-    },
-    "axis_accuracy_pct": {
-        "fr": "Précision (%)",
-        "en": "Accuracy (%)",
-    },
+    # ── Axes génériques (alias → common.py où possible) ──────────────────────────
+    "axis_matches": "col_matches",
+    "axis_accuracy_pct": "col_accuracy_pct",
     "axis_duration_sec": {
         "fr": "Durée (secondes)",
         "en": "Duration (seconds)",
     },
-    "axis_score": {
-        "fr": "Score",
-        "en": "Score",
-    },
+    "axis_score": "col_score",
     "axis_score_per_min": {
         "fr": "Score / min",
         "en": "Score / min",
@@ -204,30 +162,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Personal score",
     },
     # ── Tableaux de données ──────────────────────────────────────────────────
-    "col_map": {
-        "fr": "Carte",
-        "en": "Map",
-    },
-    "col_matches": {
-        "fr": "Parties",
-        "en": "Matches",
-    },
-    "col_avg_accuracy": {
-        "fr": "Précision moy. (%)",
-        "en": "Avg. accuracy (%)",
-    },
-    "col_win_rate": {
-        "fr": "Taux victoire (%)",
-        "en": "Win rate (%)",
-    },
-    "col_loss_rate": {
-        "fr": "Taux défaite (%)",
-        "en": "Loss rate (%)",
-    },
-    "col_global_ratio": {
-        "fr": "Ratio global",
-        "en": "Overall ratio",
-    },
+    # NOTE: Les clés col_map, col_matches, col_avg_accuracy, col_win_rate,
+    # col_loss_rate, col_global_ratio ont été supprimées (doublons de common.py
+    # ou inutilisées via viz_t). viz_t() retombe sur common.STRINGS en fallback.
     # ── Traces victoires / défaites ──────────────────────────────────────────
     "trace_wins": {
         "fr": "Victoires",
@@ -250,10 +187,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Nombre",
         "en": "Count",
     },
-    "axis_hour": {
-        "fr": "Heure",
-        "en": "Hour",
-    },
+    "axis_hour": "lbl_hour",
     "axis_day_of_week": {
         "fr": "Jour",
         "en": "Day",
@@ -287,15 +221,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "période",
         "en": "period",
     },
-    # ── Labels statuts résultat (usage dans antagonists, summaries) ──────────
-    "label_win": {
-        "fr": "Victoire",
-        "en": "Win",
-    },
-    "label_loss": {
-        "fr": "Défaite",
-        "en": "Loss",
-    },
+    # ── Labels statuts résultat (alias → common.py) ──────────────────────────
+    "label_win": "outcome_win",
+    "label_loss": "outcome_loss",
     "label_tie": {
         "fr": "Égalité",
         "en": "Tie",
@@ -322,10 +250,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Win Rate",
     },
     # ── Labels temporels (majuscule) — x-axis ────────────────────────────────
-    "bucket_cap_match": {
-        "fr": "Match",
-        "en": "Match",
-    },
+    "bucket_cap_match": "col_match",
     "bucket_cap_day": {
         "fr": "Jour",
         "en": "Day",
@@ -348,10 +273,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Taux (%)",
         "en": "Rate (%)",
     },
-    "axis_hour_label": {
-        "fr": "Heure",
-        "en": "Hour",
-    },
+    "axis_hour_label": "lbl_hour",
     "axis_day_label": {
         "fr": "Jour",
         "en": "Day",
@@ -373,19 +295,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Dégâts",
         "en": "Damage",
     },
-    "axis_shots": {
-        "fr": "Tirs",
-        "en": "Shots",
-    },
+    "axis_shots": "col_shots_fired_short",
     "axis_streak": {
         "fr": "Série",
         "en": "Streak",
     },
     # ── Titres graphiques combat ──────────────────────────────────────────────
-    "title_avg_life": {
-        "fr": "Durée de vie moyenne",
-        "en": "Average life span",
-    },
+    "title_avg_life": "col_avg_life_long",
     "title_performance": {
         "fr": "Score de performance",
         "en": "Performance score",
@@ -492,8 +408,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Cumulative Net Score",
     },
     # ── Axes supplémentaires ─────────────────────────────────────────────────
-    "axis_kills": {"fr": "Frags", "en": "Kills"},
-    "axis_deaths": {"fr": "Morts", "en": "Deaths"},
+    "axis_kills": "col_kills",
+    "axis_deaths": "col_deaths",
     "axis_kills_deaths": {"fr": "Frags / Morts", "en": "Kills / Deaths"},
     "axis_ratio": {"fr": "Ratio K/D", "en": "K/D Ratio"},
     "axis_fda": {"fr": "FDA", "en": "FDA"},
@@ -551,8 +467,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "trace_win_rate": {"fr": "Victoires", "en": "Win Rate"},
     "trace_loss_rate": {"fr": "Défaites", "en": "Loss Rate"},
     "trace_others_tie_unfinished": {"fr": "Égalités / Non terminés", "en": "Ties / Unfinished"},
-    "trace_actual": {"fr": "Réel", "en": "Actual"},
-    "trace_expected": {"fr": "Attendu", "en": "Expected"},
+    "trace_actual": "lbl_actual",
+    "trace_expected": "lbl_expected",
     "trace_obj_score": {"fr": "Score objectif", "en": "Objective Score"},
     "trace_total_score": {"fr": "Score total", "en": "Total Score"},
     # ── Hover supplémentaires ─────────────────────────────────────────────────
@@ -563,13 +479,13 @@ STRINGS: dict[str, dict[str, str]] = {
     "hover_kill_ordinal": {"fr": "Frag n°%{x}", "en": "Kill #%{x}"},
     "hover_death_ordinal": {"fr": "Mort n°%{x}", "en": "Death #%{x}"},
     # ── Labels supplémentaires ────────────────────────────────────────────────
-    "label_nemesis": {"fr": "Némésis", "en": "Nemesis"},
+    "label_nemesis": "lbl_nemesis",
     "label_punching_bag": {"fr": "Punching bag", "en": "Punching Bag"},
     "label_session_a": {"fr": "Session A", "en": "Session A"},
     "label_session_b": {"fr": "Session B", "en": "Session B"},
     "label_this_match": {"fr": "Ce match", "en": "This Match"},
     # ── Catégories de participation ────────────────────────────────────────────
-    "cat_label_kill": {"fr": "Frags", "en": "Kills"},
+    "cat_label_kill": "col_kills",
     "cat_label_assist": {"fr": "Assists", "en": "Assists"},
     "cat_label_objective": {"fr": "Objectifs", "en": "Objectives"},
     "cat_label_vehicle": {"fr": "Véhicules", "en": "Vehicles"},
@@ -581,7 +497,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "impact_last_group_kill": {"fr": "Dernier du groupe", "en": "Last Group Kill"},
     "impact_first_group_death": {"fr": "Premier mort du groupe", "en": "First Group Death"},
     # ── Messages vides ────────────────────────────────────────────────────────
-    "empty_no_data": {"fr": "Aucune donnée disponible.", "en": "No data available."},
+    "empty_no_data": "no_data",
     "empty_no_duel": {"fr": "Aucun duel trouvé.", "en": "No duel found."},
     "empty_no_match_data": {
         "fr": "Aucune donnée de match disponible.",
@@ -595,7 +511,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "label_kill_assists": {"fr": "Kill Assists", "en": "Kill Assists"},
     "label_mark_assists": {"fr": "Mark Assists", "en": "Mark Assists"},
     "label_emp_assists": {"fr": "EMP Assists", "en": "EMP Assists"},
-    "axis_assists": {"fr": "Assistances", "en": "Assists"},
+    "axis_assists": "col_assists",
     "axis_per_minute": {"fr": "Par minute", "en": "Per minute"},
     # ── Labels duels / net ────────────────────────────────────────────────────
     "label_net": {"fr": "Net", "en": "Net"},
@@ -787,8 +703,16 @@ STRINGS: dict[str, dict[str, str]] = {
 def viz_t(key: str, lang: str = "fr", **kwargs: object) -> str:
     """Helper rapide pour les visualisations, sans dépendance Streamlit.
 
+    Résout d'abord dans ``viz.STRINGS``, puis tombe en fallback sur
+    ``common.STRINGS`` pour éviter de dupliquer les labels partagés
+    (métriques, colonnes, résultats…).
+
+    Supporte les **alias** : si la valeur dans STRINGS est un ``str``
+    au lieu d'un ``dict``, elle est utilisée comme clé à résoudre
+    (dans STRINGS d'abord, puis common.STRINGS).
+
     Args:
-        key:  Clé dans STRINGS.
+        key:  Clé dans STRINGS (ou common.STRINGS en fallback).
         lang: ``"fr"`` ou ``"en"``.
         **kwargs: Variables pour str.format().
 
@@ -796,8 +720,27 @@ def viz_t(key: str, lang: str = "fr", **kwargs: object) -> str:
         La chaîne traduite ou la clé entre crochets.
     """
     entry = STRINGS.get(key)
+
+    # Résolution d'alias (str → clé cible)
+    if isinstance(entry, str):
+        target = entry
+        entry = STRINGS.get(target)
+        if entry is None or isinstance(entry, str):
+            from src.ui.i18n.common import STRINGS as COMMON_STRINGS
+
+            entry = COMMON_STRINGS.get(target)
+
+    if entry is None:
+        # Fallback vers common.STRINGS (import paresseux pour éviter circular)
+        from src.ui.i18n.common import STRINGS as COMMON_STRINGS
+
+        entry = COMMON_STRINGS.get(key)
+
     if entry is None:
         return f"[{key}]"
+    if isinstance(entry, str):
+        # Alias non résolu dans common — ne devrait pas arriver
+        return entry
     text = entry.get(lang) or entry.get("fr") or f"[{key}]"
     if kwargs:
         with contextlib.suppress(KeyError, ValueError):

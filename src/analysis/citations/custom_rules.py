@@ -153,7 +153,12 @@ def compute_annexion_forcee(
     if awards is None:
         return 0
 
-    zone_captures = awards.get("Zone capturée", 0) or awards.get("Zone Capture", 0)
+    zone_captures = (
+        awards.get("zone_captured", 0)
+        # Legacy fallback (données pré-migration)
+        or awards.get("Zone capturée", 0)
+        or awards.get("Zone Capture", 0)
+    )
 
     if zone_captures < 3:
         return 0
@@ -178,9 +183,10 @@ def compute_flag_em_down(
     """
     if awards is None:
         return 0
-    # Support noms FR ("Porteur arrêté") et EN legacy ("Flag Carrier Kill")
     return (
-        awards.get("Porteur arrêté", 0)
+        awards.get("runner_stopped", 0)
+        # Legacy fallback (données pré-migration)
+        + awards.get("Porteur arrêté", 0)
         + awards.get("Flag Carrier Kill", 0)
         + awards.get("Flag Carrier Killed", 0)
     )
@@ -202,10 +208,12 @@ def compute_hijack(
     if awards is None:
         return 0
 
-    hijack_keywords = ["Hijacked", "Hijack", "Skyjack"]
     total = 0
     for key, val in awards.items():
-        if any(kw.lower() in key.lower() for kw in hijack_keywords):
+        # Technical IDs: hijacked_banshee, hijacked_ghost, etc.
+        if key.startswith("hijacked_") or any(
+            kw in key.lower() for kw in ("hijacked", "hijack", "skyjack")
+        ):
             total += val
     return total
 
@@ -226,10 +234,12 @@ def compute_vandalism(
     if awards is None:
         return 0
 
-    destroy_keywords = ["Destroyed", "Destruction"]
     total = 0
     for key, val in awards.items():
-        if any(kw.lower() in key.lower() for kw in destroy_keywords):
+        # Technical IDs: destroyed_banshee, destroyed_ghost, etc.
+        if key.startswith("destroyed_") or any(
+            kw in key.lower() for kw in ("destroyed", "destruction")
+        ):
             total += val
     return total
 
@@ -240,7 +250,12 @@ def compute_wraith_destroyer(
     """Compte les Wraiths détruits."""
     if awards is None:
         return 0
-    return awards.get("Wraith Destroyed", 0) + awards.get("Apparition Destroyed", 0)
+    return (
+        awards.get("destroyed_wraith", 0)
+        # Legacy fallback
+        + awards.get("Wraith Destroyed", 0)
+        + awards.get("Apparition Destroyed", 0)
+    )
 
 
 def compute_mongoose_destroyer(
@@ -249,7 +264,11 @@ def compute_mongoose_destroyer(
     """Compte les Mongooses détruits."""
     if awards is None:
         return 0
-    return awards.get("Mongoose Destroyed", 0)
+    return (
+        awards.get("destroyed_mongoose", 0)
+        # Legacy fallback
+        + awards.get("Mongoose Destroyed", 0)
+    )
 
 
 def compute_warthog_destroyer(
@@ -258,7 +277,13 @@ def compute_warthog_destroyer(
     """Compte les Warthogs détruits."""
     if awards is None:
         return 0
-    return awards.get("Warthog Destroyed", 0) + awards.get("Rocket Warthog Destroyed", 0)
+    return (
+        awards.get("destroyed_warthog", 0)
+        + awards.get("destroyed_rocket_warthog", 0)
+        # Legacy fallback
+        + awards.get("Warthog Destroyed", 0)
+        + awards.get("Rocket Warthog Destroyed", 0)
+    )
 
 
 # Registry des fonctions custom pour utilisation dynamique
