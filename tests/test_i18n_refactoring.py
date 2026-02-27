@@ -205,3 +205,56 @@ class TestRegistryIntegrity:
 
         reset_registry()
         assert t("__totally_fake__") == "[__totally_fake__]"
+
+
+class TestAliasResolution:
+    """Les alias dans pages/widgets/viz se résolvent correctement via t()."""
+
+    def test_pages_alias_resolves(self) -> None:
+        """Un alias pages → common renvoie la bonne valeur."""
+        from src.ui.i18n import reset_registry, t
+
+        reset_registry()
+        # career_metric_rank → col_rank
+        assert t("career_metric_rank", lang="fr") == t("col_rank", lang="fr")
+        assert t("career_metric_rank", lang="en") == t("col_rank", lang="en")
+
+    def test_widgets_alias_resolves(self) -> None:
+        """Un alias widgets → common renvoie la bonne valeur."""
+        from src.ui.i18n import reset_registry, t
+
+        reset_registry()
+        # metric_kills → col_kills
+        assert t("metric_kills", lang="fr") == t("col_kills", lang="fr")
+        assert t("metric_kills", lang="en") == t("col_kills", lang="en")
+
+    def test_viz_alias_resolves(self) -> None:
+        """Un alias viz → common renvoie la bonne valeur."""
+        from src.ui.i18n import reset_registry, t
+
+        reset_registry()
+        # trace_kills → col_kills
+        assert t("trace_kills", lang="fr") == t("col_kills", lang="fr")
+
+    def test_all_aliases_resolve(self) -> None:
+        """Aucun alias ne reste non-résolu (pas de [key])."""
+        from src.ui.i18n import pages, reset_registry, t, viz, widgets
+
+        reset_registry()
+        unresolved: list[str] = []
+        for mod_name, mod in [("pages", pages), ("widgets", widgets), ("viz", viz)]:
+            for key, val in mod.STRINGS.items():
+                if isinstance(val, str):  # c'est un alias
+                    result = t(key, lang="fr")
+                    if result.startswith("["):
+                        unresolved.append(f"{mod_name}.{key} → {val}")
+
+        assert not unresolved, "Alias non résolus :\n" + "\n".join(unresolved)
+
+    def test_casing_harmonized(self) -> None:
+        """Le casing EN est harmonisé pour les termes communs."""
+        from src.ui.i18n import reset_registry, t
+
+        reset_registry()
+        assert t("col_avg_life_long", lang="en") == "Average lifespan"
+        assert t("tm_perfect_kills", lang="en") == "Perfect kills"
