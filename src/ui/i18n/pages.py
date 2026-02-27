@@ -361,7 +361,7 @@ STRINGS: dict[str, dict[str, str]] = {
     # ── Page Match View ──────────────────────────────────────────────────────
     "mv_citations": {
         "fr": "Citations",
-        "en": "Quotes",
+        "en": "Commendations",
     },
     "mv_medals": {
         "fr": "Médailles",
@@ -1525,6 +1525,19 @@ STRINGS: dict[str, dict[str, str]] = {
     "radar_hover_no_penalty": {"fr": "Aucune", "en": "None"},
     "radar_hover_survival_pct": {"fr": "survie", "en": "survival"},
     "radar_hover_pts_per_min": {"fr": "{pts:.1f} pts/min", "en": "{pts:.1f} pts/min"},
+    # ── Radar — descriptions des axes ───────────────────────────────────────
+    "radar_desc_objectives": {
+        "fr": "**Objectifs** : contribution à la victoire (objectifs ou frags selon le mode)",
+        "en": "**Objectives** : contribution to victory (objectives or kills depending on mode)",
+    },
+    "radar_desc_combat": {"fr": "**Combat** : éliminations directes", "en": "**Combat** : direct eliminations"},
+    "radar_desc_support": {"fr": "**Support** : assists", "en": "**Support** : assists"},
+    "radar_desc_score": {"fr": "**Score** : points totaux", "en": "**Score** : total points"},
+    "radar_desc_impact": {"fr": "**Impact** : intensité (pts/min)", "en": "**Impact** : intensity (pts/min)"},
+    "radar_desc_survival": {
+        "fr": "**Survie** : moins de morts + durée de vie moyenne",
+        "en": "**Survival** : fewer deaths + average lifespan",
+    },
     # ── Career progress circle ──────────────────────────────────────────────
     # (uses career_max_rank, career_hero_rank from career section above)
     # ── Checkbox filter ─────────────────────────────────────────────────────

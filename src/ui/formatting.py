@@ -118,14 +118,15 @@ def paris_epoch_seconds(dt_value) -> float | None:
         return None
 
 
-def format_date_fr(dt_value) -> str:
-    """Formate une date en français, ex: 'Lun. 4 décembre 2025'.
+def format_date_fr(dt_value, lang: str = "fr") -> str:
+    """Formate une date dans la langue donnée, ex: 'Lun. 4 décembre 2025' / 'Mon. December 4 2025'.
 
     Args:
         dt_value: Valeur de date (datetime, Timestamp, str, etc.).
+        lang: ``"fr"`` ou ``"en"`` (défaut: ``"fr"`` pour compatibilité).
 
     Returns:
-        Date formatée en français ou "-" si invalide.
+        Date formatée ou "-" si invalide.
     """
     if dt_value is None:
         return "-"
@@ -136,22 +137,22 @@ def format_date_fr(dt_value) -> str:
     except Exception:
         return str(dt_value)
 
-    jours = ["Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam.", "Dim."]
-    mois = [
-        "janvier",
-        "février",
-        "mars",
-        "avril",
-        "mai",
-        "juin",
-        "juillet",
-        "août",
-        "septembre",
-        "octobre",
-        "novembre",
-        "décembre",
+    jours_fr = ["Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam.", "Dim."]
+    jours_en = ["Mon.", "Tue.", "Wed.", "Thu.", "Fri.", "Sat.", "Sun."]
+    mois_fr = [
+        "janvier", "février", "mars", "avril", "mai", "juin",
+        "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+    ]
+    mois_en = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
     ]
 
+    jours = jours_fr if lang == "fr" else jours_en
+    mois = mois_fr if lang == "fr" else mois_en
+
+    if lang == "en":
+        return f"{jours[d.weekday()]} {mois[d.month - 1]} {d.day} {d.year}"
     return f"{jours[d.weekday()]} {d.day} {mois[d.month - 1]} {d.year}"
 
 
@@ -187,15 +188,17 @@ def format_mmss(seconds: float | int | None) -> str:
         return "-"
 
 
-def format_duration_hms(seconds: float | int | None) -> str:
+def format_duration_hms(seconds: float | int | None, lang: str = "fr") -> str:
     """Formate une durée en hh:mm:ss ou mm:ss.
 
     Args:
         seconds: Durée en secondes.
+        lang: ``"fr"`` ou ``"en"`` pour l'abréviation du jour.
 
     Returns:
         Chaîne formatée ou "-" si invalide.
     """
+    _day_abbr = {"fr": "j", "en": "d"}
     if seconds is None or seconds != seconds:
         return "-"
     try:
@@ -208,21 +211,24 @@ def format_duration_hms(seconds: float | int | None) -> str:
     m, s = divmod(rem, 60)
     if h >= 24:
         d, hh = divmod(h, 24)
-        return f"{d}j {hh:02d}:{m:02d}:{s:02d}"
+        day_lbl = _day_abbr.get(lang, "j")
+        return f"{d}{day_lbl} {hh:02d}:{m:02d}:{s:02d}"
     if h > 0:
         return f"{h:d}:{m:02d}:{s:02d}"
     return f"{m:d}:{s:02d}"
 
 
-def format_duration_dhm(seconds: float | int | None) -> str:
+def format_duration_dhm(seconds: float | int | None, lang: str = "fr") -> str:
     """Formate une durée en jours/heures/minutes.
 
     Args:
         seconds: Durée en secondes.
+        lang: ``"fr"`` ou ``"en"`` pour l'abréviation du jour.
 
     Returns:
-        Chaîne formatée (ex: "2j 5h 30min") ou "-" si invalide.
+        Chaîne formatée (ex: "2j 5h 30min" / "2d 5h 30min") ou "-" si invalide.
     """
+    _day_abbr = {"fr": "j", "en": "d"}
     if seconds is None or seconds != seconds:
         return "-"
     try:
@@ -236,20 +242,22 @@ def format_duration_dhm(seconds: float | int | None) -> str:
     hours, minutes = divmod(minutes, 60)
     days, hours = divmod(hours, 24)
 
+    day_lbl = _day_abbr.get(lang, "j")
     parts: list[str] = []
     if days:
-        parts.append(f"{days}j")
+        parts.append(f"{days}{day_lbl}")
     if hours or days:
         parts.append(f"{hours}h")
     parts.append(f"{minutes}min")
     return " ".join(parts)
 
 
-def format_datetime_fr_hm(dt_value) -> str:
-    """Formate une date avec heure en français (ex: 'Lun. 4 décembre 2025 14:30').
+def format_datetime_fr_hm(dt_value, lang: str = "fr") -> str:
+    """Formate une date avec heure dans la langue donnée (ex: 'Lun. 4 décembre 2025 14:30').
 
     Args:
         dt_value: Valeur de date.
+        lang: ``"fr"`` ou ``"en"``.
 
     Returns:
         Date formatée avec heure ou "-" si invalide.
@@ -259,7 +267,7 @@ def format_datetime_fr_hm(dt_value) -> str:
     d = to_paris_naive(dt_value)
     if d is None:
         return "-"
-    return f"{format_date_fr(d)} {d:%H:%M}"
+    return f"{format_date_fr(d, lang=lang)} {d:%H:%M}"
 
 
 def coerce_int(v) -> int | None:

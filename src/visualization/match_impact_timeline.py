@@ -251,7 +251,7 @@ def plot_match_kill_death_timeline(
                 name=viz_t("trace_kills", lang),
                 line={"color": kill_color, "width": 2.5},
                 marker={"size": 5, "color": kill_color},
-                hovertemplate="<b>Frag #%{y}</b><br>%{text}<extra></extra>",
+                hovertemplate=viz_t("hover_kill_cumul", lang),
                 text=kill_labels,
             )
         )
@@ -270,7 +270,7 @@ def plot_match_kill_death_timeline(
                 name=viz_t("trace_deaths", lang),
                 line={"color": death_color, "width": 2.5, "dash": "dot"},
                 marker={"size": 5, "color": death_color},
-                hovertemplate="<b>Mort #%{y}</b><br>%{text}<extra></extra>",
+                hovertemplate=viz_t("hover_death_cumul", lang),
                 text=death_labels,
             )
         )
@@ -555,7 +555,7 @@ def plot_all_players_frags_timeline(
                     "color": color,
                 },
                 opacity=1.0 if is_me else 0.65,
-                hovertemplate=(f"<b>{name}</b><br>" "Frags: %{y:.0f}<br>" "%{text}<extra></extra>"),
+                hovertemplate=(f"<b>{name}</b><br>" f"{viz_t('trace_kills', lang)}: %{{y:.0f}}<br>" "%{text}<extra></extra>"),
                 text=labels,
             )
         )

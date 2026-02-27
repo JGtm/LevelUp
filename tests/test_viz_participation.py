@@ -21,12 +21,12 @@ from src.visualization.participation_charts import (
     plot_participation_sunburst,
 )
 from src.visualization.participation_radar import (
-    RADAR_AXIS_LINES,
     RADAR_THRESHOLDS,
     _extract_scores_from_awards,
     _get_match_stats_values,
     _is_objective_mode_from_pair_name,
     compute_participation_profile,
+    get_radar_axis_lines,
 )
 
 # ============================================================================
@@ -402,5 +402,6 @@ class TestRadarConstants:
             assert v > 0, f"{k} should be positive"
 
     def test_axis_lines(self):
-        assert len(RADAR_AXIS_LINES) == 6
-        assert all(isinstance(line, str) for line in RADAR_AXIS_LINES)
+        lines = get_radar_axis_lines()
+        assert len(lines) == 6
+        assert all(isinstance(line, str) for line in lines)

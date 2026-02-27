@@ -452,7 +452,7 @@ def plot_dominance_chart(
     fig.add_annotation(
         x=_x_label,
         y=18,
-        text="Adversaires",
+        text=viz_t("trace_opponents", lang),
         font={"color": _ENEMY_COLOR, "size": 10},
         showarrow=False,
         xanchor="left",
@@ -576,7 +576,7 @@ def plot_dominance_chart(
                 },
                 customdata=formatted_pts,
                 hovertemplate=(
-                    f"<b>{streak.gamertag}</b> — série ×{streak.kills_count}"
+                    f"<b>{streak.gamertag}</b> — {viz_t('label_streak', lang)} ×{streak.kills_count}"
                     "<br>%{customdata}<extra></extra>"
                 ),
                 showlegend=False,

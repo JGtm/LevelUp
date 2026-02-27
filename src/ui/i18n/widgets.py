@@ -317,4 +317,22 @@ STRINGS: dict[str, dict[str, str]] = {
     "kpi_losses": {"fr": "Défaites", "en": "Losses"},
     "kpi_ties": {"fr": "Égalités", "en": "Ties"},
     "kpi_no_finish": {"fr": "Non terminés", "en": "Unfinished"},
+    # ── Sidebar — boutons sélection ──────────────────────────────────────────
+    "btn_select_all": {"fr": "✓ Tout", "en": "✓ All"},
+    "btn_select_none": {"fr": "✗ Aucun", "en": "✗ None"},
+    # ── Durée ────────────────────────────────────────────────────────────────
+    "dur_day_abbr": {"fr": "j", "en": "d"},
+    # ── Métriques DuckDB analytics ───────────────────────────────────────────
+    "metric_matches": {"fr": "Matchs", "en": "Matches"},
+    "metric_win_rate": {"fr": "Taux victoires", "en": "Win rate"},
+    "metric_avg_kda": {"fr": "FDA moyen", "en": "Avg KDA"},
+    "metric_accuracy": {"fr": "Précision", "en": "Accuracy"},
+    "metric_kills": {"fr": "Frags", "en": "Kills"},
+    "metric_deaths": {"fr": "Morts", "en": "Deaths"},
+    "metric_assists": {"fr": "Assistances", "en": "Assists"},
+    "metric_time_played": {"fr": "Temps joué", "en": "Time played"},
+    # ── Filtres — playlists preferred order ──────────────────────────────────
+    "playlist_quick_play": {"fr": "Partie rapide", "en": "Quick Play"},
+    "playlist_ranked_arena": {"fr": "Arène classée", "en": "Ranked Arena"},
+    "playlist_ranked_assassin": {"fr": "Assassin classé", "en": "Ranked Assassin"},
 }

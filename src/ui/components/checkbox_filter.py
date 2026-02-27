@@ -166,10 +166,10 @@ def render_checkbox_filter(
                     st.session_state[f"{sk}_confirm_clear"] = True
 
             cols[0].button(
-                "✓ Tout", key=f"{session_key}_all", width="stretch", on_click=_select_all
+                t("btn_select_all"), key=f"{session_key}_all", width="stretch", on_click=_select_all
             )
             cols[1].button(
-                "✗ Aucun", key=f"{session_key}_none", width="stretch", on_click=_select_none
+                t("btn_select_none"), key=f"{session_key}_none", width="stretch", on_click=_select_none
             )
 
         # Confirmation message
@@ -313,9 +313,9 @@ def render_hierarchical_checkbox_filter(
             else:
                 st.session_state[f"{sk}_confirm_clear"] = True
 
-        cols[0].button("✓ Tout", key=f"{session_key}_all", width="stretch", on_click=_select_all_g)
+        cols[0].button(t("btn_select_all"), key=f"{session_key}_all", width="stretch", on_click=_select_all_g)
         cols[1].button(
-            "✗ Aucun", key=f"{session_key}_none", width="stretch", on_click=_select_none_g
+            t("btn_select_none"), key=f"{session_key}_none", width="stretch", on_click=_select_none_g
         )
 
         # Confirmation message
