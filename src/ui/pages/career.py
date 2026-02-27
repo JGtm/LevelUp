@@ -441,9 +441,10 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
 
     # Sélecteur de groupe : "Tous" + un par groupe disponible
     group_options: dict[str, str | None] = {t("career_lusr_all_groups"): None}
+    pg_labels = _get_pg_labels()
     for g in _PG_ORDER:
         if g in available_groups:
-            group_options[f"{_PG_ICONS.get(g, '🎮')} {_PG_LABELS.get(g, g.capitalize())}"] = g
+            group_options[f"{_PG_ICONS.get(g, '🎮')} {pg_labels.get(g, g.capitalize())}"] = g
     # Groupes hors _PG_ORDER en queue
     for g in available_groups:
         if g not in _PG_ORDER:

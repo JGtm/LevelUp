@@ -57,10 +57,11 @@ def fragment_if_available(func: F) -> F:
         try:
             from streamlit.runtime.scriptrunner import get_script_run_ctx
 
-            if get_script_run_ctx() is not None:
-                return fragmented(*args, **kwargs)
-        except (ImportError, Exception):
-            pass
+            ctx = get_script_run_ctx()
+        except ImportError:
+            ctx = None
+        if ctx is not None:
+            return fragmented(*args, **kwargs)
         return func(*args, **kwargs)
 
     return _wrapper  # type: ignore[return-value]
