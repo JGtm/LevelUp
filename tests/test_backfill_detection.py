@@ -39,7 +39,8 @@ def shared_conn():
             pair_id VARCHAR,
             game_variant_name VARCHAR,
             game_variant_id VARCHAR,
-            backfill_completed INTEGER DEFAULT 0
+            backfill_completed INTEGER DEFAULT 0,
+            events_loaded BOOLEAN DEFAULT false
         )
     """)
     c.execute("""
@@ -88,11 +89,11 @@ def shared_conn():
         """
         INSERT INTO match_registry (match_id, playlist_name, playlist_id,
             map_name, map_id, pair_name, pair_id,
-            game_variant_name, game_variant_id, backfill_completed)
+            game_variant_name, game_variant_id, backfill_completed, events_loaded)
         VALUES
-            ('m1', NULL, 'p1', NULL, 'map1', NULL, 'pair1', NULL, 'gv1', 0),
-            ('m2', 'Ranked', 'p2', 'Recharge', 'map2', 'Slayer', 'pair2', 'Slayer', 'gv2', ?),
-            ('m3', NULL, 'p3', NULL, 'map3', NULL, 'pair3', NULL, 'gv3', 0)
+            ('m1', NULL, 'p1', NULL, 'map1', NULL, 'pair1', NULL, 'gv1', 0, false),
+            ('m2', 'Ranked', 'p2', 'Recharge', 'map2', 'Slayer', 'pair2', 'Slayer', 'gv2', ?, true),
+            ('m3', NULL, 'p3', NULL, 'map3', NULL, 'pair3', NULL, 'gv3', 0, false)
     """,
         [_M2_BACKFILL_BITS],
     )

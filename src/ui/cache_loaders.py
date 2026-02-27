@@ -625,12 +625,14 @@ def cached_get_match_skill_rank(
         ou None si absent.
     """
     _ = db_key
-    import duckdb
+    from src.data.repositories.duckdb_repo import DuckDBRepository
 
     try:
-        with duckdb.connect(str(db_path), read_only=True) as conn:
-            row = conn.execute(
-                """
+        with DuckDBRepository(str(db_path), "", read_only=True) as repo:
+            row = (
+                repo._get_connection()
+                .execute(
+                    """
                 WITH cte AS (
                     SELECT
                         msr.match_id,
@@ -648,12 +650,11 @@ def cached_get_match_skill_rank(
                 FROM cte
                 WHERE match_id = ?
                 """,
-                [match_id],
-            ).fetchone()
+                    [match_id],
+                )
+                .fetchone()
+            )
         return row
-    except duckdb.CatalogException:
-        # Table match_skill_rank absente (joueur sans LUSR/CSR calculé)
-        return None
     except Exception:
         return None
 
