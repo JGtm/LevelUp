@@ -255,7 +255,7 @@ def _render_streak_section(dff: pl.DataFrame) -> None:
     st.caption(t("wl_streaks_caption"))
     if "outcome" in dff.columns and "start_time" in dff.columns:
         try:
-            fig_streak = plot_streak_chart(dff, title=None)
+            fig_streak = plot_streak_chart(dff, title=None, lang=get_lang())
             if fig_streak is not None:
                 st.plotly_chart(fig_streak, width="stretch", config={"displayModeBar": False})
             else:
@@ -299,7 +299,7 @@ def _render_period_section(
     st.divider()
     st.subheader(t("wl_period"))
     # compute_period_table accepte directement un pl.DataFrame
-    period = WinLossService.compute_period_table(dff, bucket_label, is_session_scope)
+    period = WinLossService.compute_period_table(dff, bucket_label, is_session_scope, lang=get_lang())
     if period.is_empty:
         st.info(t("wl_no_period_data"))
         return
@@ -314,10 +314,7 @@ def _render_period_section(
             return ""
         return "color: #E0E0E0; font-weight: 700;"
 
-    win_rate_col = next(
-        (c for c in ("Taux de victoires", "Win rate", "Taux de victoire") if c in out_tbl.columns),
-        None,
-    )
+    win_rate_col = t("wl_period_col_win_rate") if t("wl_period_col_win_rate") in out_tbl.columns else None
     if win_rate_col:
         out_styled = _styler_map(out_tbl.style, _style_pct, subset=[win_rate_col])
         col_cfg = {win_rate_col: st.column_config.NumberColumn(win_rate_col, format="%.1f%%")}
@@ -446,7 +443,7 @@ def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None
             return "-"
         if len(vals) == 1:
             return vals[0]
-        return "Plusieurs"
+        return t("wl_several")
 
     def _clean_asset_label(s: str | None) -> str:
         """Nettoie un label d'asset."""
@@ -458,14 +455,14 @@ def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None
         """Normalise un label de mode de jeu."""
         from src.ui.translations import translate_pair_name
 
-        return translate_pair_name(p) if p else None
+        return translate_pair_name(p, lang=get_lang()) if p else None
 
     if "playlist_ui" in base_scope.columns:
         playlist_ctx = _single_or_multi_label(base_scope["playlist_ui"].drop_nulls().to_list())
     else:
         # Vectorisation: build_mapping + replace_strict au lieu de map_elements
         def _clean_then_translate(s: str | None) -> str | None:
-            return translate_playlist_name(_clean_asset_label(s))
+            return translate_playlist_name(_clean_asset_label(s), lang=get_lang())
 
         _pl_map = build_mapping(base_scope["playlist_name"], _clean_then_translate)
         playlist_vals = (

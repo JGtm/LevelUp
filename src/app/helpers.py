@@ -12,7 +12,7 @@ import streamlit as st
 
 from src.config import HALO_COLORS
 from src.ui import translate_pair_name
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 
 
 def _to_polars(df: pl.DataFrame) -> pl.DataFrame:
@@ -75,10 +75,10 @@ def normalize_mode_label(pair_name: str | None) -> str | None:
     if pair_name is None:
         return None
     base = clean_asset_label(pair_name)
-    t = translate_pair_name(base)
-    if t is None:
+    _translated = translate_pair_name(base, lang=get_lang())
+    if _translated is None:
         return None
-    s = str(t).strip()
+    s = str(_translated).strip()
     if " on " in s:
         s = s.split(" on ", 1)[0].strip()
     s = re.sub(r"\s*-\s*Forge\b", "", s, flags=re.IGNORECASE).strip()

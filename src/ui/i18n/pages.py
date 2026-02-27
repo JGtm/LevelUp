@@ -754,12 +754,12 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     # ── Citations ─────────────────────────────────────────────────────────────
     "citations_halo5_title": {
-        "fr": "Citations (Commendations Halo 5)",
-        "en": "Citations (Halo 5 Commendations)",
+        "fr": "Citations",
+        "en": "Commendations",
     },
     "citations_medals_title": {
-        "fr": "Médailles (Halo Infinite)",
-        "en": "Medals (Halo Infinite)",
+        "fr": "Médailles",
+        "en": "Medals",
     },
     "citations_medals_caption": {
         "fr": "Médailles sur la sélection/filtres actuels.",
@@ -1051,7 +1051,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "page_last_match": {"fr": "Dernier match", "en": "Last Match"},
     "page_match": {"fr": "Match", "en": "Match"},
     "page_media": {"fr": "Médias", "en": "Media"},
-    "page_citations": {"fr": "Citations", "en": "Citations"},
+    "page_citations": {"fr": "Citations", "en": "Commendations"},
     "page_win_loss": {"fr": "Victoires/Défaites", "en": "Wins/Losses"},
     "page_teammates": {"fr": "Mes coéquipiers", "en": "My Teammates"},
     "page_match_history": {"fr": "Historique des parties", "en": "Match History"},
@@ -1188,6 +1188,15 @@ STRINGS: dict[str, dict[str, str]] = {
     "cit_matches_analyzed": {"fr": "Matchs analysés", "en": "Matches analyzed"},
     "cit_distinct_medals": {"fr": "Médailles distinctes", "en": "Distinct medals"},
     "cit_total_medals": {"fr": "Total médailles", "en": "Total medals"},
+    "cit_filter_category": {"fr": "Catégorie", "en": "Category"},
+    "cit_filter_all": {"fr": "(toutes)", "en": "(all)"},
+    "cit_search": {"fr": "Recherche", "en": "Search"},
+    "cit_search_placeholder": {
+        "fr": "ex: assassin, pilote, multifrag…",
+        "en": "e.g. assassin, pilot, multikill…",
+    },
+    "cit_mastery_master": {"fr": "Maître", "en": "Master"},
+    "cit_mastery_level": {"fr": "Niveau {level}", "en": "Level {level}"},
     # ── Last match ──────────────────────────────────────────────────────────
     "lm_quick_select": {
         "fr": "Sélection rapide (filtres actuels)",
@@ -1271,6 +1280,13 @@ STRINGS: dict[str, dict[str, str]] = {
     "wl_col_ratio": {"fr": "Ratio global", "en": "Overall ratio"},
     "wl_col_playlist": {"fr": "Playlist", "en": "Playlist"},
     "wl_col_mode": {"fr": "Mode", "en": "Mode"},
+    "wl_several": {"fr": "Plusieurs", "en": "Multiple"},
+    "wl_period_col_wins": {"fr": "Victoires", "en": "Wins"},
+    "wl_period_col_losses": {"fr": "Défaites", "en": "Losses"},
+    "wl_period_col_draws": {"fr": "Égalités", "en": "Draws"},
+    "wl_period_col_unfinished": {"fr": "Non terminés", "en": "Unfinished"},
+    "wl_period_col_total": {"fr": "Total", "en": "Total"},
+    "wl_period_col_win_rate": {"fr": "Taux de victoires", "en": "Win rate"},
     # ── Teammates ───────────────────────────────────────────────────────────
     "tm_no_matches_filters": {
         "fr": "Aucun match à afficher avec les filtres actuels.",

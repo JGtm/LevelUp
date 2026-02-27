@@ -712,7 +712,7 @@ def render_match_view(
         )
         md_df = md_df.sort(["count", "label"], descending=[True, False])
         render_medals_grid(
-            md_df.select(["name_id", "count"]).to_dicts(), cols_per_row=8, center=True
+            md_df.select(["name_id", "count"]).to_dicts(), cols_per_row=8, center=True, lang=get_lang()
         )
 
     # Médias

@@ -524,6 +524,7 @@ def _render_antagonist_chart(
                     rank_by_xuid=rank_by_xuid,
                     title=t("mv_killer_victim_title"),
                     height=400,
+                    lang=get_lang(),
                 )
                 if fig is not None:
                     st.plotly_chart(fig, width="stretch", config={"staticPlot": True})

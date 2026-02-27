@@ -7,11 +7,14 @@ Centralise les mappings de libellés (playlist, mode/pair) afin de :
 Toutes les fonctions publiques acceptent un paramètre ``lang: str = "fr"``.
 La valeur ``"fr"`` est le défaut pour assurer la rétrocompatibilité.
 
-Source de vérité : tables playlist_translations et mode_translations dans metadata.duckdb.
-Ce fichier contient les mappings hardcodés historiques pour l'UI.
+Source de vérité : fichiers JSON ``static/i18n/playlists_{lang}.json`` et
+``static/i18n/modes_{lang}.json``.  Les dictionnaires hardcodés ci-dessous
+servent de **fallback** historique.
 """
 
 from __future__ import annotations
+
+from src.ui.i18n.data_labels import label, load_domain
 
 PLAYLIST_FR: dict[str, str] = {
     "Big Team Battle": "Grande bataille en équipe",
@@ -564,6 +567,8 @@ def _is_uuid_like(s: str) -> bool:
 def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
     """Traduit un nom de playlist dans la langue demandée.
 
+    Résolution : JSON i18n → dicts hardcodés → valeur brute.
+
     Args:
         name: Nom de playlist brut (peut être ``None``).
         lang: ``"fr"`` (défaut) ou ``"en"``.
@@ -578,7 +583,16 @@ def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
         return None
     # Détection des UUIDs non résolus
     if _is_uuid_like(s):
-        return "Inconnue" if lang == "fr" else "Unknown"
+        # Vérifier d'abord dans le JSON (les UUIDs peuvent y être mappés)
+        json_val = label("playlists", s, lang=lang)
+        if json_val != s:
+            return json_val
+        return label("playlists", "_unknown", lang=lang)
+    # 1) JSON i18n
+    json_val = label("playlists", s, lang=lang)
+    if json_val != s:
+        return json_val
+    # 2) Fallback dicts hardcodés
     if lang == "en":
         return PLAYLIST_EN.get(s, s)
     return PLAYLIST_FR.get(s, s)

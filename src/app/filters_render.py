@@ -32,7 +32,7 @@ from src.ui.filter_state import (
     load_filter_preferences,
     save_filter_preferences,
 )
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.vectorize_helpers import build_mapping
 
 GAP_MINUTES_FIXED = 120  # Figé (sessions stockées en base, cf. SESSIONS_STOCKAGE_PLAN.md)
@@ -133,7 +133,7 @@ def _apply_experience_filter(
     firefight_pls = set(get_firefight_playlists(all_playlist_values))
     pve_cond = pl.col("playlist_ui").cast(pl.Utf8).fill_null("").is_in(list(firefight_pls))
     ranked_cond = (
-        pl.col("playlist_ui").cast(pl.Utf8).fill_null("").str.to_lowercase().str.contains("classé")
+        pl.col("playlist_ui").cast(pl.Utf8).fill_null("").str.to_lowercase().str.contains("classé|ranked")
         & ~pve_cond
     )
 
@@ -222,7 +222,7 @@ def render_filters_sidebar(
     _all_playlists = (
         sorted(
             {
-                str(translate_playlist_name(clean_asset_label_fn(x))).strip()
+                str(translate_playlist_name(clean_asset_label_fn(x), lang=get_lang())).strip()
                 for x in base_for_filters.get_column("playlist_name").drop_nulls().to_list()
                 if str(x).strip()
             }
@@ -1061,7 +1061,9 @@ def apply_filters(
         derived_exprs: list[pl.Expr] = []
         if "playlist_name" in dff.columns:
             if "playlist_fr" not in dff.columns:
-                _pfr_map = build_mapping(dff["playlist_name"], translate_playlist_name)
+                _pfr_map = build_mapping(
+                    dff["playlist_name"], lambda x: translate_playlist_name(x, lang=get_lang())
+                )
                 derived_exprs.append(
                     pl.col("playlist_name")
                     .cast(pl.Utf8)
@@ -1071,7 +1073,7 @@ def apply_filters(
             if "playlist_ui" not in dff.columns:
                 _pui_map = build_mapping(
                     dff["playlist_name"],
-                    lambda x: translate_playlist_name(clean_asset_label_fn(x)),
+                    lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=get_lang()),
                 )
                 derived_exprs.append(
                     pl.col("playlist_name")
@@ -1081,7 +1083,9 @@ def apply_filters(
                 )
         if "pair_name" in dff.columns:
             if "pair_fr" not in dff.columns:
-                _pair_map = build_mapping(dff["pair_name"], translate_pair_name)
+                _pair_map = build_mapping(
+                    dff["pair_name"], lambda x: translate_pair_name(x, lang=get_lang())
+                )
                 derived_exprs.append(
                     pl.col("pair_name")
                     .cast(pl.Utf8)

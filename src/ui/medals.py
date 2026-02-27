@@ -134,17 +134,20 @@ def get_medals_cache_dir() -> str:
     )
 
 
-def medal_label(nid: int) -> str:
-    """Retourne le label d'une médaille (FR prioritaire, sinon EN, sinon générique).
+def medal_label(nid: int, lang: str = "fr") -> str:
+    """Retourne le label d'une médaille selon la langue.
 
     Args:
         nid: NameId de la médaille.
+        lang: Langue cible ("fr" ou "en").
 
     Returns:
-        Label de la médaille ou "Médaille #<nid>" si inconnu.
+        Label de la médaille ou générique si inconnu.
     """
     fr_map, en_map = load_medal_name_maps(_json_mtime=_medals_json_mtime())
     key = str(int(nid))
+    if lang == "en":
+        return en_map.get(key) or fr_map.get(key) or f"Medal #{nid}"
     return fr_map.get(key) or en_map.get(key) or f"Médaille #{nid}"
 
 
@@ -170,6 +173,7 @@ def render_medals_grid(
     cols_per_row: int = 8,
     deltas: dict[int, int] | None = None,
     center: bool = False,
+    lang: str = "fr",
 ) -> None:
     """Affiche une grille de médailles dans Streamlit.
 
@@ -211,7 +215,7 @@ def render_medals_grid(
         col = cols[i % actual_cols]
         nid = int(m.get("name_id", 0))
         cnt = int(m.get("count", 0))
-        name = medal_label(nid)
+        name = medal_label(nid, lang=lang)
         icon = medal_icon_path(nid)
 
         if icon:

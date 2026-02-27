@@ -21,6 +21,9 @@ import duckdb
 import streamlit as st
 
 from src.config import get_repo_root
+from src.ui.i18n import get_lang
+from src.ui.i18n.data_labels import label_obj
+from src.ui.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +129,8 @@ def _compute_mastery_display(
     """
 
     targets: list[int] = []
-    for t in tiers or []:
-        v = t.get("target_count")
+    for tier_item in tiers or []:
+        v = tier_item.get("target_count")
         if v is None:
             continue
         try:
@@ -148,7 +151,7 @@ def _compute_mastery_display(
 
     master_target = targets[-1]
     if cur >= master_target:
-        return "Maître", f"{cur}", True, 1.0
+        return t("cit_mastery_master"), f"{cur}", True, 1.0
 
     completed = 0
     for target in targets:
@@ -166,7 +169,7 @@ def _compute_mastery_display(
     if ratio > 1.0:
         ratio = 1.0
     level = completed + 1
-    return f"Niveau {level}", f"{cur}/{next_target}", False, ratio
+    return t("cit_mastery_level", level=level), f"{cur}/{next_target}", False, ratio
 
 
 # ── Image helpers ────────────────────────────────────────────────────────────
@@ -257,11 +260,14 @@ def render_h5g_commendations_section(
     enabled_norms: set[str] = {c["citation_name_norm"] for c in citations_db}
     items: list[dict[str, Any]] = []
 
+    lang = get_lang()
     for cit in citations_db:
         norm = cit["citation_name_norm"]
-        name = cit["citation_name_display"]
-        desc = cit.get("description") or ""
-        category = cit.get("category") or ""
+        # Résolution i18n : labels depuis JSON, fallback sur DB
+        i18n = label_obj("citations", norm, lang=lang)
+        name = i18n.get("name", cit["citation_name_display"])
+        desc = i18n.get("description", cit.get("description") or "")
+        category = i18n.get("category", cit.get("category") or "")
         image_path = cit.get("image_path")
         tier_targets = cit.get("tier_targets")
         composite_children = cit.get("composite_children")
@@ -293,12 +299,12 @@ def render_h5g_commendations_section(
     cats = sorted({it["category"] for it in items if it["category"]})
     c1, c2 = st.columns([1, 2])
     with c1:
-        picked_cat = st.selectbox("Catégorie", options=["(toutes)"] + cats, index=0)
+        picked_cat = st.selectbox(t("cit_filter_category"), options=[t("cit_filter_all")] + cats, index=0)
     with c2:
-        q = st.text_input("Recherche", value="", placeholder="ex: assassin, pilote, multifrag…")
+        q = st.text_input(t("cit_search"), value="", placeholder=t("cit_search_placeholder"))
 
     filtered = items
-    if picked_cat != "(toutes)":
+    if picked_cat != t("cit_filter_all"):
         filtered = [x for x in filtered if x["category"] == picked_cat]
     if q.strip():
         qn = q.strip().lower()
