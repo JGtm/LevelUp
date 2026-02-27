@@ -46,15 +46,15 @@ def _create_metadata_db(path: Path) -> None:
         "medal_id, stat_name, award_name, custom_function, confidence, notes) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
-            ("pilote", "Pilote", "medal", 3169118333, None, None, None, "high", "test"),
+            ("driver", "Pilote", "medal", 3169118333, None, None, None, "high", "test"),
             ("assistant", "Assistant", "stat", None, "assists", None, None, "high", "test"),
             (
-                "defenseur du drapeau",
+                "flag_defender",
                 "Défenseur du drapeau",
                 "award",
                 None,
                 None,
-                "Flag Defense",
+                "flag_defense",
                 None,
                 "high",
                 "test",
@@ -210,7 +210,7 @@ def _create_player_db(path: Path) -> None:
         )
     """)
     conn.execute(
-        "INSERT INTO personal_score_awards VALUES ('m1', 'Flag Defense', 'objective', 3, 150)"
+        "INSERT INTO personal_score_awards VALUES ('m1', 'flag_defense', 'objective', 3, 150)"
     )
     conn.close()
 
@@ -299,12 +299,12 @@ class TestBackfillCitations:
 
         read = duckdb.connect(str(db_path), read_only=True)
 
-        # m1 a pilote=2 (medal 3169118333), assistant=8, defenseur du drapeau=3
-        m1_pilote = read.execute(
-            "SELECT value FROM match_citations WHERE match_id = 'm1' AND citation_name_norm = 'pilote'"
+        # m1 a driver=2 (medal 3169118333), assistant=8, flag_defender=3
+        m1_driver = read.execute(
+            "SELECT value FROM match_citations WHERE match_id = 'm1' AND citation_name_norm = 'driver'"
         ).fetchone()
-        assert m1_pilote is not None
-        assert m1_pilote[0] == 2
+        assert m1_driver is not None
+        assert m1_driver[0] == 2
 
         m1_assistant = read.execute(
             "SELECT value FROM match_citations WHERE match_id = 'm1' AND citation_name_norm = 'assistant'"
@@ -313,7 +313,7 @@ class TestBackfillCitations:
         assert m1_assistant[0] == 8
 
         m1_defense = read.execute(
-            "SELECT value FROM match_citations WHERE match_id = 'm1' AND citation_name_norm = 'defenseur du drapeau'"
+            "SELECT value FROM match_citations WHERE match_id = 'm1' AND citation_name_norm = 'flag_defender'"
         ).fetchone()
         assert m1_defense is not None
         assert m1_defense[0] == 3

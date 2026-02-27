@@ -45,9 +45,9 @@ def metadata_conn(tmp_path: Path):
         (citation_name_norm, citation_name_display, mapping_type, medal_id,
          stat_name, award_name, custom_function, confidence, notes)
         VALUES
-        ('pilote', 'Pilote', 'medal', 3169118333, NULL, NULL, NULL, 'high', 'test'),
+        ('driver', 'Pilote', 'medal', 3169118333, NULL, NULL, NULL, 'high', 'test'),
         ('assistant', 'Assistant', 'stat', NULL, 'assists', NULL, NULL, 'high', 'test'),
-        ('defenseur du drapeau', 'Défenseur du drapeau', 'award', NULL, NULL, 'Flag Defense', NULL, 'high', 'test'),
+        ('flag_defender', 'Défenseur du drapeau', 'award', NULL, NULL, 'flag_defense', NULL, 'high', 'test'),
         ('bulldozer', 'Bulldozer', 'custom', NULL, NULL, NULL, 'compute_bulldozer', 'high', 'test')
     """)
     yield conn
@@ -126,7 +126,7 @@ class TestCitationMappingsTable:
     def test_medal_id_bigint(self, metadata_conn: duckdb.DuckDBPyConnection) -> None:
         """Vérifie que medal_id supporte des valeurs > 2^31 (BIGINT)."""
         val = metadata_conn.execute(
-            "SELECT medal_id FROM citation_mappings WHERE citation_name_norm = 'pilote'"
+            "SELECT medal_id FROM citation_mappings WHERE citation_name_norm = 'driver'"
         ).fetchone()[0]
         assert val == 3169118333
 
@@ -159,10 +159,10 @@ class TestMatchCitationsTable:
     def test_primary_key(self, player_conn: duckdb.DuckDBPyConnection) -> None:
         """Vérifie la PK composite (match_id, citation_name_norm)."""
         # Insérer une ligne
-        player_conn.execute("INSERT INTO match_citations VALUES ('m1', 'pilote', 2)")
+        player_conn.execute("INSERT INTO match_citations VALUES ('m1', 'driver', 2)")
         # Le doublon sur la PK doit lever une erreur
         with pytest.raises(duckdb.ConstraintException):
-            player_conn.execute("INSERT INTO match_citations VALUES ('m1', 'pilote', 5)")
+            player_conn.execute("INSERT INTO match_citations VALUES ('m1', 'driver', 5)")
 
     def test_index_exists(self, player_conn: duckdb.DuckDBPyConnection) -> None:
         """Vérifie que l'index sur citation_name_norm existe."""
@@ -176,8 +176,8 @@ class TestMatchCitationsTable:
         """Vérifie INSERT et agrégation basique."""
         player_conn.execute(
             "INSERT INTO match_citations VALUES "
-            "('m1', 'pilote', 2), ('m1', 'assistant', 5), "
-            "('m2', 'pilote', 1), ('m2', 'assistant', 3)"
+            "('m1', 'driver', 2), ('m1', 'assistant', 5), "
+            "('m2', 'driver', 1), ('m2', 'assistant', 3)"
         )
         totals = player_conn.execute(
             "SELECT citation_name_norm, SUM(value) as total "
@@ -185,7 +185,7 @@ class TestMatchCitationsTable:
             "GROUP BY citation_name_norm "
             "ORDER BY citation_name_norm"
         ).fetchall()
-        assert totals == [("assistant", 8), ("pilote", 3)]
+        assert totals == [("assistant", 8), ("driver", 3)]
 
     def test_create_idempotent(self, tmp_path: Path) -> None:
         """Vérifie que create_match_citations_table est idempotent."""
