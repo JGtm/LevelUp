@@ -9,7 +9,7 @@ Ce script automatise :
 4. Agrégation des weapon IDs
 
 Usage:
-    python scripts/batch_weapon_analysis.py --gamertag JGtm --matches 10
+    python scripts/batch_weapon_analysis.py --gamertag SpartanC --matches 10
 
 Prérequis:
     - Tokens API configurés dans .env.local ou environnement

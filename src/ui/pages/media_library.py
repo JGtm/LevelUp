@@ -581,7 +581,7 @@ def _gamertag_from_db_path(db_path: str) -> str | None:
         from pathlib import Path
 
         p = Path(db_path)
-        # data/players/JGtm/stats.duckdb -> JGtm
+        # data/players/SpartanC/stats.duckdb -> SpartanC
         if p.name and p.name.endswith(".duckdb"):
             return p.parent.name or None
         return None
@@ -730,7 +730,7 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
 
     identity = get_default_identity()
     xuid = (
-        resolve_xuid(xuid_input or "JGtm", db_path, identity)
+        resolve_xuid(xuid_input or "SpartanC", db_path, identity)
         or identity.xuid
         or identity.xuid_fallback
     )

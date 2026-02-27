@@ -27,7 +27,7 @@ class TestIsSpnkrDbPath:
         from src.ui.sync import is_spnkr_db_path
 
         # SQLite .db est maintenant refusé
-        assert is_spnkr_db_path("data/spnkr_JGtm.db") is False
+        assert is_spnkr_db_path("data/spnkr_SpartanC.db") is False
         assert is_spnkr_db_path("spnkr_player.db") is False
         assert is_spnkr_db_path("data/halo_merged.db") is False
 
@@ -36,7 +36,7 @@ class TestIsSpnkrDbPath:
         from src.ui.sync import is_spnkr_db_path
 
         # Créer la structure de dossiers
-        players_dir = tmp_path / "data" / "players" / "JGtm"
+        players_dir = tmp_path / "data" / "players" / "SpartanC"
         players_dir.mkdir(parents=True)
         db_path = players_dir / "stats.duckdb"
         db_path.touch()
@@ -68,12 +68,12 @@ class TestExtractGamertagFromDuckDBPath:
 
     def test_extract_gamertag_from_valid_path(self):
         """Test extraction depuis un chemin valide."""
-        path = "data/players/JGtm/stats.duckdb"
+        path = "data/players/SpartanC/stats.duckdb"
         p = Path(path)
 
         # Le gamertag devrait être le nom du parent directory
         assert p.name == "stats.duckdb"
-        assert p.parent.name == "JGtm"
+        assert p.parent.name == "SpartanC"
         assert p.parent.parent.name == "players"
 
     def test_extract_gamertag_with_spaces(self):

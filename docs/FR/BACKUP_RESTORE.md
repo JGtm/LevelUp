@@ -25,7 +25,7 @@ Ces scripts permettent d'exporter et restaurer ces données au format Parquet av
 
 ```bash
 # Sauvegarder un joueur
-python scripts/backup_player.py --gamertag Chocoboflor
+python scripts/backup_player.py --gamertag SpartanB
 
 # Sauvegarder tous les joueurs
 python scripts/backup_player.py --all
@@ -38,13 +38,13 @@ python scripts/backup_player.py --list
 
 ```bash
 # Spécifier un répertoire de sortie
-python scripts/backup_player.py --gamertag JGtm --output ./mes_backups
+python scripts/backup_player.py --gamertag SpartanC --output ./mes_backups
 
 # Ajuster le niveau de compression (1-22)
-python scripts/backup_player.py --gamertag JGtm --compression-level 15
+python scripts/backup_player.py --gamertag SpartanC --compression-level 15
 
 # Sans métadonnées JSON
-python scripts/backup_player.py --gamertag JGtm --no-metadata
+python scripts/backup_player.py --gamertag SpartanC --no-metadata
 ```
 
 ### Niveaux de compression Zstd
@@ -60,7 +60,7 @@ python scripts/backup_player.py --gamertag JGtm --no-metadata
 
 ```
 data/backups/
-└── Chocoboflor/
+└── SpartanB/
     ├── match_stats_20260201_143025.parquet
     ├── medals_earned_20260201_143025.parquet
     ├── teammates_aggregate_20260201_143025.parquet
@@ -77,10 +77,10 @@ Le fichier `backup_metadata_*.json` contient :
 
 ```json
 {
-  "gamertag": "Chocoboflor",
+  "gamertag": "SpartanB",
   "backup_timestamp": "20260201_143025",
   "backup_datetime": "2026-02-01T14:30:25.123456",
-  "source_db": "data/players/Chocoboflor/stats.duckdb",
+  "source_db": "data/players/SpartanB/stats.duckdb",
   "compression": "zstd",
   "compression_level": 9,
   "tables": {
@@ -103,24 +103,24 @@ Le fichier `backup_metadata_*.json` contient :
 
 ```bash
 # Restaurer un joueur
-python scripts/restore_player.py --gamertag Chocoboflor --backup ./data/backups/Chocoboflor
+python scripts/restore_player.py --gamertag SpartanB --backup ./data/backups/SpartanB
 
 # Simuler sans écrire (dry-run)
-python scripts/restore_player.py --gamertag Chocoboflor --backup ./data/backups/Chocoboflor --dry-run
+python scripts/restore_player.py --gamertag SpartanB --backup ./data/backups/SpartanB --dry-run
 
 # Lister les tables dans un backup
-python scripts/restore_player.py --gamertag Chocoboflor --backup ./data/backups/Chocoboflor --list
+python scripts/restore_player.py --gamertag SpartanB --backup ./data/backups/SpartanB --list
 ```
 
 ### Options avancées
 
 ```bash
 # Restaurer des tables spécifiques seulement
-python scripts/restore_player.py --gamertag JGtm --backup ./backups/JGtm \
+python scripts/restore_player.py --gamertag SpartanC --backup ./backups/SpartanC \
     --tables match_stats,medals_earned
 
 # Remplacer les données existantes (au lieu d'ajouter)
-python scripts/restore_player.py --gamertag JGtm --backup ./backups/JGtm --replace
+python scripts/restore_player.py --gamertag SpartanC --backup ./backups/SpartanC --replace
 ```
 
 ### Comportement par défaut
@@ -143,7 +143,7 @@ python scripts/backup_player.py --all --output ./export
 
 # Copier le dossier export vers la nouvelle machine
 # Sur la nouvelle machine
-python scripts/restore_player.py --gamertag Chocoboflor --backup ./export/Chocoboflor --replace
+python scripts/restore_player.py --gamertag SpartanB --backup ./export/SpartanB --replace
 ```
 
 ### Archivage mensuel automatisé
@@ -159,10 +159,10 @@ python scripts/backup_player.py --all --output "/archives/halo/$DATE" --compress
 
 ```bash
 # Vérifier le contenu du backup
-python scripts/restore_player.py --gamertag Chocoboflor --backup ./backups/Chocoboflor --list
+python scripts/restore_player.py --gamertag SpartanB --backup ./backups/SpartanB --list
 
 # Restaurer avec remplacement
-python scripts/restore_player.py --gamertag Chocoboflor --backup ./backups/Chocoboflor --replace
+python scripts/restore_player.py --gamertag SpartanB --backup ./backups/SpartanB --replace
 ```
 
 ---
@@ -221,10 +221,10 @@ print(df.head())
 
 ```bash
 # Vérifier qu'un backup est lisible
-python scripts/restore_player.py --gamertag Chocoboflor --backup ./backups/Chocoboflor --list
+python scripts/restore_player.py --gamertag SpartanB --backup ./backups/SpartanB --list
 
 # Simuler une restauration
-python scripts/restore_player.py --gamertag Chocoboflor --backup ./backups/Chocoboflor --dry-run
+python scripts/restore_player.py --gamertag SpartanB --backup ./backups/SpartanB --dry-run
 ```
 
 ---
@@ -234,7 +234,7 @@ python scripts/restore_player.py --gamertag Chocoboflor --backup ./backups/Choco
 ### Erreur "DB non trouvée"
 
 ```
-Backup non trouvé: DB non trouvée pour JGtm
+Backup non trouvé: DB non trouvée pour SpartanC
 ```
 
 **Solution** : Vérifiez que le joueur existe dans `data/players/{gamertag}/stats.duckdb`.

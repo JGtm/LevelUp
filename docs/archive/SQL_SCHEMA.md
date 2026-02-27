@@ -400,7 +400,7 @@ Script de migration pour les données existantes :
 
 ```sql
 -- Attacher l'ancienne base SQLite
-ATTACH 'data/spnkr_gt_Chocoboflor.db' AS legacy (TYPE SQLITE, READ_ONLY);
+ATTACH 'data/spnkr_gt_SpartanB.db' AS legacy (TYPE SQLITE, READ_ONLY);
 
 -- Migrer les données
 INSERT INTO match_stats 

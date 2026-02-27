@@ -8,7 +8,7 @@ Chaque section correspond à une page ou un sous-groupe de sections.
 
 from __future__ import annotations
 
-STRINGS: dict[str, dict[str, str]] = {
+STRINGS: dict[str, dict[str, str] | str] = {
     # ── Page Victoires/Défaites ──────────────────────────────────────────────
     "wl_results_by_map_mode": {
         "fr": "Résultats par carte et mode",
@@ -152,10 +152,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Unable to display the chart: {error}",
     },
     # ── Métriques carrière (v5.3) ────────────────────────────────────────────
-    "career_metric_rank": {
-        "fr": "Rang",
-        "en": "Rank",
-    },
+    "career_metric_rank": "col_rank",  # alias → common
     "career_metric_xp_total": {
         "fr": "XP total",
         "en": "Total XP",
@@ -181,10 +178,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Required total",
     },
     # ── Page Timeseries ──────────────────────────────────────────────────────
-    "ts_fda": {
-        "fr": "FDA",
-        "en": "KDA",
-    },
+    "ts_fda": "col_kda",  # alias → common
     "ts_fda_unavailable": {
         "fr": "FDA indisponible sur ce filtre.",
         "en": "KDA is unavailable for this filter.",
@@ -225,22 +219,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Données d'événements non disponibles (premier frag / première mort). L'**Actualiser** récupère déjà ces données pour les **nouveaux** matchs. Pour les matchs déjà en base sans événements film, active dans **Paramètres** → **Options du bouton Actualiser** l'option **Backfill events**, puis **Actualiser**.",
         "en": "Event data is not available (first kill / first death). **Refresh** already fetches these for **new** matches. For existing matches without film events, enable **Backfill events** in **Settings** → **Refresh button options**, then **Refresh**.",
     },
-    "ts_performance": {
-        "fr": "Performance",
-        "en": "Performance",
-    },
-    "ts_assists": {
-        "fr": "Assistances",
-        "en": "Assists",
-    },
+    "ts_performance": "col_performance",  # alias → common
+    "ts_assists": "col_assists",  # alias → common
     "ts_per_minute": {
         "fr": "Stats par minute",
         "en": "Per-minute stats",
     },
-    "ts_lifespan": {
-        "fr": "Durée de vie moyenne",
-        "en": "Average life span",
-    },
+    "ts_lifespan": "col_avg_life_long",  # alias → common
     "ts_lifespan_unavailable": {
         "fr": "Average Life indisponible sur ce filtre.",
         "en": "Average Life is unavailable for this filter.",
@@ -388,10 +373,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Re-scanner les dossiers",
         "en": "Rescan folders",
     },
-    "media_error_indexing": {
-        "fr": "Erreur lors de l'indexation : {error}",
-        "en": "Indexing error: {error}",
-    },
+    "media_error_indexing": "indexing_error",  # alias → common
     "media_configure_video": {
         "fr": "Configure un dossier vidéos dans Paramètres → Médias.",
         "en": "Configure a videos folder in Settings → Media.",
@@ -516,26 +498,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Distribution Win Rate Glissant (5 matchs)",
         "en": "Rolling win rate distribution (5 matches)",
     },
-    "ts_accuracy_label": {
-        "fr": "Précision (%)",
-        "en": "Accuracy (%)",
-    },
-    "ts_kills_label": {
-        "fr": "Frags",
-        "en": "Kills",
-    },
+    "ts_accuracy_label": "col_accuracy_pct",  # alias → common
+    "ts_kills_label": "col_kills",  # alias → common
     "ts_life_label": {
         "fr": "Durée (secondes)",
         "en": "Duration (seconds)",
     },
-    "ts_score_label": {
-        "fr": "Score",
-        "en": "Score",
-    },
-    "ts_matches_label": {
-        "fr": "Matchs",
-        "en": "Matches",
-    },
+    "ts_score_label": "col_score",  # alias → common
+    "ts_matches_label": "col_matches",  # alias → common
     "ts_score_per_min_label": {
         "fr": "Score / min",
         "en": "Score / min",
@@ -629,10 +599,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Score personnel",
         "en": "Personal score",
     },
-    "wl_personal_score_hover": {
-        "fr": "Score",
-        "en": "Score",
-    },
+    "wl_personal_score_hover": "col_score",  # alias → common
     # ── Page Carrière — manquants ─────────────────────────────────────────────
     "career_computing": {
         "fr": "Chargement des données de carrière…",
@@ -720,7 +687,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "{type} {group}: {value}",
     },
     # Noms traduits des groupes de playlist
-    "mv_pg_ranked": {"fr": "Classé", "en": "Ranked"},
+    "mv_pg_ranked": "ranked",  # alias → common
     "mv_pg_arena": {"fr": "Arena", "en": "Arena"},
     "mv_pg_btb": {"fr": "Grand Combat", "en": "Big Team Battle"},
     "mv_pg_tactical": {"fr": "Tactique", "en": "Tactical"},
@@ -881,26 +848,11 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     # ── Media ─────────────────────────────────────────────────────────────────
     # media_disabled, media_no_folder : définis dans common.py
-    "media_no_files": {
-        "fr": "Aucun média trouvé.",
-        "en": "No media found.",
-    },
-    "media_no_filter_result": {
-        "fr": "Aucun média à afficher avec ces filtres.",
-        "en": "No media to display with these filters.",
-    },
-    "media_unknown_match": {
-        "fr": "Match inconnu",
-        "en": "Unknown match",
-    },
-    "media_no_thumbnail": {
-        "fr": "(pas de miniature générée)",
-        "en": "(no thumbnail generated)",
-    },
-    "media_unassociated_match": {
-        "fr": "Match: non associé",
-        "en": "Match: unassociated",
-    },
+    "media_no_files": "media_not_found",  # alias → common
+    "media_no_filter_result": "no_media",  # alias → common
+    "media_unknown_match": "match_unknown",  # alias → common
+    "media_no_thumbnail": "no_thumbnail",  # alias → common
+    "media_unassociated_match": "not_associated",  # alias → common
     # ── Settings ─────────────────────────────────────────────────────────────
     "settings_save_ok": {
         "fr": "Paramètres sauvegardés.",
@@ -1002,8 +954,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "tm_killing_spree": {"fr": "Folie meurtrière (max)", "en": "Killing Spree (max)"},
     "tm_headshots": {"fr": "Tirs à la tête", "en": "Headshots"},
     "tm_perfect_kills": {"fr": "Frags parfaits", "en": "Perfect Kills"},
-    "tm_kills": {"fr": "Frags", "en": "Kills"},
-    "tm_deaths": {"fr": "Morts", "en": "Deaths"},
+    "tm_kills": "col_kills",  # alias → common
+    "tm_deaths": "col_deaths",  # alias → common
     "tm_assists": {"fr": "Assists", "en": "Assists"},
     # ── Match View Participation ──────────────────────────────────────────────
     "mvp_participation_title": {"fr": "Participation au match", "en": "Match Participation"},
@@ -1032,17 +984,17 @@ STRINGS: dict[str, dict[str, str]] = {
     "obj_tab_breakdown": {"fr": "Répartition du Score", "en": "Score Breakdown"},
     "obj_tab_trend": {"fr": "Évolution", "en": "Trend"},
     # ── Coéquipiers — métriques supplémentaires ──────────────────────────────
-    "tm_kda": {"fr": "FDA", "en": "KDA"},
-    "tm_accuracy": {"fr": "Précision", "en": "Accuracy"},
+    "tm_kda": "col_kda",  # alias → common
+    "tm_accuracy": "col_accuracy",  # alias → common
     "tm_avg_life": {"fr": "Durée de vie moyenne", "en": "Average Lifespan"},
-    "tm_performance": {"fr": "Performance", "en": "Performance"},
-    "tm_score": {"fr": "Score", "en": "Score"},
+    "tm_performance": "col_performance",  # alias → common
+    "tm_score": "col_score",  # alias → common
     "tm_seconds": {"fr": "Secondes", "en": "Seconds"},
     # ── Noms des pages (navigation / onglets) ────────────────────────────────
     "page_timeseries": {"fr": "Séries temporelles", "en": "Time Series"},
     "page_session_compare": {"fr": "Comparaison de sessions", "en": "Session Comparison"},
     "page_last_match": {"fr": "Dernier match", "en": "Last Match"},
-    "page_match": {"fr": "Match", "en": "Match"},
+    "page_match": "col_match",  # alias → common
     "page_media": {"fr": "Médias", "en": "Media"},
     "page_citations": {"fr": "Citations", "en": "Commendations"},
     "page_win_loss": {"fr": "Victoires/Défaites", "en": "Wins/Losses"},
@@ -1051,26 +1003,26 @@ STRINGS: dict[str, dict[str, str]] = {
     "page_career": {"fr": "Carrière", "en": "Career"},
     "page_settings": {"fr": "Paramètres", "en": "Settings"},
     # ── KPIs ─────────────────────────────────────────────────────────────────
-    "kpi_matches_header": {"fr": "Parties", "en": "Matches"},
+    "kpi_matches_header": "lbl_parties",  # alias → common
     "kpi_career_header": {"fr": "Carrière", "en": "Career"},
-    "kpi_avg_duration": {"fr": "Durée moyenne / match", "en": "Avg duration / match"},
-    "kpi_total_duration": {"fr": "Durée totale", "en": "Total duration"},
-    "kpi_kills_per_match": {"fr": "Frags par partie", "en": "Kills per match"},
-    "kpi_deaths_per_match": {"fr": "Morts par partie", "en": "Deaths per match"},
-    "kpi_assists_per_match": {"fr": "Assistances par partie", "en": "Assists per match"},
-    "kpi_kills_per_min": {"fr": "Frags / min", "en": "Kills / min"},
-    "kpi_deaths_per_min": {"fr": "Morts / min", "en": "Deaths / min"},
-    "kpi_assists_per_min": {"fr": "Assistances / min", "en": "Assists / min"},
-    "kpi_avg_accuracy": {"fr": "Précision moyenne", "en": "Average accuracy"},
+    "kpi_avg_duration": "col_avg_duration",  # alias → common
+    "kpi_total_duration": "col_total_duration",  # alias → common
+    "kpi_kills_per_match": "col_kills_per_match",  # alias → common
+    "kpi_deaths_per_match": "col_deaths_per_match",  # alias → common
+    "kpi_assists_per_match": "col_assists_per_match",  # alias → common
+    "kpi_kills_per_min": "col_kpm",  # alias → common
+    "kpi_deaths_per_min": "col_dpm",  # alias → common
+    "kpi_assists_per_min": "col_apm",  # alias → common
+    "kpi_avg_accuracy": "col_avg_accuracy",  # alias → common
     "kpi_avg_lifespan": {"fr": "Durée de vie moyenne", "en": "Average lifespan"},
-    "kpi_win_rate": {"fr": "Taux de victoire", "en": "Win rate"},
-    "kpi_loss_rate": {"fr": "Taux de défaite", "en": "Loss rate"},
-    "kpi_ratio": {"fr": "Ratio", "en": "Ratio"},
+    "kpi_win_rate": "col_win_rate",  # alias → common
+    "kpi_loss_rate": "col_loss_rate",  # alias → common
+    "kpi_ratio": "col_ratio",  # alias → common
     # ── Score de performance ─────────────────────────────────────────────────
     "perf_title": {"fr": "Score de performance", "en": "Performance Score"},
     "perf_short_desc": {"fr": "Relatif à ton historique", "en": "Relative to your history"},
     "perf_insufficient": {"fr": "Historique insuffisant", "en": "Insufficient history"},
-    "perf_matches_count": {"fr": "parties", "en": "matches"},
+    "perf_matches_count": "lbl_total_matches",  # alias → common
     "perf_label_excellent": {"fr": "Excellent", "en": "Excellent"},
     "perf_label_good": {"fr": "Bon", "en": "Good"},
     "perf_label_average": {"fr": "Moyen", "en": "Average"},
@@ -1096,7 +1048,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Aucun rating LUSR/CSR calculé pour ce match. Lance un backfill rating pour la playlist concernée.",
         "en": "No LUSR/CSR rating calculated for this match. Run a rating backfill for the relevant playlist.",
     },
-    "mv_performance": {"fr": "Performance", "en": "Performance"},
+    "mv_performance": "col_performance",  # alias → common
     "mv_results": {"fr": "Résultats", "en": "Results"},
     "mv_relative_history": {"fr": "Relatif à ton historique", "en": "Relative to your history"},
     "mv_insufficient_history": {"fr": "Historique insuffisant", "en": "Insufficient history"},
@@ -1145,8 +1097,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "mv_roster_opponents": {"fr": "Adversaires", "en": "Opponents"},
     # ── Match view charts ───────────────────────────────────────────────────
     "mvc_mmr_team": {"fr": "MMR d'équipe", "en": "Team MMR"},
-    "mvc_mmr_enemy": {"fr": "MMR adverse", "en": "Enemy MMR"},
-    "mvc_mmr_gap": {"fr": "Écart MMR", "en": "MMR gap"},
+    "mvc_mmr_enemy": "col_mmr_enemy",  # alias → common
+    "mvc_mmr_gap": "col_mmr_gap",  # alias → common
     "mvc_actual_only": {
         "fr": "Valeur réelle (comparaison indisponible)",
         "en": "Actual value (comparison unavailable)",
@@ -1157,7 +1109,7 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "mvc_ratio_avg": {"fr": "Ratio moy. {category}", "en": "Avg ratio {category}"},
     "mvc_fda_title": {"fr": "F / D / A", "en": "K / D / A"},
-    "mvc_ratio_title": {"fr": "Ratio", "en": "Ratio"},
+    "mvc_ratio_title": "col_ratio",  # alias → common
     "mvc_this_match": {"fr": "Ce match", "en": "This match"},
     "mvc_mmr_gap_sub": {"fr": "équipe - adverse", "en": "team - enemy"},
     "mvc_fda_ratio": {"fr": "Ratio F/D/A", "en": "K/D/A Ratio"},
@@ -1174,7 +1126,7 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "career_max_rank": {"fr": "Rang maximum atteint", "en": "Maximum rank reached"},
     "career_hero_rank": {"fr": "Rang Héros atteint !", "en": "Hero rank reached!"},
-    "career_ranked": {"fr": "Classé", "en": "Ranked"},
+    "career_ranked": "ranked",  # alias → common
     "career_tactical": {"fr": "Tactique", "en": "Tactical"},
     # ── Citations ───────────────────────────────────────────────────────────
     "cit_obtained": {"fr": "Citations obtenues", "en": "Citations earned"},
@@ -1182,7 +1134,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "cit_distinct_medals": {"fr": "Médailles distinctes", "en": "Distinct medals"},
     "cit_total_medals": {"fr": "Total médailles", "en": "Total medals"},
     "cit_filter_category": {"fr": "Catégorie", "en": "Category"},
-    "cit_filter_all": {"fr": "(toutes)", "en": "(all)"},
+    "cit_filter_all": "sel_all",  # alias → common
     "cit_search": {"fr": "Recherche", "en": "Search"},
     "cit_search_placeholder": {
         "fr": "ex: assassin, pilote, multifrag…",
@@ -1196,8 +1148,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Quick select (current filters)",
     },
     "lm_search_datetime": {"fr": "Recherche par date/heure", "en": "Search by date/time"},
-    "lm_date": {"fr": "Date", "en": "Date"},
-    "lm_time": {"fr": "Heure", "en": "Time"},
+    "lm_date": "col_date",  # alias → common
+    "lm_time": "col_time",  # alias → common
     "lm_tolerance": {"fr": "Tolérance (minutes)", "en": "Tolerance (minutes)"},
     "lm_no_match_tol": {
         "fr": "Aucun match trouvé dans ±{tol} min autour de {dt}.",
@@ -1210,8 +1162,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "sc_session_b": {"fr": "Session B", "en": "Session B"},
     "sc_match_count": {"fr": "Nombre de parties", "en": "Number of matches"},
     "sc_kda_label": {"fr": "FDA (Frags-Décès-Assists)", "en": "KDA (Kills-Deaths-Assists)"},
-    "sc_win_rate": {"fr": "Taux de victoire", "en": "Win rate"},
-    "sc_avg_life": {"fr": "Durée de vie moyenne", "en": "Average life span"},
+    "sc_win_rate": "col_win_rate",  # alias → common
+    "sc_avg_life": "col_avg_life_long",  # alias → common
     "sc_total_kills": {"fr": "Total des frags", "en": "Total kills"},
     "sc_total_deaths": {"fr": "Total des morts", "en": "Total deaths"},
     "sc_total_assists": {"fr": "Total des assistances", "en": "Total assists"},
@@ -1258,22 +1210,22 @@ STRINGS: dict[str, dict[str, str]] = {
     "scc_mmr_enemy": {"fr": "MMR Adverse", "en": "Enemy MMR"},
     # ── Playlist categories ─────────────────────────────────────────────────
     "cat_btb": {"fr": "Grande bataille en équipe", "en": "Big Team Battle"},
-    "cat_ranked": {"fr": "Classé", "en": "Ranked"},
+    "cat_ranked": "ranked",  # alias → common
     "cat_firefight": {"fr": "Baptême du feu", "en": "Firefight"},
     "cat_other": {"fr": "Autre", "en": "Other"},
     # ── Win/Loss ────────────────────────────────────────────────────────────
     "wl_me_filtered": {"fr": "Moi (filtres actuels)", "en": "Me (current filters)"},
     "wl_me_all": {"fr": "Moi (toutes les parties)", "en": "Me (all matches)"},
-    "wl_col_map": {"fr": "Carte", "en": "Map"},
-    "wl_col_matches": {"fr": "Parties", "en": "Matches"},
-    "wl_col_accuracy_avg": {"fr": "Précision moy. (%)", "en": "Avg accuracy (%)"},
-    "wl_col_performance_avg": {"fr": "Performance moy.", "en": "Avg performance"},
-    "wl_col_win_rate": {"fr": "Taux victoire (%)", "en": "Win rate (%)"},
-    "wl_col_loss_rate": {"fr": "Taux défaite (%)", "en": "Loss rate (%)"},
-    "wl_col_ratio": {"fr": "Ratio global", "en": "Overall ratio"},
-    "wl_col_playlist": {"fr": "Playlist", "en": "Playlist"},
-    "wl_col_mode": {"fr": "Mode", "en": "Mode"},
-    "wl_several": {"fr": "Plusieurs", "en": "Multiple"},
+    "wl_col_map": "col_map",  # alias → common
+    "wl_col_matches": "lbl_parties",  # alias → common
+    "wl_col_accuracy_avg": "col_avg_accuracy_pct",  # alias → common
+    "wl_col_performance_avg": "col_avg_perf",  # alias → common
+    "wl_col_win_rate": "col_win_rate_pct",  # alias → common
+    "wl_col_loss_rate": "col_loss_rate_pct",  # alias → common
+    "wl_col_ratio": "col_global_ratio",  # alias → common
+    "wl_col_playlist": "col_playlist",  # alias → common
+    "wl_col_mode": "col_mode",  # alias → common
+    "wl_several": "lbl_several",  # alias → common
     "wl_period_col_wins": {"fr": "Victoires", "en": "Wins"},
     "wl_period_col_losses": {"fr": "Défaites", "en": "Losses"},
     "wl_period_col_draws": {"fr": "Égalités", "en": "Draws"},
@@ -1299,11 +1251,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Match details (player vs player)",
     },
     "tm_win_loss": {"fr": "Win/Loss", "en": "Win/Loss"},
-    "tm_metric_matches": {"fr": "Matchs", "en": "Matches"},
-    "tm_metric_global_ratio": {"fr": "Ratio global", "en": "Overall ratio"},
-    "tm_metric_frags_min": {"fr": "Frags / min", "en": "Kills / min"},
-    "tm_metric_deaths_min": {"fr": "Morts / min", "en": "Deaths / min"},
-    "tm_metric_assists_min": {"fr": "Assistances / min", "en": "Assists / min"},
+    "tm_metric_matches": "col_matches",  # alias → common
+    "tm_metric_global_ratio": "col_global_ratio",  # alias → common
+    "tm_metric_frags_min": "col_kpm",  # alias → common
+    "tm_metric_deaths_min": "col_dpm",  # alias → common
+    "tm_metric_assists_min": "col_apm",  # alias → common
     "tm_loading_slow": {
         "fr": "Le chargement sera plus lent car les données sont lues depuis la base partagée.",
         "en": "Loading will be slower as data is read from the shared database.",
@@ -1326,9 +1278,9 @@ STRINGS: dict[str, dict[str, str]] = {
     "tmi_liability": {"fr": "🔴 Boulet", "en": "🔴 Liability"},
     "tmi_matches_analyzed": {"fr": "📊 Matchs analysés", "en": "📊 Matches analyzed"},
     "tmi_badge": {"fr": "Badge", "en": "Badge"},
-    "tmi_col_rank": {"fr": "Rang", "en": "Rank"},
-    "tmi_col_player": {"fr": "Joueur", "en": "Player"},
-    "tmi_col_score": {"fr": "Score", "en": "Score"},
+    "tmi_col_rank": "col_rank",  # alias → common
+    "tmi_col_player": "col_player",  # alias → common
+    "tmi_col_score": "col_score",  # alias → common
     "tmi_col_first_blood": {"fr": "⚡ Premier Sang", "en": "⚡ First Blood"},
     "tmi_col_finisher": {"fr": "🎯 Finisseur", "en": "🎯 Finisher"},
     "tmi_col_casualty": {"fr": "💀 Boulet", "en": "💀 Liability"},
@@ -1348,27 +1300,27 @@ STRINGS: dict[str, dict[str, str]] = {
     "tms_trio_title": {"fr": "Complémentarité trio", "en": "Trio complementarity"},
     # ── Teammates helpers ───────────────────────────────────────────────────
     "tmh_waypoint": {"fr": "HaloWaypoint", "en": "HaloWaypoint"},
-    "tmh_col_match": {"fr": "Match", "en": "Match"},
-    "tmh_col_date": {"fr": "Date", "en": "Date"},
-    "tmh_col_map": {"fr": "Carte", "en": "Map"},
-    "tmh_col_playlist": {"fr": "Playlist", "en": "Playlist"},
-    "tmh_col_mode": {"fr": "Mode", "en": "Mode"},
-    "tmh_col_result": {"fr": "Résultat", "en": "Result"},
-    "tmh_col_score": {"fr": "Score", "en": "Score"},
-    "tmh_col_team_mmr": {"fr": "MMR équipe", "en": "Team MMR"},
-    "tmh_col_enemy_mmr": {"fr": "MMR adverse", "en": "Enemy MMR"},
-    "tmh_col_delta_mmr": {"fr": "Écart MMR", "en": "MMR gap"},
-    "tmh_link_open": {"fr": "Ouvrir", "en": "Open"},
-    "tmh_outcome_win": {"fr": "Victoire", "en": "Win"},
-    "tmh_outcome_loss": {"fr": "Défaite", "en": "Loss"},
-    "tmh_outcome_draw": {"fr": "Égalité", "en": "Draw"},
-    "tmh_outcome_unfinished": {"fr": "Non terminé", "en": "Did Not Finish"},
+    "tmh_col_match": "col_match",  # alias → common
+    "tmh_col_date": "col_date",  # alias → common
+    "tmh_col_map": "col_map",  # alias → common
+    "tmh_col_playlist": "col_playlist",  # alias → common
+    "tmh_col_mode": "col_mode",  # alias → common
+    "tmh_col_result": "col_result",  # alias → common
+    "tmh_col_score": "col_score",  # alias → common
+    "tmh_col_team_mmr": "col_mmr_team",  # alias → common
+    "tmh_col_enemy_mmr": "col_mmr_enemy",  # alias → common
+    "tmh_col_delta_mmr": "col_mmr_gap",  # alias → common
+    "tmh_link_open": "btn_open",  # alias → common
+    "tmh_outcome_win": "outcome_win",  # alias → common
+    "tmh_outcome_loss": "outcome_loss",  # alias → common
+    "tmh_outcome_draw": "outcome_draw",  # alias → common
+    "tmh_outcome_unfinished": "outcome_dnf",  # alias → common
     # ── Timeseries ──────────────────────────────────────────────────────────
     "ts_lifespan_vs_kills": {"fr": "Durée de vie vs frags", "en": "Life span vs kills"},
     "ts_lifespan_s": {"fr": "Durée de vie (s)", "en": "Life span (s)"},
     "ts_accuracy_vs_kda": {"fr": "Précision vs FDA", "en": "Accuracy vs KDA"},
     "ts_lifespan_vs_deaths": {"fr": "Durée de vie vs morts", "en": "Life span vs deaths"},
-    "ts_deaths_label": {"fr": "Morts", "en": "Deaths"},
+    "ts_deaths_label": "col_deaths",  # alias → common
     "ts_kills_vs_deaths": {"fr": "Frags vs morts", "en": "Kills vs deaths"},
     "ts_mmr_team_vs_enemy": {"fr": "MMR Équipe vs MMR Adversaire", "en": "Team MMR vs Enemy MMR"},
     "ts_mmr_team": {"fr": "MMR Équipe", "en": "Team MMR"},
@@ -1521,8 +1473,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "radar_support": {"fr": "Support", "en": "Support"},
     "radar_impact": {"fr": "Impact", "en": "Impact"},
     "radar_complementarity": {"fr": "Complémentarité", "en": "Complementarity"},
-    "radar_kills_label": {"fr": "Frags", "en": "Kills"},
-    "radar_assists_label": {"fr": "Assistances", "en": "Assists"},
+    "radar_kills_label": "col_kills",  # alias → common
+    "radar_assists_label": "col_assists",  # alias → common
     "radar_kills_pct": {"fr": "Frags %", "en": "Kills %"},
     "radar_assists_pct": {"fr": "Assistances %", "en": "Assists %"},
     "radar_obj_pct": {"fr": "Objectifs %", "en": "Objectives %"},
@@ -1557,7 +1509,7 @@ STRINGS: dict[str, dict[str, str]] = {
     # (uses career_max_rank, career_hero_rank from career section above)
     # ── Checkbox filter ─────────────────────────────────────────────────────
     "cbf_suffix_all": {"fr": "(tous)", "en": "(all)"},
-    "cbf_suffix_none": {"fr": "(aucun)", "en": "(none)"},
+    "cbf_suffix_none": "sel_none",  # alias → common
     "cbf_confirm_clear": {
         "fr": "⚠️ Confirmer : vider toutes les sélections ?",
         "en": "⚠️ Confirm: clear all selections?",
@@ -1565,11 +1517,11 @@ STRINGS: dict[str, dict[str, str]] = {
     # ── DuckDB analytics ────────────────────────────────────────────────────
     "dba_global_stats": {"fr": "📊 Stats globales (DuckDB)", "en": "📊 Global stats (DuckDB)"},
     "dba_win_rate": {"fr": "Taux victoires", "en": "Win rate"},
-    "kpi_section_matches": {"fr": "Parties", "en": "Matches"},
+    "kpi_section_matches": "lbl_parties",  # alias → common
     "kpi_section_career": {"fr": "Carrière", "en": "Career"},
     "flt_date_start": {"fr": "Début", "en": "Start"},
     "flt_date_end": {"fr": "Fin", "en": "End"},
-    "flt_session_all": {"fr": "(toutes)", "en": "(all)"},
+    "flt_session_all": "sel_all",  # alias → common
     "flt_session_last": {"fr": "Dernière session", "en": "Last session"},
     "flt_session_prev": {"fr": "Session précédente", "en": "Previous session"},
     "flt_session_trio": {"fr": "Dernière session en trio", "en": "Last trio session"},
@@ -1616,7 +1568,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Synchronise tous les joueurs configurés.",
         "en": "Sync all configured players.",
     },
-    "app_no_match": {"fr": "Aucun match trouvé.", "en": "No match found."},
+    "app_no_match": "no_match_found",  # alias → common
     "app_configure_db": {
         "fr": "Configure une DB et un joueur dans Paramètres.",
         "en": "Configure a DB and a player in Settings.",

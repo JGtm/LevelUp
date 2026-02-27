@@ -16,7 +16,7 @@ Logique :
 3. Migrer les xuid_aliases du joueur
 
 Usage :
-    python scripts/migration/migrate_player_to_shared.py Chocoboflor [--verbose] [--dry-run]
+    python scripts/migration/migrate_player_to_shared.py SpartanB [--verbose] [--dry-run]
     python scripts/migration/migrate_player_to_shared.py --all [--verbose]
 """
 
@@ -863,7 +863,7 @@ def migrate_all_players(
 ) -> dict[str, dict[str, int]]:
     """Migre tous les joueurs de db_profiles.json vers shared_matches.
 
-    Ordre de migration : Chocoboflor (référence) → Madina → JGtm → XxDaemonGamerxX.
+    Ordre de migration : SpartanB (référence) → SpartanA → SpartanC → SpartanD.
 
     Returns:
         Dictionnaire {gamertag: stats} pour chaque joueur.
@@ -871,7 +871,7 @@ def migrate_all_players(
     profiles = load_profiles()
 
     # Ordre de migration déterministe
-    migration_order = ["Chocoboflor", "Madina97294", "JGtm", "XxDaemonGamerxX"]
+    migration_order = ["SpartanB", "SpartanA", "SpartanC", "SpartanD"]
     # Filtrer les joueurs présents dans les profils
     ordered_gamertags = [gt for gt in migration_order if gt in profiles]
     # Ajouter les joueurs non listés dans l'ordre prédéfini

@@ -203,7 +203,7 @@ def diagnose_first_kill_death(db_path: str, xuid: str) -> None:
         if total_count == 0:
             print("\n❌ PROBLÈME: La table highlight_events est vide")
             print("   → Solution: Synchroniser les matchs avec:")
-            print("      python scripts/sync.py --delta --player JGtm --with-highlight-events")
+            print("      python scripts/sync.py --delta --player SpartanC --with-highlight-events")
         elif xuid_count == 0:
             print("\n❌ PROBLÈME: Aucun événement pour ce XUID")
             print("   → Vérifier que le XUID est correct")

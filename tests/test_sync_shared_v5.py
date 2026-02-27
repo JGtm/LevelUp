@@ -53,7 +53,7 @@ SAMPLE_MATCH_JSON: dict[str, Any] = {
     "Players": [
         {
             "PlayerId": "xuid(2535423456789)",
-            "PlayerGamertag": "Chocoboflor",
+            "PlayerGamertag": "SpartanB",
             "Outcome": 2,
             "LastTeamId": 0,
             "Rank": 1,
@@ -86,7 +86,7 @@ SAMPLE_MATCH_JSON: dict[str, Any] = {
         },
         {
             "PlayerId": "xuid(2533987654321)",
-            "PlayerGamertag": "Madina97294",
+            "PlayerGamertag": "SpartanA",
             "Outcome": 3,
             "LastTeamId": 1,
             "Rank": 2,
@@ -243,7 +243,7 @@ def tmp_shared_db(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def tmp_player_db(tmp_path: Path) -> Path:
-    db_path = tmp_path / "players" / "Chocoboflor" / "stats.duckdb"
+    db_path = tmp_path / "players" / "SpartanB" / "stats.duckdb"
     db_path.parent.mkdir(parents=True, exist_ok=True)
     return db_path
 
@@ -253,7 +253,7 @@ def engine_with_shared(tmp_player_db: Path, tmp_shared_db: Path) -> DuckDBSyncEn
     return DuckDBSyncEngine(
         tmp_player_db,
         xuid="2535423456789",
-        gamertag="Chocoboflor",
+        gamertag="SpartanB",
         shared_db_path=tmp_shared_db,
     )
 

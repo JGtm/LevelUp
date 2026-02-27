@@ -24,7 +24,7 @@ import pytest
 # =============================================================================
 
 PLAYER_XUID = "2535469190789936"
-PLAYER_GAMERTAG = "Chocoboflor"
+PLAYER_GAMERTAG = "SpartanB"
 MATCH_ID_1 = "sync-aaaa-1111-bbbb"
 MATCH_ID_2 = "sync-cccc-2222-dddd"
 MATCH_ID_3 = "sync-eeee-3333-ffff"

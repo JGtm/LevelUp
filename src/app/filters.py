@@ -72,7 +72,7 @@ def _load_local_friends_defaults() -> dict[str, list[str]]:
 
     Convention: préfixer un nom avec ``~`` pour le garder dans le fichier
     mais l'exclure de la sélection par défaut (ami inactif/occasionnel).
-    Exemple: ``"~XxDaemonGamerxX"``
+    Exemple: ``"~SpartanD"``
     """
     try:
         p = Path(__file__).resolve().parents[2] / ".streamlit" / "friends_defaults.json"

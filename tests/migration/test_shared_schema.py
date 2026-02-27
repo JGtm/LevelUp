@@ -244,7 +244,7 @@ class TestMatchRegistry:
                 'gv-001', 'Slayer',
                 'pvp', TRUE, FALSE,
                 720, 50, 45,
-                'Chocoboflor', '2025-06-16 10:00:00', 2
+                'SpartanB', '2025-06-16 10:00:00', 2
             )
         """)
         row = rw_conn.execute(
@@ -531,7 +531,7 @@ class TestXuidAliases:
         """xuid est la clé primaire."""
         rw_conn.execute(
             "INSERT INTO xuid_aliases (xuid, gamertag, source) "
-            "VALUES ('xuid-001', 'Chocoboflor', 'api')"
+            "VALUES ('xuid-001', 'SpartanB', 'api')"
         )
         with pytest.raises(duckdb.ConstraintException):
             rw_conn.execute(

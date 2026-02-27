@@ -5,8 +5,8 @@ Exporte les données DuckDB d'un joueur vers des fichiers Parquet
 avec compression Zstd optimale pour archivage et partage.
 
 Usage:
-    python scripts/backup_player.py --gamertag Chocoboflor
-    python scripts/backup_player.py --gamertag Chocoboflor --output ./backups
+    python scripts/backup_player.py --gamertag SpartanB
+    python scripts/backup_player.py --gamertag SpartanB --output ./backups
     python scripts/backup_player.py --all --compression-level 9
 """
 
@@ -164,8 +164,8 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemples:
-  python scripts/backup_player.py --gamertag Chocoboflor
-  python scripts/backup_player.py --gamertag JGtm --output ./backups
+  python scripts/backup_player.py --gamertag SpartanB
+  python scripts/backup_player.py --gamertag SpartanC --output ./backups
   python scripts/backup_player.py --all
   python scripts/backup_player.py --all --compression-level 15
 

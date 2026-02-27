@@ -36,7 +36,7 @@ class TestParseXuidInput:
         assert parse_xuid_input("   ") is None
 
     def test_non_digit(self):
-        assert parse_xuid_input("Chocoboflor") is None
+        assert parse_xuid_input("SpartanB") is None
 
     def test_mixed_text(self):
         assert parse_xuid_input("hello123") is None
@@ -84,13 +84,13 @@ class TestExtractGamertagFromPlayerId:
         assert extract_gamertag_from_player_id(None) is None
 
     def test_dict_gamertag(self):
-        assert extract_gamertag_from_player_id({"Gamertag": "Chocoboflor"}) == "Chocoboflor"
+        assert extract_gamertag_from_player_id({"Gamertag": "SpartanB"}) == "SpartanB"
 
     def test_dict_gamertag_lower(self):
-        assert extract_gamertag_from_player_id({"gamertag": "Chocoboflor"}) == "Chocoboflor"
+        assert extract_gamertag_from_player_id({"gamertag": "SpartanB"}) == "SpartanB"
 
     def test_dict_gt(self):
-        assert extract_gamertag_from_player_id({"GT": "Chocoboflor"}) == "Chocoboflor"
+        assert extract_gamertag_from_player_id({"GT": "SpartanB"}) == "SpartanB"
 
     def test_dict_no_gamertag(self):
         assert extract_gamertag_from_player_id({"Xuid": "123"}) is None
@@ -100,10 +100,10 @@ class TestExtractGamertagFromPlayerId:
         assert extract_gamertag_from_player_id({"Gamertag": "   "}) is None
 
     def test_string_input(self):
-        assert extract_gamertag_from_player_id("Chocoboflor") is None  # not a dict
+        assert extract_gamertag_from_player_id("SpartanB") is None  # not a dict
 
     def test_whitespace_stripping(self):
-        assert extract_gamertag_from_player_id({"Gamertag": "  Chocoboflor  "}) == "Chocoboflor"
+        assert extract_gamertag_from_player_id({"Gamertag": "  SpartanB  "}) == "SpartanB"
 
 
 class TestResolveXuidFromDb:
@@ -120,8 +120,8 @@ class TestResolveXuidFromDb:
     def test_default_gamertag_match(self):
         result = resolve_xuid_from_db(
             "/db.duckdb",
-            "Chocoboflor",
-            default_gamertag="Chocoboflor",
+            "SpartanB",
+            default_gamertag="SpartanB",
             default_xuid="2533274823110022",
         )
         assert result == "2533274823110022"
@@ -129,32 +129,32 @@ class TestResolveXuidFromDb:
     def test_default_gamertag_case_insensitive(self):
         result = resolve_xuid_from_db(
             "/db.duckdb",
-            "chocoboflor",
-            default_gamertag="Chocoboflor",
+            "spartanb",
+            default_gamertag="SpartanB",
             default_xuid="2533274823110022",
         )
         assert result == "2533274823110022"
 
     def test_default_gamertag_no_xuid(self):
         result = resolve_xuid_from_db(
-            "/db.duckdb", "Chocoboflor", default_gamertag="Chocoboflor", default_xuid=None
+            "/db.duckdb", "SpartanB", default_gamertag="SpartanB", default_xuid=None
         )
         assert result is None
 
     def test_env_variable_fallback(self, monkeypatch):
-        monkeypatch.setenv("OPENSPARTAN_DEFAULT_GAMERTAG", "Chocoboflor")
+        monkeypatch.setenv("OPENSPARTAN_DEFAULT_GAMERTAG", "SpartanB")
         monkeypatch.setenv("OPENSPARTAN_DEFAULT_XUID", "2533274823110022")
-        result = resolve_xuid_from_db("/nonexistent.duckdb", "Chocoboflor")
+        result = resolve_xuid_from_db("/nonexistent.duckdb", "SpartanB")
         assert result == "2533274823110022"
 
     def test_aliases_fallback(self):
-        aliases = {"2533274823110022": "Chocoboflor"}
-        result = resolve_xuid_from_db("/nonexistent.duckdb", "Chocoboflor", aliases=aliases)
+        aliases = {"2533274823110022": "SpartanB"}
+        result = resolve_xuid_from_db("/nonexistent.duckdb", "SpartanB", aliases=aliases)
         assert result == "2533274823110022"
 
     def test_aliases_case_insensitive(self):
-        aliases = {"2533274823110022": "chocoboflor"}
-        result = resolve_xuid_from_db("/nonexistent.duckdb", "Chocoboflor", aliases=aliases)
+        aliases = {"2533274823110022": "spartanb"}
+        result = resolve_xuid_from_db("/nonexistent.duckdb", "SpartanB", aliases=aliases)
         assert result == "2533274823110022"
 
     def test_db_not_found(self):
@@ -171,23 +171,23 @@ class TestResolveXuidFromDb:
         shared_db = str(warehouse / "shared_matches.duckdb")
         conn = duckdb.connect(shared_db)
         conn.execute("CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)")
-        conn.execute("INSERT INTO xuid_aliases VALUES ('2533274823110022', 'Chocoboflor')")
+        conn.execute("INSERT INTO xuid_aliases VALUES ('2533274823110022', 'SpartanB')")
         conn.close()
 
         # Player DB pour le chemin
-        player_db = tmp_path / "data" / "players" / "Chocoboflor" / "stats.duckdb"
+        player_db = tmp_path / "data" / "players" / "SpartanB" / "stats.duckdb"
         player_db.parent.mkdir(parents=True, exist_ok=True)
         conn = duckdb.connect(str(player_db))
         conn.execute("CREATE TABLE sync_meta (key VARCHAR, value VARCHAR)")
         conn.close()
 
-        result = resolve_xuid_from_db(str(player_db), "Chocoboflor")
+        result = resolve_xuid_from_db(str(player_db), "SpartanB")
         assert result == "2533274823110022"
 
 
 class TestInferSpnkrPlayerFromDbPath:
     def test_spnkr_gt(self):
-        assert infer_spnkr_player_from_db_path("spnkr_gt_Chocoboflor.db") == "Chocoboflor"
+        assert infer_spnkr_player_from_db_path("spnkr_gt_SpartanB.db") == "SpartanB"
 
     def test_spnkr_xuid(self):
         assert (
@@ -219,8 +219,8 @@ class TestGuessXuidFromDbPath:
         assert guess_xuid_from_db_path("spnkr_xuid_2533274823110022.db") == "2533274823110022"
 
     def test_gamertag_with_alias(self):
-        aliases = {"2535469190789936": "Chocoboflor"}
-        result = guess_xuid_from_db_path("spnkr_gt_Chocoboflor.db", aliases=aliases)
+        aliases = {"2535469190789936": "SpartanB"}
+        result = guess_xuid_from_db_path("spnkr_gt_SpartanB.db", aliases=aliases)
         assert result == "2535469190789936"
 
     def test_no_match(self):
@@ -288,8 +288,8 @@ class TestPathConstants:
 
 class TestGetPlayerDbPath:
     def test_basic(self):
-        path = get_player_db_path("Chocoboflor")
-        assert path == PLAYERS_DIR / "Chocoboflor" / "stats.duckdb"
+        path = get_player_db_path("SpartanB")
+        assert path == PLAYERS_DIR / "SpartanB" / "stats.duckdb"
 
     def test_with_spaces(self):
         path = get_player_db_path("My Player")
@@ -298,8 +298,8 @@ class TestGetPlayerDbPath:
 
 class TestGetPlayerArchiveDir:
     def test_basic(self):
-        path = get_player_archive_dir("Chocoboflor")
-        assert path == PLAYERS_DIR / "Chocoboflor" / "archive"
+        path = get_player_archive_dir("SpartanB")
+        assert path == PLAYERS_DIR / "SpartanB" / "archive"
 
 
 class TestGetMetadataDbPath:
@@ -322,7 +322,7 @@ class TestListPlayerGamertags:
 class TestPlayerDbExists:
     def test_existing_player(self):
         """Les joueurs de test peuvent exister dans l'env local."""
-        result = player_db_exists("Chocoboflor")
+        result = player_db_exists("SpartanB")
         assert isinstance(result, bool)
 
     def test_nonexistent_player(self):

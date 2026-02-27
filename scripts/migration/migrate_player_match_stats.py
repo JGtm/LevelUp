@@ -6,9 +6,9 @@ Ce script migre la table PlayerMatchStats (contenant les données MMR/skill)
 depuis les DBs SQLite legacy vers les DBs DuckDB v4.
 
 Usage:
-    python scripts/migrate_player_match_stats.py --gamertag JGtm
+    python scripts/migrate_player_match_stats.py --gamertag SpartanC
     python scripts/migrate_player_match_stats.py --all
-    python scripts/migrate_player_match_stats.py --gamertag JGtm --dry-run
+    python scripts/migrate_player_match_stats.py --gamertag SpartanC --dry-run
 
 Structure source (SQLite):
     - PlayerMatchStats: MatchId VARCHAR, ResponseBody TEXT (JSON)

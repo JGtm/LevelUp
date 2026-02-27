@@ -160,8 +160,8 @@ python scripts/sync.py --gamertag NouveauJoueur --full
 > ces données pour plusieurs joueurs, déclarez un token per-player dans `.env.local` :
 >
 > ```env
-> # Gamertag "JGtm" → clé normalisée JGTM
-> SPNKR_OAUTH_REFRESH_TOKEN_JGTM=votre_refresh_token
+# Gamertag "SpartanC" → clé normalisée SPARTANC
+SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC=votre_refresh_token
 > # Gamertag "Mon GT 2" → clé normalisée MON_GT_2
 > SPNKR_OAUTH_REFRESH_TOKEN_MON_GT_2=autre_refresh_token
 > ```

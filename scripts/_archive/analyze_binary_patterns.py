@@ -14,7 +14,7 @@ Usage:
     # Analyser les chunks d'un match avec les gamertags connus
     python scripts/analyze_binary_patterns.py \\
         --chunks-dir data/investigation/chunks_xxx/ \\
-        --gamertags "XxDaemonGamerxX,JGtm,Madina97294"
+        --gamertags "SpartanD,SpartanC,SpartanA"
 
     # Analyser avec les XUIDs
     python scripts/analyze_binary_patterns.py \\

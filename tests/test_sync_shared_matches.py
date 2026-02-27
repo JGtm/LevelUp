@@ -64,7 +64,7 @@ def sample_match_json() -> dict[str, Any]:
         "Players": [
             {
                 "PlayerId": "xuid(2535423456789)",
-                "PlayerGamertag": "Chocoboflor",
+                "PlayerGamertag": "SpartanB",
                 "Outcome": 2,  # Win
                 "LastTeamId": 0,
                 "Rank": 1,
@@ -97,7 +97,7 @@ def sample_match_json() -> dict[str, Any]:
             },
             {
                 "PlayerId": "xuid(2533987654321)",
-                "PlayerGamertag": "Madina97294",
+                "PlayerGamertag": "SpartanA",
                 "Outcome": 3,  # Loss
                 "LastTeamId": 1,
                 "Rank": 2,
@@ -137,14 +137,14 @@ def sample_highlight_events() -> list[dict[str, Any]]:
             "event_type": "kill",
             "time_ms": 45000,
             "xuid": "2535423456789",
-            "gamertag": "Chocoboflor",
+            "gamertag": "SpartanB",
             "type_hint": 1,
         },
         {
             "event_type": "death",
             "time_ms": 60000,
             "xuid": "2535423456789",
-            "gamertag": "Chocoboflor",
+            "gamertag": "SpartanB",
             "type_hint": 2,
         },
     ]
@@ -249,7 +249,7 @@ def tmp_shared_db(tmp_path: Path) -> Path:
 @pytest.fixture
 def tmp_player_db(tmp_path: Path) -> Path:
     """Crée un chemin pour la player DB (sera initialisée par le moteur)."""
-    db_path = tmp_path / "players" / "Chocoboflor" / "stats.duckdb"
+    db_path = tmp_path / "players" / "SpartanB" / "stats.duckdb"
     db_path.parent.mkdir(parents=True, exist_ok=True)
     return db_path
 
@@ -260,7 +260,7 @@ def engine_with_shared(tmp_player_db: Path, tmp_shared_db: Path) -> DuckDBSyncEn
     engine = DuckDBSyncEngine(
         tmp_player_db,
         xuid="2535423456789",
-        gamertag="Chocoboflor",
+        gamertag="SpartanB",
         shared_db_path=tmp_shared_db,
     )
     return engine
@@ -273,7 +273,7 @@ def engine_without_shared(tmp_player_db: Path) -> DuckDBSyncEngine:
     engine = DuckDBSyncEngine(
         tmp_player_db,
         xuid="2535423456789",
-        gamertag="Chocoboflor",
+        gamertag="SpartanB",
         shared_db_path=Path("/nonexistent/shared_matches.duckdb"),
     )
     return engine
@@ -536,8 +536,8 @@ class TestSyncEngineSharedInsertions:
         ).fetchall()
 
         assert len(rows) == 2
-        # Premier par rang (Chocoboflor)
-        assert rows[0][1] == "Chocoboflor"
+        # Premier par rang (SpartanB)
+        assert rows[0][1] == "SpartanB"
         assert rows[0][2] == 20  # kills
         assert rows[0][3] == 10  # deaths
 
@@ -558,7 +558,7 @@ class TestSyncEngineSharedInsertions:
             "WHERE match_id = 'shared-test-match-001' ORDER BY xuid, medal_name_id"
         ).fetchall()
 
-        assert len(rows) >= 4  # 2 médailles pour Choco + 2 pour Madina
+        assert len(rows) >= 4  # 2 médailles pour SpartanB + 2 pour SpartanA
         xuids = {r[0] for r in rows}
         assert "2535423456789" in xuids
         assert "2533987654321" in xuids
@@ -605,8 +605,8 @@ class TestSyncEngineSharedInsertions:
 
         assert len(rows) == 2
         gamertags = {r[1] for r in rows}
-        assert "Chocoboflor" in gamertags
-        assert "Madina97294" in gamertags
+        assert "SpartanB" in gamertags
+        assert "SpartanA" in gamertags
 
         engine_with_shared.close()
 
@@ -754,7 +754,7 @@ class TestProcessNewMatch:
             "Players": [
                 {
                     "PlayerId": "xuid(2535423456789)",
-                    "PlayerGamertag": "Chocoboflor",
+                    "PlayerGamertag": "SpartanB",
                     "Outcome": 3,
                     "LastTeamId": 0,
                     "Rank": 2,
@@ -967,7 +967,7 @@ class TestProcessSingleMatchDispatch:
             "Players": [
                 {
                     "PlayerId": "xuid(2535423456789)",
-                    "PlayerGamertag": "Chocoboflor",
+                    "PlayerGamertag": "SpartanB",
                     "Outcome": 2,
                     "LastTeamId": 0,
                     "Rank": 1,
@@ -1063,7 +1063,7 @@ class TestProcessSingleMatchDispatch:
             "Players": [
                 {
                     "PlayerId": "xuid(2535423456789)",
-                    "PlayerGamertag": "Chocoboflor",
+                    "PlayerGamertag": "SpartanB",
                     "Outcome": 2,
                     "LastTeamId": 0,
                     "Rank": 1,

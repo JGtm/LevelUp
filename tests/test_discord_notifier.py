@@ -43,7 +43,7 @@ _WEBHOOK = "https://discord.com/api/webhooks/123456789/abcdefghij_token"
 
 
 def _player(
-    gamertag: str = "JGtm",
+    gamertag: str = "SpartanC",
     matches_synced: int = 5,
     missing: int = 0,
     error: str | None = None,
@@ -237,9 +237,9 @@ class TestFormatPlayerField:
         assert "Dernier match" not in value
 
     def test_name_contains_gamertag(self):
-        p = _player(gamertag="Chocoboflor")
+        p = _player(gamertag="SpartanB")
         name, _ = _format_player_field(p, "sync_delta")
-        assert "Chocoboflor" in name
+        assert "SpartanB" in name
 
     def test_name_max_256_chars(self):
         long_tag = "A" * 300

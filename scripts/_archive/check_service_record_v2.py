@@ -12,7 +12,7 @@ from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
 
 
 async def main():
-    gamertag = sys.argv[1] if len(sys.argv) > 1 else "JGtm"
+    gamertag = sys.argv[1] if len(sys.argv) > 1 else "SpartanC"
 
     tokens = await get_tokens_from_env()
 

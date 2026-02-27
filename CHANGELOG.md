@@ -40,7 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **UI â€” Career page and Match View** (`src/ui/pages/`)
   - `career.py`: visual cards per group (90px centered rank image, LUSR/CSR badge, â–²/â–¼ delta) + group selector (`st.selectbox`) for the progression graph â€” replaces the expander table and tabs
-  - `match_view.py`: í¿… Rank tab with rank badge, colored progress bar, green/red delta
+  - `match_view.py`: ï¿½ï¿½ï¿½ Rank tab with rank badge, colored progress bar, green/red delta
 
 - **Calibration CLI**
   - `python -m src.analysis.skill_rating_calibration --player <GT> [--n-samples 300] [--metric corr]`
@@ -69,11 +69,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Dedicated i18n package with specialized modules: `common.py`, `pages.py`, `widgets.py`, `viz.py`, `cli.py`
   - Functions: `t(key, lang=None)` (Streamlit UI), `viz_t(key, lang)` (Plotly), `discord_t(key, **kwargs)` (Discord), `ct(key, **kwargs)` (CLI/scripts)
   - Language stored in `st.session_state["lang"]` (Streamlit) or `LEVELUP_LANG` env variable (scripts)
-  - í·«í··/í·¬í·§ language selector in the sidebar (`_render_lang_selector()` in `src/app/sidebar.py`)
+  - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ language selector in the sidebar (`_render_lang_selector()` in `src/app/sidebar.py`)
   - Three fields in `AppSettings`: `lang`, `discord_lang`, `cli_lang` (default `"fr"`)
   - `src/ui/translations.py` bilingual: `translate_playlist_name(name, lang)` and `translate_pair_name(name, lang)` â€” preserves `" on Map"` grouping and Halo prefixes (Arena, BTB, Ranked)
   - `src/analysis/mode_categories.py`: bilingual `normalize_pair_name_to_mode_ui(pair_name, lang)`
-  - `src/utils/discord_notifier.py` fully bilingual: `_format_player_field`, `build_embed_payload`, outcomes (í¿†/í²€/âš–ï¸/íº¶), KDA (`{k}K / {d}D / {a}A` vs `{k}F / {d}D / {a}A`), operation labels, footer
+  - `src/utils/discord_notifier.py` fully bilingual: `_format_player_field`, `build_embed_payload`, outcomes (ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½/âš–ï¸/ï¿½ï¿½ï¿½), KDA (`{k}K / {d}D / {a}A` vs `{k}F / {d}D / {a}A`), operation labels, footer
   - `src/visualization/distributions_outcomes.py` bilingual: Wins/Losses/Ties/Unfinished traces, time buckets (match/hour/day/week/month), win rate heatmap (EN/FR days), `plot_matches_at_top_by_week` (Others/Top Rate)
   - `src/visualization/antagonist_charts.py` bilingual: `plot_duel_history` translates Win/Loss/Tie in duel annotation
   - `src/ui/pages/win_loss.py`: all viz calls pass `lang=get_lang()`
@@ -84,10 +84,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Root cause of divergence: `v_draw(t > 0)` gave positive deltas even at composite=0.5, creating infinite drift when `state.mu > INITIAL_MU` or when the player over-fragged their `kills_expected`
   - New mu formula: `delta_mu = K_ELO Ã— (composite âˆ’ 0.5) Ã— weight_factor` â†’ exact ZERO at composite=0.5, independent of `mu_opp`
   - Sigma retains TrueSkill reduction evaluated at t=0 (symmetric, `mu_opp` only influences `cÂ²`)
-  - Result: stabilized ratings â€” Madina (Diamond V) â†’ Platinum IV BTB / Platinum VI Arena / Diamond IV Ranked, Chocoboflor/JGtm â†’ Gold II-IV depending on mode
-- **Composite score calibrated on 1765 matches** (Madina, JGtm, Chocoboflor â€” Silver â†’ Diamond)
+  - Result: stabilized ratings â€” SpartanA (Diamond V) â†’ Platinum IV BTB / Platinum VI Arena / Diamond IV Ranked, SpartanB/SpartanC â†’ Gold II-IV depending on mode
+- **Composite score calibrated on 1765 matches** (SpartanA, SpartanC, SpartanB â€” Silver â†’ Diamond)
   - Target signal: `individual_mmr = team_mmr Ã— (kills_expected / ke_avg_match)`
-  - Weighting by `nb_matches Ã— MAE_improvement`: Madina 36.7%, JGtm 40.0%, Chocobo 13.3%
+  - Weighting by `nb_matches Ã— MAE_improvement`: SpartanA 36.7%, SpartanC 40.0%, SpartanB 13.3%
   - New weights: kills_vs_expected=31%, deaths_vs_expected=28%, damage_efficiency=23%, accuracy_delta=13%, win_factor=5%
 - **damage_efficiency bias elimination**: `PlayerState.damage_eff_history` per-group â€” the damage component now uses a delta vs personal history (like accuracy_delta) instead of the raw value
 - **mu_opp anchored on `state.mu`**: `compute_enemy_strength` uses `player_mu=state.mu` as the base estimate for opponents (matchmaking pairs players of similar level)
@@ -184,7 +184,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Replaces the removed "Players" (roster) section
 
 - **Per-player tokens for player-gated endpoints** (`src/data/sync/api_client.py`, `src/ui/profile_api_tokens.py`)
-  - `SPNKR_OAUTH_REFRESH_TOKEN_<NORMALIZED_GT>` in `.env.local` per player (e.g.: `_JGTM`, `_MON_GT_2`)
+  - `SPNKR_OAUTH_REFRESH_TOKEN_<NORMALIZED_GT>` in `.env.local` per player (e.g.: `_SPARTANC`, `_MON_GT_2`)
   - Normalization: `re.sub(r"[^A-Za-z0-9]", "_", gt.strip()).upper()`
   - `get_tokens_for_player(gamertag)`: async, returns `Tokens | None` â€” skip + warning if absent (no global fallback on restricted endpoint)
   - `get_player_token_env_key(gamertag)`: returns the normalized env key

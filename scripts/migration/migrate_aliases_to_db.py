@@ -1,8 +1,8 @@
 """Migration des aliases du fichier JSON vers la table XuidAliases en DB.
 
 Usage:
-    python scripts/migrate_aliases_to_db.py --db data/spnkr_gt_JGtm.db
-    python scripts/migrate_aliases_to_db.py --db data/spnkr_gt_JGtm.db --json xuid_aliases.json
+    python scripts/migrate_aliases_to_db.py --db data/spnkr_gt_SpartanC.db
+    python scripts/migrate_aliases_to_db.py --db data/spnkr_gt_SpartanC.db --json xuid_aliases.json
 
 Ce script:
 1. Lit le fichier xuid_aliases.json (ou celui spécifié)

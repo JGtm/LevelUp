@@ -3,7 +3,7 @@
 Script pour corréler les kills connus avec les patterns binaires.
 
 Données connues pour le match 7f1bbf06-d54d-4434-ad80-923fcabe8b1b:
-- Killer: JGtm (XUID: 2533274823110022)
+- Killer: SpartanC (XUID: 2533274823110022)
 - Frag 2: ~169s, Sidekick, victime breizhbengp (2535454710220286)
 - Frag 3: ~220s, Sidekick, victime breizhbengp
 - Frag 4: ~231s, Sidekick, victime HJ Destroyer (2683394777983413)
@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 # Données du match
-KILLER_XUID = 2533274823110022  # JGtm
+KILLER_XUID = 2533274823110022  # SpartanC
 VICTIMS = {
     "breizhbengp": 2535454710220286,
     "HJ Destroyer": 2683394777983413,

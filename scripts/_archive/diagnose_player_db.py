@@ -10,7 +10,7 @@ Vérifie l'état des données :
 
 Usage:
     python scripts/diagnose_player_db.py [db_path]
-    python scripts/diagnose_player_db.py data/players/JGtm/stats.duckdb
+    python scripts/diagnose_player_db.py data/players/SpartanC/stats.duckdb
 """
 
 import sys
@@ -242,6 +242,6 @@ def print_report(results: dict, db_path: str) -> None:
 
 
 if __name__ == "__main__":
-    db = sys.argv[1] if len(sys.argv) > 1 else "data/players/JGtm/stats.duckdb"
+    db = sys.argv[1] if len(sys.argv) > 1 else "data/players/SpartanC/stats.duckdb"
     results = diagnose(db)
     print_report(results, db)

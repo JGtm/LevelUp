@@ -6,10 +6,10 @@ compressés, permettant de garder la DB principale légère tout en conservant
 l'historique complet.
 
 Usage:
-    python scripts/archive_season.py --gamertag Chocoboflor --cutoff 2024-01-01
-    python scripts/archive_season.py --gamertag Chocoboflor --older-than-days 365
-    python scripts/archive_season.py --gamertag Chocoboflor --dry-run
-    python scripts/archive_season.py --gamertag Chocoboflor --list-archives
+    python scripts/archive_season.py --gamertag SpartanB --cutoff 2024-01-01
+    python scripts/archive_season.py --gamertag SpartanB --older-than-days 365
+    python scripts/archive_season.py --gamertag SpartanB --dry-run
+    python scripts/archive_season.py --gamertag SpartanB --list-archives
 
 Structure de sortie:
     data/players/{gamertag}/
@@ -432,19 +432,19 @@ def main() -> int:
         epilog="""
 Exemples:
   # Lister les archives existantes
-  python scripts/archive_season.py --gamertag Chocoboflor --list-archives
+  python scripts/archive_season.py --gamertag SpartanB --list-archives
 
   # Archiver les matchs avant 2024
-  python scripts/archive_season.py --gamertag Chocoboflor --cutoff 2024-01-01
+  python scripts/archive_season.py --gamertag SpartanB --cutoff 2024-01-01
 
   # Archiver les matchs de plus d'un an (365 jours)
-  python scripts/archive_season.py --gamertag Chocoboflor --older-than-days 365
+  python scripts/archive_season.py --gamertag SpartanB --older-than-days 365
 
   # Dry-run (voir ce qui serait archivé sans effectuer l'opération)
-  python scripts/archive_season.py --gamertag Chocoboflor --cutoff 2024-01-01 --dry-run
+  python scripts/archive_season.py --gamertag SpartanB --cutoff 2024-01-01 --dry-run
 
   # Archiver ET supprimer de la DB principale
-  python scripts/archive_season.py --gamertag Chocoboflor --cutoff 2024-01-01 --delete
+  python scripts/archive_season.py --gamertag SpartanB --cutoff 2024-01-01 --delete
 
 Seuils recommandés:
   - > 5000 matchs : archiver pour améliorer les performances

@@ -31,7 +31,7 @@ Usage :
         finished_at=finished_at,
         players=[
             DiscordPlayerResult(
-                gamertag="JGtm",
+                gamertag="SpartanC",
                 xuid="1234567890",
                 matches_synced=12,
                 missing_data_count=0,
@@ -453,8 +453,8 @@ def build_embed_payload(
 
     _OP_KEYS: dict[str, str] = {
         "sync_delta": "discord_op_sync_delta",
-        "sync_full":  "discord_op_sync_full",
-        "backfill":   "discord_op_backfill",
+        "sync_full": "discord_op_sync_full",
+        "backfill": "discord_op_backfill",
     }
     op_label = discord_t(_OP_KEYS.get(operation, operation))
     duration = _format_duration(started_at, finished_at)
@@ -488,7 +488,9 @@ def build_embed_payload(
         else:
             matches_str = discord_t("discord_all_up_to_date")
 
-    completed_line = discord_t("discord_completed_in", status=status_icon, op=op_label, duration=duration)
+    completed_line = discord_t(
+        "discord_completed_in", status=status_icon, op=op_label, duration=duration
+    )
     time_line = discord_t("discord_time_range", t_start=t_start, t_end=t_end)
     players_line = discord_t("discord_player_count", count=len(players)) + "  ·  " + matches_str
     description = f"{completed_line}\n{time_line}\n{players_line}"

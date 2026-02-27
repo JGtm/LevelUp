@@ -220,7 +220,7 @@ class WinLossService:
 
         if scope == "Moi (toutes les parties)":
             return base
-        elif scope == "Avec Madina972":
+        elif scope == "Avec SpartanA":
             match_ids = set(
                 cached_same_team_match_ids_with_friend(
                     db_path,
@@ -230,7 +230,7 @@ class WinLossService:
                 )
             )
             return base.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(match_ids)))
-        elif scope == "Avec Chocoboflor":
+        elif scope == "Avec SpartanB":
             match_ids = set(
                 cached_same_team_match_ids_with_friend(
                     db_path,

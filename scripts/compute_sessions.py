@@ -8,19 +8,19 @@ Ce script :
 
 Usage:
     # Calculer les sessions pour un joueur
-    python scripts/compute_sessions.py --gamertag JGtm
+    python scripts/compute_sessions.py --gamertag SpartanC
 
     # Calculer les sessions pour tous les joueurs
     python scripts/compute_sessions.py --all
 
     # Spécifier un gap différent (défaut: 120 minutes)
-    python scripts/compute_sessions.py --gamertag JGtm --gap-minutes 90
+    python scripts/compute_sessions.py --gamertag SpartanC --gap-minutes 90
 
     # Mode dry-run (affiche seulement, ne modifie rien)
-    python scripts/compute_sessions.py --gamertag JGtm --dry-run
+    python scripts/compute_sessions.py --gamertag SpartanC --dry-run
 
     # Forcer le recalcul même si des sessions existent
-    python scripts/compute_sessions.py --gamertag JGtm --force
+    python scripts/compute_sessions.py --gamertag SpartanC --force
 
 Note: Les boutons "Dernière session" et "Session en trio" utilisent
       le calcul à la volée (cached_compute_sessions_db), mais persister
@@ -100,6 +100,7 @@ def compute_sessions_for_db(
     # V5.1 : start_time vient de shared.match_registry, teammates_signature de player_match_enrichment
     if shared_db_path:
         import contextlib
+
         with contextlib.suppress(Exception):
             conn.execute(f"ATTACH '{shared_db_path}' AS shared (READ_ONLY)")
     df = conn.execute("""
@@ -216,7 +217,8 @@ def refresh_session_stats(conn: duckdb.DuckDBPyConnection, xuid: str | None = No
         # Vider et recalculer
         conn.execute("DELETE FROM mv_session_stats")
         if xuid:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO mv_session_stats
                 SELECT
                     pme.session_id,
@@ -240,7 +242,9 @@ def refresh_session_stats(conn: duckdb.DuckDBPyConnection, xuid: str | None = No
                 JOIN shared.match_participants mp ON pme.match_id = mp.match_id AND mp.xuid = ?
                 WHERE pme.session_id IS NOT NULL
                 GROUP BY pme.session_id
-            """, [xuid])
+            """,
+                [xuid],
+            )
         else:
             conn.execute("""
                 INSERT INTO mv_session_stats
@@ -308,7 +312,8 @@ def populate_sessions_table(conn: duckdb.DuckDBPyConnection, xuid: str | None = 
         # Vider et recalculer
         conn.execute("DELETE FROM sessions")
         if xuid:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO sessions (
                     session_id, start_time, end_time, match_count,
                     total_kills, total_deaths, total_assists,
@@ -332,7 +337,9 @@ def populate_sessions_table(conn: duckdb.DuckDBPyConnection, xuid: str | None = 
                 JOIN shared.match_participants mp ON pme.match_id = mp.match_id AND mp.xuid = ?
                 WHERE pme.session_id IS NOT NULL
                 GROUP BY pme.session_id
-            """, [xuid])
+            """,
+                [xuid],
+            )
         else:
             conn.execute("""
                 INSERT INTO sessions (
@@ -394,6 +401,7 @@ def process_player(
 
     # Résoudre le xuid depuis db_profiles.json
     import json
+
     xuid: str | None = None
     profiles_path = REPO_ROOT / "db_profiles.json"
     if profiles_path.exists():
@@ -412,7 +420,10 @@ def process_player(
 
         # Calculer les sessions
         session_results = compute_sessions_for_db(
-            conn, gap_minutes=gap_minutes, force=force, dry_run=dry_run,
+            conn,
+            gap_minutes=gap_minutes,
+            force=force,
+            dry_run=dry_run,
             shared_db_path=shared_db_path,
         )
         results.update(session_results)

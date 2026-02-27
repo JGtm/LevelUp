@@ -7,16 +7,16 @@ Usage:
 
 Exemples:
     # Ajouter avec XUID connu (alias seulement)
-    python scripts/add_friend.py XxDaemonGamerxX --xuid 2533274833178266
+    python scripts/add_friend.py SpartanD --xuid 2533274833178266
 
     # Ajouter avec profil + import ses matchs + merge dans DB unifiée
-    python scripts/add_friend.py XxDaemonGamerxX --xuid 2533274833178266 --profile --import --merge
+    python scripts/add_friend.py SpartanD --xuid 2533274833178266 --profile --import --merge
 
     # Workflow complet simplifié (alias + profil + import + merge)
-    python scripts/add_friend.py XxDaemonGamerxX --xuid 2533274833178266 --full
+    python scripts/add_friend.py SpartanD --xuid 2533274833178266 --full
 
     # Trouver automatiquement le XUID depuis un match partagé
-    python scripts/add_friend.py XxDaemonGamerxX --from-match 1e26f641-5570-475c-a52d-d7afc6b49fd8
+    python scripts/add_friend.py SpartanD --from-match 1e26f641-5570-475c-a52d-d7afc6b49fd8
 
     # Mode interactif (liste les joueurs inconnus d'un match)
     python scripts/add_friend.py --from-match 1e26f641-5570-475c-a52d-d7afc6b49fd8
@@ -263,7 +263,7 @@ def interactive_mode(match_id: str) -> None:
         print(f"{i:<3} {p['xuid']:<20} {p['kills']:<4} {p['deaths']:<4} {p['assists']:<4}")
 
     print("\n💡 Pour ajouter un ami, entre son numéro puis son gamertag.")
-    print("   Exemple: 1 XxDaemonGamerxX")
+    print("   Exemple: 1 SpartanD")
     print("   Tape 'q' pour quitter.\n")
 
     while True:

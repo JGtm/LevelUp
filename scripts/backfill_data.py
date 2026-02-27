@@ -7,28 +7,28 @@ et les remplit en re-téléchargeant les données nécessaires depuis l'API SPNK
 
 Usage:
     # Backfill toutes les données pour un joueur
-    python scripts/backfill_data.py --player JGtm --all-data
+    python scripts/backfill_data.py --player SpartanC --all-data
 
     # Mode strict (pas de re-téléchargement si partiellement rempli)
-    python scripts/backfill_data.py --player JGtm --all-data --detection-mode and
+    python scripts/backfill_data.py --player SpartanC --all-data --detection-mode and
 
     # Backfill uniquement les médailles
-    python scripts/backfill_data.py --player JGtm --medals
+    python scripts/backfill_data.py --player SpartanC --medals
 
     # Calculer les scores de performance manquants
-    python scripts/backfill_data.py --player JGtm --performance-scores
+    python scripts/backfill_data.py --player SpartanC --performance-scores
 
     # Backfill pour tous les joueurs
     python scripts/backfill_data.py --all --all-data
 
     # Mode dry-run (liste seulement)
-    python scripts/backfill_data.py --player JGtm --dry-run
+    python scripts/backfill_data.py --player SpartanC --dry-run
 
     # Limiter le nombre de matchs
-    python scripts/backfill_data.py --player JGtm --max-matches 100
+    python scripts/backfill_data.py --player SpartanC --max-matches 100
 
 Note: Pour combiner sync + backfill en une seule commande, utilisez :
-    python scripts/sync.py --delta --player JGtm --with-backfill
+    python scripts/sync.py --delta --player SpartanC --with-backfill
 
 Architecture (Sprint 10B) :
     scripts/backfill/

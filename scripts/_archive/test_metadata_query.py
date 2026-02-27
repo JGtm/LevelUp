@@ -20,7 +20,7 @@ def test_metadata_query():
     print("🔍 Test de la requête SQL de résolution des métadonnées")
     print("=" * 60)
 
-    db_path = root / "data" / "players" / "JGtm" / "stats.duckdb"
+    db_path = root / "data" / "players" / "SpartanC" / "stats.duckdb"
     meta_path = root / "data" / "warehouse" / "metadata.duckdb"
 
     if not db_path.exists():

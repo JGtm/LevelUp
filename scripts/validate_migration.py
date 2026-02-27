@@ -10,7 +10,7 @@ Vérifie l'intégrité des données après migration vers shared_matches.duckdb 
 Usage:
     python scripts/validate_migration.py --baseline .ai/v5-baseline-audit.json
     python scripts/validate_migration.py --check-integrity
-    python scripts/validate_migration.py --compare-player Chocoboflor
+    python scripts/validate_migration.py --compare-player SpartanB
 """
 
 from __future__ import annotations

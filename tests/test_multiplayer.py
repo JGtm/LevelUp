@@ -141,8 +141,8 @@ class TestIsDuckdbV4Path:
 
 class TestGetGamertagFromDuckdbV4Path:
     def test_valid(self):
-        p = str(Path("data") / "players" / "Chocoboflor" / "stats.duckdb")
-        assert get_gamertag_from_duckdb_v4_path(p) == "Chocoboflor"
+        p = str(Path("data") / "players" / "SpartanB" / "stats.duckdb")
+        assert get_gamertag_from_duckdb_v4_path(p) == "SpartanB"
 
     def test_empty(self):
         assert get_gamertag_from_duckdb_v4_path("") is None

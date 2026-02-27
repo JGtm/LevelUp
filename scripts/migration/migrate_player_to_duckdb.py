@@ -14,9 +14,9 @@ Ce script migre spnkr_gt_{gamertag}.db (SQLite legacy) vers
 data/players/{gamertag}/stats.duckdb (DuckDB).
 
 Usage:
-    python scripts/migrate_player_to_duckdb.py --gamertag JGtm
+    python scripts/migrate_player_to_duckdb.py --gamertag SpartanC
     python scripts/migrate_player_to_duckdb.py --all
-    python scripts/migrate_player_to_duckdb.py --gamertag JGtm --dry-run
+    python scripts/migrate_player_to_duckdb.py --gamertag SpartanC --dry-run
 """
 
 from __future__ import annotations

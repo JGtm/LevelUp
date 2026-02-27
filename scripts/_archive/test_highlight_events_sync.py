@@ -2,8 +2,8 @@
 """Script de test pour vérifier la récupération des highlight_events lors de la sync.
 
 Usage:
-    python scripts/test_highlight_events_sync.py --db-path data/players/JGtm/stats.duckdb --match-id <match_id>
-    python scripts/test_highlight_events_sync.py --db-path data/players/JGtm/stats.duckdb --last-match
+    python scripts/test_highlight_events_sync.py --db-path data/players/SpartanC/stats.duckdb --match-id <match_id>
+    python scripts/test_highlight_events_sync.py --db-path data/players/SpartanC/stats.duckdb --last-match
 """
 
 import argparse

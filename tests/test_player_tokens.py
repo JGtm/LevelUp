@@ -11,11 +11,9 @@ Couvre :
 
 from __future__ import annotations
 
-import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # =============================================================================
 # api_client.py — helpers normalize / key / get_tokens_for_player
@@ -28,7 +26,7 @@ class TestNormalizeGamertag:
     def test_simple_gamertag(self):
         from src.data.sync.api_client import _normalize_gamertag_for_env
 
-        assert _normalize_gamertag_for_env("JGtm") == "JGTM"
+        assert _normalize_gamertag_for_env("SpartanC") == "SPARTANC"
 
     def test_gamertag_with_spaces(self):
         from src.data.sync.api_client import _normalize_gamertag_for_env
@@ -43,12 +41,12 @@ class TestNormalizeGamertag:
     def test_gamertag_already_upper(self):
         from src.data.sync.api_client import _normalize_gamertag_for_env
 
-        assert _normalize_gamertag_for_env("JGTM") == "JGTM"
+        assert _normalize_gamertag_for_env("SPARTANC") == "SPARTANC"
 
     def test_gamertag_with_leading_trailing_spaces(self):
         from src.data.sync.api_client import _normalize_gamertag_for_env
 
-        assert _normalize_gamertag_for_env("  JGtm  ") == "JGTM"
+        assert _normalize_gamertag_for_env("  SpartanC  ") == "SPARTANC"
 
     def test_gamertag_with_hyphens(self):
         from src.data.sync.api_client import _normalize_gamertag_for_env
@@ -67,7 +65,7 @@ class TestGetPlayerTokenEnvKey:
     def test_simple_gamertag(self):
         from src.data.sync.api_client import get_player_token_env_key
 
-        assert get_player_token_env_key("JGtm") == "SPNKR_OAUTH_REFRESH_TOKEN_JGTM"
+        assert get_player_token_env_key("SpartanC") == "SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC"
 
     def test_gamertag_with_spaces(self):
         from src.data.sync.api_client import get_player_token_env_key
@@ -89,9 +87,9 @@ class TestGetTokensForPlayer:
         from src.data.sync.api_client import get_tokens_for_player
 
         monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
-        monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", raising=False)
+        monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", raising=False)
 
-        result = await get_tokens_for_player("JGtm")
+        result = await get_tokens_for_player("SpartanC")
         assert result is None
 
     @pytest.mark.asyncio
@@ -100,12 +98,12 @@ class TestGetTokensForPlayer:
         from src.data.sync.api_client import get_tokens_for_player
 
         monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
-        monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", "")
+        monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", "")
 
-        result = await get_tokens_for_player("JGtm")
+        result = await get_tokens_for_player("SpartanC")
         assert result is None
 
-        monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", raising=False)
+        monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", raising=False)
 
     @pytest.mark.asyncio
     async def test_returns_none_when_azure_creds_missing(self, monkeypatch):
@@ -113,14 +111,14 @@ class TestGetTokensForPlayer:
         from src.data.sync.api_client import get_tokens_for_player
 
         monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
-        monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", "fake_refresh_token")
+        monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", "fake_refresh_token")
         monkeypatch.delenv("SPNKR_AZURE_CLIENT_ID", raising=False)
         monkeypatch.delenv("SPNKR_AZURE_CLIENT_SECRET", raising=False)
 
-        result = await get_tokens_for_player("JGtm")
+        result = await get_tokens_for_player("SpartanC")
         assert result is None
 
-        monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", raising=False)
+        monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", raising=False)
 
     @pytest.mark.asyncio
     async def test_returns_tokens_when_all_present(self, monkeypatch):
@@ -128,7 +126,7 @@ class TestGetTokensForPlayer:
         from src.data.sync.api_client import Tokens, get_tokens_for_player
 
         monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
-        monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", "player_refresh_token")
+        monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", "player_refresh_token")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_ID", "client_id")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_SECRET", "client_secret")
 
@@ -137,7 +135,7 @@ class TestGetTokensForPlayer:
             "src.data.sync.api_client._get_tokens_via_oauth",
             new=AsyncMock(return_value=expected_tokens),
         ) as mock_oauth:
-            result = await get_tokens_for_player("JGtm")
+            result = await get_tokens_for_player("SpartanC")
 
         assert result == expected_tokens
         mock_oauth.assert_awaited_once_with(
@@ -147,7 +145,7 @@ class TestGetTokensForPlayer:
             "player_refresh_token",
         )
 
-        monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", raising=False)
+        monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", raising=False)
         monkeypatch.delenv("SPNKR_AZURE_CLIENT_ID", raising=False)
         monkeypatch.delenv("SPNKR_AZURE_CLIENT_SECRET", raising=False)
 
@@ -157,7 +155,7 @@ class TestGetTokensForPlayer:
         from src.data.sync.api_client import Tokens, get_tokens_for_player
 
         monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
-        monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", "player_token")
+        monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", "player_token")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_ID", "cid")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_SECRET", "csecret")
         monkeypatch.setenv("SPNKR_AZURE_REDIRECT_URI", "https://custom.redirect")
@@ -167,13 +165,13 @@ class TestGetTokensForPlayer:
             "src.data.sync.api_client._get_tokens_via_oauth",
             new=AsyncMock(return_value=fake_tokens),
         ) as mock_oauth:
-            await get_tokens_for_player("JGtm")
+            await get_tokens_for_player("SpartanC")
 
         _, _, redirect, _ = mock_oauth.call_args.args
         assert redirect == "https://custom.redirect"
 
         for key in [
-            "SPNKR_OAUTH_REFRESH_TOKEN_JGTM",
+            "SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC",
             "SPNKR_AZURE_CLIENT_ID",
             "SPNKR_AZURE_CLIENT_SECRET",
             "SPNKR_AZURE_REDIRECT_URI",
@@ -294,12 +292,15 @@ class TestSyncCareerRankSkip:
         mock_client_ctx.__aexit__ = AsyncMock(return_value=False)
         mock_client_ctx.get_career_rank_progression = AsyncMock(return_value=fake_career)
 
-        with patch(
-            "src.data.sync.engine.get_tokens_for_player",
-            new=AsyncMock(return_value=fake_tokens),
-        ), patch(
-            "src.data.sync.engine.SPNKrAPIClient",
-            return_value=mock_client_ctx,
+        with (
+            patch(
+                "src.data.sync.engine.get_tokens_for_player",
+                new=AsyncMock(return_value=fake_tokens),
+            ),
+            patch(
+                "src.data.sync.engine.SPNKrAPIClient",
+                return_value=mock_client_ctx,
+            ),
         ):
             result = await engine.sync_career_rank()
 
@@ -511,7 +512,7 @@ class TestNormalizeGamertag_TokensModule:
     def test_simple(self):
         from src.ui.profile_api_tokens import _normalize_gamertag_for_env
 
-        assert _normalize_gamertag_for_env("JGtm") == "JGTM"
+        assert _normalize_gamertag_for_env("SpartanC") == "SPARTANC"
 
     def test_spaces(self):
         from src.ui.profile_api_tokens import _normalize_gamertag_for_env
@@ -533,7 +534,7 @@ class TestGetTokensWithGamertagParam:
         from src.ui.profile_api_tokens import get_tokens
 
         monkeypatch.setattr("src.ui.profile_api_tokens._load_dotenv_if_present", lambda: None)
-        monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", "player_refresh")
+        monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", "player_refresh")
         monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN", "global_refresh")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_ID", "cid")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_SECRET", "csecret")
@@ -549,9 +550,12 @@ class TestGetTokensWithGamertagParam:
 
         # AzureApp et refresh_player_tokens sont importés localement (dans la fonction)
         # donc on patche directement dans le module spnkr
-        with patch("spnkr.AzureApp", MagicMock()), patch(
-            "spnkr.refresh_player_tokens",
-            side_effect=fake_refresh_tokens,
+        with (
+            patch("spnkr.AzureApp", MagicMock()),
+            patch(
+                "spnkr.refresh_player_tokens",
+                side_effect=fake_refresh_tokens,
+            ),
         ):
             session = MagicMock()
             st, ct = await get_tokens(
@@ -559,13 +563,13 @@ class TestGetTokensWithGamertagParam:
                 spartan_token=None,
                 clearance_token=None,
                 timeout_seconds=5,
-                gamertag="JGtm",
+                gamertag="SpartanC",
             )
 
         assert captured_refresh.get("token") == "player_refresh"
 
         for key in [
-            "SPNKR_OAUTH_REFRESH_TOKEN_JGTM",
+            "SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC",
             "SPNKR_OAUTH_REFRESH_TOKEN",
             "SPNKR_AZURE_CLIENT_ID",
             "SPNKR_AZURE_CLIENT_SECRET",
@@ -578,7 +582,7 @@ class TestGetTokensWithGamertagParam:
         from src.ui.profile_api_tokens import get_tokens
 
         monkeypatch.setattr("src.ui.profile_api_tokens._load_dotenv_if_present", lambda: None)
-        monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", raising=False)
+        monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", raising=False)
         monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN", "global_refresh")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_ID", "cid")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_SECRET", "csecret")
@@ -592,9 +596,12 @@ class TestGetTokensWithGamertagParam:
             mock.clearance_token.token = "ct_global"
             return mock
 
-        with patch("spnkr.AzureApp", MagicMock()), patch(
-            "spnkr.refresh_player_tokens",
-            side_effect=fake_refresh_tokens,
+        with (
+            patch("spnkr.AzureApp", MagicMock()),
+            patch(
+                "spnkr.refresh_player_tokens",
+                side_effect=fake_refresh_tokens,
+            ),
         ):
             session = MagicMock()
             await get_tokens(
@@ -602,7 +609,7 @@ class TestGetTokensWithGamertagParam:
                 spartan_token=None,
                 clearance_token=None,
                 timeout_seconds=5,
-                gamertag="JGtm",
+                gamertag="SpartanC",
             )
 
         assert captured_refresh.get("token") == "global_refresh"
@@ -633,9 +640,12 @@ class TestGetTokensWithGamertagParam:
             mock.clearance_token.token = "ct"
             return mock
 
-        with patch("spnkr.AzureApp", MagicMock()), patch(
-            "spnkr.refresh_player_tokens",
-            side_effect=fake_refresh_tokens,
+        with (
+            patch("spnkr.AzureApp", MagicMock()),
+            patch(
+                "spnkr.refresh_player_tokens",
+                side_effect=fake_refresh_tokens,
+            ),
         ):
             session = MagicMock()
             await get_tokens(
@@ -648,5 +658,9 @@ class TestGetTokensWithGamertagParam:
 
         assert captured_refresh.get("token") == "global_only"
 
-        for key in ["SPNKR_OAUTH_REFRESH_TOKEN", "SPNKR_AZURE_CLIENT_ID", "SPNKR_AZURE_CLIENT_SECRET"]:
+        for key in [
+            "SPNKR_OAUTH_REFRESH_TOKEN",
+            "SPNKR_AZURE_CLIENT_ID",
+            "SPNKR_AZURE_CLIENT_SECRET",
+        ]:
             monkeypatch.delenv(key, raising=False)

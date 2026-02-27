@@ -267,7 +267,7 @@ class TestStreamlitBridge:
 
 def _has_match_stats_table() -> bool:
     """Vérifie que la DB de test contient la table match_stats."""
-    db_path = Path("data/players/XxDaemonGamerxX/stats.duckdb")
+    db_path = Path("data/players/SpartanD/stats.duckdb")
     if not db_path.exists():
         return False
     try:
@@ -297,9 +297,9 @@ class TestDuckDBRepositoryWithRealData:
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
         repo = DuckDBRepository(
-            player_db_path="data/players/XxDaemonGamerxX/stats.duckdb",
+            player_db_path="data/players/SpartanD/stats.duckdb",
             xuid="2533274833178266",
-            gamertag="XxDaemonGamerxX",
+            gamertag="SpartanD",
         )
         yield repo
         repo.close()
@@ -360,7 +360,7 @@ class TestDuckDBRepositoryQueries:
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
         repo = DuckDBRepository(
-            player_db_path="data/players/XxDaemonGamerxX/stats.duckdb",
+            player_db_path="data/players/SpartanD/stats.duckdb",
             xuid="2533274833178266",
         )
         yield repo
