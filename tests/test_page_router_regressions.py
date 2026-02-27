@@ -145,7 +145,7 @@ def test_dispatch_session_comparison_merges_session_columns(
         lambda *_args, **_kwargs: (),
     )
 
-    _dispatch("Comparaison de sessions", router_ctx)
+    _dispatch("session_compare", router_ctx)
 
     renderer = router_ctx["render_session_comparison_page_fn"]
     assert isinstance(renderer, MagicMock)

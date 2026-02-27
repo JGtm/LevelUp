@@ -13,12 +13,12 @@ from src.app import page_router, routing
 @pytest.mark.regression
 def test_consume_pending_page_applies_valid_and_pops(monkeypatch: pytest.MonkeyPatch) -> None:
     """Une page en attente valide doit être appliquée et consommée."""
-    fake_st = SimpleNamespace(session_state={"_pending_page": "Médias"})
+    fake_st = SimpleNamespace(session_state={"_pending_page": "media"})
     monkeypatch.setattr(page_router, "st", fake_st)
 
     page_router.consume_pending_page()
 
-    assert fake_st.session_state.get("page") == "Médias"
+    assert fake_st.session_state.get("page") == "media"
     assert "_pending_page" not in fake_st.session_state
 
 
@@ -30,7 +30,7 @@ def test_consume_pending_page_defaults_when_missing(monkeypatch: pytest.MonkeyPa
 
     page_router.consume_pending_page()
 
-    assert fake_st.session_state["page"] == "Séries temporelles"
+    assert fake_st.session_state["page"] == "timeseries"
 
 
 @pytest.mark.regression
@@ -38,12 +38,12 @@ def test_consume_pending_page_ignores_invalid_keeps_existing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Une pending page invalide ne doit pas écraser la page courante."""
-    fake_st = SimpleNamespace(session_state={"_pending_page": "Inconnue", "page": "Citations"})
+    fake_st = SimpleNamespace(session_state={"_pending_page": "Inconnue", "page": "citations"})
     monkeypatch.setattr(page_router, "st", fake_st)
 
     page_router.consume_pending_page()
 
-    assert fake_st.session_state["page"] == "Citations"
+    assert fake_st.session_state["page"] == "citations"
     assert "_pending_page" not in fake_st.session_state
 
 
@@ -61,19 +61,26 @@ def test_consume_pending_match_id_trims_and_stores(monkeypatch: pytest.MonkeyPat
 
 @pytest.mark.regression
 def test_render_page_selector_uses_canonical_pages(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Le sélecteur doit être câblé sur la liste canonique des pages."""
-    segmented_control = MagicMock(return_value="Carrière")
-    fake_st = SimpleNamespace(segmented_control=segmented_control)
+    """Le sélecteur retourne un slug correspondant au label sélectionné."""
+    # En contexte test, t() retourne le français par défaut,
+    # donc get_page_labels() retourne les labels FR.
+    from src.app.page_router import get_page_labels
+
+    labels = get_page_labels()
+    # Simuler la sélection du dernier label (correspond au slug "settings")
+    segmented_control = MagicMock(return_value=labels[-1])
+    fake_st = SimpleNamespace(
+        segmented_control=segmented_control,
+        session_state={},
+    )
     monkeypatch.setattr(page_router, "st", fake_st)
 
     selected = page_router.render_page_selector()
 
-    assert selected == "Carrière"
+    assert selected == "settings"
     segmented_control.assert_called_once()
-    args, kwargs = segmented_control.call_args
-    assert args[0] == "Onglets"
-    assert kwargs["options"] == page_router.PAGES
-    assert kwargs["key"] == "page"
+    _, kwargs = segmented_control.call_args
+    assert kwargs["options"] == labels
 
 
 @pytest.mark.regression

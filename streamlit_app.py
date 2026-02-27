@@ -74,11 +74,13 @@ from src.app.main_helpers import (
 
 # Phase 4 refactoring: Page router
 from src.app.page_router import (
+    PAGE_KEYS,
     build_match_view_params,
     build_navigation,
     consume_pending_match_id,
     consume_pending_page,
     dispatch_page,
+    get_page_label,
     render_page_selector,
     render_page_selector_nav,
 )
@@ -118,7 +120,7 @@ from src.ui.formatting import (
     format_score_label,
     score_css_color,
 )
-from src.ui.i18n import get_lang, set_lang
+from src.ui.i18n import get_lang, set_lang, t
 from src.ui.multiplayer import (
     get_gamertag_from_duckdb_v4_path,
     render_player_selector_unified,
@@ -620,8 +622,8 @@ def main() -> None:
 
     if len(df) == 0:
         st.radio(
-            "Navigation",
-            options=["Paramètres"],
+            t("sidebar_navigation"),
+            options=[t("page_settings")],
             horizontal=True,
             key="page",
             label_visibility="collapsed",
@@ -845,17 +847,17 @@ def main() -> None:
             )
 
         page_callables: dict[str, Callable] = {
-            "Séries temporelles": _page_timeseries,
-            "Comparaison de sessions": _page_session_compare,
-            "Dernier match": _page_last_match,
-            "Match": _page_match_search,
-            "Médias": _page_media,
-            "Citations": _page_citations,
-            "Victoires/Défaites": _page_win_loss,
-            "Mes coéquipiers": _page_teammates,
-            "Historique des parties": _page_match_history,
-            "Carrière": _page_career,
-            "Paramètres": _page_settings,
+            "timeseries": _page_timeseries,
+            "session_compare": _page_session_compare,
+            "last_match": _page_last_match,
+            "match": _page_match_search,
+            "media": _page_media,
+            "citations": _page_citations,
+            "win_loss": _page_win_loss,
+            "teammates": _page_teammates,
+            "match_history": _page_match_history,
+            "career": _page_career,
+            "settings": _page_settings,
         }
 
         pg, pages = build_navigation(page_callables)
@@ -863,7 +865,12 @@ def main() -> None:
         # Gérer les redirections en attente (liens depuis une autre page)
         pending_page = st.session_state.pop("_pending_page", None)
         if isinstance(pending_page, str):
-            target = next((p for p in pages if p.title == pending_page), None)
+            # Accepter un slug OU un ancien nom FR (legacy)
+            from src.app.page_router import _LEGACY_NAME_TO_SLUG
+
+            slug = _LEGACY_NAME_TO_SLUG.get(pending_page, pending_page)
+            label = get_page_label(slug) if slug in PAGE_KEYS else pending_page
+            target = next((p for p in pages if p.title == label), None)
             if target is not None and target != pg:
                 st.switch_page(target)
 

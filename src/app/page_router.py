@@ -13,6 +13,7 @@ from collections.abc import Callable
 import polars as pl
 import streamlit as st
 
+from src.ui.i18n import t
 from src.ui.settings import AppSettings
 
 
@@ -23,20 +24,73 @@ def _to_polars(df: pl.DataFrame) -> pl.DataFrame:
     return pl.from_pandas(df)
 
 
-# Liste des pages disponibles
-PAGES: list[str] = [
-    "Séries temporelles",
-    "Comparaison de sessions",
-    "Dernier match",
-    "Match",
-    "Médias",
-    "Citations",
-    "Victoires/Défaites",
-    "Mes coéquipiers",
-    "Historique des parties",
-    "Carrière",
-    "Paramètres",
+# Clés internes stables (slugs) — NE PAS TRADUIRE
+PAGE_KEYS: list[str] = [
+    "timeseries",
+    "session_compare",
+    "last_match",
+    "match",
+    "media",
+    "citations",
+    "win_loss",
+    "teammates",
+    "match_history",
+    "career",
+    "settings",
 ]
+
+# Mapping slug → clé i18n pour le label traduit
+_PAGE_I18N_KEYS: dict[str, str] = {
+    "timeseries": "page_timeseries",
+    "session_compare": "page_session_compare",
+    "last_match": "page_last_match",
+    "match": "page_match",
+    "media": "page_media",
+    "citations": "page_citations",
+    "win_loss": "page_win_loss",
+    "teammates": "page_teammates",
+    "match_history": "page_match_history",
+    "career": "page_career",
+    "settings": "page_settings",
+}
+
+# Legacy: ancien nom FR → slug (pour migration session_state)
+_LEGACY_NAME_TO_SLUG: dict[str, str] = {
+    "Séries temporelles": "timeseries",
+    "Comparaison de sessions": "session_compare",
+    "Dernier match": "last_match",
+    "Match": "match",
+    "Médias": "media",
+    "Citations": "citations",
+    "Victoires/Défaites": "win_loss",
+    "Mes coéquipiers": "teammates",
+    "Historique des parties": "match_history",
+    "Carrière": "career",
+    "Paramètres": "settings",
+}
+
+
+def get_page_label(slug: str) -> str:
+    """Retourne le label traduit pour un slug de page."""
+    i18n_key = _PAGE_I18N_KEYS.get(slug, "")
+    return t(i18n_key) if i18n_key else slug
+
+
+def get_page_labels() -> list[str]:
+    """Retourne la liste des labels traduits dans l'ordre de PAGE_KEYS."""
+    return [get_page_label(k) for k in PAGE_KEYS]
+
+
+# Compatibilité descendante : PAGES est une propriété dynamique
+# qui retourne les labels traduits (pour le code qui itère encore dessus).
+@property  # type: ignore[misc]
+def _pages_compat() -> list[str]:
+    return get_page_labels()
+
+
+# Garde l'ancienne variable pour éviter les imports cassés,
+# mais elle retourne désormais les labels traduits.
+PAGES = PAGE_KEYS  # Les consommateurs doivent utiliser get_page_label(slug)
 
 
 def build_match_view_params(
@@ -83,10 +137,13 @@ def build_match_view_params(
 def consume_pending_page() -> None:
     """Consomme la page en attente si définie."""
     pending_page = st.session_state.pop("_pending_page", None)
-    if isinstance(pending_page, str) and pending_page in PAGES:
-        st.session_state["page"] = pending_page
+    if isinstance(pending_page, str):
+        # Accepter un slug OU un ancien nom FR
+        slug = _LEGACY_NAME_TO_SLUG.get(pending_page, pending_page)
+        if slug in PAGE_KEYS:
+            st.session_state["page"] = slug
     if "page" not in st.session_state:
-        st.session_state["page"] = "Séries temporelles"
+        st.session_state["page"] = PAGE_KEYS[0]  # timeseries
 
 
 def consume_pending_match_id() -> None:
@@ -97,50 +154,58 @@ def consume_pending_match_id() -> None:
 
 
 def render_page_selector() -> str:
-    """Rend le sélecteur de page et retourne la page choisie.
+    """Rend le sélecteur de page et retourne le slug de la page choisie.
 
     Note: Conservé pour compatibilité. Avec st.navigation, utiliser
     ``build_navigation`` + ``run_selected_page`` à la place.
     """
-    return st.segmented_control(
+    labels = get_page_labels()
+    selected_label = st.segmented_control(
         "Onglets",
-        options=PAGES,
-        key="page",
+        options=labels,
+        key="page_label_selector",
         label_visibility="collapsed",
     )
+    if selected_label:
+        # Trouver le slug correspondant au label sélectionné
+        idx = labels.index(selected_label) if selected_label in labels else 0
+        slug = PAGE_KEYS[idx]
+        st.session_state["page"] = slug
+        return slug
+    return st.session_state.get("page", PAGE_KEYS[0])
 
 
 # ---------------------------------------------------------------------------
 # st.navigation — routing moderne (8ter.5)
 # ---------------------------------------------------------------------------
 
-# Mapping titre de page → url_path (slugs URL-friendly)
+# Mapping slug → url_path (slugs URL-friendly)
 _PAGE_URL_PATHS: dict[str, str] = {
-    "Séries temporelles": "timeseries",
-    "Comparaison de sessions": "session-compare",
-    "Dernier match": "last-match",
-    "Match": "match",
-    "Médias": "medias",
-    "Citations": "citations",
-    "Victoires/Défaites": "win-loss",
-    "Mes coéquipiers": "teammates",
-    "Historique des parties": "history",
-    "Carrière": "career",
-    "Paramètres": "settings",
+    "timeseries": "timeseries",
+    "session_compare": "session-compare",
+    "last_match": "last-match",
+    "match": "match",
+    "media": "medias",
+    "citations": "citations",
+    "win_loss": "win-loss",
+    "teammates": "teammates",
+    "match_history": "history",
+    "career": "career",
+    "settings": "settings",
 }
 
 _PAGE_ICONS: dict[str, str] = {
-    "Séries temporelles": "📈",
-    "Comparaison de sessions": "🔄",
-    "Dernier match": "🎯",
-    "Match": "🔍",
-    "Médias": "🎬",
-    "Citations": "🏅",
-    "Victoires/Défaites": "📊",
-    "Mes coéquipiers": "👥",
-    "Historique des parties": "📋",
-    "Carrière": "⭐",
-    "Paramètres": "⚙️",
+    "timeseries": "📈",
+    "session_compare": "🔄",
+    "last_match": "🎯",
+    "match": "🔍",
+    "media": "🎬",
+    "citations": "🏅",
+    "win_loss": "📊",
+    "teammates": "👥",
+    "match_history": "📋",
+    "career": "⭐",
+    "settings": "⚙️",
 }
 
 
@@ -150,20 +215,21 @@ def build_navigation(
     """Construit les pages st.navigation et retourne (page sélectionnée, toutes les pages).
 
     Args:
-        page_callables: Mapping titre_page → callback sans argument.
+        page_callables: Mapping slug → callback sans argument.
 
     Returns:
         Tuple (page_courante, liste_pages) prêt pour ``pg.run()``.
     """
     pages: list[st.Page] = []
-    for title in PAGES:
-        cb = page_callables.get(title)
+    for slug in PAGE_KEYS:
+        cb = page_callables.get(slug)
         if cb is None:
             continue
-        url_path = _PAGE_URL_PATHS.get(title, title.lower().replace(" ", "-"))
-        icon = _PAGE_ICONS.get(title)
+        url_path = _PAGE_URL_PATHS.get(slug, slug)
+        icon = _PAGE_ICONS.get(slug)
+        label = get_page_label(slug)
         pages.append(
-            st.Page(cb, title=title, icon=icon, url_path=url_path),
+            st.Page(cb, title=label, icon=icon, url_path=url_path),
         )
 
     pg = st.navigation(pages, position="hidden")
@@ -182,7 +248,6 @@ def render_page_selector_nav(
     titles = [p.title for p in pages]
     current_title = current_page.title if current_page else titles[0]
 
-    # Le segmented_control avec default= pour refléter la page courante
     selected = st.segmented_control(
         "Onglets",
         options=titles,
@@ -236,13 +301,13 @@ def dispatch_page(
     # Les fonctions de rendu attendent encore pandas, donc on garde df en l'état
     # La conversion se fera progressivement au niveau de chaque page
 
-    if page == "Dernier match":
+    if page == "last_match":
         render_last_match_page_fn(dff=dff, **match_view_params)
 
-    elif page == "Match":
+    elif page == "match":
         render_match_search_page_fn(df=df, dff=dff, **match_view_params)
 
-    elif page == "Citations":
+    elif page == "citations":
         render_citations_page_fn(
             dff=dff,
             df_full=df,
@@ -252,7 +317,7 @@ def dispatch_page(
             top_medals_fn=top_medals_fn,
         )
 
-    elif page == "Comparaison de sessions":
+    elif page == "session_compare":
         from src.app.filters import get_friends_xuids_for_sessions
 
         friends_tuple = get_friends_xuids_for_sessions(db_path, xuid.strip(), db_key, aliases_key)
@@ -282,10 +347,10 @@ def dispatch_page(
             sessions_for_compare = all_sessions_pl
         render_session_comparison_page_fn(sessions_for_compare, df_full=df)
 
-    elif page == "Séries temporelles":
+    elif page == "timeseries":
         render_timeseries_page_fn(dff, df_full=df, db_path=db_path, xuid=xuid)
 
-    elif page == "Victoires/Défaites":
+    elif page == "win_loss":
         render_win_loss_page_fn(
             dff=dff,
             base=base,
@@ -295,7 +360,7 @@ def dispatch_page(
             db_key=db_key,
         )
 
-    elif page == "Mes coéquipiers":
+    elif page == "teammates":
         render_teammates_page_fn(
             df=df,
             dff=dff,
@@ -315,7 +380,7 @@ def dispatch_page(
             top_medals_fn=top_medals_fn,
         )
 
-    elif page == "Historique des parties":
+    elif page == "match_history":
         render_match_history_page_fn(
             dff=dff,
             waypoint_player=waypoint_player,
@@ -325,20 +390,20 @@ def dispatch_page(
             df_full=df,
         )
 
-    elif page == "Médias" or page == "Bibliothèque médias":
+    elif page == "media" or page == "Bibliothèque médias":
         render_media_tab_fn(
             df_full=df,
             settings=settings,
         )
 
-    elif page == "Carrière":
+    elif page == "career":
         render_career_page_fn(
             db_path=db_path,
             xuid=xuid,
             db_key=db_key,
         )
 
-    elif page == "Paramètres":
+    elif page == "settings":
         render_settings_page_fn(
             settings,
             get_local_dbs_fn=get_local_dbs_fn,

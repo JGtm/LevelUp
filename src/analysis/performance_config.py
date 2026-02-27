@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from src.ui.i18n import t
+
 # =============================================================================
 # Version du score
 # =============================================================================
@@ -83,6 +85,17 @@ SCORE_LABELS = {
 }
 
 
+def get_score_labels(lang: str | None = None) -> dict[str, str]:
+    """Retourne les labels traduits pour les seuils de performance."""
+    return {
+        "excellent": t("perf_label_excellent", lang=lang),
+        "good": t("perf_label_good", lang=lang),
+        "average": t("perf_label_average", lang=lang),
+        "below_average": t("perf_label_below", lang=lang),
+        "bad": t("perf_label_bad", lang=lang),
+    }
+
+
 # =============================================================================
 # Description centralisée (pour l'UI)
 # =============================================================================
@@ -90,6 +103,17 @@ SCORE_LABELS = {
 PERFORMANCE_SCORE_TITLE = "Score de performance"
 
 PERFORMANCE_SCORE_SHORT_DESC = "Relatif à ton historique"
+
+
+def get_performance_title(lang: str | None = None) -> str:
+    """Retourne le titre traduit du score de performance."""
+    return t("perf_title", lang=lang)
+
+
+def get_performance_short_desc(lang: str | None = None) -> str:
+    """Retourne la description courte traduite."""
+    return t("perf_short_desc", lang=lang)
+
 
 PERFORMANCE_SCORE_FULL_DESC = f"""
 Le **score de performance** (0-100) est un indicateur **relatif** qui compare
@@ -140,6 +164,62 @@ PERFORMANCE_SCORE_COMPACT_DESC = f"""
 """
 
 
+_PERFORMANCE_FULL_DESC_EN = f"""
+The **performance score** (0-100) is a **relative** indicator that compares
+your performance in a match to your **personal history**.
+
+### Metrics used
+| Metric | Weight | Description |
+|--------|--------|-------------|
+| KPM (Kills/min) | 17% | Kills per minute |
+| DPM Deaths (Deaths/min) | 13% | Deaths per minute (inverted) |
+| KDA | 13% | (Kills + Assists) / Deaths ratio |
+| PSPM (Score/min) | 12% | Personal score per minute |
+| Kills vs Expected | 10% | Actual kills vs matchmaking prediction |
+| DPM Damage (Damage/min) | 9% | Damage dealt per minute |
+| Deaths vs Expected | 8% | Actual deaths vs prediction (inverted) |
+| APM (Assists/min) | 8% | Assists per minute |
+| Accuracy | 6% | Shot accuracy percentage |
+| Rank vs Expected | 4% | Rank performance adjusted by MMR |
+
+### Interpretation
+| Score | Meaning |
+|-------|-------|
+| **75-100** | Exceptional match for you |
+| **60-75** | Above your average |
+| **45-60** | Typical performance |
+| **30-45** | Below your average |
+| **0-30** | Tough match for you |
+
+### Calculation
+1. For each metric, the **percentile** of your performance in this match
+   is calculated relative to your entire history
+2. Percentiles are combined with the weights above
+3. **50 = your median performance**
+4. Unavailable metrics are ignored (weights renormalized)
+
+### Notes
+- Requires at least **{MIN_MATCHES_FOR_RELATIVE} matches** in history
+- The score is **stored in DB** at import time
+- A player who improves will see new scores rise above 50
+"""
+
+
+def get_performance_full_desc(lang: str | None = None) -> str:
+    """Retourne la description complète traduite du score de performance."""
+    resolved = lang
+    if resolved is None:
+        try:
+            from src.ui.i18n import get_lang
+
+            resolved = get_lang()
+        except Exception:
+            resolved = "fr"
+    if resolved == "en":
+        return _PERFORMANCE_FULL_DESC_EN
+    return PERFORMANCE_SCORE_FULL_DESC
+
+
 # =============================================================================
 # Dataclass pour les résultats
 # =============================================================================
@@ -163,18 +243,22 @@ class PerformanceScoreResult:
 
     @property
     def label(self) -> str:
-        """Label textuel du score."""
+        """Label textuel du score (traduit)."""
+        return self.get_label()
+
+    def get_label(self, lang: str | None = None) -> str:
+        """Label textuel du score, traduit selon la langue."""
         if self.score is None:
             return "N/A"
         if self.score >= SCORE_THRESHOLDS["excellent"]:
-            return "Exceptionnel"
+            return t("perf_score_exceptional", lang=lang)
         if self.score >= SCORE_THRESHOLDS["good"]:
-            return "Bon"
+            return t("perf_score_good", lang=lang)
         if self.score >= SCORE_THRESHOLDS["average"]:
-            return "Normal"
+            return t("perf_score_normal", lang=lang)
         if self.score >= SCORE_THRESHOLDS["below_average"]:
-            return "Sous la moyenne"
-        return "Difficile"
+            return t("perf_score_below", lang=lang)
+        return t("perf_score_difficult", lang=lang)
 
     @property
     def color_class(self) -> str:
@@ -192,16 +276,16 @@ class PerformanceScoreResult:
         return "perf-bad"
 
 
-def get_score_interpretation(score: float | None) -> str:
-    """Retourne l'interprétation textuelle d'un score."""
+def get_score_interpretation(score: float | None, lang: str | None = None) -> str:
+    """Retourne l'interprétation textuelle d'un score (traduite)."""
     if score is None:
-        return "Historique insuffisant"
+        return t("perf_insufficient", lang=lang)
     if score >= SCORE_THRESHOLDS["excellent"]:
-        return "Match exceptionnel pour toi"
+        return t("perf_interp_excellent", lang=lang)
     if score >= SCORE_THRESHOLDS["good"]:
-        return "Au-dessus de ta moyenne"
+        return t("perf_interp_good", lang=lang)
     if score >= SCORE_THRESHOLDS["average"]:
-        return "Performance typique"
+        return t("perf_interp_average", lang=lang)
     if score >= SCORE_THRESHOLDS["below_average"]:
-        return "En-dessous de ta moyenne"
-    return "Match difficile"
+        return t("perf_interp_below", lang=lang)
+    return t("perf_interp_bad", lang=lang)

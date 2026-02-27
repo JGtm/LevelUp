@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
-from src.ui.i18n import get_lang, set_lang, t
+from src.ui.i18n import set_lang, t
 from src.ui.multiplayer import (
     render_player_selector,
 )
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from src.ui.settings import AppSettings
 
 
-def _render_lang_selector(settings: "AppSettings") -> bool:
+def _render_lang_selector(settings: AppSettings) -> bool:
     """Affiche le sélecteur de langue et retourne True si la langue a changé."""
     _LANG_OPTIONS = {"fr": "🇫🇷 Français", "en": "🇬🇧 English"}
     current = st.session_state.get("lang", settings.lang or "fr")
@@ -173,12 +173,12 @@ def render_sync_button(
         return False
 
     if st.button(
-        "🔄 Synchroniser",
+        t("sidebar_sync_btn"),
         key="sidebar_sync_button",
-        help="Synchronise tous les joueurs (nouveaux matchs, highlights, aliases).",
+        help=t("sidebar_sync_help"),
         width="stretch",
     ):
-        with st.spinner("Synchronisation en cours..."):
+        with st.spinner(t("syncing")):
             ok, msg = sync_all_players_duckdb(
                 match_type=str(
                     getattr(settings, "spnkr_refresh_match_type", "matchmaking") or "matchmaking"
@@ -212,7 +212,7 @@ def render_sync_button(
 
                 from scripts.backfill_data import backfill_all_players
 
-                with st.spinner("Backfill des données manquantes..."):
+                with st.spinner(t("sidebar_backfill_running")):
                     backfill_result = asyncio.run(
                         backfill_all_players(
                             dry_run=False,
@@ -238,21 +238,23 @@ def render_sync_button(
                         totals = backfill_result.get("total_results", {})
                         backfill_parts = []
                         if totals.get("medals_inserted", 0) > 0:
-                            backfill_parts.append(f"{totals['medals_inserted']} médaille(s)")
+                            backfill_parts.append(t("backfill_medals", n=totals["medals_inserted"]))
                         if totals.get("events_inserted", 0) > 0:
-                            backfill_parts.append(f"{totals['events_inserted']} event(s)")
+                            backfill_parts.append(t("backfill_events", n=totals["events_inserted"]))
                         if totals.get("skill_inserted", 0) > 0:
-                            backfill_parts.append("skill")
+                            backfill_parts.append(t("backfill_skill"))
                         if totals.get("personal_scores_inserted", 0) > 0:
                             backfill_parts.append(
-                                f"{totals['personal_scores_inserted']} personal_score(s)"
+                                t("backfill_personal_scores", n=totals["personal_scores_inserted"])
                             )
                         if totals.get("performance_scores_inserted", 0) > 0:
                             backfill_parts.append(
-                                f"{totals['performance_scores_inserted']} score(s) perf"
+                                t("backfill_scores", n=totals["performance_scores_inserted"])
                             )
                         if totals.get("aliases_inserted", 0) > 0:
-                            backfill_parts.append(f"{totals['aliases_inserted']} alias(es)")
+                            backfill_parts.append(
+                                t("backfill_aliases", n=totals["aliases_inserted"])
+                            )
 
                         if backfill_parts:
                             st.info(f"Backfill: {', '.join(backfill_parts)}")
@@ -298,7 +300,7 @@ def render_navigation_tabs(
         return pages[current_index]
     else:
         selected = st.radio(
-            "Navigation",
+            t("sidebar_navigation"),
             options=pages,
             index=current_index,
             horizontal=True,
@@ -316,11 +318,11 @@ def render_db_info(db_path: str) -> None:
         db_path: Chemin vers la base de données.
     """
     if not db_path:
-        st.caption("Aucune base de données sélectionnée")
+        st.caption(t("sidebar_no_db_selected"))
         return
 
     if not os.path.exists(db_path):
-        st.warning(f"Base introuvable: {db_path}")
+        st.warning(t("sidebar_db_not_found", path=db_path))
         return
 
     try:
@@ -349,9 +351,9 @@ def render_quick_filters(
     if not playlists:
         return selected_playlists
 
-    with st.expander("🎮 Filtres rapides", expanded=False):
+    with st.expander(t("sidebar_quick_filters"), expanded=False):
         new_selection = st.multiselect(
-            "Playlists",
+            t("filter_playlists"),
             options=playlists,
             default=selected_playlists,
             key="quick_filter_playlists",

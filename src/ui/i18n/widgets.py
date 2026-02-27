@@ -5,6 +5,7 @@ Boutons, selectbox, expander, checkbox, radio, multiselect, captions de widgets.
 ⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO" ci-dessous.
    Règles : voir le prompt de la Phase 1b dans le plan i18n.
 """
+
 from __future__ import annotations
 
 STRINGS: dict[str, dict[str, str]] = {
@@ -234,5 +235,72 @@ STRINGS: dict[str, dict[str, str]] = {
     "mh_no_matches": {
         "fr": "Aucun match à afficher. Vérifiez vos filtres ou synchronisez les données.",
         "en": "No matches to display. Check your filters or sync your data.",
+    },
+    # ── Sidebar — sync ──────────────────────────────────────────────────────
+    "sidebar_sync_btn": {"fr": "🔄 Synchroniser", "en": "🔄 Sync"},
+    "sidebar_sync_help": {
+        "fr": "Synchronise tous les joueurs (nouveaux matchs, highlights, aliases).",
+        "en": "Sync all players (new matches, highlights, aliases).",
+    },
+    "sidebar_backfill_running": {
+        "fr": "Backfill des données manquantes…",
+        "en": "Backfilling missing data…",
+    },
+    "sidebar_navigation": {"fr": "Navigation", "en": "Navigation"},
+    "sidebar_db_not_found": {
+        "fr": "Base introuvable : {path}",
+        "en": "Database not found: {path}",
+    },
+    # ── Sidebar — résultats backfill ────────────────────────────────────────
+    "backfill_medals": {"fr": "{n} médaille(s)", "en": "{n} medal(s)"},
+    "backfill_events": {"fr": "{n} event(s)", "en": "{n} event(s)"},
+    "backfill_scores": {"fr": "{n} score(s) perf", "en": "{n} perf score(s)"},
+    "backfill_aliases": {"fr": "{n} alias(es)", "en": "{n} alias(es)"},
+    "backfill_personal_scores": {"fr": "{n} personal_score(s)", "en": "{n} personal score(s)"},
+    "backfill_skill": {"fr": "skill", "en": "skill"},
+    # ── Filtres — labels supplémentaires ────────────────────────────────────
+    "filter_header": {"fr": "Filtres", "en": "Filters"},
+    "filter_selection": {"fr": "Sélection", "en": "Selection"},
+    "filter_period": {"fr": "Période", "en": "Period"},
+    "filter_sessions": {"fr": "Sessions", "en": "Sessions"},
+    "filter_start": {"fr": "Début", "en": "Start"},
+    "filter_end": {"fr": "Fin", "en": "End"},
+    "filter_playlists": {"fr": "Playlists", "en": "Playlists"},
+    "filter_modes": {"fr": "Modes", "en": "Modes"},
+    "filter_maps": {"fr": "Cartes", "en": "Maps"},
+    "filter_last_session": {"fr": "Dernière session", "en": "Last session"},
+    "filter_prev_session": {"fr": "Session précédente", "en": "Previous session"},
+    "filter_session_label": {"fr": "Session", "en": "Session"},
+    "filter_last_trio_session": {"fr": "Dernière session en trio", "en": "Last trio session"},
+    "filter_pvp_unranked": {"fr": "PVP non classé", "en": "Unranked PVP"},
+    "filter_pvp_ranked": {"fr": "PVP classé", "en": "Ranked PVP"},
+    "filter_pve": {"fr": "PVE", "en": "PVE"},
+    # ── Settings — labels supplémentaires ───────────────────────────────────
+    "settings_save": {"fr": "Enregistrer", "en": "Save"},
+    "settings_backfill_enable": {
+        "fr": "Activer le backfill après synchronisation",
+        "en": "Enable backfill after sync",
+    },
+    "settings_max_matches": {"fr": "Max matchs par sync", "en": "Max matches per sync"},
+    "settings_api_rate": {"fr": "Requêtes API / seconde", "en": "API requests / second"},
+    "settings_clear_cache_on_refresh": {
+        "fr": "Le bouton Actualiser vide aussi les caches",
+        "en": "Refresh also clears caches",
+    },
+    "settings_media_base_folder": {
+        "fr": "Dossier de base des captures",
+        "en": "Base folder for captures",
+    },
+    "settings_media_tolerance": {
+        "fr": "Tolérance (minutes) autour du match",
+        "en": "Tolerance (minutes) around the match",
+    },
+    "settings_source_help": {
+        "fr": "Le fichier db_profiles.json contient la configuration des bases de données. Les tokens d'authentification sont dans .env.local.",
+        "en": "The db_profiles.json file contains the database configuration. Authentication tokens are in .env.local.",
+    },
+    "settings_sync_help": {
+        "fr": "Configure les paramètres de synchronisation avec l'API Halo.",
+        "en": "Configure sync settings with the Halo API.",
     },
 }
