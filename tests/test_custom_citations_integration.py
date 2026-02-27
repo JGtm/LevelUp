@@ -6,6 +6,7 @@ Ces tests appellent les VRAIES fonctions Python au lieu de simuler la logique SQ
 from __future__ import annotations
 
 from src.analysis.citations.custom_rules import (
+    compute_annexion_forcee,
     compute_flag_em_down,
     compute_hijack,
     compute_mongoose_destroyer,
@@ -270,3 +271,62 @@ class TestCombinedCitationsIntegration:
         )
 
         assert result == 3
+
+
+class TestTechnicalIdSupport:
+    """Tests pour les nouveaux IDs techniques (post-migration)."""
+
+    def test_flag_em_down_with_runner_stopped(self):
+        """Avec le nouvel ID technique runner_stopped."""
+        awards = {"runner_stopped": 3}
+        assert compute_flag_em_down(awards=awards) == 3
+
+    def test_flag_em_down_mixed_legacy_and_technical(self):
+        """Mélange legacy + technique doit sommer."""
+        awards = {"runner_stopped": 2, "Flag Carrier Kill": 1}
+        assert compute_flag_em_down(awards=awards) == 3
+
+    def test_wraith_with_destroyed_wraith(self):
+        """Avec le nouvel ID technique destroyed_wraith."""
+        awards = {"destroyed_wraith": 2}
+        assert compute_wraith_destroyer(awards=awards) == 2
+
+    def test_wraith_mixed_legacy_and_technical(self):
+        """Mélange legacy + technique doit sommer."""
+        awards = {"destroyed_wraith": 1, "Wraith Destroyed": 2}
+        assert compute_wraith_destroyer(awards=awards) == 3
+
+    def test_mongoose_with_destroyed_mongoose(self):
+        """Avec le nouvel ID technique destroyed_mongoose."""
+        awards = {"destroyed_mongoose": 4}
+        assert compute_mongoose_destroyer(awards=awards) == 4
+
+    def test_warthog_with_destroyed_warthog(self):
+        """Avec les nouveaux IDs techniques destroyed_warthog."""
+        awards = {"destroyed_warthog": 3, "destroyed_rocket_warthog": 1}
+        assert compute_warthog_destroyer(awards=awards) == 4
+
+    def test_hijack_with_hijacked_prefix(self):
+        """Avec les nouveaux IDs techniques hijacked_*."""
+        awards = {"hijacked_banshee": 1, "hijacked_ghost": 2}
+        assert compute_hijack(awards=awards) == 3
+
+    def test_vandalism_with_destroyed_prefix(self):
+        """Avec les nouveaux IDs techniques destroyed_*."""
+        awards = {"destroyed_banshee": 1, "destroyed_ghost": 2, "destroyed_warthog": 3}
+        assert compute_vandalism(awards=awards) == 6
+
+    def test_vandalism_mixed_legacy_and_technical(self):
+        """Mélange legacy + technique pour vandalism."""
+        awards = {"destroyed_banshee": 1, "Warthog Destroyed": 2}
+        assert compute_vandalism(awards=awards) == 3
+
+    def test_zone_capture_with_zone_captured(self):
+        """Avec le nouvel ID technique zone_captured."""
+        awards = {"zone_captured": 9}
+        assert compute_annexion_forcee(awards=awards) == 3
+
+    def test_zone_capture_mixed_legacy(self):
+        """zone_captured prioritaire via 'or' chain."""
+        awards = {"zone_captured": 6}
+        assert compute_annexion_forcee(awards=awards) == 2
