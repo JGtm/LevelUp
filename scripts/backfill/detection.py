@@ -299,11 +299,12 @@ def _find_matches_in_shared_all(
             conditions.append(base + _done_guard("medals", has_bf_col))
 
     # Events
+    # Fix v5.4: utiliser mr.events_loaded (source de vérité 100% fiable) plutôt que
+    # le bitmask backfill_completed. Le bit "events" (=2) était posé dans
+    # backfill_completed même quand l'API retournait highlight_events=[] → les matchs
+    # sans events étaient exclus silencieusement de la détection.
     if events:
-        conditions.append(
-            "mp.match_id NOT IN (SELECT DISTINCT match_id FROM highlight_events WHERE match_id = mp.match_id)"
-            + _done_guard("events", has_bf_col)
-        )
+        conditions.append("mr.events_loaded = false")
 
     # Skill
     # NOTE V5.2 : Condition composite pour éviter la re-détection infinie des modes

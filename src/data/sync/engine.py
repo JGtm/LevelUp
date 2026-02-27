@@ -34,7 +34,6 @@ import duckdb
 from src.data.sync.api_client import (
     SPNKrAPIClient,
     Tokens,
-    _normalize_gamertag_for_env,
     enrich_match_info_with_assets,
     get_player_token_env_key,
     get_tokens_for_player,
@@ -1133,6 +1132,14 @@ class DuckDBSyncEngine:
                     )
                     result["events"] = len(event_rows_shared)
                     backfill_needed.append("events")
+                    # Fix v5.4: poser le bit ici (insertion réelle) plutôt que dans
+                    # _compute_backfill_mask (qui le posait même sans insertion effective)
+                    shared_conn.execute(
+                        "UPDATE match_registry "
+                        "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                        "WHERE match_id = ?",
+                        (BACKFILL_FLAGS["events"], match_id),
+                    )
 
                 if not medals_loaded:
                     medals_all = extract_all_medals(stats_json)
@@ -1487,8 +1494,10 @@ class DuckDBSyncEngine:
         if options.with_skill:
             bf_mask |= BACKFILL_FLAGS["skill"]
             bf_mask |= BACKFILL_FLAGS["enemy_mmr"]
-        if options.with_highlight_events:
-            bf_mask |= BACKFILL_FLAGS["events"]
+        # Fix v5.4: le bit "events" n'est plus posé ici de façon inconditionnelle.
+        # Il est posé uniquement quand des events sont réellement insérés
+        # (cf. bloc events dans _sync_single_match_shared), pour éviter que
+        # backfill_completed & 2 soit posé sur des matchs où l'API retourne [].
         if options.with_participants:
             bf_mask |= BACKFILL_FLAGS["participants"]
             bf_mask |= BACKFILL_FLAGS["participants_scores"]
