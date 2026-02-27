@@ -88,7 +88,7 @@ def plot_killer_victim_stacked_bars(
     *,
     me_xuid: str | None = None,
     rank_by_xuid: dict[str, int] | None = None,
-    title: str = "Eliminateur-Victime",
+    title: str | None = None,
     height: int = 400,
     lang: str = "fr",
 ) -> go.Figure:
@@ -106,6 +106,8 @@ def plot_killer_victim_stacked_bars(
     Returns:
         Figure Plotly avec barres empilées (une par tueur, segments = victimes).
     """
+    if title is None:
+        title = viz_t("title_elim_victim", lang)
     if not POLARS_AVAILABLE:
         raise ImportError("Polars requis pour cette fonction")
 
@@ -302,7 +304,7 @@ def plot_kd_timeseries(
                 line={"color": final_color, "width": 3},
                 marker={"size": 6},
                 yaxis="y2",
-                hovertemplate="Min %{x}<br>Net K/D cumulé: %{y:+d}<extra></extra>",
+                hovertemplate=viz_t("hover_net_kd_cumul", lang),
             )
         )
 
@@ -477,7 +479,7 @@ def plot_nemesis_victim_summary(
     nemesis_data: dict[str, Any],
     victim_data: dict[str, Any],
     *,
-    title: str = "Némésis et Souffre-douleur",
+    title: str | None = None,
     height: int = 250,
     lang: str = "fr",
 ) -> go.Figure:
@@ -494,6 +496,8 @@ def plot_nemesis_victim_summary(
     Returns:
         Figure Plotly avec le résumé.
     """
+    if title is None:
+        title = viz_t("title_nemesis_victim", lang)
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -549,7 +553,7 @@ def plot_nemesis_victim_summary(
 def plot_killer_victim_heatmap(
     matrix_df: pl.DataFrame,
     *,
-    title: str = "Matrice Killer-Victim",
+    title: str | None = None,
     height: int = 500,
     lang: str = "fr",
 ) -> go.Figure:
@@ -564,6 +568,8 @@ def plot_killer_victim_heatmap(
     Returns:
         Figure Plotly avec la heatmap.
     """
+    if title is None:
+        title = viz_t("title_killer_victim_matrix", lang)
     if not POLARS_AVAILABLE:
         raise ImportError("Polars requis pour cette fonction")
 
@@ -622,7 +628,7 @@ def plot_top_antagonists_bars(
     victims: list[dict],
     *,
     top_n: int = 5,
-    title: str = "Top Antagonistes",
+    title: str | None = None,
     height: int = 400,
     lang: str = "fr",
 ) -> go.Figure:
@@ -638,6 +644,8 @@ def plot_top_antagonists_bars(
     Returns:
         Figure Plotly avec les top antagonistes.
     """
+    if title is None:
+        title = viz_t("title_top_antagonists", lang)
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -661,7 +669,7 @@ def plot_top_antagonists_bars(
                 orientation="h",
                 marker={"color": COLORS["nemesis"]},
                 name=viz_t("trace_deaths", lang),
-                hovertemplate="<b>%{y}</b><br>M'a tué: %{x} fois<extra></extra>",
+                hovertemplate=viz_t("hover_killed_by", lang),
             ),
             row=1,
             col=1,
@@ -680,7 +688,7 @@ def plot_top_antagonists_bars(
                 orientation="h",
                 marker={"color": COLORS["victim"]},
                 name=viz_t("trace_kills", lang),
-                hovertemplate="<b>%{y}</b><br>Tué: %{x} fois<extra></extra>",
+                hovertemplate=viz_t("hover_i_killed", lang),
             ),
             row=1,
             col=2,

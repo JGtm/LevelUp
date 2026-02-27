@@ -128,7 +128,7 @@ def render_media_tab(
     _kind = st.session_state.pop("_lightbox_media_kind", "image")
     if _path is not None and Path(_path).exists():
 
-        @st.dialog("Média", width="large")
+        @st.dialog(t("media_dialog_title"), width="large")
         def _lightbox_dialog():
             # CSS pour maximiser la largeur sans débordement (cible le contenu du modal)
             st.markdown(

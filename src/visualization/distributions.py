@@ -80,7 +80,7 @@ def plot_kda_distribution(df: DataFrameLike, lang: str = "fr") -> go.Figure:
             line={"width": PLOT_CONFIG.line_width, "color": colors["cyan"]},
             fill="tozeroy",
             fillcolor="rgba(53,208,255,0.18)",
-            hovertemplate="FDA=%{x:.2f}<br>densité=%{y:.3f}<extra></extra>",
+            hovertemplate=viz_t("hover_kde", lang),
         )
     )
 
@@ -105,7 +105,7 @@ def plot_kda_distribution(df: DataFrameLike, lang: str = "fr") -> go.Figure:
             x=median_val,
             line_dash="dash",
             line_color="#ffaa00",
-            annotation_text=f"Médiane: {median_val:.2f}",
+            annotation_text=viz_t("annot_median", lang, val=f"{median_val:.2f}"),
             annotation_position="top right",
             annotation_font_color="#ffaa00",
         )
@@ -161,15 +161,10 @@ def plot_top_weapons(
             name=viz_t("trace_kills", lang),
             marker_color=colors["cyan"],
             opacity=0.85,
-            text=[f"{k} frags" for k in kills],
+            text=[viz_t("text_kills_count", lang, k=k) for k in kills],
             textposition="outside",
             customdata=list(zip(hs_rates, accuracies, strict=False)),
-            hovertemplate=(
-                "%{y}<br>"
-                "Frags: %{x}<br>"
-                "Headshot: %{customdata[0]:.1f}%<br>"
-                "Précision: %{customdata[1]:.1f}%<extra></extra>"
-            ),
+            hovertemplate=viz_t("hover_weapons", lang),
         )
     )
 
@@ -279,7 +274,7 @@ def plot_histogram(
             x=median_val,
             line_dash="dash",
             line_color="#ffaa00",
-            annotation_text=f"Médiane: {median_val:.1f}",
+            annotation_text=viz_t("annot_median", lang, val=f"{median_val:.1f}"),
             annotation_position="top right",
             annotation_font_color="#ffaa00",
         )
@@ -529,7 +524,7 @@ def plot_first_event_distribution(
                 marker_color=colors["green"],
                 opacity=0.7,
                 nbinsx=20,
-                hovertemplate="Temps: %{x:.0f}s<br>Matchs: %{y}<extra></extra>",
+                hovertemplate=viz_t("hover_first_event", lang),
             )
         )
 
@@ -541,7 +536,7 @@ def plot_first_event_distribution(
                 marker_color=colors["red"],
                 opacity=0.6,
                 nbinsx=20,
-                hovertemplate="Temps: %{x:.0f}s<br>Matchs: %{y}<extra></extra>",
+                hovertemplate=viz_t("hover_first_event", lang),
             )
         )
 
@@ -552,7 +547,7 @@ def plot_first_event_distribution(
             x=avg_kill,
             line_dash="dash",
             line_color=colors["green"],
-            annotation_text=f"Moy. frag: {avg_kill:.0f}s",
+            annotation_text=viz_t("annot_avg_kill", lang, val=f"{avg_kill:.0f}"),
             annotation_position="top",
         )
 
@@ -562,7 +557,7 @@ def plot_first_event_distribution(
             x=avg_death,
             line_dash="dash",
             line_color=colors["red"],
-            annotation_text=f"Moy. mort: {avg_death:.0f}s",
+            annotation_text=viz_t("annot_avg_death", lang, val=f"{avg_death:.0f}"),
             annotation_position="bottom",
         )
 
@@ -573,7 +568,7 @@ def plot_first_event_distribution(
             x=median_kill,
             line_dash="dot",
             line_color="#ffaa00",
-            annotation_text=f"Méd. frag: {median_kill:.0f}s",
+            annotation_text=viz_t("annot_med_kill", lang, val=f"{median_kill:.0f}"),
             annotation_position="top right",
             annotation_font_color="#ffaa00",
         )
@@ -584,7 +579,7 @@ def plot_first_event_distribution(
             x=median_death,
             line_dash="dot",
             line_color="#ffaa00",
-            annotation_text=f"Méd. mort: {median_death:.0f}s",
+            annotation_text=viz_t("annot_med_death", lang, val=f"{median_death:.0f}"),
             annotation_position="bottom right",
             annotation_font_color="#ffaa00",
         )

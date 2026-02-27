@@ -146,7 +146,7 @@ def plot_participation_pie(
     # Annotation pénalités si présentes
     if penalties < 0:
         fig.add_annotation(
-            text=f"Pénalités: {int(penalties):,} pts",
+            text=viz_t("annot_penalties", lang, pts=f"{int(penalties):,}"),
             xref="paper",
             yref="paper",
             x=0.5,

@@ -1602,4 +1602,109 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Profil auto (SPNKr) : {err}",
         "en": "Profile auto (SPNKr): {err}",
     },
+    # ── Objective analysis page (Phase 3) ───────────────────────────────────
+    "obj_caption": {
+        "fr": "Analysez votre contribution aux objectifs de jeu et découvrez votre profil de joueur.",
+        "en": "Analyze your contribution to game objectives and discover your player profile.",
+    },
+    "obj_sync_hint": {
+        "fr": "💡 Les tables `personal_score_awards` peuvent ne pas exister. Lancez une synchronisation pour les créer.",
+        "en": "💡 The `personal_score_awards` tables may not exist. Please run a sync to create them.",
+    },
+    "obj_no_personal_score": {
+        "fr": "⚠️ Aucune donnée de score personnel disponible. Synchronisez vos matchs pour obtenir ces données.",
+        "en": "⚠️ No personal score data available. Sync your matches to get this data.",
+    },
+    "obj_help_obj_points": {
+        "fr": "Points gagnés sur les objectifs de jeu",
+        "en": "Points earned on game objectives",
+    },
+    "obj_help_kill_points": {
+        "fr": "Points gagnés avec les éliminations",
+        "en": "Points earned with eliminations",
+    },
+    "obj_help_assist_points": {
+        "fr": "Points gagnés avec les assistances",
+        "en": "Points earned with assists",
+    },
+    "obj_profile_desc_support": {
+        "fr": "Vous contribuez fortement aux objectifs de l'équipe.",
+        "en": "You contribute strongly to team objectives.",
+    },
+    "obj_profile_desc_balanced": {
+        "fr": "Bon équilibre entre kills et objectifs.",
+        "en": "Good balance between kills and objectives.",
+    },
+    "obj_profile_desc_slayer": {
+        "fr": "Vous excellez dans les éliminations.",
+        "en": "You excel at eliminations.",
+    },
+    "obj_scatter_caption": {
+        "fr": "Chaque point représente un match. Les points au-dessus de la tendance indiquent une meilleure contribution aux objectifs.",
+        "en": "Each point represents a match. Points above the trend line indicate better objective contribution.",
+    },
+    "obj_team_feature_hint": {
+        "fr": "Cette fonctionnalité nécessite d'avoir synchronisé les données de tous les joueurs d'un match. Elle sera disponible dans une prochaine version.",
+        "en": "This feature requires syncing all players' data from a match. It will be available in a future version.",
+    },
+    "obj_tip_improve_obj": {
+        "fr": "🎯 **Pensez aux objectifs !**\n\nVotre ratio objectifs est faible. Dans les modes objectifs (CTF, Strongholds, etc.), contribuer aux objectifs rapporte plus de points à l'équipe.",
+        "en": "🎯 **Think objectives!**\n\nYour objective ratio is low. In objective modes (CTF, Strongholds, etc.), focusing on objectives scores more points for the team.",
+    },
+    "obj_tip_great_support": {
+        "fr": "🛡️ **Excellent joueur d'objectif !**\n\nVous êtes un pilier pour votre équipe sur les objectifs. Continuez à jouer le jeu d'équipe !",
+        "en": "🛡️ **Excellent objective player!**\n\nYou are a cornerstone for your team on objectives. Keep playing the team game!",
+    },
+    "obj_tip_assists": {
+        "fr": "🤝 **Grand fournisseur d'assists !**\n\nVous contribuez beaucoup aux éliminations de vos coéquipiers. Pensez à utiliser le ping et les EMP pour maximiser cet impact.",
+        "en": "🤝 **Great assist provider!**\n\nYou contribute a lot to your teammates' eliminations. Consider using ping and EMP to maximize this impact.",
+    },
+    # ── Settings page (Phase 3) ──────────────────────────────────────────────
+    "set_arch_v5_info": {
+        "fr": "ℹ️ **Architecture v5** : La synchronisation récupère automatiquement TOUTES les données :\n- Nouveaux matchs (matchmaking uniquement)\n- Highlight events (clips)\n- Médailles\n- Stats skill/MMR\n- Personal score awards\n- Aliases XUID\n\nCes options ne sont plus configurables - tout est récupéré à chaque sync.",
+        "en": "ℹ️ **Architecture v5**: The sync automatically fetches ALL data:\n- New matches (matchmaking only)\n- Highlight events (clips)\n- Medals\n- Skill/MMR stats\n- Personal score awards\n- XUID aliases\n\nThese options are no longer configurable — everything is fetched on each sync.",
+    },
+    "settings_backfill_caption": {
+        "fr": "Configurez ce que fait le bouton 🔄 Synchroniser dans la sidebar. Le backfill remplit les données manquantes pour les matchs existants.",
+        "en": "Configure what the 🔄 Sync button does in the sidebar. Backfill fills missing data for existing matches.",
+    },
+    "settings_backfill_all_help": {
+        "fr": "Cochez pour backfill toutes les données, ou choisissez individuellement ci-dessous",
+        "en": "Check to backfill all data, or choose individually below",
+    },
+    "set_backfill_score_help": {
+        "fr": "Calcule les scores de performance manquants (peut être activé même sans backfill général)",
+        "en": "Computes missing performance scores (can be enabled even without general backfill)",
+    },
+    "set_media_arch_info": {
+        "fr": "ℹ️ **Architecture v5** : La section Médias est toujours active. Configurez le dossier de base et la tolérance temporelle.",
+        "en": "ℹ️ **Architecture v5**: The Media section is always active. Configure the base folder and time tolerance.",
+    },
+    "set_media_root_help": {
+        "fr": "Racine des captures. Un sous-dossier par joueur, nommé comme le gamertag (ex: D:/Captures/PlayerA/, D:/Captures/PlayerB/). Images et vidéos dans le même dossier.",
+        "en": "Capture root. One subfolder per player, named like the gamertag (e.g. D:/Captures/PlayerA/, D:/Captures/PlayerB/). Images and videos in the same folder.",
+    },
+    # ── Match view helpers (Phase 3) ─────────────────────────────────────────
+    "mvh_window_label": {
+        "fr": "Fenêtre: {start} → {end}",
+        "en": "Window: {start} → {end}",
+    },
+    "mvh_duration_estimated": {
+        "fr": " *(durée estimée)*",
+        "en": " *(estimated duration)*",
+    },
+    # ── Match view players (Phase 3) ─────────────────────────────────────────
+    "mvp_attribution_deaths": {
+        "fr": "Morts attribuées {assigned}/{total} (certain {certain}, estimé {estimated}, manquantes {missing})",
+        "en": "Deaths attributed {assigned}/{total} (certain {certain}, estimated {estimated}, missing {missing})",
+    },
+    "mvp_attribution_kills": {
+        "fr": "Kills attribués {assigned}/{total} (certain {certain}, estimé {estimated}, manquants {missing})",
+        "en": "Kills attributed {assigned}/{total} (certain {certain}, estimated {estimated}, missing {missing})",
+    },
+    # ── Teammates charts (Phase 3) ───────────────────────────────────────────
+    "tm_lifespan_with": {
+        "fr": "{player} — Durée de vie (avec {partner})",
+        "en": "{player} — Life span (with {partner})",
+    },
 }

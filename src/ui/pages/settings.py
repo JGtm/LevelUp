@@ -54,16 +54,7 @@ def render_settings_page(
     with st.expander(t("set_sync_title"), expanded=False):
         st.caption(t("settings_sync_help"))
 
-        st.info(
-            "ℹ️ **Architecture v5** : La synchronisation récupère automatiquement TOUTES les données :\n"
-            "- Nouveaux matchs (matchmaking uniquement)\n"
-            "- Highlight events (clips)\n"
-            "- Médailles\n"
-            "- Stats skill/MMR\n"
-            "- Personal score awards\n"
-            "- Aliases XUID\n\n"
-            "Ces options ne sont plus configurables - tout est récupéré à chaque sync."
-        )
+        st.info(t("set_arch_v5_info"))
 
         max_matches = st.number_input(
             t("set_sync_max_matches"),
@@ -82,10 +73,7 @@ def render_settings_page(
         )
 
     with st.expander(t("set_refresh_options"), expanded=False):
-        st.caption(
-            "Configurez ce que fait le bouton 🔄 Synchroniser dans la sidebar. "
-            "Le backfill remplit les données manquantes pour les matchs existants."
-        )
+        st.caption(t("settings_backfill_caption"))
 
         # Option pour activer le backfill complet
         backfill_enabled = st.toggle(
@@ -97,7 +85,7 @@ def render_settings_page(
         backfill_all = st.checkbox(
             t("backfill_all_data"),
             value=False,
-            help="Cochez pour backfill toutes les données, ou choisissez individuellement ci-dessous",
+            help=t("settings_backfill_all_help"),
             disabled=not backfill_enabled,
         )
 
@@ -137,7 +125,7 @@ def render_settings_page(
                     value=bool(
                         getattr(settings, "spnkr_refresh_backfill_performance_scores", True)
                     ),
-                    help="Calcule les scores de performance manquants (peut être activé même sans backfill général)",
+                    help=t("set_backfill_score_help"),
                 )
                 backfill_aliases = st.checkbox(
                     t("set_backfill_aliases"),
@@ -146,18 +134,12 @@ def render_settings_page(
                 )
 
     with st.expander(t("set_media_title"), expanded=True):
-        st.info(
-            "ℹ️ **Architecture v5** : La section Médias est toujours active. "
-            "Configurez le dossier de base et la tolérance temporelle."
-        )
+        st.info(t("set_media_arch_info"))
         media_captures_base_dir = directory_input(
             t("set_media_screenshots"),
             value=str(getattr(settings, "media_captures_base_dir", "") or ""),
             key="settings_media_captures_base_dir",
-            help=(
-                "Racine des captures. Un sous-dossier par joueur, nommé comme le gamertag "
-                "(ex: D:/Captures/PlayerA/, D:/Captures/PlayerB/). Images et vidéos dans le même dossier."
-            ),
+            help=t("set_media_root_help"),
             placeholder="Ex: D:/Captures",
         )
         media_tolerance_minutes = st.slider(

@@ -126,7 +126,7 @@ def _add_duration_markers(
 def plot_cumulative_net_score(
     cumulative_df: pl.DataFrame,
     *,
-    title: str = "Net Score Cumulé",
+    title: str | None = None,
     height: int = 400,
     show_zero_line: bool = True,
     time_played_seconds: list[int | float] | None = None,
@@ -154,11 +154,13 @@ def plot_cumulative_net_score(
         >>> fig = plot_cumulative_net_score(df)
         >>> st.plotly_chart(fig, config={"displayModeBar": False})
     """
+    if title is None:
+        title = viz_t("title_cumul_net_score", lang)
     fig = go.Figure()
 
     if not POLARS_AVAILABLE or cumulative_df.is_empty():
         fig.add_annotation(
-            text="Aucune donnée disponible",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -190,7 +192,7 @@ def plot_cumulative_net_score(
             name=viz_t("trace_net_score_cumul", lang),
             line={"color": line_color, "width": 3},
             marker={"size": 8, "color": line_color},
-            hovertemplate="<b>%{x}</b><br>Cumulé: %{y:+d}<extra></extra>",
+            hovertemplate=viz_t("hover_cumul_score", lang),
         )
     )
 
@@ -238,7 +240,7 @@ def plot_cumulative_net_score(
 def plot_cumulative_kd(
     cumulative_df: pl.DataFrame,
     *,
-    title: str = "K/D Cumulé",
+    title: str | None = None,
     height: int = 400,
     show_target: float | None = 1.0,
     time_played_seconds: list[int | float] | None = None,
@@ -258,11 +260,13 @@ def plot_cumulative_kd(
     Returns:
         Figure Plotly avec le graphique.
     """
+    if title is None:
+        title = viz_t("title_cumul_kd", lang)
     fig = go.Figure()
 
     if not POLARS_AVAILABLE or cumulative_df.is_empty():
         fig.add_annotation(
-            text="Aucune donnée disponible",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -287,7 +291,7 @@ def plot_cumulative_kd(
             name=viz_t("trace_kd_cumul", lang),
             line={"color": PERFORMANCE_COLORS["kd_line"], "width": 3},
             marker={"size": 8, "color": PERFORMANCE_COLORS["kd_line"]},
-            hovertemplate="<b>%{x}</b><br>K/D Cumulé: %{y:.2f}<extra></extra>",
+            hovertemplate=viz_t("hover_kd_cumul_line", lang),
         )
     )
 
@@ -359,7 +363,7 @@ def plot_rolling_kd(
 
     if not POLARS_AVAILABLE or rolling_df.is_empty():
         fig.add_annotation(
-            text="Aucune donnée disponible",
+            text=viz_t("empty_no_data", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -397,7 +401,7 @@ def plot_rolling_kd(
             name=viz_t("trace_kd_rolling", lang, window=window_size),
             line={"color": PERFORMANCE_COLORS["rolling"], "width": 3},
             marker={"size": 6, "color": PERFORMANCE_COLORS["rolling"]},
-            hovertemplate="<b>%{x}</b><br>K/D Glissant: %{y:.2f}<extra></extra>",
+            hovertemplate=viz_t("hover_kd_rolling_line", lang),
         )
     )
 
@@ -424,7 +428,7 @@ def plot_rolling_kd(
 def plot_session_trend(
     match_stats_df: pl.DataFrame,
     *,
-    title: str = "Tendance de la Session",
+    title: str | None = None,
     height: int = 350,
     lang: str = "fr",
 ) -> go.Figure:
@@ -441,11 +445,13 @@ def plot_session_trend(
     Returns:
         Figure Plotly avec indicateurs de tendance.
     """
+    if title is None:
+        title = viz_t("title_session_trend", lang)
     fig = go.Figure()
 
     if not POLARS_AVAILABLE or match_stats_df.is_empty() or len(match_stats_df) < 4:
         fig.add_annotation(
-            text="Pas assez de matchs pour analyser la tendance (min: 4)",
+            text=viz_t("empty_not_enough_matches", lang),
             xref="paper",
             yref="paper",
             x=0.5,
@@ -614,7 +620,7 @@ def plot_cumulative_comparison(
                 name=label,
                 line={"color": color, "width": 2},
                 marker={"size": 6, "color": color},
-                hovertemplate=f"<b>{label}</b><br>Match #%{{x}}<br>Cumulé: %{{y:+d}}<extra></extra>",
+                hovertemplate=viz_t("hover_match_cumul", lang, label=label),
             )
         )
 

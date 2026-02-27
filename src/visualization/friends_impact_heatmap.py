@@ -81,7 +81,7 @@ def plot_friends_impact_heatmap(
     if impact_matrix.is_empty():
         fig = go.Figure()
         fig.add_annotation(
-            text="Aucun événement d'impact à afficher",
+            text=viz_t("empty_no_impact_events", lang),
             xref="paper",
             yref="paper",
             x=0.5,

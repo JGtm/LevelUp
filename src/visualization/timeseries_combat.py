@@ -58,11 +58,7 @@ def plot_average_life(df: DataFrameLike, title: str | None = None, lang: str = "
             marker_color=colors["green"],
             opacity=PLOT_CONFIG.bar_opacity,
             customdata=custom,
-            hovertemplate=(
-                "durée de vie moy.=%{y:.1f}s<br>"
-                "morts=%{customdata[0]}<br>"
-                "temps joué=%{customdata[1]:.0f}s<extra></extra>"
-            ),
+            hovertemplate=viz_t("hover_lifespan", lang),
         )
     )
 
@@ -73,7 +69,7 @@ def plot_average_life(df: DataFrameLike, title: str | None = None, lang: str = "
             mode="lines",
             name=viz_t("trace_avg_smoothed", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["cyan"]},
-            hovertemplate="moyenne=%{y:.2f}s<extra></extra>",
+            hovertemplate=viz_t("hover_avg_smoothed_s", lang),
         )
     )
 
@@ -133,7 +129,7 @@ def plot_spree_headshots_accuracy(
             alignmentgroup="spree_hs",
             offsetgroup="spree",
             width=0.42,
-            hovertemplate="folie meurtrière=%{y}<extra></extra>",
+            hovertemplate=viz_t("hover_killing_spree", lang),
         ),
         secondary_y=False,
     )
@@ -148,7 +144,7 @@ def plot_spree_headshots_accuracy(
             alignmentgroup="spree_hs",
             offsetgroup="headshots",
             width=0.42,
-            hovertemplate="tirs à la tête=%{y}<extra></extra>",
+            hovertemplate=viz_t("hover_headshots", lang),
         ),
         secondary_y=False,
     )
@@ -290,7 +286,7 @@ def plot_performance_timeseries(
                 mode="lines",
                 name=viz_t("trace_avg_smoothed", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors.get("violet", "#8B5CF6")},
-                hovertemplate="moyenne=%{y:.1f}<extra></extra>",
+                hovertemplate=viz_t("hover_avg_s1", lang),
             )
         )
 
@@ -392,7 +388,7 @@ def plot_streak_chart(
             y=streak_values,
             marker_color=bar_colors,
             opacity=0.85,
-            hovertemplate="série=%{y}<br>date=%{customdata}<extra></extra>",
+            hovertemplate=viz_t("hover_streak", lang),
             customdata=labels,
             showlegend=False,
         )
@@ -452,7 +448,7 @@ def plot_damage_dealt_taken(
                 name=viz_t("trace_dmg_dealt", lang),
                 marker_color=colors["cyan"],
                 opacity=0.80,
-                hovertemplate="infligés=%{y:.0f}<extra></extra>",
+                hovertemplate=viz_t("hover_dmg_dealt", lang),
             )
         )
         fig.add_trace(
@@ -462,7 +458,7 @@ def plot_damage_dealt_taken(
                 mode="lines",
                 name=viz_t("trace_dmg_dealt_avg", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors["cyan"]},
-                hovertemplate="moy=%{y:.0f}<extra></extra>",
+                hovertemplate=viz_t("hover_avg0", lang),
             )
         )
 
@@ -475,7 +471,7 @@ def plot_damage_dealt_taken(
                 name=viz_t("trace_dmg_taken", lang),
                 marker_color=colors["red"],
                 opacity=0.65,
-                hovertemplate="subis=%{y:.0f}<extra></extra>",
+                hovertemplate=viz_t("hover_dmg_taken", lang),
             )
         )
         fig.add_trace(
@@ -485,7 +481,7 @@ def plot_damage_dealt_taken(
                 mode="lines",
                 name=viz_t("trace_dmg_taken_avg", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors["red"], "dash": "dot"},
-                hovertemplate="moy=%{y:.0f}<extra></extra>",
+                hovertemplate=viz_t("hover_avg0", lang),
             )
         )
 
@@ -548,7 +544,7 @@ def plot_shots_accuracy(
                 alignmentgroup="shots",
                 offsetgroup="fired",
                 width=0.42,
-                hovertemplate="tirés=%{y:.0f}<extra></extra>",
+                hovertemplate=viz_t("hover_shots_fired", lang),
             ),
             secondary_y=False,
         )
@@ -565,7 +561,7 @@ def plot_shots_accuracy(
                 alignmentgroup="shots",
                 offsetgroup="hit",
                 width=0.42,
-                hovertemplate="touchés=%{y:.0f}<extra></extra>",
+                hovertemplate=viz_t("hover_shots_hit", lang),
             ),
             secondary_y=False,
         )
@@ -579,7 +575,7 @@ def plot_shots_accuracy(
                 mode="lines",
                 name=viz_t("trace_accuracy", lang),
                 line={"width": PLOT_CONFIG.line_width, "color": colors["violet"]},
-                hovertemplate="précision=%{y:.2f}%<extra></extra>",
+                hovertemplate=viz_t("hover_accuracy_pct", lang),
             ),
             secondary_y=True,
         )

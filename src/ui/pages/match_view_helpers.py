@@ -186,7 +186,7 @@ def _show_media_group(
             lv = [os.path.basename(p) for p in valid]
             key = f"media_vid_{label}_{match_id}"
             picked = st.selectbox(
-                "Vidéo",
+                t("ml_video"),
                 options=list(range(len(valid))),
                 format_func=lambda i, _lv=lv: _lv[i],
                 index=0,
@@ -294,9 +294,9 @@ def _render_media_legacy(
         return
 
     st.subheader(t("mv_media_title"))
-    window_info = f"Fenêtre: {format_datetime_fn(t0)} → {format_datetime_fn(t1)}"
+    window_info = t("mvh_window_label", start=format_datetime_fn(t0), end=format_datetime_fn(t1))
     if not duration_known:
-        window_info += " *(durée estimée)*"
+        window_info += t("mvh_duration_estimated")
     st.caption(window_info)
 
     if img_hits is not None:
@@ -313,7 +313,7 @@ def _render_media_legacy(
         if paths:
             labels = [os.path.basename(p) for p in paths]
             picked = st.selectbox(
-                "Vidéo",
+                t("ml_video"),
                 options=list(range(len(paths))),
                 format_func=lambda i: labels[i],
                 index=0,

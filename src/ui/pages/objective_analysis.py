@@ -72,9 +72,7 @@ def render_objective_analysis_page(
         match_ids: Liste optionnelle de match_ids à analyser (sinon tous).
     """
     st.title(t("obj_analysis_title"))
-    st.caption(
-        "Analysez votre contribution aux objectifs de jeu et découvrez votre profil de joueur."
-    )
+    st.caption(t("obj_caption"))
 
     if not POLARS_AVAILABLE:
         st.error(t("obj_polars_missing"))
@@ -107,17 +105,11 @@ def render_objective_analysis_page(
                 match_stats_df = repo.query_df(match_query)
         except Exception as e:
             st.error(t("error_loading", error=e))
-            st.info(
-                "💡 Les tables `personal_score_awards` peuvent ne pas exister. "
-                "Lancez une synchronisation pour les créer."
-            )
+            st.info(t("obj_sync_hint"))
             return
 
     if awards_df.is_empty():
-        st.warning(
-            "⚠️ Aucune donnée de score personnel disponible. "
-            "Synchronisez vos matchs pour obtenir ces données."
-        )
+        st.warning(t("obj_no_personal_score"))
         return
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -166,21 +158,21 @@ def render_objective_analysis_page(
         st.metric(
             label=t("obj_score_label"),
             value=_format_score(total_objective),
-            help="Points gagnés sur les objectifs de jeu",
+            help=t("obj_help_obj_points"),
         )
 
     with col2:
         st.metric(
             label=t("obj_frag_score_label"),
             value=_format_score(total_kill),
-            help="Points gagnés avec les éliminations",
+            help=t("obj_help_kill_points"),
         )
 
     with col3:
         st.metric(
             label=t("obj_assist_score_label"),
             value=_format_score(total_assist),
-            help="Points gagnés avec les assistances",
+            help=t("obj_help_assist_points"),
         )
 
     with col4:
@@ -192,14 +184,14 @@ def render_objective_analysis_page(
 
     # Indicateur de profil
     if objective_ratio >= 0.4:
-        profile = "🛡️ Joueur Support/Objectif"
-        profile_desc = "Vous contribuez fortement aux objectifs de l'équipe."
+        profile = "\ud83d\udee1\ufe0f Joueur Support/Objectif"
+        profile_desc = t("obj_profile_desc_support")
     elif objective_ratio >= 0.2:
-        profile = "⚔️ Joueur Polyvalent"
-        profile_desc = "Bon équilibre entre kills et objectifs."
+        profile = "\u2694\ufe0f Joueur Polyvalent"
+        profile_desc = t("obj_profile_desc_balanced")
     else:
-        profile = "🎯 Joueur Slayer"
-        profile_desc = "Vous excellez dans les éliminations."
+        profile = "\ud83c\udfaf Joueur Slayer"
+        profile_desc = t("obj_profile_desc_slayer")
 
     st.info(f"**{t('obj_profile_label')}:** {profile}\n\n{profile_desc}")
 
@@ -219,10 +211,7 @@ def render_objective_analysis_page(
 
     with tab_scatter:
         st.markdown(f"### {t('obj_correlation_title')}")
-        st.caption(
-            "Chaque point représente un match. "
-            "Les points au-dessus de la tendance indiquent une meilleure contribution aux objectifs."
-        )
+        st.caption(t("obj_scatter_caption"))
         try:
             fig_scatter = plot_objective_vs_kills_scatter(
                 my_awards_df,
@@ -402,10 +391,7 @@ def render_objective_analysis_page(
     # Note: Cette fonctionnalité nécessite d'avoir les awards de tous les joueurs
     # Pour l'instant, on affiche un placeholder
     with st.expander(t("obj_comparison_coming_soon"), expanded=False):
-        st.info(
-            "Cette fonctionnalité nécessite d'avoir synchronisé les données de tous les joueurs "
-            "d'un match. Elle sera disponible dans une prochaine version."
-        )
+        st.info(t("obj_team_feature_hint"))
 
         # Placeholder pour le graphique
         # rankings = rank_players_by_objective_contribution_polars(awards_df, top_n=10)
@@ -419,25 +405,13 @@ def render_objective_analysis_page(
     st.markdown(f"## {t('obj_tips')}")
 
     if objective_ratio < 0.15:
-        st.warning(
-            "🎯 **Pensez aux objectifs !**\n\n"
-            "Votre ratio objectifs est faible. Dans les modes objectifs (CTF, Strongholds, etc.), "
-            "contribuer aux objectifs rapporte plus de points à l'équipe."
-        )
+        st.warning(t("obj_tip_improve_obj"))
     elif objective_ratio > 0.5:
-        st.success(
-            "🛡️ **Excellent joueur d'objectif !**\n\n"
-            "Vous êtes un pilier pour votre équipe sur les objectifs. "
-            "Continuez à jouer le jeu d'équipe !"
-        )
+        st.success(t("obj_tip_great_support"))
 
     # Conseil basé sur les assistances
     if total_assist > total_kill * 0.3:
-        st.info(
-            "🤝 **Grand fournisseur d'assists !**\n\n"
-            "Vous contribuez beaucoup aux éliminations de vos coéquipiers. "
-            "Pensez à utiliser le ping et les EMP pour maximiser cet impact."
-        )
+        st.info(t("obj_tip_assists"))
 
 
 def render_objective_analysis_page_from_session_state() -> None:
