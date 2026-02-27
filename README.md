@@ -60,11 +60,11 @@
 
 ![Main dashboard](docs/screenshots/main.png)
 
-*Main dashboard: multi-page navigation, session/period filters, and real-time interactive charts.*
+*Main dashboard: multi-page navigation and real-time interactive charts.*
 
 ![Sidebar, Time to First Kill & Performance](docs/screenshots/Sidebar-first-kill-performance.png)
 
-*Advanced filters (type, playlist, mode, map), Time-to-First-Kill vs First Death distribution, and per-match performance score.*
+*Advanced filters (type, playlist, mode, map,session/period), Time-to-First-Kill vs First Death distribution, and per-match performance score.*
 
 ---
 
