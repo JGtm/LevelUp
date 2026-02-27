@@ -176,7 +176,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "col_max_spree": {"fr": "Tuerie (max)", "en": "Spree (max)"},
     "col_headshots": {"fr": "Têtes", "en": "Headshots"},
     "col_avg_life": {"fr": "Durée de vie", "en": "Avg life"},
-    "col_avg_life_long": {"fr": "Durée de vie moyenne", "en": "Average life span"},
+    "col_avg_life_long": {"fr": "Durée de vie moyenne", "en": "Average lifespan"},
     "col_kpm": {"fr": "Frags / min", "en": "Kills / min"},
     "col_dpm": {"fr": "Morts / min", "en": "Deaths / min"},
     "col_apm": {"fr": "Assistances / min", "en": "Assists / min"},

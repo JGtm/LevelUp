@@ -953,7 +953,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Coéquipiers — titres graphiques ──────────────────────────────────────
     "tm_killing_spree": {"fr": "Folie meurtrière (max)", "en": "Killing Spree (max)"},
     "tm_headshots": {"fr": "Tirs à la tête", "en": "Headshots"},
-    "tm_perfect_kills": {"fr": "Frags parfaits", "en": "Perfect Kills"},
+    "tm_perfect_kills": {"fr": "Frags parfaits", "en": "Perfect kills"},
     "tm_kills": "col_kills",  # alias → common
     "tm_deaths": "col_deaths",  # alias → common
     "tm_assists": {"fr": "Assists", "en": "Assists"},
@@ -986,7 +986,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Coéquipiers — métriques supplémentaires ──────────────────────────────
     "tm_kda": "col_kda",  # alias → common
     "tm_accuracy": "col_accuracy",  # alias → common
-    "tm_avg_life": {"fr": "Durée de vie moyenne", "en": "Average Lifespan"},
+    "tm_avg_life": "col_avg_life_long",  # alias → common
     "tm_performance": "col_performance",  # alias → common
     "tm_score": "col_score",  # alias → common
     "tm_seconds": {"fr": "Secondes", "en": "Seconds"},
@@ -1014,7 +1014,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "kpi_deaths_per_min": "col_dpm",  # alias → common
     "kpi_assists_per_min": "col_apm",  # alias → common
     "kpi_avg_accuracy": "col_avg_accuracy",  # alias → common
-    "kpi_avg_lifespan": {"fr": "Durée de vie moyenne", "en": "Average lifespan"},
+    "kpi_avg_lifespan": "col_avg_life_long",  # alias → common
     "kpi_win_rate": "col_win_rate",  # alias → common
     "kpi_loss_rate": "col_loss_rate",  # alias → common
     "kpi_ratio": "col_ratio",  # alias → common
