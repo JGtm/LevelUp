@@ -12,7 +12,7 @@ import streamlit as st
 
 from src.config import HALO_COLORS
 from src.data.services.timeseries_service import TimeseriesService
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import fragment_if_available
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.distributions import (
@@ -79,12 +79,12 @@ def _downsample_for_plot(df: pl.DataFrame, max_points: int = MAX_PLOT_POINTS) ->
 
 
 @fragment_if_available
-def _render_kda_section(dff: pl.DataFrame) -> None:
+def _render_kda_section(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche le graphe KDA et sa distribution."""
     try:
         # 8bis.A6 : Downsampling pour performance
         df_plot = _downsample_for_plot(dff)
-        fig = plot_timeseries(df_plot)
+        fig = plot_timeseries(df_plot, lang=lang)
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         else:
@@ -429,12 +429,13 @@ def _render_advanced_sections(
     df_full: pl.DataFrame | None,
     db_path: str | None,
     xuid: str | None,
+    lang: str = "fr",
 ) -> None:
     """Affiche Performance, Assists, Stats/min, Average Life, Spree, Sprint 7."""
     history = df_full if df_full is not None else dff
     st.subheader(t("ts_performance"))
     try:
-        fig_perf = plot_performance_timeseries(dff, df_history=history)
+        fig_perf = plot_performance_timeseries(dff, df_history=history, lang=lang)
         if fig_perf is not None:
             st.plotly_chart(fig_perf, width="stretch", config={"displayModeBar": False})
         else:
@@ -444,7 +445,7 @@ def _render_advanced_sections(
 
     st.subheader(t("ts_assists"))
     try:
-        fig_assists = plot_assists_timeseries(dff)
+        fig_assists = plot_assists_timeseries(dff, lang=lang)
         if fig_assists is not None:
             st.plotly_chart(fig_assists, width="stretch", config={"displayModeBar": False})
         else:
@@ -454,7 +455,7 @@ def _render_advanced_sections(
 
     st.subheader(t("ts_per_minute"))
     try:
-        fig_spm = plot_per_minute_timeseries(dff)
+        fig_spm = plot_per_minute_timeseries(dff, lang=lang)
         if fig_spm is not None:
             st.plotly_chart(fig_spm, width="stretch", config={"displayModeBar": False})
         else:
@@ -467,7 +468,7 @@ def _render_advanced_sections(
         st.info(t("ts_lifespan_unavailable"))
     else:
         try:
-            fig_life = plot_average_life(dff)
+            fig_life = plot_average_life(dff, lang=lang)
             if fig_life is not None:
                 st.plotly_chart(fig_life, width="stretch", config={"displayModeBar": False})
             else:
@@ -475,14 +476,15 @@ def _render_advanced_sections(
         except Exception as e:
             st.warning(t("error_chart", error=e))
 
-    _render_spree_section(dff, db_path, xuid)
-    _render_sprint7_sections(dff)
+    _render_spree_section(dff, db_path, xuid, lang=lang)
+    _render_sprint7_sections(dff, lang=lang)
 
 
 def _render_spree_section(
     dff: pl.DataFrame,
     db_path: str | None,
     xuid: str | None,
+    lang: str = "fr",
 ) -> None:
     """Affiche la section Folie meurtrière / Tirs à la tête / Frags parfaits."""
     st.subheader(t("ts_spree"))
@@ -493,7 +495,7 @@ def _render_spree_section(
     pk_data = TimeseriesService.load_perfect_kills(_db_path, _xuid, _match_ids)
 
     try:
-        fig_spree = plot_spree_headshots_accuracy(dff, perfect_counts=pk_data.counts)
+        fig_spree = plot_spree_headshots_accuracy(dff, perfect_counts=pk_data.counts, lang=lang)
         if fig_spree is not None:
             st.plotly_chart(fig_spree, width="stretch", config={"displayModeBar": False})
         else:
@@ -502,7 +504,7 @@ def _render_spree_section(
         st.warning(t("error_chart", error=e))
 
 
-def _render_sprint7_sections(dff: pl.DataFrame) -> None:
+def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche les sections Sprint 7 : tirs, dégâts, rang."""
     # 7.5 — Tirs et précision
     _has_shots = any(c in dff.columns for c in ("shots_fired", "shots_hit"))
@@ -511,7 +513,7 @@ def _render_sprint7_sections(dff: pl.DataFrame) -> None:
         st.subheader(t("ts_shots"))
         st.caption(t("ts_shots_caption"))
         try:
-            fig_shots = plot_shots_accuracy(dff, title=None)
+            fig_shots = plot_shots_accuracy(dff, title=None, lang=lang)
             if fig_shots is not None:
                 st.plotly_chart(fig_shots, width="stretch", config={"displayModeBar": False})
             else:
@@ -526,7 +528,7 @@ def _render_sprint7_sections(dff: pl.DataFrame) -> None:
         st.subheader(t("ts_damage"))
         st.caption(t("ts_damage_caption"))
         try:
-            fig_damage = plot_damage_dealt_taken(dff, title=None)
+            fig_damage = plot_damage_dealt_taken(dff, title=None, lang=lang)
             if fig_damage is not None:
                 st.plotly_chart(fig_damage, width="stretch", config={"displayModeBar": False})
             else:
@@ -541,7 +543,7 @@ def _render_sprint7_sections(dff: pl.DataFrame) -> None:
         st.subheader(t("ts_rank_score"))
         st.caption(t("ts_rank_score_caption"))
         try:
-            fig_rank = plot_rank_score(dff, title=t("ts_rank_score"))
+            fig_rank = plot_rank_score(dff, title=t("ts_rank_score"), lang=lang)
             if fig_rank is not None:
                 st.plotly_chart(fig_rank, width="stretch", config={"displayModeBar": False})
             else:
@@ -583,10 +585,11 @@ def render_timeseries_page(
         df_full,
     )
 
+    lang = get_lang()
     with st.spinner(t("ts_computing")):
-        _render_kda_section(dff)
+        _render_kda_section(dff, lang=lang)
         _render_cumulative_performance(dff)
         _render_distributions(dff)
         _render_correlations(dff)
         _render_first_event_section(dff, db_path, xuid)
-        _render_advanced_sections(dff, df_full, db_path, xuid)
+        _render_advanced_sections(dff, df_full, db_path, xuid, lang=lang)
