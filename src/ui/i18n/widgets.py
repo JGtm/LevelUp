@@ -223,6 +223,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Synchronise tous les joueurs (nouveaux matchs, highlights, aliases).",
         "en": "Sync all players (new matches, highlights, aliases).",
     },
+    "sidebar_sync_spinner": {
+        "fr": "Synchronisation en cours…",
+        "en": "Syncing…",
+    },
     "sidebar_backfill_running": {
         "fr": "Backfill des données manquantes…",
         "en": "Backfilling missing data…",

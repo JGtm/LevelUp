@@ -545,12 +545,12 @@ def main() -> None:
         # Bouton Sync pour toutes les DB SPNKr (multi-joueurs si DB fusionnée)
         if db_path and is_spnkr_db_path(db_path) and os.path.exists(db_path):  # noqa: SIM102
             if st.button(
-                "🔄 Synchroniser",
+                t("sidebar_sync_btn"),
                 key="sidebar_sync_button",
-                help="Synchronise tous les joueurs (nouveaux matchs, highlights, aliases).",
+                help=t("sidebar_sync_help"),
                 width="stretch",
             ):
-                with st.spinner("Synchronisation en cours..."):
+                with st.spinner(t("sidebar_sync_spinner")):
                     ok, msg = sync_all_players(
                         db_path=db_path,
                         match_type=str(
