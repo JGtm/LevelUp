@@ -822,7 +822,19 @@ def _render_session_filter(
     )
 
     # ── Sélection active consolidée ──────────────────────────────────────────
-    active_label = st.session_state.get("picked_session_label", "(toutes)")
+    # Dériver depuis les widgets solo/escouade (source de vérité) plutôt que
+    # picked_session_label qui peut être désynchronisé entre deux rendus.
+    solo_active = st.session_state.get("picked_solo_session_label", "(toutes)")
+    squad_active = st.session_state.get("picked_squad_session_label", "(toutes)")
+    if solo_active != "(toutes)":
+        active_label = solo_active
+    elif squad_active != "(toutes)":
+        active_label = squad_active
+    else:
+        active_label = "(toutes)"
+    # Garder picked_session_label cohérent pour les autres parties de l'app
+    st.session_state["picked_session_label"] = active_label
+    st.session_state["picked_sessions"] = [] if active_label == "(toutes)" else [active_label]
     picked_session_labels = None if active_label == "(toutes)" else [active_label]
 
     return gap_minutes, picked_session_labels, base_s_ui, friends_tuple
