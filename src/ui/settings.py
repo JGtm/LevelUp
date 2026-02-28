@@ -115,6 +115,13 @@ def _coerce_int(v: Any, default: int) -> int:
 def load_settings() -> AppSettings:
     path = get_settings_path()
     if not os.path.exists(path):
+        # Auto-créer le fichier avec un JSON vide pour éviter toute confusion
+        try:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("{}\n")
+        except OSError:
+            pass
         return AppSettings()
     try:
         with open(path, encoding="utf-8") as f:
