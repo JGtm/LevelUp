@@ -594,6 +594,82 @@ class TestNotifyOperationDone:
         ):
             notify_operation_done("sync_delta", t0, t1, [_player()], success=True)
 
+    def test_skip_idle_filters_zero_matches(self):
+        """skip_idle=True exclut les joueurs à 0 matchs mais garde ceux actifs."""
+        t0, t1 = _NOW - timedelta(minutes=1), _NOW
+        mock_settings = {"discord_notifications_enabled": True}
+        active = _player(gamertag="Active", matches_synced=5)
+        idle = _player(gamertag="Idle", matches_synced=0)
+        with (
+            patch("src.utils.discord_notifier._load_app_settings", return_value=mock_settings),
+            patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
+            patch(
+                "urllib.request.urlopen",
+                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+            ) as mock_http,
+        ):
+            notify_operation_done(
+                "sync_delta", t0, t1, [active, idle], success=True, skip_idle=True
+            )
+            mock_http.assert_called_once()
+            # Vérifier que seul le joueur actif est dans le payload
+            call_args = mock_http.call_args[0][0]
+            body = json.loads(call_args.data.decode("utf-8"))
+            fields = body["embeds"][0]["fields"]
+            field_names = [f["name"] for f in fields]
+            assert any("Active" in n for n in field_names)
+            assert not any("Idle" in n for n in field_names)
+
+    def test_skip_idle_all_zero_skips_entirely(self):
+        """skip_idle=True avec tous les joueurs à 0 matchs → pas de notification."""
+        t0, t1 = _NOW - timedelta(minutes=1), _NOW
+        mock_settings = {"discord_notifications_enabled": True}
+        idle1 = _player(gamertag="Idle1", matches_synced=0)
+        idle2 = _player(gamertag="Idle2", matches_synced=0)
+        with (
+            patch("src.utils.discord_notifier._load_app_settings", return_value=mock_settings),
+            patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
+            patch("urllib.request.urlopen") as mock_http,
+        ):
+            notify_operation_done(
+                "sync_delta", t0, t1, [idle1, idle2], success=True, skip_idle=True
+            )
+            mock_http.assert_not_called()
+
+    def test_skip_idle_keeps_error_players(self):
+        """skip_idle=True garde les joueurs en erreur même à 0 matchs."""
+        t0, t1 = _NOW - timedelta(minutes=1), _NOW
+        mock_settings = {"discord_notifications_enabled": True}
+        error_player = _player(gamertag="Erreur", matches_synced=0, error="Échec sync")
+        with (
+            patch("src.utils.discord_notifier._load_app_settings", return_value=mock_settings),
+            patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
+            patch(
+                "urllib.request.urlopen",
+                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+            ) as mock_http,
+        ):
+            notify_operation_done(
+                "sync_delta", t0, t1, [error_player], success=False, skip_idle=True
+            )
+            mock_http.assert_called_once()
+
+    def test_skip_idle_false_keeps_all(self):
+        """skip_idle=False (défaut) conserve tous les joueurs, même idle."""
+        t0, t1 = _NOW - timedelta(minutes=1), _NOW
+        mock_settings = {"discord_notifications_enabled": True}
+        idle = _player(gamertag="Idle", matches_synced=0)
+        with (
+            patch("src.utils.discord_notifier._load_app_settings", return_value=mock_settings),
+            patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
+            patch(
+                "urllib.request.urlopen",
+                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+            ) as mock_http,
+        ):
+            notify_operation_done("sync_delta", t0, t1, [idle], success=True, skip_idle=False)
+            mock_http.assert_called_once()
+
 
 # =============================================================================
 # Tests — _load_app_settings
