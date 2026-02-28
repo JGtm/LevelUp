@@ -160,7 +160,10 @@ def cached_compute_sessions_db(
 
             if not has_null_session and not has_recent:
                 # Cas A : tout stable, retourner tel quel
-                return df_pl.select(["match_id", "start_time", "session_id", "session_label"])
+                cols_cas_a = ["match_id", "start_time", "session_id", "session_label"]
+                if "teammates_signature" in df_pl.columns:
+                    cols_cas_a.append("teammates_signature")
+                return df_pl.select(cols_cas_a)
 
             # Cas B : calcul complet à la volée
             df_pl = compute_sessions_with_context_polars(
@@ -169,7 +172,10 @@ def cached_compute_sessions_db(
                 teammates_column="teammates_signature",
                 friends_xuids=friends_set,
             )
-            return df_pl.select(["match_id", "start_time", "session_id", "session_label"])
+            cols_cas_b = ["match_id", "start_time", "session_id", "session_label"]
+            if "teammates_signature" in df_pl.columns:
+                cols_cas_b.append("teammates_signature")
+            return df_pl.select(cols_cas_b)
 
         except Exception as e:
             logger.warning(f"Erreur calcul sessions Polars: {e}")
@@ -183,7 +189,10 @@ def cached_compute_sessions_db(
                             pl.lit(None).cast(pl.Utf8).alias("session_label"),
                         ]
                     )
-                return df_pl.select(["match_id", "start_time", "session_id", "session_label"])
+                cols_err = ["match_id", "start_time", "session_id", "session_label"]
+                if "teammates_signature" in df_pl.columns:
+                    cols_err.append("teammates_signature")
+                return df_pl.select(cols_err)
 
     # Si on arrive ici, c'est qu'on n'a pas de données v5
     # Retourner un DataFrame vide plutôt que de risquer un conflit de connexion

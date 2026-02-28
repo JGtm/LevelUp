@@ -19,7 +19,6 @@ from src.app.filters import get_friends_xuids_for_sessions
 from src.ui import translate_pair_name, translate_playlist_name
 from src.ui.cache import (
     cached_compute_sessions_db,
-    cached_same_team_match_ids_with_friend,
 )
 from src.ui.components import (
     get_firefight_playlists,
@@ -268,6 +267,8 @@ def render_filters_sidebar(
         ("picked_session_label", "_picked_session_label_shadow"),
         ("start_date_cal", "_start_date_cal_shadow"),
         ("end_date_cal", "_end_date_cal_shadow"),
+        ("picked_solo_session_label", "_picked_solo_session_label_shadow"),
+        ("picked_squad_session_label", "_picked_squad_session_label_shadow"),
     ]
     for _widget_key, _shadow_key in _SHADOW_RESTORATIONS:
         if _widget_key not in st.session_state:
@@ -436,6 +437,14 @@ def render_filters_sidebar(
         st.session_state["_picked_session_label_shadow"] = st.session_state["picked_session_label"]
     if "picked_sessions" in st.session_state:
         st.session_state["_picked_sessions_shadow"] = st.session_state["picked_sessions"]
+    if "picked_solo_session_label" in st.session_state:
+        st.session_state["_picked_solo_session_label_shadow"] = st.session_state[
+            "picked_solo_session_label"
+        ]
+    if "picked_squad_session_label" in st.session_state:
+        st.session_state["_picked_squad_session_label_shadow"] = st.session_state[
+            "picked_squad_session_label"
+        ]
 
     return FilterState(
         filter_mode=filter_mode,
@@ -521,6 +530,72 @@ def _render_period_filter(dmin: date, dmax: date) -> tuple[date, date]:
     return start_date, end_date
 
 
+def _classify_sessions_solo_squad(
+    base_s: pl.DataFrame,
+    friends_xuids: frozenset[str],
+) -> tuple[list[str], list[str]]:
+    """Classifie les sessions en solo vs escouade.
+
+    Une session est "escouade" si au moins un de ses matchs contient
+    un ami parmi friends_xuids (via la colonne teammates_signature).
+    Sinon, elle est classée "solo".
+
+    Implémentation vectorisée Polars (str.contains sur chaque XUID ami) —
+    O(k * n) avec k = nb amis (≤3) et n = nb matchs, tout en C, sans boucle Python
+    sur les lignes.
+
+    Args:
+        base_s: DataFrame sessions (doit avoir session_id, session_label,
+                start_time et optionnellement teammates_signature).
+        friends_xuids: XUIDs des amis sélectionnés dans le multiselect Teammates.
+
+    Returns:
+        (solo_labels, squad_labels) ordonnés par date décroissante.
+    """
+    if base_s.is_empty():
+        return [], []
+
+    if not friends_xuids or "teammates_signature" not in base_s.columns:
+        return _session_labels_ordered_by_last_match(base_s), []
+
+    # ── Détection vectorisée : au moins un ami présent dans la signature ────
+    # teammates_signature = XUIDs comma-separated (ex: "1234,5678,9012")
+    # XUIDs sont des nombres 16-18 chiffres → pas de faux positifs str.contains
+    sig_col = pl.col("teammates_signature").cast(pl.Utf8).fill_null("")
+    friend_exprs = [sig_col.str.contains(fxuid, literal=True) for fxuid in friends_xuids]
+    has_friend_expr = friend_exprs[0]
+    for expr in friend_exprs[1:]:
+        has_friend_expr = has_friend_expr | expr
+
+    df_marked = base_s.select(
+        ["session_id", "session_label", "start_time", "teammates_signature"]
+    ).with_columns(has_friend_expr.alias("_has_friend"))
+
+    # Sessions escouade = celles qui ont au moins un match avec ami
+    squad_session_ids: set[str] = set(
+        df_marked.filter(pl.col("_has_friend"))["session_id"].drop_nulls().cast(pl.Utf8).to_list()
+    )
+
+    if not squad_session_ids:
+        return _session_labels_ordered_by_last_match(base_s), []
+
+    # Tri des labels par date décroissante (une itération sur les sessions, pas les matchs)
+    agg = (
+        base_s.group_by(["session_id", "session_label"])
+        .agg(pl.col("start_time").max())
+        .sort("start_time", descending=True)
+    )
+    solo_labels: list[str] = []
+    squad_labels: list[str] = []
+    for row in agg.iter_rows(named=True):
+        sid = str(row.get("session_id") or "")
+        lbl = str(row.get("session_label") or "")
+        if not lbl:
+            continue
+        (squad_labels if sid in squad_session_ids else solo_labels).append(lbl)
+    return solo_labels, squad_labels
+
+
 def _render_session_filter(
     db_path: str,
     xuid: str,
@@ -529,11 +604,19 @@ def _render_session_filter(
     base_for_filters: pl.DataFrame,
     build_friends_opts_map_fn: Callable,
 ) -> tuple[int, list[str] | None, pl.DataFrame, tuple[str, ...] | None]:
-    """Rend les contrôles en mode Sessions (gap fixé à 120 min, stockage en base)."""
+    """Rend les contrôles en mode Sessions : sous-sections En solo / Mon escouade.
+
+    - "En solo"      : sessions où aucun ami du multiselect n'était présent.
+    - "Mon escouade" : sessions où au moins un ami était présent.
+
+    Les sélections sont mutuellement exclusives : choisir dans une section
+    réinitialise l'autre à "(toutes)".
+    """
     gap_minutes = GAP_MINUTES_FIXED
 
+    # ── Chargement des sessions (avec teammates_signature pour classification) ──
     friends_tuple = get_friends_xuids_for_sessions(db_path, xuid.strip(), db_key, aliases_key)
-    base_s_ui = _to_polars(
+    base_s_raw = _to_polars(
         cached_compute_sessions_db(
             db_path,
             xuid.strip(),
@@ -543,195 +626,191 @@ def _render_session_filter(
             friends_xuids=friends_tuple,
         )
     )
+
+    # Vue allégée (sans teammates_signature) pour la compatibilité du reste de l'app
+    base_s_ui = (
+        base_s_raw.select(["match_id", "start_time", "session_id", "session_label"])
+        if not base_s_raw.is_empty()
+        else pl.DataFrame(
+            schema={
+                "match_id": pl.Utf8,
+                "start_time": pl.Datetime,
+                "session_id": pl.Utf8,
+                "session_label": pl.Utf8,
+            }
+        )
+    )
+
     options_ui = _session_labels_ordered_by_last_match(base_s_ui)
     st.session_state["_latest_session_label"] = options_ui[0] if options_ui else None
 
-    def _set_session_selection(label: str) -> None:
-        prev_label = st.session_state.get("picked_session_label", "(toutes)")
-        st.session_state.picked_session_label = label
-        if label == "(toutes)":
-            st.session_state.picked_sessions = []
-        elif label in options_ui:
-            st.session_state.picked_sessions = [label]
-        # Réinitialiser les filtres cascade si la session change.
-        # Sans ça, le pattern Save-Render-Restore réinjecte les valeurs de l'ancienne
-        # session dans filter_playlists/modes/maps, filtrant tous les matchs de la
-        # nouvelle session dont les playlists/modes/maps ne se chevauchent pas.
-        if label != prev_label:
-            for _k in (
-                "filter_playlists",
-                "filter_modes",
-                "filter_maps",
-                "_playlists_exclusions",
-                "_modes_exclusions",
-                "_maps_exclusions",
-                "_playlists_filter_mode",
-                "_modes_filter_mode",
-                "_maps_filter_mode",
-            ):
+    # ── Résoudre les amis depuis l'UI (multiselect Teammates persisted) ─────
+    friends_opts_map, friends_default_labels = build_friends_opts_map_fn(
+        db_path, xuid.strip(), db_key, aliases_key
+    )
+    ui_picked_labels: list[str] = (
+        st.session_state.get("teammates_picked_labels") or friends_default_labels
+    )
+    friends_xuids_for_classify = frozenset(
+        friends_opts_map[lbl] for lbl in ui_picked_labels if lbl in friends_opts_map
+    )
+
+    # ── Classification solo / escouade ──────────────────────────────────────
+    solo_options, squad_options = _classify_sessions_solo_squad(
+        base_s_raw, friends_xuids_for_classify
+    )
+
+    # ── Helpers (exclusion mutuelle entre solo et escouade) ──────────────────
+    _CASCADE_RESET_KEYS = (
+        "filter_playlists",
+        "filter_modes",
+        "filter_maps",
+        "_playlists_exclusions",
+        "_modes_exclusions",
+        "_maps_exclusions",
+        "_playlists_filter_mode",
+        "_modes_filter_mode",
+        "_maps_filter_mode",
+    )
+
+    def _set_solo_selection(label: str) -> None:
+        prev = st.session_state.get("picked_session_label", "(toutes)")
+        st.session_state["picked_solo_session_label"] = label
+        st.session_state["picked_squad_session_label"] = "(toutes)"
+        st.session_state["picked_session_label"] = label
+        st.session_state["picked_sessions"] = [] if label == "(toutes)" else [label]
+        if label != prev:
+            for _k in _CASCADE_RESET_KEYS:
                 st.session_state.pop(_k, None)
 
-    if "picked_session_label" not in st.session_state:
-        _set_session_selection(options_ui[0] if options_ui else "(toutes)")
-    if "picked_sessions" not in st.session_state:
-        st.session_state.picked_sessions = options_ui[:1] if options_ui else []
+    def _set_squad_selection(label: str) -> None:
+        prev = st.session_state.get("picked_session_label", "(toutes)")
+        st.session_state["picked_squad_session_label"] = label
+        st.session_state["picked_solo_session_label"] = "(toutes)"
+        st.session_state["picked_session_label"] = label
+        st.session_state["picked_sessions"] = [] if label == "(toutes)" else [label]
+        if label != prev:
+            for _k in _CASCADE_RESET_KEYS:
+                st.session_state.pop(_k, None)
 
-    # Boutons de navigation
-    cols = st.columns(2)
-    if cols[0].button(t("filter_last_session"), width="stretch"):
-        _set_session_selection(options_ui[0] if options_ui else "(toutes)")
+    # ── Initialisation des clés de sélection ────────────────────────────────
+    if "picked_solo_session_label" not in st.session_state:
+        # Héritage depuis picked_session_label (rétrocompabilité prefs / apply_default)
+        existing = st.session_state.get("picked_session_label", "(toutes)")
+        if existing in solo_options:
+            st.session_state["picked_solo_session_label"] = existing
+            st.session_state.setdefault("picked_squad_session_label", "(toutes)")
+        elif existing in squad_options:
+            st.session_state["picked_squad_session_label"] = existing
+            st.session_state["picked_solo_session_label"] = "(toutes)"
+        else:
+            first_solo = solo_options[0] if solo_options else "(toutes)"
+            st.session_state["picked_solo_session_label"] = first_solo
+            st.session_state.setdefault("picked_squad_session_label", "(toutes)")
+            if "picked_session_label" not in st.session_state:
+                st.session_state["picked_session_label"] = first_solo
+                st.session_state["picked_sessions"] = (
+                    [first_solo] if first_solo != "(toutes)" else []
+                )
+
+    st.session_state.setdefault("picked_squad_session_label", "(toutes)")
+
+    if "picked_sessions" not in st.session_state:
+        active = st.session_state.get("picked_session_label", "(toutes)")
+        st.session_state["picked_sessions"] = [active] if active != "(toutes)" else []
+
+    # Cohérence : remettre dans la liste si une session a disparu (ex: changement d'amis)
+    if st.session_state.get("picked_solo_session_label") not in ["(toutes)"] + solo_options:
+        st.session_state["picked_solo_session_label"] = (
+            solo_options[0] if solo_options else "(toutes)"
+        )
+    if st.session_state.get("picked_squad_session_label") not in ["(toutes)"] + squad_options:
+        st.session_state["picked_squad_session_label"] = "(toutes)"
+
+    # ── Sous-section "En solo" ───────────────────────────────────────────────
+    st.subheader(t("filter_solo_title"))
+    st.divider()
+    solo_cols = st.columns(2)
+    if solo_cols[0].button(t("filter_last_session"), width="stretch", key="btn_solo_last"):
+        _set_solo_selection(solo_options[0] if solo_options else "(toutes)")
         st.session_state["min_matches_maps"] = 1
         st.session_state["_min_matches_maps_auto"] = True
         st.session_state["min_matches_maps_friends"] = 1
         st.session_state["_min_matches_maps_friends_auto"] = True
-    if cols[1].button(t("filter_prev_session"), width="stretch"):
-        current = st.session_state.get("picked_session_label", "(toutes)")
-        if not options_ui:
-            _set_session_selection("(toutes)")
-        elif current == "(toutes)" or current not in options_ui:
-            _set_session_selection(options_ui[0])
+    if solo_cols[1].button(t("filter_prev_session"), width="stretch", key="btn_solo_prev"):
+        current = st.session_state.get("picked_solo_session_label", "(toutes)")
+        if not solo_options:
+            _set_solo_selection("(toutes)")
+        elif current == "(toutes)" or current not in solo_options:
+            _set_solo_selection(solo_options[0])
         else:
-            idx = options_ui.index(current)
-            next_idx = min(idx + 1, len(options_ui) - 1)
-            _set_session_selection(options_ui[next_idx])
+            idx = solo_options.index(current)
+            _set_solo_selection(solo_options[min(idx + 1, len(solo_options) - 1)])
 
-    # Trio
-    trio_label = _compute_trio_label(
-        db_path,
-        xuid,
-        db_key,
-        aliases_key,
-        base_for_filters,
-        base_s_ui,
-        options_ui,
-        build_friends_opts_map_fn,
-    )
-    _render_trio_button(trio_label)
+    def _on_solo_selectbox_change() -> None:
+        _set_solo_selection(st.session_state.get("picked_solo_session_label", "(toutes)"))
 
-    # Sélecteur de session
-    picked_one = st.selectbox(
-        t("filter_session_label"),
-        options=["(toutes)"] + options_ui,
+    st.selectbox(
+        t("filter_solo_session_label"),
+        options=["(toutes)"] + solo_options,
         format_func=lambda x: t("sel_all_categories") if x == "(toutes)" else x,
-        key="picked_session_label",
+        key="picked_solo_session_label",
+        on_change=_on_solo_selectbox_change,
     )
-    picked_session_labels = None if picked_one == "(toutes)" else [picked_one]
+
+    # ── Sous-section "Mon escouade" ──────────────────────────────────────────
+    st.subheader(t("filter_squad_title"))
+    st.divider()
+    no_friends = len(friends_xuids_for_classify) == 0
+    no_squad_sessions = not squad_options
+
+    if no_friends:
+        st.caption(t("filter_squad_no_friends"))
+
+    squad_cols = st.columns(2)
+    if squad_cols[0].button(
+        t("filter_last_carnage"),
+        width="stretch",
+        key="btn_squad_last",
+        disabled=no_friends or no_squad_sessions,
+    ):
+        _set_squad_selection(squad_options[0] if squad_options else "(toutes)")
+        st.session_state["min_matches_maps"] = 1
+        st.session_state["_min_matches_maps_auto"] = True
+        st.session_state["min_matches_maps_friends"] = 1
+        st.session_state["_min_matches_maps_friends_auto"] = True
+    if squad_cols[1].button(
+        t("filter_prev_carnage"),
+        width="stretch",
+        key="btn_squad_prev",
+        disabled=no_friends or no_squad_sessions,
+    ):
+        current = st.session_state.get("picked_squad_session_label", "(toutes)")
+        if not squad_options:
+            _set_squad_selection("(toutes)")
+        elif current == "(toutes)" or current not in squad_options:
+            _set_squad_selection(squad_options[0])
+        else:
+            idx = squad_options.index(current)
+            _set_squad_selection(squad_options[min(idx + 1, len(squad_options) - 1)])
+
+    def _on_squad_selectbox_change() -> None:
+        _set_squad_selection(st.session_state.get("picked_squad_session_label", "(toutes)"))
+
+    st.selectbox(
+        t("filter_squad_session_label"),
+        options=["(toutes)"] + squad_options,
+        format_func=lambda x: t("sel_all_categories") if x == "(toutes)" else x,
+        key="picked_squad_session_label",
+        on_change=_on_squad_selectbox_change,
+        disabled=no_friends or no_squad_sessions,
+    )
+
+    # ── Sélection active consolidée ──────────────────────────────────────────
+    active_label = st.session_state.get("picked_session_label", "(toutes)")
+    picked_session_labels = None if active_label == "(toutes)" else [active_label]
 
     return gap_minutes, picked_session_labels, base_s_ui, friends_tuple
-
-
-@st.cache_data(show_spinner=False, ttl=120)
-def _cached_get_trio_match_ids(
-    db_path: str,
-    xuid: str,
-    f1_xuid: str,
-    f2_xuid: str,
-    db_key: tuple[int, int] | None,
-) -> tuple[str, ...]:
-    """Récupère les match IDs où les 3 joueurs sont dans la même équipe (cachée).
-
-    Cette fonction est coûteuse car elle fait 2 requêtes SQL.
-    Le cache TTL de 120s évite les recalculs fréquents.
-    """
-    try:
-        ids_m = set(
-            cached_same_team_match_ids_with_friend(db_path, xuid.strip(), f1_xuid, db_key=db_key)
-        )
-        ids_c = set(
-            cached_same_team_match_ids_with_friend(db_path, xuid.strip(), f2_xuid, db_key=db_key)
-        )
-        trio_ids = ids_m & ids_c
-        return tuple(sorted(trio_ids))
-    except Exception:
-        return ()
-
-
-def _compute_trio_label(
-    db_path: str,
-    xuid: str,
-    db_key: tuple[int, int] | None,
-    aliases_key: int | None,
-    base_for_filters: pl.DataFrame,
-    base_s_ui: pl.DataFrame,
-    options_ui: list[str],
-    build_friends_opts_map_fn: Callable,
-) -> str | None:
-    """Calcule le label de la dernière session en trio.
-
-    Optimisé: utilise un cache TTL pour éviter les recalculs coûteux
-    des requêtes SQL à chaque rendu.
-    """
-    try:
-        base_for_filters = _to_polars(base_for_filters)
-        base_s_ui = _to_polars(base_s_ui)
-        # Récupérer les amis sélectionnés (déjà caché via @st.cache_data)
-        friends_opts_map, friends_default_labels = build_friends_opts_map_fn(
-            db_path, xuid.strip(), db_key, aliases_key
-        )
-        picked_friend_labels = st.session_state.get("friends_picked_labels")
-        if not isinstance(picked_friend_labels, list) or not picked_friend_labels:
-            picked_friend_labels = friends_default_labels
-        picked_xuids = [
-            friends_opts_map[lbl] for lbl in picked_friend_labels if lbl in friends_opts_map
-        ]
-        if len(picked_xuids) < 2:
-            return None
-
-        f1_xuid, f2_xuid = picked_xuids[0], picked_xuids[1]
-
-        # Utiliser la fonction cachée avec TTL pour les requêtes coûteuses
-        trio_ids_tuple = _cached_get_trio_match_ids(db_path, xuid.strip(), f1_xuid, f2_xuid, db_key)
-        if not trio_ids_tuple:
-            return None
-
-        trio_ids = set(trio_ids_tuple)
-
-        # Filtrer par les matchs disponibles dans base_for_filters
-        base_match_ids = set(base_for_filters["match_id"].cast(pl.Utf8).to_list())
-        trio_ids = trio_ids & base_match_ids
-
-        if not trio_ids:
-            return None
-
-        # Trouver la dernière session trio (par max(start_time), pas session_id)
-        trio_rows = base_s_ui.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(trio_ids)))
-        if trio_rows.is_empty() or "start_time" not in trio_rows.columns:
-            return None
-
-        agg = (
-            trio_rows.group_by(["session_id", "session_label"])
-            .agg(pl.col("start_time").max())
-            .sort("start_time", descending=True)
-        )
-        if not agg.is_empty():
-            return agg["session_label"][0]
-    except Exception:
-        pass
-    return None
-
-
-def _render_trio_button(trio_label: str | None) -> None:
-    """Rend le bouton Dernière session en trio."""
-    st.session_state["_trio_latest_session_label"] = trio_label
-    disabled_trio = not isinstance(trio_label, str) or not trio_label
-
-    def _apply_trio_filter(tl: str | None = trio_label) -> None:
-        st.session_state["_pending_filter_mode"] = "Sessions"
-        st.session_state["_pending_picked_session_label"] = tl
-        st.session_state["_pending_picked_sessions"] = [tl]
-        st.session_state["min_matches_maps"] = 1
-        st.session_state["_min_matches_maps_auto"] = True
-        st.session_state["min_matches_maps_friends"] = 1
-        st.session_state["_min_matches_maps_friends_auto"] = True
-
-    st.button(
-        t("filter_last_trio_session"),
-        width="stretch",
-        disabled=disabled_trio,
-        on_click=_apply_trio_filter,
-    )
-    if not disabled_trio:
-        st.caption(f"Trio : {trio_label}")
 
 
 def _render_cascade_filters(

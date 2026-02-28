@@ -152,6 +152,10 @@ def test_cached_compute_sessions_db_returns_expected_contract(tmp_path) -> None:
         )
 
     assert not result.is_empty()
-    assert ["match_id", "start_time", "session_id", "session_label"] == result.columns
+    # v5.3 : teammates_signature est maintenant inclus pour la classification solo/escouade
+    required_cols = {"match_id", "start_time", "session_id", "session_label"}
+    assert required_cols.issubset(
+        set(result.columns)
+    ), f"Colonnes manquantes : {required_cols - set(result.columns)}"
     assert set(result["session_id"].cast(str).to_list()) == {"s1", "s2"}
     assert set(result["session_label"].cast(str).to_list()) == {"Session 1", "Session 2"}

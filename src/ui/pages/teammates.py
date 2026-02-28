@@ -144,11 +144,18 @@ def render_teammates_page(
         opts_map, default_labels = build_friends_opts_map_fn(
             db_path, xuid.strip(), db_key, aliases_key
         )
+    # Préférer la sélection persistée dans FilterPreferences (v5.3)
+    _persisted = st.session_state.get("teammates_picked_labels")
+    _valid_persisted = (
+        [lbl for lbl in _persisted if lbl in opts_map] if isinstance(_persisted, list) else []
+    )
+    _effective_default = _valid_persisted if _valid_persisted else default_labels
     picked_labels = st.multiselect(
         t("tm_select_teammates"),
         options=list(opts_map.keys()),
-        default=default_labels,
+        default=_effective_default,
         key="teammates_picked_labels",
+        max_selections=3,
     )
     picked_xuids = [opts_map[lbl] for lbl in picked_labels if lbl in opts_map]
 

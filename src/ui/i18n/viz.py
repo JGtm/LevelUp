@@ -28,7 +28,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Density",
     },
     "trace_trend": {
-        "fr": "Tendance (lissée)",
+        "fr": "Tendance lissée",
         "en": "Trend (smoothed)",
     },
     "trace_trend_r2": {
@@ -36,11 +36,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Trend (R²={r2:.2f})",
     },
     "trace_avg_smoothed": {
-        "fr": "Moyenne (lissée)",
+        "fr": "Moy. lissée",
         "en": "Average (smoothed)",
     },
     "trace_avg_3_smoothed": {
-        "fr": "Moyenne (3) lissée",
+        "fr": "Moy. lissée (×3)",
         "en": "Average (3) smoothed",
     },
     "trace_confidence": {
@@ -521,7 +521,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Suffixes indicateurs ──────────────────────────────────────────────────
     "suffix_deaths": {"fr": "morts", "en": "deaths"},
     "suffix_kills": {"fr": "kills", "en": "kills"},
-    "suffix_smoothed": {"fr": "(moy. lissée)", "en": "(smoothed)"},
+    "suffix_smoothed": {"fr": "(lissée)", "en": "(smoothed)"},
     # ── Titres supplémentaires (Phase 3) ─────────────────────────────────────
     "title_cumul_net_score": {"fr": "Net Score Cumulé", "en": "Cumulative Net Score"},
     "title_cumul_kd": {"fr": "K/D Cumulé", "en": "Cumulative K/D"},
