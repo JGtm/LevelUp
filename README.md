@@ -123,10 +123,8 @@
 | Last match | Scoreboard |
 |:-:|:-:|
 | ![Last match](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/Scorebard-commendations.png) |
-|:-:|:-:|
-| Career | Antagonists |
-|:-:|:-:|
-| ![Career](docs/screenshots/career.png) | ![Antagonists](docs/screenshots/antagonist.png) |
+| Impact & Dominance | Antagonists |
+| ![Impact & Dominance](docs/screenshots/impact-dominance.png) | ![Antagonists](docs/screenshots/antagonist.png) |
 
 *Full scoreboard for your latest game (searchable by match ID) — and your most formidable rivals, MVP/LVP, scoreboard, commendations (Halo 5 inspired) grid and medal distributions.*
 
@@ -146,23 +144,23 @@
 
 ### Career progression, Ranks & Path to Hero
 
-| Career | Ranks |
+![Career](docs/screenshots/career.png)
+
+| Ranks (LUSR/CSR) | Path to Hero |
 |:-:|:-:|
-| ![Career](docs/screenshots/career.png) | ![Ranks](docs/screenshots/antagonist.png) |
-|:-:|:-:|
-| Career | Antagonists |
-|:-:|:-:|
-| ![Career](docs/screenshots/career.png) | ![Antagonists](docs/screenshots/antagonist.png) |
+| ![Ranks](docs/screenshots/LUSRs.png) | ![Path to Hero](docs/screenshots/path-hero.png) |
 
 *Rank history, progression to Hero, LUSR/CSR per playlist group*
 
 ---
 
-### Media library
+### Media library & Commendations
 
-![Media library](docs/screenshots/media-library.png)
+| Media library | Commendations |
+|:-:|:-:|
+| ![Media library](docs/screenshots/media-library.png) | ![Commendations](docs/screenshots/commendations.png) |
 
-*Browse and search your clips and screenshots, each linked to its match for instant context.*
+*Browse and search your clips and screenshots linked to their matches — track your commendations with medal grids and distributions.*
 
 ---
 
