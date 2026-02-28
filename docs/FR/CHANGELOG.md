@@ -101,7 +101,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 - **Page Carrière — Courbes de projection vers le rang Héros** (`src/ui/pages/career.py`)
   - **Projection standard** (orange, tirets) : extrapole depuis le rythme actif XP/jour en excluant les gaps d'inactivité > 14 jours
-  - **Projection optimiste** (vert, tirets-points) : ajoute les défis hebdomadaires (950 XP/semaine = 4×50 + 3×100 + 3×150) avec boost XP ×2
+  - **Projection optimiste** (vert, tirets-points) : ajoute les défis hebdomadaires (950 XP/semaine = 4×50 + 3×100 + 3×150) et le défi quotidien (500 XP/jour), le tout avec boost XP ×2 — soit +4 450 XP/semaine en défis
   - Les deux courbes masquées par défaut — cliquer sur la légende pour les afficher
   - Ligne horizontale dorée au seuil Héros (9 319 350 XP)
   - Projection plafonnée à 10 ans pour éviter les graphes infinis

@@ -111,7 +111,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Career page — Projection curves to Hero rank** (`src/ui/pages/career.py`)
   - **Standard projection** (orange dashed): extrapolates from the current active XP/day rate, excluding inactivity gaps > 14 days
-  - **Optimistic projection** (green dash-dot): adds weekly challenge XP (950 XP/week = 4×50 + 3×100 + 3×150) with ×2 XP boost
+  - **Optimistic projection** (green dash-dot): adds weekly challenge XP (950 XP/week = 4×50 + 3×100 + 3×150) plus daily challenge XP (500 XP/day), all with ×2 XP boost — total +4 450 XP/week from challenges
   - Both curves hidden by default — click the legend to reveal them
   - Gold horizontal line at the Hero threshold (9,319,350 XP)
   - Projection capped at 10 years to avoid infinite charts

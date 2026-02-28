@@ -20,7 +20,7 @@
   - Full internationalization (i18n) support across all UI pages
   - Multi-language interface (French 🇫🇷 / English 🇬🇧), switchable from the sidebar
   - Translations centralized in `src/ui/i18n/` (dedicated package: `common`, `pages`, `widgets`, `viz`, `cli`)
-  - Career page: estimated pre-sync XP curve (purple dotted) + Hero rank projections (standard & optimistic, hidden by default)
+  - Career page: estimated pre-sync XP curve (purple dotted) + Hero rank projections (standard & optimistic with challenges + daily + ×2 boost, hidden by default)
   - **Solo / Squad session filter**: sidebar splits into two subsections — "En solo" (no friends) and "Mon escouade" (at least one teammate from your selected squad), with persistent friend selection and vectorized Polars classification
 
 - **v5.2 — PvE / Firefight**
