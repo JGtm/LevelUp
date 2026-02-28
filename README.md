@@ -134,9 +134,9 @@
 
 | Squad overview | Session stats |
 |:-:|:-:|
-| ![Squad overview](docs/screenshots/squad-overview.png) | ![Session stats](docs/screenshots/squad-session-stats.png) |
+| ![Session history](docs/screenshots/history.png) | ![Squad complementarity](docs/screenshots/per-minute-complementarity.png) |
 | **Teammates performance** | **Solo vs Squad** |
-| ![Teammates performance](docs/screenshots/teammates-performance.png) | ![Solo vs Squad](docs/screenshots/solo-vs-squad.png) |
+| ![Teammates performance](docs/screenshots/performance-spree.png) | ![Squad ranking](docs/screenshots/teammate-heatmap.png) |
 
 *Filter your sessions by squad: compare your stats when playing with friends vs. solo, and see how your teammates perform across shared matches.*
 
