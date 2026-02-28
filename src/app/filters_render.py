@@ -660,7 +660,7 @@ def _render_session_filter(
         base_s_raw, friends_xuids_for_classify
     )
 
-    # ── Helpers (exclusion mutuelle entre solo et escouade) ──────────────────
+    # ── Clés de filtres cascade (réinitialisées quand la session active change) ──
     _CASCADE_RESET_KEYS = (
         "filter_playlists",
         "filter_modes",
@@ -673,33 +673,25 @@ def _render_session_filter(
         "_maps_filter_mode",
     )
 
-    def _set_solo_selection(label: str) -> None:
-        """Sélectionne une session solo via clés pending (jamais d'écriture directe widget)."""
-        prev = st.session_state.get("picked_session_label", "(toutes)")
-        # Écriture UNIQUEMENT dans des clés _pending_* — jamais dans les clés
-        # widget (picked_solo/squad_session_label) pour éviter
-        # StreamlitAPIException "cannot be modified after widget is instantiated".
+    # ── Helpers boutons (écrivent UNIQUEMENT des clés _pending_*) ───────────
+    # ARCHITECTURE : aucun on_change sur les selectboxes solo/escouade.
+    # Raison : les callbacks on_change s'exécutent dans un contexte où
+    # Streamlit peut considérer les clés widget du cycle précédent comme
+    # « instanciées », provoquant StreamlitAPIException.
+    # L'exclusion mutuelle est gérée par :
+    #   - Boutons → pending keys + st.rerun()
+    #   - Selectbox solo → détection de changement AVANT le rendu du squad
+    #   - Selectbox squad → pending key + st.rerun()
+
+    def _select_solo_via_button(label: str) -> None:
+        """Écrit des clés pending pour sélection solo — appelé par boutons uniquement."""
         st.session_state["_pending_solo_session_label"] = label
         st.session_state["_pending_squad_session_label"] = "(toutes)"
-        st.session_state["picked_session_label"] = label
-        st.session_state["picked_sessions"] = [] if label == "(toutes)" else [label]
-        if label != prev:
-            for _k in _CASCADE_RESET_KEYS:
-                st.session_state.pop(_k, None)
 
-    def _set_squad_selection(label: str) -> None:
-        """Sélectionne une session escouade via clés pending (jamais d'écriture directe widget)."""
-        prev = st.session_state.get("picked_session_label", "(toutes)")
-        # Écriture UNIQUEMENT dans des clés _pending_* — jamais dans les clés
-        # widget (picked_solo/squad_session_label) pour éviter
-        # StreamlitAPIException "cannot be modified after widget is instantiated".
+    def _select_squad_via_button(label: str) -> None:
+        """Écrit des clés pending pour sélection escouade — appelé par boutons uniquement."""
         st.session_state["_pending_squad_session_label"] = label
         st.session_state["_pending_solo_session_label"] = "(toutes)"
-        st.session_state["picked_session_label"] = label
-        st.session_state["picked_sessions"] = [] if label == "(toutes)" else [label]
-        if label != prev:
-            for _k in _CASCADE_RESET_KEYS:
-                st.session_state.pop(_k, None)
 
     # ── Initialisation des clés de sélection ────────────────────────────────
     if "picked_solo_session_label" not in st.session_state:
@@ -727,7 +719,7 @@ def _render_session_filter(
         active = st.session_state.get("picked_session_label", "(toutes)")
         st.session_state["picked_sessions"] = [active] if active != "(toutes)" else []
 
-    # Cohérence : remettre dans la liste si une session a disparu (ex: changement d'amis)
+    # Cohérence : remettre dans la liste si session disparue (ex: changement d'amis)
     if st.session_state.get("picked_solo_session_label") not in ["(toutes)"] + solo_options:
         st.session_state["picked_solo_session_label"] = (
             solo_options[0] if solo_options else "(toutes)"
@@ -735,23 +727,27 @@ def _render_session_filter(
     if st.session_state.get("picked_squad_session_label") not in ["(toutes)"] + squad_options:
         st.session_state["picked_squad_session_label"] = "(toutes)"
 
-    # ── Resets croisés en attente (pattern pending — Streamlit widget key safety) ──
-    # Les helpers _set_solo/squad_selection écrivent dans _pending_* pour éviter
-    # StreamlitAPIException "cannot be modified after widget is instantiated".
-    # Ces clés sont consommées ici, AVANT que les selectboxes soient rendus.
-    _pending_solo_reset = st.session_state.pop("_pending_solo_session_label", None)
-    if _pending_solo_reset is not None:
-        st.session_state["picked_solo_session_label"] = _pending_solo_reset
-    _pending_squad_reset = st.session_state.pop("_pending_squad_session_label", None)
-    if _pending_squad_reset is not None:
-        st.session_state["picked_squad_session_label"] = _pending_squad_reset
+    # ── Consommation des clés pending (AVANT tout widget) ───────────────────
+    # Les boutons et le reset croisé squad→solo écrivent dans _pending_*.
+    # On les consomme ici pour écrire dans les clés widget en toute sécurité
+    # (les selectboxes ne sont pas encore instanciés à ce stade).
+    _pending_solo = st.session_state.pop("_pending_solo_session_label", None)
+    if _pending_solo is not None:
+        st.session_state["picked_solo_session_label"] = _pending_solo
+    _pending_squad = st.session_state.pop("_pending_squad_session_label", None)
+    if _pending_squad is not None:
+        st.session_state["picked_squad_session_label"] = _pending_squad
+
+    # ── Capture pré-rendu pour détection de changement ──────────────────────
+    _pre_solo = st.session_state.get("picked_solo_session_label", "(toutes)")
+    _pre_squad = st.session_state.get("picked_squad_session_label", "(toutes)")
 
     # ── Sous-section "En solo" ───────────────────────────────────────────────
     st.subheader(t("filter_solo_title"))
     st.divider()
     solo_cols = st.columns(2)
     if solo_cols[0].button(t("filter_last_session"), width="stretch", key="btn_solo_last"):
-        _set_solo_selection(solo_options[0] if solo_options else "(toutes)")
+        _select_solo_via_button(solo_options[0] if solo_options else "(toutes)")
         st.session_state["min_matches_maps"] = 1
         st.session_state["_min_matches_maps_auto"] = True
         st.session_state["min_matches_maps_friends"] = 1
@@ -760,24 +756,28 @@ def _render_session_filter(
     if solo_cols[1].button(t("filter_prev_session"), width="stretch", key="btn_solo_prev"):
         current = st.session_state.get("picked_solo_session_label", "(toutes)")
         if not solo_options:
-            _set_solo_selection("(toutes)")
+            _select_solo_via_button("(toutes)")
         elif current == "(toutes)" or current not in solo_options:
-            _set_solo_selection(solo_options[0])
+            _select_solo_via_button(solo_options[0])
         else:
             idx = solo_options.index(current)
-            _set_solo_selection(solo_options[min(idx + 1, len(solo_options) - 1)])
+            _select_solo_via_button(solo_options[min(idx + 1, len(solo_options) - 1)])
         st.rerun()
 
-    def _on_solo_selectbox_change() -> None:
-        _set_solo_selection(st.session_state.get("picked_solo_session_label", "(toutes)"))
-
+    # Selectbox solo — PAS de on_change (voir commentaire architecture ci-dessus)
     st.selectbox(
         t("filter_solo_session_label"),
         options=["(toutes)"] + solo_options,
         format_func=lambda x: t("sel_all_categories") if x == "(toutes)" else x,
         key="picked_solo_session_label",
-        on_change=_on_solo_selectbox_change,
     )
+
+    # ── Détection changement solo → reset escouade ──────────────────────────
+    # Sûr : le selectbox squad n'est pas encore instancié, on peut écrire
+    # directement dans sa clé widget.
+    _post_solo = st.session_state.get("picked_solo_session_label", "(toutes)")
+    if _post_solo != _pre_solo and _post_solo != "(toutes)":
+        st.session_state["picked_squad_session_label"] = "(toutes)"
 
     # ── Sous-section "Mon escouade" ──────────────────────────────────────────
     st.subheader(t("filter_squad_title"))
@@ -795,7 +795,7 @@ def _render_session_filter(
         key="btn_squad_last",
         disabled=no_friends or no_squad_sessions,
     ):
-        _set_squad_selection(squad_options[0] if squad_options else "(toutes)")
+        _select_squad_via_button(squad_options[0] if squad_options else "(toutes)")
         st.session_state["min_matches_maps"] = 1
         st.session_state["_min_matches_maps_auto"] = True
         st.session_state["min_matches_maps_friends"] = 1
@@ -809,29 +809,33 @@ def _render_session_filter(
     ):
         current = st.session_state.get("picked_squad_session_label", "(toutes)")
         if not squad_options:
-            _set_squad_selection("(toutes)")
+            _select_squad_via_button("(toutes)")
         elif current == "(toutes)" or current not in squad_options:
-            _set_squad_selection(squad_options[0])
+            _select_squad_via_button(squad_options[0])
         else:
             idx = squad_options.index(current)
-            _set_squad_selection(squad_options[min(idx + 1, len(squad_options) - 1)])
+            _select_squad_via_button(squad_options[min(idx + 1, len(squad_options) - 1)])
         st.rerun()
 
-    def _on_squad_selectbox_change() -> None:
-        _set_squad_selection(st.session_state.get("picked_squad_session_label", "(toutes)"))
-
+    # Selectbox escouade — PAS de on_change (voir commentaire architecture ci-dessus)
     st.selectbox(
         t("filter_squad_session_label"),
         options=["(toutes)"] + squad_options,
         format_func=lambda x: t("sel_all_categories") if x == "(toutes)" else x,
         key="picked_squad_session_label",
-        on_change=_on_squad_selectbox_change,
         disabled=no_friends or no_squad_sessions,
     )
 
+    # ── Détection changement escouade → reset solo au prochain cycle ────────
+    # Le selectbox solo est DÉJÀ instancié → écriture directe interdite.
+    # On passe par pending + rerun pour que la consommation se fasse au
+    # début du prochain run (avant l'instanciation des widgets).
+    _post_squad = st.session_state.get("picked_squad_session_label", "(toutes)")
+    if _post_squad != _pre_squad and _post_squad != "(toutes)":
+        st.session_state["_pending_solo_session_label"] = "(toutes)"
+        st.rerun()
+
     # ── Sélection active consolidée ──────────────────────────────────────────
-    # Dériver depuis les widgets solo/escouade (source de vérité) plutôt que
-    # picked_session_label qui peut être désynchronisé entre deux rendus.
     solo_active = st.session_state.get("picked_solo_session_label", "(toutes)")
     squad_active = st.session_state.get("picked_squad_session_label", "(toutes)")
     if solo_active != "(toutes)":
@@ -840,6 +844,14 @@ def _render_session_filter(
         active_label = squad_active
     else:
         active_label = "(toutes)"
+
+    # Cascade reset des filtres ssi la session active effective a changé
+    _prev_active = st.session_state.get("_prev_active_session_label", "(toutes)")
+    if active_label != _prev_active:
+        for _k in _CASCADE_RESET_KEYS:
+            st.session_state.pop(_k, None)
+    st.session_state["_prev_active_session_label"] = active_label
+
     # Garder picked_session_label cohérent pour les autres parties de l'app
     st.session_state["picked_session_label"] = active_label
     st.session_state["picked_sessions"] = [] if active_label == "(toutes)" else [active_label]
@@ -1175,8 +1187,11 @@ def apply_filters(
             # Utiliser base_s_ui depuis FilterState (source de vérité = ce qui était affiché)
             # pour éviter toute désynchronisation avec un recalcul via cached_compute_sessions_db.
             # Fallback sur un recalcul uniquement si base_s_ui n'est pas disponible.
-            if filter_state.base_s_ui is not None and not filter_state.base_s_ui.is_empty():
-                base_s = _to_polars(filter_state.base_s_ui)
+            _bsu = (
+                _to_polars(filter_state.base_s_ui) if filter_state.base_s_ui is not None else None
+            )
+            if _bsu is not None and not _bsu.is_empty():
+                base_s = _bsu
             elif db_path and xuid:
                 base_s = _to_polars(
                     cached_compute_sessions_db(
