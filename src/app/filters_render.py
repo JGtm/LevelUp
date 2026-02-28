@@ -676,7 +676,9 @@ def _render_session_filter(
     def _set_solo_selection(label: str) -> None:
         prev = st.session_state.get("picked_session_label", "(toutes)")
         st.session_state["picked_solo_session_label"] = label
-        st.session_state["picked_squad_session_label"] = "(toutes)"
+        # Utiliser une clé pending pour éviter l'erreur Streamlit
+        # "cannot be modified after the widget is instantiated"
+        st.session_state["_pending_squad_session_label"] = "(toutes)"
         st.session_state["picked_session_label"] = label
         st.session_state["picked_sessions"] = [] if label == "(toutes)" else [label]
         if label != prev:
@@ -686,7 +688,9 @@ def _render_session_filter(
     def _set_squad_selection(label: str) -> None:
         prev = st.session_state.get("picked_session_label", "(toutes)")
         st.session_state["picked_squad_session_label"] = label
-        st.session_state["picked_solo_session_label"] = "(toutes)"
+        # Utiliser une clé pending pour éviter l'erreur Streamlit
+        # "cannot be modified after the widget is instantiated"
+        st.session_state["_pending_solo_session_label"] = "(toutes)"
         st.session_state["picked_session_label"] = label
         st.session_state["picked_sessions"] = [] if label == "(toutes)" else [label]
         if label != prev:
@@ -726,6 +730,17 @@ def _render_session_filter(
         )
     if st.session_state.get("picked_squad_session_label") not in ["(toutes)"] + squad_options:
         st.session_state["picked_squad_session_label"] = "(toutes)"
+
+    # ── Resets croisés en attente (pattern pending — Streamlit widget key safety) ──
+    # Les helpers _set_solo/squad_selection écrivent dans _pending_* pour éviter
+    # StreamlitAPIException "cannot be modified after widget is instantiated".
+    # Ces clés sont consommées ici, AVANT que les selectboxes soient rendus.
+    _pending_solo_reset = st.session_state.pop("_pending_solo_session_label", None)
+    if _pending_solo_reset is not None:
+        st.session_state["picked_solo_session_label"] = _pending_solo_reset
+    _pending_squad_reset = st.session_state.pop("_pending_squad_session_label", None)
+    if _pending_squad_reset is not None:
+        st.session_state["picked_squad_session_label"] = _pending_squad_reset
 
     # ── Sous-section "En solo" ───────────────────────────────────────────────
     st.subheader(t("filter_solo_title"))
