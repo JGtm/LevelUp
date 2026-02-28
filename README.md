@@ -94,7 +94,7 @@
 
 | KDA | Impact & Dominance |
 |:-:|:-:|
-| ![KDA](docs/screenshots/kda.png) | ![Impact & Dominance](docs/screenshots/impact-dominance.png) |
+| ![KDA](docs/screenshots/kda.png) | ![Impact & Dominance](docs/screenshots/.png) |
 
 *K/D ratio with trend, per-weapon accuracy, kill streaks — impact and dominance over your opponents.*
 
@@ -160,7 +160,7 @@
 |:-:|:-:|
 | ![Media library](docs/screenshots/media-library.png) | ![Commendations](docs/screenshots/commendations.png) |
 
-*Browse and search your clips and screenshots linked to their matches — track your commendations with medal grids and distributions.*
+*Browse and search your clips and screenshots linked to their matches (still in beta) — track your commendations with medal grids and distributions.*
 
 ---
 
