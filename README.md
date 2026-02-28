@@ -92,7 +92,7 @@
 
 ### Performance & Combat
 
-| KDA & Accuracy | Impact & Dominance |
+| KDA | Impact & Dominance |
 |:-:|:-:|
 | ![KDA](docs/screenshots/kda.png) | ![Impact & Dominance](docs/screenshots/impact-dominance.png) |
 
@@ -118,23 +118,51 @@
 
 ---
 
-### Last match & Commendations
+### Last match details
 
-| Last match | Commendations |
+| Last match | Scoreboard |
 |:-:|:-:|
 | ![Last match](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/Scorebard-commendations.png) |
-
-*Full scoreboard for your latest game (searchable by match ID) — commendations grid with medal distributions.*
-
----
-
-### Career progression & Rivalries
-
+|:-:|:-:|
 | Career | Antagonists |
 |:-:|:-:|
 | ![Career](docs/screenshots/career.png) | ![Antagonists](docs/screenshots/antagonist.png) |
 
-*Rank history, progression to Hero, LUSR/CSR per playlist group — and your most formidable rivals.*
+*Full scoreboard for your latest game (searchable by match ID) — and your most formidable rivals, MVP/LVP, scoreboard, commendations (Halo 5 inspired) grid and medal distributions.*
+
+---
+
+### Squad sessions & Teammates
+
+| Squad overview | Session stats |
+|:-:|:-:|
+| ![Squad overview](docs/screenshots/squad-overview.png) | ![Session stats](docs/screenshots/squad-session-stats.png) |
+| **Teammates performance** | **Solo vs Squad** |
+| ![Teammates performance](docs/screenshots/teammates-performance.png) | ![Solo vs Squad](docs/screenshots/solo-vs-squad.png) |
+
+*Filter your sessions by squad: compare your stats when playing with friends vs. solo, and see how your teammates perform across shared matches.*
+
+---
+
+### Career progression, Ranks & Path to Hero
+
+| Career | Ranks |
+|:-:|:-:|
+| ![Career](docs/screenshots/career.png) | ![Ranks](docs/screenshots/antagonist.png) |
+|:-:|:-:|
+| Career | Antagonists |
+|:-:|:-:|
+| ![Career](docs/screenshots/career.png) | ![Antagonists](docs/screenshots/antagonist.png) |
+
+*Rank history, progression to Hero, LUSR/CSR per playlist group*
+
+---
+
+### Media library
+
+![Media library](docs/screenshots/media-library.png)
+
+*Browse and search your clips and screenshots, each linked to its match for instant context.*
 
 ---
 
