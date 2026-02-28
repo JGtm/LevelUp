@@ -14,6 +14,7 @@ import pytest
 
 from src.ui.components.career_progress_circle import XP_HERO_TOTAL
 from src.ui.pages.career import (
+    DAILY_CHALLENGE_XP,
     INACTIVITY_GAP_DAYS,
     WEEKLY_CHALLENGE_XP,
     XP_BOOST_MULTIPLIER,
@@ -230,9 +231,9 @@ class TestComputeHeroProjections:
             assert opt_dates == sorted(opt_dates)
 
     def test_optimiste_integre_challenges_et_boost(self):
-        """Vérifie que le rythme optimiste = (xp_day + challenges/7) × boost."""
+        """Vérifie que le rythme optimiste = (xp_day + hebdo/7 + quotidien) × boost."""
         xp_per_day = self.FAST_XP_PER_DAY
-        challenge_per_day = WEEKLY_CHALLENGE_XP / 7.0
+        challenge_per_day = WEEKLY_CHALLENGE_XP / 7.0 + DAILY_CHALLENGE_XP
         expected_opt_rate = (xp_per_day + challenge_per_day) * XP_BOOST_MULTIPLIER
 
         xp_remaining = XP_HERO_TOTAL - self.BASE_XP
@@ -263,6 +264,10 @@ class TestConstants:
     def test_weekly_challenge_xp(self):
         """950 XP = 4×50 + 3×100 + 3×150 (Normal + Heroic + Legendary post-CU32)."""
         assert WEEKLY_CHALLENGE_XP == 4 * 50 + 3 * 100 + 3 * 150
+
+    def test_daily_challenge_xp(self):
+        """500 XP par défi quotidien (source : Halopedia)."""
+        assert DAILY_CHALLENGE_XP == 500
 
     def test_xp_boost_multiplier(self):
         assert XP_BOOST_MULTIPLIER == 2.0

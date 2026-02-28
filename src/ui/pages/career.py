@@ -42,6 +42,8 @@ logger = logging.getLogger(__name__)
 # XP des 10 défis hebdomadaires (source : Halopedia, post-CU32)
 # 4 Normal × 50 + 3 Heroic × 100 + 3 Legendary × 150 = 950 XP/semaine
 WEEKLY_CHALLENGE_XP: int = 950
+# XP du défi quotidien (1 défi/jour × 500 XP, source : Halopedia)
+DAILY_CHALLENGE_XP: int = 500
 # Multiplicateur boost XP (consommable Double XP)
 XP_BOOST_MULTIPLIER: float = 2.0
 # Seuil d'inactivité en jours — les gaps plus longs sont exclus du rythme
@@ -317,7 +319,8 @@ def _compute_hero_projections(
     normal_days = min(normal_days, 365 * 10)
 
     # ── Projection optimiste : (rythme réel + challenges/jour) × boost ──
-    challenge_xp_per_day = WEEKLY_CHALLENGE_XP / 7.0
+    # challenges/jour = défis hebdo répartis sur 7 jours + 1 défi quotidien
+    challenge_xp_per_day = WEEKLY_CHALLENGE_XP / 7.0 + DAILY_CHALLENGE_XP
     optimistic_xp_per_day = (xp_per_active_day + challenge_xp_per_day) * XP_BOOST_MULTIPLIER
     optimistic_days = xp_remaining / optimistic_xp_per_day
     optimistic_days = min(optimistic_days, 365 * 10)
