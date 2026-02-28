@@ -21,7 +21,6 @@ import streamlit as st
 from src.config import THEME_COLORS
 from src.ui.career_ranks import (
     format_career_rank_label_fr,
-    get_rank_for_xp,
     get_rank_icon_path,
 )
 from src.ui.components.career_progress_circle import (
@@ -201,36 +200,32 @@ def _load_post_sync_match_count(
 def _compute_estimated_xp_curve(
     history: list[dict],
     pre_sync_match_dates: list[datetime],
-    xuid: str,
 ) -> list[tuple[datetime, int]]:
     """Estime la courbe XP pour les matchs antérieurs au premier sync.
 
-    Logique : on calcule l'XP moyen gagné par match sur la période post-sync,
-    puis on l'applique rétroactivement à chaque match pré-sync en partant
-    de l'XP connue au 1er snapshot et en remontant dans le temps.
+    Logique : l'XP total au 1er snapshot est réparti uniformément sur tous les
+    matchs pré-sync (average = first_xp / n_pre_sync). On remonte dans le temps
+    depuis le 1er snapshot en soustrayant cet XP moyen à chaque match.
+    Cela garantit que la courbe part de ~0 au match le plus ancien.
 
     Returns:
         Liste de (date, xp_estimé) en ordre chronologique, se terminant
         au 1er point réel (inclus pour raccord visuel).
     """
-    if not pre_sync_match_dates or len(history) < 2:
+    if not pre_sync_match_dates or not history:
         return []
 
     first_xp = history[0]["xp_total"] or 0
-    last_xp = history[-1]["xp_total"] or 0
     first_sync_at = history[0]["recorded_at"]
 
-    # XP gagné sur la période de sync
-    xp_delta = last_xp - first_xp
-    if xp_delta <= 0:
+    if first_xp <= 0:
         return []
 
-    # Nombre de matchs post-sync
-    post_sync_count = _load_post_sync_match_count(xuid, first_sync_at)
-    if post_sync_count <= 0:
-        return []
-
-    avg_xp_per_match = xp_delta / post_sync_count
+    # Moyenne basée sur l'XP total au 1er snapshot réparti sur tous les matchs
+    # pré-sync : garantit que la courbe part de ~0 au match le plus ancien.
+    # (utiliser la moyenne post-sync introduirait un biais si le rythme change)
+    n_pre = len(pre_sync_match_dates)
+    avg_xp_per_match = first_xp / n_pre
 
     # Remonter dans le temps depuis le 1er snapshot
     curve: list[tuple[datetime, int]] = []
@@ -423,14 +418,10 @@ def _create_xp_history_chart(
         est_dates = [pt[0] for pt in estimated_curve]
         est_xp = [pt[1] for pt in estimated_curve]
 
-        est_hover = []
-        for pt in estimated_curve:
-            rank_info = get_rank_for_xp(pt[1])
-            rank_num = rank_info.rank_number if rank_info else "?"
-            date_str = str(pt[0])[:10]
-            est_hover.append(
-                t("career_xp_estimated_hover", date=date_str, xp=f"{pt[1]:,}", rank=rank_num)
-            )
+        est_hover = [
+            t("career_xp_estimated_hover", date=str(pt[0])[:10], xp=f"{pt[1]:,}")
+            for pt in estimated_curve
+        ]
 
         fig.add_trace(
             go.Scatter(
@@ -511,17 +502,17 @@ def _create_xp_history_chart(
         plot_bgcolor=bg_color,
         font={"color": "white"},
         height=400,
-        margin={"t": 40, "b": 40, "l": 60, "r": 20},
         xaxis={"gridcolor": "rgba(255,255,255,0.05)"},
         yaxis={"gridcolor": "rgba(255,255,255,0.1)"},
         legend={
             "orientation": "h",
-            "yanchor": "bottom",
-            "y": 1.02,
-            "xanchor": "left",
-            "x": 0,
+            "yanchor": "top",
+            "y": -0.18,
+            "xanchor": "center",
+            "x": 0.5,
             "font": {"size": 11},
         },
+        margin={"t": 40, "b": 80, "l": 60, "r": 20},
     )
 
     apply_halo_plot_style(fig)
@@ -990,7 +981,7 @@ def render_career_page(
             if first_sync_at and len(history) >= 2:
                 pre_sync_dates = _load_pre_sync_match_dates(db_path, xuid, first_sync_at)
                 if pre_sync_dates:
-                    estimated_curve = _compute_estimated_xp_curve(history, pre_sync_dates, xuid)
+                    estimated_curve = _compute_estimated_xp_curve(history, pre_sync_dates)
         except Exception as e:
             logger.debug(f"Estimation pré-sync échouée: {e}")
 
