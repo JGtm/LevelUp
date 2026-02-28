@@ -10,7 +10,7 @@ import polars as pl
 import streamlit as st
 
 from src.config import HALO_COLORS
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import fragment_if_available
 from src.visualization import (
     plot_average_life,
@@ -46,7 +46,7 @@ def render_comparison_charts(
     c1, c2 = st.columns(2)
     with c1:
         st.plotly_chart(
-            plot_timeseries(sub, title=f"{me_name} — matchs avec {friend_name}"),
+            plot_timeseries(sub, title=f"{me_name} — matchs avec {friend_name}", lang=get_lang()),
             width="stretch",
             key=f"friend_ts_me_{friend_xuid}",
             config={"displayModeBar": False},
@@ -56,7 +56,9 @@ def render_comparison_charts(
             st.warning(t("error_chart", error="charger les stats du coéquipier"))
         else:
             st.plotly_chart(
-                plot_timeseries(friend_sub, title=f"{friend_name} — matchs avec {me_name}"),
+                plot_timeseries(
+                    friend_sub, title=f"{friend_name} — matchs avec {me_name}", lang=get_lang()
+                ),
                 width="stretch",
                 key=f"friend_ts_fr_{friend_xuid}",
                 config={"displayModeBar": False},
@@ -65,7 +67,9 @@ def render_comparison_charts(
     c3, c4 = st.columns(2)
     with c3:
         st.plotly_chart(
-            plot_per_minute_timeseries(sub, title=f"{me_name} — stats/min (avec {friend_name})"),
+            plot_per_minute_timeseries(
+                sub, title=f"{me_name} — stats/min (avec {friend_name})", lang=get_lang()
+            ),
             width="stretch",
             key=f"friend_pm_me_{friend_xuid}",
             config={"displayModeBar": False},
@@ -76,6 +80,7 @@ def render_comparison_charts(
                 plot_per_minute_timeseries(
                     friend_sub,
                     title=f"{friend_name} — stats/min (avec {me_name})",
+                    lang=get_lang(),
                 ),
                 width="stretch",
                 key=f"friend_pm_fr_{friend_xuid}",
@@ -86,7 +91,11 @@ def render_comparison_charts(
     with c5:
         if not sub.drop_nulls(subset=["average_life_seconds"]).is_empty():
             st.plotly_chart(
-                plot_average_life(sub, title=t("tm_lifespan_with", player=me_name, partner=friend_name)),
+                plot_average_life(
+                    sub,
+                    title=t("tm_lifespan_with", player=me_name, partner=friend_name),
+                    lang=get_lang(),
+                ),
                 width="stretch",
                 key=f"friend_life_me_{friend_xuid}",
                 config={"displayModeBar": False},
@@ -98,7 +107,9 @@ def render_comparison_charts(
         ):
             st.plotly_chart(
                 plot_average_life(
-                    friend_sub, title=t("tm_lifespan_with", player=friend_name, partner=me_name)
+                    friend_sub,
+                    title=t("tm_lifespan_with", player=friend_name, partner=me_name),
+                    lang=get_lang(),
                 ),
                 width="stretch",
                 key=f"friend_life_fr_{friend_xuid}",
@@ -110,7 +121,10 @@ def render_comparison_charts(
     with c7:
         st.plotly_chart(
             plot_performance_timeseries(
-                sub, title=f"{me_name} — Performance (avec {friend_name})", show_smooth=show_smooth
+                sub,
+                title=f"{me_name} — Performance (avec {friend_name})",
+                show_smooth=show_smooth,
+                lang=get_lang(),
             ),
             width="stretch",
             key=f"friend_perf_me_{friend_xuid}",
@@ -123,6 +137,7 @@ def render_comparison_charts(
                     friend_sub,
                     title=f"{friend_name} — Performance (avec {me_name})",
                     show_smooth=show_smooth,
+                    lang=get_lang(),
                 ),
                 width="stretch",
                 key=f"friend_perf_fr_{friend_xuid}",
@@ -147,6 +162,7 @@ def render_metric_bar_charts(
         key_suffix: Suffixe pour les clés Streamlit.
         plot_fn: Fonction de tracé.
     """
+    _lang = get_lang()
     fig_spree = plot_fn(
         series,
         metric_col="max_killing_spree",
@@ -156,6 +172,7 @@ def render_metric_bar_charts(
         colors=colors_by_name,
         smooth_window=10,
         show_smooth_lines=show_smooth,
+        lang=_lang,
     )
     if fig_spree is None:
         st.info(t("insufficient_data_chart"))
@@ -176,6 +193,7 @@ def render_metric_bar_charts(
         colors=colors_by_name,
         smooth_window=10,
         show_smooth_lines=show_smooth,
+        lang=_lang,
     )
     if fig_hs is None:
         st.info(t("insufficient_data_chart"))
@@ -196,6 +214,7 @@ def render_metric_bar_charts(
         colors=colors_by_name,
         smooth_window=10,
         show_smooth_lines=show_smooth,
+        lang=_lang,
     )
     if fig_pk is None:
         st.info(t("insufficient_data_chart"))
@@ -275,6 +294,7 @@ def render_trio_charts(
     """
     names = (me_name, f1_name, f2_name)
 
+    _lang = get_lang()
     st.plotly_chart(
         plot_trio_metric(
             d_self,
@@ -284,6 +304,7 @@ def render_trio_charts(
             names=names,
             title=t("tm_kills"),
             y_title=t("tm_kills"),
+            lang=_lang,
         ),
         width="stretch",
         key=f"trio_kills_{f1_xuid}_{f2_xuid}",
@@ -298,6 +319,7 @@ def render_trio_charts(
             names=names,
             title=t("tm_deaths"),
             y_title=t("tm_deaths"),
+            lang=_lang,
         ),
         width="stretch",
         key=f"trio_deaths_{f1_xuid}_{f2_xuid}",
@@ -312,6 +334,7 @@ def render_trio_charts(
             names=names,
             title=t("tm_assists"),
             y_title=t("tm_assists"),
+            lang=_lang,
         ),
         width="stretch",
         key=f"trio_assists_{f1_xuid}_{f2_xuid}",
@@ -327,6 +350,7 @@ def render_trio_charts(
             title=t("tm_kda"),
             y_title=t("tm_kda"),
             y_format=".3f",
+            lang=_lang,
         ),
         width="stretch",
         key=f"trio_ratio_{f1_xuid}_{f2_xuid}",
@@ -343,6 +367,7 @@ def render_trio_charts(
             y_title="%",
             y_suffix="%",
             y_format=".2f",
+            lang=_lang,
         ),
         width="stretch",
         key=f"trio_accuracy_{f1_xuid}_{f2_xuid}",
@@ -358,6 +383,7 @@ def render_trio_charts(
             title=t("tm_avg_life"),
             y_title=t("tm_seconds"),
             y_format=".1f",
+            lang=_lang,
         ),
         width="stretch",
         key=f"trio_life_{f1_xuid}_{f2_xuid}",
@@ -373,6 +399,7 @@ def render_trio_charts(
             title=t("tm_performance"),
             y_title=t("tm_score"),
             y_format=".1f",
+            lang=_lang,
         ),
         width="stretch",
         key=f"trio_performance_{f1_xuid}_{f2_xuid}",
