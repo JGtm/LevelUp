@@ -674,10 +674,12 @@ def _render_session_filter(
     )
 
     def _set_solo_selection(label: str) -> None:
+        """Sélectionne une session solo via clés pending (jamais d'écriture directe widget)."""
         prev = st.session_state.get("picked_session_label", "(toutes)")
-        st.session_state["picked_solo_session_label"] = label
-        # Utiliser une clé pending pour éviter l'erreur Streamlit
-        # "cannot be modified after the widget is instantiated"
+        # Écriture UNIQUEMENT dans des clés _pending_* — jamais dans les clés
+        # widget (picked_solo/squad_session_label) pour éviter
+        # StreamlitAPIException "cannot be modified after widget is instantiated".
+        st.session_state["_pending_solo_session_label"] = label
         st.session_state["_pending_squad_session_label"] = "(toutes)"
         st.session_state["picked_session_label"] = label
         st.session_state["picked_sessions"] = [] if label == "(toutes)" else [label]
@@ -686,10 +688,12 @@ def _render_session_filter(
                 st.session_state.pop(_k, None)
 
     def _set_squad_selection(label: str) -> None:
+        """Sélectionne une session escouade via clés pending (jamais d'écriture directe widget)."""
         prev = st.session_state.get("picked_session_label", "(toutes)")
-        st.session_state["picked_squad_session_label"] = label
-        # Utiliser une clé pending pour éviter l'erreur Streamlit
-        # "cannot be modified after the widget is instantiated"
+        # Écriture UNIQUEMENT dans des clés _pending_* — jamais dans les clés
+        # widget (picked_solo/squad_session_label) pour éviter
+        # StreamlitAPIException "cannot be modified after widget is instantiated".
+        st.session_state["_pending_squad_session_label"] = label
         st.session_state["_pending_solo_session_label"] = "(toutes)"
         st.session_state["picked_session_label"] = label
         st.session_state["picked_sessions"] = [] if label == "(toutes)" else [label]
@@ -752,6 +756,7 @@ def _render_session_filter(
         st.session_state["_min_matches_maps_auto"] = True
         st.session_state["min_matches_maps_friends"] = 1
         st.session_state["_min_matches_maps_friends_auto"] = True
+        st.rerun()
     if solo_cols[1].button(t("filter_prev_session"), width="stretch", key="btn_solo_prev"):
         current = st.session_state.get("picked_solo_session_label", "(toutes)")
         if not solo_options:
@@ -761,6 +766,7 @@ def _render_session_filter(
         else:
             idx = solo_options.index(current)
             _set_solo_selection(solo_options[min(idx + 1, len(solo_options) - 1)])
+        st.rerun()
 
     def _on_solo_selectbox_change() -> None:
         _set_solo_selection(st.session_state.get("picked_solo_session_label", "(toutes)"))
@@ -794,6 +800,7 @@ def _render_session_filter(
         st.session_state["_min_matches_maps_auto"] = True
         st.session_state["min_matches_maps_friends"] = 1
         st.session_state["_min_matches_maps_friends_auto"] = True
+        st.rerun()
     if squad_cols[1].button(
         t("filter_prev_carnage"),
         width="stretch",
@@ -808,6 +815,7 @@ def _render_session_filter(
         else:
             idx = squad_options.index(current)
             _set_squad_selection(squad_options[min(idx + 1, len(squad_options) - 1)])
+        st.rerun()
 
     def _on_squad_selectbox_change() -> None:
         _set_squad_selection(st.session_state.get("picked_squad_session_label", "(toutes)"))
