@@ -1324,6 +1324,7 @@ Exemples:
                 players=_discord_players,
                 success=success,
                 disabled=getattr(args, "no_discord", False),
+                skip_idle=True,
             )
         except Exception as _discord_exc:
             logger.debug(f"[Discord] Notification ignorée : {_discord_exc}")
@@ -1525,6 +1526,7 @@ Exemples:
                 ],
                 success=success,
                 disabled=getattr(args, "no_discord", False),
+                skip_idle=True,
             )
         except Exception as _discord_exc:
             logger.debug(f"[Discord] Notification ignorée : {_discord_exc}")

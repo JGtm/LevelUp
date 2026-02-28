@@ -565,6 +565,7 @@ def notify_operation_done(
     success: bool = True,
     *,
     disabled: bool = False,
+    skip_idle: bool = False,
 ) -> None:
     """Envoie la notification Discord de fin d'opération.
 
@@ -578,6 +579,8 @@ def notify_operation_done(
         players:     Liste de DiscordPlayerResult, un par joueur traité.
         success:     False si au moins une erreur globale s'est produite.
         disabled:    Si True, court-circuitage immédiat (flag --no-discord).
+        skip_idle:   Si True, exclut les joueurs sans nouveaux matchs et sans
+                     erreur. Si tous sont idle, la notification est omise.
     """
     if disabled:
         return
@@ -591,6 +594,13 @@ def notify_operation_done(
         if not players:
             logger.debug("[Discord] Aucun joueur à notifier, skip")
             return
+
+        # ── Filtrage des joueurs idle ────────────────────────────────────
+        if skip_idle:
+            players = [p for p in players if p.matches_synced > 0 or p.error]
+            if not players:
+                logger.debug("[Discord] Tous les joueurs à jour, notification omise")
+                return
 
         payload = build_embed_payload(
             operation=operation,
