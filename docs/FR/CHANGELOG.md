@@ -94,6 +94,20 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - **Paramètres d'inactivité réduits** : `INACTIVITY_SIGMA_PER_DAY` 3.5→1.0, `MAX_INACTIVITY_DAYS` 30→14 — évite les swings de ±200 pts après une longue pause
 - **Seed sigma CSR réduit** : `PlayerState.from_csr()` démarre à `sigma=MIN_SIGMA` (60) au lieu de `INITIAL_SIGMA × 0.6` (210) — le CSR est un ancrage fort, démarrer en état stable évite la volatilité initiale
 
+- **Page Carrière — Courbe XP estimée pré-sync** (`src/ui/pages/career.py`)
+  - Trace violette pointillée estimant l'XP pour les ~561 matchs joués avant le premier sync
+  - XP moyen/match = `first_xp / n_matchs_pré_sync` — la courbe part de ~0 au match le plus ancien et rejoint le premier snapshot réel
+  - Visuellement distincte de la courbe XP réelle (violet `#CE93D8` pointillé)
+
+- **Page Carrière — Courbes de projection vers le rang Héros** (`src/ui/pages/career.py`)
+  - **Projection standard** (orange, tirets) : extrapole depuis le rythme actif XP/jour en excluant les gaps d'inactivité > 14 jours
+  - **Projection optimiste** (vert, tirets-points) : ajoute les défis hebdomadaires (950 XP/semaine = 4×50 + 3×100 + 3×150) avec boost XP ×2
+  - Les deux courbes masquées par défaut — cliquer sur la légende pour les afficher
+  - Ligne horizontale dorée au seuil Héros (9 319 350 XP)
+  - Projection plafonnée à 10 ans pour éviter les graphes infinis
+  - Légende déplacée en dessous du graphe (centrée)
+  - 23 tests unitaires dans `tests/test_career_xp_projection.py`
+
 ### Corrigé
 
 - **20 tests pré-existants corrigés** suite à la migration v5.1 (architecture shared)

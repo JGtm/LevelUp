@@ -94,6 +94,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Reduced inactivity params**: `INACTIVITY_SIGMA_PER_DAY` 3.5→1.0, `MAX_INACTIVITY_DAYS` 30→14 — avoids ±200 pt swings after a long break
 - **Reduced CSR seed sigma**: `PlayerState.from_csr()` starts at `sigma=MIN_SIGMA` (60) instead of `INITIAL_SIGMA × 0.6` (210) — CSR is a strong anchor; starting in a stable state avoids initial volatility
 
+- **Career page — Estimated pre-sync XP curve** (`src/ui/pages/career.py`)
+  - Dotted purple trace retroactively estimating XP for the ~561 matches played before the first sync
+  - Average XP/match = `first_xp / n_pre_sync_matches` — curve starts near 0 at the oldest match and connects seamlessly to the first real snapshot
+  - Visually distinct from the real XP trace (purple `#CE93D8` dotted line)
+
+- **Career page — Projection curves to Hero rank** (`src/ui/pages/career.py`)
+  - **Standard projection** (orange dashed): extrapolates from the current active XP/day rate, excluding inactivity gaps > 14 days
+  - **Optimistic projection** (green dash-dot): adds weekly challenge XP (950 XP/week = 4×50 + 3×100 + 3×150) with ×2 XP boost
+  - Both curves hidden by default — click the legend to reveal them
+  - Gold horizontal line at the Hero threshold (9,319,350 XP)
+  - Projection capped at 10 years to avoid infinite charts
+  - Legend moved to the bottom of the chart (centered)
+  - 23 unit tests in `tests/test_career_xp_projection.py`
+
 ### Fixed
 
 - **20 pre-existing tests fixed** following the v5.1 migration (shared architecture)

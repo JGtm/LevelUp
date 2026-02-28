@@ -20,6 +20,7 @@
   - Full internationalization (i18n) support across all UI pages
   - Multi-language interface (French 🇫🇷 / English 🇬🇧), switchable from the sidebar
   - Translations centralized in `src/ui/i18n/` (dedicated package: `common`, `pages`, `widgets`, `viz`, `cli`)
+  - Career page: estimated pre-sync XP curve (purple dotted) + Hero rank projections (standard & optimistic, hidden by default)
 
 - **v5.2 — PvE / Firefight**
   - Dedicated `shared_pve.duckdb` database for Firefight matches
