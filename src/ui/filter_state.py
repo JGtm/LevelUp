@@ -62,6 +62,13 @@ FILTER_DATA_KEYS: list[str] = [
     "_picked_sessions_shadow",
     "_start_date_cal_shadow",
     "_end_date_cal_shadow",
+    # Solo / escouade (v5.3)
+    "picked_solo_session_label",
+    "picked_squad_session_label",
+    "_picked_solo_session_label_shadow",
+    "_picked_squad_session_label_shadow",
+    # Amis sélectionnés dans l'onglet Teammates (v5.3)
+    "teammates_picked_labels",
 ]
 
 FILTER_WIDGET_KEY_PREFIXES: tuple[str, ...] = (
@@ -122,6 +129,11 @@ class FilterPreferences:
     # Si picked_session_label == latest_session_label, l'utilisateur suivait
     # la session la plus récente → on réinitialise sur la vraie dernière au prochain chargement.
     latest_session_label: str | None = None
+    # Sessions solo / escouade (v5.3)
+    picked_solo_session_label: str | None = None
+    picked_squad_session_label: str | None = None
+    # Amis sélectionnés dans l'onglet Teammates (v5.3)
+    friends_selected_labels: list[str] | None = None
 
     # Filtres cascade (listes de strings)
     # En mode "exclude" : contient ce qui est DÉCOCHÉ
@@ -297,6 +309,17 @@ def save_filter_preferences(
         latest_session_label_val = st.session_state.get("_latest_session_label")
         if isinstance(latest_session_label_val, str):
             preferences.latest_session_label = latest_session_label_val
+        # Sessions solo / escouade (v5.3)
+        solo_label = st.session_state.get("picked_solo_session_label")
+        if isinstance(solo_label, str):
+            preferences.picked_solo_session_label = solo_label
+        squad_label = st.session_state.get("picked_squad_session_label")
+        if isinstance(squad_label, str):
+            preferences.picked_squad_session_label = squad_label
+        # Amis sélectionnés dans Teammates (v5.3)
+        friends_labels = st.session_state.get("teammates_picked_labels")
+        if isinstance(friends_labels, list):
+            preferences.friends_selected_labels = friends_labels
 
         # Filtres cascade — logique intent-based
         # Mapping session_key → exclusions_key pour mise à jour mid-session
@@ -455,13 +478,35 @@ def apply_filter_preferences(
     if preferences.gap_minutes is not None:
         st.session_state["gap_minutes"] = preferences.gap_minutes
 
-    if preferences.picked_session_label:
+    # Sessions solo / escouade (v5.3) — précédence sur l'ancien picked_session_label
+    if preferences.picked_solo_session_label:
+        st.session_state["picked_solo_session_label"] = preferences.picked_solo_session_label
+    if preferences.picked_squad_session_label:
+        st.session_state["picked_squad_session_label"] = preferences.picked_squad_session_label
+
+    # Dériver picked_session_label actif depuis solo/squad, ou fallback legacy
+    _active_new = None
+    solo_saved = preferences.picked_solo_session_label
+    squad_saved = preferences.picked_squad_session_label
+    if solo_saved and solo_saved != "(toutes)":
+        _active_new = solo_saved
+    elif squad_saved and squad_saved != "(toutes)":
+        _active_new = squad_saved
+
+    if _active_new:
+        st.session_state["picked_session_label"] = _active_new
+        st.session_state["picked_sessions"] = [_active_new]
+    elif preferences.picked_session_label:
         st.session_state["picked_session_label"] = preferences.picked_session_label
         # Mettre à jour picked_sessions aussi
         if preferences.picked_session_label != "(toutes)":
             st.session_state["picked_sessions"] = [preferences.picked_session_label]
         else:
             st.session_state["picked_sessions"] = []
+
+    # Amis sélectionnés dans Teammates (v5.3)
+    if preferences.friends_selected_labels:
+        st.session_state["teammates_picked_labels"] = preferences.friends_selected_labels
 
     # Filtres cascade — logique intent-based
     def _apply_filter(
