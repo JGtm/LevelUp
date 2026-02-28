@@ -92,11 +92,14 @@
 
 ### Performance & Combat
 
-| KDA | Impact & Dominance |
+| KDA | Cumulative performance & trend |
 |:-:|:-:|
-| ![KDA](docs/screenshots/kda.png) | ![Impact & Dominance](docs/screenshots/.png) |
+| ![KDA](docs/screenshots/kda.png) | ![Cumulative performance & trend](docs/screenshots/cumulative-perf.png) |
 
-*K/D ratio with trend, per-weapon accuracy, kill streaks — impact and dominance over your opponents.*
+![Average lifespan & Combat Skills](docs/screenshots/avg-lifespan-perfect-kills.png)
+
+
+*K/D ratio with trend, cumulative performance score, average lifespan and combat skills.*
 
 ---
 
@@ -135,10 +138,10 @@
 | Squad overview | Session stats |
 |:-:|:-:|
 | ![Session history](docs/screenshots/history.png) | ![Squad complementarity](docs/screenshots/per-minute-complementarity.png) |
-| **Teammates performance** | **Solo vs Squad** |
+| **Teammates performance** | **Squad ranking** |
 | ![Teammates performance](docs/screenshots/performance-spree.png) | ![Squad ranking](docs/screenshots/teammate-heatmap.png) |
 
-*Filter your sessions by squad: compare your stats when playing with friends vs. solo, and see how your teammates perform across shared matches.*
+*Filter your sessions by squad: compare your stats when playing with friends and see how you and your teammates perform across shared matches.*
 
 ---
 
@@ -158,7 +161,7 @@
 
 | Media library | Commendations |
 |:-:|:-:|
-| ![Media library](docs/screenshots/media-library.png) | ![Commendations](docs/screenshots/commendations.png) |
+| ![Media library](docs/screenshots/media-library.png) | ![commendations](docs/screenshots/commendations.png) |
 
 *Browse and search your clips and screenshots linked to their matches (still in beta) — track your commendations with medal grids and distributions.*
 
