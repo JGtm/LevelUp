@@ -502,6 +502,17 @@ def create_argument_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ── Détection version SPNKr stale (v5.4) ──────────────────────────────
+    parser.add_argument(
+        "--detect-stale-events",
+        action="store_true",
+        help=(
+            "Détecte les matchs syncés avec une version SPNKr obsolète "
+            "(highlight_events potentiellement corrompus). Affiche un rapport "
+            "sans modifier les données."
+        ),
+    )
+
     return parser
 
 

@@ -53,6 +53,7 @@ from src.data.sync.migrations import (
     ensure_backfill_completed_column,
     ensure_career_progression_autoincrement,
     ensure_highlight_events_autoincrement,
+    ensure_match_registry_spnkr_version,
     ensure_match_skill_rank_table,
     ensure_player_performance_indexes,
 )
@@ -335,6 +336,15 @@ class DuckDBSyncEngine:
         # Cache des XUIDs amis (chargé lazily depuis friends_defaults.json)
         self._friends_xuids: frozenset[str] | None = None
 
+        # Version SPNKr installée (trackée dans match_registry + sync_meta)
+        self._spnkr_version: str | None = None
+        try:
+            from importlib.metadata import version as _pkg_version
+
+            self._spnkr_version = _pkg_version("spnkr")
+        except Exception:
+            pass
+
         # Créer le resolver pour les métadonnées
         self._metadata_resolver = create_metadata_resolver(self._metadata_db_path)
 
@@ -419,6 +429,12 @@ class DuckDBSyncEngine:
             ensure_performance_indexes(self._shared_connection)
         except Exception as e:
             logger.debug(f"Index performance shared: {e}")
+
+        # Colonne sync_spnkr_version sur match_registry (migration v5.4)
+        try:
+            ensure_match_registry_spnkr_version(self._shared_connection)
+        except Exception as e:
+            logger.debug(f"Migration sync_spnkr_version shared: {e}")
 
         return self._shared_connection
 
@@ -775,6 +791,8 @@ class DuckDBSyncEngine:
                 self._update_sync_meta("xuid", self._xuid)
             if self._gamertag:
                 self._update_sync_meta("gamertag", self._gamertag)
+            if self._spnkr_version:
+                self._update_sync_meta("spnkr_version", self._spnkr_version)
 
             # Commit final
             conn = self._get_connection()
@@ -1536,8 +1554,9 @@ class DuckDBSyncEngine:
                 mode_category, is_ranked, is_firefight,
                 duration_seconds,
                 team_0_score, team_1_score,
+                sync_spnkr_version,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
             (
                 data["match_id"],
                 data["start_time"],
@@ -1556,6 +1575,7 @@ class DuckDBSyncEngine:
                 data["duration_seconds"],
                 data["team_0_score"],
                 data["team_1_score"],
+                self._spnkr_version,
             ),
         )
         # Si le match existait déjà avec mode_category NULL (anciens matchs insérés
