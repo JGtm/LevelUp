@@ -4,16 +4,20 @@ Couvre :
 - ``_compute_estimated_xp_curve`` : estimation de l'XP pré-sync
 - ``_compute_active_xp_per_day``  : rythme XP/jour actif (hors inactivité)
 - ``_compute_hero_projections``   : courbes de projection vers le rang Héros
+- ``_load_other_players_histories`` : chargement historiques multi-joueurs
+- ``_create_xp_history_chart``    : traces autres joueurs sur le graphe XP
 """
 
 from __future__ import annotations
 
+import unittest.mock as mock
 from datetime import datetime, timedelta
 
 import pytest
 
 from src.ui.components.career_progress_circle import XP_HERO_TOTAL
 from src.ui.pages.career import (
+    _OTHER_PLAYERS_COLORS,
     DAILY_CHALLENGE_XP,
     INACTIVITY_GAP_DAYS,
     WEEKLY_CHALLENGE_XP,
@@ -21,6 +25,8 @@ from src.ui.pages.career import (
     _compute_active_xp_per_day,
     _compute_estimated_xp_curve,
     _compute_hero_projections,
+    _create_xp_history_chart,
+    _load_other_players_histories,
 )
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -274,3 +280,233 @@ class TestConstants:
 
     def test_inactivity_gap_days(self):
         assert INACTIVITY_GAP_DAYS == 14
+
+
+# ── Tests _OTHER_PLAYERS_COLORS ───────────────────────────────────────────────
+
+
+class TestOtherPlayersColors:
+    def test_six_couleurs(self):
+        """La palette doit contenir au moins 6 couleurs distinctes."""
+        assert len(_OTHER_PLAYERS_COLORS) >= 6
+
+    def test_couleurs_uniques(self):
+        """Pas de doublon dans la palette."""
+        assert len(_OTHER_PLAYERS_COLORS) == len(set(_OTHER_PLAYERS_COLORS))
+
+    def test_pas_de_conflit_avec_traces_fixes(self):
+        """Les couleurs ne doivent pas chevaucher les traces prédéfinies."""
+        reserved = {"#CE93D8", "#FFA726", "#66BB6A"}  # estimé, proj, optimiste
+        for color in _OTHER_PLAYERS_COLORS:
+            assert color.upper() not in {c.upper() for c in reserved}
+
+
+# ── Tests _load_other_players_histories ───────────────────────────────────────
+
+
+XUID_CURRENT = "xuid_current"
+XUID_OTHER_A = "xuid_player_a"
+XUID_OTHER_B = "xuid_player_b"
+
+_PROFILES_MOCK = {
+    "PlayerCurrent": {"xuid": XUID_CURRENT, "db_path": "/db/current.duckdb"},
+    "PlayerA": {"xuid": XUID_OTHER_A, "db_path": "/db/player_a.duckdb"},
+    "PlayerB": {"xuid": XUID_OTHER_B, "db_path": "/db/player_b.duckdb"},
+}
+
+_HIST_A = [
+    {
+        "rank": 10,
+        "rank_name": "X",
+        "rank_tier": "G",
+        "current_xp": 0,
+        "xp_for_next_rank": 1000,
+        "xp_total": 1000,
+        "is_max_rank": False,
+        "recorded_at": datetime(2024, 1, 1),
+    },
+    {
+        "rank": 20,
+        "rank_name": "X",
+        "rank_tier": "G",
+        "current_xp": 0,
+        "xp_for_next_rank": 1000,
+        "xp_total": 5000,
+        "is_max_rank": False,
+        "recorded_at": datetime(2024, 2, 1),
+    },
+]
+_HIST_B = [
+    {
+        "rank": 5,
+        "rank_name": "X",
+        "rank_tier": "G",
+        "current_xp": 0,
+        "xp_for_next_rank": 1000,
+        "xp_total": 500,
+        "is_max_rank": False,
+        "recorded_at": datetime(2024, 1, 15),
+    },
+    {
+        "rank": 15,
+        "rank_name": "X",
+        "rank_tier": "G",
+        "current_xp": 0,
+        "xp_for_next_rank": 1000,
+        "xp_total": 2000,
+        "is_max_rank": False,
+        "recorded_at": datetime(2024, 3, 1),
+    },
+]
+
+
+class TestLoadOtherPlayersHistories:
+    def _run(self, histories_by_xuid: dict, existing_paths: set | None = None):
+        """Helper : mocke load_profiles, os.path.exists et _load_career_history."""
+        if existing_paths is None:
+            existing_paths = {"/db/player_a.duckdb", "/db/player_b.duckdb"}
+
+        def fake_history(db_path, xuid, limit=50):
+            return histories_by_xuid.get(xuid, [])
+
+        with (
+            mock.patch("src.utils.profiles.load_profiles", return_value=_PROFILES_MOCK),
+            mock.patch("src.ui.pages.career._load_career_history", side_effect=fake_history),
+            mock.patch("os.path.exists", side_effect=lambda p: p in existing_paths),
+        ):
+            return _load_other_players_histories(XUID_CURRENT)
+
+    def test_exclut_joueur_actuel(self):
+        """Le joueur dont le XUID correspond à current_xuid est ignoré."""
+        results = self._run({XUID_OTHER_A: _HIST_A, XUID_OTHER_B: _HIST_B})
+        gamertags = [r["gamertag"] for r in results]
+        assert "PlayerCurrent" not in gamertags
+
+    def test_retourne_autres_joueurs(self):
+        """Retourne les profils avec au moins 2 snapshots."""
+        results = self._run({XUID_OTHER_A: _HIST_A, XUID_OTHER_B: _HIST_B})
+        assert len(results) == 2
+        gamertags = {r["gamertag"] for r in results}
+        assert gamertags == {"PlayerA", "PlayerB"}
+
+    def test_ignore_db_inexistante(self):
+        """Un profil dont le fichier DB n'existe pas est ignoré."""
+        results = self._run(
+            {XUID_OTHER_A: _HIST_A, XUID_OTHER_B: _HIST_B},
+            existing_paths={"/db/player_a.duckdb"},  # player_b absent
+        )
+        gamertags = [r["gamertag"] for r in results]
+        assert "PlayerA" in gamertags
+        assert "PlayerB" not in gamertags
+
+    def test_ignore_historique_insuffisant(self):
+        """Un profil avec moins de 2 snapshots est ignoré."""
+        hist_court = [_HIST_A[0]]  # 1 seul snapshot
+        results = self._run({XUID_OTHER_A: hist_court, XUID_OTHER_B: _HIST_B})
+        gamertags = [r["gamertag"] for r in results]
+        assert "PlayerA" not in gamertags
+        assert "PlayerB" in gamertags
+
+    def test_retourne_liste_vide_si_exception(self):
+        """Une exception dans load_profiles → liste vide, pas de crash."""
+        with mock.patch("src.utils.profiles.load_profiles", side_effect=RuntimeError("boom")):
+            result = _load_other_players_histories(XUID_CURRENT)
+        assert result == []
+
+    def test_structure_retournee(self):
+        """Chaque élément contient 'gamertag' et 'history'."""
+        results = self._run({XUID_OTHER_A: _HIST_A})
+        assert len(results) == 1
+        assert "gamertag" in results[0]
+        assert "history" in results[0]
+        assert results[0]["gamertag"] == "PlayerA"
+        assert results[0]["history"] == _HIST_A
+
+
+# ── Tests _create_xp_history_chart (traces autres joueurs) ────────────────────
+
+
+class TestCreateXpHistoryChartOtherPlayers:
+    BASE_HISTORY = [
+        {
+            "rank": 10,
+            "rank_name": "Private",
+            "rank_tier": "Bronze",
+            "current_xp": 100,
+            "xp_for_next_rank": 1000,
+            "xp_total": 10000,
+            "is_max_rank": False,
+            "recorded_at": datetime(2024, 1, 1),
+        },
+        {
+            "rank": 20,
+            "rank_name": "Corporal",
+            "rank_tier": "Silver",
+            "current_xp": 200,
+            "xp_for_next_rank": 2000,
+            "xp_total": 50000,
+            "is_max_rank": False,
+            "recorded_at": datetime(2024, 6, 1),
+        },
+    ]
+
+    def test_sans_autres_joueurs_pas_de_traces_supplementaires(self):
+        """Sans other_players, seule la trace du joueur principal existe."""
+        fig = _create_xp_history_chart(self.BASE_HISTORY)
+        assert fig is not None
+        assert len(fig.data) == 1
+
+    def test_avec_un_autre_joueur(self):
+        """Avec 1 autre joueur, 2 traces au total."""
+        fig = _create_xp_history_chart(
+            self.BASE_HISTORY,
+            other_players=[{"gamertag": "PlayerA", "history": _HIST_A}],
+        )
+        assert fig is not None
+        assert len(fig.data) == 2
+
+    def test_avec_deux_autres_joueurs(self):
+        """Avec 2 autres joueurs, 3 traces au total."""
+        fig = _create_xp_history_chart(
+            self.BASE_HISTORY,
+            other_players=[
+                {"gamertag": "PlayerA", "history": _HIST_A},
+                {"gamertag": "PlayerB", "history": _HIST_B},
+            ],
+        )
+        assert fig is not None
+        assert len(fig.data) == 3
+
+    def test_traces_autres_joueurs_masquees_par_defaut(self):
+        """Les traces des autres joueurs doivent être visible='legendonly'."""
+        fig = _create_xp_history_chart(
+            self.BASE_HISTORY,
+            other_players=[{"gamertag": "PlayerA", "history": _HIST_A}],
+        )
+        # La première trace est le joueur principal (visible), la seconde masquée
+        assert fig.data[0].visible is None or fig.data[0].visible is True
+        assert fig.data[1].visible == "legendonly"
+
+    def test_nom_trace_contient_gamertag(self):
+        """Le nom de la trace doit contenir le gamertag du joueur."""
+        fig = _create_xp_history_chart(
+            self.BASE_HISTORY,
+            other_players=[{"gamertag": "PlayerA", "history": _HIST_A}],
+        )
+        assert "PlayerA" in fig.data[1].name
+
+    def test_couleurs_cycliques_palette(self):
+        """7 joueurs → les couleurs bouclent sur la palette."""
+        players = [{"gamertag": f"P{i}", "history": _HIST_A} for i in range(7)]
+        fig = _create_xp_history_chart(self.BASE_HISTORY, other_players=players)
+        assert fig is not None
+        # La 7ème trace reprend la couleur de la 1ère
+        color_1 = fig.data[1].line.color
+        color_7 = fig.data[7].line.color
+        assert color_1 == color_7
+
+    def test_liste_vide_equivalent_a_none(self):
+        """other_players=[] produit le même résultat que other_players=None."""
+        fig_none = _create_xp_history_chart(self.BASE_HISTORY, other_players=None)
+        fig_empty = _create_xp_history_chart(self.BASE_HISTORY, other_players=[])
+        assert len(fig_none.data) == len(fig_empty.data)
