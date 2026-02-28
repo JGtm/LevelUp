@@ -333,3 +333,79 @@ class TestNoDuckDBConnectDirect:
         # Chercher duckdb.connect mais pas dans les commentaires
         matches = re.findall(r"^\s*[^#]*duckdb\.connect\(", text, re.MULTILINE)
         assert len(matches) == 0, f"{relpath} contient encore duckdb.connect() direct : {matches}"
+
+
+# =====================================================================
+# 9. Cascade reset — nettoyage des clés widget checkbox
+# =====================================================================
+
+
+class TestCascadeResetWidgetCleanup:
+    """Vérifie que _cascade_reset_filters nettoie les clés widget individuelles."""
+
+    def test_cascade_reset_cleans_checkbox_keys(self) -> None:
+        """Le cascade reset doit supprimer les clés widget des checkboxes."""
+        from unittest.mock import patch
+
+        # Simuler un session_state avec des clés stale
+        mock_state = {
+            # Clés agrégées (doivent être supprimées)
+            "filter_playlists": {"Quick Play", "BTB"},
+            "filter_modes": {"Slayer"},
+            "filter_maps": {"Recharge"},
+            "_playlists_filter_mode": "exclude",
+            "_playlists_exclusions": {"Firefight"},
+            "_modes_filter_mode": "include",
+            "_modes_exclusions": set(),
+            "_maps_filter_mode": "include",
+            "_maps_exclusions": set(),
+            # Clés widget individuelles (doivent être supprimées)
+            "filter_playlists_cb_Quick Play": True,
+            "filter_playlists_cb_BTB": True,
+            "filter_playlists_cb_Firefight": False,
+            "filter_modes_cb_Slayer": True,
+            "filter_modes_cat_Arena": True,
+            "filter_modes_mode_Arena_Slayer": True,
+            "filter_maps_cb_Recharge": True,
+            "filter_maps_cb_Live Fire": True,
+            # Clés non-cascade (doivent survivre)
+            "filter_mode": "Sessions",
+            "picked_session_label": "Session 1",
+            "picked_solo_session_label": "Session 1",
+            "_show_debug_info": False,
+        }
+
+        with patch("src.app.filters_render.st") as mock_st:
+            mock_st.session_state = mock_state
+            from src.app.filters_render import _cascade_reset_filters
+
+            _cascade_reset_filters()
+
+        # Vérifier que les clés agrégées sont supprimées
+        assert "filter_playlists" not in mock_state
+        assert "filter_modes" not in mock_state
+        assert "filter_maps" not in mock_state
+        assert "_playlists_filter_mode" not in mock_state
+        assert "_playlists_exclusions" not in mock_state
+
+        # Vérifier que les clés widget individuelles sont supprimées
+        assert "filter_playlists_cb_Quick Play" not in mock_state
+        assert "filter_playlists_cb_BTB" not in mock_state
+        assert "filter_playlists_cb_Firefight" not in mock_state
+        assert "filter_modes_cb_Slayer" not in mock_state
+        assert "filter_modes_cat_Arena" not in mock_state
+        assert "filter_modes_mode_Arena_Slayer" not in mock_state
+        assert "filter_maps_cb_Recharge" not in mock_state
+        assert "filter_maps_cb_Live Fire" not in mock_state
+
+        # Vérifier que les clés non-cascade survivent
+        assert mock_state["filter_mode"] == "Sessions"
+        assert mock_state["picked_session_label"] == "Session 1"
+        assert mock_state["picked_solo_session_label"] == "Session 1"
+
+    def test_cascade_reset_called_on_session_change(self) -> None:
+        """Vérifier que _cascade_reset_filters est appelée dans le code."""
+        text = (SRC_ROOT / "app" / "filters_render.py").read_text(encoding="utf-8")
+        # Doit être appelée au moins 2 fois (une dans render_filters_sidebar, une dans _render_session_filter)
+        count = text.count("_cascade_reset_filters()")
+        assert count >= 2, f"_cascade_reset_filters() appelée {count} fois, attendu >= 2"

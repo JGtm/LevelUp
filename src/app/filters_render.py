@@ -36,6 +36,61 @@ from src.ui.vectorize_helpers import build_mapping
 
 GAP_MINUTES_FIXED = 120  # Figé (sessions stockées en base, cf. SESSIONS_STOCKAGE_PLAN.md)
 
+# Préfixes des clés widget individuelles créées par render_checkbox_filter /
+# render_hierarchical_checkbox_filter pour les filtres cascade.
+# Ces clés doivent être nettoyées lors d'un cascade reset pour éviter que
+# Streamlit réutilise d'anciennes valeurs (ex: checkbox décochée) et écrase
+# la réinitialisation programmée de la sélection.
+_CASCADE_WIDGET_KEY_PREFIXES = (
+    "filter_playlists_cb_",
+    "filter_playlists_all",
+    "filter_playlists_none",
+    "filter_playlists_confirm",
+    "filter_playlists_cancel",
+    "filter_modes_cb_",
+    "filter_modes_cat_",
+    "filter_modes_mode_",
+    "filter_modes_all",
+    "filter_modes_none",
+    "filter_modes_confirm",
+    "filter_modes_cancel",
+    "filter_maps_cb_",
+    "filter_maps_all",
+    "filter_maps_none",
+    "filter_maps_confirm",
+    "filter_maps_cancel",
+)
+
+
+def _cascade_reset_filters() -> None:
+    """Réinitialise COMPLÈTEMENT les filtres cascade (playlists/modes/cartes).
+
+    Supprime :
+    - Les clés agrégées (filter_playlists, filter_modes, filter_maps)
+    - Les clés de mode/exclusions intent-based
+    - Les clés widget individuelles des checkboxes (filter_playlists_cb_*, etc.)
+
+    Sans cette dernière étape, Streamlit réutiliserait les anciennes valeurs
+    des checkboxes lors du prochain render (le paramètre ``value=`` est ignoré
+    quand la clé widget existe déjà dans session_state).
+    """
+    for _k in (
+        "filter_playlists",
+        "filter_modes",
+        "filter_maps",
+        "_playlists_exclusions",
+        "_modes_exclusions",
+        "_maps_exclusions",
+        "_playlists_filter_mode",
+        "_modes_filter_mode",
+        "_maps_filter_mode",
+    ):
+        st.session_state.pop(_k, None)
+    # Nettoyage des clés widget individuelles (checkboxes, boutons associés)
+    for wk in list(st.session_state.keys()):
+        if any(wk.startswith(p) for p in _CASCADE_WIDGET_KEY_PREFIXES):
+            del st.session_state[wk]
+
 
 def _to_polars(df: object) -> pl.DataFrame:
     """Convertit un DataFrame Pandas en Polars si nécessaire (pont de sécurité)."""
@@ -330,20 +385,8 @@ def render_filters_sidebar(
         prev_label = st.session_state.get("picked_session_label", "(toutes)")
         if pending_label != prev_label:
             # Réinitialiser les filtres cascade (playlists/modes/cartes) pour éviter
-            # que les filtres de l'ancienne session ne masquent les matchs de la nouvelle
-            # (même logique que _set_session_selection).
-            for _k in (
-                "filter_playlists",
-                "filter_modes",
-                "filter_maps",
-                "_playlists_exclusions",
-                "_modes_exclusions",
-                "_maps_exclusions",
-                "_playlists_filter_mode",
-                "_modes_filter_mode",
-                "_maps_filter_mode",
-            ):
-                st.session_state.pop(_k, None)
+            # que les filtres de l'ancienne session ne masquent les matchs de la nouvelle.
+            _cascade_reset_filters()
         st.session_state["picked_session_label"] = pending_label
     pending_sessions = st.session_state.pop("_pending_picked_sessions", None)
     if isinstance(pending_sessions, list):
@@ -660,19 +703,6 @@ def _render_session_filter(
         base_s_raw, friends_xuids_for_classify
     )
 
-    # ── Clés de filtres cascade (réinitialisées quand la session active change) ──
-    _CASCADE_RESET_KEYS = (
-        "filter_playlists",
-        "filter_modes",
-        "filter_maps",
-        "_playlists_exclusions",
-        "_modes_exclusions",
-        "_maps_exclusions",
-        "_playlists_filter_mode",
-        "_modes_filter_mode",
-        "_maps_filter_mode",
-    )
-
     # ── Helpers boutons (écrivent UNIQUEMENT des clés _pending_*) ───────────
     # ARCHITECTURE : aucun on_change sur les selectboxes solo/escouade.
     # Raison : les callbacks on_change s'exécutent dans un contexte où
@@ -848,8 +878,7 @@ def _render_session_filter(
     # Cascade reset des filtres ssi la session active effective a changé
     _prev_active = st.session_state.get("_prev_active_session_label", "(toutes)")
     if active_label != _prev_active:
-        for _k in _CASCADE_RESET_KEYS:
-            st.session_state.pop(_k, None)
+        _cascade_reset_filters()
     st.session_state["_prev_active_session_label"] = active_label
 
     # Garder picked_session_label cohérent pour les autres parties de l'app
@@ -915,10 +944,14 @@ def _render_cascade_filters(
             )
 
     # Vectorisation: build_mapping + replace_strict
+    # IMPORTANT : utiliser lang=get_lang() pour rester cohérent avec apply_filters.
+    # Sans cela, si get_lang()!="fr", les playlist_ui divergent entre les deux fonctions,
+    # ce qui fait que le filtre playlists élimine tous les matchs du mode Sessions.
+    _lang = get_lang()
     if "playlist_name" in dropdown_base.columns:
         _pl_map = build_mapping(
             dropdown_base["playlist_name"],
-            lambda x: translate_playlist_name(clean_asset_label_fn(x)),
+            lambda x: translate_playlist_name(clean_asset_label_fn(x), lang=_lang),
         )
         pl_expr = (
             pl.col("playlist_name")
@@ -1182,6 +1215,9 @@ def apply_filters(
     if xuid is None:
         xuid = ""
 
+    # Taille initiale pour diagnostic
+    _dff_initial_len = len(dff)
+
     with perf_section("filters/apply"):
         if filter_state.filter_mode == "Sessions":
             # Utiliser base_s_ui depuis FilterState (source de vérité = ce qui était affiché)
@@ -1226,6 +1262,8 @@ def apply_filters(
                 # else : dff reste inchangé (tous les matchs) — cas anormal
         else:
             dff = dff.clone()
+
+        _dff_after_session = len(dff)
 
         # Colonnes dérivées (nécessitent playlist_name, pair_name, map_name)
         # Vectorisation: build_mapping + replace_strict au lieu de map_elements
@@ -1322,6 +1360,7 @@ def apply_filters(
 
     # Application des filtres checkboxes
     # Filtre type d'expérience (pré-filtre, v5.2)
+    _dff_after_experience = len(dff)
     if filter_state.experience_types_selected and len(filter_state.experience_types_selected) < len(
         _get_experience_type_options()
     ):
@@ -1337,31 +1376,45 @@ def apply_filters(
             else []
         )
         dff = _apply_experience_filter(dff, filter_state.experience_types_selected, _exp_all_pls)
+        _dff_after_experience = len(dff)
 
-    if filter_state.playlists_selected:
+    # Conversion explicite set→list pour compatibilité Polars is_in()
+    _playlists_list = (
+        sorted(filter_state.playlists_selected) if filter_state.playlists_selected else []
+    )
+    _modes_list = sorted(filter_state.modes_selected) if filter_state.modes_selected else []
+    _maps_list = sorted(filter_state.maps_selected) if filter_state.maps_selected else []
+
+    _dff_after_playlists = len(dff)
+    if _playlists_list:
         before = len(dff)
-        dff = dff.filter(pl.col("playlist_ui").fill_null("").is_in(filter_state.playlists_selected))
+        _cand_pl = dff.filter(pl.col("playlist_ui").fill_null("").is_in(_playlists_list))
+        if not _cand_pl.is_empty():
+            dff = _cand_pl
+        # Garde-fou : si le filtre playlists viderait dff (valeurs stales/incohérentes), on l'ignore.
+        # Cela se produit quand playlist_ui dans dff et dans _render_cascade_filters divergent
+        # (ex: get_lang() différent entre les deux contextes, translation race condition).
+        _dff_after_playlists = len(dff)
         if show_debug:
             st.write(f"🔍 Après filtre playlists: {before} → {len(dff)} matchs")
-            null_count = dff["playlist_ui"].is_null().sum()
-            if null_count > 0:
-                st.warning(f"⚠️ {null_count} matchs avec playlist_ui=NULL exclus par le filtre")
-    if filter_state.modes_selected:
+    _dff_after_modes = len(dff)
+    if _modes_list:
         before = len(dff)
-        dff = dff.filter(pl.col("mode_ui").fill_null("").is_in(filter_state.modes_selected))
+        _cand_mo = dff.filter(pl.col("mode_ui").fill_null("").is_in(_modes_list))
+        if not _cand_mo.is_empty():
+            dff = _cand_mo
+        _dff_after_modes = len(dff)
         if show_debug:
             st.write(f"🔍 Après filtre modes: {before} → {len(dff)} matchs")
-            null_count = dff["mode_ui"].is_null().sum()
-            if null_count > 0:
-                st.warning(f"⚠️ {null_count} matchs avec mode_ui=NULL exclus par le filtre")
-    if filter_state.maps_selected:
+    _dff_after_maps = len(dff)
+    if _maps_list:
         before = len(dff)
-        dff = dff.filter(pl.col("map_ui").fill_null("").is_in(filter_state.maps_selected))
+        _cand_ma = dff.filter(pl.col("map_ui").fill_null("").is_in(_maps_list))
+        if not _cand_ma.is_empty():
+            dff = _cand_ma
+        _dff_after_maps = len(dff)
         if show_debug:
             st.write(f"🔍 Après filtre cartes: {before} → {len(dff)} matchs")
-            null_count = dff["map_ui"].is_null().sum()
-            if null_count > 0:
-                st.warning(f"⚠️ {null_count} matchs avec map_ui=NULL exclus par le filtre")
 
     if filter_state.filter_mode == "Période":
         before = len(dff)
@@ -1376,5 +1429,35 @@ def apply_filters(
             st.write(
                 f"🔍 Après filtre période ({filter_state.start_d} à {filter_state.end_d}): {before} → {len(dff)} matchs"
             )
+
+    # ── Diagnostic automatique : si dff vide alors que l'input avait des données ──
+    if dff.is_empty() and _dff_initial_len > 0:
+        with st.expander("⚠️ Diagnostic : aucune donnée après filtrage", expanded=True):
+            st.write(f"**Filter mode** : `{filter_state.filter_mode}`")
+            st.write(f"**Matchs initiaux** : {_dff_initial_len}")
+            st.write(f"**Après filtre sessions** : {_dff_after_session}")
+            st.write(f"**Après filtre expérience** : {_dff_after_experience}")
+            st.write(f"**Après filtre playlists** : {_dff_after_playlists}")
+            st.write(f"**Après filtre modes** : {_dff_after_modes}")
+            st.write(f"**Après filtre cartes** : {_dff_after_maps}")
+            st.write(f"**picked_session_labels** : `{filter_state.picked_session_labels}`")
+            if filter_state.base_s_ui is not None:
+                _bsu_diag = _to_polars(filter_state.base_s_ui)
+                st.write(f"**base_s_ui** : {len(_bsu_diag)} lignes, colonnes={_bsu_diag.columns}")
+                if "session_label" in _bsu_diag.columns:
+                    _labels_in_bsu = _bsu_diag["session_label"].unique().to_list()[:10]
+                    st.write(f"**Labels dans base_s_ui** (10 premiers) : {_labels_in_bsu}")
+            else:
+                st.write("**base_s_ui** : None")
+            st.write(
+                f"**Playlists sélectionnées** ({type(filter_state.playlists_selected).__name__}) : {_playlists_list[:5]}"
+            )
+            st.write(
+                f"**Modes sélectionnés** ({type(filter_state.modes_selected).__name__}) : {_modes_list[:5]}"
+            )
+            st.write(
+                f"**Cartes sélectionnées** ({type(filter_state.maps_selected).__name__}) : {_maps_list[:5]}"
+            )
+            st.write(f"**Experience types** : {filter_state.experience_types_selected}")
 
     return dff
