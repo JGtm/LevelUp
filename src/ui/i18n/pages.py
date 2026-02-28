@@ -1128,8 +1128,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "career_hero_rank": {"fr": "Rang Héros atteint !", "en": "Hero rank reached!"},
     "career_xp_estimated": {"fr": "XP estimé (pré-sync)", "en": "Estimated XP (pre-sync)"},
     "career_xp_estimated_hover": {
-        "fr": "Estimation · {date}<br>~{xp} XP · ~Rang {rank}",
-        "en": "Estimate · {date}<br>~{xp} XP · ~Rank {rank}",
+        "fr": "Estimation · {date}<br>~{xp} XP",
+        "en": "Estimate · {date}<br>~{xp} XP",
     },
     "career_projection_hero": {"fr": "Projection → Héros", "en": "Projection → Hero"},
     "career_projection_hero_hover": {

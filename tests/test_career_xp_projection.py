@@ -106,18 +106,9 @@ class TestComputeActiveXpPerDay:
 
 
 class TestComputeEstimatedXpCurve:
-    XUID = "xuid(123456)"
-
     def _run(self, history, pre_sync_dates):
-        """Wrapper qui injecte un mock pour _load_post_sync_match_count."""
-        # On patch la fonction pour éviter un accès DB
-        import unittest.mock as mock
-
-        with mock.patch(
-            "src.ui.pages.career._load_post_sync_match_count",
-            return_value=len(history) * 5,  # 5 matchs par snapshot post-sync
-        ):
-            return _compute_estimated_xp_curve(history, pre_sync_dates, self.XUID)
+        """Appelle directement _compute_estimated_xp_curve (plus de mock DB)."""
+        return _compute_estimated_xp_curve(history, pre_sync_dates)
 
     def test_pas_de_matchs_pre_sync(self):
         history = _make_history(
@@ -129,11 +120,9 @@ class TestComputeEstimatedXpCurve:
         result = self._run(history, [])
         assert result == []
 
-    def test_history_insuffisante(self):
-        """Moins de 2 snapshots → pas d'estimation possible."""
-        history = _make_history([(datetime(2024, 2, 1), 10, 5000)])
-        pre_sync_dates = [datetime(2024, 1, 15), datetime(2024, 1, 20)]
-        result = self._run(history, pre_sync_dates)
+    def test_history_vide(self):
+        """Historique vide → pas d'estimation possible."""
+        result = self._run([], [datetime(2024, 1, 15), datetime(2024, 1, 20)])
         assert result == []
 
     def test_courbe_relie_premier_snapshot(self):
