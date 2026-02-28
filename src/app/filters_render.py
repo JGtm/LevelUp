@@ -133,7 +133,11 @@ def _apply_experience_filter(
     firefight_pls = set(get_firefight_playlists(all_playlist_values))
     pve_cond = pl.col("playlist_ui").cast(pl.Utf8).fill_null("").is_in(list(firefight_pls))
     ranked_cond = (
-        pl.col("playlist_ui").cast(pl.Utf8).fill_null("").str.to_lowercase().str.contains("classé|ranked")
+        pl.col("playlist_ui")
+        .cast(pl.Utf8)
+        .fill_null("")
+        .str.to_lowercase()
+        .str.contains("classé|ranked")
         & ~pve_cond
     )
 
@@ -322,6 +326,23 @@ def render_filters_sidebar(
 
     pending_label = st.session_state.pop("_pending_picked_session_label", None)
     if isinstance(pending_label, str) and pending_label:
+        prev_label = st.session_state.get("picked_session_label", "(toutes)")
+        if pending_label != prev_label:
+            # Réinitialiser les filtres cascade (playlists/modes/cartes) pour éviter
+            # que les filtres de l'ancienne session ne masquent les matchs de la nouvelle
+            # (même logique que _set_session_selection).
+            for _k in (
+                "filter_playlists",
+                "filter_modes",
+                "filter_maps",
+                "_playlists_exclusions",
+                "_modes_exclusions",
+                "_maps_exclusions",
+                "_playlists_filter_mode",
+                "_modes_filter_mode",
+                "_maps_filter_mode",
+            ):
+                st.session_state.pop(_k, None)
         st.session_state["picked_session_label"] = pending_label
     pending_sessions = st.session_state.pop("_pending_picked_sessions", None)
     if isinstance(pending_sessions, list):
@@ -843,7 +864,11 @@ def _render_cascade_filters(
             if str(x).strip()
         }
     )
-    preferred_order = [t("playlist_quick_play"), t("playlist_ranked_arena"), t("playlist_ranked_assassin")]
+    preferred_order = [
+        t("playlist_quick_play"),
+        t("playlist_ranked_arena"),
+        t("playlist_ranked_assassin"),
+    ]
     playlist_values = [p for p in preferred_order if p in playlist_values] + [
         p for p in playlist_values if p not in preferred_order
     ]
