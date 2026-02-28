@@ -1163,27 +1163,44 @@ def apply_filters(
         xuid = ""
 
     with perf_section("filters/apply"):
-        if filter_state.filter_mode == "Sessions" and db_path and xuid:
-            base_s = _to_polars(
-                cached_compute_sessions_db(
-                    db_path,
-                    xuid.strip(),
-                    db_key,
-                    True,
-                    filter_state.gap_minutes,
-                    friends_xuids=filter_state.friends_tuple,
-                )
-            )
-            # base_s n'a que match_id, session_id, session_label (pas playlist_name, etc.)
-            # On filtre dff par les match_id des sessions sélectionnées au lieu de remplacer dff.
-            if filter_state.picked_session_labels:
-                session_subset = base_s.filter(
-                    pl.col("session_label").is_in(filter_state.picked_session_labels)
+        if filter_state.filter_mode == "Sessions":
+            # Utiliser base_s_ui depuis FilterState (source de vérité = ce qui était affiché)
+            # pour éviter toute désynchronisation avec un recalcul via cached_compute_sessions_db.
+            # Fallback sur un recalcul uniquement si base_s_ui n'est pas disponible.
+            if filter_state.base_s_ui is not None and not filter_state.base_s_ui.is_empty():
+                base_s = _to_polars(filter_state.base_s_ui)
+            elif db_path and xuid:
+                base_s = _to_polars(
+                    cached_compute_sessions_db(
+                        db_path,
+                        xuid.strip(),
+                        db_key,
+                        True,
+                        filter_state.gap_minutes,
+                        friends_xuids=filter_state.friends_tuple,
+                    )
                 )
             else:
-                session_subset = base_s
-            session_match_ids = set(session_subset["match_id"].cast(pl.Utf8).to_list())
-            dff = dff.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(session_match_ids)))
+                base_s = pl.DataFrame()
+
+            if not base_s.is_empty():
+                # base_s n'a que match_id, session_id, session_label
+                # On filtre dff par les match_id des sessions sélectionnées.
+                if filter_state.picked_session_labels:
+                    session_subset = base_s.filter(
+                        pl.col("session_label").is_in(filter_state.picked_session_labels)
+                    )
+                else:
+                    session_subset = base_s
+                session_match_ids = set(session_subset["match_id"].cast(pl.Utf8).to_list())
+                # Garde-fou : si l'intersection est vide (incohérence inattendue),
+                # ne pas filtrer plutôt que retourner un dff vide.
+                candidate = dff.filter(
+                    pl.col("match_id").cast(pl.Utf8).is_in(list(session_match_ids))
+                )
+                if not candidate.is_empty():
+                    dff = candidate
+                # else : dff reste inchangé (tous les matchs) — cas anormal
         else:
             dff = dff.clone()
 
