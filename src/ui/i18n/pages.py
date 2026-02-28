@@ -1126,6 +1126,25 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "career_max_rank": {"fr": "Rang maximum atteint", "en": "Maximum rank reached"},
     "career_hero_rank": {"fr": "Rang Héros atteint !", "en": "Hero rank reached!"},
+    "career_xp_estimated": {"fr": "XP estimé (pré-sync)", "en": "Estimated XP (pre-sync)"},
+    "career_xp_estimated_hover": {
+        "fr": "Estimation · {date}<br>~{xp} XP · ~Rang {rank}",
+        "en": "Estimate · {date}<br>~{xp} XP · ~Rank {rank}",
+    },
+    "career_projection_hero": {"fr": "Projection → Héros", "en": "Projection → Hero"},
+    "career_projection_hero_hover": {
+        "fr": "Projection · {date}<br>{xp} XP",
+        "en": "Projection · {date}<br>{xp} XP",
+    },
+    "career_projection_optimistic": {
+        "fr": "Projection optimiste (défis + x2)",
+        "en": "Optimistic (challenges + x2)",
+    },
+    "career_projection_optimistic_hover": {
+        "fr": "Optimiste · {date}<br>{xp} XP",
+        "en": "Optimistic · {date}<br>{xp} XP",
+    },
+    "career_hero_threshold": {"fr": "Seuil Héros", "en": "Hero threshold"},
     "career_ranked": "ranked",  # alias → common
     "career_tactical": {"fr": "Tactique", "en": "Tactical"},
     # ── Citations ───────────────────────────────────────────────────────────
