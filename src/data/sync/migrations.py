@@ -463,14 +463,14 @@ def add_spartan_id_to_career_progression(conn: duckdb.DuckDBPyConnection) -> Non
     if not table_exists(conn, "career_progression"):
         return
     try:
-        conn.execute(
-            "ALTER TABLE career_progression ADD COLUMN IF NOT EXISTS spartan_id VARCHAR"
-        )
+        conn.execute("ALTER TABLE career_progression ADD COLUMN IF NOT EXISTS spartan_id VARCHAR")
         logger.debug("✅ career_progression : colonne spartan_id présente")
     except Exception as e:
         # DuckDB peut lever une erreur si la syntaxe IF NOT EXISTS n'est pas reconnue
         # dans certaines versions anciennes — on ignore silencieusement.
         logger.debug("Colonne spartan_id déjà existante ou erreur non fatale : %s", e)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -1036,3 +1036,20 @@ def ensure_match_skill_rank_table(conn: duckdb.DuckDBPyConnection) -> None:
         logger.debug("Table match_skill_rank initialisée (stats.duckdb)")
     except Exception as e:
         logger.error(f"Impossible d'initialiser match_skill_rank : {e}")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Migration match_registry : colonne sync_spnkr_version (v5.4)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_match_registry_spnkr_version(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute la colonne sync_spnkr_version à match_registry si absente.
+
+    Stocke la version de SPNKr utilisée lors de la sync initiale du match.
+    Permet de détecter les matchs syncés avec une version ayant un bug connu
+    (ex : highlight_events film v41 cassé avant SPNKr 0.10.1).
+    """
+    if not table_exists(conn, "match_registry"):
+        return
+    _add_column_if_missing(conn, "match_registry", "sync_spnkr_version", "VARCHAR")

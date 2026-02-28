@@ -721,3 +721,75 @@ def compute_bits_needed_from_scope(scope: SyncScope) -> tuple[int, int]:
         m_bits |= MatchBits.PVE_STATS
 
     return p_bits, m_bits
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Détection de matchs syncés avec une version SPNKr obsolète (v5.4)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def find_matches_with_stale_spnkr(
+    shared_conn: Any,
+    *,
+    min_version: str = "0.10.1",
+    max_matches: int | None = None,
+) -> dict[str, list[str]]:
+    """Identifie les matchs potentiellement impactés par un bug SPNKr.
+
+    Retourne deux listes :
+    - ``stale_versioned`` : matchs dont ``sync_spnkr_version`` est inférieure
+      à *min_version* et dont les events ont été chargés (possiblement corrompus).
+    - ``stale_unknown`` : matchs récents sans version trackée ET sans events
+      (probablement échoués à cause du bug, avant l'ajout du tracking).
+
+    Args:
+        shared_conn: Connexion à shared_matches.duckdb.
+        min_version: Version SPNKr minimum acceptable.
+        max_matches: Limite de résultats par catégorie.
+
+    Returns:
+        Dict avec clés ``stale_versioned`` et ``stale_unknown``.
+    """
+    from src.data.sync.migrations import column_exists
+
+    result: dict[str, list[str]] = {"stale_versioned": [], "stale_unknown": []}
+
+    has_col = column_exists(shared_conn, "match_registry", "sync_spnkr_version")
+
+    # 1) Matchs avec version connue < min_version ET events chargés
+    if has_col:
+        q1 = """
+            SELECT mr.match_id
+            FROM match_registry mr
+            WHERE mr.sync_spnkr_version IS NOT NULL
+              AND mr.sync_spnkr_version < ?
+              AND mr.events_loaded = TRUE
+            ORDER BY mr.start_time DESC
+        """
+        if max_matches:
+            q1 += f" LIMIT {max_matches}"
+        try:
+            result["stale_versioned"] = [
+                row[0] for row in shared_conn.execute(q1, (min_version,)).fetchall()
+            ]
+        except Exception as e:
+            logger.error(f"Erreur détection stale (versioned): {e}")
+
+    # 2) Matchs pré-tracking (version NULL) + events absents + récents
+    q2 = """
+        SELECT mr.match_id
+        FROM match_registry mr
+        WHERE mr.events_loaded = FALSE
+          AND mr.start_time >= '2025-12-01'
+    """
+    if has_col:
+        q2 += " AND mr.sync_spnkr_version IS NULL"
+    q2 += " ORDER BY mr.start_time DESC"
+    if max_matches:
+        q2 += f" LIMIT {max_matches}"
+    try:
+        result["stale_unknown"] = [row[0] for row in shared_conn.execute(q2).fetchall()]
+    except Exception as e:
+        logger.error(f"Erreur détection stale (unknown): {e}")
+
+    return result

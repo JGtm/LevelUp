@@ -153,6 +153,46 @@ def main() -> int:
             traceback.print_exc()
         return 0
 
+    # --detect-stale-events est un diagnostic global (local, sans API)
+    detect_stale = getattr(args, "detect_stale_events", False)
+    if detect_stale:
+        try:
+            from scripts.backfill.detection import find_matches_with_stale_spnkr
+
+            shared_conn = _open_shared_conn()
+            stale = find_matches_with_stale_spnkr(shared_conn, min_version="0.10.1")
+            n_versioned = len(stale["stale_versioned"])
+            n_unknown = len(stale["stale_unknown"])
+
+            logger.info("=" * 60)
+            logger.info("DIAGNOSTIC : Matchs avec highlight events potentiellement stale")
+            logger.info("=" * 60)
+            logger.info(f"Matchs syncés avec SPNKr < 0.10.1 (events chargés) : {n_versioned}")
+            logger.info(f"Matchs récents sans version trackée + sans events  : {n_unknown}")
+
+            if n_versioned > 0:
+                logger.info("\nMatchs avec version obsolète (top 10) :")
+                for mid in stale["stale_versioned"][:10]:
+                    logger.info(f"  - {mid}")
+            if n_unknown > 0:
+                logger.info("\nMatchs pré-tracking sans events (top 10) :")
+                for mid in stale["stale_unknown"][:10]:
+                    logger.info(f"  - {mid}")
+
+            if n_versioned + n_unknown > 0:
+                logger.info("\n→ Action recommandée : mettre à jour SPNKr puis lancer :")
+                logger.info("  pip install --upgrade spnkr")
+                logger.info("  python scripts/backfill_data.py --all --events --force-medals")
+            else:
+                logger.info("\n✅ Aucun match stale détecté.")
+            shared_conn.close()
+        except Exception as e:
+            logger.error(f"Erreur --detect-stale-events : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
     # Validation
     if not args.all and not args.player:
         parser.error("--player ou --all est requis")

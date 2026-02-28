@@ -166,6 +166,7 @@ def main() -> int:
         "pyarrow": "23.0.0",
         "pandas": "2.3.3",
         "numpy": "2.4.2",
+        "spnkr": "0.10.1",
     }
 
     e, w = _check_versions(expected_versions)

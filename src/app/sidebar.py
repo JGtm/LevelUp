@@ -26,6 +26,28 @@ from src.ui.sync import (
 if TYPE_CHECKING:
     from src.ui.settings import AppSettings
 
+# Version minimum requise de SPNKr (fix highlight_events film v41)
+_MIN_SPNKR_VERSION = "0.10.1"
+
+
+def _check_spnkr_version_warning() -> None:
+    """Affiche un warning sidebar si la version SPNKr installée est obsolète."""
+    try:
+        from importlib.metadata import version as _pkg_version
+
+        from packaging.version import Version
+
+        installed = _pkg_version("spnkr")
+        if Version(installed) < Version(_MIN_SPNKR_VERSION):
+            st.warning(
+                f"⚠️ SPNKr **{installed}** installé — la version "
+                f"**≥ {_MIN_SPNKR_VERSION}** est requise pour parser "
+                f"correctement les highlight events récents (film v41+). "
+                f"Lancer : `pip install --upgrade spnkr`"
+            )
+    except Exception:
+        pass  # SPNKr absent ou packaging non dispo — pas bloquant
+
 
 def _render_lang_selector(settings: AppSettings) -> bool:
     """Affiche le sélecteur de langue et retourne True si la langue a changé."""
@@ -89,6 +111,9 @@ def render_sidebar(
         # Indicateur de dernière synchronisation
         if db_path and os.path.exists(db_path):
             render_sync_indicator(db_path)
+
+        # Avertissement si SPNKr obsolète
+        _check_spnkr_version_warning()
 
         # Sélecteur multi-joueurs (si DB fusionnée)
         new_xuid = render_player_selector_sidebar(
