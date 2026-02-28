@@ -1321,7 +1321,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Teammates synergy ───────────────────────────────────────────────────
     "tms_participation_title": {"fr": "Profil de participation", "en": "Participation profile"},
     "tms_axes": {"fr": "**Axes**", "en": "**Axes**"},
-    "tms_trio_title": {"fr": "Complémentarité trio", "en": "Trio complementarity"},
+    "tms_trio_title": {"fr": "Complémentarité de l'escouade", "en": "Squad complementarity"},
     # ── Teammates helpers ───────────────────────────────────────────────────
     "tmh_waypoint": {"fr": "HaloWaypoint", "en": "HaloWaypoint"},
     "tmh_col_match": "col_match",  # alias → common
