@@ -13,10 +13,30 @@
 
 ## What’s new
 
-- **v5.3 — LUSR/CSR** — TrueSkill 2 rating system per playlist group (ranked/arena/btb/tactical/social/fun) with empirical calibration. Discord notifications after sync/backfill.
-- **v5.2 — PvE stats** — Dedicated `shared_pve.duckdb` database for Firefight matches. Persistent intent-based filters. Full “Last match” scoreboard. Okabe–Ito palette (color-blind friendly).
-- **v5.1 — Optimized architecture** — Modern Streamlit (`@st.fragment`, `st.navigation`), no SQLite/Pandas, centralized `SyncScope`, -75% DB connection time.
-- **v5.0 — Shared Matches** — `shared_matches.duckdb` centralizes all matches (-69% storage, -72% API calls). **3323 tests**, 0 failures.
+- **v5.3 — LUSR/CSR & i18n**
+  - TrueSkill 2 rating system per playlist group (ranked / arena / btb / tactical / social / fun)
+  - Empirical calibration with historical data
+  - Discord notifications after sync and backfill
+  - Full internationalization (i18n) support across all UI pages
+  - Multi-language interface (French 🇫🇷 / English 🇬🇧), switchable from the sidebar
+  - Translations centralized in `src/ui/i18n/` (dedicated package: `common`, `pages`, `widgets`, `viz`, `cli`)
+
+- **v5.2 — PvE / Firefight**
+  - Dedicated `shared_pve.duckdb` database for Firefight matches
+  - Persistent intent-based filters
+  - Full "Last match" scoreboard
+  - Per-player OAuth tokens (player-gated Career Rank sync)
+  - Okabe–Ito palette (color-blind friendly)
+
+- **v5.1 — Optimized architecture**
+  - Modern Streamlit (`@st.fragment`, `st.navigation`)
+  - No SQLite / No Pandas, centralized `SyncScope`
+  - −75% DB connection time
+
+- **v5.0 — Shared Matches**
+  - `shared_matches.duckdb` centralizes all matches (registry, participants, events, medals)
+  - −69% storage, −72% API calls
+  - **3323 tests**, 0 failures
 
 ---
 
