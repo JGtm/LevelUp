@@ -1145,6 +1145,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Optimistic · {date}<br>{xp} XP",
     },
     "career_hero_threshold": {"fr": "Seuil Héros", "en": "Hero threshold"},
+    "career_xp_other_player": {"fr": "{gamertag}", "en": "{gamertag}"},
+    "career_xp_other_player_hover": {
+        "fr": "{gamertag} · {date}<br>{xp} XP",
+        "en": "{gamertag} · {date}<br>{xp} XP",
+    },
     "career_ranked": "ranked",  # alias → common
     "career_tactical": {"fr": "Tactique", "en": "Tactical"},
     # ── Citations ───────────────────────────────────────────────────────────
