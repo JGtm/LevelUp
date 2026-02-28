@@ -196,6 +196,56 @@ def _load_post_sync_match_count(
         return 0
 
 
+# Palette pour les courbes des autres joueurs (distincte des 4 traces existantes)
+# Évite : accent (cyan), #CE93D8 (violet estimé), #FFA726 (orange proj), #66BB6A (vert opt)
+_OTHER_PLAYERS_COLORS: list[str] = [
+    "#EF5350",  # rouge
+    "#29B6F6",  # bleu clair
+    "#FFCA28",  # ambre
+    "#26C6DA",  # cyan
+    "#FF7043",  # orange-rouge
+    "#AB47BC",  # violet foncé
+]
+
+
+def _load_other_players_histories(current_xuid: str) -> list[dict]:
+    """Charge l'historique XP de tous les autres profils disponibles.
+
+    Args:
+        current_xuid: XUID du joueur actuellement affiché (exclu).
+
+    Returns:
+        Liste de dicts ``{"gamertag": str, "history": list[dict]}``
+        pour chaque autre profil ayant des données career_progression.
+    """
+    try:
+        from src.utils.paths import get_player_db_path
+        from src.utils.profiles import load_profiles
+
+        profiles = load_profiles()
+        results: list[dict] = []
+
+        for gamertag, profile in profiles.items():
+            puid = profile.get("xuid", "")
+            if puid == current_xuid:
+                continue  # ignorer le joueur actuel
+
+            db_path = profile.get("db_path") or str(get_player_db_path(gamertag))
+            import os
+
+            if not os.path.exists(db_path):
+                continue
+
+            hist = _load_career_history(db_path, puid)
+            if len(hist) >= 2:
+                results.append({"gamertag": gamertag, "history": hist})
+
+        return results
+    except Exception as e:
+        logger.debug(f"Impossible de charger les historiques des autres joueurs: {e}")
+        return []
+
+
 # ── Estimation pré-sync ─────────────────────────────────────────────────────
 
 
@@ -371,14 +421,16 @@ def _create_xp_history_chart(
     hero_projection: list[tuple[datetime, int]] | None = None,
     optimistic_projection: list[tuple[datetime, int]] | None = None,
     is_max_rank: bool = False,
+    other_players: list[dict] | None = None,
 ) -> go.Figure | None:
     """Crée un graphique d'historique XP total dans le temps.
 
     Traces :
     1. XP réel (accent, lignes + marqueurs)
     2. XP estimé pré-sync (pointillés, couleur atténuée)
-    3. Projection → Héros (tirets, orange, masquée par défaut)
-    4. Projection optimiste (tirets-points, vert, masquée par défaut)
+    3. Autres joueurs (lignes, couleurs distinctes, masquées par défaut)
+    4. Projection → Héros (tirets, orange, masquée par défaut)
+    5. Projection optimiste (tirets-points, vert, masquée par défaut)
     + Ligne horizontale au seuil Héros (si projections actives)
     """
     if len(history) < 2:
@@ -437,6 +489,37 @@ def _create_xp_history_chart(
                 hoverinfo="text",
             )
         )
+
+    # ── Traces autres joueurs (masquées par défaut) ──
+    if other_players:
+        for idx, player in enumerate(other_players):
+            color = _OTHER_PLAYERS_COLORS[idx % len(_OTHER_PLAYERS_COLORS)]
+            p_gamertag = player["gamertag"]
+            p_history = player["history"]
+            p_dates = [h["recorded_at"] for h in p_history]
+            p_xp = [h["xp_total"] or 0 for h in p_history]
+            p_hover = [
+                t(
+                    "career_xp_other_player_hover",
+                    gamertag=p_gamertag,
+                    date=str(h["recorded_at"])[:10],
+                    xp=f"{h['xp_total'] or 0:,}",
+                )
+                for h in p_history
+            ]
+            fig.add_trace(
+                go.Scatter(
+                    x=p_dates,
+                    y=p_xp,
+                    mode="lines+markers",
+                    name=t("career_xp_other_player", gamertag=p_gamertag),
+                    line={"color": color, "width": 1.5},
+                    marker={"size": 5, "color": color},
+                    hovertext=p_hover,
+                    hoverinfo="text",
+                    visible="legendonly",
+                )
+            )
 
     # ── Trace 3 : Projection → Héros (masquée par défaut) ──
     if hero_projection and not is_max_rank:
@@ -1003,12 +1086,19 @@ def render_career_page(
                 logger.debug(f"Projection Héros échouée: {e}")
 
         try:
+            other_players_data = _load_other_players_histories(xuid)
+        except Exception as e:
+            logger.debug(f"Chargement autres joueurs échoué: {e}")
+            other_players_data = []
+
+        try:
             history_fig = _create_xp_history_chart(
                 history,
                 estimated_curve=estimated_curve,
                 hero_projection=hero_proj,
                 optimistic_projection=optimistic_proj,
                 is_max_rank=is_max,
+                other_players=other_players_data or None,
             )
             if history_fig:
                 st.plotly_chart(
