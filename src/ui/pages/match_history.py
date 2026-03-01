@@ -14,10 +14,14 @@ Sprint 8bis : Vectorisation
 
 from __future__ import annotations
 
+import html as html_lib
+
 import polars as pl
 import streamlit as st
 
 from src.analysis.performance_score import compute_performance_series
+from src.config import HALO_COLORS, OUTCOME_CODES
+from src.ui.components.performance import get_score_class
 from src.ui.i18n import get_outcome_map, t
 from src.visualization._compat import DataFrameLike, ensure_polars
 
@@ -174,67 +178,152 @@ def render_match_history_page(
 
 
 def _render_history_table(dff_table: pl.DataFrame) -> None:
-    """Affiche le tableau de l'historique via `st.dataframe` modernisé."""
+    """Affiche le tableau de l'historique via un tableau HTML avec couleurs."""
     view = dff_table.sort("start_time", descending=True).head(250)
+    colors = HALO_COLORS.as_dict()
 
-    view = view.with_columns(
-        (pl.lit("/?page=Match&match_id=") + pl.col("match_id").cast(pl.Utf8).fill_null(pl.lit("")))
-        .alias("match_link")
-        .str.replace(r"\s+", "", literal=False)
-    )
+    def _fmt(v) -> str:
+        if v is None:
+            return "-"
+        s = str(v)
+        return s if s.strip() else "-"
 
-    display = view.select(
-        [
-            pl.col("match_link").alias("Match"),
-            pl.col("match_url").alias("HaloWaypoint"),
-            pl.col("start_time_fr").alias(t("col_start_date")),
-            pl.col("map_name").fill_null("-").alias(t("col_map")),
-            pl.col("playlist_fr").fill_null("-").alias(t("col_playlist")),
-            pl.col("mode_ui").fill_null("-").alias(t("col_mode")),
-            pl.col("outcome_label").fill_null("-").alias(t("col_result")),
-            pl.col("score").fill_null("-").alias(t("col_score")),
-            pl.col("performance_display").fill_null("-").alias(t("mv_performance")),
-            pl.col("team_mmr")
-            .cast(pl.Float64, strict=False)
-            .round(0)
-            .cast(pl.Int64, strict=False)
-            .cast(pl.Utf8)
-            .fill_null("-")
-            .alias(t("col_mmr_team")),
-            pl.col("enemy_mmr")
-            .cast(pl.Float64, strict=False)
-            .round(0)
-            .cast(pl.Int64, strict=False)
-            .cast(pl.Utf8)
-            .fill_null("-")
-            .alias(t("col_mmr_enemy")),
-            pl.col("delta_mmr")
-            .cast(pl.Float64, strict=False)
-            .round(0)
-            .cast(pl.Int64, strict=False)
-            .cast(pl.Utf8)
-            .fill_null("-")
-            .alias(t("col_mmr_gap")),
-            pl.col("kda").cast(pl.Float64, strict=False).round(2).cast(pl.Utf8).fill_null("-").alias(t("col_kda")),
-            pl.col("kills").cast(pl.Utf8).fill_null("-").alias(t("col_kills")),
-            pl.col("deaths").cast(pl.Utf8).fill_null("-").alias(t("col_deaths")),
-            pl.col("max_killing_spree").cast(pl.Utf8).fill_null("-").alias(t("col_max_spree")),
-            pl.col("headshot_kills").cast(pl.Utf8).fill_null("-").alias(t("col_headshots")),
-            pl.col("average_life_mmss").fill_null("-").alias(t("col_avg_life")),
-            pl.col("assists").cast(pl.Utf8).fill_null("-").alias(t("col_assists")),
-            pl.col("accuracy").cast(pl.Float64, strict=False).round(2).cast(pl.Utf8).fill_null("-").alias(t("col_accuracy")),
-            pl.col("ratio").cast(pl.Float64, strict=False).round(2).cast(pl.Utf8).fill_null("-").alias(t("col_ratio")),
-        ]
-    )
+    def _fmt_float(v, decimals: int = 2) -> str:
+        if v is None:
+            return "-"
+        try:
+            f = float(v)
+            if f != f:
+                return "-"
+            return f"{f:.{decimals}f}"
+        except Exception:
+            return "-"
 
-    st.dataframe(
-        display,
-        width="stretch",
-        hide_index=True,
-        column_config={
-            "Match": st.column_config.LinkColumn("Match", display_text=t("btn_open")),
-            "HaloWaypoint": st.column_config.LinkColumn("HaloWaypoint", display_text=t("btn_open")),
-        },
+    def _fmt_mmr_int(v) -> str:
+        if v is None:
+            return "-"
+        try:
+            f = float(v)
+            if f != f:
+                return "-"
+            return str(int(round(f)))
+        except Exception:
+            return "-"
+
+    def _outcome_style(outcome, label: str) -> str:
+        try:
+            if int(outcome) == int(OUTCOME_CODES.WIN):
+                return f"color:{colors['green']}; font-weight:800"
+            if int(outcome) == int(OUTCOME_CODES.LOSS):
+                return f"color:{colors['red']}; font-weight:800"
+            if int(outcome) in (int(OUTCOME_CODES.TIE), int(OUTCOME_CODES.NO_FINISH)):
+                return f"color:{colors['violet']}; font-weight:800"
+        except Exception:
+            pass
+        v = str(label or "").strip().casefold()
+        if v.startswith("victoire") or v == "win":
+            return f"color:{colors['green']}; font-weight:800"
+        if v.startswith("défaite") or v.startswith("defaite") or v == "loss":
+            return f"color:{colors['red']}; font-weight:800"
+        if v.startswith("égalité") or v.startswith("egalite") or v in ("tie", "draw"):
+            return f"color:{colors['violet']}; font-weight:800"
+        return "opacity:0.92"
+
+    def _mmr_gap_style(v) -> str:
+        try:
+            f = float(v)
+            if f != f:
+                return ""
+            if f > 0:
+                return f"color:{colors['green']}; font-weight:600"
+            if f < 0:
+                return f"color:{colors['red']}; font-weight:600"
+        except Exception:
+            pass
+        return ""
+
+    cols = [
+        (t("col_start_date"), "start_time_fr"),
+        (t("col_map"), "map_name"),
+        (t("col_playlist"), "playlist_fr"),
+        (t("col_mode"), "mode_ui"),
+        (t("col_result"), "outcome_label"),
+        (t("col_score"), "score"),
+        (t("mv_performance"), "performance"),
+        (t("col_mmr_team"), "team_mmr"),
+        (t("col_mmr_enemy"), "enemy_mmr"),
+        (t("col_mmr_gap"), "delta_mmr"),
+        (t("col_kda"), "kda"),
+        (t("col_kills"), "kills"),
+        (t("col_deaths"), "deaths"),
+        (t("col_max_spree"), "max_killing_spree"),
+        (t("col_headshots"), "headshot_kills"),
+        (t("col_avg_life"), "average_life_mmss"),
+        (t("col_assists"), "assists"),
+        (t("col_accuracy"), "accuracy"),
+        (t("col_ratio"), "ratio"),
+    ]
+
+    lbl_open = t("btn_open")
+    head_cells = [
+        f"<th>{html_lib.escape(lbl_open)}</th>",
+        "<th>Waypoint</th>",
+    ] + [f"<th>{html_lib.escape(h)}</th>" for h, _ in cols]
+    head = "".join(head_cells)
+
+    body_rows: list[str] = []
+    for r in view.to_dicts():
+        mid = str(r.get("match_id") or "").strip()
+        app = _app_url("Match", match_id=mid)
+        match_link = (
+            f"<a href='{html_lib.escape(app)}' target='_self'>{html_lib.escape(lbl_open)}</a>"
+            if mid
+            else "-"
+        )
+        hw = str(r.get("match_url") or "").strip()
+        hw_link = (
+            f"<a href='{html_lib.escape(hw)}' target='_blank' rel='noopener'>{html_lib.escape(lbl_open)}</a>"
+            if hw
+            else "-"
+        )
+
+        tds = [f"<td>{match_link}</td>", f"<td>{hw_link}</td>"]
+        outcome_code = r.get("outcome")
+
+        for _h, key in cols:
+            if key == "outcome_label":
+                val = _fmt(r.get(key))
+                style = _outcome_style(outcome_code, val)
+                tds.append(f"<td style='{style}'>{html_lib.escape(val)}</td>")
+            elif key == "performance":
+                perf_val = r.get("performance")
+                css_class = get_score_class(perf_val)
+                display = _fmt_mmr_int(perf_val) if perf_val is not None else "-"
+                tds.append(f"<td class='{css_class}'>{html_lib.escape(display)}</td>")
+            elif key in ("team_mmr", "enemy_mmr"):
+                tds.append(f"<td>{html_lib.escape(_fmt_mmr_int(r.get(key)))}</td>")
+            elif key == "delta_mmr":
+                val = r.get(key)
+                style = _mmr_gap_style(val)
+                try:
+                    display = f"{int(round(float(val))):+d}"
+                except Exception:
+                    display = "-"
+                tds.append(f"<td style='{style}'>{html_lib.escape(display)}</td>")
+            elif key in ("kda", "accuracy", "ratio"):
+                tds.append(f"<td>{html_lib.escape(_fmt_float(r.get(key)))}</td>")
+            else:
+                tds.append(f"<td>{html_lib.escape(_fmt(r.get(key)))}</td>")
+
+        body_rows.append("<tr>" + "".join(tds) + "</tr>")
+
+    st.markdown(
+        "<div class='os-table-wrap'><table class='os-table'><thead><tr>"
+        + head
+        + "</tr></thead><tbody>"
+        + "".join(body_rows)
+        + "</tbody></table></div>",
+        unsafe_allow_html=True,
     )
 
 
