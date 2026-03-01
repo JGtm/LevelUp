@@ -61,6 +61,7 @@ diagnose_*.py
 .streamlit/*
 !.streamlit/secrets.toml.example
 !.streamlit/friends_defaults.json
+!.streamlit/config.toml
 out/
 
 # Fichier accidentel Windows (nul = device réservé)

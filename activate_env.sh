@@ -11,6 +11,10 @@ if [ -d ".venv" ]; then
     if [ -d ".venv/Scripts" ] && [ -f ".venv/Scripts/python.exe" ]; then
         export PATH="$(pwd)/.venv/Scripts:$PATH"
         source .venv/Scripts/activate 2>/dev/null || true
+        # Masquer l'alias Microsoft Store (python sans .exe) dans Git Bash
+        alias python="$(pwd)/.venv/Scripts/python.exe"
+        alias python3="$(pwd)/.venv/Scripts/python.exe"
+        alias pip="$(pwd)/.venv/Scripts/python.exe -m pip"
         echo "Environnement: .venv ($(.venv/Scripts/python.exe --version 2>&1))"
         exit 0
     fi
