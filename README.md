@@ -125,7 +125,7 @@
 
 | Last match | Scoreboard |
 |:-:|:-:|
-| ![Last match](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/Scorebard-commendations.png) |
+| ![Summary](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/Scorebard-commendations.png) |
 | Impact & Dominance | Antagonists |
 | ![Impact & Dominance](docs/screenshots/impact-dominance.png) | ![Antagonists](docs/screenshots/antagonist.png) |
 
@@ -139,7 +139,7 @@
 |:-:|:-:|
 | ![Session history](docs/screenshots/history.png) | ![Squad complementarity](docs/screenshots/per-minute-complementarity.png) |
 | **Teammates performance** | **Squad ranking** |
-| ![Teammates performance](docs/screenshots/performance-spree.png) | ![Squad ranking](docs/screenshots/teammate-heatmap.png) |
+| ![Squad performance](docs/screenshots/performance-spree.png) | ![Squad ranking](docs/screenshots/teammate-heatmap.png) |
 
 *Filter your sessions by squad: compare your stats when playing with friends and see how you and your teammates perform across shared matches.*
 

@@ -64,9 +64,9 @@ def render_expected_vs_actual(
         else:
             dm = float(delta_mmr)
             col = (
-                "var(--color-win)"
+                "#4CAF50"  # --color-win
                 if dm > 0
-                else ("var(--color-loss)" if dm < 0 else "var(--color-tie)")
+                else ("#F44336" if dm < 0 else "#9E9E9E")  # --color-loss / --color-tie
             )
             os_card(t("mvc_mmr_gap"), f"{dm:+.1f}", t("mvc_mmr_gap_sub"), accent=col, kpi_color=col)
 
