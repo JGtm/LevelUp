@@ -147,11 +147,9 @@
 
 ### Career progression, Ranks & Path to Hero
 
-![Career](docs/screenshots/career.png)
-
-| Ranks (LUSR/CSR) | Path to Hero |
-|:-:|:-:|
-| ![Ranks](docs/screenshots/LUSRs.png) | ![Path to Hero](docs/screenshots/path-hero.png) |
+| Career | Ranks (LUSR/CSR) | Path to Hero |
+|:-:|:-:|:-:|
+| ![Career](docs/screenshots/career.png) | ![Ranks](docs/screenshots/LUSRs.png) | ![Path to Hero](docs/screenshots/path-hero.png) |
 
 *Rank history, progression to Hero, LUSR/CSR per playlist group*
 
