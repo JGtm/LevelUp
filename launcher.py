@@ -624,7 +624,7 @@ def _cmd_sync(args: argparse.Namespace) -> int:
 
     # Lancer le dashboard si demandé
     if getattr(args, "run", False):
-        return _launch_streamlit(db_path=None, port=None, no_browser=False)
+        return _launch_streamlit(db_path=None, port=8501, no_browser=False)
 
     return 0
 
@@ -742,7 +742,7 @@ def _interactive() -> int:
             print("\n⚠ Aucune donnée joueur trouvée.")
             print("  Lance d'abord une synchronisation (choix 2 ou 3)")
             return 2
-        return _launch_streamlit(db_path=None, port=None, no_browser=False)
+        return _launch_streamlit(db_path=None, port=8501, no_browser=False)
 
     if choice == "2":
         if not players:
@@ -796,7 +796,7 @@ Architecture v4:
 
     # run
     p_run = sub.add_parser("run", help="Lance le dashboard")
-    p_run.add_argument("--port", type=int, default=None, help="Port (sinon auto)")
+    p_run.add_argument("--port", type=int, default=8501, help="Port (défaut : 8501)")
     p_run.add_argument("--no-browser", action="store_true", help="Ne pas ouvrir le navigateur")
     p_run.set_defaults(func=_cmd_run)
 

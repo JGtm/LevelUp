@@ -125,7 +125,7 @@
 
 | Last match | Scoreboard |
 |:-:|:-:|
-| ![Last match](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/Scorebard-commendations.png) |
+| ![Summary](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/Scorebard-commendations.png) |
 | Impact & Dominance | Antagonists |
 | ![Impact & Dominance](docs/screenshots/impact-dominance.png) | ![Antagonists](docs/screenshots/antagonist.png) |
 

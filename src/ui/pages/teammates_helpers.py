@@ -331,6 +331,19 @@ def render_friends_history_table(
             return f"color:{colors['violet']}; font-weight:800"
         return "opacity:0.92"
 
+    def _mmr_gap_style(v) -> str:
+        try:
+            f = float(v)
+            if f != f:
+                return ""
+            if f > 0:
+                return f"color:{colors['green']}; font-weight:600"
+            if f < 0:
+                return f"color:{colors['red']}; font-weight:600"
+        except Exception:
+            pass
+        return ""
+
     cols = [
         (t("tmh_col_match"), "_app"),
         (t("tmh_waypoint"), "match_url"),
@@ -371,9 +384,17 @@ def render_friends_history_table(
             elif key == "outcome_label":
                 val = _fmt(r.get(key))
                 tds.append(f"<td style='{_outcome_style(val)}'>{html_lib.escape(val)}</td>")
-            elif key in ("team_mmr", "enemy_mmr", "delta_mmr"):
+            elif key in ("team_mmr", "enemy_mmr"):
                 val = _fmt_mmr_int(r.get(key))
                 tds.append(f"<td>{html_lib.escape(val)}</td>")
+            elif key == "delta_mmr":
+                raw = r.get(key)
+                style = _mmr_gap_style(raw)
+                try:
+                    display = f"{int(round(float(raw))):+d}"
+                except Exception:
+                    display = "-"
+                tds.append(f"<td style='{style}'>{html_lib.escape(display)}</td>")
             else:
                 val = _fmt(r.get(key))
                 tds.append(f"<td>{html_lib.escape(val)}</td>")
