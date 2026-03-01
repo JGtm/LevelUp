@@ -115,6 +115,17 @@ async def get_tokens_from_env() -> Tokens:
     azure_redirect_uri = os.environ.get("SPNKR_AZURE_REDIRECT_URI", "https://localhost")
     oauth_refresh_token = os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN")
 
+    # Fallback : si SPNKR_OAUTH_REFRESH_TOKEN absent, chercher SPNKR_OAUTH_REFRESH_TOKEN_<GT>
+    if not oauth_refresh_token and azure_client_id and azure_client_secret:
+        for key, value in os.environ.items():
+            if key.startswith("SPNKR_OAUTH_REFRESH_TOKEN_") and value.strip():
+                logger.debug(
+                    "SPNKR_OAUTH_REFRESH_TOKEN absent — utilisation de %s comme token par défaut.",
+                    key,
+                )
+                oauth_refresh_token = value.strip()
+                break
+
     if azure_client_id and azure_client_secret and oauth_refresh_token:
         return await _get_tokens_via_oauth(
             azure_client_id,
