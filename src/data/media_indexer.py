@@ -627,30 +627,52 @@ class MediaIndexer:
 
     @staticmethod
     def _get_all_player_dbs() -> list[tuple[Path, str]]:
+        """Retourne les (db_path, xuid) de tous les joueurs.
+
+        N'ouvre PAS les stats.duckdb individuelles (causerait des handles
+        read_only persistants dans DuckDB → conflict avec les ouvertures RW
+        ultérieures du MediaIndexer).
+        Lit les xuids depuis shared_matches.duckdb/xuid_aliases à la place.
+        """
         player_dbs = []
         if not PLAYERS_DIR.exists():
             return player_dbs
+
+        # Charger le mapping gamertag→xuid depuis shared_matches.duckdb
+        xuid_by_gamertag: dict[str, str] = {}
+        shared_path = get_shared_matches_path_from_player(
+            PLAYERS_DIR / "_any" / PLAYER_DB_FILENAME
+        )
+        # Retrouver shared_matches.duckdb depuis la première DB joueur valide
+        for player_dir in PLAYERS_DIR.iterdir():
+            if player_dir.is_dir():
+                first_db = player_dir / PLAYER_DB_FILENAME
+                if first_db.exists():
+                    shared_path = get_shared_matches_path_from_player(first_db)
+                    break
+
+        if shared_path and shared_path.exists():
+            try:
+                with duckdb.connect(str(shared_path), read_only=True) as sc:
+                    rows = sc.execute(
+                        "SELECT xuid, gamertag FROM xuid_aliases"
+                    ).fetchall()
+                    for xuid_val, gamertag_val in rows:
+                        if gamertag_val and xuid_val:
+                            # Normaliser la casse pour la correspondance
+                            xuid_by_gamertag[str(gamertag_val).lower()] = str(xuid_val)
+            except Exception as e:
+                logger.debug("_get_all_player_dbs: lecture xuid_aliases: %s", e)
+
         for player_dir in sorted(PLAYERS_DIR.iterdir(), key=lambda p: p.name):
             if not player_dir.is_dir():
                 continue
             db_path = player_dir / PLAYER_DB_FILENAME
             if not db_path.exists():
                 continue
-            xuid = None
-            try:
-                c = duckdb.connect(str(db_path), read_only=True)
-                try:
-                    r = c.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
-                    if r:
-                        xuid = r[0]
-                except Exception:
-                    pass
-                finally:
-                    c.close()
-            except Exception:
-                pass
-            if not xuid:
-                xuid = player_dir.name
+            gamertag = player_dir.name
+            # Chercher le xuid dans le mapping shared, sinon utiliser le gamertag
+            xuid = xuid_by_gamertag.get(gamertag.lower(), gamertag)
             player_dbs.append((db_path, xuid))
         return player_dbs
 
