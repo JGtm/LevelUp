@@ -308,71 +308,59 @@ def _background_media_indexing(settings, db_path: str) -> None:
                     player_captures = base_path / gamertag
                     if not player_captures.exists():
                         continue
-                    # Libérer proactivement les connexions read_only du repo
-                    # pour éviter le conflit DuckDB "different configuration"
-                    # (read_only repo vs read_write MediaIndexer).
+                    # Libérer TOUTES les connexions read_only (pas seulement ce
+                    # joueur) pour éviter le conflit DuckDB "different configuration".
+                    # DuckDB maintient un handle interne même après .close() si
+                    # d'autres connexions au même fichier existent dans le processus.
                     try:
                         from src.data.repositories.duckdb_repo import (
-                            release_db_connections,
+                            release_all_db_connections,
                         )
 
-                        n_closed = release_db_connections(db_file)
+                        n_closed = release_all_db_connections()
                         if n_closed > 0:
                             logger.debug(
-                                "🔓 %d connexion(s) read_only libérée(s) pour %s avant indexation",
+                                "🔓 %d connexion(s) libérée(s) avant indexation %s",
                                 n_closed,
                                 gamertag,
                             )
                     except Exception:
                         pass
 
-                    try:
-                        _index_media_for_player(db_file, gamertag, player_captures, tolerance)
-                    except Exception as player_err:
-                        err_str = str(player_err).lower()
-                        if "different configuration" in err_str:
-                            # Le repo s'est rouvert entre-temps (requête Streamlit
-                            # concurrente). On force une deuxième libération et retry.
-                            try:
-                                from src.data.repositories.duckdb_repo import (
-                                    release_db_connections,
-                                )
+                    # Retry loop : 3 tentatives avec délai croissant
+                    last_err: Exception | None = None
+                    for _attempt in range(3):
+                        try:
+                            _index_media_for_player(db_file, gamertag, player_captures, tolerance)
+                            last_err = None
+                            break
+                        except Exception as player_err:
+                            last_err = player_err
+                            if "different configuration" in str(player_err).lower():
+                                import time as _time
 
-                                n_closed = release_db_connections(db_file)
-                            except Exception:
-                                n_closed = 0
-                            if n_closed > 0:
-                                logger.info(
-                                    "🔄 %d connexion(s) read_only fermée(s) pour %s, "
-                                    "réessai indexation médias",
-                                    n_closed,
-                                    gamertag,
-                                )
                                 try:
-                                    _index_media_for_player(
-                                        db_file,
-                                        gamertag,
-                                        player_captures,
-                                        tolerance,
+                                    from src.data.repositories.duckdb_repo import (
+                                        release_all_db_connections,
                                     )
-                                except Exception as retry_err:
-                                    logger.warning(
-                                        "⏭️ Indexation médias %s échouée après retry: %s",
-                                        gamertag,
-                                        retry_err,
-                                    )
+
+                                    release_all_db_connections()
+                                except Exception:
+                                    pass
+                                _time.sleep((_attempt + 1) * 0.5)
                             else:
-                                logger.warning(
-                                    "⏭️ Indexation médias %s ignorée (conflit DB): %s",
-                                    gamertag,
-                                    player_err,
-                                )
-                        else:
-                            # DB verrouillée par un autre processus (backfill, sync)
-                            logger.warning(
-                                "⏭️ Indexation médias %s ignorée (DB verrouillée ?): %s",
+                                break  # Erreur non liée au conflit → pas de retry
+                    if last_err is not None:
+                        if "different configuration" in str(last_err).lower():
+                            logger.info(
+                                "⏭️ Indexation médias %s ignorée (DB occupée par Streamlit)",
                                 gamertag,
-                                player_err,
+                            )
+                        else:
+                            logger.warning(
+                                "⏭️ Indexation médias %s ignorée: %s",
+                                gamertag,
+                                last_err,
                             )
             else:
                 # Legacy : deux dossiers globaux, DB courante uniquement

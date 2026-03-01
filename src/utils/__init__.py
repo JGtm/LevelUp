@@ -1,6 +1,6 @@
 """Utilitaires partagés pour le projet OpenSpartan Graph."""
 
-from src.utils.paths import (
+from .paths import (
     ARCHIVE_DIR,
     DATA_DIR,
     PLAYERS_DIR,
@@ -11,14 +11,14 @@ from src.utils.paths import (
     get_player_db_path,
     list_player_gamertags,
 )
-from src.utils.profiles import (
+from .profiles import (
     PROFILES_PATH,
     get_profiles_path,
     list_local_dbs,
     load_profiles,
     save_profiles,
 )
-from src.utils.xuid import (
+from .xuid import (
     XUID_DIGITS_RE,
     extract_gamertag_from_player_id,
     extract_xuid_from_player_id,
