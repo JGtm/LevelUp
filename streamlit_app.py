@@ -308,19 +308,39 @@ def _background_media_indexing(settings, db_path: str) -> None:
                     player_captures = base_path / gamertag
                     if not player_captures.exists():
                         continue
+                    # Libérer proactivement les connexions read_only du repo
+                    # pour éviter le conflit DuckDB "different configuration"
+                    # (read_only repo vs read_write MediaIndexer).
+                    try:
+                        from src.data.repositories.duckdb_repo import (
+                            release_db_connections,
+                        )
+
+                        n_closed = release_db_connections(db_file)
+                        if n_closed > 0:
+                            logger.debug(
+                                "🔓 %d connexion(s) read_only libérée(s) pour %s avant indexation",
+                                n_closed,
+                                gamertag,
+                            )
+                    except Exception:
+                        pass
+
                     try:
                         _index_media_for_player(db_file, gamertag, player_captures, tolerance)
                     except Exception as player_err:
                         err_str = str(player_err).lower()
                         if "different configuration" in err_str:
-                            # Conflit read_only vs read_write dans le même
-                            # processus (repo Streamlit read_only encore ouvert).
-                            # On ferme les connexions existantes et on réessaie.
-                            from src.data.repositories.duckdb_repo import (
-                                release_db_connections,
-                            )
+                            # Le repo s'est rouvert entre-temps (requête Streamlit
+                            # concurrente). On force une deuxième libération et retry.
+                            try:
+                                from src.data.repositories.duckdb_repo import (
+                                    release_db_connections,
+                                )
 
-                            n_closed = release_db_connections(db_file)
+                                n_closed = release_db_connections(db_file)
+                            except Exception:
+                                n_closed = 0
                             if n_closed > 0:
                                 logger.info(
                                     "🔄 %d connexion(s) read_only fermée(s) pour %s, "

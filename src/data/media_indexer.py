@@ -674,9 +674,12 @@ class MediaIndexer:
             Nombre de nouvelles associations insérées.
         """
         self.ensure_schema()
-        conn_read = duckdb.connect(str(self.db_path), read_only=True)
+        # Utiliser read_only=False pour la lecture ET l'écriture dans la même connexion,
+        # afin d'éviter l'ouverture successive RO→RW qui déclenche l'erreur DuckDB
+        # "different configuration" quand un repo Streamlit a entre-temps rouvert en RO.
+        conn = duckdb.connect(str(self.db_path), read_only=False)
         try:
-            media_rows = conn_read.execute(
+            media_rows = conn.execute(
                 """
                 SELECT mf.file_path, mf.mtime
                 FROM media_files mf
@@ -684,10 +687,12 @@ class MediaIndexer:
                 ORDER BY mf.mtime DESC
                 """
             ).fetchall()
-        finally:
-            conn_read.close()
+        except Exception:
+            conn.close()
+            return 0
 
         if not media_rows:
+            conn.close()
             return 0
 
         player_dbs = self._get_all_player_dbs_current_first()
@@ -724,11 +729,8 @@ class MediaIndexer:
                 matches_by_xuid[str(xuid)] = []
 
         tol_seconds = tolerance_minutes * 60
-        conn_write = duckdb.connect(str(self.db_path), read_only=False)
         try:
-            before = conn_write.execute("SELECT COUNT(*) FROM media_match_associations").fetchone()[
-                0
-            ]
+            before = conn.execute("SELECT COUNT(*) FROM media_match_associations").fetchone()[0]
 
             for media_path, mtime_epoch in media_rows:
                 for xuid, matches in matches_by_xuid.items():
@@ -751,7 +753,7 @@ class MediaIndexer:
                     candidates.sort(key=lambda x: (x[5], x[1]))
                     best = candidates[0]
                     try:
-                        conn_write.execute(
+                        conn.execute(
                             """
                             INSERT INTO media_match_associations
                             (media_path, match_id, xuid, match_start_time, map_id, map_name, association_confidence)
@@ -769,12 +771,10 @@ class MediaIndexer:
                         )
                     except Exception as e:
                         logger.warning("Association %s/%s: %s", media_path, xuid, e)
-            conn_write.commit()
-            after = conn_write.execute("SELECT COUNT(*) FROM media_match_associations").fetchone()[
-                0
-            ]
+            conn.commit()
+            after = conn.execute("SELECT COUNT(*) FROM media_match_associations").fetchone()[0]
         finally:
-            conn_write.close()
+            conn.close()
         return int(after - before)
 
     @staticmethod
