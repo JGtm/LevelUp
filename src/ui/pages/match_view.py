@@ -527,14 +527,13 @@ def render_match_view(
     # Détecter le flag had_bot_teammate depuis player_match_enrichment
     _had_bot_teammate = False
     try:
-        import duckdb as _duckdb
+        from src.utils.db import duckdb_read_only
 
-        _pme_conn = _duckdb.connect(db_path, read_only=True)
-        _bot_row = _pme_conn.execute(
-            "SELECT had_bot_teammate FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
-            [match_id],
-        ).fetchone()
-        _pme_conn.close()
+        with duckdb_read_only(db_path) as _pme_conn:
+            _bot_row = _pme_conn.execute(
+                "SELECT had_bot_teammate FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
+                [match_id],
+            ).fetchone()
         if _bot_row and _bot_row[0]:
             _had_bot_teammate = True
     except Exception:

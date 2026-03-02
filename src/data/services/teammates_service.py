@@ -84,15 +84,14 @@ class TeammatesService:
         Returns:
             Le xuid du joueur, ou chaîne vide si non trouvé.
         """
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
         try:
-            conn = duckdb.connect(db_path, read_only=True)
-            # sync_meta est une table clé-valeur (key, value, updated_at)
-            result = conn.execute(
-                "SELECT value FROM sync_meta WHERE key = 'xuid' LIMIT 1"
-            ).fetchone()
-            conn.close()
+            with duckdb_read_only(db_path) as conn:
+                # sync_meta est une table clé-valeur (key, value, updated_at)
+                result = conn.execute(
+                    "SELECT value FROM sync_meta WHERE key = 'xuid' LIMIT 1"
+                ).fetchone()
             if result:
                 return str(result[0]).strip()
         except Exception as e:

@@ -243,19 +243,18 @@ def _sync_duckdb_player(
         # Compter les matchs avant (player_match_stats = source de vérité v5)
         matches_before = 0
         try:
-            import duckdb
+            from src.utils.db import duckdb_read_only
 
-            conn = duckdb.connect(str(db_file), read_only=True)
-            # Essayer player_match_stats (v5), puis match_stats (fallback)
-            for table in ("player_match_stats", "match_stats"):
-                try:
-                    result = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
-                    if result and result[0]:
-                        matches_before = result[0]
-                        break
-                except Exception:
-                    continue
-            conn.close()
+            with duckdb_read_only(str(db_file)) as conn:
+                # Essayer player_match_stats (v5), puis match_stats (fallback)
+                for table in ("player_match_stats", "match_stats"):
+                    try:
+                        result = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+                        if result and result[0]:
+                            matches_before = result[0]
+                            break
+                    except Exception:
+                        continue
         except Exception:
             pass
 
@@ -353,16 +352,17 @@ def _sync_duckdb_player(
         # Compter les matchs après (même logique que avant)
         matches_after = 0
         try:
-            conn = duckdb.connect(str(db_file), read_only=True)
-            for table in ("player_match_stats", "match_stats"):
-                try:
-                    result = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
-                    if result and result[0]:
-                        matches_after = result[0]
-                        break
-                except Exception:
-                    continue
-            conn.close()
+            from src.utils.db import duckdb_read_only
+
+            with duckdb_read_only(str(db_file)) as conn:
+                for table in ("player_match_stats", "match_stats"):
+                    try:
+                        result = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+                        if result and result[0]:
+                            matches_after = result[0]
+                            break
+                    except Exception:
+                        continue
         except Exception:
             pass
 

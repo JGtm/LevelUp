@@ -62,7 +62,7 @@ def compute_global_radar_thresholds(
     if _global_thresholds_cache is not None:
         return _global_thresholds_cache.copy()
 
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
     if players_base_path is None:
         from src.config import get_repo_root
@@ -85,74 +85,71 @@ def compute_global_radar_thresholds(
             continue
 
         try:
-            conn = duckdb.connect(str(db_path), read_only=True)
+            with duckdb_read_only(str(db_path)) as conn:
+                # Exclure Firefight et BTB (scores disproportionnés) pour une référence Arena/Slayer
+                exclude_filter = """
+                    AND match_id IN (
+                        SELECT match_id FROM match_stats
+                        WHERE (LOWER(COALESCE(pair_name,'')) NOT LIKE '%firefight%')
+                          AND (LOWER(COALESCE(pair_name,'')) NOT LIKE '%btb%')
+                          AND (LOWER(COALESCE(pair_name,'')) NOT LIKE '%big team%')
+                          AND (LOWER(COALESCE(pair_name,'')) NOT LIKE '%grande équipe%')
+                    )
+                """
+                # Max par catégorie (par match, puis global) - hors Firefight/BTB
+                r = conn.execute(f"""
+                    SELECT award_category, MAX(total) as m FROM (
+                        SELECT p.match_id, p.award_category, SUM(p.award_score) as total
+                        FROM personal_score_awards p
+                        WHERE p.award_category IN ('kill','assist','objective','vehicle')
+                        {exclude_filter}
+                        GROUP BY p.match_id, p.award_category
+                    ) GROUP BY award_category
+                """).fetchall()
 
-            # Exclure Firefight et BTB (scores disproportionnés) pour une référence Arena/Slayer
-            exclude_filter = """
-                AND match_id IN (
-                    SELECT match_id FROM match_stats
-                    WHERE (LOWER(COALESCE(pair_name,'')) NOT LIKE '%firefight%')
-                      AND (LOWER(COALESCE(pair_name,'')) NOT LIKE '%btb%')
-                      AND (LOWER(COALESCE(pair_name,'')) NOT LIKE '%big team%')
-                      AND (LOWER(COALESCE(pair_name,'')) NOT LIKE '%grande équipe%')
-                )
-            """
-            # Max par catégorie (par match, puis global) - hors Firefight/BTB
-            r = conn.execute(f"""
-                SELECT award_category, MAX(total) as m FROM (
-                    SELECT p.match_id, p.award_category, SUM(p.award_score) as total
-                    FROM personal_score_awards p
-                    WHERE p.award_category IN ('kill','assist','objective','vehicle')
-                    {exclude_filter}
-                    GROUP BY p.match_id, p.award_category
-                ) GROUP BY award_category
-            """).fetchall()
+                for cat, m in r or []:
+                    m = float(m or 0)
+                    if cat == "kill":
+                        max_kill = max(max_kill, m)
+                    elif cat == "assist":
+                        max_assist = max(max_assist, m)
+                    elif cat == "objective":
+                        max_obj = max(max_obj, m)
+                    seen_any = True
 
-            for cat, m in r or []:
-                m = float(m or 0)
-                if cat == "kill":
-                    max_kill = max(max_kill, m)
-                elif cat == "assist":
-                    max_assist = max(max_assist, m)
-                elif cat == "objective":
-                    max_obj = max(max_obj, m)
-                seen_any = True
-
-            # Max score total positif par match - hors Firefight/BTB
-            r2 = conn.execute(f"""
-                SELECT MAX(s) FROM (
-                    SELECT p.match_id, GREATEST(0, SUM(CASE WHEN p.award_score > 0 THEN p.award_score ELSE 0 END)) as s
-                    FROM personal_score_awards p
-                    WHERE 1=1 {exclude_filter}
-                    GROUP BY p.match_id
-                )
-            """).fetchone()
-            if r2 and r2[0] is not None:
-                max_score = max(max_score, float(r2[0]))
-                seen_any = True
-
-            # Max impact (pts/min) - hors Firefight/BTB
-            try:
-                r3 = conn.execute(f"""
-                    SELECT MAX(agg.total_pos / NULLIF(ms.time_played_seconds / 60.0, 0)) FROM (
-                        SELECT p.match_id, SUM(CASE WHEN p.award_category IN ('kill','assist','objective','vehicle')
-                            AND p.award_score > 0 THEN p.award_score ELSE 0 END) as total_pos
+                # Max score total positif par match - hors Firefight/BTB
+                r2 = conn.execute(f"""
+                    SELECT MAX(s) FROM (
+                        SELECT p.match_id, GREATEST(0, SUM(CASE WHEN p.award_score > 0 THEN p.award_score ELSE 0 END)) as s
                         FROM personal_score_awards p
                         WHERE 1=1 {exclude_filter}
                         GROUP BY p.match_id
-                    ) agg
-                    JOIN match_stats ms ON agg.match_id = ms.match_id
-                    WHERE ms.time_played_seconds > 0
-                    AND (LOWER(COALESCE(ms.pair_name,'')) NOT LIKE '%firefight%')
-                    AND (LOWER(COALESCE(ms.pair_name,'')) NOT LIKE '%btb%')
+                    )
                 """).fetchone()
-                if r3 and r3[0] is not None and float(r3[0]) > 0:
-                    max_impact = max(max_impact, float(r3[0]))
+                if r2 and r2[0] is not None:
+                    max_score = max(max_score, float(r2[0]))
                     seen_any = True
-            except Exception:
-                pass
 
-            conn.close()
+                # Max impact (pts/min) - hors Firefight/BTB
+                try:
+                    r3 = conn.execute(f"""
+                        SELECT MAX(agg.total_pos / NULLIF(ms.time_played_seconds / 60.0, 0)) FROM (
+                            SELECT p.match_id, SUM(CASE WHEN p.award_category IN ('kill','assist','objective','vehicle')
+                                AND p.award_score > 0 THEN p.award_score ELSE 0 END) as total_pos
+                            FROM personal_score_awards p
+                            WHERE 1=1 {exclude_filter}
+                            GROUP BY p.match_id
+                        ) agg
+                        JOIN match_stats ms ON agg.match_id = ms.match_id
+                        WHERE ms.time_played_seconds > 0
+                        AND (LOWER(COALESCE(ms.pair_name,'')) NOT LIKE '%firefight%')
+                        AND (LOWER(COALESCE(ms.pair_name,'')) NOT LIKE '%btb%')
+                    """).fetchone()
+                    if r3 and r3[0] is not None and float(r3[0]) > 0:
+                        max_impact = max(max_impact, float(r3[0]))
+                        seen_any = True
+                except Exception:
+                    pass
         except Exception:
             continue
 

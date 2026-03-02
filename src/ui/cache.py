@@ -26,7 +26,6 @@ from src.ui.cache_loaders import (  # noqa: F401
     _is_duckdb_v4_path,
     _load_matches_duckdb_v4,
     _load_matches_duckdb_v4_polars,
-    _to_polars,
     cached_get_cache_stats,
     cached_has_cache_tables,
     cached_list_local_dbs,

@@ -641,7 +641,7 @@ def _render_cumulative_section(
                     title="",
                 )
                 if fig_cumul is not None:
-                    st.plotly_chart(fig_cumul, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig_cumul, width="stretch", config=PLOTLY_CLEAN_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
             except Exception as e:
@@ -778,3 +778,4 @@ from src.ui.pages.session_compare_charts import (  # noqa: E402, F401
     render_participation_trend_section,
     render_session_history_table,
 )
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG

@@ -17,13 +17,11 @@ import os
 import unicodedata
 from typing import Any
 
-import duckdb
 import streamlit as st
 
 from src.config import get_repo_root
-from src.ui.i18n import get_lang
+from src.ui.i18n import get_lang, t
 from src.ui.i18n.data_labels import label_obj
-from src.ui.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -87,33 +85,33 @@ def _load_citations_from_db() -> list[dict[str, Any]]:
         logger.warning("metadata.duckdb introuvable : %s", db_path)
         return []
 
-    conn = duckdb.connect(db_path, read_only=True)
-    try:
-        rows = conn.execute(
-            "SELECT citation_name_norm, citation_name_display, mapping_type, "
-            "       image_path, category, description, tier_targets, "
-            "       composite_children "
-            "FROM citation_mappings "
-            "WHERE enabled IS NOT FALSE "
-            "ORDER BY category, citation_name_display"
-        ).fetchall()
+    from src.utils.db import duckdb_read_only
 
-        columns = [
-            "citation_name_norm",
-            "citation_name_display",
-            "mapping_type",
-            "image_path",
-            "category",
-            "description",
-            "tier_targets",
-            "composite_children",
-        ]
-        return [dict(zip(columns, row, strict=False)) for row in rows]
-    except Exception:
-        logger.exception("Erreur chargement citation_mappings")
-        return []
-    finally:
-        conn.close()
+    with duckdb_read_only(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT citation_name_norm, citation_name_display, mapping_type, "
+                "       image_path, category, description, tier_targets, "
+                "       composite_children "
+                "FROM citation_mappings "
+                "WHERE enabled IS NOT FALSE "
+                "ORDER BY category, citation_name_display"
+            ).fetchall()
+
+            columns = [
+                "citation_name_norm",
+                "citation_name_display",
+                "mapping_type",
+                "image_path",
+                "category",
+                "description",
+                "tier_targets",
+                "composite_children",
+            ]
+            return [dict(zip(columns, row, strict=False)) for row in rows]
+        except Exception:
+            logger.exception("Erreur chargement citation_mappings")
+            return []
 
 
 # ── Mastery / progression ───────────────────────────────────────────────────
@@ -299,7 +297,9 @@ def render_h5g_commendations_section(
     cats = sorted({it["category"] for it in items if it["category"]})
     c1, c2 = st.columns([1, 2])
     with c1:
-        picked_cat = st.selectbox(t("cit_filter_category"), options=[t("cit_filter_all")] + cats, index=0)
+        picked_cat = st.selectbox(
+            t("cit_filter_category"), options=[t("cit_filter_all")] + cats, index=0
+        )
     with c2:
         q = st.text_input(t("cit_search"), value="", placeholder=t("cit_search_placeholder"))
 

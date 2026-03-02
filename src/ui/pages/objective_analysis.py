@@ -18,7 +18,7 @@ from src.analysis.objective_participation import (
 )
 from src.ui.i18n import get_lang, t
 from src.ui.i18n.data_labels import label as i18n_label
-from src.ui.streamlit_modern import fragment_if_available
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization.objective_charts import (
     plot_assist_breakdown_pie,
     plot_objective_breakdown_bars,
@@ -209,7 +209,7 @@ def render_objective_analysis_page(
                 title=None,
             )
             if fig_scatter is not None:
-                st.plotly_chart(fig_scatter, width="stretch", config={"displayModeBar": False})
+                st.plotly_chart(fig_scatter, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
         except Exception as e:
@@ -227,7 +227,7 @@ def render_objective_analysis_page(
                     title=None,
                 )
                 if fig_bars is not None:
-                    st.plotly_chart(fig_bars, width="stretch", config={"staticPlot": True})
+                    st.plotly_chart(fig_bars, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
             except Exception as e:
@@ -241,7 +241,7 @@ def render_objective_analysis_page(
                     title="% du score sur objectifs",
                 )
                 if fig_gauge is not None:
-                    st.plotly_chart(fig_gauge, width="stretch", config={"staticPlot": True})
+                    st.plotly_chart(fig_gauge, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
             except Exception as e:
@@ -267,7 +267,7 @@ def render_objective_analysis_page(
                     title=None,
                 )
                 if fig_trend is not None:
-                    st.plotly_chart(fig_trend, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig_trend, width="stretch", config=PLOTLY_CLEAN_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
             except Exception as e:
@@ -324,7 +324,7 @@ def render_objective_analysis_page(
                 breakdown,
                 title="Types d'Assistances",
             )
-            st.plotly_chart(fig_pie, width="stretch", config={"staticPlot": True})
+            st.plotly_chart(fig_pie, width="stretch", config=PLOTLY_STATIC_CONFIG)
 
         with col_table:
             st.markdown(f"### {t('obj_assist_detail')}")

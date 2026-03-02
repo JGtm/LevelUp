@@ -10,6 +10,7 @@ import streamlit as st
 from src.ui.commendations import render_h5g_commendations_section
 from src.ui.i18n import get_lang, t
 from src.ui.medals import load_medal_name_maps, medal_label, render_medals_grid
+from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.distributions import plot_medals_distribution
 
@@ -157,7 +158,9 @@ def render_citations_page(
 
             # Préparer les données pour le graphique
             try:
-                medal_names_dict = {int(nid): medal_label(int(nid), lang=get_lang()) for nid, _ in top}
+                medal_names_dict = {
+                    int(nid): medal_label(int(nid), lang=get_lang()) for nid, _ in top
+                }
                 fig_medals = plot_medals_distribution(
                     top,
                     medal_names_dict,
@@ -166,7 +169,7 @@ def render_citations_page(
                     lang=get_lang(),
                 )
                 if fig_medals is not None:
-                    st.plotly_chart(fig_medals, width="stretch", config={"staticPlot": True})
+                    st.plotly_chart(fig_medals, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
             except Exception as e:

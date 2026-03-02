@@ -35,6 +35,7 @@ from src.ui.pages.teammates_helpers import (
 )
 from src.ui.pages.teammates_impact import render_impact_taquinerie
 from src.ui.pages.teammates_synergy import render_synergy_radar, render_trio_synergy_radar
+from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.visualization import plot_map_ratio_with_winloss
 from src.visualization._compat import DataFrameLike, ensure_polars, to_pandas_for_st
 
@@ -267,7 +268,7 @@ def render_multi_teammate_view(
                 title = t("tm_ratio_map_header", n=min_matches_maps_friends)
                 fig_map = plot_map_ratio_with_winloss(view_all, title=title)
                 if fig_map is not None:
-                    st.plotly_chart(fig_map, width="stretch", config={"staticPlot": True})
+                    st.plotly_chart(fig_map, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
             except Exception as e:
@@ -668,7 +669,7 @@ def _render_per_minute_stats(
     fig_pm = apply_halo_plot_style(fig_pm, title=None, height=None)
     try:
         if fig_pm is not None:
-            st.plotly_chart(fig_pm, width="stretch", config={"staticPlot": True})
+            st.plotly_chart(fig_pm, width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
     except Exception as e:

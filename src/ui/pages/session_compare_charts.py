@@ -20,11 +20,12 @@ import streamlit as st
 from src.analysis.performance_score import compute_performance_series
 from src.ui import translate_pair_name
 from src.ui.components.performance import get_score_class
+from src.ui.date_formats import FMT_DATETIME_FR_SHORT_YEAR
 from src.ui.i18n import get_lang, get_outcome_map, get_weekdays, t
 from src.ui.pages.session_compare import (
     _outcome_class,
 )
-from src.ui.streamlit_modern import fragment_if_available
+from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import (
     DataFrameLike,
@@ -100,7 +101,7 @@ def _build_history_dataframe(
                 .dt.weekday()
                 .replace_strict(_weekdays, default="-", return_dtype=pl.Utf8)
                 + pl.lit(" ")
-                + pl.col("start_time").dt.strftime("%d/%m/%y %H:%M")
+                + pl.col("start_time").dt.strftime(FMT_DATETIME_FR_SHORT_YEAR)
             )
             .fill_null("-")
             .alias(t("col_time"))
@@ -343,7 +344,7 @@ def render_comparison_radar_chart(
 
     try:
         if fig_radar is not None:
-            st.plotly_chart(fig_radar, width="stretch", config={"staticPlot": True})
+            st.plotly_chart(fig_radar, width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
     except Exception as e:
@@ -570,7 +571,7 @@ def render_comparison_bar_chart(
     try:
         fig = _build_bar_chart_figure(metrics)
         if fig is not None:
-            st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
+            st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
     except Exception as e:
@@ -695,7 +696,7 @@ def render_participation_trend_section(
             try:
                 fig = create_participation_profile_radar(profiles, title="", height=380)
                 if fig is not None:
-                    st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
+                    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
             except Exception as e:

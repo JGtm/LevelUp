@@ -16,6 +16,7 @@ from typing import Any
 import polars as pl
 
 from src.config import SESSION_CONFIG
+from src.ui.date_formats import FMT_DATE_FR
 
 # =============================================================================
 # Configuration des sessions améliorées
@@ -90,7 +91,7 @@ def _compute_sessions_polars(df: pl.DataFrame, gap_minutes: int) -> pl.DataFrame
         [
             pl.format(
                 "{} {}–{} ({})",
-                pl.col("min_time").dt.strftime("%d/%m/%Y"),
+                pl.col("min_time").dt.strftime(FMT_DATE_FR),
                 pl.col("min_time").dt.strftime("%H:%M"),
                 pl.col("max_time").dt.strftime("%H:%M"),
                 pl.col("count").cast(pl.Utf8),
@@ -275,7 +276,7 @@ def compute_sessions_with_context_polars(
         .with_columns(
             pl.format(
                 "{} {}–{} ({})",
-                pl.col("start").dt.strftime("%d/%m/%Y"),
+                pl.col("start").dt.strftime(FMT_DATE_FR),
                 pl.col("start").dt.strftime("%H:%M"),
                 pl.col("end").dt.strftime("%H:%M"),
                 pl.col("count"),

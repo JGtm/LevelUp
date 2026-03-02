@@ -40,15 +40,16 @@ class TestPlotlyStaticConfig:
         assert PLOTLY_CLEAN_CONFIG.get("staticPlot") is False
 
     def test_static_plot_count_in_pages(self) -> None:
-        """Au moins 25 usages de staticPlot: True dans src/ui/pages/."""
+        """Au moins 25 usages de PLOTLY_STATIC_CONFIG dans src/ui/pages/."""
         pages_dir = SRC_ROOT / "ui" / "pages"
         count = 0
         for py_file in pages_dir.glob("*.py"):
             text = py_file.read_text(encoding="utf-8")
+            count += text.count("PLOTLY_STATIC_CONFIG")
+            # Compter aussi les inline résiduels éventuels
             count += text.count('"staticPlot": True')
             count += text.count("'staticPlot': True")
-            count += text.count('"staticPlot":True')
-        assert count >= 25, f"Seulement {count} staticPlot trouvés (attendu ≥25)"
+        assert count >= 25, f"Seulement {count} PLOTLY_STATIC_CONFIG trouvés (attendu ≥25)"
 
 
 # =====================================================================

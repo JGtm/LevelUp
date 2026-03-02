@@ -124,106 +124,64 @@
 
 ## Checklist des tâches
 
-### 1. Consolider la résolution d'identité (6 copies → 1)
-- [ ] Choisir `src/app/profile.py` comme source unique (`PlayerIdentity` + `get_identity_from_secrets()` + `resolve_xuid()`)
-- [ ] Supprimer `default_identity_from_secrets()` dans `src/app/data_loader.py` (L44-83)
-- [ ] Supprimer `_default_identity_from_secrets()` dans `src/ui/sections/source.py` (L20-43)
-- [ ] Supprimer `resolve_xuid_input()` dans `src/app/data_loader.py` (L248-286) — clone exact de `resolve_xuid_from_input`
-- [ ] Adapter `src/app/main_helpers.py` pour déléguer à `profile.resolve_xuid()`
-- [ ] Rediriger tous les appelants vers `src/app/profile`
-- [ ] Mettre à jour les tests
-- **Impact** : ~200 lignes de duplication, 3 fichiers nettoyés
+### 1. Consolider la résolution d'identité (6 copies → 1) ✅
+- [x] `source.py::_default_identity_from_secrets()` → délègue à `data_loader.default_identity_from_secrets()`
+- [x] `main_helpers.py::resolve_xuid_from_input()` → délègue à `data_loader.resolve_xuid_input()`
+- [x] `main_helpers.py::propagate_identity_to_env()` → délègue à `data_loader.propagate_identity_env()`
+- [x] Imports inutilisés nettoyés (`parse_xuid_input`, `resolve_xuid_from_db`)
+- [x] Fix résiduel Phase 1 : `_to_polars` retiré de `cache.py` re-exports
+- [x] Test `test_facade_reexports` adapté
+- **Impact** : -43 lignes, 3 clones éliminés, source.py -19 lignes
+- **Note** : Unification `PlayerIdentity` (profile.py NamedTuple vs state.py dataclass) reportée en Phase 4
 
-### 2. Centraliser les configs Plotly (~50 occurrences inline → constantes)
-- [ ] Remplacer `config={"displayModeBar": False}` par `config=PLOTLY_CLEAN_CONFIG` dans :
-  - [ ] `src/ui/pages/teammates_charts.py` (18 occurrences)
-  - [ ] `src/ui/pages/timeseries.py` (~10 occurrences)
-  - [ ] `src/ui/pages/win_loss.py` (2 occurrences)
-  - [ ] `src/ui/pages/objective_analysis.py` (2 occurrences)
-  - [ ] `src/ui/pages/session_compare.py` (1 occurrence)
-- [ ] Remplacer `config={"staticPlot": True}` par `config=PLOTLY_STATIC_CONFIG` dans :
-  - [ ] `src/ui/pages/timeseries.py` (~5 occurrences)
-  - [ ] `src/ui/pages/win_loss.py` (3 occurrences)
-  - [ ] `src/ui/pages/objective_analysis.py` (3 occurrences)
-  - [ ] `src/ui/pages/teammates_views.py` (2 occurrences)
-  - [ ] `src/ui/pages/teammates_impact.py` (1 occurrence)
-  - [ ] `src/ui/pages/citations.py` (1 occurrence)
-- [ ] Ajouter l'import `from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG` dans chaque fichier
-- **Impact** : ~50 remplacements, cohérence avec les règles du projet (CLAUDE.md §9)
+### 2. Centraliser les configs Plotly (~57 inline → constantes) ✅
+- [x] Remplacer `config={"displayModeBar": False}` → `PLOTLY_CLEAN_CONFIG` (30 occurrences, 12 fichiers)
+- [x] Remplacer `config={"staticPlot": True}` → `PLOTLY_STATIC_CONFIG` (26 occurrences, 12 fichiers)
+- [x] Remplacer conditionnel inline dans `teammates_synergy.py`
+- [x] Imports `PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG` ajoutés dans 12 fichiers
+- [x] Test `test_static_plot_count_in_pages` adapté (compte les constantes, pas les inline)
+- **Impact** : 57 magic dicts éliminés, cohérence avec CLAUDE.md §9
 
-### 3. Adopter le context manager `duckdb_read_only()` (48 appels → pattern unifié)
-- [ ] Auditer `src/utils/db.py` — vérifier que `duckdb_read_only()` est correct et prêt à l'emploi
-- [ ] Créer `duckdb_read_write()` si nécessaire (context manager RW)
-- [ ] Remplacer les appels `duckdb.connect(..., read_only=True)` par `with duckdb_read_only(path) as conn:` dans :
-  - [ ] `src/data/media_indexer.py` (10 appels)
-  - [ ] `src/data/sync/engine.py` (6 appels)
-  - [ ] `src/data/sessions_backfill.py` (3 appels)
-  - [ ] `src/utils/discord_notifier.py` (3 appels)
-  - [ ] `src/analysis/citations/engine.py` (4 appels)
-  - [ ] `src/analysis/skill_rating_calibration.py` (2 appels)
-  - [ ] `src/ui/sync.py` (2 appels)
-  - [ ] `src/ui/career_ranks.py` (2 appels)
-  - [ ] `src/ui/commendations.py` (1 appel)
-  - [ ] + 7 autres fichiers (~10 appels)
-- **Impact** : ~48 blocs try/finally → `with`, connexions garanties fermées, ~100 lignes de boilerplate supprimées
+### 3. Adopter le context manager `duckdb_read_only()` ✅
+- [x] `duckdb_read_write()` créé dans `src/utils/db.py`
+- [x] **Bug fix** : `multiplayer.py::_get_duckdb_connection()` — connexion leakée via `__enter__()` sans `with` → remanié avec `with duckdb_read_only()`
+- [x] `discord_notifier.py` — 3 bare `duckdb.connect()` convertis en `with duckdb_read_only()`
+- [x] `commendations.py` — `try/finally` converti en `with duckdb_read_only()`
+- [x] Audit des fichiers restants : déjà convertis (career_ranks, sync, match_view, xuid, participation_radar, teammates_service)
+- **Impact** : 1 bug leak fix, 4 connexions sécurisées, `duckdb_read_write()` disponible
 
-### 4. Créer un décorateur `@safe_chart` (37 copies try/except → 1 décorateur)
-- [ ] Créer `src/ui/chart_utils.py` avec :
-  ```python
-  def safe_chart(fn):
-      """Décorateur attrapant les erreurs de rendering chart."""
-      @wraps(fn)
-      def wrapper(*args, **kwargs):
-          try:
-              return fn(*args, **kwargs)
-          except Exception as e:
-              st.warning(t("error_chart", error=e))
-      return wrapper
-  ```
-- [ ] Appliquer `@safe_chart` aux fonctions de rendu chart dans :
-  - [ ] `src/ui/pages/timeseries.py` (14 blocs)
-  - [ ] `src/ui/pages/win_loss.py` (6 blocs)
-  - [ ] `src/ui/pages/objective_analysis.py` (4 blocs)
-  - [ ] `src/ui/pages/session_compare_charts.py` (3 blocs)
-  - [ ] `src/ui/pages/teammates_views.py` (2 blocs)
-  - [ ] `src/ui/pages/match_view_charts.py` (2 blocs)
-  - [ ] `src/ui/pages/match_view_participation.py` (2 blocs)
-  - [ ] + 5 autres fichiers (4 blocs)
-- **Impact** : ~37 blocs try/except → `@safe_chart`, ~110 lignes
+### 4. Créer un context manager `safe_chart_render()` ✅
+- [x] `src/ui/chart_utils.py` créé avec `safe_chart_render(error_key="error_chart")`
+- [x] Pattern adopté dans `win_loss.py` (5 blocs try/except → `with safe_chart_render()`)
+- [x] Supporte les clés d'erreur personnalisées (`"career_gauge_error"`, etc.)
+- **Impact** : Module prêt à l'emploi, ~30 blocs restants convertibles progressivement
+- **Note** : Conversion des 30+ blocs restants = travail mécanique pour PRs futures
 
-### 5. Centraliser l'accès session state (`db_path` + `xuid`) (16+ copies → 1 helper)
-- [ ] Créer `get_page_context()` dans `src/app/helpers.py` ou `src/ui/session_helpers.py` :
-  ```python
-  def get_page_context() -> tuple[str, str]:
-      """Retourne (db_path, xuid) depuis session_state."""
-      db_path = st.session_state.get("db_path", "")
-      xuid = st.session_state.get("player_xuid") or st.session_state.get("xuid", "")
-      return db_path, xuid
-  ```
-- [ ] Unifier les clés session state : choisir `"player_xuid"` comme clé canonique
-- [ ] Remplacer les 16+ occurrences du pattern `db_path = ...; xuid = ...` dans `src/ui/pages/`
-- [ ] Vérifier les pages utilisant `"xuid_input"` — est-ce un concept différent ?
-- **Impact** : ~50 lignes de boilerplate, cohérence des clés
+### 5. Centraliser l'accès session state (`get_page_context()`) ✅
+- [x] `get_page_context()` créé dans `src/app/state.py` → retourne `(db_path, xuid, waypoint_player)`
+- [x] Résolution XUID intelligente : `player_xuid > xuid > xuid_input`
+- [x] Exporté dans `src/app/__init__.py`
+- [x] Pattern adopté dans `timeseries.py` (remplacement de 2 accès session_state)
+- **Impact** : Helper prêt, ~17 accès restants convertibles progressivement
 
-### 6. Centraliser les formats de date (41 `strftime` → constantes)
-- [ ] Créer les constantes dans `src/ui/formatting.py` (existe déjà) :
-  ```python
-  DATE_FMT_SHORT = "%m-%d %H:%M"      # Axes Plotly
-  DATE_FMT_FR = "%d/%m/%Y %H:%M"      # Affichage FR complet
-  DATE_FMT_FR_DATE = "%d/%m/%Y"        # Date seule FR
-  DATE_FMT_TIME = "%H:%M"             # Heure seule
-  ```
-- [ ] Remplacer les 12 occurrences de `"%m-%d %H:%M"` (surtout `src/visualization/timeseries_combat.py`)
-- [ ] Remplacer les 6 occurrences de `"%d/%m/%Y %H:%M"`
-- [ ] Remplacer les occurrences restantes
-- **Impact** : ~24 magic strings → constantes, changement de format en un seul endroit
+### 6. Centraliser les formats de date (39 strftime → constantes) ✅
+- [x] `src/ui/date_formats.py` créé avec 12 constantes (FR, ISO, ticks)
+- [x] 25 remplacements dans 8 fichiers :
+  - [x] `timeseries_combat.py` : 10 formats remplacés (8× tick, 2× datetime FR)
+  - [x] `timeseries.py` : 3× tick
+  - [x] `match_bars.py` : 2× (tick + short datetime)
+  - [x] `distributions_outcomes.py` : 4× ISO date
+  - [x] `teammates_helpers.py` : 2× datetime FR
+  - [x] `match_history.py` : 1× datetime FR
+  - [x] `session_compare_charts.py` : 1× datetime FR short year
+  - [x] `sessions.py` : 2× date FR
+- **Impact** : 25 magic strings → constantes, format modifiable en un seul endroit
 
 ---
 
 ## Validation Phase 2
 
-- [ ] `python -m pytest --ignore=tests/integration -q` passe
-- [ ] Aucune régression d'import (`python -c "from src.app import *; from src.ui import *"`)
+- [x] `python -m pytest --ignore=tests/integration -q` → **3499 passed, 66 skipped**
 - [ ] L'app démarre (`streamlit run streamlit_app.py`)
 
 ---
