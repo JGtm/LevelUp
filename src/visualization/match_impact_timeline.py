@@ -40,6 +40,7 @@ def get_impact_labels(lang: str = "fr") -> dict[str, tuple[str, str]]:
     return {
         "first_blood": ("⚡", viz_t("impact_first_blood", lang)),
         "clutch_finisher": ("🎯", viz_t("impact_clutch_finisher", lang)),
+        "last_casualty": ("💀", viz_t("impact_last_casualty", lang)),
         "last_group_kill": ("🐌", viz_t("impact_last_group_kill", lang)),
         "first_group_death": ("🪦", viz_t("impact_first_group_death", lang)),
     }
@@ -113,6 +114,20 @@ def compute_single_match_impact(
                 xuid=xu,
                 gamertag=str(last_kill.get("gamertag", "?")),
                 time_ms=int(last_kill["time_ms"]),
+                is_me=(xu == me_xuid),
+            )
+        )
+
+    # --- Boulet : dernière mort d'une défaite ---
+    if deaths and outcome == 3:
+        last_death = max(deaths, key=lambda e: int(e["time_ms"]))
+        xu = str(last_death.get("xuid", "")).strip()
+        events.append(
+            MatchImpactEvent(
+                event_type="last_casualty",
+                xuid=xu,
+                gamertag=str(last_death.get("gamertag", "?")),
+                time_ms=int(last_death["time_ms"]),
                 is_me=(xu == me_xuid),
             )
         )
@@ -316,10 +331,15 @@ def plot_match_kill_death_timeline(
             # Compter les kills du joueur principal à ce timestamp
             y_val = sum(1 for e in my_kills if int(e["time_ms"]) <= t_ms) if my_kills else 0
             anchor_trace = "kills"
+            # Clamp x à l'étendue de la courbe pour que la flèche pointe sur la courbe
+            # (l'événement peut appartenir à un autre joueur dont le kill est après le dernier kill du joueur principal)
+            arrow_x = min(t_ms, int(my_kills[-1]["time_ms"])) if my_kills else t_ms
         else:
             # Compter les deaths du joueur principal à ce timestamp
             y_val = sum(1 for e in my_deaths if int(e["time_ms"]) <= t_ms) if my_deaths else 0
             anchor_trace = "deaths"
+            # Clamp x à l'étendue de la courbe (ex: last_casualty peut être après la dernière mort du joueur principal)
+            arrow_x = min(t_ms, int(my_deaths[-1]["time_ms"])) if my_deaths else t_ms
 
         # Si le joueur n'a pas de données sur cette courbe, positionner à 0
         if (
@@ -331,6 +351,7 @@ def plot_match_kill_death_timeline(
             and not my_deaths
         ):
             y_val = 0.5
+            arrow_x = t_ms
 
         # Couleur selon si c'est moi ou un autre
         ann_bg = "rgba(61, 255, 181, 0.15)" if ie.is_me else "rgba(255, 183, 3, 0.15)"
@@ -341,7 +362,7 @@ def plot_match_kill_death_timeline(
 
         annotations.append(
             {
-                "x": t_ms,
+                "x": arrow_x,
                 "y": y_val,
                 "text": f"<b>{annotation_text}</b><br><span style='font-size:11px'>{display_name}</span>",
                 "showarrow": True,
@@ -555,7 +576,11 @@ def plot_all_players_frags_timeline(
                     "color": color,
                 },
                 opacity=1.0 if is_me else 0.65,
-                hovertemplate=(f"<b>{name}</b><br>" f"{viz_t('trace_kills', lang)}: %{{y:.0f}}<br>" "%{text}<extra></extra>"),
+                hovertemplate=(
+                    f"<b>{name}</b><br>"
+                    f"{viz_t('trace_kills', lang)}: %{{y:.0f}}<br>"
+                    "%{text}<extra></extra>"
+                ),
                 text=labels,
             )
         )
