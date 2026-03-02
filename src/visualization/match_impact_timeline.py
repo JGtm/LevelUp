@@ -322,36 +322,33 @@ def plot_match_kill_death_timeline(
         display_name = ie.gamertag
         annotation_text = f"{icon} {label_fr}"
 
-        # Trouver la position Y correspondante sur la courbe
+        # Trouver la position Y et X d'ancrage sur la courbe concernée.
+        # On clamp arrow_x dans [premier_event, dernier_event] de la courbe pour
+        # garantir que la flèche pointe toujours sur un segment existant :
+        #   - trop tôt (ex: first_group_death avant ma 1ère mort) → clamp au début
+        #   - trop tard (ex: last_casualty après ma dernière mort) → clamp à la fin
+        # y_val est recalculé sur la position clampée.
         t_ms = ie.time_ms
         event_base = ie.event_type
 
-        # Déterminer si c'est lié à un kill ou une death
         if event_base in ("first_blood", "clutch_finisher", "last_group_kill"):
-            # Compter les kills du joueur principal à ce timestamp
-            y_val = sum(1 for e in my_kills if int(e["time_ms"]) <= t_ms) if my_kills else 0
-            anchor_trace = "kills"
-            # Clamp x à l'étendue de la courbe pour que la flèche pointe sur la courbe
-            # (l'événement peut appartenir à un autre joueur dont le kill est après le dernier kill du joueur principal)
-            arrow_x = min(t_ms, int(my_kills[-1]["time_ms"])) if my_kills else t_ms
+            if my_kills:
+                first_t = int(my_kills[0]["time_ms"])
+                last_t = int(my_kills[-1]["time_ms"])
+                arrow_x = max(first_t, min(t_ms, last_t))
+                y_val = sum(1 for e in my_kills if int(e["time_ms"]) <= arrow_x)
+            else:
+                arrow_x = t_ms
+                y_val = 0.5
         else:
-            # Compter les deaths du joueur principal à ce timestamp
-            y_val = sum(1 for e in my_deaths if int(e["time_ms"]) <= t_ms) if my_deaths else 0
-            anchor_trace = "deaths"
-            # Clamp x à l'étendue de la courbe (ex: last_casualty peut être après la dernière mort du joueur principal)
-            arrow_x = min(t_ms, int(my_deaths[-1]["time_ms"])) if my_deaths else t_ms
-
-        # Si le joueur n'a pas de données sur cette courbe, positionner à 0
-        if (
-            y_val == 0
-            and anchor_trace == "kills"
-            and not my_kills
-            or y_val == 0
-            and anchor_trace == "deaths"
-            and not my_deaths
-        ):
-            y_val = 0.5
-            arrow_x = t_ms
+            if my_deaths:
+                first_t = int(my_deaths[0]["time_ms"])
+                last_t = int(my_deaths[-1]["time_ms"])
+                arrow_x = max(first_t, min(t_ms, last_t))
+                y_val = sum(1 for e in my_deaths if int(e["time_ms"]) <= arrow_x)
+            else:
+                arrow_x = t_ms
+                y_val = 0.5
 
         # Couleur selon si c'est moi ou un autre
         ann_bg = "rgba(61, 255, 181, 0.15)" if ie.is_me else "rgba(255, 183, 3, 0.15)"
