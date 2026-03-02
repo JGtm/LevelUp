@@ -25,6 +25,9 @@ Fichier d'état persistant : data/cache/uptime_state.json
 Usage :
   .venv\\Scripts\\python.exe scripts\\monitor_uptime.py
   (ou via Planificateur de tâches, toutes les 1 minute)
+
+Enregistrement de la tâche planifiée (PowerShell admin) :
+  .\\scripts\\setup_uptime_task.ps1
 """
 
 from __future__ import annotations
