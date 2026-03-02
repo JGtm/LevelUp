@@ -501,6 +501,36 @@ def create_argument_parser() -> argparse.ArgumentParser:
             "et le stocke dans skill_history. Utilisé pour seeder le LUSR initial."
         ),
     )
+    # ── Détection des bots ────────────────────────────────────────────────────
+    parser.add_argument(
+        "--bot-detection",
+        action="store_true",
+        help=(
+            "Détecte les matchs où un coéquipier était un bot IA (xuid LIKE 'bid(%%') "
+            "et met à jour had_bot_teammate dans player_match_enrichment."
+        ),
+    )
+
+    # ── Gestion des métadonnées (citations) ───────────────────────────────────
+    parser.add_argument(
+        "--enable-pve-citations",
+        action="store_true",
+        help=(
+            "Active les citations PVE désactivées (brute_slayer, skimmer_slayer) "
+            "dans metadata.duckdb. Opération locale, app doit être arrêtée."
+        ),
+    )
+
+    parser.add_argument(
+        "--skill-rank",
+        action="store_true",
+        help="= --lusr + --csr (alias unifié pour backfill LUSR + CSR en une commande)",
+    )
+    parser.add_argument(
+        "--force-skill-rank",
+        action="store_true",
+        help="= --force-lusr + --force-csr (recalcule tout depuis zéro)",
+    )
 
     # ── Détection version SPNKr stale (v5.4) ──────────────────────────────
     parser.add_argument(

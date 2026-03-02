@@ -243,6 +243,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "backfill_aliases": {"fr": "{n} alias(es)", "en": "{n} alias(es)"},
     "backfill_personal_scores": {"fr": "{n} personal_score(s)", "en": "{n} personal score(s)"},
     "backfill_skill": {"fr": "skill", "en": "skill"},
+    "backfill_lusr": {"fr": "{n} LUSR calculé(s)", "en": "{n} LUSR computed"},
     # ── Filtres — labels supplémentaires ────────────────────────────────────
     "filter_header": {"fr": "Filtres", "en": "Filters"},
     "filter_selection": {"fr": "Sélection", "en": "Selection"},

@@ -229,6 +229,7 @@ def render_sync_button(
                     bool(getattr(settings, "spnkr_refresh_backfill_personal_scores", False)),
                     bool(getattr(settings, "spnkr_refresh_backfill_performance_scores", True)),
                     bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
+                    bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
                 ]
             )
 
@@ -236,28 +237,26 @@ def render_sync_button(
                 import asyncio
 
                 from scripts.backfill_data import backfill_all_players
+                from src.data.sync.scope import SyncScope
+
+                _backfill_scope = SyncScope(
+                    medals=bool(getattr(settings, "spnkr_refresh_backfill_medals", False)),
+                    events=bool(getattr(settings, "spnkr_refresh_backfill_events", False)),
+                    skill=bool(getattr(settings, "spnkr_refresh_backfill_skill", False)),
+                    personal_scores=bool(
+                        getattr(settings, "spnkr_refresh_backfill_personal_scores", False)
+                    ),
+                    performance_scores=bool(
+                        getattr(settings, "spnkr_refresh_backfill_performance_scores", True)
+                    ),
+                    aliases=bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
+                    lusr=bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
+                    all_data=backfill_enabled,
+                )
+                _backfill_scope.resolve()
 
                 with st.spinner(t("sidebar_backfill_running")):
-                    backfill_result = asyncio.run(
-                        backfill_all_players(
-                            dry_run=False,
-                            max_matches=None,
-                            requests_per_second=5,
-                            medals=bool(getattr(settings, "spnkr_refresh_backfill_medals", False)),
-                            events=bool(getattr(settings, "spnkr_refresh_backfill_events", False)),
-                            skill=bool(getattr(settings, "spnkr_refresh_backfill_skill", False)),
-                            personal_scores=bool(
-                                getattr(settings, "spnkr_refresh_backfill_personal_scores", False)
-                            ),
-                            performance_scores=bool(
-                                getattr(settings, "spnkr_refresh_backfill_performance_scores", True)
-                            ),
-                            aliases=bool(
-                                getattr(settings, "spnkr_refresh_backfill_aliases", False)
-                            ),
-                            all_data=False,  # On utilise les options individuelles
-                        )
-                    )
+                    backfill_result = asyncio.run(backfill_all_players(scope=_backfill_scope))
 
                     if backfill_result.get("players_processed", 0) > 0:
                         totals = backfill_result.get("total_results", {})
@@ -280,6 +279,8 @@ def render_sync_button(
                             backfill_parts.append(
                                 t("backfill_aliases", n=totals["aliases_inserted"])
                             )
+                        if totals.get("lusr_computed", 0) > 0:
+                            backfill_parts.append(t("backfill_lusr", n=totals["lusr_computed"]))
 
                         if backfill_parts:
                             st.info(f"Backfill: {', '.join(backfill_parts)}")

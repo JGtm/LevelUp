@@ -54,9 +54,18 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 
 
 def _build_match_rank_html(
-    *, match_id: str, db_path: str, db_key: tuple[int, int] | None = None
+    *,
+    match_id: str,
+    db_path: str,
+    db_key: tuple[int, int] | None = None,
+    had_bot_teammate: bool = False,
+    bot_outcome: int | None = None,
 ) -> str | None:
     """Construit le HTML du bloc rang LUSR/CSR pour un match.
+
+    Args:
+        had_bot_teammate: Si True, ajoute une note contextuelle bot sous le delta.
+        bot_outcome: Outcome du joueur (2 = victoire) pour choisir la note bot.
 
     Returns:
         Chaîne HTML prête à injecter, ou None si pas de données.
@@ -121,8 +130,7 @@ def _build_match_rank_html(
             data_url = file_to_data_url(str(img_full))
             if data_url:
                 img_html = (
-                    f"<img src='{data_url}' "
-                    f"style='width:110px;height:110px;object-fit:contain'>"
+                    f"<img src='{data_url}' style='width:110px;height:110px;object-fit:contain'>"
                 )
 
     # Delta — formatage avec 1 décimale si |delta| < 5, entier sinon
@@ -193,6 +201,20 @@ def _build_match_rank_html(
   <span style='font-size:0.75em;color:#888;min-width:14px'>{tier_sz}</span>
 </div>"""
 
+    # Note contextuelle si coéquipier bot détecté
+    bot_note_html = ""
+    if had_bot_teammate:
+        if bot_outcome == 2:
+            _note_text = html.escape(t("mv_lusr_bot_win"))
+            bot_note_html = (
+                f"<div style='color:#50C878;font-size:0.82em;margin-top:6px'>💪 {_note_text}</div>"
+            )
+        else:
+            _note_text = html.escape(t("mv_lusr_bot_loss"))
+            bot_note_html = (
+                f"<div style='color:#FFB347;font-size:0.82em;margin-top:6px'>⚠️ {_note_text}</div>"
+            )
+
     return (
         f"<div style='display:flex;align-items:center;gap:16px'>"
         f"{img_html}"
@@ -200,6 +222,7 @@ def _build_match_rank_html(
         f"<div style='font-size:1.4em;font-weight:700;line-height:1.2'>{tier_display}</div>"
         f"{progress_html}"
         f"{delta_html}"
+        f"{bot_note_html}"
         f"<div style='color:#ffffff;font-size:1.2em;font-weight:bold;margin-top:4px'>{rating_line}</div>"
         f"</div>"
         f"</div>"
@@ -207,13 +230,24 @@ def _build_match_rank_html(
 
 
 def _render_match_rank_tab(
-    *, match_id: str, db_path: str, db_key: tuple[int, int] | None = None
+    *,
+    match_id: str,
+    db_path: str,
+    db_key: tuple[int, int] | None = None,
+    had_bot_teammate: bool = False,
+    bot_outcome: int | None = None,
 ) -> None:
     """Affiche l'onglet 🏅 Rang pour un match (LUSR ou CSR).
 
     Wrapper qui appelle ``_build_match_rank_html`` et rend le résultat.
     """
-    rank_html = _build_match_rank_html(match_id=match_id, db_path=db_path, db_key=db_key)
+    rank_html = _build_match_rank_html(
+        match_id=match_id,
+        db_path=db_path,
+        db_key=db_key,
+        had_bot_teammate=had_bot_teammate,
+        bot_outcome=bot_outcome,
+    )
     if rank_html is None:
         st.info(t("mv_no_rating"))
         return
@@ -490,10 +524,32 @@ def render_match_view(
             f"https://www.halowaypoint.com/halo-infinite/players/{wp}/matches/{match_id.strip()}"
         )
 
+    # Détecter le flag had_bot_teammate depuis player_match_enrichment
+    _had_bot_teammate = False
+    try:
+        import duckdb as _duckdb
+
+        _pme_conn = _duckdb.connect(db_path, read_only=True)
+        _bot_row = _pme_conn.execute(
+            "SELECT had_bot_teammate FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
+            [match_id],
+        ).fetchone()
+        _pme_conn.close()
+        if _bot_row and _bot_row[0]:
+            _had_bot_teammate = True
+    except Exception:
+        pass
+
+    # Bot + outcome : leniency uniquement sur défaite (rage quit en cours de partie)
+    _bot_is_loss = _had_bot_teammate and outcome_code != OUTCOME_CODES.WIN
+    _bot_is_win = _had_bot_teammate and outcome_code == OUTCOME_CODES.WIN
+
     # Calcul du score de performance RELATIF
     perf_score = None
     if df_full is not None and len(df_full) >= 10:
-        perf_score = compute_relative_performance_score(row, df_full)
+        perf_score = compute_relative_performance_score(
+            row, df_full, had_bot_teammate=_had_bot_teammate
+        )
     perf_display = f"{perf_score:.0f}" if perf_score is not None else "-"
     perf_color = None
     if perf_score is not None:
@@ -526,10 +582,18 @@ def render_match_view(
             kpi_color=str(outcome_color),
         )
     with top_cols[2]:
+        if _bot_is_loss:
+            _perf_subtitle = t("mv_bot_teammate_note")  # "Équipe incomplète (+5 pts)"
+        elif _bot_is_win:
+            _perf_subtitle = t("mv_bot_teammate_win_note")  # "Victoire malgré équipe incomplète"
+        else:
+            _perf_subtitle = (
+                t("mv_relative_history") if perf_score is not None else t("mv_insufficient_history")
+            )
         os_card(
             t("mv_performance"),
             perf_display,
-            t("mv_relative_history") if perf_score is not None else t("mv_insufficient_history"),
+            _perf_subtitle,
             accent=perf_color,
             kpi_color=perf_color,
         )
@@ -573,8 +637,14 @@ def render_match_view(
         with contextlib.suppress(Exception):
             thumb_data_url = _f2du(str(thumb))
 
-    # Construire le HTML du rang
-    rank_html = _build_match_rank_html(match_id=match_id, db_path=db_path, db_key=db_key)
+    # Construire le HTML du rang (avec contexte bot si applicable)
+    rank_html = _build_match_rank_html(
+        match_id=match_id,
+        db_path=db_path,
+        db_key=db_key,
+        had_bot_teammate=_had_bot_teammate,
+        bot_outcome=outcome_code,
+    )
 
     # Assembler carte + rang dans un seul bloc HTML centré verticalement
     map_img_html = ""

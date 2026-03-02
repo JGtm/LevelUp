@@ -217,6 +217,7 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     teammates_signature VARCHAR,
     known_teammates_count SMALLINT,
     friends_xuids VARCHAR,
+    had_bot_teammate BOOLEAN,  -- coéquipier bot IA détecté (v5.5)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -502,6 +503,11 @@ class DuckDBSyncEngine:
         # Colonne bitmask backfill_completed (migration)
         ensure_backfill_completed_column(conn)
 
+        # Colonne had_bot_teammate sur player_match_enrichment (migration v5.5)
+        from src.data.sync.migrations import ensure_bot_teammate_column
+
+        ensure_bot_teammate_column(conn)
+
         # Index de performance sur tables locales (v5.1 Étape 2)
         ensure_player_performance_indexes(conn)
 
@@ -621,10 +627,12 @@ class DuckDBSyncEngine:
         return ""
 
     def _load_existing_match_ids(self) -> set[str]:
-        """Charge les IDs des matchs existants depuis shared (V5 finale).
+        """Charge les IDs des matchs existants depuis shared + player DB (V5 finale).
 
-        V5 finale : lecture UNIQUEMENT depuis shared.match_participants.
-        La table locale match_stats n'est plus alimentée.
+        V5 finale : un match est considéré « déjà traité » seulement si le joueur
+        est présent dans shared.match_participants **ET** dans player_match_enrichment.
+        Cela évite de sauter les matchs insérés dans shared par la sync d'un coéquipier
+        mais jamais enrichis pour le joueur courant (bug fix v5.4).
 
         Fallback legacy : si shared non disponible, tente player_match_stats.
         """
@@ -633,15 +641,36 @@ class DuckDBSyncEngine:
 
         ids: set[str] = set()
 
-        # Priorité 1 : shared.match_participants (V5)
+        # Priorité 1 : intersection shared.match_participants ∩ player_match_enrichment (V5)
         shared_conn = self._get_shared_connection()
         if shared_conn is not None and self._xuid:
             try:
-                result = shared_conn.execute(
+                shared_ids_result = shared_conn.execute(
                     "SELECT DISTINCT match_id FROM match_participants WHERE xuid = ?", [self._xuid]
                 ).fetchall()
-                ids = {str(r[0]) for r in result if r[0]}
-                logger.debug(f"Chargé {len(ids)} match IDs depuis shared.match_participants")
+                shared_ids = {str(r[0]) for r in shared_ids_result if r[0]}
+                logger.debug(f"Chargé {len(shared_ids)} match IDs depuis shared.match_participants")
+
+                # Charger les IDs enrichis côté joueur
+                enriched_ids: set[str] = set()
+                conn = self._get_connection()
+                try:
+                    enr_result = conn.execute(
+                        "SELECT DISTINCT match_id FROM player_match_enrichment"
+                    ).fetchall()
+                    enriched_ids = {str(r[0]) for r in enr_result if r[0]}
+                except Exception:
+                    # Table absente ou vide — pas bloquant
+                    pass
+
+                # Un match est « existant » seulement s'il est dans les deux
+                ids = shared_ids & enriched_ids
+                skipped = shared_ids - enriched_ids
+                if skipped:
+                    logger.info(
+                        f"{len(skipped)} match(s) dans shared mais sans enrichment "
+                        f"→ seront re-traités pour ce joueur"
+                    )
                 self._existing_match_ids = ids
                 return ids
             except Exception as e:
@@ -1328,18 +1357,22 @@ class DuckDBSyncEngine:
                     result["aliases"] = len(alias_rows)
 
                 # Mettre à jour les flags du registre
+                # Utiliser un timestamp Python UTC (pas CURRENT_TIMESTAMP qui retourne
+                # l'heure locale sur Windows) pour cohérence avec _sync_started_at
+                _utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
                 shared_conn.execute(
                     """UPDATE match_registry SET
                         participants_loaded = TRUE,
                         events_loaded = ?,
                         medals_loaded = TRUE,
                         first_sync_by = ?,
-                        first_sync_at = CURRENT_TIMESTAMP,
+                        first_sync_at = ?,
                         player_count = 1
                     WHERE match_id = ?""",
                     (
                         len(event_rows_shared) > 0,
                         self._gamertag,
+                        _utc_now,
                         match_id,
                     ),
                 )
@@ -2202,6 +2235,7 @@ class DuckDBSyncEngine:
 
             # Tracker le rating précédent par playlist_group (pour rating_delta)
             prev_rating: dict[str, float] = {}
+            _LUSR_MAX_DELTA = 100.0  # Guard-rail : cap ±100 pts par match
 
             for row in ratings_df.iter_rows(named=True):
                 mid = row["match_id"]
@@ -2212,7 +2246,18 @@ class DuckDBSyncEngine:
                 # Delta vs match précédent dans le même playlist_group
                 delta: float | None = None
                 if pg in prev_rating:
-                    delta = rating_value - prev_rating[pg]
+                    raw_delta = rating_value - prev_rating[pg]
+                    # Guard-rail : limiter le delta à ±100 pts par match
+                    if abs(raw_delta) > _LUSR_MAX_DELTA:
+                        logger.warning(
+                            f"LUSR guard-rail: delta {raw_delta:+.1f} capé à "
+                            f"{_LUSR_MAX_DELTA if raw_delta > 0 else -_LUSR_MAX_DELTA:+.0f} "
+                            f"pour {mid} (groupe {pg})"
+                        )
+                        delta = _LUSR_MAX_DELTA if raw_delta > 0 else -_LUSR_MAX_DELTA
+                        rating_value = prev_rating[pg] + delta
+                    else:
+                        delta = raw_delta
                 prev_rating[pg] = rating_value
 
                 # Mode incrémental : sauter si déjà présent

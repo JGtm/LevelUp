@@ -1324,10 +1324,10 @@ Exemples:
                 players=_discord_players,
                 success=success,
                 disabled=getattr(args, "no_discord", False),
-                skip_idle=True,
+                skip_idle=False,
             )
         except Exception as _discord_exc:
-            logger.debug(f"[Discord] Notification ignorée : {_discord_exc}")
+            logger.warning(f"[Discord] Notification ignorée : {_discord_exc}")
         return 0 if success else 1
 
     if not db_path:
@@ -1526,13 +1526,20 @@ Exemples:
                 ],
                 success=success,
                 disabled=getattr(args, "no_discord", False),
-                skip_idle=True,
+                skip_idle=False,
             )
         except Exception as _discord_exc:
-            logger.debug(f"[Discord] Notification ignorée : {_discord_exc}")
+            logger.warning(f"[Discord] Notification ignorée : {_discord_exc}")
 
     return 0 if success else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from src.utils.sync_lock import SyncAlreadyRunning, SyncLock
+
+    try:
+        with SyncLock():
+            sys.exit(main())
+    except SyncAlreadyRunning as _e:
+        print(f"❌ {_e}", file=sys.stderr)
+        sys.exit(2)

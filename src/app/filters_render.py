@@ -860,9 +860,15 @@ def _render_session_filter(
     # Le selectbox solo est DÉJÀ instancié → écriture directe interdite.
     # On passe par pending + rerun pour que la consommation se fasse au
     # début du prochain run (avant l'instanciation des widgets).
+    # IMPORTANT : on persiste aussi la valeur escouade dans _pending_squad pour
+    # qu'elle survive à la vérification de cohérence du prochain run (ligne 757).
+    # Sans ça, si squad_options diffère légèrement entre les runs (ex: amis recomputed),
+    # la cohérence peut resetter picked_squad_session_label à "(toutes)" AVANT la
+    # consommation du pending solo, effaçant la sélection utilisateur.
     _post_squad = st.session_state.get("picked_squad_session_label", "(toutes)")
     if _post_squad != _pre_squad and _post_squad != "(toutes)":
         st.session_state["_pending_solo_session_label"] = "(toutes)"
+        st.session_state["_pending_squad_session_label"] = _post_squad
         st.rerun()
 
     # ── Sélection active consolidée ──────────────────────────────────────────

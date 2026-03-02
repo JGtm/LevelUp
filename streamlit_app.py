@@ -422,6 +422,20 @@ def main() -> None:
     settings: AppSettings = load_settings()
     st.session_state["app_settings"] = settings
 
+    # Chargement des secrets (Doppler ou .env.local) — une seule fois par session
+    if not st.session_state.get("_secrets_loaded"):
+        st.session_state["_secrets_loaded"] = True
+        try:
+            from src.utils.secrets import load_doppler_secrets_to_env
+
+            if bool(getattr(settings, "doppler_enabled", False)):
+                load_doppler_secrets_to_env(
+                    project=str(getattr(settings, "doppler_project", "") or ""),
+                    config=str(getattr(settings, "doppler_config", "") or ""),
+                )
+        except Exception:
+            pass
+
     # Langue UI (persistée) : session_state prime, sinon app_settings.json.
     if "lang" not in st.session_state:
         st.session_state["lang"] = getattr(settings, "lang", "fr") or "fr"
@@ -429,6 +443,20 @@ def main() -> None:
     # Propage les defaults depuis secrets vers l'env et applique les overrides de chemins
     propagate_identity_to_env()
     apply_settings_overrides_main(settings)
+
+    # Validation de la configuration (calculée une fois par session, affichée à chaque render)
+    if "_startup_cfg_warnings" not in st.session_state:
+        try:
+            from src.utils.startup_check import check_app_settings
+
+            _w, _e = check_app_settings(settings)
+            st.session_state["_startup_cfg_warnings"] = _w
+            st.session_state["_startup_cfg_errors"] = _e
+        except Exception:
+            st.session_state["_startup_cfg_warnings"] = []
+            st.session_state["_startup_cfg_errors"] = []
+    _cfg_warnings: list[str] = st.session_state.get("_startup_cfg_warnings", [])
+    _cfg_errors: list[str] = st.session_state.get("_startup_cfg_errors", [])
 
     # ==========================================================================
     # Source (persistée via session_state) — UI dans l'onglet Paramètres
@@ -441,6 +469,27 @@ def main() -> None:
     # Indexation médias en arrière-plan (non-bloquant)
     # ==========================================================================
     _background_media_indexing(settings, DEFAULT_DB)
+
+    # ==========================================================================
+    # Tailscale funnel + notification Discord (une seule fois par session)
+    # ==========================================================================
+    if not st.session_state.get("_tailscale_started") and bool(
+        getattr(settings, "tailscale_funnel_enabled", False)
+    ):
+        st.session_state["_tailscale_started"] = True
+
+        def _tailscale_worker() -> None:
+            try:
+                from src.utils.discord_notifier import notify_app_started
+                from src.utils.tailscale import start_funnel
+
+                url = start_funnel()
+                if url:
+                    notify_app_started(url)
+            except Exception as _e:
+                print(f"[Tailscale] worker erreur inattendue : {_e}", flush=True)
+
+        threading.Thread(target=_tailscale_worker, daemon=True, name="tailscale-funnel").start()
 
     # Support liens internes via query params (?page=...&match_id=...)
     try:
@@ -652,6 +701,12 @@ def main() -> None:
     # ==========================================================================
 
     with st.sidebar:
+        # Alertes de configuration (calculées une fois par session)
+        for _err_msg in _cfg_errors:
+            st.error(_err_msg)
+        for _warn_msg in _cfg_warnings:
+            st.warning(_warn_msg)
+
         filter_state = render_filters_sidebar(
             df=df,
             db_path=db_path,
