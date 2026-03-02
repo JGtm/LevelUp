@@ -773,24 +773,8 @@ class TestEngineBatchInsertMethods:
         pytest.skip("8bis.B3 : méthode _insert_medal_rows supprimée en v5.1")
 
     def test_batch_insert_events_via_engine(self, engine_with_db):
-        """Les events sont insérés en batch."""
-        from src.data.sync.models import HighlightEventRow
-
-        engine = engine_with_db
-        rows = [
-            HighlightEventRow(
-                match_id="m1", event_type="kill", time_ms=1000, xuid="x1", gamertag="P1"
-            ),
-            HighlightEventRow(
-                match_id="m1", event_type="death", time_ms=2000, xuid="x1", gamertag="P1"
-            ),
-        ]
-        engine._insert_event_rows(rows)
-
-        conn = engine._get_connection()
-        result = conn.execute("SELECT COUNT(*) FROM highlight_events").fetchone()[0]
-        assert result == 2
-        engine.close()
+        """8bis.B3: Test supprimé — highlight_events dans shared uniquement (v5.1)."""
+        pytest.skip("8bis.B3 : highlight_events centralisée dans shared_matches.duckdb")
 
     def test_batch_insert_participants_via_engine(self, engine_with_db):
         """8bis.B3: Test supprimé — _insert_participant_rows obsolète (dans shared)."""

@@ -50,9 +50,7 @@ from src.data.sync.batch_insert import (
 from src.data.sync.migrations import (
     BACKFILL_FLAGS,
     add_spartan_id_to_career_progression,
-    ensure_backfill_completed_column,
     ensure_career_progression_autoincrement,
-    ensure_highlight_events_autoincrement,
     ensure_match_registry_spnkr_version,
     ensure_match_skill_rank_table,
     ensure_player_performance_indexes,
@@ -118,44 +116,6 @@ except ImportError:
 # =============================================================================
 
 SYNC_SCHEMA_DDL = """
--- Table medals_earned (médailles obtenues par match)
-CREATE TABLE IF NOT EXISTS medals_earned (
-    match_id VARCHAR,
-    medal_name_id BIGINT,
-    count SMALLINT,
-    PRIMARY KEY (match_id, medal_name_id)
-);
-
--- Table player_match_stats (MMR/skill par match)
-CREATE TABLE IF NOT EXISTS player_match_stats (
-    match_id VARCHAR PRIMARY KEY,
-    xuid VARCHAR NOT NULL,
-    team_id TINYINT,
-    team_mmr FLOAT,
-    enemy_mmr FLOAT,
-    kills_expected FLOAT,
-    kills_stddev FLOAT,
-    deaths_expected FLOAT,
-    deaths_stddev FLOAT,
-    assists_expected FLOAT,
-    assists_stddev FLOAT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Table highlight_events (kills, deaths depuis les films)
-CREATE SEQUENCE IF NOT EXISTS highlight_events_id_seq;
-CREATE TABLE IF NOT EXISTS highlight_events (
-    id INTEGER PRIMARY KEY DEFAULT nextval('highlight_events_id_seq'),
-    match_id VARCHAR NOT NULL,
-    event_type VARCHAR NOT NULL,
-    time_ms INTEGER,
-    xuid VARCHAR,
-    gamertag VARCHAR,
-    type_hint INTEGER,
-    raw_json VARCHAR
-);
-CREATE INDEX IF NOT EXISTS idx_highlight_match ON highlight_events(match_id);
-
 -- Table personal_score_awards (Sprint 8 - Décomposition du score personnel)
 -- Stocke les awards individuels pour analyse de la contribution aux objectifs
 CREATE SEQUENCE IF NOT EXISTS personal_score_awards_id_seq;
@@ -173,39 +133,6 @@ CREATE INDEX IF NOT EXISTS idx_psa_match ON personal_score_awards(match_id);
 CREATE INDEX IF NOT EXISTS idx_psa_xuid ON personal_score_awards(xuid);
 CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category);
 
--- Table match_participants (Sprint Gamertag Roster Fix)
--- Stocke TOUS les joueurs de chaque match avec team_id/outcome/gamertag/score/rank/kda
--- Source : MatchStats.Players[] (API propre, pas les films corrompus)
--- rank = classement (1 = meilleur), API prioritaire sinon calculé. Score et k/d/a = API
-CREATE TABLE IF NOT EXISTS match_participants (
-    match_id VARCHAR NOT NULL,
-    xuid VARCHAR NOT NULL,
-    team_id INTEGER,
-    outcome INTEGER,
-    gamertag VARCHAR,
-    rank SMALLINT,
-    score INTEGER,
-    kills SMALLINT,
-    deaths SMALLINT,
-    assists SMALLINT,
-    shots_fired INTEGER,
-    shots_hit INTEGER,
-    damage_dealt FLOAT,
-    damage_taken FLOAT,
-    avg_life_seconds FLOAT,
-    headshot_kills SMALLINT,
-    max_killing_spree SMALLINT,
-    kda FLOAT,
-    accuracy FLOAT,
-    time_played_seconds INTEGER,
-    grenade_kills SMALLINT,
-    melee_kills SMALLINT,
-    power_weapon_kills SMALLINT,
-    PRIMARY KEY (match_id, xuid)
-);
-CREATE INDEX IF NOT EXISTS idx_participants_xuid ON match_participants(xuid);
-CREATE INDEX IF NOT EXISTS idx_participants_team ON match_participants(match_id, team_id);
-
 -- Table player_match_enrichment (V5 finale - Enrichissements personnels uniquement)
 -- Données spécifiques au POV du joueur, ne vont PAS dans shared
 CREATE TABLE IF NOT EXISTS player_match_enrichment (
@@ -222,16 +149,6 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id);
-
--- Table xuid_aliases (correspondances XUID → Gamertag)
-CREATE TABLE IF NOT EXISTS xuid_aliases (
-    xuid VARCHAR PRIMARY KEY,
-    gamertag VARCHAR NOT NULL,
-    last_seen TIMESTAMP,
-    source VARCHAR,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_aliases_gamertag ON xuid_aliases(gamertag);
 
 -- Table sync_meta (métadonnées de synchronisation)
 CREATE TABLE IF NOT EXISTS sync_meta (
@@ -474,10 +391,20 @@ class DuckDBSyncEngine:
         if conn is None:
             return
 
-        # S'assurer que match_stats existe avec toutes les colonnes nécessaires
-        self._ensure_match_stats_table()
+        # Nettoyage one-shot : supprimer les tables legacy migrées vers shared_matches.duckdb
+        _LEGACY_PLAYER_TABLES = [
+            "medals_earned",
+            "player_match_stats",
+            "highlight_events",
+            "match_participants",
+            "xuid_aliases",
+            "backfill_status",
+        ]
+        for tbl in _LEGACY_PLAYER_TABLES:
+            with contextlib.suppress(Exception):
+                conn.execute(f"DROP TABLE IF EXISTS {tbl} CASCADE")
 
-        # Tables de sync (nouvelles)
+        # Tables de sync (player-only)
         for stmt in SYNC_SCHEMA_DDL.split(";"):
             stmt = stmt.strip()
             if stmt:
@@ -488,20 +415,11 @@ class DuckDBSyncEngine:
                     if "already exists" not in str(e).lower():
                         logger.warning(f"Schema DDL warning: {e}")
 
-        # Colonnes rank/score sur match_participants (migration)
-        self._ensure_match_participants_rank_score()
-
-        # S'assurer que la séquence pour highlight_events existe (migration)
-        self._ensure_highlight_events_sequence()
-
         # S'assurer que la séquence pour career_progression existe (migration)
         self._ensure_career_progression_sequence()
 
         # Colonne spartan_id sur career_progression (migration v5.3+)
         self._ensure_career_progression_spartan_id()
-
-        # Colonne bitmask backfill_completed (migration)
-        ensure_backfill_completed_column(conn)
 
         # Colonne had_bot_teammate sur player_match_enrichment (migration v5.5)
         from src.data.sync.migrations import ensure_bot_teammate_column
@@ -534,22 +452,6 @@ class DuckDBSyncEngine:
         # Pour les DBs legacy v4 : si match_stats existe déjà, la laisser en l'état
         # mais ne plus l'alimenter
 
-    def _ensure_match_participants_rank_score(self) -> None:
-        """Ajoute les colonnes rank, score et k/d/a à match_participants si absentes (migration)."""
-        conn = self._connection
-        if conn is None:
-            return
-        from src.data.sync.migrations import ensure_match_participants_columns
-
-        ensure_match_participants_columns(conn)
-
-    def _ensure_highlight_events_sequence(self) -> None:
-        """S'assure que highlight_events.id utilise une séquence auto-increment."""
-        conn = self._connection
-        if conn is None:
-            return
-        ensure_highlight_events_autoincrement(conn)
-
     def _ensure_career_progression_sequence(self) -> None:
         """S'assure que career_progression.id utilise une séquence auto-increment."""
         conn = self._connection
@@ -567,10 +469,9 @@ class DuckDBSyncEngine:
     def _resolve_xuid_from_db(self) -> str:
         """Résout le XUID depuis la DB joueur (fallback si non fourni).
 
-        Stratégie identique à cache_loaders._resolve_player_xuid :
+        Stratégie :
         1. sync_meta (key='xuid')
-        2. player_match_stats.xuid
-        3. xuid_aliases via gamertag
+        2. shared.xuid_aliases via gamertag
         """
         try:
             conn = duckdb.connect(str(self._player_db_path), read_only=True)
@@ -586,20 +487,7 @@ class DuckDBSyncEngine:
             except Exception:
                 pass
 
-            # 2. player_match_stats
-            try:
-                r = conn.execute(
-                    "SELECT DISTINCT xuid FROM player_match_stats WHERE xuid IS NOT NULL LIMIT 1"
-                ).fetchone()
-                if r and r[0] and str(r[0]).strip():
-                    xuid = str(r[0]).strip()
-                    conn.close()
-                    logger.info(f"XUID résolu depuis player_match_stats: {xuid}")
-                    return xuid
-            except Exception:
-                pass
-
-            # 3. xuid_aliases via shared_matches.duckdb (v5.1)
+            # 2. xuid_aliases via shared_matches.duckdb (v5.1)
             if self._gamertag:
                 try:
                     from src.utils.paths import get_shared_matches_path_from_player
@@ -629,19 +517,16 @@ class DuckDBSyncEngine:
     def _load_existing_match_ids(self) -> set[str]:
         """Charge les IDs des matchs existants depuis shared + player DB (V5 finale).
 
-        V5 finale : un match est considéré « déjà traité » seulement si le joueur
-        est présent dans shared.match_participants **ET** dans player_match_enrichment.
+        Un match est considéré « déjà traité » seulement si le joueur est présent
+        dans shared.match_participants **ET** dans player_match_enrichment.
         Cela évite de sauter les matchs insérés dans shared par la sync d'un coéquipier
         mais jamais enrichis pour le joueur courant (bug fix v5.4).
-
-        Fallback legacy : si shared non disponible, tente player_match_stats.
         """
         if self._existing_match_ids is not None:
             return self._existing_match_ids
 
         ids: set[str] = set()
 
-        # Priorité 1 : intersection shared.match_participants ∩ player_match_enrichment (V5)
         shared_conn = self._get_shared_connection()
         if shared_conn is not None and self._xuid:
             try:
@@ -660,7 +545,6 @@ class DuckDBSyncEngine:
                     ).fetchall()
                     enriched_ids = {str(r[0]) for r in enr_result if r[0]}
                 except Exception:
-                    # Table absente ou vide — pas bloquant
                     pass
 
                 # Un match est « existant » seulement s'il est dans les deux
@@ -671,21 +555,8 @@ class DuckDBSyncEngine:
                         f"{len(skipped)} match(s) dans shared mais sans enrichment "
                         f"→ seront re-traités pour ce joueur"
                     )
-                self._existing_match_ids = ids
-                return ids
             except Exception as e:
                 logger.debug(f"Impossible de lire shared.match_participants: {e}")
-
-        # Fallback legacy : player_match_stats (V4)
-        conn = self._get_connection()
-        try:
-            result = conn.execute(
-                "SELECT DISTINCT match_id FROM player_match_stats WHERE xuid = ?", [self._xuid]
-            ).fetchall()
-            ids = {str(r[0]) for r in result if r[0]}
-            logger.debug(f"Fallback V4 : {len(ids)} match IDs depuis player_match_stats")
-        except Exception as e:
-            logger.warning(f"Impossible de charger les match IDs : {e}")
 
         self._existing_match_ids = ids
         return ids

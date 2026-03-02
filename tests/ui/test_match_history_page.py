@@ -130,8 +130,8 @@ class TestRenderMatchHistoryPage:
             mock_perf.return_value = pl.Series("performance", [50.0] * 15)
             mod.render_match_history_page(dff, "TestPlayer", "dummy.duckdb", "100", None)
 
-        # Le tableau est rendu via st.dataframe (8ter)
-        ms.calls["dataframe"].assert_called()
+        # Le tableau est rendu via st.markdown (HTML custom)
+        ms.calls["markdown"].assert_called()
         ms.calls["subheader"].assert_called()
         # Le bouton de téléchargement CSV est affiché
         ms.calls["download_button"].assert_called_once()
@@ -150,4 +150,4 @@ class TestRenderMatchHistoryPage:
                 dff, "TestPlayer", "dummy.duckdb", "100", None, df_full=df_full
             )
 
-        ms.calls["dataframe"].assert_called()
+        ms.calls["markdown"].assert_called()
