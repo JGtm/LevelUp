@@ -35,16 +35,7 @@ from src.ui.components import (
 )
 from src.ui.i18n import t
 from src.ui.vectorize_helpers import build_mapping
-
-
-def _to_polars(df: object) -> pl.DataFrame:
-    """Convertit un DataFrame Pandas en Polars si nécessaire (pont de sécurité)."""
-    if isinstance(df, pl.DataFrame):
-        return df
-    try:
-        return pl.from_pandas(df)  # type: ignore[arg-type]
-    except Exception:
-        return pl.DataFrame()
+from src.utils.polars_compat import ensure_polars as _to_polars
 
 
 def _safe_to_date(val: object) -> date:

@@ -27,7 +27,6 @@ if not hasattr(st, "runtime") or not st.runtime.exists():
 logging.getLogger("streamlit.runtime.caching.cache_data_api").setLevel(logging.ERROR)
 
 from src.app.data_loader import (
-    default_identity_from_secrets,
     ensure_h5g_commendations_repo,
     init_source_state,
 )
@@ -43,14 +42,10 @@ from src.app.filters_render import (
 # Phase 2 refactoring: Helpers et fonctions extraites
 from src.app.helpers import (
     assign_player_colors,
-    avg_match_duration_seconds,
     clean_asset_label,
-    compute_session_span_seconds,
-    compute_total_play_seconds,
     date_range,
     normalize_map_label,
     normalize_mode_label,
-    styler_map,
 )
 
 # Phase 5 refactoring: KPIs et Filtres
@@ -157,23 +152,6 @@ from src.ui.sync import (
 from src.visualization import (
     plot_multi_metric_bars_by_match,
 )
-
-# =============================================================================
-# Aliases vers les fonctions extraites (Phase 2)
-# =============================================================================
-_default_identity_from_secrets = default_identity_from_secrets
-_init_source_state = init_source_state
-_ensure_h5g_commendations_repo = ensure_h5g_commendations_repo
-_clean_asset_label = clean_asset_label
-_normalize_mode_label = normalize_mode_label
-_normalize_map_label = normalize_map_label
-_styler_map = styler_map
-_assign_player_colors = assign_player_colors
-_compute_session_span_seconds = compute_session_span_seconds
-_compute_total_play_seconds = compute_total_play_seconds
-_avg_match_duration_seconds = avg_match_duration_seconds
-_date_range = date_range
-_build_friends_opts_map = build_friends_opts_map
 
 
 def _qp_first(value) -> str | None:
@@ -416,7 +394,7 @@ def main() -> None:
     # IMPORTANT: aucun accès réseau implicite.
     # La génération du référentiel Citations doit être explicite (opt-in via env).
     if str(os.environ.get("OPENSPARTAN_CITATIONS_AUTOGEN") or "").strip() in {"1", "true", "True"}:
-        _ensure_h5g_commendations_repo()
+        ensure_h5g_commendations_repo()
 
     # Paramètres (persistés)
     settings: AppSettings = load_settings()
@@ -463,7 +441,7 @@ def main() -> None:
     # ==========================================================================
 
     DEFAULT_DB = get_default_db_path()
-    _init_source_state(DEFAULT_DB, settings)
+    init_source_state(DEFAULT_DB, settings)
 
     # ==========================================================================
     # Indexation médias en arrière-plan (non-bloquant)
@@ -713,11 +691,11 @@ def main() -> None:
             xuid=xuid,
             db_key=db_key,
             aliases_key=aliases_key,
-            date_range_fn=_date_range,
-            clean_asset_label_fn=_clean_asset_label,
-            normalize_mode_label_fn=_normalize_mode_label,
-            normalize_map_label_fn=_normalize_map_label,
-            build_friends_opts_map_fn=_build_friends_opts_map,
+            date_range_fn=date_range,
+            clean_asset_label_fn=clean_asset_label,
+            normalize_mode_label_fn=normalize_mode_label,
+            normalize_map_label_fn=normalize_map_label,
+            build_friends_opts_map_fn=build_friends_opts_map,
         )
 
     # Base "globale" : toutes les parties (après inclusion/exclusion Firefight)
@@ -733,9 +711,9 @@ def main() -> None:
         db_path=db_path,
         xuid=xuid,
         db_key=db_key,
-        clean_asset_label_fn=_clean_asset_label,
-        normalize_mode_label_fn=_normalize_mode_label,
-        normalize_map_label_fn=_normalize_map_label,
+        clean_asset_label_fn=clean_asset_label,
+        normalize_mode_label_fn=normalize_mode_label,
+        normalize_map_label_fn=normalize_map_label,
     )
 
     # Variables pour compatibilité avec le dispatch
@@ -764,7 +742,7 @@ def main() -> None:
         settings=settings,
         df_full=df,
         render_match_view_fn=render_match_view,
-        normalize_mode_label_fn=_normalize_mode_label,
+        normalize_mode_label_fn=normalize_mode_label,
         format_score_label_fn=format_score_label,
         score_css_color_fn=score_css_color,
         format_datetime_fn=format_datetime_fr_hm,
@@ -877,8 +855,8 @@ def main() -> None:
                 picked_session_labels=picked_session_labels,
                 include_firefight=True,
                 waypoint_player=waypoint_player,
-                build_friends_opts_map_fn=_build_friends_opts_map,
-                assign_player_colors_fn=_assign_player_colors,
+                build_friends_opts_map_fn=build_friends_opts_map,
+                assign_player_colors_fn=assign_player_colors,
                 plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
                 top_medals_fn=_top_medals,
             )
@@ -973,8 +951,8 @@ def main() -> None:
             render_settings_page_fn=render_settings_page,
             cached_compute_sessions_db_fn=cached_compute_sessions_db,
             top_medals_fn=_top_medals,
-            build_friends_opts_map_fn=_build_friends_opts_map,
-            assign_player_colors_fn=_assign_player_colors,
+            build_friends_opts_map_fn=build_friends_opts_map,
+            assign_player_colors_fn=assign_player_colors,
             plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
             get_local_dbs_fn=cached_list_local_dbs,
             clear_caches_fn=_clear_app_caches,

@@ -7,20 +7,9 @@ séries de défaites (loss streaks) et statistiques associées.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-# Import conditionnel de Polars
-try:
-    import polars as pl
-
-    POLARS_AVAILABLE = True
-except ImportError:
-    POLARS_AVAILABLE = False
-    pl = None  # type: ignore
-
-if TYPE_CHECKING:
-    import polars as pl
-
+import polars as pl
 
 # =============================================================================
 # Constantes
@@ -114,9 +103,6 @@ def compute_streaks_polars(
     Raises:
         ValueError: Si Polars n'est pas disponible.
     """
-    if not POLARS_AVAILABLE:
-        raise ValueError("Polars est requis pour compute_streaks_polars")
-
     if match_stats_df is None or match_stats_df.is_empty():
         return []
 
@@ -187,9 +173,6 @@ def compute_streak_summary_polars(
     Returns:
         StreakSummary avec statistiques agrégées.
     """
-    if not POLARS_AVAILABLE:
-        raise ValueError("Polars est requis pour compute_streak_summary_polars")
-
     streaks = compute_streaks_polars(match_stats_df)
 
     if not streaks:
@@ -272,9 +255,6 @@ def compute_streak_series_polars(
     Raises:
         ValueError: Si Polars n'est pas disponible.
     """
-    if not POLARS_AVAILABLE:
-        raise ValueError("Polars est requis pour compute_streak_series_polars")
-
     if match_stats_df is None or match_stats_df.is_empty():
         return pl.DataFrame(
             schema={
@@ -368,9 +348,6 @@ def compute_rolling_win_rate_polars(
             - win_rate: Taux de victoire (0-100) sur la fenêtre.
             - match_index: Index du match.
     """
-    if not POLARS_AVAILABLE:
-        raise ValueError("Polars est requis pour compute_rolling_win_rate_polars")
-
     if match_stats_df is None or match_stats_df.is_empty():
         return pl.DataFrame(
             schema={

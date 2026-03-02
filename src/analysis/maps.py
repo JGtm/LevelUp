@@ -5,13 +5,7 @@ import polars as pl
 from src.analysis.performance_score import compute_performance_series
 from src.analysis.stats import compute_global_ratio, compute_outcome_rates
 from src.data.domain.models.stats import MapBreakdown
-
-
-def _to_polars(df: pl.DataFrame) -> pl.DataFrame:
-    """Convertit un DataFrame en Polars si nécessaire (bridge transitoire)."""
-    if isinstance(df, pl.DataFrame):
-        return df
-    return pl.from_pandas(df)
+from src.utils.polars_compat import ensure_polars as _to_polars
 
 
 def compute_map_breakdown(df: pl.DataFrame, df_history: pl.DataFrame | None = None) -> pl.DataFrame:

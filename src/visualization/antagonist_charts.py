@@ -13,26 +13,14 @@ Références :
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import plotly.graph_objects as go
+import polars as pl
 from plotly.subplots import make_subplots
-
-# Import conditionnel de Polars
-try:
-    import polars as pl
-
-    POLARS_AVAILABLE = True
-except ImportError:
-    POLARS_AVAILABLE = False
-    pl = None  # type: ignore
 
 from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style
-
-if TYPE_CHECKING:
-    pass
-
 
 # =============================================================================
 # Configuration des couleurs
@@ -108,9 +96,6 @@ def plot_killer_victim_stacked_bars(
     """
     if title is None:
         title = viz_t("title_elim_victim", lang)
-    if not POLARS_AVAILABLE:
-        raise ImportError("Polars requis pour cette fonction")
-
     fig = go.Figure()
 
     if pairs_df.is_empty():
@@ -242,9 +227,6 @@ def plot_kd_timeseries(
     Returns:
         Figure Plotly avec la timeseries.
     """
-    if not POLARS_AVAILABLE:
-        raise ImportError("Polars requis pour cette fonction")
-
     title = title or viz_t("title_kd_per_min", lang)
     fig = go.Figure()
 
@@ -357,9 +339,6 @@ def plot_duel_history(
     Returns:
         Figure Plotly avec l'historique des duels.
     """
-    if not POLARS_AVAILABLE:
-        raise ImportError("Polars requis pour cette fonction")
-
     if title is None:
         title = f"Historique des duels : {me_gamertag} vs {opponent_gamertag}"
 
@@ -570,9 +549,6 @@ def plot_killer_victim_heatmap(
     """
     if title is None:
         title = viz_t("title_killer_victim_matrix", lang)
-    if not POLARS_AVAILABLE:
-        raise ImportError("Polars requis pour cette fonction")
-
     fig = go.Figure()
 
     if matrix_df.is_empty():

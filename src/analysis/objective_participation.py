@@ -15,14 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-# Import conditionnel de Polars pour gérer l'absence
-try:
-    import polars as pl
-
-    POLARS_AVAILABLE = True
-except ImportError:
-    POLARS_AVAILABLE = False
-    pl = None  # type: ignore
+import polars as pl
 
 from src.data.domain.refdata import (
     ASSIST_SCORES,
@@ -136,8 +129,6 @@ class PlayerObjectiveRanking:
 
 def _ensure_polars() -> None:
     """Vérifie que Polars est disponible."""
-    if not POLARS_AVAILABLE:
-        raise ImportError("Polars n'est pas installé. Installez-le avec: pip install polars")
 
 
 def compute_objective_participation_score_polars(

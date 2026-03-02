@@ -107,14 +107,8 @@ from src.app.profile import (
     resolve_xuid,
     warn_missing_assets,
 )
-from src.app.routing import (
-    Page,
-    Router,
-    build_app_url,
-    consume_query_params,
-    get_current_page,
-    navigate_to,
-)
+
+# routing.py supprimé en Phase 1 (module mort, remplacé par page_router.py)
 from src.app.sidebar import (
     render_player_selector_sidebar,
     render_sidebar,
@@ -141,13 +135,7 @@ __all__ = [
     "get_aliases_cache_key",
     "propagate_env_defaults",
     "apply_settings_path_overrides",
-    # Routing
-    "Page",
-    "Router",
-    "get_current_page",
-    "navigate_to",
-    "consume_query_params",
-    "build_app_url",
+    # Routing (supprimé en Phase 1 — voir page_router.py)
     # Sidebar
     "render_sidebar",
     "render_sync_button",

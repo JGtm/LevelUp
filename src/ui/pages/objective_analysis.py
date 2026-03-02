@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+# Polars
+import polars as pl
 import streamlit as st
 
 from src.analysis.objective_participation import (
@@ -24,15 +26,6 @@ from src.visualization.objective_charts import (
     plot_objective_trend_over_time,
     plot_objective_vs_kills_scatter,
 )
-
-# Import conditionnel de Polars
-try:
-    import polars as pl
-
-    POLARS_AVAILABLE = True
-except ImportError:
-    POLARS_AVAILABLE = False
-    pl = None
 
 if TYPE_CHECKING:
     from src.data.repositories.duckdb_repo import DuckDBRepository
@@ -74,10 +67,6 @@ def render_objective_analysis_page(
     """
     st.title(t("obj_analysis_title"))
     st.caption(t("obj_caption"))
-
-    if not POLARS_AVAILABLE:
-        st.error(t("obj_polars_missing"))
-        return
 
     # ══════════════════════════════════════════════════════════════════════════
     # Chargement des données

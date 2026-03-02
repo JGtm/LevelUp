@@ -13,14 +13,7 @@ import streamlit as st
 from src.config import HALO_COLORS
 from src.ui import translate_pair_name
 from src.ui.i18n import get_lang, t
-
-
-def _to_polars(df: pl.DataFrame) -> pl.DataFrame:
-    """Convertit un DataFrame en Polars si nécessaire (bridge transitoire)."""
-    if isinstance(df, pl.DataFrame):
-        return df
-    return pl.from_pandas(df)
-
+from src.utils.polars_compat import ensure_polars as _to_polars
 
 # =============================================================================
 # Regex & constantes
