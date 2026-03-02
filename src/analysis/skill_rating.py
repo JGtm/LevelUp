@@ -674,6 +674,20 @@ def compute_skill_ratings_batch(
         ]
         enemy_avg_ke = sum(enemy_kes) / len(enemy_kes) if enemy_kes else None
 
+        # ── Guard : match sans résultat (outcome=None) ──
+        # Un match sans outcome est un match fantôme (crash serveur, lobby avorté).
+        # On maintient le state (decay inactivité + last_match_time) mais on ne
+        # modifie pas mu/sigma pour ne pas polluer le rating avec un résultat invalide.
+        raw_outcome = row.get("outcome")
+        if raw_outcome is None:
+            state.match_count += 1
+            state.last_match_time = start_time
+            match_ids.append(str(match_id))
+            ratings.append(round(state.mu, 1))
+            deviations.append(round(state.sigma, 1))
+            groups.append(group)
+            continue
+
         # ── Score composite ──
         composite = compute_composite_score(
             row,
