@@ -19,13 +19,14 @@ $ErrorActionPreference = "Stop"
 
 $TaskName   = "LevelUp-UptimeMonitor"
 $ScriptRoot = Split-Path -Parent $PSScriptRoot   # racine du repo (parent de scripts/)
-$Python     = Join-Path $ScriptRoot ".venv\Scripts\python.exe"
+# pythonw.exe = interpréteur sans fenêtre console (livré avec Python, dans le même dossier)
+$Python     = Join-Path $ScriptRoot ".venv\Scripts\pythonw.exe"
 $Script     = Join-Path $ScriptRoot "scripts\monitor_uptime.py"
 
 # --- Vérifications préalables ---
 
 if (-not (Test-Path $Python)) {
-    Write-Error "Interpréteur introuvable : $Python`nActive d'abord l'environnement : .\scripts\setup_env.ps1"
+    Write-Error "Interpréteur introuvable : $Python`nActive d'abord l'environnement : .\scripts\setup_env.ps1`n(pythonw.exe est livré avec python.exe dans le même dossier .venv\Scripts\)"
     exit 1
 }
 

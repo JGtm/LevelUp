@@ -23,8 +23,9 @@ Fichier d'état persistant : data/cache/uptime_state.json
   {"status": "online"|"offline", "since": "<ISO datetime>"}
 
 Usage :
-  .venv\\Scripts\\python.exe scripts\\monitor_uptime.py
-  (ou via Planificateur de tâches, toutes les 1 minute)
+  .venv\\Scripts\\python.exe scripts\\monitor_uptime.py        # avec fenêtre console
+  .venv\\Scripts\\pythonw.exe scripts\\monitor_uptime.py       # sans fenêtre (arrière-plan)
+  (le Planificateur de tâches utilise pythonw.exe automatiquement)
 
 Enregistrement de la tâche planifiée (PowerShell admin) :
   .\\scripts\\setup_uptime_task.ps1
