@@ -8,13 +8,7 @@ from src.analysis.mode_categories import infer_custom_category_from_pair_name
 from src.data.domain.models.stats import AggregatedStats, OutcomeRates
 from src.ui.formatting import format_mmss
 from src.ui.vectorize_helpers import build_mapping
-
-
-def _to_polars(df: pl.DataFrame) -> pl.DataFrame:
-    """Convertit un DataFrame en Polars si nécessaire (bridge transitoire)."""
-    if isinstance(df, pl.DataFrame):
-        return df
-    return pl.from_pandas(df)
+from src.utils.polars_compat import ensure_polars as _to_polars
 
 
 def compute_aggregated_stats(df: pl.DataFrame) -> AggregatedStats:

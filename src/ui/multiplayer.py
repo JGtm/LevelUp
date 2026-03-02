@@ -15,7 +15,6 @@ Une seule DB avec table Players pour les DBs fusionnées.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -76,51 +75,8 @@ class PlayerInfo:
 
 
 def is_multi_player_db(db_path: str) -> bool:
-    """Vérifie si la DB contient une table Players (DB fusionnée).
-
-    DuckDB v4 uniquement : chaque joueur a sa propre DB, toujours single-player.
-    Retourne False (SQLite .db refusé).
-    """
-    if not db_path or not os.path.exists(db_path):
-        return False
-    # SQLite (.db) interdit - toujours False
-    if db_path.strip().lower().endswith(".db"):
-        return False
-    # DuckDB v4 : toujours single-player
-    if _is_duckdb_file(db_path):
-        return False
+    """Vérifie si la DB est multi-joueurs. Toujours False en v5 (chaque joueur a sa propre DB)."""
     return False
-
-
-def list_players_in_db(db_path: str) -> list[PlayerInfo]:
-    """Liste les joueurs disponibles dans une DB multi-joueurs.
-
-    DuckDB v4 uniquement : toujours single-player, retourne [].
-    SQLite (.db) interdit.
-    """
-    if not db_path or not os.path.exists(db_path):
-        return []
-    # SQLite interdit, DuckDB v4 = single-player
-    return []
-
-
-def get_unique_xuids_from_matchstats(db_path: str) -> list[tuple[str, int]]:
-    """Fallback : liste les XUIDs distincts depuis MatchStats.
-
-    Utilisé si la table Players n'existe pas mais que la DB contient
-    des matchs de plusieurs joueurs.
-
-    Returns:
-        Liste de (xuid, count) triée par count décroissant.
-    """
-    if not db_path or not os.path.exists(db_path):
-        return []
-
-    # DuckDB v4 : chaque DB = 1 joueur, pas de multi-xuid
-    if _is_duckdb_file(db_path):
-        return []
-    # SQLite (.db) interdit
-    return []
 
 
 def render_player_selector(
@@ -128,68 +84,7 @@ def render_player_selector(
     current_xuid: str,
     key: str = "player_selector",
 ) -> str | None:
-    """Affiche un sélecteur de joueur si la DB est multi-joueurs.
-
-    Args:
-        db_path: Chemin vers la DB.
-        current_xuid: XUID actuellement sélectionné.
-        key: Clé Streamlit pour le widget.
-
-    Returns:
-        XUID sélectionné, ou None si pas de changement / pas multi-joueurs.
-    """
-    if not db_path or not is_multi_player_db(db_path):
-        return None
-
-    players = list_players_in_db(db_path)
-    if len(players) <= 1:
-        return None
-
-    # Construire les options
-    options = {p.xuid: p.display_with_stats for p in players}
-    xuids = list(options.keys())
-    labels = list(options.values())
-
-    # Index actuel
-    try:
-        current_idx = xuids.index(current_xuid)
-    except ValueError:
-        current_idx = 0
-
-    # Afficher le sélecteur
-    st.markdown(f"#### {t('sidebar_player_heading')}")
-    selected_label = st.selectbox(
-        t("sidebar_player_label"),
-        options=labels,
-        index=current_idx,
-        key=key,
-        label_visibility="collapsed",
-    )
-
-    # Retrouver le XUID sélectionné
-    try:
-        selected_idx = labels.index(selected_label)
-        selected_xuid = xuids[selected_idx]
-    except (ValueError, IndexError):
-        selected_xuid = current_xuid
-
-    if selected_xuid != current_xuid:
-        return selected_xuid
-
-    return None
-
-
-def get_player_display_name(db_path: str, xuid: str) -> str | None:
-    """Récupère le nom d'affichage d'un joueur.
-
-    DuckDB v4 : pas de table Players (chaque joueur = une DB). Retourne None.
-    SQLite (.db) interdit.
-    """
-    if not db_path or not xuid or not os.path.exists(db_path):
-        return None
-    if _is_duckdb_file(db_path):
-        return None
-    # SQLite (.db) interdit
+    """Sélecteur legacy multi-joueurs. Toujours None en v5 (single-player par DB)."""
     return None
 
 

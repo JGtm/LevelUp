@@ -32,16 +32,10 @@ from src.ui.formatting import (
     format_duration_hms,
 )
 from src.ui.i18n import get_lang, t
+from src.utils.polars_compat import ensure_polars as _to_polars
 
 if TYPE_CHECKING:
     pass
-
-
-def _to_polars(df: pl.DataFrame) -> pl.DataFrame:
-    """Convertit un DataFrame en Polars si nécessaire (bridge transitoire)."""
-    if isinstance(df, pl.DataFrame):
-        return df
-    return pl.from_pandas(df)
 
 
 def render_kpis_section(dff: pl.DataFrame) -> None:

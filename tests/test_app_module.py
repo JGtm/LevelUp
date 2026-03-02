@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from src.app.routing import (
-    Page,
-    build_app_url,
-)
 from src.app.state import (
     AppState,
     PlayerIdentity,
@@ -70,51 +66,6 @@ class TestAppState:
         assert state.filter_playlists == []
         assert state.filter_modes == []
         assert state.filter_maps == []
-
-
-class TestPage:
-    """Tests pour l'enum Page."""
-
-    def test_from_string_exact(self):
-        """Test conversion exacte."""
-        assert Page.from_string("Accueil") == Page.ACCUEIL
-        assert Page.from_string("Paramètres") == Page.PARAMETRES
-
-    def test_from_string_case_insensitive(self):
-        """Test conversion case insensitive."""
-        assert Page.from_string("accueil") == Page.ACCUEIL
-        assert Page.from_string("ACCUEIL") == Page.ACCUEIL
-
-    def test_from_string_unknown(self):
-        """Test conversion avec valeur inconnue."""
-        assert Page.from_string("PageInconnue") == Page.ACCUEIL
-
-    def test_navigable_pages(self):
-        """Test liste des pages navigables."""
-        pages = Page.navigable_pages()
-        assert Page.ACCUEIL in pages
-        assert Page.PARAMETRES in pages
-        assert Page.MATCH_VIEW not in pages  # Page interne
-
-
-class TestBuildAppUrl:
-    """Tests pour build_app_url."""
-
-    def test_simple_page(self):
-        """Test URL simple."""
-        url = build_app_url(Page.ACCUEIL)
-        assert "page=Accueil" in url
-
-    def test_with_params(self):
-        """Test URL avec paramètres."""
-        url = build_app_url(Page.MATCH_VIEW, match_id="abc123")
-        assert "page=match_view" in url
-        assert "match_id=abc123" in url
-
-    def test_string_page(self):
-        """Test avec page en string."""
-        url = build_app_url("Historique")
-        assert "page=Historique" in url
 
 
 class TestGetDbCacheKey:

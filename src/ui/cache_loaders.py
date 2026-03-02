@@ -100,16 +100,6 @@ COLUMNS_COMPUTED: list[str] = [
 ]
 
 
-def _to_polars(df: object) -> pl.DataFrame:
-    """Convertit un DataFrame Pandas en Polars si nécessaire (pont de sécurité)."""
-    if isinstance(df, pl.DataFrame):
-        return df
-    try:
-        return pl.from_pandas(df)  # type: ignore[arg-type]
-    except Exception:
-        return pl.DataFrame()
-
-
 def db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
     """Retourne une signature stable des DBs pour invalider les caches.
 
@@ -282,9 +272,6 @@ def cached_same_team_match_ids_with_friend(
             return tuple(sorted(match_ids))
         except Exception:
             return ()
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return ()
 
 
 @st.cache_data(show_spinner=False)
@@ -307,9 +294,6 @@ def cached_query_matches_with_friend(
             return match_ids
         except Exception:
             return []
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return []
 
 
 @st.cache_data(show_spinner=False)
@@ -356,9 +340,6 @@ def cached_load_player_match_result(
             }
         except Exception:
             return None
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return None
 
 
 @st.cache_data(show_spinner=False)
@@ -379,9 +360,6 @@ def cached_load_match_medals_for_player(
             return repo.load_match_medals(match_id)
         except Exception:
             return []
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return []
 
 
 @st.cache_data(show_spinner=False)
@@ -403,9 +381,6 @@ def cached_load_match_rosters(
             return repo.load_match_rosters(match_id)
         except Exception:
             return None
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return None
 
 
 @st.cache_data(show_spinner=False)
@@ -428,9 +403,6 @@ def cached_load_highlight_events_for_match(
             return repo.load_highlight_events(match_id)
         except Exception:
             return []
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return []
 
 
 @st.cache_data(show_spinner=False)
@@ -467,9 +439,6 @@ def cached_load_match_player_gamertags(
             }
         except Exception:
             return {}
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return {}
 
 
 @st.cache_data(show_spinner=False)
@@ -494,9 +463,6 @@ def cached_load_top_medals(
             )
         except Exception:
             return []
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return []
 
 
 def top_medals_smart(
@@ -521,9 +487,6 @@ def top_medals_smart(
             except Exception:
                 return []
         return cached_load_top_medals(db_path, xuid, tuple(match_ids), top_n, db_key=db_key)
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return []
 
 
 def clear_app_caches() -> None:
@@ -555,9 +518,6 @@ def cached_list_other_xuids(
             return repo.list_other_player_xuids(limit=limit)
         except Exception:
             return []
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return []
 
 
 @st.cache_data(show_spinner=False)
@@ -576,9 +536,6 @@ def cached_list_top_teammates(
             return repo.list_top_teammates(limit=limit)
         except Exception:
             return []
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return []
 
 
 # =============================================================================
@@ -596,9 +553,6 @@ def cached_has_cache_tables(db_path: str, db_key: tuple[int, int] | None = None)
     # DuckDB v4 : toujours considéré comme ayant le cache
     if _is_duckdb_v4_path(db_path):
         return True
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return False
 
 
 @st.cache_data(show_spinner=False, ttl=300)
@@ -678,9 +632,6 @@ def cached_get_cache_stats(db_path: str, xuid: str, db_key: tuple[int, int] | No
             }
         except Exception:
             return {"has_cache": True}
-    # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-    return {}
 
 
 def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
@@ -810,10 +761,6 @@ def load_df_optimized(
 
         # Fallback legacy : MatchRow → reconstruction DataFrame
         matches = _load_matches_duckdb_v4(db_path, include_firefight=include_firefight)
-    else:
-        # Legacy SQLite non supporté depuis v4.8
-        logger.warning(f"DB legacy SQLite non supportée: {db_path}")
-        matches = []
 
     if not matches:
         return pl.DataFrame()
@@ -854,13 +801,9 @@ def load_df_optimized(
 
 # ─── Fonctions sociales réexportées depuis cache_social.py ─────────────────
 from src.ui.cache_social import (  # noqa: E402
-    cached_get_match_session_info,
-    cached_load_friends,
     cached_load_top_teammates_optimized,
 )
 
 __all__ = [
-    "cached_get_match_session_info",
-    "cached_load_friends",
     "cached_load_top_teammates_optimized",
 ]

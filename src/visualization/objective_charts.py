@@ -5,26 +5,14 @@ Sprint 7: Visualisations pour la participation aux objectifs et la contribution 
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import plotly.graph_objects as go
+import polars as pl
 
 from src.config import THEME_COLORS
 from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style
-
-# Import conditionnel de Polars
-try:
-    import polars as pl
-
-    POLARS_AVAILABLE = True
-except ImportError:
-    POLARS_AVAILABLE = False
-    pl = None  # type: ignore
-
-if TYPE_CHECKING:
-    import polars as pl
-
 
 # =============================================================================
 # Configuration des couleurs
@@ -83,7 +71,7 @@ def plot_objective_vs_kills_scatter(
     title = title or viz_t("title_obj_vs_kills", lang)
     fig = go.Figure()
 
-    if not POLARS_AVAILABLE or awards_df.is_empty() or match_stats_df.is_empty():
+    if awards_df.is_empty() or match_stats_df.is_empty():
         fig.add_annotation(
             text=viz_t("empty_no_data", lang),
             xref="paper",
@@ -204,7 +192,7 @@ def plot_objective_breakdown_bars(
     title = title or viz_t("title_score_by_category", lang)
     fig = go.Figure()
 
-    if not POLARS_AVAILABLE or awards_df.is_empty():
+    if awards_df.is_empty():
         fig.add_annotation(
             text=viz_t("empty_no_data", lang),
             xref="paper",
@@ -525,7 +513,7 @@ def plot_objective_trend_over_time(
     title = title or viz_t("title_obj_trend", lang)
     fig = go.Figure()
 
-    if not POLARS_AVAILABLE or summary_df.is_empty():
+    if summary_df.is_empty():
         fig.add_annotation(
             text=viz_t("empty_no_data", lang),
             xref="paper",

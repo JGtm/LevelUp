@@ -5,27 +5,15 @@ Sprint 6: Visualisations des séries cumulatives (net score, K/D, tendances).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import plotly.graph_objects as go
+import polars as pl
 from plotly.subplots import make_subplots
 
 from src.config import HALO_COLORS, THEME_COLORS
 from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style
-
-# Import conditionnel de Polars
-try:
-    import polars as pl
-
-    POLARS_AVAILABLE = True
-except ImportError:
-    POLARS_AVAILABLE = False
-    pl = None  # type: ignore
-
-if TYPE_CHECKING:
-    import polars as pl
-
 
 # =============================================================================
 # Configuration des couleurs
@@ -158,7 +146,7 @@ def plot_cumulative_net_score(
         title = viz_t("title_cumul_net_score", lang)
     fig = go.Figure()
 
-    if not POLARS_AVAILABLE or cumulative_df.is_empty():
+    if cumulative_df.is_empty():
         fig.add_annotation(
             text=viz_t("empty_no_data", lang),
             xref="paper",
@@ -264,7 +252,7 @@ def plot_cumulative_kd(
         title = viz_t("title_cumul_kd", lang)
     fig = go.Figure()
 
-    if not POLARS_AVAILABLE or cumulative_df.is_empty():
+    if cumulative_df.is_empty():
         fig.add_annotation(
             text=viz_t("empty_no_data", lang),
             xref="paper",
@@ -361,7 +349,7 @@ def plot_rolling_kd(
 
     fig = go.Figure()
 
-    if not POLARS_AVAILABLE or rolling_df.is_empty():
+    if rolling_df.is_empty():
         fig.add_annotation(
             text=viz_t("empty_no_data", lang),
             xref="paper",
@@ -449,7 +437,7 @@ def plot_session_trend(
         title = viz_t("title_session_trend", lang)
     fig = go.Figure()
 
-    if not POLARS_AVAILABLE or match_stats_df.is_empty() or len(match_stats_df) < 4:
+    if match_stats_df.is_empty() or len(match_stats_df) < 4:
         fig.add_annotation(
             text=viz_t("empty_not_enough_matches", lang),
             xref="paper",
@@ -580,17 +568,6 @@ def plot_cumulative_comparison(
         Figure Plotly avec les deux courbes superposées.
     """
     fig = go.Figure()
-
-    if not POLARS_AVAILABLE:
-        fig.add_annotation(
-            text="Polars non disponible",
-            xref="paper",
-            yref="paper",
-            x=0.5,
-            y=0.5,
-            showarrow=False,
-        )
-        return apply_halo_plot_style(fig, title=title, height=height)
 
     if title is None:
         title = viz_t("title_session_comparison", lang)

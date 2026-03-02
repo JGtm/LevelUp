@@ -33,6 +33,7 @@ from src.ui.filter_state import (
 )
 from src.ui.i18n import get_lang, t
 from src.ui.vectorize_helpers import build_mapping
+from src.utils.polars_compat import ensure_polars as _to_polars
 
 GAP_MINUTES_FIXED = 120  # Figé (sessions stockées en base, cf. SESSIONS_STOCKAGE_PLAN.md)
 
@@ -90,16 +91,6 @@ def _cascade_reset_filters() -> None:
     for wk in list(st.session_state.keys()):
         if any(wk.startswith(p) for p in _CASCADE_WIDGET_KEY_PREFIXES):
             del st.session_state[wk]
-
-
-def _to_polars(df: object) -> pl.DataFrame:
-    """Convertit un DataFrame Pandas en Polars si nécessaire (pont de sécurité)."""
-    if isinstance(df, pl.DataFrame):
-        return df
-    try:
-        return pl.from_pandas(df)  # type: ignore[arg-type]
-    except Exception:
-        return pl.DataFrame()
 
 
 def _safe_to_date(val: object) -> date:

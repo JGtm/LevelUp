@@ -6,20 +6,9 @@ Sprint 6: Fonctions pour calculer les séries cumulées (net score, K/D, objecti
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-# Import conditionnel de Polars
-try:
-    import polars as pl
-
-    POLARS_AVAILABLE = True
-except ImportError:
-    POLARS_AVAILABLE = False
-    pl = None  # type: ignore
-
-if TYPE_CHECKING:
-    import polars as pl
-
+import polars as pl
 
 # =============================================================================
 # Dataclasses de résultats
@@ -106,10 +95,6 @@ def compute_cumulative_net_score_series_polars(
         >>> result = compute_cumulative_net_score_series_polars(df)
         >>> print(result.head())
     """
-    if not POLARS_AVAILABLE:
-        msg = "Polars n'est pas disponible. Installez-le avec: pip install polars"
-        raise ValueError(msg)
-
     if match_stats_df.is_empty():
         return pl.DataFrame(
             schema={
@@ -167,10 +152,6 @@ def compute_cumulative_kd_series_polars(
         DataFrame avec colonnes: match_id, start_time, kd, cumulative_kills,
         cumulative_deaths, cumulative_kd.
     """
-    if not POLARS_AVAILABLE:
-        msg = "Polars n'est pas disponible."
-        raise ValueError(msg)
-
     if match_stats_df.is_empty():
         return pl.DataFrame(
             schema={
@@ -239,10 +220,6 @@ def compute_cumulative_kda_series_polars(
     Returns:
         DataFrame avec colonnes: match_id, start_time, kda, cumulative_kda.
     """
-    if not POLARS_AVAILABLE:
-        msg = "Polars n'est pas disponible."
-        raise ValueError(msg)
-
     if match_stats_df.is_empty():
         return pl.DataFrame(
             schema={
@@ -304,10 +281,6 @@ def compute_cumulative_objective_score_series_polars(
     Returns:
         DataFrame avec colonnes: match_id, start_time, objective_score, cumulative_objective.
     """
-    if not POLARS_AVAILABLE:
-        msg = "Polars n'est pas disponible."
-        raise ValueError(msg)
-
     if awards_df.is_empty() or match_stats_df.is_empty():
         return pl.DataFrame(
             schema={
@@ -356,10 +329,6 @@ def compute_cumulative_metrics_polars(
     Returns:
         CumulativeMetricsResult avec toutes les métriques.
     """
-    if not POLARS_AVAILABLE:
-        msg = "Polars n'est pas disponible."
-        raise ValueError(msg)
-
     if match_stats_df.is_empty():
         return CumulativeMetricsResult(
             total_kills=0,
@@ -415,10 +384,6 @@ def compute_rolling_kd_polars(
     Returns:
         DataFrame avec colonnes: match_id, start_time, kd, rolling_kd.
     """
-    if not POLARS_AVAILABLE:
-        msg = "Polars n'est pas disponible."
-        raise ValueError(msg)
-
     if match_stats_df.is_empty():
         return pl.DataFrame(
             schema={
@@ -490,10 +455,6 @@ def compute_session_trend_polars(
         - kd_change: Différence de K/D
         - kd_change_pct: Changement en pourcentage
     """
-    if not POLARS_AVAILABLE:
-        msg = "Polars n'est pas disponible."
-        raise ValueError(msg)
-
     if match_stats_df.is_empty() or len(match_stats_df) < 4:
         return {
             "trend": "stable",
@@ -555,9 +516,6 @@ def cumulative_series_to_dicts(
     Returns:
         Liste de dictionnaires pour utilisation avec Plotly.
     """
-    if not POLARS_AVAILABLE:
-        return []
-
     if df.is_empty():
         return []
 
