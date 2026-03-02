@@ -1053,3 +1053,22 @@ def ensure_match_registry_spnkr_version(conn: duckdb.DuckDBPyConnection) -> None
     if not table_exists(conn, "match_registry"):
         return
     _add_column_if_missing(conn, "match_registry", "sync_spnkr_version", "VARCHAR")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Migration player_match_enrichment : colonne had_bot_teammate (v5.5)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_bot_teammate_column(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute la colonne had_bot_teammate à player_match_enrichment si absente.
+
+    Indique si un coéquipier était un bot IA (remplacement en cours de match)
+    dans le même team_id que le joueur. Utilisé pour assouplir le score de
+    performance (le joueur ne devrait pas être pénalisé pour un coéquipier bot).
+
+    Bots identifiés par xuid LIKE 'bid(%' dans match_participants.
+    """
+    if not table_exists(conn, "player_match_enrichment"):
+        return
+    _add_column_if_missing(conn, "player_match_enrichment", "had_bot_teammate", "BOOLEAN")

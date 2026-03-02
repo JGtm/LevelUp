@@ -193,6 +193,147 @@ def main() -> int:
             traceback.print_exc()
         return 0
 
+    # --bot-detection : détecte les coéquipiers bots et met à jour had_bot_teammate
+    bot_detection = getattr(args, "bot_detection", False)
+    if bot_detection:
+        try:
+            from src.ui.multiplayer import list_duckdb_v4_players
+
+            _SHARED_DB_BOT = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+            if not _SHARED_DB_BOT.exists():
+                logger.error("shared_matches.duckdb introuvable pour --bot-detection")
+                return 1
+
+            shared_conn = duckdb.connect(str(_SHARED_DB_BOT), read_only=True)
+            _players_list = list_duckdb_v4_players()
+            total_updated = 0
+
+            for _gt_info in _players_list:
+                _gt = _gt_info.gamertag
+                _db = _gt_info.db_path  # déjà un Path
+                if not _db.exists():
+                    continue
+                # Utiliser le xuid déjà présent dans DuckDBPlayerInfo si disponible
+                try:
+                    _pconn = duckdb.connect(str(_db), read_only=False)
+                    if _gt_info.xuid:
+                        _xuid = _gt_info.xuid
+                    else:
+                        _xuid_row = _pconn.execute(
+                            "SELECT value FROM sync_meta WHERE key = 'xuid' LIMIT 1"
+                        ).fetchone()
+                        if not _xuid_row:
+                            _pconn.close()
+                            continue
+                        _xuid = _xuid_row[0]
+
+                    # Ajouter la colonne si absente
+                    from src.data.sync.migrations import ensure_bot_teammate_column
+
+                    ensure_bot_teammate_column(_pconn)
+
+                    # Trouver les matchs où un coéquipier du joueur était un bot
+                    # Un bot a xuid LIKE 'bid(%'.
+                    # On filtre les bots très brefs (< 60s) = simples déconnexions/reconnexions.
+                    # On stocke aussi l'outcome du joueur pour la logique d'indulgence.
+                    _bot_matches = shared_conn.execute(
+                        """
+                        SELECT DISTINCT mp.match_id, mp.outcome
+                        FROM match_participants mp
+                        JOIN match_participants bot ON mp.match_id = bot.match_id
+                            AND mp.team_id = bot.team_id
+                            AND bot.xuid LIKE 'bid(%'
+                            AND bot.time_played_seconds > 60
+                        WHERE mp.xuid = ?
+                          AND mp.xuid NOT LIKE 'bid(%'
+                        """,
+                        [_xuid],
+                    ).fetchall()
+
+                    if _bot_matches:
+                        _match_ids = [r[0] for r in _bot_matches]
+                        placeholders = ", ".join(["?"] * len(_match_ids))
+
+                        # Séparer les match_ids existants (UPDATE) des absents (INSERT)
+                        _existing_set = {
+                            r[0]
+                            for r in _pconn.execute(
+                                f"SELECT match_id FROM player_match_enrichment "
+                                f"WHERE match_id IN ({placeholders})",
+                                _match_ids,
+                            ).fetchall()
+                        }
+
+                        _n = 0
+
+                        # UPDATE les lignes existantes
+                        _existing_list = [m for m in _match_ids if m in _existing_set]
+                        if _existing_list:
+                            _ep = ", ".join(["?"] * len(_existing_list))
+                            _updated = _pconn.execute(
+                                f"UPDATE player_match_enrichment "
+                                f"SET had_bot_teammate = TRUE, updated_at = CURRENT_TIMESTAMP "
+                                f"WHERE match_id IN ({_ep}) "
+                                f"  AND (had_bot_teammate IS NULL OR had_bot_teammate = FALSE) "
+                                f"RETURNING match_id",
+                                _existing_list,
+                            ).fetchall()
+                            _n += len(_updated)
+
+                        # INSERT les matchs sans ligne dans player_match_enrichment
+                        _new_list = [m for m in _match_ids if m not in _existing_set]
+                        if _new_list:
+                            _pconn.executemany(
+                                "INSERT INTO player_match_enrichment (match_id, had_bot_teammate) "
+                                "VALUES (?, TRUE)",
+                                [(m,) for m in _new_list],
+                            )
+                            _n += len(_new_list)
+
+                        _pconn.commit()
+                        total_updated += _n
+                        logger.info(
+                            f"[{_gt}] {_n} matchs mis à jour "
+                            f"(bots trouvés: {len(_match_ids)}, "
+                            f"mis à jour: {len(_existing_list)}, "
+                            f"nouveaux: {len(_new_list)})"
+                        )
+                    _pconn.close()
+                except Exception as _e:
+                    logger.warning(f"[{_gt}] Erreur bot-detection : {_e}")
+
+            shared_conn.close()
+            logger.info(
+                f"Bot detection terminée : {total_updated} ligne(s) mise(s) à jour au total"
+            )
+        except Exception as e:
+            logger.error(f"Erreur --bot-detection : {e}")
+        return 0
+
+    # --enable-pve-citations : active les citations PVE désactivées dans metadata.duckdb
+    enable_pve_citations = getattr(args, "enable_pve_citations", False)
+    if enable_pve_citations:
+        try:
+            _META_DB = REPO_ROOT / "data" / "warehouse" / "metadata.duckdb"
+            meta_conn = duckdb.connect(str(_META_DB), read_only=False)
+            n_enabled = meta_conn.execute(
+                "UPDATE citation_mappings SET enabled = TRUE "
+                "WHERE citation_name_norm IN ('brute_slayer', 'skimmer_slayer') "
+                "  AND (enabled IS NULL OR enabled = FALSE)"
+            ).rowcount
+            meta_conn.commit()
+            meta_conn.close()
+            logger.info(f"Citations PVE activées : {n_enabled} entrée(s) mise(s) à jour")
+            logger.info(
+                "  → brute_slayer (kills_brute) et skimmer_slayer (kills_skimmer) sont maintenant actives"
+            )
+            logger.info(
+                "  → Lance --all --citations --force-citations pour recalculer les compteurs"
+            )
+        except Exception as e:
+            logger.error(f"Erreur --enable-pve-citations : {e}")
+        return 0
+
     # Validation
     if not args.all and not args.player:
         parser.error("--player ou --all est requis")
@@ -372,4 +513,11 @@ def _print_totals(totals: dict, scope: object) -> None:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from src.utils.sync_lock import SyncAlreadyRunning, SyncLock
+
+    try:
+        with SyncLock():
+            sys.exit(main())
+    except SyncAlreadyRunning as _e:
+        print(f"❌ {_e}", file=sys.stderr)
+        sys.exit(2)

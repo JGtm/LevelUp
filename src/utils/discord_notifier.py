@@ -47,7 +47,7 @@ from __future__ import annotations
 import json
 import logging
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -88,6 +88,8 @@ class LastMatchInfo:
     assists: int = 0
     outcome: int = 0  # 1=Tie, 2=Win, 3=Loss, 4=Left
     score: int = 0
+    participants_count: int = 0  # Nombre total de participants dans le match
+    squad_friends: list[str] = field(default_factory=list)  # Gamertags des amis présents
 
 
 @dataclass
@@ -152,12 +154,32 @@ def _get_webhook_url() -> str | None:
 
     if url.startswith("https://discord.com/api/webhooks/"):
         return url
+
+    logger.warning(
+        "[Discord] Notifications activées mais aucun webhook valide trouvé. "
+        "Vérifiez DISCORD_WEBHOOK_URL dans .env.local ou discord_webhook_url dans app_settings.json."
+    )
     return None
 
 
 # =============================================================================
 # Requêtes DuckDB
 # =============================================================================
+
+
+def _load_friends_defaults() -> dict[str, list[str]]:
+    """Charge .streamlit/friends_defaults.json → {xuid: [gamertag, ...]}."""
+    p = _PROJECT_ROOT / ".streamlit" / "friends_defaults.json"
+    if not p.exists():
+        return {}
+    try:
+        with open(p, encoding="utf-8") as fh:
+            data = json.load(fh)
+        if isinstance(data, dict):
+            return {str(k): [str(g).lstrip("~") for g in v if g] for k, v in data.items()}
+    except Exception:
+        pass
+    return {}
 
 
 def fetch_last_match_info(xuid: str) -> LastMatchInfo | None:
@@ -167,7 +189,7 @@ def fetch_last_match_info(xuid: str) -> LastMatchInfo | None:
         xuid: Xbox User ID du joueur.
 
     Returns:
-        LastMatchInfo rempli, ou None si aucune donnée / erreur.
+        LastMatchInfo rempli (avec squad_friends et participants_count), ou None si erreur.
     """
     if not xuid or not _SHARED_DB.exists():
         return None
@@ -198,11 +220,47 @@ def fetch_last_match_info(xuid: str) -> LastMatchInfo | None:
             """,
             [xuid],
         ).fetchone()
-        conn.close()
         if not row:
+            conn.close()
             return None
+
+        match_id = str(row[0] or "")
+
+        # Nombre de participants dans ce match
+        participants_count = 0
+        squad_friends: list[str] = []
+        if match_id:
+            try:
+                # Compter les participants
+                cnt = conn.execute(
+                    "SELECT COUNT(DISTINCT xuid) FROM match_participants WHERE match_id = ?",
+                    [match_id],
+                ).fetchone()
+                participants_count = int(cnt[0]) if cnt else 0
+
+                # Trouver les amis présents dans ce match
+                friends_map = _load_friends_defaults()
+                my_friends_gt = {g.casefold() for g in friends_map.get(str(xuid), [])}
+                if my_friends_gt:
+                    # Récupérer les gamertags de tous les participants (via xuid_aliases)
+                    participants_rows = conn.execute(
+                        """
+                        SELECT DISTINCT xa.gamertag
+                        FROM match_participants mp
+                        JOIN xuid_aliases xa ON mp.xuid = xa.xuid
+                        WHERE mp.match_id = ? AND mp.xuid != ?
+                        """,
+                        [match_id, xuid],
+                    ).fetchall()
+                    for (gt,) in participants_rows:
+                        if gt and gt.casefold() in my_friends_gt:
+                            squad_friends.append(str(gt))
+            except Exception:
+                pass
+
+        conn.close()
         return LastMatchInfo(
-            match_id=str(row[0] or ""),
+            match_id=match_id,
             map_name=str(row[1] or "—"),
             playlist_name=str(row[2] or "—"),
             game_variant_name=str(row[3] or "—"),
@@ -214,6 +272,8 @@ def fetch_last_match_info(xuid: str) -> LastMatchInfo | None:
             assists=int(row[9] or 0),
             outcome=int(row[10] or 0),
             score=int(row[11] or 0),
+            participants_count=participants_count,
+            squad_friends=squad_friends,
         )
     except Exception as exc:
         logger.debug(f"[Discord] fetch_last_match_info({xuid}): {exc}")
@@ -430,6 +490,11 @@ def _format_player_field(
             f"📊  {kda}  ·  {outcome_icon} {outcome_label}"
         )
 
+        # ── Infos escouade ───────────────────────────────────────────────────
+        if lm.squad_friends:
+            lines.append(discord_t("discord_squad_match", n=lm.participants_count))
+            lines.append(discord_t("discord_squad_friends", friends=", ".join(lm.squad_friends)))
+
     return name[:256], "\n".join(lines)[:1024]
 
 
@@ -602,7 +667,7 @@ def notify_operation_done(
         if skip_idle:
             players = [p for p in players if p.matches_synced > 0 or p.error]
             if not players:
-                logger.debug("[Discord] Tous les joueurs à jour, notification omise")
+                logger.info("[Discord] Tous les joueurs à jour, notification omise")
                 return
 
         payload = build_embed_payload(
@@ -621,3 +686,33 @@ def notify_operation_done(
 
     except Exception as exc:
         logger.warning(f"[Discord] Erreur inattendue lors de la notification : {exc}")
+
+
+def notify_app_started(url: str) -> None:
+    """Envoie une notification Discord quand l'app démarre avec une URL Tailscale.
+
+    Message simple (pas d'embed) : "🟢 LevelUp est disponible sur {url}".
+    Fonction entièrement failsafe — ne lève jamais d'exception.
+
+    Args:
+        url: URL publique Tailscale (ex: "https://hostname.tailnet.ts.net").
+    """
+    try:
+        webhook_url = _get_webhook_url()
+        if not webhook_url:
+            return
+        if not url or not url.startswith("https://"):
+            logger.debug("[Discord] notify_app_started : URL invalide %r", url)
+            return
+
+        from src.ui.i18n.cli import discord_t
+
+        content = discord_t("tailscale_discord_startup", url=url)
+        payload: dict[str, Any] = {"content": content}
+        ok = send_discord_notification(payload, webhook_url)
+        if ok:
+            logger.info("[Discord] Notification démarrage app envoyée (%s)", url)
+        else:
+            logger.warning("[Discord] Notification démarrage app non reçue")
+    except Exception as exc:
+        logger.warning(f"[Discord] Erreur notify_app_started : {exc}")

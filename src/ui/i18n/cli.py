@@ -13,8 +13,10 @@ Pour Discord, la clé ``"discord_lang"`` dans ``app_settings.json`` prévaut.
 ⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO" ci-dessous.
    Règles : voir le prompt de la Phase 1b dans le plan i18n.
 """
+
 from __future__ import annotations
 
+import contextlib
 import os
 
 STRINGS: dict[str, dict[str, str]] = {
@@ -120,6 +122,18 @@ STRINGS: dict[str, dict[str, str]] = {
     "discord_kda": {
         "fr": "{k}F / {d}D / {a}A",
         "en": "{k}K / {d}D / {a}A",
+    },
+    "discord_squad_match": {
+        "fr": "🎮 Match en escouade",
+        "en": "🎮 Squad match",
+    },
+    "discord_squad_friends": {
+        "fr": "👥 Amis : {friends}",
+        "en": "👥 Friends: {friends}",
+    },
+    "tailscale_discord_startup": {
+        "fr": "🟢 LevelUp est disponible sur {url}",
+        "en": "🟢 LevelUp is available at {url}",
     },
     # ── Scripts — Messages logger génériques ─────────────────────────────────
     "cli_no_players": {
@@ -289,10 +303,8 @@ def ct(key: str, **kwargs: object) -> str:
         return f"[{key}]"
     text = entry.get(lang) or entry.get("fr") or f"[{key}]"
     if kwargs:
-        try:
+        with contextlib.suppress(KeyError, ValueError):
             text = text.format(**kwargs)
-        except (KeyError, ValueError):
-            pass
     return text
 
 
@@ -326,8 +338,6 @@ def discord_t(key: str, **kwargs: object) -> str:
         return f"[{key}]"
     text = entry.get(lang) or entry.get("fr") or f"[{key}]"
     if kwargs:
-        try:
+        with contextlib.suppress(KeyError, ValueError):
             text = text.format(**kwargs)
-        except (KeyError, ValueError):
-            pass
     return text

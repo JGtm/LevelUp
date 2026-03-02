@@ -54,6 +54,7 @@ class AppSettings:
     spnkr_refresh_backfill_personal_scores: bool = False
     spnkr_refresh_backfill_performance_scores: bool = True  # Par défaut activé
     spnkr_refresh_backfill_aliases: bool = False
+    spnkr_refresh_backfill_lusr: bool = True  # LUSR local (sans API) — par défaut activé
 
     # Fichiers (overrides optionnels)
     aliases_path: str = ""
@@ -81,6 +82,14 @@ class AppSettings:
     repository_mode: str = "duckdb"
     # Activer les analytics DuckDB (requêtes haute performance)
     enable_duckdb_analytics: bool = False
+
+    # Doppler secrets (opt-in)
+    doppler_enabled: bool = False  # Charger les secrets depuis Doppler au démarrage
+    doppler_project: str = ""  # Nom du projet Doppler (ex: "levelup")
+    doppler_config: str = ""  # Config Doppler (ex: "dev", "prod")
+
+    # Tailscale funnel (opt-in)
+    tailscale_funnel_enabled: bool = False  # Exposer l'app via Tailscale au démarrage
 
     # Internationalisation
     lang: str = "fr"  # Langue de l'UI ("fr" ou "en")
@@ -201,6 +210,9 @@ def load_settings() -> AppSettings:
     s.spnkr_refresh_backfill_aliases = _coerce_bool(
         obj.get("spnkr_refresh_backfill_aliases"), s.spnkr_refresh_backfill_aliases
     )
+    s.spnkr_refresh_backfill_lusr = _coerce_bool(
+        obj.get("spnkr_refresh_backfill_lusr"), s.spnkr_refresh_backfill_lusr
+    )
 
     s.aliases_path = str(obj.get("aliases_path") or "").strip()
     s.profiles_path = str(obj.get("profiles_path") or "").strip()
@@ -247,6 +259,16 @@ def load_settings() -> AppSettings:
     _cli_lang = str(obj.get("cli_lang") or s.cli_lang).strip().lower()
     if _cli_lang in {"fr", "en"}:
         s.cli_lang = _cli_lang
+
+    # Tailscale funnel
+    s.tailscale_funnel_enabled = _coerce_bool(
+        obj.get("tailscale_funnel_enabled"), s.tailscale_funnel_enabled
+    )
+
+    # Doppler secrets
+    s.doppler_enabled = _coerce_bool(obj.get("doppler_enabled"), s.doppler_enabled)
+    s.doppler_project = str(obj.get("doppler_project") or "").strip()
+    s.doppler_config = str(obj.get("doppler_config") or "").strip()
 
     return s
 

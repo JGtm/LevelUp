@@ -1052,6 +1052,22 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "mv_results": {"fr": "Résultats", "en": "Results"},
     "mv_relative_history": {"fr": "Relatif à ton historique", "en": "Relative to your history"},
     "mv_insufficient_history": {"fr": "Historique insuffisant", "en": "Insufficient history"},
+    "mv_bot_teammate_note": {
+        "fr": "Équipe incomplète (+5 pts)",
+        "en": "Incomplete team (+5 pts)",
+    },
+    "mv_bot_teammate_win_note": {
+        "fr": "Victoire malgré équipe incomplète",
+        "en": "Won despite incomplete team",
+    },
+    "mv_lusr_bot_loss": {
+        "fr": "Défaite avec équipe incomplète (non représentative)",
+        "en": "Loss with incomplete team (unrepresentative)",
+    },
+    "mv_lusr_bot_win": {
+        "fr": "Victoire malgré équipe incomplète",
+        "en": "Won despite incomplete team",
+    },
     "mv_thumbnail_unavailable": {
         "fr": "Miniature de carte indisponible.",
         "en": "Map thumbnail unavailable.",
@@ -1464,6 +1480,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "set_backfill_shots": {"fr": "Shots (tirs)", "en": "Shots"},
     "set_backfill_participants_shots": {"fr": "Shots participants", "en": "Participants shots"},
     "set_backfill_pve": {"fr": "Stats PvE", "en": "PvE stats"},
+    "set_backfill_lusr": {"fr": "LUSR (rating local)", "en": "LUSR (local rating)"},
     "set_media_title": {"fr": "Médias", "en": "Media"},
     "set_media_enable": {"fr": "Activer les médias", "en": "Enable media"},
     "set_media_screenshots": {"fr": "Dossier captures", "en": "Screenshots folder"},
@@ -1679,6 +1696,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "set_backfill_score_help": {
         "fr": "Calcule les scores de performance manquants (peut être activé même sans backfill général)",
         "en": "Computes missing performance scores (can be enabled even without general backfill)",
+    },
+    "set_backfill_lusr_help": {
+        "fr": "Calcule le LUSR (LevelUp Skill Rank) pour les matchs non classés — calcul local, pas d'API requise",
+        "en": "Computes LUSR (LevelUp Skill Rank) for unranked matches — local computation, no API required",
     },
     "set_media_arch_info": {
         "fr": "ℹ️ **Architecture v5** : La section Médias est toujours active. Configurez le dossier de base et la tolérance temporelle.",

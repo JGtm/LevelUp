@@ -1144,6 +1144,21 @@ def render_match_impact_section(
     else:
         st.info(t("mv_impact_too_few"))
 
+    # Boulet : dernière mort de l'équipe sur une défaite
+    if outcome == 3:  # OUTCOME_LOSS
+        deaths = [
+            e
+            for e in he
+            if str(e.get("event_type", "")).lower() == "death" and e.get("time_ms") is not None
+        ]
+        if deaths:
+            last_death = max(deaths, key=lambda e: int(e["time_ms"]))
+            boulet_gt = str(last_death.get("gamertag", "")).strip()
+            if gt_map:
+                boulet_gt = gt_map.get(str(last_death.get("xuid", "")), boulet_gt) or boulet_gt
+            if boulet_gt:
+                st.error(t("tmi_boulet_label", boulet=boulet_gt))
+
 
 def _format_time(ms: int) -> str:
     """Formate un timestamp ms en M:SS."""

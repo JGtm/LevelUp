@@ -132,6 +132,12 @@ def render_settings_page(
                     value=bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
                     disabled=not backfill_enabled,
                 )
+                backfill_lusr = st.checkbox(
+                    t("set_backfill_lusr"),
+                    value=bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
+                    disabled=not backfill_enabled,
+                    help=t("set_backfill_lusr_help"),
+                )
 
     with st.expander(t("set_media_title"), expanded=True):
         st.info(t("set_media_arch_info"))
@@ -226,6 +232,7 @@ def render_settings_page(
             spnkr_refresh_backfill_personal_scores=bool(backfill_personal_scores),
             spnkr_refresh_backfill_performance_scores=bool(backfill_performance_scores),
             spnkr_refresh_backfill_aliases=bool(backfill_aliases),
+            spnkr_refresh_backfill_lusr=bool(backfill_lusr),
             aliases_path=str(aliases_path or "").strip(),
             profiles_path=str(profiles_path or "").strip(),
             profile_assets_download_enabled=bool(profile_assets_download_enabled),

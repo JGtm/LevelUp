@@ -266,6 +266,8 @@ def _compute_rank_performance(
 def compute_relative_performance_score(
     row: dict[str, Any],
     df_history: pl.DataFrame | Any,
+    *,
+    had_bot_teammate: bool = False,
 ) -> float | None:
     """Calcule le score de performance RELATIF d'un match (v4).
 
@@ -277,6 +279,8 @@ def compute_relative_performance_score(
              time_played_seconds, personal_score, damage_dealt, rank,
              team_mmr, enemy_mmr, kills_expected, deaths_expected.
         df_history: DataFrame (Polars ou Pandas) de l'historique complet du joueur.
+        had_bot_teammate: Si True et match perdu, applique un bonus de +5 pts (rage quit coéquipier).
+            Pas de bonus sur victoire (gagner malgré un bot est impressionnant, pas pénalisant).
 
     Returns:
         Score 0-100 où 50 = performance moyenne, 100 = meilleure perf, 0 = pire perf.
@@ -442,6 +446,29 @@ def compute_relative_performance_score(
         return None
 
     score = sum(percentiles[k] * weights_used[k] for k in percentiles) / total_weight
+
+    # Bonus/indulgence bot coéquipier, modulé par l'écart MMR :
+    #   Défaite + bot  → indulgence +3 à +7 (rage quit qui met l'équipe en sous-nombre)
+    #   Victoire + bot → bonus +0.5 à +5 (s'être surpassé malgré le désavantage numérique)
+    #   Modulation MMR : ennemi 30%+ plus fort → max bonus/indulgence
+    #                    ennemi 30%+ plus faible → min bonus/indulgence
+    if had_bot_teammate:
+        _outcome_val = row.get("outcome")
+        _is_win = _outcome_val is not None and float(_outcome_val) == 2.0
+
+        # Facteur d'écart MMR normalisé : ±30% → [-1, +1]
+        _team_mmr = row.get("team_mmr")
+        _enemy_mmr = row.get("enemy_mmr")
+        _mmr_gap_factor = 0.0
+        if _team_mmr and _enemy_mmr and float(_team_mmr) > 0:
+            _gap_pct = (float(_enemy_mmr) - float(_team_mmr)) / float(_team_mmr)
+            _mmr_gap_factor = max(-1.0, min(1.0, _gap_pct / 0.30))
+
+        # Victoire : bonus +0.5→+5 | Défaite : indulgence +3→+7 selon écart MMR
+        # ennemi -30% → min | égal → base | ennemi +30% → max
+        _bonus = max(0.5, 3.0 + _mmr_gap_factor * 2.0) if _is_win else 5.0 + _mmr_gap_factor * 2.0
+
+        score = min(100.0, score + _bonus)
 
     return round(score, 1)
 
