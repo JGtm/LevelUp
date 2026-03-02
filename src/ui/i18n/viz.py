@@ -493,9 +493,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "cat_label_other": {"fr": "Autre", "en": "Other"},
     # ── Impact timeline ────────────────────────────────────────────────────────
     "impact_first_blood": {"fr": "Premier sang", "en": "First Blood"},
-    "impact_clutch_finisher": {"fr": "Clutch Finisher", "en": "Clutch Finisher"},
-    "impact_last_group_kill": {"fr": "Dernier du groupe", "en": "Last Group Kill"},
-    "impact_first_group_death": {"fr": "Premier mort du groupe", "en": "First Group Death"},
+    "impact_clutch_finisher": {"fr": "Finisseur", "en": "Finisher"},
+    "impact_last_group_kill": {"fr": "Plus lent", "en": "Slowest"},
+    "impact_first_group_death": {"fr": "Première victime", "en": "First Casualty"},
+    "impact_last_casualty": {"fr": "Boulet", "en": "Weakest Link"},
     # ── Messages vides ────────────────────────────────────────────────────────
     "empty_no_data": "no_data",
     "empty_no_duel": {"fr": "Aucun duel trouvé.", "en": "No duel found."},
