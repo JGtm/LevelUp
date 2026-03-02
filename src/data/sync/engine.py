@@ -2185,6 +2185,7 @@ class DuckDBSyncEngine:
                   AND COALESCE(mr.is_ranked, FALSE) = FALSE
                   AND COALESCE(mr.is_firefight, FALSE) = FALSE
                   AND mr.start_time IS NOT NULL
+                  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)
                 ORDER BY mr.start_time ASC
                 """,
                 [self._xuid],
