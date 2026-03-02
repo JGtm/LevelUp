@@ -239,6 +239,9 @@ def count_new_matches(xuid: str, gamertag: str, since: datetime) -> int:
     try:
         import duckdb
 
+        # Normaliser en naive UTC : first_sync_at est stocké sans timezone (TIMESTAMP)
+        since_naive = since.replace(tzinfo=None) if since.tzinfo is not None else since
+
         conn = duckdb.connect(str(_SHARED_DB), read_only=True)
         result = conn.execute(
             """
@@ -248,7 +251,7 @@ def count_new_matches(xuid: str, gamertag: str, since: datetime) -> int:
             WHERE mp.xuid = ?
               AND mr.first_sync_at >= ?
             """,
-            [xuid, since],
+            [xuid, since_naive],
         ).fetchone()
         conn.close()
         return int(result[0]) if result else 0

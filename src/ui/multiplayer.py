@@ -421,12 +421,16 @@ def render_duckdb_v4_player_selector(
     except StopIteration:
         current_idx = 0
 
+    # Initialiser session_state avant le rendu pour éviter le conflit
+    # "default value + Session State API" (warning Streamlit)
+    if key not in st.session_state:
+        st.session_state[key] = labels[current_idx] if labels else None
+
     # Afficher le sélecteur
     st.markdown(f"#### {t('sidebar_player_heading')}")
     selected_label = st.selectbox(
         t("sidebar_player_label"),
         options=labels,
-        index=current_idx,
         key=key,
         label_visibility="collapsed",
     )

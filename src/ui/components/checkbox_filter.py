@@ -169,7 +169,10 @@ def render_checkbox_filter(
                 t("btn_select_all"), key=f"{session_key}_all", width="stretch", on_click=_select_all
             )
             cols[1].button(
-                t("btn_select_none"), key=f"{session_key}_none", width="stretch", on_click=_select_none
+                t("btn_select_none"),
+                key=f"{session_key}_none",
+                width="stretch",
+                on_click=_select_none,
             )
 
         # Confirmation message
@@ -313,9 +316,14 @@ def render_hierarchical_checkbox_filter(
             else:
                 st.session_state[f"{sk}_confirm_clear"] = True
 
-        cols[0].button(t("btn_select_all"), key=f"{session_key}_all", width="stretch", on_click=_select_all_g)
+        cols[0].button(
+            t("btn_select_all"), key=f"{session_key}_all", width="stretch", on_click=_select_all_g
+        )
         cols[1].button(
-            t("btn_select_none"), key=f"{session_key}_none", width="stretch", on_click=_select_none_g
+            t("btn_select_none"),
+            key=f"{session_key}_none",
+            width="stretch",
+            on_click=_select_none_g,
         )
 
         # Confirmation message
@@ -371,6 +379,8 @@ def render_hierarchical_checkbox_filter(
                 def _on_cat_single_change(
                     sk: str = session_key, fms: list[str] = full_modes, k: str = cb_key
                 ) -> None:
+                    if k not in st.session_state or sk not in st.session_state:
+                        return
                     if st.session_state[k]:
                         st.session_state[sk] = st.session_state[sk] | set(fms)
                     else:
