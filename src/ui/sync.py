@@ -719,6 +719,22 @@ async def sync_player_duckdb_async(
         else:
             result = await engine.sync_full(options)
 
+        # LUSR automatique post-sync : calculer le rating pour les nouveaux matchs
+        if result.matches_inserted > 0:
+            try:
+                # Forcer la réinitialisation de la connexion shared : refresh_aggregates
+                # l'a fermée/rouverte, il peut rester un handle en conflit.
+                engine._shared_connection = None
+                lusr_count = engine.batch_compute_lusr(force=False)
+                if lusr_count > 0:
+                    logging.getLogger(__name__).info(
+                        f"[LUSR] {lusr_count} rating(s) calculé(s) automatiquement post-sync"
+                    )
+            except Exception as lusr_exc:
+                logging.getLogger(__name__).warning(
+                    f"[LUSR] Calcul post-sync échoué (non bloquant) : {lusr_exc}"
+                )
+
         engine.close()
 
         return result.success, result.to_message()

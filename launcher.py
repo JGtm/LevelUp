@@ -1,6 +1,6 @@
 """Lanceur LevelUp pour OpenSpartan Graph.
 
-Architecture v4 DuckDB unifiée avec stockage par joueur.
+Architecture v5 DuckDB unifiée avec stockage partagé (shared_matches).
 
 Usage
 -----
@@ -50,7 +50,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 REPO_ROOT = Path(__file__).resolve().parent
 DEFAULT_STREAMLIT_APP = REPO_ROOT / "streamlit_app.py"
 
-# Architecture v4 - Chemins DuckDB (centralisés dans src/utils/paths)
+# Architecture v5 - Chemins DuckDB (centralisés dans src/utils/paths)
 from src.utils.paths import (
     METADATA_DB_FILENAME,
     PLAYER_DB_FILENAME,
@@ -189,7 +189,7 @@ def _pick_free_port() -> int:
 
 
 # =============================================================================
-# Helpers DuckDB (Architecture v4)
+# Helpers DuckDB (Architecture v5)
 # =============================================================================
 
 
@@ -207,7 +207,7 @@ def _import_duckdb():
 
 @dataclass
 class PlayerInfo:
-    """Informations sur un joueur (architecture v4)."""
+    """Informations sur un joueur (architecture v5)."""
 
     gamertag: str
     db_path: Path
@@ -327,7 +327,7 @@ def _metadata_db_exists() -> bool:
 
 
 # =============================================================================
-# Synchronisation DuckDB (Architecture v4)
+# Synchronisation DuckDB (Architecture v5)
 # =============================================================================
 
 
@@ -463,7 +463,7 @@ def _launch_streamlit(
 ) -> int:
     """Lance le dashboard Streamlit.
 
-    Note: Dans l'architecture v4, db_path n'est plus nécessaire.
+    Note: Dans l'architecture v5, db_path n'est plus nécessaire.
     Le dashboard détecte automatiquement les joueurs depuis data/players/.
     """
     if not DEFAULT_STREAMLIT_APP.exists():
@@ -493,10 +493,10 @@ def _launch_streamlit(
     # Délai avant ouverture du navigateur pour laisser Streamlit démarrer
     STREAMLIT_STARTUP_DELAY_SECONDS = 1.2
 
-    print("\n🚀 Lancement du dashboard…")
-    print(f"   URL: {url}")
-    print("   Architecture: DuckDB v4")
-    print(f"   Données: {_display_path(PLAYERS_DIR)}")
+    print("\n\ud83d\ude80 Lancement du dashboard\u2026", flush=True)
+    print(f"   URL: {url}", flush=True)
+    print("   Architecture: DuckDB v5", flush=True)
+    print(f"   Donn\u00e9es: {_display_path(PLAYERS_DIR)}", flush=True)
 
     global _active_process
     # Ne pas hériter stdin pour éviter que le sous-processus bloque (ex. Cursor/IDE)
@@ -540,15 +540,18 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
     # Afficher les infos
     total_matches = sum(p.total_matches for p in players)
-    print(f"\n📊 Architecture DuckDB v4: {len(players)} joueur(s), {total_matches} matchs")
+    print(
+        f"\n\ud83d\udcca Architecture DuckDB v5: {len(players)} joueur(s), {total_matches} matchs",
+        flush=True,
+    )
     for p in players:
-        print(f"   - {p.gamertag}: {p.total_matches} matchs")
+        print(f"   - {p.gamertag}: {p.total_matches} matchs", flush=True)
 
     return _launch_streamlit(db_path=None, port=args.port, no_browser=args.no_browser)
 
 
 def _cmd_sync(args: argparse.Namespace) -> int:
-    """Commande: sync tous les joueurs (architecture v4 DuckDB)."""
+    """Commande: sync tous les joueurs (architecture v5 DuckDB)."""
 
     # Lister les joueurs existants
     players = _list_players()
@@ -562,7 +565,7 @@ def _cmd_sync(args: argparse.Namespace) -> int:
         return 2
 
     print("=" * 60)
-    print("🔄 SYNCHRONISATION (DuckDB v4)")
+    print("🔄 SYNCHRONISATION (DuckDB v5)")
     print("=" * 60)
     print(f"\n   {len(players)} joueur(s) détecté(s):")
     for p in players:
@@ -638,7 +641,7 @@ def _cmd_info(args: argparse.Namespace) -> int:
         return 2
 
     print("=" * 60)
-    print("📊 INFORMATIONS (DuckDB v4)")
+    print("📊 INFORMATIONS (DuckDB v5)")
     print("=" * 60)
 
     total_matches = sum(p.total_matches for p in players)
@@ -672,7 +675,7 @@ def _interactive() -> int:
     """Menu interactif simplifié."""
     print("=" * 60)
     print("        LevelUp - Dashboard Halo Infinite")
-    print("        Architecture DuckDB v4")
+    print("        Architecture DuckDB v5")
     print("=" * 60)
 
     # Lister les joueurs DuckDB
@@ -776,7 +779,7 @@ def _build_parser() -> argparse.ArgumentParser:
     """Construit le parser CLI."""
     ap = argparse.ArgumentParser(
         prog="levelup",
-        description="LevelUp - Dashboard Halo Infinite (Architecture DuckDB v4)",
+        description="LevelUp - Dashboard Halo Infinite (Architecture DuckDB v5)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemples:
@@ -786,8 +789,9 @@ Exemples:
   python launcher.py sync --run  # Sync + dashboard
   python launcher.py info      # Affiche les infos
 
-Architecture v4:
+Architecture v5:
   - Données joueurs: data/players/{gamertag}/stats.duckdb
+  - Matchs partagés: data/warehouse/shared_matches.duckdb
   - Métadonnées: data/warehouse/metadata.duckdb
 """,
     )
