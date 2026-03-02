@@ -13,6 +13,7 @@ import streamlit as st
 from src.data.repositories import DuckDBRepository
 from src.ui.components.radar_chart import create_participation_profile_radar
 from src.ui.i18n import t
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.participation_radar import (
     compute_participation_profile,
@@ -100,7 +101,7 @@ def _render_radar_display(
                 show_fill=show_fill,
             )
             if fig is not None:
-                config = {"staticPlot": True} if static_plot else {"displayModeBar": False}
+                config = PLOTLY_STATIC_CONFIG if static_plot else PLOTLY_CLEAN_CONFIG
                 st.plotly_chart(fig, width="stretch", config=config)
             else:
                 st.info(t("insufficient_data_chart"))

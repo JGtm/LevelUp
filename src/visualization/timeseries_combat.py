@@ -12,6 +12,7 @@ from plotly.subplots import make_subplots
 from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.config import HALO_COLORS, PLOT_CONFIG
 from src.ui.components.chart_annotations import add_extreme_annotations  # noqa: F401
+from src.ui.date_formats import FMT_DATETIME_FR, FMT_TICK_DATETIME
 from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars, smart_scatter  # noqa: F401
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
@@ -36,7 +37,7 @@ def plot_average_life(df: DataFrameLike, title: str | None = None, lang: str = "
     colors = HALO_COLORS.as_dict()
     d = d.filter(pl.col("average_life_seconds").is_not_null()).sort("start_time")
     x_idx = list(range(d.height))
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
 
     y = d["average_life_seconds"].cast(pl.Float64, strict=False)
@@ -170,7 +171,7 @@ def plot_spree_headshots_accuracy(
         secondary_y=False,
     )
 
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if labels else 1
     fig.update_xaxes(
         title_text=viz_t("axis_chronological", lang),
@@ -227,7 +228,7 @@ def plot_performance_timeseries(
     colors = HALO_COLORS.as_dict()
     d = d.sort("start_time")
     x_idx = list(range(d.height))
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
 
     # Calculer le score de performance RELATIF
@@ -262,7 +263,7 @@ def plot_performance_timeseries(
     ]
 
     hover = "performance=%{y:.1f}<br>" "date=%{customdata[0]}<extra></extra>"
-    customdata = list(zip(d["start_time"].dt.strftime("%d/%m/%Y %H:%M").to_list(), strict=False))
+    customdata = list(zip(d["start_time"].dt.strftime(FMT_DATETIME_FR).to_list(), strict=False))
 
     fig = go.Figure()
     fig.add_trace(
@@ -378,7 +379,7 @@ def plot_streak_chart(
 
     bar_colors = [colors["green"] if v > 0 else colors["red"] for v in streak_values]
 
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if labels else 1
 
     fig = go.Figure()
@@ -434,7 +435,7 @@ def plot_damage_dealt_taken(
 
     d = d.sort("start_time")
     x_idx = list(range(d.height))
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if labels else 1
 
     fig = go.Figure()
@@ -527,7 +528,7 @@ def plot_shots_accuracy(
 
     d = d.sort("start_time")
     x_idx = list(range(d.height))
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if labels else 1
 
     fig = make_subplots(rows=1, cols=1, specs=[[{"secondary_y": True}]])
@@ -632,7 +633,7 @@ def plot_rank_score(
 
     d = d.sort("start_time")
     x_idx = list(range(d.height))
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if labels else 1
 
     fig = make_subplots(rows=1, cols=1, specs=[[{"secondary_y": True}]])
@@ -736,7 +737,7 @@ def plot_lusr_timeseries(
 
     d = d.sort("start_time")
     x_idx = list(range(d.height))
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
     colors = HALO_COLORS.as_dict()
 
@@ -823,7 +824,7 @@ def plot_lusr_timeseries(
         "Rating=%{y:.0f}<br>" "Rang=%{customdata[0]}<br>" "Date=%{customdata[1]}<extra></extra>"
     )
     customdata = list(
-        zip(tier_labels, d["start_time"].dt.strftime("%d/%m/%Y %H:%M").to_list(), strict=False)
+        zip(tier_labels, d["start_time"].dt.strftime(FMT_DATETIME_FR).to_list(), strict=False)
     )
 
     # Couleur selon type dominant

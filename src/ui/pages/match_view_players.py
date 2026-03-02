@@ -17,7 +17,7 @@ from src.config import BOT_MAP, TEAM_MAP
 from src.ui import display_name_from_xuid
 from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_helpers import os_card
-from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, fragment_if_available
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.utils import parse_xuid_input
 from src.visualization.match_impact_timeline import (
     compute_single_match_impact,
@@ -527,7 +527,7 @@ def _render_antagonist_chart(
                     lang=get_lang(),
                 )
                 if fig is not None:
-                    st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
+                    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("mv_interactions_no_data"))
             except Exception as e:
@@ -1140,7 +1140,7 @@ def render_match_impact_section(
         lang=get_lang(),
     )
     if fig is not None:
-        st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
+        st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
     else:
         st.info(t("mv_impact_too_few"))
 

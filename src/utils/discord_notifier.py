@@ -194,87 +194,85 @@ def fetch_last_match_info(xuid: str) -> LastMatchInfo | None:
     if not xuid or not _SHARED_DB.exists():
         return None
     try:
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
-        conn = duckdb.connect(str(_SHARED_DB), read_only=True)
-        row = conn.execute(
-            """
-            SELECT
-                mr.match_id,
-                COALESCE(mr.map_name,          mr.map_id,       '—') AS map_name,
-                COALESCE(mr.playlist_name,     '—')                  AS playlist_name,
-                COALESCE(mr.game_variant_name, '—')                  AS game_variant_name,
-                COALESCE(mr.pair_name,         '—')                  AS pair_name,
-                COALESCE(mr.is_ranked,         FALSE)                AS is_ranked,
-                mr.start_time,
-                COALESCE(mp.kills,   0) AS kills,
-                COALESCE(mp.deaths,  0) AS deaths,
-                COALESCE(mp.assists, 0) AS assists,
-                COALESCE(mp.outcome, 0) AS outcome,
-                COALESCE(mp.score,   0) AS score
-            FROM match_registry mr
-            JOIN match_participants mp ON mr.match_id = mp.match_id
-            WHERE mp.xuid = ?
-            ORDER BY mr.start_time DESC
-            LIMIT 1
-            """,
-            [xuid],
-        ).fetchone()
-        if not row:
-            conn.close()
-            return None
+        with duckdb_read_only(_SHARED_DB) as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    mr.match_id,
+                    COALESCE(mr.map_name,          mr.map_id,       '—') AS map_name,
+                    COALESCE(mr.playlist_name,     '—')                  AS playlist_name,
+                    COALESCE(mr.game_variant_name, '—')                  AS game_variant_name,
+                    COALESCE(mr.pair_name,         '—')                  AS pair_name,
+                    COALESCE(mr.is_ranked,         FALSE)                AS is_ranked,
+                    mr.start_time,
+                    COALESCE(mp.kills,   0) AS kills,
+                    COALESCE(mp.deaths,  0) AS deaths,
+                    COALESCE(mp.assists, 0) AS assists,
+                    COALESCE(mp.outcome, 0) AS outcome,
+                    COALESCE(mp.score,   0) AS score
+                FROM match_registry mr
+                JOIN match_participants mp ON mr.match_id = mp.match_id
+                WHERE mp.xuid = ?
+                ORDER BY mr.start_time DESC
+                LIMIT 1
+                """,
+                [xuid],
+            ).fetchone()
+            if not row:
+                return None
 
-        match_id = str(row[0] or "")
+            match_id = str(row[0] or "")
 
-        # Nombre de participants dans ce match
-        participants_count = 0
-        squad_friends: list[str] = []
-        if match_id:
-            try:
-                # Compter les participants
-                cnt = conn.execute(
-                    "SELECT COUNT(DISTINCT xuid) FROM match_participants WHERE match_id = ?",
-                    [match_id],
-                ).fetchone()
-                participants_count = int(cnt[0]) if cnt else 0
+            # Nombre de participants dans ce match
+            participants_count = 0
+            squad_friends: list[str] = []
+            if match_id:
+                try:
+                    # Compter les participants
+                    cnt = conn.execute(
+                        "SELECT COUNT(DISTINCT xuid) FROM match_participants WHERE match_id = ?",
+                        [match_id],
+                    ).fetchone()
+                    participants_count = int(cnt[0]) if cnt else 0
 
-                # Trouver les amis présents dans ce match
-                friends_map = _load_friends_defaults()
-                my_friends_gt = {g.casefold() for g in friends_map.get(str(xuid), [])}
-                if my_friends_gt:
-                    # Récupérer les gamertags de tous les participants (via xuid_aliases)
-                    participants_rows = conn.execute(
-                        """
-                        SELECT DISTINCT xa.gamertag
-                        FROM match_participants mp
-                        JOIN xuid_aliases xa ON mp.xuid = xa.xuid
-                        WHERE mp.match_id = ? AND mp.xuid != ?
-                        """,
-                        [match_id, xuid],
-                    ).fetchall()
-                    for (gt,) in participants_rows:
-                        if gt and gt.casefold() in my_friends_gt:
-                            squad_friends.append(str(gt))
-            except Exception:
-                pass
+                    # Trouver les amis présents dans ce match
+                    friends_map = _load_friends_defaults()
+                    my_friends_gt = {g.casefold() for g in friends_map.get(str(xuid), [])}
+                    if my_friends_gt:
+                        # Récupérer les gamertags de tous les participants (via xuid_aliases)
+                        participants_rows = conn.execute(
+                            """
+                            SELECT DISTINCT xa.gamertag
+                            FROM match_participants mp
+                            JOIN xuid_aliases xa ON mp.xuid = xa.xuid
+                            WHERE mp.match_id = ? AND mp.xuid != ?
+                            """,
+                            [match_id, xuid],
+                        ).fetchall()
+                        for (gt,) in participants_rows:
+                            if gt and gt.casefold() in my_friends_gt:
+                                squad_friends.append(str(gt))
+                except Exception:
+                    pass
 
-        conn.close()
-        return LastMatchInfo(
-            match_id=match_id,
-            map_name=str(row[1] or "—"),
-            playlist_name=str(row[2] or "—"),
-            game_variant_name=str(row[3] or "—"),
-            pair_name=str(row[4] or "—"),
-            is_ranked=bool(row[5]),
-            start_time=row[6],
-            kills=int(row[7] or 0),
-            deaths=int(row[8] or 0),
-            assists=int(row[9] or 0),
-            outcome=int(row[10] or 0),
-            score=int(row[11] or 0),
-            participants_count=participants_count,
-            squad_friends=squad_friends,
-        )
+            return LastMatchInfo(
+                match_id=match_id,
+                map_name=str(row[1] or "—"),
+                playlist_name=str(row[2] or "—"),
+                game_variant_name=str(row[3] or "—"),
+                pair_name=str(row[4] or "—"),
+                is_ranked=bool(row[5]),
+                start_time=row[6],
+                kills=int(row[7] or 0),
+                deaths=int(row[8] or 0),
+                assists=int(row[9] or 0),
+                outcome=int(row[10] or 0),
+                score=int(row[11] or 0),
+                participants_count=participants_count,
+                squad_friends=squad_friends,
+            )
     except Exception as exc:
         logger.debug(f"[Discord] fetch_last_match_info({xuid}): {exc}")
         return None
@@ -297,24 +295,23 @@ def count_new_matches(xuid: str, gamertag: str, since: datetime) -> int:
     if not xuid or not _SHARED_DB.exists():
         return 0
     try:
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
         # Normaliser en naive UTC : first_sync_at est stocké sans timezone (TIMESTAMP)
         since_naive = since.replace(tzinfo=None) if since.tzinfo is not None else since
 
-        conn = duckdb.connect(str(_SHARED_DB), read_only=True)
-        result = conn.execute(
-            """
-            SELECT COUNT(*)
-            FROM match_registry mr
-            JOIN match_participants mp ON mr.match_id = mp.match_id
-            WHERE mp.xuid = ?
-              AND mr.first_sync_at >= ?
-            """,
-            [xuid, since_naive],
-        ).fetchone()
-        conn.close()
-        return int(result[0]) if result else 0
+        with duckdb_read_only(_SHARED_DB) as conn:
+            result = conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM match_registry mr
+                JOIN match_participants mp ON mr.match_id = mp.match_id
+                WHERE mp.xuid = ?
+                  AND mr.first_sync_at >= ?
+                """,
+                [xuid, since_naive],
+            ).fetchone()
+            return int(result[0]) if result else 0
     except Exception as exc:
         logger.debug(f"[Discord] count_new_matches({gamertag}): {exc}")
         return 0
@@ -336,29 +333,28 @@ def count_matches_missing_data(xuid: str) -> int:
     if not xuid or not _SHARED_DB.exists():
         return 0
     try:
-        import duckdb
+        from src.utils.db import duckdb_read_only
 
-        conn = duckdb.connect(str(_SHARED_DB), read_only=True)
-        result = conn.execute(
-            """
-            SELECT COUNT(*)
-            FROM match_registry mr
-            JOIN match_participants mp ON mr.match_id = mp.match_id
-            WHERE mp.xuid = ?
-              AND (
-                  -- médailles absentes : ni sync ni backfill (bit 0) ne les a chargées
-                  (COALESCE(mr.medals_loaded, FALSE) = FALSE
-                   AND (COALESCE(mr.backfill_completed, 0) & 1) = 0)
-                  OR
-                  -- events absents : ni sync ni backfill (bit 1) ne les a chargés
-                  (COALESCE(mr.events_loaded, FALSE) = FALSE
-                   AND (COALESCE(mr.backfill_completed, 0) & 2) = 0)
-              )
-            """,
-            [xuid],
-        ).fetchone()
-        conn.close()
-        return int(result[0]) if result else 0
+        with duckdb_read_only(_SHARED_DB) as conn:
+            result = conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM match_registry mr
+                JOIN match_participants mp ON mr.match_id = mp.match_id
+                WHERE mp.xuid = ?
+                  AND (
+                      -- médailles absentes : ni sync ni backfill (bit 0) ne les a chargées
+                      (COALESCE(mr.medals_loaded, FALSE) = FALSE
+                       AND (COALESCE(mr.backfill_completed, 0) & 1) = 0)
+                      OR
+                      -- events absents : ni sync ni backfill (bit 1) ne les a chargés
+                      (COALESCE(mr.events_loaded, FALSE) = FALSE
+                       AND (COALESCE(mr.backfill_completed, 0) & 2) = 0)
+                  )
+                """,
+                [xuid],
+            ).fetchone()
+            return int(result[0]) if result else 0
     except Exception as exc:
         logger.debug(f"[Discord] count_matches_missing_data({xuid}): {exc}")
         return 0

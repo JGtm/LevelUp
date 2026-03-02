@@ -13,7 +13,7 @@ from src.analysis.stats import compute_mode_category_averages, extract_mode_cate
 from src.config import HALO_COLORS
 from src.ui.i18n import t
 from src.ui.pages.match_view_helpers import os_card
-from src.ui.streamlit_modern import fragment_if_available
+from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
@@ -256,7 +256,7 @@ def render_expected_vs_actual(
     with chart_cols[0]:
         try:
             if exp_fig is not None:
-                st.plotly_chart(exp_fig, width="stretch", config={"staticPlot": True})
+                st.plotly_chart(exp_fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
         except Exception as e:
@@ -388,7 +388,7 @@ def _render_spree_headshots(
         try:
             styled_fig = apply_halo_plot_style(fig_sh, height=260)
             if styled_fig is not None:
-                st.plotly_chart(styled_fig, width="stretch", config={"staticPlot": True})
+                st.plotly_chart(styled_fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
         except Exception as e:

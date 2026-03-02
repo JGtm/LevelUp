@@ -39,3 +39,27 @@ def duckdb_read_only(db_path: str | Path) -> Generator[duckdb.DuckDBPyConnection
         yield conn
     finally:
         conn.close()
+
+
+@contextlib.contextmanager
+def duckdb_read_write(db_path: str | Path) -> Generator[duckdb.DuckDBPyConnection, None, None]:
+    """Ouvre une connexion DuckDB en lecture-écriture avec fermeture garantie.
+
+    Usage::
+
+        from src.utils.db import duckdb_read_write
+
+        with duckdb_read_write(db_path) as conn:
+            conn.execute("INSERT INTO ...")
+
+    Args:
+        db_path: Chemin vers le fichier ``.duckdb``.
+
+    Yields:
+        Connexion DuckDB read-write.
+    """
+    conn = duckdb.connect(str(db_path))
+    try:
+        yield conn
+    finally:
+        conn.close()

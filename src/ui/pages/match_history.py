@@ -22,6 +22,7 @@ import streamlit as st
 from src.analysis.performance_score import compute_performance_series
 from src.config import HALO_COLORS, OUTCOME_CODES
 from src.ui.components.performance import get_score_class
+from src.ui.date_formats import FMT_DATETIME_FR
 from src.ui.i18n import get_outcome_map, t
 from src.visualization._compat import DataFrameLike, ensure_polars
 
@@ -135,7 +136,7 @@ def render_match_history_page(
 
     # Vectorisation start_time_fr: strftime() au lieu de map_elements()
     dff_table = dff_table.with_columns(
-        pl.col("start_time").dt.strftime("%d/%m/%Y %H:%M").fill_null("-").alias("start_time_fr")
+        pl.col("start_time").dt.strftime(FMT_DATETIME_FR).fill_null("-").alias("start_time_fr")
     )
     # Vectorisation average_life_mmss: calcul arithmétique au lieu de map_elements()
     dff_table = dff_table.with_columns(

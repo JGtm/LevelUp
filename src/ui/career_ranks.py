@@ -205,15 +205,14 @@ logger = logging.getLogger(__name__)
 @lru_cache(maxsize=1)
 def _build_ranks_lookup() -> dict[int, CareerRankInfo]:
     """Construit le lookup depuis metadata.duckdb (table career_ranks)."""
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
     db_path = _repo_root() / "data" / "warehouse" / "metadata.duckdb"
     if not db_path.exists():
         logger.warning("metadata.duckdb introuvable : %s", db_path)
         return {}
 
-    conn = duckdb.connect(str(db_path), read_only=True)
-    try:
+    with duckdb_read_only(str(db_path)) as conn:
         # Vérifier que la table existe
         tables = {
             row[0]
@@ -229,8 +228,6 @@ def _build_ranks_lookup() -> dict[int, CareerRankInfo]:
             "SELECT rank_id, title_en, subtitle_en, tier, xp_required, large_icon_path "
             "FROM career_ranks ORDER BY rank_id"
         ).fetchall()
-    finally:
-        conn.close()
 
     lookup: dict[int, CareerRankInfo] = {}
     for rank_id, title, subtitle, tier, xp_req, large_icon in rows:
@@ -329,20 +326,17 @@ def count_cached_icons() -> int:
 @lru_cache(maxsize=1)
 def is_metadata_available() -> bool:
     """Vérifie si les métadonnées des rangs sont disponibles dans metadata.duckdb."""
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
     db_path = _repo_root() / "data" / "warehouse" / "metadata.duckdb"
     if not db_path.exists():
         return False
     try:
-        conn = duckdb.connect(str(db_path), read_only=True)
-        try:
+        with duckdb_read_only(str(db_path)) as conn:
             count = conn.execute(
                 "SELECT COUNT(*) FROM information_schema.tables "
                 "WHERE table_name = 'career_ranks'"
             ).fetchone()[0]
             return count > 0
-        finally:
-            conn.close()
     except Exception:
         return False

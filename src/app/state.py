@@ -112,6 +112,27 @@ class AppState:
                 del st.session_state[key]
 
 
+def get_page_context() -> tuple[str, str, str]:
+    """Retourne le contexte courant (db_path, xuid, waypoint_player) depuis session_state.
+
+    Centralise les accès ``st.session_state.get("db_path")`` etc.
+    dispersés dans les pages UI.
+
+    Returns:
+        Tuple (db_path, xuid, waypoint_player) — chaînes vides si absent.
+    """
+    db_path = str(st.session_state.get("db_path", "") or "")
+    # Résolution du XUID : player_xuid (résolu) > xuid > xuid_input (brut)
+    xuid = str(
+        st.session_state.get("player_xuid")
+        or st.session_state.get("xuid")
+        or st.session_state.get("xuid_input", "")
+        or ""
+    ).strip()
+    wp = str(st.session_state.get("waypoint_player", "") or "")
+    return db_path, xuid, wp
+
+
 def get_default_identity() -> PlayerIdentity:
     """Retourne l'identité par défaut depuis secrets/env/constants.
 

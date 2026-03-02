@@ -15,6 +15,7 @@ from src.analysis.friends_impact import (
 )
 from src.data.repositories import DuckDBRepository
 from src.ui.i18n import t
+from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.utils.paths import get_shared_matches_path_from_player
 from src.visualization.friends_impact_heatmap import (
     build_impact_ranking_df,
@@ -314,7 +315,7 @@ def render_impact_taquinerie(
             title=None,
             max_matches=len(sorted_match_ids),
         )
-        st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
+        st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
 
         # Tableau de ranking
         st.subheader(t("tm_impact_ranking"))

@@ -19,6 +19,7 @@ from src.ui import (
     translate_playlist_name,
 )
 from src.ui.cache import cached_load_player_match_result
+from src.ui.date_formats import FMT_DATETIME_FR
 from src.ui.i18n import t
 from src.ui.player_assets import ensure_local_image_path
 from src.ui.vectorize_helpers import build_mapping
@@ -30,7 +31,7 @@ def _format_datetime_fr_hm(dt: object) -> str:
     if dt is None:
         return "-"
     try:
-        return dt.strftime("%d/%m/%Y %H:%M")
+        return dt.strftime(FMT_DATETIME_FR)
     except Exception:
         return str(dt)
 
@@ -177,7 +178,7 @@ def render_friends_history_table(
     """
     friends_table = ensure_polars(sub_all)
     friends_table = friends_table.with_columns(
-        pl.col("start_time").dt.strftime("%d/%m/%Y %H:%M").fill_null("-").alias("start_time_fr")
+        pl.col("start_time").dt.strftime(FMT_DATETIME_FR).fill_null("-").alias("start_time_fr")
     )
     if "playlist_fr" not in friends_table.columns:
         _playlist_map = build_mapping(friends_table["playlist_name"], translate_playlist_name)

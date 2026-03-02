@@ -171,7 +171,6 @@ class TestSprintTargetsCacheFacade:
         "cached_load_match_player_gamertags",
         "top_medals_smart",
         "PARIS_TZ_NAME",
-        "_to_polars",
     ]
 
     @pytest.mark.parametrize("symbol", EXPECTED_SYMBOLS)

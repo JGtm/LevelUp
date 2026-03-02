@@ -13,7 +13,11 @@ import polars as pl
 import streamlit as st
 
 from src.analysis import mark_firefight
-from src.app.data_loader import default_identity_from_secrets
+from src.app.data_loader import (
+    default_identity_from_secrets,
+    propagate_identity_env,
+    resolve_xuid_input,
+)
 from src.ui import (
     display_name_from_xuid,
     ensure_spnkr_tokens,
@@ -30,7 +34,6 @@ from src.ui.sync import (
     render_sync_indicator,
     sync_all_players,
 )
-from src.utils import parse_xuid_input, resolve_xuid_from_db
 
 if TYPE_CHECKING:
     from src.ui import AppSettings
@@ -40,13 +43,7 @@ def propagate_identity_to_env() -> None:
     """Propage les defaults depuis secrets vers l'environnement."""
     try:
         xuid_or_gt, xuid_fallback, wp = default_identity_from_secrets()
-        if xuid_or_gt and not str(xuid_or_gt).strip().isdigit() and xuid_fallback:
-            if not str(os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip():
-                os.environ["OPENSPARTAN_DEFAULT_GAMERTAG"] = str(xuid_or_gt).strip()
-            if not str(os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip():
-                os.environ["OPENSPARTAN_DEFAULT_XUID"] = str(xuid_fallback).strip()
-        if wp and not str(os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or "").strip():
-            os.environ["OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER"] = str(wp).strip()
+        propagate_identity_env(xuid_or_gt, xuid_fallback, wp)
     except Exception:
         pass
 
@@ -107,40 +104,9 @@ def validate_and_fix_db_path(db_path: str, default_db: str) -> str:
 def resolve_xuid_from_input(xuid_input: str, db_path: str) -> str:
     """Résout le XUID depuis l'entrée utilisateur.
 
-    Args:
-        xuid_input: Entrée brute (XUID ou gamertag).
-        db_path: Chemin vers la DB.
-
-    Returns:
-        XUID résolu ou chaîne vide.
+    Délègue à ``data_loader.resolve_xuid_input`` (implémentation unique).
     """
-    xraw = (xuid_input or "").strip()
-    xuid_resolved = parse_xuid_input(xraw) or ""
-
-    if not xuid_resolved and xraw and not xraw.isdigit() and db_path:
-        xuid_resolved = resolve_xuid_from_db(db_path, xraw) or ""
-        # Fallback: secrets/env quand l'entrée correspond au gamertag par défaut
-        if not xuid_resolved:
-            try:
-                xuid_or_gt, xuid_fallback, _wp = default_identity_from_secrets()
-                if (
-                    xuid_or_gt
-                    and xuid_fallback
-                    and (not str(xuid_or_gt).strip().isdigit())
-                    and str(xuid_or_gt).strip().casefold() == str(xraw).strip().casefold()
-                ):
-                    xuid_resolved = str(xuid_fallback).strip()
-            except Exception:
-                pass
-
-    if not xuid_resolved and not xraw and db_path:
-        xuid_or_gt, xuid_fallback, _wp = default_identity_from_secrets()
-        if xuid_or_gt and not xuid_or_gt.isdigit():
-            xuid_resolved = resolve_xuid_from_db(db_path, xuid_or_gt) or xuid_fallback
-        else:
-            xuid_resolved = xuid_or_gt or xuid_fallback
-
-    return xuid_resolved or ""
+    return resolve_xuid_input(xuid_input, db_path)
 
 
 def render_sidebar_header(db_path: str, xuid: str, settings: AppSettings) -> str:
