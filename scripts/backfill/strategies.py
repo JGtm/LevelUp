@@ -463,6 +463,7 @@ def compute_lusr_for_player(
 
         now = datetime.now(timezone.utc)
         prev_rating: dict[str, float] = {}
+        _LUSR_MAX_DELTA = 100.0  # Guard-rail : cap ±100 pts par match
         updates = 0
 
         for row in ratings_df.iter_rows(named=True):
@@ -474,7 +475,18 @@ def compute_lusr_for_player(
             # Delta vs match précédent dans le même groupe
             delta: float | None = None
             if pg in prev_rating:
-                delta = rating_value - prev_rating[pg]
+                raw_delta = rating_value - prev_rating[pg]
+                # Guard-rail : limiter le delta à ±100 pts par match
+                if abs(raw_delta) > _LUSR_MAX_DELTA:
+                    logger.warning(
+                        f"LUSR guard-rail: delta {raw_delta:+.1f} capé à "
+                        f"{_LUSR_MAX_DELTA if raw_delta > 0 else -_LUSR_MAX_DELTA:+.0f} "
+                        f"pour {mid} (groupe {pg})"
+                    )
+                    delta = _LUSR_MAX_DELTA if raw_delta > 0 else -_LUSR_MAX_DELTA
+                    rating_value = prev_rating[pg] + delta
+                else:
+                    delta = raw_delta
             prev_rating[pg] = rating_value
 
             # Mode incrémental : sauter si déjà présent

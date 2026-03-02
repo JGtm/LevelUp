@@ -317,22 +317,38 @@ class TestLoadExistingMatchIds:
         assert len(ids) == 1
 
     def test_fallback_to_shared_participants(self, tmp_path: Path) -> None:
-        """Si la player DB est vide, utilise shared.match_participants."""
+        """Si la player DB a enrichment, utilise intersection shared ∩ enrichment.
+
+        V5.4 fix: un match n'est considéré "existant" que s'il est à la fois
+        dans shared.match_participants ET dans player_match_enrichment.
+        Les matchs présents dans shared mais non enrichis seront re-traités.
+        """
         # Créer la structure data/players/{gt}/stats.duckdb + data/warehouse/shared_matches.duckdb
         players_dir = tmp_path / "data" / "players" / PLAYER_GAMERTAG
         db = players_dir / "stats.duckdb"
         db.parent.mkdir(parents=True, exist_ok=True)
 
-        # DB joueur vide (tables sans données)
+        # DB joueur avec seulement MATCH_ID_1 enrichi
         conn = duckdb.connect(str(db))
         conn.execute("""
             CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR, updated_at VARCHAR)
         """)
         conn.execute("CREATE TABLE match_stats (match_id VARCHAR)")
         conn.execute("CREATE TABLE player_match_stats (match_id VARCHAR, xuid VARCHAR)")
+        conn.execute("""
+            CREATE TABLE player_match_enrichment (
+                match_id VARCHAR PRIMARY KEY,
+                performance_score FLOAT DEFAULT 0
+            )
+        """)
+        # Seul MATCH_ID_1 est enrichi
+        conn.execute(
+            "INSERT INTO player_match_enrichment (match_id) VALUES (?)",
+            (MATCH_ID_1,),
+        )
         conn.close()
 
-        # Shared DB avec des matchs
+        # Shared DB avec 3 matchs (tous dans match_participants)
         shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
         _create_shared_db(shared_db)
 
@@ -345,10 +361,13 @@ class TestLoadExistingMatchIds:
             shared_db_path=shared_db,
         )
         ids = engine._load_existing_match_ids()
+        # Seul MATCH_ID_1 est dans l'intersection (shared ∩ enrichment)
         assert MATCH_ID_1 in ids
-        assert MATCH_ID_2 in ids
-        assert MATCH_ID_3 in ids
-        assert len(ids) == 3
+        # MATCH_ID_2 et MATCH_ID_3 ne sont PAS considérés existants
+        # car absents de player_match_enrichment → seront re-traités
+        assert MATCH_ID_2 not in ids
+        assert MATCH_ID_3 not in ids
+        assert len(ids) == 1
 
     def test_empty_db_returns_empty_set(self, tmp_path: Path) -> None:
         """DB totalement vide → set vide (pas d'erreur)."""
