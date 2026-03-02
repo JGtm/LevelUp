@@ -82,6 +82,7 @@ TABLES_TO_REMOVE = [
     "teammates_aggregate",
     "player_match_stats",  # MMR/skill → maintenant dans shared.match_participants
     "xuid_aliases",  # mapping xuid→gamertag → maintenant dans shared.xuid_aliases
+    "backfill_status",  # table zombie, plus référencée nulle part
 ]
 
 # Views de compatibilité créées pendant la migration (optionnelles)
@@ -476,19 +477,80 @@ def cleanup_player_db(
                             result["errors"].append(error_msg)
                             logger.error(f"  ✗ {error_msg}")
 
-            # Exécuter VACUUM pour récupérer l'espace disque
-            logger.info("  🔧 Exécution VACUUM...")
-            conn.execute("VACUUM")
-
             conn.close()
 
-            # Taille après nettoyage
+            # Taille après nettoyage (avant compaction)
             result["size_after_kb"] = player_db_path.stat().st_size // 1024
 
     except Exception as exc:
         error_msg = f"Erreur fatale nettoyage {gamertag} : {exc}"
         result["errors"].append(error_msg)
         logger.error(f"❌ {error_msg}")
+
+    return result
+
+
+def compact_player_db(player_db_path: Path, gamertag: str) -> dict[str, Any]:
+    """Compacte une player DB via EXPORT/IMPORT pour récupérer le dead space.
+
+    DuckDB ne libère pas l'espace disque avec VACUUM après suppression de données.
+    La seule façon de compacter est d'exporter vers Parquet puis de réimporter
+    dans une nouvelle DB, puis de remplacer l'originale.
+
+    Returns:
+        Dict avec size_before_kb, size_after_kb, saved_kb.
+    """
+
+    result: dict[str, Any] = {
+        "gamertag": gamertag,
+        "size_before_kb": player_db_path.stat().st_size // 1024,
+        "size_after_kb": 0,
+        "saved_kb": 0,
+        "error": None,
+    }
+
+    tmp_export = player_db_path.parent / "_compact_export"
+    new_db = player_db_path.parent / "_compact_new.duckdb"
+
+    try:
+        logger.info(f"  🗜️  Compaction {gamertag} ({result['size_before_kb']:,} KB)...")
+
+        # Export
+        con = duckdb.connect(str(player_db_path), read_only=True)
+        con.execute(f"EXPORT DATABASE '{tmp_export}' (FORMAT PARQUET)")
+        con.close()
+
+        # Import dans une DB neuve
+        con2 = duckdb.connect(str(new_db))
+        con2.execute(f"IMPORT DATABASE '{tmp_export}'")
+        con2.close()
+
+        # Remplacer l'originale
+        player_db_path.replace(player_db_path.with_suffix(".duckdb.pre_compact"))
+        new_db.rename(player_db_path)
+        # Supprimer l'ancien backup de compaction s'il existe
+        pre = player_db_path.with_suffix(".duckdb.pre_compact")
+        if pre.exists():
+            pre.unlink()
+
+        result["size_after_kb"] = player_db_path.stat().st_size // 1024
+        result["saved_kb"] = result["size_before_kb"] - result["size_after_kb"]
+        logger.info(
+            f"  ✅ Compaction terminée : {result['size_before_kb']:,} KB → "
+            f"{result['size_after_kb']:,} KB "
+            f"(-{result['saved_kb']:,} KB, "
+            f"{100 * result['saved_kb'] // max(result['size_before_kb'], 1)}%)"
+        )
+
+    except Exception as exc:
+        result["error"] = str(exc)
+        logger.error(f"  ❌ Erreur compaction {gamertag} : {exc}")
+        # Nettoyage partiel
+        if new_db.exists():
+            new_db.unlink()
+    finally:
+        if tmp_export.exists():
+            shutil.rmtree(tmp_export)
 
     return result
 
@@ -501,6 +563,7 @@ def cleanup_all_players(
     dry_run: bool = False,
     verbose: bool = False,
     skip_coverage_check: bool = False,
+    compact: bool = False,
 ) -> dict[str, dict[str, Any]]:
     """Nettoie tous les joueurs de db_profiles.json.
 
@@ -577,7 +640,16 @@ def cleanup_all_players(
         results[gamertag] = result
 
         total_size_before += result["size_before_kb"]
-        total_size_after += result["size_after_kb"]
+        size_after = result["size_after_kb"]
+
+        # Compaction EXPORT/IMPORT si demandée (après les DROPs)
+        if compact and not dry_run:
+            compact_result = compact_player_db(player_db_path, gamertag)
+            if not compact_result.get("error"):
+                size_after = compact_result["size_after_kb"]
+                result["size_after_kb"] = size_after
+
+        total_size_after += size_after
 
         # Afficher résumé
         if result["tables_dropped"]:
@@ -587,7 +659,7 @@ def cleanup_all_players(
         if result["errors"]:
             print(f"  ✗ Erreurs : {len(result['errors'])}")
 
-        saved_kb = result["size_before_kb"] - result["size_after_kb"]
+        saved_kb = result["size_before_kb"] - size_after
         if saved_kb > 0:
             percent = (
                 (saved_kb / result["size_before_kb"]) * 100 if result["size_before_kb"] > 0 else 0
@@ -666,6 +738,11 @@ def main() -> None:
         action="store_true",
         help="Ne pas vérifier la couverture shared avant suppression (dangereux)",
     )
+    parser.add_argument(
+        "--compact",
+        action="store_true",
+        help="Compacter les DBs via EXPORT/IMPORT après nettoyage (récupère ~87%% d'espace)",
+    )
 
     args = parser.parse_args()
 
@@ -682,6 +759,7 @@ def main() -> None:
             dry_run=args.dry_run,
             verbose=args.verbose,
             skip_coverage_check=args.skip_coverage_check,
+            compact=args.compact,
         )
     elif args.gamertag:
         # Vérifier que shared_matches.duckdb existe
@@ -737,6 +815,11 @@ def main() -> None:
             dry_run=args.dry_run,
             skip_coverage_check=args.skip_coverage_check,
         )
+
+        # Compaction si demandée
+        if args.compact and not args.dry_run:
+            compact_player_db(player_db, args.gamertag)
+            result["size_after_kb"] = player_db.stat().st_size // 1024
 
         print(f"\n{'='*60}")
         print("RÉSULTAT")

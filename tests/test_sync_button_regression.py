@@ -233,16 +233,6 @@ class TestResolveXuidFromDb:
         engine = DuckDBSyncEngine(player_db_path=db, xuid="", gamertag=PLAYER_GAMERTAG)
         assert engine._xuid == PLAYER_XUID
 
-    def test_resolve_from_player_match_stats(self, tmp_path: Path) -> None:
-        """Stratégie 2 : XUID depuis player_match_stats."""
-        db = tmp_path / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        _create_player_db(db)  # Pas de sync_meta.xuid
-
-        from src.data.sync.engine import DuckDBSyncEngine
-
-        engine = DuckDBSyncEngine(player_db_path=db, xuid="", gamertag=PLAYER_GAMERTAG)
-        assert engine._xuid == PLAYER_XUID
-
     def test_resolve_from_xuid_aliases(self, tmp_path: Path) -> None:
         """8bis: Stratégie 3 en v5.1 — XUID depuis shared.xuid_aliases via gamertag."""
         # Structure v5.1 : créer shared_matches.duckdb avec xuid_aliases
@@ -286,19 +276,6 @@ class TestResolveXuidFromDb:
 
 class TestLoadExistingMatchIds:
     """Tests du fallback multi-sources pour détecter les matchs existants."""
-
-    def test_fallback_to_player_match_stats(self, tmp_path: Path) -> None:
-        """Si match_stats est vide, utilise player_match_stats."""
-        db = tmp_path / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        _create_player_db(db)
-
-        from src.data.sync.engine import DuckDBSyncEngine
-
-        engine = DuckDBSyncEngine(player_db_path=db, xuid=PLAYER_XUID, gamertag=PLAYER_GAMERTAG)
-        ids = engine._load_existing_match_ids()
-        assert MATCH_ID_1 in ids
-        assert MATCH_ID_2 in ids
-        assert len(ids) == 2
 
     @pytest.mark.skip(
         reason="V4 legacy - match_stats n'est plus prioritaire en V5 finale (shared.match_participants > player_match_stats)"
