@@ -12,24 +12,23 @@ from src.ui.components.performance import (
     render_performance_score_card,
 )
 from src.ui.i18n import t
-from src.ui.pages.session_compare_logic import (
-    compute_historical_context as _compute_historical_context,
+from src.ui.pages.session_compare_charts import (
+    SESSION_COLORS,  # noqa: F401 — re-exported
+    render_comparison_bar_chart,
+    render_comparison_radar_chart,
+    render_participation_trend_section,
+    render_session_history_table,
 )
 from src.ui.pages.session_compare_logic import (
+    compute_historical_context,
     compute_similar_sessions_average,  # noqa: F401 — re-exported
+    format_seconds_to_mmss,
     get_session_friends_signature,  # noqa: F401 — re-exported
+    infer_session_dominant_category,
     is_session_with_friends,  # noqa: F401 — re-exported
+    outcome_class,  # noqa: F401 — re-exported
 )
-from src.ui.pages.session_compare_logic import (
-    format_seconds_to_mmss as _format_seconds_to_mmss,
-)
-from src.ui.pages.session_compare_logic import (
-    infer_session_dominant_category as _infer_session_dominant_category,
-)
-from src.ui.pages.session_compare_logic import (
-    outcome_class as _outcome_class,  # noqa: F401 — re-exported
-)
-from src.ui.streamlit_modern import fragment_if_available
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, fragment_if_available
 from src.visualization._compat import (
     DataFrameLike,
     ensure_polars,
@@ -238,7 +237,7 @@ def _render_detailed_metrics(perf_a: dict, perf_b: dict) -> None:
         t("sc_avg_life"),
         perf_a["avg_life_seconds"],
         perf_b["avg_life_seconds"],
-        _format_seconds_to_mmss,
+        format_seconds_to_mmss,
     )
 
     st.markdown("---")
@@ -376,9 +375,9 @@ def render_session_comparison_page(
         else None
     )
     exclude_ids = [sid for sid in [session_a_id, session_b_id] if sid is not None]
-    session_b_category = _infer_session_dominant_category(df_session_b)
+    session_b_category = infer_session_dominant_category(df_session_b)
 
-    hist_avg, compare_mode = _compute_historical_context(
+    hist_avg, compare_mode = compute_historical_context(
         all_sessions_df,
         df_session_b,
         exclude_ids,
@@ -436,14 +435,3 @@ def render_session_comparison_page(
         render_session_history_table(df_session_a, "Session A", df_full=df_full)
     with tab_hist_b:
         render_session_history_table(df_session_b, "Session B", df_full=df_full)
-
-
-# Re-exports pour compatibilité ascendante
-from src.ui.pages.session_compare_charts import (  # noqa: E402, F401
-    SESSION_COLORS,
-    render_comparison_bar_chart,
-    render_comparison_radar_chart,
-    render_participation_trend_section,
-    render_session_history_table,
-)
-from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG

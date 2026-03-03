@@ -22,8 +22,8 @@ from src.ui import translate_pair_name
 from src.ui.components.performance import get_score_class
 from src.ui.date_formats import FMT_DATETIME_FR_SHORT_YEAR
 from src.ui.i18n import get_lang, get_outcome_map, get_weekdays, t
-from src.ui.pages.session_compare import (
-    _outcome_class,
+from src.ui.pages.session_compare_logic import (
+    outcome_class,
 )
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
@@ -210,7 +210,7 @@ def _render_history_html(
         for col in df_display.columns:
             val = row[col]
             if col == t("col_result"):
-                css_class = _outcome_class(str(val))
+                css_class = outcome_class(str(val))
                 cells.append(f"<td class='{css_class}'>{html_lib.escape(str(val))}</td>")
             elif col == t("col_performance"):
                 # Coloration selon le score
