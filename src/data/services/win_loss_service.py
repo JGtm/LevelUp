@@ -13,6 +13,8 @@ from dataclasses import dataclass
 
 import polars as pl
 
+from src.data.domain.refdata import Outcome
+
 # ─── Dataclasses retour ────────────────────────────────────────────────
 
 
@@ -137,10 +139,10 @@ class WinLossService:
             d.group_by("bucket")
             .agg(
                 [
-                    (pl.col("outcome") == 2).sum().alias(_col_wins),
-                    (pl.col("outcome") == 3).sum().alias(_col_losses),
-                    (pl.col("outcome") == 1).sum().alias(_col_draws),
-                    (pl.col("outcome") == 4).sum().alias(_col_unfinished),
+                    (pl.col("outcome") == Outcome.WIN).sum().alias(_col_wins),
+                    (pl.col("outcome") == Outcome.LOSS).sum().alias(_col_losses),
+                    (pl.col("outcome") == Outcome.TIE).sum().alias(_col_draws),
+                    (pl.col("outcome") == Outcome.DID_NOT_FINISH).sum().alias(_col_unfinished),
                 ]
             )
             .sort("bucket")

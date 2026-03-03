@@ -15,6 +15,7 @@ from typing import Any
 
 import plotly.graph_objects as go
 
+from src.data.domain.refdata import Outcome
 from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style, get_default_layout_kwargs
 
@@ -105,7 +106,7 @@ def compute_single_match_impact(
         )
 
     # --- Finisseur : dernier kill d'une victoire ---
-    if kills and outcome == 2:
+    if kills and outcome == Outcome.WIN:
         last_kill = max(kills, key=lambda e: int(e["time_ms"]))
         xu = str(last_kill.get("xuid", "")).strip()
         events.append(
@@ -119,7 +120,7 @@ def compute_single_match_impact(
         )
 
     # --- Boulet : dernière mort d'une défaite ---
-    if deaths and outcome == 3:
+    if deaths and outcome == Outcome.LOSS:
         last_death = max(deaths, key=lambda e: int(e["time_ms"]))
         xu = str(last_death.get("xuid", "")).strip()
         events.append(

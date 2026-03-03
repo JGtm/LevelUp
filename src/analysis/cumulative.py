@@ -10,6 +10,8 @@ from typing import Any
 
 import polars as pl
 
+from src.config import CORE_STAT_COLUMNS
+
 # =============================================================================
 # Dataclasses de résultats
 # =============================================================================
@@ -106,7 +108,7 @@ def compute_cumulative_net_score_series_polars(
         )
 
     # S'assurer que les colonnes requises existent
-    required_cols = {"start_time", "kills", "deaths"}
+    required_cols = set(CORE_STAT_COLUMNS)
     available_cols = set(match_stats_df.columns)
     if not required_cols.issubset(available_cols):
         missing = required_cols - available_cols

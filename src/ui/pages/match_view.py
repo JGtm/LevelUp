@@ -21,6 +21,7 @@ from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.analysis.performance_score import compute_relative_performance_score
 from src.app.helpers import normalize_map_label
 from src.config import HALO_COLORS, OUTCOME_CODES
+from src.data.domain.refdata import Outcome
 from src.ui import (
     AppSettings,
     translate_pair_name,
@@ -204,7 +205,7 @@ def _build_match_rank_html(
     # Note contextuelle si coéquipier bot détecté
     bot_note_html = ""
     if had_bot_teammate:
-        if bot_outcome == 2:
+        if bot_outcome == Outcome.WIN:
             _note_text = html.escape(t("mv_lusr_bot_win"))
             bot_note_html = (
                 f"<div style='color:#50C878;font-size:0.82em;margin-top:6px'>💪 {_note_text}</div>"
