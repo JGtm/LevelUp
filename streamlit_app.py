@@ -28,7 +28,9 @@ logging.getLogger("streamlit.runtime.caching.cache_data_api").setLevel(logging.E
 
 # Guard niveau processus : Tailscale ne démarre qu'une seule fois, même si
 # Streamlit crée plusieurs sessions WebSocket (reconnexions, hot-reload).
-_tailscale_process_started = threading.Event()
+# NOTE : ne pas utiliser une variable module-level ici — Streamlit ré-exécute
+# ce script à chaque rerun (exec()), donc un threading.Event défini ici serait
+# recréé à chaque fois. Le guard est dans src/utils/tailscale.py (module caché).
 
 from src.app.data_loader import (
     default_identity_from_secrets,
@@ -477,23 +479,18 @@ def main() -> None:
     # ==========================================================================
     # Tailscale funnel + notification Discord (une seule fois par processus)
     # ==========================================================================
-    if not _tailscale_process_started.is_set() and bool(
-        getattr(settings, "tailscale_funnel_enabled", False)
-    ):
-        _tailscale_process_started.set()
+    if bool(getattr(settings, "tailscale_funnel_enabled", False)):
+        from src.utils.tailscale import ensure_funnel_started_once, is_funnel_started
 
-        def _tailscale_worker() -> None:
-            try:
-                from src.utils.discord_notifier import notify_app_started
-                from src.utils.tailscale import start_funnel
+        if not is_funnel_started():
+            from src.utils.discord_notifier import notify_app_started
 
-                url = start_funnel()
-                if url:
-                    notify_app_started(url)
-            except Exception as _e:
-                print(f"[Tailscale] worker erreur inattendue : {_e}", flush=True)
-
-        threading.Thread(target=_tailscale_worker, daemon=True, name="tailscale-funnel").start()
+            threading.Thread(
+                target=ensure_funnel_started_once,
+                kwargs={"port": 8501, "notify_fn": notify_app_started},
+                daemon=True,
+                name="tailscale-funnel",
+            ).start()
 
     # Support liens internes via query params (?page=...&match_id=...)
     try:

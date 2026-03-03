@@ -19,9 +19,14 @@ from __future__ import annotations
 import json
 import logging
 import subprocess
+import threading
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Guard niveau processus : le funnel ne démarre qu'une seule fois,
+# indépendamment du nombre de sessions WebSocket Streamlit.
+_funnel_started: threading.Event = threading.Event()
 
 
 def get_funnel_url() -> str | None:
@@ -140,9 +145,42 @@ def start_funnel(port: int = 8501) -> str | None:
 
     url = get_funnel_url()
     if url:
-        print(f"[Tailscale] Funnel actif → {url}", flush=True)
+        print(f"[Tailscale] Funnel actif \u2192 {url}", flush=True)
     else:
         print(
-            "[Tailscale] Funnel démarré mais URL introuvable (get_funnel_url() → None)", flush=True
+            "[Tailscale] Funnel d\u00e9marr\u00e9 mais URL introuvable (get_funnel_url() \u2192 None)",
+            flush=True,
         )
+    return url
+
+
+def is_funnel_started() -> bool:
+    """Retourne True si le funnel a déjà été démarré dans ce processus."""
+    return _funnel_started.is_set()
+
+
+def ensure_funnel_started_once(
+    port: int = 8501,
+    notify_fn: object = None,
+) -> str | None:
+    """D\u00e9marre le funnel Tailscale une seule fois par processus Python.
+
+    Appels suivants (depuis d'autres sessions WebSocket Streamlit) sont ignor\u00e9s.
+
+    Args:
+        port:      Port local \u00e0 exposer (d\u00e9faut 8501).
+        notify_fn: Callable optionnel ``(url: str) -> None`` appel\u00e9 apr\u00e8s d\u00e9marrage.
+
+    Returns:
+        URL publique si premier appel et succ\u00e8s, None sinon.
+    """
+    if _funnel_started.is_set():
+        return None  # D\u00e9j\u00e0 d\u00e9marr\u00e9 dans ce processus
+    _funnel_started.set()
+    url = start_funnel(port=port)
+    if url and callable(notify_fn):
+        try:
+            notify_fn(url)  # type: ignore[call-arg]
+        except Exception as exc:
+            logger.warning("[Tailscale] notify_fn erreur : %s", exc)
     return url
