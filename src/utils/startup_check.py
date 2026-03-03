@@ -64,18 +64,24 @@ def check_app_settings(settings: AppSettings) -> tuple[list[str], list[str]]:
         )
 
     # ── Discord ────────────────────────────────────────────────────────────────
+    # Note : on ne vérifie que si Doppler est désactivé. Si Doppler est activé,
+    # le webhook peut être stocké dans Doppler et n'être disponible qu'après
+    # que Doppler ait été contacté (ce qui peut échouer au démarrage mais
+    # réussir plus tard). Le discord_notifier gère ses propres erreurs en failsafe.
     discord_enabled = raw.get("discord_notifications_enabled", False)
-    discord_url = (
-        str(raw.get("discord_webhook_url") or "").strip()
-        or str(get_secret("DISCORD_WEBHOOK_URL") or "").strip()
-    )
-    if discord_enabled and not discord_url:
-        warnings.append(
-            "🔔 `discord_notifications_enabled` est activé mais "
-            "`discord_webhook_url` n'est pas défini (ni dans app_settings.json "
-            "ni dans la variable d'environnement `DISCORD_WEBHOOK_URL`). "
-            "Les notifications Discord seront désactivées silencieusement."
+    doppler_active = raw.get("doppler_enabled", False)
+    if discord_enabled and not doppler_active:
+        discord_url = (
+            str(raw.get("discord_webhook_url") or "").strip()
+            or str(get_secret("DISCORD_WEBHOOK_URL") or "").strip()
         )
+        if not discord_url:
+            warnings.append(
+                "🔔 `discord_notifications_enabled` est activé mais "
+                "`discord_webhook_url` n'est pas défini (ni dans app_settings.json "
+                "ni dans la variable d'environnement `DISCORD_WEBHOOK_URL`). "
+                "Les notifications Discord seront désactivées silencieusement."
+            )
 
     # ── Médias ────────────────────────────────────────────────────────────────
     if settings.media_enabled:
