@@ -134,7 +134,7 @@ python scripts/backfill_data.py --player MonGT --participants-shots
 python scripts/backfill_data.py --player MonGT --participants-shots --force-participants-shots
 
 # Tests
-.venv/bin/python.exe -m pytest tests/ -v
+.venv/Scripts/python.exe -m pytest tests/ -v
 ```
 
 ## Règles
@@ -145,20 +145,23 @@ python scripts/backfill_data.py --player MonGT --participants-shots --force-part
 4. **Pandas est PROSCRIT** - Utiliser **Polars** uniquement pour les DataFrames et séries (voir § Pandas interdit ci-dessous)
 5. Utiliser DuckDBRepository pour l'accès aux données
 6. Documenter les décisions dans `.ai/thought_log.md`
-7. **SQLite est PROSCRIT** - Aucun fallback SQLite, tout le code doit utiliser DuckDB v4 uniquement
+7. **SQLite est PROSCRIT** - Aucun fallback SQLite, tout le code doit utiliser DuckDB uniquement
 8. **Streamlit** : Ne jamais utiliser `use_container_width=True` (déprécié). Utiliser `width="stretch"` à la place (`width="content"` si besoin). Pour `st.button`, `st.image`, `st.plotly_chart`, etc.
 9. **Plotly** : Tout `st.plotly_chart` doit inclure `config=` (utiliser `PLOTLY_CLEAN_CONFIG` ou `PLOTLY_STATIC_CONFIG` de `src/ui/streamlit_modern.py`)
 10. **Fragments** : Préférer `@fragment_if_available` (de `src/ui/streamlit_modern.py`) pour les sections interactives multi-charts
 11. **Coéquipiers** : Charger les stats coéquipiers depuis `shared.match_participants` (pas les DBs individuelles)
-12. **Backfill** : Pour tout backfill ou création de nouvelles fonctions de backfill, utiliser `scripts/backfill_data.py`. Ne pas créer de scripts backfill séparés ; ajouter une option dédiée (ex. `--sessions`, `--killer-victim`) dans `backfill_data.py`.
-13. **SyncScope** : Ne jamais passer 30+ kwargs individuels aux fonctions backfill/sync. Toujours construire un `SyncScope` et le passer via `scope=`. Les kwargs legacy sont marqués `LEGACY` et seront supprimés.
+12. **SyncScope** : Ne jamais passer 30+ kwargs individuels aux fonctions backfill/sync. Toujours construire un `SyncScope` et le passer via `scope=`. Les kwargs legacy sont marqués `LEGACY` et seront supprimés.
+13. **Taille max fonctions** : 80 lignes (docstring incluse). Au-delà → extraire une sous-fonction nommée. Pas d'exception sans `# noqa: PLR0915` + commentaire justificatif. Violations existantes dans `scripts/size_baseline.txt` (dette documentée).
+14. **Taille max modules** : 500 lignes. Whitelist dans `scripts/check_code_size.py` (`src/ui/i18n/`, `src/data/sync/migrations.py`). Si un module approche 500L → créer un sous-module **avant** d'atteindre la limite.
+15. **Arguments max** : 5 par fonction. Au-delà → `TypedDict`, `dataclass` ou `SyncScope`. Violations existantes annotées `# noqa: PLR0913`.
+16. **Complexité cyclomatique** : max 12 (McCabe C901, enforced via Ruff). Violations existantes annotées `# noqa: C901`. Chaque `# noqa` restant = dette à réduire.
+17. **Responsabilité unique** : le nom d'une fonction doit tenir en 1 verbe + 1 complément. `render_and_compute_X()` → 2 responsabilités → diviser en `compute_X()` + `render_X()`. Indicateurs suspects : `_and_`, `_with_`, `_then_` dans un nom de fonction. Test automatique : `tests/test_code_quality.py::test_no_srp_violation_in_function_names`.
 
 ## ⛔ Pandas interdit (règle critique)
 
 - **Aucun** `import pandas` ni `import pandas as pd` dans le code applicatif (analyse, UI, sync, repositories, scripts).
 - **Polars uniquement** : `import polars as pl` ; utiliser `pl.DataFrame`, `pl.Series`, `pl.LazyFrame`.
 - À la frontière avec des librairies qui exigent du NumPy/Pandas (ex. certains composants Streamlit/Plotly), convertir au dernier moment avec `.to_pandas()` ou `.to_numpy()` et ne pas faire remonter du Pandas dans les modules métier.
-- **Audit des points à migrer** : voir `.ai/PANDAS_TO_POLARS_AUDIT.md` et `.ai/CONSOLIDATED_AUDITS_AND_ROADMAP.md`.
 
 ## ⛔ SQLite interdit (règle critique)
 
@@ -166,9 +169,7 @@ python scripts/backfill_data.py --player MonGT --participants-shots --force-part
 - **Aucun** fallback sur une base `.db` (SQLite) : si une base est attendue, elle doit être `.duckdb`.
 - **Aucun** usage de `sqlite_master` : utiliser `information_schema.tables` (DuckDB).
 - **Seules exceptions** : les scripts de **migration** qui lisent l’ancien SQLite pour alimenter DuckDB (`recover_from_sqlite.py`, `migrate_player_to_duckdb.py`). Ils restent les seuls autorisés à ouvrir un fichier `.db`.
-- **Audit des points à migrer** : voir `.ai/SQLITE_TO_DUCKDB_AUDIT.md`.
-- **Audit Pandas → Polars** : voir `.ai/PANDAS_TO_POLARS_AUDIT.md`.
-- **Synthèse consolidée** : `.ai/CONSOLIDATED_AUDITS_AND_ROADMAP.md`.
+
 
 ## Architecture Multi-Joueurs (v5.1)
 
