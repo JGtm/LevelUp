@@ -241,12 +241,14 @@ class TestSyncCareerRankSkip:
         """sync_career_rank retourne None et log un warning si token absent."""
         import logging
 
-        with patch(
-            "src.data.sync.engine.get_tokens_for_player",
-            new=AsyncMock(return_value=None),
+        with (
+            patch(
+                "src.data.sync.engine.get_tokens_for_player",
+                new=AsyncMock(return_value=None),
+            ),
+            caplog.at_level(logging.WARNING),
         ):
-            with caplog.at_level(logging.WARNING):
-                result = await engine.sync_career_rank()
+            result = await engine.sync_career_rank()
 
         assert result is None
         # Un warning doit mentionner le gamertag
@@ -258,12 +260,14 @@ class TestSyncCareerRankSkip:
         """Le warning inclut le nom de la variable d'env à configurer."""
         import logging
 
-        with patch(
-            "src.data.sync.engine.get_tokens_for_player",
-            new=AsyncMock(return_value=None),
+        with (
+            patch(
+                "src.data.sync.engine.get_tokens_for_player",
+                new=AsyncMock(return_value=None),
+            ),
+            caplog.at_level(logging.WARNING),
         ):
-            with caplog.at_level(logging.WARNING):
-                await engine.sync_career_rank()
+            await engine.sync_career_rank()
 
         # Le nom de la clé env doit apparaître dans les logs
         all_messages = " ".join(r.message for r in caplog.records)
@@ -294,11 +298,11 @@ class TestSyncCareerRankSkip:
 
         with (
             patch(
-                "src.data.sync.engine.get_tokens_for_player",
+                "src.data.sync._career.get_tokens_for_player",
                 new=AsyncMock(return_value=fake_tokens),
             ),
             patch(
-                "src.data.sync.engine.SPNKrAPIClient",
+                "src.data.sync._career.SPNKrAPIClient",
                 return_value=mock_client_ctx,
             ),
         ):
