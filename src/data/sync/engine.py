@@ -732,6 +732,31 @@ class DuckDBSyncEngine:
                 except Exception as e:
                     logger.warning(f"Erreur recalcul sessions post-sync : {e}")
 
+            # Calculer les citations pour les nouveaux matchs (post-sync, comme les sessions).
+            # La connexion shared est fermée (batch_compute_performance_scores l'a déjà fermée),
+            # ce qui permet à citations_backfill de l'attacher en READ_ONLY sans conflit.
+            if result.matches_inserted > 0:
+                try:
+                    from src.data.citations_backfill import backfill_citations_for_player
+
+                    # Garde-fou : fermer shared si encore ouverte (cas defer_performance_score=False)
+                    if self._shared_connection is not None:
+                        with contextlib.suppress(Exception):
+                            self._shared_connection.close()
+                        self._shared_connection = None
+
+                    cit_result = backfill_citations_for_player(
+                        db_path=self._player_db_path,
+                        xuid=self._xuid or "",
+                        conn=self._get_connection(),
+                    )
+                    logger.info(
+                        f"Citations post-sync : {cit_result['citations_computed']} matchs "
+                        f"traités sur {cit_result['matches_processed']}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Erreur calcul citations post-sync : {e}")
+
         except Exception as e:
             result.errors.append(str(e))
             logger.error(f"Erreur sync: {e}")
