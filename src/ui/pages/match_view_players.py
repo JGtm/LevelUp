@@ -463,9 +463,7 @@ def _render_antagonist_chart(
             pairs_df = None
 
     # Fallback : construire depuis highlight_events
-    if (
-        pairs_df is None or (hasattr(pairs_df, "is_empty") and pairs_df.is_empty())
-    ) and highlight_events:
+    if (pairs_df is None or pairs_df.is_empty()) and highlight_events:
         try:
             import polars as pl
 
@@ -487,7 +485,7 @@ def _render_antagonist_chart(
         except Exception:
             pass
 
-    if pairs_df is not None and not (hasattr(pairs_df, "is_empty") and pairs_df.is_empty()):
+    if pairs_df is not None and not pairs_df.is_empty():
         try:
             import polars as pl
 

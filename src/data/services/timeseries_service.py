@@ -12,6 +12,8 @@ from dataclasses import dataclass
 
 import polars as pl
 
+from src.config import CORE_STAT_COLUMNS
+
 # ─── Dataclasses retour ────────────────────────────────────────────────
 
 
@@ -133,7 +135,7 @@ class TimeseriesService:
             compute_rolling_kd_polars,
         )
 
-        _required = ["start_time", "kills", "deaths"]
+        _required = CORE_STAT_COLUMNS
         if not all(c in dff.columns for c in _required):
             return None
 

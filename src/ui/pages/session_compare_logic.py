@@ -8,6 +8,7 @@ from __future__ import annotations
 import polars as pl
 
 from src.analysis.mode_categories import infer_custom_category_from_pair_name
+from src.data.domain.refdata import Outcome
 from src.ui.i18n import get_weekdays
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -171,9 +172,11 @@ def aggregate_session_stats(
         pl.col("kills").sum(),
         pl.col("deaths").sum(),
         pl.col("assists").sum(),
-        ((pl.col("outcome") == 2).sum().cast(pl.Float64) / pl.len().cast(pl.Float64) * 100).alias(
-            "win_rate"
-        ),
+        (
+            (pl.col("outcome") == Outcome.WIN).sum().cast(pl.Float64)
+            / pl.len().cast(pl.Float64)
+            * 100
+        ).alias("win_rate"),
         pl.col("average_life_seconds").mean(),
     ]
     acc_col: str | None = None

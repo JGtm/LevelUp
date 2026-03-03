@@ -11,6 +11,7 @@ from src.analysis.performance_config import (
     MIN_MATCHES_FOR_RELATIVE,
     RELATIVE_WEIGHTS,
 )
+from src.data.domain.refdata import Outcome
 
 
 def _normalize_df(df: pl.DataFrame | Any) -> pl.DataFrame:
@@ -454,7 +455,7 @@ def compute_relative_performance_score(
     #                    ennemi 30%+ plus faible → min bonus/indulgence
     if had_bot_teammate:
         _outcome_val = row.get("outcome")
-        _is_win = _outcome_val is not None and float(_outcome_val) == 2.0
+        _is_win = _outcome_val is not None and float(_outcome_val) == Outcome.WIN
 
         # Facteur d'écart MMR normalisé : ±30% → [-1, +1]
         _team_mmr = row.get("team_mmr")
@@ -587,10 +588,12 @@ def _sum_int(df: pl.DataFrame, column: str) -> int:
 
 
 def _count_wins(df: pl.DataFrame) -> int:
-    """Compte le nombre de victoires (outcome == 2) dans le DataFrame."""
+    """Compte le nombre de victoires (outcome == Outcome.WIN) dans le DataFrame."""
     if "outcome" not in df.columns:
         return 0
-    return int(df.get_column("outcome").cast(pl.Float64, strict=False).fill_null(0).eq(2.0).sum())
+    return int(
+        df.get_column("outcome").cast(pl.Float64, strict=False).fill_null(0).eq(Outcome.WIN).sum()
+    )
 
 
 def _saturation_score(x: float, scale: float) -> float:

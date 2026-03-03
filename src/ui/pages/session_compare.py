@@ -5,6 +5,7 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
+from src.config import CORE_STAT_COLUMNS
 from src.ui.components.performance import (
     compute_session_performance_score_v2_ui,
     render_metric_comparison_row,
@@ -287,7 +288,7 @@ def _render_cumulative_section(
     """Affiche la section du net score cumulé par session."""
     df_session_a = ensure_polars(df_session_a)
     df_session_b = ensure_polars(df_session_b)
-    _req = ["start_time", "kills", "deaths"]
+    _req = CORE_STAT_COLUMNS
     if not all(c in df_session_a.columns for c in _req) or not all(
         c in df_session_b.columns for c in _req
     ):

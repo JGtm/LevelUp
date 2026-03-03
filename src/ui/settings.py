@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def get_settings_path() -> str:
+    """Retourne le chemin du fichier app_settings.json."""
     override = os.environ.get("OPENSPARTAN_SETTINGS_PATH")
     if override and str(override).strip():
         return str(override).strip()
@@ -23,14 +25,22 @@ def get_settings_path() -> str:
     return os.path.join(repo_root, "app_settings.json")
 
 
-@dataclass
-class AppSettings:
+class AppSettings(BaseModel):
+    """Paramètres utilisateur persistés en JSON.
+
+    Pydantic v2 gère automatiquement la coercion des types (str→bool, str→int, etc.)
+    et ignore les clés inconnues (extra='ignore') comme ``_comment`` ou
+    ``discord_notifications_enabled``.
+    """
+
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
     # Médias
     media_enabled: bool = True
     media_screens_dir: str = ""  # Déprécié: migration vers media_captures_base_dir
     media_videos_dir: str = ""  # Déprécié: migration vers media_captures_base_dir
     media_captures_base_dir: str = ""  # Base unique: base_dir/{gamertag}/ pour captures
-    media_tolerance_minutes: int = 3
+    media_tolerance_minutes: int = Field(default=3, ge=0)
 
     # UX
     refresh_clears_caches: bool = False
@@ -41,9 +51,9 @@ class AppSettings:
     # SPNKr (API → DB) : rafraîchissement automatique
     spnkr_refresh_on_start: bool = True
     spnkr_refresh_on_manual_refresh: bool = True
-    spnkr_refresh_match_type: str = "matchmaking"  # all|matchmaking|custom|local
-    spnkr_refresh_max_matches: int = 200
-    spnkr_refresh_rps: int = 3
+    spnkr_refresh_match_type: Literal["all", "matchmaking", "custom", "local"] = "matchmaking"
+    spnkr_refresh_max_matches: int = Field(default=200, ge=1)
+    spnkr_refresh_rps: int = Field(default=3, ge=1)
     spnkr_refresh_with_highlight_events: bool = False
 
     # Backfill après synchronisation
@@ -62,11 +72,11 @@ class AppSettings:
 
     # Profil joueur (bannière/rang) — aucun accès réseau implicite
     profile_assets_download_enabled: bool = False
-    profile_assets_auto_refresh_hours: int = 24  # 0 = désactivé (ne rafraîchit pas)
+    profile_assets_auto_refresh_hours: int = Field(default=24, ge=0)  # 0 = désactivé
 
     # Profil joueur (auto depuis API Waypoint via SPNKr) — opt-in
     profile_api_enabled: bool = False
-    profile_api_auto_refresh_hours: int = 6  # cache disque des URLs/paths d'apparence
+    profile_api_auto_refresh_hours: int = Field(default=6, ge=0)
 
     profile_banner: str = ""  # URL https://... ou chemin local
     profile_emblem: str = ""  # URL https://... ou chemin local
@@ -78,9 +88,7 @@ class AppSettings:
     profile_rank_subtitle: str = ""  # ex: "CSR 1540" / "Saison 5" / etc.
 
     # Architecture de données v4
-    # Mode supporté: "duckdb"
-    repository_mode: str = "duckdb"
-    # Activer les analytics DuckDB (requêtes haute performance)
+    repository_mode: Literal["duckdb"] = "duckdb"
     enable_duckdb_analytics: bool = False
 
     # Doppler secrets (opt-in)
@@ -92,39 +100,86 @@ class AppSettings:
     tailscale_funnel_enabled: bool = False  # Exposer l'app via Tailscale au démarrage
 
     # Internationalisation
-    lang: str = "fr"  # Langue de l'UI ("fr" ou "en")
-    discord_lang: str = "fr"  # Langue des messages Discord
-    cli_lang: str = "fr"  # Langue des scripts CLI
+    lang: Literal["fr", "en"] = "fr"  # Langue de l'UI
+    discord_lang: Literal["fr", "en"] = "fr"  # Langue des messages Discord
+    cli_lang: Literal["fr", "en"] = "fr"  # Langue des scripts CLI
 
+    # --- Validators ---
 
-def _coerce_bool(v: Any, default: bool) -> bool:
-    if isinstance(v, bool):
-        return v
-    if isinstance(v, int | float):
-        return bool(v)
-    if isinstance(v, str):
-        s = v.strip().lower()
-        if s in {"1", "true", "yes", "y", "on"}:
-            return True
-        if s in {"0", "false", "no", "n", "off"}:
-            return False
-    return default
+    @model_validator(mode="before")
+    @classmethod
+    def _strip_none_values(cls, data: Any) -> Any:
+        """Supprime les valeurs None pour laisser les défauts Pydantic s'appliquer."""
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if v is not None}
+        return data
 
+    @field_validator("spnkr_refresh_match_type", mode="before")
+    @classmethod
+    def _normalize_match_type(cls, v: Any) -> str:
+        """Normalise le type de match en minuscules avec fallback."""
+        s = str(v).strip().lower()
+        return s if s in {"all", "matchmaking", "custom", "local"} else "matchmaking"
 
-def _coerce_int(v: Any, default: int) -> int:
-    try:
-        if v is None:
-            return default
-        x = int(v)
-        return x
-    except Exception:
-        return default
+    @field_validator("lang", "discord_lang", "cli_lang", mode="before")
+    @classmethod
+    def _normalize_lang(cls, v: Any) -> str:
+        """Normalise la langue en minuscules avec fallback sur 'fr'."""
+        s = str(v).strip().lower()
+        return s if s in {"fr", "en"} else "fr"
+
+    @field_validator("repository_mode", mode="before")
+    @classmethod
+    def _normalize_repo_mode(cls, _v: Any) -> str:
+        """Seul mode supporté : duckdb."""
+        return "duckdb"
+
+    @field_validator(
+        "media_tolerance_minutes",
+        "profile_assets_auto_refresh_hours",
+        "profile_api_auto_refresh_hours",
+        mode="before",
+    )
+    @classmethod
+    def _clamp_non_negative(cls, v: Any, info: Any) -> int:
+        """Convertit en int ≥ 0 avec fallback sur le défaut du champ."""
+        try:
+            return max(0, int(v))
+        except (ValueError, TypeError):
+            return cls.model_fields[info.field_name].default
+
+    @field_validator("spnkr_refresh_max_matches", "spnkr_refresh_rps", mode="before")
+    @classmethod
+    def _clamp_positive(cls, v: Any, info: Any) -> int:
+        """Convertit en int ≥ 1 avec fallback sur le défaut du champ."""
+        try:
+            return max(1, int(v))
+        except (ValueError, TypeError):
+            return cls.model_fields[info.field_name].default
+
+    @model_validator(mode="after")
+    def _migrate_legacy_media_dirs(self) -> AppSettings:
+        """Migration : si base vide mais anciens champs renseignés, propose le parent commun."""
+        if not self.media_captures_base_dir and (self.media_screens_dir or self.media_videos_dir):
+            from pathlib import Path
+
+            paths = [Path(p) for p in [self.media_screens_dir, self.media_videos_dir] if p]
+            if paths:
+                try:
+                    common = paths[0].parent
+                    for p in paths[1:]:
+                        common = Path(os.path.commonpath([str(common), str(p)]))
+                    if str(common).strip():
+                        self.media_captures_base_dir = str(common)
+                except (ValueError, TypeError):
+                    pass
+        return self
 
 
 def load_settings() -> AppSettings:
+    """Charge les paramètres depuis le fichier JSON."""
     path = get_settings_path()
     if not os.path.exists(path):
-        # Auto-créer le fichier avec un JSON vide pour éviter toute confusion
         try:
             os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
             with open(path, "w", encoding="utf-8") as f:
@@ -141,144 +196,19 @@ def load_settings() -> AppSettings:
     if not isinstance(obj, dict):
         return AppSettings()
 
-    s = AppSettings()
-    s.media_enabled = _coerce_bool(obj.get("media_enabled"), s.media_enabled)
-    s.media_screens_dir = str(obj.get("media_screens_dir") or "").strip()
-    s.media_videos_dir = str(obj.get("media_videos_dir") or "").strip()
-    s.media_captures_base_dir = str(obj.get("media_captures_base_dir") or "").strip()
-    # Migration: si base vide mais anciens champs renseignés, proposer parent commun
-    if not s.media_captures_base_dir and (s.media_screens_dir or s.media_videos_dir):
-        from pathlib import Path
-
-        paths = [Path(p) for p in [s.media_screens_dir, s.media_videos_dir] if p]
-        if paths:
-            try:
-                common = paths[0].parent
-                for p in paths[1:]:
-                    common = Path(os.path.commonpath([str(common), str(p)]))
-                if str(common).strip():
-                    s.media_captures_base_dir = str(common)
-            except (ValueError, TypeError):
-                pass
-    s.media_tolerance_minutes = max(
-        0, _coerce_int(obj.get("media_tolerance_minutes"), s.media_tolerance_minutes)
-    )
-    s.refresh_clears_caches = _coerce_bool(
-        obj.get("refresh_clears_caches"), s.refresh_clears_caches
-    )
-    s.prefer_spnkr_db_if_available = _coerce_bool(
-        obj.get("prefer_spnkr_db_if_available"), s.prefer_spnkr_db_if_available
-    )
-
-    s.spnkr_refresh_on_start = _coerce_bool(
-        obj.get("spnkr_refresh_on_start"), s.spnkr_refresh_on_start
-    )
-    s.spnkr_refresh_on_manual_refresh = _coerce_bool(
-        obj.get("spnkr_refresh_on_manual_refresh"), s.spnkr_refresh_on_manual_refresh
-    )
-    mt = str(obj.get("spnkr_refresh_match_type") or s.spnkr_refresh_match_type).strip().lower()
-    if mt in {"all", "matchmaking", "custom", "local"}:
-        s.spnkr_refresh_match_type = mt
-    s.spnkr_refresh_max_matches = max(
-        1, _coerce_int(obj.get("spnkr_refresh_max_matches"), s.spnkr_refresh_max_matches)
-    )
-    s.spnkr_refresh_rps = max(1, _coerce_int(obj.get("spnkr_refresh_rps"), s.spnkr_refresh_rps))
-    s.spnkr_refresh_with_highlight_events = _coerce_bool(
-        obj.get("spnkr_refresh_with_highlight_events"), s.spnkr_refresh_with_highlight_events
-    )
-
-    # Backfill après synchronisation
-    s.spnkr_refresh_with_backfill = _coerce_bool(
-        obj.get("spnkr_refresh_with_backfill"), s.spnkr_refresh_with_backfill
-    )
-    s.spnkr_refresh_backfill_medals = _coerce_bool(
-        obj.get("spnkr_refresh_backfill_medals"), s.spnkr_refresh_backfill_medals
-    )
-    s.spnkr_refresh_backfill_events = _coerce_bool(
-        obj.get("spnkr_refresh_backfill_events"), s.spnkr_refresh_backfill_events
-    )
-    s.spnkr_refresh_backfill_skill = _coerce_bool(
-        obj.get("spnkr_refresh_backfill_skill"), s.spnkr_refresh_backfill_skill
-    )
-    s.spnkr_refresh_backfill_personal_scores = _coerce_bool(
-        obj.get("spnkr_refresh_backfill_personal_scores"), s.spnkr_refresh_backfill_personal_scores
-    )
-    s.spnkr_refresh_backfill_performance_scores = _coerce_bool(
-        obj.get("spnkr_refresh_backfill_performance_scores"),
-        s.spnkr_refresh_backfill_performance_scores,
-    )
-    s.spnkr_refresh_backfill_aliases = _coerce_bool(
-        obj.get("spnkr_refresh_backfill_aliases"), s.spnkr_refresh_backfill_aliases
-    )
-    s.spnkr_refresh_backfill_lusr = _coerce_bool(
-        obj.get("spnkr_refresh_backfill_lusr"), s.spnkr_refresh_backfill_lusr
-    )
-
-    s.aliases_path = str(obj.get("aliases_path") or "").strip()
-    s.profiles_path = str(obj.get("profiles_path") or "").strip()
-
-    s.profile_assets_download_enabled = _coerce_bool(
-        obj.get("profile_assets_download_enabled"), s.profile_assets_download_enabled
-    )
-    s.profile_assets_auto_refresh_hours = max(
-        0,
-        _coerce_int(
-            obj.get("profile_assets_auto_refresh_hours"), s.profile_assets_auto_refresh_hours
-        ),
-    )
-
-    s.profile_api_enabled = _coerce_bool(obj.get("profile_api_enabled"), s.profile_api_enabled)
-    s.profile_api_auto_refresh_hours = max(
-        0, _coerce_int(obj.get("profile_api_auto_refresh_hours"), s.profile_api_auto_refresh_hours)
-    )
-
-    s.profile_banner = str(obj.get("profile_banner") or "").strip()
-    s.profile_emblem = str(obj.get("profile_emblem") or "").strip()
-    s.profile_backdrop = str(obj.get("profile_backdrop") or "").strip()
-    s.profile_nameplate = str(obj.get("profile_nameplate") or "").strip()
-    s.profile_service_tag = str(obj.get("profile_service_tag") or "").strip()
-    s.profile_id_badge_text_color = str(obj.get("profile_id_badge_text_color") or "").strip()
-    s.profile_rank_label = str(obj.get("profile_rank_label") or "").strip()
-    s.profile_rank_subtitle = str(obj.get("profile_rank_subtitle") or "").strip()
-
-    # Architecture de données v4
-    rm = str(obj.get("repository_mode") or s.repository_mode).strip().lower()
-    if rm == "duckdb":
-        s.repository_mode = rm
-    s.enable_duckdb_analytics = _coerce_bool(
-        obj.get("enable_duckdb_analytics"), s.enable_duckdb_analytics
-    )
-
-    # Internationalisation
-    _lang = str(obj.get("lang") or s.lang).strip().lower()
-    if _lang in {"fr", "en"}:
-        s.lang = _lang
-    _discord_lang = str(obj.get("discord_lang") or s.discord_lang).strip().lower()
-    if _discord_lang in {"fr", "en"}:
-        s.discord_lang = _discord_lang
-    _cli_lang = str(obj.get("cli_lang") or s.cli_lang).strip().lower()
-    if _cli_lang in {"fr", "en"}:
-        s.cli_lang = _cli_lang
-
-    # Tailscale funnel
-    s.tailscale_funnel_enabled = _coerce_bool(
-        obj.get("tailscale_funnel_enabled"), s.tailscale_funnel_enabled
-    )
-
-    # Doppler secrets
-    s.doppler_enabled = _coerce_bool(obj.get("doppler_enabled"), s.doppler_enabled)
-    s.doppler_project = str(obj.get("doppler_project") or "").strip()
-    s.doppler_config = str(obj.get("doppler_config") or "").strip()
-
-    return s
+    try:
+        return AppSettings.model_validate(obj)
+    except Exception:
+        return AppSettings()
 
 
 def save_settings(settings: AppSettings) -> tuple[bool, str]:
+    """Sauvegarde les paramètres dans le fichier JSON."""
     path = get_settings_path()
     try:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(asdict(settings), f, ensure_ascii=False, indent=2)
+            json.dump(settings.model_dump(), f, ensure_ascii=False, indent=2)
         return True, ""
     except Exception as e:
         return False, f"Impossible d'écrire {path}: {e}"

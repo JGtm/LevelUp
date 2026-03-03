@@ -17,6 +17,7 @@ import polars as pl
 
 from src.analysis.friends_impact import ImpactEvent
 from src.config import HALO_COLORS
+from src.data.domain.refdata import Outcome
 from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style
 
@@ -191,11 +192,11 @@ def plot_friends_impact_heatmap(
             outcome = match_outcomes_map.get(match_id, 0)
 
             # Définir la couleur selon l'outcome
-            if outcome == 2:  # Win
+            if outcome == Outcome.WIN:
                 fillcolor = OUTCOME_COLORS["win"]
-            elif outcome == 3:  # Loss
+            elif outcome == Outcome.LOSS:
                 fillcolor = OUTCOME_COLORS["loss"]
-            elif outcome == 1:  # Tie
+            elif outcome == Outcome.TIE:
                 fillcolor = OUTCOME_COLORS["tie"]
             else:
                 continue  # Pas de rectangle si outcome inconnu
