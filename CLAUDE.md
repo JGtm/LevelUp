@@ -227,6 +227,98 @@ Les fonctions `backfill_player_data`, `backfill_all_players`, `_backfill_with_ap
 `find_matches_missing_data` conservent les 30+ kwargs individuels marqués `LEGACY` dans le code.
 **Nouveau code : toujours passer `scope=SyncScope(...)`.**
 
+## 🔍 Diagnostic de revue de code
+
+Avant d'écrire ou modifier du code, l'agent IA doit vérifier que ses changements ne réintroduisent pas les anti-patterns éliminés lors du refactoring v5.
+
+### Seuils obligatoires
+
+| Métrique | Seuil max | Action si dépassé |
+|----------|:---------:|-------------------|
+| **Lignes par fichier** | **500 L** | Découper en modules (mixins, `*_logic.py`, `*_data.py`) |
+| **Lignes par fonction** | **80 L** | Extraire des sous-fonctions nommées |
+| **Copies d'un même pattern** | **≤ 2** | Centraliser dans un helper/constante |
+| **Magic numbers/strings** | **0** | Utiliser des enums (`Outcome.WIN`) ou constantes nommées |
+| **Fonctions/modules morts** | **0** | Supprimer immédiatement avec leurs tests et imports |
+| **Connexions DB bare** | **0** | Toujours via context manager (`duckdb_read_only()` / `duckdb_read_write()`) |
+
+### Anti-patterns interdits
+
+1. **"Dead code museum"** — Conserver du code mort "au cas où" (fonctions retournant `[]`, `None`, `False`, modules entiers inutilisés)
+2. **"Compatibility guard forever"** — Garder des branches `if POLARS_AVAILABLE:` ou `if SQLITE_MODE:` après migration ; toute guard de compatibilité doit avoir une **date d'expiration** en commentaire
+3. **"God file"** — Fichier >500L mélangeant des responsabilités distinctes → découper en mixins ou modules séparés
+4. **"Swiss-army function"** — Fonction qui fait init + logique + IO + render → extraire en fonctions à responsabilité unique
+5. **"Copy-paste config"** — Même dict/string copié dans 3+ endroits → constante centralisée (ex: `PLOTLY_CLEAN_CONFIG`, `DATE_FORMAT_FR`)
+6. **"Bare connect"** — `duckdb.connect()` sans `with` → fuite de ressource
+7. **"Manual coercion dataclass"** — `@dataclass` + parsing JSON ad hoc 160L → Pydantic v2 `model_validate()`
+8. **"Magic integer"** — `outcome == 2` sans contexte → `Outcome.WIN`  
+9. **"Logique métier dans l'UI"** — Calculs purs mélangés aux appels Streamlit → séparer en `*_logic.py` testable sans Streamlit
+10. **"Alias inutile"** — `_func = func` en tête de fichier sans raison → import direct
+
+### Patterns à appliquer
+
+| Situation | Pattern recommandé | Exemple dans le projet |
+|-----------|-------------------|------------------------|
+| God class >500L | **Mixins MRO** | `engine.py` → 6 mixins (`_shared_writes.py`, `_performance.py`, etc.) |
+| God function >80L | **Extract method** | `main()` 582L → `_initialize_app()`, `_load_and_filter_data()`, etc. |
+| Page Streamlit avec logique | **Séparation UI/logique** | `session_compare.py` + `session_compare_logic.py` |
+| Config/parsing complexe | **Pydantic v2** | `AppSettings(BaseModel)` avec `model_validate()` |
+| Codes numériques | **IntEnum** | `Outcome(IntEnum): WIN=2, LOSS=3, TIE=1, DNF=4` |
+| Connexions DB | **Context manager** | `duckdb_read_only(path)`, `duckdb_read_write(path)` |
+| Constantes répétées | **Module dédié** | `PLOTLY_CLEAN_CONFIG`, `DATE_FORMAT_FR`, `CORE_STAT_COLUMNS` |
+| Rendu chart avec error handling | **Context manager** | `safe_chart_render()` dans `src/ui/chart_utils.py` |
+
+### Checklist de revue automatique
+
+Avant chaque commit, l'agent doit vérifier :
+
+- [ ] Aucun fichier créé/modifié ne dépasse **500 lignes**
+- [ ] Aucune fonction ne dépasse **80 lignes**
+- [ ] Pas de pattern dupliqué dans **3+ endroits** → centraliser
+- [ ] Pas de **magic number** → enum ou constante
+- [ ] Toute connexion DuckDB utilise un **context manager**
+- [ ] Tout `st.plotly_chart` inclut `config=PLOTLY_CLEAN_CONFIG` ou `PLOTLY_STATIC_CONFIG`
+- [ ] Pas de `import pandas` (sauf `.to_pandas()` à la frontière Streamlit/Plotly)
+- [ ] Pas de `import sqlite3` (sauf scripts de migration)
+- [ ] Logique métier testable **sans Streamlit** (pas de `st.*` dans les fonctions de calcul)
+- [ ] Code mort supprimé (pas de fonctions retournant toujours `None`/`[]`/`False`)
+- [ ] Guards de compatibilité retirés si la migration est terminée
+
+---
+
+## Stratégie de branches Git
+
+### Règle fondamentale : 1 tâche = 1 branche, N commits
+
+```
+# ✅ Correct — phases séquentielles = commits sur une branche
+git checkout -b refactor/cleanup-all
+git commit -m "refactor(phase1): dead code cleanup"
+git commit -m "refactor(phase2): DRY violations"
+git commit -m "refactor(phase3): split god classes"
+git commit -m "refactor(phase4): quality patterns"
+
+# ❌ Interdit — phases séquentielles = branches séparées
+git checkout -b refactor/phase1-dead-code-cleanup  # puis
+git checkout -b refactor/phase2-dry-violations      # puis
+git checkout -b refactor/phase3-god-class-splits    # puis
+git checkout -b refactor/phase4-quality-patterns    # → oblige une rebase/merge manuelle
+```
+
+### Quand créer plusieurs branches ?
+
+Uniquement si les tâches sont **indépendantes et parallélisables** (ex : deux features sans dépendance). Si les tâches sont séquentielles, tout va sur **une seule branche** avec plusieurs commits.
+
+### Règles d'application
+
+1. **Toujours vérifier la branche courante** avant de committer : `git branch --show-current`
+2. **Ne jamais travailler sur `main`** sans instruction explicite de l'utilisateur
+3. **Si aucun nom de branche n'est spécifié** par l'utilisateur, demander ou proposer un nom avant de créer
+4. **Entre sessions** : relire les commits existants (`git log --oneline -10`) pour reprendre sur la bonne branche
+5. **Résumé** : une branche pour le sujet, des commits pour les étapes — pas l'inverse
+
+---
+
 ## Modules Supprimés (v4.1)
 
 Les anciens modules legacy ont été supprimés lors de la migration v4.1 :
