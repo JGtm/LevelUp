@@ -26,6 +26,10 @@ if not hasattr(st, "runtime") or not st.runtime.exists():
 # Suppression des warnings connus et non bloquants
 logging.getLogger("streamlit.runtime.caching.cache_data_api").setLevel(logging.ERROR)
 
+# Guard niveau processus : Tailscale ne démarre qu'une seule fois, même si
+# Streamlit crée plusieurs sessions WebSocket (reconnexions, hot-reload).
+_tailscale_process_started = threading.Event()
+
 from src.app.data_loader import (
     default_identity_from_secrets,
     ensure_h5g_commendations_repo,
@@ -471,12 +475,12 @@ def main() -> None:
     _background_media_indexing(settings, DEFAULT_DB)
 
     # ==========================================================================
-    # Tailscale funnel + notification Discord (une seule fois par session)
+    # Tailscale funnel + notification Discord (une seule fois par processus)
     # ==========================================================================
-    if not st.session_state.get("_tailscale_started") and bool(
+    if not _tailscale_process_started.is_set() and bool(
         getattr(settings, "tailscale_funnel_enabled", False)
     ):
-        st.session_state["_tailscale_started"] = True
+        _tailscale_process_started.set()
 
         def _tailscale_worker() -> None:
             try:
