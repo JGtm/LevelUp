@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from src.utils.secrets import get_secret
+
 if TYPE_CHECKING:
     from src.ui.settings import AppSettings
 
@@ -65,7 +67,7 @@ def check_app_settings(settings: AppSettings) -> tuple[list[str], list[str]]:
     discord_enabled = raw.get("discord_notifications_enabled", False)
     discord_url = (
         str(raw.get("discord_webhook_url") or "").strip()
-        or str(os.environ.get("DISCORD_WEBHOOK_URL") or "").strip()
+        or str(get_secret("DISCORD_WEBHOOK_URL") or "").strip()
     )
     if discord_enabled and not discord_url:
         warnings.append(
