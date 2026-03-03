@@ -308,6 +308,7 @@ def _sync_duckdb_player(
         # Créer le moteur de sync
         _sync_error: Exception | None = None
         _sync_result = None
+        _engine_ref = None
         try:
             engine = DuckDBSyncEngine(
                 player_db_path=db_file,
@@ -315,6 +316,7 @@ def _sync_duckdb_player(
                 gamertag=gamertag,
                 tokens=tokens,
             )
+            _engine_ref = engine
 
             # Exécuter la sync — toujours tout récupérer (match stats, highlight_events, skill, aliases, participants)
             options = SyncOptions(
@@ -333,6 +335,17 @@ def _sync_duckdb_player(
         except Exception as e:
             _sync_error = e
         finally:
+            # Fermer le moteur de sync pour forcer le checkpoint WAL sur shared_matches.duckdb.
+            # DOIT se faire AVANT end_sync_mode() : la connexion R/W doit être libérée
+            # avant que les DuckDBRepository n'ATTACHent shared en READ_ONLY, sinon le
+            # WAL non checkpointé est invisible et le dernier match n'apparaît pas dans l'app.
+            if _engine_ref is not None:
+                try:
+                    _engine_ref.close()
+                    _sync_log.debug("Sync: engine.close() → WAL shared_matches.duckdb checkpointé")
+                except Exception:
+                    pass
+                _engine_ref = None
             # Toujours désactiver le mode sync (même en cas d'erreur) pour que les
             # DuckDBRepository puissent r'attacher shared_matches normalement.
             try:
