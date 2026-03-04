@@ -112,7 +112,7 @@ FUNC:src/ui/pages/last_match.py:107:render_match_search_page:164L
 FUNC:src/ui/pages/match_history.py:181:_render_history_table:147L
 FUNC:src/ui/pages/match_history.py:39:render_match_history_page:139L
 FUNC:src/ui/pages/match_view.py:264:_render_match_citations_section:157L
-FUNC:src/ui/pages/match_view.py:429:render_match_view:426L
+FUNC:src/ui/pages/match_view.py:429:render_match_view:425L
 FUNC:src/ui/pages/match_view.py:58:_build_match_rank_html:173L
 FUNC:src/ui/pages/match_view_charts.py:271:_render_spree_headshots:120L
 FUNC:src/ui/pages/match_view_charts.py:40:render_expected_vs_actual:228L
@@ -231,7 +231,7 @@ MODULE:src/ui/cache_loaders.py:846L
 MODULE:src/ui/components/radar_chart.py:838L
 MODULE:src/ui/filter_state.py:589L
 MODULE:src/ui/pages/career.py:1127L
-MODULE:src/ui/pages/match_view.py:918L
+MODULE:src/ui/pages/match_view.py:917L
 MODULE:src/ui/pages/match_view_players.py:1165L
 MODULE:src/ui/pages/media_library_data.py:521L
 MODULE:src/ui/pages/session_compare_charts.py:705L
