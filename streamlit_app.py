@@ -465,27 +465,35 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
 
         # Bouton Sync
         if db_path and is_spnkr_db_path(db_path) and os.path.exists(db_path):  # noqa: SIM102
+            is_syncing = st.session_state.get(SK.IS_SYNCING, False)
             if st.button(
                 t("sidebar_sync_btn"),
                 key="sidebar_sync_button",
                 help=t("sidebar_sync_help"),
                 width="stretch",
+                disabled=is_syncing,
             ):
+                st.session_state[SK.IS_SYNCING] = True
                 logger.info("Sync démarré par l'utilisateur (db=%s)", db_path)
-                with st.spinner(t("sidebar_sync_spinner")):
-                    ok, msg = sync_all_players(
-                        db_path=db_path,
-                        match_type=str(
-                            getattr(settings, "spnkr_refresh_match_type", "matchmaking")
-                            or "matchmaking"
-                        ),
-                        max_matches=int(getattr(settings, "spnkr_refresh_max_matches", 200) or 200),
-                        rps=int(getattr(settings, "spnkr_refresh_rps", 5) or 5),
-                        with_highlight_events=True,
-                        with_aliases=True,
-                        delta=True,
-                        timeout_seconds=180,
-                    )
+                try:
+                    with st.spinner(t("sidebar_sync_spinner")):
+                        ok, msg = sync_all_players(
+                            db_path=db_path,
+                            match_type=str(
+                                getattr(settings, "spnkr_refresh_match_type", "matchmaking")
+                                or "matchmaking"
+                            ),
+                            max_matches=int(
+                                getattr(settings, "spnkr_refresh_max_matches", 200) or 200
+                            ),
+                            rps=int(getattr(settings, "spnkr_refresh_rps", 5) or 5),
+                            with_highlight_events=True,
+                            with_aliases=True,
+                            delta=True,
+                            timeout_seconds=180,
+                        )
+                finally:
+                    st.session_state[SK.IS_SYNCING] = False
                 if ok:
                     logger.info("Sync terminé: %s", msg)
                     st.success(msg)
