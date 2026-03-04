@@ -682,4 +682,3 @@ def notify_operation_done(  # noqa: PLR0913
 
     except Exception as exc:
         logger.warning(f"[Discord] Erreur inattendue lors de la notification : {exc}")
-
