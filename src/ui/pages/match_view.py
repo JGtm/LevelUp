@@ -307,7 +307,15 @@ def _render_match_citations_section(
         tiers = _parse_tier_targets(cit.get("tier_targets"))
         current_full = full_map.get(norm, 0)
         delta = delta_map.get(norm, 0)
-        # Toutes les citations avec delta > 0 sont affichées, y compris les Maîtres.
+        _, _, is_master, _ = _compute_mastery_display(current_full, tiers)
+        # Si on est maître ACTUELLEMENT, vérifier si on le was AVANT ce match.
+        # Si on ne l'était pas avant (count_before < seuil maître), c'est que
+        # ce match a fait atteindre le niveau maître → on l'affiche quand même.
+        if is_master:
+            count_before = current_full - delta
+            _, _, was_master_before, _ = _compute_mastery_display(count_before, tiers)
+            if was_master_before:
+                continue  # Déjà maître avant ce match → on ne l'affiche pas
         # Résolution i18n du nom de citation
         lang = get_lang()
         i18n = label_obj("citations", norm, lang=lang) or {}
