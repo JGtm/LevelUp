@@ -316,25 +316,20 @@ def load_df_hybrid(
     _ = db_key  # Utilisé pour invalidation du cache Streamlit
 
     try:
-        from src.data.integration import get_repository_mode_from_settings, load_matches_df
+        from src.data.integration import get_repository_mode_from_settings, load_matches_polars
 
         mode = get_repository_mode_from_settings()
 
-        # Utiliser le nouveau système (retourne encore Pandas pour l'instant)
-        df_pd = load_matches_df(
+        # Polars natif — plus de roundtrip Pandas→Polars
+        df_pl = load_matches_polars(
             db_path,
             xuid,
             include_firefight=include_firefight,
             mode=mode,
         )
 
-        if isinstance(df_pd, pl.DataFrame):
-            if not df_pd.is_empty():
-                return df_pd
-        elif hasattr(df_pd, "empty") and not df_pd.empty:
-            # Pandas DataFrame — convertir en Polars (bridge résiduel, mode intégration legacy)
-            logger.debug("load_df_hybrid: conversion Pandas→Polars (mode intégration)")
-            return pl.from_pandas(df_pd)
+        if not df_pl.is_empty():
+            return df_pl
 
         # Fallback sur legacy si vide (pas de données Parquet)
         return load_df_optimized(db_path, xuid, db_key=db_key, include_firefight=include_firefight)
