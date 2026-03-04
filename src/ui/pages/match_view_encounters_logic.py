@@ -15,6 +15,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from src.ui.i18n import t
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -224,7 +226,7 @@ def compute_encounter_badges(stats: EncounterStats) -> list[Badge]:
             Badge(
                 label_key="badge_tough_nut",
                 css_class="os-sb-td--worst",
-                tooltip=f"Il t'a tué {stats.deaths_suffered}× pour {stats.kills_dealt} kills",
+                tooltip=t("tooltip_tough_nut_kd", killed=stats.deaths_suffered, kills=stats.kills_dealt),
             )
         )
     elif stats.deaths_suffered >= 3 and stats.kills_dealt == 0:
@@ -232,7 +234,7 @@ def compute_encounter_badges(stats: EncounterStats) -> list[Badge]:
             Badge(
                 label_key="badge_tough_nut",
                 css_class="os-sb-td--worst",
-                tooltip=f"Il t'a tué {stats.deaths_suffered}× sans riposte",
+                tooltip=t("tooltip_tough_nut_zero", killed=stats.deaths_suffered),
             )
         )
 
@@ -243,7 +245,7 @@ def compute_encounter_badges(stats: EncounterStats) -> list[Badge]:
             Badge(
                 label_key="badge_ally_plus",
                 css_class="os-sb-td--best",
-                tooltip=f"{pct}% de victoires ensemble ({stats.ally_count} matchs)",
+                tooltip=t("tooltip_ally_plus", pct=pct, count=stats.ally_count),
             )
         )
 
@@ -258,7 +260,7 @@ def compute_encounter_badges(stats: EncounterStats) -> list[Badge]:
             Badge(
                 label_key="badge_coriace",
                 css_class="encounter-badge--amber",
-                tooltip=f"Seulement {pct}% de victoires face à lui ({stats.enemy_count} duels)",
+                tooltip=t("tooltip_coriace", pct=pct, count=stats.enemy_count),
             )
         )
 

@@ -58,10 +58,10 @@ def _role_cell_html(side: str) -> str:
     """Génère la cellule Rôle colorée selon le côté (allié / ennemi)."""
     if side == "allié":
         style = "color:#a8d4f5;background:rgba(0,114,178,0.28);padding:2px 7px;border-radius:3px;font-size:0.8em;font-weight:600;"
-        label = "Allié"
+        label = t("role_ally")
     else:
         style = "color:#f5c8a8;background:rgba(213,94,0,0.24);padding:2px 7px;border-radius:3px;font-size:0.8em;font-weight:600;"
-        label = "Ennemi"
+        label = t("role_enemy")
     return f'<span style="{style}">{label}</span>'
 
 

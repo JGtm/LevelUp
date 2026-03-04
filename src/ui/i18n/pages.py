@@ -1746,4 +1746,22 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "badge_tough_nut": {"fr": "Dur à cuire", "en": "Tough Nut"},
     "badge_ally_plus": {"fr": "Allié+", "en": "Ally+"},
     "badge_coriace": {"fr": "Coriace", "en": "Tough Guy"},
+    "role_ally": {"fr": "Allié", "en": "Ally"},
+    "role_enemy": {"fr": "Ennemi", "en": "Enemy"},
+    "tooltip_tough_nut_kd": {
+        "fr": "Il t'a tué {killed}× pour {kills} kill de ta part",
+        "en": "Killed you {killed}× for only {kills} kill back",
+    },
+    "tooltip_tough_nut_zero": {
+        "fr": "Il t'a tué {killed}× sans riposte",
+        "en": "Killed you {killed}× with no retaliation",
+    },
+    "tooltip_ally_plus": {
+        "fr": "{pct}% de victoires ensemble ({count} matchs)",
+        "en": "{pct}% win rate together ({count} games)",
+    },
+    "tooltip_coriace": {
+        "fr": "Seulement {pct}% de victoires face à lui ({count} duels)",
+        "en": "Only {pct}% win rate against them ({count} duels)",
+    },
 }
