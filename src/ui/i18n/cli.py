@@ -9,9 +9,6 @@ La langue est lue via ``ct()`` depuis :
 3. Défaut : ``"fr"``
 
 Pour Discord, la clé ``"discord_lang"`` dans ``app_settings.json`` prévaut.
-
-⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO" ci-dessous.
-   Règles : voir le prompt de la Phase 1b dans le plan i18n.
 """
 
 from __future__ import annotations

@@ -80,6 +80,8 @@ PREFIX_TO_CATEGORY: Final[dict[str, str]] = {
     # BTB
     "BTB": "BTB",
     "BTB Heavies": "BTB",
+    "Grande bataille en équipe": "BTB",        # traduction FR de BTB
+    "Grande bataille en équipe Heavies": "BTB",  # traduction FR de BTB Heavies
     # Ranked
     "Ranked": "Ranked",
     "Classé": "Ranked",

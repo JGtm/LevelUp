@@ -240,7 +240,9 @@ class TestColumnProjection:
         assert isinstance(COLUMNS_COMPUTED, list)
         assert "match_id" in COLUMNS_COMMON
         assert "kills" in COLUMNS_COMMON
-        assert "ratio" in COLUMNS_COMPUTED
+        # ratio est calculé dans load_matches_as_polars (couche repo) → COLUMNS_COMMON
+        assert "ratio" in COLUMNS_COMMON
+        assert "game_variant_name" in COLUMNS_COMMON  # utilisé dans match_view.py
         assert "date" in COLUMNS_COMPUTED
 
 

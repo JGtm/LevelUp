@@ -61,8 +61,10 @@ def get_cached_repository_st(
 # ─── Constantes de projection par page (Sprint 19 — tâche 19.3) ────────────
 # Colonnes effectivement utilisées par les pages principales.
 # Permet de réduire la mémoire en ne chargeant que le nécessaire.
-# Note : game_variant_id, game_variant_name, team_id ne sont utilisés par aucune
-# page hot-path et sont exclus du set commun.
+# Exclus du set commun (non utilisés dans le hot-path) :
+#   game_variant_id — jamais affiché directement
+#   team_id         — lu depuis shared.match_participants (vue detail)
+#   rank            — lu depuis shared.match_participants (vue detail)
 
 COLUMNS_COMMON: list[str] = [
     "match_id",
@@ -73,8 +75,10 @@ COLUMNS_COMMON: list[str] = [
     "playlist_name",
     "pair_id",
     "pair_name",
+    "game_variant_name",  # utilisé dans match_view.py (mode affiché)
     "outcome",
     "kda",
+    "ratio",              # calculé dans load_matches_as_polars (kills/deaths)
     "kills",
     "deaths",
     "assists",
@@ -90,9 +94,8 @@ COLUMNS_COMMON: list[str] = [
     "enemy_mmr",
 ]
 
-# Colonnes calculées ajoutées par _enrich_matches_df
+# Colonnes calculées ajoutées par _enrich_matches_df (post-chargement)
 COLUMNS_COMPUTED: list[str] = [
-    "ratio",
     "date",
     "kills_per_min",
     "deaths_per_min",
@@ -774,7 +777,11 @@ def load_df_optimized(
     # Détecter le type de DB
     if _is_duckdb_v4_path(db_path):
         # Sprint 19 : chemin optimisé DuckDB → Arrow → Polars (zero-copy)
-        df = _load_matches_duckdb_v4_polars(db_path, include_firefight=include_firefight)
+        # P5 : projection COLUMNS_COMMON pour réduire l'empreinte mémoire
+        #      (exclut game_variant_id, team_id, rank — non utilisés en hot-path)
+        df = _load_matches_duckdb_v4_polars(
+            db_path, include_firefight=include_firefight, columns=COLUMNS_COMMON
+        )
         if not df.is_empty():
             # Enrichissement standard (timezone, colonnes calculées)
             df = _enrich_matches_df(df)

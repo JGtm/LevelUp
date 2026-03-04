@@ -1,9 +1,6 @@
 """Chaînes pour les widgets interactifs Streamlit.
 
 Boutons, selectbox, expander, checkbox, radio, multiselect, captions de widgets.
-
-⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO" ci-dessous.
-   Règles : voir le prompt de la Phase 1b dans le plan i18n.
 """
 
 from __future__ import annotations
@@ -234,6 +231,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "backfill_personal_scores": {"fr": "{n} personal_score(s)", "en": "{n} personal score(s)"},
     "backfill_skill": {"fr": "skill", "en": "skill"},
     "backfill_lusr": {"fr": "{n} LUSR calculé(s)", "en": "{n} LUSR computed"},
+    "backfill_summary": {"fr": "Backfill\u00a0: {parts}", "en": "Backfill: {parts}"},
     # ── Filtres — labels supplémentaires ────────────────────────────────────
     "filter_header": {"fr": "Filtres", "en": "Filters"},
     "filter_selection": {"fr": "Sélection", "en": "Selection"},

@@ -527,17 +527,23 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
         )
 
     # Détecter le flag had_bot_teammate depuis player_match_enrichment
+    # P4: aussi lire performance_score stocké pour éviter le recalcul
     _had_bot_teammate = False
+    _stored_perf_score: float | None = None
     try:
         from src.utils.db import duckdb_read_only
 
         with duckdb_read_only(db_path) as _pme_conn:
             _bot_row = _pme_conn.execute(
-                "SELECT had_bot_teammate FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
+                "SELECT had_bot_teammate, performance_score"
+                " FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
                 [match_id],
             ).fetchone()
-        if _bot_row and _bot_row[0]:
-            _had_bot_teammate = True
+        if _bot_row:
+            if _bot_row[0]:
+                _had_bot_teammate = True
+            if _bot_row[1] is not None:
+                _stored_perf_score = float(_bot_row[1])
     except Exception:
         pass
 
@@ -545,9 +551,10 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
     _bot_is_loss = _had_bot_teammate and outcome_code != OUTCOME_CODES.WIN
     _bot_is_win = _had_bot_teammate and outcome_code == OUTCOME_CODES.WIN
 
-    # Calcul du score de performance RELATIF
-    perf_score = None
-    if df_full is not None and len(df_full) >= 10:
+    # P4: Utiliser le performance_score déjà stocké en DB (évite le recalcul à l'affichage)
+    # Fallback : calcul relatif si non stocké et historique suffisant (≥ 10 matchs)
+    perf_score: float | None = _stored_perf_score
+    if perf_score is None and df_full is not None and len(df_full) >= 10:
         perf_score = compute_relative_performance_score(
             row, df_full, had_bot_teammate=_had_bot_teammate
         )
