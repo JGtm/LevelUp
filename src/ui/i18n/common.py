@@ -2,9 +2,6 @@
 
 Ces chaînes apparaissent dans plusieurs fichiers src/ui/pages/ et src/app/.
 En centralisant ici, on évite la duplication.
-
-⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO" ci-dessous.
-   Règles : voir le prompt de la Phase 1b dans le plan i18n.
 """
 
 from __future__ import annotations
@@ -71,6 +68,10 @@ STRINGS: dict[str, dict[str, str]] = {
     "error_loading": {
         "fr": "Erreur lors du chargement : {error}",
         "en": "Error while loading: {error}",
+    },
+    "profile_asset_error": {
+        "fr": "Asset « {prefix} » non téléchargé : {error}",
+        "en": "Asset '{prefix}' could not be downloaded: {error}",
     },
     # ── Actions ─────────────────────────────────────────────────────────────
     "loading": {

@@ -26,6 +26,7 @@ from src.ui import (
     get_hero_html,
     get_profile_appearance,
 )
+from src.ui.i18n import t
 from src.ui.player_assets import download_image_to_cache, ensure_local_image_path
 from src.utils import parse_xuid_input, resolve_xuid_from_db
 
@@ -321,7 +322,7 @@ def warn_missing_assets(
         st.session_state[key] = True
         ok, err, _out = download_image_to_cache(u, prefix=prefix, timeout_seconds=12)
         if not ok:
-            st.caption(f"Asset '{prefix}' non téléchargé: {err}")
+            st.caption(t("profile_asset_error", prefix=prefix, error=err))
 
     _warn_asset("backdrop", backdrop_value, backdrop_path)
     _warn_asset("rank", rank_icon_value, rank_icon_path)

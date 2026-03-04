@@ -46,7 +46,10 @@ class TestTranslatePairName:
     def test_exact_match(self):
         """Test avec correspondance exacte."""
         assert translate_pair_name("Arena:CTF on Aquarius") == "Arène : Capture du drapeau"
-        assert translate_pair_name("BTB:Slayer on Deadlock") == "BTB : Assassin"
+        # BTB est traduit en FR via _prefixes : "Grande bataille en équipe"
+        assert (
+            translate_pair_name("BTB:Slayer on Deadlock") == "Grande bataille en équipe : Assassin"
+        )
 
     def test_generic_fallback(self):
         """Test avec fallback générique (sans carte)."""
@@ -61,9 +64,9 @@ class TestTranslatePairName:
         assert result is not None
 
     def test_btb_heavies_preserved(self):
-        """Test que BTB Heavies est préservé."""
+        """Test que BTB Heavies est traduit correctement en FR."""
         result = translate_pair_name("BTB Heavies:CTF on Highpower Heavies")
-        assert result == "BTB Heavies : Capture du drapeau"
+        assert result == "Grande bataille en équipe Heavies : Capture du drapeau"
 
     def test_none_value(self):
         """Test avec None."""
@@ -90,12 +93,18 @@ class TestTranslationCompleteness:
         assert len(PLAYLIST_FR) >= 10
 
     def test_pair_fr_not_empty(self):
-        """Vérifie que PAIR_FR contient des entrées utiles (sans les doublons génériques supprimés).
+        """Depuis backlog N, PAIR_FR est vide : la source de vérité est modes_fr.json._pairs.
 
-        Après nettoyage L (backlog_plan.md §L) : 399 → 56 entrées uniques.
-        Seuil = 50 (marge pour futures suppressions légitimes).
+        On vérifie que le JSON contient bien des overrides.
+        Seuil = 8 (au moins quelques entrées _pairs dans modes_fr.json).
         """
-        assert len(PAIR_FR) >= 50
+        import json
+        import pathlib
+
+        modes_fr = json.loads(
+            (pathlib.Path("static/i18n/modes_fr.json")).read_text(encoding="utf-8")
+        )
+        assert len(modes_fr.get("_pairs", {})) >= 8
 
     def test_all_playlists_have_french(self):
         """Vérifie que toutes les playlists ont une traduction non vide."""
