@@ -433,7 +433,7 @@ def get_all_impact_events(
     )
 
 
-def build_impact_matrix(
+def build_impact_matrix(  # noqa: C901, PLR0912, PLR0913
     first_bloods: dict[str, ImpactEvent],
     clutch_finishers: dict[str, ImpactEvent],
     last_casualties: dict[str, ImpactEvent],

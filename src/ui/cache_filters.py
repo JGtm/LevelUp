@@ -30,11 +30,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
 
 @st.cache_data(show_spinner=False)
-def cached_compute_sessions_db(
+def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None,

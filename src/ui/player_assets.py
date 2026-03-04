@@ -79,7 +79,7 @@ def resolve_local_image_path(value: str | None) -> str | None:
     return None
 
 
-def download_image_to_cache(
+def download_image_to_cache(  # noqa: C901, PLR0915
     url: str, *, prefix: str, timeout_seconds: int = 12
 ) -> tuple[bool, str, str | None]:
     """Télécharge une image depuis une URL dans le cache local.
@@ -121,7 +121,7 @@ def download_image_to_cache(
                 fut = ex.submit(lambda: asyncio.run(coro))
                 return fut.result(timeout=float(timeout_seconds) + 20.0)
 
-    def _try_spnkr_fetch_bytes(target: str) -> tuple[bytes | None, str | None]:
+    def _try_spnkr_fetch_bytes(target: str) -> tuple[bytes | None, str | None]:  # noqa: C901, PLR0912
         """Best-effort: télécharge via SPNKr (auth) pour contourner 401/403.
 
         `target` peut être:
@@ -230,7 +230,7 @@ def download_image_to_cache(
             method = "direct GET" if use_direct_get else "get_image"
             return None, f"SPNKr {method} KO: {e}"
 
-    def _extract_image_url_from_json(obj: object) -> str | None:
+    def _extract_image_url_from_json(obj: object) -> str | None:  # noqa: C901
         candidates: list[str] = []
 
         def walk(x: object) -> None:

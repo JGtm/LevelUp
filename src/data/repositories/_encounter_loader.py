@@ -135,13 +135,13 @@ def load_encounter_stats(
     sql = _build_encounter_sql(n)
     # Ordre des paramètres : voir _build_encounter_sql docstring — 3n+6 total
     params: list[str] = (
-        [self_xuid]          # my_matches WHERE xuid = ?
-        + target_xuids       # encounters WHERE p.xuid IN (...)
-        + [self_xuid] * 3    # kvp CASE + SUM kills + SUM deaths
-        + [self_xuid]        # kvp WHERE killer = ?
-        + target_xuids       # kvp WHERE victim IN (...)
-        + target_xuids       # kvp WHERE killer IN (...)
-        + [self_xuid]        # kvp WHERE victim = ?
+        [self_xuid]  # my_matches WHERE xuid = ?
+        + target_xuids  # encounters WHERE p.xuid IN (...)
+        + [self_xuid] * 3  # kvp CASE + SUM kills + SUM deaths
+        + [self_xuid]  # kvp WHERE killer = ?
+        + target_xuids  # kvp WHERE victim IN (...)
+        + target_xuids  # kvp WHERE killer IN (...)
+        + [self_xuid]  # kvp WHERE victim = ?
     )
 
     columns = [

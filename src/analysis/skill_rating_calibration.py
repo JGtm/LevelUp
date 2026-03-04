@@ -272,7 +272,7 @@ def _generate_candidates(
 # =============================================================================
 
 
-def calibrate_lusr_weights(
+def calibrate_lusr_weights(  # noqa: PLR0912, PLR0913
     db_path: str | Path,
     xuid: str,
     *,
@@ -323,7 +323,7 @@ def calibrate_lusr_weights(
 
     if shared_db is None or not shared_db.exists():
         raise FileNotFoundError(
-            "shared_matches.duckdb introuvable. " "Vérifiez le chemin ou utilisez --shared-db."
+            "shared_matches.duckdb introuvable. Vérifiez le chemin ou utilisez --shared-db."
         )
 
     if verbose:
@@ -433,7 +433,7 @@ def _resolve_xuid_from_gamertag(gamertag: str, shared_db: Path) -> str | None:
         conn.close()
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915
     """Point d'entrée CLI.
 
     Usage:

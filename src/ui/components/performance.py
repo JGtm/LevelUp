@@ -137,7 +137,7 @@ def render_performance_score_card(
             <div class="os-perf-card__label">{html_mod.escape(str(label))}</div>
             <div class="os-perf-card__score {score_class}">{score_display}{badge}</div>
             <div class="os-perf-card__status {score_class}">{score_label}</div>
-            <div class="os-perf-card__meta">{perf.get('matches', 0)} {matches_label}</div>
+            <div class="os-perf-card__meta">{perf.get("matches", 0)} {matches_label}</div>
         </div>
         """,
         unsafe_allow_html=True,

@@ -57,7 +57,7 @@ EVENT_LABELS = {
 }
 
 
-def plot_friends_impact_heatmap(
+def plot_friends_impact_heatmap(  # noqa: C901, PLR0912, PLR0915
     impact_matrix: pl.DataFrame,
     *,
     title: str | None = None,
@@ -179,7 +179,7 @@ def plot_friends_impact_heatmap(
             zmin=0,
             zmax=1,
             showscale=False,
-            hovertemplate=("<b>%{y}</b><br>" "Match %{x}<br>" "%{text}<extra></extra>"),
+            hovertemplate=("<b>%{y}</b><br>Match %{x}<br>%{text}<extra></extra>"),
             xgap=3,  # Bordures verticales entre les matchs
             ygap=2,  # Bordures horizontales entre les joueurs
         )

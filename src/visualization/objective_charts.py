@@ -255,9 +255,7 @@ def plot_objective_breakdown_bars(
             textposition="outside",
             customdata=counts,
             hovertemplate=(
-                "<b>%{x}</b><br>"
-                "Points: %{y:,.0f}<br>"
-                "Occurrences: %{customdata}<extra></extra>"
+                "<b>%{x}</b><br>Points: %{y:,.0f}<br>Occurrences: %{customdata}<extra></extra>"
             ),
         )
     )

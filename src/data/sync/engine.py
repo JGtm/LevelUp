@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import gc
 import logging
 import time
 from collections.abc import Callable
@@ -44,7 +45,7 @@ import duckdb
 from src.data.sync._aggregates import AggregatesMixin
 from src.data.sync._career import CareerMixin
 from src.data.sync._match_processing import MatchProcessingMixin
-from src.data.sync._performance import _PERF_SCORE_AVAILABLE, PerformanceMixin
+from src.data.sync._performance import PerformanceMixin
 from src.data.sync._shared_writes import SharedWritesMixin
 from src.data.sync._skill_rating import SkillRatingMixin
 from src.data.sync.api_client import (
@@ -183,7 +184,7 @@ class DuckDBSyncEngine(
         MatchProcessingMixin — traitement des matchs
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         player_db_path: Path | str,
         *,
@@ -276,7 +277,7 @@ class DuckDBSyncEngine(
 
         return self._connection
 
-    def _get_shared_connection(self) -> duckdb.DuckDBPyConnection | None:
+    def _get_shared_connection(self) -> duckdb.DuckDBPyConnection | None:  # noqa: PLR0912
         """Retourne une connexion vers shared_matches.duckdb (R/W).
 
         Returns:
@@ -294,15 +295,12 @@ class DuckDBSyncEngine(
 
         try:
             self._shared_connection = _open_shared()
-        except Exception as e:
+        except duckdb.IOException as e:
             err = str(e).lower()
             if "unique file handle conflict" in err or "already attached" in err:
                 logger.warning(
                     "shared_matches.duckdb conflit de handle, libération et retry… (%s)", e
                 )
-                import gc
-                import time as _time
-
                 try:
                     from src.data.repositories.duckdb_repo import release_all_db_connections
 
@@ -310,7 +308,7 @@ class DuckDBSyncEngine(
                 except Exception:
                     pass
                 gc.collect()
-                _time.sleep(0.15)
+                time.sleep(0.15)
                 self._shared_connection = _open_shared()
             else:
                 raise
@@ -606,7 +604,7 @@ class DuckDBSyncEngine(
             progress_callback=progress_callback,
         )
 
-    async def _sync_internal(
+    async def _sync_internal(  # noqa: C901, PLR0912, PLR0915
         self,
         options: SyncOptions,
         *,
@@ -653,8 +651,7 @@ class DuckDBSyncEngine(
                     career_data = await self.sync_career_rank()
                     if career_data:
                         logger.info(
-                            f"Career rank sync: {self._gamertag} → "
-                            f"Rang {career_data.current_rank}"
+                            f"Career rank sync: {self._gamertag} → Rang {career_data.current_rank}"
                         )
                 except Exception as e:
                     logger.warning(f"Career rank sync échoué (non bloquant): {e}")
@@ -676,11 +673,7 @@ class DuckDBSyncEngine(
             conn.commit()
 
             # Sprint 6 bis : Calcul batch des performance scores en tout dernier
-            if (
-                result.matches_inserted > 0
-                and options.defer_performance_score
-                and _PERF_SCORE_AVAILABLE
-            ):
+            if result.matches_inserted > 0 and options.defer_performance_score:
                 if self._shared_connection is not None:
                     with contextlib.suppress(Exception):
                         self._shared_connection.close()
@@ -707,6 +700,31 @@ class DuckDBSyncEngine(
                 except Exception as e:
                     logger.warning(f"Erreur recalcul sessions post-sync : {e}")
 
+            # Calculer les citations pour les nouveaux matchs (post-sync, comme les sessions).
+            # La connexion shared est fermée (batch_compute_performance_scores l'a déjà fermée),
+            # ce qui permet à citations_backfill de l'attacher en READ_ONLY sans conflit.
+            if result.matches_inserted > 0:
+                try:
+                    from src.data.citations_backfill import backfill_citations_for_player
+
+                    # Garde-fou : fermer shared si encore ouverte (cas defer_performance_score=False)
+                    if self._shared_connection is not None:
+                        with contextlib.suppress(Exception):
+                            self._shared_connection.close()
+                        self._shared_connection = None
+
+                    cit_result = backfill_citations_for_player(
+                        db_path=self._player_db_path,
+                        xuid=self._xuid or "",
+                        conn=self._get_connection(),
+                    )
+                    logger.info(
+                        f"Citations post-sync : {cit_result['citations_computed']} matchs "
+                        f"traités sur {cit_result['matches_processed']}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Erreur calcul citations post-sync : {e}")
+
         except Exception as e:
             result.errors.append(str(e))
             logger.error(f"Erreur sync: {e}")
@@ -714,6 +732,14 @@ class DuckDBSyncEngine(
         result.finished_at = datetime.now(timezone.utc)
         result.duration_seconds = time.time() - start_time
 
+        logger.info(
+            "Sync terminé [%s, mode=%s]: %d insérés, %d erreurs en %.1fs",
+            self._gamertag,
+            "delta" if delta_mode else "full",
+            result.matches_inserted,
+            len(result.errors),
+            result.duration_seconds,
+        )
         return result
 
     # =========================================================================

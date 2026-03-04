@@ -262,7 +262,7 @@ def plot_performance_timeseries(
         for v in performance.to_list()
     ]
 
-    hover = "performance=%{y:.1f}<br>" "date=%{customdata[0]}<extra></extra>"
+    hover = "performance=%{y:.1f}<br>date=%{customdata[0]}<extra></extra>"
     customdata = list(zip(d["start_time"].dt.strftime(FMT_DATETIME_FR).to_list(), strict=False))
 
     fig = go.Figure()
@@ -695,7 +695,7 @@ def plot_rank_score(
     return apply_halo_plot_style(fig, height=400)
 
 
-def plot_lusr_timeseries(
+def plot_lusr_timeseries(  # noqa: PLR0913
     df: DataFrameLike,
     title: str | None = None,
     show_confidence: bool = True,
@@ -820,9 +820,7 @@ def plot_lusr_timeseries(
 
     tier_labels = d["tier_label"].to_list() if "tier_label" in d.columns else [""] * len(x_idx)
 
-    hover_tpl = (
-        "Rating=%{y:.0f}<br>" "Rang=%{customdata[0]}<br>" "Date=%{customdata[1]}<extra></extra>"
-    )
+    hover_tpl = "Rating=%{y:.0f}<br>Rang=%{customdata[0]}<br>Date=%{customdata[1]}<extra></extra>"
     customdata = list(
         zip(tier_labels, d["start_time"].dt.strftime(FMT_DATETIME_FR).to_list(), strict=False)
     )

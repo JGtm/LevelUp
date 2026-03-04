@@ -6,6 +6,7 @@ import polars as pl
 import streamlit as st
 
 from src.config import CORE_STAT_COLUMNS
+from src.ui.chart_utils import safe_chart_render
 from src.ui.components.performance import (
     compute_session_performance_score_v2_ui,
     render_metric_comparison_row,
@@ -48,7 +49,7 @@ def _get_category_fr() -> dict[str, str]:
     }
 
 
-def _get_friends_names(df_session: DataFrameLike) -> set[str]:
+def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PLR0912
     """Récupère les noms/nicknames des amis présents dans une session.
 
     Utilise les aliases chargés en session_state si disponibles,
@@ -299,7 +300,7 @@ def _render_cumulative_section(
         if not pl_a.is_empty() and not pl_b.is_empty():
             st.markdown(t("sc_net_score_cumul"))
             st.caption(t("sc_net_score_desc"))
-            try:
+            with safe_chart_render():
                 fig_cumul = plot_cumulative_comparison(
                     pl_a,
                     pl_b,
@@ -311,8 +312,6 @@ def _render_cumulative_section(
                     st.plotly_chart(fig_cumul, width="stretch", config=PLOTLY_CLEAN_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
     except Exception:
         pass
 

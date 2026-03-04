@@ -246,7 +246,7 @@ def _infer_event_type(event: dict[str, Any]) -> str | None:
     return None
 
 
-def compute_killer_victim_pairs(
+def compute_killer_victim_pairs(  # noqa: C901, PLR0912
     events: Iterable[dict[str, Any]],
     *,
     tolerance_ms: int = 5,
@@ -340,7 +340,7 @@ def compute_killer_victim_pairs(
     return out
 
 
-def compute_personal_antagonists(
+def compute_personal_antagonists(  # noqa: C901, PLR0912, PLR0915
     events: Iterable[dict[str, Any]],
     *,
     me_xuid: str,

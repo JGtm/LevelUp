@@ -45,7 +45,7 @@ from src.analysis.skill_rating_config import (
 _NOW = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
 
-def _make_row(
+def _make_row(  # noqa: PLR0913
     *,
     kills: float = 10.0,
     deaths: float = 5.0,

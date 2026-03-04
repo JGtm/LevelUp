@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 
-def add_extreme_annotations(
+def add_extreme_annotations(  # noqa: PLR0913
     fig: go.Figure,
     x_values: list[Any],
     y_values: list[float],

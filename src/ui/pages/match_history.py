@@ -36,7 +36,7 @@ def _app_url(page: str, **params: str) -> str:
     return base + "?" + urllib.parse.urlencode(qp)
 
 
-def render_match_history_page(
+def render_match_history_page(  # noqa: PLR0913
     dff: DataFrameLike,
     waypoint_player: str,
     db_path: str,
@@ -178,7 +178,7 @@ def render_match_history_page(
     _render_csv_download(dff_table)
 
 
-def _render_history_table(dff_table: pl.DataFrame) -> None:
+def _render_history_table(dff_table: pl.DataFrame) -> None:  # noqa: C901, PLR0915
     """Affiche le tableau de l'historique via un tableau HTML avec couleurs."""
     view = dff_table.sort("start_time", descending=True).head(250)
     colors = HALO_COLORS.as_dict()

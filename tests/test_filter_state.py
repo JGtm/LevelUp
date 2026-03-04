@@ -652,7 +652,7 @@ class TestGetAllFilterKeysToClear:
 
     def test_all_data_keys_covered(self):
         """Toutes les clés de FILTER_DATA_KEYS sont reconnues."""
-        session_state = {k: "dummy" for k in FILTER_DATA_KEYS}
+        session_state = dict.fromkeys(FILTER_DATA_KEYS, "dummy")
         result = get_all_filter_keys_to_clear(session_state)
         for k in FILTER_DATA_KEYS:
             assert k in result

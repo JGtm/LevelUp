@@ -206,7 +206,7 @@ def matches_to_dataframe(matches: list[MatchRow]) -> pd.DataFrame:
     return df
 
 
-def load_matches_df(
+def load_matches_df(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     *,
@@ -338,7 +338,7 @@ def matches_to_polars(matches: list[MatchRow]) -> pl.DataFrame:
     return df
 
 
-def load_matches_polars(
+def load_matches_polars(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     *,

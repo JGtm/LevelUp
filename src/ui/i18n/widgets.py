@@ -211,10 +211,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Coéquipiers",
         "en": "Teammates",
     },
-    "tm_session_trend": {
-        "fr": "Tendance de session",
-        "en": "Session trend",
-    },
     # ── Match history ─────────────────────────────────────────────────────────
     "mh_no_matches": "no_matches",  # alias → common
     # ── Sidebar — sync ──────────────────────────────────────────────────────

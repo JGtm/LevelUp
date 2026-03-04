@@ -8,10 +8,13 @@ Ce module gère:
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import polars as pl
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 from src.analysis import (
     compute_aggregated_stats,
@@ -47,6 +50,7 @@ def render_kpis_section(dff: pl.DataFrame) -> None:
     from src.ui.perf import perf_section
 
     dff_pl = _to_polars(dff)
+    logger.debug("KPIs calculés: %d matchs", len(dff_pl))
 
     with perf_section("kpis"):
         rates = compute_outcome_rates(dff_pl)
@@ -115,8 +119,8 @@ def render_kpis_section(dff: pl.DataFrame) -> None:
             ),
             (t("kpi_avg_accuracy"), f"{avg_acc:.2f}%" if avg_acc is not None else "-"),
             (t("kpi_avg_lifespan"), format_mmss(avg_life)),
-            (t("kpi_win_rate"), f"{win_rate*100:.1f}%" if rates.total else "-"),
-            (t("kpi_loss_rate"), f"{loss_rate*100:.1f}%" if rates.total else "-"),
+            (t("kpi_win_rate"), f"{win_rate * 100:.1f}%" if rates.total else "-"),
+            (t("kpi_loss_rate"), f"{loss_rate * 100:.1f}%" if rates.total else "-"),
             (t("kpi_ratio"), f"{global_ratio:.2f}" if global_ratio is not None else "-"),
         ],
         dense=False,

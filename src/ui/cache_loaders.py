@@ -315,6 +315,7 @@ def cached_load_player_match_result(
     ⚠️ assists expected/stddev : toujours NULL (limitation API Halo Infinite).
     """
     # DuckDB v4 : utiliser le repository caché (v5.1 perf)
+    logger.debug("Match result chargé: %s", match_id)
     if _is_duckdb_v4_path(db_path):
         try:
             repo = get_cached_repository_st(db_path, str(xuid).strip())
@@ -354,10 +355,17 @@ def cached_load_match_medals_for_player(
     Utilise DuckDBRepository pour .duckdb, sinon fallback legacy.
     """
     # DuckDB v4 : utiliser le repository caché (v5.1 perf)
+    logger.debug("Médailles chargées: %s", match_id)
     if _is_duckdb_v4_path(db_path):
         try:
             repo = get_cached_repository_st(db_path, str(xuid).strip())
-            return repo.load_match_medals(match_id)
+            result = repo.load_match_medals(match_id)
+            logger.debug(
+                "Médailles chargées: %s (%d médailles)",
+                match_id,
+                len(result) if result is not None else 0,
+            )
+            return result
         except Exception:
             return []
 
@@ -375,6 +383,7 @@ def cached_load_match_rosters(
     """
     _ = db_key
     # DuckDB v4 : utiliser le repository caché (v5.1 perf)
+    logger.debug("Roster chargé: %s", match_id)
     if _is_duckdb_v4_path(db_path):
         try:
             repo = get_cached_repository_st(db_path, str(xuid).strip())
@@ -396,6 +405,7 @@ def cached_load_highlight_events_for_match(
     """
     _ = db_key
     # DuckDB v4 : utiliser le repository caché (v5.1 perf)
+    logger.debug("Events chargés: %s", match_id)
     if _is_duckdb_v4_path(db_path):
         try:
             player_xuid = _resolve_player_xuid(db_path)
@@ -419,6 +429,7 @@ def cached_load_match_player_gamertags(
     """
     _ = db_key
     # DuckDB v4 : utiliser le repository pour résolution centralisée
+    logger.debug("Gamertags résolus: %s", match_id)
     if _is_duckdb_v4_path(db_path):
         try:
             # Utiliser le repo caché pour récupérer les XUIDs et résoudre les gamertags
@@ -479,6 +490,11 @@ def top_medals_smart(
     Utilise DuckDBRepository pour les bases .duckdb.
     """
     # DuckDB v4 : utiliser le repository caché (v5.1 perf)
+    logger.debug(
+        "Top medals: %d match_ids, route=%s",
+        len(match_ids),
+        "direct" if len(match_ids) > 1500 else "cache",
+    )
     if _is_duckdb_v4_path(db_path):
         if len(match_ids) > 1500:
             try:
@@ -749,6 +765,11 @@ def load_df_optimized(
     """
     _ = db_key  # Utilisé pour invalidation du cache Streamlit
     _ = cache_buster  # Utilisé pour forcer le rechargement après sync
+    logger.debug(
+        "load_df_optimized: xuid=%s..., cache_buster=%s",
+        str(xuid or "")[:8],
+        cache_buster,
+    )
 
     # Détecter le type de DB
     if _is_duckdb_v4_path(db_path):

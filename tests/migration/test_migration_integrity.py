@@ -151,7 +151,7 @@ def shared_db(tmp_dir: Path) -> Path:
     return db_path
 
 
-def _create_player_db(
+def _create_player_db(  # noqa: PLR0913
     tmp_dir: Path,
     gamertag: str,
     xuid: str,

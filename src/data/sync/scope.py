@@ -309,7 +309,7 @@ class SyncScope:
     # Résolution automatique
     # ─────────────────────────────────────────────────────────────────────
 
-    def resolve(self) -> None:
+    def resolve(self) -> None:  # noqa: C901
         """Applique les implications ``all_data`` → champs et ``force_X`` → X.
 
         Doit être appelé une seule fois après construction.

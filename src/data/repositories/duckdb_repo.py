@@ -143,7 +143,7 @@ class DuckDBRepository(
     - stats.duckdb : Données du joueur (matchs, médailles, etc.)
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         player_db_path: str | Path,
         xuid: str,
@@ -311,7 +311,7 @@ class DuckDBRepository(
             self._table_cache[cache_key] = False
             return False
 
-    def _get_connection(self) -> duckdb.DuckDBPyConnection:
+    def _get_connection(self) -> duckdb.DuckDBPyConnection:  # noqa: C901, PLR0912
         """
         Retourne une connexion DuckDB vers la DB joueur.
         (Returns DuckDB connection to player DB)
@@ -474,7 +474,7 @@ class DuckDBRepository(
         self._schema_cache[cache_key] = False
         return False
 
-    def _select_optional_column(
+    def _select_optional_column(  # noqa: PLR0913
         self,
         conn: duckdb.DuckDBPyConnection,
         *,

@@ -19,6 +19,7 @@ import streamlit as st
 
 from src.analysis.performance_score import compute_performance_series
 from src.ui import translate_pair_name
+from src.ui.chart_utils import safe_chart_render
 from src.ui.components.performance import get_score_class
 from src.ui.date_formats import FMT_DATETIME_FR_SHORT_YEAR
 from src.ui.i18n import get_lang, get_outcome_map, get_weekdays, t
@@ -52,7 +53,7 @@ SESSION_COLORS = {
 # ════════════════════════════════════════════════════════════════════════════
 
 
-def _build_history_dataframe(
+def _build_history_dataframe(  # noqa: C901, PLR0912
     df_sess: DataFrameLike,
     df_full: DataFrameLike | None = None,
 ) -> tuple[pl.DataFrame, pl.Series | None]:
@@ -227,7 +228,7 @@ def _render_history_html(
     html_table = f"""
     <table class="session-history-table">
     <thead><tr>{header_cells}</tr></thead>
-    <tbody>{''.join(html_rows)}</tbody>
+    <tbody>{"".join(html_rows)}</tbody>
     </table>
     """
     st.markdown(html_table, unsafe_allow_html=True)
@@ -342,13 +343,11 @@ def render_comparison_radar_chart(
         height=400,
     )
 
-    try:
+    with safe_chart_render():
         if fig_radar is not None:
             st.plotly_chart(fig_radar, width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -568,14 +567,12 @@ def render_comparison_bar_chart(
         hist_avg: Moyenne historique des sessions similaires (optionnel).
     """
     metrics = _prepare_bar_metrics(perf_a, perf_b, hist_avg)
-    try:
+    with safe_chart_render():
         fig = _build_bar_chart_figure(metrics)
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -584,7 +581,7 @@ def render_comparison_bar_chart(
 
 
 @fragment_if_available
-def render_participation_trend_section(
+def render_participation_trend_section(  # noqa: C901
     df_session_a: DataFrameLike,
     df_session_b: DataFrameLike,
     db_path: str,
@@ -692,15 +689,12 @@ def render_participation_trend_section(
         st.caption(t("sc_participation_comparison"))
 
         col_radar, col_legend = st.columns([2, 1])
-        with col_radar:
-            try:
-                fig = create_participation_profile_radar(profiles, title="", height=380)
-                if fig is not None:
-                    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-                else:
-                    st.info(t("insufficient_data_chart"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
+        with col_radar, safe_chart_render():
+            fig = create_participation_profile_radar(profiles, title="", height=380)
+            if fig is not None:
+                st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+            else:
+                st.info(t("insufficient_data_chart"))
         with col_legend:
             st.markdown(f"**{t('mvp_axes_label')}**")
             for line in get_radar_axis_lines():

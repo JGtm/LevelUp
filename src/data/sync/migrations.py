@@ -184,8 +184,7 @@ def ensure_match_participants_backfill_bits(conn: duckdb.DuckDBPyConnection) -> 
     # Index pour détection rapide des participants avec données manquantes
     try:
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_mp_backfill "
-            "ON match_participants(xuid, backfill_bits)"
+            "CREATE INDEX IF NOT EXISTS idx_mp_backfill ON match_participants(xuid, backfill_bits)"
         )
     except Exception as e:
         logger.debug(f"Index idx_mp_backfill ignoré: {e}")
@@ -349,7 +348,7 @@ def _recreate_highlight_events_with_sequence(conn: duckdb.DuckDBPyConnection, ma
         conn.execute("DROP TABLE highlight_events_backup")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_highlight_match ON highlight_events(match_id)")
-    logger.info("✅ highlight_events migrée avec séquence auto-increment " f"(start={max_id + 1})")
+    logger.info(f"✅ highlight_events migrée avec séquence auto-increment (start={max_id + 1})")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -390,9 +389,7 @@ def ensure_career_progression_autoincrement(conn: duckdb.DuckDBPyConnection) -> 
     max_id = max_id_row[0] if max_id_row else 0
 
     # Pas de DEFAULT → recreation complète
-    logger.info(
-        f"Migration career_progression: ajout séquence auto-increment " f"(max_id={max_id})"
-    )
+    logger.info(f"Migration career_progression: ajout séquence auto-increment (max_id={max_id})")
     _recreate_career_progression_with_sequence(conn, max_id)
 
 
@@ -598,7 +595,7 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
     catalog = None
     try:
         rows = conn.execute(
-            "SELECT database_name FROM duckdb_tables() " "WHERE table_name = 'match_registry'"
+            "SELECT database_name FROM duckdb_tables() WHERE table_name = 'match_registry'"
         ).fetchall()
         for row in rows:
             db_name = row[0]
@@ -726,7 +723,7 @@ def ensure_performance_indexes(conn: duckdb.DuckDBPyConnection) -> None:
     catalog = None
     try:
         rows = conn.execute(
-            "SELECT database_name FROM duckdb_tables() " "WHERE table_name = 'match_participants'"
+            "SELECT database_name FROM duckdb_tables() WHERE table_name = 'match_participants'"
         ).fetchall()
         for row in rows:
             db_name = row[0]
@@ -767,8 +764,7 @@ def ensure_performance_indexes(conn: duckdb.DuckDBPyConnection) -> None:
     # --- match_registry ---
     _create_index_safe(
         conn,
-        f"CREATE INDEX IF NOT EXISTS idx_mr_start_time "
-        f"ON {prefix}match_registry(start_time DESC)",
+        f"CREATE INDEX IF NOT EXISTS idx_mr_start_time ON {prefix}match_registry(start_time DESC)",
         "idx_mr_start_time",
     )
 

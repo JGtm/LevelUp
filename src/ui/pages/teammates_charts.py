@@ -23,7 +23,7 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 
 
 @fragment_if_available
-def render_comparison_charts(
+def render_comparison_charts(  # noqa: PLR0913
     sub: DataFrameLike,
     friend_sub: DataFrameLike,
     me_name: str,
@@ -270,7 +270,7 @@ def render_outcome_bar_chart(dfr: DataFrameLike) -> None:
 
 
 @fragment_if_available
-def render_trio_charts(
+def render_trio_charts(  # noqa: PLR0913
     d_self: DataFrameLike,
     d_f1: DataFrameLike,
     d_f2: DataFrameLike,

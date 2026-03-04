@@ -103,7 +103,7 @@ class TestDatabaseCreation:
     def test_all_expected_tables_exist(self, conn: duckdb.DuckDBPyConnection) -> None:
         """Toutes les tables attendues doivent être présentes."""
         rows = conn.execute(
-            "SELECT table_name FROM information_schema.tables " "WHERE table_schema = 'main'"
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
         ).fetchall()
         existing = {r[0] for r in rows}
         missing = EXPECTED_TABLES - existing
@@ -202,7 +202,7 @@ class TestMatchRegistry:
         """start_time ne peut pas être NULL."""
         with pytest.raises(duckdb.ConstraintException):
             rw_conn.execute(
-                "INSERT INTO match_registry (match_id, start_time) " "VALUES ('test-null', NULL)"
+                "INSERT INTO match_registry (match_id, start_time) VALUES ('test-null', NULL)"
             )
 
     def test_defaults(self, rw_conn: duckdb.DuckDBPyConnection) -> None:
@@ -326,8 +326,7 @@ class TestMatchParticipants:
         """
         # Pas de ConstraintException attendue — FK non enforced
         rw_conn.execute(
-            "INSERT INTO match_participants (match_id, xuid) "
-            "VALUES ('match-inexistant', 'xuid-fk')"
+            "INSERT INTO match_participants (match_id, xuid) VALUES ('match-inexistant', 'xuid-fk')"
         )
         # Nettoyage
         rw_conn.execute("DELETE FROM match_participants WHERE match_id = 'match-inexistant'")
@@ -343,7 +342,7 @@ class TestMatchParticipants:
                 "INSERT INTO match_participants (match_id, xuid, gamertag, "
                 "team_id, outcome, kills, deaths, assists) "
                 f"VALUES ('match-multi', 'xuid-{i:03d}', 'Player{i}', "
-                f"{i % 2}, {2 if i % 2 == 0 else 3}, {10+i}, {5+i}, {3+i})"
+                f"{i % 2}, {2 if i % 2 == 0 else 3}, {10 + i}, {5 + i}, {3 + i})"
             )
         count = rw_conn.execute(
             "SELECT COUNT(*) FROM match_participants WHERE match_id = 'match-multi'"
@@ -407,7 +406,7 @@ class TestHighlightEvents:
         Les FK ont été retirées du schéma v5 (DuckDB UPDATE = DELETE+INSERT).
         """
         rw_conn.execute(
-            "INSERT INTO highlight_events (match_id, event_type) " "VALUES ('match-ghost', 'kill')"
+            "INSERT INTO highlight_events (match_id, event_type) VALUES ('match-ghost', 'kill')"
         )
         rw_conn.execute("DELETE FROM highlight_events WHERE match_id = 'match-ghost'")
 
@@ -542,7 +541,7 @@ class TestXuidAliases:
     def test_gamertag_not_null(self, rw_conn: duckdb.DuckDBPyConnection) -> None:
         """gamertag ne peut pas être NULL."""
         with pytest.raises(duckdb.ConstraintException):
-            rw_conn.execute("INSERT INTO xuid_aliases (xuid, gamertag) " "VALUES ('xuid-nn', NULL)")
+            rw_conn.execute("INSERT INTO xuid_aliases (xuid, gamertag) VALUES ('xuid-nn', NULL)")
 
     def test_source_values(self, rw_conn: duckdb.DuckDBPyConnection) -> None:
         """Les sources acceptées sont correctement stockées."""
@@ -597,7 +596,7 @@ class TestIndexes:
     def test_registry_indexes(self, conn: duckdb.DuckDBPyConnection) -> None:
         """Les index de match_registry existent."""
         rows = conn.execute(
-            "SELECT index_name FROM duckdb_indexes() " "WHERE table_name = 'match_registry'"
+            "SELECT index_name FROM duckdb_indexes() WHERE table_name = 'match_registry'"
         ).fetchall()
         index_names = {r[0] for r in rows}
         expected = {
@@ -613,7 +612,7 @@ class TestIndexes:
     def test_participants_indexes(self, conn: duckdb.DuckDBPyConnection) -> None:
         """Les index de match_participants existent."""
         rows = conn.execute(
-            "SELECT index_name FROM duckdb_indexes() " "WHERE table_name = 'match_participants'"
+            "SELECT index_name FROM duckdb_indexes() WHERE table_name = 'match_participants'"
         ).fetchall()
         index_names = {r[0] for r in rows}
         expected = {
@@ -627,7 +626,7 @@ class TestIndexes:
     def test_events_indexes(self, conn: duckdb.DuckDBPyConnection) -> None:
         """Les index de highlight_events existent."""
         rows = conn.execute(
-            "SELECT index_name FROM duckdb_indexes() " "WHERE table_name = 'highlight_events'"
+            "SELECT index_name FROM duckdb_indexes() WHERE table_name = 'highlight_events'"
         ).fetchall()
         index_names = {r[0] for r in rows}
         expected = {"idx_events_match", "idx_events_killer", "idx_events_victim"}
@@ -637,7 +636,7 @@ class TestIndexes:
     def test_medals_indexes(self, conn: duckdb.DuckDBPyConnection) -> None:
         """Les index de medals_earned existent."""
         rows = conn.execute(
-            "SELECT index_name FROM duckdb_indexes() " "WHERE table_name = 'medals_earned'"
+            "SELECT index_name FROM duckdb_indexes() WHERE table_name = 'medals_earned'"
         ).fetchall()
         index_names = {r[0] for r in rows}
         expected = {"idx_medals_match", "idx_medals_xuid", "idx_medals_composite"}
@@ -719,7 +718,7 @@ class TestCrossTableQueries:
         for i in range(5):
             rw_conn.execute(
                 "INSERT INTO match_registry (match_id, start_time) "
-                f"VALUES ('match-cnt-{i}', '2025-01-0{i+1} 12:00:00')"
+                f"VALUES ('match-cnt-{i}', '2025-01-0{i + 1} 12:00:00')"
             )
             rw_conn.execute(
                 "INSERT INTO match_participants (match_id, xuid, gamertag) "

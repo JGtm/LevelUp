@@ -71,7 +71,7 @@ def _enrich_series_with_perfect_kills(
 # =============================================================================
 
 
-def render_teammates_page(
+def render_teammates_page(  # noqa: C901, PLR0912, PLR0913
     df: DataFrameLike,
     dff: DataFrameLike,
     base: DataFrameLike,

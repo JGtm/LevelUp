@@ -117,7 +117,7 @@ def _load_citations_from_db() -> list[dict[str, Any]]:
 # ── Mastery / progression ───────────────────────────────────────────────────
 
 
-def _compute_mastery_display(
+def _compute_mastery_display(  # noqa: PLR0912
     current_count: int,
     tiers: list[dict[str, Any]],
 ) -> tuple[str, str, bool, float]:
@@ -211,7 +211,7 @@ def _img_data_uri(abs_path: str, mtime: float | None = None) -> str | None:
 # ── Section principale ──────────────────────────────────────────────────────
 
 
-def render_h5g_commendations_section(
+def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
     *,
     db_path: str | None = None,
     xuid: str | None = None,
@@ -388,8 +388,7 @@ def render_h5g_commendations_section(
             delta_html = ""
             if is_filtered and delta_citation > 0:
                 delta_html = (
-                    f" <span style='color: #4CAF50; font-weight: bold;'>"
-                    f"+{delta_citation}</span>"
+                    f" <span style='color: #4CAF50; font-weight: bold;'>+{delta_citation}</span>"
                 )
             st.markdown(
                 "<div class='os-citation-counter'>"

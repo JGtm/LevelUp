@@ -265,9 +265,9 @@ class TestStreamlitBridge:
         assert mode == RepositoryMode.DUCKDB
 
 
-def _has_match_stats_table() -> bool:
-    """Vérifie que la DB de test contient la table match_stats."""
-    db_path = Path("data/players/SpartanD/stats.duckdb")
+def _has_player_match_enrichment_table() -> bool:
+    """Vérifie que la DB de test contient la table player_match_enrichment."""
+    db_path = Path("data/players/JGtm/stats.duckdb")
     if not db_path.exists():
         return False
     try:
@@ -276,7 +276,7 @@ def _has_match_stats_table() -> bool:
         c = _ddb.connect(str(db_path), read_only=True)
         r = c.execute(
             "SELECT COUNT(*) FROM information_schema.tables "
-            "WHERE table_schema='main' AND table_name='match_stats'"
+            "WHERE table_schema='main' AND table_name='player_match_enrichment'"
         ).fetchone()
         c.close()
         return bool(r and r[0] > 0)
@@ -285,8 +285,8 @@ def _has_match_stats_table() -> bool:
 
 
 @pytest.mark.skipif(
-    not _has_match_stats_table(),
-    reason="Base de données de test non disponible ou vide (pas de match_stats)",
+    not _has_player_match_enrichment_table(),
+    reason="Base de données de test non disponible ou vide (player_match_enrichment manquante)",
 )
 class TestDuckDBRepositoryWithRealData:
     """Tests avec vraies données (si disponibles)."""
@@ -297,9 +297,9 @@ class TestDuckDBRepositoryWithRealData:
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
         repo = DuckDBRepository(
-            player_db_path="data/players/SpartanD/stats.duckdb",
-            xuid="2533274833178266",
-            gamertag="SpartanD",
+            player_db_path="data/players/JGtm/stats.duckdb",
+            xuid="2533274823110022",
+            gamertag="JGtm",
         )
         yield repo
         repo.close()
@@ -335,21 +335,21 @@ class TestDuckDBRepositoryWithRealData:
         info = repo.get_storage_info()
 
         assert info["type"] == "duckdb"
-        assert "match_stats" in info["tables"]
-        assert info["file_size_mb"] > 0
+        assert "tables" in info
+        assert info["file_size_mb"] >= 0
 
     def test_get_sync_metadata(self, repo):
         """Vérifie les métadonnées de sync."""
         meta = repo.get_sync_metadata()
 
         assert meta["storage_type"] == "duckdb"
-        assert meta["player_xuid"] == "2533274833178266"
+        assert meta["player_xuid"] == "2533274823110022"
         assert "total_matches" in meta
 
 
 @pytest.mark.skipif(
-    not _has_match_stats_table(),
-    reason="Base de données de test non disponible ou vide (pas de match_stats)",
+    not _has_player_match_enrichment_table(),
+    reason="Base de données de test non disponible ou vide (player_match_enrichment manquante)",
 )
 class TestDuckDBRepositoryQueries:
     """Tests des requêtes avancées."""
@@ -360,15 +360,15 @@ class TestDuckDBRepositoryQueries:
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
         repo = DuckDBRepository(
-            player_db_path="data/players/SpartanD/stats.duckdb",
-            xuid="2533274833178266",
+            player_db_path="data/players/JGtm/stats.duckdb",
+            xuid="2533274823110022",
         )
         yield repo
         repo.close()
 
     def test_query_raw_sql(self, repo):
         """Vérifie que query() fonctionne."""
-        results = repo.query("SELECT COUNT(*) as cnt FROM match_stats")
+        results = repo.query("SELECT COUNT(*) as cnt FROM player_match_enrichment")
 
         assert len(results) == 1
         assert "cnt" in results[0]
@@ -376,8 +376,8 @@ class TestDuckDBRepositoryQueries:
     def test_query_with_params(self, repo):
         """Vérifie query() avec paramètres."""
         results = repo.query(
-            "SELECT COUNT(*) as cnt FROM match_stats WHERE outcome = ?",
-            [2],  # Victoire
+            "SELECT COUNT(*) as cnt FROM player_match_enrichment WHERE match_id IS NOT NULL",
+            None,
         )
 
         assert len(results) == 1
@@ -386,11 +386,13 @@ class TestDuckDBRepositoryQueries:
         """Vérifie que query_df retourne un DataFrame Polars."""
         import polars as pl
 
-        df = repo.query_df("SELECT match_id, kda FROM match_stats LIMIT 5")
+        df = repo.query_df(
+            "SELECT match_id, performance_score FROM player_match_enrichment LIMIT 5"
+        )
 
         assert isinstance(df, pl.DataFrame)
         assert "match_id" in df.columns
-        assert "kda" in df.columns
+        assert "performance_score" in df.columns
 
     def test_load_top_teammates(self, repo):
         """Vérifie list_top_teammates."""

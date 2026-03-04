@@ -54,7 +54,7 @@ def _clean_gamertag_static(value: Any) -> str | None:
 class RosterLoaderMixin:
     """Mixin fournissant le chargement des rosters et la résolution des gamertags pour DuckDBRepository."""
 
-    def load_match_rosters(
+    def load_match_rosters(  # noqa: C901, PLR0912, PLR0915
         self,
         match_id: str,
     ) -> dict[str, Any] | None:
@@ -333,7 +333,7 @@ class RosterLoaderMixin:
         except Exception:
             return False
 
-    def resolve_gamertag(
+    def resolve_gamertag(  # noqa: C901, PLR0912
         self,
         xuid: str,
         *,
@@ -475,7 +475,7 @@ class RosterLoaderMixin:
         """
         return {xuid: self.resolve_gamertag(xuid, match_id=match_id) for xuid in xuids}
 
-    def load_match_player_gamertags(self, match_id: str) -> dict[str, str]:
+    def load_match_player_gamertags(self, match_id: str) -> dict[str, str]:  # noqa: C901, PLR0912
         """Retourne un mapping XUID → Gamertag pour un match.
 
         Utilise shared.match_participants (v5) si disponible, sinon la table locale.

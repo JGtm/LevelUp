@@ -202,6 +202,7 @@ class TestBuildFriendsSet:
         json_path.write_text(json.dumps(friends_data), encoding="utf-8")
 
         import src.ui.pages.match_view_encounters_logic as mod
+
         monkeypatch.setattr(mod, "_FRIENDS_JSON", json_path)
 
         result = build_friends_set("xuid_me", "")
@@ -214,6 +215,7 @@ class TestBuildFriendsSet:
         json_path.write_text(json.dumps(friends_data), encoding="utf-8")
 
         import src.ui.pages.match_view_encounters_logic as mod
+
         monkeypatch.setattr(mod, "_FRIENDS_JSON", json_path)
 
         result = build_friends_set("xuid_me", None)
@@ -222,6 +224,7 @@ class TestBuildFriendsSet:
 
     def test_missing_json_returns_empty_on_fallback(self, tmp_path, monkeypatch):
         import src.ui.pages.match_view_encounters_logic as mod
+
         monkeypatch.setattr(mod, "_FRIENDS_JSON", tmp_path / "nonexistent.json")
 
         result = build_friends_set("xuid_me", None)
@@ -236,6 +239,7 @@ class TestBuildFriendsSet:
 class TestRelativeDateFr:
     def _dt(self, days_ago: int) -> datetime:
         from datetime import timedelta
+
         return datetime.now(tz=timezone.utc) - timedelta(days=days_ago)
 
     def test_today(self):

@@ -45,7 +45,7 @@ class CitationEngine(CitationDataLoaderMixin):
         conn: Connexion DuckDB partagée (réutilisée si fournie).
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         db_path: str | Path,
         xuid: str,
@@ -220,7 +220,7 @@ class CitationEngine(CitationDataLoaderMixin):
     # Calcul par match
     # ------------------------------------------------------------------
 
-    def compute_citation_for_match(
+    def compute_citation_for_match(  # noqa: C901, PLR0912, PLR0913
         self,
         mapping: dict[str, Any],
         *,
@@ -297,7 +297,7 @@ class CitationEngine(CitationDataLoaderMixin):
 
         return 0
 
-    def compute_all_for_match(
+    def compute_all_for_match(  # noqa: PLR0913
         self,
         match_id: str,  # noqa: ARG002 — conservé pour cohérence API
         *,

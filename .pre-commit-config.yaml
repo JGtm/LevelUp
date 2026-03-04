@@ -101,6 +101,15 @@ repos:
         language: system
         pass_filenames: false
 
+      # Vérification des limites de taille (mode ratchet)
+      # Échoue uniquement si une NOUVELLE violation apparaît (pas dans le baseline)
+      # Pour mettre à jour après refactoring : python scripts/check_code_size.py --update
+      - id: check-code-size
+        name: Check function/module size limits (ratchet)
+        entry: python scripts/check_code_size.py
+        language: system
+        pass_filenames: false
+
   # ==========================================================================
   # TYPE CHECKING (optionnel - décommenter si souhaité)
   # ==========================================================================

@@ -352,7 +352,7 @@ class TestComputeParticipationProfile:
         assert result["score_raw"] == 0
 
     def test_custom_thresholds(self, awards_df):
-        th = {k: 100.0 for k in RADAR_THRESHOLDS}
+        th = dict.fromkeys(RADAR_THRESHOLDS, 100.0)
         result = compute_participation_profile(awards_df, thresholds=th, name="Custom")
         # With very low thresholds, norms should be 1.0 (capped)
         assert result["combat_norm"] == 1.0

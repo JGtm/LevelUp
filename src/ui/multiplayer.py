@@ -15,6 +15,7 @@ Une seule DB avec table Players pour les DBs fusionnées.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -26,6 +27,8 @@ from src.utils.paths import PLAYERS_DIR
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 
 def _get_players_dir() -> Path:
@@ -115,7 +118,7 @@ class DuckDBPlayerInfo:
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
-def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:
+def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:  # noqa: C901, PLR0912, PLR0915
     """Liste les joueurs depuis data/players/*/stats.duckdb.
 
     Résultat mis en cache 60 secondes pour éviter les reconnexions répétées
@@ -342,6 +345,8 @@ def render_duckdb_v4_player_selector(
     # Vérifier si changement
     try:
         if Path(selected_db_path).resolve() != Path(current_db_path).resolve():
+            gamertag = Path(selected_db_path).parent.name if selected_db_path else selected_db_path
+            logger.info("Joueur sélectionné: %s", gamertag or selected_db_path)
             return selected_db_path
     except Exception:
         pass

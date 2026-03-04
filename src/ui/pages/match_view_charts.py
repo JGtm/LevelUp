@@ -11,6 +11,7 @@ from plotly.subplots import make_subplots
 
 from src.analysis.stats import compute_mode_category_averages, extract_mode_category, format_mmss
 from src.config import HALO_COLORS
+from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import t
 from src.ui.pages.match_view_helpers import os_card
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
@@ -36,7 +37,7 @@ def _safe_numeric(value: Any) -> float:
 
 
 @fragment_if_available
-def render_expected_vs_actual(
+def render_expected_vs_actual(  # noqa: C901, PLR0912, PLR0913, PLR0915
     row: dict[str, Any],
     pm: dict,
     colors: dict,
@@ -253,14 +254,11 @@ def render_expected_vs_actual(
 
     # K/D/A et Folie meurtrière sur la même rangée
     chart_cols = st.columns(2)
-    with chart_cols[0]:
-        try:
-            if exp_fig is not None:
-                st.plotly_chart(exp_fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-            else:
-                st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
+    with chart_cols[0], safe_chart_render():
+        if exp_fig is not None:
+            st.plotly_chart(exp_fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+        else:
+            st.info(t("insufficient_data_chart"))
     with chart_cols[1]:
         _render_spree_headshots(
             row,
@@ -385,14 +383,12 @@ def _render_spree_headshots(
             legend=get_legend_horizontal_bottom(),
         )
         fig_sh.update_yaxes(rangemode="tozero")
-        try:
+        with safe_chart_render():
             styled_fig = apply_halo_plot_style(fig_sh, height=260)
             if styled_fig is not None:
                 st.plotly_chart(styled_fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
 
 
 # =============================================================================

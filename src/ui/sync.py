@@ -13,6 +13,8 @@ import logging
 import os
 import subprocess
 import sys
+
+logger = logging.getLogger(__name__)
 import time as time_module
 from datetime import datetime, timezone
 from pathlib import Path
@@ -63,17 +65,13 @@ def is_spnkr_db_path(db_path: str) -> bool:
         p = Path(db_path)
         suffix = p.suffix.lower()
 
-        # SQLite (.db) refusé - DuckDB uniquement
-        if suffix != ".duckdb":
-            return False
-
-        # DB DuckDB v4 (stats.duckdb dans data/players/{gamertag}/)
-        return True
+        # SQLite (.db) refusé — DuckDB uniquement
+        return suffix == ".duckdb"
     except Exception:
         return False
 
 
-def cleanup_orphan_tmp_dbs(repo_root: Path | None = None) -> None:
+def cleanup_orphan_tmp_dbs(repo_root: Path | None = None) -> None:  # noqa: PLR0912
     """Nettoie les fichiers .tmp.*.db orphelins dans le dossier data/.
 
     Ces fichiers peuvent rester si un import SPNKr a été interrompu
@@ -203,7 +201,7 @@ def render_sync_indicator(db_path: str) -> None:
     # )
 
 
-def _sync_duckdb_player(
+def _sync_duckdb_player(  # noqa: C901, PLR0915
     *,
     db_path: str,
     gamertag: str,
@@ -225,7 +223,7 @@ def _sync_duckdb_player(
     """
     import asyncio
 
-    async def _sync_async() -> tuple[bool, str]:
+    async def _sync_async() -> tuple[bool, str]:  # noqa: C901, PLR0912, PLR0915
         try:
             from src.data.sync.api_client import get_tokens_from_env
             from src.data.sync.engine import DuckDBSyncEngine
@@ -276,12 +274,11 @@ def _sync_duckdb_player(
         #      shared_matches (protection contre les threads Streamlit concurrents).
         #   2. Invalider le cache @st.cache_resource pour détruire les repositories existants.
         #   3. Fermer toutes les connexions DuckDBRepository actives (libère les ATTACH AS shared).
-        _sync_log = logging.getLogger(__name__)
         try:
             from src.data.repositories.duckdb_repo import begin_sync_mode
 
             begin_sync_mode()
-            _sync_log.debug("Sync: mode sync activé (ATTACH shared suspendu)")
+            logger.debug("Sync: mode sync activé (ATTACH shared suspendu)")
         except Exception:
             pass
 
@@ -289,7 +286,7 @@ def _sync_duckdb_player(
             from src.ui.cache_loaders import get_cached_repository_st
 
             get_cached_repository_st.clear()
-            _sync_log.debug("Sync: cache @st.cache_resource get_cached_repository_st invalidé")
+            logger.debug("Sync: cache @st.cache_resource get_cached_repository_st invalidé")
         except Exception:
             pass
 
@@ -298,7 +295,7 @@ def _sync_duckdb_player(
 
             n_closed = release_all_db_connections()
             if n_closed:
-                _sync_log.debug(
+                logger.debug(
                     "Sync: %d connexion(s) repo fermée(s) avant ouverture shared R/W", n_closed
                 )
         except Exception:
@@ -307,6 +304,7 @@ def _sync_duckdb_player(
         # Créer le moteur de sync
         _sync_error: Exception | None = None
         _sync_result = None
+        _engine_ref = None
         try:
             engine = DuckDBSyncEngine(
                 player_db_path=db_file,
@@ -314,6 +312,7 @@ def _sync_duckdb_player(
                 gamertag=gamertag,
                 tokens=tokens,
             )
+            _engine_ref = engine
 
             # Exécuter la sync — toujours tout récupérer (match stats, highlight_events, skill, aliases, participants)
             options = SyncOptions(
@@ -332,13 +331,24 @@ def _sync_duckdb_player(
         except Exception as e:
             _sync_error = e
         finally:
+            # Fermer le moteur AVANT end_sync_mode() pour forcer le checkpoint WAL
+            # sur shared_matches.duckdb. La connexion R/W doit être libérée avant
+            # que les DuckDBRepository ne rattachent shared en READ_ONLY — sinon le
+            # WAL non checkpointé est invisible et le dernier match n'apparaît pas.
+            if _engine_ref is not None:
+                try:
+                    _engine_ref.close()
+                    logger.debug("Sync: engine.close() → WAL shared_matches.duckdb checkpointé")
+                except Exception:
+                    pass
+                _engine_ref = None
             # Toujours désactiver le mode sync (même en cas d'erreur) pour que les
             # DuckDBRepository puissent r'attacher shared_matches normalement.
             try:
                 from src.data.repositories.duckdb_repo import end_sync_mode
 
                 end_sync_mode()
-                _sync_log.debug("Sync: mode sync désactivé (ATTACH shared rétabli)")
+                logger.debug("Sync: mode sync désactivé (ATTACH shared rétabli)")
             except Exception:
                 pass
 
@@ -381,14 +391,22 @@ def _sync_duckdb_player(
         return True, f"À jour ({matches_after} matchs)."
 
     try:
-        return asyncio.run(asyncio.wait_for(_sync_async(), timeout=timeout_seconds))
+        from src.utils.sync_lock import SyncAlreadyRunning, SyncLock
+
+        with SyncLock(timeout=0):
+            return asyncio.run(asyncio.wait_for(_sync_async(), timeout=timeout_seconds))
+    except SyncAlreadyRunning:
+        return (
+            False,
+            "Un sync est déjà en cours (CLI ou autre onglet). Réessaie dans quelques instants.",
+        )
     except asyncio.TimeoutError:
         return False, f"Timeout après {timeout_seconds}s."
     except Exception as e:
         return False, f"Erreur: {e}"
 
 
-def refresh_spnkr_db_via_api(
+def refresh_spnkr_db_via_api(  # noqa: PLR0913
     *,
     db_path: str,
     player: str,
@@ -487,7 +505,7 @@ def refresh_spnkr_db_via_api(
     return True, f"Sync OK pour {p}"
 
 
-def sync_all_players(
+def sync_all_players(  # noqa: C901, PLR0912, PLR0913
     *,
     db_path: str,
     match_type: str = "matchmaking",
@@ -651,7 +669,7 @@ def is_duckdb_player(gamertag: str, repo_root: Path | None = None) -> bool:
     return get_player_duckdb_path(gamertag, repo_root) is not None
 
 
-async def sync_player_duckdb_async(
+async def sync_player_duckdb_async(  # noqa: PLR0913
     gamertag: str,
     xuid: str,
     *,
@@ -693,9 +711,7 @@ async def sync_player_duckdb_async(
     if player_db_path is None:
         # Nouveau joueur : construire le chemin attendu, DuckDBSyncEngine créera la DB
         player_db_path = repo_root / "data" / "players" / gamertag / "stats.duckdb"
-        logging.getLogger(__name__).info(
-            f"Nouveau joueur {gamertag}, création de la DB: {player_db_path}"
-        )
+        logger.info(f"Nouveau joueur {gamertag}, création de la DB: {player_db_path}")
 
     try:
         from src.data.sync import DuckDBSyncEngine, SyncOptions
@@ -727,13 +743,11 @@ async def sync_player_duckdb_async(
                 engine._shared_connection = None
                 lusr_count = engine.batch_compute_lusr(force=False)
                 if lusr_count > 0:
-                    logging.getLogger(__name__).info(
+                    logger.info(
                         f"[LUSR] {lusr_count} rating(s) calculé(s) automatiquement post-sync"
                     )
             except Exception as lusr_exc:
-                logging.getLogger(__name__).warning(
-                    f"[LUSR] Calcul post-sync échoué (non bloquant) : {lusr_exc}"
-                )
+                logger.warning(f"[LUSR] Calcul post-sync échoué (non bloquant) : {lusr_exc}")
 
         engine.close()
 
@@ -743,7 +757,7 @@ async def sync_player_duckdb_async(
         return False, f"Erreur sync DuckDB: {e}"
 
 
-def sync_player_duckdb(
+def sync_player_duckdb(  # noqa: PLR0913
     gamertag: str,
     xuid: str,
     *,
@@ -796,7 +810,7 @@ def sync_player_duckdb(
     )
 
 
-def sync_player_auto(
+def sync_player_auto(  # noqa: PLR0913
     gamertag: str,
     xuid: str,
     *,
@@ -865,7 +879,7 @@ def sync_player_auto(
     return False, f"Aucune DB trouvée pour {gamertag}"
 
 
-def sync_all_players_duckdb(
+def sync_all_players_duckdb(  # noqa: PLR0913
     *,
     delta: bool = True,
     match_type: str = "matchmaking",

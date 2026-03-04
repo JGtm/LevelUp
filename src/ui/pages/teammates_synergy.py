@@ -11,6 +11,7 @@ import polars as pl
 import streamlit as st
 
 from src.data.repositories import DuckDBRepository
+from src.ui.chart_utils import safe_chart_render
 from src.ui.components.radar_chart import create_participation_profile_radar
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
@@ -22,7 +23,7 @@ from src.visualization.participation_radar import (
 )
 
 
-def _compute_player_profile(
+def _compute_player_profile(  # noqa: PLR0913
     repo: DuckDBRepository,
     df_player: DataFrameLike,
     shared_match_ids: list[str],
@@ -92,28 +93,25 @@ def _render_radar_display(
 
     st.subheader(title)
     col_radar, col_legend = st.columns([2, 1])
-    with col_radar:
-        try:
-            fig = create_participation_profile_radar(
-                profiles,
-                title=t("tms_participation_title"),
-                height=380,
-                show_fill=show_fill,
-            )
-            if fig is not None:
-                config = PLOTLY_STATIC_CONFIG if static_plot else PLOTLY_CLEAN_CONFIG
-                st.plotly_chart(fig, width="stretch", config=config)
-            else:
-                st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
+    with col_radar, safe_chart_render():
+        fig = create_participation_profile_radar(
+            profiles,
+            title=t("tms_participation_title"),
+            height=380,
+            show_fill=show_fill,
+        )
+        if fig is not None:
+            config = PLOTLY_STATIC_CONFIG if static_plot else PLOTLY_CLEAN_CONFIG
+            st.plotly_chart(fig, width="stretch", config=config)
+        else:
+            st.info(t("insufficient_data_chart"))
     with col_legend:
         st.markdown(t("tms_axes"))
         for line in get_radar_axis_lines():
             st.markdown(line)
 
 
-def render_synergy_radar(
+def render_synergy_radar(  # noqa: PLR0913
     sub: DataFrameLike,
     friend_sub: DataFrameLike,
     me_name: str,
@@ -187,7 +185,7 @@ def render_synergy_radar(
     _render_radar_display(profiles)
 
 
-def render_trio_synergy_radar(
+def render_trio_synergy_radar(  # noqa: PLR0913
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
     f2_df: DataFrameLike,

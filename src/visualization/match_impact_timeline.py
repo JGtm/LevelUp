@@ -190,7 +190,7 @@ def _format_time(ms: int) -> str:
     return f"{minutes}:{seconds:02d}"
 
 
-def plot_match_kill_death_timeline(
+def plot_match_kill_death_timeline(  # noqa: C901, PLR0912, PLR0915
     highlight_events: list[dict[str, Any]],
     me_xuid: str,
     impact_events: list[MatchImpactEvent],
@@ -436,7 +436,7 @@ def plot_match_kill_death_timeline(
 # =============================================================================
 
 
-def plot_all_players_frags_timeline(
+def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
     highlight_events: list[dict[str, Any]],
     me_xuid: str,
     *,

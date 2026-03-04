@@ -23,6 +23,7 @@ from src.ui.career_ranks import (
     format_career_rank_label_fr,
     get_rank_icon_path,
 )
+from src.ui.chart_utils import safe_chart_render
 from src.ui.components.career_progress_circle import (
     RANK_MAX,
     XP_HERO_TOTAL,
@@ -414,7 +415,7 @@ def _compute_hero_projections(
 # ── Graphique XP enrichi ────────────────────────────────────────────────────
 
 
-def _create_xp_history_chart(
+def _create_xp_history_chart(  # noqa: PLR0913
     history: list[dict],
     *,
     estimated_curve: list[tuple[datetime, int]] | None = None,
@@ -743,7 +744,7 @@ _PG_ICONS: dict[str, str] = {
 _PG_ORDER = ["ranked", "arena", "btb", "tactical", "social", "fun"]
 
 
-def _render_lusr_section(*, db_path: str, xuid: str) -> None:
+def _render_lusr_section(*, db_path: str, xuid: str) -> None:  # noqa: C901, PLR0912, PLR0915
     """Rend la section LUSR/CSR sur la page Carrière.
 
     Affiche :
@@ -780,7 +781,7 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
 
     # Angles droits sur les bordures des cartes LUSR
     st.markdown(
-        "<style>[data-testid='stVerticalBlockBorderWrapper']" "{border-radius:0!important}</style>",
+        "<style>[data-testid='stVerticalBlockBorderWrapper']{border-radius:0!important}</style>",
         unsafe_allow_html=True,
     )
 
@@ -900,7 +901,7 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
     selected_group = group_options[selected_label]
 
     chart_title = f"LUSR / CSR — {selected_label}"
-    try:
+    with safe_chart_render("career_lusr_group_error"):
         fig = plot_lusr_timeseries(
             df_all,
             title=chart_title,
@@ -912,12 +913,10 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
             width="stretch",
             config=PLOTLY_CLEAN_CONFIG,
         )
-    except Exception as e:
-        st.warning(t("career_lusr_group_error", error=e))
 
 
 @fragment_if_available
-def render_career_page(
+def render_career_page(  # noqa: C901, PLR0912, PLR0915
     *,
     db_path: str,
     xuid: str,
@@ -997,24 +996,21 @@ def render_career_page(
                 st.metric(t("career_metric_current_xp"), f"{current_xp:,}")
                 st.metric(t("career_metric_next_rank_xp"), f"{xp_for_next:,}")
 
-    with col_gauge:
+    with col_gauge, safe_chart_render("career_gauge_error"):
         # Gauge de progression
-        try:
-            gauge_fig = create_career_progress_gauge(
-                current_xp=current_xp,
-                xp_for_next_rank=xp_for_next,
-                progress_pct=progress_pct,
-                rank_name_fr=rank_label_fr,
-                is_max_rank=is_max,
+        gauge_fig = create_career_progress_gauge(
+            current_xp=current_xp,
+            xp_for_next_rank=xp_for_next,
+            progress_pct=progress_pct,
+            rank_name_fr=rank_label_fr,
+            is_max_rank=is_max,
+        )
+        if gauge_fig is not None:
+            st.plotly_chart(
+                gauge_fig, key="career_gauge", width="stretch", config=PLOTLY_STATIC_CONFIG
             )
-            if gauge_fig is not None:
-                st.plotly_chart(
-                    gauge_fig, key="career_gauge", width="stretch", config=PLOTLY_STATIC_CONFIG
-                )
-            else:
-                st.info(t("career_gauge_generate_error"))
-        except Exception as e:
-            st.warning(t("career_gauge_error", error=e))
+        else:
+            st.info(t("career_gauge_generate_error"))
 
     # --- Progression vers Héros ---
     st.divider()
@@ -1037,22 +1033,19 @@ def render_career_page(
         with m4:
             st.metric(t("career_metric_rank"), f"{rank_number} / {RANK_MAX}")
 
-    with col_hero_gauge:
-        try:
-            hero_gauge = create_hero_progress_gauge(
-                hero_pct=hero_pct,
-                xp_total=xp_total,
-                xp_remaining=xp_remaining,
-                is_max_rank=is_max,
-            )
-            st.plotly_chart(
-                hero_gauge,
-                key="hero_progress_gauge",
-                width="stretch",
-                config=PLOTLY_STATIC_CONFIG,
-            )
-        except Exception as e:
-            st.warning(t("career_hero_progress_error", error=e))
+    with col_hero_gauge, safe_chart_render("career_hero_progress_error"):
+        hero_gauge = create_hero_progress_gauge(
+            hero_pct=hero_pct,
+            xp_total=xp_total,
+            xp_remaining=xp_remaining,
+            is_max_rank=is_max,
+        )
+        st.plotly_chart(
+            hero_gauge,
+            key="hero_progress_gauge",
+            width="stretch",
+            config=PLOTLY_STATIC_CONFIG,
+        )
 
     # --- Historique de progression ---
     st.divider()
@@ -1091,7 +1084,7 @@ def render_career_page(
             logger.debug(f"Chargement autres joueurs échoué: {e}")
             other_players_data = []
 
-        try:
+        with safe_chart_render("career_history_error"):
             history_fig = _create_xp_history_chart(
                 history,
                 estimated_curve=estimated_curve,
@@ -1109,8 +1102,6 @@ def render_career_page(
                 )
             else:
                 st.info(t("career_rank_history_no_data"))
-        except Exception as e:
-            st.warning(t("career_history_error", error=e))
 
         # Tableau récapitulatif des derniers snapshots
         with st.expander(t("career_rank_history_title"), expanded=False):

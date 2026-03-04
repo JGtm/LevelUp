@@ -370,7 +370,7 @@ class TestMvPlayerMatchesView:
         ensure_mv_player_matches_view(conn)
 
         row = conn.execute(
-            "SELECT kda, kills, deaths, assists FROM mv_player_matches " "WHERE xuid = ? LIMIT 1",
+            "SELECT kda, kills, deaths, assists FROM mv_player_matches WHERE xuid = ? LIMIT 1",
             [PLAYER_XUID],
         ).fetchone()
 
@@ -465,7 +465,7 @@ class TestPlayerPerformanceIndexes:
         ensure_player_performance_indexes(conn)
 
         indexes = conn.execute(
-            "SELECT index_name FROM duckdb_indexes() " "WHERE database_name != 'system'"
+            "SELECT index_name FROM duckdb_indexes() WHERE database_name != 'system'"
         ).fetchall()
         index_names = {row[0] for row in indexes}
 

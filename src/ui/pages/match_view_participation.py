@@ -10,6 +10,7 @@ from typing import Any
 
 import streamlit as st
 
+from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 
@@ -80,27 +81,24 @@ def render_participation_section(
     st.subheader(f"🎯 {t('mvp_participation_title')}")
 
     col_radar, col_legend = st.columns([2, 1])
-    with col_radar:
-        try:
-            fig = create_participation_profile_radar(
-                [profile],
-                title=t("mvp_participation_title"),
-                height=380,
-                radial_range=(0, 0.75),  # Échelle réduite pour agrandir le graphe
-            )
-            if fig is not None:
-                st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-            else:
-                st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
+    with col_radar, safe_chart_render():
+        fig = create_participation_profile_radar(
+            [profile],
+            title=t("mvp_participation_title"),
+            height=380,
+            radial_range=(0, 0.75),  # Échelle réduite pour agrandir le graphe
+        )
+        if fig is not None:
+            st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+        else:
+            st.info(t("insufficient_data_chart"))
     with col_legend:
         st.markdown(f"**{t('mvp_axes_label')}**")
         for line in get_radar_axis_lines():
             st.markdown(line)
 
 
-def render_participation_comparison(
+def render_participation_comparison(  # noqa: C901, PLR0912, PLR0913
     db_path: str,
     match_ids: list[str],
     xuid: str,
@@ -168,15 +166,12 @@ def render_participation_comparison(
 
         st.subheader(f"📊 {t('mvp_comparison_title')}")
         col_radar, col_legend = st.columns([2, 1])
-        with col_radar:
-            try:
-                fig = create_participation_profile_radar(profiles, title="", height=400)
-                if fig is not None:
-                    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-                else:
-                    st.info(t("insufficient_data_chart"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
+        with col_radar, safe_chart_render():
+            fig = create_participation_profile_radar(profiles, title="", height=400)
+            if fig is not None:
+                st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+            else:
+                st.info(t("insufficient_data_chart"))
         with col_legend:
             st.markdown(f"**{t('mvp_axes_label')}**")
             for line in get_radar_axis_lines():

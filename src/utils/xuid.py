@@ -102,7 +102,7 @@ def extract_gamertag_from_player_id(player_id: Any) -> str | None:
     return None
 
 
-def resolve_xuid_from_db(
+def resolve_xuid_from_db(  # noqa: C901, PLR0912
     db_path: str,
     player: str,
     *,

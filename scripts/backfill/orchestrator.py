@@ -538,9 +538,9 @@ async def backfill_all_players(
     total_results = _empty_result()
 
     for i, player_info in enumerate(players, 1):
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"[{i}/{len(players)}] Traitement de {player_info.gamertag}")
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
 
         result = await backfill_player_data(
             player_info.gamertag,

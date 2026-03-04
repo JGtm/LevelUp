@@ -32,7 +32,7 @@ class Badge:
 
     label_key: str  # clé i18n résolue dans la couche rendu
     css_class: str  # classe CSS os-sb-td--best | os-sb-td--worst | encounter-badge--amber
-    tooltip: str    # texte français libre (dynamique, non traduit)
+    tooltip: str  # texte français libre (dynamique, non traduit)
 
 
 class EncounterStats(BaseModel):
@@ -226,7 +226,9 @@ def compute_encounter_badges(stats: EncounterStats) -> list[Badge]:
             Badge(
                 label_key="badge_tough_nut",
                 css_class="os-sb-td--worst",
-                tooltip=t("tooltip_tough_nut_kd", killed=stats.deaths_suffered, kills=stats.kills_dealt),
+                tooltip=t(
+                    "tooltip_tough_nut_kd", killed=stats.deaths_suffered, kills=stats.kills_dealt
+                ),
             )
         )
     elif stats.deaths_suffered >= 3 and stats.kills_dealt == 0:
@@ -239,7 +241,11 @@ def compute_encounter_badges(stats: EncounterStats) -> list[Badge]:
         )
 
     # Allié+
-    if stats.winrate_as_ally is not None and stats.winrate_as_ally >= 0.65 and stats.ally_count >= 2:
+    if (
+        stats.winrate_as_ally is not None
+        and stats.winrate_as_ally >= 0.65
+        and stats.ally_count >= 2
+    ):
         pct = round(stats.winrate_as_ally * 100)
         badges.append(
             Badge(

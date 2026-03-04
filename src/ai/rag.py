@@ -26,11 +26,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 try:
     import httpx
@@ -334,9 +337,7 @@ class HaloKnowledgeBase:
             config: Configuration RAG. Si None, utilise les valeurs par défaut.
         """
         if not LANCEDB_AVAILABLE:
-            raise ImportError(
-                "LanceDB n'est pas installé. " "Installez-le avec: pip install lancedb"
-            )
+            raise ImportError("LanceDB n'est pas installé. Installez-le avec: pip install lancedb")
 
         self.config = config or RAGConfig()
         self.chunker = TextChunker(
@@ -454,7 +455,7 @@ class HaloKnowledgeBase:
                     chunks = self.index_file(file_path)
                     results[str(file_path)] = chunks
                 except Exception as e:
-                    print(f"Erreur indexation {file_path}: {e}")
+                    logger.warning("Erreur indexation %s: %s", file_path, e)
 
         return results
 
@@ -738,6 +739,6 @@ def create_knowledge_base(
                 try:
                     kb.index_directory(source)
                 except Exception as e:
-                    print(f"Erreur indexation {source}: {e}")
+                    logger.warning("Erreur indexation %s: %s", source, e)
 
     return kb

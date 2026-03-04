@@ -42,7 +42,7 @@ RADAR_THRESHOLDS: dict[str, float] = {
 _global_thresholds_cache: dict[str, float] | None = None
 
 
-def compute_global_radar_thresholds(
+def compute_global_radar_thresholds(  # noqa: C901, PLR0912
     players_base_path: str | Path | None = None,
 ) -> dict[str, float]:
     """Calcule les seuils de normalisation à partir du meilleur match de toutes les DBs.
@@ -243,10 +243,10 @@ def _extract_scores_from_awards(awards_df: pl.DataFrame) -> dict[str, int]:
     import polars as pl
 
     if awards_df.is_empty():
-        return {c: 0 for c in _CATEGORIES}
+        return dict.fromkeys(_CATEGORIES, 0)
 
     if "award_score" not in awards_df.columns:
-        return {c: 0 for c in _CATEGORIES}
+        return dict.fromkeys(_CATEGORIES, 0)
 
     agg = awards_df.group_by("award_category").agg(pl.col("award_score").sum().alias("total"))
     scores = {row["award_category"]: int(row["total"]) for row in agg.iter_rows(named=True)}
@@ -290,7 +290,7 @@ def _get_match_stats_values(match_row: dict | None) -> tuple[int, float, float]:
     return deaths, duration_min, avg_life
 
 
-def compute_participation_profile(
+def compute_participation_profile(  # noqa: PLR0913
     awards_df: pl.DataFrame,
     match_row: dict | pl.Series | None = None,
     *,

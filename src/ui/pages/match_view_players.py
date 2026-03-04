@@ -15,6 +15,7 @@ import streamlit as st
 from src.analysis import compute_personal_antagonists
 from src.config import BOT_MAP, TEAM_MAP
 from src.ui import display_name_from_xuid
+from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_helpers import os_card
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
@@ -90,7 +91,7 @@ def _load_match_scoreboard(db_path: str, match_id: str) -> list[dict[str, Any]]:
 
 
 @fragment_if_available
-def render_team_dominance_section(
+def render_team_dominance_section(  # noqa: PLR0913
     *,
     match_id: str,
     db_path: str,
@@ -188,7 +189,7 @@ def render_team_dominance_section(
 
 
 @fragment_if_available
-def render_nemesis_section(
+def render_nemesis_section(  # noqa: C901, PLR0913, PLR0915
     *,
     match_id: str,
     db_path: str,
@@ -432,7 +433,7 @@ def _display_name_for_chart(
     return "-"
 
 
-def _render_antagonist_chart(
+def _render_antagonist_chart(  # noqa: C901, PLR0912, PLR0913
     *,
     match_id: str,
     db_path: str,
@@ -514,7 +515,7 @@ def _render_antagonist_chart(
             me_xuid = str(
                 parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()
             ).strip()
-            try:
+            with safe_chart_render():
                 fig = plot_killer_victim_stacked_bars(
                     pairs_df,
                     match_id=match_id,
@@ -528,8 +529,6 @@ def _render_antagonist_chart(
                     st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("mv_interactions_no_data"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
         except Exception:
             pass
 
@@ -653,7 +652,7 @@ def _fmt_scoreboard_cell(key: str, value: Any) -> str:
     return str(value)
 
 
-def render_kd_timeline_section(
+def render_kd_timeline_section(  # noqa: PLR0913
     *,
     match_id: str,
     db_path: str,
@@ -698,7 +697,7 @@ def render_kd_timeline_section(
         st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
 
 
-def render_match_scoreboard(
+def render_match_scoreboard(  # noqa: C901, PLR0912, PLR0915
     *,
     match_id: str,
     db_path: str,
@@ -917,7 +916,7 @@ def render_match_scoreboard(
 # =============================================================================
 
 
-def render_roster_section(
+def render_roster_section(  # noqa: C901, PLR0913
     *,
     match_id: str,
     db_path: str,
@@ -1055,7 +1054,7 @@ def render_roster_section(
 
 
 @fragment_if_available
-def render_match_impact_section(
+def render_match_impact_section(  # noqa: PLR0913
     *,
     match_id: str,
     db_path: str,

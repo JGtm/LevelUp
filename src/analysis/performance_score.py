@@ -95,7 +95,7 @@ def _safe_col(df: pl.DataFrame, col: str, default: float = 0.0) -> pl.Expr:
     return pl.lit(default)
 
 
-def _prepare_history_metrics(df_history: pl.DataFrame) -> pl.DataFrame:
+def _prepare_history_metrics(df_history: pl.DataFrame) -> pl.DataFrame:  # noqa: PLR0912
     """Prépare les métriques normalisées par minute pour l'historique.
 
     Args:
@@ -121,7 +121,7 @@ def _prepare_history_metrics(df_history: pl.DataFrame) -> pl.DataFrame:
     ]
 
     if df_history.is_empty():
-        return pl.DataFrame(schema={c: pl.Float64 for c in output_cols})
+        return pl.DataFrame(schema=dict.fromkeys(output_cols, pl.Float64))
 
     # Durée du match en secondes
     duration_col = None
@@ -264,7 +264,7 @@ def _compute_rank_performance(
     return _percentile_rank(rank_diff, rank_diff_series)
 
 
-def compute_relative_performance_score(
+def compute_relative_performance_score(  # noqa: C901, PLR0912, PLR0915
     row: dict[str, Any],
     df_history: pl.DataFrame | Any,
     *,

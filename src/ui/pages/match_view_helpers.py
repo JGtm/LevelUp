@@ -238,7 +238,7 @@ def _render_media_from_indexed_db(
     return True
 
 
-def _render_media_legacy(
+def _render_media_legacy(  # noqa: C901, PLR0912
     *,
     row: dict[str, Any],
     settings: AppSettings,
@@ -328,7 +328,7 @@ def _render_media_legacy(
                 st.write(str(p))
 
 
-def render_media_section(
+def render_media_section(  # noqa: PLR0913
     *,
     row: dict[str, Any],
     settings: AppSettings,
@@ -382,7 +382,7 @@ def _is_valid_css_color(val: str | None) -> bool:
     return s.startswith("#") or s.startswith("var(")
 
 
-def os_card(
+def os_card(  # noqa: PLR0913
     title: str,
     kpi: str,
     sub_html: str | None = None,

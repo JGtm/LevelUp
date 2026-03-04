@@ -400,8 +400,7 @@ def _find_matches_in_shared_all(
             conditions.append("mr.is_firefight = TRUE")
         else:
             conditions.append(
-                f"mr.is_firefight = TRUE"
-                f" AND (COALESCE(mr.backfill_completed, 0) & {pve_bit}) = 0"
+                f"mr.is_firefight = TRUE AND (COALESCE(mr.backfill_completed, 0) & {pve_bit}) = 0"
             )
 
     if not conditions:

@@ -217,7 +217,7 @@ def _build_ranks_lookup() -> dict[int, CareerRankInfo]:
         tables = {
             row[0]
             for row in conn.execute(
-                "SELECT table_name FROM information_schema.tables " "WHERE table_schema = 'main'"
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
             ).fetchall()
         }
         if "career_ranks" not in tables:
@@ -334,8 +334,7 @@ def is_metadata_available() -> bool:
     try:
         with duckdb_read_only(str(db_path)) as conn:
             count = conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_name = 'career_ranks'"
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'career_ranks'"
             ).fetchone()[0]
             return count > 0
     except Exception:

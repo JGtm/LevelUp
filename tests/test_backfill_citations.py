@@ -196,8 +196,7 @@ def _create_player_db(path: Path) -> None:
         )
     """)
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_match_citations_name "
-        "ON match_citations(citation_name_norm)"
+        "CREATE INDEX IF NOT EXISTS idx_match_citations_name ON match_citations(citation_name_norm)"
     )
 
     conn.execute("""

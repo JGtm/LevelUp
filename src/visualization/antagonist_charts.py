@@ -70,7 +70,7 @@ PLAYER_COLORS = [
 # =============================================================================
 
 
-def plot_killer_victim_stacked_bars(
+def plot_killer_victim_stacked_bars(  # noqa: PLR0913
     pairs_df: pl.DataFrame,
     match_id: str | None = None,
     *,
@@ -317,7 +317,7 @@ def plot_kd_timeseries(
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
-def plot_duel_history(
+def plot_duel_history(  # noqa: PLR0913
     duel_df: pl.DataFrame,
     me_gamertag: str,
     opponent_gamertag: str,
@@ -599,7 +599,7 @@ def plot_killer_victim_heatmap(
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
-def plot_top_antagonists_bars(
+def plot_top_antagonists_bars(  # noqa: PLR0913
     nemeses: list[dict],
     victims: list[dict],
     *,

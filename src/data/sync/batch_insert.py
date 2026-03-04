@@ -197,7 +197,7 @@ CRITICAL_TABLES = ["match_stats", "match_participants", "highlight_events"]
 # =============================================================================
 
 
-def _coerce_value(value: Any, duckdb_type: str) -> Any:
+def _coerce_value(value: Any, duckdb_type: str) -> Any:  # noqa: C901, PLR0912
     """Convertit une valeur Python pour correspondre au type DuckDB attendu.
 
     Args:
@@ -286,7 +286,7 @@ def coerce_row_types(
 # =============================================================================
 
 
-def batch_insert_rows(
+def batch_insert_rows(  # noqa: PLR0913
     conn: Any,
     table_name: str,
     rows: list[Any],
@@ -630,7 +630,7 @@ MATCH_STATS_COLUMNS = [
 # =============================================================================
 
 
-def audit_column_types(
+def audit_column_types(  # noqa: C901
     conn: Any,
     table_name: str,
 ) -> list[dict[str, str]]:

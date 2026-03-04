@@ -6,8 +6,12 @@ Fonctions d'initialisation, de validation et de rendu du profil.
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
+import time as _time
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 import polars as pl
 import streamlit as st
@@ -426,8 +430,14 @@ def load_match_dataframe(
     df = pl.DataFrame()
     db_key = db_cache_key(db_path) if db_path else None
 
+    from src.utils.log_config import log_duration
+
+    _t0 = _time.perf_counter()
     if db_path and os.path.exists(db_path) and str(xuid or "").strip():
-        with perf_section("db/load_df_optimized"):
+        with (
+            perf_section("db/load_df_optimized"),
+            log_duration("db/load_df_optimized", logger, threshold_ms=500),
+        ):
             df = load_df_optimized(db_path, xuid.strip(), db_key=db_key, cache_buster=cache_buster)
         if df.is_empty():
             st.warning(t("app_no_match"))
@@ -438,4 +448,11 @@ def load_match_dataframe(
         with perf_section("analysis/mark_firefight"):
             df = mark_firefight(df)
 
+    _ms = (_time.perf_counter() - _t0) * 1000
+    logger.info(
+        "DataFrame chargé: %d matchs en %.0f ms (xuid=%s...)",
+        len(df),
+        _ms,
+        str(xuid or "")[:8],
+    )
     return df, db_key

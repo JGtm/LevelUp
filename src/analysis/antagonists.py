@@ -151,7 +151,7 @@ class AggregationResult:
         return sorted_entries[:limit]
 
 
-def aggregate_antagonists(
+def aggregate_antagonists(  # noqa: C901, PLR0912
     match_results: list[tuple[datetime, AntagonistsResult]],
     *,
     min_encounters: int = 1,

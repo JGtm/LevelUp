@@ -419,7 +419,7 @@ def compute_assist_breakdown_polars(
     }
 
     # Compter chaque type d'assistance
-    counts = {name: 0 for name in assist_mapping.values()}
+    counts = dict.fromkeys(assist_mapping.values(), 0)
     total_points = 0
 
     for row in assist_df.iter_rows(named=True):
@@ -910,22 +910,22 @@ def compute_player_profile_polars(
         profile_type = "slayer"
         profile_label = "🎯 Joueur Slayer"
         description = (
-            f"Vous excellez dans les éliminations avec {kill_ratio*100:.0f}% "
+            f"Vous excellez dans les éliminations avec {kill_ratio * 100:.0f}% "
             "de votre score provenant des kills."
         )
     elif support_ratio >= 0.40:
         profile_type = "support"
         profile_label = "🛡️ Joueur Support"
         description = (
-            f"Vous contribuez fortement aux objectifs ({objective_ratio*100:.0f}%) "
-            f"et aux assistances ({assist_ratio*100:.0f}%)."
+            f"Vous contribuez fortement aux objectifs ({objective_ratio * 100:.0f}%) "
+            f"et aux assistances ({assist_ratio * 100:.0f}%)."
         )
     else:
         profile_type = "versatile"
         profile_label = "⚔️ Joueur Polyvalent"
         description = (
-            f"Bon équilibre entre kills ({kill_ratio*100:.0f}%), "
-            f"objectifs ({objective_ratio*100:.0f}%) et assists ({assist_ratio*100:.0f}%)."
+            f"Bon équilibre entre kills ({kill_ratio * 100:.0f}%), "
+            f"objectifs ({objective_ratio * 100:.0f}%) et assists ({assist_ratio * 100:.0f}%)."
         )
 
     return PlayerProfileResult(

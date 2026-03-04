@@ -183,8 +183,7 @@ class TestTeammatesAggregateIntegrity:
         # mais c'est rare, donc on avertit
         if players_without_teammates:
             pytest.skip(
-                f"Joueurs sans coéquipiers (peut être normal si solo): "
-                f"{players_without_teammates}"
+                f"Joueurs sans coéquipiers (peut être normal si solo): {players_without_teammates}"
             )
 
     def test_teammates_not_self(self, db_connection):
@@ -337,7 +336,7 @@ class TestSourceVsCacheConsistency:
                 import warnings
 
                 warnings.warn(
-                    f"Seulement {ratio*100:.1f}% des matchs sources sont en cache "
+                    f"Seulement {ratio * 100:.1f}% des matchs sources sont en cache "
                     f"({cache_count}/{source_count})",
                     stacklevel=2,
                 )

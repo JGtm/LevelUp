@@ -18,12 +18,15 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Clés session_state liées aux filtres (centralisées pour nettoyage exhaustif)
@@ -256,7 +259,7 @@ def _get_filter_file_path(player_key: str) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def save_filter_preferences(
+def save_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
     xuid: str,
     db_path: str | None = None,
     preferences: FilterPreferences | None = None,
@@ -387,6 +390,7 @@ def save_filter_preferences(
     # Sauvegarder dans le fichier
     player_key = _get_player_key(xuid, db_path)
     file_path = _get_filter_file_path(player_key)
+    logger.debug("Prefs filtres sauvegardées (xuid=%s...)", str(xuid or "")[:8])
 
     try:
         with open(file_path, "w", encoding="utf-8") as f:
@@ -424,7 +428,7 @@ def load_filter_preferences(
         return None
 
 
-def apply_filter_preferences(
+def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913
     xuid: str,
     db_path: str | None = None,
     preferences: FilterPreferences | None = None,
@@ -454,6 +458,8 @@ def apply_filter_preferences(
         preferences = load_filter_preferences(xuid, db_path)
         if preferences is None:
             return
+
+    logger.debug("Prefs filtres restaurées (xuid=%s...)", str(xuid or "")[:8])
 
     # Mode de filtre
     if preferences.filter_mode:
@@ -509,7 +515,7 @@ def apply_filter_preferences(
         st.session_state["teammates_picked_labels"] = preferences.friends_selected_labels
 
     # Filtres cascade — logique intent-based
-    def _apply_filter(
+    def _apply_filter(  # noqa: PLR0913
         stored: list[str] | None,
         mode: str | None,
         all_opts: list[str] | None,

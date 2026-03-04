@@ -81,7 +81,7 @@ def get_session_friends_signature(df_session: DataFrameLike) -> set[str]:
 # ------------------------------------------------------------------
 
 
-def filter_candidate_sessions(
+def filter_candidate_sessions(  # noqa: PLR0912
     all_sessions_df: DataFrameLike,
     is_with_friends: bool,
     exclude_session_ids: list[int] | None = None,

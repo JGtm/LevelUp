@@ -28,50 +28,23 @@ from src.data.sync.models import MatchStatsRow, SyncOptions
 
 @pytest.fixture
 def temp_duckdb(tmp_path: Path) -> Path:
-    """Crée une base DuckDB temporaire avec le schéma match_stats complet."""
+    """Crée une base DuckDB temporaire avec le schéma V5 (player_match_enrichment)."""
     db_path = tmp_path / f"test_player_{uuid.uuid4().hex[:8]}" / "stats.duckdb"
     db_path.parent.mkdir(parents=True)
 
     conn = duckdb.connect(str(db_path))
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS match_stats (
-            match_id VARCHAR PRIMARY KEY,
-            start_time TIMESTAMP,
-            end_time TIMESTAMP,
-            playlist_id VARCHAR,
-            playlist_name VARCHAR,
-            map_id VARCHAR,
-            map_name VARCHAR,
-            pair_id VARCHAR,
-            pair_name VARCHAR,
-            game_variant_id VARCHAR,
-            game_variant_name VARCHAR,
-            outcome INTEGER,
-            team_id INTEGER,
-            kills INTEGER,
-            deaths INTEGER,
-            assists INTEGER,
-            kda DOUBLE,
-            accuracy DOUBLE,
-            headshot_kills INTEGER,
-            max_killing_spree INTEGER,
-            time_played_seconds DOUBLE,
-            avg_life_seconds DOUBLE,
-            my_team_score INTEGER,
-            enemy_team_score INTEGER,
-            team_mmr DOUBLE,
-            enemy_mmr DOUBLE,
-            shots_fired INTEGER,
-            shots_hit INTEGER,
-            is_firefight BOOLEAN,
-            teammates_signature VARCHAR,
-            updated_at TIMESTAMP,
-            performance_score DOUBLE,
-            personal_score INTEGER,
-            damage_dealt DOUBLE,
-            damage_taken DOUBLE,
-            rank INTEGER,
-            backfill_completed INTEGER DEFAULT 0
+        CREATE TABLE IF NOT EXISTS player_match_enrichment (
+            match_id               VARCHAR PRIMARY KEY,
+            performance_score      FLOAT,
+            session_id             VARCHAR,
+            session_label          VARCHAR,
+            is_with_friends        BOOLEAN,
+            teammates_signature    VARCHAR,
+            known_teammates_count  INTEGER DEFAULT 0,
+            friends_xuids          VARCHAR,
+            created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     conn.execute("""
@@ -85,6 +58,64 @@ def temp_duckdb(tmp_path: Path) -> Path:
     del conn
     gc.collect()
 
+    return db_path
+
+
+@pytest.fixture
+def temp_shared_db(tmp_path: Path) -> Path:
+    """Crée shared_matches.duckdb avec match_registry + match_participants (schéma V5)."""
+    db_path = tmp_path / "warehouse" / "shared_matches.duckdb"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    conn = duckdb.connect(str(db_path))
+    conn.execute("""
+        CREATE TABLE match_registry (
+            match_id VARCHAR PRIMARY KEY,
+            start_time TIMESTAMP NOT NULL
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE match_participants (
+            match_id             VARCHAR NOT NULL,
+            xuid                 VARCHAR NOT NULL,
+            gamertag             VARCHAR,
+            outcome              INTEGER  DEFAULT 2,
+            kills                SMALLINT DEFAULT 10,
+            deaths               SMALLINT DEFAULT 8,
+            assists              SMALLINT DEFAULT 5,
+            kda                  FLOAT    DEFAULT 1.5,
+            accuracy             FLOAT    DEFAULT 0.45,
+            time_played_seconds  INTEGER  DEFAULT 600,
+            avg_life_seconds     FLOAT    DEFAULT 45.0,
+            personal_score       INTEGER  DEFAULT 1500,
+            damage_dealt         FLOAT    DEFAULT 3000.0,
+            damage_taken         FLOAT    DEFAULT 2800.0,
+            rank                 SMALLINT DEFAULT 1,
+            team_mmr             FLOAT    DEFAULT 1500.0,
+            enemy_mmr            FLOAT    DEFAULT 1480.0,
+            kills_expected       FLOAT    DEFAULT 9.5,
+            deaths_expected      FLOAT    DEFAULT 8.5,
+            kills_stddev         FLOAT    DEFAULT 2.0,
+            deaths_stddev        FLOAT    DEFAULT 2.0,
+            assists_expected     FLOAT    DEFAULT 5.0,
+            assists_stddev       FLOAT    DEFAULT 1.5,
+            shots_fired          INTEGER  DEFAULT 200,
+            shots_hit            INTEGER  DEFAULT 90,
+            grenade_kills        SMALLINT DEFAULT 0,
+            melee_kills          SMALLINT DEFAULT 0,
+            power_weapon_kills   SMALLINT DEFAULT 0,
+            score                INTEGER  DEFAULT 1500,
+            headshot_kills       SMALLINT DEFAULT 3,
+            max_killing_spree    SMALLINT DEFAULT 5,
+            team_id              INTEGER  DEFAULT 0,
+            backfill_bits        INTEGER  DEFAULT 0,
+            created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (match_id, xuid)
+        )
+    """)
+    conn.close()
+    del conn
+    gc.collect()
     return db_path
 
 
@@ -113,48 +144,6 @@ def _make_match_row(
         outcome=2,
         team_id=0,
     )
-
-
-def _insert_test_matches(db_path: Path, count: int = 30) -> list[str]:
-    """Insère N matchs de test dans la DB. Retourne les match_ids."""
-    conn = duckdb.connect(str(db_path))
-    base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
-    match_ids = []
-
-    for i in range(count):
-        mid = f"match-{i:04d}"
-        match_ids.append(mid)
-        t = base_time + timedelta(hours=i)
-        conn.execute(
-            """INSERT INTO match_stats (
-                match_id, start_time, kills, deaths, assists, kda, accuracy,
-                time_played_seconds, avg_life_seconds, personal_score,
-                damage_dealt, rank, team_mmr, enemy_mmr, performance_score
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                mid,
-                t,
-                10 + i % 5,
-                8 + i % 3,
-                5 + i % 4,
-                1.5 + (i % 5) * 0.1,
-                0.4 + (i % 10) * 0.01,
-                600,
-                45.0,
-                1500 + i * 10,
-                3000.0 + i * 50,
-                i % 8 + 1,
-                1200.0 + i * 5,
-                1200.0 + i * 3,
-                None,  # performance_score = NULL
-            ),
-        )
-
-    conn.commit()
-    conn.close()
-    del conn
-    gc.collect()
-    return match_ids
 
 
 # =============================================================================
@@ -198,99 +187,88 @@ class TestDeferPerformanceScore:
 # =============================================================================
 
 
-@pytest.mark.skip(
-    reason="V4 legacy - batch_compute_performance_scores teste l'ancienne architecture (match_stats)"
-)
 class TestBatchComputePerformanceScores:
-    """Tests pour le calcul batch des performance scores post-sync."""
+    """Tests batch_compute_performance_scores — architecture V5 (shared_matches)."""
 
-    def test_batch_compute_no_matches(self, temp_duckdb: Path):
-        """Avec une DB vide, batch_compute retourne 0."""
+    XUID = "2535423456789"
+    GAMERTAG = "TestPlayer"
+
+    def _fill_shared_db(self, db_path: Path, xuid: str, n_matches: int) -> None:
+        """Insère n_matches dans la shared DB déjà créée."""
+        conn = duckdb.connect(str(db_path))
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        for i in range(n_matches):
+            mid = f"m-{i:04d}"
+            t = base_time + timedelta(hours=i)
+            conn.execute(
+                "INSERT INTO match_registry (match_id, start_time) VALUES (?, ?)",
+                (mid, t),
+            )
+            conn.execute(
+                "INSERT INTO match_participants (match_id, xuid, gamertag) VALUES (?, ?, ?)",
+                (mid, xuid, self.GAMERTAG),
+            )
+        conn.commit()
+        conn.close()
+
+    def test_batch_compute_no_matches(self, temp_duckdb: Path, temp_shared_db: Path):
+        """Avec une shared DB vide, batch_compute retourne 0."""
         engine = DuckDBSyncEngine(
             player_db_path=str(temp_duckdb),
-            xuid="2535423456789",
-            gamertag="TestPlayer",
+            xuid=self.XUID,
+            gamertag=self.GAMERTAG,
+            shared_db_path=temp_shared_db,
         )
         result = engine.batch_compute_performance_scores()
         assert result == 0
         engine.close()
 
-    def test_batch_compute_with_null_scores(self, temp_duckdb: Path):
-        """Calcule les scores manquants pour les matchs avec assez d'historique."""
-        _insert_test_matches(temp_duckdb, count=30)
-
+    def test_batch_compute_with_sufficient_history(self, temp_duckdb: Path, temp_shared_db: Path):
+        """Calcule les scores quand assez de matchs dans shared."""
+        self._fill_shared_db(temp_shared_db, self.XUID, n_matches=30)
         engine = DuckDBSyncEngine(
             player_db_path=str(temp_duckdb),
-            xuid="2535423456789",
-            gamertag="TestPlayer",
+            xuid=self.XUID,
+            gamertag=self.GAMERTAG,
+            shared_db_path=temp_shared_db,
         )
-
         updated = engine.batch_compute_performance_scores()
-
-        # Au moins quelques matchs devraient avoir été calculés
-        # (les premiers n'ont pas assez d'historique, les suivants oui)
-        assert updated > 0, "Au moins quelques scores devraient être calculés"
-
-        # Vérifier dans la DB
-        conn = duckdb.connect(str(temp_duckdb))
-        non_null = conn.execute(
-            "SELECT COUNT(*) FROM match_stats WHERE performance_score IS NOT NULL"
-        ).fetchone()[0]
-        conn.close()
-
-        assert non_null == updated
         engine.close()
+        assert updated > 0, "Au moins quelques scores doivent etre calcules"
 
-    def test_batch_compute_idempotent(self, temp_duckdb: Path):
-        """Exécuter batch_compute 2 fois ne recalcule pas les scores existants."""
-        _insert_test_matches(temp_duckdb, count=30)
-
+    def test_batch_compute_idempotent(self, temp_duckdb: Path, temp_shared_db: Path):
+        """Executer batch_compute 2 fois ne recalcule pas les scores existants."""
+        self._fill_shared_db(temp_shared_db, self.XUID, n_matches=30)
         engine = DuckDBSyncEngine(
             player_db_path=str(temp_duckdb),
-            xuid="2535423456789",
-            gamertag="TestPlayer",
+            xuid=self.XUID,
+            gamertag=self.GAMERTAG,
+            shared_db_path=temp_shared_db,
         )
-
         first_run = engine.batch_compute_performance_scores()
         second_run = engine.batch_compute_performance_scores()
-
         assert first_run > 0
-        assert second_run == 0, "Le 2e appel ne devrait rien recalculer"
+        assert second_run == 0, "Le 2e appel ne doit rien recalculer"
         engine.close()
 
-    def test_batch_compute_all_scores_already_present(self, temp_duckdb: Path):
-        """Si tous les matchs ont un score, retourne 0."""
+    def test_batch_compute_all_scores_already_present(
+        self, temp_duckdb: Path, temp_shared_db: Path
+    ):
+        """Si tous les matchs ont deja un score, retourne 0."""
+        self._fill_shared_db(temp_shared_db, self.XUID, n_matches=5)
         conn = duckdb.connect(str(temp_duckdb))
-        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
         for i in range(5):
             conn.execute(
-                """INSERT INTO match_stats (
-                    match_id, start_time, kills, deaths, assists, kda,
-                    accuracy, time_played_seconds, avg_life_seconds,
-                    performance_score
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    f"m-{i}",
-                    base_time + timedelta(hours=i),
-                    10,
-                    8,
-                    5,
-                    1.5,
-                    0.45,
-                    600,
-                    45.0,
-                    65.0,
-                ),
+                "INSERT INTO player_match_enrichment (match_id, performance_score) VALUES (?, ?)",
+                (f"m-{i:04d}", 65.0),
             )
         conn.commit()
         conn.close()
-        del conn
-        gc.collect()
-
         engine = DuckDBSyncEngine(
             player_db_path=str(temp_duckdb),
-            xuid="2535423456789",
-            gamertag="TestPlayer",
+            xuid=self.XUID,
+            gamertag=self.GAMERTAG,
+            shared_db_path=temp_shared_db,
         )
         result = engine.batch_compute_performance_scores()
         assert result == 0

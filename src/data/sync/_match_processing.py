@@ -10,7 +10,10 @@ import asyncio
 import logging
 from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.data.sync._protocol import _SyncProtocol
 
 import duckdb
 
@@ -36,8 +39,8 @@ logger = logging.getLogger(__name__)
 class MatchProcessingMixin:
     """Méthodes de traitement des matchs (fetch, transform, insert)."""
 
-    async def _process_matches(
-        self,
+    async def _process_matches(  # noqa: C901, PLR0912, PLR0913
+        self: _SyncProtocol,
         client: Any,
         options: SyncOptions,
         existing_ids: set[str],
@@ -58,7 +61,7 @@ class MatchProcessingMixin:
             batch_size = min(25, remaining)
 
             history = await client.get_match_history(
-                self._gamertag,  # type: ignore[attr-defined]
+                self._gamertag,
                 match_type=options.match_type,
                 start=start,
                 count=batch_size,
@@ -105,9 +108,10 @@ class MatchProcessingMixin:
                         options.batch_commit_size > 0
                         and result.matches_inserted % options.batch_commit_size == 0
                     ):
-                        conn = self._get_connection()  # type: ignore[attr-defined]
+                        conn = self._get_connection()
                         conn.commit()
                         logger.debug(f"Commit intermédiaire après {result.matches_inserted} matchs")
+                        logger.debug("Batch commit: %d matchs traités", result.matches_inserted)
 
                 if match_result.get("error"):
                     result.warnings.append(match_result["error"])
@@ -133,7 +137,7 @@ class MatchProcessingMixin:
         return result
 
     async def _process_single_match(
-        self,
+        self: _SyncProtocol,
         client: Any,
         match_id: str,
         options: SyncOptions,
@@ -145,7 +149,7 @@ class MatchProcessingMixin:
         registre partagé.
         """
         # ── Mode shared v5 ─────────────────────────────────────────
-        shared_conn = self._get_shared_connection()  # type: ignore[attr-defined]
+        shared_conn = self._get_shared_connection()
         if shared_conn is not None:
             try:
                 registry = shared_conn.execute(
@@ -163,9 +167,7 @@ class MatchProcessingMixin:
                 registry = None
 
             if registry is not None:
-                logger.info(
-                    f"Match {match_id} déjà connu dans shared " f"(player_count={registry[4]})"
-                )
+                logger.info(f"Match {match_id} déjà connu dans shared (player_count={registry[4]})")
                 return await self._process_known_match(
                     client,
                     match_id,
@@ -187,8 +189,8 @@ class MatchProcessingMixin:
             f"Exécutez 'python scripts/migrate_to_v5.py' pour créer la DB partagée."
         )
 
-    async def _process_known_match(
-        self,
+    async def _process_known_match(  # noqa: C901, PLR0912, PLR0915
+        self: _SyncProtocol,
         client: Any,
         match_id: str,
         registry: tuple,
@@ -251,9 +253,9 @@ class MatchProcessingMixin:
 
             match_row = transform_match_stats(
                 stats_json,
-                self._xuid,  # type: ignore[attr-defined]
+                self._xuid,
                 skill_json=skill_json,
-                metadata_resolver=self._metadata_resolver,  # type: ignore[attr-defined]
+                metadata_resolver=self._metadata_resolver,
             )
             if match_row is None:
                 result["error"] = f"Transformation échouée pour {match_id}"
@@ -261,20 +263,20 @@ class MatchProcessingMixin:
 
             _skill_row = None
             if skill_json:
-                _skill_row = transform_skill_stats(skill_json, match_id, self._xuid)  # type: ignore[attr-defined]
+                _skill_row = transform_skill_stats(skill_json, match_id, self._xuid)
 
             # Extraire les médailles perso (player DB)
             from src.data.sync.transformers import extract_medals
 
-            _medal_rows = extract_medals(stats_json, self._xuid)  # type: ignore[attr-defined]
+            _medal_rows = extract_medals(stats_json, self._xuid)
 
             # PersonalScores
-            personal_scores = extract_personal_score_awards(stats_json, self._xuid)  # type: ignore[attr-defined]
+            personal_scores = extract_personal_score_awards(stats_json, self._xuid)
             personal_score_rows = []
             if personal_scores:
                 personal_score_rows = transform_personal_score_awards(
                     match_id,
-                    self._xuid,  # type: ignore[attr-defined]
+                    self._xuid,
                     personal_scores,
                 )
 
@@ -287,13 +289,13 @@ class MatchProcessingMixin:
                 _participant_rows = extract_participants(stats_json)
 
             # 3. V5 finale : Insérer minimalement dans la player DB (seulement enrichissements)
-            async with self._db_lock:  # type: ignore[attr-defined]
+            async with self._db_lock:
                 # ✅ CONSERVÉ : personal_score_awards (enrichissement personnel)
                 if personal_score_rows:
-                    self._insert_personal_score_rows(personal_score_rows)  # type: ignore[attr-defined]
+                    self._insert_personal_score_rows(personal_score_rows)
 
                 # ✅ NOUVEAU : player_match_enrichment (performance_score, sessions, etc.)
-                self._insert_enrichment_row(match_id, match_row)  # type: ignore[attr-defined]
+                self._insert_enrichment_row(match_id, match_row)
                 self._compute_and_update_performance_score(match_id, match_row)
 
                 # ✅ CSR (v5.2) : écrire le CSR dans match_skill_rank si match classé
@@ -302,8 +304,8 @@ class MatchProcessingMixin:
 
             # 4. Backfill sélectif dans shared si des données manquent
             backfill_needed: list[str] = []
-            async with self._shared_db_lock:  # type: ignore[attr-defined]
-                shared_conn = self._get_shared_connection()  # type: ignore[attr-defined]
+            async with self._shared_db_lock:
+                shared_conn = self._get_shared_connection()
                 if shared_conn is None:
                     result["error"] = "shared_connection perdue"
                     return result
@@ -413,8 +415,8 @@ class MatchProcessingMixin:
 
         return result
 
-    async def _process_new_match(
-        self,
+    async def _process_new_match(  # noqa: C901, PLR0912, PLR0915
+        self: _SyncProtocol,
         client: Any,
         match_id: str,
         options: SyncOptions,
@@ -467,7 +469,7 @@ class MatchProcessingMixin:
             # 3. Extraire les données communes pour shared
             registry_data = extract_match_registry_data(
                 stats_json,
-                metadata_resolver=self._metadata_resolver,  # type: ignore[attr-defined]
+                metadata_resolver=self._metadata_resolver,
             )
             if registry_data is None:
                 result["error"] = f"Extraction registry échouée pour {match_id}"
@@ -482,8 +484,8 @@ class MatchProcessingMixin:
                 event_rows_shared = transform_highlight_events(highlight_events, match_id)
 
             # 4. Insérer dans shared_matches
-            async with self._shared_db_lock:  # type: ignore[attr-defined]
-                shared_conn = self._get_shared_connection()  # type: ignore[attr-defined]
+            async with self._shared_db_lock:
+                shared_conn = self._get_shared_connection()
                 if shared_conn is None:
                     result["error"] = "shared_connection indisponible"
                     return result
@@ -513,7 +515,7 @@ class MatchProcessingMixin:
                     WHERE match_id = ?""",
                     (
                         len(event_rows_shared) > 0,
-                        self._gamertag,  # type: ignore[attr-defined]
+                        self._gamertag,
                         _utc_now,
                         match_id,
                     ),
@@ -537,9 +539,9 @@ class MatchProcessingMixin:
             # 5. Insérer les données personnelles dans la player DB
             match_row = transform_match_stats(
                 stats_json,
-                self._xuid,  # type: ignore[attr-defined]
+                self._xuid,
                 skill_json=skill_json,
-                metadata_resolver=self._metadata_resolver,  # type: ignore[attr-defined]
+                metadata_resolver=self._metadata_resolver,
             )
             if match_row is None:
                 result["error"] = f"Transformation match_stats échouée pour {match_id}"
@@ -547,12 +549,12 @@ class MatchProcessingMixin:
 
             _skill_row = None
             if skill_json:
-                _skill_row = transform_skill_stats(skill_json, match_id, self._xuid)  # type: ignore[attr-defined]
+                _skill_row = transform_skill_stats(skill_json, match_id, self._xuid)
 
             # ✅ Écrire team_mmr/enemy_mmr + expected/stddev dans shared.match_participants (V5.1)
             if _skill_row and (_skill_row.team_mmr is not None or _skill_row.enemy_mmr is not None):
-                async with self._shared_db_lock:  # type: ignore[attr-defined]
-                    shared_conn = self._get_shared_connection()  # type: ignore[attr-defined]
+                async with self._shared_db_lock:
+                    shared_conn = self._get_shared_connection()
                     if shared_conn:
                         shared_conn.execute(
                             "UPDATE match_participants SET "
@@ -575,20 +577,20 @@ class MatchProcessingMixin:
                                 _skill_row.assists_expected,
                                 _skill_row.assists_stddev,
                                 match_id,
-                                self._xuid,  # type: ignore[attr-defined]
+                                self._xuid,
                             ),
                         )
 
             from src.data.sync.transformers import extract_medals
 
-            _medal_rows_personal = extract_medals(stats_json, self._xuid)  # type: ignore[attr-defined]
+            _medal_rows_personal = extract_medals(stats_json, self._xuid)
 
-            personal_scores = extract_personal_score_awards(stats_json, self._xuid)  # type: ignore[attr-defined]
+            personal_scores = extract_personal_score_awards(stats_json, self._xuid)
             personal_score_rows = []
             if personal_scores:
                 personal_score_rows = transform_personal_score_awards(
                     match_id,
-                    self._xuid,  # type: ignore[attr-defined]
+                    self._xuid,
                     personal_scores,
                 )
 
@@ -597,13 +599,13 @@ class MatchProcessingMixin:
                 _participant_rows_player = participants  # Réutiliser l'extraction
 
             # V5 finale : écriture minimale dans player DB (seulement enrichissements personnels)
-            async with self._db_lock:  # type: ignore[attr-defined]
+            async with self._db_lock:
                 # ✅ CONSERVÉ : personal_score_awards (enrichissement personnel)
                 if personal_score_rows:
-                    self._insert_personal_score_rows(personal_score_rows)  # type: ignore[attr-defined]
+                    self._insert_personal_score_rows(personal_score_rows)
 
                 # ✅ NOUVEAU : player_match_enrichment (performance_score, sessions, etc.)
-                self._insert_enrichment_row(match_id, match_row)  # type: ignore[attr-defined]
+                self._insert_enrichment_row(match_id, match_row)
                 self._compute_and_update_performance_score(match_id, match_row)
 
                 # ✅ CSR (v5.2) : écrire le CSR dans match_skill_rank si match classé
@@ -619,7 +621,7 @@ class MatchProcessingMixin:
         return result
 
     async def _try_insert_pve_stats(
-        self,
+        self: _SyncProtocol,
         stats_json: dict,
         match_id: str,
         shared_conn: duckdb.DuckDBPyConnection | None,
@@ -640,8 +642,8 @@ class MatchProcessingMixin:
 
         try:
             pve_rows = extract_pve_stats(stats_json)
-            async with self._pve_db_lock:  # type: ignore[attr-defined]
-                pve_conn = self._get_pve_connection()  # type: ignore[attr-defined]
+            async with self._pve_db_lock:
+                pve_conn = self._get_pve_connection()
                 if pve_rows:
                     inserted = batch_insert_pve_stats(pve_conn, pve_rows)
                     logger.debug(f"PVE stats insérées pour {match_id}: {inserted} lignes")

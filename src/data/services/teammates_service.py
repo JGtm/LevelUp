@@ -224,7 +224,7 @@ class TeammatesService:
     # Toutes les données coéquipiers sont dans shared_matches.duckdb
 
     @staticmethod
-    def enrich_series_with_perfect_kills(
+    def enrich_series_with_perfect_kills(  # noqa: PLR0912
         series: list[tuple[str, pl.DataFrame]],
         db_path: str,
     ) -> EnrichedSeries:
