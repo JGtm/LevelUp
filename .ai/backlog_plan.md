@@ -1,7 +1,7 @@
 # Plan de traitement — Backlog consolidé — 2026-03-04
 
-> **Mise à jour 2026-03-04** — Items A→L + J2/J3/J4/J5/M terminés sur `refactor/cleanup-all`.
-> Tests : 3572 passed, 0 failed, 6 warnings. Reste : N, O, P, Q, R.
+> **Mise à jour 2026-03-04** — Tous les items A→R terminés sur `refactor/cleanup-all`.
+> Tests : 3614 passed, 0 failed. Backlog 100% traité.
 
 Synthèse de tous les soucis remontés (notes + logic_issues.md).
 Chaque item est classé par état, priorité et effort.
@@ -439,8 +439,8 @@ mais n'est pas intégrée au cycle de développement — elle ne protège que si
 | J4 | TODOs mineurs (`custom_rules.py`, `migrate_metadata_to_duckdb.py`) | ✅ Fait | Très faible | 🔵 Backlog |
 | M | Docs (`ARCHITECTURE_V5.md`, `README`, `CHANGELOG`) | ✅ Fait (CHANGELOG) | Moyen | 🔵 Backlog |
 | N | Migrer `PAIR_FR` → `static/i18n/modes_fr.json` (source unique) | ✅ Fait | Moyen | 🔵 Backlog |
-| O | Câbler `t()` dans l'UI Streamlit (traductions EN existantes) | ❌ À faire | Moyen | 🔵 Backlog |
-| P | Performance UI P1→P5 (MVs, lazy-loading, filtres SQL) | ❌ À faire | Élevé | 🔵 Backlog |
+| O | Câbler `t()` dans l'UI Streamlit (traductions EN existantes) | ✅ Fait | Moyen | 🔵 Backlog |
+| P | Performance UI P1→P5 (MVs, tabs match_view, LIMIT SQL, perf_score DB, projections fines) | ✅ Fait | Élevé | 🔵 Backlog |
 | Q | CI/CD détection régression (workflow GitHub) | ✅ Fait | Moyen | 🔵 Backlog |
 | R | Améliorations futures (Pandas résiduel, `START_HERE.md`) | ✅ Pandas OK + START_HERE archivé | Variable | 🟢 Un jour |
 
@@ -473,6 +473,6 @@ mais n'est pas intégrée au cycle de développement — elle ne protège que si
 ✅ 18. Q  — ci.yml : refactor/* + job quality + ruff fail sans || true
 ✅ 19. R  — START_HERE.md archivé, Pandas OK (à la frontière uniquement)
 
-❌ 20. O  — Câbler t() dans l'UI Streamlit (sprint dédié)
-❌ 21. P  — Performance UI P1→P5 (sprint dédié)
+✅ 20. O  — Câbler t() dans l'UI Streamlit (sprint dédié)
+✅ 21. P  — Performance UI P1→P5 (sprint dédié)
 ```
