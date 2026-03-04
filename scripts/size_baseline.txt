@@ -151,12 +151,12 @@ FUNC:src/ui/profile_api.py:49:fetch_appearance_via_spnkr:158L
 FUNC:src/ui/profile_api.py:77:_run:128L
 FUNC:src/ui/profile_api_tokens.py:68:get_tokens:108L
 FUNC:src/ui/styles.py:44:get_hero_html:146L
-FUNC:src/ui/sync.py:215:_sync_duckdb_player:165L
-FUNC:src/ui/sync.py:237:_sync_async:128L
-FUNC:src/ui/sync.py:383:refresh_spnkr_db_via_api:96L
-FUNC:src/ui/sync.py:482:sync_all_players:122L
-FUNC:src/ui/sync.py:646:sync_player_duckdb_async:85L
-FUNC:src/ui/sync.py:856:sync_all_players_duckdb:81L
+FUNC:src/ui/sync.py:216:_sync_duckdb_player:165L
+FUNC:src/ui/sync.py:238:_sync_async:128L
+FUNC:src/ui/sync.py:384:refresh_spnkr_db_via_api:96L
+FUNC:src/ui/sync.py:483:sync_all_players:122L
+FUNC:src/ui/sync.py:647:sync_player_duckdb_async:85L
+FUNC:src/ui/sync.py:857:sync_all_players_duckdb:81L
 FUNC:src/utils/discord_notifier.py:185:fetch_last_match_info:93L
 FUNC:src/utils/discord_notifier.py:497:build_embed_payload:83L
 FUNC:src/visualization/antagonist_charts.py:208:plot_kd_timeseries:109L
@@ -222,7 +222,7 @@ MODULE:src/data/services/teammates_service.py:585L
 MODULE:src/data/sync/_match_processing.py:696L
 MODULE:src/data/sync/api_client.py:993L
 MODULE:src/data/sync/batch_insert.py:806L
-MODULE:src/data/sync/engine.py:861L
+MODULE:src/data/sync/engine.py:874L
 MODULE:src/data/sync/models.py:511L
 MODULE:src/data/sync/transformers/_helpers.py:656L
 MODULE:src/data/sync/transformers/_match.py:531L
@@ -239,7 +239,7 @@ MODULE:src/ui/pages/teammates_views.py:839L
 MODULE:src/ui/pages/timeseries.py:593L
 MODULE:src/ui/pages/win_loss.py:539L
 MODULE:src/ui/profile_api.py:575L
-MODULE:src/ui/sync.py:938L
+MODULE:src/ui/sync.py:939L
 MODULE:src/utils/discord_notifier.py:685L
 MODULE:src/visualization/antagonist_charts.py:751L
 MODULE:src/visualization/distributions.py:610L
