@@ -146,9 +146,10 @@ def render_sync_indicator(db_path: str) -> None:
 
     meta = _get_sync_metadata_smart(db_path)
     last_sync = meta.get("last_sync_at")
-    _ = meta.get("total_matches", 0)  # noqa: F841 - Pour usage futur
+    total_matches = meta.get("total_matches", 0)
 
     now = datetime.now(timezone.utc)
+    sync_text = ""
 
     if last_sync:
         delta = now - last_sync
@@ -167,7 +168,7 @@ def render_sync_indicator(db_path: str) -> None:
             days = int(hours / 24)
             time_str = "il y a 1 jour" if days == 1 else f"il y a {days} jours"
 
-        _ = f"{indicator} Sync {time_str}"  # noqa: F841 - Pour usage futur
+        sync_text = f"{indicator} Sync {time_str}"
     else:
         # Pas de métadonnées de sync, on utilise la date de modification du fichier
         try:
@@ -189,17 +190,17 @@ def render_sync_indicator(db_path: str) -> None:
                 days = int(hours / 24)
                 time_str = f"il y a {days} jour{'s' if days > 1 else ''}"
 
-            _ = f"{indicator} Modifié {time_str}"  # noqa: F841 - Pour usage futur
+            sync_text = f"{indicator} Modifié {time_str}"
         except Exception:
-            pass  # Sync inconnue
+            return
 
-    # Affichage compact
-    # match_info = f"({total_matches} matchs)" if total_matches > 0 else ""
-    # st.markdown(
-    #     f"<div style='font-size: 0.85em; color: #888; margin: 4px 0 8px 0;'>"
-    #     f"{sync_text} {match_info}</div>",
-    #     unsafe_allow_html=True,
-    # )
+    if sync_text:
+        match_info = f" ({total_matches} matchs)" if total_matches > 0 else ""
+        st.markdown(
+            f"<div style='font-size: 0.85em; color: #888; margin: 4px 0 8px 0;'>"
+            f"{sync_text}{match_info}</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def _shared_path(player_db: Path) -> Path:
