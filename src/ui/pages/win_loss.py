@@ -300,7 +300,7 @@ def _render_period_section(
 
     def _style_pct(v) -> str:
         try:
-            x = float(v)  # noqa: F841
+            float(v)
         except Exception:
             return ""
         return "color: #E0E0E0; font-weight: 700;"

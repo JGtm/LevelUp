@@ -517,7 +517,6 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
     last_my_score = row.get("my_team_score")
     last_enemy_score = row.get("enemy_team_score")
     score_label = format_score_label_fn(last_my_score, last_enemy_score)
-    _ = score_css_color_fn(last_my_score, last_enemy_score)  # noqa: F841
 
     wp = str(waypoint_player or "").strip()
     match_url = None
