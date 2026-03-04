@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 import polars as pl
 import streamlit as st
 
+from src.utils.db import is_duckdb_v4_path as _is_duckdb_v4_path
 from src.utils.profiles import list_local_dbs
 
 if TYPE_CHECKING:
@@ -78,7 +79,7 @@ COLUMNS_COMMON: list[str] = [
     "game_variant_name",  # utilisé dans match_view.py (mode affiché)
     "outcome",
     "kda",
-    "ratio",              # calculé dans load_matches_as_polars (kills/deaths)
+    "ratio",  # calculé dans load_matches_as_polars (kills/deaths)
     "kills",
     "deaths",
     "assists",
@@ -137,13 +138,6 @@ def db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
         pass
 
     return mtime_player, size_player, mtime_shared, size_shared
-
-
-def _is_duckdb_v4_path(db_path: str) -> bool:
-    """Détecte si le chemin est une DB joueur DuckDB v4."""
-    if not db_path:
-        return False
-    return db_path.endswith(".duckdb") or db_path.endswith("stats.duckdb")
 
 
 def _resolve_player_xuid(db_path: str) -> str:
@@ -787,7 +781,9 @@ def load_df_optimized(  # noqa: PLR0913
         #      (exclut game_variant_id, team_id, rank — non utilisés en hot-path)
         # P3 : LIMIT SQL via max_matches pour limiter le chargement initial
         df = _load_matches_duckdb_v4_polars(
-            db_path, include_firefight=include_firefight, columns=COLUMNS_COMMON,
+            db_path,
+            include_firefight=include_firefight,
+            columns=COLUMNS_COMMON,
             max_matches=max_matches,
         )
         if not df.is_empty():

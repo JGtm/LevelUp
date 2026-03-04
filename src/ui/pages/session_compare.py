@@ -94,10 +94,9 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PL
                 repo = get_cached_repository_st(db_path, xuid)
                 conn = repo._get_connection()
                 # Vérifier si la table existe
-                tables = conn.execute(
-                    "SELECT table_name FROM information_schema.tables WHERE table_name = 'friends'"
-                ).fetchall()
-                if tables:
+                from src.utils.db import has_table
+
+                if has_table(conn, "friends"):
                     result = conn.execute(
                         "SELECT friend_xuid, friend_gamertag, nickname FROM friends WHERE owner_xuid = ?",
                         (xuid,),

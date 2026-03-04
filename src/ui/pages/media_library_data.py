@@ -329,16 +329,9 @@ def load_match_windows_from_db(db_path: str) -> pl.DataFrame:  # noqa: C901, PLR
 
                 try:
                     with duckdb_read_only(player_db) as conn:
-                        tables = conn.execute(
-                            """
-                            SELECT table_name
-                            FROM information_schema.tables
-                            WHERE table_schema = 'main'
-                            AND table_name = 'match_stats'
-                            """
-                        ).fetchall()
+                        from src.utils.db import has_table
 
-                        if not tables:
+                        if not has_table(conn, "match_stats"):
                             continue
 
                         matches = conn.execute(
@@ -442,16 +435,9 @@ def load_media_from_db(
         from src.utils.db import duckdb_read_only
 
         with duckdb_read_only(db_path) as conn:
-            tables = conn.execute(
-                """
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema = 'main'
-                AND table_name = 'media_files'
-                """
-            ).fetchall()
+            from src.utils.db import has_table
 
-            if not tables:
+            if not has_table(conn, "media_files"):
                 return pl.DataFrame()
 
             if xuid or gamertag:

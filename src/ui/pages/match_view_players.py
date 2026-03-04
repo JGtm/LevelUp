@@ -20,6 +20,7 @@ from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_helpers import os_card
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.utils import parse_xuid_input
+from src.utils.db import is_duckdb_v4_path as _is_duckdb_v4_path
 from src.visualization.match_impact_timeline import (
     compute_single_match_impact,
     get_impact_labels,
@@ -40,13 +41,11 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-def _is_duckdb_v4_path(db_path: str) -> bool:
-    """Détecte si le chemin est une DB joueur DuckDB v4."""
-    return db_path.endswith(".duckdb") if db_path else False
-
-
 def _has_table_duckdb(db_path: str, table_name: str) -> bool:
-    """Vérifie si une table existe dans une DB DuckDB (locale ou shared)."""
+    """Vérifie si une table existe dans une DB DuckDB (locale ou shared).
+
+    Utilise le repository pour vérifier la table locale puis shared.
+    """
     if not _is_duckdb_v4_path(db_path):
         return False
     try:

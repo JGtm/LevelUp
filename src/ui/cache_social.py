@@ -13,14 +13,9 @@ import logging
 
 import streamlit as st
 
+from src.utils.db import is_duckdb_v4_path as _is_duckdb_v4_path
+
 logger = logging.getLogger(__name__)
-
-
-def _is_duckdb_v4_path(db_path: str) -> bool:
-    """Détecte si le chemin est une DB joueur DuckDB v4."""
-    if not db_path:
-        return False
-    return db_path.endswith(".duckdb") or db_path.endswith("stats.duckdb")
 
 
 @st.cache_data(show_spinner=False)

@@ -214,13 +214,9 @@ def _build_ranks_lookup() -> dict[int, CareerRankInfo]:
 
     with duckdb_read_only(str(db_path)) as conn:
         # Vérifier que la table existe
-        tables = {
-            row[0]
-            for row in conn.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
-            ).fetchall()
-        }
-        if "career_ranks" not in tables:
+        from src.utils.db import has_table
+
+        if not has_table(conn, "career_ranks"):
             logger.warning("Table career_ranks absente de metadata.duckdb")
             return {}
 
@@ -333,9 +329,10 @@ def is_metadata_available() -> bool:
         return False
     try:
         with duckdb_read_only(str(db_path)) as conn:
-            count = conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'career_ranks'"
-            ).fetchone()[0]
-            return count > 0
+            from src.utils.db import has_table
+
+            if not has_table(conn, "career_ranks"):
+                return False
+            return True
     except Exception:
         return False
