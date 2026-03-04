@@ -32,6 +32,9 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - **`SessionKeys` / `SK`** (`src/app/session_keys.py`) — 20+ clés `st.session_state` centralisées
 - **`_sql_fragments.py`** (`src/data/query/_sql_fragments.py`) — source de vérité unique pour `WIN_RATE_EXPR` (dénominateur WIN+LOSS, NULLIF division) ; 7 duplications supprimées dans `analytics.py` et `trends.py`
 - **Dettes techniques v4→v5 supprimées** : guard `_PERF_SCORE_AVAILABLE` (always-True), dead method `_ensure_performance_score_column()`, magic number `outcome == 4` → `Outcome.DID_NOT_FINISH`
+- **Système de logs centralisé** (`src/utils/log_config.py`) — `setup_app_logging()` : logs fichiers uniquement (`data/logs/app.log` 5 Mo×3, `data/logs/sync.log` 10 Mo×5), aucune sortie console ; `setup_script_logging()` pour les scripts CLI ; `log_duration()` context manager avec seuil ms configurable. Câblé dans : lancement app, chargement joueur, sélection session, changements filtres, chargement DataFrame, KPIs, navigation match (boutons dernier match / carnage / match précédent), sync UI, backfill CLI, tailscale, RAG. `data/logs/` exclu du dépôt.
+- **`.gitattributes`** — enforce `eol=lf` sur tout le dépôt ; résout les conflits pre-commit mixed-line-ending sur Windows
+- **`pyproject.toml`** — `per-file-ignores` pour `scripts/*` et `launcher.py` (complexité tolérée dans les scripts utilitaires)
 - **Enforcement qualité** : `scripts/check_code_size.py` (ratchet 247 violations connues), `tests/test_code_quality.py` (3 tests qualité structurelle), règles CLAUDE.md 13-17
 
 ### Corrections de bugs
@@ -41,6 +44,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - **SyncLock câblé à l'UI** — `SyncLock(timeout=0)` protège contre les syncs concurrents inter-processus ; flush WAL DuckDB avant `end_sync_mode()`
 - **Tailscale guard process-level** — `threading.Event` module-level remplace `st.session_state` ; une seule notification Discord par démarrage de processus
 - **Fausse alerte Discord webhook** — skip du check si Doppler est actif ; chargement `.env.local` avant vérification
+- **`_PERF_SCORE_AVAILABLE` manquant** (`src/data/sync/_performance.py`) — variable absente après le split en mixins ; guard `try/except ImportError` ajouté ; corrige `NameError` à l'exécution
 - **NaN-check fragile** (`match_view.py`) — `x == x` (idiome NaN flottant) → `x is not None`
 - **i18n** — 2 clés `PAIR_FR` tronquées restaurées, doublon `tm_session_trend` supprimé, 343 entrées redondantes nettoyées (399 → 56 entrées utiles)
 
