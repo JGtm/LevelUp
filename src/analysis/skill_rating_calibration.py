@@ -73,8 +73,7 @@ def _load_matches_for_calibration(
     """
     import duckdb
 
-    conn = duckdb.connect(str(shared_db), read_only=True)
-    try:
+    with duckdb.connect(str(shared_db), read_only=True) as conn:
         # Tous les matchs du joueur (sans Firefight), triés ASC
         df_matches = conn.execute(
             """
@@ -159,9 +158,6 @@ def _load_matches_for_calibration(
             )
 
         return df_matches, df_participants, individual_mmr_map
-
-    finally:
-        conn.close()
 
 
 # =============================================================================
@@ -420,17 +416,15 @@ def _resolve_xuid_from_gamertag(gamertag: str, shared_db: Path) -> str | None:
 
     if not shared_db.exists():
         return None
-    conn = duckdb.connect(str(shared_db), read_only=True)
-    try:
-        row = conn.execute(
-            "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
-            [gamertag],
-        ).fetchone()
-        return str(row[0]) if row and row[0] else None
-    except Exception:
-        return None
-    finally:
-        conn.close()
+    with duckdb.connect(str(shared_db), read_only=True) as conn:
+        try:
+            row = conn.execute(
+                "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
+                [gamertag],
+            ).fetchone()
+            return str(row[0]) if row and row[0] else None
+        except Exception:
+            return None
 
 
 def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915

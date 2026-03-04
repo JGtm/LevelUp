@@ -99,9 +99,8 @@ class ArchivesMixin:
 
             # Essayer de lire le nombre de lignes via DuckDB
             try:
-                conn = duckdb.connect(":memory:")
-                count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{pf}')").fetchone()[0]
-                conn.close()
+                with duckdb.connect(":memory:") as conn:
+                    count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{pf}')").fetchone()[0]
             except Exception:
                 count = None
 
@@ -162,8 +161,6 @@ class ArchivesMixin:
         file_paths = [str(pf) for pf in sorted(parquet_files)]
 
         # Utiliser DuckDB pour lire les Parquet
-        conn = duckdb.connect(":memory:")
-
         # Construire la clause WHERE
         where_clauses = []
         params = []
@@ -183,25 +180,24 @@ class ArchivesMixin:
         file_list_sql = ", ".join([f"'{f}'" for f in file_paths])
 
         try:
-            sql = f"""
-                SELECT
-                    match_id, start_time, map_id, map_name,
-                    playlist_id, playlist_name, pair_id, pair_name,
-                    game_variant_id, game_variant_name,
-                    outcome, team_id, kda, max_killing_spree, headshot_kills,
-                    avg_life_seconds, time_played_seconds,
-                    kills, deaths, assists, accuracy,
-                    my_team_score, enemy_team_score, team_mmr, enemy_mmr
-                FROM read_parquet([{file_list_sql}])
-                WHERE {where_sql}
-                ORDER BY start_time ASC
-            """
+            with duckdb.connect(":memory:") as conn:
+                sql = f"""
+                    SELECT
+                        match_id, start_time, map_id, map_name,
+                        playlist_id, playlist_name, pair_id, pair_name,
+                        game_variant_id, game_variant_name,
+                        outcome, team_id, kda, max_killing_spree, headshot_kills,
+                        avg_life_seconds, time_played_seconds,
+                        kills, deaths, assists, accuracy,
+                        my_team_score, enemy_team_score, team_mmr, enemy_mmr
+                    FROM read_parquet([{file_list_sql}])
+                    WHERE {where_sql}
+                    ORDER BY start_time ASC
+                """
 
-            result = conn.execute(sql, params) if params else conn.execute(sql)
-            rows = result.fetchall()
-            columns = [desc[0] for desc in result.description]
-
-            conn.close()
+                result = conn.execute(sql, params) if params else conn.execute(sql)
+                rows = result.fetchall()
+                columns = [desc[0] for desc in result.description]
 
             return [
                 MatchRow(
@@ -238,7 +234,6 @@ class ArchivesMixin:
             ]
         except Exception as e:
             logger.warning(f"Erreur lecture archives: {e}")
-            conn.close()
             return []
 
     def load_all_matches_unified(
