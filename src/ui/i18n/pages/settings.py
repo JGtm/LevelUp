@@ -1,0 +1,97 @@
+"""Chaînes i18n — page Paramètres."""
+
+from __future__ import annotations
+
+STRINGS: dict[str, dict[str, str] | str] = {
+    "settings_title": {
+        "fr": "Paramètres",
+        "en": "Settings",
+    },
+    "settings_backfill_data_label": {
+        "fr": "Données à backfill :",
+        "en": "Data to backfill:",
+    },
+    "backfill_all_data": {"fr": "Toutes les données", "en": "All data"},
+    # ── Page Analyse Objectifs ───────────────────────────────────────────────
+    "settings_save_ok": {
+        "fr": "Paramètres sauvegardés.",
+        "en": "Settings saved.",
+    },
+    "settings_save_error": {
+        "fr": "Erreur lors de la sauvegarde : {error}",
+        "en": "Error while saving: {error}",
+    },
+    # ── Last Match ────────────────────────────────────────────────────────────
+    "settings_index_reset": {
+        "fr": "Index médias réinitialisé (joueur courant).",
+        "en": "Media index reset (current player).",
+    },
+    "set_db_mgmt": {"fr": "Gestion de la base de données", "en": "Database management"},
+    "set_db_empty": {
+        "fr": "La base sélectionnée est vide (0 octet). Lancez une synchronisation.",
+        "en": "The selected database is empty (0 bytes). Run a sync.",
+    },
+    "set_sync_title": {"fr": "Synchronisation", "en": "Sync"},
+    "set_sync_source": {"fr": "Source de données", "en": "Data source"},
+    "set_sync_max_matches": {"fr": "Max matchs à récupérer", "en": "Max matches to fetch"},
+    "set_sync_rate": {"fr": "Délai entre appels API (sec)", "en": "API rate limit (sec)"},
+    "set_refresh_options": {"fr": "Options du bouton Actualiser", "en": "Refresh button options"},
+    "set_backfill_medals": {"fr": "Médailles", "en": "Medals"},
+    "set_backfill_events": {"fr": "Événements", "en": "Events"},
+    "set_backfill_scores": {"fr": "Scores de performance", "en": "Performance scores"},
+    "set_backfill_aliases": {"fr": "Alias joueurs", "en": "Player aliases"},
+    "set_backfill_personal_scores": {"fr": "Personal Scores", "en": "Personal Scores"},
+    "set_backfill_sessions": {"fr": "Sessions", "en": "Sessions"},
+    "set_backfill_citations": {"fr": "Citations", "en": "Citations"},
+    "set_backfill_antagonists": {"fr": "Antagonistes", "en": "Antagonists"},
+    "set_backfill_skill": {"fr": "Skill/Rating", "en": "Skill/Rating"},
+    "set_backfill_killer_victim": {"fr": "Killer/Victim", "en": "Killer/Victim"},
+    "set_backfill_shots": {"fr": "Shots (tirs)", "en": "Shots"},
+    "set_backfill_participants_shots": {"fr": "Shots participants", "en": "Participants shots"},
+    "set_backfill_pve": {"fr": "Stats PvE", "en": "PvE stats"},
+    "set_backfill_lusr": {"fr": "LUSR (rating local)", "en": "LUSR (local rating)"},
+    "set_media_title": {"fr": "Médias", "en": "Media"},
+    "set_media_enable": {"fr": "Activer les médias", "en": "Enable media"},
+    "set_media_screenshots": {"fr": "Dossier captures", "en": "Screenshots folder"},
+    "set_media_videos": {"fr": "Dossier vidéos", "en": "Videos folder"},
+    "set_media_tolerance": {
+        "fr": "Tolérance association (minutes)",
+        "en": "Association tolerance (minutes)",
+    },
+    "set_experience_title": {"fr": "Expérience", "en": "Experience"},
+    "set_lang_title": {"fr": "Langue", "en": "Language"},
+    "set_clear_cache_title": {
+        "fr": "Vider le cache à chaque actualisation",
+        "en": "Clear cache on every refresh",
+    },
+    # ── Match view helpers ──────────────────────────────────────────────────
+    "set_arch_v5_info": {
+        "fr": "ℹ️ **Architecture v5** : La synchronisation récupère automatiquement TOUTES les données :\n- Nouveaux matchs (matchmaking uniquement)\n- Highlight events (clips)\n- Médailles\n- Stats skill/MMR\n- Personal score awards\n- Aliases XUID\n\nCes options ne sont plus configurables - tout est récupéré à chaque sync.",
+        "en": "ℹ️ **Architecture v5**: The sync automatically fetches ALL data:\n- New matches (matchmaking only)\n- Highlight events (clips)\n- Medals\n- Skill/MMR stats\n- Personal score awards\n- XUID aliases\n\nThese options are no longer configurable — everything is fetched on each sync.",
+    },
+    "settings_backfill_caption": {
+        "fr": "Configurez ce que fait le bouton 🔄 Synchroniser dans la sidebar. Le backfill remplit les données manquantes pour les matchs existants.",
+        "en": "Configure what the 🔄 Sync button does in the sidebar. Backfill fills missing data for existing matches.",
+    },
+    "settings_backfill_all_help": {
+        "fr": "Cochez pour backfill toutes les données, ou choisissez individuellement ci-dessous",
+        "en": "Check to backfill all data, or choose individually below",
+    },
+    "set_backfill_score_help": {
+        "fr": "Calcule les scores de performance manquants (peut être activé même sans backfill général)",
+        "en": "Computes missing performance scores (can be enabled even without general backfill)",
+    },
+    "set_backfill_lusr_help": {
+        "fr": "Calcule le LUSR (LevelUp Skill Rank) pour les matchs non classés — calcul local, pas d'API requise",
+        "en": "Computes LUSR (LevelUp Skill Rank) for unranked matches — local computation, no API required",
+    },
+    "set_media_arch_info": {
+        "fr": "ℹ️ **Architecture v5** : La section Médias est toujours active. Configurez le dossier de base et la tolérance temporelle.",
+        "en": "ℹ️ **Architecture v5**: The Media section is always active. Configure the base folder and time tolerance.",
+    },
+    "set_media_root_help": {
+        "fr": "Racine des captures. Un sous-dossier par joueur, nommé comme le gamertag (ex: D:/Captures/PlayerA/, D:/Captures/PlayerB/). Images et vidéos dans le même dossier.",
+        "en": "Capture root. One subfolder per player, named like the gamertag (e.g. D:/Captures/PlayerA/, D:/Captures/PlayerB/). Images and videos in the same folder.",
+    },
+    # ── Match view helpers (Phase 3) ─────────────────────────────────────────
+}
