@@ -104,14 +104,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "ℹ️ À propos du score de performance",
         "en": "ℹ️ About the performance score",
     },
-    "exp_history_detail": {
-        "fr": "Historique détaillé",
-        "en": "Detailed history",
-    },
-    "exp_current_ranking": {
-        "fr": "📊 Classement actuel (instantané)",
-        "en": "📊 Current rating snapshot",
-    },
+    "exp_history_detail": "career_rank_history_title",  # alias → pages
+    "exp_current_ranking": "career_lusr_snapshot_title",  # alias → pages
     # ── Checkboxes ──────────────────────────────────────────────────────────
     "chk_backfill_all": {
         "fr": "Tout backfiller",
