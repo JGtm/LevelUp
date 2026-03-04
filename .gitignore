@@ -110,3 +110,6 @@ To do.txt
 *.backup
 # Outils IA locaux (non trackés)
 .claude/
+
+# Logs locaux (non trackés)
+data/logs/*
