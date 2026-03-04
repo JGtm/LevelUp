@@ -342,7 +342,15 @@ def _background_media_indexing(settings, db_path: str) -> None:
                             break
                         except Exception as player_err:
                             last_err = player_err
-                            if "different configuration" in str(player_err).lower():
+                            _err_str = str(player_err).lower()
+                            # Retry sur conflit de configuration OU verrou OS Windows
+                            _is_transient = (
+                                "different configuration" in _err_str
+                                or "cannot open file" in _err_str
+                                or "utilisé par un autre processus" in _err_str
+                                or "process cannot access" in _err_str
+                            )
+                            if _is_transient:
                                 import time as _time
 
                                 try:
