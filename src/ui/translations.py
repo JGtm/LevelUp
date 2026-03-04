@@ -57,160 +57,10 @@ PLAYLIST_EN: dict[str, str] = {
 }
 
 
-# NOTE: ce mapping cible MatchStats.PlaylistMapModePairs (pair_name)
-# Exemple: "Arena:CTF on Aquarius" -> "Arène : Capture du drapeau"
-PAIR_FR: dict[str, str] = {
-    # -------------------------------------------------------------------------
-    # Variantes sans carte (fallback génériques)
-    # -------------------------------------------------------------------------
-    "Arena:CTF": "Arène : Capture du drapeau",
-    "Arena:King of the Hill": "Arène : Roi de la colline",
-    "Arena:Neutral Flag CTF": "Arène : Drapeau neutre",
-    "Arena:Oddball": "Arène : Oddball",
-    "Arena:Slayer": "Arène : Assassin",
-    "Arena:Team Slayer": "Arène : Assassin en équipe",
-    "Arena:Strongholds": "Arène : Bases",
-    "Arena:Attrition": "Arène : Attrition",
-    "Arena:One Flag CTF": "Arène : Drapeau neutre",
-    "Arena:Escalation Slayer": "Arène : Escalade",
-    "Arena:FFA Slayer": "Arène : Assassin FFA",
-    "Arena:Shotty Snipes Slayer": "Fusils snipers à grenaille",
-    "Arena:Team Snipers": "Arène : Snipers en équipe",
-    "BTB:CTF": "BTB : Capture du drapeau",
-    "BTB:Slayer": "BTB : Assassin",
-    "BTB:Total Control": "BTB : Contrôle total",
-    "BTB:Stockpile": "BTB : Stockage",
-    "BTB:Fiesta CTF": "BTB : Fiesta CDD",
-    "BTB:Fiesta Slayer": "BTB : Fiesta Assassin",
-    "BTB:Fiesta Total Control": "BTB : Fiesta Contrôle total",
-    "BTB:One Flag CTF": "BTB : Drapeau neutre",
-    "BTB:Extraction": "BTB : Extraction",
-    "BTB:Escalation Slayer": "BTB : Escalade",
-    "BTB:Sentry Defense": "BTB : Défense sentinelle",
-    "BTB:Team Snipers": "BTB : Snipers en équipe",
-    "BTB Heavies:CTF": "BTB Heavies : Capture du drapeau",
-    "BTB Heavies:Slayer": "BTB Heavies : Assassin",
-    "BTB Heavies:Total Control": "BTB Heavies : Contrôle total",
-    "Ranked:CTF": "Classé : Capture du drapeau",
-    "Ranked:Slayer": "Classé : Assassin",
-    "Ranked:Oddball": "Classé : Oddball",
-    "Ranked:Strongholds": "Classé : Bases",
-    "Ranked:King of the Hill": "Classé : Roi de la colline",
-    "Tactical:Slayer": "Tactique : Assassin",
-    "Community:Slayer": "Communauté : Assassin",
-    "Community:Team Slayer": "Communauté : Assassin en équipe",
-    "Event:Escalation Slayer": "Événement : Escalade",
-    "Super Fiesta:Slayer": "Super Fiesta : Assassin",
-    "Fiesta:FFA Slayer": "Fiesta : Assassin FFA",
-    "Firefight:Heroic King of the Hill": "Baptême du feu : Roi de la colline héroïque",
-    "Firefight:Legendary King of the Hill": "Baptême du feu : Roi de la colline légendaire",
-    "Gruntpocalypse:Heroic KOTH": "Gruntpocalypse : Roi de la colline héroïque",
-    "Husky Raid:CTF": "Husky Raid : CDD",
-    "Super Husky Raid:CTF": "Super Husky Raid : CDD",
-    "Assault:Neutral Bomb": "Arène : Bombe neutre",
-    "Assault:Neutral Bomb Squad": "Arène : Escouade bombe neutre",
-    # -------------------------------------------------------------------------
-    # Arena
-    # -------------------------------------------------------------------------
-    "Arena:VIP on Catalyst": "Arène : VIP",
-    # -------------------------------------------------------------------------
-    # Assault
-    # -------------------------------------------------------------------------
-    "Assault:One Bomb on Curfew": "Arène : Bombe neutre",
-    # -------------------------------------------------------------------------
-    # BTB (Big Team Battle)
-    # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
-    # BTB Heavies
-    # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
-    # Community
-    # -------------------------------------------------------------------------
-    "Community:Fiesta Slayer on High Ground": "Fiesta",
-    "Community:Fiesta Slayer on Snowbound": "Fiesta",
-    "Community:Shotty Snipe Slayer FFA on Dynasty": "Fusils snipers à grenaille",
-    # -------------------------------------------------------------------------
-    # Event
-    # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
-    # Fiesta
-    # -------------------------------------------------------------------------
-    "Fiesta:Slayer on Behemoth - Forge": "Fiesta",
-    "Fiesta:Slayer on Catalyst - Forge": "Fiesta",
-    # -------------------------------------------------------------------------
-    # Firefight / Gruntpocalypse
-    # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
-    # Husky Raid / Super Husky Raid
-    # -------------------------------------------------------------------------
-    "Husky Raid:Assault on Urban Raid": "Husky Raid",
-    # -------------------------------------------------------------------------
-    # Ranked
-    # -------------------------------------------------------------------------
-    "Ranked:CTF 3 Captures on Argyle": "Classé : CDD 3 captures",
-    # -------------------------------------------------------------------------
-    # Super Fiesta
-    # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
-    # Tactical
-    # -------------------------------------------------------------------------
-    # -------------------------------------------------------------------------
-    # Autres / Events spéciaux
-    # -------------------------------------------------------------------------
-    "Survive The Undead 3.0 on TFF | Night Of The Undead": "Survivre aux morts-vivants 3.0",
-}
-
-# Traduction des modes génériques côté EN  (même logique d'agrégation qu'en FR)
-_EN_GENERIC_MODES: dict[str, str] = {
-    "Slayer": "Slayer",
-    "Team Slayer": "Team Slayer",
-    "FFA Slayer": "FFA Slayer",
-    "Fiesta Slayer": "Fiesta Slayer",
-    "Fiesta CTF": "Fiesta CTF",
-    "Fiesta Total Control": "Fiesta Total Control",
-    "Oddball": "Oddball",
-    "CTF": "CTF",
-    "CTF 3 Captures": "CTF (3 Captures)",
-    "Neutral Flag CTF": "Neutral Flag CTF",
-    "One Flag CTF": "One Flag CTF",
-    "King of the Hill": "King of the Hill",
-    "Heroic King of the Hill": "King of the Hill (Heroic)",
-    "Legendary King of the Hill": "King of the Hill (Legendary)",
-    "Heroic KOTH": "King of the Hill (Heroic)",
-    "Strongholds": "Strongholds",
-    "Attrition": "Attrition",
-    "Escalation Slayer": "Escalation Slayer",
-    "Team Snipers": "Team Snipers",
-    "Shotty Snipes Slayer": "Shotty Snipers",
-    "Shotty Snipe Slayer FFA": "Shotty Snipers FFA",
-    "Total Control": "Total Control",
-    "Stockpile": "Stockpile",
-    "Extraction": "Extraction",
-    "Land Grab": "Land Grab",
-    "VIP": "VIP",
-    "Sentry Defense": "Sentry Defense",
-    "Assault": "Assault",
-    "Neutral Bomb": "Neutral Bomb",
-    "Neutral Bomb Squad": "Neutral Bomb Squad",
-    "One Bomb": "One Bomb",
-}
-
-_EN_PREFIXES: dict[str, str] = {
-    "Arena": "Arena",
-    "BTB": "BTB",
-    "BTB Heavies": "BTB Heavies",
-    "Ranked": "Ranked",
-    "Tactical": "Tactical",
-    "Community": "Community",
-    "Event": "Event",
-    "Fiesta": "Fiesta",
-    "Super Fiesta": "Super Fiesta",
-    "Firefight": "Firefight",
-    "Gruntpocalypse": "Gruntpocalypse",
-    "Husky Raid": "Husky Raid",
-    "Super Husky Raid": "Super Husky Raid",
-    "Assault": "Assault",
-}
+# NOTE: PAIR_FR est vide — les traductions sont désormais dans
+# static/i18n/modes_fr.json (_pairs pour les overrides, combinateur _prefixes+mode
+# pour le reste). Conserver pour rétrocompatibilité des imports externes.
+PAIR_FR: dict[str, str] = {}
 
 
 def _is_uuid_like(s: str) -> bool:
@@ -255,16 +105,44 @@ def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
     return PLAYLIST_FR.get(s, s)
 
 
-def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:  # noqa: C901, PLR0912
+def _normalize_pair_case(s: str) -> str:
+    """Normalise la casse d'un pair_name (préfixe canonique + mode titlecase).
+
+    Exemples : ``"arena:slayer"`` → ``"Arena:Slayer"``
+    """
+    if ":" not in s:
+        return s
+    prefix, rest = s.split(":", 1)
+    prefix = prefix.strip()
+    rest = rest.strip()
+    prefix_lower = prefix.lower()
+    if prefix_lower == "btb heavies":
+        prefix = "BTB Heavies"
+    elif prefix_lower == "btb":
+        prefix = "BTB"
+    elif prefix_lower == "super fiesta":
+        prefix = "Super Fiesta"
+    elif prefix_lower == "super husky raid":
+        prefix = "Super Husky Raid"
+    elif prefix_lower == "husky raid":
+        prefix = "Husky Raid"
+    else:
+        prefix = prefix[:1].upper() + prefix[1:].lower()
+    if rest and rest == rest.lower():
+        rest = " ".join(w[:1].upper() + w[1:] for w in rest.split())
+    return f"{prefix}:{rest}" if prefix else rest
+
+
+def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:  # noqa: C901
     """Traduit un nom de mode/pair dans la langue demandée.
 
-    Stratégie de fallback:
-    1. JSON i18n (modes)
-    2. Match exact dans PAIR_FR (FR)
-    3. Normalisation de la casse et retry
-    4. Match par préfixe (mode sans carte, logique d'agrégation préservée)
-    5. Fallback générique avec dictionnaires JSON localisés
-    6. Si UUID non résolu -> "Mode inconnu" / "Unknown mode"
+    Stratégie (source de vérité : static/i18n/modes_{lang}.json) :
+    1. Override exact depuis ``_pairs`` (renommages spéciaux ou carte-spécifiques)
+    2. Normalisation douce de la casse + retry ``_pairs``
+    3. Strip " on <carte>" + retry ``_pairs``
+    4. Combinateur ``_prefixes`` + clé mode (logique générique)
+    5. Mode seul (pas de préfixe)
+    6. UUID non résolu → "Mode inconnu" / "Unknown mode"
 
     Args:
         name: Nom de pair brut (peut être ``None``).
@@ -276,70 +154,40 @@ def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:  # no
     if not s:
         return None
 
-    # Détection précoce des UUIDs non résolus
+    # UUID non résolu
     if _is_uuid_like(s):
         return label("modes", "_unknown", lang=lang)
 
-    # EN : pas de PAIR_EN exhaustif — on passe directement à la logique de normalisation
-    # FR : 1) Match exact hardcodé (legacy, PAIR_FR a ~300 entrées)
-    if lang == "fr" and s in PAIR_FR:
-        return PAIR_FR[s]
-
-    # 2) Normalisation douce (casse) pour supporter des valeurs du type "arena:Team Slayer".
-    candidate = s
-    if ":" in s:
-        prefix, rest = s.split(":", 1)
-        prefix = prefix.strip()
-        rest = rest.strip()
-        if prefix:
-            # Préfixes multi-mots à préserver
-            prefix_lower = prefix.lower()
-            if prefix_lower == "btb heavies":
-                prefix = "BTB Heavies"
-            elif prefix_lower == "btb":
-                prefix = "BTB"
-            elif prefix_lower == "super fiesta":
-                prefix = "Super Fiesta"
-            elif prefix_lower == "super husky raid":
-                prefix = "Super Husky Raid"
-            elif prefix_lower == "husky raid":
-                prefix = "Husky Raid"
-            else:
-                prefix = prefix[:1].upper() + prefix[1:].lower()
-        # Si la partie mode est totalement en minuscules, on la TitleCase ("oddball" -> "Oddball").
-        if rest and rest == rest.lower():
-            rest = " ".join(w[:1].upper() + w[1:] for w in rest.split())
-        candidate = f"{prefix}:{rest}" if prefix else rest
-
-    if lang == "fr" and candidate in PAIR_FR:
-        return PAIR_FR[candidate]
-
-    # 3) Fallback: extraire le mode sans carte (logique d'agrégation)
-    base = candidate
-    mode_without_map = base
-    if " on " in base:
-        mode_without_map = base.split(" on ", 1)[0].strip()
-
-    # Chercher le mode sans carte dans les fallbacks génériques (FR uniquement, legacy)
-    if lang == "fr" and mode_without_map in PAIR_FR:
-        return PAIR_FR[mode_without_map]
-
-    # 4) Fallback générique avec JSON i18n (modes_{lang}.json)
+    # Charger le domaine une seule fois (mis en cache par load_domain)
     modes_data = load_domain("modes", lang)
+    pairs = modes_data.get("_pairs", {})
     prefixes = modes_data.get("_prefixes", {})
     separator = modes_data.get("_separator", ": ")
 
+    # 1) Override exact
+    if s in pairs:
+        return pairs[s]
+
+    # 2) Normalisation douce de la casse
+    candidate = _normalize_pair_case(s)
+    if candidate in pairs:
+        return pairs[candidate]
+
+    # 3) Strip " on <carte>" + retry _pairs
+    mode_without_map = candidate
+    if " on " in candidate:
+        mode_without_map = candidate.split(" on ", 1)[0].strip()
+        if mode_without_map in pairs:
+            return pairs[mode_without_map]
+
+    # 4) Combinateur : _prefixes + clé mode
     if ":" in mode_without_map:
-        prefix, mode_part = mode_without_map.split(":", 1)
-        prefix = prefix.strip()
-        mode_part = mode_part.strip()
-
-        prefix_loc = prefixes.get(prefix, prefix)
-        mode_loc = modes_data.get(mode_part, mode_part)
-
+        prefix_raw, mode_part = mode_without_map.split(":", 1)
+        prefix_loc = prefixes.get(prefix_raw.strip(), prefix_raw.strip())
+        mode_loc = modes_data.get(mode_part.strip(), mode_part.strip())
         return f"{prefix_loc}{separator}{mode_loc}"
 
-    # Fallback dernière chance : mode seul
+    # 5) Mode seul
     mode_loc = modes_data.get(mode_without_map)
     if mode_loc and not isinstance(mode_loc, dict):
         return str(mode_loc)

@@ -47,5 +47,15 @@
     "Neutral Bomb": "Neutral Bomb",
     "Neutral Bomb Squad": "Neutral Bomb Squad",
     "One Bomb": "One Bomb",
-    "_unknown": "Unknown mode"
+    "_unknown": "Unknown mode",
+    "_pairs": {
+        "Arena:Shotty Snipes Slayer": "Shotty Snipers",
+        "Community:Fiesta Slayer on High Ground": "Fiesta",
+        "Community:Fiesta Slayer on Snowbound": "Fiesta",
+        "Community:Shotty Snipe Slayer FFA on Dynasty": "Shotty Snipers",
+        "Fiesta:Slayer on Behemoth - Forge": "Fiesta",
+        "Fiesta:Slayer on Catalyst - Forge": "Fiesta",
+        "Husky Raid:Assault on Urban Raid": "Husky Raid",
+        "Survive The Undead 3.0 on TFF | Night Of The Undead": "Survive the Undead"
+    }
 }

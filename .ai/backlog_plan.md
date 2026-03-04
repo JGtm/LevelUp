@@ -438,11 +438,11 @@ mais n'est pas intégrée au cycle de développement — elle ne protège que si
 | J5 | Déduplication citations (`strategies.py` → délègue à `citations_backfill.py`) + dépréc. `--with-citations` | ✅ Fait | Faible | 🔵 Backlog |
 | J4 | TODOs mineurs (`custom_rules.py`, `migrate_metadata_to_duckdb.py`) | ✅ Fait | Très faible | 🔵 Backlog |
 | M | Docs (`ARCHITECTURE_V5.md`, `README`, `CHANGELOG`) | ✅ Fait (CHANGELOG) | Moyen | 🔵 Backlog |
-| N | Migrer `PAIR_FR` → `static/i18n/modes_fr.json` (source unique) | ❌ À faire | Moyen | 🔵 Backlog |
+| N | Migrer `PAIR_FR` → `static/i18n/modes_fr.json` (source unique) | ✅ Fait | Moyen | 🔵 Backlog |
 | O | Câbler `t()` dans l'UI Streamlit (traductions EN existantes) | ❌ À faire | Moyen | 🔵 Backlog |
 | P | Performance UI P1→P5 (MVs, lazy-loading, filtres SQL) | ❌ À faire | Élevé | 🔵 Backlog |
-| Q | CI/CD détection régression (workflow GitHub) | ❌ À faire | Moyen | 🔵 Backlog |
-| R | Améliorations futures (Pandas résiduel, `START_HERE.md`) | ❌ À faire | Variable | 🟢 Un jour |
+| Q | CI/CD détection régression (workflow GitHub) | ✅ Fait | Moyen | 🔵 Backlog |
+| R | Améliorations futures (Pandas résiduel, `START_HERE.md`) | ✅ Pandas OK + START_HERE archivé | Variable | 🟢 Un jour |
 
 ---
 
@@ -469,9 +469,10 @@ mais n'est pas intégrée au cycle de développement — elle ne protège que si
 ✅ 15. J4 — TODOs mineurs (custom_rules.py nettoyé, migrate_metadata conservé volontairement)
 ✅ 16. M  — CHANGELOG mis à jour
 
-❌ 17. N  — PAIR_FR → static/i18n/modes_fr.json (source de vérité unique)
-❌ 18. O  — Câbler t() dans l'UI Streamlit
-❌ 19. P  — Performance UI P1→P5 (sprint dédié)
-❌ 20. Q  — CI/CD détection régression (GitHub workflow)
-❌ 21. R  — Améliorations futures (Pandas résiduel, START_HERE.md)
+✅ 17. N  — PAIR_FR → static/i18n/modes_fr.json + _pairs + vider PAIR_FR
+✅ 18. Q  — ci.yml : refactor/* + job quality + ruff fail sans || true
+✅ 19. R  — START_HERE.md archivé, Pandas OK (à la frontière uniquement)
+
+❌ 20. O  — Câbler t() dans l'UI Streamlit (sprint dédié)
+❌ 21. P  — Performance UI P1→P5 (sprint dédié)
 ```
