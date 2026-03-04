@@ -32,6 +32,7 @@ from src.ui.i18n import get_lang, get_outcome_map, t
 from src.ui.i18n.data_labels import label_obj
 from src.ui.medals import load_medal_name_maps, render_medals_grid
 from src.ui.pages.match_view_charts import render_expected_vs_actual
+from src.ui.pages.match_view_encounters import render_encounter_section
 
 # Imports depuis les sous-modules
 from src.ui.pages.match_view_helpers import (
@@ -758,6 +759,13 @@ def render_match_view(
         xuid=xuid,
         db_key=db_key,
         load_match_gamertags_fn=load_match_gamertags_fn,
+    )
+
+    # Historique des rencontres (v5.4)
+    render_encounter_section(
+        match_id=match_id,
+        self_xuid=xuid,
+        db_path=db_path,
     )
 
     # Citations (progressées dans ce match)
