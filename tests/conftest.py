@@ -61,19 +61,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--run-e2e-browser",
         action="store_true",
         default=False,
-        help="Exécute les tests E2E navigateur réel (Playwright).",
+        help="Exécute les tests E2E navigateur réel (Playwright). (legacy, toujours actifs)",
     )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Skip des tests E2E navigateur sauf si explicitement demandés."""
-    if config.getoption("--run-e2e-browser"):
-        return
-
-    skip_e2e = pytest.mark.skip(reason="E2E navigateur désactivé (utiliser --run-e2e-browser)")
-    for item in items:
-        if "e2e_browser" in item.keywords:
-            item.add_marker(skip_e2e)
+    """Hook de collection — les tests e2e_browser s'exécutent normalement."""
 
 
 def pytest_configure(config: pytest.Config) -> None:

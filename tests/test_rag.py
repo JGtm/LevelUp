@@ -36,19 +36,17 @@ class TestTextChunker:
         chunks = chunker.chunk_text(text)
         assert len(chunks) > 1
 
-    @pytest.mark.skip(reason="TextChunker n'implémente pas l'overlap comme attendu - à revoir")
     def test_chunk_overlap(self, chunker):
         """Les chunks doivent avoir un overlap."""
-        # Avec chunk_size=100 et overlap=20, un texte de 220 chars devrait
-        # produire des chunks avec overlap.
+        # Avec chunk_size=100 et overlap=20, un texte de 220 chars
+        # produit des chunks avec overlap → taille totale > taille du texte.
         text = "A" * 220
         chunks = chunker.chunk_text(text)
 
-        # Avec overlap de 20, on devrait avoir au moins 2 chunks
-        # et leur taille totale devrait dépasser la taille du texte
-        if len(chunks) >= 2:
-            # L'overlap devrait créer une redondance
-            assert len(chunks[0]) + len(chunks[1]) >= len(text)
+        assert len(chunks) >= 2
+        total_chars = sum(len(c) for c in chunks)
+        # L'overlap crée de la redondance → somme > texte original
+        assert total_chars > len(text)
 
     def test_python_chunking(self, chunker):
         """Le code Python doit être découpé par fonction."""
@@ -169,10 +167,6 @@ class TestRAGConfig:
         assert config.persist_directory == "custom/path"
 
 
-@pytest.mark.skipif(
-    True,  # Toujours skip car nécessite LanceDB
-    reason="Nécessite LanceDB installé",
-)
 class TestHaloKnowledgeBase:
     """Tests d'intégration pour la base de connaissances."""
 
