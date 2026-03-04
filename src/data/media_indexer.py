@@ -16,6 +16,7 @@ import hashlib
 import logging
 import os
 import subprocess
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -208,17 +209,33 @@ class MediaIndexer:
         """Crée ou migre le schéma media_files et media_match_associations.
 
         Raises:
-            duckdb.IOException: Si le fichier DB est verrouillé par un autre processus.
+            duckdb.IOException: Si le fichier DB est verrouillé par un autre processus
+                et que les 3 tentatives ont échoué.
         """
-        try:
-            conn = duckdb.connect(str(self.db_path), read_only=False)
-        except duckdb.IOException as e:
-            logger.warning(
-                "Impossible d'ouvrir %s en écriture (verrouillé ?): %s",
-                self.db_path,
-                e,
-            )
-            raise
+        conn: duckdb.DuckDBPyConnection | None = None
+        _max_retries = 3
+        for _attempt in range(_max_retries):
+            try:
+                conn = duckdb.connect(str(self.db_path), read_only=False)
+                break
+            except duckdb.IOException as e:
+                if _attempt < _max_retries - 1:
+                    logger.debug(
+                        "DB %s verrouillée, retry %d/%d: %s",
+                        self.db_path.name,
+                        _attempt + 1,
+                        _max_retries,
+                        e,
+                    )
+                    time.sleep((_attempt + 1) * 0.5)
+                else:
+                    logger.warning(
+                        "Impossible d'ouvrir %s en écriture (verrouillé ?): %s",
+                        self.db_path,
+                        e,
+                    )
+                    raise
+        assert conn is not None
         try:
             tables = conn.execute(
                 """
@@ -640,9 +657,7 @@ class MediaIndexer:
 
         # Charger le mapping gamertag→xuid depuis shared_matches.duckdb
         xuid_by_gamertag: dict[str, str] = {}
-        shared_path = get_shared_matches_path_from_player(
-            PLAYERS_DIR / "_any" / PLAYER_DB_FILENAME
-        )
+        shared_path = get_shared_matches_path_from_player(PLAYERS_DIR / "_any" / PLAYER_DB_FILENAME)
         # Retrouver shared_matches.duckdb depuis la première DB joueur valide
         for player_dir in PLAYERS_DIR.iterdir():
             if player_dir.is_dir():
@@ -654,9 +669,7 @@ class MediaIndexer:
         if shared_path and shared_path.exists():
             try:
                 with duckdb.connect(str(shared_path), read_only=True) as sc:
-                    rows = sc.execute(
-                        "SELECT xuid, gamertag FROM xuid_aliases"
-                    ).fetchall()
+                    rows = sc.execute("SELECT xuid, gamertag FROM xuid_aliases").fetchall()
                     for xuid_val, gamertag_val in rows:
                         if gamertag_val and xuid_val:
                             # Normaliser la casse pour la correspondance

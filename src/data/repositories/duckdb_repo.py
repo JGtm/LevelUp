@@ -84,11 +84,15 @@ def release_db_connections(db_path: str | Path) -> int:
         for repo in list(_instances):
             try:
                 if str(repo._player_db_path.resolve()) == target and repo._connection is not None:
-                    with contextlib.suppress(Exception):
-                        repo._connection.close()
-                    repo._connection = None
-                    repo._attached_dbs.clear()
-                    closed += 1
+                    _lock = getattr(repo, "_connection_lock", None)
+                    _ctx = _lock if _lock is not None else contextlib.nullcontext()
+                    with _ctx:
+                        if repo._connection is not None:
+                            with contextlib.suppress(Exception):
+                                repo._connection.close()
+                            repo._connection = None
+                            repo._attached_dbs.clear()
+                            closed += 1
             except Exception:
                 pass
     if closed:
@@ -113,12 +117,15 @@ def release_all_db_connections() -> int:
     with _instances_lock:
         for repo in list(_instances):
             try:
-                if repo._connection is not None:
-                    with contextlib.suppress(Exception):
-                        repo._connection.close()
-                    repo._connection = None
-                    repo._attached_dbs.clear()
-                    closed += 1
+                _lock = getattr(repo, "_connection_lock", None)
+                _ctx = _lock if _lock is not None else contextlib.nullcontext()
+                with _ctx:
+                    if repo._connection is not None:
+                        with contextlib.suppress(Exception):
+                            repo._connection.close()
+                        repo._connection = None
+                        repo._attached_dbs.clear()
+                        closed += 1
             except Exception:
                 pass
     if closed:
@@ -189,6 +196,10 @@ class DuckDBRepository(
         # Connexion DuckDB (lazy loading)
         self._connection: duckdb.DuckDBPyConnection | None = None
         self._attached_dbs: set[str] = set()
+        # Verrou par instance pour protéger l'initialisation contre les races
+        # (ex. release_all_db_connections appelé depuis thread media-indexer
+        # pendant que _get_connection est en cours dans le thread Streamlit).
+        self._connection_lock = threading.Lock()
 
         # Enregistrement dans le registre global (weakref)
         with _instances_lock:
@@ -316,15 +327,24 @@ class DuckDBRepository(
 
         Intègre un retry automatique si la DB est temporairement ouverte
         par un autre composant avec un mode d'accès différent (ex. MediaIndexer
-        en read_write pendant que le repo est read_only).
+        en read_write pendant que le repo est read_only), ou verrouillée au
+        niveau OS sur Windows.
+        Thread-safe via ``_connection_lock`` (pattern DCL) pour éviter la race
+        condition avec ``release_all_db_connections`` (thread media-indexer).
         """
-        if self._connection is None:
+        # Fast-path sans verrou (optimiste)
+        if self._connection is not None:
+            return self._connection
+        with self._connection_lock:
+            # Double-check sous verrou (pattern DCL)
+            if self._connection is not None:
+                return self._connection
             if not self._player_db_path.exists():
                 raise FileNotFoundError(
                     f"Base de données joueur non trouvée: {self._player_db_path}"
                 )
 
-            # Connexion à la DB joueur — retry si conflit de configuration
+            # Connexion à la DB joueur — retry si conflit de configuration ou lock OS (Windows)
             max_retries = 3
             for attempt in range(max_retries):
                 try:
@@ -334,9 +354,16 @@ class DuckDBRepository(
                     )
                     break
                 except Exception as e:
-                    if "different configuration" in str(e).lower() and attempt < max_retries - 1:
+                    err_str = str(e).lower()
+                    is_transient = (
+                        "different configuration" in err_str
+                        or "cannot open file" in err_str
+                        or "utilisé par un autre processus" in err_str
+                        or "process cannot access" in err_str
+                    )
+                    if is_transient and attempt < max_retries - 1:
                         logger.debug(
-                            "DB %s occupée par un autre mode d'accès, retry %d/%d",
+                            "DB %s temporairement verrouillée, retry %d/%d",
                             self._player_db_path.name,
                             attempt + 1,
                             max_retries,
@@ -420,7 +447,7 @@ class DuckDBRepository(
             elif "shared" in attached_db_names:
                 self._attached_dbs.add("shared")  # Synchroniser le tracker local
 
-        return self._connection
+            return self._connection
 
     def _has_column(
         self, conn: duckdb.DuckDBPyConnection, table_name: str, column_name: str
