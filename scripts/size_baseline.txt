@@ -240,7 +240,7 @@ MODULE:src/ui/pages/timeseries.py:593L
 MODULE:src/ui/pages/win_loss.py:539L
 MODULE:src/ui/profile_api.py:575L
 MODULE:src/ui/sync.py:964L
-MODULE:src/utils/discord_notifier.py:715L
+MODULE:src/utils/discord_notifier.py:685L
 MODULE:src/visualization/antagonist_charts.py:751L
 MODULE:src/visualization/distributions.py:610L
 MODULE:src/visualization/distributions_outcomes.py:625L

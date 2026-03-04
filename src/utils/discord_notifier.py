@@ -683,32 +683,3 @@ def notify_operation_done(  # noqa: PLR0913
     except Exception as exc:
         logger.warning(f"[Discord] Erreur inattendue lors de la notification : {exc}")
 
-
-def notify_app_started(url: str) -> None:
-    """Envoie une notification Discord quand l'app démarre avec une URL Tailscale.
-
-    Message simple (pas d'embed) : "🟢 LevelUp est disponible sur {url}".
-    Fonction entièrement failsafe — ne lève jamais d'exception.
-
-    Args:
-        url: URL publique Tailscale (ex: "https://hostname.tailnet.ts.net").
-    """
-    try:
-        webhook_url = _get_webhook_url()
-        if not webhook_url:
-            return
-        if not url or not url.startswith("https://"):
-            logger.debug("[Discord] notify_app_started : URL invalide %r", url)
-            return
-
-        from src.ui.i18n.cli import discord_t
-
-        content = discord_t("tailscale_discord_startup", url=url)
-        payload: dict[str, Any] = {"content": content}
-        ok = send_discord_notification(payload, webhook_url)
-        if ok:
-            logger.info("[Discord] Notification démarrage app envoyée (%s)", url)
-        else:
-            logger.warning("[Discord] Notification démarrage app non reçue")
-    except Exception as exc:
-        logger.warning(f"[Discord] Erreur notify_app_started : {exc}")

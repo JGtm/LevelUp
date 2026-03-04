@@ -246,12 +246,11 @@ class PageContext(NamedTuple):
 
 
 def _tailscale_worker() -> None:
-    """Démarre le funnel Tailscale + notification Discord (une seule fois par processus)."""
+    """Démarre le funnel Tailscale une seule fois par processus."""
     try:
-        from src.utils.discord_notifier import notify_app_started
         from src.utils.tailscale import ensure_funnel_started_once
 
-        ensure_funnel_started_once(notify_fn=notify_app_started)
+        ensure_funnel_started_once()
     except Exception as _e:
         print(f"[Tailscale] worker erreur inattendue : {_e}", flush=True)
 
