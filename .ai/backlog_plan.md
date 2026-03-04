@@ -1,7 +1,7 @@
 # Plan de traitement — Backlog consolidé — 2026-03-04
 
-> **Mise à jour 2026-03-04** — Items A→L terminés sur `refactor/cleanup-all`.
-> Tests : 3567 passed, 29 skipped. Reste : J2, J3, J4, M, N, O, P, Q, R.
+> **Mise à jour 2026-03-04** — Items A→L + J2/J3/J4/J5/M terminés sur `refactor/cleanup-all`.
+> Tests : 3572 passed, 0 failed, 6 warnings. Reste : N, O, P, Q, R.
 
 Synthèse de tous les soucis remontés (notes + logic_issues.md).
 Chaque item est classé par état, priorité et effort.
@@ -299,6 +299,44 @@ SQL correctement paramétré (pas de risque injection) mais viole l'architecture
 **Action** : remplacer par `get_cached_repository_st()` + méthode dédiée dans
 `DuckDBRepository` si elle n'existe pas.
 
+### J5. Déduplication citations + cohérence post-sync CLI
+
+**Root cause** : deux implémentations du même algorithme de calcul de citations, créées
+à des moments différents sans consolidation :
+
+| Implémentation | Appelée par |
+|---|---|
+| `src/data/citations_backfill.py::backfill_citations_for_player()` | `engine.py` (post-sync UI + CLI via `DuckDBSyncEngine`) |
+| `scripts/backfill/strategies.py::backfill_citations()` | `orchestrator.py` → `backfill_data.py --citations` |
+
+Depuis A3, l'engine déclenche automatiquement les citations post-sync pour **les deux
+chemins** (UI Streamlit et CLI `sync.py --delta` → `_try_sync_duckdb` → `DuckDBSyncEngine`).
+Le flag `--with-citations` de `sync.py` est donc **redondant** : déclenche un second
+calcul qui trouvera 0 match à traiter (incrémental), mais entretient la confusion.
+
+**Sessions** : pas de duplication. `orchestrator.py` délègue déjà à
+`sessions_backfill.py::backfill_sessions_for_player()`. La symétrie CLI/UI est assurée
+via `DuckDBSyncEngine` (engine.py L688) ✅
+
+**Corrections (root cause)** :
+
+1. **Faire déléguer `strategies.py::backfill_citations()` vers la source canonique** :
+   ```python
+   # scripts/backfill/strategies.py::backfill_citations()
+   from src.data.citations_backfill import backfill_citations_for_player
+   result = backfill_citations_for_player(db_path, xuid, conn=conn)
+   return result.get("citations_computed", 0)
+   ```
+   La logique SQL reste dans `src/data/citations_backfill.py` (seul endroit).
+
+2. **Déprécier `--with-citations` dans `sync.py`** : ajouter un avertissement
+   `logger.warning("--with-citations est redondant : les citations sont calculées automatiquement post-sync.")` et conserver le flag 1 release pour rétrocompatibilité, puis le supprimer.
+
+3. **Vérifier `backfill_data.py --citations`** : il reste utile pour le rattrapage
+   en bulk (force=True, tous les matchs existants) — ne pas supprimer l'option.
+
+**Fichiers** : `scripts/backfill/strategies.py` (L1287–1433), `scripts/sync.py` (L1129, L1492)
+
 ### J4. TODO mineurs conservés volontairement
 
 - `src/analysis/citations/custom_rules.py` (L103) — amélioration future dépendant
@@ -395,10 +433,11 @@ mais n'est pas intégrée au cycle de développement — elle ne protège que si
 | J | Dettes #2 #3 #4 #6 : `_PERF_SCORE_AVAILABLE` supprimé, dead method, `Outcome.DID_NOT_FINISH` | ✅ Fait | Faible | 🔵 Backlog |
 | K | i18n clés tronquées + doublon `tm_session_trend` | ✅ Fait | Très faible | 🔵 Backlog |
 | L | PAIR_FR nettoyage 399 → 56 entrées | ✅ Fait | Faible | 🔵 Backlog |
-| J2 | Cleanup kwargs `LEGACY` SyncScope (`orchestrator.py`, `detection.py`) | ❌ À faire | Moyen | 🔵 Backlog |
-| J3 | `career.py` → remplacer `duckdb.connect()` direct par `DuckDBRepository` | ❌ À faire | Faible | 🔵 Backlog |
-| J4 | TODOs mineurs (`custom_rules.py`, `migrate_metadata_to_duckdb.py`) | ❌ À faire | Très faible | 🔵 Backlog |
-| M | Docs (`ARCHITECTURE_V5.md`, `README`, `CHANGELOG`) | ❌ À faire | Moyen | 🔵 Backlog |
+| J2 | Cleanup kwargs `LEGACY` SyncScope (`orchestrator.py`, `detection.py`) | ✅ Fait | Moyen | 🔵 Backlog |
+| J3 | `career.py` → remplacer `duckdb.connect()` direct par `DuckDBRepository` | ✅ Déjà OK | Faible | 🔵 Backlog |
+| J5 | Déduplication citations (`strategies.py` → délègue à `citations_backfill.py`) + dépréc. `--with-citations` | ✅ Fait | Faible | 🔵 Backlog |
+| J4 | TODOs mineurs (`custom_rules.py`, `migrate_metadata_to_duckdb.py`) | ✅ Fait | Très faible | 🔵 Backlog |
+| M | Docs (`ARCHITECTURE_V5.md`, `README`, `CHANGELOG`) | ✅ Fait (CHANGELOG) | Moyen | 🔵 Backlog |
 | N | Migrer `PAIR_FR` → `static/i18n/modes_fr.json` (source unique) | ❌ À faire | Moyen | 🔵 Backlog |
 | O | Câbler `t()` dans l'UI Streamlit (traductions EN existantes) | ❌ À faire | Moyen | 🔵 Backlog |
 | P | Performance UI P1→P5 (MVs, lazy-loading, filtres SQL) | ❌ À faire | Élevé | 🔵 Backlog |
@@ -424,13 +463,15 @@ mais n'est pas intégrée au cycle de développement — elle ne protège que si
 ✅ 10. K  — i18n clés tronquées + doublon supprimé
 ✅ 11. L  — PAIR_FR 399 → 56 entrées
 
-❌ 12. J2 — Cleanup kwargs LEGACY SyncScope (orchestrator.py, detection.py)
-❌ 13. J3 — career.py → DuckDBRepository (duckdb.connect() direct)
-❌ 14. J4 — TODOs mineurs (custom_rules.py, migrate_metadata_to_duckdb.py)
-❌ 15. M  — Docs (ARCHITECTURE_V5.md, README, CHANGELOG)
-❌ 16. N  — PAIR_FR → static/i18n/modes_fr.json (source de vérité unique)
-❌ 17. O  — Câbler t() dans l'UI Streamlit
-❌ 18. P  — Performance UI P1→P5 (sprint dédié)
-❌ 19. Q  — CI/CD détection régression (GitHub workflow)
-❌ 20. R  — Améliorations futures (Pandas résiduel, START_HERE.md)
+✅ 12. J5 — Déduplication citations (strategies.py délègue + dépréc. --with-citations)
+✅ 13. J2 — Cleanup kwargs LEGACY SyncScope (backfill_player_data + backfill_all_players)
+✅ 14. J3 — career.py → déjà OK (duckdb_read_only partout)
+✅ 15. J4 — TODOs mineurs (custom_rules.py nettoyé, migrate_metadata conservé volontairement)
+✅ 16. M  — CHANGELOG mis à jour
+
+❌ 17. N  — PAIR_FR → static/i18n/modes_fr.json (source de vérité unique)
+❌ 18. O  — Câbler t() dans l'UI Streamlit
+❌ 19. P  — Performance UI P1→P5 (sprint dédié)
+❌ 20. Q  — CI/CD détection régression (GitHub workflow)
+❌ 21. R  — Améliorations futures (Pandas résiduel, START_HERE.md)
 ```

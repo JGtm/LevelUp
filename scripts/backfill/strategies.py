@@ -1291,147 +1291,25 @@ def backfill_citations(
     *,
     force: bool = False,
 ) -> int:
-    """Calcule et insère les citations pour les matchs existants.
-
-    Mode incrémental par défaut : ne traite que les matchs sans citations.
-    Mode force : recalcule pour tous les matchs.
+    """Délègue à la source canonique ``src.data.citations_backfill``.
 
     Args:
-        conn: Connexion DuckDB (non utilisée directement, on ouvre via engine).
+        conn: Connexion DuckDB (réutilisée si fournie).
         db_path: Chemin vers la DB joueur.
         xuid: XUID du joueur.
         force: Si True, recalcule pour tous les matchs.
 
     Returns:
-        Nombre de matchs traités.
+        Nombre de matchs traités avec citations.
     """
-    from pathlib import Path
-
-    from src.analysis.citations.engine import CitationEngine
-
-    db_path = Path(db_path) if not isinstance(db_path, Path) else db_path
-    engine = CitationEngine(str(db_path), xuid, conn=conn)
-
-    # Vérifier que les mappings existent
-    mappings = engine.load_mappings()
-    if not mappings:
-        logger.warning("Aucun mapping de citations trouvé")
-        return 0
-
-    # Récupérer les match_ids à traiter via shared.match_participants
-    shared_path = db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
-    if not shared_path.exists():
-        logger.warning("shared_matches.duckdb introuvable pour les citations")
-        return 0
-
-    # Vérifier si shared est déjà attaché (sous n'importe quel alias)
-    # D'abord chercher via le nom de fichier ou via match_participants
-    shared_alias = None
-    try:
-        dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
-        for db_name, db_path_val in dbs:
-            # Chercher par nom de fichier dans le path
-            if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
-                shared_alias = db_name
-                break
-            # Ou par nom de base contenant "shared"
-            if db_name and "shared" in db_name.lower():
-                # Vérifier que cette DB a bien match_participants
-                try:
-                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
-                    shared_alias = db_name
-                    break
-                except Exception:
-                    continue
-    except Exception:
-        pass
-
-    # Si pas trouvé, chercher n'importe quelle DB avec match_participants
-    if not shared_alias:
-        try:
-            dbs = conn.execute("SELECT database_name FROM duckdb_databases()").fetchall()
-            for (db_name,) in dbs:
-                if db_name not in ("memory", "temp", "main", "stats", "system"):
-                    try:
-                        conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
-                        shared_alias = db_name
-                        break
-                    except Exception:
-                        continue
-        except Exception:
-            pass
-
-    # En dernier recours, essayer d'attacher
-    if not shared_alias:
-        try:
-            conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
-            shared_alias = "shared"
-        except Exception as e:
-            logger.debug(f"Attach shared pour citations: {e}")
-
-    if not shared_alias:
-        logger.warning("Impossible de trouver la base shared pour les citations")
-        return 0
-
-    # S'assurer que match_citations existe (table locale dans player DB)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS match_citations (
-            match_id VARCHAR NOT NULL,
-            citation_name_norm VARCHAR NOT NULL,
-            value INTEGER DEFAULT 0,
-            PRIMARY KEY (match_id, citation_name_norm)
-        )
-    """)
+    from src.data.citations_backfill import backfill_citations_for_player
 
     if force:
-        match_ids = [
-            r[0]
-            for r in conn.execute(
-                f"SELECT DISTINCT mp.match_id "
-                f"FROM {shared_alias}.match_participants mp "
-                f"JOIN {shared_alias}.match_registry mr ON mp.match_id = mr.match_id "
-                f"WHERE mp.xuid = ? "
-                f"ORDER BY mr.start_time",
-                [xuid],
-            ).fetchall()
-        ]
-    else:
-        match_ids = [
-            r[0]
-            for r in conn.execute(
-                f"SELECT DISTINCT mp.match_id "
-                f"FROM {shared_alias}.match_participants mp "
-                f"JOIN {shared_alias}.match_registry mr ON mp.match_id = mr.match_id "
-                f"WHERE mp.xuid = ? "
-                f"  AND NOT EXISTS ("
-                f"    SELECT 1 FROM match_citations mc "
-                f"    WHERE mc.match_id = mp.match_id"
-                f"  ) "
-                f"ORDER BY mr.start_time",
-                [xuid],
-            ).fetchall()
-        ]
+        # Supprimer les citations existantes pour forcer le recalcul complet
+        conn.execute("DELETE FROM match_citations")
 
-    if not match_ids:
-        logger.info("Aucun match à traiter pour les citations")
-        return 0
-
-    logger.info(f"Traitement de {len(match_ids)} match(s) pour les citations...")
-
-    count = 0
-    for i, match_id in enumerate(match_ids, 1):
-        try:
-            n = engine.compute_and_store_for_match(match_id, conn=conn)
-            if n > 0:
-                count += 1
-            if i % 100 == 0:
-                logger.info(f"  [{i}/{len(match_ids)}] {count} matchs avec citations")
-        except Exception as e:
-            logger.warning(f"Erreur citation pour {match_id}: {e}")
-            continue
-
-    logger.info(f"✅ {count} match(s) traités pour les citations")
-    return count
+    result = backfill_citations_for_player(db_path, xuid, conn=conn)
+    return result.get("citations_computed", 0)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
