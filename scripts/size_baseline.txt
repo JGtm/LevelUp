@@ -85,8 +85,8 @@ FUNC:src/data/sync/transformers/_medals.py:90:extract_all_medals:94L
 FUNC:src/data/sync/transformers/_skill.py:127:transform_all_skill_stats:142L
 FUNC:src/data/sync/transformers/_skill.py:24:transform_skill_stats:100L
 FUNC:src/ui/cache_filters.py:35:cached_compute_sessions_db:169L
-FUNC:src/ui/cache_filters.py:480:cached_load_recent_matches:95L
-FUNC:src/ui/cache_filters.py:580:cached_load_matches_paginated:98L
+FUNC:src/ui/cache_filters.py:475:cached_load_recent_matches:95L
+FUNC:src/ui/cache_filters.py:575:cached_load_matches_paginated:98L
 FUNC:src/ui/cache_loaders.py:741:load_df_optimized:94L
 FUNC:src/ui/commendations.py:214:render_h5g_commendations_section:185L
 FUNC:src/ui/components/career_progress_circle.py:136:create_hero_progress_gauge:85L
@@ -226,7 +226,7 @@ MODULE:src/data/sync/engine.py:869L
 MODULE:src/data/sync/models.py:511L
 MODULE:src/data/sync/transformers/_helpers.py:656L
 MODULE:src/data/sync/transformers/_match.py:531L
-MODULE:src/ui/cache_filters.py:717L
+MODULE:src/ui/cache_filters.py:712L
 MODULE:src/ui/cache_loaders.py:846L
 MODULE:src/ui/components/radar_chart.py:838L
 MODULE:src/ui/filter_state.py:589L
