@@ -738,7 +738,7 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_df_optimized(
+def load_df_optimized(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None = None,

@@ -153,17 +153,13 @@ def is_funnel_started() -> bool:
     return _funnel_started.is_set()
 
 
-def ensure_funnel_started_once(
-    port: int = 8501,
-    notify_fn: object = None,
-) -> str | None:
+def ensure_funnel_started_once(port: int = 8501) -> str | None:
     """Démarre le funnel Tailscale une seule fois par processus Python.
 
     Appels suivants (depuis d'autres sessions WebSocket Streamlit) sont ignorés.
 
     Args:
-        port:      Port local à exposer (défaut 8501).
-        notify_fn: Callable optionnel ``(url: str) -> None`` appelé après démarrage.
+        port: Port local à exposer (défaut 8501).
 
     Returns:
         URL publique si premier appel et succès, None sinon.
@@ -171,10 +167,4 @@ def ensure_funnel_started_once(
     if _funnel_started.is_set():
         return None  # Déjà démarré dans ce processus
     _funnel_started.set()
-    url = start_funnel(port=port)
-    if url and callable(notify_fn):
-        try:
-            notify_fn(url)  # type: ignore[call-arg]
-        except Exception as exc:
-            logger.warning("[Tailscale] notify_fn erreur : %s", exc)
-    return url
+    return start_funnel(port=port)

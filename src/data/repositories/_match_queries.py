@@ -916,7 +916,7 @@ class MatchQueriesMixin:
     # Chargement Polars zero-copy (Sprint 19 — hot path optimisé)
     # =========================================================================
 
-    def load_matches_as_polars(  # noqa: PLR0912
+    def load_matches_as_polars(  # noqa: PLR0912, C901
         self,
         *,
         include_firefight: bool = True,

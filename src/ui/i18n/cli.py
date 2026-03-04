@@ -119,10 +119,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "👥 Amis : {friends}",
         "en": "👥 Friends: {friends}",
     },
-    "tailscale_discord_startup": {
-        "fr": "🟢 LevelUp est disponible sur {url}",
-        "en": "🟢 LevelUp is available at {url}",
-    },
     # ── Scripts — Messages logger génériques ─────────────────────────────────
     "cli_no_players": {
         "fr": "Aucun joueur à synchroniser.",
