@@ -308,4 +308,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Seulement {pct}% de victoires face à lui ({count} duels)",
         "en": "Only {pct}% win rate against them ({count} duels)",
     },
+    # Onglets de la vue détaillée (P2)
+    "mv_tab_summary": {"fr": "Résumé", "en": "Summary"},
+    "mv_tab_combat": {"fr": "Combat", "en": "Combat"},
+    "mv_tab_team": {"fr": "Équipe", "en": "Team"},
+    "mv_tab_citations_medals": {"fr": "Citations & Médailles", "en": "Citations & Medals"},
+    "mv_tab_media": {"fr": "Médias", "en": "Media"},
 }

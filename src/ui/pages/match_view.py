@@ -678,15 +678,13 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
     else:
         st.markdown(map_img_html, unsafe_allow_html=True)
 
-    # Stats détaillées
+    # Chargement des données détaillées (commun à tous les onglets)
     with st.spinner(t("mv_loading")):
         pm = load_player_match_result_fn(db_path, match_id, xuid.strip(), db_key=db_key)
         medals_last = load_match_medals_fn(db_path, match_id, xuid.strip(), db_key=db_key)
 
-    if not pm:
-        st.info(t("mv_stats_unavailable"))
-    else:
-        # Enrichir pm avec les valeurs réelles depuis row si elles sont manquantes (DuckDB v4)
+    # Enrichir pm avec les valeurs réelles depuis row si elles sont manquantes (DuckDB v4)
+    if pm:
         if pm.get("kills", {}).get("count") is None:
             kills_val = row.get("kills")
             if kills_val is not None:
@@ -706,128 +704,157 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
                     float(assists_val) if assists_val == assists_val else None
                 )
 
-        render_expected_vs_actual(row, pm, colors, df_full=df_full, db_path=db_path, xuid=xuid)
-
-    # Section Participation (PersonalScores) - Radar unifié 6 axes
-    render_participation_section(
-        db_path=db_path,
-        match_id=match_id,
-        xuid=xuid,
-        db_key=db_key,
-        match_row=row,
+    # Onglets de navigation (P2 — lazy rendering par section)
+    (
+        _tab_summary,
+        _tab_combat,
+        _tab_team,
+        _tab_cit,
+        _tab_media,
+    ) = st.tabs(
+        [
+            t("mv_tab_summary"),
+            t("mv_tab_combat"),
+            t("mv_tab_team"),
+            t("mv_tab_citations_medals"),
+            t("mv_tab_media"),
+        ]
     )
 
-    # Impact & Timeline (kills/deaths cumulées + badges)
-    render_match_impact_section(
-        match_id=match_id,
-        db_path=db_path,
-        xuid=xuid,
-        db_key=db_key,
-        outcome=outcome_code,
-        load_highlight_events_fn=load_highlight_events_fn,
-        load_match_gamertags_fn=load_match_gamertags_fn,
-    )
+    # ── Onglet Résumé ────────────────────────────────────────────────────────
+    with _tab_summary:
+        if not pm:
+            st.info(t("mv_stats_unavailable"))
+        else:
+            render_expected_vs_actual(row, pm, colors, df_full=df_full, db_path=db_path, xuid=xuid)
 
-    # Dynamique du match (frise de dominance — PvP uniquement)
-    render_team_dominance_section(
-        match_id=match_id,
-        db_path=db_path,
-        xuid=xuid,
-        db_key=db_key,
-        is_firefight=bool(row.get("is_firefight")),
-        load_highlight_events_fn=load_highlight_events_fn,
-    )
-
-    # Némésis / Souffre-douleur
-    render_nemesis_section(
-        match_id=match_id,
-        db_path=db_path,
-        xuid=xuid,
-        db_key=db_key,
-        colors=colors,
-        load_highlight_events_fn=load_highlight_events_fn,
-        load_match_gamertags_fn=load_match_gamertags_fn,
-    )
-
-    # Évolution K/D de tous les joueurs
-    render_kd_timeline_section(
-        match_id=match_id,
-        db_path=db_path,
-        xuid=xuid,
-        db_key=db_key,
-        load_highlight_events_fn=load_highlight_events_fn,
-        load_match_gamertags_fn=load_match_gamertags_fn,
-    )
-
-    # Tableau des scores par équipe
-    render_match_scoreboard(
-        match_id=match_id,
-        db_path=db_path,
-        xuid=xuid,
-        db_key=db_key,
-        load_match_gamertags_fn=load_match_gamertags_fn,
-    )
-
-    # Historique des rencontres (v5.4)
-    render_encounter_section(
-        match_id=match_id,
-        self_xuid=xuid,
-        db_path=db_path,
-    )
-
-    # Citations (progressées dans ce match)
-    st.subheader(t("mv_citations"))
-    _render_match_citations_section(
-        match_id=match_id,
-        db_path=db_path,
-        xuid=xuid.strip(),
-    )
-
-    # Médailles
-    st.subheader(t("mv_medals"))
-    if not medals_last:
-        st.info(t("mv_medals_no_data"))
-    else:
-        md_df = pl.DataFrame(medals_last)
-        _fr_map, _en_map = load_medal_name_maps()
-        _medal_map = {
-            **{str(k): v for k, v in _en_map.items()},
-            **{str(k): v for k, v in _fr_map.items()},
-        }
-        md_df = md_df.with_columns(
-            pl.col("name_id")
-            .cast(pl.Utf8)
-            .replace_strict(_medal_map, default=None, return_dtype=pl.Utf8)
-            .fill_null(pl.lit(t("mv_medal_fallback", n="") + " ") + pl.col("name_id").cast(pl.Utf8))
-            .alias("label")
-        )
-        md_df = md_df.sort(["count", "label"], descending=[True, False])
-        render_medals_grid(
-            md_df.select(["name_id", "count"]).to_dicts(),
-            cols_per_row=8,
-            center=True,
-            lang=get_lang(),
+        # Section Participation (PersonalScores) - Radar unifié 6 axes
+        render_participation_section(
+            db_path=db_path,
+            match_id=match_id,
+            xuid=xuid,
+            db_key=db_key,
+            match_row=row,
         )
 
-    # Médias
-    render_media_section(
-        row=row,
-        settings=settings,
-        format_datetime_fn=format_datetime_fn,
-        paris_tz=paris_tz,
-        gamertag=waypoint_player,
-        db_path=db_path,
-        current_xuid=xuid,
-    )
+    # ── Onglet Combat ────────────────────────────────────────────────────────
+    with _tab_combat:
+        # Impact & Timeline (kills/deaths cumulées + badges)
+        render_match_impact_section(
+            match_id=match_id,
+            db_path=db_path,
+            xuid=xuid,
+            db_key=db_key,
+            outcome=outcome_code,
+            load_highlight_events_fn=load_highlight_events_fn,
+            load_match_gamertags_fn=load_match_gamertags_fn,
+        )
 
-    # Lien Waypoint
-    if match_url:
-        st.write("")
-        st.link_button(t("mv_open_waypoint"), match_url, width="stretch")
+        # Dynamique du match (frise de dominance — PvP uniquement)
+        render_team_dominance_section(
+            match_id=match_id,
+            db_path=db_path,
+            xuid=xuid,
+            db_key=db_key,
+            is_firefight=bool(row.get("is_firefight")),
+            load_highlight_events_fn=load_highlight_events_fn,
+        )
+
+        # Némésis / Souffre-douleur
+        render_nemesis_section(
+            match_id=match_id,
+            db_path=db_path,
+            xuid=xuid,
+            db_key=db_key,
+            colors=colors,
+            load_highlight_events_fn=load_highlight_events_fn,
+            load_match_gamertags_fn=load_match_gamertags_fn,
+        )
+
+        # Évolution K/D de tous les joueurs
+        render_kd_timeline_section(
+            match_id=match_id,
+            db_path=db_path,
+            xuid=xuid,
+            db_key=db_key,
+            load_highlight_events_fn=load_highlight_events_fn,
+            load_match_gamertags_fn=load_match_gamertags_fn,
+        )
+
+    # ── Onglet Équipe ────────────────────────────────────────────────────────
+    with _tab_team:
+        # Tableau des scores par équipe
+        render_match_scoreboard(
+            match_id=match_id,
+            db_path=db_path,
+            xuid=xuid,
+            db_key=db_key,
+            load_match_gamertags_fn=load_match_gamertags_fn,
+        )
+
+        # Historique des rencontres (v5.4)
+        render_encounter_section(
+            match_id=match_id,
+            self_xuid=xuid,
+            db_path=db_path,
+        )
+
+    # ── Onglet Citations & Médailles ─────────────────────────────────────────
+    with _tab_cit:
+        # Citations (progressées dans ce match)
+        st.subheader(t("mv_citations"))
+        _render_match_citations_section(
+            match_id=match_id,
+            db_path=db_path,
+            xuid=xuid.strip(),
+        )
+
+        # Médailles
+        st.subheader(t("mv_medals"))
+        if not medals_last:
+            st.info(t("mv_medals_no_data"))
+        else:
+            md_df = pl.DataFrame(medals_last)
+            _fr_map, _en_map = load_medal_name_maps()
+            _medal_map = {
+                **{str(k): v for k, v in _en_map.items()},
+                **{str(k): v for k, v in _fr_map.items()},
+            }
+            md_df = md_df.with_columns(
+                pl.col("name_id")
+                .cast(pl.Utf8)
+                .replace_strict(_medal_map, default=None, return_dtype=pl.Utf8)
+                .fill_null(
+                    pl.lit(t("mv_medal_fallback", n="") + " ") + pl.col("name_id").cast(pl.Utf8)
+                )
+                .alias("label")
+            )
+            md_df = md_df.sort(["count", "label"], descending=[True, False])
+            render_medals_grid(
+                md_df.select(["name_id", "count"]).to_dicts(),
+                cols_per_row=8,
+                center=True,
+                lang=get_lang(),
+            )
+
+    # ── Onglet Médias ────────────────────────────────────────────────────────
+    with _tab_media:
+        render_media_section(
+            row=row,
+            settings=settings,
+            format_datetime_fn=format_datetime_fn,
+            paris_tz=paris_tz,
+            gamertag=waypoint_player,
+            db_path=db_path,
+            current_xuid=xuid,
+        )
+
+        # Lien Waypoint
+        if match_url:
+            st.write("")
+            st.link_button(t("mv_open_waypoint"), match_url, width="stretch")
 
 
-# =============================================================================
-# Exports publics (rétrocompatibilité)
 # =============================================================================
 
 # Réexporter les fonctions helpers pour rétrocompatibilité

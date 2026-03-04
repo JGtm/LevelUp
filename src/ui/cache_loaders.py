@@ -221,6 +221,7 @@ def _load_matches_duckdb_v4_polars(
     db_path: str,
     include_firefight: bool = True,
     columns: list[str] | None = None,
+    max_matches: int | None = None,
 ) -> pl.DataFrame:
     """Charge les matchs depuis une DB DuckDB v4 en Polars via Arrow zero-copy.
 
@@ -232,6 +233,7 @@ def _load_matches_duckdb_v4_polars(
         db_path: Chemin vers la DB DuckDB.
         include_firefight: Inclure les matchs PvE.
         columns: Liste de colonnes à projeter (None = toutes).
+        max_matches: Limite SQL sur les N matchs les plus récents (P3).
 
     Returns:
         DataFrame Polars. Vide en cas d'erreur.
@@ -242,6 +244,7 @@ def _load_matches_duckdb_v4_polars(
         return repo.load_matches_as_polars(
             include_firefight=include_firefight,
             columns=columns,
+            max_matches=max_matches,
         )
     except Exception:
         logger.debug("load_matches_as_polars échoué, fallback MatchRow", exc_info=True)
@@ -741,6 +744,7 @@ def load_df_optimized(
     db_key: tuple[int, int] | None = None,
     include_firefight: bool = True,
     cache_buster: int = 0,
+    max_matches: int | None = None,
 ) -> pl.DataFrame:
     """Charge les matchs avec fallback intelligent.
 
@@ -762,6 +766,8 @@ def load_df_optimized(
         db_key: Clé de cache (mtime, size) — None si fichier inexistant.
         include_firefight: Inclure les matchs PvE.
         cache_buster: Token pour forcer l'invalidation du cache après sync.
+        max_matches: Limite SQL sur les N matchs les plus récents (P3).
+                     None = pas de limite (comportement par défaut).
 
     Returns:
         DataFrame Polars enrichi avec toutes les colonnes calculées.
@@ -779,8 +785,10 @@ def load_df_optimized(
         # Sprint 19 : chemin optimisé DuckDB → Arrow → Polars (zero-copy)
         # P5 : projection COLUMNS_COMMON pour réduire l'empreinte mémoire
         #      (exclut game_variant_id, team_id, rank — non utilisés en hot-path)
+        # P3 : LIMIT SQL via max_matches pour limiter le chargement initial
         df = _load_matches_duckdb_v4_polars(
-            db_path, include_firefight=include_firefight, columns=COLUMNS_COMMON
+            db_path, include_firefight=include_firefight, columns=COLUMNS_COMMON,
+            max_matches=max_matches,
         )
         if not df.is_empty():
             # Enrichissement standard (timezone, colonnes calculées)
