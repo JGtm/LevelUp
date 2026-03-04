@@ -195,14 +195,11 @@ class MediaIndexer:
 
     def reset_media_tables(self) -> None:
         """Vide les tables media_files et media_match_associations (schéma conservé)."""
-        conn = duckdb.connect(str(self.db_path), read_only=False)
-        try:
+        with duckdb.connect(str(self.db_path), read_only=False) as conn:
             self.ensure_schema()
             conn.execute("DELETE FROM media_match_associations")
             conn.execute("DELETE FROM media_files")
             conn.commit()
-        finally:
-            conn.close()
 
     def ensure_schema(self) -> None:  # noqa: C901, PLR0912, PLR0915
         """Crée ou migre le schéma media_files et media_match_associations.
@@ -219,7 +216,7 @@ class MediaIndexer:
                 e,
             )
             raise
-        try:
+        with conn:
             tables = conn.execute(
                 """
                 SELECT table_name FROM information_schema.tables
@@ -354,8 +351,6 @@ class MediaIndexer:
                     "CREATE INDEX IF NOT EXISTS idx_assoc_match ON media_match_associations(match_id, xuid)"
                 )
                 conn.commit()
-        finally:
-            conn.close()
 
     def _compute_file_hash(self, file_path: Path) -> str:
         try:
@@ -447,8 +442,7 @@ class MediaIndexer:
         result = ScanResult()
         now = datetime.now()
 
-        conn = duckdb.connect(str(self.db_path), read_only=False)
-        try:
+        with duckdb.connect(str(self.db_path), read_only=False) as conn:
             existing = {}
             if not force_rescan:
                 rows = conn.execute(
@@ -620,8 +614,6 @@ class MediaIndexer:
                 result.n_updated,
                 result.n_deleted,
             )
-        finally:
-            conn.close()
 
         return result
 
@@ -695,59 +687,56 @@ class MediaIndexer:
         # Utiliser read_only=False pour la lecture ET l'écriture dans la même connexion,
         # afin d'éviter l'ouverture successive RO→RW qui déclenche l'erreur DuckDB
         # "different configuration" quand un repo Streamlit a entre-temps rouvert en RO.
-        conn = duckdb.connect(str(self.db_path), read_only=False)
-        try:
-            media_rows = conn.execute(
-                """
-                SELECT mf.file_path, mf.mtime
-                FROM media_files mf
-                WHERE mf.status = 'active'
-                ORDER BY mf.mtime DESC
-                """
-            ).fetchall()
-        except Exception:
-            conn.close()
-            return 0
-
-        if not media_rows:
-            conn.close()
-            return 0
-
-        player_dbs = self._get_all_player_dbs_current_first()
-        if not player_dbs:
-            player_dbs = [(self.db_path, get_gamertag_from_db_path(self.db_path) or "")]
-
-        # v5.1 : récupérer les match infos depuis shared_matches.duckdb
-        matches_by_xuid: dict[str, list[tuple[Any, ...]]] = {}
-        shared_path = get_shared_matches_path_from_player(self.db_path)
-        if shared_path and shared_path.exists():
+        with duckdb.connect(str(self.db_path), read_only=False) as conn:
             try:
-                with duckdb.connect(str(shared_path), read_only=True) as c:
-                    for _db_path_iter, xuid in player_dbs:
-                        try:
-                            rows = c.execute(
-                                """
-                                SELECT mp.match_id, mr.start_time,
-                                       COALESCE(mr.duration_seconds, 720),
-                                       COALESCE(mr.map_id, ''), COALESCE(mr.map_name, '')
-                                FROM match_participants mp
-                                JOIN match_registry mr ON mp.match_id = mr.match_id
-                                WHERE mp.xuid = ? AND mr.start_time IS NOT NULL
-                                """,
-                                [str(xuid)],
-                            ).fetchall()
-                            matches_by_xuid[str(xuid)] = rows
-                        except Exception:
-                            matches_by_xuid[str(xuid)] = []
-            except Exception as e:
-                logger.warning("associate_with_matches shared_db: %s", e)
-        else:
-            # Fallback : pas de shared DB disponible
-            for _db_path, xuid in player_dbs:
-                matches_by_xuid[str(xuid)] = []
+                media_rows = conn.execute(
+                    """
+                    SELECT mf.file_path, mf.mtime
+                    FROM media_files mf
+                    WHERE mf.status = 'active'
+                    ORDER BY mf.mtime DESC
+                    """
+                ).fetchall()
+            except Exception:
+                return 0
 
-        tol_seconds = tolerance_minutes * 60
-        try:
+            if not media_rows:
+                return 0
+
+            player_dbs = self._get_all_player_dbs_current_first()
+            if not player_dbs:
+                player_dbs = [(self.db_path, get_gamertag_from_db_path(self.db_path) or "")]
+
+            # v5.1 : récupérer les match infos depuis shared_matches.duckdb
+            matches_by_xuid: dict[str, list[tuple[Any, ...]]] = {}
+            shared_path = get_shared_matches_path_from_player(self.db_path)
+            if shared_path and shared_path.exists():
+                try:
+                    with duckdb.connect(str(shared_path), read_only=True) as c:
+                        for _db_path_iter, xuid in player_dbs:
+                            try:
+                                rows = c.execute(
+                                    """
+                                    SELECT mp.match_id, mr.start_time,
+                                           COALESCE(mr.duration_seconds, 720),
+                                           COALESCE(mr.map_id, ''), COALESCE(mr.map_name, '')
+                                    FROM match_participants mp
+                                    JOIN match_registry mr ON mp.match_id = mr.match_id
+                                    WHERE mp.xuid = ? AND mr.start_time IS NOT NULL
+                                    """,
+                                    [str(xuid)],
+                                ).fetchall()
+                                matches_by_xuid[str(xuid)] = rows
+                            except Exception:
+                                matches_by_xuid[str(xuid)] = []
+                except Exception as e:
+                    logger.warning("associate_with_matches shared_db: %s", e)
+            else:
+                # Fallback : pas de shared DB disponible
+                for _db_path, xuid in player_dbs:
+                    matches_by_xuid[str(xuid)] = []
+
+            tol_seconds = tolerance_minutes * 60
             before = conn.execute("SELECT COUNT(*) FROM media_match_associations").fetchone()[0]
 
             for media_path, mtime_epoch in media_rows:
@@ -791,9 +780,7 @@ class MediaIndexer:
                         logger.warning("Association %s/%s: %s", media_path, xuid, e)
             conn.commit()
             after = conn.execute("SELECT COUNT(*) FROM media_match_associations").fetchone()[0]
-        finally:
-            conn.close()
-        return int(after - before)
+            return int(after - before)
 
     @staticmethod
     def load_media_for_ui(db_path: Path | str, current_xuid: str | None) -> pl.DataFrame:  # noqa: C901, PLR0912, PLR0915
@@ -1148,8 +1135,7 @@ class MediaIndexer:
         # DB déjà ouverte par Streamlit en read-only — les tables existent déjà
         with contextlib.suppress(Exception):
             self.ensure_schema()
-        conn = duckdb.connect(str(self.db_path), read_only=False)
-        try:
+        with duckdb.connect(str(self.db_path), read_only=False) as conn:
             # Inclure les vidéos sans thumbnail ET celles dont le GIF n'existe plus
             videos = conn.execute(
                 """
@@ -1195,8 +1181,6 @@ class MediaIndexer:
                 except Exception:
                     errors += 1
             conn.commit()
-        finally:
-            conn.close()
         return generated, errors
 
     def _generate_image_thumbnails(self, screens_dir: Path) -> tuple[int, int]:
@@ -1206,8 +1190,7 @@ class MediaIndexer:
         if importlib.util.find_spec("PIL") is None:
             return 0, 0
         self.ensure_schema()
-        conn = duckdb.connect(str(self.db_path), read_only=False)
-        try:
+        with duckdb.connect(str(self.db_path), read_only=False) as conn:
             images = conn.execute(
                 """
                 SELECT file_path, file_name FROM media_files
@@ -1246,8 +1229,6 @@ class MediaIndexer:
                 except Exception:
                     errors += 1
             conn.commit()
-        finally:
-            conn.close()
         return generated, errors
 
 

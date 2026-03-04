@@ -360,7 +360,7 @@ class HaloKnowledgeBase:
         """Initialise la table LanceDB."""
         table_name = self.config.table_name
 
-        if table_name in self.db.table_names():
+        if table_name in self.db.list_tables():
             self.table = self.db.open_table(table_name)
         else:
             # Créer une table vide avec le schéma
@@ -660,7 +660,7 @@ class HaloKnowledgeBase:
     def clear(self) -> None:
         """Supprime tous les documents de la table."""
         table_name = self.config.table_name
-        if table_name in self.db.table_names():
+        if table_name in self.db.list_tables():
             self.db.drop_table(table_name)
         self.table = None
         self._indexed_count = 0

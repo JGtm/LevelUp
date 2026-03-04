@@ -129,8 +129,7 @@ class CitationDataLoaderMixin:
         if self._pve_db_path is None:
             return {}
         try:
-            pve_conn = duckdb.connect(str(self._pve_db_path), read_only=True)
-            try:
+            with duckdb.connect(str(self._pve_db_path), read_only=True) as pve_conn:
                 result = pve_conn.execute(
                     "SELECT * FROM pve_match_stats WHERE match_id = ? AND xuid = ? LIMIT 1",
                     [match_id, self._xuid],
@@ -140,8 +139,6 @@ class CitationDataLoaderMixin:
                     return {}
                 columns = [desc[0] for desc in result.description]
                 return dict(zip(columns, row, strict=False))
-            finally:
-                pve_conn.close()
         except Exception:
             return {}
 
@@ -185,7 +182,7 @@ class CitationDataLoaderMixin:
     # DataFrame match (pour fonctions custom)
     # ------------------------------------------------------------------
 
-    def load_match_df(self, match_id: str) -> pl.DataFrame:
+    def load_match_df(self, match_id: str) -> pl.DataFrame:  # noqa: PLR0912
         """Charge un match comme DataFrame Polars (1 ligne).
 
         En V5, joint ``shared.match_participants`` + ``shared.match_registry``.
