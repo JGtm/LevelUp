@@ -8,6 +8,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [5.4.0] - 2026-03-04
 
+### Tests — anciens skips corrigés
+
+Les tests suivants étaient marqués `@pytest.mark.skip` ou `skipif(True)` et sont maintenant exécutables :
+
+| Fichier | Test(s) | Motif de correction |
+|---------|---------|---------------------|
+| `tests/test_rag.py` | `TestHaloKnowledgeBase` (3 tests) + `test_chunk_overlap` | Suppression des guards `skipif(True)` et faux skip |
+| `tests/test_season_archive.py` | `test_get_archive_info_with_archives` | Suppression du skip + assertion `>= 0` (fichier Parquet tiny) |
+| `tests/test_i18n_refactoring.py` | `test_no_duplicate_keys_in_module[pages]` | Support des packages (dossier `pages/` au lieu de `pages.py`) |
+| `tests/e2e/test_streamlit_browser_e2e.py` | `test_e2e_004_deeplink_match_query_params` | Regex `exception(?!nel)` — exclut "exceptionnel" (mot FR) |
+| `tests/test_cache_integrity.py` | 11 tests SQLite legacy | Fichier **supprimé** (code mort v3) |
+| `tests/conftest.py` | tous les tests `e2e_browser` | Suppression du guard auto-skip + installation Chromium |
+
+Pour rejouer uniquement ces tests :
+
+```bash
+# RAG
+python -m pytest tests/test_rag.py::TestHaloKnowledgeBase tests/test_rag.py::TestTextChunker::test_chunk_overlap -v
+
+# Archive saisonnière
+python -m pytest tests/test_season_archive.py::TestDuckDBRepositoryArchives::test_get_archive_info_with_archives -v
+
+# i18n (package pages/)
+python -m pytest tests/test_i18n_refactoring.py::TestNoInternalDuplicates -v
+
+# E2E deeplink
+python -m pytest tests/e2e/test_streamlit_browser_e2e.py::test_e2e_004_deeplink_match_query_params -v
+
+# Suite complète sans intégration
+python -m pytest -q --ignore=tests/integration
+```
+
 ### Added
 
 - **Historique des rencontres — section sous le scoreboard** (`src/ui/pages/match_view_encounters.py`)
