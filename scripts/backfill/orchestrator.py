@@ -98,155 +98,32 @@ async def backfill_player_data(
     gamertag: str,
     *,
     scope: SyncScope | None = None,
-    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
-    # Ces kwargs individuels sont conservés pour rétro-compatibilité.
-    # Nouveau code : passer ``scope=SyncScope(...)`` à la place.
-    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
-    #   utilisent SyncScope (vérifier sync.py, tests, scripts).
-    # ─────────────────────────────────────────────────────────────────────
-    dry_run: bool = False,
-    max_matches: int | None = None,
-    requests_per_second: int = 5,
-    medals: bool = False,
-    events: bool = False,
-    skill: bool = False,
-    personal_scores: bool = False,
-    performance_scores: bool = False,
-    aliases: bool = False,
-    accuracy: bool = False,
-    enemy_mmr: bool = False,
-    assets: bool = False,
-    participants: bool = False,
-    participants_scores: bool = False,
-    participants_kda: bool = False,
-    participants_shots: bool = False,
-    participants_damage: bool = False,
-    participants_avg_life: bool = False,
-    killer_victim: bool = False,
-    end_time: bool = False,
-    sessions: bool = False,
-    all_data: bool = False,
-    force_medals: bool = False,
-    force_accuracy: bool = False,
-    shots: bool = False,
-    force_shots: bool = False,
-    force_participants_shots: bool = False,
-    force_participants_damage: bool = False,
-    force_participants_avg_life: bool = False,
-    force_enemy_mmr: bool = False,
-    force_aliases: bool = False,
-    force_assets: bool = False,
-    force_participants: bool = False,
-    force_end_time: bool = False,
-    force_sessions: bool = False,
-    citations: bool = False,
-    force_citations: bool = False,
-    participants_enrich: bool = False,
-    force_participants_enrich: bool = False,
-    detection_mode: str = "or",
 ) -> dict[str, int]:
     """Remplit les données manquantes pour un joueur.
 
-    .. deprecated:: v5.2
-        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
-        Les kwargs sont conservés temporairement pour rétro-compatibilité.
-
     Args:
         gamertag: Gamertag du joueur.
-        scope: Périmètre de données — **méthode recommandée** (SyncScope).
-        dry_run: (legacy) Si True, ne fait que lister les matchs sans données.
-        max_matches: (legacy) Nombre maximum de matchs à traiter (None = tous).
-        requests_per_second: (legacy) Rate limiting API.
-        detection_mode: (legacy) "or" (défaut) ou "and" (strict).
-        **kwargs: (legacy) 30+ flags booléens — voir SyncScope pour la liste.
+        scope: Périmètre de données (SyncScope). Obligatoire en pratique ;
+               si ``None``, un scope vide est créé (aucune action).
 
     Returns:
         Dict avec les statistiques.
     """
     # ── Construire / résoudre le scope ──
     if scope is None:
-        scope = SyncScope(
-            dry_run=dry_run,
-            max_matches=max_matches,
-            requests_per_second=requests_per_second,
-            detection_mode=detection_mode,
-            medals=medals,
-            events=events,
-            skill=skill,
-            personal_scores=personal_scores,
-            performance_scores=performance_scores,
-            aliases=aliases,
-            accuracy=accuracy,
-            enemy_mmr=enemy_mmr,
-            assets=assets,
-            participants=participants,
-            participants_scores=participants_scores,
-            participants_kda=participants_kda,
-            participants_shots=participants_shots,
-            participants_damage=participants_damage,
-            participants_avg_life=participants_avg_life,
-            killer_victim=killer_victim,
-            end_time=end_time,
-            sessions=sessions,
-            shots=shots,
-            citations=citations,
-            participants_enrich=participants_enrich,
-            all_data=all_data,
-            force_medals=force_medals,
-            force_accuracy=force_accuracy,
-            force_shots=force_shots,
-            force_participants_shots=force_participants_shots,
-            force_participants_damage=force_participants_damage,
-            force_participants_avg_life=force_participants_avg_life,
-            force_enemy_mmr=force_enemy_mmr,
-            force_aliases=force_aliases,
-            force_assets=force_assets,
-            force_participants=force_participants,
-            force_end_time=force_end_time,
-            force_sessions=force_sessions,
-            force_citations=force_citations,
-            force_participants_enrich=force_participants_enrich,
-        )
+        scope = SyncScope()
     scope.resolve()
 
-    # Extraire les valeurs résolues en variables locales
+    # Extraire les valeurs résolues en variables locales (used below)
     dry_run = scope.dry_run
     max_matches = scope.max_matches
     requests_per_second = scope.requests_per_second
-    detection_mode = scope.detection_mode
-    medals = scope.medals
-    events = scope.events
-    skill = scope.skill
-    personal_scores = scope.personal_scores
-    performance_scores = scope.performance_scores
-    aliases = scope.aliases
-    accuracy = scope.accuracy
-    enemy_mmr = scope.enemy_mmr
-    assets = scope.assets
-    participants = scope.participants
-    participants_scores = scope.participants_scores
-    participants_kda = scope.participants_kda
-    participants_shots = scope.participants_shots
-    participants_damage = scope.participants_damage
-    participants_avg_life = scope.participants_avg_life
     killer_victim = scope.killer_victim
     end_time = scope.end_time
+    force_end_time = scope.force_end_time
     sessions = scope.sessions
-    shots = scope.shots
     citations = scope.citations
     participants_enrich = scope.participants_enrich
-    force_medals = scope.force_medals
-    force_accuracy = scope.force_accuracy
-    force_shots = scope.force_shots
-    # force_skill est utilisé via scope dans find_matches_missing_data()
-    force_participants_shots = scope.force_participants_shots
-    force_participants_damage = scope.force_participants_damage
-    force_participants_avg_life = scope.force_participants_avg_life
-    force_enemy_mmr = scope.force_enemy_mmr
-    force_aliases = scope.force_aliases
-    force_assets = scope.force_assets
-    force_participants = scope.force_participants
-    force_end_time = scope.force_end_time
     force_sessions = scope.force_sessions
     force_citations = scope.force_citations
     force_participants_enrich = scope.force_participants_enrich
@@ -430,100 +307,16 @@ async def backfill_player_data(
 async def backfill_all_players(
     *,
     scope: SyncScope | None = None,
-    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
-    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
-    #   utilisent SyncScope.
-    # ─────────────────────────────────────────────────────────────────────
-    dry_run: bool = False,
-    max_matches: int | None = None,
-    requests_per_second: int = 5,
-    medals: bool = False,
-    events: bool = False,
-    skill: bool = False,
-    personal_scores: bool = False,
-    performance_scores: bool = False,
-    aliases: bool = False,
-    accuracy: bool = False,
-    enemy_mmr: bool = False,
-    assets: bool = False,
-    participants: bool = False,
-    participants_scores: bool = False,
-    participants_kda: bool = False,
-    participants_shots: bool = False,
-    participants_damage: bool = False,
-    participants_avg_life: bool = False,
-    killer_victim: bool = False,
-    end_time: bool = False,
-    all_data: bool = False,
-    force_medals: bool = False,
-    force_accuracy: bool = False,
-    shots: bool = False,
-    force_shots: bool = False,
-    force_participants_shots: bool = False,
-    force_participants_damage: bool = False,
-    force_participants_avg_life: bool = False,
-    force_enemy_mmr: bool = False,
-    force_aliases: bool = False,
-    force_assets: bool = False,
-    force_participants: bool = False,
-    force_end_time: bool = False,
-    sessions: bool = False,
-    force_sessions: bool = False,
-    citations: bool = False,
-    force_citations: bool = False,
-    participants_enrich: bool = False,
-    force_participants_enrich: bool = False,
-    detection_mode: str = "or",
 ) -> dict[str, Any]:
     """Backfill pour tous les joueurs DuckDB.
 
-    .. deprecated:: v5.2
-        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+    Args:
+        scope: Périmètre de données (SyncScope). Obligatoire en pratique ;
+               si ``None``, un scope vide est créé (aucune action).
     """
     # ── Construire le scope si non fourni ──
     if scope is None:
-        scope = SyncScope(
-            dry_run=dry_run,
-            max_matches=max_matches,
-            requests_per_second=requests_per_second,
-            detection_mode=detection_mode,
-            medals=medals,
-            events=events,
-            skill=skill,
-            personal_scores=personal_scores,
-            performance_scores=performance_scores,
-            aliases=aliases,
-            accuracy=accuracy,
-            enemy_mmr=enemy_mmr,
-            assets=assets,
-            participants=participants,
-            participants_scores=participants_scores,
-            participants_kda=participants_kda,
-            participants_shots=participants_shots,
-            participants_damage=participants_damage,
-            participants_avg_life=participants_avg_life,
-            killer_victim=killer_victim,
-            end_time=end_time,
-            sessions=sessions,
-            shots=shots,
-            citations=citations,
-            participants_enrich=participants_enrich,
-            all_data=all_data,
-            force_medals=force_medals,
-            force_accuracy=force_accuracy,
-            force_shots=force_shots,
-            force_participants_shots=force_participants_shots,
-            force_participants_damage=force_participants_damage,
-            force_participants_avg_life=force_participants_avg_life,
-            force_enemy_mmr=force_enemy_mmr,
-            force_aliases=force_aliases,
-            force_assets=force_assets,
-            force_participants=force_participants,
-            force_end_time=force_end_time,
-            force_sessions=force_sessions,
-            force_citations=force_citations,
-            force_participants_enrich=force_participants_enrich,
-        )
+        scope = SyncScope()
 
     from src.ui.multiplayer import list_duckdb_v4_players
 
