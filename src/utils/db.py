@@ -63,3 +63,35 @@ def duckdb_read_write(db_path: str | Path) -> Generator[duckdb.DuckDBPyConnectio
         yield conn
     finally:
         conn.close()
+
+
+def is_duckdb_v4_path(db_path: str) -> bool:
+    """Détecte si le chemin est une DB joueur DuckDB v4+.
+
+    Args:
+        db_path: Chemin vers le fichier DB.
+
+    Returns:
+        True si le chemin pointe vers un fichier ``.duckdb``.
+    """
+    if not db_path:
+        return False
+    return db_path.endswith(".duckdb") or db_path.endswith("stats.duckdb")
+
+
+def has_table(conn: duckdb.DuckDBPyConnection, table_name: str, schema: str = "main") -> bool:
+    """Vérifie si une table existe dans une connexion DuckDB ouverte.
+
+    Args:
+        conn: Connexion DuckDB déjà ouverte.
+        table_name: Nom de la table à vérifier.
+        schema: Schéma SQL (``main`` par défaut).
+
+    Returns:
+        True si la table existe.
+    """
+    rows = conn.execute(
+        "SELECT 1 FROM information_schema.tables " "WHERE table_schema = ? AND table_name = ?",
+        [schema, table_name],
+    ).fetchone()
+    return rows is not None

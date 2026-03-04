@@ -50,25 +50,6 @@ def _app_url(page: str, **params: str) -> str:
     return base + "?" + urllib.parse.urlencode(qp)
 
 
-def _format_score_label(my_score: object, enemy_score: object) -> str:
-    """Formate le score du match."""
-
-    def _safe(v: object) -> str:
-        if v is None:
-            return "-"
-        try:
-            if v != v:  # NaN
-                return "-"
-        except Exception:
-            pass
-        try:
-            return str(int(round(float(v))))
-        except Exception:
-            return str(v)
-
-    return f"{_safe(my_score)} - {_safe(enemy_score)}"
-
-
 def _clear_min_matches_maps_friends_auto() -> None:
     """Callback pour désactiver le mode auto du slider coéquipiers."""
     st.session_state["_min_matches_maps_friends_auto"] = False
