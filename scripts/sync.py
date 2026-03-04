@@ -25,6 +25,7 @@ Usage:
     python scripts/sync.py --apply-indexes            # Applique les index optimisés
     python scripts/sync.py --delta --with-assets      # Sync + assets
     python scripts/sync.py --delta --player SpartanC --with-backfill  # Sync + backfill complet
+    python scripts/sync.py --delta --player SpartanC --with-citations  # Sync + citations (sans API)
     python scripts/sync.py --delta --player SpartanC --backfill-performance-scores  # Sync + scores performance
 """
 
@@ -1045,6 +1046,7 @@ Exemples:
   python scripts/sync.py --apply-indexes            # Applique les index
   python scripts/sync.py --delta --with-assets      # Sync + téléchargement assets
   python scripts/sync.py --delta --player SpartanC --with-backfill  # Sync + backfill complet (toutes données)
+  python scripts/sync.py --delta --player SpartanC --with-citations  # Sync + calcul citations (rapide, sans API)
   python scripts/sync.py --delta --player SpartanC --backfill-performance-scores  # Sync + calcul scores performance
   python scripts/sync.py --stats                    # Affiche les statistiques
         """,
@@ -1124,6 +1126,11 @@ Exemples:
         help="Effectue un backfill complet des données manquantes après la synchronisation (toutes les données)",
     )
     parser.add_argument(
+        "--with-citations",
+        action="store_true",
+        help="Calcule les citations manquantes après la synchronisation (traitement local, sans API)",
+    )
+    parser.add_argument(
         "--backfill-performance-scores",
         action="store_true",
         help="Calcule les scores de performance manquants après la synchronisation",
@@ -1194,6 +1201,7 @@ Exemples:
                 or args.stats
                 or args.with_assets
                 or args.with_backfill
+                or args.with_citations
                 or args.backfill_performance_scores
                 or args.migrate_parquet
             ):
@@ -1478,6 +1486,35 @@ Exemples:
                 logger.warning(f"Impossible d'importer backfill_data: {e}")
             except Exception as e:
                 logger.error(f"Erreur lors du backfill: {e}")
+                success = False
+
+    # Calcul des citations manquantes (traitement local, sans API)
+    if args.with_citations:
+        if not args.player:
+            logger.warning(
+                "--with-citations nécessite --player. "
+                "Utilisez scripts/backfill_data.py --all --citations pour tous les joueurs."
+            )
+        else:
+            logger.info("Calcul des citations manquantes après synchronisation...")
+            try:
+                import asyncio
+
+                from scripts.backfill_data import backfill_player_data
+                from src.data.sync.scope import SyncScope
+
+                scope = SyncScope(citations=True)
+                scope.resolve()
+
+                result = asyncio.run(backfill_player_data(args.player, scope=scope))
+
+                citations_count = result.get("citations_computed", 0)
+                logger.info(f"Citations calculées : {citations_count}")
+
+            except ImportError as e:
+                logger.warning(f"Impossible d'importer backfill_data: {e}")
+            except Exception as e:
+                logger.error(f"Erreur lors du calcul des citations: {e}")
                 success = False
 
     # Migration vers Parquet (dépréciée depuis v4)
