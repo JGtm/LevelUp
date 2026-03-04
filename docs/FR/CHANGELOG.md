@@ -6,6 +6,46 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [5.4.0] - 2026-03-04
+
+### Ajouté
+
+- **Historique des rencontres — section sous le scoreboard** (`src/ui/pages/match_view_encounters.py`)
+  - Tableau HTML affiché sous le scoreboard sur la page Vue Match
+  - Par joueur non-ami : fréquence de rencontres, répartition allié/ennemi, win rate allié/ennemi, K/D croisé, date de dernière rencontre
+  - Tri : ennemis en premier, puis alliés ; dans chaque groupe par `total_encounters DESC`
+  - Badges automatiques : **Dur à cuire**, **Allié+**, **Coriace**
+
+- **Loader SQL dédié** (`src/data/repositories/_encounter_loader.py`)
+  - `load_encounter_stats()` — 3 CTEs sur `shared_matches.duckdb`
+
+- **Logique pure testable** (`src/ui/pages/match_view_encounters_logic.py`)
+  - `EncounterStats` (Pydantic v2), `Badge`, `build_friends_set()`, `compute_encounter_badges()`
+  - 28 tests unitaires dans `tests/test_match_view_encounters.py`
+
+### Refactoring & Architecture
+
+- **Split `transformers.py` (2 095L → package)** — `src/data/sync/transformers/` avec 7 sous-modules (`_helpers`, `_match`, `_skill`, `_events`, `_medals`, `_personal_scores`, `_pve`) + `__init__.py` ré-exportant tout ; aucun breaking change
+- **Split `filters_render.py` (1 460L → 4 modules)** — `_filters_period.py`, `_filters_session.py`, `_filters_cascade.py` extraits
+- **`_SyncProtocol`** (`src/data/sync/_protocol.py`) — contrat `Protocol` explicite pour les 6 mixins du `DuckDBSyncEngine` ; élimine 70+ `# type: ignore[attr-defined]`
+- **`PageContext` + `MatchViewParams`** (`src/app/_page_context.py`) — types réels à la place de 5 champs `Any`
+- **`SessionKeys` / `SK`** (`src/app/session_keys.py`) — 20+ clés `st.session_state` centralisées
+- **`_sql_fragments.py`** (`src/data/query/_sql_fragments.py`) — source de vérité unique pour `WIN_RATE_EXPR` (dénominateur WIN+LOSS, NULLIF division) ; 7 duplications supprimées dans `analytics.py` et `trends.py`
+- **Dettes techniques v4→v5 supprimées** : guard `_PERF_SCORE_AVAILABLE` (always-True), dead method `_ensure_performance_score_column()`, magic number `outcome == 4` → `Outcome.DID_NOT_FINISH`
+- **Enforcement qualité** : `scripts/check_code_size.py` (ratchet 247 violations connues), `tests/test_code_quality.py` (3 tests qualité structurelle), règles CLAUDE.md 13-17
+
+### Corrections de bugs
+
+- **Filtres auto-invalidation post-sync** — `_filters_db_key_{player}` remplace le booléen write-once ; les filtres se réinitialisent quand la DB change (sync, CLI, backfill, changement de profil)
+- **Citations calculées post-sync** (`src/data/citations_backfill.py`) — module incrémental appelé après chaque sync ; plus de matchs sans citations
+- **SyncLock câblé à l'UI** — `SyncLock(timeout=0)` protège contre les syncs concurrents inter-processus ; flush WAL DuckDB avant `end_sync_mode()`
+- **Tailscale guard process-level** — `threading.Event` module-level remplace `st.session_state` ; une seule notification Discord par démarrage de processus
+- **Fausse alerte Discord webhook** — skip du check si Doppler est actif ; chargement `.env.local` avant vérification
+- **NaN-check fragile** (`match_view.py`) — `x == x` (idiome NaN flottant) → `x is not None`
+- **i18n** — 2 clés `PAIR_FR` tronquées restaurées, doublon `tm_session_trend` supprimé, 343 entrées redondantes nettoyées (399 → 56 entrées utiles)
+
+---
+
 ## [5.3.0] - Non publié
 
 ### Ajouté
