@@ -108,23 +108,29 @@ exclude = [
 
 [tool.ruff.lint]
 select = [
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort
-    "B",    # flake8-bugbear
-    "C4",   # flake8-comprehensions
-    "UP",   # pyupgrade
-    "ARG",  # flake8-unused-arguments
-    "SIM",  # flake8-simplify
+    "E",       # pycodestyle errors
+    "W",       # pycodestyle warnings
+    "F",       # pyflakes
+    "I",       # isort
+    "B",       # flake8-bugbear
+    "C4",      # flake8-comprehensions
+    "UP",      # pyupgrade
+    "ARG",     # flake8-unused-arguments
+    "SIM",     # flake8-simplify
+    "C9",      # McCabe complexity (C901 — max-complexity dans [tool.ruff.lint.mccabe])
+    "PLR0912", # too-many-branches  (cible : <= 12, voir [tool.ruff.lint.pylint])
+    "PLR0913", # too-many-arguments (cible : <= 5)
+    "PLR0915", # too-many-statements (cible : <= 60)
     # "TID",  # flake8-tidy-imports - DÉSACTIVÉ pour tolérance Pandas transitoire
 ]
 ignore = [
     "E501",   # line too long (handled by black)
     "E402",   # module level import not at top of file (needed for sys.path manipulation)
     "B008",   # do not perform function calls in argument defaults
-    "C901",   # too complex
     "ARG001", # unused function argument
+    # C901 / PLR0912 / PLR0913 / PLR0915 : ACTIFS
+    # Violations existantes annotées avec # noqa: <CODE> (dette documentée visible).
+    # Chaque # noqa restant = une dette à réduire via refactoring.
 ]
 
 # NOTE: Règle anti-Pandas (TID251 banned-api) préparée mais non activée
@@ -135,9 +141,21 @@ ignore = [
 # [tool.ruff.lint.flake8-tidy-imports.banned-api]
 # "pandas".msg = "Pandas est interdit. Utilisez Polars."
 
+[tool.ruff.lint.mccabe]
+max-complexity = 12  # Complexité cyclomatique max. Violations existantes = # noqa: C901.
+
+[tool.ruff.lint.pylint]
+max-args = 5        # Cible. Violations existantes = # noqa: PLR0913.
+max-branches = 12   # Cible. Violations existantes = # noqa: PLR0912.
+max-statements = 60 # Cible. Violations existantes = # noqa: PLR0915.
+max-returns = 4
+
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/*" = ["ARG001", "ARG002"]
+"tests/*" = ["ARG001", "ARG002", "UP038"]
+# Scripts utilitaires — complexité tolérée (pas du code applicatif)
+"scripts/*" = ["C901", "PLR0912", "PLR0913", "PLR0915"]
+"launcher.py" = ["C901", "PLR0912", "PLR0913", "PLR0915"]
 
 
 [tool.ruff.lint.isort]
@@ -171,6 +189,7 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+norecursedirs = ["_archive", ".git", "__pycache__", ".venv", "node_modules"]
 addopts = [
     "-v",
     "--tb=short",
@@ -183,6 +202,7 @@ markers = [
     "regression: marks tests as regression tests (e.g. media suite)",
     "e2e_browser: tests E2E navigateur réel (Playwright), désactivés par défaut",
     "asyncio: marks tests as async (use pytest-asyncio)",
+    "quality: tests de qualité structurelle (taille, complexité, SRP) — ratchet mode",
 ]
 asyncio_mode = "auto"
 

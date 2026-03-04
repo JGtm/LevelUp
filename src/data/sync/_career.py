@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.data.sync._protocol import _SyncProtocol
 
 from src.data.sync.api_client import (
     SPNKrAPIClient,
@@ -22,7 +25,7 @@ logger = logging.getLogger(__name__)
 class CareerMixin:
     """Méthodes de synchronisation du rang carrière."""
 
-    async def sync_career_rank(self) -> CareerRankData | None:
+    async def sync_career_rank(self: _SyncProtocol) -> CareerRankData | None:
         """Synchronise la progression du rang carrière.
 
         Utilise le token propre au joueur (``SPNKR_OAUTH_REFRESH_TOKEN_<GT>``
@@ -34,21 +37,21 @@ class CareerMixin:
         """
         try:
             # Priorité : token propre au joueur (endpoint economy player-gated)
-            player_tokens = await get_tokens_for_player(self._gamertag)  # type: ignore[attr-defined]
+            player_tokens = await get_tokens_for_player(self._gamertag)
             if player_tokens is None:
                 logger.warning(
                     "Aucun token joueur pour '%s' — career rank skippé. "
                     "Définir %s dans .env.local pour activer la sync.",
-                    self._gamertag,  # type: ignore[attr-defined]
-                    get_player_token_env_key(self._gamertag),  # type: ignore[attr-defined]
+                    self._gamertag,
+                    get_player_token_env_key(self._gamertag),
                 )
                 return None
 
             async with SPNKrAPIClient(tokens=player_tokens) as client:
-                career_data = await client.get_career_rank_progression(self._xuid)  # type: ignore[attr-defined]
+                career_data = await client.get_career_rank_progression(self._xuid)
 
                 if career_data is None:
-                    logger.warning("Career rank non disponible pour %s", self._gamertag)  # type: ignore[attr-defined]
+                    logger.warning("Career rank non disponible pour %s", self._gamertag)
                     return None
 
                 # Sauvegarder en BDD
@@ -56,7 +59,7 @@ class CareerMixin:
 
                 logger.info(
                     "Career rank sync: %s → Rang %d (%s)",
-                    self._gamertag,  # type: ignore[attr-defined]
+                    self._gamertag,
                     career_data.current_rank,
                     career_data.current_rank_name,
                 )
@@ -67,9 +70,9 @@ class CareerMixin:
             logger.error("Erreur sync_career_rank: %s", e)
             return None
 
-    def _save_career_rank(self, data: CareerRankData) -> None:
+    def _save_career_rank(self: _SyncProtocol, data: CareerRankData) -> None:
         """Sauvegarde un snapshot de la progression de rang."""
-        conn = self._get_connection()  # type: ignore[attr-defined]
+        conn = self._get_connection()
         now = datetime.now(timezone.utc)
 
         conn.execute(
@@ -95,10 +98,10 @@ class CareerMixin:
         conn.commit()
 
         # Mettre à jour sync_meta
-        self._update_sync_meta("last_career_sync_at", now.isoformat())  # type: ignore[attr-defined]
-        self._update_sync_meta("current_rank", str(data.current_rank))  # type: ignore[attr-defined]
+        self._update_sync_meta("last_career_sync_at", now.isoformat())
+        self._update_sync_meta("current_rank", str(data.current_rank))
 
-    def get_career_rank_history(self, limit: int = 50) -> list[dict[str, Any]]:
+    def get_career_rank_history(self: _SyncProtocol, limit: int = 50) -> list[dict[str, Any]]:
         """Récupère l'historique de progression de rang.
 
         Args:
@@ -108,7 +111,7 @@ class CareerMixin:
             Liste des snapshots de progression.
         """
         try:
-            conn = self._get_connection()  # type: ignore[attr-defined]
+            conn = self._get_connection()
             result = conn.execute(
                 """SELECT rank, rank_name, rank_tier, current_xp,
                           xp_for_next_rank, xp_total, is_max_rank,
@@ -117,7 +120,7 @@ class CareerMixin:
                    WHERE xuid = ?
                    ORDER BY recorded_at DESC
                    LIMIT ?""",
-                (self._xuid, limit),  # type: ignore[attr-defined]
+                (self._xuid, limit),
             ).fetchall()
 
             return [

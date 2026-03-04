@@ -75,8 +75,7 @@ class TestCitationMappingsTable:
     def test_table_exists(self, metadata_conn: duckdb.DuckDBPyConnection) -> None:
         """Vérifie que la table citation_mappings existe."""
         count = metadata_conn.execute(
-            "SELECT COUNT(*) FROM information_schema.tables "
-            "WHERE table_name = 'citation_mappings'"
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'citation_mappings'"
         ).fetchone()[0]
         assert count == 1
 
@@ -142,7 +141,7 @@ class TestMatchCitationsTable:
     def test_table_exists(self, player_conn: duckdb.DuckDBPyConnection) -> None:
         """Vérifie que la table match_citations existe."""
         count = player_conn.execute(
-            "SELECT COUNT(*) FROM information_schema.tables " "WHERE table_name = 'match_citations'"
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'match_citations'"
         ).fetchone()[0]
         assert count == 1
 
@@ -167,7 +166,7 @@ class TestMatchCitationsTable:
     def test_index_exists(self, player_conn: duckdb.DuckDBPyConnection) -> None:
         """Vérifie que l'index sur citation_name_norm existe."""
         indexes = player_conn.execute(
-            "SELECT index_name FROM duckdb_indexes() " "WHERE table_name = 'match_citations'"
+            "SELECT index_name FROM duckdb_indexes() WHERE table_name = 'match_citations'"
         ).fetchall()
         idx_names = [i[0] for i in indexes]
         assert "idx_match_citations_name" in idx_names

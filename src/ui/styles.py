@@ -41,7 +41,7 @@ def load_css() -> str:
         """
 
 
-def get_hero_html(
+def get_hero_html(  # noqa: PLR0913
     *,
     player_name: str | None = None,
     service_tag: str | None = None,

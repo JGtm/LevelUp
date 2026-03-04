@@ -320,7 +320,7 @@ def _add_outcome_traces(
         )
 
 
-def plot_stacked_outcomes_by_category(
+def plot_stacked_outcomes_by_category(  # noqa: PLR0913
     df: DataFrameLike,
     category_col: str,
     *,

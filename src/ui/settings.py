@@ -10,10 +10,13 @@ Le chemin est configurable via OPENSPARTAN_SETTINGS_PATH.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
 
 
 def get_settings_path() -> str:
@@ -197,13 +200,16 @@ def load_settings() -> AppSettings:
         return AppSettings()
 
     try:
-        return AppSettings.model_validate(obj)
+        settings = AppSettings.model_validate(obj)
+        logger.info("Settings chargées depuis %s", path)
+        return settings
     except Exception:
         return AppSettings()
 
 
 def save_settings(settings: AppSettings) -> tuple[bool, str]:
     """Sauvegarde les paramètres dans le fichier JSON."""
+    logger.info("Settings sauvegardées")
     path = get_settings_path()
     try:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)

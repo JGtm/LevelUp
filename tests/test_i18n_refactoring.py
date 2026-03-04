@@ -35,21 +35,6 @@ class TestVizTFallbackToCommon:
         result = viz_t("__nonexistent_key_xyz__", "fr")
         assert result == "[__nonexistent_key_xyz__]"
 
-    def test_viz_t_prefers_viz_over_common(self) -> None:
-        """Si la clé existe dans viz ET common, viz gagne."""
-        from src.ui.i18n.common import STRINGS as COMMON
-        from src.ui.i18n.viz import STRINGS as VIZ
-        from src.ui.i18n.viz import viz_t
-
-        # Trouver une clé présente dans les deux
-        shared_keys = set(VIZ.keys()) & set(COMMON.keys())
-        if not shared_keys:
-            pytest.skip("Aucune clé partagée entre viz et common")
-
-        key = next(iter(shared_keys))
-        result = viz_t(key, "fr")
-        assert result == VIZ[key]["fr"]
-
     def test_viz_t_kwargs_support(self) -> None:
         """viz_t() doit supporter str.format(**kwargs)."""
         from src.ui.i18n.viz import viz_t

@@ -90,8 +90,12 @@ class TestTranslationCompleteness:
         assert len(PLAYLIST_FR) >= 10
 
     def test_pair_fr_not_empty(self):
-        """Vérifie que PAIR_FR contient des entrées."""
-        assert len(PAIR_FR) >= 200
+        """Vérifie que PAIR_FR contient des entrées utiles (sans les doublons génériques supprimés).
+
+        Après nettoyage L (backlog_plan.md §L) : 399 → 56 entrées uniques.
+        Seuil = 50 (marge pour futures suppressions légitimes).
+        """
+        assert len(PAIR_FR) >= 50
 
     def test_all_playlists_have_french(self):
         """Vérifie que toutes les playlists ont une traduction non vide."""

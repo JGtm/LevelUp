@@ -768,26 +768,6 @@ class TestEngineBatchInsertMethods:
         """)
         return engine
 
-    def test_batch_insert_medals_via_engine(self, engine_with_db):
-        """8bis.B3: Test supprimé — _insert_medal_rows obsolète (medals dans shared)."""
-        pytest.skip("8bis.B3 : méthode _insert_medal_rows supprimée en v5.1")
-
-    def test_batch_insert_events_via_engine(self, engine_with_db):
-        """8bis.B3: Test supprimé — highlight_events dans shared uniquement (v5.1)."""
-        pytest.skip("8bis.B3 : highlight_events centralisée dans shared_matches.duckdb")
-
-    def test_batch_insert_participants_via_engine(self, engine_with_db):
-        """8bis.B3: Test supprimé — _insert_participant_rows obsolète (dans shared)."""
-        pytest.skip("8bis.B3 : méthode _insert_participant_rows supprimée en v5.1")
-
-    def test_batch_insert_aliases_via_engine(self, engine_with_db):
-        """8bis.B3: Test supprimé — _insert_alias_rows obsolète (dans shared)."""
-        pytest.skip("8bis.B3 : méthode _insert_alias_rows supprimée en v5.1")
-
-    def test_batch_insert_skill_via_engine(self, engine_with_db):
-        """8bis.B3: Test supprimé — _insert_skill_row obsolète (dans shared)."""
-        pytest.skip("8bis.B3 : méthode _insert_skill_row supprimée en v5.1")
-
     def test_batch_insert_personal_scores_via_engine(self, engine_with_db):
         """Les personal scores sont insérés en batch."""
         engine = engine_with_db

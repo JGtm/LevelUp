@@ -35,6 +35,62 @@ def _raw_app_settings() -> dict:
         return {}
 
 
+def _check_discord_config(raw: dict, warnings: list[str]) -> None:
+    """Vérifie la configuration Discord."""
+    discord_enabled = raw.get("discord_notifications_enabled", False)
+    doppler_active = raw.get("doppler_enabled", False)
+    if discord_enabled and not doppler_active:
+        discord_url = (
+            str(raw.get("discord_webhook_url") or "").strip()
+            or str(get_secret("DISCORD_WEBHOOK_URL") or "").strip()
+        )
+        if not discord_url:
+            warnings.append(
+                "🔔 `discord_notifications_enabled` est activé mais "
+                "`discord_webhook_url` n'est pas défini (ni dans app_settings.json "
+                "ni dans la variable d'environnement `DISCORD_WEBHOOK_URL`). "
+                "Les notifications Discord seront désactivées silencieusement."
+            )
+
+
+def _check_media_config(settings: AppSettings, warnings: list[str]) -> None:  # type: ignore[name-defined]
+    """Vérifie la configuration des médias."""
+    if not settings.media_enabled:
+        return
+    capture_dir = settings.media_captures_base_dir
+    if capture_dir and not Path(capture_dir).exists():
+        warnings.append(
+            f"📁 `media_captures_base_dir` pointe vers un dossier inexistant : "
+            f"`{capture_dir}`. "
+            "La galerie média sera vide."
+        )
+    elif not capture_dir and not settings.media_screens_dir and not settings.media_videos_dir:
+        warnings.append(
+            "📁 `media_enabled` est activé mais aucun dossier de captures "
+            "n'est configuré (`media_captures_base_dir` vide). "
+            "La galerie média sera vide."
+        )
+
+
+def _check_players_config(errors: list[str]) -> None:
+    """Vérifie qu'au moins un joueur est initialisé."""
+    try:
+        from src.utils.paths import PLAYERS_DIR
+
+        if not PLAYERS_DIR.exists() or not any(
+            (PLAYERS_DIR / d / "stats.duckdb").exists()
+            for d in os.listdir(PLAYERS_DIR)
+            if (PLAYERS_DIR / d).is_dir()
+        ):
+            errors.append(
+                "👤 Aucun joueur trouvé dans `data/players/`. "
+                "Lance `python scripts/sync.py --gamertag <ton_gamertag>` "
+                "pour initialiser ta base de données."
+            )
+    except Exception:
+        pass
+
+
 def check_app_settings(settings: AppSettings) -> tuple[list[str], list[str]]:
     """Valide la configuration de l'app au démarrage.
 
@@ -63,61 +119,8 @@ def check_app_settings(settings: AppSettings) -> tuple[list[str], list[str]]:
             "L'interface utilisera le français par défaut."
         )
 
-    # ── Discord ────────────────────────────────────────────────────────────────
-    # Note : on ne vérifie que si Doppler est désactivé. Si Doppler est activé,
-    # le webhook peut être stocké dans Doppler et n'être disponible qu'après
-    # que Doppler ait été contacté (ce qui peut échouer au démarrage mais
-    # réussir plus tard). Le discord_notifier gère ses propres erreurs en failsafe.
-    discord_enabled = raw.get("discord_notifications_enabled", False)
-    doppler_active = raw.get("doppler_enabled", False)
-    if discord_enabled and not doppler_active:
-        discord_url = (
-            str(raw.get("discord_webhook_url") or "").strip()
-            or str(get_secret("DISCORD_WEBHOOK_URL") or "").strip()
-        )
-        if not discord_url:
-            warnings.append(
-                "🔔 `discord_notifications_enabled` est activé mais "
-                "`discord_webhook_url` n'est pas défini (ni dans app_settings.json "
-                "ni dans la variable d'environnement `DISCORD_WEBHOOK_URL`). "
-                "Les notifications Discord seront désactivées silencieusement."
-            )
-
-    # ── Médias ────────────────────────────────────────────────────────────────
-    if settings.media_enabled:
-        capture_dir = settings.media_captures_base_dir
-        if capture_dir and not Path(capture_dir).exists():
-            warnings.append(
-                f"📁 `media_captures_base_dir` pointe vers un dossier inexistant : "
-                f"`{capture_dir}`. "
-                "La galerie média sera vide."
-            )
-        elif not capture_dir:
-            # Vérifier les anciens champs séparés
-            screens = settings.media_screens_dir
-            videos = settings.media_videos_dir
-            if not screens and not videos:
-                warnings.append(
-                    "📁 `media_enabled` est activé mais aucun dossier de captures "
-                    "n'est configuré (`media_captures_base_dir` vide). "
-                    "La galerie média sera vide."
-                )
-
-    # ── Joueurs ────────────────────────────────────────────────────────────────
-    try:
-        from src.utils.paths import PLAYERS_DIR
-
-        if not PLAYERS_DIR.exists() or not any(
-            (PLAYERS_DIR / d / "stats.duckdb").exists()
-            for d in os.listdir(PLAYERS_DIR)
-            if (PLAYERS_DIR / d).is_dir()
-        ):
-            errors.append(
-                "👤 Aucun joueur trouvé dans `data/players/`. "
-                "Lance `python scripts/sync.py --gamertag <ton_gamertag>` "
-                "pour initialiser ta base de données."
-            )
-    except Exception:
-        pass
+    _check_discord_config(raw, warnings)
+    _check_media_config(settings, warnings)
+    _check_players_config(errors)
 
     return warnings, errors

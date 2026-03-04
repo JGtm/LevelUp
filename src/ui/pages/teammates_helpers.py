@@ -160,7 +160,7 @@ def render_teammate_cards(picked_xuids: list[str], settings: object, db_path: st
                 st.markdown(card_html, unsafe_allow_html=True)
 
 
-def render_friends_history_table(
+def render_friends_history_table(  # noqa: C901, PLR0912, PLR0915
     sub_all: DataFrameLike,
     db_path: str,
     xuid: str,

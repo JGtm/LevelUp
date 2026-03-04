@@ -46,7 +46,7 @@ from src.ui.profile_api_urls import (
 )
 
 
-def fetch_appearance_via_spnkr(
+def fetch_appearance_via_spnkr(  # noqa: C901, PLR0913
     *,
     xuid: str,
     gamertag: str | None = None,
@@ -207,7 +207,7 @@ def fetch_appearance_via_spnkr(
     return _run_sync(_run())
 
 
-async def _get_career_rank_for_player(
+async def _get_career_rank_for_player(  # noqa: C901, PLR0912, PLR0913, PLR0915
     client, session, st_in: str, ct_in: str, xuid: str, parse_fn
 ) -> tuple[str | None, str | None, str | None, str | None]:
     """Récupère le Career Rank du joueur via les APIs Halo.
@@ -432,7 +432,7 @@ def fetch_xuid_via_spnkr(
     return _run_sync(_run())
 
 
-def get_xuid_for_gamertag(
+def get_xuid_for_gamertag(  # noqa: PLR0913
     *,
     gamertag: str,
     enabled: bool,
@@ -497,7 +497,7 @@ def get_xuid_for_gamertag(
     return xuid, None
 
 
-def get_profile_appearance(
+def get_profile_appearance(  # noqa: PLR0913
     *,
     xuid: str,
     enabled: bool,

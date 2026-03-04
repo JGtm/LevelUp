@@ -586,8 +586,7 @@ class TestSyncEngineBackfillBitmask:
         # La détection skill ignore le bitmask et vérifie les colonnes directement →
         # simuler les données skill remplies pour tous les participants
         shared_conn.execute(
-            "UPDATE match_participants SET team_mmr = 1400.0, kills_expected = 0.7 "
-            "WHERE xuid = ?",
+            "UPDATE match_participants SET team_mmr = 1400.0, kills_expected = 0.7 WHERE xuid = ?",
             [XUID],
         )
 

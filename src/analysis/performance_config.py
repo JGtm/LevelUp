@@ -159,7 +159,7 @@ ta performance sur un match à ton **historique personnel**.
 PERFORMANCE_SCORE_COMPACT_DESC = f"""
 **Score relatif (0-100)** comparant ce match à ton historique.
 - >=75: Exceptionnel | >=60: Bon | >=45: Normal | >=30: Sous ta moyenne | <30: Difficile
-- 10 métriques: KPM ({RELATIVE_WEIGHTS['kpm']:.0%}), DPM inversé ({RELATIVE_WEIGHTS['dpm_deaths']:.0%}), FDA ({RELATIVE_WEIGHTS['kda']:.0%}), PSPM ({RELATIVE_WEIGHTS['pspm']:.0%}), Kills vs Expected ({RELATIVE_WEIGHTS['kills_vs_expected']:.0%}), DPM Damage ({RELATIVE_WEIGHTS['dpm_damage']:.0%}), Deaths vs Expected ({RELATIVE_WEIGHTS['deaths_vs_expected']:.0%}), APM ({RELATIVE_WEIGHTS['apm']:.0%}), Précision ({RELATIVE_WEIGHTS['accuracy']:.0%}), Rang ({RELATIVE_WEIGHTS['rank_perf']:.0%})
+- 10 métriques: KPM ({RELATIVE_WEIGHTS["kpm"]:.0%}), DPM inversé ({RELATIVE_WEIGHTS["dpm_deaths"]:.0%}), FDA ({RELATIVE_WEIGHTS["kda"]:.0%}), PSPM ({RELATIVE_WEIGHTS["pspm"]:.0%}), Kills vs Expected ({RELATIVE_WEIGHTS["kills_vs_expected"]:.0%}), DPM Damage ({RELATIVE_WEIGHTS["dpm_damage"]:.0%}), Deaths vs Expected ({RELATIVE_WEIGHTS["deaths_vs_expected"]:.0%}), APM ({RELATIVE_WEIGHTS["apm"]:.0%}), Précision ({RELATIVE_WEIGHTS["accuracy"]:.0%}), Rang ({RELATIVE_WEIGHTS["rank_perf"]:.0%})
 - Minimum {MIN_MATCHES_FOR_RELATIVE} matchs requis
 """
 

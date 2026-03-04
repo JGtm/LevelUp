@@ -14,7 +14,7 @@ from src.ui.i18n import t
 from src.visualization.theme import apply_halo_plot_style
 
 
-def create_radar_chart(
+def create_radar_chart(  # noqa: PLR0913
     data: list[dict[str, Any]],
     *,
     title: str | None = None,
@@ -453,7 +453,7 @@ def create_participation_radar(
 # =============================================================================
 
 
-def create_participation_profile_radar(
+def create_participation_profile_radar(  # noqa: PLR0913
     profiles: list[dict[str, Any]],
     *,
     title: str = "Profil de participation",

@@ -9,41 +9,21 @@ import logging
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+from src.analysis.performance_config import MIN_MATCHES_FOR_RELATIVE
+from src.analysis.performance_score import compute_relative_performance_score
+
 if TYPE_CHECKING:
+    from src.data.sync._protocol import _SyncProtocol
     from src.data.sync.models import MatchStatsRow
 
 logger = logging.getLogger(__name__)
-
-# Import conditionnel pour le calcul des scores de performance
-try:
-    import polars as pl
-
-    from src.analysis.performance_config import MIN_MATCHES_FOR_RELATIVE
-    from src.analysis.performance_score import compute_relative_performance_score
-
-    _PERF_SCORE_AVAILABLE = True
-except ImportError:
-    pl = None
-    compute_relative_performance_score = None
-    MIN_MATCHES_FOR_RELATIVE = 10
-    _PERF_SCORE_AVAILABLE = False
 
 
 class PerformanceMixin:
     """Méthodes de calcul du score de performance."""
 
-    def _ensure_performance_score_column(self) -> None:
-        """V5 finale - Plus nécessaire (performance_score dans player_match_enrichment).
-
-        La colonne performance_score n'est plus dans match_stats (table obsolète)
-        mais dans player_match_enrichment (créée via SYNC_SCHEMA_DDL).
-
-        Cette fonction est conservée pour compatibilité mais ne fait plus rien.
-        """
-        pass
-
     def _compute_and_update_performance_score(
-        self, match_id: str, match_row: MatchStatsRow
+        self: _SyncProtocol, match_id: str, match_row: MatchStatsRow
     ) -> None:
         """Calcule et met à jour le score de performance pour un match.
 
@@ -57,15 +37,8 @@ class PerformanceMixin:
             match_id: ID du match
             match_row: Données du match inséré
         """
-        if not _PERF_SCORE_AVAILABLE:
-            logger.debug("Modules de calcul de performance non disponibles, skip")
-            return
-
         try:
-            conn = self._get_connection()  # type: ignore[attr-defined]
-
-            # S'assurer que la colonne existe
-            self._ensure_performance_score_column()
+            conn = self._get_connection()
 
             # Vérifier si le score existe déjà dans player_match_enrichment
             existing = conn.execute(
@@ -91,7 +64,7 @@ class PerformanceMixin:
                 current_start_time_str = str(current_start_time)
 
             # V5 finale : lire depuis shared.match_participants + match_registry
-            shared_conn = self._get_shared_connection()  # type: ignore[attr-defined]
+            shared_conn = self._get_shared_connection()
             if shared_conn is None:
                 logger.debug("shared_connection indisponible pour calcul score")
                 return
@@ -114,7 +87,7 @@ class PerformanceMixin:
                   AND mr.start_time < CAST(? AS TIMESTAMP)
                 ORDER BY mr.start_time ASC
                 """,
-                (self._xuid, match_id, current_start_time_str),  # type: ignore[attr-defined]
+                (self._xuid, match_id, current_start_time_str),
             ).pl()
 
             if history_df.is_empty() or len(history_df) < MIN_MATCHES_FOR_RELATIVE:
@@ -163,7 +136,7 @@ class PerformanceMixin:
             # Ne pas bloquer la synchronisation si le calcul échoue
             logger.warning(f"Erreur calcul score performance pour {match_id}: {e}")
 
-    def batch_compute_performance_scores(self) -> int:
+    def batch_compute_performance_scores(self: _SyncProtocol) -> int:  # noqa: C901, PLR0912
         """Calcule les performance_score pour tous les matchs où il est NULL.
 
         Exécuté post-sync pour ne pas bloquer l'insertion des matchs.
@@ -178,19 +151,14 @@ class PerformanceMixin:
         Returns:
             Nombre de matchs mis à jour.
         """
-        if not _PERF_SCORE_AVAILABLE:
-            logger.debug("Modules de calcul de performance non disponibles, skip batch")
-            return 0
-
         try:
             # V5 finale : lire depuis shared.match_participants + match_registry
-            shared_conn = self._get_shared_connection()  # type: ignore[attr-defined]
-            if shared_conn is None or not self._xuid:  # type: ignore[attr-defined]
+            shared_conn = self._get_shared_connection()
+            if shared_conn is None or not self._xuid:
                 logger.warning("shared_connection ou xuid manquant pour batch performance scores")
                 return 0
 
-            conn = self._get_connection()  # type: ignore[attr-defined]
-            self._ensure_performance_score_column()
+            conn = self._get_connection()
 
             # 1. Charger TOUS les matchs triés par date depuis shared (SANS le JOIN cross-DB)
             all_matches_df = shared_conn.execute(
@@ -208,7 +176,7 @@ class PerformanceMixin:
                   AND mr.start_time IS NOT NULL
                 ORDER BY mr.start_time ASC
                 """,
-                [self._xuid],  # type: ignore[attr-defined]
+                [self._xuid],
             ).pl()
 
             if all_matches_df.is_empty():

@@ -64,7 +64,7 @@ def _build_kda_customdata(d: pl.DataFrame, lang: str = "fr") -> tuple[list, str]
     return customdata, common_hover
 
 
-def _add_kda_traces(
+def _add_kda_traces(  # noqa: PLR0913
     fig: go.Figure,
     x_idx: list[int],
     d: pl.DataFrame,
@@ -263,7 +263,7 @@ def plot_assists_timeseries(
     return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
 
 
-def _add_permin_rolling_lines(
+def _add_permin_rolling_lines(  # noqa: PLR0913
     fig: go.Figure,
     x_idx: list[int],
     kpm: pl.Series,

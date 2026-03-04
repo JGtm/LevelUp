@@ -12,6 +12,7 @@ import streamlit as st
 
 from src.config import HALO_COLORS
 from src.data.services.timeseries_service import TimeseriesService
+from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -81,7 +82,7 @@ def _downsample_for_plot(df: pl.DataFrame, max_points: int = MAX_PLOT_POINTS) ->
 @fragment_if_available
 def _render_kda_section(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche le graphe KDA et sa distribution."""
-    try:
+    with safe_chart_render():
         # 8bis.A6 : Downsampling pour performance
         df_plot = _downsample_for_plot(dff)
         fig = plot_timeseries(df_plot, lang=lang)
@@ -89,8 +90,6 @@ def _render_kda_section(dff: pl.DataFrame, lang: str = "fr") -> None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
     st.subheader(t("ts_fda"))
     valid = dff.drop_nulls(subset=["kda"]) if "kda" in dff.columns else pl.DataFrame()
@@ -101,14 +100,12 @@ def _render_kda_section(dff: pl.DataFrame, lang: str = "fr") -> None:
         m[0].metric(
             t("ts_kda_mean_label"), f"{valid['kda'].mean():.2f}", label_visibility="collapsed"
         )
-        try:
+        with safe_chart_render():
             fig_dist = plot_kda_distribution(dff, lang=lang)
             if fig_dist is not None:
                 st.plotly_chart(fig_dist, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
 
 
 @fragment_if_available
@@ -119,7 +116,7 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
     st.caption(t("ts_cumulative_caption"))
     cumul = TimeseriesService.compute_cumulative_metrics(dff)
     if cumul is not None:
-        try:
+        with safe_chart_render():
             st.plotly_chart(
                 plot_cumulative_net_score(
                     cumul.cumul_net, time_played_seconds=cumul.time_played_seconds, lang=lang
@@ -147,8 +144,6 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
                 )
             else:
                 st.info(t("ts_trend_min_matches"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
     else:
         st.info(t("ts_col_missing_cumul"))
 
@@ -257,7 +252,7 @@ def _render_distribution_row3(dff: pl.DataFrame, colors: dict, lang: str = "fr")
             st.info(t("ts_insufficient_win_rate_dist"))
 
 
-def _render_single_histogram(
+def _render_single_histogram(  # noqa: PLR0913
     dff: pl.DataFrame,
     column: str,
     title: str,
@@ -370,7 +365,7 @@ def _render_mmr_correlation(dff: pl.DataFrame, lang: str = "fr") -> None:
     )
 
 
-def _render_scatter(
+def _render_scatter(  # noqa: PLR0913
     dff: pl.DataFrame,
     x_col: str,
     y_col: str,
@@ -389,7 +384,7 @@ def _render_scatter(
     if len(valid) <= min_data - 1:
         st.info(t("ts_not_enough_corr", count=len(valid), min=min_data))
         return
-    try:
+    with safe_chart_render():
         fig = plot_correlation_scatter(
             dff,
             x_col,
@@ -405,8 +400,6 @@ def _render_scatter(
             st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
             st.info(t("ts_corr_gen_error", title=title))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
 
 @fragment_if_available
@@ -425,7 +418,7 @@ def _render_first_event_section(
     first_event = TimeseriesService.load_first_event_times(db_path, xuid, _match_ids)
 
     if first_event.available:
-        try:
+        with safe_chart_render():
             fig_events = plot_first_event_distribution(
                 first_event.first_kills,
                 first_event.first_deaths,
@@ -436,14 +429,12 @@ def _render_first_event_section(
                 st.plotly_chart(fig_events, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
     else:
         st.info(t("ts_first_event_no_data"))
 
 
 @fragment_if_available
-def _render_advanced_sections(
+def _render_advanced_sections(  # noqa: PLR0912
     dff: pl.DataFrame,
     df_full: pl.DataFrame | None,
     db_path: str | None,
@@ -453,47 +444,39 @@ def _render_advanced_sections(
     """Affiche Performance, Assists, Stats/min, Average Life, Spree, Sprint 7."""
     history = df_full if df_full is not None else dff
     st.subheader(t("ts_performance"))
-    try:
+    with safe_chart_render():
         fig_perf = plot_performance_timeseries(dff, df_history=history, lang=lang)
         if fig_perf is not None:
             st.plotly_chart(fig_perf, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
     st.subheader(t("ts_assists"))
-    try:
+    with safe_chart_render():
         fig_assists = plot_assists_timeseries(dff, lang=lang)
         if fig_assists is not None:
             st.plotly_chart(fig_assists, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
     st.subheader(t("ts_per_minute"))
-    try:
+    with safe_chart_render():
         fig_spm = plot_per_minute_timeseries(dff, lang=lang)
         if fig_spm is not None:
             st.plotly_chart(fig_spm, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
     st.subheader(t("ts_lifespan"))
     if dff.drop_nulls(subset=["average_life_seconds"]).is_empty():
         st.info(t("ts_lifespan_unavailable"))
     else:
-        try:
+        with safe_chart_render():
             fig_life = plot_average_life(dff, lang=lang)
             if fig_life is not None:
                 st.plotly_chart(fig_life, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
 
     _render_spree_section(dff, db_path, xuid, lang=lang)
     _render_sprint7_sections(dff, lang=lang)
@@ -516,14 +499,12 @@ def _render_spree_section(
     _match_ids = dff["match_id"].cast(pl.Utf8).to_list() if "match_id" in dff.columns else []
     pk_data = TimeseriesService.load_perfect_kills(_db_path, _xuid, _match_ids)
 
-    try:
+    with safe_chart_render():
         fig_spree = plot_spree_headshots_accuracy(dff, perfect_counts=pk_data.counts, lang=lang)
         if fig_spree is not None:
             st.plotly_chart(fig_spree, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
 
 def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
@@ -534,14 +515,12 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.divider()
         st.subheader(t("ts_shots"))
         st.caption(t("ts_shots_caption"))
-        try:
+        with safe_chart_render():
             fig_shots = plot_shots_accuracy(dff, title=None, lang=lang)
             if fig_shots is not None:
                 st.plotly_chart(fig_shots, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
 
     # 7.4 — Dégâts infligés vs subis
     _has_damage = any(c in dff.columns for c in ("damage_dealt", "damage_taken"))
@@ -549,14 +528,12 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.divider()
         st.subheader(t("ts_damage"))
         st.caption(t("ts_damage_caption"))
-        try:
+        with safe_chart_render():
             fig_damage = plot_damage_dealt_taken(dff, title=None, lang=lang)
             if fig_damage is not None:
                 st.plotly_chart(fig_damage, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
 
     # 7.3 — Rang et score personnel
     _has_rank_score = "rank" in dff.columns or "personal_score" in dff.columns
@@ -564,14 +541,12 @@ def _render_sprint7_sections(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.divider()
         st.subheader(t("ts_rank_score"))
         st.caption(t("ts_rank_score_caption"))
-        try:
+        with safe_chart_render():
             fig_rank = plot_rank_score(dff, title=t("ts_rank_score"), lang=lang)
             if fig_rank is not None:
                 st.plotly_chart(fig_rank, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
 
 
 # =============================================================================

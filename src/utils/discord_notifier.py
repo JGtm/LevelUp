@@ -621,7 +621,7 @@ def send_discord_notification(
 # =============================================================================
 
 
-def notify_operation_done(
+def notify_operation_done(  # noqa: PLR0913
     operation: str,
     started_at: datetime,
     finished_at: datetime,

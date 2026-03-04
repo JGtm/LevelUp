@@ -111,7 +111,7 @@ def _add_duration_markers(
 # =============================================================================
 
 
-def plot_cumulative_net_score(
+def plot_cumulative_net_score(  # noqa: PLR0913
     cumulative_df: pl.DataFrame,
     *,
     title: str | None = None,
@@ -225,7 +225,7 @@ def plot_cumulative_net_score(
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
-def plot_cumulative_kd(
+def plot_cumulative_kd(  # noqa: PLR0913
     cumulative_df: pl.DataFrame,
     *,
     title: str | None = None,
@@ -544,7 +544,7 @@ def plot_session_trend(
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
-def plot_cumulative_comparison(
+def plot_cumulative_comparison(  # noqa: PLR0913
     session_a_df: pl.DataFrame,
     session_b_df: pl.DataFrame,
     *,

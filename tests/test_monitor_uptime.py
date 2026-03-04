@@ -321,7 +321,7 @@ class TestGetWebhookUrl:
 class TestDebounceLogic:
     """Tests du mécanisme anti-flapping dans main()."""
 
-    def _run_main(
+    def _run_main(  # noqa: PLR0913
         self,
         *,
         is_up: bool,
@@ -338,7 +338,7 @@ class TestDebounceLogic:
         saved_state: dict | None = None
         notified = False
 
-        def mock_save(
+        def mock_save(  # noqa: PLR0913
             status, since, *, url="", previous=None, consecutive_failures=0, state_file=None
         ):
             nonlocal saved_state

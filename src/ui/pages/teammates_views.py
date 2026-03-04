@@ -21,6 +21,7 @@ from src.ui.cache import (
     cached_query_matches_with_friend,
     cached_same_team_match_ids_with_friend,
 )
+from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import t
 from src.ui.medals import render_medals_grid
 from src.ui.pages.teammates_charts import (
@@ -46,7 +47,7 @@ from src.visualization._compat import DataFrameLike, ensure_polars, to_pandas_fo
 # On utilise des callbacks passés en paramètre pour éviter les imports circulaires.
 
 
-def render_single_teammate_view(
+def render_single_teammate_view(  # noqa: PLR0913
     df: DataFrameLike,
     dff: DataFrameLike,
     me_name: str,
@@ -154,7 +155,7 @@ def render_single_teammate_view(
         )
 
 
-def render_multi_teammate_view(
+def render_multi_teammate_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
     df: DataFrameLike,
     dff: DataFrameLike,
     base: DataFrameLike,
@@ -263,7 +264,7 @@ def render_multi_teammate_view(
         if breakdown_all.is_empty():
             st.info(t("tm_not_enough_matches"))
         else:
-            try:
+            with safe_chart_render():
                 view_all = breakdown_all.head(20).reverse()
                 title = t("tm_ratio_map_header", n=min_matches_maps_friends)
                 fig_map = plot_map_ratio_with_winloss(view_all, title=title)
@@ -271,8 +272,6 @@ def render_multi_teammate_view(
                     st.plotly_chart(fig_map, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
 
             st.subheader(t("tm_history"))
 
@@ -332,7 +331,7 @@ def render_multi_teammate_view(
         )
 
 
-def render_trio_view(
+def render_trio_view(  # noqa: PLR0913
     df: DataFrameLike,
     dff: DataFrameLike,
     base: DataFrameLike,
@@ -489,7 +488,7 @@ def _render_shared_stats_metrics(sub: DataFrameLike) -> None:
 
     k = st.columns(3)
     k[0].metric(t("tm_metric_matches"), f"{len(sub)}")
-    k[1].metric(t("tm_win_loss"), f"{win_rate_sub*100:.1f}% / {loss_rate_sub*100:.1f}%")
+    k[1].metric(t("tm_win_loss"), f"{win_rate_sub * 100:.1f}% / {loss_rate_sub * 100:.1f}%")
     k[2].metric(
         t("tm_metric_global_ratio"),
         f"{global_ratio_sub:.2f}" if global_ratio_sub is not None else "-",
@@ -511,7 +510,7 @@ def _render_shared_stats_metrics(sub: DataFrameLike) -> None:
     )
 
 
-def _render_shared_medals(
+def _render_shared_medals(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     friend_xuid: str,
@@ -574,7 +573,7 @@ def _collect_friend_match_ids(
     return all_match_ids, per_friend_ids
 
 
-def _detect_trio_session(
+def _detect_trio_session(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None,
@@ -618,7 +617,7 @@ def _detect_trio_session(
         st.caption(t("tm_trio_session_unknown"))
 
 
-def _render_per_minute_stats(
+def _render_per_minute_stats(  # noqa: PLR0913
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
     f2_df: DataFrameLike,
@@ -667,13 +666,11 @@ def _render_per_minute_stats(
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "x": 0.5, "xanchor": "center"},
     )
     fig_pm = apply_halo_plot_style(fig_pm, title=None, height=None)
-    try:
+    with safe_chart_render():
         if fig_pm is not None:
             st.plotly_chart(fig_pm, width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
 
 def _merge_trio_dataframes(
@@ -727,7 +724,7 @@ def _merge_trio_dataframes(
     )
 
 
-def _render_trio_performance_charts(
+def _render_trio_performance_charts(  # noqa: PLR0913
     merged: DataFrameLike,
     me_name: str,
     f1_name: str,
@@ -797,7 +794,7 @@ def _render_trio_performance_charts(
     render_trio_charts(d_self, d_f1, d_f2, me_name, f1_name, f2_name, f1_xuid, f2_xuid)
 
 
-def _render_trio_medals(
+def _render_trio_medals(  # noqa: PLR0913
     merged: DataFrameLike,
     db_path: str,
     xuid: str,

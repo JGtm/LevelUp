@@ -17,7 +17,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import duckdb
-import pytest
 
 # =============================================================================
 # Constantes
@@ -276,22 +275,6 @@ class TestResolveXuidFromDb:
 
 class TestLoadExistingMatchIds:
     """Tests du fallback multi-sources pour détecter les matchs existants."""
-
-    @pytest.mark.skip(
-        reason="V4 legacy - match_stats n'est plus prioritaire en V5 finale (shared.match_participants > player_match_stats)"
-    )
-    def test_match_stats_preferred(self, tmp_path: Path) -> None:
-        """Si match_stats a des données, c'est elle qui est utilisée (pas player_match_stats)."""
-        db = tmp_path / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        _create_player_db(db, with_match_stats=True)
-
-        from src.data.sync.engine import DuckDBSyncEngine
-
-        engine = DuckDBSyncEngine(player_db_path=db, xuid=PLAYER_XUID, gamertag=PLAYER_GAMERTAG)
-        ids = engine._load_existing_match_ids()
-        # match_stats ne contient que MATCH_ID_1
-        assert MATCH_ID_1 in ids
-        assert len(ids) == 1
 
     def test_fallback_to_shared_participants(self, tmp_path: Path) -> None:
         """Si la player DB a enrichment, utilise intersection shared ∩ enrichment.

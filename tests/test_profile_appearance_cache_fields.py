@@ -141,9 +141,7 @@ class TestGetProfileAppearanceStaleOnError:
         assert result.service_tag == "STALE"
         assert result.backdrop_image_url == "https://example.com/backdrop.png"
 
-    def test_none_when_no_stale_cache_and_api_fails(
-        self, _clean_cache: Path
-    ) -> None:
+    def test_none_when_no_stale_cache_and_api_fails(self, _clean_cache: Path) -> None:
         """Sans aucun cache et API en échec → (None, message d'erreur)."""
         from unittest.mock import patch
 
@@ -163,9 +161,7 @@ class TestGetProfileAppearanceStaleOnError:
         assert err is not None
         assert "Connection timeout" in err
 
-    def test_import_error_propagated_even_with_stale_cache(
-        self, _clean_cache: Path
-    ) -> None:
+    def test_import_error_propagated_even_with_stale_cache(self, _clean_cache: Path) -> None:
         """ImportError (dépendance manquante) génère un message d'erreur dédié."""
         from unittest.mock import patch
 

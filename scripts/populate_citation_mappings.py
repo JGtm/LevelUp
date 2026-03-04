@@ -246,9 +246,7 @@ def ensure_schema(conn: duckdb.DuckDBPyConnection) -> None:
     }
     for col_name, col_type in migrations.items():
         if col_name not in cols:
-            conn.execute(
-                f"ALTER TABLE citation_mappings ADD COLUMN {col_name} {col_type}"
-            )
+            conn.execute(f"ALTER TABLE citation_mappings ADD COLUMN {col_name} {col_type}")
             print(f"  ✅ Colonne {col_name} ajoutée")
 
 
@@ -263,9 +261,7 @@ def cleanup_obsolete(conn: duckdb.DuckDBPyConnection) -> int:
     known_norms = {c[0] for c in ALL_CITATIONS}
     existing = {
         row[0]
-        for row in conn.execute(
-            "SELECT citation_name_norm FROM citation_mappings"
-        ).fetchall()
+        for row in conn.execute("SELECT citation_name_norm FROM citation_mappings").fetchall()
     }
     obsolete = existing - known_norms
     if obsolete:
@@ -279,9 +275,7 @@ def cleanup_obsolete(conn: duckdb.DuckDBPyConnection) -> int:
 
 def main() -> None:
     """Point d'entrée principal."""
-    parser = argparse.ArgumentParser(
-        description="Peuple citation_mappings dans metadata.duckdb"
-    )
+    parser = argparse.ArgumentParser(description="Peuple citation_mappings dans metadata.duckdb")
     parser.add_argument(
         "--reset",
         action="store_true",

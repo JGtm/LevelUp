@@ -55,7 +55,7 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 # =============================================================================
 
 
-def _build_match_rank_html(
+def _build_match_rank_html(  # noqa: C901, PLR0912, PLR0915
     *,
     match_id: str,
     db_path: str,
@@ -261,7 +261,7 @@ def _render_match_rank_tab(
 # =============================================================================
 
 
-def _render_match_citations_section(
+def _render_match_citations_section(  # noqa: C901, PLR0912, PLR0915
     *,
     match_id: str,
     db_path: str,
@@ -426,7 +426,7 @@ def _render_match_citations_section(
 # =============================================================================
 
 
-def render_match_view(
+def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
     *,
     row: dict[str, Any],
     match_id: str,
@@ -499,8 +499,8 @@ def render_match_view(
 
     outcome_map = get_outcome_map()
     try:
-        outcome_code = int(last_outcome) if last_outcome == last_outcome else None
-    except Exception:
+        outcome_code = int(last_outcome) if last_outcome is not None else None
+    except (TypeError, ValueError):
         outcome_code = None
     outcome_label = outcome_map.get(outcome_code, "?") if outcome_code is not None else "-"
 

@@ -113,8 +113,7 @@ def _create_player_db(path: Path) -> None:
         )
     """)
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_match_citations_name "
-        "ON match_citations(citation_name_norm)"
+        "CREATE INDEX IF NOT EXISTS idx_match_citations_name ON match_citations(citation_name_norm)"
     )
 
     # Table medals_earned
@@ -165,7 +164,7 @@ def _insert_sample_data(db_path: Path) -> None:
         "INSERT INTO match_stats VALUES "
         "('m1', 15, 5, 8, 3, 2, 'Ranked Slayer', 'Slayer', '2026-01-01 12:00:00')"
     )
-    conn.execute("INSERT INTO medals_earned VALUES " "('m1', 3169118333, 2), ('m1', 221693153, 1)")
+    conn.execute("INSERT INTO medals_earned VALUES ('m1', 3169118333, 2), ('m1', 221693153, 1)")
     conn.execute(
         "INSERT INTO personal_score_awards VALUES "
         "('m1', 'Flag Defense', 'objective', 3, 150), "
@@ -177,7 +176,7 @@ def _insert_sample_data(db_path: Path) -> None:
         "INSERT INTO match_stats VALUES "
         "('m2', 10, 8, 12, 2, 2, 'Quick Play', 'CTF', '2026-01-02 14:00:00')"
     )
-    conn.execute("INSERT INTO medals_earned VALUES " "('m2', 3169118333, 1)")
+    conn.execute("INSERT INTO medals_earned VALUES ('m2', 3169118333, 1)")
     conn.execute(
         "INSERT INTO personal_score_awards VALUES "
         "('m2', 'Flag Defense', 'objective', 1, 50), "

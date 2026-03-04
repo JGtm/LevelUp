@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from src.data.sync._protocol import _SyncProtocol
 
 from src.data.sync.migrations import ensure_match_skill_rank_table
 
@@ -36,7 +39,7 @@ class SkillRatingMixin:
     """Méthodes de calcul du skill rating (CSR et LUSR)."""
 
     def _upsert_csr_rating(
-        self,
+        self: _SyncProtocol,
         match_id: str,
         skill_row: Any,
     ) -> None:
@@ -56,7 +59,7 @@ class SkillRatingMixin:
         if post_csr is None:
             return
 
-        conn = self._get_connection()  # type: ignore[attr-defined]
+        conn = self._get_connection()
         try:
             ensure_match_skill_rank_table(conn)
 
@@ -121,7 +124,7 @@ class SkillRatingMixin:
         except Exception as e:
             logger.warning(f"Erreur écriture CSR pour {match_id}: {e}")
 
-    def batch_compute_lusr(self, *, force: bool = False) -> int:
+    def batch_compute_lusr(self: _SyncProtocol, *, force: bool = False) -> int:  # noqa: C901, PLR0912
         """Calcule le LUSR pour tous les matchs non classés sans rating LUSR.
 
         Traitement **séquentiel** (TrueSkill 2) : chaque match dépend du précédent.
@@ -142,12 +145,12 @@ class SkillRatingMixin:
             return 0
 
         try:
-            shared_conn = self._get_shared_connection()  # type: ignore[attr-defined]
-            if shared_conn is None or not self._xuid:  # type: ignore[attr-defined]
+            shared_conn = self._get_shared_connection()
+            if shared_conn is None or not self._xuid:
                 logger.warning("shared_connection ou xuid manquant pour batch_compute_lusr")
                 return 0
 
-            conn = self._get_connection()  # type: ignore[attr-defined]
+            conn = self._get_connection()
             ensure_match_skill_rank_table(conn)
 
             # 1. Charger tous les matchs non classés, non-Firefight du joueur (ordre ASC)
@@ -168,7 +171,7 @@ class SkillRatingMixin:
                   AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)
                 ORDER BY mr.start_time ASC
                 """,
-                [self._xuid],  # type: ignore[attr-defined]
+                [self._xuid],
             ).pl()
 
             if df_matches.is_empty():

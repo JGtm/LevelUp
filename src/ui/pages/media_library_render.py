@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import html
+import logging
 import os
 
 import polars as pl
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 from src.ui.formatting import format_datetime_fr_hm
 from src.ui.i18n import t
@@ -41,6 +44,7 @@ def open_match_button(match_id: str, *, unique_suffix: str | None = None) -> Non
     button_key = f"open_match_{mid}_{unique_suffix}" if unique_suffix else f"open_match_{mid}"
 
     if st.button(t("ml_open_match"), key=button_key, width="stretch"):
+        logger.info("Match ouvert depuis media library: %s", mid)
         st.session_state["_pending_page"] = "Match"
         st.session_state["_pending_match_id"] = mid
         st.rerun()
@@ -115,7 +119,7 @@ def _render_single_media(rec: dict, render_context: str) -> None:
         st.caption(t("media_unassociated_match"))
 
 
-def _render_video_cell(
+def _render_video_cell(  # noqa: PLR0912
     rec: dict, path: str, base: str, mid: str | None, render_context: str
 ) -> None:
     """Rend une cellule vidéo avec thumbnail et preview."""
@@ -123,7 +127,7 @@ def _render_video_cell(
     path_hash = hashlib.md5(path.encode()).hexdigest()
     match_id_part = str(mid).strip() if isinstance(mid, str) and mid.strip() else "no_match"
     stable_id = rec.get("_stable_id", 0)
-    thumb_key = f"thumb_show::{path_hash}::{match_id_part}" f"::{render_context}::{stable_id}"
+    thumb_key = f"thumb_show::{path_hash}::{match_id_part}::{render_context}::{stable_id}"
     show_thumb = st.session_state.get(thumb_key, False)
 
     if show_thumb and thumb_path and os.path.exists(thumb_path):
@@ -144,9 +148,7 @@ def _render_video_cell(
             st.caption(t("media_no_thumbnail"))
 
     if path:
-        preview_key = (
-            f"media_preview::{path_hash}::{match_id_part}" f"::{render_context}::{stable_id}"
-        )
+        preview_key = f"media_preview::{path_hash}::{match_id_part}::{render_context}::{stable_id}"
         if st.button(t("ml_preview"), key=preview_key, width="stretch"):
             st.session_state[preview_key + "::open"] = True
         if st.session_state.get(preview_key + "::open"):

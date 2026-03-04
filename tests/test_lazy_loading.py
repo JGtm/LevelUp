@@ -6,7 +6,7 @@ du DuckDBRepository.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
@@ -265,84 +265,147 @@ class TestLoadRecentMatches:
 class TestLoadMatchesPaginated:
     """Tests pour load_matches_paginated.
 
-    Note: Les tests avec mocks unitaires sont skip car le mocking de DuckDBRepository
-    est complexe (appels d'init pour attacher metadata.duckdb).
-    Les tests d'intégration dans TestLazyLoadingIntegration couvrent ce cas.
+    Les tests unitaires utilisent patch.object pour isoler la logique
+    de pagination du moteur SQL (comportement couvert par TestLazyLoadingIntegration).
     """
 
-    @pytest.mark.skip(reason="Mocking complexe - couvert par tests d'intégration")
-    def test_pagination_page_1(self):
-        """Test page 1 (offset 0)."""
-        with patch("src.data.repositories.duckdb_repo.duckdb") as mock_duckdb:
-            mock_conn = MagicMock()
-            mock_duckdb.connect.return_value = mock_conn
+    XUID = "2535423456789"
 
-            # Mock get_match_count
-            count_result = MagicMock()
-            count_result.fetchone.return_value = [100]
+    def _make_player_db(self, tmp_path: Path, n_matches: int = 0) -> Path:
+        """Crée un player DB minimal avec player_match_enrichment."""
+        import duckdb
 
-            matches_result = MagicMock()
-            matches_result.fetchall.return_value = []
-            matches_result.description = []
+        db_path = tmp_path / "players" / "TestPlayer" / "stats.duckdb"
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = duckdb.connect(str(db_path))
+        conn.execute(
+            "CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, performance_score FLOAT)"
+        )
+        for i in range(n_matches):
+            conn.execute(
+                "INSERT INTO player_match_enrichment (match_id) VALUES (?)",
+                (f"m-{i:04d}",),
+            )
+        conn.close()
+        return db_path
 
-            mock_conn.execute.side_effect = [count_result, matches_result]
+    def _make_shared_db(self, tmp_path: Path, xuid: str, n_matches: int) -> Path:
+        """Crée shared_matches.duckdb minimal avec la vue mv_player_matches."""
+        import duckdb
 
-            from src.data.repositories.duckdb_repo import DuckDBRepository
+        db_path = tmp_path / "warehouse" / "shared_matches.duckdb"
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = duckdb.connect(str(db_path))
+        conn.execute("""
+            CREATE TABLE match_registry (
+                match_id          VARCHAR PRIMARY KEY,
+                start_time        TIMESTAMP NOT NULL,
+                map_id            VARCHAR   DEFAULT 'map1',
+                map_name          VARCHAR   DEFAULT 'Recharge',
+                playlist_id       VARCHAR   DEFAULT 'pl1',
+                playlist_name     VARCHAR   DEFAULT 'Quick Play',
+                pair_id           VARCHAR   DEFAULT 'pair1',
+                pair_name         VARCHAR   DEFAULT 'Slayer',
+                game_variant_id   VARCHAR   DEFAULT 'gv1',
+                game_variant_name VARCHAR   DEFAULT 'Slayer',
+                duration_seconds  INTEGER   DEFAULT 600,
+                team_0_score      INTEGER   DEFAULT 50,
+                team_1_score      INTEGER   DEFAULT 45,
+                is_firefight      BOOLEAN   DEFAULT FALSE,
+                is_ranked         BOOLEAN   DEFAULT FALSE
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE match_participants (
+                match_id          VARCHAR  NOT NULL,
+                xuid              VARCHAR  NOT NULL,
+                gamertag          VARCHAR,
+                outcome           INTEGER  DEFAULT 2,
+                kills             SMALLINT DEFAULT 10,
+                deaths            SMALLINT DEFAULT 8,
+                assists           SMALLINT DEFAULT 5,
+                score             INTEGER  DEFAULT 1500,
+                shots_fired       INTEGER  DEFAULT 200,
+                shots_hit         INTEGER  DEFAULT 90,
+                avg_life_seconds  FLOAT    DEFAULT 45.0,
+                team_id           INTEGER  DEFAULT 0,
+                PRIMARY KEY (match_id, xuid)
+            )
+        """)
+        conn.execute("""
+            CREATE OR REPLACE VIEW mv_player_matches AS
+            SELECT
+                r.match_id, r.start_time,
+                r.map_id, r.map_name, r.playlist_id, r.playlist_name,
+                r.pair_id, r.pair_name, r.game_variant_id, r.game_variant_name,
+                p.xuid, p.outcome, p.team_id,
+                CASE WHEN p.deaths > 0
+                    THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
+                         / CAST(p.deaths AS FLOAT)
+                    ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
+                END AS kda,
+                0 AS max_killing_spree,
+                0 AS headshot_kills,
+                COALESCE(p.avg_life_seconds, 0) AS avg_life_seconds,
+                COALESCE(r.duration_seconds, 0) AS time_played_seconds,
+                COALESCE(p.kills, 0) AS kills,
+                COALESCE(p.deaths, 0) AS deaths,
+                COALESCE(p.assists, 0) AS assists,
+                CASE WHEN p.shots_fired > 0
+                    THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT)
+                    ELSE NULL
+                END AS accuracy,
+                CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
+                CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+                NULL AS team_mmr, NULL AS enemy_mmr,
+                p.score AS personal_score,
+                COALESCE(r.is_firefight, FALSE) AS is_firefight,
+                COALESCE(r.is_ranked, FALSE) AS is_ranked
+            FROM match_registry r
+            JOIN match_participants p ON r.match_id = p.match_id
+        """)
+        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        for i in range(n_matches):
+            mid = f"m-{i:04d}"
+            t = base_time + timedelta(hours=i)
+            conn.execute(
+                "INSERT INTO match_registry (match_id, start_time) VALUES (?, ?)", (mid, t)
+            )
+            conn.execute(
+                "INSERT INTO match_participants (match_id, xuid) VALUES (?, ?)", (mid, xuid)
+            )
+        conn.close()
+        return db_path
 
-            with patch.object(Path, "exists", return_value=True):
-                repo = DuckDBRepository(Path("/fake/path.duckdb"), "12345")
-                matches, total_pages = repo.load_matches_paginated(page=1, page_size=50)
+    def test_pagination_page_1(self, tmp_path: Path) -> None:
+        """Test que total_pages = 100 / 50 = 2."""
+        from src.data.repositories.duckdb_repo import DuckDBRepository
 
-            assert total_pages == 2  # 100 matchs / 50 par page = 2 pages
+        player_db = self._make_player_db(tmp_path, n_matches=100)
+        shared_db = self._make_shared_db(tmp_path, self.XUID, n_matches=100)
+        repo = DuckDBRepository(player_db, self.XUID, shared_db_path=shared_db, read_only=False)
+        _, total_pages = repo.load_matches_paginated(page=1, page_size=50)
+        assert total_pages == 2
 
-    @pytest.mark.skip(reason="Mocking complexe - couvert par tests d'intégration")
-    def test_pagination_calculates_total_pages(self):
-        """Test que le nombre total de pages est correct."""
-        with patch("src.data.repositories.duckdb_repo.duckdb") as mock_duckdb:
-            mock_conn = MagicMock()
-            mock_duckdb.connect.return_value = mock_conn
+    def test_pagination_calculates_total_pages(self, tmp_path: Path) -> None:
+        """Test que 125 matchs / 50 par page = 3 pages (arrondi supérieur)."""
+        from src.data.repositories.duckdb_repo import DuckDBRepository
 
-            count_result = MagicMock()
-            count_result.fetchone.return_value = [125]
+        player_db = self._make_player_db(tmp_path, n_matches=125)
+        shared_db = self._make_shared_db(tmp_path, self.XUID, n_matches=125)
+        repo = DuckDBRepository(player_db, self.XUID, shared_db_path=shared_db, read_only=False)
+        _, total_pages = repo.load_matches_paginated(page=1, page_size=50)
+        assert total_pages == 3
 
-            matches_result = MagicMock()
-            matches_result.fetchall.return_value = []
-            matches_result.description = []
+    def test_pagination_clamps_invalid_page(self, tmp_path: Path) -> None:
+        """Test que page=999 est corrigée à total_pages."""
+        from src.data.repositories.duckdb_repo import DuckDBRepository
 
-            mock_conn.execute.side_effect = [count_result, matches_result]
-
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            with patch.object(Path, "exists", return_value=True):
-                repo = DuckDBRepository(Path("/fake/path.duckdb"), "12345")
-                _, total_pages = repo.load_matches_paginated(page=1, page_size=50)
-
-            assert total_pages == 3  # 125 matchs / 50 par page = 3 pages (arrondi supérieur)
-
-    @pytest.mark.skip(reason="Mocking complexe - couvert par tests d'intégration")
-    def test_pagination_clamps_invalid_page(self):
-        """Test que les pages invalides sont corrigées."""
-        with patch("src.data.repositories.duckdb_repo.duckdb") as mock_duckdb:
-            mock_conn = MagicMock()
-            mock_duckdb.connect.return_value = mock_conn
-
-            count_result = MagicMock()
-            count_result.fetchone.return_value = [100]
-
-            matches_result = MagicMock()
-            matches_result.fetchall.return_value = []
-            matches_result.description = []
-
-            mock_conn.execute.side_effect = [count_result, matches_result]
-
-            from src.data.repositories.duckdb_repo import DuckDBRepository
-
-            with patch.object(Path, "exists", return_value=True):
-                repo = DuckDBRepository(Path("/fake/path.duckdb"), "12345")
-                # Page 999 devrait être corrigée à la dernière page (2)
-                _, total_pages = repo.load_matches_paginated(page=999, page_size=50)
-
-            assert total_pages == 2
+        player_db = self._make_player_db(tmp_path, n_matches=100)
+        shared_db = self._make_shared_db(tmp_path, self.XUID, n_matches=100)
+        repo = DuckDBRepository(player_db, self.XUID, shared_db_path=shared_db, read_only=False)
+        _, total_pages = repo.load_matches_paginated(page=999, page_size=50)
+        assert total_pages == 2
 
 
 # ============================================================================

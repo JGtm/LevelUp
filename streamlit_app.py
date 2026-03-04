@@ -24,8 +24,12 @@ if not hasattr(st, "runtime") or not st.runtime.exists():
     print("  python launcher.py\n")
     sys.exit(1)
 
-# Suppression des warnings connus et non bloquants
-logging.getLogger("streamlit.runtime.caching.cache_data_api").setLevel(logging.ERROR)
+# Configuration centralisée du logging (guard process-level)
+from src.utils.log_config import setup_app_logging  # noqa: E402
+
+setup_app_logging()
+
+logger = logging.getLogger("streamlit_app")
 
 from src.app.data_loader import (
     ensure_h5g_commendations_repo,
@@ -81,6 +85,7 @@ from src.app.page_router import (
     render_page_selector,
     render_page_selector_nav,
 )
+from src.app.session_keys import SK
 
 # Imports depuis la nouvelle architecture
 from src.config import (
@@ -241,14 +246,12 @@ class PageContext(NamedTuple):
 
 
 def _tailscale_worker() -> None:
-    """Démarre le funnel Tailscale + notification Discord."""
+    """Démarre le funnel Tailscale + notification Discord (une seule fois par processus)."""
     try:
         from src.utils.discord_notifier import notify_app_started
-        from src.utils.tailscale import start_funnel
+        from src.utils.tailscale import ensure_funnel_started_once
 
-        url = start_funnel()
-        if url:
-            notify_app_started(url)
+        ensure_funnel_started_once(notify_fn=notify_app_started)
     except Exception as _e:
         print(f"[Tailscale] worker erreur inattendue : {_e}", flush=True)
 
@@ -278,11 +281,12 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
 
     # Paramètres (persistés)
     settings: AppSettings = load_settings()
-    st.session_state["app_settings"] = settings
+    st.session_state[SK.APP_SETTINGS] = settings
+    logger.info("Settings chargées: lang=%s", getattr(settings, "lang", "fr"))
 
     # Chargement des secrets (Doppler ou .env.local) — une seule fois par session
     if not st.session_state.get("_secrets_loaded"):
-        st.session_state["_secrets_loaded"] = True
+        st.session_state[SK.SECRETS_LOADED] = True
         try:
             from src.utils.secrets import load_doppler_secrets_to_env
 
@@ -291,12 +295,12 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
                     project=str(getattr(settings, "doppler_project", "") or ""),
                     config=str(getattr(settings, "doppler_config", "") or ""),
                 )
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.warning("Chargement secrets Doppler échoué: %s", _e)
 
     # Langue UI (persistée) : session_state prime, sinon app_settings.json.
     if "lang" not in st.session_state:
-        st.session_state["lang"] = getattr(settings, "lang", "fr") or "fr"
+        st.session_state[SK.LANG] = getattr(settings, "lang", "fr") or "fr"
 
     # Propage les defaults depuis secrets vers l'env et applique les overrides de chemins
     propagate_identity_to_env()
@@ -308,13 +312,15 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
             from src.utils.startup_check import check_app_settings
 
             _w, _e = check_app_settings(settings)
-            st.session_state["_startup_cfg_warnings"] = _w
-            st.session_state["_startup_cfg_errors"] = _e
+            st.session_state[SK.STARTUP_WARNINGS] = _w
+            st.session_state[SK.STARTUP_ERRORS] = _e
         except Exception:
-            st.session_state["_startup_cfg_warnings"] = []
-            st.session_state["_startup_cfg_errors"] = []
+            st.session_state[SK.STARTUP_WARNINGS] = []
+            st.session_state[SK.STARTUP_ERRORS] = []
     cfg_warnings: list[str] = st.session_state.get("_startup_cfg_warnings", [])
     cfg_errors: list[str] = st.session_state.get("_startup_cfg_errors", [])
+    if cfg_errors:
+        logger.warning("Startup: %d erreur(s) de configuration", len(cfg_errors))
 
     # Source (persistée via session_state)
     DEFAULT_DB = get_default_db_path()
@@ -326,12 +332,14 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
 def _start_background_services(settings: AppSettings, DEFAULT_DB: str) -> None:
     """Lance les services d'arrière-plan (media indexing, Tailscale)."""
     background_media_indexing(settings, DEFAULT_DB)
+    logger.debug("Media indexing thread lancé")
 
-    if not st.session_state.get("_tailscale_started") and bool(
-        getattr(settings, "tailscale_funnel_enabled", False)
-    ):
-        st.session_state["_tailscale_started"] = True
-        threading.Thread(target=_tailscale_worker, daemon=True, name="tailscale-funnel").start()
+    if bool(getattr(settings, "tailscale_funnel_enabled", False)):
+        from src.utils.tailscale import is_funnel_started
+
+        if not is_funnel_started():
+            threading.Thread(target=_tailscale_worker, daemon=True, name="tailscale-funnel").start()
+            logger.info("Tailscale funnel thread lancé (port 8501)")
 
 
 def _parse_query_params() -> None:
@@ -345,11 +353,17 @@ def _parse_query_params() -> None:
         qp_mid = None
     qp_params = (str(qp_page or "").strip(), str(qp_mid or "").strip())
     if any(qp_params) and st.session_state.get("_consumed_query_params") != qp_params:
-        st.session_state["_consumed_query_params"] = qp_params
+        st.session_state[SK.CONSUMED_QUERY_PARAMS] = qp_params
         if qp_params[0]:
-            st.session_state["_pending_page"] = qp_params[0]
+            st.session_state[SK.PENDING_PAGE] = qp_params[0]
         if qp_params[1]:
-            st.session_state["_pending_match_id"] = qp_params[1]
+            st.session_state[SK.PENDING_MATCH_ID] = qp_params[1]
+        if qp_params[0] or qp_params[1]:
+            logger.info(
+                "Deep link consommé: page=%r, match_id=%r",
+                qp_params[0] or None,
+                qp_params[1] or None,
+            )
         # Nettoie l'URL après consommation
         try:
             st.query_params.clear()
@@ -358,7 +372,7 @@ def _parse_query_params() -> None:
                 st.experimental_set_query_params()
 
 
-def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tuple[str, str, str]:
+def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tuple[str, str, str]:  # noqa: C901, PLR0912, PLR0915
     """Rendu de la sidebar principale (langue, logo, joueur, sync).
 
     Peut appeler ``st.rerun()`` lors d'un changement de joueur ou de langue.
@@ -431,17 +445,22 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
 
                 # Mettre à jour db_path et xuid pour le nouveau joueur
                 if new_db_path:
-                    st.session_state["db_path"] = new_db_path
+                    st.session_state[SK.DB_PATH] = new_db_path
                     db_path = new_db_path
                     gamertag = get_gamertag_from_duckdb_v4_path(new_db_path)
                     if gamertag:
-                        st.session_state["xuid_input"] = gamertag
-                        st.session_state["waypoint_player"] = gamertag
+                        st.session_state[SK.XUID_INPUT] = gamertag
+                        st.session_state[SK.WAYPOINT_PLAYER] = gamertag
                         xuid = gamertag
                 if new_xuid:
-                    st.session_state["xuid_input"] = new_xuid
+                    st.session_state[SK.XUID_INPUT] = new_xuid
                     xuid = new_xuid
 
+                logger.info(
+                    "Changement joueur: %s → %s",
+                    old_xuid[:8] if old_xuid else "?",
+                    xuid[:8] if xuid else "?",
+                )
                 apply_filter_preferences(xuid, db_path)
                 st.rerun()
 
@@ -453,6 +472,7 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                 help=t("sidebar_sync_help"),
                 width="stretch",
             ):
+                logger.info("Sync démarré par l'utilisateur (db=%s)", db_path)
                 with st.spinner(t("sidebar_sync_spinner")):
                     ok, msg = sync_all_players(
                         db_path=db_path,
@@ -468,17 +488,21 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                         timeout_seconds=180,
                     )
                 if ok:
+                    logger.info("Sync terminé: %s", msg)
                     st.success(msg)
                     _clear_app_caches()
-                    st.session_state["_cache_buster"] = st.session_state.get("_cache_buster", 0) + 1
+                    cache_buster_val = st.session_state.get("_cache_buster", 0)
+                    logger.info("Caches invalidés après sync, cache_buster=%d", cache_buster_val)
+                    st.session_state[SK.CACHE_BUSTER] = cache_buster_val + 1
                     st.rerun()
                 else:
+                    logger.error("Sync échoué: %s", msg)
                     st.error(msg)
 
     return db_path, xuid, waypoint_player
 
 
-def _load_and_prepare_data(
+def _load_and_prepare_data(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     DEFAULT_DB: str,
@@ -642,7 +666,7 @@ def _dispatch_pages(ctx: PageContext) -> None:
         _dispatch_legacy(ctx)
 
 
-def _dispatch_navigation(ctx: PageContext) -> None:
+def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
     """Dispatch via st.navigation (Streamlit ≥ 1.36) avec lazy-loading."""
 
     def _page_timeseries() -> None:

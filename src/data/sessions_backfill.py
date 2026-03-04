@@ -16,7 +16,7 @@ import duckdb
 import polars as pl
 
 
-def get_friends_xuids_for_backfill(
+def get_friends_xuids_for_backfill(  # noqa: C901, PLR0912
     db_path: str | Path,
     self_xuid: str,
     *,
@@ -160,7 +160,7 @@ def get_top_two_teammate_xuids(
             conn.close()
 
 
-def backfill_sessions_for_player(
+def backfill_sessions_for_player(  # noqa: C901, PLR0912, PLR0913, PLR0915
     db_path: Path | str,
     xuid: str | None = None,
     *,

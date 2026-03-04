@@ -350,7 +350,7 @@ def render_date_filters(
 GAP_MINUTES_FIXED = 120  # Figé (sessions stockées en base)
 
 
-def render_session_filters(
+def render_session_filters(  # noqa: C901
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None,
@@ -447,7 +447,7 @@ def render_session_filters(
     return gap_minutes, picked_session_labels
 
 
-def _compute_trio_label(
+def _compute_trio_label(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None,

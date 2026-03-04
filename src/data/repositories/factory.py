@@ -49,7 +49,7 @@ class RepositoryMode(Enum):
     DUCKDB = "duckdb"
 
 
-def get_repository(
+def get_repository(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     *,
@@ -96,7 +96,7 @@ def get_repository(
 
     if mode != RepositoryMode.DUCKDB:
         raise ValueError(
-            f"Mode '{mode.value}' non supporté. " f"Utilisez '{RepositoryMode.DUCKDB.value}'."
+            f"Mode '{mode.value}' non supporté. Utilisez '{RepositoryMode.DUCKDB.value}'."
         )
 
     # Mode DuckDB natif - le db_path pointe vers stats.duckdb

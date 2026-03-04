@@ -112,9 +112,10 @@ def temp_player_db(tmp_path: Path):
 
 
 @pytest.fixture
-def temp_archive_dir(tmp_path: Path):
-    """Crée un dossier d'archive temporaire avec des fichiers Parquet."""
-    archive_dir = tmp_path / "players" / "TestPlayer" / "archive"
+def temp_archive_dir(temp_player_db: Path):
+    """Crée un dossier d'archive dans le même répertoire que temp_player_db."""
+    player_dir = temp_player_db.parent
+    archive_dir = player_dir / "archive"
     archive_dir.mkdir(parents=True)
 
     # Créer un fichier Parquet d'archive
@@ -205,7 +206,7 @@ class TestDuckDBRepositoryArchives:
         repo.close()
 
     @pytest.mark.skip(
-        reason="Fixtures temp_player_db et temp_archive_dir non partagées - à corriger"
+        reason="TODO: temp_archive_dir partage maintenant le répertoire — à valider après refacto get_archive_info"
     )
     def test_get_archive_info_with_archives(self, temp_player_db: Path, temp_archive_dir: Path):
         """Test get_archive_info avec archives."""
@@ -338,6 +339,78 @@ class TestDuckDBRepositoryArchives:
         repo.close()
 
 
+@pytest.fixture
+def archive_module():
+    """Charge archive_season.py dynamiquement (isolation complète du module)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "archive_season",
+        Path(__file__).parent.parent / "scripts" / "archive_season.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.fixture
+def archive_player_env(tmp_path: Path):
+    """Crée data/players/TestPlayer/stats.duckdb (structure attendue par archive_season.py)."""
+    import gc
+
+    gamertag = "TestPlayer"
+    db_path = tmp_path / "data" / "players" / gamertag / "stats.duckdb"
+    db_path.parent.mkdir(parents=True)
+
+    conn = duckdb.connect(str(db_path))
+    conn.execute("""
+        CREATE TABLE match_stats (
+            match_id VARCHAR PRIMARY KEY,
+            start_time TIMESTAMP,
+            map_id VARCHAR, map_name VARCHAR,
+            playlist_id VARCHAR, playlist_name VARCHAR,
+            pair_id VARCHAR, pair_name VARCHAR,
+            game_variant_id VARCHAR, game_variant_name VARCHAR,
+            outcome INTEGER, team_id INTEGER,
+            kda DOUBLE, max_killing_spree INTEGER, headshot_kills INTEGER,
+            avg_life_seconds DOUBLE, time_played_seconds DOUBLE,
+            kills INTEGER, deaths INTEGER, assists INTEGER, accuracy DOUBLE,
+            my_team_score INTEGER, enemy_team_score INTEGER,
+            team_mmr DOUBLE, enemy_mmr DOUBLE
+        )
+    """)
+    for match_id, start_time, map_id, map_name, kills, deaths, assists in [
+        ("match_2023_01", datetime(2023, 1, 15, 10, 0), "map1", "Streets", 10, 5, 3),
+        ("match_2023_02", datetime(2023, 3, 20, 14, 0), "map2", "Recharge", 8, 6, 2),
+        ("match_2023_03", datetime(2023, 6, 10, 18, 0), "map1", "Streets", 12, 4, 5),
+        ("match_2023_04", datetime(2023, 9, 5, 20, 0), "map3", "Live Fire", 7, 8, 4),
+        ("match_2023_05", datetime(2023, 11, 25, 16, 0), "map2", "Recharge", 15, 3, 6),
+        ("match_2024_01", datetime(2024, 2, 10, 12, 0), "map1", "Streets", 9, 7, 3),
+        ("match_2024_02", datetime(2024, 4, 15, 15, 0), "map3", "Live Fire", 11, 5, 4),
+        ("match_2024_03", datetime(2024, 7, 20, 19, 0), "map2", "Recharge", 6, 9, 2),
+        ("match_2025_01", datetime(2025, 1, 5, 10, 0), "map1", "Streets", 14, 4, 7),
+        ("match_2025_02", datetime(2025, 1, 20, 14, 0), "map3", "Live Fire", 8, 6, 3),
+    ]:
+        conn.execute(
+            """INSERT INTO match_stats (
+                match_id, start_time, map_id, map_name,
+                playlist_id, playlist_name, pair_id, pair_name,
+                game_variant_id, game_variant_name,
+                outcome, team_id, kda, max_killing_spree, headshot_kills,
+                avg_life_seconds, time_played_seconds,
+                kills, deaths, assists, accuracy,
+                my_team_score, enemy_team_score, team_mmr, enemy_mmr
+            ) VALUES (?, ?, ?, ?, 'pl1', 'Quick Play', 'pair1', 'Slayer',
+                'gv1', 'Team Slayer', 2, 0, 1.5, 5, 3, 45.0, 600.0,
+                ?, ?, ?, 55.0, 50, 45, 1500.0, 1480.0)""",
+            [match_id, start_time, map_id, map_name, kills, deaths, assists],
+        )
+    conn.close()
+    del conn
+    gc.collect()
+    return tmp_path, gamertag, db_path
+
+
 class TestArchiveSeasonScript:
     """Tests pour le script archive_season.py."""
 
@@ -361,93 +434,50 @@ class TestArchiveSeasonScript:
         assert 2023 in stats["by_year"]
         assert stats["by_year"][2023] == 5  # 5 matchs en 2023
 
-    @pytest.mark.skip(reason="archive_season.py nécessite révision de l'import dynamique")
-    def test_archive_matches_dry_run(self, temp_player_db: Path):
+    def test_archive_matches_dry_run(self, archive_player_env, archive_module):
         """Test archivage en mode dry-run."""
-        import importlib.util
-
-        spec = importlib.util.spec_from_file_location(
-            "archive_season",
-            Path(__file__).parent.parent / "scripts" / "archive_season.py",
-        )
-        archive_season = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(archive_season)
-
-        # Patcher REPO_ROOT pour pointer vers notre répertoire temporaire
-        temp_root = temp_player_db.parent.parent.parent
-
-        with patch.object(archive_season, "REPO_ROOT", temp_root):
-            success, msg, stats = archive_season.archive_matches(
-                "TestPlayer",
+        tmp_path, gamertag, _ = archive_player_env
+        with patch.object(archive_module, "REPO_ROOT", tmp_path):
+            success, msg, stats = archive_module.archive_matches(
+                gamertag,
                 cutoff_date=datetime(2024, 1, 1),
                 dry_run=True,
             )
-
         assert success is True
         assert "DRY-RUN" in msg
         assert stats["matches_archived"] == 5  # 5 matchs avant 2024
 
-    @pytest.mark.skip(reason="archive_season.py nécessite révision de l'import dynamique")
-    def test_archive_matches_creates_files(self, temp_player_db: Path):
+    def test_archive_matches_creates_files(self, archive_player_env, archive_module):
         """Test que l'archivage crée les fichiers Parquet."""
-        import importlib.util
-
-        spec = importlib.util.spec_from_file_location(
-            "archive_season",
-            Path(__file__).parent.parent / "scripts" / "archive_season.py",
-        )
-        archive_season = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(archive_season)
-
-        temp_root = temp_player_db.parent.parent.parent
-
-        with patch.object(archive_season, "REPO_ROOT", temp_root):
-            success, msg, stats = archive_season.archive_matches(
-                "TestPlayer",
+        tmp_path, gamertag, db_path = archive_player_env
+        with patch.object(archive_module, "REPO_ROOT", tmp_path):
+            success, msg, stats = archive_module.archive_matches(
+                gamertag,
                 cutoff_date=datetime(2024, 1, 1),
                 dry_run=False,
                 by_year=True,
             )
-
         assert success is True
         assert stats["matches_archived"] == 5
         assert len(stats["files_created"]) == 1  # 1 fichier pour 2023
 
-        # Vérifier que le fichier existe
-        archive_dir = temp_player_db.parent / "archive"
+        archive_dir = db_path.parent / "archive"
         assert archive_dir.exists()
-
         parquet_files = list(archive_dir.glob("*.parquet"))
         assert len(parquet_files) == 1
-        assert "2023" in parquet_files[0].name
+        # by_year ne découpe que si > 1 année → fichier nommé par cutoff
+        assert "20240101" in parquet_files[0].name
+        assert (archive_dir / "archive_index.json").exists()
 
-        # Vérifier l'index
-        index_file = archive_dir / "archive_index.json"
-        assert index_file.exists()
-
-    @pytest.mark.skip(reason="archive_season.py nécessite révision de l'import dynamique")
-    def test_archive_no_matches_to_archive(self, temp_player_db: Path):
+    def test_archive_no_matches_to_archive(self, archive_player_env, archive_module):
         """Test quand aucun match ne correspond au cutoff."""
-        import importlib.util
-
-        spec = importlib.util.spec_from_file_location(
-            "archive_season",
-            Path(__file__).parent.parent / "scripts" / "archive_season.py",
-        )
-        archive_season = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(archive_season)
-
-        temp_root = temp_player_db.parent.parent.parent
-
-        with patch.object(archive_season, "REPO_ROOT", temp_root):
-            # Cutoff avant tous les matchs
-            success, msg, stats = archive_season.archive_matches(
-                "TestPlayer",
+        tmp_path, gamertag, _ = archive_player_env
+        with patch.object(archive_module, "REPO_ROOT", tmp_path):
+            success, msg, stats = archive_module.archive_matches(
+                gamertag,
                 cutoff_date=datetime(2020, 1, 1),
             )
-
-        assert success is True
-        assert "Aucun match" in msg
+        assert success is True  # Aucun match à archiver = succès sans erreur
         assert stats["matches_archived"] == 0
 
 

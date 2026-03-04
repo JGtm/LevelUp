@@ -189,7 +189,7 @@ class TestHaloKnowledgeBase:
         # Créer un fichier de test
         test_file = tmp_path / "test_doc.md"
         test_file.write_text(
-            "# Spartan Token\n\n" "Le Spartan Token est utilisé pour l'authentification API Halo."
+            "# Spartan Token\n\nLe Spartan Token est utilisé pour l'authentification API Halo."
         )
 
         # Indexer

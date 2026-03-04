@@ -8,14 +8,18 @@ Ce module centralise :
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 import polars as pl
 import streamlit as st
 
+from src.app._page_context import MatchViewParams
 from src.ui.i18n import t
 from src.ui.settings import AppSettings
 from src.utils.polars_compat import ensure_polars as _to_polars
+
+logger = logging.getLogger(__name__)
 
 # Clés internes stables (slugs) — NE PAS TRADUIRE
 PAGE_KEYS: list[str] = [
@@ -86,7 +90,7 @@ def _pages_compat() -> list[str]:
 PAGES = PAGE_KEYS  # Les consommateurs doivent utiliser get_page_label(slug)
 
 
-def build_match_view_params(
+def build_match_view_params(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     waypoint_player: str,
@@ -104,7 +108,7 @@ def build_match_view_params(
     load_match_gamertags_fn: Callable,
     load_match_rosters_fn: Callable,
     paris_tz,
-) -> dict:
+) -> MatchViewParams:
     """Construit les paramètres communs pour les pages de match."""
     return {
         "db_path": db_path,
@@ -143,6 +147,7 @@ def consume_pending_match_id() -> None:
     """Consomme le match_id en attente si défini."""
     pending_mid = st.session_state.pop("_pending_match_id", None)
     if isinstance(pending_mid, str) and pending_mid.strip():
+        logger.info("Ouverture match depuis pending: %s", pending_mid.strip())
         st.session_state["match_id_input"] = pending_mid.strip()
 
 
@@ -249,12 +254,13 @@ def render_page_selector_nav(
     )
 
     if selected and selected != current_title:
+        logger.info("Navigation: %s → %s", current_title, selected)
         target = next((p for p in pages if p.title == selected), None)
         if target is not None:
             st.switch_page(target)
 
 
-def dispatch_page(
+def dispatch_page(  # noqa: C901, PLR0912, PLR0913
     page: str,
     dff: pl.DataFrame,
     df: pl.DataFrame,
@@ -293,6 +299,7 @@ def dispatch_page(
     """Dispatch vers la page appropriée."""
     # Les fonctions de rendu attendent encore pandas, donc on garde df en l'état
     # La conversion se fera progressivement au niveau de chaque page
+    logger.debug("Page exécutée: %s", page)
 
     if page == "last_match":
         render_last_match_page_fn(dff=dff, **match_view_params)

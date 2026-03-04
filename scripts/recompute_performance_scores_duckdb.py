@@ -211,7 +211,7 @@ def recompute_scores_for_player(
     if not dry_run:
         conn2 = duckdb.connect(str(db_path), read_only=False)
         try:
-            sessions_updated = conn2.execute("""
+            conn2.execute("""
                 UPDATE sessions s
                 SET performance_score = (
                     SELECT AVG(pme.performance_score)

@@ -46,7 +46,7 @@ def result_to_polars(result: duckdb.DuckDBPyResult) -> pl.DataFrame:
             columns = [desc[0] for desc in result.description]
             rows = result.fetchall()
             if not rows:
-                return pl.DataFrame(schema={col: pl.Utf8 for col in columns})
+                return pl.DataFrame(schema=dict.fromkeys(columns, pl.Utf8))
             return pl.DataFrame({col: [row[i] for row in rows] for i, col in enumerate(columns)})
         except Exception as e2:
             logger.warning(f"Conversion DuckDB→Polars échouée: {e2}")

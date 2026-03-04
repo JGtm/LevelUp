@@ -61,7 +61,7 @@ class WinLossService:
     """
 
     @staticmethod
-    def compute_period_table(
+    def compute_period_table(  # noqa: PLR0912
         dff: pl.DataFrame,
         bucket_label: str,
         is_session_scope: bool = False,
@@ -197,7 +197,7 @@ class WinLossService:
         )
 
     @staticmethod
-    def get_friend_scope_df(
+    def get_friend_scope_df(  # noqa: PLR0913
         scope: str,
         dff: pl.DataFrame,
         base: pl.DataFrame,

@@ -18,7 +18,7 @@ from src.ui.i18n import t
 from src.ui.sections import render_source_section
 
 
-def render_settings_page(
+def render_settings_page(  # noqa: PLR0915
     settings: AppSettings,
     *,
     get_local_dbs_fn: Callable[[], list[str]],

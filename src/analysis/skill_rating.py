@@ -215,7 +215,7 @@ def _standard_normal_cdf(x: float) -> float:
 # =============================================================================
 
 
-def compute_composite_score(
+def compute_composite_score(  # noqa: C901, PLR0912, PLR0913
     row: dict[str, Any],
     avg_accuracy: float | None,
     teammate_avg_ke: float | None,
@@ -414,7 +414,7 @@ def compute_enemy_strength(
 # =============================================================================
 
 
-def trueskill_update(
+def trueskill_update(  # noqa: PLR0913
     mu: float,
     sigma: float,
     mu_opp: float,
@@ -544,7 +544,7 @@ def _split_participants(
 # =============================================================================
 
 
-def compute_skill_ratings_batch(
+def compute_skill_ratings_batch(  # noqa: C901, PLR0912, PLR0915
     df_matches: pl.DataFrame,
     df_all_participants: pl.DataFrame,
     *,

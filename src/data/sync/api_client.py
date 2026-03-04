@@ -280,7 +280,7 @@ async def _get_tokens_oauth_v2_fallback(
 
     if resp.status >= 400:
         raise ValueError(
-            f"Échec refresh OAuth v2: status={resp.status} " f"error={payload.get('error')}"
+            f"Échec refresh OAuth v2: status={resp.status} error={payload.get('error')}"
         )
 
     access_token = payload.get("access_token")

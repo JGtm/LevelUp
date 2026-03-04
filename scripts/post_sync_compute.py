@@ -237,7 +237,7 @@ def main() -> None:
 
     db_path = _ROOT / "data" / "players" / args.gamertag / "stats.duckdb"
     if not db_path.exists():
-        print(f"[ERREUR] DB joueur introuvable : {db_path}")
+        logger.error("DB joueur introuvable : %s", db_path)
         sys.exit(1)
 
     results = post_sync_compute(
@@ -246,8 +246,8 @@ def main() -> None:
         kda_window=args.kda_window,
     )
     for table, count in results.items():
-        print(f"  {table}: {count} lignes")
-    print("Terminé.")
+        logger.info("%s: %d lignes", table, count)
+    logger.info("Terminé.")
 
 
 if __name__ == "__main__":

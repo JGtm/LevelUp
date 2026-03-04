@@ -128,7 +128,7 @@ def check_shared_db_exists(shared_db_path: Path) -> bool:
 
         # Vérifier que les tables essentielles existent
         tables = conn.execute(
-            "SELECT table_name FROM information_schema.tables " "WHERE table_schema='main'"
+            "SELECT table_name FROM information_schema.tables WHERE table_schema='main'"
         ).fetchall()
         table_names = {r[0] for r in tables}
 
@@ -578,13 +578,13 @@ def cleanup_all_players(
     profiles = load_profiles()
     results: dict[str, dict[str, Any]] = {}
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"NETTOYAGE PLAYER DBs v5 ({'DRY-RUN' if dry_run else 'MODE RÉEL'})")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Joueurs à traiter : {len(profiles)}")
     print(f"Backup avant nettoyage : {'Oui' if backup else 'Non'}")
     print(f"Supprimer views compatibilité : {'Oui' if remove_compat_views else 'Non'}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     total_size_before = 0
     total_size_after = 0
@@ -667,9 +667,9 @@ def cleanup_all_players(
             print(f"  💾 Espace libéré : {saved_kb:,} KB (-{percent:.1f}%)")
 
     # Résumé global
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("RÉSUMÉ GLOBAL")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Joueurs traités : {len(results)}")
 
     total_saved = total_size_before - total_size_after
@@ -821,9 +821,9 @@ def main() -> None:
             compact_player_db(player_db, args.gamertag)
             result["size_after_kb"] = player_db.stat().st_size // 1024
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("RÉSULTAT")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         if result.get("coverage") and result["coverage"]["local_count"] > 0:
             cov = result["coverage"]

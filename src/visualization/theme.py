@@ -34,11 +34,11 @@ def apply_halo_plot_style(
         # Fond Waypoint (section news) pour cohérence avec l'UI
         paper_bgcolor=bg_color,
         plot_bgcolor=bg_color,
-        font=dict(color=THEME_COLORS.text_primary, size=13),
-        hoverlabel=dict(
-            bgcolor=THEME_COLORS.bg_plot_rgba(0.96),
-            bordercolor=THEME_COLORS.border,
-        ),
+        font={"color": THEME_COLORS.text_primary, "size": 13},
+        hoverlabel={
+            "bgcolor": THEME_COLORS.bg_plot_rgba(0.96),
+            "bordercolor": THEME_COLORS.border,
+        },
     )
 
     if title is not None:
@@ -76,32 +76,20 @@ def get_default_layout_kwargs(height: int | None = None) -> dict:
     cfg = PLOT_CONFIG
     return {
         "height": height or cfg.default_height,
-        "margin": dict(
-            l=cfg.margin_left,
-            r=cfg.margin_right,
-            t=cfg.margin_top,
-            b=cfg.margin_bottom,
-        ),
+        "margin": {
+            "l": cfg.margin_left,
+            "r": cfg.margin_right,
+            "t": cfg.margin_top,
+            "b": cfg.margin_bottom,
+        },
     }
 
 
 def get_legend_horizontal_top() -> dict:
     """Retourne la configuration pour une légende horizontale en haut."""
-    return dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="left",
-        x=0,
-    )
+    return {"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0}
 
 
 def get_legend_horizontal_bottom() -> dict:
     """Retourne la configuration pour une légende horizontale en bas."""
-    return dict(
-        orientation="h",
-        yanchor="top",
-        y=-0.22,
-        xanchor="left",
-        x=0,
-    )
+    return {"orientation": "h", "yanchor": "top", "y": -0.22, "xanchor": "left", "x": 0}

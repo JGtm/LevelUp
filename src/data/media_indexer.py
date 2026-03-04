@@ -204,7 +204,7 @@ class MediaIndexer:
         finally:
             conn.close()
 
-    def ensure_schema(self) -> None:
+    def ensure_schema(self) -> None:  # noqa: C901, PLR0912, PLR0915
         """Crée ou migre le schéma media_files et media_match_associations.
 
         Raises:
@@ -430,7 +430,7 @@ class MediaIndexer:
             logger.warning("Métadonnées %s: %s", file_path, e)
             return None
 
-    def scan_and_index(
+    def scan_and_index(  # noqa: C901, PLR0912, PLR0915
         self,
         videos_dir: Path | None = None,
         screens_dir: Path | None = None,
@@ -640,9 +640,7 @@ class MediaIndexer:
 
         # Charger le mapping gamertag→xuid depuis shared_matches.duckdb
         xuid_by_gamertag: dict[str, str] = {}
-        shared_path = get_shared_matches_path_from_player(
-            PLAYERS_DIR / "_any" / PLAYER_DB_FILENAME
-        )
+        shared_path = get_shared_matches_path_from_player(PLAYERS_DIR / "_any" / PLAYER_DB_FILENAME)
         # Retrouver shared_matches.duckdb depuis la première DB joueur valide
         for player_dir in PLAYERS_DIR.iterdir():
             if player_dir.is_dir():
@@ -654,9 +652,7 @@ class MediaIndexer:
         if shared_path and shared_path.exists():
             try:
                 with duckdb.connect(str(shared_path), read_only=True) as sc:
-                    rows = sc.execute(
-                        "SELECT xuid, gamertag FROM xuid_aliases"
-                    ).fetchall()
+                    rows = sc.execute("SELECT xuid, gamertag FROM xuid_aliases").fetchall()
                     for xuid_val, gamertag_val in rows:
                         if gamertag_val and xuid_val:
                             # Normaliser la casse pour la correspondance
@@ -684,7 +680,7 @@ class MediaIndexer:
         others = [(p, x) for p, x in all_dbs if p.resolve() != current]
         return current_first + others
 
-    def associate_with_matches(self, tolerance_minutes: int = 1) -> int:
+    def associate_with_matches(self, tolerance_minutes: int = 1) -> int:  # noqa: C901, PLR0912
         """Associe les médias actifs avec les matchs (multi-joueurs).
 
         Pour chaque média actif, on cherche le match le plus proche (dans la tolérance)
@@ -800,7 +796,7 @@ class MediaIndexer:
         return int(after - before)
 
     @staticmethod
-    def load_media_for_ui(db_path: Path | str, current_xuid: str | None) -> pl.DataFrame:
+    def load_media_for_ui(db_path: Path | str, current_xuid: str | None) -> pl.DataFrame:  # noqa: C901, PLR0912, PLR0915
         """Charge les médias actifs avec associations pour l'onglet Médias (Sprint 5).
 
         Cross-DB : « Mes captures » depuis la DB courante ; « Captures de XXX »
@@ -1010,7 +1006,7 @@ class MediaIndexer:
         return df.sort("capture_end_utc", descending=True, nulls_last=True)
 
     @staticmethod
-    def load_media_for_match(
+    def load_media_for_match(  # noqa: C901
         db_path: Path | str,
         match_id: str,
         current_xuid: str | None = None,  # noqa: ARG004
@@ -1137,7 +1133,7 @@ class MediaIndexer:
 
         return total_gen, total_err
 
-    def _generate_video_thumbnails(self, videos_dir: Path) -> tuple[int, int]:
+    def _generate_video_thumbnails(self, videos_dir: Path) -> tuple[int, int]:  # noqa: PLR0912
         """Génère les thumbnails GIF pour les vidéos."""
         try:
             from scripts.generate_thumbnails import (

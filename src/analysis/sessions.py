@@ -136,10 +136,7 @@ def is_session_potentially_active(
     yesterday = (now - timedelta(days=1)).date()
     today_cutoff = datetime.combine(now.date(), time(cutoff_hour, 0), tzinfo=timezone.utc)
 
-    if last_match_time.date() == yesterday and now < today_cutoff:
-        return True
-
-    return False
+    return last_match_time.date() == yesterday and now < today_cutoff
 
 
 def _parse_teammates_signature(sig: str | None) -> set[str]:
@@ -163,11 +160,8 @@ def _should_start_new_session_on_teammate_change(
     # Cas 1: Passage à "sans amis" (passage à solo)
     if not curr_friends and prev_friends:
         return True
-    # Cas 2: Un ami rejoint
-    if curr_friends - prev_friends:
-        return True
-    # Cas 3: Des amis partent mais aucun nouveau → même session
-    return False
+    # Cas 2: Un ami rejoint — Cas 3: amis partent sans nouvel arrivant → même session
+    return bool(curr_friends - prev_friends)
 
 
 def compute_sessions_with_context_polars(

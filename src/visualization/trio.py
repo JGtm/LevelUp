@@ -9,7 +9,7 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
-def plot_trio_metric(
+def plot_trio_metric(  # noqa: PLR0913
     d_self: DataFrameLike,
     d_f1: DataFrameLike,
     d_f2: DataFrameLike,

@@ -15,7 +15,7 @@ import duckdb
 from src.data.sync.batch_insert import ALIAS_COLUMNS, PARTICIPANT_COLUMNS, batch_upsert_rows
 
 if TYPE_CHECKING:
-    pass
+    from src.data.sync._protocol import _SyncProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class SharedWritesMixin:
     """Méthodes d'écriture dans shared_matches.duckdb."""
 
     def _insert_shared_registry(
-        self,
+        self: _SyncProtocol,
         shared_conn: duckdb.DuckDBPyConnection,
         data: dict[str, Any],
     ) -> None:
@@ -65,7 +65,7 @@ class SharedWritesMixin:
                 data["duration_seconds"],
                 data["team_0_score"],
                 data["team_1_score"],
-                self._spnkr_version,  # type: ignore[attr-defined]
+                self._spnkr_version,
             ),
         )
         # Si le match existait déjà avec mode_category NULL (anciens matchs insérés

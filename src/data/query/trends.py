@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
+from src.data.query._sql_fragments import IS_LOSS, IS_WIN, WIN_RATE_EXPR
 from src.data.query.engine import QueryEngine
 
 
@@ -189,7 +190,7 @@ class TrendAnalyzer:
                     match_id,
                     start_time,
                     outcome,
-                    CASE WHEN outcome = 2 THEN 1 ELSE 0 END as is_win,
+                    {IS_WIN} as is_win,
                     ROW_NUMBER() OVER (ORDER BY start_time DESC) as rn
                 FROM {{table}}
                 WHERE outcome IN (2, 3)  -- Seulement victoires et défaites
@@ -238,10 +239,9 @@ class TrendAnalyzer:
                 SUM(assists) as total_assists,
                 AVG(kda) as avg_kda,
                 AVG(accuracy) as avg_accuracy,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN outcome = 3 THEN 1 ELSE 0 END) as losses,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) * 1.0 /
-                    NULLIF(SUM(CASE WHEN outcome IN (2, 3) THEN 1 ELSE 0 END), 0) as win_rate
+                SUM({IS_WIN}) as wins,
+                SUM({IS_LOSS}) as losses,
+                {WIN_RATE_EXPR} as win_rate
             FROM {{table}}
             WHERE start_time >= '{cutoff.isoformat()}'
             GROUP BY DATE_TRUNC('day', start_time)
@@ -269,10 +269,9 @@ class TrendAnalyzer:
                 SUM(deaths) as total_deaths,
                 AVG(kda) as avg_kda,
                 AVG(accuracy) as avg_accuracy,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN outcome = 3 THEN 1 ELSE 0 END) as losses,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) * 1.0 /
-                    NULLIF(SUM(CASE WHEN outcome IN (2, 3) THEN 1 ELSE 0 END), 0) as win_rate
+                SUM({IS_WIN}) as wins,
+                SUM({IS_LOSS}) as losses,
+                {WIN_RATE_EXPR} as win_rate
             FROM {{table}}
             WHERE start_time >= '{cutoff.isoformat()}'
             GROUP BY DATE_TRUNC('week', start_time)
@@ -302,10 +301,9 @@ class TrendAnalyzer:
                 SUM(time_played_seconds) / 3600.0 as hours_played,
                 AVG(kda) as avg_kda,
                 AVG(accuracy) as avg_accuracy,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN outcome = 3 THEN 1 ELSE 0 END) as losses,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) * 1.0 /
-                    NULLIF(SUM(CASE WHEN outcome IN (2, 3) THEN 1 ELSE 0 END), 0) as win_rate
+                SUM({IS_WIN}) as wins,
+                SUM({IS_LOSS}) as losses,
+                {WIN_RATE_EXPR} as win_rate
             FROM {{table}}
             WHERE start_time >= '{cutoff.isoformat()}'
             GROUP BY DATE_TRUNC('month', start_time)

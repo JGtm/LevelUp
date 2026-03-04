@@ -94,7 +94,7 @@ def _translate_category(cat: str) -> str:
     return _get_category_labels().get(cat, cat)
 
 
-def render_checkbox_filter(
+def render_checkbox_filter(  # noqa: C901, PLR0913
     *,
     label: str,
     options: list[str],
@@ -221,7 +221,7 @@ def _extract_mode_name(full_mode: str) -> str:
     return full_mode
 
 
-def render_hierarchical_checkbox_filter(
+def render_hierarchical_checkbox_filter(  # noqa: C901, PLR0912, PLR0915
     *,
     label: str,
     options: list[str],

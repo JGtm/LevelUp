@@ -19,9 +19,9 @@ if sys.platform == "win32" or "MSYS" in platform.system():
 
 def run_command(cmd, check=True):
     """Exécute une commande et affiche la sortie."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Exécution: {cmd}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
     result = subprocess.run(cmd, shell=True, check=check)
     return result.returncode == 0
 

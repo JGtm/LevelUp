@@ -166,7 +166,7 @@ def main() -> None:
     print("## Gains v4 → v5 (estimés)")
     print("-" * 50)
     print(f"  {'Métrique':30s} {'v4 (estimé)':>12s} {'v5 (mesuré)':>12s} {'Gain':>8s}")
-    print(f"  {'-'*30} {'-'*12} {'-'*12} {'-'*8}")
+    print(f"  {'-' * 30} {'-' * 12} {'-' * 12} {'-' * 8}")
 
     # Estimation v4 : chaque joueur avait ~200 MB
     n_players = len(player_info)

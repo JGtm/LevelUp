@@ -316,4 +316,3 @@ def render_encounter_section(
 
 
 __all__ = ["render_encounter_section"]
-

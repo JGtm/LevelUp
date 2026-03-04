@@ -15,7 +15,7 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
-def plot_metric_bars_by_match(
+def plot_metric_bars_by_match(  # noqa: PLR0913
     df_: DataFrameLike,
     *,
     metric_col: str,
@@ -115,7 +115,7 @@ def plot_metric_bars_by_match(
     return apply_halo_plot_style(fig, height=320)
 
 
-def plot_multi_metric_bars_by_match(
+def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     series: list[tuple[str, DataFrameLike]],
     *,
     metric_col: str,

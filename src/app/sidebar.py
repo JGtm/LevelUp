@@ -171,7 +171,7 @@ def render_player_selector_sidebar(
     return None
 
 
-def render_sync_button(
+def render_sync_button(  # noqa: C901, PLR0912
     *,
     db_path: str,
     settings: AppSettings,

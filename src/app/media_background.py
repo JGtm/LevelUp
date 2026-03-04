@@ -14,7 +14,7 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 
-def background_media_indexing(settings, db_path: str) -> None:
+def background_media_indexing(settings, db_path: str) -> None:  # noqa: C901, PLR0915
     """Lance l'indexation des médias en arrière-plan (non-bloquant).
 
     Dossier par joueur : base_dir/{gamertag}/. Indexe tous les joueurs connus.
@@ -45,7 +45,7 @@ def background_media_indexing(settings, db_path: str) -> None:
     st.session_state["_media_indexing_started"] = True
     logger.info("🚀 Démarrage indexation médias en arrière-plan")
 
-    def worker():
+    def worker():  # noqa: C901, PLR0912, PLR0915
         try:
             from pathlib import Path
 

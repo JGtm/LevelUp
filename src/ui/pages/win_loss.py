@@ -91,7 +91,7 @@ def _style_map_table_row(row: pd.Series) -> pd.Series:
 
 
 @fragment_if_available
-def render_win_loss_page(
+def render_win_loss_page(  # noqa: PLR0913
     dff: DataFrameLike,
     base: DataFrameLike,
     picked_session_labels: list[str] | None,
@@ -131,7 +131,8 @@ def render_win_loss_page(
 
 def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str:
     """Affiche le graphe outcomes over time. Retourne le bucket_label."""
-    try:
+    bucket_label = t("wl_period_default")
+    with safe_chart_render("wl_cannot_display_evolution"):
         fig_out, bucket_label = plot_outcomes_over_time(
             dff, session_style=is_session_scope, lang=get_lang()
         )
@@ -140,10 +141,7 @@ def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str
             st.plotly_chart(fig_out, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
             st.info(t("wl_insufficient_evolution"))
-        return bucket_label
-    except Exception as e:
-        st.warning(t("wl_cannot_display_evolution", error=e))
-        return t("wl_period_default")
+    return bucket_label
 
 
 @fragment_if_available
@@ -225,22 +223,19 @@ def _render_top_by_week(dff: pl.DataFrame) -> None:
     if "start_time" not in dff.columns:
         st.info(t("missing_time_data"))
         return
-    try:
-        rank_col = "rank" if "rank" in dff.columns else "outcome"
-        with safe_chart_render():
-            fig_top = plot_matches_at_top_by_week(
-                dff,
-                title=None,
-                rank_col=rank_col,
-                top_n_ranks=1,
-                lang=get_lang(),
-            )
-            if fig_top is not None:
-                st.plotly_chart(fig_top, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-            else:
-                st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
+    rank_col = "rank" if "rank" in dff.columns else "outcome"
+    with safe_chart_render():
+        fig_top = plot_matches_at_top_by_week(
+            dff,
+            title=None,
+            rank_col=rank_col,
+            top_n_ranks=1,
+            lang=get_lang(),
+        )
+        if fig_top is not None:
+            st.plotly_chart(fig_top, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+        else:
+            st.info(t("insufficient_data_chart"))
 
 
 @fragment_if_available
@@ -390,7 +385,7 @@ def _render_ratio_by_map_section(
     key, label = metric
 
     view = breakdown.head(20).reverse()
-    try:
+    with safe_chart_render():
         if key == "ratio_global":
             fig = plot_map_ratio_with_winloss(view, title=label)
         else:
@@ -404,8 +399,6 @@ def _render_ratio_by_map_section(
             st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
     base_scope = base_scope_pl
     _render_map_table(breakdown, base_scope)
