@@ -921,6 +921,7 @@ class MatchQueriesMixin:
         *,
         include_firefight: bool = True,
         columns: list[str] | None = None,
+        max_matches: int | None = None,
     ) -> pl.DataFrame:
         """Charge les matchs en DataFrame Polars via Arrow zero-copy.
 
@@ -938,6 +939,9 @@ class MatchQueriesMixin:
                      headshot_kills, avg_life_seconds, time_played_seconds,
                      kills, deaths, assists, accuracy, my_team_score,
                      enemy_team_score, team_mmr, enemy_mmr, personal_score.
+            max_matches: Limite SQL sur les N matchs les plus récents.
+                         None (défaut) = tous les matchs. Réduit la RAM
+                         pour les joueurs avec > 2000 matchs (P3).
 
         Returns:
             DataFrame Polars avec les colonnes demandées.
@@ -1036,51 +1040,105 @@ class MatchQueriesMixin:
                 {rank_select}
         """
 
-        sql = f"""
-            SELECT {all_select_exprs}
-            FROM {source_sql}{metadata_joins}{pms_join}{rank_join}
-            WHERE {where_sql}
-            ORDER BY match_stats.start_time ASC
-        """
+        # P3 : LIMIT SQL pour réduire la charge mémoire sur les grandes histoires
+        _limit_clause = f"LIMIT {int(max_matches)}" if max_matches else ""
+
+        if _limit_clause:
+            sql = f"""
+                SELECT * FROM (
+                    SELECT {all_select_exprs}
+                    FROM {source_sql}{metadata_joins}{pms_join}{rank_join}
+                    WHERE {where_sql}
+                    ORDER BY match_stats.start_time DESC
+                    {_limit_clause}
+                ) _recent
+                ORDER BY start_time ASC
+            """
+        else:
+            sql = f"""
+                SELECT {all_select_exprs}
+                FROM {source_sql}{metadata_joins}{pms_join}{rank_join}
+                WHERE {where_sql}
+                ORDER BY match_stats.start_time ASC
+            """
 
         try:
             result = conn.execute(sql, source_params) if source_params else conn.execute(sql)
             df = result_to_polars(result)
         except Exception as e:
             logger.warning(f"Requête avec jointures échouée: {e}. Fallback.")
-            sql_fallback = f"""
-                SELECT
-                    match_stats.match_id,
-                    match_stats.start_time,
-                    match_stats.map_id,
-                    match_stats.map_name,
-                    match_stats.playlist_id,
-                    match_stats.playlist_name,
-                    match_stats.pair_id,
-                    match_stats.pair_name,
-                    match_stats.game_variant_id,
-                    match_stats.game_variant_name,
-                    match_stats.outcome,
-                    match_stats.team_id,
-                    match_stats.kda,
-                    match_stats.max_killing_spree,
-                    match_stats.headshot_kills,
-                    match_stats.avg_life_seconds,
-                    match_stats.time_played_seconds,
-                    COALESCE(match_stats.kills, 0) as kills,
-                    COALESCE(match_stats.deaths, 0) as deaths,
-                    COALESCE(match_stats.assists, 0) as assists,
-                    match_stats.accuracy,
-                    match_stats.my_team_score,
-                    match_stats.enemy_team_score,
-                    {team_mmr_expr} as team_mmr,
-                    {enemy_mmr_expr} as enemy_mmr,
-                    {personal_score_select},
-                    {rank_select}
-                FROM {source_sql}{pms_join}{rank_join}
-                WHERE {where_sql}
-                ORDER BY match_stats.start_time ASC
-            """
+            if _limit_clause:
+                sql_fallback = f"""
+                    SELECT * FROM (
+                        SELECT
+                            match_stats.match_id,
+                            match_stats.start_time,
+                            match_stats.map_id,
+                            match_stats.map_name,
+                            match_stats.playlist_id,
+                            match_stats.playlist_name,
+                            match_stats.pair_id,
+                            match_stats.pair_name,
+                            match_stats.game_variant_id,
+                            match_stats.game_variant_name,
+                            match_stats.outcome,
+                            match_stats.team_id,
+                            match_stats.kda,
+                            match_stats.max_killing_spree,
+                            match_stats.headshot_kills,
+                            match_stats.avg_life_seconds,
+                            match_stats.time_played_seconds,
+                            COALESCE(match_stats.kills, 0) as kills,
+                            COALESCE(match_stats.deaths, 0) as deaths,
+                            COALESCE(match_stats.assists, 0) as assists,
+                            match_stats.accuracy,
+                            match_stats.my_team_score,
+                            match_stats.enemy_team_score,
+                            {team_mmr_expr} as team_mmr,
+                            {enemy_mmr_expr} as enemy_mmr,
+                            {personal_score_select},
+                            {rank_select}
+                        FROM {source_sql}{pms_join}{rank_join}
+                        WHERE {where_sql}
+                        ORDER BY match_stats.start_time DESC
+                        {_limit_clause}
+                    ) _recent
+                    ORDER BY start_time ASC
+                """
+            else:
+                sql_fallback = f"""
+                    SELECT
+                        match_stats.match_id,
+                        match_stats.start_time,
+                        match_stats.map_id,
+                        match_stats.map_name,
+                        match_stats.playlist_id,
+                        match_stats.playlist_name,
+                        match_stats.pair_id,
+                        match_stats.pair_name,
+                        match_stats.game_variant_id,
+                        match_stats.game_variant_name,
+                        match_stats.outcome,
+                        match_stats.team_id,
+                        match_stats.kda,
+                        match_stats.max_killing_spree,
+                        match_stats.headshot_kills,
+                        match_stats.avg_life_seconds,
+                        match_stats.time_played_seconds,
+                        COALESCE(match_stats.kills, 0) as kills,
+                        COALESCE(match_stats.deaths, 0) as deaths,
+                        COALESCE(match_stats.assists, 0) as assists,
+                        match_stats.accuracy,
+                        match_stats.my_team_score,
+                        match_stats.enemy_team_score,
+                        {team_mmr_expr} as team_mmr,
+                        {enemy_mmr_expr} as enemy_mmr,
+                        {personal_score_select},
+                        {rank_select}
+                    FROM {source_sql}{pms_join}{rank_join}
+                    WHERE {where_sql}
+                    ORDER BY match_stats.start_time ASC
+                """
             result = (
                 conn.execute(sql_fallback, source_params)
                 if source_params
