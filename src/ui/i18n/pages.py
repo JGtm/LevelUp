@@ -1732,4 +1732,18 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "{player} — Durée de vie (avec {partner})",
         "en": "{player} — Life span (with {partner})",
     },
+    # ── Historique des rencontres (v5.4) ─────────────────────────────────────
+    "mv_encounter_history": {
+        "fr": "Historique des rencontres",
+        "en": "Encounter History",
+    },
+    "col_role": {"fr": "Rôle", "en": "Side"},
+    "col_encounters": {"fr": "Rencontres", "en": "Encounters"},
+    "col_wr_ally": {"fr": "WR allié", "en": "WR ally"},
+    "col_wr_enemy": {"fr": "WR ennemi", "en": "WR enemy"},
+    "col_kd_cross": {"fr": "K/D croisé", "en": "Cross K/D"},
+    "col_last_seen": {"fr": "Dernière fois", "en": "Last seen"},
+    "badge_tough_nut": {"fr": "Dur à cuire", "en": "Tough Nut"},
+    "badge_ally_plus": {"fr": "Allié+", "en": "Ally+"},
+    "badge_coriace": {"fr": "Coriace", "en": "Tough Guy"},
 }

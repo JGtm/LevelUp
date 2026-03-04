@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [docs/FR/CHANGELOG.md](docs/FR/CHANGELOG.md)
 
+## [5.4.0] - 2026-03-04
+
+### Added
+
+- **Historique des rencontres — section sous le scoreboard** (`src/ui/pages/match_view_encounters.py`)
+  - Nouveau tableau HTML affiché directement sous le scoreboard sur la page Match View
+  - Pour chaque joueur non-ami du match : fréquence de rencontres, répartition allié/ennemi, win rate allié, win rate ennemi, K/D croisé (depuis `killer_victim_pairs`), date de dernière rencontre
+  - Tri : ennemis en premier, puis alliés ; dans chaque groupe par `total_encounters DESC`
+  - Ligne compacte grisée pour les premières rencontres (total = 1), ligne complète avec métriques au-delà
+  - Badges automatiques inline : **Dur à cuire** (deaths/kills > 2 et ≥ 3 morts), **Allié+** (WR allié ≥ 65% sur ≥ 2 matchs), **Coriace** (WR ennemi ≤ 35% sur ≥ 3 matchs)
+  - Code couleur réutilisant les classes CSS du scoreboard (`os-sb-td--best`, `os-sb-td--worst`, amber)
+  - Périmètre : tous les joueurs non membres de l'escouade / non-amis
+
+- **Loader SQL dédié** (`src/data/repositories/_encounter_loader.py`)
+  - `load_encounter_stats(self_xuid, target_xuids, db_path)` — 3 CTEs sur `shared_matches.duckdb` (match_participants, killer_victim_pairs, match_registry, xuid_aliases)
+  - Dérivation automatique du chemin `shared_matches.duckdb` depuis `stats.duckdb`
+  - Connexion `duckdb_read_only()` sur shared directement (no ATTACH conflict)
+
+- **Logique pure testable** (`src/ui/pages/match_view_encounters_logic.py`)
+  - `EncounterStats` (Pydantic v2), `Badge` (dataclass), `ordinal_fr()`, `build_friends_set()`, `filter_encounter_xuids()`, `compute_encounter_badges()`
+  - `build_friends_set` : double source `player_match_enrichment.friends_xuids` → fallback `friends_defaults.json`
+  - 28 tests unitaires dans `tests/test_match_view_encounters.py` (sans import Streamlit)
+
+- **Clés i18n** (`src/ui/i18n/pages.py`) : `mv_encounter_history`, `col_role`, `col_encounters`, `col_wr_ally`, `col_wr_enemy`, `col_kd_cross`, `col_last_seen`
+
+### Technical
+
+- `match_view.py` : appel de `render_encounter_section()` après `render_match_scoreboard()` (+10 lignes, zéro logique ajoutée dans le fichier)
+- Architecture SRP respectée : 3 nouveaux fichiers < 350 lignes chacun, fonctions < 50 lignes, logique UI et data séparées
+
+---
+
 ## [5.3.0] - 2026-02-28
 
 ### Added
