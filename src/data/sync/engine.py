@@ -845,16 +845,29 @@ class DuckDBSyncEngine(
     # =========================================================================
 
     def close(self) -> None:
-        """Ferme les connexions DuckDB (player + shared + pve)."""
+        """Ferme les connexions DuckDB (player + shared + pve).
+
+        Exécute un CHECKPOINT explicite sur chaque connexion R/W avant
+        de la fermer. Sans cela, le WAL n'est pas flushed si d'autres
+        connexions R/O (ex. ATTACH des sessions Streamlit) tiennent le
+        fichier ouvert — le mtime ne changerait pas et les caches
+        @st.cache_data ne seraient pas invalidés.
+        """
         if self._connection:
+            with contextlib.suppress(Exception):
+                self._connection.execute("CHECKPOINT")
             with contextlib.suppress(Exception):
                 self._connection.close()
             self._connection = None
         if self._shared_connection:
             with contextlib.suppress(Exception):
+                self._shared_connection.execute("CHECKPOINT")
+            with contextlib.suppress(Exception):
                 self._shared_connection.close()
             self._shared_connection = None
         if self._pve_connection:
+            with contextlib.suppress(Exception):
+                self._pve_connection.execute("CHECKPOINT")
             with contextlib.suppress(Exception):
                 self._pve_connection.close()
             self._pve_connection = None

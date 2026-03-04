@@ -9,6 +9,7 @@ Ce module contient les fonctions pour :
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import subprocess
@@ -145,9 +146,10 @@ def render_sync_indicator(db_path: str) -> None:
 
     meta = _get_sync_metadata_smart(db_path)
     last_sync = meta.get("last_sync_at")
-    _ = meta.get("total_matches", 0)  # noqa: F841 - Pour usage futur
+    total_matches = meta.get("total_matches", 0)
 
     now = datetime.now(timezone.utc)
+    sync_text = ""
 
     if last_sync:
         delta = now - last_sync
@@ -166,7 +168,7 @@ def render_sync_indicator(db_path: str) -> None:
             days = int(hours / 24)
             time_str = "il y a 1 jour" if days == 1 else f"il y a {days} jours"
 
-        _ = f"{indicator} Sync {time_str}"  # noqa: F841 - Pour usage futur
+        sync_text = f"{indicator} Sync {time_str}"
     else:
         # Pas de métadonnées de sync, on utilise la date de modification du fichier
         try:
@@ -188,17 +190,27 @@ def render_sync_indicator(db_path: str) -> None:
                 days = int(hours / 24)
                 time_str = f"il y a {days} jour{'s' if days > 1 else ''}"
 
-            _ = f"{indicator} Modifié {time_str}"  # noqa: F841 - Pour usage futur
+            sync_text = f"{indicator} Modifié {time_str}"
         except Exception:
-            pass  # Sync inconnue
+            return
 
-    # Affichage compact
-    # match_info = f"({total_matches} matchs)" if total_matches > 0 else ""
-    # st.markdown(
-    #     f"<div style='font-size: 0.85em; color: #888; margin: 4px 0 8px 0;'>"
-    #     f"{sync_text} {match_info}</div>",
-    #     unsafe_allow_html=True,
-    # )
+    if sync_text:
+        match_info = f" ({total_matches} matchs)" if total_matches > 0 else ""
+        st.markdown(
+            f"<div style='font-size: 0.85em; color: #888; margin: 4px 0 8px 0;'>"
+            f"{sync_text}{match_info}</div>",
+            unsafe_allow_html=True,
+        )
+
+
+def _shared_path(player_db: Path) -> Path:
+    """Résout le chemin vers shared_matches.duckdb depuis le chemin joueur."""
+    from src.utils.paths import get_shared_matches_path_from_player
+
+    return (
+        get_shared_matches_path_from_player(str(player_db))
+        or player_db.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+    )
 
 
 def _sync_duckdb_player(  # noqa: C901, PLR0915
@@ -237,24 +249,6 @@ def _sync_duckdb_player(  # noqa: C901, PLR0915
         from src.ui.cache_loaders import _resolve_player_xuid
 
         resolved_xuid = _resolve_player_xuid(str(db_file))
-
-        # Compter les matchs avant (player_match_stats = source de vérité v5)
-        matches_before = 0
-        try:
-            from src.utils.db import duckdb_read_only
-
-            with duckdb_read_only(str(db_file)) as conn:
-                # Essayer player_match_stats (v5), puis match_stats (fallback)
-                for table in ("player_match_stats", "match_stats"):
-                    try:
-                        result = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
-                        if result and result[0]:
-                            matches_before = result[0]
-                            break
-                    except Exception:
-                        continue
-        except Exception:
-            pass
 
         # Récupérer les tokens
         try:
@@ -355,40 +349,21 @@ def _sync_duckdb_player(  # noqa: C901, PLR0915
         if _sync_error is not None:
             return False, f"Erreur sync: {_sync_error}"
 
-        result = _sync_result
-        if result is not None and result.errors:
-            return False, f"Erreur: {'; '.join(result.errors)}"
+        sync_result = _sync_result
+        if sync_result is not None and sync_result.errors:
+            return False, f"Erreur: {'; '.join(sync_result.errors)}"
 
-        # Compter les matchs après (même logique que avant)
-        matches_after = 0
-        try:
-            from src.utils.db import duckdb_read_only
+        # Forcer la mise à jour du mtime des fichiers DB pour invalider les
+        # caches @st.cache_data (db_cache_key surveille les deux fichiers).
+        for path in (str(db_file), str(_shared_path(db_file))):
+            with contextlib.suppress(Exception):
+                os.utime(path, None)
 
-            with duckdb_read_only(str(db_file)) as conn:
-                for table in ("player_match_stats", "match_stats"):
-                    try:
-                        result = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
-                        if result and result[0]:
-                            matches_after = result[0]
-                            break
-                    except Exception:
-                        continue
-        except Exception:
-            pass
-
-        # Forcer la mise à jour du mtime du fichier pour invalider les caches
-        # même si aucun nouveau match n'a été ajouté
-        try:
-            import os
-
-            os.utime(str(db_file), None)
-        except Exception:
-            pass
-
-        new_matches = matches_after - matches_before
-        if new_matches > 0:
-            return True, f"{new_matches} nouveau(x) match(s) synchronisé(s)."
-        return True, f"À jour ({matches_after} matchs)."
+        # Utiliser SyncResult (source de vérité) au lieu de recompter sur
+        # des tables supprimées en v5.1 (player_match_stats, match_stats).
+        if sync_result is not None:
+            return True, sync_result.to_message()
+        return True, "Sync terminé."
 
     try:
         from src.utils.sync_lock import SyncAlreadyRunning, SyncLock

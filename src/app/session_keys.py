@@ -40,6 +40,7 @@ class SK:
     # Cycle de vie application
     # ------------------------------------------------------------------
     CACHE_BUSTER: str = "_cache_buster"
+    IS_SYNCING: str = "_is_syncing"
     STARTUP_WARNINGS: str = "_startup_cfg_warnings"
     STARTUP_ERRORS: str = "_startup_cfg_errors"
     SECRETS_LOADED: str = "_secrets_loaded"
