@@ -349,6 +349,18 @@ class DuckDBSyncEngine(
             perf_count = self.batch_compute_performance_scores()
             logger.info("Performance scores calculés en batch : %d", perf_count)
 
+        # LUSR (skill rating) pour matchs non classés
+        try:
+            if self._shared_connection is not None:
+                with contextlib.suppress(Exception):
+                    self._shared_connection.close()
+                self._shared_connection = None
+            lusr_count = self.batch_compute_lusr(force=False)
+            if lusr_count > 0:
+                logger.info("LUSR calculés post-sync : %d matchs", lusr_count)
+        except Exception as e:
+            logger.warning("Erreur calcul LUSR post-sync (non bloquant) : %s", e)
+
         # Recalculer les sessions
         try:
             from src.data.sessions_backfill import backfill_sessions_for_player

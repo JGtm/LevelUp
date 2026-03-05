@@ -140,6 +140,11 @@ class SkillRatingMixin:
         Returns:
             Nombre de matchs mis à jour.
         """
+        logger.info(
+            "batch_compute_lusr : démarrage (xuid=%s, force=%s)",
+            getattr(self, "_xuid", None),
+            force,
+        )
         if not _LUSR_AVAILABLE:
             logger.debug("Modules LUSR non disponibles, skip batch_compute_lusr")
             return 0
