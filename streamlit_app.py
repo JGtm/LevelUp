@@ -250,7 +250,9 @@ def _tailscale_worker() -> None:
     try:
         from src.utils.tailscale import ensure_funnel_started_once
 
-        ensure_funnel_started_once()
+        url = ensure_funnel_started_once()
+        if url:
+            print(f"[Tailscale] ✅ Funnel actif → {url}", flush=True)
     except Exception as _e:
         print(f"[Tailscale] worker erreur inattendue : {_e}", flush=True)
 
@@ -417,7 +419,16 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
         # Logo en haut de la sidebar
         logo_path = os.path.join(os.path.dirname(__file__), "static", "logo.png")
         if os.path.exists(logo_path):
-            st.image(logo_path, width="stretch")
+            import base64
+
+            with open(logo_path, "rb") as _f:
+                _logo_b64 = base64.b64encode(_f.read()).decode()
+            st.markdown(
+                f"<div style='display:flex;justify-content:center;'>"
+                f"<img src='data:image/png;base64,{_logo_b64}' style='width:65%;'/>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
 
         st.markdown("<div class='os-sidebar-divider'></div>", unsafe_allow_html=True)
 
