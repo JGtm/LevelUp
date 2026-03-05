@@ -28,7 +28,6 @@ from src.ui.pages.explorer_logic import (
     filter_by_date,
     filter_by_squad,
     find_closest_date,
-    fuzzy_search_gamertags,
     get_distinct_dates,
 )
 from src.ui.pages.explorer_results import (
@@ -161,12 +160,10 @@ def _dispatch_results(  # noqa: PLR0913
     )
     if player_gt and player_xuid:
         render_player_results(
-            db_path,
-            xuid,
-            player_xuid,
-            player_gt,
-            waypoint_player,
-            df,
+            self_xuid=xuid,
+            target_xuid=player_xuid,
+            target_gt=player_gt,
+            df=df,
             **mvp,
         )
     elif player_gt and not player_xuid:
@@ -385,31 +382,28 @@ def _render_player_search(
 ) -> tuple[str, str | None]:
     """Rend la section recherche joueur. Retourne (gamertag, xuid|None)."""
     st.subheader(t("exp_player_search"))
-    gt_input = st.text_input(
+    all_gts = _cached_all_gamertags(db_path)
+
+    # Pré-sélection si un gamertag est passé en paramètre (ex: navigation)
+    default_index: int | None = None
+    if pending_gt:
+        pending_lower = pending_gt.strip().casefold()
+        for i, gt in enumerate(all_gts):
+            if gt.casefold() == pending_lower:
+                default_index = i
+                break
+
+    picked = st.selectbox(
         t("exp_player_hint"),
-        value=pending_gt or "",
+        options=all_gts,
+        index=default_index,
         key="_exp_player_input",
         label_visibility="collapsed",
         placeholder=t("exp_player_hint"),
     )
 
-    gt_value = (gt_input or "").strip()
-    resolved_xuid = None
-
-    if len(gt_value) >= 2:
-        all_gts = _cached_all_gamertags(db_path)
-        suggestions = fuzzy_search_gamertags(gt_value, all_gts)
-        if suggestions:
-            picked = st.selectbox(
-                t("exp_player_suggestions"),
-                suggestions,
-                key="_exp_player_suggest",
-            )
-            if picked:
-                gt_value = picked
-                resolved_xuid = resolve_gamertag_to_xuid(db_path, picked)
-        elif gt_value:
-            resolved_xuid = resolve_gamertag_to_xuid(db_path, gt_value)
+    gt_value = (picked or "").strip()
+    resolved_xuid = resolve_gamertag_to_xuid(db_path, gt_value) if gt_value else None
 
     return gt_value, resolved_xuid
 
