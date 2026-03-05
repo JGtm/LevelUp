@@ -50,7 +50,17 @@ def _build_match_rank_html(  # noqa: C901, PLR0912, PLR0915
 
     row_rank = cached_get_match_skill_rank(db_path, match_id, db_key=db_key)
     if row_rank is None:
-        return None
+        _msg = html.escape(t("mv_rating_pending"))
+        _hint = html.escape(t("mv_rating_pending_hint"))
+        return (
+            "<div style='display:flex;align-items:center;gap:16px'>"
+            "<span style='color:#555;font-size:3.2em;line-height:1'>?</span>"
+            "<div style='flex:1;min-width:0'>"
+            f"<div style='font-size:1.1em;font-weight:600;color:#888'>{_msg}</div>"
+            f"<div style='font-size:0.82em;color:#555;margin-top:4px'>{_hint}</div>"
+            "</div>"
+            "</div>"
+        )
 
     (
         rating_type,

@@ -246,16 +246,6 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
         else:
             result = await engine.sync_full(options)
 
-        # LUSR automatique post-sync
-        if result.matches_inserted > 0:
-            try:
-                engine._shared_connection = None
-                lusr_count = engine.batch_compute_lusr(force=False)
-                if lusr_count > 0:
-                    logger.info("[LUSR] %d rating(s) calculé(s) post-sync", lusr_count)
-            except Exception as lusr_exc:
-                logger.warning("[LUSR] Calcul post-sync échoué (non bloquant) : %s", lusr_exc)
-
         engine.close()
 
         return result.success, result.to_message()
