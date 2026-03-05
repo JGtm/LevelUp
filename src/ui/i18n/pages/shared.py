@@ -105,8 +105,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "cit_matches_analyzed": {"fr": "Matchs analysés", "en": "Matches analyzed"},
     "cit_distinct_medals": {"fr": "Médailles distinctes", "en": "Distinct medals"},
     "cit_total_medals": {"fr": "Total médailles", "en": "Total medals"},
-    "cit_filter_category": {"fr": "Catégorie", "en": "Category"},
-    "cit_filter_all": "sel_all",  # alias → common
     "cit_search": {"fr": "Recherche", "en": "Search"},
     "cit_search_placeholder": {
         "fr": "ex: assassin, pilote, multifrag…",
