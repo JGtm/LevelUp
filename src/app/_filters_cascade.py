@@ -147,7 +147,7 @@ def _render_cascade_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
     - Réconciliation mid-session via _reconcile_filter_options avant chaque render
     - Retour 8-tuple : (selected x4, all_values x4) pour intent-based save
     """
-    from src.app.filters_render import _safe_to_date
+    from src.app._filters_shared import safe_to_date as _safe_to_date
 
     dropdown_base = _to_polars(base_for_filters)
 
