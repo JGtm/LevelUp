@@ -10,6 +10,15 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Ajouté
 
+- **Page Explorer — recherche et navigation unifiée dans les matchs** (`src/ui/pages/explorer.py`)
+  - Remplace l'ancienne page "Match" avec 6 modules (explorer, explorer_results, explorer_enrich, explorer_data, explorer_logic, match_table_html)
+  - Filtres en cascade : date, escouade, type, playlist, mode, carte
+  - Recherche floue par gamertag avec suggestions et résolution XUID
+  - Tableau HTML OS-style avec KDA, MMR delta, performance, liens deep-link
+  - Deep linking : `?page=Explorer&gamertag=XXX` ou `&match_id=XXX`
+  - Badges encounter : rival, mentor, proie
+  - i18n FR/EN complet + logging structuré + 40 tests unitaires
+
 - **Historique des rencontres — section sous le scoreboard** (`src/ui/pages/match_view_encounters.py`)
   - Tableau HTML affiché sous le scoreboard sur la page Vue Match
   - Par joueur non-ami : fréquence de rencontres, répartition allié/ennemi, win rate allié/ennemi, K/D croisé, date de dernière rencontre

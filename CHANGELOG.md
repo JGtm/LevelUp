@@ -8,6 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [5.4.0] - 2026-03-04
 
+### Added
+
+- **Page Explorer — recherche et navigation unifiée dans les matchs** (`src/ui/pages/explorer.py`)
+  - Remplace l'ancienne page "Match" avec une architecture 6 modules (explorer, explorer_results, explorer_enrich, explorer_data, explorer_logic, match_table_html)
+  - **Filtres en cascade** : date, escouade (solo/squad), type d'expérience (ranked/unranked/PvE), playlist, mode de jeu, carte
+  - **Recherche floue par gamertag** avec suggestions dynamiques et résolution XUID
+  - **Tableau HTML OS-style** (`match_table_html.py`) : colonnes KDA, kills, deaths, accuracy, score, MMR delta, performance, headshots, spree, avg life ; liens deep-link inter-pages
+  - **Deep linking** : `?page=Explorer&gamertag=XXX` ou `&match_id=XXX` pour navigation directe
+  - **Badges encounter** : rival, mentor, proie — calculés sur l'historique croisé des joueurs
+  - **Enrichissement** (`explorer_enrich.py`) : score équipe, delta MMR, performance, temps de vie moyen, URL Waypoint
+  - **i18n FR/EN complet** (`src/ui/i18n/pages/explorer.py`)
+  - **Logging structuré** : info (deep links), warning (joueur introuvable, DB absente), error (exceptions DB avec `exc_info`)
+  - **40 tests unitaires** (`tests/test_explorer_logic.py`) couvrant logique, enrichissement, accès données et rendu HTML
+
 ### Tests — anciens skips corrigés
 
 Les tests suivants étaient marqués `@pytest.mark.skip` ou `skipif(True)` et sont maintenant exécutables :
