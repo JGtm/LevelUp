@@ -44,15 +44,15 @@ class TestAppUrl:
     """Tests pour _app_url."""
 
     def test_basic(self) -> None:
-        from src.ui.pages.match_history import _app_url
+        from src.ui.pages.match_table_html import app_url as _app_url
 
-        url = _app_url("Match", match_id="abc123")
-        assert "page=Match" in url
+        url = _app_url("Explorer", match_id="abc123")
+        assert "page=Explorer" in url
         assert "match_id=abc123" in url
         assert url.startswith("/")
 
     def test_no_params(self) -> None:
-        from src.ui.pages.match_history import _app_url
+        from src.ui.pages.match_table_html import app_url as _app_url
 
         url = _app_url("Historique")
         assert "page=Historique" in url

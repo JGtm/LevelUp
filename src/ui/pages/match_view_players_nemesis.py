@@ -19,6 +19,7 @@ from src.config import BOT_MAP
 from src.ui import display_name_from_xuid
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
+from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_helpers import os_card
 from src.ui.pages.match_view_players_data import (
     has_table_duckdb as _has_table_duckdb,
@@ -309,7 +310,7 @@ def render_nemesis_section(  # noqa: C901, PLR0913, PLR0915
         with c[0]:
             os_card(
                 t("lbl_nemesis"),
-                nemesis_name,
+                gamertag_link(nemesis_name) if nemesis_name != "-" else "-",
                 _fmt_two_lines(
                     nemesis_killed_me,
                     nemesis_killed_me_approx,
@@ -317,17 +318,19 @@ def render_nemesis_section(  # noqa: C901, PLR0913, PLR0915
                     me_killed_nemesis_approx,
                 ),
                 accent=_cmp_color(nemesis_killed_me, me_killed_nemesis),
+                kpi_is_html=True,
                 sub_style="color: rgba(245, 248, 255, 0.92); font-weight: 800; font-size: 16px; line-height: 1.15;",
                 min_h=110,
             )
         with c[1]:
             os_card(
                 t("lbl_victim"),
-                bully_name,
+                gamertag_link(bully_name) if bully_name != "-" else "-",
                 _fmt_two_lines(
                     bully_killed_me, bully_killed_me_approx, me_killed_bully, me_killed_bully_approx
                 ),
                 accent=_cmp_color(bully_killed_me, me_killed_bully),
+                kpi_is_html=True,
                 sub_style="color: rgba(245, 248, 255, 0.92); font-weight: 800; font-size: 16px; line-height: 1.15;",
                 min_h=110,
             )
