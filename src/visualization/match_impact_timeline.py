@@ -438,9 +438,11 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
     height: int = 380,
     lang: str = "fr",
 ) -> go.Figure | None:
-    """Graphe chronologique des frags cumulés de tous les joueurs d'un match.
+    """Graphe chronologique du score K/D différentiel cumulé de tous les joueurs.
 
-    Compte uniquement les kills (frags) au fil du temps pour chaque joueur.
+    Chaque kill ajoute +1, chaque mort retranche -1. Les courbes peuvent
+    descendre en dessous de zéro, révélant les phases de domination et de
+    remontée au fil du match.
 
     Args:
         highlight_events: Events {event_type, time_ms, xuid, gamertag, ...}.
@@ -480,24 +482,24 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     events.sort(key=lambda x: x[0])
 
-    # Accumuler les frags (kills uniquement) par joueur au fil du temps
-    player_kills: dict[str, int] = {}
-    # Stocker (time_ms, frags_cumulés) par joueur
+    # Accumuler le différentiel K/D (+1 kill, -1 mort) par joueur au fil du temps
+    player_kd: dict[str, int] = {}
+    # Stocker (time_ms, kd_cumulé) par joueur
     player_series: dict[str, list[tuple[int, int]]] = {}
     player_gt: dict[str, str] = {}  # xuid → meilleur gamertag connu
 
     for t_ms, etype, xu, gt_raw in events:
-        if etype != "kill":
-            # Garder le gamertag même sur les deaths
-            if gt_raw and str(gt_raw).strip():
-                player_gt.setdefault(xu, str(gt_raw).strip())
-            continue
-
-        player_kills.setdefault(xu, 0)
+        player_kd.setdefault(xu, 0)
         player_series.setdefault(xu, [])
 
-        player_kills[xu] += 1
-        player_series[xu].append((t_ms, player_kills[xu]))
+        if etype == "kill":
+            player_kd[xu] += 1
+        elif etype == "death":
+            player_kd[xu] -= 1
+        else:
+            continue
+
+        player_series[xu].append((t_ms, player_kd[xu]))
 
         # Garder le gamertag le plus récent
         if gt_raw and str(gt_raw).strip():
@@ -545,9 +547,10 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
         if not series:
             continue
 
-        times = [s[0] for s in series]
-        kds = [s[1] for s in series]
-        labels = [_format_time(t) for t in times]
+        # Insérer (0, 0) pour que toutes les courbes partent du même axe
+        times = [0] + [s[0] for s in series]
+        kds = [0] + [s[1] for s in series]
+        labels = ["00:00"] + [_format_time(t) for t in times[1:]]
         name = _resolve_gt(xu)
         color = player_color_map.get(xu, "#999999")
         is_me = xu == me_xuid
@@ -568,18 +571,24 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 },
                 opacity=1.0 if is_me else 0.65,
                 hovertemplate=(
-                    f"<b>{name}</b><br>"
-                    f"{viz_t('trace_kills', lang)}: %{{y:.0f}}<br>"
-                    "%{text}<extra></extra>"
+                    f"<b>{name}</b><br>" f"Score: %{{y:+.0f}}<br>" "%{text}<extra></extra>"
                 ),
                 text=labels,
             )
         )
 
+    # Ligne de référence à y=0 (équilibre kills/deaths)
+    fig.add_hline(
+        y=0,
+        line_dash="dot",
+        line_color="rgba(200, 200, 200, 0.5)",
+        line_width=1,
+    )
+
     fig.update_layout(
         **get_default_layout_kwargs(height),
         xaxis_title="",
-        yaxis_title=viz_t("axis_kills", lang),
+        yaxis_title=viz_t("axis_kd_score", lang),
         showlegend=True,
         legend={
             "orientation": "h",
@@ -591,15 +600,14 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
         },
     )
 
-    # Figer l'axe Y pour que le toggle de légende ne change pas l'échelle
-    all_frags = [f for xu in player_series for _, f in player_series[xu]]
-    if all_frags:
-        y_max = max(all_frags)
-        margin = max(1, round(y_max * 0.1))
-        fig.update_yaxes(
-            range=[0, y_max + margin],
-            fixedrange=True,
-        )
+    # Calibrer l'axe Y sur les valeurs réelles (potentiellement négatives)
+    all_kd_values = [0] + [v for xu in player_series for _, v in player_series[xu]]
+    y_min = min(all_kd_values)
+    y_max = max(all_kd_values)
+    margin = max(1, round(max(abs(y_min), abs(y_max)) * 0.1))
+    fig.update_yaxes(
+        range=[y_min - margin, y_max + margin],
+    )
 
     # Formater l'axe X en MM:SS
     all_times = [t for xu in player_series for t, _ in player_series[xu]]
