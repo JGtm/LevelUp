@@ -190,5 +190,9 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Pas assez de données ({count} matchs). Il en faut au moins {min} pour la corrélation.",
         "en": "Not enough data ({count} matches). At least {min} are needed for the correlation.",
     },
-    # ── Media tab ───────────────────────────────────────────────────────────
+    # ── Onglets (navigation)
+    "ts_tab_kda": {"fr": "⚔️ K/D/A", "en": "⚔️ K/D/A"},
+    "ts_tab_progression": {"fr": "📈 Progression", "en": "📈 Progression"},
+    "ts_tab_distributions": {"fr": "📊 Distributions", "en": "📊 Distributions"},
+    "ts_tab_advanced": {"fr": "🎯 Avancé", "en": "🎯 Advanced"},
 }
