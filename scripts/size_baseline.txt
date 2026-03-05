@@ -24,7 +24,7 @@ FUNC:src/app/_filters_apply.py:22:apply_filters:191L
 FUNC:src/app/_filters_cascade.py:121:_render_cascade_filters:283L
 FUNC:src/app/_filters_session.py:134:_render_session_filter:262L
 FUNC:src/app/filters.py:341:render_session_filters:94L
-FUNC:src/app/filters_render.py:138:render_filters_sidebar:280L
+FUNC:src/app/filters_render.py:139:render_filters_sidebar:274L
 FUNC:src/app/kpis_render.py:44:render_kpis_section:83L
 FUNC:src/app/main_helpers.py:250:render_profile_hero:140L
 FUNC:src/app/media_background.py:17:background_media_indexing:160L
@@ -55,7 +55,7 @@ FUNC:src/data/sync/_match_processing.py:421:_process_new_match:203L
 FUNC:src/data/sync/_match_processing.py:42:_process_matches:96L
 FUNC:src/data/sync/_performance.py:140:batch_compute_performance_scores:124L
 FUNC:src/data/sync/_performance.py:25:_compute_and_update_performance_score:113L
-FUNC:src/data/sync/_skill_rating.py:127:batch_compute_lusr:183L
+FUNC:src/data/sync/_skill_rating.py:127:batch_compute_lusr:178L
 FUNC:src/data/sync/_skill_rating.py:41:_upsert_csr_rating:84L
 FUNC:src/data/sync/transformers/_helpers.py:453:_extract_mmr_from_skill:86L
 FUNC:src/data/sync/transformers/_match.py:284:extract_participants:138L
@@ -65,6 +65,7 @@ FUNC:src/data/sync/transformers/_medals.py:90:extract_all_medals:94L
 FUNC:src/data/sync/transformers/_skill.py:127:transform_all_skill_stats:142L
 FUNC:src/data/sync/transformers/_skill.py:24:transform_skill_stats:100L
 FUNC:src/ui/_cache_sessions.py:21:cached_compute_sessions_db:171L
+FUNC:src/ui/_sync_duckdb_ops.py:183:sync_player_duckdb_async:81L
 FUNC:src/ui/_sync_duckdb_ops.py:20:_sync_duckdb_player:119L
 FUNC:src/ui/_sync_duckdb_ops.py:42:_sync_async:82L
 FUNC:src/ui/cache_loaders.py:189:load_df_optimized:96L
@@ -105,7 +106,7 @@ FUNC:src/ui/pages/match_view_players.py:50:render_roster_section:129L
 FUNC:src/ui/pages/match_view_players_nemesis.py:170:render_nemesis_section:208L
 FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
-FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
+FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:174L
 FUNC:src/ui/pages/media_library_data.py:246:load_match_windows_from_db:142L
 FUNC:src/ui/pages/media_library_data.py:406:load_media_from_db:100L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
