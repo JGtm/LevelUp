@@ -29,7 +29,7 @@ FUNC:src/app/kpis_render.py:44:render_kpis_section:83L
 FUNC:src/app/main_helpers.py:250:render_profile_hero:140L
 FUNC:src/app/media_background.py:17:background_media_indexing:160L
 FUNC:src/app/media_background.py:48:worker:126L
-FUNC:src/app/page_router.py:263:dispatch_page:148L
+FUNC:src/app/page_router.py:264:dispatch_page:148L
 FUNC:src/app/profile.py:187:load_profile_assets:101L
 FUNC:src/app/sidebar.py:174:render_sync_button:120L
 FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:106L
@@ -92,8 +92,8 @@ FUNC:src/ui/pages/career.py:66:_render_lusr_section:168L
 FUNC:src/ui/pages/career_logic.py:209:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:19:render_citations_page:169L
 FUNC:src/ui/pages/last_match.py:107:render_match_search_page:164L
-FUNC:src/ui/pages/match_history.py:181:_render_history_table:147L
-FUNC:src/ui/pages/match_history.py:39:render_match_history_page:139L
+FUNC:src/ui/pages/match_history.py:173:_render_history_table:147L
+FUNC:src/ui/pages/match_history.py:31:render_match_history_page:139L
 FUNC:src/ui/pages/match_view.py:64:render_match_view:427L
 FUNC:src/ui/pages/match_view_charts.py:276:_render_spree_headshots:124L
 FUNC:src/ui/pages/match_view_charts.py:43:render_expected_vs_actual:230L

@@ -347,21 +347,29 @@ def _parse_query_params() -> None:
         qp = dict(st.query_params)
         qp_page = _qp_first(qp.get("page"))
         qp_mid = _qp_first(qp.get("match_id"))
+        qp_gt = _qp_first(qp.get("gamertag"))
     except Exception:
         qp_page = None
         qp_mid = None
-    qp_params = (str(qp_page or "").strip(), str(qp_mid or "").strip())
+        qp_gt = None
+    qp_params = (str(qp_page or "").strip(), str(qp_mid or "").strip(), str(qp_gt or "").strip())
     if any(qp_params) and st.session_state.get("_consumed_query_params") != qp_params:
         st.session_state[SK.CONSUMED_QUERY_PARAMS] = qp_params
         if qp_params[0]:
             st.session_state[SK.PENDING_PAGE] = qp_params[0]
         if qp_params[1]:
             st.session_state[SK.PENDING_MATCH_ID] = qp_params[1]
-        if qp_params[0] or qp_params[1]:
+        if qp_params[2]:
+            st.session_state[SK.PENDING_GAMERTAG] = qp_params[2]
+            # Auto-navigate to Explorer for gamertag deep links
+            if not qp_params[0]:
+                st.session_state[SK.PENDING_PAGE] = "Explorer"
+        if any(qp_params):
             logger.info(
-                "Deep link consommé: page=%r, match_id=%r",
+                "Deep link consommé: page=%r, match_id=%r, gamertag=%r",
                 qp_params[0] or None,
                 qp_params[1] or None,
+                qp_params[2] or None,
             )
         # Nettoie l'URL après consommation
         try:
@@ -724,10 +732,10 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
 
         render_last_match_page(dff=ctx.dff, **ctx.match_view_params)
 
-    def _page_match_search() -> None:
-        from src.ui.pages import render_match_search_page
+    def _page_explorer() -> None:
+        from src.ui.pages import render_explorer_page
 
-        render_match_search_page(df=ctx.df, dff=ctx.dff, **ctx.match_view_params)
+        render_explorer_page(df=ctx.df, dff=ctx.dff, **ctx.match_view_params)
 
     def _page_media() -> None:
         from src.ui.pages import render_media_tab
@@ -810,7 +818,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
         "timeseries": _page_timeseries,
         "session_compare": _page_session_compare,
         "last_match": _page_last_match,
-        "match": _page_match_search,
+        "explorer": _page_explorer,
         "media": _page_media,
         "citations": _page_citations,
         "win_loss": _page_win_loss,

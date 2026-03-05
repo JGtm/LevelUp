@@ -26,7 +26,7 @@ PAGE_KEYS: list[str] = [
     "timeseries",
     "session_compare",
     "last_match",
-    "match",
+    "explorer",
     "media",
     "citations",
     "win_loss",
@@ -41,7 +41,7 @@ _PAGE_I18N_KEYS: dict[str, str] = {
     "timeseries": "page_timeseries",
     "session_compare": "page_session_compare",
     "last_match": "page_last_match",
-    "match": "page_match",
+    "explorer": "page_explorer",
     "media": "page_media",
     "citations": "page_citations",
     "win_loss": "page_win_loss",
@@ -56,7 +56,8 @@ _LEGACY_NAME_TO_SLUG: dict[str, str] = {
     "Séries temporelles": "timeseries",
     "Comparaison de sessions": "session_compare",
     "Dernier match": "last_match",
-    "Match": "match",
+    "Match": "explorer",
+    "Explorer": "explorer",
     "Médias": "media",
     "Citations": "citations",
     "Victoires/Défaites": "win_loss",
@@ -182,7 +183,7 @@ _PAGE_URL_PATHS: dict[str, str] = {
     "timeseries": "timeseries",
     "session_compare": "session-compare",
     "last_match": "last-match",
-    "match": "match",
+    "explorer": "explorer",
     "media": "medias",
     "citations": "citations",
     "win_loss": "win-loss",
@@ -196,7 +197,7 @@ _PAGE_ICONS: dict[str, str] = {
     "timeseries": "📈",
     "session_compare": "🔄",
     "last_match": "🎯",
-    "match": "🔍",
+    "explorer": "🔍",
     "media": "🎬",
     "citations": "🏅",
     "win_loss": "📊",
@@ -304,7 +305,7 @@ def dispatch_page(  # noqa: C901, PLR0912, PLR0913
     if page == "last_match":
         render_last_match_page_fn(dff=dff, **match_view_params)
 
-    elif page == "match":
+    elif page == "explorer":
         render_match_search_page_fn(df=df, dff=dff, **match_view_params)
 
     elif page == "citations":
