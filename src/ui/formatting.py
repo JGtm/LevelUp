@@ -444,3 +444,18 @@ def parse_date_fr_input(value: str | None, *, default_value: date) -> date:
         return date(yyyy, mm, dd)
     except Exception:
         return default_value
+
+
+def format_time_ms(ms: int) -> str:
+    """Formate un timestamp en millisecondes vers ``M:SS``.
+
+    Args:
+        ms: Durée en millisecondes.
+
+    Returns:
+        Chaîne formatée ``"M:SS"`` (ex. ``"3:05"``).
+    """
+    total_sec = max(0, ms // 1000)
+    minutes = total_sec // 60
+    seconds = total_sec % 60
+    return f"{minutes}:{seconds:02d}"

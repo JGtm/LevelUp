@@ -193,10 +193,11 @@ class TestMatchViewPlayersHelpers:
     """Tests pour les helpers de match_view_players."""
 
     def test_is_duckdb_v4_path(self) -> None:
-        from src.ui.pages.match_view_players import _is_duckdb_v4_path
+        # has_table_duckdb utilise is_duckdb_v4_path en interne — tester indirectement
+        from src.utils.db import is_duckdb_v4_path
 
-        assert _is_duckdb_v4_path("data/players/Test/stats.duckdb") is True
-        assert _is_duckdb_v4_path("some/path/stats.db") is False
+        assert is_duckdb_v4_path("data/players/Test/stats.duckdb") is True
+        assert is_duckdb_v4_path("some/path/stats.db") is False
 
 
 # =============================================================================

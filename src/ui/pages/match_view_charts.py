@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import plotly.graph_objects as go
@@ -18,6 +19,8 @@ from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_numeric(value: Any) -> float:
@@ -47,6 +50,7 @@ def render_expected_vs_actual(  # noqa: C901, PLR0912, PLR0913, PLR0915
     xuid: str | None = None,
 ) -> None:
     """Rend la section Réel vs Attendu avec moyenne historique par catégorie de mode."""
+    logger.debug("charts: rendu expected vs actual, xuid=%s", xuid)
     # Normaliser df_full en Polars
     if df_full is not None:
         df_full = ensure_polars(df_full)
@@ -146,6 +150,7 @@ def render_expected_vs_actual(  # noqa: C901, PLR0912, PLR0913, PLR0915
     try:
         real_ratio_f = float(real_ratio) if real_ratio == real_ratio else None
     except Exception:
+        logger.warning("charts: conversion ratio impossible, valeur=%s", real_ratio)
         real_ratio_f = None
     if real_ratio_f is None:
         denom = max(1.0, float(row.get("deaths") or 0.0))
@@ -326,7 +331,11 @@ def _render_spree_headshots(
                     total = sum(perfect_counts.get(mid, 0) for mid in match_ids)
                     hist_avgs["avg_perfect_kills"] = total / len(match_ids)
         except Exception:
-            pass
+            logger.warning(
+                "charts: erreur chargement perfect kills, match=%s",
+                row.get("match_id"),
+                exc_info=True,
+            )
 
     has_spree_or_hs = (spree_v == spree_v) or (headshots_v == headshots_v)
     if has_spree_or_hs or (db_path and xuid):

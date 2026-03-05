@@ -16,6 +16,7 @@ from typing import Any
 import plotly.graph_objects as go
 
 from src.data.domain.refdata import Outcome
+from src.ui.formatting import format_time_ms as _format_time
 from src.ui.i18n.viz import viz_t
 from src.visualization.theme import apply_halo_plot_style, get_default_layout_kwargs
 
@@ -180,14 +181,6 @@ def compute_single_match_impact(
 # =============================================================================
 # Construction du graphe Timeline
 # =============================================================================
-
-
-def _format_time(ms: int) -> str:
-    """Formate un timestamp en ms vers 'M:SS'."""
-    total_sec = max(0, ms // 1000)
-    minutes = total_sec // 60
-    seconds = total_sec % 60
-    return f"{minutes}:{seconds:02d}"
 
 
 def plot_match_kill_death_timeline(  # noqa: C901, PLR0912, PLR0915

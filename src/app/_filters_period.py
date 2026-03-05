@@ -12,19 +12,8 @@ from datetime import date
 
 import streamlit as st
 
+from src.app._filters_shared import safe_to_date as _safe_to_date
 from src.ui.i18n import t
-
-
-def _safe_to_date(val: object) -> date:
-    """Convertit une valeur en date Python, date.today() si invalide."""
-    if isinstance(val, date):
-        return val
-    try:
-        from dateutil.parser import parse as _parse_dt
-
-        return _parse_dt(str(val)).date()
-    except (ValueError, TypeError, ImportError):
-        return date.today()
 
 
 def _render_period_filter(dmin: date, dmax: date) -> tuple[date, date]:

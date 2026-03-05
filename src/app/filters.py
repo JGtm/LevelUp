@@ -16,6 +16,7 @@ import polars as pl
 import streamlit as st
 
 from src.analysis import build_xuid_option_map
+from src.app._filters_shared import safe_to_date as _safe_to_date
 from src.app.helpers import (
     clean_asset_label,
     normalize_map_label,
@@ -36,19 +37,6 @@ from src.ui.components import (
 from src.ui.i18n import t
 from src.ui.vectorize_helpers import build_mapping
 from src.utils.polars_compat import ensure_polars as _to_polars
-
-
-def _safe_to_date(val: object) -> date:
-    """Convertit une valeur en date Python, date.today() si invalide."""
-    if isinstance(val, date):
-        return val
-    try:
-        from dateutil.parser import parse as _parse_dt
-
-        return _parse_dt(str(val)).date()
-    except (ValueError, TypeError, ImportError):
-        return date.today()
-
 
 # =============================================================================
 # Friends helpers

@@ -100,16 +100,7 @@ def _cascade_reset_filters() -> None:
             del st.session_state[wk]
 
 
-def _safe_to_date(val: object) -> date:
-    """Convertit une valeur en date Python, date.today() si invalide."""
-    if isinstance(val, date):
-        return val
-    try:
-        from dateutil.parser import parse as _parse_dt
-
-        return _parse_dt(str(val)).date()
-    except (ValueError, TypeError, ImportError):
-        return date.today()
+from src.app._filters_shared import safe_to_date as _safe_to_date
 
 
 def _session_labels_ordered_by_last_match(base_s: pl.DataFrame) -> list[str]:

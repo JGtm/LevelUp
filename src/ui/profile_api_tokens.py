@@ -5,56 +5,11 @@ Chargement des variables d'environnement et refresh des tokens via Azure.
 
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
 import os
-import re
-from pathlib import Path
 
-
-def _repo_root() -> Path:
-    """Retourne la racine du repository."""
-    return Path(__file__).resolve().parents[2]
-
-
-def _load_dotenv_if_present() -> None:
-    """Charge `.env.local` puis `.env` à la racine du repo (si présents).
-
-    Objectif: permettre à Streamlit (et aux helpers UI) de trouver les variables
-    SPNKr Azure sans exiger une export manuelle dans le shell.
-    Règles:
-    - lignes `KEY=VALUE`
-    - ignore lignes vides / commentaires (#)
-    - ne remplace pas une variable déjà définie dans l'environnement
-    """
-    repo_root = _repo_root()
-    for name in (".env.local", ".env"):
-        dotenv_path = repo_root / name
-        if not dotenv_path.exists():
-            continue
-        try:
-            content = dotenv_path.read_text(encoding="utf-8")
-        except Exception:
-            continue
-
-        for raw_line in content.splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            if not key:
-                continue
-            if os.environ.get(key) is None:
-                os.environ[key] = value
-
-
-def _normalize_gamertag_for_env(gamertag: str) -> str:
-    """Normalise un gamertag en cl\u00e9 d'env valide (majuscules, non-alphanum \u2192 underscore)."""
-    return re.sub(r"[^A-Za-z0-9]", "_", gamertag.strip()).upper()
+from src.utils.async_compat import run_sync as _run_sync_compat
+from src.utils.env import load_dotenv_if_present as _load_dotenv_if_present
+from src.utils.env import normalize_gamertag_for_env as _normalize_gamertag_for_env
 
 
 def _is_probable_auth_error(err: Exception) -> bool:
@@ -186,16 +141,7 @@ def ensure_spnkr_tokens(*, timeout_seconds: int = 12) -> tuple[bool, str | None]
         Tuple (ok, error_message).
     """
 
-    def _run_sync(coro):
-        try:
-            return asyncio.run(coro)
-        except RuntimeError as e:
-            msg = str(e)
-            if "asyncio.run() cannot be called" not in msg:
-                raise
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                fut = ex.submit(lambda: asyncio.run(coro))
-                return fut.result(timeout=float(timeout_seconds) + 20.0)
+    _run_sync = _run_sync_compat
 
     async def _run() -> None:
         import aiohttp

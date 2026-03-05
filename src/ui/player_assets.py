@@ -7,9 +7,7 @@ Contraintes:
 
 from __future__ import annotations
 
-import asyncio
 import base64
-import concurrent.futures
 import hashlib
 import json
 import mimetypes
@@ -18,6 +16,8 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+
+from src.utils.async_compat import run_sync as _run_sync_compat
 
 
 def get_player_assets_cache_dir() -> str:
@@ -111,15 +111,7 @@ def download_image_to_cache(  # noqa: C901, PLR0915
         return headers
 
     def _run_sync(coro):
-        try:
-            return asyncio.run(coro)
-        except RuntimeError as e:
-            msg = str(e)
-            if "asyncio.run() cannot be called" not in msg:
-                raise
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                fut = ex.submit(lambda: asyncio.run(coro))
-                return fut.result(timeout=float(timeout_seconds) + 20.0)
+        return _run_sync_compat(coro, timeout=float(timeout_seconds) + 20.0)
 
     def _try_spnkr_fetch_bytes(target: str) -> tuple[bytes | None, str | None]:  # noqa: C901, PLR0912
         """Best-effort: télécharge via SPNKr (auth) pour contourner 401/403.
