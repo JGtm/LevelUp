@@ -19,13 +19,14 @@ En v5.1, les stats coéquipiers sont chargées depuis `shared.match_participants
 
 Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score_awards` uniquement.
 
-## État Actuel (2026-02-25) — v5.3 Release
+## État Actuel (2026-03-05) — v5.4 Refactoring
 
 ### Historique des versions
 
 - **v5.1** : Architecture Shared DB, éradication SQLite/Pandas, cleanup tables legacy ✅
 - **v5.2** : Filtres intent-based, Stats PvE Firefight (`shared_pve.duckdb`), Scoreboard, palette Okabe-Ito ✅
 - **v5.3** : LUSR/CSR TrueSkill 2 per-groupe, Notifications Discord, 20 tests corrigés ✅
+- **v5.4** : i18n split, logging centralisé, SyncScope cleanup, refactoring modules >500L (Phases 0-4) ✅
 
 ### Architecture v5.3
 
@@ -46,29 +47,32 @@ data/
 ## Modules Clés
 
 ### Accès aux Données
-- `src/data/repositories/duckdb_repo.py` : Repository principal DuckDB
+- `src/data/repositories/duckdb_repo.py` : Repository principal DuckDB (splitté: `_awards_repo`, `_diagnostic_repo`, `_legacy_compat`, `_match_queries_*`, `_metadata_resolution`, `_schema_introspection`)
 - `src/data/repositories/factory.py` : Factory pattern
-- `src/data/sync/engine.py` : Moteur de synchronisation
-- `src/data/media_indexer.py` : Indexation médias (scan delta, associations, thumbnails), chargement pour UI
+- `src/data/sync/engine.py` : Moteur de synchronisation (splitté: `_engine_connections`, `_engine_schema`)
+- `src/data/media_indexer.py` : Indexation médias (splitté: `media_helpers`, `media_loaders`, `media_thumbnails`)
 
 ### Analyse
-- `src/analysis/killer_victim.py` : Calcul antagonistes
+- `src/analysis/killer_victim.py` : Calcul antagonistes (splitté: `_killer_victim_polars`, `_kv_types`)
 - `src/analysis/antagonists.py` : Agrégation rivalités
 - `src/analysis/sessions.py` : Détection sessions
-- `src/analysis/performance_score.py` : Score de performance (percentile 0-100)
-- `src/analysis/playlist_groups.py` : 6 groupes Halo Infinite (ranked/arena/btb/tactical/social/fun), détection par `pair_name`/`playlist_name` — v5.3
-- `src/analysis/skill_rating_config.py` : Constantes TrueSkill 2 (K_ELO, tiers Bronze→Onyx, COMPOSITE_WEIGHTS, get_tier_for_rating) — v5.3
-- `src/analysis/skill_rating.py` : Algorithme LUSR — `PlayerState` par groupe, `compute_composite_score()`, `trueskill_update()` Elo-style, `compute_skill_ratings_batch()` séquentiel — v5.3
-- `src/analysis/skill_rating_calibration.py` : Calibration des poids COMPOSITE_WEIGHTS via grid search vs `team_mmr` API — v5.3
+- `src/analysis/performance_score.py` : Score de performance (splitté: `_performance_relative`, `_performance_session`)
+- `src/analysis/objective_participation.py` : Participation objectifs (splitté: `_objective_helpers`, `_objective_profile`, `_objective_summary`)
+- `src/analysis/playlist_groups.py` : 6 groupes Halo Infinite — v5.3
+- `src/analysis/skill_rating.py` / `skill_rating_config.py` / `skill_rating_calibration.py` : LUSR/CSR TrueSkill 2 — v5.3
 
 ### UI
-- `src/ui/pages/` : Pages du dashboard (career.py ajouté Sprint 3B)
-- `src/ui/components/` : Composants réutilisables (career_progress_circle.py ajouté Sprint 3B)
-- `src/ui/streamlit_modern.py` : Wrappers compatibilité Streamlit moderne (fragment_if_available, PLOTLY_CLEAN_CONFIG) — Sprint 8ter
-- `src/ui/vectorize_helpers.py` : Helpers vectorisation Polars (build_mapping, replace map_elements) — Sprint 8ter
-- `src/ui/filter_state.py` : Filtres intent-based v5.2 (`FilterPreferences`, `_detect_filter_mode()`, `reconcile_filter_prefs()`, persist JSON)
-- `src/utils/discord_notifier.py` : Notifications Discord post-sync/backfill (failsafe, stdlib uniquement) — v5.3
-- `src/visualization/` : Graphiques Plotly (palette Okabe-Ito v5.2, `plot_lusr_timeseries()` v5.3)
+- `src/ui/pages/` : Pages du dashboard
+- `src/ui/pages/teammates_views.py` : Vues coéquipiers (splitté: `_teammates_trio.py`)
+- `src/ui/components/radar_chart.py` : Radar charts (splitté: `_radar_participation`, `_radar_teammates`)
+- `src/ui/cache_loaders.py` : Cache Streamlit (splitté: `_cache_core`, `_cache_queries`)
+- `src/ui/sync.py` : UI sync (splitté: `_sync_utils`, `_sync_indicator`, `_sync_duckdb_ops`)
+- `src/ui/streamlit_modern.py` : Wrappers Streamlit moderne
+- `src/ui/filter_state.py` : Filtres intent-based v5.2
+- `src/utils/discord_notifier.py` : Notifications Discord (splitté: `_discord_embed`, `_discord_queries`) — v5.3
+- `src/utils/safe_types.py` / `async_compat.py` / `env.py` : Utilitaires partagés — v5.4
+- `src/visualization/` : Graphiques Plotly
+- `src/visualization/timeseries_combat.py` : Séries temporelles (splitté: `_timeseries_helpers`, `_timeseries_progression`)
 
 ## Tables DuckDB
 
@@ -168,14 +172,15 @@ data/
 
 Aucun problème bloquant connu.
 
-## État technique final (v5.3)
+## État technique (v5.4)
 
-- **3323 tests** passent, 0 échecs
+- **3614 tests** passent, 0 échecs
 - **Architecture DuckDB v5.3** : shared_matches + shared_pve + player enrichments
 - **Polars** comme moteur DataFrame (0 Pandas dans code métier)
 - **0 SQLite** dans le code runtime
 - **Streamlit ≥1.37** avec @st.fragment, st.navigation, column_config
 - **Taille player DB** : ~4 MB (vs ~30 MB en v5.0)
+- **Refactoring v5.4** : 45 nouveaux sous-modules, 206 violations restantes (35 modules >500L, 171 fonctions >80L)
 
 ## Exploration Complète du Projet
 
@@ -197,6 +202,7 @@ Consulter ce fichier pour une cartographie exhaustive ; le présent `project_map
 
 ## Dernière Mise à Jour
 
+**2026-03-05** : **v5.4 Refactoring** — Phases 0-4 split modules >500L, 45 sous-modules, 3614 tests, baseline 206 violations
 **2026-02-25** : **v5.3.0** — LUSR/CSR TrueSkill 2 per-groupe, Notifications Discord, 3323 tests
 **2026-02-20** : **v5.2.0** — Filtres intent-based, Stats PvE shared_pve.duckdb, Scoreboard, Okabe-Ito
 **2026-02-17** : **v5.1.0 Release** — Documentation finale, archivage, release tag
