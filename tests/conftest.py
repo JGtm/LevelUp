@@ -268,6 +268,9 @@ class MockStreamlit:
         # st.columns → retourne des MagicMock avec les mêmes attrs
         self._setup_columns()
 
+        # st.tabs → retourne des MagicMock context managers (comme columns)
+        self._setup_tabs()
+
         # st.session_state → dict partagé
         self.session_state: dict = {}
         monkeypatch.setattr(module.st, "session_state", self.session_state)
@@ -318,6 +321,20 @@ class MockStreamlit:
         self.calls["columns"] = MagicMock(return_value=cols)
         self._monkeypatch.setattr(self._module.st, "columns", self.calls["columns"])
         self.columns = cols
+
+    def _setup_tabs(self, default_n: int = 8):
+        """Mock st.tabs → retourne N context managers."""
+        from unittest.mock import MagicMock
+
+        def _fake_tabs(labels, **_kw):
+            tabs = [MagicMock(name=f"tab_{i}") for i in range(len(labels))]
+            for tab in tabs:
+                tab.__enter__ = lambda s: s
+                tab.__exit__ = lambda _s, *_a: None
+            return tabs
+
+        self.calls["tabs"] = MagicMock(side_effect=_fake_tabs)
+        self._monkeypatch.setattr(self._module.st, "tabs", self.calls["tabs"])
 
     def set_columns(self, n: int):
         """Reconfigure le nombre de colonnes retournées."""
