@@ -7,6 +7,61 @@
 
 ## Journal
 
+### [2026-03-05] — Refactoring massif : Phases 0-4 — Split de tous les modules >500L
+
+**Statut** : Phase 4 complétée ✅ — 35 modules >500L restants (dette documentée)
+
+**Objectif** : Réduire TOUS les fichiers >500 lignes en sous-modules, éliminer les violations DRY, centraliser les utilitaires partagés.
+
+**Commit** : `a435b8a` (branche `refactor/cleanup-all`) — 88 fichiers modifiés, 45 nouveaux modules créés.
+
+**Raisonnement** :
+- Baseline initial : ~50+ modules >500L, 209 violations totales
+- Anti-pattern "God file" omniprésent : sync.py (939L), timeseries_combat.py (886L), engine.py (869L), cache_loaders.py (842L), radar_chart.py (838L), teammates_views.py (839L)
+- Stratégie : extraire des sous-modules `_prefixed.py` avec re-exports dans le module parent pour préserver la compatibilité d'import
+
+**Phase 0 — Utilitaires partagés** :
+- `src/utils/safe_types.py` : `safe_int`, `safe_float` centralisés (suppression 6+ copies)
+- `src/utils/async_compat.py` : `run_async` wrapper sync→async
+- `src/utils/env.py` : `load_env_local()` chargement `.env.local`
+- `src/app/_filters_shared.py` : constantes/helpers filtres partagés
+- `format_time_ms()` centralisé
+
+**Phase 1 — Modules data/utils** :
+- `media_indexer.py` → `media_helpers.py` + `media_loaders.py` + `media_thumbnails.py`
+- `api_client.py` → `_tokens.py` + `_career_rank_api.py`
+- `batch_insert.py` → `_batch_audit.py` + `_batch_columns.py`
+- `discord_notifier.py` → `_discord_embed.py` + `_discord_queries.py`
+
+**Phase 2 — Modules analysis/repositories** :
+- `performance_score.py` → `_performance_relative.py` + `_performance_session.py`
+- `_match_queries.py` → `_match_queries_helpers.py` + `_match_queries_polars.py`
+- `duckdb_repo.py` → `_awards_repo.py` + `_diagnostic_repo.py` + `_legacy_compat.py` + `_metadata_resolution.py` + `_schema_introspection.py`
+
+**Phase 3 — Modules analysis** :
+- `objective_participation.py` → `_objective_helpers.py` + `_objective_profile.py` + `_objective_summary.py`
+- `killer_victim.py` → `_killer_victim_polars.py` + `_kv_types.py`
+
+**Phase 4 — Modules UI/visualization** :
+- `sync.py` (939L → 386L) → `_sync_utils.py` + `_sync_indicator.py` + `_sync_duckdb_ops.py`
+- `timeseries_combat.py` (886L → 443L) → `_timeseries_helpers.py` + `_timeseries_progression.py`
+- `engine.py` (869L → 478L) → `_engine_connections.py` + `_engine_schema.py`
+- `cache_loaders.py` (842L → 295L) → `_cache_core.py` + `_cache_queries.py`
+- `radar_chart.py` (838L → 292L) → `_radar_participation.py` + `_radar_teammates.py`
+- `teammates_views.py` (839L → 459L) → `_teammates_trio.py`
+
+**Résultat** :
+- Baseline : 209 → 206 violations (35 modules >500L, 171 fonctions >80L)
+- 3614 tests passent, 0 échec
+- Tous les pre-commit hooks passent (ruff, format, circular imports, size ratchet)
+
+**Suivi** :
+- [ ] Phase 5+ : 35 modules >500L restants à traiter (match_view_players 800L, antagonist_charts 751L, ai/rag 745L, skill_rating 736L, performance.py 733L, ...)
+- [x] Tests à jour ✅
+- [ ] Logs `.ai/` mis à jour (cette entrée)
+
+---
+
 ### [2026-02-26] — Centralisation des TODO dans `.ai/BACKLOG.md`
 
 **Statut** : Complété ✅

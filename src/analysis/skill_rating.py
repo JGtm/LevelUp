@@ -6,6 +6,10 @@ les matchs séquentiellement dans l'ordre chronologique. Chaque match met
 la force estimée de l'équipe adverse (depuis kills_expected de tous les
 participants dans match_participants).
 
+Modules internes :
+- _trueskill_math : PlayerState, fonctions gaussiennes, update TrueSkill, decay
+- _composite      : score composite continu [0,1]
+
 Usage:
     from src.analysis.skill_rating import compute_skill_ratings_batch
 
@@ -16,307 +20,42 @@ Usage:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
 from typing import Any
 
 import polars as pl
 
+from src.analysis._composite import (
+    _sigmoid_ratio,  # noqa: F401 — réexport
+    compute_composite_score,
+)
+from src.analysis._trueskill_math import (
+    PlayerState,
+    apply_inactivity_decay,
+    trueskill_update,
+)
 from src.analysis.skill_rating_config import (
     ACCURACY_HISTORY_SIZE,
-    BETA,
-    COMPOSITE_WEIGHTS,
     DEFAULT_OPPONENT_SIGMA,
-    DRAW_PROBABILITY,
-    INACTIVITY_SIGMA_PER_DAY,
-    INACTIVITY_THRESHOLD_DAYS,
     INDIVIDUAL_MU_ALPHA,
     INITIAL_MU,
-    INITIAL_SIGMA,
-    K_ELO,
-    MAX_INACTIVITY_DAYS,
-    MAX_SIGMA,
     MIN_MATCHES_FOR_ACCURACY_DELTA,
-    MIN_RATING,
     MIN_SIGMA,
     PLAYLIST_GROUPS,
-    TAU,
     get_playlist_group,
 )
+from src.utils.safe_types import clamp as _clamp
+from src.utils.safe_types import safe_float as _safe_float
 
-# =============================================================================
-# État du joueur entre deux matchs
-# =============================================================================
-
-
-@dataclass
-class PlayerState:
-    """État TrueSkill 2 du joueur, mis à jour après chaque match."""
-
-    mu: float = INITIAL_MU
-    """Rating courant (centre de la distribution gaussienne)."""
-
-    sigma: float = INITIAL_SIGMA
-    """Déviation courante (incertitude sur le rating)."""
-
-    match_count: int = 0
-    """Nombre de matchs traités depuis l'initialisation."""
-
-    last_match_time: Any = None
-    """Timestamp du dernier match traité (datetime ou None)."""
-
-    accuracy_history: list[float] = field(default_factory=list)
-    """Historique des précisions des derniers matchs (pour accuracy_delta)."""
-
-    damage_eff_history: list[float] = field(default_factory=list)
-    """Historique damage_efficiency des derniers matchs (pour damage_eff_delta)."""
-
-    @classmethod
-    def from_csr(cls, csr: float) -> PlayerState:
-        """Initialise un PlayerState à partir d'un CSR connu (seed LUSR).
-
-        Mapping bijection tier-à-tier entre l'échelle CSR Halo et l'échelle LUSR :
-            mu = 1000 + csr × (2/3)
-
-        Exemples :
-            CSR   0  (Bronze I)   → mu 1000  (LUSR Bronze I)
-            CSR 300  (Silver I)   → mu 1200  (LUSR Silver I)
-            CSR 600  (Gold I)     → mu 1400  (LUSR Gold I)
-            CSR 711  (Gold III)   → mu 1474  (LUSR Gold III)
-            CSR 900  (Plat I)     → mu 1600  (LUSR Platine I)
-            CSR 1200 (Diamond I)  → mu 1800  (LUSR Diamond I)
-            CSR 1400 (Diamond V)  → mu 1933  (LUSR Diamond V)
-            CSR 1500 (Onyx)       → mu 2000  (LUSR Onyx)
-
-        Le sigma est réduit à 60 % de l'initial pour refléter la confiance
-        apportée par le CSR comme ancre (incertitude réduite mais non minimale).
-        """
-        mu = 1000.0 + max(0.0, float(csr)) * (2.0 / 3.0)
-        # Sigma = MIN_SIGMA (état stable) : le CSR est un ancrage très fort.
-        # On démarre directement au steady-state (~65 après TAU) pour éviter
-        # la phase de haute volatilité qui cause des swings aléatoires de ±100 pts
-        # dans les premiers matchs du groupe.
-        sigma = MIN_SIGMA  # 60 → devient ~65 après TAU
-        return cls(mu=mu, sigma=sigma)
-
-
-# =============================================================================
-# Fonctions utilitaires
-# =============================================================================
-
-
-from src.utils.safe_types import clamp as _clamp  # noqa: E402
-from src.utils.safe_types import safe_float as _safe_float  # noqa: E402
-
-
-def _sigmoid_ratio(numerator: float, denominator: float) -> float:
-    """Mappe ratio positif → [0,1] via sigmoid symétrique.
-
-    ratio = 1.0 → 0.5 (performance attendue)
-    ratio = 2.0 → ~0.67 (sur-performance)
-    ratio = 0.5 → ~0.33 (sous-performance)
-    """
-    if denominator <= 0:
-        return 0.5
-    ratio = numerator / denominator
-    # Utilise x/(1+x) plutôt qu'un sigmoid standard pour un mapping naturel
-    return _clamp(ratio / (1.0 + ratio), 0.0, 1.0)
-
-
-# =============================================================================
-# Fonctions TrueSkill 2 — truncated Gaussian
-# =============================================================================
-
-
-def _draw_margin(beta: float) -> float:
-    """Calcule la marge d'égalité ε à partir de la probabilité de draw."""
-    # ε = Φ^{-1}((p_draw + 1) / 2) × c, approché par la formule standard
-    # Pour DRAW_PROBABILITY ≈ 0.06 : ε ≈ 0.074 × c
-    if DRAW_PROBABILITY <= 0:
-        return 0.0
-    p = (DRAW_PROBABILITY + 1.0) / 2.0
-    # Approximation de Φ^{-1}(p) pour p proche de 0.5
-    # Utilise la méthode de Beasley-Springer-Moro (approximation rapide)
-    t = math.sqrt(-2.0 * math.log(1.0 - p)) if p < 1.0 else 8.0
-    return t * beta
-
-
-def _v_win(t: float, eps: float) -> float:
-    """Facteur v pour le cas victoire (score > 0.5)."""
-    x = t - eps
-    denom = _standard_normal_cdf(x)
-    if denom < 1e-10:
-        return -x  # asymptote
-    return _standard_normal_pdf(x) / denom
-
-
-def _w_win(t: float, eps: float) -> float:
-    """Facteur w pour le cas victoire."""
-    x = t - eps
-    v = _v_win(t, eps)
-    return v * (v + x)
-
-
-def _v_draw(t: float, eps: float) -> float:  # pragma: no cover — non utilisé (v5.3)
-    """Facteur v pour le cas égalité — conservé comme référence TrueSkill 2.
-
-    .. deprecated::
-        Non appelé dans le calcul courant (Halo Infinite n'a pas de matchs
-        nuls vrais en compétitif). Archivé pour référence algorithmique.
-    """
-    abs_t = abs(t)
-    num = _standard_normal_pdf(eps - abs_t) - _standard_normal_pdf(-eps - abs_t)
-    denom = _standard_normal_cdf(eps - abs_t) - _standard_normal_cdf(-eps - abs_t)
-    if denom < 1e-10:
-        return 0.0
-    if t < 0:
-        return -num / denom
-    return num / denom
-
-
-def _w_draw(t: float, eps: float) -> float:  # pragma: no cover — non utilisé (v5.3)
-    """Facteur w pour le cas égalité — conservé comme référence TrueSkill 2.
-
-    .. deprecated::
-        Non appelé dans le calcul courant. Archivé pour référence algorithmique.
-    """
-    abs_t = abs(t)
-    eps_m = eps - abs_t
-    eps_p = -eps - abs_t
-    num = eps_m * _standard_normal_pdf(eps_m) - eps_p * _standard_normal_pdf(eps_p)
-    denom = _standard_normal_cdf(eps_m) - _standard_normal_cdf(eps_p)
-    if denom < 1e-10:
-        return 1.0
-    return (
-        num / denom
-        + ((eps_m * _standard_normal_pdf(eps_m) - eps_p * _standard_normal_pdf(eps_p)) / denom) ** 2
-    )
-
-
-def _standard_normal_pdf(x: float) -> float:
-    return math.exp(-0.5 * x * x) / math.sqrt(2.0 * math.pi)
-
-
-def _standard_normal_cdf(x: float) -> float:
-    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
-
-
-# =============================================================================
-# Score composite (0 → 1)
-# =============================================================================
-
-
-def compute_composite_score(  # noqa: C901, PLR0912, PLR0913
-    row: dict[str, Any],
-    avg_accuracy: float | None,
-    teammate_avg_ke: float | None,
-    enemy_avg_ke: float | None,
-    avg_damage_eff: float | None = None,
-    *,
-    weights: dict[str, float] | None = None,
-) -> float:
-    """Calcule le score composite continu [0, 1] d'un match.
-
-    Ce score est l'équivalent du "résultat" dans TrueSkill 2 — il combine
-    plusieurs métriques en un indicateur unique de performance.
-
-    La valeur 0.5 correspond à une performance parfaitement attendue.
-    > 0.5 : sur-performance, < 0.5 : sous-performance.
-
-    Graceful degradation : si des métriques sont manquantes, les poids sont
-    renormalisés automatiquement sur les métriques disponibles.
-
-    Args:
-        row: Ligne du match avec kills, deaths, kills_expected, deaths_expected,
-             outcome, damage_dealt, damage_taken, accuracy.
-        avg_accuracy: Moyenne historique de la précision du joueur.
-        teammate_avg_ke: kills_expected moyen des coéquipiers (ajustement carry).
-        enemy_avg_ke: kills_expected moyen des adversaires (contexte opposition).
-        avg_damage_eff: Moyenne historique damage_efficiency du joueur.
-            Si fourni, le composant est calculé en DELTA (ce match vs sa moyenne)
-            pour éviter le biais systématique des joueurs forts qui ont toujours
-            une efficacité > 0.5. Si None, utilise la valeur brute.
-
-    Returns:
-        Score composite entre 0.0 et 1.0.
-    """
-    components: dict[str, float] = {}
-    weights_used: dict[str, float] = {}
-    # Poids effectifs : permet à la calibration de passer ses propres poids
-    # sans muter le global COMPOSITE_WEIGHTS (thread-safe).
-    _w = weights if weights is not None else COMPOSITE_WEIGHTS
-
-    # ── 1. Kills vs Expected ──
-    kills = _safe_float(row.get("kills"))
-    kills_expected = _safe_float(row.get("kills_expected"))
-    if kills is not None and kills_expected is not None and kills_expected > 0:
-        score = _sigmoid_ratio(kills, kills_expected)
-        # Ajustement carry : si mes coéquipiers ont beaucoup plus de kills_expected,
-        # une bonne perf peut être une chance — réduire légèrement l'impact
-        if teammate_avg_ke is not None and kills_expected > 0 and teammate_avg_ke > 0:
-            carry_ratio = kills_expected / teammate_avg_ke
-            # carry_ratio < 1 → j'étais le plus faible, mes kills comptent plus
-            # carry_ratio > 1 → j'étais le plus fort, normal de faire plus de kills
-            carry_adj = _clamp(carry_ratio, 0.5, 2.0)
-            score = _clamp(score * (1.0 / carry_adj) + 0.5 * (1.0 - 1.0 / carry_adj), 0.0, 1.0)
-        components["kills_vs_expected"] = score
-        weights_used["kills_vs_expected"] = _w["kills_vs_expected"]
-
-    # ── 2. Deaths vs Expected (inversé) ──
-    deaths = _safe_float(row.get("deaths"))
-    deaths_expected = _safe_float(row.get("deaths_expected"))
-    if deaths is not None and deaths_expected is not None and deaths_expected > 0:
-        deaths_safe = max(1.0, deaths)
-        score = _sigmoid_ratio(deaths_expected, deaths_safe)
-        components["deaths_vs_expected"] = score
-        weights_used["deaths_vs_expected"] = _w["deaths_vs_expected"]
-
-    # ── 3. Win factor ──
-    outcome = row.get("outcome")
-    if outcome is not None:
-        try:
-            outcome_int = int(outcome)
-        except (ValueError, TypeError):
-            outcome_int = -1
-        win_map = {2: 1.0, 1: 0.5, 3: 0.0, 4: 0.15}
-        win_score = win_map.get(outcome_int)
-        if win_score is not None:
-            components["win_factor"] = win_score
-            weights_used["win_factor"] = _w["win_factor"]
-
-    # ── 4. Damage efficiency ──
-    # Si avg_damage_eff fourni : delta vs historique personnel (élimine le biais
-    # systématique des bons joueurs qui ont toujours efficacité > 0.5).
-    # Sinon : valeur brute (pour la phase de bootstrap avant que l'historique existe).
-    damage_dealt = _safe_float(row.get("damage_dealt"))
-    damage_taken = _safe_float(row.get("damage_taken"))
-    if damage_dealt is not None and damage_taken is not None:
-        total = damage_dealt + damage_taken
-        if total > 0:
-            raw_eff = _clamp(damage_dealt / total, 0.0, 1.0)
-            if avg_damage_eff is not None and avg_damage_eff > 0:
-                # Delta : ce match vs ma moyenne → neutre à 0.5 en moyenne
-                score_eff = _sigmoid_ratio(raw_eff, avg_damage_eff)
-            else:
-                score_eff = raw_eff
-            components["damage_efficiency"] = score_eff
-            weights_used["damage_efficiency"] = _w["damage_efficiency"]
-
-    # ── 5. Accuracy delta ──
-    accuracy = _safe_float(row.get("accuracy"))
-    if accuracy is not None and avg_accuracy is not None and avg_accuracy > 0:
-        score = _sigmoid_ratio(accuracy, avg_accuracy)
-        components["accuracy_delta"] = score
-        weights_used["accuracy_delta"] = _w["accuracy_delta"]
-
-    if not components:
-        return 0.5  # Aucune donnée → résultat neutre
-
-    total_weight = sum(weights_used.values())
-    if total_weight < 1e-12:
-        return 0.5
-
-    composite = sum(components[k] * weights_used[k] for k in components) / total_weight
-    return _clamp(composite, 0.0, 1.0)
+# Réexports publics
+__all__ = [
+    "PlayerState",
+    "apply_inactivity_decay",
+    "compute_composite_score",
+    "compute_enemy_strength",
+    "compute_skill_ratings_batch",
+    "estimate_individual_mu",
+    "trueskill_update",
+]
 
 
 # =============================================================================
@@ -397,88 +136,6 @@ def compute_enemy_strength(
         sigma = DEFAULT_OPPONENT_SIGMA
 
     return avg_mu, sigma
-
-
-# =============================================================================
-# Mise à jour TrueSkill 2
-# =============================================================================
-
-
-def trueskill_update(  # noqa: PLR0913
-    mu: float,
-    sigma: float,
-    mu_opp: float,
-    sigma_opp: float,
-    actual_score: float,
-    weight_factor: float = 1.0,
-) -> tuple[float, float]:
-    """Met à jour (mu, sigma) après un match.
-
-    **Mu** : formule Elo-style continue (K_ELO × (score - 0.5) × wf).
-        → ZÉRO exact quand composite = 0.5, indépendant de mu_opp.
-        → Élimine le biais asymétrique de la zone draw TrueSkill classique
-          (v_draw avec t > 0 donnait des mises à jour positives même sur des
-          scores neutres quand le joueur dépassait son niveau de référence).
-
-    **Sigma** : réduction TrueSkill à t = 0 (symétrique, matchmaking ~équivalent).
-        → mu_opp et sigma_opp influencent c² → ampleur de la réduction.
-        → TAU ajouté après (dérive dynamique par match).
-
-    Args:
-        mu: Rating courant du joueur.
-        sigma: Déviation courante du joueur.
-        mu_opp: Rating estimé de l'équipe adverse (utilisé pour c², i.e. sigma).
-        sigma_opp: Déviation estimée de l'équipe adverse.
-        actual_score: Score composite du match [0, 1].
-        weight_factor: Facteur playlist (1.0=ranked, 0.15=fun).
-
-    Returns:
-        Tuple (new_mu, new_sigma).
-    """
-    # ── Mu : Elo-style continu ──
-    # delta = K_ELO × (composite - 0.5) × wf
-    # Propriétés :
-    #   composite = 0.5  → delta = 0 (performance attendue, rating stable)
-    #   composite = 1.0  → delta = +K_ELO × 0.5 × wf (sur-performance maximale)
-    #   composite = 0.0  → delta = -K_ELO × 0.5 × wf (sous-performance maximale)
-    delta_mu = K_ELO * (actual_score - 0.5) * weight_factor
-    new_mu = max(MIN_RATING, mu + delta_mu)
-
-    # ── Sigma : TrueSkill à t = 0 ──
-    # c² = 2β² + σ² + σ_opp²  (c reflète l'incertitude totale du match)
-    # w = facteur de réduction d'incertitude au point t=0 (symétrique)
-    c2 = 2.0 * BETA**2 + sigma**2 + sigma_opp**2
-    c = math.sqrt(c2)
-    eps = _draw_margin(BETA)
-
-    sigma2 = sigma**2
-    w = _w_win(0.0, eps / c)  # t=0 toujours → pas de biais directionnel
-    delta_sigma2 = sigma2 * (sigma2 / c2) * w * weight_factor
-
-    new_sigma2 = max(MIN_SIGMA**2, sigma2 - delta_sigma2)
-    new_sigma = math.sqrt(new_sigma2)
-
-    # Dérive TAU (sigma croît légèrement à chaque match — évolution naturelle)
-    new_sigma = min(math.sqrt(new_sigma**2 + TAU**2), MAX_SIGMA)
-
-    return new_mu, new_sigma
-
-
-def apply_inactivity_decay(sigma: float, days_inactive: float) -> float:
-    """Augmente sigma proportionnellement à la durée d'inactivité.
-
-    Args:
-        sigma: Déviation courante.
-        days_inactive: Jours depuis le dernier match.
-
-    Returns:
-        Nouvelle sigma (augmentée).
-    """
-    capped = min(days_inactive, MAX_INACTIVITY_DAYS)
-    if capped <= INACTIVITY_THRESHOLD_DAYS:
-        return sigma
-    added = INACTIVITY_SIGMA_PER_DAY * (capped - INACTIVITY_THRESHOLD_DAYS)
-    return _clamp(sigma + added, MIN_SIGMA, MAX_SIGMA)
 
 
 # =============================================================================
