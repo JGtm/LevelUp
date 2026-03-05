@@ -15,9 +15,6 @@ Ce module contient la logique d'orchestration extraite de streamlit_app.py :
 from __future__ import annotations
 
 from src.app.data_loader import (
-    apply_settings_path_overrides as apply_settings_overrides,
-)
-from src.app.data_loader import (
     default_identity_from_secrets,
     ensure_h5g_commendations_repo,
     load_match_data,
@@ -73,9 +70,6 @@ from src.app.kpis_render import (
     render_performance_info,
 )
 from src.app.main_helpers import (
-    apply_settings_path_overrides as apply_settings_overrides_main,
-)
-from src.app.main_helpers import (
     load_match_dataframe,
     load_profile_api,
     render_profile_hero,
@@ -124,6 +118,12 @@ from src.app.state import (
     get_page_context,
     init_source_state,
     propagate_env_defaults,
+)
+from src.app.state import (
+    apply_settings_path_overrides as apply_settings_overrides,
+)
+from src.app.state import (
+    apply_settings_path_overrides as apply_settings_overrides_main,
 )
 
 __all__ = [

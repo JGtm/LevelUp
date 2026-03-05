@@ -58,9 +58,6 @@ from src.app.kpis_render import (
     render_kpis_section,
     render_performance_info,
 )
-from src.app.main_helpers import (
-    apply_settings_path_overrides as apply_settings_overrides_main,
-)
 
 # Phase 4 refactoring: Main helpers
 from src.app.main_helpers import (
@@ -86,6 +83,9 @@ from src.app.page_router import (
     render_page_selector_nav,
 )
 from src.app.session_keys import SK
+from src.app.state import (
+    apply_settings_path_overrides as apply_settings_overrides_main,
+)
 
 # Imports depuis la nouvelle architecture
 from src.config import (

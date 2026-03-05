@@ -15,54 +15,11 @@ import streamlit as st
 
 from src.analysis import compute_aggregated_stats, compute_global_ratio, compute_outcome_rates
 from src.analysis.stats import format_mmss
+from src.app.helpers import avg_match_duration_seconds, compute_total_play_seconds
 from src.ui.components import render_kpi_cards, render_top_summary
 from src.ui.formatting import format_duration_dhm, format_duration_hms
 from src.ui.i18n import t
 from src.utils.polars_compat import ensure_polars as _to_polars
-
-# =============================================================================
-# Helpers
-# =============================================================================
-
-
-# =============================================================================
-# Calculs temporels
-# =============================================================================
-
-
-def avg_match_duration_seconds(df_: pl.DataFrame) -> float | None:
-    """Calcule la durée moyenne d'un match.
-
-    Args:
-        df_: DataFrame (Pandas ou Polars) des matchs.
-
-    Returns:
-        Durée moyenne en secondes ou None.
-    """
-    df_pl = _to_polars(df_)
-
-    if df_pl.is_empty() or "time_played_seconds" not in df_pl.columns:
-        return None
-    val = df_pl.select(pl.col("time_played_seconds").cast(pl.Float64, strict=False).mean()).item()
-    return float(val) if val is not None else None
-
-
-def compute_total_play_seconds(df_: pl.DataFrame) -> float | None:
-    """Calcule le temps de jeu total (somme des durées de matchs).
-
-    Args:
-        df_: DataFrame (Pandas ou Polars) des matchs.
-
-    Returns:
-        Durée totale en secondes ou None.
-    """
-    df_pl = _to_polars(df_)
-
-    if df_pl.is_empty() or "time_played_seconds" not in df_pl.columns:
-        return None
-    val = df_pl.select(pl.col("time_played_seconds").cast(pl.Float64, strict=False).sum()).item()
-    return float(val) if val is not None else None
-
 
 # =============================================================================
 # Statistiques KPI

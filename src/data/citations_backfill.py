@@ -22,6 +22,8 @@ from typing import Any
 
 import duckdb
 
+from src.utils.db import ensure_shared_attached
+
 logger = logging.getLogger(__name__)
 
 
@@ -71,7 +73,9 @@ def backfill_citations_for_player(  # noqa: PLR0912
         """)
 
         # ── 2. Attacher shared en READ_ONLY ──────────────────────────────────
-        shared_alias = _ensure_shared_attached(conn, shared_path)
+        shared_alias = ensure_shared_attached(
+            conn, shared_path, ("shared", "shared_ro", "shared_cit")
+        )
         if shared_alias is None:
             logger.warning("citations_backfill: impossible d'attacher shared_matches")
             return {"matches_processed": 0, "citations_computed": 0}
@@ -130,37 +134,3 @@ def backfill_citations_for_player(  # noqa: PLR0912
         if own_conn and conn is not None:
             with contextlib.suppress(Exception):
                 conn.close()
-
-
-def _ensure_shared_attached(
-    conn: duckdb.DuckDBPyConnection,
-    shared_path: Path,
-) -> str | None:
-    """Vérifie si shared_matches est déjà attaché, sinon l'attache en READ_ONLY.
-
-    Args:
-        conn: Connexion DuckDB de la player DB.
-        shared_path: Chemin absolu vers shared_matches.duckdb.
-
-    Returns:
-        Nom de l'alias sous lequel shared est accessible, ou ``None`` en cas d'échec.
-    """
-    # Chercher un alias existant pointant vers shared_matches.duckdb
-    with contextlib.suppress(Exception):
-        dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
-        for db_name, db_path_val in dbs:
-            if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
-                return db_name
-            # Alias contenant "shared" avec match_participants accessible ?
-            if db_name and "shared" in db_name.lower():
-                with contextlib.suppress(Exception):
-                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
-                    return db_name
-
-    # Tentative d'attachement READ_ONLY
-    for alias in ("shared", "shared_ro", "shared_cit"):
-        with contextlib.suppress(Exception):
-            conn.execute(f"ATTACH '{shared_path}' AS {alias} (READ_ONLY)")
-            return alias
-
-    return None

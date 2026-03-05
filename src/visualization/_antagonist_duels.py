@@ -10,13 +10,8 @@ import polars as pl
 from plotly.subplots import make_subplots
 
 from src.ui.i18n.viz import viz_t
+from src.visualization._antagonist_colors import COLORS
 from src.visualization.theme import apply_halo_plot_style
-
-
-def _get_colors() -> dict[str, str]:
-    from src.visualization.antagonist_charts import COLORS
-
-    return COLORS
 
 
 def plot_duel_history(  # noqa: C901, PLR0912, PLR0913
@@ -29,7 +24,7 @@ def plot_duel_history(  # noqa: C901, PLR0912, PLR0913
     lang: str = "fr",
 ) -> go.Figure:
     """Graphique d'historique de duels entre deux joueurs (barres groupées + net)."""
-    colors = _get_colors()
+    colors = COLORS
     if title is None:
         title = f"Historique des duels : {me_gamertag} vs {opponent_gamertag}"
     fig = go.Figure()
@@ -136,7 +131,7 @@ def plot_nemesis_victim_summary(
     lang: str = "fr",
 ) -> go.Figure:
     """Indicateurs résumé : nemesis et victime principale."""
-    colors = _get_colors()
+    colors = COLORS
     if title is None:
         title = viz_t("title_nemesis_victim", lang)
 
@@ -192,7 +187,7 @@ def plot_top_antagonists_bars(  # noqa: PLR0913
     lang: str = "fr",
 ) -> go.Figure:
     """Barres horizontales des top antagonistes (némésis et souffre-douleurs)."""
-    colors = _get_colors()
+    colors = COLORS
     if title is None:
         title = viz_t("title_top_antagonists", lang)
 
@@ -249,7 +244,7 @@ def plot_top_antagonists_bars(  # noqa: PLR0913
 
 def get_antagonist_chart_colors() -> dict[str, str]:
     """Retourne une copie des couleurs des graphiques antagonistes."""
-    return _get_colors().copy()
+    return COLORS.copy()
 
 
 def create_kd_indicator(
@@ -260,7 +255,7 @@ def create_kd_indicator(
     height: int = 150,
 ) -> go.Figure:
     """Indicateur K/D unique avec delta par rapport à 1.0."""
-    colors = _get_colors()
+    colors = COLORS
     kd_ratio = kills / deaths if deaths > 0 else kills
 
     if kd_ratio >= 1.5:

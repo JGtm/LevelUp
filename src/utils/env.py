@@ -8,12 +8,8 @@ from __future__ import annotations
 
 import os
 import re
-from pathlib import Path
 
-
-def _repo_root() -> Path:
-    """Retourne la racine du repository (3 niveaux au-dessus de utils/)."""
-    return Path(__file__).resolve().parents[2]
+from src.utils.paths import REPO_ROOT
 
 
 def load_dotenv_if_present() -> None:
@@ -23,7 +19,7 @@ def load_dotenv_if_present() -> None:
     - Lignes ``KEY=VALUE`` (commentaires ``#`` ignorés).
     - Ne remplace pas une variable déjà définie dans l'environnement.
     """
-    root = _repo_root()
+    root = REPO_ROOT
     for name in (".env.local", ".env"):
         dotenv_path = root / name
         if not dotenv_path.exists():
@@ -61,15 +57,3 @@ def normalize_gamertag_for_env(gamertag: str) -> str:
         "Spartan#42"  → "SPARTAN_42"
     """
     return re.sub(r"[^A-Za-z0-9]", "_", gamertag.strip()).upper()
-
-
-def get_player_token_env_key(gamertag: str) -> str:
-    """Retourne le nom de la variable d'env du refresh token propre au joueur.
-
-    Args:
-        gamertag: Gamertag du joueur.
-
-    Returns:
-        Nom de la variable ``SPNKR_OAUTH_REFRESH_TOKEN_<GT_NORMALISÉ>``.
-    """
-    return f"SPNKR_OAUTH_REFRESH_TOKEN_{normalize_gamertag_for_env(gamertag)}"

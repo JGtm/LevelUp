@@ -19,9 +19,9 @@ from typing import Any
 
 import streamlit as st
 
-from src.config import get_repo_root
 from src.ui.i18n import get_lang, t
 from src.ui.i18n.data_labels import label_obj
+from src.utils.paths import REPO_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -32,18 +32,13 @@ _METADATA_DB_REL = os.path.join("data", "warehouse", "metadata.duckdb")
 # ── Utilitaires internes ────────────────────────────────────────────────────
 
 
-def _repo_root() -> str:
-    """Racine du repo (robuste si CWD différent)."""
-    return get_repo_root(__file__)
-
-
 def _abs_from_repo(path: str) -> str:
     """Transforme un chemin relatif au repo en chemin absolu."""
     if not path:
         return path
     if os.path.isabs(path):
         return path
-    return os.path.join(_repo_root(), path)
+    return os.path.join(str(REPO_ROOT), path)
 
 
 def _normalize_name(s: str) -> str:

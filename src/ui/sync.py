@@ -27,7 +27,6 @@ from src.ui._sync_duckdb_ops import (  # noqa: E402
 )
 from src.ui._sync_indicator import render_sync_indicator  # noqa: E402
 from src.ui._sync_utils import (  # noqa: E402
-    _default_repo_root,
     _get_sync_metadata_smart,
     _shared_path,
     _summarize_sync_results,
@@ -37,6 +36,7 @@ from src.ui._sync_utils import (  # noqa: E402
     is_spnkr_db_path,
     pick_latest_spnkr_db_if_any,
 )
+from src.utils.paths import REPO_ROOT
 
 __all__ = [
     "_get_sync_metadata_smart",
@@ -93,7 +93,7 @@ def refresh_spnkr_db_via_api(  # noqa: PLR0913
         Tuple (succès, message).
     """
     if repo_root is None:
-        repo_root = _default_repo_root()
+        repo_root = REPO_ROOT
     importer = repo_root / "scripts" / "spnkr_import_db.py"
     if not importer.exists():
         return False, f"Script introuvable: {importer}"
@@ -344,7 +344,7 @@ def sync_all_players_duckdb(  # noqa: PLR0913
     import json
 
     if repo_root is None:
-        repo_root = _default_repo_root()
+        repo_root = REPO_ROOT
 
     db_profiles_path = repo_root / "db_profiles.json"
     if not db_profiles_path.exists():
