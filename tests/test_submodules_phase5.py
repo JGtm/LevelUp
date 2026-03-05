@@ -12,6 +12,7 @@ Sous-modules testés :
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import polars as pl
@@ -104,6 +105,13 @@ class TestPerformanceRelative:
         history = pl.DataFrame()
         result = compute_relative_performance_score(row, history)
         assert result is None
+
+    def test_has_logger(self):
+        """Le module _performance_relative possède un logger."""
+        import src.analysis._performance_relative as mod
+
+        assert hasattr(mod, "logger")
+        assert isinstance(mod.logger, logging.Logger)
 
 
 # =============================================================================
@@ -481,3 +489,10 @@ class TestRAGGitHub:
         from src.ai._rag_github import GitHubIndexer
 
         assert "__pycache__" in GitHubIndexer.EXCLUDE_PATTERNS
+
+    def test_has_logger(self):
+        """Le module _rag_github possède un logger."""
+        import src.ai._rag_github as mod
+
+        assert hasattr(mod, "logger")
+        assert isinstance(mod.logger, logging.Logger)

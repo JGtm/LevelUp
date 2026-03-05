@@ -10,6 +10,7 @@ Configuration centralisée dans : src/analysis/performance_config.py
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import polars as pl
@@ -18,6 +19,8 @@ from src.analysis.performance_config import (
     MIN_MATCHES_FOR_RELATIVE,
     RELATIVE_WEIGHTS,
 )
+
+logger = logging.getLogger(__name__)
 from src.data.domain.refdata import Outcome
 from src.utils.safe_types import clamp as _clamp
 from src.utils.safe_types import safe_float as _safe_float
@@ -329,6 +332,7 @@ def _extract_match_values(row: dict[str, Any]) -> dict[str, Any] | None:
             ),
         }
     except Exception:
+        logger.debug("Erreur extraction métriques match", exc_info=True)
         return None
 
 
