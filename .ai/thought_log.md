@@ -98,6 +98,38 @@
 
 ---
 
+### [2026-03-05] — Page Explorer : recherche multi-critères et navigation unifiée
+
+**Statut** : Complété ✅
+
+**Objectif** : Remplacer l'ancienne page "Match" par une page Explorer complète avec recherche multi-critères, tableau HTML et deep linking.
+
+**Commit** : `be59454` (branche `refactor/cleanup-all`) — 15 fichiers, 2047 insertions.
+
+**Architecture** (6 modules, SRP respecté) :
+- `explorer.py` (454L) — orchestration page, deep links, filtres cascade, bouton recherche
+- `explorer_results.py` (243L) — rendu résultats (filtres ou joueur), badges encounter
+- `explorer_enrich.py` (181L) — enrichissement DataFrame (score, delta MMR, avg life, performance)
+- `explorer_data.py` (153L) — accès données DuckDB (gamertags, XUID, matchs communs)
+- `explorer_logic.py` (186L) — logique pure (fuzzy search, classification, filtres date/squad/team)
+- `match_table_html.py` (262L) — rendu tableau HTML OS-style avec deep links
+
+**Fonctionnalités** :
+- Filtres en cascade : date → escouade → type → playlist → mode → carte
+- Recherche floue gamertag (prefix + Levenshtein) avec suggestions dynamiques
+- Tableau HTML colonnes : date, carte, playlist, mode, résultat, score, KDA, kills, deaths, headshots, spree, accuracy, avg life, MMR, delta MMR, performance
+- Deep linking bidirectionnel (`?page=Explorer&gamertag=X` et `&match_id=X`)
+- Badges encounter (rival/mentor/proie) sur les résultats joueur
+- i18n FR/EN complet (`src/ui/i18n/pages/explorer.py`)
+
+**Qualité** :
+- Logging structuré (info/warning/error) dans tous les modules I/O
+- 40 tests unitaires (logique, enrichissement, data mock, HTML)
+- `render_explorer_page` splitté en 3 sous-fonctions pour respecter la règle 80L
+- Ruff + ruff-format + check_code_size : OK
+
+---
+
 ### [2026-02-26] — Centralisation des TODO dans `.ai/BACKLOG.md`
 
 **Statut** : Complété ✅
