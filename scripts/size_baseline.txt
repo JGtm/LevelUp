@@ -32,7 +32,7 @@ FUNC:src/app/media_background.py:48:worker:126L
 FUNC:src/app/page_router.py:263:dispatch_page:148L
 FUNC:src/app/profile.py:187:load_profile_assets:101L
 FUNC:src/app/sidebar.py:174:render_sync_button:120L
-FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:104L
+FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:106L
 FUNC:src/data/infrastructure/database/duckdb_engine.py:139:load_matches:82L
 FUNC:src/data/media_indexer.py:234:scan_and_index:91L
 FUNC:src/data/media_indexer.py:90:ensure_schema:138L
@@ -120,7 +120,7 @@ FUNC:src/ui/pages/teammates.py:74:render_teammates_page:191L
 FUNC:src/ui/pages/teammates_charts.py:26:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_charts.py:273:render_trio_charts:134L
 FUNC:src/ui/pages/teammates_helpers.py:144:render_friends_history_table:248L
-FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:120L
+FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:122L
 FUNC:src/ui/pages/teammates_views.py:163:render_multi_teammate_view:173L
 FUNC:src/ui/pages/teammates_views.py:55:render_single_teammate_view:105L
 FUNC:src/ui/pages/win_loss.py:322:_render_ratio_by_map_section:82L

@@ -16,6 +16,7 @@ from src.analysis.friends_impact import (
 from src.data.repositories import DuckDBRepository
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
+from src.utils.db import ensure_shared_attached
 from src.utils.paths import get_shared_matches_path_from_player
 from src.visualization.friends_impact_heatmap import (
     build_impact_ranking_df,
@@ -23,40 +24,6 @@ from src.visualization.friends_impact_heatmap import (
     plot_friends_impact_heatmap,
     render_impact_summary_stats,
 )
-
-
-def _ensure_shared_attached(conn, player_db_path: str) -> str | None:
-    """Attache shared_matches.duckdb si nécessaire.
-
-    Returns:
-        Nom de l'alias de la DB shared, ou None si échec.
-    """
-    # Chercher si shared est déjà attaché
-    try:
-        dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
-        for db_name, db_path_val in dbs:
-            if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
-                return db_name
-            if db_name and "shared" in db_name.lower():
-                # Vérifier que cette DB a bien match_participants
-                try:
-                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
-                    return db_name
-                except Exception:
-                    continue
-    except Exception:
-        pass
-
-    # Pas trouvé, attacher
-    shared_db = get_shared_matches_path_from_player(player_db_path)
-    if not shared_db or not shared_db.exists():
-        return None
-
-    try:
-        conn.execute(f"ATTACH '{shared_db}' AS shared (READ_ONLY)")
-        return "shared"
-    except Exception:
-        return None
 
 
 def _load_highlight_events(
@@ -236,7 +203,10 @@ def render_impact_taquinerie(
         conn = repo._get_connection()
 
         # Attacher shared_matches.duckdb
-        shared_alias = _ensure_shared_attached(conn, db_path)
+        _shared_db = get_shared_matches_path_from_player(db_path)
+        shared_alias = (
+            ensure_shared_attached(conn, _shared_db) if _shared_db and _shared_db.exists() else None
+        )
         if not shared_alias:
             st.warning(t("tmi_no_shared_db"))
             return

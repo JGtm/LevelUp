@@ -9,22 +9,8 @@ import plotly.graph_objects as go
 import polars as pl
 
 from src.ui.i18n.viz import viz_t
+from src.visualization._antagonist_colors import COLORS, PLAYER_COLORS
 from src.visualization.theme import apply_halo_plot_style
-
-# Imports locaux retardés pour éviter les imports circulaires.
-# COLORS, PLAYER_COLORS sont dans le module façade (antagonist_charts.py).
-
-
-def _get_colors() -> dict[str, str]:
-    from src.visualization.antagonist_charts import COLORS
-
-    return COLORS
-
-
-def _get_player_colors() -> list[str]:
-    from src.visualization.antagonist_charts import PLAYER_COLORS
-
-    return PLAYER_COLORS
 
 
 def plot_killer_victim_stacked_bars(  # noqa: PLR0913
@@ -38,8 +24,8 @@ def plot_killer_victim_stacked_bars(  # noqa: PLR0913
     lang: str = "fr",
 ) -> go.Figure:
     """Graphique barres empilées : une ligne par tueur, segments = victimes."""
-    colors = _get_colors()
-    player_colors = _get_player_colors()
+    colors = COLORS
+    player_colors = PLAYER_COLORS
     if title is None:
         title = viz_t("title_elim_victim", lang)
     fig = go.Figure()
@@ -142,7 +128,7 @@ def plot_kd_timeseries(
     lang: str = "fr",
 ) -> go.Figure:
     """Graphique timeseries du K/D par minute."""
-    colors = _get_colors()
+    colors = COLORS
     title = title or viz_t("title_kd_per_min", lang)
     fig = go.Figure()
 
@@ -227,7 +213,7 @@ def plot_killer_victim_heatmap(
     lang: str = "fr",
 ) -> go.Figure:
     """Heatmap de la matrice killer-victim."""
-    colors = _get_colors()
+    colors = COLORS
     if title is None:
         title = viz_t("title_killer_victim_matrix", lang)
     fig = go.Figure()

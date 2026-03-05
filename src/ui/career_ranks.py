@@ -28,6 +28,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from src.ui.i18n.data_labels import load_domain
+from src.utils.paths import REPO_ROOT
 
 # Legacy dicts conservés comme fallback — source de vérité = JSON
 _CAREER_RANK_TIER_FR: dict[str, str] = {
@@ -191,12 +192,8 @@ class CareerRankInfo:
         )
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
 def _get_icons_dir() -> Path:
-    return _repo_root() / "data" / "cache" / "career_ranks"
+    return REPO_ROOT / "data" / "cache" / "career_ranks"
 
 
 logger = logging.getLogger(__name__)
@@ -207,7 +204,7 @@ def _build_ranks_lookup() -> dict[int, CareerRankInfo]:
     """Construit le lookup depuis metadata.duckdb (table career_ranks)."""
     from src.utils.db import duckdb_read_only
 
-    db_path = _repo_root() / "data" / "warehouse" / "metadata.duckdb"
+    db_path = REPO_ROOT / "data" / "warehouse" / "metadata.duckdb"
     if not db_path.exists():
         logger.warning("metadata.duckdb introuvable : %s", db_path)
         return {}
@@ -324,7 +321,7 @@ def is_metadata_available() -> bool:
     """Vérifie si les métadonnées des rangs sont disponibles dans metadata.duckdb."""
     from src.utils.db import duckdb_read_only
 
-    db_path = _repo_root() / "data" / "warehouse" / "metadata.duckdb"
+    db_path = REPO_ROOT / "data" / "warehouse" / "metadata.duckdb"
     if not db_path.exists():
         return False
     try:

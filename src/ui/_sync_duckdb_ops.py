@@ -11,7 +11,8 @@ import logging
 import os
 from pathlib import Path
 
-from src.ui._sync_utils import _default_repo_root, _shared_path, get_player_duckdb_path
+from src.ui._sync_utils import _shared_path, get_player_duckdb_path
+from src.utils.paths import REPO_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +216,7 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
     with_skill = True
     with_aliases = True
     if repo_root is None:
-        repo_root = _default_repo_root()
+        repo_root = REPO_ROOT
 
     player_db_path = get_player_duckdb_path(gamertag, repo_root)
     if player_db_path is None:

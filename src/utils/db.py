@@ -123,3 +123,40 @@ def has_table(conn: duckdb.DuckDBPyConnection, table_name: str, schema: str = "m
         [schema, table_name],
     ).fetchone()
     return rows is not None
+
+
+def ensure_shared_attached(
+    conn: duckdb.DuckDBPyConnection,
+    shared_path: str | Path,
+    aliases: tuple[str, ...] = ("shared",),
+) -> str | None:
+    """Vérifie si shared_matches est déjà attaché, sinon l'attache en READ_ONLY.
+
+    Args:
+        conn: Connexion DuckDB active.
+        shared_path: Chemin absolu vers shared_matches.duckdb.
+        aliases: Noms d'alias à essayer pour l'attachement.
+
+    Returns:
+        Nom de l'alias sous lequel shared est accessible, ou None en cas d'échec.
+    """
+    import contextlib
+
+    # Chercher un alias existant pointant vers shared_matches.duckdb
+    with contextlib.suppress(Exception):
+        dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
+        for db_name, db_path_val in dbs:
+            if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
+                return db_name
+            if db_name and "shared" in db_name.lower():
+                with contextlib.suppress(Exception):
+                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                    return db_name
+
+    # Tentative d'attachement READ_ONLY
+    for alias in aliases:
+        with contextlib.suppress(Exception):
+            conn.execute(f"ATTACH '{shared_path}' AS {alias} (READ_ONLY)")
+            return alias
+
+    return None

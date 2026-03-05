@@ -13,15 +13,12 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
+from src.utils.paths import REPO_ROOT
+
 if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
-
-
-def _default_repo_root() -> Path:
-    """Retourne la racine du repo déduite depuis ce fichier."""
-    return Path(__file__).resolve().parent.parent.parent
 
 
 def pick_latest_spnkr_db_if_any(repo_root: Path | None = None) -> str:
@@ -35,7 +32,7 @@ def pick_latest_spnkr_db_if_any(repo_root: Path | None = None) -> str:
     """
     try:
         if repo_root is None:
-            repo_root = _default_repo_root()
+            repo_root = REPO_ROOT
         data_dir = repo_root / "data"
         if not data_dir.exists():
             return ""
@@ -83,7 +80,7 @@ def cleanup_orphan_tmp_dbs(repo_root: Path | None = None) -> None:  # noqa: PLR0
 
     try:
         if repo_root is None:
-            repo_root = _default_repo_root()
+            repo_root = REPO_ROOT
         data_dir = repo_root / "data"
         if not data_dir.exists():
             return
@@ -147,7 +144,7 @@ def get_player_duckdb_path(gamertag: str, repo_root: Path | None = None) -> Path
         Path vers stats.duckdb ou None si non trouvé.
     """
     if repo_root is None:
-        repo_root = _default_repo_root()
+        repo_root = REPO_ROOT
 
     stats_db = repo_root / "data" / "players" / gamertag / "stats.duckdb"
 
