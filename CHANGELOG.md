@@ -70,13 +70,39 @@ python -m pytest -q --ignore=tests/integration
 
 ### Refactoring & Architecture (branche `refactor/cleanup-all`)
 
+> **Refactoring massif en 6 phases** — 331 fichiers modifiés, ~30 000 lignes réécrites, 72 nouveaux sous-modules, 3 693 tests passent (dont 79 tests dédiés ajoutés). Aucun changement fonctionnel pour l'utilisateur.
+
+#### Phase 0-4 : Infrastructure & premiers splits
+
 - **Split `transformers.py` (2 095L → package)** — `src/data/sync/transformers/` avec 7 sous-modules (`_helpers`, `_match`, `_skill`, `_events`, `_medals`, `_personal_scores`, `_pve`) + `__init__.py` ré-exportant tout ; aucun breaking change
 - **Split `filters_render.py` (1 460L → 4 modules)** — `_filters_period.py`, `_filters_session.py`, `_filters_cascade.py` extraits ; `filters_render.py` réduit à l'orchestration
+- **Split `engine.py` (1 500L → 8 mixins)** — `_shared_writes.py`, `_performance.py`, `_skill_rating.py`, `_career.py`, `_aggregates.py`, `_tokens.py`, `_engine_connections.py`, `_engine_schema.py`
+- **Split `duckdb_repo.py` (1 200L → 8 mixins)** — `_match_queries_helpers.py`, `_match_queries_polars.py`, `_archives_repo.py`, `_awards_repo.py`, `_diagnostic_repo.py`, `_events_repo.py`, `_medals_repo.py`, `_schema_introspection.py`
+- **Split modules utilitaires** — `media_indexer.py`, `api_client.py`, `batch_insert.py`, `discord_notifier.py`, `cache_loaders.py`, `radar_chart.py`, `teammates_views.py`, `sync.py`, `timeseries_combat.py`
 - **`_SyncProtocol`** (`src/data/sync/_protocol.py`) — contrat `Protocol` explicite pour les 6 mixins du `DuckDBSyncEngine` ; élimine 70+ `# type: ignore[attr-defined]`
 - **`PageContext` + `MatchViewParams`** (`src/app/_page_context.py`) — types réels à la place de 5 champs `Any` dans le `NamedTuple`
 - **`SessionKeys` / `SK`** (`src/app/session_keys.py`) — 20+ clés `st.session_state` centralisées, complétions IDE, plus de typos silencieuses
 - **`_sql_fragments.py`** (`src/data/query/_sql_fragments.py`) — source de vérité unique pour `WIN_RATE_EXPR` (dénominateur WIN+LOSS, NULLIF division), `IS_WIN`, `IS_LOSS` ; 7 occurrences dupliquées dans `analytics.py` et `trends.py` supprimées
 - **Dettes techniques v4→v5 supprimées** : guard `_PERF_SCORE_AVAILABLE` (always-True), dead method `_ensure_performance_score_column()`, magic number `outcome == 4` → `Outcome.DID_NOT_FINISH`
+
+#### Phase 5 : Split modules d'analyse & visualisation
+
+- **Split `performance_score.py` (950L → 3 modules)** — `_performance_relative.py` (score match relatif), `_performance_session.py` (score session v1/v2, `ScoreComponent`) ; façade inchangée
+- **Split `antagonist_charts.py` (570L → 3 modules)** — `_antagonist_kv.py` (stacked bars, timeseries, heatmap), `_antagonist_duels.py` (duel history, nemesis summary, indicators) ; façade inchangée
+- **Split `rag.py` (750L → 4 modules)** — `_rag_models.py` (RAGConfig, Document, SearchResult), `_rag_github.py` (GitHubIndexer), `_rag_chunker.py` (TextChunker) ; façade inchangée
+
+#### Phase 6 : Split modules UI & data
+
+- **Split `refdata.py` (880L → 2 modules)** — `_refdata_personal_scores.py` (PersonalScoreNameId enum 68 membres, dictionnaires de points/noms/IDs) ; façade inchangée
+- **Split `_roster_loader.py` (520L → 2 mixins)** — `_gamertag_resolver.py` (GamertagResolverMixin, cascade XUID→gamertag 5 sources) ; `_roster_loader.py` hérite du mixin
+- **Split `cache_filters.py` (740L → 3 modules)** — `_cache_loading.py` (recent matches, pagination, match count), `_cache_sessions.py` (compute sessions DB) ; façade inchangée
+- **Split `filters_render.py`** — `_filters_apply.py` (apply_filters 190L, diagnostic empty) ; façade inchangée
+- **Split `session_compare_charts.py` (480L → 2 modules)** — `_session_compare_history.py` (tableau historique HTML) ; façade inchangée
+
+#### Qualité & couverture
+
+- **79 tests unitaires dédiés** — `test_submodules_phase5.py` (37 tests) + `test_submodules_phase6.py` (42 tests) couvrant directement les 13 sous-modules et vérifiant les re-exports des façades
+- **Logger ajouté dans 3 modules silencieux** — `_cache_loading.py` (6 blocs `except` → `logger.debug` avec `exc_info`), `_performance_relative.py` (1 catch-all), `_rag_github.py` (1 erreur réseau) ; tous les `except Exception` des sous-modules sont désormais tracés
 - **Système de logs centralisé** (`src/utils/log_config.py`) — `setup_app_logging()` : logs fichiers uniquement (`data/logs/app.log` 5 Mo×3, `data/logs/sync.log` 10 Mo×5), pas de sortie console ; `setup_script_logging()` pour les scripts CLI ; `log_duration()` context manager avec seuil ms configurable. Câblé dans : launch app, chargement joueur, sélection session, changements filtres, chargement DataFrame, KPIs, navigation match (boutons dernier match / carnage / match précédent), sync UI, backfill CLI, tailscale, RAG. `data/logs/` exclu du dépôt.
 - **`.gitattributes`** — enforce `eol=lf` sur tout le dépôt ; résout les conflits pre-commit mixed-line-ending sur Windows (`core.autocrlf=true`)
 - **`pyproject.toml`** — `per-file-ignores` pour `scripts/*` et `launcher.py` (complexité C901/PLR0912/PLR0913/PLR0915 tolérée dans les scripts utilitaires)
