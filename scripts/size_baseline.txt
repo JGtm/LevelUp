@@ -114,7 +114,7 @@ FUNC:src/ui/pages/session_compare.py:319:render_session_comparison_page:116L
 FUNC:src/ui/pages/session_compare_charts.py:245:_build_bar_chart_figure:89L
 FUNC:src/ui/pages/session_compare_charts.py:367:render_participation_trend_section:120L
 FUNC:src/ui/pages/session_compare_charts.py:51:render_comparison_radar_chart:82L
-FUNC:src/ui/pages/settings.py:21:render_settings_page:251L
+FUNC:src/ui/pages/settings.py:21:render_settings_page:256L
 FUNC:src/ui/pages/teammates.py:74:render_teammates_page:191L
 FUNC:src/ui/pages/teammates_charts.py:26:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_charts.py:273:render_trio_charts:134L
@@ -129,7 +129,7 @@ FUNC:src/ui/player_assets.py:82:download_image_to_cache:280L
 FUNC:src/ui/profile_api.py:200:_get_career_rank_for_player:138L
 FUNC:src/ui/profile_api.py:48:fetch_appearance_via_spnkr:149L
 FUNC:src/ui/profile_api.py:67:_run:128L
-FUNC:src/ui/profile_api_tokens.py:23:get_tokens:108L
+FUNC:src/ui/profile_api_tokens.py:23:get_tokens:122L
 FUNC:src/ui/styles.py:44:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
