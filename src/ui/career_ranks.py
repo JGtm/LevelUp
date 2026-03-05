@@ -331,8 +331,6 @@ def is_metadata_available() -> bool:
         with duckdb_read_only(str(db_path)) as conn:
             from src.utils.db import has_table
 
-            if not has_table(conn, "career_ranks"):
-                return False
-            return True
+            return has_table(conn, "career_ranks")
     except Exception:
         return False

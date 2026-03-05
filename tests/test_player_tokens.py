@@ -86,7 +86,7 @@ class TestGetTokensForPlayer:
         """Retourne None si la variable joueur est absente de l'env."""
         from src.data.sync.api_client import get_tokens_for_player
 
-        monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
+        monkeypatch.setattr("src.data.sync._tokens.load_dotenv_if_present", lambda: None)
         monkeypatch.delenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", raising=False)
 
         result = await get_tokens_for_player("SpartanC")
@@ -97,7 +97,7 @@ class TestGetTokensForPlayer:
         """Retourne None si la variable joueur est vide."""
         from src.data.sync.api_client import get_tokens_for_player
 
-        monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
+        monkeypatch.setattr("src.data.sync._tokens.load_dotenv_if_present", lambda: None)
         monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", "")
 
         result = await get_tokens_for_player("SpartanC")
@@ -110,7 +110,7 @@ class TestGetTokensForPlayer:
         """Retourne None + warning si token joueur présent mais Azure creds absents."""
         from src.data.sync.api_client import get_tokens_for_player
 
-        monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
+        monkeypatch.setattr("src.data.sync._tokens.load_dotenv_if_present", lambda: None)
         monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", "fake_refresh_token")
         monkeypatch.delenv("SPNKR_AZURE_CLIENT_ID", raising=False)
         monkeypatch.delenv("SPNKR_AZURE_CLIENT_SECRET", raising=False)
@@ -125,14 +125,14 @@ class TestGetTokensForPlayer:
         """Retourne Tokens quand token joueur + Azure creds sont présents."""
         from src.data.sync.api_client import Tokens, get_tokens_for_player
 
-        monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
+        monkeypatch.setattr("src.data.sync._tokens.load_dotenv_if_present", lambda: None)
         monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", "player_refresh_token")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_ID", "client_id")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_SECRET", "client_secret")
 
         expected_tokens = Tokens(spartan_token="spartan_123", clearance_token="clearance_abc")
         with patch(
-            "src.data.sync.api_client._get_tokens_via_oauth",
+            "src.data.sync._tokens._get_tokens_via_oauth",
             new=AsyncMock(return_value=expected_tokens),
         ) as mock_oauth:
             result = await get_tokens_for_player("SpartanC")
@@ -154,7 +154,7 @@ class TestGetTokensForPlayer:
         """Utilise SPNKR_AZURE_REDIRECT_URI si défini."""
         from src.data.sync.api_client import Tokens, get_tokens_for_player
 
-        monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
+        monkeypatch.setattr("src.data.sync._tokens.load_dotenv_if_present", lambda: None)
         monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC", "player_token")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_ID", "cid")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_SECRET", "csecret")
@@ -162,7 +162,7 @@ class TestGetTokensForPlayer:
 
         fake_tokens = Tokens(spartan_token="st", clearance_token="ct")
         with patch(
-            "src.data.sync.api_client._get_tokens_via_oauth",
+            "src.data.sync._tokens._get_tokens_via_oauth",
             new=AsyncMock(return_value=fake_tokens),
         ) as mock_oauth:
             await get_tokens_for_player("SpartanC")
@@ -183,7 +183,7 @@ class TestGetTokensForPlayer:
         """Le gamertag est normalisé avant de chercher l'env var."""
         from src.data.sync.api_client import Tokens, get_tokens_for_player
 
-        monkeypatch.setattr("src.data.sync.api_client._load_dotenv_if_present", lambda: None)
+        monkeypatch.setattr("src.data.sync._tokens.load_dotenv_if_present", lambda: None)
         # Gamertag "Mon GT" → clé "SPNKR_OAUTH_REFRESH_TOKEN_MON_GT"
         monkeypatch.setenv("SPNKR_OAUTH_REFRESH_TOKEN_MON_GT", "player_token")
         monkeypatch.setenv("SPNKR_AZURE_CLIENT_ID", "cid")
@@ -191,7 +191,7 @@ class TestGetTokensForPlayer:
 
         fake_tokens = Tokens(spartan_token="st", clearance_token="ct")
         with patch(
-            "src.data.sync.api_client._get_tokens_via_oauth",
+            "src.data.sync._tokens._get_tokens_via_oauth",
             new=AsyncMock(return_value=fake_tokens),
         ):
             result = await get_tokens_for_player("Mon GT")

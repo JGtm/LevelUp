@@ -8,7 +8,6 @@ import logging
 import os
 import re
 from collections.abc import Callable
-from typing import Any
 
 import streamlit as st
 
@@ -16,11 +15,20 @@ from src.analysis import compute_personal_antagonists
 from src.config import BOT_MAP, TEAM_MAP
 from src.ui import display_name_from_xuid
 from src.ui.chart_utils import safe_chart_render
+from src.ui.formatting import format_time_ms as _format_time
 from src.ui.i18n import get_lang, t
 from src.ui.pages.match_view_helpers import os_card
+from src.ui.pages.match_view_players_data import (
+    has_table_duckdb as _has_table_duckdb,
+)
+from src.ui.pages.match_view_players_data import (
+    load_match_players_stats as _load_match_players_stats,
+)
+from src.ui.pages.match_view_scoreboard import (
+    render_match_scoreboard,  # noqa: F401 — re-export
+)
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.utils import parse_xuid_input
-from src.utils.db import is_duckdb_v4_path as _is_duckdb_v4_path
 from src.visualization.match_impact_timeline import (
     compute_single_match_impact,
     get_impact_labels,
@@ -34,54 +42,6 @@ from src.visualization.team_dominance_timeline import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# Helper DuckDB v4
-# =============================================================================
-
-
-def _has_table_duckdb(db_path: str, table_name: str) -> bool:
-    """Vérifie si une table existe dans une DB DuckDB (locale ou shared).
-
-    Utilise le repository pour vérifier la table locale puis shared.
-    """
-    if not _is_duckdb_v4_path(db_path):
-        return False
-    try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
-        repo = DuckDBRepository(db_path, xuid="", read_only=True)
-        # Vérifier la table locale puis shared (v5.1)
-        return repo.has_table(table_name) or repo._has_shared_table(table_name)
-    except Exception:
-        return False
-
-
-def _load_match_players_stats(db_path: str, match_id: str) -> list[dict[str, Any]]:
-    """Charge les stats des joueurs d'un match."""
-    if not _is_duckdb_v4_path(db_path):
-        return []
-    try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
-        repo = DuckDBRepository(db_path, xuid="", read_only=True)
-        return repo.load_match_players_stats(match_id)
-    except Exception:
-        return []
-
-
-def _load_match_scoreboard(db_path: str, match_id: str) -> list[dict[str, Any]]:
-    """Charge le tableau de bord complet (toutes stats + frags parfaits) d'un match."""
-    if not _is_duckdb_v4_path(db_path):
-        return []
-    try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
-        repo = DuckDBRepository(db_path, xuid="", read_only=True)
-        return repo.load_match_scoreboard(match_id)
-    except Exception:
-        return []
 
 
 # =============================================================================
@@ -106,9 +66,11 @@ def render_team_dominance_section(  # noqa: PLR0913
     - Kill feed individuel avec séries annotées.
     """
     if is_firefight:
+        logger.debug("dominance: mode firefight, section ignorée")
         return
 
     if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
+        logger.debug("dominance: table highlight_events absente pour match=%s", match_id)
         return
 
     st.subheader(t("mv_match_dynamics"))
@@ -201,6 +163,7 @@ def render_nemesis_section(  # noqa: C901, PLR0913, PLR0915
     """Rend la section Némésis / Souffre-douleur."""
     st.subheader(t("mv_antagonists_title"))
     if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
+        logger.debug("némésis: table highlight_events absente pour match=%s", match_id)
         st.caption(t("mv_nemesis_unavailable"))
         return
 
@@ -450,6 +413,7 @@ def _render_antagonist_chart(  # noqa: C901, PLR0912, PLR0913
         try:
             gt_map = load_match_gamertags_fn(db_path, match_id.strip(), db_key=db_key)
         except Exception:
+            logger.warning("antagonist chart: erreur chargement gamertags match=%s", match_id)
             gt_map = None
 
     pairs_df = None
@@ -460,6 +424,7 @@ def _render_antagonist_chart(  # noqa: C901, PLR0912, PLR0913
             repo = DuckDBRepository(db_path, str(xuid).strip())
             pairs_df = repo.load_killer_victim_pairs_as_polars(match_id=match_id.strip())
         except Exception:
+            logger.warning("antagonist chart: erreur chargement KV pairs match=%s", match_id)
             pairs_df = None
 
     # Fallback : construire depuis highlight_events
@@ -483,7 +448,9 @@ def _render_antagonist_chart(  # noqa: C901, PLR0912, PLR0913
                     }
                 )
         except Exception:
-            pass
+            logger.warning(
+                "antagonist chart: erreur fallback KV highlight_events match=%s", match_id
+            )
 
     if pairs_df is not None and not pairs_df.is_empty():
         try:
@@ -529,126 +496,14 @@ def _render_antagonist_chart(  # noqa: C901, PLR0912, PLR0913
                 else:
                     st.info(t("mv_interactions_no_data"))
         except Exception:
-            pass
+            logger.warning(
+                "antagonist chart: erreur rendu graphique KV match=%s", match_id, exc_info=True
+            )
 
 
 # =============================================================================
-# Section Tableau des scores par équipe
+# Section frags cumulés au fil du temps
 # =============================================================================
-
-
-def _get_scoreboard_cols() -> list[tuple[str, str]]:
-    """Retourne les colonnes du scoreboard traduites."""
-    return [
-        (t("col_player"), "gamertag"),
-        (t("col_rank"), "rank"),
-        (t("col_score"), "score"),
-        (t("col_kills"), "kills"),
-        (t("col_deaths"), "deaths"),
-        (t("col_assists_short"), "assists"),
-        (t("col_kda"), "kda"),
-        (t("col_killing_spree"), "max_killing_spree"),
-        (t("col_headshots"), "headshot_kills"),
-        (t("col_perfect_kills"), "perfect_kills"),
-        (t("col_shots_fired_short"), "shots_fired"),
-        (t("col_shots_hit"), "shots_hit"),
-        (t("col_accuracy"), "accuracy"),
-        (t("col_melee"), "melee_kills"),
-        (t("col_power_weapon"), "power_weapon_kills"),
-        (t("col_dmg_dealt"), "damage_dealt"),
-        (t("col_dmg_taken"), "damage_taken"),
-        (t("mv_scoreboard_avg_life"), "avg_life_seconds"),
-    ]
-
-
-# Colonnes non comparables (texte / ordinal) : pas de highlight min/max
-_SB_SKIP_HIGHLIGHT: set[str] = {"gamertag", "rank"}
-
-# Colonnes inversées : moins = mieux (vert), plus = pire (rouge)
-_SB_INVERTED: set[str] = {"deaths", "damage_taken"}
-
-
-def _sb_numeric_value(key: str, value: Any) -> float | None:
-    """Extrait la valeur numérique comparable d'une cellule du scoreboard."""
-    if value is None:
-        return None
-    try:
-        v = float(value)
-        # accuracy stockée en fraction 0-1 : normaliser pour comparaison
-        if key == "accuracy" and v <= 1.0:
-            v *= 100.0
-        return v
-    except (ValueError, TypeError):
-        return None
-
-
-def _compute_scoreboard_extremes(
-    players: list[dict[str, Any]],
-) -> dict[str, tuple[float, float]]:
-    """Calcule le min et max de chaque colonne numérique sur tous les joueurs.
-
-    Returns:
-        Dict {key: (min_val, max_val)} pour les colonnes ayant au moins
-        2 valeurs distinctes.
-    """
-    extremes: dict[str, tuple[float, float]] = {}
-    for _, key in _get_scoreboard_cols():
-        if key in _SB_SKIP_HIGHLIGHT:
-            continue
-        vals = [v for p in players if (v := _sb_numeric_value(key, p.get(key))) is not None]
-        if len(vals) < 2:
-            continue
-        mn, mx = min(vals), max(vals)
-        if mn == mx:
-            continue  # toutes les valeurs identiques → pas de highlight
-        extremes[key] = (mn, mx)
-    return extremes
-
-
-def _sb_cell_class(
-    key: str,
-    value: Any,
-    extremes: dict[str, tuple[float, float]],
-) -> str:
-    """Retourne la classe CSS de highlight pour une cellule du scoreboard."""
-    if key in _SB_SKIP_HIGHLIGHT or key not in extremes:
-        return ""
-    v = _sb_numeric_value(key, value)
-    if v is None:
-        return ""
-    mn, mx = extremes[key]
-    inverted = key in _SB_INVERTED
-    if v == mx:
-        return " os-sb-td--worst" if inverted else " os-sb-td--best"
-    if v == mn:
-        return " os-sb-td--best" if inverted else " os-sb-td--worst"
-    return ""
-
-
-def _fmt_scoreboard_cell(key: str, value: Any) -> str:
-    """Formate une valeur selon son type pour l'affichage dans le scoreboard."""
-    if value is None:
-        return "—"
-    if key == "gamertag":
-        s = str(value).strip()
-        # Masquer les XUIDs bruts : si tout numérique ou format xuid(…)
-        if not s or s.isdigit() or s.lower().startswith("xuid(") or s == "?":
-            return "—"
-        return s
-    if key == "kda":
-        return f"{float(value):.2f}"
-    if key == "accuracy":
-        v = float(value)
-        # Si la valeur est déjà en fraction (0–1), convertir en %
-        if v <= 1.0:
-            v *= 100.0
-        return f"{v:.1f}\u202f%"
-    if key == "avg_life_seconds":
-        secs = int(float(value))
-        return f"{secs // 60}:{secs % 60:02d}"
-    if key in ("damage_dealt", "damage_taken"):
-        return str(int(round(float(value))))
-    return str(value)
 
 
 def render_kd_timeline_section(  # noqa: PLR0913
@@ -667,11 +522,13 @@ def render_kd_timeline_section(  # noqa: PLR0913
     éliminateur-victime.
     """
     if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
+        logger.debug("kd_timeline: table highlight_events absente pour match=%s", match_id)
         return
 
     try:
         he = load_highlight_events_fn(db_path, match_id.strip(), db_key=db_key)
     except Exception:
+        logger.warning("kd_timeline: erreur chargement highlight_events match=%s", match_id)
         he = None
 
     if not he:
@@ -694,220 +551,6 @@ def render_kd_timeline_section(  # noqa: PLR0913
     if fig is not None:
         st.subheader(t("mv_kills_over_time"))
         st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-
-
-def render_match_scoreboard(  # noqa: C901, PLR0912, PLR0915
-    *,
-    match_id: str,
-    db_path: str,
-    xuid: str,
-    db_key: tuple[int, int] | None,
-    load_match_gamertags_fn: Callable,
-) -> None:
-    """Rend les tableaux de scores par équipe pour un match.
-
-    Affiche un tableau par équipe présente dans le match, avec 18 colonnes
-    de statistiques. La ligne du joueur principal est mise en évidence.
-
-    Args:
-        match_id: Identifiant du match.
-        db_path: Chemin vers la base de données.
-        xuid: XUID du joueur principal.
-        db_key: Clé de cache (conservée pour cohérence d'API).
-        load_match_gamertags_fn: Fonction injectée de résolution gamertags —
-            doit être la même que celle passée à render_roster_section.
-            Interroge shared.match_participants + highlight_events + xuid_aliases
-            (source de vérité v5.1). NE PAS utiliser display_name_from_xuid
-            ni get_xuid_aliases (src/ui/aliases.py) qui sont obsolètes pour
-            ce contexte et ignorent les données fraîches de la session.
-    """
-    st.subheader(t("mv_scoreboard"))
-
-    players = _load_match_scoreboard(db_path, match_id.strip())
-    if not players:
-        st.info(t("mv_scoreboard_no_data"))
-        return
-
-    # Normaliser le xuid du joueur principal
-    me_xu = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
-
-    # Charger le mapping gamertag (même source que render_roster_section)
-    # SOURCE DE VÉRITÉ : shared.match_participants → highlight_events → shared.xuid_aliases
-    # Ne pas substituer par display_name_from_xuid / get_xuid_aliases (obsolètes ici)
-    gt_map: dict[str, str] = load_match_gamertags_fn(db_path, match_id.strip(), db_key=db_key) or {}
-
-    # Résoudre les gamertags manquants dans les données du scoreboard
-    for p in players:
-        xu = str(
-            parse_xuid_input(str(p.get("xuid") or "").strip()) or str(p.get("xuid") or "").strip()
-        ).strip()
-
-        # Priorité 1 : bots (bid(...))
-        if xu.lower().startswith("bid("):
-            bot_name = BOT_MAP.get(xu)
-            if isinstance(bot_name, str) and bot_name.strip():
-                p["gamertag"] = bot_name.strip()
-                continue
-
-        # Priorité 2 : gt_map issu de load_match_gamertags_fn (source fraîche DuckDB v5)
-        if xu and isinstance(gt_map, dict):
-            mapped = gt_map.get(xu)
-            if isinstance(mapped, str) and mapped.strip():
-                p["gamertag"] = mapped.strip()
-                continue
-
-        # Priorité 3 : gamertag déjà présent dans les données (COALESCE SQL)
-        gt = str(p.get("gamertag") or "").strip()
-        if gt and gt != "?" and not gt.isdigit() and not gt.lower().startswith("xuid("):
-            continue  # gamertag valide, on garde
-
-        # Aucune résolution possible — afficher le XUID court ou "—"
-        p["gamertag"] = None
-
-    # Déterminer l'équipe du joueur principal (après résolution gamertags)
-    my_team_id: Any = None
-    for p in players:
-        p_xu = str(
-            parse_xuid_input(str(p.get("xuid") or "").strip()) or str(p.get("xuid") or "").strip()
-        ).strip()
-        if me_xu and p_xu and p_xu == me_xu:
-            my_team_id = p.get("team_id")
-            break
-
-    # Grouper par team_id (ordre croissant). Les joueurs sans team_id connu sont regroupés en dernier.
-    teams: dict[Any, list[dict[str, Any]]] = {}
-    unknown_team: list[dict[str, Any]] = []
-    for p in players:
-        tid = p.get("team_id")
-        if tid is None:
-            unknown_team.append(p)
-        else:
-            teams.setdefault(tid, []).append(p)
-
-    # Ajouter les joueurs sans team_id en dernier si présents
-    if unknown_team:
-        teams[None] = unknown_team
-
-    # Comptage des équipes réelles (team_id non None)
-    n_real_teams = len([t for t in teams if t is not None])
-
-    # Min/max par colonne (toutes équipes confondues) pour highlight vert/rouge
-    extremes = _compute_scoreboard_extremes(players)
-
-    # Compter best/worst par joueur pour highlight ligne MVP/LVP
-    player_best_count: dict[int, int] = {}  # index dans players → nb best
-    player_worst_count: dict[int, int] = {}  # index dans players → nb worst
-    for i, p in enumerate(players):
-        best = 0
-        worst = 0
-        for _, key in _get_scoreboard_cols():
-            cls = _sb_cell_class(key, p.get(key), extremes)
-            if "best" in cls:
-                best += 1
-            elif "worst" in cls:
-                worst += 1
-        player_best_count[i] = best
-        player_worst_count[i] = worst
-
-    # Le joueur avec le plus de "best" = MVP, le plus de "worst" = LVP
-    # Egalité MVP : moins de "worst" gagne, puis meilleur rang (plus bas)
-    # Egalité LVP : moins de "best" gagne, puis pire rang (plus haut)
-    # (au moins 2 colonnes pour éviter un highlight sur un seul stat)
-    mvp_idx = (
-        max(
-            player_best_count,
-            key=lambda i: (
-                player_best_count[i],
-                -player_worst_count.get(i, 0),
-                -(players[i].get("rank") or 999),
-            ),
-        )
-        if player_best_count
-        else -1
-    )
-    lvp_idx = (
-        max(
-            player_worst_count,
-            key=lambda i: (
-                player_worst_count[i],
-                -player_best_count.get(i, 0),
-                (players[i].get("rank") or 0),
-            ),
-        )
-        if player_worst_count
-        else -1
-    )
-    if player_best_count.get(mvp_idx, 0) < 2:
-        mvp_idx = -1
-    if player_worst_count.get(lvp_idx, 0) < 2:
-        lvp_idx = -1
-    # Construire un set de xuids MVP/LVP pour lookup rapide
-    mvp_xuid = str(players[mvp_idx].get("xuid", "")).strip() if mvp_idx >= 0 else ""
-    lvp_xuid = str(players[lvp_idx].get("xuid", "")).strip() if lvp_idx >= 0 else ""
-
-    for tid, team_players in teams.items():
-        # Nom de l'équipe via TEAM_MAP
-        try:
-            raw_name = (
-                TEAM_MAP.get(int(tid), t("mv_team_n", n=tid))
-                if tid is not None
-                else t("mv_team_unknown")
-            )
-        except (ValueError, TypeError):
-            raw_name = t("mv_team_n", n=tid) if tid is not None else t("mv_team_unknown")
-
-        # Détecter si c'est l'équipe du joueur pour la couleur Okabe-Ito
-        is_my_team = tid == my_team_id
-        team_css_mod = "os-sb-team--mine" if is_my_team else "os-sb-team--enemy"
-        team_label = t("mv_team_label", name=html.escape(raw_name))
-
-        # En-têtes colonnes
-        sb_cols = _get_scoreboard_cols()
-        th_cells = "".join(
-            f"<th class='os-sb-th'>{html.escape(label)}</th>" for label, _ in sb_cols
-        )
-        n_cols = len(sb_cols)
-        thead = (
-            f"<thead>"
-            f"<tr><th class='os-sb-team {team_css_mod}' colspan='{n_cols}'>{team_label}</th></tr>"
-            f"<tr>{th_cells}</tr>"
-            f"</thead>"
-        )
-
-        # Lignes joueurs
-        body_rows = []
-        for p in team_players:
-            p_xu = str(
-                parse_xuid_input(str(p.get("xuid") or "").strip())
-                or str(p.get("xuid") or "").strip()
-            ).strip()
-            is_me = bool(me_xu and p_xu and p_xu == me_xu)
-            row_class = " os-sb-row--me" if is_me else ""
-            # MVP / LVP row highlight (s'applique aussi au joueur principal)
-            if p_xu and p_xu == mvp_xuid:
-                row_class += " os-sb-row--mvp"
-            elif p_xu and p_xu == lvp_xuid:
-                row_class += " os-sb-row--lvp"
-            cells = "".join(
-                f"<td class='os-sb-td{_sb_cell_class(key, p.get(key), extremes)}'>"
-                f"{html.escape(_fmt_scoreboard_cell(key, p.get(key)))}</td>"
-                for _, key in sb_cols
-            )
-            body_rows.append(f"<tr class='os-sb-row{row_class}'>{cells}</tr>")
-
-        table_html = (
-            "<div class='os-table-wrap os-sb-wrap'>"
-            "<table class='os-table os-scoreboard'>"
-            f"{thead}"
-            "<tbody>" + "".join(body_rows) + "</tbody>"
-            "</table>"
-            "</div>"
-        )
-        st.markdown(table_html, unsafe_allow_html=True)
-
-    # Note sur le rang : en mode équipe, le rang est individuel au sein de l'équipe
-    if n_real_teams > 1:
-        st.caption(t("mv_scoreboard_rank_note"))
 
 
 # =============================================================================
@@ -1072,6 +715,7 @@ def render_match_impact_section(  # noqa: PLR0913
     st.subheader(t("mv_impact_title"))
 
     if not (match_id and match_id.strip() and _has_table_duckdb(db_path, "highlight_events")):
+        logger.debug("impact: table highlight_events absente pour match=%s", match_id)
         st.caption(t("mv_impact_no_events"))
         return
 
@@ -1139,14 +783,6 @@ def render_match_impact_section(  # noqa: PLR0913
         st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
     else:
         st.info(t("mv_impact_too_few"))
-
-
-def _format_time(ms: int) -> str:
-    """Formate un timestamp ms en M:SS."""
-    total_sec = max(0, ms // 1000)
-    minutes = total_sec // 60
-    seconds = total_sec % 60
-    return f"{minutes}:{seconds:02d}"
 
 
 # =============================================================================

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 import html
+import logging
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
@@ -21,7 +22,6 @@ from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.analysis.performance_score import compute_relative_performance_score
 from src.app.helpers import normalize_map_label
 from src.config import HALO_COLORS, OUTCOME_CODES
-from src.data.domain.refdata import Outcome
 from src.ui import (
     AppSettings,
     translate_pair_name,
@@ -29,9 +29,11 @@ from src.ui import (
 )
 from src.ui.formatting import format_date_fr
 from src.ui.i18n import get_lang, get_outcome_map, t
-from src.ui.i18n.data_labels import label_obj
 from src.ui.medals import load_medal_name_maps, render_medals_grid
 from src.ui.pages.match_view_charts import render_expected_vs_actual
+from src.ui.pages.match_view_citations import (
+    render_match_citations_section as _render_match_citations_section,
+)
 from src.ui.pages.match_view_encounters import render_encounter_section
 
 # Imports depuis les sous-modules
@@ -48,377 +50,10 @@ from src.ui.pages.match_view_players import (
     render_nemesis_section,
     render_team_dominance_section,
 )
+from src.ui.pages.match_view_rank import _build_match_rank_html
 from src.visualization._compat import DataFrameLike, ensure_polars
 
-# =============================================================================
-# Section Rang LUSR / CSR
-# =============================================================================
-
-
-def _build_match_rank_html(  # noqa: C901, PLR0912, PLR0915
-    *,
-    match_id: str,
-    db_path: str,
-    db_key: tuple[int, int] | None = None,
-    had_bot_teammate: bool = False,
-    bot_outcome: int | None = None,
-) -> str | None:
-    """Construit le HTML du bloc rang LUSR/CSR pour un match.
-
-    Args:
-        had_bot_teammate: Si True, ajoute une note contextuelle bot sous le delta.
-        bot_outcome: Outcome du joueur (2 = victoire) pour choisir la note bot.
-
-    Returns:
-        Chaîne HTML prête à injecter, ou None si pas de données.
-    """
-    try:
-        from pathlib import Path
-
-        from src.analysis.skill_rating_config import (
-            UNRANKED_COLOR,
-            UNRANKED_LABEL,
-            get_rank_image_path,
-            get_sub_tier_start,
-            get_tier_for_rating,
-            get_tier_size,
-        )
-        from src.ui.cache_loaders import cached_get_match_skill_rank
-    except ImportError:
-        return None
-
-    row_rank = cached_get_match_skill_rank(db_path, match_id, db_key=db_key)
-    if row_rank is None:
-        return None
-
-    (
-        rating_type,
-        rating_value,
-        rating_deviation,
-        tier_label,
-        sub_tier,
-        tier_name,
-        tier_fr,
-        rating_delta,
-        playlist_group,
-    ) = row_rank
-
-    from src.ui.player_assets import file_to_data_url
-
-    tier_display = html.escape(tier_label or UNRANKED_LABEL)
-    rating_type_badge = html.escape("CSR" if rating_type == "CSR" else "LUSR")
-    rating_val_str = f"{rating_value:.0f}" if rating_value is not None else "-"
-
-    # Groupe traduit
-    group_translated = ""
-    if playlist_group:
-        group_key = f"mv_pg_{playlist_group.lower()}"
-        group_translated = t(group_key)
-        if group_translated == group_key:
-            group_translated = playlist_group.capitalize()
-
-    rating_line = html.escape(
-        f"{rating_type_badge} {group_translated} : {rating_val_str}"
-        if group_translated
-        else f"{rating_type_badge} • {rating_val_str}"
-    )
-
-    # Image du rang en data URI
-    img_html = f"<span style='color:{UNRANKED_COLOR};font-size:3em'>◆</span>"
-    img_path_rel = get_rank_image_path(rating_value) if rating_value else None
-    if img_path_rel:
-        img_full = Path(__file__).resolve().parents[3] / img_path_rel
-        if img_full.exists():
-            data_url = file_to_data_url(str(img_full))
-            if data_url:
-                img_html = (
-                    f"<img src='{data_url}' style='width:110px;height:110px;object-fit:contain'>"
-                )
-
-    # Delta — formatage avec 1 décimale si |delta| < 5, entier sinon
-    delta_html = ""
-    if rating_delta is not None:
-        _abs = abs(rating_delta)
-        if _abs < 0.05:
-            delta_html = "<div style='color:#888888;font-size:1.05em;margin-top:4px'>= 0 pts</div>"
-        else:
-            _delta_color = "#50C878" if rating_delta > 0 else "#FF4444"
-            _delta_sign = "+" if rating_delta > 0 else "-"
-            # 1 décimale si petit delta (< 5 pts), entier sinon
-            _delta_fmt = f"{_abs:.1f}" if _abs < 5 else f"{round(_abs)}"
-            delta_html = (
-                f"<div style='color:{_delta_color};font-size:1.05em;margin-top:4px'>"
-                f"{_delta_sign}{_delta_fmt} pts</div>"
-            )
-
-    # Barre de progression avec marqueur de delta
-    progress_html = ""
-    if rating_value is not None:
-        tier_obj, sub = get_tier_for_rating(rating_value)
-        if tier_obj and tier_obj.sub_tiers > 1:
-            tier_size = get_tier_size(rating_value)
-            sub_start = get_sub_tier_start(rating_value)
-            if tier_size > 0:
-                pct = min(100.0, max(0.0, (rating_value - sub_start) / tier_size * 100))
-                tier_sz = f"{tier_size:.0f}"
-
-                # Calcul du marqueur delta sur la barre
-                bar_inner = ""
-                if rating_delta is not None and abs(rating_delta) >= 0.05:
-                    # Largeur min garantie de 1 % pour qu'1 pixel soit visible
-                    _MIN_PCT = 1.0
-                    delta_pct = abs(rating_delta) / tier_size * 100
-                    delta_width = max(_MIN_PCT, min(delta_pct, 100.0))
-                    _band_color = "#50C878" if rating_delta > 0 else "#FF4444"
-                    if rating_delta > 0:
-                        # Gain : remplissage bleu jusqu'à (pct - delta), puis bande verte
-                        base_pct = max(0.0, pct - delta_pct)
-                        bar_inner = (
-                            f"<div style='position:absolute;left:0;top:0;"
-                            f"width:{base_pct:.2f}%;height:8px;background:#33d6ff'></div>"
-                            f"<div style='position:absolute;left:{base_pct:.2f}%;top:0;"
-                            f"width:{delta_width:.2f}%;height:8px;background:{_band_color}'></div>"
-                        )
-                    else:
-                        # Perte : remplissage bleu jusqu'à pct, puis bande rouge
-                        bar_inner = (
-                            f"<div style='position:absolute;left:0;top:0;"
-                            f"width:{pct:.2f}%;height:8px;background:#33d6ff'></div>"
-                            f"<div style='position:absolute;left:{pct:.2f}%;top:0;"
-                            f"width:{delta_width:.2f}%;height:8px;background:{_band_color}'></div>"
-                        )
-                else:
-                    # Pas de delta : barre simple
-                    bar_inner = (
-                        f"<div style='position:absolute;left:0;top:0;"
-                        f"width:{pct:.2f}%;height:8px;background:#33d6ff'></div>"
-                    )
-
-                progress_html = f"""
-<div style='display:flex;align-items:center;gap:6px;margin-top:8px'>
-  <span style='font-size:0.75em;color:#888;min-width:14px;text-align:right'>0</span>
-  <div style='position:relative;flex:1;height:8px;background:rgba(255,255,255,0.12);border-radius:4px;overflow:hidden'>
-    {bar_inner}
-  </div>
-  <span style='font-size:0.75em;color:#888;min-width:14px'>{tier_sz}</span>
-</div>"""
-
-    # Note contextuelle si coéquipier bot détecté
-    bot_note_html = ""
-    if had_bot_teammate:
-        if bot_outcome == Outcome.WIN:
-            _note_text = html.escape(t("mv_lusr_bot_win"))
-            bot_note_html = (
-                f"<div style='color:#50C878;font-size:0.82em;margin-top:6px'>💪 {_note_text}</div>"
-            )
-        else:
-            _note_text = html.escape(t("mv_lusr_bot_loss"))
-            bot_note_html = (
-                f"<div style='color:#FFB347;font-size:0.82em;margin-top:6px'>⚠️ {_note_text}</div>"
-            )
-
-    return (
-        f"<div style='display:flex;align-items:center;gap:16px'>"
-        f"{img_html}"
-        f"<div style='flex:1;min-width:0'>"
-        f"<div style='font-size:1.4em;font-weight:700;line-height:1.2'>{tier_display}</div>"
-        f"{progress_html}"
-        f"{delta_html}"
-        f"{bot_note_html}"
-        f"<div style='color:#ffffff;font-size:1.2em;font-weight:bold;margin-top:4px'>{rating_line}</div>"
-        f"</div>"
-        f"</div>"
-    )
-
-
-def _render_match_rank_tab(
-    *,
-    match_id: str,
-    db_path: str,
-    db_key: tuple[int, int] | None = None,
-    had_bot_teammate: bool = False,
-    bot_outcome: int | None = None,
-) -> None:
-    """Affiche l'onglet 🏅 Rang pour un match (LUSR ou CSR).
-
-    Wrapper qui appelle ``_build_match_rank_html`` et rend le résultat.
-    """
-    rank_html = _build_match_rank_html(
-        match_id=match_id,
-        db_path=db_path,
-        db_key=db_key,
-        had_bot_teammate=had_bot_teammate,
-        bot_outcome=bot_outcome,
-    )
-    if rank_html is None:
-        st.info(t("mv_no_rating"))
-        return
-    st.markdown(rank_html, unsafe_allow_html=True)
-
-
-# =============================================================================
-# Section Citations (progressées dans un match)
-# =============================================================================
-
-
-def _render_match_citations_section(  # noqa: C901, PLR0912, PLR0915
-    *,
-    match_id: str,
-    db_path: str,
-    xuid: str,
-) -> None:
-    """Affiche les citations qui ont progressé dans ce match, avec compteur delta."""
-    import os as _os
-
-    from src.analysis.citations.engine import CitationEngine
-    from src.ui.commendations import (
-        _compute_mastery_display,
-        _img_data_uri,
-        _img_src,
-        _load_citations_from_db,
-        _parse_tier_targets,
-    )
-
-    citations_db = _load_citations_from_db()
-    if not citations_db:
-        st.caption(t("mv_citations_unavailable"))
-        return
-
-    try:
-        engine = CitationEngine(db_path, xuid)
-        delta_map = engine.aggregate_for_display(match_ids=[match_id])
-    except Exception:
-        st.caption(t("mv_citations_no_data"))
-        return
-
-    active_norms = {norm for norm, val in delta_map.items() if val > 0}
-    if not active_norms:
-        st.info(t("citations_no_progress"))
-        return
-
-    try:
-        full_map = engine.aggregate_for_display(match_ids=None)
-    except Exception:
-        full_map = {}
-
-    items = []
-    for cit in citations_db:
-        norm = cit["citation_name_norm"]
-        if norm not in active_norms:
-            continue
-        tiers = _parse_tier_targets(cit.get("tier_targets"))
-        current_full = full_map.get(norm, 0)
-        delta = delta_map.get(norm, 0)
-        _, _, is_master, _ = _compute_mastery_display(current_full, tiers)
-        # Si on est maître ACTUELLEMENT, vérifier si on le was AVANT ce match.
-        # Si on ne l'était pas avant (count_before < seuil maître), c'est que
-        # ce match a fait atteindre le niveau maître → on l'affiche quand même.
-        if is_master:
-            count_before = current_full - delta
-            _, _, was_master_before, _ = _compute_mastery_display(count_before, tiers)
-            if was_master_before:
-                continue  # Déjà maître avant ce match → on ne l'affiche pas
-        # Résolution i18n du nom de citation
-        lang = get_lang()
-        i18n = label_obj("citations", norm, lang=lang) or {}
-        items.append(
-            {
-                "name": i18n.get("name", cit["citation_name_display"]),
-                "norm": norm,
-                "description": i18n.get("description", cit.get("description") or ""),
-                "image_path": cit.get("image_path"),
-                "tiers": tiers,
-                "current_full": current_full,
-                "delta": delta,
-            }
-        )
-
-    if not items:
-        st.info(t("citations_no_progress"))
-        return
-
-    # Grille centrée : padding symétrique si moins de 8 éléments
-    n_cols = min(len(items), 8)
-    if n_cols < 8:
-        _pad = max(1, (8 - n_cols) // 2)
-        _all_cols = st.columns([_pad] + [1] * n_cols + [_pad])
-        display_cols = _all_cols[1 : 1 + n_cols]
-    else:
-        display_cols = st.columns(8)
-
-    for i, item in enumerate(items):
-        col = display_cols[i % n_cols]
-        name = item["name"]
-        tiers = item["tiers"]
-        current_full = item["current_full"]
-        delta = item["delta"]
-
-        level_label, counter_label, is_master, progress_ratio = _compute_mastery_display(
-            current_full, tiers
-        )
-
-        img = _img_src(item["image_path"])
-        data_uri = None
-        if img:
-            try:
-                mtime = _os.path.getmtime(img)
-            except OSError:
-                mtime = None
-            data_uri = _img_data_uri(img, mtime)
-
-        desc = item["description"]
-        tip = html.escape(desc) if desc else html.escape(name)
-
-        with col:
-            st.markdown("<div class='os-citation-top-gap'></div>", unsafe_allow_html=True)
-
-            if data_uri:
-                ring_class = (
-                    "os-citation-ring os-citation-ring--master" if is_master else "os-citation-ring"
-                )
-                ring_color = "#d6b35a" if is_master else "#41d6ff"
-                st.markdown(
-                    "<div class='"
-                    + ring_class
-                    + "' title='"
-                    + tip
-                    + "' style=\"--p:"
-                    + str(float(progress_ratio))
-                    + ";--ring-color:"
-                    + ring_color
-                    + ";--img:url('"
-                    + data_uri
-                    + "')\"></div>",
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown(
-                    "<div class='os-medal-missing' title='" + tip + "'>?</div>",
-                    unsafe_allow_html=True,
-                )
-
-            st.markdown(
-                "<div class='os-citation-name' title='" + tip + "'>" + html.escape(name) + "</div>",
-                unsafe_allow_html=True,
-            )
-            level_class = (
-                "os-citation-level os-citation-level--master" if is_master else "os-citation-level"
-            )
-            st.markdown(
-                f"<div class='{level_class}'>{html.escape(level_label)}</div>",
-                unsafe_allow_html=True,
-            )
-
-            delta_html = ""
-            if delta > 0:
-                delta_html = f" <span style='color: #4CAF50; font-weight: bold;'>+{delta}</span>"
-            st.markdown(
-                "<div class='os-citation-counter'>"
-                + html.escape(counter_label)
-                + delta_html
-                + "</div>",
-                unsafe_allow_html=True,
-            )
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -485,6 +120,8 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
         st.info(t("mv_match_id_missing"))
         return
 
+    logger.debug("render_match_view match=%s xuid=%s", match_id, xuid)
+
     last_time = row.get("start_time")
     last_map = row.get("map_name")
     last_playlist = row.get("playlist_name")
@@ -544,7 +181,7 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
             if _bot_row[1] is not None:
                 _stored_perf_score = float(_bot_row[1])
     except Exception:
-        pass
+        logger.debug("match_view: enrichment introuvable match=%s", match_id)
 
     # Bot + outcome : leniency uniquement sur défaite (rage quit en cours de partie)
     _bot_is_loss = _had_bot_teammate and outcome_code != OUTCOME_CODES.WIN

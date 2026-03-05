@@ -65,6 +65,34 @@ def duckdb_read_write(db_path: str | Path) -> Generator[duckdb.DuckDBPyConnectio
         conn.close()
 
 
+@contextlib.contextmanager
+def duckdb_flexible(db_path: str | Path) -> Generator[duckdb.DuckDBPyConnection, None, None]:
+    """Ouvre une connexion DuckDB, read-only si possible, sinon read-write.
+
+    Utile en contexte Streamlit où un autre thread peut déjà détenir une
+    connexion write sur le même fichier.
+
+    Args:
+        db_path: Chemin vers le fichier ``.duckdb``.
+
+    Yields:
+        Connexion DuckDB (read-only ou read-write).
+    """
+    conn = None
+    for ro in (True, False):
+        try:
+            conn = duckdb.connect(str(db_path), read_only=ro)
+            break
+        except Exception:
+            if not ro:
+                raise
+    try:
+        yield conn
+    finally:
+        if conn:
+            conn.close()
+
+
 def is_duckdb_v4_path(db_path: str) -> bool:
     """Détecte si le chemin est une DB joueur DuckDB v4+.
 
@@ -91,7 +119,7 @@ def has_table(conn: duckdb.DuckDBPyConnection, table_name: str, schema: str = "m
         True si la table existe.
     """
     rows = conn.execute(
-        "SELECT 1 FROM information_schema.tables " "WHERE table_schema = ? AND table_name = ?",
+        "SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ?",
         [schema, table_name],
     ).fetchone()
     return rows is not None

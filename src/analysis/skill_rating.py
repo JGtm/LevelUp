@@ -104,18 +104,8 @@ class PlayerState:
 # =============================================================================
 
 
-def _clamp(value: float, lo: float, hi: float) -> float:
-    return max(lo, min(hi, value))
-
-
-def _safe_float(value: Any) -> float | None:
-    if value is None:
-        return None
-    try:
-        f = float(value)
-        return f if math.isfinite(f) else None
-    except (ValueError, TypeError):
-        return None
+from src.utils.safe_types import clamp as _clamp  # noqa: E402
+from src.utils.safe_types import safe_float as _safe_float  # noqa: E402
 
 
 def _sigmoid_ratio(numerator: float, denominator: float) -> float:

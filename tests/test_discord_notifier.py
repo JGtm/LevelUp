@@ -878,7 +878,7 @@ class TestCountMatchesMissingData:
             tmp_path,
             [{"match_id": self.MATCH_A, "medals_loaded": True, "events_loaded": True}],
         )
-        with patch("src.utils.discord_notifier._SHARED_DB", db):
+        with patch("src.utils._discord_queries._SHARED_DB", db):
             assert count_matches_missing_data(self.XUID) == 0
 
     def test_returns_zero_when_backfilled_via_bitmask(self, tmp_path):
@@ -894,7 +894,7 @@ class TestCountMatchesMissingData:
                 }
             ],
         )
-        with patch("src.utils.discord_notifier._SHARED_DB", db):
+        with patch("src.utils._discord_queries._SHARED_DB", db):
             assert count_matches_missing_data(self.XUID) == 0
 
     def test_counts_match_with_no_medals_and_no_backfill(self, tmp_path):
@@ -910,7 +910,7 @@ class TestCountMatchesMissingData:
                 }
             ],
         )
-        with patch("src.utils.discord_notifier._SHARED_DB", db):
+        with patch("src.utils._discord_queries._SHARED_DB", db):
             assert count_matches_missing_data(self.XUID) == 1
 
     def test_counts_match_with_no_events_and_no_backfill(self, tmp_path):
@@ -926,7 +926,7 @@ class TestCountMatchesMissingData:
                 }
             ],
         )
-        with patch("src.utils.discord_notifier._SHARED_DB", db):
+        with patch("src.utils._discord_queries._SHARED_DB", db):
             assert count_matches_missing_data(self.XUID) == 1
 
     def test_medals_backfilled_but_events_still_missing(self, tmp_path):
@@ -942,7 +942,7 @@ class TestCountMatchesMissingData:
                 }
             ],
         )
-        with patch("src.utils.discord_notifier._SHARED_DB", db):
+        with patch("src.utils._discord_queries._SHARED_DB", db):
             assert count_matches_missing_data(self.XUID) == 1
 
     def test_mixed_matches_counts_only_truly_missing(self, tmp_path):
@@ -973,17 +973,17 @@ class TestCountMatchesMissingData:
                 },
             ],
         )
-        with patch("src.utils.discord_notifier._SHARED_DB", db):
+        with patch("src.utils._discord_queries._SHARED_DB", db):
             assert count_matches_missing_data(self.XUID) == 1
 
     def test_returns_zero_for_empty_xuid(self, tmp_path):
         """XUID vide → 0 sans planter."""
         db = self._setup_db(tmp_path, [])
-        with patch("src.utils.discord_notifier._SHARED_DB", db):
+        with patch("src.utils._discord_queries._SHARED_DB", db):
             assert count_matches_missing_data("") == 0
 
     def test_returns_zero_when_db_missing(self, tmp_path):
         """DB absente → 0 sans planter."""
         missing_db = tmp_path / "nope.duckdb"
-        with patch("src.utils.discord_notifier._SHARED_DB", missing_db):
+        with patch("src.utils._discord_queries._SHARED_DB", missing_db):
             assert count_matches_missing_data(self.XUID) == 0
