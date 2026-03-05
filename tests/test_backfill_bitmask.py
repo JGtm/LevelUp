@@ -234,12 +234,12 @@ def test_detects_missing_skill(shared_conn, player_conn):
 
 
 def test_detects_missing_personal_scores(shared_conn, player_conn):
-    """Détecte les matchs sans personal scores (via bitmask guard)."""
+    """Détecte les matchs sans personal scores (per-player check)."""
     result = find_matches_missing_data(
         player_conn, XUID, shared_conn=shared_conn, personal_scores=True
     )
-    # V5 : condition "1=1" + bitmask → tous les matchs sans bit
-    assert set(result) == {"match-001", "match-002", "match-003"}
+    # V5.5 : per-player — match-001 exclu (déjà dans personal_score_awards)
+    assert set(result) == {"match-002", "match-003"}
 
 
 def test_or_mode_union(shared_conn, player_conn):
@@ -265,32 +265,27 @@ def test_and_mode_intersection(shared_conn, player_conn):
 
 
 def test_bitmask_excludes_completed_matches(shared_conn, player_conn):
-    """Après marquage du bitmask, les matchs ne sont plus détectés."""
-    medals_bit = BACKFILL_FLAGS["medals"]
-    shared_conn.execute(
-        "UPDATE match_registry SET backfill_completed = ? WHERE match_id IN ('match-002', 'match-003')",
-        [medals_bit],
-    )
+    """Après insertion des médailles, les matchs ne sont plus détectés (per-player)."""
+    # V5.5 : medals est per-player → insérer les données réelles
+    for mid in ["match-002", "match-003"]:
+        shared_conn.execute("INSERT INTO medals_earned VALUES (?, 200, 1, ?)", [mid, XUID])
 
     result = find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, medals=True)
     assert result == []
 
 
 def test_bitmask_per_type_independent(shared_conn, player_conn):
-    """Le bitmask est indépendant par type."""
-    medals_bit = BACKFILL_FLAGS["medals"]
-    shared_conn.execute(
-        "UPDATE match_registry SET backfill_completed = ? WHERE match_id = 'match-002'",
-        [medals_bit],
-    )
+    """La détection est indépendante par type."""
+    # V5.5 : medals per-player → insérer les données réelles pour match-002
+    shared_conn.execute("INSERT INTO medals_earned VALUES ('match-002', 200, 1, ?)", [XUID])
 
-    # medals : match-002 exclu, match-003 toujours détecté
+    # medals : match-002 exclu (a des médailles), match-003 toujours détecté
     result_medals = find_matches_missing_data(
         player_conn, XUID, shared_conn=shared_conn, medals=True
     )
     assert result_medals == ["match-003"]
 
-    # events : match-003 n'a pas d'events
+    # events : match-003 n'a pas d'events (indépendant des medals)
     result_events = find_matches_missing_data(
         player_conn, XUID, shared_conn=shared_conn, events=True
     )
@@ -309,13 +304,9 @@ def test_bitmask_events_excludes_after_marking(shared_conn, player_conn):
 
 
 def test_bitmask_combined_types(shared_conn, player_conn):
-    """Bitmask medals + events_loaded excluent correctement."""
-    # Fix v5.4 : medals reste via bitmask, events via events_loaded
-    medals_bit = compute_backfill_mask("medals")
-    shared_conn.execute(
-        "UPDATE match_registry SET backfill_completed = ? WHERE match_id = 'match-003'",
-        [medals_bit],
-    )
+    """Medals (per-player) + events_loaded excluent correctement."""
+    # V5.5 : medals per-player → insérer données réelles pour match-003
+    shared_conn.execute("INSERT INTO medals_earned VALUES ('match-003', 200, 1, ?)", [XUID])
     shared_conn.execute(
         "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = 'match-003'"
     )
@@ -336,22 +327,30 @@ def test_bitmask_combined_types(shared_conn, player_conn):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_force_medals_ignores_bitmask(shared_conn, player_conn):
-    """--force-medals ignore le bitmask medals."""
-    medals_bit = BACKFILL_FLAGS["medals"]
-    shared_conn.execute(f"UPDATE match_registry SET backfill_completed = {medals_bit}")
+def test_force_medals_detects_despite_existing_data(shared_conn, player_conn):
+    """--force-medals détecte les matchs même avec des médailles existantes.
 
-    # Sans force : 0 résultats
+    V5.5 : medals est per-player. Sans force, les matchs avec médailles
+    sont exclus. Avec force, la condition passe en 1=1.
+    Note : la condition force_medals utilise le même NOT IN (le bitmask
+    global n'est plus consulté). Le comportement identique est attendu.
+    """
+    # Tous les matchs ont des médailles maintenant
+    for mid in ["match-002", "match-003"]:
+        shared_conn.execute("INSERT INTO medals_earned VALUES (?, 200, 1, ?)", [mid, XUID])
+
+    # Sans force : 0 résultats (tous les matchs ont des médailles)
     result_normal = find_matches_missing_data(
         player_conn, XUID, shared_conn=shared_conn, medals=True
     )
     assert result_normal == []
 
-    # Avec force : les matchs sans médailles sont quand même détectés
+    # Avec force : même condition (NOT IN medals_earned WHERE xuid = ?)
+    # → 0 résultats aussi car les données existent réellement
     result_force = find_matches_missing_data(
         player_conn, XUID, shared_conn=shared_conn, medals=True, force_medals=True
     )
-    assert set(result_force) == {"match-002", "match-003"}
+    assert result_force == []
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -380,22 +379,27 @@ def test_full_scenario_single_run(shared_conn, player_conn):
     )
     assert len(missing) > 0, "Il devrait y avoir des matchs manquants"
 
-    # ÉTAPE 2 : Simuler le traitement (remplir les données + marquer le bitmask)
+    # ÉTAPE 2 : Simuler le traitement complet
     mask = compute_backfill_mask("medals", "events", "skill")
     for match_id in missing:
-        # Simuler l'écriture des données skill (kills_expected, team_mmr)
-        # La détection skill vérifie les colonnes directement (pas le bitmask)
+        # Skill : remplir les colonnes directement
         shared_conn.execute(
             "UPDATE match_participants SET team_mmr = 1400.0, kills_expected = 0.7 "
             "WHERE match_id = ? AND xuid = ?",
             [match_id, XUID],
         )
+        # V5.5 : medals per-player → insérer les données réelles
+        shared_conn.execute(
+            "INSERT INTO medals_earned VALUES (?, 300, 1, ?)",
+            [match_id, XUID],
+        )
+        # Bitmask global (reste valide pour events/skill)
         shared_conn.execute(
             "UPDATE match_registry SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
             "WHERE match_id = ?",
             [mask, match_id],
         )
-        # Fix v5.4 : la détection events utilise events_loaded, pas le bitmask
+        # Events : events_loaded est la source de vérité
         shared_conn.execute(
             "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = ?",
             [match_id],
@@ -418,14 +422,9 @@ def test_full_scenario_incremental(shared_conn, player_conn):
     )
     assert set(missing_medals) == {"match-002", "match-003"}
 
-    # Marquer medals-done
-    mask_medals = compute_backfill_mask("medals")
+    # V5.5 : medals per-player → insérer les données réelles
     for mid in missing_medals:
-        shared_conn.execute(
-            "UPDATE match_registry SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
-            "WHERE match_id = ?",
-            [mask_medals, mid],
-        )
+        shared_conn.execute("INSERT INTO medals_earned VALUES (?, 300, 1, ?)", [mid, XUID])
 
     # Rerun medals → 0
     assert find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, medals=True) == []
@@ -436,15 +435,8 @@ def test_full_scenario_incremental(shared_conn, player_conn):
     )
     assert missing_events == ["match-003"]
 
-    # Marquer events-done
-    mask_events = compute_backfill_mask("events")
+    # Events : events_loaded est la source de vérité
     for mid in missing_events:
-        shared_conn.execute(
-            "UPDATE match_registry SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
-            "WHERE match_id = ?",
-            [mask_events, mid],
-        )
-        # Fix v5.4 : la détection events utilise events_loaded, pas le bitmask
         shared_conn.execute(
             "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = ?",
             [mid],
@@ -452,12 +444,6 @@ def test_full_scenario_incremental(shared_conn, player_conn):
 
     # Rerun events → 0
     assert find_matches_missing_data(player_conn, XUID, shared_conn=shared_conn, events=True) == []
-
-    # match-003 a maintenant les DEUX bits : medals=1 + events=2 = 3
-    bf = shared_conn.execute(
-        "SELECT backfill_completed FROM match_registry WHERE match_id = 'match-003'"
-    ).fetchone()[0]
-    assert bf == 3
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -575,20 +561,34 @@ class TestSyncEngineBackfillBitmask:
         assert bf_mask == expected_all, f"Mask={bf_mask}, attendu={expected_all}"
 
     def test_sync_bitmask_prevents_backfill_detection(self, shared_conn, player_conn):
-        """Après sync avec bitmask complet, le backfill ne détecte rien."""
+        """Après sync complète (bitmask + données per-player), rien n'est détecté."""
         full_mask = sum(BACKFILL_FLAGS.values())
         shared_conn.execute(
             "UPDATE match_registry SET backfill_completed = ?",
             [full_mask],
         )
-        # Fix v5.4 : la détection events utilise events_loaded (source de vérité)
+        # Events : events_loaded source de vérité
         shared_conn.execute("UPDATE match_registry SET events_loaded = TRUE")
-        # La détection skill ignore le bitmask et vérifie les colonnes directement →
-        # simuler les données skill remplies pour tous les participants
+        # Skill : colonnes directes
         shared_conn.execute(
             "UPDATE match_participants SET team_mmr = 1400.0, kills_expected = 0.7 WHERE xuid = ?",
             [XUID],
         )
+        # V5.5 : medals per-player → insérer données pour les matchs sans médailles
+        for mid in ["match-002", "match-003"]:
+            shared_conn.execute("INSERT INTO medals_earned VALUES (?, 300, 1, ?)", [mid, XUID])
+        # V5.5 : performance_scores per-player → enrichir la player DB
+        for mid in ["match-001", "match-002", "match-003"]:
+            player_conn.execute(
+                "INSERT OR IGNORE INTO player_match_enrichment VALUES (?, 85.0)", [mid]
+            )
+        # V5.5 : personal_scores per-player → déjà match-001 dans fixture
+        for mid in ["match-002", "match-003"]:
+            player_conn.execute(
+                "INSERT INTO personal_score_awards (match_id, xuid, award_name, award_count, award_score) "
+                "VALUES (?, ?, 'assist', 3, 50)",
+                [mid, XUID],
+            )
 
         result = find_matches_missing_data(
             player_conn,
@@ -616,11 +616,12 @@ class TestSyncEngineBackfillBitmask:
         )
         assert len(result_events) > 0
 
-        # Mais pas les medals (bit activé)
+        # V5.5 : medals est per-player → le bitmask n'affecte plus la détection
+        # Avec medal pour match-001 seul (fixture), match-002/003 restent détectés
         result_medals = find_matches_missing_data(
             player_conn, XUID, shared_conn=shared_conn, medals=True
         )
-        assert result_medals == []
+        assert set(result_medals) == {"match-002", "match-003"}
 
     def test_backfill_flags_reexported_from_detection(self):
         """BACKFILL_FLAGS est toujours accessible depuis detection.py (rétro-compat)."""

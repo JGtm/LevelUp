@@ -118,6 +118,7 @@ python -m pytest -q --ignore=tests/integration
 - **`_PERF_SCORE_AVAILABLE` manquant** (`src/data/sync/_performance.py`) — variable module-level absente après le split `engine.py` → mixins ; ajout d'un guard `try/except ImportError` avec `_PERF_SCORE_AVAILABLE = True/False` ; corrige `F821 Undefined name` et `NameError` à l'exécution
 - **NaN-check fragile** (`src/ui/pages/match_view.py`) — `x == x` (idiome NaN flottant) remplacé par `x is not None`
 - **i18n** (`src/ui/translations.py`, `src/ui/i18n/widgets.py`) — 2 clés `PAIR_FR` tronquées restaurées, doublon `tm_session_trend` supprimé, 343 entrées redondantes nettoyées (399 → 56 entrées utiles)
+- **Détection backfill per-player** (`scripts/backfill/detection.py`) — les 6 flags per-player (medals, personal_scores, performance_scores, accuracy, shots, enemy_mmr) vérifient désormais les données réelles du joueur courant au lieu du bitmask global `backfill_completed` ; corrige un bug où le premier joueur syncé masquait les matchs pour les autres joueurs ; nouvelle fonction `_player_done_guard()` ; 15 nouveaux tests multi-joueur + 9 tests adaptés
 
 ---
 
