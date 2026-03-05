@@ -102,7 +102,7 @@ def backfill_citations_for_player(  # noqa: PLR0912
             logger.debug("citations_backfill: aucun match sans citations")
             return {"matches_processed": 0, "citations_computed": 0}
 
-        logger.info(f"citations_backfill ({xuid[:8]}…): {len(match_ids)} match(s) à traiter")
+        logger.info("citations_backfill (%s…): %s match(s) à traiter", xuid[:8], len(match_ids))
 
         # ── 5. Calculer et insérer les citations ────────────────────────────
         citations_computed = 0
@@ -112,12 +112,14 @@ def backfill_citations_for_player(  # noqa: PLR0912
                 if n > 0:
                     citations_computed += 1
             except Exception as exc:
-                logger.debug(f"citations_backfill: skip {match_id[:8]}… → {exc}")
+                logger.debug("citations_backfill: skip %s… → %s", match_id[:8], exc)
             if i > 0 and i % 50 == 0:
-                logger.info(f"  [{i}/{len(match_ids)}] {citations_computed} matchs traités")
+                logger.info("  [%s/%s] %s matchs traités", i, len(match_ids), citations_computed)
 
         logger.info(
-            f"citations_backfill: ✅ {citations_computed}/{len(match_ids)} matchs avec citations"
+            "citations_backfill: ✅ %s/%s matchs avec citations",
+            citations_computed,
+            len(match_ids),
         )
         return {
             "matches_processed": len(match_ids),

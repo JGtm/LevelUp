@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+from enum import IntEnum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -217,6 +218,14 @@ def get_player_rank(xuid: str, official_stats: list[MatchPlayerStats]) -> int:
     return 999
 
 
+class EventTypeHint(IntEnum):
+    """Codes numériques type_hint dans les événements highlight."""
+
+    MODE = 10
+    DEATH = 20
+    KILL = 50
+
+
 def _infer_event_type(event: dict[str, Any]) -> str | None:
     """Infère le type d'événement (kill/death) depuis un event brut."""
     et = _coerce_str(event.get("event_type"))
@@ -224,10 +233,10 @@ def _infer_event_type(event: dict[str, Any]) -> str | None:
         return et.lower()
 
     th = _coerce_int(event.get("type_hint"))
-    if th == 50:
+    if th == EventTypeHint.KILL:
         return "kill"
-    if th == 20:
+    if th == EventTypeHint.DEATH:
         return "death"
-    if th == 10:
+    if th == EventTypeHint.MODE:
         return "mode"
     return None

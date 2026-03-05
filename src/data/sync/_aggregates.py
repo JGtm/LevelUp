@@ -62,7 +62,7 @@ class AggregatesMixin:
                 result["materialized_views"] = 1
                 repo.close()
             except Exception as e:
-                logger.debug(f"refresh_materialized_views non disponible: {e}")
+                logger.debug("refresh_materialized_views non disponible: %s", e)
 
             # Sprint 8ter.4 : Pré-calcul post-sync des agrégats UI
             try:
@@ -71,7 +71,7 @@ class AggregatesMixin:
                 precomp = post_sync_compute(str(self._player_db_path))
                 result.update(precomp)
             except Exception as e:
-                logger.debug(f"post_sync_compute non disponible: {e}")
+                logger.debug("post_sync_compute non disponible: %s", e)
 
             # Rouvrir la connexion shared si elle était ouverte avant
             if shared_was_open:
@@ -80,7 +80,7 @@ class AggregatesMixin:
                     self._get_shared_connection()
 
         except Exception as e:
-            logger.warning(f"Erreur refresh_aggregates: {e}")
+            logger.warning("Erreur refresh_aggregates: %s", e)
 
         return result
 

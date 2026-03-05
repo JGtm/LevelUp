@@ -274,5 +274,5 @@ class GamertagResolverMixin:
 
             return result
         except Exception as e:
-            logger.debug(f"Erreur load_match_player_gamertags: {e}")
+            logger.debug("Erreur load_match_player_gamertags: %s", e)
             return result

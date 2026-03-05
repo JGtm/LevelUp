@@ -59,7 +59,7 @@ class EventsMixin:
             )
             return {row[0]: row[1] for row in result.fetchall()}
         except Exception as e:
-            logger.debug(f"Erreur load_first_event_times shared: {e}")
+            logger.debug("Erreur load_first_event_times shared: %s", e)
             return {}
 
     def get_first_kill_death_times(
@@ -105,5 +105,5 @@ class EventsMixin:
             columns = ["event_type", "time_ms", "xuid", "gamertag", "type_hint"]
             return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
         except Exception as e:
-            logger.debug(f"Erreur load_highlight_events shared: {e}")
+            logger.debug("Erreur load_highlight_events shared: %s", e)
             return []

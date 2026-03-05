@@ -63,13 +63,15 @@ class MetadataResolver:
                 read_only = metadata_db_path.exists() and not create_if_missing
                 self._conn = duckdb.connect(str(metadata_db_path), read_only=read_only)
                 logger.debug(
-                    f"Connecté à metadata.duckdb: {metadata_db_path} (read_only={read_only})"
+                    "Connecté à metadata.duckdb: %s (read_only=%s)",
+                    metadata_db_path,
+                    read_only,
                 )
             except Exception as e:
-                logger.warning(f"Impossible de se connecter à metadata.duckdb: {e}")
+                logger.warning("Impossible de se connecter à metadata.duckdb: %s", e)
                 self._conn = None
         else:
-            logger.debug(f"metadata.duckdb non trouvé: {metadata_db_path}")
+            logger.debug("metadata.duckdb non trouvé: %s", metadata_db_path)
 
     def resolve(self, asset_type: str, asset_id: str | None) -> str | None:
         """Résout un nom depuis les référentiels.
@@ -139,7 +141,7 @@ class MetadataResolver:
             existing_candidates = [c for c in table_candidates if c in tables]
 
             if not existing_candidates:
-                logger.debug(f"Aucune table trouvée pour {asset_type} parmi {table_candidates}")
+                logger.debug("Aucune table trouvée pour %s parmi %s", asset_type, table_candidates)
                 return None
 
             # Essayer chaque table candidate dans l'ordre de priorité
@@ -151,7 +153,7 @@ class MetadataResolver:
             return None
 
         except Exception as e:
-            logger.debug(f"Erreur résolution {asset_type} {asset_id}: {e}")
+            logger.debug("Erreur résolution %s %s: %s", asset_type, asset_id, e)
             return None
 
     def _resolve_from_table(self, table_name: str, asset_id: str) -> str | None:
@@ -181,7 +183,9 @@ class MetadataResolver:
                     continue
 
             if not id_column:
-                logger.debug(f"Aucune colonne ID trouvée dans {table_name} (essayé asset_id, uuid)")
+                logger.debug(
+                    "Aucune colonne ID trouvée dans %s (essayé asset_id, uuid)", table_name
+                )
                 return None
 
             # Détecter dynamiquement la colonne de nom (public_name, name_fr, name_en, name)
@@ -197,7 +201,7 @@ class MetadataResolver:
                     continue
 
             if not name_column:
-                logger.debug(f"Aucune colonne de nom trouvée dans {table_name}")
+                logger.debug("Aucune colonne de nom trouvée dans %s", table_name)
                 return None
 
             # Requête pour récupérer le nom avec les colonnes détectées
@@ -208,13 +212,13 @@ class MetadataResolver:
 
             if result and result[0]:
                 name = str(result[0])
-                logger.debug(f"Résolu {asset_id} → {name} depuis {table_name}.{name_column}")
+                logger.debug("Résolu %s → %s depuis %s.%s", asset_id, name, table_name, name_column)
                 return name
 
             return None
 
         except Exception as e:
-            logger.debug(f"Erreur résolution depuis {table_name}: {e}")
+            logger.debug("Erreur résolution depuis %s: %s", table_name, e)
             return None
 
     def close(self) -> None:

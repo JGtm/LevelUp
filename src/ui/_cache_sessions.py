@@ -78,7 +78,7 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
                             pass
 
                     if not player_xuid:
-                        logger.warning(f"Impossible de résoudre XUID pour {db_path}")
+                        logger.warning("Impossible de résoudre XUID pour %s", db_path)
                     else:
                         query = f"""
                             SELECT
@@ -100,13 +100,15 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
                         try:
                             df_pl = conn.execute(query, [player_xuid]).pl()
                             logger.debug(
-                                f"Chargé {len(df_pl) if df_pl is not None else 0} matchs pour xuid={player_xuid}"
+                                "Chargé %d matchs pour xuid=%s",
+                                len(df_pl) if df_pl is not None else 0,
+                                player_xuid,
                             )
                         except Exception as e:
-                            logger.warning(f"Erreur chargement matchs depuis shared: {e}")
+                            logger.warning("Erreur chargement matchs depuis shared: %s", e)
                             df_pl = None
                 else:
-                    logger.warning(f"shared_matches.duckdb non attaché pour {db_path}")
+                    logger.info("shared_matches.duckdb non attaché pour %s", db_path)
 
                 if df_pl is None:
                     # v5.1 : pas de fallback local (match_stats supprimée des DBs individuelles)
@@ -162,7 +164,7 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
             return df_pl.select(cols_cas_b)
 
         except Exception as e:
-            logger.warning(f"Erreur calcul sessions Polars: {e}")
+            logger.warning("Erreur calcul sessions Polars: %s", e)
             # En cas d'erreur, retourner les données sans calcul de session si disponibles
             if df_pl is not None and not df_pl.is_empty():
                 # Assurer que les colonnes session existent (même vides)

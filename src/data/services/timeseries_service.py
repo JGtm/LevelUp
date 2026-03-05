@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import polars as pl
 
 from src.config import CORE_STAT_COLUMNS
+from src.data.domain.refdata import Outcome
 
 # ─── Dataclasses retour ────────────────────────────────────────────────
 
@@ -215,7 +216,7 @@ class TimeseriesService:
             )
 
         _wr_df = dff.sort("start_time") if "start_time" in dff.columns else dff
-        _wins = (_wr_df["outcome"] == 1).cast(pl.Float64)
+        _wins = (_wr_df["outcome"] == Outcome.WIN).cast(pl.Float64)
         win_rate_rolling = _wins.rolling_mean(window_size=5, min_samples=5) * 100
         win_rate_clean = win_rate_rolling.drop_nulls()
 

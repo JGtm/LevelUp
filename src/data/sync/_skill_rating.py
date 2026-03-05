@@ -120,9 +120,9 @@ class SkillRatingMixin:
                     now,
                 ),
             )
-            logger.debug(f"CSR écrit dans match_skill_rank pour {match_id} : {post_csr}")
+            logger.debug("CSR écrit dans match_skill_rank pour %s : %s", match_id, post_csr)
         except Exception as e:
-            logger.warning(f"Erreur écriture CSR pour {match_id}: {e}")
+            logger.warning("Erreur écriture CSR pour %s: %s", match_id, e)
 
     def batch_compute_lusr(self: _SyncProtocol, *, force: bool = False) -> int:  # noqa: C901, PLR0912
         """Calcule le LUSR pour tous les matchs non classés sans rating LUSR.
@@ -232,10 +232,13 @@ class SkillRatingMixin:
                     raw_delta = rating_value - prev_rating[pg]
                     # Guard-rail : limiter le delta à ±100 pts par match
                     if abs(raw_delta) > _LUSR_MAX_DELTA:
+                        capped = _LUSR_MAX_DELTA if raw_delta > 0 else -_LUSR_MAX_DELTA
                         logger.warning(
-                            f"LUSR guard-rail: delta {raw_delta:+.1f} capé à "
-                            f"{_LUSR_MAX_DELTA if raw_delta > 0 else -_LUSR_MAX_DELTA:+.0f} "
-                            f"pour {mid} (groupe {pg})"
+                            "LUSR guard-rail: delta %+.1f capé à %+.0f pour %s (groupe %s)",
+                            raw_delta,
+                            capped,
+                            mid,
+                            pg,
                         )
                         delta = _LUSR_MAX_DELTA if raw_delta > 0 else -_LUSR_MAX_DELTA
                         rating_value = prev_rating[pg] + delta
@@ -293,10 +296,10 @@ class SkillRatingMixin:
 
             if updates:
                 conn.commit()
-                logger.info(f"LUSR batch : {updates} matchs mis à jour")
+                logger.info("LUSR batch : %s matchs mis à jour", updates)
 
             return updates
 
         except Exception as e:
-            logger.warning(f"Erreur batch_compute_lusr : {e}")
+            logger.warning("Erreur batch_compute_lusr : %s", e)
             return 0

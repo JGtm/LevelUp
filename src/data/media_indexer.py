@@ -347,7 +347,7 @@ class MediaIndexer:
                     result.n_updated += 1
             except Exception as e:
                 result.errors.append(f"Insert {path_str}: {e}")
-                logger.error("Insert média: %s", e, exc_info=True)
+                logger.exception("Insert média: %s", e)
 
     # ------------------------------------------------------------------
     #  Association

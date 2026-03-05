@@ -180,7 +180,7 @@ class SharedWritesMixin:
                 [PB.MEDALS, match_id],
             )
         except Exception as e:
-            logger.debug(f"Mise à jour backfill_bits match {match_id}: {e}")
+            logger.debug("Mise à jour backfill_bits match %s: %s", match_id, e)
 
     def _insert_shared_events(
         self,

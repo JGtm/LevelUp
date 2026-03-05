@@ -41,7 +41,7 @@ def result_to_polars(result: duckdb.DuckDBPyResult) -> pl.DataFrame:
     try:
         return result.pl()
     except Exception as e:
-        logger.debug(f"Arrow zero-copy échoué, fallback fetchall: {e}")
+        logger.debug("Arrow zero-copy échoué, fallback fetchall: %s", e)
         try:
             columns = [desc[0] for desc in result.description]
             rows = result.fetchall()
@@ -49,7 +49,7 @@ def result_to_polars(result: duckdb.DuckDBPyResult) -> pl.DataFrame:
                 return pl.DataFrame(schema=dict.fromkeys(columns, pl.Utf8))
             return pl.DataFrame({col: [row[i] for row in rows] for i, col in enumerate(columns)})
         except Exception as e2:
-            logger.warning(f"Conversion DuckDB→Polars échouée: {e2}")
+            logger.warning("Conversion DuckDB→Polars échouée: %s", e2)
             return pl.DataFrame()
 
 

@@ -269,7 +269,7 @@ class AntagonistsMixin:
             result = conn.execute(sql, params) if params else conn.execute(sql)
             return result_to_polars(result)
         except Exception as e:
-            logger.warning(f"Erreur chargement killer_victim_pairs: {e}")
+            logger.warning("Erreur chargement killer_victim_pairs: %s", e)
             # Retourner un DataFrame vide avec le bon schéma
             return pl.DataFrame(
                 {

@@ -282,7 +282,7 @@ def aggregate_antagonists_from_events(
 
         if not isinstance(start_time, datetime):
             result.matches_with_errors += 1
-            logger.warning(f"Match {match_id}: start_time invalide")
+            logger.warning("Match %s: start_time invalide", match_id)
             continue
 
         if not events:
@@ -300,7 +300,7 @@ def aggregate_antagonists_from_events(
 
         except Exception as e:
             result.matches_with_errors += 1
-            logger.warning(f"Match {match_id}: erreur lors du calcul: {e}")
+            logger.warning("Match %s: erreur lors du calcul: %s", match_id, e)
             continue
 
     # Déléguer l'agrégation

@@ -233,7 +233,7 @@ class ArchivesMixin:
                 for row in rows
             ]
         except Exception as e:
-            logger.warning(f"Erreur lecture archives: {e}")
+            logger.warning("Erreur lecture archives: %s", e)
             return []
 
     def load_all_matches_unified(
@@ -266,7 +266,7 @@ class ArchivesMixin:
                 end_date=end_date,
             )
             matches.extend(archive_matches)
-            logger.debug(f"Archives: {len(archive_matches)} matchs chargés")
+            logger.debug("Archives: %d matchs chargés", len(archive_matches))
 
         # 2. Charger depuis la DB principale
         db_matches = self.load_matches()
@@ -283,7 +283,7 @@ class ArchivesMixin:
             db_matches = filtered
 
         matches.extend(db_matches)
-        logger.debug(f"DB principale: {len(db_matches)} matchs chargés")
+        logger.debug("DB principale: %d matchs chargés", len(db_matches))
 
         # 3. Dédupliquer (au cas où un match serait dans les deux)
         seen_ids: set[str] = set()
@@ -297,7 +297,7 @@ class ArchivesMixin:
         # 4. Trier par date
         unique_matches.sort(key=lambda m: m.start_time)
 
-        logger.debug(f"Total unifié: {len(unique_matches)} matchs")
+        logger.debug("Total unifié: %d matchs", len(unique_matches))
         return unique_matches
 
     def get_total_match_count_with_archives(self) -> dict[str, int]:
