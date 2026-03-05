@@ -17,6 +17,7 @@ import streamlit as st
 from src.data.repositories._encounter_loader import load_encounter_stats
 from src.data.repositories.duckdb_repo import DuckDBRepository
 from src.ui.i18n import t
+from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_encounters_logic import (
     Badge,
     EncounterStats,
@@ -106,12 +107,12 @@ def _kd_cell_html(kills: int, deaths: int) -> str:
 
 def _compact_row_html(gamertag: str, side: str) -> str:
     """Génère une ligne compacte pour un joueur rencontré pour la 1ère fois."""
-    gt_esc = html.escape(gamertag or "—")
+    gt_html = gamertag_link(gamertag) if gamertag and gamertag != "—" else "—"
     role = _role_cell_html(side)
     ordinal = _ordinal_badge_html(1)
     return (
         f"<tr class='os-sb-row'>"
-        f"<td class='os-sb-td'>{gt_esc}{ordinal}</td>"
+        f"<td class='os-sb-td'>{gt_html}{ordinal}</td>"
         f"<td class='os-sb-td'>{role}</td>"
         f"<td class='os-sb-td' colspan='5' style='color:#666;font-style:italic;'>1ère rencontre</td>"
         f"</tr>"
@@ -120,7 +121,8 @@ def _compact_row_html(gamertag: str, side: str) -> str:
 
 def _full_row_html(stats: EncounterStats, badges: list[Badge]) -> str:
     """Génère une ligne complète avec toutes les métriques et badges."""
-    gt_esc = html.escape(stats.gamertag or stats.xuid[:8] or "—")
+    gt_raw = stats.gamertag or stats.xuid[:8] or "—"
+    gt_html = gamertag_link(gt_raw) if gt_raw != "—" else "—"
     ordinal = _ordinal_badge_html(stats.total_encounters)
     badges_html = " ".join(_badge_html(b) for b in badges)
     role = _role_cell_html(stats.current_side)
@@ -133,7 +135,7 @@ def _full_row_html(stats: EncounterStats, badges: list[Badge]) -> str:
 
     return (
         f"<tr class='os-sb-row'>"
-        f"<td class='os-sb-td'>{gt_esc}{ordinal} {badges_html}</td>"
+        f"<td class='os-sb-td'>{gt_html}{ordinal} {badges_html}</td>"
         f"<td class='os-sb-td'>{role}</td>"
         f"<td class='os-sb-td'>{stats.total_encounters} <span style='color:#888;font-size:0.8em;'>({enc_detail})</span></td>"
         f"<td class='os-sb-td'>{wr_ally}</td>"
@@ -313,6 +315,7 @@ def render_encounter_section(
     rows_html = _build_encounter_rows(df.to_dicts(), xuid_to_team, my_team_id)
     if rows_html:
         st.markdown(_build_encounter_table_html(rows_html), unsafe_allow_html=True)
+        st.caption(t("mv_encounter_legend"))
 
 
 __all__ = ["render_encounter_section"]

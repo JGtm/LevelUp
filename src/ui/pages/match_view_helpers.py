@@ -389,12 +389,13 @@ def os_card(  # noqa: PLR0913
     *,
     accent: str | None = None,
     kpi_color: str | None = None,
+    kpi_is_html: bool = False,
     sub_style: str | None = None,
     min_h: int = 112,
 ) -> None:
     """Rend une carte KPI avec style OpenSpartan."""
     t = html.escape(str(title or ""))
-    k = html.escape(str(kpi or "-"))
+    k = str(kpi or "-") if kpi_is_html else html.escape(str(kpi or "-"))
     s = "" if not sub_html else str(sub_html)
     style = "min-height:" + str(int(min_h)) + "px; margin-bottom:10px;"
     if accent and _is_valid_css_color(accent):

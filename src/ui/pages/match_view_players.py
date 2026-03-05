@@ -18,6 +18,7 @@ from src.config import BOT_MAP, TEAM_MAP
 from src.ui import display_name_from_xuid
 from src.ui.formatting import format_time_ms as _format_time
 from src.ui.i18n import get_lang, t
+from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_helpers import os_card
 from src.ui.pages.match_view_players_data import (
     has_table_duckdb as _has_table_duckdb,
@@ -126,12 +127,12 @@ def render_roster_section(  # noqa: C901, PLR0913
     def _pill_html(name: str, *, side: str, is_self: bool) -> str:
         if not name:
             return "<span class='os-roster-empty'>—</span>"
-        safe = html.escape(str(name))
+        display = gamertag_link(name) if not is_self else html.escape(str(name))
         extra = " os-roster-pill--self" if is_self else ""
         return (
             f"<span class='os-roster-pill os-roster-pill--{side}{extra}'>"
             "<span class='os-roster-pill__dot'></span>"
-            f"<span>{safe}</span>"
+            f"<span>{display}</span>"
             "</span>"
         )
 
@@ -248,14 +249,16 @@ def render_match_impact_section(  # noqa: PLR0913
                 continue
             icon, label_fr = label_info
             display_name = ie.gamertag
+            display_html = gamertag_link(display_name) if not ie.is_me else display_name
             accent = "#3DFFB5" if ie.is_me else "#FFB703"  # vert si moi, ambre sinon
             with badge_cols[i]:
                 os_card(
                     f"{icon} {label_fr}",
-                    display_name,
+                    display_html,
                     _format_time(ie.time_ms),
                     accent=accent,
                     kpi_color=accent,
+                    kpi_is_html=not ie.is_me,
                     min_h=80,
                 )
 

@@ -101,10 +101,10 @@ FUNC:src/ui/pages/match_view_citations.py:16:render_match_citations_section:163L
 FUNC:src/ui/pages/match_view_helpers.py:241:_render_media_legacy:87L
 FUNC:src/ui/pages/match_view_participation.py:111:render_participation_comparison:85L
 FUNC:src/ui/pages/match_view_participation.py:22:render_participation_section:86L
-FUNC:src/ui/pages/match_view_players.py:187:render_match_impact_section:86L
-FUNC:src/ui/pages/match_view_players.py:49:render_roster_section:129L
-FUNC:src/ui/pages/match_view_players_nemesis.py:169:render_nemesis_section:206L
-FUNC:src/ui/pages/match_view_players_nemesis.py:64:_render_antagonist_chart:101L
+FUNC:src/ui/pages/match_view_players.py:188:render_match_impact_section:88L
+FUNC:src/ui/pages/match_view_players.py:50:render_roster_section:129L
+FUNC:src/ui/pages/match_view_players_nemesis.py:170:render_nemesis_section:208L
+FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:174L
 FUNC:src/ui/pages/media_library_data.py:246:load_match_windows_from_db:142L

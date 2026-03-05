@@ -14,6 +14,7 @@ import streamlit as st
 
 from src.config import BOT_MAP, TEAM_MAP
 from src.ui.i18n import t
+from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_players_data import load_match_scoreboard
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG  # noqa: F401 — re-export éventuel
 from src.utils import parse_xuid_input
@@ -284,11 +285,16 @@ def _render_team_table(  # noqa: PLR0913
             row_class += " os-sb-row--mvp"
         elif p_xu and p_xu == lvp_xuid:
             row_class += " os-sb-row--lvp"
-        cells = "".join(
-            f"<td class='os-sb-td{_sb_cell_class(key, p.get(key), extremes)}'>"
-            f"{html.escape(_fmt_scoreboard_cell(key, p.get(key)))}</td>"
-            for _, key in sb_cols
-        )
+        cell_parts = []
+        for _, key in sb_cols:
+            css = _sb_cell_class(key, p.get(key), extremes)
+            raw = _fmt_scoreboard_cell(key, p.get(key))
+            if key == "gamertag" and raw != "—" and not is_me:
+                content = gamertag_link(raw)
+            else:
+                content = html.escape(raw)
+            cell_parts.append(f"<td class='os-sb-td{css}'>{content}</td>")
+        cells = "".join(cell_parts)
         body_rows.append(f"<tr class='os-sb-row{row_class}'>{cells}</tr>")
 
     table_html = (
