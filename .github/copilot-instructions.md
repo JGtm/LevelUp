@@ -303,7 +303,7 @@ Avant chaque commit, vérifier que le code ne réintroduit pas d'anti-patterns c
 
 ### Patterns recommandés
 
-- **God class** → mixins MRO (`engine.py` → 6 mixins)
+- **God class** → mixins MRO (`engine.py` → 8 mixins + `_protocol.py`)
 - **God function** → extract method (`main()` → sous-fonctions nommées)
 - **Page UI complexe** → `page.py` + `page_logic.py` + `page_data.py`
 - **Config/parsing** → Pydantic v2 `BaseModel` + `model_validate()`

@@ -26,7 +26,7 @@ Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score
 - **v5.1** : Architecture Shared DB, éradication SQLite/Pandas, cleanup tables legacy ✅
 - **v5.2** : Filtres intent-based, Stats PvE Firefight (`shared_pve.duckdb`), Scoreboard, palette Okabe-Ito ✅
 - **v5.3** : LUSR/CSR TrueSkill 2 per-groupe, Notifications Discord, 20 tests corrigés ✅
-- **v5.4** : i18n split, logging centralisé, SyncScope cleanup, refactoring modules >500L (Phases 0-4) ✅
+- **v5.4** : i18n split, logging centralisé, SyncScope cleanup, refactoring modules >500L (Phases 0-6, 72 sous-modules) ✅
 
 ### Architecture v5.3
 
@@ -47,9 +47,9 @@ data/
 ## Modules Clés
 
 ### Accès aux Données
-- `src/data/repositories/duckdb_repo.py` : Repository principal DuckDB (splitté: `_awards_repo`, `_diagnostic_repo`, `_legacy_compat`, `_match_queries_*`, `_metadata_resolution`, `_schema_introspection`)
+- `src/data/repositories/duckdb_repo.py` : Repository principal DuckDB (splitté: `_awards_repo`, `_diagnostic_repo`, `_legacy_compat`, `_match_queries_helpers`, `_match_queries_polars`, `_metadata_resolution`, `_schema_introspection`, `_archives_repo`, `_events_repo`, `_medals_repo`, `_gamertag_resolver`)
 - `src/data/repositories/factory.py` : Factory pattern
-- `src/data/sync/engine.py` : Moteur de synchronisation (splitté: `_engine_connections`, `_engine_schema`)
+- `src/data/sync/engine.py` : Moteur de synchronisation (8 mixins MRO : `_shared_writes`, `_performance`, `_skill_rating`, `_career`, `_aggregates`, `_match_processing`, `_engine_connections`, `_engine_schema` + `_protocol.py`)
 - `src/data/media_indexer.py` : Indexation médias (splitté: `media_helpers`, `media_loaders`, `media_thumbnails`)
 
 ### Analyse
@@ -58,6 +58,21 @@ data/
 - `src/analysis/sessions.py` : Détection sessions
 - `src/analysis/performance_score.py` : Score de performance (splitté: `_performance_relative`, `_performance_session`)
 - `src/analysis/objective_participation.py` : Participation objectifs (splitté: `_objective_helpers`, `_objective_profile`, `_objective_summary`)
+- `src/data/sync/transformers/` : Package (7 sous-modules: `_helpers`, `_match`, `_skill`, `_events`, `_medals`, `_personal_scores`, `_pve`)
+
+### Visualisation & UI (splits phases 4-6)
+- `src/visualization/antagonist_charts.py` : Charts antagonistes (splitté: `_antagonist_kv`, `_antagonist_duels`)
+- `src/ai/rag.py` : RAG IA (splitté: `_rag_models`, `_rag_github`, `_rag_chunker`)
+- `src/data/repositories/refdata.py` : Référentiels (splitté: `_refdata_personal_scores`)
+- `src/app/cache_filters.py` : Cache & filtres (splitté: `_cache_loading`, `_cache_sessions`)
+- `src/app/filters_render.py` : Rendu filtres (splitté: `_filters_apply`, `_filters_period`, `_filters_session`, `_filters_cascade`)
+- `src/visualization/session_compare_charts.py` : Comparaison sessions (splitté: `_session_compare_history`)
+
+### Infrastructure transversale (v5.4)
+- `src/data/sync/_protocol.py` : `_SyncProtocol` — contrat Protocol pour les 8 mixins engine
+- `src/app/_page_context.py` : `PageContext` + `MatchViewParams` — types réels pour pages
+- `src/app/session_keys.py` : `SessionKeys` / `SK` — clés session_state centralisées
+- `src/data/query/_sql_fragments.py` : `WIN_RATE_EXPR`, `IS_WIN`, `IS_LOSS` centralisés
 - `src/analysis/playlist_groups.py` : 6 groupes Halo Infinite — v5.3
 - `src/analysis/skill_rating.py` / `skill_rating_config.py` / `skill_rating_calibration.py` : LUSR/CSR TrueSkill 2 — v5.3
 
@@ -174,13 +189,13 @@ Aucun problème bloquant connu.
 
 ## État technique (v5.4)
 
-- **3614 tests** passent, 0 échecs
+- **3693 tests** passent, 0 échecs
 - **Architecture DuckDB v5.3** : shared_matches + shared_pve + player enrichments
 - **Polars** comme moteur DataFrame (0 Pandas dans code métier)
 - **0 SQLite** dans le code runtime
 - **Streamlit ≥1.37** avec @st.fragment, st.navigation, column_config
 - **Taille player DB** : ~4 MB (vs ~30 MB en v5.0)
-- **Refactoring v5.4** : 45 nouveaux sous-modules, 206 violations restantes (35 modules >500L, 171 fonctions >80L)
+- **Refactoring v5.4** : 72 nouveaux sous-modules (phases 0-6), 191 violations restantes (25 modules >500L, 166 fonctions >80L)
 
 ## Exploration Complète du Projet
 
@@ -202,7 +217,7 @@ Consulter ce fichier pour une cartographie exhaustive ; le présent `project_map
 
 ## Dernière Mise à Jour
 
-**2026-03-05** : **v5.4 Refactoring** — Phases 0-4 split modules >500L, 45 sous-modules, 3614 tests, baseline 206 violations
+**2026-03-05** : **v5.4 Refactoring** — Phases 0-6 split modules >500L, 72 sous-modules, 3693 tests, baseline 191 violations
 **2026-02-25** : **v5.3.0** — LUSR/CSR TrueSkill 2 per-groupe, Notifications Discord, 3323 tests
 **2026-02-20** : **v5.2.0** — Filtres intent-based, Stats PvE shared_pve.duckdb, Scoreboard, Okabe-Ito
 **2026-02-17** : **v5.1.0 Release** — Documentation finale, archivage, release tag

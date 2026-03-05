@@ -27,7 +27,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 - **Split `transformers.py` (2 095L → package)** — `src/data/sync/transformers/` avec 7 sous-modules (`_helpers`, `_match`, `_skill`, `_events`, `_medals`, `_personal_scores`, `_pve`) + `__init__.py` ré-exportant tout ; aucun breaking change
 - **Split `filters_render.py` (1 460L → 4 modules)** — `_filters_period.py`, `_filters_session.py`, `_filters_cascade.py` extraits
-- **`_SyncProtocol`** (`src/data/sync/_protocol.py`) — contrat `Protocol` explicite pour les 6 mixins du `DuckDBSyncEngine` ; élimine 70+ `# type: ignore[attr-defined]`
+- **`_SyncProtocol`** (`src/data/sync/_protocol.py`) — contrat `Protocol` explicite pour les 8 mixins du `DuckDBSyncEngine` ; élimine 70+ `# type: ignore[attr-defined]`
 - **`PageContext` + `MatchViewParams`** (`src/app/_page_context.py`) — types réels à la place de 5 champs `Any`
 - **`SessionKeys` / `SK`** (`src/app/session_keys.py`) — 20+ clés `st.session_state` centralisées
 - **`_sql_fragments.py`** (`src/data/query/_sql_fragments.py`) — source de vérité unique pour `WIN_RATE_EXPR` (dénominateur WIN+LOSS, NULLIF division) ; 7 duplications supprimées dans `analytics.py` et `trends.py`

@@ -260,7 +260,7 @@ Avant d'écrire ou modifier du code, l'agent IA doit vérifier que ses changemen
 
 | Situation | Pattern recommandé | Exemple dans le projet |
 |-----------|-------------------|------------------------|
-| God class >500L | **Mixins MRO** | `engine.py` → 6 mixins (`_shared_writes.py`, `_performance.py`, etc.) |
+| God class >500L | **Mixins MRO** | `engine.py` → 8 mixins + `_protocol.py` (`_shared_writes`, `_performance`, `_skill_rating`, `_career`, `_aggregates`, `_match_processing`, `_engine_connections`, `_engine_schema`) |
 | God function >80L | **Extract method** | `main()` 582L → `_initialize_app()`, `_load_and_filter_data()`, etc. |
 | Page Streamlit avec logique | **Séparation UI/logique** | `session_compare.py` + `session_compare_logic.py` |
 | Config/parsing complexe | **Pydantic v2** | `AppSettings(BaseModel)` avec `model_validate()` |

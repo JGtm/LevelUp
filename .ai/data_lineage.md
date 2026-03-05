@@ -1,7 +1,7 @@
 # Data Lineage - Traçabilité des Données Halo
 
 > Ce fichier trace l'origine, les transformations et la destination de chaque flux de données.
-> Mis à jour : 2026-02-25
+> Mis à jour : 2026-03-05
 
 ## Architecture v5.1 - Shared Matches + Player Enrichments
 
@@ -60,7 +60,7 @@ Source: API Halo Infinite (via SPNKr)
 Client: SPNKrAPIClient (src/data/sync/api_client.py)
      ↓
 Transformers: transform_match_stats(), extract_participants(), etc.
-     ↓
+     ↓          (package `src/data/sync/transformers/` : 7 sous-modules)
 Engine: DuckDBSyncEngine (src/data/sync/engine.py)
      ├─→ Match connu → enrichissement personnel uniquement (player_match_enrichment)
      └─→ Match nouveau → shared (registry + participants + events + medals)
