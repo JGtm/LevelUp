@@ -34,6 +34,7 @@ class SK:
     CURRENT_PAGE: str = "current_page"
     PENDING_PAGE: str = "_pending_page"
     PENDING_MATCH_ID: str = "_pending_match_id"
+    PENDING_GAMERTAG: str = "_pending_gamertag"
     MATCH_ID_INPUT: str = "match_id_input"
 
     # ------------------------------------------------------------------

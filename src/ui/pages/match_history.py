@@ -24,16 +24,8 @@ from src.config import HALO_COLORS, OUTCOME_CODES
 from src.ui.components.performance import get_score_class
 from src.ui.date_formats import FMT_DATETIME_FR
 from src.ui.i18n import get_outcome_map, t
+from src.ui.pages.match_table_html import app_url
 from src.visualization._compat import DataFrameLike, ensure_polars
-
-
-def _app_url(page: str, **params: str) -> str:
-    """Génère une URL interne vers une page de l'app."""
-    import urllib.parse
-
-    base = "/"
-    qp = {"page": page, **params}
-    return base + "?" + urllib.parse.urlencode(qp)
 
 
 def render_match_history_page(  # noqa: PLR0913
@@ -275,7 +267,7 @@ def _render_history_table(dff_table: pl.DataFrame) -> None:  # noqa: C901, PLR09
     body_rows: list[str] = []
     for r in view.to_dicts():
         mid = str(r.get("match_id") or "").strip()
-        app = _app_url("Match", match_id=mid)
+        app = app_url("Explorer", match_id=mid)
         match_link = (
             f"<a href='{html_lib.escape(app)}' target='_self'>{html_lib.escape(lbl_open)}</a>"
             if mid

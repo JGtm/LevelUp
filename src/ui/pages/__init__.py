@@ -2,6 +2,7 @@
 
 from src.ui.pages.career import render_career_page
 from src.ui.pages.citations import render_citations_page
+from src.ui.pages.explorer import render_explorer_page
 from src.ui.pages.last_match import render_last_match_page, render_match_search_page
 from src.ui.pages.match_history import render_match_history_page
 from src.ui.pages.match_view import render_match_view
@@ -27,6 +28,7 @@ __all__ = [
     "render_settings_page",
     "render_match_view",
     "render_last_match_page",
+    "render_explorer_page",
     "render_match_search_page",
     "render_media_library_page",
     "render_career_page",
