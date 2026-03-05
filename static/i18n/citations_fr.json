@@ -57,12 +57,12 @@
     "splatter": {
         "name": "Écrasement",
         "description": "Écrasez un Spartan adverse avec un véhicule.",
-        "category": "Arme"
+        "category": "Véhicule"
     },
     "driver": {
         "name": "Pilote",
         "description": "Décrochez des médailles de pilote.",
-        "category": "Arme"
+        "category": "Véhicule"
     },
     "assassin": {
         "name": "Assassin",
@@ -187,37 +187,37 @@
     "wraith_destroyer": {
         "name": "Destructeur d'apparitions",
         "description": "Détruisez les apparitions occupées par l'adversaire.",
-        "category": "Arme"
+        "category": "Véhicule"
     },
     "banshee_destroyer": {
         "name": "Destructeur de banshees",
         "description": "Détruisez les banshees occupés par l'adversaire.",
-        "category": "Arme"
+        "category": "Véhicule"
     },
     "ghost_destroyer": {
         "name": "Destructeur de ghosts",
         "description": "Détruisez les ghosts occupés par l'adversaire.",
-        "category": "Arme"
+        "category": "Véhicule"
     },
     "mongoose_destroyer": {
         "name": "Destructeur de mongooses",
         "description": "Détruisez les mongooses occupées par l'adversaire.",
-        "category": "Arme"
+        "category": "Véhicule"
     },
     "scorpion_destroyer": {
         "name": "Destructeur de scorpions",
         "description": "Détruisez les scorpions occupés par l'adversaire.",
-        "category": "Arme"
+        "category": "Véhicule"
     },
     "warthog_destroyer": {
         "name": "Destructeur de warthogs",
         "description": "Détruisez les warthogs occupés par l'adversaire.",
-        "category": "Arme"
+        "category": "Véhicule"
     },
     "wasp_destroyer": {
         "name": "Destructeur de wasps",
         "description": "Détruisez les wasps occupés par l'adversaire.",
-        "category": "Arme"
+        "category": "Véhicule"
     },
     "grunt_slayer": {
         "name": "Tueur de Grognards",

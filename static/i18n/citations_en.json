@@ -57,12 +57,12 @@
     "splatter": {
         "name": "Splatter",
         "description": "Splatter an enemy Spartan with a vehicle.",
-        "category": "Weapon"
+        "category": "Vehicle"
     },
     "driver": {
         "name": "Driver",
         "description": "Earn driver medals.",
-        "category": "Weapon"
+        "category": "Vehicle"
     },
     "assassin": {
         "name": "Assassin",
@@ -187,37 +187,37 @@
     "wraith_destroyer": {
         "name": "Wraith Destroyer",
         "description": "Destroy occupied enemy Wraiths.",
-        "category": "Weapon"
+        "category": "Vehicle"
     },
     "banshee_destroyer": {
         "name": "Banshee Destroyer",
         "description": "Destroy occupied enemy Banshees.",
-        "category": "Weapon"
+        "category": "Vehicle"
     },
     "ghost_destroyer": {
         "name": "Ghost Destroyer",
         "description": "Destroy occupied enemy Ghosts.",
-        "category": "Weapon"
+        "category": "Vehicle"
     },
     "mongoose_destroyer": {
         "name": "Mongoose Destroyer",
         "description": "Destroy occupied enemy Mongooses.",
-        "category": "Weapon"
+        "category": "Vehicle"
     },
     "scorpion_destroyer": {
         "name": "Scorpion Destroyer",
         "description": "Destroy occupied enemy Scorpions.",
-        "category": "Weapon"
+        "category": "Vehicle"
     },
     "warthog_destroyer": {
         "name": "Warthog Destroyer",
         "description": "Destroy occupied enemy Warthogs.",
-        "category": "Weapon"
+        "category": "Vehicle"
     },
     "wasp_destroyer": {
         "name": "Wasp Destroyer",
         "description": "Destroy occupied enemy Wasps.",
-        "category": "Weapon"
+        "category": "Vehicle"
     },
     "grunt_slayer": {
         "name": "Grunt Killer",
