@@ -11,6 +11,7 @@ import pytest
 from scripts.backfill.detection import (
     _done_guard,
     _has_backfill_completed_column,
+    _player_done_guard,
     find_matches_missing_data,
 )
 
@@ -116,7 +117,10 @@ def shared_conn():
 
 @pytest.fixture
 def player_conn():
-    """Connexion DuckDB :memory: simulant la DB joueur."""
+    """Connexion DuckDB :memory: simulant la DB joueur.
+
+    m2 est "complet" dans shared → enrichissement/personal_scores aussi.
+    """
     c = duckdb.connect(":memory:")
     c.execute("""
         CREATE TABLE player_match_enrichment (
@@ -131,6 +135,9 @@ def player_conn():
             award_name VARCHAR
         )
     """)
+    # m2 est complet : données per-player présentes
+    c.execute("INSERT INTO player_match_enrichment VALUES ('m2', 85.0)")
+    c.execute("INSERT INTO personal_score_awards VALUES ('m2', '1234567890123456', 'flag_cap')")
     yield c
     c.close()
 
@@ -303,7 +310,7 @@ class TestFindMatchesMissingPersonalScores:
         result = find_matches_missing_data(
             player_conn, "1234567890123456", shared_conn=shared_conn, personal_scores=True
         )
-        # V5 : condition "1=1" + bitmask guard → m1 et m3 (pas de bit)
+        # V5.5 : per-player — m2 exclu car présent dans personal_score_awards
         assert "m1" in result
         assert "m3" in result
         assert "m2" not in result
@@ -317,7 +324,7 @@ class TestFindMatchesMissingPerformance:
         result = find_matches_missing_data(
             player_conn, "1234567890123456", shared_conn=shared_conn, performance_scores=True
         )
-        # V5 : condition "1=1" + bitmask guard → m1 et m3 (pas de bit)
+        # V5.5 : per-player — m2 exclu car présent dans player_match_enrichment
         assert "m1" in result
         assert "m3" in result
         assert "m2" not in result
@@ -458,21 +465,25 @@ class TestForceAliases:
 
 class TestBitmaskFiltering:
     def test_already_backfilled_excluded(self, shared_conn, player_conn):
-        """Les matchs avec le bit medals activé ne sont pas re-détectés."""
+        """Les flags globaux (assets) respectent encore le bitmask.
+
+        V5.5 : les flags per-player (medals, perf, etc.) n'utilisent plus
+        le bitmask global. On vérifie ici qu'assets (flag global) fonctionne.
+        """
         from src.data.sync.migrations import BACKFILL_FLAGS
 
-        medal_bit = BACKFILL_FLAGS.get("medals", 0)
-        if medal_bit:
+        asset_bit = BACKFILL_FLAGS.get("assets", 0)
+        if asset_bit:
             shared_conn.execute(
                 "UPDATE match_registry SET backfill_completed = ? WHERE match_id = 'm1'",
-                [medal_bit],
+                [asset_bit],
             )
             result = find_matches_missing_data(
-                player_conn, "1234567890123456", shared_conn=shared_conn, medals=True
+                player_conn, "1234567890123456", shared_conn=shared_conn, assets=True
             )
-            # m1 should be excluded now
+            # m1 exclu par le bitmask global
             assert "m1" not in result
-            # m3 still missing
+            # m3 : pas de bit, assets NULL → détecté
             assert "m3" in result
 
 
@@ -755,3 +766,349 @@ class TestSharedConnIntegration:
             assert "m1" in result
         finally:
             local_conn.close()
+
+
+# =============================================================================
+# Tests fix multi-joueur (v5.5) — détection per-player
+# =============================================================================
+
+XUID_A = "1111111111111111"
+XUID_B = "2222222222222222"
+
+
+def _make_multiplayer_shared() -> duckdb.DuckDBPyConnection:
+    """Crée une shared DB avec 2 joueurs partageant 3 matchs.
+
+    Joueur A : toutes les données remplies (bits posés).
+    Joueur B : données vides (accuracy, shots, team_mmr = NULL).
+    backfill_completed est posé à fond (simule un sync par joueur A).
+    """
+    c = duckdb.connect(":memory:")
+    # Tous les bits per-player + global posés
+    ALL_BITS = 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384
+    c.execute("""
+        CREATE TABLE match_registry (
+            match_id VARCHAR PRIMARY KEY,
+            start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            end_time TIMESTAMP,
+            playlist_name VARCHAR DEFAULT 'Ranked',
+            playlist_id VARCHAR DEFAULT 'p1',
+            map_name VARCHAR DEFAULT 'Recharge',
+            map_id VARCHAR DEFAULT 'map1',
+            pair_name VARCHAR DEFAULT 'Slayer',
+            pair_id VARCHAR DEFAULT 'pair1',
+            game_variant_name VARCHAR DEFAULT 'Slayer',
+            game_variant_id VARCHAR DEFAULT 'gv1',
+            backfill_completed INTEGER DEFAULT 0,
+            events_loaded BOOLEAN DEFAULT true,
+            is_firefight BOOLEAN DEFAULT false
+        )
+    """)
+    c.execute("""
+        CREATE TABLE match_participants (
+            match_id VARCHAR,
+            xuid VARCHAR,
+            rank INTEGER,
+            score INTEGER,
+            kills INTEGER,
+            deaths INTEGER,
+            assists INTEGER,
+            accuracy DOUBLE,
+            shots_fired INTEGER,
+            shots_hit INTEGER,
+            damage_dealt DOUBLE,
+            damage_taken DOUBLE,
+            avg_life_seconds DOUBLE,
+            team_mmr DOUBLE,
+            enemy_mmr DOUBLE,
+            kills_expected DOUBLE,
+            deaths_expected DOUBLE,
+            assists_expected DOUBLE,
+            backfill_bits INTEGER DEFAULT 0,
+            PRIMARY KEY (match_id, xuid)
+        )
+    """)
+    c.execute("""
+        CREATE TABLE medals_earned (
+            match_id VARCHAR,
+            medal_name_id VARCHAR,
+            count INTEGER,
+            xuid VARCHAR
+        )
+    """)
+    c.execute("""
+        CREATE TABLE highlight_events (
+            match_id VARCHAR,
+            event_type VARCHAR,
+            xuid VARCHAR
+        )
+    """)
+    # 3 matchs partagés, backfill_completed à fond (sync par A)
+    c.execute(
+        "INSERT INTO match_registry (match_id, backfill_completed) VALUES "
+        "('mx1', ?), ('mx2', ?), ('mx3', ?)",
+        [ALL_BITS, ALL_BITS, ALL_BITS],
+    )
+    # Joueur A : données complètes
+    for mid in ("mx1", "mx2", "mx3"):
+        c.execute(
+            "INSERT INTO match_participants "
+            "(match_id, xuid, accuracy, shots_fired, shots_hit, team_mmr,"
+            " kills, deaths, assists, rank, score, damage_dealt, damage_taken,"
+            " kills_expected, deaths_expected, assists_expected, backfill_bits) "
+            "VALUES (?, ?, 0.5, 100, 50, 1500.0, 10, 5, 3, 1, 100, 1000, 800,"
+            " 0.8, 0.4, 0.2, ?)",
+            [mid, XUID_A, 0xFFFF],
+        )
+        c.execute(
+            "INSERT INTO medals_earned VALUES (?, 'double_kill', 1, ?)",
+            [mid, XUID_A],
+        )
+    # Joueur B : données vides (NULL), backfill_bits = 0
+    for mid in ("mx1", "mx2", "mx3"):
+        c.execute(
+            "INSERT INTO match_participants "
+            "(match_id, xuid, accuracy, shots_fired, shots_hit, team_mmr) "
+            "VALUES (?, ?, NULL, NULL, NULL, NULL)",
+            [mid, XUID_B],
+        )
+    return c
+
+
+def _make_player_db_empty() -> duckdb.DuckDBPyConnection:
+    """Player DB joueur B : tables vides (rien d'enrichi)."""
+    c = duckdb.connect(":memory:")
+    c.execute("""
+        CREATE TABLE player_match_enrichment (
+            match_id VARCHAR PRIMARY KEY,
+            performance_score FLOAT
+        )
+    """)
+    c.execute("""
+        CREATE TABLE personal_score_awards (
+            match_id VARCHAR,
+            xuid VARCHAR,
+            award_name VARCHAR
+        )
+    """)
+    return c
+
+
+def _make_player_db_partial() -> duckdb.DuckDBPyConnection:
+    """Player DB joueur B : enrichment partiel (mx1 fait, mx2/mx3 manquants)."""
+    c = _make_player_db_empty()
+    c.execute("INSERT INTO player_match_enrichment VALUES ('mx1', 85.0)")
+    c.execute("INSERT INTO personal_score_awards VALUES ('mx1', ?, 'flag_cap')", [XUID_B])
+    return c
+
+
+class TestMultiPlayerDetection:
+    """Vérifie que la détection per-player ne masque pas les matchs pour le joueur B
+    quand le joueur A a déjà posé le bit global dans backfill_completed."""
+
+    def test_performance_scores_detected_for_player_b(self):
+        """backfill_completed a le bit perf_scores posé par A,
+        mais B n'a pas de performance_score → matchs détectés."""
+        shared = _make_multiplayer_shared()
+        player_b = _make_player_db_empty()
+        try:
+            result = find_matches_missing_data(
+                player_b, XUID_B, shared_conn=shared, performance_scores=True
+            )
+            assert set(result) == {"mx1", "mx2", "mx3"}
+        finally:
+            shared.close()
+            player_b.close()
+
+    def test_performance_scores_partial_enrichment(self):
+        """B a déjà performance_score pour mx1 → seuls mx2/mx3 détectés."""
+        shared = _make_multiplayer_shared()
+        player_b = _make_player_db_partial()
+        try:
+            result = find_matches_missing_data(
+                player_b, XUID_B, shared_conn=shared, performance_scores=True
+            )
+            assert "mx1" not in result
+            assert "mx2" in result
+            assert "mx3" in result
+        finally:
+            shared.close()
+            player_b.close()
+
+    def test_personal_scores_detected_for_player_b(self):
+        """backfill_completed posé par A, mais B n'a pas de personal_scores."""
+        shared = _make_multiplayer_shared()
+        player_b = _make_player_db_empty()
+        try:
+            result = find_matches_missing_data(
+                player_b, XUID_B, shared_conn=shared, personal_scores=True
+            )
+            assert set(result) == {"mx1", "mx2", "mx3"}
+        finally:
+            shared.close()
+            player_b.close()
+
+    def test_personal_scores_partial(self):
+        """B a personal_scores pour mx1 uniquement."""
+        shared = _make_multiplayer_shared()
+        player_b = _make_player_db_partial()
+        try:
+            result = find_matches_missing_data(
+                player_b, XUID_B, shared_conn=shared, personal_scores=True
+            )
+            assert "mx1" not in result
+            assert "mx2" in result
+            assert "mx3" in result
+        finally:
+            shared.close()
+            player_b.close()
+
+    def test_medals_detected_for_player_b(self):
+        """backfill_completed posé par A, mais B n'a pas de medals."""
+        shared = _make_multiplayer_shared()
+        player_b = _make_player_db_empty()
+        try:
+            result = find_matches_missing_data(player_b, XUID_B, shared_conn=shared, medals=True)
+            assert set(result) == {"mx1", "mx2", "mx3"}
+        finally:
+            shared.close()
+            player_b.close()
+
+    def test_accuracy_detected_for_player_b(self):
+        """accuracy NULL pour B malgré backfill_completed posé."""
+        shared = _make_multiplayer_shared()
+        player_b = _make_player_db_empty()
+        try:
+            result = find_matches_missing_data(player_b, XUID_B, shared_conn=shared, accuracy=True)
+            assert set(result) == {"mx1", "mx2", "mx3"}
+        finally:
+            shared.close()
+            player_b.close()
+
+    def test_shots_detected_for_player_b(self):
+        """shots NULL pour B malgré backfill_completed posé."""
+        shared = _make_multiplayer_shared()
+        player_b = _make_player_db_empty()
+        try:
+            result = find_matches_missing_data(player_b, XUID_B, shared_conn=shared, shots=True)
+            assert set(result) == {"mx1", "mx2", "mx3"}
+        finally:
+            shared.close()
+            player_b.close()
+
+    def test_enemy_mmr_detected_for_player_b(self):
+        """team_mmr NULL pour B malgré backfill_completed posé."""
+        shared = _make_multiplayer_shared()
+        player_b = _make_player_db_empty()
+        try:
+            result = find_matches_missing_data(player_b, XUID_B, shared_conn=shared, enemy_mmr=True)
+            assert set(result) == {"mx1", "mx2", "mx3"}
+        finally:
+            shared.close()
+            player_b.close()
+
+    def test_combined_flags_dont_lose_matches(self):
+        """Avec medals + performance_scores, un match encore nécessaire
+        pour medals ne doit pas être exclu par le filtre perf."""
+        shared = _make_multiplayer_shared()
+        player_b = _make_player_db_partial()  # mx1 a perf, mx2/mx3 non
+        try:
+            result = find_matches_missing_data(
+                player_b,
+                XUID_B,
+                shared_conn=shared,
+                medals=True,
+                performance_scores=True,
+            )
+            # mx1 : perf done mais medals manquantes → détecté
+            # mx2, mx3 : perf + medals manquantes → détectés
+            assert "mx1" in result
+            assert "mx2" in result
+            assert "mx3" in result
+        finally:
+            shared.close()
+            player_b.close()
+
+    def test_player_a_not_affected(self):
+        """Joueur A qui a tout rempli ne doit rien détecter."""
+        shared = _make_multiplayer_shared()
+        # Player A DB : tout rempli
+        player_a = duckdb.connect(":memory:")
+        player_a.execute("""
+            CREATE TABLE player_match_enrichment (
+                match_id VARCHAR PRIMARY KEY,
+                performance_score FLOAT
+            )
+        """)
+        player_a.execute("""
+            CREATE TABLE personal_score_awards (
+                match_id VARCHAR, xuid VARCHAR, award_name VARCHAR
+            )
+        """)
+        for mid in ("mx1", "mx2", "mx3"):
+            player_a.execute("INSERT INTO player_match_enrichment VALUES (?, 90.0)", [mid])
+            player_a.execute(
+                "INSERT INTO personal_score_awards VALUES (?, ?, 'flag')",
+                [mid, XUID_A],
+            )
+        try:
+            result = find_matches_missing_data(
+                player_a,
+                XUID_A,
+                shared_conn=shared,
+                performance_scores=True,
+                personal_scores=True,
+                accuracy=True,
+                shots=True,
+                enemy_mmr=True,
+                medals=True,
+            )
+            # A a tout : accuracy/shots/mmr remplis, perf/personal remplis, medals remplies
+            assert result == []
+        finally:
+            shared.close()
+            player_a.close()
+
+
+class TestPlayerDoneGuard:
+    """Tests unitaires pour _player_done_guard."""
+
+    def test_empty_table_returns_1_eq_1(self):
+        c = duckdb.connect(":memory:")
+        c.execute("CREATE TABLE t (match_id VARCHAR, score FLOAT)")
+        assert _player_done_guard(c, "t", "score") == "1=1"
+        c.close()
+
+    def test_with_data_returns_not_in(self):
+        c = duckdb.connect(":memory:")
+        c.execute("CREATE TABLE t (match_id VARCHAR PRIMARY KEY, score FLOAT)")
+        c.execute("INSERT INTO t VALUES ('m1', 85.0), ('m2', 90.0)")
+        result = _player_done_guard(c, "t", "score")
+        assert "NOT IN" in result
+        assert "m1" in result
+        assert "m2" in result
+        c.close()
+
+    def test_with_null_column_excluded(self):
+        c = duckdb.connect(":memory:")
+        c.execute("CREATE TABLE t (match_id VARCHAR PRIMARY KEY, score FLOAT)")
+        c.execute("INSERT INTO t VALUES ('m1', 85.0), ('m2', NULL)")
+        result = _player_done_guard(c, "t", "score")
+        assert "m1" in result
+        assert "m2" not in result  # NULL → pas considéré comme fait
+        c.close()
+
+    def test_without_column_checks_distinct(self):
+        c = duckdb.connect(":memory:")
+        c.execute("CREATE TABLE t (match_id VARCHAR, v INTEGER)")
+        c.execute("INSERT INTO t VALUES ('m1', 1), ('m1', 2), ('m2', 3)")
+        result = _player_done_guard(c, "t")
+        assert "NOT IN" in result
+        assert "m1" in result
+        assert "m2" in result
+        c.close()
+
+    def test_missing_table_returns_1_eq_1(self):
+        c = duckdb.connect(":memory:")
+        assert _player_done_guard(c, "nonexistent_table", "score") == "1=1"
+        c.close()

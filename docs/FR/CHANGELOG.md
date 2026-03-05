@@ -47,6 +47,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - **`_PERF_SCORE_AVAILABLE` manquant** (`src/data/sync/_performance.py`) — variable absente après le split en mixins ; guard `try/except ImportError` ajouté ; corrige `NameError` à l'exécution
 - **NaN-check fragile** (`match_view.py`) — `x == x` (idiome NaN flottant) → `x is not None`
 - **i18n** — 2 clés `PAIR_FR` tronquées restaurées, doublon `tm_session_trend` supprimé, 343 entrées redondantes nettoyées (399 → 56 entrées utiles)
+- **Détection backfill per-player** (`detection.py`) — les 6 flags per-player (medals, personal_scores, performance_scores, accuracy, shots, enemy_mmr) vérifient les données réelles du joueur au lieu du bitmask global `backfill_completed` ; corrige un masquage entre joueurs lors du premier sync ; `_player_done_guard()` + 15 tests multi-joueur + 9 tests adaptés
 
 ---
 
