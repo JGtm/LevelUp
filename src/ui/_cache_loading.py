@@ -6,10 +6,14 @@ cached_get_match_count_duckdb extraites de cache_filters.py.
 
 from __future__ import annotations
 
+import logging
+
 import polars as pl
 import streamlit as st
 
 from src.ui.cache_loaders import PARIS_TZ_NAME
+
+logger = logging.getLogger(__name__)
 
 
 # 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
@@ -58,8 +62,10 @@ def cached_load_recent_matches(
         return _convert_timezone(df)
 
     except ImportError:
+        logger.debug("Import DuckDBRepository indisponible pour recent_matches")
         return pl.DataFrame()
     except Exception:
+        logger.debug("Erreur chargement recent_matches", exc_info=True)
         return pl.DataFrame()
 
 
@@ -112,8 +118,10 @@ def cached_load_matches_paginated(
         return _convert_timezone(df), total_pages
 
     except ImportError:
+        logger.debug("Import DuckDBRepository indisponible pour matches_paginated")
         return pl.DataFrame(), 1
     except Exception:
+        logger.debug("Erreur chargement matches_paginated", exc_info=True)
         return pl.DataFrame(), 1
 
 
@@ -152,6 +160,7 @@ def cached_get_match_count_duckdb(
             repo.close()
 
     except Exception:
+        logger.debug("Erreur récupération match_count", exc_info=True)
         return 0
 
 
@@ -231,6 +240,7 @@ def _convert_timezone(df: pl.DataFrame) -> pl.DataFrame:
             .dt.replace_time_zone(None)
         )
     except Exception:
+        logger.debug("Erreur conversion timezone start_time", exc_info=True)
         import contextlib
 
         with contextlib.suppress(Exception):
