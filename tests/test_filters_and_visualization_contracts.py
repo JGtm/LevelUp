@@ -136,7 +136,7 @@ def test_apply_filters_sessions_updates_result_set(monkeypatch: pytest.MonkeyPat
         }
     )
     monkeypatch.setattr(
-        "src.app.filters_render.cached_compute_sessions_db", lambda *_args, **_kwargs: sessions_df
+        "src.app._filters_apply.cached_compute_sessions_db", lambda *_args, **_kwargs: sessions_df
     )
 
     filter_state = FilterState(
