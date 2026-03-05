@@ -155,6 +155,16 @@
 
 ---
 
+### Explorer & Encounter History
+
+| Explorer | Encounter History |
+|:-:|:-:|
+| ![Explorer](docs/screenshots/explorer.png) | ![Encounter History](docs/screenshots/encounter-history.png) |
+
+*Browse and filter all your matches in detail with the Explorer, including search by player — track recurring opponents and cross-match encounter patterns with the Encounter History view.*
+
+---
+
 ### Media library & Commendations
 
 | Media library | Commendations |

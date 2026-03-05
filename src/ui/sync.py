@@ -360,6 +360,7 @@ def sync_all_players_duckdb(  # noqa: PLR0913
     if not profiles:
         return False, "Aucun profil dans db_profiles.json."
 
+    logger.info("[App Sync] Démarrage sync pour %d joueur(s)", len(profiles))
     results: list[tuple[str, bool, str]] = []
 
     for gamertag, profile in profiles.items():
@@ -367,6 +368,7 @@ def sync_all_players_duckdb(  # noqa: PLR0913
         player_db_path = repo_root / profile.get("db_path", "")
 
         if not player_db_path.exists():
+            logger.warning("[App Sync] %s: DB introuvable (%s)", gamertag, player_db_path)
             results.append((gamertag, False, f"DB introuvable: {player_db_path}"))
             continue
 
@@ -381,6 +383,12 @@ def sync_all_players_duckdb(  # noqa: PLR0913
             with_aliases=with_aliases,
             repo_root=repo_root,
         )
+        if ok:
+            logger.info("[App Sync] %s: OK — %s", gamertag, msg)
+        else:
+            logger.error("[App Sync] %s: échec — %s", gamertag, msg)
         results.append((gamertag, ok, msg))
 
-    return _summarize_sync_results(results)
+    global_ok, global_msg = _summarize_sync_results(results)
+    logger.info("[App Sync] Résultat global: %s", global_msg)
+    return global_ok, global_msg
