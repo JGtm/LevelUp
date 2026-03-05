@@ -128,6 +128,24 @@ def _format_player_field(
         lines.append(discord_t("discord_data_complete"))
     else:
         lines.append(discord_t("discord_data_incomplete", count=player.missing_data_count))
+    _counts = getattr(player, "backfill_counts", {}) or {}
+    _BACKFILL_I18N_KEYS = {
+        "medals_inserted": "discord_bf_medals",
+        "events_inserted": "discord_bf_events",
+        "lusr_computed": "discord_bf_lusr",
+        "csr_fetched": "discord_bf_csr",
+        "sessions_updated": "discord_bf_sessions",
+        "citations_computed": "discord_bf_citations",
+        "killer_victim_pairs_inserted": "discord_bf_kvp",
+        "personal_scores_inserted": "discord_bf_personal_scores",
+        "performance_scores_inserted": "discord_bf_perf_scores",
+        "aliases_inserted": "discord_bf_aliases",
+        "pve_stats_inserted": "discord_bf_pve",
+    }
+    for _key, _i18n_key in _BACKFILL_I18N_KEYS.items():
+        _n = _counts.get(_key, 0)
+        if _n > 0:
+            lines.append(discord_t(_i18n_key, count=_n))
 
     # ── Dernier match ────────────────────────────────────────────────────
     if player.last_match:

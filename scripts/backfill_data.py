@@ -372,13 +372,15 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
                     _xuid_bf = _xuid_map.get(_pinfo.gamertag.lower())
                     _missing_bf = count_matches_missing_data(_xuid_bf or "") if _xuid_bf else 0
                     _last_bf = fetch_last_match_info(_xuid_bf or "") if _xuid_bf else None
+                    _pres = result.get("per_player", {}).get(_pinfo.gamertag, {})
                     _discord_players.append(
                         DiscordPlayerResult(
                             gamertag=_pinfo.gamertag,
                             xuid=_xuid_bf,
-                            matches_synced=_matches_checked_total // _n_ref,
+                            matches_synced=_pres.get("matches_checked", 0),
                             missing_data_count=_missing_bf,
                             last_match=_last_bf,
+                            backfill_counts=_pres,
                         )
                     )
                 notify_operation_done(
@@ -426,6 +428,7 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
                             matches_synced=result.get("matches_checked", 0),
                             missing_data_count=_missing_bf,
                             last_match=_last_bf,
+                            backfill_counts=result,
                         )
                     ],
                     success=True,

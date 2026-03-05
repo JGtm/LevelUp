@@ -64,9 +64,15 @@ def _fetch_squad_info(
                 SELECT DISTINCT xa.gamertag
                 FROM match_participants mp
                 JOIN xuid_aliases xa ON mp.xuid = xa.xuid
-                WHERE mp.match_id = ? AND mp.xuid != ?
+                WHERE mp.match_id = ?
+                  AND mp.xuid != ?
+                  AND mp.team_id = (
+                      SELECT team_id FROM match_participants
+                      WHERE match_id = ? AND xuid = ?
+                      LIMIT 1
+                  )
                 """,
-                [match_id, xuid],
+                [match_id, xuid, match_id, xuid],
             ).fetchall()
             for (gt,) in rows:
                 if gt and gt.casefold() in my_friends_gt:

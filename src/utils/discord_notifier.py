@@ -79,6 +79,7 @@ class DiscordPlayerResult:
     missing_data_count: int = 0
     last_match: LastMatchInfo | None = None
     error: str | None = None
+    backfill_counts: dict = field(default_factory=dict)
 
 
 # =============================================================================
