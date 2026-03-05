@@ -38,7 +38,7 @@
 - **v5.0 — Shared Matches**
   - `shared_matches.duckdb` centralizes all matches (registry, participants, events, medals)
   - −69% storage, −72% API calls
-  - **3323 tests**, 0 failures
+  - **3693 tests**, 0 failures
 
 ---
 

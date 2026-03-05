@@ -13,6 +13,7 @@
 
 ## Dernières nouveautés
 
+- **v5.4 — Refactoring** — 72 sous-modules extraits (phases 0-6), architecture mixin MRO généralisée. **3693 tests**, 0 failure.
 - **v5.3 — LUSR/CSR** — Système de rating TrueSkill 2 per-groupe (ranked/arena/btb/tactical/social/fun) avec calibration empirique. Notifications Discord post-sync/backfill.
 - **v5.2 — Stats PvE** — Base dédiée `shared_pve.duckdb` pour les matchs Firefight. Filtres intent-based persistants. Scoreboard complet "Dernier match". Palette Okabe-Ito (accessibilité daltonisme).
 - **v5.1 — Architecture optimisée** — Streamlit moderne (`@st.fragment`, `st.navigation`), éradication SQLite/Pandas, `SyncScope` centralisé, -75% temps de connexion DB.

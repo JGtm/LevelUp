@@ -56,9 +56,45 @@
 - Tous les pre-commit hooks passent (ruff, format, circular imports, size ratchet)
 
 **Suivi** :
-- [ ] Phase 5+ : 35 modules >500L restants à traiter (match_view_players 800L, antagonist_charts 751L, ai/rag 745L, skill_rating 736L, performance.py 733L, ...)
+- [x] Phase 5-6 : voir entrée [2026-03-05] ci-dessous ✅
 - [x] Tests à jour ✅
-- [ ] Logs `.ai/` mis à jour (cette entrée)
+- [x] Logs `.ai/` mis à jour ✅
+
+---
+
+### [2026-03-05] — Refactoring : Phases 5-6 — Split modules analyse, visualisation & UI
+
+**Statut** : Phases 5-6 complétées ✅ — 25 modules >500L restants (dette documentée)
+
+**Objectif** : Continuer le split des modules >500L (phases 5-6 après la base phases 0-4).
+
+**Commits** :
+- `c2b8f0c` (phase 5) — split performance_score, antagonist_charts, rag
+- `c345e10` (phase 6) — split refdata, roster_loader, cache_filters, filters_render, session_compare_charts
+- `815b8b6` — 79 tests dédiés + logger `_cache_loading`
+- `73e8e46` — loggers `_performance_relative` + `_rag_github`
+- `411f4de` — changelog v5.4 mis à jour
+
+**Phase 5 — Analyse & visualisation** :
+- `performance_score.py` (950L) → `_performance_relative.py` + `_performance_session.py`
+- `antagonist_charts.py` (570L) → `_antagonist_kv.py` + `_antagonist_duels.py`
+- `rag.py` (750L) → `_rag_models.py` + `_rag_github.py` + `_rag_chunker.py`
+
+**Phase 6 — UI & data** :
+- `refdata.py` (880L) → `_refdata_personal_scores.py`
+- `_roster_loader.py` (520L) → `_gamertag_resolver.py` (GamertagResolverMixin)
+- `cache_filters.py` (740L) → `_cache_loading.py` + `_cache_sessions.py`
+- `filters_render.py` → `_filters_apply.py`
+- `session_compare_charts.py` (480L) → `_session_compare_history.py`
+
+**Qualité** :
+- 79 tests unitaires dédiés (`test_submodules_phase5.py` + `test_submodules_phase6.py`)
+- Logger ajouté dans 3 modules silencieux (8 blocs `except` instrumentés)
+
+**Résultat** :
+- Total : 72 sous-modules créés (phases 0-6)
+- Baseline : 191 violations (25 modules >500L, 166 fonctions >80L)
+- 3693 tests passent, 0 échec
 
 ---
 
