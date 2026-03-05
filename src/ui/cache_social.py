@@ -45,5 +45,5 @@ def cached_load_top_teammates_optimized(
             return []
 
     # Legacy SQLite non supporté depuis v4.8
-    logger.warning(f"DB legacy SQLite non supportée: {db_path}")
+    logger.warning("DB legacy SQLite non supportée: %s", db_path)
     return []

@@ -44,7 +44,7 @@ def get_cached_repository_st(
     """
     from src.data.repositories.duckdb_repo import DuckDBRepository
 
-    logger.info(f"Création d'un repository mis en cache pour {db_path}")
+    logger.info("Création d'un repository mis en cache pour %s", db_path)
     repo = DuckDBRepository(db_path, xuid, read_only=True)
     # Warm-up : forcer la connexion + ATTACH immédiatement
     repo._get_connection()

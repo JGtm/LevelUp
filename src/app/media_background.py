@@ -67,8 +67,11 @@ def background_media_indexing(settings, db_path: str) -> None:  # noqa: C901, PL
                     screens_dir=captures_dir,
                 )
                 logger.info(
-                    f"✅ {gamertag}: {result.n_new + result.n_updated} médias, "
-                    f"{n_associated} assoc., {n_thumb_gen} thumbs"
+                    "✅ %s: %d médias, %d assoc., %d thumbs",
+                    gamertag,
+                    result.n_new + result.n_updated,
+                    n_associated,
+                    n_thumb_gen,
                 )
 
             tolerance = int(getattr(settings, "media_tolerance_minutes", 5) or 5)
@@ -161,12 +164,14 @@ def background_media_indexing(settings, db_path: str) -> None:  # noqa: C901, PL
                     screens_dir=screens_path,
                 )
                 logger.info(
-                    f"✅ Scan: {result.n_scanned} scannés, {n_associated} assoc., "
-                    f"{n_thumb_gen} thumbs"
+                    "✅ Scan: %d scannés, %d assoc., %d thumbs",
+                    result.n_scanned,
+                    n_associated,
+                    n_thumb_gen,
                 )
             logger.info("✅ Indexation médias terminée")
         except Exception as e:
-            logger.error("❌ Erreur indexation médias: %s", e, exc_info=True)
+            logger.exception("❌ Erreur indexation médias: %s", e)
 
     thread = threading.Thread(target=worker, daemon=True, name="media-indexer")
     thread.start()

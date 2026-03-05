@@ -164,11 +164,12 @@ class RosterLoaderMixin(GamertagResolverMixin):
 
                         mp_success = len(team_by_xuid) >= 1
                         logger.debug(
-                            f"MÉTHODE 0: {len(team_by_xuid)} participants chargés depuis match_participants"
+                            "MÉTHODE 0: %d participants chargés depuis match_participants",
+                            len(team_by_xuid),
                         )
 
                 except Exception as e:
-                    logger.debug(f"Erreur lecture match_participants: {e}")
+                    logger.debug("Erreur lecture match_participants: %s", e)
 
             # ======================================================================
             # V5.1 : match_participants.team_id est la source canonique.
@@ -176,7 +177,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
             # ======================================================================
             if not mp_success:
                 # En v5.1, match_participants devrait toujours être disponible
-                logger.warning(f"match_participants manquant pour {match_id}")
+                logger.warning("match_participants manquant pour %s", match_id)
                 return None
 
             all_xuids: set[str] = set(team_by_xuid.keys())
@@ -232,7 +233,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
                 "enemy_team_names": [],
             }
         except Exception as e:
-            logger.warning(f"Erreur lors du chargement des rosters pour {match_id}: {e}")
+            logger.warning("Erreur lors du chargement des rosters pour %s: %s", match_id, e)
             return None
 
     def load_matches_with_teammate(
@@ -263,7 +264,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
             )
             return [row[0] for row in result.fetchall()]
         except Exception as e:
-            logger.debug(f"Erreur load_matches_with_teammate shared: {e}")
+            logger.debug("Erreur load_matches_with_teammate shared: %s", e)
             return []
 
     def load_same_team_match_ids(
@@ -297,7 +298,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
             )
             return [row[0] for row in result.fetchall()]
         except Exception as e:
-            logger.debug(f"Erreur load_same_team_match_ids shared: {e}")
+            logger.debug("Erreur load_same_team_match_ids shared: %s", e)
             return []
 
     def has_match_participants(self) -> bool:
@@ -364,7 +365,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
                 )
             return result
         except Exception as e:
-            logger.debug(f"Erreur load_match_players_stats shared: {e}")
+            logger.debug("Erreur load_match_players_stats shared: %s", e)
             return []
 
     def load_match_scoreboard(self, match_id: str) -> list[dict[str, Any]]:
@@ -454,5 +455,5 @@ class RosterLoaderMixin(GamertagResolverMixin):
                 )
             return result
         except Exception as e:
-            logger.debug(f"Erreur load_match_scoreboard shared: {e}")
+            logger.debug("Erreur load_match_scoreboard shared: %s", e)
             return []

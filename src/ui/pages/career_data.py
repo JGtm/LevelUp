@@ -45,7 +45,7 @@ def _load_career_data(db_path: str, xuid: str) -> dict | None:
                     "recorded_at": result[8],
                 }
     except Exception as e:
-        logger.warning("Impossible de charger career_progression: %s", e)
+        logger.debug("Impossible de charger career_progression: %s", e)
 
     return None
 
@@ -86,7 +86,7 @@ def _load_career_history(db_path: str, xuid: str, limit: int = 50) -> list[dict]
                 for r in rows
             ]
     except Exception as e:
-        logger.warning("Impossible de charger career_history: %s", e)
+        logger.debug("Impossible de charger career_history: %s", e)
         return []
 
 
@@ -128,7 +128,7 @@ def _load_pre_sync_match_dates(
             ).fetchall()
             return [r[0] for r in rows if r[0] is not None]
     except Exception as e:
-        logger.warning("Impossible de charger les matchs pré-sync: %s", e)
+        logger.debug("Impossible de charger les matchs pré-sync: %s", e)
         return []
 
 
@@ -156,7 +156,7 @@ def _load_post_sync_match_count(
             ).fetchone()
             return result[0] if result else 0
     except Exception as e:
-        logger.warning("Impossible de compter les matchs post-sync: %s", e)
+        logger.debug("Impossible de compter les matchs post-sync: %s", e)
         return 0
 
 
@@ -195,7 +195,7 @@ def _load_other_players_histories(current_xuid: str) -> list[dict]:
 
         return results
     except Exception as e:
-        logger.warning("Impossible de charger les historiques des autres joueurs: %s", e)
+        logger.info("Impossible de charger les historiques des autres joueurs: %s", e)
         return []
 
 
@@ -262,7 +262,7 @@ def _load_lusr_snapshot(db_path: str) -> list[dict]:
                 for r in rows
             ]
     except Exception as e:
-        logger.warning("Impossible de charger match_skill_rank: %s", e)
+        logger.debug("Impossible de charger match_skill_rank: %s", e)
         return []
 
 
@@ -310,5 +310,5 @@ def _load_lusr_history(db_path: str, playlist_group: str | None = None) -> list[
                 for r in rows
             ]
     except Exception as e:
-        logger.warning("Impossible de charger l'historique LUSR: %s", e)
+        logger.debug("Impossible de charger l'historique LUSR: %s", e)
         return []

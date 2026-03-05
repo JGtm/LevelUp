@@ -53,7 +53,7 @@ class MedalsMixin:
             result = conn.execute(sql, [*match_ids, self._xuid])
             return [(row[0], row[1]) for row in result.fetchall()]
         except Exception as e:
-            logger.debug(f"Erreur load_top_medals shared: {e}")
+            logger.debug("Erreur load_top_medals shared: %s", e)
             return []
 
     def load_match_medals(self, match_id: str) -> list[dict[str, int]]:
@@ -74,7 +74,7 @@ class MedalsMixin:
             )
             return [{"name_id": row[0], "count": row[1]} for row in result.fetchall()]
         except Exception as e:
-            logger.debug(f"Erreur load_match_medals shared: {e}")
+            logger.debug("Erreur load_match_medals shared: %s", e)
             return []
 
     def count_medal_by_match(
@@ -110,7 +110,7 @@ class MedalsMixin:
             )
             return {str(row[0]): row[1] for row in result.fetchall()}
         except Exception as e:
-            logger.debug(f"Erreur count_medal_by_match shared: {e}")
+            logger.debug("Erreur count_medal_by_match shared: %s", e)
             return {}
 
     def count_perfect_kills_by_match(

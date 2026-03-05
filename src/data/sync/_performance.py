@@ -48,13 +48,13 @@ class PerformanceMixin:
 
             if existing and existing[0] is not None:
                 # Score déjà calculé, skip
-                logger.debug(f"Score de performance déjà présent pour {match_id}")
+                logger.debug("Score de performance déjà présent pour %s", match_id)
                 return
 
             # Charger l'historique (tous les matchs AVANT celui-ci, triés par date)
             current_start_time = match_row.start_time
             if current_start_time is None:
-                logger.debug(f"Pas de start_time pour {match_id}, skip calcul score")
+                logger.debug("Pas de start_time pour %s, skip calcul score", match_id)
                 return
 
             # Convertir datetime en format compatible avec DuckDB
@@ -92,7 +92,8 @@ class PerformanceMixin:
 
             if history_df.is_empty() or len(history_df) < MIN_MATCHES_FOR_RELATIVE:
                 logger.debug(
-                    f"Pas assez d'historique pour calculer le score ({len(history_df)} matchs)"
+                    "Pas assez d'historique pour calculer le score (%s matchs)",
+                    len(history_df),
                 )
                 return
 
@@ -128,13 +129,13 @@ class PerformanceMixin:
                     """,
                     (match_id, score, now),
                 )
-                logger.debug(f"Score de performance calculé pour {match_id}: {score:.1f}")
+                logger.debug("Score de performance calculé pour %s: %.1f", match_id, score)
             else:
-                logger.debug(f"Impossible de calculer le score pour {match_id}")
+                logger.debug("Impossible de calculer le score pour %s", match_id)
 
         except Exception as e:
             # Ne pas bloquer la synchronisation si le calcul échoue
-            logger.warning(f"Erreur calcul score performance pour {match_id}: {e}")
+            logger.warning("Erreur calcul score performance pour %s: %s", match_id, e)
 
     def batch_compute_performance_scores(self: _SyncProtocol) -> int:  # noqa: C901, PLR0912
         """Calcule les performance_score pour tous les matchs où il est NULL.
@@ -254,10 +255,10 @@ class PerformanceMixin:
                         (match_id, score, updated_at),
                     )
                 conn.commit()
-                logger.info(f"Performance scores batch : {len(updates)} matchs mis à jour")
+                logger.info("Performance scores batch : %s matchs mis à jour", len(updates))
 
             return len(updates)
 
         except Exception as e:
-            logger.warning(f"Erreur batch calcul performance scores : {e}")
+            logger.warning("Erreur batch calcul performance scores : %s", e)
             return 0

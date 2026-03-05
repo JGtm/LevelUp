@@ -95,7 +95,7 @@ class TeammatesService:
             if result:
                 return str(result[0]).strip()
         except Exception as e:
-            logger.debug(f"Impossible de charger le xuid depuis {db_path}: {e}")
+            logger.debug("Impossible de charger le xuid depuis %s: %s", db_path, e)
         return ""
 
     @staticmethod
@@ -155,8 +155,9 @@ class TeammatesService:
                 # 8bis.A7 : Plus de fallback legacy en v5.1
                 # Toutes les données sont dans shared_matches.duckdb
                 logger.warning(
-                    f"Coéquipier '{teammate_gamertag}' introuvable dans shared "
-                    f"(ni xuid_aliases ni match_participants)"
+                    "Coéquipier '%s' introuvable dans shared "
+                    "(ni xuid_aliases ni match_participants)",
+                    teammate_gamertag,
                 )
                 return TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
 
@@ -217,7 +218,7 @@ class TeammatesService:
                 is_empty=df_filtered.is_empty(),
             )
         except Exception as e:
-            logger.debug(f"Erreur load_teammate_stats shared: {e}")
+            logger.debug("Erreur load_teammate_stats shared: %s", e)
             return TeammateStats(gamertag=teammate_gamertag, df=pl.DataFrame(), is_empty=True)
 
     # 8bis.A7 : _load_teammate_stats_legacy supprimé (v5.1)
@@ -260,14 +261,18 @@ class TeammatesService:
                         if len(xuid_values) > 0:
                             player_xuid = str(xuid_values[0])
                             logger.debug(
-                                f"[enrich] Extrait xuid depuis DataFrame pour {name}: {player_xuid}"
+                                "[enrich] Extrait xuid depuis DataFrame pour %s: %s",
+                                name,
+                                player_xuid,
                             )
 
                     # Fallback pour le joueur principal : charger le xuid depuis sync_meta
                     if not player_xuid and idx == 0:
                         player_xuid = TeammatesService._load_xuid_from_db(db_path)
                         logger.debug(
-                            f"[enrich] Chargé xuid depuis sync_meta pour {name}: {player_xuid}"
+                            "[enrich] Chargé xuid depuis sync_meta pour %s: %s",
+                            name,
+                            player_xuid,
                         )
 
                     if idx == 0:
@@ -282,20 +287,26 @@ class TeammatesService:
                     if not player_xuid:
                         # Si impossible de trouver le xuid, skip ce joueur
                         logger.warning(
-                            f"Impossible de trouver le xuid pour {name}, skip perfect_kills"
+                            "Impossible de trouver le xuid pour %s, skip perfect_kills",
+                            name,
                         )
                         df = df.with_columns(pl.lit(0).alias("perfect_kills"))
                         enriched.append((name, df))
                         continue
 
                     logger.debug(
-                        f"[enrich] Appel count_perfect_kills_by_match pour {name} "
-                        f"(xuid={player_xuid}, {len(match_ids)} matchs)"
+                        "[enrich] Appel count_perfect_kills_by_match pour %s "
+                        "(xuid=%s, %d matchs)",
+                        name,
+                        player_xuid,
+                        len(match_ids),
                     )
                     repo = DuckDBRepository(use_path, player_xuid)
                     counts = repo.count_perfect_kills_by_match(match_ids)
                     logger.debug(
-                        f"[enrich] Résultat pour {name}: {len(counts)} matchs avec Perfect"
+                        "[enrich] Résultat pour %s: %d matchs avec Perfect",
+                        name,
+                        len(counts),
                     )
 
                     # Si aucun Perfect, mettre 0 pour tous les matchs
@@ -315,7 +326,7 @@ class TeammatesService:
                             pl.col("_pk").fill_null(0).alias("perfect_kills")
                         ).drop(["_join_mid", "_pk"], strict=False)
                 except Exception as e:
-                    logger.debug(f"Erreur enrichissement perfect_kills pour {name}: {e}")
+                    logger.debug("Erreur enrichissement perfect_kills pour %s: %s", name, e)
                     df = df.with_columns(pl.lit(0).alias("perfect_kills"))
             else:
                 df = df.with_columns(pl.lit(0).alias("perfect_kills"))

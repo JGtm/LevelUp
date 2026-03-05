@@ -80,7 +80,7 @@ class MatchProcessingMixin:
                 # Vérifier si le match existe déjà
                 if match_id in existing_ids:
                     if delta_mode:
-                        logger.info(f"[DELTA] Match {match_id} déjà connu — arrêt")
+                        logger.info("[DELTA] Match %s déjà connu — arrêt", match_id)
                         return result
                     else:
                         result.matches_skipped += 1
@@ -110,8 +110,9 @@ class MatchProcessingMixin:
                     ):
                         conn = self._get_connection()
                         conn.commit()
-                        logger.debug(f"Commit intermédiaire après {result.matches_inserted} matchs")
-                        logger.debug("Batch commit: %d matchs traités", result.matches_inserted)
+                        logger.debug(
+                            "Commit intermédiaire après %s matchs", result.matches_inserted
+                        )
 
                 if match_result.get("error"):
                     result.warnings.append(match_result["error"])
@@ -128,7 +129,7 @@ class MatchProcessingMixin:
 
                 # Log de progression
                 if result.matches_inserted > 0 and result.matches_inserted % 10 == 0:
-                    logger.info(f"Importé {result.matches_inserted} matchs...")
+                    logger.info("Importé %s matchs...", result.matches_inserted)
 
             # Fin du batch
             if len(history) < batch_size:
@@ -167,7 +168,9 @@ class MatchProcessingMixin:
                 registry = None
 
             if registry is not None:
-                logger.info(f"Match {match_id} déjà connu dans shared (player_count={registry[4]})")
+                logger.info(
+                    "Match %s déjà connu dans shared (player_count=%s)", match_id, registry[4]
+                )
                 return await self._process_known_match(
                     client,
                     match_id,
@@ -175,7 +178,7 @@ class MatchProcessingMixin:
                     options,
                 )
             else:
-                logger.info(f"Nouveau match {match_id} → sync complète vers shared")
+                logger.info("Nouveau match %s → sync complète vers shared", match_id)
                 return await self._process_new_match(
                     client,
                     match_id,
@@ -405,7 +408,7 @@ class MatchProcessingMixin:
             await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
 
             if backfill_needed:
-                logger.info(f"Backfill shared pour {match_id}: {', '.join(backfill_needed)}")
+                logger.info("Backfill shared pour %s: %s", match_id, ", ".join(backfill_needed))
 
             result["inserted"] = True
 
@@ -646,7 +649,7 @@ class MatchProcessingMixin:
                 pve_conn = self._get_pve_connection()
                 if pve_rows:
                     inserted = batch_insert_pve_stats(pve_conn, pve_rows)
-                    logger.debug(f"PVE stats insérées pour {match_id}: {inserted} lignes")
+                    logger.debug("PVE stats insérées pour %s: %s lignes", match_id, inserted)
 
             # Poser le guard dans match_registry.backfill_completed (même si 0 lignes)
             if shared_conn is not None:
@@ -657,7 +660,7 @@ class MatchProcessingMixin:
                     (MatchBits.PVE_STATS, match_id),
                 )
         except Exception as e:
-            logger.debug(f"PVE stats non insérées pour {match_id}: {e}")
+            logger.debug("PVE stats non insérées pour %s: %s", match_id, e)
 
     def _compute_backfill_mask(self, options: SyncOptions) -> int:
         """Calcule le bitmask backfill_completed pour un match.

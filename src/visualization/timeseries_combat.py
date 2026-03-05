@@ -10,6 +10,7 @@ import polars as pl
 from plotly.subplots import make_subplots
 
 from src.config import PLOT_CONFIG
+from src.data.domain.refdata import Outcome
 from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars, smart_scatter  # noqa: F401
 from src.visualization._timeseries_helpers import COLORS, apply_chrono_xaxis, prepare_time_axis
@@ -220,7 +221,7 @@ def plot_streak_chart(
 
     # Calculer la série : cumul dans chaque streak
     outcome_col = d["outcome"]
-    is_win = (outcome_col == 2).cast(pl.Int64)
+    is_win = (outcome_col == Outcome.WIN).cast(pl.Int64)
     new_streak = (outcome_col != outcome_col.shift(1)).fill_null(True)
     streak_group = new_streak.cast(pl.Int64).cum_sum()
 

@@ -39,7 +39,7 @@ class CareerMixin:
             # Priorité : token propre au joueur (endpoint economy player-gated)
             player_tokens = await get_tokens_for_player(self._gamertag)
             if player_tokens is None:
-                logger.warning(
+                logger.info(
                     "Aucun token joueur pour '%s' — career rank skippé. "
                     "Définir %s dans .env.local pour activer la sync.",
                     self._gamertag,
@@ -51,7 +51,7 @@ class CareerMixin:
                 career_data = await client.get_career_rank_progression(self._xuid)
 
                 if career_data is None:
-                    logger.warning("Career rank non disponible pour %s", self._gamertag)
+                    logger.info("Career rank non disponible pour %s", self._gamertag)
                     return None
 
                 # Sauvegarder en BDD
@@ -140,7 +140,7 @@ class CareerMixin:
             ]
 
         except Exception as e:
-            logger.warning(f"Erreur get_career_rank_history: {e}")
+            logger.warning("Erreur get_career_rank_history: %s", e)
             return []
 
     def get_latest_career_rank(self) -> dict[str, Any] | None:

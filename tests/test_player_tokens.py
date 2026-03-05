@@ -238,7 +238,7 @@ class TestSyncCareerRankSkip:
 
     @pytest.mark.asyncio
     async def test_skips_when_no_player_token(self, engine, caplog, monkeypatch):
-        """sync_career_rank retourne None et log un warning si token absent."""
+        """sync_career_rank retourne None et log un info si token absent."""
         import logging
 
         with (
@@ -246,18 +246,18 @@ class TestSyncCareerRankSkip:
                 "src.data.sync.engine.get_tokens_for_player",
                 new=AsyncMock(return_value=None),
             ),
-            caplog.at_level(logging.WARNING),
+            caplog.at_level(logging.INFO),
         ):
             result = await engine.sync_career_rank()
 
         assert result is None
-        # Un warning doit mentionner le gamertag
+        # Un message info doit mentionner le gamertag
         assert any("TestPlayer" in r.message for r in caplog.records)
         engine.close()
 
     @pytest.mark.asyncio
     async def test_skips_warning_mentions_env_key(self, engine, caplog, monkeypatch):
-        """Le warning inclut le nom de la variable d'env à configurer."""
+        """Le message info inclut le nom de la variable d'env à configurer."""
         import logging
 
         with (
@@ -265,7 +265,7 @@ class TestSyncCareerRankSkip:
                 "src.data.sync.engine.get_tokens_for_player",
                 new=AsyncMock(return_value=None),
             ),
-            caplog.at_level(logging.WARNING),
+            caplog.at_level(logging.INFO),
         ):
             await engine.sync_career_rank()
 
