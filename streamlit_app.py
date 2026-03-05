@@ -11,6 +11,7 @@ import sys
 import threading
 import urllib.parse
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any, NamedTuple
 
 import streamlit as st
@@ -154,7 +155,7 @@ from src.ui.sync import (
     cleanup_orphan_tmp_dbs,
     is_spnkr_db_path,
     render_sync_indicator,
-    sync_all_players,
+    sync_all_players_duckdb,
 )
 from src.visualization import (
     plot_multi_metric_bars_by_match,
@@ -381,6 +382,32 @@ def _parse_query_params() -> None:
                 st.experimental_set_query_params()
 
 
+def _send_sync_discord_notification(
+    started_at: datetime,
+    finished_at: datetime,
+    summary_msg: str,
+) -> None:
+    """Envoie la notification Discord après un sync UI réussi (failsafe)."""
+    try:
+        from src.utils.discord_notifier import DiscordPlayerResult, notify_operation_done
+
+        # Construire un résultat résumé à partir du message
+        result = DiscordPlayerResult(gamertag="(tous)", matches_synced=0)
+        players = [result]
+
+        notify_operation_done(
+            operation="sync_delta",
+            started_at=started_at,
+            finished_at=finished_at,
+            players=players,
+            success=True,
+            skip_idle=False,
+        )
+        logger.info("[Discord] Notification sync UI envoyée")
+    except Exception as exc:
+        logger.warning("[Discord] Notification sync UI échouée : %s", exc)
+
+
 def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tuple[str, str, str]:  # noqa: C901, PLR0912, PLR0915
     """Rendu de la sidebar principale (langue, logo, joueur, sync).
 
@@ -493,11 +520,18 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                 disabled=is_syncing,
             ):
                 st.session_state[SK.IS_SYNCING] = True
-                logger.info("Sync démarré par l'utilisateur (db=%s)", db_path)
+                logger.info("Sync démarré par l'utilisateur (tous les joueurs)")
+
+                # Sauvegarder les filtres avant sync pour éviter le reset
+                with contextlib.suppress(Exception):
+                    save_filter_preferences(xuid, db_path)
+
+                from datetime import timezone
+
+                sync_started_at = datetime.now(timezone.utc)
                 try:
                     with st.spinner(t("sidebar_sync_spinner")):
-                        ok, msg = sync_all_players(
-                            db_path=db_path,
+                        ok, msg = sync_all_players_duckdb(
                             match_type=str(
                                 getattr(settings, "spnkr_refresh_match_type", "matchmaking")
                                 or "matchmaking"
@@ -505,21 +539,32 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                             max_matches=int(
                                 getattr(settings, "spnkr_refresh_max_matches", 200) or 200
                             ),
-                            rps=int(getattr(settings, "spnkr_refresh_rps", 5) or 5),
                             with_highlight_events=True,
                             with_aliases=True,
                             delta=True,
-                            timeout_seconds=180,
                         )
                 finally:
                     st.session_state[SK.IS_SYNCING] = False
+                sync_finished_at = datetime.now(timezone.utc)
+
                 if ok:
                     logger.info("Sync terminé: %s", msg)
                     st.success(msg)
+
+                    # Notification Discord
+                    _send_sync_discord_notification(sync_started_at, sync_finished_at, msg)
+
                     _clear_app_caches()
                     cache_buster_val = st.session_state.get("_cache_buster", 0)
                     logger.info("Caches invalidés après sync, cache_buster=%d", cache_buster_val)
                     st.session_state[SK.CACHE_BUSTER] = cache_buster_val + 1
+
+                    # Mettre à jour le db_key AVANT rerun pour éviter le reset
+                    # des filtres (render_filters_sidebar détecte db_key changé)
+                    new_db_key = db_cache_key(db_path)
+                    player_key = _get_player_key(xuid, db_path)
+                    st.session_state[f"_filters_db_key_{player_key}"] = new_db_key
+
                     st.rerun()
                 else:
                     logger.error("Sync échoué: %s", msg)
