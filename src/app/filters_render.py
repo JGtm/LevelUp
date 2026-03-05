@@ -8,7 +8,6 @@ Ce module gère:
 
 from __future__ import annotations
 
-import contextlib
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -280,8 +279,14 @@ def render_filters_sidebar(  # noqa: C901, PLR0912, PLR0913, PLR0915
             str(xuid or "")[:8],
         )
         st.session_state[filters_db_key_key] = db_key
-        with contextlib.suppress(Exception):
+        try:
             _apply_default_last_session(db_path, xuid, db_key, aliases_key)
+        except Exception:
+            logger.warning(
+                "_apply_default_last_session échoué pour xuid=%s (non bloquant)",
+                str(xuid or "")[:8],
+                exc_info=True,
+            )
 
     # Consommation des états pending
     pending_mode = st.session_state.pop("_pending_filter_mode", None)
