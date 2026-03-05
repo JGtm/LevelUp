@@ -99,8 +99,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Not enough data for killer-victim interactions.",
     },
     "mv_kills_over_time": {
-        "fr": "Frags au fil du match",
-        "en": "Kills over the match",
+        "fr": "Score Frags-Décès au fil du match",
+        "en": "K/D Score over the match",
     },
     "mv_scoreboard": {
         "fr": "Tableau des scores",
