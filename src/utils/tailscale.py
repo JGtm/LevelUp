@@ -26,7 +26,9 @@ logger = logging.getLogger(__name__)
 
 # Guard niveau processus : le funnel ne démarre qu'une seule fois,
 # indépendamment du nombre de sessions WebSocket Streamlit.
+# _funnel_lock garantit l'exclusion mutuelle (double-checked locking).
 _funnel_started: threading.Event = threading.Event()
+_funnel_lock: threading.Lock = threading.Lock()
 
 
 def get_funnel_url() -> str | None:
@@ -157,6 +159,8 @@ def ensure_funnel_started_once(port: int = 8501) -> str | None:
     """Démarre le funnel Tailscale une seule fois par processus Python.
 
     Appels suivants (depuis d'autres sessions WebSocket Streamlit) sont ignorés.
+    Utilise un double-checked locking pour éviter les race conditions entre
+    sessions Streamlit concurrentes.
 
     Args:
         port: Port local à exposer (défaut 8501).
@@ -165,6 +169,9 @@ def ensure_funnel_started_once(port: int = 8501) -> str | None:
         URL publique si premier appel et succès, None sinon.
     """
     if _funnel_started.is_set():
-        return None  # Déjà démarré dans ce processus
-    _funnel_started.set()
+        return None  # Fast path : déjà démarré
+    with _funnel_lock:
+        if _funnel_started.is_set():
+            return None  # Vérifié de nouveau sous le verrou
+        _funnel_started.set()
     return start_funnel(port=port)
