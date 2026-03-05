@@ -329,6 +329,7 @@ async def backfill_all_players(
     logger.info(f"Trouvé {len(players)} joueur(s) DuckDB")
 
     total_results = _empty_result()
+    per_player_results: dict[str, Any] = {}
 
     for i, player_info in enumerate(players, 1):
         logger.info(f"\n{'=' * 60}")
@@ -342,10 +343,12 @@ async def backfill_all_players(
 
         for key in total_results:
             total_results[key] += result.get(key, 0)
+        per_player_results[player_info.gamertag] = result
 
     return {
         "players_processed": len(players),
         "total_results": total_results,
+        "per_player": per_player_results,
     }
 
 
