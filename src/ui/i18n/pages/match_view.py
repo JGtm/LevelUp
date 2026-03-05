@@ -169,6 +169,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Aucun rating LUSR/CSR calculé pour ce match. Lance un backfill rating pour la playlist concernée.",
         "en": "No LUSR/CSR rating calculated for this match. Run a rating backfill for the relevant playlist.",
     },
+    "mv_rating_pending": {
+        "fr": "Rating non encore calculé",
+        "en": "Rating not yet calculated",
+    },
+    "mv_rating_pending_hint": {
+        "fr": "LUSR calculé automatiquement au prochain sync",
+        "en": "LUSR will be computed automatically on next sync",
+    },
     "mv_performance": "col_performance",  # alias → common
     "mv_results": {"fr": "Résultats", "en": "Results"},
     "mv_relative_history": {"fr": "Relatif à ton historique", "en": "Relative to your history"},
@@ -283,10 +291,22 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "col_role": {"fr": "Rôle", "en": "Side"},
     "col_encounters": {"fr": "Rencontres", "en": "Encounters"},
-    "col_wr_ally": {"fr": "WR allié", "en": "WR ally"},
-    "col_wr_enemy": {"fr": "WR ennemi", "en": "WR enemy"},
-    "col_kd_cross": {"fr": "K/D croisé", "en": "Cross K/D"},
-    "col_last_seen": {"fr": "Dernière fois", "en": "Last seen"},
+    "col_wr_ally": {"fr": "% Vict. allié", "en": "Win% (ally)"},
+    "col_wr_enemy": {"fr": "% Vict. ennemi", "en": "Win% (enemy)"},
+    "col_kd_cross": {"fr": "Frags/Morts", "en": "Kills/Deaths"},
+    "col_last_seen": {"fr": "Dernier match", "en": "Last match"},
+    "mv_encounter_legend": {
+        "fr": (
+            "**% Vict. allié / ennemi** — ton taux de victoires sur les matchs joués avec ou contre ce joueur · "
+            "**Frags/Morts** — nombre de fois où tu l'as éliminé / où il t'a éliminé dans vos matchs communs · "
+            "**Dernier match** — date du dernier match partagé"
+        ),
+        "en": (
+            "**Win% (ally/enemy)** — your win rate on shared matches, by team side · "
+            "**Kills/Deaths** — how many times you eliminated them / they eliminated you across shared matches · "
+            "**Last match** — date of the last shared match"
+        ),
+    },
     "badge_tough_nut": {"fr": "Dur à cuire", "en": "Tough Nut"},
     "badge_ally_plus": {"fr": "Allié+", "en": "Ally+"},
     "badge_coriace": {"fr": "Coriace", "en": "Tough Guy"},
@@ -309,9 +329,9 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Only {pct}% win rate against them ({count} duels)",
     },
     # Onglets de la vue détaillée (P2)
-    "mv_tab_summary": {"fr": "Résumé", "en": "Summary"},
-    "mv_tab_combat": {"fr": "Combat", "en": "Combat"},
-    "mv_tab_team": {"fr": "Équipe", "en": "Team"},
-    "mv_tab_citations_medals": {"fr": "Citations & Médailles", "en": "Citations & Medals"},
-    "mv_tab_media": {"fr": "Médias", "en": "Media"},
+    "mv_tab_summary": {"fr": "📊 Résumé", "en": "📊 Summary"},
+    "mv_tab_combat": {"fr": "⚔️ Combat", "en": "⚔️ Combat"},
+    "mv_tab_team": {"fr": "👥 Équipe", "en": "👥 Team"},
+    "mv_tab_citations_medals": {"fr": "🏅 Citations & Médailles", "en": "🏅 Citations & Medals"},
+    "mv_tab_media": {"fr": "🎬 Médias", "en": "🎬 Media"},
 }

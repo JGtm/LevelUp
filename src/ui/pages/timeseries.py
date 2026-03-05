@@ -111,7 +111,6 @@ def _render_kda_section(dff: pl.DataFrame, lang: str = "fr") -> None:
 @fragment_if_available
 def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche les graphes de performance cumulée et tendance (Sprint 6)."""
-    st.divider()
     st.subheader(t("ts_cumulative"))
     st.caption(t("ts_cumulative_caption"))
     cumul = TimeseriesService.compute_cumulative_metrics(dff)
@@ -151,7 +150,6 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
 @fragment_if_available
 def _render_distributions(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche les distributions statistiques (Sprint 5.4.3 + Sprint 6)."""
-    st.divider()
     st.subheader(t("ts_distributions"))
     st.caption(t("ts_distributions_caption"))
 
@@ -286,7 +284,7 @@ def _render_single_histogram(  # noqa: PLR0913
 @fragment_if_available
 def _render_correlations(dff: pl.DataFrame, lang: str = "fr") -> None:
     """Affiche les graphes de corrélation (Sprint 5.4.5 + Sprint 6)."""
-    st.divider()
+    st.divider()  # sépare Distributions et Corrélations dans le même onglet
     st.subheader(t("ts_correlations"))
     st.caption(t("ts_correlations_caption"))
 
@@ -410,7 +408,6 @@ def _render_first_event_section(
     lang: str = "fr",
 ) -> None:
     """Affiche la distribution du premier frag / première mort (Sprint 5.4.4)."""
-    st.divider()
     st.subheader(t("ts_first_event"))
     st.caption(t("ts_first_event_caption"))
 
@@ -583,10 +580,26 @@ def render_timeseries_page(
     )
 
     lang = get_lang()
-    with st.spinner(t("ts_computing")):
+
+    _tab_kda, _tab_prog, _tab_dist, _tab_adv = st.tabs(
+        [
+            t("ts_tab_kda"),
+            t("ts_tab_progression"),
+            t("ts_tab_distributions"),
+            t("ts_tab_advanced"),
+        ]
+    )
+
+    with _tab_kda:
         _render_kda_section(dff, lang=lang)
+
+    with _tab_prog:
         _render_cumulative_performance(dff, lang=lang)
+
+    with _tab_dist:
         _render_distributions(dff, lang=lang)
         _render_correlations(dff, lang=lang)
+
+    with _tab_adv:
         _render_first_event_section(dff, db_path, xuid, lang=lang)
         _render_advanced_sections(dff, df_full, db_path, xuid, lang=lang)
