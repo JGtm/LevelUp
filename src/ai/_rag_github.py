@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 
 from src.ai._rag_models import Document
+
+logger = logging.getLogger(__name__)
 
 try:
     import httpx
@@ -84,6 +87,7 @@ class GitHubIndexer:
                 resp.raise_for_status()
                 return resp.text
         except Exception:
+            logger.debug("Erreur récupération fichier GitHub %s", path, exc_info=True)
             return None
 
     def fetch_all_documents(self, branch: str = "master") -> list[Document]:
