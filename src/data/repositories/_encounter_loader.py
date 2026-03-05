@@ -32,7 +32,7 @@ def _get_shared_db_path(db_path: str) -> Path:
 def _build_encounter_sql(n_targets: int) -> str:
     """Construit la requête SQL d'historique des rencontres.
 
-    Génère 3n+6 placeholders pour les paramètres DuckDB.
+    Génère 4n+6 placeholders pour les paramètres DuckDB.
 
     Args:
         n_targets: Nombre de XUIDs cibles (len(target_xuids)).
@@ -47,10 +47,16 @@ def _build_encounter_sql(n_targets: int) -> str:
         FROM match_participants
         WHERE xuid = ?
     ),
+    he_gamertags AS (
+        SELECT xuid, MAX(gamertag) AS gamertag
+        FROM highlight_events
+        WHERE xuid IN ({ph}) AND gamertag IS NOT NULL AND gamertag != ''
+        GROUP BY xuid
+    ),
     encounters AS (
         SELECT
             p.xuid,
-            MAX(COALESCE(a.gamertag, p.gamertag)) AS gamertag,
+            MAX(COALESCE(a.gamertag, p.gamertag, he.gamertag)) AS gamertag,
             COUNT(*)                                AS total_encounters,
             SUM(CASE WHEN p.team_id = m.team_id   THEN 1 ELSE 0 END) AS ally_count,
             SUM(CASE WHEN p.team_id != m.team_id  THEN 1 ELSE 0 END) AS enemy_count,
@@ -68,6 +74,7 @@ def _build_encounter_sql(n_targets: int) -> str:
         FROM match_participants p
         INNER JOIN my_matches m  ON m.match_id = p.match_id
         LEFT JOIN  xuid_aliases a ON a.xuid = p.xuid
+        LEFT JOIN  he_gamertags he ON he.xuid = p.xuid
         LEFT JOIN  match_registry r ON r.match_id = p.match_id
         WHERE p.xuid IN ({ph})
         GROUP BY p.xuid
@@ -136,6 +143,7 @@ def load_encounter_stats(
     # Ordre des paramètres : voir _build_encounter_sql docstring — 3n+6 total
     params: list[str] = (
         [self_xuid]  # my_matches WHERE xuid = ?
+        + target_xuids  # he_gamertags WHERE xuid IN (...)
         + target_xuids  # encounters WHERE p.xuid IN (...)
         + [self_xuid] * 3  # kvp CASE + SUM kills + SUM deaths
         + [self_xuid]  # kvp WHERE killer = ?
