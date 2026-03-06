@@ -107,7 +107,6 @@ FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
 FUNC:src/ui/pages/media_library_data.py:246:load_match_windows_from_db:142L
 FUNC:src/ui/pages/media_library_data.py:406:load_media_from_db:100L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
-FUNC:src/ui/pages/objective_analysis.py:50:render_objective_analysis_page:356L
 FUNC:src/ui/pages/session_compare.py:319:render_session_comparison_page:116L
 FUNC:src/ui/pages/session_compare_charts.py:245:_build_bar_chart_figure:89L
 FUNC:src/ui/pages/session_compare_charts.py:367:render_participation_trend_section:120L
@@ -161,7 +160,7 @@ FUNC:src/visualization/participation_charts.py:65:plot_participation_pie:94L
 FUNC:src/visualization/participation_radar.py:293:compute_participation_profile:110L
 FUNC:src/visualization/participation_radar.py:45:compute_global_radar_thresholds:135L
 FUNC:src/visualization/team_dominance_timeline.py:173:detect_streaks:99L
-FUNC:src/visualization/team_dominance_timeline.py:291:plot_dominance_chart:369L
+FUNC:src/visualization/team_dominance_timeline.py:520:plot_dominance_chart:135L
 FUNC:src/visualization/timeseries.py:317:plot_per_minute_timeseries:91L
 FUNC:src/visualization/timeseries_combat.py:268:plot_damage_dealt_taken:81L
 FUNC:src/visualization/timeseries_combat.py:352:plot_shots_accuracy:92L
@@ -191,4 +190,4 @@ MODULE:src/visualization/distributions_outcomes.py:625L
 MODULE:src/visualization/match_impact_timeline.py:636L
 MODULE:src/visualization/objective_charts.py:583L
 MODULE:src/visualization/participation_charts.py:648L
-MODULE:src/visualization/team_dominance_timeline.py:670L
+MODULE:src/visualization/team_dominance_timeline.py:665L
