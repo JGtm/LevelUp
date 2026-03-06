@@ -98,10 +98,11 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:  # noqa: C901, PLR
             tier_label = snap["tier_label"] or t("unranked")
             r_value = float(snap["rating_value"] or 0.0)
             delta = snap["rating_delta"]
-            # Pour le groupe ranked, le fallback est "CSR" (playlist compétitive officielle)
-            r_type = snap["rating_type"] or (
-                "CSR" if snap.get("playlist_group") == "ranked" else "LUSR"
-            )
+            # Le groupe ranked utilise TOUJOURS le CSR officiel (jamais LUSR)
+            if snap.get("playlist_group") == "ranked":
+                r_type = "CSR"
+            else:
+                r_type = snap["rating_type"] or "LUSR"
 
             with col, st.container(border=True):
                 # ── En-tête du groupe ──

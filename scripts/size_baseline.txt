@@ -81,7 +81,7 @@ FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
 FUNC:src/ui/multiplayer.py:121:list_duckdb_v4_players:126L
 FUNC:src/ui/pages/_session_compare_history.py:20:_build_history_dataframe:139L
 FUNC:src/ui/pages/_teammates_trio.py:30:render_trio_view:116L
-FUNC:src/ui/pages/career.py:56:_render_lusr_section:166L
+FUNC:src/ui/pages/career.py:56:_render_lusr_section:167L
 FUNC:src/ui/pages/career_logic.py:209:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:19:render_citations_page:169L
 FUNC:src/ui/pages/match_history.py:173:_render_history_table:147L
