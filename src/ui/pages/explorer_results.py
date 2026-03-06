@@ -136,6 +136,7 @@ def render_player_results(  # noqa: PLR0913
             enrich_common_matches(allies, df_full),
             waypoint_player=waypoint_player,
             header_css_class="os-sb-team--mine",
+            hide_empty_cols=True,
         )
         st.markdown(html_ally, unsafe_allow_html=True)
 
@@ -145,6 +146,7 @@ def render_player_results(  # noqa: PLR0913
             enrich_common_matches(enemies, df_full),
             waypoint_player=waypoint_player,
             header_css_class="os-sb-team--enemy",
+            hide_empty_cols=True,
         )
         st.markdown(html_enemy, unsafe_allow_html=True)
 
