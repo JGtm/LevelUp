@@ -57,7 +57,6 @@ def get_cached_repository_st(
 # Exclus du set commun (non utilisés dans le hot-path) :
 #   game_variant_id — jamais affiché directement
 #   team_id         — lu depuis shared.match_participants (vue detail)
-#   rank            — lu depuis shared.match_participants (vue detail)
 
 COLUMNS_COMMON: list[str] = [
     "match_id",
@@ -80,6 +79,7 @@ COLUMNS_COMMON: list[str] = [
     "time_played_seconds",
     "max_killing_spree",
     "headshot_kills",
+    "rank",
     "personal_score",
     "my_team_score",
     "enemy_team_score",
