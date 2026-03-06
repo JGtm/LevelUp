@@ -28,6 +28,7 @@ from src.app._filters_cascade import (
 from src.app._filters_period import _render_period_filter
 from src.app._filters_session import _apply_default_last_session, _render_session_filter
 from src.ui import translate_playlist_name
+from src.ui.cache import cached_compute_sessions_db
 from src.ui.filter_state import (
     _get_player_key,
     apply_filter_preferences,
@@ -313,6 +314,27 @@ def render_filters_sidebar(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if isinstance(pending_sessions, list):
         st.session_state["picked_sessions"] = pending_sessions
 
+    # ── Pré-chargement sessions (warm cache quel que soit le mode) ──────────
+    # Évite le coût du premier hit DuckDB au moment du switch Période → Sessions.
+    # Les fonctions sous-jacentes sont @st.cache_data, donc les appels suivants
+    # dans _render_session_filter seront gratuits (cache hit).
+    from src.app.filters import get_friends_xuids_for_sessions
+
+    _prefetch_friends = get_friends_xuids_for_sessions(db_path, xuid.strip(), db_key, aliases_key)
+    _prefetch_sessions = cached_compute_sessions_db(
+        db_path,
+        xuid.strip(),
+        db_key,
+        True,
+        GAP_MINUTES_FIXED,
+        friends_xuids=_prefetch_friends,
+    )
+    logger.debug(
+        "Sessions pré-chargées: %d matchs, %d amis",
+        len(_prefetch_sessions) if _prefetch_sessions is not None else 0,
+        len(_prefetch_friends) if _prefetch_friends else 0,
+    )
+
     # Sélecteur de mode
     if "filter_mode" not in st.session_state:
         st.session_state["filter_mode"] = "Période"
@@ -352,6 +374,8 @@ def render_filters_sidebar(  # noqa: C901, PLR0912, PLR0913, PLR0915
             aliases_key,
             base_for_filters,
             build_friends_opts_map_fn,
+            prefetched_friends=_prefetch_friends,
+            prefetched_sessions=_prefetch_sessions,
         )
 
     # Filtres cascade (v5.2 : retourne selected + all_options)

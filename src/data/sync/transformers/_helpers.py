@@ -26,6 +26,9 @@ logger = logging.getLogger(__name__)
 
 XUID_RE = re.compile(r"(\d{12,20})")
 
+# Gamertags Xbox valides : alphanum + espace, 1-15 chars, pas de null bytes ni mojibake
+_VALID_GAMERTAG_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9 ]{0,14}$")
+
 
 # =============================================================================
 # Helpers de parsing
@@ -436,8 +439,9 @@ def _extract_xuid(player: dict[str, Any] | str) -> str | None:
 def _normalize_gamertag(raw: str | bytes | Any) -> str | None:
     """Normalise un gamertag pour éviter troncature et problèmes d'encodage.
 
-    Aligné avec le script legacy spnkr_import_db (_extract_gamertags_from_match_stats).
-    Utilise str().strip() comme le legacy et gère les bytes mal encodés.
+    Rejette les valeurs corrompues (null bytes, mojibake, chaînes purement
+    numériques trop courtes). Les gamertags Xbox valides contiennent uniquement
+    des caractères alphanumériques et espaces (1-15 chars).
     """
     if raw is None:
         return None
@@ -447,7 +451,14 @@ def _normalize_gamertag(raw: str | bytes | Any) -> str | None:
         except Exception:
             return None
     s = str(raw).strip() if raw else ""
-    return s if s else None
+    if "\x00" in s:
+        s = s.split("\x00")[0].strip()
+        logger.debug("Gamertag tronqué (null bytes): %r → %r", raw, s)
+    if not s or not _VALID_GAMERTAG_RE.match(s):
+        if s:
+            logger.debug("Gamertag rejeté (format invalide): %r", s)
+        return None
+    return s
 
 
 def _extract_mmr_from_skill(  # noqa: C901, PLR0912
