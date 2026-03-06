@@ -10,6 +10,7 @@ import logging
 from dataclasses import replace
 from typing import Any
 
+from src.config import CAREER_RANK_MAX
 from src.data.sync._tokens import Tokens, build_halo_headers, clean_xuid
 from src.data.sync.models import CareerRankData
 
@@ -74,7 +75,7 @@ def parse_career_rank(xuid: str, data: dict[str, Any]) -> CareerRankData:
     current = data.get("CurrentProgress", {})
     rank = current.get("Rank", 0)
     partial_xp = current.get("PartialProgress", 0)
-    is_max = rank >= 272
+    is_max = rank >= CAREER_RANK_MAX
     rank_info = get_rank_info(rank)
 
     return CareerRankData(
@@ -115,7 +116,7 @@ async def resolve_adornment_url(client: Any, rank: int) -> str | None:
         if not ranks_list:
             return None
 
-        display_rank = rank if rank == 272 else rank + 1
+        display_rank = rank if rank == CAREER_RANK_MAX else rank + 1
         for rank_obj in ranks_list:
             r = getattr(rank_obj, "rank", None)
             if r == display_rank:

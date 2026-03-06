@@ -66,7 +66,6 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 |-------|-------------|
 | `player_match_enrichment` | performance_score, session_id, is_with_friends — **SEULE table match** |
 | `personal_score_awards` | Awards objectifs (PersonalScores API) |
-| `antagonists` | Rivalités (killers/victimes) |
 | `match_citations` | Citations calculées par match |
 | `career_progression` | Historique rangs |
 | `media_files` | Fichiers médias indexés |

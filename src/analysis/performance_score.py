@@ -9,7 +9,7 @@ from __future__ import annotations
 
 # ── Re-exports : score relatif (par match) ────────────────────────────────────
 # Alias interne exporté pour les tests
-from src.analysis._performance_relative import (  # noqa: F401  # noqa: F401
+from src.analysis._performance_relative import (  # noqa: F401
     _compute_rank_performance,
     _normalize_df,
     _percentile_rank,

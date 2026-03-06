@@ -34,7 +34,7 @@ Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score
 data/
 ├── players/                    # Enrichissements uniquement (~4 MB/joueur)
 │   └── {gamertag}/
-│       ├── stats.duckdb       # player_match_enrichment, awards, antagonists, citations,
+│       ├── stats.duckdb       # player_match_enrichment, awards, citations,
 │       │                      #   match_skill_rank (LUSR/CSR par match)
 │       └── archive/           # Archives temporelles
 ├── warehouse/
@@ -111,7 +111,6 @@ data/
 |-------|-------------|
 | `player_match_enrichment` | performance_score, session_id, is_with_friends (**SEULE table match**) |
 | `personal_score_awards` | Awards objectifs (PersonalScores API) |
-| `antagonists` | Top killers/victimes agrégés |
 | `match_citations` | Citations calculées par match |
 | `career_progression` | Historique rangs |
 | `media_files` | Fichiers médias indexés (status, thumbnail_path, capture_end_utc) |

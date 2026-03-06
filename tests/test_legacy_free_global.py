@@ -67,7 +67,7 @@ class TestSprintTargetsMixinsSplit:
             "_match_queries.py",
             "_roster_loader.py",
             "_materialized_views.py",
-            "_antagonists_repo.py",
+            "_killer_victim_repo.py",
             "_arrow_bridge.py",
         ],
     )
@@ -101,7 +101,7 @@ class TestSprintTargetsNoPandasInMigratedFiles:
         "src/data/repositories/_match_queries.py",
         "src/data/repositories/_roster_loader.py",
         "src/data/repositories/_materialized_views.py",
-        "src/data/repositories/_antagonists_repo.py",
+        "src/data/repositories/_killer_victim_repo.py",
         "src/data/repositories/_arrow_bridge.py",
     ]
 

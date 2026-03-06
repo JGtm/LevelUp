@@ -182,7 +182,6 @@ def format_summary(audits: list[dict]) -> str:
         lines.append(f"   Médailles  : {rc.get('medals_earned', 0)} lignes")
         lines.append(f"   Events     : {rc.get('highlight_events', 0)} lignes")
         lines.append(f"   Particip.  : {rc.get('match_participants', 0)} lignes")
-        lines.append(f"   Antagonistes: {rc.get('antagonists', 0)} lignes")
         lines.append(f"   Coéquipiers: {rc.get('teammates_aggregate', 0)} lignes")
 
         archives = audit.get("archives", {})

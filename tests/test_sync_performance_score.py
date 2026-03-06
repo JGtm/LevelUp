@@ -245,7 +245,7 @@ class TestBatchComputePerformanceScores:
 
 
 class TestComputeAndUpdateSingleMatch:
-    """Tests _compute_and_update_performance_score pour un match individuel."""
+    """Tests _update_performance_score pour un match individuel."""
 
     def test_score_not_recalculated_if_exists(self, tmp_path: Path) -> None:
         """Si un score existe deja dans player_match_enrichment, on ne le recalcule pas."""

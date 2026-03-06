@@ -408,3 +408,97 @@ def _get_pg_labels() -> dict[str, str]:
         "social": "Social",
         "fun": "Fun",
     }
+
+
+# ── Builders HTML — Top rencontres / antagonistes ────────────────────────────
+
+
+def _kd_style(kills: int, deaths: int) -> str:
+    """Retourne un style CSS selon le ratio K/D."""
+    if deaths == 0:
+        return "color:#33ffbf;font-weight:700;" if kills > 0 else ""
+    ratio = kills / deaths
+    if ratio >= 1.5:
+        return "color:#33ffbf;font-weight:700;"
+    if ratio <= 0.5:
+        return "color:#ff9e6b;font-weight:700;"
+    return ""
+
+
+def build_encounters_table_html(rows: list[dict], title: str) -> str:
+    """Construit un tableau HTML top joueurs croisés."""
+    from src.ui.pages.match_table_html import gamertag_link
+
+    header = (
+        "<thead><tr>"
+        f"<th class='os-sb-th' style='text-align:left'>#</th>"
+        f"<th class='os-sb-th' style='text-align:left'>{t('col_player')}</th>"
+        f"<th class='os-sb-th'>{t('col_encounters')}</th>"
+        "</tr></thead>"
+    )
+    body_rows = []
+    for i, r in enumerate(rows, 1):
+        gt = gamertag_link(r["gamertag"]) if r.get("gamertag") else r.get("xuid", "—")[:12]
+        n = r.get("total_encounters", 0)
+        body_rows.append(
+            f"<tr class='os-sb-row'><td class='os-sb-td'>{i}</td>"
+            f"<td class='os-sb-td'>{gt}</td>"
+            f"<td class='os-sb-td' style='text-align:center'>{n}</td></tr>"
+        )
+    tbody = "<tbody>" + "".join(body_rows) + "</tbody>"
+    return (
+        f"<div class='os-table-wrap os-sb-wrap'>"
+        f"<table class='os-table os-scoreboard'>"
+        f"<thead><tr><th class='os-sb-team' colspan='3'>{title}</th></tr></thead>"
+        f"{header}{tbody}</table></div>"
+    )
+
+
+def build_antagonist_table_html(
+    rows: list[dict],
+    title: str,
+    *,
+    mode: str,
+) -> str:
+    """Construit un tableau HTML top némésis ou souffre-douleurs."""
+    from src.ui.pages.match_table_html import gamertag_link
+
+    col_main = t("col_times_killed_by") if mode == "nemesis" else t("col_times_killed")
+    col_sec = t("col_times_killed") if mode == "nemesis" else t("col_times_killed_by")
+    header = (
+        "<thead><tr>"
+        f"<th class='os-sb-th' style='text-align:left'>#</th>"
+        f"<th class='os-sb-th' style='text-align:left'>{t('col_player')}</th>"
+        f"<th class='os-sb-th'>{col_main}</th>"
+        f"<th class='os-sb-th'>{col_sec}</th>"
+        f"<th class='os-sb-th'>{t('col_net_kills')}</th>"
+        f"<th class='os-sb-th'>{t('col_matches_against')}</th>"
+        "</tr></thead>"
+    )
+    body_rows = []
+    for i, r in enumerate(rows, 1):
+        opp_gt = r.get("opponent_gamertag") or ""
+        gt = gamertag_link(opp_gt) if opp_gt else "—"
+        killed = r.get("times_killed", 0)
+        killed_by = r.get("times_killed_by", 0)
+        net = r.get("net_kills", killed - killed_by)
+        matches = r.get("matches_against", 0)
+        main_val = killed_by if mode == "nemesis" else killed
+        sec_val = killed if mode == "nemesis" else killed_by
+        net_style = _kd_style(killed, killed_by)
+        net_sign = "+" if net > 0 else ""
+        body_rows.append(
+            f"<tr class='os-sb-row'><td class='os-sb-td'>{i}</td>"
+            f"<td class='os-sb-td'>{gt}</td>"
+            f"<td class='os-sb-td' style='text-align:center;font-weight:700'>{main_val}</td>"
+            f"<td class='os-sb-td' style='text-align:center'>{sec_val}</td>"
+            f"<td class='os-sb-td' style='text-align:center;{net_style}'>{net_sign}{net}</td>"
+            f"<td class='os-sb-td' style='text-align:center;color:#aaa'>{matches}</td></tr>"
+        )
+    tbody = "<tbody>" + "".join(body_rows) + "</tbody>"
+    return (
+        f"<div class='os-table-wrap os-sb-wrap'>"
+        f"<table class='os-table os-scoreboard'>"
+        f"<thead><tr><th class='os-sb-team' colspan='6'>{title}</th></tr></thead>"
+        f"{header}{tbody}</table></div>"
+    )

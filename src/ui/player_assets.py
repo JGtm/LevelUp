@@ -79,7 +79,259 @@ def resolve_local_image_path(value: str | None) -> str | None:
     return None
 
 
-def download_image_to_cache(  # noqa: C901, PLR0915
+def _build_auth_headers() -> dict[str, str]:
+    """Construit les headers d'authentification pour les endpoints Halo Waypoint."""
+    headers: dict[str, str] = {"User-Agent": "OpenSpartan-Graphs"}
+    clearance = str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip()
+    spartan = str(os.environ.get("SPNKR_SPARTAN_TOKEN") or "").strip()
+    if clearance:
+        headers.setdefault("Cookie", f"343-clearance={clearance}")
+        headers.setdefault("343-clearance", clearance)
+    if spartan:
+        headers.setdefault("x-343-authorization-spartan", spartan)
+    return headers
+
+
+def _try_spnkr_fetch_bytes(  # noqa: C901, PLR0912
+    target: str, *, timeout_seconds: int
+) -> tuple[bytes | None, str | None]:
+    """Best-effort: télécharge via SPNKr (auth) pour contourner 401/403.
+
+    Stratégie:
+    1. URL complète → GET direct avec headers auth (préserve le path exact)
+    2. Chemin /hi/images/file/ → extrait le rel et utilise get_image()
+    3. Chemin relatif (Inventory/...) → utilise get_image()
+    """
+    st = str(os.environ.get("SPNKR_SPARTAN_TOKEN") or "").strip()
+    ct = str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip()
+    if not (st and ct):
+        return None, None
+
+    raw = str(target or "").strip()
+    if not raw:
+        return None, None
+
+    is_full_url = raw.startswith("http://") or raw.startswith("https://")
+    use_direct_get, direct_url, rel = _resolve_spnkr_strategy(raw, is_full_url)
+
+    if not use_direct_get:
+        rel = rel.lstrip("/")
+        if not rel:
+            return None, None
+
+    coro = _build_spnkr_coro(
+        use_direct_get=use_direct_get,
+        direct_url=direct_url,
+        rel=rel,
+        spartan_token=st,
+        clearance_token=ct,
+        timeout_seconds=timeout_seconds,
+    )
+    try:
+        data = _run_sync_compat(coro, timeout=float(timeout_seconds) + 20.0)
+        return (data if isinstance(data, bytes | bytearray) else None), None
+    except Exception as e:
+        method = "direct GET" if use_direct_get else "get_image"
+        return None, f"SPNKr {method} KO: {e}"
+
+
+def _resolve_spnkr_strategy(raw: str, is_full_url: bool) -> tuple[bool, str, str]:
+    """Détermine la stratégie de téléchargement SPNKr (GET direct vs get_image)."""
+    use_direct_get = False
+    direct_url = ""
+    rel = raw
+
+    if is_full_url:
+        try:
+            p = urllib.parse.urlparse(raw)
+            path_lower = (p.path or "").lower()
+            if "/hi/waypoint/file/images/" in path_lower:
+                use_direct_get = True
+                direct_url = raw
+            elif "/hi/images/file/" in path_lower:
+                marker = "/hi/images/file/"
+                rel = (p.path or "")[path_lower.index(marker) + len(marker) :]
+            else:
+                use_direct_get = True
+                direct_url = raw
+        except Exception:
+            use_direct_get = True
+            direct_url = raw
+    else:
+        rel = raw.lstrip("/")
+
+    return use_direct_get, direct_url, rel
+
+
+async def _build_spnkr_coro(  # noqa: PLR0913
+    *,
+    use_direct_get: bool,
+    direct_url: str,
+    rel: str,
+    spartan_token: str,
+    clearance_token: str,
+    timeout_seconds: int,
+) -> bytes:
+    """Construit et exécute la coroutine SPNKr appropriée."""
+    import aiohttp
+
+    timeout_obj = aiohttp.ClientTimeout(total=float(timeout_seconds))
+
+    if use_direct_get:
+        headers = {
+            "Accept": "image/png, image/*;q=0.9, */*;q=0.8",
+            "User-Agent": "OpenSpartan-Graphs",
+        }
+        if spartan_token:
+            headers["x-343-authorization-spartan"] = spartan_token
+        if clearance_token:
+            headers["343-clearance"] = clearance_token
+            headers["Cookie"] = f"343-clearance={clearance_token}"
+        async with (
+            aiohttp.ClientSession(timeout=timeout_obj) as session,
+            session.get(direct_url, headers=headers) as resp,
+        ):
+            resp.raise_for_status()
+            return await resp.read()
+
+    from spnkr.client import HaloInfiniteClient
+
+    async with aiohttp.ClientSession(timeout=timeout_obj) as session:
+        client = HaloInfiniteClient(
+            session,
+            spartan_token=spartan_token,
+            clearance_token=clearance_token,
+            requests_per_second=3,
+        )
+        img_resp = await client.gamecms_hacs.get_image(rel)
+        return await img_resp.read()
+
+
+def _extract_image_url_from_json(obj: object) -> str | None:  # noqa: C901
+    """Extrait une URL d'image depuis un manifeste JSON Halo Waypoint."""
+    candidates: list[str] = []
+
+    def walk(x: object) -> None:
+        if isinstance(x, dict):
+            for v in x.values():
+                walk(v)
+            return
+        if isinstance(x, list):
+            for v in x[:200]:
+                walk(v)
+            return
+        if isinstance(x, str):
+            s = x.strip()
+            if not s:
+                return
+            candidates.append(s)
+
+    walk(obj)
+
+    image_exts = (".png", ".jpg", ".jpeg", ".webp")
+    for s in candidates:
+        if (s.startswith("http://") or s.startswith("https://")) and s.lower().endswith(image_exts):
+            return s
+
+    host = "https://gamecms-hacs.svc.halowaypoint.com"
+    for s in candidates:
+        if "/hi/Waypoint/file/images/" in s and s.lower().endswith(image_exts):
+            rel = s[s.index("/hi/Waypoint/file/images/") :]
+            return f"{host}{rel}"
+
+    for s in candidates:
+        s_lower = s.lower()
+        marker = "/hi/images/file/"
+        if marker in s_lower and s_lower.endswith(image_exts):
+            rel = s[s_lower.index(marker) :]
+            rel = rel.replace("/hi/images/file/", "/hi/Images/file/")
+            return f"{host}{rel}"
+
+    for s in candidates:
+        if s.lower().startswith("inventory/") and s.lower().endswith(image_exts):
+            return f"{host}/hi/Images/file/{s.lstrip('/')}"
+
+    return None
+
+
+def _download_once(
+    target_url: str, *, timeout_seconds: int
+) -> tuple[bytes | None, str | None, str | None]:
+    """Télécharge une URL (avec auth si nécessaire), détecte les manifestes JSON."""
+    try:
+        data: bytes | None = None
+        content_type = ""
+
+        url_lower = str(target_url).lower()
+        needs_auth = (
+            ("/hi/images/file/" in url_lower)
+            or ("/hi/waypoint/file/images/" in url_lower)
+            or url_lower.strip().startswith("inventory/")
+            or str(target_url).strip().startswith("/Inventory/")
+        )
+
+        if needs_auth:
+            data_spnkr, _spnkr_err = _try_spnkr_fetch_bytes(
+                target_url, timeout_seconds=timeout_seconds
+            )
+            if data_spnkr:
+                data = bytes(data_spnkr)
+            else:
+                req = urllib.request.Request(target_url, headers=_build_auth_headers())
+                with urllib.request.urlopen(req, timeout=float(timeout_seconds)) as resp:  # noqa: S310
+                    data = resp.read()
+                    content_type = str(resp.headers.get("content-type") or "").lower()
+        else:
+            req = urllib.request.Request(target_url, headers=_build_auth_headers())
+            with urllib.request.urlopen(req, timeout=float(timeout_seconds)) as resp:  # noqa: S310
+                data = resp.read()
+                content_type = str(resp.headers.get("content-type") or "").lower()
+
+        if not data:
+            return None, None, "Téléchargement vide."
+        if "application/json" in content_type or data.lstrip()[:1] in (b"{", b"["):
+            try:
+                parsed = json.loads(data.decode("utf-8", errors="ignore"))
+            except Exception:
+                return None, None, "Réponse JSON illisible."
+            img = _extract_image_url_from_json(parsed)
+            if img:
+                return None, img, None
+            return None, None, "Manifeste JSON sans URL d'image exploitable."
+        return data, None, None
+    except Exception as e:
+        return None, None, f"Téléchargement impossible: {e}"
+
+
+def _resolve_image_chain(
+    url: str, *, timeout_seconds: int, max_redirects: int = 5
+) -> tuple[bytes | None, str | None, str]:
+    """Suit les manifestes JSON (max N sauts) et télécharge l'image finale.
+
+    Retourne (data, error_message, final_url).
+    """
+    current = url
+    visited: set[str] = set()
+    last_err: str | None = None
+
+    for _ in range(max_redirects):
+        if current in visited:
+            return None, "Boucle de redirection inattendue.", current
+        visited.add(current)
+
+        data, next_url, err = _download_once(current, timeout_seconds=timeout_seconds)
+        last_err = err
+        if next_url:
+            current = next_url
+            continue
+        if data is not None:
+            return data, None, current
+        break
+
+    return None, last_err or "Téléchargement impossible.", current
+
+
+def download_image_to_cache(
     url: str, *, prefix: str, timeout_seconds: int = 12
 ) -> tuple[bool, str, str | None]:
     """Télécharge une image depuis une URL dans le cache local.
@@ -96,262 +348,13 @@ def download_image_to_cache(  # noqa: C901, PLR0915
     fname = _hashed_name(u, prefix=prefix)
     out_path = os.path.join(cache_dir, fname)
 
-    def _auth_headers_for_url(target_url: str) -> dict[str, str]:
-        headers: dict[str, str] = {"User-Agent": "OpenSpartan-Graphs"}
-
-        # Certains endpoints Halo Waypoint (hi/images/file/...) exigent une auth (343-clearance).
-        clearance = str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip()
-        spartan = str(os.environ.get("SPNKR_SPARTAN_TOKEN") or "").strip()
-        if clearance:
-            # Les deux existent dans la nature; on fournit les deux.
-            headers.setdefault("Cookie", f"343-clearance={clearance}")
-            headers.setdefault("343-clearance", clearance)
-        if spartan:
-            headers.setdefault("x-343-authorization-spartan", spartan)
-        return headers
-
-    def _run_sync(coro):
-        return _run_sync_compat(coro, timeout=float(timeout_seconds) + 20.0)
-
-    def _try_spnkr_fetch_bytes(target: str) -> tuple[bytes | None, str | None]:  # noqa: C901, PLR0912
-        """Best-effort: télécharge via SPNKr (auth) pour contourner 401/403.
-
-        `target` peut être:
-        - une URL complète https://gamecms-hacs.../hi/images/file/<relative>
-        - une URL complète https://gamecms-hacs.../hi/Waypoint/file/images/<relative>
-        - un chemin relatif Inventory/... (ou /Inventory/...)
-
-        Stratégie:
-        1. URL complète → GET direct avec headers auth (préserve le path exact)
-        2. Chemin /hi/images/file/ → extrait le rel et utilise get_image()
-        3. Chemin relatif (Inventory/...) → utilise get_image()
-        """
-
-        st = str(os.environ.get("SPNKR_SPARTAN_TOKEN") or "").strip()
-        ct = str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip()
-        if not (st and ct):
-            return None, None
-
-        raw = str(target or "").strip()
-        if not raw:
-            return None, None
-
-        is_full_url = raw.startswith("http://") or raw.startswith("https://")
-
-        # Déterminer si on peut utiliser un GET direct (URL complète)
-        # ou si on doit passer par get_image() (chemin relatif)
-        use_direct_get = False
-        direct_url = ""
-        rel = raw
-
-        if is_full_url:
-            try:
-                p = urllib.parse.urlparse(raw)
-                path_lower = (p.path or "").lower()
-
-                # URLs /hi/Waypoint/file/images/... : GET direct obligatoire
-                # car get_image() réécrit en /hi/images/file/ (mauvais endpoint)
-                if "/hi/waypoint/file/images/" in path_lower:
-                    use_direct_get = True
-                    direct_url = raw
-                # URLs /hi/images/file/... : get_image() fonctionne, mais
-                # GET direct est aussi valide. On utilise get_image() pour
-                # conserver la compatibilité.
-                elif "/hi/images/file/" in path_lower:
-                    marker = "/hi/images/file/"
-                    rel = (p.path or "")[path_lower.index(marker) + len(marker) :]
-                else:
-                    # URL inconnue → GET direct en best-effort
-                    use_direct_get = True
-                    direct_url = raw
-            except Exception:
-                use_direct_get = True
-                direct_url = raw
-        else:
-            # Chemin relatif (Inventory/...) → get_image()
-            rel = raw.lstrip("/")
-
-        if not use_direct_get:
-            rel = rel.lstrip("/")
-            if not rel:
-                return None, None
-
-        async def _run_get_image() -> bytes:
-            """Télécharge via gamecms_hacs.get_image() (chemin /hi/images/file/)."""
-            import aiohttp
-            from spnkr.client import HaloInfiniteClient
-
-            timeout_obj = aiohttp.ClientTimeout(total=float(timeout_seconds))
-            async with aiohttp.ClientSession(timeout=timeout_obj) as session:
-                client = HaloInfiniteClient(
-                    session,
-                    spartan_token=st,
-                    clearance_token=ct,
-                    requests_per_second=3,
-                )
-                img_resp = await client.gamecms_hacs.get_image(rel)
-                return await img_resp.read()
-
-        async def _run_direct_get() -> bytes:
-            """Télécharge via GET direct avec headers auth (URL complète)."""
-            import aiohttp
-
-            headers = {
-                "Accept": "image/png, image/*;q=0.9, */*;q=0.8",
-                "User-Agent": "OpenSpartan-Graphs",
-            }
-            if st:
-                headers["x-343-authorization-spartan"] = st
-            if ct:
-                headers["343-clearance"] = ct
-                headers["Cookie"] = f"343-clearance={ct}"
-
-            timeout_obj = aiohttp.ClientTimeout(total=float(timeout_seconds))
-            async with (
-                aiohttp.ClientSession(timeout=timeout_obj) as session,
-                session.get(direct_url, headers=headers) as resp,
-            ):
-                resp.raise_for_status()
-                return await resp.read()
-
-        try:
-            coro = _run_direct_get() if use_direct_get else _run_get_image()
-            data = _run_sync(coro)
-            return (data if isinstance(data, bytes | bytearray) else None), None
-        except Exception as e:
-            method = "direct GET" if use_direct_get else "get_image"
-            return None, f"SPNKr {method} KO: {e}"
-
-    def _extract_image_url_from_json(obj: object) -> str | None:  # noqa: C901
-        candidates: list[str] = []
-
-        def walk(x: object) -> None:
-            if isinstance(x, dict):
-                for v in x.values():
-                    walk(v)
-                return
-            if isinstance(x, list):
-                for v in x[:200]:
-                    walk(v)
-                return
-            if isinstance(x, str):
-                s = x.strip()
-                if not s:
-                    return
-                candidates.append(s)
-
-        walk(obj)
-
-        image_exts = (".png", ".jpg", ".jpeg", ".webp")
-        # Priorité: URL explicite d'image
-        for s in candidates:
-            if (s.startswith("http://") or s.startswith("https://")) and s.lower().endswith(
-                image_exts
-            ):
-                return s
-
-        # Sinon: chemin vers /hi/Waypoint/file/images/ (souvent public)
-        host = "https://gamecms-hacs.svc.halowaypoint.com"
-        for s in candidates:
-            if "/hi/Waypoint/file/images/" in s and s.lower().endswith(image_exts):
-                rel = s[s.index("/hi/Waypoint/file/images/") :]
-                return f"{host}{rel}"
-
-        # Sinon: chemin vers /hi/images/file/
-        for s in candidates:
-            s_lower = s.lower()
-            marker = "/hi/images/file/"
-            if marker in s_lower and s_lower.endswith(image_exts):
-                rel = s[s_lower.index(marker) :]
-                rel = rel.replace("/hi/images/file/", "/hi/Images/file/")
-                return f"{host}{rel}"
-
-        # Dernier recours: chemin relatif "Inventory/...png"
-        for s in candidates:
-            if s.lower().startswith("inventory/") and s.lower().endswith(image_exts):
-                return f"{host}/hi/Images/file/{s.lstrip('/')}"
-
-        return None
-
-    def _download_once(target_url: str) -> tuple[bytes | None, str | None, str | None]:
-        try:
-            data: bytes | None = None
-            content_type = ""
-
-            # Certains endpoints renvoient 401/403 en accès direct; on tente SPNKr en fallback.
-            # Inclut: /hi/images/file/, /hi/Waypoint/file/images/ (ALL sous-chemins), et Inventory/
-            url_lower = str(target_url).lower()
-            needs_auth = (
-                ("/hi/images/file/" in url_lower)
-                or ("/hi/waypoint/file/images/" in url_lower)
-                or url_lower.strip().startswith("inventory/")
-                or str(target_url).strip().startswith("/Inventory/")
-            )
-
-            if needs_auth:
-                data_spnkr, spnkr_err = _try_spnkr_fetch_bytes(target_url)
-                if data_spnkr:
-                    data = bytes(data_spnkr)
-                else:
-                    # Fallback urllib (ex: si SPNKr non installé / tokens absents)
-                    req = urllib.request.Request(
-                        target_url, headers=_auth_headers_for_url(target_url)
-                    )
-                    with urllib.request.urlopen(req, timeout=float(timeout_seconds)) as resp:
-                        data = resp.read()
-                        content_type = str(resp.headers.get("content-type") or "").lower()
-            else:
-                # Cas standard (ex: Waypoint/file/images/*.png)
-                req = urllib.request.Request(target_url, headers=_auth_headers_for_url(target_url))
-                with urllib.request.urlopen(req, timeout=float(timeout_seconds)) as resp:
-                    data = resp.read()
-                    content_type = str(resp.headers.get("content-type") or "").lower()
-
-            if not data:
-                return None, None, "Téléchargement vide."
-            # On ne se fie pas seulement au content-type (parfois absent)
-            if "application/json" in content_type or data.lstrip()[:1] in (b"{", b"["):
-                try:
-                    obj = json.loads(data.decode("utf-8", errors="ignore"))
-                except Exception:
-                    return None, None, "Réponse JSON illisible."
-                img = _extract_image_url_from_json(obj)
-                if img:
-                    # Signale au caller qu'il faut re-télécharger cette URL.
-                    return None, img, None
-                return None, None, "Manifeste JSON sans URL d'image exploitable."
-            return data, None, None
-        except Exception as e:
-            return None, None, f"Téléchargement impossible: {e}"
-
-    # Téléchargement (avec auth si dispo) + suivi de manifestes JSON (max N sauts)
-    current = u
-    visited: set[str] = set()
-    data: bytes | None = None
-    last_err: str | None = None
-
-    for _ in range(5):
-        if current in visited:
-            return False, "Boucle de redirection inattendue.", None
-        visited.add(current)
-
-        data, next_url, err = _download_once(current)
-        last_err = err
-        if next_url:
-            current = next_url
-            continue
-        if data is not None:
-            break
-        # Erreur terminale sans redirection: inutile de boucler.
-        break
+    data, err, final_url = _resolve_image_chain(u, timeout_seconds=timeout_seconds)
 
     if data is None:
-        return False, last_err or "Téléchargement impossible.", None
+        return False, err or "Téléchargement impossible.", None
 
-    # Si on a suivi une redirection, on cache avec l'URL finale (extension + hash)
-    if current != u:
-        u = current
-        fname = _hashed_name(u, prefix=prefix)
+    if final_url != u:
+        fname = _hashed_name(final_url, prefix=prefix)
         out_path = os.path.join(cache_dir, fname)
 
     try:

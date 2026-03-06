@@ -15,14 +15,14 @@ pour que les matchs nouvellement insérés aient toujours leurs citations.
 
 from __future__ import annotations
 
-import contextlib
 import logging
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
 import duckdb
 
-from src.utils.db import ensure_shared_attached
+from src.utils.db import duckdb_read_write, ensure_shared_attached
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +57,8 @@ def backfill_citations_for_player(  # noqa: PLR0912
         logger.debug("citations_backfill: shared_matches.duckdb absent, skip")
         return {"matches_processed": 0, "citations_computed": 0}
 
-    own_conn = conn is None
-    if own_conn:
-        conn = duckdb.connect(str(db_path))
-
-    try:
+    ctx = duckdb_read_write(str(db_path)) if conn is None else nullcontext(conn)
+    with ctx as conn:
         # ── 1. S'assurer que match_citations existe ──────────────────────────
         conn.execute("""
             CREATE TABLE IF NOT EXISTS match_citations (
@@ -129,8 +126,3 @@ def backfill_citations_for_player(  # noqa: PLR0912
             "matches_processed": len(match_ids),
             "citations_computed": citations_computed,
         }
-
-    finally:
-        if own_conn and conn is not None:
-            with contextlib.suppress(Exception):
-                conn.close()

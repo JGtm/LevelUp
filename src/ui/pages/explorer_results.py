@@ -7,12 +7,11 @@ sous forme de tableaux HTML + vue match détaillée.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
-from typing import Any
 
 import polars as pl
 import streamlit as st
 
+from src.app._page_context import MatchViewParams
 from src.ui.i18n import t
 from src.ui.pages.explorer_enrich import enrich_common_matches, enrich_for_table
 from src.ui.pages.explorer_logic import split_by_team
@@ -28,33 +27,19 @@ _SK_SELECTED_MATCH = "_explorer_selected_match"
 # ---------------------------------------------------------------------------
 
 
-def render_filter_results(  # noqa: PLR0913
+def render_filter_results(
     filtered: pl.DataFrame,
     selected_match_id: str | None,
-    waypoint_player: str,
     df: pl.DataFrame,
-    db_path: str,
-    xuid: str,
-    db_key: Any,
-    settings: Any,
-    df_full: Any,
-    render_match_view_fn: Callable[..., Any],
-    normalize_mode_label_fn: Callable[..., Any],
-    format_score_label_fn: Callable[..., Any],
-    score_css_color_fn: Callable[..., Any],
-    format_datetime_fn: Callable[..., Any],
-    load_player_match_result_fn: Callable[..., Any],
-    load_match_medals_fn: Callable[..., Any],
-    load_highlight_events_fn: Callable[..., Any],
-    load_match_gamertags_fn: Callable[..., Any],
-    load_match_rosters_fn: Callable[..., Any],
-    paris_tz: Any,
+    params: MatchViewParams,
 ) -> None:
     """Affiche le tableau de résultats filtres et la vue match si sélectionné."""
     if filtered.is_empty():
         st.warning(t("exp_no_results"))
         return
 
+    waypoint_player = params["waypoint_player"]
+    df_full = params.get("df_full")
     enriched = enrich_for_table(filtered, waypoint_player, df_full)
     st.subheader(t("exp_results_title", count=len(enriched)))
 
@@ -64,27 +49,7 @@ def render_filter_results(  # noqa: PLR0913
     # Si un match est sélectionné via le selectbox, afficher sa vue
     mid = selected_match_id or st.session_state.get(_SK_SELECTED_MATCH)
     if mid:
-        show_single_match(
-            df,
-            mid,
-            db_path,
-            xuid,
-            waypoint_player,
-            db_key,
-            settings,
-            df_full,
-            render_match_view_fn,
-            normalize_mode_label_fn,
-            format_score_label_fn,
-            score_css_color_fn,
-            format_datetime_fn,
-            load_player_match_result_fn,
-            load_match_medals_fn,
-            load_highlight_events_fn,
-            load_match_gamertags_fn,
-            load_match_rosters_fn,
-            paris_tz,
-        )
+        show_single_match(df, mid, params)
 
 
 # ---------------------------------------------------------------------------
@@ -92,30 +57,19 @@ def render_filter_results(  # noqa: PLR0913
 # ---------------------------------------------------------------------------
 
 
-def render_player_results(  # noqa: PLR0913
-    db_path: str,
-    self_xuid: str,
+def render_player_results(
     target_xuid: str,
     target_gt: str,
-    waypoint_player: str,
     df: pl.DataFrame,
-    db_key: Any,
-    settings: Any,
-    df_full: Any,
-    render_match_view_fn: Callable[..., Any],
-    normalize_mode_label_fn: Callable[..., Any],
-    format_score_label_fn: Callable[..., Any],
-    score_css_color_fn: Callable[..., Any],
-    format_datetime_fn: Callable[..., Any],
-    load_player_match_result_fn: Callable[..., Any],
-    load_match_medals_fn: Callable[..., Any],
-    load_highlight_events_fn: Callable[..., Any],
-    load_match_gamertags_fn: Callable[..., Any],
-    load_match_rosters_fn: Callable[..., Any],
-    paris_tz: Any,
+    params: MatchViewParams,
 ) -> None:
     """Affiche les résultats de recherche par joueur avec bilan encounter."""
     from src.ui.pages.explorer_data import load_common_matches
+
+    self_xuid = params["xuid"]
+    db_path = params["db_path"]
+    waypoint_player = params["waypoint_player"]
+    df_full = params.get("df_full")
 
     common = load_common_matches(db_path, self_xuid, target_xuid)
     if common.is_empty():
@@ -206,26 +160,10 @@ def _safe_float(v: object) -> float | None:
 # ---------------------------------------------------------------------------
 
 
-def show_single_match(  # noqa: PLR0913
+def show_single_match(
     df: pl.DataFrame,
     match_id: str,
-    db_path: str,
-    xuid: str,
-    waypoint_player: str,
-    db_key: Any,
-    settings: Any,
-    df_full: Any,
-    render_match_view_fn: Callable[..., Any],
-    normalize_mode_label_fn: Callable[..., Any],
-    format_score_label_fn: Callable[..., Any],
-    score_css_color_fn: Callable[..., Any],
-    format_datetime_fn: Callable[..., Any],
-    load_player_match_result_fn: Callable[..., Any],
-    load_match_medals_fn: Callable[..., Any],
-    load_highlight_events_fn: Callable[..., Any],
-    load_match_gamertags_fn: Callable[..., Any],
-    load_match_rosters_fn: Callable[..., Any],
-    paris_tz: Any,
+    params: MatchViewParams,
 ) -> None:
     """Affiche la vue détaillée d'un match unique."""
     st.divider()
@@ -236,23 +174,8 @@ def show_single_match(  # noqa: PLR0913
         return
 
     row = rows.sort("start_time").row(-1, named=True)
-    render_match_view_fn(
+    params["render_match_view_fn"](
         row=row,
         match_id=match_id,
-        db_path=db_path,
-        xuid=xuid,
-        waypoint_player=waypoint_player,
-        db_key=db_key,
-        settings=settings,
-        df_full=df_full,
-        normalize_mode_label_fn=normalize_mode_label_fn,
-        format_score_label_fn=format_score_label_fn,
-        score_css_color_fn=score_css_color_fn,
-        format_datetime_fn=format_datetime_fn,
-        load_player_match_result_fn=load_player_match_result_fn,
-        load_match_medals_fn=load_match_medals_fn,
-        load_highlight_events_fn=load_highlight_events_fn,
-        load_match_gamertags_fn=load_match_gamertags_fn,
-        load_match_rosters_fn=load_match_rosters_fn,
-        paris_tz=paris_tz,
+        params=params,
     )
