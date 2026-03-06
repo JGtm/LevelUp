@@ -1,8 +1,8 @@
 # LevelUp - Halo Infinite Dashboard
 
-> **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB v5 architecture.**
+> **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-5.4.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.4.0)
+[![Version](https://img.shields.io/badge/Version-5.5.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.5.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -12,6 +12,15 @@
 ---
 
 ## What’s new
+- **v5.5 — Setup Wizard & Xbox OAuth**
+  - **Setup Wizard**: guided first-time setup with two paths — **Xbox Express** (recommended, 2 steps: Azure credentials → Xbox login) and **Azure manual** (advanced, 3 steps: credentials → refresh token → player creation)
+  - **Xbox OAuth**: one-click Xbox login — full Microsoft OAuth flow with CSRF protection, automatic gamertag/XUID resolution, and player provisioning
+  - **Player provisioning**: automatic DB + profile creation on first login (`provision_player()`)
+  - **setup.bat**: Windows one-click installer (Python check, venv creation, dependency install, dashboard launch)
+  - **Token DB fallback**: refresh token read from player DB when not in environment variables
+  - **Documentation rewrite**: CONFIGURATION.md with 11 Azure screenshots, SYNC_GUIDE.md with v5.1 architecture
+  - Bug fixes: CSRF validation, `_repo_root` undefined, DuckDB retry broadened, GC sync mode, test isolation
+  - **75 new tests** (auth, wizard logic, Xbox OAuth, e2e callback, wizard UI)
 
 - **v5.4 — Explorer & Encounter History**
   - New **Explorer** page: unified match search with cascade filters (date, squad, type, playlist, mode, map), fuzzy gamertag search with XUID resolution, OS-style HTML table (KDA, MMR delta, accuracy, spree…), deep linking (`?page=Explorer&gamertag=XXX`) and encounter badges (rival, mentor, prey)
@@ -72,13 +81,17 @@
 - **Commendations** - Track your commendations with medal distributions and grids
 - **Media library** - Index and browse clips/screenshots linked to their matches
 - **Discord notifications** - Automatic alerts after sync and backfill operations
+- **Setup Wizard** - Guided first-time setup with Xbox Express or Azure manual paths
+- **Xbox OAuth** - One-click Xbox login with automatic player provisioning
 
-### v5.4 architecture — DuckDB Multi-DB
+### v5.5 architecture — DuckDB Multi-DB
 - **Shared Matches** — `shared_matches.duckdb` centralizes all matches (registry, participants, events, medals)
 - **PvE Firefight** — `shared_pve.duckdb` isolates Firefight stats (waves, bosses, enemies by type)
 - **Multi-DB ATTACH** — DuckDB `ATTACH` for seamless cross-DB reads
 - **LUSR/CSR** — TrueSkill 2 ratings per group stored in `match_skill_rank` (player DB)
 - **Performance** — DuckDB queries < 30ms (warm), native Polars DataFrames, materialized views
+- **Xbox OAuth** — Microsoft OAuth 2.0 flow with CSRF protection, refresh token stored in player DB
+- **Setup Wizard** — Guided configuration with auto-detection of missing credentials/players
 
 ---
 
