@@ -224,7 +224,7 @@ COMPOSITE_CITATIONS: list[tuple] = [
     ("vehicle_mastery", "Maîtrise de véhicule", "composite", None, None, None, None, None, None,
      "[" + ", ".join(f'"{c}"' for c in _VEHICLE_CHILDREN) + "]",
      "high", "Obtenez toutes les citations de véhicule", True,
-     "static/commendations/h5g/Vehicle_Mastery.png", "Véhicule", "Obtenez toutes les citations de véhicule.", None, None),
+     "static/commendations/h5g/Vehicle_Mastery.png", "Véhicule", "Obtenez toutes les citations de véhicule.", None, "Général"),
 ]
 # fmt: on
 

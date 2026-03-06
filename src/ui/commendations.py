@@ -90,7 +90,7 @@ def _load_citations_from_db() -> list[dict[str, Any]]:
                 "       composite_children, subcategory "
                 "FROM citation_mappings "
                 "WHERE enabled IS NOT FALSE "
-                "ORDER BY category, citation_name_display"
+                "ORDER BY category, CASE WHEN mapping_type = 'composite' THEN 0 ELSE 1 END, citation_name_display"
             ).fetchall()
 
             columns = [
