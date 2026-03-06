@@ -450,8 +450,13 @@ def _normalize_gamertag(raw: str | bytes | Any) -> str | None:
             raw = raw.decode("utf-8", errors="replace")
         except Exception:
             return None
-    s = str(raw).strip().split("\x00")[0].strip() if raw else ""
+    s = str(raw).strip() if raw else ""
+    if "\x00" in s:
+        s = s.split("\x00")[0].strip()
+        logger.debug("Gamertag tronqué (null bytes): %r → %r", raw, s)
     if not s or not _VALID_GAMERTAG_RE.match(s):
+        if s:
+            logger.debug("Gamertag rejeté (format invalide): %r", s)
         return None
     return s
 

@@ -57,7 +57,7 @@ FUNC:src/data/sync/_performance.py:140:batch_compute_performance_scores:124L
 FUNC:src/data/sync/_performance.py:25:_compute_and_update_performance_score:113L
 FUNC:src/data/sync/_skill_rating.py:127:batch_compute_lusr:183L
 FUNC:src/data/sync/_skill_rating.py:41:_upsert_csr_rating:84L
-FUNC:src/data/sync/transformers/_helpers.py:459:_extract_mmr_from_skill:86L
+FUNC:src/data/sync/transformers/_helpers.py:464:_extract_mmr_from_skill:86L
 FUNC:src/data/sync/transformers/_match.py:284:extract_participants:138L
 FUNC:src/data/sync/transformers/_match.py:425:extract_match_registry_data:105L
 FUNC:src/data/sync/transformers/_match.py:71:transform_match_stats:170L
@@ -180,7 +180,7 @@ MODULE:src/data/query/trends.py:537L
 MODULE:src/data/services/teammates_service.py:596L
 MODULE:src/data/sync/_match_processing.py:699L
 MODULE:src/data/sync/models.py:511L
-MODULE:src/data/sync/transformers/_helpers.py:662L
+MODULE:src/data/sync/transformers/_helpers.py:667L
 MODULE:src/data/sync/transformers/_match.py:531L
 MODULE:src/ui/filter_state.py:589L
 MODULE:src/ui/pages/match_view.py:554L
