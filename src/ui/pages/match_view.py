@@ -11,8 +11,6 @@ from __future__ import annotations
 import contextlib
 import html
 import logging
-from collections.abc import Callable
-from datetime import datetime
 from typing import Any
 
 import polars as pl
@@ -20,10 +18,10 @@ import streamlit as st
 
 from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.analysis.performance_score import compute_relative_performance_score
+from src.app._page_context import MatchViewParams
 from src.app.helpers import normalize_map_label
 from src.config import HALO_COLORS, OUTCOME_CODES
 from src.ui import (
-    AppSettings,
     translate_pair_name,
     translate_playlist_name,
 )
@@ -51,7 +49,7 @@ from src.ui.pages.match_view_players import (
     render_team_dominance_section,
 )
 from src.ui.pages.match_view_rank import _build_match_rank_html
-from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._compat import ensure_polars
 
 logger = logging.getLogger(__name__)
 
@@ -275,27 +273,11 @@ def _enrich_pm_from_row(pm: dict[str, Any], row: dict[str, Any]) -> None:
 # =============================================================================
 
 
-def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
+def render_match_view(  # noqa: C901, PLR0912, PLR0915
     *,
     row: dict[str, Any],
     match_id: str,
-    db_path: str,
-    xuid: str,
-    waypoint_player: str,
-    db_key: tuple[int, int] | None,
-    settings: AppSettings,
-    df_full: DataFrameLike | None = None,
-    # Fonctions injectées
-    normalize_mode_label_fn: Callable[[str | None], str],
-    format_score_label_fn: Callable[[Any, Any], str],
-    score_css_color_fn: Callable[[Any, Any], str],
-    format_datetime_fn: Callable[[datetime | None], str],
-    load_player_match_result_fn: Callable,
-    load_match_medals_fn: Callable,
-    load_highlight_events_fn: Callable,
-    load_match_gamertags_fn: Callable,
-    load_match_rosters_fn: Callable,
-    paris_tz,
+    params: MatchViewParams,
 ) -> None:
     """Rend la vue détaillée d'un match.
 
@@ -305,26 +287,24 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
         Données du match (dict issu de iter_rows(named=True) ou to_dicts()).
     match_id : str
         Identifiant du match.
-    db_path : str
-        Chemin vers la base de données.
-    xuid : str
-        XUID du joueur principal.
-    waypoint_player : str
-        Gamertag pour les liens Waypoint.
-    db_key : tuple[int, int] | None
-        Clé de cache pour la base de données.
-    settings : AppSettings
-        Paramètres de l'application.
-    df_full : DataFrameLike | None
-        DataFrame complet pour le calcul du score relatif.
-    normalize_mode_label_fn, format_score_label_fn, score_css_color_fn, format_datetime_fn
-        Fonctions de formatage injectées.
-    load_player_match_result_fn, load_match_medals_fn, load_highlight_events_fn,
-    load_match_gamertags_fn, load_match_rosters_fn
-        Fonctions de chargement de données injectées.
-    paris_tz
-        Timezone Paris.
+    params : MatchViewParams
+        Paramètres communs (DB, fonctions injectées, settings, etc.).
     """
+    # Unpack des paramètres communs
+    db_path = params["db_path"]
+    xuid = params["xuid"]
+    waypoint_player = params["waypoint_player"]
+    db_key = params["db_key"]
+    settings = params["settings"]
+    df_full = params.get("df_full")
+    normalize_mode_label_fn = params["normalize_mode_label_fn"]
+    format_score_label_fn = params["format_score_label_fn"]
+    format_datetime_fn = params["format_datetime_fn"]
+    load_player_match_result_fn = params["load_player_match_result_fn"]
+    load_match_medals_fn = params["load_match_medals_fn"]
+    load_highlight_events_fn = params["load_highlight_events_fn"]
+    load_match_gamertags_fn = params["load_match_gamertags_fn"]
+    paris_tz = params["paris_tz"]
     # Normaliser df_full en Polars
     if df_full is not None:
         df_full = ensure_polars(df_full)

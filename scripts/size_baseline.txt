@@ -87,7 +87,7 @@ FUNC:src/ui/pages/career_logic.py:209:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:19:render_citations_page:169L
 FUNC:src/ui/pages/match_history.py:173:_render_history_table:147L
 FUNC:src/ui/pages/match_history.py:31:render_match_history_page:139L
-FUNC:src/ui/pages/match_view.py:278:render_match_view:276L
+FUNC:src/ui/pages/match_view.py:276:render_match_view:258L
 FUNC:src/ui/pages/match_view_charts.py:276:_render_spree_headshots:124L
 FUNC:src/ui/pages/match_view_charts.py:43:render_expected_vs_actual:230L
 FUNC:src/ui/pages/match_view_citations.py:16:render_match_citations_section:163L
@@ -172,7 +172,7 @@ MODULE:src/data/sync/models.py:511L
 MODULE:src/data/sync/transformers/_helpers.py:667L
 MODULE:src/data/sync/transformers/_match.py:531L
 MODULE:src/ui/pages/career_logic.py:505L
-MODULE:src/ui/pages/match_view.py:617L
+MODULE:src/ui/pages/match_view.py:597L
 MODULE:src/ui/pages/media_library_data.py:507L
 MODULE:src/ui/pages/win_loss.py:539L
 MODULE:src/ui/profile_api.py:558L

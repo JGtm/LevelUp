@@ -12,11 +12,12 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from datetime import date
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import polars as pl
 import streamlit as st
 
+from src.app._page_context import MatchViewParams
 from src.ui.i18n import t
 from src.ui.pages.explorer_data import (
     get_all_gamertags,
@@ -37,11 +38,6 @@ from src.ui.pages.explorer_results import (
 )
 from src.visualization._compat import ensure_polars
 
-if TYPE_CHECKING:
-    from zoneinfo import ZoneInfo
-
-    from src.ui.settings import AppSettings
-
 logger = logging.getLogger(__name__)
 
 
@@ -50,66 +46,30 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def render_explorer_page(  # noqa: PLR0913
+def render_explorer_page(
     df: pl.DataFrame,
     dff: pl.DataFrame,
-    db_path: str,
-    xuid: str,
-    waypoint_player: str,
-    db_key: tuple[int, int] | None,
-    settings: AppSettings,
-    df_full: pl.DataFrame | None,
-    render_match_view_fn: Callable[..., Any],
-    normalize_mode_label_fn: Callable[[str | None], str | None],
-    format_score_label_fn: Callable[..., Any],
-    score_css_color_fn: Callable[..., Any],
-    format_datetime_fn: Callable[..., Any],
-    load_player_match_result_fn: Callable[..., Any],
-    load_match_medals_fn: Callable[..., Any],
-    load_highlight_events_fn: Callable[..., Any],
-    load_match_gamertags_fn: Callable[..., Any],
-    load_match_rosters_fn: Callable[..., Any],
-    paris_tz: ZoneInfo,
+    params: MatchViewParams,
 ) -> None:
     """Rend la page Explorer complète."""
     df, dff = ensure_polars(df), ensure_polars(dff)
     _inject_explorer_css()
     pending_gt, pending_mid = _consume_deep_links()
 
-    mvp = _build_match_view_kwargs(
-        db_path,
-        xuid,
-        waypoint_player,
-        db_key,
-        settings,
-        df_full,
-        render_match_view_fn,
-        normalize_mode_label_fn,
-        format_score_label_fn,
-        score_css_color_fn,
-        format_datetime_fn,
-        load_player_match_result_fn,
-        load_match_medals_fn,
-        load_highlight_events_fn,
-        load_match_gamertags_fn,
-        load_match_rosters_fn,
-        paris_tz,
-    )
-
     filtered, selected_mid = _render_match_filters(
         dff,
-        db_path,
-        format_datetime_fn,
-        normalize_mode_label_fn,
+        params["db_path"],
+        params["format_datetime_fn"],
+        params["normalize_mode_label_fn"],
     )
 
     st.divider()
-    player_gt, player_xuid = _render_player_search(db_path, pending_gt)
+    player_gt, player_xuid = _render_player_search(params["db_path"], pending_gt)
 
     search_clicked = st.button(t("btn_search"), width="stretch", type="primary")
 
     if pending_mid and isinstance(pending_mid, str) and pending_mid.strip():
-        show_single_match(df, pending_mid.strip(), **mvp)
+        show_single_match(df, pending_mid.strip(), params)
         return
 
     # Auto-déclencher la recherche si un gamertag est passé en deep link
@@ -122,11 +82,8 @@ def render_explorer_page(  # noqa: PLR0913
         player_xuid,
         filtered,
         selected_mid,
-        db_path,
-        xuid,
-        waypoint_player,
         df,
-        mvp,
+        params,
     )
 
 
@@ -146,11 +103,8 @@ def _dispatch_results(  # noqa: PLR0913
     player_xuid: str | None,
     filtered: pl.DataFrame,
     selected_mid: str | None,
-    db_path: str,
-    xuid: str,
-    waypoint_player: str,
     df: pl.DataFrame,
-    mvp: dict[str, Any],
+    params: MatchViewParams,
 ) -> None:
     """Affiche les résultats selon le contexte de recherche."""
     logger.debug(
@@ -160,25 +114,21 @@ def _dispatch_results(  # noqa: PLR0913
         len(filtered),
     )
     if player_gt and player_xuid:
-        _mvp_player = {k: v for k, v in mvp.items() if k != "xuid"}
         render_player_results(
-            self_xuid=xuid,
             target_xuid=player_xuid,
             target_gt=player_gt,
             df=df,
-            **_mvp_player,
+            params=params,
         )
     elif player_gt and not player_xuid:
         logger.warning("Explorer: joueur introuvable %r", player_gt)
         st.warning(t("exp_player_not_found", gamertag=player_gt))
     else:
-        _mvp_filter = {k: v for k, v in mvp.items() if k != "waypoint_player"}
         render_filter_results(
             filtered,
             selected_mid,
-            waypoint_player,
             df,
-            **_mvp_filter,
+            params=params,
         )
 
 
@@ -435,45 +385,4 @@ def _experience_type_labels() -> dict[str, str]:
         "unranked": t("exp_pvp_unranked"),
         "ranked": t("exp_pvp_ranked"),
         "pve": t("exp_pve"),
-    }
-
-
-def _build_match_view_kwargs(  # noqa: PLR0913
-    db_path: str,
-    xuid: str,
-    waypoint_player: str,
-    db_key: Any,
-    settings: Any,
-    df_full: Any,
-    render_match_view_fn: Callable[..., Any],
-    normalize_mode_label_fn: Callable[..., Any],
-    format_score_label_fn: Callable[..., Any],
-    score_css_color_fn: Callable[..., Any],
-    format_datetime_fn: Callable[..., Any],
-    load_player_match_result_fn: Callable[..., Any],
-    load_match_medals_fn: Callable[..., Any],
-    load_highlight_events_fn: Callable[..., Any],
-    load_match_gamertags_fn: Callable[..., Any],
-    load_match_rosters_fn: Callable[..., Any],
-    paris_tz: Any,
-) -> dict[str, Any]:
-    """Construit le dict de kwargs pour les fonctions de résultat."""
-    return {
-        "db_path": db_path,
-        "xuid": xuid,
-        "waypoint_player": waypoint_player,
-        "db_key": db_key,
-        "settings": settings,
-        "df_full": df_full,
-        "render_match_view_fn": render_match_view_fn,
-        "normalize_mode_label_fn": normalize_mode_label_fn,
-        "format_score_label_fn": format_score_label_fn,
-        "score_css_color_fn": score_css_color_fn,
-        "format_datetime_fn": format_datetime_fn,
-        "load_player_match_result_fn": load_player_match_result_fn,
-        "load_match_medals_fn": load_match_medals_fn,
-        "load_highlight_events_fn": load_highlight_events_fn,
-        "load_match_gamertags_fn": load_match_gamertags_fn,
-        "load_match_rosters_fn": load_match_rosters_fn,
-        "paris_tz": paris_tz,
     }

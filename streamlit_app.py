@@ -787,12 +787,12 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
     def _page_last_match() -> None:
         from src.ui.pages import render_last_match_page
 
-        render_last_match_page(dff=ctx.dff, **ctx.match_view_params)
+        render_last_match_page(dff=ctx.dff, params=ctx.match_view_params)
 
     def _page_explorer() -> None:
         from src.ui.pages import render_explorer_page
 
-        render_explorer_page(df=ctx.df, dff=ctx.df, **ctx.match_view_params)
+        render_explorer_page(df=ctx.df, dff=ctx.df, params=ctx.match_view_params)
 
     def _page_media() -> None:
         from src.ui.pages import render_media_tab
