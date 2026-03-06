@@ -322,6 +322,69 @@ def _start_background_services(settings: AppSettings, DEFAULT_DB: str) -> None:
             logger.info("Tailscale funnel thread lancé (port 8501)")
 
 
+def _handle_xbox_oauth_callback() -> None:
+    """Consomme le callback ?code=XXX&state=YYY de Microsoft après auth Xbox.
+
+    Microsoft redirige vers cette URL après la connexion de l'utilisateur.
+    Le callback est traité en priorité, avant les query params de navigation.
+    Doit être appelé depuis main() après le démarrage de Tailscale.
+    """
+    _xbox_code = _qp_first(dict(st.query_params).get("code"))
+    _xbox_state = _qp_first(dict(st.query_params).get("state"))
+    if not _xbox_code or st.session_state.get("_xbox_oauth_consumed"):
+        return
+
+    _expected_state = st.session_state.get("_xbox_oauth_state")
+    if _expected_state and _xbox_state != _expected_state:
+        st.error("❌ Erreur CSRF : état OAuth invalide. Veuillez réessayer la connexion Xbox.")
+        st.query_params.clear()
+        return
+
+    _azure_id = str(os.environ.get("SPNKR_AZURE_CLIENT_ID") or "").strip()
+    _azure_secret = str(os.environ.get("SPNKR_AZURE_CLIENT_SECRET") or "").strip()
+    _azure_redir = (
+        str(os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "").strip() or "http://localhost:8501"
+    )
+
+    if not (_azure_id and _azure_secret):
+        return
+
+    from src.app.player_provisioning import provision_player
+    from src.ui.xbox_oauth import run_xbox_oauth_callback
+    from src.ui.xbox_oauth_ui import handle_pending_xbox_result
+
+    st.session_state["_xbox_oauth_consumed"] = True
+    with st.spinner("🎮 Connexion Xbox en cours…"):
+        _result = run_xbox_oauth_callback(
+            _xbox_code,
+            client_id=_azure_id,
+            client_secret=_azure_secret,
+            redirect_uri=_azure_redir,
+        )
+
+    if "error" not in _result:
+        _gt = _result["gamertag"]
+        _xuid = _result["xuid"]
+        _token = _result["refresh_token"]
+        try:
+            _db = provision_player(_gt, _xuid)
+            handle_pending_xbox_result(_gt, _xuid, str(_db), _token)
+            # Basculer vers le profil du joueur nouvellement connecté
+            st.session_state[SK.DB_PATH] = str(_db)
+            st.session_state[SK.XUID_INPUT] = _gt
+            st.session_state[SK.WAYPOINT_PLAYER] = _gt
+        except Exception as _prov_err:
+            logger.error("Provisionnement Xbox OAuth échoué: %s", _prov_err)
+            st.session_state["_xbox_oauth_result"] = {"error": str(_prov_err)}
+    else:
+        st.session_state["_xbox_oauth_result"] = _result
+
+    st.query_params.clear()
+    # Supprimer le guard pour permettre une reconnexion future
+    st.session_state.pop("_xbox_oauth_consumed", None)
+    st.rerun()
+
+
 def _parse_query_params() -> None:
     """Consomme les query params (?page=...&match_id=...) pour navigation interne."""
     try:
@@ -926,6 +989,9 @@ def main() -> None:
 
     # 2. Services d'arrière-plan (media indexing, Tailscale)
     _start_background_services(settings, DEFAULT_DB)
+
+    # 2.5. Callback OAuth Xbox (prioritaire sur la navigation)
+    _handle_xbox_oauth_callback()
 
     # 3. Query params (deep links)
     _parse_query_params()
