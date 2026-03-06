@@ -585,3 +585,95 @@ class TestFactory:
         _ = repo.get_match_count()
         assert repo.has_shared is True
         repo.close()
+
+
+# =============================================================================
+# Tests lazy re-ATTACH shared après sync_mode
+# =============================================================================
+
+
+class TestLazyReattachShared:
+    """Régression : repo créé pendant sync_mode doit ré-attacher shared ensuite."""
+
+    def test_reattach_after_sync_mode(self, tmp_path: Path) -> None:
+        """Repo créé pendant sync_mode ré-attache shared après end_sync_mode."""
+        from src.data.repositories.duckdb_repo import begin_sync_mode, end_sync_mode
+
+        player_db = tmp_path / "player" / "stats.duckdb"
+        shared_db = tmp_path / "shared_matches.duckdb"
+        _create_player_db(player_db)
+        _create_shared_db(shared_db)
+
+        begin_sync_mode()
+        try:
+            repo = DuckDBRepository(
+                player_db,
+                PLAYER_XUID,
+                shared_db_path=shared_db,
+                gamertag="TestPlayer",
+            )
+            repo._get_connection()
+            assert repo.has_shared is False, "shared ne devrait pas être attaché pendant sync"
+        finally:
+            end_sync_mode()
+
+        # Après sync, le prochain appel devrait ré-attacher shared
+        repo._get_connection()
+        assert repo.has_shared is True, "shared devrait être ré-attaché après sync"
+
+        matches = repo.load_matches()
+        assert len(matches) >= 5
+        repo.close()
+
+    def test_no_reattach_during_sync_mode(self, tmp_path: Path) -> None:
+        """Repo ne retente PAS le ATTACH si sync_mode est toujours actif."""
+        from src.data.repositories.duckdb_repo import begin_sync_mode, end_sync_mode
+
+        player_db = tmp_path / "player" / "stats.duckdb"
+        shared_db = tmp_path / "shared_matches.duckdb"
+        _create_player_db(player_db)
+        _create_shared_db(shared_db)
+
+        begin_sync_mode()
+        try:
+            repo = DuckDBRepository(
+                player_db,
+                PLAYER_XUID,
+                shared_db_path=shared_db,
+                gamertag="TestPlayer",
+            )
+            repo._get_connection()
+            assert repo.has_shared is False
+
+            # Re-appel pendant sync_mode : pas de re-ATTACH
+            repo._get_connection()
+            assert repo.has_shared is False
+        finally:
+            end_sync_mode()
+        repo.close()
+
+    def test_reattach_loads_polars(self, tmp_path: Path) -> None:
+        """load_matches_as_polars fonctionne après re-ATTACH lazy."""
+        from src.data.repositories.duckdb_repo import begin_sync_mode, end_sync_mode
+
+        player_db = tmp_path / "player" / "stats.duckdb"
+        shared_db = tmp_path / "shared_matches.duckdb"
+        _create_player_db(player_db)
+        _create_shared_db(shared_db)
+
+        begin_sync_mode()
+        try:
+            repo = DuckDBRepository(
+                player_db,
+                PLAYER_XUID,
+                shared_db_path=shared_db,
+                gamertag="TestPlayer",
+            )
+            repo._get_connection()
+        finally:
+            end_sync_mode()
+
+        df = repo.load_matches_as_polars()
+        assert len(df) >= 5
+        assert "match_id" in df.columns
+        repo.close()

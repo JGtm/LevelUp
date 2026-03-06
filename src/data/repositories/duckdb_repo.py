@@ -253,6 +253,13 @@ class DuckDBRepository(
         """
         # Fast-path sans verrou (optimiste)
         if self._connection is not None:
+            # Lazy re-ATTACH shared si désactivé pendant sync_mode
+            if (
+                "shared" not in self._attached_dbs
+                and self._shared_db_path.exists()
+                and not _sync_mode.is_set()
+            ):
+                self._try_reattach_shared()
             return self._connection
         with self._connection_lock:
             # Double-check sous verrou (pattern DCL)
@@ -358,6 +365,19 @@ class DuckDBRepository(
                     logger.warning("Impossible d'attacher shared_matches.duckdb: %s", e)
         elif "shared" in attached_db_names:
             self._attached_dbs.add("shared")
+
+    def _try_reattach_shared(self) -> None:
+        """Tente de ré-attacher shared_matches.duckdb après une période sync_mode."""
+        try:
+            self._connection.execute(f"ATTACH '{self._shared_db_path}' AS shared (READ_ONLY)")
+            self._attached_dbs.add("shared")
+            logger.info("Shared matches DB ré-attachée après sync: %s", self._shared_db_path)
+        except Exception as e:
+            err_str = str(e).lower()
+            if "already" in err_str:
+                self._attached_dbs.add("shared")
+            else:
+                logger.debug("Ré-ATTACH shared échoué: %s", e)
 
     # =========================================================================
     # Coéquipiers
