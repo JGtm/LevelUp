@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import threading
 from typing import Any
@@ -26,8 +27,9 @@ logger = logging.getLogger(__name__)
 
 # Guard niveau processus : le funnel ne démarre qu'une seule fois,
 # indépendamment du nombre de sessions WebSocket Streamlit.
-# _funnel_lock garantit l'exclusion mutuelle (double-checked locking).
-_funnel_started: threading.Event = threading.Event()
+# On utilise os.environ (survit au rechargement de modules par Streamlit)
+# + _funnel_lock pour l'exclusion mutuelle (double-checked locking).
+_FUNNEL_ENV_KEY = "_LEVELUP_TAILSCALE_FUNNEL_STARTED"
 _funnel_lock: threading.Lock = threading.Lock()
 
 
@@ -152,7 +154,7 @@ def start_funnel(port: int = 8501) -> str | None:
 
 def is_funnel_started() -> bool:
     """Retourne True si le funnel a déjà été démarré dans ce processus."""
-    return _funnel_started.is_set()
+    return os.environ.get(_FUNNEL_ENV_KEY) == "1"
 
 
 def ensure_funnel_started_once(port: int = 8501) -> str | None:
@@ -168,10 +170,10 @@ def ensure_funnel_started_once(port: int = 8501) -> str | None:
     Returns:
         URL publique si premier appel et succès, None sinon.
     """
-    if _funnel_started.is_set():
+    if os.environ.get(_FUNNEL_ENV_KEY) == "1":
         return None  # Fast path : déjà démarré
     with _funnel_lock:
-        if _funnel_started.is_set():
+        if os.environ.get(_FUNNEL_ENV_KEY) == "1":
             return None  # Vérifié de nouveau sous le verrou
-        _funnel_started.set()
+        os.environ[_FUNNEL_ENV_KEY] = "1"
     return start_funnel(port=port)
