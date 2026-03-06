@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB v5 architecture.**
 
-[![Version](https://img.shields.io/badge/Version-5.3.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.3.0)
+[![Version](https://img.shields.io/badge/Version-5.4.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.4.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -12,6 +12,12 @@
 ---
 
 ## What’s new
+
+- **v5.4 — Explorer & Encounter History**
+  - New **Explorer** page: unified match search with cascade filters (date, squad, type, playlist, mode, map), fuzzy gamertag search with XUID resolution, OS-style HTML table (KDA, MMR delta, accuracy, spree…), deep linking (`?page=Explorer&gamertag=XXX`) and encounter badges (rival, mentor, prey)
+  - **Encounter History** panel in Match View: per-player stats (encounter count, ally/enemy win rates, cross K/D) with auto-badges (**Dur à cuire** / Tough, **Allié+** / Good Ally, **Coriace** / Hard to Kill)
+  - **Massive refactoring** (72 new sub-modules, centralized logging system, quality enforcement) — 3,693 tests, 0 failures
+  - Bug fixes: filter auto-invalidation post-sync, SyncLock UI guard, per-player backfill detection, citations post-sync
 
 - **v5.3 — LUSR/CSR & i18n & Sessions**
   - TrueSkill 2 rating system per playlist group (ranked / arena / btb / tactical / social / fun)
@@ -59,15 +65,15 @@
 - **Top weapons** - Weapon stats with headshot rate
 
 ### Pages & navigation
-- **Last match** - Full scoreboard for your latest game, searchable by match ID
-- **Match history** - Filterable and sortable match log
+- **Explorer** - Unified match search with cascade filters, fuzzy gamertag lookup, OS-style table, deep linking and encounter badges
+- **Last match** - Full scoreboard for your latest game, searchable by match ID — with Encounter History panel
 - **Session comparison** - Side-by-side analysis of two play sessions
 - **Career progression** - Rank history, progression to Hero, LUSR rating per playlist group
 - **Commendations** - Track your commendations with medal distributions and grids
 - **Media library** - Index and browse clips/screenshots linked to their matches
 - **Discord notifications** - Automatic alerts after sync and backfill operations
 
-### v5.3 architecture — DuckDB Multi-DB
+### v5.4 architecture — DuckDB Multi-DB
 - **Shared Matches** — `shared_matches.duckdb` centralizes all matches (registry, participants, events, medals)
 - **PvE Firefight** — `shared_pve.duckdb` isolates Firefight stats (waves, bosses, enemies by type)
 - **Multi-DB ATTACH** — DuckDB `ATTACH` for seamless cross-DB reads
@@ -232,7 +238,7 @@ python scripts/spnkr_get_refresh_token.py
 
 ## Architecture
 
-### Data layout (v5.3)
+### Data layout (v5.4)
 
 ```
 data/
