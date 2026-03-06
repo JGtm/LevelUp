@@ -29,7 +29,6 @@ FUNC:src/app/kpis_render.py:44:render_kpis_section:83L
 FUNC:src/app/main_helpers.py:250:render_profile_hero:140L
 FUNC:src/app/media_background.py:17:background_media_indexing:160L
 FUNC:src/app/media_background.py:48:worker:126L
-FUNC:src/app/page_router.py:264:dispatch_page:148L
 FUNC:src/app/profile.py:187:load_profile_assets:101L
 FUNC:src/app/sidebar.py:174:render_sync_button:120L
 FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:106L
@@ -125,9 +124,9 @@ FUNC:src/ui/pages/win_loss.py:322:_render_ratio_by_map_section:82L
 FUNC:src/ui/pages/win_loss.py:407:_render_map_table:131L
 FUNC:src/ui/player_assets.py:116:_try_spnkr_fetch_bytes:107L
 FUNC:src/ui/player_assets.py:82:download_image_to_cache:280L
-FUNC:src/ui/profile_api.py:200:_get_career_rank_for_player:138L
-FUNC:src/ui/profile_api.py:48:fetch_appearance_via_spnkr:149L
-FUNC:src/ui/profile_api.py:67:_run:128L
+FUNC:src/ui/profile_api.py:201:_get_career_rank_for_player:138L
+FUNC:src/ui/profile_api.py:49:fetch_appearance_via_spnkr:149L
+FUNC:src/ui/profile_api.py:68:_run:128L
 FUNC:src/ui/profile_api_tokens.py:23:get_tokens:108L
 FUNC:src/ui/styles.py:44:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
@@ -186,7 +185,7 @@ MODULE:src/ui/pages/match_view.py:554L
 MODULE:src/ui/pages/media_library_data.py:507L
 MODULE:src/ui/pages/timeseries.py:606L
 MODULE:src/ui/pages/win_loss.py:539L
-MODULE:src/ui/profile_api.py:557L
+MODULE:src/ui/profile_api.py:558L
 MODULE:src/visualization/distributions.py:610L
 MODULE:src/visualization/distributions_outcomes.py:625L
 MODULE:src/visualization/match_impact_timeline.py:636L
