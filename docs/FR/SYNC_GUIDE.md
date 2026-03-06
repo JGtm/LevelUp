@@ -82,16 +82,19 @@ python scripts/sync.py --delta --player MonGamertag --backfill-performance-score
 | Option | Description | Défaut |
 |--------|-------------|--------|
 | `--player` | Nom du joueur à synchroniser (gamertag ou XUID) | Tous les joueurs |
+| `--add-player` | Ajoute/MAJ un profil dans `db_profiles.json` (gamertag ou XUID) | — |
 | `--delta` | Mode incrémental (nouveaux matchs uniquement) | Non |
 | `--full` | Mode complet (tous les matchs jusqu'à la limite) | Non |
-| `--max-matches` | Nombre max de matchs | 200 (delta) / 1000 (full) |
+| `--max-matches` | Nombre max de matchs | 200 |
 | `--match-type` | Type de matchs (`all`, `matchmaking`, `custom`) | `matchmaking` |
 | `--with-assets` | Télécharge les assets manquants (médailles, maps) | Non |
 | `--with-backfill` | Effectue un backfill complet après la sync | Non |
+| `--with-citations` | Calcule les citations après la sync (local, sans API) | Non |
 | `--backfill-performance-scores` | Calcule les scores de performance manquants | Non |
 | `--rebuild-cache` | Reconstruit le cache MatchCache | Non |
 | `--apply-indexes` | Applique les index optimisés | Non |
 | `--stats` | Affiche les statistiques de la DB | Non |
+| `--no-discord` | Désactive la notification Discord pour cette exécution | Non |
 | `--verbose` | Mode verbeux | Non |
 
 **Note importante :** Toutes les données sont toujours récupérées pour chaque match synchronisé :

@@ -58,7 +58,7 @@ class ConnectionMixin:
 
         try:
             self._shared_connection = _open_shared()
-        except duckdb.IOException as e:
+        except duckdb.Error as e:
             err = str(e).lower()
             if "unique file handle conflict" in err or "already attached" in err:
                 logger.warning(
@@ -71,7 +71,7 @@ class ConnectionMixin:
                 except Exception:
                     pass
                 gc.collect()
-                time.sleep(0.15)
+                time.sleep(0.5)
                 self._shared_connection = _open_shared()
             else:
                 raise
