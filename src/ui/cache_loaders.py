@@ -97,7 +97,7 @@ def _load_matches_duckdb_v4_polars(
             max_matches=max_matches,
         )
     except Exception:
-        logger.debug("load_matches_as_polars échoué, fallback MatchRow", exc_info=True)
+        logger.warning("load_matches_as_polars échoué, fallback MatchRow", exc_info=True)
         return pl.DataFrame()
 
 
