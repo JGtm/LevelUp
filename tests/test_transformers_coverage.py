@@ -317,6 +317,42 @@ class TestNormalizeGamertag:
 
         assert _normalize_gamertag(12345) == "12345"
 
+    def test_null_bytes_stripped(self):
+        from src.data.sync.transformers import _normalize_gamertag
+
+        assert _normalize_gamertag("Danky08\x00\x00\x00\x00\x00\x03") == "Danky08"
+
+    def test_mojibake_rejected(self):
+        from src.data.sync.transformers import _normalize_gamertag
+
+        # Null bytes strippés, mais le fragment résiduel "17L" est valide
+        assert _normalize_gamertag("17L\x00\x00\x00\x00\x00\x00\x00\x00\x00ā\x01") == "17L"
+        # Mojibake pur sans partie ASCII valide → rejeté
+        assert _normalize_gamertag("ā\x01\x03") is None
+        assert _normalize_gamertag("Ã\x00Ā\x01") is None
+
+    def test_control_chars_rejected(self):
+        from src.data.sync.transformers import _normalize_gamertag
+
+        assert _normalize_gamertag("\x02") is None
+        assert _normalize_gamertag("\x03") is None
+
+    def test_null_only_rejected(self):
+        from src.data.sync.transformers import _normalize_gamertag
+
+        assert _normalize_gamertag("\x00\x00\x00") is None
+
+    def test_gamertag_with_space(self):
+        from src.data.sync.transformers import _normalize_gamertag
+
+        assert _normalize_gamertag("LF 8") == "LF 8"
+
+    def test_max_length_15(self):
+        from src.data.sync.transformers import _normalize_gamertag
+
+        assert _normalize_gamertag("A" * 15) == "A" * 15
+        assert _normalize_gamertag("A" * 16) is None
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Tests _find_player
