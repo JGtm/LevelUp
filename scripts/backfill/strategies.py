@@ -428,23 +428,24 @@ def compute_lusr_for_player(
             except Exception:
                 existing_lusr_ids = set()
 
-        # 4. Seed depuis CSR si disponible et aucun LUSR existant
+        # 4. Seed depuis CSR si disponible (toujours, pas seulement au premier run)
+        # Bug fix : en mode incrémental, le seed était ignoré car
+        # existing_lusr_ids n'était pas vide, ce qui faisait démarrer la
+        # recomputation à μ=1500 au lieu du CSR réel du joueur.
         existing_states_seed: dict | None = None
-        if not existing_lusr_ids:
-            best_csr = get_best_csr_for_player(conn)
-            if best_csr is not None:
-                from src.analysis.skill_rating import PlayerState
+        best_csr = get_best_csr_for_player(conn)
+        if best_csr is not None:
+            from src.analysis.skill_rating import PlayerState
 
-                seeded = PlayerState.from_csr(best_csr)
-                # Seed tous les groupes depuis le même CSR (légère variance sur sigma)
-                existing_states_seed = {
-                    group: PlayerState(mu=seeded.mu, sigma=seeded.sigma)
-                    for group in ("ranked", "arena", "btb", "tactical", "social", "fun")
-                }
-                logger.info(
-                    f"LUSR seed depuis CSR={best_csr:.0f} → mu={seeded.mu:.1f} "
-                    f"sigma={seeded.sigma:.1f}"
-                )
+            seeded = PlayerState.from_csr(best_csr)
+            existing_states_seed = {
+                group: PlayerState(mu=seeded.mu, sigma=seeded.sigma)
+                for group in ("ranked", "arena", "btb", "tactical", "social", "fun")
+            }
+            logger.info(
+                f"LUSR seed depuis CSR={best_csr:.0f} → mu={seeded.mu:.1f} "
+                f"sigma={seeded.sigma:.1f}"
+            )
 
         # 5. Calcul TrueSkill 2 batch (séquentiel complet sur tout l'historique)
         ratings_df = compute_skill_ratings_batch(
