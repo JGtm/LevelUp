@@ -389,19 +389,46 @@ def _send_sync_discord_notification(
 ) -> None:
     """Envoie la notification Discord après un sync UI réussi (failsafe)."""
     try:
-        from src.utils.discord_notifier import DiscordPlayerResult, notify_operation_done
+        import json as _json
+        from pathlib import Path
 
-        # Construire un résultat résumé à partir du message
-        result = DiscordPlayerResult(gamertag="(tous)", matches_synced=0)
-        players = [result]
+        from src.utils.discord_notifier import (
+            DiscordPlayerResult,
+            count_matches_missing_data,
+            count_new_matches,
+            fetch_last_match_info,
+            notify_operation_done,
+        )
+
+        # Charger les profils joueurs depuis db_profiles.json
+        _profiles_path = Path("db_profiles.json")
+        _discord_players: list[DiscordPlayerResult] = []
+        if _profiles_path.exists():
+            _pdata = _json.loads(_profiles_path.read_text(encoding="utf-8"))
+            for _gt, _profile in _pdata.get("profiles", {}).items():
+                if not isinstance(_profile, dict):
+                    continue
+                _xuid = str(_profile.get("xuid", "")) or None
+                _new = count_new_matches(_xuid or "", _gt, started_at) if _xuid else 0
+                _missing = count_matches_missing_data(_xuid or "") if _xuid else 0
+                _last = fetch_last_match_info(_xuid or "") if _xuid else None
+                _discord_players.append(
+                    DiscordPlayerResult(
+                        gamertag=_gt,
+                        xuid=_xuid,
+                        matches_synced=_new,
+                        missing_data_count=_missing,
+                        last_match=_last,
+                    )
+                )
 
         notify_operation_done(
             operation="sync_delta",
             started_at=started_at,
             finished_at=finished_at,
-            players=players,
+            players=_discord_players,
             success=True,
-            skip_idle=False,
+            skip_idle=True,
         )
         logger.info("[Discord] Notification sync UI envoyée")
     except Exception as exc:
