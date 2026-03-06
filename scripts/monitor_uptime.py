@@ -153,18 +153,21 @@ def _get_webhook_url() -> str | None:
     (cohérent avec ``src.utils.discord_notifier``).
 
     Priorité de l'URL :
-    1. Variable d'environnement ``DISCORD_WEBHOOK_URL``
+    1. Variable d'environnement ``DISCORD_WEBHOOK_URL`` (chargé depuis .env.local)
     2. Clé ``discord_webhook_url`` dans app_settings.json (rétrocompat.)
     """
     cfg = _load_app_settings()
 
     # Vérifier que les notifications Discord sont activées
     if not cfg.get("discord_notifications_enabled", False):
+        logger.debug("[Discord] Notifications désactivées (discord_notifications_enabled=False).")
         return None
 
-    import os
+    # Charger .env.local explicitement pour garantir DISCORD_WEBHOOK_URL même
+    # dans les contextes sans console (pythonw.exe / planificateur de tâches).
+    from src.utils.secrets import get_secret
 
-    url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+    url = get_secret("DISCORD_WEBHOOK_URL", "").strip()
     if not url:
         url = str(cfg.get("discord_webhook_url") or "").strip()
 
