@@ -111,8 +111,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     # ── LUSR / CSR ───────────────────────────────────────────────────────────
     "trace_lusr_default_title": {
-        "fr": "LUSR — LevelUp Skill Rank",
-        "en": "LUSR — LevelUp Skill Rank",
+        "fr": "CSR / LevelUp Skill Rank",
+        "en": "CSR / LevelUp Skill Rank",
     },
     "trace_lusr_axis": {
         "fr": "Rating LUSR / CSR",
