@@ -160,7 +160,224 @@ def get_top_two_teammate_xuids(
             conn.close()
 
 
-def backfill_sessions_for_player(  # noqa: C901, PLR0912, PLR0913, PLR0915
+def _ensure_enrichment_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée/migre la table player_match_enrichment si nécessaire."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS player_match_enrichment (
+            match_id VARCHAR PRIMARY KEY,
+            performance_score FLOAT,
+            session_id VARCHAR,
+            session_label VARCHAR,
+            is_with_friends BOOLEAN,
+            teammates_signature VARCHAR,
+            known_teammates_count SMALLINT,
+            friends_xuids VARCHAR,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    with contextlib.suppress(Exception):
+        conn.execute(
+            "ALTER TABLE player_match_enrichment ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        )
+    with contextlib.suppress(Exception):
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id)"
+        )
+
+
+def _find_or_attach_shared(  # noqa: C901, PLR0912
+    conn: duckdb.DuckDBPyConnection,
+    shared_db: Path,
+) -> tuple[str | None, bool]:
+    """Trouve un alias shared existant ou attache la DB.
+
+    Retourne (alias, owns_attach). alias=None si impossible.
+    """
+    # Chercher via le path ou le nom
+    try:
+        dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
+        shared_db_normalized = str(shared_db.resolve()).lower().replace("\\", "/")
+        for db_name, db_path_val in dbs:
+            if db_path_val:
+                db_path_normalized = str(db_path_val).lower().replace("\\", "/")
+                if (
+                    shared_db_normalized in db_path_normalized
+                    or db_path_normalized in shared_db_normalized
+                ):
+                    return db_name, False
+            if db_name and "shared" in db_name.lower():
+                try:
+                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                    return db_name, False
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+    # Chercher n'importe quelle DB avec match_participants
+    try:
+        dbs = conn.execute("SELECT database_name FROM duckdb_databases()").fetchall()
+        for (db_name,) in dbs:
+            if db_name not in ("memory", "temp", "main", "stats", "system"):
+                try:
+                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
+                    return db_name, False
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+    # Dernier recours : attacher
+    try:
+        # DuckDB ne supporte pas les placeholders ? pour ATTACH
+        conn.execute(f"ATTACH '{shared_db}' AS shared (READ_ONLY)")
+        return "shared", True
+    except Exception:
+        return None, False
+
+
+def _upsert_session_rows(  # noqa: PLR0912
+    conn: duckdb.DuckDBPyConnection,
+    df_sessions: pl.DataFrame,
+    friends_set: frozenset[str],
+    *,
+    include_recent: bool,
+    threshold: float,
+) -> tuple[int, int, list[str]]:
+    """Upsert les lignes de sessions dans player_match_enrichment.
+
+    Retourne (updated, skipped, errors).
+    """
+    from src.analysis.sessions import _parse_teammates_signature
+
+    has_friends_config = len(friends_set) > 0
+    updated = 0
+    skipped = 0
+    errors: list[str] = []
+
+    for row in df_sessions.iter_rows(named=True):
+        match_id = row["match_id"]
+        session_id = row["session_id"]
+        session_label = row["session_label"]
+        st_ts = row.get("_ts")
+
+        if st_ts is None:
+            continue
+        if not include_recent and st_ts > threshold:
+            skipped += 1
+            continue
+
+        if has_friends_config:
+            sig = row.get("teammates_signature")
+            team_set = _parse_teammates_signature(sig)
+            common = team_set & friends_set
+            iwf: bool | None = bool(common)
+            ktc: int | None = len(common)
+            fx: str | None = ",".join(sorted(common)) if common else None
+        else:
+            iwf = None
+            ktc = None
+            fx = None
+
+        try:
+            conn.execute(
+                "INSERT INTO player_match_enrichment "
+                "(match_id, session_id, session_label, is_with_friends, known_teammates_count, friends_xuids) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT (match_id) DO UPDATE SET "
+                "session_id = EXCLUDED.session_id, "
+                "session_label = EXCLUDED.session_label, "
+                "is_with_friends = COALESCE(EXCLUDED.is_with_friends, player_match_enrichment.is_with_friends), "
+                "known_teammates_count = COALESCE(EXCLUDED.known_teammates_count, player_match_enrichment.known_teammates_count), "
+                "friends_xuids = COALESCE(EXCLUDED.friends_xuids, player_match_enrichment.friends_xuids), "
+                "updated_at = now()",
+                [
+                    match_id,
+                    session_id,
+                    str(session_label) if session_label else None,
+                    iwf,
+                    ktc,
+                    fx,
+                ],
+            )
+            updated += 1
+        except Exception as e:
+            errors.append(f"{match_id}: {e}")
+
+    return updated, skipped, errors
+
+
+def _resolve_shared_db_path(player_db_path: Path) -> Path | None:
+    """Trouve le chemin vers shared_matches.duckdb."""
+    shared_db = player_db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+    if shared_db.exists():
+        return shared_db
+    shared_db = Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
+    return shared_db if shared_db.exists() else None
+
+
+def _load_matches_from_shared(
+    conn: duckdb.DuckDBPyConnection, shared_alias: str, xuid: str
+) -> pl.DataFrame:
+    """Charge les matchs depuis shared + player_match_enrichment."""
+    return conn.execute(
+        f"""
+        SELECT mr.match_id, mr.start_time, pme.teammates_signature, pme.session_id
+        FROM {shared_alias}.match_participants mp
+        JOIN {shared_alias}.match_registry mr ON mr.match_id = mp.match_id
+        LEFT JOIN player_match_enrichment pme ON pme.match_id = mr.match_id
+        WHERE mp.xuid = ?
+        AND mr.start_time IS NOT NULL
+        ORDER BY mr.start_time ASC
+    """,
+        [xuid],
+    ).pl()
+
+
+def _fetch_shared_context(
+    conn: duckdb.DuckDBPyConnection,
+    path: Path,
+    xuid: str | None,
+) -> tuple[str | None, pl.DataFrame, frozenset[str], list[str]]:
+    """Attache shared, résout xuid, charge amis et matchs.
+
+    Retourne (xuid, df_matches, friends, errors).
+    """
+    errors: list[str] = []
+    shared_db = _resolve_shared_db_path(path)
+    if not shared_db:
+        return None, pl.DataFrame(), frozenset(), ["shared_matches.duckdb introuvable"]
+
+    shared_alias, owns_shared_attach = _find_or_attach_shared(conn, shared_db)
+    if not shared_alias:
+        return None, pl.DataFrame(), frozenset(), ["Impossible d'attacher shared"]
+
+    if not xuid:
+        row = conn.execute(
+            f"SELECT DISTINCT xuid FROM {shared_alias}.xuid_aliases WHERE xuid IS NOT NULL LIMIT 1"
+        ).fetchone()
+        xuid = str(row[0]).strip() if row and row[0] else None
+    if not xuid:
+        if owns_shared_attach:
+            with contextlib.suppress(Exception):
+                conn.execute(f"DETACH {shared_alias}")
+        return None, pl.DataFrame(), frozenset(), ["XUID non trouvé"]
+
+    friends = get_friends_xuids_for_backfill(path, xuid, conn=conn)
+    if not friends:
+        friends = get_top_two_teammate_xuids(path, xuid, limit=2, conn=conn)
+
+    df = _load_matches_from_shared(conn, shared_alias, xuid)
+
+    if owns_shared_attach:
+        with contextlib.suppress(Exception):
+            conn.execute(f"DETACH {shared_alias}")
+
+    return xuid, df, frozenset(friends) if friends else frozenset(), errors
+
+
+def backfill_sessions_for_player(  # noqa: PLR0913
     db_path: Path | str,
     xuid: str | None = None,
     *,
@@ -174,28 +391,12 @@ def backfill_sessions_for_player(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     Lit les matchs depuis shared.match_participants + match_registry.
     Écrit les sessions dans player_match_enrichment.
-
-    Args:
-        db_path: Chemin vers la DB joueur.
-        xuid: XUID du joueur (résolu depuis shared.xuid_aliases si None).
-        conn: Connexion existante (obligatoire si appelé depuis backfill_data.py qui a déjà une conn ouverte).
-        gap_minutes, include_recent, force, dry_run: Options de backfill.
-
-    Returns:
-        Dict avec updated, skipped_recent, errors.
     """
-    from src.analysis.sessions import (
-        _parse_teammates_signature,
-        compute_sessions_with_context_polars,
-    )
+    from src.analysis.sessions import compute_sessions_with_context_polars
     from src.config import SESSION_CONFIG
 
     path = Path(db_path)
-    results: dict[str, Any] = {
-        "updated": 0,
-        "skipped_recent": 0,
-        "errors": [],
-    }
+    results: dict[str, Any] = {"updated": 0, "skipped_recent": 0, "errors": []}
     stability_hours = SESSION_CONFIG.session_stability_hours
 
     if not path.exists():
@@ -208,144 +409,20 @@ def backfill_sessions_for_player(  # noqa: C901, PLR0912, PLR0913, PLR0915
         own_conn = True
 
     try:
-        # S'assurer que player_match_enrichment existe avec les bonnes colonnes
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS player_match_enrichment (
-                match_id VARCHAR PRIMARY KEY,
-                performance_score FLOAT,
-                session_id VARCHAR,
-                session_label VARCHAR,
-                is_with_friends BOOLEAN,
-                teammates_signature VARCHAR,
-                known_teammates_count SMALLINT,
-                friends_xuids VARCHAR,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        # Migration : ajouter updated_at si manquante (anciennes tables)
-        with contextlib.suppress(Exception):
-            conn.execute(
-                "ALTER TABLE player_match_enrichment ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-            )
-        with contextlib.suppress(Exception):
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_pme_session ON player_match_enrichment(session_id)"
-            )
+        _ensure_enrichment_table(conn)
 
-        # Attacher shared_matches.duckdb pour lire les matchs
-        shared_db = path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
-        if not shared_db.exists():
-            # Fallback : chercher depuis la racine du projet
-            shared_db = (
-                Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
-            )
-        if not shared_db.exists():
-            results["errors"].append("shared_matches.duckdb introuvable")
+        xuid, df, friends_set, fetch_errors = _fetch_shared_context(conn, path, xuid)
+        results["errors"].extend(fetch_errors)
+        if not xuid or df.is_empty():
             return results
 
-        # Vérifier si shared est déjà attaché (sous n'importe quel alias)
-        # D'abord chercher via le nom de fichier ou via match_participants
-        shared_alias = None
-        owns_shared_attach = False  # True si on a attaché nous-mêmes
-        try:
-            dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
-            # Normaliser le chemin cible pour la comparaison
-            shared_db_normalized = str(shared_db.resolve()).lower().replace("\\", "/")
-            for db_name, db_path_val in dbs:
-                # Chercher par nom de fichier dans le path (normalisation robuste)
-                if db_path_val:
-                    db_path_normalized = str(db_path_val).lower().replace("\\", "/")
-                    # Comparaison par résolution de chemin
-                    if (
-                        shared_db_normalized in db_path_normalized
-                        or db_path_normalized in shared_db_normalized
-                    ):
-                        shared_alias = db_name
-                        break
-                # Ou par nom de base contenant "shared"
-                if db_name and "shared" in db_name.lower():
-                    # Vérifier que cette DB a bien match_participants
-                    try:
-                        conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
-                        shared_alias = db_name
-                        break
-                    except Exception:
-                        continue
-        except Exception:
-            pass
-
-        # Si pas trouvé, chercher n'importe quelle DB avec match_participants
-        if not shared_alias:
-            try:
-                dbs = conn.execute("SELECT database_name FROM duckdb_databases()").fetchall()
-                for (db_name,) in dbs:
-                    if db_name not in ("memory", "temp", "main", "stats", "system"):
-                        try:
-                            conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
-                            shared_alias = db_name
-                            break
-                        except Exception:
-                            continue
-            except Exception:
-                pass
-
-        # En dernier recours, essayer d'attacher
-        if not shared_alias:
-            try:
-                # DuckDB ne supporte pas les placeholders ? pour ATTACH
-                conn.execute(f"ATTACH '{shared_db}' AS shared (READ_ONLY)")
-                shared_alias = "shared"
-                owns_shared_attach = True
-            except Exception as e:
-                results["errors"].append(f"Impossible d'attacher shared: {e}")
-                return results
-        if not xuid:
-            row = conn.execute(
-                f"SELECT DISTINCT xuid FROM {shared_alias}.xuid_aliases WHERE xuid IS NOT NULL LIMIT 1"
-            ).fetchone()
-            xuid = str(row[0]).strip() if row and row[0] else None
-        if not xuid:
-            results["errors"].append("XUID non trouvé")
-            if owns_shared_attach:
-                with contextlib.suppress(Exception):
-                    conn.execute(f"DETACH {shared_alias}")
+        if not force and df.filter(pl.col("session_id").is_null()).is_empty():
             return results
-
-        friends = get_friends_xuids_for_backfill(path, xuid, conn=conn)
-        if not friends:
-            friends = get_top_two_teammate_xuids(path, xuid, limit=2, conn=conn)
-
-        # Lire les matchs depuis shared + player_match_enrichment pour session_id existant
-        df = conn.execute(
-            f"""
-            SELECT mr.match_id, mr.start_time, pme.teammates_signature, pme.session_id
-            FROM {shared_alias}.match_participants mp
-            JOIN {shared_alias}.match_registry mr ON mr.match_id = mp.match_id
-            LEFT JOIN player_match_enrichment pme ON pme.match_id = mr.match_id
-            WHERE mp.xuid = ?
-            AND mr.start_time IS NOT NULL
-            ORDER BY mr.start_time ASC
-        """,
-            [xuid],
-        ).pl()
-
-        if owns_shared_attach:
-            with contextlib.suppress(Exception):
-                conn.execute(f"DETACH {shared_alias}")
-
-        if df.is_empty():
-            return results
-
-        if not force:
-            has_null = df.filter(pl.col("session_id").is_null())
-            if has_null.is_empty():
-                return results
 
         df_sessions = compute_sessions_with_context_polars(
             df.select(["match_id", "start_time", "teammates_signature"]),
             gap_minutes=gap_minutes,
-            friends_xuids=friends if friends else None,
+            friends_xuids=friends_set if friends_set else None,
         )
 
         now = datetime.now(timezone.utc)
@@ -361,64 +438,16 @@ def backfill_sessions_for_player(  # noqa: C901, PLR0912, PLR0913, PLR0915
             results["updated"] = len(to_update)
             return results
 
-        # Préparer le set d'amis pour le calcul is_with_friends
-        friends_set: frozenset[str] = frozenset(friends) if friends else frozenset()
-        has_friends_config = len(friends_set) > 0
-
-        updated = 0
-        skipped = 0
-        for row in df_sessions.iter_rows(named=True):
-            match_id = row["match_id"]
-            session_id = row["session_id"]
-            session_label = row["session_label"]
-            st_ts = row.get("_ts")
-
-            if st_ts is None:
-                continue
-            if not include_recent and st_ts > threshold:
-                skipped += 1
-                continue
-
-            # Calculer les colonnes amis pour ce match
-            if has_friends_config:
-                sig = row.get("teammates_signature")
-                team_set = _parse_teammates_signature(sig)
-                common = team_set & friends_set
-                iwf: bool | None = bool(common)
-                ktc: int | None = len(common)
-                fx: str | None = ",".join(sorted(common)) if common else None
-            else:
-                iwf = None
-                ktc = None
-                fx = None
-
-            try:
-                conn.execute(
-                    "INSERT INTO player_match_enrichment "
-                    "(match_id, session_id, session_label, is_with_friends, known_teammates_count, friends_xuids) "
-                    "VALUES (?, ?, ?, ?, ?, ?) "
-                    "ON CONFLICT (match_id) DO UPDATE SET "
-                    "session_id = EXCLUDED.session_id, "
-                    "session_label = EXCLUDED.session_label, "
-                    "is_with_friends = COALESCE(EXCLUDED.is_with_friends, player_match_enrichment.is_with_friends), "
-                    "known_teammates_count = COALESCE(EXCLUDED.known_teammates_count, player_match_enrichment.known_teammates_count), "
-                    "friends_xuids = COALESCE(EXCLUDED.friends_xuids, player_match_enrichment.friends_xuids), "
-                    "updated_at = now()",
-                    [
-                        match_id,
-                        session_id,
-                        str(session_label) if session_label else None,
-                        iwf,
-                        ktc,
-                        fx,
-                    ],
-                )
-                updated += 1
-            except Exception as e:
-                results["errors"].append(f"{match_id}: {e}")
-
+        updated, skipped, errors = _upsert_session_rows(
+            conn,
+            df_sessions,
+            friends_set,
+            include_recent=include_recent,
+            threshold=threshold,
+        )
         results["updated"] = updated
         results["skipped_recent"] = skipped
+        results["errors"].extend(errors)
         conn.commit()
 
     finally:
