@@ -173,7 +173,7 @@ def build_antagonist_table_html(
     tbody = "<tbody>" + "".join(body_rows) + "</tbody>"
     return (
         f"<div class='os-table-wrap os-sb-wrap'>"
-        f"<table class='os-table os-scoreboard'>"
+        f"<table class='os-table os-scoreboard' style='min-width:0;width:100%'>"
         f"<thead><tr><th class='os-sb-team' colspan='6'>{title}</th></tr></thead>"
         f"{header}{tbody}</table></div>"
     )
