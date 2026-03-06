@@ -1,13 +1,4 @@
-"""Page Carrière — Progression du rang Halo Infinite.
-
-Affiche le rang actuel, une gauge de progression XP, et l'historique
-de progression dans le temps.
-
-Inclut :
-- Estimation pré-sync (XP moyen/match appliqué rétroactivement)
-- Projection vers Héros (rythme actif, hors inactivité)
-- Projection optimiste (défis weekly + boost x2)
-"""
+"""Page Carrière — Progression du rang Halo Infinite."""
 
 from __future__ import annotations
 
@@ -37,24 +28,19 @@ from src.ui.pages.career_data import (
     _load_lusr_snapshot,
     _load_other_players_histories,
     _load_pre_sync_match_dates,
-    _load_top_encountered,
-    _load_top_nemeses,
-    _load_top_victims,
 )
+from src.ui.pages.career_encounters_render import render_encounters_section
 from src.ui.pages.career_logic import (
     _compute_active_xp_per_day,
     _compute_estimated_xp_curve,
     _compute_hero_projections,
     _create_xp_history_chart,
     _get_pg_labels,
-    build_antagonist_table_html,
-    build_encounters_table_html,
 )
 from src.ui.player_assets import ensure_local_image_path
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 
 logger = logging.getLogger(__name__)
-
 
 _PG_ICONS: dict[str, str] = {
     "ranked": "🏆",
@@ -64,17 +50,11 @@ _PG_ICONS: dict[str, str] = {
     "social": "🎮",
     "fun": "🎉",
 }
-# Ordre d'affichage des groupes (du plus compétitif au plus détendu)
 _PG_ORDER = ["ranked", "arena", "btb", "tactical", "social", "fun"]
 
 
 def _render_lusr_section(*, db_path: str, xuid: str) -> None:  # noqa: C901, PLR0912, PLR0915
-    """Rend la section LUSR/CSR sur la page Carrière.
-
-    Affiche :
-    1. Cartes visuelles par groupe (rang, image, delta)
-    2. Graphe d'évolution avec sélecteur de groupe
-    """
+    """Rend la section LUSR/CSR sur la page Carrière."""
     from pathlib import Path
 
     try:
@@ -239,63 +219,13 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:  # noqa: C901, PLR
         )
 
 
-def _render_encounters_section(*, db_path: str, xuid: str) -> None:
-    """Rend la section top rencontres, némésis et souffre-douleurs."""
-    st.subheader(t("career_encounters_header"))
-
-    encountered = _load_top_encountered(xuid, limit=10)
-    if encountered:
-        st.markdown(
-            build_encounters_table_html(encountered, t("career_encounters_header")),
-            unsafe_allow_html=True,
-        )
-    else:
-        st.info(t("career_encounters_no_data"))
-
-    nemeses = _load_top_nemeses(xuid, limit=10)
-    victims = _load_top_victims(xuid, limit=10)
-
-    if nemeses or victims:
-        col_nem, col_vic = st.columns(2)
-        with col_nem:
-            if nemeses:
-                st.markdown(
-                    build_antagonist_table_html(
-                        nemeses, t("career_nemesis_header"), mode="nemesis"
-                    ),
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.info(t("career_antagonists_no_data"))
-        with col_vic:
-            if victims:
-                st.markdown(
-                    build_antagonist_table_html(victims, t("career_victims_header"), mode="victim"),
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.info(t("career_antagonists_no_data"))
-    else:
-        st.info(t("career_antagonists_no_data"))
-
-
-@fragment_if_available
-def render_career_page(  # noqa: C901, PLR0912, PLR0915
+def _render_rank_section(  # noqa: C901, PLR0912, PLR0915
     *,
+    career_data: dict,
     db_path: str,
     xuid: str,
-    db_key: str | None = None,
 ) -> None:
-    """Rend la page Carrière avec rang actuel, gauge et historique."""
-    st.header(t("career_header"))
-
-    # Charger les données
-    career_data = _load_career_data(db_path, xuid)
-
-    if career_data is None:
-        st.info(t("career_no_data"))
-        return
-
+    """Rend les sections rang, gauge, progression Héros et historique XP."""
     rank_number = career_data.get("rank", 0)
     rank_name = career_data.get("rank_name", "")
     rank_tier = career_data.get("rank_tier", "")
@@ -317,16 +247,41 @@ def render_career_page(  # noqa: C901, PLR0912, PLR0915
     if not rank_label_fr:
         rank_label_fr = rank_name or t("career_rank_n", n=rank_number)
 
-    # --- Header avec icone + metriques ---
+    _render_rank_header(
+        career_data,
+        rank_number,
+        rank_label_fr,
+        is_max,
+        current_xp,
+        xp_for_next,
+        xp_total,
+        progress_pct,
+    )
+
+    st.divider()
+    _render_hero_section(xp_total, rank_number, is_max)
+
+    st.divider()
+    _render_xp_history(db_path, xuid, is_max, xp_total)
+
+
+def _render_rank_header(  # noqa: PLR0913
+    career_data: dict,
+    rank_number: int,
+    rank_label_fr: str,
+    is_max: bool,
+    current_xp: int,
+    xp_for_next: int,
+    xp_total: int,
+    progress_pct: float,
+) -> None:
+    """Rend le header avec icône de rang, métriques et gauge."""
     col_icon, col_info, col_gauge = st.columns([1, 2, 2])
 
     with col_icon:
-        # Priorité: adornment (DB) > icône locale du rang (10C.3.4)
         adornment_db_path = career_data.get("adornment_path") or ""
         displayed_icon = False
-
         if adornment_db_path:
-            # L'adornment_path peut être une URL ou un chemin CMSlocal
             local_adornment = ensure_local_image_path(
                 adornment_db_path,
                 prefix="adornment",
@@ -336,9 +291,7 @@ def render_career_page(  # noqa: C901, PLR0912, PLR0915
             if local_adornment:
                 st.image(local_adornment, width=140)
                 displayed_icon = True
-
         if not displayed_icon:
-            # Fallback: icône locale standard
             icon_path = get_rank_icon_path(rank_number) if rank_number else None
             if icon_path and icon_path.exists():
                 st.image(str(icon_path), width=120)
@@ -347,8 +300,6 @@ def render_career_page(  # noqa: C901, PLR0912, PLR0915
 
     with col_info:
         st.subheader(rank_label_fr)
-
-        # Métriques
         m1, m2 = st.columns(2)
         with m1:
             st.metric(t("career_metric_rank"), f"{rank_number} / 272")
@@ -361,7 +312,6 @@ def render_career_page(  # noqa: C901, PLR0912, PLR0915
                 st.metric(t("career_metric_next_rank_xp"), f"{xp_for_next:,}")
 
     with col_gauge, safe_chart_render("career_gauge_error"):
-        # Gauge de progression
         gauge_fig = create_career_progress_gauge(
             current_xp=current_xp,
             xp_for_next_rank=xp_for_next,
@@ -371,21 +321,23 @@ def render_career_page(  # noqa: C901, PLR0912, PLR0915
         )
         if gauge_fig is not None:
             st.plotly_chart(
-                gauge_fig, key="career_gauge", width="stretch", config=PLOTLY_STATIC_CONFIG
+                gauge_fig,
+                key="career_gauge",
+                width="stretch",
+                config=PLOTLY_STATIC_CONFIG,
             )
         else:
             st.info(t("career_gauge_generate_error"))
 
-    # --- Progression vers Héros ---
-    st.divider()
-    st.subheader(t("career_progression_to_hero"))
 
+def _render_hero_section(xp_total: int, rank_number: int, is_max: bool) -> None:
+    """Rend la section progression vers Héros."""
+    st.subheader(t("career_progression_to_hero"))
     hero_data = compute_hero_progress(xp_total=xp_total, rank=rank_number, is_max_rank=is_max)
     hero_pct = hero_data["percentage"]
     xp_remaining = hero_data["xp_remaining"]
 
     col_hero_metrics, col_hero_gauge = st.columns([3, 2])
-
     with col_hero_metrics:
         m1, m2, m3, m4 = st.columns(4)
         with m1:
@@ -411,84 +363,103 @@ def render_career_page(  # noqa: C901, PLR0912, PLR0915
             config=PLOTLY_STATIC_CONFIG,
         )
 
-    # --- Historique de progression ---
-    st.divider()
 
+def _render_xp_history(  # noqa: C901, PLR0912
+    db_path: str,
+    xuid: str,
+    is_max: bool,
+    xp_total: int,
+) -> None:
+    """Rend la section historique de progression XP."""
     history = _load_career_history(db_path, xuid)
-
-    if history:
-        # ── Estimation pré-sync ──
-        estimated_curve: list[tuple[datetime, int]] | None = None
-        try:
-            first_sync_at = history[0]["recorded_at"]
-            if first_sync_at and len(history) >= 2:
-                pre_sync_dates = _load_pre_sync_match_dates(db_path, xuid, first_sync_at)
-                if pre_sync_dates:
-                    estimated_curve = _compute_estimated_xp_curve(history, pre_sync_dates)
-        except Exception as e:
-            logger.warning("Estimation pré-sync échouée: %s", e)
-
-        # ── Projections vers Héros ──
-        hero_proj: list[tuple[datetime, int]] | None = None
-        optimistic_proj: list[tuple[datetime, int]] | None = None
-        if not is_max:
-            try:
-                xp_per_day = _compute_active_xp_per_day(history)
-                if xp_per_day > 0:
-                    last_date = history[-1]["recorded_at"]
-                    hero_proj, optimistic_proj = _compute_hero_projections(
-                        xp_total, last_date, xp_per_day
-                    )
-            except Exception as e:
-                logger.warning("Projection Héros échouée: %s", e)
-
-        try:
-            other_players_data = _load_other_players_histories(xuid)
-        except Exception as e:
-            logger.warning("Chargement autres joueurs échoué: %s", e)
-            other_players_data = []
-
-        with safe_chart_render("career_history_error"):
-            history_fig = _create_xp_history_chart(
-                history,
-                estimated_curve=estimated_curve,
-                hero_projection=hero_proj,
-                optimistic_projection=optimistic_proj,
-                is_max_rank=is_max,
-                other_players=other_players_data or None,
-            )
-            if history_fig:
-                st.plotly_chart(
-                    history_fig,
-                    key="career_xp_history",
-                    width="stretch",
-                    config=PLOTLY_CLEAN_CONFIG,
-                )
-            else:
-                st.info(t("career_rank_history_no_data"))
-
-        # Tableau récapitulatif des derniers snapshots
-        with st.expander(t("career_rank_history_title"), expanded=False):
-            # Afficher les 10 derniers snapshots (du plus récent au plus ancien)
-            recent = list(reversed(history[-10:]))
-            for snap in recent:
-                snap_label = format_career_rank_label_fr(
-                    tier=snap.get("rank_tier", ""),
-                    title=snap.get("rank_name", ""),
-                    grade=None,
-                )
-                date_str = str(snap.get("recorded_at", ""))[:19]
-                xp_t = snap.get("xp_total", 0) or 0
-                st.text(
-                    f"{date_str}  |  {t('career_rank_n', n=snap['rank'])}: {snap_label}  |  XP: {xp_t:,}"
-                )
-    else:
+    if not history:
         st.info(t("career_computing"))
+        return
 
-    # --- LUSR / CSR — LevelUp Skill Rank ---
+    estimated_curve: list[tuple[datetime, int]] | None = None
+    try:
+        first_sync_at = history[0]["recorded_at"]
+        if first_sync_at and len(history) >= 2:
+            pre_sync_dates = _load_pre_sync_match_dates(db_path, xuid, first_sync_at)
+            if pre_sync_dates:
+                estimated_curve = _compute_estimated_xp_curve(history, pre_sync_dates)
+    except Exception as e:
+        logger.warning("Estimation pré-sync échouée: %s", e)
+
+    hero_proj: list[tuple[datetime, int]] | None = None
+    optimistic_proj: list[tuple[datetime, int]] | None = None
+    if not is_max:
+        try:
+            xp_per_day = _compute_active_xp_per_day(history)
+            if xp_per_day > 0:
+                last_date = history[-1]["recorded_at"]
+                hero_proj, optimistic_proj = _compute_hero_projections(
+                    xp_total,
+                    last_date,
+                    xp_per_day,
+                )
+        except Exception as e:
+            logger.warning("Projection Héros échouée: %s", e)
+
+    try:
+        other_players_data = _load_other_players_histories(xuid)
+    except Exception as e:
+        logger.warning("Chargement autres joueurs échoué: %s", e)
+        other_players_data = []
+
+    with safe_chart_render("career_history_error"):
+        history_fig = _create_xp_history_chart(
+            history,
+            estimated_curve=estimated_curve,
+            hero_projection=hero_proj,
+            optimistic_projection=optimistic_proj,
+            is_max_rank=is_max,
+            other_players=other_players_data or None,
+        )
+        if history_fig:
+            st.plotly_chart(
+                history_fig,
+                key="career_xp_history",
+                width="stretch",
+                config=PLOTLY_CLEAN_CONFIG,
+            )
+        else:
+            st.info(t("career_rank_history_no_data"))
+
+    # Tableau récapitulatif des derniers snapshots
+    with st.expander(t("career_rank_history_title"), expanded=False):
+        recent = list(reversed(history[-10:]))
+        for snap in recent:
+            snap_label = format_career_rank_label_fr(
+                tier=snap.get("rank_tier", ""),
+                title=snap.get("rank_name", ""),
+                grade=None,
+            )
+            date_str = str(snap.get("recorded_at", ""))[:19]
+            xp_t = snap.get("xp_total", 0) or 0
+            st.text(
+                f"{date_str}  |  {t('career_rank_n', n=snap['rank'])}: {snap_label}  |  XP: {xp_t:,}"
+            )
+
+
+@fragment_if_available
+def render_career_page(  # noqa: C901, PLR0912, PLR0915
+    *,
+    db_path: str,
+    xuid: str,
+    db_key: str | None = None,
+) -> None:
+    """Rend la page Carrière avec rang actuel, gauge et historique."""
+    st.header(t("career_header"))
+    career_data = _load_career_data(db_path, xuid)
+
+    if career_data is not None:
+        _render_rank_section(career_data=career_data, db_path=db_path, xuid=xuid)
+    else:
+        st.info(t("career_no_data"))
+
     st.divider()
     _render_lusr_section(db_path=db_path, xuid=xuid)
 
-    # --- Rencontres & Antagonistes ---
     st.divider()
-    _render_encounters_section(db_path=db_path, xuid=xuid)
+    render_encounters_section(db_path=db_path, xuid=xuid)

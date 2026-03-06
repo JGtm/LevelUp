@@ -8,8 +8,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Career",
     },
     "career_no_data": {
-        "fr": "Aucune donnée de carrière disponible. Synchronisez vos données pour voir votre progression de rang.",
-        "en": "No career data available. Sync your data to see your rank progression.",
+        "fr": "Progression de rang non disponible. Synchronisez avec `--career` pour afficher votre rang et historique XP.",
+        "en": "Rank progression not available. Sync with `--career` to display your rank and XP history.",
     },
     "career_rank_max": {
         "fr": "Rang maximum",
