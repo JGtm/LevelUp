@@ -9,6 +9,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+import time
 from pathlib import Path
 
 from src.ui._sync_utils import _shared_path, get_player_duckdb_path
@@ -167,6 +168,12 @@ def _activate_sync_mode() -> None:
             )
     except Exception:
         pass
+
+    # Forcer le GC pour libérer les file handles DuckDB (Windows)
+    import gc
+
+    gc.collect()
+    time.sleep(0.3)
 
 
 def _deactivate_sync_mode() -> None:
