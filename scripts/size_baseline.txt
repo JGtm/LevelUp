@@ -22,7 +22,7 @@ FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
 FUNC:src/app/_filters_apply.py:22:apply_filters:191L
 FUNC:src/app/_filters_cascade.py:121:_render_cascade_filters:283L
 FUNC:src/app/_filters_session.py:134:_render_session_filter:278L
-FUNC:src/app/filters.py:341:render_session_filters:94L
+FUNC:src/app/filters.py:206:render_session_filters:94L
 FUNC:src/app/filters_render.py:147:render_filters_sidebar:303L
 FUNC:src/app/kpis_render.py:44:render_kpis_section:83L
 FUNC:src/app/main_helpers.py:250:render_profile_hero:140L
@@ -30,7 +30,7 @@ FUNC:src/app/media_background.py:17:background_media_indexing:160L
 FUNC:src/app/media_background.py:48:worker:126L
 FUNC:src/app/profile.py:187:load_profile_assets:101L
 FUNC:src/app/sidebar.py:174:render_sync_button:120L
-FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:106L
+FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:98L
 FUNC:src/data/infrastructure/database/duckdb_engine.py:139:load_matches:82L
 FUNC:src/data/media_indexer.py:234:scan_and_index:91L
 FUNC:src/data/media_indexer.py:90:ensure_schema:138L
@@ -45,7 +45,7 @@ FUNC:src/data/services/teammates_service.py:228:enrich_series_with_perfect_kills
 FUNC:src/data/services/teammates_service.py:338:compute_participation_profiles:99L
 FUNC:src/data/services/teammates_service.py:440:load_impact_data:155L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
-FUNC:src/data/sessions_backfill.py:19:get_friends_xuids_for_backfill:88L
+FUNC:src/data/sessions_backfill.py:22:get_friends_xuids_for_backfill:82L
 FUNC:src/data/sync/_match_processing.py:195:_process_known_match:224L
 FUNC:src/data/sync/_match_processing.py:421:_process_new_match:203L
 FUNC:src/data/sync/_match_processing.py:42:_process_matches:96L
@@ -77,8 +77,8 @@ FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
 FUNC:src/ui/components/media_thumbnail.py:82:build_thumbnail_html:82L
 FUNC:src/ui/components/radar_chart.py:188:create_performance_radar:92L
 FUNC:src/ui/components/radar_chart.py:98:create_stats_per_minute_radar:87L
-FUNC:src/ui/filter_state.py:262:save_filter_preferences:138L
-FUNC:src/ui/filter_state.py:431:apply_filter_preferences:142L
+FUNC:src/ui/filter_state.py:235:apply_filter_preferences:142L
+FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
 FUNC:src/ui/multiplayer.py:121:list_duckdb_v4_players:126L
 FUNC:src/ui/pages/_session_compare_history.py:20:_build_history_dataframe:139L
 FUNC:src/ui/pages/_teammates_trio.py:30:render_trio_view:116L
@@ -161,11 +161,10 @@ FUNC:src/visualization/timeseries_combat.py:352:plot_shots_accuracy:92L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:139L
 MODULE:src/analysis/_performance_relative.py:525L
-MODULE:src/analysis/citations/engine.py:521L
+MODULE:src/analysis/citations/engine.py:516L
 MODULE:src/analysis/cumulative.py:525L
 MODULE:src/analysis/friends_impact.py:547L
 MODULE:src/analysis/skill_rating_calibration.py:569L
-MODULE:src/app/filters.py:594L
 MODULE:src/data/media_indexer.py:522L
 MODULE:src/data/query/trends.py:537L
 MODULE:src/data/services/teammates_service.py:596L
@@ -173,11 +172,9 @@ MODULE:src/data/sync/_match_processing.py:699L
 MODULE:src/data/sync/models.py:511L
 MODULE:src/data/sync/transformers/_helpers.py:667L
 MODULE:src/data/sync/transformers/_match.py:531L
-MODULE:src/ui/filter_state.py:589L
 MODULE:src/ui/pages/career_logic.py:505L
 MODULE:src/ui/pages/match_view.py:617L
 MODULE:src/ui/pages/media_library_data.py:507L
-MODULE:src/ui/pages/timeseries.py:606L
 MODULE:src/ui/pages/win_loss.py:539L
 MODULE:src/ui/profile_api.py:558L
 MODULE:src/visualization/objective_charts.py:583L
