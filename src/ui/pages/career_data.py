@@ -98,16 +98,7 @@ def _load_pre_sync_match_dates(
     xuid: str,
     first_sync_at: datetime,
 ) -> list[datetime]:
-    """Charge les dates de matchs du joueur antérieurs au premier sync.
-
-    Args:
-        db_path: Chemin vers stats.duckdb (player DB).
-        xuid: XUID du joueur.
-        first_sync_at: Date du premier snapshot career_progression.
-
-    Returns:
-        Liste de ``start_time`` ordonnées chronologiquement.
-    """
+    """Charge les dates de matchs du joueur antérieurs au premier sync."""
     logger.debug("Chargement matchs pré-sync pour xuid=%s avant %s", xuid, first_sync_at)
     try:
         from src.utils.db import duckdb_read_only
@@ -161,15 +152,7 @@ def _load_post_sync_match_count(
 
 
 def _load_other_players_histories(current_xuid: str) -> list[dict]:
-    """Charge l'historique XP de tous les autres profils disponibles.
-
-    Args:
-        current_xuid: XUID du joueur actuellement affiché (exclu).
-
-    Returns:
-        Liste de dicts ``{"gamertag": str, "history": list[dict]}``
-        pour chaque autre profil ayant des données career_progression.
-    """
+    """Charge l'historique XP de tous les autres profils disponibles."""
     logger.debug("Chargement historiques carrière des autres joueurs (exclu xuid=%s)", current_xuid)
     try:
         from src.utils.paths import get_player_db_path
@@ -200,26 +183,12 @@ def _load_other_players_histories(current_xuid: str) -> list[dict]:
 
 
 def _load_lusr_snapshot(db_path: str) -> list[dict]:
-    """Charge le dernier rating LUSR/CSR par playlist_group depuis match_skill_rank.
-
-    Le ``rating_delta`` est calculé dynamiquement via une window function ``LAG``
-    sur les ``rating_value`` stockés, garantissant la cohérence avec les valeurs
-    affichées (évite le delta stocké périmé si le backfill a utilisé un seed
-    différent entre deux exécutions).
-
-    Returns:
-        Liste de dicts : rating_type, rating_value, tier_label, rating_delta, playlist_group.
-        Triée par playlist_group alphabétique.
-    """
+    """Charge le dernier rating LUSR/CSR par playlist_group depuis match_skill_rank."""
     logger.debug("Chargement snapshot LUSR depuis %s", db_path)
     try:
         from src.utils.db import duckdb_read_only
 
         with duckdb_read_only(db_path) as conn:
-            # Dernier rating par playlist_group = ligne avec start_time la plus récente.
-            # Le delta est recalculé dynamiquement via LAG pour garantir la cohérence
-            # avec les rating_value stockés (évite le delta stocké potentiellement
-            # périmé en cas de recalcul avec seed différent).
             rows = conn.execute(
                 """
                 WITH history AS (
@@ -267,16 +236,7 @@ def _load_lusr_snapshot(db_path: str) -> list[dict]:
 
 
 def _load_lusr_history(db_path: str, playlist_group: str | None = None) -> list[dict]:
-    """Charge l'historique LUSR/CSR pour le graphe d'évolution.
-
-    Args:
-        db_path: Chemin vers stats.duckdb.
-        playlist_group: Filtrer par groupe (None = tous).
-
-    Returns:
-        Liste de dicts avec : match_id, rating_value, rating_deviation,
-        rating_type, playlist_group, start_time, tier_label.
-    """
+    """Charge l'historique LUSR/CSR pour le graphe d'évolution."""
     logger.debug("Chargement historique LUSR depuis %s (groupe=%s)", db_path, playlist_group)
     try:
         from src.utils.db import duckdb_read_only
@@ -316,13 +276,66 @@ def _load_lusr_history(db_path: str, playlist_group: str | None = None) -> list[
 
 # ── Chargement top encounters / antagonistes ────────────────────────────────
 
+_TOP_ENCOUNTERED_SQL = """
+WITH my_matches AS (
+    SELECT match_id, team_id, outcome
+    FROM match_participants
+    WHERE xuid = ?
+),
+encounters AS (
+    SELECT
+        p.xuid,
+        MAX(COALESCE(a.gamertag, p.gamertag)) AS gamertag,
+        COUNT(*)                                AS total_encounters,
+        SUM(CASE WHEN p.team_id = m.team_id   THEN 1 ELSE 0 END) AS ally_count,
+        SUM(CASE WHEN p.team_id != m.team_id  THEN 1 ELSE 0 END) AS enemy_count,
+        AVG(CASE
+            WHEN p.team_id = m.team_id AND m.outcome = 2         THEN 1.0
+            WHEN p.team_id = m.team_id AND m.outcome IN (3, 4)   THEN 0.0
+            ELSE NULL
+        END) AS winrate_as_ally,
+        AVG(CASE
+            WHEN p.team_id != m.team_id AND m.outcome = 2        THEN 1.0
+            WHEN p.team_id != m.team_id AND m.outcome IN (3, 4)  THEN 0.0
+            ELSE NULL
+        END) AS winrate_vs_enemy,
+        MAX(r.start_time) AS last_seen
+    FROM match_participants p
+    INNER JOIN my_matches m  ON m.match_id = p.match_id
+    LEFT JOIN  xuid_aliases a ON a.xuid = p.xuid
+    LEFT JOIN  match_registry r ON r.match_id = p.match_id
+    WHERE p.xuid != ?
+    GROUP BY p.xuid
+),
+kvp_agg AS (
+    SELECT
+        CASE WHEN k.killer_xuid = ? THEN k.victim_xuid
+             ELSE k.killer_xuid END AS opp,
+        SUM(CASE WHEN k.killer_xuid = ? THEN k.kill_count ELSE 0 END) AS kills_dealt,
+        SUM(CASE WHEN k.victim_xuid = ? THEN k.kill_count ELSE 0 END) AS deaths_suffered
+    FROM killer_victim_pairs k
+    WHERE k.killer_xuid = ? OR k.victim_xuid = ?
+    GROUP BY 1
+)
+SELECT
+    e.xuid, e.gamertag, e.total_encounters, e.ally_count, e.enemy_count,
+    e.winrate_as_ally, e.winrate_vs_enemy,
+    COALESCE(kvp.kills_dealt, 0)     AS kills_dealt,
+    COALESCE(kvp.deaths_suffered, 0) AS deaths_suffered,
+    e.last_seen
+FROM encounters e
+LEFT JOIN kvp_agg kvp ON kvp.opp = e.xuid
+ORDER BY e.total_encounters DESC
+LIMIT ?
+"""
 
-def _load_top_encountered(xuid: str, limit: int = 10) -> list[dict]:
-    """Charge les joueurs les plus croisés depuis shared_matches.duckdb.
 
-    Returns:
-        Liste de dicts triée par nombre de rencontres décroissant.
-    """
+def _load_top_encountered(
+    xuid: str,
+    limit: int = 10,
+    exclude_xuids: set[str] | None = None,
+) -> list[dict]:
+    """Charge les joueurs les plus croisés depuis shared_matches.duckdb."""
     try:
         from src.utils.db import duckdb_read_only
 
@@ -330,50 +343,68 @@ def _load_top_encountered(xuid: str, limit: int = 10) -> list[dict]:
         if not shared_path.exists():
             return []
 
+        extra = len(exclude_xuids) if exclude_xuids else 0
+        sql_limit = limit + extra
+
         with duckdb_read_only(shared_path) as conn:
             rows = conn.execute(
-                """
-                SELECT p.xuid,
-                       COALESCE(a.gamertag, p.gamertag) AS gamertag,
-                       COUNT(*) AS total_encounters
-                FROM match_participants p
-                INNER JOIN match_participants me
-                    ON me.match_id = p.match_id AND me.xuid = ?
-                LEFT JOIN xuid_aliases a ON a.xuid = p.xuid
-                WHERE p.xuid != ?
-                GROUP BY p.xuid, COALESCE(a.gamertag, p.gamertag)
-                ORDER BY total_encounters DESC
-                LIMIT ?
-                """,
-                [xuid, xuid, limit],
+                _TOP_ENCOUNTERED_SQL,
+                [xuid, xuid, xuid, xuid, xuid, xuid, xuid, sql_limit],
             ).fetchall()
 
-        return [{"xuid": r[0], "gamertag": r[1], "total_encounters": r[2]} for r in rows]
+        cols = (
+            "xuid",
+            "gamertag",
+            "total_encounters",
+            "ally_count",
+            "enemy_count",
+            "winrate_as_ally",
+            "winrate_vs_enemy",
+            "kills_dealt",
+            "deaths_suffered",
+            "last_seen",
+        )
+        results = [dict(zip(cols, r, strict=False)) for r in rows]
+        if exclude_xuids:
+            lower_excl = {e.casefold() for e in exclude_xuids}
+            results = [
+                r
+                for r in results
+                if r["xuid"] not in exclude_xuids
+                and (r.get("gamertag") or "").casefold() not in lower_excl
+            ]
+        return results[:limit]
     except Exception as e:
         logger.debug("Impossible de charger top_encountered: %s", e)
         return []
 
 
-def _load_top_nemeses(xuid: str, limit: int = 10) -> list[dict]:
-    """Charge les adversaires qui nous tuent le plus (némésis).
+def _load_top_nemeses(
+    xuid: str,
+    limit: int = 10,
+    exclude_xuids: set[str] | None = None,
+) -> list[dict]:
+    """Charge les adversaires qui nous tuent le plus (némésis)."""
+    return _load_antagonists_from_shared(
+        xuid,
+        mode="nemesis",
+        limit=limit,
+        exclude_xuids=exclude_xuids,
+    )
 
-    Requête directe sur killer_victim_pairs dans shared_matches.duckdb.
 
-    Returns:
-        Liste de dicts triée par times_killed_by décroissant.
-    """
-    return _load_antagonists_from_shared(xuid, mode="nemesis", limit=limit)
-
-
-def _load_top_victims(xuid: str, limit: int = 10) -> list[dict]:
-    """Charge les adversaires qu'on tue le plus (souffre-douleurs).
-
-    Requête directe sur killer_victim_pairs dans shared_matches.duckdb.
-
-    Returns:
-        Liste de dicts triée par times_killed décroissant.
-    """
-    return _load_antagonists_from_shared(xuid, mode="victim", limit=limit)
+def _load_top_victims(
+    xuid: str,
+    limit: int = 10,
+    exclude_xuids: set[str] | None = None,
+) -> list[dict]:
+    """Charge les adversaires qu'on tue le plus (souffre-douleurs)."""
+    return _load_antagonists_from_shared(
+        xuid,
+        mode="victim",
+        limit=limit,
+        exclude_xuids=exclude_xuids,
+    )
 
 
 _ANTAGONISTS_SQL = """
@@ -421,6 +452,7 @@ def _load_antagonists_from_shared(
     *,
     mode: str,
     limit: int = 10,
+    exclude_xuids: set[str] | None = None,
 ) -> list[dict]:
     """Charge némésis ou souffre-douleurs depuis shared killer_victim_pairs."""
     try:
@@ -430,11 +462,15 @@ def _load_antagonists_from_shared(
         if not shared_path.exists():
             return []
 
+        extra = len(exclude_xuids) if exclude_xuids else 0
         order_col = "times_killed_by" if mode == "nemesis" else "times_killed"
         sql = _ANTAGONISTS_SQL.format(order_col=order_col)
 
         with duckdb_read_only(shared_path) as conn:
-            rows = conn.execute(sql, [xuid, xuid, xuid, xuid, xuid, xuid, limit]).fetchall()
+            rows = conn.execute(
+                sql,
+                [xuid, xuid, xuid, xuid, xuid, xuid, limit + extra],
+            ).fetchall()
 
         cols = (
             "opponent_xuid",
@@ -444,7 +480,16 @@ def _load_antagonists_from_shared(
             "matches_against",
             "net_kills",
         )
-        return [dict(zip(cols, r, strict=False)) for r in rows]
+        results = [dict(zip(cols, r, strict=False)) for r in rows]
+        if exclude_xuids:
+            lower_excl = {e.casefold() for e in exclude_xuids}
+            results = [
+                r
+                for r in results
+                if r["opponent_xuid"] not in exclude_xuids
+                and (r.get("opponent_gamertag") or "").casefold() not in lower_excl
+            ]
+        return results[:limit]
     except Exception as e:
         logger.debug("Impossible de charger antagonistes depuis shared: %s", e)
         return []
