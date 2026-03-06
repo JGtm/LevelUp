@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from src.config import OUTCOME_CODES
 from src.data.query._sql_fragments import WIN_RATE_EXPR
 from src.data.query.engine import QueryEngine
 
@@ -408,7 +409,9 @@ class AnalyticsQueries:
         return {
             "max_win_streak": r["max_win_streak"] or 0,
             "max_loss_streak": r["max_loss_streak"] or 0,
-            "current_streak": current_streak if current_type == 2 else -current_streak,
+            "current_streak": current_streak
+            if current_type == OUTCOME_CODES.WIN
+            else -current_streak,
         }
 
     def get_best_matches(

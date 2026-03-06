@@ -18,6 +18,79 @@ from src.ui.i18n import t
 from src.ui.sections import render_source_section
 
 
+def _build_settings_from_ui(  # noqa: PLR0913
+    *,
+    settings: AppSettings,
+    media_captures_base_dir: str,
+    media_tolerance_minutes: int,
+    refresh_clears_caches: bool,
+    max_matches: int,
+    rps: int,
+    backfill_enabled: bool,
+    backfill_medals: bool,
+    backfill_events: bool,
+    backfill_skill: bool,
+    backfill_personal_scores: bool,
+    backfill_performance_scores: bool,
+    backfill_aliases: bool,
+    backfill_lusr: bool,
+) -> AppSettings:
+    """Construit un AppSettings à partir des valeurs UI actuelles."""
+
+    # Conserver les valeurs non exposées dans l'UI
+    def _s(attr: str, default: str = "") -> str:
+        return str(getattr(settings, attr, default) or default).strip()
+
+    def _b(attr: str, default: bool = False) -> bool:
+        return bool(getattr(settings, attr, default))
+
+    def _i(attr: str, default: int = 0) -> int:
+        return int(getattr(settings, attr, default) or 0)
+
+    return AppSettings(
+        media_enabled=True,
+        media_screens_dir="",
+        media_videos_dir="",
+        media_captures_base_dir=str(media_captures_base_dir or "").strip(),
+        media_tolerance_minutes=int(media_tolerance_minutes),
+        refresh_clears_caches=bool(refresh_clears_caches),
+        prefer_spnkr_db_if_available=True,
+        spnkr_refresh_on_start=False,
+        spnkr_refresh_on_manual_refresh=True,
+        spnkr_refresh_match_type="matchmaking",
+        spnkr_refresh_max_matches=int(max_matches),
+        spnkr_refresh_rps=int(rps),
+        spnkr_refresh_with_highlight_events=True,
+        spnkr_refresh_with_backfill=bool(backfill_enabled),
+        spnkr_refresh_backfill_medals=bool(backfill_medals),
+        spnkr_refresh_backfill_events=bool(backfill_events),
+        spnkr_refresh_backfill_skill=bool(backfill_skill),
+        spnkr_refresh_backfill_personal_scores=bool(backfill_personal_scores),
+        spnkr_refresh_backfill_performance_scores=bool(backfill_performance_scores),
+        spnkr_refresh_backfill_aliases=bool(backfill_aliases),
+        spnkr_refresh_backfill_lusr=bool(backfill_lusr),
+        aliases_path=_s("aliases_path"),
+        profiles_path=_s("profiles_path"),
+        profile_assets_download_enabled=_b("profile_assets_download_enabled"),
+        profile_assets_auto_refresh_hours=_i("profile_assets_auto_refresh_hours", 24),
+        profile_api_enabled=_b("profile_api_enabled"),
+        profile_api_auto_refresh_hours=_i("profile_api_auto_refresh_hours", 6),
+        profile_banner=_s("profile_banner"),
+        profile_emblem=_s("profile_emblem"),
+        profile_backdrop=_s("profile_backdrop"),
+        profile_nameplate=_s("profile_nameplate"),
+        profile_service_tag=_s("profile_service_tag"),
+        profile_id_badge_text_color=_s("profile_id_badge_text_color"),
+        profile_rank_label=_s("profile_rank_label"),
+        profile_rank_subtitle=_s("profile_rank_subtitle"),
+        repository_mode="duckdb",
+        enable_duckdb_analytics=True,
+        lang=_s("lang", "fr"),
+        discord_lang=_s("discord_lang", "fr"),
+        cli_lang=_s("cli_lang", "fr"),
+    )
+
+
 def render_settings_page(  # noqa: PLR0915
     settings: AppSettings,
     *,
@@ -176,83 +249,24 @@ def render_settings_page(  # noqa: PLR0915
         )
 
     # Architecture v5 : DuckDB avec shared_matches (valeurs fixes, plus d'UI dédiée)
-    repository_mode_val = "duckdb"
-    enable_duckdb_val = True
-
-    # Section "Fichiers (avancé)" masquée - valeurs conservées depuis settings
-    aliases_path = str(getattr(settings, "aliases_path", "") or "").strip()
-    profiles_path = str(getattr(settings, "profiles_path", "") or "").strip()
-
-    # Profil joueur (bannière / rang)
-    # Par défaut, on masque ces réglages et on garde les valeurs actuelles.
-    profile_assets_download_enabled = bool(
-        getattr(settings, "profile_assets_download_enabled", False)
-    )
-    profile_assets_auto_refresh_hours = int(
-        getattr(settings, "profile_assets_auto_refresh_hours", 24) or 0
-    )
-    profile_api_enabled = bool(getattr(settings, "profile_api_enabled", False))
-    profile_api_auto_refresh_hours = int(
-        getattr(settings, "profile_api_auto_refresh_hours", 6) or 0
-    )
-    profile_banner = str(getattr(settings, "profile_banner", "") or "").strip()
-    profile_emblem = str(getattr(settings, "profile_emblem", "") or "").strip()
-    profile_backdrop = str(getattr(settings, "profile_backdrop", "") or "").strip()
-    profile_nameplate = str(getattr(settings, "profile_nameplate", "") or "").strip()
-    profile_service_tag = str(getattr(settings, "profile_service_tag", "") or "").strip()
-    profile_id_badge_text_color = str(
-        getattr(settings, "profile_id_badge_text_color", "") or ""
-    ).strip()
-    profile_rank_label = str(getattr(settings, "profile_rank_label", "") or "").strip()
-    profile_rank_subtitle = str(getattr(settings, "profile_rank_subtitle", "") or "").strip()
-
-    # Section "Profil joueur (avancé)" masquée - valeurs conservées depuis settings
 
     cols = st.columns(2)
     if cols[0].button(t("btn_save"), width="stretch"):
-        new_settings = AppSettings(
-            media_enabled=True,  # Toujours activé en v5
-            media_screens_dir="",  # Legacy - non utilisé en v5
-            media_videos_dir="",  # Legacy - non utilisé en v5
-            media_captures_base_dir=str(media_captures_base_dir or "").strip(),
+        new_settings = _build_settings_from_ui(
+            settings=settings,
+            media_captures_base_dir=str(media_captures_base_dir or ""),
             media_tolerance_minutes=int(media_tolerance_minutes),
             refresh_clears_caches=bool(refresh_clears_caches),
-            # SPNKr - valeurs fixes pour v5 (tout est récupéré automatiquement)
-            prefer_spnkr_db_if_available=True,
-            spnkr_refresh_on_start=False,  # Désactivé par défaut (sync manuelle via bouton)
-            spnkr_refresh_on_manual_refresh=True,
-            spnkr_refresh_match_type="matchmaking",  # Toujours matchmaking
-            spnkr_refresh_max_matches=int(max_matches),
-            spnkr_refresh_rps=int(rps),
-            spnkr_refresh_with_highlight_events=True,  # Toujours activé
-            spnkr_refresh_with_backfill=bool(backfill_enabled),
-            spnkr_refresh_backfill_medals=bool(backfill_medals),
-            spnkr_refresh_backfill_events=bool(backfill_events),
-            spnkr_refresh_backfill_skill=bool(backfill_skill),
-            spnkr_refresh_backfill_personal_scores=bool(backfill_personal_scores),
-            spnkr_refresh_backfill_performance_scores=bool(backfill_performance_scores),
-            spnkr_refresh_backfill_aliases=bool(backfill_aliases),
-            spnkr_refresh_backfill_lusr=bool(backfill_lusr),
-            aliases_path=str(aliases_path or "").strip(),
-            profiles_path=str(profiles_path or "").strip(),
-            profile_assets_download_enabled=bool(profile_assets_download_enabled),
-            profile_assets_auto_refresh_hours=int(profile_assets_auto_refresh_hours),
-            profile_api_enabled=bool(profile_api_enabled),
-            profile_api_auto_refresh_hours=int(profile_api_auto_refresh_hours),
-            profile_banner=str(profile_banner or "").strip(),
-            profile_emblem=str(profile_emblem or "").strip(),
-            profile_backdrop=str(profile_backdrop or "").strip(),
-            profile_nameplate=str(profile_nameplate or "").strip(),
-            profile_service_tag=str(profile_service_tag or "").strip(),
-            profile_id_badge_text_color=str(profile_id_badge_text_color or "").strip(),
-            profile_rank_label=str(profile_rank_label or "").strip(),
-            profile_rank_subtitle=str(profile_rank_subtitle or "").strip(),
-            repository_mode=str(repository_mode_val),
-            enable_duckdb_analytics=bool(enable_duckdb_val),
-            # Internationalisation (préserver les valeurs actuelles)
-            lang=str(getattr(settings, "lang", "fr") or "fr"),
-            discord_lang=str(getattr(settings, "discord_lang", "fr") or "fr"),
-            cli_lang=str(getattr(settings, "cli_lang", "fr") or "fr"),
+            max_matches=int(max_matches),
+            rps=int(rps),
+            backfill_enabled=bool(backfill_enabled),
+            backfill_medals=bool(backfill_medals),
+            backfill_events=bool(backfill_events),
+            backfill_skill=bool(backfill_skill),
+            backfill_personal_scores=bool(backfill_personal_scores),
+            backfill_performance_scores=bool(backfill_performance_scores),
+            backfill_aliases=bool(backfill_aliases),
+            backfill_lusr=bool(backfill_lusr),
         )
         ok, err = save_settings(new_settings)
         if ok:

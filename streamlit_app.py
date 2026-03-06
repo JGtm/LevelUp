@@ -665,11 +665,13 @@ def _load_and_prepare_data(  # noqa: PLR0913
             xuid=xuid,
             db_key=db_key,
             aliases_key=aliases_key,
-            date_range_fn=date_range,
-            clean_asset_label_fn=clean_asset_label,
-            normalize_mode_label_fn=normalize_mode_label,
-            normalize_map_label_fn=normalize_map_label,
-            build_friends_opts_map_fn=build_friends_opts_map,
+            callbacks={
+                "date_range_fn": date_range,
+                "clean_asset_label_fn": clean_asset_label,
+                "normalize_mode_label_fn": normalize_mode_label,
+                "normalize_map_label_fn": normalize_map_label,
+                "build_friends_opts_map_fn": build_friends_opts_map,
+            },
         )
 
     # Base "globale" : toutes les parties (après inclusion/exclusion Firefight)
@@ -787,12 +789,12 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
     def _page_last_match() -> None:
         from src.ui.pages import render_last_match_page
 
-        render_last_match_page(dff=ctx.dff, **ctx.match_view_params)
+        render_last_match_page(dff=ctx.dff, params=ctx.match_view_params)
 
     def _page_explorer() -> None:
         from src.ui.pages import render_explorer_page
 
-        render_explorer_page(df=ctx.df, dff=ctx.df, **ctx.match_view_params)
+        render_explorer_page(df=ctx.df, dff=ctx.df, params=ctx.match_view_params)
 
     def _page_media() -> None:
         from src.ui.pages import render_media_tab

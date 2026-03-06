@@ -22,103 +22,102 @@ logger = logging.getLogger(__name__)
 class PerformanceMixin:
     """Méthodes de calcul du score de performance."""
 
-    def _compute_and_update_performance_score(
+    def _compute_performance_score(
+        self: _SyncProtocol, match_id: str, match_row: MatchStatsRow
+    ) -> float | None:
+        """Calcule le score de performance relatif pour un match.
+
+        Charge l'historique depuis shared.match_participants, construit
+        le vecteur de stats du match courant, et délègue le calcul à
+        ``compute_relative_performance_score``.
+
+        Returns:
+            Score relatif (float) ou None si données insuffisantes.
+        """
+        current_start_time = match_row.start_time
+        if current_start_time is None:
+            logger.debug("Pas de start_time pour %s, skip calcul score", match_id)
+            return None
+
+        # Convertir datetime en format compatible avec DuckDB
+        if isinstance(current_start_time, datetime):
+            current_start_time_str = current_start_time.isoformat()
+        else:
+            current_start_time_str = str(current_start_time)
+
+        shared_conn = self._get_shared_connection()
+        if shared_conn is None:
+            logger.debug("shared_connection indisponible pour calcul score")
+            return None
+
+        history_df = shared_conn.execute(
+            """
+            SELECT
+                mr.match_id, mr.start_time,
+                mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
+                mp.time_played_seconds, mp.avg_life_seconds,
+                mp.personal_score, mp.damage_dealt,
+                mp.rank, mp.team_mmr, mp.enemy_mmr,
+                mp.kills_expected, mp.deaths_expected
+            FROM match_registry mr
+            JOIN match_participants mp ON mr.match_id = mp.match_id
+            WHERE mp.xuid = ?
+              AND mr.match_id != ?
+              AND mr.start_time IS NOT NULL
+              AND mr.start_time < CAST(? AS TIMESTAMP)
+            ORDER BY mr.start_time ASC
+            """,
+            (self._xuid, match_id, current_start_time_str),
+        ).pl()
+
+        if history_df.is_empty() or len(history_df) < MIN_MATCHES_FOR_RELATIVE:
+            logger.debug(
+                "Pas assez d'historique pour calculer le score (%s matchs)",
+                len(history_df),
+            )
+            return None
+
+        match_dict = {
+            "kills": match_row.kills or 0,
+            "deaths": match_row.deaths or 0,
+            "assists": match_row.assists or 0,
+            "kda": match_row.kda,
+            "accuracy": match_row.accuracy,
+            "time_played_seconds": match_row.time_played_seconds or 600.0,
+            "personal_score": getattr(match_row, "personal_score", None),
+            "damage_dealt": getattr(match_row, "damage_dealt", None),
+            "rank": getattr(match_row, "rank", None),
+            "team_mmr": getattr(match_row, "team_mmr", None),
+            "enemy_mmr": getattr(match_row, "enemy_mmr", None),
+            "kills_expected": getattr(match_row, "kills_expected", None),
+            "deaths_expected": getattr(match_row, "deaths_expected", None),
+        }
+
+        return compute_relative_performance_score(match_dict, history_df)
+
+    def _update_performance_score(
         self: _SyncProtocol, match_id: str, match_row: MatchStatsRow
     ) -> None:
-        """Calcule et met à jour le score de performance pour un match.
+        """Orchestre le calcul et le stockage du score de performance.
 
-        Architecture v5.1 :
-            Lit team_mmr et enemy_mmr directement depuis mp.enemy_mmr dans
-            shared.match_participants (corrigé : remplace l'ancienne sous-requête
-            corrélée qui calculait la moyenne de l'équipe adverse).
-            Écrit dans player_match_enrichment (player DB).
-
-        Args:
-            match_id: ID du match
-            match_row: Données du match inséré
+        Vérifie si le score existe déjà, calcule via ``_compute_performance_score``,
+        puis écrit dans player_match_enrichment.
         """
         try:
             conn = self._get_connection()
 
-            # Vérifier si le score existe déjà dans player_match_enrichment
             existing = conn.execute(
                 "SELECT performance_score FROM player_match_enrichment WHERE match_id = ?",
                 (match_id,),
             ).fetchone()
 
             if existing and existing[0] is not None:
-                # Score déjà calculé, skip
                 logger.debug("Score de performance déjà présent pour %s", match_id)
                 return
 
-            # Charger l'historique (tous les matchs AVANT celui-ci, triés par date)
-            current_start_time = match_row.start_time
-            if current_start_time is None:
-                logger.debug("Pas de start_time pour %s, skip calcul score", match_id)
-                return
-
-            # Convertir datetime en format compatible avec DuckDB
-            if isinstance(current_start_time, datetime):
-                current_start_time_str = current_start_time.isoformat()
-            else:
-                current_start_time_str = str(current_start_time)
-
-            # V5 finale : lire depuis shared.match_participants + match_registry
-            shared_conn = self._get_shared_connection()
-            if shared_conn is None:
-                logger.debug("shared_connection indisponible pour calcul score")
-                return
-
-            # v5 : lire depuis shared avec xuid du joueur
-            history_df = shared_conn.execute(
-                """
-                SELECT
-                    mr.match_id, mr.start_time,
-                    mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
-                    mp.time_played_seconds, mp.avg_life_seconds,
-                    mp.personal_score, mp.damage_dealt,
-                    mp.rank, mp.team_mmr, mp.enemy_mmr,
-                    mp.kills_expected, mp.deaths_expected
-                FROM match_registry mr
-                JOIN match_participants mp ON mr.match_id = mp.match_id
-                WHERE mp.xuid = ?
-                  AND mr.match_id != ?
-                  AND mr.start_time IS NOT NULL
-                  AND mr.start_time < CAST(? AS TIMESTAMP)
-                ORDER BY mr.start_time ASC
-                """,
-                (self._xuid, match_id, current_start_time_str),
-            ).pl()
-
-            if history_df.is_empty() or len(history_df) < MIN_MATCHES_FOR_RELATIVE:
-                logger.debug(
-                    "Pas assez d'historique pour calculer le score (%s matchs)",
-                    len(history_df),
-                )
-                return
-
-            # Convertir match_row en dict pour le calcul v5
-            match_dict = {
-                "kills": match_row.kills or 0,
-                "deaths": match_row.deaths or 0,
-                "assists": match_row.assists or 0,
-                "kda": match_row.kda,
-                "accuracy": match_row.accuracy,
-                "time_played_seconds": match_row.time_played_seconds or 600.0,
-                "personal_score": getattr(match_row, "personal_score", None),
-                "damage_dealt": getattr(match_row, "damage_dealt", None),
-                "rank": getattr(match_row, "rank", None),
-                "team_mmr": getattr(match_row, "team_mmr", None),
-                "enemy_mmr": getattr(match_row, "enemy_mmr", None),
-                "kills_expected": getattr(match_row, "kills_expected", None),
-                "deaths_expected": getattr(match_row, "deaths_expected", None),
-            }
-
-            # Calculer le score
-            score = compute_relative_performance_score(match_dict, history_df)
+            score = self._compute_performance_score(match_id, match_row)
 
             if score is not None:
-                # V5 finale : écrire dans player_match_enrichment au lieu de match_stats
                 now = datetime.now(timezone.utc)
                 conn.execute(
                     """INSERT INTO player_match_enrichment (match_id, performance_score, updated_at)

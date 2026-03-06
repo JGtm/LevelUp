@@ -11,8 +11,6 @@ from __future__ import annotations
 import contextlib
 import html
 import logging
-from collections.abc import Callable
-from datetime import datetime
 from typing import Any
 
 import polars as pl
@@ -20,10 +18,10 @@ import streamlit as st
 
 from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.analysis.performance_score import compute_relative_performance_score
+from src.app._page_context import MatchViewParams
 from src.app.helpers import normalize_map_label
 from src.config import HALO_COLORS, OUTCOME_CODES
 from src.ui import (
-    AppSettings,
     translate_pair_name,
     translate_playlist_name,
 )
@@ -51,92 +49,23 @@ from src.ui.pages.match_view_players import (
     render_team_dominance_section,
 )
 from src.ui.pages.match_view_rank import _build_match_rank_html
-from src.visualization._compat import DataFrameLike, ensure_polars
+from src.visualization._compat import ensure_polars
 
 logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# Fonction principale
+# Helpers internes
 # =============================================================================
 
 
-def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
-    *,
+def _resolve_outcome(
     row: dict[str, Any],
-    match_id: str,
-    db_path: str,
-    xuid: str,
-    waypoint_player: str,
-    db_key: tuple[int, int] | None,
-    settings: AppSettings,
-    df_full: DataFrameLike | None = None,
-    # Fonctions injectées
-    normalize_mode_label_fn: Callable[[str | None], str],
-    format_score_label_fn: Callable[[Any, Any], str],
-    score_css_color_fn: Callable[[Any, Any], str],
-    format_datetime_fn: Callable[[datetime | None], str],
-    load_player_match_result_fn: Callable,
-    load_match_medals_fn: Callable,
-    load_highlight_events_fn: Callable,
-    load_match_gamertags_fn: Callable,
-    load_match_rosters_fn: Callable,
-    paris_tz,
-) -> None:
-    """Rend la vue détaillée d'un match.
-
-    Parameters
-    ----------
-    row : dict[str, Any]
-        Données du match (dict issu de iter_rows(named=True) ou to_dicts()).
-    match_id : str
-        Identifiant du match.
-    db_path : str
-        Chemin vers la base de données.
-    xuid : str
-        XUID du joueur principal.
-    waypoint_player : str
-        Gamertag pour les liens Waypoint.
-    db_key : tuple[int, int] | None
-        Clé de cache pour la base de données.
-    settings : AppSettings
-        Paramètres de l'application.
-    df_full : DataFrameLike | None
-        DataFrame complet pour le calcul du score relatif.
-    normalize_mode_label_fn, format_score_label_fn, score_css_color_fn, format_datetime_fn
-        Fonctions de formatage injectées.
-    load_player_match_result_fn, load_match_medals_fn, load_highlight_events_fn,
-    load_match_gamertags_fn, load_match_rosters_fn
-        Fonctions de chargement de données injectées.
-    paris_tz
-        Timezone Paris.
-    """
-    # Normaliser df_full en Polars
-    if df_full is not None:
-        df_full = ensure_polars(df_full)
-
-    match_id = str(match_id or "").strip()
-    if not match_id:
-        st.info(t("mv_match_id_missing"))
-        return
-
-    logger.debug("render_match_view match=%s xuid=%s", match_id, xuid)
-
-    last_time = row.get("start_time")
-    last_map = row.get("map_name")
-    last_playlist = row.get("playlist_name")
-    last_pair = row.get("pair_name")
-    last_mode = row.get("game_variant_name")
-    last_outcome = row.get("outcome")
-
-    last_playlist_fr = (
-        translate_playlist_name(str(last_playlist), lang=get_lang()) if last_playlist else None
-    )
-    last_pair_fr = translate_pair_name(str(last_pair), lang=get_lang()) if last_pair else None
-
+) -> tuple[int | None, str, str]:
+    """Résout le code outcome → (code, label, couleur)."""
     outcome_map = get_outcome_map()
     try:
-        outcome_code = int(last_outcome) if last_outcome is not None else None
+        outcome_code = int(row.get("outcome")) if row.get("outcome") is not None else None
     except (TypeError, ValueError):
         outcome_code = None
     outcome_label = outcome_map.get(outcome_code, "?") if outcome_code is not None else "-"
@@ -146,57 +75,49 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
         outcome_color = colors["green"]
     elif outcome_code == OUTCOME_CODES.LOSS:
         outcome_color = colors["red"]
-    elif outcome_code == OUTCOME_CODES.TIE or outcome_code == OUTCOME_CODES.NO_FINISH:
+    elif outcome_code in (OUTCOME_CODES.TIE, OUTCOME_CODES.NO_FINISH):
         outcome_color = colors["violet"]
     else:
         outcome_color = colors["slate"]
+    return outcome_code, outcome_label, outcome_color
 
-    last_my_score = row.get("my_team_score")
-    last_enemy_score = row.get("enemy_team_score")
-    score_label = format_score_label_fn(last_my_score, last_enemy_score)
 
-    wp = str(waypoint_player or "").strip()
-    match_url = None
-    if wp and match_id and match_id.strip() and match_id.strip() != "-":
-        match_url = (
-            f"https://www.halowaypoint.com/halo-infinite/players/{wp}/matches/{match_id.strip()}"
-        )
-
-    # Détecter le flag had_bot_teammate depuis player_match_enrichment
-    # P4: aussi lire performance_score stocké pour éviter le recalcul
-    _had_bot_teammate = False
-    _stored_perf_score: float | None = None
+def _load_enrichment(db_path: str, match_id: str) -> tuple[bool, float | None]:
+    """Charge had_bot_teammate et performance_score depuis player_match_enrichment."""
+    had_bot = False
+    stored_perf: float | None = None
     try:
         from src.utils.db import duckdb_read_only
 
-        with duckdb_read_only(db_path) as _pme_conn:
-            _bot_row = _pme_conn.execute(
+        with duckdb_read_only(db_path) as conn:
+            pme_row = conn.execute(
                 "SELECT had_bot_teammate, performance_score"
                 " FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
                 [match_id],
             ).fetchone()
-        if _bot_row:
-            if _bot_row[0]:
-                _had_bot_teammate = True
-            if _bot_row[1] is not None:
-                _stored_perf_score = float(_bot_row[1])
+        if pme_row:
+            had_bot = bool(pme_row[0])
+            if pme_row[1] is not None:
+                stored_perf = float(pme_row[1])
     except Exception:
         logger.debug("match_view: enrichment introuvable match=%s", match_id)
+    return had_bot, stored_perf
 
-    # Bot + outcome : leniency uniquement sur défaite (rage quit en cours de partie)
-    _bot_is_loss = _had_bot_teammate and outcome_code != OUTCOME_CODES.WIN
-    _bot_is_win = _had_bot_teammate and outcome_code == OUTCOME_CODES.WIN
 
-    # P4: Utiliser le performance_score déjà stocké en DB (évite le recalcul à l'affichage)
-    # Fallback : calcul relatif si non stocké et historique suffisant (≥ 10 matchs)
-    perf_score: float | None = _stored_perf_score
+def _compute_perf_display(
+    row: dict[str, Any],
+    df_full: pl.DataFrame | None,
+    stored_perf: float | None,
+    had_bot: bool,
+) -> tuple[float | None, str, str | None]:
+    """Calcule le score de performance et sa représentation visuelle."""
+    perf_score = stored_perf
     if perf_score is None and df_full is not None and len(df_full) >= 10:
-        perf_score = compute_relative_performance_score(
-            row, df_full, had_bot_teammate=_had_bot_teammate
-        )
+        perf_score = compute_relative_performance_score(row, df_full, had_bot_teammate=had_bot)
     perf_display = f"{perf_score:.0f}" if perf_score is not None else "-"
     perf_color = None
     if perf_score is not None:
+        colors = HALO_COLORS.as_dict()
         if perf_score >= SCORE_THRESHOLDS["excellent"]:
             perf_color = colors["green"]
         elif perf_score >= SCORE_THRESHOLDS["good"]:
@@ -207,8 +128,21 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
             perf_color = colors.get("orange", "#FF8C00")
         else:
             perf_color = colors["red"]
+    return perf_score, perf_display, perf_color
 
-    # Cartes KPI - Date, Résultat, Performance
+
+def _render_kpi_cards(  # noqa: PLR0913
+    *,
+    last_time: Any,
+    outcome_code: int | None,
+    outcome_label: str,
+    outcome_color: str,
+    score_label: str,
+    perf_display: str,
+    perf_color: str | None,
+    had_bot: bool,
+) -> None:
+    """Affiche les 3 cartes KPI : Date, Résultat, Performance."""
     top_cols = st.columns(3)
     with top_cols[0]:
         os_card(t("col_date"), format_date_fr(last_time, lang=get_lang()))
@@ -226,21 +160,206 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
             kpi_color=str(outcome_color),
         )
     with top_cols[2]:
-        if _bot_is_loss:
-            _perf_subtitle = t("mv_bot_teammate_note")  # "Équipe incomplète (+5 pts)"
-        elif _bot_is_win:
-            _perf_subtitle = t("mv_bot_teammate_win_note")  # "Victoire malgré équipe incomplète"
+        bot_is_loss = had_bot and outcome_code != OUTCOME_CODES.WIN
+        bot_is_win = had_bot and outcome_code == OUTCOME_CODES.WIN
+        if bot_is_loss:
+            perf_subtitle = t("mv_bot_teammate_note")
+        elif bot_is_win:
+            perf_subtitle = t("mv_bot_teammate_win_note")
         else:
-            _perf_subtitle = (
-                t("mv_relative_history") if perf_score is not None else t("mv_insufficient_history")
+            perf_subtitle = (
+                t("mv_relative_history") if perf_display != "-" else t("mv_insufficient_history")
             )
         os_card(
             t("mv_performance"),
             perf_display,
-            _perf_subtitle,
+            perf_subtitle,
             accent=perf_color,
             kpi_color=perf_color,
         )
+
+
+def _render_map_and_rank(  # noqa: PLR0913
+    row: dict[str, Any],
+    *,
+    map_display: str,
+    db_path: str,
+    match_id: str,
+    db_key: tuple[int, int] | None,
+    had_bot: bool,
+    outcome_code: int | None,
+) -> None:
+    """Affiche la miniature de carte et le rang côte à côte."""
+    map_id = row.get("map_id")
+    thumb = map_thumb_path(row, str(map_id) if map_id else None)
+
+    from src.ui.player_assets import file_to_data_url as _f2du
+
+    thumb_data_url = None
+    if thumb:
+        with contextlib.suppress(Exception):
+            thumb_data_url = _f2du(str(thumb))
+
+    rank_html = _build_match_rank_html(
+        match_id=match_id,
+        db_path=db_path,
+        db_key=db_key,
+        had_bot_teammate=had_bot,
+        bot_outcome=outcome_code,
+    )
+
+    if thumb_data_url:
+        map_img_html = (
+            f"<img src='{thumb_data_url}' "
+            f"style='width:100%;max-width:480px;height:auto;border-radius:4px;object-fit:cover'>"
+        )
+    else:
+        map_img_html = (
+            "<div style='padding:16px;color:#888;font-style:italic'>"
+            f"{t('mv_thumbnail_unavailable')}</div>"
+        )
+
+    if rank_html:
+        st.markdown(
+            f"""<div style='display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:1.5rem'>
+  <div style='flex:1;min-width:250px'>{map_img_html}</div>
+  <div style='flex:1;min-width:250px'>{rank_html}</div>
+</div>""",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(map_img_html, unsafe_allow_html=True)
+
+
+def _render_medals_tab(medals_last: list[dict[str, Any]] | None) -> None:
+    """Affiche la grille de médailles dans l'onglet Citations & Médailles."""
+    st.subheader(t("mv_medals"))
+    if not medals_last:
+        st.info(t("mv_medals_no_data"))
+        return
+    md_df = pl.DataFrame(medals_last)
+    _fr_map, _en_map = load_medal_name_maps()
+    _medal_map = {
+        **{str(k): v for k, v in _en_map.items()},
+        **{str(k): v for k, v in _fr_map.items()},
+    }
+    md_df = md_df.with_columns(
+        pl.col("name_id")
+        .cast(pl.Utf8)
+        .replace_strict(_medal_map, default=None, return_dtype=pl.Utf8)
+        .fill_null(pl.lit(t("mv_medal_fallback", n="") + " ") + pl.col("name_id").cast(pl.Utf8))
+        .alias("label")
+    )
+    md_df = md_df.sort(["count", "label"], descending=[True, False])
+    render_medals_grid(
+        md_df.select(["name_id", "count"]).to_dicts(),
+        cols_per_row=8,
+        center=True,
+        lang=get_lang(),
+    )
+
+
+def _enrich_pm_from_row(pm: dict[str, Any], row: dict[str, Any]) -> None:
+    """Enrichit pm avec les valeurs réelles si manquantes (fallback DuckDB v4)."""
+    for stat_key in ("kills", "deaths", "assists"):
+        if pm.get(stat_key, {}).get("count") is None:
+            val = row.get(stat_key)
+            if val is not None:
+                pm.setdefault(stat_key, {})["count"] = float(val) if val == val else None
+
+
+# =============================================================================
+# Fonction principale
+# =============================================================================
+
+
+def render_match_view(  # noqa: C901, PLR0912, PLR0915
+    *,
+    row: dict[str, Any],
+    match_id: str,
+    params: MatchViewParams,
+) -> None:
+    """Rend la vue détaillée d'un match.
+
+    Parameters
+    ----------
+    row : dict[str, Any]
+        Données du match (dict issu de iter_rows(named=True) ou to_dicts()).
+    match_id : str
+        Identifiant du match.
+    params : MatchViewParams
+        Paramètres communs (DB, fonctions injectées, settings, etc.).
+    """
+    # Unpack des paramètres communs
+    db_path = params["db_path"]
+    xuid = params["xuid"]
+    waypoint_player = params["waypoint_player"]
+    db_key = params["db_key"]
+    settings = params["settings"]
+    df_full = params.get("df_full")
+    normalize_mode_label_fn = params["normalize_mode_label_fn"]
+    format_score_label_fn = params["format_score_label_fn"]
+    format_datetime_fn = params["format_datetime_fn"]
+    load_player_match_result_fn = params["load_player_match_result_fn"]
+    load_match_medals_fn = params["load_match_medals_fn"]
+    load_highlight_events_fn = params["load_highlight_events_fn"]
+    load_match_gamertags_fn = params["load_match_gamertags_fn"]
+    paris_tz = params["paris_tz"]
+    # Normaliser df_full en Polars
+    if df_full is not None:
+        df_full = ensure_polars(df_full)
+
+    match_id = str(match_id or "").strip()
+    if not match_id:
+        st.info(t("mv_match_id_missing"))
+        return
+
+    logger.debug("render_match_view match=%s xuid=%s", match_id, xuid)
+
+    last_time = row.get("start_time")
+    last_map = row.get("map_name")
+    last_playlist = row.get("playlist_name")
+    last_pair = row.get("pair_name")
+    last_mode = row.get("game_variant_name")
+
+    last_playlist_fr = (
+        translate_playlist_name(str(last_playlist), lang=get_lang()) if last_playlist else None
+    )
+    last_pair_fr = translate_pair_name(str(last_pair), lang=get_lang()) if last_pair else None
+
+    outcome_code, outcome_label, outcome_color = _resolve_outcome(row)
+    colors = HALO_COLORS.as_dict()
+
+    last_my_score = row.get("my_team_score")
+    last_enemy_score = row.get("enemy_team_score")
+    score_label = format_score_label_fn(last_my_score, last_enemy_score)
+
+    wp = str(waypoint_player or "").strip()
+    match_url = None
+    if wp and match_id and match_id.strip() and match_id.strip() != "-":
+        match_url = (
+            f"https://www.halowaypoint.com/halo-infinite/players/{wp}/matches/{match_id.strip()}"
+        )
+
+    # Charger enrichment (bot + performance_score) depuis player_match_enrichment
+    _had_bot_teammate, _stored_perf_score = _load_enrichment(db_path, match_id)
+
+    # Performance relative
+    _perf_score, perf_display, perf_color = _compute_perf_display(
+        row, df_full, _stored_perf_score, _had_bot_teammate
+    )
+
+    # Cartes KPI - Date, Résultat, Performance
+    _render_kpi_cards(
+        last_time=last_time,
+        outcome_code=outcome_code,
+        outcome_label=outcome_label,
+        outcome_color=outcome_color,
+        score_label=score_label,
+        perf_display=perf_display,
+        perf_color=perf_color,
+        had_bot=_had_bot_teammate,
+    )
 
     last_mode_ui = row.get("mode_ui") or normalize_mode_label_fn(
         str(last_pair) if last_pair else None
@@ -270,49 +389,15 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
     row_cols[2].metric(" ", mode_display)
 
     # Miniature de la carte + Rang (LUSR/CSR) côte à côte
-    map_id = row.get("map_id")
-    thumb = map_thumb_path(row, str(map_id) if map_id else None)
-
-    # Convertir la miniature en data URI pour l'intégrer au HTML
-    from src.ui.player_assets import file_to_data_url as _f2du
-
-    thumb_data_url = None
-    if thumb:
-        with contextlib.suppress(Exception):
-            thumb_data_url = _f2du(str(thumb))
-
-    # Construire le HTML du rang (avec contexte bot si applicable)
-    rank_html = _build_match_rank_html(
-        match_id=match_id,
+    _render_map_and_rank(
+        row,
+        map_display=map_display,
         db_path=db_path,
+        match_id=match_id,
         db_key=db_key,
-        had_bot_teammate=_had_bot_teammate,
-        bot_outcome=outcome_code,
+        had_bot=_had_bot_teammate,
+        outcome_code=outcome_code,
     )
-
-    # Assembler carte + rang dans un seul bloc HTML centré verticalement
-    map_img_html = ""
-    if thumb_data_url:
-        map_img_html = (
-            f"<img src='{thumb_data_url}' "
-            f"style='width:100%;max-width:480px;height:auto;border-radius:4px;object-fit:cover'>"
-        )
-    else:
-        map_img_html = (
-            "<div style='padding:16px;color:#888;font-style:italic'>"
-            f"{t('mv_thumbnail_unavailable')}</div>"
-        )
-
-    if rank_html:
-        st.markdown(
-            f"""<div style='display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:1.5rem'>
-  <div style='flex:1;min-width:250px'>{map_img_html}</div>
-  <div style='flex:1;min-width:250px'>{rank_html}</div>
-</div>""",
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(map_img_html, unsafe_allow_html=True)
 
     # Chargement des données détaillées (commun à tous les onglets)
     with st.spinner(t("mv_loading")):
@@ -321,24 +406,7 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     # Enrichir pm avec les valeurs réelles depuis row si elles sont manquantes (DuckDB v4)
     if pm:
-        if pm.get("kills", {}).get("count") is None:
-            kills_val = row.get("kills")
-            if kills_val is not None:
-                pm.setdefault("kills", {})["count"] = (
-                    float(kills_val) if kills_val == kills_val else None
-                )
-        if pm.get("deaths", {}).get("count") is None:
-            deaths_val = row.get("deaths")
-            if deaths_val is not None:
-                pm.setdefault("deaths", {})["count"] = (
-                    float(deaths_val) if deaths_val == deaths_val else None
-                )
-        if pm.get("assists", {}).get("count") is None:
-            assists_val = row.get("assists")
-            if assists_val is not None:
-                pm.setdefault("assists", {})["count"] = (
-                    float(assists_val) if assists_val == assists_val else None
-                )
+        _enrich_pm_from_row(pm, row)
 
     # Onglets de navigation (P2 — lazy rendering par section)
     (
@@ -446,32 +514,7 @@ def render_match_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
         )
 
         # Médailles
-        st.subheader(t("mv_medals"))
-        if not medals_last:
-            st.info(t("mv_medals_no_data"))
-        else:
-            md_df = pl.DataFrame(medals_last)
-            _fr_map, _en_map = load_medal_name_maps()
-            _medal_map = {
-                **{str(k): v for k, v in _en_map.items()},
-                **{str(k): v for k, v in _fr_map.items()},
-            }
-            md_df = md_df.with_columns(
-                pl.col("name_id")
-                .cast(pl.Utf8)
-                .replace_strict(_medal_map, default=None, return_dtype=pl.Utf8)
-                .fill_null(
-                    pl.lit(t("mv_medal_fallback", n="") + " ") + pl.col("name_id").cast(pl.Utf8)
-                )
-                .alias("label")
-            )
-            md_df = md_df.sort(["count", "label"], descending=[True, False])
-            render_medals_grid(
-                md_df.select(["name_id", "count"]).to_dicts(),
-                cols_per_row=8,
-                center=True,
-                lang=get_lang(),
-            )
+        _render_medals_tab(medals_last)
 
     # ── Onglet Médias ────────────────────────────────────────────────────────
     with _tab_media:

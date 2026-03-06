@@ -15,6 +15,7 @@ from src.analysis import (
     compute_map_breakdown,
     compute_outcome_rates,
 )
+from src.app._page_context import TeammateCallbacks, TeammateContext, TeammateFilterOptions
 from src.ui import display_name_from_xuid
 from src.ui.cache import (
     cached_friend_matches_df,
@@ -52,24 +53,28 @@ __all__ = [
 ]
 
 
-def render_single_teammate_view(  # noqa: PLR0913
+def render_single_teammate_view(
     df: DataFrameLike,
     dff: DataFrameLike,
-    me_name: str,
-    xuid: str,
-    db_path: str,
-    db_key: tuple[int, int] | None,
-    picked_xuids: list[str],
-    apply_current_filters: bool,
-    same_team_only: bool,
-    show_smooth: bool,
-    assign_player_colors_fn,
-    plot_multi_metric_bars_fn,
-    top_medals_fn,
-    load_teammate_stats_fn,
-    enrich_series_fn,
+    ctx: TeammateContext,
+    filters: TeammateFilterOptions,
+    callbacks: TeammateCallbacks,
 ) -> None:
     """Vue pour un seul coéquipier sélectionné."""
+    me_name = ctx["me_name"]
+    xuid = ctx["xuid"]
+    db_path = ctx["db_path"]
+    db_key = ctx["db_key"]
+    picked_xuids = ctx["picked_xuids"]
+    apply_current_filters = filters["apply_current_filters"]
+    same_team_only = filters["same_team_only"]
+    show_smooth = filters["show_smooth"]
+    assign_player_colors_fn = callbacks["assign_player_colors_fn"]
+    plot_multi_metric_bars_fn = callbacks["plot_multi_metric_bars_fn"]
+    top_medals_fn = callbacks["top_medals_fn"]
+    load_teammate_stats_fn = callbacks["load_teammate_stats_fn"]
+    enrich_series_fn = callbacks["enrich_series_fn"]
+
     df = ensure_polars(df)
     dff = ensure_polars(dff)
     friend_xuid = picked_xuids[0]
@@ -164,25 +169,29 @@ def render_multi_teammate_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
     df: DataFrameLike,
     dff: DataFrameLike,
     base: DataFrameLike,
-    me_name: str,
-    xuid: str,
-    db_path: str,
-    db_key: tuple[int, int] | None,
-    aliases_key: int | None,
-    picked_xuids: list[str],
-    picked_session_labels: list[str] | None,
-    apply_current_filters: bool,
-    same_team_only: bool,
-    show_smooth: bool,
-    include_firefight: bool,
-    waypoint_player: str,
-    assign_player_colors_fn,
-    plot_multi_metric_bars_fn,
-    top_medals_fn,
-    load_teammate_stats_fn,
-    enrich_series_fn,
+    ctx: TeammateContext,
+    filters: TeammateFilterOptions,
+    callbacks: TeammateCallbacks,
 ) -> None:
     """Vue pour plusieurs coéquipiers sélectionnés."""
+    me_name = ctx["me_name"]
+    xuid = ctx["xuid"]
+    db_path = ctx["db_path"]
+    db_key = ctx["db_key"]
+    picked_xuids = ctx["picked_xuids"]
+    aliases_key = ctx["aliases_key"]
+    picked_session_labels = ctx["picked_session_labels"]
+    include_firefight = ctx["include_firefight"]
+    waypoint_player = ctx["waypoint_player"]
+    apply_current_filters = filters["apply_current_filters"]
+    same_team_only = filters["same_team_only"]
+    show_smooth = filters["show_smooth"]
+    assign_player_colors_fn = callbacks["assign_player_colors_fn"]
+    plot_multi_metric_bars_fn = callbacks["plot_multi_metric_bars_fn"]
+    top_medals_fn = callbacks["top_medals_fn"]
+    load_teammate_stats_fn = callbacks["load_teammate_stats_fn"]
+    enrich_series_fn = callbacks["enrich_series_fn"]
+
     df = ensure_polars(df)
     dff = ensure_polars(dff)
     base = ensure_polars(base)

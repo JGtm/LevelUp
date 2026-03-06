@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ import polars as pl
 
 from src.analysis.citations._data_loader import CitationDataLoaderMixin
 from src.analysis.citations.custom_rules import CUSTOM_FUNCTIONS
+from src.utils.db import duckdb_read_write
 from src.utils.paths import get_pve_db_path_from_player
 
 logger = logging.getLogger(__name__)
@@ -168,8 +170,9 @@ class CitationEngine(CitationDataLoaderMixin):
             self._mappings = {}
             return self._mappings
 
-        conn = duckdb.connect(str(meta_path), read_only=True)
-        try:
+        from src.utils.db import duckdb_read_only
+
+        with duckdb_read_only(meta_path) as conn:
             # Vérifier que la table existe
             exists = conn.execute(
                 "SELECT COUNT(*) FROM information_schema.tables "
@@ -213,8 +216,6 @@ class CitationEngine(CitationDataLoaderMixin):
                 norm = d.pop("citation_name_norm")
                 self._mappings[norm] = d
             return self._mappings
-        finally:
-            conn.close()
 
     # ------------------------------------------------------------------
     # Calcul par match
@@ -431,15 +432,11 @@ class CitationEngine(CitationDataLoaderMixin):
         )
 
         # Insérer dans match_citations (même si vide, on marque comme traité)
-        own_conn = conn is None
-        if own_conn:
-            if self._shared_conn is not None:
-                conn = self._shared_conn
-                own_conn = False
-            else:
-                conn = duckdb.connect(str(self._db_path))
+        if conn is None:
+            conn = self._shared_conn
+        ctx = duckdb_read_write(str(self._db_path)) if conn is None else nullcontext(conn)
 
-        try:
+        with ctx as conn:
             # Insérer les citations calculées
             for norm_name, value in citations.items():
                 conn.execute(
@@ -455,9 +452,6 @@ class CitationEngine(CitationDataLoaderMixin):
                 [match_id],
             )
             return len(citations) + 1  # +1 pour le marqueur
-        finally:
-            if own_conn:
-                conn.close()
 
     # ------------------------------------------------------------------
     # Méthode haut-niveau : agrégation compatible UI
@@ -511,9 +505,7 @@ class CitationEngine(CitationDataLoaderMixin):
                     mastered_count += 1
                     continue
                 targets = sorted(
-                    int(t.strip())
-                    for t in str(child_tiers).split(",")
-                    if t.strip().isdigit()
+                    int(t.strip()) for t in str(child_tiers).split(",") if t.strip().isdigit()
                 )
                 if targets and child_count >= targets[-1]:
                     mastered_count += 1

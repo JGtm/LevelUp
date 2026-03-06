@@ -46,126 +46,79 @@ def _format_ratio(value: float | None) -> str:
     return f"{value * 100:.1f}%"
 
 
-@fragment_if_available
-def render_objective_analysis_page(  # noqa: C901, PLR0912, PLR0915
+def _load_awards_data(
     repo: DuckDBRepository,
-    xuid: str,
-    *,
-    match_ids: list[str] | None = None,
-) -> None:
-    """Affiche la page d'analyse des objectifs.
-
-    Cette page permet de :
-    - Voir la contribution du joueur aux objectifs vs kills
-    - Analyser la répartition du score par catégorie
-    - Comparer avec les autres joueurs rencontrés
-    - Identifier les forces du joueur (support vs slayer)
-
-    Args:
-        repo: Repository DuckDB pour charger les données.
-        xuid: XUID du joueur principal.
-        match_ids: Liste optionnelle de match_ids à analyser (sinon tous).
-    """
-    st.title(t("obj_analysis_title"))
-    st.caption(t("obj_caption"))
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # Chargement des données
-    # ══════════════════════════════════════════════════════════════════════════
+    match_ids: list[str] | None,
+) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
+    """Charge les awards et match_stats depuis le repo."""
     with st.spinner(t("obj_loading")):
-        # Charger les personal_score_awards
         try:
             if match_ids:
-                # Paramétrage SQL sécurisé avec placeholders
                 placeholders = ", ".join("?" * len(match_ids))
-                awards_query = f"""
-                    SELECT * FROM personal_score_awards
-                    WHERE match_id IN ({placeholders})
-                """
-                match_query = f"""
-                    SELECT * FROM match_stats
-                    WHERE match_id IN ({placeholders})
-                    ORDER BY start_time ASC
-                """
-                awards_df = repo.query_df(awards_query, match_ids)
-                match_stats_df = repo.query_df(match_query, match_ids)
+                awards_df = repo.query_df(
+                    f"SELECT * FROM personal_score_awards WHERE match_id IN ({placeholders})",
+                    match_ids,
+                )
+                match_stats_df = repo.query_df(
+                    f"SELECT * FROM match_stats WHERE match_id IN ({placeholders}) ORDER BY start_time ASC",
+                    match_ids,
+                )
             else:
-                awards_query = "SELECT * FROM personal_score_awards"
-                match_query = "SELECT * FROM match_stats ORDER BY start_time ASC"
-                awards_df = repo.query_df(awards_query)
-                match_stats_df = repo.query_df(match_query)
+                awards_df = repo.query_df("SELECT * FROM personal_score_awards")
+                match_stats_df = repo.query_df("SELECT * FROM match_stats ORDER BY start_time ASC")
         except Exception as e:
             st.error(t("error_loading", error=e))
             st.info(t("obj_sync_hint"))
-            return
+            return None, None
 
     if awards_df.is_empty():
         st.warning(t("obj_no_personal_score"))
-        return
+        return None, None
+    return awards_df, match_stats_df
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # Filtrage par joueur
-    # ══════════════════════════════════════════════════════════════════════════
-    my_awards_df = (
-        awards_df.filter(pl.col("xuid") == xuid) if "xuid" in awards_df.columns else awards_df
-    )
 
-    if my_awards_df.is_empty():
-        st.warning(t("obj_no_player_data", xuid=xuid))
-        return
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # Section 1: Vue d'ensemble
-    # ══════════════════════════════════════════════════════════════════════════
+def _render_overview(my_awards_df: pl.DataFrame) -> tuple[float, int, int]:
+    """Affiche la section vue d'ensemble et retourne (objective_ratio, total_kill, total_assist)."""
     st.markdown("---")
     st.markdown(f"## 🎯 {t('obj_overview_title')}")
 
-    # Calculer les métriques globales
     total_objective = (
         my_awards_df.filter(pl.col("score_category").is_in(["objective", "mode"]))
         .select(pl.col("points").sum())
         .item()
     ) or 0
-
     total_kill = (
         my_awards_df.filter(pl.col("score_category") == "kill")
         .select(pl.col("points").sum())
         .item()
     ) or 0
-
     total_assist = (
         my_awards_df.filter(pl.col("score_category") == "assist")
         .select(pl.col("points").sum())
         .item()
     ) or 0
-
     total_all = total_objective + total_kill + total_assist
     objective_ratio = total_objective / total_all if total_all > 0 else 0
 
-    # Métriques en colonnes
     col1, col2, col3, col4 = st.columns(4)
-
     with col1:
         st.metric(
             label=t("obj_score_label"),
             value=_format_score(total_objective),
             help=t("obj_help_obj_points"),
         )
-
     with col2:
         st.metric(
             label=t("obj_frag_score_label"),
             value=_format_score(total_kill),
             help=t("obj_help_kill_points"),
         )
-
     with col3:
         st.metric(
             label=t("obj_assist_score_label"),
             value=_format_score(total_assist),
             help=t("obj_help_assist_points"),
         )
-
     with col4:
         st.metric(
             label=t("obj_ratio_label"),
@@ -173,237 +126,223 @@ def render_objective_analysis_page(  # noqa: C901, PLR0912, PLR0915
             help="Part des objectifs dans le score total",
         )
 
-    # Indicateur de profil
     if objective_ratio >= 0.4:
-        profile = "\ud83d\udee1\ufe0f Joueur Support/Objectif"
+        profile = "🛡️ Joueur Support/Objectif"
         profile_desc = t("obj_profile_desc_support")
     elif objective_ratio >= 0.2:
-        profile = "\u2694\ufe0f Joueur Polyvalent"
+        profile = "⚔️ Joueur Polyvalent"
         profile_desc = t("obj_profile_desc_balanced")
     else:
-        profile = "\ud83c\udfaf Joueur Slayer"
+        profile = "🎯 Joueur Slayer"
         profile_desc = t("obj_profile_desc_slayer")
-
     st.info(f"**{t('obj_profile_label')}:** {profile}\n\n{profile_desc}")
+    return objective_ratio, total_kill, total_assist
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # Section 2: Graphiques principaux
-    # ══════════════════════════════════════════════════════════════════════════
+
+def _render_analysis_tabs(
+    my_awards_df: pl.DataFrame,
+    match_stats_df: pl.DataFrame,
+    xuid: str,
+    objective_ratio: float,
+) -> None:
+    """Affiche les onglets d'analyse détaillée (scatter, breakdown, trend)."""
     st.markdown("---")
     st.markdown(f"## {t('obj_analysis_detailed')}")
 
     tab_scatter, tab_breakdown, tab_trend = st.tabs(
-        [
-            t("obj_tab_scatter"),
-            t("obj_tab_breakdown"),
-            t("obj_tab_trend"),
-        ]
+        [t("obj_tab_scatter"), t("obj_tab_breakdown"), t("obj_tab_trend")],
     )
-
     with tab_scatter:
         st.markdown(f"### {t('obj_correlation_title')}")
         st.caption(t("obj_scatter_caption"))
         with safe_chart_render():
-            fig_scatter = plot_objective_vs_kills_scatter(
-                my_awards_df,
-                match_stats_df,
-                title=None,
-            )
-            if fig_scatter is not None:
-                st.plotly_chart(fig_scatter, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+            fig = plot_objective_vs_kills_scatter(my_awards_df, match_stats_df, title=None)
+            if fig is not None:
+                st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
 
     with tab_breakdown:
         col_bars, col_gauge = st.columns([2, 1])
-
         with col_bars:
             st.markdown(f"### {t('obj_breakdown_title')}")
             with safe_chart_render():
-                fig_bars = plot_objective_breakdown_bars(
-                    my_awards_df,
-                    xuid=xuid,
-                    title=None,
-                )
-                if fig_bars is not None:
-                    st.plotly_chart(fig_bars, width="stretch", config=PLOTLY_STATIC_CONFIG)
+                fig = plot_objective_breakdown_bars(my_awards_df, xuid=xuid, title=None)
+                if fig is not None:
+                    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
-
         with col_gauge:
             st.markdown(f"### {t('obj_ratio_label')}")
             with safe_chart_render():
-                fig_gauge = plot_objective_ratio_gauge(
-                    objective_ratio,
-                    title="% du score sur objectifs",
-                )
-                if fig_gauge is not None:
-                    st.plotly_chart(fig_gauge, width="stretch", config=PLOTLY_STATIC_CONFIG)
+                fig = plot_objective_ratio_gauge(objective_ratio, title="% du score sur objectifs")
+                if fig is not None:
+                    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
 
     with tab_trend:
         st.markdown(f"### {t('obj_trend_title')}")
-
-        # Calculer le résumé par match
         summary_df = compute_objective_summary_by_match_polars(my_awards_df, xuid)
-
         if not summary_df.is_empty():
-            # Joindre avec match_stats pour avoir start_time
             summary_with_time = (
                 match_stats_df.select(["match_id", "start_time"])
                 .join(summary_df, on="match_id", how="inner")
                 .sort("start_time")
             )
-
             with safe_chart_render():
-                fig_trend = plot_objective_trend_over_time(
-                    summary_with_time,
-                    title=None,
-                )
-                if fig_trend is not None:
-                    st.plotly_chart(fig_trend, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+                fig = plot_objective_trend_over_time(summary_with_time, title=None)
+                if fig is not None:
+                    st.plotly_chart(fig, width="stretch", config=PLOTLY_CLEAN_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
         else:
             st.info(t("insufficient_data_chart"))
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # Section 3: Analyse des assistances
-    # ══════════════════════════════════════════════════════════════════════════
+
+def _render_assists_section(my_awards_df: pl.DataFrame) -> None:
+    """Affiche la section d'analyse des assistances."""
     st.markdown("---")
     st.markdown("## 🤝 Analyse des Assistances")
     st.caption(t("obj_assists_caption"))
 
-    # Calculer la décomposition des assistances globale
     assist_awards = my_awards_df.filter(pl.col("score_category") == "assist")
-
-    if not assist_awards.is_empty():
-        # Agréger par type d'award
-        assist_by_type = (
-            assist_awards.group_by("award_name")
-            .agg(
-                [
-                    pl.col("points").sum().alias("total_points"),
-                    pl.count().alias("count"),
-                ]
-            )
-            .sort("total_points", descending=True)
-        )
-
-        col_pie, col_table = st.columns([1, 1])
-
-        with col_pie:
-            # Créer un breakdown simplifié pour le pie chart
-            kill_assists = assist_awards.filter(
-                pl.col("award_name").str.contains("(?i)kill")
-            ).height
-            mark_assists = assist_awards.filter(
-                pl.col("award_name").str.contains("(?i)mark|spot|tag")
-            ).height
-            emp_assists = assist_awards.filter(
-                pl.col("award_name").str.contains("(?i)emp|disable")
-            ).height
-            other_assists = assist_awards.height - kill_assists - mark_assists - emp_assists
-
-            breakdown = {
-                "kill_assists": kill_assists,
-                "mark_assists": mark_assists,
-                "emp_assists": emp_assists,
-                "other_assists": max(0, other_assists),
-            }
-
-            fig_pie = plot_assist_breakdown_pie(
-                breakdown,
-                title="Types d'Assistances",
-            )
-            st.plotly_chart(fig_pie, width="stretch", config=PLOTLY_STATIC_CONFIG)
-
-        with col_table:
-            st.markdown(f"### {t('obj_assist_detail')}")
-            if not assist_by_type.is_empty():
-                # Convertir en pandas pour affichage
-                assist_table = assist_by_type.to_pandas()
-                assist_table["award_name"] = assist_table["award_name"].map(
-                    lambda x: i18n_label("awards", x, lang=get_lang()) or x
-                )
-                assist_table.columns = ["Type d'assistance", "Points", "Nombre"]
-                st.dataframe(
-                    assist_table,
-                    width="stretch",
-                    hide_index=True,
-                )
-    else:
+    if assist_awards.is_empty():
         st.info(t("obj_no_assists"))
+        return
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # Section 4: Awards les plus fréquents
-    # ══════════════════════════════════════════════════════════════════════════
+    assist_by_type = (
+        assist_awards.group_by("award_name")
+        .agg([pl.col("points").sum().alias("total_points"), pl.count().alias("count")])
+        .sort("total_points", descending=True)
+    )
+    col_pie, col_table = st.columns([1, 1])
+    with col_pie:
+        kill_assists = assist_awards.filter(pl.col("award_name").str.contains("(?i)kill")).height
+        mark_assists = assist_awards.filter(
+            pl.col("award_name").str.contains("(?i)mark|spot|tag")
+        ).height
+        emp_assists = assist_awards.filter(
+            pl.col("award_name").str.contains("(?i)emp|disable")
+        ).height
+        other_assists = assist_awards.height - kill_assists - mark_assists - emp_assists
+        breakdown = {
+            "kill_assists": kill_assists,
+            "mark_assists": mark_assists,
+            "emp_assists": emp_assists,
+            "other_assists": max(0, other_assists),
+        }
+        fig_pie = plot_assist_breakdown_pie(breakdown, title="Types d'Assistances")
+        st.plotly_chart(fig_pie, width="stretch", config=PLOTLY_STATIC_CONFIG)
+
+    with col_table:
+        st.markdown(f"### {t('obj_assist_detail')}")
+        if not assist_by_type.is_empty():
+            assist_table = assist_by_type.to_pandas()
+            assist_table["award_name"] = assist_table["award_name"].map(
+                lambda x: i18n_label("awards", x, lang=get_lang()) or x
+            )
+            assist_table.columns = ["Type d'assistance", "Points", "Nombre"]
+            st.dataframe(assist_table, width="stretch", hide_index=True)
+
+
+def _render_awards_frequency(my_awards_df: pl.DataFrame) -> None:
+    """Affiche les awards les plus fréquents."""
     st.markdown("---")
     st.markdown(f"## {t('obj_awards_frequent')}")
 
-    col_obj_awards, col_all_awards = st.columns(2)
-
-    with col_obj_awards:
+    col_obj, col_all = st.columns(2)
+    with col_obj:
         st.markdown("### Objectifs & Mode")
         obj_freq = compute_award_frequency_polars(
             my_awards_df.filter(pl.col("score_category").is_in(["objective", "mode"])),
             top_n=10,
         )
         if not obj_freq.is_empty():
-            freq_table = obj_freq.to_pandas()
-            freq_table.iloc[:, 0] = freq_table.iloc[:, 0].map(
+            tbl = obj_freq.to_pandas()
+            tbl.iloc[:, 0] = tbl.iloc[:, 0].map(
                 lambda x: i18n_label("awards", x, lang=get_lang()) or x
             )
-            freq_table.columns = ["Award", "Points", "Occurrences"]
-            st.dataframe(freq_table, width="stretch", hide_index=True)
+            tbl.columns = ["Award", "Points", "Occurrences"]
+            st.dataframe(tbl, width="stretch", hide_index=True)
         else:
             st.info(t("obj_no_awards"))
 
-    with col_all_awards:
+    with col_all:
         st.markdown("### Tous les Awards")
         all_freq = compute_award_frequency_polars(my_awards_df, top_n=10)
         if not all_freq.is_empty():
-            all_table = all_freq.to_pandas()
-            all_table.iloc[:, 0] = all_table.iloc[:, 0].map(
+            tbl = all_freq.to_pandas()
+            tbl.iloc[:, 0] = tbl.iloc[:, 0].map(
                 lambda x: i18n_label("awards", x, lang=get_lang()) or x
             )
-            all_table.columns = ["Award", "Points", "Occurrences"]
-            st.dataframe(all_table, width="stretch", hide_index=True)
+            tbl.columns = ["Award", "Points", "Occurrences"]
+            st.dataframe(tbl, width="stretch", hide_index=True)
         else:
             st.info(t("obj_no_awards_generic"))
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # Section 5: Comparaison avec les autres joueurs
-    # ══════════════════════════════════════════════════════════════════════════
+
+def _render_comparison_placeholder() -> None:
+    """Affiche la section de comparaison (placeholder)."""
     st.markdown("---")
     st.markdown("## 👥 Comparaison avec les Adversaires")
     st.caption(t("obj_top_opponents_caption"))
-
-    # Note: Cette fonctionnalité nécessite d'avoir les awards de tous les joueurs
-    # Pour l'instant, on affiche un placeholder
     with st.expander(t("obj_comparison_coming_soon"), expanded=False):
         st.info(t("obj_team_feature_hint"))
 
-        # Placeholder pour le graphique
-        # rankings = rank_players_by_objective_contribution_polars(awards_df, top_n=10)
-        # fig_rankings = plot_top_players_objective_bars(rankings)
-        # st.plotly_chart(fig_rankings, width="stretch")
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # Section 6: Conseils personnalisés
-    # ══════════════════════════════════════════════════════════════════════════
+def _render_tips(objective_ratio: float, total_kill: int, total_assist: int) -> None:
+    """Affiche les conseils personnalisés."""
     st.markdown("---")
     st.markdown(f"## {t('obj_tips')}")
-
     if objective_ratio < 0.15:
         st.warning(t("obj_tip_improve_obj"))
     elif objective_ratio > 0.5:
         st.success(t("obj_tip_great_support"))
-
-    # Conseil basé sur les assistances
     if total_assist > total_kill * 0.3:
         st.info(t("obj_tip_assists"))
+
+
+@fragment_if_available
+def render_objective_analysis_page(  # noqa: C901, PLR0912, PLR0915
+    repo: DuckDBRepository,
+    xuid: str,
+    *,
+    match_ids: list[str] | None = None,
+) -> None:
+    """Affiche la page d'analyse des objectifs."""
+    st.title(t("obj_analysis_title"))
+    st.caption(t("obj_caption"))
+
+    # Chargement des données
+    awards_df, match_stats_df = _load_awards_data(repo, match_ids)
+    if awards_df is None:
+        return
+
+    my_awards_df = (
+        awards_df.filter(pl.col("xuid") == xuid) if "xuid" in awards_df.columns else awards_df
+    )
+    if my_awards_df.is_empty():
+        st.warning(t("obj_no_player_data", xuid=xuid))
+        return
+
+    # Section 1: Vue d'ensemble
+    objective_ratio, total_kill, total_assist = _render_overview(my_awards_df)
+
+    # Section 2: Graphiques principaux
+    _render_analysis_tabs(my_awards_df, match_stats_df, xuid, objective_ratio)
+
+    # Section 3: Analyse des assistances
+    _render_assists_section(my_awards_df)
+
+    # Section 4: Awards fréquents
+    _render_awards_frequency(my_awards_df)
+
+    # Section 5: Comparaison (placeholder)
+    _render_comparison_placeholder()
+
+    # Section 6: Conseils personnalisés
+    _render_tips(objective_ratio, total_kill, total_assist)
 
 
 def render_objective_analysis_page_from_session_state() -> None:

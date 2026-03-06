@@ -1,0 +1,160 @@
+"""Modèle d'événement d'impact et logique d'extraction pour un match unique.
+
+Identifie les événements remarquables (premier sang, finisseur, etc.)
+à partir des highlight_events d'un match Halo Infinite.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from src.data.domain.refdata import Outcome
+from src.ui.i18n.viz import viz_t
+
+
+@dataclass(frozen=True)
+class MatchImpactEvent:
+    """Événement d'impact identifié dans un match unique."""
+
+    event_type: str  # "first_blood", "clutch_finisher", "last_group_kill", "first_group_death"
+    xuid: str
+    gamertag: str
+    time_ms: int
+    is_me: bool  # True si c'est le joueur principal
+
+
+def get_impact_labels(lang: str = "fr") -> dict[str, tuple[str, str]]:
+    """Retourne le mapping événement → (icône, label traduit)."""
+    return {
+        "first_blood": ("⚡", viz_t("impact_first_blood", lang)),
+        "clutch_finisher": ("🎯", viz_t("impact_clutch_finisher", lang)),
+        "last_casualty": ("💀", viz_t("impact_last_casualty", lang)),
+        "last_group_kill": ("🐌", viz_t("impact_last_group_kill", lang)),
+        "first_group_death": ("🪦", viz_t("impact_first_group_death", lang)),
+    }
+
+
+def compute_single_match_impact(
+    highlight_events: list[dict[str, Any]],
+    me_xuid: str,
+    outcome: int | None = None,
+) -> list[MatchImpactEvent]:
+    """Identifie les événements d'impact pour un match unique.
+
+    Contrairement à friends_impact.py (multi-matchs, multi-joueurs),
+    cette fonction travaille sur un seul match et tous les joueurs présents.
+
+    Args:
+        highlight_events: Liste de dicts {event_type, time_ms, xuid, gamertag, ...}.
+        me_xuid: XUID du joueur principal.
+        outcome: Code outcome (2=win, 3=loss) pour le clutch_finisher.
+
+    Returns:
+        Liste de MatchImpactEvent identifiés.
+    """
+    if not highlight_events:
+        return []
+
+    me_xuid = str(me_xuid).strip()
+    events: list[MatchImpactEvent] = []
+
+    # Séparer kills et deaths
+    kills = [
+        e
+        for e in highlight_events
+        if str(e.get("event_type", "")).lower() == "kill" and e.get("time_ms") is not None
+    ]
+    deaths = [
+        e
+        for e in highlight_events
+        if str(e.get("event_type", "")).lower() == "death" and e.get("time_ms") is not None
+    ]
+
+    if not kills and not deaths:
+        return []
+
+    # --- Premier sang : premier kill du match (tous joueurs) ---
+    if kills:
+        first_kill = min(kills, key=lambda e: int(e["time_ms"]))
+        xu = str(first_kill.get("xuid", "")).strip()
+        events.append(
+            MatchImpactEvent(
+                event_type="first_blood",
+                xuid=xu,
+                gamertag=str(first_kill.get("gamertag", "?")),
+                time_ms=int(first_kill["time_ms"]),
+                is_me=(xu == me_xuid),
+            )
+        )
+
+    # --- Finisseur : dernier kill d'une victoire ---
+    if kills and outcome == Outcome.WIN:
+        last_kill = max(kills, key=lambda e: int(e["time_ms"]))
+        xu = str(last_kill.get("xuid", "")).strip()
+        events.append(
+            MatchImpactEvent(
+                event_type="clutch_finisher",
+                xuid=xu,
+                gamertag=str(last_kill.get("gamertag", "?")),
+                time_ms=int(last_kill["time_ms"]),
+                is_me=(xu == me_xuid),
+            )
+        )
+
+    # --- Boulet : dernière mort d'une défaite ---
+    if deaths and outcome == Outcome.LOSS:
+        last_death = max(deaths, key=lambda e: int(e["time_ms"]))
+        xu = str(last_death.get("xuid", "")).strip()
+        events.append(
+            MatchImpactEvent(
+                event_type="last_casualty",
+                xuid=xu,
+                gamertag=str(last_death.get("gamertag", "?")),
+                time_ms=int(last_death["time_ms"]),
+                is_me=(xu == me_xuid),
+            )
+        )
+
+    # --- Plus lent : joueur le plus lent à obtenir son 1er kill ---
+    if kills:
+        # Grouper par xuid → premier kill de chaque joueur
+        first_kill_by_player: dict[str, dict[str, Any]] = {}
+        for k in kills:
+            xu = str(k.get("xuid", "")).strip()
+            if not xu:
+                continue
+            if xu not in first_kill_by_player or int(k["time_ms"]) < int(
+                first_kill_by_player[xu]["time_ms"]
+            ):
+                first_kill_by_player[xu] = k
+
+        if len(first_kill_by_player) >= 2:
+            # Le plus lent = celui avec le max de time_ms pour son premier kill
+            slowest = max(first_kill_by_player.values(), key=lambda e: int(e["time_ms"]))
+            xu = str(slowest.get("xuid", "")).strip()
+            events.append(
+                MatchImpactEvent(
+                    event_type="last_group_kill",
+                    xuid=xu,
+                    gamertag=str(slowest.get("gamertag", "?")),
+                    time_ms=int(slowest["time_ms"]),
+                    is_me=(xu == me_xuid),
+                )
+            )
+
+    # --- Première victime : première mort du match (tous joueurs) ---
+    if deaths:
+        first_death = min(deaths, key=lambda e: int(e["time_ms"]))
+        xu = str(first_death.get("xuid", "")).strip()
+        events.append(
+            MatchImpactEvent(
+                event_type="first_group_death",
+                xuid=xu,
+                gamertag=str(first_death.get("gamertag", "?")),
+                time_ms=int(first_death["time_ms"]),
+                is_me=(xu == me_xuid),
+            )
+        )
+
+    return events

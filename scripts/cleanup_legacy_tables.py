@@ -16,10 +16,9 @@ Tables supprimées (9):
 - mv_team_stats : Vue obsolète
 - mv_opponent_stats : Vue obsolète
 
-Tables conservées (9):
+Tables conservées (8):
 - player_match_enrichment : Enrichissements spécifiques joueur
 - teammates_aggregate : Agrégats coéquipiers
-- antagonists : Top killers/victimes
 - match_citations : Citations calculées
 - career_progression : Historique rangs
 - sync_meta : Métadonnées de synchronisation

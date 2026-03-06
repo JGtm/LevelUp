@@ -299,7 +299,7 @@ class MatchProcessingMixin:
 
                 # ✅ NOUVEAU : player_match_enrichment (performance_score, sessions, etc.)
                 self._insert_enrichment_row(match_id, match_row)
-                self._compute_and_update_performance_score(match_id, match_row)
+                self._update_performance_score(match_id, match_row)
 
                 # ✅ CSR (v5.2) : écrire le CSR dans match_skill_rank si match classé
                 if _skill_row is not None and match_row.is_ranked:
@@ -609,7 +609,7 @@ class MatchProcessingMixin:
 
                 # ✅ NOUVEAU : player_match_enrichment (performance_score, sessions, etc.)
                 self._insert_enrichment_row(match_id, match_row)
-                self._compute_and_update_performance_score(match_id, match_row)
+                self._update_performance_score(match_id, match_row)
 
                 # ✅ CSR (v5.2) : écrire le CSR dans match_skill_rank si match classé
                 if _skill_row is not None and match_row.is_ranked:

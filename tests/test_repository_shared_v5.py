@@ -55,16 +55,6 @@ def _create_player_db(db_path: Path) -> None:
         )
     """)
     conn.execute("""
-        CREATE TABLE antagonists (
-            opponent_xuid VARCHAR PRIMARY KEY,
-            opponent_gamertag VARCHAR,
-            kills_dealt INTEGER DEFAULT 0,
-            deaths_suffered INTEGER DEFAULT 0,
-            net_kills INTEGER GENERATED ALWAYS AS (kills_dealt - deaths_suffered) VIRTUAL,
-            matches_fought INTEGER DEFAULT 0
-        )
-    """)
-    conn.execute("""
         CREATE SEQUENCE IF NOT EXISTS highlight_events_id_seq;
         CREATE TABLE highlight_events (
             id INTEGER PRIMARY KEY DEFAULT nextval('highlight_events_id_seq'),
@@ -133,12 +123,6 @@ def _create_player_db(db_path: Path) -> None:
                 False,
             ),
         )
-
-    # Antagonists
-    conn.execute("""
-        INSERT INTO antagonists (opponent_xuid, opponent_gamertag, kills_dealt, deaths_suffered, matches_fought)
-        VALUES ('xuid_rival1', 'Rival1', 50, 30, 15)
-    """)
 
     conn.close()
 
@@ -495,7 +479,7 @@ class TestPolarsOutput:
 
 
 # =============================================================================
-# Tests médailles, coéquipiers, antagonistes
+# Tests médailles, coéquipiers
 # =============================================================================
 
 
@@ -513,7 +497,7 @@ class TestMedalsShared:
 
 
 class TestTeammatesAndAntagonists:
-    """Tests coéquipiers et antagonistes."""
+    """Tests coéquipiers."""
 
     def test_list_top_teammates(self, repo_with_shared: DuckDBRepository) -> None:
         teammates = repo_with_shared.list_top_teammates(limit=5)
