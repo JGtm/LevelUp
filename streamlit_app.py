@@ -818,7 +818,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
     def _page_explorer() -> None:
         from src.ui.pages import render_explorer_page
 
-        render_explorer_page(df=ctx.df, dff=ctx.dff, **ctx.match_view_params)
+        render_explorer_page(df=ctx.df, dff=ctx.df, **ctx.match_view_params)
 
     def _page_media() -> None:
         from src.ui.pages import render_media_tab
@@ -901,11 +901,11 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
         "timeseries": _page_timeseries,
         "session_compare": _page_session_compare,
         "last_match": _page_last_match,
-        "explorer": _page_explorer,
         "media": _page_media,
         "citations": _page_citations,
         "win_loss": _page_win_loss,
         "teammates": _page_teammates,
+        "explorer": _page_explorer,
         "match_history": _page_match_history,
         "career": _page_career,
         "settings": _page_settings,
