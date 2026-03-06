@@ -94,7 +94,7 @@ def _translate_category(cat: str) -> str:
     return _get_category_labels().get(cat, cat)
 
 
-def render_checkbox_filter(
+def render_checkbox_filter(  # noqa: C901, PLR0913
     *,
     label: str,
     options: list[str],
@@ -221,7 +221,7 @@ def _extract_mode_name(full_mode: str) -> str:
     return full_mode
 
 
-def render_hierarchical_checkbox_filter(
+def render_hierarchical_checkbox_filter(  # noqa: C901, PLR0912, PLR0915
     *,
     label: str,
     options: list[str],
@@ -457,13 +457,19 @@ def render_hierarchical_checkbox_filter(
     return st.session_state[session_key]
 
 
+# Patterns identifiant les playlists PvE (Firefight) dans toutes les langues
+_FIREFIGHT_PATTERNS: tuple[str, ...] = ("firefight", "baptême du feu", "bapteme du feu")
+
+
 def get_firefight_playlists(playlist_values: list[str]) -> set[str]:
     """Identifie les playlists Firefight dans une liste.
 
+    Détecte les noms anglais ("Firefight") et français ("Baptême du feu").
+
     Args:
-        playlist_values: Liste des noms de playlists.
+        playlist_values: Liste des noms de playlists (traduits ou bruts).
 
     Returns:
-        Ensemble des playlists contenant "Firefight".
+        Ensemble des playlists PvE détectées.
     """
-    return {p for p in playlist_values if "firefight" in p.lower()}
+    return {p for p in playlist_values if any(pat in p.lower() for pat in _FIREFIGHT_PATTERNS)}

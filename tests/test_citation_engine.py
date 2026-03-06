@@ -113,8 +113,7 @@ def _create_player_db(path: Path) -> None:
         )
     """)
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_match_citations_name "
-        "ON match_citations(citation_name_norm)"
+        "CREATE INDEX IF NOT EXISTS idx_match_citations_name ON match_citations(citation_name_norm)"
     )
 
     # Table medals_earned
@@ -165,7 +164,7 @@ def _insert_sample_data(db_path: Path) -> None:
         "INSERT INTO match_stats VALUES "
         "('m1', 15, 5, 8, 3, 2, 'Ranked Slayer', 'Slayer', '2026-01-01 12:00:00')"
     )
-    conn.execute("INSERT INTO medals_earned VALUES " "('m1', 3169118333, 2), ('m1', 221693153, 1)")
+    conn.execute("INSERT INTO medals_earned VALUES ('m1', 3169118333, 2), ('m1', 221693153, 1)")
     conn.execute(
         "INSERT INTO personal_score_awards VALUES "
         "('m1', 'Flag Defense', 'objective', 3, 150), "
@@ -177,7 +176,7 @@ def _insert_sample_data(db_path: Path) -> None:
         "INSERT INTO match_stats VALUES "
         "('m2', 10, 8, 12, 2, 2, 'Quick Play', 'CTF', '2026-01-02 14:00:00')"
     )
-    conn.execute("INSERT INTO medals_earned VALUES " "('m2', 3169118333, 1)")
+    conn.execute("INSERT INTO medals_earned VALUES ('m2', 3169118333, 1)")
     conn.execute(
         "INSERT INTO personal_score_awards VALUES "
         "('m2', 'Flag Defense', 'objective', 1, 50), "
@@ -755,3 +754,113 @@ class TestV5SharedSupport:
             metadata_db_path=warehouse / "metadata.duckdb",
         )
         assert engine.has_shared
+
+
+# ---------------------------------------------------------------------------
+# Tests composite mastery
+# ---------------------------------------------------------------------------
+
+
+class TestCompositeMastery:
+    """Vérifie que aggregate_for_display compte les enfants masterisés."""
+
+    def _setup(self, tmp_path: Path) -> CitationEngine:
+        warehouse = tmp_path / "data" / "warehouse"
+        warehouse.mkdir(parents=True)
+        meta_path = warehouse / "metadata.duckdb"
+
+        conn = duckdb.connect(str(meta_path))
+        conn.execute("""
+            CREATE TABLE citation_mappings (
+                citation_name_norm TEXT PRIMARY KEY,
+                citation_name_display TEXT NOT NULL,
+                mapping_type TEXT NOT NULL,
+                medal_id BIGINT, medal_ids TEXT, stat_name TEXT,
+                award_name TEXT, award_category TEXT, custom_function TEXT,
+                composite_children TEXT,
+                confidence TEXT, notes TEXT,
+                enabled BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                image_path TEXT, category TEXT, description TEXT, tier_targets TEXT
+            )
+        """)
+        children_json = '["child_a", "child_b", "child_c"]'
+        conn.executemany(
+            "INSERT INTO citation_mappings "
+            "(citation_name_norm, citation_name_display, mapping_type, "
+            "stat_name, composite_children, confidence, tier_targets) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [
+                ("child_a", "Child A", "stat", "kills", None, "high", "10,20,50"),
+                ("child_b", "Child B", "stat", "assists", None, "high", "5,10,30"),
+                ("child_c", "Child C", "stat", "deaths", None, "high", "10,20,100"),
+                ("parent_comp", "Parent", "composite", None, children_json, "high", None),
+            ],
+        )
+        conn.close()
+
+        player_dir = tmp_path / "data" / "players" / "TestPlayer"
+        player_dir.mkdir(parents=True)
+        _create_player_db(player_dir / "stats.duckdb")
+
+        return CitationEngine(
+            db_path=player_dir / "stats.duckdb",
+            xuid="0",
+            metadata_db_path=meta_path,
+            shared_db_path=False,
+        )
+
+    def test_composite_not_mastered_when_children_incomplete(self, tmp_path: Path) -> None:
+        """Composite = 0 quand aucun enfant n'a atteint sa maîtrise."""
+        engine = self._setup(tmp_path)
+        # child_a master=50, child_b master=30, child_c master=100
+        # Injectons des valeurs en dessous de la maîtrise
+        conn = duckdb.connect(str(engine._db_path))
+        conn.executemany(
+            "INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?, ?, ?)",
+            [
+                ("m1", "child_a", 40),   # < 50 → pas masterisé
+                ("m1", "child_b", 25),   # < 30 → pas masterisé
+                ("m1", "child_c", 90),   # < 100 → pas masterisé
+            ],
+        )
+        conn.close()
+
+        result = engine.aggregate_for_display(match_ids=None)
+        assert result.get("parent_comp", 0) == 0
+
+    def test_composite_partial_mastery(self, tmp_path: Path) -> None:
+        """Composite = nombre d'enfants masterisés (pas la somme brute)."""
+        engine = self._setup(tmp_path)
+        conn = duckdb.connect(str(engine._db_path))
+        conn.executemany(
+            "INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?, ?, ?)",
+            [
+                ("m1", "child_a", 50),   # = 50 → masterisé ✓
+                ("m1", "child_b", 30),   # = 30 → masterisé ✓
+                ("m1", "child_c", 10),   # < 100 → pas masterisé
+            ],
+        )
+        conn.close()
+
+        result = engine.aggregate_for_display(match_ids=None)
+        # 2 enfants masterisés, pas 90 (somme brute)
+        assert result["parent_comp"] == 2
+
+    def test_composite_full_mastery(self, tmp_path: Path) -> None:
+        """Composite = 3 quand les 3 enfants sont masterisés."""
+        engine = self._setup(tmp_path)
+        conn = duckdb.connect(str(engine._db_path))
+        conn.executemany(
+            "INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?, ?, ?)",
+            [
+                ("m1", "child_a", 100),   # ≥ 50 → masterisé ✓
+                ("m1", "child_b", 30),    # = 30 → masterisé ✓
+                ("m1", "child_c", 100),   # = 100 → masterisé ✓
+            ],
+        )
+        conn.close()
+
+        result = engine.aggregate_for_display(match_ids=None)
+        assert result["parent_comp"] == 3

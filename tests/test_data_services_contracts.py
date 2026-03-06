@@ -8,6 +8,7 @@ Vérifie que :
 
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime, timedelta
 
 import polars as pl
@@ -64,7 +65,6 @@ def _make_match_pl(n: int = 20) -> pl.DataFrame:
 def _make_empty_pl() -> pl.DataFrame:
     """Construit un DataFrame Polars vide (pour compute_period_table)."""
     return pl.DataFrame()
-
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -461,10 +461,8 @@ class TestComputeSkillRatingsBatchWeights:
         )
         custom_weights = {**COMPOSITE_WEIGHTS, "kills_vs_expected": 99.0}
         # Appel avec poids personnalisés — ne doit pas muter le global
-        try:
+        with contextlib.suppress(Exception):  # On teste uniquement la non-mutation, pas le résultat
             compute_skill_ratings_batch(df_matches, pl.DataFrame(), weights=custom_weights)
-        except Exception:
-            pass  # On teste uniquement la non-mutation, pas le résultat
 
         assert COMPOSITE_WEIGHTS["kills_vs_expected"] == original_kills_weight
 
@@ -487,8 +485,7 @@ class TestEnsureMatchSkillRankTable:
         ensure_match_skill_rank_table(conn)
         ensure_match_skill_rank_table(conn)  # ne doit pas lever
         tables = conn.execute(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_name = 'match_skill_rank'"
+            "SELECT table_name FROM information_schema.tables WHERE table_name = 'match_skill_rank'"
         ).fetchall()
         assert len(tables) == 1
         conn.close()
@@ -527,7 +524,7 @@ class TestEnsureMatchSkillRankTable:
         )
         import pytest
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017 — DuckDB lève une ConstraintException générique
             conn.execute(
                 "INSERT INTO match_skill_rank (match_id, rating_type, rating_value) "
                 "VALUES ('m1', 'CSR', 900)"

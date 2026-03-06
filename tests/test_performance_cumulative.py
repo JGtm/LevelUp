@@ -85,7 +85,7 @@ def improving_session_df() -> pl.DataFrame:
     return pl.DataFrame(
         {
             "match_id": [f"m{i}" for i in range(10)],
-            "start_time": [f"2026-02-01T{10+i}:00:00" for i in range(10)],
+            "start_time": [f"2026-02-01T{10 + i}:00:00" for i in range(10)],
             "kills": [5, 6, 6, 7, 7, 10, 11, 12, 13, 15],  # Croissant
             "deaths": [10, 9, 8, 8, 7, 6, 5, 5, 4, 4],  # Décroissant
             "assists": [2, 2, 3, 3, 3, 4, 4, 5, 5, 6],
@@ -99,7 +99,7 @@ def declining_session_df() -> pl.DataFrame:
     return pl.DataFrame(
         {
             "match_id": [f"m{i}" for i in range(10)],
-            "start_time": [f"2026-02-01T{10+i}:00:00" for i in range(10)],
+            "start_time": [f"2026-02-01T{10 + i}:00:00" for i in range(10)],
             "kills": [15, 14, 12, 10, 10, 8, 7, 6, 5, 4],  # Décroissant
             "deaths": [4, 5, 5, 6, 7, 8, 9, 10, 11, 12],  # Croissant
             "assists": [5, 5, 4, 4, 3, 3, 2, 2, 1, 1],
@@ -366,7 +366,7 @@ class TestSessionTrend:
         df = pl.DataFrame(
             {
                 "match_id": [f"m{i}" for i in range(10)],
-                "start_time": [f"2026-02-01T{10+i}:00:00" for i in range(10)],
+                "start_time": [f"2026-02-01T{10 + i}:00:00" for i in range(10)],
                 "kills": [10] * 10,  # Constant
                 "deaths": [10] * 10,  # Constant
                 "assists": [5] * 10,

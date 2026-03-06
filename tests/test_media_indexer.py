@@ -9,6 +9,7 @@ from unittest.mock import patch
 import duckdb
 import pytest
 
+from src.data.media_helpers import compute_file_hash, get_file_metadata
 from src.data.media_indexer import MediaIndexer, ScanResult
 
 
@@ -363,22 +364,22 @@ def test_associate_with_matches_explicit_timestamps(tmp_path: Path) -> None:
 
 def test_file_hash_computation(temp_db: Path, tmp_path: Path) -> None:
     """Test le calcul du hash des fichiers."""
-    indexer = MediaIndexer(temp_db)
+    MediaIndexer(temp_db)  # vérifie que l'init marche
     test_file = tmp_path / "test.txt"
     test_file.write_text("test content")
-    hash1 = indexer._compute_file_hash(test_file)
+    hash1 = compute_file_hash(test_file)
     assert hash1
     test_file.write_text("modified content")
-    hash2 = indexer._compute_file_hash(test_file)
+    hash2 = compute_file_hash(test_file)
     assert hash1 != hash2
 
 
 def test_get_file_metadata(temp_db: Path, tmp_path: Path) -> None:
     """Test la récupération des métadonnées (capture_start_utc, capture_end_utc)."""
-    indexer = MediaIndexer(temp_db)
+    MediaIndexer(temp_db)  # vérifie que l'init marche
     test_video = tmp_path / "test.mp4"
     test_video.write_text("fake video")
-    metadata = indexer._get_file_metadata(test_video)
+    metadata = get_file_metadata(test_video)
     assert metadata is not None
     assert metadata["kind"] == "video"
     assert metadata["file_ext"] == "mp4"

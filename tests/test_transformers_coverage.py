@@ -23,7 +23,7 @@ XUID = "1234567890123456"
 MATCH_ID = "test-match-001"
 
 
-def _player_obj(
+def _player_obj(  # noqa: PLR0913
     xuid: str = XUID,
     kills: int = 10,
     deaths: int = 5,
@@ -88,7 +88,7 @@ def _player_obj(
     }
 
 
-def _match_json(
+def _match_json(  # noqa: PLR0913
     match_id: str = MATCH_ID,
     xuid: str = XUID,
     start_time: str = "2024-01-15T10:00:00Z",

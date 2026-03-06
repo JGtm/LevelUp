@@ -54,7 +54,7 @@ class TestLoadDotenvIfPresent:
 
         env_file = tmp_path / ".env"
         env_file.write_text("TEST_KEY_DOTENV=test_value\n")
-        monkeypatch.setattr("src.ui.profile_api_tokens._repo_root", lambda: tmp_path)
+        monkeypatch.setattr("src.utils.env.REPO_ROOT", tmp_path)
         monkeypatch.delenv("TEST_KEY_DOTENV", raising=False)
 
         _load_dotenv_if_present()
@@ -68,7 +68,7 @@ class TestLoadDotenvIfPresent:
 
         env_file = tmp_path / ".env"
         env_file.write_text("EXISTING_KEY=new_value\n")
-        monkeypatch.setattr("src.ui.profile_api_tokens._repo_root", lambda: tmp_path)
+        monkeypatch.setattr("src.utils.env.REPO_ROOT", tmp_path)
         monkeypatch.setenv("EXISTING_KEY", "original_value")
 
         _load_dotenv_if_present()
@@ -80,7 +80,7 @@ class TestLoadDotenvIfPresent:
 
         (tmp_path / ".env.local").write_text("PRIORITY_KEY=local_value\n")
         (tmp_path / ".env").write_text("PRIORITY_KEY=env_value\n")
-        monkeypatch.setattr("src.ui.profile_api_tokens._repo_root", lambda: tmp_path)
+        monkeypatch.setattr("src.utils.env.REPO_ROOT", tmp_path)
         monkeypatch.delenv("PRIORITY_KEY", raising=False)
 
         _load_dotenv_if_present()
@@ -92,7 +92,7 @@ class TestLoadDotenvIfPresent:
     def test_no_env_file(self, tmp_path, monkeypatch):
         from src.ui.profile_api_tokens import _load_dotenv_if_present
 
-        monkeypatch.setattr("src.ui.profile_api_tokens._repo_root", lambda: tmp_path)
+        monkeypatch.setattr("src.utils.env.REPO_ROOT", tmp_path)
         # Should not raise
         _load_dotenv_if_present()
 
@@ -101,7 +101,7 @@ class TestLoadDotenvIfPresent:
 
         env_file = tmp_path / ".env"
         env_file.write_text("# Comment\n\nVALID_KEY=value\n  \n")
-        monkeypatch.setattr("src.ui.profile_api_tokens._repo_root", lambda: tmp_path)
+        monkeypatch.setattr("src.utils.env.REPO_ROOT", tmp_path)
         monkeypatch.delenv("VALID_KEY", raising=False)
 
         _load_dotenv_if_present()
@@ -114,7 +114,7 @@ class TestLoadDotenvIfPresent:
 
         env_file = tmp_path / ".env"
         env_file.write_text('QUOTED_KEY="quoted_value"\n')
-        monkeypatch.setattr("src.ui.profile_api_tokens._repo_root", lambda: tmp_path)
+        monkeypatch.setattr("src.utils.env.REPO_ROOT", tmp_path)
         monkeypatch.delenv("QUOTED_KEY", raising=False)
 
         _load_dotenv_if_present()
@@ -198,8 +198,7 @@ class TestProfileApiCacheLayer:
 
 class TestRepoRoot:
     def test_returns_path(self):
-        from src.ui.profile_api_tokens import _repo_root
+        from src.utils.env import REPO_ROOT
 
-        result = _repo_root()
-        assert isinstance(result, Path)
-        assert result.exists()
+        assert isinstance(REPO_ROOT, Path)
+        assert REPO_ROOT.exists()

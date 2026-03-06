@@ -1,6 +1,9 @@
-"""Rendu du filtre Période (sélecteurs de dates).
+"""Filtre Période — sélecteurs de date pour la sidebar.
 
-Extrait de filters_render.py pour respecter la limite de taille des modules.
+Ce module expose uniquement :
+- ``_render_period_filter`` : rend les deux date_input (début / fin) en mode Période.
+
+Importé par ``filters_render.py`` ; ne pas utiliser directement depuis l'UI.
 """
 
 from __future__ import annotations
@@ -9,7 +12,7 @@ from datetime import date
 
 import streamlit as st
 
-from src.app._filters_helpers import _safe_to_date
+from src.app._filters_shared import safe_to_date as _safe_to_date
 from src.ui.i18n import t
 
 

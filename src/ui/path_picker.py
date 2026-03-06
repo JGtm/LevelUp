@@ -74,7 +74,7 @@ def _safe_listdir_files(path: str, *, exts: Iterable[str] | None = None) -> list
     return out
 
 
-def directory_input(
+def directory_input(  # noqa: PLR0913
     label: str,
     *,
     value: str = "",
@@ -113,7 +113,7 @@ def directory_input(
     return str(path_value or "").strip()
 
 
-def file_input(
+def file_input(  # noqa: PLR0913
     label: str,
     *,
     value: str = "",

@@ -228,6 +228,23 @@ python -m pytest --ignore=tests/integration
 
 ---
 
+## Stratégie de branches Git
+
+### Règle : 1 tâche = 1 branche, N commits
+
+- Phases séquentielles d'un même sujet → **commits** sur une branche unique
+- Plusieurs branches uniquement si les tâches sont **indépendantes et parallélisables**
+- Anti-pattern à éviter : créer `feature/phase1`, `feature/phase2`, `feature/phase3`… pour un travail linéaire
+
+### Règles opérationnelles
+
+1. Vérifier la branche courante avant de committer : `git branch --show-current`
+2. Ne jamais travailler sur `main` sans instruction explicite
+3. Si aucun nom de branche n'est spécifié, proposer un nom avant de créer
+4. Entre sessions : relire `git log --oneline -10` pour reprendre sur la bonne branche
+
+---
+
 ## Commits
 
 ### Format Conventional Commits
@@ -254,6 +271,45 @@ feat(ui): ajouter graphe radar des stats par minute
 fix(sync): corriger détection des modes Firefight
 docs: mettre à jour README avec branding LevelUp
 ```
+
+---
+
+## Diagnostic de revue de code
+
+Avant chaque commit, vérifier que le code ne réintroduit pas d'anti-patterns connus.
+
+### Seuils
+
+| Métrique | Max | Conséquence |
+|----------|:---:|-------------|
+| Lignes par fichier | **500** | Découper en modules (mixins, `*_logic.py`) |
+| Lignes par fonction | **80** | Extraire des sous-fonctions |
+| Copies d'un pattern | **≤ 2** | Centraliser (helper/constante) |
+| Magic numbers | **0** | Enum (`Outcome.WIN`) ou constante |
+| Code mort | **0** | Supprimer avec tests et imports associés |
+| Connexions DB bare | **0** | Context manager obligatoire |
+
+### Anti-patterns interdits
+
+1. **Dead code museum** — code mort conservé "au cas où"
+2. **Compatibility guard forever** — `if POLARS_AVAILABLE:` après migration terminée
+3. **God file** — fichier >500L avec responsabilités distinctes
+4. **Swiss-army function** — fonction qui fait tout (init + logique + IO + render)
+5. **Copy-paste config** — même valeur dans 3+ endroits au lieu d'une constante
+6. **Bare connect** — `duckdb.connect()` sans context manager
+7. **Manual coercion** — `@dataclass` + parsing ad hoc → préférer Pydantic v2
+8. **Magic integer** — `outcome == 2` → `Outcome.WIN`
+9. **Logique dans l'UI** — calculs purs dans des fichiers Streamlit → séparer en `*_logic.py`
+
+### Patterns recommandés
+
+- **God class** → mixins MRO (`engine.py` → 8 mixins + `_protocol.py`)
+- **God function** → extract method (`main()` → sous-fonctions nommées)
+- **Page UI complexe** → `page.py` + `page_logic.py` + `page_data.py`
+- **Config/parsing** → Pydantic v2 `BaseModel` + `model_validate()`
+- **Codes numériques** → `IntEnum`
+- **Connexions DB** → `duckdb_read_only()` / `duckdb_read_write()`
+- **Constantes** → modules dédiés (`PLOTLY_CLEAN_CONFIG`, `DATE_FORMAT_FR`)
 
 ---
 

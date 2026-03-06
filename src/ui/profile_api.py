@@ -12,8 +12,6 @@ Contraintes:
 
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
 import contextlib
 import os
 import time
@@ -44,9 +42,10 @@ from src.ui.profile_api_urls import (
 from src.ui.profile_api_urls import (
     resolve_inventory_png_via_api as _resolve_inventory_png_via_api,
 )
+from src.utils.async_compat import run_sync as _run_sync_compat
 
 
-def fetch_appearance_via_spnkr(
+def fetch_appearance_via_spnkr(  # noqa: C901, PLR0913
     *,
     xuid: str,
     gamertag: str | None = None,
@@ -63,16 +62,7 @@ def fetch_appearance_via_spnkr(
     """
 
     def _run_sync(coro):
-        try:
-            return asyncio.run(coro)
-        except RuntimeError as e:
-            # Certains environnements peuvent déjà avoir une loop.
-            msg = str(e)
-            if "asyncio.run() cannot be called" not in msg:
-                raise
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                fut = ex.submit(lambda: asyncio.run(coro))
-                return fut.result(timeout=float(timeout_seconds) + 20.0)
+        return _run_sync_compat(coro, timeout=float(timeout_seconds) + 20.0)
 
     async def _run() -> ProfileAppearance:
         try:
@@ -207,7 +197,7 @@ def fetch_appearance_via_spnkr(
     return _run_sync(_run())
 
 
-async def _get_career_rank_for_player(
+async def _get_career_rank_for_player(  # noqa: C901, PLR0912, PLR0913, PLR0915
     client, session, st_in: str, ct_in: str, xuid: str, parse_fn
 ) -> tuple[str | None, str | None, str | None, str | None]:
     """Récupère le Career Rank du joueur via les APIs Halo.
@@ -359,15 +349,7 @@ def fetch_xuid_via_spnkr(
     """Retourne (xuid_digits, canonical_gamertag) pour un gamertag."""
 
     def _run_sync(coro):
-        try:
-            return asyncio.run(coro)
-        except RuntimeError as e:
-            msg = str(e)
-            if "asyncio.run() cannot be called" not in msg:
-                raise
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                fut = ex.submit(lambda: asyncio.run(coro))
-                return fut.result(timeout=float(timeout_seconds) + 20.0)
+        return _run_sync_compat(coro, timeout=float(timeout_seconds) + 20.0)
 
     async def _run() -> tuple[str, str]:
         try:
@@ -432,7 +414,7 @@ def fetch_xuid_via_spnkr(
     return _run_sync(_run())
 
 
-def get_xuid_for_gamertag(
+def get_xuid_for_gamertag(  # noqa: PLR0913
     *,
     gamertag: str,
     enabled: bool,
@@ -497,7 +479,7 @@ def get_xuid_for_gamertag(
     return xuid, None
 
 
-def get_profile_appearance(
+def get_profile_appearance(  # noqa: PLR0913
     *,
     xuid: str,
     enabled: bool,

@@ -62,13 +62,13 @@ class SyncLock:
             raise SyncAlreadyRunning(
                 "Un sync est déjà en cours. Réessaie dans quelques instants."
             ) from err
-        logger.debug(f"[SyncLock] Verrou acquis : {self._lock_file}")
+        logger.debug("[SyncLock] Verrou acquis : %s", self._lock_file)
         return self
 
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
         if self._lock is not None:
             try:
                 self._lock.release()
-                logger.debug(f"[SyncLock] Verrou libéré : {self._lock_file}")
+                logger.debug("[SyncLock] Verrou libéré : %s", self._lock_file)
             except Exception:
                 pass

@@ -24,7 +24,7 @@ def create_match_citations_table(conn: duckdb.DuckDBPyConnection) -> bool:
     """
     # Vérifier si la table existe
     exists = conn.execute(
-        "SELECT COUNT(*) FROM information_schema.tables " "WHERE table_name = 'match_citations'"
+        "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'match_citations'"
     ).fetchone()[0]
 
     if exists:

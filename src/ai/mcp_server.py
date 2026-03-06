@@ -248,7 +248,7 @@ class MCPServer:
         return self.kb.get_stats()
 
 
-def run_stdio_server():
+def run_stdio_server():  # noqa: C901
     """Lance le serveur MCP en mode stdio (JSON-RPC)."""
     server = MCPServer()
 

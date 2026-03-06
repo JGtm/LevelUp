@@ -23,7 +23,7 @@ _XUID_C = "100000000000333"
 _XUID_D = "100000000000999"
 
 
-def _make_firefight_json(
+def _make_firefight_json(  # noqa: PLR0913
     match_id: str = "ff-match-001",
     category_id: int = 41,
     player_xuid: str = _XUID_A,
@@ -336,7 +336,7 @@ class TestPveSchemaAndInsert:
 
     def test_ensure_pve_schema_creates_table(self, pve_conn):
         result = pve_conn.execute(
-            "SELECT COUNT(*) FROM information_schema.tables " "WHERE table_name = 'pve_match_stats'"
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'pve_match_stats'"
         ).fetchone()
         assert result[0] == 1
 

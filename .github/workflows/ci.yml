@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, feature/*]
+    branches: [main, feature/*, refactor/*]
   pull_request:
     branches: [main]
 
@@ -115,4 +115,26 @@ jobs:
         run: isort --check-only --diff src/ tests/ || true
 
       - name: Lint (Ruff)
-        run: ruff check src/ tests/ || true
+        run: ruff check src/ tests/
+
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Check code size limits
+        run: python scripts/check_code_size.py || true
+
+      - name: Check imports health
+        run: python scripts/check_imports.py || true

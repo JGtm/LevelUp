@@ -8,15 +8,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+# Polars
+import polars as pl
 import streamlit as st
 
 from src.analysis.objective_participation import (
     compute_award_frequency_polars,
     compute_objective_summary_by_match_polars,
 )
+from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.i18n.data_labels import label as i18n_label
-from src.ui.streamlit_modern import fragment_if_available
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization.objective_charts import (
     plot_assist_breakdown_pie,
     plot_objective_breakdown_bars,
@@ -24,15 +27,6 @@ from src.visualization.objective_charts import (
     plot_objective_trend_over_time,
     plot_objective_vs_kills_scatter,
 )
-
-# Import conditionnel de Polars
-try:
-    import polars as pl
-
-    POLARS_AVAILABLE = True
-except ImportError:
-    POLARS_AVAILABLE = False
-    pl = None
 
 if TYPE_CHECKING:
     from src.data.repositories.duckdb_repo import DuckDBRepository
@@ -53,7 +47,7 @@ def _format_ratio(value: float | None) -> str:
 
 
 @fragment_if_available
-def render_objective_analysis_page(
+def render_objective_analysis_page(  # noqa: C901, PLR0912, PLR0915
     repo: DuckDBRepository,
     xuid: str,
     *,
@@ -74,10 +68,6 @@ def render_objective_analysis_page(
     """
     st.title(t("obj_analysis_title"))
     st.caption(t("obj_caption"))
-
-    if not POLARS_AVAILABLE:
-        st.error(t("obj_polars_missing"))
-        return
 
     # ══════════════════════════════════════════════════════════════════════════
     # Chargement des données
@@ -213,50 +203,44 @@ def render_objective_analysis_page(
     with tab_scatter:
         st.markdown(f"### {t('obj_correlation_title')}")
         st.caption(t("obj_scatter_caption"))
-        try:
+        with safe_chart_render():
             fig_scatter = plot_objective_vs_kills_scatter(
                 my_awards_df,
                 match_stats_df,
                 title=None,
             )
             if fig_scatter is not None:
-                st.plotly_chart(fig_scatter, width="stretch", config={"displayModeBar": False})
+                st.plotly_chart(fig_scatter, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
 
     with tab_breakdown:
         col_bars, col_gauge = st.columns([2, 1])
 
         with col_bars:
             st.markdown(f"### {t('obj_breakdown_title')}")
-            try:
+            with safe_chart_render():
                 fig_bars = plot_objective_breakdown_bars(
                     my_awards_df,
                     xuid=xuid,
                     title=None,
                 )
                 if fig_bars is not None:
-                    st.plotly_chart(fig_bars, width="stretch", config={"staticPlot": True})
+                    st.plotly_chart(fig_bars, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
 
         with col_gauge:
             st.markdown(f"### {t('obj_ratio_label')}")
-            try:
+            with safe_chart_render():
                 fig_gauge = plot_objective_ratio_gauge(
                     objective_ratio,
                     title="% du score sur objectifs",
                 )
                 if fig_gauge is not None:
-                    st.plotly_chart(fig_gauge, width="stretch", config={"staticPlot": True})
+                    st.plotly_chart(fig_gauge, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
 
     with tab_trend:
         st.markdown(f"### {t('obj_trend_title')}")
@@ -272,17 +256,15 @@ def render_objective_analysis_page(
                 .sort("start_time")
             )
 
-            try:
+            with safe_chart_render():
                 fig_trend = plot_objective_trend_over_time(
                     summary_with_time,
                     title=None,
                 )
                 if fig_trend is not None:
-                    st.plotly_chart(fig_trend, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig_trend, width="stretch", config=PLOTLY_CLEAN_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
         else:
             st.info(t("insufficient_data_chart"))
 
@@ -335,7 +317,7 @@ def render_objective_analysis_page(
                 breakdown,
                 title="Types d'Assistances",
             )
-            st.plotly_chart(fig_pie, width="stretch", config={"staticPlot": True})
+            st.plotly_chart(fig_pie, width="stretch", config=PLOTLY_STATIC_CONFIG)
 
         with col_table:
             st.markdown(f"### {t('obj_assist_detail')}")

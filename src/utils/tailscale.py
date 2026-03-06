@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import threading
 from typing import Any
@@ -26,7 +27,10 @@ logger = logging.getLogger(__name__)
 
 # Guard niveau processus : le funnel ne démarre qu'une seule fois,
 # indépendamment du nombre de sessions WebSocket Streamlit.
-_funnel_started: threading.Event = threading.Event()
+# On utilise os.environ (survit au rechargement de modules par Streamlit)
+# + _funnel_lock pour l'exclusion mutuelle (double-checked locking).
+_FUNNEL_ENV_KEY = "_LEVELUP_TAILSCALE_FUNNEL_STARTED"
+_funnel_lock: threading.Lock = threading.Lock()
 
 
 def get_funnel_url() -> str | None:
@@ -101,7 +105,7 @@ def start_funnel(port: int = 8501) -> str | None:
     """
     # Tailscale ≥1.56 — le mode foreground (sans --bg) bloque indéfiniment.
     # On essaie d'abord --bg (background, retour immédiat, funnel persistant).
-    print("[Tailscale] Démarrage du funnel sur le port", port, "...", flush=True)
+    logger.info("[Tailscale] Démarrage du funnel sur le port %d ...", port)
     for cmd in (
         ["tailscale", "funnel", "--bg", str(port)],
         ["tailscale", "funnel", str(port)],  # fallback anciennes versions
@@ -115,72 +119,61 @@ def start_funnel(port: int = 8501) -> str | None:
             )
             # Code 0 = succès, 1 = déjà actif — on continue dans les deux cas
             if result.returncode not in (0, 1):
-                msg = (
-                    f"[Tailscale] `{' '.join(cmd)}` retour {result.returncode} : "
-                    f"{result.stderr.strip() or '(no stderr)'}"
+                logger.warning(
+                    "[Tailscale] `%s` retour %d : %s",
+                    " ".join(cmd),
+                    result.returncode,
+                    result.stderr.strip() or "(no stderr)",
                 )
-                logger.warning(msg)
-                print(msg, flush=True)
                 # Tenter quand même de récupérer l'URL (funnel peut être déjà actif)
             else:
                 # Commande réussie — pas besoin du fallback
-                print(f"[Tailscale] `{' '.join(cmd)}` OK (code {result.returncode})", flush=True)
+                logger.info("[Tailscale] `%s` OK (code %d)", " ".join(cmd), result.returncode)
                 break
         except FileNotFoundError:
-            msg = "[Tailscale] CLI `tailscale` introuvable — funnel non démarré"
-            logger.warning(msg)
-            print(msg, flush=True)
+            logger.warning("[Tailscale] CLI `tailscale` introuvable — funnel non démarré")
             return None
         except subprocess.TimeoutExpired:
-            msg = f"[Tailscale] `{' '.join(cmd)}` timeout (>15s) — commande bloquante, essai suivant ignoré"
-            logger.warning(msg)
-            print(msg, flush=True)
+            logger.warning(
+                "[Tailscale] `%s` timeout (>15s) — commande bloquante, essai suivant ignoré",
+                " ".join(cmd),
+            )
             # Si le timeout vient du fallback sans --bg, on abandonne
             break
         except Exception as exc:
-            msg = f"[Tailscale] start_funnel() erreur : {exc}"
-            logger.warning(msg)
-            print(msg, flush=True)
+            logger.warning("[Tailscale] start_funnel() erreur : %s", exc)
             return None
 
     url = get_funnel_url()
     if url:
-        print(f"[Tailscale] Funnel actif \u2192 {url}", flush=True)
+        logger.info("[Tailscale] Funnel actif → %s", url)
     else:
-        print(
-            "[Tailscale] Funnel d\u00e9marr\u00e9 mais URL introuvable (get_funnel_url() \u2192 None)",
-            flush=True,
-        )
+        logger.warning("[Tailscale] Funnel démarré mais URL introuvable (get_funnel_url() → None)")
     return url
 
 
 def is_funnel_started() -> bool:
     """Retourne True si le funnel a déjà été démarré dans ce processus."""
-    return _funnel_started.is_set()
+    return os.environ.get(_FUNNEL_ENV_KEY) == "1"
 
 
-def ensure_funnel_started_once(
-    port: int = 8501,
-    notify_fn: object = None,
-) -> str | None:
-    """D\u00e9marre le funnel Tailscale une seule fois par processus Python.
+def ensure_funnel_started_once(port: int = 8501) -> str | None:
+    """Démarre le funnel Tailscale une seule fois par processus Python.
 
-    Appels suivants (depuis d'autres sessions WebSocket Streamlit) sont ignor\u00e9s.
+    Appels suivants (depuis d'autres sessions WebSocket Streamlit) sont ignorés.
+    Utilise un double-checked locking pour éviter les race conditions entre
+    sessions Streamlit concurrentes.
 
     Args:
-        port:      Port local \u00e0 exposer (d\u00e9faut 8501).
-        notify_fn: Callable optionnel ``(url: str) -> None`` appel\u00e9 apr\u00e8s d\u00e9marrage.
+        port: Port local à exposer (défaut 8501).
 
     Returns:
-        URL publique si premier appel et succ\u00e8s, None sinon.
+        URL publique si premier appel et succès, None sinon.
     """
-    if _funnel_started.is_set():
-        return None  # D\u00e9j\u00e0 d\u00e9marr\u00e9 dans ce processus
-    _funnel_started.set()
-    url = start_funnel(port=port)
-    if url and callable(notify_fn):
-        try:
-            notify_fn(url)  # type: ignore[call-arg]
-        except Exception as exc:
-            logger.warning("[Tailscale] notify_fn erreur : %s", exc)
-    return url
+    if os.environ.get(_FUNNEL_ENV_KEY) == "1":
+        return None  # Fast path : déjà démarré
+    with _funnel_lock:
+        if os.environ.get(_FUNNEL_ENV_KEY) == "1":
+            return None  # Vérifié de nouveau sous le verrou
+        os.environ[_FUNNEL_ENV_KEY] = "1"
+    return start_funnel(port=port)

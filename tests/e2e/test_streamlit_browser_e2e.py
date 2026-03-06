@@ -38,9 +38,12 @@ def _wait_for_http_ready(url: str, timeout_s: int = 60) -> None:
 
 def _assert_no_front_error(page) -> None:
     """Vérifie l'absence d'erreur front évidente dans le HTML courant."""
+    import re
+
     content = page.content().lower()
     assert "traceback" not in content
-    assert "exception" not in content
+    # Exclure "exceptionnel(le)(s)" — mot français légitime dans l'UI
+    assert not re.search(r"exception(?!nel)", content)
 
 
 def _click_first_visible_text(page, labels: list[str], *, in_sidebar: bool = True) -> str | None:

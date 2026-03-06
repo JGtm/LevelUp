@@ -268,7 +268,7 @@ class MaterializedViewsMixin:
         except Exception:
             results["mv_session_stats"] = 0
 
-        logger.info(f"Vues matérialisées rafraîchies: {results}")
+        logger.info("Vues matérialisées rafraîchies: %s", results)
         return results
 
     def get_map_stats(self, min_matches: int = 1) -> list[dict]:

@@ -13,7 +13,6 @@ from datetime import date
 import polars as pl
 import streamlit as st
 
-from src.app._filters_helpers import _safe_to_date, _to_polars
 from src.ui import translate_playlist_name
 from src.ui.components import (
     get_firefight_playlists,
@@ -22,6 +21,7 @@ from src.ui.components import (
 )
 from src.ui.i18n import get_lang, t
 from src.ui.vectorize_helpers import build_mapping
+from src.utils.polars_compat import ensure_polars as _to_polars
 
 # ---------------------------------------------------------------------------
 # Sélecteur Type d'expérience — liste statique (v5.2)
@@ -147,6 +147,8 @@ def _render_cascade_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
     - Réconciliation mid-session via _reconcile_filter_options avant chaque render
     - Retour 8-tuple : (selected x4, all_values x4) pour intent-based save
     """
+    from src.app._filters_shared import safe_to_date as _safe_to_date
+
     dropdown_base = _to_polars(base_for_filters)
 
     if filter_mode == "Période":

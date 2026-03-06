@@ -671,7 +671,7 @@ def _cmd_info(args: argparse.Namespace) -> int:
 # =============================================================================
 
 
-def _interactive() -> int:
+def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
     """Menu interactif simplifié."""
     print("=" * 60)
     print("        LevelUp - Dashboard Halo Infinite")

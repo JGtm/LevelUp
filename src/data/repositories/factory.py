@@ -28,7 +28,6 @@ Usage explicite:
 from __future__ import annotations
 
 import json
-import os
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -50,7 +49,7 @@ class RepositoryMode(Enum):
     DUCKDB = "duckdb"
 
 
-def get_repository(
+def get_repository(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     *,
@@ -97,7 +96,7 @@ def get_repository(
 
     if mode != RepositoryMode.DUCKDB:
         raise ValueError(
-            f"Mode '{mode.value}' non supporté. " f"Utilisez '{RepositoryMode.DUCKDB.value}'."
+            f"Mode '{mode.value}' non supporté. Utilisez '{RepositoryMode.DUCKDB.value}'."
         )
 
     # Mode DuckDB natif - le db_path pointe vers stats.duckdb
@@ -169,29 +168,3 @@ def get_repository_from_profile(
         shared_db_path=shared_db_path,
         gamertag=gamertag,
     )
-
-
-def get_default_mode() -> RepositoryMode:
-    """
-    Retourne le mode par défaut basé sur la configuration.
-    (Return default mode based on configuration)
-
-    Lit la variable d'environnement OPENSPARTAN_REPOSITORY_MODE.
-    Toute valeur différente de `duckdb` est ignorée.
-    """
-    mode_str = os.environ.get("OPENSPARTAN_REPOSITORY_MODE", RepositoryMode.DUCKDB.value)
-    if str(mode_str).lower().strip() == RepositoryMode.DUCKDB.value:
-        return RepositoryMode.DUCKDB
-    return RepositoryMode.DUCKDB
-
-
-def is_migration_complete(db_path: str, xuid: str) -> bool:
-    """
-    Vérifie si la migration est complète pour un joueur.
-    (Check if migration is complete for a player)
-
-    @deprecated Depuis v4, cette fonction retourne toujours True car
-    seul DuckDB est utilisé. Les migrations legacy → DuckDB sont terminées.
-    """
-    # En v4, on utilise uniquement DuckDB, donc pas de migration en cours
-    return True

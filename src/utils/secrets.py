@@ -66,7 +66,7 @@ def _load_dotenv_local() -> int:
     return n
 
 
-def load_doppler_secrets_to_env(
+def load_doppler_secrets_to_env(  # noqa: C901, PLR0912
     project: str = "",
     config: str = "",
     *,

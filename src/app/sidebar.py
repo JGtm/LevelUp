@@ -171,7 +171,7 @@ def render_player_selector_sidebar(
     return None
 
 
-def render_sync_button(
+def render_sync_button(  # noqa: C901, PLR0912
     *,
     db_path: str,
     settings: AppSettings,
@@ -283,7 +283,7 @@ def render_sync_button(
                             backfill_parts.append(t("backfill_lusr", n=totals["lusr_computed"]))
 
                         if backfill_parts:
-                            st.info(f"Backfill: {', '.join(backfill_parts)}")
+                            st.info(t("backfill_summary", parts=", ".join(backfill_parts)))
 
             if on_complete:
                 on_complete()

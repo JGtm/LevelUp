@@ -16,6 +16,7 @@ from typing import Any
 import polars as pl
 
 from src.config import SESSION_CONFIG
+from src.ui.date_formats import FMT_DATE_FR
 
 # =============================================================================
 # Configuration des sessions améliorées
@@ -90,7 +91,7 @@ def _compute_sessions_polars(df: pl.DataFrame, gap_minutes: int) -> pl.DataFrame
         [
             pl.format(
                 "{} {}–{} ({})",
-                pl.col("min_time").dt.strftime("%d/%m/%Y"),
+                pl.col("min_time").dt.strftime(FMT_DATE_FR),
                 pl.col("min_time").dt.strftime("%H:%M"),
                 pl.col("max_time").dt.strftime("%H:%M"),
                 pl.col("count").cast(pl.Utf8),
@@ -135,10 +136,7 @@ def is_session_potentially_active(
     yesterday = (now - timedelta(days=1)).date()
     today_cutoff = datetime.combine(now.date(), time(cutoff_hour, 0), tzinfo=timezone.utc)
 
-    if last_match_time.date() == yesterday and now < today_cutoff:
-        return True
-
-    return False
+    return last_match_time.date() == yesterday and now < today_cutoff
 
 
 def _parse_teammates_signature(sig: str | None) -> set[str]:
@@ -162,11 +160,8 @@ def _should_start_new_session_on_teammate_change(
     # Cas 1: Passage à "sans amis" (passage à solo)
     if not curr_friends and prev_friends:
         return True
-    # Cas 2: Un ami rejoint
-    if curr_friends - prev_friends:
-        return True
-    # Cas 3: Des amis partent mais aucun nouveau → même session
-    return False
+    # Cas 2: Un ami rejoint — Cas 3: amis partent sans nouvel arrivant → même session
+    return bool(curr_friends - prev_friends)
 
 
 def compute_sessions_with_context_polars(
@@ -275,7 +270,7 @@ def compute_sessions_with_context_polars(
         .with_columns(
             pl.format(
                 "{} {}–{} ({})",
-                pl.col("start").dt.strftime("%d/%m/%Y"),
+                pl.col("start").dt.strftime(FMT_DATE_FR),
                 pl.col("start").dt.strftime("%H:%M"),
                 pl.col("end").dt.strftime("%H:%M"),
                 pl.col("count"),

@@ -9,9 +9,6 @@ La langue est lue via ``ct()`` depuis :
 3. Défaut : ``"fr"``
 
 Pour Discord, la clé ``"discord_lang"`` dans ``app_settings.json`` prévaut.
-
-⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO" ci-dessous.
-   Règles : voir le prompt de la Phase 1b dans le plan i18n.
 """
 
 from __future__ import annotations
@@ -19,20 +16,11 @@ from __future__ import annotations
 import contextlib
 import os
 
-STRINGS: dict[str, dict[str, str]] = {
+STRINGS: dict[str, dict[str, str] | str] = {
     # ── Discord — Résultats de match ─────────────────────────────────────────
-    "discord_outcome_draw": {
-        "fr": "Égalité",
-        "en": "Draw",
-    },
-    "discord_outcome_win": {
-        "fr": "Victoire",
-        "en": "Win",
-    },
-    "discord_outcome_loss": {
-        "fr": "Défaite",
-        "en": "Loss",
-    },
+    "discord_outcome_draw": "outcome_draw",  # alias → common
+    "discord_outcome_win": "outcome_win",  # alias → common
+    "discord_outcome_loss": "outcome_loss",  # alias → common
     "discord_outcome_quit": {
         "fr": "Abandon",
         "en": "Quit",
@@ -71,6 +59,32 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "✅  Données complètes",
         "en": "✅  Data complete",
     },
+    "discord_bf_lusr": {"fr": "🏅  {count} LUSR calculé(s)", "en": "🏅  {count} LUSR computed"},
+    "discord_bf_medals": {"fr": "🥇  {count} médaille(s)", "en": "🥇  {count} medal(s)"},
+    "discord_bf_events": {
+        "fr": "🎬  {count} event(s) highlight",
+        "en": "🎬  {count} highlight event(s)",
+    },
+    "discord_bf_csr": {"fr": "📈  {count} CSR récupéré(s)", "en": "📈  {count} CSR fetched"},
+    "discord_bf_sessions": {
+        "fr": "📅  {count} session(s) recalculée(s)",
+        "en": "📅  {count} session(s) updated",
+    },
+    "discord_bf_citations": {"fr": "💬  {count} citation(s)", "en": "💬  {count} citation(s)"},
+    "discord_bf_kvp": {
+        "fr": "⚔️  {count} paire(s) killer-victim",
+        "en": "⚔️  {count} killer-victim pair(s)",
+    },
+    "discord_bf_personal_scores": {
+        "fr": "🎯  {count} personal score(s)",
+        "en": "🎯  {count} personal score(s)",
+    },
+    "discord_bf_perf_scores": {
+        "fr": "⚡  {count} perf score(s)",
+        "en": "⚡  {count} perf score(s)",
+    },
+    "discord_bf_aliases": {"fr": "👤  {count} alias(es)", "en": "👤  {count} alias(es)"},
+    "discord_bf_pve": {"fr": "🤖  {count} stat(s) PvE", "en": "🤖  {count} PvE stat(s)"},
     "discord_data_incomplete": {
         "fr": "⚠️   **{count}** match(s) avec données incomplètes",
         "en": "⚠️   **{count}** match(es) with incomplete data",
@@ -130,10 +144,6 @@ STRINGS: dict[str, dict[str, str]] = {
     "discord_squad_friends": {
         "fr": "👥 Amis : {friends}",
         "en": "👥 Friends: {friends}",
-    },
-    "tailscale_discord_startup": {
-        "fr": "🟢 LevelUp est disponible sur {url}",
-        "en": "🟢 LevelUp is available at {url}",
     },
     # ── Scripts — Messages logger génériques ─────────────────────────────────
     "cli_no_players": {
@@ -285,6 +295,38 @@ def _read_cli_lang() -> str:
     return "fr"
 
 
+def _resolve_entry(key: str) -> dict[str, str] | None:
+    """Résout une entrée STRINGS en suivant les alias (str → str → dict).
+
+    Les alias peuvent pointer vers des clés du registre global i18n
+    (``common.py``, ``pages/``). Import paresseux pour éviter la circularité.
+    """
+    seen: set[str] = set()
+    current = key
+    while current not in seen:
+        seen.add(current)
+        entry = STRINGS.get(current)
+        if entry is None:
+            # Clé absente du STRINGS local → chercher dans le registre global
+            try:
+                import src.ui.i18n as _i18n_pkg
+
+                if _i18n_pkg._REGISTRY is None:
+                    _i18n_pkg._REGISTRY = _i18n_pkg._build_registry()
+                global_entry = _i18n_pkg._REGISTRY.get(current)
+            except Exception:
+                return None
+            if global_entry is None:
+                return None
+            # Le registre global a déjà résolu ses alias → toujours un dict
+            return global_entry if isinstance(global_entry, dict) else None
+        if isinstance(entry, dict):
+            return entry
+        # entry est un alias (str) → suivre vers la clé cible
+        current = entry
+    return None  # boucle d'alias détectée
+
+
 def ct(key: str, **kwargs: object) -> str:
     """Retourne la chaîne CLI traduite pour la clé donnée.
 
@@ -298,7 +340,7 @@ def ct(key: str, **kwargs: object) -> str:
         La chaîne traduite, ou la clé entre crochets si introuvable.
     """
     lang = _read_cli_lang()
-    entry = STRINGS.get(key)
+    entry = _resolve_entry(key)
     if entry is None:
         return f"[{key}]"
     text = entry.get(lang) or entry.get("fr") or f"[{key}]"
@@ -333,7 +375,7 @@ def discord_t(key: str, **kwargs: object) -> str:
     except Exception:
         lang = "fr"
 
-    entry = STRINGS.get(key)
+    entry = _resolve_entry(key)
     if entry is None:
         return f"[{key}]"
     text = entry.get(lang) or entry.get("fr") or f"[{key}]"

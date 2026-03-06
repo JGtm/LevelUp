@@ -15,9 +15,6 @@ Ce module contient la logique d'orchestration extraite de streamlit_app.py :
 from __future__ import annotations
 
 from src.app.data_loader import (
-    apply_settings_path_overrides as apply_settings_overrides,
-)
-from src.app.data_loader import (
     default_identity_from_secrets,
     ensure_h5g_commendations_repo,
     load_match_data,
@@ -73,9 +70,6 @@ from src.app.kpis_render import (
     render_performance_info,
 )
 from src.app.main_helpers import (
-    apply_settings_path_overrides as apply_settings_overrides_main,
-)
-from src.app.main_helpers import (
     load_match_dataframe,
     load_profile_api,
     render_profile_hero,
@@ -107,14 +101,8 @@ from src.app.profile import (
     resolve_xuid,
     warn_missing_assets,
 )
-from src.app.routing import (
-    Page,
-    Router,
-    build_app_url,
-    consume_query_params,
-    get_current_page,
-    navigate_to,
-)
+
+# routing.py supprimé en Phase 1 (module mort, remplacé par page_router.py)
 from src.app.sidebar import (
     render_player_selector_sidebar,
     render_sidebar,
@@ -127,8 +115,15 @@ from src.app.state import (
     get_aliases_cache_key,
     get_db_cache_key,
     get_default_identity,
+    get_page_context,
     init_source_state,
     propagate_env_defaults,
+)
+from src.app.state import (
+    apply_settings_path_overrides as apply_settings_overrides,
+)
+from src.app.state import (
+    apply_settings_path_overrides as apply_settings_overrides_main,
 )
 
 __all__ = [
@@ -141,13 +136,7 @@ __all__ = [
     "get_aliases_cache_key",
     "propagate_env_defaults",
     "apply_settings_path_overrides",
-    # Routing
-    "Page",
-    "Router",
-    "get_current_page",
-    "navigate_to",
-    "consume_query_params",
-    "build_app_url",
+    # Routing (supprimé en Phase 1 — voir page_router.py)
     # Sidebar
     "render_sidebar",
     "render_sync_button",

@@ -64,7 +64,7 @@ def _build_kda_customdata(d: pl.DataFrame, lang: str = "fr") -> tuple[list, str]
     return customdata, common_hover
 
 
-def _add_kda_traces(
+def _add_kda_traces(  # noqa: PLR0913
     fig: go.Figure,
     x_idx: list[int],
     d: pl.DataFrame,
@@ -159,7 +159,7 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
     )
     fig.update_yaxes(title_text=viz_t("axis_ratio", lang), secondary_y=True)
 
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
     fig.update_xaxes(
         title_text=viz_t("axis_match_number", lang),
@@ -200,7 +200,7 @@ def plot_assists_timeseries(
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
     x_idx = list(range(len(d)))
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
 
     accuracy = d["accuracy"].cast(pl.Float64, strict=False).fill_null(0).round(2)
@@ -263,7 +263,7 @@ def plot_assists_timeseries(
     return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
 
 
-def _add_permin_rolling_lines(
+def _add_permin_rolling_lines(  # noqa: PLR0913
     fig: go.Figure,
     x_idx: list[int],
     kpm: pl.Series,
@@ -332,7 +332,7 @@ def plot_per_minute_timeseries(
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
     x_idx = list(range(len(d)))
-    labels = d["start_time"].dt.strftime("%m-%d %H:%M").to_list()
+    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
 
     time_played = d["time_played_seconds"].cast(pl.Float64, strict=False)
@@ -442,6 +442,7 @@ def plot_accuracy_last_n(df: DataFrameLike, n: int, lang: str = "fr") -> go.Figu
 
 
 # Re-exports depuis timeseries_combat (compat backward — Sprint 16)
+from src.ui.date_formats import FMT_TICK_DATETIME
 from src.visualization.timeseries_combat import (  # noqa: E402, F401
     plot_average_life,
     plot_damage_dealt_taken,

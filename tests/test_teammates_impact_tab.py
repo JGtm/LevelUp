@@ -132,10 +132,15 @@ def test_impact_tab_handles_missing_highlight_table(monkeypatch) -> None:
 
     st_mocks = _patch_streamlit(monkeypatch)
     monkeypatch.setattr("src.ui.pages.teammates_impact.DuckDBRepository", _MinimalRepo)
-    # Mocker _ensure_shared_attached pour simuler que shared est attaché
+    # Mocker ensure_shared_attached pour simuler que shared est attaché
     monkeypatch.setattr(
-        "src.ui.pages.teammates_impact._ensure_shared_attached",
+        "src.ui.pages.teammates_impact.ensure_shared_attached",
         lambda _conn, _db_path: "shared",
+    )
+    # Mocker get_shared_matches_path_from_player
+    monkeypatch.setattr(
+        "src.ui.pages.teammates_impact.get_shared_matches_path_from_player",
+        lambda _p: MagicMock(exists=lambda: True),
     )
     # Mocker _load_highlight_events pour simuler l'absence de la table
     monkeypatch.setattr(
@@ -169,10 +174,15 @@ def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:
             return MagicMock()
 
     monkeypatch.setattr("src.ui.pages.teammates_impact.DuckDBRepository", _MinimalRepo)
-    # Mocker _ensure_shared_attached pour simuler que shared est attaché
+    # Mocker ensure_shared_attached pour simuler que shared est attaché
     monkeypatch.setattr(
-        "src.ui.pages.teammates_impact._ensure_shared_attached",
+        "src.ui.pages.teammates_impact.ensure_shared_attached",
         lambda _conn, _db_path: "shared",
+    )
+    # Mocker get_shared_matches_path_from_player
+    monkeypatch.setattr(
+        "src.ui.pages.teammates_impact.get_shared_matches_path_from_player",
+        lambda _p: MagicMock(exists=lambda: True),
     )
     # Mocker _load_highlight_events pour retourner des événements
     monkeypatch.setattr(

@@ -117,9 +117,9 @@ class TestCleanupScript:
         monkeypatch.setattr(
             "pathlib.Path.parent",
             property(
-                lambda self: tmp_path
-                if "cleanup" in str(self)
-                else Path.__bases__[0].parent.fget(self)
+                lambda self: (
+                    tmp_path if "cleanup" in str(self) else Path.__bases__[0].parent.fget(self)
+                )
             ),
         )
 

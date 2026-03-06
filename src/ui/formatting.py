@@ -41,7 +41,7 @@ _SCORE_LABEL_RE = re.compile(r"^\s*(-?\d+)\s*[-–—]\s*(-?\d+)\s*$")
 _DATE_FR_RE = re.compile(r"^\s*(\d{1,2})\s*[\-/]\s*(\d{1,2})\s*[\-/]\s*(\d{4})\s*$")
 
 
-def _parse_datetime(value) -> datetime | None:
+def _parse_datetime(value) -> datetime | None:  # noqa: PLR0912
     """Parse une valeur en datetime Python natif."""
     if value is None:
         return None
@@ -140,12 +140,32 @@ def format_date_fr(dt_value, lang: str = "fr") -> str:
     jours_fr = ["Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam.", "Dim."]
     jours_en = ["Mon.", "Tue.", "Wed.", "Thu.", "Fri.", "Sat.", "Sun."]
     mois_fr = [
-        "janvier", "février", "mars", "avril", "mai", "juin",
-        "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
     ]
     mois_en = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
     ]
 
     jours = jours_fr if lang == "fr" else jours_en
@@ -424,3 +444,18 @@ def parse_date_fr_input(value: str | None, *, default_value: date) -> date:
         return date(yyyy, mm, dd)
     except Exception:
         return default_value
+
+
+def format_time_ms(ms: int) -> str:
+    """Formate un timestamp en millisecondes vers ``M:SS``.
+
+    Args:
+        ms: Durée en millisecondes.
+
+    Returns:
+        Chaîne formatée ``"M:SS"`` (ex. ``"3:05"``).
+    """
+    total_sec = max(0, ms // 1000)
+    minutes = total_sec // 60
+    seconds = total_sec % 60
+    return f"{minutes}:{seconds:02d}"

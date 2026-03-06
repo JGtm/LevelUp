@@ -238,7 +238,7 @@ def _render_media_from_indexed_db(
     return True
 
 
-def _render_media_legacy(
+def _render_media_legacy(  # noqa: C901, PLR0912
     *,
     row: dict[str, Any],
     settings: AppSettings,
@@ -328,7 +328,7 @@ def _render_media_legacy(
                 st.write(str(p))
 
 
-def render_media_section(
+def render_media_section(  # noqa: PLR0913
     *,
     row: dict[str, Any],
     settings: AppSettings,
@@ -382,19 +382,20 @@ def _is_valid_css_color(val: str | None) -> bool:
     return s.startswith("#") or s.startswith("var(")
 
 
-def os_card(
+def os_card(  # noqa: PLR0913
     title: str,
     kpi: str,
     sub_html: str | None = None,
     *,
     accent: str | None = None,
     kpi_color: str | None = None,
+    kpi_is_html: bool = False,
     sub_style: str | None = None,
     min_h: int = 112,
 ) -> None:
     """Rend une carte KPI avec style OpenSpartan."""
     t = html.escape(str(title or ""))
-    k = html.escape(str(kpi or "-"))
+    k = str(kpi or "-") if kpi_is_html else html.escape(str(kpi or "-"))
     s = "" if not sub_html else str(sub_html)
     style = "min-height:" + str(int(min_h)) + "px; margin-bottom:10px;"
     if accent and _is_valid_css_color(accent):

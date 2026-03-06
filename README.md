@@ -38,7 +38,7 @@
 - **v5.0 — Shared Matches**
   - `shared_matches.duckdb` centralizes all matches (registry, participants, events, medals)
   - −69% storage, −72% API calls
-  - **3323 tests**, 0 failures
+  - **3693 tests**, 0 failures
 
 ---
 
@@ -152,6 +152,16 @@
 | ![Career](docs/screenshots/career.png) | ![Ranks](docs/screenshots/LUSRs.png) | ![Path to Hero](docs/screenshots/path-hero.png) |
 
 *Rank history, progression to Hero, LUSR/CSR per playlist group*
+
+---
+
+### Explorer & Encounter History
+
+| Explorer | Encounter History |
+|:-:|:-:|
+| ![Explorer](docs/screenshots/explorer.png) | ![Encounter History](docs/screenshots/encounters.png) |
+
+*Browse and filter all your matches in detail with the Explorer, including search by player — track recurring opponents and cross-match encounter patterns with the Encounter History view.*
 
 ---
 

@@ -20,15 +20,6 @@ from typing import Any
 
 import polars as pl
 
-# Type alias pour compatibilité DataFrame
-try:
-    import pandas as pd
-
-    DataFrameType = pd.DataFrame | pl.DataFrame
-except ImportError:
-    pd = None  # type: ignore[assignment]
-    DataFrameType = pl.DataFrame  # type: ignore[misc]
-
 # Import direct depuis factory pour éviter l'import circulaire avec src.data
 from src.data.domain.models.stats import MatchRow
 from src.data.repositories.factory import (
@@ -149,17 +140,21 @@ def get_repository_for_player(
     return get_repository_from_profile(gamertag, mode=mode)
 
 
-def matches_to_dataframe(matches: list[MatchRow]) -> pd.DataFrame:
-    """
-    Convertit une liste de MatchRow en DataFrame Pandas.
-    (Convert list of MatchRow to Pandas DataFrame)
+def matches_to_dataframe(matches: list[MatchRow]) -> Any:
+    """Convertit une liste de MatchRow en DataFrame Pandas.
+
+    Construit en interne un DataFrame Polars puis convertit en Pandas
+    à la frontière UI. ``import pandas`` est différé dans cette fonction.
 
     Format identique à load_df_optimized() pour compatibilité.
     """
+    import pandas as pd  # frontière UI uniquement
+
     if not matches:
         return pd.DataFrame()
 
-    df = pd.DataFrame(
+    # Construire d'abord en Polars (moteur natif)
+    df_pl = pl.DataFrame(
         {
             "match_id": [m.match_id for m in matches],
             "start_time": [m.start_time for m in matches],
@@ -190,23 +185,27 @@ def matches_to_dataframe(matches: list[MatchRow]) -> pd.DataFrame:
         }
     )
 
-    # Conversions standard (identiques à cache.py)
+    # Stats par minute (en Polars)
+    minutes = pl.col("time_played_seconds").cast(pl.Float64) / 60.0
+    df_pl = df_pl.with_columns(
+        (pl.col("kills").cast(pl.Float64) / minutes).alias("kills_per_min"),
+        (pl.col("deaths").cast(pl.Float64) / minutes).alias("deaths_per_min"),
+        (pl.col("assists").cast(pl.Float64) / minutes).alias("assists_per_min"),
+    )
+
+    # Convertir en Pandas à la frontière
+    df = df_pl.to_pandas()
+
+    # Conversions timezone (API Pandas requise par l'UI)
     df["start_time"] = (
         pd.to_datetime(df["start_time"], utc=True).dt.tz_convert(PARIS_TZ_NAME).dt.tz_localize(None)
     )
     df["date"] = df["start_time"].dt.date
 
-    # Stats par minute
-    minutes = (pd.to_numeric(df["time_played_seconds"], errors="coerce") / 60.0).astype(float)
-    minutes = minutes.where(minutes > 0)
-    df["kills_per_min"] = pd.to_numeric(df["kills"], errors="coerce") / minutes
-    df["deaths_per_min"] = pd.to_numeric(df["deaths"], errors="coerce") / minutes
-    df["assists_per_min"] = pd.to_numeric(df["assists"], errors="coerce") / minutes
-
     return df
 
 
-def load_matches_df(
+def load_matches_df(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     *,
@@ -214,7 +213,7 @@ def load_matches_df(
     playlist_filter: str | None = None,
     map_filter: str | None = None,
     mode: RepositoryMode | None = None,
-) -> pd.DataFrame:
+) -> Any:
     """
     Charge les matchs en DataFrame via le DataRepository.
     (Load matches as DataFrame via DataRepository)
@@ -338,7 +337,7 @@ def matches_to_polars(matches: list[MatchRow]) -> pl.DataFrame:
     return df
 
 
-def load_matches_polars(
+def load_matches_polars(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     *,

@@ -5,6 +5,7 @@ des calculs de sessions, transformations, agrégations DuckDB analytics,
 et pagination.
 
 Extrait de cache.py lors du Sprint 17 (découpage <800L).
+Sous-modules : _cache_sessions.py, _cache_loading.py.
 """
 
 from __future__ import annotations
@@ -15,12 +16,17 @@ from typing import TYPE_CHECKING
 import polars as pl
 import streamlit as st
 
-from src.analysis import compute_sessions_with_context_polars
-from src.config import SESSION_CONFIG
 from src.ui import translate_pair_name, translate_playlist_name
+
+# Re-exports depuis sous-modules
+from src.ui._cache_loading import (  # noqa: F401
+    cached_get_match_count_duckdb,
+    cached_load_matches_paginated,
+    cached_load_recent_matches,
+)
+from src.ui._cache_sessions import cached_compute_sessions_db  # noqa: F401
 from src.ui.cache_loaders import (
     PARIS_TZ_NAME,
-    _is_duckdb_v4_path,
     cached_query_matches_with_friend,
     load_df_optimized,
 )
@@ -29,181 +35,6 @@ if TYPE_CHECKING:
     pass
 
 logger = logging.getLogger(__name__)
-
-logger = logging.getLogger(__name__)
-
-
-@st.cache_data(show_spinner=False)
-def cached_compute_sessions_db(
-    db_path: str,
-    xuid: str,
-    db_key: tuple[int, int] | None,
-    include_firefight: bool,
-    gap_minutes: int,
-    friends_xuids: tuple[str, ...] | None = None,
-) -> pl.DataFrame:
-    """Compute sessions sur la base (cache) avec logique avancée (gap + coéquipiers).
-
-    Si friends_xuids est fourni, mode amis : seuls les amis déclenchent une
-    nouvelle session (randoms matchmaking ignorés).
-    """
-    friends_set = frozenset(friends_xuids) if friends_xuids else None
-
-    # DuckDB v4 : lecture hybride (stocké si stable, sinon calcul à la volée)
-    if _is_duckdb_v4_path(db_path):
-        try:
-            from datetime import datetime, timezone
-
-            from src.utils.db import duckdb_read_only
-            from src.utils.paths import get_shared_matches_path_from_player
-
-            with duckdb_read_only(db_path) as conn:
-                # Attacher shared_matches.duckdb pour accéder aux données partagées
-                shared_attached = False
-                shared_path = get_shared_matches_path_from_player(db_path)
-                if shared_path and shared_path.exists():
-                    # Vérifier si déjà attaché
-                    try:
-                        dbs = conn.execute(
-                            "SELECT database_name FROM duckdb_databases()"
-                        ).fetchall()
-                        existing_dbs = {db[0].lower() for db in dbs if db[0]}
-                        if "shared" in existing_dbs:
-                            shared_attached = True
-                        else:
-                            conn.execute(f"ATTACH '{shared_path}' AS shared (READ_ONLY)")
-                            shared_attached = True
-                    except Exception:
-                        pass
-
-                df_pl = None
-
-                if shared_attached:
-                    # Production v5 : données dans shared + player_match_enrichment
-                    firefight_filter = "" if include_firefight else "AND r.is_firefight = FALSE"
-
-                    player_xuid = xuid.strip()
-                    if not player_xuid:
-                        try:
-                            row = conn.execute(
-                                "SELECT value FROM sync_meta WHERE key = 'xuid'"
-                            ).fetchone()
-                            if row:
-                                player_xuid = str(row[0]).strip()
-                        except Exception:
-                            pass
-
-                    if not player_xuid:
-                        logger.warning(f"Impossible de résoudre XUID pour {db_path}")
-                    else:
-                        query = f"""
-                            SELECT
-                                r.match_id,
-                                r.start_time,
-                                e.teammates_signature,
-                                e.session_id,
-                                e.session_label
-                            FROM shared.match_registry r
-                            INNER JOIN shared.match_participants p
-                                ON r.match_id = p.match_id
-                                AND p.xuid = ?
-                            LEFT JOIN player_match_enrichment e
-                                ON r.match_id = e.match_id
-                            WHERE r.start_time IS NOT NULL
-                            {firefight_filter}
-                            ORDER BY r.start_time ASC
-                        """
-                        try:
-                            df_pl = conn.execute(query, [player_xuid]).pl()
-                            logger.debug(
-                                f"Chargé {len(df_pl) if df_pl is not None else 0} matchs pour xuid={player_xuid}"
-                            )
-                        except Exception as e:
-                            logger.warning(f"Erreur chargement matchs depuis shared: {e}")
-                            df_pl = None
-                else:
-                    logger.warning(f"shared_matches.duckdb non attaché pour {db_path}")
-
-                if df_pl is None:
-                    # v5.1 : pas de fallback local (match_stats supprimée des DBs individuelles)
-                    # Retourner un DataFrame vide si shared non disponible
-                    logger.debug("Aucune donnée chargée, retour DataFrame vide")
-                    df_pl = pl.DataFrame(
-                        schema={
-                            "match_id": pl.Utf8,
-                            "start_time": pl.Datetime,
-                            "teammates_signature": pl.Utf8,
-                            "session_id": pl.Utf8,
-                            "session_label": pl.Utf8,
-                        }
-                    )
-
-            if df_pl is None or df_pl.is_empty():
-                logger.debug("DataFrame vide après chargement")
-                return pl.DataFrame(
-                    schema={
-                        "match_id": pl.Utf8,
-                        "start_time": pl.Datetime,
-                        "session_id": pl.Utf8,
-                        "session_label": pl.Utf8,
-                    }
-                )
-
-            # Cas A : tous ont session_id et sont >= 4h → utiliser stocké
-            # Cas B : au moins un NULL ou récent → calcul complet à la volée
-            stability_hours = SESSION_CONFIG.session_stability_hours
-            threshold = datetime.now(timezone.utc).timestamp() - (stability_hours * 3600)
-            has_null_session = df_pl.filter(pl.col("session_id").is_null()).height > 0
-            df_pl = df_pl.with_columns(pl.col("start_time").dt.epoch(time_unit="s").alias("_ts"))
-            has_recent = df_pl.filter(pl.col("_ts") > threshold).height > 0
-            df_pl = df_pl.drop("_ts")
-
-            if not has_null_session and not has_recent:
-                # Cas A : tout stable, retourner tel quel
-                cols_cas_a = ["match_id", "start_time", "session_id", "session_label"]
-                if "teammates_signature" in df_pl.columns:
-                    cols_cas_a.append("teammates_signature")
-                return df_pl.select(cols_cas_a)
-
-            # Cas B : calcul complet à la volée
-            df_pl = compute_sessions_with_context_polars(
-                df_pl.select(["match_id", "start_time", "teammates_signature"]),
-                gap_minutes=gap_minutes,
-                teammates_column="teammates_signature",
-                friends_xuids=friends_set,
-            )
-            cols_cas_b = ["match_id", "start_time", "session_id", "session_label"]
-            if "teammates_signature" in df_pl.columns:
-                cols_cas_b.append("teammates_signature")
-            return df_pl.select(cols_cas_b)
-
-        except Exception as e:
-            logger.warning(f"Erreur calcul sessions Polars: {e}")
-            # En cas d'erreur, retourner les données sans calcul de session si disponibles
-            if df_pl is not None and not df_pl.is_empty():
-                # Assurer que les colonnes session existent (même vides)
-                if "session_id" not in df_pl.columns:
-                    df_pl = df_pl.with_columns(
-                        [
-                            pl.lit(None).cast(pl.Utf8).alias("session_id"),
-                            pl.lit(None).cast(pl.Utf8).alias("session_label"),
-                        ]
-                    )
-                cols_err = ["match_id", "start_time", "session_id", "session_label"]
-                if "teammates_signature" in df_pl.columns:
-                    cols_err.append("teammates_signature")
-                return df_pl.select(cols_err)
-
-    # Si on arrive ici, c'est qu'on n'a pas de données v5
-    # Retourner un DataFrame vide plutôt que de risquer un conflit de connexion
-    return pl.DataFrame(
-        schema={
-            "match_id": pl.Utf8,
-            "start_time": pl.Datetime,
-            "session_id": pl.Utf8,
-            "session_label": pl.Utf8,
-        }
-    )
 
 
 @st.cache_data(show_spinner=False)
@@ -318,25 +149,20 @@ def load_df_hybrid(
     _ = db_key  # Utilisé pour invalidation du cache Streamlit
 
     try:
-        from src.data.integration import get_repository_mode_from_settings, load_matches_df
+        from src.data.integration import get_repository_mode_from_settings, load_matches_polars
 
         mode = get_repository_mode_from_settings()
 
-        # Utiliser le nouveau système (retourne encore Pandas pour l'instant)
-        df_pd = load_matches_df(
+        # Polars natif — plus de roundtrip Pandas→Polars
+        df_pl = load_matches_polars(
             db_path,
             xuid,
             include_firefight=include_firefight,
             mode=mode,
         )
 
-        if isinstance(df_pd, pl.DataFrame):
-            if not df_pd.is_empty():
-                return df_pd
-        elif hasattr(df_pd, "empty") and not df_pd.empty:
-            # Pandas DataFrame — convertir en Polars (bridge résiduel, mode intégration legacy)
-            logger.debug("load_df_hybrid: conversion Pandas→Polars (mode intégration)")
-            return pl.from_pandas(df_pd)
+        if not df_pl.is_empty():
+            return df_pl
 
         # Fallback sur legacy si vide (pas de données Parquet)
         return load_df_optimized(db_path, xuid, db_key=db_key, include_firefight=include_firefight)
@@ -470,249 +296,3 @@ def cached_get_migration_status(
             "progress_percent": 0,
             "is_complete": False,
         }
-
-
-# =============================================================================
-# Lazy Loading et Pagination (Sprint 4.3)
-# =============================================================================
-
-
-# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
-@st.cache_data(show_spinner=False)
-def cached_load_recent_matches(
-    player_db_path: str,
-    xuid: str,
-    limit: int = 50,
-    db_key: tuple[int, int] | None = None,
-) -> pl.DataFrame:
-    """Charge les N matchs les plus récents via DuckDB (lazy loading).
-
-    Optimisé pour le chargement initial rapide de l'UI.
-    Utilise le DuckDBRepository si disponible, sinon fallback.
-
-    Args:
-        player_db_path: Chemin vers stats.duckdb du joueur.
-        xuid: XUID du joueur.
-        limit: Nombre de matchs à charger.
-        db_key: Clé de cache pour invalidation.
-
-    Returns:
-        DataFrame Polars des matchs récents.
-    """
-    _ = db_key  # Pour invalidation du cache Streamlit
-
-    try:
-        from pathlib import Path
-
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
-        db_path = Path(player_db_path)
-        if not db_path.exists():
-            return pl.DataFrame()
-
-        repo = DuckDBRepository(db_path, xuid)
-        try:
-            matches = repo.load_recent_matches(limit=limit)
-        finally:
-            repo.close()
-
-        if not matches:
-            return pl.DataFrame()
-
-        df = pl.DataFrame(
-            {
-                "match_id": [m.match_id for m in matches],
-                "start_time": [m.start_time for m in matches],
-                "map_id": [m.map_id for m in matches],
-                "map_name": [m.map_name for m in matches],
-                "playlist_id": [m.playlist_id for m in matches],
-                "playlist_name": [m.playlist_name for m in matches],
-                "pair_id": [m.map_mode_pair_id for m in matches],
-                "pair_name": [m.map_mode_pair_name for m in matches],
-                "game_variant_id": [m.game_variant_id for m in matches],
-                "game_variant_name": [m.game_variant_name for m in matches],
-                "outcome": [m.outcome for m in matches],
-                "kda": [m.kda for m in matches],
-                "my_team_score": [m.my_team_score for m in matches],
-                "enemy_team_score": [m.enemy_team_score for m in matches],
-                "max_killing_spree": [m.max_killing_spree for m in matches],
-                "headshot_kills": [m.headshot_kills for m in matches],
-                "average_life_seconds": [m.average_life_seconds for m in matches],
-                "time_played_seconds": [m.time_played_seconds for m in matches],
-                "kills": [m.kills for m in matches],
-                "deaths": [m.deaths for m in matches],
-                "assists": [m.assists for m in matches],
-                "accuracy": [m.accuracy for m in matches],
-                "ratio": [m.ratio for m in matches],
-                "team_mmr": [m.team_mmr for m in matches],
-                "enemy_mmr": [m.enemy_mmr for m in matches],
-            }
-        )
-
-        # Conversion timezone : UTC → Paris → naïf + colonne date
-        try:
-            df = df.with_columns(
-                pl.col("start_time")
-                .cast(pl.Datetime("us", "UTC"))
-                .dt.convert_time_zone(PARIS_TZ_NAME)
-                .dt.replace_time_zone(None)
-            )
-        except Exception:
-            import contextlib
-
-            with contextlib.suppress(Exception):
-                df = df.with_columns(
-                    pl.col("start_time")
-                    .dt.replace_time_zone("UTC")
-                    .dt.convert_time_zone(PARIS_TZ_NAME)
-                    .dt.replace_time_zone(None)
-                )
-        df = df.with_columns(pl.col("start_time").cast(pl.Date).alias("date"))
-
-        return df
-
-    except ImportError:
-        return pl.DataFrame()
-    except Exception:
-        return pl.DataFrame()
-
-
-# 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
-@st.cache_data(show_spinner=False)
-def cached_load_matches_paginated(
-    player_db_path: str,
-    xuid: str,
-    page: int = 1,
-    page_size: int = 50,
-    db_key: tuple[int, int] | None = None,
-) -> tuple[pl.DataFrame, int]:
-    """Charge les matchs avec pagination via DuckDB.
-
-    Args:
-        player_db_path: Chemin vers stats.duckdb du joueur.
-        xuid: XUID du joueur.
-        page: Numéro de page (1-indexed).
-        page_size: Nombre de matchs par page.
-        db_key: Clé de cache pour invalidation.
-
-    Returns:
-        Tuple (DataFrame Polars des matchs, nombre total de pages).
-    """
-    _ = db_key
-
-    try:
-        from pathlib import Path
-
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
-        db_path = Path(player_db_path)
-        if not db_path.exists():
-            return pl.DataFrame(), 1
-
-        repo = DuckDBRepository(db_path, xuid)
-        try:
-            matches, total_pages = repo.load_matches_paginated(
-                page=page,
-                page_size=page_size,
-                order_desc=True,
-            )
-        finally:
-            repo.close()
-
-        if not matches:
-            return pl.DataFrame(), total_pages
-
-        df = pl.DataFrame(
-            {
-                "match_id": [m.match_id for m in matches],
-                "start_time": [m.start_time for m in matches],
-                "map_id": [m.map_id for m in matches],
-                "map_name": [m.map_name for m in matches],
-                "playlist_id": [m.playlist_id for m in matches],
-                "playlist_name": [m.playlist_name for m in matches],
-                "pair_id": [m.map_mode_pair_id for m in matches],
-                "pair_name": [m.map_mode_pair_name for m in matches],
-                "game_variant_id": [m.game_variant_id for m in matches],
-                "game_variant_name": [m.game_variant_name for m in matches],
-                "outcome": [m.outcome for m in matches],
-                "kda": [m.kda for m in matches],
-                "my_team_score": [m.my_team_score for m in matches],
-                "enemy_team_score": [m.enemy_team_score for m in matches],
-                "max_killing_spree": [m.max_killing_spree for m in matches],
-                "headshot_kills": [m.headshot_kills for m in matches],
-                "average_life_seconds": [m.average_life_seconds for m in matches],
-                "time_played_seconds": [m.time_played_seconds for m in matches],
-                "kills": [m.kills for m in matches],
-                "deaths": [m.deaths for m in matches],
-                "assists": [m.assists for m in matches],
-                "accuracy": [m.accuracy for m in matches],
-                "ratio": [m.ratio for m in matches],
-                "team_mmr": [m.team_mmr for m in matches],
-                "enemy_mmr": [m.enemy_mmr for m in matches],
-            }
-        )
-
-        # Conversion timezone : UTC → Paris → naïf + colonne date
-        try:
-            df = df.with_columns(
-                pl.col("start_time")
-                .cast(pl.Datetime("us", "UTC"))
-                .dt.convert_time_zone(PARIS_TZ_NAME)
-                .dt.replace_time_zone(None)
-            )
-        except Exception:
-            import contextlib
-
-            with contextlib.suppress(Exception):
-                df = df.with_columns(
-                    pl.col("start_time")
-                    .dt.replace_time_zone("UTC")
-                    .dt.convert_time_zone(PARIS_TZ_NAME)
-                    .dt.replace_time_zone(None)
-                )
-        df = df.with_columns(pl.col("start_time").cast(pl.Date).alias("date"))
-
-        return df, total_pages
-
-    except ImportError:
-        return pl.DataFrame(), 1
-    except Exception:
-        return pl.DataFrame(), 1
-
-
-@st.cache_data(show_spinner=False, ttl=600)
-def cached_get_match_count_duckdb(
-    player_db_path: str,
-    xuid: str,
-    db_key: tuple[int, int] | None = None,
-) -> int:
-    """Récupère le nombre total de matchs via DuckDB.
-
-    Args:
-        player_db_path: Chemin vers stats.duckdb du joueur.
-        xuid: XUID du joueur.
-        db_key: Clé de cache pour invalidation.
-
-    Returns:
-        Nombre total de matchs.
-    """
-    _ = db_key
-
-    try:
-        from pathlib import Path
-
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
-        db_path = Path(player_db_path)
-        if not db_path.exists():
-            return 0
-
-        repo = DuckDBRepository(db_path, xuid)
-        try:
-            count = repo.get_match_count()
-            return count
-        finally:
-            repo.close()
-
-    except Exception:
-        return 0

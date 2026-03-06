@@ -94,6 +94,7 @@ def label(domain: str, key: str, *, lang: str | None = None) -> str:
     """
     if lang is None:
         from src.ui.i18n import get_lang
+
         lang = get_lang()
 
     # Tentative dans la langue demandée
@@ -142,6 +143,7 @@ def label_obj(domain: str, key: str, *, lang: str | None = None) -> dict[str, st
     """
     if lang is None:
         from src.ui.i18n import get_lang
+
         lang = get_lang()
 
     data = load_domain(domain, lang)

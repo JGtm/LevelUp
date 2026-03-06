@@ -17,13 +17,11 @@ import os
 import unicodedata
 from typing import Any
 
-import duckdb
 import streamlit as st
 
-from src.config import get_repo_root
-from src.ui.i18n import get_lang
+from src.ui.i18n import get_lang, t
 from src.ui.i18n.data_labels import label_obj
-from src.ui.i18n import t
+from src.utils.paths import REPO_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -34,18 +32,13 @@ _METADATA_DB_REL = os.path.join("data", "warehouse", "metadata.duckdb")
 # ── Utilitaires internes ────────────────────────────────────────────────────
 
 
-def _repo_root() -> str:
-    """Racine du repo (robuste si CWD différent)."""
-    return get_repo_root(__file__)
-
-
 def _abs_from_repo(path: str) -> str:
     """Transforme un chemin relatif au repo en chemin absolu."""
     if not path:
         return path
     if os.path.isabs(path):
         return path
-    return os.path.join(_repo_root(), path)
+    return os.path.join(str(REPO_ROOT), path)
 
 
 def _normalize_name(s: str) -> str:
@@ -87,39 +80,40 @@ def _load_citations_from_db() -> list[dict[str, Any]]:
         logger.warning("metadata.duckdb introuvable : %s", db_path)
         return []
 
-    conn = duckdb.connect(db_path, read_only=True)
-    try:
-        rows = conn.execute(
-            "SELECT citation_name_norm, citation_name_display, mapping_type, "
-            "       image_path, category, description, tier_targets, "
-            "       composite_children "
-            "FROM citation_mappings "
-            "WHERE enabled IS NOT FALSE "
-            "ORDER BY category, citation_name_display"
-        ).fetchall()
+    from src.utils.db import duckdb_read_only
 
-        columns = [
-            "citation_name_norm",
-            "citation_name_display",
-            "mapping_type",
-            "image_path",
-            "category",
-            "description",
-            "tier_targets",
-            "composite_children",
-        ]
-        return [dict(zip(columns, row, strict=False)) for row in rows]
-    except Exception:
-        logger.exception("Erreur chargement citation_mappings")
-        return []
-    finally:
-        conn.close()
+    with duckdb_read_only(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT citation_name_norm, citation_name_display, mapping_type, "
+                "       image_path, category, description, tier_targets, "
+                "       composite_children, subcategory "
+                "FROM citation_mappings "
+                "WHERE enabled IS NOT FALSE "
+                "ORDER BY category, CASE WHEN mapping_type = 'composite' THEN 0 ELSE 1 END, citation_name_display"
+            ).fetchall()
+
+            columns = [
+                "citation_name_norm",
+                "citation_name_display",
+                "mapping_type",
+                "image_path",
+                "category",
+                "description",
+                "tier_targets",
+                "composite_children",
+                "subcategory",
+            ]
+            return [dict(zip(columns, row, strict=False)) for row in rows]
+        except Exception:
+            logger.exception("Erreur chargement citation_mappings")
+            return []
 
 
 # ── Mastery / progression ───────────────────────────────────────────────────
 
 
-def _compute_mastery_display(
+def _compute_mastery_display(  # noqa: PLR0912
     current_count: int,
     tiers: list[dict[str, Any]],
 ) -> tuple[str, str, bool, float]:
@@ -210,10 +204,94 @@ def _img_data_uri(abs_path: str, mtime: float | None = None) -> str | None:
     return f"data:{mime};base64,{b64}"
 
 
+# ── Rendu d'une rangée de citations ────────────────────────────────────────
+
+
+def _render_citation_row(
+    items: list[dict],
+    cols_per_row: int,
+    citations_full: dict[str, int],
+    citations_filtered: dict[str, int],
+    is_filtered: bool,
+) -> None:
+    """Affiche une grille de citations (cols_per_row colonnes par rangée)."""
+    cols = st.columns(cols_per_row)
+    for i, item in enumerate(items):
+        col = cols[i % cols_per_row]
+        name = item["name"]
+        desc = item["description"]
+        norm_name = item["norm"]
+        tiers = item["tiers"]
+
+        current_full = citations_full.get(norm_name, 0)
+        current_filtered = citations_filtered.get(norm_name, 0) if is_filtered else current_full
+        delta_citation = current_filtered if (is_filtered and current_filtered > 0) else 0
+
+        level_label, counter_label, is_master, progress_ratio = _compute_mastery_display(
+            current_full, tiers
+        )
+
+        with col:
+            st.markdown("<div class='os-citation-top-gap'></div>", unsafe_allow_html=True)
+            img = _img_src(item["image_path"])
+            data_uri = None
+            if img:
+                try:
+                    mtime = os.path.getmtime(img)
+                except OSError:
+                    mtime = None
+                data_uri = _img_data_uri(img, mtime)
+            tip = html.escape(desc) if desc else html.escape(name)
+            if data_uri:
+                ring_class = "os-citation-ring" + (" os-citation-ring--master" if is_master else "")
+                ring_color = "#d6b35a" if is_master else "#41d6ff"
+                st.markdown(
+                    "<div class='"
+                    + ring_class
+                    + "' title='"
+                    + tip
+                    + "' "
+                    + 'style="--p:'
+                    + str(float(progress_ratio))
+                    + ";--ring-color:"
+                    + ring_color
+                    + ";--img:url('"
+                    + data_uri
+                    + "')\"></div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    "<div class='os-medal-missing' title='" + tip + "'>?</div>",
+                    unsafe_allow_html=True,
+                )
+            st.markdown(
+                "<div class='os-citation-name' title='" + tip + "'>" + html.escape(name) + "</div>",
+                unsafe_allow_html=True,
+            )
+            level_class = "os-citation-level" + (" os-citation-level--master" if is_master else "")
+            st.markdown(
+                f"<div class='{level_class}'>{html.escape(level_label)}</div>",
+                unsafe_allow_html=True,
+            )
+            delta_html = ""
+            if is_filtered and delta_citation > 0:
+                delta_html = (
+                    f" <span style='color: #4CAF50; font-weight: bold;'>+{delta_citation}</span>"
+                )
+            st.markdown(
+                "<div class='os-citation-counter'>"
+                + html.escape(counter_label)
+                + delta_html
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+
+
 # ── Section principale ──────────────────────────────────────────────────────
 
 
-def render_h5g_commendations_section(
+def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
     *,
     db_path: str | None = None,
     xuid: str | None = None,
@@ -290,111 +368,85 @@ def render_h5g_commendations_section(
                 "norm": norm,
                 "description": desc,
                 "category": category,
+                "subcategory": cit.get("subcategory"),
                 "image_path": image_path,
                 "tiers": tiers,
             }
         )
 
-    # ── 4. Filtres UI ───────────────────────────────────────────────────
-    cats = sorted({it["category"] for it in items if it["category"]})
-    c1, c2 = st.columns([1, 2])
-    with c1:
-        picked_cat = st.selectbox(t("cit_filter_category"), options=[t("cit_filter_all")] + cats, index=0)
-    with c2:
-        q = st.text_input(t("cit_search"), value="", placeholder=t("cit_search_placeholder"))
-
-    filtered = items
-    if picked_cat != t("cit_filter_all"):
-        filtered = [x for x in filtered if x["category"] == picked_cat]
+    # ── 4. Filtre texte ───────────────────────────────────────────────────
+    q = st.text_input(t("cit_search"), value="", placeholder=t("cit_search_placeholder"))
     if q.strip():
         qn = q.strip().lower()
-        filtered = [
+        items = [
             x
-            for x in filtered
+            for x in items
             if qn in x["name"].lower()
             or qn in x["description"].lower()
-            or qn in x["category"].lower()
+            or qn in (x["category"] or "").lower()
         ]
 
     # ── 5. Grille 8 colonnes ────────────────────────────────────────────
+    # ── 5. Affichage groupé par catégorie / sous-catégorie ─────────────
+    _CATEGORY_ORDER_BY_LANG: dict[str, list[str]] = {
+        "fr": ["Mode de jeu", "Multijoueur", "Arme", "Spartan Companies", "Véhicule", "Ennemi"],
+        "en": ["Game mode", "Multiplayer", "Weapon", "Spartan Companies", "Vehicle", "Enemy"],
+    }
+    _CATEGORY_ORDER = _CATEGORY_ORDER_BY_LANG.get(lang, _CATEGORY_ORDER_BY_LANG["en"])
+    _SUBCAT_ORDER: dict[str, list[str]] = {
+        "Arme": ["Grenade"],
+        "Weapon": ["Grenade"],
+        "Véhicule": ["Général", "UNSC", "Covenant"],
+        "Vehicle": ["Général", "UNSC", "Covenant"],
+        "Ennemi": ["Covenant", "Banished"],
+        "Enemy": ["Covenant", "Banished"],
+    }
     cols_per_row = 8
-    cols = st.columns(cols_per_row)
-    for i, item in enumerate(filtered):
-        col = cols[i % cols_per_row]
-        name = item["name"]
-        desc = item["description"]
-        norm_name = item["norm"]
-        tiers = item["tiers"]
 
-        current_full = citations_full.get(norm_name, 0)
-        current_filtered = citations_filtered.get(norm_name, 0) if is_filtered else current_full
-        delta_citation = current_filtered if (is_filtered and current_filtered > 0) else 0
+    from collections import defaultdict
 
-        level_label, counter_label, is_master, progress_ratio = _compute_mastery_display(
-            current_full, tiers
+    by_cat: dict[str, dict[str | None, list[dict]]] = defaultdict(lambda: defaultdict(list))
+    for it in items:
+        by_cat[it["category"] or ""][it.get("subcategory")].append(it)
+
+    present_cats = {it["category"] for it in items}
+    cat_order = [c for c in _CATEGORY_ORDER if c in present_cats]
+    cat_order += sorted(c for c in present_cats if c not in _CATEGORY_ORDER)
+
+    for cat in cat_order:
+        subcats_dict = by_cat[cat]
+        all_in_cat = [it for sub_items in subcats_dict.values() for it in sub_items]
+        if not all_in_cat:
+            continue
+
+        st.markdown(
+            f"<h3 style='margin-top:1.5rem'>{html.escape(cat)}</h3>",
+            unsafe_allow_html=True,
         )
+        st.divider()
 
-        with col:
-            st.markdown("<div class='os-citation-top-gap'></div>", unsafe_allow_html=True)
-
-            img = _img_src(item["image_path"])
-            data_uri = None
-            if img:
-                try:
-                    mtime = os.path.getmtime(img)
-                except OSError:
-                    mtime = None
-                data_uri = _img_data_uri(img, mtime)
-
-            tip = html.escape(desc) if desc else html.escape(name)
-
-            if data_uri:
-                ring_class = (
-                    "os-citation-ring os-citation-ring--master" if is_master else "os-citation-ring"
+        if cat in _SUBCAT_ORDER:
+            _SUBCAT_DISPLAY: dict[str, dict[str, str]] = {
+                "en": {"Général": "General"},
+            }
+            ordered_keys = _SUBCAT_ORDER[cat]
+            extra_keys = sorted(k for k in subcats_dict if k not in ordered_keys and k is not None)
+            none_keys: list[str | None] = [None] if None in subcats_dict else []
+            for subcat in ordered_keys + extra_keys + none_keys:  # type: ignore[operator]
+                sub_items = subcats_dict.get(subcat, [])
+                if not sub_items:
+                    continue
+                if subcat is not None:
+                    subcat_label = _SUBCAT_DISPLAY.get(lang, {}).get(subcat, subcat)
+                    st.markdown(
+                        f"<h4 style='margin-top:1rem'>{html.escape(subcat_label)}</h4>"
+                        "<hr style='margin:0.25rem 0 0.75rem 0;opacity:0.3'>",
+                        unsafe_allow_html=True,
+                    )
+                _render_citation_row(
+                    sub_items, cols_per_row, citations_full, citations_filtered, is_filtered
                 )
-                ring_color = "#d6b35a" if is_master else "#41d6ff"
-                st.markdown(
-                    "<div class='"
-                    + ring_class
-                    + "' title='"
-                    + tip
-                    + "' "
-                    + 'style="--p:'
-                    + str(float(progress_ratio))
-                    + ";--ring-color:"
-                    + ring_color
-                    + ";--img:url('"
-                    + data_uri
-                    + "')\"></div>",
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown(
-                    "<div class='os-medal-missing' title='" + tip + "'>?</div>",
-                    unsafe_allow_html=True,
-                )
-
-            st.markdown(
-                "<div class='os-citation-name' title='" + tip + "'>" + html.escape(name) + "</div>",
-                unsafe_allow_html=True,
-            )
-            level_class = (
-                "os-citation-level os-citation-level--master" if is_master else "os-citation-level"
-            )
-            st.markdown(
-                f"<div class='{level_class}'>{html.escape(level_label)}</div>",
-                unsafe_allow_html=True,
-            )
-            delta_html = ""
-            if is_filtered and delta_citation > 0:
-                delta_html = (
-                    f" <span style='color: #4CAF50; font-weight: bold;'>"
-                    f"+{delta_citation}</span>"
-                )
-            st.markdown(
-                "<div class='os-citation-counter'>"
-                + html.escape(counter_label)
-                + delta_html
-                + "</div>",
-                unsafe_allow_html=True,
+        else:
+            _render_citation_row(
+                all_in_cat, cols_per_row, citations_full, citations_filtered, is_filtered
             )

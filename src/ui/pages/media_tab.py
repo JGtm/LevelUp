@@ -115,7 +115,7 @@ def _render_media_grid(
                         )
 
 
-def render_media_tab(
+def render_media_tab(  # noqa: C901, PLR0912, PLR0915
     *,
     df_full: pl.DataFrame | None = None,
     settings: AppSettings | None = None,

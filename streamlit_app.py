@@ -11,6 +11,8 @@ import sys
 import threading
 import urllib.parse
 from collections.abc import Callable
+from datetime import datetime
+from typing import Any, NamedTuple
 
 import streamlit as st
 
@@ -23,17 +25,14 @@ if not hasattr(st, "runtime") or not st.runtime.exists():
     print("  python launcher.py\n")
     sys.exit(1)
 
-# Suppression des warnings connus et non bloquants
-logging.getLogger("streamlit.runtime.caching.cache_data_api").setLevel(logging.ERROR)
+# Configuration centralisée du logging (guard process-level)
+from src.utils.log_config import setup_app_logging  # noqa: E402
 
-# Guard niveau processus : Tailscale ne démarre qu'une seule fois, même si
-# Streamlit crée plusieurs sessions WebSocket (reconnexions, hot-reload).
-# NOTE : ne pas utiliser une variable module-level ici — Streamlit ré-exécute
-# ce script à chaque rerun (exec()), donc un threading.Event défini ici serait
-# recréé à chaque fois. Le guard est dans src/utils/tailscale.py (module caché).
+setup_app_logging()
+
+logger = logging.getLogger("streamlit_app")
 
 from src.app.data_loader import (
-    default_identity_from_secrets,
     ensure_h5g_commendations_repo,
     init_source_state,
 )
@@ -49,23 +48,16 @@ from src.app.filters_render import (
 # Phase 2 refactoring: Helpers et fonctions extraites
 from src.app.helpers import (
     assign_player_colors,
-    avg_match_duration_seconds,
     clean_asset_label,
-    compute_session_span_seconds,
-    compute_total_play_seconds,
     date_range,
     normalize_map_label,
     normalize_mode_label,
-    styler_map,
 )
 
 # Phase 5 refactoring: KPIs et Filtres
 from src.app.kpis_render import (
     render_kpis_section,
     render_performance_info,
-)
-from src.app.main_helpers import (
-    apply_settings_path_overrides as apply_settings_overrides_main,
 )
 
 # Phase 4 refactoring: Main helpers
@@ -77,6 +69,7 @@ from src.app.main_helpers import (
     resolve_xuid_from_input,
     validate_and_fix_db_path,
 )
+from src.app.media_background import background_media_indexing
 
 # Phase 4 refactoring: Page router
 from src.app.page_router import (
@@ -89,6 +82,10 @@ from src.app.page_router import (
     get_page_label,
     render_page_selector,
     render_page_selector_nav,
+)
+from src.app.session_keys import SK
+from src.app.state import (
+    apply_settings_path_overrides as apply_settings_overrides_main,
 )
 
 # Imports depuis la nouvelle architecture
@@ -158,31 +155,15 @@ from src.ui.sync import (
     cleanup_orphan_tmp_dbs,
     is_spnkr_db_path,
     render_sync_indicator,
-    sync_all_players,
+    sync_all_players_duckdb,
 )
 from src.visualization import (
     plot_multi_metric_bars_by_match,
 )
 
-# =============================================================================
-# Aliases vers les fonctions extraites (Phase 2)
-# =============================================================================
-_default_identity_from_secrets = default_identity_from_secrets
-_init_source_state = init_source_state
-_ensure_h5g_commendations_repo = ensure_h5g_commendations_repo
-_clean_asset_label = clean_asset_label
-_normalize_mode_label = normalize_mode_label
-_normalize_map_label = normalize_map_label
-_styler_map = styler_map
-_assign_player_colors = assign_player_colors
-_compute_session_span_seconds = compute_session_span_seconds
-_compute_total_play_seconds = compute_total_play_seconds
-_avg_match_duration_seconds = avg_match_duration_seconds
-_date_range = date_range
-_build_friends_opts_map = build_friends_opts_map
 
-
-def _qp_first(value) -> str | None:
+def _qp_first(value: Any) -> str | None:
+    """Extrait la première valeur d'un query parameter."""
     if value is None:
         return None
     if isinstance(value, list | tuple):
@@ -192,6 +173,7 @@ def _qp_first(value) -> str | None:
 
 
 def _set_query_params(**kwargs: str) -> None:
+    """Setter query params (compat multi-version Streamlit)."""
     clean: dict[str, str] = {
         k: str(v) for k, v in kwargs.items() if v is not None and str(v).strip()
     }
@@ -206,6 +188,7 @@ def _set_query_params(**kwargs: str) -> None:
 
 
 def _app_url(page: str, **params: str) -> str:
+    """Génère une URL avec query params pour navigation interne."""
     qp: dict[str, str] = {"page": page}
     for k, v in params.items():
         if v is None:
@@ -235,190 +218,53 @@ def _aliases_cache_key() -> int | None:
     return None
 
 
-def _background_media_indexing(settings, db_path: str) -> None:
-    """Lance l'indexation des médias en arrière-plan (non-bloquant).
+# =============================================================================
+# Contexte partagé entre les étapes de main()
+# =============================================================================
 
-    Dossier par joueur : base_dir/{gamertag}/. Indexe tous les joueurs connus.
+
+class PageContext(NamedTuple):
+    """Données partagées entre le chargement et le dispatch des pages."""
+
+    dff: Any  # pl.DataFrame — matchs filtrés
+    df: Any  # pl.DataFrame — tous les matchs
+    base: Any  # pl.DataFrame — clone avant filtres
+    db_path: str
+    xuid: str
+    db_key: Any
+    aliases_key: int | None
+    settings: AppSettings
+    waypoint_player: str
+    me_name: str
+    gap_minutes: int
+    picked_session_labels: Any
+    match_view_params: dict[str, Any]
+
+
+# =============================================================================
+# Fonctions extraites de main()
+# =============================================================================
+
+
+def _tailscale_worker() -> None:
+    """Démarre le funnel Tailscale une seule fois par processus."""
+    try:
+        from src.utils.tailscale import ensure_funnel_started_once
+
+        url = ensure_funnel_started_once()
+        if url:
+            print(f"[Tailscale] ✅ Funnel actif → {url}", flush=True)
+    except Exception as _e:
+        print(f"[Tailscale] worker erreur inattendue : {_e}", flush=True)
+
+
+def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
+    """Configure la page Streamlit, charge les settings et valide la config.
+
+    Returns:
+        Tuple (settings, DEFAULT_DB, cfg_warnings, cfg_errors).
     """
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    if not bool(getattr(settings, "media_enabled", True)):
-        logger.debug("Indexation médias désactivée dans les paramètres")
-        return
-
-    base_dir = str(getattr(settings, "media_captures_base_dir", "") or "").strip()
-    # Fallback legacy
-    if not base_dir:
-        videos_dir = str(getattr(settings, "media_videos_dir", "") or "").strip()
-        screens_dir = str(getattr(settings, "media_screens_dir", "") or "").strip()
-        if not videos_dir and not screens_dir:
-            logger.debug("Aucun dossier média configuré - indexation ignorée")
-            return
-    else:
-        videos_dir = screens_dir = ""
-
-    if not db_path or not db_path.endswith(".duckdb"):
-        logger.debug("DB non DuckDB ou invalide - indexation ignorée")
-        return
-
-    if st.session_state.get("_media_indexing_started"):
-        logger.debug("Indexation médias déjà démarrée dans cette session")
-        return
-
-    st.session_state["_media_indexing_started"] = True
-    logger.info("🚀 Démarrage indexation médias en arrière-plan")
-
-    def worker():
-        import logging
-
-        logger = logging.getLogger(__name__)
-        try:
-            from pathlib import Path
-
-            from src.data.media_indexer import MediaIndexer
-            from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR
-
-            def _index_media_for_player(
-                db_file: Path, gamertag: str, captures_dir: Path, tolerance: int
-            ) -> None:
-                """Indexe les médias d'un joueur (scan, association, thumbnails)."""
-                indexer = MediaIndexer(db_file)
-                result = indexer.scan_and_index(
-                    player_captures_dir=captures_dir,
-                    force_rescan=False,
-                )
-                n_associated = indexer.associate_with_matches(tolerance_minutes=tolerance)
-                n_thumb_gen, _n_thumb_err = indexer.generate_thumbnails_for_new(
-                    videos_dir=captures_dir,
-                    screens_dir=captures_dir,
-                )
-                logger.info(
-                    f"✅ {gamertag}: {result.n_new + result.n_updated} médias, "
-                    f"{n_associated} assoc., {n_thumb_gen} thumbs"
-                )
-
-            tolerance = int(getattr(settings, "media_tolerance_minutes", 5) or 5)
-            base_path = Path(base_dir) if base_dir else None
-
-            if base_path is not None and base_path.exists():
-                # Nouvelle logique : indexer tous les joueurs ayant base_dir/gamertag
-                for player_dir in sorted(PLAYERS_DIR.iterdir(), key=lambda p: p.name):
-                    if not player_dir.is_dir():
-                        continue
-                    db_file = player_dir / PLAYER_DB_FILENAME
-                    if not db_file.exists():
-                        continue
-                    gamertag = player_dir.name
-                    player_captures = base_path / gamertag
-                    if not player_captures.exists():
-                        continue
-                    # Libérer TOUTES les connexions read_only (pas seulement ce
-                    # joueur) pour éviter le conflit DuckDB "different configuration".
-                    # DuckDB maintient un handle interne même après .close() si
-                    # d'autres connexions au même fichier existent dans le processus.
-                    try:
-                        from src.data.repositories.duckdb_repo import (
-                            release_all_db_connections,
-                        )
-
-                        n_closed = release_all_db_connections()
-                        if n_closed > 0:
-                            logger.debug(
-                                "🔓 %d connexion(s) libérée(s) avant indexation %s",
-                                n_closed,
-                                gamertag,
-                            )
-                    except Exception:
-                        pass
-
-                    # Retry loop : 3 tentatives avec délai croissant
-                    last_err: Exception | None = None
-                    for _attempt in range(3):
-                        try:
-                            _index_media_for_player(db_file, gamertag, player_captures, tolerance)
-                            last_err = None
-                            break
-                        except Exception as player_err:
-                            last_err = player_err
-                            _err_str = str(player_err).lower()
-                            # Retry sur conflit de configuration OU verrou OS Windows
-                            _is_transient = (
-                                "different configuration" in _err_str
-                                or "cannot open file" in _err_str
-                                or "utilisé par un autre processus" in _err_str
-                                or "process cannot access" in _err_str
-                            )
-                            if _is_transient:
-                                import time as _time
-
-                                try:
-                                    from src.data.repositories.duckdb_repo import (
-                                        release_all_db_connections,
-                                    )
-
-                                    release_all_db_connections()
-                                except Exception:
-                                    pass
-                                _time.sleep((_attempt + 1) * 0.5)
-                            else:
-                                break  # Erreur non liée au conflit → pas de retry
-                    if last_err is not None:
-                        if "different configuration" in str(last_err).lower():
-                            logger.info(
-                                "⏭️ Indexation médias %s ignorée (DB occupée par Streamlit)",
-                                gamertag,
-                            )
-                        else:
-                            logger.warning(
-                                "⏭️ Indexation médias %s ignorée: %s",
-                                gamertag,
-                                last_err,
-                            )
-            else:
-                # Legacy : deux dossiers globaux, DB courante uniquement
-                videos_path = (
-                    Path(videos_dir) if videos_dir and os.path.exists(videos_dir) else None
-                )
-                screens_path = (
-                    Path(screens_dir) if screens_dir and os.path.exists(screens_dir) else None
-                )
-                if not videos_path and not screens_path:
-                    logger.warning("Aucun dossier média valide trouvé")
-                    return
-                indexer = MediaIndexer(Path(db_path))
-                result = indexer.scan_and_index(
-                    videos_dir=videos_path,
-                    screens_dir=screens_path,
-                    force_rescan=False,
-                )
-                n_associated = indexer.associate_with_matches(tolerance_minutes=tolerance)
-                n_thumb_gen, n_thumb_err = indexer.generate_thumbnails_for_new(
-                    videos_dir=videos_path,
-                    screens_dir=screens_path,
-                )
-                logger.info(
-                    f"✅ Scan: {result.n_scanned} scannés, {n_associated} assoc., "
-                    f"{n_thumb_gen} thumbs"
-                )
-            logger.info("✅ Indexation médias terminée")
-        except Exception as e:
-            logger.error("❌ Erreur indexation médias: %s", e, exc_info=True)
-
-    thread = threading.Thread(target=worker, daemon=True, name="media-indexer")
-    thread.start()
-
-
-# =============================================================================
-# Application principale
-# =============================================================================
-
-
-def main() -> None:
-    """Point d'entrée principal de l'application Streamlit."""
     st.set_page_config(page_title="LevelUp", page_icon="🎯", layout="wide")
-
     perf_reset_run()
 
     # Nettoyage des fichiers temporaires orphelins (une fois par session)
@@ -427,18 +273,22 @@ def main() -> None:
     with perf_section("css"):
         st.markdown(load_css(), unsafe_allow_html=True)
 
-    # IMPORTANT: aucun accès réseau implicite.
-    # La génération du référentiel Citations doit être explicite (opt-in via env).
-    if str(os.environ.get("OPENSPARTAN_CITATIONS_AUTOGEN") or "").strip() in {"1", "true", "True"}:
-        _ensure_h5g_commendations_repo()
+    # Référentiel Citations (opt-in via env)
+    if str(os.environ.get("OPENSPARTAN_CITATIONS_AUTOGEN") or "").strip() in {
+        "1",
+        "true",
+        "True",
+    }:
+        ensure_h5g_commendations_repo()
 
     # Paramètres (persistés)
     settings: AppSettings = load_settings()
-    st.session_state["app_settings"] = settings
+    st.session_state[SK.APP_SETTINGS] = settings
+    logger.info("Settings chargées: lang=%s", getattr(settings, "lang", "fr"))
 
     # Chargement des secrets (Doppler ou .env.local) — une seule fois par session
     if not st.session_state.get("_secrets_loaded"):
-        st.session_state["_secrets_loaded"] = True
+        st.session_state[SK.SECRETS_LOADED] = True
         try:
             from src.utils.secrets import load_doppler_secrets_to_env
 
@@ -447,83 +297,152 @@ def main() -> None:
                     project=str(getattr(settings, "doppler_project", "") or ""),
                     config=str(getattr(settings, "doppler_config", "") or ""),
                 )
-        except Exception:
-            pass
+        except Exception as _e:
+            logger.warning("Chargement secrets Doppler échoué: %s", _e)
 
     # Langue UI (persistée) : session_state prime, sinon app_settings.json.
     if "lang" not in st.session_state:
-        st.session_state["lang"] = getattr(settings, "lang", "fr") or "fr"
+        st.session_state[SK.LANG] = getattr(settings, "lang", "fr") or "fr"
 
     # Propage les defaults depuis secrets vers l'env et applique les overrides de chemins
     propagate_identity_to_env()
     apply_settings_overrides_main(settings)
 
-    # Validation de la configuration (calculée une fois par session, affichée à chaque render)
+    # Validation de la configuration (calculée une fois par session)
     if "_startup_cfg_warnings" not in st.session_state:
         try:
             from src.utils.startup_check import check_app_settings
 
             _w, _e = check_app_settings(settings)
-            st.session_state["_startup_cfg_warnings"] = _w
-            st.session_state["_startup_cfg_errors"] = _e
+            st.session_state[SK.STARTUP_WARNINGS] = _w
+            st.session_state[SK.STARTUP_ERRORS] = _e
         except Exception:
-            st.session_state["_startup_cfg_warnings"] = []
-            st.session_state["_startup_cfg_errors"] = []
-    _cfg_warnings: list[str] = st.session_state.get("_startup_cfg_warnings", [])
-    _cfg_errors: list[str] = st.session_state.get("_startup_cfg_errors", [])
+            st.session_state[SK.STARTUP_WARNINGS] = []
+            st.session_state[SK.STARTUP_ERRORS] = []
+    cfg_warnings: list[str] = st.session_state.get("_startup_cfg_warnings", [])
+    cfg_errors: list[str] = st.session_state.get("_startup_cfg_errors", [])
+    if cfg_errors:
+        logger.warning("Startup: %d erreur(s) de configuration", len(cfg_errors))
 
-    # ==========================================================================
-    # Source (persistée via session_state) — UI dans l'onglet Paramètres
-    # ==========================================================================
-
+    # Source (persistée via session_state)
     DEFAULT_DB = get_default_db_path()
-    _init_source_state(DEFAULT_DB, settings)
+    init_source_state(DEFAULT_DB, settings)
 
-    # ==========================================================================
-    # Indexation médias en arrière-plan (non-bloquant)
-    # ==========================================================================
-    _background_media_indexing(settings, DEFAULT_DB)
+    return settings, DEFAULT_DB, cfg_warnings, cfg_errors
 
-    # ==========================================================================
-    # Tailscale funnel + notification Discord (une seule fois par processus)
-    # ==========================================================================
+
+def _start_background_services(settings: AppSettings, DEFAULT_DB: str) -> None:
+    """Lance les services d'arrière-plan (media indexing, Tailscale)."""
+    background_media_indexing(settings, DEFAULT_DB)
+    logger.debug("Media indexing thread lancé")
+
     if bool(getattr(settings, "tailscale_funnel_enabled", False)):
-        from src.utils.tailscale import ensure_funnel_started_once, is_funnel_started
+        from src.utils.tailscale import is_funnel_started
 
         if not is_funnel_started():
-            from src.utils.discord_notifier import notify_app_started
+            threading.Thread(target=_tailscale_worker, daemon=True, name="tailscale-funnel").start()
+            logger.info("Tailscale funnel thread lancé (port 8501)")
 
-            threading.Thread(
-                target=ensure_funnel_started_once,
-                kwargs={"port": 8501, "notify_fn": notify_app_started},
-                daemon=True,
-                name="tailscale-funnel",
-            ).start()
 
-    # Support liens internes via query params (?page=...&match_id=...)
+def _parse_query_params() -> None:
+    """Consomme les query params (?page=...&match_id=...) pour navigation interne."""
     try:
         qp = dict(st.query_params)
         qp_page = _qp_first(qp.get("page"))
         qp_mid = _qp_first(qp.get("match_id"))
+        qp_gt = _qp_first(qp.get("gamertag"))
     except Exception:
         qp_page = None
         qp_mid = None
-    qp_params = (str(qp_page or "").strip(), str(qp_mid or "").strip())
+        qp_gt = None
+    qp_params = (str(qp_page or "").strip(), str(qp_mid or "").strip(), str(qp_gt or "").strip())
     if any(qp_params) and st.session_state.get("_consumed_query_params") != qp_params:
-        st.session_state["_consumed_query_params"] = qp_params
+        st.session_state[SK.CONSUMED_QUERY_PARAMS] = qp_params
         if qp_params[0]:
-            st.session_state["_pending_page"] = qp_params[0]
+            st.session_state[SK.PENDING_PAGE] = qp_params[0]
         if qp_params[1]:
-            st.session_state["_pending_match_id"] = qp_params[1]
-        # Nettoie l'URL après consommation pour ne pas forcer la page en boucle.
+            st.session_state[SK.PENDING_MATCH_ID] = qp_params[1]
+        if qp_params[2]:
+            st.session_state[SK.PENDING_GAMERTAG] = qp_params[2]
+            # Auto-navigate to Explorer for gamertag deep links
+            if not qp_params[0]:
+                st.session_state[SK.PENDING_PAGE] = "Explorer"
+        if any(qp_params):
+            logger.info(
+                "Deep link consommé: page=%r, match_id=%r, gamertag=%r",
+                qp_params[0] or None,
+                qp_params[1] or None,
+                qp_params[2] or None,
+            )
+        # Nettoie l'URL après consommation
         try:
             st.query_params.clear()
         except Exception:
             with contextlib.suppress(Exception):
                 st.experimental_set_query_params()
 
-    db_path = str(st.session_state.get("db_path", "") or "").strip()
-    xuid = str(st.session_state.get("xuid_input", "") or "").strip()
+
+def _send_sync_discord_notification(
+    started_at: datetime,
+    finished_at: datetime,
+    summary_msg: str,
+) -> None:
+    """Envoie la notification Discord après un sync UI réussi (failsafe)."""
+    try:
+        import json as _json
+        from pathlib import Path
+
+        from src.utils.discord_notifier import (
+            DiscordPlayerResult,
+            count_matches_missing_data,
+            count_new_matches,
+            fetch_last_match_info,
+            notify_operation_done,
+        )
+
+        # Charger les profils joueurs depuis db_profiles.json
+        _profiles_path = Path("db_profiles.json")
+        _discord_players: list[DiscordPlayerResult] = []
+        if _profiles_path.exists():
+            _pdata = _json.loads(_profiles_path.read_text(encoding="utf-8"))
+            for _gt, _profile in _pdata.get("profiles", {}).items():
+                if not isinstance(_profile, dict):
+                    continue
+                _xuid = str(_profile.get("xuid", "")) or None
+                _new = count_new_matches(_xuid or "", _gt, started_at) if _xuid else 0
+                _missing = count_matches_missing_data(_xuid or "") if _xuid else 0
+                _last = fetch_last_match_info(_xuid or "") if _xuid else None
+                _discord_players.append(
+                    DiscordPlayerResult(
+                        gamertag=_gt,
+                        xuid=_xuid,
+                        matches_synced=_new,
+                        missing_data_count=_missing,
+                        last_match=_last,
+                    )
+                )
+
+        notify_operation_done(
+            operation="sync_delta",
+            started_at=started_at,
+            finished_at=finished_at,
+            players=_discord_players,
+            success=True,
+            skip_idle=True,
+        )
+        logger.info("[Discord] Notification sync UI envoyée")
+    except Exception as exc:
+        logger.warning("[Discord] Notification sync UI échouée : %s", exc)
+
+
+def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tuple[str, str, str]:  # noqa: C901, PLR0912, PLR0915
+    """Rendu de la sidebar principale (langue, logo, joueur, sync).
+
+    Peut appeler ``st.rerun()`` lors d'un changement de joueur ou de langue.
+
+    Returns:
+        Tuple (db_path, xuid, waypoint_player) potentiellement mis à jour.
+    """
     waypoint_player = str(st.session_state.get("waypoint_player", "") or "").strip()
 
     with st.sidebar:
@@ -554,7 +473,16 @@ def main() -> None:
         # Logo en haut de la sidebar
         logo_path = os.path.join(os.path.dirname(__file__), "static", "logo.png")
         if os.path.exists(logo_path):
-            st.image(logo_path, width="stretch")
+            import base64
+
+            with open(logo_path, "rb") as _f:
+                _logo_b64 = base64.b64encode(_f.read()).decode()
+            st.markdown(
+                f"<div style='display:flex;justify-content:center;'>"
+                f"<img src='data:image/png;base64,{_logo_b64}' style='width:65%;'/>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
 
         st.markdown("<div class='os-sidebar-divider'></div>", unsafe_allow_html=True)
 
@@ -562,7 +490,7 @@ def main() -> None:
         if db_path and os.path.exists(db_path):
             render_sync_indicator(db_path)
 
-        # Sélecteur multi-joueurs (Legacy SQLite + DuckDB v4)
+        # Sélecteur multi-joueurs
         if db_path and os.path.exists(db_path):
             new_db_path, new_xuid = render_player_selector_unified(
                 db_path, xuid, key="sidebar_player_selector"
@@ -572,14 +500,13 @@ def main() -> None:
                 old_xuid = xuid
                 old_db_path = db_path
                 with contextlib.suppress(Exception):
-                    # Ne pas bloquer le changement de joueur si la sauvegarde échoue
                     save_filter_preferences(old_xuid, old_db_path)
 
-                # Nettoyer exhaustivement les filtres (données + widgets checkbox)
+                # Nettoyer exhaustivement les filtres
                 for key in get_all_filter_keys_to_clear(st.session_state):
                     del st.session_state[key]
 
-                # Réinitialiser les flags de chargement et sauvegarde pour l'ancien joueur
+                # Réinitialiser les flags de chargement et sauvegarde
                 old_player_key = _get_player_key(old_xuid, old_db_path)
                 old_filters_loaded_key = f"_filters_loaded_{old_player_key}"
                 old_last_saved_key = f"_last_saved_player_{old_player_key}"
@@ -590,55 +517,103 @@ def main() -> None:
 
                 # Mettre à jour db_path et xuid pour le nouveau joueur
                 if new_db_path:
-                    st.session_state["db_path"] = new_db_path
+                    st.session_state[SK.DB_PATH] = new_db_path
                     db_path = new_db_path
-                    # Pour DuckDB v4, mettre à jour le gamertag comme xuid_input
                     gamertag = get_gamertag_from_duckdb_v4_path(new_db_path)
                     if gamertag:
-                        st.session_state["xuid_input"] = gamertag
-                        st.session_state["waypoint_player"] = gamertag
+                        st.session_state[SK.XUID_INPUT] = gamertag
+                        st.session_state[SK.WAYPOINT_PLAYER] = gamertag
                         xuid = gamertag
                 if new_xuid:
-                    st.session_state["xuid_input"] = new_xuid
+                    st.session_state[SK.XUID_INPUT] = new_xuid
                     xuid = new_xuid
 
-                # Charger les filtres sauvegardés pour le nouveau joueur
-                # Le flag _filters_loaded sera vérifié dans render_filters_sidebar()
-                # et comme on l'a supprimé pour l'ancien joueur, les filtres seront rechargés
+                logger.info(
+                    "Changement joueur: %s → %s",
+                    old_xuid[:8] if old_xuid else "?",
+                    xuid[:8] if xuid else "?",
+                )
                 apply_filter_preferences(xuid, db_path)
                 st.rerun()
 
-        # Bouton Sync pour toutes les DB SPNKr (multi-joueurs si DB fusionnée)
+        # Bouton Sync
         if db_path and is_spnkr_db_path(db_path) and os.path.exists(db_path):  # noqa: SIM102
+            is_syncing = st.session_state.get(SK.IS_SYNCING, False)
             if st.button(
                 t("sidebar_sync_btn"),
                 key="sidebar_sync_button",
                 help=t("sidebar_sync_help"),
                 width="stretch",
+                disabled=is_syncing,
             ):
-                with st.spinner(t("sidebar_sync_spinner")):
-                    ok, msg = sync_all_players(
-                        db_path=db_path,
-                        match_type=str(
-                            getattr(settings, "spnkr_refresh_match_type", "matchmaking")
-                            or "matchmaking"
-                        ),
-                        max_matches=int(getattr(settings, "spnkr_refresh_max_matches", 200) or 200),
-                        rps=int(getattr(settings, "spnkr_refresh_rps", 5) or 5),
-                        with_highlight_events=True,
-                        with_aliases=True,
-                        delta=True,
-                        timeout_seconds=180,
-                    )
+                st.session_state[SK.IS_SYNCING] = True
+                logger.info("Sync démarré par l'utilisateur (tous les joueurs)")
+
+                # Sauvegarder les filtres avant sync pour éviter le reset
+                with contextlib.suppress(Exception):
+                    save_filter_preferences(xuid, db_path)
+
+                from datetime import timezone
+
+                sync_started_at = datetime.now(timezone.utc)
+                try:
+                    with st.spinner(t("sidebar_sync_spinner")):
+                        ok, msg = sync_all_players_duckdb(
+                            match_type=str(
+                                getattr(settings, "spnkr_refresh_match_type", "matchmaking")
+                                or "matchmaking"
+                            ),
+                            max_matches=int(
+                                getattr(settings, "spnkr_refresh_max_matches", 200) or 200
+                            ),
+                            with_highlight_events=True,
+                            with_aliases=True,
+                            delta=True,
+                        )
+                finally:
+                    st.session_state[SK.IS_SYNCING] = False
+                sync_finished_at = datetime.now(timezone.utc)
+
                 if ok:
+                    logger.info("Sync terminé: %s", msg)
                     st.success(msg)
+
+                    # Notification Discord
+                    _send_sync_discord_notification(sync_started_at, sync_finished_at, msg)
+
                     _clear_app_caches()
-                    # Force cache invalidation avec un token de session
-                    st.session_state["_cache_buster"] = st.session_state.get("_cache_buster", 0) + 1
+                    cache_buster_val = st.session_state.get("_cache_buster", 0)
+                    logger.info("Caches invalidés après sync, cache_buster=%d", cache_buster_val)
+                    st.session_state[SK.CACHE_BUSTER] = cache_buster_val + 1
+
+                    # Mettre à jour le db_key AVANT rerun pour éviter le reset
+                    # des filtres (render_filters_sidebar détecte db_key changé)
+                    new_db_key = db_cache_key(db_path)
+                    player_key = _get_player_key(xuid, db_path)
+                    st.session_state[f"_filters_db_key_{player_key}"] = new_db_key
+
                     st.rerun()
                 else:
+                    logger.error("Sync échoué: %s", msg)
                     st.error(msg)
 
+    return db_path, xuid, waypoint_player
+
+
+def _load_and_prepare_data(  # noqa: PLR0913
+    db_path: str,
+    xuid: str,
+    DEFAULT_DB: str,
+    settings: AppSettings,
+    waypoint_player: str,
+    cfg_warnings: list[str],
+    cfg_errors: list[str],
+) -> PageContext | None:
+    """Charge les données, applique les filtres et rend les KPIs.
+
+    Returns:
+        ``PageContext`` si des données existent, sinon ``None`` (page settings affichée).
+    """
     # Validation du chemin DB
     db_path = validate_and_fix_db_path(db_path, DEFAULT_DB)
 
@@ -656,18 +631,12 @@ def main() -> None:
     api_app, _api_err = load_profile_api(xuid, settings, db_path=db_path)
     render_profile_hero(xuid, settings, api_app, db_path=db_path)
 
-    # ==========================================================================
     # Chargement des données
-    # ==========================================================================
-
-    # Cache buster pour forcer le rechargement après sync
     cache_buster = st.session_state.get("_cache_buster", 0)
     df, db_key = load_match_dataframe(db_path, xuid, cache_buster=cache_buster)
 
-    # Debug: Informations sur le DataFrame complet (avant filtres)
-    # Désactivé par défaut - peut être activé via session_state["_show_debug_info"] = True
+    # Debug conditionnel
     show_debug = st.session_state.get("_show_debug_info", False)
-
     if show_debug and len(df) > 0:
         st.info("🔍 **Mode Debug activé** - Informations sur les données chargées")
         with st.expander("🔍 Debug - DataFrame complet (avant filtres)", expanded=True):
@@ -683,9 +652,11 @@ def main() -> None:
                 st.write("**5 derniers matchs dans df (par date) :**")
                 for row in last_5_df.iter_rows(named=True):
                     st.write(
-                        f"- {row.get('start_time')} | Match ID: {row.get('match_id')} | Map: {row.get('map_name')}"
+                        f"- {row.get('start_time')} | Match ID: {row.get('match_id')}"
+                        f" | Map: {row.get('map_name')}"
                     )
 
+    # Early return si aucun match
     if len(df) == 0:
         st.radio(
             t("sidebar_navigation"),
@@ -694,8 +665,6 @@ def main() -> None:
             key="page",
             label_visibility="collapsed",
         )
-        # Import lazy — nécessaire quand HAS_NAVIGATION=True (Streamlit >= 1.36)
-        # car l'import eager est conditionnel (if not HAS_NAVIGATION)
         from src.ui.pages import render_settings_page as _render_settings_empty
 
         _render_settings_empty(
@@ -703,17 +672,13 @@ def main() -> None:
             get_local_dbs_fn=cached_list_local_dbs,
             on_clear_caches_fn=_clear_app_caches,
         )
-        return
+        return None
 
-    # ==========================================================================
     # Sidebar - Filtres
-    # ==========================================================================
-
     with st.sidebar:
-        # Alertes de configuration (calculées une fois par session)
-        for _err_msg in _cfg_errors:
+        for _err_msg in cfg_errors:
             st.error(_err_msg)
-        for _warn_msg in _cfg_warnings:
+        for _warn_msg in cfg_warnings:
             st.warning(_warn_msg)
 
         filter_state = render_filters_sidebar(
@@ -722,47 +687,34 @@ def main() -> None:
             xuid=xuid,
             db_key=db_key,
             aliases_key=aliases_key,
-            date_range_fn=_date_range,
-            clean_asset_label_fn=_clean_asset_label,
-            normalize_mode_label_fn=_normalize_mode_label,
-            normalize_map_label_fn=_normalize_map_label,
-            build_friends_opts_map_fn=_build_friends_opts_map,
+            date_range_fn=date_range,
+            clean_asset_label_fn=clean_asset_label,
+            normalize_mode_label_fn=normalize_mode_label,
+            normalize_map_label_fn=normalize_map_label,
+            build_friends_opts_map_fn=build_friends_opts_map,
         )
 
     # Base "globale" : toutes les parties (après inclusion/exclusion Firefight)
     base = df.clone()
 
-    # ==========================================================================
     # Application des filtres
-    # ==========================================================================
-
     dff = apply_filters(
         dff=df,
         filter_state=filter_state,
         db_path=db_path,
         xuid=xuid,
         db_key=db_key,
-        clean_asset_label_fn=_clean_asset_label,
-        normalize_mode_label_fn=_normalize_mode_label,
-        normalize_map_label_fn=_normalize_map_label,
+        clean_asset_label_fn=clean_asset_label,
+        normalize_mode_label_fn=normalize_mode_label,
+        normalize_map_label_fn=normalize_map_label,
     )
 
-    # Variables pour compatibilité avec le dispatch
     gap_minutes = filter_state.gap_minutes
     picked_session_labels = filter_state.picked_session_labels
 
-    # ==========================================================================
     # KPIs
-    # ==========================================================================
-
     render_kpis_section(dff)
     render_performance_info()
-
-    # ==========================================================================
-    # Pages (navigation)
-    # ==========================================================================
-
-    consume_pending_match_id()
 
     # Paramètres communs pour les pages de match
     _match_view_params = build_match_view_params(
@@ -773,7 +725,7 @@ def main() -> None:
         settings=settings,
         df_full=df,
         render_match_view_fn=render_match_view,
-        normalize_mode_label_fn=_normalize_mode_label,
+        normalize_mode_label_fn=normalize_mode_label,
         format_score_label_fn=format_score_label,
         score_css_color_fn=score_css_color,
         format_datetime_fn=format_datetime_fr_hm,
@@ -785,209 +737,274 @@ def main() -> None:
         paris_tz=PARIS_TZ,
     )
 
+    return PageContext(
+        dff=dff,
+        df=df,
+        base=base,
+        db_path=db_path,
+        xuid=xuid,
+        db_key=db_key,
+        aliases_key=aliases_key,
+        settings=settings,
+        waypoint_player=waypoint_player,
+        me_name=me_name,
+        gap_minutes=gap_minutes,
+        picked_session_labels=picked_session_labels,
+        match_view_params=_match_view_params,
+    )
+
+
+def _dispatch_pages(ctx: PageContext) -> None:
+    """Dispatch vers la page active (st.navigation ou fallback legacy)."""
+    consume_pending_match_id()
+
     if HAS_NAVIGATION:
-        # ---- st.navigation : lazy loading des pages (8ter.5) ----------------
-
-        def _page_timeseries() -> None:
-            from src.ui.pages import render_timeseries_page
-
-            render_timeseries_page(dff, df_full=df, db_path=db_path, xuid=xuid)
-
-        def _page_session_compare() -> None:
-            from src.app.filters import get_friends_xuids_for_sessions
-            from src.app.page_router import _to_polars
-            from src.ui.pages import render_session_comparison_page
-
-            friends_tuple = get_friends_xuids_for_sessions(
-                db_path,
-                xuid.strip(),
-                db_key,
-                aliases_key,
-            )
-            all_sessions_df = cached_compute_sessions_db(
-                db_path,
-                xuid.strip(),
-                db_key,
-                True,
-                gap_minutes,
-                friends_xuids=friends_tuple,
-            )
-            all_sessions_pl = _to_polars(all_sessions_df)
-            df_pl = _to_polars(df)
-            if (
-                not all_sessions_pl.is_empty()
-                and "match_id" in df_pl.columns
-                and "match_id" in all_sessions_pl.columns
-            ):
-                sess_cols = ["match_id", "session_id", "session_label"]
-                drop_cols = [c for c in ("session_id", "session_label") if c in df_pl.columns]
-                df_for_merge = df_pl.drop(drop_cols) if drop_cols else df_pl
-                sessions_for_compare = df_for_merge.join(
-                    all_sessions_pl.select(sess_cols),
-                    on="match_id",
-                    how="inner",
-                )
-            else:
-                sessions_for_compare = all_sessions_pl
-            render_session_comparison_page(sessions_for_compare, df_full=df)
-
-        def _page_last_match() -> None:
-            from src.ui.pages import render_last_match_page
-
-            render_last_match_page(dff=dff, **_match_view_params)
-
-        def _page_match_search() -> None:
-            from src.ui.pages import render_match_search_page
-
-            render_match_search_page(df=df, dff=dff, **_match_view_params)
-
-        def _page_media() -> None:
-            from src.ui.pages import render_media_tab
-
-            render_media_tab(df_full=df, settings=settings)
-
-        def _page_citations() -> None:
-            from src.ui.pages import render_citations_page
-
-            render_citations_page(
-                dff=dff,
-                df_full=df,
-                xuid=xuid,
-                db_path=db_path,
-                db_key=db_key,
-                top_medals_fn=_top_medals,
-            )
-
-        def _page_win_loss() -> None:
-            from src.ui.pages import render_win_loss_page
-
-            render_win_loss_page(
-                dff=dff,
-                base=base,
-                picked_session_labels=picked_session_labels,
-                db_path=db_path,
-                xuid=xuid,
-                db_key=db_key,
-            )
-
-        def _page_teammates() -> None:
-            from src.ui.pages import render_teammates_page
-
-            render_teammates_page(
-                df=df,
-                dff=dff,
-                base=base,
-                me_name=me_name,
-                xuid=xuid,
-                db_path=db_path,
-                db_key=db_key,
-                aliases_key=aliases_key,
-                settings=settings,
-                picked_session_labels=picked_session_labels,
-                include_firefight=True,
-                waypoint_player=waypoint_player,
-                build_friends_opts_map_fn=_build_friends_opts_map,
-                assign_player_colors_fn=_assign_player_colors,
-                plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
-                top_medals_fn=_top_medals,
-            )
-
-        def _page_match_history() -> None:
-            from src.ui.pages import render_match_history_page
-
-            render_match_history_page(
-                dff=dff,
-                waypoint_player=waypoint_player,
-                db_path=db_path,
-                xuid=xuid,
-                db_key=db_key,
-                df_full=df,
-            )
-
-        def _page_career() -> None:
-            from src.ui.pages import render_career_page
-
-            render_career_page(db_path=db_path, xuid=xuid, db_key=db_key)
-
-        def _page_settings() -> None:
-            from src.ui.pages import render_settings_page
-
-            render_settings_page(
-                settings,
-                get_local_dbs_fn=cached_list_local_dbs,
-                on_clear_caches_fn=_clear_app_caches,
-            )
-
-        page_callables: dict[str, Callable] = {
-            "timeseries": _page_timeseries,
-            "session_compare": _page_session_compare,
-            "last_match": _page_last_match,
-            "match": _page_match_search,
-            "media": _page_media,
-            "citations": _page_citations,
-            "win_loss": _page_win_loss,
-            "teammates": _page_teammates,
-            "match_history": _page_match_history,
-            "career": _page_career,
-            "settings": _page_settings,
-        }
-
-        pg, pages = build_navigation(page_callables)
-
-        # Gérer les redirections en attente (liens depuis une autre page)
-        pending_page = st.session_state.pop("_pending_page", None)
-        if isinstance(pending_page, str):
-            # Accepter un slug OU un ancien nom FR (legacy)
-            from src.app.page_router import _LEGACY_NAME_TO_SLUG
-
-            slug = _LEGACY_NAME_TO_SLUG.get(pending_page, pending_page)
-            label = get_page_label(slug) if slug in PAGE_KEYS else pending_page
-            target = next((p for p in pages if p.title == label), None)
-            if target is not None and target != pg:
-                st.switch_page(target)
-
-        render_page_selector_nav(pages, pg)
-        pg.run()
-
+        _dispatch_navigation(ctx)
     else:
-        # ---- Fallback legacy (Streamlit < 1.36) -----------------------------
-        consume_pending_page()
-        page = render_page_selector()
+        _dispatch_legacy(ctx)
 
-        dispatch_page(
-            page=page,
-            dff=dff,
-            df=df,
-            base=base,
-            me_name=me_name,
-            xuid=xuid,
-            db_path=db_path,
-            db_key=db_key,
-            aliases_key=aliases_key,
-            settings=settings,
-            picked_session_labels=picked_session_labels,
-            waypoint_player=waypoint_player,
-            gap_minutes=gap_minutes,
-            match_view_params=_match_view_params,
-            render_last_match_page_fn=render_last_match_page,
-            render_match_search_page_fn=render_match_search_page,
-            render_citations_page_fn=render_citations_page,
-            render_session_comparison_page_fn=render_session_comparison_page,
-            render_timeseries_page_fn=render_timeseries_page,
-            render_win_loss_page_fn=render_win_loss_page,
-            render_teammates_page_fn=render_teammates_page,
-            render_match_history_page_fn=render_match_history_page,
-            render_media_tab_fn=render_media_tab,
-            render_career_page_fn=render_career_page,
-            render_settings_page_fn=render_settings_page,
-            cached_compute_sessions_db_fn=cached_compute_sessions_db,
-            top_medals_fn=_top_medals,
-            build_friends_opts_map_fn=_build_friends_opts_map,
-            assign_player_colors_fn=_assign_player_colors,
-            plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
-            get_local_dbs_fn=cached_list_local_dbs,
-            clear_caches_fn=_clear_app_caches,
+
+def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
+    """Dispatch via st.navigation (Streamlit ≥ 1.36) avec lazy-loading."""
+
+    def _page_timeseries() -> None:
+        from src.ui.pages import render_timeseries_page
+
+        render_timeseries_page(ctx.dff, df_full=ctx.df, db_path=ctx.db_path, xuid=ctx.xuid)
+
+    def _page_session_compare() -> None:
+        from src.app.filters import get_friends_xuids_for_sessions
+        from src.app.page_router import _to_polars
+        from src.ui.pages import render_session_comparison_page
+
+        friends_tuple = get_friends_xuids_for_sessions(
+            ctx.db_path,
+            ctx.xuid.strip(),
+            ctx.db_key,
+            ctx.aliases_key,
         )
+        all_sessions_df = cached_compute_sessions_db(
+            ctx.db_path,
+            ctx.xuid.strip(),
+            ctx.db_key,
+            True,
+            ctx.gap_minutes,
+            friends_xuids=friends_tuple,
+        )
+        all_sessions_pl = _to_polars(all_sessions_df)
+        df_pl = _to_polars(ctx.df)
+        if (
+            not all_sessions_pl.is_empty()
+            and "match_id" in df_pl.columns
+            and "match_id" in all_sessions_pl.columns
+        ):
+            sess_cols = ["match_id", "session_id", "session_label"]
+            drop_cols = [c for c in ("session_id", "session_label") if c in df_pl.columns]
+            df_for_merge = df_pl.drop(drop_cols) if drop_cols else df_pl
+            sessions_for_compare = df_for_merge.join(
+                all_sessions_pl.select(sess_cols),
+                on="match_id",
+                how="inner",
+            )
+        else:
+            sessions_for_compare = all_sessions_pl
+        render_session_comparison_page(sessions_for_compare, df_full=ctx.df)
+
+    def _page_last_match() -> None:
+        from src.ui.pages import render_last_match_page
+
+        render_last_match_page(dff=ctx.dff, **ctx.match_view_params)
+
+    def _page_explorer() -> None:
+        from src.ui.pages import render_explorer_page
+
+        render_explorer_page(df=ctx.df, dff=ctx.dff, **ctx.match_view_params)
+
+    def _page_media() -> None:
+        from src.ui.pages import render_media_tab
+
+        render_media_tab(df_full=ctx.df, settings=ctx.settings)
+
+    def _page_citations() -> None:
+        from src.ui.pages import render_citations_page
+
+        render_citations_page(
+            dff=ctx.dff,
+            df_full=ctx.df,
+            xuid=ctx.xuid,
+            db_path=ctx.db_path,
+            db_key=ctx.db_key,
+            top_medals_fn=_top_medals,
+        )
+
+    def _page_win_loss() -> None:
+        from src.ui.pages import render_win_loss_page
+
+        render_win_loss_page(
+            dff=ctx.dff,
+            base=ctx.base,
+            picked_session_labels=ctx.picked_session_labels,
+            db_path=ctx.db_path,
+            xuid=ctx.xuid,
+            db_key=ctx.db_key,
+        )
+
+    def _page_teammates() -> None:
+        from src.ui.pages import render_teammates_page
+
+        render_teammates_page(
+            df=ctx.df,
+            dff=ctx.dff,
+            base=ctx.base,
+            me_name=ctx.me_name,
+            xuid=ctx.xuid,
+            db_path=ctx.db_path,
+            db_key=ctx.db_key,
+            aliases_key=ctx.aliases_key,
+            settings=ctx.settings,
+            picked_session_labels=ctx.picked_session_labels,
+            include_firefight=True,
+            waypoint_player=ctx.waypoint_player,
+            build_friends_opts_map_fn=build_friends_opts_map,
+            assign_player_colors_fn=assign_player_colors,
+            plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
+            top_medals_fn=_top_medals,
+        )
+
+    def _page_match_history() -> None:
+        from src.ui.pages import render_match_history_page
+
+        render_match_history_page(
+            dff=ctx.dff,
+            waypoint_player=ctx.waypoint_player,
+            db_path=ctx.db_path,
+            xuid=ctx.xuid,
+            db_key=ctx.db_key,
+            df_full=ctx.df,
+        )
+
+    def _page_career() -> None:
+        from src.ui.pages import render_career_page
+
+        render_career_page(db_path=ctx.db_path, xuid=ctx.xuid, db_key=ctx.db_key)
+
+    def _page_settings() -> None:
+        from src.ui.pages import render_settings_page
+
+        render_settings_page(
+            ctx.settings,
+            get_local_dbs_fn=cached_list_local_dbs,
+            on_clear_caches_fn=_clear_app_caches,
+        )
+
+    page_callables: dict[str, Callable[[], None]] = {
+        "timeseries": _page_timeseries,
+        "session_compare": _page_session_compare,
+        "last_match": _page_last_match,
+        "explorer": _page_explorer,
+        "media": _page_media,
+        "citations": _page_citations,
+        "win_loss": _page_win_loss,
+        "teammates": _page_teammates,
+        "match_history": _page_match_history,
+        "career": _page_career,
+        "settings": _page_settings,
+    }
+
+    pg, pages = build_navigation(page_callables)
+
+    # Gérer les redirections en attente (liens depuis une autre page)
+    pending_page = st.session_state.pop("_pending_page", None)
+    if isinstance(pending_page, str):
+        from src.app.page_router import _LEGACY_NAME_TO_SLUG
+
+        slug = _LEGACY_NAME_TO_SLUG.get(pending_page, pending_page)
+        label = get_page_label(slug) if slug in PAGE_KEYS else pending_page
+        target = next((p for p in pages if p.title == label), None)
+        if target is not None and target != pg:
+            st.switch_page(target)
+
+    render_page_selector_nav(pages, pg)
+    pg.run()
+
+
+def _dispatch_legacy(ctx: PageContext) -> None:
+    """Dispatch legacy via page selector (Streamlit < 1.36)."""
+    consume_pending_page()
+    page = render_page_selector()
+
+    dispatch_page(
+        page=page,
+        dff=ctx.dff,
+        df=ctx.df,
+        base=ctx.base,
+        me_name=ctx.me_name,
+        xuid=ctx.xuid,
+        db_path=ctx.db_path,
+        db_key=ctx.db_key,
+        aliases_key=ctx.aliases_key,
+        settings=ctx.settings,
+        picked_session_labels=ctx.picked_session_labels,
+        waypoint_player=ctx.waypoint_player,
+        gap_minutes=ctx.gap_minutes,
+        match_view_params=ctx.match_view_params,
+        render_last_match_page_fn=render_last_match_page,
+        render_match_search_page_fn=render_match_search_page,
+        render_citations_page_fn=render_citations_page,
+        render_session_comparison_page_fn=render_session_comparison_page,
+        render_timeseries_page_fn=render_timeseries_page,
+        render_win_loss_page_fn=render_win_loss_page,
+        render_teammates_page_fn=render_teammates_page,
+        render_match_history_page_fn=render_match_history_page,
+        render_media_tab_fn=render_media_tab,
+        render_career_page_fn=render_career_page,
+        render_settings_page_fn=render_settings_page,
+        cached_compute_sessions_db_fn=cached_compute_sessions_db,
+        top_medals_fn=_top_medals,
+        build_friends_opts_map_fn=build_friends_opts_map,
+        assign_player_colors_fn=assign_player_colors,
+        plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
+        get_local_dbs_fn=cached_list_local_dbs,
+        clear_caches_fn=_clear_app_caches,
+    )
+
+
+# =============================================================================
+# Application principale
+# =============================================================================
+
+
+def main() -> None:
+    """Point d'entrée principal de l'application Streamlit."""
+    # 1. Initialisation (config, CSS, settings, validation)
+    settings, DEFAULT_DB, cfg_warnings, cfg_errors = _initialize_app()
+
+    # 2. Services d'arrière-plan (media indexing, Tailscale)
+    _start_background_services(settings, DEFAULT_DB)
+
+    # 3. Query params (deep links)
+    _parse_query_params()
+
+    # 4. Sidebar principale (langue, joueur, sync)
+    db_path = str(st.session_state.get("db_path", "") or "").strip()
+    xuid = str(st.session_state.get("xuid_input", "") or "").strip()
+    db_path, xuid, waypoint_player = _render_main_sidebar(db_path, xuid, settings)
+
+    # 5. Chargement des données, filtres et KPIs
+    ctx = _load_and_prepare_data(
+        db_path,
+        xuid,
+        DEFAULT_DB,
+        settings,
+        waypoint_player,
+        cfg_warnings,
+        cfg_errors,
+    )
+    if ctx is None:
+        return  # Aucun match — page settings déjà affichée
+
+    # 6. Dispatch vers la page active
+    _dispatch_pages(ctx)
 
 
 if __name__ == "__main__":

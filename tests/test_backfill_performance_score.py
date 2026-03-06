@@ -134,8 +134,7 @@ def _create_player_conn(
         # Pré-remplir les scores pour match-020 à match-024
         for i in range(20, 25):
             conn.execute(
-                "INSERT INTO player_match_enrichment (match_id, performance_score) "
-                "VALUES (?, ?)",
+                "INSERT INTO player_match_enrichment (match_id, performance_score) VALUES (?, ?)",
                 (f"match-{i:03d}", 75.5),
             )
     return conn

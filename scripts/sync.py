@@ -1443,26 +1443,16 @@ Exemples:
                 import asyncio
 
                 from scripts.backfill_data import backfill_player_data
+                from src.data.sync.scope import SyncScope
 
-                # Déterminer les options de backfill
+                # Déterminer le scope de backfill
                 if args.with_backfill:
-                    # Backfill complet (toutes les données)
-                    backfill_kwargs = {
-                        "dry_run": False,
-                        "max_matches": None,
-                        "requests_per_second": 5,
-                        "all_data": True,
-                    }
+                    _scope = SyncScope.make_all()
                 else:
-                    # Backfill uniquement les scores de performance
-                    backfill_kwargs = {
-                        "dry_run": False,
-                        "max_matches": None,
-                        "requests_per_second": 5,
-                        "performance_scores": True,
-                    }
+                    _scope = SyncScope(performance_scores=True)
+                _scope.resolve()
 
-                result = asyncio.run(backfill_player_data(args.player, **backfill_kwargs))
+                result = asyncio.run(backfill_player_data(args.player, scope=_scope))
 
                 logger.info("\n=== Résumé Backfill ===")
                 logger.info(f"Matchs vérifiés: {result['matches_checked']}")
@@ -1488,34 +1478,13 @@ Exemples:
                 logger.error(f"Erreur lors du backfill: {e}")
                 success = False
 
-    # Calcul des citations manquantes (traitement local, sans API)
+    # --with-citations : redondant depuis v5.2 (citations calculées automatiquement par engine)
     if args.with_citations:
-        if not args.player:
-            logger.warning(
-                "--with-citations nécessite --player. "
-                "Utilisez scripts/backfill_data.py --all --citations pour tous les joueurs."
-            )
-        else:
-            logger.info("Calcul des citations manquantes après synchronisation...")
-            try:
-                import asyncio
-
-                from scripts.backfill_data import backfill_player_data
-                from src.data.sync.scope import SyncScope
-
-                scope = SyncScope(citations=True)
-                scope.resolve()
-
-                result = asyncio.run(backfill_player_data(args.player, scope=scope))
-
-                citations_count = result.get("citations_computed", 0)
-                logger.info(f"Citations calculées : {citations_count}")
-
-            except ImportError as e:
-                logger.warning(f"Impossible d'importer backfill_data: {e}")
-            except Exception as e:
-                logger.error(f"Erreur lors du calcul des citations: {e}")
-                success = False
+        logger.warning(
+            "--with-citations est déprécié : les citations sont calculées automatiquement "
+            "après chaque sync par DuckDBSyncEngine. "
+            "Pour un rattrapage en bulk, utiliser : scripts/backfill_data.py --all --citations"
+        )
 
     # Migration vers Parquet (dépréciée depuis v4)
     if args.migrate_parquet:

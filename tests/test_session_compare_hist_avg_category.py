@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import pandas as pd
+import polars as pl
 
-from src.ui.pages.session_compare import compute_similar_sessions_average
+from src.ui.pages.session_compare_logic import compute_similar_sessions_average
 
 
 class TestSessionCompareHistoricalAverageByCategory:
@@ -13,7 +13,7 @@ class TestSessionCompareHistoricalAverageByCategory:
         # Session 1: Assassin (solo)
         # Session 2: BTB (solo)
         # Session 3: Assassin (solo)
-        df = pd.DataFrame(
+        df = pl.DataFrame(
             [
                 {
                     "session_id": 1,
@@ -90,7 +90,7 @@ class TestSessionCompareHistoricalAverageByCategory:
 
     def test_compute_similar_sessions_average_without_is_with_friends(self) -> None:
         """Fallback: si is_with_friends est absent, comparer sur toutes les sessions."""
-        df = pd.DataFrame(
+        df = pl.DataFrame(
             [
                 {
                     "session_id": 10,

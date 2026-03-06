@@ -170,7 +170,7 @@ def compute_dominance_buckets(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def detect_streaks(
+def detect_streaks(  # noqa: C901, PLR0912
     events: list[dict[str, Any]],
     xuid_to_team: dict[str, int],
     xuid_to_gamertag: dict[str, str],
@@ -288,7 +288,7 @@ def _fmt_s(total_s: float) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def plot_dominance_chart(
+def plot_dominance_chart(  # noqa: C901, PLR0912, PLR0913, PLR0915
     buckets: list[DominanceBucket],
     streaks: list[KillStreak],
     kill_events: list[dict[str, Any]],

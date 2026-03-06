@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from src.utils.paths import REPO_ROOT
+
 
 @dataclass(frozen=True)
 class ProfileAppearance:
@@ -28,14 +30,9 @@ class ProfileAppearance:
     spartan_id: str | None = None
 
 
-def _repo_root() -> Path:
-    """Retourne la racine du repository."""
-    return Path(__file__).resolve().parents[2]
-
-
 def get_profile_api_cache_dir() -> Path:
     """Retourne le répertoire de cache pour les données de profil."""
-    return _repo_root() / "data" / "cache" / "profile_api"
+    return REPO_ROOT / "data" / "cache" / "profile_api"
 
 
 def _cache_path(xuid: str) -> Path:

@@ -144,25 +144,25 @@ class TestSessionCompareHelpers:
     """Tests pour les helpers de session_compare (fonctions pures)."""
 
     def test_format_seconds_to_mmss(self) -> None:
-        from src.ui.pages.session_compare import _format_seconds_to_mmss
+        from src.ui.pages.session_compare_logic import format_seconds_to_mmss
 
-        assert _format_seconds_to_mmss(90) == "1:30"
+        assert format_seconds_to_mmss(90) == "1:30"
 
     def test_format_seconds_to_mmss_zero(self) -> None:
-        from src.ui.pages.session_compare import _format_seconds_to_mmss
+        from src.ui.pages.session_compare_logic import format_seconds_to_mmss
 
-        assert _format_seconds_to_mmss(0) == "0:00"
+        assert format_seconds_to_mmss(0) == "0:00"
 
     def test_format_seconds_to_mmss_large(self) -> None:
-        from src.ui.pages.session_compare import _format_seconds_to_mmss
+        from src.ui.pages.session_compare_logic import format_seconds_to_mmss
 
-        result = _format_seconds_to_mmss(3661)
+        result = format_seconds_to_mmss(3661)
         assert isinstance(result, str)
 
     def test_outcome_class(self) -> None:
-        from src.ui.pages.session_compare import _outcome_class
+        from src.ui.pages.session_compare_logic import outcome_class
 
-        assert callable(_outcome_class)
+        assert callable(outcome_class)
 
 
 class TestMatchViewChartsHelpers:
@@ -193,10 +193,11 @@ class TestMatchViewPlayersHelpers:
     """Tests pour les helpers de match_view_players."""
 
     def test_is_duckdb_v4_path(self) -> None:
-        from src.ui.pages.match_view_players import _is_duckdb_v4_path
+        # has_table_duckdb utilise is_duckdb_v4_path en interne — tester indirectement
+        from src.utils.db import is_duckdb_v4_path
 
-        assert _is_duckdb_v4_path("data/players/Test/stats.duckdb") is True
-        assert _is_duckdb_v4_path("some/path/stats.db") is False
+        assert is_duckdb_v4_path("data/players/Test/stats.duckdb") is True
+        assert is_duckdb_v4_path("some/path/stats.db") is False
 
 
 # =============================================================================

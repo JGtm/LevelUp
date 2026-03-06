@@ -96,30 +96,6 @@ def propagate_identity_env(xuid_or_gt: str, xuid_fallback: str, wp: str) -> None
         pass
 
 
-def apply_settings_path_overrides(settings: AppSettings) -> None:
-    """Applique les overrides de chemins depuis les paramètres.
-
-    Args:
-        settings: Paramètres de l'application.
-    """
-    try:
-        aliases_override = str(getattr(settings, "aliases_path", "") or "").strip()
-        if aliases_override:
-            os.environ["OPENSPARTAN_ALIASES_PATH"] = aliases_override
-        else:
-            os.environ.pop("OPENSPARTAN_ALIASES_PATH", None)
-    except Exception:
-        pass
-    try:
-        profiles_override = str(getattr(settings, "profiles_path", "") or "").strip()
-        if profiles_override:
-            os.environ["OPENSPARTAN_PROFILES_PATH"] = profiles_override
-        else:
-            os.environ.pop("OPENSPARTAN_PROFILES_PATH", None)
-    except Exception:
-        pass
-
-
 # =============================================================================
 # DuckDB v4 Player Detection
 # =============================================================================

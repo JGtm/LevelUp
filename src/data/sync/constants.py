@@ -148,7 +148,7 @@ class PveBits(IntFlag):
     FULL_PVE = TOTAL_KILLS | BOSS_KILLS | ALL_ENEMIES
 
 
-def compute_participant_bits_from_data(data: dict) -> int:
+def compute_participant_bits_from_data(data: dict) -> int:  # noqa: C901, PLR0912
     """Calcule le bitmask ``ParticipantBits`` depuis un dict de données participant.
 
     Vérifie chaque colonne clé : si non-NULL → le bit correspondant est activé.

@@ -7,6 +7,129 @@
 
 ## Journal
 
+### [2026-03-05] — Refactoring massif : Phases 0-4 — Split de tous les modules >500L
+
+**Statut** : Phase 4 complétée ✅ — 35 modules >500L restants (dette documentée)
+
+**Objectif** : Réduire TOUS les fichiers >500 lignes en sous-modules, éliminer les violations DRY, centraliser les utilitaires partagés.
+
+**Commit** : `a435b8a` (branche `refactor/cleanup-all`) — 88 fichiers modifiés, 45 nouveaux modules créés.
+
+**Raisonnement** :
+- Baseline initial : ~50+ modules >500L, 209 violations totales
+- Anti-pattern "God file" omniprésent : sync.py (939L), timeseries_combat.py (886L), engine.py (869L), cache_loaders.py (842L), radar_chart.py (838L), teammates_views.py (839L)
+- Stratégie : extraire des sous-modules `_prefixed.py` avec re-exports dans le module parent pour préserver la compatibilité d'import
+
+**Phase 0 — Utilitaires partagés** :
+- `src/utils/safe_types.py` : `safe_int`, `safe_float` centralisés (suppression 6+ copies)
+- `src/utils/async_compat.py` : `run_async` wrapper sync→async
+- `src/utils/env.py` : `load_env_local()` chargement `.env.local`
+- `src/app/_filters_shared.py` : constantes/helpers filtres partagés
+- `format_time_ms()` centralisé
+
+**Phase 1 — Modules data/utils** :
+- `media_indexer.py` → `media_helpers.py` + `media_loaders.py` + `media_thumbnails.py`
+- `api_client.py` → `_tokens.py` + `_career_rank_api.py`
+- `batch_insert.py` → `_batch_audit.py` + `_batch_columns.py`
+- `discord_notifier.py` → `_discord_embed.py` + `_discord_queries.py`
+
+**Phase 2 — Modules analysis/repositories** :
+- `performance_score.py` → `_performance_relative.py` + `_performance_session.py`
+- `_match_queries.py` → `_match_queries_helpers.py` + `_match_queries_polars.py`
+- `duckdb_repo.py` → `_awards_repo.py` + `_diagnostic_repo.py` + `_legacy_compat.py` + `_metadata_resolution.py` + `_schema_introspection.py`
+
+**Phase 3 — Modules analysis** :
+- `objective_participation.py` → `_objective_helpers.py` + `_objective_profile.py` + `_objective_summary.py`
+- `killer_victim.py` → `_killer_victim_polars.py` + `_kv_types.py`
+
+**Phase 4 — Modules UI/visualization** :
+- `sync.py` (939L → 386L) → `_sync_utils.py` + `_sync_indicator.py` + `_sync_duckdb_ops.py`
+- `timeseries_combat.py` (886L → 443L) → `_timeseries_helpers.py` + `_timeseries_progression.py`
+- `engine.py` (869L → 478L) → `_engine_connections.py` + `_engine_schema.py`
+- `cache_loaders.py` (842L → 295L) → `_cache_core.py` + `_cache_queries.py`
+- `radar_chart.py` (838L → 292L) → `_radar_participation.py` + `_radar_teammates.py`
+- `teammates_views.py` (839L → 459L) → `_teammates_trio.py`
+
+**Résultat** :
+- Baseline : 209 → 206 violations (35 modules >500L, 171 fonctions >80L)
+- 3614 tests passent, 0 échec
+- Tous les pre-commit hooks passent (ruff, format, circular imports, size ratchet)
+
+**Suivi** :
+- [x] Phase 5-6 : voir entrée [2026-03-05] ci-dessous ✅
+- [x] Tests à jour ✅
+- [x] Logs `.ai/` mis à jour ✅
+
+---
+
+### [2026-03-05] — Refactoring : Phases 5-6 — Split modules analyse, visualisation & UI
+
+**Statut** : Phases 5-6 complétées ✅ — 25 modules >500L restants (dette documentée)
+
+**Objectif** : Continuer le split des modules >500L (phases 5-6 après la base phases 0-4).
+
+**Commits** :
+- `c2b8f0c` (phase 5) — split performance_score, antagonist_charts, rag
+- `c345e10` (phase 6) — split refdata, roster_loader, cache_filters, filters_render, session_compare_charts
+- `815b8b6` — 79 tests dédiés + logger `_cache_loading`
+- `73e8e46` — loggers `_performance_relative` + `_rag_github`
+- `411f4de` — changelog v5.4 mis à jour
+
+**Phase 5 — Analyse & visualisation** :
+- `performance_score.py` (950L) → `_performance_relative.py` + `_performance_session.py`
+- `antagonist_charts.py` (570L) → `_antagonist_kv.py` + `_antagonist_duels.py`
+- `rag.py` (750L) → `_rag_models.py` + `_rag_github.py` + `_rag_chunker.py`
+
+**Phase 6 — UI & data** :
+- `refdata.py` (880L) → `_refdata_personal_scores.py`
+- `_roster_loader.py` (520L) → `_gamertag_resolver.py` (GamertagResolverMixin)
+- `cache_filters.py` (740L) → `_cache_loading.py` + `_cache_sessions.py`
+- `filters_render.py` → `_filters_apply.py`
+- `session_compare_charts.py` (480L) → `_session_compare_history.py`
+
+**Qualité** :
+- 79 tests unitaires dédiés (`test_submodules_phase5.py` + `test_submodules_phase6.py`)
+- Logger ajouté dans 3 modules silencieux (8 blocs `except` instrumentés)
+
+**Résultat** :
+- Total : 72 sous-modules créés (phases 0-6)
+- Baseline : 191 violations (25 modules >500L, 166 fonctions >80L)
+- 3693 tests passent, 0 échec
+
+---
+
+### [2026-03-05] — Page Explorer : recherche multi-critères et navigation unifiée
+
+**Statut** : Complété ✅
+
+**Objectif** : Remplacer l'ancienne page "Match" par une page Explorer complète avec recherche multi-critères, tableau HTML et deep linking.
+
+**Commit** : `be59454` (branche `refactor/cleanup-all`) — 15 fichiers, 2047 insertions.
+
+**Architecture** (6 modules, SRP respecté) :
+- `explorer.py` (454L) — orchestration page, deep links, filtres cascade, bouton recherche
+- `explorer_results.py` (243L) — rendu résultats (filtres ou joueur), badges encounter
+- `explorer_enrich.py` (181L) — enrichissement DataFrame (score, delta MMR, avg life, performance)
+- `explorer_data.py` (153L) — accès données DuckDB (gamertags, XUID, matchs communs)
+- `explorer_logic.py` (186L) — logique pure (fuzzy search, classification, filtres date/squad/team)
+- `match_table_html.py` (262L) — rendu tableau HTML OS-style avec deep links
+
+**Fonctionnalités** :
+- Filtres en cascade : date → escouade → type → playlist → mode → carte
+- Recherche floue gamertag (prefix + Levenshtein) avec suggestions dynamiques
+- Tableau HTML colonnes : date, carte, playlist, mode, résultat, score, KDA, kills, deaths, headshots, spree, accuracy, avg life, MMR, delta MMR, performance
+- Deep linking bidirectionnel (`?page=Explorer&gamertag=X` et `&match_id=X`)
+- Badges encounter (rival/mentor/proie) sur les résultats joueur
+- i18n FR/EN complet (`src/ui/i18n/pages/explorer.py`)
+
+**Qualité** :
+- Logging structuré (info/warning/error) dans tous les modules I/O
+- 40 tests unitaires (logique, enrichissement, data mock, HTML)
+- `render_explorer_page` splitté en 3 sous-fonctions pour respecter la règle 80L
+- Ruff + ruff-format + check_code_size : OK
+
+---
+
 ### [2026-02-26] — Centralisation des TODO dans `.ai/BACKLOG.md`
 
 **Statut** : Complété ✅

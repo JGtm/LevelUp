@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from src.data.query._sql_fragments import WIN_RATE_EXPR
 from src.data.query.engine import QueryEngine
 
 
@@ -160,7 +161,7 @@ class AnalyticsQueries:
                 SUM(deaths) as total_deaths,
                 SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) as wins,
                 SUM(CASE WHEN outcome = 3 THEN 1 ELSE 0 END) as losses,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as win_rate
+                {WIN_RATE_EXPR} as win_rate
             FROM {{table}}
             GROUP BY COALESCE(map_name, map_id, 'Unknown')
             HAVING COUNT(*) >= {min_matches}
@@ -190,7 +191,7 @@ class AnalyticsQueries:
                 SUM(deaths) as total_deaths,
                 SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) as wins,
                 SUM(CASE WHEN outcome = 3 THEN 1 ELSE 0 END) as losses,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as win_rate
+                {WIN_RATE_EXPR} as win_rate
             FROM {{table}}
             GROUP BY COALESCE(playlist_name, playlist_id, 'Unknown')
             HAVING COUNT(*) >= {min_matches}
@@ -452,13 +453,13 @@ class AnalyticsQueries:
 
         Utile pour identifier les meilleures heures pour jouer.
         """
-        sql = """
+        sql = f"""
             SELECT
                 EXTRACT(HOUR FROM start_time) as hour,
                 COUNT(*) as matches,
                 AVG(kda) as avg_kda,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as win_rate
-            FROM {table}
+                {WIN_RATE_EXPR} as win_rate
+            FROM {{table}}
             GROUP BY EXTRACT(HOUR FROM start_time)
             ORDER BY hour
         """
@@ -470,7 +471,7 @@ class AnalyticsQueries:
         Calcule les performances par jour de la semaine.
         (Calculate performance by day of week)
         """
-        sql = """
+        sql = f"""
             SELECT
                 EXTRACT(DOW FROM start_time) as day_of_week,
                 CASE EXTRACT(DOW FROM start_time)
@@ -484,8 +485,8 @@ class AnalyticsQueries:
                 END as day_name,
                 COUNT(*) as matches,
                 AVG(kda) as avg_kda,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as win_rate
-            FROM {table}
+                {WIN_RATE_EXPR} as win_rate
+            FROM {{table}}
             GROUP BY EXTRACT(DOW FROM start_time)
             ORDER BY day_of_week
         """

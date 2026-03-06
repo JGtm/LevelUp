@@ -16,7 +16,7 @@ XP_HERO_TOTAL: int = 9_319_350  # XP cumulée pour atteindre le rang 272 (offici
 RANK_MAX: int = 272  # Rang maximum (Héros)
 
 
-def create_career_progress_gauge(
+def create_career_progress_gauge(  # noqa: PLR0913
     current_xp: int,
     xp_for_next_rank: int,
     progress_pct: float,
