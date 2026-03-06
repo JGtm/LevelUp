@@ -51,7 +51,7 @@ def gamertag_link(gt: str) -> str:
     href = app_url("Explorer", gamertag=gt)
     esc = html_lib.escape(gt)
     return (
-        f"<a href='{html_lib.escape(href)}' target='_self' "
+        f"<a href='{html_lib.escape(href)}' target='_blank' "
         f"style='text-decoration:underline;color:inherit;'>{esc}</a>"
     )
 

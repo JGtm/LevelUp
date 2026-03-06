@@ -112,7 +112,8 @@ def render_explorer_page(  # noqa: PLR0913
         show_single_match(df, pending_mid.strip(), **mvp)
         return
 
-    if not search_clicked:
+    # Auto-déclencher la recherche si un gamertag est passé en deep link
+    if not search_clicked and not pending_gt:
         st.info(t("exp_select_match_hint"))
         return
 
@@ -159,23 +160,25 @@ def _dispatch_results(  # noqa: PLR0913
         len(filtered),
     )
     if player_gt and player_xuid:
+        _mvp_player = {k: v for k, v in mvp.items() if k != "xuid"}
         render_player_results(
             self_xuid=xuid,
             target_xuid=player_xuid,
             target_gt=player_gt,
             df=df,
-            **mvp,
+            **_mvp_player,
         )
     elif player_gt and not player_xuid:
         logger.warning("Explorer: joueur introuvable %r", player_gt)
         st.warning(t("exp_player_not_found", gamertag=player_gt))
     else:
+        _mvp_filter = {k: v for k, v in mvp.items() if k != "waypoint_player"}
         render_filter_results(
             filtered,
             selected_mid,
             waypoint_player,
             df,
-            **mvp,
+            **_mvp_filter,
         )
 
 
