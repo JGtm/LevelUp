@@ -72,29 +72,59 @@ def ordinal_fr(n: int) -> str:
     return "1ère" if n == 1 else f"{n}e"
 
 
-def _relative_date_fr(dt: datetime) -> str:
-    """Formate une datetime en texte relatif français approximatif."""
+def ordinal_en(n: int) -> str:
+    """Returns the English ordinal for a positive integer.
+
+    Examples:
+        ordinal_en(1) == "1st"
+        ordinal_en(2) == "2nd"
+        ordinal_en(3) == "3rd"
+        ordinal_en(12) == "12th"
+    """
+    if n <= 0:
+        return str(n)
+    if 11 <= (n % 100) <= 13:
+        return f"{n}th"
+    suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+def ordinal(n: int) -> str:
+    """Retourne l'ordinal localisé selon la langue active (FR ou EN)."""
+    from src.ui.i18n import get_lang
+
+    return ordinal_fr(n) if get_lang() == "fr" else ordinal_en(n)
+
+
+def _relative_date(dt: datetime, lang: str | None = None) -> str:
+    """Formate une datetime en texte relatif localisé."""
     now = datetime.now(tz=timezone.utc)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     delta = now - dt
     days = delta.days
     if days < 0:
-        return "à venir"
+        return t("rel_date_upcoming", lang=lang)
     if days == 0:
-        return "aujourd'hui"
+        return t("rel_date_today", lang=lang)
     if days == 1:
-        return "hier"
+        return t("rel_date_yesterday", lang=lang)
     if days < 7:
-        return f"il y a {days} j"
+        return t("rel_date_days_ago", lang=lang, days=days)
     if days < 30:
         weeks = days // 7
-        return f"il y a {weeks} sem."
+        return t("rel_date_weeks_ago", lang=lang, weeks=weeks)
     if days < 365:
         months = days // 30
-        return f"il y a {months} mois"
+        return t("rel_date_months_ago", lang=lang, months=months)
     years = days // 365
-    return f"il y a {years} an{'s' if years > 1 else ''}"
+    key = "rel_date_years_ago_pl" if years > 1 else "rel_date_years_ago"
+    return t(key, lang=lang, years=years)
+
+
+def _relative_date_fr(dt: datetime) -> str:
+    """Alias de compatibilité — texte relatif en français."""
+    return _relative_date(dt, "fr")
 
 
 # ---------------------------------------------------------------------------
