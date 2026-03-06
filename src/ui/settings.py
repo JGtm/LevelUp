@@ -32,11 +32,14 @@ class AppSettings(BaseModel):
     """Paramètres utilisateur persistés en JSON.
 
     Pydantic v2 gère automatiquement la coercion des types (str→bool, str→int, etc.)
-    et ignore les clés inconnues (extra='ignore') comme ``_comment`` ou
-    ``discord_notifications_enabled``.
+    et ignore les clés inconnues (extra='ignore') comme ``_comment``.
     """
 
     model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+    # Discord
+    discord_notifications_enabled: bool = False
+    discord_webhook_url: str = ""  # Fallback si DISCORD_WEBHOOK_URL absent de l'env
 
     # Médias
     media_enabled: bool = True

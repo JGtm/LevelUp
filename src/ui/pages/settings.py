@@ -88,6 +88,13 @@ def _build_settings_from_ui(  # noqa: PLR0913
         lang=_s("lang", "fr"),
         discord_lang=_s("discord_lang", "fr"),
         cli_lang=_s("cli_lang", "fr"),
+        # Champs non exposés dans l'UI — préservés tels quels depuis les settings actuels
+        discord_notifications_enabled=_b("discord_notifications_enabled"),
+        discord_webhook_url=_s("discord_webhook_url"),
+        tailscale_funnel_enabled=_b("tailscale_funnel_enabled"),
+        doppler_enabled=_b("doppler_enabled"),
+        doppler_project=_s("doppler_project"),
+        doppler_config=_s("doppler_config"),
     )
 
 
