@@ -109,7 +109,7 @@ _SRP_EXCEPTIONS: frozenset[str] = frozenset(
         # Dette technique existante (à refactoriser progressivement)
         "validate_and_fix_db_path",  # main_helpers.py — valide + corrige chemin au démarrage
         "compute_and_store_for_match",  # citations/engine.py — calcul + écriture citations (atomique)
-        "_compute_and_update_performance_score",  # sync/_performance.py — à découper en Phase A.1
+        # _compute_and_update_performance_score — découpé en _compute + _update (Phase P5)
         "_render_map_and_rank",  # match_view.py — composant UI composite (carte + rang côte à côte)
     }
 )
