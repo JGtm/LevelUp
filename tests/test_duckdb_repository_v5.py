@@ -114,16 +114,6 @@ def _create_player_db(db_path: Path) -> None:
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    conn.execute("""
-        CREATE TABLE antagonists (
-            opponent_xuid VARCHAR PRIMARY KEY,
-            opponent_gamertag VARCHAR,
-            kills_dealt INTEGER DEFAULT 0,
-            deaths_suffered INTEGER DEFAULT 0,
-            net_kills INTEGER GENERATED ALWAYS AS (kills_dealt - deaths_suffered) VIRTUAL,
-            matches_fought INTEGER DEFAULT 0
-        )
-    """)
     # Insérer un match de test
     conn.execute("""
         INSERT INTO match_stats VALUES (

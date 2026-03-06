@@ -1,11 +1,5 @@
 """Module d'analyse des données."""
 
-from src.analysis.antagonists import (
-    AggregationResult,
-    AntagonistEntry,
-    aggregate_antagonists,
-    aggregate_antagonists_from_events,
-)
 from src.analysis.cumulative import (
     CumulativeMetricsResult,
     CumulativeSeriesResult,
@@ -120,11 +114,6 @@ __all__ = [
     "MIN_MATCHES_FOR_RELATIVE",
     "extract_mode_category",
     "compute_mode_category_averages",
-    # Sprint 3.2: Agrégation des antagonistes
-    "aggregate_antagonists",
-    "aggregate_antagonists_from_events",
-    "AntagonistEntry",
-    "AggregationResult",
     # Sprint 4: Participation aux objectifs avec Polars
     "ObjectiveParticipationResult",
     "AssistBreakdownResult",

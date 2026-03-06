@@ -35,7 +35,7 @@
                          │  │  players/{gt}/stats.duckdb          │   │
                          │  │  - player_match_enrichment (SEULE)  │   │
                          │  │  - personal_score_awards             │   │
-                         │  │  - antagonists, match_citations      │   │
+                         │  │  - match_citations                   │   │
                          │  │  - career_progression, sessions      │   │
                          │  │  - media_files, media_match_assoc    │   │
                          │  │  - match_skill_rank (LUSR/CSR) v5.3 │   │
@@ -205,7 +205,6 @@ Lancement : thread en arrière-plan au démarrage de l’app (`_background_media
 |-------|-------------|-------------|
 | `player_match_enrichment` | 1:N par joueur | performance_score, session_id, is_with_friends (**SEULE table match**) |
 | `personal_score_awards` | M:N | Awards objectifs (PersonalScores API) |
-| `antagonists` | 1:N | Rivalités agrégées |
 | `match_citations` | 1:N | Citations calculées par match |
 | `career_progression` | 1:N | Historique rangs |
 | `sessions` | 1:N | Sessions groupées |
@@ -233,7 +232,6 @@ Lancement : thread en arrière-plan au démarrage de l’app (`_background_media
 | `rating_delta` | match_skill_rank | `rating_value[i] − rating_value[i-1]` pour le même `playlist_group` |
 | `shots_fired` / `shots_hit` | API → match_stats, match_participants | `Players[].PlayerTeamStats[].Stats.CoreStats.ShotsFired` / `ShotsHit` ; joueur propriétaire dans match_stats, tous les joueurs dans match_participants. |
 | `accuracy` | match_stats | `shots_hit / shots_fired * 100` (ou API si fourni) |
-| `net_kills` | antagonists | `times_killed - times_killed_by` |
 | `win_rate` | mv_global_stats | `wins / total_matches * 100` |
 | `headshot_rate` | weapon_stats | `headshot_kills / total_kills * 100` |
 

@@ -87,16 +87,6 @@ def integration_db(tmp_path: Path) -> tuple[Path, str]:
         """)
 
         conn.execute("""
-            CREATE TABLE antagonists (
-                opponent_gamertag VARCHAR PRIMARY KEY,
-                kills_against INTEGER,
-                deaths_against INTEGER,
-                matches_against INTEGER,
-                avg_kda_against FLOAT
-            )
-        """)
-
-        conn.execute("""
             CREATE TABLE match_participants (
                 match_id VARCHAR,
                 player_gamertag VARCHAR,

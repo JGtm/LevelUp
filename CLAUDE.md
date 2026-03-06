@@ -59,7 +59,6 @@
 |-------|-------------|
 | `player_match_enrichment` | performance_score, session_id, is_with_friends — **SEULE table match** |
 | `personal_score_awards` | Awards objectifs (PersonalScores API) |
-| `antagonists` | Top killers/victimes agrégés |
 | `match_citations` | Citations calculées par match |
 | `career_progression` | Historique rangs |
 | `media_files` | Fichiers médias indexés |

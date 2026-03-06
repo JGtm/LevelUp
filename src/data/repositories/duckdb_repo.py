@@ -24,12 +24,12 @@ from typing import Any
 
 import duckdb
 
-from src.data.repositories._antagonists_repo import AntagonistsMixin
 from src.data.repositories._archives_repo import ArchivesMixin
 from src.data.repositories._arrow_bridge import result_to_polars
 from src.data.repositories._awards_repo import AwardsMixin
 from src.data.repositories._diagnostic_repo import DiagnosticMixin
 from src.data.repositories._events_repo import EventsMixin
+from src.data.repositories._killer_victim_repo import KillerVictimMixin
 from src.data.repositories._legacy_compat import LegacyCompatMixin
 from src.data.repositories._match_queries import MatchQueriesMixin
 from src.data.repositories._materialized_views import MaterializedViewsMixin
@@ -140,7 +140,7 @@ class DuckDBRepository(
     MatchQueriesMixin,
     RosterLoaderMixin,
     MaterializedViewsMixin,
-    AntagonistsMixin,
+    KillerVictimMixin,
     MedalsMixin,
     EventsMixin,
     ArchivesMixin,
