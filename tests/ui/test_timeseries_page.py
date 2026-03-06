@@ -73,8 +73,8 @@ class TestRenderTimeseriesPage:
             patch.object(mod, "plot_cumulative_kd", return_value=MagicMock()),
             patch.object(mod, "plot_rolling_kd", return_value=MagicMock()),
             patch.object(mod, "plot_session_trend", return_value=MagicMock()),
-            patch.object(mod, "plot_histogram", return_value=MagicMock()),
-            patch.object(mod, "plot_correlation_scatter", return_value=MagicMock()),
+            patch.object(mod, "render_distributions", return_value=None),
+            patch.object(mod, "render_correlations", return_value=None),
             patch.object(mod, "plot_first_event_distribution", return_value=MagicMock()),
             patch.object(mod, "plot_performance_timeseries", return_value=MagicMock()),
             patch.object(mod, "plot_assists_timeseries", return_value=MagicMock()),
@@ -159,10 +159,10 @@ class TestRenderKdaSection:
 
 
 class TestRenderDistributions:
-    """Tests pour _render_distributions."""
+    """Tests pour render_distributions."""
 
     def test_renders_histograms(self, mock_st) -> None:
-        from src.ui.pages import timeseries as mod
+        from src.ui.pages import _timeseries_distributions as mod
 
         ms = mock_st(mod)
         ms.set_columns_dynamic()
@@ -181,7 +181,7 @@ class TestRenderDistributions:
             wr.not_enough_matches = True
             mock_svc.compute_rolling_win_rate.return_value = wr
 
-            mod._render_distributions(dff)
+            mod.render_distributions(dff)
 
         ms.calls["subheader"].assert_called()
 
@@ -190,7 +190,7 @@ class TestRenderSingleHistogram:
     """Tests pour _render_single_histogram."""
 
     def test_missing_column(self, mock_st) -> None:
-        from src.ui.pages import timeseries as mod
+        from src.ui.pages import _timeseries_distributions as mod
 
         ms = mock_st(mod)
         dff = pl.DataFrame({"match_id": ["m1"]})
@@ -198,7 +198,7 @@ class TestRenderSingleHistogram:
         ms.calls["info"].assert_called()
 
     def test_not_enough_data(self, mock_st) -> None:
-        from src.ui.pages import timeseries as mod
+        from src.ui.pages import _timeseries_distributions as mod
 
         ms = mock_st(mod)
         dff = pl.DataFrame({"kills": [5, 6]})
@@ -206,7 +206,7 @@ class TestRenderSingleHistogram:
         ms.calls["info"].assert_called()
 
     def test_enough_data(self, mock_st) -> None:
-        from src.ui.pages import timeseries as mod
+        from src.ui.pages import _timeseries_distributions as mod
 
         ms = mock_st(mod)
         dff = pl.DataFrame({"kills": list(range(20))})
@@ -221,7 +221,7 @@ class TestRenderScatter:
     """Tests pour _render_scatter."""
 
     def test_missing_columns(self, mock_st) -> None:
-        from src.ui.pages import timeseries as mod
+        from src.ui.pages import _timeseries_distributions as mod
 
         ms = mock_st(mod)
         dff = pl.DataFrame({"match_id": ["m1"]})
@@ -229,7 +229,7 @@ class TestRenderScatter:
         ms.calls["info"].assert_called()
 
     def test_not_enough_data(self, mock_st) -> None:
-        from src.ui.pages import timeseries as mod
+        from src.ui.pages import _timeseries_distributions as mod
 
         ms = mock_st(mod)
         dff = pl.DataFrame({"kills": [5], "deaths": [3], "outcome": [2]})
@@ -237,7 +237,7 @@ class TestRenderScatter:
         ms.calls["info"].assert_called()
 
     def test_enough_data(self, mock_st) -> None:
-        from src.ui.pages import timeseries as mod
+        from src.ui.pages import _timeseries_distributions as mod
 
         ms = mock_st(mod)
         np.random.seed(42)
