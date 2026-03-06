@@ -16,6 +16,7 @@ import contextlib
 import os
 import time
 
+from src.config import CAREER_RANK_MAX
 from src.ui.career_ranks import format_career_rank_label_fr
 
 # Re-export des modules décomposés pour compatibilité
@@ -285,7 +286,7 @@ async def _get_career_rank_for_player(  # noqa: C901, PLR0912, PLR0913, PLR0915
             return None, None, None, None
 
         # 3. Trouver le stage correspondant dans les métadonnées
-        display_rank = current_rank if current_rank == 272 else current_rank + 1
+        display_rank = current_rank if current_rank == CAREER_RANK_MAX else current_rank + 1
 
         current_stage = None
         for rank_obj in ranks_list:
@@ -308,7 +309,7 @@ async def _get_career_rank_for_player(  # noqa: C901, PLR0912, PLR0913, PLR0915
         rank_title = getattr(rank_title_obj, "value", None) if rank_title_obj else None
         rank_tier = getattr(rank_tier_obj, "value", None) if rank_tier_obj else None
 
-        if current_rank == 272:
+        if current_rank == CAREER_RANK_MAX:
             r_label = format_career_rank_label_fr(
                 tier=None, title=(rank_title or "Hero"), grade=None
             )
