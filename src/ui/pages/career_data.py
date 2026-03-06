@@ -312,3 +312,139 @@ def _load_lusr_history(db_path: str, playlist_group: str | None = None) -> list[
     except Exception as e:
         logger.debug("Impossible de charger l'historique LUSR: %s", e)
         return []
+
+
+# ── Chargement top encounters / antagonistes ────────────────────────────────
+
+
+def _load_top_encountered(xuid: str, limit: int = 10) -> list[dict]:
+    """Charge les joueurs les plus croisés depuis shared_matches.duckdb.
+
+    Returns:
+        Liste de dicts triée par nombre de rencontres décroissant.
+    """
+    try:
+        from src.utils.db import duckdb_read_only
+
+        shared_path = get_shared_matches_path()
+        if not shared_path.exists():
+            return []
+
+        with duckdb_read_only(shared_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT p.xuid,
+                       COALESCE(a.gamertag, p.gamertag) AS gamertag,
+                       COUNT(*) AS total_encounters
+                FROM match_participants p
+                INNER JOIN match_participants me
+                    ON me.match_id = p.match_id AND me.xuid = ?
+                LEFT JOIN xuid_aliases a ON a.xuid = p.xuid
+                WHERE p.xuid != ?
+                GROUP BY p.xuid, COALESCE(a.gamertag, p.gamertag)
+                ORDER BY total_encounters DESC
+                LIMIT ?
+                """,
+                [xuid, xuid, limit],
+            ).fetchall()
+
+        return [{"xuid": r[0], "gamertag": r[1], "total_encounters": r[2]} for r in rows]
+    except Exception as e:
+        logger.debug("Impossible de charger top_encountered: %s", e)
+        return []
+
+
+def _load_top_nemeses(xuid: str, limit: int = 10) -> list[dict]:
+    """Charge les adversaires qui nous tuent le plus (némésis).
+
+    Requête directe sur killer_victim_pairs dans shared_matches.duckdb.
+
+    Returns:
+        Liste de dicts triée par times_killed_by décroissant.
+    """
+    return _load_antagonists_from_shared(xuid, mode="nemesis", limit=limit)
+
+
+def _load_top_victims(xuid: str, limit: int = 10) -> list[dict]:
+    """Charge les adversaires qu'on tue le plus (souffre-douleurs).
+
+    Requête directe sur killer_victim_pairs dans shared_matches.duckdb.
+
+    Returns:
+        Liste de dicts triée par times_killed décroissant.
+    """
+    return _load_antagonists_from_shared(xuid, mode="victim", limit=limit)
+
+
+_ANTAGONISTS_SQL = """
+WITH kills_dealt AS (
+    SELECT victim_xuid AS opponent_xuid, SUM(kill_count) AS times_killed
+    FROM killer_victim_pairs WHERE killer_xuid = ? GROUP BY victim_xuid
+),
+kills_suffered AS (
+    SELECT killer_xuid AS opponent_xuid, SUM(kill_count) AS times_killed_by
+    FROM killer_victim_pairs WHERE victim_xuid = ? GROUP BY killer_xuid
+),
+matches_vs AS (
+    SELECT DISTINCT kvp.match_id,
+           CASE WHEN kvp.killer_xuid = ? THEN kvp.victim_xuid
+                ELSE kvp.killer_xuid END AS opponent_xuid
+    FROM killer_victim_pairs kvp
+    WHERE kvp.killer_xuid = ? OR kvp.victim_xuid = ?
+),
+match_counts AS (
+    SELECT opponent_xuid, COUNT(*) AS matches_against
+    FROM matches_vs GROUP BY opponent_xuid
+),
+combined AS (
+    SELECT COALESCE(kd.opponent_xuid, ks.opponent_xuid) AS opponent_xuid,
+           COALESCE(kd.times_killed, 0) AS times_killed,
+           COALESCE(ks.times_killed_by, 0) AS times_killed_by
+    FROM kills_dealt kd
+    FULL OUTER JOIN kills_suffered ks ON kd.opponent_xuid = ks.opponent_xuid
+)
+SELECT c.opponent_xuid, COALESCE(xa.gamertag, '') AS opponent_gamertag,
+       c.times_killed, c.times_killed_by,
+       COALESCE(mc.matches_against, 0) AS matches_against,
+       c.times_killed - c.times_killed_by AS net_kills
+FROM combined c
+LEFT JOIN xuid_aliases xa ON xa.xuid = c.opponent_xuid
+LEFT JOIN match_counts mc ON mc.opponent_xuid = c.opponent_xuid
+WHERE c.opponent_xuid != ?
+ORDER BY {order_col} DESC
+LIMIT ?
+"""
+
+
+def _load_antagonists_from_shared(
+    xuid: str,
+    *,
+    mode: str,
+    limit: int = 10,
+) -> list[dict]:
+    """Charge némésis ou souffre-douleurs depuis shared killer_victim_pairs."""
+    try:
+        from src.utils.db import duckdb_read_only
+
+        shared_path = get_shared_matches_path()
+        if not shared_path.exists():
+            return []
+
+        order_col = "times_killed_by" if mode == "nemesis" else "times_killed"
+        sql = _ANTAGONISTS_SQL.format(order_col=order_col)
+
+        with duckdb_read_only(shared_path) as conn:
+            rows = conn.execute(sql, [xuid, xuid, xuid, xuid, xuid, xuid, limit]).fetchall()
+
+        cols = (
+            "opponent_xuid",
+            "opponent_gamertag",
+            "times_killed",
+            "times_killed_by",
+            "matches_against",
+            "net_kills",
+        )
+        return [dict(zip(cols, r, strict=False)) for r in rows]
+    except Exception as e:
+        logger.debug("Impossible de charger antagonistes depuis shared: %s", e)
+        return []

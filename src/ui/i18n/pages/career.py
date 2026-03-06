@@ -138,5 +138,46 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "career_ranked": "ranked",  # alias → common
     "career_tactical": {"fr": "Tactique", "en": "Tactical"},
+    # ── Section Rencontres & Antagonistes ────────────────────────────────────
+    "career_encounters_header": {
+        "fr": "🤝 Joueurs les plus croisés",
+        "en": "🤝 Most encountered players",
+    },
+    "career_nemesis_header": {
+        "fr": "💀 Top Némésis",
+        "en": "💀 Top Nemesis",
+    },
+    "career_victims_header": {
+        "fr": "🎯 Top Souffre-douleurs",
+        "en": "🎯 Top Punching Bags",
+    },
+    "career_encounters_no_data": {
+        "fr": "Pas de données de rencontres disponibles.",
+        "en": "No encounter data available.",
+    },
+    "career_antagonists_no_data": {
+        "fr": "Pas de données d'antagonistes. Lancez le backfill antagonistes pour calculer.",
+        "en": "No antagonist data. Run the antagonist backfill to compute.",
+    },
+    "career_encounters_error": {
+        "fr": "Impossible d'afficher les rencontres : {error}",
+        "en": "Unable to display encounters: {error}",
+    },
+    "col_times_killed": {
+        "fr": "Tués",
+        "en": "Killed",
+    },
+    "col_times_killed_by": {
+        "fr": "Mort par",
+        "en": "Killed by",
+    },
+    "col_net_kills": {
+        "fr": "Bilan",
+        "en": "Net",
+    },
+    "col_matches_against": {
+        "fr": "Matchs",
+        "en": "Matches",
+    },
     # ── Citations ───────────────────────────────────────────────────────────
 }

@@ -23,7 +23,6 @@ Tables SUPPRIMÉES (maintenant dans shared ou obsolètes) :
 Tables CONSERVÉES (données personnelles) :
 - player_match_enrichment (performance_score, session_id, is_with_friends)
 - personal_score_awards (awards objectifs)
-- antagonists (rivalités)
 - match_citations (citations calculées)
 - career_progression (historique rangs)
 - media_files, media_match_associations
@@ -97,7 +96,6 @@ COMPAT_VIEWS = [
 TABLES_TO_KEEP = [
     "player_match_enrichment",
     "personal_score_awards",
-    "antagonists",
     "match_citations",
     "career_progression",
     "media_files",
