@@ -22,9 +22,9 @@ FUNC:src/analysis/skill_rating_calibration.py:50:_load_matches_for_calibration:1
 FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
 FUNC:src/app/_filters_apply.py:22:apply_filters:191L
 FUNC:src/app/_filters_cascade.py:121:_render_cascade_filters:283L
-FUNC:src/app/_filters_session.py:134:_render_session_filter:262L
+FUNC:src/app/_filters_session.py:134:_render_session_filter:276L
 FUNC:src/app/filters.py:341:render_session_filters:94L
-FUNC:src/app/filters_render.py:146:render_filters_sidebar:280L
+FUNC:src/app/filters_render.py:147:render_filters_sidebar:298L
 FUNC:src/app/kpis_render.py:44:render_kpis_section:83L
 FUNC:src/app/main_helpers.py:250:render_profile_hero:140L
 FUNC:src/app/media_background.py:17:background_media_indexing:160L

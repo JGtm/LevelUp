@@ -28,6 +28,7 @@ from src.app._filters_cascade import (
 from src.app._filters_period import _render_period_filter
 from src.app._filters_session import _apply_default_last_session, _render_session_filter
 from src.ui import translate_playlist_name
+from src.ui.cache import cached_compute_sessions_db
 from src.ui.filter_state import (
     _get_player_key,
     apply_filter_preferences,
@@ -335,6 +336,22 @@ def render_filters_sidebar(  # noqa: C901, PLR0912, PLR0913, PLR0915
         st.session_state["min_matches_maps_friends"] = 5
         st.session_state["_min_matches_maps_friends_auto"] = False
 
+    # ── Pré-chargement sessions (warm cache quel que soit le mode) ──────────
+    # Évite le coût du premier hit DuckDB au moment du switch Période → Sessions.
+    # Les fonctions sous-jacentes sont @st.cache_data, donc les appels suivants
+    # dans _render_session_filter seront gratuits (cache hit).
+    from src.app.filters import get_friends_xuids_for_sessions
+
+    _prefetch_friends = get_friends_xuids_for_sessions(db_path, xuid.strip(), db_key, aliases_key)
+    _prefetch_sessions = cached_compute_sessions_db(
+        db_path,
+        xuid.strip(),
+        db_key,
+        True,
+        GAP_MINUTES_FIXED,
+        friends_xuids=_prefetch_friends,
+    )
+
     # Valeurs par défaut
     start_d, end_d = dmin, dmax
     gap_minutes = GAP_MINUTES_FIXED
@@ -352,6 +369,8 @@ def render_filters_sidebar(  # noqa: C901, PLR0912, PLR0913, PLR0915
             aliases_key,
             base_for_filters,
             build_friends_opts_map_fn,
+            prefetched_friends=_prefetch_friends,
+            prefetched_sessions=_prefetch_sessions,
         )
 
     # Filtres cascade (v5.2 : retourne selected + all_options)
