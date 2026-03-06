@@ -274,6 +274,26 @@
         "description": "Obtenez toutes les citations d'élimination de Covenants",
         "category": "Ennemi"
     },
+    "frag_grenade": {
+        "name": "Grenade à fragmentation",
+        "description": "Tuez un Spartan adverse à l'aide d'une grenade à fragmentation.",
+        "category": "Arme"
+    },
+    "plasma_grenade": {
+        "name": "Grenade à plasma",
+        "description": "Tuez un Spartan adverse à l'aide d'une grenade à plasma.",
+        "category": "Arme"
+    },
+    "grenade_mastery": {
+        "name": "Maîtrise des grenades",
+        "description": "Obtenez toutes les citations de grenade.",
+        "category": "Arme"
+    },
+    "vehicle_mastery": {
+        "name": "Maîtrise de véhicule",
+        "description": "Obtenez toutes les citations de véhicule.",
+        "category": "Véhicule"
+    },
     "lone_wolf": {
         "name": "Seul contre tous",
         "description": "Remportez une partie en Mêlée générale.",

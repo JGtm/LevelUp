@@ -274,6 +274,26 @@
         "description": "Earn all Covenant elimination commendations",
         "category": "Enemy"
     },
+    "frag_grenade": {
+        "name": "Frag Grenade",
+        "description": "Kill an enemy Spartan with the Frag Grenade.",
+        "category": "Weapon"
+    },
+    "plasma_grenade": {
+        "name": "Plasma Grenade",
+        "description": "Kill an enemy Spartan with the Plasma Grenade.",
+        "category": "Weapon"
+    },
+    "grenade_mastery": {
+        "name": "Grenade Mastery",
+        "description": "Master all grenade commendations.",
+        "category": "Weapon"
+    },
+    "vehicle_mastery": {
+        "name": "Vehicle Mastery",
+        "description": "Master all vehicle commendations.",
+        "category": "Vehicle"
+    },
     "lone_wolf": {
         "name": "Lone Wolf",
         "description": "Win a Free-For-All game.",

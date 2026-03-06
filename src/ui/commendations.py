@@ -397,6 +397,7 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
         "Spartan Companies",
     ]
     _SUBCAT_ORDER: dict[str, list[str]] = {
+        "Arme": ["Grenade"],
         "Véhicule": ["Général", "UNSC", "Covenant"],
         "Ennemi": ["Covenant", "Banished"],
     }

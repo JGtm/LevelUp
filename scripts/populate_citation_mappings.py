@@ -76,11 +76,16 @@ PVP_CITATIONS: list[tuple] = [
      "static/commendations/h5g/H5G_citation_Victoire_en_Assassin.png", "Mode de jeu", "Remportez une partie d'Assassin en équipe.", "5,10,15,25,50", None),
     ("strongholds_victory", "Victoire en bases", "custom", None, None, None, None, None, "compute_wins_strongholds", None, "high", "Mode de jeu — Victoires Strongholds", True,
      "static/commendations/h5g/H5G_citation_Victoire_en_Bases.png", "Mode de jeu", "Remportez n'importe quelle partie matchmaking Bases.", "5,10,15,25,50", None),
-    # ── GROUPE 2 : Arme (2) ────────────────────────────────────────────────
+    # ── GROUPE 2 : Arme — Véhicule (2) ─────────────────────────────────────
     ("splatter", "Écrasement", "medal", 221693153, None, None, None, None, None, None, "high", "Véhicule — Médaille Splatter/Écrasement", True,
      "static/commendations/h5g/H5G_citation_%C3%89crasement.png", "Véhicule", "Écrasez un Spartan adverse avec un véhicule.", "10,20,30,50,100", "Général"),
     ("driver", "Pilote", "medal", 3169118333, None, None, None, None, None, None, "high", "Véhicule — Médaille Violence routière", True,
      "static/commendations/h5g/H5G_citation_Pilote.png", "Véhicule", "Décrochez des médailles de pilote.", "10,20,30,50,100", "Général"),
+    # ── GROUPE 2b : Arme — Grenade (2) ─────────────────────────────────────
+    ("frag_grenade", "Grenade à fragmentation", "medal", 2648272972, None, None, None, None, None, None, "high", "Arme — Médaille Grenadier (frag)", True,
+     "static/commendations/h5g/H5G_citation_Grenade_%C3%A0_fragmentation.png", "Arme", "Tuez un Spartan adverse à l'aide d'une grenade à fragmentation.", "5,10,15,25,50", "Grenade"),
+    ("plasma_grenade", "Grenade à plasma", "medal", 3655682764, None, None, None, None, None, None, "high", "Arme — Médaille Collage (stick plasma)", True,
+     "static/commendations/h5g/H5G_citation_Grenade_%C3%A0_plasma.png", "Arme", "Tuez un Spartan adverse à l'aide d'une grenade à plasma.", "2,4,6,10,20", "Grenade"),
     # ── GROUPE 3 : Multijoueur (9) ─────────────────────────────────────────
     ("assassin", "Assassin", "medal", 548533137, None, None, None, None, None, None, "high", "Multijoueur — Médaille Par derrière", True,
      "static/commendations/h5g/H5G_citation_Assassin.png", "Multijoueur", "Assassinez des Spartans adverses.", "5,10,15,25,50", None),
@@ -187,12 +192,39 @@ _DESTRUCTEUR_CHILDREN = [
     "skimmer_slayer",
 ]
 
+# ── Citation composite : Maîtrise des grenades ────────────────────────────
+_GRENADE_CHILDREN = [
+    "frag_grenade",
+    "plasma_grenade",
+]
+
+# ── Citation composite : Maîtrise de véhicule ─────────────────────────────
+_VEHICLE_CHILDREN = [
+    "splatter",
+    "driver",
+    "wraith_destroyer",
+    "banshee_destroyer",
+    "ghost_destroyer",
+    "mongoose_destroyer",
+    "scorpion_destroyer",
+    "warthog_destroyer",
+    "wasp_destroyer",
+]
+
 # fmt: off
 COMPOSITE_CITATIONS: list[tuple] = [
     ("covenant_destroyer", "Destructeur de Covenants", "composite", None, None, None, None, None, None,
      "[" + ", ".join(f'"{c}"' for c in _DESTRUCTEUR_CHILDREN) + "]",
      "high", "Obtenez toutes les citations d'élimination de Covenants", True,
      "static/commendations/h5g/H5G_ma\u00eetrise_Destructeur_de_Covenants.png", "Ennemi", "Obtenez toutes les citations d'élimination de Covenants", None, "Covenant"),
+    ("grenade_mastery", "Maîtrise des grenades", "composite", None, None, None, None, None, None,
+     "[" + ", ".join(f'"{c}"' for c in _GRENADE_CHILDREN) + "]",
+     "high", "Obtenez toutes les citations de grenade", True,
+     "static/commendations/h5g/H5G_Ma\u00eetrise_des_grenades.png", "Arme", "Obtenez toutes les citations de grenade.", None, "Grenade"),
+    ("vehicle_mastery", "Maîtrise de véhicule", "composite", None, None, None, None, None, None,
+     "[" + ", ".join(f'"{c}"' for c in _VEHICLE_CHILDREN) + "]",
+     "high", "Obtenez toutes les citations de véhicule", True,
+     "static/commendations/h5g/Vehicle_Mastery.png", "Véhicule", "Obtenez toutes les citations de véhicule.", None, None),
 ]
 # fmt: on
 
