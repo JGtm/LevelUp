@@ -126,6 +126,9 @@ FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
 FUNC:src/visualization/_antagonist_kv.py:122:plot_kd_timeseries:83L
 FUNC:src/visualization/_antagonist_kv.py:16:plot_killer_victim_stacked_bars:103L
+FUNC:src/visualization/_distributions_advanced.py:151:plot_first_event_distribution:107L
+FUNC:src/visualization/_distributions_advanced.py:18:plot_correlation_scatter:130L
+FUNC:src/visualization/_distributions_outcomes_helpers.py:125:add_outcome_traces:84L
 FUNC:src/visualization/_match_impact_events.py:38:compute_single_match_impact:122L
 FUNC:src/visualization/_perf_cumulative.py:91:plot_cumulative_net_score:82L
 FUNC:src/visualization/_perf_session.py:21:plot_session_trend:114L
@@ -133,12 +136,9 @@ FUNC:src/visualization/_timeseries_progression.py:183:plot_lusr_timeseries:89L
 FUNC:src/visualization/_timeseries_progression.py:23:plot_performance_timeseries:82L
 FUNC:src/visualization/distributions.py:183:plot_histogram:107L
 FUNC:src/visualization/distributions.py:32:plot_kda_distribution:87L
-FUNC:src/visualization/distributions.py:358:plot_correlation_scatter:130L
-FUNC:src/visualization/distributions.py:491:plot_first_event_distribution:107L
-FUNC:src/visualization/distributions_outcomes.py:236:_add_outcome_traces:84L
-FUNC:src/visualization/distributions_outcomes.py:370:plot_win_ratio_heatmap:105L
-FUNC:src/visualization/distributions_outcomes.py:507:plot_matches_at_top_by_week:117L
-FUNC:src/visualization/distributions_outcomes.py:88:plot_outcomes_over_time:90L
+FUNC:src/visualization/distributions_outcomes.py:173:plot_win_ratio_heatmap:105L
+FUNC:src/visualization/distributions_outcomes.py:286:plot_matches_at_top_by_week:117L
+FUNC:src/visualization/distributions_outcomes.py:28:plot_outcomes_over_time:90L
 FUNC:src/visualization/friends_impact_heatmap.py:60:plot_friends_impact_heatmap:174L
 FUNC:src/visualization/match_bars.py:118:plot_multi_metric_bars_by_match:211L
 FUNC:src/visualization/match_bars.py:18:plot_metric_bars_by_match:97L
@@ -180,7 +180,5 @@ MODULE:src/ui/pages/media_library_data.py:507L
 MODULE:src/ui/pages/timeseries.py:606L
 MODULE:src/ui/pages/win_loss.py:539L
 MODULE:src/ui/profile_api.py:558L
-MODULE:src/visualization/distributions.py:610L
-MODULE:src/visualization/distributions_outcomes.py:625L
 MODULE:src/visualization/objective_charts.py:583L
 MODULE:src/visualization/participation_charts.py:648L
