@@ -101,7 +101,7 @@ def shared_db(tmp_path: Path) -> Path:
 def _patch_shared_path(shared_db: Path):
     """Retourne un context manager qui patche get_shared_matches_path."""
     return patch(
-        "src.ui.pages.career_data.get_shared_matches_path",
+        "src.ui.pages.career_encounters_data.get_shared_matches_path",
         return_value=shared_db,
     )
 
@@ -110,7 +110,7 @@ class TestLoadTopNemeses:
     """Tests pour _load_top_nemeses (adversaires qui nous tuent le plus)."""
 
     def test_returns_sorted_by_killed_by(self, shared_db: Path) -> None:
-        from src.ui.pages.career_data import _load_top_nemeses
+        from src.ui.pages.career_encounters_data import _load_top_nemeses
 
         with _patch_shared_path(shared_db):
             result = _load_top_nemeses("XUID_ME", limit=10)
@@ -123,7 +123,7 @@ class TestLoadTopNemeses:
         assert result[0]["net_kills"] == -7
 
     def test_limit_respected(self, shared_db: Path) -> None:
-        from src.ui.pages.career_data import _load_top_nemeses
+        from src.ui.pages.career_encounters_data import _load_top_nemeses
 
         with _patch_shared_path(shared_db):
             result = _load_top_nemeses("XUID_ME", limit=1)
@@ -132,7 +132,7 @@ class TestLoadTopNemeses:
         assert result[0]["opponent_gamertag"] == "PlayerA"
 
     def test_empty_for_unknown_xuid(self, shared_db: Path) -> None:
-        from src.ui.pages.career_data import _load_top_nemeses
+        from src.ui.pages.career_encounters_data import _load_top_nemeses
 
         with _patch_shared_path(shared_db):
             result = _load_top_nemeses("XUID_UNKNOWN", limit=10)
@@ -144,7 +144,7 @@ class TestLoadTopVictims:
     """Tests pour _load_top_victims (adversaires qu'on tue le plus)."""
 
     def test_returns_sorted_by_killed(self, shared_db: Path) -> None:
-        from src.ui.pages.career_data import _load_top_victims
+        from src.ui.pages.career_encounters_data import _load_top_victims
 
         with _patch_shared_path(shared_db):
             result = _load_top_victims("XUID_ME", limit=10)
@@ -157,7 +157,7 @@ class TestLoadTopVictims:
         assert result[0]["net_kills"] == 6
 
     def test_matches_against_correct(self, shared_db: Path) -> None:
-        from src.ui.pages.career_data import _load_top_victims
+        from src.ui.pages.career_encounters_data import _load_top_victims
 
         with _patch_shared_path(shared_db):
             result = _load_top_victims("XUID_ME", limit=10)
@@ -171,7 +171,7 @@ class TestLoadTopEncountered:
     """Tests pour _load_top_encountered (joueurs les plus croisés)."""
 
     def test_returns_sorted_by_encounters(self, shared_db: Path) -> None:
-        from src.ui.pages.career_data import _load_top_encountered
+        from src.ui.pages.career_encounters_data import _load_top_encountered
 
         with _patch_shared_path(shared_db):
             result = _load_top_encountered("XUID_ME", limit=10)
@@ -193,7 +193,7 @@ class TestLoadTopEncountered:
         assert "last_seen" in player_a
 
     def test_excludes_self(self, shared_db: Path) -> None:
-        from src.ui.pages.career_data import _load_top_encountered
+        from src.ui.pages.career_encounters_data import _load_top_encountered
 
         with _patch_shared_path(shared_db):
             result = _load_top_encountered("XUID_ME", limit=10)
@@ -202,7 +202,7 @@ class TestLoadTopEncountered:
         assert "XUID_ME" not in xuids
 
     def test_excludes_friends_by_xuid(self, shared_db: Path) -> None:
-        from src.ui.pages.career_data import _load_top_encountered
+        from src.ui.pages.career_encounters_data import _load_top_encountered
 
         with _patch_shared_path(shared_db):
             result = _load_top_encountered(
@@ -216,7 +216,7 @@ class TestLoadTopEncountered:
         assert "XUID_B" in xuids
 
     def test_excludes_friends_by_gamertag(self, shared_db: Path) -> None:
-        from src.ui.pages.career_data import _load_top_encountered
+        from src.ui.pages.career_encounters_data import _load_top_encountered
 
         with _patch_shared_path(shared_db):
             result = _load_top_encountered(
