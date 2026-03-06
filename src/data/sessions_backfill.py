@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import contextlib
 import json
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import duckdb
 import polars as pl
+
+from src.utils.db import duckdb_read_only, duckdb_read_write
 
 
 def get_friends_xuids_for_backfill(  # noqa: C901, PLR0912
@@ -57,11 +60,8 @@ def get_friends_xuids_for_backfill(  # noqa: C901, PLR0912
     if not friends_raw or not isinstance(friends_raw, list):
         return frozenset()
 
-    own_conn = False
-    if conn is None:
-        conn = duckdb.connect(str(path), read_only=True)
-        own_conn = True
-    try:
+    ctx = duckdb_read_only(str(path)) if conn is None else nullcontext(conn)
+    with ctx as conn:
         # V5.1: Utiliser shared.xuid_aliases UNIQUEMENT (plus de fallback local)
         alias_table = "xuid_aliases"
         try:
@@ -102,9 +102,6 @@ def get_friends_xuids_for_backfill(  # noqa: C901, PLR0912
             if xu:
                 xuids.add(xu)
         return frozenset(xuids)
-    finally:
-        if own_conn:
-            conn.close()
 
 
 def get_top_two_teammate_xuids(
@@ -124,40 +121,35 @@ def get_top_two_teammate_xuids(
     if not shared_db.exists():
         return frozenset()
 
-    own_conn = False
-    if conn is None:
-        conn = duckdb.connect(str(path), read_only=True)
-        own_conn = True
-    try:
+    ctx = duckdb_read_only(str(path)) if conn is None else nullcontext(conn)
+    with ctx as conn:
         # Attacher shared en read-only (DuckDB ne supporte pas ? pour ATTACH)
         with contextlib.suppress(Exception):
             conn.execute(f"ATTACH '{shared_db}' AS shared_tmp (READ_ONLY)")
 
-        result = conn.execute(
-            """
-            SELECT mp2.xuid, COUNT(DISTINCT mp2.match_id) AS match_count
-            FROM shared_tmp.match_participants mp1
-            JOIN shared_tmp.match_participants mp2
-              ON mp1.match_id = mp2.match_id
-             AND mp1.xuid != mp2.xuid
-             AND mp1.team_id = mp2.team_id
-            WHERE mp1.xuid = ?
-            GROUP BY mp2.xuid
-            ORDER BY match_count DESC
-            LIMIT ?
-            """,
-            [str(self_xuid).strip(), limit],
-        ).fetchall()
-
-        with contextlib.suppress(Exception):
-            conn.execute("DETACH shared_tmp")
+        try:
+            result = conn.execute(
+                """
+                SELECT mp2.xuid, COUNT(DISTINCT mp2.match_id) AS match_count
+                FROM shared_tmp.match_participants mp1
+                JOIN shared_tmp.match_participants mp2
+                  ON mp1.match_id = mp2.match_id
+                 AND mp1.xuid != mp2.xuid
+                 AND mp1.team_id = mp2.team_id
+                WHERE mp1.xuid = ?
+                GROUP BY mp2.xuid
+                ORDER BY match_count DESC
+                LIMIT ?
+                """,
+                [str(self_xuid).strip(), limit],
+            ).fetchall()
+        except Exception:
+            return frozenset()
+        finally:
+            with contextlib.suppress(Exception):
+                conn.execute("DETACH shared_tmp")
 
         return frozenset(str(r[0]).strip() for r in result if r[0])
-    except Exception:
-        return frozenset()
-    finally:
-        if own_conn:
-            conn.close()
 
 
 def _ensure_enrichment_table(conn: duckdb.DuckDBPyConnection) -> None:
@@ -403,12 +395,8 @@ def backfill_sessions_for_player(  # noqa: PLR0913
         results["errors"].append("DB non trouvée")
         return results
 
-    own_conn = False
-    if conn is None:
-        conn = duckdb.connect(str(path))
-        own_conn = True
-
-    try:
+    ctx = duckdb_read_write(str(path)) if conn is None else nullcontext(conn)
+    with ctx as conn:
         _ensure_enrichment_table(conn)
 
         xuid, df, friends_set, fetch_errors = _fetch_shared_context(conn, path, xuid)
@@ -449,9 +437,5 @@ def backfill_sessions_for_player(  # noqa: PLR0913
         results["skipped_recent"] = skipped
         results["errors"].extend(errors)
         conn.commit()
-
-    finally:
-        if own_conn:
-            conn.close()
 
     return results
