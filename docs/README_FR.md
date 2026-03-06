@@ -158,7 +158,7 @@ data/
 
 ## Contribution
 
-Les contributions sont les bienvenues ! Voir [CONTRIBUTING.md](../CONTRIBUTING.md) pour les guidelines.
+Les contributions sont les bienvenues ! Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour les guidelines.
 
 ---
 
@@ -194,7 +194,7 @@ Ce projet est sous licence MIT. Voir [LICENSE](../LICENSE) pour plus de détails
 - **Andy Curtis** ([acurtis166](https://github.com/acurtis166)) pour [SPNKr](https://github.com/acurtis166/SPNKr)
 - **Den Delimarsky** ([dend](https://github.com/dend)) pour [Grunt](https://github.com/dend/grunt) et [OpenSpartan](https://github.com/OpenSpartan)
 
-Voir aussi [ACKNOWLEDGMENTS.md](../ACKNOWLEDGMENTS.md).
+Voir aussi [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
 
 ---
 

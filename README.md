@@ -295,7 +295,7 @@ Archived docs (not translated): [docs/archive/](docs/archive/)
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are welcome! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
 
 ---
 
@@ -331,7 +331,7 @@ This project is licensed under MIT. See [LICENSE](LICENSE) for details.
 - **Andy Curtis** ([acurtis166](https://github.com/acurtis166)) for [SPNKr](https://github.com/acurtis166/SPNKr)
 - **Den Delimarsky** ([dend](https://github.com/dend)) for [Grunt](https://github.com/dend/grunt) and [OpenSpartan](https://github.com/OpenSpartan)
 
-See also [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
+See also [ACKNOWLEDGMENTS.md](docs/ACKNOWLEDGMENTS.md).
 
 ---
 
