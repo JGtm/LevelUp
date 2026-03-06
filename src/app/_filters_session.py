@@ -138,6 +138,9 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     aliases_key: int | None,
     base_for_filters: pl.DataFrame,
     build_friends_opts_map_fn: Callable,
+    *,
+    prefetched_friends: tuple[str, ...] | None = None,
+    prefetched_sessions: pl.DataFrame | None = None,
 ) -> tuple[int, list[str] | None, pl.DataFrame, tuple[str, ...] | None]:
     """Rend les contrôles en mode Sessions : sous-sections En solo / Mon escouade.
 
@@ -146,6 +149,10 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     Les sélections sont mutuellement exclusives : choisir dans une section
     réinitialise l'autre à "(toutes)".
+
+    Args:
+        prefetched_friends: Amis pré-chargés par render_filters_sidebar (évite double calcul).
+        prefetched_sessions: Sessions pré-chargées par render_filters_sidebar (warm cache).
     """
     # Import local pour éviter la circularité au niveau module
     from src.app.filters_render import (
@@ -157,17 +164,24 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     gap_minutes = GAP_MINUTES_FIXED
 
     # ── Chargement des sessions (avec teammates_signature pour classification) ──
-    friends_tuple = get_friends_xuids_for_sessions(db_path, xuid.strip(), db_key, aliases_key)
-    base_s_raw = _to_polars(
-        cached_compute_sessions_db(
-            db_path,
-            xuid.strip(),
-            db_key,
-            True,
-            gap_minutes,
-            friends_xuids=friends_tuple,
-        )
+    # Utiliser les données pré-chargées si disponibles (warm cache depuis render_filters_sidebar)
+    friends_tuple = prefetched_friends or get_friends_xuids_for_sessions(
+        db_path, xuid.strip(), db_key, aliases_key
     )
+    if prefetched_sessions is not None and not prefetched_sessions.is_empty():
+        base_s_raw = _to_polars(prefetched_sessions)
+        logger.debug("Sessions: utilisation du cache pré-chargé (%d matchs)", len(base_s_raw))
+    else:
+        base_s_raw = _to_polars(
+            cached_compute_sessions_db(
+                db_path,
+                xuid.strip(),
+                db_key,
+                True,
+                gap_minutes,
+                friends_xuids=friends_tuple,
+            )
+        )
 
     # Vue allégée (sans teammates_signature) pour la compatibilité du reste de l'app
     base_s_ui = (
@@ -357,10 +371,12 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     # ── Détection changement escouade → reset solo au prochain cycle ────────
     # Le selectbox solo est DÉJÀ instancié → écriture directe interdite.
-    # On passe par pending + rerun pour que la consommation se fasse au
+    # On passe par pending keys pour que la consommation se fasse au
     # début du prochain run (avant l'instanciation des widgets).
+    # Le changement de selectbox déclenche naturellement un rerun Streamlit,
+    # donc pas besoin de st.rerun() explicite ici.
     # IMPORTANT : on persiste aussi la valeur escouade dans _pending_squad pour
-    # qu'elle survive à la vérification de cohérence du prochain run (ligne 757).
+    # qu'elle survive à la vérification de cohérence du prochain run.
     # Sans ça, si squad_options diffère légèrement entre les runs (ex: amis recomputed),
     # la cohérence peut resetter picked_squad_session_label à "(toutes)" AVANT la
     # consommation du pending solo, effaçant la sélection utilisateur.
@@ -368,7 +384,7 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if _post_squad != _pre_squad and _post_squad != "(toutes)":
         st.session_state["_pending_solo_session_label"] = "(toutes)"
         st.session_state["_pending_squad_session_label"] = _post_squad
-        st.rerun()
+        logger.debug("Reset solo→(toutes) via pending (escouade=%s)", _post_squad)
 
     # ── Sélection active consolidée ──────────────────────────────────────────
     solo_active = st.session_state.get("picked_solo_session_label", "(toutes)")
