@@ -914,6 +914,16 @@ def main() -> None:
     # 1. Initialisation (config, CSS, settings, validation)
     settings, DEFAULT_DB, cfg_warnings, cfg_errors = _initialize_app()
 
+    # 1b. Wizard de configuration initiale si config incomplète
+    from src.ui.pages.setup_wizard_logic import get_setup_status
+
+    setup_status = get_setup_status()
+    if setup_status.needs_setup:
+        from src.ui.pages.setup_wizard import render_setup_wizard_page
+
+        render_setup_wizard_page()
+        return
+
     # 2. Services d'arrière-plan (media indexing, Tailscale)
     _start_background_services(settings, DEFAULT_DB)
 
