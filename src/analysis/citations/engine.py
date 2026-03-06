@@ -498,10 +498,26 @@ class CitationEngine(CitationDataLoaderMixin):
                 continue
 
             # Compter les sous-citations qui ont atteint la maîtrise
-            # (pour l'instant on stocke la somme brute des valeurs enfants
-            # pour que l'UI puisse afficher "X/N" via les tiers du JSON H5G)
-            total = sum(result.get(child, 0) for child in children if child in mappings)
-            if total > 0:
-                result[norm_name] = total
+            mastered_count = 0
+            for child in children:
+                if child not in mappings:
+                    continue
+                child_count = result.get(child, 0)
+                if child_count <= 0:
+                    continue
+                child_tiers = mappings[child].get("tier_targets")
+                if not child_tiers:
+                    # Pas de tiers → considérer masterisé si > 0
+                    mastered_count += 1
+                    continue
+                targets = sorted(
+                    int(t.strip())
+                    for t in str(child_tiers).split(",")
+                    if t.strip().isdigit()
+                )
+                if targets and child_count >= targets[-1]:
+                    mastered_count += 1
+            if mastered_count > 0:
+                result[norm_name] = mastered_count
 
         return result
