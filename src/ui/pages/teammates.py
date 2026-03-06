@@ -71,7 +71,7 @@ def _enrich_series_with_perfect_kills(
 # =============================================================================
 
 
-def render_teammates_page(  # noqa: C901, PLR0912, PLR0913
+def render_teammates_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
     df: DataFrameLike,
     dff: DataFrameLike,
     base: DataFrameLike,
@@ -220,46 +220,46 @@ def render_teammates_page(  # noqa: C901, PLR0912, PLR0913
                     )
                     st.caption(f"{_first:.2f} → {_second:.2f}")
 
+    _ctx = {
+        "me_name": me_name,
+        "xuid": xuid,
+        "db_path": db_path,
+        "db_key": db_key,
+        "picked_xuids": picked_xuids,
+        "aliases_key": aliases_key,
+        "picked_session_labels": picked_session_labels,
+        "include_firefight": include_firefight,
+        "waypoint_player": waypoint_player,
+    }
+    _filters = {
+        "apply_current_filters": apply_current_filters_teammates,
+        "same_team_only": same_team_only_teammates,
+        "show_smooth": show_smooth_teammates,
+    }
+    _callbacks = {
+        "assign_player_colors_fn": assign_player_colors_fn,
+        "plot_multi_metric_bars_fn": plot_multi_metric_bars_fn,
+        "top_medals_fn": top_medals_fn,
+        "load_teammate_stats_fn": _load_teammate_stats_from_own_db,
+        "enrich_series_fn": _enrich_series_with_perfect_kills,
+    }
+
     if len(picked_xuids) < 1:
         st.info(t("tm_select_teammate"))
     elif len(picked_xuids) == 1:
         render_single_teammate_view(
             df=df,
             dff=dff,
-            me_name=me_name,
-            xuid=xuid,
-            db_path=db_path,
-            db_key=db_key,
-            picked_xuids=picked_xuids,
-            apply_current_filters=apply_current_filters_teammates,
-            same_team_only=same_team_only_teammates,
-            show_smooth=show_smooth_teammates,
-            assign_player_colors_fn=assign_player_colors_fn,
-            plot_multi_metric_bars_fn=plot_multi_metric_bars_fn,
-            top_medals_fn=top_medals_fn,
-            load_teammate_stats_fn=_load_teammate_stats_from_own_db,
-            enrich_series_fn=_enrich_series_with_perfect_kills,
+            ctx=_ctx,
+            filters=_filters,
+            callbacks=_callbacks,
         )
     else:
         render_multi_teammate_view(
             df=df,
             dff=dff,
             base=base,
-            me_name=me_name,
-            xuid=xuid,
-            db_path=db_path,
-            db_key=db_key,
-            aliases_key=aliases_key,
-            picked_xuids=picked_xuids,
-            picked_session_labels=picked_session_labels,
-            apply_current_filters=apply_current_filters_teammates,
-            same_team_only=same_team_only_teammates,
-            show_smooth=show_smooth_teammates,
-            include_firefight=include_firefight,
-            waypoint_player=waypoint_player,
-            assign_player_colors_fn=assign_player_colors_fn,
-            plot_multi_metric_bars_fn=plot_multi_metric_bars_fn,
-            top_medals_fn=top_medals_fn,
-            load_teammate_stats_fn=_load_teammate_stats_from_own_db,
-            enrich_series_fn=_enrich_series_with_perfect_kills,
+            ctx=_ctx,
+            filters=_filters,
+            callbacks=_callbacks,
         )

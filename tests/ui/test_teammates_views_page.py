@@ -141,19 +141,29 @@ class TestRenderSingleTeammateView:
             mod.render_single_teammate_view(
                 df=df,
                 dff=df,
-                me_name="TestPlayer",
-                xuid="100",
-                db_path="dummy.duckdb",
-                db_key=None,
-                picked_xuids=["200"],
-                apply_current_filters=False,
-                same_team_only=True,
-                show_smooth=True,
-                assign_player_colors_fn=lambda *_a, **_kw: {},
-                plot_multi_metric_bars_fn=lambda *_a, **_kw: MagicMock(),
-                top_medals_fn=lambda *_a, **_kw: [],
-                load_teammate_stats_fn=lambda *_a, **_kw: pl.DataFrame(),
-                enrich_series_fn=lambda *_a, **_kw: {},
+                ctx={
+                    "me_name": "TestPlayer",
+                    "xuid": "100",
+                    "db_path": "dummy.duckdb",
+                    "db_key": None,
+                    "picked_xuids": ["200"],
+                    "aliases_key": None,
+                    "picked_session_labels": None,
+                    "include_firefight": False,
+                    "waypoint_player": "TestPlayer",
+                },
+                filters={
+                    "apply_current_filters": False,
+                    "same_team_only": True,
+                    "show_smooth": True,
+                },
+                callbacks={
+                    "assign_player_colors_fn": lambda *_a, **_kw: {},
+                    "plot_multi_metric_bars_fn": lambda *_a, **_kw: MagicMock(),
+                    "top_medals_fn": lambda *_a, **_kw: [],
+                    "load_teammate_stats_fn": lambda *_a, **_kw: pl.DataFrame(),
+                    "enrich_series_fn": lambda *_a, **_kw: {},
+                },
             )
 
         ms.calls["warning"].assert_called()
@@ -203,25 +213,35 @@ class TestRenderSingleTeammateView:
             mod.render_single_teammate_view(
                 df=df,
                 dff=df,
-                me_name="TestPlayer",
-                xuid="100",
-                db_path="dummy.duckdb",
-                db_key=None,
-                picked_xuids=["200"],
-                apply_current_filters=False,
-                same_team_only=True,
-                show_smooth=True,
-                assign_player_colors_fn=lambda *_a, **_kw: {
-                    "TestPlayer": "#00ff00",
-                    "FriendName": "#ff0000",
+                ctx={
+                    "me_name": "TestPlayer",
+                    "xuid": "100",
+                    "db_path": "dummy.duckdb",
+                    "db_key": None,
+                    "picked_xuids": ["200"],
+                    "aliases_key": None,
+                    "picked_session_labels": None,
+                    "include_firefight": False,
+                    "waypoint_player": "TestPlayer",
                 },
-                plot_multi_metric_bars_fn=lambda *_a, **_kw: MagicMock(),
-                top_medals_fn=lambda *_a, **_kw: [],
-                load_teammate_stats_fn=lambda *_a, **_kw: friend_df,
-                enrich_series_fn=lambda *_a, **_kw: {
-                    "friend_names": {"200": "FriendName"},
-                    "colors_by_name": {"TestPlayer": "#00ff00", "FriendName": "#ff0000"},
-                    "series": [],
+                filters={
+                    "apply_current_filters": False,
+                    "same_team_only": True,
+                    "show_smooth": True,
+                },
+                callbacks={
+                    "assign_player_colors_fn": lambda *_a, **_kw: {
+                        "TestPlayer": "#00ff00",
+                        "FriendName": "#ff0000",
+                    },
+                    "plot_multi_metric_bars_fn": lambda *_a, **_kw: MagicMock(),
+                    "top_medals_fn": lambda *_a, **_kw: [],
+                    "load_teammate_stats_fn": lambda *_a, **_kw: friend_df,
+                    "enrich_series_fn": lambda *_a, **_kw: {
+                        "friend_names": {"200": "FriendName"},
+                        "colors_by_name": {"TestPlayer": "#00ff00", "FriendName": "#ff0000"},
+                        "series": [],
+                    },
                 },
             )
 

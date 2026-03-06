@@ -112,8 +112,8 @@ FUNC:src/ui/pages/teammates.py:74:render_teammates_page:191L
 FUNC:src/ui/pages/teammates_charts.py:26:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_charts.py:273:render_trio_charts:134L
 FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:122L
-FUNC:src/ui/pages/teammates_views.py:163:render_multi_teammate_view:173L
-FUNC:src/ui/pages/teammates_views.py:55:render_single_teammate_view:105L
+FUNC:src/ui/pages/teammates_views.py:168:render_multi_teammate_view:177L
+FUNC:src/ui/pages/teammates_views.py:56:render_single_teammate_view:109L
 FUNC:src/ui/pages/win_loss.py:322:_render_ratio_by_map_section:82L
 FUNC:src/ui/pages/win_loss.py:407:_render_map_table:131L
 FUNC:src/ui/profile_api.py:201:_get_career_rank_for_player:138L
