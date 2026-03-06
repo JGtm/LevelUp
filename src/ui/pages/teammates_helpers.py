@@ -141,23 +141,17 @@ def render_teammate_cards(picked_xuids: list[str], settings: object, db_path: st
                 st.markdown(card_html, unsafe_allow_html=True)
 
 
-def render_friends_history_table(  # noqa: C901, PLR0912, PLR0915
-    sub_all: DataFrameLike,
+def _prepare_friends_table_data(  # noqa: PLR0912
+    friends_table: pl.DataFrame,
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None,
     waypoint_player: str,
-) -> None:
-    """Affiche le tableau d'historique des matchs avec coéquipiers.
+) -> pl.DataFrame:
+    """Prépare le DataFrame pour le tableau d'historique coéquipiers.
 
-    Args:
-        sub_all: DataFrame des matchs filtrés.
-        db_path: Chemin vers la base de données.
-        xuid: XUID du joueur principal.
-        db_key: Clé de cache de la DB.
-        waypoint_player: Nom Waypoint du joueur.
+    Ajoute les colonnes traduites, scores, MMR, delta et URLs.
     """
-    friends_table = ensure_polars(sub_all)
     friends_table = friends_table.with_columns(
         pl.col("start_time").dt.strftime(FMT_DATETIME_FR).fill_null("-").alias("start_time_fr")
     )
@@ -210,58 +204,8 @@ def render_friends_history_table(  # noqa: C901, PLR0912, PLR0915
         )
         .alias("outcome_label")
     )
-    # Calcul du score
-    score_cols = ["my_team_score", "enemy_team_score"]
-    if all(c in friends_table.columns for c in score_cols):
-
-        def _safe_score(c: str) -> pl.Expr:
-            return (
-                pl.when(pl.col(c).is_null() | pl.col(c).is_nan())
-                .then(pl.lit("-"))
-                .otherwise(pl.col(c).round(0).cast(pl.Int64).cast(pl.Utf8))
-            )
-
-        friends_table = friends_table.with_columns(
-            (_safe_score("my_team_score") + pl.lit(" - ") + _safe_score("enemy_team_score")).alias(
-                "score"
-            )
-        )
-    else:
-        friends_table = friends_table.with_columns(pl.lit("-").alias("score"))
-
-    # Utiliser les colonnes MMR du DataFrame si elles existent (DuckDB v4 les charge déjà)
-    # Sinon, fallback vers des requêtes individuelles (legacy ou colonnes manquantes)
-    if "team_mmr" not in friends_table.columns or friends_table["team_mmr"].is_null().all():
-        match_ids_list = friends_table["match_id"].cast(pl.Utf8).to_list()
-        team_mmrs: list[object] = []
-        enemy_mmrs: list[object] = []
-        for mid in match_ids_list:
-            pm = cached_load_player_match_result(db_path, str(mid), xuid.strip(), db_key=db_key)
-            if not isinstance(pm, dict):
-                team_mmrs.append(None)
-                enemy_mmrs.append(None)
-            else:
-                team_mmrs.append(pm.get("team_mmr"))
-                enemy_mmrs.append(pm.get("enemy_mmr"))
-        friends_table = friends_table.with_columns(
-            [
-                pl.Series("team_mmr", team_mmrs),
-                pl.Series("enemy_mmr", enemy_mmrs),
-            ]
-        )
-
-    # S'assurer que les colonnes existent
-    if "team_mmr" not in friends_table.columns:
-        friends_table = friends_table.with_columns(pl.lit(None).alias("team_mmr"))
-    if "enemy_mmr" not in friends_table.columns:
-        friends_table = friends_table.with_columns(pl.lit(None).alias("enemy_mmr"))
-
-    friends_table = friends_table.with_columns(
-        pl.when(pl.col("team_mmr").is_not_null() & pl.col("enemy_mmr").is_not_null())
-        .then(pl.col("team_mmr").cast(pl.Float64) - pl.col("enemy_mmr").cast(pl.Float64))
-        .otherwise(pl.lit(None))
-        .alias("delta_mmr")
-    )
+    friends_table = _add_score_columns(friends_table)
+    friends_table = _add_mmr_columns(friends_table, db_path, xuid, db_key)
     wp = str(waypoint_player or "").strip()
     if wp:
         friends_table = friends_table.with_columns(
@@ -272,34 +216,92 @@ def render_friends_history_table(  # noqa: C901, PLR0912, PLR0915
         )
     else:
         friends_table = friends_table.with_columns(pl.lit("").alias("match_url"))
+    return friends_table
 
-    view = friends_table.sort("start_time", descending=True).head(250)
 
-    def _fmt(v) -> str:
-        if v is None:
+def _add_score_columns(df: pl.DataFrame) -> pl.DataFrame:
+    """Ajoute la colonne score formatée 'X - Y'."""
+    score_cols = ["my_team_score", "enemy_team_score"]
+    if not all(c in df.columns for c in score_cols):
+        return df.with_columns(pl.lit("-").alias("score"))
+
+    def _safe_score(c: str) -> pl.Expr:
+        return (
+            pl.when(pl.col(c).is_null() | pl.col(c).is_nan())
+            .then(pl.lit("-"))
+            .otherwise(pl.col(c).round(0).cast(pl.Int64).cast(pl.Utf8))
+        )
+
+    return df.with_columns(
+        (_safe_score("my_team_score") + pl.lit(" - ") + _safe_score("enemy_team_score")).alias(
+            "score"
+        )
+    )
+
+
+def _add_mmr_columns(
+    df: pl.DataFrame, db_path: str, xuid: str, db_key: tuple[int, int] | None
+) -> pl.DataFrame:
+    """Ajoute les colonnes team_mmr, enemy_mmr et delta_mmr."""
+    if "team_mmr" not in df.columns or df["team_mmr"].is_null().all():
+        match_ids_list = df["match_id"].cast(pl.Utf8).to_list()
+        team_mmrs: list[object] = []
+        enemy_mmrs: list[object] = []
+        for mid in match_ids_list:
+            pm = cached_load_player_match_result(db_path, str(mid), xuid.strip(), db_key=db_key)
+            if not isinstance(pm, dict):
+                team_mmrs.append(None)
+                enemy_mmrs.append(None)
+            else:
+                team_mmrs.append(pm.get("team_mmr"))
+                enemy_mmrs.append(pm.get("enemy_mmr"))
+        df = df.with_columns([pl.Series("team_mmr", team_mmrs), pl.Series("enemy_mmr", enemy_mmrs)])
+    if "team_mmr" not in df.columns:
+        df = df.with_columns(pl.lit(None).alias("team_mmr"))
+    if "enemy_mmr" not in df.columns:
+        df = df.with_columns(pl.lit(None).alias("enemy_mmr"))
+    return df.with_columns(
+        pl.when(pl.col("team_mmr").is_not_null() & pl.col("enemy_mmr").is_not_null())
+        .then(pl.col("team_mmr").cast(pl.Float64) - pl.col("enemy_mmr").cast(pl.Float64))
+        .otherwise(pl.lit(None))
+        .alias("delta_mmr")
+    )
+
+
+def _fmt_value(v: object) -> str:
+    """Formate une valeur pour affichage HTML (tiret si vide/null/NaN)."""
+    if v is None:
+        return "-"
+    try:
+        if v != v:
             return "-"
-        try:
-            if v != v:
-                return "-"
-        except Exception:
-            pass
-        s = str(v)
-        return s if s.strip() else "-"
+    except Exception:
+        pass
+    s = str(v)
+    return s if s.strip() else "-"
 
-    def _fmt_mmr_int(v) -> str:
-        if v is None:
+
+def _fmt_mmr_int(v: object) -> str:
+    """Formate une valeur MMR en entier."""
+    if v is None:
+        return "-"
+    try:
+        if v != v:
             return "-"
-        try:
-            if v != v:
-                return "-"
-        except Exception:
-            pass
-        try:
-            return str(int(round(float(v))))
-        except Exception:
-            return _fmt(v)
+    except Exception:
+        pass
+    try:
+        return str(int(round(float(v))))
+    except Exception:
+        return _fmt_value(v)
 
-    colors = HALO_COLORS.as_dict()
+
+def _build_html_rows(  # noqa: C901, PLR0912
+    view: pl.DataFrame,
+    cols: list[tuple[str, str]],
+    colors: dict[str, str],
+) -> list[str]:
+    """Construit les lignes HTML du tableau d'historique coéquipiers."""
 
     def _outcome_style(label: str) -> str:
         v = str(label or "").strip().casefold()
@@ -313,7 +315,7 @@ def render_friends_history_table(  # noqa: C901, PLR0912, PLR0915
             return f"color:{colors['violet']}; font-weight:800"
         return "opacity:0.92"
 
-    def _mmr_gap_style(v) -> str:
+    def _mmr_gap_style(v: object) -> str:
         try:
             f = float(v)
             if f != f:
@@ -326,21 +328,6 @@ def render_friends_history_table(  # noqa: C901, PLR0912, PLR0915
             pass
         return ""
 
-    cols = [
-        (t("tmh_col_match"), "_app"),
-        (t("tmh_waypoint"), "match_url"),
-        (t("tmh_col_date"), "start_time_fr"),
-        (t("tmh_col_map"), "map_name"),
-        (t("tmh_col_playlist"), "playlist_fr"),
-        (t("tmh_col_mode"), "mode"),
-        (t("tmh_col_result"), "outcome_label"),
-        (t("tmh_col_score"), "score"),
-        (t("tmh_col_team_mmr"), "team_mmr"),
-        (t("tmh_col_enemy_mmr"), "enemy_mmr"),
-        (t("tmh_col_delta_mmr"), "delta_mmr"),
-    ]
-
-    head = "".join(f"<th>{html_lib.escape(h)}</th>" for h, _ in cols)
     body_rows: list[str] = []
     for r in view.to_dicts():
         mid = str(r.get("match_id") or "").strip()
@@ -364,7 +351,7 @@ def render_friends_history_table(  # noqa: C901, PLR0912, PLR0915
             elif key == "match_url":
                 tds.append(f"<td>{hw_link}</td>")
             elif key == "outcome_label":
-                val = _fmt(r.get(key))
+                val = _fmt_value(r.get(key))
                 tds.append(f"<td style='{_outcome_style(val)}'>{html_lib.escape(val)}</td>")
             elif key in ("team_mmr", "enemy_mmr"):
                 val = _fmt_mmr_int(r.get(key))
@@ -378,9 +365,42 @@ def render_friends_history_table(  # noqa: C901, PLR0912, PLR0915
                     display = "-"
                 tds.append(f"<td style='{style}'>{html_lib.escape(display)}</td>")
             else:
-                val = _fmt(r.get(key))
+                val = _fmt_value(r.get(key))
                 tds.append(f"<td>{html_lib.escape(val)}</td>")
         body_rows.append("<tr>" + "".join(tds) + "</tr>")
+    return body_rows
+
+
+def render_friends_history_table(
+    sub_all: DataFrameLike,
+    db_path: str,
+    xuid: str,
+    db_key: tuple[int, int] | None,
+    waypoint_player: str,
+) -> None:
+    """Affiche le tableau d'historique des matchs avec coéquipiers."""
+    friends_table = ensure_polars(sub_all)
+    friends_table = _prepare_friends_table_data(
+        friends_table, db_path, xuid, db_key, waypoint_player
+    )
+    view = friends_table.sort("start_time", descending=True).head(250)
+
+    cols = [
+        (t("tmh_col_match"), "_app"),
+        (t("tmh_waypoint"), "match_url"),
+        (t("tmh_col_date"), "start_time_fr"),
+        (t("tmh_col_map"), "map_name"),
+        (t("tmh_col_playlist"), "playlist_fr"),
+        (t("tmh_col_mode"), "mode"),
+        (t("tmh_col_result"), "outcome_label"),
+        (t("tmh_col_score"), "score"),
+        (t("tmh_col_team_mmr"), "team_mmr"),
+        (t("tmh_col_enemy_mmr"), "enemy_mmr"),
+        (t("tmh_col_delta_mmr"), "delta_mmr"),
+    ]
+
+    head = "".join(f"<th>{html_lib.escape(h)}</th>" for h, _ in cols)
+    body_rows = _build_html_rows(view, cols, HALO_COLORS.as_dict())
 
     st.markdown(
         "<div class='os-table-wrap'><table class='os-table'><thead><tr>"
