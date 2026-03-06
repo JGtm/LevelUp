@@ -122,6 +122,11 @@ def render_settings_page(  # noqa: PLR0915
     """
     st.subheader(t("settings_title"))
 
+    with st.expander(t("xbox_connect_section_title"), expanded=True):
+        from src.ui.xbox_oauth_ui import render_xbox_login_section
+
+        render_xbox_login_section()
+
     with st.expander("Source", expanded=False):
         st.caption(t("set_db_mgmt"))
         default_db = get_default_db_path()

@@ -69,9 +69,23 @@ async def get_tokens(
         player_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{_normalize_gamertag_for_env(gamertag)}"
         oauth_refresh_token = str(os.environ.get(player_key) or "").strip()
 
-    # Fallback : refresh token global
+    # Fallback 2 : refresh token global en env
     if not oauth_refresh_token:
         oauth_refresh_token = str(os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN") or "").strip()
+
+    # Fallback 3 : refresh token stocké en DB (connexion Xbox OAuth via Streamlit UI)
+    if not oauth_refresh_token and gamertag:
+        try:
+            from src.ui.xbox_oauth import load_refresh_token as _load_rt
+
+            _root = _repo_root()
+            _player_db = _root / "data" / "players" / gamertag / "stats.duckdb"
+            if _player_db.exists():
+                _token_from_db = _load_rt(_player_db)
+                if _token_from_db:
+                    oauth_refresh_token = _token_from_db
+        except Exception:
+            pass
 
     if not (azure_client_id and azure_client_secret and oauth_refresh_token):
         raise RuntimeError(
