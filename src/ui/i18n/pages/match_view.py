@@ -307,6 +307,18 @@ STRINGS: dict[str, dict[str, str] | str] = {
             "**Last match** — date of the last shared match"
         ),
     },
+    "legend_badge_tough_nut": {
+        "fr": "Ce joueur te tue au moins 2× plus que tu ne le tues (min. 3 morts)",
+        "en": "This player kills you at least 2× more than you kill them (min. 3 deaths)",
+    },
+    "legend_badge_ally_plus": {
+        "fr": "Tu gagnes souvent avec ce joueur dans ton équipe (≥ 65% de victoires, min. 2 matchs)",
+        "en": "You win often with this player on your team (≥ 65% win rate, min. 2 games)",
+    },
+    "legend_badge_coriace": {
+        "fr": "Tu as du mal à battre ce joueur quand il est en face (≤ 35% de victoires, min. 3 duels)",
+        "en": "You struggle to beat this player as an opponent (≤ 35% win rate, min. 3 duels)",
+    },
     # Ordinal de rencontre — "{ordinal} rencontre" / "{ordinal} encounter"
     "encounter_ordinal": {"fr": "{ordinal} rencontre", "en": "{ordinal} encounter"},
     # Dates relatives (tableau encounter history)

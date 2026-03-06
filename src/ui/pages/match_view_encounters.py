@@ -100,6 +100,31 @@ def _kd_cell_html(kills: int, deaths: int) -> str:
     return f'<span style="{css}">{ratio_str}</span>'
 
 
+_BADGE_LEGEND_ITEMS = (
+    ("badge_tough_nut", "color:#ff9e6b;background:rgba(213,94,0,0.22);", "legend_badge_tough_nut"),
+    ("badge_ally_plus", "color:#33ffbf;background:rgba(0,158,115,0.22);", "legend_badge_ally_plus"),
+    ("badge_coriace", "color:#FFB703;background:rgba(255,183,3,0.18);", "legend_badge_coriace"),
+)
+
+
+def _build_badge_legend_html() -> str:
+    """Génère un bloc HTML de légende pour les 3 badges de rencontres."""
+    items = []
+    for label_key, style, desc_key in _BADGE_LEGEND_ITEMS:
+        label = html.escape(t(label_key))
+        desc = html.escape(t(desc_key))
+        items.append(
+            f'<span style="{style}padding:1px 5px;border-radius:3px;font-size:0.75em;'
+            f'font-weight:700;margin-right:4px;">{label}</span>'
+            f'<span style="color:#aaa;font-size:0.82em;">{desc}</span>'
+        )
+    return (
+        '<div style="margin-top:6px;margin-bottom:2px;line-height:1.9;">'
+        + "<br>".join(items)
+        + "</div>"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Construction des lignes HTML
 # ---------------------------------------------------------------------------
@@ -315,6 +340,7 @@ def render_encounter_section(
     rows_html = _build_encounter_rows(df.to_dicts(), xuid_to_team, my_team_id)
     if rows_html:
         st.markdown(_build_encounter_table_html(rows_html), unsafe_allow_html=True)
+        st.markdown(_build_badge_legend_html(), unsafe_allow_html=True)
         st.caption(t("mv_encounter_legend"))
 
 
