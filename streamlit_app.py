@@ -334,8 +334,15 @@ def _handle_xbox_oauth_callback() -> None:
     if not _xbox_code or st.session_state.get("_xbox_oauth_consumed"):
         return
 
+    logger.info("Callback OAuth Xbox détecté (code=%s…)", _xbox_code[:8])
+
     _expected_state = st.session_state.get("_xbox_oauth_state")
     if _expected_state and _xbox_state != _expected_state:
+        logger.warning(
+            "Callback OAuth Xbox : état CSRF invalide (attendu=%s, reçu=%s)",
+            _expected_state,
+            _xbox_state,
+        )
         st.error("❌ Erreur CSRF : état OAuth invalide. Veuillez réessayer la connexion Xbox.")
         st.query_params.clear()
         return
@@ -366,9 +373,11 @@ def _handle_xbox_oauth_callback() -> None:
         _gt = _result["gamertag"]
         _xuid = _result["xuid"]
         _token = _result["refresh_token"]
+        logger.info("OAuth Xbox : tokens obtenus pour %s (xuid=%s)", _gt, _xuid)
         try:
             _db = provision_player(_gt, _xuid)
             handle_pending_xbox_result(_gt, _xuid, str(_db), _token)
+            logger.info("OAuth Xbox : joueur %s provisionné avec succès", _gt)
             # Basculer vers le profil du joueur nouvellement connecté
             st.session_state[SK.DB_PATH] = str(_db)
             st.session_state[SK.XUID_INPUT] = _gt
@@ -377,6 +386,7 @@ def _handle_xbox_oauth_callback() -> None:
             logger.error("Provisionnement Xbox OAuth échoué: %s", _prov_err)
             st.session_state["_xbox_oauth_result"] = {"error": str(_prov_err)}
     else:
+        logger.warning("OAuth Xbox : erreur retournée par le callback : %s", _result.get("error"))
         st.session_state["_xbox_oauth_result"] = _result
 
     st.query_params.clear()

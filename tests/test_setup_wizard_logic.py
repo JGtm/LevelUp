@@ -319,3 +319,144 @@ class TestGetSetupStatus:
 
         assert status.has_players is True
         assert status.player_count == 1
+
+    def test_counts_multiple_players(self, tmp_path: Path) -> None:
+        """Compte correctement plusieurs joueurs."""
+        players_dir = tmp_path / "players"
+        for name in ("Player1", "Player2", "Player3"):
+            p = players_dir / name
+            p.mkdir(parents=True)
+            (p / "stats.duckdb").write_bytes(b"")
+
+        with (
+            patch("src.ui.pages.setup_wizard_logic.PLAYERS_DIR", players_dir),
+            patch("src.ui.pages.setup_wizard_logic.get_auth_status") as mock_auth,
+        ):
+            mock_auth.return_value = AuthStatus(
+                has_client_id=True,
+                has_client_secret=True,
+            )
+            status = get_setup_status()
+
+        assert status.player_count == 3
+
+    def test_ignores_dirs_without_db(self, tmp_path: Path) -> None:
+        """Ignore les dossiers joueurs sans stats.duckdb."""
+        players_dir = tmp_path / "players"
+        (players_dir / "Player1").mkdir(parents=True)  # Pas de .duckdb
+        p2 = players_dir / "Player2"
+        p2.mkdir(parents=True)
+        (p2 / "stats.duckdb").write_bytes(b"")
+
+        with (
+            patch("src.ui.pages.setup_wizard_logic.PLAYERS_DIR", players_dir),
+            patch("src.ui.pages.setup_wizard_logic.get_auth_status") as mock_auth,
+        ):
+            mock_auth.return_value = AuthStatus(
+                has_client_id=True,
+                has_client_secret=True,
+            )
+            status = get_setup_status()
+
+        assert status.player_count == 1
+
+
+# =============================================================================
+# Edge cases create_player_profile
+# =============================================================================
+
+
+class TestCreatePlayerProfileEdgeCases:
+    """Tests edge cases de create_player_profile."""
+
+    def test_case_insensitive_lookup(self, tmp_path: Path) -> None:
+        """Retrouve un profil existant indépendamment de la casse."""
+        db_profiles = tmp_path / "db_profiles.json"
+        players_dir = tmp_path / "players"
+        db_profiles.write_text(
+            json.dumps(
+                {
+                    "version": "2.1",
+                    "profiles": {
+                        "MySpartan": {
+                            "db_path": "data/players/MySpartan/stats.duckdb",
+                            "waypoint_player": "MySpartan",
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with (
+            patch("src.ui.pages.setup_wizard_logic._DB_PROFILES_PATH", db_profiles),
+            patch("src.ui.pages.setup_wizard_logic.PLAYERS_DIR", players_dir),
+        ):
+            key = create_player_profile("MYSPARTAN")
+
+        # Doit réutiliser la clé existante (pas créer un doublon)
+        assert key == "MySpartan"
+        data = json.loads(db_profiles.read_text(encoding="utf-8"))
+        assert len(data["profiles"]) == 1
+
+    def test_whitespace_trimmed(self, tmp_path: Path) -> None:
+        """Le gamertag est nettoyé des espaces avant/après."""
+        db_profiles = tmp_path / "db_profiles.json"
+        players_dir = tmp_path / "players"
+
+        with (
+            patch("src.ui.pages.setup_wizard_logic._DB_PROFILES_PATH", db_profiles),
+            patch("src.ui.pages.setup_wizard_logic.PLAYERS_DIR", players_dir),
+        ):
+            key = create_player_profile("  MyGT  ")
+
+        assert key == "MyGT"
+        assert (players_dir / "MyGT").exists()
+
+    def test_creates_default_structure(self, tmp_path: Path) -> None:
+        """Crée db_profiles.json avec la structure par défaut si absent."""
+        db_profiles = tmp_path / "db_profiles.json"
+        players_dir = tmp_path / "players"
+
+        with (
+            patch("src.ui.pages.setup_wizard_logic._DB_PROFILES_PATH", db_profiles),
+            patch("src.ui.pages.setup_wizard_logic.PLAYERS_DIR", players_dir),
+        ):
+            create_player_profile("NewPlayer")
+
+        data = json.loads(db_profiles.read_text(encoding="utf-8"))
+        assert data["version"] == "2.1"
+        assert "warehouse_path" in data
+        assert "NewPlayer" in data["profiles"]
+
+
+# =============================================================================
+# save_azure_credentials
+# =============================================================================
+
+
+class TestSaveAzureCredentials:
+    """Tests de save_azure_credentials."""
+
+    def test_updates_environ(self, tmp_path: Path) -> None:
+        """Vérifie que os.environ est mis à jour après sauvegarde."""
+        import os
+
+        env_file = tmp_path / ".env.local"
+
+        with (
+            patch("src.utils.auth._ENV_LOCAL_PATH", env_file),
+            patch("src.ui.pages.setup_wizard_logic.write_env_local") as _mock_write,
+        ):
+            from src.ui.pages.setup_wizard_logic import save_azure_credentials
+
+            save_azure_credentials(
+                "  12345678-1234-1234-1234-123456789abc  ",
+                "  my_secret  ",
+                "  https://localhost  ",
+            )
+
+        # Vérifie que les valeurs sont trimées dans os.environ
+        assert os.environ.get("SPNKR_AZURE_CLIENT_ID") == "12345678-1234-1234-1234-123456789abc"
+        assert os.environ.get("SPNKR_AZURE_CLIENT_SECRET") == "my_secret"
+        assert os.environ.get("SPNKR_AZURE_REDIRECT_URI") == "https://localhost"
