@@ -68,7 +68,7 @@ FUNC:src/ui/_cache_sessions.py:21:cached_compute_sessions_db:171L
 FUNC:src/ui/_sync_duckdb_ops.py:20:_sync_duckdb_player:119L
 FUNC:src/ui/_sync_duckdb_ops.py:42:_sync_async:82L
 FUNC:src/ui/cache_loaders.py:189:load_df_optimized:96L
-FUNC:src/ui/commendations.py:294:render_h5g_commendations_section:154L
+FUNC:src/ui/commendations.py:294:render_h5g_commendations_section:158L
 FUNC:src/ui/components/_radar_participation.py:151:create_participation_profile_radar:138L
 FUNC:src/ui/components/_radar_participation.py:17:create_participation_radar:131L
 FUNC:src/ui/components/_radar_teammates.py:105:create_session_trend_radar:94L
