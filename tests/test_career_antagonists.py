@@ -39,6 +39,12 @@ def shared_db(tmp_path: Path) -> Path:
             )
         """)
 
+        conn.execute("""
+            CREATE TABLE match_registry (
+                match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP
+            )
+        """)
+
         # Joueur principal : XUID_ME
         # Adversaire A : me tue 10 fois, je le tue 3 fois (némésis)
         # Adversaire B : je le tue 8 fois, il me tue 2 fois (souffre-douleur)
@@ -81,6 +87,13 @@ def shared_db(tmp_path: Path) -> Path:
             ('m2', 'XUID_C', 'PlayerC', 2, 3, 2, 5),
             ('m3', 'XUID_ME', 'Me', 1, 2, 3, 1),
             ('m3', 'XUID_B', 'PlayerB', 2, 3, 1, 3)
+        """)
+
+        conn.execute("""
+            INSERT INTO match_registry VALUES
+            ('m1', '2025-01-01 10:00:00'),
+            ('m2', '2025-01-02 10:00:00'),
+            ('m3', '2025-01-03 10:00:00')
         """)
     return db_path
 
@@ -170,6 +183,15 @@ class TestLoadTopEncountered:
         assert "PlayerB" in gamertags
         assert "PlayerC" in gamertags
 
+        # Vérifier les colonnes enrichies
+        player_a = next(r for r in result if r["gamertag"] == "PlayerA")
+        assert player_a["ally_count"] >= 0
+        assert player_a["enemy_count"] >= 0
+        assert "winrate_as_ally" in player_a
+        assert "kills_dealt" in player_a
+        assert "deaths_suffered" in player_a
+        assert "last_seen" in player_a
+
     def test_excludes_self(self, shared_db: Path) -> None:
         from src.ui.pages.career_data import _load_top_encountered
 
@@ -178,3 +200,31 @@ class TestLoadTopEncountered:
 
         xuids = [r["xuid"] for r in result]
         assert "XUID_ME" not in xuids
+
+    def test_excludes_friends_by_xuid(self, shared_db: Path) -> None:
+        from src.ui.pages.career_data import _load_top_encountered
+
+        with _patch_shared_path(shared_db):
+            result = _load_top_encountered(
+                "XUID_ME",
+                limit=10,
+                exclude_xuids={"XUID_A"},
+            )
+
+        xuids = [r["xuid"] for r in result]
+        assert "XUID_A" not in xuids
+        assert "XUID_B" in xuids
+
+    def test_excludes_friends_by_gamertag(self, shared_db: Path) -> None:
+        from src.ui.pages.career_data import _load_top_encountered
+
+        with _patch_shared_path(shared_db):
+            result = _load_top_encountered(
+                "XUID_ME",
+                limit=10,
+                exclude_xuids={"PlayerB"},
+            )
+
+        gamertags = [r["gamertag"] for r in result]
+        assert "PlayerB" not in gamertags
+        assert "PlayerA" in gamertags
