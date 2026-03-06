@@ -4,7 +4,7 @@ All notable changes to this project are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-> French version: [docs/FR/CHANGELOG.md](docs/FR/CHANGELOG.md)
+> French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
 ## [5.4.0] - 2026-03-04
 

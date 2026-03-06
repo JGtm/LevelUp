@@ -28,11 +28,11 @@ To use the Halo Infinite API via SPNKr, you need:
 ### 1. Create an Azure Application
 
 1. Go to [Azure Portal](https://portal.azure.com/)
-2. Navigate to **Microsoft Entra ID** → **App registrations**
+2. Navigate to **Microsoft Entra ID**
 
    ![Microsoft Entra ID](screenshots/azure-setup/01-entra-id.png)
 
-3. Click **New registration**
+3. Click **Add** → **Add registration**
 
    ![Add App Registration](screenshots/azure-setup/02-add-app-registration.png)
 
@@ -44,39 +44,47 @@ To use the Halo Infinite API via SPNKr, you need:
 
    ![Register Application](screenshots/azure-setup/03-register-application.png)
 
+6. After registration, you are redirected to the application's **Overview** page. **Copy the Application (client) ID** — this is your `SPNKR_AZURE_CLIENT_ID`.
+
+   > It looks like: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (GUID format)
+
 ### 2. Configure Permissions
 
 1. In your application, go to **API permissions** and click **Add a permission**
 
    ![API Permissions](screenshots/azure-setup/04-api-permissions.png)
 
-2. Select **Microsoft Graph** → **Delegated permissions**
+2. Select **Microsoft Graph**
 
    ![Select Microsoft Graph](screenshots/azure-setup/05-select-microsoft-graph.png)
 
-3. Add `offline_access`
+3. Search, select and add permission `offline_access`
 
    ![Add offline_access](screenshots/azure-setup/06-permission-offline-access.png)
 
-4. Add `User.Read`
+4. Search, select and add permission `User.Read`
 
    ![Add User.Read](screenshots/azure-setup/07-permission-user-read.png)
 
-5. Also add Xbox Live permissions (if available)
-
 ### 3. Create a Client Secret
 
-1. Go to **Certificates & secrets** and click **New client secret**
+1. In the left sidebar, go to **Certificates & secrets** and click **New client secret**
 
    ![Certificates & Secrets](screenshots/azure-setup/08-certificates-secrets.png)
 
-2. Give it a description and choose an expiration
+2. Give it a description, choose an expiration then click **Add**
 
    ![New Client Secret](screenshots/azure-setup/09-new-client-secret.png)
 
-3. **Copy the value immediately** (it won't be visible again later)
+3. **Copy the `Value` column immediately** — this is your `SPNKR_AZURE_CLIENT_SECRET`. It disappears as soon as you navigate away.
+
+   > ⚠️ Do not copy the **Secret ID** (the other column) — you need the **Value**.
 
    ![Copy Secret Value](screenshots/azure-setup/10-copy-secret.png)
+
+> **Recap — at this point you should have two values ready:**
+> - `SPNKR_AZURE_CLIENT_ID` → copied from the app's **Overview** page (step 1.6)
+> - `SPNKR_AZURE_CLIENT_SECRET` → copied from **Certificates & secrets** (step 3.3)
 
 ### 4. Set Up the .env.local File
 

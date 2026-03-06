@@ -1,6 +1,6 @@
 # Journal des modifications
 
-> Version française du [CHANGELOG.md](../../CHANGELOG.md) racine.
+> Version française du [CHANGELOG.md](../CHANGELOG.md) racine.
 
 Toutes les modifications notables de ce projet sont documentées ici.
 

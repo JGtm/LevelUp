@@ -7,7 +7,7 @@ VENV_PYTHON="$SCRIPT_DIR/.venv/Scripts/python.exe"
 
 if [ ! -f "$VENV_PYTHON" ]; then
     echo "Erreur: .venv non trouve"
-    echo "Active d'abord l'environnement: source activate_env.sh"
+    echo "Active d'abord l'environnement: source scripts/activate_env.sh"
     exit 1
 fi
 

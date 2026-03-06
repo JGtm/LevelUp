@@ -40,6 +40,10 @@ Pour utiliser l'API Halo Infinite via SPNKr, vous devez :
 
    ![Register Application](../screenshots/azure-setup/03-register-application.png)
 
+6. Après l'enregistrement, Azure redirige vers la page **Overview** de l'application. **Copier l'Application (client) ID** — c'est votre `SPNKR_AZURE_CLIENT_ID`.
+
+   > Il ressemble à : `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (format GUID)
+
 ### 2. Configurer les Permissions
 
 1. Dans votre application, aller à **API permissions** et cliquer sur **Add a permission**
@@ -70,9 +74,15 @@ Pour utiliser l'API Halo Infinite via SPNKr, vous devez :
 
    ![New Client Secret](../screenshots/azure-setup/09-new-client-secret.png)
 
-3. **Copier immédiatement la valeur** (elle ne sera plus visible après)
+3. **Copier immédiatement la colonne `Value`** — c'est votre `SPNKR_AZURE_CLIENT_SECRET`. Elle disparaît dès que vous naviguez ailleurs.
+
+   > ⚠️ Ne pas copier le **Secret ID** (l'autre colonne) — vous avez besoin de la **Value**.
 
    ![Copy Secret Value](../screenshots/azure-setup/10-copy-secret.png)
+
+> **Récapitulatif — à ce stade vous devriez avoir deux valeurs en main :**
+> - `SPNKR_AZURE_CLIENT_ID` → copié depuis la page **Overview** de l'app (étape 1.6)
+> - `SPNKR_AZURE_CLIENT_SECRET` → copié depuis **Certificates & secrets** (étape 3.3)
 
 ### 4. Configurer le Fichier .env.local
 

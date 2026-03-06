@@ -77,7 +77,7 @@ Créez une Pull Request sur GitHub.
 
 ```bash
 bash scripts/setup_env.sh
-source activate_env.sh
+source scripts/activate_env.sh
 ```
 
 Le script utilise `py` (Python Launcher Windows) pour créer un venv avec le Python Windows, afin d'obtenir les wheels précompilées de DuckDB.
