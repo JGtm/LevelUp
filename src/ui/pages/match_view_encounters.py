@@ -21,11 +21,11 @@ from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_encounters_logic import (
     Badge,
     EncounterStats,
-    _relative_date_fr,
+    _relative_date,
     build_friends_set,
     compute_encounter_badges,
     filter_encounter_xuids,
-    ordinal_fr,
+    ordinal,
 )
 from src.utils.db import duckdb_read_only
 
@@ -50,8 +50,8 @@ def _badge_html(badge: Badge) -> str:
 
 
 def _ordinal_badge_html(n: int) -> str:
-    """Génère le badge ordinal grisé ('12e rencontre')."""
-    label = html.escape(f"{ordinal_fr(n)} rencontre")
+    """Génère le badge ordinal grisé ('12e rencontre' / '12th encounter')."""
+    label = html.escape(t("encounter_ordinal", ordinal=ordinal(n)))
     return f'<span style="color:#888;font-size:0.75em;margin-left:6px;">{label}</span>'
 
 
@@ -114,7 +114,7 @@ def _compact_row_html(gamertag: str, side: str) -> str:
         f"<tr class='os-sb-row'>"
         f"<td class='os-sb-td'>{gt_html}{ordinal}</td>"
         f"<td class='os-sb-td'>{role}</td>"
-        f"<td class='os-sb-td' colspan='5' style='color:#666;font-style:italic;'>1ère rencontre</td>"
+        f"<td class='os-sb-td' colspan='5' style='color:#666;font-style:italic;'>{html.escape(t('encounter_ordinal', ordinal=ordinal(1)))}</td>"
         f"</tr>"
     )
 
@@ -131,7 +131,7 @@ def _full_row_html(stats: EncounterStats, badges: list[Badge]) -> str:
     wr_ally = _wr_cell_html(stats.winrate_as_ally, stats.ally_count)
     wr_enemy = _wr_cell_html(stats.winrate_vs_enemy, stats.enemy_count)
     kd = _kd_cell_html(stats.kills_dealt, stats.deaths_suffered)
-    last_str = html.escape(_relative_date_fr(stats.last_seen)) if stats.last_seen else "—"
+    last_str = html.escape(_relative_date(stats.last_seen)) if stats.last_seen else "—"
 
     return (
         f"<tr class='os-sb-row'>"

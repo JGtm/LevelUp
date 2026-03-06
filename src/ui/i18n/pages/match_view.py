@@ -307,6 +307,17 @@ STRINGS: dict[str, dict[str, str] | str] = {
             "**Last match** — date of the last shared match"
         ),
     },
+    # Ordinal de rencontre — "{ordinal} rencontre" / "{ordinal} encounter"
+    "encounter_ordinal": {"fr": "{ordinal} rencontre", "en": "{ordinal} encounter"},
+    # Dates relatives (tableau encounter history)
+    "rel_date_upcoming": {"fr": "à venir", "en": "upcoming"},
+    "rel_date_today": {"fr": "aujourd'hui", "en": "today"},
+    "rel_date_yesterday": {"fr": "hier", "en": "yesterday"},
+    "rel_date_days_ago": {"fr": "il y a {days} j", "en": "{days}d ago"},
+    "rel_date_weeks_ago": {"fr": "il y a {weeks} sem.", "en": "{weeks}w ago"},
+    "rel_date_months_ago": {"fr": "il y a {months} mois", "en": "{months}mo ago"},
+    "rel_date_years_ago": {"fr": "il y a {years} an", "en": "{years}y ago"},
+    "rel_date_years_ago_pl": {"fr": "il y a {years} ans", "en": "{years}y ago"},
     "badge_tough_nut": {"fr": "Dur à cuire", "en": "Tough Nut"},
     "badge_ally_plus": {"fr": "Allié+", "en": "Ally+"},
     "badge_coriace": {"fr": "Coriace", "en": "Tough Guy"},
