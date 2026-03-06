@@ -9,7 +9,6 @@ Ce module gère:
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 
@@ -27,6 +26,7 @@ from src.app._filters_cascade import (
 )
 from src.app._filters_period import _render_period_filter
 from src.app._filters_session import _apply_default_last_session, _render_session_filter
+from src.app._page_context import FilterSidebarCallbacks
 from src.ui import translate_playlist_name
 from src.ui.cache import cached_compute_sessions_db
 from src.ui.filter_state import (
@@ -150,17 +150,19 @@ def render_filters_sidebar(  # noqa: C901, PLR0912, PLR0913, PLR0915
     xuid: str,
     db_key: tuple[int, int] | None,
     aliases_key: int | None,
-    date_range_fn: Callable[[pl.DataFrame], tuple[date, date]],
-    clean_asset_label_fn: Callable[[str], str],
-    normalize_mode_label_fn: Callable[[str], str],
-    normalize_map_label_fn: Callable[[str], str],
-    build_friends_opts_map_fn: Callable,
+    callbacks: FilterSidebarCallbacks,
 ) -> FilterState:
     """Rend la section complète des filtres dans la sidebar.
 
     Returns:
         FilterState avec tous les paramètres de filtrage sélectionnés.
     """
+    date_range_fn = callbacks["date_range_fn"]
+    clean_asset_label_fn = callbacks["clean_asset_label_fn"]
+    normalize_mode_label_fn = callbacks["normalize_mode_label_fn"]
+    normalize_map_label_fn = callbacks["normalize_map_label_fn"]
+    build_friends_opts_map_fn = callbacks["build_friends_opts_map_fn"]
+
     df = _to_polars(df)
 
     st.header(t("filter_header"))
