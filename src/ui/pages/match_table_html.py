@@ -161,13 +161,14 @@ def _build_default_columns() -> list[tuple[str, str]]:
     ]
 
 
-def render_match_table_html(
+def render_match_table_html(  # noqa: PLR0913 — kwargs keyword-only, interface stable
     view: pl.DataFrame,
     *,
     waypoint_player: str | None = None,
     header_css_class: str = "",
     page_slug: str = "Explorer",
     max_rows: int = 250,
+    hide_empty_cols: bool = False,
 ) -> str:
     """Génère le HTML d'un tableau de matchs.
 
@@ -177,12 +178,19 @@ def render_match_table_html(
         header_css_class: Classe CSS additionnelle pour le ``<thead>`` (ex: couleur d'équipe).
         page_slug: Slug de la page cible pour le lien "Ouvrir".
         max_rows: Nombre maximum de lignes à afficher.
+        hide_empty_cols: Si True, masque les colonnes entièrement nulles (inconnus).
 
     Returns:
         Chaîne HTML complète (``<div class='os-table-wrap'>…</div>``).
     """
     view = view.sort("start_time", descending=True).head(max_rows)
     cols = _build_default_columns()
+    if hide_empty_cols:
+        cols = [
+            (lbl, key)
+            for lbl, key in cols
+            if key not in view.columns or view[key].drop_nulls().len() > 0
+        ]
     lbl_open = t("btn_open")
 
     # En-têtes

@@ -100,29 +100,21 @@ def _kd_cell_html(kills: int, deaths: int) -> str:
     return f'<span style="{css}">{ratio_str}</span>'
 
 
-_BADGE_LEGEND_ITEMS = (
-    ("badge_tough_nut", "color:#ff9e6b;background:rgba(213,94,0,0.22);", "legend_badge_tough_nut"),
-    ("badge_ally_plus", "color:#33ffbf;background:rgba(0,158,115,0.22);", "legend_badge_ally_plus"),
-    ("badge_coriace", "color:#FFB703;background:rgba(255,183,3,0.18);", "legend_badge_coriace"),
-)
-
-
 def _build_badge_legend_html() -> str:
-    """Génère un bloc HTML de légende pour les 3 badges de rencontres."""
-    items = []
-    for label_key, style, desc_key in _BADGE_LEGEND_ITEMS:
-        label = html.escape(t(label_key))
-        desc = html.escape(t(desc_key))
-        items.append(
-            f'<span style="{style}padding:1px 5px;border-radius:3px;font-size:0.75em;'
-            f'font-weight:700;margin-right:4px;">{label}</span>'
-            f'<span style="color:#aaa;font-size:0.82em;">{desc}</span>'
-        )
-    return (
-        '<div style="margin-top:6px;margin-bottom:2px;line-height:1.9;">'
-        + "<br>".join(items)
-        + "</div>"
-    )
+    """Génère une légende HTML inline pour les badges d'encounter."""
+    items = [
+        ("os-sb-td--best", "badge_ally_plus", "legend_badge_ally_plus"),
+        ("encounter-badge--amber", "badge_coriace", "legend_badge_coriace"),
+        ("os-sb-td--worst", "badge_tough_nut", "legend_badge_tough_nut"),
+    ]
+    parts = []
+    for css_class, label_key, legend_key in items:
+        badge = Badge(label_key=label_key, css_class=css_class, tooltip="")
+        badge_span = _badge_html(badge)
+        legend_text = html.escape(t(legend_key))
+        parts.append(f"<span style='margin-right:14px;'>{badge_span} {legend_text}</span>")
+    inner = "".join(parts)
+    return f"<div style='font-size:0.78em;opacity:0.72;margin-top:4px;'>{inner}</div>"
 
 
 # ---------------------------------------------------------------------------
