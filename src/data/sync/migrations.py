@@ -682,6 +682,9 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             p.team_mmr,
             {enemy_mmr_expr},
 
+            -- Rang dans le match
+            p.rank,
+
             -- Score personnel
             p.score AS personal_score,
 
