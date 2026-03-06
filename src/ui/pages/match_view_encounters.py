@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _badge_html(badge: Badge) -> str:
+def badge_html(badge: Badge) -> str:
     """Génère un <span> inline pour un badge."""
     esc_label = html.escape(t(badge.label_key))
     esc_tip = html.escape(badge.tooltip)
@@ -49,13 +49,13 @@ def _badge_html(badge: Badge) -> str:
     return f'<span style="{style}" title="{esc_tip}">{esc_label}</span>'
 
 
-def _ordinal_badge_html(n: int) -> str:
+def ordinal_badge_html(n: int) -> str:
     """Génère le badge ordinal grisé ('12e rencontre' / '12th encounter')."""
     label = html.escape(t("encounter_ordinal", ordinal=ordinal(n)))
     return f'<span style="color:#888;font-size:0.75em;margin-left:6px;">{label}</span>'
 
 
-def _role_cell_html(side: str) -> str:
+def role_cell_html(side: str) -> str:
     """Génère la cellule Rôle colorée selon le côté (allié / ennemi)."""
     if side == "allié":
         style = "color:#a8d4f5;background:rgba(0,114,178,0.28);padding:2px 7px;border-radius:3px;font-size:0.8em;font-weight:600;"
@@ -66,7 +66,7 @@ def _role_cell_html(side: str) -> str:
     return f'<span style="{style}">{label}</span>'
 
 
-def _wr_cell_html(wr: float | None, n_matches: int) -> str:
+def wr_cell_html(wr: float | None, n_matches: int) -> str:
     """Formate un win rate avec highlight si extrême."""
     if wr is None or n_matches == 0:
         return "—"
@@ -80,7 +80,7 @@ def _wr_cell_html(wr: float | None, n_matches: int) -> str:
     return f'<span style="{css}">{pct}%</span>'
 
 
-def _kd_cell_html(kills: int, deaths: int) -> str:
+def kd_cell_html(kills: int, deaths: int) -> str:
     """Formate le ratio K/D croisé avec highlight."""
     if kills == 0 and deaths == 0:
         return "—"
@@ -100,7 +100,7 @@ def _kd_cell_html(kills: int, deaths: int) -> str:
     return f'<span style="{css}">{ratio_str}</span>'
 
 
-def _build_badge_legend_html() -> str:
+def build_badge_legend_html() -> str:
     """Génère une légende HTML inline pour les badges d'encounter."""
     items = [
         ("os-sb-td--best", "badge_ally_plus", "legend_badge_ally_plus"),
@@ -110,7 +110,7 @@ def _build_badge_legend_html() -> str:
     parts = []
     for css_class, label_key, legend_key in items:
         badge = Badge(label_key=label_key, css_class=css_class, tooltip="")
-        badge_span = _badge_html(badge)
+        badge_span = badge_html(badge)
         legend_text = html.escape(t(legend_key))
         parts.append(f"<span style='margin-right:14px;'>{badge_span} {legend_text}</span>")
     inner = "".join(parts)
@@ -125,8 +125,8 @@ def _build_badge_legend_html() -> str:
 def _compact_row_html(gamertag: str, side: str) -> str:
     """Génère une ligne compacte pour un joueur rencontré pour la 1ère fois."""
     gt_html = gamertag_link(gamertag) if gamertag and gamertag != "—" else "—"
-    role = _role_cell_html(side)
-    ordinal_html = _ordinal_badge_html(1)
+    role = role_cell_html(side)
+    ordinal_html = ordinal_badge_html(1)
     return (
         f"<tr class='os-sb-row'>"
         f"<td class='os-sb-td'>{gt_html}{ordinal_html}</td>"
@@ -140,14 +140,14 @@ def _full_row_html(stats: EncounterStats, badges: list[Badge]) -> str:
     """Génère une ligne complète avec toutes les métriques et badges."""
     gt_raw = stats.gamertag or stats.xuid[:8] or "—"
     gt_html = gamertag_link(gt_raw) if gt_raw != "—" else "—"
-    ordinal_html = _ordinal_badge_html(stats.total_encounters)
-    badges_html = " ".join(_badge_html(b) for b in badges)
-    role = _role_cell_html(stats.current_side)
+    ordinal_html = ordinal_badge_html(stats.total_encounters)
+    badges_html = " ".join(badge_html(b) for b in badges)
+    role = role_cell_html(stats.current_side)
 
     enc_detail = f"A:{stats.ally_count} | E:{stats.enemy_count}"
-    wr_ally = _wr_cell_html(stats.winrate_as_ally, stats.ally_count)
-    wr_enemy = _wr_cell_html(stats.winrate_vs_enemy, stats.enemy_count)
-    kd = _kd_cell_html(stats.kills_dealt, stats.deaths_suffered)
+    wr_ally = wr_cell_html(stats.winrate_as_ally, stats.ally_count)
+    wr_enemy = wr_cell_html(stats.winrate_vs_enemy, stats.enemy_count)
+    kd = kd_cell_html(stats.kills_dealt, stats.deaths_suffered)
     last_str = html.escape(_relative_date(stats.last_seen)) if stats.last_seen else "—"
 
     return (
@@ -332,8 +332,16 @@ def render_encounter_section(
     rows_html = _build_encounter_rows(df.to_dicts(), xuid_to_team, my_team_id)
     if rows_html:
         st.markdown(_build_encounter_table_html(rows_html), unsafe_allow_html=True)
-        st.markdown(_build_badge_legend_html(), unsafe_allow_html=True)
+        st.markdown(build_badge_legend_html(), unsafe_allow_html=True)
         st.caption(t("mv_encounter_legend"))
 
 
-__all__ = ["render_encounter_section"]
+__all__ = [
+    "badge_html",
+    "build_badge_legend_html",
+    "kd_cell_html",
+    "ordinal_badge_html",
+    "render_encounter_section",
+    "role_cell_html",
+    "wr_cell_html",
+]
