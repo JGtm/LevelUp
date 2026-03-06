@@ -107,7 +107,7 @@ def save_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
         # Mode Sessions
         gap_minutes_val = st.session_state.get("gap_minutes")
-        if isinstance(gap_minutes_val, (int, float)):  # noqa: UP038
+        if isinstance(gap_minutes_val, int | float):
             preferences.gap_minutes = int(gap_minutes_val)
         picked_session_label_val = st.session_state.get("picked_session_label")
         if isinstance(picked_session_label_val, str):
