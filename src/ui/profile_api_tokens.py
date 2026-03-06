@@ -20,7 +20,7 @@ def _is_probable_auth_error(err: Exception) -> bool:
     return ("401" in m) or ("unauthorized" in m) or ("forbidden" in m and "403" in m)
 
 
-async def get_tokens(
+async def get_tokens(  # noqa: C901, PLR0915
     session,
     *,
     spartan_token: str | None,
@@ -77,9 +77,9 @@ async def get_tokens(
     if not oauth_refresh_token and gamertag:
         try:
             from src.ui.xbox_oauth import load_refresh_token as _load_rt
+            from src.utils.paths import REPO_ROOT as _repo_root_path
 
-            _root = _repo_root()
-            _player_db = _root / "data" / "players" / gamertag / "stats.duckdb"
+            _player_db = _repo_root_path / "data" / "players" / gamertag / "stats.duckdb"
             if _player_db.exists():
                 _token_from_db = _load_rt(_player_db)
                 if _token_from_db:

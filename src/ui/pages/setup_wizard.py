@@ -19,6 +19,7 @@ import streamlit as st
 
 from src.ui.i18n import t
 from src.ui.pages.setup_wizard_logic import (
+    SetupStatus,
     create_player_profile,
     get_setup_status,
     get_sync_command,
@@ -122,8 +123,10 @@ def render_setup_wizard_page() -> None:
     )
 
     status = get_setup_status()
+    logger.debug("Wizard : status=%s", status)
 
     if not status.needs_setup:
+        logger.info("Wizard : configuration complète, skip")
         st.balloons()
         st.success(t("setup_already_configured"))
         return
@@ -132,6 +135,7 @@ def render_setup_wizard_page() -> None:
     oauth_result = st.session_state.get("_xbox_oauth_result")
     if oauth_result and "error" not in oauth_result:
         gt = oauth_result.get("gamertag", "")
+        logger.info("Wizard : callback Xbox OAuth réussi pour %s", gt)
         st.balloons()
         st.success(t("setup_xbox_provisioned", gamertag=gt))
         st.info(t("setup_xbox_sync_hint", gamertag=gt))
@@ -146,8 +150,10 @@ def render_setup_wizard_page() -> None:
     if mode is None:
         _render_mode_selection()
     elif mode == "xbox":
+        logger.debug("Wizard : mode Xbox sélectionné")
         _render_xbox_flow(status)
     elif mode == "azure":
+        logger.debug("Wizard : mode Azure sélectionné")
         _render_azure_flow(status)
 
 
@@ -209,7 +215,7 @@ def _render_mode_selection() -> None:
 # =============================================================================
 
 
-def _render_xbox_flow(status) -> None:
+def _render_xbox_flow(status: SetupStatus) -> None:
     """Parcours Xbox en 2 étapes : credentials Azure + connexion Xbox."""
     _render_back_button()
 
@@ -238,6 +244,7 @@ def _render_xbox_flow(status) -> None:
     redirect_uri = os.environ.get("SPNKR_AZURE_REDIRECT_URI", "").strip() or "http://localhost:8501"
 
     if client_id:
+        logger.debug("Wizard Xbox : génération URL OAuth (client_id=%s…)", client_id[:8])
         from src.ui.xbox_oauth import build_xbox_auth_url, generate_oauth_state
 
         if "_xbox_oauth_state" not in st.session_state:
@@ -254,6 +261,7 @@ def _render_xbox_flow(status) -> None:
         )
         st.caption(t("setup_xbox_redirect_note", redirect_uri=redirect_uri))
     else:
+        logger.warning("Wizard Xbox : client_id absent, bouton désactivé")
         st.warning(t("setup_credentials_missing"))
 
 
@@ -262,7 +270,7 @@ def _render_xbox_flow(status) -> None:
 # =============================================================================
 
 
-def _render_azure_flow(status) -> None:
+def _render_azure_flow(status: SetupStatus) -> None:
     """Parcours Azure classique en 3 étapes."""
     _render_back_button()
 
