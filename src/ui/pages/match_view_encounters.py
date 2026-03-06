@@ -109,10 +109,10 @@ def _compact_row_html(gamertag: str, side: str) -> str:
     """Génère une ligne compacte pour un joueur rencontré pour la 1ère fois."""
     gt_html = gamertag_link(gamertag) if gamertag and gamertag != "—" else "—"
     role = _role_cell_html(side)
-    ordinal = _ordinal_badge_html(1)
+    ordinal_html = _ordinal_badge_html(1)
     return (
         f"<tr class='os-sb-row'>"
-        f"<td class='os-sb-td'>{gt_html}{ordinal}</td>"
+        f"<td class='os-sb-td'>{gt_html}{ordinal_html}</td>"
         f"<td class='os-sb-td'>{role}</td>"
         f"<td class='os-sb-td' colspan='5' style='color:#666;font-style:italic;'>{html.escape(t('encounter_ordinal', ordinal=ordinal(1)))}</td>"
         f"</tr>"
@@ -123,7 +123,7 @@ def _full_row_html(stats: EncounterStats, badges: list[Badge]) -> str:
     """Génère une ligne complète avec toutes les métriques et badges."""
     gt_raw = stats.gamertag or stats.xuid[:8] or "—"
     gt_html = gamertag_link(gt_raw) if gt_raw != "—" else "—"
-    ordinal = _ordinal_badge_html(stats.total_encounters)
+    ordinal_html = _ordinal_badge_html(stats.total_encounters)
     badges_html = " ".join(_badge_html(b) for b in badges)
     role = _role_cell_html(stats.current_side)
 
@@ -135,7 +135,7 @@ def _full_row_html(stats: EncounterStats, badges: list[Badge]) -> str:
 
     return (
         f"<tr class='os-sb-row'>"
-        f"<td class='os-sb-td'>{gt_html}{ordinal} {badges_html}</td>"
+        f"<td class='os-sb-td'>{gt_html}{ordinal_html} {badges_html}</td>"
         f"<td class='os-sb-td'>{role}</td>"
         f"<td class='os-sb-td'>{stats.total_encounters} <span style='color:#888;font-size:0.8em;'>({enc_detail})</span></td>"
         f"<td class='os-sb-td'>{wr_ally}</td>"
