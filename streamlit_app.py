@@ -977,7 +977,11 @@ def main() -> None:
     # 1. Initialisation (config, CSS, settings, validation)
     settings, DEFAULT_DB, cfg_warnings, cfg_errors = _initialize_app()
 
-    # 1b. Wizard de configuration initiale si config incomplète
+    # 1b. Callback OAuth Xbox (doit être traité AVANT le wizard guard,
+    #     car le redirect ?code=XXX peut arriver pendant le setup)
+    _handle_xbox_oauth_callback()
+
+    # 1c. Wizard de configuration initiale si config incomplète
     from src.ui.pages.setup_wizard_logic import get_setup_status
 
     setup_status = get_setup_status()
@@ -989,9 +993,6 @@ def main() -> None:
 
     # 2. Services d'arrière-plan (media indexing, Tailscale)
     _start_background_services(settings, DEFAULT_DB)
-
-    # 2.5. Callback OAuth Xbox (prioritaire sur la navigation)
-    _handle_xbox_oauth_callback()
 
     # 3. Query params (deep links)
     _parse_query_params()

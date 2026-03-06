@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 STRINGS: dict[str, dict[str, str]] = {
-    # ── Titres ──────────────────────────────────────────────────────────────
+    # ── En-tête ─────────────────────────────────────────────────────────────
     "setup_title": {
         "fr": "⚙️ Configuration initiale",
         "en": "⚙️ Initial Setup",
+    },
+    "setup_title_clean": {
+        "fr": "Bienvenue dans LevelUp",
+        "en": "Welcome to LevelUp",
+    },
+    "setup_subtitle": {
+        "fr": "Analysez vos stats Halo Infinite. Choisissez une méthode de connexion pour commencer.",
+        "en": "Analyze your Halo Infinite stats. Choose a login method to get started.",
     },
     "setup_welcome": {
         "fr": (
@@ -18,10 +26,111 @@ STRINGS: dict[str, dict[str, str]] = {
             "stats, a few settings are needed."
         ),
     },
-    # ── Étape 1 : Azure ────────────────────────────────────────────────────
+    # ── Cartes de sélection de mode ────────────────────────────────────────
+    "setup_xbox_card_title": {
+        "fr": "Connexion Xbox",
+        "en": "Xbox Login",
+    },
+    "setup_xbox_card_desc": {
+        "fr": "Connectez-vous avec votre compte Microsoft. Votre profil sera créé automatiquement.",
+        "en": "Sign in with your Microsoft account. Your profile will be created automatically.",
+    },
+    "setup_xbox_card_badge": {
+        "fr": "✨ Recommandé",
+        "en": "✨ Recommended",
+    },
+    "setup_xbox_card_btn": {
+        "fr": "🎮 Choisir Xbox",
+        "en": "🎮 Choose Xbox",
+    },
+    "setup_azure_card_title": {
+        "fr": "Configuration Azure",
+        "en": "Azure Setup",
+    },
+    "setup_azure_card_desc": {
+        "fr": "Configurez manuellement votre App Azure et votre token. Pour les utilisateurs avancés.",
+        "en": "Manually configure your Azure App and token. For advanced users.",
+    },
+    "setup_azure_card_badge": {
+        "fr": "🔧 Avancé",
+        "en": "🔧 Advanced",
+    },
+    "setup_azure_card_btn": {
+        "fr": "☁️ Choisir Azure",
+        "en": "☁️ Choose Azure",
+    },
+    "setup_footer_note": {
+        "fr": "Les deux méthodes nécessitent une App Azure. La méthode Xbox simplifie l'obtention du token et la création du profil.",
+        "en": "Both methods require an Azure App. The Xbox method simplifies token acquisition and profile creation.",
+    },
+    # ── Parcours Xbox ──────────────────────────────────────────────────────
+    "setup_xbox_step1_title": {
+        "fr": "App Azure",
+        "en": "Azure App",
+    },
+    "setup_xbox_step1_help": {
+        "fr": (
+            "Même avec la connexion Xbox, une **App Azure** est nécessaire (elle sert de passerelle OAuth).\n\n"
+            "**Important** : dans Azure Portal → Authentication, ajoutez `http://localhost:8501` "
+            "comme **Redirect URI** (type Web).\n\n"
+            "📖 [Guide pas à pas avec captures d'écran](docs/CONFIGURATION.md#azure-configuration)"
+        ),
+        "en": (
+            "Even with Xbox login, an **Azure App** is needed (it serves as the OAuth gateway).\n\n"
+            "**Important**: in Azure Portal → Authentication, add `http://localhost:8501` "
+            "as a **Redirect URI** (Web type).\n\n"
+            "📖 [Step-by-step guide with screenshots](docs/CONFIGURATION.md#azure-configuration)"
+        ),
+    },
+    "setup_xbox_step2_title": {
+        "fr": "Connexion Xbox",
+        "en": "Xbox Login",
+    },
+    "setup_xbox_step2_help": {
+        "fr": (
+            "Cliquez ci-dessous pour vous connecter avec votre compte Xbox/Microsoft.\n\n"
+            "Votre gamertag et votre token seront récupérés **automatiquement** — "
+            "pas besoin de copier/coller quoi que ce soit."
+        ),
+        "en": (
+            "Click below to sign in with your Xbox/Microsoft account.\n\n"
+            "Your gamertag and token will be retrieved **automatically** — "
+            "no copy/paste needed."
+        ),
+    },
+    "setup_xbox_connect_btn": {
+        "fr": "🎮 Se connecter avec Xbox",
+        "en": "🎮 Sign in with Xbox",
+    },
+    "setup_xbox_redirect_note": {
+        "fr": "Après connexion, Microsoft vous redirigera vers `{redirect_uri}`.",
+        "en": "After login, Microsoft will redirect you to `{redirect_uri}`.",
+    },
+    "setup_xbox_provisioned": {
+        "fr": "🎉 Connexion réussie ! Profil créé pour **{gamertag}**.",
+        "en": "🎉 Login successful! Profile created for **{gamertag}**.",
+    },
+    "setup_xbox_sync_hint": {
+        "fr": (
+            "Lancez cette commande dans un terminal pour récupérer vos matchs, "
+            "puis rechargez la page (F5) :"
+        ),
+        "en": (
+            "Run this command in a terminal to fetch your matches, " "then reload the page (F5):"
+        ),
+    },
+    "setup_credentials_missing": {
+        "fr": "⚠️ Complétez l'étape précédente d'abord.",
+        "en": "⚠️ Complete the previous step first.",
+    },
+    "setup_back_btn": {
+        "fr": "← Retour",
+        "en": "← Back",
+    },
+    # ── Étape 1 : Azure (parcours classique) ───────────────────────────────
     "setup_step1_title": {
-        "fr": "1️⃣ Credentials Azure",
-        "en": "1️⃣ Azure Credentials",
+        "fr": "Credentials Azure",
+        "en": "Azure Credentials",
     },
     "setup_step1_help": {
         "fr": (
@@ -48,8 +157,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Redirect URI",
     },
     "setup_save_credentials": {
-        "fr": "💾 Sauvegarder les credentials",
-        "en": "💾 Save credentials",
+        "fr": "💾 Sauvegarder",
+        "en": "💾 Save",
     },
     "setup_credentials_saved": {
         "fr": "✅ Credentials sauvegardées dans `.env.local`.",
@@ -59,10 +168,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "✅ Credentials Azure configurées.",
         "en": "✅ Azure credentials configured.",
     },
-    # ── Étape 2 : Token ───────────────────────────────────────────────────
+    # ── Étape 2 : Token (parcours classique) ──────────────────────────────
     "setup_step2_title": {
-        "fr": "2️⃣ Token OAuth",
-        "en": "2️⃣ OAuth Token",
+        "fr": "Token OAuth",
+        "en": "OAuth Token",
     },
     "setup_step2_help": {
         "fr": (
@@ -102,10 +211,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "⚠️ Le token est vide.",
         "en": "⚠️ The token is empty.",
     },
-    # ── Étape 3 : Joueur ──────────────────────────────────────────────────
+    # ── Étape 3 : Joueur (parcours classique) ─────────────────────────────
     "setup_step3_title": {
-        "fr": "3️⃣ Ajouter un joueur",
-        "en": "3️⃣ Add a player",
+        "fr": "Ajouter un joueur",
+        "en": "Add a player",
     },
     "setup_step3_help": {
         "fr": (
