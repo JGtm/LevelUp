@@ -28,28 +28,55 @@ To use the Halo Infinite API via SPNKr, you need:
 ### 1. Create an Azure Application
 
 1. Go to [Azure Portal](https://portal.azure.com/)
-2. Navigate to **Azure Active Directory** → **App registrations**
+2. Navigate to **Microsoft Entra ID** → **App registrations**
+
+   ![Microsoft Entra ID](screenshots/azure-setup/01-entra-id.png)
+
 3. Click **New registration**
+
+   ![Add App Registration](screenshots/azure-setup/02-add-app-registration.png)
+
 4. Configure:
    - **Name**: `LevelUp Halo`
    - **Supported account types**: Personal Microsoft accounts only
    - **Redirect URI**: `https://localhost` (Web)
 5. Click **Register**
 
+   ![Register Application](screenshots/azure-setup/03-register-application.png)
+
 ### 2. Configure Permissions
 
-1. In your application, go to **API permissions**
-2. Click **Add a permission**
-3. Select **Microsoft Graph** → **Delegated permissions**
-4. Add: `User.Read`, `offline_access`
+1. In your application, go to **API permissions** and click **Add a permission**
+
+   ![API Permissions](screenshots/azure-setup/04-api-permissions.png)
+
+2. Select **Microsoft Graph** → **Delegated permissions**
+
+   ![Select Microsoft Graph](screenshots/azure-setup/05-select-microsoft-graph.png)
+
+3. Add `offline_access`
+
+   ![Add offline_access](screenshots/azure-setup/06-permission-offline-access.png)
+
+4. Add `User.Read`
+
+   ![Add User.Read](screenshots/azure-setup/07-permission-user-read.png)
+
 5. Also add Xbox Live permissions (if available)
 
 ### 3. Create a Client Secret
 
-1. Go to **Certificates & secrets**
-2. Click **New client secret**
-3. Give it a name and choose an expiration
-4. **Copy the value immediately** (it won't be visible again later)
+1. Go to **Certificates & secrets** and click **New client secret**
+
+   ![Certificates & Secrets](screenshots/azure-setup/08-certificates-secrets.png)
+
+2. Give it a description and choose an expiration
+
+   ![New Client Secret](screenshots/azure-setup/09-new-client-secret.png)
+
+3. **Copy the value immediately** (it won't be visible again later)
+
+   ![Copy Secret Value](screenshots/azure-setup/10-copy-secret.png)
 
 ### 4. Set Up the .env.local File
 
