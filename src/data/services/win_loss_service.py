@@ -13,6 +13,8 @@ from dataclasses import dataclass
 
 import polars as pl
 
+from src.data.domain.refdata import Outcome
+
 # ─── Dataclasses retour ────────────────────────────────────────────────
 
 
@@ -59,7 +61,7 @@ class WinLossService:
     """
 
     @staticmethod
-    def compute_period_table(
+    def compute_period_table(  # noqa: PLR0912
         dff: pl.DataFrame,
         bucket_label: str,
         is_session_scope: bool = False,
@@ -137,10 +139,10 @@ class WinLossService:
             d.group_by("bucket")
             .agg(
                 [
-                    (pl.col("outcome") == 2).sum().alias(_col_wins),
-                    (pl.col("outcome") == 3).sum().alias(_col_losses),
-                    (pl.col("outcome") == 1).sum().alias(_col_draws),
-                    (pl.col("outcome") == 4).sum().alias(_col_unfinished),
+                    (pl.col("outcome") == Outcome.WIN).sum().alias(_col_wins),
+                    (pl.col("outcome") == Outcome.LOSS).sum().alias(_col_losses),
+                    (pl.col("outcome") == Outcome.TIE).sum().alias(_col_draws),
+                    (pl.col("outcome") == Outcome.DID_NOT_FINISH).sum().alias(_col_unfinished),
                 ]
             )
             .sort("bucket")
@@ -195,7 +197,7 @@ class WinLossService:
         )
 
     @staticmethod
-    def get_friend_scope_df(
+    def get_friend_scope_df(  # noqa: PLR0913
         scope: str,
         dff: pl.DataFrame,
         base: pl.DataFrame,

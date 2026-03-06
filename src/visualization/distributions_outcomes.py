@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from src.config import HALO_COLORS, OUTCOME_CODES, PLOT_CONFIG, SESSION_CONFIG
+from src.ui.date_formats import FMT_DATE_ISO
 from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import (
@@ -73,11 +74,11 @@ def _compute_outcome_buckets(
         d = d.with_columns(pl.col("start_time").dt.truncate("1h").alias("bucket"))
         return d, viz_t("bucket_hour", lang)
     if days <= cfg.bucket_threshold_weekly:
-        d = d.with_columns(pl.col("start_time").dt.strftime("%Y-%m-%d").alias("bucket"))
+        d = d.with_columns(pl.col("start_time").dt.strftime(FMT_DATE_ISO).alias("bucket"))
         return d, viz_t("bucket_day", lang)
     if days <= cfg.bucket_threshold_monthly:
         d = d.with_columns(
-            pl.col("start_time").dt.truncate("1w").dt.strftime("%Y-%m-%d").alias("bucket")
+            pl.col("start_time").dt.truncate("1w").dt.strftime(FMT_DATE_ISO).alias("bucket")
         )
         return d, viz_t("bucket_week", lang)
     d = d.with_columns(pl.col("start_time").dt.strftime("%Y-%m").alias("bucket"))
@@ -102,7 +103,9 @@ def plot_outcomes_over_time(
             height=PLOT_CONFIG.default_height, margin={"l": 40, "r": 20, "t": 30, "b": 40}
         )
         fig.update_yaxes(title_text=viz_t("axis_count", lang))
-        return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height), viz_t("bucket_period", lang)
+        return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height), viz_t(
+            "bucket_period", lang
+        )
 
     d, bucket_label = _compute_outcome_buckets(d, session_style=session_style, lang=lang)
 
@@ -317,7 +320,7 @@ def _add_outcome_traces(
         )
 
 
-def plot_stacked_outcomes_by_category(
+def plot_stacked_outcomes_by_category(  # noqa: PLR0913
     df: DataFrameLike,
     category_col: str,
     *,
@@ -477,9 +480,7 @@ def plot_win_ratio_heatmap(
 # ---------------------------------------------------------------------------
 
 
-def _determine_top_period(
-    d: pl.DataFrame, lang: str = "fr"
-) -> tuple[pl.DataFrame, str]:
+def _determine_top_period(d: pl.DataFrame, lang: str = "fr") -> tuple[pl.DataFrame, str]:
     """Ajoute une colonne 'period' et retourne (df, period_label)."""
     d = _ensure_datetime(d, "start_time")
     d = d.drop_nulls(subset=["start_time"])
@@ -495,10 +496,10 @@ def _determine_top_period(
         d = d.with_row_index("period").with_columns(pl.col("period").cast(pl.String))
         return d, viz_t("bucket_cap_match", lang)
     if days < 7:
-        d = d.with_columns(pl.col("start_time").dt.strftime("%Y-%m-%d").alias("period"))
+        d = d.with_columns(pl.col("start_time").dt.strftime(FMT_DATE_ISO).alias("period"))
         return d, viz_t("bucket_cap_day", lang)
     d = d.with_columns(
-        pl.col("start_time").dt.truncate("1w").dt.strftime("%Y-%m-%d").alias("period")
+        pl.col("start_time").dt.truncate("1w").dt.strftime(FMT_DATE_ISO).alias("period")
     )
     return d, viz_t("bucket_cap_week", lang)
 

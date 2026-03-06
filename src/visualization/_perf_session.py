@@ -1,0 +1,280 @@
+"""Graphiques de session et indicateurs de performance.
+
+Extraits de performance.py — regroupe les charts de tendance de session
+et les indicateurs de métriques agrégées.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import plotly.graph_objects as go
+import polars as pl
+from plotly.subplots import make_subplots
+
+from src.config import THEME_COLORS
+from src.ui.i18n.viz import viz_t
+from src.visualization._perf_cumulative import PERFORMANCE_COLORS
+from src.visualization.theme import apply_halo_plot_style
+
+
+def plot_session_trend(
+    match_stats_df: pl.DataFrame,
+    *,
+    title: str | None = None,
+    height: int = 350,
+    lang: str = "fr",
+) -> go.Figure:
+    """Crée un graphique montrant la tendance de la session.
+
+    Compare la première et la seconde moitié avec une indication visuelle
+    de l'amélioration ou de la dégradation.
+    """
+    if title is None:
+        title = viz_t("title_session_trend", lang)
+    fig = go.Figure()
+
+    if match_stats_df.is_empty() or len(match_stats_df) < 4:
+        fig.add_annotation(
+            text=viz_t("empty_not_enough_matches", lang),
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+            font={"size": 14, "color": THEME_COLORS.text_primary},
+        )
+        return apply_halo_plot_style(fig, title=title, height=height)
+
+    # Import local pour éviter les imports circulaires
+    from src.analysis.cumulative import compute_session_trend_polars
+
+    trend_data = compute_session_trend_polars(match_stats_df)
+
+    first_kd = trend_data.get("first_half_kd", 0) or 0
+    second_kd = trend_data.get("second_half_kd", 0) or 0
+    change_pct = trend_data.get("kd_change_pct", 0) or 0
+    trend = trend_data.get("trend", "stable")
+
+    if trend == "improving":
+        delta_color = PERFORMANCE_COLORS["trend_up"]
+        trend_symbol = "▲"
+        trend_text = viz_t("label_improving", lang)
+    elif trend == "declining":
+        delta_color = PERFORMANCE_COLORS["trend_down"]
+        trend_symbol = "▼"
+        trend_text = viz_t("label_declining", lang)
+    else:
+        delta_color = PERFORMANCE_COLORS["baseline"]
+        trend_symbol = "◆"
+        trend_text = viz_t("label_stable", lang)
+
+    fig = make_subplots(
+        rows=1,
+        cols=3,
+        specs=[[{"type": "indicator"}, {"type": "indicator"}, {"type": "indicator"}]],
+        subplot_titles=[
+            viz_t("label_session_start", lang),
+            viz_t("label_session_end", lang),
+            viz_t("trace_trend", lang),
+        ],
+    )
+
+    fig.add_trace(
+        go.Indicator(
+            mode="number",
+            value=first_kd,
+            number={
+                "font": {"size": 40, "color": PERFORMANCE_COLORS["neutral"]},
+                "suffix": "",
+                "valueformat": ".2f",
+            },
+            title={"text": "K/D", "font": {"size": 14}},
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Indicator(
+            mode="number",
+            value=second_kd,
+            number={
+                "font": {"size": 40, "color": PERFORMANCE_COLORS["kd_line"]},
+                "suffix": "",
+                "valueformat": ".2f",
+            },
+            title={"text": "K/D", "font": {"size": 14}},
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.add_trace(
+        go.Indicator(
+            mode="number+delta",
+            value=change_pct,
+            number={
+                "font": {"size": 32, "color": delta_color},
+                "suffix": "%",
+                "valueformat": "+.1f",
+            },
+            delta={
+                "reference": 0,
+                "relative": False,
+                "valueformat": ".1f",
+                "increasing": {"color": PERFORMANCE_COLORS["trend_up"]},
+                "decreasing": {"color": PERFORMANCE_COLORS["trend_down"]},
+            },
+            title={"text": f"{trend_symbol} {trend_text}", "font": {"size": 14}},
+        ),
+        row=1,
+        col=3,
+    )
+
+    return apply_halo_plot_style(fig, title=title, height=height)
+
+
+def plot_cumulative_comparison(  # noqa: PLR0913
+    session_a_df: pl.DataFrame,
+    session_b_df: pl.DataFrame,
+    *,
+    label_a: str = "Session A",
+    label_b: str = "Session B",
+    title: str | None = None,
+    height: int = 400,
+    lang: str = "fr",
+) -> go.Figure:
+    """Compare deux sessions avec leurs courbes de net score cumulé."""
+    fig = go.Figure()
+
+    if title is None:
+        title = viz_t("title_session_comparison", lang)
+
+    from src.analysis.cumulative import compute_cumulative_net_score_series_polars
+
+    def add_session_trace(df: pl.DataFrame, label: str, color: str) -> None:
+        if df.is_empty():
+            return
+
+        cumul = compute_cumulative_net_score_series_polars(df)
+        if cumul.is_empty():
+            return
+
+        data = cumul.to_dicts()
+        x_values = list(range(len(data)))
+        y_values = [d.get("cumulative_net_score", 0) for d in data]
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_values,
+                y=y_values,
+                mode="lines+markers",
+                name=label,
+                line={"color": color, "width": 2},
+                marker={"size": 6, "color": color},
+                hovertemplate=viz_t("hover_match_cumul", lang, label=label),
+            )
+        )
+
+    add_session_trace(session_a_df, label_a, PERFORMANCE_COLORS["neutral"])
+    add_session_trace(session_b_df, label_b, PERFORMANCE_COLORS["kd_line"])
+
+    fig.add_hline(
+        y=0,
+        line_dash="dash",
+        line_color=PERFORMANCE_COLORS["baseline"],
+        annotation_text=viz_t("label_balance", lang),
+        annotation_position="right",
+    )
+
+    fig.update_layout(
+        xaxis_title=viz_t("axis_match_number", lang),
+        yaxis_title=viz_t("axis_cumul_net_score", lang),
+        hovermode="x unified",
+        showlegend=True,
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
+    )
+
+    return apply_halo_plot_style(fig, title=title, height=height)
+
+
+def create_cumulative_metrics_indicator(
+    metrics: Any,  # CumulativeMetricsResult
+    *,
+    show_trend: bool = True,
+    height: int = 150,
+    lang: str = "fr",
+) -> go.Figure:
+    """Crée un indicateur compact des métriques cumulées."""
+    fig = make_subplots(
+        rows=1,
+        cols=4,
+        specs=[[{"type": "indicator"}] * 4],
+        subplot_titles=[
+            viz_t("trace_kills", lang),
+            viz_t("trace_deaths", lang),
+            viz_t("trace_net_score_match", lang),
+            viz_t("label_kd_fm", lang),
+        ],
+    )
+
+    fig.add_trace(
+        go.Indicator(
+            mode="number",
+            value=metrics.total_kills if hasattr(metrics, "total_kills") else 0,
+            number={
+                "font": {"size": 28, "color": PERFORMANCE_COLORS["kills"]},
+            },
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Indicator(
+            mode="number",
+            value=metrics.total_deaths if hasattr(metrics, "total_deaths") else 0,
+            number={
+                "font": {"size": 28, "color": PERFORMANCE_COLORS["deaths"]},
+            },
+        ),
+        row=1,
+        col=2,
+    )
+
+    net_score = metrics.cumulative_net_score if hasattr(metrics, "cumulative_net_score") else 0
+    net_color = PERFORMANCE_COLORS["positive"] if net_score >= 0 else PERFORMANCE_COLORS["negative"]
+    fig.add_trace(
+        go.Indicator(
+            mode="number",
+            value=net_score,
+            number={
+                "font": {"size": 28, "color": net_color},
+                "valueformat": "+d",
+            },
+        ),
+        row=1,
+        col=3,
+    )
+
+    kd = metrics.cumulative_kd if hasattr(metrics, "cumulative_kd") else 0
+    fig.add_trace(
+        go.Indicator(
+            mode="number",
+            value=kd,
+            number={
+                "font": {"size": 28, "color": PERFORMANCE_COLORS["kd_line"]},
+                "valueformat": ".2f",
+            },
+        ),
+        row=1,
+        col=4,
+    )
+
+    return apply_halo_plot_style(fig, height=height)
+
+
+def get_performance_colors() -> dict[str, str]:
+    """Retourne le dictionnaire des couleurs de performance."""
+    return PERFORMANCE_COLORS.copy()

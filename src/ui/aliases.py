@@ -81,10 +81,9 @@ def _load_aliases_from_duckdb_cached(db_path: str, mtime: float | None) -> dict[
     if shared_path:
         try:
             with duckdb_read_only(shared_path) as con:
-                tables = con.execute(
-                    "SELECT table_name FROM information_schema.tables WHERE table_name = 'xuid_aliases'"
-                ).fetchall()
-                if tables:
+                from src.utils.db import has_table
+
+                if has_table(con, "xuid_aliases"):
                     rows = con.execute(
                         "SELECT xuid, gamertag FROM xuid_aliases WHERE gamertag IS NOT NULL AND gamertag != ''"
                     ).fetchall()

@@ -186,26 +186,35 @@ Note: `Display` values are currently in French because they match the stored/UI 
 | 43 | `destructeur de warthogs` | Destructeur de warthogs | custom | `compute_warthog_destroyer` | 5, 10, 15, 25, **50** | 50 | `H5G_citation_Destructeur_de_warthogs.png` |
 | 44 | `destructeur de wasps` | Destructeur de wasps | award | `DESTROYED_WASP` | 3, 6, 9, 15, **30** | 30 | `H5G_citation_Destructeur_de_wasps.png` |
 
-### GROUP 6 — PvE Firefight (10, including 4 disabled)
+### GROUP 5b — Grenades (2)
+
+| # | Norm | Display | Type | Source (medal_id) | Tiers | Master | Image |
+|---|------|---------|------|-------------------|-------|--------|-------|
+| 45 | `frag_grenade` | Grenade à fragmentation | medal | `2648272972` (Grenadier) | 5, 10, 15, 25, **50** | 50 | `H5G_citation_Grenade_%C3%A0_fragmentation.png` |
+| 46 | `plasma_grenade` | Grenade à plasma | medal | `3655682764` (Collage/Stick) | 2, 4, 6, 10, **20** | 20 | `H5G_citation_Grenade_%C3%A0_plasma.png` |
+
+### GROUP 7 — PvE Firefight (10, including 4 disabled)
 
 | # | Norm | Display | Type | Source (pve_match_stats) | Enabled | Tiers | Master | Image |
 |---|------|---------|------|--------------------------|---------|-------|--------|-------|
-| 45 | `tueur de grognards` | Tueur de Grognards | pve_stat | `grunt_kills` | ✅ | 10, 20, 30, 50, **100** | 100 | `H5G_citation_Tueur_de_Grognards.png` |
-| 46 | `tueur d'elites` | Tueur d'Élites | pve_stat | `elite_kills` | ✅ | 10, 20, 30, 50, **100** | 100 | `H5G_citation_Tueur_d%27%C3%89lites.png` |
-| 47 | `tueur de rapaces` | Tueur de Rapaces | pve_stat | `jackal_kills` | ✅ | 5, 10, 15, 25, **50** | 50 | `H5G_citation_Tueur_de_Rapaces.png` |
-| 48 | `tueur de chasseurs` | Tueur de Chasseurs | pve_stat | `hunter_kills` | ✅ | 2, 4, 6, 10, **20** | 20 | `H5G_citation_Tueur_de_Chasseurs.png` |
-| 49 | `tueur de sentinelles` | Tueur de sentinelles | pve_stat | `sentinel_kills` | ❌ | 5, 10, 15, 25, **50** | 50 | `H5G_citation_Tueur_de_sentinelles.png` |
-| 50 | `like a boss` | Comme un Boss | pve_stat | `boss_kills` | ✅ | 250, 500, 750, 1200, **2400** | 2400 | `H5G_citation_Like_a_boss.png` |
-| 51 | `player vs everything` | Éliminations Firefight | pve_stat | `total_enemy_kills` | ✅ | 200, 400, 600, 960, **1940** | 1940 | `H5G_citation_Player_vs_Everything.png` |
-| 52 | `tueur de brutes` | Tueur de Brutes | pve_stat | `brute_kills` | ❌ | — | — | *(no H5G image)* |
-| 53 | `tueur de skimmers` | Tueur de Skimmers | pve_stat | `skimmer_kills` | ❌ | — | — | *(no H5G image)* |
-| 54 | `tueur de marines` | Tueur de Marines | pve_stat | `marine_kills` | ❌ | 20, 40, 60, 100, **200** | 200 | `H5G_citation_Tueur_de_r%C3%A9pliques_de_Marines.png` |
+| 47 | `tueur de grognards` | Tueur de Grognards | pve_stat | `grunt_kills` | ✅ | 10, 20, 30, 50, **100** | 100 | `H5G_citation_Tueur_de_Grognards.png` |
+| 48 | `tueur d'elites` | Tueur d'Élites | pve_stat | `elite_kills` | ✅ | 10, 20, 30, 50, **100** | 100 | `H5G_citation_Tueur_d%27%C3%89lites.png` |
+| 49 | `tueur de rapaces` | Tueur de Rapaces | pve_stat | `jackal_kills` | ✅ | 5, 10, 15, 25, **50** | 50 | `H5G_citation_Tueur_de_Rapaces.png` |
+| 50 | `tueur de chasseurs` | Tueur de Chasseurs | pve_stat | `hunter_kills` | ✅ | 2, 4, 6, 10, **20** | 20 | `H5G_citation_Tueur_de_Chasseurs.png` |
+| 51 | `tueur de sentinelles` | Tueur de sentinelles | pve_stat | `sentinel_kills` | ❌ | 5, 10, 15, 25, **50** | 50 | `H5G_citation_Tueur_de_sentinelles.png` |
+| 52 | `like a boss` | Comme un Boss | pve_stat | `boss_kills` | ✅ | 250, 500, 750, 1200, **2400** | 2400 | `H5G_citation_Like_a_boss.png` |
+| 53 | `player vs everything` | Éliminations Firefight | pve_stat | `total_enemy_kills` | ✅ | 200, 400, 600, 960, **1940** | 1940 | `H5G_citation_Player_vs_Everything.png` |
+| 54 | `tueur de brutes` | Tueur de Brutes | pve_stat | `brute_kills` | ❌ | — | — | *(no H5G image)* |
+| 55 | `tueur de skimmers` | Tueur de Skimmers | pve_stat | `skimmer_kills` | ❌ | — | — | *(no H5G image)* |
+| 56 | `tueur de marines` | Tueur de Marines | pve_stat | `marine_kills` | ❌ | 20, 40, 60, 100, **200** | 200 | `H5G_citation_Tueur_de_r%C3%A9pliques_de_Marines.png` |
 
-### GROUP 7 — Composite (1)
+### GROUP 8 — Composites (3)
 
 | # | Norm | Display | Type | Children | Calculation |
 |---|------|---------|------|----------|-------------|
-| 55 | `destructeur de covenants` | Destructeur de Covenants | composite | `tueur de grognards`, `tueur d'elites`, `tueur de rapaces`, `tueur de chasseurs`, `like a boss`, `tueur de brutes`, `tueur de skimmers` | Raw sum of aggregated values from all enabled children. No dedicated image. |
+| 57 | `covenant_destroyer` | Destructeur de Covenants | composite | `grunt_slayer`, `elite_slayer`, `jackal_slayer`, `hunter_slayer`, `like_a_boss`, `brute_slayer`, `skimmer_slayer` | Count of mastered children (not raw sum). |
+| 58 | `grenade_mastery` | Maîtrise des grenades | composite | `frag_grenade`, `plasma_grenade` | Count of mastered children. |
+| 59 | `vehicle_mastery` | Maîtrise de véhicule | composite | `splatter`, `driver`, `wraith_destroyer`, `banshee_destroyer`, `ghost_destroyer`, `mongoose_destroyer`, `scorpion_destroyer`, `warthog_destroyer`, `wasp_destroyer` | Count of mastered children. |
 
 ---
 
@@ -224,8 +233,10 @@ Note: `Display` values are currently in French because they match the stored/UI 
 | `2137071619` | Quelle tuerie | Overkill | `combattant opportuniste` |
 | `2242633421` | Meurtre mort détruire | Killimanjaro | `combattant opportuniste` |
 | `2625820422` | Frag d'outre-tombe | From the Grave | `the reaper` |
+| `2648272972` | Grenadier | Grenadier | `frag_grenade` |
 | `3091261182` | Chargeur vide | Empty Magazine | `lucky` |
 | `3169118333` | Violence routière | Wheelman | `pilote`, `road trip` |
+| `3655682764` | Collage | Stick | `plasma_grenade` |
 | `3905838030` | La chance | Lucky | `lucky` |
 | `4261842076` | Massacre | Killamanjaro | `combattant opportuniste` |
 

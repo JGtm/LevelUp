@@ -72,9 +72,7 @@ def is_allowed_playlist_name(name: str) -> bool:
         return True
     if re.search(r"\branked\b.*\bslayer\b", s):
         return True
-    if re.search(r"\branked\b.*\barena\b", s):
-        return True
-    return False
+    return bool(re.search(r"\branked\b.*\barena\b", s))
 
 
 def build_option_map(series_name: pl.Series, series_id: pl.Series) -> dict[str, str]:

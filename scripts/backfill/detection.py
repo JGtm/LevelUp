@@ -241,6 +241,12 @@ def _done_guard(flag_name: str, has_column: bool) -> str:
     """Clause SQL excluant les matchs déjà traités dans match_registry.
 
     Utilise mr.backfill_completed.
+
+    .. warning::
+        Ne convient que pour les données **globales au match** (assets,
+        participants, aliases…).  Pour les données **per-player** (performance_scores,
+        personal_scores, medals, accuracy, shots, enemy_mmr), utiliser
+        ``_player_done_guard()`` qui vérifie les données réelles du joueur courant.
     """
     if not has_column:
         return ""
@@ -248,6 +254,35 @@ def _done_guard(flag_name: str, has_column: bool) -> str:
     if bit == 0:
         return ""
     return f" AND (COALESCE(mr.backfill_completed, 0) & {bit} = 0)"
+
+
+def _player_done_guard(conn: Any, table: str, column: str | None = None) -> str:
+    """Clause SQL excluant les matchs déjà traités dans la player DB.
+
+    Fix multi-joueur (v5.5) : vérifie les données réelles du joueur courant
+    au lieu du bitmask global ``backfill_completed`` qui est posé par le
+    premier joueur syncé et masque les matchs pour les autres joueurs.
+
+    Args:
+        conn: Connexion à la player DB (stats.duckdb).
+        table: Nom de la table à vérifier.
+        column: Si fourni, filtre sur ``column IS NOT NULL``.
+
+    Returns:
+        Clause SQL ``mp.match_id NOT IN (...)`` ou ``1=1`` si table vide.
+    """
+    try:
+        if column:
+            query = f"SELECT match_id FROM {table} WHERE {column} IS NOT NULL"
+        else:
+            query = f"SELECT DISTINCT match_id FROM {table}"
+        done_ids = {r[0] for r in conn.execute(query).fetchall()}
+    except Exception:
+        return "1=1"
+    if not done_ids:
+        return "1=1"
+    items = ",".join(f"'{mid}'" for mid in done_ids)
+    return f"mp.match_id NOT IN ({items})"
 
 
 def _find_matches_in_shared_all(
@@ -290,13 +325,11 @@ def _find_matches_in_shared_all(
     conditions: list[str] = []
     has_bf_col = _has_backfill_completed_column(shared_conn)
 
-    # Médailles
+    # Médailles — per-player : NOT IN ... WHERE xuid = ? suffit
     if medals:
-        base = "mp.match_id NOT IN (SELECT DISTINCT match_id FROM medals_earned WHERE xuid = ?)"
-        if force_medals:
-            conditions.append(base)
-        else:
-            conditions.append(base + _done_guard("medals", has_bf_col))
+        conditions.append(
+            "mp.match_id NOT IN (SELECT DISTINCT match_id FROM medals_earned WHERE xuid = ?)"
+        )
 
     # Events
     # Fix v5.4: utiliser mr.events_loaded (source de vérité 100% fiable) plutôt que
@@ -310,15 +343,12 @@ def _find_matches_in_shared_all(
     # NOTE V5.2 : Condition composite pour éviter la re-détection infinie des modes
     # non-classés (Firefight, Rumble Pit, social…).
     #
-    # Problème : kills_expected / team_mmr sont NULL par DESIGN pour les modes sans
-    # CSR (non-ranked). Un simple NULL-check causerait une boucle infinie.
-    #
-    # Solution : double guard
-    #   1. backfill_bits & 1 = 0 → le bit TEAM_MMR n'est pas posé (données absentes)
-    #   2. backfill_completed & 4 = 0 → le skill n'a JAMAIS été tenté pour ce match
-    #
-    # Si backfill_completed & 4 != 0 : skill tenté → team_mmr NULL = normal pour
-    # les modes non-ranked → on n'essaie pas de re-télécharger.
+    # Guard per-player (backfill_bits) + guard global (backfill_completed).
+    # Le guard global empêche la boucle infinie pour les modes non-ranked
+    # (team_mmr NULL par design), mais a le même faux positif multi-joueur
+    # que les autres flags per-player.
+    # TODO(v5.6): migrer vers un ParticipantBits.SKILL_ATTEMPTED posé même
+    # quand les données sont NULL, pour remplacer le guard global.
     if skill:
         if force_skill:
             conditions.append("1=1")
@@ -329,44 +359,36 @@ def _find_matches_in_shared_all(
                 " AND (COALESCE(mr.backfill_completed, 0) & 4) = 0"
             )
 
-    # Personal scores (player DB)
+    # Personal scores — per-player : vérifier données réelles dans player DB
     if personal_scores:
-        # personal_score_awards est dans la player DB; on peut juste appliquer backfill guard
-        conditions.append("1=1" + _done_guard("personal_scores", has_bf_col))
+        conditions.append(_player_done_guard(conn, "personal_score_awards"))
 
-    # Performance scores (player_match_enrichment)
-    # Note: La détection nécessite d'accéder à la player DB pour voir performance_score NULL
-    # On ne peut pas le faire depuis shared DB, donc on retourne tous les matchs et on filtrera
-    # pendant le traitement. Force permet d'ignorer le guard backfill_completed.
+    # Performance scores — per-player : vérifier player_match_enrichment du joueur
     if performance_scores:
         if force_performance_scores:
             conditions.append("1=1")
         else:
-            conditions.append("1=1" + _done_guard("performance_scores", has_bf_col))
+            conditions.append(
+                _player_done_guard(conn, "player_match_enrichment", "performance_score")
+            )
 
-    # Accuracy
+    # Accuracy — per-player : mp.accuracy IS NULL est déjà filtré par xuid
     if accuracy:
         if force_accuracy:
             conditions.append("1=1")
         else:
-            conditions.append("(mp.accuracy IS NULL)" + _done_guard("accuracy", has_bf_col))
+            conditions.append("(mp.accuracy IS NULL)")
 
-    # Shots
+    # Shots — per-player : mp.shots_* IS NULL est déjà filtré par xuid
     if shots:
         if force_shots:
             conditions.append("1=1")
         else:
-            conditions.append(
-                "(mp.shots_fired IS NULL OR mp.shots_hit IS NULL)"
-                + _done_guard("shots", has_bf_col)
-            )
+            conditions.append("(mp.shots_fired IS NULL OR mp.shots_hit IS NULL)")
 
-    # Enemy MMR
+    # Enemy MMR — per-player : mp.team_mmr IS NULL est déjà filtré par xuid
     if enemy_mmr:
-        if force_enemy_mmr:
-            conditions.append("(mp.team_mmr IS NULL)")
-        else:
-            conditions.append("(mp.team_mmr IS NULL)" + _done_guard("enemy_mmr", has_bf_col))
+        conditions.append("(mp.team_mmr IS NULL)")
 
     # Assets
     if assets:
@@ -400,8 +422,7 @@ def _find_matches_in_shared_all(
             conditions.append("mr.is_firefight = TRUE")
         else:
             conditions.append(
-                f"mr.is_firefight = TRUE"
-                f" AND (COALESCE(mr.backfill_completed, 0) & {pve_bit}) = 0"
+                f"mr.is_firefight = TRUE AND (COALESCE(mr.backfill_completed, 0) & {pve_bit}) = 0"
             )
 
     if not conditions:

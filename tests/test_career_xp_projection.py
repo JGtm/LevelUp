@@ -16,7 +16,10 @@ from datetime import datetime, timedelta
 import pytest
 
 from src.ui.components.career_progress_circle import XP_HERO_TOTAL
-from src.ui.pages.career import (
+from src.ui.pages.career_data import (
+    _load_other_players_histories,
+)
+from src.ui.pages.career_logic import (
     _OTHER_PLAYERS_COLORS,
     DAILY_CHALLENGE_XP,
     INACTIVITY_GAP_DAYS,
@@ -26,7 +29,6 @@ from src.ui.pages.career import (
     _compute_estimated_xp_curve,
     _compute_hero_projections,
     _create_xp_history_chart,
-    _load_other_players_histories,
 )
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -371,7 +373,7 @@ class TestLoadOtherPlayersHistories:
 
         with (
             mock.patch("src.utils.profiles.load_profiles", return_value=_PROFILES_MOCK),
-            mock.patch("src.ui.pages.career._load_career_history", side_effect=fake_history),
+            mock.patch("src.ui.pages.career_data._load_career_history", side_effect=fake_history),
             mock.patch("os.path.exists", side_effect=lambda p: p in existing_paths),
         ):
             return _load_other_players_histories(XUID_CURRENT)

@@ -1,0 +1,14 @@
+# Normalise tous les fichiers texte en LF dans le dépôt
+* text=auto eol=lf
+
+# Binaires explicites
+*.png binary
+*.jpg binary
+*.ico binary
+*.gif binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.db binary
+*.duckdb binary

@@ -306,11 +306,11 @@ fournie par l'API Halo, au lieu du LUSR calculé. Un match ne peut avoir que l'u
 ### Métriques du score composite
 | Métrique | Poids | Description |
 |----------|-------|-------------|
-| Kills vs Expected | {COMPOSITE_WEIGHTS['kills_vs_expected']:.0%} | Frags réels / frags prédits |
-| Deaths vs Expected | {COMPOSITE_WEIGHTS['deaths_vs_expected']:.0%} | Morts prédites / morts réelles |
-| Facteur victoire | {COMPOSITE_WEIGHTS['win_factor']:.0%} | V=1, Égalité=0.5, D=0 |
-| Efficacité dégâts | {COMPOSITE_WEIGHTS['damage_efficiency']:.0%} | Dégâts infligés / total |
-| Delta précision | {COMPOSITE_WEIGHTS['accuracy_delta']:.0%} | Précision vs ta moyenne |
+| Kills vs Expected | {COMPOSITE_WEIGHTS["kills_vs_expected"]:.0%} | Frags réels / frags prédits |
+| Deaths vs Expected | {COMPOSITE_WEIGHTS["deaths_vs_expected"]:.0%} | Morts prédites / morts réelles |
+| Facteur victoire | {COMPOSITE_WEIGHTS["win_factor"]:.0%} | V=1, Égalité=0.5, D=0 |
+| Efficacité dégâts | {COMPOSITE_WEIGHTS["damage_efficiency"]:.0%} | Dégâts infligés / total |
+| Delta précision | {COMPOSITE_WEIGHTS["accuracy_delta"]:.0%} | Précision vs ta moyenne |
 
 ### Tiers
 | Tier | Rating LUSR |

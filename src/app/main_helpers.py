@@ -6,14 +6,22 @@ Fonctions d'initialisation, de validation et de rendu du profil.
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
+import time as _time
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 import polars as pl
 import streamlit as st
 
 from src.analysis import mark_firefight
-from src.app.data_loader import default_identity_from_secrets
+from src.app.data_loader import (
+    default_identity_from_secrets,
+    propagate_identity_env,
+    resolve_xuid_input,
+)
 from src.ui import (
     display_name_from_xuid,
     ensure_spnkr_tokens,
@@ -30,7 +38,6 @@ from src.ui.sync import (
     render_sync_indicator,
     sync_all_players,
 )
-from src.utils import parse_xuid_input, resolve_xuid_from_db
 
 if TYPE_CHECKING:
     from src.ui import AppSettings
@@ -40,33 +47,7 @@ def propagate_identity_to_env() -> None:
     """Propage les defaults depuis secrets vers l'environnement."""
     try:
         xuid_or_gt, xuid_fallback, wp = default_identity_from_secrets()
-        if xuid_or_gt and not str(xuid_or_gt).strip().isdigit() and xuid_fallback:
-            if not str(os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip():
-                os.environ["OPENSPARTAN_DEFAULT_GAMERTAG"] = str(xuid_or_gt).strip()
-            if not str(os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip():
-                os.environ["OPENSPARTAN_DEFAULT_XUID"] = str(xuid_fallback).strip()
-        if wp and not str(os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or "").strip():
-            os.environ["OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER"] = str(wp).strip()
-    except Exception:
-        pass
-
-
-def apply_settings_path_overrides(settings: AppSettings) -> None:
-    """Applique les overrides de chemins depuis les settings."""
-    try:
-        aliases_override = str(getattr(settings, "aliases_path", "") or "").strip()
-        if aliases_override:
-            os.environ["OPENSPARTAN_ALIASES_PATH"] = aliases_override
-        else:
-            os.environ.pop("OPENSPARTAN_ALIASES_PATH", None)
-    except Exception:
-        pass
-    try:
-        profiles_override = str(getattr(settings, "profiles_path", "") or "").strip()
-        if profiles_override:
-            os.environ["OPENSPARTAN_PROFILES_PATH"] = profiles_override
-        else:
-            os.environ.pop("OPENSPARTAN_PROFILES_PATH", None)
+        propagate_identity_env(xuid_or_gt, xuid_fallback, wp)
     except Exception:
         pass
 
@@ -107,40 +88,9 @@ def validate_and_fix_db_path(db_path: str, default_db: str) -> str:
 def resolve_xuid_from_input(xuid_input: str, db_path: str) -> str:
     """Résout le XUID depuis l'entrée utilisateur.
 
-    Args:
-        xuid_input: Entrée brute (XUID ou gamertag).
-        db_path: Chemin vers la DB.
-
-    Returns:
-        XUID résolu ou chaîne vide.
+    Délègue à ``data_loader.resolve_xuid_input`` (implémentation unique).
     """
-    xraw = (xuid_input or "").strip()
-    xuid_resolved = parse_xuid_input(xraw) or ""
-
-    if not xuid_resolved and xraw and not xraw.isdigit() and db_path:
-        xuid_resolved = resolve_xuid_from_db(db_path, xraw) or ""
-        # Fallback: secrets/env quand l'entrée correspond au gamertag par défaut
-        if not xuid_resolved:
-            try:
-                xuid_or_gt, xuid_fallback, _wp = default_identity_from_secrets()
-                if (
-                    xuid_or_gt
-                    and xuid_fallback
-                    and (not str(xuid_or_gt).strip().isdigit())
-                    and str(xuid_or_gt).strip().casefold() == str(xraw).strip().casefold()
-                ):
-                    xuid_resolved = str(xuid_fallback).strip()
-            except Exception:
-                pass
-
-    if not xuid_resolved and not xraw and db_path:
-        xuid_or_gt, xuid_fallback, _wp = default_identity_from_secrets()
-        if xuid_or_gt and not xuid_or_gt.isdigit():
-            xuid_resolved = resolve_xuid_from_db(db_path, xuid_or_gt) or xuid_fallback
-        else:
-            xuid_resolved = xuid_or_gt or xuid_fallback
-
-    return xuid_resolved or ""
+    return resolve_xuid_input(xuid_input, db_path)
 
 
 def render_sidebar_header(db_path: str, xuid: str, settings: AppSettings) -> str:
@@ -460,8 +410,14 @@ def load_match_dataframe(
     df = pl.DataFrame()
     db_key = db_cache_key(db_path) if db_path else None
 
+    from src.utils.log_config import log_duration
+
+    _t0 = _time.perf_counter()
     if db_path and os.path.exists(db_path) and str(xuid or "").strip():
-        with perf_section("db/load_df_optimized"):
+        with (
+            perf_section("db/load_df_optimized"),
+            log_duration("db/load_df_optimized", logger, threshold_ms=500),
+        ):
             df = load_df_optimized(db_path, xuid.strip(), db_key=db_key, cache_buster=cache_buster)
         if df.is_empty():
             st.warning(t("app_no_match"))
@@ -472,4 +428,11 @@ def load_match_dataframe(
         with perf_section("analysis/mark_firefight"):
             df = mark_firefight(df)
 
+    _ms = (_time.perf_counter() - _t0) * 1000
+    logger.info(
+        "DataFrame chargé: %d matchs en %.0f ms (xuid=%s...)",
+        len(df),
+        _ms,
+        str(xuid or "")[:8],
+    )
     return df, db_key

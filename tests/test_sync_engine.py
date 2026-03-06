@@ -633,48 +633,40 @@ class TestCareerRankModels:
 
 
 class TestCareerRankApiParsing:
-    """Tests pour le parsing du Career Rank dans api_client."""
+    """Tests pour le parsing du Career Rank dans _career_rank_api."""
 
     def test_rank_info_bronze(self):
         """Vérifie les infos pour un rang Bronze."""
-        from src.data.sync.api_client import SPNKrAPIClient
+        from src.data.sync._career_rank_api import get_rank_info
 
-        # Créer un client mock pour tester les méthodes internes
-        client = SPNKrAPIClient.__new__(SPNKrAPIClient)
-        client._tokens = None
-
-        info = client._get_rank_info(1)
+        info = get_rank_info(1)
         assert info["tier"] == "Bronze"
         assert "Bronze 1" in info["name"]
 
     def test_rank_info_silver(self):
         """Vérifie les infos pour un rang Silver."""
-        from src.data.sync.api_client import SPNKrAPIClient
+        from src.data.sync._career_rank_api import get_rank_info
 
-        client = SPNKrAPIClient.__new__(SPNKrAPIClient)
-        info = client._get_rank_info(6)
+        info = get_rank_info(6)
         assert info["tier"] == "Silver"
 
     def test_rank_info_high_tier(self):
         """Vérifie les infos pour un rang élevé."""
-        from src.data.sync.api_client import SPNKrAPIClient
+        from src.data.sync._career_rank_api import get_rank_info
 
-        client = SPNKrAPIClient.__new__(SPNKrAPIClient)
-        info = client._get_rank_info(100)
+        info = get_rank_info(100)
         # Devrait avoir un grade comme I, II, III, etc.
         assert info["tier"] in ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Onyx"]
 
     def test_rank_info_hero(self):
         """Vérifie les infos pour le rang Hero."""
-        from src.data.sync.api_client import SPNKrAPIClient
+        from src.data.sync._career_rank_api import get_rank_info
 
-        client = SPNKrAPIClient.__new__(SPNKrAPIClient)
-
-        info_hero = client._get_rank_info(271)
+        info_hero = get_rank_info(271)
         assert info_hero["tier"] == "Hero"
         assert info_hero["name"] == "Hero"
 
-        info_legend = client._get_rank_info(272)
+        info_legend = get_rank_info(272)
         assert info_legend["tier"] == "Hero"
         assert info_legend["name"] == "Hero Legend"
 
@@ -682,11 +674,9 @@ class TestCareerRankApiParsing:
         """Vérifie le parsing des données brutes Career Rank.
 
         Note 10C.3.5: adornment_path n'est plus extrait de la réponse JSON
-        (il est résolu séparément via gamecms). _parse_career_rank retourne None.
+        (il est résolu séparément via gamecms). parse_career_rank retourne None.
         """
-        from src.data.sync.api_client import SPNKrAPIClient
-
-        client = SPNKrAPIClient.__new__(SPNKrAPIClient)
+        from src.data.sync._career_rank_api import parse_career_rank
 
         # Simule une réponse API
         api_response = {
@@ -699,7 +689,7 @@ class TestCareerRankApiParsing:
             },
         }
 
-        data = client._parse_career_rank("2535423456789", api_response)
+        data = parse_career_rank("2535423456789", api_response)
 
         assert data.xuid == "2535423456789"
         assert data.current_rank == 50
@@ -710,9 +700,7 @@ class TestCareerRankApiParsing:
 
     def test_parse_career_rank_max(self):
         """Vérifie le parsing au rang max."""
-        from src.data.sync.api_client import SPNKrAPIClient
-
-        client = SPNKrAPIClient.__new__(SPNKrAPIClient)
+        from src.data.sync._career_rank_api import parse_career_rank
 
         api_response = {
             "CurrentProgress": {
@@ -721,7 +709,7 @@ class TestCareerRankApiParsing:
             },
         }
 
-        data = client._parse_career_rank("123", api_response)
+        data = parse_career_rank("123", api_response)
         assert data.is_max_rank is True
         assert data.current_rank == 272
 
@@ -767,26 +755,6 @@ class TestEngineBatchInsertMethods:
             )
         """)
         return engine
-
-    def test_batch_insert_medals_via_engine(self, engine_with_db):
-        """8bis.B3: Test supprimé — _insert_medal_rows obsolète (medals dans shared)."""
-        pytest.skip("8bis.B3 : méthode _insert_medal_rows supprimée en v5.1")
-
-    def test_batch_insert_events_via_engine(self, engine_with_db):
-        """8bis.B3: Test supprimé — highlight_events dans shared uniquement (v5.1)."""
-        pytest.skip("8bis.B3 : highlight_events centralisée dans shared_matches.duckdb")
-
-    def test_batch_insert_participants_via_engine(self, engine_with_db):
-        """8bis.B3: Test supprimé — _insert_participant_rows obsolète (dans shared)."""
-        pytest.skip("8bis.B3 : méthode _insert_participant_rows supprimée en v5.1")
-
-    def test_batch_insert_aliases_via_engine(self, engine_with_db):
-        """8bis.B3: Test supprimé — _insert_alias_rows obsolète (dans shared)."""
-        pytest.skip("8bis.B3 : méthode _insert_alias_rows supprimée en v5.1")
-
-    def test_batch_insert_skill_via_engine(self, engine_with_db):
-        """8bis.B3: Test supprimé — _insert_skill_row obsolète (dans shared)."""
-        pytest.skip("8bis.B3 : méthode _insert_skill_row supprimée en v5.1")
 
     def test_batch_insert_personal_scores_via_engine(self, engine_with_db):
         """Les personal scores sont insérés en batch."""

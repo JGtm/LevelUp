@@ -5,6 +5,125 @@ Liste des bugs et dettes techniques détectés par analyse statique du code.
 
 ---
 
+## 🔴 Bug majeur — 2026-03-04 (post-sync)
+
+### 0. Dernier match invisible après un sync réussi
+
+**Fichiers concernés** :
+- `streamlit_app.py` (lignes 491–497 : bloc post-sync)
+- `src/app/filters_render.py` (ligne 241 : guard `filters_loaded_key`)
+- `src/app/_filters_session.py` : `_apply_default_last_session()`
+- `src/ui/cache_loaders.py` (lignes 736–773 : `load_df_optimized`)
+
+**Symptôme** : après un sync delta réussi, le nouveau match n'apparaît pas dans le dashboard
+jusqu'au prochain rechargement complet (F5) ou changement de profil.
+
+**Root cause** : le bloc post-sync ([`streamlit_app.py#L491`](streamlit_app.py)) effectue bien :
+
+```python
+_clear_app_caches()                           # ✅ vide @st.cache_data / @st.cache_resource
+st.session_state["_cache_buster"] += 1        # ✅ force reload du DataFrame
+st.rerun()
+```
+
+Mais il ne supprime **pas** la clé `_filters_loaded_{player_key}` dans `session_state`.
+Cette clé est le guard qui empêche `_apply_default_last_session()` de se ré-exécuter
+([`filters_render.py#L241`](src/app/filters_render.py)).
+
+Conséquence : après le rerun, les filtres restent pointés sur l'ancienne "dernière session".
+Si le nouveau match tombe dans une **nouvelle session** (créée par le sync), il est
+filtré hors de vue.
+
+**Flux complet du bug** :
+```
+sync OK → _clear_app_caches() → cache_buster++ → st.rerun()
+             ↓ DataFrame rechargé (N+1 matchs) ✅
+             ↓ _filters_loaded_{key} = True (non supprimé) ❌
+             ↓ _apply_default_last_session() ignorée ❌
+             ↓ picked_session_label → ancienne session ❌
+             ↓ nouveau match filtré → invisible ❌
+```
+
+**Correction** : dans `streamlit_app.py`, après `cache_buster += 1`, supprimer les clés
+`_filters_loaded_*` pour forcer la réinitialisation des filtres au prochain rerun :
+
+```python
+for k in list(st.session_state.keys()):
+    if k.startswith("_filters_loaded_"):
+        del st.session_state[k]
+        logger.info("Filtre réinitialisé après sync: %s", k)
+```
+
+**Logs disponibles (état actuel)** :
+
+| Ce qui est loggé | Niveau | Fichier |
+|---|---|---|
+| Création du repository caché | `INFO` | `cache_loaders.py:56` |
+| `load_df_optimized` appelé (cache miss seulement) | `DEBUG` | `cache_loaders.py:770` |
+| DataFrame chargé : N matchs en Xms | `INFO` | `main_helpers.py:449` |
+| Caches invalidés après sync, cache_buster=N | `INFO` | `streamlit_app.py:495` |
+| Filtres initialisés pour xuid=... | `INFO` (1× par session) | `filters_render.py:242` |
+| Mode filtre: Période/Sessions | `INFO` | `filters_render.py:310` |
+| Filtres appliqués: X → Y matchs | `INFO` | `filters_render.py:700` |
+
+**Ce qui manque pour diagnostiquer** :
+- `db_cache_key()` ne logge pas la signature (mtime + size) → impossible de vérifier
+  que le changement de fichier est détecté
+- La **réutilisation** d'un cache `@st.cache_data` n'émet aucun log (la fonction n'est
+  pas appelée sur un cache hit)
+- La suppression / conservation de `_filters_loaded_{key}` n'est pas tracée
+
+**Logs à ajouter** (dans `streamlit_app.py` post-sync et `cache_loaders.py:db_cache_key`) :
+
+```python
+# cache_loaders.py — db_cache_key()
+logger.debug("db_cache_key: player mtime=%d size=%d shared mtime=%d size=%d",
+             mtime_player, size_player, mtime_shared, size_shared)
+
+# streamlit_app.py — post-sync
+for k in list(st.session_state.keys()):
+    if k.startswith("_filters_loaded_"):
+        del st.session_state[k]
+        logger.info("Filtre réinitialisé après sync: %s", k)
+```
+
+**Correction attendue** : supprimer `_filters_loaded_*` post-sync + ajouter les deux logs ci-dessus.
+
+**Périmètre d'impact élargi** : ce bug ne se limite pas au "dernier match invisible",
+et ne concerne **pas uniquement les opérations externes à l'app**.
+
+**Confirmation** : `_clear_app_caches()` (appelé après chaque sync in-app) vide uniquement
+`st.cache_data` et `st.cache_resource` — il ne touche **pas** `session_state`.
+La clé `_filters_loaded_*` survit donc à **chaque** sync, y compris via le bouton de l'app :
+
+```python
+# clear_app_caches() — tout ce qu'elle fait :
+st.cache_data.clear()      # ✅ données rechargées
+st.cache_resource.clear()  # ✅ repository reconstruit
+# session_state["_filters_loaded_{key}"] → toujours True ❌
+```
+
+Conséquence : **le bug se produit à 100% des syncs in-app** dès qu'un nouveau match
+tombe dans une nouvelle session ou que les labels de sessions changent.
+
+Autres scénarios impactés :
+
+| Scénario | Conséquence |
+|---|---|
+| Sync delta in-app → nouvelle session créée | Tous les matchs de la nouvelle session invisibles |
+| Sync delta in-app → session existante étendue | `picked_session_label` peut pointer sur un label renommé/bougé |
+| Mode **Période** — sync ajoute un match "aujourd'hui" | `end_d` calculé à l'init (avant sync) peut exclure le nouveau match |
+| `backfill_data.py --sessions` lancé en dehors de l'UI | Sessions recalculées, labels changés, filtre complètement désynchronisé |
+| Changement de profil joueur A → B → A | `_filters_loaded_A` survit, les filtres de A ne se réinitialisent pas au retour |
+| Sync multi-joueurs (`sync_all_players`) | Chaque joueur subit le même problème |
+| KPIs, pages maps/armes/médailles | Toutes consomment le `df` filtré — stats calculées sur jeu de données incomplet, sans avertissement |
+
+En résumé : **`_filters_loaded_*` est une clé write-once, never-expire dans `session_state`**.
+La couche de filtres n'a aucun mécanisme d'auto-invalidation, ce qui rend l'état du
+dashboard silencieusement incohérent après toute opération modifiant la DB.
+
+---
+
 ## 🔴 Bug majeur
 
 ### 1. Incohérence du calcul `win_rate`
@@ -109,12 +228,13 @@ Les valeurs `2` (WIN) et `3` (LOSS) sont dupliquées en dur dans toutes les requ
 
 | # | Sévérité | Effort | Priorité |
 |---|----------|--------|----------|
-| 1 | Bug visible | Faible | ⭐ Sprint prochain |
-| 5 | Bug potentiel | Très faible | ⭐ Sprint prochain |
-| 4 | Dette | Très faible | Sprint suivant |
+| 0 | Bug UX critique (match invisible post-sync) | Très faible | 🔥 Immédiat |
+| 1 | Bug visible (win_rate) | Faible | ⭐ Sprint prochain |
+| 5 | Bug potentiel (NaN-check) | Très faible | ⭐ Sprint prochain |
+| 4 | Dette (magic number) | Très faible | Sprint suivant |
 | 3 | Dead code | Très faible | Sprint suivant |
 | 2 | Guard obsolète | Faible | Sprint suivant |
-| 6 | Lisibilité | Moyen | Backlog |
+| 6 | Lisibilité (magic SQL) | Moyen | Backlog |
 
 ---
 

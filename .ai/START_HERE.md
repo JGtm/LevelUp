@@ -1,8 +1,16 @@
-# 🚀 Migration V5 Finale - Démarrage Rapide
+# ~~Migration V5 Finale - Démarrage Rapide~~ — ARCHIVÉ
 
-> **Vous êtes ici** : Point d'entrée pour la migration V5 finale
+> **⚠️ Document obsolète** (2026-03-04) — La migration V5 est **terminée** (phases 0-10 complètes).
+> Ce fichier est conservé à titre historique. Il référence des documents de travail
+> qui n'existent plus ou ont été archivés dans `.ai/archive/v5.0/`.
+>
+> **Point d'entrée actuel** : voir `docs/ARCHITECTURE_V5.md` et `.ai/backlog_plan.md`.
+
+---
+
+> **Vous étiez ici** : Point d'entrée pour la migration V5 finale (état 2026-02-16)
 > 
-> **Phases 0-4** : ✅ Complétées | **Phases 5-10** : 📋 À faire
+> **Phases 0-4** : ✅ Complétées | **Phases 5-10** : ~~📋 À faire~~ ✅ Terminées
 
 ---
 

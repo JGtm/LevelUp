@@ -174,8 +174,7 @@ def migrate_backfill_bits(
     logger.info("Création de l'index idx_mp_backfill...")
     try:
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_mp_backfill "
-            "ON match_participants(xuid, backfill_bits)"
+            "CREATE INDEX IF NOT EXISTS idx_mp_backfill ON match_participants(xuid, backfill_bits)"
         )
     except Exception as e:
         logger.debug(f"Index ignoré: {e}")

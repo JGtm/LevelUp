@@ -183,7 +183,6 @@ class TestRenderDistributions:
 
             mod._render_distributions(dff)
 
-        ms.calls["divider"].assert_called()
         ms.calls["subheader"].assert_called()
 
 

@@ -15,7 +15,7 @@ Une seule DB avec table Players pour les DBs fusionnées.
 
 from __future__ import annotations
 
-import os
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -27,6 +27,8 @@ from src.utils.paths import PLAYERS_DIR
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 
 def _get_players_dir() -> Path:
@@ -40,7 +42,11 @@ def _is_duckdb_file(db_path: str) -> bool:
 
 
 def _get_duckdb_connection(db_path: str):
-    """Retourne une connexion DuckDB (read-only)."""
+    """Retourne une connexion DuckDB (read-only).
+
+    .. deprecated:: v5.2
+        Préférer ``with duckdb_read_only(db_path) as conn:`` directement.
+    """
     from src.utils.db import duckdb_read_only
 
     return duckdb_read_only(db_path).__enter__()
@@ -76,51 +82,8 @@ class PlayerInfo:
 
 
 def is_multi_player_db(db_path: str) -> bool:
-    """Vérifie si la DB contient une table Players (DB fusionnée).
-
-    DuckDB v4 uniquement : chaque joueur a sa propre DB, toujours single-player.
-    Retourne False (SQLite .db refusé).
-    """
-    if not db_path or not os.path.exists(db_path):
-        return False
-    # SQLite (.db) interdit - toujours False
-    if db_path.strip().lower().endswith(".db"):
-        return False
-    # DuckDB v4 : toujours single-player
-    if _is_duckdb_file(db_path):
-        return False
+    """Vérifie si la DB est multi-joueurs. Toujours False en v5 (chaque joueur a sa propre DB)."""
     return False
-
-
-def list_players_in_db(db_path: str) -> list[PlayerInfo]:
-    """Liste les joueurs disponibles dans une DB multi-joueurs.
-
-    DuckDB v4 uniquement : toujours single-player, retourne [].
-    SQLite (.db) interdit.
-    """
-    if not db_path or not os.path.exists(db_path):
-        return []
-    # SQLite interdit, DuckDB v4 = single-player
-    return []
-
-
-def get_unique_xuids_from_matchstats(db_path: str) -> list[tuple[str, int]]:
-    """Fallback : liste les XUIDs distincts depuis MatchStats.
-
-    Utilisé si la table Players n'existe pas mais que la DB contient
-    des matchs de plusieurs joueurs.
-
-    Returns:
-        Liste de (xuid, count) triée par count décroissant.
-    """
-    if not db_path or not os.path.exists(db_path):
-        return []
-
-    # DuckDB v4 : chaque DB = 1 joueur, pas de multi-xuid
-    if _is_duckdb_file(db_path):
-        return []
-    # SQLite (.db) interdit
-    return []
 
 
 def render_player_selector(
@@ -128,68 +91,7 @@ def render_player_selector(
     current_xuid: str,
     key: str = "player_selector",
 ) -> str | None:
-    """Affiche un sélecteur de joueur si la DB est multi-joueurs.
-
-    Args:
-        db_path: Chemin vers la DB.
-        current_xuid: XUID actuellement sélectionné.
-        key: Clé Streamlit pour le widget.
-
-    Returns:
-        XUID sélectionné, ou None si pas de changement / pas multi-joueurs.
-    """
-    if not db_path or not is_multi_player_db(db_path):
-        return None
-
-    players = list_players_in_db(db_path)
-    if len(players) <= 1:
-        return None
-
-    # Construire les options
-    options = {p.xuid: p.display_with_stats for p in players}
-    xuids = list(options.keys())
-    labels = list(options.values())
-
-    # Index actuel
-    try:
-        current_idx = xuids.index(current_xuid)
-    except ValueError:
-        current_idx = 0
-
-    # Afficher le sélecteur
-    st.markdown(f"#### {t('sidebar_player_heading')}")
-    selected_label = st.selectbox(
-        t("sidebar_player_label"),
-        options=labels,
-        index=current_idx,
-        key=key,
-        label_visibility="collapsed",
-    )
-
-    # Retrouver le XUID sélectionné
-    try:
-        selected_idx = labels.index(selected_label)
-        selected_xuid = xuids[selected_idx]
-    except (ValueError, IndexError):
-        selected_xuid = current_xuid
-
-    if selected_xuid != current_xuid:
-        return selected_xuid
-
-    return None
-
-
-def get_player_display_name(db_path: str, xuid: str) -> str | None:
-    """Récupère le nom d'affichage d'un joueur.
-
-    DuckDB v4 : pas de table Players (chaque joueur = une DB). Retourne None.
-    SQLite (.db) interdit.
-    """
-    if not db_path or not xuid or not os.path.exists(db_path):
-        return None
-    if _is_duckdb_file(db_path):
-        return None
-    # SQLite (.db) interdit
+    """Sélecteur legacy multi-joueurs. Toujours None en v5 (single-player par DB)."""
     return None
 
 
@@ -216,7 +118,7 @@ class DuckDBPlayerInfo:
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
-def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:
+def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:  # noqa: C901, PLR0912, PLR0915
     """Liste les joueurs depuis data/players/*/stats.duckdb.
 
     Résultat mis en cache 60 secondes pour éviter les reconnexions répétées
@@ -244,92 +146,90 @@ def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:
         xuid = None
 
         try:
-            con = _get_duckdb_connection(str(db_path))
-            # Compter les matchs avec fallback intelligent
-            # Chaîne de priorité : player_match_enrichment → match_stats → player_match_stats
-            # Si une table existe mais est vide (0), on essaie la suivante
-            total_matches = 0
+            from src.utils.db import duckdb_read_only
 
-            # Tentative 1 : player_match_enrichment (v5)
-            try:
-                result = con.execute("SELECT COUNT(*) FROM player_match_enrichment").fetchone()
-                total_matches = result[0] if result else 0
-            except Exception:
-                pass
+            with duckdb_read_only(str(db_path)) as con:
+                # Compter les matchs avec fallback intelligent
+                # Chaîne de priorité : player_match_enrichment → match_stats → player_match_stats
+                # Si une table existe mais est vide (0), on essaie la suivante
+                total_matches = 0
 
-            # Tentative 2 : match_stats (v4) si player_match_enrichment vide ou absente
-            if total_matches == 0:
+                # Tentative 1 : player_match_enrichment (v5)
                 try:
-                    result = con.execute("SELECT COUNT(*) FROM match_stats").fetchone()
+                    result = con.execute("SELECT COUNT(*) FROM player_match_enrichment").fetchone()
                     total_matches = result[0] if result else 0
                 except Exception:
                     pass
 
-            # Tentative 3 : player_match_stats (legacy v3) si tout le reste vide
-            if total_matches == 0:
-                try:
-                    result = con.execute("SELECT COUNT(*) FROM player_match_stats").fetchone()
-                    total_matches = result[0] if result else 0
-                except Exception:
-                    pass
+                # Tentative 2 : match_stats (v4) si player_match_enrichment vide ou absente
+                if total_matches == 0:
+                    try:
+                        result = con.execute("SELECT COUNT(*) FROM match_stats").fetchone()
+                        total_matches = result[0] if result else 0
+                    except Exception:
+                        pass
 
-            # Récupérer le XUID avec fallback intelligent
-            # 1. sync_meta (v5) → 2. player_match_stats (v3/v4) → 3. xuid_aliases
-            try:
-                result = con.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
-                if result and result[0] and str(result[0]).strip():
-                    xuid = str(result[0]).strip()
-            except Exception:
-                pass
+                # Tentative 3 : player_match_stats (legacy v3) si tout le reste vide
+                if total_matches == 0:
+                    try:
+                        result = con.execute("SELECT COUNT(*) FROM player_match_stats").fetchone()
+                        total_matches = result[0] if result else 0
+                    except Exception:
+                        pass
 
-            if not xuid:
+                # Récupérer le XUID avec fallback intelligent
+                # 1. sync_meta (v5) → 2. player_match_stats (v3/v4) → 3. xuid_aliases
                 try:
                     result = con.execute(
-                        "SELECT DISTINCT xuid FROM player_match_stats WHERE xuid IS NOT NULL LIMIT 1"
+                        "SELECT value FROM sync_meta WHERE key = 'xuid'"
                     ).fetchone()
                     if result and result[0] and str(result[0]).strip():
                         xuid = str(result[0]).strip()
                 except Exception:
                     pass
 
-            # V5.1 : Lire depuis shared_matches.duckdb (source unique)
-            if not xuid:
-                try:
-                    from src.utils.paths import get_shared_matches_path_from_player
+                if not xuid:
+                    try:
+                        result = con.execute(
+                            "SELECT DISTINCT xuid FROM player_match_stats WHERE xuid IS NOT NULL LIMIT 1"
+                        ).fetchone()
+                        if result and result[0] and str(result[0]).strip():
+                            xuid = str(result[0]).strip()
+                    except Exception:
+                        pass
 
-                    shared_path = get_shared_matches_path_from_player(db_path)
-                    if shared_path and shared_path.exists():
-                        from src.utils.db import duckdb_read_only
+                # V5.1 : Lire depuis shared_matches.duckdb (source unique)
+                if not xuid:
+                    try:
+                        from src.utils.paths import get_shared_matches_path_from_player
 
-                        with duckdb_read_only(shared_path) as shared_con:
-                            result = shared_con.execute(
-                                "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1",
-                                [gamertag],
-                            ).fetchone()
-                            if result and result[0] and str(result[0]).strip():
-                                xuid = str(result[0]).strip()
-                except Exception:
-                    pass
+                        shared_path = get_shared_matches_path_from_player(db_path)
+                        if shared_path and shared_path.exists():
+                            with duckdb_read_only(shared_path) as shared_con:
+                                result = shared_con.execute(
+                                    "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1",
+                                    [gamertag],
+                                ).fetchone()
+                                if result and result[0] and str(result[0]).strip():
+                                    xuid = str(result[0]).strip()
+                    except Exception:
+                        pass
 
-            # V5.1 : Si toujours 0, compter depuis shared (mv_player_matches ou match_participants)
-            if total_matches == 0 and xuid:
-                try:
-                    from src.utils.paths import get_shared_matches_path_from_player
+                # V5.1 : Si toujours 0, compter depuis shared (mv_player_matches ou match_participants)
+                if total_matches == 0 and xuid:
+                    try:
+                        from src.utils.paths import get_shared_matches_path_from_player
 
-                    shared_path = get_shared_matches_path_from_player(db_path)
-                    if shared_path and shared_path.exists():
-                        from src.utils.db import duckdb_read_only
-
-                        with duckdb_read_only(shared_path) as shared_con:
-                            result = shared_con.execute(
-                                "SELECT COUNT(*) FROM match_participants WHERE xuid = ?",
-                                [xuid],
-                            ).fetchone()
-                            total_matches = result[0] if result else 0
-                except Exception:
-                    pass
-
-            con.close()
+                        shared_path = get_shared_matches_path_from_player(db_path)
+                        if shared_path and shared_path.exists():
+                            with duckdb_read_only(shared_path) as shared_con:
+                                result = shared_con.execute(
+                                    "SELECT COUNT(*) FROM match_participants WHERE xuid = ?",
+                                    [xuid],
+                                ).fetchone()
+                                total_matches = result[0] if result else 0
+                    except Exception:
+                        pass
         except Exception:
             pass
 
@@ -445,6 +345,8 @@ def render_duckdb_v4_player_selector(
     # Vérifier si changement
     try:
         if Path(selected_db_path).resolve() != Path(current_db_path).resolve():
+            gamertag = Path(selected_db_path).parent.name if selected_db_path else selected_db_path
+            logger.info("Joueur sélectionné: %s", gamertag or selected_db_path)
             return selected_db_path
     except Exception:
         pass

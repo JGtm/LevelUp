@@ -79,7 +79,7 @@ def _mime_for_path(path: Path, kind: str) -> str:
     return "image/png"
 
 
-def build_thumbnail_html(
+def build_thumbnail_html(  # noqa: PLR0913
     *,
     static_src: str,
     hover_src: str | None,
@@ -164,7 +164,7 @@ def build_thumbnail_html(
 """
 
 
-def render_media_thumbnail(
+def render_media_thumbnail(  # noqa: PLR0913
     *,
     static_path: Path | str,
     hover_path: Path | str | None = None,

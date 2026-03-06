@@ -187,7 +187,7 @@ class ParquetReader:
 
     def _get_partition_patterns(
         self,
-        player_path: Path,
+        player_path: Path,  # noqa: ARG002 — signatute de méthode héritée, non utilisée ici
         start_date: datetime,
         end_date: datetime,
     ) -> list[str]:

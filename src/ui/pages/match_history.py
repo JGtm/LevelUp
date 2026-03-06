@@ -22,20 +22,13 @@ import streamlit as st
 from src.analysis.performance_score import compute_performance_series
 from src.config import HALO_COLORS, OUTCOME_CODES
 from src.ui.components.performance import get_score_class
+from src.ui.date_formats import FMT_DATETIME_FR
 from src.ui.i18n import get_outcome_map, t
+from src.ui.pages.match_table_html import app_url
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 
-def _app_url(page: str, **params: str) -> str:
-    """Génère une URL interne vers une page de l'app."""
-    import urllib.parse
-
-    base = "/"
-    qp = {"page": page, **params}
-    return base + "?" + urllib.parse.urlencode(qp)
-
-
-def render_match_history_page(
+def render_match_history_page(  # noqa: PLR0913
     dff: DataFrameLike,
     waypoint_player: str,
     db_path: str,
@@ -135,7 +128,7 @@ def render_match_history_page(
 
     # Vectorisation start_time_fr: strftime() au lieu de map_elements()
     dff_table = dff_table.with_columns(
-        pl.col("start_time").dt.strftime("%d/%m/%Y %H:%M").fill_null("-").alias("start_time_fr")
+        pl.col("start_time").dt.strftime(FMT_DATETIME_FR).fill_null("-").alias("start_time_fr")
     )
     # Vectorisation average_life_mmss: calcul arithmétique au lieu de map_elements()
     dff_table = dff_table.with_columns(
@@ -177,7 +170,7 @@ def render_match_history_page(
     _render_csv_download(dff_table)
 
 
-def _render_history_table(dff_table: pl.DataFrame) -> None:
+def _render_history_table(dff_table: pl.DataFrame) -> None:  # noqa: C901, PLR0915
     """Affiche le tableau de l'historique via un tableau HTML avec couleurs."""
     view = dff_table.sort("start_time", descending=True).head(250)
     colors = HALO_COLORS.as_dict()
@@ -274,7 +267,7 @@ def _render_history_table(dff_table: pl.DataFrame) -> None:
     body_rows: list[str] = []
     for r in view.to_dicts():
         mid = str(r.get("match_id") or "").strip()
-        app = _app_url("Match", match_id=mid)
+        app = app_url("Explorer", match_id=mid)
         match_link = (
             f"<a href='{html_lib.escape(app)}' target='_self'>{html_lib.escape(lbl_open)}</a>"
             if mid

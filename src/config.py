@@ -251,6 +251,9 @@ class OutcomeCodes:
 
 OUTCOME_CODES = OutcomeCodes()
 
+# Colonnes minimales requises pour les calculs de tendances / cumulatifs.
+CORE_STAT_COLUMNS: list[str] = ["start_time", "kills", "deaths"]
+
 
 # =============================================================================
 # Configuration des graphiques

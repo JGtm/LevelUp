@@ -19,6 +19,7 @@ from src.ui import (
     translate_playlist_name,
 )
 from src.ui.cache import cached_load_player_match_result
+from src.ui.date_formats import FMT_DATETIME_FR
 from src.ui.i18n import t
 from src.ui.player_assets import ensure_local_image_path
 from src.ui.vectorize_helpers import build_mapping
@@ -30,7 +31,7 @@ def _format_datetime_fr_hm(dt: object) -> str:
     if dt is None:
         return "-"
     try:
-        return dt.strftime("%d/%m/%Y %H:%M")
+        return dt.strftime(FMT_DATETIME_FR)
     except Exception:
         return str(dt)
 
@@ -47,25 +48,6 @@ def _app_url(page: str, **params: str) -> str:
     base = "/"
     qp = {"page": page, **params}
     return base + "?" + urllib.parse.urlencode(qp)
-
-
-def _format_score_label(my_score: object, enemy_score: object) -> str:
-    """Formate le score du match."""
-
-    def _safe(v: object) -> str:
-        if v is None:
-            return "-"
-        try:
-            if v != v:  # NaN
-                return "-"
-        except Exception:
-            pass
-        try:
-            return str(int(round(float(v))))
-        except Exception:
-            return str(v)
-
-    return f"{_safe(my_score)} - {_safe(enemy_score)}"
 
 
 def _clear_min_matches_maps_friends_auto() -> None:
@@ -159,7 +141,7 @@ def render_teammate_cards(picked_xuids: list[str], settings: object, db_path: st
                 st.markdown(card_html, unsafe_allow_html=True)
 
 
-def render_friends_history_table(
+def render_friends_history_table(  # noqa: C901, PLR0912, PLR0915
     sub_all: DataFrameLike,
     db_path: str,
     xuid: str,
@@ -177,7 +159,7 @@ def render_friends_history_table(
     """
     friends_table = ensure_polars(sub_all)
     friends_table = friends_table.with_columns(
-        pl.col("start_time").dt.strftime("%d/%m/%Y %H:%M").fill_null("-").alias("start_time_fr")
+        pl.col("start_time").dt.strftime(FMT_DATETIME_FR).fill_null("-").alias("start_time_fr")
     )
     if "playlist_fr" not in friends_table.columns:
         _playlist_map = build_mapping(friends_table["playlist_name"], translate_playlist_name)

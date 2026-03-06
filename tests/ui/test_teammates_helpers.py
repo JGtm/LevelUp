@@ -36,25 +36,27 @@ class TestFormatDatetimeFrHm:
 
 
 class TestFormatScoreLabel:
-    def test_normal(self):
-        from src.ui.pages.teammates_helpers import _format_score_label
+    """Tests redirigés vers formatting.format_score_label (canonical)."""
 
-        assert _format_score_label(50, 25) == "50 - 25"
+    def test_normal(self):
+        from src.ui.formatting import format_score_label
+
+        assert format_score_label(50, 25) == "50 - 25"
 
     def test_floats(self):
-        from src.ui.pages.teammates_helpers import _format_score_label
+        from src.ui.formatting import format_score_label
 
-        assert _format_score_label(50.7, 25.3) == "51 - 25"
+        assert format_score_label(50.7, 25.3) == "51 - 25"
 
     def test_none_values(self):
-        from src.ui.pages.teammates_helpers import _format_score_label
+        from src.ui.formatting import format_score_label
 
-        assert _format_score_label(None, None) == "- - -"
+        assert format_score_label(None, None) == "-"
 
     def test_nan_values(self):
-        from src.ui.pages.teammates_helpers import _format_score_label
+        from src.ui.formatting import format_score_label
 
-        assert _format_score_label(float("nan"), 10) == "- - 10"
+        assert format_score_label(float("nan"), 10) == "-"
 
 
 class TestAppUrl:

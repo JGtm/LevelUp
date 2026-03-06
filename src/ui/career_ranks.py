@@ -28,6 +28,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from src.ui.i18n.data_labels import load_domain
+from src.utils.paths import REPO_ROOT
 
 # Legacy dicts conservés comme fallback — source de vérité = JSON
 _CAREER_RANK_TIER_FR: dict[str, str] = {
@@ -191,12 +192,8 @@ class CareerRankInfo:
         )
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
 def _get_icons_dir() -> Path:
-    return _repo_root() / "data" / "cache" / "career_ranks"
+    return REPO_ROOT / "data" / "cache" / "career_ranks"
 
 
 logger = logging.getLogger(__name__)
@@ -205,23 +202,18 @@ logger = logging.getLogger(__name__)
 @lru_cache(maxsize=1)
 def _build_ranks_lookup() -> dict[int, CareerRankInfo]:
     """Construit le lookup depuis metadata.duckdb (table career_ranks)."""
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
-    db_path = _repo_root() / "data" / "warehouse" / "metadata.duckdb"
+    db_path = REPO_ROOT / "data" / "warehouse" / "metadata.duckdb"
     if not db_path.exists():
         logger.warning("metadata.duckdb introuvable : %s", db_path)
         return {}
 
-    conn = duckdb.connect(str(db_path), read_only=True)
-    try:
+    with duckdb_read_only(str(db_path)) as conn:
         # Vérifier que la table existe
-        tables = {
-            row[0]
-            for row in conn.execute(
-                "SELECT table_name FROM information_schema.tables " "WHERE table_schema = 'main'"
-            ).fetchall()
-        }
-        if "career_ranks" not in tables:
+        from src.utils.db import has_table
+
+        if not has_table(conn, "career_ranks"):
             logger.warning("Table career_ranks absente de metadata.duckdb")
             return {}
 
@@ -229,8 +221,6 @@ def _build_ranks_lookup() -> dict[int, CareerRankInfo]:
             "SELECT rank_id, title_en, subtitle_en, tier, xp_required, large_icon_path "
             "FROM career_ranks ORDER BY rank_id"
         ).fetchall()
-    finally:
-        conn.close()
 
     lookup: dict[int, CareerRankInfo] = {}
     for rank_id, title, subtitle, tier, xp_req, large_icon in rows:
@@ -329,20 +319,15 @@ def count_cached_icons() -> int:
 @lru_cache(maxsize=1)
 def is_metadata_available() -> bool:
     """Vérifie si les métadonnées des rangs sont disponibles dans metadata.duckdb."""
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
-    db_path = _repo_root() / "data" / "warehouse" / "metadata.duckdb"
+    db_path = REPO_ROOT / "data" / "warehouse" / "metadata.duckdb"
     if not db_path.exists():
         return False
     try:
-        conn = duckdb.connect(str(db_path), read_only=True)
-        try:
-            count = conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_name = 'career_ranks'"
-            ).fetchone()[0]
-            return count > 0
-        finally:
-            conn.close()
+        with duckdb_read_only(str(db_path)) as conn:
+            from src.utils.db import has_table
+
+            return has_table(conn, "career_ranks")
     except Exception:
         return False

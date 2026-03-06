@@ -140,7 +140,7 @@ def process_player(
             continue
 
     logger.info(
-        f"{gamertag}: {matches_with_events} matchs avec events, " f"{matches_with_errors} erreurs"
+        f"{gamertag}: {matches_with_events} matchs avec events, {matches_with_errors} erreurs"
     )
 
     if not match_results:

@@ -1,25 +1,32 @@
-"""Rendu des filtres Sessions (solo / escouade).
+"""Filtre Sessions — sélecteur de sessions solo / escouade pour la sidebar.
 
-Extrait de filters_render.py pour respecter la limite de taille des modules.
-Contient : _apply_default_last_session, _classify_sessions_solo_squad,
-           _render_session_filter.
+Ce module expose :
+- ``_apply_default_last_session`` : initialise la session par défaut au premier chargement.
+- ``_classify_sessions_solo_squad`` : classifie les sessions selon la présence d'amis.
+- ``_render_session_filter`` : rend les contrôles complets du mode Sessions.
+
+Importé par ``filters_render.py`` ; ne pas utiliser directement depuis l'UI.
+
+Note : les imports de ``filters_render`` (``GAP_MINUTES_FIXED``,
+``_cascade_reset_filters``, ``_session_labels_ordered_by_last_match``) sont
+effectués en local dans chaque fonction pour éviter les imports circulaires au
+niveau module.
 """
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 import polars as pl
 import streamlit as st
 
-from src.app._filters_helpers import (
-    GAP_MINUTES_FIXED,
-    _cascade_reset_filters,
-    _session_labels_ordered_by_last_match,
-    _to_polars,
-)
+from src.app.filters import get_friends_xuids_for_sessions
 from src.ui.cache import cached_compute_sessions_db
 from src.ui.i18n import t
+from src.utils.polars_compat import ensure_polars as _to_polars
+
+logger = logging.getLogger(__name__)
 
 
 def _apply_default_last_session(
@@ -32,7 +39,8 @@ def _apply_default_last_session(
 
     Utilisé au premier chargement ou changement de joueur/db.
     """
-    from src.app.filters import get_friends_xuids_for_sessions
+    # Import local pour éviter la circularité au niveau module
+    from src.app.filters_render import GAP_MINUTES_FIXED, _session_labels_ordered_by_last_match
 
     gap_default = GAP_MINUTES_FIXED
     friends_tuple = get_friends_xuids_for_sessions(db_path, xuid.strip(), db_key, aliases_key)
@@ -75,6 +83,9 @@ def _classify_sessions_solo_squad(
     Returns:
         (solo_labels, squad_labels) ordonnés par date décroissante.
     """
+    # Import local pour éviter la circularité au niveau module
+    from src.app.filters_render import _session_labels_ordered_by_last_match
+
     if base_s.is_empty():
         return [], []
 
@@ -86,6 +97,7 @@ def _classify_sessions_solo_squad(
     # XUIDs sont des nombres 16-18 chiffres → pas de faux positifs str.contains
     sig_col = pl.col("teammates_signature").cast(pl.Utf8).fill_null("")
     friend_exprs = [sig_col.str.contains(fxuid, literal=True) for fxuid in friends_xuids]
+
     has_friend_expr = friend_exprs[0]
     for expr in friend_exprs[1:]:
         has_friend_expr = has_friend_expr | expr
@@ -135,7 +147,12 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     Les sélections sont mutuellement exclusives : choisir dans une section
     réinitialise l'autre à "(toutes)".
     """
-    from src.app.filters import get_friends_xuids_for_sessions
+    # Import local pour éviter la circularité au niveau module
+    from src.app.filters_render import (
+        GAP_MINUTES_FIXED,
+        _cascade_reset_filters,
+        _session_labels_ordered_by_last_match,
+    )
 
     gap_minutes = GAP_MINUTES_FIXED
 
@@ -373,5 +390,7 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     st.session_state["picked_session_label"] = active_label
     st.session_state["picked_sessions"] = [] if active_label == "(toutes)" else [active_label]
     picked_session_labels = None if active_label == "(toutes)" else [active_label]
+    if active_label != _prev_active:
+        logger.info("Session sélectionnée: %s", active_label)
 
     return gap_minutes, picked_session_labels, base_s_ui, friends_tuple

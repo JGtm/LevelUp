@@ -78,7 +78,7 @@ class QueryEngine:
 
         # Vérifier que le warehouse existe
         if not self.warehouse_path.exists():
-            logger.warning(f"Warehouse non trouvé: {self.warehouse_path}")
+            logger.warning("Warehouse non trouvé: %s", self.warehouse_path)
 
     @property
     def connection(self) -> duckdb.DuckDBPyConnection:
@@ -112,7 +112,7 @@ class QueryEngine:
         if metadata_duckdb.exists():
             conn.execute(f"ATTACH '{metadata_duckdb}' AS meta (READ_ONLY)")
             self._metadata_attached = True
-            logger.debug(f"metadata.duckdb attachée: {metadata_duckdb}")
+            logger.debug("metadata.duckdb attachée: %s", metadata_duckdb)
 
         return conn
 
@@ -255,7 +255,7 @@ class QueryEngine:
                     with suppress(Exception):
                         conn.execute(f"RESET VARIABLE {key}")
 
-    def execute_with_parquet(
+    def execute_with_parquet(  # noqa: PLR0913
         self,
         sql_template: str,
         table: str,
@@ -291,7 +291,7 @@ class QueryEngine:
 
         return self.execute(sql, params, return_type=return_type)  # type: ignore
 
-    def query_match_facts(
+    def query_match_facts(  # noqa: PLR0913
         self,
         xuid: str,
         *,
@@ -378,7 +378,7 @@ class QueryEngine:
                 parquet_glob = self.get_parquet_glob("match_facts", xuid)
                 sql = sql.replace("{match_facts}", f"read_parquet('{parquet_glob}')")
             else:
-                logger.warning("Pas de données match_facts")
+                logger.debug("Pas de données match_facts")
                 return []
 
         if "{medals}" in sql:

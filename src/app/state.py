@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
+from src.app.session_keys import SK
 from src.config import (
     DEFAULT_PLAYER_GAMERTAG,
     DEFAULT_PLAYER_XUID,
@@ -87,18 +88,18 @@ class AppState:
 
     def save_to_session(self) -> None:
         """Sauvegarde l'état dans session_state."""
-        st.session_state["db_path"] = self.db_path
-        st.session_state["xuid_input"] = self.xuid_input
-        st.session_state["waypoint_player"] = self.waypoint_player
+        st.session_state[SK.DB_PATH] = self.db_path
+        st.session_state[SK.XUID_INPUT] = self.xuid_input
+        st.session_state[SK.WAYPOINT_PLAYER] = self.waypoint_player
         st.session_state["filter_playlists"] = self.filter_playlists
         st.session_state["filter_modes"] = self.filter_modes
         st.session_state["filter_maps"] = self.filter_maps
         st.session_state["filter_sessions"] = self.filter_sessions
-        st.session_state["current_page"] = self.current_page
+        st.session_state[SK.CURRENT_PAGE] = self.current_page
         if self.pending_page:
-            st.session_state["_pending_page"] = self.pending_page
+            st.session_state[SK.PENDING_PAGE] = self.pending_page
         if self.pending_match_id:
-            st.session_state["_pending_match_id"] = self.pending_match_id
+            st.session_state[SK.PENDING_MATCH_ID] = self.pending_match_id
 
     def clear_filters(self) -> None:
         """Réinitialise tous les filtres."""
@@ -110,6 +111,27 @@ class AppState:
         for key in ["filter_playlists", "filter_modes", "filter_maps", "filter_sessions"]:
             if key in st.session_state:
                 del st.session_state[key]
+
+
+def get_page_context() -> tuple[str, str, str]:
+    """Retourne le contexte courant (db_path, xuid, waypoint_player) depuis session_state.
+
+    Centralise les accès ``st.session_state.get("db_path")`` etc.
+    dispersés dans les pages UI.
+
+    Returns:
+        Tuple (db_path, xuid, waypoint_player) — chaînes vides si absent.
+    """
+    db_path = str(st.session_state.get("db_path", "") or "")
+    # Résolution du XUID : player_xuid (résolu) > xuid > xuid_input (brut)
+    xuid = str(
+        st.session_state.get("player_xuid")
+        or st.session_state.get("xuid")
+        or st.session_state.get("xuid_input", "")
+        or ""
+    ).strip()
+    wp = str(st.session_state.get("waypoint_player", "") or "")
+    return db_path, xuid, wp
 
 
 def get_default_identity() -> PlayerIdentity:
@@ -173,7 +195,7 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
             if spnkr and os.path.exists(spnkr) and os.path.getsize(spnkr) > 0:
                 chosen = spnkr
 
-        st.session_state["db_path"] = chosen
+        st.session_state[SK.DB_PATH] = chosen
 
     # XUID input
     if "xuid_input" not in st.session_state:
@@ -186,12 +208,12 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
             infer_spnkr_player_from_db_path(str(st.session_state.get("db_path", "") or "")) or ""
         )
 
-        st.session_state["xuid_input"] = legacy or inferred or guessed or identity.xuid_or_gamertag
+        st.session_state[SK.XUID_INPUT] = legacy or inferred or guessed or identity.xuid_or_gamertag
 
     # Waypoint player
     if "waypoint_player" not in st.session_state:
         identity = get_default_identity()
-        st.session_state["waypoint_player"] = identity.waypoint_player
+        st.session_state[SK.WAYPOINT_PLAYER] = identity.waypoint_player
 
 
 def get_db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:

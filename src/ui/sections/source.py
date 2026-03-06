@@ -8,7 +8,7 @@ from collections.abc import Callable, Mapping
 
 import streamlit as st
 
-from src.config import DEFAULT_PLAYER_GAMERTAG, DEFAULT_WAYPOINT_PLAYER
+from src.app.data_loader import default_identity_from_secrets
 from src.ui.aliases import display_name_from_xuid
 from src.utils import (
     guess_xuid_from_db_path,
@@ -19,26 +19,7 @@ from src.utils import (
 
 def _default_identity_from_secrets() -> tuple[str, str]:
     """Retourne (xuid_or_gamertag, waypoint_player) depuis secrets/env/constants."""
-    try:
-        player = st.secrets.get("player", {})
-        if isinstance(player, dict):
-            gt = str(player.get("gamertag") or "").strip()
-            xu = str(player.get("xuid") or "").strip()
-            wp = str(player.get("waypoint_player") or "").strip()
-        else:
-            gt = xu = wp = ""
-    except Exception:
-        gt = xu = wp = ""
-
-    gt = gt or str(os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip()
-    xu = xu or str(os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip()
-    wp = wp or str(os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or "").strip()
-
-    gt = gt or str(DEFAULT_PLAYER_GAMERTAG or "").strip()
-    wp = wp or str(DEFAULT_WAYPOINT_PLAYER or "").strip() or gt
-
-    # UI: on préfère afficher le gamertag, tout en conservant xuid en fallback.
-    xuid_or_gt = gt or xu
+    xuid_or_gt, _xuid_fallback, wp = default_identity_from_secrets()
     return xuid_or_gt, wp
 
 

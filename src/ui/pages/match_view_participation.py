@@ -6,12 +6,16 @@ Support, Score, Impact, Survie. Réutilisable dans Mes coéquipiers.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import streamlit as st
 
+from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import t
-from src.ui.streamlit_modern import fragment_if_available
+from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
+
+logger = logging.getLogger(__name__)
 
 
 @fragment_if_available
@@ -36,6 +40,7 @@ def render_participation_section(
         match_row: Ligne match_stats (pair_name, deaths, time_played_seconds)
                    pour Impact et Survie. Optionnel.
     """
+    logger.debug("participation: rendu section match=%s xuid=%s", match_id, xuid)
     from src.data.repositories import DuckDBRepository
     from src.ui.components.radar_chart import create_participation_profile_radar
     from src.visualization.participation_radar import (
@@ -53,9 +58,15 @@ def render_participation_section(
         df = repo.load_personal_score_awards_as_polars(match_id=match_id)
 
         if df.is_empty():
+            logger.debug("participation: aucun award pour match=%s", match_id)
             return
 
     except Exception:
+        logger.warning(
+            "participation: erreur chargement awards match=%s",
+            match_id,
+            exc_info=True,
+        )
         return
 
     # Convertir match_row en dict si Series
@@ -80,27 +91,24 @@ def render_participation_section(
     st.subheader(f"🎯 {t('mvp_participation_title')}")
 
     col_radar, col_legend = st.columns([2, 1])
-    with col_radar:
-        try:
-            fig = create_participation_profile_radar(
-                [profile],
-                title=t("mvp_participation_title"),
-                height=380,
-                radial_range=(0, 0.75),  # Échelle réduite pour agrandir le graphe
-            )
-            if fig is not None:
-                st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
-            else:
-                st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
+    with col_radar, safe_chart_render():
+        fig = create_participation_profile_radar(
+            [profile],
+            title=t("mvp_participation_title"),
+            height=380,
+            radial_range=(0, 0.75),  # Échelle réduite pour agrandir le graphe
+        )
+        if fig is not None:
+            st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+        else:
+            st.info(t("insufficient_data_chart"))
     with col_legend:
         st.markdown(f"**{t('mvp_axes_label')}**")
         for line in get_radar_axis_lines():
             st.markdown(line)
 
 
-def render_participation_comparison(
+def render_participation_comparison(  # noqa: C901, PLR0912, PLR0913
     db_path: str,
     match_ids: list[str],
     xuid: str,
@@ -119,6 +127,7 @@ def render_participation_comparison(
         match_rows: Lignes match_stats pour chaque match_id (optionnel).
                     Si absent, Impact et Survie utilisent des valeurs par défaut.
     """
+    logger.debug("participation: comparaison %d matchs, xuid=%s", len(match_ids), xuid)
     from src.data.repositories import DuckDBRepository
     from src.ui.components.radar_chart import create_participation_profile_radar
     from src.visualization.participation_radar import (
@@ -168,22 +177,23 @@ def render_participation_comparison(
 
         st.subheader(f"📊 {t('mvp_comparison_title')}")
         col_radar, col_legend = st.columns([2, 1])
-        with col_radar:
-            try:
-                fig = create_participation_profile_radar(profiles, title="", height=400)
-                if fig is not None:
-                    st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
-                else:
-                    st.info(t("insufficient_data_chart"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
+        with col_radar, safe_chart_render():
+            fig = create_participation_profile_radar(profiles, title="", height=400)
+            if fig is not None:
+                st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+            else:
+                st.info(t("insufficient_data_chart"))
         with col_legend:
             st.markdown(f"**{t('mvp_axes_label')}**")
             for line in get_radar_axis_lines():
                 st.markdown(line)
 
     except Exception:
-        pass
+        logger.warning(
+            "participation: erreur comparaison matchs=%s",
+            match_ids,
+            exc_info=True,
+        )
 
 
 __all__ = [

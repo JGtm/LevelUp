@@ -190,7 +190,7 @@ class TestFindMatchesWithStaleSpnkr:
                 """INSERT INTO match_registry
                    (match_id, start_time, events_loaded, sync_spnkr_version)
                    VALUES (?, ?, TRUE, '0.10.0')""",
-                (f"stale-{i:03d}", f"2026-01-{10+i:02d}"),
+                (f"stale-{i:03d}", f"2026-01-{10 + i:02d}"),
             )
 
         result = find_matches_with_stale_spnkr(conn, min_version="0.10.1", max_matches=3)

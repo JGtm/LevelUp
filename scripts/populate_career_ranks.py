@@ -39,9 +39,7 @@ CREATE TABLE IF NOT EXISTS career_ranks (
 """
 
 
-def populate_career_ranks(
-    conn: duckdb.DuckDBPyConnection, json_path: Path
-) -> int:
+def populate_career_ranks(conn: duckdb.DuckDBPyConnection, json_path: Path) -> int:
     """Peuple career_ranks depuis le JSON (migration initiale).
 
     Returns:
@@ -63,9 +61,7 @@ def populate_career_ranks(
 
         title_obj = r.get("RankTitle", {})
         title_en = (
-            title_obj.get("value", "")
-            if isinstance(title_obj, dict)
-            else str(title_obj or "")
+            title_obj.get("value", "") if isinstance(title_obj, dict) else str(title_obj or "")
         )
 
         subtitle_obj = r.get("RankSubTitle", {})
@@ -76,11 +72,7 @@ def populate_career_ranks(
         )
 
         tier_obj = r.get("RankTier", {})
-        tier = (
-            tier_obj.get("value", "")
-            if isinstance(tier_obj, dict)
-            else str(tier_obj or "")
-        )
+        tier = tier_obj.get("value", "") if isinstance(tier_obj, dict) else str(tier_obj or "")
 
         tier_type = r.get("TierType", "")
         grade = r.get("RankGrade", 1)
@@ -89,18 +81,20 @@ def populate_career_ranks(
         large_icon_path = r.get("RankLargeIcon", "")
         adornment_icon_path = r.get("RankAdornmentIcon", "")
 
-        rows.append((
-            rank_id,
-            title_en,
-            subtitle_en or None,
-            tier or None,
-            tier_type or None,
-            grade,
-            xp_required,
-            icon_path or None,
-            large_icon_path or None,
-            adornment_icon_path or None,
-        ))
+        rows.append(
+            (
+                rank_id,
+                title_en,
+                subtitle_en or None,
+                tier or None,
+                tier_type or None,
+                grade,
+                xp_required,
+                icon_path or None,
+                large_icon_path or None,
+                adornment_icon_path or None,
+            )
+        )
 
     conn.executemany(
         """INSERT INTO career_ranks VALUES (?,?,?,?,?,?,?,?,?,?)
@@ -164,7 +158,9 @@ def main() -> None:
             "FROM career_ranks WHERE rank_id IN (1, 50, 100, 200, 272) "
             "ORDER BY rank_id"
         ).fetchall():
-            print(f"   #{row[0]:3d} {row[1]:20s} {row[2] or '':10s} {row[3] or '':10s} {row[4]:>10,} XP")
+            print(
+                f"   #{row[0]:3d} {row[1]:20s} {row[2] or '':10s} {row[3] or '':10s} {row[4]:>10,} XP"
+            )
 
     finally:
         conn.close()

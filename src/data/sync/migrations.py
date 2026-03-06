@@ -34,7 +34,7 @@ def get_table_columns(conn: duckdb.DuckDBPyConnection, table_name: str) -> set[s
         ).fetchall()
         return {r[0] for r in cols} if cols else set()
     except Exception as e:
-        logger.debug(f"Impossible de lire les colonnes de {table_name}: {e}")
+        logger.debug("Impossible de lire les colonnes de %s: %s", table_name, e)
         return set()
 
 
@@ -108,10 +108,10 @@ def _add_column_if_missing(
     if is_missing:
         try:
             conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
-            logger.info(f"Ajout de la colonne {column_name} à {table_name}")
+            logger.info("Ajout de la colonne %s à %s", column_name, table_name)
             return True
         except Exception as e:
-            logger.warning(f"Impossible d'ajouter {column_name} à {table_name}: {e}")
+            logger.warning("Impossible d'ajouter %s à %s: %s", column_name, table_name, e)
     return False
 
 
@@ -184,11 +184,10 @@ def ensure_match_participants_backfill_bits(conn: duckdb.DuckDBPyConnection) -> 
     # Index pour détection rapide des participants avec données manquantes
     try:
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_mp_backfill "
-            "ON match_participants(xuid, backfill_bits)"
+            "CREATE INDEX IF NOT EXISTS idx_mp_backfill ON match_participants(xuid, backfill_bits)"
         )
     except Exception as e:
-        logger.debug(f"Index idx_mp_backfill ignoré: {e}")
+        logger.debug("Index idx_mp_backfill ignoré: %s", e)
 
 
 def ensure_match_participants_columns(conn: duckdb.DuckDBPyConnection) -> None:
@@ -305,8 +304,9 @@ def ensure_highlight_events_autoincrement(conn: duckdb.DuckDBPyConnection) -> No
 
     # Pas de DEFAULT → recreation complète
     logger.info(
-        f"Migration highlight_events: ajout séquence auto-increment "
-        f"(max_id={max_id}, {max_id_row} rows)"
+        "Migration highlight_events: ajout séquence auto-increment (max_id=%s, %s rows)",
+        max_id,
+        max_id_row,
     )
     _recreate_highlight_events_with_sequence(conn, max_id)
 
@@ -349,7 +349,7 @@ def _recreate_highlight_events_with_sequence(conn: duckdb.DuckDBPyConnection, ma
         conn.execute("DROP TABLE highlight_events_backup")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_highlight_match ON highlight_events(match_id)")
-    logger.info("✅ highlight_events migrée avec séquence auto-increment " f"(start={max_id + 1})")
+    logger.info("✅ highlight_events migrée avec séquence auto-increment (start=%s)", max_id + 1)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -390,9 +390,7 @@ def ensure_career_progression_autoincrement(conn: duckdb.DuckDBPyConnection) -> 
     max_id = max_id_row[0] if max_id_row else 0
 
     # Pas de DEFAULT → recreation complète
-    logger.info(
-        f"Migration career_progression: ajout séquence auto-increment " f"(max_id={max_id})"
-    )
+    logger.info("Migration career_progression: ajout séquence auto-increment (max_id=%s)", max_id)
     _recreate_career_progression_with_sequence(conn, max_id)
 
 
@@ -445,7 +443,7 @@ def _recreate_career_progression_with_sequence(
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_career_date ON career_progression(recorded_at)")
-    logger.info(f"✅ career_progression migrée avec séquence auto-increment (start={max_id + 1})")
+    logger.info("✅ career_progression migrée avec séquence auto-increment (start=%s)", max_id + 1)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -567,7 +565,7 @@ def ensure_medals_earned_bigint(conn: duckdb.DuckDBPyConnection) -> bool:
             logger.info("✅ Schéma medals_earned migré vers BIGINT")
             return True
     except Exception as e:
-        logger.warning(f"Migration medals_earned échouée (continuation): {e}")
+        logger.warning("Migration medals_earned échouée (continuation): %s", e)
 
     return False
 
@@ -598,7 +596,7 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
     catalog = None
     try:
         rows = conn.execute(
-            "SELECT database_name FROM duckdb_tables() " "WHERE table_name = 'match_registry'"
+            "SELECT database_name FROM duckdb_tables() WHERE table_name = 'match_registry'"
         ).fetchall()
         for row in rows:
             db_name = row[0]
@@ -726,7 +724,7 @@ def ensure_performance_indexes(conn: duckdb.DuckDBPyConnection) -> None:
     catalog = None
     try:
         rows = conn.execute(
-            "SELECT database_name FROM duckdb_tables() " "WHERE table_name = 'match_participants'"
+            "SELECT database_name FROM duckdb_tables() WHERE table_name = 'match_participants'"
         ).fetchall()
         for row in rows:
             db_name = row[0]
@@ -767,8 +765,7 @@ def ensure_performance_indexes(conn: duckdb.DuckDBPyConnection) -> None:
     # --- match_registry ---
     _create_index_safe(
         conn,
-        f"CREATE INDEX IF NOT EXISTS idx_mr_start_time "
-        f"ON {prefix}match_registry(start_time DESC)",
+        f"CREATE INDEX IF NOT EXISTS idx_mr_start_time ON {prefix}match_registry(start_time DESC)",
         "idx_mr_start_time",
     )
 
@@ -867,9 +864,9 @@ def _create_index_safe(conn: duckdb.DuckDBPyConnection, sql: str, index_name: st
     except Exception as e:
         err = str(e).lower()
         if "already exists" in err or "read only" in err:
-            logger.debug(f"Index {index_name} ignoré: {e}")
+            logger.debug("Index %s ignoré: %s", index_name, e)
         else:
-            logger.warning(f"Index {index_name} non créé: {e}")
+            logger.warning("Index %s non créé: %s", index_name, e)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -930,7 +927,7 @@ def ensure_pve_schema(conn: duckdb.DuckDBPyConnection) -> None:
                 except Exception as e:
                     err = str(e).lower()
                     if "already exists" not in err:
-                        logger.warning(f"Erreur DDL PvE : {e}")
+                        logger.warning("Erreur DDL PvE : %s", e)
 
         # Migration v5.2 : ajout des colonnes manquantes si ancienne version du schéma
         _pve_migrations = [
@@ -948,13 +945,13 @@ def ensure_pve_schema(conn: duckdb.DuckDBPyConnection) -> None:
             if col_name not in existing_cols:
                 try:
                     conn.execute(f"ALTER TABLE pve_match_stats ADD COLUMN {col_name} {col_def}")
-                    logger.info(f"Migration PvE : colonne '{col_name}' ajoutée à pve_match_stats")
+                    logger.info("Migration PvE : colonne '%s' ajoutée à pve_match_stats", col_name)
                 except Exception as e:
-                    logger.warning(f"Migration PvE '{col_name}': {e}")
+                    logger.warning("Migration PvE '%s': %s", col_name, e)
 
         logger.debug("Schéma PvE initialisé (shared_pve.duckdb)")
     except Exception as e:
-        logger.error(f"Impossible d'initialiser le schéma PvE : {e}")
+        logger.error("Impossible d'initialiser le schéma PvE : %s", e)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1009,7 +1006,7 @@ def ensure_skill_history_table(conn: duckdb.DuckDBPyConnection) -> None:
         """)
         logger.debug("Table skill_history initialisée (stats.duckdb)")
     except Exception as e:
-        logger.error(f"Impossible d'initialiser skill_history : {e}")
+        logger.error("Impossible d'initialiser skill_history : %s", e)
 
 
 def ensure_match_skill_rank_table(conn: duckdb.DuckDBPyConnection) -> None:
@@ -1032,10 +1029,10 @@ def ensure_match_skill_rank_table(conn: duckdb.DuckDBPyConnection) -> None:
             except Exception as e:
                 err = str(e).lower()
                 if "already exists" not in err:
-                    logger.warning(f"Index match_skill_rank non créé : {e}")
+                    logger.warning("Index match_skill_rank non créé : %s", e)
         logger.debug("Table match_skill_rank initialisée (stats.duckdb)")
     except Exception as e:
-        logger.error(f"Impossible d'initialiser match_skill_rank : {e}")
+        logger.error("Impossible d'initialiser match_skill_rank : %s", e)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

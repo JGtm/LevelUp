@@ -139,6 +139,17 @@ class TestGetFirefightPlaylists:
         result = get_firefight_playlists(playlists)
         assert result == {"Firefight: Heroic"}
 
+    def test_finds_firefight_french(self):
+        from src.ui.components.checkbox_filter import get_firefight_playlists
+
+        playlists = [
+            "Partie rapide",
+            "Baptême du feu",
+            "Baptême du feu : Roi de la colline héroïque",
+        ]
+        result = get_firefight_playlists(playlists)
+        assert result == {"Baptême du feu", "Baptême du feu : Roi de la colline héroïque"}
+
     def test_case_insensitive(self):
         from src.ui.components.checkbox_filter import get_firefight_playlists
 

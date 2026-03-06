@@ -440,7 +440,7 @@ class TestSyncEngineSharedConfig:
 
         # Vérifier qu'on peut lire le schéma
         tables = conn.execute(
-            "SELECT table_name FROM information_schema.tables " "WHERE table_schema = 'main'"
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
         ).fetchall()
         table_names = {r[0] for r in tables}
         assert "match_registry" in table_names
@@ -580,7 +580,7 @@ class TestSyncEngineSharedInsertions:
         engine_with_shared._insert_shared_events(shared_conn, event_rows)
 
         count = shared_conn.execute(
-            "SELECT COUNT(*) FROM highlight_events " "WHERE match_id = 'shared-test-match-001'"
+            "SELECT COUNT(*) FROM highlight_events WHERE match_id = 'shared-test-match-001'"
         ).fetchone()[0]
 
         assert count == 2
@@ -1042,65 +1042,6 @@ class TestProcessSingleMatchDispatch:
         assert result["mode"] == "known_match"
 
         engine_with_shared.close()
-
-    @pytest.mark.skip(reason="V4 legacy - mode sans shared_matches déprécié en V5 finale")
-    @pytest.mark.asyncio
-    async def test_falls_back_to_legacy_without_shared(
-        self,
-        engine_without_shared: DuckDBSyncEngine,
-    ) -> None:
-        """Sin shared_matches.duckdb, utilise le mode legacy (DÉPRÉCIÉ V5)."""
-        match_json = {
-            "MatchId": "legacy-test",
-            "MatchInfo": {
-                "StartTime": "2024-06-15T20:00:00Z",
-                "Playlist": {"AssetId": "p1", "PublicName": "Test PL"},
-                "MapVariant": {"AssetId": "m1", "PublicName": "Test Map"},
-                "PlaylistMapModePair": {"AssetId": "pm1", "PublicName": "Test - Slayer"},
-                "UgcGameVariant": {"AssetId": "gv1", "PublicName": "Slayer"},
-            },
-            "Teams": [{"TeamId": 0, "TotalPoints": 50}],
-            "Players": [
-                {
-                    "PlayerId": "xuid(2535423456789)",
-                    "PlayerGamertag": "SpartanB",
-                    "Outcome": 2,
-                    "LastTeamId": 0,
-                    "Rank": 1,
-                    "PlayerTeamStats": [
-                        {
-                            "Stats": {
-                                "CoreStats": {
-                                    "Kills": 10,
-                                    "Deaths": 5,
-                                    "Assists": 3,
-                                    "Accuracy": 0.45,
-                                }
-                            }
-                        }
-                    ],
-                }
-            ],
-        }
-
-        client = AsyncMock()
-        client.get_match_stats = AsyncMock(return_value=match_json)
-        client.get_highlight_events = AsyncMock(return_value=[])
-        client.get_skill_stats = AsyncMock(return_value=None)
-
-        options = SyncOptions(with_highlight_events=False)
-
-        result = await engine_without_shared._process_single_match(
-            client,
-            "legacy-test",
-            options,
-        )
-
-        # V5 finale : mode legacy retourne également une clé mode
-        assert result["inserted"] is True
-        assert result.get("mode") is not None or result["inserted"] is True
-
-        engine_without_shared.close()
 
 
 # =============================================================================

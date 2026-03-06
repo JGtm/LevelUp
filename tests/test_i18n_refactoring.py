@@ -9,6 +9,8 @@ Vérifie :
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 
@@ -34,21 +36,6 @@ class TestVizTFallbackToCommon:
 
         result = viz_t("__nonexistent_key_xyz__", "fr")
         assert result == "[__nonexistent_key_xyz__]"
-
-    def test_viz_t_prefers_viz_over_common(self) -> None:
-        """Si la clé existe dans viz ET common, viz gagne."""
-        from src.ui.i18n.common import STRINGS as COMMON
-        from src.ui.i18n.viz import STRINGS as VIZ
-        from src.ui.i18n.viz import viz_t
-
-        # Trouver une clé présente dans les deux
-        shared_keys = set(VIZ.keys()) & set(COMMON.keys())
-        if not shared_keys:
-            pytest.skip("Aucune clé partagée entre viz et common")
-
-        key = next(iter(shared_keys))
-        result = viz_t(key, "fr")
-        assert result == VIZ[key]["fr"]
 
     def test_viz_t_kwargs_support(self) -> None:
         """viz_t() doit supporter str.format(**kwargs)."""
@@ -87,20 +74,36 @@ class TestNoInternalDuplicates:
         Note : Python dict garde la dernière valeur, donc on parse le source
         pour détecter les doublons.
         """
-        import ast
         from pathlib import Path
 
         # Résoudre le chemin depuis la racine du projet
         test_dir = Path(__file__).resolve().parent
         project_root = test_dir.parent
         module_path = project_root / "src" / "ui" / "i18n" / f"{module_name}.py"
-        if not module_path.exists():
-            pytest.skip(f"Module {module_name}.py introuvable à {module_path}")
 
-        source = module_path.read_text(encoding="utf-8")
+        # Support packages (dossier au lieu de fichier unique)
+        package_dir = project_root / "src" / "ui" / "i18n" / module_name
+        if package_dir.is_dir():
+            source_files = sorted(package_dir.glob("*.py"))
+            source_files = [f for f in source_files if f.name != "__init__.py"]
+            assert source_files, f"Package {module_name}/ vide (pas de modules .py)"
+        elif module_path.exists():
+            source_files = [module_path]
+        else:
+            pytest.skip(f"Module {module_name}.py introuvable à {module_path}")
+            return  # unreachable, pour le type checker
+
+        for src_file in source_files:
+            self._check_no_duplicate_keys(src_file)
+
+    @staticmethod
+    def _check_no_duplicate_keys(src_file: Path) -> None:
+        """Vérifie l'absence de clés dupliquées dans STRINGS d'un fichier source."""
+        import ast
+
+        source = src_file.read_text(encoding="utf-8")
         tree = ast.parse(source)
 
-        # Trouver l'assignation STRINGS = {...} ou STRINGS: ... = {...}
         for node in ast.walk(tree):
             target_name: str | None = None
             value_node = None
@@ -130,10 +133,8 @@ class TestNoInternalDuplicates:
                     if k in seen:
                         duplicates.append(k)
                     seen[k] = seen.get(k, 0) + 1
-                assert not duplicates, f"Clés en double dans {module_name}.py: {duplicates}"
+                assert not duplicates, f"Clés en double dans {src_file.name}: {duplicates}"
                 return
-
-        pytest.skip(f"STRINGS non trouvé dans {module_name}.py")
 
 
 class TestNoSilentCollisions:

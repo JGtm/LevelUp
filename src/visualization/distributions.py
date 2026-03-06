@@ -180,7 +180,7 @@ def plot_top_weapons(
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
-def plot_histogram(
+def plot_histogram(  # noqa: PLR0913
     values: pd.Series | pl.Series | np.ndarray,
     *,
     title: str | None = None,
@@ -355,7 +355,7 @@ def plot_medals_distribution(
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
-def plot_correlation_scatter(
+def plot_correlation_scatter(  # noqa: PLR0913
     df: DataFrameLike,
     x_col: str,
     y_col: str,
@@ -429,8 +429,7 @@ def plot_correlation_scatter(
                 "opacity": 0.6,
             },
             hovertemplate=(
-                f"{x_label or x_col}: %{{x:.2f}}<br>"
-                f"{y_label or y_col}: %{{y:.2f}}<extra></extra>"
+                f"{x_label or x_col}: %{{x:.2f}}<br>{y_label or y_col}: %{{y:.2f}}<extra></extra>"
             ),
         )
     )

@@ -370,9 +370,9 @@ def list_archives(gamertag: str) -> None:
     # Stats de la DB principale
     match_stats = get_match_stats(db_path)
 
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info(f"Joueur: {gamertag}")
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
 
     logger.info(f"\nDB Principale ({db_path.name}):")
     logger.info(f"  Total matchs: {match_stats['total_matches']}")
@@ -395,7 +395,7 @@ def list_archives(gamertag: str) -> None:
         if parquet_files:
             total_size = sum(f.stat().st_size for f in parquet_files)
             logger.info(f"  Fichiers: {len(parquet_files)}")
-            logger.info(f"  Taille totale: {total_size / (1024*1024):.2f} MB")
+            logger.info(f"  Taille totale: {total_size / (1024 * 1024):.2f} MB")
 
             for pf in sorted(parquet_files):
                 size_mb = pf.stat().st_size / (1024 * 1024)
@@ -409,7 +409,7 @@ def list_archives(gamertag: str) -> None:
         logger.info("\nArchives: Aucune (dossier inexistant)")
 
     # Recommandations
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info("Recommandations:")
 
     if match_stats["total_matches"] >= 5000:
@@ -418,7 +418,7 @@ def list_archives(gamertag: str) -> None:
     if match_stats["min_year"] and match_stats["max_year"]:
         span = match_stats["max_year"] - match_stats["min_year"]
         if span >= 2:
-            logger.info(f"  ⚠ Historique sur {span+1} années : archivage par année recommandé")
+            logger.info(f"  ⚠ Historique sur {span + 1} années : archivage par année recommandé")
 
     if match_stats["total_matches"] < 1000:
         logger.info("  ✓ < 1000 matchs : archivage non nécessaire")

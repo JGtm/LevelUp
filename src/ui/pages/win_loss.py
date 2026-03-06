@@ -11,8 +11,9 @@ import streamlit as st
 
 from src.config import HALO_COLORS
 from src.data.services.win_loss_service import WinLossService
+from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
-from src.ui.streamlit_modern import fragment_if_available
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization import (
     plot_map_comparison,
@@ -90,7 +91,7 @@ def _style_map_table_row(row: pd.Series) -> pd.Series:
 
 
 @fragment_if_available
-def render_win_loss_page(
+def render_win_loss_page(  # noqa: PLR0913
     dff: DataFrameLike,
     base: DataFrameLike,
     picked_session_labels: list[str] | None,
@@ -130,19 +131,17 @@ def render_win_loss_page(
 
 def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str:
     """Affiche le graphe outcomes over time. Retourne le bucket_label."""
-    try:
+    bucket_label = t("wl_period_default")
+    with safe_chart_render("wl_cannot_display_evolution"):
         fig_out, bucket_label = plot_outcomes_over_time(
             dff, session_style=is_session_scope, lang=get_lang()
         )
         st.markdown(t("wl_bucket_intro", bucket=bucket_label))
         if fig_out is not None:
-            st.plotly_chart(fig_out, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig_out, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
             st.info(t("wl_insufficient_evolution"))
-        return bucket_label
-    except Exception as e:
-        st.warning(t("wl_cannot_display_evolution", error=e))
-        return t("wl_period_default")
+    return bucket_label
 
 
 @fragment_if_available
@@ -155,7 +154,7 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
     with col_by_map:
         st.markdown(f"##### {t('wl_by_map')}")
         if "map_name" in dff.columns and "outcome" in dff.columns:
-            try:
+            with safe_chart_render():
                 fig_map = plot_stacked_outcomes_by_category(
                     dff,
                     "map_name",
@@ -166,11 +165,9 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     lang=get_lang(),
                 )
                 if fig_map is not None:
-                    st.plotly_chart(fig_map, width="stretch", config={"staticPlot": True})
+                    st.plotly_chart(fig_map, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
         else:
             st.info(t("insufficient_data_chart"))
 
@@ -182,7 +179,7 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
             else ("mode_category" if "mode_category" in dff.columns else "pair_name")
         )
         if mode_col in dff.columns and "outcome" in dff.columns:
-            try:
+            with safe_chart_render():
                 fig_mode = plot_stacked_outcomes_by_category(
                     dff,
                     mode_col,
@@ -193,11 +190,9 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     lang=get_lang(),
                 )
                 if fig_mode is not None:
-                    st.plotly_chart(fig_mode, width="stretch", config={"staticPlot": True})
+                    st.plotly_chart(fig_mode, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
-            except Exception as e:
-                st.warning(t("error_chart", error=e))
         else:
             st.info(t("insufficient_data_chart"))
 
@@ -209,14 +204,12 @@ def _render_heatmap_section(dff: pl.DataFrame) -> None:
     st.subheader(t("wl_heatmap_title"))
     st.caption(t("wl_heatmap_caption"))
     if "start_time" in dff.columns and "outcome" in dff.columns:
-        try:
+        with safe_chart_render():
             fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=1, lang=get_lang())
             if fig_heat is not None:
-                st.plotly_chart(fig_heat, width="stretch", config={"staticPlot": True})
+                st.plotly_chart(fig_heat, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
     else:
         st.info(t("missing_time_data"))
 
@@ -230,8 +223,8 @@ def _render_top_by_week(dff: pl.DataFrame) -> None:
     if "start_time" not in dff.columns:
         st.info(t("missing_time_data"))
         return
-    try:
-        rank_col = "rank" if "rank" in dff.columns else "outcome"
+    rank_col = "rank" if "rank" in dff.columns else "outcome"
+    with safe_chart_render():
         fig_top = plot_matches_at_top_by_week(
             dff,
             title=None,
@@ -240,11 +233,9 @@ def _render_top_by_week(dff: pl.DataFrame) -> None:
             lang=get_lang(),
         )
         if fig_top is not None:
-            st.plotly_chart(fig_top, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig_top, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
 
 @fragment_if_available
@@ -254,14 +245,12 @@ def _render_streak_section(dff: pl.DataFrame) -> None:
     st.subheader(t("wl_streaks"))
     st.caption(t("wl_streaks_caption"))
     if "outcome" in dff.columns and "start_time" in dff.columns:
-        try:
+        with safe_chart_render():
             fig_streak = plot_streak_chart(dff, title=None, lang=get_lang())
             if fig_streak is not None:
-                st.plotly_chart(fig_streak, width="stretch", config={"displayModeBar": False})
+                st.plotly_chart(fig_streak, width="stretch", config=PLOTLY_CLEAN_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        except Exception as e:
-            st.warning(t("error_chart", error=e))
     else:
         st.info(t("missing_outcome_data"))
 
@@ -285,7 +274,7 @@ def _render_personal_score_section(dff: pl.DataFrame) -> None:
         smooth_window=10,
     )
     if fig_ps is not None:
-        st.plotly_chart(fig_ps, width="stretch", config={"displayModeBar": False})
+        st.plotly_chart(fig_ps, width="stretch", config=PLOTLY_CLEAN_CONFIG)
     else:
         st.info(t("insufficient_data_chart"))
 
@@ -311,7 +300,7 @@ def _render_period_section(
 
     def _style_pct(v) -> str:
         try:
-            x = float(v)  # noqa: F841
+            float(v)
         except Exception:
             return ""
         return "color: #E0E0E0; font-weight: 700;"
@@ -396,7 +385,7 @@ def _render_ratio_by_map_section(
     key, label = metric
 
     view = breakdown.head(20).reverse()
-    try:
+    with safe_chart_render():
         if key == "ratio_global":
             fig = plot_map_ratio_with_winloss(view, title=label)
         else:
@@ -407,11 +396,9 @@ def _render_ratio_by_map_section(
                 fig.update_xaxes(tickformat=".0%")
             if key in ("accuracy_avg",):
                 fig.update_xaxes(ticksuffix="%")
-            st.plotly_chart(fig, width="stretch", config={"staticPlot": True})
+            st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-    except Exception as e:
-        st.warning(t("error_chart", error=e))
 
     base_scope = base_scope_pl
     _render_map_table(breakdown, base_scope)

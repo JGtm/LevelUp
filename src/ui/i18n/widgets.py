@@ -1,9 +1,6 @@
 """Chaînes pour les widgets interactifs Streamlit.
 
 Boutons, selectbox, expander, checkbox, radio, multiselect, captions de widgets.
-
-⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO" ci-dessous.
-   Règles : voir le prompt de la Phase 1b dans le plan i18n.
 """
 
 from __future__ import annotations
@@ -104,14 +101,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "ℹ️ À propos du score de performance",
         "en": "ℹ️ About the performance score",
     },
-    "exp_history_detail": {
-        "fr": "Historique détaillé",
-        "en": "Detailed history",
-    },
-    "exp_current_ranking": {
-        "fr": "📊 Classement actuel (instantané)",
-        "en": "📊 Current rating snapshot",
-    },
+    "exp_history_detail": "career_rank_history_title",  # alias → pages
+    "exp_current_ranking": "career_lusr_snapshot_title",  # alias → pages
     # ── Checkboxes ──────────────────────────────────────────────────────────
     "chk_backfill_all": {
         "fr": "Tout backfiller",
@@ -211,10 +202,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Coéquipiers",
         "en": "Teammates",
     },
-    "tm_session_trend": {
-        "fr": "Tendance de session",
-        "en": "Session trend",
-    },
     # ── Match history ─────────────────────────────────────────────────────────
     "mh_no_matches": "no_matches",  # alias → common
     # ── Sidebar — sync ──────────────────────────────────────────────────────
@@ -244,6 +231,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "backfill_personal_scores": {"fr": "{n} personal_score(s)", "en": "{n} personal score(s)"},
     "backfill_skill": {"fr": "skill", "en": "skill"},
     "backfill_lusr": {"fr": "{n} LUSR calculé(s)", "en": "{n} LUSR computed"},
+    "backfill_summary": {"fr": "Backfill\u00a0: {parts}", "en": "Backfill: {parts}"},
     # ── Filtres — labels supplémentaires ────────────────────────────────────
     "filter_header": {"fr": "Filtres", "en": "Filters"},
     "filter_selection": {"fr": "Sélection", "en": "Selection"},

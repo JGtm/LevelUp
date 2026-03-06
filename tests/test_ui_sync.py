@@ -106,7 +106,7 @@ class TestCleanupOrphanTmpDbs:
 
         # Mock session_state
         session_state = {}
-        monkeypatch.setattr("src.ui.sync.st.session_state", session_state)
+        monkeypatch.setattr("src.ui._sync_utils.st.session_state", session_state)
 
         data = tmp_path / "data"
         data.mkdir()
@@ -126,7 +126,7 @@ class TestCleanupOrphanTmpDbs:
         from src.ui.sync import cleanup_orphan_tmp_dbs
 
         session_state = {}
-        monkeypatch.setattr("src.ui.sync.st.session_state", session_state)
+        monkeypatch.setattr("src.ui._sync_utils.st.session_state", session_state)
 
         data = tmp_path / "data"
         data.mkdir()
@@ -143,7 +143,7 @@ class TestCleanupOrphanTmpDbs:
         from src.ui.sync import cleanup_orphan_tmp_dbs
 
         session_state = {"_tmp_db_cleanup_done": True}
-        monkeypatch.setattr("src.ui.sync.st.session_state", session_state)
+        monkeypatch.setattr("src.ui._sync_utils.st.session_state", session_state)
 
         # Should return immediately
         cleanup_orphan_tmp_dbs(tmp_path)

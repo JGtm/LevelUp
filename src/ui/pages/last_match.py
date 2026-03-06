@@ -7,6 +7,7 @@ Ce module contient les fonctions de rendu pour :
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import date, datetime, time
 from typing import TYPE_CHECKING
@@ -18,13 +19,15 @@ from src.ui.i18n import t
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from zoneinfo import ZoneInfo
 
     from src.ui.settings import AppSettings
 
 
-def render_last_match_page(
+def render_last_match_page(  # noqa: PLR0913
     dff: DataFrameLike,
     db_path: str,
     xuid: str,
@@ -77,6 +80,7 @@ def render_last_match_page(
 
     last_row = dff.sort("start_time").row(-1, named=True)
     last_match_id = str(last_row.get("match_id", "")).strip()
+    logger.debug("Dernier match auto: %s", last_match_id)
 
     render_match_view_fn(
         row=last_row,
@@ -100,7 +104,7 @@ def render_last_match_page(
     )
 
 
-def render_match_search_page(
+def render_match_search_page(  # noqa: PLR0913
     df: DataFrameLike,
     dff: DataFrameLike,
     db_path: str,
@@ -197,6 +201,7 @@ def render_match_search_page(
     def _on_use_quick_match() -> None:
         picked = st.session_state.get("match_quick_pick_label")
         if isinstance(picked, str) and picked in opts:
+            logger.info("Match sélectionné (recherche rapide): %s", opts[picked])
             st.session_state["match_id_input"] = opts[picked]
 
     st.button(t("btn_use_match"), width="stretch", on_click=_on_use_quick_match)

@@ -16,6 +16,7 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
+from src.config import CORE_STAT_COLUMNS
 from src.data.services.teammates_service import TeammatesService
 from src.ui.cache import cached_has_cache_tables
 from src.ui.i18n import t
@@ -70,7 +71,7 @@ def _enrich_series_with_perfect_kills(
 # =============================================================================
 
 
-def render_teammates_page(
+def render_teammates_page(  # noqa: C901, PLR0912, PLR0913
     df: DataFrameLike,
     dff: DataFrameLike,
     base: DataFrameLike,
@@ -164,7 +165,7 @@ def render_teammates_page(
         render_teammate_cards(picked_xuids, settings, db_path=db_path)
 
     # Tendance de session (matchs affichés) — multi-joueurs
-    _req_trend = ["start_time", "kills", "deaths"]
+    _req_trend = CORE_STAT_COLUMNS
     if len(dff) >= 4 and all(c in dff.columns for c in _req_trend):
         from src.analysis.cumulative import compute_session_trend_polars
         from src.ui import display_name_from_xuid

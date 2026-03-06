@@ -119,7 +119,7 @@ def dispatch_context() -> dict[str, object]:
     ("page", "expected_renderer"),
     [
         ("last_match", "render_last_match_page_fn"),
-        ("match", "render_match_search_page_fn"),
+        ("explorer", "render_match_search_page_fn"),
         ("citations", "render_citations_page_fn"),
         ("session_compare", "render_session_comparison_page_fn"),
         ("timeseries", "render_timeseries_page_fn"),
@@ -197,7 +197,7 @@ def test_pages_constant_matches_expected_navigation() -> None:
         "timeseries",
         "session_compare",
         "last_match",
-        "match",
+        "explorer",
         "media",
         "citations",
         "win_loss",

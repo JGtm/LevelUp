@@ -9,11 +9,8 @@ from src.ui.multiplayer import (
     PlayerInfo,
     _is_duckdb_file,
     get_gamertag_from_duckdb_v4_path,
-    get_player_display_name,
-    get_unique_xuids_from_matchstats,
     is_duckdb_v4_path,
     is_multi_player_db,
-    list_players_in_db,
 )
 
 # ============================================================================
@@ -165,21 +162,3 @@ class TestLegacyFunctions:
 
     def test_is_multi_player_db_empty(self):
         assert is_multi_player_db("") is False
-
-    def test_list_players_nonexistent(self):
-        assert list_players_in_db("/nonexistent/path.duckdb") == []
-
-    def test_list_players_empty(self):
-        assert list_players_in_db("") == []
-
-    def test_get_unique_xuids_nonexistent(self):
-        assert get_unique_xuids_from_matchstats("/nonexistent/path.duckdb") == []
-
-    def test_get_unique_xuids_empty(self):
-        assert get_unique_xuids_from_matchstats("") == []
-
-    def test_get_player_display_name_none(self):
-        assert get_player_display_name("", "123") is None
-
-    def test_get_player_display_name_nonexistent(self):
-        assert get_player_display_name("/nope.duckdb", "123") is None

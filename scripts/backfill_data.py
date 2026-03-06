@@ -67,6 +67,11 @@ from scripts.backfill.orchestrator import (  # noqa: E402
     backfill_player_data,
 )
 from src.data.sync.scope import SyncScope  # noqa: E402
+from src.utils.log_config import setup_script_logging  # noqa: E402
+
+setup_script_logging(sync_log=True)
+
+logger = logging.getLogger(__name__)
 
 _SHARED_DB = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
 
@@ -75,16 +80,7 @@ def _open_shared_conn() -> duckdb.DuckDBPyConnection:
     return duckdb.connect(str(_SHARED_DB))
 
 
-# Configuration du logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-logger = logging.getLogger(__name__)
-
-
-def main() -> int:
+def main() -> int:  # noqa: C901, PLR0912, PLR0915
     """Point d'entrée principal."""
     parser = create_argument_parser()
     parser.add_argument(
@@ -376,13 +372,15 @@ def main() -> int:
                     _xuid_bf = _xuid_map.get(_pinfo.gamertag.lower())
                     _missing_bf = count_matches_missing_data(_xuid_bf or "") if _xuid_bf else 0
                     _last_bf = fetch_last_match_info(_xuid_bf or "") if _xuid_bf else None
+                    _pres = result.get("per_player", {}).get(_pinfo.gamertag, {})
                     _discord_players.append(
                         DiscordPlayerResult(
                             gamertag=_pinfo.gamertag,
                             xuid=_xuid_bf,
-                            matches_synced=_matches_checked_total // _n_ref,
+                            matches_synced=_pres.get("matches_checked", 0),
                             missing_data_count=_missing_bf,
                             last_match=_last_bf,
+                            backfill_counts=_pres,
                         )
                     )
                 notify_operation_done(
@@ -430,6 +428,7 @@ def main() -> int:
                             matches_synced=result.get("matches_checked", 0),
                             missing_data_count=_missing_bf,
                             last_match=_last_bf,
+                            backfill_counts=result,
                         )
                     ],
                     success=True,
@@ -467,7 +466,7 @@ def _print_summary_player(result: dict, scope: object) -> None:
     _print_totals(result, scope)
 
 
-def _print_totals(totals: dict, scope: object) -> None:
+def _print_totals(totals: dict, scope: object) -> None:  # noqa: C901, PLR0912
     """Affiche les totaux du backfill."""
     logger.info(f"Matchs vérifiés: {totals.get('matches_checked', 0)}")
     logger.info(f"Matchs avec données manquantes: {totals.get('matches_missing_data', 0)}")
@@ -519,5 +518,5 @@ if __name__ == "__main__":
         with SyncLock():
             sys.exit(main())
     except SyncAlreadyRunning as _e:
-        print(f"❌ {_e}", file=sys.stderr)
+        logger.error("%s", _e)
         sys.exit(2)

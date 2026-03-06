@@ -326,10 +326,12 @@ def test_app_data_to_chart_flow(app_flow_dbs) -> None:
             }
         )
 
-        fb, clutch, casualty, _last_group_kills, _first_group_deaths, scores = get_all_impact_events(
-            events_df,
-            matches_df,
-            friend_xuids={"x_me", "x_friend"},
+        fb, clutch, casualty, _last_group_kills, _first_group_deaths, scores = (
+            get_all_impact_events(
+                events_df,
+                matches_df,
+                friend_xuids={"x_me", "x_friend"},
+            )
         )
         assert len(scores) >= 1
 

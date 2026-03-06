@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.app import page_router, routing
+from src.app import page_router
 
 
 @pytest.mark.regression
@@ -81,57 +81,3 @@ def test_render_page_selector_uses_canonical_pages(monkeypatch: pytest.MonkeyPat
     segmented_control.assert_called_once()
     _, kwargs = segmented_control.call_args
     assert kwargs["options"] == labels
-
-
-@pytest.mark.regression
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        (None, None),
-        ("", None),
-        ("abc", "abc"),
-        (["x", "y"], "x"),
-        (("z",), "z"),
-        ([], None),
-    ],
-)
-def test_qp_first_behaviors(value, expected) -> None:
-    """_qp_first gère scalaires/listes/vides sans régression."""
-    assert routing._qp_first(value) == expected
-
-
-class _QueryParamsDict(dict):
-    def clear(self) -> None:
-        super().clear()
-
-
-@pytest.mark.regression
-def test_set_query_params_primary_api_filters_empty(monkeypatch: pytest.MonkeyPatch) -> None:
-    """_set_query_params garde uniquement les valeurs non vides via st.query_params."""
-    qp = _QueryParamsDict({"legacy": "1"})
-    fake_st = SimpleNamespace(query_params=qp, experimental_set_query_params=MagicMock())
-    monkeypatch.setattr(routing, "st", fake_st)
-
-    routing._set_query_params(page="Match", match_id="abc123", empty="", none_val=None)
-
-    assert dict(qp) == {"page": "Match", "match_id": "abc123"}
-    fake_st.experimental_set_query_params.assert_not_called()
-
-
-@pytest.mark.regression
-def test_set_query_params_fallbacks_to_legacy_api(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Si l'API moderne échoue, fallback sur experimental_set_query_params."""
-
-    class _BrokenQueryParams(dict):
-        def clear(self) -> None:
-            raise RuntimeError("query_params indisponible")
-
-    legacy = MagicMock()
-    fake_st = SimpleNamespace(
-        query_params=_BrokenQueryParams(), experimental_set_query_params=legacy
-    )
-    monkeypatch.setattr(routing, "st", fake_st)
-
-    routing._set_query_params(page="Carrière", match_id="m42")
-
-    legacy.assert_called_once_with(page="Carrière", match_id="m42")

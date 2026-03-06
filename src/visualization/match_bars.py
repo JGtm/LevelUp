@@ -9,12 +9,13 @@ from __future__ import annotations
 import plotly.graph_objects as go
 import polars as pl
 
+from src.ui.date_formats import FMT_SHORT_DATETIME_FR, FMT_TICK_DATETIME
 from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
-def plot_metric_bars_by_match(
+def plot_metric_bars_by_match(  # noqa: PLR0913
     df_: DataFrameLike,
     *,
     metric_col: str,
@@ -63,7 +64,7 @@ def plot_metric_bars_by_match(
     d = d.with_columns(pl.col(metric_col).cast(pl.Float64, strict=False))
     y = d.get_column(metric_col).to_list()
     x_idx = list(range(len(d)))
-    labels = d.get_column("start_time").dt.strftime("%m-%d %H:%M").to_list()
+    labels = d.get_column("start_time").dt.strftime(FMT_TICK_DATETIME).to_list()
     step = max(1, len(labels) // 10) if labels else 1
 
     w = int(smooth_window) if smooth_window else 0
@@ -114,7 +115,7 @@ def plot_metric_bars_by_match(
     return apply_halo_plot_style(fig, height=320)
 
 
-def plot_multi_metric_bars_by_match(
+def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     series: list[tuple[str, DataFrameLike]],
     *,
     metric_col: str,
@@ -226,7 +227,7 @@ def plot_multi_metric_bars_by_match(
     )
 
     # Labels pour l'axe X (dates)
-    labels = match_times.get_column("start_time").dt.strftime("%d/%m %H:%M").to_list()
+    labels = match_times.get_column("start_time").dt.strftime(FMT_SHORT_DATETIME_FR).to_list()
     step = max(1, len(labels) // 10) if labels else 1
 
     fig = go.Figure()

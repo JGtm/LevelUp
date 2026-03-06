@@ -8,6 +8,8 @@ repositories et la couche d'analyse.
 from dataclasses import dataclass
 from datetime import datetime
 
+from src.data.domain.refdata import Outcome
+
 
 @dataclass(frozen=True)
 class MatchRow:
@@ -54,12 +56,12 @@ class MatchRow:
     @property
     def is_win(self) -> bool:
         """Retourne True si le match est une victoire."""
-        return self.outcome == 2
+        return self.outcome == Outcome.WIN
 
     @property
     def is_loss(self) -> bool:
         """Retourne True si le match est une défaite."""
-        return self.outcome == 3
+        return self.outcome == Outcome.LOSS
 
 
 @dataclass

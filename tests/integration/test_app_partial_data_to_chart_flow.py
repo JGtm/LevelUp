@@ -142,7 +142,14 @@ def test_app_partial_data_to_chart_flow_graceful(app_partial_flow_db) -> None:
             }
         )
 
-        first_bloods, clutch_finishers, last_casualties, last_group_kills, first_group_deaths, scores = get_all_impact_events(
+        (
+            first_bloods,
+            clutch_finishers,
+            last_casualties,
+            last_group_kills,
+            first_group_deaths,
+            scores,
+        ) = get_all_impact_events(
             events_df,
             matches_df,
             friend_xuids={"x_me"},

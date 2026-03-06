@@ -8,28 +8,25 @@ Ce module centralise :
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 import polars as pl
 import streamlit as st
 
+from src.app._page_context import MatchViewParams
 from src.ui.i18n import t
 from src.ui.settings import AppSettings
+from src.utils.polars_compat import ensure_polars as _to_polars
 
-
-def _to_polars(df: pl.DataFrame) -> pl.DataFrame:
-    """Convertit un DataFrame en Polars si nécessaire (bridge transitoire)."""
-    if isinstance(df, pl.DataFrame):
-        return df
-    return pl.from_pandas(df)
-
+logger = logging.getLogger(__name__)
 
 # Clés internes stables (slugs) — NE PAS TRADUIRE
 PAGE_KEYS: list[str] = [
     "timeseries",
     "session_compare",
     "last_match",
-    "match",
+    "explorer",
     "media",
     "citations",
     "win_loss",
@@ -44,7 +41,7 @@ _PAGE_I18N_KEYS: dict[str, str] = {
     "timeseries": "page_timeseries",
     "session_compare": "page_session_compare",
     "last_match": "page_last_match",
-    "match": "page_match",
+    "explorer": "page_explorer",
     "media": "page_media",
     "citations": "page_citations",
     "win_loss": "page_win_loss",
@@ -59,7 +56,8 @@ _LEGACY_NAME_TO_SLUG: dict[str, str] = {
     "Séries temporelles": "timeseries",
     "Comparaison de sessions": "session_compare",
     "Dernier match": "last_match",
-    "Match": "match",
+    "Match": "explorer",
+    "Explorer": "explorer",
     "Médias": "media",
     "Citations": "citations",
     "Victoires/Défaites": "win_loss",
@@ -93,7 +91,7 @@ def _pages_compat() -> list[str]:
 PAGES = PAGE_KEYS  # Les consommateurs doivent utiliser get_page_label(slug)
 
 
-def build_match_view_params(
+def build_match_view_params(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     waypoint_player: str,
@@ -111,7 +109,7 @@ def build_match_view_params(
     load_match_gamertags_fn: Callable,
     load_match_rosters_fn: Callable,
     paris_tz,
-) -> dict:
+) -> MatchViewParams:
     """Construit les paramètres communs pour les pages de match."""
     return {
         "db_path": db_path,
@@ -150,6 +148,7 @@ def consume_pending_match_id() -> None:
     """Consomme le match_id en attente si défini."""
     pending_mid = st.session_state.pop("_pending_match_id", None)
     if isinstance(pending_mid, str) and pending_mid.strip():
+        logger.info("Ouverture match depuis pending: %s", pending_mid.strip())
         st.session_state["match_id_input"] = pending_mid.strip()
 
 
@@ -184,7 +183,7 @@ _PAGE_URL_PATHS: dict[str, str] = {
     "timeseries": "timeseries",
     "session_compare": "session-compare",
     "last_match": "last-match",
-    "match": "match",
+    "explorer": "explorer",
     "media": "medias",
     "citations": "citations",
     "win_loss": "win-loss",
@@ -198,7 +197,7 @@ _PAGE_ICONS: dict[str, str] = {
     "timeseries": "📈",
     "session_compare": "🔄",
     "last_match": "🎯",
-    "match": "🔍",
+    "explorer": "🔍",
     "media": "🎬",
     "citations": "🏅",
     "win_loss": "📊",
@@ -256,12 +255,13 @@ def render_page_selector_nav(
     )
 
     if selected and selected != current_title:
+        logger.info("Navigation: %s → %s", current_title, selected)
         target = next((p for p in pages if p.title == selected), None)
         if target is not None:
             st.switch_page(target)
 
 
-def dispatch_page(
+def dispatch_page(  # noqa: C901, PLR0912, PLR0913
     page: str,
     dff: pl.DataFrame,
     df: pl.DataFrame,
@@ -300,11 +300,12 @@ def dispatch_page(
     """Dispatch vers la page appropriée."""
     # Les fonctions de rendu attendent encore pandas, donc on garde df en l'état
     # La conversion se fera progressivement au niveau de chaque page
+    logger.debug("Page exécutée: %s", page)
 
     if page == "last_match":
         render_last_match_page_fn(dff=dff, **match_view_params)
 
-    elif page == "match":
+    elif page == "explorer":
         render_match_search_page_fn(df=df, dff=dff, **match_view_params)
 
     elif page == "citations":
