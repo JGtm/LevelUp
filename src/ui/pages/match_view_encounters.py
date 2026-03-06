@@ -83,7 +83,7 @@ def wr_cell_html(wr: float | None, n_matches: int) -> str:
 def kd_cell_html(kills: int, deaths: int) -> str:
     """Formate le ratio K/D croisé avec highlight."""
     if kills == 0 and deaths == 0:
-        return "—"
+        return '<span style="color:#666">0/0</span>'
     ratio_str = f"{kills}/{deaths}"
     if deaths == 0:
         css = "color:#33ffbf;font-weight:700;"
