@@ -315,7 +315,7 @@ class TestMatchTableHTML:
         assert "Test Player" in html
         assert "gamertag=Test" in html
         assert "<a " in html
-        assert "target='_self'" in html
+        assert "target='_blank'" in html
 
     def test_gamertag_link_escapes_html(self) -> None:
         from src.ui.pages.match_table_html import gamertag_link

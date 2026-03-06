@@ -45,6 +45,11 @@ GAP_MINUTES_FIXED = 120  # Figé (sessions stockées en base, cf. SESSIONS_STOCK
 # Streamlit réutilise d'anciennes valeurs (ex: checkbox décochée) et écrase
 # la réinitialisation programmée de la sélection.
 _CASCADE_WIDGET_KEY_PREFIXES = (
+    "filter_experience_types_cb_",
+    "filter_experience_types_all",
+    "filter_experience_types_none",
+    "filter_experience_types_confirm",
+    "filter_experience_types_cancel",
     "filter_playlists_cb_",
     "filter_playlists_all",
     "filter_playlists_none",
@@ -66,10 +71,10 @@ _CASCADE_WIDGET_KEY_PREFIXES = (
 
 
 def _cascade_reset_filters() -> None:
-    """Réinitialise COMPLÈTEMENT les filtres cascade (playlists/modes/cartes).
+    """Réinitialise COMPLÈTEMENT les filtres cascade (expérience/playlists/modes/cartes).
 
     Supprime :
-    - Les clés agrégées (filter_playlists, filter_modes, filter_maps)
+    - Les clés agrégées (filter_experience_types, filter_playlists, filter_modes, filter_maps)
     - Les clés de mode/exclusions intent-based
     - Les clés widget individuelles des checkboxes (filter_playlists_cb_*, etc.)
 
@@ -78,6 +83,9 @@ def _cascade_reset_filters() -> None:
     quand la clé widget existe déjà dans session_state).
     """
     for _k in (
+        "filter_experience_types",
+        "_experience_types_exclusions",
+        "_experience_types_filter_mode",
         "filter_playlists",
         "filter_modes",
         "filter_maps",
