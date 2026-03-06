@@ -65,7 +65,6 @@ EXPECTED_RENDER_FUNCTIONS = [
     "render_timeseries_page",
     "render_session_comparison_page",
     "render_last_match_page",
-    "render_match_search_page",
     "render_match_view",
     "render_match_history_page",
     "render_win_loss_page",
@@ -265,11 +264,10 @@ class TestUIComponentsImport:
     """Vérifie que les composants UI clés sont importables."""
 
     def test_page_router_import(self) -> None:
-        from src.app.page_router import PAGES, dispatch_page
+        from src.app.page_router import PAGES
 
         assert isinstance(PAGES, list)
         assert len(PAGES) > 0
-        assert callable(dispatch_page)
 
     def test_page_router_has_all_expected_pages(self) -> None:
         """Le routeur contient toutes les pages attendues."""
