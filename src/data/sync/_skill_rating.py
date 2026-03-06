@@ -124,7 +124,7 @@ class SkillRatingMixin:
         except Exception as e:
             logger.warning("Erreur écriture CSR pour %s: %s", match_id, e)
 
-    def batch_compute_lusr(self: _SyncProtocol, *, force: bool = False) -> int:  # noqa: C901, PLR0912
+    def batch_compute_lusr(self: _SyncProtocol, *, force: bool = False) -> int:  # noqa: C901, PLR0912, PLR0915
         """Calcule le LUSR pour tous les matchs non classés sans rating LUSR.
 
         Traitement **séquentiel** (TrueSkill 2) : chaque match dépend du précédent.
@@ -195,7 +195,18 @@ class SkillRatingMixin:
                 match_ids,
             ).pl()
 
-            # 3. En mode incrémental, identifier les match_ids déjà dans match_skill_rank
+            # 3a. Toujours protéger les matchs déjà traités avec le CSR officiel
+            #     (ne jamais écraser un CSR avec un LUSR calculé localement)
+            existing_csr_ids: set[str] = set()
+            try:
+                csr_df = conn.execute(
+                    "SELECT match_id FROM match_skill_rank WHERE rating_type = 'CSR'"
+                ).pl()
+                existing_csr_ids = set(csr_df["match_id"].to_list())
+            except Exception:
+                existing_csr_ids = set()
+
+            # 3b. En mode incrémental, identifier les match_ids déjà dans match_skill_rank
             existing_lusr_ids: set[str] = set()
             if not force:
                 try:
@@ -250,6 +261,10 @@ class SkillRatingMixin:
                     else:
                         delta = raw_delta
                 prev_rating[pg] = rating_value
+
+                # Protéger les CSR officiels : ne jamais les écraser avec un LUSR calculé
+                if mid in existing_csr_ids:
+                    continue
 
                 # Mode incrémental : sauter si déjà présent
                 if not force and mid in existing_lusr_ids:
