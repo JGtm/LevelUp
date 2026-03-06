@@ -388,18 +388,18 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
 
     # ── 5. Grille 8 colonnes ────────────────────────────────────────────
     # ── 5. Affichage groupé par catégorie / sous-catégorie ─────────────
-    _CATEGORY_ORDER = [
-        "Mode de jeu",
-        "Multijoueur",
-        "Arme",
-        "Véhicule",
-        "Ennemi",
-        "Spartan Companies",
-    ]
+    _CATEGORY_ORDER_BY_LANG: dict[str, list[str]] = {
+        "fr": ["Mode de jeu", "Multijoueur", "Arme", "Spartan Companies", "Véhicule", "Ennemi"],
+        "en": ["Game mode", "Multiplayer", "Weapon", "Spartan Companies", "Vehicle", "Enemy"],
+    }
+    _CATEGORY_ORDER = _CATEGORY_ORDER_BY_LANG.get(lang, _CATEGORY_ORDER_BY_LANG["en"])
     _SUBCAT_ORDER: dict[str, list[str]] = {
         "Arme": ["Grenade"],
+        "Weapon": ["Grenade"],
         "Véhicule": ["Général", "UNSC", "Covenant"],
+        "Vehicle": ["Général", "UNSC", "Covenant"],
         "Ennemi": ["Covenant", "Banished"],
+        "Enemy": ["Covenant", "Banished"],
     }
     cols_per_row = 8
 
@@ -426,6 +426,9 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
         st.divider()
 
         if cat in _SUBCAT_ORDER:
+            _SUBCAT_DISPLAY: dict[str, dict[str, str]] = {
+                "en": {"Général": "General"},
+            }
             ordered_keys = _SUBCAT_ORDER[cat]
             extra_keys = sorted(k for k in subcats_dict if k not in ordered_keys and k is not None)
             none_keys: list[str | None] = [None] if None in subcats_dict else []
@@ -434,8 +437,9 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
                 if not sub_items:
                     continue
                 if subcat is not None:
+                    subcat_label = _SUBCAT_DISPLAY.get(lang, {}).get(subcat, subcat)
                     st.markdown(
-                        f"<h4 style='margin-top:1rem'>{html.escape(subcat)}</h4>"
+                        f"<h4 style='margin-top:1rem'>{html.escape(subcat_label)}</h4>"
                         "<hr style='margin:0.25rem 0 0.75rem 0;opacity:0.3'>",
                         unsafe_allow_html=True,
                     )
