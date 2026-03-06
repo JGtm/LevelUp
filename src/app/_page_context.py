@@ -6,6 +6,7 @@ Extrait de streamlit_app.py pour éviter le recours à Any dans PageContext.
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from typing import Any, TypedDict
 
 
@@ -34,3 +35,13 @@ class MatchViewParams(TypedDict):
     load_match_gamertags_fn: Callable[..., Any]
     load_match_rosters_fn: Callable[..., Any]
     paris_tz: Any  # ZoneInfo | pytz.timezone
+
+
+class FilterSidebarCallbacks(TypedDict):
+    """Callbacks injectées dans render_filters_sidebar."""
+
+    date_range_fn: Callable[..., tuple[date, date]]
+    clean_asset_label_fn: Callable[[str], str]
+    normalize_mode_label_fn: Callable[[str], str]
+    normalize_map_label_fn: Callable[[str], str]
+    build_friends_opts_map_fn: Callable[..., Any]

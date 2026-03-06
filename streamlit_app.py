@@ -665,11 +665,13 @@ def _load_and_prepare_data(  # noqa: PLR0913
             xuid=xuid,
             db_key=db_key,
             aliases_key=aliases_key,
-            date_range_fn=date_range,
-            clean_asset_label_fn=clean_asset_label,
-            normalize_mode_label_fn=normalize_mode_label,
-            normalize_map_label_fn=normalize_map_label,
-            build_friends_opts_map_fn=build_friends_opts_map,
+            callbacks={
+                "date_range_fn": date_range,
+                "clean_asset_label_fn": clean_asset_label,
+                "normalize_mode_label_fn": normalize_mode_label,
+                "normalize_map_label_fn": normalize_map_label,
+                "build_friends_opts_map_fn": build_friends_opts_map,
+            },
         )
 
     # Base "globale" : toutes les parties (après inclusion/exclusion Firefight)
