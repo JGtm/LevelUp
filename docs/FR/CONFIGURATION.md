@@ -24,28 +24,55 @@ Pour utiliser l'API Halo Infinite via SPNKr, vous devez :
 ### 1. Créer une Application Azure
 
 1. Aller sur [Azure Portal](https://portal.azure.com/)
-2. Naviguer vers **Azure Active Directory** → **App registrations**
+2. Naviguer vers **Microsoft Entra ID** → **App registrations**
+
+   ![Microsoft Entra ID](../screenshots/azure-setup/01-entra-id.png)
+
 3. Cliquer sur **New registration**
+
+   ![Add App Registration](../screenshots/azure-setup/02-add-app-registration.png)
+
 4. Configurer :
    - **Name** : `LevelUp Halo`
    - **Supported account types** : Personal Microsoft accounts only
    - **Redirect URI** : `https://localhost` (Web)
 5. Cliquer sur **Register**
 
+   ![Register Application](../screenshots/azure-setup/03-register-application.png)
+
 ### 2. Configurer les Permissions
 
-1. Dans votre application, aller à **API permissions**
-2. Cliquer sur **Add a permission**
-3. Sélectionner **Microsoft Graph** → **Delegated permissions**
-4. Ajouter : `User.Read`, `offline_access`
+1. Dans votre application, aller à **API permissions** et cliquer sur **Add a permission**
+
+   ![API Permissions](../screenshots/azure-setup/04-api-permissions.png)
+
+2. Sélectionner **Microsoft Graph** → **Delegated permissions**
+
+   ![Select Microsoft Graph](../screenshots/azure-setup/05-select-microsoft-graph.png)
+
+3. Ajouter `offline_access`
+
+   ![Add offline_access](../screenshots/azure-setup/06-permission-offline-access.png)
+
+4. Ajouter `User.Read`
+
+   ![Add User.Read](../screenshots/azure-setup/07-permission-user-read.png)
+
 5. Ajouter aussi les permissions Xbox Live (si disponibles)
 
 ### 3. Créer un Secret Client
 
-1. Aller à **Certificates & secrets**
-2. Cliquer sur **New client secret**
-3. Donner un nom et choisir une expiration
-4. **Copier immédiatement la valeur** (elle ne sera plus visible après)
+1. Aller à **Certificates & secrets** et cliquer sur **New client secret**
+
+   ![Certificates & Secrets](../screenshots/azure-setup/08-certificates-secrets.png)
+
+2. Donner une description et choisir une expiration
+
+   ![New Client Secret](../screenshots/azure-setup/09-new-client-secret.png)
+
+3. **Copier immédiatement la valeur** (elle ne sera plus visible après)
+
+   ![Copy Secret Value](../screenshots/azure-setup/10-copy-secret.png)
 
 ### 4. Configurer le Fichier .env.local
 
