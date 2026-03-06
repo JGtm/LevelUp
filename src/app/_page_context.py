@@ -13,8 +13,8 @@ class MatchViewParams(TypedDict):
     """Paramètres communs passés aux pages de visualisation de match.
 
     Retourné par ``build_match_view_params()`` dans page_router.py.
-    Les clés correspondent aux kwargs attendus par ``render_match_view_fn``,
-    ``render_last_match_page_fn`` et ``render_match_search_page_fn``.
+    Les clés correspondent aux kwargs attendus par ``render_match_view_fn``
+    et ``render_last_match_page_fn``.
     """
 
     db_path: str

@@ -77,10 +77,7 @@ from src.app.page_router import (
     build_match_view_params,
     build_navigation,
     consume_pending_match_id,
-    consume_pending_page,
-    dispatch_page,
     get_page_label,
-    render_page_selector,
     render_page_selector_nav,
 )
 from src.app.session_keys import SK
@@ -131,25 +128,6 @@ from src.ui.multiplayer import (
 
 # render_match_view est toujours nécessaire pour build_match_view_params
 from src.ui.pages import render_match_view
-from src.ui.streamlit_modern import HAS_NAVIGATION
-
-# Sprint 8ter.5 : Imports page de rendu lazy (chargés à la demande via st.navigation)
-# Les fonctions sont importées au moment où la page est visitée, pas au démarrage.
-if not HAS_NAVIGATION:
-    # Fallback : imports eager pour les versions < 1.36
-    from src.ui.pages import (
-        render_career_page,
-        render_citations_page,
-        render_last_match_page,
-        render_match_history_page,
-        render_match_search_page,
-        render_media_tab,
-        render_session_comparison_page,
-        render_settings_page,
-        render_teammates_page,
-        render_timeseries_page,
-        render_win_loss_page,
-    )
 from src.ui.perf import perf_reset_run, perf_section
 from src.ui.sync import (
     cleanup_orphan_tmp_dbs,
@@ -755,13 +733,9 @@ def _load_and_prepare_data(  # noqa: PLR0913
 
 
 def _dispatch_pages(ctx: PageContext) -> None:
-    """Dispatch vers la page active (st.navigation ou fallback legacy)."""
+    """Dispatch vers la page active via st.navigation."""
     consume_pending_match_id()
-
-    if HAS_NAVIGATION:
-        _dispatch_navigation(ctx)
-    else:
-        _dispatch_legacy(ctx)
+    _dispatch_navigation(ctx)
 
 
 def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
@@ -818,7 +792,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
     def _page_explorer() -> None:
         from src.ui.pages import render_explorer_page
 
-        render_explorer_page(df=ctx.df, dff=ctx.dff, **ctx.match_view_params)
+        render_explorer_page(df=ctx.df, dff=ctx.df, **ctx.match_view_params)
 
     def _page_media() -> None:
         from src.ui.pages import render_media_tab
@@ -901,11 +875,11 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
         "timeseries": _page_timeseries,
         "session_compare": _page_session_compare,
         "last_match": _page_last_match,
-        "explorer": _page_explorer,
         "media": _page_media,
         "citations": _page_citations,
         "win_loss": _page_win_loss,
         "teammates": _page_teammates,
+        "explorer": _page_explorer,
         "match_history": _page_match_history,
         "career": _page_career,
         "settings": _page_settings,
@@ -926,47 +900,6 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
 
     render_page_selector_nav(pages, pg)
     pg.run()
-
-
-def _dispatch_legacy(ctx: PageContext) -> None:
-    """Dispatch legacy via page selector (Streamlit < 1.36)."""
-    consume_pending_page()
-    page = render_page_selector()
-
-    dispatch_page(
-        page=page,
-        dff=ctx.dff,
-        df=ctx.df,
-        base=ctx.base,
-        me_name=ctx.me_name,
-        xuid=ctx.xuid,
-        db_path=ctx.db_path,
-        db_key=ctx.db_key,
-        aliases_key=ctx.aliases_key,
-        settings=ctx.settings,
-        picked_session_labels=ctx.picked_session_labels,
-        waypoint_player=ctx.waypoint_player,
-        gap_minutes=ctx.gap_minutes,
-        match_view_params=ctx.match_view_params,
-        render_last_match_page_fn=render_last_match_page,
-        render_match_search_page_fn=render_match_search_page,
-        render_citations_page_fn=render_citations_page,
-        render_session_comparison_page_fn=render_session_comparison_page,
-        render_timeseries_page_fn=render_timeseries_page,
-        render_win_loss_page_fn=render_win_loss_page,
-        render_teammates_page_fn=render_teammates_page,
-        render_match_history_page_fn=render_match_history_page,
-        render_media_tab_fn=render_media_tab,
-        render_career_page_fn=render_career_page,
-        render_settings_page_fn=render_settings_page,
-        cached_compute_sessions_db_fn=cached_compute_sessions_db,
-        top_medals_fn=_top_medals,
-        build_friends_opts_map_fn=build_friends_opts_map,
-        assign_player_colors_fn=assign_player_colors,
-        plot_multi_metric_bars_fn=plot_multi_metric_bars_by_match,
-        get_local_dbs_fn=cached_list_local_dbs,
-        clear_caches_fn=_clear_app_caches,
-    )
 
 
 # =============================================================================
