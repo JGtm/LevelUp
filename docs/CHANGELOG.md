@@ -6,6 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [5.5.0] - 2026-03-06
+
+### Added
+
+- **Setup Wizard — Configuration initiale guidée** (`src/ui/pages/setup_wizard.py` + `setup_wizard_logic.py`)
+  - Deux parcours : **Xbox Express** (recommandé, 2 étapes) et **Azure manuel** (avancé, 3 étapes)
+  - Cards CSS personnalisées avec icônes, barre de progression animée, étapes numérotées
+  - Logique séparée de l'UI (`SetupStatus`, `validate_azure_credentials()`, `validate_gamertag()`, `create_player_profile()`, `save_azure_credentials()`)
+  - Guard dans `main()` : le wizard s'affiche automatiquement si credentials ou joueur manquants
+  - i18n FR/EN (~49 clés) dans `src/ui/i18n/setup.py`
+
+- **Xbox OAuth — Connexion Xbox en 1 clic** (`src/ui/xbox_oauth.py` + `xbox_oauth_ui.py`)
+  - Flux complet : URL Microsoft → callback `?code=XXX&state=YYY` → échange code → refresh_token → spartan/clearance tokens → résolution gamertag+XUID → provisionnement automatique
+  - `xbox_oauth.py` (436L) : logique OAuth pure sans dépendance Streamlit
+  - `xbox_oauth_ui.py` (163L) : composant Streamlit intégré dans Settings (bouton login, statut, déconnexion)
+  - Protection CSRF avec `state` aléatoire validé au retour du callback
+  - i18n FR/EN dans `src/ui/i18n/pages/xbox.py`
+
+- **Player Provisioning** (`src/app/player_provisioning.py`)
+  - `provision_player()` : crée `data/players/{gamertag}/stats.duckdb` + table `sync_meta` + enregistre dans `db_profiles.json` — idempotent
+
+- **Auth Status** (`src/utils/auth.py`)
+  - `AuthStatus` dataclass + `get_auth_status()`, `check_credentials()`, `write_env_local()` (écriture/mise à jour de `.env.local` en préservant les commentaires)
+
+- **setup.bat** — Script d'installation Windows one-click (vérifie/installe Python 3.12+, crée le `.venv`, installe les dépendances, lance le dashboard)
+
+- **Token fallback DB** (`src/ui/profile_api_tokens.py`)
+  - Fallback 3 : lecture du refresh_token depuis `sync_meta` de la DB joueur si absent des variables d'environnement
+
+- **Documentation**
+  - `docs/CONFIGURATION.md` : réécriture complète avec TOC, guide Azure pas-à-pas avec 11 captures d'écran annotées, sections Player Profiles, Environment Variables, App Settings, Security, Troubleshooting
+  - `docs/FR/CONFIGURATION.md` : version FR mise à jour
+  - `docs/SYNC_GUIDE.md` : réécriture avec architecture sync v5.1, diagramme ASCII, commandes détaillées
+  - `docs/FR/SYNC_GUIDE.md` : mise à jour
+
+### Fixed
+
+- **CSRF** (`streamlit_app.py`) — Corrige comparaison `_xbox_state != _xbox_state` (auto-comparaison, toujours False) → `_xbox_state != _expected_state`
+- **`_repo_root` undefined** (`src/ui/profile_api_tokens.py`) — `_repo_root()` jamais importée → remplacée par `REPO_ROOT` depuis `src.utils.paths`
+- **DuckDB retry élargi** (`src/data/sync/_engine_connections.py`) — `except duckdb.IOException` → `except duckdb.Error` + délai retry `0.15s → 0.5s`
+- **GC sync mode** (`src/ui/_sync_duckdb_ops.py`) — `gc.collect()` + `time.sleep(0.3)` pour libérer les file handles DuckDB sous Windows
+- **OAuth consumed guard** (`streamlit_app.py`) — Flag `_xbox_oauth_consumed` pour éviter le double-traitement du callback au rerun Streamlit
+- **Test isolation webhook** (`tests/test_monitor_uptime.py`) — Patch `get_secret` au lieu de manipuler `os.environ` pour éviter le rechargement `.env.local`
+
+### Tests
+
+- **75 tests ajoutés** (1 482 lignes) couvrant l'ensemble des nouveaux modules :
+  - `test_auth.py` (13 tests) : `AuthStatus`, `get_auth_status()`, `write_env_local()`
+  - `test_setup_wizard_logic.py` (20+ tests) : `SetupStatus`, validations, création de profil, edge cases
+  - `test_xbox_oauth.py` (18 tests) : URL OAuth, échange de code, store/load token, provisionnement
+  - `test_xbox_oauth_callback_e2e.py` (9 tests) : flux complet code→player, erreurs, CSRF, cycle token
+  - `test_setup_wizard_page.py` (15 tests) : UI mockée (MockStreamlit), modes Xbox/Azure, progression
+
+### Chore
+
+- Rangement racine : `ACKNOWLEDGMENTS.md`, `CHANGELOG.md`, `CONTRIBUTING.md` déplacés vers `docs/`
+- Scripts déplacés : `activate_env.sh`, `run_monitor_hidden.vbs` → `scripts/`
+
 ## [5.4.0] - 2026-03-04
 
 ### Added

@@ -2,7 +2,7 @@
 
 > **Analysez vos performances Halo Infinite avec des visualisations avancées et une architecture DuckDB v5 ultra-rapide.**
 
-[![Version](https://img.shields.io/badge/Version-5.3.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.3.0)
+[![Version](https://img.shields.io/badge/Version-5.5.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.5.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -13,7 +13,8 @@
 
 ## Dernières nouveautés
 
-- **v5.4 — Refactoring** — 72 sous-modules extraits (phases 0-6), architecture mixin MRO généralisée. **3693 tests**, 0 failure.
+- **v5.5 — Wizard & Xbox OAuth** — Wizard de configuration initiale avec deux parcours (Xbox Express / Azure manuel). Connexion Xbox en 1 clic avec provisionnement automatique. Script `setup.bat` pour installation Windows. Documentation réécrite (CONFIGURATION.md + SYNC_GUIDE.md). **75 nouveaux tests**.
+- **v5.4 — Explorer & Rencontres** — Page Explorer unifiée. Historique des rencontres. Refactoring massif (72 sous-modules). **3693 tests**, 0 failure.
 - **v5.3 — LUSR/CSR** — Système de rating TrueSkill 2 per-groupe (ranked/arena/btb/tactical/social/fun) avec calibration empirique. Notifications Discord post-sync/backfill.
 - **v5.2 — Stats PvE** — Base dédiée `shared_pve.duckdb` pour les matchs Firefight. Filtres intent-based persistants. Scoreboard complet "Dernier match". Palette Okabe-Ito (accessibilité daltonisme).
 - **v5.1 — Architecture optimisée** — Streamlit moderne (`@st.fragment`, `st.navigation`), éradication SQLite/Pandas, `SyncScope` centralisé, -75% temps de connexion DB.
@@ -37,12 +38,14 @@
 - **Corrélations** - Scatter plots durée de vie vs kills
 - **Top armes** - Statistiques par arme avec headshot rate
 
-### Architecture v5.3 - DuckDB Multi-DB
+### Architecture v5.5 - DuckDB Multi-DB
 - **Shared Matches** — `shared_matches.duckdb` centralise tous les matchs (registry, participants, events, médailles)
 - **PvE Firefight** — `shared_pve.duckdb` isole les stats Firefight (waves, boss, ennemis par type)
 - **ATTACH multi-DB** — DuckDB ATTACH pour lecture transparente cross-DB
 - **LUSR/CSR** — Ratings TrueSkill 2 per-groupe stockés dans `match_skill_rank` (player DB)
 - **Performance** — Requêtes DuckDB < 30ms (warm), DataFrame Polars natifs, vues matérialisées
+- **Xbox OAuth** — Flux Microsoft OAuth 2.0 avec protection CSRF, refresh token stocké en DB joueur
+- **Wizard Setup** — Configuration guidée avec détection automatique des credentials/joueurs manquants
 
 ---
 
