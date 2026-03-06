@@ -125,12 +125,6 @@ class TestPageRouterModernisation:
 
         assert isinstance(HAS_NAVIGATION, bool)
 
-    def test_legacy_dispatch_page_still_exists(self) -> None:
-        """dispatch_page doit exister pour le fallback legacy."""
-        from src.app.page_router import dispatch_page
-
-        assert callable(dispatch_page)
-
 
 # =====================================================================
 # 4. duckdb_read_only context manager

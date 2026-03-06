@@ -88,9 +88,6 @@ from src.app.page_router import (
 from src.app.page_router import (
     build_match_view_params,
     consume_pending_match_id,
-    consume_pending_page,
-    dispatch_page,
-    render_page_selector,
 )
 from src.app.profile import (
     ProfileAssets,
@@ -199,10 +196,7 @@ __all__ = [
     # Page router
     "PAGES_ROUTER",
     "build_match_view_params",
-    "consume_pending_page",
     "consume_pending_match_id",
-    "render_page_selector",
-    "dispatch_page",
     # KPIs render
     "render_kpis_section",
     "render_performance_info",
