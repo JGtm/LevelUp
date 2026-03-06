@@ -170,6 +170,7 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     )
     if prefetched_sessions is not None and not prefetched_sessions.is_empty():
         base_s_raw = _to_polars(prefetched_sessions)
+        logger.debug("Sessions: utilisation du cache pré-chargé (%d matchs)", len(base_s_raw))
     else:
         base_s_raw = _to_polars(
             cached_compute_sessions_db(
@@ -383,6 +384,7 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if _post_squad != _pre_squad and _post_squad != "(toutes)":
         st.session_state["_pending_solo_session_label"] = "(toutes)"
         st.session_state["_pending_squad_session_label"] = _post_squad
+        logger.debug("Reset solo→(toutes) via pending (escouade=%s)", _post_squad)
 
     # ── Sélection active consolidée ──────────────────────────────────────────
     solo_active = st.session_state.get("picked_solo_session_label", "(toutes)")
