@@ -51,7 +51,7 @@ Pour utiliser l'API Halo Infinite via SPNKr, vous devez :
 
 ```bash
 # Copier le template
-cp .env.example .env.local
+cp .env.local.example .env.local
 ```
 
 Éditer `.env.local` :
@@ -122,13 +122,33 @@ Plusieurs méthodes :
 
 ### Ajouter un Nouveau Joueur
 
+**Méthode 1 — Automatique via CLI (recommandée) :**
+
+```bash
+# Par gamertag
+python scripts/sync.py --add-player NouveauJoueur
+
+# Par XUID
+python scripts/sync.py --add-player 2533274823110022
+
+# Ajout + sync complète en une seule commande
+python scripts/sync.py --add-player NouveauJoueur --full --max-matches 500
+```
+
+Cette commande :
+- Résout le gamertag/XUID via l'API
+- Crée l'entrée dans `db_profiles.json`
+- Crée le dossier `data/players/<gamertag>/`
+
+**Méthode 2 — Manuelle :**
+
 ```bash
 # Créer le dossier
 mkdir -p data/players/NouveauJoueur
 
-# Ajouter au fichier db_profiles.json
+# Ajouter l'entrée dans db_profiles.json (voir structure ci-dessus)
 # Puis synchroniser
-python scripts/sync.py --gamertag NouveauJoueur --full
+python scripts/sync.py --player NouveauJoueur --full
 ```
 
 ---
