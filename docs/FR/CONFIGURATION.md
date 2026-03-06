@@ -42,6 +42,8 @@ Pour utiliser l'API Halo Infinite via SPNKr, vous devez :
 
 6. Après l'enregistrement, Azure redirige vers la page **Overview** de l'application. **Copier l'Application (client) ID** — c'est votre `SPNKR_AZURE_CLIENT_ID`.
 
+   ![Overview — Application (client) ID](../screenshots/azure-setup/03b-overview-client-id.png)
+
    > Il ressemble à : `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (format GUID)
 
 ### 2. Configurer les Permissions
