@@ -168,8 +168,9 @@ class CitationEngine(CitationDataLoaderMixin):
             self._mappings = {}
             return self._mappings
 
-        conn = duckdb.connect(str(meta_path), read_only=True)
-        try:
+        from src.utils.db import duckdb_read_only
+
+        with duckdb_read_only(meta_path) as conn:
             # Vérifier que la table existe
             exists = conn.execute(
                 "SELECT COUNT(*) FROM information_schema.tables "
@@ -213,8 +214,6 @@ class CitationEngine(CitationDataLoaderMixin):
                 norm = d.pop("citation_name_norm")
                 self._mappings[norm] = d
             return self._mappings
-        finally:
-            conn.close()
 
     # ------------------------------------------------------------------
     # Calcul par match
@@ -511,9 +510,7 @@ class CitationEngine(CitationDataLoaderMixin):
                     mastered_count += 1
                     continue
                 targets = sorted(
-                    int(t.strip())
-                    for t in str(child_tiers).split(",")
-                    if t.strip().isdigit()
+                    int(t.strip()) for t in str(child_tiers).split(",") if t.strip().isdigit()
                 )
                 if targets and child_count >= targets[-1]:
                     mastered_count += 1
