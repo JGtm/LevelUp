@@ -749,8 +749,8 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
         render_timeseries_page(ctx.dff, df_full=ctx.df, db_path=ctx.db_path, xuid=ctx.xuid)
 
     def _page_session_compare() -> None:
+        from src.app._filters_helpers import _to_polars
         from src.app.filters import get_friends_xuids_for_sessions
-        from src.app.page_router import _to_polars
         from src.ui.pages import render_session_comparison_page
 
         friends_tuple = get_friends_xuids_for_sessions(
