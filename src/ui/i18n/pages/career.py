@@ -163,6 +163,31 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Impossible d'afficher les rencontres : {error}",
         "en": "Unable to display encounters: {error}",
     },
+    # ── Filtre période rencontres ────────────────────────────────────────────
+    "encounters_period_label": {
+        "fr": "Période",
+        "en": "Period",
+    },
+    "encounters_period_all": {
+        "fr": "Tout",
+        "en": "All time",
+    },
+    "encounters_period_2y": {
+        "fr": "2 dernières années",
+        "en": "Last 2 years",
+    },
+    "encounters_period_1y": {
+        "fr": "Dernière année",
+        "en": "Last year",
+    },
+    "encounters_period_1m": {
+        "fr": "Dernier mois",
+        "en": "Last month",
+    },
+    "encounters_period_1w": {
+        "fr": "Dernière semaine",
+        "en": "Last week",
+    },
     "col_times_killed": {
         "fr": "Tués",
         "en": "Killed",
