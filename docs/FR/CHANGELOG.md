@@ -6,7 +6,7 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
-## [5.4.0] - 2026-03-04
+## [5.4.0] - 2026-03-06
 
 ### Ajouté
 
