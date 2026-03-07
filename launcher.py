@@ -454,6 +454,260 @@ def _fetch_profile_assets(gamertag: str) -> None:
 
 
 # =============================================================================
+# Commande: setup (remplace setup.bat / setup_env.ps1)
+# =============================================================================
+
+
+def _find_system_python() -> str | None:
+    """Trouve un Python 3.10-3.13 sur le système."""
+    import shutil
+
+    # 1. Essayer le Python Launcher (py) — Windows uniquement
+    if sys.platform == "win32" and shutil.which("py"):
+        for minor in (12, 13, 11, 10):
+            try:
+                result = subprocess.run(
+                    ["py", f"-3.{minor}", "-c", "import sys; print(sys.executable)"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    return result.stdout.strip()
+            except Exception:
+                continue
+
+    # 2. Essayer python / python3 dans le PATH
+    for name in ("python3", "python"):
+        exe = shutil.which(name)
+        if not exe:
+            continue
+        try:
+            result = subprocess.run(
+                [exe, "-c", "import sys; print(sys.version_info.minor)"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                minor = int(result.stdout.strip())
+                if 10 <= minor <= 13:
+                    return exe
+        except Exception:
+            continue
+
+    # 3. Chemins standards Windows
+    if sys.platform == "win32":
+        appdata = os.environ.get("LOCALAPPDATA", "")
+        for minor in (12, 13, 11, 10):
+            candidate = Path(appdata) / "Programs" / "Python" / f"Python3{minor}" / "python.exe"
+            if candidate.exists():
+                return str(candidate)
+
+    return None
+
+
+def _install_python_via_winget() -> bool:
+    """Installe Python 3.12 via winget (Windows uniquement)."""
+    if sys.platform != "win32":
+        print("  ⚠ Installation automatique uniquement disponible sur Windows.")
+        print("  Installez Python manuellement: https://www.python.org/downloads/")
+        return False
+
+    import shutil
+
+    if not shutil.which("winget"):
+        print("  ⚠ winget non disponible sur ce système.")
+        print("  Installez Python manuellement: https://www.python.org/downloads/")
+        return False
+
+    print("  → Installation de Python 3.12 via winget...")
+    try:
+        result = subprocess.run(
+            [
+                "winget",
+                "install",
+                "--id",
+                "Python.Python.3.12",
+                "--scope",
+                "user",
+                "--accept-source-agreements",
+                "--accept-package-agreements",
+            ],
+            timeout=300,
+        )
+        return result.returncode == 0
+    except Exception as e:
+        print(f"  ⚠ Erreur winget: {e}")
+        return False
+
+
+def _cmd_setup(args: argparse.Namespace) -> int:
+    """Commande: configure l'environnement (venv + dépendances)."""
+    update_mode = getattr(args, "update", False)
+
+    print("=" * 60)
+    print("⚙️  LEVELUP — SETUP" + (" (mise à jour)" if update_mode else ""))
+    print("=" * 60)
+
+    venv_python = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
+    if sys.platform != "win32":
+        venv_python = REPO_ROOT / ".venv" / "bin" / "python"
+
+    # ── 1. Vérifier/créer le venv ──
+    if venv_python.exists() and not update_mode:
+        print("\n[1/3] Environnement .venv déjà présent ✓")
+        py = str(venv_python)
+    else:
+        print("\n[1/3] Recherche de Python...")
+
+        py = _find_system_python()
+        if not py:
+            print("  Python 3.10+ non trouvé sur le système.")
+            if _install_python_via_winget():
+                py = _find_system_python()
+
+        if not py:
+            print("\n  ❌ Impossible de trouver Python 3.10+.")
+            print("  Installez-le depuis https://www.python.org/downloads/")
+            return 1
+
+        print(f"  Python trouvé: {py}")
+
+        if not venv_python.exists():
+            print("\n[2/3] Création de l'environnement virtuel...")
+            result = subprocess.run([py, "-m", "venv", str(REPO_ROOT / ".venv")])
+            if result.returncode != 0:
+                print("  ❌ Impossible de créer le venv.")
+                return 1
+            print("  ✓ .venv créé")
+        else:
+            print("\n[2/3] Environnement .venv existant ✓")
+
+        py = str(venv_python)
+
+    # ── 2. Installer/mettre à jour les dépendances ──
+    step = "3/3" if not venv_python.exists() else "2/3"
+    print(f"\n[{step}] Installation des dépendances...")
+
+    subprocess.run([py, "-m", "pip", "install", "--upgrade", "pip", "-q"])
+    pip_cmd = [py, "-m", "pip", "install", "-e", ".[spnkr]", "-q"]
+    if update_mode:
+        pip_cmd.insert(-1, "--upgrade")
+
+    result = subprocess.run(pip_cmd)
+    if result.returncode != 0:
+        print("  ❌ L'installation des dépendances a échoué.")
+        return 1
+    print("  ✓ Dépendances installées")
+
+    # ── 3. Vérification rapide ──
+    check = subprocess.run(
+        [py, "-c", "import streamlit; import duckdb; import polars; print('OK')"],
+        capture_output=True,
+        text=True,
+    )
+    if check.returncode != 0:
+        print("  ⚠ Packages critiques manquants après installation.")
+        return 1
+
+    print("\n" + "=" * 60)
+    print("✅ SETUP TERMINÉ")
+    print("=" * 60)
+    print(f"\n  Python: {py}")
+    print("  Commandes utiles:")
+    print("    python launcher.py run     # Lancer le dashboard")
+    print("    python launcher.py doctor  # Vérifier l'environnement")
+    return 0
+
+
+# =============================================================================
+# Commande: doctor (absorbe check_env.py)
+# =============================================================================
+
+
+def _cmd_doctor(args: argparse.Namespace) -> int:
+    """Commande: vérifie la santé de l'environnement."""
+    from importlib import metadata as importlib_metadata
+
+    print("=" * 60)
+    print("🩺 LEVELUP — DOCTOR")
+    print("=" * 60)
+
+    import platform as pf
+
+    print(f"\n  OS:     {pf.system()} {pf.release()}")
+    print(f"  Python: {sys.version.split()[0]}")
+    print(f"  Exe:    {sys.executable}")
+    print(f"  Venv:   {'oui' if sys.prefix != getattr(sys, 'base_prefix', sys.prefix) else 'non'}")
+
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    # Vérifier qu'on est dans le bon venv
+    expected_venv = (REPO_ROOT / ".venv").resolve()
+    if expected_venv.exists():
+        expected_py = expected_venv / "Scripts" / "python.exe"
+        if expected_py.exists():
+            exe_r = Path(sys.executable).resolve()
+            if exe_r != expected_py.resolve():
+                errors.append(f"Mauvais interpréteur: {exe_r} (attendu {expected_py.resolve()})")
+    else:
+        errors.append("Dossier .venv introuvable — lancez: python launcher.py setup")
+
+    # Vérifier les versions des packages critiques
+    expected_packages = {
+        "duckdb": "1.4.4",
+        "polars": "1.38.1",
+        "pyarrow": "23.0.0",
+        "streamlit": None,
+        "spnkr": None,
+    }
+    for pkg, expected_ver in expected_packages.items():
+        try:
+            actual = importlib_metadata.version(pkg)
+            status = "✓"
+            if expected_ver and actual != expected_ver:
+                status = "⚠"
+                warnings.append(f"{pkg}: {actual} (attendu {expected_ver})")
+            print(f"  {status} {pkg}=={actual}")
+        except importlib_metadata.PackageNotFoundError:
+            print(f"  ✗ {pkg} — MANQUANT")
+            errors.append(f"Package manquant: {pkg}")
+
+    # Vérifier les données
+    print()
+    players = _list_players()
+    if players:
+        total = sum(p.total_matches for p in players)
+        print(f"  📊 {len(players)} joueur(s), {total} matchs")
+    else:
+        warnings.append("Aucune donnée joueur trouvée dans data/players/")
+
+    meta_path = WAREHOUSE_DIR / METADATA_DB_FILENAME
+    if meta_path.exists():
+        print(f"  ✓ metadata.duckdb ({meta_path.stat().st_size / 1024 / 1024:.1f} MB)")
+    else:
+        warnings.append("metadata.duckdb manquant")
+
+    # Résultats
+    if warnings:
+        print("\n⚠ Avertissements:")
+        for w in warnings:
+            print(f"  - {w}")
+
+    if errors:
+        print("\n❌ Erreurs:")
+        for e in errors:
+            print(f"  - {e}")
+        print("\n  → Corrigez avec: python launcher.py setup")
+        return 1
+
+    print("\n✅ Environnement OK")
+    return 0
+
+
+# =============================================================================
 # Commandes principales
 # =============================================================================
 
@@ -469,9 +723,7 @@ def _launch_streamlit(
     if not DEFAULT_STREAMLIT_APP.exists():
         raise SystemExit(f"Introuvable: {DEFAULT_STREAMLIT_APP}")
 
-    _require_module(
-        "streamlit", install_hint="./.venv/Scripts/python -m pip install -r requirements.txt"
-    )
+    _require_module("streamlit", install_hint="./.venv/Scripts/python -m pip install -e .[spnkr]")
 
     chosen_port = int(port) if port else _pick_free_port()
     url = f"http://localhost:{chosen_port}"
@@ -787,6 +1039,9 @@ Exemples:
   python launcher.py run       # Dashboard seul
   python launcher.py sync      # Sync tous les joueurs
   python launcher.py sync --run  # Sync + dashboard
+  python launcher.py setup     # Installer venv + dépendances
+  python launcher.py setup --update  # Mettre à jour les dépendances
+  python launcher.py doctor    # Vérifier l'environnement
   python launcher.py info      # Affiche les infos
 
 Architecture v5:
@@ -816,6 +1071,17 @@ Architecture v5:
     # info
     p_info = sub.add_parser("info", help="Affiche les informations sur les données")
     p_info.set_defaults(func=_cmd_info)
+
+    # setup
+    p_setup = sub.add_parser("setup", help="Configure l'environnement (venv + dépendances)")
+    p_setup.add_argument(
+        "--update", action="store_true", help="Met à jour les dépendances existantes"
+    )
+    p_setup.set_defaults(func=_cmd_setup)
+
+    # doctor
+    p_doctor = sub.add_parser("doctor", help="Vérifie la santé de l'environnement")
+    p_doctor.set_defaults(func=_cmd_doctor)
 
     return ap
 
