@@ -16,10 +16,15 @@
   - **Setup Wizard**: guided first-time setup with two paths — **Xbox Express** (recommended, 2 steps: Azure credentials → Xbox login) and **Azure manual** (advanced, 3 steps: credentials → refresh token → player creation)
   - **Xbox OAuth**: one-click Xbox login — full Microsoft OAuth flow with CSRF protection, automatic gamertag/XUID resolution, and player provisioning
   - **Player provisioning**: automatic DB + profile creation on first login (`provision_player()`)
-  - **LevelUp.bat**: Windows one-click launcher (Python check via winget, venv creation, dependency install, dashboard launch)
+  - **`launcher.py setup`**: interactive install command — detects Python (py launcher → PATH → winget auto-install), creates `.venv`, installs deps. `--update` flag to update an existing environment
+  - **`launcher.py doctor`**: full environment healthcheck (OS, Python, venv, package versions, player data, metadata.duckdb)
+  - **Portable packaging**: `packaging/build_release.py` generates a self-contained `LevelUp-vX.Y.Z-win64-portable.zip` with Python Embeddable
+  - **Release CI**: `.github/workflows/release.yml` — push a `v*.*.*` tag → auto-build portable zip → GitHub Release
+  - **%APPDATA% portable mode**: data stored in `%APPDATA%/LevelUp/` (portable) or `./data/` (dev mode), override via `LEVELUP_DATA`
   - **Token DB fallback**: refresh token read from player DB when not in environment variables
   - **Documentation rewrite**: CONFIGURATION.md with 11 Azure screenshots, SYNC_GUIDE.md with v5.1 architecture
   - Bug fixes: CSRF validation, `_repo_root` undefined, DuckDB retry broadened, GC sync mode, test isolation; deprecated `use_container_width=True` → `width="stretch"` in setup wizard
+  - **Repo cleanup**: 99 dead files removed (`scripts/_archive/`, `requirements.txt`, obsolete setup scripts)
   - **API abstraction layer** (Ports & Adapters): `HaloAPIPort` Protocol + `create_api_client()` factory + auth facade — decouples SPNKr library, making future API backend switches seamless (14 dedicated tests)
   - **Post-install smoke test**: 3-phase guided verification (sync → backfill → integrity checks) with real-time progress feedback
   - **3 831 tests**, 0 failures
