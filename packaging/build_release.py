@@ -12,11 +12,15 @@ Usage :
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
+import logging
 import shutil
 import zipfile
 from pathlib import Path
 from urllib.request import urlopen
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PYTHON_EMBED_VERSION = "3.12.10"
@@ -24,6 +28,8 @@ PYTHON_EMBED_URL = (
     f"https://www.python.org/ftp/python/{PYTHON_EMBED_VERSION}"
     f"/python-{PYTHON_EMBED_VERSION}-embed-amd64.zip"
 )
+# MD5 officiel depuis python.org/downloads/release/python-31210/
+PYTHON_EMBED_MD5 = "fe8ef205f2e9c3ba44d0cf9954e1abd3"  # pragma: allowlist secret
 
 # Fichiers/dossiers à inclure dans la release
 INCLUDE_FILES = [
@@ -42,18 +48,6 @@ INCLUDE_DIRS = [
     "scripts",
 ]
 
-# Patterns à exclure
-EXCLUDE_PATTERNS = {
-    "__pycache__",
-    ".pyc",
-    ".pyo",
-    ".git",
-    ".venv",
-    "node_modules",
-    ".pytest_cache",
-    ".ruff_cache",
-}
-
 
 def _read_version() -> str:
     """Lit la version depuis pyproject.toml."""
@@ -64,19 +58,25 @@ def _read_version() -> str:
     return "0.0.0"
 
 
-def _should_exclude(path: Path) -> bool:
-    """Vérifie si un chemin doit être exclu."""
-    parts = path.parts
-    return any(
-        excl in parts or any(str(p).endswith(excl) for p in parts) for excl in EXCLUDE_PATTERNS
-    )
-
-
 def _download_python_embed(target_dir: Path) -> None:
-    """Télécharge et extrait Python Embeddable."""
+    """Télécharge et extrait Python Embeddable avec vérification d'intégrité."""
+    logger.info("Téléchargement Python Embeddable %s...", PYTHON_EMBED_VERSION)
     print(f"  → Téléchargement Python Embeddable {PYTHON_EMBED_VERSION}...")
-    resp = urlopen(PYTHON_EMBED_URL)  # noqa: S310 — URL fixe vers python.org
-    data = io.BytesIO(resp.read())
+    resp = urlopen(PYTHON_EMBED_URL, timeout=120)  # noqa: S310 — URL fixe python.org
+    raw = resp.read()
+
+    # Vérification d'intégrité MD5 (hash officiel python.org)
+    actual_md5 = hashlib.md5(raw).hexdigest()  # noqa: S324
+    if actual_md5 != PYTHON_EMBED_MD5:
+        msg = (
+            f"Intégrité Python Embeddable compromise : "
+            f"MD5 attendu {PYTHON_EMBED_MD5}, obtenu {actual_md5}"
+        )
+        logger.error(msg)
+        raise ValueError(msg)
+    logger.info("Intégrité vérifiée (MD5 OK)")
+
+    data = io.BytesIO(raw)
 
     python_dir = target_dir / "python"
     python_dir.mkdir(parents=True, exist_ok=True)
@@ -91,6 +91,7 @@ def _download_python_embed(target_dir: Path) -> None:
         content = content.replace("#import site", "import site")
         pth.write_text(content, encoding="utf-8")
 
+    logger.info("Python Embeddable extrait dans %s", python_dir)
     print(f"  ✓ Python Embeddable extrait ({python_dir})")
 
 
@@ -177,6 +178,7 @@ def _create_zip(target_dir: Path, version: str) -> Path:
 
 def main() -> int:
     """Point d'entrée du build."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     ap = argparse.ArgumentParser(description="Build LevelUp portable release")
     ap.add_argument("--version", default=None, help="Version (défaut: depuis pyproject.toml)")
     args = ap.parse_args()
