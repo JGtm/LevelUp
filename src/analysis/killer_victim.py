@@ -45,6 +45,178 @@ if TYPE_CHECKING:
     from src.analysis._kv_types import MatchPlayerStats
 
 
+def _xuid_sort_key(xuid_value: str) -> tuple[int, str]:
+    """Clé de tri stable pour XUIDs (numérique d'abord, puis alpha)."""
+    s = str(xuid_value or "").strip()
+    try:
+        return (0, f"{int(s):020d}")
+    except Exception:
+        return (1, s)
+
+
+def _choose_best(
+    candidates: list[str],
+    prefer: dict[str, int],
+    rank_by_xuid: dict[str, int],
+) -> str:
+    """Choisit le meilleur candidat parmi les ambigus.
+
+    Heuristiques (dans l'ordre):
+    1. Privilégie l'adversaire déjà le plus fréquent en "certain" (Pass 1)
+    2. Tie-breaker par rang dans le match (meilleur classement = priorité)
+    3. Fallback stable: plus petit XUID numérique
+    """
+    if not candidates:
+        return ""
+    best_score = max(int(prefer.get(c, 0)) for c in candidates)
+    tied = [c for c in candidates if int(prefer.get(c, 0)) == best_score]
+    if len(tied) == 1:
+        return tied[0]
+    if rank_by_xuid:
+        tied.sort(key=lambda x: (rank_by_xuid.get(x, 999), _xuid_sort_key(x)))
+    else:
+        tied.sort(key=_xuid_sort_key)
+    return tied[0]
+
+
+def _assign_antagonist_counts(  # noqa: PLR0913
+    my_events: list[tuple[int, str, str]],
+    other_events: list[tuple[int, str, str]],
+    other_times: list[int],
+    tolerance_ms: int,
+    rank_by_xuid: dict[str, int],
+    *,
+    exclude_self: str = "",
+) -> tuple[dict[str, int], dict[str, int], set[int]]:
+    """Pass 1 (certain) + Pass 2 (estimé) pour un sens killer→victim.
+
+    Retourne (certain_counts, estimated_counts, used_other_indices).
+    """
+    used_idx: set[int] = set()
+    certain: dict[str, int] = {}
+    estimated: dict[str, int] = {}
+    pending: list[tuple[int, list[int]]] = []
+
+    for t_evt, _xu, _gt in my_events:
+        lo = bisect_left(other_times, t_evt - tolerance_ms)
+        hi = bisect_right(other_times, t_evt + tolerance_ms)
+        cand_idx = [i for i in range(lo, hi) if i not in used_idx]
+        if len(cand_idx) == 1:
+            i = cand_idx[0]
+            used_idx.add(i)
+            xu = str(other_events[i][1] or "").strip()
+            if xu and xu != exclude_self:
+                certain[xu] = int(certain.get(xu, 0)) + 1
+        elif len(cand_idx) > 1:
+            pending.append((t_evt, cand_idx))
+
+    for _t_evt, cand_idx in pending:
+        cand_idx2 = [i for i in cand_idx if i not in used_idx]
+        if not cand_idx2:
+            continue
+        candidates = [str(other_events[i][1] or "").strip() for i in cand_idx2]
+        candidates = [c for c in candidates if c and c != exclude_self]
+        if not candidates:
+            continue
+        chosen = _choose_best(candidates, certain, rank_by_xuid)
+        if not chosen:
+            continue
+        chosen_idxs = [i for i in cand_idx2 if str(other_events[i][1] or "").strip() == chosen]
+        if chosen_idxs:
+            used_idx.add(min(chosen_idxs))
+            estimated[chosen] = int(estimated.get(chosen, 0)) + 1
+
+    return certain, estimated, used_idx
+
+
+def _select_top_antagonist(
+    certain: dict[str, int],
+    estimated: dict[str, int],
+) -> str | None:
+    """Retourne le XUID de l'antagoniste principal (total le plus élevé)."""
+    keys = set(certain.keys()) | set(estimated.keys())
+    if not keys:
+        return None
+    best: str | None = None
+    best_tuple: tuple[int, int, tuple[int, str]] | None = None
+    for x in keys:
+        t = (
+            int(certain.get(x, 0)) + int(estimated.get(x, 0)),
+            int(certain.get(x, 0)),
+            _xuid_sort_key(x),
+        )
+        if (
+            best_tuple is None
+            or t[0] > best_tuple[0]
+            or (
+                t[0] == best_tuple[0]
+                and (t[1] > best_tuple[1] or (t[1] == best_tuple[1] and t[2] < best_tuple[2]))
+            )
+        ):
+            best_tuple = t
+            best = x
+    return best
+
+
+def _build_duel(  # noqa: PLR0913
+    op_xu: str | None,
+    gt_by_xuid: dict[str, str],
+    killed_me_c: dict[str, int],
+    killed_me_e: dict[str, int],
+    bully_c: dict[str, int],
+    bully_e: dict[str, int],
+) -> OpponentDuel | None:
+    """Construit l'OpponentDuel pour un antagoniste donné."""
+    if not op_xu:
+        return None
+
+    def _ec(map_c: dict[str, int], map_e: dict[str, int], key: str) -> EstimatedCount:
+        return EstimatedCount(int(map_c.get(key, 0)), int(map_e.get(key, 0)))
+
+    return OpponentDuel(
+        xuid=op_xu,
+        gamertag=gt_by_xuid.get(op_xu, ""),
+        opponent_killed_me=_ec(killed_me_c, killed_me_e, op_xu),
+        me_killed_opponent=_ec(bully_c, bully_e, op_xu),
+    )
+
+
+def _validate_against_official(
+    me: str,
+    my_kills_assigned: int,
+    my_deaths_assigned: int,
+    official_stats: list[MatchPlayerStats] | None,
+) -> tuple[bool, str]:
+    """Valide les compteurs reconstitués vs les stats officielles."""
+    if not official_stats:
+        return False, "Pas de stats officielles pour validation"
+
+    def _get_xuid(s: Any) -> str:
+        return s.xuid if hasattr(s, "xuid") else s["xuid"]
+
+    def _get_stat(s: Any, key: str) -> int:
+        return getattr(s, key, 0) if hasattr(s, key) else s.get(key, 0)
+
+    my_official = next((s for s in official_stats if _get_xuid(s) == me), None)
+    if not my_official:
+        return False, "Stats officielles du joueur non trouvées"
+
+    off_kills = _get_stat(my_official, "kills")
+    off_deaths = _get_stat(my_official, "deaths")
+    kills_diff = my_kills_assigned - off_kills
+    deaths_diff = my_deaths_assigned - off_deaths
+
+    if kills_diff == 0 and deaths_diff == 0:
+        return True, "Cohérent avec stats officielles"
+
+    notes = []
+    if kills_diff != 0:
+        notes.append(f"kills: {my_kills_assigned} vs {off_kills} ({kills_diff:+d})")
+    if deaths_diff != 0:
+        notes.append(f"deaths: {my_deaths_assigned} vs {off_deaths} ({deaths_diff:+d})")
+    return False, "Écarts: " + ", ".join(notes)
+
+
 def compute_killer_victim_pairs(  # noqa: C901, PLR0912
     events: Iterable[dict[str, Any]],
     *,
@@ -139,70 +311,13 @@ def compute_killer_victim_pairs(  # noqa: C901, PLR0912
     return out
 
 
-def compute_personal_antagonists(  # noqa: C901, PLR0912, PLR0915
+def _parse_events(
     events: Iterable[dict[str, Any]],
-    *,
-    me_xuid: str,
-    tolerance_ms: int = 5,
-    official_stats: list[MatchPlayerStats] | None = None,
-) -> AntagonistsResult:
-    """Calcule Némésis et Souffre-douleur à partir des highlight events.
-
-    Stratégie hybride (A+B) avec validation (Sprint 3.1):
-    - Pass 1: on attribue uniquement les duels non ambigus (1 seul candidat).
-    - Pass 2: on attribue les cas ambigus via une heuristique déterministe:
-        1) privilégie l'adversaire déjà le plus fréquent en "certain" (Pass 1)
-        2) NEW: tie-breaker par rang dans le match (meilleur classement = priorité)
-        3) sinon, fallback stable: plus petit XUID (numérique si possible)
-
-    Cette approche évite les résultats "aléatoires" tout en conservant
-    une transparence: chaque compteur sépare certain vs estimé.
-
-    Args:
-        events: highlight events bruts (dicts) du match.
-        me_xuid: XUID du joueur (digits recommandés, ou "xuid(...)" accepté).
-        tolerance_ms: fenêtre de jointure en millisecondes.
-        official_stats: Stats officielles des joueurs du match (pour validation et tie-breaker).
-
-    Returns:
-        AntagonistsResult avec flag de validation.
-    """
-
-    if tolerance_ms < 0:
-        tolerance_ms = 0
-
-    me = _coerce_str(me_xuid) or ""
-    if not me:
-        return AntagonistsResult(
-            nemesis=None,
-            bully=None,
-            my_deaths_total=0,
-            my_deaths_assigned_certain=0,
-            my_deaths_assigned_total=0,
-            my_kills_total=0,
-            my_kills_assigned_certain=0,
-            my_kills_assigned_total=0,
-            is_validated=False,
-            validation_notes="XUID manquant",
-        )
-
-    # Construire un mapping xuid → rang (pour tie-breaker)
-    def get_xuid(s) -> str:
-        return s.xuid if hasattr(s, "xuid") else s["xuid"]
-
-    def get_rank(s) -> int:
-        return s.rank if hasattr(s, "rank") else s.get("rank", 99)
-
-    rank_by_xuid: dict[str, int] = {}
-    if official_stats:
-        for s in official_stats:
-            rank_by_xuid[get_xuid(s)] = get_rank(s)
-
+) -> tuple[list[tuple[int, str, str]], list[tuple[int, str, str]], dict[str, str]]:
+    """Trie les events en kills et deaths, avec mapping xuid→gamertag."""
     kills: list[tuple[int, str, str]] = []
     deaths: list[tuple[int, str, str]] = []
-    # Map xuid -> last known gamertag (from events)
     gt_by_xuid: dict[str, str] = {}
-
     for e in events:
         if not isinstance(e, dict):
             continue
@@ -218,255 +333,106 @@ def compute_personal_antagonists(  # noqa: C901, PLR0912, PLR0915
             kills.append((int(t), xu, gt))
         elif et == "death":
             deaths.append((int(t), xu, gt))
-
     kills.sort(key=lambda x: x[0])
     deaths.sort(key=lambda x: x[0])
+    return kills, deaths, gt_by_xuid
 
-    kill_times = [t for t, _xu, _gt in kills]
-    death_times = [t for t, _xu, _gt in deaths]
 
-    def _xuid_sort_key(xuid_value: str) -> tuple[int, str]:
-        s = str(xuid_value or "").strip()
-        try:
-            return (0, f"{int(s):020d}")
-        except Exception:
-            return (1, s)
+def _build_rank_map(official_stats: list[Any] | None) -> dict[str, int]:
+    """Construit le mapping xuid→rang depuis les stats officielles."""
+    if not official_stats:
+        return {}
+    rank_by_xuid: dict[str, int] = {}
+    for s in official_stats:
+        xu = s.xuid if hasattr(s, "xuid") else s["xuid"]
+        rk = s.rank if hasattr(s, "rank") else s.get("rank", 99)
+        rank_by_xuid[xu] = rk
+    return rank_by_xuid
 
-    def _choose_best(candidates: list[str], prefer: dict[str, int]) -> str:
-        """Choisit le meilleur candidat parmi les ambigus.
 
-        Heuristiques (dans l'ordre):
-        1. Privilégie l'adversaire déjà le plus fréquent en "certain" (Pass 1)
-        2. Tie-breaker par rang dans le match (meilleur classement = priorité)
-        3. Fallback stable: plus petit XUID numérique
+_EMPTY_RESULT = AntagonistsResult(
+    nemesis=None,
+    bully=None,
+    my_deaths_total=0,
+    my_deaths_assigned_certain=0,
+    my_deaths_assigned_total=0,
+    my_kills_total=0,
+    my_kills_assigned_certain=0,
+    my_kills_assigned_total=0,
+    is_validated=False,
+    validation_notes="XUID manquant",
+)
 
-        Sprint 3.1: Ajout du tie-breaker par rang.
-        """
-        if not candidates:
-            return ""
 
-        # heuristique 1: privilégier ceux déjà fréquents en certain
-        best_score = None
-        best = None
-        for c in candidates:
-            score = int(prefer.get(c, 0))
-            if best_score is None or score > best_score:
-                best_score = score
-                best = c
+def compute_personal_antagonists(
+    events: Iterable[dict[str, Any]],
+    *,
+    me_xuid: str,
+    tolerance_ms: int = 5,
+    official_stats: list[MatchPlayerStats] | None = None,
+) -> AntagonistsResult:
+    """Calcule Némésis et Souffre-douleur à partir des highlight events.
 
-        if best is None:
-            return ""
+    Stratégie hybride (A+B) avec validation (Sprint 3.1):
+    - Pass 1: on attribue uniquement les duels non ambigus (1 seul candidat).
+    - Pass 2: on attribue les cas ambigus via une heuristique déterministe.
+    """
+    if tolerance_ms < 0:
+        tolerance_ms = 0
+    me = _coerce_str(me_xuid) or ""
+    if not me:
+        return _EMPTY_RESULT
 
-        # si plusieurs candidats ont le même score "certain"
-        top_score = int(best_score or 0)
-        tied = [c for c in candidates if int(prefer.get(c, 0)) == top_score]
+    rank_by_xuid = _build_rank_map(official_stats)
+    kills, deaths, gt_by_xuid = _parse_events(events)
+    kill_times = [t for t, _, _ in kills]
+    death_times = [t for t, _, _ in deaths]
 
-        if len(tied) == 1:
-            return tied[0]
+    # Némésis: qui m'a le plus tué (killer → me)
+    my_deaths = [(t, vx, vgt) for t, vx, vgt in deaths if str(vx) == str(me)]
+    nem_certain, nem_est, _ = _assign_antagonist_counts(
+        my_deaths,
+        kills,
+        kill_times,
+        tolerance_ms,
+        rank_by_xuid,
+    )
+    # Souffre-douleur: qui j'ai le plus tué (me → victim)
+    my_kills = [(t, kx, kgt) for t, kx, kgt in kills if str(kx) == str(me)]
+    bully_certain, bully_est, _ = _assign_antagonist_counts(
+        my_kills,
+        deaths,
+        death_times,
+        tolerance_ms,
+        rank_by_xuid,
+        exclude_self=me,
+    )
 
-        # Sprint 3.1: Tie-breaker par rang dans le match
-        # Meilleur rang (plus petit numéro) = priorité
-        if rank_by_xuid:
-            tied.sort(key=lambda x: (rank_by_xuid.get(x, 999), _xuid_sort_key(x)))
-        else:
-            # Fallback: plus petit xuid (stable)
-            tied.sort(key=_xuid_sort_key)
+    nem_xu = _select_top_antagonist(nem_certain, nem_est)
+    bully_xu = _select_top_antagonist(bully_certain, bully_est)
+    nemesis = _build_duel(nem_xu, gt_by_xuid, nem_certain, nem_est, bully_certain, bully_est)
+    bully = _build_duel(bully_xu, gt_by_xuid, nem_certain, nem_est, bully_certain, bully_est)
 
-        return tied[0]
-
-    # -----------------
-    # Némésis: qui m'a le plus tué (killer -> me)
-    # -----------------
-    my_deaths = [(t, vx, vgt) for (t, vx, vgt) in deaths if str(vx) == str(me)]
-    my_deaths_total = len(my_deaths)
-    used_kill_idx: set[int] = set()
-
-    nem_certain: dict[str, int] = {}
-    nem_est: dict[str, int] = {}
-
-    pending_deaths: list[tuple[int, str, str, list[int]]] = []
-
-    for t_death, _vx, _vgt in my_deaths:
-        lo = bisect_left(kill_times, t_death - tolerance_ms)
-        hi = bisect_right(kill_times, t_death + tolerance_ms)
-        cand_idx = [i for i in range(lo, hi) if i not in used_kill_idx]
-        if len(cand_idx) == 1:
-            i = cand_idx[0]
-            used_kill_idx.add(i)
-            kx = str(kills[i][1] or "").strip()
-            if kx:
-                nem_certain[kx] = int(nem_certain.get(kx, 0)) + 1
-        elif len(cand_idx) > 1:
-            pending_deaths.append((t_death, _vx, _vgt, cand_idx))
-
-    # Pass 2: assignation estimée
-    for _t_death, _vx, _vgt, cand_idx in pending_deaths:
-        cand_idx2 = [i for i in cand_idx if i not in used_kill_idx]
-        if not cand_idx2:
-            continue
-        candidates = [str(kills[i][1] or "").strip() for i in cand_idx2]
-        candidates = [c for c in candidates if c]
-        if not candidates:
-            continue
-        chosen = _choose_best(candidates, nem_certain)
-        if not chosen:
-            continue
-        # on consomme un kill event correspondant au chosen (stable)
-        chosen_idxs = [i for i in cand_idx2 if str(kills[i][1] or "").strip() == chosen]
-        if not chosen_idxs:
-            continue
-        used_kill_idx.add(min(chosen_idxs))
-        nem_est[chosen] = int(nem_est.get(chosen, 0)) + 1
-
-    my_deaths_assigned_certain = sum(nem_certain.values())
-    my_deaths_assigned_total = my_deaths_assigned_certain + sum(nem_est.values())
-
-    # -----------------
-    # Souffre-douleur: qui j'ai le plus tué (me -> victim)
-    # -----------------
-    my_kills = [(t, kx, kgt) for (t, kx, kgt) in kills if str(kx) == str(me)]
-    my_kills_total = len(my_kills)
-    used_death_idx: set[int] = set()
-
-    bully_certain: dict[str, int] = {}
-    bully_est: dict[str, int] = {}
-    pending_kills: list[tuple[int, str, str, list[int]]] = []
-
-    for t_kill, _kx, _kgt in my_kills:
-        lo = bisect_left(death_times, t_kill - tolerance_ms)
-        hi = bisect_right(death_times, t_kill + tolerance_ms)
-        cand_idx = [i for i in range(lo, hi) if i not in used_death_idx]
-        if len(cand_idx) == 1:
-            i = cand_idx[0]
-            used_death_idx.add(i)
-            vx = str(deaths[i][1] or "").strip()
-            if vx and vx != str(me):
-                bully_certain[vx] = int(bully_certain.get(vx, 0)) + 1
-        elif len(cand_idx) > 1:
-            pending_kills.append((t_kill, _kx, _kgt, cand_idx))
-
-    for _t_kill, _kx, _kgt, cand_idx in pending_kills:
-        cand_idx2 = [i for i in cand_idx if i not in used_death_idx]
-        if not cand_idx2:
-            continue
-        candidates = [str(deaths[i][1] or "").strip() for i in cand_idx2]
-        candidates = [c for c in candidates if c and c != str(me)]
-        if not candidates:
-            continue
-        chosen = _choose_best(candidates, bully_certain)
-        if not chosen:
-            continue
-        chosen_idxs = [i for i in cand_idx2 if str(deaths[i][1] or "").strip() == chosen]
-        if not chosen_idxs:
-            continue
-        used_death_idx.add(min(chosen_idxs))
-        bully_est[chosen] = int(bully_est.get(chosen, 0)) + 1
-
-    my_kills_assigned_certain = sum(bully_certain.values())
-    my_kills_assigned_total = my_kills_assigned_certain + sum(bully_est.values())
-
-    # -----------------
-    # Sélection top nemesis / bully + construction du duel (inclut les 2 sens)
-    # -----------------
-    def _top_xuid(certain_map: dict[str, int], est_map: dict[str, int]) -> str | None:
-        keys = set(certain_map.keys()) | set(est_map.keys())
-        if not keys:
-            return None
-        # max sur total/certain; tie-break xuid asc
-        best = None
-        best_tuple = None
-        for x in keys:
-            t = (
-                int(certain_map.get(x, 0)) + int(est_map.get(x, 0)),
-                int(certain_map.get(x, 0)),
-                _xuid_sort_key(x),
-            )
-            if (
-                best_tuple is None
-                or t[0] > best_tuple[0]
-                or (
-                    t[0] == best_tuple[0]
-                    and (t[1] > best_tuple[1] or (t[1] == best_tuple[1] and t[2] < best_tuple[2]))
-                )
-            ):
-                best_tuple = t
-                best = x
-        return best
-
-    nem_xu = _top_xuid(nem_certain, nem_est)
-    bully_xu = _top_xuid(bully_certain, bully_est)
-
-    # cross counts (me<->opponent) via the already computed per-direction counters
-    def _ec(map_c: dict[str, int], map_e: dict[str, int], key: str | None) -> EstimatedCount:
-        if not key:
-            return EstimatedCount(0, 0)
-        return EstimatedCount(int(map_c.get(key, 0)), int(map_e.get(key, 0)))
-
-    # me killed opponent counters are bully_certain/bully_est (victims)
-    def _build_duel(
-        op_xu: str | None, *, killed_me_c: dict[str, int], killed_me_e: dict[str, int]
-    ) -> OpponentDuel | None:
-        if not op_xu:
-            return None
-        op_gt = gt_by_xuid.get(op_xu, "")
-        return OpponentDuel(
-            xuid=op_xu,
-            gamertag=op_gt,
-            opponent_killed_me=_ec(killed_me_c, killed_me_e, op_xu),
-            me_killed_opponent=_ec(bully_certain, bully_est, op_xu),
-        )
-
-    nemesis = _build_duel(nem_xu, killed_me_c=nem_certain, killed_me_e=nem_est)
-    bully = _build_duel(bully_xu, killed_me_c=nem_certain, killed_me_e=nem_est)
-
-    # Sprint 3.1: Validation avec les stats officielles
-    is_validated = False
-    validation_notes = ""
-
-    def get_xuid(s) -> str:
-        return s.xuid if hasattr(s, "xuid") else s["xuid"]
-
-    def get_stat(s, key: str) -> int:
-        return getattr(s, key, 0) if hasattr(s, key) else s.get(key, 0)
-
-    if official_stats:
-        # Trouver mes stats officielles
-        my_official = next((s for s in official_stats if get_xuid(s) == me), None)
-        if my_official:
-            # Comparer mes kills/deaths reconstitués vs officiels
-            off_kills = get_stat(my_official, "kills")
-            off_deaths = get_stat(my_official, "deaths")
-            kills_diff = my_kills_assigned_total - off_kills
-            deaths_diff = my_deaths_assigned_total - off_deaths
-
-            if kills_diff == 0 and deaths_diff == 0:
-                is_validated = True
-                validation_notes = "Cohérent avec stats officielles"
-            else:
-                notes = []
-                if kills_diff != 0:
-                    notes.append(
-                        f"kills: {my_kills_assigned_total} vs {off_kills} ({kills_diff:+d})"
-                    )
-                if deaths_diff != 0:
-                    notes.append(
-                        f"deaths: {my_deaths_assigned_total} vs {off_deaths} ({deaths_diff:+d})"
-                    )
-                validation_notes = "Écarts: " + ", ".join(notes)
-        else:
-            validation_notes = "Stats officielles du joueur non trouvées"
-    else:
-        validation_notes = "Pas de stats officielles pour validation"
+    my_deaths_c = sum(nem_certain.values())
+    my_deaths_t = my_deaths_c + sum(nem_est.values())
+    my_kills_c = sum(bully_certain.values())
+    my_kills_t = my_kills_c + sum(bully_est.values())
+    is_validated, validation_notes = _validate_against_official(
+        me,
+        my_kills_t,
+        my_deaths_t,
+        official_stats,
+    )
 
     return AntagonistsResult(
         nemesis=nemesis,
         bully=bully,
-        my_deaths_total=int(my_deaths_total),
-        my_deaths_assigned_certain=int(my_deaths_assigned_certain),
-        my_deaths_assigned_total=int(my_deaths_assigned_total),
-        my_kills_total=int(my_kills_total),
-        my_kills_assigned_certain=int(my_kills_assigned_certain),
-        my_kills_assigned_total=int(my_kills_assigned_total),
+        my_deaths_total=len(my_deaths),
+        my_deaths_assigned_certain=my_deaths_c,
+        my_deaths_assigned_total=my_deaths_t,
+        my_kills_total=len(my_kills),
+        my_kills_assigned_certain=my_kills_c,
+        my_kills_assigned_total=my_kills_t,
         is_validated=is_validated,
         validation_notes=validation_notes,
     )

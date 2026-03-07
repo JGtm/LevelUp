@@ -11,8 +11,7 @@ FUNC:src/analysis/_performance_relative.py:339:compute_relative_performance_scor
 FUNC:src/analysis/_performance_relative.py:95:_prepare_history_metrics:97L
 FUNC:src/analysis/_performance_session.py:321:compute_session_performance_score_v2:81L
 FUNC:src/analysis/friends_impact.py:436:build_impact_matrix:110L
-FUNC:src/analysis/killer_victim.py:142:compute_personal_antagonists:330L
-FUNC:src/analysis/killer_victim.py:48:compute_killer_victim_pairs:91L
+FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
 FUNC:src/analysis/sessions.py:167:compute_sessions_with_context_polars:122L
 FUNC:src/analysis/skill_rating.py:194:compute_skill_ratings_batch:198L
 FUNC:src/analysis/skill_rating_calibration.py:271:calibrate_lusr_weights:134L
@@ -166,7 +165,6 @@ MODULE:src/data/sync/models.py:511L
 MODULE:src/data/sync/transformers/_helpers.py:667L
 MODULE:src/data/sync/transformers/_match.py:531L
 MODULE:src/ui/pages/media_library_data.py:507L
-MODULE:src/ui/pages/setup_smoke_test_logic.py:504L
 MODULE:src/ui/pages/win_loss.py:539L
 MODULE:src/ui/profile_api.py:557L
 MODULE:src/visualization/objective_charts.py:583L
