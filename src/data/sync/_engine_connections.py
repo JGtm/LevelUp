@@ -72,7 +72,15 @@ class ConnectionMixin:
                     pass
                 gc.collect()
                 time.sleep(0.5)
-                self._shared_connection = _open_shared()
+                try:
+                    self._shared_connection = _open_shared()
+                except duckdb.Error as e2:
+                    # 2ème tentative aussi échouée : log + return None
+                    # pour éviter de faire remonter le Binder Error dans result.errors.
+                    logger.warning(
+                        "shared_matches.duckdb : retry échoué (%s) — shared non disponible", e2
+                    )
+                    return None
             else:
                 raise
 

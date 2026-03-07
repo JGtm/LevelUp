@@ -322,6 +322,10 @@ class DuckDBSyncEngine(
             if result.matches_inserted > 0:
                 self._run_post_sync_compute(options)
 
+            # LUSR toujours recalculé — même sans nouveaux matchs
+            # (rattrapage des ratings manquants suite à un sync partiel)
+            self._run_lusr_post_sync()
+
         except Exception as e:
             result.errors.append(str(e))
             logger.error("Erreur sync: %s", e)
@@ -339,19 +343,21 @@ class DuckDBSyncEngine(
         )
         return result
 
-    def _run_post_sync_compute(self, options: SyncOptions) -> None:
-        """Exécute les traitements post-sync : perf scores, sessions, citations."""
-        # Performance scores en batch
-        if options.defer_performance_score:
-            if self._shared_connection is not None:
-                with contextlib.suppress(Exception):
-                    self._shared_connection.close()
-                self._shared_connection = None
-            perf_count = self.batch_compute_performance_scores()
-            logger.info("Performance scores calculés en batch : %d", perf_count)
+    def _run_lusr_post_sync(self) -> None:
+        """Calcule les ratings LUSR manquants — appelé inconditionnellement après tout sync.
 
-        # LUSR (skill rating) pour matchs non classés
+        Contrairement aux autres traitements post-sync, le LUSR est recalculé
+        même si aucun nouveau match n'a été inséré, afin de rattraper les ratings
+        manquants suite à un sync partiel ou une erreur précédente.
+
+        Ferme `_shared_connection` si elle est encore ouverte, puis délègue à
+        `batch_compute_lusr` qui la rouvrira et absorbera tout Binder Error éventuel.
+        Appelé que `matches_inserted` soit 0 ou >0 (dans ce dernier cas
+        `_run_post_sync_compute` avait déjà fermé `_shared_connection`).
+        """
         try:
+            # Fermer la connexion shared si elle est encore ouverte,
+            # pour qu'elle puisse être rouverte proprement dans batch_compute_lusr.
             if self._shared_connection is not None:
                 with contextlib.suppress(Exception):
                     self._shared_connection.close()
@@ -361,6 +367,21 @@ class DuckDBSyncEngine(
                 logger.info("LUSR calculés post-sync : %d matchs", lusr_count)
         except Exception as e:
             logger.warning("Erreur calcul LUSR post-sync (non bloquant) : %s", e)
+
+    def _run_post_sync_compute(self, options: SyncOptions) -> None:
+        """Exécute les traitements post-sync : perf scores, sessions, citations.
+
+        Note : le LUSR est calculé séparément dans _run_lusr_post_sync(),
+        appelé inconditionnellement dans _sync_internal.
+        """
+        # Performance scores en batch
+        if options.defer_performance_score:
+            if self._shared_connection is not None:
+                with contextlib.suppress(Exception):
+                    self._shared_connection.close()
+                self._shared_connection = None
+            perf_count = self.batch_compute_performance_scores()
+            logger.info("Performance scores calculés en batch : %d", perf_count)
 
         # Recalculer les sessions
         try:
