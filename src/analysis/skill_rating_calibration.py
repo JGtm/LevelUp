@@ -58,10 +58,9 @@ def _load_matches_for_calibration(
     Raises:
         ValueError: si moins de min_matches_with_mmr matchs ont team_mmr + kills_expected.
     """
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
-    with duckdb.connect(str(shared_db), read_only=True) as conn:
-        # Tous les matchs du joueur (sans Firefight), triés ASC
+    with duckdb_read_only(shared_db) as conn:
         df_matches = conn.execute(
             """
             SELECT
@@ -387,11 +386,11 @@ def calibrate_lusr_weights(  # noqa: PLR0913
 
 def _resolve_xuid_from_gamertag(gamertag: str, shared_db: Path) -> str | None:
     """Résout le XUID depuis le gamertag via xuid_aliases."""
-    import duckdb
+    from src.utils.db import duckdb_read_only
 
     if not shared_db.exists():
         return None
-    with duckdb.connect(str(shared_db), read_only=True) as conn:
+    with duckdb_read_only(shared_db) as conn:
         try:
             row = conn.execute(
                 "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",

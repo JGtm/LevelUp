@@ -138,9 +138,9 @@ FUNC:src/visualization/timeseries_combat.py:352:plot_shots_accuracy:92L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:139L
 MODULE:src/analysis/_performance_relative.py:519L
-MODULE:src/analysis/citations/engine.py:516L
+MODULE:src/analysis/citations/engine.py:518L
 MODULE:src/analysis/cumulative.py:525L
-MODULE:src/analysis/skill_rating_calibration.py:546L
+MODULE:src/analysis/skill_rating_calibration.py:545L
 MODULE:src/data/media_indexer.py:522L
 MODULE:src/data/query/trends.py:537L
 MODULE:src/data/services/teammates_service.py:596L

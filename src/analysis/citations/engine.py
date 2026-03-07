@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+from collections.abc import Generator
 from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
@@ -89,25 +90,30 @@ class CitationEngine(CitationDataLoaderMixin):
     # Connexion helper
     # ------------------------------------------------------------------
 
-    def _read_conn(self) -> tuple[duckdb.DuckDBPyConnection, bool]:
-        """Retourne une connexion lecture et indique si elle a été créée.
+    @contextlib.contextmanager
+    def _read_conn(self) -> Generator[duckdb.DuckDBPyConnection, None, None]:
+        """Context manager : connexion lecture, fermée automatiquement si créée.
 
-        Si une connexion partagée est disponible, la retourne (owned=False).
-        Sinon, ouvre une nouvelle connexion read-only (owned=True) et
-        ATTACH ``shared_matches.duckdb`` si disponible.
+        Si une connexion partagée est disponible, la yield sans la fermer.
+        Sinon, ouvre une nouvelle connexion read-only, ATTACH shared si
+        disponible, et la ferme à la sortie du ``with``.
         """
         if self._shared_conn is not None:
-            return self._shared_conn, False
+            yield self._shared_conn
+            return
         conn = duckdb.connect(str(self._db_path), read_only=True)
-        # ATTACH shared_matches.duckdb pour lecture V5
-        if self._shared_db_path is not None and self._shared_db_path.exists():
-            try:
-                conn.execute(f"ATTACH '{self._shared_db_path}' AS shared (READ_ONLY)")
-            except Exception as e:
-                err = str(e).lower()
-                if "already" not in err and "conflict" not in err:
-                    logger.debug("Impossible d'attacher shared: %s", e)
-        return conn, True
+        try:
+            # ATTACH shared_matches.duckdb pour lecture V5
+            if self._shared_db_path is not None and self._shared_db_path.exists():
+                try:
+                    conn.execute(f"ATTACH '{self._shared_db_path}' AS shared (READ_ONLY)")
+                except Exception as e:
+                    err = str(e).lower()
+                    if "already" not in err and "conflict" not in err:
+                        logger.debug("Impossible d'attacher shared: %s", e)
+            yield conn
+        finally:
+            conn.close()
 
     @property
     def has_shared(self) -> bool:
@@ -351,8 +357,7 @@ class CitationEngine(CitationDataLoaderMixin):
         if not self._db_path.exists() and self._shared_conn is None:
             return {}
 
-        conn, owned = self._read_conn()
-        try:
+        with self._read_conn() as conn:
             # Vérifier que la table existe
             exists = conn.execute(
                 "SELECT COUNT(*) FROM information_schema.tables "
@@ -386,9 +391,6 @@ class CitationEngine(CitationDataLoaderMixin):
             ).fetchall()
 
             return {row[0]: int(row[1]) for row in rows}
-        finally:
-            if owned:
-                conn.close()
 
     # ------------------------------------------------------------------
     # Méthode haut-niveau : calcul complet pour un match
