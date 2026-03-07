@@ -7,9 +7,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # --- Étape 1 : Dépendances (cache Docker maximisé) ---
-# On copie pyproject.toml + requirements.txt en premier pour ne pas
+# On copie pyproject.toml en premier pour ne pas
 # réinstaller à chaque changement de code source.
-COPY pyproject.toml requirements.txt /app/
+COPY pyproject.toml /app/
 # setup.py stub minimal pour que pip install -e fonctionne sans le code src/
 RUN mkdir -p /app/src && touch /app/src/__init__.py
 
