@@ -24,6 +24,8 @@ Usage:
 """
 
 from src.data.sync.api_client import SPNKrAPIClient, Tokens, get_tokens_from_env
+from src.data.sync.api_factory import create_api_client
+from src.data.sync.api_port import HaloAPIPort
 from src.data.sync.engine import DuckDBSyncEngine
 from src.data.sync.models import (
     CareerRankData,
@@ -63,6 +65,9 @@ __all__ = [
     "SPNKrAPIClient",
     "Tokens",
     "get_tokens_from_env",
+    # API Abstraction
+    "HaloAPIPort",
+    "create_api_client",
     # Transformers
     "transform_match_stats",
     "transform_skill_stats",

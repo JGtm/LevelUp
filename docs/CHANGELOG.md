@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [5.5.1] - 2026-03-07
+
+### Fixed
+
+- **API Streamlit dépréciée** (`src/ui/pages/setup_wizard.py`) — Remplacement des trois occurrences de `use_container_width=True` par `width="stretch"` : bouton Xbox Express, bouton Azure manuel, `st.link_button` OAuth. Anti-drift préventif avant le prochain bump Streamlit.
+- **Smoke test UI manquant** (`src/ui/pages/setup_smoke_test.py`) — Le module UI du smoke test post-installation avait disparu du dossier pages ; il est recréé conformément à l’implémentation d’origine (290 L, 3 phases avec barres de progression, tableau de vérification, boutons de continuation / relance).
+- **Test patch `SPNKrAPIClient` incorrect** (`tests/test_player_tokens.py`) — La cible de mock `src.data.sync._career.SPNKrAPIClient` était invalide (attribut absent du module) ; corrigé en `src.data.sync._career.create_api_client` conformément à l’abstraction API v5.5.
+
+### Tests
+
+- **Assertions `width="stretch"` ajoutées** (`tests/ui/test_setup_wizard_page.py`) — Les deux tests qui vérifiaient le rendu des cartes Xbox/Azure et du `link_button` OAuth vérifient désormais explicitement que `width="stretch"` est présent et que `use_container_width` est absent des kwargs Streamlit.
+- **3 831 tests, 0 échec**
+
 ## [5.5.0] - 2026-03-06
 
 ### Added
@@ -58,6 +71,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `test_xbox_oauth.py` (18 tests) : URL OAuth, échange de code, store/load token, provisionnement
   - `test_xbox_oauth_callback_e2e.py` (9 tests) : flux complet code→player, erreurs, CSRF, cycle token
   - `test_setup_wizard_page.py` (15 tests) : UI mockée (MockStreamlit), modes Xbox/Azure, progression
+
+### Architecture
+
+- **Abstraction API — Ports & Adapters** : découplage de la librairie SPNKr pour faciliter un futur changement de backend API
+  - `api_port.py` : Protocol `HaloAPIPort` — contrat structurel (runtime_checkable) définissant les méthodes que tout client API Halo doit implémenter
+  - `api_factory.py` : Factory `create_api_client(backend="spnkr")` — instanciation centralisée, extensible à d'autres backends
+  - `_auth.py` : Facade d'authentification — les modules UI appellent `refresh_halo_tokens()` sans importer SPNKr directement
+  - Migration des consommateurs : `engine.py`, `orchestrator.py`, `strategies.py`, `_career.py`, `populate_metadata_from_discovery.py`, `profile_api_tokens.py`, `player_assets.py`, `xbox_oauth.py` — tous utilisent la factory ou la facade auth
+  - 14 tests dédiés (`test_api_abstraction.py`) : conformité Protocol, factory, facade auth, vérification d'absence d'imports SPNKr dans les modules UI migrés
 
 ### Chore
 

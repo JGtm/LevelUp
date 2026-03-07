@@ -161,73 +161,19 @@ async def get_spartan_tokens_from_refresh(
         Tuple ``(spartan_token, clearance_token)``.
 
     Raises:
-        ImportError: Si spnkr n'est pas installé.
+        ImportError: Si les dépendances auth sont manquantes.
         ValueError: En cas d'échec d'authentification.
     """
-    try:
-        from spnkr import AzureApp, refresh_player_tokens
-    except ImportError as e:
-        raise ImportError("La librairie SPNKr est requise : pip install spnkr") from e
+    from src.data.sync._auth import refresh_halo_tokens
 
-    app = AzureApp(client_id, client_secret, redirect_uri)
-
-    try:
-        player = await refresh_player_tokens(session, app, refresh_token)
-        return str(player.spartan_token.token), str(player.clearance_token.token)
-    except Exception as exc:
-        # Fallback : endpoint OAuth v2 consumers → chain Xbox/XSTS/Halo
-        if "invalid_client" not in str(exc):
-            raise
-        logger.debug("Fallback OAuth v2 pour get_spartan_tokens_from_refresh: %s", exc)
-
-    return await _spartan_tokens_oauth_v2_fallback(
+    tokens = await refresh_halo_tokens(
         session,
         client_id=client_id,
         client_secret=client_secret,
+        redirect_uri=redirect_uri,
         refresh_token=refresh_token,
     )
-
-
-async def _spartan_tokens_oauth_v2_fallback(
-    session,
-    *,
-    client_id: str,
-    client_secret: str,
-    refresh_token: str,
-) -> tuple[str, str]:
-    """Fallback : refresh OAuth v2 → chain Xbox/XSTS/Halo."""
-    from spnkr.auth.core import XSTS_V3_HALO_AUDIENCE, XSTS_V3_XBOX_AUDIENCE
-    from spnkr.auth.halo import request_clearance_token, request_spartan_token
-    from spnkr.auth.xbox import request_user_token, request_xsts_token
-
-    url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
-    data = {
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "grant_type": "refresh_token",
-        "refresh_token": refresh_token,
-        "scope": _XBOX_SCOPES,
-    }
-    resp = await session.post(url, data=data)
-    payload = await resp.json(content_type=None)
-
-    if resp.status >= 400:
-        raise ValueError(
-            f"Échec refresh OAuth v2 fallback: {payload.get('error')} — "
-            f"{payload.get('error_description')}"
-        )
-
-    access_token = payload.get("access_token")
-    if not access_token:
-        raise ValueError("OAuth v2 fallback: pas d'access_token dans la réponse.")
-
-    user_token = await request_user_token(session, access_token)
-    _ = await request_xsts_token(session, user_token.token, XSTS_V3_XBOX_AUDIENCE)
-    halo_xsts = await request_xsts_token(session, user_token.token, XSTS_V3_HALO_AUDIENCE)
-    spartan = await request_spartan_token(session, halo_xsts.token)
-    clearance = await request_clearance_token(session, spartan.token)
-
-    return str(spartan.token), str(clearance.token)
+    return tokens.spartan_token, tokens.clearance_token
 
 
 # =============================================================================

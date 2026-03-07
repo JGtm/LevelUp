@@ -683,7 +683,8 @@ async def _backfill_with_api(
     force_citations = scope.force_citations
     pve_stats = getattr(scope, "pve_stats", False)
     force_pve_stats = getattr(scope, "force_pve_stats", False)
-    from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
+    from src.data.sync.api_client import get_tokens_from_env
+    from src.data.sync.api_factory import create_api_client
     from src.data.sync.migrations import ensure_match_participants_columns
     from src.data.sync.transformers import (
         extract_aliases,
@@ -746,7 +747,7 @@ async def _backfill_with_api(
     totals["matches_checked"] = len(match_ids)
     totals["matches_missing_data"] = len(match_ids)
 
-    async with SPNKrAPIClient(
+    async with create_api_client(
         tokens=tokens,
         requests_per_second=requests_per_second,
     ) as client:
@@ -1026,7 +1027,7 @@ async def _backfill_with_api(
         from scripts.backfill.strategies import fetch_current_csr_for_player
 
         logger.info(f"Récupération snapshot CSR pour {gamertag} ({xuid})...")
-        async with SPNKrAPIClient(
+        async with create_api_client(
             tokens=tokens,
             requests_per_second=requests_per_second,
         ) as csr_client:
@@ -1042,7 +1043,7 @@ async def _backfill_with_api(
         from scripts.backfill.strategies import backfill_csr_for_player
 
         logger.info(f"Backfill CSR par match pour {gamertag} ({xuid})...")
-        async with SPNKrAPIClient(
+        async with create_api_client(
             tokens=tokens,
             requests_per_second=requests_per_second,
         ) as csr_api:

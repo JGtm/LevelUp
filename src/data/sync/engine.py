@@ -55,6 +55,7 @@ from src.data.sync.api_client import (
     get_tokens_for_player,
     get_tokens_from_env,
 )
+from src.data.sync.api_factory import create_api_client
 from src.data.sync.batch_insert import (
     HIGHLIGHT_EVENT_COLUMNS,
     PERSONAL_SCORE_COLUMNS,
@@ -283,7 +284,7 @@ class DuckDBSyncEngine(
             if delta_mode and not existing_ids:
                 logger.warning("Mode delta mais aucun match existant!")
 
-            async with SPNKrAPIClient(
+            async with create_api_client(
                 tokens=self._tokens,
                 requests_per_second=options.requests_per_second,
             ) as client:
