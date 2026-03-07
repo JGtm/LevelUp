@@ -122,6 +122,10 @@ class TestRenderSetupWizardPage:
         ms.calls["columns"].assert_called()
         # Vérifie que les boutons de choix sont rendus
         assert ms.calls["button"].call_count >= 2
+        # Vérifie width="stretch" (pas use_container_width déprécié)
+        for call in ms.calls["button"].call_args_list:
+            assert call.kwargs.get("use_container_width") is None
+            assert call.kwargs.get("width") == "stretch"
 
     def test_xbox_mode_sans_credentials(self, mock_st) -> None:
         """Mode Xbox : affiche le formulaire Azure si pas de credentials."""
@@ -164,6 +168,9 @@ class TestRenderSetupWizardPage:
         ms.calls["link_button"].assert_called_once()
         call_kwargs = ms.calls["link_button"].call_args
         assert "https://fake" in str(call_kwargs)
+        # Vérifie width="stretch" (pas use_container_width déprécié)
+        assert call_kwargs.kwargs.get("use_container_width") is None
+        assert call_kwargs.kwargs.get("width") == "stretch"
 
     def test_azure_mode_etape1(self, mock_st) -> None:
         """Mode Azure : affiche étape 1 si pas de credentials."""
