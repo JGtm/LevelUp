@@ -227,6 +227,7 @@ def _render_actions(all_ok: bool, warnings: int) -> None:
                 t("smoke_btn_full_sync"), key="smoke_continue", type="primary", width="stretch"
             ):
                 st.session_state["_setup_smoke_completed"] = True
+                st.session_state["_pending_page"] = "settings"
                 st.rerun()
         with col2:
             if st.button(t("smoke_btn_dashboard"), key="smoke_dashboard", width="stretch"):

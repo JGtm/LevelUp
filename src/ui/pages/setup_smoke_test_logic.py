@@ -233,9 +233,29 @@ def _check_shared_tables(shared_path: Path, result: SmokeTestResult) -> None:
                 ),
             )
         )
-        result.checks.append(_check_optional_shared(conn, tables, "highlight_events", "événements"))
         result.checks.append(
-            _check_optional_shared(conn, tables, "killer_victim_pairs", "paires killer/victim")
+            _simple_check(
+                conn,
+                tables,
+                _SimpleCheckParams(
+                    "highlight_events",
+                    "shared",
+                    True,
+                    "événements filmés",
+                ),
+            )
+        )
+        result.checks.append(
+            _simple_check(
+                conn,
+                tables,
+                _SimpleCheckParams(
+                    "killer_victim_pairs",
+                    "shared",
+                    True,
+                    "paires killer/victim",
+                ),
+            )
         )
         result.checks.append(
             _simple_check(
@@ -273,30 +293,6 @@ def _check_match_participants(conn: Any, tables: set[str]) -> TableCheck:
     return check
 
 
-def _check_optional_shared(
-    conn: Any,
-    tables: set[str],
-    table: str,
-    label: str,
-) -> TableCheck:
-    """Vérifie une table optionnelle de shared."""
-    check = TableCheck(table=table, db_label="shared", expected=False)
-    if table not in tables:
-        check.ok = True
-        check.detail = "Table absente (optionnel)"
-        check.warn = True
-        return check
-
-    check.row_count = _count_rows(conn, table)
-    check.ok = True
-    if check.row_count == 0:
-        check.detail = f"Aucun(e) {label} (normal)"
-        check.warn = True
-    else:
-        check.detail = f"{check.row_count} {label}"
-    return check
-
-
 # ── Vérifications player ────────────────────────────────────────────────
 
 
@@ -313,7 +309,7 @@ def _check_player_tables(db_path: Path, result: SmokeTestResult) -> None:
                 _SimpleCheckParams(
                     "match_citations",
                     "player",
-                    False,
+                    True,
                     "citations",
                 ),
             )
@@ -326,7 +322,7 @@ def _check_player_tables(db_path: Path, result: SmokeTestResult) -> None:
                 _SimpleCheckParams(
                     "sessions",
                     "player",
-                    False,
+                    True,
                     "sessions",
                 ),
             )
@@ -395,8 +391,8 @@ def _check_performance_scores() -> TableCheck:
             check.row_count = scored
             check.ok = True
             if scored == 0 and total_count > 0:
-                check.detail = f"0/{total_count} avec score (normal pour ≤10 matchs)"
-                check.warn = True
+                check.ok = False
+                check.detail = f"0/{total_count} — performance_score non calculé"
             elif total_count > 0:
                 check.detail = f"{scored}/{total_count} avec score"
             else:
@@ -411,18 +407,16 @@ def _check_performance_scores() -> TableCheck:
 
 def _check_skill_rank(conn: Any, tables: set[str]) -> TableCheck:
     """Vérifie match_skill_rank (LUSR/CSR)."""
-    check = TableCheck(table="match_skill_rank", db_label="player", expected=False)
+    check = TableCheck(table="match_skill_rank", db_label="player", expected=True)
     if "match_skill_rank" not in tables:
-        check.ok = True
-        check.detail = "Table non créée (sera créée par backfill)"
-        check.warn = True
+        check.ok = False
+        check.detail = "Table absente — backfill LUSR/CSR non exécuté"
         return check
 
     check.row_count = _count_rows(conn, "match_skill_rank")
-    check.ok = True
+    check.ok = check.row_count > 0
     if check.row_count == 0:
-        check.detail = "Aucun rating (sera calculé par backfill)"
-        check.warn = True
+        check.detail = "Aucun rating — backfill LUSR/CSR non exécuté"
     else:
         row = conn.execute(
             "SELECT "

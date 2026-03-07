@@ -2,143 +2,182 @@
 
 > Guide complet pour installer et configurer LevelUp sur votre machine.
 
-## Prérequis
+## Installation recommandée (Windows — grand public)
 
-### Système
-- **Windows 10/11**, Linux ou macOS
-- **Python 3.10+** (recommandé: 3.11 ou 3.12)
-- **Git** pour cloner le repository
+LevelUp fournit un lanceur tout-en-un qui automatise l'intégralité de l'installation.
+**Vous n'avez pas besoin de savoir ce qu'est Python.**
 
-### Compte Azure
-- Compte Azure AD pour l'authentification API Halo
-- Application enregistrée dans Azure Portal
+### Étape 1 — Télécharger LevelUp
+
+Rendez-vous sur la page GitHub du projet → bouton vert **Code** → **Download ZIP**.
+Extrayez le dossier où vous voulez (ex. Bureau ou `C:\LevelUp\`).
+
+> Vous pouvez aussi cloner avec Git si vous savez l'utiliser :
+> ```bash
+> git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
+> ```
+
+### Étape 2 — Double-cliquer sur `LevelUp.bat`
+
+Le lanceur fait **tout automatiquement** :
+
+1. Cherche Python sur votre PC
+2. Si absent → le télécharge et l'installe via `winget` (Windows 10/11 — vous répondez `O`)
+3. Crée un environnement isolé (`.venv`)
+4. Installe toutes les dépendances
+5. Lance le dashboard et ouvre votre navigateur sur `http://localhost:8501`
+
+> **Au premier lancement** : 2–5 minutes (téléchargements). Les suivants : quelques secondes.
+
+### Étape 3 — Setup Wizard dans le navigateur
+
+Au premier lancement, LevelUp détecte qu'il n'est pas configuré et affiche un **wizard guidé**.
+Choisissez votre parcours :
+
+#### 🎮 Xbox Express (recommandé — 2 étapes)
+
+Le parcours le plus simple. Seule contrainte inévitable : créer une application Azure gratuite
+(Microsoft l'exige pour l'accès à l'API Halo Infinite officielle).
+
+**Étape 1 du wizard — Créer une application Azure (gratuit, aucun frais)**
+
+> Azure est le service cloud Microsoft qui gère l'authentification Xbox.
+> LevelUp a besoin d'une « clé d'accès » propre à chaque utilisateur.
+> L'inscription est gratuite ; LevelUp n'utilise aucun service payant Azure.
+
+1. Allez sur [portal.azure.com](https://portal.azure.com) — connectez-vous avec votre compte Microsoft/Xbox
+2. Cherchez **Microsoft Entra ID** → **App registrations** → **New registration**
+3. Remplissez :
+   - Nom : `LevelUp Halo`
+   - Type de compte : *Personal Microsoft accounts only*
+   - Redirect URI → **Web** → `http://localhost:8501`
+4. Cliquez **Register**
+5. Sur la page **Overview** : copiez l'**Application (client) ID** (format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+6. Allez dans **Certificates & secrets** → **New client secret** → donnez un nom → **Add**
+   → copiez immédiatement la colonne **Value** (elle disparaît si vous naviguez ailleurs)
+7. Allez dans **API permissions** → **Add a permission** → **Microsoft Graph** :
+   ajoutez `offline_access` et `User.Read`
+
+Collez le Client ID et la Value dans le wizard → LevelUp sauvegarde tout automatiquement.
+
+**Étape 2 du wizard — Connexion Xbox en 1 clic**
+
+Cliquez sur **"Se connecter avec Xbox"** → une fenêtre Microsoft s'ouvre → connectez-vous
+avec votre compte Xbox → LevelUp récupère automatiquement votre gamertag et XUID,
+crée votre profil et stocke le token OAuth dans votre base de données.
+
+#### ☁️ Azure manuel (avancé — 3 étapes)
+
+Même configuration Azure qu'au-dessus, mais le refresh token est obtenu manuellement
+(à utiliser si le flux Xbox automatique pose problème, ex. reverse proxy) :
+
+```bash
+python scripts/spnkr_get_refresh_token.py
+```
+
+Ce script ouvre un navigateur, vous authentifie et affiche le token à copier dans `.env.local`.
+
+### Étape 4 — Smoke test (vérification automatique sur 20 matchs)
+
+Après la connexion Xbox, le wizard lance automatiquement un **smoke test en 3 phases** :
+
+| Phase | Ce qui se passe |
+|-------|----------------|
+| 📡 Phase 1 — Sync | Synchronisation de 20 matchs depuis l'API Halo |
+| ⚙️ Phase 2 — Enrichissement | Calcul des scores, sessions, citations, LUSR/CSR, paires killer/victim |
+| 🔍 Phase 3 — Vérification | Contrôle d'intégrité de toutes les tables (voir ci-dessous) |
+
+**Tables vérifiées (toutes obligatoires) :**
+
+| Table | Base | Ce qui est validé |
+|-------|------|-------------------|
+| `match_registry` | shared | count > 0 |
+| `match_participants` | shared | count > 0 + kills/deaths non NULL |
+| `medals_earned` | shared | count > 0 |
+| `killer_victim_pairs` | shared | count > 0 |
+| `xuid_aliases` | shared | count > 0 |
+| `player_match_enrichment` | player | count > 0 + session_id non NULL |
+| `performance_score` | shared (via match_participants) | score calculé > 0 |
+| `match_citations` | player | count > 0 |
+| `match_skill_rank` (LUSR/CSR) | player | count > 0 + LUSR/CSR présents |
+| `sessions` | player | count > 0 |
+| `highlight_events` | shared | count > 0 (clips filmés) |
+| `sync_meta` | player | count > 0 |
+| Cohérence shared↔player | croisé | counts cohérents |
+
+Si un check échoue, le test propose de **relancer**. Si tout est vert, deux choix s'offrent :
+
+- **⚙️ Sync complète** → navigue vers la page Paramètres pour récupérer tout votre historique (recommandé)
+- **📊 Dashboard (20 matchs)** → accède directement au dashboard avec les matchs déjà synchronisés
 
 ---
 
-## Installation Standard
+## Installation pour développeurs
 
-### 1. Cloner le Repository
+### Prérequis
+- Python 3.10+ (recommandé : 3.12)
+- Git
 
 ```bash
-git clone https://github.com/username/levelup-halo.git
-cd levelup-halo
-```
+git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
+cd LevelUp_with_SPNKr
 
-### 2. Créer l'Environnement Virtuel
-
-**Windows (PowerShell)** :
-```powershell
+# Créer l'environnement virtuel
 python -m venv .venv
+
+# Activer (Windows PowerShell)
 .venv\Scripts\Activate.ps1
-```
-
-**Windows (CMD)** :
-```cmd
-python -m venv .venv
-.venv\Scripts\activate.bat
-```
-
-**Linux/macOS** :
-```bash
-python -m venv .venv
+# Activer (Linux/macOS)
 source .venv/bin/activate
-```
 
-### 3. Installer les Dépendances
-
-**Installation standard** :
-```bash
-pip install -e .
-```
-
-**Installation développeur** (avec outils de test/linting) :
-```bash
-pip install -e ".[dev]"
-```
-
-**Avec support SPNKr** (API Halo) :
-```bash
-pip install -e ".[spnkr]"
-```
-
-**Installation complète** :
-```bash
+# Installation complète (avec outils de dev)
 pip install -e ".[dev,spnkr]"
 ```
 
-### 4. Vérifier l'Installation
+### Vérification de l'environnement
 
 ```bash
-# Vérifier Python
-python --version
-
-# Vérifier Streamlit
-streamlit --version
-
-# Vérifier DuckDB
-python -c "import duckdb; print(duckdb.__version__)"
-
-# Vérifier Pytest (évite les soucis de PATH)
-python -m pytest --version
-
-# Healthcheck environnement (recommandé)
+# Healthcheck complet
 python scripts/check_env.py
+
+# Ou via le lanceur
+python launcher.py doctor
 ```
 
----
-
-## Tests
-
-Pour lancer la suite de tests, privilégiez `python -m pytest` (ça utilise toujours le pytest installé dans *cet* environnement virtuel).
+### Tests
 
 ```bash
-# Tous les tests
+# Suite complète
 python -m pytest
+
+# Hors intégration (plus rapide)
+python -m pytest --ignore=tests/integration
 
 # Un fichier spécifique
 python -m pytest tests/test_duckdb_repository.py -v
 ```
 
----
-
-## Configuration Initiale
-
-### 1. Fichier d'Environnement
+### Mise à jour
 
 ```bash
-# Copier le template
-cp .env.example .env.local
+git pull origin main
+python launcher.py setup --update
 ```
-
-### 2. Configurer les Tokens
 
 Voir [CONFIGURATION.md](CONFIGURATION.md) pour la configuration des tokens Azure.
 
-### 3. Ajouter un Joueur
+### 3. Ajouter un joueur via CLI (si le wizard n'est pas utilisé)
 
-Éditer `db_profiles.json` :
-
-```json
-{
-  "version": "2.1",
-  "profiles": {
-    "MonGamertag": {
-      "xuid": "2533274XXXXXXXXX",
-      "gamertag": "MonGamertag",
-      "db_path": "data/players/MonGamertag/stats.duckdb"
-    }
-  }
-}
+```bash
+python scripts/sync.py --add-player MonGamertag
 ```
+
+Cette commande crée automatiquement l'entrée dans `db_profiles.json` et le dossier `data/players/MonGamertag/`.
 
 ### 4. Premier Lancement
 
 ```bash
-# Lancer le dashboard
 python launcher.py run
-
-# Ou directement avec Streamlit
-streamlit run streamlit_app.py
 ```
 
 ---
@@ -194,7 +233,7 @@ L'image Docker :
 
 | Volume hôte | Chemin conteneur | Description |
 |-------------|-----------------|-------------|
-| `./data` | `/app/data` | Données DuckDB v4 (lecture/écriture) |
+| `./data` | `/app/data` | Données DuckDB v5 (lecture/écriture) |
 | `./db_profiles.json` | `/app/db_profiles.json` | Profils joueurs |
 | `./app_settings.json` | `/app/app_settings.json` | Paramètres applicatifs |
 
@@ -203,84 +242,43 @@ L'image Docker :
 | Variable | Défaut | Description |
 |----------|--------|-------------|
 | `LEVELUP_ROOT` | `/app` | Racine du projet (détection pyproject.toml) |
-| `LEVELUP_DB` | *(vide)* | Forcer un chemin DB (optionnel) |
+| `LEVELUP_DATA` | `%APPDATA%/LevelUp` ou `./data` | Répertoire des données |
 | `LEVELUP_DEFAULT_GAMERTAG` | *(vide)* | Gamertag par défaut pour mode headless |
-
-Exemple pour forcer une base :
-
-```yaml
-environment:
-  - LEVELUP_DB=/app/data/players/MonGamertag/stats.duckdb
-```
-
-`LEVELUP_DB` est optionnelle : si non définie, l'application utilise la sélection via profils/UI.
-
----
-
-## Mise à Jour
-
-### Mettre à Jour le Code
-
-```bash
-# Pull les dernières modifications
-git pull origin main
-
-# Réinstaller les dépendances
-pip install -e .
-```
-
-### Migration de Base de Données
-
-Si vous migrez depuis une ancienne version (SQLite → DuckDB) :
-
-```bash
-# Migrer les métadonnées
-python scripts/migrate_metadata_to_duckdb.py
-
-# Migrer un joueur
-python scripts/migrate_player_to_duckdb.py --gamertag MonGamertag
-
-# Migrer tous les joueurs
-python scripts/migrate_player_to_duckdb.py --all
-```
 
 ---
 
 ## Dépannage
 
+### Diagnostic complet
+
+```bash
+python launcher.py doctor
+```
+
 ### Erreur "Module not found"
 
 ```bash
-# Réinstaller les dépendances
-pip install -e .
+python launcher.py setup
 ```
 
-### Erreur DuckDB
+### Erreur DuckDB (version incorrecte)
 
 ```bash
-# Vérifier la version
 python -c "import duckdb; print(duckdb.__version__)"
-
-# Doit être >= 0.10.0
-pip install --upgrade duckdb
+# Doit être >= 1.4.0
+python launcher.py setup --update
 ```
 
-### Erreur Streamlit
+### Problème de token OAuth expiré
 
-```bash
-# Vider le cache Streamlit
-streamlit cache clear
+Aller dans l'app → **Paramètres** → **Connexion Xbox** → **Reconnecter**.
+Le token est stocké dans `data/players/<gamertag>/stats.duckdb` (table `sync_meta`).
 
-# Relancer
-streamlit run streamlit_app.py
-```
+### Permission Denied (Windows / PowerShell)
 
-### Permission Denied (Windows)
-
-Exécuter PowerShell en tant qu'administrateur ou utiliser CMD :
-
-```cmd
-python -m streamlit run streamlit_app.py
+```powershell
+# Autoriser les scripts PowerShell (une seule fois)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
 ---
@@ -288,16 +286,17 @@ python -m streamlit run streamlit_app.py
 ## Structure des Dossiers Après Installation
 
 ```
-levelup-halo/
-├── .venv/                  # Environnement virtuel
+LevelUp/
+├── .venv/                         # Environnement virtuel Python
 ├── data/
-│   ├── players/            # Données par joueur
+│   ├── players/
 │   │   └── MonGamertag/
-│   │       └── stats.duckdb
+│   │       └── stats.duckdb       # Enrichissements joueur
 │   └── warehouse/
-│       └── metadata.duckdb
-├── .env.local              # Configuration locale
-├── db_profiles.json        # Profils joueurs
+│       ├── metadata.duckdb        # Référentiels (maps, médailles…)
+│       └── shared_matches.duckdb  # Matchs partagés (centralisé)
+├── .env.local                     # Tokens Azure (créé par le wizard)
+├── db_profiles.json               # Profils joueurs (créé par le wizard)
 └── ...
 ```
 
@@ -305,6 +304,6 @@ levelup-halo/
 
 ## Prochaines Étapes
 
-1. [Configurer les tokens Azure](CONFIGURATION.md)
+1. [Configuration Azure détaillée](CONFIGURATION.md)
 2. [Synchroniser vos matchs](SYNC_GUIDE.md)
 3. [Explorer le dashboard](../README.md#utilisation)

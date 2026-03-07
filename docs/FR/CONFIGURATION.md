@@ -4,14 +4,37 @@
 
 ## Table des Matières
 
-- [Configuration Azure](#configuration-azure)
+- [Setup Wizard (recommandé)](#setup-wizard-recommandé)
+- [Configuration Azure détaillée](#configuration-azure-détaillée)
 - [Profils Joueurs](#profils-joueurs)
 - [Variables d'Environnement](#variables-denvironnement)
 - [Paramètres Application](#paramètres-application)
 
 ---
 
-## Configuration Azure
+## Setup Wizard (recommandé)
+
+**LevelUp configure tout automatiquement via un wizard intégré.**
+Après avoir double-cliqué sur `LevelUp.bat`, le wizard s'ouvre dans le navigateur et guide les étapes suivantes :
+
+| Étape | Parcours Xbox Express | Parcours Azure manuel |
+|-------|----------------------|----------------------|
+| 1 | Saisir Client ID + Secret Azure | Saisir Client ID + Secret Azure |
+| 2 | Cliquer "Se connecter avec Xbox" (OAuth automatique) | Lancer `spnkr_get_refresh_token.py` + coller le token |
+| 3 | *(automatique)* gamertag + XUID résolus, profil créé | Saisir le gamertag manuellement |
+
+**Le wizard gère automatiquement :**
+- Création de `.env.local` avec les credentials
+- Obtention et stockage du refresh token OAuth (dans `stats.duckdb/sync_meta`)
+- Création du profil joueur dans `db_profiles.json`
+- Smoke test de vérification sur 20 matchs
+
+> Si le wizard ne s'affiche pas, c'est que la configuration est déjà complète.
+> Pour forcer son réaffichage : supprimer `.env.local` ou `db_profiles.json`.
+
+---
+
+## Configuration Azure détaillée
 
 ### À propos de l'inscription Azure
 
@@ -103,7 +126,10 @@ Pour utiliser l'API Halo Infinite via SPNKr, vous devez :
 > - `SPNKR_AZURE_CLIENT_ID` → copié depuis la page **Overview** de l'app (étape 1.6)
 > - `SPNKR_AZURE_CLIENT_SECRET` → copié depuis **Certificates & secrets** (étape 3.3)
 
-### 4. Configurer le Fichier .env.local
+> ✅ **Si vous utilisez le Setup Wizard (recommandé)** : collez ces deux valeurs dans les champs
+> du wizard. Il sauvegarde `.env.local` et gère le reste automatiquement.
+
+### 4. Configurer le Fichier .env.local (méthode manuelle — avancé)
 
 ```bash
 # Copier le template
@@ -122,7 +148,10 @@ SPNKR_AZURE_REDIRECT_URI=https://localhost
 SPNKR_OAUTH_REFRESH_TOKEN=
 ```
 
-### 5. Obtenir le Refresh Token
+### 5. Obtenir le Refresh Token (méthode manuelle — avancé)
+
+> **Si vous utilisez Xbox Express** dans le wizard, cette étape est inutile.
+> Le token est obtenu automatiquement via OAuth et stocké en base de données.
 
 ```bash
 python scripts/spnkr_get_refresh_token.py
@@ -137,6 +166,9 @@ Ce script :
 ---
 
 ## Profils Joueurs
+
+> **Si vous utilisez le Setup Wizard** : le profil est créé automatiquement.
+> Cette section est utile pour ajouter des joueurs supplémentaires ou en mode CLI.
 
 ### Structure du Fichier db_profiles.json
 
