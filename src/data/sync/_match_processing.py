@@ -286,12 +286,20 @@ class MatchProcessingMixin:
 
             if not participants_loaded:
                 participants = extract_participants(stats_json)
-                self._insert_shared_participants(shared_conn, participants)
-                shared_conn.execute(
-                    "UPDATE match_registry SET participants_loaded = TRUE WHERE match_id = ?",
-                    (match_id,),
-                )
-                backfill_needed.append("participants")
+                inserted = self._insert_shared_participants(shared_conn, participants)
+                if inserted > 0:
+                    shared_conn.execute(
+                        "UPDATE match_registry SET participants_loaded = TRUE WHERE match_id = ?",
+                        (match_id,),
+                    )
+                    backfill_needed.append("participants")
+                elif participants:
+                    logger.warning(
+                        "_backfill_known_match_shared: 0/%d participants insérés pour "
+                        "match=%s — participants_loaded NON marqué, backfill relancé au prochain sync",
+                        len(participants),
+                        match_id,
+                    )
 
             if not events_loaded and highlight_events:
                 event_rows = transform_highlight_events(highlight_events, match_id)
@@ -438,7 +446,14 @@ class MatchProcessingMixin:
                 return
 
             self._insert_shared_registry(shared_conn, registry_data)
-            self._insert_shared_participants(shared_conn, participants)
+            inserted = self._insert_shared_participants(shared_conn, participants)
+            if inserted == 0 and participants:
+                logger.warning(
+                    "_insert_new_match_shared: 0/%d participants insérés pour match=%s "
+                    "— participants_loaded reste FALSE",
+                    len(participants),
+                    match_id,
+                )
             self._insert_shared_medals(shared_conn, medals_all)
 
             if event_rows:
@@ -452,14 +467,14 @@ class MatchProcessingMixin:
             _utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
             shared_conn.execute(
                 """UPDATE match_registry SET
-                    participants_loaded = TRUE,
+                    participants_loaded = ?,
                     events_loaded = ?,
                     medals_loaded = TRUE,
                     first_sync_by = ?,
                     first_sync_at = ?,
                     player_count = 1
                 WHERE match_id = ?""",
-                (len(event_rows) > 0, self._gamertag, _utc_now, match_id),
+                (inserted > 0, len(event_rows) > 0, self._gamertag, _utc_now, match_id),
             )
             bf_mask = self._compute_backfill_mask(options)
             shared_conn.execute(
