@@ -45,9 +45,7 @@ FUNC:src/data/services/teammates_service.py:338:compute_participation_profiles:9
 FUNC:src/data/services/teammates_service.py:440:load_impact_data:155L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sessions_backfill.py:22:get_friends_xuids_for_backfill:82L
-FUNC:src/data/sync/_match_processing.py:195:_process_known_match:224L
-FUNC:src/data/sync/_match_processing.py:421:_process_new_match:203L
-FUNC:src/data/sync/_match_processing.py:42:_process_matches:96L
+FUNC:src/data/sync/_match_processing.py:43:_process_matches:96L
 FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
 FUNC:src/data/sync/_skill_rating.py:127:batch_compute_lusr:198L
 FUNC:src/data/sync/_skill_rating.py:41:_upsert_csr_rating:84L
@@ -164,7 +162,7 @@ MODULE:src/analysis/skill_rating_calibration.py:569L
 MODULE:src/data/media_indexer.py:522L
 MODULE:src/data/query/trends.py:537L
 MODULE:src/data/services/teammates_service.py:596L
-MODULE:src/data/sync/_match_processing.py:699L
+MODULE:src/data/sync/_match_processing.py:695L
 MODULE:src/data/sync/models.py:511L
 MODULE:src/data/sync/transformers/_helpers.py:667L
 MODULE:src/data/sync/transformers/_match.py:531L
