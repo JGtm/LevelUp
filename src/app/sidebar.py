@@ -110,7 +110,7 @@ def render_sidebar(
 
         # Indicateur de dernière synchronisation
         if db_path and os.path.exists(db_path):
-            render_sync_indicator(db_path)
+            render_sync_indicator(db_path, xuid=xuid)
 
         # Avertissement si SPNKr obsolète
         _check_spnkr_version_warning()

@@ -539,7 +539,7 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
 
         # Indicateur de dernière synchronisation
         if db_path and os.path.exists(db_path):
-            render_sync_indicator(db_path)
+            render_sync_indicator(db_path, xuid=xuid)
 
         # Sélecteur multi-joueurs
         if db_path and os.path.exists(db_path):

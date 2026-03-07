@@ -59,10 +59,14 @@ def _load_matches_duckdb_v4(db_path: str, include_firefight: bool = True) -> lis
     Préférer _load_matches_duckdb_v4_polars() pour le chemin optimisé.
     Utilise le repository caché (v5.1 perf) pour éviter les reconnexions.
     """
+    from src.ui._cache_core import SharedDBUnavailableError
+
     try:
         player_xuid = _resolve_player_xuid(db_path)
         repo = get_cached_repository_st(db_path, player_xuid)
         return repo.load_matches(include_firefight=include_firefight)
+    except SharedDBUnavailableError:
+        raise
     except Exception:
         return []
 
@@ -88,6 +92,8 @@ def _load_matches_duckdb_v4_polars(
     Returns:
         DataFrame Polars. Vide en cas d'erreur.
     """
+    from src.ui._cache_core import SharedDBUnavailableError
+
     try:
         player_xuid = _resolve_player_xuid(db_path)
         repo = get_cached_repository_st(db_path, player_xuid)
@@ -96,6 +102,8 @@ def _load_matches_duckdb_v4_polars(
             columns=columns,
             max_matches=max_matches,
         )
+    except SharedDBUnavailableError:
+        raise  # Ne pas cacher — retry automatique au prochain appel
     except Exception:
         logger.warning("load_matches_as_polars échoué, fallback MatchRow", exc_info=True)
         return pl.DataFrame()

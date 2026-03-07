@@ -107,7 +107,7 @@ def render_sidebar_header(db_path: str, xuid: str, settings: AppSettings) -> str
 
     # Indicateur de dernière synchronisation
     if db_path and os.path.exists(db_path):
-        render_sync_indicator(db_path)
+        render_sync_indicator(db_path, xuid=xuid)
 
     # Sélecteur multi-joueurs (si DB fusionnée)
     if db_path and os.path.exists(db_path):
@@ -410,15 +410,26 @@ def load_match_dataframe(
     df = pl.DataFrame()
     db_key = db_cache_key(db_path) if db_path else None
 
+    from src.ui._cache_core import SharedDBUnavailableError
     from src.utils.log_config import log_duration
 
     _t0 = _time.perf_counter()
     if db_path and os.path.exists(db_path) and str(xuid or "").strip():
-        with (
-            perf_section("db/load_df_optimized"),
-            log_duration("db/load_df_optimized", logger, threshold_ms=500),
-        ):
-            df = load_df_optimized(db_path, xuid.strip(), db_key=db_key, cache_buster=cache_buster)
+        try:
+            with (
+                perf_section("db/load_df_optimized"),
+                log_duration("db/load_df_optimized", logger, threshold_ms=500),
+            ):
+                df = load_df_optimized(
+                    db_path, xuid.strip(), db_key=db_key, cache_buster=cache_buster
+                )
+        except SharedDBUnavailableError:
+            st.error(
+                "⚠️ **shared_matches.duckdb** est verrouillé par un autre processus "
+                "(extension DuckDB VS Code, CLI…). "
+                "Fermez la connexion externe et rechargez la page."
+            )
+            return pl.DataFrame(), db_key
         if df.is_empty():
             st.warning(t("app_no_match"))
     else:
