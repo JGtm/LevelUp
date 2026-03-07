@@ -477,7 +477,13 @@ def _find_system_python() -> str | None:
             except Exception:
                 continue
 
-    # 2. Essayer python / python3 dans le PATH
+    # 2. Essayer les binaires versionnés (Homebrew macOS, apt Linux)
+    for minor in (12, 13, 11, 10):
+        exe = shutil.which(f"python3.{minor}")
+        if exe:
+            return exe
+
+    # 3. Essayer python3 / python générique dans le PATH
     for name in ("python3", "python"):
         exe = shutil.which(name)
         if not exe:
@@ -496,13 +502,21 @@ def _find_system_python() -> str | None:
         except Exception:
             continue
 
-    # 3. Chemins standards Windows
+    # 4. Chemins standards Windows
     if sys.platform == "win32":
         appdata = os.environ.get("LOCALAPPDATA", "")
         for minor in (12, 13, 11, 10):
             candidate = Path(appdata) / "Programs" / "Python" / f"Python3{minor}" / "python.exe"
             if candidate.exists():
                 return str(candidate)
+
+    # 5. Chemins standards macOS (Homebrew Intel + Apple Silicon)
+    if sys.platform == "darwin":
+        for prefix in ("/opt/homebrew", "/usr/local"):
+            for minor in (12, 13, 11, 10):
+                candidate = Path(prefix) / "bin" / f"python3.{minor}"
+                if candidate.exists():
+                    return str(candidate)
 
     return None
 
@@ -650,11 +664,11 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
     # Vérifier qu'on est dans le bon venv
     expected_venv = (REPO_ROOT / ".venv").resolve()
     if expected_venv.exists():
-        expected_py = expected_venv / "Scripts" / "python.exe"
-        if expected_py.exists():
+        _venv_py = _preferred_python_executable()
+        if _venv_py is not None:
             exe_r = Path(sys.executable).resolve()
-            if exe_r != expected_py.resolve():
-                errors.append(f"Mauvais interpréteur: {exe_r} (attendu {expected_py.resolve()})")
+            if exe_r != _venv_py.resolve():
+                errors.append(f"Mauvais interpréteur: {exe_r} (attendu {_venv_py.resolve()})")
     else:
         errors.append("Dossier .venv introuvable — lancez: python launcher.py setup")
 
@@ -726,7 +740,8 @@ def _launch_streamlit(
     if not DEFAULT_STREAMLIT_APP.exists():
         raise SystemExit(f"Introuvable: {DEFAULT_STREAMLIT_APP}")
 
-    _require_module("streamlit", install_hint="./.venv/Scripts/python -m pip install -e .[spnkr]")
+    _pip_hint = ".venv\\Scripts\\python.exe" if sys.platform == "win32" else ".venv/bin/python"
+    _require_module("streamlit", install_hint=f"{_pip_hint} -m pip install -e .[spnkr]")
 
     chosen_port = int(port) if port else _pick_free_port()
     url = f"http://localhost:{chosen_port}"
