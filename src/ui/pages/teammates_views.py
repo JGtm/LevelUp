@@ -41,6 +41,7 @@ from src.ui.pages.teammates_helpers import (
 from src.ui.pages.teammates_impact import render_impact_taquinerie
 from src.ui.pages.teammates_synergy import render_synergy_radar
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
+from src.ui.tz import get_tz_name
 from src.visualization import plot_map_ratio_with_winloss
 from src.visualization._compat import DataFrameLike, ensure_polars, to_pandas_for_st
 
@@ -86,6 +87,7 @@ def render_single_teammate_view(
                 friend_xuid,
                 same_team_only=bool(same_team_only),
                 db_key=db_key,
+                tz_name=get_tz_name(),
             )
         )
         if dfr.is_empty():
@@ -165,7 +167,7 @@ def render_single_teammate_view(
         )
 
 
-def render_multi_teammate_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
+def render_multi_teammate_view(  # noqa: PLR0913
     df: DataFrameLike,
     dff: DataFrameLike,
     base: DataFrameLike,
@@ -174,17 +176,11 @@ def render_multi_teammate_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
     callbacks: TeammateCallbacks,
 ) -> None:
     """Vue pour plusieurs coéquipiers sélectionnés."""
-    me_name = ctx["me_name"]
-    xuid = ctx["xuid"]
     db_path = ctx["db_path"]
     db_key = ctx["db_key"]
     picked_xuids = ctx["picked_xuids"]
     aliases_key = ctx["aliases_key"]
-    picked_session_labels = ctx["picked_session_labels"]
     include_firefight = ctx["include_firefight"]
-    waypoint_player = ctx["waypoint_player"]
-    apply_current_filters = filters["apply_current_filters"]
-    same_team_only = filters["same_team_only"]
     show_smooth = filters["show_smooth"]
     assign_player_colors_fn = callbacks["assign_player_colors_fn"]
     plot_multi_metric_bars_fn = callbacks["plot_multi_metric_bars_fn"]
@@ -195,58 +191,177 @@ def render_multi_teammate_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
     df = ensure_polars(df)
     dff = ensure_polars(dff)
     base = ensure_polars(base)
-    st.subheader(t("tm_by_map"))
-    with st.spinner(t("tm_computing_map")):
-        current_mode = st.session_state.get("filter_mode")
-        latest_session_label = st.session_state.get("_latest_session_label")
-        trio_latest_label = st.session_state.get("_trio_latest_session_label")
 
-        selected_session = None
-        if (
-            current_mode == "Sessions"
-            and isinstance(picked_session_labels, list)
-            and len(picked_session_labels) == 1
-        ):
-            selected_session = picked_session_labels[0]
+    sub_all, series, colors_by_name, rendered_bottom_charts = _render_map_history_section(
+        df=df,
+        dff=dff,
+        ctx=ctx,
+        filters=filters,
+        callbacks=callbacks,
+    )
 
-        is_last_session = bool(selected_session and selected_session == latest_session_label)
-        is_last_trio_session = bool(
-            selected_session
-            and isinstance(trio_latest_label, str)
-            and selected_session == trio_latest_label
+    if len(picked_xuids) >= 2:
+        rendered_bottom_charts = render_trio_view(
+            df=df,
+            dff=dff,
+            base=base,
+            me_name=ctx["me_name"],
+            xuid=ctx["xuid"],
+            db_path=db_path,
+            db_key=db_key,
+            aliases_key=aliases_key,
+            picked_xuids=picked_xuids,
+            apply_current_filters=filters["apply_current_filters"],
+            include_firefight=include_firefight,
+            series=series,
+            colors_by_name=colors_by_name,
+            show_smooth=show_smooth,
+            assign_player_colors_fn=assign_player_colors_fn,
+            plot_multi_metric_bars_fn=plot_multi_metric_bars_fn,
+            top_medals_fn=top_medals_fn,
+            load_teammate_stats_fn=load_teammate_stats_fn,
+            enrich_series_fn=enrich_series_fn,
         )
 
-        if is_last_session or is_last_trio_session:
-            last_applied = st.session_state.get("_friends_min_matches_last_session_label")
-            if last_applied != selected_session:
-                st.session_state["min_matches_maps_friends"] = 1
-                st.session_state["_min_matches_maps_friends_auto"] = True
-                st.session_state["_friends_min_matches_last_session_label"] = selected_session
+    if len(picked_xuids) >= 2:
+        impact_match_ids = (
+            sub_all["match_id"].cast(pl.Utf8).unique().to_list() if not sub_all.is_empty() else []
+        )
+        render_impact_taquinerie(
+            db_path=db_path,
+            xuid=ctx["xuid"],
+            match_ids=impact_match_ids,
+            friend_xuids=picked_xuids,
+            db_key=db_key,
+        )
 
-        min_matches_maps_friends = st.slider(
-            t("tm_min_matches_map"),
-            1,
-            30,
-            step=1,
-            key="min_matches_maps_friends",
-            on_change=_clear_min_matches_maps_friends_auto,
+    if not rendered_bottom_charts:
+        series = enrich_series_fn(series, db_path)
+        render_metric_bar_charts(
+            series=series,
+            colors_by_name=colors_by_name,
+            show_smooth=show_smooth,
+            key_suffix=f"{len(series)}",
+            plot_fn=plot_multi_metric_bars_fn,
+        )
+
+
+def _auto_reset_min_matches_slider(
+    picked_session_labels: list,
+    latest_session_label: str | None,
+    trio_latest_label: str | None,
+) -> int:
+    """Gère l'auto-reset du slider si la dernière session est sélectionnée.
+
+    Retourne la valeur courante du slider min_matches_maps_friends.
+    """
+    current_mode = st.session_state.get("filter_mode")
+    selected_session = None
+    if (
+        current_mode == "Sessions"
+        and isinstance(picked_session_labels, list)
+        and len(picked_session_labels) == 1
+    ):
+        selected_session = picked_session_labels[0]
+
+    is_last_session = bool(selected_session and selected_session == latest_session_label)
+    is_last_trio_session = bool(
+        selected_session
+        and isinstance(trio_latest_label, str)
+        and selected_session == trio_latest_label
+    )
+    if is_last_session or is_last_trio_session:
+        last_applied = st.session_state.get("_friends_min_matches_last_session_label")
+        if last_applied != selected_session:
+            st.session_state["min_matches_maps_friends"] = 1
+            st.session_state["_min_matches_maps_friends_auto"] = True
+            st.session_state["_friends_min_matches_last_session_label"] = selected_session
+
+    return st.slider(
+        t("tm_min_matches_map"),
+        1,
+        30,
+        step=1,
+        key="min_matches_maps_friends",
+        on_change=_clear_min_matches_maps_friends_auto,
+    )
+
+
+def _render_map_breakdown(
+    sub_all: DataFrameLike,
+    breakdown_all: DataFrameLike,
+    min_matches_maps_friends: int,
+    ctx: TeammateContext,
+) -> None:
+    """Affiche le graphe de répartition par carte et le tableau d'historique."""
+    db_path = ctx["db_path"]
+    xuid = ctx["xuid"]
+    db_key = ctx["db_key"]
+    waypoint_player = ctx["waypoint_player"]
+    if breakdown_all.is_empty():
+        st.info(t("tm_not_enough_matches"))
+    else:
+        with safe_chart_render():
+            view_all = breakdown_all.head(20).reverse()
+            title = t("tm_ratio_map_header", n=min_matches_maps_friends)
+            fig_map = plot_map_ratio_with_winloss(view_all, title=title)
+            if fig_map is not None:
+                st.plotly_chart(fig_map, width="stretch", config=PLOTLY_STATIC_CONFIG)
+            else:
+                st.info(t("insufficient_data_chart"))
+
+        st.subheader(t("tm_history"))
+        st.caption(t("tm_history_tz_caption", tz=get_tz_name()))
+
+    if sub_all.is_empty():
+        st.info(t("tm_no_matches_filter"))
+    else:
+        render_friends_history_table(sub_all, db_path, xuid, db_key, waypoint_player)
+
+
+def _render_map_history_section(
+    df: DataFrameLike,
+    dff: DataFrameLike,
+    ctx: TeammateContext,
+    filters: TeammateFilterOptions,
+    callbacks: TeammateCallbacks,
+) -> tuple[DataFrameLike, list, dict, bool]:
+    """Rend la carte W/L et l'historique multi-coéquipiers.
+
+    Retourne (sub_all, series, colors_by_name, rendered_bottom_charts).
+    """
+    me_name = ctx["me_name"]
+    xuid = ctx["xuid"]
+    db_path = ctx["db_path"]
+    db_key = ctx["db_key"]
+    picked_xuids = ctx["picked_xuids"]
+    picked_session_labels = ctx["picked_session_labels"]
+    apply_current_filters = filters["apply_current_filters"]
+    same_team_only = filters["same_team_only"]
+    assign_player_colors_fn = callbacks["assign_player_colors_fn"]
+    load_teammate_stats_fn = callbacks["load_teammate_stats_fn"]
+
+    df = ensure_polars(df)
+    dff = ensure_polars(dff)
+    rendered_bottom_charts = False
+
+    st.subheader(t("tm_by_map"))
+    with st.spinner(t("tm_computing_map")):
+        latest_session_label = st.session_state.get("_latest_session_label")
+        trio_latest_label = st.session_state.get("_trio_latest_session_label")
+        min_matches_maps_friends = _auto_reset_min_matches_slider(
+            picked_session_labels, latest_session_label, trio_latest_label
         )
 
         base_for_friends_all = dff if apply_current_filters else df
         all_match_ids, per_friend_ids = _collect_friend_match_ids(
-            db_path,
-            xuid,
-            picked_xuids,
-            same_team_only,
-            db_key,
+            db_path, xuid, picked_xuids, same_team_only, db_key
         )
-
         sub_all = base_for_friends_all.filter(
             pl.col("match_id").cast(pl.Utf8).is_in(list(all_match_ids))
         )
 
         series: list[tuple[str, DataFrameLike]] = [(me_name, sub_all)]
-        # Récupérer les match_ids filtrés du joueur principal
         filtered_match_ids = (
             sub_all["match_id"].cast(pl.Utf8).to_list() if not sub_all.is_empty() else []
         )
@@ -262,7 +377,6 @@ def render_multi_teammate_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 )
                 if fr_sub.is_empty():
                     continue
-                # Filtrer fr_sub pour garder que les match_ids présents dans sub_all (après filtres)
                 if "match_id" in fr_sub.columns and filtered_match_ids:
                     fr_sub = fr_sub.filter(
                         pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids)
@@ -270,79 +384,13 @@ def render_multi_teammate_view(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 if fr_sub.is_empty():
                     continue
                 series.append((fx_gamertag, fr_sub))
-        colors_by_name = assign_player_colors_fn([n for n, _ in series])
 
+        colors_by_name = assign_player_colors_fn([n for n, _ in series])
         breakdown_all = ensure_polars(compute_map_breakdown(sub_all))
         breakdown_all = breakdown_all.filter(pl.col("matches") >= int(min_matches_maps_friends))
+        _render_map_breakdown(sub_all, breakdown_all, min_matches_maps_friends, ctx)
 
-        if breakdown_all.is_empty():
-            st.info(t("tm_not_enough_matches"))
-        else:
-            with safe_chart_render():
-                view_all = breakdown_all.head(20).reverse()
-                title = t("tm_ratio_map_header", n=min_matches_maps_friends)
-                fig_map = plot_map_ratio_with_winloss(view_all, title=title)
-                if fig_map is not None:
-                    st.plotly_chart(fig_map, width="stretch", config=PLOTLY_STATIC_CONFIG)
-                else:
-                    st.info(t("insufficient_data_chart"))
-
-            st.subheader(t("tm_history"))
-
-        if sub_all.is_empty():
-            st.info(t("tm_no_matches_filter"))
-        else:
-            render_friends_history_table(sub_all, db_path, xuid, db_key, waypoint_player)
-
-        rendered_bottom_charts = False
-
-    # Vue trio (moi + 2 coéquipiers)
-    if len(picked_xuids) >= 2:
-        rendered_bottom_charts = render_trio_view(
-            df=df,
-            dff=dff,
-            base=base,
-            me_name=me_name,
-            xuid=xuid,
-            db_path=db_path,
-            db_key=db_key,
-            aliases_key=aliases_key,
-            picked_xuids=picked_xuids,
-            apply_current_filters=apply_current_filters,
-            include_firefight=include_firefight,
-            series=series,
-            colors_by_name=colors_by_name,
-            show_smooth=show_smooth,
-            assign_player_colors_fn=assign_player_colors_fn,
-            plot_multi_metric_bars_fn=plot_multi_metric_bars_fn,
-            top_medals_fn=top_medals_fn,
-            load_teammate_stats_fn=load_teammate_stats_fn,
-            enrich_series_fn=enrich_series_fn,
-        )
-
-    # Impact (si ≥2 amis)
-    if len(picked_xuids) >= 2:
-        # Utiliser les match_ids du DataFrame filtré sub_all au lieu de all_match_ids
-        impact_match_ids = (
-            sub_all["match_id"].cast(pl.Utf8).unique().to_list() if not sub_all.is_empty() else []
-        )
-        render_impact_taquinerie(
-            db_path=db_path,
-            xuid=xuid,
-            match_ids=impact_match_ids,
-            friend_xuids=picked_xuids,
-            db_key=db_key,
-        )
-
-    if not rendered_bottom_charts:
-        series = enrich_series_fn(series, db_path)
-        render_metric_bar_charts(
-            series=series,
-            colors_by_name=colors_by_name,
-            show_smooth=show_smooth,
-            key_suffix=f"{len(series)}",
-            plot_fn=plot_multi_metric_bars_fn,
-        )
+    return sub_all, series, colors_by_name, rendered_bottom_charts
 
 
 # ---------------------------------------------------------------------------
@@ -462,7 +510,8 @@ def _collect_friend_match_ids(
             }
         else:
             rows = cached_query_matches_with_friend(db_path, xuid.strip(), fx, db_key=db_key)
-            ids = {str(r.match_id) for r in rows}
+            # DuckDB v4 : rows est une list[str] de match_ids ; chemin legacy : objets avec .match_id
+            ids = {str(r) if isinstance(r, str) else str(r.match_id) for r in rows}
         per_friend_ids[str(fx)] = ids
         all_match_ids.update(ids)
     return all_match_ids, per_friend_ids

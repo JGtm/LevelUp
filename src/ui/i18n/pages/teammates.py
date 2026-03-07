@@ -11,6 +11,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Historique — matchs avec mes coéquipiers",
         "en": "History — matches with my teammates",
     },
+    "tm_history_tz_caption": {
+        "fr": "Dates et heures en heure locale ({tz}).",
+        "en": "Dates and times displayed in local time ({tz}).",
+    },
     "tm_medals": {
         "fr": "Médailles (matchs partagés)",
         "en": "Medals (shared matches)",

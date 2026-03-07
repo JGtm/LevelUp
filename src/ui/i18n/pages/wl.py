@@ -20,8 +20,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Win rate by day and hour",
     },
     "wl_heatmap_caption": {
-        "fr": "Identifie les créneaux horaires où tu performes le mieux. Les cellules affichent le nombre de matchs.",
-        "en": "Find the time slots where you perform best. Cells show the number of matches.",
+        "fr": "Identifie les créneaux horaires où tu performes le mieux (heure locale {tz}). Les cellules affichent le nombre de matchs.",
+        "en": "Find the time slots where you perform best ({tz} local time). Cells show the number of matches.",
     },
     "wl_top_by_week": {
         "fr": "Matchs Top vs Total par semaine",
