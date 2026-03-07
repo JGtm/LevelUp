@@ -1072,3 +1072,35 @@ def ensure_bot_teammate_column(conn: duckdb.DuckDBPyConnection) -> None:
     if not table_exists(conn, "player_match_enrichment"):
         return
     _add_column_if_missing(conn, "player_match_enrichment", "had_bot_teammate", "BOOLEAN")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Correction bot XIDs (bug legacy migrate_sqlite) — shared_matches.duckdb
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_fix_bot_xuid_shared(conn: duckdb.DuckDBPyConnection) -> None:
+    """Corrige les XIDs de bots sans parenthèse fermante dans match_participants.
+
+    Bug d'origine : recover_from_sqlite.py utilisait
+    ``player_id.replace('xuid(', '').replace(')', '')`` qui supprimait
+    la ')' fermante de ``bid(0.0)`` → ``bid(0.0``.
+
+    Cette migration corrige les 506 entrées affectées en ajoutant la ')'
+    manquante, rendant les clés cohérentes avec BOT_MAP.
+    Idempotente : ne touche que les lignes sans ')' finale.
+    """
+    if not table_exists(conn, "match_participants"):
+        return
+    try:
+        result = conn.execute(
+            "UPDATE match_participants SET xuid = xuid || ')' "
+            "WHERE xuid LIKE 'bid(%' AND xuid NOT LIKE 'bid(%)'"
+        )
+        rows_affected = result.fetchone()
+        logger.info(
+            "✅ fix_bot_xuid_shared : %s xuid(s) de bots corrigés",
+            rows_affected[0] if rows_affected else "?",
+        )
+    except Exception as e:
+        logger.warning("ensure_fix_bot_xuid_shared : erreur non fatale : %s", e)

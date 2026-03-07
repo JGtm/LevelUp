@@ -89,7 +89,7 @@ class SharedWritesMixin:
         self,
         shared_conn: duckdb.DuckDBPyConnection,
         participants: list,
-    ) -> None:
+    ) -> int:
         """Insère les participants dans shared.match_participants.
 
         Architecture v5.1 :
@@ -100,12 +100,17 @@ class SharedWritesMixin:
         Args:
             shared_conn: Connexion vers shared_matches.duckdb.
             participants: Liste de MatchParticipantRow.
+
+        Returns:
+            Nombre de lignes effectivement insérées/mises à jour (0 si liste vide
+            ou si toutes les insertions ont échoué).  Le flag ``participants_loaded``
+            dans match_registry NE DOIT être posé à TRUE que si ce retour > 0.
         """
         if not participants:
-            return
+            return 0
         from src.data.sync.batch_insert import batch_upsert_participants
 
-        batch_upsert_participants(shared_conn, participants, PARTICIPANT_COLUMNS)
+        return batch_upsert_participants(shared_conn, participants, PARTICIPANT_COLUMNS)
 
     def _update_match_participant_bits(
         self,

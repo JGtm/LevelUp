@@ -39,6 +39,7 @@ _FORCE_MAP: dict[str, str] = {
     "force_sessions": "sessions",
     "force_citations": "citations",
     "force_participants_enrich": "participants_enrich",
+    "force_teammates_sig": "teammates_sig",
     # ── Granulaires v5.2 ──
     "force_team_mmr": "team_mmr",
     "force_kills_expected": "kills_expected",
@@ -90,6 +91,7 @@ _ALL_DATA_FIELDS: tuple[str, ...] = (
     "sessions",
     "citations",
     "participants_enrich",
+    "teammates_sig",
     # ── Granulaires v5.2 ──
     "team_mmr",
     "kills_expected",
@@ -188,6 +190,7 @@ class SyncScope:
     shots: bool = False
     citations: bool = False
     participants_enrich: bool = False
+    teammates_sig: bool = False  # Backfiller teammates_signature + is_with_friends depuis shared
 
     # ── Types granulaires v5.2 (nouveaux champs bitmask) ─────────────────
     # Skill / MMR
@@ -240,6 +243,7 @@ class SyncScope:
     force_sessions: bool = False
     force_citations: bool = False
     force_participants_enrich: bool = False
+    force_teammates_sig: bool = False
 
     # ── Flags force granulaires v5.2 ─────────────────────────────────────
     force_team_mmr: bool = False
