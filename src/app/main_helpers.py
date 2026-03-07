@@ -423,13 +423,23 @@ def load_match_dataframe(
                 df = load_df_optimized(
                     db_path, xuid.strip(), db_key=db_key, cache_buster=cache_buster
                 )
-        except SharedDBUnavailableError:
-            st.error(
-                "⚠️ **shared_matches.duckdb** est verrouillé par un autre processus "
-                "(extension DuckDB VS Code, CLI…). "
-                "Fermez la connexion externe et rechargez la page."
-            )
+        except SharedDBUnavailableError as exc:
+            # Erreur transitoire (DB verrouillée par MediaIndexer ou xuid non résolu).
+            # On tente UN rerun automatique ; si ça échoue encore, on affiche l'erreur.
+            retry_key = "_shared_db_retry"
+            if not st.session_state.get(retry_key):
+                st.session_state[retry_key] = True
+                logger.info("SharedDBUnavailableError transitoire, rerun auto: %s", exc)
+                st.rerun()
+            else:
+                st.session_state.pop(retry_key, None)
+                st.error(
+                    "⚠️ Base de données temporairement inaccessible "
+                    "(verrouillage concurrent). Rechargez la page."
+                )
             return pl.DataFrame(), db_key
+        # Chargement réussi : effacer le flag de retry
+        st.session_state.pop("_shared_db_retry", None)
         if df.is_empty():
             st.warning(t("app_no_match"))
     else:
