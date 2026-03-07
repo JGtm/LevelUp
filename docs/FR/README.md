@@ -13,7 +13,7 @@
 
 ## Dernières nouveautés
 
-- **v5.5 — Wizard & Xbox OAuth** — Wizard de configuration initiale avec deux parcours (Xbox Express / Azure manuel). Connexion Xbox en 1 clic avec provisionnement automatique. Script `setup.bat` pour installation Windows. Documentation réécrite (CONFIGURATION.md + SYNC_GUIDE.md). **75 nouveaux tests**.
+- **v5.5 — Wizard & Xbox OAuth & macOS/Linux** — Wizard de configuration initiale avec deux parcours (Xbox Express / Azure manuel). Connexion Xbox en 1 clic. `LevelUp.sh` pour macOS/Linux (POSIX sh, Homebrew, APT…). Documentation réécrite. **75 nouveaux tests**.
 - **v5.4 — Explorer & Rencontres** — Page Explorer unifiée. Historique des rencontres. Refactoring massif (72 sous-modules). **3693 tests**, 0 failure.
 - **v5.3 — LUSR/CSR** — Système de rating TrueSkill 2 per-groupe (ranked/arena/btb/tactical/social/fun) avec calibration empirique. Notifications Discord post-sync/backfill.
 - **v5.2 — Stats PvE** — Base dédiée `shared_pve.duckdb` pour les matchs Firefight. Filtres intent-based persistants. Scoreboard complet "Dernier match". Palette Okabe-Ito (accessibilité daltonisme).
