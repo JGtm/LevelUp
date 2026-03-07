@@ -465,6 +465,74 @@ class TestExtractParticipants:
             assert p.kills is not None
             assert p.deaths is not None
 
+    def test_bot_participant_is_extracted(self) -> None:
+        """Un bot (PlayerId=bid(X.0)) est extrait comme participant ordinaire.
+
+        Régression de la correction v5 : avant le fix, les bots étaient silencieusement
+        ignorés par XUID_RE (qui ne matche que les chiffres), ne laissant aucune trace
+        dans match_participants pour les matchs contenant des bots.
+        """
+        match_with_bot: dict = {
+            "MatchId": "bot-regression-test",
+            "Players": [
+                {
+                    "PlayerId": "xuid(2535423456789)",
+                    "PlayerGamertag": "SpartanA",
+                    "Outcome": 2,
+                    "LastTeamId": 0,
+                    "PlayerTeamStats": [
+                        {"Stats": {"CoreStats": {"Kills": 10, "Deaths": 5, "Assists": 2}}}
+                    ],
+                },
+                {
+                    "PlayerId": "bid(0.0)",
+                    "PlayerGamertag": "",
+                    "Outcome": 3,
+                    "LastTeamId": 1,
+                    "PlayerTeamStats": [
+                        {"Stats": {"CoreStats": {"Kills": 3, "Deaths": 12, "Assists": 0}}}
+                    ],
+                },
+            ],
+        }
+        participants = extract_participants(match_with_bot)
+        assert len(participants) == 2, "Le bot doit être compté comme participant"
+
+        xuids = [p.xuid for p in participants]
+        assert "bid(0.0)" in xuids, "Le xuid du bot doit être 'bid(0.0)' (avec ')' fermante)"
+
+    def test_bot_xuid_is_canonical(self) -> None:
+        """Le xuid stocké pour un bot doit toujours avoir sa ')' fermante.
+
+        Valide que extract_participants produit des XIDs canoniques cohérents
+        avec les clés de BOT_MAP — condition nécessaire pour que get_bot_name()
+        fonctionne sans fallback.
+        """
+        from src.config import BOT_MAP
+
+        match_with_bots: dict = {
+            "MatchId": "bot-canonical-test",
+            "Players": [
+                {
+                    "PlayerId": f"bid({i}.0)",
+                    "PlayerGamertag": "",
+                    "Outcome": 2,
+                    "LastTeamId": 0,
+                    "PlayerTeamStats": [
+                        {"Stats": {"CoreStats": {"Kills": 1, "Deaths": 1, "Assists": 0}}}
+                    ],
+                }
+                for i in range(3)
+            ],
+        }
+        participants = extract_participants(match_with_bots)
+        assert len(participants) == 3
+        for p in participants:
+            # Le xuid doit être une clé valide de BOT_MAP (format canonique)
+            assert (
+                p.xuid in BOT_MAP
+            ), f"xuid '{p.xuid}' non trouvé dans BOT_MAP — vérifier la normalisation dans extract_participants"
+
 
 # =============================================================================
 # Tests SyncOptions
