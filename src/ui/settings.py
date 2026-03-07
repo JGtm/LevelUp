@@ -110,6 +110,9 @@ class AppSettings(BaseModel):
     discord_lang: Literal["fr", "en"] = "fr"  # Langue des messages Discord
     cli_lang: Literal["fr", "en"] = "fr"  # Langue des scripts CLI
 
+    # Affichage
+    user_timezone: str = "Europe/Paris"  # Timezone pour les dates/heures affichées (IANA)
+
     # --- Validators ---
 
     @model_validator(mode="before")
@@ -133,6 +136,21 @@ class AppSettings(BaseModel):
         """Normalise la langue en minuscules avec fallback sur 'fr'."""
         s = str(v).strip().lower()
         return s if s in {"fr", "en"} else "fr"
+
+    @field_validator("user_timezone", mode="before")
+    @classmethod
+    def _validate_timezone(cls, v: Any) -> str:
+        """Valide la timezone via ZoneInfo (standard IANA) avec fallback 'Europe/Paris'."""
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        s = str(v or "").strip()
+        if not s:
+            return "Europe/Paris"
+        try:
+            ZoneInfo(s)
+            return s
+        except (ZoneInfoNotFoundError, KeyError, Exception):
+            return "Europe/Paris"
 
     @field_validator("repository_mode", mode="before")
     @classmethod

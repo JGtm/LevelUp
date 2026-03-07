@@ -44,5 +44,6 @@
   "tailscale_funnel_enabled": false,
   "doppler_enabled": false,
   "doppler_project": "levelup",
-  "doppler_config": "dev"
+  "doppler_config": "dev",
+  "user_timezone": "Europe/Paris"
 }
