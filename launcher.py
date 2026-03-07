@@ -56,6 +56,8 @@ from src.utils.paths import (
     PLAYER_DB_FILENAME,
     PLAYERS_DIR,
     WAREHOUSE_DIR,
+    get_pve_db_path,
+    get_shared_matches_path,
 )
 
 # =============================================================================
@@ -725,6 +727,72 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
 
 
 # =============================================================================
+# Migrations de schéma automatiques
+# =============================================================================
+
+
+def _run_migrations() -> None:
+    """Applique les migrations de schéma pendantes sur toutes les DB.
+
+    Exécuté avant le lancement de Streamlit. Non-bloquant en cas d'erreur.
+    """
+    from src.data.migration.runner import apply_pending_migrations
+
+    players = _list_players()
+    shared_path = get_shared_matches_path()
+    pve_path = get_pve_db_path()
+
+    if not players and not shared_path.exists():
+        return
+
+    print("\n🔧 Vérification du schéma de données…", flush=True)
+
+    total_schemas = 0
+    total_backfills = 0
+    errors: list[str] = []
+
+    # Migrations shared (une seule fois)
+    try:
+        report = apply_pending_migrations(
+            shared_db_path=shared_path if shared_path.exists() else None,
+            pve_db_path=pve_path if pve_path.exists() else None,
+        )
+        total_schemas += report.schemas_applied
+        total_backfills += report.backfills_applied
+        if report.errors:
+            errors.extend(report.errors)
+    except Exception as e:
+        errors.append(f"shared: {e}")
+
+    # Migrations player (pour chaque joueur)
+    for player in players:
+        db_path = PLAYERS_DIR / player.gamertag / PLAYER_DB_FILENAME
+        if not db_path.exists():
+            continue
+        try:
+            report = apply_pending_migrations(player_db_path=db_path)
+            total_schemas += report.schemas_applied
+            total_backfills += report.backfills_applied
+            if report.errors:
+                errors.extend(report.errors)
+        except Exception as e:
+            errors.append(f"{player.gamertag}: {e}")
+
+    if total_schemas == 0 and total_backfills == 0:
+        print("   ✓ Schéma à jour", flush=True)
+    else:
+        if total_schemas:
+            print(f"   ✓ {total_schemas} migration(s) de schéma appliquée(s)", flush=True)
+        if total_backfills:
+            print(f"   ✓ {total_backfills} backfill(s) exécuté(s)", flush=True)
+
+    if errors:
+        print(f"   ⚠ {len(errors)} erreur(s) non-bloquante(s):", flush=True)
+        for err in errors[:5]:
+            print(f"     - {err}", flush=True)
+
+
+# =============================================================================
 # Commandes principales
 # =============================================================================
 
@@ -762,6 +830,9 @@ def _launch_streamlit(
 
     # Délai avant ouverture du navigateur pour laisser Streamlit démarrer
     STREAMLIT_STARTUP_DELAY_SECONDS = 1.2
+
+    # Appliquer les migrations de schéma avant le lancement
+    _run_migrations()
 
     print("\n\ud83d\ude80 Lancement du dashboard\u2026", flush=True)
     print(f"   URL: {url}", flush=True)
