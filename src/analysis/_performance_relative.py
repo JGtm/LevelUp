@@ -92,13 +92,26 @@ def _add_percentile(  # noqa: PLR0913
 # =============================================================================
 
 
-def _prepare_history_metrics(df_history: pl.DataFrame) -> pl.DataFrame:  # noqa: PLR0912
-    """Prépare les métriques normalisées par minute pour l'historique.
+_DEFAULT_DURATION = 600.0
 
-    Returns:
-        DataFrame avec colonnes: kpm, dpm_deaths, apm, kda, accuracy,
-        pspm, dpm_damage, rank_perf_diff, kills_vs_expected, deaths_vs_expected.
-    """
+_DURATION_CANDIDATES = ("time_played_seconds", "duration_seconds", "match_duration_seconds")
+
+
+def _resolve_duration_column(df: pl.DataFrame) -> pl.DataFrame:
+    """Ajoute la colonne _duration normalisée (secondes, toujours > 0)."""
+    duration_col = next((c for c in _DURATION_CANDIDATES if c in df.columns), None)
+    if duration_col is None:
+        return df.with_columns(pl.lit(_DEFAULT_DURATION).alias("_duration"))
+    return df.with_columns(
+        pl.when(pl.col(duration_col).cast(pl.Float64, strict=False).fill_null(0.0) <= 0)
+        .then(_DEFAULT_DURATION)
+        .otherwise(pl.col(duration_col).cast(pl.Float64, strict=False).fill_null(_DEFAULT_DURATION))
+        .alias("_duration")
+    )
+
+
+def _prepare_history_metrics(df_history: pl.DataFrame) -> pl.DataFrame:
+    """Prépare les métriques normalisées par minute pour l'historique."""
     output_cols = [
         "kpm",
         "dpm_deaths",
@@ -115,22 +128,7 @@ def _prepare_history_metrics(df_history: pl.DataFrame) -> pl.DataFrame:  # noqa:
     if df_history.is_empty():
         return pl.DataFrame(schema=dict.fromkeys(output_cols, pl.Float64))
 
-    # Durée du match en secondes
-    duration_col = None
-    for col in ["time_played_seconds", "duration_seconds", "match_duration_seconds"]:
-        if col in df_history.columns:
-            duration_col = col
-            break
-
-    if duration_col is None:
-        df = df_history.with_columns(pl.lit(600.0).alias("_duration"))
-    else:
-        df = df_history.with_columns(
-            pl.when(pl.col(duration_col).cast(pl.Float64, strict=False).fill_null(0.0) <= 0)
-            .then(600.0)
-            .otherwise(pl.col(duration_col).cast(pl.Float64, strict=False).fill_null(600.0))
-            .alias("_duration")
-        )
+    df = _resolve_duration_column(df_history)
 
     minutes_expr = pl.col("_duration") / 60.0
     df = df.with_columns(
@@ -336,6 +334,46 @@ def _extract_match_values(row: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
 
+_STANDARD_METRICS = ["kpm", "apm", "kda", "accuracy", "pspm", "dpm_damage"]
+_INVERSE_METRICS = {"dpm_deaths"}
+_VS_EXPECTED_METRICS = ["kills_vs_expected", "deaths_vs_expected"]
+
+
+def _collect_percentiles(
+    metrics: dict[str, Any],
+    history_metrics: pl.DataFrame,
+) -> tuple[dict[str, float], dict[str, float]]:
+    """Collecte les percentiles et poids pour toutes les métriques."""
+    percentiles: dict[str, float] = {}
+    weights_used: dict[str, float] = {}
+
+    for m in _STANDARD_METRICS:
+        _add_percentile(m, metrics[m], history_metrics, percentiles, weights_used)
+    _add_percentile(
+        "dpm_deaths",
+        metrics["dpm_deaths"],
+        history_metrics,
+        percentiles,
+        weights_used,
+        inverse=True,
+    )
+
+    if metrics["rank"] is not None and metrics["team_mmr"] and metrics["enemy_mmr"]:
+        rank_perf = _compute_rank_performance(
+            metrics["rank"],
+            metrics["team_mmr"],
+            metrics["enemy_mmr"],
+            history_metrics,
+        )
+        if rank_perf is not None:
+            percentiles["rank_perf"] = rank_perf
+            weights_used["rank_perf"] = RELATIVE_WEIGHTS["rank_perf"]
+
+    for m in _VS_EXPECTED_METRICS:
+        _add_percentile(m, metrics[m], history_metrics, percentiles, weights_used)
+    return percentiles, weights_used
+
+
 def compute_relative_performance_score(
     row: dict[str, Any],
     df_history: pl.DataFrame | Any,
@@ -366,51 +404,7 @@ def compute_relative_performance_score(
     if metrics is None:
         return None
 
-    percentiles: dict[str, float] = {}
-    weights_used: dict[str, float] = {}
-
-    # Métriques standards (10 composantes)
-    _add_percentile("kpm", metrics["kpm"], history_metrics, percentiles, weights_used)
-    _add_percentile(
-        "dpm_deaths",
-        metrics["dpm_deaths"],
-        history_metrics,
-        percentiles,
-        weights_used,
-        inverse=True,
-    )
-    _add_percentile("apm", metrics["apm"], history_metrics, percentiles, weights_used)
-    _add_percentile("kda", metrics["kda"], history_metrics, percentiles, weights_used)
-    _add_percentile("accuracy", metrics["accuracy"], history_metrics, percentiles, weights_used)
-    _add_percentile("pspm", metrics["pspm"], history_metrics, percentiles, weights_used)
-    _add_percentile("dpm_damage", metrics["dpm_damage"], history_metrics, percentiles, weights_used)
-
-    # Rank Performance (cas spécial : calcul via _compute_rank_performance)
-    if metrics["rank"] is not None and metrics["team_mmr"] and metrics["enemy_mmr"]:
-        rank_perf = _compute_rank_performance(
-            metrics["rank"],
-            metrics["team_mmr"],
-            metrics["enemy_mmr"],
-            history_metrics,
-        )
-        if rank_perf is not None:
-            percentiles["rank_perf"] = rank_perf
-            weights_used["rank_perf"] = RELATIVE_WEIGHTS["rank_perf"]
-
-    _add_percentile(
-        "kills_vs_expected",
-        metrics["kills_vs_expected"],
-        history_metrics,
-        percentiles,
-        weights_used,
-    )
-    _add_percentile(
-        "deaths_vs_expected",
-        metrics["deaths_vs_expected"],
-        history_metrics,
-        percentiles,
-        weights_used,
-    )
+    percentiles, weights_used = _collect_percentiles(metrics, history_metrics)
 
     if not percentiles:
         return None
