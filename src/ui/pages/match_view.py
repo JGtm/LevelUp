@@ -33,6 +33,7 @@ from src.ui.pages.match_view_helpers import (
 )
 from src.ui.pages.match_view_logic import (
     compute_perf_display,
+    detect_abandoned_match,
     enrich_pm_from_row,
     load_enrichment,
     resolve_outcome,
@@ -199,6 +200,13 @@ def render_match_view(  # noqa: C901, PLR0912
         db_key=db_key,
     )
 
+    is_abandoned = detect_abandoned_match(match_id, db_path)
+    if is_abandoned:
+        st.warning(
+            f"**{t('mv_abandoned_match')}** — {t('mv_abandoned_match_desc')}",
+            icon="⚠️",
+        )
+
     with st.spinner(t("mv_loading")):
         pm = params["load_player_match_result_fn"](db_path, match_id, xuid.strip(), db_key=db_key)
         medals_last = params["load_match_medals_fn"](db_path, match_id, xuid.strip(), db_key=db_key)
@@ -219,6 +227,7 @@ def render_match_view(  # noqa: C901, PLR0912
         match_url=match_url,
         settings=settings,
         params=params,
+        is_abandoned=is_abandoned,
     )
 
 
@@ -275,6 +284,7 @@ def _render_match_tabs(  # noqa: PLR0913
     match_url: str | None,
     settings: Any,
     params: MatchViewParams,
+    is_abandoned: bool = False,
 ) -> None:
     """Affiche les 5 onglets du match."""
     tabs = st.tabs(
@@ -287,7 +297,7 @@ def _render_match_tabs(  # noqa: PLR0913
         ]
     )
     with tabs[0]:
-        _render_summary_tab(pm, row, colors, df_full, db_path, xuid, match_id, db_key)
+        _render_summary_tab(pm, row, colors, df_full, db_path, xuid, match_id, db_key, is_abandoned=is_abandoned)
     with tabs[1]:
         _render_combat_tab(
             match_id,
@@ -299,6 +309,7 @@ def _render_match_tabs(  # noqa: PLR0913
             params["load_highlight_events_fn"],
             params["load_match_gamertags_fn"],
             colors,
+            is_abandoned=is_abandoned,
         )
     with tabs[2]:
         _render_team_tab(match_id, db_path, xuid, db_key, params["load_match_gamertags_fn"])
@@ -363,9 +374,13 @@ def _render_summary_tab(  # noqa: PLR0913
     xuid: str,
     match_id: str,
     db_key: str,
+    *,
+    is_abandoned: bool = False,
 ) -> None:
     """Contenu de l'onglet Résumé."""
-    if not pm:
+    if is_abandoned:
+        st.info(t("mv_abandoned_match_desc"))
+    elif not pm:
         st.info(t("mv_stats_unavailable"))
     else:
         render_expected_vs_actual(row, pm, colors, df_full=df_full, db_path=db_path, xuid=xuid)
@@ -388,8 +403,13 @@ def _render_combat_tab(  # noqa: PLR0913
     load_highlight_events_fn: Any,
     load_match_gamertags_fn: Any,
     colors: dict,
+    *,
+    is_abandoned: bool = False,
 ) -> None:
     """Contenu de l'onglet Combat."""
+    if is_abandoned:
+        st.info(t("mv_abandoned_match_desc"))
+        return
     render_match_impact_section(
         match_id=match_id,
         db_path=db_path,

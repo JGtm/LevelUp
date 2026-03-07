@@ -181,6 +181,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "tm_select_teammates": {"fr": "Coéquipiers", "en": "Teammates"},
     "tm_session_trend": {"fr": "Tendance de session", "en": "Session trend"},
+    "tm_solo_session_info": {
+        "fr": "Cette session est en solo — les stats de coéquipiers ne sont pas disponibles.",
+        "en": "You played solo this session — teammate stats are not available.",
+    },
     # ── Teammates impact ────────────────────────────────────────────────────
     "tmi_first_blood": {"fr": "🟢 Premier Sang", "en": "🟢 First Blood"},
     "tmi_finisher": {"fr": "🟡 Finisseur", "en": "🟡 Finisher"},

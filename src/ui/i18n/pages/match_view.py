@@ -205,6 +205,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Stats détaillées indisponibles pour ce match. Essaie un backfill.",
         "en": "Detailed stats unavailable for this match. Try a backfill.",
     },
+    "mv_abandoned_match": {
+        "fr": "Match abandonné",
+        "en": "Abandoned match",
+    },
+    "mv_abandoned_match_desc": {
+        "fr": "Ce match s'est terminé avant qu'aucun joueur ne marque de points (crash serveur ou partie non disputée). Les statistiques détaillées et les graphiques de combat sont indisponibles.",
+        "en": "This match ended before any player scored (server crash or match not played). Detailed statistics and combat charts are unavailable.",
+    },
     "mv_medal_fallback": {"fr": "Médaille #{n}", "en": "Medal #{n}"},
     "mv_open_waypoint": {"fr": "Ouvrir sur HaloWaypoint", "en": "Open on HaloWaypoint"},
     "mv_killer_victim_title": {"fr": "Éliminateur-Victime", "en": "Killer-Victim"},
@@ -316,7 +324,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "You win often with this player on your team (≥ 65% win rate, min. 2 games)",
     },
     "legend_badge_coriace": {
-        "fr": "Tu as du mal à battre ce joueur quand il est en face (≤ 35% de victoires, min. 3 duels)",
+        "fr": "Tu as du mal à battre ce joueur quand il est dans l'équipe adverse (≤ 35% de victoires, min. 3 duels)",
         "en": "You struggle to beat this player as an opponent (≤ 35% win rate, min. 3 duels)",
     },
     # Ordinal de rencontre — "{ordinal} rencontre" / "{ordinal} encounter"

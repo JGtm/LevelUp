@@ -113,7 +113,7 @@ def _render_encounter_summary(
 ) -> None:
     """Affiche le bilan encounter avec badges au-dessus des tableaux."""
     from src.data.repositories._encounter_loader import load_encounter_stats
-    from src.ui.pages.match_view_encounters import _badge_html
+    from src.ui.pages.match_view_encounters import badge_html as _badge_html
     from src.ui.pages.match_view_encounters_logic import (
         EncounterStats,
         compute_encounter_badges,
