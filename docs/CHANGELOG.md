@@ -109,6 +109,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `Dockerfile` et `e2e-browser-optional.yml` mis à jour pour utiliser `pyproject.toml` au lieu de `requirements.txt`
 - `run.sh` redirige vers `launcher.py setup` au lieu de `activate_env.sh`
 
+### Mises à jour complémentaires (7 mars 2026)
+
+- **Sélecteur de timezone** — Choix de la timezone d'affichage directement dans les Settings (Europe/Paris par défaut, ~40 fuseaux disponibles). Les horodatages des matchs s'adaptent automatiquement partout dans l'app.
+- **Page Carrière améliorée** — Meilleure lisibilité de la section classement LUSR, navigation plus fluide.
+- **Migration bot xuid** — Correction automatique des matchs contenant des bots mal identifiés dans la base de données partagée.
+- **Stabilité** — Corrections sur le chargement des données d'adversaires, les requêtes de matchs, le cache UI et la synchronisation. Amélioration de la fiabilité sur Windows lors des accès concurrents aux bases DuckDB.
+
 ## [5.4.0] - 2026-03-04
 
 ### Added
