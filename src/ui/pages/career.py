@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import html
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 
 import streamlit as st
 
 from src.ui.career_ranks import (
     format_career_rank_label_fr,
     get_rank_icon_path,
+)
+from src.ui.career_ranks import (
+    get_rank_info as get_meta_rank_info,
 )
 from src.ui.chart_utils import safe_chart_render
 from src.ui.components.career_progress_circle import (
@@ -53,42 +57,11 @@ _PG_ICONS: dict[str, str] = {
 _PG_ORDER = ["ranked", "arena", "btb", "tactical", "social", "fun"]
 
 
-def _render_lusr_section(*, db_path: str, xuid: str) -> None:  # noqa: C901, PLR0912, PLR0915
-    """Rend la section LUSR/CSR sur la page Carrière."""
-    from pathlib import Path
+def _render_lusr_rank_cards(ordered: list, project_root: Path) -> None:  # noqa: PLR0912
+    """Rend la grille de cartes visuelles LUSR/CSR (rang, tier, delta)."""
+    from src.analysis.skill_rating_config import get_rank_image_path
 
-    try:
-        import polars as pl
-
-        from src.analysis.skill_rating_config import LUSR_SUBTITLE, LUSR_TITLE, get_rank_image_path
-        from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG
-        from src.visualization.timeseries_combat import plot_lusr_timeseries
-    except ImportError:
-        logger.debug("Modules LUSR non disponibles pour career.py")
-        return
-
-    st.subheader(f"🏅 {LUSR_TITLE} — {LUSR_SUBTITLE}")
-
-    snapshot = _load_lusr_snapshot(db_path)
-    if not snapshot:
-        st.info(t("career_lusr_no_rating"))
-        return
-
-    # ── Cartes visuelles — triées par ordre de compétitivité ──
-    snap_by_group = {s["playlist_group"]: s for s in snapshot}
-    ordered = [snap_by_group[g] for g in _PG_ORDER if g in snap_by_group]
-    # Groupes non listés dans _PG_ORDER (futur) en queue
-    ordered += [s for s in snapshot if s["playlist_group"] not in _PG_ORDER]
-
-    # Racine projet depuis l'emplacement du fichier source (parents[3] = LevelUp/)
-    project_root = Path(__file__).parents[3]
-
-    # Angles droits sur les bordures des cartes LUSR
-    st.markdown(
-        "<style>[data-testid='stVerticalBlockBorderWrapper']{border-radius:0!important}</style>",
-        unsafe_allow_html=True,
-    )
-
+    pg_labels = _get_pg_labels()
     n_per_row = 3
     for row_start in range(0, len(ordered), n_per_row):
         batch = ordered[row_start : row_start + n_per_row]
@@ -98,18 +71,12 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:  # noqa: C901, PLR
             tier_label = snap["tier_label"] or t("unranked")
             r_value = float(snap["rating_value"] or 0.0)
             delta = snap["rating_delta"]
-            # Le groupe ranked utilise TOUJOURS le CSR officiel (jamais LUSR)
-            if snap.get("playlist_group") == "ranked":
-                r_type = "CSR"
-            else:
-                r_type = snap["rating_type"] or "LUSR"
-
+            r_type = (
+                "CSR" if snap.get("playlist_group") == "ranked" else (snap["rating_type"] or "LUSR")
+            )
             with col, st.container(border=True):
-                # ── En-tête du groupe ──
-                pg_label = _get_pg_labels().get(pg, pg.capitalize())
+                pg_label = pg_labels.get(pg, pg.capitalize())
                 pg_icon = _PG_ICONS.get(pg, "🎮")
-
-                # ── Image du rang encodée en base64 ──
                 img_b64 = ""
                 img_path_rel = get_rank_image_path(r_value)
                 if img_path_rel:
@@ -118,19 +85,14 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:  # noqa: C901, PLR
                         import base64
 
                         img_b64 = base64.b64encode(img_full.read_bytes()).decode()
-
                 img_html = (
                     f"<img src='data:image/png;base64,{img_b64}' "
                     f"style='width:90px;height:90px;object-fit:contain' />"
                     if img_b64
                     else "<div style='width:90px;height:90px'></div>"
                 )
-
-                # ── Badge type ──
                 badge_bg = "#00B7EB" if r_type == "LUSR" else "#FFD700"
                 badge_fg = "#000"
-
-                # ── Delta ──
                 if delta is not None:
                     _d = round(delta)
                     if _d == 0:
@@ -147,7 +109,6 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:  # noqa: C901, PLR
                         )
                 else:
                     delta_html = "<div style='color:#888;font-size:0.9em;margin-top:4px'>—</div>"
-
                 st.markdown(
                     f"""<div style='display:flex;flex-direction:column;
                                     align-items:center;justify-content:center;
@@ -178,49 +139,98 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:  # noqa: C901, PLR
                     unsafe_allow_html=True,
                 )
 
-    # ── Graphe d'évolution avec sélecteur de groupe ──
+
+def _render_lusr_rating_chart(db_path: str) -> None:
+    """Rend le graphe d'évolution LUSR/CSR avec filtres période et groupe."""
+    import polars as pl
+
+    from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG
+    from src.visualization.timeseries_combat import plot_lusr_timeseries
+
     history_all = _load_lusr_history(db_path)
     if not history_all:
         return
-
     df_all = pl.DataFrame(history_all)
+    st.markdown(f"#### {t('career_lusr_rating_evolution')}")
+    _PERIOD_KEYS = ["all", "2y", "1y", "1m", "1w"]
+    selected_period = st.segmented_control(
+        t("encounters_period_label"),
+        options=_PERIOD_KEYS,
+        format_func=lambda k: t(f"encounters_period_{k}"),
+        default="all",
+        key="lusr_period",
+    )
+    _period_offsets = {"2y": 730, "1y": 365, "1m": 30, "1w": 7}
+    _selected = selected_period or "all"
+    if _selected in _period_offsets:
+        _since = datetime.utcnow() - timedelta(days=_period_offsets[_selected])
+        df_all = df_all.filter(pl.col("start_time") >= _since)
+    _PERIOD_GRANULARITY: dict[str, str | None] = {
+        "1w": None,
+        "1m": "1d",
+        "1y": "1w",
+        "2y": "1w",
+        "all": "1w",
+    }
+    _trunc = _PERIOD_GRANULARITY.get(_selected)
+    if _trunc is not None:
+        df_all = (
+            df_all.with_columns(pl.col("start_time").dt.truncate(_trunc).alias("_bucket"))
+            .sort("start_time", descending=True)
+            .unique(subset=["_bucket", "playlist_group"], keep="first")
+            .drop("_bucket")
+            .sort("start_time")
+        )
     available_groups = sorted(df_all["playlist_group"].drop_nulls().unique().to_list())
     if not available_groups:
         return
-
-    st.markdown(f"#### {t('career_lusr_rating_evolution')}")
-
-    # Sélecteur de groupe : "Tous" + un par groupe disponible
     group_options: dict[str, str | None] = {t("career_lusr_all_groups"): None}
     pg_labels = _get_pg_labels()
     for g in _PG_ORDER:
         if g in available_groups:
             group_options[f"{_PG_ICONS.get(g, '🎮')} {pg_labels.get(g, g.capitalize())}"] = g
-    # Groupes hors _PG_ORDER en queue
     for g in available_groups:
         if g not in _PG_ORDER:
             group_options[f"🎮 {g.capitalize()}"] = g
-
     selected_label = st.selectbox(
         t("career_lusr_group_select"),
         options=list(group_options.keys()),
         key="lusr_group_select",
     )
     selected_group = group_options[selected_label]
-
     chart_title = f"LUSR / CSR — {selected_label}"
     with safe_chart_render("career_lusr_group_error"):
-        fig = plot_lusr_timeseries(
-            df_all,
-            title=chart_title,
-            playlist_group=selected_group,
-        )
+        fig = plot_lusr_timeseries(df_all, title=chart_title, playlist_group=selected_group)
         st.plotly_chart(
-            fig,
-            key=f"lusr_chart_{selected_label}",
-            width="stretch",
-            config=PLOTLY_CLEAN_CONFIG,
+            fig, key=f"lusr_chart_{selected_label}", width="stretch", config=PLOTLY_CLEAN_CONFIG
         )
+
+
+def _render_lusr_section(*, db_path: str, xuid: str) -> None:
+    """Rend la section LUSR/CSR sur la page Carrière."""
+    try:
+        from src.analysis.skill_rating_config import LUSR_SUBTITLE, LUSR_TITLE
+    except ImportError:
+        logger.debug("Modules LUSR non disponibles pour career.py")
+        return
+
+    st.subheader(f"🏅 {LUSR_TITLE} — {LUSR_SUBTITLE}")
+    snapshot = _load_lusr_snapshot(db_path)
+    if not snapshot:
+        st.info(t("career_lusr_no_rating"))
+        return
+
+    snap_by_group = {s["playlist_group"]: s for s in snapshot}
+    ordered = [snap_by_group[g] for g in _PG_ORDER if g in snap_by_group]
+    ordered += [s for s in snapshot if s["playlist_group"] not in _PG_ORDER]
+
+    project_root = Path(__file__).parents[3]
+    st.markdown(
+        "<style>[data-testid='stVerticalBlockBorderWrapper']{border-radius:0!important}</style>",
+        unsafe_allow_html=True,
+    )
+    _render_lusr_rank_cards(ordered, project_root)
+    _render_lusr_rating_chart(db_path)
 
 
 def _render_rank_section(  # noqa: C901, PLR0912, PLR0915
@@ -246,10 +256,19 @@ def _render_rank_section(  # noqa: C901, PLR0912, PLR0915
     else:
         progress_pct = 0.0
 
-    # Label FR du rang
-    rank_label_fr = format_career_rank_label_fr(tier=rank_tier, title=rank_name, grade=None)
-    if not rank_label_fr:
-        rank_label_fr = rank_name or t("career_rank_n", n=rank_number)
+    # Label FR du rang — utiliser les métadonnées officielles depuis metadata.duckdb
+    _meta = get_meta_rank_info(rank_number)
+    if _meta:
+        rank_label_fr = _meta.full_label_fr or t("career_rank_n", n=rank_number)
+    else:
+        logger.warning(
+            "Rang %d introuvable dans metadata.duckdb — fallback sur rank_name DB ('%s')",
+            rank_number,
+            rank_name,
+        )
+        rank_label_fr = format_career_rank_label_fr(tier=rank_tier, title=rank_name, grade=None)
+        if not rank_label_fr:
+            rank_label_fr = rank_name or t("career_rank_n", n=rank_number)
 
     _render_rank_header(
         career_data,
@@ -434,10 +453,15 @@ def _render_xp_history(  # noqa: C901, PLR0912
     with st.expander(t("career_rank_history_title"), expanded=False):
         recent = list(reversed(history[-10:]))
         for snap in recent:
-            snap_label = format_career_rank_label_fr(
-                tier=snap.get("rank_tier", ""),
-                title=snap.get("rank_name", ""),
-                grade=None,
+            _snap_meta = get_meta_rank_info(snap.get("rank", 0))
+            snap_label = (
+                _snap_meta.full_label_fr
+                if _snap_meta
+                else format_career_rank_label_fr(
+                    tier=snap.get("rank_tier", ""),
+                    title=snap.get("rank_name", ""),
+                    grade=None,
+                )
             )
             date_str = str(snap.get("recorded_at", ""))[:19]
             xp_t = snap.get("xp_total", 0) or 0
