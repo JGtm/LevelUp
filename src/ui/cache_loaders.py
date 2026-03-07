@@ -63,6 +63,10 @@ def _load_matches_duckdb_v4(db_path: str, include_firefight: bool = True) -> lis
 
     try:
         player_xuid = _resolve_player_xuid(db_path)
+        if not player_xuid:
+            raise SharedDBUnavailableError(
+                "XUID non résolu (DB probablement verrouillée) — retry au prochain rerun"
+            )
         repo = get_cached_repository_st(db_path, player_xuid)
         return repo.load_matches(include_firefight=include_firefight)
     except SharedDBUnavailableError:
@@ -96,6 +100,10 @@ def _load_matches_duckdb_v4_polars(
 
     try:
         player_xuid = _resolve_player_xuid(db_path)
+        if not player_xuid:
+            raise SharedDBUnavailableError(
+                "XUID non résolu (DB probablement verrouillée) — retry au prochain rerun"
+            )
         repo = get_cached_repository_st(db_path, player_xuid)
         return repo.load_matches_as_polars(
             include_firefight=include_firefight,
