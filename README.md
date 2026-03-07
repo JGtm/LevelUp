@@ -28,8 +28,7 @@
   - **Repo cleanup**: 99 dead files removed (`scripts/_archive/`, `requirements.txt`, obsolete setup scripts)
   - **API abstraction layer** (Ports & Adapters): `HaloAPIPort` Protocol + `create_api_client()` factory + auth facade — decouples SPNKr library, making future API backend switches seamless (14 dedicated tests)
   - **Post-install smoke test**: 3-phase guided verification (sync → backfill → integrity checks) with real-time progress feedback
-  - **3 831 tests**, 0 failures
-
+  - **3 831 tests**, 0 failures  - **Automatic schema migrations** (`src/data/migration/`): versioned migration runner applied at every startup, tracks applied migrations per-DB in `schema_migrations`. Schema changes to any DuckDB (`player`, `shared`, `shared_pve`) require no user action on update.
 - **v5.4 — Explorer & Encounter History**
   - New **Explorer** page: unified match search with cascade filters (date, squad, type, playlist, mode, map), fuzzy gamertag search with XUID resolution, OS-style HTML table (KDA, MMR delta, accuracy, spree…), deep linking (`?page=Explorer&gamertag=XXX`) and encounter badges (rival, mentor, prey)
   - **Encounter History** panel in Match View: per-player stats (encounter count, ally/enemy win rates, cross K/D) with auto-badges (**Dur à cuire** / Tough, **Allié+** / Good Ally, **Coriace** / Hard to Kill)

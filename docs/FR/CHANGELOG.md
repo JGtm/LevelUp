@@ -59,6 +59,8 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - `docs/SYNC_GUIDE.md` : réécriture avec architecture sync v5.1, diagramme ASCII
   - `docs/FR/SYNC_GUIDE.md` : mise à jour
 
+- **Migrations de schéma automatiques** (`src/data/migration/`) — runner versionné appliqué automatiquement au démarrage (`launcher.py → _run_migrations()`). Chaque DB (`player`, `shared`, `shared_pve`) trace les migrations dans une table `schema_migrations`. 11 migrations initiales enregistrées. Pour ajouter un changement de schéma : créer une fonction `ensure_xxx` idempotente dans `src/data/sync/migrations.py`, créer le step dans `src/data/migration/steps/` et l'importer dans `steps/__init__.py`.
+
 ### Corrigé
 
 - **CSRF** (`streamlit_app.py`) — Correction comparaison `_xbox_state != _xbox_state` (auto-comparaison, toujours False) → `_xbox_state != _expected_state`
