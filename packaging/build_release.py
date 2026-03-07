@@ -16,6 +16,8 @@ import hashlib
 import io
 import logging
 import shutil
+import stat
+import tarfile
 import zipfile
 from pathlib import Path
 from urllib.request import urlopen
@@ -42,11 +44,25 @@ INCLUDE_FILES = [
     "run.sh",
 ]
 
+# Fichiers pour la release Unix (macOS / Linux) — sans LevelUp.bat
+INCLUDE_FILES_UNIX = [
+    "launcher.py",
+    "streamlit_app.py",
+    "LevelUp.sh",
+    "pyproject.toml",
+    "db_profiles.json",
+    "app_settings.example.json",
+    "run.sh",
+]
+
 INCLUDE_DIRS = [
     "src",
     "static",
     "scripts",
 ]
+
+# Scripts shell à marquer exécutables dans le tarball
+_EXECUTABLE_SUFFIXES = {".sh"}
 
 
 def _read_version() -> str:
@@ -95,11 +111,12 @@ def _download_python_embed(target_dir: Path) -> None:
     print(f"  ✓ Python Embeddable extrait ({python_dir})")
 
 
-def _copy_project(target_dir: Path) -> None:
+def _copy_project(target_dir: Path, include_files: list[str] | None = None) -> None:
     """Copie les fichiers du projet."""
     print("  → Copie des fichiers du projet...")
+    files = include_files if include_files is not None else INCLUDE_FILES
 
-    for f in INCLUDE_FILES:
+    for f in files:
         src = REPO_ROOT / f
         if src.exists():
             shutil.copy2(src, target_dir / f)
@@ -158,7 +175,7 @@ if not exist ".deps_installed" (
 
 
 def _create_zip(target_dir: Path, version: str) -> Path:
-    """Crée le zip final."""
+    """Crée le zip final (Windows portable)."""
     zip_name = f"LevelUp-v{version}-win64-portable"
     zip_path = REPO_ROOT / "dist" / f"{zip_name}.zip"
     zip_path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,20 +193,36 @@ def _create_zip(target_dir: Path, version: str) -> Path:
     return zip_path
 
 
-def main() -> int:
-    """Point d'entrée du build."""
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    ap = argparse.ArgumentParser(description="Build LevelUp portable release")
-    ap.add_argument("--version", default=None, help="Version (défaut: depuis pyproject.toml)")
-    args = ap.parse_args()
+def _create_unix_tarball(target_dir: Path, version: str) -> Path:
+    """Crée l'archive tar.gz pour macOS/Linux avec permissions exécutables sur les .sh."""
+    tar_name = f"LevelUp-v{version}-unix"
+    tar_path = REPO_ROOT / "dist" / f"{tar_name}.tar.gz"
+    tar_path.parent.mkdir(parents=True, exist_ok=True)
 
-    version = args.version or _read_version()
+    print(f"  → Création de {tar_path.name}...")
 
-    print("=" * 60)
-    print(f"📦 BUILD RELEASE — LevelUp v{version}")
-    print("=" * 60)
+    with tarfile.open(tar_path, "w:gz") as tf:
+        for file in sorted(target_dir.rglob("*")):
+            if not file.is_file():
+                continue
+            arcname = f"{tar_name}/{file.relative_to(target_dir)}"
+            info = tf.gettarinfo(str(file), arcname=arcname)
+            # Scripts shell doivent être exécutables
+            if file.suffix in _EXECUTABLE_SUFFIXES:
+                info.mode = stat.S_IFREG | 0o755
+            else:
+                info.mode = stat.S_IFREG | 0o644
+            with file.open("rb") as fh:
+                tf.addfile(info, fh)
 
-    build_dir = REPO_ROOT / "dist" / f"_build_v{version}"
+    size_mb = tar_path.stat().st_size / (1024 * 1024)
+    print(f"  ✓ {tar_path.name} ({size_mb:.1f} MB)")
+    return tar_path
+
+
+def _build_win64(version: str) -> Path:
+    """Construit la release portable Windows."""
+    build_dir = REPO_ROOT / "dist" / f"_build_win64_v{version}"
     if build_dir.exists():
         shutil.rmtree(build_dir)
     build_dir.mkdir(parents=True)
@@ -197,16 +230,56 @@ def main() -> int:
     _download_python_embed(build_dir)
     _copy_project(build_dir)
     _create_portable_bat(build_dir)
-    zip_path = _create_zip(build_dir, version)
+    artifact = _create_zip(build_dir, version)
 
-    # Nettoyage du dossier temporaire
     shutil.rmtree(build_dir)
+    return artifact
+
+
+def _build_unix(version: str) -> Path:
+    """Construit la release source Unix (macOS / Linux)."""
+    build_dir = REPO_ROOT / "dist" / f"_build_unix_v{version}"
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+    build_dir.mkdir(parents=True)
+
+    _copy_project(build_dir, include_files=INCLUDE_FILES_UNIX)
+    artifact = _create_unix_tarball(build_dir, version)
+
+    shutil.rmtree(build_dir)
+    return artifact
+
+
+def main() -> int:
+    """Point d'entrée du build."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    ap = argparse.ArgumentParser(description="Build LevelUp portable release")
+    ap.add_argument("--version", default=None, help="Version (défaut: depuis pyproject.toml)")
+    ap.add_argument(
+        "--platform",
+        choices=["win64", "unix"],
+        default="win64",
+        help="Plateforme cible (défaut: win64)",
+    )
+    args = ap.parse_args()
+
+    version = args.version or _read_version()
+
+    print("=" * 60)
+    print(f"📦 BUILD RELEASE — LevelUp v{version} [{args.platform}]")
+    print("=" * 60)
+
+    if args.platform == "win64":
+        artifact = _build_win64(version)
+        print("  L'utilisateur n'a qu'à extraire le zip et double-cliquer LevelUp.bat")
+    else:
+        artifact = _build_unix(version)
+        print("  L'utilisateur n'a qu'à extraire l'archive et lancer ./LevelUp.sh")
 
     print("\n" + "=" * 60)
     print("✅ BUILD TERMINÉ")
     print("=" * 60)
-    print(f"\n  Release: {zip_path}")
-    print("  L'utilisateur n'a qu'à extraire le zip et double-cliquer LevelUp.bat")
+    print(f"\n  Release: {artifact}")
     return 0
 
 
