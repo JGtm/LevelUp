@@ -200,11 +200,11 @@ def render_nemesis_section(  # noqa: C901, PLR0913, PLR0915
         st.info(t("mv_nemesis_no_data"))
 
     def _debug_enabled() -> bool:
-        env_flag = str(os.environ.get("OPENSPARTAN_DEBUG_ANTAGONISTS") or "").strip().lower()
+        env_flag = str(os.environ.get("LEVELUP_DEBUG_ANTAGONISTS") or "").strip().lower()
         if env_flag in {"1", "true", "yes", "y", "on"}:
             return True
 
-        env_flag2 = str(os.environ.get("OPENSPARTAN_DEBUG") or "").strip().lower()
+        env_flag2 = str(os.environ.get("LEVELUP_DEBUG") or "").strip().lower()
         if env_flag2 in {"1", "true", "yes", "y", "on"}:
             return True
 

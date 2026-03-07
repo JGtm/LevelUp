@@ -252,7 +252,7 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
         st.markdown(load_css(), unsafe_allow_html=True)
 
     # Référentiel Citations (opt-in via env)
-    if str(os.environ.get("OPENSPARTAN_CITATIONS_AUTOGEN") or "").strip() in {
+    if str(os.environ.get("LEVELUP_CITATIONS_AUTOGEN") or "").strip() in {
         "1",
         "true",
         "True",

@@ -251,17 +251,17 @@ SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC=votre_refresh_token
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
-| `OPENSPARTAN_DB` | Chemin vers la DB par défaut | Auto |
-| `OPENSPARTAN_DB_PATH` | Alias pour OPENSPARTAN_DB | Auto |
-| `OPENSPARTAN_DB_READONLY` | Mode lecture seule | `0` |
+| `LEVELUP_DB` | Chemin vers la DB par défaut | Auto |
+| `LEVELUP_DB_PATH` | Alias pour LEVELUP_DB | Auto |
+| `LEVELUP_DB_READONLY` | Mode lecture seule | `0` |
 | `SPNKR_PLAYER` | Joueur par défaut pour sync | Premier profil |
 
 #### Debug
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
-| `OPENSPARTAN_DEBUG` | Mode debug global | `0` |
-| `OPENSPARTAN_DEBUG_ANTAGONISTS` | Debug calcul antagonistes | `0` |
+| `LEVELUP_DEBUG` | Mode debug global | `0` |
+| `LEVELUP_DEBUG_ANTAGONISTS` | Debug calcul antagonistes | `0` |
 | `STREAMLIT_DEBUG` | Debug Streamlit | `0` |
 
 ---
@@ -331,7 +331,7 @@ python scripts/spnkr_get_refresh_token.py
 En production (Docker, serveur) :
 
 ```env
-OPENSPARTAN_DB_READONLY=1
+LEVELUP_DB_READONLY=1
 ```
 
 Cela empêche les modifications accidentelles de la base.

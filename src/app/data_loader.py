@@ -65,9 +65,9 @@ def default_identity_from_secrets() -> tuple[str, str, str]:
         gt = xu = wp = ""
 
     # Env vars (utile Docker/CLI)
-    gt = gt or str(os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip()
-    xu = xu or str(os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip()
-    wp = wp or str(os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or "").strip() or gt
+    gt = gt or str(os.environ.get("LEVELUP_DEFAULT_GAMERTAG") or "").strip()
+    xu = xu or str(os.environ.get("LEVELUP_DEFAULT_XUID") or "").strip()
+    wp = wp or str(os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") or "").strip() or gt
 
     # Fallback constants
     gt = gt or str(DEFAULT_PLAYER_GAMERTAG or "").strip()
@@ -86,12 +86,12 @@ def propagate_identity_env(xuid_or_gt: str, xuid_fallback: str, wp: str) -> None
     """
     try:
         if xuid_or_gt and not str(xuid_or_gt).strip().isdigit() and xuid_fallback:
-            if not str(os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip():
-                os.environ["OPENSPARTAN_DEFAULT_GAMERTAG"] = str(xuid_or_gt).strip()
-            if not str(os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip():
-                os.environ["OPENSPARTAN_DEFAULT_XUID"] = str(xuid_fallback).strip()
-        if wp and not str(os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or "").strip():
-            os.environ["OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER"] = str(wp).strip()
+            if not str(os.environ.get("LEVELUP_DEFAULT_GAMERTAG") or "").strip():
+                os.environ["LEVELUP_DEFAULT_GAMERTAG"] = str(xuid_or_gt).strip()
+            if not str(os.environ.get("LEVELUP_DEFAULT_XUID") or "").strip():
+                os.environ["LEVELUP_DEFAULT_XUID"] = str(xuid_fallback).strip()
+        if wp and not str(os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") or "").strip():
+            os.environ["LEVELUP_DEFAULT_WAYPOINT_PLAYER"] = str(wp).strip()
     except Exception:
         pass
 
@@ -181,7 +181,7 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
 
         # Si l'utilisateur force une DB via env, ne pas l'écraser
         forced_env_db = str(
-            os.environ.get("OPENSPARTAN_DB") or os.environ.get("OPENSPARTAN_DB_PATH") or ""
+            os.environ.get("LEVELUP_DB") or os.environ.get("LEVELUP_DB_PATH") or ""
         ).strip()
 
         if not forced_env_db:

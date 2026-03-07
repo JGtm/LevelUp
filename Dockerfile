@@ -42,10 +42,10 @@ USER appuser
 EXPOSE 8501
 
 # Variables d'environnement par défaut
-# OPENSPARTAN_DB : optionnel, force un chemin DB précis
-# OPENSPARTAN_ROOT : indique la racine du projet au runtime
-ENV OPENSPARTAN_DB="" \
-    OPENSPARTAN_ROOT=/app
+# LEVELUP_DB : optionnel, force un chemin DB précis
+# LEVELUP_ROOT : indique la racine du projet au runtime
+ENV LEVELUP_DB="" \
+    LEVELUP_ROOT=/app
 
 # Healthcheck Streamlit (endpoint officiel /_stcore/health)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \

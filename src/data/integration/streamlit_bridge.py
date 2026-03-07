@@ -40,13 +40,13 @@ def get_repository_mode_from_settings() -> RepositoryMode:
     (Get repository mode from settings or environment)
 
     Priorité:
-    1. Variable d'environnement OPENSPARTAN_REPOSITORY_MODE (duckdb)
+    1. Variable d'environnement LEVELUP_REPOSITORY_MODE (duckdb)
     2. Paramètre dans st.session_state.app_settings.repository_mode (duckdb)
     3. Auto-détection depuis db_profiles.json
     4. Défaut: DUCKDB
     """
     # 1. Variable d'environnement
-    env_mode = os.environ.get("OPENSPARTAN_REPOSITORY_MODE", "").lower().strip()
+    env_mode = os.environ.get("LEVELUP_REPOSITORY_MODE", "").lower().strip()
     if env_mode == RepositoryMode.DUCKDB.value:
         return RepositoryMode.DUCKDB
 

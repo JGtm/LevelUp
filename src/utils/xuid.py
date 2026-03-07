@@ -114,7 +114,7 @@ def resolve_xuid_from_db(  # noqa: C901, PLR0912
 
     - Si `player` est déjà un XUID (ou xuid(...)), renvoie le XUID.
     - Sinon, tente de retrouver le XUID depuis les alias ou la DB.
-    - Fallback sur les variables d'environnement OPENSPARTAN_DEFAULT_*.
+    - Fallback sur les variables d'environnement LEVELUP_DEFAULT_*.
 
     Args:
         db_path: Chemin vers la base de données.
@@ -140,8 +140,8 @@ def resolve_xuid_from_db(  # noqa: C901, PLR0912
         return default_xuid or None
 
     # 3. Fallback variables d'environnement
-    env_gt = os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG", "").strip()
-    env_xu = os.environ.get("OPENSPARTAN_DEFAULT_XUID", "").strip()
+    env_gt = os.environ.get("LEVELUP_DEFAULT_GAMERTAG", "").strip()
+    env_xu = os.environ.get("LEVELUP_DEFAULT_XUID", "").strip()
     if env_gt and env_xu and p.casefold() == env_gt.casefold():
         return env_xu
 

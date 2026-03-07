@@ -155,9 +155,9 @@ def get_default_identity() -> PlayerIdentity:
         gt = xu = wp = ""
 
     # Variables d'environnement
-    gt = gt or str(os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip()
-    xu = xu or str(os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip()
-    wp = wp or str(os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or "").strip() or gt
+    gt = gt or str(os.environ.get("LEVELUP_DEFAULT_GAMERTAG") or "").strip()
+    xu = xu or str(os.environ.get("LEVELUP_DEFAULT_XUID") or "").strip()
+    wp = wp or str(os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") or "").strip() or gt
 
     # Constantes fallback
     gt = gt or str(DEFAULT_PLAYER_GAMERTAG or "").strip()
@@ -186,7 +186,7 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
 
         # Override via env ?
         forced_env_db = str(
-            os.environ.get("OPENSPARTAN_DB") or os.environ.get("OPENSPARTAN_DB_PATH") or ""
+            os.environ.get("LEVELUP_DB") or os.environ.get("LEVELUP_DB_PATH") or ""
         ).strip()
 
         # Auto-sélection SPNKr si préféré
@@ -255,16 +255,16 @@ def propagate_env_defaults() -> None:
         and not str(identity.xuid_or_gamertag).strip().isdigit()
         and identity.xuid_fallback
     ):
-        if not str(os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip():
-            os.environ["OPENSPARTAN_DEFAULT_GAMERTAG"] = str(identity.xuid_or_gamertag).strip()
-        if not str(os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip():
-            os.environ["OPENSPARTAN_DEFAULT_XUID"] = str(identity.xuid_fallback).strip()
+        if not str(os.environ.get("LEVELUP_DEFAULT_GAMERTAG") or "").strip():
+            os.environ["LEVELUP_DEFAULT_GAMERTAG"] = str(identity.xuid_or_gamertag).strip()
+        if not str(os.environ.get("LEVELUP_DEFAULT_XUID") or "").strip():
+            os.environ["LEVELUP_DEFAULT_XUID"] = str(identity.xuid_fallback).strip()
 
     if (
         identity.waypoint_player
-        and not str(os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or "").strip()
+        and not str(os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") or "").strip()
     ):
-        os.environ["OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER"] = str(identity.waypoint_player).strip()
+        os.environ["LEVELUP_DEFAULT_WAYPOINT_PLAYER"] = str(identity.waypoint_player).strip()
 
 
 def apply_settings_path_overrides(settings: AppSettings) -> None:
@@ -277,9 +277,9 @@ def apply_settings_path_overrides(settings: AppSettings) -> None:
     try:
         aliases_override = str(getattr(settings, "aliases_path", "") or "").strip()
         if aliases_override:
-            os.environ["OPENSPARTAN_ALIASES_PATH"] = aliases_override
+            os.environ["LEVELUP_ALIASES_PATH"] = aliases_override
         else:
-            os.environ.pop("OPENSPARTAN_ALIASES_PATH", None)
+            os.environ.pop("LEVELUP_ALIASES_PATH", None)
     except Exception:
         pass
 
@@ -287,8 +287,8 @@ def apply_settings_path_overrides(settings: AppSettings) -> None:
     try:
         profiles_override = str(getattr(settings, "profiles_path", "") or "").strip()
         if profiles_override:
-            os.environ["OPENSPARTAN_PROFILES_PATH"] = profiles_override
+            os.environ["LEVELUP_PROFILES_PATH"] = profiles_override
         else:
-            os.environ.pop("OPENSPARTAN_PROFILES_PATH", None)
+            os.environ.pop("LEVELUP_PROFILES_PATH", None)
     except Exception:
         pass

@@ -273,17 +273,17 @@ If you don't want to set up Azure OAuth, you can provide Spartan and Clearance t
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OPENSPARTAN_DB` | Path to the default DB | Auto |
-| `OPENSPARTAN_DB_PATH` | Alias for OPENSPARTAN_DB | Auto |
-| `OPENSPARTAN_DB_READONLY` | Read-only mode | `0` |
+| `LEVELUP_DB` | Path to the default DB | Auto |
+| `LEVELUP_DB_PATH` | Alias for LEVELUP_DB | Auto |
+| `LEVELUP_DB_READONLY` | Read-only mode | `0` |
 | `SPNKR_PLAYER` | Default player for sync | First profile |
 
 #### Debug
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OPENSPARTAN_DEBUG` | Global debug mode | `0` |
-| `OPENSPARTAN_DEBUG_ANTAGONISTS` | Debug antagonist calculations | `0` |
+| `LEVELUP_DEBUG` | Global debug mode | `0` |
+| `LEVELUP_DEBUG_ANTAGONISTS` | Debug antagonist calculations | `0` |
 | `STREAMLIT_DEBUG` | Streamlit debug | `0` |
 
 #### Uptime Monitor
@@ -423,7 +423,7 @@ python scripts/spnkr_get_refresh_token.py
 In production (Docker, server):
 
 ```env
-OPENSPARTAN_DB_READONLY=1
+LEVELUP_DB_READONLY=1
 ```
 
 This prevents accidental database modifications.

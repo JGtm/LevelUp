@@ -202,18 +202,18 @@ L'image Docker :
 
 | Variable | Défaut | Description |
 |----------|--------|-------------|
-| `OPENSPARTAN_ROOT` | `/app` | Racine du projet (détection pyproject.toml) |
-| `OPENSPARTAN_DB` | *(vide)* | Forcer un chemin DB (optionnel) |
-| `OPENSPARTAN_DEFAULT_GAMERTAG` | *(vide)* | Gamertag par défaut pour mode headless |
+| `LEVELUP_ROOT` | `/app` | Racine du projet (détection pyproject.toml) |
+| `LEVELUP_DB` | *(vide)* | Forcer un chemin DB (optionnel) |
+| `LEVELUP_DEFAULT_GAMERTAG` | *(vide)* | Gamertag par défaut pour mode headless |
 
 Exemple pour forcer une base :
 
 ```yaml
 environment:
-  - OPENSPARTAN_DB=/app/data/players/MonGamertag/stats.duckdb
+  - LEVELUP_DB=/app/data/players/MonGamertag/stats.duckdb
 ```
 
-`OPENSPARTAN_DB` est optionnelle : si non définie, l'application utilise la sélection via profils/UI.
+`LEVELUP_DB` est optionnelle : si non définie, l'application utilise la sélection via profils/UI.
 
 ---
 

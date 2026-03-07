@@ -26,7 +26,7 @@ def _find_repo_root() -> Path:
             return parent
 
     # Fallback : CWD ou variable d'environnement
-    if env_root := os.environ.get("OPENSPARTAN_ROOT"):
+    if env_root := os.environ.get("LEVELUP_ROOT"):
         return Path(env_root)
 
     return Path.cwd()
