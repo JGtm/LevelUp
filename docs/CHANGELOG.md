@@ -6,20 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
-## [5.5.1] - 2026-03-07
-
-### Fixed
-
-- **API Streamlit dépréciée** (`src/ui/pages/setup_wizard.py`) — Remplacement des trois occurrences de `use_container_width=True` par `width="stretch"` : bouton Xbox Express, bouton Azure manuel, `st.link_button` OAuth. Anti-drift préventif avant le prochain bump Streamlit.
-- **Smoke test UI manquant** (`src/ui/pages/setup_smoke_test.py`) — Le module UI du smoke test post-installation avait disparu du dossier pages ; il est recréé conformément à l’implémentation d’origine (290 L, 3 phases avec barres de progression, tableau de vérification, boutons de continuation / relance).
-- **Test patch `SPNKrAPIClient` incorrect** (`tests/test_player_tokens.py`) — La cible de mock `src.data.sync._career.SPNKrAPIClient` était invalide (attribut absent du module) ; corrigé en `src.data.sync._career.create_api_client` conformément à l’abstraction API v5.5.
-
-### Tests
-
-- **Assertions `width="stretch"` ajoutées** (`tests/ui/test_setup_wizard_page.py`) — Les deux tests qui vérifiaient le rendu des cartes Xbox/Azure et du `link_button` OAuth vérifient désormais explicitement que `width="stretch"` est présent et que `use_container_width` est absent des kwargs Streamlit.
-- **3 831 tests, 0 échec**
-
-## [5.5.0] - 2026-03-06
+## [5.5.0] - 2026-03-07
 
 ### Added
 
@@ -62,6 +49,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **GC sync mode** (`src/ui/_sync_duckdb_ops.py`) — `gc.collect()` + `time.sleep(0.3)` pour libérer les file handles DuckDB sous Windows
 - **OAuth consumed guard** (`streamlit_app.py`) — Flag `_xbox_oauth_consumed` pour éviter le double-traitement du callback au rerun Streamlit
 - **Test isolation webhook** (`tests/test_monitor_uptime.py`) — Patch `get_secret` au lieu de manipuler `os.environ` pour éviter le rechargement `.env.local`
+- **API Streamlit dépréciée** (`src/ui/pages/setup_wizard.py`) — Remplacement des trois occurrences de `use_container_width=True` par `width="stretch"` : bouton Xbox Express, bouton Azure manuel, `st.link_button` OAuth.
+- **Smoke test UI manquant** (`src/ui/pages/setup_smoke_test.py`) — Module UI recréé : 3 phases avec barres de progression, tableau de vérification, boutons de continuation / relance.
+- **Test patch `SPNKrAPIClient` incorrect** (`tests/test_player_tokens.py`) — Cible de mock corrigée en `src.data.sync._career.create_api_client` conformément à l’abstraction API.
 
 ### Tests
 
@@ -70,7 +60,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `test_setup_wizard_logic.py` (20+ tests) : `SetupStatus`, validations, création de profil, edge cases
   - `test_xbox_oauth.py` (18 tests) : URL OAuth, échange de code, store/load token, provisionnement
   - `test_xbox_oauth_callback_e2e.py` (9 tests) : flux complet code→player, erreurs, CSRF, cycle token
-  - `test_setup_wizard_page.py` (15 tests) : UI mockée (MockStreamlit), modes Xbox/Azure, progression
+  - `test_setup_wizard_page.py` (15 tests) : UI mockée (MockStreamlit), modes Xbox/Azure, progression ; assertions `width="stretch"` sur les widgets
+- **3 831 tests, 0 échec**
 
 ### Architecture
 

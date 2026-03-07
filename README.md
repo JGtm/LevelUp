@@ -11,12 +11,7 @@
 
 ---
 
-## What’s new- **v5.5.1 — API drift fix & smoke test restore**
-  - **Deprecated Streamlit API** (`setup_wizard.py`): replaced 3× `use_container_width=True` with `width="stretch"` (Xbox/Azure buttons + OAuth `link_button`) — guards against breakage on the next Streamlit bump
-  - **Smoke test UI restored** (`setup_smoke_test.py`): the post-install smoke test page was missing from the pages folder; recreated with its 3-phase progress UI (sync → backfill → integrity checks), results table, and continue/retry buttons
-  - **Test patch corrected** (`test_player_tokens.py`): mock target `SPNKrAPIClient` replaced by `create_api_client` to match the API abstraction introduced in v5.5
-  - **Regression guard added** (`test_setup_wizard_page.py`): tests now assert `width="stretch"` is passed and `use_container_width` is absent from widget kwargs
-  - **3 831 tests, 0 failures**
+## What’s new
 - **v5.5 — Setup Wizard & Xbox OAuth**
   - **Setup Wizard**: guided first-time setup with two paths — **Xbox Express** (recommended, 2 steps: Azure credentials → Xbox login) and **Azure manual** (advanced, 3 steps: credentials → refresh token → player creation)
   - **Xbox OAuth**: one-click Xbox login — full Microsoft OAuth flow with CSRF protection, automatic gamertag/XUID resolution, and player provisioning
@@ -24,9 +19,10 @@
   - **LevelUp.bat**: Windows one-click launcher (Python check via winget, venv creation, dependency install, dashboard launch)
   - **Token DB fallback**: refresh token read from player DB when not in environment variables
   - **Documentation rewrite**: CONFIGURATION.md with 11 Azure screenshots, SYNC_GUIDE.md with v5.1 architecture
-  - Bug fixes: CSRF validation, `_repo_root` undefined, DuckDB retry broadened, GC sync mode, test isolation
+  - Bug fixes: CSRF validation, `_repo_root` undefined, DuckDB retry broadened, GC sync mode, test isolation; deprecated `use_container_width=True` → `width="stretch"` in setup wizard
   - **API abstraction layer** (Ports & Adapters): `HaloAPIPort` Protocol + `create_api_client()` factory + auth facade — decouples SPNKr library, making future API backend switches seamless (14 dedicated tests)
-  - **75 new tests** (auth, wizard logic, Xbox OAuth, e2e callback, wizard UI)
+  - **Post-install smoke test**: 3-phase guided verification (sync → backfill → integrity checks) with real-time progress feedback
+  - **3 831 tests**, 0 failures
 
 - **v5.4 — Explorer & Encounter History**
   - New **Explorer** page: unified match search with cascade filters (date, squad, type, playlist, mode, map), fuzzy gamertag search with XUID resolution, OS-style HTML table (KDA, MMR delta, accuracy, spree…), deep linking (`?page=Explorer&gamertag=XXX`) and encounter badges (rival, mentor, prey)

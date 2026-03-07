@@ -18,11 +18,11 @@ import os
 import streamlit as st
 
 from src.ui.i18n import t
+from src.ui.pages.setup_smoke_test import render_smoke_test
 from src.ui.pages.setup_wizard_logic import (
     SetupStatus,
     create_player_profile,
     get_setup_status,
-    get_sync_command,
     get_token_script_path,
     save_azure_credentials,
     validate_azure_credentials,
@@ -138,10 +138,30 @@ def render_setup_wizard_page() -> None:
         logger.info("Wizard : callback Xbox OAuth réussi pour %s", gt)
         st.balloons()
         st.success(t("setup_xbox_provisioned", gamertag=gt))
-        st.info(t("setup_xbox_sync_hint", gamertag=gt))
-        cmd = get_sync_command(gt, 200)
-        st.code(" ".join(cmd), language="bash")
         st.session_state.pop("_xbox_oauth_result", None)
+        # Lancer le smoke test au lieu d'afficher une commande CLI
+        db_path = f"data/players/{gt}/stats.duckdb"
+        st.session_state["_smoke_gamertag"] = gt
+        st.session_state["_smoke_db_path"] = db_path
+        render_smoke_test(gt, db_path)
+        return
+
+    # ── Smoke test en cours (reprise après rerun) ──
+    if st.session_state.get("_smoke_gamertag") and not st.session_state.get(
+        "_setup_smoke_completed"
+    ):
+        gt = st.session_state["_smoke_gamertag"]
+        db_path = st.session_state["_smoke_db_path"]
+        render_smoke_test(gt, db_path)
+        return
+
+    # ── Smoke test terminé → redirection dashboard ──
+    if st.session_state.get("_setup_smoke_completed"):
+        st.session_state.pop("_smoke_gamertag", None)
+        st.session_state.pop("_smoke_db_path", None)
+        st.session_state.pop("_setup_smoke_completed", None)
+        st.balloons()
+        st.success(t("setup_already_configured"))
         return
 
     # ── Sélection du mode ──────────────────────────────────────────────────
@@ -181,7 +201,7 @@ def _render_mode_selection() -> None:
         if st.button(
             t("setup_xbox_card_btn"),
             key="choose_xbox",
-            use_container_width=True,
+            width="stretch",
             type="primary",
         ):
             st.session_state["_setup_mode"] = "xbox"
@@ -200,7 +220,7 @@ def _render_mode_selection() -> None:
         if st.button(
             t("setup_azure_card_btn"),
             key="choose_azure",
-            use_container_width=True,
+            width="stretch",
         ):
             st.session_state["_setup_mode"] = "azure"
             st.rerun()
@@ -257,7 +277,7 @@ def _render_xbox_flow(status: SetupStatus) -> None:
         st.link_button(
             t("setup_xbox_connect_btn"),
             url=auth_url,
-            use_container_width=True,
+            width="stretch",
         )
         st.caption(t("setup_xbox_redirect_note", redirect_uri=redirect_uri))
     else:
@@ -422,7 +442,7 @@ def _render_player_form() -> None:
     """Formulaire de création de profil joueur."""
     with st.form("player_form"):
         gamertag = st.text_input(t("setup_gamertag"), placeholder="MonGamertag")
-        max_matches = st.slider(
+        st.slider(
             t("setup_max_matches"),
             min_value=50,
             max_value=1000,
@@ -440,7 +460,8 @@ def _render_player_form() -> None:
             profile_key = create_player_profile(gamertag)
             st.success(t("setup_profile_created", gamertag=profile_key))
             logger.info("Wizard : profil joueur créé : %s", profile_key)
-            st.markdown(t("setup_sync_instructions"))
-            cmd = get_sync_command(profile_key, max_matches)
-            st.code(" ".join(cmd), language="bash")
-            st.info(t("setup_sync_done_hint"))
+            # Lancer le smoke test au lieu d'afficher une commande CLI
+            db_path = f"data/players/{profile_key}/stats.duckdb"
+            st.session_state["_smoke_gamertag"] = profile_key
+            st.session_state["_smoke_db_path"] = db_path
+            st.rerun()
