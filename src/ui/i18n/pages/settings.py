@@ -64,6 +64,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Vider le cache à chaque actualisation",
         "en": "Clear cache on every refresh",
     },
+    "set_timezone_label": {
+        "fr": "Fuseau horaire (affichage des dates)",
+        "en": "Timezone (date display)",
+    },
+    "set_timezone_help": {
+        "fr": "Toutes les dates et heures affichées dans l'application utiliseront ce fuseau horaire.",
+        "en": "All dates and times displayed in the application will use this timezone.",
+    },
     # ── Match view helpers ──────────────────────────────────────────────────
     "set_arch_v5_info": {
         "fr": "ℹ️ **Architecture v5** : La synchronisation récupère automatiquement TOUTES les données :\n- Nouveaux matchs (matchmaking uniquement)\n- Highlight events (clips)\n- Médailles\n- Stats skill/MMR\n- Personal score awards\n- Aliases XUID\n\nCes options ne sont plus configurables - tout est récupéré à chaque sync.",
