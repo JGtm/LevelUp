@@ -18,8 +18,8 @@ FUNC:src/app/filters.py:206:render_session_filters:94L
 FUNC:src/app/filters_render.py:373:render_filters_sidebar:112L
 FUNC:src/app/kpis_render.py:44:render_kpis_section:83L
 FUNC:src/app/main_helpers.py:250:render_profile_hero:140L
-FUNC:src/app/media_background.py:17:background_media_indexing:160L
-FUNC:src/app/media_background.py:48:worker:126L
+FUNC:src/app/media_background.py:17:background_media_indexing:143L
+FUNC:src/app/media_background.py:48:worker:109L
 FUNC:src/app/profile.py:187:load_profile_assets:101L
 FUNC:src/app/sidebar.py:174:render_sync_button:120L
 FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:98L
@@ -157,6 +157,7 @@ MODULE:src/data/sync/_match_processing.py:695L
 MODULE:src/data/sync/models.py:511L
 MODULE:src/data/sync/transformers/_helpers.py:667L
 MODULE:src/data/sync/transformers/_match.py:531L
+MODULE:src/ui/pages/match_view.py:509L
 MODULE:src/ui/pages/media_library_data.py:507L
 MODULE:src/ui/pages/win_loss.py:539L
 MODULE:src/ui/profile_api.py:557L
