@@ -1,0 +1,212 @@
+"""Build script pour créer une release portable LevelUp.
+
+Crée un zip contenant :
+- Python Embeddable (~15 MB)
+- Le code source LevelUp
+- LevelUp.bat (lanceur double-clic)
+
+Usage :
+    python packaging/build_release.py [--version 5.5.0]
+"""
+
+from __future__ import annotations
+
+import argparse
+import io
+import shutil
+import zipfile
+from pathlib import Path
+from urllib.request import urlopen
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+PYTHON_EMBED_VERSION = "3.12.10"
+PYTHON_EMBED_URL = (
+    f"https://www.python.org/ftp/python/{PYTHON_EMBED_VERSION}"
+    f"/python-{PYTHON_EMBED_VERSION}-embed-amd64.zip"
+)
+
+# Fichiers/dossiers à inclure dans la release
+INCLUDE_FILES = [
+    "launcher.py",
+    "streamlit_app.py",
+    "LevelUp.bat",
+    "pyproject.toml",
+    "db_profiles.json",
+    "app_settings.example.json",
+    "run.sh",
+]
+
+INCLUDE_DIRS = [
+    "src",
+    "static",
+    "scripts",
+]
+
+# Patterns à exclure
+EXCLUDE_PATTERNS = {
+    "__pycache__",
+    ".pyc",
+    ".pyo",
+    ".git",
+    ".venv",
+    "node_modules",
+    ".pytest_cache",
+    ".ruff_cache",
+}
+
+
+def _read_version() -> str:
+    """Lit la version depuis pyproject.toml."""
+    toml_path = REPO_ROOT / "pyproject.toml"
+    for line in toml_path.read_text(encoding="utf-8").splitlines():
+        if line.strip().startswith("version"):
+            return line.split("=")[1].strip().strip('"')
+    return "0.0.0"
+
+
+def _should_exclude(path: Path) -> bool:
+    """Vérifie si un chemin doit être exclu."""
+    parts = path.parts
+    return any(
+        excl in parts or any(str(p).endswith(excl) for p in parts) for excl in EXCLUDE_PATTERNS
+    )
+
+
+def _download_python_embed(target_dir: Path) -> None:
+    """Télécharge et extrait Python Embeddable."""
+    print(f"  → Téléchargement Python Embeddable {PYTHON_EMBED_VERSION}...")
+    resp = urlopen(PYTHON_EMBED_URL)  # noqa: S310 — URL fixe vers python.org
+    data = io.BytesIO(resp.read())
+
+    python_dir = target_dir / "python"
+    python_dir.mkdir(parents=True, exist_ok=True)
+
+    with zipfile.ZipFile(data) as zf:
+        zf.extractall(python_dir)
+
+    # Activer pip : décommenter import site dans python312._pth
+    pth_files = list(python_dir.glob("python*._pth"))
+    for pth in pth_files:
+        content = pth.read_text(encoding="utf-8")
+        content = content.replace("#import site", "import site")
+        pth.write_text(content, encoding="utf-8")
+
+    print(f"  ✓ Python Embeddable extrait ({python_dir})")
+
+
+def _copy_project(target_dir: Path) -> None:
+    """Copie les fichiers du projet."""
+    print("  → Copie des fichiers du projet...")
+
+    for f in INCLUDE_FILES:
+        src = REPO_ROOT / f
+        if src.exists():
+            shutil.copy2(src, target_dir / f)
+
+    for d in INCLUDE_DIRS:
+        src_dir = REPO_ROOT / d
+        if not src_dir.exists():
+            continue
+        dst_dir = target_dir / d
+        shutil.copytree(
+            src_dir,
+            dst_dir,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo", ".git"),
+        )
+
+    # Créer les dossiers de données vides
+    (target_dir / "data" / "players").mkdir(parents=True, exist_ok=True)
+    (target_dir / "data" / "warehouse").mkdir(parents=True, exist_ok=True)
+
+    print("  ✓ Fichiers copiés")
+
+
+def _create_portable_bat(target_dir: Path) -> None:
+    """Crée un LevelUp.bat adapté au mode portable (Python Embeddable)."""
+    bat_content = r"""@echo off
+chcp 65001 >nul 2>&1
+setlocal EnableDelayedExpansion
+
+title LevelUp - Halo Infinite Dashboard
+cd /d "%~dp0"
+
+set "PYTHON=%~dp0python\python.exe"
+
+:: Premier lancement : installer les dépendances
+if not exist ".deps_installed" (
+    echo.
+    echo  Installation des dependances ^(premier lancement^)...
+    echo.
+    "%PYTHON%" -m ensurepip --upgrade -q 2>nul
+    "%PYTHON%" -m pip install --upgrade pip -q
+    "%PYTHON%" -m pip install -e ".[spnkr]" -q
+    if !ERRORLEVEL! neq 0 (
+        echo   Erreur lors de l'installation.
+        pause
+        exit /b 1
+    )
+    echo OK > .deps_installed
+    echo   OK - Dependances installees.
+    echo.
+)
+
+"%PYTHON%" launcher.py run
+"""
+    (target_dir / "LevelUp.bat").write_text(bat_content, encoding="utf-8")
+    print("  ✓ LevelUp.bat portable créé")
+
+
+def _create_zip(target_dir: Path, version: str) -> Path:
+    """Crée le zip final."""
+    zip_name = f"LevelUp-v{version}-win64-portable"
+    zip_path = REPO_ROOT / "dist" / f"{zip_name}.zip"
+    zip_path.parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"  → Création de {zip_path.name}...")
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for file in sorted(target_dir.rglob("*")):
+            if file.is_file():
+                arcname = f"{zip_name}/{file.relative_to(target_dir)}"
+                zf.write(file, arcname)
+
+    size_mb = zip_path.stat().st_size / (1024 * 1024)
+    print(f"  ✓ {zip_path.name} ({size_mb:.1f} MB)")
+    return zip_path
+
+
+def main() -> int:
+    """Point d'entrée du build."""
+    ap = argparse.ArgumentParser(description="Build LevelUp portable release")
+    ap.add_argument("--version", default=None, help="Version (défaut: depuis pyproject.toml)")
+    args = ap.parse_args()
+
+    version = args.version or _read_version()
+
+    print("=" * 60)
+    print(f"📦 BUILD RELEASE — LevelUp v{version}")
+    print("=" * 60)
+
+    build_dir = REPO_ROOT / "dist" / f"_build_v{version}"
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+    build_dir.mkdir(parents=True)
+
+    _download_python_embed(build_dir)
+    _copy_project(build_dir)
+    _create_portable_bat(build_dir)
+    zip_path = _create_zip(build_dir, version)
+
+    # Nettoyage du dossier temporaire
+    shutil.rmtree(build_dir)
+
+    print("\n" + "=" * 60)
+    print("✅ BUILD TERMINÉ")
+    print("=" * 60)
+    print(f"\n  Release: {zip_path}")
+    print("  L'utilisateur n'a qu'à extraire le zip et double-cliquer LevelUp.bat")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

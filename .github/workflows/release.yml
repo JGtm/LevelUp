@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-portable:
+    name: Build Portable Release (Windows)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build portable release
+        run: python packaging/build_release.py --version ${{ steps.version.outputs.version }}
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-release
+          path: dist/LevelUp-v${{ steps.version.outputs.version }}-win64-portable.zip
+
+  publish:
+    name: Publish GitHub Release
+    needs: build-portable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: portable-release
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/LevelUp-v*-win64-portable.zip
+          body: |
+            ## Installation
+
+            ### Option 1 : Portable (recommandée pour les débutants)
+            1. Téléchargez le fichier `.zip` ci-dessous
+            2. Extrayez-le où vous voulez
+            3. Double-cliquez sur `LevelUp.bat`
+            4. Au premier lancement, les dépendances s'installent automatiquement (~2 min)
+
+            ### Option 2 : Depuis les sources (développeurs)
+            ```bash
+            git clone https://github.com/${{ github.repository }}.git
+            cd LevelUp
+            python launcher.py setup
+            python launcher.py run
+            ```
