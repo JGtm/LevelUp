@@ -30,7 +30,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Auth Status** (`src/utils/auth.py`)
   - `AuthStatus` dataclass + `get_auth_status()`, `check_credentials()`, `write_env_local()` (écriture/mise à jour de `.env.local` en préservant les commentaires)
 
-- **setup.bat** — Script d'installation Windows one-click (vérifie/installe Python 3.12+, crée le `.venv`, installe les dépendances, lance le dashboard)
+- **`launcher.py setup`** — Commande d'installation interactive : détecte Python (py launcher → PATH → emplacements standard → installation via winget), crée le `.venv`, installe les dépendances (`pip install -e ".[spnkr]"`). Supporte `--update` pour mettre à jour un environnement existant.
+
+- **`launcher.py doctor`** — Diagnostic complet de l'environnement : OS, Python, venv, versions des packages critiques vs attendues, nombre de joueurs configurés, présence de `metadata.duckdb`
+
+- **Packaging portable** (`packaging/build_release.py`)
+  - Génère un zip autonome `LevelUp-v{version}-win64-portable.zip` contenant Python Embeddable 3.12 (~15 Mo) + le projet complet
+  - Premier lancement : installation automatique des dépendances via pip
+
+- **Release GitHub Actions** (`.github/workflows/release.yml`)
+  - Déclenché sur push de tag `v*.*.*`
+  - Build du zip portable + publication automatique en GitHub Release
+
+- **Mode portable `%APPDATA%`** (`src/utils/paths.py`, `auth.py`, `env.py`)
+  - Données stockées dans `%APPDATA%/LevelUp/` (Windows) ou `$XDG_DATA_HOME/levelup/` (Linux) quand pas de `.venv` à la racine
+  - Mode développeur : `./data/` si `.venv` existe
+  - Override possible via variable d'environnement `LEVELUP_DATA`
+  - `.env.local` cherché dans `DATA_DIR` en priorité, puis à la racine du repo
 
 - **Token fallback DB** (`src/ui/profile_api_tokens.py`)
   - Fallback 3 : lecture du refresh_token depuis `sync_meta` de la DB joueur si absent des variables d'environnement
@@ -72,10 +88,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Migration des consommateurs : `engine.py`, `orchestrator.py`, `strategies.py`, `_career.py`, `populate_metadata_from_discovery.py`, `profile_api_tokens.py`, `player_assets.py`, `xbox_oauth.py` — tous utilisent la factory ou la facade auth
   - 14 tests dédiés (`test_api_abstraction.py`) : conformité Protocol, factory, facade auth, vérification d'absence d'imports SPNKr dans les modules UI migrés
 
+### Removed
+
+- **`scripts/_archive/`** — 89 fichiers de code mort supprimés (anciens scripts d'analyse d'armes, diagnostics, patchs i18n, utilitaires obsolètes)
+- **`requirements.txt`** — Supprimé, remplacé par `pyproject.toml` (source unique de vérité pour les dépendances)
+- **`setup.bat`** — Remplacé par `LevelUp.bat` (détection Python améliorée, installation via winget, utilisation de `pip install -e .`)
+- **`scripts/install_dependencies.py`** — Workaround MSYS2 SSL, utilisait `requirements.txt`
+- **`scripts/setup_env.ps1`**, **`scripts/setup_env.sh`**, **`scripts/activate_env.sh`** — Remplacés par `launcher.py setup`
+- **`tests/test_spnkr_refactoring.py`** — Tests pour du code archivé supprimé
+
 ### Chore
 
 - Rangement racine : `ACKNOWLEDGMENTS.md`, `CHANGELOG.md`, `CONTRIBUTING.md` déplacés vers `docs/`
 - Scripts déplacés : `activate_env.sh`, `run_monitor_hidden.vbs` → `scripts/`
+- `LevelUp.bat` remplace `setup.bat` comme point d'entrée Windows
+- `Dockerfile` et `e2e-browser-optional.yml` mis à jour pour utiliser `pyproject.toml` au lieu de `requirements.txt`
+- `run.sh` redirige vers `launcher.py setup` au lieu de `activate_env.sh`
 
 ## [5.4.0] - 2026-03-04
 
