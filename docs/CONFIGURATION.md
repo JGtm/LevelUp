@@ -17,6 +17,23 @@ French version: [FR/CONFIGURATION.md](FR/CONFIGURATION.md)
 
 ## Azure Configuration
 
+### About Azure Account Registration
+
+> **Why does Azure ask for a credit/debit card?**
+>
+> Azure requires a credit or debit card during sign-up mainly for **identity verification and fraud prevention**. Even though many Azure services offer free credits or free tiers, Microsoft needs a valid payment method to:
+> - Verify the user's identity
+> - Prevent misuse or multiple free account sign-ups
+> - Enable automatic billing if usage exceeds free limits
+>
+> **This does not mean charges will occur immediately.** Charges only apply if paid services are used beyond free limits.
+>
+> **For this project, you will never exceed the free tier.** LevelUp only registers an OAuth application in Azure Active Directory (Microsoft Entra ID), which is completely free and has no usage quota. No paid Azure service is consumed.
+
+> **Azure for Students — No Credit Card Required**
+>
+> If you have a valid university or college email address, you can sign up for [Azure for Students](https://azure.microsoft.com/en-us/free/students/) for free, without a credit card.
+
 ### Prerequisites
 
 To use the Halo Infinite API via SPNKr, you need:
