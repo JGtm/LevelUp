@@ -7,6 +7,29 @@
 
 ## Journal
 
+### [2026-03-07] — Robustesse sync/multiplayer : lease write, fallback shared, unification des paths
+
+**Statut** : Correctifs structurels en cours ✅ (tests ciblés verts)
+
+**Contexte** : Régressions observées après sync (stucks >30s sur navigation onglets, compteur matchs à 0 intermittent, divergence des paths de sync).
+
+**Décisions techniques** :
+- Introduit un mécanisme explicite de coordination read_write/read_only via `db_write_lease()` + `wait_for_write_leases_cleared()` (`src/data/repositories/_write_lease.py`).
+- Branché MediaIndexer sur ce lease (et fermeture ciblée des connexions RO via `release_db_connections(db_file)`), au lieu de fermer globalement toutes les connexions.
+- Dans `DuckDBRepository._get_connection()`, attente des write leases avant ouverture RO pour éviter `different configuration`.
+- Refonte de `list_duckdb_v4_players()` en 2 phases indépendantes :
+   1. tentative player DB,
+   2. fallback shared DB (résolution xuid + count), même si la player DB est verrouillée.
+- Unification du flux `sync_all_players_duckdb` : un seul `SyncLock`, un seul cycle `activate/deactivate sync_mode`, et `mtime` touch explicite pour invalidation cache.
+- `sync_player_duckdb_async()` rendu composable via `_manage_sync_mode` pour éviter les activations/destructions de cache répétées dans la boucle multi-joueurs.
+
+**Risques / observations** :
+- Les tests repository "real data" peuvent échouer si `shared_matches.duckdb` est verrouillée par un processus externe (ex. VS Code/Streamlit en cours). Ce n'est pas un échec logique des correctifs, mais un artefact d'environnement.
+
+**Validation** :
+- `tests/test_ui_sync.py`, `tests/test_multiplayer.py`, `tests/test_sync_button_regression.py`, `tests/test_duckdb_repository.py::TestWriteLease` verts.
+- `test_no_new_size_violations` + `test_ruff_no_errors` verts après refactor (fonction >80L corrigée).
+
 ### [2026-03-05] — Refactoring massif : Phases 0-4 — Split de tous les modules >500L
 
 **Statut** : Phase 4 complétée ✅ — 35 modules >500L restants (dette documentée)
