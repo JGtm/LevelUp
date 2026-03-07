@@ -6,10 +6,13 @@ utilisés dans ``api_client.py`` et ``profile_api_tokens.py``.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 
 from src.utils.paths import DATA_DIR, REPO_ROOT
+
+logger = logging.getLogger(__name__)
 
 
 def load_dotenv_if_present() -> None:
@@ -29,8 +32,10 @@ def load_dotenv_if_present() -> None:
             try:
                 content = dotenv_path.read_text(encoding="utf-8")
             except Exception:  # noqa: BLE001
+                logger.warning("Impossible de lire %s", dotenv_path)
                 continue
 
+            loaded = 0
             for raw_line in content.splitlines():
                 line = raw_line.strip()
                 if not line or line.startswith("#"):
@@ -44,6 +49,9 @@ def load_dotenv_if_present() -> None:
                     continue
                 if os.environ.get(key) is None:
                     os.environ[key] = value
+                    loaded += 1
+            if loaded:
+                logger.debug("Chargé %d variable(s) depuis %s", loaded, dotenv_path)
 
 
 def normalize_gamertag_for_env(gamertag: str) -> str:

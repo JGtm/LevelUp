@@ -27,6 +27,12 @@ jobs:
       - name: Build portable release
         run: python packaging/build_release.py --version ${{ steps.version.outputs.version }}
 
+      - name: Verify artifact exists
+        run: |
+          FILE="dist/LevelUp-v${{ steps.version.outputs.version }}-win64-portable.zip"
+          test -f "$FILE" || { echo "::error::Artifact introuvable: $FILE"; exit 1; }
+          ls -lh "$FILE"
+
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:

@@ -554,6 +554,8 @@ def _cmd_setup(args: argparse.Namespace) -> int:
     if sys.platform != "win32":
         venv_python = REPO_ROOT / ".venv" / "bin" / "python"
 
+    created_venv = False
+
     # ── 1. Vérifier/créer le venv ──
     if venv_python.exists() and not update_mode:
         print("\n[1/3] Environnement .venv déjà présent ✓")
@@ -581,13 +583,14 @@ def _cmd_setup(args: argparse.Namespace) -> int:
                 print("  ❌ Impossible de créer le venv.")
                 return 1
             print("  ✓ .venv créé")
+            created_venv = True
         else:
             print("\n[2/3] Environnement .venv existant ✓")
 
         py = str(venv_python)
 
     # ── 2. Installer/mettre à jour les dépendances ──
-    step = "3/3" if not venv_python.exists() else "2/3"
+    step = "3/3" if created_venv else "2/2"
     print(f"\n[{step}] Installation des dépendances...")
 
     subprocess.run([py, "-m", "pip", "install", "--upgrade", "pip", "-q"])
