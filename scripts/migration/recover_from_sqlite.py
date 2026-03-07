@@ -117,8 +117,13 @@ def extract_participants_from_sqlite(
                 continue
 
             for player in data.get("Players", []):
-                player_id = player.get("PlayerId", "")
-                xuid = player_id.replace("xuid(", "").replace(")", "")
+                player_id = str(player.get("PlayerId") or "").strip()
+                # Extraire le XUID numérique depuis xuid(XXXX) ; conserver tel quel
+                # les autres formats (bots : bid(0.0), etc.)
+                if player_id.lower().startswith("xuid("):
+                    xuid = player_id[5:].rstrip(")")
+                else:
+                    xuid = player_id
                 if not xuid:
                     continue
 
