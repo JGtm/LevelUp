@@ -1,9 +1,9 @@
+#
 # Baseline des violations de taille — généré automatiquement
 # Chaque ligne = une violation connue (dette documentée)
-# Réduire ce fichier = réduire la dette technique
 # Format FUNC: FUNC:<fichier>:<ligne>:<nom>:<taille>L
 # Format MODULE: MODULE:<fichier>:<taille>L
-#
+# Réduire ce fichier = réduire la dette technique
 FUNC:src/ai/mcp_server.py:251:run_stdio_server:103L
 FUNC:src/ai/mcp_server.py:64:get_tools:83L
 FUNC:src/analysis/_composite.py:29:compute_composite_score:87L
@@ -47,8 +47,8 @@ FUNC:src/data/services/teammates_service.py:440:load_impact_data:155L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sessions_backfill.py:22:get_friends_xuids_for_backfill:82L
 FUNC:src/data/sync/_match_processing.py:195:_process_known_match:224L
-FUNC:src/data/sync/_match_processing.py:421:_process_new_match:203L
 FUNC:src/data/sync/_match_processing.py:42:_process_matches:96L
+FUNC:src/data/sync/_match_processing.py:421:_process_new_match:203L
 FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
 FUNC:src/data/sync/_skill_rating.py:127:batch_compute_lusr:198L
 FUNC:src/data/sync/_skill_rating.py:41:_upsert_csr_rating:84L
@@ -118,7 +118,6 @@ FUNC:src/ui/pages/win_loss.py:407:_render_map_table:131L
 FUNC:src/ui/profile_api.py:201:_get_career_rank_for_player:138L
 FUNC:src/ui/profile_api.py:49:fetch_appearance_via_spnkr:149L
 FUNC:src/ui/profile_api.py:68:_run:128L
-FUNC:src/ui/profile_api_tokens.py:23:get_tokens:122L
 FUNC:src/ui/styles.py:44:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
@@ -135,8 +134,8 @@ FUNC:src/visualization/_timeseries_progression.py:23:plot_performance_timeseries
 FUNC:src/visualization/distributions.py:183:plot_histogram:107L
 FUNC:src/visualization/distributions.py:32:plot_kda_distribution:87L
 FUNC:src/visualization/distributions_outcomes.py:173:plot_win_ratio_heatmap:105L
-FUNC:src/visualization/distributions_outcomes.py:286:plot_matches_at_top_by_week:117L
 FUNC:src/visualization/distributions_outcomes.py:28:plot_outcomes_over_time:90L
+FUNC:src/visualization/distributions_outcomes.py:286:plot_matches_at_top_by_week:117L
 FUNC:src/visualization/friends_impact_heatmap.py:60:plot_friends_impact_heatmap:174L
 FUNC:src/visualization/match_bars.py:118:plot_multi_metric_bars_by_match:211L
 FUNC:src/visualization/match_bars.py:18:plot_metric_bars_by_match:97L

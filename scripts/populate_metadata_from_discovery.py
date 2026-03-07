@@ -32,7 +32,9 @@ except ImportError:
     print("ERREUR: DuckDB non installé. Exécutez: pip install duckdb")
     sys.exit(1)
 
-from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
+from src.data.sync.api_client import get_tokens_from_env
+from src.data.sync.api_factory import create_api_client
+from src.data.sync.api_port import HaloAPIPort
 
 logging.basicConfig(
     level=logging.INFO,
@@ -228,7 +230,7 @@ def get_unique_asset_ids_from_players(
 
 
 async def fetch_asset_from_api(
-    client: SPNKrAPIClient,
+    client: HaloAPIPort,
     asset_type: str,
     asset_id: str,
     version_id: str,
@@ -254,7 +256,7 @@ async def fetch_asset_from_api(
 
 async def populate_metadata_from_api(
     conn: duckdb.DuckDBPyConnection,
-    client: SPNKrAPIClient,
+    client: HaloAPIPort,
     assets: dict[str, set[tuple[str, str]]],
     dry_run: bool = False,
 ) -> dict[str, int]:
@@ -468,7 +470,7 @@ async def main_async(
         return 1
 
     # Créer le client API
-    client = SPNKrAPIClient(tokens)
+    client = create_api_client(tokens=tokens)
 
     # Peupler depuis l'API
     logger.info("Récupération des métadonnées depuis Discovery UGC...")

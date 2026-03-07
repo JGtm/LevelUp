@@ -75,17 +75,7 @@ async def get_tokens(  # noqa: C901, PLR0915
 
     # Fallback 3 : refresh token stocké en DB (connexion Xbox OAuth via Streamlit UI)
     if not oauth_refresh_token and gamertag:
-        try:
-            from src.ui.xbox_oauth import load_refresh_token as _load_rt
-            from src.utils.paths import REPO_ROOT as _repo_root_path
-
-            _player_db = _repo_root_path / "data" / "players" / gamertag / "stats.duckdb"
-            if _player_db.exists():
-                _token_from_db = _load_rt(_player_db)
-                if _token_from_db:
-                    oauth_refresh_token = _token_from_db
-        except Exception:
-            pass
+        oauth_refresh_token = _load_refresh_token_from_db(gamertag) or oauth_refresh_token
 
     if not (azure_client_id and azure_client_secret and oauth_refresh_token):
         raise RuntimeError(
@@ -93,56 +83,33 @@ async def get_tokens(  # noqa: C901, PLR0915
             "soit SPNKR_AZURE_CLIENT_ID + SPNKR_AZURE_CLIENT_SECRET + SPNKR_OAUTH_REFRESH_TOKEN."
         )
 
-    from spnkr import AzureApp, refresh_player_tokens
+    from src.data.sync._auth import refresh_halo_tokens
 
-    async def _refresh_oauth_access_token_v2(refresh_token: str, app: AzureApp) -> str:
-        url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
-        data = {
-            "client_id": app.client_id,
-            "client_secret": app.client_secret,
-            "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-            "scope": "Xboxlive.signin Xboxlive.offline_access",
-        }
-        resp = await session.post(url, data=data)
-        payload = await resp.json()
-        if resp.status >= 400:
-            raise RuntimeError(
-                "Échec refresh OAuth v2 (consumers). "
-                f"status={resp.status} error={payload.get('error')} desc={payload.get('error_description')}"
-            )
-        access = payload.get("access_token")
-        if not isinstance(access, str) or not access.strip():
-            raise RuntimeError("OAuth v2: pas de access_token dans la réponse.")
-        return access.strip()
+    tokens = await refresh_halo_tokens(
+        session,
+        client_id=azure_client_id,
+        client_secret=azure_client_secret,
+        redirect_uri=azure_redirect_uri,
+        refresh_token=oauth_refresh_token,
+    )
+    os.environ["SPNKR_SPARTAN_TOKEN"] = tokens.spartan_token
+    os.environ["SPNKR_CLEARANCE_TOKEN"] = tokens.clearance_token
+    return tokens.spartan_token, tokens.clearance_token
 
-    app = AzureApp(azure_client_id, azure_client_secret, azure_redirect_uri)
+
+def _load_refresh_token_from_db(gamertag: str) -> str:
+    """Charge le refresh token depuis stats.duckdb du joueur (fallback Xbox OAuth)."""
     try:
-        player = await refresh_player_tokens(session, app, oauth_refresh_token)
-        st2, ct2 = str(player.spartan_token.token), str(player.clearance_token.token)
-        os.environ["SPNKR_SPARTAN_TOKEN"] = st2
-        os.environ["SPNKR_CLEARANCE_TOKEN"] = ct2
-        return st2, ct2
-    except Exception as e:
-        msg = str(e)
-        if "invalid_client" not in msg or "client_secret" not in msg:
-            raise
+        from src.ui.xbox_oauth import load_refresh_token as _load_rt
+        from src.utils.paths import REPO_ROOT as _repo_root_path
 
-        # Fallback: endpoint OAuth v2 (consumers) -> chain Xbox/XSTS/Halo
-        from spnkr.auth.core import XSTS_V3_HALO_AUDIENCE, XSTS_V3_XBOX_AUDIENCE
-        from spnkr.auth.halo import request_clearance_token, request_spartan_token
-        from spnkr.auth.xbox import request_user_token, request_xsts_token
-
-        access_token = await _refresh_oauth_access_token_v2(oauth_refresh_token, app)
-        user_token = await request_user_token(session, access_token)
-        _ = await request_xsts_token(session, user_token.token, XSTS_V3_XBOX_AUDIENCE)
-        halo_xsts_token = await request_xsts_token(session, user_token.token, XSTS_V3_HALO_AUDIENCE)
-        spartan = await request_spartan_token(session, halo_xsts_token.token)
-        clearance = await request_clearance_token(session, spartan.token)
-        st3, ct3 = str(spartan.token), str(clearance.token)
-        os.environ["SPNKR_SPARTAN_TOKEN"] = st3
-        os.environ["SPNKR_CLEARANCE_TOKEN"] = ct3
-        return st3, ct3
+        _player_db = _repo_root_path / "data" / "players" / gamertag / "stats.duckdb"
+        if _player_db.exists():
+            token = _load_rt(_player_db)
+            return token or ""
+    except Exception:
+        pass
+    return ""
 
 
 def ensure_spnkr_tokens(*, timeout_seconds: int = 12) -> tuple[bool, str | None]:
