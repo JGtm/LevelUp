@@ -348,6 +348,21 @@ BOT_MAP: dict[str, str] = {
     "bid(59.0)": "343 Hollis",
 }
 
+
+def get_bot_name(xuid: str) -> str | None:
+    """Retourne le nom d'affichage d'un bot à partir de son xuid.
+
+    Tolère les deux formats : ``bid(0.0)`` (canonique) et ``bid(0.0``
+    (sans parenthèse fermante, héritage du bug migrate_sqlite).
+    """
+    key = str(xuid or "").strip()
+    if not key.lower().startswith("bid("):
+        return None
+    if not key.endswith(")"):
+        key = key + ")"
+    return BOT_MAP.get(key)
+
+
 # Mapping of team IDs to names. For example, 0 -> 'Eagle'.
 TEAM_MAP: dict[int, str] = {
     0: "Eagle",
