@@ -503,6 +503,8 @@ def _print_totals(totals: dict, scope: object) -> None:  # noqa: C901, PLR0912
         logger.info(f"End time mis à jour: {totals.get('end_time_updated', 0)}")
     if getattr(scope, "sessions", False):
         logger.info(f"Sessions mises à jour: {totals.get('sessions_updated', 0)}")
+    if getattr(scope, "teammates_sig", False):
+        logger.info(f"Signatures coéquipiers: {totals.get('teammates_sig_updated', 0)}")
     if getattr(scope, "citations", False):
         logger.info(f"Citations calculées: {totals.get('citations_computed', 0)}")
     if getattr(scope, "participants_enrich", False):
