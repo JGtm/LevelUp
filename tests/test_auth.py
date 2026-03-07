@@ -115,7 +115,7 @@ class TestWriteEnvLocal:
 
     def test_create_new_file(self, tmp_path: Path) -> None:
         env_file = tmp_path / ".env.local"
-        with patch("src.utils.auth._ENV_LOCAL_PATH", env_file):
+        with patch("src.utils.auth._env_local_path", return_value=env_file):
             write_env_local({"KEY_A": "value_a", "KEY_B": "value_b"})
 
         content = env_file.read_text(encoding="utf-8")
@@ -126,7 +126,7 @@ class TestWriteEnvLocal:
         env_file = tmp_path / ".env.local"
         env_file.write_text("KEY_A=old_value\nKEY_B=keep_me\n", encoding="utf-8")
 
-        with patch("src.utils.auth._ENV_LOCAL_PATH", env_file):
+        with patch("src.utils.auth._env_local_path", return_value=env_file):
             write_env_local({"KEY_A": "new_value"})
 
         content = env_file.read_text(encoding="utf-8")
@@ -141,7 +141,7 @@ class TestWriteEnvLocal:
             encoding="utf-8",
         )
 
-        with patch("src.utils.auth._ENV_LOCAL_PATH", env_file):
+        with patch("src.utils.auth._env_local_path", return_value=env_file):
             write_env_local({"SPNKR_AZURE_CLIENT_ID": "xyz"})
 
         content = env_file.read_text(encoding="utf-8")
@@ -153,7 +153,7 @@ class TestWriteEnvLocal:
         env_file = tmp_path / ".env.local"
         env_file.write_text("EXISTING=yes\n", encoding="utf-8")
 
-        with patch("src.utils.auth._ENV_LOCAL_PATH", env_file):
+        with patch("src.utils.auth._env_local_path", return_value=env_file):
             write_env_local({"NEW_KEY": "new_val"})
 
         content = env_file.read_text(encoding="utf-8")

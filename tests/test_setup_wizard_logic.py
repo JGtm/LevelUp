@@ -445,7 +445,7 @@ class TestSaveAzureCredentials:
         env_file = tmp_path / ".env.local"
 
         with (
-            patch("src.utils.auth._ENV_LOCAL_PATH", env_file),
+            patch("src.utils.auth._env_local_path", return_value=env_file),
             patch("src.ui.pages.setup_wizard_logic.write_env_local") as _mock_write,
         ):
             from src.ui.pages.setup_wizard_logic import save_azure_credentials
