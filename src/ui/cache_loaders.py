@@ -15,6 +15,7 @@ import logging
 import polars as pl
 import streamlit as st
 
+from src.ui.tz import get_tz_name as _get_tz_name  # résolution dynamique depuis settings
 from src.utils.db import is_duckdb_v4_path as _is_duckdb_v4_path
 
 # ─── Réexports depuis _cache_core ──────────────────────────────────────────
@@ -140,6 +141,7 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
 
     # Conversion timezone start_time
     if "start_time" in df.columns:
+        _tz = _get_tz_name()  # résolution dynamique depuis app_settings
         start_time_dtype = df.schema.get("start_time")
         if start_time_dtype in (
             pl.Datetime,
@@ -150,7 +152,7 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
             try:
                 df = df.with_columns(
                     pl.col("start_time")
-                    .dt.convert_time_zone(PARIS_TZ_NAME)
+                    .dt.convert_time_zone(_tz)
                     .dt.replace_time_zone(None)
                     .alias("start_time")
                 )
@@ -158,7 +160,7 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
                 df = df.with_columns(
                     pl.col("start_time")
                     .dt.replace_time_zone("UTC")
-                    .dt.convert_time_zone(PARIS_TZ_NAME)
+                    .dt.convert_time_zone(_tz)
                     .dt.replace_time_zone(None)
                     .alias("start_time")
                 )
@@ -166,7 +168,7 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
             df = df.with_columns(
                 pl.col("start_time")
                 .str.to_datetime(time_zone="UTC")
-                .dt.convert_time_zone(PARIS_TZ_NAME)
+                .dt.convert_time_zone(_tz)
                 .dt.replace_time_zone(None)
                 .alias("start_time")
             )

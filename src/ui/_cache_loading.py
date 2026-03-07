@@ -23,6 +23,7 @@ def cached_load_recent_matches(
     xuid: str,
     limit: int = 50,
     db_key: tuple[int, int] | None = None,
+    tz_name: str = "",
 ) -> pl.DataFrame:
     """Charge les N matchs les plus récents via DuckDB (lazy loading).
 
@@ -59,24 +60,25 @@ def cached_load_recent_matches(
             return pl.DataFrame()
 
         df = _matches_to_dataframe(matches)
-        return _convert_timezone(df)
+        return _convert_timezone(df, tz_name or PARIS_TZ_NAME)
 
     except ImportError:
-        logger.debug("Import DuckDBRepository indisponible pour recent_matches")
+        logger.warning("Import DuckDBRepository indisponible pour recent_matches")
         return pl.DataFrame()
     except Exception:
-        logger.debug("Erreur chargement recent_matches", exc_info=True)
+        logger.warning("Erreur chargement recent_matches", exc_info=True)
         return pl.DataFrame()
 
 
 # 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
 @st.cache_data(show_spinner=False)
-def cached_load_matches_paginated(
+def cached_load_matches_paginated(  # noqa: PLR0913
     player_db_path: str,
     xuid: str,
     page: int = 1,
     page_size: int = 50,
     db_key: tuple[int, int] | None = None,
+    tz_name: str = "",
 ) -> tuple[pl.DataFrame, int]:
     """Charge les matchs avec pagination via DuckDB.
 
@@ -115,13 +117,18 @@ def cached_load_matches_paginated(
             return pl.DataFrame(), total_pages
 
         df = _matches_to_dataframe(matches)
-        return _convert_timezone(df), total_pages
+        return _convert_timezone(df, tz_name or PARIS_TZ_NAME), total_pages
 
     except ImportError:
-        logger.debug("Import DuckDBRepository indisponible pour matches_paginated")
+        logger.warning("Import DuckDBRepository indisponible pour matches_paginated")
         return pl.DataFrame(), 1
     except Exception:
-        logger.debug("Erreur chargement matches_paginated", exc_info=True)
+        logger.warning(
+            "Erreur chargement matches_paginated (db=%s page=%d)",
+            player_db_path,
+            page,
+            exc_info=True,
+        )
         return pl.DataFrame(), 1
 
 
@@ -230,24 +237,24 @@ def _matches_to_dataframe(matches: list) -> pl.DataFrame:
     )
 
 
-def _convert_timezone(df: pl.DataFrame) -> pl.DataFrame:
-    """Convertit start_time UTC → Paris (naïf) et ajoute colonne date."""
+def _convert_timezone(df: pl.DataFrame, tz_name: str = "Europe/Paris") -> pl.DataFrame:
+    """Convertit start_time UTC → timezone donnée (naïve) et ajoute colonne date."""
     try:
         df = df.with_columns(
             pl.col("start_time")
             .cast(pl.Datetime("us", "UTC"))
-            .dt.convert_time_zone(PARIS_TZ_NAME)
+            .dt.convert_time_zone(tz_name)
             .dt.replace_time_zone(None)
         )
     except Exception:
-        logger.debug("Erreur conversion timezone start_time", exc_info=True)
+        logger.debug("Erreur conversion timezone start_time (tz=%s)", tz_name, exc_info=True)
         import contextlib
 
         with contextlib.suppress(Exception):
             df = df.with_columns(
                 pl.col("start_time")
                 .dt.replace_time_zone("UTC")
-                .dt.convert_time_zone(PARIS_TZ_NAME)
+                .dt.convert_time_zone(tz_name)
                 .dt.replace_time_zone(None)
             )
     return df.with_columns(pl.col("start_time").cast(pl.Date).alias("date"))
