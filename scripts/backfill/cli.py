@@ -248,6 +248,21 @@ def create_argument_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ── Teammates signature ──
+    parser.add_argument(
+        "--teammates-sig",
+        action="store_true",
+        help=(
+            "Reconstruire teammates_signature + is_with_friends depuis shared_matches "
+            "pour les matchs où teammates_signature IS NULL."
+        ),
+    )
+    parser.add_argument(
+        "--force-teammates-sig",
+        action="store_true",
+        help="Recalculer teammates_signature + is_with_friends pour TOUS les matchs.",
+    )
+
     # ── Citations ──
     parser.add_argument(
         "--citations",
