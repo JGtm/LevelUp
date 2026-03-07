@@ -20,6 +20,13 @@ logger = logging.getLogger(__name__)
 PARIS_TZ_NAME = "Europe/Paris"
 
 
+class SharedDBUnavailableError(RuntimeError):
+    """Levée quand shared_matches.duckdb est verrouillé par un autre processus.
+
+    Non cachée par @st.cache_data → le prochain appel retente l'ATTACH.
+    """
+
+
 # ─── Cache Repository (v5.1 perf) ──────────────────────────────────────────
 # Connexion persistante via @st.cache_resource pour éviter les reconnexions
 # coûteuses (ATTACH × 3 = 50-100ms par instanciation).
@@ -48,6 +55,16 @@ def get_cached_repository_st(
     repo = DuckDBRepository(db_path, xuid, read_only=True)
     # Warm-up : forcer la connexion + ATTACH immédiatement
     repo._get_connection()
+    # Ne PAS cacher un repo sans shared si le fichier existe : raise pour
+    # empêcher @st.cache_resource de stocker un repo cassé. Le prochain
+    # appel retentera l'ATTACH.
+    if not repo.has_shared and repo._shared_db_path.exists():
+        repo.close()
+        raise SharedDBUnavailableError(
+            "shared_matches.duckdb est verrouillé par un autre processus "
+            "et ne peut pas être attaché. Fermez toute connexion DuckDB "
+            "externe (extension VS Code, CLI) et rechargez la page."
+        )
     return repo
 
 
