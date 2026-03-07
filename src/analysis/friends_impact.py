@@ -1,23 +1,10 @@
-"""Module d'analyse d'impact des coéquipiers (Sprint 12).
-
-Identifie les événements clés par coéquipier :
-- First Blood : Premier kill du match
-- Clutch Finisher : Dernier kill d'une victoire
-- Last Casualty : Dernière mort d'une défaite
-
-Ces événements sont utilisés pour calculer un score d'impact
-et générer une heatmap de "taquinerie" entre amis.
-"""
+"""Analyse d'impact des coéquipiers : First Blood, Clutch Finisher, Last Casualty."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import polars as pl
-
-if TYPE_CHECKING:
-    pass
 
 # Constantes de scoring
 SCORE_CLUTCH_FINISHER = 2  # Finisseur : +2 points
@@ -433,7 +420,58 @@ def get_all_impact_events(
     )
 
 
-def build_impact_matrix(  # noqa: C901, PLR0912, PLR0913
+_EVENT_DEFS: list[tuple[str, int]] = [
+    ("first_blood", 1),
+    ("clutch_finisher", 2),
+    ("last_casualty", -1),
+    ("last_group_kill", 3),
+    ("first_group_death", -2),
+]
+
+_EMPTY_IMPACT_SCHEMA = {
+    "match_id": pl.Utf8,
+    "gamertag": pl.Utf8,
+    "events": pl.List(pl.Struct([pl.Field("event", pl.Utf8), pl.Field("value", pl.Int64)])),
+    "outcome": pl.Int64,
+}
+
+
+def _populate_events_map(
+    match_ids: list[str],
+    gamertags: list[str],
+    event_dicts: list[dict[str, ImpactEvent]],
+) -> dict[tuple[str, str], list[dict[str, str | int]]]:
+    """Initialise et remplit le mapping (match_id, gamertag) → events."""
+    events_map: dict[tuple[str, str], list[dict[str, str | int]]] = {
+        (mid, gt): [] for mid in match_ids for gt in gamertags
+    }
+    for src, (event_name, value) in zip(event_dicts, _EVENT_DEFS, strict=True):
+        for _match_id, event in src.items():
+            key = (_match_id, event.gamertag)
+            if key in events_map:
+                events_map[key].append({"event": event_name, "value": value})
+    return events_map
+
+
+def _build_impact_rows(
+    events_map: dict[tuple[str, str], list[dict[str, str | int]]],
+    match_ids: list[str],
+    match_outcomes: dict[str, int] | None,
+) -> list[dict]:
+    """Construit les lignes du DataFrame d'impact."""
+    rows: list[dict] = []
+    if match_outcomes:
+        for match_id in match_ids:
+            outcome = match_outcomes.get(match_id, 0)
+            rows.append(
+                {"match_id": match_id, "gamertag": "Résultat", "events": [], "outcome": outcome}
+            )
+    for (match_id, gamertag), events in events_map.items():
+        rows.append({"match_id": match_id, "gamertag": gamertag, "events": events, "outcome": None})
+    return rows
+
+
+def build_impact_matrix(  # noqa: PLR0913
     first_bloods: dict[str, ImpactEvent],
     clutch_finishers: dict[str, ImpactEvent],
     last_casualties: dict[str, ImpactEvent],
@@ -443,104 +481,16 @@ def build_impact_matrix(  # noqa: C901, PLR0912, PLR0913
     gamertags: list[str],
     match_outcomes: dict[str, int] | None = None,
 ) -> pl.DataFrame:
-    """Construit une matrice d'impact pour la heatmap.
-
-    Crée un DataFrame avec les colonnes :
-    - match_id : ID du match
-    - gamertag : Nom du joueur (ou "Résultat" pour la ligne d'outcome)
-    - events : Liste d'événements [(event_type, value), ...]
-    - outcome : Outcome du match (2=Win, 3=Loss, 1=Tie, null pour les joueurs)
-
-    Args:
-        first_bloods: Dict des premiers kills.
-        clutch_finishers: Dict des finisseurs.
-        last_casualties: Dict des boulets.
-        last_group_kills: Dict des derniers à tuer (plus lent).
-        first_group_deaths: Dict des premières victimes.
-        match_ids: Liste ordonnée des IDs de matchs.
-        gamertags: Liste des gamertags à inclure.
-        match_outcomes: Dict optionnel {match_id: outcome} pour afficher la ligne de résultat.
-
-    Returns:
-        DataFrame Polars avec la matrice d'impact.
-    """
-    # Créer un mapping {(match_id, gamertag): [(event_type, value), ...]}
-    events_map: dict[tuple[str, str], list[tuple[str, int]]] = {}
-
-    for match_id in match_ids:
-        for gamertag in gamertags:
-            key = (match_id, gamertag)
-            events_map[key] = []
-
-    # Ajouter les First Bloods
-    for match_id, event in first_bloods.items():
-        key = (match_id, event.gamertag)
-        if key in events_map:
-            events_map[key].append({"event": "first_blood", "value": 1})
-
-    # Ajouter les Clutch Finishers
-    for match_id, event in clutch_finishers.items():
-        key = (match_id, event.gamertag)
-        if key in events_map:
-            events_map[key].append({"event": "clutch_finisher", "value": 2})
-
-    # Ajouter les Last Casualties
-    for match_id, event in last_casualties.items():
-        key = (match_id, event.gamertag)
-        if key in events_map:
-            events_map[key].append({"event": "last_casualty", "value": -1})
-
-    # Ajouter les Last Group Kills (dernier à tuer)
-    for match_id, event in last_group_kills.items():
-        key = (match_id, event.gamertag)
-        if key in events_map:
-            events_map[key].append({"event": "last_group_kill", "value": 3})
-
-    # Ajouter les First Group Deaths (première victime)
-    for match_id, event in first_group_deaths.items():
-        key = (match_id, event.gamertag)
-        if key in events_map:
-            events_map[key].append({"event": "first_group_death", "value": -2})
-
-    # Construire le DataFrame
-    rows = []
-
-    # Ajouter la ligne "Résultat" en premier si match_outcomes est fourni
-    if match_outcomes:
-        for match_id in match_ids:
-            outcome = match_outcomes.get(match_id, 0)
-            rows.append(
-                {
-                    "match_id": match_id,
-                    "gamertag": "Résultat",
-                    "events": [],
-                    "outcome": outcome,
-                }
-            )
-
-    # Ajouter les lignes des joueurs
-    for (match_id, gamertag), events in events_map.items():
-        rows.append(
-            {
-                "match_id": match_id,
-                "gamertag": gamertag,
-                "events": events,  # Garder TOUS les événements
-                "outcome": None,
-            }
-        )
-
+    """Construit une matrice d'impact pour la heatmap."""
+    event_dicts = [
+        first_bloods,
+        clutch_finishers,
+        last_casualties,
+        last_group_kills,
+        first_group_deaths,
+    ]
+    events_map = _populate_events_map(match_ids, gamertags, event_dicts)
+    rows = _build_impact_rows(events_map, match_ids, match_outcomes)
     if not rows:
-        # DataFrame vide avec le bon schéma
-        return pl.DataFrame(
-            [],
-            schema={
-                "match_id": pl.Utf8,
-                "gamertag": pl.Utf8,
-                "events": pl.List(
-                    pl.Struct([pl.Field("event", pl.Utf8), pl.Field("value", pl.Int64)])
-                ),
-                "outcome": pl.Int64,
-            },
-        )
-
+        return pl.DataFrame([], schema=_EMPTY_IMPACT_SCHEMA)
     return pl.DataFrame(rows)
