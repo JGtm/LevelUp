@@ -142,8 +142,8 @@ class TestResolveXuidFromDb:
         assert result is None
 
     def test_env_variable_fallback(self, monkeypatch):
-        monkeypatch.setenv("OPENSPARTAN_DEFAULT_GAMERTAG", "SpartanB")
-        monkeypatch.setenv("OPENSPARTAN_DEFAULT_XUID", "2533274823110022")
+        monkeypatch.setenv("LEVELUP_DEFAULT_GAMERTAG", "SpartanB")
+        monkeypatch.setenv("LEVELUP_DEFAULT_XUID", "2533274823110022")
         result = resolve_xuid_from_db("/nonexistent.duckdb", "SpartanB")
         assert result == "2533274823110022"
 
@@ -365,7 +365,7 @@ class TestGetProfilesPath:
         assert path.endswith("db_profiles.json")
 
     def test_env_override(self, monkeypatch):
-        monkeypatch.setenv("OPENSPARTAN_PROFILES_PATH", "/custom/path.json")
+        monkeypatch.setenv("LEVELUP_PROFILES_PATH", "/custom/path.json")
         path = get_profiles_path()
         assert path == "/custom/path.json"
 
@@ -380,7 +380,7 @@ class TestLoadProfiles:
         }
         fp = tmp_path / "profiles.json"
         fp.write_text(json.dumps(profiles_data), encoding="utf-8")
-        monkeypatch.setenv("OPENSPARTAN_PROFILES_PATH", str(fp))
+        monkeypatch.setenv("LEVELUP_PROFILES_PATH", str(fp))
         # Clear cache
         from src.utils.profiles import _load_profiles_cached
 
@@ -392,7 +392,7 @@ class TestLoadProfiles:
         assert "Player2" in result
 
     def test_missing_file(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENSPARTAN_PROFILES_PATH", str(tmp_path / "missing.json"))
+        monkeypatch.setenv("LEVELUP_PROFILES_PATH", str(tmp_path / "missing.json"))
         from src.utils.profiles import _load_profiles_cached
 
         _load_profiles_cached.cache_clear()
@@ -402,7 +402,7 @@ class TestLoadProfiles:
     def test_invalid_json(self, tmp_path, monkeypatch):
         fp = tmp_path / "bad.json"
         fp.write_text("not json", encoding="utf-8")
-        monkeypatch.setenv("OPENSPARTAN_PROFILES_PATH", str(fp))
+        monkeypatch.setenv("LEVELUP_PROFILES_PATH", str(fp))
         from src.utils.profiles import _load_profiles_cached
 
         _load_profiles_cached.cache_clear()
@@ -412,7 +412,7 @@ class TestLoadProfiles:
     def test_no_profiles_key(self, tmp_path, monkeypatch):
         fp = tmp_path / "empty.json"
         fp.write_text('{"other": "data"}', encoding="utf-8")
-        monkeypatch.setenv("OPENSPARTAN_PROFILES_PATH", str(fp))
+        monkeypatch.setenv("LEVELUP_PROFILES_PATH", str(fp))
         from src.utils.profiles import _load_profiles_cached
 
         _load_profiles_cached.cache_clear()
@@ -423,7 +423,7 @@ class TestLoadProfiles:
         data = {"profiles": {"  ": {"db_path": "/x"}, "Valid": {"db_path": "/x"}}}
         fp = tmp_path / "profiles.json"
         fp.write_text(json.dumps(data), encoding="utf-8")
-        monkeypatch.setenv("OPENSPARTAN_PROFILES_PATH", str(fp))
+        monkeypatch.setenv("LEVELUP_PROFILES_PATH", str(fp))
         from src.utils.profiles import _load_profiles_cached
 
         _load_profiles_cached.cache_clear()
@@ -435,7 +435,7 @@ class TestLoadProfiles:
 class TestSaveProfiles:
     def test_save_success(self, tmp_path, monkeypatch):
         fp = tmp_path / "profiles.json"
-        monkeypatch.setenv("OPENSPARTAN_PROFILES_PATH", str(fp))
+        monkeypatch.setenv("LEVELUP_PROFILES_PATH", str(fp))
         from src.utils.profiles import _load_profiles_cached
 
         _load_profiles_cached.cache_clear()
@@ -449,7 +449,7 @@ class TestSaveProfiles:
         assert "Player1" in data["profiles"]
 
     def test_save_failure(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("OPENSPARTAN_PROFILES_PATH", str(tmp_path / "nodir" / "p.json"))
+        monkeypatch.setenv("LEVELUP_PROFILES_PATH", str(tmp_path / "nodir" / "p.json"))
         from src.utils.profiles import _load_profiles_cached
 
         _load_profiles_cached.cache_clear()

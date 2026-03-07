@@ -52,7 +52,7 @@ def get_default_db_path() -> str:
     Si aucun joueur trouvé, retourne une chaîne vide.
     """
     # Override explicite (utile en Docker/Linux)
-    override = os.environ.get("OPENSPARTAN_DB") or os.environ.get("OPENSPARTAN_DB_PATH")
+    override = os.environ.get("LEVELUP_DB") or os.environ.get("LEVELUP_DB_PATH")
     if override and os.path.exists(override):
         return override
 
@@ -81,12 +81,12 @@ def get_default_db_path() -> str:
 # Identité par défaut (local)
 # =============================================================================
 
-DEFAULT_PLAYER_GAMERTAG = (os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip()
-DEFAULT_PLAYER_XUID = (os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip()
+DEFAULT_PLAYER_GAMERTAG = (os.environ.get("LEVELUP_DEFAULT_GAMERTAG") or "").strip()
+DEFAULT_PLAYER_XUID = (os.environ.get("LEVELUP_DEFAULT_XUID") or "").strip()
 
 
 DEFAULT_WAYPOINT_PLAYER = (
-    os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or DEFAULT_PLAYER_GAMERTAG
+    os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") or DEFAULT_PLAYER_GAMERTAG
 ).strip()
 
 

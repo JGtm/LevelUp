@@ -4,7 +4,7 @@ Objectif:
 - Déplacer les "paramètres" hors sidebar (onglet Paramètres)
 - Permettre une exécution sur NAS/Docker avec un fichier de config monté
 
-Le chemin est configurable via OPENSPARTAN_SETTINGS_PATH.
+Le chemin est configurable via LEVELUP_SETTINGS_PATH.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def get_settings_path() -> str:
     """Retourne le chemin du fichier app_settings.json."""
-    override = os.environ.get("OPENSPARTAN_SETTINGS_PATH")
+    override = os.environ.get("LEVELUP_SETTINGS_PATH")
     if override and str(override).strip():
         return str(override).strip()
     repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))

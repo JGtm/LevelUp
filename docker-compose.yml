@@ -5,8 +5,8 @@ services:
       - "8501:8501"
     environment:
       # Optionnel: forcer une base explicite (sinon sélection via profils/UI)
-      # - OPENSPARTAN_DB=/app/data/players/MonGamertag/stats.duckdb
-      - OPENSPARTAN_ROOT=/app
+      # - LEVELUP_DB=/app/data/players/MonGamertag/stats.duckdb
+      - LEVELUP_ROOT=/app
     volumes:
       # Données v4 (DuckDB/Parquet) en lecture/écriture
       - ./data:/app/data

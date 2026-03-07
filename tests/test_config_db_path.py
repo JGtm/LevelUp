@@ -74,13 +74,13 @@ class TestGetDefaultDbPath:
             ), f"RÉGRESSION: Detected SQLite file (.db) instead of DuckDB: {db_path}"
 
     def test_env_override_takes_priority(self):
-        """OPENSPARTAN_DB doit avoir priorité sur auto-detection."""
+        """LEVELUP_DB doit avoir priorité sur auto-detection."""
         with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as tmp:
             tmp_path = tmp.name
 
         try:
             # Set env var
-            with patch.dict(os.environ, {"OPENSPARTAN_DB": tmp_path}):
+            with patch.dict(os.environ, {"LEVELUP_DB": tmp_path}):
                 result = get_default_db_path()
 
                 # Doit retourner le chemin env

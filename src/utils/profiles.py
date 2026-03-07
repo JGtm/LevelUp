@@ -25,12 +25,12 @@ _DEFAULT_PROFILES_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
     "db_profiles.json",
 )
-PROFILES_PATH = os.environ.get("OPENSPARTAN_PROFILES_PATH") or _DEFAULT_PROFILES_PATH
+PROFILES_PATH = os.environ.get("LEVELUP_PROFILES_PATH") or _DEFAULT_PROFILES_PATH
 
 
 def get_profiles_path() -> str:
     """Retourne le chemin du fichier de profils (env override supporté)."""
-    override = os.environ.get("OPENSPARTAN_PROFILES_PATH")
+    override = os.environ.get("LEVELUP_PROFILES_PATH")
     if isinstance(override, str) and override.strip():
         return override.strip()
     return _DEFAULT_PROFILES_PATH
