@@ -30,6 +30,8 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - **État d'authentification** (`src/utils/auth.py`)
   - `AuthStatus` dataclass + `get_auth_status()`, `check_credentials()`, `write_env_local()` (écriture/mise à jour de `.env.local` en préservant les commentaires)
 
+- **Compatibilité macOS / Linux** — `LevelUp.sh` (nouveau) : lanceur premier-lancement équivalent à `LevelUp.bat` pour macOS/Linux, écrit en POSIX sh (sans bashism — compatible macOS bash 3.2, dash, zsh). Détecte Python 3.10+ via binaires versionnnés (`python3.12` → Homebrew), chemins Homebrew Intel/Apple Silicon (`/opt/homebrew`, `/usr/local`), puis générique. Messages d'aide ciblés par distribution. `run.sh` corrigé cross-platform. `launcher.py` enrichi : candidats Python versionnnés, chemins Homebrew, `doctor` cross-platform.
+
 - **`launcher.py setup`** — Commande d'installation interactive : détecte Python (py launcher → PATH → emplacements standard → installation via winget), crée le `.venv`, installe les dépendances (`pip install -e ".[spnkr]"`). Supporte `--update` pour mettre à jour un environnement existant.
 
 - **`launcher.py doctor`** — Diagnostic complet de l'environnement : OS, Python, venv, versions des packages critiques vs attendues, nombre de joueurs configurés, présence de `metadata.duckdb`

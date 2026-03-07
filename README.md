@@ -16,6 +16,7 @@
   - **Setup Wizard**: guided first-time setup with two paths — **Xbox Express** (recommended, 2 steps: Azure credentials → Xbox login) and **Azure manual** (advanced, 3 steps: credentials → refresh token → player creation)
   - **Xbox OAuth**: one-click Xbox login — full Microsoft OAuth flow with CSRF protection, automatic gamertag/XUID resolution, and player provisioning
   - **Player provisioning**: automatic DB + profile creation on first login (`provision_player()`)
+  - **macOS / Linux support**: new `LevelUp.sh` launcher (POSIX sh — compatible with macOS bash 3.2, dash, zsh) mirrors `LevelUp.bat` for Unix systems. Detects Python 3.10+ via versioned binaries (`python3.12`…), Homebrew paths (`/opt/homebrew`, `/usr/local`), then generic fallback. Distro-targeted help messages. `run.sh` fixed to be cross-platform. `launcher.py` enriched with Homebrew paths and cross-platform `doctor` check
   - **`launcher.py setup`**: interactive install command — detects Python (py launcher → PATH → winget auto-install), creates `.venv`, installs deps. `--update` flag to update an existing environment
   - **`launcher.py doctor`**: full environment healthcheck (OS, Python, venv, package versions, player data, metadata.duckdb)
   - **Portable packaging**: `packaging/build_release.py` generates a self-contained `LevelUp-vX.Y.Z-win64-portable.zip` with Python Embeddable
