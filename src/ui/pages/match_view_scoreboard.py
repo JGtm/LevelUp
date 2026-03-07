@@ -12,7 +12,7 @@ from typing import Any
 
 import streamlit as st
 
-from src.config import BOT_MAP, TEAM_MAP
+from src.config import TEAM_MAP, get_bot_name
 from src.ui.i18n import t
 from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_players_data import load_match_scoreboard
@@ -154,7 +154,7 @@ def _resolve_scoreboard_gamertags(
 
         # Priorité 1 : bots
         if xu.lower().startswith("bid("):
-            bot_name = BOT_MAP.get(xu)
+            bot_name = get_bot_name(xu)
             if isinstance(bot_name, str) and bot_name.strip():
                 p["gamertag"] = bot_name.strip()
                 continue

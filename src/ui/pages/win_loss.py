@@ -14,6 +14,7 @@ from src.data.services.win_loss_service import WinLossService
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
+from src.ui.tz import get_tz_name
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization import (
     plot_map_comparison,
@@ -202,7 +203,7 @@ def _render_heatmap_section(dff: pl.DataFrame) -> None:
     """Affiche la heatmap Win Rate par jour et heure."""
     st.divider()
     st.subheader(t("wl_heatmap_title"))
-    st.caption(t("wl_heatmap_caption"))
+    st.caption(t("wl_heatmap_caption", tz=get_tz_name()))
     if "start_time" in dff.columns and "outcome" in dff.columns:
         with safe_chart_render():
             fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=1, lang=get_lang())

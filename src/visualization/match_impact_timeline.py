@@ -303,7 +303,7 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if not highlight_events:
         return None
 
-    from src.config import BOT_MAP
+    from src.config import get_bot_name
     from src.visualization.antagonist_charts import PLAYER_COLORS
 
     me_xuid = str(me_xuid).strip()
@@ -362,7 +362,7 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 return g
         # Bots
         if xu.lower().startswith("bid("):
-            bot = BOT_MAP.get(xu)
+            bot = get_bot_name(xu)
             if isinstance(bot, str) and bot.strip():
                 return bot.strip()
         # Gamertag de l'event

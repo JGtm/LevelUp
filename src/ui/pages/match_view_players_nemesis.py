@@ -15,7 +15,7 @@ from collections.abc import Callable
 import streamlit as st
 
 from src.analysis import compute_personal_antagonists
-from src.config import BOT_MAP
+from src.config import get_bot_name
 from src.ui import display_name_from_xuid
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
@@ -44,7 +44,7 @@ def _display_name_for_chart(
     if xu_s:
         bot_key = xu_s.strip()
         if bot_key.lower().startswith("bid("):
-            bot_name = BOT_MAP.get(bot_key)
+            bot_name = get_bot_name(bot_key)
             if isinstance(bot_name, str) and bot_name.strip():
                 return bot_name.strip()
 
