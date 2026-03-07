@@ -193,6 +193,43 @@ Les fonctions `backfill_player_data`, `backfill_all_players`, `_backfill_with_ap
 
 ---
 
+## Migrations de Schéma DuckDB
+
+Quand tu ajoutes ou modifies une colonne, une table ou un index dans une DB DuckDB (`player`, `shared`, `shared_pve`) :
+
+**Étapes obligatoires :**
+
+1. **Créer/modifier `ensure_xxx`** dans `src/data/sync/migrations.py` — doit être **idempotente** (utiliser `_add_column_if_missing()` ou `IF NOT EXISTS`)
+
+2. **Créer un fichier step** dans `src/data/migration/steps/add_{nom}.py` :
+   ```python
+   from src.data.migration.registry import Migration, register
+   from src.data.sync.migrations import ensure_xxx
+
+   register(Migration(
+       name="add_{nom}",
+       target_db="player",  # ou "shared" ou "shared_pve"
+       description="Description courte",
+       apply_schema=ensure_xxx,
+       # apply_backfill=ma_fonction,  # si backfill API nécessaire
+       # requires_api=True,
+   ))
+   ```
+
+3. **Ajouter l'import** dans `src/data/migration/steps/__init__.py` :
+   ```python
+   from src.data.migration.steps import add_{nom}  # noqa: F401
+   ```
+
+**Règles :**
+
+- Les migrations sont appliquées **automatiquement** au prochain lancement via `launcher.py → _run_migrations()`
+- Chaque DB trace les migrations dans une table `schema_migrations` (colonnes : `name`, `applied_at`, `schema_done`, `backfill_done`)
+- Une migration déjà appliquée ne tourne **jamais** deux fois (idempotence garantie)
+- `target_db` détermine quelle DB reçoit la migration : `"player"` (stats.duckdb de chaque joueur), `"shared"` (shared_matches.duckdb), `"shared_pve"` (shared_pve.duckdb)
+
+---
+
 ## Synchronisation
 
 ### Mode Delta (incrémental)
