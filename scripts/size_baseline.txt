@@ -18,8 +18,6 @@ FUNC:src/app/filters.py:206:render_session_filters:94L
 FUNC:src/app/filters_render.py:373:render_filters_sidebar:112L
 FUNC:src/app/kpis_render.py:44:render_kpis_section:83L
 FUNC:src/app/main_helpers.py:250:render_profile_hero:140L
-FUNC:src/app/media_background.py:17:background_media_indexing:143L
-FUNC:src/app/media_background.py:48:worker:109L
 FUNC:src/app/profile.py:187:load_profile_assets:101L
 FUNC:src/app/sidebar.py:174:render_sync_button:120L
 FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:98L
@@ -52,7 +50,7 @@ FUNC:src/data/sync/transformers/_skill.py:24:transform_skill_stats:100L
 FUNC:src/ui/_cache_sessions.py:21:cached_compute_sessions_db:171L
 FUNC:src/ui/_sync_duckdb_ops.py:21:_sync_duckdb_player:119L
 FUNC:src/ui/_sync_duckdb_ops.py:43:_sync_async:82L
-FUNC:src/ui/cache_loaders.py:189:load_df_optimized:96L
+FUNC:src/ui/cache_loaders.py:197:load_df_optimized:96L
 FUNC:src/ui/commendations.py:294:render_h5g_commendations_section:158L
 FUNC:src/ui/components/_radar_participation.py:151:create_participation_profile_radar:138L
 FUNC:src/ui/components/_radar_participation.py:17:create_participation_radar:131L
@@ -68,7 +66,6 @@ FUNC:src/ui/components/radar_chart.py:188:create_performance_radar:92L
 FUNC:src/ui/components/radar_chart.py:98:create_stats_per_minute_radar:87L
 FUNC:src/ui/filter_state.py:235:apply_filter_preferences:142L
 FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
-FUNC:src/ui/multiplayer.py:121:list_duckdb_v4_players:126L
 FUNC:src/ui/pages/_session_compare_history.py:20:_build_history_dataframe:139L
 FUNC:src/ui/pages/_teammates_trio.py:30:render_trio_view:116L
 FUNC:src/ui/pages/career.py:56:_render_lusr_section:167L
