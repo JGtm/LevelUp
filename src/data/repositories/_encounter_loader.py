@@ -73,9 +73,9 @@ def _build_encounter_sql(n_targets: int) -> str:
             MAX(r.start_time) AS last_seen
         FROM match_participants p
         INNER JOIN my_matches m  ON m.match_id = p.match_id
+        INNER JOIN match_registry r ON r.match_id = p.match_id
         LEFT JOIN  xuid_aliases a ON a.xuid = p.xuid
         LEFT JOIN  he_gamertags he ON he.xuid = p.xuid
-        LEFT JOIN  match_registry r ON r.match_id = p.match_id
         WHERE p.xuid IN ({ph})
         GROUP BY p.xuid
     ),
@@ -135,10 +135,11 @@ def load_encounter_stats(
 
     shared_path = _get_shared_db_path(db_path)
     if not shared_path.exists():
-        logger.debug("shared_matches.duckdb introuvable : %s", shared_path)
+        logger.warning("shared_matches.duckdb introuvable : %s", shared_path)
         return pl.DataFrame()
 
     n = len(target_xuids)
+    logger.debug("load_encounter_stats: %d cible(s) pour xuid=%s", n, self_xuid)
     sql = _build_encounter_sql(n)
     # Ordre des paramètres : voir _build_encounter_sql docstring — 3n+6 total
     params: list[str] = (
@@ -168,9 +169,10 @@ def load_encounter_stats(
     try:
         with duckdb_read_only(shared_path) as conn:
             rows = conn.execute(sql, params).fetchall()
+        logger.debug("load_encounter_stats: %d ligne(s) retournée(s)", len(rows))
         if not rows:
             return pl.DataFrame()
         return pl.DataFrame(rows, schema=columns, orient="row")
     except Exception:
-        logger.debug("load_encounter_stats échec", exc_info=True)
+        logger.warning("load_encounter_stats échec pour xuid=%s", self_xuid, exc_info=True)
         return pl.DataFrame()

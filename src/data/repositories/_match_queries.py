@@ -321,7 +321,9 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
                 if shared_result:
                     return shared_result
             except Exception:
-                pass
+                logger.warning(
+                    "load_match_mmr_batch: échec requête shared.match_participants", exc_info=True
+                )
 
         try:
             has_pms = self._has_table_cached(conn, "player_match_stats")
@@ -348,6 +350,7 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
                 )
             return {row[0]: (row[1], row[2]) for row in result.fetchall()}
         except Exception:
+            logger.warning("load_match_mmr_batch: échec requête locale", exc_info=True)
             return {}
 
     def load_match_skill_data(self, match_id: str) -> dict[str, Any] | None:
@@ -371,6 +374,11 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
                 [match_id, self._xuid],
             ).fetchone()
         except Exception:
+            logger.warning(
+                "load_match_skill_data: erreur requête shared.match_participants (match_id=%s)",
+                match_id,
+                exc_info=True,
+            )
             return None
 
         if not row:
@@ -380,8 +388,23 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
 
         # Fallback MMR depuis coéquipier si absent pour ce joueur
         if (team_mmr is None or enemy_mmr is None) and team_id is not None:
+            logger.debug(
+                "load_match_skill_data: MMR NULL pour xuid=%s match_id=%s — tentative fallback coéquipier",
+                self._xuid,
+                match_id,
+            )
             team_mmr, enemy_mmr = self._fallback_mmr_from_teammate(
                 conn, match_id, team_id, team_mmr, enemy_mmr
+            )
+
+        if team_mmr is None or enemy_mmr is None:
+            logger.warning(
+                "load_match_skill_data: MMR définitivement absent pour xuid=%s match_id=%s "
+                "(team_mmr=%s enemy_mmr=%s) — l'API Halo n'a peut-être pas de données pour ce match",
+                self._xuid,
+                match_id,
+                team_mmr,
+                enemy_mmr,
             )
 
         return {
@@ -414,7 +437,17 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
                 [match_id, team_id],
             ).fetchone()
             if teammate_row:
+                logger.debug(
+                    "_fallback_mmr_from_teammate: MMR récupéré depuis coéquipier (match_id=%s team_id=%s)",
+                    match_id,
+                    team_id,
+                )
                 return teammate_row[0], teammate_row[1]
         except Exception:
-            pass
+            logger.warning(
+                "_fallback_mmr_from_teammate: erreur requête (match_id=%s team_id=%s)",
+                match_id,
+                team_id,
+                exc_info=True,
+            )
         return team_mmr, enemy_mmr

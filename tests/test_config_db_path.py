@@ -19,6 +19,57 @@ import pytest
 from src.config import get_default_db_path, get_repo_root
 
 
+class TestGetBotName:
+    """Tests anti-régression pour get_bot_name().
+
+    Régression corrigée v5 : recover_from_sqlite.py stockait 'bid(0.0'
+    au lieu de 'bid(0.0)'. Les lookups retournaient None silencieusement.
+    """
+
+    def test_canonical_format_resolves(self) -> None:
+        """Format canonique bid(X.0) → nom du bot."""
+        from src.config import get_bot_name
+
+        assert get_bot_name("bid(0.0)") == "343 Ritzy"
+        assert get_bot_name("bid(59.0)") == "343 Hollis"
+
+    def test_corrupted_format_resolves(self) -> None:
+        """Format corrompu bid(X.0 (sans ')') → même résultat que le format canonique.
+
+        Assure la compatibilité avec les données historiques avant migration.
+        """
+        from src.config import get_bot_name
+
+        assert get_bot_name("bid(0.0") == "343 Ritzy"
+        assert get_bot_name("bid(59.0") == "343 Hollis"
+
+    def test_human_xuid_returns_none(self) -> None:
+        """Un XUID numérique humain → None."""
+        from src.config import get_bot_name
+
+        assert get_bot_name("2533274823110022") is None
+
+    def test_unknown_bot_returns_none(self) -> None:
+        """Un ID bot inconnu → None (pas de KeyError)."""
+        from src.config import get_bot_name
+
+        assert get_bot_name("bid(999.0)") is None
+
+    def test_empty_or_none_input(self) -> None:
+        """Entrée vide ou None → None (pas de crash)."""
+        from src.config import get_bot_name
+
+        assert get_bot_name("") is None
+        assert get_bot_name(None) is None  # type: ignore[arg-type]
+
+    def test_result_matches_bot_map_directly(self) -> None:
+        """Tous les bots de BOT_MAP sont résolvables via get_bot_name."""
+        from src.config import BOT_MAP, get_bot_name
+
+        for key, expected_name in BOT_MAP.items():
+            assert get_bot_name(key) == expected_name, f"Échec pour clé '{key}'"
+
+
 class TestGetDefaultDbPath:
     """Tests pour get_default_db_path()."""
 
