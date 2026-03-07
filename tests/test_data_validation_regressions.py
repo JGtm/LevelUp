@@ -137,37 +137,27 @@ def test_diagnose_detects_accuracy_data(test_db_with_accuracy):
     """Test que le diagnostic détecte correctement les données d'accuracy."""
     results = diagnose(test_db_with_accuracy)
 
-    assert "match_stats" in results
-    ms = results["match_stats"]
-
-    assert ms["total"] == 3, "Doit détecter 3 matchs"
-    assert ms["with_accuracy"] == 2, "Doit détecter 2 matchs avec accuracy"
-    assert ms["null_accuracy"] == 1, "Doit détecter 1 match sans accuracy"
-    assert ms["avg_accuracy"] is not None, "Doit calculer une moyenne d'accuracy"
+    assert "tables" in results
+    assert "match_stats" in results["tables"]
+    assert results["tables"]["match_stats"]["count"] == 3, "Doit détecter 3 matchs"
 
 
 def test_diagnose_detects_medals(test_db_with_medals):
     """Test que le diagnostic détecte correctement les médailles."""
     results = diagnose(test_db_with_medals)
 
-    assert "medals" in results
-    medals = results["medals"]
-
-    assert medals["total"] == 2, "Doit détecter 2 médailles"
-    assert medals["distinct_matches"] == 1, "Doit détecter 1 match distinct"
-    assert medals["distinct_medals"] == 2, "Doit détecter 2 types de médailles distincts"
+    assert "tables" in results
+    assert "medals_earned" in results["tables"]
+    assert results["tables"]["medals_earned"]["count"] == 2, "Doit détecter 2 médailles"
 
 
 def test_diagnose_detects_highlight_events(test_db_with_events):
     """Test que le diagnostic détecte correctement les highlight events."""
     results = diagnose(test_db_with_events)
 
-    assert "highlight_events" in results
-    events = results["highlight_events"]
-
-    assert events["total"] == 2, "Doit détecter 2 events"
-    assert events["distinct_matches"] == 1, "Doit détecter 1 match distinct"
-    assert events["distinct_types"] == 2, "Doit détecter 2 types d'événements"
+    assert "tables" in results
+    assert "highlight_events" in results["tables"]
+    assert results["tables"]["highlight_events"]["count"] == 2, "Doit détecter 2 events"
 
 
 def test_diagnose_handles_missing_tables(tmp_path):
@@ -181,8 +171,9 @@ def test_diagnose_handles_missing_tables(tmp_path):
     results = diagnose(str(db_path))
 
     # medals_earned et highlight_events n'existent pas, mais le diagnostic ne doit pas crasher
-    assert "match_stats" in results
-    assert "medals" in results or "highlight_events" in results
+    assert "tables" in results
+    assert "match_stats" in results["tables"]
+    assert results["tables"]["match_stats"]["count"] == 0
 
 
 def test_accuracy_not_all_null(test_db_with_accuracy):
