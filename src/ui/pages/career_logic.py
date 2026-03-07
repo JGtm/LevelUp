@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 
 from src.config import THEME_COLORS
 from src.ui.career_ranks import format_career_rank_label_fr
+from src.ui.career_ranks import get_rank_info as get_meta_rank_info
 from src.ui.components.career_progress_circle import XP_HERO_TOTAL
 from src.ui.i18n import t
 from src.visualization.theme import apply_halo_plot_style
@@ -206,6 +207,141 @@ def _compute_hero_projections(
 # ── Graphique XP enrichi ────────────────────────────────────────────────────
 
 
+def _add_xp_traces(fig: go.Figure, history: list[dict], estimated_curve, other_players) -> None:
+    """Ajoute les traces XP réel, estimé et autres joueurs sur la figure."""
+    dates = [h["recorded_at"] for h in history]
+    xp_totals = [h["xp_total"] or 0 for h in history]
+    hover_texts = []
+    for h in history:
+        _meta = get_meta_rank_info(h.get("rank", 0))
+        if _meta:
+            label = _meta.full_label_fr
+        else:
+            logger.debug(
+                "Rang %d introuvable dans metadata.duckdb (hover) — fallback DB",
+                h.get("rank", 0),
+            )
+            name = h.get("rank_name", "")
+            tier = h.get("rank_tier", "")
+            label = format_career_rank_label_fr(tier=tier, title=name, grade=None)
+        hover_texts.append(
+            t("career_rank_hover", rank=h["rank"], label=label, xp=f"{h['xp_total']:,}")
+        )
+
+    fig.add_trace(
+        go.Scatter(
+            x=dates,
+            y=xp_totals,
+            mode="lines+markers",
+            name=t("career_xp_total"),
+            line={"color": THEME_COLORS.accent, "width": 2},
+            marker={"size": 6, "color": THEME_COLORS.accent},
+            hovertext=hover_texts,
+            hoverinfo="text",
+        )
+    )
+    if estimated_curve:
+        est_dates = [pt[0] for pt in estimated_curve]
+        est_xp = [pt[1] for pt in estimated_curve]
+        est_hover = [
+            t("career_xp_estimated_hover", date=str(pt[0])[:10], xp=f"{pt[1]:,}")
+            for pt in estimated_curve
+        ]
+        fig.add_trace(
+            go.Scatter(
+                x=est_dates,
+                y=est_xp,
+                mode="lines",
+                name=t("career_xp_estimated"),
+                line={"color": "#CE93D8", "width": 2, "dash": "dot"},
+                hovertext=est_hover,
+                hoverinfo="text",
+            )
+        )
+    if other_players:
+        for idx, player in enumerate(other_players):
+            color = _OTHER_PLAYERS_COLORS[idx % len(_OTHER_PLAYERS_COLORS)]
+            p_gamertag = player["gamertag"]
+            p_history = player["history"]
+            p_hover = [
+                t(
+                    "career_xp_other_player_hover",
+                    gamertag=p_gamertag,
+                    date=str(h["recorded_at"])[:10],
+                    xp=f"{h['xp_total'] or 0:,}",
+                )
+                for h in p_history
+            ]
+            fig.add_trace(
+                go.Scatter(
+                    x=[h["recorded_at"] for h in p_history],
+                    y=[h["xp_total"] or 0 for h in p_history],
+                    mode="lines+markers",
+                    name=t("career_xp_other_player", gamertag=p_gamertag),
+                    line={"color": color, "width": 1.5},
+                    marker={"size": 5, "color": color},
+                    hovertext=p_hover,
+                    hoverinfo="text",
+                    visible="legendonly",
+                )
+            )
+
+
+def _add_projection_traces(
+    fig: go.Figure,
+    hero_projection,
+    optimistic_projection,
+    *,
+    is_max_rank: bool,
+) -> None:
+    """Ajoute les traces de projection (héros + optimiste) et la ligne seuil."""
+    if hero_projection and not is_max_rank:
+        proj_hover = [
+            t("career_projection_hero_hover", date=str(pt[0])[:10], xp=f"{pt[1]:,}")
+            for pt in hero_projection
+        ]
+        fig.add_trace(
+            go.Scatter(
+                x=[pt[0] for pt in hero_projection],
+                y=[pt[1] for pt in hero_projection],
+                mode="lines",
+                name=t("career_projection_hero"),
+                line={"color": "#FFA726", "width": 2, "dash": "dash"},
+                hovertext=proj_hover,
+                hoverinfo="text",
+                visible="legendonly",
+            )
+        )
+    if optimistic_projection and not is_max_rank:
+        opt_hover = [
+            t("career_projection_optimistic_hover", date=str(pt[0])[:10], xp=f"{pt[1]:,}")
+            for pt in optimistic_projection
+        ]
+        fig.add_trace(
+            go.Scatter(
+                x=[pt[0] for pt in optimistic_projection],
+                y=[pt[1] for pt in optimistic_projection],
+                mode="lines",
+                name=t("career_projection_optimistic"),
+                line={"color": "#66BB6A", "width": 2, "dash": "dashdot"},
+                hovertext=opt_hover,
+                hoverinfo="text",
+                visible="legendonly",
+            )
+        )
+    if (hero_projection or optimistic_projection) and not is_max_rank:
+        fig.add_hline(
+            y=XP_HERO_TOTAL,
+            line_dash="dot",
+            line_color="rgba(255, 215, 0, 0.3)",
+            line_width=1,
+            annotation_text=t("career_hero_threshold"),
+            annotation_position="top left",
+            annotation_font_size=10,
+            annotation_font_color="rgba(255, 215, 0, 0.5)",
+        )
+
+
 def _create_xp_history_chart(  # noqa: PLR0913
     history: list[dict],
     *,
@@ -228,149 +364,12 @@ def _create_xp_history_chart(  # noqa: PLR0913
     if len(history) < 2:
         return None
 
-    dates = [h["recorded_at"] for h in history]
-    xp_totals = [h["xp_total"] or 0 for h in history]
-
-    # Texte au survol avec le rang
-    hover_texts = []
-    for h in history:
-        name = h.get("rank_name", "")
-        tier = h.get("rank_tier", "")
-        label = format_career_rank_label_fr(tier=tier, title=name, grade=None)
-        hover_texts.append(
-            t("career_rank_hover", rank=h["rank"], label=label, xp=f"{h['xp_total']:,}")
-        )
-
     bg_rgb = THEME_COLORS.bg_plot
     bg_color = f"rgb({bg_rgb[0]}, {bg_rgb[1]}, {bg_rgb[2]})"
-
     fig = go.Figure()
 
-    # ── Trace 1 : XP réel ──
-    fig.add_trace(
-        go.Scatter(
-            x=dates,
-            y=xp_totals,
-            mode="lines+markers",
-            name=t("career_xp_total"),
-            line={"color": THEME_COLORS.accent, "width": 2},
-            marker={"size": 6, "color": THEME_COLORS.accent},
-            hovertext=hover_texts,
-            hoverinfo="text",
-        )
-    )
-
-    # ── Trace 2 : XP estimé pré-sync ──
-    if estimated_curve:
-        est_dates = [pt[0] for pt in estimated_curve]
-        est_xp = [pt[1] for pt in estimated_curve]
-
-        est_hover = [
-            t("career_xp_estimated_hover", date=str(pt[0])[:10], xp=f"{pt[1]:,}")
-            for pt in estimated_curve
-        ]
-
-        fig.add_trace(
-            go.Scatter(
-                x=est_dates,
-                y=est_xp,
-                mode="lines",
-                name=t("career_xp_estimated"),
-                line={"color": "#CE93D8", "width": 2, "dash": "dot"},
-                hovertext=est_hover,
-                hoverinfo="text",
-            )
-        )
-
-    # ── Traces autres joueurs (masquées par défaut) ──
-    if other_players:
-        for idx, player in enumerate(other_players):
-            color = _OTHER_PLAYERS_COLORS[idx % len(_OTHER_PLAYERS_COLORS)]
-            p_gamertag = player["gamertag"]
-            p_history = player["history"]
-            p_dates = [h["recorded_at"] for h in p_history]
-            p_xp = [h["xp_total"] or 0 for h in p_history]
-            p_hover = [
-                t(
-                    "career_xp_other_player_hover",
-                    gamertag=p_gamertag,
-                    date=str(h["recorded_at"])[:10],
-                    xp=f"{h['xp_total'] or 0:,}",
-                )
-                for h in p_history
-            ]
-            fig.add_trace(
-                go.Scatter(
-                    x=p_dates,
-                    y=p_xp,
-                    mode="lines+markers",
-                    name=t("career_xp_other_player", gamertag=p_gamertag),
-                    line={"color": color, "width": 1.5},
-                    marker={"size": 5, "color": color},
-                    hovertext=p_hover,
-                    hoverinfo="text",
-                    visible="legendonly",
-                )
-            )
-
-    # ── Trace 3 : Projection → Héros (masquée par défaut) ──
-    if hero_projection and not is_max_rank:
-        proj_dates = [pt[0] for pt in hero_projection]
-        proj_xp = [pt[1] for pt in hero_projection]
-
-        proj_hover = [
-            t("career_projection_hero_hover", date=str(pt[0])[:10], xp=f"{pt[1]:,}")
-            for pt in hero_projection
-        ]
-
-        fig.add_trace(
-            go.Scatter(
-                x=proj_dates,
-                y=proj_xp,
-                mode="lines",
-                name=t("career_projection_hero"),
-                line={"color": "#FFA726", "width": 2, "dash": "dash"},
-                hovertext=proj_hover,
-                hoverinfo="text",
-                visible="legendonly",
-            )
-        )
-
-    # ── Trace 4 : Projection optimiste (masquée par défaut) ──
-    if optimistic_projection and not is_max_rank:
-        opt_dates = [pt[0] for pt in optimistic_projection]
-        opt_xp = [pt[1] for pt in optimistic_projection]
-
-        opt_hover = [
-            t("career_projection_optimistic_hover", date=str(pt[0])[:10], xp=f"{pt[1]:,}")
-            for pt in optimistic_projection
-        ]
-
-        fig.add_trace(
-            go.Scatter(
-                x=opt_dates,
-                y=opt_xp,
-                mode="lines",
-                name=t("career_projection_optimistic"),
-                line={"color": "#66BB6A", "width": 2, "dash": "dashdot"},
-                hovertext=opt_hover,
-                hoverinfo="text",
-                visible="legendonly",
-            )
-        )
-
-    # ── Ligne horizontale seuil Héros ──
-    if (hero_projection or optimistic_projection) and not is_max_rank:
-        fig.add_hline(
-            y=XP_HERO_TOTAL,
-            line_dash="dot",
-            line_color="rgba(255, 215, 0, 0.3)",
-            line_width=1,
-            annotation_text=t("career_hero_threshold"),
-            annotation_position="top left",
-            annotation_font_size=10,
-            annotation_font_color="rgba(255, 215, 0, 0.5)",
-        )
+    _add_xp_traces(fig, history, estimated_curve, other_players)
+    _add_projection_traces(fig, hero_projection, optimistic_projection, is_max_rank=is_max_rank)
 
     fig.update_layout(
         title=t("career_xp_progress"),
@@ -392,9 +391,7 @@ def _create_xp_history_chart(  # noqa: PLR0913
         },
         margin={"t": 40, "b": 80, "l": 60, "r": 20},
     )
-
     apply_halo_plot_style(fig)
-
     return fig
 
 
