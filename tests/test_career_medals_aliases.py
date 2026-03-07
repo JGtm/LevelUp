@@ -118,18 +118,10 @@ class TestCareerRankInfoProperties:
 # medals.py — fonctions testables
 # ============================================================================
 
-from src.ui.medals import get_local_medals_icons_dir, get_medals_cache_dir
+from src.ui.medals import get_local_medals_icons_dir
 
 
-class TestMedalsCacheDir:
-    def test_default_returns_string(self):
-        result = get_medals_cache_dir()
-        assert isinstance(result, str)
-
-    def test_override_via_env(self, monkeypatch):
-        monkeypatch.setenv("OPENSPARTAN_MEDALS_CACHE", "/custom/path")
-        assert get_medals_cache_dir() == "/custom/path"
-
+class TestMedalsIconsDir:
     def test_local_icons_dir(self):
         result = get_local_medals_icons_dir()
         assert isinstance(result, str)

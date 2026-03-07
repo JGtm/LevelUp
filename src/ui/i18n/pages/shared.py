@@ -7,19 +7,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "#### 👥 Joueur",
         "en": "#### 👥 Player",
     },
-    # ── OpenSpartan ──────────────────────────────────────────────────────────
-    "openspartan_exe_not_found": {
-        "fr": "Executable introuvable. Tu peux définir OPENSPARTAN_WORKSHOP_EXE si besoin.",
-        "en": "Executable not found. You can set OPENSPARTAN_WORKSHOP_EXE if needed.",
-    },
-    "openspartan_launched": {
-        "fr": "OpenSpartan Workshop lancé.",
-        "en": "OpenSpartan Workshop launched.",
-    },
-    "openspartan_launch_error": {
-        "fr": "Impossible de lancer OpenSpartan Workshop : {error}",
-        "en": "Unable to launch OpenSpartan Workshop: {error}",
-    },
     # ── Page Timeseries — spinners & labels manquants ─────────────────────────
     "citations_halo5_title": {
         "fr": "Citations",

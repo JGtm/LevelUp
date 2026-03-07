@@ -1,4 +1,4 @@
-"""Lanceur LevelUp pour OpenSpartan Graph.
+"""Lanceur LevelUp.
 
 Architecture v5 DuckDB unifiée avec stockage partagé (shared_matches).
 

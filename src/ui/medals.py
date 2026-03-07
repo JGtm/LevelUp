@@ -2,7 +2,7 @@
 
 Ce module centralise les fonctions liées aux médailles Halo Infinite :
 - Chargement des fichiers de traduction (FR/EN)
-- Récupération des icônes depuis le cache OpenSpartan.Workshop
+- Récupération des icônes embarquées (static/medals/icons/)
 - Affichage d'une grille de médailles dans Streamlit
 """
 
@@ -16,7 +16,7 @@ import streamlit as st
 __all__ = [
     "load_medal_name_maps",
     "medal_has_known_label",
-    "get_medals_cache_dir",
+    "get_local_medals_icons_dir",
     "medal_label",
     "medal_icon_path",
     "render_medals_grid",
@@ -111,29 +111,6 @@ def medal_has_known_label(nid: int) -> bool:
     return key in fr_map or key in en_map
 
 
-def get_medals_cache_dir() -> str:
-    """Retourne le dossier des icônes médailles (OpenSpartan.Workshop).
-
-    Le chemin peut être surchargé via la variable d'environnement
-    OPENSPARTAN_MEDALS_CACHE.
-
-    Returns:
-        Chemin absolu vers le dossier de cache des médailles.
-    """
-    override = os.environ.get("OPENSPARTAN_MEDALS_CACHE")
-    if override:
-        return override
-
-    localappdata = os.environ.get("LOCALAPPDATA")
-    if localappdata:
-        return os.path.join(localappdata, "OpenSpartan.Workshop", "imagecache", "medals")
-
-    # fallback (utile hors Windows, mais probablement vide)
-    return os.path.join(
-        os.path.expanduser("~"), "AppData", "Local", "OpenSpartan.Workshop", "imagecache", "medals"
-    )
-
-
 def medal_label(nid: int, lang: str = "fr") -> str:
     """Retourne le label d'une médaille selon la langue.
 
@@ -161,11 +138,7 @@ def medal_icon_path(nid: int) -> str | None:
         Chemin absolu vers l'icône ou None si introuvable.
     """
     local_p = os.path.join(get_local_medals_icons_dir(), f"{int(nid)}.png")
-    if os.path.exists(local_p):
-        return local_p
-
-    p = os.path.join(get_medals_cache_dir(), f"{int(nid)}.png")
-    return p if os.path.exists(p) else None
+    return local_p if os.path.exists(local_p) else None
 
 
 def render_medals_grid(
@@ -191,14 +164,10 @@ def render_medals_grid(
     # (certaines comme #590706932 sont des médailles internes/test à ignorer)
 
     local_dir = get_local_medals_icons_dir()
-    cache_dir = get_medals_cache_dir()
-    has_local = os.path.isdir(local_dir)
-    has_cache = os.path.isdir(cache_dir)
-    if not (has_local or has_cache):
+    if not os.path.isdir(local_dir):
         st.caption(
             "Icônes de médailles introuvables. "
-            "Utilise scripts/sync_medal_icons.py pour copier les PNG en local, "
-            "ou définis OPENSPARTAN_MEDALS_CACHE / installe OpenSpartan.Workshop."
+            "Utilise scripts/sync_medal_icons.py pour copier les PNG en local."
         )
 
     cols_per_row = max(3, min(int(cols_per_row), 12))

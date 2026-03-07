@@ -73,14 +73,6 @@ def get_default_db_path() -> str:
     return ""
 
 
-def get_default_workshop_exe_path() -> str:
-    """Retourne le chemin par défaut de l'exécutable OpenSpartan Workshop."""
-    pf86 = os.environ.get("PROGRAMFILES(X86)")
-    if not pf86:
-        pf86 = r"C:\Program Files (x86)"
-    return os.path.join(pf86, "Den.Dev", "OpenSpartan Workshop", "OpenSpartan.Workshop.exe")
-
-
 # =============================================================================
 # Constantes de l'application
 # =============================================================================

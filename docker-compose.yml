@@ -1,5 +1,5 @@
 services:
-  openspartan-graph:
+  levelup:
     build: .
     ports:
       - "8501:8501"

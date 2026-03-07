@@ -81,7 +81,7 @@ def resolve_local_image_path(value: str | None) -> str | None:
 
 def _build_auth_headers() -> dict[str, str]:
     """Construit les headers d'authentification pour les endpoints Halo Waypoint."""
-    headers: dict[str, str] = {"User-Agent": "OpenSpartan-Graphs"}
+    headers: dict[str, str] = {"User-Agent": "LevelUp"}
     clearance = str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip()
     spartan = str(os.environ.get("SPNKR_SPARTAN_TOKEN") or "").strip()
     if clearance:
@@ -180,7 +180,7 @@ async def _build_spnkr_coro(  # noqa: PLR0913
     if use_direct_get:
         headers = {
             "Accept": "image/png, image/*;q=0.9, */*;q=0.8",
-            "User-Agent": "OpenSpartan-Graphs",
+            "User-Agent": "LevelUp",
         }
         if spartan_token:
             headers["x-343-authorization-spartan"] = spartan_token
