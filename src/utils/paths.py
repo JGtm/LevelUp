@@ -1,4 +1,4 @@
-"""Gestion centralisée des chemins pour le projet OpenSpartan Graph.
+"""Gestion centralisée des chemins pour le projet LevelUp.
 
 Ce module définit tous les chemins utilisés par l'architecture v4 (DuckDB unifiée) :
 - data/players/{gamertag}/stats.duckdb : DB joueur
@@ -32,7 +32,7 @@ def _find_repo_root() -> Path:
     return Path.cwd()
 
 
-# Racine du projet OpenSpartan Graph
+# Racine du projet LevelUp
 REPO_ROOT: Path = _find_repo_root()
 
 # Dossier des données

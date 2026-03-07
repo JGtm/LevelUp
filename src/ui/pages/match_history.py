@@ -354,6 +354,6 @@ def _render_csv_download(dff_table: pl.DataFrame) -> None:
     st.download_button(
         t("btn_download_csv"),
         data=csv,
-        file_name="openspartan_matches.csv",
+        file_name="levelup_matches.csv",
         mime="text/csv",
     )

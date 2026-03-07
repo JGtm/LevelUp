@@ -1,7 +1,7 @@
 """Configuration centralisée pour DuckDB.
 
 Ce module centralise tous les paramètres de configuration DuckDB
-utilisés dans le projet OpenSpartan Graph (architecture v4).
+utilisés dans le projet LevelUp (architecture v4).
 
 Usage:
     from src.data.infrastructure.database.duckdb_config import DuckDBConfig, configure_connection

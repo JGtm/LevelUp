@@ -1,6 +1,6 @@
 # src/ai/rag.py
 """
-RAG (Retrieval-Augmented Generation) pour OpenSpartan Graph.
+RAG (Retrieval-Augmented Generation) pour LevelUp.
 
 Façade re-exportant les classes depuis les sous-modules :
 - _rag_models : RAGConfig, Document, SearchResult

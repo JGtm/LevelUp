@@ -46,10 +46,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Aperçu",
         "en": "Preview",
     },
-    "btn_launch_openspartan": {
-        "fr": "Lancer OpenSpartan Workshop",
-        "en": "Launch OpenSpartan Workshop",
-    },
     # btn_confirm, btn_cancel : définis dans common.py
     # ── Confirmations ────────────────────────────────────────────────────────
     "confirm_clear_selection": {

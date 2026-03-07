@@ -7,7 +7,6 @@ from src.ui.aliases import (
 from src.ui.formatting import format_date_fr, format_mmss
 from src.ui.medals import (
     get_local_medals_icons_dir,
-    get_medals_cache_dir,
     load_medal_name_maps,
     medal_has_known_label,
     medal_icon_path,
@@ -34,7 +33,6 @@ __all__ = [
     # medals
     "load_medal_name_maps",
     "medal_has_known_label",
-    "get_medals_cache_dir",
     "get_local_medals_icons_dir",
     "medal_label",
     "medal_icon_path",
