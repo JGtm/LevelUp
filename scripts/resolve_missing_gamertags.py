@@ -127,14 +127,12 @@ async def resolve_xuids_batch(
     xuids: list[str],
     batch_size: int = 20,  # Réduit pour éviter rate limiting
 ) -> dict[str, str]:
-    """Résout une liste de XUIDs vers gamertags via SPNKr."""
-    from src.data.sync.api_client import SPNKrAPIClient
+    """Résout une liste de XUIDs vers gamertags via l'API Halo."""
+    from src.data.sync.api_factory import create_api_client
 
     resolved: dict[str, str] = {}
 
-    async with SPNKrAPIClient(requests_per_second=1) as api_client:
-        client = api_client.client
-
+    async with create_api_client(requests_per_second=1) as api_client:
         # Traiter par batches
         total_batches = (len(xuids) + batch_size - 1) // batch_size
         for i in range(0, len(xuids), batch_size):
@@ -145,18 +143,12 @@ async def resolve_xuids_batch(
             for attempt in range(retries):
                 try:
                     logger.info(f"  Batch {batch_num}/{total_batches}: {len(batch)} XUIDs...")
-                    resp = await client.profile.get_users_by_id(batch)
-
-                    # Extraire les données
-                    if hasattr(resp, "data"):
-                        users = resp.data
-                    else:
-                        users = await resp.parse()
+                    users = await api_client.get_users_by_id(batch)
 
                     count = 0
                     for user in users:
-                        xuid = str(getattr(user, "xuid", "") or "").strip()
-                        gamertag = str(getattr(user, "gamertag", "") or "").strip()
+                        xuid = user.get("xuid", "").strip()
+                        gamertag = user.get("gamertag", "").strip()
                         if xuid and gamertag:
                             resolved[xuid] = gamertag
                             count += 1

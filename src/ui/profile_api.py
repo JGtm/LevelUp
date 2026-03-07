@@ -66,15 +66,9 @@ def fetch_appearance_via_spnkr(  # noqa: C901, PLR0913
         return _run_sync_compat(coro, timeout=float(timeout_seconds) + 20.0)
 
     async def _run() -> ProfileAppearance:
-        try:
-            import aiohttp
-            from spnkr.client import HaloInfiniteClient
-        except ImportError as e:
-            missing_module = str(e).split("'")[1] if "'" in str(e) else "module"
-            raise ImportError(
-                f"Module {missing_module} manquant. "
-                "Installer les dépendances SPNKr: pip install spnkr aiohttp"
-            ) from e
+        import aiohttp
+
+        from src.data.sync.api_client import SPNKrAPIClient
 
         timeout = aiohttp.ClientTimeout(total=float(timeout_seconds))
         async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -87,26 +81,40 @@ def fetch_appearance_via_spnkr(  # noqa: C901, PLR0913
                 return resp
 
             async def _call_with_tokens(st_in: str, ct_in: str):
-                client = HaloInfiniteClient(
-                    session,
-                    spartan_token=st_in,
-                    clearance_token=ct_in,
+                from src.data.sync._tokens import Tokens
+
+                tokens = Tokens(spartan_token=st_in, clearance_token=ct_in)
+                api = SPNKrAPIClient(
+                    tokens=tokens,
                     requests_per_second=int(requests_per_second),
                 )
-                resp = await client.economy.get_player_customization(
-                    str(xuid).strip(), view_type="public"
-                )
-                customization = await _parse(resp)
+                await api.__aenter__()
+                try:
+                    client = api.client
+                    resp = await client.economy.get_player_customization(
+                        str(xuid).strip(), view_type="public"
+                    )
+                    customization = await _parse(resp)
 
-                # Best-effort: Career Rank du joueur
-                (
-                    rank_label,
-                    rank_subtitle,
-                    rank_image_url,
-                    adornment_image_url,
-                ) = await _get_career_rank_for_player(client, session, st_in, ct_in, xuid, _parse)
+                    # Best-effort: Career Rank du joueur
+                    (
+                        rank_label,
+                        rank_subtitle,
+                        rank_image_url,
+                        adornment_image_url,
+                    ) = await _get_career_rank_for_player(
+                        client, session, st_in, ct_in, xuid, _parse
+                    )
 
-                return customization, rank_label, rank_subtitle, rank_image_url, adornment_image_url
+                    return (
+                        customization,
+                        rank_label,
+                        rank_subtitle,
+                        rank_image_url,
+                        adornment_image_url,
+                    )
+                finally:
+                    await api.__aexit__(None, None, None)
 
             st, ct = await _get_tokens(
                 session,
@@ -353,15 +361,10 @@ def fetch_xuid_via_spnkr(
         return _run_sync_compat(coro, timeout=float(timeout_seconds) + 20.0)
 
     async def _run() -> tuple[str, str]:
-        try:
-            import aiohttp
-            from spnkr.client import HaloInfiniteClient
-        except ImportError as e:
-            missing_module = str(e).split("'")[1] if "'" in str(e) else "module"
-            raise ImportError(
-                f"Module {missing_module} manquant. "
-                "Installer les dépendances SPNKr: pip install spnkr aiohttp"
-            ) from e
+        import aiohttp
+
+        from src.data.sync._tokens import Tokens
+        from src.data.sync.api_factory import create_api_client
 
         gt = str(gamertag or "").strip()
         if not gt:
@@ -371,13 +374,15 @@ def fetch_xuid_via_spnkr(
         async with aiohttp.ClientSession(timeout=timeout) as session:
 
             async def _call_with_tokens(st_in: str, ct_in: str):
-                client = HaloInfiniteClient(
-                    session,
-                    spartan_token=st_in,
-                    clearance_token=ct_in,
+                tokens = Tokens(spartan_token=st_in, clearance_token=ct_in)
+                async with create_api_client(
+                    tokens=tokens,
                     requests_per_second=int(requests_per_second),
-                )
-                return await client.profile.get_user_by_gamertag(gt)
+                ) as client:
+                    result = await client.get_user_by_gamertag(gt)
+                    if result is None:
+                        raise RuntimeError(f"Gamertag introuvable : {gt}")
+                    return result
 
             st, ct = await _get_tokens(
                 session,
@@ -400,16 +405,10 @@ def fetch_xuid_via_spnkr(
                 else:
                     raise
 
-            # Compat: selon la version SPNKr, JsonResponse expose `data` ou seulement `parse()`.
-            if hasattr(resp, "data"):
-                user = resp.data
-            else:
-                user = await resp.parse()
-
-            xuid = str(getattr(user, "xuid", "") or "").strip()
+            xuid = resp.get("xuid", "").strip()
             if not xuid.isdigit():
                 raise RuntimeError("Impossible de résoudre le XUID pour ce gamertag.")
-            canonical_gt = str(getattr(user, "gamertag", "") or "").strip() or gt
+            canonical_gt = resp.get("gamertag", "").strip() or gt
             return xuid, canonical_gt
 
     return _run_sync(_run())

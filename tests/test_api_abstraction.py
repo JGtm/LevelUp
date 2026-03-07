@@ -113,6 +113,7 @@ class TestNoSpnkrInMigratedUI:
         [
             "src/ui/profile_api_tokens.py",
             "src/ui/player_assets.py",
+            "src/ui/profile_api.py",
         ],
     )
     def test_no_top_level_spnkr_import(self, module_path: str) -> None:

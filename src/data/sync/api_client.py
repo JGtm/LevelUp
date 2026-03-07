@@ -45,8 +45,6 @@ __all__ = [
 ]
 
 
-
-
 # =============================================================================
 # Retry helper
 # =============================================================================
@@ -391,6 +389,45 @@ class SPNKrAPIClient:
         except Exception as e:
             logger.warning("Erreur get_player_customization(%s): %s", xuid, e)
             return None
+
+    async def get_user_by_gamertag(self, gamertag: str) -> dict[str, Any] | None:
+        """Résout un gamertag vers un profil Xbox (xuid, gamertag canonique)."""
+        gt = str(gamertag or "").strip()
+        if not gt:
+            return None
+        try:
+            resp = await self.client.profile.get_user_by_gamertag(gt)
+            if hasattr(resp, "data"):
+                user = resp.data
+            else:
+                user = await resp.parse()
+            if user is None:
+                return None
+            return {
+                "xuid": str(getattr(user, "xuid", "") or "").strip(),
+                "gamertag": str(getattr(user, "gamertag", "") or "").strip(),
+            }
+        except Exception as e:
+            logger.warning("Erreur get_user_by_gamertag(%s): %s", gamertag, e)
+            return None
+
+    async def get_users_by_id(self, xuids: list[str]) -> list[dict[str, Any]]:
+        """Résout une liste de XUIDs vers des profils Xbox."""
+        if not xuids:
+            return []
+        try:
+            resp = await self.client.profile.get_users_by_id(xuids)
+            users = resp.data if hasattr(resp, "data") else await resp.parse()
+            return [
+                {
+                    "xuid": str(getattr(u, "xuid", "") or "").strip(),
+                    "gamertag": str(getattr(u, "gamertag", "") or "").strip(),
+                }
+                for u in (users or [])
+            ]
+        except Exception as e:
+            logger.warning("Erreur get_users_by_id(%s XUIDs): %s", len(xuids), e)
+            return []
 
     async def get_spartan_token_xuid(self) -> str | None:
         """Récupère le XUID du joueur authentifié depuis le token Spartan."""
