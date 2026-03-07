@@ -115,7 +115,6 @@ from src.ui.filter_state import (
     save_filter_preferences,
 )
 from src.ui.formatting import (
-    PARIS_TZ,
     format_datetime_fr_hm,
     format_score_label,
     score_css_color,
@@ -135,6 +134,7 @@ from src.ui.sync import (
     render_sync_indicator,
     sync_all_players_duckdb,
 )
+from src.ui.tz import get_tz  # timezone dynamique depuis app_settings
 from src.visualization import (
     plot_multi_metric_bars_by_match,
 )
@@ -787,7 +787,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
         load_highlight_events_fn=cached_load_highlight_events_for_match,
         load_match_gamertags_fn=cached_load_match_player_gamertags,
         load_match_rosters_fn=cached_load_match_rosters,
-        paris_tz=PARIS_TZ,
+        paris_tz=get_tz(),
     )
 
     return PageContext(
