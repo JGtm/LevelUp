@@ -721,6 +721,186 @@ class TestCareerRankApiParsing:
 duckdb = pytest.importorskip("duckdb")
 
 
+class TestRunLusrPostSync:
+    """Tests pour _run_lusr_post_sync() — appelé inconditionnellement."""
+
+    def test_lusr_called_when_no_new_matches(self, tmp_path):
+        """batch_compute_lusr est appelé même si matches_inserted == 0."""
+        from unittest.mock import patch
+
+        from src.data.sync.engine import DuckDBSyncEngine
+
+        db_path = tmp_path / "player" / "stats.duckdb"
+        db_path.parent.mkdir(parents=True)
+        meta_dir = tmp_path / "warehouse"
+        meta_dir.mkdir(parents=True)
+
+        import duckdb
+
+        duckdb.connect(str(meta_dir / "metadata.duckdb")).close()
+
+        engine = DuckDBSyncEngine(
+            player_db_path=db_path,
+            xuid="2535469190789936",
+            gamertag="JGtm",
+            metadata_db_path=meta_dir / "metadata.duckdb",
+        )
+
+        calls: list[str] = []
+
+        def fake_lusr(force: bool = False) -> int:
+            calls.append("lusr")
+            return 0
+
+        with patch.object(engine, "batch_compute_lusr", side_effect=fake_lusr):
+            engine._run_lusr_post_sync()
+
+        assert calls == ["lusr"], "batch_compute_lusr doit être appelé par _run_lusr_post_sync"
+        engine.close()
+
+    def test_lusr_logs_count_when_nonzero(self, tmp_path, caplog):
+        """Un message INFO est loggé quand des ratings sont calculés."""
+        import logging
+        from unittest.mock import patch
+
+        from src.data.sync.engine import DuckDBSyncEngine
+
+        db_path = tmp_path / "player" / "stats.duckdb"
+        db_path.parent.mkdir(parents=True)
+        meta_dir = tmp_path / "warehouse"
+        meta_dir.mkdir(parents=True)
+
+        import duckdb
+
+        duckdb.connect(str(meta_dir / "metadata.duckdb")).close()
+
+        engine = DuckDBSyncEngine(
+            player_db_path=db_path,
+            xuid="2535469190789936",
+            gamertag="JGtm",
+            metadata_db_path=meta_dir / "metadata.duckdb",
+        )
+
+        with (
+            patch.object(engine, "batch_compute_lusr", return_value=3),
+            caplog.at_level(logging.INFO, logger="src.data.sync.engine"),
+        ):
+            engine._run_lusr_post_sync()
+
+        assert any("3" in r.message for r in caplog.records)
+        engine.close()
+
+    def test_lusr_exception_does_not_propagate(self, tmp_path):
+        """Une exception dans batch_compute_lusr est attrapée silencieusement."""
+        from unittest.mock import patch
+
+        from src.data.sync.engine import DuckDBSyncEngine
+
+        db_path = tmp_path / "player" / "stats.duckdb"
+        db_path.parent.mkdir(parents=True)
+        meta_dir = tmp_path / "warehouse"
+        meta_dir.mkdir(parents=True)
+
+        import duckdb
+
+        duckdb.connect(str(meta_dir / "metadata.duckdb")).close()
+
+        engine = DuckDBSyncEngine(
+            player_db_path=db_path,
+            xuid="2535469190789936",
+            gamertag="JGtm",
+            metadata_db_path=meta_dir / "metadata.duckdb",
+        )
+
+        with patch.object(
+            engine, "batch_compute_lusr", side_effect=RuntimeError("DuckDB conflict")
+        ):
+            # Ne doit pas lever d'exception
+            engine._run_lusr_post_sync()
+
+        engine.close()
+
+    def test_lusr_called_when_shared_connection_open(self, tmp_path):
+        """batch_compute_lusr est appelé même quand _shared_connection est déjà ouverte.
+
+        Cas «matches_inserted > 0 mais _run_post_sync_compute n'a pas encore tourné» :
+        la connexion doit être fermée AVANT l'appel à batch_compute_lusr.
+        """
+        from unittest.mock import patch
+
+        import duckdb
+
+        from src.data.sync.engine import DuckDBSyncEngine
+
+        db_path = tmp_path / "player" / "stats.duckdb"
+        db_path.parent.mkdir(parents=True)
+        meta_dir = tmp_path / "warehouse"
+        meta_dir.mkdir(parents=True)
+
+        duckdb.connect(str(meta_dir / "metadata.duckdb")).close()
+
+        engine = DuckDBSyncEngine(
+            player_db_path=db_path,
+            xuid="2535469190789936",
+            gamertag="JGtm",
+            metadata_db_path=meta_dir / "metadata.duckdb",
+        )
+
+        # Simuler une connexion shared ouverte (comme après _load_existing_match_ids)
+        engine._shared_connection = duckdb.connect(":memory:")
+
+        calls: list[str] = []
+
+        def fake_lusr(force: bool = False) -> int:
+            # La connexion doit avoir été fermée avant cet appel
+            assert (
+                engine._shared_connection is None
+            ), "_shared_connection doit être None quand batch_compute_lusr est appelé"
+            calls.append("lusr")
+            return 2
+
+        with patch.object(engine, "batch_compute_lusr", side_effect=fake_lusr):
+            engine._run_lusr_post_sync()
+
+        assert calls == ["lusr"], "batch_compute_lusr doit être appelé même avec shared ouvert"
+        engine.close()
+
+    def test_lusr_binder_error_from_batch_does_not_propagate(self, tmp_path):
+        """Un Binder Error DuckDB levé par batch_compute_lusr ne remonte pas dans result.errors.
+
+        Ce test reproduit le scénario : DuckDBRepository actif avec shared attaché,
+        suivi d'un appel à _run_lusr_post_sync. L'erreur doit être absorbée.
+        """
+        from unittest.mock import patch
+
+        import duckdb
+
+        from src.data.sync.engine import DuckDBSyncEngine
+
+        db_path = tmp_path / "player" / "stats.duckdb"
+        db_path.parent.mkdir(parents=True)
+        meta_dir = tmp_path / "warehouse"
+        meta_dir.mkdir(parents=True)
+
+        duckdb.connect(str(meta_dir / "metadata.duckdb")).close()
+
+        engine = DuckDBSyncEngine(
+            player_db_path=db_path,
+            xuid="2535469190789936",
+            gamertag="JGtm",
+            metadata_db_path=meta_dir / "metadata.duckdb",
+        )
+
+        binder_error = duckdb.BinderException(
+            'Binder Error: Unique file handle conflict: Cannot attach "shared_matches"'
+        )
+        with patch.object(engine, "batch_compute_lusr", side_effect=binder_error):
+            # Ne doit pas lever, le Binder Error doit être absorbé silencieusement
+            engine._run_lusr_post_sync()
+
+        engine.close()
+
+
 class TestEngineBatchInsertMethods:
     """Tests pour les méthodes batch du DuckDBSyncEngine (Sprint 15)."""
 

@@ -231,6 +231,10 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
         player_db_path = repo_root / "data" / "players" / gamertag / "stats.duckdb"
         logger.info("Nouveau joueur %s, création de la DB: %s", gamertag, player_db_path)
 
+    # Suspendre l'ATTACH shared_matches.duckdb dans les DuckDBRepository actifs
+    # pour éviter le Binder Error quand l'engine ouvre shared_matches.duckdb en R/W.
+    _activate_sync_mode()
+    _engine_ref = None
     try:
         from src.data.sync import DuckDBSyncEngine, SyncOptions
 
@@ -239,6 +243,7 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
             xuid=xuid,
             gamertag=gamertag,
         )
+        _engine_ref = engine
 
         options = SyncOptions(
             match_type=match_type,
@@ -253,12 +258,15 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
         else:
             result = await engine.sync_full(options)
 
-        engine.close()
-
         return result.success, result.to_message()
 
     except Exception as e:
         return False, f"Erreur sync DuckDB: {e}"
+    finally:
+        if _engine_ref is not None:
+            with contextlib.suppress(Exception):
+                _engine_ref.close()
+        _deactivate_sync_mode()
 
 
 def sync_player_duckdb(  # noqa: PLR0913
