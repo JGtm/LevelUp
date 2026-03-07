@@ -267,4 +267,152 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "🔧 Reconfigurer",
         "en": "🔧 Reconfigure",
     },
+    # ── Smoke test post-installation ──────────────────────────────────────
+    "smoke_title": {
+        "fr": "Vérification de l'installation",
+        "en": "Installation Verification",
+    },
+    "smoke_subtitle": {
+        "fr": (
+            "On va synchroniser **{count} matchs** pour **{gamertag}** "
+            "et vérifier que tout fonctionne."
+        ),
+        "en": ("We'll sync **{count} matches** for **{gamertag}** " "and verify everything works."),
+    },
+    "smoke_start_btn": {
+        "fr": "🚀 Lancer le test de vérification",
+        "en": "🚀 Start verification test",
+    },
+    "smoke_info_before_start": {
+        "fr": (
+            "Ce test va :\n"
+            "1. Synchroniser quelques matchs depuis l'API Halo\n"
+            "2. Enrichir les données (scores, citations, ratings...)\n"
+            "3. Vérifier l'intégrité de toutes les tables\n\n"
+            "⏱️ Durée estimée : 1-2 minutes"
+        ),
+        "en": (
+            "This test will:\n"
+            "1. Sync a few matches from the Halo API\n"
+            "2. Enrich data (scores, citations, ratings...)\n"
+            "3. Verify all tables integrity\n\n"
+            "⏱️ Estimated time: 1-2 minutes"
+        ),
+    },
+    # Phase 1 : Sync
+    "smoke_phase1_title": {
+        "fr": "📡 Phase 1 — Synchronisation",
+        "en": "📡 Phase 1 — Synchronization",
+    },
+    "smoke_phase1_connecting": {
+        "fr": "Connexion à l'API Halo Infinite...",
+        "en": "Connecting to Halo Infinite API...",
+    },
+    "smoke_phase1_fetching": {
+        "fr": "Récupération de {count} matchs...",
+        "en": "Fetching {count} matches...",
+    },
+    "smoke_phase1_done": {
+        "fr": "Sync terminée en {seconds}s",
+        "en": "Sync completed in {seconds}s",
+    },
+    "smoke_phase1_failed": {
+        "fr": "Échec de la synchronisation",
+        "en": "Synchronization failed",
+    },
+    # Phase 2 : Backfill
+    "smoke_phase2_title": {
+        "fr": "⚙️ Phase 2 — Enrichissement des données",
+        "en": "⚙️ Phase 2 — Data enrichment",
+    },
+    "smoke_phase2_running": {
+        "fr": "Calcul des scores, sessions, citations, ratings...",
+        "en": "Computing scores, sessions, citations, ratings...",
+    },
+    "smoke_phase2_done": {
+        "fr": "Enrichissements terminés",
+        "en": "Enrichments completed",
+    },
+    "smoke_phase2_partial": {
+        "fr": "Enrichissements partiels",
+        "en": "Partial enrichments",
+    },
+    # Phase 3 : Vérification
+    "smoke_phase3_title": {
+        "fr": "🔍 Phase 3 — Vérification d'intégrité",
+        "en": "🔍 Phase 3 — Integrity verification",
+    },
+    "smoke_phase3_checking": {
+        "fr": "Vérification de toutes les tables...",
+        "en": "Checking all tables...",
+    },
+    "smoke_phase3_done": {
+        "fr": "Vérification terminée",
+        "en": "Verification completed",
+    },
+    # Résultats
+    "smoke_results_title": {
+        "fr": "Rapport de vérification",
+        "en": "Verification Report",
+    },
+    "smoke_result_sync_failed": {
+        "fr": (
+            "La synchronisation a échoué : **{message}**\n\n"
+            "Vérifiez vos credentials Azure et votre token OAuth."
+        ),
+        "en": (
+            "Synchronization failed: **{message}**\n\n"
+            "Check your Azure credentials and OAuth token."
+        ),
+    },
+    "smoke_result_all_ok": {
+        "fr": "🎉 Tout est parfait ! **{passed}/{total}** vérifications réussies.",
+        "en": "🎉 Everything is perfect! **{passed}/{total}** checks passed.",
+    },
+    "smoke_result_ok_with_warnings": {
+        "fr": (
+            "✅ Installation fonctionnelle — **{passed}/{total}** vérifications réussies, "
+            "**{warnings}** avertissement(s) non bloquant(s)."
+        ),
+        "en": (
+            "✅ Installation functional — **{passed}/{total}** checks passed, "
+            "**{warnings}** non-blocking warning(s)."
+        ),
+    },
+    "smoke_result_issues": {
+        "fr": (
+            "⚠️ **{failed}** vérification(s) en échec sur **{total}**. "
+            "Consultez le détail ci-dessous."
+        ),
+        "en": ("⚠️ **{failed}** check(s) failed out of **{total}**. " "See details below."),
+    },
+    # Actions post-test
+    "smoke_next_steps": {
+        "fr": "Prochaines étapes",
+        "en": "Next steps",
+    },
+    "smoke_next_steps_info": {
+        "fr": (
+            "L'installation est validée ! Vous pouvez maintenant :\n"
+            "- **Lancer une sync complète** pour récupérer tout votre historique\n"
+            "- **Accéder au dashboard** avec les données déjà synchronisées"
+        ),
+        "en": (
+            "Installation validated! You can now:\n"
+            "- **Run a full sync** to fetch your complete match history\n"
+            "- **Access the dashboard** with the already synced data"
+        ),
+    },
+    "smoke_btn_full_sync": {
+        "fr": "📡 Continuer vers le dashboard",
+        "en": "📡 Continue to dashboard",
+    },
+    "smoke_btn_dashboard": {
+        "fr": "📊 Accéder au dashboard",
+        "en": "📊 Access dashboard",
+    },
+    "smoke_btn_retry": {
+        "fr": "🔄 Relancer le test",
+        "en": "🔄 Retry test",
+    },
 }
