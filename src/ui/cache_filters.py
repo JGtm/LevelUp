@@ -26,10 +26,11 @@ from src.ui._cache_loading import (  # noqa: F401
 )
 from src.ui._cache_sessions import cached_compute_sessions_db  # noqa: F401
 from src.ui.cache_loaders import (
-    PARIS_TZ_NAME,
     cached_query_matches_with_friend,
     load_df_optimized,
 )
+from src.ui.vectorize_helpers import build_mapping
+from src.utils.db import is_duckdb_v4_path as _is_duckdb_v4_path
 
 if TYPE_CHECKING:
     pass
@@ -37,32 +38,133 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+_FRIEND_DF_EMPTY_SCHEMA: dict[str, pl.PolarsDataType] = {
+    "match_id": pl.Utf8,
+    "start_time": pl.Datetime,
+    "playlist_name": pl.Utf8,
+    "pair_name": pl.Utf8,
+    "same_team": pl.Boolean,
+    "my_team_id": pl.Int64,
+    "my_outcome": pl.Utf8,
+    "friend_team_id": pl.Int64,
+    "friend_outcome": pl.Utf8,
+}
+
+
+def _build_friend_df_from_match_ids_v4(  # noqa: PLR0913
+    db_path: str,
+    self_xuid: str,
+    friend_xuid: str,
+    match_ids: list[str],
+    same_team_only: bool,
+    tz_name: str = "Europe/Paris",
+) -> pl.DataFrame:
+    """Construit le DataFrame des matchs partagés pour DuckDB v4.
+
+    Requête shared.match_registry + shared.match_participants à partir
+    d'une liste de match_ids (list[str]) et applique la conversion UTC→Paris.
+    """
+    try:
+        from src.ui._cache_core import get_cached_repository_st
+
+        repo = get_cached_repository_st(db_path, self_xuid)
+        conn = repo._get_connection()
+        placeholders = ", ".join(["?"] * len(match_ids))
+        result = conn.execute(
+            f"""
+            SELECT
+                mr.match_id,
+                mr.start_time,
+                mr.playlist_name,
+                mr.pair_name,
+                me.team_id  AS my_team_id,
+                CAST(me.outcome AS VARCHAR) AS my_outcome,
+                fr.team_id  AS friend_team_id,
+                CAST(fr.outcome AS VARCHAR) AS friend_outcome,
+                (me.team_id = fr.team_id) AS same_team
+            FROM shared.match_registry mr
+            LEFT JOIN shared.match_participants me
+                ON mr.match_id = me.match_id AND me.xuid = ?
+            LEFT JOIN shared.match_participants fr
+                ON mr.match_id = fr.match_id AND fr.xuid = ?
+            WHERE mr.match_id IN ({placeholders})
+            ORDER BY mr.start_time ASC
+            """,
+            [self_xuid, friend_xuid, *match_ids],
+        )
+        dfr = result.pl()
+    except Exception:
+        logger.debug("_build_friend_df_from_match_ids_v4 erreur", exc_info=True)
+        return pl.DataFrame(schema=_FRIEND_DF_EMPTY_SCHEMA)
+
+    if dfr.is_empty():
+        return pl.DataFrame(schema=_FRIEND_DF_EMPTY_SCHEMA)
+
+    if same_team_only:
+        dfr = dfr.filter(pl.col("same_team") == True)  # noqa: E712
+
+    if dfr.is_empty():
+        return pl.DataFrame(schema=_FRIEND_DF_EMPTY_SCHEMA)
+
+    # Traduction des libellés playlist / pair
+    _pl_map = build_mapping(dfr["playlist_name"], translate_playlist_name)
+    _pair_map = build_mapping(dfr["pair_name"], translate_pair_name)
+    dfr = dfr.with_columns(
+        pl.col("playlist_name").replace_strict(
+            _pl_map, default=pl.col("playlist_name"), return_dtype=pl.Utf8
+        ),
+        pl.col("pair_name").replace_strict(
+            _pair_map, default=pl.col("pair_name"), return_dtype=pl.Utf8
+        ),
+    )
+
+    # Conversion timezone UTC → ← tz_name → naïve
+    try:
+        dfr = dfr.with_columns(
+            pl.col("start_time")
+            .cast(pl.Datetime("us", "UTC"))
+            .dt.convert_time_zone(tz_name)
+            .dt.replace_time_zone(None)
+        )
+    except Exception:
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            dfr = dfr.with_columns(
+                pl.col("start_time")
+                .dt.replace_time_zone("UTC")
+                .dt.convert_time_zone(tz_name)
+                .dt.replace_time_zone(None)
+            )
+
+    return dfr.sort("start_time", descending=True)
+
+
 @st.cache_data(show_spinner=False)
-def cached_friend_matches_df(
+def cached_friend_matches_df(  # noqa: PLR0913
     db_path: str,
     self_xuid: str,
     friend_xuid: str,
     same_team_only: bool,
     db_key: tuple[int, int] | None,
+    tz_name: str = "Europe/Paris",
 ) -> pl.DataFrame:
     """Retourne un DataFrame des matchs joués avec un ami (cache)."""
     rows = cached_query_matches_with_friend(db_path, self_xuid, friend_xuid, db_key=db_key)
+    if not rows:
+        return pl.DataFrame(schema=_FRIEND_DF_EMPTY_SCHEMA)
+
+    # DuckDB v4 : rows est une list[str] de match_ids — requête shared DB
+    if _is_duckdb_v4_path(db_path) and isinstance(rows[0], str):
+        return _build_friend_df_from_match_ids_v4(
+            db_path, self_xuid, friend_xuid, list(rows), same_team_only, tz_name
+        )
+
+    # Chemin legacy : rows contient des objets avec attributs .same_team, .match_id…
     if same_team_only:
         rows = [r for r in rows if r.same_team]
     if not rows:
-        return pl.DataFrame(
-            schema={
-                "match_id": pl.Utf8,
-                "start_time": pl.Datetime,
-                "playlist_name": pl.Utf8,
-                "pair_name": pl.Utf8,
-                "same_team": pl.Boolean,
-                "my_team_id": pl.Int64,
-                "my_outcome": pl.Utf8,
-                "friend_team_id": pl.Int64,
-                "friend_outcome": pl.Utf8,
-            }
-        )
+        return pl.DataFrame(schema=_FRIEND_DF_EMPTY_SCHEMA)
 
     dfr = pl.DataFrame(
         {
@@ -77,12 +179,12 @@ def cached_friend_matches_df(
             "friend_outcome": [r.friend_outcome for r in rows],
         }
     )
-    # Conversion timezone : UTC → Paris → naïf
+    # Conversion timezone : UTC → tz_name → naïf
     try:
         dfr = dfr.with_columns(
             pl.col("start_time")
             .cast(pl.Datetime("us", "UTC"))
-            .dt.convert_time_zone(PARIS_TZ_NAME)
+            .dt.convert_time_zone(tz_name)
             .dt.replace_time_zone(None)
         )
     except Exception:
@@ -92,7 +194,7 @@ def cached_friend_matches_df(
             dfr = dfr.with_columns(
                 pl.col("start_time")
                 .dt.replace_time_zone("UTC")
-                .dt.convert_time_zone(PARIS_TZ_NAME)
+                .dt.convert_time_zone(tz_name)
                 .dt.replace_time_zone(None)
             )
     return dfr.sort("start_time", descending=True)
