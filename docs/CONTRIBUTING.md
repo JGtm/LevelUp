@@ -1,76 +1,78 @@
-# Contribuer à LevelUp
+# Contributing to LevelUp
 
-Merci de votre intérêt pour contribuer à LevelUp ! Ce document explique comment participer au projet.
+French version: [FR/CONTRIBUTING.md](FR/CONTRIBUTING.md)
 
-## Table des Matières
+Thank you for your interest in contributing to LevelUp! This document explains how to participate in the project.
 
-- [Code de Conduite](#code-de-conduite)
-- [Comment Contribuer](#comment-contribuer)
-- [Configuration de l'Environnement](#configuration-de-lenvironnement)
-- [Standards de Code](#standards-de-code)
-- [Processus de Pull Request](#processus-de-pull-request)
-- [Signaler un Bug](#signaler-un-bug)
-- [Proposer une Fonctionnalité](#proposer-une-fonctionnalité)
-- [Crédits Open Source](#crédits-open-source)
+## Table of Contents
 
----
-
-## Code de Conduite
-
-Ce projet suit un code de conduite respectueux et inclusif. Soyez bienveillant envers les autres contributeurs.
+- [Code of Conduct](#code-of-conduct)
+- [How to Contribute](#how-to-contribute)
+- [Environment Setup](#environment-setup)
+- [Code Standards](#code-standards)
+- [Pull Request Process](#pull-request-process)
+- [Reporting a Bug](#reporting-a-bug)
+- [Proposing a Feature](#proposing-a-feature)
+- [Open Source Credits](#open-source-credits)
 
 ---
 
-## Comment Contribuer
+## Code of Conduct
 
-### 1. Fork le Projet
+This project follows a respectful and inclusive code of conduct. Be kind to other contributors.
+
+---
+
+## How to Contribute
+
+### 1. Fork the Project
 
 ```bash
-# Fork via GitHub puis cloner
-git clone https://github.com/votre-username/levelup-halo.git
+# Fork via GitHub then clone
+git clone https://github.com/your-username/levelup-halo.git
 cd levelup-halo
 ```
 
-### 2. Créer une Branche
+### 2. Create a Branch
 
 ```bash
-git checkout -b feature/ma-fonctionnalite
-# ou
-git checkout -b fix/mon-bug
+git checkout -b feature/my-feature
+# or
+git checkout -b fix/my-bug
 ```
 
-### 3. Développer
+### 3. Develop
 
-Faites vos modifications en suivant les standards de code.
+Make your changes following the code standards.
 
-### 4. Tester
+### 4. Test
 
 ```bash
 pytest
 ```
 
-### 5. Committer
+### 5. Commit
 
 ```bash
 git add .
 git commit -m "feat(scope): description"
 ```
 
-### 6. Push et Pull Request
+### 6. Push and Pull Request
 
 ```bash
-git push origin feature/ma-fonctionnalite
+git push origin feature/my-feature
 ```
 
-Créez une Pull Request sur GitHub.
+Create a Pull Request on GitHub.
 
 ---
 
-## Configuration de l'Environnement
+## Environment Setup
 
-### Prérequis
+### Prerequisites
 
-- **Python 3.10 à 3.12** (python.org ou Windows Store). **Ne pas utiliser le Python MSYS2** (Git Bash) : DuckDB n'a pas de wheels pour MINGW, pip tenterait une compilation source qui échoue.
+- **Python 3.10 to 3.12** (python.org or Windows Store). **Do not use MSYS2 Python** (Git Bash): DuckDB has no wheels for MINGW, and pip would attempt a source build that fails.
 - Git
 
 ### Installation (Git Bash)
@@ -80,30 +82,30 @@ bash scripts/setup_env.sh
 source scripts/activate_env.sh
 ```
 
-Le script utilise `py` (Python Launcher Windows) pour créer un venv avec le Python Windows, afin d'obtenir les wheels précompilées de DuckDB.
+The script uses `py` (Python Launcher for Windows) to create a venv with the Windows Python, in order to get pre-built DuckDB wheels.
 
-### Outils de Développement
+### Development Tools
 
-Les outils suivants sont inclus dans `[dev]` :
+The following tools are included in `[dev]`:
 
-| Outil | Usage |
-|-------|-------|
-| `pytest` | Tests unitaires |
-| `black` | Formatage du code |
-| `isort` | Tri des imports |
+| Tool | Usage |
+|------|-------|
+| `pytest` | Unit tests |
+| `black` | Code formatting |
+| `isort` | Import sorting |
 | `ruff` | Linting |
 | `mypy` | Type checking |
 
 ---
 
-## Standards de Code
+## Code Standards
 
-### Formatage
+### Formatting
 
-Avant chaque commit :
+Before each commit:
 
 ```bash
-# Formatage
+# Formatting
 black .
 isort .
 
@@ -113,7 +115,7 @@ ruff check --fix .
 
 ### Type Hints
 
-Toutes les fonctions publiques doivent avoir des type hints :
+All public functions must have type hints:
 
 ```python
 def compute_kd_ratio(kills: int, deaths: int) -> float:
@@ -125,7 +127,7 @@ def compute_kd_ratio(kills: int, deaths: int) -> float:
 
 ### Docstrings
 
-Utilisez des docstrings en français :
+Use docstrings in French:
 
 ```python
 def load_matches(self, limit: int = 100) -> pl.DataFrame:
@@ -140,9 +142,9 @@ def load_matches(self, limit: int = 100) -> pl.DataFrame:
     """
 ```
 
-### Accès aux Données
+### Data Access
 
-**TOUJOURS** utiliser `DuckDBRepository` :
+**ALWAYS** use `DuckDBRepository`:
 
 ```python
 from src.data.repositories import DuckDBRepository
@@ -151,102 +153,102 @@ repo = DuckDBRepository(db_path, xuid)
 matches = repo.load_matches()
 ```
 
-### Backfill des données
+### Data Backfill
 
-**TOUJOURS** utiliser `scripts/backfill_data.py` pour le backfill ou la création de nouvelles fonctions de backfill. Ne pas créer de scripts backfill séparés ; ajouter une option dédiée dans `backfill_data.py` (ex. `--sessions`, `--killer-victim`). Voir la docstring du script pour le pattern à suivre.
+**ALWAYS** use `scripts/backfill_data.py` for backfilling or creating new backfill functions. Do not create separate backfill scripts; add a dedicated option in `backfill_data.py` (e.g. `--sessions`, `--killer-victim`). See the script's docstring for the pattern to follow.
 
-### Benchmark de performance
+### Performance Benchmarking
 
-Utiliser `scripts/benchmark_pages.py` pour mesurer les temps de chargement des données :
+Use `scripts/benchmark_pages.py` to measure data loading times:
 
 ```bash
-# Créer un baseline avant une modification
+# Create a baseline before a change
 python scripts/benchmark_pages.py --baseline --output .ai/reports/benchmark_baseline.json
 
-# Lancer un benchmark standard (5 itérations)
+# Run a standard benchmark (5 iterations)
 python scripts/benchmark_pages.py --runs 5
 
-# Comparer avec un baseline existant
+# Compare against an existing baseline
 python scripts/benchmark_pages.py --compare .ai/reports/benchmark_baseline.json
 ```
 
-Le script mesure automatiquement : cold/warm load, médailles, coéquipiers, filtrage Polars, conversion Pandas.
-La variabilité (CV) doit rester < 10% pour des résultats fiables.
+The script automatically measures: cold/warm load, medals, teammates, Polars filtering, Pandas conversion.
+Variability (CV) should remain < 10% for reliable results.
 
 ---
 
-## Processus de Pull Request
+## Pull Request Process
 
 ### Checklist
 
-Avant de soumettre une PR, vérifiez :
+Before submitting a PR, verify:
 
-- [ ] Les tests passent (`pytest`)
-- [ ] Le code est formaté (`black`, `isort`)
-- [ ] Pas d'erreurs de linting (`ruff check`)
-- [ ] Les nouveaux tests couvrent les changements
-- [ ] La documentation est mise à jour si nécessaire
-- [ ] Le message de commit suit le format Conventional Commits
+- [ ] Tests pass (`pytest`)
+- [ ] Code is formatted (`black`, `isort`)
+- [ ] No linting errors (`ruff check`)
+- [ ] New tests cover the changes
+- [ ] Documentation is updated if necessary
+- [ ] Commit message follows the Conventional Commits format
 
-### Format du Commit
+### Commit Format
 
 ```
 <type>(<scope>): <description>
 
-[body optionnel]
+[optional body]
 ```
 
-Types :
-- `feat` : Nouvelle fonctionnalité
-- `fix` : Correction de bug
-- `docs` : Documentation
-- `refactor` : Refactoring
-- `test` : Ajout de tests
-- `chore` : Maintenance
+Types:
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation
+- `refactor`: Refactoring
+- `test`: Adding tests
+- `chore`: Maintenance
 
-Exemples :
+Examples:
 ```
-feat(ui): ajouter graphe radar des performances
-fix(sync): corriger parsing des modes Firefight
-docs: mettre à jour guide d'installation
+feat(ui): add radar chart for performance stats
+fix(sync): fix Firefight mode parsing
+docs: update installation guide
 ```
 
 ### Review
 
-Un mainteneur reviendra vers vous pour :
-- Questions de clarification
-- Suggestions d'amélioration
-- Validation et merge
+A maintainer will get back to you for:
+- Clarification questions
+- Improvement suggestions
+- Validation and merge
 
 ---
 
-## Signaler un Bug
+## Reporting a Bug
 
-### Avant de Signaler
+### Before Reporting
 
-1. Vérifiez que le bug n'est pas déjà signalé
-2. Testez avec la dernière version
+1. Check that the bug has not already been reported
+2. Test with the latest version
 
-### Créer une Issue
+### Create an Issue
 
-Incluez :
-- **Description** : Comportement observé vs attendu
-- **Reproduction** : Étapes pour reproduire
-- **Environnement** : OS, Python version
-- **Logs** : Messages d'erreur complets
+Include:
+- **Description**: Observed vs. expected behaviour
+- **Reproduction**: Steps to reproduce
+- **Environment**: OS, Python version
+- **Logs**: Full error messages
 
 ```markdown
 ## Bug
 
 ### Description
-Le dashboard ne charge pas les matchs pour le joueur X.
+The dashboard does not load matches for player X.
 
 ### Reproduction
-1. Ouvrir le dashboard
-2. Sélectionner le joueur X
-3. Observer l'erreur
+1. Open the dashboard
+2. Select player X
+3. Observe the error
 
-### Environnement
+### Environment
 - OS: Windows 11
 - Python: 3.11.4
 - Version: 3.0.0
@@ -259,48 +261,48 @@ Error: DuckDB file not found...
 
 ---
 
-## Crédits Open Source
+## Open Source Credits
 
-Ce projet dépend de plusieurs briques communautaires. Les crédits sont centralisés dans [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
+This project relies on several community components. Credits are centralised in [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
 
-Avant d'ajouter une dépendance externe majeure, documentez-la aussi dans ce fichier pour garder une attribution claire.
+Before adding a major external dependency, document it in that file as well to keep attribution clear.
 
 ---
 
-## Proposer une Fonctionnalité
+## Proposing a Feature
 
-### Avant de Proposer
+### Before Proposing
 
-1. Vérifiez que la feature n'est pas déjà proposée ou en cours
-2. Réfléchissez à l'implémentation
+1. Check that the feature has not already been proposed or is in progress
+2. Think through the implementation
 
-### Créer une Issue
+### Create an Issue
 
-Incluez :
-- **Description** : Qu'est-ce que la feature fait ?
-- **Motivation** : Pourquoi est-ce utile ?
-- **Implémentation** : Comment l'implémenter (optionnel)
+Include:
+- **Description**: What does the feature do?
+- **Motivation**: Why is it useful?
+- **Implementation**: How to implement it (optional)
 
 ```markdown
 ## Feature Request
 
 ### Description
-Ajouter un export CSV des statistiques.
+Add a CSV export of statistics.
 
 ### Motivation
-Permettre aux utilisateurs d'analyser leurs stats dans Excel.
+Allow users to analyse their stats in Excel.
 
-### Implémentation suggérée
-- Ajouter un bouton "Exporter CSV" dans la page Historique
-- Utiliser Polars pour la conversion
+### Suggested Implementation
+- Add an "Export CSV" button on the History page
+- Use Polars for the conversion
 ```
 
 ---
 
-## Questions ?
+## Questions?
 
-Si vous avez des questions, ouvrez une issue avec le tag `question`.
+If you have questions, open an issue with the `question` tag.
 
 ---
 
-**Merci de contribuer à LevelUp !**
+**Thank you for contributing to LevelUp!**
