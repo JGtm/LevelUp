@@ -393,23 +393,25 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "smoke_next_steps_info": {
         "fr": (
-            "L'installation est validée ! Vous pouvez maintenant :\n"
-            "- **Lancer une sync complète** pour récupérer tout votre historique\n"
-            "- **Accéder au dashboard** avec les données déjà synchronisées"
+            "L'installation est validée sur 20 matchs test !\n\n"
+            "- **Sync complète (recommandé)** → récupère tout votre historique depuis l'API Halo "
+            "(peut prendre plusieurs minutes)\n"
+            "- **Dashboard** → consulter vos 20 matchs déjà synchronisés"
         ),
         "en": (
-            "Installation validated! You can now:\n"
-            "- **Run a full sync** to fetch your complete match history\n"
-            "- **Access the dashboard** with the already synced data"
+            "Installation validated on 20 test matches!\n\n"
+            "- **Full sync (recommended)** → fetch your complete match history from the Halo API "
+            "(may take several minutes)\n"
+            "- **Dashboard** → browse your 20 already synced matches"
         ),
     },
     "smoke_btn_full_sync": {
-        "fr": "📡 Continuer vers le dashboard",
-        "en": "📡 Continue to dashboard",
+        "fr": "⚙️ Sync complète — récupérer tout l'historique",
+        "en": "⚙️ Full sync — fetch complete history",
     },
     "smoke_btn_dashboard": {
-        "fr": "📊 Accéder au dashboard",
-        "en": "📊 Access dashboard",
+        "fr": "📊 Dashboard (20 matchs seulement)",
+        "en": "📊 Dashboard (20 matches only)",
     },
     "smoke_btn_retry": {
         "fr": "🔄 Relancer le test",

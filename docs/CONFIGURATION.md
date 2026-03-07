@@ -6,12 +6,35 @@ French version: [FR/CONFIGURATION.md](FR/CONFIGURATION.md)
 
 ## Table of Contents
 
+- [Setup Wizard (recommended)](#setup-wizard-recommended)
 - [Azure Configuration](#azure-configuration)
 - [Player Profiles](#player-profiles)
 - [Environment Variables](#environment-variables)
 - [Application Settings](#application-settings)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
+
+---
+
+## Setup Wizard (recommended)
+
+The easiest way to configure LevelUp is through the **Setup Wizard**, available automatically
+on first launch in the browser at `http://localhost:8501`.
+
+| | 🎮 Xbox Express | ☁️ Azure Manual |
+|-|----------------|----------------|
+| Azure application (Client ID + Secret) | Required | Required |
+| Refresh token | **Auto** (1-click Xbox sign-in) | Manual (run script) |
+| gamertag + XUID | **Auto** (resolved via OAuth) | Manual |
+| Player profile in `db_profiles.json` | **Auto** (created by wizard) | Manual |
+| Token storage | `stats.duckdb` (sync_meta) | `.env.local` |
+| Steps in wizard | **2** | **3** |
+
+**Xbox Express is the recommended path.** The only unavoidable step is creating a free
+Azure application (Microsoft mandates this for the Halo Infinite API). See [INSTALL.md](INSTALL.md)
+for the illustrated walkthrough.
+
+The manual steps below (§ Azure Configuration) describe the advanced / headless path.
 
 ---
 
@@ -105,7 +128,10 @@ To use the Halo Infinite API via SPNKr, you need:
 > - `SPNKR_AZURE_CLIENT_ID` → copied from the app's **Overview** page (step 1.6)
 > - `SPNKR_AZURE_CLIENT_SECRET` → copied from **Certificates & secrets** (step 3.3)
 
-### 4. Set Up the .env.local File
+### 4. Set Up the .env.local File (manual method — advanced)
+
+> **If you used the Xbox Express wizard**, this file is created automatically — skip to
+> [Player Profiles](#player-profiles).
 
 ```bash
 # Copy the template (Linux/macOS)
@@ -127,7 +153,10 @@ SPNKR_AZURE_REDIRECT_URI=https://localhost
 SPNKR_OAUTH_REFRESH_TOKEN=
 ```
 
-### 5. Obtain the Refresh Token
+### 5. Obtain the Refresh Token (manual method — advanced)
+
+> **If you used the Xbox Express wizard**, the token was stored automatically in your
+> player database (`stats.duckdb`, table `sync_meta`) — skip this step.
 
 ```bash
 python scripts/spnkr_get_refresh_token.py
@@ -144,6 +173,9 @@ This script:
 ## Player Profiles
 
 ### File Structure (`db_profiles.json`)
+
+> **If you used the Setup Wizard**, your first profile was created automatically.
+> The information below covers adding more players or editing profiles manually.
 
 LevelUp reads player profiles from `db_profiles.json` at the repo root.
 
