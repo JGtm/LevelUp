@@ -16,9 +16,10 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from src.utils.env import load_dotenv_if_present
-from src.utils.paths import REPO_ROOT
+from src.utils.paths import DATA_DIR, REPO_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,14 @@ _AZURE_REQUIRED_KEYS = (
     "SPNKR_AZURE_CLIENT_SECRET",
 )
 
-_ENV_LOCAL_PATH = REPO_ROOT / ".env.local"
+
+def _env_local_path() -> Path:
+    """Chemin vers .env.local (DATA_DIR en portable, REPO_ROOT en dev)."""
+    portable = DATA_DIR / ".env.local"
+    if portable.exists():
+        return portable
+    # En mode dev, DATA_DIR == REPO_ROOT/data, on écrit à la racine
+    return REPO_ROOT / ".env.local"
 
 
 @dataclass(frozen=True)
@@ -62,7 +70,7 @@ def get_auth_status() -> AuthStatus:
     """
     load_dotenv_if_present()
 
-    has_env = _ENV_LOCAL_PATH.exists()
+    has_env = _env_local_path().exists()
     client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "").strip()
     client_secret = os.environ.get("SPNKR_AZURE_CLIENT_SECRET", "").strip()
     refresh_token = os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN", "").strip()
@@ -102,9 +110,11 @@ def write_env_local(values: dict[str, str]) -> None:
     Args:
         values: Dictionnaire clé=valeur à écrire.
     """
+    env_path = _env_local_path()
+    env_path.parent.mkdir(parents=True, exist_ok=True)
     existing_lines: list[str] = []
-    if _ENV_LOCAL_PATH.exists():
-        existing_lines = _ENV_LOCAL_PATH.read_text(encoding="utf-8").splitlines()
+    if env_path.exists():
+        existing_lines = env_path.read_text(encoding="utf-8").splitlines()
 
     remaining = dict(values)
     updated_lines: list[str] = []
@@ -122,7 +132,7 @@ def write_env_local(values: dict[str, str]) -> None:
     for key, value in remaining.items():
         updated_lines.append(f"{key}={value}")
 
-    _ENV_LOCAL_PATH.write_text(
+    env_path.write_text(
         "\n".join(updated_lines) + "\n",
         encoding="utf-8",
     )
