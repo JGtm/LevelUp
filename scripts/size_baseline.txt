@@ -1,9 +1,9 @@
-#
 # Baseline des violations de taille — généré automatiquement
 # Chaque ligne = une violation connue (dette documentée)
+# Réduire ce fichier = réduire la dette technique
 # Format FUNC: FUNC:<fichier>:<ligne>:<nom>:<taille>L
 # Format MODULE: MODULE:<fichier>:<taille>L
-# Réduire ce fichier = réduire la dette technique
+#
 FUNC:src/ai/mcp_server.py:251:run_stdio_server:103L
 FUNC:src/ai/mcp_server.py:64:get_tools:83L
 FUNC:src/analysis/_composite.py:29:compute_composite_score:87L
@@ -20,10 +20,9 @@ FUNC:src/analysis/skill_rating_calibration.py:430:main:134L
 FUNC:src/analysis/skill_rating_calibration.py:50:_load_matches_for_calibration:110L
 FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
 FUNC:src/app/_filters_apply.py:22:apply_filters:191L
-FUNC:src/app/_filters_cascade.py:121:_render_cascade_filters:283L
-FUNC:src/app/_filters_session.py:134:_render_session_filter:278L
+FUNC:src/app/_filters_cascade.py:326:_render_cascade_filters:101L
 FUNC:src/app/filters.py:206:render_session_filters:94L
-FUNC:src/app/filters_render.py:147:render_filters_sidebar:305L
+FUNC:src/app/filters_render.py:373:render_filters_sidebar:112L
 FUNC:src/app/kpis_render.py:44:render_kpis_section:83L
 FUNC:src/app/main_helpers.py:250:render_profile_hero:140L
 FUNC:src/app/media_background.py:17:background_media_indexing:160L
@@ -47,8 +46,8 @@ FUNC:src/data/services/teammates_service.py:440:load_impact_data:155L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sessions_backfill.py:22:get_friends_xuids_for_backfill:82L
 FUNC:src/data/sync/_match_processing.py:195:_process_known_match:224L
-FUNC:src/data/sync/_match_processing.py:42:_process_matches:96L
 FUNC:src/data/sync/_match_processing.py:421:_process_new_match:203L
+FUNC:src/data/sync/_match_processing.py:42:_process_matches:96L
 FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
 FUNC:src/data/sync/_skill_rating.py:127:batch_compute_lusr:198L
 FUNC:src/data/sync/_skill_rating.py:41:_upsert_csr_rating:84L
@@ -115,9 +114,9 @@ FUNC:src/ui/pages/teammates_views.py:168:render_multi_teammate_view:177L
 FUNC:src/ui/pages/teammates_views.py:56:render_single_teammate_view:109L
 FUNC:src/ui/pages/win_loss.py:322:_render_ratio_by_map_section:82L
 FUNC:src/ui/pages/win_loss.py:407:_render_map_table:131L
-FUNC:src/ui/profile_api.py:201:_get_career_rank_for_player:138L
-FUNC:src/ui/profile_api.py:49:fetch_appearance_via_spnkr:149L
-FUNC:src/ui/profile_api.py:68:_run:128L
+FUNC:src/ui/profile_api.py:209:_get_career_rank_for_player:138L
+FUNC:src/ui/profile_api.py:49:fetch_appearance_via_spnkr:157L
+FUNC:src/ui/profile_api.py:68:_run:136L
 FUNC:src/ui/styles.py:44:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
@@ -134,8 +133,8 @@ FUNC:src/visualization/_timeseries_progression.py:23:plot_performance_timeseries
 FUNC:src/visualization/distributions.py:183:plot_histogram:107L
 FUNC:src/visualization/distributions.py:32:plot_kda_distribution:87L
 FUNC:src/visualization/distributions_outcomes.py:173:plot_win_ratio_heatmap:105L
-FUNC:src/visualization/distributions_outcomes.py:28:plot_outcomes_over_time:90L
 FUNC:src/visualization/distributions_outcomes.py:286:plot_matches_at_top_by_week:117L
+FUNC:src/visualization/distributions_outcomes.py:28:plot_outcomes_over_time:90L
 FUNC:src/visualization/friends_impact_heatmap.py:60:plot_friends_impact_heatmap:174L
 FUNC:src/visualization/match_bars.py:118:plot_multi_metric_bars_by_match:211L
 FUNC:src/visualization/match_bars.py:18:plot_metric_bars_by_match:97L
@@ -172,6 +171,6 @@ MODULE:src/data/sync/transformers/_match.py:531L
 MODULE:src/ui/pages/match_view.py:597L
 MODULE:src/ui/pages/media_library_data.py:507L
 MODULE:src/ui/pages/win_loss.py:539L
-MODULE:src/ui/profile_api.py:558L
+MODULE:src/ui/profile_api.py:557L
 MODULE:src/visualization/objective_charts.py:583L
 MODULE:src/visualization/participation_charts.py:648L
