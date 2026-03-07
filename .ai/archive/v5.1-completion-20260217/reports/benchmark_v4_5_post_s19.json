@@ -1,7 +1,7 @@
 {
   "timestamp": "2026-02-14T10:25:13.203136+00:00",
   "git_hash": "c8ce5e4",
-  "db_path": "C:\\Users\\Guillaume\\Downloads\\Scripts\\Openspartan-graph\\data\\players\\JGtm\\stats.duckdb",
+  "db_path": "<REPO_ROOT>\\data\\players\\JGtm\\stats.duckdb",
   "xuid": "2533274823110022",
   "iterations": 5,
   "python_version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",

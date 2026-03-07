@@ -122,7 +122,7 @@ D’après la page [Médailles de Halo Infinite](https://wiki.halo.fr/Médailles
 
 ### Étape 1 – Fichiers d’icônes (Downloads → repo)
 
-1. **Copier** les PNG depuis `C:\Users\Guillaume\Downloads\` vers `static/medals/icons/` :
+1. **Copier** les PNG depuis `<DOWNLOADS>/` vers `static/medals/icons/` :
    - Déjà nommés par ID : `2976102155.png`, `1585298941.png`, `1254180082.png`, `4014259917.png`, `3041030832.png`, `1325926691.png`, `2362950720.png`, `1334138090.png`, `2005352812.png`, `420808268.png`.
    - À **renommer** puis copier :
      - `FHo-maHWQAYsgij.png` → `2125906504.png` (Big Deal)

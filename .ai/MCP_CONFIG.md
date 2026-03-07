@@ -14,7 +14,7 @@
 ```json
 {
   "duckdb": {
-    "command": "C:\\Users\\Guillaume\\AppData\\Local\\Python\\pythoncore-3.14-64\\Scripts\\duckdb-mcp-server.exe",
+    "command": "<APPDATA>/Local\\Python\\pythoncore-3.14-64\\Scripts\\duckdb-mcp-server.exe",
     "args": [
       "--db-path",
       ":memory:"
@@ -32,14 +32,14 @@ Permet d'exécuter du SQL directement sur les données Halo :
 
 ```sql
 -- Lire les Parquet
-SELECT * FROM read_parquet('C:/Users/Guillaume/Downloads/Scripts/Openspartan-graph/data/warehouse/match_facts/**/*.parquet') LIMIT 10;
+SELECT * FROM read_parquet('<REPO_ROOT>/data/warehouse/match_facts/**/*.parquet') LIMIT 10;
 
 -- Attacher SQLite
-ATTACH 'C:/Users/Guillaume/Downloads/Scripts/Openspartan-graph/data/warehouse/metadata.db' AS meta (TYPE sqlite);
+ATTACH '<REPO_ROOT>/data/warehouse/metadata.db' AS meta (TYPE sqlite);
 
 -- Jointure Parquet + SQLite
 SELECT p.name_fr, COUNT(*) as matches
-FROM read_parquet('C:/Users/Guillaume/Downloads/Scripts/Openspartan-graph/data/warehouse/match_facts/**/*.parquet') f
+FROM read_parquet('<REPO_ROOT>/data/warehouse/match_facts/**/*.parquet') f
 JOIN meta.playlists p ON f.playlist_id = p.uuid
 GROUP BY p.name_fr;
 ```
