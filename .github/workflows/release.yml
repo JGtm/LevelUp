@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build-portable:
-    name: Build Portable Release (Windows)
+  build-releases:
+    name: Build Release Artifacts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,49 +24,68 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Build portable release
-        run: python packaging/build_release.py --version ${{ steps.version.outputs.version }}
+      - name: Build Windows portable release
+        run: python packaging/build_release.py --version ${{ steps.version.outputs.version }} --platform win64
 
-      - name: Verify artifact exists
+      - name: Build Unix release (macOS / Linux)
+        run: python packaging/build_release.py --version ${{ steps.version.outputs.version }} --platform unix
+
+      - name: Verify artifacts
         run: |
-          FILE="dist/LevelUp-v${{ steps.version.outputs.version }}-win64-portable.zip"
-          test -f "$FILE" || { echo "::error::Artifact introuvable: $FILE"; exit 1; }
-          ls -lh "$FILE"
+          WIN="dist/LevelUp-v${{ steps.version.outputs.version }}-win64-portable.zip"
+          UNIX="dist/LevelUp-v${{ steps.version.outputs.version }}-unix.tar.gz"
+          test -f "$WIN"  || { echo "::error::Artifact introuvable: $WIN";  exit 1; }
+          test -f "$UNIX" || { echo "::error::Artifact introuvable: $UNIX"; exit 1; }
+          ls -lh dist/
 
-      - name: Upload release artifact
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: portable-release
+          name: win64-portable
           path: dist/LevelUp-v${{ steps.version.outputs.version }}-win64-portable.zip
+
+      - name: Upload Unix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unix-release
+          path: dist/LevelUp-v${{ steps.version.outputs.version }}-unix.tar.gz
 
   publish:
     name: Publish GitHub Release
-    needs: build-portable
+    needs: build-releases
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download artifact
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: portable-release
           path: dist/
+          merge-multiple: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: dist/LevelUp-v*-win64-portable.zip
+          files: |
+            dist/LevelUp-v*-win64-portable.zip
+            dist/LevelUp-v*-unix.tar.gz
           body: |
             ## Installation
 
-            ### Option 1 : Portable (recommandée pour les débutants)
-            1. Téléchargez le fichier `.zip` ci-dessous
+            ### Windows — Portable (recommandée)
+            1. Téléchargez `LevelUp-v*-win64-portable.zip`
             2. Extrayez-le où vous voulez
             3. Double-cliquez sur `LevelUp.bat`
-            4. Au premier lancement, les dépendances s'installent automatiquement (~2 min)
+            4. Premier lancement : les dépendances s'installent automatiquement (~2 min)
 
-            ### Option 2 : Depuis les sources (développeurs)
+            ### macOS / Linux
+            1. Téléchargez `LevelUp-v*-unix.tar.gz`
+            2. Extrayez : `tar xzf LevelUp-v*-unix.tar.gz`
+            3. Lancez : `./LevelUp.sh`
+            4. Premier lancement : l'environnement Python est créé automatiquement
+
+            ### Depuis les sources (développeurs)
             ```bash
             git clone https://github.com/${{ github.repository }}.git
             cd LevelUp
