@@ -133,6 +133,6 @@ FUNC:src/visualization/timeseries_combat.py:268:plot_damage_dealt_taken:81L
 FUNC:src/visualization/timeseries_combat.py:352:plot_shots_accuracy:92L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:139L
-MODULE:src/data/query/trends.py:537L
+MODULE:src/data/query/trends.py:534L
 MODULE:src/data/services/teammates_service.py:536L
 MODULE:src/data/sync/transformers/_match.py:534L
