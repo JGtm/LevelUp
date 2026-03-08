@@ -11,14 +11,15 @@ import os
 
 import streamlit as st
 
+from src.app.session_keys import SK
 from src.ui.i18n import t
 
 logger = logging.getLogger(__name__)
 
 # Clé session_state pour le token CSRF anti-replay
-_STATE_KEY = "_xbox_oauth_state"
+_STATE_KEY = SK.XBOX_OAUTH_STATE
 # Clé session_state pour afficher le résultat du callback
-_RESULT_KEY = "_xbox_oauth_result"
+_RESULT_KEY = SK.XBOX_OAUTH_RESULT
 
 
 def _get_azure_config() -> tuple[str, str, str]:

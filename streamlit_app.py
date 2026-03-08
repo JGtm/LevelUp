@@ -331,13 +331,13 @@ def _handle_xbox_oauth_callback() -> None:
     """
     _xbox_code = _qp_first(dict(st.query_params).get("code"))
     _xbox_state = _qp_first(dict(st.query_params).get("state"))
-    if not _xbox_code or st.session_state.get("_xbox_oauth_consumed"):
+    if not _xbox_code or st.session_state.get(SK.XBOX_OAUTH_CONSUMED):
         return
 
     logger.info("Callback OAuth Xbox détecté (code=%s…)", _xbox_code[:8])
 
-    _expected_state = st.session_state.get("_xbox_oauth_state")
-    if _expected_state and _xbox_state != _expected_state:
+    _expected_state = st.session_state.get(SK.XBOX_OAUTH_STATE)
+    if not _expected_state or _xbox_state != _expected_state:
         logger.warning(
             "Callback OAuth Xbox : état CSRF invalide (attendu=%s, reçu=%s)",
             _expected_state,
@@ -360,7 +360,7 @@ def _handle_xbox_oauth_callback() -> None:
     from src.ui.xbox_oauth import run_xbox_oauth_callback
     from src.ui.xbox_oauth_ui import handle_pending_xbox_result
 
-    st.session_state["_xbox_oauth_consumed"] = True
+    st.session_state[SK.XBOX_OAUTH_CONSUMED] = True
     with st.spinner("🎮 Connexion Xbox en cours…"):
         _result = run_xbox_oauth_callback(
             _xbox_code,
@@ -384,14 +384,14 @@ def _handle_xbox_oauth_callback() -> None:
             st.session_state[SK.WAYPOINT_PLAYER] = _gt
         except Exception as _prov_err:
             logger.error("Provisionnement Xbox OAuth échoué: %s", _prov_err)
-            st.session_state["_xbox_oauth_result"] = {"error": str(_prov_err)}
+            st.session_state[SK.XBOX_OAUTH_RESULT] = {"error": str(_prov_err)}
     else:
         logger.warning("OAuth Xbox : erreur retournée par le callback : %s", _result.get("error"))
-        st.session_state["_xbox_oauth_result"] = _result
+        st.session_state[SK.XBOX_OAUTH_RESULT] = _result
 
     st.query_params.clear()
     # Supprimer le guard pour permettre une reconnexion future
-    st.session_state.pop("_xbox_oauth_consumed", None)
+    st.session_state.pop(SK.XBOX_OAUTH_CONSUMED, None)
     st.rerun()
 
 
