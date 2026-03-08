@@ -41,8 +41,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "exp_no_results": {"fr": "Aucun résultat", "en": "No results"},
     "exp_results_title": {"fr": "Résultats ({count})", "en": "Results ({count})"},
     "exp_select_match_hint": {
-        "fr": "Cliquez sur « Ouvrir » pour afficher le détail du match.",
-        "en": "Click 'Open' to display match details.",
+        "fr": "Cliquez sur « Rechercher » pour afficher le détail du match.",
+        "en": "Click 'Search' to display match details.",
     },
     "exp_player_not_found": {
         "fr": "Joueur introuvable : {gamertag}",

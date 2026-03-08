@@ -127,6 +127,8 @@ async def backfill_player_data(
     force_sessions = scope.force_sessions
     force_citations = scope.force_citations
     force_participants_enrich = scope.force_participants_enrich
+    teammates_sig = getattr(scope, "teammates_sig", False)
+    force_teammates_sig = getattr(scope, "force_teammates_sig", False)
     lusr = scope.lusr
     force_lusr = scope.force_lusr
     csr = scope.csr
@@ -228,7 +230,15 @@ async def backfill_player_data(
             return result
 
         # Cas : pas de matchs API mais backfill local à faire
-        needs_local_only = killer_victim or end_time or sessions or citations or lusr or skill_rank
+        needs_local_only = (
+            killer_victim
+            or end_time
+            or sessions
+            or citations
+            or lusr
+            or skill_rank
+            or teammates_sig
+        )
         needs_api = bool(match_ids) or fetch_csr or csr or skill_rank
 
         # Participants-enrich : mode autonome sur shared (pas besoin de match_ids détectés)
@@ -278,6 +288,8 @@ async def backfill_player_data(
                 force_sessions=force_sessions,
                 force_citations=force_citations,
                 force_lusr=force_lusr or force_skill_rank,
+                teammates_sig=teammates_sig,
+                force_teammates_sig=force_teammates_sig,
                 dry_run=dry_run,
             )
             if participants_enrich:
@@ -469,6 +481,8 @@ def _backfill_local_only(
     force_sessions: bool = False,
     force_citations: bool = False,
     force_lusr: bool = False,
+    teammates_sig: bool = False,
+    force_teammates_sig: bool = False,
     dry_run: bool = False,
 ) -> dict[str, int]:
     """Backfill local uniquement (pas d'API nécessaire)."""
@@ -521,6 +535,21 @@ def _backfill_local_only(
             logger.info(f"✅ LUSR calculé pour {n} match(s)")
         else:
             logger.info("Aucun nouveau match à calculer pour le LUSR")
+
+    if teammates_sig:
+        from src.data.sessions_backfill import backfill_teammates_signatures
+
+        logger.info("Backfill teammates_signature + is_with_friends depuis shared...")
+        r = backfill_teammates_signatures(db_path, xuid, force=force_teammates_sig)
+        n = r.get("updated", 0)
+        result["teammates_sig_updated"] = n
+        for e in r.get("errors", []):
+            logger.warning(f"  Erreur teammates_sig: {e}")
+        logger.info(
+            f"✅ {n} signature(s) de coéquipiers mises à jour"
+            if n
+            else "Aucune signature à mettre à jour"
+        )
 
     return result
 
@@ -683,7 +712,8 @@ async def _backfill_with_api(
     force_citations = scope.force_citations
     pve_stats = getattr(scope, "pve_stats", False)
     force_pve_stats = getattr(scope, "force_pve_stats", False)
-    from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
+    from src.data.sync.api_client import get_tokens_from_env
+    from src.data.sync.api_factory import create_api_client
     from src.data.sync.migrations import ensure_match_participants_columns
     from src.data.sync.transformers import (
         extract_aliases,
@@ -746,7 +776,7 @@ async def _backfill_with_api(
     totals["matches_checked"] = len(match_ids)
     totals["matches_missing_data"] = len(match_ids)
 
-    async with SPNKrAPIClient(
+    async with create_api_client(
         tokens=tokens,
         requests_per_second=requests_per_second,
     ) as client:
@@ -1026,7 +1056,7 @@ async def _backfill_with_api(
         from scripts.backfill.strategies import fetch_current_csr_for_player
 
         logger.info(f"Récupération snapshot CSR pour {gamertag} ({xuid})...")
-        async with SPNKrAPIClient(
+        async with create_api_client(
             tokens=tokens,
             requests_per_second=requests_per_second,
         ) as csr_client:
@@ -1042,7 +1072,7 @@ async def _backfill_with_api(
         from scripts.backfill.strategies import backfill_csr_for_player
 
         logger.info(f"Backfill CSR par match pour {gamertag} ({xuid})...")
-        async with SPNKrAPIClient(
+        async with create_api_client(
             tokens=tokens,
             requests_per_second=requests_per_second,
         ) as csr_api:

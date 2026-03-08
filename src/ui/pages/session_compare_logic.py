@@ -354,3 +354,38 @@ def compute_historical_context(
         mode_category=session_b_category,
     )
     return hist_avg, "solo"
+
+
+def build_skill_series(
+    df: pl.DataFrame,
+    db_path: str | None,
+) -> tuple[list[float | None] | None, str]:
+    """Charge les ratings LUSR/CSR depuis match_skill_rank pour les matchs de df.
+
+    Retourne (valeurs_par_match, label) — label vaut 'LUSR' ou 'CSR'.
+    Si aucune donnée disponible, retourne (None, 'CSR').
+    """
+    if not db_path or "match_id" not in df.columns:
+        return None, "CSR"
+    match_ids = df.get_column("match_id").drop_nulls().to_list()
+    if not match_ids:
+        return None, "CSR"
+    try:
+        from src.utils.db import duckdb_read_only
+
+        ph = ", ".join(["?"] * len(match_ids))
+        with duckdb_read_only(db_path) as conn:
+            rows = conn.execute(
+                f"SELECT match_id, rating_value, rating_type FROM match_skill_rank "
+                f"WHERE match_id IN ({ph})",
+                match_ids,
+            ).fetchall()
+    except Exception:
+        return None, "CSR"
+    if not rows:
+        return None, "CSR"
+    rating_map = {r[0]: (float(r[1]), str(r[2])) for r in rows}
+    types = [v[1] for v in rating_map.values()]
+    label = "LUSR" if types.count("LUSR") >= types.count("CSR") else "CSR"
+    series = [rating_map[mid][0] if mid in rating_map else None for mid in match_ids]
+    return (None, label) if all(v is None for v in series) else (series, label)

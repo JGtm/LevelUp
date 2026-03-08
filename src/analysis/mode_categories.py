@@ -12,8 +12,6 @@ from __future__ import annotations
 import re
 from typing import Final
 
-from src.ui.translations import translate_pair_name
-
 _LABEL_SUFFIX_RE: Final[re.Pattern[str]] = re.compile(
     r"^(.*?)(?:\s*[\-–—]\s*[0-9A-Za-z]{8,})$", re.IGNORECASE
 )
@@ -44,6 +42,8 @@ def normalize_pair_name_to_mode_ui(pair_name: str | None, lang: str = "fr") -> s
     m = _LABEL_SUFFIX_RE.match(raw)
     if m:
         raw = (m.group(1) or "").strip()
+
+    from src.ui.translations import translate_pair_name  # local import (dep UI → analysis évitée)
 
     translated = translate_pair_name(raw, lang=lang)
     if translated is None:

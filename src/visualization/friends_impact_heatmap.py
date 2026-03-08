@@ -52,7 +52,7 @@ EVENT_LABELS = {
     "first_blood": "⚡",  # Premier sang
     "clutch_finisher": "🎯",  # Finisseur
     "last_casualty": "💀",  # Boulet
-    "last_group_kill": "🐌",  # Dernier à tuer (plus lent)
+    "last_group_kill": "🐌",  # Touriste (dernier à obtenir son 1er kill)
     "first_group_death": "🪦",  # Première victime
 }
 

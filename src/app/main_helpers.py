@@ -28,15 +28,12 @@ from src.ui import (
     get_hero_html,
     get_profile_appearance,
 )
-from src.ui.cache import clear_app_caches, db_cache_key, load_df_optimized
+from src.ui.cache import db_cache_key, load_df_optimized
 from src.ui.i18n import t
-from src.ui.multiplayer import render_player_selector
 from src.ui.player_assets import download_image_to_cache, ensure_local_image_path
 from src.ui.sync import (
     is_spnkr_db_path,
     pick_latest_spnkr_db_if_any,
-    render_sync_indicator,
-    sync_all_players,
 )
 
 if TYPE_CHECKING:
@@ -93,69 +90,6 @@ def resolve_xuid_from_input(xuid_input: str, db_path: str) -> str:
     return resolve_xuid_input(xuid_input, db_path)
 
 
-def render_sidebar_header(db_path: str, xuid: str, settings: AppSettings) -> str:
-    """Rend le header de la sidebar (brand, sync, player selector).
-
-    Returns:
-        XUID potentiellement mis à jour.
-    """
-    st.markdown(
-        "<div class='os-sidebar-brand' style='font-size: 2.5em;'>LevelUp</div>",
-        unsafe_allow_html=True,
-    )
-    st.markdown("<div class='os-sidebar-divider'></div>", unsafe_allow_html=True)
-
-    # Indicateur de dernière synchronisation
-    if db_path and os.path.exists(db_path):
-        render_sync_indicator(db_path)
-
-    # Sélecteur multi-joueurs (si DB fusionnée)
-    if db_path and os.path.exists(db_path):
-        new_xuid = render_player_selector(db_path, xuid, key="sidebar_player_selector")
-        if new_xuid:
-            st.session_state["xuid_input"] = new_xuid
-            xuid = new_xuid
-            # Reset des filtres au changement de joueur
-            for filter_key in ["filter_playlists", "filter_modes", "filter_maps"]:
-                if filter_key in st.session_state:
-                    del st.session_state[filter_key]
-            st.rerun()
-
-    # Bouton Sync pour toutes les DB SPNKr
-    if (
-        db_path
-        and is_spnkr_db_path(db_path)
-        and os.path.exists(db_path)
-        and st.button(
-            t("hlp_btn_sync"),
-            key="sidebar_sync_button",
-            help=t("hlp_btn_sync_help"),
-            width="stretch",
-        )
-    ):
-        with st.spinner(t("syncing")):
-            ok, msg = sync_all_players(
-                db_path=db_path,
-                match_type=str(
-                    getattr(settings, "spnkr_refresh_match_type", "matchmaking") or "matchmaking"
-                ),
-                max_matches=int(getattr(settings, "spnkr_refresh_max_matches", 200) or 200),
-                rps=int(getattr(settings, "spnkr_refresh_rps", 5) or 5),
-                with_highlight_events=True,
-                with_aliases=True,
-                delta=True,
-                timeout_seconds=180,
-            )
-        if ok:
-            st.success(msg)
-            clear_app_caches()
-            st.rerun()
-        else:
-            st.error(msg)
-
-    return xuid
-
-
 def _load_spartan_id_from_db(db_path: str, xuid: str) -> str | None:
     """Charge le dernier spartan_id depuis career_progression.
 
@@ -173,7 +107,7 @@ def _load_spartan_id_from_db(db_path: str, xuid: str) -> str | None:
                 """,
                 (xuid,),
             ).fetchone()
-            if row:
+            if row and row[0] is not None:
                 return str(row[0]).strip() or None
     except Exception:
         pass
@@ -410,15 +344,36 @@ def load_match_dataframe(
     df = pl.DataFrame()
     db_key = db_cache_key(db_path) if db_path else None
 
+    from src.ui._cache_core import SharedDBUnavailableError
     from src.utils.log_config import log_duration
 
     _t0 = _time.perf_counter()
     if db_path and os.path.exists(db_path) and str(xuid or "").strip():
-        with (
-            perf_section("db/load_df_optimized"),
-            log_duration("db/load_df_optimized", logger, threshold_ms=500),
-        ):
-            df = load_df_optimized(db_path, xuid.strip(), db_key=db_key, cache_buster=cache_buster)
+        try:
+            with (
+                perf_section("db/load_df_optimized"),
+                log_duration("db/load_df_optimized", logger, threshold_ms=500),
+            ):
+                df = load_df_optimized(
+                    db_path, xuid.strip(), db_key=db_key, cache_buster=cache_buster
+                )
+        except SharedDBUnavailableError as exc:
+            # Erreur transitoire (DB verrouillée par MediaIndexer ou xuid non résolu).
+            # On tente UN rerun automatique ; si ça échoue encore, on affiche l'erreur.
+            retry_key = "_shared_db_retry"
+            if not st.session_state.get(retry_key):
+                st.session_state[retry_key] = True
+                logger.info("SharedDBUnavailableError transitoire, rerun auto: %s", exc)
+                st.rerun()
+            else:
+                st.session_state.pop(retry_key, None)
+                st.error(
+                    "⚠️ Base de données temporairement inaccessible "
+                    "(verrouillage concurrent). Rechargez la page."
+                )
+            return pl.DataFrame(), db_key
+        # Chargement réussi : effacer le flag de retry
+        st.session_state.pop("_shared_db_retry", None)
         if df.is_empty():
             st.warning(t("app_no_match"))
     else:

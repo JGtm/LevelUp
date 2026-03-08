@@ -131,40 +131,40 @@ def _classify_sessions_solo_squad(
     return solo_labels, squad_labels
 
 
-def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
+# ---------------------------------------------------------------------------
+# Helpers extraits de _render_session_filter (refacto qualité)
+# ---------------------------------------------------------------------------
+
+
+def _select_solo_via_button(label: str) -> None:
+    """Écrit des clés pending pour sélection solo — appelé par boutons."""
+    st.session_state["_pending_solo_session_label"] = label
+    st.session_state["_pending_squad_session_label"] = "(toutes)"
+
+
+def _select_squad_via_button(label: str) -> None:
+    """Écrit des clés pending pour sélection escouade — appelé par boutons."""
+    st.session_state["_pending_squad_session_label"] = label
+    st.session_state["_pending_solo_session_label"] = "(toutes)"
+
+
+def _load_session_context(  # noqa: PLR0913
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None,
     aliases_key: int | None,
-    base_for_filters: pl.DataFrame,
     build_friends_opts_map_fn: Callable,
     *,
     prefetched_friends: tuple[str, ...] | None = None,
     prefetched_sessions: pl.DataFrame | None = None,
-) -> tuple[int, list[str] | None, pl.DataFrame, tuple[str, ...] | None]:
-    """Rend les contrôles en mode Sessions : sous-sections En solo / Mon escouade.
+) -> tuple[pl.DataFrame, list[str], list[str], tuple[str, ...], frozenset[str]]:
+    """Charge les sessions et classifie solo/escouade.
 
-    - "En solo"      : sessions où aucun ami du multiselect n'était présent.
-    - "Mon escouade" : sessions où au moins un ami était présent.
-
-    Les sélections sont mutuellement exclusives : choisir dans une section
-    réinitialise l'autre à "(toutes)".
-
-    Args:
-        prefetched_friends: Amis pré-chargés par render_filters_sidebar (évite double calcul).
-        prefetched_sessions: Sessions pré-chargées par render_filters_sidebar (warm cache).
+    Returns:
+        (base_s_ui, solo_options, squad_options, friends_tuple, friends_xuids)
     """
-    # Import local pour éviter la circularité au niveau module
-    from src.app.filters_render import (
-        GAP_MINUTES_FIXED,
-        _cascade_reset_filters,
-        _session_labels_ordered_by_last_match,
-    )
+    from src.app.filters_render import GAP_MINUTES_FIXED, _session_labels_ordered_by_last_match
 
-    gap_minutes = GAP_MINUTES_FIXED
-
-    # ── Chargement des sessions (avec teammates_signature pour classification) ──
-    # Utiliser les données pré-chargées si disponibles (warm cache depuis render_filters_sidebar)
     friends_tuple = prefetched_friends or get_friends_xuids_for_sessions(
         db_path, xuid.strip(), db_key, aliases_key
     )
@@ -178,12 +178,11 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 xuid.strip(),
                 db_key,
                 True,
-                gap_minutes,
+                GAP_MINUTES_FIXED,
                 friends_xuids=friends_tuple,
             )
         )
 
-    # Vue allégée (sans teammates_signature) pour la compatibilité du reste de l'app
     base_s_ui = (
         base_s_raw.select(["match_id", "start_time", "session_id", "session_label"])
         if not base_s_raw.is_empty()
@@ -200,45 +199,30 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     options_ui = _session_labels_ordered_by_last_match(base_s_ui)
     st.session_state["_latest_session_label"] = options_ui[0] if options_ui else None
 
-    # ── Résoudre les amis depuis l'UI (multiselect Teammates persisted) ─────
     friends_opts_map, friends_default_labels = build_friends_opts_map_fn(
         db_path, xuid.strip(), db_key, aliases_key
     )
     ui_picked_labels: list[str] = (
         st.session_state.get("teammates_picked_labels") or friends_default_labels
     )
-    friends_xuids_for_classify = frozenset(
+    friends_xuids = frozenset(
         friends_opts_map[lbl] for lbl in ui_picked_labels if lbl in friends_opts_map
     )
 
-    # ── Classification solo / escouade ──────────────────────────────────────
-    solo_options, squad_options = _classify_sessions_solo_squad(
-        base_s_raw, friends_xuids_for_classify
-    )
+    solo_options, squad_options = _classify_sessions_solo_squad(base_s_raw, friends_xuids)
+    return base_s_ui, solo_options, squad_options, friends_tuple, friends_xuids
 
-    # ── Helpers boutons (écrivent UNIQUEMENT des clés _pending_*) ───────────
-    # ARCHITECTURE : aucun on_change sur les selectboxes solo/escouade.
-    # Raison : les callbacks on_change s'exécutent dans un contexte où
-    # Streamlit peut considérer les clés widget du cycle précédent comme
-    # « instanciées », provoquant StreamlitAPIException.
-    # L'exclusion mutuelle est gérée par :
-    #   - Boutons → pending keys + st.rerun()
-    #   - Selectbox solo → détection de changement AVANT le rendu du squad
-    #   - Selectbox squad → pending key + st.rerun()
 
-    def _select_solo_via_button(label: str) -> None:
-        """Écrit des clés pending pour sélection solo — appelé par boutons uniquement."""
-        st.session_state["_pending_solo_session_label"] = label
-        st.session_state["_pending_squad_session_label"] = "(toutes)"
+def _init_session_state_keys(
+    solo_options: list[str],
+    squad_options: list[str],
+) -> tuple[str, str]:
+    """Initialise et réconcilie les clés session_state pour solo/escouade.
 
-    def _select_squad_via_button(label: str) -> None:
-        """Écrit des clés pending pour sélection escouade — appelé par boutons uniquement."""
-        st.session_state["_pending_squad_session_label"] = label
-        st.session_state["_pending_solo_session_label"] = "(toutes)"
-
-    # ── Initialisation des clés de sélection ────────────────────────────────
+    Returns:
+        (pre_solo, pre_squad) — captures pré-rendu pour détection de changement.
+    """
     if "picked_solo_session_label" not in st.session_state:
-        # Héritage depuis picked_session_label (rétrocompabilité prefs / apply_default)
         existing = st.session_state.get("picked_session_label", "(toutes)")
         if existing in solo_options:
             st.session_state["picked_solo_session_label"] = existing
@@ -262,7 +246,7 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
         active = st.session_state.get("picked_session_label", "(toutes)")
         st.session_state["picked_sessions"] = [active] if active != "(toutes)" else []
 
-    # Cohérence : remettre dans la liste si session disparue (ex: changement d'amis)
+    # Cohérence : remettre dans la liste si session disparue
     if st.session_state.get("picked_solo_session_label") not in ["(toutes)"] + solo_options:
         st.session_state["picked_solo_session_label"] = (
             solo_options[0] if solo_options else "(toutes)"
@@ -270,10 +254,7 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if st.session_state.get("picked_squad_session_label") not in ["(toutes)"] + squad_options:
         st.session_state["picked_squad_session_label"] = "(toutes)"
 
-    # ── Consommation des clés pending (AVANT tout widget) ───────────────────
-    # Les boutons et le reset croisé squad→solo écrivent dans _pending_*.
-    # On les consomme ici pour écrire dans les clés widget en toute sécurité
-    # (les selectboxes ne sont pas encore instanciés à ce stade).
+    # Consommation des clés pending (AVANT tout widget)
     _pending_solo = st.session_state.pop("_pending_solo_session_label", None)
     if _pending_solo is not None:
         st.session_state["picked_solo_session_label"] = _pending_solo
@@ -281,11 +262,14 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if _pending_squad is not None:
         st.session_state["picked_squad_session_label"] = _pending_squad
 
-    # ── Capture pré-rendu pour détection de changement ──────────────────────
-    _pre_solo = st.session_state.get("picked_solo_session_label", "(toutes)")
-    _pre_squad = st.session_state.get("picked_squad_session_label", "(toutes)")
+    return (
+        st.session_state.get("picked_solo_session_label", "(toutes)"),
+        st.session_state.get("picked_squad_session_label", "(toutes)"),
+    )
 
-    # ── Sous-section "En solo" ───────────────────────────────────────────────
+
+def _render_solo_section(solo_options: list[str], pre_solo: str) -> None:
+    """Rend la sous-section En solo (boutons + selectbox + détection changement)."""
     st.subheader(t("filter_solo_title"))
     st.divider()
     solo_cols = st.columns(2)
@@ -307,7 +291,6 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
             _select_solo_via_button(solo_options[min(idx + 1, len(solo_options) - 1)])
         st.rerun()
 
-    # Selectbox solo — PAS de on_change (voir commentaire architecture ci-dessus)
     st.selectbox(
         t("filter_solo_session_label"),
         options=["(toutes)"] + solo_options,
@@ -316,16 +299,19 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     )
 
     # ── Détection changement solo → reset escouade ──────────────────────────
-    # Sûr : le selectbox squad n'est pas encore instancié, on peut écrire
-    # directement dans sa clé widget.
     _post_solo = st.session_state.get("picked_solo_session_label", "(toutes)")
-    if _post_solo != _pre_solo and _post_solo != "(toutes)":
+    if _post_solo != pre_solo and _post_solo != "(toutes)":
         st.session_state["picked_squad_session_label"] = "(toutes)"
 
-    # ── Sous-section "Mon escouade" ──────────────────────────────────────────
+
+def _render_squad_section(
+    squad_options: list[str],
+    no_friends: bool,
+    pre_squad: str,
+) -> None:
+    """Rend la sous-section Mon escouade (boutons + selectbox + détection changement)."""
     st.subheader(t("filter_squad_title"))
     st.divider()
-    no_friends = len(friends_xuids_for_classify) == 0
     no_squad_sessions = not squad_options
 
     if no_friends:
@@ -360,7 +346,6 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
             _select_squad_via_button(squad_options[min(idx + 1, len(squad_options) - 1)])
         st.rerun()
 
-    # Selectbox escouade — PAS de on_change (voir commentaire architecture ci-dessus)
     st.selectbox(
         t("filter_squad_session_label"),
         options=["(toutes)"] + squad_options,
@@ -369,24 +354,22 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
         disabled=no_friends or no_squad_sessions,
     )
 
-    # ── Détection changement escouade → reset solo au prochain cycle ────────
-    # Le selectbox solo est DÉJÀ instancié → écriture directe interdite.
-    # On passe par pending keys pour que la consommation se fasse au
-    # début du prochain run (avant l'instanciation des widgets).
-    # Le changement de selectbox déclenche naturellement un rerun Streamlit,
-    # donc pas besoin de st.rerun() explicite ici.
-    # IMPORTANT : on persiste aussi la valeur escouade dans _pending_squad pour
-    # qu'elle survive à la vérification de cohérence du prochain run.
-    # Sans ça, si squad_options diffère légèrement entre les runs (ex: amis recomputed),
-    # la cohérence peut resetter picked_squad_session_label à "(toutes)" AVANT la
-    # consommation du pending solo, effaçant la sélection utilisateur.
+    # ── Détection changement escouade → reset solo via pending ──────────────
     _post_squad = st.session_state.get("picked_squad_session_label", "(toutes)")
-    if _post_squad != _pre_squad and _post_squad != "(toutes)":
+    if _post_squad != pre_squad and _post_squad != "(toutes)":
         st.session_state["_pending_solo_session_label"] = "(toutes)"
         st.session_state["_pending_squad_session_label"] = _post_squad
         logger.debug("Reset solo→(toutes) via pending (escouade=%s)", _post_squad)
 
-    # ── Sélection active consolidée ──────────────────────────────────────────
+
+def _consolidate_active_selection() -> tuple[str, list[str] | None]:
+    """Consolide la sélection active solo/escouade et gère le cascade reset.
+
+    Returns:
+        (active_label, picked_session_labels)
+    """
+    from src.app.filters_render import _cascade_reset_filters
+
     solo_active = st.session_state.get("picked_solo_session_label", "(toutes)")
     squad_active = st.session_state.get("picked_squad_session_label", "(toutes)")
     if solo_active != "(toutes)":
@@ -396,17 +379,53 @@ def _render_session_filter(  # noqa: C901, PLR0912, PLR0913, PLR0915
     else:
         active_label = "(toutes)"
 
-    # Cascade reset des filtres ssi la session active effective a changé
+    # Sélection active consolidée
     _prev_active = st.session_state.get("_prev_active_session_label", "(toutes)")
     if active_label != _prev_active:
         _cascade_reset_filters()
     st.session_state["_prev_active_session_label"] = active_label
 
-    # Garder picked_session_label cohérent pour les autres parties de l'app
     st.session_state["picked_session_label"] = active_label
     st.session_state["picked_sessions"] = [] if active_label == "(toutes)" else [active_label]
     picked_session_labels = None if active_label == "(toutes)" else [active_label]
     if active_label != _prev_active:
         logger.info("Session sélectionnée: %s", active_label)
 
-    return gap_minutes, picked_session_labels, base_s_ui, friends_tuple
+    return active_label, picked_session_labels
+
+
+# ---------------------------------------------------------------------------
+# Fonction publique — orchestrateur
+# ---------------------------------------------------------------------------
+
+
+def _render_session_filter(  # noqa: PLR0913
+    db_path: str,
+    xuid: str,
+    db_key: tuple[int, int] | None,
+    aliases_key: int | None,
+    base_for_filters: pl.DataFrame,
+    build_friends_opts_map_fn: Callable,
+    *,
+    prefetched_friends: tuple[str, ...] | None = None,
+    prefetched_sessions: pl.DataFrame | None = None,
+) -> tuple[int, list[str] | None, pl.DataFrame, tuple[str, ...] | None]:
+    """Rend les contrôles en mode Sessions : sous-sections En solo / Mon escouade."""
+    from src.app.filters_render import GAP_MINUTES_FIXED
+
+    base_s_ui, solo_options, squad_options, friends_tuple, friends_xuids = _load_session_context(
+        db_path,
+        xuid,
+        db_key,
+        aliases_key,
+        build_friends_opts_map_fn,
+        prefetched_friends=prefetched_friends,
+        prefetched_sessions=prefetched_sessions,
+    )
+
+    pre_solo, pre_squad = _init_session_state_keys(solo_options, squad_options)
+    _render_solo_section(solo_options, pre_solo)
+    _render_squad_section(squad_options, no_friends=len(friends_xuids) == 0, pre_squad=pre_squad)
+    _, picked_session_labels = _consolidate_active_selection()
+
+    return GAP_MINUTES_FIXED, picked_session_labels, base_s_ui, friends_tuple

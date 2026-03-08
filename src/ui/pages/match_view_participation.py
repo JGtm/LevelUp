@@ -96,7 +96,6 @@ def render_participation_section(
             [profile],
             title=t("mvp_participation_title"),
             height=380,
-            radial_range=(0, 0.75),  # Échelle réduite pour agrandir le graphe
         )
         if fig is not None:
             st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)

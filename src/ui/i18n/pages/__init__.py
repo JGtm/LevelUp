@@ -19,6 +19,7 @@ from src.ui.i18n.pages import (
     teammates,
     timeseries,
     wl,
+    xbox,
 )
 
 STRINGS: dict[str, dict[str, str] | str] = {}
@@ -37,6 +38,7 @@ for _mod in (
     teammates,
     timeseries,
     wl,
+    xbox,
 ):
     STRINGS.update(_mod.STRINGS)
 

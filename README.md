@@ -1,8 +1,8 @@
 # LevelUp - Halo Infinite Dashboard
 
-> **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB v5 architecture.**
+> **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-5.4.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.4.0)
+[![Version](https://img.shields.io/badge/Version-5.5.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.5.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -11,41 +11,25 @@
 
 ---
 
-## What’s new
+## What's new
 
-- **v5.4 — Explorer & Encounter History**
-  - New **Explorer** page: unified match search with cascade filters (date, squad, type, playlist, mode, map), fuzzy gamertag search with XUID resolution, OS-style HTML table (KDA, MMR delta, accuracy, spree…), deep linking (`?page=Explorer&gamertag=XXX`) and encounter badges (rival, mentor, prey)
-  - **Encounter History** panel in Match View: per-player stats (encounter count, ally/enemy win rates, cross K/D) with auto-badges (**Dur à cuire** / Tough, **Allié+** / Good Ally, **Coriace** / Hard to Kill)
-  - **Massive refactoring** (72 new sub-modules, centralized logging system, quality enforcement) — 3,693 tests, 0 failures
-  - Bug fixes: filter auto-invalidation post-sync, SyncLock UI guard, per-player backfill detection, citations post-sync
+**v5.5 — Setup Wizard & Multi-platform**
+- Guided first-time setup with Xbox one-click login (OAuth) or manual Azure token flow
+- `LevelUp.bat` launcher for Windows and `LevelUp.sh` launcher for macOS & Linux
+- Portable Windows release (self-contained zip, no Python install required)
+- Timezone selector in Settings (~40 zones, defaults to Europe/Paris)
+- **Session Comparison page revamped** — outcomes donuts, F/D + accuracy curve, match highlights, mode & map breakdowns, LUSR/CSR rating overlay on cumulative net score
+- **XP & Hero rank comparison** — Career page now overlays XP curves and Hero projections for all players with a refresh token; precision scales with available data (real delta between syncs → global average fallback)
 
-- **v5.3 — LUSR/CSR & i18n & Sessions**
-  - TrueSkill 2 rating system per playlist group (ranked / arena / btb / tactical / social / fun)
-  - Empirical calibration with historical data
-  - Discord notifications after sync and backfill
-  - Full internationalization (i18n) support across all UI pages
-  - Multi-language interface (French 🇫🇷 / English 🇬🇧), switchable from the sidebar
-  - Translations centralized in `src/ui/i18n/` (dedicated package: `common`, `pages`, `widgets`, `viz`, `cli`)
-  - Career page: estimated pre-sync XP curve (purple dotted) + Hero rank projections (standard & optimistic with challenges + daily + ×2 boost, hidden by default)
-  - **Solo / Squad session filter**: sidebar splits into two subsections — "Solo" (no friends) and "My squad" (at least one teammate from your selected squad), with persistent friend selection and vectorized Polars classification
+**v5.4 — Explorer & Encounter History**
+- New **Explorer** page: search any match with cascade filters (date, squad, map, mode…) and deep links
+- **Encounter History**: rivalry/alliance stats with any player — K/D, win rates, auto-badges (*Rival*, *Good Ally*, *Hard to Kill*)
 
-- **v5.2 — PvE / Firefight**
-  - Dedicated `shared_pve.duckdb` database for Firefight matches
-  - Persistent intent-based filters
-  - Full "Last match" scoreboard
-  - Per-player OAuth tokens (player-gated Career Rank sync)
-  - Okabe–Ito palette (color-blind friendly)
-
-- **v5.1 — Optimized architecture**
-  - Modern Streamlit (`@st.fragment`, `st.navigation`)
-  - No SQLite / No Pandas, centralized `SyncScope`
-  - −75% DB connection time
-
-- **v5.0 — Shared Matches**
-  - `shared_matches.duckdb` centralizes all matches (registry, participants, events, medals)
-  - −69% storage, −72% API calls
-  - **3693 tests**, 0 failures
-
+**v5.3 — Skill Rating, i18n & Sessions**
+- TrueSkill 2 skill rating (LUSR) per playlist type (ranked, arena, BTB…)
+- Full French 🇫🇷 / English 🇬🇧 interface, switchable from the sidebar
+- Solo / Squad session filter in the sidebar
+- Discord notifications after sync
 ---
 
 ## Features
@@ -68,17 +52,21 @@
 - **Explorer** - Unified match search with cascade filters, fuzzy gamertag lookup, OS-style table, deep linking and encounter badges
 - **Last match** - Full scoreboard for your latest game, searchable by match ID — with Encounter History panel
 - **Session comparison** - Side-by-side analysis of two play sessions
-- **Career progression** - Rank history, progression to Hero, LUSR rating per playlist group
+- **Career progression** - Rank history, XP curve, Hero rank projections and **multi-player XP comparison** (all players with a refresh token overlaid on the same chart — detail level varies by sync history)
 - **Commendations** - Track your commendations with medal distributions and grids
 - **Media library** - Index and browse clips/screenshots linked to their matches
 - **Discord notifications** - Automatic alerts after sync and backfill operations
+- **Setup Wizard** - Guided first-time setup with Xbox Express or Azure manual paths
+- **Xbox OAuth** - One-click Xbox login with automatic player provisioning
 
-### v5.4 architecture — DuckDB Multi-DB
+### v5.5 architecture — DuckDB Multi-DB
 - **Shared Matches** — `shared_matches.duckdb` centralizes all matches (registry, participants, events, medals)
 - **PvE Firefight** — `shared_pve.duckdb` isolates Firefight stats (waves, bosses, enemies by type)
 - **Multi-DB ATTACH** — DuckDB `ATTACH` for seamless cross-DB reads
 - **LUSR/CSR** — TrueSkill 2 ratings per group stored in `match_skill_rank` (player DB)
 - **Performance** — DuckDB queries < 30ms (warm), native Polars DataFrames, materialized views
+- **Xbox OAuth** — Microsoft OAuth 2.0 flow with CSRF protection, refresh token stored in player DB
+- **Setup Wizard** — Guided configuration with auto-detection of missing credentials/players
 
 ---
 
@@ -295,7 +283,7 @@ Archived docs (not translated): [docs/archive/](docs/archive/)
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are welcome! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
 
 ---
 
@@ -331,7 +319,7 @@ This project is licensed under MIT. See [LICENSE](LICENSE) for details.
 - **Andy Curtis** ([acurtis166](https://github.com/acurtis166)) for [SPNKr](https://github.com/acurtis166/SPNKr)
 - **Den Delimarsky** ([dend](https://github.com/dend)) for [Grunt](https://github.com/dend/grunt) and [OpenSpartan](https://github.com/OpenSpartan)
 
-See also [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
+See also [ACKNOWLEDGMENTS.md](docs/ACKNOWLEDGMENTS.md).
 
 ---
 

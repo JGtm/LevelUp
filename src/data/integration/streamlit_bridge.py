@@ -34,19 +34,34 @@ from src.data.repositories.protocol import DataRepository
 PARIS_TZ_NAME = "Europe/Paris"
 
 
+def _get_display_tz_name() -> str:
+    """Retourne la timezone depuis app_settings, fallback 'Europe/Paris'."""
+    try:
+        import streamlit as st
+
+        settings = st.session_state.get("app_settings")
+        if settings is not None:
+            tz = str(getattr(settings, "user_timezone", "") or "").strip()
+            if tz:
+                return tz
+    except Exception:
+        pass
+    return PARIS_TZ_NAME
+
+
 def get_repository_mode_from_settings() -> RepositoryMode:
     """
     Récupère le mode de repository depuis les settings ou l'environnement.
     (Get repository mode from settings or environment)
 
     Priorité:
-    1. Variable d'environnement OPENSPARTAN_REPOSITORY_MODE (duckdb)
+    1. Variable d'environnement LEVELUP_REPOSITORY_MODE (duckdb)
     2. Paramètre dans st.session_state.app_settings.repository_mode (duckdb)
     3. Auto-détection depuis db_profiles.json
     4. Défaut: DUCKDB
     """
     # 1. Variable d'environnement
-    env_mode = os.environ.get("OPENSPARTAN_REPOSITORY_MODE", "").lower().strip()
+    env_mode = os.environ.get("LEVELUP_REPOSITORY_MODE", "").lower().strip()
     if env_mode == RepositoryMode.DUCKDB.value:
         return RepositoryMode.DUCKDB
 
@@ -198,7 +213,9 @@ def matches_to_dataframe(matches: list[MatchRow]) -> Any:
 
     # Conversions timezone (API Pandas requise par l'UI)
     df["start_time"] = (
-        pd.to_datetime(df["start_time"], utc=True).dt.tz_convert(PARIS_TZ_NAME).dt.tz_localize(None)
+        pd.to_datetime(df["start_time"], utc=True)
+        .dt.tz_convert(_get_display_tz_name())
+        .dt.tz_localize(None)
     )
     df["date"] = df["start_time"].dt.date
 

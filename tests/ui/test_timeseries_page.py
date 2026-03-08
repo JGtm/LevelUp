@@ -69,10 +69,6 @@ class TestRenderTimeseriesPage:
         with (
             patch.object(mod, "plot_timeseries", return_value=MagicMock()),
             patch.object(mod, "plot_kda_distribution", return_value=MagicMock()),
-            patch.object(mod, "plot_cumulative_net_score", return_value=MagicMock()),
-            patch.object(mod, "plot_cumulative_kd", return_value=MagicMock()),
-            patch.object(mod, "plot_rolling_kd", return_value=MagicMock()),
-            patch.object(mod, "plot_session_trend", return_value=MagicMock()),
             patch.object(mod, "render_distributions", return_value=None),
             patch.object(mod, "render_correlations", return_value=None),
             patch.object(mod, "plot_first_event_distribution", return_value=MagicMock()),
@@ -253,3 +249,160 @@ class TestRenderScatter:
             mod._render_scatter(dff, "kills", "deaths", "outcome", "T", "X", "Y")
 
         ms.calls["plotly_chart"].assert_called()
+
+
+# =============================================================================
+# _render_cumulative_performance
+# =============================================================================
+
+
+class TestRenderCumulativePerformance:
+    """Tests pour _render_cumulative_performance (Progression tab)."""
+
+    def _mock_cumul(self, *, has_trend: bool = False) -> MagicMock:
+        c = MagicMock()
+        c.has_enough_for_trend = has_trend
+        return c
+
+    def test_none_cumul_shows_info(self, mock_st) -> None:
+        """Si compute_cumulative_metrics retourne None → st.info affiché."""
+        from src.ui.pages import timeseries as mod
+
+        ms = mock_st(mod)
+        dff = _make_timeseries_df(5)
+
+        with patch.object(mod, "TimeseriesService") as mock_svc:
+            mock_svc.compute_cumulative_metrics.return_value = None
+            mod._render_cumulative_performance(dff, lang="fr")
+
+        ms.calls["info"].assert_called_once()
+
+    def test_basic_flow_renders_charts(self, mock_st) -> None:
+        """Flux nominal : 3 plotly_chart au minimum."""
+        from src.ui.pages import timeseries as mod
+
+        ms = mock_st(mod)
+        ms.set_columns_dynamic()
+        dff = _make_timeseries_df(30)
+
+        with (
+            patch.object(mod, "TimeseriesService") as mock_svc,
+            patch.object(mod, "plot_net_score_per_hour", return_value=MagicMock()),
+            patch.object(mod, "plot_cumulative_kd_with_ci", return_value=MagicMock()),
+            patch.object(mod, "plot_ewma_kd", return_value=MagicMock()),
+            patch.object(mod, "plot_regression_trend", return_value=MagicMock()),
+            patch.object(mod, "safe_chart_render"),
+        ):
+            mock_svc.compute_cumulative_metrics.return_value = self._mock_cumul(has_trend=False)
+            mock_svc.compute_rolling_net_score_per_hour.return_value = dff
+            mock_svc.compute_cumulative_kd_with_ci.return_value = dff
+            mock_svc.compute_ewma_kd.return_value = dff
+            mock_svc.compute_linear_regression_kd.return_value = {
+                "slope": 0.0,
+                "r_squared": 0.0,
+                "is_significant": False,
+                "trend": "stable",
+                "y_hat": [],
+                "x_labels": [],
+            }
+
+            mod._render_cumulative_performance(dff, lang="fr")
+
+        assert ms.calls["plotly_chart"].call_count >= 2
+
+    def test_nph_none_shows_info(self, mock_st) -> None:
+        """Quand nph_data est None → st.info 'ts_nph_unavailable'."""
+        from src.ui.pages import timeseries as mod
+
+        ms = mock_st(mod)
+        ms.set_columns_dynamic()
+        dff = _make_timeseries_df(20)
+
+        with (
+            patch.object(mod, "TimeseriesService") as mock_svc,
+            patch.object(mod, "plot_cumulative_kd_with_ci", return_value=MagicMock()),
+            patch.object(mod, "plot_ewma_kd", return_value=MagicMock()),
+            patch.object(mod, "safe_chart_render"),
+        ):
+            mock_svc.compute_cumulative_metrics.return_value = self._mock_cumul(has_trend=False)
+            mock_svc.compute_rolling_net_score_per_hour.return_value = None  # ← absent
+            mock_svc.compute_cumulative_kd_with_ci.return_value = dff
+            mock_svc.compute_ewma_kd.return_value = dff
+            mock_svc.compute_linear_regression_kd.return_value = {
+                "slope": 0.0,
+                "r_squared": 0.0,
+                "is_significant": False,
+                "trend": "stable",
+                "y_hat": [],
+                "x_labels": [],
+            }
+
+            mod._render_cumulative_performance(dff, lang="fr")
+
+        # st.info doit être appelé (NPH unavailable)
+        ms.calls["info"].assert_called()
+
+    def test_trend_shown_when_enough_matches(self, mock_st) -> None:
+        """Quand has_enough_for_trend=True → plot_regression_trend appelé."""
+        from src.ui.pages import timeseries as mod
+
+        ms = mock_st(mod)
+        ms.set_columns_dynamic()
+        dff = _make_timeseries_df(30)
+
+        with (
+            patch.object(mod, "TimeseriesService") as mock_svc,
+            patch.object(mod, "plot_net_score_per_hour", return_value=MagicMock()),
+            patch.object(mod, "plot_cumulative_kd_with_ci", return_value=MagicMock()),
+            patch.object(mod, "plot_ewma_kd", return_value=MagicMock()),
+            patch.object(mod, "plot_regression_trend", return_value=MagicMock()) as mock_reg,
+            patch.object(mod, "safe_chart_render"),
+        ):
+            mock_svc.compute_cumulative_metrics.return_value = self._mock_cumul(has_trend=True)
+            mock_svc.compute_rolling_net_score_per_hour.return_value = dff
+            mock_svc.compute_cumulative_kd_with_ci.return_value = dff
+            mock_svc.compute_ewma_kd.return_value = dff
+            mock_svc.compute_linear_regression_kd.return_value = {
+                "slope": 0.1,
+                "r_squared": 0.6,
+                "is_significant": True,
+                "trend": "improving",
+                "y_hat": [1.0] * 30,
+                "x_labels": [f"m{i}" for i in range(30)],
+            }
+
+            mod._render_cumulative_performance(dff, lang="fr")
+
+        mock_reg.assert_called_once()
+
+    def test_trend_info_when_not_enough(self, mock_st) -> None:
+        """Quand has_enough_for_trend=False → st.info 'ts_trend_min_matches'."""
+        from src.ui.pages import timeseries as mod
+
+        ms = mock_st(mod)
+        ms.set_columns_dynamic()
+        dff = _make_timeseries_df(5)
+
+        with (
+            patch.object(mod, "TimeseriesService") as mock_svc,
+            patch.object(mod, "plot_cumulative_kd_with_ci", return_value=MagicMock()),
+            patch.object(mod, "plot_ewma_kd", return_value=MagicMock()),
+            patch.object(mod, "safe_chart_render"),
+        ):
+            mock_svc.compute_cumulative_metrics.return_value = self._mock_cumul(has_trend=False)
+            mock_svc.compute_rolling_net_score_per_hour.return_value = None
+            mock_svc.compute_cumulative_kd_with_ci.return_value = dff
+            mock_svc.compute_ewma_kd.return_value = dff
+            mock_svc.compute_linear_regression_kd.return_value = {
+                "slope": 0.0,
+                "r_squared": 0.0,
+                "is_significant": False,
+                "trend": "stable",
+                "y_hat": [],
+                "x_labels": [],
+            }
+
+            mod._render_cumulative_performance(dff, lang="fr")
+
+        # st.info doit être appelé (ts_trend_min_matches + ts_nph_unavailable)
+        assert ms.calls["info"].call_count >= 1

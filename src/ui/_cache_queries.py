@@ -99,11 +99,21 @@ def cached_load_player_match_result(
                 skill_data["team_mmrs"] = None  # Non disponible dans DuckDB v4
                 return skill_data
             # Fallback: load_match_mmr_batch si load_match_skill_data ne retourne rien
+            logger.debug(
+                "load_match_skill_data retourne None pour match_id=%s — tentative load_match_mmr_batch",
+                match_id,
+            )
             mmr_data = repo.load_match_mmr_batch([match_id])
             team_mmr = None
             enemy_mmr = None
             if match_id in mmr_data:
                 team_mmr, enemy_mmr = mmr_data[match_id]
+            if team_mmr is None:
+                logger.warning(
+                    "MMR introuvable pour match_id=%s xuid=%s (skill_data=None, mmr_batch vide)",
+                    match_id,
+                    xuid,
+                )
             return {
                 "team_id": None,
                 "team_mmr": team_mmr,
@@ -114,6 +124,7 @@ def cached_load_player_match_result(
                 "assists": {"count": None, "expected": None, "stddev": None},
             }
         except Exception:
+            logger.warning("Erreur chargement match result (match_id=%s)", match_id, exc_info=True)
             return None
 
 
@@ -207,9 +218,9 @@ def cached_load_match_player_gamertags(
     if _is_duckdb_v4_path(db_path):
         try:
             # Utiliser le repo caché pour récupérer les XUIDs et résoudre les gamertags
-            # Résolution XUID : on utilise un xuid temporaire, resolve_gamertags_batch
-            # ne dépend pas du xuid du repo
-            repo = get_cached_repository_st(db_path, "")
+            # Résolution XUID : on résout le xuid réel pour éviter une entrée cache orpheline
+            player_xuid = _resolve_player_xuid(db_path)
+            repo = get_cached_repository_st(db_path, player_xuid)
 
             # Récupérer tous les XUIDs du match via le repo (highlight_events)
             events = repo.load_highlight_events(match_id)
@@ -289,6 +300,7 @@ def clear_app_caches() -> None:
         st.cache_data.clear()
     with contextlib.suppress(Exception):
         st.cache_resource.clear()
+    logger.debug("clear_app_caches: cache_data + cache_resource vidés")
 
 
 @st.cache_data(show_spinner=False)

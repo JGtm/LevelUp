@@ -9,6 +9,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
+import time
 from pathlib import Path
 
 from src.ui._sync_utils import _shared_path, get_player_duckdb_path
@@ -168,6 +169,12 @@ def _activate_sync_mode() -> None:
     except Exception:
         pass
 
+    # Forcer le GC pour libérer les file handles DuckDB (Windows)
+    import gc
+
+    gc.collect()
+    time.sleep(0.3)
+
 
 def _deactivate_sync_mode() -> None:
     """Désactive le mode sync pour rétablir l'ATTACH shared."""
@@ -178,6 +185,72 @@ def _deactivate_sync_mode() -> None:
         logger.debug("Sync: mode sync désactivé (ATTACH shared rétabli)")
     except Exception:
         pass
+
+
+def _resolve_sync_player_db_path(gamertag: str, repo_root: Path) -> Path:
+    """Résout le chemin stats.duckdb d'un joueur (création lazy si nouveau)."""
+    player_db_path = get_player_duckdb_path(gamertag, repo_root)
+    if player_db_path is None:
+        player_db_path = repo_root / "data" / "players" / gamertag / "stats.duckdb"
+        logger.info("Nouveau joueur %s, création de la DB: %s", gamertag, player_db_path)
+    return player_db_path
+
+
+def _touch_sync_mtime(player_db_path: Path) -> None:
+    """Met à jour le mtime des DBs pour invalider les caches Streamlit."""
+    for path in (str(player_db_path), str(_shared_path(player_db_path))):
+        with contextlib.suppress(Exception):
+            os.utime(path, None)
+            logger.debug("_touch_sync_mtime: mtime mis à jour → %s", path)
+
+
+async def _run_sync_engine(
+    *,
+    player_db_path: Path,
+    xuid: str,
+    gamertag: str,
+    delta: bool,
+    options,
+) -> tuple[bool, str]:
+    """Exécute le moteur de sync DuckDB pour un joueur."""
+    from src.data.sync import DuckDBSyncEngine
+
+    mode_str = "delta" if delta else "full"
+    logger.debug(
+        "_run_sync_engine: démarrage gamertag=%s xuid=%s mode=%s db=%s",
+        gamertag,
+        xuid,
+        mode_str,
+        player_db_path.name,
+    )
+    t0 = time.monotonic()
+    engine = DuckDBSyncEngine(
+        player_db_path=player_db_path,
+        xuid=xuid,
+        gamertag=gamertag,
+    )
+    try:
+        if delta:
+            result = await engine.sync_delta(options)
+        else:
+            result = await engine.sync_full(options)
+        elapsed = time.monotonic() - t0
+        logger.info(
+            "_run_sync_engine: terminé gamertag=%s succès=%s durée=%.1fs — %s",
+            gamertag,
+            result.success,
+            elapsed,
+            result.to_message(),
+        )
+        return result.success, result.to_message()
+    finally:
+        with contextlib.suppress(Exception):
+            engine.close()
+            logger.debug(
+                "_run_sync_engine: engine.close() gamertag=%s durée_totale=%.1fs",
+                gamertag,
+                time.monotonic() - t0,
+            )
 
 
 async def sync_player_duckdb_async(  # noqa: PLR0913
@@ -191,6 +264,7 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
     with_skill: bool = True,
     with_aliases: bool = True,
     repo_root: Path | None = None,
+    _manage_sync_mode: bool = True,
 ) -> tuple[bool, str]:
     """Synchronise un joueur via le nouveau pipeline DuckDB (async).
 
@@ -207,51 +281,76 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
         with_skill: Ignoré (toujours True).
         with_aliases: Ignoré (toujours True).
         repo_root: Racine du repo.
+        _manage_sync_mode: Si True (défaut), gère sync_mode et mtime.
+            Passer False quand le caller gère déjà (ex. sync_all_players_duckdb).
 
     Returns:
         Tuple (success, message).
     """
-    # Forcer la récupération de toutes les données
-    with_highlight_events = True
-    with_skill = True
-    with_aliases = True
+    # Forcer la récupération de toutes les données (arguments legacy ignorés)
+    _ = with_highlight_events, with_skill, with_aliases
     if repo_root is None:
         repo_root = REPO_ROOT
 
-    player_db_path = get_player_duckdb_path(gamertag, repo_root)
-    if player_db_path is None:
-        # Nouveau joueur : construire le chemin attendu
-        player_db_path = repo_root / "data" / "players" / gamertag / "stats.duckdb"
-        logger.info("Nouveau joueur %s, création de la DB: %s", gamertag, player_db_path)
+    player_db_path = _resolve_sync_player_db_path(gamertag, repo_root)
+
+    logger.info(
+        "sync_player_duckdb_async: démarrage gamertag=%s mode=%s max_matches=%d manage_sync=%s",
+        gamertag,
+        "delta" if delta else "full",
+        max_matches,
+        _manage_sync_mode,
+    )
+
+    # Guard réentrance : ne pas ré-activer si déjà en mode sync (ex. sync_all_players)
+    _already_active = False
+    if _manage_sync_mode:
+        from src.data.repositories.duckdb_repo import _sync_mode as _sm
+
+        _already_active = _sm.is_set()
+        if not _already_active:
+            _activate_sync_mode()
 
     try:
-        from src.data.sync import DuckDBSyncEngine, SyncOptions
-
-        engine = DuckDBSyncEngine(
-            player_db_path=player_db_path,
-            xuid=xuid,
-            gamertag=gamertag,
-        )
+        from src.data.sync import SyncOptions
 
         options = SyncOptions(
             match_type=match_type,
             max_matches=max_matches,
-            with_highlight_events=with_highlight_events,
-            with_skill=with_skill,
-            with_aliases=with_aliases,
+            with_highlight_events=True,
+            with_skill=True,
+            with_aliases=True,
+            with_participants=True,
+        )
+        ok, msg = await _run_sync_engine(
+            player_db_path=player_db_path,
+            xuid=xuid,
+            gamertag=gamertag,
+            delta=delta,
+            options=options,
         )
 
-        if delta:
-            result = await engine.sync_delta(options)
+        if ok:
+            logger.info("sync_player_duckdb_async: succès gamertag=%s — %s", gamertag, msg)
         else:
-            result = await engine.sync_full(options)
+            logger.warning("sync_player_duckdb_async: échec gamertag=%s — %s", gamertag, msg)
 
-        engine.close()
+        if _manage_sync_mode and not _already_active:
+            _touch_sync_mtime(player_db_path)
 
-        return result.success, result.to_message()
+        return ok, msg
 
     except Exception as e:
+        logger.error(
+            "sync_player_duckdb_async: exception gamertag=%s — %s",
+            gamertag,
+            e,
+            exc_info=True,
+        )
         return False, f"Erreur sync DuckDB: {e}"
+    finally:
+        if _manage_sync_mode and not _already_active:
+            _deactivate_sync_mode()
 
 
 def sync_player_duckdb(  # noqa: PLR0913
@@ -265,12 +364,13 @@ def sync_player_duckdb(  # noqa: PLR0913
     with_skill: bool = True,
     with_aliases: bool = True,
     repo_root: Path | None = None,
+    _manage_sync_mode: bool = True,
 ) -> tuple[bool, str]:
     """Synchronise un joueur via le nouveau pipeline DuckDB (sync wrapper).
 
     Wrapper synchrone autour de sync_player_duckdb_async().
 
-    IMPORTANT: Toutes les données sont toujours récupérées (highlights, skill, aliases, médailles).
+    IMPORTANT: Toutes les données sont toujours récupérées (highlights, skill, aliases).
 
     Args:
         gamertag: Gamertag du joueur.
@@ -282,6 +382,7 @@ def sync_player_duckdb(  # noqa: PLR0913
         with_skill: Ignoré (toujours True).
         with_aliases: Ignoré (toujours True).
         repo_root: Racine du repo.
+        _manage_sync_mode: Si True (défaut), gère sync_mode et mtime.
 
     Returns:
         Tuple (success, message).
@@ -303,5 +404,6 @@ def sync_player_duckdb(  # noqa: PLR0913
             with_skill=with_skill,
             with_aliases=with_aliases,
             repo_root=repo_root,
+            _manage_sync_mode=_manage_sync_mode,
         )
     )

@@ -1,9 +1,8 @@
-"""Calcul et affichage des KPIs pour l'application Streamlit.
+"""Calcul des KPIs pour l'application Streamlit.
 
 Ce module gère :
-- Le calcul des statistiques agrégées
-- L'affichage des cartes KPI
-- Le résumé du bandeau supérieur
+- La structure de données KPIStats
+- Le calcul des statistiques agrégées (compute_kpi_stats)
 """
 
 from __future__ import annotations
@@ -11,14 +10,9 @@ from __future__ import annotations
 from typing import NamedTuple
 
 import polars as pl
-import streamlit as st
 
 from src.analysis import compute_aggregated_stats, compute_global_ratio, compute_outcome_rates
-from src.analysis.stats import format_mmss
 from src.app.helpers import avg_match_duration_seconds, compute_total_play_seconds
-from src.ui.components import render_kpi_cards, render_top_summary
-from src.ui.formatting import format_duration_dhm, format_duration_hms
-from src.ui.i18n import t
 from src.utils.polars_compat import ensure_polars as _to_polars
 
 # =============================================================================
@@ -38,6 +32,7 @@ class KPIStats(NamedTuple):
     ties: int
 
     # Performance
+    # no_finish exposé en dernier (défaut = 0 pour rétro-compatibilité)
     avg_accuracy: float | None
     global_ratio: float | None
     avg_life_seconds: float | None
@@ -55,6 +50,7 @@ class KPIStats(NamedTuple):
     # Time
     avg_match_seconds: float | None
     total_play_seconds: float | None
+    no_finish: int = 0
 
 
 def compute_kpi_stats(df: pl.DataFrame) -> KPIStats:
@@ -113,101 +109,5 @@ def compute_kpi_stats(df: pl.DataFrame) -> KPIStats:
         assists_per_minute=stats.assists_per_minute,
         avg_match_seconds=avg_match_s,
         total_play_seconds=total_play_s,
+        no_finish=rates.no_finish,
     )
-
-
-# =============================================================================
-# Rendu des KPIs
-# =============================================================================
-
-
-def render_matches_summary(df: pl.DataFrame, kpis: KPIStats) -> None:
-    """Rend le résumé des parties (bandeau supérieur).
-
-    Args:
-        df: DataFrame des matchs filtrés.
-        kpis: Statistiques KPI calculées.
-    """
-    df_pl = _to_polars(df)
-    rates = compute_outcome_rates(df_pl)
-
-    avg_match_txt = format_duration_hms(kpis.avg_match_seconds)
-    total_play_txt = format_duration_dhm(kpis.total_play_seconds)
-
-    st.subheader(t("kpi_section_matches"))
-    render_top_summary(len(df_pl), rates)
-    render_kpi_cards(
-        [
-            (t("kpi_avg_duration"), avg_match_txt),
-            (t("kpi_total_duration"), total_play_txt),
-        ]
-    )
-
-
-def render_career_kpis(kpis: KPIStats) -> None:
-    """Rend les KPIs de carrière.
-
-    Args:
-        kpis: Statistiques KPI calculées.
-    """
-    avg_match_txt = format_duration_hms(kpis.avg_match_seconds)
-
-    st.subheader(t("kpi_section_career"))
-    render_kpi_cards(
-        [
-            (t("kpi_avg_duration"), avg_match_txt),
-            (
-                t("kpi_kills_per_match"),
-                f"{kpis.kills_per_game:.2f}" if kpis.kills_per_game is not None else "-",
-            ),
-            (
-                t("kpi_deaths_per_match"),
-                f"{kpis.deaths_per_game:.2f}" if kpis.deaths_per_game is not None else "-",
-            ),
-            (
-                t("kpi_assists_per_match"),
-                f"{kpis.assists_per_game:.2f}" if kpis.assists_per_game is not None else "-",
-            ),
-        ],
-        dense=False,
-    )
-    render_kpi_cards(
-        [
-            (
-                t("kpi_kills_per_min"),
-                f"{kpis.kills_per_minute:.2f}" if kpis.kills_per_minute else "-",
-            ),
-            (
-                t("kpi_deaths_per_min"),
-                f"{kpis.deaths_per_minute:.2f}" if kpis.deaths_per_minute else "-",
-            ),
-            (
-                t("kpi_assists_per_min"),
-                f"{kpis.assists_per_minute:.2f}" if kpis.assists_per_minute else "-",
-            ),
-            (
-                t("kpi_avg_accuracy"),
-                f"{kpis.avg_accuracy:.2f}%" if kpis.avg_accuracy is not None else "-",
-            ),
-            (t("kpi_avg_lifespan"), format_mmss(kpis.avg_life_seconds)),
-            (t("kpi_win_rate"), f"{kpis.win_rate * 100:.1f}%" if kpis.total_matches else "-"),
-            (t("kpi_loss_rate"), f"{kpis.loss_rate * 100:.1f}%" if kpis.total_matches else "-"),
-            (t("kpi_ratio"), f"{kpis.global_ratio:.2f}" if kpis.global_ratio is not None else "-"),
-        ],
-        dense=False,
-    )
-
-
-def render_all_kpis(df: pl.DataFrame) -> KPIStats:
-    """Rend tous les KPIs (parties + carrière) et retourne les stats.
-
-    Args:
-        df: DataFrame des matchs filtrés.
-
-    Returns:
-        KPIStats calculées.
-    """
-    kpis = compute_kpi_stats(df)
-    render_matches_summary(df, kpis)
-    render_career_kpis(kpis)
-    return kpis

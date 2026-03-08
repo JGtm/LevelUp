@@ -17,7 +17,7 @@
 ## Chocoboflor
 
 - **XUID** : `2535469190789936`
-- **DB** : `C:\Users\Guillaume\Downloads\Scripts\Openspartan-graph\data\players\Chocoboflor\stats.duckdb`
+- **DB** : `<REPO_ROOT>\data\players\Chocoboflor\stats.duckdb`
 - **Taille** : 64.76 MB
 
 ### Statistiques de jeu
@@ -60,7 +60,7 @@
 ## JGtm
 
 - **XUID** : `2533274823110022`
-- **DB** : `C:\Users\Guillaume\Downloads\Scripts\Openspartan-graph\data\players\JGtm\stats.duckdb`
+- **DB** : `<REPO_ROOT>\data\players\JGtm\stats.duckdb`
 - **Taille** : 73.76 MB
 
 ### Statistiques de jeu
@@ -109,7 +109,7 @@
 ## Madina97294
 
 - **XUID** : `2533274858283686`
-- **DB** : `C:\Users\Guillaume\Downloads\Scripts\Openspartan-graph\data\players\Madina97294\stats.duckdb`
+- **DB** : `<REPO_ROOT>\data\players\Madina97294\stats.duckdb`
 - **Taille** : 115.76 MB
 
 ### Statistiques de jeu
@@ -159,7 +159,7 @@
 ## XxDaemonGamerxX
 
 - **XUID** : `2533274833178266`
-- **DB** : `C:\Users\Guillaume\Downloads\Scripts\Openspartan-graph\data\players\XxDaemonGamerxX\stats.duckdb`
+- **DB** : `<REPO_ROOT>\data\players\XxDaemonGamerxX\stats.duckdb`
 - **Taille** : 8.01 MB
 
 ### Statistiques de jeu

@@ -84,7 +84,7 @@ class TestGetDbCacheKey:
         result = get_db_cache_key(str(db_file))
         assert result is not None
         assert isinstance(result, tuple)
-        # Depuis v5 : (mtime_ns_player, size_player, mtime_ns_shared, size_shared)
-        assert len(result) == 4
+        # Depuis v5.x : (mtime_ns_player, size_player, mtime_ns_shared, size_shared, wal_sentinel)
+        assert len(result) == 5
         assert isinstance(result[0], int)  # mtime_ns_player
         assert isinstance(result[1], int)  # size_player

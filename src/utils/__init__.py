@@ -1,4 +1,4 @@
-"""Utilitaires partagés pour le projet OpenSpartan Graph."""
+"""Utilitaires partagés pour le projet LevelUp."""
 
 from .paths import (
     ARCHIVE_DIR,

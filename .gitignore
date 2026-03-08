@@ -113,5 +113,8 @@ To do.txt
 # Outils IA locaux (non trackés)
 .claude/
 
+# Archives de plans IA (notes personnelles historiques)
+.ai/archive/
+
 # Logs locaux (non trackés)
 data/logs/*

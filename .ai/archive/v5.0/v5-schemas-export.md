@@ -17,13 +17,13 @@
 ## Metadata DB
 
 ### metadata.duckdb
-⚠️ Base introuvable : C:\Users\Guillaume\Downloads\Scripts\Openspartan-graph\data\warehouse\metadata.duckdb
+⚠️ Base introuvable : <REPO_ROOT>\data\warehouse\metadata.duckdb
 
 
 ## Bases Joueurs
 
 ### Chocoboflor
-- **Chemin** : `C:\Users\Guillaume\Downloads\Scripts\Openspartan-graph\data\players\Chocoboflor\stats.duckdb`
+- **Chemin** : `<REPO_ROOT>\data\players\Chocoboflor\stats.duckdb`
 - **Taille** : 64.76 MB
 - **Tables** : 21
 
@@ -398,7 +398,7 @@
 
 
 ### JGtm
-- **Chemin** : `C:\Users\Guillaume\Downloads\Scripts\Openspartan-graph\data\players\JGtm\stats.duckdb`
+- **Chemin** : `<REPO_ROOT>\data\players\JGtm\stats.duckdb`
 - **Taille** : 73.76 MB
 - **Tables** : 21
 
@@ -773,7 +773,7 @@
 
 
 ### Madina97294
-- **Chemin** : `C:\Users\Guillaume\Downloads\Scripts\Openspartan-graph\data\players\Madina97294\stats.duckdb`
+- **Chemin** : `<REPO_ROOT>\data\players\Madina97294\stats.duckdb`
 - **Taille** : 115.76 MB
 - **Tables** : 21
 
@@ -1150,7 +1150,7 @@
 
 
 ### XxDaemonGamerxX
-- **Chemin** : `C:\Users\Guillaume\Downloads\Scripts\Openspartan-graph\data\players\XxDaemonGamerxX\stats.duckdb`
+- **Chemin** : `<REPO_ROOT>\data\players\XxDaemonGamerxX\stats.duckdb`
 - **Taille** : 8.01 MB
 - **Tables** : 14
 

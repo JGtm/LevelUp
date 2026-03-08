@@ -122,5 +122,31 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Session compare charts ──────────────────────────────────────────────
     "scc_mmr_team": {"fr": "MMR Équipe", "en": "Team MMR"},
     "scc_mmr_enemy": {"fr": "MMR Adverse", "en": "Enemy MMR"},
+    # ── Nouvelles sections graphiques ───────────────────────────────────────
+    "sc_outcomes_distribution": {
+        "fr": "### 🎯 Résultats des parties",
+        "en": "### 🎯 Match results",
+    },
+    "sc_kd_progression": {
+        "fr": "#### 📈 Évolution F/D par partie",
+        "en": "#### 📈 K/D progression per match",
+    },
+    "sc_match_index": {"fr": "Partie", "en": "Match"},
+    "sc_fd_ratio": {"fr": "F/D", "en": "K/D"},
+    "sc_modes_breakdown": {
+        "fr": "#### 🕹️ Modes joués",
+        "en": "#### 🕹️ Modes played",
+    },
+    "sc_match_highlights": {
+        "fr": "#### ⭐ Highlights",
+        "en": "#### ⭐ Highlights",
+    },
+    "sc_best_match": {"fr": "🏆 Meilleur", "en": "🏆 Best"},
+    "sc_worst_match": {"fr": "💀 Pire", "en": "💀 Worst"},
+    "sc_map_table": {
+        "fr": "#### 🗺️ Stats par carte",
+        "en": "#### 🗺️ Map stats",
+    },
+    "sc_map_col": {"fr": "Carte", "en": "Map"},
     # ── Playlist categories ─────────────────────────────────────────────────
 }

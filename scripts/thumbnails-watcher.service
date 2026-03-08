@@ -19,9 +19,9 @@ After=network.target
 Type=simple
 
 # Modifier ces valeurs selon votre configuration
-User=guillaume
+User=YOUR_USERNAME
 Group=users
-WorkingDirectory=/volume1/docker/levelup
+WorkingDirectory=/path/to/levelup
 
 # Commande de démarrage
 # Modifier --videos-dir selon votre configuration

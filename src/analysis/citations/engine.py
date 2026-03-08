@@ -10,8 +10,8 @@ Ce module fournit ``CitationEngine``, classe responsable de :
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
+from collections.abc import Generator
 from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
@@ -20,6 +20,7 @@ import duckdb
 import polars as pl
 
 from src.analysis.citations._data_loader import CitationDataLoaderMixin
+from src.analysis.citations.composite import _apply_composite_citations
 from src.analysis.citations.custom_rules import CUSTOM_FUNCTIONS
 from src.utils.db import duckdb_read_write
 from src.utils.paths import get_pve_db_path_from_player
@@ -89,25 +90,30 @@ class CitationEngine(CitationDataLoaderMixin):
     # Connexion helper
     # ------------------------------------------------------------------
 
-    def _read_conn(self) -> tuple[duckdb.DuckDBPyConnection, bool]:
-        """Retourne une connexion lecture et indique si elle a été créée.
+    @contextlib.contextmanager
+    def _read_conn(self) -> Generator[duckdb.DuckDBPyConnection, None, None]:
+        """Context manager : connexion lecture, fermée automatiquement si créée.
 
-        Si une connexion partagée est disponible, la retourne (owned=False).
-        Sinon, ouvre une nouvelle connexion read-only (owned=True) et
-        ATTACH ``shared_matches.duckdb`` si disponible.
+        Si une connexion partagée est disponible, la yield sans la fermer.
+        Sinon, ouvre une nouvelle connexion read-only, ATTACH shared si
+        disponible, et la ferme à la sortie du ``with``.
         """
         if self._shared_conn is not None:
-            return self._shared_conn, False
+            yield self._shared_conn
+            return
         conn = duckdb.connect(str(self._db_path), read_only=True)
-        # ATTACH shared_matches.duckdb pour lecture V5
-        if self._shared_db_path is not None and self._shared_db_path.exists():
-            try:
-                conn.execute(f"ATTACH '{self._shared_db_path}' AS shared (READ_ONLY)")
-            except Exception as e:
-                err = str(e).lower()
-                if "already" not in err and "conflict" not in err:
-                    logger.debug("Impossible d'attacher shared: %s", e)
-        return conn, True
+        try:
+            # ATTACH shared_matches.duckdb pour lecture V5
+            if self._shared_db_path is not None and self._shared_db_path.exists():
+                try:
+                    conn.execute(f"ATTACH '{self._shared_db_path}' AS shared (READ_ONLY)")
+                except Exception as e:
+                    err = str(e).lower()
+                    if "already" not in err and "conflict" not in err:
+                        logger.debug("Impossible d'attacher shared: %s", e)
+            yield conn
+        finally:
+            conn.close()
 
     @property
     def has_shared(self) -> bool:
@@ -351,8 +357,7 @@ class CitationEngine(CitationDataLoaderMixin):
         if not self._db_path.exists() and self._shared_conn is None:
             return {}
 
-        conn, owned = self._read_conn()
-        try:
+        with self._read_conn() as conn:
             # Vérifier que la table existe
             exists = conn.execute(
                 "SELECT COUNT(*) FROM information_schema.tables "
@@ -386,9 +391,6 @@ class CitationEngine(CitationDataLoaderMixin):
             ).fetchall()
 
             return {row[0]: int(row[1]) for row in rows}
-        finally:
-            if owned:
-                conn.close()
 
     # ------------------------------------------------------------------
     # Méthode haut-niveau : calcul complet pour un match
@@ -473,43 +475,5 @@ class CitationEngine(CitationDataLoaderMixin):
             ``{citation_name_norm: total}``.
         """
         result = self.aggregate_citations(citation_names=None, match_ids=match_ids)
-
-        # Calculer les citations composites
         mappings = self.load_mappings()
-        for norm_name, mapping in mappings.items():
-            if mapping.get("mapping_type") != "composite":
-                continue
-            children_raw = mapping.get("composite_children")
-            if not children_raw:
-                continue
-            try:
-                children = (
-                    json.loads(children_raw) if isinstance(children_raw, str) else children_raw
-                )
-            except (json.JSONDecodeError, TypeError):
-                continue
-            if not isinstance(children, list):
-                continue
-
-            # Compter les sous-citations qui ont atteint la maîtrise
-            mastered_count = 0
-            for child in children:
-                if child not in mappings:
-                    continue
-                child_count = result.get(child, 0)
-                if child_count <= 0:
-                    continue
-                child_tiers = mappings[child].get("tier_targets")
-                if not child_tiers:
-                    # Pas de tiers → considérer masterisé si > 0
-                    mastered_count += 1
-                    continue
-                targets = sorted(
-                    int(t.strip()) for t in str(child_tiers).split(",") if t.strip().isdigit()
-                )
-                if targets and child_count >= targets[-1]:
-                    mastered_count += 1
-            if mastered_count > 0:
-                result[norm_name] = mastered_count
-
-        return result
+        return _apply_composite_citations(result, mappings)

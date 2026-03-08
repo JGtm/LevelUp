@@ -14,7 +14,7 @@ from collections.abc import Callable
 
 import streamlit as st
 
-from src.config import BOT_MAP, TEAM_MAP
+from src.config import TEAM_MAP, get_bot_name
 from src.ui import display_name_from_xuid
 from src.ui.formatting import format_time_ms as _format_time
 from src.ui.i18n import get_lang, t
@@ -84,7 +84,7 @@ def render_roster_section(  # noqa: C901, PLR0913
         if xu_s:
             bot_key = xu_s.strip()
             if bot_key.lower().startswith("bid("):
-                bot_name = BOT_MAP.get(bot_key)
+                bot_name = get_bot_name(bot_key)
                 if isinstance(bot_name, str) and bot_name.strip():
                     return bot_name.strip()
 
@@ -199,7 +199,7 @@ def render_match_impact_section(  # noqa: PLR0913
 
     Affiche un graphe chronologique kills/deaths cumulées du joueur,
     avec annotations des événements d'impact (premier sang, finisseur,
-    plus lent, première victime).
+    touriste, première victime).
     """
     st.subheader(t("mv_impact_title"))
 
@@ -274,6 +274,7 @@ def render_match_impact_section(  # noqa: PLR0913
         st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
     else:
         st.info(t("mv_impact_too_few"))
+    st.caption(t("mv_impact_legend"))
 
 
 # =============================================================================

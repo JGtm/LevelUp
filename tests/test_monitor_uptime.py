@@ -295,12 +295,8 @@ class TestGetWebhookUrl:
         }
         with (
             patch.object(monitor_uptime, "_load_app_settings", return_value=settings),
-            patch.dict("os.environ", {}, clear=False),
+            patch("src.utils.secrets.get_secret", return_value=""),
         ):
-            # S'assurer que la var d'env n'est pas définie
-            import os
-
-            os.environ.pop("DISCORD_WEBHOOK_URL", None)
             assert monitor_uptime._get_webhook_url() == webhook
 
     def test_returns_none_for_invalid_url(self) -> None:

@@ -330,6 +330,39 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             logger.error(f"Erreur --enable-pve-citations : {e}")
         return 0
 
+    # --xp-total : recalcule xp_total + xp_for_next_rank dans career_progression (tous joueurs)
+    xp_total_flag = getattr(args, "xp_total", False)
+    if xp_total_flag:
+        try:
+            from pathlib import Path
+
+            from scripts.backfill.strategies import backfill_career_xp_total
+            from src.ui.multiplayer import list_duckdb_v4_players
+
+            players = list_duckdb_v4_players()
+            total_updated = 0
+            for pinfo in players:
+                db = Path(pinfo.db_path)
+                if not db.exists():
+                    logger.debug(f"[{pinfo.gamertag}] stats.duckdb absent, ignoré")
+                    continue
+                try:
+                    n = backfill_career_xp_total(str(db))
+                    if n > 0:
+                        logger.info(f"[{pinfo.gamertag}] {n} snapshot(s) xp_total recalculé(s)")
+                    else:
+                        logger.debug(f"[{pinfo.gamertag}] aucun snapshot career_progression")
+                    total_updated += n
+                except Exception as _e:
+                    logger.warning(f"[{pinfo.gamertag}] Erreur --xp-total : {_e}")
+            logger.info(f"xp_total recalculé pour {total_updated} snapshot(s) au total")
+        except Exception as e:
+            logger.error(f"Erreur --xp-total : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
     # Validation
     if not args.all and not args.player:
         parser.error("--player ou --all est requis")
@@ -503,6 +536,8 @@ def _print_totals(totals: dict, scope: object) -> None:  # noqa: C901, PLR0912
         logger.info(f"End time mis à jour: {totals.get('end_time_updated', 0)}")
     if getattr(scope, "sessions", False):
         logger.info(f"Sessions mises à jour: {totals.get('sessions_updated', 0)}")
+    if getattr(scope, "teammates_sig", False):
+        logger.info(f"Signatures coéquipiers: {totals.get('teammates_sig_updated', 0)}")
     if getattr(scope, "citations", False):
         logger.info(f"Citations calculées: {totals.get('citations_computed', 0)}")
     if getattr(scope, "participants_enrich", False):

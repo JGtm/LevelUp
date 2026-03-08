@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import html
 import logging
+from typing import Any
 
+import polars as pl
 import streamlit as st
 
 from src.ui.i18n import get_lang, t
 from src.ui.i18n.data_labels import label_obj
+from src.ui.medals import load_medal_name_maps, render_medals_grid
 
 logger = logging.getLogger(__name__)
 
@@ -179,4 +182,32 @@ def render_match_citations_section(  # noqa: C901, PLR0912, PLR0915
             )
 
 
-__all__ = ["render_match_citations_section"]
+def render_medals_tab(medals_last: list[dict[str, Any]] | None) -> None:
+    """Affiche la grille de médailles dans l'onglet Citations & Médailles."""
+    st.subheader(t("mv_medals"))
+    if not medals_last:
+        st.info(t("mv_medals_no_data"))
+        return
+    md_df = pl.DataFrame(medals_last)
+    _fr_map, _en_map = load_medal_name_maps()
+    _medal_map = {
+        **{str(k): v for k, v in _en_map.items()},
+        **{str(k): v for k, v in _fr_map.items()},
+    }
+    md_df = md_df.with_columns(
+        pl.col("name_id")
+        .cast(pl.Utf8)
+        .replace_strict(_medal_map, default=None, return_dtype=pl.Utf8)
+        .fill_null(pl.lit(t("mv_medal_fallback", n="") + " ") + pl.col("name_id").cast(pl.Utf8))
+        .alias("label")
+    )
+    md_df = md_df.sort(["count", "label"], descending=[True, False])
+    render_medals_grid(
+        md_df.select(["name_id", "count"]).to_dicts(),
+        cols_per_row=8,
+        center=True,
+        lang=get_lang(),
+    )
+
+
+__all__ = ["render_match_citations_section", "render_medals_tab"]

@@ -468,6 +468,42 @@ class TestMatchDataLoaders:
         assert engine.load_match_awards("no_such") == {}
 
 
+class TestReadConnSharedBranch:
+    """Tests pour _read_conn avec connexion partagée (shared_conn)."""
+
+    def test_shared_conn_reused_not_closed(self, engine_dir: Path) -> None:
+        """Quand shared_conn est fourni, _read_conn le réutilise sans le fermer."""
+        player_db = engine_dir / "data" / "players" / "TestPlayer" / "stats.duckdb"
+        metadata_db = engine_dir / "data" / "warehouse" / "metadata.duckdb"
+
+        shared_conn = duckdb.connect(str(player_db), read_only=True)
+        try:
+            eng = CitationEngine(
+                db_path=player_db,
+                xuid="12345",
+                metadata_db_path=metadata_db,
+                conn=shared_conn,
+            )
+
+            # La connexion partagée doit rester ouverte après utilisation
+            stats = eng.load_match_stats("m1")
+            assert stats["kills"] == 15
+
+            # La connexion partagée est toujours fonctionnelle
+            row = shared_conn.execute("SELECT 1").fetchone()
+            assert row == (1,)
+        finally:
+            shared_conn.close()
+
+    def test_owned_conn_closed_after_use(self, engine: CitationEngine) -> None:
+        """Sans shared_conn, _read_conn crée et ferme sa propre connexion."""
+        # Appeler deux fois pour vérifier que chaque appel crée/ferme
+        stats1 = engine.load_match_stats("m1")
+        stats2 = engine.load_match_stats("m2")
+        assert stats1["kills"] == 15
+        assert stats2["kills"] == 10
+
+
 # ---------------------------------------------------------------------------
 # Tests compute_and_store_for_match
 # ---------------------------------------------------------------------------
@@ -820,9 +856,9 @@ class TestCompositeMastery:
         conn.executemany(
             "INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?, ?, ?)",
             [
-                ("m1", "child_a", 40),   # < 50 → pas masterisé
-                ("m1", "child_b", 25),   # < 30 → pas masterisé
-                ("m1", "child_c", 90),   # < 100 → pas masterisé
+                ("m1", "child_a", 40),  # < 50 → pas masterisé
+                ("m1", "child_b", 25),  # < 30 → pas masterisé
+                ("m1", "child_c", 90),  # < 100 → pas masterisé
             ],
         )
         conn.close()
@@ -837,9 +873,9 @@ class TestCompositeMastery:
         conn.executemany(
             "INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?, ?, ?)",
             [
-                ("m1", "child_a", 50),   # = 50 → masterisé ✓
-                ("m1", "child_b", 30),   # = 30 → masterisé ✓
-                ("m1", "child_c", 10),   # < 100 → pas masterisé
+                ("m1", "child_a", 50),  # = 50 → masterisé ✓
+                ("m1", "child_b", 30),  # = 30 → masterisé ✓
+                ("m1", "child_c", 10),  # < 100 → pas masterisé
             ],
         )
         conn.close()
@@ -855,9 +891,9 @@ class TestCompositeMastery:
         conn.executemany(
             "INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?, ?, ?)",
             [
-                ("m1", "child_a", 100),   # ≥ 50 → masterisé ✓
-                ("m1", "child_b", 30),    # = 30 → masterisé ✓
-                ("m1", "child_c", 100),   # = 100 → masterisé ✓
+                ("m1", "child_a", 100),  # ≥ 50 → masterisé ✓
+                ("m1", "child_b", 30),  # = 30 → masterisé ✓
+                ("m1", "child_c", 100),  # = 100 → masterisé ✓
             ],
         )
         conn.close()

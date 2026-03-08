@@ -1,7 +1,7 @@
 """Configuration centralisée pour DuckDB.
 
 Ce module centralise tous les paramètres de configuration DuckDB
-utilisés dans le projet OpenSpartan Graph (architecture v4).
+utilisés dans le projet LevelUp (architecture v4).
 
 Usage:
     from src.data.infrastructure.database.duckdb_config import DuckDBConfig, configure_connection
@@ -56,12 +56,12 @@ DEFAULT_ENABLE_PROGRESS_BAR = False
 
 def _get_env_memory_limit() -> str | None:
     """Lit la limite mémoire depuis l'environnement."""
-    return os.environ.get("OPENSPARTAN_DUCKDB_MEMORY_LIMIT")
+    return os.environ.get("LEVELUP_DUCKDB_MEMORY_LIMIT")
 
 
 def _get_env_threads() -> int | None:
     """Lit le nombre de threads depuis l'environnement."""
-    val = os.environ.get("OPENSPARTAN_DUCKDB_THREADS")
+    val = os.environ.get("LEVELUP_DUCKDB_THREADS")
     if val:
         try:
             return int(val)

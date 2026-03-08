@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, feature/*, refactor/*]
+    branches: [main, feature/*, refactor/*, fix/*, docs/*]
   pull_request:
     branches: [main]
 
@@ -115,7 +115,7 @@ jobs:
         run: isort --check-only --diff src/ tests/ || true
 
       - name: Lint (Ruff)
-        run: ruff check src/ tests/
+        run: ruff check src/ tests/ --output-format=github
 
   quality:
     name: Code Quality
@@ -134,7 +134,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Check code size limits
-        run: python scripts/check_code_size.py || true
+        run: python scripts/check_code_size.py
 
       - name: Check imports health
         run: python scripts/check_imports.py || true

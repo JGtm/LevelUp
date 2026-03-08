@@ -93,3 +93,36 @@ def get_legend_horizontal_top() -> dict:
 def get_legend_horizontal_bottom() -> dict:
     """Retourne la configuration pour une légende horizontale en bas."""
     return {"orientation": "h", "yanchor": "top", "y": -0.22, "xanchor": "left", "x": 0}
+
+
+def iqr_yrange(
+    values: list[float | None],
+    allow_negative: bool = True,
+    pad_factor: float = 0.15,
+) -> tuple[float, float] | None:
+    """Plage Y lisible par écrêtage des outliers (règle 1.5×IQR).
+
+    Retourne None si la liste est trop courte ou monovaluée (Plotly gère
+    alors l'autoscale). Utile pour les joueurs avec des matchs extrêmes
+    légitimes qui écraseraient sinon l'échelle.
+
+    Args:
+        values: Valeurs flottantes brutes (None ignorés).
+        allow_negative: Si False, le plancher est ramené à 0.
+        pad_factor: Marge ajoutée autour de la plage (fraction de l'étendue).
+    """
+    clean = sorted(v for v in values if v is not None)
+    if len(clean) < 4:
+        return None
+    n = len(clean)
+    q1 = clean[n // 4]
+    q3 = clean[(3 * n) // 4]
+    iqr = q3 - q1
+    if iqr == 0:
+        return None
+    lo = q1 - 1.5 * iqr
+    hi = q3 + 1.5 * iqr
+    if not allow_negative:
+        lo = max(0.0, lo)
+    span = hi - lo
+    return (lo - span * pad_factor, hi + span * pad_factor)

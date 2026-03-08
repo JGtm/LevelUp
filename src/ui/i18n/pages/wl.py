@@ -20,8 +20,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Win rate by day and hour",
     },
     "wl_heatmap_caption": {
-        "fr": "Identifie les créneaux horaires où tu performes le mieux. Les cellules affichent le nombre de matchs.",
-        "en": "Find the time slots where you perform best. Cells show the number of matches.",
+        "fr": "Identifie les créneaux horaires où tu performes le mieux (heure locale {tz}). Les cellules affichent le nombre de matchs.",
+        "en": "Find the time slots where you perform best ({tz} local time). Cells show the number of matches.",
     },
     "wl_top_by_week": {
         "fr": "Matchs Top vs Total par semaine",
@@ -123,6 +123,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "wl_metric_accuracy": {
         "fr": "Précision moyenne",
         "en": "Avg. accuracy",
+    },
+    "wl_metric_performance": {
+        "fr": "Performance moyenne",
+        "en": "Avg. performance",
+    },
+    "wl_session_map_note": {
+        "fr": "ℹ️ En vue session (peu de matchs par carte), le ratio et le taux de victoires ne sont pas représentatifs — affiché : métriques de performance.",
+        "en": "ℹ️ In session view (few matches per map), win ratio and win rate are not meaningful — showing performance metrics instead.",
     },
     "wl_personal_score_y_axis": {
         "fr": "Score personnel",

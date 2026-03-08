@@ -135,6 +135,86 @@ def plot_session_trend(
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
+def _perf_color(p: float | None, fallback: str) -> str:
+    """Retourne la couleur Plotly selon le score de performance."""
+    if p is None:
+        return fallback
+    return "#27AE60" if float(p) >= 70 else "#F39C12" if float(p) >= 45 else "#E74C3C"
+
+
+def _add_session_trace(  # noqa: PLR0913
+    fig: go.Figure,
+    df: pl.DataFrame,
+    label: str,
+    color: str,
+    lang: str,
+    perf_scores: list[float | None] | None = None,
+) -> None:
+    """Ajoute la trace du score cumulé d'une session sur la figure."""
+    from src.analysis.cumulative import compute_cumulative_net_score_series_polars
+
+    if df.is_empty():
+        return
+    cumul = compute_cumulative_net_score_series_polars(df)
+    if cumul.is_empty():
+        return
+    data = cumul.to_dicts()
+    x_values = list(range(len(data)))
+    y_values = [d.get("cumulative_net_score", 0) for d in data]
+    n = len(data)
+
+    if perf_scores and len(perf_scores) >= n:
+        marker_colors: list[str] | str = [_perf_color(perf_scores[i], color) for i in range(n)]
+        customdata = [[f"{float(p):.0f}" if p is not None else "—"] for p in perf_scores[:n]]
+        hover = (
+            f"<b>{label}</b><br>Match #%{{x}}<br>Cumulé: %{{y:+d}}"
+            "<br>⭐ Perf: %{customdata[0]}<extra></extra>"
+        )
+    else:
+        marker_colors = color
+        customdata = None
+        hover = viz_t("hover_match_cumul", lang, label=label)
+
+    trace_kwargs = {
+        "x": x_values,
+        "y": y_values,
+        "mode": "lines+markers",
+        "name": label,
+        "line": {"color": color, "width": 2},
+        "marker": {"size": 6, "color": marker_colors},
+        "hovertemplate": hover,
+    }
+    if customdata is not None:
+        trace_kwargs["customdata"] = customdata
+    fig.add_trace(go.Scatter(**trace_kwargs))
+
+
+def _add_rank_trace(
+    fig: go.Figure,
+    ranks: list[float | None],
+    label: str,
+    color: str,
+    rank_label: str,
+) -> None:
+    """Ajoute la trace LUSR/CSR (axe Y secondaire) sur la figure."""
+    valid = [(i, r) for i, r in enumerate(ranks) if r is not None and float(r) > 0]
+    if not valid:
+        return
+    fig.add_trace(
+        go.Scatter(
+            x=[v[0] for v in valid],
+            y=[float(v[1]) for v in valid],
+            mode="lines+markers",
+            name=f"{label} {rank_label}",
+            line={"color": color, "width": 1, "dash": "dot"},
+            marker={"size": 5, "symbol": "diamond", "color": color},
+            yaxis="y2",
+            opacity=0.7,
+            hovertemplate=f"{label} {rank_label}: %{{y:.0f}}<extra></extra>",
+        )
+    )
+
+
 def plot_cumulative_comparison(  # noqa: PLR0913
     session_a_df: pl.DataFrame,
     session_b_df: pl.DataFrame,
@@ -142,43 +222,27 @@ def plot_cumulative_comparison(  # noqa: PLR0913
     label_a: str = "Session A",
     label_b: str = "Session B",
     title: str | None = None,
-    height: int = 400,
+    height: int = 420,
     lang: str = "fr",
+    rank_a: list[float | None] | None = None,
+    rank_b: list[float | None] | None = None,
+    rank_label: str = "CSR",
+    perf_a: list[float | None] | None = None,
+    perf_b: list[float | None] | None = None,
 ) -> go.Figure:
     """Compare deux sessions avec leurs courbes de net score cumulé."""
-    fig = go.Figure()
-
     if title is None:
         title = viz_t("title_session_comparison", lang)
 
-    from src.analysis.cumulative import compute_cumulative_net_score_series_polars
+    fig = go.Figure()
+    _add_session_trace(fig, session_a_df, label_a, PERFORMANCE_COLORS["neutral"], lang, perf_a)
+    _add_session_trace(fig, session_b_df, label_b, PERFORMANCE_COLORS["kd_line"], lang, perf_b)
 
-    def add_session_trace(df: pl.DataFrame, label: str, color: str) -> None:
-        if df.is_empty():
-            return
-
-        cumul = compute_cumulative_net_score_series_polars(df)
-        if cumul.is_empty():
-            return
-
-        data = cumul.to_dicts()
-        x_values = list(range(len(data)))
-        y_values = [d.get("cumulative_net_score", 0) for d in data]
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_values,
-                y=y_values,
-                mode="lines+markers",
-                name=label,
-                line={"color": color, "width": 2},
-                marker={"size": 6, "color": color},
-                hovertemplate=viz_t("hover_match_cumul", lang, label=label),
-            )
-        )
-
-    add_session_trace(session_a_df, label_a, PERFORMANCE_COLORS["neutral"])
-    add_session_trace(session_b_df, label_b, PERFORMANCE_COLORS["kd_line"])
+    has_rank = bool(rank_a or rank_b)
+    if rank_a:
+        _add_rank_trace(fig, rank_a, label_a, PERFORMANCE_COLORS["neutral"], rank_label)
+    if rank_b:
+        _add_rank_trace(fig, rank_b, label_b, PERFORMANCE_COLORS["kd_line"], rank_label)
 
     fig.add_hline(
         y=0,
@@ -188,14 +252,22 @@ def plot_cumulative_comparison(  # noqa: PLR0913
         annotation_position="right",
     )
 
-    fig.update_layout(
-        xaxis_title=viz_t("axis_match_number", lang),
-        yaxis_title=viz_t("axis_cumul_net_score", lang),
-        hovermode="x unified",
-        showlegend=True,
-        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
-    )
-
+    layout_kwargs: dict = {
+        "xaxis_title": viz_t("axis_match_number", lang),
+        "yaxis_title": viz_t("axis_cumul_net_score", lang),
+        "hovermode": "x unified",
+        "showlegend": True,
+        "legend": {"orientation": "h", "yanchor": "top", "y": -0.18, "xanchor": "center", "x": 0.5},
+    }
+    if has_rank:
+        layout_kwargs["yaxis2"] = {
+            "title": rank_label,
+            "overlaying": "y",
+            "side": "right",
+            "showgrid": False,
+            "rangemode": "tozero",
+        }
+    fig.update_layout(**layout_kwargs)
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
@@ -278,3 +350,115 @@ def create_cumulative_metrics_indicator(
 def get_performance_colors() -> dict[str, str]:
     """Retourne le dictionnaire des couleurs de performance."""
     return PERFORMANCE_COLORS.copy()
+
+
+# =============================================================================
+# Indicateurs de régression (pente K/D, win rate, R²)
+# =============================================================================
+
+
+def _kd_slope_indicator(slope: float, trend: str, lang: str) -> go.Indicator:
+    """Retourne l'indicateur Plotly pour la pente K/D par 10 matchs."""
+    if trend == "improving":
+        color = PERFORMANCE_COLORS["trend_up"]
+    elif trend == "declining":
+        color = PERFORMANCE_COLORS["trend_down"]
+    else:
+        color = PERFORMANCE_COLORS["baseline"]
+    return go.Indicator(
+        mode="number+delta",
+        value=round(slope * 10, 3),
+        number={
+            "font": {"size": 32, "color": color},
+            "suffix": viz_t("suffix_per_10_matches", lang),
+            "valueformat": "+.3f",
+        },
+        delta={
+            "reference": 0,
+            "relative": False,
+            "valueformat": ".3f",
+            "increasing": {"color": PERFORMANCE_COLORS["trend_up"]},
+            "decreasing": {"color": PERFORMANCE_COLORS["trend_down"]},
+        },
+        title={"text": viz_t("label_kd_slope", lang), "font": {"size": 13}},
+    )
+
+
+def _r2_indicator(r_sq: float, is_sig: bool, lang: str) -> go.Indicator:
+    """Retourne l'indicateur Plotly pour la qualité d'ajustement R²."""
+    color = PERFORMANCE_COLORS["kd_line"] if is_sig else PERFORMANCE_COLORS["baseline"]
+    suffix = "" if is_sig else f" {viz_t('label_not_significant', lang)}"
+    return go.Indicator(
+        mode="number",
+        value=round(r_sq, 2),
+        number={"font": {"size": 32, "color": color}, "suffix": suffix, "valueformat": ".2f"},
+        title={"text": viz_t("label_r_squared", lang), "font": {"size": 13}},
+    )
+
+
+def _winrate_indicator(wr_slope: float, lang: str) -> go.Indicator:
+    """Retourne l'indicateur Plotly pour la pente win rate par 10 matchs."""
+    if wr_slope > 0.005:
+        color = PERFORMANCE_COLORS["trend_up"]
+    elif wr_slope < -0.005:
+        color = PERFORMANCE_COLORS["trend_down"]
+    else:
+        color = PERFORMANCE_COLORS["baseline"]
+    return go.Indicator(
+        mode="number+delta",
+        value=round(wr_slope * 10, 3),
+        number={
+            "font": {"size": 32, "color": color},
+            "suffix": viz_t("suffix_per_10_matches", lang),
+            "valueformat": "+.3f",
+        },
+        delta={
+            "reference": 0,
+            "relative": False,
+            "valueformat": ".3f",
+            "increasing": {"color": PERFORMANCE_COLORS["trend_up"]},
+            "decreasing": {"color": PERFORMANCE_COLORS["trend_down"]},
+        },
+        title={"text": viz_t("label_win_rate_slope", lang), "font": {"size": 13}},
+    )
+
+
+def plot_regression_trend(
+    regression_data: dict,
+    *,
+    title: str | None = None,
+    height: int = 160,
+    lang: str = "fr",
+) -> go.Figure:
+    """Indicateurs compacts : pente K/D, pente win rate et R².
+
+    Remplace la comparaison début/fin par une régression sur tous les matchs.
+    R² < 0.3 est signalé ⚠ "tendance non significative".
+
+    Args:
+        regression_data: Dict issu de compute_linear_regression_kd.
+        title: Titre (auto si None).
+        height: Hauteur en pixels.
+        lang: Langue.
+    """
+    if title is None:
+        title = viz_t("title_regression_trend", lang)
+
+    slope = regression_data.get("slope", 0.0) or 0.0
+    r_sq = regression_data.get("r_squared", 0.0) or 0.0
+    is_sig = regression_data.get("is_significant", False)
+    trend = regression_data.get("trend", "stable")
+    wr_slope = regression_data.get("win_rate_slope")
+
+    n_cols = 3 if wr_slope is not None else 2
+    fig = make_subplots(rows=1, cols=n_cols, specs=[[{"type": "indicator"}] * n_cols])
+
+    fig.add_trace(_kd_slope_indicator(slope, trend, lang), row=1, col=1)
+    fig.add_trace(_r2_indicator(r_sq, is_sig, lang), row=1, col=2)
+    if wr_slope is not None:
+        fig.add_trace(_winrate_indicator(wr_slope, lang), row=1, col=n_cols)
+
+    # Marges serrées : le titre est géré côté Streamlit (st.markdown) pour
+    # éviter tout débordement avec height=160.
+    fig.update_layout(margin={"l": 10, "r": 10, "t": 10, "b": 10})
+    return apply_halo_plot_style(fig, title=None, height=height)

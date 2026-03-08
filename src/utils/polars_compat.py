@@ -9,6 +9,8 @@ dans 9 modules.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import polars as pl
 
 
@@ -31,3 +33,28 @@ def ensure_polars(df: object) -> pl.DataFrame:
         return pl.from_pandas(df)  # type: ignore[arg-type]
     except Exception:
         return pl.DataFrame()
+
+
+def build_mapping(
+    series: pl.Series,
+    fn: Callable[[str | None], str | None],
+) -> dict[str, str]:
+    """Construit un dict de mapping à partir des valeurs distinctes d'une Series.
+
+    Utile quand on a besoin du mapping pour plusieurs colonnes ou pour
+    des paramètres callbacks.
+
+    Args:
+        series: Colonne source.
+        fn: Fonction de transformation.
+
+    Returns:
+        Dict {valeur_source: valeur_traduite} (sans les None).
+    """
+    distinct_vals = series.drop_nulls().unique().to_list()
+    mapping: dict[str, str] = {}
+    for v in distinct_vals:
+        result = fn(v)
+        if result is not None:
+            mapping[str(v)] = str(result)
+    return mapping

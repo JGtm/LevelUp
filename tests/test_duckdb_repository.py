@@ -105,6 +105,148 @@ class TestReleaseDbConnections:
         write_conn.close()
 
 
+class TestWriteLease:
+    """Tests pour le mécanisme db_write_lease / wait_for_write_leases_cleared.
+
+    Reproduit la race condition « MediaIndexer (read_write) vs switch joueur
+    (read_only) » qui causait le stuck au chargement.
+    """
+
+    def test_write_lease_blocks_get_connection(self, tmp_path: Path) -> None:
+        """_get_connection() attend que le write lease soit libéré."""
+        import threading
+        import time
+
+        from src.data.repositories._write_lease import db_write_lease
+        from src.data.repositories.duckdb_repo import DuckDBRepository
+
+        db_file = tmp_path / "player.duckdb"
+        duckdb.connect(str(db_file)).close()
+
+        results: list[str] = []
+
+        def writer():
+            with db_write_lease(db_file), duckdb.connect(str(db_file), read_only=False) as conn:
+                conn.execute("CREATE TABLE IF NOT EXISTS t (x INT)")
+                conn.commit()
+                results.append("write_start")
+                time.sleep(0.2)  # Simule le travail du MediaIndexer
+                results.append("write_end")
+
+        t = threading.Thread(target=writer)
+        t.start()
+        time.sleep(0.05)  # Laisser le writer s'installer
+
+        # _get_connection() doit attendre que le writer ait fini
+        repo = DuckDBRepository(str(db_file), xuid="x1", read_only=True)
+        conn = repo._get_connection()
+        results.append("read_opened")
+        conn  # noqa: B018 — juste pour vérifier qu'on a bien une connexion
+
+        t.join(timeout=2.0)
+
+        # L'ordre doit être : write_start → write_end → read_opened
+        assert results == ["write_start", "write_end", "read_opened"], results
+
+    def test_write_lease_released_on_exception(self, tmp_path: Path) -> None:
+        """Le write lease est libéré même si une exception survient dans le bloc."""
+        from src.data.repositories._write_lease import (
+            _write_leases,
+            db_write_lease,
+        )
+
+        db_file = tmp_path / "player.duckdb"
+        path_key = str(db_file.resolve())
+
+        with pytest.raises(RuntimeError, match="test"), db_write_lease(db_file):
+            assert _write_leases[path_key] == 1
+            raise RuntimeError("test")
+
+        assert _write_leases[path_key] == 0
+
+    def test_wait_returns_immediately_when_no_lease(self, tmp_path: Path) -> None:
+        """wait_for_write_leases_cleared retourne immédiatement si pas de lease actif."""
+        import time
+
+        from src.data.repositories._write_lease import wait_for_write_leases_cleared
+
+        db_file = tmp_path / "player.duckdb"
+        start = time.monotonic()
+        wait_for_write_leases_cleared(db_file)
+        elapsed = time.monotonic() - start
+        assert elapsed < 0.1, f"Devrait être quasi-instantané, got {elapsed:.3f}s"
+
+    def test_wait_timeout_is_bounded(self, tmp_path: Path) -> None:
+        """L'attente est bornée par timeout même si un write lease reste actif."""
+        import threading
+        import time
+
+        from src.data.repositories._write_lease import (
+            db_write_lease,
+            wait_for_write_leases_cleared,
+        )
+
+        db_file = tmp_path / "player.duckdb"
+        duckdb.connect(str(db_file)).close()
+
+        def writer_holds_lease() -> None:
+            with db_write_lease(db_file):
+                time.sleep(0.3)
+
+        t = threading.Thread(target=writer_holds_lease)
+        t.start()
+        time.sleep(0.05)
+
+        start = time.monotonic()
+        wait_for_write_leases_cleared(db_file, timeout=0.1)
+        elapsed = time.monotonic() - start
+        t.join(timeout=1.0)
+
+        assert elapsed < 0.2, f"L'attente devrait être bornée, got {elapsed:.3f}s"
+
+    def test_no_conflict_with_write_lease_pattern(self, tmp_path: Path) -> None:
+        """Reproduit exactement le bug du switch joueur : plus de conflit avec le lease."""
+        import threading
+        import time
+
+        from src.data.repositories._write_lease import db_write_lease
+        from src.data.repositories.duckdb_repo import DuckDBRepository, release_db_connections
+
+        db_file = tmp_path / "player.duckdb"
+        duckdb.connect(str(db_file)).close()
+
+        errors: list[Exception] = []
+
+        def simulate_media_indexer():
+            """Simule le MediaIndexer ouvrant la DB en écriture."""
+            with db_write_lease(db_file):
+                release_db_connections(db_file)
+                with duckdb.connect(str(db_file), read_only=False) as conn:
+                    conn.execute("CREATE TABLE IF NOT EXISTS media_files (id INT)")
+                    conn.commit()
+                    time.sleep(0.15)
+
+        def simulate_player_switch():
+            """Simule le switch de joueur qui tente d'ouvrir en read_only."""
+            try:
+                repo = DuckDBRepository(str(db_file), xuid="x1", read_only=True)
+                repo._get_connection()
+            except Exception as e:
+                errors.append(e)
+
+        t_indexer = threading.Thread(target=simulate_media_indexer)
+        t_indexer.start()
+        time.sleep(0.05)  # S'assurer que le writer est déjà en cours
+
+        t_switch = threading.Thread(target=simulate_player_switch)
+        t_switch.start()
+
+        t_indexer.join(timeout=2.0)
+        t_switch.join(timeout=2.0)
+
+        assert not errors, f"Le switch joueur a échoué : {errors}"
+
+
 class TestDuckDBRepositoryImport:
     """Tests d'import et de structure."""
 

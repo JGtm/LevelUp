@@ -337,10 +337,7 @@ class TrendAnalyzer:
         current_start = now - timedelta(days=period_days)
         previous_start = current_start - timedelta(days=period_days)
 
-        if metric == "win_rate":
-            agg = "SUM(CASE WHEN outcome = 2 THEN 1.0 ELSE 0 END) / NULLIF(COUNT(*), 0)"
-        else:
-            agg = f"AVG({metric})"
+        agg = WIN_RATE_EXPR if metric == "win_rate" else f"AVG({metric})"
 
         sql = f"""
             SELECT
@@ -405,7 +402,7 @@ class TrendAnalyzer:
             SELECT
                 AVG(kda) as recent_kda,
                 AVG(accuracy) as recent_accuracy,
-                SUM(CASE WHEN outcome = 2 THEN 1.0 ELSE 0 END) / NULLIF(COUNT(*), 0) as recent_win_rate,
+                {WIN_RATE_EXPR} as recent_win_rate,
                 COUNT(*) as match_count
             FROM {table}
             WHERE start_time >= NOW() - INTERVAL '7 days'

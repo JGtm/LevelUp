@@ -15,7 +15,7 @@ from collections.abc import Callable
 import streamlit as st
 
 from src.analysis import compute_personal_antagonists
-from src.config import BOT_MAP
+from src.config import get_bot_name
 from src.ui import display_name_from_xuid
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
@@ -44,7 +44,7 @@ def _display_name_for_chart(
     if xu_s:
         bot_key = xu_s.strip()
         if bot_key.lower().startswith("bid("):
-            bot_name = BOT_MAP.get(bot_key)
+            bot_name = get_bot_name(bot_key)
             if isinstance(bot_name, str) and bot_name.strip():
                 return bot_name.strip()
 
@@ -200,11 +200,11 @@ def render_nemesis_section(  # noqa: C901, PLR0913, PLR0915
         st.info(t("mv_nemesis_no_data"))
 
     def _debug_enabled() -> bool:
-        env_flag = str(os.environ.get("OPENSPARTAN_DEBUG_ANTAGONISTS") or "").strip().lower()
+        env_flag = str(os.environ.get("LEVELUP_DEBUG_ANTAGONISTS") or "").strip().lower()
         if env_flag in {"1", "true", "yes", "y", "on"}:
             return True
 
-        env_flag2 = str(os.environ.get("OPENSPARTAN_DEBUG") or "").strip().lower()
+        env_flag2 = str(os.environ.get("LEVELUP_DEBUG") or "").strip().lower()
         if env_flag2 in {"1", "true", "yes", "y", "on"}:
             return True
 

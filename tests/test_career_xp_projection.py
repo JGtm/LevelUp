@@ -21,6 +21,7 @@ from src.ui.pages.career_data import (
 )
 from src.ui.pages.career_logic import (
     _OTHER_PLAYERS_COLORS,
+    CAREER_XP_LAUNCH_DATE,
     DAILY_CHALLENGE_XP,
     INACTIVITY_GAP_DAYS,
     WEEKLY_CHALLENGE_XP,
@@ -172,6 +173,33 @@ class TestComputeEstimatedXpCurve:
         result = self._run(history, pre_sync_dates)
         dates = [pt[0] for pt in result]
         assert dates == sorted(dates)
+
+    def test_matchs_avant_lancement_exclus(self):
+        """Les matchs antérieurs au 20/06/2023 ne doivent pas figurer dans la courbe."""
+        d0 = datetime(2024, 2, 1)
+        history = _make_history([(d0, 10, 3000)])
+        avant_lancement = datetime(2022, 11, 15)  # Halo Infinite sorti avant les rangs
+        apres_lancement = datetime(2023, 9, 1)  # après le 20/06/2023
+        pre_sync_dates = [avant_lancement, apres_lancement]
+
+        result = self._run(history, pre_sync_dates)
+
+        dates = [pt[0] for pt in result]
+        assert avant_lancement not in dates
+        for d, _ in result[:-1]:  # exclure le point de raccord final
+            assert d.date() >= CAREER_XP_LAUNCH_DATE.date()
+
+    def test_tous_matchs_avant_lancement_retourne_vide(self):
+        """Si tous les matchs pré-sync sont antérieurs au 20/06/2023, retourner []."""
+        d0 = datetime(2024, 2, 1)
+        history = _make_history([(d0, 10, 5000)])
+        pre_sync_dates = [
+            datetime(2022, 1, 1),
+            datetime(2022, 11, 20),
+            datetime(2023, 3, 15),
+        ]
+        result = self._run(history, pre_sync_dates)
+        assert result == []
 
 
 # ── Tests _compute_hero_projections ──────────────────────────────────────────

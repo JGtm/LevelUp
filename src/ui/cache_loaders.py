@@ -15,6 +15,7 @@ import logging
 import polars as pl
 import streamlit as st
 
+from src.ui.tz import get_tz_name as _get_tz_name  # résolution dynamique depuis settings
 from src.utils.db import is_duckdb_v4_path as _is_duckdb_v4_path
 
 # ─── Réexports depuis _cache_core ──────────────────────────────────────────
@@ -59,10 +60,18 @@ def _load_matches_duckdb_v4(db_path: str, include_firefight: bool = True) -> lis
     Préférer _load_matches_duckdb_v4_polars() pour le chemin optimisé.
     Utilise le repository caché (v5.1 perf) pour éviter les reconnexions.
     """
+    from src.ui._cache_core import SharedDBUnavailableError
+
     try:
         player_xuid = _resolve_player_xuid(db_path)
+        if not player_xuid:
+            raise SharedDBUnavailableError(
+                "XUID non résolu (DB probablement verrouillée) — retry au prochain rerun"
+            )
         repo = get_cached_repository_st(db_path, player_xuid)
         return repo.load_matches(include_firefight=include_firefight)
+    except SharedDBUnavailableError:
+        raise
     except Exception:
         return []
 
@@ -88,14 +97,22 @@ def _load_matches_duckdb_v4_polars(
     Returns:
         DataFrame Polars. Vide en cas d'erreur.
     """
+    from src.ui._cache_core import SharedDBUnavailableError
+
     try:
         player_xuid = _resolve_player_xuid(db_path)
+        if not player_xuid:
+            raise SharedDBUnavailableError(
+                "XUID non résolu (DB probablement verrouillée) — retry au prochain rerun"
+            )
         repo = get_cached_repository_st(db_path, player_xuid)
         return repo.load_matches_as_polars(
             include_firefight=include_firefight,
             columns=columns,
             max_matches=max_matches,
         )
+    except SharedDBUnavailableError:
+        raise  # Ne pas cacher — retry automatique au prochain appel
     except Exception:
         logger.warning("load_matches_as_polars échoué, fallback MatchRow", exc_info=True)
         return pl.DataFrame()
@@ -124,6 +141,7 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
 
     # Conversion timezone start_time
     if "start_time" in df.columns:
+        _tz = _get_tz_name()  # résolution dynamique depuis app_settings
         start_time_dtype = df.schema.get("start_time")
         if start_time_dtype in (
             pl.Datetime,
@@ -134,7 +152,7 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
             try:
                 df = df.with_columns(
                     pl.col("start_time")
-                    .dt.convert_time_zone(PARIS_TZ_NAME)
+                    .dt.convert_time_zone(_tz)
                     .dt.replace_time_zone(None)
                     .alias("start_time")
                 )
@@ -142,7 +160,7 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
                 df = df.with_columns(
                     pl.col("start_time")
                     .dt.replace_time_zone("UTC")
-                    .dt.convert_time_zone(PARIS_TZ_NAME)
+                    .dt.convert_time_zone(_tz)
                     .dt.replace_time_zone(None)
                     .alias("start_time")
                 )
@@ -150,7 +168,7 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
             df = df.with_columns(
                 pl.col("start_time")
                 .str.to_datetime(time_zone="UTC")
-                .dt.convert_time_zone(PARIS_TZ_NAME)
+                .dt.convert_time_zone(_tz)
                 .dt.replace_time_zone(None)
                 .alias("start_time")
             )

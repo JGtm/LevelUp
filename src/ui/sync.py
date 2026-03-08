@@ -330,6 +330,10 @@ def sync_all_players_duckdb(  # noqa: PLR0913
 ) -> tuple[bool, str]:
     """Synchronise tous les joueurs DuckDB v4 via db_profiles.json.
 
+    Utilise un SyncLock unique autour de la boucle et active/désactive
+    le sync_mode une seule fois pour éviter les destructions de cache
+    répétées à chaque joueur.
+
     Args:
         delta: Mode delta (True) ou full (False).
         match_type: Type de matchs.
@@ -361,33 +365,84 @@ def sync_all_players_duckdb(  # noqa: PLR0913
         return False, "Aucun profil dans db_profiles.json."
 
     logger.info("[App Sync] Démarrage sync pour %d joueur(s)", len(profiles))
+
+    try:
+        from src.utils.sync_lock import SyncAlreadyRunning, SyncLock
+
+        with SyncLock(timeout=0):
+            return _sync_all_players_loop(
+                profiles=profiles,
+                delta=delta,
+                match_type=match_type,
+                max_matches=max_matches,
+                with_highlight_events=with_highlight_events,
+                with_aliases=with_aliases,
+                repo_root=repo_root,
+            )
+    except SyncAlreadyRunning:
+        return (
+            False,
+            "Un sync est déjà en cours (CLI ou autre onglet). Réessaie dans quelques instants.",
+        )
+    except Exception as e:
+        return False, f"Erreur sync: {e}"
+
+
+def _sync_all_players_loop(  # noqa: PLR0913
+    *,
+    profiles: dict,
+    delta: bool,
+    match_type: str,
+    max_matches: int,
+    with_highlight_events: bool,
+    with_aliases: bool,
+    repo_root: Path,
+) -> tuple[bool, str]:
+    """Boucle de sync pour tous les joueurs (appelée sous SyncLock)."""
+    import contextlib
+    import os
+
+    from src.ui._sync_duckdb_ops import _activate_sync_mode, _deactivate_sync_mode
+    from src.ui._sync_utils import _shared_path
+
     results: list[tuple[str, bool, str]] = []
 
-    for gamertag, profile in profiles.items():
-        xuid = profile.get("xuid", "")
-        player_db_path = repo_root / profile.get("db_path", "")
+    _activate_sync_mode()
+    try:
+        for gamertag, profile in profiles.items():
+            xuid = profile.get("xuid", "")
+            player_db_path = repo_root / profile.get("db_path", "")
 
-        if not player_db_path.exists():
-            logger.warning("[App Sync] %s: DB introuvable (%s)", gamertag, player_db_path)
-            results.append((gamertag, False, f"DB introuvable: {player_db_path}"))
-            continue
+            if not player_db_path.exists():
+                logger.warning("[App Sync] %s: DB introuvable (%s)", gamertag, player_db_path)
+                results.append((gamertag, False, f"DB introuvable: {player_db_path}"))
+                continue
 
-        ok, msg = sync_player_duckdb(
-            gamertag=gamertag,
-            xuid=xuid,
-            delta=delta,
-            match_type=match_type,
-            max_matches=max_matches,
-            with_highlight_events=with_highlight_events,
-            with_skill=True,
-            with_aliases=with_aliases,
-            repo_root=repo_root,
-        )
-        if ok:
-            logger.info("[App Sync] %s: OK — %s", gamertag, msg)
-        else:
-            logger.error("[App Sync] %s: échec — %s", gamertag, msg)
-        results.append((gamertag, ok, msg))
+            ok, msg = sync_player_duckdb(
+                gamertag=gamertag,
+                xuid=xuid,
+                delta=delta,
+                match_type=match_type,
+                max_matches=max_matches,
+                with_highlight_events=with_highlight_events,
+                with_skill=True,
+                with_aliases=with_aliases,
+                repo_root=repo_root,
+                _manage_sync_mode=False,
+            )
+
+            # Forcer la mise à jour du mtime pour invalider les caches
+            for path in (str(player_db_path), str(_shared_path(player_db_path))):
+                with contextlib.suppress(Exception):
+                    os.utime(path, None)
+
+            if ok:
+                logger.info("[App Sync] %s: OK — %s", gamertag, msg)
+            else:
+                logger.error("[App Sync] %s: échec — %s", gamertag, msg)
+            results.append((gamertag, ok, msg))
+    finally:
+        _deactivate_sync_mode()
 
     global_ok, global_msg = _summarize_sync_results(results)
     logger.info("[App Sync] Résultat global: %s", global_msg)

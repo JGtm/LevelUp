@@ -5,9 +5,11 @@ Couvre les fonctions pures et helpers (pas les sync API qui nécessitent SPNKr).
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from pathlib import Path
+from unittest.mock import patch
 
 # ============================================================================
 # pick_latest_spnkr_db_if_any
@@ -209,3 +211,43 @@ class TestIsDuckdbPlayer:
         (player_dir / "stats.duckdb").write_text("db")
 
         assert is_duckdb_player("TestPlayer", repo_root=tmp_path) is True
+
+
+class TestSyncAllPlayersDuckdb:
+    def test_lock_contention_returns_user_friendly_message(self, tmp_path):
+        from src.ui.sync import sync_all_players_duckdb
+
+        (tmp_path / "db_profiles.json").write_text(
+            json.dumps(
+                {
+                    "profiles": {
+                        "GT": {
+                            "xuid": "x1",
+                            "db_path": "data/players/GT/stats.duckdb",
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        class _FakeSyncAlreadyRunning(Exception):
+            pass
+
+        class _FakeSyncLock:
+            def __init__(self, timeout=0):
+                self.timeout = timeout
+
+            def __enter__(self):
+                raise _FakeSyncAlreadyRunning()
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+        with patch("src.utils.sync_lock.SyncLock", _FakeSyncLock), patch(
+            "src.utils.sync_lock.SyncAlreadyRunning", _FakeSyncAlreadyRunning
+        ):
+            ok, msg = sync_all_players_duckdb(repo_root=tmp_path)
+
+        assert ok is False
+        assert "déjà en cours" in msg

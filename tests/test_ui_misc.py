@@ -135,8 +135,8 @@ class TestDefaultIdentityFromSecrets:
 
         # Mock st.secrets to raise (no secrets)
         monkeypatch.setattr(mod.st, "secrets", MagicMock(get=MagicMock(side_effect=Exception)))
-        monkeypatch.setenv("OPENSPARTAN_DEFAULT_GAMERTAG", "TestGT")
-        monkeypatch.setenv("OPENSPARTAN_DEFAULT_XUID", "1234567890123")
+        monkeypatch.setenv("LEVELUP_DEFAULT_GAMERTAG", "TestGT")
+        monkeypatch.setenv("LEVELUP_DEFAULT_XUID", "1234567890123")
 
         identity, wp = mod._default_identity_from_secrets()
         assert identity == "TestGT"
@@ -145,9 +145,9 @@ class TestDefaultIdentityFromSecrets:
         from src.ui.sections import source as mod
 
         monkeypatch.setattr(mod.st, "secrets", MagicMock(get=MagicMock(side_effect=Exception)))
-        monkeypatch.delenv("OPENSPARTAN_DEFAULT_GAMERTAG", raising=False)
-        monkeypatch.delenv("OPENSPARTAN_DEFAULT_XUID", raising=False)
-        monkeypatch.delenv("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER", raising=False)
+        monkeypatch.delenv("LEVELUP_DEFAULT_GAMERTAG", raising=False)
+        monkeypatch.delenv("LEVELUP_DEFAULT_XUID", raising=False)
+        monkeypatch.delenv("LEVELUP_DEFAULT_WAYPOINT_PLAYER", raising=False)
 
         identity, wp = mod._default_identity_from_secrets()
         # Should fallback to DEFAULT_PLAYER_GAMERTAG from config
@@ -164,7 +164,7 @@ class TestDefaultIdentityFromSecrets:
             "waypoint_player": "SecretWP",
         }
         monkeypatch.setattr(mod.st, "secrets", secrets_mock)
-        monkeypatch.delenv("OPENSPARTAN_DEFAULT_GAMERTAG", raising=False)
+        monkeypatch.delenv("LEVELUP_DEFAULT_GAMERTAG", raising=False)
 
         identity, wp = mod._default_identity_from_secrets()
         assert identity == "SecretGT"

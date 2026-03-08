@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
+
+import duckdb
 
 from src.ui.multiplayer import (
     DuckDBPlayerInfo,
     PlayerInfo,
+    _count_matches_from_player_db,
     _is_duckdb_file,
+    _resolve_from_shared,
+    _resolve_xuid_from_player_db,
     get_gamertag_from_duckdb_v4_path,
     is_duckdb_v4_path,
     is_multi_player_db,
@@ -162,3 +168,143 @@ class TestLegacyFunctions:
 
     def test_is_multi_player_db_empty(self):
         assert is_multi_player_db("") is False
+
+
+# ============================================================================
+# _count_matches_from_player_db (pure, testable avec un vrai DuckDB en mémoire)
+# ============================================================================
+
+
+class TestCountMatchesFromPlayerDb:
+    def test_count_from_player_match_enrichment(self, tmp_path: Path) -> None:
+        db_file = tmp_path / "stats.duckdb"
+        with duckdb.connect(str(db_file)) as conn:
+            conn.execute("CREATE TABLE player_match_enrichment (match_id TEXT)")
+            conn.execute("INSERT INTO player_match_enrichment VALUES ('m1'), ('m2'), ('m3')")
+        with duckdb.connect(str(db_file), read_only=True) as conn:
+            assert _count_matches_from_player_db(conn) == 3
+
+    def test_fallback_to_match_stats(self, tmp_path: Path) -> None:
+        db_file = tmp_path / "stats.duckdb"
+        with duckdb.connect(str(db_file)) as conn:
+            conn.execute("CREATE TABLE match_stats (match_id TEXT)")
+            conn.execute("INSERT INTO match_stats VALUES ('m1'), ('m2')")
+        with duckdb.connect(str(db_file), read_only=True) as conn:
+            assert _count_matches_from_player_db(conn) == 2
+
+    def test_returns_zero_when_no_tables(self, tmp_path: Path) -> None:
+        db_file = tmp_path / "stats.duckdb"
+        with duckdb.connect(str(db_file)) as conn:
+            conn.execute("SELECT 1")
+        with duckdb.connect(str(db_file), read_only=True) as conn:
+            assert _count_matches_from_player_db(conn) == 0
+
+
+# ============================================================================
+# _resolve_xuid_from_player_db
+# ============================================================================
+
+
+class TestResolveXuidFromPlayerDb:
+    def test_xuid_from_sync_meta(self, tmp_path: Path) -> None:
+        db_file = tmp_path / "stats.duckdb"
+        with duckdb.connect(str(db_file)) as conn:
+            conn.execute("CREATE TABLE sync_meta (key TEXT, value TEXT)")
+            conn.execute("INSERT INTO sync_meta VALUES ('xuid', 'xuid123')")
+        with duckdb.connect(str(db_file), read_only=True) as conn:
+            assert _resolve_xuid_from_player_db(conn) == "xuid123"
+
+    def test_returns_none_when_no_tables(self, tmp_path: Path) -> None:
+        db_file = tmp_path / "stats.duckdb"
+        with duckdb.connect(str(db_file)) as conn:
+            conn.execute("SELECT 1")
+        with duckdb.connect(str(db_file), read_only=True) as conn:
+            assert _resolve_xuid_from_player_db(conn) is None
+
+
+# ============================================================================
+# _resolve_from_shared (le fix principal du bug Chocoboflor)
+# ============================================================================
+
+
+class TestResolveFromShared:
+    def _make_shared_db(self, path: Path) -> None:
+        """Crée une shared_matches.duckdb minimale pour les tests."""
+        with duckdb.connect(str(path)) as conn:
+            conn.execute("CREATE TABLE xuid_aliases (xuid TEXT, gamertag TEXT)")
+            conn.execute("CREATE TABLE match_participants (match_id TEXT, xuid TEXT)")
+            conn.execute("INSERT INTO xuid_aliases VALUES ('xuid_abc', 'Chocoboflor')")
+            for i in range(5):
+                conn.execute(
+                    "INSERT INTO match_participants VALUES (?, ?)",
+                    [f"m{i}", "xuid_abc"],
+                )
+
+    def test_resolves_xuid_and_count_from_shared(self, tmp_path: Path) -> None:
+        """Si xuid=None et total_matches=0, résout les deux depuis shared."""
+        shared_path = tmp_path / "shared_matches.duckdb"
+        self._make_shared_db(shared_path)
+        db_path = tmp_path / "Chocoboflor" / "stats.duckdb"
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with patch(
+            "src.utils.paths.get_shared_matches_path_from_player",
+            return_value=shared_path,
+        ):
+            xuid, count = _resolve_from_shared(db_path, "Chocoboflor", None, 0)
+        assert xuid == "xuid_abc"
+        assert count == 5
+
+    def test_uses_xuid_if_provided(self, tmp_path: Path) -> None:
+        """Si xuid est déjà connu, l'utilise directement."""
+        shared_path = tmp_path / "shared_matches.duckdb"
+        self._make_shared_db(shared_path)
+        db_path = tmp_path / "player" / "stats.duckdb"
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with patch(
+            "src.utils.paths.get_shared_matches_path_from_player",
+            return_value=shared_path,
+        ):
+            xuid, count = _resolve_from_shared(db_path, "Chocoboflor", "xuid_abc", 0)
+        assert xuid == "xuid_abc"
+        assert count == 5
+
+    def test_gamertag_join_when_no_xuid(self, tmp_path: Path) -> None:
+        """Fallback gamertag→xuid→count via JOIN quand xuid inconnu et absent de xuid_aliases."""
+        shared_path = tmp_path / "shared_matches.duckdb"
+        with duckdb.connect(str(shared_path)) as conn:
+            conn.execute("CREATE TABLE xuid_aliases (xuid TEXT, gamertag TEXT)")
+            conn.execute("CREATE TABLE match_participants (match_id TEXT, xuid TEXT)")
+            conn.execute("INSERT INTO xuid_aliases VALUES ('x1', 'UnknownGT')")
+            conn.execute("INSERT INTO match_participants VALUES ('m1', 'x1')")
+        db_path = tmp_path / "UnknownGT" / "stats.duckdb"
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with patch(
+            "src.utils.paths.get_shared_matches_path_from_player",
+            return_value=shared_path,
+        ):
+            xuid, count = _resolve_from_shared(db_path, "UnknownGT", None, 0)
+        assert xuid == "x1"
+        assert count == 1
+
+    def test_skips_when_matches_already_known(self, tmp_path: Path) -> None:
+        """Ne requête pas shared si total_matches > 0 et xuid connu."""
+        xuid, count = _resolve_from_shared(
+            tmp_path / "stats.duckdb", "GT", "xuid_ok", 42,
+        )
+        assert xuid == "xuid_ok"
+        assert count == 42
+
+    def test_returns_defaults_when_shared_missing(self, tmp_path: Path) -> None:
+        """Retourne les valeurs d'entrée si shared introuvable."""
+        with patch(
+            "src.utils.paths.get_shared_matches_path_from_player",
+            return_value=None,
+        ):
+            xuid, count = _resolve_from_shared(
+                tmp_path / "stats.duckdb", "GT", None, 0,
+            )
+        assert xuid is None
+        assert count == 0

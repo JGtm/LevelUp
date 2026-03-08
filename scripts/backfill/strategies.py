@@ -233,7 +233,7 @@ async def fetch_current_csr_for_player(
     Args:
         conn: Connexion DuckDB vers stats.duckdb du joueur.
         xuid: XUID du joueur.
-        api_client: Instance ``SPNKrAPIClient`` déjà authentifiée.
+        api_client: Instance API Halo (``HaloAPIPort``) déjà authentifiée.
 
     Returns:
         Dict ``{playlist_name: {csr, tier, sub_tier, value}}`` pour
@@ -585,7 +585,7 @@ async def backfill_csr_for_player(
         conn: Connexion DuckDB vers stats.duckdb du joueur.
         db_path: Chemin vers la DB joueur (utilisé pour dériver shared si shared_conn=None).
         xuid: XUID du joueur.
-        api_client: Instance ``SPNKrAPIClient`` déjà authentifiée.
+        api_client: Instance API Halo (``HaloAPIPort``) déjà authentifiée.
         force: Si True, re-fetche le CSR même si déjà présent.
         shared_conn: Connexion vers shared_matches.duckdb (ouverte si None).
 
@@ -994,7 +994,8 @@ async def backfill_participants_enrich(
     Returns:
         Nombre de matchs enrichis.
     """
-    from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
+    from src.data.sync.api_client import get_tokens_from_env
+    from src.data.sync.api_factory import create_api_client
     from src.data.sync.transformers import (
         extract_participants,
         extract_xuids_from_match,
@@ -1053,7 +1054,7 @@ async def backfill_participants_enrich(
         return 0
 
     count = 0
-    async with SPNKrAPIClient(
+    async with create_api_client(
         tokens=tokens,
         requests_per_second=requests_per_second,
     ) as client:
@@ -1228,7 +1229,8 @@ async def backfill_team_scores(
     Returns:
         Nombre de matchs mis à jour.
     """
-    from src.data.sync.api_client import SPNKrAPIClient, get_tokens_from_env
+    from src.data.sync.api_client import get_tokens_from_env
+    from src.data.sync.api_factory import create_api_client
     from src.data.sync.transformers import _extract_team_scores_by_id
 
     where_clause = "" if force else "WHERE team_0_score IS NULL OR team_1_score IS NULL"
@@ -1250,7 +1252,7 @@ async def backfill_team_scores(
         return 0
 
     count = 0
-    async with SPNKrAPIClient(tokens=tokens, requests_per_second=requests_per_second) as client:
+    async with create_api_client(tokens=tokens, requests_per_second=requests_per_second) as client:
         for i, match_id in enumerate(match_ids, 1):
             try:
                 logger.info(f"  [{i}/{len(match_ids)}] {match_id[:20]}...")
@@ -1361,8 +1363,43 @@ def backfill_mode_category(shared_conn: Any, *, force: bool = False) -> int:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Nettoyage structurel des DBs joueurs (vues cassées + tables legacy)
+# Career Rank — recalcul xp_total depuis metadata.duckdb
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def backfill_career_xp_total(player_db_path: str) -> int:
+    """Recalcule xp_total et xp_for_next_rank dans career_progression.
+
+    Corrige les valeurs erronées stockées avec l'ancienne formule approximative
+    hardcodée. Utilise les vraies valeurs depuis metadata.duckdb (career_ranks).
+
+    Args:
+        player_db_path: Chemin vers le stats.duckdb du joueur.
+
+    Returns:
+        Nombre de lignes mises à jour.
+    """
+    from src.data.sync._career_rank_api import compute_total_xp
+    from src.ui.career_ranks import get_rank_info as get_meta_rank_info
+    from src.utils.db import duckdb_read_write
+
+    updated = 0
+    with duckdb_read_write(player_db_path) as conn:
+        rows = conn.execute("SELECT id, rank, current_xp FROM career_progression").fetchall()
+
+        for row_id, rank, current_xp in rows:
+            new_xp_total = compute_total_xp(rank, current_xp or 0)
+            meta = get_meta_rank_info(rank)
+            new_xp_for_next = meta.xp_required if meta is not None else 0
+            conn.execute(
+                "UPDATE career_progression SET xp_total = ?, xp_for_next_rank = ? WHERE id = ?",
+                (new_xp_total, new_xp_for_next, row_id),
+            )
+            updated += 1
+
+        conn.commit()
+
+    return updated
 
 
 def cleanup_player_dbs_legacy(players_dir: str | Any = "data/players") -> dict[str, int]:

@@ -5,7 +5,6 @@ Analyse des victoires et défaites par période et par carte.
 
 from __future__ import annotations
 
-import pandas as pd  # requis pour l'API .style de Streamlit
 import polars as pl
 import streamlit as st
 
@@ -13,7 +12,13 @@ from src.config import HALO_COLORS
 from src.data.services.win_loss_service import WinLossService
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
+from src.ui.pages.win_loss_table_style import (  # noqa: F401
+    _style_map_table_row,
+    _styler_map,
+    _to_float,
+)
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
+from src.ui.tz import get_tz_name
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization import (
     plot_map_comparison,
@@ -31,63 +36,6 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 def _clear_min_matches_maps_auto() -> None:
     """Callback pour désactiver le mode auto du slider."""
     st.session_state["_min_matches_maps_auto"] = False
-
-
-def _styler_map(styler, func, subset):
-    """Applique un style en mode compatible pandas 1.x et 2.x."""
-    try:
-        return styler.map(func, subset=subset)
-    except AttributeError:
-        return styler.applymap(func, subset=subset)
-
-
-def _to_float(v: object) -> float | None:
-    """Convertit une valeur en float, ou None si impossible."""
-    try:
-        if v is None:
-            return None
-        x = float(v)
-        return x if x == x else None
-    except Exception:
-        return None
-
-
-def _style_map_table_row(row: pd.Series) -> pd.Series:
-    """Style les lignes du tableau par carte."""
-    green = str(getattr(HALO_COLORS, "green", "#2ECC71"))
-    red = str(getattr(HALO_COLORS, "red", "#E74C3C"))
-    violet = "#8E6CFF"
-
-    col_win = t("wl_col_win_rate")
-    col_loss = t("wl_col_loss_rate")
-    col_ratio = t("wl_col_ratio")
-
-    win_pct = _to_float(row.get(col_win))
-    loss_pct = _to_float(row.get(col_loss))
-    ratio_val = _to_float(row.get(col_ratio))
-
-    styles: dict[str, str] = {str(c): "" for c in row.index}
-
-    if win_pct is not None and loss_pct is not None:
-        if win_pct > loss_pct:
-            styles[col_win] = f"color: {green}; font-weight: 800;"
-            styles[col_loss] = f"color: {red}; font-weight: 800;"
-        elif win_pct < loss_pct:
-            styles[col_win] = f"color: {red}; font-weight: 800;"
-            styles[col_loss] = f"color: {green}; font-weight: 800;"
-        else:
-            styles[col_win] = f"color: {violet}; font-weight: 800;"
-            styles[col_loss] = f"color: {violet}; font-weight: 800;"
-
-    if ratio_val is not None:
-        if ratio_val > 1.0:
-            styles[col_ratio] = f"color: {green}; font-weight: 800;"
-        elif ratio_val < 1.0:
-            styles[col_ratio] = f"color: {red}; font-weight: 800;"
-        else:
-            styles[col_ratio] = f"color: {violet}; font-weight: 800;"
-
-    return pd.Series(styles)
 
 
 @fragment_if_available
@@ -126,7 +74,7 @@ def render_win_loss_page(  # noqa: PLR0913
         _render_streak_section(dff)
         _render_personal_score_section(dff)
         _render_period_section(dff, bucket_label, is_session_scope)
-        _render_ratio_by_map_section(dff, base, db_path, xuid, db_key)
+        _render_ratio_by_map_section(dff, base, db_path, xuid, db_key, is_session_scope)
 
 
 def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str:
@@ -159,12 +107,22 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     dff,
                     "map_name",
                     title=None,
-                    min_matches=2,
+                    min_matches=1,
                     sort_by="total",
                     max_categories=12,
                     lang=get_lang(),
                 )
                 if fig_map is not None:
+                    fig_map.update_layout(
+                        legend={
+                            "orientation": "h",
+                            "yanchor": "bottom",
+                            "y": 1.02,
+                            "xanchor": "right",
+                            "x": 1,
+                        },
+                        margin={"l": 40, "r": 20, "t": 30, "b": 80},
+                    )
                     st.plotly_chart(fig_map, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
@@ -180,9 +138,19 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
         )
         if mode_col in dff.columns and "outcome" in dff.columns:
             with safe_chart_render():
+                # Extraire la partie après " : " pour raccourcir les noms de modes
+                # (ex. "Arène : Assassin" → "Assassin") et regrouper les variantes
+                dff_mode = dff.with_columns(
+                    pl.col(mode_col)
+                    .map_elements(
+                        lambda s: s.split(" : ", 1)[1] if isinstance(s, str) and " : " in s else s,
+                        return_dtype=pl.String,
+                    )
+                    .alias("_mode_short")
+                )
                 fig_mode = plot_stacked_outcomes_by_category(
-                    dff,
-                    mode_col,
+                    dff_mode,
+                    "_mode_short",
                     title=None,
                     min_matches=2,
                     sort_by="total",
@@ -190,6 +158,16 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     lang=get_lang(),
                 )
                 if fig_mode is not None:
+                    fig_mode.update_layout(
+                        legend={
+                            "orientation": "h",
+                            "yanchor": "bottom",
+                            "y": 1.02,
+                            "xanchor": "right",
+                            "x": 1,
+                        },
+                        margin={"l": 40, "r": 20, "t": 30, "b": 60},
+                    )
                     st.plotly_chart(fig_mode, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
@@ -202,7 +180,7 @@ def _render_heatmap_section(dff: pl.DataFrame) -> None:
     """Affiche la heatmap Win Rate par jour et heure."""
     st.divider()
     st.subheader(t("wl_heatmap_title"))
-    st.caption(t("wl_heatmap_caption"))
+    st.caption(t("wl_heatmap_caption", tz=get_tz_name()))
     if "start_time" in dff.columns and "outcome" in dff.columns:
         with safe_chart_render():
             fig_heat = plot_win_ratio_heatmap(dff, title=None, min_matches=1, lang=get_lang())
@@ -319,12 +297,13 @@ def _render_period_section(
 
 
 @fragment_if_available
-def _render_ratio_by_map_section(
+def _render_ratio_by_map_section(  # noqa: PLR0913
     dff: pl.DataFrame,
     base: pl.DataFrame,
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None,
+    is_session_scope: bool = False,
 ) -> None:
     """Affiche le ratio par cartes avec sélection du scope."""
     st.divider()
@@ -373,13 +352,22 @@ def _render_ratio_by_map_section(
         st.warning(t("wl_not_enough_map"))
         return
 
-    metric = st.selectbox(
-        t("wl_metric_label"),
-        options=[
+    if is_session_scope:
+        st.caption(t("wl_session_map_note"))
+        metric_options = [
+            ("performance_avg", t("wl_metric_performance")),
+            ("accuracy_avg", t("wl_metric_accuracy")),
+        ]
+    else:
+        metric_options = [
+            ("performance_avg", t("wl_metric_performance")),
             ("ratio_global", t("wl_metric_ratio")),
             ("win_rate", t("wl_metric_win_rate")),
             ("accuracy_avg", t("wl_metric_accuracy")),
-        ],
+        ]
+    metric = st.selectbox(
+        t("wl_metric_label"),
+        options=metric_options,
         format_func=lambda x: x[1],
     )
     key, label = metric
@@ -387,9 +375,11 @@ def _render_ratio_by_map_section(
     view = breakdown.head(20).reverse()
     with safe_chart_render():
         if key == "ratio_global":
-            fig = plot_map_ratio_with_winloss(view, title=label)
+            fig = plot_map_ratio_with_winloss(view, title=label, absolute_counts=True)
         else:
-            fig = plot_map_comparison(view, key, title=label)
+            fig = plot_map_comparison(
+                view, key, title=label, color_by_sign=(key == "performance_avg")
+            )
 
         if fig is not None:
             if key in ("win_rate",):

@@ -16,6 +16,11 @@ from typing import Any
 import duckdb
 import polars as pl
 
+from src.data.sessions_backfill_shared import (
+    _find_or_attach_shared,
+    _load_matches_from_shared,
+    _resolve_shared_db_path,
+)
 from src.utils.db import duckdb_read_only, duckdb_read_write
 
 
@@ -25,10 +30,7 @@ def get_friends_xuids_for_backfill(  # noqa: C901, PLR0912
     *,
     conn: duckdb.DuckDBPyConnection | None = None,
 ) -> frozenset[str]:
-    """Charge les XUIDs des amis pour le backfill (sans Streamlit).
-
-    Source : .streamlit/friends_defaults.json (format {xuid: [gamertag1, gamertag2, ...]})
-    Résolution gamertag → XUID via xuid_aliases dans la DB.
+    """Charge les XUIDs des amis (friends_defaults.json) pour le backfill.
 
     Args:
         db_path: Chemin vers la DB.
@@ -62,13 +64,12 @@ def get_friends_xuids_for_backfill(  # noqa: C901, PLR0912
 
     ctx = duckdb_read_only(str(path)) if conn is None else nullcontext(conn)
     with ctx as conn:
-        # V5.1: Utiliser shared.xuid_aliases UNIQUEMENT (plus de fallback local)
+        # V5.1: Utiliser shared.xuid_aliases si disponible
         alias_table = "xuid_aliases"
         try:
             conn.execute("SELECT 1 FROM shared.xuid_aliases LIMIT 1")
             alias_table = "shared.xuid_aliases"
         except Exception:
-            # Si shared non disponible, pas de xuid_aliases disponibles
             pass
 
         result = conn.execute(
@@ -90,11 +91,8 @@ def get_friends_xuids_for_backfill(  # noqa: C901, PLR0912
 
         for ident in friends_raw:
             s = str(ident or "").strip()
-            if not s:
-                continue
-            # ~prefix = ami inactif, exclu des sessions par défaut
-            if s.startswith("~"):
-                continue
+            if not s or s.startswith("~"):
+                continue  # vide ou ami inactif (~prefix)
             if s.isdigit() and s in known_xuids:
                 xuids.add(s)
                 continue
@@ -178,57 +176,6 @@ def _ensure_enrichment_table(conn: duckdb.DuckDBPyConnection) -> None:
         )
 
 
-def _find_or_attach_shared(  # noqa: C901, PLR0912
-    conn: duckdb.DuckDBPyConnection,
-    shared_db: Path,
-) -> tuple[str | None, bool]:
-    """Trouve un alias shared existant ou attache la DB.
-
-    Retourne (alias, owns_attach). alias=None si impossible.
-    """
-    # Chercher via le path ou le nom
-    try:
-        dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
-        shared_db_normalized = str(shared_db.resolve()).lower().replace("\\", "/")
-        for db_name, db_path_val in dbs:
-            if db_path_val:
-                db_path_normalized = str(db_path_val).lower().replace("\\", "/")
-                if (
-                    shared_db_normalized in db_path_normalized
-                    or db_path_normalized in shared_db_normalized
-                ):
-                    return db_name, False
-            if db_name and "shared" in db_name.lower():
-                try:
-                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
-                    return db_name, False
-                except Exception:
-                    continue
-    except Exception:
-        pass
-
-    # Chercher n'importe quelle DB avec match_participants
-    try:
-        dbs = conn.execute("SELECT database_name FROM duckdb_databases()").fetchall()
-        for (db_name,) in dbs:
-            if db_name not in ("memory", "temp", "main", "stats", "system"):
-                try:
-                    conn.execute(f"SELECT 1 FROM {db_name}.match_participants LIMIT 1")
-                    return db_name, False
-                except Exception:
-                    continue
-    except Exception:
-        pass
-
-    # Dernier recours : attacher
-    try:
-        # DuckDB ne supporte pas les placeholders ? pour ATTACH
-        conn.execute(f"ATTACH '{shared_db}' AS shared (READ_ONLY)")
-        return "shared", True
-    except Exception:
-        return None, False
-
-
 def _upsert_session_rows(  # noqa: PLR0912
     conn: duckdb.DuckDBPyConnection,
     df_sessions: pl.DataFrame,
@@ -275,11 +222,12 @@ def _upsert_session_rows(  # noqa: PLR0912
         try:
             conn.execute(
                 "INSERT INTO player_match_enrichment "
-                "(match_id, session_id, session_label, is_with_friends, known_teammates_count, friends_xuids) "
-                "VALUES (?, ?, ?, ?, ?, ?) "
+                "(match_id, session_id, session_label, is_with_friends, known_teammates_count, friends_xuids, teammates_signature) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?) "
                 "ON CONFLICT (match_id) DO UPDATE SET "
                 "session_id = EXCLUDED.session_id, "
                 "session_label = EXCLUDED.session_label, "
+                "teammates_signature = COALESCE(EXCLUDED.teammates_signature, player_match_enrichment.teammates_signature), "
                 "is_with_friends = COALESCE(EXCLUDED.is_with_friends, player_match_enrichment.is_with_friends), "
                 "known_teammates_count = COALESCE(EXCLUDED.known_teammates_count, player_match_enrichment.known_teammates_count), "
                 "friends_xuids = COALESCE(EXCLUDED.friends_xuids, player_match_enrichment.friends_xuids), "
@@ -291,6 +239,7 @@ def _upsert_session_rows(  # noqa: PLR0912
                     iwf,
                     ktc,
                     fx,
+                    sig if has_friends_config else row.get("teammates_signature"),
                 ],
             )
             updated += 1
@@ -298,33 +247,6 @@ def _upsert_session_rows(  # noqa: PLR0912
             errors.append(f"{match_id}: {e}")
 
     return updated, skipped, errors
-
-
-def _resolve_shared_db_path(player_db_path: Path) -> Path | None:
-    """Trouve le chemin vers shared_matches.duckdb."""
-    shared_db = player_db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
-    if shared_db.exists():
-        return shared_db
-    shared_db = Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
-    return shared_db if shared_db.exists() else None
-
-
-def _load_matches_from_shared(
-    conn: duckdb.DuckDBPyConnection, shared_alias: str, xuid: str
-) -> pl.DataFrame:
-    """Charge les matchs depuis shared + player_match_enrichment."""
-    return conn.execute(
-        f"""
-        SELECT mr.match_id, mr.start_time, pme.teammates_signature, pme.session_id
-        FROM {shared_alias}.match_participants mp
-        JOIN {shared_alias}.match_registry mr ON mr.match_id = mp.match_id
-        LEFT JOIN player_match_enrichment pme ON pme.match_id = mr.match_id
-        WHERE mp.xuid = ?
-        AND mr.start_time IS NOT NULL
-        ORDER BY mr.start_time ASC
-    """,
-        [xuid],
-    ).pl()
 
 
 def _fetch_shared_context(
@@ -438,4 +360,63 @@ def backfill_sessions_for_player(  # noqa: PLR0913
         results["errors"].extend(errors)
         conn.commit()
 
+    return results
+
+
+def backfill_teammates_signatures(
+    db_path: str | Path,
+    xuid: str | None = None,
+    *,
+    force: bool = False,
+) -> dict:
+    """Backfille teammates_signature + is_with_friends depuis shared_matches."""
+    results: dict = {"updated": 0, "errors": []}
+    path = Path(db_path)
+    if not path.exists():
+        results["errors"].append(f"DB non trouvée : {path}")
+        return results
+    with duckdb_read_write(str(path)) as conn:
+        _ensure_enrichment_table(conn)
+        shared_db = _resolve_shared_db_path(path)
+        if not shared_db:
+            results["errors"].append("shared_matches.duckdb introuvable")
+            return results
+        shared_alias, _ = _find_or_attach_shared(conn, shared_db)
+        if not shared_alias:
+            results["errors"].append("Impossible d'attacher shared")
+            return results
+        if not xuid:
+            row = conn.execute(f"SELECT xuid FROM {shared_alias}.xuid_aliases LIMIT 1").fetchone()
+            xuid = str(row[0]).strip() if row and row[0] else None
+            if not xuid:
+                results["errors"].append("XUID non trouvé")
+                return results
+        friends_set = get_friends_xuids_for_backfill(path, xuid, conn=conn)
+        nf = "" if force else "WHERE pme.teammates_signature IS NULL"
+        a = shared_alias
+        sigs = conn.execute(
+            f"SELECT pme.match_id, COALESCE("
+            f" (SELECT string_agg(o.xuid ORDER BY o.xuid) FROM {a}.match_participants me"
+            f"  JOIN {a}.match_participants o ON o.match_id=me.match_id"
+            f"  AND o.team_id=me.team_id AND o.xuid!=? WHERE me.match_id=pme.match_id AND me.xuid=?),"
+            f" (SELECT string_agg(o.xuid ORDER BY o.xuid) FROM {a}.match_participants o"
+            f"  WHERE o.match_id=pme.match_id AND o.xuid!=?)) AS sig"
+            f" FROM player_match_enrichment pme {nf}",
+            [xuid, xuid, xuid],
+        ).fetchall()
+        for match_id, sig in sigs:
+            iwf = ktc = fx = None
+            if friends_set and sig:
+                common = set(sig.split(",")) & friends_set
+                iwf, ktc = bool(common), len(common)
+                fx = ",".join(sorted(common)) if common else None
+            conn.execute(
+                "UPDATE player_match_enrichment SET "
+                "teammates_signature=?, is_with_friends=?, "
+                "known_teammates_count=?, friends_xuids=?, updated_at=now() "
+                "WHERE match_id=?",
+                [sig, iwf, ktc, fx, match_id],
+            )
+            results["updated"] += 1
+        conn.commit()
     return results

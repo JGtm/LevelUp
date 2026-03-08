@@ -52,7 +52,7 @@ def get_default_db_path() -> str:
     Si aucun joueur trouvé, retourne une chaîne vide.
     """
     # Override explicite (utile en Docker/Linux)
-    override = os.environ.get("OPENSPARTAN_DB") or os.environ.get("OPENSPARTAN_DB_PATH")
+    override = os.environ.get("LEVELUP_DB") or os.environ.get("LEVELUP_DB_PATH")
     if override and os.path.exists(override):
         return override
 
@@ -73,14 +73,6 @@ def get_default_db_path() -> str:
     return ""
 
 
-def get_default_workshop_exe_path() -> str:
-    """Retourne le chemin par défaut de l'exécutable OpenSpartan Workshop."""
-    pf86 = os.environ.get("PROGRAMFILES(X86)")
-    if not pf86:
-        pf86 = r"C:\Program Files (x86)"
-    return os.path.join(pf86, "Den.Dev", "OpenSpartan Workshop", "OpenSpartan.Workshop.exe")
-
-
 # =============================================================================
 # Constantes de l'application
 # =============================================================================
@@ -89,12 +81,12 @@ def get_default_workshop_exe_path() -> str:
 # Identité par défaut (local)
 # =============================================================================
 
-DEFAULT_PLAYER_GAMERTAG = (os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip()
-DEFAULT_PLAYER_XUID = (os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip()
+DEFAULT_PLAYER_GAMERTAG = (os.environ.get("LEVELUP_DEFAULT_GAMERTAG") or "").strip()
+DEFAULT_PLAYER_XUID = (os.environ.get("LEVELUP_DEFAULT_XUID") or "").strip()
 
 
 DEFAULT_WAYPOINT_PLAYER = (
-    os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or DEFAULT_PLAYER_GAMERTAG
+    os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") or DEFAULT_PLAYER_GAMERTAG
 ).strip()
 
 
@@ -355,6 +347,21 @@ BOT_MAP: dict[str, str] = {
     "bid(58.0)": "343 Forge Lord",
     "bid(59.0)": "343 Hollis",
 }
+
+
+def get_bot_name(xuid: str) -> str | None:
+    """Retourne le nom d'affichage d'un bot à partir de son xuid.
+
+    Tolère les deux formats : ``bid(0.0)`` (canonique) et ``bid(0.0``
+    (sans parenthèse fermante, héritage du bug migrate_sqlite).
+    """
+    key = str(xuid or "").strip()
+    if not key.lower().startswith("bid("):
+        return None
+    if not key.endswith(")"):
+        key = key + ")"
+    return BOT_MAP.get(key)
+
 
 # Mapping of team IDs to names. For example, 0 -> 'Eagle'.
 TEAM_MAP: dict[int, str] = {

@@ -45,6 +45,7 @@ from src.data.sync._aggregates import AggregatesMixin
 from src.data.sync._career import CareerMixin
 from src.data.sync._engine_connections import ConnectionMixin
 from src.data.sync._engine_schema import SchemaMixin
+from src.data.sync._engine_writes import EnrichedWritesMixin
 from src.data.sync._match_processing import MatchProcessingMixin
 from src.data.sync._performance import PerformanceMixin
 from src.data.sync._shared_writes import SharedWritesMixin
@@ -55,13 +56,8 @@ from src.data.sync.api_client import (
     get_tokens_for_player,
     get_tokens_from_env,
 )
-from src.data.sync.batch_insert import (
-    HIGHLIGHT_EVENT_COLUMNS,
-    PERSONAL_SCORE_COLUMNS,
-    batch_insert_rows,
-)
+from src.data.sync.api_factory import create_api_client
 from src.data.sync.models import (
-    MatchStatsRow,
     SyncOptions,
     SyncResult,
 )
@@ -90,6 +86,7 @@ class DuckDBSyncEngine(
     CareerMixin,
     AggregatesMixin,
     MatchProcessingMixin,
+    EnrichedWritesMixin,
 ):
     """Moteur de synchronisation API → DuckDB unifié.
 
@@ -283,7 +280,7 @@ class DuckDBSyncEngine(
             if delta_mode and not existing_ids:
                 logger.warning("Mode delta mais aucun match existant!")
 
-            async with SPNKrAPIClient(
+            async with create_api_client(
                 tokens=self._tokens,
                 requests_per_second=options.requests_per_second,
             ) as client:
@@ -321,6 +318,10 @@ class DuckDBSyncEngine(
             if result.matches_inserted > 0:
                 self._run_post_sync_compute(options)
 
+            # LUSR toujours recalculé — même sans nouveaux matchs
+            # (rattrapage des ratings manquants suite à un sync partiel)
+            self._run_lusr_post_sync()
+
         except Exception as e:
             result.errors.append(str(e))
             logger.error("Erreur sync: %s", e)
@@ -338,19 +339,21 @@ class DuckDBSyncEngine(
         )
         return result
 
-    def _run_post_sync_compute(self, options: SyncOptions) -> None:
-        """Exécute les traitements post-sync : perf scores, sessions, citations."""
-        # Performance scores en batch
-        if options.defer_performance_score:
-            if self._shared_connection is not None:
-                with contextlib.suppress(Exception):
-                    self._shared_connection.close()
-                self._shared_connection = None
-            perf_count = self.batch_compute_performance_scores()
-            logger.info("Performance scores calculés en batch : %d", perf_count)
+    def _run_lusr_post_sync(self) -> None:
+        """Calcule les ratings LUSR manquants — appelé inconditionnellement après tout sync.
 
-        # LUSR (skill rating) pour matchs non classés
+        Contrairement aux autres traitements post-sync, le LUSR est recalculé
+        même si aucun nouveau match n'a été inséré, afin de rattraper les ratings
+        manquants suite à un sync partiel ou une erreur précédente.
+
+        Ferme `_shared_connection` si elle est encore ouverte, puis délègue à
+        `batch_compute_lusr` qui la rouvrira et absorbera tout Binder Error éventuel.
+        Appelé que `matches_inserted` soit 0 ou >0 (dans ce dernier cas
+        `_run_post_sync_compute` avait déjà fermé `_shared_connection`).
+        """
         try:
+            # Fermer la connexion shared si elle est encore ouverte,
+            # pour qu'elle puisse être rouverte proprement dans batch_compute_lusr.
             if self._shared_connection is not None:
                 with contextlib.suppress(Exception):
                     self._shared_connection.close()
@@ -360,6 +363,21 @@ class DuckDBSyncEngine(
                 logger.info("LUSR calculés post-sync : %d matchs", lusr_count)
         except Exception as e:
             logger.warning("Erreur calcul LUSR post-sync (non bloquant) : %s", e)
+
+    def _run_post_sync_compute(self, options: SyncOptions) -> None:
+        """Exécute les traitements post-sync : perf scores, sessions, citations.
+
+        Note : le LUSR est calculé séparément dans _run_lusr_post_sync(),
+        appelé inconditionnellement dans _sync_internal.
+        """
+        # Performance scores en batch
+        if options.defer_performance_score:
+            if self._shared_connection is not None:
+                with contextlib.suppress(Exception):
+                    self._shared_connection.close()
+                self._shared_connection = None
+            perf_count = self.batch_compute_performance_scores()
+            logger.info("Performance scores calculés en batch : %d", perf_count)
 
         # Recalculer les sessions
         try:
@@ -399,92 +417,3 @@ class DuckDBSyncEngine(
             )
         except Exception as e:
             logger.warning("Erreur calcul citations post-sync : %s", e)
-
-    # =========================================================================
-    # Player DB writes (enrichissements personnels)
-    # =========================================================================
-
-    def _insert_event_rows(self, rows: list) -> None:
-        """Insère des lignes highlight_events en batch (Sprint 15)."""
-        if not rows:
-            return
-        conn = self._get_connection()
-        batch_insert_rows(conn, "highlight_events", rows, HIGHLIGHT_EVENT_COLUMNS)
-
-    def _insert_personal_score_rows(self, rows: list) -> None:
-        """Insère des lignes personal_score_awards en batch (Sprint 15)."""
-        if not rows:
-            return
-        conn = self._get_connection()
-        now = datetime.now(timezone.utc)
-        score_dicts = []
-        for row in rows:
-            score_dicts.append(
-                {
-                    "match_id": row.match_id,
-                    "xuid": row.xuid,
-                    "award_name": row.award_name,
-                    "award_category": row.award_category,
-                    "award_count": row.award_count,
-                    "award_score": row.award_score,
-                    "created_at": now,
-                }
-            )
-        batch_insert_rows(conn, "personal_score_awards", score_dicts, PERSONAL_SCORE_COLUMNS)
-
-    def _load_friends_lazy(self) -> frozenset[str]:
-        """Charge les XUIDs des amis depuis friends_defaults.json (cache interne)."""
-        if self._friends_xuids is None:
-            try:
-                from src.data.sessions_backfill import get_friends_xuids_for_backfill
-
-                conn = self._get_connection()
-                self._friends_xuids = get_friends_xuids_for_backfill(
-                    self._player_db_path,
-                    self._xuid or "",
-                    conn=conn,
-                )
-            except Exception:
-                self._friends_xuids = frozenset()
-        return self._friends_xuids
-
-    def _insert_enrichment_row(self, match_id: str, match_row: MatchStatsRow) -> None:
-        """Insère/met à jour une ligne dans player_match_enrichment (V5 finale)."""
-        conn = self._get_connection()
-        now = datetime.now(timezone.utc)
-
-        teammates_sig = getattr(match_row, "teammates_signature", None)
-
-        try:
-            from src.analysis.sessions import _parse_teammates_signature
-
-            friends = self._load_friends_lazy()
-            if friends:
-                team_set = _parse_teammates_signature(teammates_sig)
-                common = team_set & friends
-                is_with_friends: bool | None = bool(common)
-                known_teammates: int | None = len(common)
-                friends_xuids: str | None = ",".join(sorted(common)) if common else None
-            else:
-                is_with_friends = None
-                known_teammates = None
-                friends_xuids = None
-        except Exception:
-            is_with_friends = None
-            known_teammates = None
-            friends_xuids = None
-
-        conn.execute(
-            """INSERT INTO player_match_enrichment
-                (match_id, teammates_signature, is_with_friends,
-                 known_teammates_count, friends_xuids, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (match_id) DO UPDATE SET
-                teammates_signature = COALESCE(EXCLUDED.teammates_signature, player_match_enrichment.teammates_signature),
-                is_with_friends = COALESCE(EXCLUDED.is_with_friends, player_match_enrichment.is_with_friends),
-                known_teammates_count = COALESCE(EXCLUDED.known_teammates_count, player_match_enrichment.known_teammates_count),
-                friends_xuids = COALESCE(EXCLUDED.friends_xuids, player_match_enrichment.friends_xuids),
-                updated_at = EXCLUDED.updated_at
-            """,
-            (match_id, teammates_sig, is_with_friends, known_teammates, friends_xuids, now, now),
-        )

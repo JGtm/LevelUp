@@ -302,7 +302,7 @@ class TestSyncCareerRankSkip:
                 new=AsyncMock(return_value=fake_tokens),
             ),
             patch(
-                "src.data.sync._career.SPNKrAPIClient",
+                "src.data.sync._career.create_api_client",
                 return_value=mock_client_ctx,
             ),
         ):
