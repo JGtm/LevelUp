@@ -82,8 +82,8 @@ FUNC:src/ui/pages/match_view_players_nemesis.py:170:render_nemesis_section:208L
 FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
-FUNC:src/ui/pages/media_library_data.py:246:load_match_windows_from_db:142L
-FUNC:src/ui/pages/media_library_data.py:406:load_media_from_db:100L
+FUNC:src/ui/pages/media_library_data.py:206:load_match_windows_from_db:142L
+FUNC:src/ui/pages/media_library_data.py:366:load_media_from_db:100L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
 FUNC:src/ui/pages/session_compare.py:319:render_session_comparison_page:116L
 FUNC:src/ui/pages/session_compare_charts.py:245:_build_bar_chart_figure:89L
@@ -137,13 +137,9 @@ MODULE:src/analysis/citations/engine.py:518L
 MODULE:src/data/media_indexer.py:522L
 MODULE:src/data/query/trends.py:537L
 MODULE:src/data/services/teammates_service.py:536L
-MODULE:src/data/sessions_backfill.py:502L
 MODULE:src/data/sync/_match_processing.py:710L
 MODULE:src/data/sync/engine.py:513L
-MODULE:src/data/sync/models.py:511L
 MODULE:src/data/sync/transformers/_match.py:534L
-MODULE:src/ui/pages/match_view.py:509L
-MODULE:src/ui/pages/media_library_data.py:507L
 MODULE:src/ui/pages/teammates_views.py:518L
 MODULE:src/visualization/objective_charts.py:583L
 MODULE:src/visualization/participation_charts.py:648L
