@@ -112,9 +112,13 @@ def build_badge_legend_html() -> str:
         badge = Badge(label_key=label_key, css_class=css_class, tooltip="")
         badge_span = badge_html(badge)
         legend_text = html.escape(t(legend_key))
-        parts.append(f"<span style='margin-right:14px;'>{badge_span} {legend_text}</span>")
+        parts.append(
+            f"<span style='display:block;margin-bottom:2px;'>{badge_span} {legend_text}</span>"
+        )
     inner = "".join(parts)
-    return f"<div style='font-size:0.78em;opacity:0.72;margin-top:4px;'>{inner}</div>"
+    return (
+        f"<div style='font-size:0.78em;opacity:0.72;margin-top:4px;line-height:1.8;'>{inner}</div>"
+    )
 
 
 # ---------------------------------------------------------------------------

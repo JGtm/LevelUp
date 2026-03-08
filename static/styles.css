@@ -509,12 +509,11 @@ section.main:after {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    margin-top: 3.5rem; /* Espace pour la navbar Streamlit */
-    margin-bottom: 1rem;
-    padding: 16px 20px;
+    gap: 16px;
+    margin-top: 1.25rem;
+    margin-bottom: 0.25rem;
+    padding: 6px 16px;
     background: transparent;
-    /* Pas de bordure */
     width: 100%;
 }
 
@@ -556,8 +555,8 @@ section.main:after {
 /* Adornment utilisé comme icône principale (sans rank_icon derrière) */
 .career-rank__adornment--primary {
     position: relative;
-    width: 220px;
-    height: 220px;
+    width: 140px;
+    height: 140px;
     object-fit: contain;
     top: auto;
     left: auto;
@@ -569,8 +568,8 @@ section.main:after {
 }
 
 .career-rank__icon {
-    width: 192px;
-    height: 192px;
+    width: 128px;
+    height: 128px;
     object-fit: contain;
     filter: drop-shadow(0 4px 12px rgba(51, 214, 255, 0.25));
     position: relative;
@@ -627,11 +626,10 @@ section.main:after {
 
 .spartan-id {
     position: relative;
-    width: 360px;
-    height: 100px;
-    overflow: visible;  /* Permet au backdrop de dépasser */
-    margin-left: auto;  /* Force le Spartan ID à droite */
-    /* Pas de bordure additionnelle, le wrapper gère le style */
+    width: 285px;
+    height: 82px;
+    overflow: visible;
+    margin-left: auto;
 }
 
 /* Backdrop : affiché complètement, visible derrière */
@@ -650,7 +648,7 @@ section.main:after {
 }
 
 .spartan-id__backdrop img {
-    width: 100%;
+    width: 90%;
     height: auto;
     object-fit: contain;
     opacity: 1;
@@ -660,7 +658,7 @@ section.main:after {
 .spartan-id__nameplate {
     position: absolute;
     width: 100%;
-    height: 72px;  /* Plus petite que le conteneur pour voir le backdrop dépasser */
+    height: 60px;
     left: 0;
     top: 50%;
     transform: translateY(-50%);
@@ -676,12 +674,12 @@ section.main:after {
 /* Emblème : par-dessus, aligné à gauche avec padding 10px, centré verticalement */
 .spartan-id__emblem {
     position: absolute;
-    left: 10px;
+    left: 8px;
     top: 50%;
     transform: translateY(-50%);
     z-index: 3;
-    width: 56px;
-    height: 56px;
+    width: 46px;
+    height: 46px;
 }
 
 .spartan-id__emblem img {
@@ -693,7 +691,7 @@ section.main:after {
 /* Texte : gamertag + service tag, à droite de l'emblème */
 .spartan-id__text {
     position: absolute;
-    left: 76px; /* 10px padding + 56px emblem + 10px gap */
+    left: 62px; /* 8px padding + 46px emblem + 8px gap */
     top: 50%;
     transform: translateY(-50%);
     z-index: 3;
@@ -704,7 +702,7 @@ section.main:after {
 
 .spartan-id__gamertag {
     font-family: var(--font-display);
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 400;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -1120,18 +1118,18 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
 
 .os-kpi-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 12px;
-    margin: 10px 0 10px 0;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 8px;
+    margin: 8px 0 8px 0;
 }
 
 .os-kpi-grid--dense {
-    gap: 10px;
-    margin: 10px 0 10px 0;
+    gap: 6px;
+    margin: 8px 0 8px 0;
 }
 
 .os-kpi {
-    padding: 14px 16px;
+    padding: 10px 12px;
     border-radius: 0;
     border: 1px solid rgba(255, 255, 255, 0.25);
     background: rgba(21, 50, 62, 0.7);
@@ -1142,15 +1140,15 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
 }
 
 .os-kpi__label {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: -0.005em;
     color: rgba(182, 196, 214, 0.92);
 }
 
 .os-kpi__value {
-    margin-top: 6px;
-    font-size: 22px;
+    margin-top: 4px;
+    font-size: 19px;
     font-weight: 850;
     letter-spacing: -0.02em;
     line-height: 1.1;

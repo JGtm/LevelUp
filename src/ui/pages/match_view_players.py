@@ -199,7 +199,7 @@ def render_match_impact_section(  # noqa: PLR0913
 
     Affiche un graphe chronologique kills/deaths cumulées du joueur,
     avec annotations des événements d'impact (premier sang, finisseur,
-    plus lent, première victime).
+    touriste, première victime).
     """
     st.subheader(t("mv_impact_title"))
 
@@ -274,6 +274,7 @@ def render_match_impact_section(  # noqa: PLR0913
         st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
     else:
         st.info(t("mv_impact_too_few"))
+    st.caption(t("mv_impact_legend"))
 
 
 # =============================================================================
