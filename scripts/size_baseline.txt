@@ -108,6 +108,7 @@ FUNC:src/visualization/_distributions_advanced.py:18:plot_correlation_scatter:13
 FUNC:src/visualization/_distributions_outcomes_helpers.py:125:add_outcome_traces:84L
 FUNC:src/visualization/_match_impact_events.py:38:compute_single_match_impact:122L
 FUNC:src/visualization/_perf_cumulative.py:91:plot_cumulative_net_score:82L
+FUNC:src/visualization/_perf_progression.py:217:plot_net_score_per_hour:107L
 FUNC:src/visualization/_perf_session.py:21:plot_session_trend:114L
 FUNC:src/visualization/_timeseries_progression.py:183:plot_lusr_timeseries:89L
 FUNC:src/visualization/_timeseries_progression.py:23:plot_performance_timeseries:82L

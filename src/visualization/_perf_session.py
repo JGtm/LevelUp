@@ -278,3 +278,112 @@ def create_cumulative_metrics_indicator(
 def get_performance_colors() -> dict[str, str]:
     """Retourne le dictionnaire des couleurs de performance."""
     return PERFORMANCE_COLORS.copy()
+
+
+# =============================================================================
+# Indicateurs de régression (pente K/D, win rate, R²)
+# =============================================================================
+
+
+def _kd_slope_indicator(slope: float, trend: str, lang: str) -> go.Indicator:
+    """Retourne l'indicateur Plotly pour la pente K/D par 10 matchs."""
+    if trend == "improving":
+        color = PERFORMANCE_COLORS["trend_up"]
+    elif trend == "declining":
+        color = PERFORMANCE_COLORS["trend_down"]
+    else:
+        color = PERFORMANCE_COLORS["baseline"]
+    return go.Indicator(
+        mode="number+delta",
+        value=round(slope * 10, 3),
+        number={
+            "font": {"size": 32, "color": color},
+            "suffix": viz_t("suffix_per_10_matches", lang),
+            "valueformat": "+.3f",
+        },
+        delta={
+            "reference": 0,
+            "relative": False,
+            "valueformat": ".3f",
+            "increasing": {"color": PERFORMANCE_COLORS["trend_up"]},
+            "decreasing": {"color": PERFORMANCE_COLORS["trend_down"]},
+        },
+        title={"text": viz_t("label_kd_slope", lang), "font": {"size": 13}},
+    )
+
+
+def _r2_indicator(r_sq: float, is_sig: bool, lang: str) -> go.Indicator:
+    """Retourne l'indicateur Plotly pour la qualité d'ajustement R²."""
+    color = PERFORMANCE_COLORS["kd_line"] if is_sig else PERFORMANCE_COLORS["baseline"]
+    suffix = "" if is_sig else f" {viz_t('label_not_significant', lang)}"
+    return go.Indicator(
+        mode="number",
+        value=round(r_sq, 2),
+        number={"font": {"size": 32, "color": color}, "suffix": suffix, "valueformat": ".2f"},
+        title={"text": viz_t("label_r_squared", lang), "font": {"size": 13}},
+    )
+
+
+def _winrate_indicator(wr_slope: float, lang: str) -> go.Indicator:
+    """Retourne l'indicateur Plotly pour la pente win rate par 10 matchs."""
+    if wr_slope > 0.005:
+        color = PERFORMANCE_COLORS["trend_up"]
+    elif wr_slope < -0.005:
+        color = PERFORMANCE_COLORS["trend_down"]
+    else:
+        color = PERFORMANCE_COLORS["baseline"]
+    return go.Indicator(
+        mode="number+delta",
+        value=round(wr_slope * 10, 3),
+        number={
+            "font": {"size": 32, "color": color},
+            "suffix": viz_t("suffix_per_10_matches", lang),
+            "valueformat": "+.3f",
+        },
+        delta={
+            "reference": 0,
+            "relative": False,
+            "valueformat": ".3f",
+            "increasing": {"color": PERFORMANCE_COLORS["trend_up"]},
+            "decreasing": {"color": PERFORMANCE_COLORS["trend_down"]},
+        },
+        title={"text": viz_t("label_win_rate_slope", lang), "font": {"size": 13}},
+    )
+
+
+def plot_regression_trend(
+    regression_data: dict,
+    *,
+    title: str | None = None,
+    height: int = 160,
+    lang: str = "fr",
+) -> go.Figure:
+    """Indicateurs compacts : pente K/D, pente win rate et R².
+
+    Remplace la comparaison début/fin par une régression sur tous les matchs.
+    R² < 0.3 est signalé ⚠ "tendance non significative".
+
+    Args:
+        regression_data: Dict issu de compute_linear_regression_kd.
+        title: Titre (auto si None).
+        height: Hauteur en pixels.
+        lang: Langue.
+    """
+    if title is None:
+        title = viz_t("title_regression_trend", lang)
+
+    slope = regression_data.get("slope", 0.0) or 0.0
+    r_sq = regression_data.get("r_squared", 0.0) or 0.0
+    is_sig = regression_data.get("is_significant", False)
+    trend = regression_data.get("trend", "stable")
+    wr_slope = regression_data.get("win_rate_slope")
+
+    n_cols = 3 if wr_slope is not None else 2
+    fig = make_subplots(rows=1, cols=n_cols, specs=[[{"type": "indicator"}] * n_cols])
+
+    fig.add_trace(_kd_slope_indicator(slope, trend, lang), row=1, col=1)
+    fig.add_trace(_r2_indicator(r_sq, is_sig, lang), row=1, col=2)
+    if wr_slope is not None:
+        fig.add_trace(_winrate_indicator(wr_slope, lang), row=1, col=n_cols)
+
+    return apply_halo_plot_style(fig, title=title, height=height)

@@ -13,8 +13,33 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Cumulative performance & trend",
     },
     "ts_cumulative_caption": {
-        "fr": "Net score et F/M cumulé au fil des matchs, F/M glissant, et tendance (début vs fin de période).",
-        "en": "Net score and cumulative K/D over matches, rolling K/D, and trend (start vs end of the period).",
+        "fr": "Efficacité (net score/heure), K/D cumulé avec IC 90 %, K/D lissé EWMA et indicateurs de régression.",
+        "en": "Efficiency (net score/hour), cumulative K/D with 90 % CI, EWMA smoothed K/D, and regression indicators.",
+    },
+    # ── Contrôles section Progression ────────────────────────────────────────
+    "ts_ewma_alpha_label": {
+        "fr": "Réactivité du lissage (α)",
+        "en": "Smoothing reactivity (α)",
+    },
+    "ts_ewma_alpha_help": {
+        "fr": "Petit α (0.10) = très lissé, tend vers la moyenne de long terme.\nGrand α (0.50) = très réactif, reflète ta forme récente.",
+        "en": "Small α (0.10) = very smooth, tends toward long-term average.\nLarge α (0.50) = very reactive, reflects recent form.",
+    },
+    "ts_show_outcome_markers": {
+        "fr": "Afficher V/D sur l'axe",
+        "en": "Show W/L on axis",
+    },
+    "ts_section_cumulative": {
+        "fr": "Bilan cumulatif",
+        "en": "Cumulative overview",
+    },
+    "ts_section_recent": {
+        "fr": "Forme récente",
+        "en": "Recent form",
+    },
+    "ts_nph_unavailable": {
+        "fr": "Net score/heure indisponible (colonne time_played_seconds manquante).",
+        "en": "Net score/hour unavailable (missing time_played_seconds column).",
     },
     "ts_distributions": {
         "fr": "Distributions",

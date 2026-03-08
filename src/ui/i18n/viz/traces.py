@@ -174,6 +174,15 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "K/D Glissant ({window})",
         "en": "Rolling K/D ({window})",
     },
+    # ── Progression avancée ─────────────────────────────────────────────────
+    "trace_kd_ci_band": {"fr": "IC 90 % K/D", "en": "K/D 90 % CI"},
+    "trace_kd_ewma": {"fr": "K/D Lissé (EWMA)", "en": "Smoothed K/D (EWMA)"},
+    "trace_regression_line": {"fr": "Tendance (régression)", "en": "Trend (regression)"},
+    "trace_nph_positive": {"fr": "Efficacité positive", "en": "Positive efficiency"},
+    "trace_nph_negative": {"fr": "Efficacité négative", "en": "Negative efficiency"},
+    "trace_nph_raw": {"fr": "Net/h (brut)", "en": "Net/h (raw)"},
+    "trace_nph_rolling": {"fr": "Net/h (lissé)", "en": "Net/h (smoothed)"},
+    "trace_outcome_markers": {"fr": "Résultats", "en": "Outcomes"},
     # ── Traces taux / objectifs ──────────────────────────────────────────────
     "trace_win_rate": {"fr": "Victoires", "en": "Win Rate"},
     "trace_loss_rate": {"fr": "Défaites", "en": "Loss Rate"},

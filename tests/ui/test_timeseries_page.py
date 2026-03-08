@@ -69,10 +69,6 @@ class TestRenderTimeseriesPage:
         with (
             patch.object(mod, "plot_timeseries", return_value=MagicMock()),
             patch.object(mod, "plot_kda_distribution", return_value=MagicMock()),
-            patch.object(mod, "plot_cumulative_net_score", return_value=MagicMock()),
-            patch.object(mod, "plot_cumulative_kd", return_value=MagicMock()),
-            patch.object(mod, "plot_rolling_kd", return_value=MagicMock()),
-            patch.object(mod, "plot_session_trend", return_value=MagicMock()),
             patch.object(mod, "render_distributions", return_value=None),
             patch.object(mod, "render_correlations", return_value=None),
             patch.object(mod, "plot_first_event_distribution", return_value=MagicMock()),
