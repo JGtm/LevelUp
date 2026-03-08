@@ -201,6 +201,7 @@ def _touch_sync_mtime(player_db_path: Path) -> None:
     for path in (str(player_db_path), str(_shared_path(player_db_path))):
         with contextlib.suppress(Exception):
             os.utime(path, None)
+            logger.debug("_touch_sync_mtime: mtime mis à jour → %s", path)
 
 
 async def _run_sync_engine(
@@ -214,6 +215,15 @@ async def _run_sync_engine(
     """Exécute le moteur de sync DuckDB pour un joueur."""
     from src.data.sync import DuckDBSyncEngine
 
+    mode_str = "delta" if delta else "full"
+    logger.debug(
+        "_run_sync_engine: démarrage gamertag=%s xuid=%s mode=%s db=%s",
+        gamertag,
+        xuid,
+        mode_str,
+        player_db_path.name,
+    )
+    t0 = time.monotonic()
     engine = DuckDBSyncEngine(
         player_db_path=player_db_path,
         xuid=xuid,
@@ -224,10 +234,23 @@ async def _run_sync_engine(
             result = await engine.sync_delta(options)
         else:
             result = await engine.sync_full(options)
+        elapsed = time.monotonic() - t0
+        logger.info(
+            "_run_sync_engine: terminé gamertag=%s succès=%s durée=%.1fs — %s",
+            gamertag,
+            result.success,
+            elapsed,
+            result.to_message(),
+        )
         return result.success, result.to_message()
     finally:
         with contextlib.suppress(Exception):
             engine.close()
+            logger.debug(
+                "_run_sync_engine: engine.close() gamertag=%s durée_totale=%.1fs",
+                gamertag,
+                time.monotonic() - t0,
+            )
 
 
 async def sync_player_duckdb_async(  # noqa: PLR0913
@@ -271,6 +294,14 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
 
     player_db_path = _resolve_sync_player_db_path(gamertag, repo_root)
 
+    logger.info(
+        "sync_player_duckdb_async: démarrage gamertag=%s mode=%s max_matches=%d manage_sync=%s",
+        gamertag,
+        "delta" if delta else "full",
+        max_matches,
+        _manage_sync_mode,
+    )
+
     # Guard réentrance : ne pas ré-activer si déjà en mode sync (ex. sync_all_players)
     _already_active = False
     if _manage_sync_mode:
@@ -299,12 +330,23 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
             options=options,
         )
 
+        if ok:
+            logger.info("sync_player_duckdb_async: succès gamertag=%s — %s", gamertag, msg)
+        else:
+            logger.warning("sync_player_duckdb_async: échec gamertag=%s — %s", gamertag, msg)
+
         if _manage_sync_mode and not _already_active:
             _touch_sync_mtime(player_db_path)
 
         return ok, msg
 
     except Exception as e:
+        logger.error(
+            "sync_player_duckdb_async: exception gamertag=%s — %s",
+            gamertag,
+            e,
+            exc_info=True,
+        )
         return False, f"Erreur sync DuckDB: {e}"
     finally:
         if _manage_sync_mode and not _already_active:
