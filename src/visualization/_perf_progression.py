@@ -214,51 +214,16 @@ def plot_cumulative_kd_with_ci(
 # =============================================================================
 
 
-def plot_net_score_per_hour(
-    nph_df: pl.DataFrame,
-    *,
-    title: str | None = None,
-    height: int = 350,
-    outcome_values: list[int | None] | None = None,
-    lang: str = "fr",
-) -> go.Figure:
-    """Graphique du net score normalisé par heure de jeu (rolling).
-
-    Contrairement au net score brut cumulé (toujours croissant si on joue assez),
-    cette courbe mesure l'*efficacité* : haute = tu fais plus de frags que de
-    morts relativement au temps joué.
-
-    Args:
-        nph_df: DataFrame issu de compute_rolling_net_score_per_hour.
-        title: Titre (auto si None).
-        height: Hauteur en pixels.
-        outcome_values: Liste d'Outcome pour les marqueurs V/D.
-        lang: Langue.
-    """
-    if title is None:
-        title = viz_t("title_net_score_per_hour", lang)
-    fig = go.Figure()
-
-    if nph_df.is_empty():
-        fig.add_annotation(
-            text=viz_t("empty_no_data", lang),
-            xref="paper",
-            yref="paper",
-            x=0.5,
-            y=0.5,
-            showarrow=False,
-            font={"size": 16, "color": THEME_COLORS.text_primary},
-        )
-        return apply_halo_plot_style(fig, title=title, height=height)
-
-    data = nph_df.sort("start_time").to_dicts()
-    x_values = [d.get("start_time", "") for d in data]
-    y_raw = [d.get("net_per_hour", 0.0) for d in data]
-    y_rolling = [d.get("rolling_net_per_hour") for d in data]
-
+def _add_nph_traces(
+    fig: go.Figure,
+    x_values: list,
+    y_raw: list,
+    y_rolling: list,
+    lang: str,
+) -> None:
+    """Ajoute les 4 traces net score/heure : zones ± et courbes brute/rolling."""
     y_pos = [max(0.0, v) if v is not None else 0.0 for v in y_rolling]
     y_neg = [min(0.0, v) if v is not None else 0.0 for v in y_rolling]
-
     fig.add_trace(
         go.Scatter(
             x=x_values,
@@ -305,6 +270,52 @@ def plot_net_score_per_hour(
         )
     )
 
+
+def plot_net_score_per_hour(
+    nph_df: pl.DataFrame,
+    *,
+    title: str | None = None,
+    height: int = 350,
+    outcome_values: list[int | None] | None = None,
+    lang: str = "fr",
+) -> go.Figure:
+    """Graphique du net score normalisé par heure de jeu (rolling).
+
+    Contrairement au net score brut cumulé (toujours croissant si on joue assez),
+    cette courbe mesure l'*efficacité* : haute = frags/heure élevés.
+
+    Args:
+        nph_df: DataFrame issu de compute_rolling_net_score_per_hour.
+        title: Titre (auto si None).
+        height: Hauteur en pixels.
+        outcome_values: Liste d'Outcome pour les marqueurs V/D.
+        lang: Langue.
+    """
+    if title is None:
+        title = viz_t("title_net_score_per_hour", lang)
+    fig = go.Figure()
+
+    if nph_df.is_empty():
+        fig.add_annotation(
+            text=viz_t("empty_no_data", lang),
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+            font={"size": 16, "color": THEME_COLORS.text_primary},
+        )
+        return apply_halo_plot_style(fig, title=title, height=height)
+
+    data = nph_df.sort("start_time").to_dicts()
+    x_values = [d.get("start_time", "") for d in data]
+    _add_nph_traces(
+        fig,
+        x_values,
+        y_raw=[d.get("net_per_hour", 0.0) for d in data],
+        y_rolling=[d.get("rolling_net_per_hour") for d in data],
+        lang=lang,
+    )
     fig.add_hline(
         y=0,
         line_dash="dash",
@@ -319,7 +330,6 @@ def plot_net_score_per_hour(
         showlegend=True,
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
     )
-
     _add_outcome_markers(fig, x_values, outcome_values, lang=lang)
     return apply_halo_plot_style(fig, title=title, height=height)
 
