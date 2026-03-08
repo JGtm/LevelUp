@@ -9,6 +9,8 @@ FUNC:src/ai/mcp_server.py:64:get_tools:83L
 FUNC:src/analysis/_composite.py:29:compute_composite_score:87L
 FUNC:src/analysis/_performance_session.py:321:compute_session_performance_score_v2:81L
 FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
+FUNC:src/analysis/participation_radar.py:291:compute_participation_profile:109L
+FUNC:src/analysis/participation_radar.py:43:compute_global_radar_thresholds:135L
 FUNC:src/analysis/sessions.py:169:compute_sessions_with_context_polars:122L
 FUNC:src/analysis/skill_rating.py:194:compute_skill_ratings_batch:198L
 FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
@@ -108,7 +110,6 @@ FUNC:src/visualization/_distributions_advanced.py:18:plot_correlation_scatter:13
 FUNC:src/visualization/_distributions_outcomes_helpers.py:125:add_outcome_traces:84L
 FUNC:src/visualization/_match_impact_events.py:38:compute_single_match_impact:122L
 FUNC:src/visualization/_perf_cumulative.py:91:plot_cumulative_net_score:82L
-FUNC:src/visualization/_perf_progression.py:217:plot_net_score_per_hour:107L
 FUNC:src/visualization/_perf_session.py:21:plot_session_trend:114L
 FUNC:src/visualization/_timeseries_progression.py:183:plot_lusr_timeseries:89L
 FUNC:src/visualization/_timeseries_progression.py:23:plot_performance_timeseries:82L
@@ -129,8 +130,6 @@ FUNC:src/visualization/objective_charts.py:49:plot_objective_vs_kills_scatter:12
 FUNC:src/visualization/participation_charts.py:167:plot_participation_bars:104L
 FUNC:src/visualization/participation_charts.py:355:create_participation_indicator:97L
 FUNC:src/visualization/participation_charts.py:65:plot_participation_pie:94L
-FUNC:src/visualization/participation_radar.py:293:compute_participation_profile:110L
-FUNC:src/visualization/participation_radar.py:45:compute_global_radar_thresholds:135L
 FUNC:src/visualization/team_dominance_timeline.py:101:detect_streaks:99L
 FUNC:src/visualization/team_dominance_timeline.py:208:plot_dominance_chart:135L
 FUNC:src/visualization/timeseries.py:317:plot_per_minute_timeseries:91L

@@ -9,6 +9,13 @@ import plotly.graph_objects as go
 import polars as pl
 import pytest
 
+from src.analysis.participation_radar import (
+    RADAR_THRESHOLDS,
+    _extract_scores_from_awards,
+    _get_match_stats_values,
+    _is_objective_mode_from_pair_name,
+    compute_participation_profile,
+)
 from src.visualization.participation_charts import (
     CATEGORY_COLORS,
     aggregate_participation_for_radar,
@@ -21,11 +28,6 @@ from src.visualization.participation_charts import (
     plot_participation_sunburst,
 )
 from src.visualization.participation_radar import (
-    RADAR_THRESHOLDS,
-    _extract_scores_from_awards,
-    _get_match_stats_values,
-    _is_objective_mode_from_pair_name,
-    compute_participation_profile,
     get_radar_axis_lines,
 )
 
