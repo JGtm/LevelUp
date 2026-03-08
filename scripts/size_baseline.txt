@@ -23,8 +23,8 @@ FUNC:src/app/profile.py:187:load_profile_assets:101L
 FUNC:src/app/sidebar.py:174:render_sync_button:120L
 FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:98L
 FUNC:src/data/infrastructure/database/duckdb_engine.py:139:load_matches:82L
-FUNC:src/data/media_indexer.py:234:scan_and_index:91L
-FUNC:src/data/media_indexer.py:90:ensure_schema:138L
+FUNC:src/data/media_indexer.py:238:scan_and_index:91L
+FUNC:src/data/media_indexer.py:94:ensure_schema:138L
 FUNC:src/data/repositories/_archives_repo.py:135:load_matches_from_archives:102L
 FUNC:src/data/repositories/_gamertag_resolver.py:187:load_match_player_gamertags:91L
 FUNC:src/data/repositories/_gamertag_resolver.py:45:resolve_gamertag:92L
@@ -133,13 +133,9 @@ FUNC:src/visualization/timeseries_combat.py:268:plot_damage_dealt_taken:81L
 FUNC:src/visualization/timeseries_combat.py:352:plot_shots_accuracy:92L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:139L
-MODULE:src/analysis/citations/engine.py:518L
-MODULE:src/data/media_indexer.py:522L
 MODULE:src/data/query/trends.py:537L
 MODULE:src/data/services/teammates_service.py:536L
 MODULE:src/data/sync/_match_processing.py:710L
-MODULE:src/data/sync/engine.py:513L
 MODULE:src/data/sync/transformers/_match.py:534L
-MODULE:src/ui/pages/teammates_views.py:518L
 MODULE:src/visualization/objective_charts.py:583L
 MODULE:src/visualization/participation_charts.py:648L

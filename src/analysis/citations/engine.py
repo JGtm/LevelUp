@@ -10,7 +10,6 @@ Ce module fournit ``CitationEngine``, classe responsable de :
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
 from collections.abc import Generator
 from contextlib import nullcontext
@@ -21,6 +20,7 @@ import duckdb
 import polars as pl
 
 from src.analysis.citations._data_loader import CitationDataLoaderMixin
+from src.analysis.citations.composite import _apply_composite_citations
 from src.analysis.citations.custom_rules import CUSTOM_FUNCTIONS
 from src.utils.db import duckdb_read_write
 from src.utils.paths import get_pve_db_path_from_player
@@ -475,43 +475,5 @@ class CitationEngine(CitationDataLoaderMixin):
             ``{citation_name_norm: total}``.
         """
         result = self.aggregate_citations(citation_names=None, match_ids=match_ids)
-
-        # Calculer les citations composites
         mappings = self.load_mappings()
-        for norm_name, mapping in mappings.items():
-            if mapping.get("mapping_type") != "composite":
-                continue
-            children_raw = mapping.get("composite_children")
-            if not children_raw:
-                continue
-            try:
-                children = (
-                    json.loads(children_raw) if isinstance(children_raw, str) else children_raw
-                )
-            except (json.JSONDecodeError, TypeError):
-                continue
-            if not isinstance(children, list):
-                continue
-
-            # Compter les sous-citations qui ont atteint la maîtrise
-            mastered_count = 0
-            for child in children:
-                if child not in mappings:
-                    continue
-                child_count = result.get(child, 0)
-                if child_count <= 0:
-                    continue
-                child_tiers = mappings[child].get("tier_targets")
-                if not child_tiers:
-                    # Pas de tiers → considérer masterisé si > 0
-                    mastered_count += 1
-                    continue
-                targets = sorted(
-                    int(t.strip()) for t in str(child_tiers).split(",") if t.strip().isdigit()
-                )
-                if targets and child_count >= targets[-1]:
-                    mastered_count += 1
-            if mastered_count > 0:
-                result[norm_name] = mastered_count
-
-        return result
+        return _apply_composite_citations(result, mappings)
