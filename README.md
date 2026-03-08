@@ -18,6 +18,7 @@
 - `LevelUp.bat` launcher for Windows and `LevelUp.sh` launcher for macOS & Linux
 - Portable Windows release (self-contained zip, no Python install required)
 - Timezone selector in Settings (~40 zones, defaults to Europe/Paris)
+- **Session Comparison page revamped** — outcomes donuts, F/D + accuracy curve, match highlights, mode & map breakdowns, LUSR/CSR rating overlay on cumulative net score
 
 **v5.4 — Explorer & Encounter History**
 - New **Explorer** page: search any match with cascade filters (date, squad, map, mode…) and deep links
