@@ -31,9 +31,6 @@ FUNC:src/data/repositories/_gamertag_resolver.py:45:resolve_gamertag:92L
 FUNC:src/data/repositories/_materialized_views.py:96:refresh_materialized_views:176L
 FUNC:src/data/repositories/_roster_loader.py:36:load_match_rosters:201L
 FUNC:src/data/repositories/_roster_loader.py:371:load_match_scoreboard:88L
-FUNC:src/data/services/teammates_service.py:179:load_teammate_stats:120L
-FUNC:src/data/services/teammates_service.py:305:enrich_series_with_perfect_kills:107L
-FUNC:src/data/services/teammates_service.py:415:compute_participation_profiles:99L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sync/_match_processing.py:267:_backfill_known_match_shared:85L
 FUNC:src/data/sync/_match_processing.py:43:_process_matches:96L
@@ -49,6 +46,7 @@ FUNC:src/data/sync/transformers/_skill.py:127:transform_all_skill_stats:142L
 FUNC:src/data/sync/transformers/_skill.py:24:transform_skill_stats:100L
 FUNC:src/ui/_cache_sessions.py:21:cached_compute_sessions_db:171L
 FUNC:src/ui/_sync_duckdb_ops.py:21:_sync_duckdb_player:119L
+FUNC:src/ui/_sync_duckdb_ops.py:256:sync_player_duckdb_async:97L
 FUNC:src/ui/_sync_duckdb_ops.py:43:_sync_async:82L
 FUNC:src/ui/cache_filters.py:54:_build_friend_df_from_match_ids_v4:86L
 FUNC:src/ui/cache_loaders.py:207:load_df_optimized:96L
@@ -141,7 +139,7 @@ MODULE:src/analysis/cumulative.py:525L
 MODULE:src/analysis/skill_rating_calibration.py:545L
 MODULE:src/data/media_indexer.py:522L
 MODULE:src/data/query/trends.py:537L
-MODULE:src/data/services/teammates_service.py:586L
+MODULE:src/data/services/teammates_service.py:536L
 MODULE:src/data/sessions_backfill.py:502L
 MODULE:src/data/sync/_match_processing.py:710L
 MODULE:src/data/sync/engine.py:513L
