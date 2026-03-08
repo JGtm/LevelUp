@@ -127,8 +127,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Projection · {date}<br>{xp} XP",
     },
     "career_projection_optimistic": {
-        "fr": "Projection optimiste (défis + x2)",
-        "en": "Optimistic (challenges + x2)",
+        "fr": "Projection optimiste (défis + boosts x2)",
+        "en": "Optimistic (challenges + boosts x2)",
     },
     "career_projection_optimistic_hover": {
         "fr": "Optimiste · {date}<br>{xp} XP",
