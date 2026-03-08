@@ -222,7 +222,7 @@ class TestBackfillSessionsIntegration:
         """Si shared DB manquante, retourne erreur."""
         from unittest.mock import patch
 
-        import src.data.sessions_backfill as sb_module
+        import src.data.sessions_backfill_shared as sb_shared_module
 
         player_db = temp_player_db["player_db"]
 
@@ -230,7 +230,9 @@ class TestBackfillSessionsIntegration:
         temp_player_db["shared_db"].unlink()
 
         # Patcher __file__ pour que le fallback ne trouve pas la DB de production
-        with patch.object(sb_module, "__file__", "/nonexistent/fake/sessions_backfill.py"):
+        with patch.object(
+            sb_shared_module, "__file__", "/nonexistent/fake/sessions_backfill_shared.py"
+        ):
             result = backfill_sessions_for_player(player_db, xuid="1234567890")
 
         # Doit retourner une erreur
