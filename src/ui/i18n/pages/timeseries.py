@@ -112,6 +112,43 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Tendance de session : au moins 4 matchs requis.",
         "en": "Session trend: at least 4 matches required.",
     },
+    # ── Notes explicatives sous les graphes de progression ───────────────────
+    "ts_note_nph": {
+        "fr": "**Net score/heure** = (frags − morts) rapporté à la durée réelle de jeu. "
+        "Vert = efficacité positive, rouge = négative. "
+        "La courbe épaisse est la moyenne glissante sur les derniers matchs. "
+        "⚠ L'axe Y est ajusté pour la lisibilité — les valeurs extrêmes restent accessibles au survol.",
+        "en": "**Net score/hour** = (kills − deaths) normalized by actual playtime. "
+        "Green = positive efficiency, red = negative. "
+        "The thick line is a rolling average over recent matches. "
+        "⚠ Y axis is fitted for readability — extreme values are still accessible on hover.",
+    },
+    "ts_note_ci": {
+        "fr": "**K/D cumulé avec IC 90 %** : la courbe montre l'évolution de ton K/D moyen "
+        "depuis le début de la session. La bande ombragée est l'intervalle de confiance à 90 % : "
+        "plus les matchs s'accumulent, plus la bande se resserre — signe de stabilité.",
+        "en": "**Cumulative K/D with 90% CI**: the curve shows how your average K/D has evolved "
+        "throughout the session. The shaded band is the 90% confidence interval: "
+        "the more matches pile up, the narrower it gets — a sign of stability.",
+    },
+    "ts_note_ewma": {
+        "fr": "**K/D lissé (EWMA)** : moyenne pondérée exponentielle donnant plus de poids aux matchs récents. "
+        "Un α élevé = très réactif aux dernières parties ; un α faible = vision long terme. "
+        "La droite pointillée (si présente) est significative si R² ≥ 0.3. "
+        "⚠ L'axe Y est ajusté pour la lisibilité — les valeurs extrêmes restent accessibles au survol.",
+        "en": "**Smoothed K/D (EWMA)**: exponentially weighted average giving more weight to recent matches. "
+        "High α = very reactive to the latest games; low α = long-term view. "
+        "The dotted line (if shown) is significant when R² ≥ 0.3. "
+        "⚠ Y axis is fitted for readability — extreme values are still accessible on hover.",
+    },
+    "ts_note_regression": {
+        "fr": "**Indicateurs de tendance** : pente K/D (vitesse de progression), "
+        "coefficient de détermination R² (robustesse de la tendance) "
+        "et évolution du taux de victoire sur la session.",
+        "en": "**Trend indicators**: K/D slope (pace of progress), "
+        "R² coefficient (how reliable the trend is), "
+        "and win rate evolution across the session.",
+    },
     # ── Page Coéquipiers ─────────────────────────────────────────────────────
     "ts_computing": {
         "fr": "Génération des graphes…",
