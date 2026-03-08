@@ -6,11 +6,14 @@ dans le temps plutôt que sur les simples cumuls.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import polars as pl
 
 from src.data.domain.refdata import Outcome
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # EWMA K/D
@@ -43,6 +46,7 @@ def compute_ewma_kd_polars(
             }
         )
 
+    logger.debug("compute_ewma_kd_polars: %d matchs, alpha=%.2f", len(match_stats_df), alpha)
     result = (
         match_stats_df.sort("start_time")
         .with_columns(
@@ -180,6 +184,11 @@ def compute_linear_regression_kd(
         - win_y_hat     (si colonne outcome présente)
     """
     if series_df.is_empty() or kd_col not in series_df.columns or len(series_df) < 3:
+        logger.debug(
+            "compute_linear_regression_kd: données insuffisantes (n=%d, col=%s)",
+            len(series_df),
+            kd_col,
+        )
         return _empty_regression()
 
     df = series_df.sort("start_time")
@@ -294,6 +303,7 @@ def compute_rolling_net_score_per_hour(
     if match_stats_df.is_empty():
         return pl.DataFrame(schema=_empty_schema)
     if "time_played_seconds" not in match_stats_df.columns:
+        logger.debug("compute_rolling_net_score_per_hour: colonne time_played_seconds absente")
         return pl.DataFrame(schema=_empty_schema)
 
     n = len(match_stats_df)
