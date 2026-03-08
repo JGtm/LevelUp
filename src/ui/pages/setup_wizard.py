@@ -17,6 +17,7 @@ import os
 
 import streamlit as st
 
+from src.app.session_keys import SK
 from src.ui.i18n import t
 from src.ui.pages.setup_smoke_test import render_smoke_test
 from src.ui.pages.setup_wizard_logic import (
@@ -267,10 +268,10 @@ def _render_xbox_flow(status: SetupStatus) -> None:
         logger.debug("Wizard Xbox : génération URL OAuth (client_id=%s…)", client_id[:8])
         from src.ui.xbox_oauth import build_xbox_auth_url, generate_oauth_state
 
-        if "_xbox_oauth_state" not in st.session_state:
-            st.session_state["_xbox_oauth_state"] = generate_oauth_state()
+        if SK.XBOX_OAUTH_STATE not in st.session_state:
+            st.session_state[SK.XBOX_OAUTH_STATE] = generate_oauth_state()
 
-        state = st.session_state["_xbox_oauth_state"]
+        state = st.session_state[SK.XBOX_OAUTH_STATE]
         auth_url = build_xbox_auth_url(client_id, redirect_uri, state)
 
         st.markdown("")

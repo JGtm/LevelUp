@@ -58,3 +58,10 @@ class SK:
     GAP_MINUTES: str = "gap_minutes"
     MIN_MATCHES_MAPS: str = "min_matches_maps"
     MIN_MATCHES_MAPS_FRIENDS: str = "min_matches_maps_friends"
+
+    # ------------------------------------------------------------------
+    # OAuth Xbox (partagées entre streamlit_app, xbox_oauth_ui, setup_wizard)
+    # ------------------------------------------------------------------
+    XBOX_OAUTH_STATE: str = "_xbox_oauth_state"
+    XBOX_OAUTH_RESULT: str = "_xbox_oauth_result"
+    XBOX_OAUTH_CONSUMED: str = "_xbox_oauth_consumed"
