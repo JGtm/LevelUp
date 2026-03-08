@@ -74,7 +74,7 @@ def render_win_loss_page(  # noqa: PLR0913
         _render_streak_section(dff)
         _render_personal_score_section(dff)
         _render_period_section(dff, bucket_label, is_session_scope)
-        _render_ratio_by_map_section(dff, base, db_path, xuid, db_key)
+        _render_ratio_by_map_section(dff, base, db_path, xuid, db_key, is_session_scope)
 
 
 def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str:
@@ -107,12 +107,22 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     dff,
                     "map_name",
                     title=None,
-                    min_matches=2,
+                    min_matches=1,
                     sort_by="total",
                     max_categories=12,
                     lang=get_lang(),
                 )
                 if fig_map is not None:
+                    fig_map.update_layout(
+                        legend={
+                            "orientation": "h",
+                            "yanchor": "bottom",
+                            "y": 1.02,
+                            "xanchor": "right",
+                            "x": 1,
+                        },
+                        margin={"l": 40, "r": 20, "t": 30, "b": 80},
+                    )
                     st.plotly_chart(fig_map, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
@@ -128,9 +138,19 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
         )
         if mode_col in dff.columns and "outcome" in dff.columns:
             with safe_chart_render():
+                # Extraire la partie après " : " pour raccourcir les noms de modes
+                # (ex. "Arène : Assassin" → "Assassin") et regrouper les variantes
+                dff_mode = dff.with_columns(
+                    pl.col(mode_col)
+                    .map_elements(
+                        lambda s: s.split(" : ", 1)[1] if isinstance(s, str) and " : " in s else s,
+                        return_dtype=pl.String,
+                    )
+                    .alias("_mode_short")
+                )
                 fig_mode = plot_stacked_outcomes_by_category(
-                    dff,
-                    mode_col,
+                    dff_mode,
+                    "_mode_short",
                     title=None,
                     min_matches=2,
                     sort_by="total",
@@ -138,6 +158,16 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     lang=get_lang(),
                 )
                 if fig_mode is not None:
+                    fig_mode.update_layout(
+                        legend={
+                            "orientation": "h",
+                            "yanchor": "bottom",
+                            "y": 1.02,
+                            "xanchor": "right",
+                            "x": 1,
+                        },
+                        margin={"l": 40, "r": 20, "t": 30, "b": 60},
+                    )
                     st.plotly_chart(fig_mode, width="stretch", config=PLOTLY_STATIC_CONFIG)
                 else:
                     st.info(t("insufficient_data_chart"))
@@ -267,12 +297,13 @@ def _render_period_section(
 
 
 @fragment_if_available
-def _render_ratio_by_map_section(
+def _render_ratio_by_map_section(  # noqa: PLR0913
     dff: pl.DataFrame,
     base: pl.DataFrame,
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None,
+    is_session_scope: bool = False,
 ) -> None:
     """Affiche le ratio par cartes avec sélection du scope."""
     st.divider()
@@ -321,13 +352,22 @@ def _render_ratio_by_map_section(
         st.warning(t("wl_not_enough_map"))
         return
 
-    metric = st.selectbox(
-        t("wl_metric_label"),
-        options=[
+    if is_session_scope:
+        st.caption(t("wl_session_map_note"))
+        metric_options = [
+            ("performance_avg", t("wl_metric_performance")),
+            ("accuracy_avg", t("wl_metric_accuracy")),
+        ]
+    else:
+        metric_options = [
+            ("performance_avg", t("wl_metric_performance")),
             ("ratio_global", t("wl_metric_ratio")),
             ("win_rate", t("wl_metric_win_rate")),
             ("accuracy_avg", t("wl_metric_accuracy")),
-        ],
+        ]
+    metric = st.selectbox(
+        t("wl_metric_label"),
+        options=metric_options,
         format_func=lambda x: x[1],
     )
     key, label = metric
@@ -335,9 +375,11 @@ def _render_ratio_by_map_section(
     view = breakdown.head(20).reverse()
     with safe_chart_render():
         if key == "ratio_global":
-            fig = plot_map_ratio_with_winloss(view, title=label)
+            fig = plot_map_ratio_with_winloss(view, title=label, absolute_counts=True)
         else:
-            fig = plot_map_comparison(view, key, title=label)
+            fig = plot_map_comparison(
+                view, key, title=label, color_by_sign=(key == "performance_avg")
+            )
 
         if fig is not None:
             if key in ("win_rate",):

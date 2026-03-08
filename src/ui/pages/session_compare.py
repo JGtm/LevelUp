@@ -13,6 +13,11 @@ from src.ui.components.performance import (
     render_performance_score_card,
 )
 from src.ui.i18n import t
+from src.ui.pages._session_compare_viz import (
+    render_kd_progression,
+    render_outcomes_distribution,
+    render_session_temporal_header,
+)
 from src.ui.pages.session_compare_charts import (
     SESSION_COLORS,  # noqa: F401 — re-exported
     render_comparison_bar_chart,
@@ -392,7 +397,12 @@ def render_session_comparison_page(
     # ══════════════════════════════════════════════════════════════════════════
     # Sections de la page
     # ══════════════════════════════════════════════════════════════════════════
+    render_session_temporal_header(df_session_a, df_session_b)
     _render_score_cards(perf_a, perf_b)
+
+    # Répartition des résultats (W/L/T)
+    render_outcomes_distribution(df_session_a, df_session_b)
+
     _render_detailed_metrics(perf_a, perf_b)
     _render_mmr_comparison(perf_a, perf_b)
 
@@ -414,8 +424,9 @@ def render_session_comparison_page(
         st.markdown(t("sc_metric_comparison"))
         render_comparison_bar_chart(perf_a, perf_b, hist_avg=hist_avg)
 
-    # Net score cumulé
+    # Net score cumulé + évolution F/M
     _render_cumulative_section(df_session_a, df_session_b, session_a_label, session_b_label)
+    render_kd_progression(df_session_a, df_session_b, session_a_label, session_b_label)
 
     # Tendance de participation (PersonalScores) - Sprint 8.2
     render_participation_trend_section(
