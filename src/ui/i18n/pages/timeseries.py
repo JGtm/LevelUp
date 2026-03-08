@@ -13,7 +13,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Cumulative performance & trend",
     },
     "ts_cumulative_caption": {
-        "fr": "Efficacité (net score/heure), K/D cumulé avec IC 90 %, K/D lissé EWMA et indicateurs de régression.",
+        "fr": "Efficacité (net score/heure), F/D cumulé avec intervalle de confiance à 90 %, F/D lissé EWMA et indicateurs de régression.",
         "en": "Efficiency (net score/hour), cumulative K/D with 90 % CI, EWMA smoothed K/D, and regression indicators.",
     },
     # ── Contrôles section Progression ────────────────────────────────────────
@@ -115,7 +115,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Notes explicatives sous les graphes de progression ───────────────────
     "ts_note_nph": {
         "fr": "- Courbe qui **monte** → tu crées plus de valeur que tu n'en perds — bonne dynamique\n"
-        "- **En dessous de 0** → tu meurs plus vite que tu ne frattes\n"
+        "- **En dessous de 0** → tu meurs plus vite que tu ne fragges\n"
         "- Un pic isolé ne dit rien ; c'est la direction générale sur plusieurs matchs qui compte",
         "en": "- **Rising** → you generate more value than you lose — good momentum\n"
         "- **Below 0** → you die faster than you score kills\n"
@@ -123,7 +123,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "ts_note_ci": {
         "fr": "- Courbe en hausse en fin de session → tu t'es vraiment amélioré par rapport au début\n"
-        "- **IC étroit** → niveau stable et reproductible ; **IC large** → trop tôt pour conclure\n"
+        "- **Bande étroite** → niveau stable et reproductible ; **bande large** → trop tôt pour conclure\\n"
         "- Cercle très éloigné de la courbe → partie atypique qui tire la moyenne",
         "en": "- Rising curve toward session end → genuine improvement relative to your start\n"
         "- **Narrow CI** → stable, reproducible level; **wide CI** → too early to draw conclusions\n"
