@@ -558,6 +558,17 @@ def create_argument_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ── Career Rank XP total (local, sans API) ───────────────────────────────────
+    parser.add_argument(
+        "--xp-total",
+        action="store_true",
+        help=(
+            "Recalcule xp_total et xp_for_next_rank dans career_progression "
+            "pour tous les joueurs, depuis les vraies valeurs metadata.duckdb. "
+            "Corrige l'ancienne formule approximative hardcodée. Local, sans API."
+        ),
+    )
+
     return parser
 
 

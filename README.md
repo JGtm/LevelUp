@@ -19,6 +19,7 @@
 - Portable Windows release (self-contained zip, no Python install required)
 - Timezone selector in Settings (~40 zones, defaults to Europe/Paris)
 - **Session Comparison page revamped** — outcomes donuts, F/D + accuracy curve, match highlights, mode & map breakdowns, LUSR/CSR rating overlay on cumulative net score
+- **XP & Hero rank comparison** — Career page now overlays XP curves and Hero projections for all players with a refresh token; precision scales with available data (real delta between syncs → global average fallback)
 
 **v5.4 — Explorer & Encounter History**
 - New **Explorer** page: search any match with cascade filters (date, squad, map, mode…) and deep links
@@ -51,7 +52,7 @@
 - **Explorer** - Unified match search with cascade filters, fuzzy gamertag lookup, OS-style table, deep linking and encounter badges
 - **Last match** - Full scoreboard for your latest game, searchable by match ID — with Encounter History panel
 - **Session comparison** - Side-by-side analysis of two play sessions
-- **Career progression** - Rank history, progression to Hero, LUSR rating per playlist group
+- **Career progression** - Rank history, XP curve, Hero rank projections and **multi-player XP comparison** (all players with a refresh token overlaid on the same chart — detail level varies by sync history)
 - **Commendations** - Track your commendations with medal distributions and grids
 - **Media library** - Index and browse clips/screenshots linked to their matches
 - **Discord notifications** - Automatic alerts after sync and backfill operations

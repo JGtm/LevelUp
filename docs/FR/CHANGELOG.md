@@ -247,6 +247,18 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - **Paramètres d'inactivité réduits** : `INACTIVITY_SIGMA_PER_DAY` 3.5→1.0, `MAX_INACTIVITY_DAYS` 30→14 — évite les swings de ±200 pts après une longue pause
 - **Seed sigma CSR réduit** : `PlayerState.from_csr()` démarre à `sigma=MIN_SIGMA` (60) au lieu de `INITIAL_SIGMA × 0.6` (210) — le CSR est un ancrage fort, démarrer en état stable évite la volatilité initiale
 
+- **Page Carrière — Comparaison XP & projections multi-joueurs** (`src/ui/pages/career.py`, `career_logic.py`, `career_data.py`)
+  - Pour chaque joueur possédant un refresh token, le graphe affiche désormais ses courbes côte à côte avec le joueur courant :
+    - Courbe XP réelle (lignes + marqueurs, couleur distincte par joueur)
+    - Courbe XP estimée pré-sync (pointillés même couleur) — interpolation linéaire sur les matchs antérieurs au premier sync
+    - Projection « à ce rythme » → Héros (tirets) et projection optimiste défis + boost×2 (tirets-points)
+    - Toutes les courbes secondaires masquées par défaut — cliquer dans la légende pour les afficher
+  - **Niveau de précision variable** selon l’historique disponible :
+    - Niveau 1 (fallback) : XP total / jours depuis le premier match connu — actif dès le première sync
+    - Niveau 2 (delta réel) : delta XP inter-snapshots / jours actifs — plus précis, s’active automatiquement quand le joueur a joué entre deux syncs
+  - Nouvelles clés i18n : `career_xp_other_estimated`, `career_projection_other_hero`, `career_projection_other_optimistic`
+  - `_compute_fallback_xp_per_day()` ajoutée dans `career_logic.py`
+
 - **Page Carrière — Courbe XP estimée pré-sync** (`src/ui/pages/career.py`)
   - Trace violette pointillée estimant l'XP pour les ~561 matchs joués avant le premier sync
   - XP moyen/match = `first_xp / n_matchs_pré_sync` — la courbe part de ~0 au match le plus ancien et rejoint le premier snapshot réel

@@ -71,21 +71,39 @@ async def get_career_rank_progression(
 
 
 def parse_career_rank(xuid: str, data: dict[str, Any]) -> CareerRankData:
-    """Parse les données brutes de career rank en CareerRankData."""
+    """Parse les données brutes de career rank en CareerRankData.
+
+    Note : l'API Halo retourne CurrentProgress.Rank = dernier rang *complété*
+    (pas le rang affiché). Le rang affiché = API.Rank + 1, sauf au rang max.
+    """
     current = data.get("CurrentProgress", {})
     rank = current.get("Rank", 0)
     partial_xp = current.get("PartialProgress", 0)
     is_max = rank >= CAREER_RANK_MAX
-    rank_info = get_rank_info(rank)
+
+    # Le rang affiché est le suivant (celui en cours), sauf si on est au max
+    display_rank = rank if is_max else rank + 1
+    rank_info = get_rank_info(display_rank)
+
+    # xp_for_next_rank : utiliser les vraies valeurs depuis metadata.duckdb
+    xp_for_next = rank_info.get("xp_required", 0)
+    try:
+        from src.ui.career_ranks import get_rank_info as _get_meta
+
+        meta = _get_meta(display_rank)
+        if meta is not None:
+            xp_for_next = meta.xp_required
+    except Exception:
+        pass
 
     return CareerRankData(
         xuid=xuid,
-        current_rank=rank,
-        current_rank_name=rank_info.get("name", f"Rank {rank}"),
+        current_rank=display_rank,
+        current_rank_name=rank_info.get("name", f"Rank {display_rank}"),
         current_rank_tier=rank_info.get("tier", ""),
         current_xp=partial_xp,
-        xp_for_next_rank=rank_info.get("xp_required", 0),
-        xp_total=compute_total_xp(rank, partial_xp),
+        xp_for_next_rank=xp_for_next,
+        xp_total=compute_total_xp(display_rank, partial_xp),
         is_max_rank=is_max,
         adornment_path=None,
         raw_json=data,
@@ -165,9 +183,24 @@ def get_rank_info(rank: int) -> dict[str, Any]:
 
 
 def compute_total_xp(rank: int, partial_xp: int) -> int:
-    """Calcule l'XP total basé sur le rang et l'XP partiel."""
-    base_xp = 0
-    for r in range(1, rank):
-        info = get_rank_info(r)
-        base_xp += info.get("xp_required", 10000)
-    return base_xp + partial_xp
+    """Calcule l'XP total basé sur le rang et l'XP partiel.
+
+    Utilise les vraies valeurs depuis metadata.duckdb (table career_ranks)
+    pour une précision maximale. Fallback sur la formule approx si metadata
+    indisponible (ex: premier lancement, DB absente).
+    """
+    try:
+        from src.ui.career_ranks import get_rank_info as _get_meta
+
+        base_xp = 0
+        for r in range(1, rank):
+            info = _get_meta(r)
+            base_xp += info.xp_required if info is not None else 0
+        return base_xp + partial_xp
+    except Exception:
+        # Fallback si metadata.duckdb est indisponible
+        base_xp = 0
+        for r in range(1, rank):
+            info = get_rank_info(r)
+            base_xp += info.get("xp_required", 10000)
+        return base_xp + partial_xp

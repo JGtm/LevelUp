@@ -140,6 +140,26 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "{gamertag} · {date}<br>{xp} XP",
         "en": "{gamertag} · {date}<br>{xp} XP",
     },
+    "career_xp_other_estimated": {
+        "fr": "{gamertag} (estimé)",
+        "en": "{gamertag} (est.)",
+    },
+    "career_xp_other_estimated_hover": {
+        "fr": "{gamertag} · {date} (estimé)<br>~{xp} XP",
+        "en": "{gamertag} · {date} (est.)<br>~{xp} XP",
+    },
+    "career_projection_other_hero": {
+        "fr": "Proj. {gamertag} → Héros",
+        "en": "Proj. {gamertag} → Hero",
+    },
+    "career_projection_other_optimistic": {
+        "fr": "Proj. {gamertag} (optimiste)",
+        "en": "Proj. {gamertag} (optimistic)",
+    },
+    "career_projection_other_hover": {
+        "fr": "{gamertag} · {date}<br>{xp} XP",
+        "en": "{gamertag} · {date}<br>{xp} XP",
+    },
     "career_ranked": "ranked",  # alias → common
     "career_tactical": {"fr": "Tactique", "en": "Tactical"},
     # ── Section Rencontres & Antagonistes ────────────────────────────────────

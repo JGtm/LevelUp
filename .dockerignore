@@ -26,7 +26,12 @@ dist
 # === Données joueurs (montées en volume, pas buildées dans l'image) ===
 data/players/
 data/cache/
-data/backups/
+backups/
+
+# === Secrets (ne jamais inclure dans l'image) ===
+.env
+.env.local
+.env.*.local
 
 # === IA / docs internes ===
 .ai/

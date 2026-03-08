@@ -20,6 +20,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
 COPY src /app/src
 COPY static /app/static
 COPY scripts /app/scripts
+COPY .streamlit /app/.streamlit
 COPY streamlit_app.py launcher.py /app/
 
 # Données de référence embarquées (petits fichiers nécessaires à l'UI)
@@ -31,7 +32,7 @@ COPY db_profiles.json /app/db_profiles.json
 RUN if [ ! -f /app/app_settings.json ]; then echo '{}' > /app/app_settings.json; fi
 
 # Dossiers attendus par le runtime
-RUN mkdir -p /app/data/players /app/data/warehouse
+RUN mkdir -p /app/data/players /app/data/warehouse /app/data/logs
 
 # --- Étape 3 : Utilisateur non-root ---
 RUN adduser --disabled-password --gecos "" --uid 10001 appuser \
@@ -44,8 +45,10 @@ EXPOSE 8501
 # Variables d'environnement par défaut
 # LEVELUP_DB : optionnel, force un chemin DB précis
 # LEVELUP_ROOT : indique la racine du projet au runtime
+# LEVELUP_DATA : obligatoire en conteneur (pas de .venv → _is_dev_mode()=False)
 ENV LEVELUP_DB="" \
-    LEVELUP_ROOT=/app
+    LEVELUP_ROOT=/app \
+    LEVELUP_DATA=/app/data
 
 # Healthcheck Streamlit (endpoint officiel /_stcore/health)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
