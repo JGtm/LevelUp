@@ -271,8 +271,15 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
 
     player_db_path = _resolve_sync_player_db_path(gamertag, repo_root)
 
+    # Guard réentrance : ne pas ré-activer si déjà en mode sync (ex. sync_all_players)
+    _already_active = False
     if _manage_sync_mode:
-        _activate_sync_mode()
+        from src.data.repositories.duckdb_repo import _sync_mode as _sm
+
+        _already_active = _sm.is_set()
+        if not _already_active:
+            _activate_sync_mode()
+
     try:
         from src.data.sync import SyncOptions
 
@@ -292,7 +299,7 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
             options=options,
         )
 
-        if _manage_sync_mode:
+        if _manage_sync_mode and not _already_active:
             _touch_sync_mtime(player_db_path)
 
         return ok, msg
@@ -300,7 +307,7 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
     except Exception as e:
         return False, f"Erreur sync DuckDB: {e}"
     finally:
-        if _manage_sync_mode:
+        if _manage_sync_mode and not _already_active:
             _deactivate_sync_mode()
 
 

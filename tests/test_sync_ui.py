@@ -433,3 +433,228 @@ class TestSyncIntegration:
         assert p.name == "stats.duckdb"
         assert p.parent.name == gamertag
         assert p.parent.parent.name == "players"
+
+
+# =============================================================================
+# Tests de régression — sync mode (handle conflict shared_matches.duckdb)
+# =============================================================================
+
+
+class TestSyncModeHandleConflict:
+    """Régression : sync_player_duckdb_async doit activer le sync mode.
+
+    Bug original : sync_all_players_duckdb → sync_player_duckdb →
+    sync_player_duckdb_async créait un DuckDBSyncEngine sans appeler
+    _activate_sync_mode(). Le DuckDBRepository de Streamlit conservait
+    un ATTACH de shared_matches.duckdb, causant un « Unique file handle
+    conflict: Cannot attach "shared_matches" ».
+    """
+
+    def test_sync_player_duckdb_async_activates_sync_mode(self, tmp_path):
+        """sync_player_duckdb_async active le sync mode avant de créer l'engine."""
+        import asyncio
+        import threading
+
+        import duckdb
+
+        # Créer la DB joueur minimale
+        players_dir = tmp_path / "data" / "players" / "TestSync"
+        players_dir.mkdir(parents=True)
+        db_path = players_dir / "stats.duckdb"
+        conn = duckdb.connect(str(db_path))
+        conn.execute("CREATE TABLE sync_meta (key VARCHAR, value VARCHAR)")
+        conn.close()
+
+        # Tracer les appels activate/deactivate
+        calls: list[str] = []
+
+        with (
+            patch(
+                "src.ui._sync_duckdb_ops._activate_sync_mode",
+                side_effect=lambda: calls.append("activate"),
+            ),
+            patch(
+                "src.ui._sync_duckdb_ops._deactivate_sync_mode",
+                side_effect=lambda: calls.append("deactivate"),
+            ),
+            patch(
+                "src.data.repositories.duckdb_repo._sync_mode",
+                threading.Event(),  # mode non-set = pas déjà en sync
+            ),
+            patch(
+                "src.data.sync.DuckDBSyncEngine",
+                side_effect=RuntimeError("test stop"),
+            ),
+        ):
+            from src.ui._sync_duckdb_ops import sync_player_duckdb_async
+
+            ok, msg = asyncio.run(
+                sync_player_duckdb_async(
+                    gamertag="TestSync",
+                    xuid="123",
+                    repo_root=tmp_path,
+                )
+            )
+
+            assert ok is False
+            assert "activate" in calls, "sync mode doit être activé"
+            assert "deactivate" in calls, "sync mode doit être désactivé dans finally"
+
+    def test_reentrant_sync_mode_not_deactivated_early(self, tmp_path):
+        """Quand le sync mode est déjà actif, sync_player_duckdb_async ne le désactive pas."""
+        import asyncio
+        import threading
+
+        import duckdb
+
+        # Créer la DB joueur minimale
+        players_dir = tmp_path / "data" / "players" / "TestReentrant"
+        players_dir.mkdir(parents=True)
+        db_path = players_dir / "stats.duckdb"
+        conn = duckdb.connect(str(db_path))
+        conn.execute("CREATE TABLE sync_meta (key VARCHAR, value VARCHAR)")
+        conn.close()
+
+        calls: list[str] = []
+        # Simuler un sync mode DÉJÀ actif (set)
+        pre_set_event = threading.Event()
+        pre_set_event.set()
+
+        with (
+            patch(
+                "src.ui._sync_duckdb_ops._activate_sync_mode",
+                side_effect=lambda: calls.append("activate"),
+            ),
+            patch(
+                "src.ui._sync_duckdb_ops._deactivate_sync_mode",
+                side_effect=lambda: calls.append("deactivate"),
+            ),
+            patch(
+                "src.data.repositories.duckdb_repo._sync_mode",
+                pre_set_event,
+            ),
+            patch(
+                "src.data.sync.DuckDBSyncEngine",
+                side_effect=RuntimeError("test stop"),
+            ),
+        ):
+            from src.ui._sync_duckdb_ops import sync_player_duckdb_async
+
+            ok, msg = asyncio.run(
+                sync_player_duckdb_async(
+                    gamertag="TestReentrant",
+                    xuid="456",
+                    repo_root=tmp_path,
+                )
+            )
+
+            assert ok is False
+            assert "activate" not in calls, "ne doit PAS réactiver si déjà en sync"
+            assert "deactivate" not in calls, "ne doit PAS désactiver si préexistant"
+
+    def test_engine_closed_on_error(self, tmp_path):
+        """L'engine est fermé même si sync_delta lève une exception."""
+        import asyncio
+        import threading
+
+        import duckdb
+
+        # Créer la DB joueur minimale
+        players_dir = tmp_path / "data" / "players" / "TestClose"
+        players_dir.mkdir(parents=True)
+        db_path = players_dir / "stats.duckdb"
+        conn = duckdb.connect(str(db_path))
+        conn.execute("CREATE TABLE sync_meta (key VARCHAR, value VARCHAR)")
+        conn.close()
+
+        close_calls: list[str] = []
+
+        class MockEngine:
+            async def sync_delta(self, options):
+                raise RuntimeError("boom")
+
+            def close(self):
+                close_calls.append("close")
+
+        pre_set_event = threading.Event()
+        pre_set_event.set()
+
+        with (
+            patch(
+                "src.ui._sync_duckdb_ops._activate_sync_mode",
+            ),
+            patch(
+                "src.ui._sync_duckdb_ops._deactivate_sync_mode",
+            ),
+            patch(
+                "src.data.repositories.duckdb_repo._sync_mode",
+                pre_set_event,
+            ),
+            patch(
+                "src.data.sync.DuckDBSyncEngine",
+                return_value=MockEngine(),
+            ),
+        ):
+            from src.ui._sync_duckdb_ops import sync_player_duckdb_async
+
+            ok, msg = asyncio.run(
+                sync_player_duckdb_async(
+                    gamertag="TestClose",
+                    xuid="789",
+                    repo_root=tmp_path,
+                )
+            )
+
+            assert ok is False
+            assert "close" in close_calls, "engine.close() doit être appelé même en cas d'erreur"
+
+    def test_sync_all_players_duckdb_wraps_sync_mode(self, tmp_path):
+        """sync_all_players_duckdb active le sync mode une fois autour de la boucle."""
+        import json
+
+        import duckdb
+
+        # Créer db_profiles.json avec 2 joueurs
+        profiles = {
+            "version": "2.1",
+            "profiles": {
+                "Player1": {"db_path": "data/players/Player1/stats.duckdb", "xuid": "111"},
+                "Player2": {"db_path": "data/players/Player2/stats.duckdb", "xuid": "222"},
+            },
+        }
+        (tmp_path / "db_profiles.json").write_text(json.dumps(profiles), encoding="utf-8")
+
+        # Créer les DBs
+        for gt in ("Player1", "Player2"):
+            d = tmp_path / "data" / "players" / gt
+            d.mkdir(parents=True)
+            conn = duckdb.connect(str(d / "stats.duckdb"))
+            conn.execute("CREATE TABLE sync_meta (key VARCHAR, value VARCHAR)")
+            conn.close()
+
+        calls: list[str] = []
+
+        with (
+            patch(
+                "src.ui._sync_duckdb_ops._activate_sync_mode",
+                side_effect=lambda: calls.append("activate"),
+            ),
+            patch(
+                "src.ui._sync_duckdb_ops._deactivate_sync_mode",
+                side_effect=lambda: calls.append("deactivate"),
+            ),
+            patch(
+                "src.ui.sync.sync_player_duckdb",
+                return_value=(True, "OK"),
+            ),
+        ):
+            from src.ui.sync import sync_all_players_duckdb
+
+            ok, msg = sync_all_players_duckdb(repo_root=tmp_path)
+
+            assert ok is True
+            # Doit activer une seule fois, et désactiver une seule fois
+            assert calls.count("activate") == 1, f"activate appelé {calls.count('activate')} fois"
+            assert (
+                calls.count("deactivate") == 1
+            ), f"deactivate appelé {calls.count('deactivate')} fois"
