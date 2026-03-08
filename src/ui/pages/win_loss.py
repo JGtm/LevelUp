@@ -5,9 +5,13 @@ Analyse des victoires et défaites par période et par carte.
 
 from __future__ import annotations
 
-import pandas as pd  # requis pour l'API .style de Streamlit
+from typing import TYPE_CHECKING
+
 import polars as pl
 import streamlit as st
+
+if TYPE_CHECKING:
+    import pandas as pd  # pour les annotations de _style_map_table_row
 
 from src.config import HALO_COLORS
 from src.data.services.win_loss_service import WinLossService
@@ -55,6 +59,8 @@ def _to_float(v: object) -> float | None:
 
 def _style_map_table_row(row: pd.Series) -> pd.Series:
     """Style les lignes du tableau par carte."""
+    import pandas as pd  # requis pour l'API .style de Streamlit
+
     green = str(getattr(HALO_COLORS, "green", "#2ECC71"))
     red = str(getattr(HALO_COLORS, "red", "#E74C3C"))
     violet = "#8E6CFF"

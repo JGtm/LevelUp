@@ -96,8 +96,8 @@ FUNC:src/ui/pages/teammates_charts.py:26:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_charts.py:273:render_trio_charts:134L
 FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:122L
 FUNC:src/ui/pages/teammates_views.py:57:render_single_teammate_view:110L
-FUNC:src/ui/pages/win_loss.py:323:_render_ratio_by_map_section:82L
-FUNC:src/ui/pages/win_loss.py:408:_render_map_table:131L
+FUNC:src/ui/pages/win_loss.py:329:_render_ratio_by_map_section:82L
+FUNC:src/ui/pages/win_loss.py:414:_render_map_table:131L
 FUNC:src/ui/styles.py:44:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
@@ -153,7 +153,7 @@ MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/match_view.py:509L
 MODULE:src/ui/pages/media_library_data.py:507L
 MODULE:src/ui/pages/teammates_views.py:518L
-MODULE:src/ui/pages/win_loss.py:540L
+MODULE:src/ui/pages/win_loss.py:546L
 MODULE:src/ui/profile_api.py:539L
 MODULE:src/visualization/objective_charts.py:583L
 MODULE:src/visualization/participation_charts.py:648L
