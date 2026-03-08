@@ -114,52 +114,36 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     # ── Notes explicatives sous les graphes de progression ───────────────────
     "ts_note_nph": {
-        "fr": "**Comment lire ce graphe**\n\n"
-        "- **Courbe épaisse** : ton débit récent de net score par heure — monte si tu joues mieux\n"
-        "- **Ligne à 0** : tu fais autant de frags que de morts par heure\n"
-        "- **Ombrage vert / rouge** : zone positive vs négative\n"
-        "- ⚠ L'axe Y est ajusté pour la lisibilité — les valeurs extrêmes restent accessibles au survol",
-        "en": "**How to read this chart**\n\n"
-        "- **Thick curve**: your recent throughput — rises when you play better\n"
-        "- **Line at 0**: kills and deaths per hour are equal\n"
-        "- **Green / red shading**: positive vs negative zone\n"
-        "- ⚠ Y axis is fitted for readability — extreme values accessible on hover",
+        "fr": "- Courbe qui **monte** → tu crées plus de valeur que tu n'en perds — bonne dynamique\n"
+        "- **En dessous de 0** → tu meurs plus vite que tu ne frattes\n"
+        "- Un pic isolé ne dit rien ; c'est la direction générale sur plusieurs matchs qui compte",
+        "en": "- **Rising** → you generate more value than you lose — good momentum\n"
+        "- **Below 0** → you die faster than you score kills\n"
+        "- An isolated spike means nothing; the overall direction over several games is what matters",
     },
     "ts_note_ci": {
-        "fr": "**Comment lire ce graphe**\n\n"
-        "- **Courbe principale** : K/D cumulé depuis le début de la session\n"
-        "- **Bande ombragée** : intervalle de confiance à 90 % — se rétrécit à mesure que les matchs s'accumulent\n"
-        "- **Cercles** : K/D de chaque match individuel\n"
-        "- **Ligne à 1.0** : seuil d'équilibre kills = morts",
-        "en": "**How to read this chart**\n\n"
-        "- **Main curve**: cumulative K/D from the start of the session\n"
-        "- **Shaded band**: 90% confidence interval — narrows as matches pile up\n"
-        "- **Circles**: per-match K/D values\n"
-        "- **Line at 1.0**: balance threshold (kills = deaths)",
+        "fr": "- Courbe en hausse en fin de session → tu t'es vraiment amélioré par rapport au début\n"
+        "- **IC étroit** → niveau stable et reproductible ; **IC large** → trop tôt pour conclure\n"
+        "- Cercle très éloigné de la courbe → partie atypique qui tire la moyenne",
+        "en": "- Rising curve toward session end → genuine improvement relative to your start\n"
+        "- **Narrow CI** → stable, reproducible level; **wide CI** → too early to draw conclusions\n"
+        "- Circle far from the curve → atypical game skewing the average",
     },
     "ts_note_ewma": {
-        "fr": "**Comment lire ce graphe**\n\n"
-        "- **Courbe fine** : K/D match par match (bruit brut)\n"
-        "- **Courbe épaisse** : EWMA — réagit plus vite aux changements récents que la moyenne glissante\n"
-        "- **Slider α** : 0.1 = très lissé (vision long terme)· 0.5 = très réactif (forme du moment)\n"
-        "- **Droite pointillée** (si présente) : tendance linéaire significative (R² ≥ 0.3)\n"
-        "- ⚠ L'axe Y est ajusté pour la lisibilité — les valeurs extrêmes restent accessibles au survol",
-        "en": "**How to read this chart**\n\n"
-        "- **Thin curve**: per-match K/D (raw noise)\n"
-        "- **Thick curve**: EWMA — reacts faster to recent changes than a rolling average\n"
-        "- **α slider**: 0.1 = heavily smoothed (long-term view)· 0.5 = very reactive (current form)\n"
-        "- **Dotted line** (if shown): significant linear trend (R² ≥ 0.3)\n"
-        "- ⚠ Y axis is fitted for readability — extreme values accessible on hover",
+        "fr": "- Regarde la **direction générale** de la courbe lissée, pas les sommets ou creux individuels\n"
+        "- La droite pointillée confirme une **vraie tendance** si R² ≥ 0,3 — en dessous, c'est du bruit\n"
+        "- α élevé : utile pour détecter rapidement une rupture de forme dans la session",
+        "en": "- Focus on the **general direction** of the smoothed curve, not individual peaks or dips\n"
+        "- The dotted line confirms a **real trend** if R² ≥ 0.3 — below that threshold, it's noise\n"
+        "- High α: useful for quickly detecting a shift in form during the session",
     },
     "ts_note_regression": {
-        "fr": "**Comment lire ce graphe**\n\n"
-        "- **Pente K/D** : vitesse de progression — positif = en amélioration, négatif = en baisse\n"
-        "- **R²** : robustesse du signal — ≥ 0.3 = tendance significative, < 0.3 = bruit\n"
-        "- **Taux de victoire** : évolution du win rate sur la session (si disponible)",
-        "en": "**How to read this chart**\n\n"
-        "- **K/D slope**: pace of improvement — positive = getting better, negative = declining\n"
-        "- **R²**: signal strength — ≥ 0.3 = significant trend, < 0.3 = noise\n"
-        "- **Win rate**: evolution of your win rate across the session (if available)",
+        "fr": "- **Pente positive + R² ≥ 0,3** → progression réelle sur la session, pas un hasard\n"
+        "- **R² < 0,3** → résultats trop éparpillés, impossible de tirer une conclusion fiable\n"
+        "- Win rate en hausse + pente positive → double confirmation que la forme et les résultats s'alignent",
+        "en": "- **Positive slope + R² ≥ 0.3** → genuine improvement across the session, not luck\n"
+        "- **R² < 0.3** → results too scattered, no reliable conclusion possible\n"
+        "- Rising win rate + positive slope → double confirmation that form and results align",
     },
     "ts_regression_subheader": {
         "fr": "Tendance (régression linéaire)",

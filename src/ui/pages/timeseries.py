@@ -7,6 +7,8 @@ Graphes d'évolution des statistiques dans le temps.
 
 from __future__ import annotations
 
+import re
+
 import polars as pl
 import streamlit as st
 
@@ -147,7 +149,7 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
                 outcome_values=outcome_values,
             )
             st.plotly_chart(fig_nph, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-        st.info(t("ts_note_nph"))
+        _render_note(t("ts_note_nph"))
     else:
         st.info(t("ts_nph_unavailable"))
 
@@ -159,7 +161,7 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
             outcome_values=outcome_values,
         )
         st.plotly_chart(fig_ci, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-    st.info(t("ts_note_ci"))
+    _render_note(t("ts_note_ci"))
 
     # ── Section : Forme récente ───────────────────────────────────────────────
     st.markdown(f"#### {t('ts_section_recent')}")
@@ -175,16 +177,43 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
             outcome_values=outcome_values,
         )
         st.plotly_chart(fig_ewma, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-    st.info(t("ts_note_ewma"))
+    _render_note(t("ts_note_ewma"))
 
     if cumul.has_enough_for_trend:
         st.markdown(f"##### {t('ts_regression_subheader')}")
         with safe_chart_render():
             fig_reg = plot_regression_trend(regression, lang=lang)
             st.plotly_chart(fig_reg, width="stretch", config=PLOTLY_STATIC_CONFIG)
-        st.info(t("ts_note_regression"))
+        _render_note(t("ts_note_regression"))
     else:
         st.info(t("ts_trend_min_matches"))
+
+
+def _render_note(text: str) -> None:
+    """Encadré conclusif discret sous chaque graphe (thème Halo)."""
+    lines = text.split("\n")
+    parts: list[str] = []
+    in_list = False
+    for line in lines:
+        if line.startswith("- "):
+            if not in_list:
+                parts.append("<ul>")
+                in_list = True
+            item = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line[2:])
+            parts.append(f"<li>{item}</li>")
+        else:
+            if in_list:
+                parts.append("</ul>")
+                in_list = False
+            if line.strip():
+                item = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line)
+                parts.append(f"<p>{item}</p>")
+    if in_list:
+        parts.append("</ul>")
+    st.markdown(
+        f'<div class="ts-note">{"".join(parts)}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 @fragment_if_available

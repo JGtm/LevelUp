@@ -276,6 +276,11 @@ h3, .stMarkdown h3 {
     color: rgba(255, 255, 255, 0.88) !important;
 }
 
+h4, .stMarkdown h4 {
+    font-size: 1.0rem !important;
+    color: rgba(255, 255, 255, 0.78) !important;
+}
+
 section.main {
     /* Fond global : utilise la variable centralisée */
     background: var(--bg-main);
@@ -1729,3 +1734,29 @@ div[data-testid="stNumberInput"] input:focus {
 /* =============================================================================
    LUSR Rank Card (onglet dernier match) — réservé pour extensions futures
    ============================================================================= */
+
+/* =============================================================================
+   Notes conclusives sous les graphes Progression (ts-note)
+   ============================================================================= */
+
+.ts-note {
+    background: rgba(21, 50, 62, 0.55);
+    border-left: 3px solid rgba(255, 255, 255, 0.18);
+    padding: 7px 14px;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.875em;
+    color: rgba(182, 196, 214, 0.88);
+    margin: 4px 0 14px 0;
+    line-height: 1.55;
+}
+.ts-note ul {
+    margin: 0;
+    padding-left: 18px;
+    list-style: disc;
+}
+.ts-note li {
+    margin: 2px 0;
+}
+.ts-note strong {
+    color: rgba(245, 248, 255, 0.92);
+}
