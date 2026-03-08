@@ -675,10 +675,14 @@ class TestCareerRankApiParsing:
 
         Note 10C.3.5: adornment_path n'est plus extrait de la réponse JSON
         (il est résolu séparément via gamecms). parse_career_rank retourne None.
+
+        L'API Halo retourne CurrentProgress.Rank = dernier rang *complété*.
+        Le rang affiché (current_rank stocké) = API.Rank + 1.
+        Avec Rank=50 (API) → current_rank=51, current_xp=5000/seuil_rang_51.
         """
         from src.data.sync._career_rank_api import parse_career_rank
 
-        # Simule une réponse API
+        # Simule une réponse API : Rank=50 = dernier rang complété
         api_response = {
             "CurrentProgress": {
                 "Rank": 50,
@@ -692,7 +696,8 @@ class TestCareerRankApiParsing:
         data = parse_career_rank("2535423456789", api_response)
 
         assert data.xuid == "2535423456789"
-        assert data.current_rank == 50
+        # API.Rank=50 (complété) → rang affiché = 51
+        assert data.current_rank == 51
         assert data.current_xp == 5000
         # adornment_path est résolu via gamecms, pas depuis la réponse economy
         assert data.adornment_path is None

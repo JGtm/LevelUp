@@ -174,7 +174,50 @@ def _load_other_players_histories(current_xuid: str) -> list[dict]:
 
             hist = _load_career_history(db_path, puid)
             if len(hist) >= 2:
-                results.append({"gamertag": gamertag, "history": hist})
+                estimated_curve = None
+                hero_proj = None
+                optimistic_proj = None
+                pre_sync_first_date: datetime | None = None
+                try:
+                    from src.ui.components.career_progress_circle import (
+                        XP_HERO_TOTAL,  # noqa: PLC0415
+                    )
+                    from src.ui.pages.career_logic import (  # noqa: PLC0415
+                        CAREER_XP_LAUNCH_DATE,
+                        _compute_active_xp_per_day,
+                        _compute_estimated_xp_curve,
+                        _compute_fallback_xp_per_day,
+                        _compute_hero_projections,
+                    )
+
+                    first_sync_at = hist[0]["recorded_at"]
+                    pre_sync_dates = _load_pre_sync_match_dates(db_path, puid, first_sync_at)
+                    if pre_sync_dates:
+                        pre_sync_first_date = pre_sync_dates[0]
+                        estimated_curve = _compute_estimated_xp_curve(hist, pre_sync_dates)
+
+                    p_xp_total = hist[-1]["xp_total"] or 0
+                    if p_xp_total > 0 and p_xp_total < XP_HERO_TOTAL:
+                        xp_per_day = _compute_active_xp_per_day(hist)
+                        if xp_per_day <= 0:
+                            ref = pre_sync_first_date or CAREER_XP_LAUNCH_DATE
+                            xp_per_day = _compute_fallback_xp_per_day(p_xp_total, ref)
+                        if xp_per_day > 0:
+                            last_date = hist[-1]["recorded_at"]
+                            hero_proj, optimistic_proj = _compute_hero_projections(
+                                p_xp_total, last_date, xp_per_day
+                            )
+                except Exception:
+                    pass
+                results.append(
+                    {
+                        "gamertag": gamertag,
+                        "history": hist,
+                        "estimated_curve": estimated_curve,
+                        "hero_proj": hero_proj,
+                        "optimistic_proj": optimistic_proj,
+                    }
+                )
 
         return results
     except Exception as e:

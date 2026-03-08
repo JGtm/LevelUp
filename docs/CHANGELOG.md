@@ -19,148 +19,157 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Cumulative net score: per-match performance score coloring (green ≥70 / orange ≥45 / red <45) + LUSR or CSR overlay on secondary Y-axis (auto-detected from `match_skill_rank`)
   - Participation profile: replaced opaque stacked radar with grouped horizontal bars; thresholds scaled by number of matches
 
-- **Setup Wizard — Configuration initiale guidée** (`src/ui/pages/setup_wizard.py` + `setup_wizard_logic.py`)
-  - Deux parcours : **Xbox Express** (recommandé, 2 étapes) et **Azure manuel** (avancé, 3 étapes)
-  - Cards CSS personnalisées avec icônes, barre de progression animée, étapes numérotées
-  - Logique séparée de l'UI (`SetupStatus`, `validate_azure_credentials()`, `validate_gamertag()`, `create_player_profile()`, `save_azure_credentials()`)
-  - Guard dans `main()` : le wizard s'affiche automatiquement si credentials ou joueur manquants
-  - i18n FR/EN (~49 clés) dans `src/ui/i18n/setup.py`
+- **Setup Wizard — Guided initial configuration** (`src/ui/pages/setup_wizard.py` + `setup_wizard_logic.py`)
+  - Two flows: **Xbox Express** (recommended, 2 steps) and **Azure manual** (advanced, 3 steps)
+  - Custom CSS cards with icons, animated progress bar, numbered steps
+  - Logic separated from UI (`SetupStatus`, `validate_azure_credentials()`, `validate_gamertag()`, `create_player_profile()`, `save_azure_credentials()`)
+  - Guard in `main()`: the wizard displays automatically when credentials or player are missing
+  - FR/EN i18n (~49 keys) in `src/ui/i18n/setup.py`
 
-- **Xbox OAuth — Connexion Xbox en 1 clic** (`src/ui/xbox_oauth.py` + `xbox_oauth_ui.py`)
-  - Flux complet : URL Microsoft → callback `?code=XXX&state=YYY` → échange code → refresh_token → spartan/clearance tokens → résolution gamertag+XUID → provisionnement automatique
-  - `xbox_oauth.py` (436L) : logique OAuth pure sans dépendance Streamlit
-  - `xbox_oauth_ui.py` (163L) : composant Streamlit intégré dans Settings (bouton login, statut, déconnexion)
-  - Protection CSRF avec `state` aléatoire validé au retour du callback
-  - i18n FR/EN dans `src/ui/i18n/pages/xbox.py`
+- **Xbox OAuth — One-click Xbox login** (`src/ui/xbox_oauth.py` + `xbox_oauth_ui.py`)
+  - Full flow: Microsoft URL → callback `?code=XXX&state=YYY` → code exchange → refresh_token → spartan/clearance tokens → gamertag+XUID resolution → automatic provisioning
+  - `xbox_oauth.py` (436L): pure OAuth logic without Streamlit dependency
+  - `xbox_oauth_ui.py` (163L): Streamlit component integrated in Settings (login button, status, logout)
+  - CSRF protection with random `state` validated on callback return
+  - FR/EN i18n in `src/ui/i18n/pages/xbox.py`
 
 - **Player Provisioning** (`src/app/player_provisioning.py`)
-  - `provision_player()` : crée `data/players/{gamertag}/stats.duckdb` + table `sync_meta` + enregistre dans `db_profiles.json` — idempotent
+  - `provision_player()`: creates `data/players/{gamertag}/stats.duckdb` + `sync_meta` table + registers in `db_profiles.json` — idempotent
 
 - **Auth Status** (`src/utils/auth.py`)
-  - `AuthStatus` dataclass + `get_auth_status()`, `check_credentials()`, `write_env_local()` (écriture/mise à jour de `.env.local` en préservant les commentaires)
+  - `AuthStatus` dataclass + `get_auth_status()`, `check_credentials()`, `write_env_local()` (writes/updates `.env.local` while preserving comments)
 
-- **Compatibilité macOS / Linux** — `LevelUp.sh` (nouveau) : lanceur premier-lancement équivalent à `LevelUp.bat` pour macOS/Linux, écrit en POSIX sh (sans bashism — compatible macOS bash 3.2, dash, zsh). Détecte Python 3.10+ via binaires versionnnés (`python3.12` → Homebrew), chemins Homebrew Intel/Apple Silicon (`/opt/homebrew`, `/usr/local`), puis générique. Messages d'aide ciblés par distribution. `run.sh` corrigé pour détecter `.venv/bin/python` (macOS/Linux) ou `.venv/Scripts/python.exe` (Windows Git Bash). `launcher.py` : `_find_system_python()` enrichi avec candidats versionnnés et chemins Homebrew ; `_cmd_doctor()` utilise désormais `_preferred_python_executable()` cross-platform.
+- **macOS / Linux compatibility** — `LevelUp.sh` (new): first-launch launcher equivalent to `LevelUp.bat` for macOS/Linux, written in POSIX sh (no bashisms — compatible with macOS bash 3.2, dash, zsh). Detects Python 3.10+ via versioned binaries (`python3.12` → Homebrew), Homebrew Intel/Apple Silicon paths (`/opt/homebrew`, `/usr/local`), then generic. Distribution-targeted help messages. `run.sh` fixed to detect `.venv/bin/python` (macOS/Linux) or `.venv/Scripts/python.exe` (Windows Git Bash). `launcher.py`: `_find_system_python()` enriched with versioned candidates and Homebrew paths; `_cmd_doctor()` now uses `_preferred_python_executable()` cross-platform.
 
-- **`launcher.py setup`** — Commande d'installation interactive : détecte Python (py launcher → PATH → emplacements standard → installation via winget), crée le `.venv`, installe les dépendances (`pip install -e ".[spnkr]"`). Supporte `--update` pour mettre à jour un environnement existant.
+- **`launcher.py setup`** — Interactive installation command: detects Python (py launcher → PATH → standard locations → installation via winget), creates `.venv`, installs dependencies (`pip install -e ".[spnkr]"`). Supports `--update` to update an existing environment.
 
-- **`launcher.py doctor`** — Diagnostic complet de l'environnement : OS, Python, venv, versions des packages critiques vs attendues, nombre de joueurs configurés, présence de `metadata.duckdb`
+- **`launcher.py doctor`** — Full environment diagnostic: OS, Python, venv, critical vs expected package versions, number of configured players, presence of `metadata.duckdb`
 
-- **Packaging portable** (`packaging/build_release.py`)
-  - Génère un zip autonome `LevelUp-v{version}-win64-portable.zip` contenant Python Embeddable 3.12 (~15 Mo) + le projet complet
-  - Premier lancement : installation automatique des dépendances via pip
+- **Portable packaging** (`packaging/build_release.py`)
+  - Generates a self-contained zip `LevelUp-v{version}-win64-portable.zip` containing Python Embeddable 3.12 (~15 MB) + the full project
+  - First launch: automatic dependency installation via pip
 
-- **Release GitHub Actions** (`.github/workflows/release.yml`)
-  - Déclenché sur push de tag `v*.*.*`
-  - Build du zip portable + publication automatique en GitHub Release
+- **GitHub Actions Release** (`.github/workflows/release.yml`)
+  - Triggered on push of tag `v*.*.*`
+  - Portable zip build + automatic publication as a GitHub Release
 
-- **Mode portable `%APPDATA%`** (`src/utils/paths.py`, `auth.py`, `env.py`)
-  - Données stockées dans `%APPDATA%/LevelUp/` (Windows) ou `$XDG_DATA_HOME/levelup/` (Linux) quand pas de `.venv` à la racine
-  - Mode développeur : `./data/` si `.venv` existe
-  - Override possible via variable d'environnement `LEVELUP_DATA`
-  - `.env.local` cherché dans `DATA_DIR` en priorité, puis à la racine du repo
+- **Portable `%APPDATA%` mode** (`src/utils/paths.py`, `auth.py`, `env.py`)
+  - Data stored in `%APPDATA%/LevelUp/` (Windows) or `$XDG_DATA_HOME/levelup/` (Linux) when no `.venv` at the root
+  - Developer mode: `./data/` if `.venv` exists
+  - Override possible via `LEVELUP_DATA` environment variable
+  - `.env.local` looked up in `DATA_DIR` first, then at the repo root
 
 - **Token fallback DB** (`src/ui/profile_api_tokens.py`)
-  - Fallback 3 : lecture du refresh_token depuis `sync_meta` de la DB joueur si absent des variables d'environnement
+  - Fallback 3: reads the refresh_token from the player DB `sync_meta` if absent from environment variables
 
 - **Documentation**
-  - `docs/CONFIGURATION.md` : réécriture complète avec TOC, guide Azure pas-à-pas avec 11 captures d'écran annotées, sections Player Profiles, Environment Variables, App Settings, Security, Troubleshooting
-  - `docs/FR/CONFIGURATION.md` : version FR mise à jour
-  - `docs/SYNC_GUIDE.md` : réécriture avec architecture sync v5.1, diagramme ASCII, commandes détaillées
-  - `docs/FR/SYNC_GUIDE.md` : mise à jour
+  - `docs/CONFIGURATION.md`: complete rewrite with TOC, step-by-step Azure guide with 11 annotated screenshots, sections Player Profiles, Environment Variables, App Settings, Security, Troubleshooting
+  - `docs/FR/CONFIGURATION.md`: FR version updated
+  - `docs/SYNC_GUIDE.md`: rewrite with v5.1 sync architecture, ASCII diagram, detailed commands
+  - `docs/FR/SYNC_GUIDE.md`: updated
 
-- **Migrations de schéma automatiques** (`src/data/migration/`) — runner versionné appliqué automatiquement au démarrage (`launcher.py → _run_migrations()`). Chaque DB (`player`, `shared`, `shared_pve`) trace les migrations dans une table `schema_migrations`. 11 migrations initiales enregistrées. Pour ajouter un changement de schéma : créer une fonction `ensure_xxx` idempotente dans `src/data/sync/migrations.py`, créer le step correspondant dans `src/data/migration/steps/` et l'importer dans `steps/__init__.py`.
+- **Automatic schema migrations** (`src/data/migration/`) — versioned runner applied automatically at startup (`launcher.py → _run_migrations()`). Each DB (`player`, `shared`, `shared_pve`) tracks migrations in a `schema_migrations` table. 11 initial migrations registered. To add a schema change: create an idempotent `ensure_xxx` function in `src/data/sync/migrations.py`, create the corresponding step in `src/data/migration/steps/` and import it in `steps/__init__.py`.
 
 ### Fixed
 
-- **CSRF** (`streamlit_app.py`) — Corrige comparaison `_xbox_state != _xbox_state` (auto-comparaison, toujours False) → `_xbox_state != _expected_state`
-- **`_repo_root` undefined** (`src/ui/profile_api_tokens.py`) — `_repo_root()` jamais importée → remplacée par `REPO_ROOT` depuis `src.utils.paths`
-- **DuckDB retry élargi** (`src/data/sync/_engine_connections.py`) — `except duckdb.IOException` → `except duckdb.Error` + délai retry `0.15s → 0.5s`
-- **GC sync mode** (`src/ui/_sync_duckdb_ops.py`) — `gc.collect()` + `time.sleep(0.3)` pour libérer les file handles DuckDB sous Windows
-- **OAuth consumed guard** (`streamlit_app.py`) — Flag `_xbox_oauth_consumed` pour éviter le double-traitement du callback au rerun Streamlit
-- **Test isolation webhook** (`tests/test_monitor_uptime.py`) — Patch `get_secret` au lieu de manipuler `os.environ` pour éviter le rechargement `.env.local`
-- **API Streamlit dépréciée** (`src/ui/pages/setup_wizard.py`) — Remplacement des trois occurrences de `use_container_width=True` par `width="stretch"` : bouton Xbox Express, bouton Azure manuel, `st.link_button` OAuth.
-- **Smoke test UI manquant** (`src/ui/pages/setup_smoke_test.py`) — Module UI recréé : 3 phases avec barres de progression, tableau de vérification, boutons de continuation / relance.
-- **Test patch `SPNKrAPIClient` incorrect** (`tests/test_player_tokens.py`) — Cible de mock corrigée en `src.data.sync._career.create_api_client` conformément à l’abstraction API.
+- **CSRF** (`streamlit_app.py`) — Fixes comparison `_xbox_state != _xbox_state` (self-comparison, always False) → `_xbox_state != _expected_state`
+- **`_repo_root` undefined** (`src/ui/profile_api_tokens.py`) — `_repo_root()` was never imported → replaced with `REPO_ROOT` from `src.utils.paths`
+- **Expanded DuckDB retry** (`src/data/sync/_engine_connections.py`) — `except duckdb.IOException` → `except duckdb.Error` + retry delay `0.15s → 0.5s`
+- **GC sync mode** (`src/ui/_sync_duckdb_ops.py`) — `gc.collect()` + `time.sleep(0.3)` to release DuckDB file handles on Windows
+- **OAuth consumed guard** (`streamlit_app.py`) — `_xbox_oauth_consumed` flag to prevent double-processing of the callback on Streamlit rerun
+- **Test isolation webhook** (`tests/test_monitor_uptime.py`) — Patches `get_secret` instead of mutating `os.environ` to avoid reloading `.env.local`
+- **Deprecated Streamlit API** (`src/ui/pages/setup_wizard.py`) — Replaces the three `use_container_width=True` occurrences with `width="stretch"`: Xbox Express button, Azure manual button, and OAuth `st.link_button`.
+- **Missing UI smoke test** (`src/ui/pages/setup_smoke_test.py`) — UI module recreated: 3 phases with progress bars, verification table, and continue/retry buttons.
+- **Incorrect `SPNKrAPIClient` test patch** (`tests/test_player_tokens.py`) — Mock target corrected to `src.data.sync._career.create_api_client` to match the API abstraction.
 
 ### Tests
 
-- **75 tests ajoutés** (1 482 lignes) couvrant l'ensemble des nouveaux modules :
-  - `test_auth.py` (13 tests) : `AuthStatus`, `get_auth_status()`, `write_env_local()`
-  - `test_setup_wizard_logic.py` (20+ tests) : `SetupStatus`, validations, création de profil, edge cases
-  - `test_xbox_oauth.py` (18 tests) : URL OAuth, échange de code, store/load token, provisionnement
-  - `test_xbox_oauth_callback_e2e.py` (9 tests) : flux complet code→player, erreurs, CSRF, cycle token
-  - `test_setup_wizard_page.py` (15 tests) : UI mockée (MockStreamlit), modes Xbox/Azure, progression ; assertions `width="stretch"` sur les widgets
-- **3 831 tests, 0 échec**
+- **75 tests added** (1,482 lines) covering all new modules:
+  - `test_auth.py` (13 tests): `AuthStatus`, `get_auth_status()`, `write_env_local()`
+  - `test_setup_wizard_logic.py` (20+ tests): `SetupStatus`, validation, profile creation, edge cases
+  - `test_xbox_oauth.py` (18 tests): OAuth URL, code exchange, store/load token, provisioning
+  - `test_xbox_oauth_callback_e2e.py` (9 tests): full code→player flow, errors, CSRF, token cycle
+  - `test_setup_wizard_page.py` (15 tests): mocked UI (MockStreamlit), Xbox/Azure modes, progression; `width="stretch"` assertions on widgets
+- **3,831 tests, 0 failures**
 
 ### Architecture
 
-- **Abstraction API — Ports & Adapters** : découplage de la librairie SPNKr pour faciliter un futur changement de backend API
-  - `api_port.py` : Protocol `HaloAPIPort` — contrat structurel (runtime_checkable) définissant les méthodes que tout client API Halo doit implémenter
-  - `api_factory.py` : Factory `create_api_client(backend="spnkr")` — instanciation centralisée, extensible à d'autres backends
-  - `_auth.py` : Facade d'authentification — les modules UI appellent `refresh_halo_tokens()` sans importer SPNKr directement
-  - Migration des consommateurs : `engine.py`, `orchestrator.py`, `strategies.py`, `_career.py`, `populate_metadata_from_discovery.py`, `profile_api_tokens.py`, `player_assets.py`, `xbox_oauth.py` — tous utilisent la factory ou la facade auth
-  - 14 tests dédiés (`test_api_abstraction.py`) : conformité Protocol, factory, facade auth, vérification d'absence d'imports SPNKr dans les modules UI migrés
+- **API Abstraction — Ports & Adapters**: decouples the codebase from the SPNKr library to make a future API backend switch easier
+  - `api_port.py`: `HaloAPIPort` Protocol — structural contract (`runtime_checkable`) defining the methods every Halo API client must implement
+  - `api_factory.py`: `create_api_client(backend="spnkr")` factory — centralized instantiation, extensible to other backends
+  - `_auth.py`: authentication facade — UI modules call `refresh_halo_tokens()` without importing SPNKr directly
+  - Consumer migration: `engine.py`, `orchestrator.py`, `strategies.py`, `_career.py`, `populate_metadata_from_discovery.py`, `profile_api_tokens.py`, `player_assets.py`, `xbox_oauth.py` — all now use the factory or the auth facade
+  - 14 dedicated tests (`test_api_abstraction.py`): Protocol compliance, factory behavior, auth facade, and verification that migrated UI modules no longer import SPNKr
 
 ### Removed
 
-- **`scripts/_archive/`** — 89 fichiers de code mort supprimés (anciens scripts d'analyse d'armes, diagnostics, patchs i18n, utilitaires obsolètes)
-- **`requirements.txt`** — Supprimé, remplacé par `pyproject.toml` (source unique de vérité pour les dépendances)
-- **`setup.bat`** — Remplacé par `LevelUp.bat` (détection Python améliorée, installation via winget, utilisation de `pip install -e .`)
-- **`scripts/install_dependencies.py`** — Workaround MSYS2 SSL, utilisait `requirements.txt`
-- **`scripts/setup_env.ps1`**, **`scripts/setup_env.sh`**, **`scripts/activate_env.sh`** — Remplacés par `launcher.py setup`
-- **`tests/test_spnkr_refactoring.py`** — Tests pour du code archivé supprimé
+- **`scripts/_archive/`** — 89 dead code files deleted (legacy weapon analysis scripts, diagnostics, i18n patches, obsolete utilities)
+- **`requirements.txt`** — Removed, replaced by `pyproject.toml` (single source of truth for dependencies)
+- **`setup.bat`** — Replaced by `LevelUp.bat` (improved Python detection, installation via winget, use of `pip install -e .`)
+- **`scripts/install_dependencies.py`** — MSYS2 SSL workaround, used `requirements.txt`
+- **`scripts/setup_env.ps1`**, **`scripts/setup_env.sh`**, **`scripts/activate_env.sh`** — Replaced by `launcher.py setup`
+- **`tests/test_spnkr_refactoring.py`** — Tests for deleted archived code
 
 ### Chore
 
-- Rangement racine : `ACKNOWLEDGMENTS.md`, `CHANGELOG.md`, `CONTRIBUTING.md` déplacés vers `docs/`
-- Scripts déplacés : `activate_env.sh`, `run_monitor_hidden.vbs` → `scripts/`
-- `LevelUp.bat` remplace `setup.bat` comme point d'entrée Windows
-- `Dockerfile` et `e2e-browser-optional.yml` mis à jour pour utiliser `pyproject.toml` au lieu de `requirements.txt`
-- `run.sh` redirige vers `launcher.py setup` au lieu de `activate_env.sh`
+- Root cleanup: `ACKNOWLEDGMENTS.md`, `CHANGELOG.md`, and `CONTRIBUTING.md` moved to `docs/`
+- Scripts moved: `activate_env.sh`, `run_monitor_hidden.vbs` → `scripts/`
+- `LevelUp.bat` replaces `setup.bat` as the Windows entry point
+- `Dockerfile` and `e2e-browser-optional.yml` updated to use `pyproject.toml` instead of `requirements.txt`
+- `run.sh` now redirects to `launcher.py setup` instead of `activate_env.sh`
 
-### Mises à jour complémentaires (7 mars 2026)
+### Additional updates (8 March 2026)
 
-- **Sélecteur de timezone** — Choix de la timezone d'affichage directement dans les Settings (Europe/Paris par défaut, ~40 fuseaux disponibles). Les horodatages des matchs s'adaptent automatiquement partout dans l'app.
-- **Page Carrière améliorée** — Meilleure lisibilité de la section classement LUSR, navigation plus fluide.
-- **Migration bot xuid** — Correction automatique des matchs contenant des bots mal identifiés dans la base de données partagée.
-- **Stabilité** — Corrections sur le chargement des données d'adversaires, les requêtes de matchs, le cache UI et la synchronisation. Amélioration de la fiabilité sur Windows lors des accès concurrents aux bases DuckDB.
+- **XP & Hero rank multi-player comparison** — Career page now overlays XP curves and Hero projections for every player with a refresh token:
+  - Real XP curve (lines + markers, distinct colour per player)
+  - Pre-sync estimated XP curve (dotted, same colour) — linear interpolation over matches played before the first sync
+  - "At this pace" → Hero projection (dashed) and optimistic projection (challenges + boost ×2, dash-dot)
+  - All secondary curves hidden by default — click the legend to show them
+  - **Variable precision** depending on available data: real XP delta between snapshots when enough syncs exist, otherwise falls back to a global average rate (total XP / days since earliest known match, or since Career Rank launch on 20 June 2023). Precision improves automatically with each new sync.
+
+### Additional updates (7 March 2026)
+
+- **Timezone selector** — Choose the display timezone directly in Settings (Europe/Paris by default, ~40 timezones available). Match timestamps adapt automatically throughout the app.
+- **Improved Career page** — Better readability of the LUSR ranking section, smoother navigation.
+- **Bot xuid migration** — Automatic correction of matches containing misidentified bots in the shared database.
+- **Stability** — Fixes on adversary data loading, match queries, UI cache, and synchronisation. Improved reliability on Windows during concurrent DuckDB access.
 
 ## [5.4.0] - 2026-03-04
 
 ### Added
 
-- **Page Explorer — recherche et navigation unifiée dans les matchs** (`src/ui/pages/explorer.py`)
-  - Remplace l'ancienne page "Match" avec une architecture 6 modules (explorer, explorer_results, explorer_enrich, explorer_data, explorer_logic, match_table_html)
-  - **Filtres en cascade** : date, escouade (solo/squad), type d'expérience (ranked/unranked/PvE), playlist, mode de jeu, carte
-  - **Recherche floue par gamertag** avec suggestions dynamiques et résolution XUID
-  - **Tableau HTML OS-style** (`match_table_html.py`) : colonnes KDA, kills, deaths, accuracy, score, MMR delta, performance, headshots, spree, avg life ; liens deep-link inter-pages
-  - **Deep linking** : `?page=Explorer&gamertag=XXX` ou `&match_id=XXX` pour navigation directe
-  - **Badges encounter** : rival, mentor, proie — calculés sur l'historique croisé des joueurs
-  - **Enrichissement** (`explorer_enrich.py`) : score équipe, delta MMR, performance, temps de vie moyen, URL Waypoint
-  - **i18n FR/EN complet** (`src/ui/i18n/pages/explorer.py`)
-  - **Logging structuré** : info (deep links), warning (joueur introuvable, DB absente), error (exceptions DB avec `exc_info`)
-  - **40 tests unitaires** (`tests/test_explorer_logic.py`) couvrant logique, enrichissement, accès données et rendu HTML
+- **Explorer page — unified match search and navigation** (`src/ui/pages/explorer.py`)
+  - Replaces the legacy "Match" page with a 6-module architecture (`explorer`, `explorer_results`, `explorer_enrich`, `explorer_data`, `explorer_logic`, `match_table_html`)
+  - **Cascading filters**: date, squad (solo/squad), experience type (ranked/unranked/PvE), playlist, game mode, map
+  - **Fuzzy gamertag search** with dynamic suggestions and XUID resolution
+  - **OS-style HTML table** (`match_table_html.py`): KDA, kills, deaths, accuracy, score, MMR delta, performance, headshots, spree, average life; cross-page deep links
+  - **Deep linking**: `?page=Explorer&gamertag=XXX` or `&match_id=XXX` for direct navigation
+  - **Encounter badges**: rival, mentor, prey — computed from cross-player history
+  - **Enrichment** (`explorer_enrich.py`): team score, MMR delta, performance, average lifetime, Waypoint URL
+  - **Complete FR/EN i18n** (`src/ui/i18n/pages/explorer.py`)
+  - **Structured logging**: info (deep links), warning (player not found, missing DB), error (DB exceptions with `exc_info`)
+  - **40 unit tests** (`tests/test_explorer_logic.py`) covering logic, enrichment, data access, and HTML rendering
 
-### Tests — anciens skips corrigés
+### Tests — previous skips fixed
 
-Les tests suivants étaient marqués `@pytest.mark.skip` ou `skipif(True)` et sont maintenant exécutables :
+The following tests were marked `@pytest.mark.skip` or `skipif(True)` and now run normally:
 
-| Fichier | Test(s) | Motif de correction |
-|---------|---------|---------------------|
-| `tests/test_rag.py` | `TestHaloKnowledgeBase` (3 tests) + `test_chunk_overlap` | Suppression des guards `skipif(True)` et faux skip |
-| `tests/test_season_archive.py` | `test_get_archive_info_with_archives` | Suppression du skip + assertion `>= 0` (fichier Parquet tiny) |
-| `tests/test_i18n_refactoring.py` | `test_no_duplicate_keys_in_module[pages]` | Support des packages (dossier `pages/` au lieu de `pages.py`) |
-| `tests/e2e/test_streamlit_browser_e2e.py` | `test_e2e_004_deeplink_match_query_params` | Regex `exception(?!nel)` — exclut "exceptionnel" (mot FR) |
-| `tests/test_cache_integrity.py` | 11 tests SQLite legacy | Fichier **supprimé** (code mort v3) |
-| `tests/conftest.py` | tous les tests `e2e_browser` | Suppression du guard auto-skip + installation Chromium |
+| File | Test(s) | Fix reason |
+|------|---------|------------|
+| `tests/test_rag.py` | `TestHaloKnowledgeBase` (3 tests) + `test_chunk_overlap` | Removed `skipif(True)` guards and false skip |
+| `tests/test_season_archive.py` | `test_get_archive_info_with_archives` | Removed skip + `>= 0` assertion (tiny Parquet file) |
+| `tests/test_i18n_refactoring.py` | `test_no_duplicate_keys_in_module[pages]` | Added package support (`pages/` folder instead of `pages.py`) |
+| `tests/e2e/test_streamlit_browser_e2e.py` | `test_e2e_004_deeplink_match_query_params` | Regex `exception(?!nel)` excludes "exceptionnel" (French word) |
+| `tests/test_cache_integrity.py` | 11 SQLite legacy tests | File **removed** (v3 dead code) |
+| `tests/conftest.py` | all `e2e_browser` tests | Removed auto-skip guard + installed Chromium |
 
-Pour rejouer uniquement ces tests :
+To rerun only these tests:
 
 ```bash
 # RAG
 python -m pytest tests/test_rag.py::TestHaloKnowledgeBase tests/test_rag.py::TestTextChunker::test_chunk_overlap -v
 
-# Archive saisonnière
+# Season archive
 python -m pytest tests/test_season_archive.py::TestDuckDBRepositoryArchives::test_get_archive_info_with_archives -v
 
 # i18n (package pages/)
@@ -169,89 +178,89 @@ python -m pytest tests/test_i18n_refactoring.py::TestNoInternalDuplicates -v
 # E2E deeplink
 python -m pytest tests/e2e/test_streamlit_browser_e2e.py::test_e2e_004_deeplink_match_query_params -v
 
-# Suite complète sans intégration
+# Full suite without integration
 python -m pytest -q --ignore=tests/integration
 ```
 
 ### Added
 
-- **Historique des rencontres — section sous le scoreboard** (`src/ui/pages/match_view_encounters.py`)
-  - Nouveau tableau HTML affiché directement sous le scoreboard sur la page Match View
-  - Pour chaque joueur non-ami du match : fréquence de rencontres, répartition allié/ennemi, win rate allié, win rate ennemi, K/D croisé (depuis `killer_victim_pairs`), date de dernière rencontre
-  - Tri : ennemis en premier, puis alliés ; dans chaque groupe par `total_encounters DESC`
-  - Ligne compacte grisée pour les premières rencontres (total = 1), ligne complète avec métriques au-delà
-  - Badges automatiques inline : **Dur à cuire** (deaths/kills > 2 et ≥ 3 morts), **Allié+** (WR allié ≥ 65% sur ≥ 2 matchs), **Coriace** (WR ennemi ≤ 35% sur ≥ 3 matchs)
-  - Code couleur réutilisant les classes CSS du scoreboard (`os-sb-td--best`, `os-sb-td--worst`, amber)
-  - Périmètre : tous les joueurs non membres de l'escouade / non-amis
+- **Encounter history — section below the scoreboard** (`src/ui/pages/match_view_encounters.py`)
+  - New HTML table displayed directly below the scoreboard on the Match View page
+  - For each non-friend player in the match: encounter frequency, ally/enemy split, ally win rate, enemy win rate, cross K/D (from `killer_victim_pairs`), and last encounter date
+  - Sorting: enemies first, then allies; within each group by `total_encounters DESC`
+  - Compact grey row for first encounters (`total = 1`), full row with metrics beyond that
+  - Automatic inline badges: **Hard to Kill** (deaths/kills > 2 and at least 3 deaths), **Ally+** (ally WR ≥ 65% over at least 2 matches), **Tough** (enemy WR ≤ 35% over at least 3 matches)
+  - Color coding reuses scoreboard CSS classes (`os-sb-td--best`, `os-sb-td--worst`, amber)
+  - Scope: all non-squad, non-friend players
 
-- **Loader SQL dédié** (`src/data/repositories/_encounter_loader.py`)
-  - `load_encounter_stats(self_xuid, target_xuids, db_path)` — 3 CTEs sur `shared_matches.duckdb` (match_participants, killer_victim_pairs, match_registry, xuid_aliases)
-  - Dérivation automatique du chemin `shared_matches.duckdb` depuis `stats.duckdb`
-  - Connexion `duckdb_read_only()` sur shared directement (no ATTACH conflict)
+- **Dedicated SQL loader** (`src/data/repositories/_encounter_loader.py`)
+  - `load_encounter_stats(self_xuid, target_xuids, db_path)` — 3 CTEs on `shared_matches.duckdb` (`match_participants`, `killer_victim_pairs`, `match_registry`, `xuid_aliases`)
+  - Automatically derives the `shared_matches.duckdb` path from `stats.duckdb`
+  - Uses a direct `duckdb_read_only()` connection on shared (no ATTACH conflict)
 
-- **Logique pure testable** (`src/ui/pages/match_view_encounters_logic.py`)
+- **Pure testable logic** (`src/ui/pages/match_view_encounters_logic.py`)
   - `EncounterStats` (Pydantic v2), `Badge` (dataclass), `ordinal_fr()`, `build_friends_set()`, `filter_encounter_xuids()`, `compute_encounter_badges()`
-  - `build_friends_set` : double source `player_match_enrichment.friends_xuids` → fallback `friends_defaults.json`
-  - 28 tests unitaires dans `tests/test_match_view_encounters.py` (sans import Streamlit)
+  - `build_friends_set`: dual source `player_match_enrichment.friends_xuids` → fallback `friends_defaults.json`
+  - 28 unit tests in `tests/test_match_view_encounters.py` (without importing Streamlit)
 
-- **Clés i18n** (`src/ui/i18n/pages.py`) : `mv_encounter_history`, `col_role`, `col_encounters`, `col_wr_ally`, `col_wr_enemy`, `col_kd_cross`, `col_last_seen`
+- **i18n keys** (`src/ui/i18n/pages.py`): `mv_encounter_history`, `col_role`, `col_encounters`, `col_wr_ally`, `col_wr_enemy`, `col_kd_cross`, `col_last_seen`
 
 ### Technical
 
-- `match_view.py` : appel de `render_encounter_section()` après `render_match_scoreboard()` (+10 lignes, zéro logique ajoutée dans le fichier)
-- Architecture SRP respectée : 3 nouveaux fichiers < 350 lignes chacun, fonctions < 50 lignes, logique UI et data séparées
+- `match_view.py`: calls `render_encounter_section()` after `render_match_scoreboard()` (+10 lines, zero business logic added to the file)
+- SRP architecture preserved: 3 new files under 350 lines each, functions under 50 lines, UI and data logic separated
 
-### Refactoring & Architecture (branche `refactor/cleanup-all`)
+### Refactoring & Architecture (branch `refactor/cleanup-all`)
 
-> **Refactoring massif en 6 phases** — 331 fichiers modifiés, ~30 000 lignes réécrites, 72 nouveaux sous-modules, 3 693 tests passent (dont 79 tests dédiés ajoutés). Aucun changement fonctionnel pour l'utilisateur.
+> **Massive 6-phase refactor** — 331 files modified, about 30,000 lines rewritten, 72 new submodules, 3,693 passing tests (including 79 dedicated tests added). No user-facing functional changes.
 
-#### Phase 0-4 : Infrastructure & premiers splits
+#### Phase 0-4: Infrastructure & initial splits
 
-- **Split `transformers.py` (2 095L → package)** — `src/data/sync/transformers/` avec 7 sous-modules (`_helpers`, `_match`, `_skill`, `_events`, `_medals`, `_personal_scores`, `_pve`) + `__init__.py` ré-exportant tout ; aucun breaking change
-- **Split `filters_render.py` (1 460L → 4 modules)** — `_filters_period.py`, `_filters_session.py`, `_filters_cascade.py` extraits ; `filters_render.py` réduit à l'orchestration
-- **Split `engine.py` (1 500L → 8 mixins)** — `_shared_writes.py`, `_performance.py`, `_skill_rating.py`, `_career.py`, `_aggregates.py`, `_tokens.py`, `_engine_connections.py`, `_engine_schema.py`
-- **Split `duckdb_repo.py` (1 200L → 8 mixins)** — `_match_queries_helpers.py`, `_match_queries_polars.py`, `_archives_repo.py`, `_awards_repo.py`, `_diagnostic_repo.py`, `_events_repo.py`, `_medals_repo.py`, `_schema_introspection.py`
-- **Split modules utilitaires** — `media_indexer.py`, `api_client.py`, `batch_insert.py`, `discord_notifier.py`, `cache_loaders.py`, `radar_chart.py`, `teammates_views.py`, `sync.py`, `timeseries_combat.py`
-- **`_SyncProtocol`** (`src/data/sync/_protocol.py`) — contrat `Protocol` explicite pour les 8 mixins du `DuckDBSyncEngine` ; élimine 70+ `# type: ignore[attr-defined]`
-- **`PageContext` + `MatchViewParams`** (`src/app/_page_context.py`) — types réels à la place de 5 champs `Any` dans le `NamedTuple`
-- **`SessionKeys` / `SK`** (`src/app/session_keys.py`) — 20+ clés `st.session_state` centralisées, complétions IDE, plus de typos silencieuses
-- **`_sql_fragments.py`** (`src/data/query/_sql_fragments.py`) — source de vérité unique pour `WIN_RATE_EXPR` (dénominateur WIN+LOSS, NULLIF division), `IS_WIN`, `IS_LOSS` ; 7 occurrences dupliquées dans `analytics.py` et `trends.py` supprimées
-- **Dettes techniques v4→v5 supprimées** : guard `_PERF_SCORE_AVAILABLE` (always-True), dead method `_ensure_performance_score_column()`, magic number `outcome == 4` → `Outcome.DID_NOT_FINISH`
+- **Split `transformers.py` (2,095L → package)** — `src/data/sync/transformers/` split into 7 submodules (`_helpers`, `_match`, `_skill`, `_events`, `_medals`, `_personal_scores`, `_pve`) + `__init__.py` re-exporting everything; no breaking change
+- **Split `filters_render.py` (1,460L → 4 modules)** — extracted `_filters_period.py`, `_filters_session.py`, `_filters_cascade.py`; `filters_render.py` reduced to orchestration
+- **Split `engine.py` (1,500L → 8 mixins)** — `_shared_writes.py`, `_performance.py`, `_skill_rating.py`, `_career.py`, `_aggregates.py`, `_tokens.py`, `_engine_connections.py`, `_engine_schema.py`
+- **Split `duckdb_repo.py` (1,200L → 8 mixins)** — `_match_queries_helpers.py`, `_match_queries_polars.py`, `_archives_repo.py`, `_awards_repo.py`, `_diagnostic_repo.py`, `_events_repo.py`, `_medals_repo.py`, `_schema_introspection.py`
+- **Split utility modules** — `media_indexer.py`, `api_client.py`, `batch_insert.py`, `discord_notifier.py`, `cache_loaders.py`, `radar_chart.py`, `teammates_views.py`, `sync.py`, `timeseries_combat.py`
+- **`_SyncProtocol`** (`src/data/sync/_protocol.py`) — explicit `Protocol` contract for the 8 `DuckDBSyncEngine` mixins; removes 70+ `# type: ignore[attr-defined]`
+- **`PageContext` + `MatchViewParams`** (`src/app/_page_context.py`) — real types instead of 5 `Any` fields in the `NamedTuple`
+- **`SessionKeys` / `SK`** (`src/app/session_keys.py`) — 20+ centralized `st.session_state` keys, IDE completion, no more silent typos
+- **`_sql_fragments.py`** (`src/data/query/_sql_fragments.py`) — single source of truth for `WIN_RATE_EXPR` (WIN+LOSS denominator, `NULLIF` division), `IS_WIN`, `IS_LOSS`; 7 duplicated occurrences removed from `analytics.py` and `trends.py`
+- **v4→v5 technical debt removed**: `_PERF_SCORE_AVAILABLE` guard (always true), dead method `_ensure_performance_score_column()`, magic number `outcome == 4` → `Outcome.DID_NOT_FINISH`
 
-#### Phase 5 : Split modules d'analyse & visualisation
+#### Phase 5: Analysis & visualization splits
 
-- **Split `performance_score.py` (950L → 3 modules)** — `_performance_relative.py` (score match relatif), `_performance_session.py` (score session v1/v2, `ScoreComponent`) ; façade inchangée
-- **Split `antagonist_charts.py` (570L → 3 modules)** — `_antagonist_kv.py` (stacked bars, timeseries, heatmap), `_antagonist_duels.py` (duel history, nemesis summary, indicators) ; façade inchangée
-- **Split `rag.py` (750L → 4 modules)** — `_rag_models.py` (RAGConfig, Document, SearchResult), `_rag_github.py` (GitHubIndexer), `_rag_chunker.py` (TextChunker) ; façade inchangée
+- **Split `performance_score.py` (950L → 3 modules)** — `_performance_relative.py` (relative match score), `_performance_session.py` (session score v1/v2, `ScoreComponent`); public facade unchanged
+- **Split `antagonist_charts.py` (570L → 3 modules)** — `_antagonist_kv.py` (stacked bars, time series, heatmap), `_antagonist_duels.py` (duel history, nemesis summary, indicators); public facade unchanged
+- **Split `rag.py` (750L → 4 modules)** — `_rag_models.py` (RAGConfig, Document, SearchResult), `_rag_github.py` (GitHubIndexer), `_rag_chunker.py` (TextChunker); public facade unchanged
 
-#### Phase 6 : Split modules UI & data
+#### Phase 6: UI & data splits
 
-- **Split `refdata.py` (880L → 2 modules)** — `_refdata_personal_scores.py` (PersonalScoreNameId enum 68 membres, dictionnaires de points/noms/IDs) ; façade inchangée
-- **Split `_roster_loader.py` (520L → 2 mixins)** — `_gamertag_resolver.py` (GamertagResolverMixin, cascade XUID→gamertag 5 sources) ; `_roster_loader.py` hérite du mixin
-- **Split `cache_filters.py` (740L → 3 modules)** — `_cache_loading.py` (recent matches, pagination, match count), `_cache_sessions.py` (compute sessions DB) ; façade inchangée
-- **Split `filters_render.py`** — `_filters_apply.py` (apply_filters 190L, diagnostic empty) ; façade inchangée
-- **Split `session_compare_charts.py` (480L → 2 modules)** — `_session_compare_history.py` (tableau historique HTML) ; façade inchangée
+- **Split `refdata.py` (880L → 2 modules)** — `_refdata_personal_scores.py` (68-member `PersonalScoreNameId` enum, score/name/ID dictionaries); public facade unchanged
+- **Split `_roster_loader.py` (520L → 2 mixins)** — `_gamertag_resolver.py` (`GamertagResolverMixin`, 5-source XUID→gamertag cascade); `_roster_loader.py` now inherits from the mixin
+- **Split `cache_filters.py` (740L → 3 modules)** — `_cache_loading.py` (recent matches, pagination, match count), `_cache_sessions.py` (session DB computation); public facade unchanged
+- **Split `filters_render.py`** — `_filters_apply.py` (`apply_filters` in 190L, empty-state diagnostic); public facade unchanged
+- **Split `session_compare_charts.py` (480L → 2 modules)** — `_session_compare_history.py` (HTML history table); public facade unchanged
 
-#### Qualité & couverture
+#### Quality & coverage
 
-- **79 tests unitaires dédiés** — `test_submodules_phase5.py` (37 tests) + `test_submodules_phase6.py` (42 tests) couvrant directement les 13 sous-modules et vérifiant les re-exports des façades
-- **Logger ajouté dans 3 modules silencieux** — `_cache_loading.py` (6 blocs `except` → `logger.debug` avec `exc_info`), `_performance_relative.py` (1 catch-all), `_rag_github.py` (1 erreur réseau) ; tous les `except Exception` des sous-modules sont désormais tracés
-- **Système de logs centralisé** (`src/utils/log_config.py`) — `setup_app_logging()` : logs fichiers uniquement (`data/logs/app.log` 5 Mo×3, `data/logs/sync.log` 10 Mo×5), pas de sortie console ; `setup_script_logging()` pour les scripts CLI ; `log_duration()` context manager avec seuil ms configurable. Câblé dans : launch app, chargement joueur, sélection session, changements filtres, chargement DataFrame, KPIs, navigation match (boutons dernier match / carnage / match précédent), sync UI, backfill CLI, tailscale, RAG. `data/logs/` exclu du dépôt.
-- **`.gitattributes`** — enforce `eol=lf` sur tout le dépôt ; résout les conflits pre-commit mixed-line-ending sur Windows (`core.autocrlf=true`)
-- **`pyproject.toml`** — `per-file-ignores` pour `scripts/*` et `launcher.py` (complexité C901/PLR0912/PLR0913/PLR0915 tolérée dans les scripts utilitaires)
-- **Enforcement qualité** : `scripts/check_code_size.py` (ratchet), `tests/test_code_quality.py` (3 tests qualité structurelle), règles CLAUDE.md 13-17 (taille max, args max, complexité, SRP)
+- **79 dedicated unit tests** — `test_submodules_phase5.py` (37 tests) + `test_submodules_phase6.py` (42 tests), covering the 13 submodules directly and verifying public re-exports
+- **Logger added to 3 previously silent modules** — `_cache_loading.py` (6 `except` blocks → `logger.debug` with `exc_info`), `_performance_relative.py` (1 catch-all), `_rag_github.py` (1 network error); all submodule `except Exception` blocks are now traced
+- **Centralized logging system** (`src/utils/log_config.py`) — `setup_app_logging()`: file-only logs (`data/logs/app.log` 5 MB×3, `data/logs/sync.log` 10 MB×5), no console output; `setup_script_logging()` for CLI scripts; `log_duration()` context manager with configurable millisecond threshold. Wired into app launch, player loading, session selection, filter changes, DataFrame loading, KPIs, match navigation (last match / carnage / previous match buttons), sync UI, backfill CLI, tailscale, and RAG. `data/logs/` is excluded from the repository.
+- **`.gitattributes`** — enforces `eol=lf` across the repo; resolves pre-commit mixed line-ending conflicts on Windows (`core.autocrlf=true`)
+- **`pyproject.toml`** — `per-file-ignores` for `scripts/*` and `launcher.py` (C901/PLR0912/PLR0913/PLR0915 complexity tolerated in utility scripts)
+- **Quality enforcement** — `scripts/check_code_size.py` (ratchet), `tests/test_code_quality.py` (3 structural quality tests), CLAUDE.md rules 13-17 (max file/function size, max args, complexity, SRP)
 
-### Bug fixes (portés depuis `main`)
+### Bug fixes (backported from `main`)
 
-- **Filtres auto-invalidation post-sync** (`src/app/filters_render.py`) — `_filters_db_key_{player}` remplace le booléen write-once `_filters_loaded_*` ; les filtres se réinitialisent automatiquement quand la DB change (sync, CLI, backfill, changement de profil)
-- **Citations calculées post-sync** (`src/data/citations_backfill.py`) — module incremental appelé par `DuckDBSyncEngine` après chaque sync ; les matchs nouvellement insérés ont immédiatement leurs citations
-- **SyncLock câblé à l'UI** (`src/ui/sync.py`) — `SyncLock(timeout=0)` protège contre les syncs concurrents inter-processus ; `SyncAlreadyRunning` affiché proprement à l'utilisateur + flush WAL DuckDB avant `end_sync_mode()`
-- **Tailscale guard process-level** (`src/utils/tailscale.py`) — `threading.Event` module-level remplace `st.session_state` (par-session) ; `ensure_funnel_started_once()` garantit un seul démarrage et une seule notification Discord par processus Python
-- **Fausse alerte Discord webhook** (`src/utils/startup_check.py`) — skip du check si Doppler est actif ; chargement `.env.local` avant vérification
-- **`_PERF_SCORE_AVAILABLE` manquant** (`src/data/sync/_performance.py`) — variable module-level absente après le split `engine.py` → mixins ; ajout d'un guard `try/except ImportError` avec `_PERF_SCORE_AVAILABLE = True/False` ; corrige `F821 Undefined name` et `NameError` à l'exécution
-- **NaN-check fragile** (`src/ui/pages/match_view.py`) — `x == x` (idiome NaN flottant) remplacé par `x is not None`
-- **i18n** (`src/ui/translations.py`, `src/ui/i18n/widgets.py`) — 2 clés `PAIR_FR` tronquées restaurées, doublon `tm_session_trend` supprimé, 343 entrées redondantes nettoyées (399 → 56 entrées utiles)
-- **Détection backfill per-player** (`scripts/backfill/detection.py`) — les 6 flags per-player (medals, personal_scores, performance_scores, accuracy, shots, enemy_mmr) vérifient désormais les données réelles du joueur courant au lieu du bitmask global `backfill_completed` ; corrige un bug où le premier joueur syncé masquait les matchs pour les autres joueurs ; nouvelle fonction `_player_done_guard()` ; 15 nouveaux tests multi-joueur + 9 tests adaptés
+- **Post-sync filter auto-invalidation** (`src/app/filters_render.py`) — `_filters_db_key_{player}` replaces the write-once `_filters_loaded_*` boolean; filters now reset automatically when the DB changes (sync, CLI, backfill, profile change)
+- **Post-sync citation computation** (`src/data/citations_backfill.py`) — incremental module called by `DuckDBSyncEngine` after each sync; newly inserted matches get their citations immediately
+- **SyncLock wired into the UI** (`src/ui/sync.py`) — `SyncLock(timeout=0)` protects against concurrent inter-process syncs; `SyncAlreadyRunning` is surfaced cleanly to the user, and DuckDB WAL is flushed before `end_sync_mode()`
+- **Process-level Tailscale guard** (`src/utils/tailscale.py`) — module-level `threading.Event` replaces per-session `st.session_state`; `ensure_funnel_started_once()` guarantees only one startup and one Discord notification per Python process
+- **False Discord webhook alert** (`src/utils/startup_check.py`) — skips the check when Doppler is active; loads `.env.local` before validation
+- **Missing `_PERF_SCORE_AVAILABLE`** (`src/data/sync/_performance.py`) — module-level variable missing after the `engine.py` split into mixins; added `try/except ImportError` guard with `_PERF_SCORE_AVAILABLE = True/False`; fixes `F821 Undefined name` and runtime `NameError`
+- **Fragile NaN check** (`src/ui/pages/match_view.py`) — replaces floating-point NaN idiom `x == x` with `x is not None`
+- **i18n** (`src/ui/translations.py`, `src/ui/i18n/widgets.py`) — restored 2 truncated `PAIR_FR` keys, removed duplicate `tm_session_trend`, cleaned 343 redundant entries (399 → 56 useful entries)
+- **Per-player backfill detection** (`scripts/backfill/detection.py`) — the 6 per-player flags (`medals`, `personal_scores`, `performance_scores`, `accuracy`, `shots`, `enemy_mmr`) now check the current player's real data instead of the global `backfill_completed` bitmask; fixes a bug where the first synced player masked matches for other players; new `_player_done_guard()` function; 15 new multi-player tests + 9 adapted tests
 
 ---
 
