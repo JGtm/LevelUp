@@ -6,8 +6,8 @@ import polars as pl
 
 from src.analysis.mode_categories import infer_custom_category_from_pair_name
 from src.data.domain.models.stats import AggregatedStats, OutcomeRates
-from src.ui.formatting import format_mmss
-from src.ui.vectorize_helpers import build_mapping
+from src.utils.formatting import format_mmss
+from src.utils.polars_compat import build_mapping
 from src.utils.polars_compat import ensure_polars as _to_polars
 
 

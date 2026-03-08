@@ -14,6 +14,8 @@ from collections.abc import Callable
 
 import polars as pl
 
+from src.utils.polars_compat import build_mapping as build_mapping  # noqa: F401 (re-export)
+
 
 def vectorized_apply(
     series_or_expr: pl.Series | pl.Expr,
@@ -55,31 +57,6 @@ def vectorized_apply(
     col_ref = pl.col(series_or_expr.name)
     expr = col_ref.cast(pl.Utf8).replace_strict(mapping, default=default, return_dtype=pl.Utf8)
     return expr
-
-
-def build_mapping(
-    series: pl.Series,
-    fn: Callable[[str | None], str | None],
-) -> dict[str, str]:
-    """Construit un dict de mapping à partir des valeurs distinctes d'une Series.
-
-    Utile quand on a besoin du mapping pour plusieurs colonnes ou pour
-    des paramètres callbacks.
-
-    Args:
-        series: Colonne source.
-        fn: Fonction de transformation.
-
-    Returns:
-        Dict {valeur_source: valeur_traduite} (sans les None).
-    """
-    distinct_vals = series.drop_nulls().unique().to_list()
-    mapping: dict[str, str] = {}
-    for v in distinct_vals:
-        result = fn(v)
-        if result is not None:
-            mapping[str(v)] = str(result)
-    return mapping
 
 
 # ---------------------------------------------------------------------------
