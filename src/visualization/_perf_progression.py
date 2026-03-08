@@ -12,7 +12,7 @@ import polars as pl
 from src.config import THEME_COLORS
 from src.ui.i18n.viz import viz_t
 from src.visualization._perf_cumulative import PERFORMANCE_COLORS
-from src.visualization.theme import apply_halo_plot_style
+from src.visualization.theme import apply_halo_plot_style, iqr_yrange
 
 # =============================================================================
 # Helper partagé — marqueurs résultat (V/D) sur l'axe X
@@ -309,13 +309,9 @@ def plot_net_score_per_hour(
 
     data = nph_df.sort("start_time").to_dicts()
     x_values = [d.get("start_time", "") for d in data]
-    _add_nph_traces(
-        fig,
-        x_values,
-        y_raw=[d.get("net_per_hour", 0.0) for d in data],
-        y_rolling=[d.get("rolling_net_per_hour") for d in data],
-        lang=lang,
-    )
+    y_raw = [d.get("net_per_hour", 0.0) for d in data]
+    y_rolling = [d.get("rolling_net_per_hour") for d in data]
+    _add_nph_traces(fig, x_values, y_raw=y_raw, y_rolling=y_rolling, lang=lang)
     fig.add_hline(
         y=0,
         line_dash="dash",
@@ -323,13 +319,23 @@ def plot_net_score_per_hour(
         annotation_text=viz_t("label_balance", lang),
         annotation_position="right",
     )
-    fig.update_layout(
-        yaxis_title=viz_t("axis_net_per_hour", lang),
-        xaxis_title="Match",
-        hovermode="x unified",
-        showlegend=True,
-        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
-    )
+    y_range = iqr_yrange(y_raw + [v for v in y_rolling if v is not None])
+    layout: dict = {
+        "yaxis_title": viz_t("axis_net_per_hour", lang),
+        "xaxis_title": "Match",
+        "hovermode": "x unified",
+        "showlegend": True,
+        "legend": {
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "center",
+            "x": 0.5,
+        },
+    }
+    if y_range:
+        layout["yaxis_range"] = list(y_range)
+    fig.update_layout(**layout)
     _add_outcome_markers(fig, x_values, outcome_values, lang=lang)
     return apply_halo_plot_style(fig, title=title, height=height)
 
@@ -432,11 +438,13 @@ def plot_ewma_kd(  # noqa: PLR0913
 
     data = ewma_df.sort("start_time").to_dicts()
     x_values = [d.get("start_time", "") for d in data]
+    y_kd = [d.get("kd", 0.0) for d in data]
+    y_ewma = [d.get("ewma_kd", 0.0) for d in data]
     _add_ewma_traces(
         fig,
         x_values,
-        y_kd=[d.get("kd", 0.0) for d in data],
-        y_ewma=[d.get("ewma_kd", 0.0) for d in data],
+        y_kd=y_kd,
+        y_ewma=y_ewma,
         regression_data=regression_data,
         lang=lang,
     )
@@ -447,12 +455,22 @@ def plot_ewma_kd(  # noqa: PLR0913
         annotation_text=viz_t("label_kd_ref", lang),
         annotation_position="right",
     )
-    fig.update_layout(
-        yaxis_title=viz_t("axis_kd_ratio", lang),
-        xaxis_title="Match",
-        hovermode="x unified",
-        showlegend=True,
-        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
-    )
+    y_range = iqr_yrange(y_kd + y_ewma, allow_negative=False)
+    layout: dict = {
+        "yaxis_title": viz_t("axis_kd_ratio", lang),
+        "xaxis_title": "Match",
+        "hovermode": "x unified",
+        "showlegend": True,
+        "legend": {
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "center",
+            "x": 0.5,
+        },
+    }
+    if y_range:
+        layout["yaxis_range"] = list(y_range)
+    fig.update_layout(**layout)
     _add_outcome_markers(fig, x_values, outcome_values, lang=lang)
     return apply_halo_plot_style(fig, title=title, height=height)
