@@ -162,8 +162,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── DuckDB analytics ────────────────────────────────────────────────────
     "dba_global_stats": {"fr": "📊 Stats globales (DuckDB)", "en": "📊 Global stats (DuckDB)"},
     "dba_win_rate": {"fr": "Taux victoires", "en": "Win rate"},
-    "kpi_section_matches": "lbl_parties",  # alias → common
-    "kpi_section_career": {"fr": "Carrière", "en": "Career"},
     "flt_date_start": {"fr": "Début", "en": "Start"},
     "flt_date_end": {"fr": "Fin", "en": "End"},
     "flt_session_all": "sel_all",  # alias → common
