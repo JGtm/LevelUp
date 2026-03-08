@@ -11,58 +11,23 @@
 
 ---
 
-## What’s new
-- **v5.5 — Setup Wizard & Xbox OAuth**
-  - **Setup Wizard**: guided first-time setup with two paths — **Xbox Express** (recommended, 2 steps: Azure credentials → Xbox login) and **Azure manual** (advanced, 3 steps: credentials → refresh token → player creation)
-  - **Xbox OAuth**: one-click Xbox login — full Microsoft OAuth flow with CSRF protection, automatic gamertag/XUID resolution, and player provisioning
-  - **Player provisioning**: automatic DB + profile creation on first login (`provision_player()`)
-  - **macOS / Linux support**: new `LevelUp.sh` launcher (POSIX sh — compatible with macOS bash 3.2, dash, zsh) mirrors `LevelUp.bat` for Unix systems. Detects Python 3.10+ via versioned binaries (`python3.12`…), Homebrew paths (`/opt/homebrew`, `/usr/local`), then generic fallback. Distro-targeted help messages. `run.sh` fixed to be cross-platform. `launcher.py` enriched with Homebrew paths and cross-platform `doctor` check
-  - **`launcher.py setup`**: interactive install command — detects Python (py launcher → PATH → winget auto-install), creates `.venv`, installs deps. `--update` flag to update an existing environment
-  - **`launcher.py doctor`**: full environment healthcheck (OS, Python, venv, package versions, player data, metadata.duckdb)
-  - **Portable packaging**: `packaging/build_release.py` generates a self-contained `LevelUp-vX.Y.Z-win64-portable.zip` with Python Embeddable
-  - **Release CI**: `.github/workflows/release.yml` — push a `v*.*.*` tag → auto-build portable zip → GitHub Release
-  - **%APPDATA% portable mode**: data stored in `%APPDATA%/LevelUp/` (portable) or `./data/` (dev mode), override via `LEVELUP_DATA`
-  - **Token DB fallback**: refresh token read from player DB when not in environment variables
-  - **Documentation rewrite**: CONFIGURATION.md with 11 Azure screenshots, SYNC_GUIDE.md with v5.1 architecture
-  - Bug fixes: CSRF validation, `_repo_root` undefined, DuckDB retry broadened, GC sync mode, test isolation; deprecated `use_container_width=True` → `width="stretch"` in setup wizard
-  - **Repo cleanup**: 99 dead files removed (`scripts/_archive/`, `requirements.txt`, obsolete setup scripts)
-  - **API abstraction layer** (Ports & Adapters): `HaloAPIPort` Protocol + `create_api_client()` factory + auth facade — decouples SPNKr library, making future API backend switches seamless (14 dedicated tests)
-  - **Post-install smoke test**: 3-phase guided verification (sync → backfill → integrity checks) with real-time progress feedback
-  - **3 831 tests**, 0 failures  - **Automatic schema migrations** (`src/data/migration/`): versioned migration runner applied at every startup, tracks applied migrations per-DB in `schema_migrations`. Schema changes to any DuckDB (`player`, `shared`, `shared_pve`) require no user action on update.  - **Timezone selector**: choose your display timezone in Settings (~40 time zones available, defaults to Europe/Paris) — match timestamps update everywhere automatically
-  - **Career page**: improved LUSR ranking section layout and readability
-  - **Bug fixes & stability**: encounter data loading, match queries, UI cache, sync reliability on Windows- **v5.4 — Explorer & Encounter History**
-  - New **Explorer** page: unified match search with cascade filters (date, squad, type, playlist, mode, map), fuzzy gamertag search with XUID resolution, OS-style HTML table (KDA, MMR delta, accuracy, spree…), deep linking (`?page=Explorer&gamertag=XXX`) and encounter badges (rival, mentor, prey)
-  - **Encounter History** panel in Match View: per-player stats (encounter count, ally/enemy win rates, cross K/D) with auto-badges (**Dur à cuire** / Tough, **Allié+** / Good Ally, **Coriace** / Hard to Kill)
-  - **Massive refactoring** (72 new sub-modules, centralized logging system, quality enforcement) — 3,693 tests, 0 failures
-  - Bug fixes: filter auto-invalidation post-sync, SyncLock UI guard, per-player backfill detection, citations post-sync
+## What's new
 
-- **v5.3 — LUSR/CSR & i18n & Sessions**
-  - TrueSkill 2 rating system per playlist group (ranked / arena / btb / tactical / social / fun)
-  - Empirical calibration with historical data
-  - Discord notifications after sync and backfill
-  - Full internationalization (i18n) support across all UI pages
-  - Multi-language interface (French 🇫🇷 / English 🇬🇧), switchable from the sidebar
-  - Translations centralized in `src/ui/i18n/` (dedicated package: `common`, `pages`, `widgets`, `viz`, `cli`)
-  - Career page: estimated pre-sync XP curve (purple dotted) + Hero rank projections (standard & optimistic with challenges + daily + ×2 boost, hidden by default)
-  - **Solo / Squad session filter**: sidebar splits into two subsections — "Solo" (no friends) and "My squad" (at least one teammate from your selected squad), with persistent friend selection and vectorized Polars classification
+**v5.5 — Setup Wizard & Multi-platform**
+- Guided first-time setup with Xbox one-click login (OAuth) or manual Azure token flow
+- `LevelUp.bat` launcher for Windows and `LevelUp.sh` launcher for macOS & Linux
+- Portable Windows release (self-contained zip, no Python install required)
+- Timezone selector in Settings (~40 zones, defaults to Europe/Paris)
 
-- **v5.2 — PvE / Firefight**
-  - Dedicated `shared_pve.duckdb` database for Firefight matches
-  - Persistent intent-based filters
-  - Full "Last match" scoreboard
-  - Per-player OAuth tokens (player-gated Career Rank sync)
-  - Okabe–Ito palette (color-blind friendly)
+**v5.4 — Explorer & Encounter History**
+- New **Explorer** page: search any match with cascade filters (date, squad, map, mode…) and deep links
+- **Encounter History**: rivalry/alliance stats with any player — K/D, win rates, auto-badges (*Rival*, *Good Ally*, *Hard to Kill*)
 
-- **v5.1 — Optimized architecture**
-  - Modern Streamlit (`@st.fragment`, `st.navigation`)
-  - No SQLite / No Pandas, centralized `SyncScope`
-  - −75% DB connection time
-
-- **v5.0 — Shared Matches**
-  - `shared_matches.duckdb` centralizes all matches (registry, participants, events, medals)
-  - −69% storage, −72% API calls
-  - **3693 tests**, 0 failures
-
+**v5.3 — Skill Rating, i18n & Sessions**
+- TrueSkill 2 skill rating (LUSR) per playlist type (ranked, arena, BTB…)
+- Full French 🇫🇷 / English 🇬🇧 interface, switchable from the sidebar
+- Solo / Squad session filter in the sidebar
+- Discord notifications after sync
 ---
 
 ## Features
