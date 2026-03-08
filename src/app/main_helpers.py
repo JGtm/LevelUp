@@ -107,7 +107,7 @@ def _load_spartan_id_from_db(db_path: str, xuid: str) -> str | None:
                 """,
                 (xuid,),
             ).fetchone()
-            if row:
+            if row and row[0] is not None:
                 return str(row[0]).strip() or None
     except Exception:
         pass
