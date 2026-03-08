@@ -115,4 +115,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "axis_match_time": {"fr": "Temps du match", "en": "Match time"},
     # ── Axe score différentiel K/D (timeline match) ──────────────────────────
     "axis_kd_score": {"fr": "Score Frags-Décès", "en": "K/D Score"},
+    # ── Progression avancée ───────────────────────────────────────────────────
+    "axis_net_per_hour": {"fr": "Net Score / heure", "en": "Net Score / hour"},
 }
