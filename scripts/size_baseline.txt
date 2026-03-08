@@ -6,7 +6,6 @@
 #
 FUNC:src/ai/mcp_server.py:251:run_stdio_server:103L
 FUNC:src/ai/mcp_server.py:64:get_tools:83L
-FUNC:src/analysis/_composite.py:29:compute_composite_score:87L
 FUNC:src/analysis/_performance_session.py:321:compute_session_performance_score_v2:81L
 FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
 FUNC:src/analysis/participation_radar.py:291:compute_participation_profile:109L
@@ -32,10 +31,9 @@ FUNC:src/data/repositories/_gamertag_resolver.py:45:resolve_gamertag:92L
 FUNC:src/data/repositories/_materialized_views.py:96:refresh_materialized_views:176L
 FUNC:src/data/repositories/_roster_loader.py:36:load_match_rosters:201L
 FUNC:src/data/repositories/_roster_loader.py:371:load_match_scoreboard:88L
-FUNC:src/data/services/teammates_service.py:102:load_teammate_stats:120L
-FUNC:src/data/services/teammates_service.py:228:enrich_series_with_perfect_kills:107L
-FUNC:src/data/services/teammates_service.py:338:compute_participation_profiles:99L
-FUNC:src/data/services/teammates_service.py:440:load_impact_data:155L
+FUNC:src/data/services/teammates_service.py:179:load_teammate_stats:120L
+FUNC:src/data/services/teammates_service.py:305:enrich_series_with_perfect_kills:107L
+FUNC:src/data/services/teammates_service.py:415:compute_participation_profiles:99L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sync/_match_processing.py:267:_backfill_known_match_shared:85L
 FUNC:src/data/sync/_match_processing.py:43:_process_matches:96L
@@ -143,7 +141,7 @@ MODULE:src/analysis/cumulative.py:525L
 MODULE:src/analysis/skill_rating_calibration.py:545L
 MODULE:src/data/media_indexer.py:522L
 MODULE:src/data/query/trends.py:537L
-MODULE:src/data/services/teammates_service.py:596L
+MODULE:src/data/services/teammates_service.py:586L
 MODULE:src/data/sessions_backfill.py:502L
 MODULE:src/data/sync/_match_processing.py:710L
 MODULE:src/data/sync/engine.py:513L

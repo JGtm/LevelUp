@@ -64,6 +64,83 @@ class ImpactData:
     """True si des événements d'impact ont été trouvés."""
 
 
+def _query_impact_events(conn: object, match_ids: list[str], placeholders: str) -> list:
+    """Récupère les événements highlight depuis shared.highlight_events."""
+    query = f"""
+        SELECT
+            match_id,
+            CASE WHEN event_type IN ('kill', 'Kill') THEN killer_xuid::TEXT
+                 WHEN event_type IN ('death', 'Death') THEN victim_xuid::TEXT
+                 ELSE COALESCE(killer_xuid, victim_xuid)::TEXT
+            END AS xuid,
+            CASE WHEN event_type IN ('kill', 'Kill') THEN COALESCE(killer_gamertag, killer_xuid::TEXT)
+                 WHEN event_type IN ('death', 'Death') THEN COALESCE(victim_gamertag, victim_xuid::TEXT)
+                 ELSE COALESCE(killer_gamertag, victim_gamertag, 'Unknown')
+            END AS gamertag,
+            event_type,
+            COALESCE(time_ms, 0) AS time_ms
+        FROM shared.highlight_events
+        WHERE match_id IN ({placeholders})
+    """
+    return conn.execute(query, match_ids).fetchall()
+
+
+def _query_match_outcomes(conn: object, match_ids: list[str], xuid: str, placeholders: str) -> list:
+    """Récupère les outcomes depuis shared.match_participants (avec fallback local)."""
+    result = conn.execute(
+        f"SELECT match_id, outcome FROM shared.match_participants"
+        f" WHERE match_id IN ({placeholders}) AND xuid = ?",
+        [*match_ids, xuid.strip()],
+    ).fetchall()
+    if not result:
+        try:
+            result = conn.execute(
+                f"SELECT match_id, outcome FROM match_stats WHERE match_id IN ({placeholders})",
+                match_ids,
+            ).fetchall()
+        except Exception:
+            result = []
+    return result
+
+
+def _collect_impact_data(
+    conn: object,
+    match_ids: list[str],
+    xuid: str,
+    friend_xuids: set[str],
+    placeholders: str,
+) -> tuple | None:
+    """Construit DataFrames events/matches et calcule les événements d'impact.
+
+    Returns:
+        Tuple (first_bloods, clutch_finishers, last_casualties,
+        last_group_kills, first_group_deaths, scores) ou None si aucun événement.
+    """
+    from src.analysis.friends_impact import get_all_impact_events
+
+    events_result = _query_impact_events(conn, match_ids, placeholders)
+    if not events_result:
+        return None
+
+    events_df = pl.DataFrame(
+        {
+            "match_id": [str(r[0]) for r in events_result],
+            "xuid": [str(r[1]) for r in events_result],
+            "gamertag": [r[2] or "Unknown" for r in events_result],
+            "event_type": [r[3] for r in events_result],
+            "time_ms": [int(r[4] or 0) for r in events_result],
+        }
+    )
+    matches_result = _query_match_outcomes(conn, match_ids, xuid, placeholders)
+    matches_df = pl.DataFrame(
+        {
+            "match_id": [str(r[0]) for r in matches_result],
+            "outcome": [int(r[1] or 0) for r in matches_result],
+        }
+    )
+    return get_all_impact_events(events_df, matches_df, friend_xuids=friend_xuids)
+
+
 # ─── Service ───────────────────────────────────────────────────────────
 
 
@@ -445,13 +522,7 @@ class TeammatesService:
     ) -> ImpactData:
         """Charge les données d'impact et taquinerie depuis shared.
 
-        V5 : Lit shared.highlight_events et shared.match_registry (outcome).
-
-        Args:
-            db_path: Chemin vers la DB.
-            xuid: XUID du joueur principal.
-            match_ids: Liste des match_id.
-            friend_xuids: Liste des XUIDs des coéquipiers.
+        V5 : Lit shared.highlight_events et shared.match_participants (outcome).
 
         Returns:
             ImpactData avec événements ou available=False.
@@ -474,76 +545,13 @@ class TeammatesService:
         try:
             repo = DuckDBRepository(db_path, xuid.strip())
             conn = repo._get_connection()
-
             placeholders = ", ".join(["?" for _ in match_ids])
-
-            # Charger les événements depuis shared.highlight_events
-            # Schéma v5 : killer_xuid/victim_xuid → construire xuid/gamertag
-            events_query = f"""
-                SELECT
-                    match_id,
-                    CASE WHEN event_type IN ('kill', 'Kill') THEN killer_xuid::TEXT
-                         WHEN event_type IN ('death', 'Death') THEN victim_xuid::TEXT
-                         ELSE COALESCE(killer_xuid, victim_xuid)::TEXT
-                    END AS xuid,
-                    CASE WHEN event_type IN ('kill', 'Kill') THEN COALESCE(killer_gamertag, killer_xuid::TEXT)
-                         WHEN event_type IN ('death', 'Death') THEN COALESCE(victim_gamertag, victim_xuid::TEXT)
-                         ELSE COALESCE(killer_gamertag, victim_gamertag, 'Unknown')
-                    END AS gamertag,
-                    event_type,
-                    COALESCE(time_ms, 0) AS time_ms
-                FROM shared.highlight_events
-                WHERE match_id IN ({placeholders})
-            """
-
-            events_result = conn.execute(events_query, match_ids).fetchall()
-
-            if not events_result:
-                return _empty
-
-            events_df = pl.DataFrame(
-                {
-                    "match_id": [str(r[0]) for r in events_result],
-                    "xuid": [str(r[1]) for r in events_result],
-                    "gamertag": [r[2] or "Unknown" for r in events_result],
-                    "event_type": [r[3] for r in events_result],
-                    "time_ms": [int(r[4] or 0) for r in events_result],
-                }
-            )
-
-            # Charger les outcomes depuis shared.match_registry
-            matches_query = f"""
-                SELECT match_id, outcome
-                FROM shared.match_participants
-                WHERE match_id IN ({placeholders})
-                  AND xuid = ?
-            """
-
-            matches_result = conn.execute(matches_query, [*match_ids, xuid.strip()]).fetchall()
-
-            if not matches_result:
-                # Fallback : essayer match_stats local
-                try:
-                    fallback_query = f"""
-                        SELECT match_id, outcome
-                        FROM match_stats
-                        WHERE match_id IN ({placeholders})
-                    """
-                    matches_result = conn.execute(fallback_query, match_ids).fetchall()
-                except Exception:
-                    matches_result = []
-
-            matches_df = pl.DataFrame(
-                {
-                    "match_id": [str(r[0]) for r in matches_result],
-                    "outcome": [int(r[1] or 0) for r in matches_result],
-                }
-            )
-
             all_friend_xuids = {str(x) for x in friend_xuids}
             all_friend_xuids.add(str(xuid).strip())
 
-            from src.analysis.friends_impact import get_all_impact_events
+            result = _collect_impact_data(conn, match_ids, xuid, all_friend_xuids, placeholders)
+            if result is None:
+                return _empty
 
             (
                 first_bloods,
@@ -552,44 +560,26 @@ class TeammatesService:
                 last_group_kills,
                 first_group_deaths,
                 scores,
-            ) = get_all_impact_events(events_df, matches_df, friend_xuids=all_friend_xuids)
-
+            ) = result
             if not scores:
                 return _empty
 
-            gamertags = list(scores.keys())
-            sorted_match_ids = sorted(
-                {
-                    m
-                    for m in match_ids
-                    if m
-                    in set(
-                        list(first_bloods.keys())
-                        + list(clutch_finishers.keys())
-                        + list(last_casualties.keys())
-                        + list(last_group_kills.keys())
-                        + list(first_group_deaths.keys())
-                    )
-                }
+            involved_keys = (
+                set(first_bloods)
+                | set(clutch_finishers)
+                | set(last_casualties)
+                | set(last_group_kills)
+                | set(first_group_deaths)
             )
-
             return ImpactData(
                 first_bloods=first_bloods,
                 clutch_finishers=clutch_finishers,
                 last_casualties=last_casualties,
                 scores=scores,
-                gamertags=gamertags,
-                match_ids=sorted_match_ids,
+                gamertags=list(scores.keys()),
+                match_ids=sorted({m for m in match_ids if m in involved_keys}),
                 available=True,
             )
 
         except Exception:
-            return ImpactData(
-                first_bloods={},
-                clutch_finishers={},
-                last_casualties={},
-                scores={},
-                gamertags=[],
-                match_ids=[],
-                available=False,
-            )
+            return _empty
