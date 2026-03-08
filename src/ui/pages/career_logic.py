@@ -26,6 +26,9 @@ DAILY_CHALLENGE_XP: int = 500
 XP_BOOST_MULTIPLIER: float = 2.0
 # Seuil d'inactivité en jours — les gaps plus longs sont exclus du rythme
 INACTIVITY_GAP_DAYS: int = 14
+# Date d'introduction du système de rangs (Career Rank, mise à jour CU32 — 20 juin 2023)
+# Avant cette date il n'y avait pas d'XP : tout le monde démarrait à 0.
+CAREER_XP_LAUNCH_DATE: datetime = datetime(2023, 6, 20)
 
 # Palette pour les courbes des autres joueurs (distincte des 4 traces existantes)
 # Évite : accent (cyan), #CE93D8 (violet estimé), #FFA726 (orange proj), #66BB6A (vert opt)
@@ -49,9 +52,10 @@ def _compute_estimated_xp_curve(
     """Estime la courbe XP pour les matchs antérieurs au premier sync.
 
     Logique : l'XP total au 1er snapshot est réparti uniformément sur tous les
-    matchs pré-sync (average = first_xp / n_pre_sync). On remonte dans le temps
-    depuis le 1er snapshot en soustrayant cet XP moyen à chaque match.
-    Cela garantit que la courbe part de ~0 au match le plus ancien.
+    matchs pré-sync éligibles (après le 20 juin 2023, date de lancement des
+    rangs de carrière). On remonte dans le temps depuis le 1er snapshot en
+    soustrayant cet XP moyen à chaque match éligible.
+    Les matchs antérieurs au lancement sont exclus : il n'existait pas d'XP.
 
     Returns:
         Liste de (date, xp_estimé) en ordre chronologique, se terminant
@@ -66,18 +70,25 @@ def _compute_estimated_xp_curve(
     if first_xp <= 0:
         return []
 
-    # Moyenne basée sur l'XP total au 1er snapshot réparti sur tous les matchs
-    # pré-sync : garantit que la courbe part de ~0 au match le plus ancien.
+    # Exclure les matchs antérieurs au lancement du système de rangs (20/06/2023).
+    # Utiliser .date() pour rester compatible avec les datetimes tz-aware ou naives.
+    launch = CAREER_XP_LAUNCH_DATE.date()
+    eligible_dates = [d for d in pre_sync_match_dates if d.date() >= launch]
+
+    if not eligible_dates:
+        return []
+
+    # Moyenne basée sur l'XP total au 1er snapshot réparti sur les matchs éligibles.
     # (utiliser la moyenne post-sync introduirait un biais si le rythme change)
-    n_pre = len(pre_sync_match_dates)
+    n_pre = len(eligible_dates)
     avg_xp_per_match = first_xp / n_pre
 
     # Remonter dans le temps depuis le 1er snapshot
     curve: list[tuple[datetime, int]] = []
     current_xp = float(first_xp)
 
-    # Parcourir les matchs pré-sync du plus récent au plus ancien
-    for match_date in reversed(pre_sync_match_dates):
+    # Parcourir les matchs éligibles du plus récent au plus ancien
+    for match_date in reversed(eligible_dates):
         current_xp -= avg_xp_per_match
         if current_xp < 0:
             current_xp = 0
