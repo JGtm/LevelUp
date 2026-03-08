@@ -8,12 +8,15 @@ Contrat : les pages UI appellent ces fonctions, jamais de calcul inline.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import polars as pl
 
 from src.config import CORE_STAT_COLUMNS
 from src.data.domain.refdata import Outcome
+
+logger = logging.getLogger(__name__)
 
 # ─── Dataclasses retour ────────────────────────────────────────────────
 
