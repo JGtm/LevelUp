@@ -113,6 +113,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "career_max_rank": {"fr": "Rang maximum atteint", "en": "Maximum rank reached"},
     "career_hero_rank": {"fr": "Rang Héros atteint !", "en": "Hero rank reached!"},
     "career_xp_estimated": {"fr": "XP estimé (pré-sync)", "en": "Estimated XP (pre-sync)"},
+    "career_xp_estimated_note": {
+        "fr": "\u26a0\ufe0f La courbe pointillée est une estimation. Les Career Ranks ont été introduits le 20 juin 2023 — tous les joueurs partaient de 0 à cette date. Seuls les matchs joués après cette date sont pris en compte dans le calcul.",
+        "en": "\u26a0\ufe0f The dotted curve is an estimate. Career Ranks were introduced on June 20, 2023 — all players started at 0 on that date. Only matches played after that date are included in the calculation.",
+    },
     "career_xp_estimated_hover": {
         "fr": "Estimation · {date}<br>~{xp} XP",
         "en": "Estimate · {date}<br>~{xp} XP",

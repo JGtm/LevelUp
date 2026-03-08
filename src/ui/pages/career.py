@@ -387,6 +387,27 @@ def _render_hero_section(xp_total: int, rank_number: int, is_max: bool) -> None:
         )
 
 
+def _render_xp_snapshots_table(history: list[dict]) -> None:
+    """Affiche le tableau récapitulatif des derniers snapshots XP."""
+    with st.expander(t("career_rank_history_title"), expanded=False):
+        for snap in reversed(history[-10:]):
+            _snap_meta = get_meta_rank_info(snap.get("rank", 0))
+            snap_label = (
+                _snap_meta.full_label_fr
+                if _snap_meta
+                else format_career_rank_label_fr(
+                    tier=snap.get("rank_tier", ""),
+                    title=snap.get("rank_name", ""),
+                    grade=None,
+                )
+            )
+            date_str = str(snap.get("recorded_at", ""))[:19]
+            xp_t = snap.get("xp_total", 0) or 0
+            st.text(
+                f"{date_str}  |  {t('career_rank_n', n=snap['rank'])}: {snap_label}  |  XP: {xp_t:,}"
+            )
+
+
 def _render_xp_history(  # noqa: C901, PLR0912
     db_path: str,
     xuid: str,
@@ -446,28 +467,12 @@ def _render_xp_history(  # noqa: C901, PLR0912
                 width="stretch",
                 config=PLOTLY_CLEAN_CONFIG,
             )
+            if estimated_curve:
+                st.caption(t("career_xp_estimated_note"))
         else:
             st.info(t("career_rank_history_no_data"))
 
-    # Tableau récapitulatif des derniers snapshots
-    with st.expander(t("career_rank_history_title"), expanded=False):
-        recent = list(reversed(history[-10:]))
-        for snap in recent:
-            _snap_meta = get_meta_rank_info(snap.get("rank", 0))
-            snap_label = (
-                _snap_meta.full_label_fr
-                if _snap_meta
-                else format_career_rank_label_fr(
-                    tier=snap.get("rank_tier", ""),
-                    title=snap.get("rank_name", ""),
-                    grade=None,
-                )
-            )
-            date_str = str(snap.get("recorded_at", ""))[:19]
-            xp_t = snap.get("xp_total", 0) or 0
-            st.text(
-                f"{date_str}  |  {t('career_rank_n', n=snap['rank'])}: {snap_label}  |  XP: {xp_t:,}"
-            )
+    _render_xp_snapshots_table(history)
 
 
 @fragment_if_available
