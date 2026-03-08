@@ -1,91 +1,30 @@
-"""Fonctions utilitaires pures et constantes partagées entre les modules transformers.
+"""Helpers JSON d'extraction Halo Infinite (match, players, teams, modes).
 
-Ce module contient :
-- Constantes (XUID_RE, logger)
-- Helpers de parsing sûrs (_safe_float, _safe_int, _safe_str, _parse_iso_utc)
-- Helpers d'extraction JSON (_find_player, _find_core_stats_dict, etc.)
-- Fonctions de détermination de mode (_is_ranked_playlist, _is_firefight_match, etc.)
+Parsing/conversions : _helpers_conversions.py | MMR : _helpers_mmr.py
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import math
 import re
-from datetime import datetime
 from typing import Any
 
 from src.analysis.mode_categories import infer_custom_category_from_pair_name
+from src.data.sync.transformers._helpers_conversions import (  # noqa: F401
+    XUID_RE,
+    _parse_duration_to_seconds,
+    _parse_iso_utc,
+    _safe_float,
+    _safe_int,
+    _safe_str,
+)
+from src.data.sync.transformers._helpers_mmr import _extract_mmr_from_skill  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
-# =============================================================================
-# Regex et constantes
-# =============================================================================
-
-XUID_RE = re.compile(r"(\d{12,20})")
-
-# Gamertags Xbox valides : alphanum + espace, 1-15 chars, pas de null bytes ni mojibake
+# Gamertag valide Xbox : alphanum + espace, 1-15 chars (pas de null bytes ni mojibake)
 _VALID_GAMERTAG_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9 ]{0,14}$")
-
-
-# =============================================================================
-# Helpers de parsing
-# =============================================================================
-
-
-def _safe_float(v: Any) -> float | None:
-    """Convertit une valeur en float, gérant NaN et None."""
-    if v is None:
-        return None
-    try:
-        f = float(v)
-        if math.isnan(f) or math.isinf(f):
-            return None
-        return f
-    except (TypeError, ValueError):
-        return None
-
-
-def _safe_int(v: Any) -> int | None:
-    """Convertit une valeur en int, gérant NaN et None."""
-    if v is None:
-        return None
-    try:
-        f = float(v)
-        if math.isnan(f) or math.isinf(f):
-            return None
-        return int(f)
-    except (TypeError, ValueError):
-        return None
-
-
-def _safe_str(v: Any) -> str | None:
-    """Convertit une valeur en str, gérant None."""
-    if v is None:
-        return None
-    try:
-        s = str(v)
-        if s == "nan" or s == "None":
-            return None
-        return s
-    except Exception:
-        return None
-
-
-def _parse_iso_utc(s: str | None) -> datetime | None:
-    """Parse un timestamp ISO 8601 en datetime UTC."""
-    if not s or not isinstance(s, str):
-        return None
-    try:
-        # Gérer les formats avec ou sans 'Z'
-        s = s.replace("Z", "+00:00")
-        if "+" not in s and "-" not in s[10:]:
-            s += "+00:00"
-        return datetime.fromisoformat(s)
-    except Exception:
-        return None
 
 
 def _find_player(players: list[dict[str, Any]], xuid: str) -> dict[str, Any] | None:
@@ -178,24 +117,6 @@ def _extract_spree_headshots(player_obj: dict[str, Any]) -> tuple[int | None, in
     max_spree = _safe_int(stats_dict.get("MaxKillingSpree"))
     headshots = _safe_int(stats_dict.get("HeadshotKills"))
     return max_spree, headshots
-
-
-def _parse_duration_to_seconds(duration_str: str) -> int | None:
-    """Parse une durée ISO 8601 (PT1H30M45S) en secondes."""
-    if not duration_str or not isinstance(duration_str, str):
-        return None
-
-    # Format: PT{hours}H{minutes}M{seconds}S ou variations
-    pattern = r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?"
-    match = re.match(pattern, duration_str, re.IGNORECASE)
-    if not match:
-        return None
-
-    hours = int(match.group(1) or 0)
-    minutes = int(match.group(2) or 0)
-    seconds = float(match.group(3) or 0)
-
-    return int(hours * 3600 + minutes * 60 + seconds)
 
 
 def _extract_life_time_stats(
@@ -459,95 +380,6 @@ def _normalize_gamertag(raw: str | bytes | Any) -> str | None:
             logger.debug("Gamertag rejeté (format invalide): %r", s)
         return None
     return s
-
-
-def _extract_mmr_from_skill(  # noqa: C901, PLR0912
-    skill_json: dict[str, Any],
-    xuid: str,
-    team_id: int | None,
-) -> tuple[float | None, float | None] | None:
-    """Extrait team_mmr et enemy_mmr depuis le JSON skill.
-
-    Args:
-        skill_json: JSON de l'API skill (PlayerMatchStats).
-        xuid: XUID du joueur.
-        team_id: ID de l'équipe du joueur (utilisé comme fallback si non trouvé dans Result).
-
-    Returns:
-        Tuple (team_mmr, enemy_mmr) où chaque valeur peut être None, ou None si le joueur n'est pas trouvé.
-        Retourne None uniquement si le joueur n'est pas trouvé dans le JSON.
-        Sinon, retourne toujours un tuple, même si une seule valeur est disponible.
-    """
-    value = skill_json.get("Value")
-    if not isinstance(value, list):
-        return None
-
-    # Trouver notre joueur et extraire TeamMmrs
-    my_result = None
-    my_team_id = None
-
-    for player in value:
-        if not isinstance(player, dict):
-            continue
-
-        player_id = player.get("Id")
-        player_xuid = None
-        if isinstance(player_id, str):
-            m = XUID_RE.search(player_id)
-            if m:
-                player_xuid = m.group(1)
-
-        if player_xuid == xuid:
-            my_result = player.get("Result")
-            if isinstance(my_result, dict):
-                my_team_id = _safe_int(my_result.get("TeamId"))
-                break
-
-    # Si le joueur n'est pas trouvé, retourner None
-    if not my_result:
-        return None
-
-    # Utiliser team_id du paramètre si non trouvé dans Result
-    if my_team_id is None:
-        my_team_id = team_id
-
-    # Extraire team_mmr depuis TeamMmr du joueur
-    team_mmr = _safe_float(my_result.get("TeamMmr"))
-
-    # Extraire enemy_mmr depuis TeamMmrs (recommandé)
-    # TeamMmrs contient les MMR de toutes les équipes : {"0": 1200.5, "1": 1150.3}
-    enemy_mmr = None
-    team_mmrs_raw = my_result.get("TeamMmrs")
-    if isinstance(team_mmrs_raw, dict) and my_team_id is not None:
-        my_key = str(my_team_id)
-        for k, v in team_mmrs_raw.items():
-            if k != my_key:
-                enemy_mmr = _safe_float(v)
-                break
-
-    # Fallback : utiliser TeamMmr d'un adversaire si TeamMmrs n'est pas disponible
-    if enemy_mmr is None and my_team_id is not None:
-        enemy_team_mmrs = []
-        for player in value:
-            if not isinstance(player, dict):
-                continue
-            result = player.get("Result")
-            if not isinstance(result, dict):
-                continue
-            player_team = result.get("TeamId")
-            player_team_mmr = _safe_float(result.get("TeamMmr"))
-            if (
-                player_team is not None
-                and player_team != my_team_id
-                and player_team_mmr is not None
-            ):
-                enemy_team_mmrs.append(player_team_mmr)
-
-        if enemy_team_mmrs:
-            enemy_mmr = sum(enemy_team_mmrs) / len(enemy_team_mmrs)
-
-    # Retourner les valeurs même si une seule est disponible
-    return (team_mmr, enemy_mmr)
 
 
 # IDs GameVariantCategory pour Firefight — VALIDÉS sur JSON API réels.
