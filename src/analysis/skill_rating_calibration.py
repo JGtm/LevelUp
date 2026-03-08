@@ -30,6 +30,14 @@ from typing import Any
 
 import polars as pl
 
+from src.analysis._calibration_loaders import (
+    _compute_individual_mmr_map,  # noqa: F401
+    _detect_shared_db,
+    _load_matches_for_calibration,
+    _resolve_xuid_from_gamertag,
+)
+from src.analysis._calibration_scoring import _score_corr, _score_mae
+
 logger = logging.getLogger(__name__)
 
 # Clés canoniques des poids (ordre stable pour affichage)
@@ -40,175 +48,6 @@ _WEIGHT_KEYS = (
     "damage_efficiency",
     "accuracy_delta",
 )
-
-
-# =============================================================================
-# Chargement des données
-# =============================================================================
-
-
-def _load_matches_for_calibration(
-    shared_db: Path,
-    xuid: str,
-    *,
-    min_matches_with_mmr: int = 30,
-) -> tuple[pl.DataFrame, pl.DataFrame, dict[str, float]]:
-    """Charge les matchs, participants et MMR individuel décorrélé.
-
-    Raises:
-        ValueError: si moins de min_matches_with_mmr matchs ont team_mmr + kills_expected.
-    """
-    from src.utils.db import duckdb_read_only
-
-    with duckdb_read_only(shared_db) as conn:
-        df_matches = conn.execute(
-            """
-            SELECT
-                mp.match_id,
-                mr.start_time,
-                COALESCE(mr.playlist_name, '') AS playlist_name,
-                COALESCE(mr.pair_name, '')     AS pair_name,
-                COALESCE(mp.outcome, 3)        AS outcome,
-                COALESCE(mp.kills, 0)          AS kills,
-                COALESCE(mp.deaths, 1)         AS deaths,
-                COALESCE(mp.assists, 0)        AS assists,
-                mp.kills_expected,
-                mp.deaths_expected,
-                mp.damage_dealt,
-                mp.damage_taken,
-                mp.accuracy,
-                mp.team_id,
-                mp.team_mmr,
-                mp.enemy_mmr,
-                COALESCE(mr.is_ranked, FALSE)  AS is_ranked,
-                COALESCE(mr.is_firefight, FALSE) AS is_firefight
-            FROM match_participants mp
-            JOIN match_registry mr ON mr.match_id = mp.match_id
-            WHERE mp.xuid = ?
-              AND COALESCE(mr.is_firefight, FALSE) = FALSE
-            ORDER BY mr.start_time ASC
-            """,
-            [xuid],
-        ).pl()
-
-        if df_matches.is_empty():
-            raise ValueError(f"Aucun match trouvé pour XUID {xuid}.")
-
-        # Tous participants (pour estimation μ adversaires + calcul kills_expected moyen)
-        match_ids = df_matches["match_id"].to_list()
-        placeholders = ", ".join(["?"] * len(match_ids))
-        df_participants = conn.execute(
-            f"""
-            SELECT
-                match_id,
-                xuid::TEXT AS xuid,
-                team_id,
-                kills_expected,
-                deaths_expected
-            FROM match_participants
-            WHERE match_id IN ({placeholders})
-            """,
-            match_ids,
-        ).pl()
-
-        # Calculer individual MMR décorrélé
-        individual_mmr_map = _compute_individual_mmr_map(df_matches, df_participants)
-
-        n_with_mmr = len(individual_mmr_map)
-        if n_with_mmr < min_matches_with_mmr:
-            raise ValueError(
-                f"Seulement {n_with_mmr} matchs avec individual_mmr calculable "
-                f"(minimum {min_matches_with_mmr}). "
-                "Effectuez un backfill --skill pour enrichir les données."
-            )
-
-        return df_matches, df_participants, individual_mmr_map
-
-
-def _compute_individual_mmr_map(
-    df_matches: pl.DataFrame,
-    df_participants: pl.DataFrame,
-) -> dict[str, float]:
-    """Calcule individual_mmr = team_mmr × (ke_joueur / ke_moyen_match)."""
-    ke_avg_by_match: dict[str, float] = {}
-    for row in (
-        df_participants.filter(
-            pl.col("kills_expected").is_not_null() & (pl.col("kills_expected") > 0)
-        )
-        .group_by("match_id")
-        .agg(pl.col("kills_expected").mean().alias("ke_avg"))
-        .iter_rows(named=True)
-    ):
-        ke_avg_by_match[row["match_id"]] = row["ke_avg"]
-
-    individual_mmr_map: dict[str, float] = {}
-    for row in df_matches.iter_rows(named=True):
-        mid = row["match_id"]
-        team_mmr = row["team_mmr"]
-        ke_me = row["kills_expected"]
-        ke_avg = ke_avg_by_match.get(mid)
-        if team_mmr is None or ke_me is None or ke_avg is None or ke_avg <= 0:
-            continue
-        individual_mmr_map[mid] = team_mmr * (ke_me / ke_avg)
-    return individual_mmr_map
-
-
-def _normalize(series: pl.Series) -> pl.Series:
-    """Normalise une série à [0, 1] par min-max."""
-    lo = series.min()
-    hi = series.max()
-    if hi is None or lo is None or hi == lo:
-        return pl.Series([0.5] * len(series))
-    return (series - lo) / (hi - lo)
-
-
-def _score_mae(
-    df_ratings: pl.DataFrame,
-    team_mmr_map: dict[str, float],
-) -> float:
-    """Calcule MAE normalisé entre LUSR et individual_mmr décorrélé (plus bas = meilleur)."""
-    rows = [
-        (mid, rv, team_mmr_map[mid])
-        for mid, rv in zip(
-            df_ratings["match_id"].to_list(),
-            df_ratings["rating_value"].to_list(),
-            strict=False,
-        )
-        if mid in team_mmr_map
-    ]
-    if len(rows) < 10:
-        return 1.0
-
-    r_series = pl.Series([r[1] for r in rows], dtype=pl.Float64)
-    t_series = pl.Series([r[2] for r in rows], dtype=pl.Float64)
-
-    r_norm = _normalize(r_series)
-    t_norm = _normalize(t_series)
-    return float((r_norm - t_norm).abs().mean())
-
-
-def _score_corr(
-    df_ratings: pl.DataFrame,
-    team_mmr_map: dict[str, float],
-) -> float:
-    """Corrélation de Pearson entre LUSR et individual_mmr décorrélé (plus haut = meilleur)."""
-    rows = [
-        (mid, rv, team_mmr_map[mid])
-        for mid, rv in zip(
-            df_ratings["match_id"].to_list(),
-            df_ratings["rating_value"].to_list(),
-            strict=False,
-        )
-        if mid in team_mmr_map
-    ]
-    if len(rows) < 10:
-        return -1.0
-
-    r_series = pl.Series([r[1] for r in rows], dtype=pl.Float64)
-    t_series = pl.Series([r[2] for r in rows], dtype=pl.Float64)
-
-    corr = r_series.pearson_corr(t_series)
-    return float(corr) if corr is not None else 0.0
 
 
 # =============================================================================
@@ -254,27 +93,6 @@ def _generate_candidates(
 # =============================================================================
 # Cœur de la calibration
 # =============================================================================
-
-
-def _detect_shared_db(db_path: Path, explicit_path: str | Path | None) -> Path:
-    """Résout le chemin shared_matches.duckdb (auto-détecté ou explicite)."""
-    if explicit_path is not None:
-        p = Path(explicit_path)
-        if not p.exists():
-            raise FileNotFoundError(
-                "shared_matches.duckdb introuvable. Vérifiez le chemin ou utilisez --shared-db."
-            )
-        return p
-    candidates_paths = [
-        db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb",
-        Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb",
-    ]
-    found = next((p for p in candidates_paths if p.exists()), None)
-    if found is None:
-        raise FileNotFoundError(
-            "shared_matches.duckdb introuvable. Vérifiez le chemin ou utilisez --shared-db."
-        )
-    return found
 
 
 def _run_weight_optimization(  # noqa: PLR0913
@@ -382,23 +200,6 @@ def calibrate_lusr_weights(  # noqa: PLR0913
 # =============================================================================
 # Point d'entrée CLI
 # =============================================================================
-
-
-def _resolve_xuid_from_gamertag(gamertag: str, shared_db: Path) -> str | None:
-    """Résout le XUID depuis le gamertag via xuid_aliases."""
-    from src.utils.db import duckdb_read_only
-
-    if not shared_db.exists():
-        return None
-    with duckdb_read_only(shared_db) as conn:
-        try:
-            row = conn.execute(
-                "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
-                [gamertag],
-            ).fetchone()
-            return str(row[0]) if row and row[0] else None
-        except Exception:
-            return None
 
 
 def _build_cli_parser() -> argparse.ArgumentParser:
