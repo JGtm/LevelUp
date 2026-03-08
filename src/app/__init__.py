@@ -73,7 +73,6 @@ from src.app.main_helpers import (
     load_match_dataframe,
     load_profile_api,
     render_profile_hero,
-    render_sidebar_header,
     resolve_xuid_from_input,
     validate_and_fix_db_path,
 )
@@ -189,7 +188,6 @@ __all__ = [
     "apply_settings_overrides_main",
     "validate_and_fix_db_path",
     "resolve_xuid_from_input",
-    "render_sidebar_header",
     "load_profile_api",
     "render_profile_hero",
     "load_match_dataframe",

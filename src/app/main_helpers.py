@@ -28,15 +28,12 @@ from src.ui import (
     get_hero_html,
     get_profile_appearance,
 )
-from src.ui.cache import clear_app_caches, db_cache_key, load_df_optimized
+from src.ui.cache import db_cache_key, load_df_optimized
 from src.ui.i18n import t
-from src.ui.multiplayer import render_player_selector
 from src.ui.player_assets import download_image_to_cache, ensure_local_image_path
 from src.ui.sync import (
     is_spnkr_db_path,
     pick_latest_spnkr_db_if_any,
-    render_sync_indicator,
-    sync_all_players,
 )
 
 if TYPE_CHECKING:
@@ -91,69 +88,6 @@ def resolve_xuid_from_input(xuid_input: str, db_path: str) -> str:
     Délègue à ``data_loader.resolve_xuid_input`` (implémentation unique).
     """
     return resolve_xuid_input(xuid_input, db_path)
-
-
-def render_sidebar_header(db_path: str, xuid: str, settings: AppSettings) -> str:
-    """Rend le header de la sidebar (brand, sync, player selector).
-
-    Returns:
-        XUID potentiellement mis à jour.
-    """
-    st.markdown(
-        "<div class='os-sidebar-brand' style='font-size: 2.5em;'>LevelUp</div>",
-        unsafe_allow_html=True,
-    )
-    st.markdown("<div class='os-sidebar-divider'></div>", unsafe_allow_html=True)
-
-    # Indicateur de dernière synchronisation
-    if db_path and os.path.exists(db_path):
-        render_sync_indicator(db_path, xuid=xuid)
-
-    # Sélecteur multi-joueurs (si DB fusionnée)
-    if db_path and os.path.exists(db_path):
-        new_xuid = render_player_selector(db_path, xuid, key="sidebar_player_selector")
-        if new_xuid:
-            st.session_state["xuid_input"] = new_xuid
-            xuid = new_xuid
-            # Reset des filtres au changement de joueur
-            for filter_key in ["filter_playlists", "filter_modes", "filter_maps"]:
-                if filter_key in st.session_state:
-                    del st.session_state[filter_key]
-            st.rerun()
-
-    # Bouton Sync pour toutes les DB SPNKr
-    if (
-        db_path
-        and is_spnkr_db_path(db_path)
-        and os.path.exists(db_path)
-        and st.button(
-            t("hlp_btn_sync"),
-            key="sidebar_sync_button",
-            help=t("hlp_btn_sync_help"),
-            width="stretch",
-        )
-    ):
-        with st.spinner(t("syncing")):
-            ok, msg = sync_all_players(
-                db_path=db_path,
-                match_type=str(
-                    getattr(settings, "spnkr_refresh_match_type", "matchmaking") or "matchmaking"
-                ),
-                max_matches=int(getattr(settings, "spnkr_refresh_max_matches", 200) or 200),
-                rps=int(getattr(settings, "spnkr_refresh_rps", 5) or 5),
-                with_highlight_events=True,
-                with_aliases=True,
-                delta=True,
-                timeout_seconds=180,
-            )
-        if ok:
-            st.success(msg)
-            clear_app_caches()
-            st.rerun()
-        else:
-            st.error(msg)
-
-    return xuid
 
 
 def _load_spartan_id_from_db(db_path: str, xuid: str) -> str | None:

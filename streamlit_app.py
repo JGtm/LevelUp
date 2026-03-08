@@ -32,6 +32,8 @@ setup_app_logging()
 
 logger = logging.getLogger("streamlit_app")
 
+# Phase 4 refactoring: Main helpers
+from src.app.cache_control import invalidate_after_sync
 from src.app.data_loader import (
     ensure_h5g_commendations_repo,
     init_source_state,
@@ -59,8 +61,6 @@ from src.app.kpis_render import (
     render_kpis_section,
     render_performance_info,
 )
-
-# Phase 4 refactoring: Main helpers
 from src.app.main_helpers import (
     load_match_dataframe,
     load_profile_api,
@@ -306,6 +306,13 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
     DEFAULT_DB = get_default_db_path()
     init_source_state(DEFAULT_DB, settings)
 
+    # Guard : IS_SYNCING ne doit pas survivre à un crash/redémarrage du process.
+    # On le réinitialise une seule fois à False au premier rerun de la session.
+    if "_app_session_init_done" not in st.session_state:
+        st.session_state[SK.IS_SYNCING] = False
+        st.session_state["_app_session_init_done"] = True
+        logger.debug("Session init: IS_SYNCING réinitialisé à False")
+
     return settings, DEFAULT_DB, cfg_warnings, cfg_errors
 
 
@@ -378,6 +385,15 @@ def _handle_xbox_oauth_callback() -> None:
             _db = provision_player(_gt, _xuid)
             handle_pending_xbox_result(_gt, _xuid, str(_db), _token)
             logger.info("OAuth Xbox : joueur %s provisionné avec succès", _gt)
+            # Invalider le cache du sélecteur joueur pour que le nouveau joueur
+            # apparaisse immédiatement sans attendre la fin du TTL (1800s)
+            with contextlib.suppress(Exception):
+                from src.ui.multiplayer import list_duckdb_v4_players
+
+                list_duckdb_v4_players.clear()
+            logger.info(
+                "Cache list_duckdb_v4_players invalidé après provisionnement Xbox (%s)", _gt
+            )
             # Basculer vers le profil du joueur nouvellement connecté
             st.session_state[SK.DB_PATH] = str(_db)
             st.session_state[SK.XUID_INPUT] = _gt
@@ -632,17 +648,7 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                     # Notification Discord
                     _send_sync_discord_notification(sync_started_at, sync_finished_at, msg)
 
-                    _clear_app_caches()
-                    cache_buster_val = st.session_state.get("_cache_buster", 0)
-                    logger.info("Caches invalidés après sync, cache_buster=%d", cache_buster_val)
-                    st.session_state[SK.CACHE_BUSTER] = cache_buster_val + 1
-
-                    # Mettre à jour le db_key AVANT rerun pour éviter le reset
-                    # des filtres (render_filters_sidebar détecte db_key changé)
-                    new_db_key = db_cache_key(db_path)
-                    player_key = _get_player_key(xuid, db_path)
-                    st.session_state[f"_filters_db_key_{player_key}"] = new_db_key
-
+                    invalidate_after_sync()
                     st.rerun()
                 else:
                     logger.error("Sync échoué: %s", msg)

@@ -19,7 +19,7 @@ FUNC:src/app/_filters_cascade.py:326:_render_cascade_filters:101L
 FUNC:src/app/filters.py:206:render_session_filters:94L
 FUNC:src/app/filters_render.py:373:render_filters_sidebar:112L
 FUNC:src/app/kpis_render.py:44:render_kpis_section:83L
-FUNC:src/app/main_helpers.py:250:render_profile_hero:140L
+FUNC:src/app/main_helpers.py:184:render_profile_hero:140L
 FUNC:src/app/profile.py:187:load_profile_assets:101L
 FUNC:src/app/sidebar.py:174:render_sync_button:120L
 FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:98L
