@@ -10,6 +10,15 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ### Ajouté
 
+- **Page Comparaison de sessions entièrement revue** (`src/ui/pages/session_compare.py` et modules associés)
+  - Répartition des résultats : 2 donuts W/L/T/DNF par session avec taux de victoire au centre
+  - Highlights : meilleur/pire match par session (ratio F/D, nom du mode)
+  - Courbe F/D + précision : K/D renommé F/D, précision sur axe Y secondaire (tirets), durée de vie en hover
+  - Modes joués : barres horizontales groupées par session
+  - Tableau par carte : victoires/défaites par carte pour chaque session
+  - Net score cumulé : coloration des marqueurs par score de performance (vert ≥70 / orange ≥45 / rouge <45) + overlay LUSR ou CSR sur axe secondaire (détecté automatiquement depuis `match_skill_rank`)
+  - Profil de participation : radar opaque remplacé par barres horizontales groupées ; seuils mis à l'échelle par nombre de matchs
+
 - **Wizard de configuration — Configuration initiale guidée** (`src/ui/pages/setup_wizard.py` + `setup_wizard_logic.py`)
   - Deux parcours : **Xbox Express** (recommandé, 2 étapes) et **Azure manuel** (avancé, 3 étapes)
   - Cards CSS personnalisées avec icônes, barre de progression animée, étapes numérotées

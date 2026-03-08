@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Session Comparison page revamped** (`src/ui/pages/session_compare.py` and related modules)
+  - Outcomes distribution: W/L/T/DNF donut charts per session with win-rate in center
+  - Match highlights: best/worst match per session (F/D ratio, mode name)
+  - F/D + accuracy progression: K/D curve renamed F/D (FR), accuracy on secondary Y-axis (dashed), avg lifespan in hover
+  - Modes breakdown: grouped horizontal bar chart of modes played per session
+  - Map stats table: wins/losses per map for both sessions
+  - Cumulative net score: per-match performance score coloring (green ≥70 / orange ≥45 / red <45) + LUSR or CSR overlay on secondary Y-axis (auto-detected from `match_skill_rank`)
+  - Participation profile: replaced opaque stacked radar with grouped horizontal bars; thresholds scaled by number of matches
+
 - **Setup Wizard — Configuration initiale guidée** (`src/ui/pages/setup_wizard.py` + `setup_wizard_logic.py`)
   - Deux parcours : **Xbox Express** (recommandé, 2 étapes) et **Azure manuel** (avancé, 3 étapes)
   - Cards CSS personnalisées avec icônes, barre de progression animée, étapes numérotées
