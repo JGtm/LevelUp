@@ -116,7 +116,7 @@ def compute_single_match_impact(
             )
         )
 
-    # --- Plus lent : joueur le plus lent à obtenir son 1er kill ---
+    # --- Touriste : joueur le plus lent à obtenir son 1er kill ---
     if kills:
         # Grouper par xuid → premier kill de chaque joueur
         first_kill_by_player: dict[str, dict[str, Any]] = {}
@@ -130,7 +130,7 @@ def compute_single_match_impact(
                 first_kill_by_player[xu] = k
 
         if len(first_kill_by_player) >= 2:
-            # Le plus lent = celui avec le max de time_ms pour son premier kill
+            # Le Touriste = celui avec le max de time_ms pour son premier kill
             slowest = max(first_kill_by_player.values(), key=lambda e: int(e["time_ms"]))
             xu = str(slowest.get("xuid", "")).strip()
             events.append(

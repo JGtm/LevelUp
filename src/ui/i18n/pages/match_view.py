@@ -118,6 +118,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Impact du match",
         "en": "Match impact",
     },
+    "mv_impact_legend": {
+        "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier à obtenir son 1er kill\n- 🪦 **Première victime** — première mort du match, toutes équipes confondues",
+        "en": "- ⚡ **First Blood** — first kill of the match, across all teams\n- 🎯 **Finisher** — last kill of a won match\n- 💀 **Dead Weight** — last death of a lost match\n- 🐌 **Tourist** — last to get their first kill\n- 🪦 **First Casualty** — first death of the match, across all teams",
+    },
     "mv_impact_no_events": {
         "fr": "Données d'impact indisponibles (highlight events manquants).",
         "en": "Impact data unavailable (missing highlight events).",
