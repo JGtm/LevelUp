@@ -4,7 +4,7 @@ Affiche un graphe chronologique montrant l'accumulation des kills et deaths
 du joueur principal au cours du match, avec des marqueurs annotés pour :
 - ⚡ Premier sang (premier kill du match, tous joueurs confondus)
 - 🎯 Finisseur (dernier kill d'une victoire)
-- 🐌 Plus lent (le joueur le plus lent à obtenir son 1er kill)
+- 🐌 Touriste (le joueur le plus lent à obtenir son 1er kill)
 - 🪦 Première victime (première mort du match, tous joueurs confondus)
 """
 

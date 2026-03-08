@@ -84,8 +84,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "🏆 Ranking",
     },
     "tm_impact_legend": {
-        "fr": "⚡ Premier sang | 🎯 Finisseur | 💀 Boulet | 🐌 Plus lent | 🪦 Première victime",
-        "en": "⚡ First Blood | 🎯 Finisher | 💀 Dead Weight | 🐌 Slowest | 🪦 First Victim",
+        "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier à obtenir son 1er kill\n- 🪦 **Première victime** — première mort du match, toutes équipes confondues",
+        "en": "- ⚡ **First Blood** — first kill of the match, across all teams\n- 🎯 **Finisher** — last kill of a won match\n- 💀 **Dead Weight** — last death of a lost match\n- 🐌 **Tourist** — last to get their first kill\n- 🪦 **First Casualty** — first death of the match, across all teams",
     },
     # ── Page Match View ──────────────────────────────────────────────────────
     "tm_computing_teammate": {

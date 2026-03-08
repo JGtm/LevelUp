@@ -107,7 +107,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Impact timeline ────────────────────────────────────────────────────────
     "impact_first_blood": {"fr": "Premier sang", "en": "First Blood"},
     "impact_clutch_finisher": {"fr": "Finisseur", "en": "Finisher"},
-    "impact_last_group_kill": {"fr": "Plus lent", "en": "Slowest"},
+    "impact_last_group_kill": {"fr": "Touriste", "en": "Tourist"},
     "impact_first_group_death": {"fr": "Première victime", "en": "First Casualty"},
     "impact_last_casualty": {"fr": "Boulet", "en": "Weakest Link"},
     # ── Messages vides ────────────────────────────────────────────────────────
