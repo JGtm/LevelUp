@@ -351,11 +351,11 @@ class TeammatesService:
         Returns:
             Liste de profils (dicts) compatibles avec create_participation_profile_radar.
         """
-        from src.data.repositories import DuckDBRepository
-        from src.visualization.participation_radar import (
+        from src.analysis.participation_radar import (
             compute_participation_profile,
             get_radar_thresholds,
         )
+        from src.data.repositories import DuckDBRepository  # noqa: PLC0415
 
         thresholds = get_radar_thresholds(db_path) if db_path else None
         base_dir = Path(db_path).parent.parent
