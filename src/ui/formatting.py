@@ -9,10 +9,11 @@ Ce module centralise les utilitaires de formatage :
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from src.config import HALO_COLORS
+from src.utils.formatting import format_mmss as format_mmss  # noqa: F401 (re-export)
 
 __all__ = [
     "format_date_fr",
@@ -183,29 +184,6 @@ def _is_nan(value) -> bool:
     if isinstance(value, float):
         return value != value  # NaN != NaN
     return False
-
-
-def format_mmss(seconds: float | int | None) -> str:
-    """Formate une durée en mm:ss.
-
-    Args:
-        seconds: Durée en secondes.
-
-    Returns:
-        Chaîne formatée "mm:ss" ou "-" si invalide.
-    """
-    if seconds is None or _is_nan(seconds):
-        return "-"
-    try:
-        secs = int(seconds)
-        if secs < 0:
-            return "-"
-        td = timedelta(seconds=secs)
-        total_minutes = td.seconds // 60
-        remaining_seconds = td.seconds % 60
-        return f"{total_minutes:02d}:{remaining_seconds:02d}"
-    except (ValueError, TypeError):
-        return "-"
 
 
 def format_duration_hms(seconds: float | int | None, lang: str = "fr") -> str:

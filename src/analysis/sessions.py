@@ -16,7 +16,9 @@ from typing import Any
 import polars as pl
 
 from src.config import SESSION_CONFIG
-from src.ui.date_formats import FMT_DATE_FR
+
+# Format de date français (copié depuis ui.date_formats pour éviter couplage UI→analysis)
+FMT_DATE_FR: str = "%d/%m/%Y"
 
 # =============================================================================
 # Configuration des sessions améliorées
