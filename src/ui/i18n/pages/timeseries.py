@@ -114,40 +114,56 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     # ── Notes explicatives sous les graphes de progression ───────────────────
     "ts_note_nph": {
-        "fr": "**Net score/heure** = (frags − morts) rapporté à la durée réelle de jeu. "
-        "Vert = efficacité positive, rouge = négative. "
-        "La courbe épaisse est la moyenne glissante sur les derniers matchs. "
-        "⚠ L'axe Y est ajusté pour la lisibilité — les valeurs extrêmes restent accessibles au survol.",
-        "en": "**Net score/hour** = (kills − deaths) normalized by actual playtime. "
-        "Green = positive efficiency, red = negative. "
-        "The thick line is a rolling average over recent matches. "
-        "⚠ Y axis is fitted for readability — extreme values are still accessible on hover.",
+        "fr": "**Comment lire ce graphe**\n\n"
+        "- **Courbe épaisse** : ton débit récent de net score par heure — monte si tu joues mieux\n"
+        "- **Ligne à 0** : tu fais autant de frags que de morts par heure\n"
+        "- **Ombrage vert / rouge** : zone positive vs négative\n"
+        "- ⚠ L'axe Y est ajusté pour la lisibilité — les valeurs extrêmes restent accessibles au survol",
+        "en": "**How to read this chart**\n\n"
+        "- **Thick curve**: your recent throughput — rises when you play better\n"
+        "- **Line at 0**: kills and deaths per hour are equal\n"
+        "- **Green / red shading**: positive vs negative zone\n"
+        "- ⚠ Y axis is fitted for readability — extreme values accessible on hover",
     },
     "ts_note_ci": {
-        "fr": "**K/D cumulé avec IC 90 %** : la courbe montre l'évolution de ton K/D moyen "
-        "depuis le début de la session. La bande ombragée est l'intervalle de confiance à 90 % : "
-        "plus les matchs s'accumulent, plus la bande se resserre — signe de stabilité.",
-        "en": "**Cumulative K/D with 90% CI**: the curve shows how your average K/D has evolved "
-        "throughout the session. The shaded band is the 90% confidence interval: "
-        "the more matches pile up, the narrower it gets — a sign of stability.",
+        "fr": "**Comment lire ce graphe**\n\n"
+        "- **Courbe principale** : K/D cumulé depuis le début de la session\n"
+        "- **Bande ombragée** : intervalle de confiance à 90 % — se rétrécit à mesure que les matchs s'accumulent\n"
+        "- **Cercles** : K/D de chaque match individuel\n"
+        "- **Ligne à 1.0** : seuil d'équilibre kills = morts",
+        "en": "**How to read this chart**\n\n"
+        "- **Main curve**: cumulative K/D from the start of the session\n"
+        "- **Shaded band**: 90% confidence interval — narrows as matches pile up\n"
+        "- **Circles**: per-match K/D values\n"
+        "- **Line at 1.0**: balance threshold (kills = deaths)",
     },
     "ts_note_ewma": {
-        "fr": "**K/D lissé (EWMA)** : moyenne pondérée exponentielle donnant plus de poids aux matchs récents. "
-        "Un α élevé = très réactif aux dernières parties ; un α faible = vision long terme. "
-        "La droite pointillée (si présente) est significative si R² ≥ 0.3. "
-        "⚠ L'axe Y est ajusté pour la lisibilité — les valeurs extrêmes restent accessibles au survol.",
-        "en": "**Smoothed K/D (EWMA)**: exponentially weighted average giving more weight to recent matches. "
-        "High α = very reactive to the latest games; low α = long-term view. "
-        "The dotted line (if shown) is significant when R² ≥ 0.3. "
-        "⚠ Y axis is fitted for readability — extreme values are still accessible on hover.",
+        "fr": "**Comment lire ce graphe**\n\n"
+        "- **Courbe fine** : K/D match par match (bruit brut)\n"
+        "- **Courbe épaisse** : EWMA — réagit plus vite aux changements récents que la moyenne glissante\n"
+        "- **Slider α** : 0.1 = très lissé (vision long terme)· 0.5 = très réactif (forme du moment)\n"
+        "- **Droite pointillée** (si présente) : tendance linéaire significative (R² ≥ 0.3)\n"
+        "- ⚠ L'axe Y est ajusté pour la lisibilité — les valeurs extrêmes restent accessibles au survol",
+        "en": "**How to read this chart**\n\n"
+        "- **Thin curve**: per-match K/D (raw noise)\n"
+        "- **Thick curve**: EWMA — reacts faster to recent changes than a rolling average\n"
+        "- **α slider**: 0.1 = heavily smoothed (long-term view)· 0.5 = very reactive (current form)\n"
+        "- **Dotted line** (if shown): significant linear trend (R² ≥ 0.3)\n"
+        "- ⚠ Y axis is fitted for readability — extreme values accessible on hover",
     },
     "ts_note_regression": {
-        "fr": "**Indicateurs de tendance** : pente K/D (vitesse de progression), "
-        "coefficient de détermination R² (robustesse de la tendance) "
-        "et évolution du taux de victoire sur la session.",
-        "en": "**Trend indicators**: K/D slope (pace of progress), "
-        "R² coefficient (how reliable the trend is), "
-        "and win rate evolution across the session.",
+        "fr": "**Comment lire ce graphe**\n\n"
+        "- **Pente K/D** : vitesse de progression — positif = en amélioration, négatif = en baisse\n"
+        "- **R²** : robustesse du signal — ≥ 0.3 = tendance significative, < 0.3 = bruit\n"
+        "- **Taux de victoire** : évolution du win rate sur la session (si disponible)",
+        "en": "**How to read this chart**\n\n"
+        "- **K/D slope**: pace of improvement — positive = getting better, negative = declining\n"
+        "- **R²**: signal strength — ≥ 0.3 = significant trend, < 0.3 = noise\n"
+        "- **Win rate**: evolution of your win rate across the session (if available)",
+    },
+    "ts_regression_subheader": {
+        "fr": "Tendance (régression linéaire)",
+        "en": "Trend (linear regression)",
     },
     # ── Page Coéquipiers ─────────────────────────────────────────────────────
     "ts_computing": {

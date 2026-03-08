@@ -386,4 +386,7 @@ def plot_regression_trend(
     if wr_slope is not None:
         fig.add_trace(_winrate_indicator(wr_slope, lang), row=1, col=n_cols)
 
-    return apply_halo_plot_style(fig, title=title, height=height)
+    # Marges serrées : le titre est géré côté Streamlit (st.markdown) pour
+    # éviter tout débordement avec height=160.
+    fig.update_layout(margin={"l": 10, "r": 10, "t": 10, "b": 10})
+    return apply_halo_plot_style(fig, title=None, height=height)

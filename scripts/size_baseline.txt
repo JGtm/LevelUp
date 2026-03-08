@@ -131,6 +131,7 @@ FUNC:src/visualization/team_dominance_timeline.py:208:plot_dominance_chart:135L
 FUNC:src/visualization/timeseries.py:317:plot_per_minute_timeseries:91L
 FUNC:src/visualization/timeseries_combat.py:268:plot_damage_dealt_taken:81L
 FUNC:src/visualization/timeseries_combat.py:352:plot_shots_accuracy:92L
+FUNC:src/ui/pages/_session_compare_viz.py:251:render_kd_progression:81L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:139L
 MODULE:src/data/query/trends.py:534L

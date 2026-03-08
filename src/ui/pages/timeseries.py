@@ -147,7 +147,7 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
                 outcome_values=outcome_values,
             )
             st.plotly_chart(fig_nph, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-            st.caption(t("ts_note_nph"))
+        st.info(t("ts_note_nph"))
     else:
         st.info(t("ts_nph_unavailable"))
 
@@ -159,7 +159,7 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
             outcome_values=outcome_values,
         )
         st.plotly_chart(fig_ci, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-        st.caption(t("ts_note_ci"))
+    st.info(t("ts_note_ci"))
 
     # ── Section : Forme récente ───────────────────────────────────────────────
     st.markdown(f"#### {t('ts_section_recent')}")
@@ -175,13 +175,14 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
             outcome_values=outcome_values,
         )
         st.plotly_chart(fig_ewma, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-        st.caption(t("ts_note_ewma"))
+    st.info(t("ts_note_ewma"))
 
     if cumul.has_enough_for_trend:
+        st.markdown(f"##### {t('ts_regression_subheader')}")
         with safe_chart_render():
             fig_reg = plot_regression_trend(regression, lang=lang)
             st.plotly_chart(fig_reg, width="stretch", config=PLOTLY_STATIC_CONFIG)
-            st.caption(t("ts_note_regression"))
+        st.info(t("ts_note_regression"))
     else:
         st.info(t("ts_trend_min_matches"))
 
