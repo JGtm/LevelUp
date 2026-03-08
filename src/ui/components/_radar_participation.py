@@ -256,9 +256,11 @@ def create_participation_profile_radar(  # noqa: PLR0913
             "radialaxis": {
                 "visible": True,
                 "range": list(radial_range),
-                "showticklabels": False,
+                "showticklabels": True,
+                "tickvals": [0.25, 0.5, 0.75, 1.0],
+                "ticktext": ["25%", "50%", "75%", "100%"],
+                "tickfont": {"color": "rgba(255,255,255,0.85)", "size": 11, "weight": "bold"},
                 "gridcolor": "rgba(255,255,255,0.12)",
-                "tickfont": {"color": THEME_COLORS.text_primary},
             },
             "angularaxis": {
                 "gridcolor": "rgba(255,255,255,0.12)",

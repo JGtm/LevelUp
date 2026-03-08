@@ -108,19 +108,35 @@ def cleanup_orphan_tmp_dbs(repo_root: Path | None = None) -> None:  # noqa: PLR0
 
 
 def _get_sync_metadata_smart(db_path: str, xuid: str | None = None) -> dict:
-    """Récupère les métadonnées de sync selon le type de base."""
-    # DuckDB v4 : utiliser le repository
-    if db_path.endswith(".duckdb"):
+    """Récupère les métadonnées de sync selon le type de base.
+
+    Utilise le repo caché Streamlit si disponible pour éviter de
+    créer une connexion DuckDB supplémentaire à chaque rerun.
+    """
+    if not db_path.endswith(".duckdb"):
+        return {"last_sync_at": None, "total_matches": 0, "last_match_time": None, "player_xuid": None}
+
+    resolved_xuid = str(xuid or "").strip()
+    # Tenter le repo caché (pas de coût de connexion)
+    if resolved_xuid:
         try:
-            from src.data.repositories.duckdb_repo import DuckDBRepository
+            from src.ui._cache_core import SharedDBUnavailableError, get_cached_repository_st
 
-            repo = DuckDBRepository(db_path, str(xuid or "").strip() or "unknown")
+            repo = get_cached_repository_st(db_path, resolved_xuid)
             return repo.get_sync_metadata()
-        except Exception:
+        except SharedDBUnavailableError:
             return {"last_sync_at": None, "total_matches": 0}
+        except Exception:
+            pass
 
-    # SQLite (.db) interdit - retourner métadonnées vides
-    return {"last_sync_at": None, "total_matches": 0, "last_match_time": None, "player_xuid": None}
+    # Fallback : création d'un repo temporaire (coûteux)
+    try:
+        from src.data.repositories.duckdb_repo import DuckDBRepository
+
+        repo = DuckDBRepository(db_path, resolved_xuid or "unknown")
+        return repo.get_sync_metadata()
+    except Exception:
+        return {"last_sync_at": None, "total_matches": 0}
 
 
 def _shared_path(player_db: Path) -> Path:

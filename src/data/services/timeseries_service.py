@@ -8,12 +8,15 @@ Contrat : les pages UI appellent ces fonctions, jamais de calcul inline.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import polars as pl
 
 from src.config import CORE_STAT_COLUMNS
 from src.data.domain.refdata import Outcome
+
+logger = logging.getLogger(__name__)
 
 # ─── Dataclasses retour ────────────────────────────────────────────────
 
@@ -293,5 +296,81 @@ class TimeseriesService:
                 return PerfectKillsData(counts=counts)
         except Exception:
             pass
-
         return PerfectKillsData(counts=None)
+
+    # =========================================================================
+    # Progression avancée (Phase refonte Progression)
+    # =========================================================================
+
+    @staticmethod
+    def compute_ewma_kd(
+        dff: pl.DataFrame,
+        alpha: float = 0.2,
+    ) -> pl.DataFrame:
+        """Calcule le K/D lissé EWMA. Délègue à cumulative_progression.
+
+        Args:
+            dff: DataFrame des matchs.
+            alpha: Facteur de lissage (0 = très lisse, 0.5 = réactif).
+
+        Returns:
+            DataFrame avec kd, ewma_kd, outcome (si disponible).
+        """
+        from src.analysis.cumulative_progression import compute_ewma_kd_polars
+
+        return compute_ewma_kd_polars(dff, alpha=alpha)
+
+    @staticmethod
+    def compute_cumulative_kd_with_ci(
+        dff: pl.DataFrame,
+        z: float = 1.645,
+    ) -> pl.DataFrame:
+        """Calcule le K/D cumulé + IC 90 %. Délègue à cumulative_progression.
+
+        Args:
+            dff: DataFrame des matchs.
+            z: Z-score (1.645 = 90 %, 1.96 = 95 %).
+
+        Returns:
+            DataFrame avec cumulative_kd, ci_lower, ci_upper.
+        """
+        from src.analysis.cumulative_progression import compute_cumulative_kd_with_ci
+
+        return compute_cumulative_kd_with_ci(dff, z=z)
+
+    @staticmethod
+    def compute_linear_regression_kd(
+        ewma_df: pl.DataFrame,
+        kd_col: str = "ewma_kd",
+    ) -> dict:
+        """Calcule régression linéaire sur K/D + win rate. Délègue à cumulative_progression.
+
+        Args:
+            ewma_df: DataFrame avec ewma_kd (et outcome si disponible).
+            kd_col: Colonne K/D à régresser.
+
+        Returns:
+            Dict avec slope, r_squared, trend, is_significant, win_rate_slope…
+        """
+        from src.analysis.cumulative_progression import compute_linear_regression_kd
+
+        return compute_linear_regression_kd(ewma_df, kd_col=kd_col)
+
+    @staticmethod
+    def compute_rolling_net_score_per_hour(
+        dff: pl.DataFrame,
+        window_size: int | None = None,
+    ) -> pl.DataFrame | None:
+        """Calcule le net score/h rolling. Retourne None si time_played_seconds absent.
+
+        Args:
+            dff: DataFrame des matchs.
+            window_size: Taille de fenêtre (None = adaptatif).
+
+        Returns:
+            DataFrame ou None si données insuffisantes.
+        """
+        from src.analysis.cumulative_progression import compute_rolling_net_score_per_hour
+
+        result = compute_rolling_net_score_per_hour(dff, window_size=window_size)
+        return result if not result.is_empty() else None

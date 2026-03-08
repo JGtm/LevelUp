@@ -13,10 +13,10 @@ if TYPE_CHECKING:
     from src.data.sync._protocol import _SyncProtocol
 
 from src.data.sync.api_client import (
-    SPNKrAPIClient,
     get_player_token_env_key,
     get_tokens_for_player,
 )
+from src.data.sync.api_factory import create_api_client
 from src.data.sync.models import CareerRankData
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class CareerMixin:
                 )
                 return None
 
-            async with SPNKrAPIClient(tokens=player_tokens) as client:
+            async with create_api_client(tokens=player_tokens) as client:
                 career_data = await client.get_career_rank_progression(self._xuid)
 
                 if career_data is None:

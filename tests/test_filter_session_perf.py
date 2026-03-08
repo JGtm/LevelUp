@@ -137,18 +137,19 @@ class TestPrefetchSessionsInRenderFiltersSidebar:
     """Vérifie que render_filters_sidebar pré-charge les sessions."""
 
     def test_prefetch_calls_before_radio(self) -> None:
-        """Le pré-chargement (get_friends + compute_sessions) est appelé
-        AVANT le radio filter_mode dans le source.
+        """Le pré-chargement (_prefetch_session_data) est appelé
+        AVANT le sélecteur de mode (_render_filter_mode_selector) dans le source.
         """
-        from pathlib import Path
+        import inspect
 
-        source = (Path("src/app/filters_render.py")).read_text(encoding="utf-8")
+        from src.app.filters_render import render_filters_sidebar
 
-        # Les appels prefetch doivent apparaître AVANT le radio filter_mode
-        prefetch_pos = source.find("_prefetch_friends")
-        radio_pos = source.find('key="filter_mode"')
-        assert prefetch_pos > 0, "Pré-chargement _prefetch_friends non trouvé"
-        assert radio_pos > 0, "Radio filter_mode non trouvé"
+        source = inspect.getsource(render_filters_sidebar)
+
+        prefetch_pos = source.find("_prefetch_session_data")
+        radio_pos = source.find("_render_filter_mode_selector")
+        assert prefetch_pos > 0, "Appel _prefetch_session_data non trouvé"
+        assert radio_pos > 0, "Appel _render_filter_mode_selector non trouvé"
         assert prefetch_pos < radio_pos, "Le pré-chargement doit être AVANT le radio filter_mode"
 
     def test_prefetch_passed_to_render_session_filter(self) -> None:
@@ -205,25 +206,20 @@ class TestNoRerunOnSquadReset:
         """
         import inspect
 
-        from src.app._filters_session import _render_session_filter
+        from src.app._filters_session import _render_squad_section
 
-        source = inspect.getsource(_render_session_filter)
+        source = inspect.getsource(_render_squad_section)
 
         # Localiser le bloc de détection changement escouade
         marker = "Détection changement escouade"
         marker_pos = source.find(marker)
         assert marker_pos > 0, f"Marqueur '{marker}' non trouvé dans le source"
 
-        # Prendre le bloc entre ce marqueur et la section suivante
-        next_section = source.find("Sélection active consolidée", marker_pos)
-        assert next_section > marker_pos
-        squad_reset_block = source[marker_pos:next_section]
+        # Après ce marqueur, il ne doit pas y avoir de st.rerun()
+        squad_reset_block = source[marker_pos:]
 
-        # Vérifier qu'il n'y a pas d'appel réel st.rerun()
-        # (exclure les commentaires qui mentionnent st.rerun())
         import re
 
-        # Cherche st.rerun() en début de ligne (indenté), pas dans les commentaires
         real_rerun_calls = re.findall(r"^\s+st\.rerun\(\)", squad_reset_block, re.MULTILINE)
         assert (
             len(real_rerun_calls) == 0
@@ -236,13 +232,15 @@ class TestNoRerunOnSquadReset:
         """
         import inspect
 
-        from src.app._filters_session import _render_session_filter
+        from src.app._filters_session import _render_solo_section, _render_squad_section
 
-        source = inspect.getsource(_render_session_filter)
+        solo_src = inspect.getsource(_render_solo_section)
+        squad_src = inspect.getsource(_render_squad_section)
+        total_reruns = solo_src.count("st.rerun()") + squad_src.count("st.rerun()")
 
         # Les boutons doivent toujours avoir st.rerun()
         assert (
-            source.count("st.rerun()") >= 4
+            total_reruns >= 4
         ), "Les 4 boutons (solo last/prev, squad last/prev) doivent garder st.rerun()"
 
 
@@ -257,23 +255,23 @@ class TestPrefetchLogs:
     def test_prefetch_log_in_render_filters_sidebar(self) -> None:
         import inspect
 
-        from src.app.filters_render import render_filters_sidebar
+        from src.app.filters_render import _prefetch_session_data
 
-        source = inspect.getsource(render_filters_sidebar)
+        source = inspect.getsource(_prefetch_session_data)
         assert "Sessions pré-chargées" in source
 
     def test_cache_usage_log_in_render_session_filter(self) -> None:
         import inspect
 
-        from src.app._filters_session import _render_session_filter
+        from src.app._filters_session import _load_session_context
 
-        source = inspect.getsource(_render_session_filter)
+        source = inspect.getsource(_load_session_context)
         assert "utilisation du cache pré-chargé" in source
 
     def test_squad_reset_log_in_render_session_filter(self) -> None:
         import inspect
 
-        from src.app._filters_session import _render_session_filter
+        from src.app._filters_session import _render_squad_section
 
-        source = inspect.getsource(_render_session_filter)
+        source = inspect.getsource(_render_squad_section)
         assert "Reset solo" in source

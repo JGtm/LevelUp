@@ -118,6 +118,14 @@ def render_teammates_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
         st.warning(t("no_matches"))
         return
 
+    # Session solo — aucun coéquipier
+    if (
+        picked_session_labels is not None
+        and st.session_state.get("picked_solo_session_label", "(toutes)") != "(toutes)"
+    ):
+        st.info(t("tm_solo_session_info"))
+        return
+
     # Vérification du cache pour performance
     if not st.session_state.get("_cache_warning_shown"):
         has_cache = cached_has_cache_tables(db_path, db_key)

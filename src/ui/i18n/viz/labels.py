@@ -107,7 +107,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Impact timeline ────────────────────────────────────────────────────────
     "impact_first_blood": {"fr": "Premier sang", "en": "First Blood"},
     "impact_clutch_finisher": {"fr": "Finisseur", "en": "Finisher"},
-    "impact_last_group_kill": {"fr": "Plus lent", "en": "Slowest"},
+    "impact_last_group_kill": {"fr": "Touriste", "en": "Tourist"},
     "impact_first_group_death": {"fr": "Première victime", "en": "First Casualty"},
     "impact_last_casualty": {"fr": "Boulet", "en": "Weakest Link"},
     # ── Messages vides ────────────────────────────────────────────────────────
@@ -158,6 +158,12 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "suffix_deaths": {"fr": "morts", "en": "deaths"},
     "suffix_kills": {"fr": "kills", "en": "kills"},
     "suffix_smoothed": {"fr": "(lissée)", "en": "(smoothed)"},
+    "suffix_per_10_matches": {"fr": "/10 matchs", "en": "/10 matches"},
+    # ── Régression ────────────────────────────────────────────────────────────
+    "label_kd_slope": {"fr": "Pente K/D", "en": "K/D Slope"},
+    "label_win_rate_slope": {"fr": "Pente Win Rate", "en": "Win Rate Slope"},
+    "label_r_squared": {"fr": "R² (solidité)", "en": "R² (strength)"},
+    "label_not_significant": {"fr": "⚠ non significatif", "en": "⚠ not significant"},
     # ── Texte divers ──────────────────────────────────────────────────────────
     "text_kills_count": {
         "fr": "{k} frags",

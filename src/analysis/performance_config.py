@@ -8,7 +8,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.ui.i18n import t
+
+def _t(key: str, lang: str | None = None) -> str:
+    """Wrapper local pour la traduction (évite import UI au niveau module)."""
+    from src.ui.i18n import t  # local import intentionnel (analysis → ui évité au module-level)
+
+    return t(key, lang=lang)
+
 
 # =============================================================================
 # Version du score
@@ -88,11 +94,11 @@ SCORE_LABELS = {
 def get_score_labels(lang: str | None = None) -> dict[str, str]:
     """Retourne les labels traduits pour les seuils de performance."""
     return {
-        "excellent": t("perf_label_excellent", lang=lang),
-        "good": t("perf_label_good", lang=lang),
-        "average": t("perf_label_average", lang=lang),
-        "below_average": t("perf_label_below", lang=lang),
-        "bad": t("perf_label_bad", lang=lang),
+        "excellent": _t("perf_label_excellent", lang=lang),
+        "good": _t("perf_label_good", lang=lang),
+        "average": _t("perf_label_average", lang=lang),
+        "below_average": _t("perf_label_below", lang=lang),
+        "bad": _t("perf_label_bad", lang=lang),
     }
 
 
@@ -107,12 +113,12 @@ PERFORMANCE_SCORE_SHORT_DESC = "Relatif à ton historique"
 
 def get_performance_title(lang: str | None = None) -> str:
     """Retourne le titre traduit du score de performance."""
-    return t("perf_title", lang=lang)
+    return _t("perf_title", lang=lang)
 
 
 def get_performance_short_desc(lang: str | None = None) -> str:
     """Retourne la description courte traduite."""
-    return t("perf_short_desc", lang=lang)
+    return _t("perf_short_desc", lang=lang)
 
 
 PERFORMANCE_SCORE_FULL_DESC = f"""
@@ -251,14 +257,14 @@ class PerformanceScoreResult:
         if self.score is None:
             return "N/A"
         if self.score >= SCORE_THRESHOLDS["excellent"]:
-            return t("perf_score_exceptional", lang=lang)
+            return _t("perf_score_exceptional", lang=lang)
         if self.score >= SCORE_THRESHOLDS["good"]:
-            return t("perf_score_good", lang=lang)
+            return _t("perf_score_good", lang=lang)
         if self.score >= SCORE_THRESHOLDS["average"]:
-            return t("perf_score_normal", lang=lang)
+            return _t("perf_score_normal", lang=lang)
         if self.score >= SCORE_THRESHOLDS["below_average"]:
-            return t("perf_score_below", lang=lang)
-        return t("perf_score_difficult", lang=lang)
+            return _t("perf_score_below", lang=lang)
+        return _t("perf_score_difficult", lang=lang)
 
     @property
     def color_class(self) -> str:
@@ -279,13 +285,13 @@ class PerformanceScoreResult:
 def get_score_interpretation(score: float | None, lang: str | None = None) -> str:
     """Retourne l'interprétation textuelle d'un score (traduite)."""
     if score is None:
-        return t("perf_insufficient", lang=lang)
+        return _t("perf_insufficient", lang=lang)
     if score >= SCORE_THRESHOLDS["excellent"]:
-        return t("perf_interp_excellent", lang=lang)
+        return _t("perf_interp_excellent", lang=lang)
     if score >= SCORE_THRESHOLDS["good"]:
-        return t("perf_interp_good", lang=lang)
+        return _t("perf_interp_good", lang=lang)
     if score >= SCORE_THRESHOLDS["average"]:
-        return t("perf_interp_average", lang=lang)
+        return _t("perf_interp_average", lang=lang)
     if score >= SCORE_THRESHOLDS["below_average"]:
-        return t("perf_interp_below", lang=lang)
-    return t("perf_interp_bad", lang=lang)
+        return _t("perf_interp_below", lang=lang)
+    return _t("perf_interp_bad", lang=lang)

@@ -157,6 +157,65 @@ def _inventory_backdrop_to_waypoint_png(backdrop_path: str | None) -> str | None
     return None
 
 
+async def resolve_positive_emblem_cfg(  # noqa: PLR0912
+    session,
+    emblem_path: str | None,
+    configuration_id: int | None,
+    *,
+    spartan_token: str,
+    clearance_token: str,
+) -> int | None:
+    """Résout un ConfigurationId positif valide pour un emblème.
+
+    Si configuration_id > 0, le retourne tel quel (aucun appel réseau).
+    Sinon, interroge le JSON GameCMS de l'emblème pour trouver le premier
+    ConfigurationId positif dans AvailableConfigurations.
+
+    Les cfgs négatifs (ex: -1498857697) sont des palettes « Test » dont le CDN
+    Waypoint ne sert pas d'images. Il faut utiliser une palette alternative.
+    """
+    if configuration_id is None:
+        return None
+    try:
+        cfg = int(configuration_id)
+    except (TypeError, ValueError):
+        return None
+
+    if cfg > 0:
+        return cfg
+
+    # cfg <= 0 : chercher un cfg positif dans les AvailableConfigurations du JSON CMS
+    cms_url = _inventory_json_to_cms_url(emblem_path)
+    if not cms_url:
+        return None
+
+    headers = {
+        "Accept": "application/json",
+        "X-343-Authorization-Spartan": spartan_token,
+        "343-Clearance": clearance_token,
+    }
+
+    try:
+        async with session.get(cms_url, headers=headers) as resp:
+            if resp.status != 200:
+                return None
+            data = await resp.json(content_type=None)
+    except Exception:
+        return None
+
+    for entry in data.get("AvailableConfigurations", []):
+        entry_cfg = entry.get("ConfigurationId")
+        if entry_cfg is not None:
+            try:
+                entry_cfg_int = int(entry_cfg)
+                if entry_cfg_int > 0:
+                    return entry_cfg_int
+            except (TypeError, ValueError):
+                pass
+
+    return None
+
+
 async def resolve_inventory_png_via_api(
     session,
     inventory_path: str | None,

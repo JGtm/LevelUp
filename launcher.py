@@ -1,4 +1,4 @@
-"""Lanceur LevelUp pour OpenSpartan Graph.
+"""Lanceur LevelUp.
 
 Architecture v5 DuckDB unifiée avec stockage partagé (shared_matches).
 
@@ -56,6 +56,8 @@ from src.utils.paths import (
     PLAYER_DB_FILENAME,
     PLAYERS_DIR,
     WAREHOUSE_DIR,
+    get_pve_db_path,
+    get_shared_matches_path,
 )
 
 # =============================================================================
@@ -235,6 +237,7 @@ def _list_players() -> list[PlayerInfo]:
         gamertag = player_dir.name
         total_matches = 0
         xuid = None
+        db_readable = True
 
         try:
             con = duckdb.connect(str(db_path), read_only=True)
@@ -270,7 +273,7 @@ def _list_players() -> list[PlayerInfo]:
             finally:
                 con.close()
         except Exception:
-            pass
+            db_readable = False
 
         players.append(
             PlayerInfo(
@@ -280,6 +283,8 @@ def _list_players() -> list[PlayerInfo]:
                 xuid=xuid,
             )
         )
+        if not db_readable:
+            print(f"  ⚠ {gamertag}/stats.duckdb illisible (fichier corrompu ?)")
 
     # Trier par nombre de matchs décroissant
     players.sort(key=lambda p: p.total_matches, reverse=True)
@@ -331,6 +336,46 @@ def _metadata_db_exists() -> bool:
 # =============================================================================
 
 
+def _classify_sync_error(err: str, gamertag: str) -> str:
+    """Retourne un message d'erreur de sync actionnable selon le type d'échec."""
+    s = err.lower()
+    if "invalid_grant" in s or "aadsts" in s or ("expir" in s and ("token" in s or "refresh" in s)):
+        return (
+            f"  ⚠ Token OAuth expiré pour {gamertag}\n"
+            "  → Relance LevelUp puis choisis « Ajouter un joueur » pour renouveler le token."
+        )
+    if any(
+        kw in s
+        for kw in (
+            "could not set lock",
+            "could not open lock",
+            "locked by",
+            "being used by another process",
+        )
+    ):
+        return (
+            "  ⚠ Base de données verrouillée.\n"
+            "  → Ferme le dashboard LevelUp (Streamlit) avant de synchroniser."
+        )
+    if any(
+        kw in s
+        for kw in (
+            "cannot connect",
+            "clientconnectorerror",
+            "getaddrinfo",
+            "name resolution",
+            "timed out",
+            "network unreachable",
+            "connection refused",
+        )
+    ):
+        return (
+            "  ⚠ Impossible de joindre les serveurs Halo.\n"
+            "  → Vérifie ta connexion internet et réessaie."
+        )
+    return f"  ⚠ Erreur sync ({gamertag}) : {err}"
+
+
 async def _sync_player_duckdb_async(
     gamertag: str, *, delta: bool = True, max_matches: int = 100
 ) -> tuple[int, int]:
@@ -362,7 +407,7 @@ async def _sync_player_duckdb_async(
         print("  ⚠ Tokens non configurés (SPNKR_SPARTAN_TOKEN, SPNKR_CLEARANCE_TOKEN)")
         return (matches_before, matches_before)
     except Exception as e:
-        print(f"  ⚠ Erreur tokens: {e}")
+        print(_classify_sync_error(str(e), gamertag))
         return (matches_before, matches_before)
 
     if not tokens:
@@ -392,10 +437,10 @@ async def _sync_player_duckdb_async(
             result = await engine.sync_full(options)
 
         if result.error:
-            print(f"  ⚠ Erreur sync: {result.error}")
+            print(_classify_sync_error(str(result.error), gamertag))
 
     except Exception as e:
-        print(f"  ⚠ Erreur sync: {e}")
+        print(_classify_sync_error(str(e), gamertag))
         return (matches_before, matches_before)
 
     # Compter les matchs après
@@ -454,6 +499,351 @@ def _fetch_profile_assets(gamertag: str) -> None:
 
 
 # =============================================================================
+# Commande: setup (remplace setup.bat / setup_env.ps1)
+# =============================================================================
+
+
+def _find_system_python() -> str | None:
+    """Trouve un Python 3.10-3.13 sur le système."""
+    import shutil
+
+    # 1. Essayer le Python Launcher (py) — Windows uniquement
+    if sys.platform == "win32" and shutil.which("py"):
+        for minor in (12, 13, 11, 10):
+            try:
+                result = subprocess.run(
+                    ["py", f"-3.{minor}", "-c", "import sys; print(sys.executable)"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    return result.stdout.strip()
+            except Exception:
+                continue
+
+    # 2. Essayer les binaires versionnés (Homebrew macOS, apt Linux)
+    for minor in (12, 13, 11, 10):
+        exe = shutil.which(f"python3.{minor}")
+        if exe:
+            return exe
+
+    # 3. Essayer python3 / python générique dans le PATH
+    for name in ("python3", "python"):
+        exe = shutil.which(name)
+        if not exe:
+            continue
+        try:
+            result = subprocess.run(
+                [exe, "-c", "import sys; print(sys.version_info.minor)"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                minor = int(result.stdout.strip())
+                if 10 <= minor <= 13:
+                    return exe
+        except Exception:
+            continue
+
+    # 4. Chemins standards Windows
+    if sys.platform == "win32":
+        appdata = os.environ.get("LOCALAPPDATA", "")
+        for minor in (12, 13, 11, 10):
+            candidate = Path(appdata) / "Programs" / "Python" / f"Python3{minor}" / "python.exe"
+            if candidate.exists():
+                return str(candidate)
+
+    # 5. Chemins standards macOS (Homebrew Intel + Apple Silicon)
+    if sys.platform == "darwin":
+        for prefix in ("/opt/homebrew", "/usr/local"):
+            for minor in (12, 13, 11, 10):
+                candidate = Path(prefix) / "bin" / f"python3.{minor}"
+                if candidate.exists():
+                    return str(candidate)
+
+    return None
+
+
+def _install_python_via_winget() -> bool:
+    """Installe Python 3.12 via winget (Windows uniquement)."""
+    if sys.platform != "win32":
+        print("  ⚠ Installation automatique uniquement disponible sur Windows.")
+        print("  Installez Python manuellement: https://www.python.org/downloads/")
+        return False
+
+    import shutil
+
+    if not shutil.which("winget"):
+        print("  ⚠ winget non disponible sur ce système.")
+        print("  Installez Python manuellement: https://www.python.org/downloads/")
+        return False
+
+    print("  → Installation de Python 3.12 via winget...")
+    try:
+        result = subprocess.run(
+            [
+                "winget",
+                "install",
+                "--id",
+                "Python.Python.3.12",
+                "--scope",
+                "user",
+                "--accept-source-agreements",
+                "--accept-package-agreements",
+            ],
+            timeout=300,
+        )
+        return result.returncode == 0
+    except Exception as e:
+        print(f"  ⚠ Erreur winget: {e}")
+        return False
+
+
+def _cmd_setup(args: argparse.Namespace) -> int:
+    """Commande: configure l'environnement (venv + dépendances)."""
+    update_mode = getattr(args, "update", False)
+
+    print("=" * 60)
+    print("⚙️  LEVELUP — SETUP" + (" (mise à jour)" if update_mode else ""))
+    print("=" * 60)
+
+    venv_python = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
+    if sys.platform != "win32":
+        venv_python = REPO_ROOT / ".venv" / "bin" / "python"
+
+    created_venv = False
+
+    # ── 1. Vérifier/créer le venv ──
+    if venv_python.exists() and not update_mode:
+        print("\n[1/3] Environnement .venv déjà présent ✓")
+        py = str(venv_python)
+    else:
+        print("\n[1/3] Recherche de Python...")
+
+        py = _find_system_python()
+        if not py:
+            print("  Python 3.10+ non trouvé sur le système.")
+            if _install_python_via_winget():
+                py = _find_system_python()
+
+        if not py:
+            print("\n  ❌ Impossible de trouver Python 3.10+.")
+            print("  Installez-le depuis https://www.python.org/downloads/")
+            return 1
+
+        print(f"  Python trouvé: {py}")
+
+        if not venv_python.exists():
+            print("\n[2/3] Création de l'environnement virtuel...")
+            result = subprocess.run([py, "-m", "venv", str(REPO_ROOT / ".venv")])
+            if result.returncode != 0:
+                print("  ❌ Impossible de créer le venv.")
+                return 1
+            print("  ✓ .venv créé")
+            created_venv = True
+        else:
+            print("\n[2/3] Environnement .venv existant ✓")
+
+        py = str(venv_python)
+
+    # ── 2. Installer/mettre à jour les dépendances ──
+    step = "3/3" if created_venv else "2/2"
+    print(f"\n[{step}] Installation des dépendances...")
+
+    subprocess.run([py, "-m", "pip", "install", "--upgrade", "pip", "-q"])
+    pip_cmd = [py, "-m", "pip", "install", "-e", ".[spnkr]", "-q"]
+    if update_mode:
+        pip_cmd.insert(-1, "--upgrade")
+
+    result = subprocess.run(pip_cmd)
+    if result.returncode != 0:
+        print("  ❌ L'installation des dépendances a échoué.")
+        print("  Causes possibles :")
+        print("  - Pas de connexion internet")
+        print("  - Dossier en lecture seule (déplace LevelUp dans Documents)")
+        print("  - Espace disque insuffisant")
+        return 1
+    print("  ✓ Dépendances installées")
+
+    # ── 3. Vérification rapide ──
+    check = subprocess.run(
+        [py, "-c", "import streamlit; import duckdb; import polars; print('OK')"],
+        capture_output=True,
+        text=True,
+    )
+    if check.returncode != 0:
+        print("  ⚠ Packages critiques manquants après installation.")
+        return 1
+
+    print("\n" + "=" * 60)
+    print("✅ SETUP TERMINÉ")
+    print("=" * 60)
+    print(f"\n  Python: {py}")
+    print("  Commandes utiles:")
+    print("    python launcher.py run     # Lancer le dashboard")
+    print("    python launcher.py doctor  # Vérifier l'environnement")
+    return 0
+
+
+# =============================================================================
+# Commande: doctor (absorbe check_env.py)
+# =============================================================================
+
+
+def _cmd_doctor(args: argparse.Namespace) -> int:
+    """Commande: vérifie la santé de l'environnement."""
+    from importlib import metadata as importlib_metadata
+
+    print("=" * 60)
+    print("🩺 LEVELUP — DOCTOR")
+    print("=" * 60)
+
+    import platform as pf
+
+    print(f"\n  OS:     {pf.system()} {pf.release()}")
+    print(f"  Python: {sys.version.split()[0]}")
+    print(f"  Exe:    {sys.executable}")
+    print(f"  Venv:   {'oui' if sys.prefix != getattr(sys, 'base_prefix', sys.prefix) else 'non'}")
+
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    # Vérifier qu'on est dans le bon venv
+    expected_venv = (REPO_ROOT / ".venv").resolve()
+    if expected_venv.exists():
+        _venv_py = _preferred_python_executable()
+        if _venv_py is not None:
+            exe_r = Path(sys.executable).resolve()
+            if exe_r != _venv_py.resolve():
+                errors.append(f"Mauvais interpréteur: {exe_r} (attendu {_venv_py.resolve()})")
+    else:
+        errors.append("Dossier .venv introuvable — lancez: python launcher.py setup")
+
+    # Vérifier les versions des packages critiques
+    expected_packages = {
+        "duckdb": "1.4.4",
+        "polars": "1.38.1",
+        "pyarrow": "23.0.0",
+        "streamlit": None,
+        "spnkr": None,
+    }
+    for pkg, expected_ver in expected_packages.items():
+        try:
+            actual = importlib_metadata.version(pkg)
+            status = "✓"
+            if expected_ver and actual != expected_ver:
+                status = "⚠"
+                warnings.append(f"{pkg}: {actual} (attendu {expected_ver})")
+            print(f"  {status} {pkg}=={actual}")
+        except importlib_metadata.PackageNotFoundError:
+            print(f"  ✗ {pkg} — MANQUANT")
+            errors.append(f"Package manquant: {pkg}")
+
+    # Vérifier les données
+    print()
+    players = _list_players()
+    if players:
+        total = sum(p.total_matches for p in players)
+        print(f"  📊 {len(players)} joueur(s), {total} matchs")
+    else:
+        warnings.append("Aucune donnée joueur trouvée dans data/players/")
+
+    meta_path = WAREHOUSE_DIR / METADATA_DB_FILENAME
+    if meta_path.exists():
+        print(f"  ✓ metadata.duckdb ({meta_path.stat().st_size / 1024 / 1024:.1f} MB)")
+    else:
+        warnings.append("metadata.duckdb manquant")
+
+    # Résultats
+    if warnings:
+        print("\n⚠ Avertissements:")
+        for w in warnings:
+            print(f"  - {w}")
+
+    if errors:
+        print("\n❌ Erreurs:")
+        for e in errors:
+            print(f"  - {e}")
+        print("\n  → Corrigez avec: python launcher.py setup")
+        return 1
+
+    print("\n✅ Environnement OK")
+    return 0
+
+
+# =============================================================================
+# Migrations de schéma automatiques
+# =============================================================================
+
+
+def _run_migrations() -> None:
+    """Applique les migrations de schéma pendantes sur toutes les DB.
+
+    Exécuté avant le lancement de Streamlit. Non-bloquant en cas d'erreur.
+    """
+    from src.data.migration.runner import apply_pending_migrations
+
+    players = _list_players()
+    shared_path = get_shared_matches_path()
+    pve_path = get_pve_db_path()
+
+    # Initialiser shared_matches.duckdb si absent (premier lancement avec joueurs)
+    if players and not shared_path.exists():
+        _ensure_warehouse_dbs()
+
+    if not players and not shared_path.exists():
+        return
+
+    print("\n🔧 Vérification du schéma de données…", flush=True)
+
+    total_schemas = 0
+    total_backfills = 0
+    errors: list[str] = []
+
+    # Migrations shared (une seule fois)
+    try:
+        report = apply_pending_migrations(
+            shared_db_path=shared_path if shared_path.exists() else None,
+            pve_db_path=pve_path if pve_path.exists() else None,
+        )
+        total_schemas += report.schemas_applied
+        total_backfills += report.backfills_applied
+        if report.errors:
+            errors.extend(report.errors)
+    except Exception as e:
+        errors.append(f"shared: {e}")
+
+    # Migrations player (pour chaque joueur)
+    for player in players:
+        db_path = PLAYERS_DIR / player.gamertag / PLAYER_DB_FILENAME
+        if not db_path.exists():
+            continue
+        try:
+            report = apply_pending_migrations(player_db_path=db_path)
+            total_schemas += report.schemas_applied
+            total_backfills += report.backfills_applied
+            if report.errors:
+                errors.extend(report.errors)
+        except Exception as e:
+            errors.append(f"{player.gamertag}: {e}")
+
+    if total_schemas == 0 and total_backfills == 0:
+        print("   ✓ Schéma à jour", flush=True)
+    else:
+        if total_schemas:
+            print(f"   ✓ {total_schemas} migration(s) de schéma appliquée(s)", flush=True)
+        if total_backfills:
+            print(f"   ✓ {total_backfills} backfill(s) exécuté(s)", flush=True)
+
+    if errors:
+        print(f"   ⚠ {len(errors)} erreur(s) non-bloquante(s):", flush=True)
+        for err in errors[:5]:
+            print(f"     - {err}", flush=True)
+
+
+# =============================================================================
 # Commandes principales
 # =============================================================================
 
@@ -469,9 +859,8 @@ def _launch_streamlit(
     if not DEFAULT_STREAMLIT_APP.exists():
         raise SystemExit(f"Introuvable: {DEFAULT_STREAMLIT_APP}")
 
-    _require_module(
-        "streamlit", install_hint="./.venv/Scripts/python -m pip install -r requirements.txt"
-    )
+    _pip_hint = ".venv\\Scripts\\python.exe" if sys.platform == "win32" else ".venv/bin/python"
+    _require_module("streamlit", install_hint=f"{_pip_hint} -m pip install -e .[spnkr]")
 
     chosen_port = int(port) if port else _pick_free_port()
     url = f"http://localhost:{chosen_port}"
@@ -492,6 +881,9 @@ def _launch_streamlit(
 
     # Délai avant ouverture du navigateur pour laisser Streamlit démarrer
     STREAMLIT_STARTUP_DELAY_SECONDS = 1.2
+
+    # Appliquer les migrations de schéma avant le lancement
+    _run_migrations()
 
     print("\n\ud83d\ude80 Lancement du dashboard\u2026", flush=True)
     print(f"   URL: {url}", flush=True)
@@ -534,8 +926,22 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
     if not players:
         print("❌ Aucune donnée joueur trouvée")
-        print("\n   Tu dois d'abord synchroniser les données:")
-        print("   python launcher.py sync")
+        print()
+        if sys.stdin.isatty():
+            try:
+                go = input("  Configurer un premier joueur maintenant ? [O/n] : ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                return 2
+            if go in ("", "o", "oui", "y", "yes"):
+                rc = _onboard_first_player()
+                if rc == 0:
+                    players = _list_players()
+                    if players:
+                        return _launch_streamlit(
+                            db_path=None, port=args.port, no_browser=args.no_browser
+                        )
+        else:
+            print("   Lance : python launcher.py add-player --gamertag <gamertag>")
         return 2
 
     # Afficher les infos
@@ -558,10 +964,10 @@ def _cmd_sync(args: argparse.Namespace) -> int:
 
     if not players:
         print("❌ Aucun joueur trouvé dans data/players/")
-        print("\n   Pour ajouter un nouveau joueur, utilise:")
-        print("   python scripts/sync_player.py --gamertag <gamertag>")
-        print("\n   Ou crée manuellement le dossier:")
-        print("   mkdir data/players/<gamertag>")
+        print("\n   Pour synchroniser un premier joueur :")
+        print("   python launcher.py add-player")
+        print("\n   Ou directement en ligne de commande :")
+        print("   python scripts/sync.py --delta --gamertag <gamertag>")
         return 2
 
     print("=" * 60)
@@ -605,7 +1011,7 @@ def _cmd_sync(args: argparse.Namespace) -> int:
             _fetch_profile_assets(player.gamertag)
 
         except Exception as e:
-            print(f"  ⚠ Erreur: {e}")
+            print(_classify_sync_error(str(e), player.gamertag))
             failures += 1
 
     if _check_shutdown():
@@ -627,7 +1033,7 @@ def _cmd_sync(args: argparse.Namespace) -> int:
 
     # Lancer le dashboard si demandé
     if getattr(args, "run", False):
-        return _launch_streamlit(db_path=None, port=8501, no_browser=False)
+        return _launch_streamlit(db_path=None, port=None, no_browser=False)
 
     return 0
 
@@ -667,6 +1073,439 @@ def _cmd_info(args: argparse.Namespace) -> int:
 
 
 # =============================================================================
+# Onboarding — Premier joueur
+# =============================================================================
+
+
+def _ensure_warehouse_dbs() -> None:
+    """Crée data/warehouse/ et initialise shared_matches.duckdb et metadata.duckdb si absents (idempotent)."""
+    WAREHOUSE_DIR.mkdir(parents=True, exist_ok=True)
+
+    shared_path = get_shared_matches_path()
+    if not shared_path.exists():
+        try:
+            from src.data.sync._engine_connections import _bootstrap_shared_matches_db
+
+            _bootstrap_shared_matches_db(shared_path)
+            print("  ✓ shared_matches.duckdb initialisé", flush=True)
+        except Exception as exc:
+            print(f"  ⚠ Impossible d'initialiser shared_matches.duckdb : {exc}", flush=True)
+
+    meta_path = WAREHOUSE_DIR / "metadata.duckdb"
+    if not meta_path.exists():
+        try:
+            import duckdb as _duckdb
+
+            _conn = _duckdb.connect(str(meta_path))
+            _conn.close()
+            print("  ✓ metadata.duckdb initialisé", flush=True)
+        except Exception as exc:
+            print(f"  ⚠ Impossible d'initialiser metadata.duckdb : {exc}", flush=True)
+
+
+def _load_dotenv_for_launcher() -> None:
+    """Charge .env.local puis .env dans os.environ (ne surcharge pas les vars existantes)."""
+    for name in (".env.local", ".env"):
+        env_file = REPO_ROOT / name
+        if not env_file.exists():
+            continue
+        try:
+            content = env_file.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
+def _env_check_for_player(gamertag: str) -> dict[str, object]:
+    """Vérifie la présence des variables d'env requises pour un gamertag.
+
+    Returns:
+        Dictionnaire avec les clés « client_id », « client_secret »,
+        « player_token » (bool) et « player_token_key » (str).
+    """
+    _load_dotenv_for_launcher()
+    gt_norm = gamertag.upper().replace(" ", "_").replace("-", "_")
+    token_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{gt_norm}"
+    return {
+        "client_id": bool(os.environ.get("SPNKR_AZURE_CLIENT_ID")),
+        "client_secret": bool(os.environ.get("SPNKR_AZURE_CLIENT_SECRET")),
+        "player_token": bool(
+            os.environ.get(token_key) or os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN")
+        ),
+        "player_token_key": token_key,
+    }
+
+
+def _print_token_setup_instructions(gamertag: str, token_key: str) -> None:
+    """Affiche les instructions pour obtenir et configurer le refresh token OAuth."""
+    client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "<CLIENT_ID>")
+    auth_url = (
+        f"https://login.live.com/oauth20_authorize.srf"
+        f"?client_id={client_id}"
+        "&response_type=code"
+        "&redirect_uri=https%3A%2F%2Flocalhost"
+        "&scope=Xboxlive.signin+Xboxlive.offline_access"
+    )
+    print()
+    print("  ┌────────────────────────────────────────────────────────┐")
+    print("  │          Configuration du token OAuth Azure            │")
+    print("  └────────────────────────────────────────────────────────┘")
+    print()
+    print("  1) Ouvre ce lien dans ton navigateur :")
+    print(f"\n     {auth_url}\n")
+    print("  2) Connecte-toi avec ton compte Xbox puis copie")
+    print("     l'URL de redirection (https://localhost/?code=...)")
+    print()
+    print("  3) Lance :")
+    print("       python scripts/spnkr_get_refresh_token.py \\")
+    print("         --oauth-endpoint v2 \\")
+    print('         --auth-code "<URL copiée>"')
+    print()
+    print("  4) Ajoute dans .env.local :")
+    print(f"       {token_key}=<refresh_token_obtenu>")
+    print()
+    print("  5) Relance LevelUp")
+    print()
+
+
+# =============================================================================
+# Wizards de configuration interactive (zéro CLI)
+# =============================================================================
+
+
+def _upsert_env_key(path: Path, key: str, value: str) -> None:
+    """Écrit ou met à jour une clé dans un fichier .env / .env.local."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines: list[str] = []
+    if path.exists():
+        with contextlib.suppress(Exception):
+            lines = path.read_text(encoding="utf-8").splitlines()
+    new_lines: list[str] = []
+    replaced = False
+    for line in lines:
+        if line.strip().startswith(f"{key}="):
+            new_lines.append(f"{key}={value}")
+            replaced = True
+        else:
+            new_lines.append(line)
+    if not replaced:
+        if new_lines and new_lines[-1].strip():
+            new_lines.append("")
+        new_lines.append(f"{key}={value}")
+    path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+
+def _extract_code_from_url(value: str) -> str:
+    """Extrait le code OAuth depuis une URL de redirection ou retourne la valeur brute."""
+    from urllib.parse import parse_qs, urlparse
+
+    v = (value or "").strip()
+    if not v or ("code=" not in v and "http" not in v):
+        return v
+    try:
+        qs = parse_qs(urlparse(v).query)
+        code = (qs.get("code") or [""])[0]
+        if code:
+            return str(code).strip()
+    except Exception:
+        pass
+    if "code=" in v:
+        return v.split("code=", 1)[1].split("&", 1)[0].strip()
+    return v
+
+
+def _extract_oauth_error_from_url(value: str) -> tuple[str | None, str | None]:
+    """Extrait (error, description) depuis une URL OAuth de redirection."""
+    from urllib.parse import parse_qs, urlparse
+
+    v = (value or "").strip()
+    if "error=" not in v:
+        return None, None
+    try:
+        qs = parse_qs(urlparse(v).query)
+        err = (qs.get("error") or [None])[0]
+        desc = (qs.get("error_description") or [None])[0]
+        if err:
+            return str(err), (str(desc) if desc else None)
+    except Exception:
+        pass
+    err = v.split("error=", 1)[1].split("&", 1)[0].strip() or None
+    return err, None
+
+
+async def _async_exchange_oauth_code_v2(
+    auth_code: str, client_id: str, client_secret: str, redirect_uri: str
+) -> str:
+    """Échange un code OAuth contre un refresh_token (endpoint Microsoft v2 consumers)."""
+    from aiohttp import ClientSession
+
+    url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
+    data = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": "authorization_code",
+        "code": auth_code,
+        "redirect_uri": redirect_uri,
+        "scope": "Xboxlive.signin Xboxlive.offline_access",
+    }
+    async with ClientSession() as session:
+        resp = await session.post(url, data=data)
+        payload = await resp.json()
+    if resp.status >= 400:
+        err = payload.get("error", "unknown")
+        desc = str(payload.get("error_description", ""))[:200]
+        raise ValueError(f"{err}: {desc}")
+    token = payload.get("refresh_token")
+    if not isinstance(token, str) or not token.strip():
+        raise ValueError("Pas de refresh_token dans la réponse OAuth")
+    return token.strip()
+
+
+def _wizard_azure_creds() -> bool:
+    """Wizard interactif : saisie et sauvegarde des credentials Azure App.
+
+    Retourne True si configurés avec succès, False sinon.
+    """
+    print()
+    print("  ┌────────────────────────────────────────────────────────┐")
+    print("  │     Configuration Azure App Registration               │")
+    print("  └────────────────────────────────────────────────────────┘")
+    print()
+    print("  Pour accéder à l'API Halo, il te faut une Azure App :")
+    print("    1) https://portal.azure.com → App registrations → New registration")
+    print("       Nom : LevelUp | Account type : Personal Microsoft accounts")
+    print("       Redirect URI : Web → https://localhost")
+    print("    2) Copie l'« Application (client) ID »")
+    print("    3) Certificates & secrets → New client secret → copie la VALUE")
+    print()
+    try:
+        client_id = input("  Client ID (Application ID) : ").strip()
+        if not client_id:
+            return False
+        client_secret = input("  Client Secret (Value)     : ").strip()
+        if not client_secret:
+            return False
+    except (EOFError, KeyboardInterrupt):
+        return False
+    env_local = REPO_ROOT / ".env.local"
+    try:
+        _upsert_env_key(env_local, "SPNKR_AZURE_CLIENT_ID", client_id)
+        _upsert_env_key(env_local, "SPNKR_AZURE_CLIENT_SECRET", client_secret)
+        os.environ["SPNKR_AZURE_CLIENT_ID"] = client_id
+        os.environ["SPNKR_AZURE_CLIENT_SECRET"] = client_secret
+        print("  ✅ Credentials sauvegardés dans .env.local")
+        return True
+    except Exception as exc:
+        print(f"  ❌ Sauvegarde impossible : {exc}")
+        return False
+
+
+def _wizard_oauth_token(gamertag: str, client_id: str, client_secret: str) -> str | None:
+    """Wizard interactif : obtention et sauvegarde du refresh token OAuth Xbox Live.
+
+    Ouvre le navigateur, demande l'URL de redirection, échange le code,
+    écrit le token dans .env.local. Retourne le token ou None si échec.
+    """
+    from urllib.parse import quote_plus
+
+    redirect_uri = os.environ.get("SPNKR_AZURE_REDIRECT_URI", "https://localhost")
+    scope = "Xboxlive.signin Xboxlive.offline_access"
+    auth_url = (
+        "https://login.live.com/oauth20_authorize.srf"
+        f"?client_id={quote_plus(client_id)}"
+        "&response_type=code&approval_prompt=auto"
+        f"&scope={quote_plus(scope)}"
+        f"&redirect_uri={quote_plus(redirect_uri)}"
+    )
+    print()
+    print("  ┌────────────────────────────────────────────────────────┐")
+    print("  │       Connexion Xbox Live — OAuth                      │")
+    print("  └────────────────────────────────────────────────────────┘")
+    print()
+    print("  Je vais ouvrir ton navigateur pour te connecter à Xbox Live.")
+    print("  → Tu seras redirigé vers https://localhost (page d'erreur : normal).")
+    print("  → Copie l'URL complète de la barre d'adresse et colle-la ici.")
+    print()
+    with contextlib.suppress(Exception):
+        webbrowser.open(auth_url)
+    print(f"  (Lien de secours : {auth_url})")
+    print()
+    try:
+        redirect_url = input("  Colle ici l'URL de redirection : ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    if not redirect_url:
+        return None
+    err, desc = _extract_oauth_error_from_url(redirect_url)
+    if err:
+        print(f"  ❌ Erreur OAuth : {err}" + (f" — {desc}" if desc else ""))
+        return None
+    auth_code = _extract_code_from_url(redirect_url)
+    if not auth_code:
+        print("  ❌ Impossible d'extraire le code OAuth de l'URL.")
+        return None
+    print("  Échange du code contre un token OAuth…")
+    try:
+        token = asyncio.run(
+            _async_exchange_oauth_code_v2(auth_code, client_id, client_secret, redirect_uri)
+        )
+    except Exception as exc:
+        print(f"  ❌ Échec de l'échange OAuth : {exc}")
+        return None
+    gt_norm = gamertag.upper().replace(" ", "_").replace("-", "_")
+    token_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{gt_norm}"
+    env_local = REPO_ROOT / ".env.local"
+    try:
+        _upsert_env_key(env_local, token_key, token)
+        print(f"  ✅ Token sauvegardé dans .env.local ({token_key})")
+    except Exception as exc:
+        print(f"  ⚠  Sauvegarde impossible ({exc}) — ajoute manuellement dans .env.local :")
+        print(f"     {token_key}={token}")
+    # Toujours injecter en mémoire pour le sync qui suit (même si l'écriture a échoué)
+    os.environ[token_key] = token
+    return token
+
+
+def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
+    """Guide interactif pour configurer et synchroniser un premier joueur.
+
+    Wizard zéro-CLI : détecte les credentials manquants et guide l'utilisateur
+    pas à pas (Azure App, token OAuth, sync) sans jamais exiger de ligne de commande.
+
+    Returns:
+        0 si la synchronisation a réussi, 2 sinon.
+    """
+    print()
+    print("  ┌────────────────────────────────────────────────────────┐")
+    print("  │       LevelUp — Configuration du premier joueur        │")
+    print("  └────────────────────────────────────────────────────────┘")
+    print()
+
+    if not sys.stdin.isatty():
+        print("  Terminal non interactif — impossible de procéder.")
+        print("  Lance : python launcher.py add-player --gamertag <gamertag>")
+        return 2
+
+    try:
+        gamertag = input("  Ton Gamertag Xbox (ex: JGtm) : ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return 2
+
+    if not gamertag:
+        print("  Gamertag vide — annulé.")
+        return 2
+
+    _load_dotenv_for_launcher()
+
+    # ── Étape 1 : Credentials Azure ───────────────────────────────────────────
+    if not (
+        os.environ.get("SPNKR_AZURE_CLIENT_ID") and os.environ.get("SPNKR_AZURE_CLIENT_SECRET")
+    ):
+        print()
+        print("  ❌ Credentials Azure non configurés")
+        ok = _wizard_azure_creds()
+        if not ok:
+            print("  → Configure les credentials Azure et relance LevelUp.")
+            return 2
+    else:
+        print("  ✓ Credentials Azure présents")
+
+    client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "")
+    client_secret = os.environ.get("SPNKR_AZURE_CLIENT_SECRET", "")
+
+    # ── Étape 2 : Token OAuth joueur ──────────────────────────────────────────
+    gt_norm = gamertag.upper().replace(" ", "_").replace("-", "_")
+    token_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{gt_norm}"
+    has_token = bool(os.environ.get(token_key) or os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN"))
+    if not has_token:
+        print(f"  ❌ Token OAuth manquant ({token_key})")
+        token = _wizard_oauth_token(gamertag, client_id, client_secret)
+        if not token:
+            print("  → Obtiens le token et relance LevelUp.")
+            return 2
+    else:
+        print("  ✓ Token OAuth présent")
+
+    # ── Étape 3 : Initialisation des bases de données ─────────────────────────
+    print()
+    _ensure_warehouse_dbs()
+    _run_migrations()
+
+    # ── Étape 4 : Synchronisation ─────────────────────────────────────────────
+    print()
+    print(f"  → Synchronisation de « {gamertag} » (premier chargement, quelques minutes)…")
+    print()
+
+    try:
+        before, after = _sync_player_duckdb(gamertag, delta=False, max_matches=200)
+    except Exception as e:
+        print(_classify_sync_error(str(e), gamertag))
+        return 2
+
+    new_matches = after - before
+    if new_matches > 0:
+        print(f"\n  ✅ {new_matches} match(s) synchronisé(s) pour {gamertag}")
+    elif after > 0:
+        print(f"\n  ✅ {after} match(s) déjà présents pour {gamertag}")
+    else:
+        print("\n  ⚠ Aucun match récupéré. Vérifie ton token ou ta connexion.")
+        return 2
+
+    return 0
+
+
+def _cmd_add_player(args: argparse.Namespace) -> int:
+    """Commande: ajoute/synchronise un joueur par son gamertag."""
+    gamertag = getattr(args, "gamertag", None)
+
+    if not gamertag:
+        return _onboard_first_player()
+
+    print(f"  → Synchronisation de « {gamertag} »…")
+
+    _load_dotenv_for_launcher()
+    env_info = _env_check_for_player(gamertag)
+
+    if not env_info["client_id"] or not env_info["client_secret"]:
+        print(
+            "  ❌ Credentials Azure manquants (SPNKR_AZURE_CLIENT_ID / SPNKR_AZURE_CLIENT_SECRET)"
+        )
+        return 2
+
+    if not env_info["player_token"]:
+        print(f"  ❌ Token manquant : {env_info['player_token_key']}")
+        if sys.stdin.isatty():
+            _print_token_setup_instructions(gamertag, str(env_info["player_token_key"]))
+        return 2
+
+    full_sync = getattr(args, "full", False)
+    max_matches = int(getattr(args, "max_matches", 200))
+
+    _ensure_warehouse_dbs()
+
+    try:
+        before, after = _sync_player_duckdb(gamertag, delta=not full_sync, max_matches=max_matches)
+    except Exception as e:
+        print(_classify_sync_error(str(e), gamertag))
+        return 2
+
+    new_matches = after - before
+    if new_matches > 0:
+        print(f"  ✅ {new_matches} nouveau(x) match(s) pour {gamertag}")
+    else:
+        print(f"  ✅ À jour ({after} matchs) pour {gamertag}")
+    return 0
+
+
+# =============================================================================
 # Mode interactif
 # =============================================================================
 
@@ -698,9 +1537,53 @@ def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
         else:
             print("   Métadonnées: ⚠ Non trouvées")
     else:
-        print("   ❌ Aucun joueur trouvé")
-        print("   → Tu dois d'abord synchroniser des données")
+        print("   ❌ Aucun joueur trouvé — premier démarrage")
 
+    # ── Menu différent selon l'état ───────────────────────────────────────────
+    if not players:
+        # Premier démarrage : proposer l'ajout d'un joueur
+        print("\n" + "-" * 60)
+        print("Choisis une action:\n")
+        print("  1) ➕ Ajouter un joueur               [premier démarrage]")
+        print("     Configure et synchronise ton compte")
+        print()
+        print("  Q) Quitter")
+        print()
+
+        if not sys.stdin.isatty():
+            print(
+                "⚠ Terminal non interactif — Lance : python launcher.py add-player --gamertag <gt>"
+            )
+            return 2
+
+        try:
+            choice = input("Ton choix (1/Q): ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            return 2
+
+        if choice in {"q", "quit", "exit"}:
+            return 0
+
+        if choice in {"1", ""}:
+            rc = _onboard_first_player()
+            if rc != 0:
+                return rc
+            players = _list_players()
+            if not players:
+                return 2
+            print()
+            try:
+                go = input("  Lancer le dashboard maintenant ? [O/n] : ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                return 0
+            if go not in ("n", "non", "no"):
+                return _launch_streamlit(db_path=None, port=None, no_browser=False)
+            return 0
+
+        print("Choix invalide.")
+        return 2
+
+    # ── Menu joueurs existants ────────────────────────────────────────────────
     print("\n" + "-" * 60)
     print("Choisis une action:\n")
     print("  1) 🚀 Dashboard                       [recommandé]")
@@ -715,64 +1598,62 @@ def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
     print("  4) 📊 Infos")
     print("     Affiche les informations détaillées")
     print()
+    print("  5) ➕ Ajouter un joueur")
+    print("     Configure et synchronise un nouveau compte")
+    print()
     print("  Q) Quitter")
     print()
 
-    # Si stdin n'est pas un terminal (IDE, Cursor, pipe), ne pas bloquer sur input()
+    # Si stdin n'est pas un terminal (IDE, Cursor, pipe), lancer directement
     if not sys.stdin.isatty():
         print("⚠ Terminal non interactif détecté → lancement direct du dashboard (option 1).")
-        print("  Pour d'autres actions, utilise la CLI: run / sync / info")
-        choice = "1" if players else ""
-        if not choice:
-            print("  Aucun joueur trouvé. Lance: python launcher.py sync")
-            return 2
+        print("  Pour d'autres actions, utilise la CLI: run / sync / info / add-player")
+        choice = "1"
     else:
         try:
-            choice = input("Ton choix (1/2/3/4/Q): ").strip().lower()
+            choice = input("Ton choix (1/2/3/4/5/Q): ").strip().lower()
         except EOFError:
             print("\n⚠ stdin fermé ou non connecté (terminal/IDE).")
-            print("  Utilise les arguments CLI:")
-            print("    python launcher.py run    # option 1")
-            print("    python launcher.py sync   # option 3")
-            print("    python launcher.py info   # option 4")
+            print("  Utilise les arguments CLI :")
+            print("    python launcher.py run          # option 1")
+            print("    python launcher.py sync         # option 3")
+            print("    python launcher.py info         # option 4")
+            print("    python launcher.py add-player   # option 5")
             return 2
 
     if choice in {"q", "quit", "exit"}:
         return 0
 
     if choice == "1":
-        if not players:
-            print("\n⚠ Aucune donnée joueur trouvée.")
-            print("  Lance d'abord une synchronisation (choix 2 ou 3)")
-            return 2
-        return _launch_streamlit(db_path=None, port=8501, no_browser=False)
+        return _launch_streamlit(db_path=None, port=None, no_browser=False)
 
     if choice == "2":
-        if not players:
-            print("\n⚠ Aucun joueur configuré.")
-            print("  Crée d'abord un dossier dans data/players/<gamertag>/")
-            return 2
         args = argparse.Namespace(max_matches=100, full=False, run=True)
         return _cmd_sync(args)
 
     if choice == "3":
-        if not players:
-            print("\n⚠ Aucun joueur configuré.")
-            print("  Crée d'abord un dossier dans data/players/<gamertag>/")
-            return 2
         args = argparse.Namespace(max_matches=100, full=False, run=False)
         return _cmd_sync(args)
 
     if choice == "4":
         return _cmd_info(argparse.Namespace())
 
+    if choice == "5":
+        rc = _onboard_first_player()
+        if rc == 0:
+            players = _list_players()
+            if players:
+                print()
+                try:
+                    go = input("  Lancer le dashboard maintenant ? [O/n] : ").strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    return 0
+                if go not in ("n", "non", "no"):
+                    return _launch_streamlit(db_path=None, port=None, no_browser=False)
+        return rc
+
     print("Choix invalide.")
     return 2
-
-
-# =============================================================================
-# Parser CLI
-# =============================================================================
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -783,11 +1664,16 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemples:
-  python launcher.py           # Mode interactif
-  python launcher.py run       # Dashboard seul
-  python launcher.py sync      # Sync tous les joueurs
-  python launcher.py sync --run  # Sync + dashboard
-  python launcher.py info      # Affiche les infos
+  python launcher.py                           # Mode interactif
+  python launcher.py run                       # Dashboard seul
+  python launcher.py sync                      # Sync tous les joueurs
+  python launcher.py sync --run                # Sync + dashboard
+  python launcher.py add-player                # Ajouter un joueur (guidé)
+  python launcher.py add-player --gamertag JGtm  # Ajouter un joueur spécifique
+  python launcher.py setup                     # Installer venv + dépendances
+  python launcher.py setup --update            # Mettre à jour les dépendances
+  python launcher.py doctor                    # Vérifier l'environnement
+  python launcher.py info                      # Affiche les infos
 
 Architecture v5:
   - Données joueurs: data/players/{gamertag}/stats.duckdb
@@ -816,6 +1702,24 @@ Architecture v5:
     # info
     p_info = sub.add_parser("info", help="Affiche les informations sur les données")
     p_info.set_defaults(func=_cmd_info)
+
+    # setup
+    p_setup = sub.add_parser("setup", help="Configure l'environnement (venv + dépendances)")
+    p_setup.add_argument(
+        "--update", action="store_true", help="Met à jour les dépendances existantes"
+    )
+    p_setup.set_defaults(func=_cmd_setup)
+
+    # doctor
+    p_doctor = sub.add_parser("doctor", help="Vérifie la santé de l'environnement")
+    p_doctor.set_defaults(func=_cmd_doctor)
+
+    # add-player
+    p_add = sub.add_parser("add-player", help="Ajoute/synchronise un joueur par son gamertag")
+    p_add.add_argument("--gamertag", type=str, default=None, help="Gamertag Xbox du joueur")
+    p_add.add_argument("--full", action="store_true", help="Sync complète (pas de delta)")
+    p_add.add_argument("--max-matches", type=int, default=200, help="Max matchs (défaut: 200)")
+    p_add.set_defaults(func=_cmd_add_player)
 
     return ap
 

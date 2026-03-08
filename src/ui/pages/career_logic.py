@@ -5,13 +5,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 
-import plotly.graph_objects as go
-
-from src.config import THEME_COLORS
-from src.ui.career_ranks import format_career_rank_label_fr
 from src.ui.components.career_progress_circle import XP_HERO_TOTAL
 from src.ui.i18n import t
-from src.visualization.theme import apply_halo_plot_style
 
 logger = logging.getLogger(__name__)
 
@@ -25,17 +20,9 @@ DAILY_CHALLENGE_XP: int = 500
 XP_BOOST_MULTIPLIER: float = 2.0
 # Seuil d'inactivité en jours — les gaps plus longs sont exclus du rythme
 INACTIVITY_GAP_DAYS: int = 14
-
-# Palette pour les courbes des autres joueurs (distincte des 4 traces existantes)
-# Évite : accent (cyan), #CE93D8 (violet estimé), #FFA726 (orange proj), #66BB6A (vert opt)
-_OTHER_PLAYERS_COLORS: list[str] = [
-    "#EF5350",  # rouge
-    "#29B6F6",  # bleu clair
-    "#FFCA28",  # ambre
-    "#26C6DA",  # cyan
-    "#FF7043",  # orange-rouge
-    "#AB47BC",  # violet foncé
-]
+# Date d'introduction du système de rangs (Career Rank, mise à jour CU32 — 20 juin 2023)
+# Avant cette date il n'y avait pas d'XP : tout le monde démarrait à 0.
+CAREER_XP_LAUNCH_DATE: datetime = datetime(2023, 6, 20)
 
 
 # ── Estimation pré-sync ─────────────────────────────────────────────────────
@@ -48,9 +35,10 @@ def _compute_estimated_xp_curve(
     """Estime la courbe XP pour les matchs antérieurs au premier sync.
 
     Logique : l'XP total au 1er snapshot est réparti uniformément sur tous les
-    matchs pré-sync (average = first_xp / n_pre_sync). On remonte dans le temps
-    depuis le 1er snapshot en soustrayant cet XP moyen à chaque match.
-    Cela garantit que la courbe part de ~0 au match le plus ancien.
+    matchs pré-sync éligibles (après le 20 juin 2023, date de lancement des
+    rangs de carrière). On remonte dans le temps depuis le 1er snapshot en
+    soustrayant cet XP moyen à chaque match éligible.
+    Les matchs antérieurs au lancement sont exclus : il n'existait pas d'XP.
 
     Returns:
         Liste de (date, xp_estimé) en ordre chronologique, se terminant
@@ -65,18 +53,25 @@ def _compute_estimated_xp_curve(
     if first_xp <= 0:
         return []
 
-    # Moyenne basée sur l'XP total au 1er snapshot réparti sur tous les matchs
-    # pré-sync : garantit que la courbe part de ~0 au match le plus ancien.
+    # Exclure les matchs antérieurs au lancement du système de rangs (20/06/2023).
+    # Utiliser .date() pour rester compatible avec les datetimes tz-aware ou naives.
+    launch = CAREER_XP_LAUNCH_DATE.date()
+    eligible_dates = [d for d in pre_sync_match_dates if d.date() >= launch]
+
+    if not eligible_dates:
+        return []
+
+    # Moyenne basée sur l'XP total au 1er snapshot réparti sur les matchs éligibles.
     # (utiliser la moyenne post-sync introduirait un biais si le rythme change)
-    n_pre = len(pre_sync_match_dates)
+    n_pre = len(eligible_dates)
     avg_xp_per_match = first_xp / n_pre
 
     # Remonter dans le temps depuis le 1er snapshot
     curve: list[tuple[datetime, int]] = []
     current_xp = float(first_xp)
 
-    # Parcourir les matchs pré-sync du plus récent au plus ancien
-    for match_date in reversed(pre_sync_match_dates):
+    # Parcourir les matchs éligibles du plus récent au plus ancien
+    for match_date in reversed(eligible_dates):
         current_xp -= avg_xp_per_match
         if current_xp < 0:
             current_xp = 0
@@ -131,6 +126,27 @@ def _compute_active_xp_per_day(history: list[dict]) -> float:
         return 0.0
 
     return xp_delta / total_active_days
+
+
+def _compute_fallback_xp_per_day(xp_total: int, first_date: datetime) -> float:
+    """Rythme XP moyen global quand le delta inter-snapshots est nul.
+
+    Utilise le rapport XP total / jours depuis la première date connue
+    (typiquement le début de la courbe estimée pré-sync) pour débloquer
+    les projections quand le joueur a trop peu de snapshots.
+
+    Returns:
+        XP par jour actif moyen, ou 0.0 si impossible à calculer.
+    """
+    try:
+        tz = getattr(first_date, "tzinfo", None)
+        now = datetime.now(tz=tz) if tz else datetime.now()
+    except Exception:
+        now = datetime.now()
+    days = (now - first_date).total_seconds() / 86400.0
+    if days <= 0 or xp_total <= 0:
+        return 0.0
+    return xp_total / days
 
 
 def _compute_hero_projections(
@@ -201,201 +217,6 @@ def _compute_hero_projections(
     optimistic_curve = _build_curve(optimistic_days, optimistic_xp_per_day)
 
     return normal_curve, optimistic_curve
-
-
-# ── Graphique XP enrichi ────────────────────────────────────────────────────
-
-
-def _create_xp_history_chart(  # noqa: PLR0913
-    history: list[dict],
-    *,
-    estimated_curve: list[tuple[datetime, int]] | None = None,
-    hero_projection: list[tuple[datetime, int]] | None = None,
-    optimistic_projection: list[tuple[datetime, int]] | None = None,
-    is_max_rank: bool = False,
-    other_players: list[dict] | None = None,
-) -> go.Figure | None:
-    """Crée un graphique d'historique XP total dans le temps.
-
-    Traces :
-    1. XP réel (accent, lignes + marqueurs)
-    2. XP estimé pré-sync (pointillés, couleur atténuée)
-    3. Autres joueurs (lignes, couleurs distinctes, masquées par défaut)
-    4. Projection → Héros (tirets, orange, masquée par défaut)
-    5. Projection optimiste (tirets-points, vert, masquée par défaut)
-    + Ligne horizontale au seuil Héros (si projections actives)
-    """
-    if len(history) < 2:
-        return None
-
-    dates = [h["recorded_at"] for h in history]
-    xp_totals = [h["xp_total"] or 0 for h in history]
-
-    # Texte au survol avec le rang
-    hover_texts = []
-    for h in history:
-        name = h.get("rank_name", "")
-        tier = h.get("rank_tier", "")
-        label = format_career_rank_label_fr(tier=tier, title=name, grade=None)
-        hover_texts.append(
-            t("career_rank_hover", rank=h["rank"], label=label, xp=f"{h['xp_total']:,}")
-        )
-
-    bg_rgb = THEME_COLORS.bg_plot
-    bg_color = f"rgb({bg_rgb[0]}, {bg_rgb[1]}, {bg_rgb[2]})"
-
-    fig = go.Figure()
-
-    # ── Trace 1 : XP réel ──
-    fig.add_trace(
-        go.Scatter(
-            x=dates,
-            y=xp_totals,
-            mode="lines+markers",
-            name=t("career_xp_total"),
-            line={"color": THEME_COLORS.accent, "width": 2},
-            marker={"size": 6, "color": THEME_COLORS.accent},
-            hovertext=hover_texts,
-            hoverinfo="text",
-        )
-    )
-
-    # ── Trace 2 : XP estimé pré-sync ──
-    if estimated_curve:
-        est_dates = [pt[0] for pt in estimated_curve]
-        est_xp = [pt[1] for pt in estimated_curve]
-
-        est_hover = [
-            t("career_xp_estimated_hover", date=str(pt[0])[:10], xp=f"{pt[1]:,}")
-            for pt in estimated_curve
-        ]
-
-        fig.add_trace(
-            go.Scatter(
-                x=est_dates,
-                y=est_xp,
-                mode="lines",
-                name=t("career_xp_estimated"),
-                line={"color": "#CE93D8", "width": 2, "dash": "dot"},
-                hovertext=est_hover,
-                hoverinfo="text",
-            )
-        )
-
-    # ── Traces autres joueurs (masquées par défaut) ──
-    if other_players:
-        for idx, player in enumerate(other_players):
-            color = _OTHER_PLAYERS_COLORS[idx % len(_OTHER_PLAYERS_COLORS)]
-            p_gamertag = player["gamertag"]
-            p_history = player["history"]
-            p_dates = [h["recorded_at"] for h in p_history]
-            p_xp = [h["xp_total"] or 0 for h in p_history]
-            p_hover = [
-                t(
-                    "career_xp_other_player_hover",
-                    gamertag=p_gamertag,
-                    date=str(h["recorded_at"])[:10],
-                    xp=f"{h['xp_total'] or 0:,}",
-                )
-                for h in p_history
-            ]
-            fig.add_trace(
-                go.Scatter(
-                    x=p_dates,
-                    y=p_xp,
-                    mode="lines+markers",
-                    name=t("career_xp_other_player", gamertag=p_gamertag),
-                    line={"color": color, "width": 1.5},
-                    marker={"size": 5, "color": color},
-                    hovertext=p_hover,
-                    hoverinfo="text",
-                    visible="legendonly",
-                )
-            )
-
-    # ── Trace 3 : Projection → Héros (masquée par défaut) ──
-    if hero_projection and not is_max_rank:
-        proj_dates = [pt[0] for pt in hero_projection]
-        proj_xp = [pt[1] for pt in hero_projection]
-
-        proj_hover = [
-            t("career_projection_hero_hover", date=str(pt[0])[:10], xp=f"{pt[1]:,}")
-            for pt in hero_projection
-        ]
-
-        fig.add_trace(
-            go.Scatter(
-                x=proj_dates,
-                y=proj_xp,
-                mode="lines",
-                name=t("career_projection_hero"),
-                line={"color": "#FFA726", "width": 2, "dash": "dash"},
-                hovertext=proj_hover,
-                hoverinfo="text",
-                visible="legendonly",
-            )
-        )
-
-    # ── Trace 4 : Projection optimiste (masquée par défaut) ──
-    if optimistic_projection and not is_max_rank:
-        opt_dates = [pt[0] for pt in optimistic_projection]
-        opt_xp = [pt[1] for pt in optimistic_projection]
-
-        opt_hover = [
-            t("career_projection_optimistic_hover", date=str(pt[0])[:10], xp=f"{pt[1]:,}")
-            for pt in optimistic_projection
-        ]
-
-        fig.add_trace(
-            go.Scatter(
-                x=opt_dates,
-                y=opt_xp,
-                mode="lines",
-                name=t("career_projection_optimistic"),
-                line={"color": "#66BB6A", "width": 2, "dash": "dashdot"},
-                hovertext=opt_hover,
-                hoverinfo="text",
-                visible="legendonly",
-            )
-        )
-
-    # ── Ligne horizontale seuil Héros ──
-    if (hero_projection or optimistic_projection) and not is_max_rank:
-        fig.add_hline(
-            y=XP_HERO_TOTAL,
-            line_dash="dot",
-            line_color="rgba(255, 215, 0, 0.3)",
-            line_width=1,
-            annotation_text=t("career_hero_threshold"),
-            annotation_position="top left",
-            annotation_font_size=10,
-            annotation_font_color="rgba(255, 215, 0, 0.5)",
-        )
-
-    fig.update_layout(
-        title=t("career_xp_progress"),
-        xaxis_title=t("col_date"),
-        yaxis_title=t("career_xp_total"),
-        paper_bgcolor=bg_color,
-        plot_bgcolor=bg_color,
-        font={"color": "white"},
-        height=400,
-        xaxis={"gridcolor": "rgba(255,255,255,0.05)"},
-        yaxis={"gridcolor": "rgba(255,255,255,0.1)"},
-        legend={
-            "orientation": "h",
-            "yanchor": "top",
-            "y": -0.18,
-            "xanchor": "center",
-            "x": 0.5,
-            "font": {"size": 11},
-        },
-        margin={"t": 40, "b": 80, "l": 60, "r": 20},
-    )
-
-    apply_halo_plot_style(fig)
-
-    return fig
 
 
 def _get_pg_labels() -> dict[str, str]:

@@ -13,8 +13,33 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Cumulative performance & trend",
     },
     "ts_cumulative_caption": {
-        "fr": "Net score et F/M cumulé au fil des matchs, F/M glissant, et tendance (début vs fin de période).",
-        "en": "Net score and cumulative K/D over matches, rolling K/D, and trend (start vs end of the period).",
+        "fr": "Efficacité (net score/heure), F/D cumulé avec intervalle de confiance à 90 %, F/D lissé EWMA et indicateurs de régression.",
+        "en": "Efficiency (net score/hour), cumulative K/D with 90 % CI, EWMA smoothed K/D, and regression indicators.",
+    },
+    # ── Contrôles section Progression ────────────────────────────────────────
+    "ts_ewma_alpha_label": {
+        "fr": "Réactivité du lissage (α)",
+        "en": "Smoothing reactivity (α)",
+    },
+    "ts_ewma_alpha_help": {
+        "fr": "Petit α (0.10) = très lissé, tend vers la moyenne de long terme.\nGrand α (0.50) = très réactif, reflète ta forme récente.",
+        "en": "Small α (0.10) = very smooth, tends toward long-term average.\nLarge α (0.50) = very reactive, reflects recent form.",
+    },
+    "ts_show_outcome_markers": {
+        "fr": "Afficher V/D sur l'axe",
+        "en": "Show W/L on axis",
+    },
+    "ts_section_cumulative": {
+        "fr": "Bilan cumulatif",
+        "en": "Cumulative overview",
+    },
+    "ts_section_recent": {
+        "fr": "Forme récente",
+        "en": "Recent form",
+    },
+    "ts_nph_unavailable": {
+        "fr": "Net score/heure indisponible (colonne time_played_seconds manquante).",
+        "en": "Net score/hour unavailable (missing time_played_seconds column).",
     },
     "ts_distributions": {
         "fr": "Distributions",
@@ -86,6 +111,43 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "ts_trend_min_matches": {
         "fr": "Tendance de session : au moins 4 matchs requis.",
         "en": "Session trend: at least 4 matches required.",
+    },
+    # ── Notes explicatives sous les graphes de progression ───────────────────
+    "ts_note_nph": {
+        "fr": "- Courbe qui **monte** → tu crées plus de valeur que tu n'en perds — bonne dynamique\n"
+        "- **En dessous de 0** → tu meurs plus vite que tu ne fragges\n"
+        "- Un pic isolé ne dit rien ; c'est la direction générale sur plusieurs matchs qui compte",
+        "en": "- **Rising** → you generate more value than you lose — good momentum\n"
+        "- **Below 0** → you die faster than you score kills\n"
+        "- An isolated spike means nothing; the overall direction over several games is what matters",
+    },
+    "ts_note_ci": {
+        "fr": "- Courbe en hausse en fin de session → tu t'es vraiment amélioré par rapport au début\n"
+        "- **Bande étroite** → niveau stable et reproductible ; **bande large** → trop tôt pour conclure\\n"
+        "- Cercle très éloigné de la courbe → partie atypique qui tire la moyenne",
+        "en": "- Rising curve toward session end → genuine improvement relative to your start\n"
+        "- **Narrow CI** → stable, reproducible level; **wide CI** → too early to draw conclusions\n"
+        "- Circle far from the curve → atypical game skewing the average",
+    },
+    "ts_note_ewma": {
+        "fr": "- Regarde la **direction générale** de la courbe lissée, pas les sommets ou creux individuels\n"
+        "- La droite pointillée confirme une **vraie tendance** si R² ≥ 0,3 — en dessous, c'est du bruit\n"
+        "- α élevé : utile pour détecter rapidement une rupture de forme dans la session",
+        "en": "- Focus on the **general direction** of the smoothed curve, not individual peaks or dips\n"
+        "- The dotted line confirms a **real trend** if R² ≥ 0.3 — below that threshold, it's noise\n"
+        "- High α: useful for quickly detecting a shift in form during the session",
+    },
+    "ts_note_regression": {
+        "fr": "- **Pente positive + R² ≥ 0,3** → progression réelle sur la session, pas un hasard\n"
+        "- **R² < 0,3** → résultats trop éparpillés, impossible de tirer une conclusion fiable\n"
+        "- Win rate en hausse + pente positive → double confirmation que la forme et les résultats s'alignent",
+        "en": "- **Positive slope + R² ≥ 0.3** → genuine improvement across the session, not luck\n"
+        "- **R² < 0.3** → results too scattered, no reliable conclusion possible\n"
+        "- Rising win rate + positive slope → double confirmation that form and results align",
+    },
+    "ts_regression_subheader": {
+        "fr": "Tendance (régression linéaire)",
+        "en": "Trend (linear regression)",
     },
     # ── Page Coéquipiers ─────────────────────────────────────────────────────
     "ts_computing": {
@@ -191,7 +253,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Not enough data ({count} matches). At least {min} are needed for the correlation.",
     },
     # ── Onglets (navigation)
-    "ts_tab_kda": {"fr": "⚔️ K/D/A", "en": "⚔️ K/D/A"},
+    "ts_tab_kda": {"fr": "⚔️ F/D/A", "en": "⚔️ K/D/A"},
     "ts_tab_progression": {"fr": "📈 Progression", "en": "📈 Progression"},
     "ts_tab_distributions": {"fr": "📊 Distributions", "en": "📊 Distributions"},
     "ts_tab_advanced": {"fr": "🎯 Avancé", "en": "🎯 Advanced"},

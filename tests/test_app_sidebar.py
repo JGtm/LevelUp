@@ -39,8 +39,8 @@ class TestDefaultIdentityFromSecrets:
         secrets_mock.get.return_value = {}
         ms._monkeypatch.setattr(mod.st, "secrets", secrets_mock)
 
-        monkeypatch.setenv("OPENSPARTAN_DEFAULT_GAMERTAG", "TestPlayer")
-        monkeypatch.setenv("OPENSPARTAN_DEFAULT_XUID", "1234567890")
+        monkeypatch.setenv("LEVELUP_DEFAULT_GAMERTAG", "TestPlayer")
+        monkeypatch.setenv("LEVELUP_DEFAULT_XUID", "1234567890")
 
         xuid_or_gt, xuid_fb, wp = mod.default_identity_from_secrets()
         assert xuid_or_gt == "TestPlayer"
@@ -53,34 +53,34 @@ class TestPropagateIdentityEnv:
     def test_sets_env_vars(self, monkeypatch):
         from src.app.data_loader import propagate_identity_env
 
-        monkeypatch.delenv("OPENSPARTAN_DEFAULT_GAMERTAG", raising=False)
-        monkeypatch.delenv("OPENSPARTAN_DEFAULT_XUID", raising=False)
-        monkeypatch.delenv("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER", raising=False)
+        monkeypatch.delenv("LEVELUP_DEFAULT_GAMERTAG", raising=False)
+        monkeypatch.delenv("LEVELUP_DEFAULT_XUID", raising=False)
+        monkeypatch.delenv("LEVELUP_DEFAULT_WAYPOINT_PLAYER", raising=False)
 
         propagate_identity_env("MonGamertag", "999", "MonGamertag")
-        assert os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") == "MonGamertag"
-        assert os.environ.get("OPENSPARTAN_DEFAULT_XUID") == "999"
-        assert os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") == "MonGamertag"
+        assert os.environ.get("LEVELUP_DEFAULT_GAMERTAG") == "MonGamertag"
+        assert os.environ.get("LEVELUP_DEFAULT_XUID") == "999"
+        assert os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") == "MonGamertag"
 
     def test_does_not_overwrite_existing(self, monkeypatch):
         from src.app.data_loader import propagate_identity_env
 
-        monkeypatch.setenv("OPENSPARTAN_DEFAULT_GAMERTAG", "Existing")
-        monkeypatch.setenv("OPENSPARTAN_DEFAULT_XUID", "111")
+        monkeypatch.setenv("LEVELUP_DEFAULT_GAMERTAG", "Existing")
+        monkeypatch.setenv("LEVELUP_DEFAULT_XUID", "111")
 
         propagate_identity_env("NewGT", "222", "NewGT")
-        assert os.environ["OPENSPARTAN_DEFAULT_GAMERTAG"] == "Existing"
-        assert os.environ["OPENSPARTAN_DEFAULT_XUID"] == "111"
+        assert os.environ["LEVELUP_DEFAULT_GAMERTAG"] == "Existing"
+        assert os.environ["LEVELUP_DEFAULT_XUID"] == "111"
 
     def test_noop_for_numeric_xuid(self, monkeypatch):
         from src.app.data_loader import propagate_identity_env
 
-        monkeypatch.delenv("OPENSPARTAN_DEFAULT_GAMERTAG", raising=False)
-        monkeypatch.delenv("OPENSPARTAN_DEFAULT_XUID", raising=False)
+        monkeypatch.delenv("LEVELUP_DEFAULT_GAMERTAG", raising=False)
+        monkeypatch.delenv("LEVELUP_DEFAULT_XUID", raising=False)
 
         # Si xuid_or_gt est numérique, on ne propage pas GT/XUID
         propagate_identity_env("123456", "123456", "")
-        assert os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") is None
+        assert os.environ.get("LEVELUP_DEFAULT_GAMERTAG") is None
 
 
 class TestValidateDbPath:
@@ -174,8 +174,8 @@ class TestGetDbCacheKey:
         result = get_db_cache_key(str(db_file))
         assert result is not None
         assert isinstance(result, tuple)
-        # Depuis v5 : (mtime_ns_player, size_player, mtime_ns_shared, size_shared)
-        assert len(result) == 4
+        # Depuis v5.x : (mtime_ns_player, size_player, mtime_ns_shared, size_shared, wal_sentinel)
+        assert len(result) == 5
 
     def test_returns_none_for_nonexistent(self):
         from src.app.data_loader import get_db_cache_key

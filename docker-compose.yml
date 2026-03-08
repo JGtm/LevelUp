@@ -1,12 +1,20 @@
 services:
-  openspartan-graph:
+  levelup:
     build: .
     ports:
       - "8501:8501"
     environment:
       # Optionnel: forcer une base explicite (sinon sélection via profils/UI)
-      # - OPENSPARTAN_DB=/app/data/players/MonGamertag/stats.duckdb
-      - OPENSPARTAN_ROOT=/app
+      # - LEVELUP_DB=/app/data/players/MonGamertag/stats.duckdb
+      - LEVELUP_ROOT=/app
+      # Chemin des données dans le conteneur (obligatoire : sans .venv, _is_dev_mode()=False)
+      - LEVELUP_DATA=/app/data
+    # Secrets et tokens API (sync Halo, Discord, Tailscale)
+    # Créer .env.local depuis .env.local.example avant le premier `docker compose up`.
+    # Si absent, le dashboard fonctionne en lecture seule (pas de sync API).
+    env_file:
+      - path: .env.local
+        required: false
     volumes:
       # Données v4 (DuckDB/Parquet) en lecture/écriture
       - ./data:/app/data

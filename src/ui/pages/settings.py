@@ -16,6 +16,7 @@ from src.ui import (
 )
 from src.ui.i18n import t
 from src.ui.sections import render_source_section
+from src.ui.tz import CURATED_TZ_LIST  # liste curated des timezones disponibles
 
 
 def _build_settings_from_ui(  # noqa: PLR0913
@@ -34,6 +35,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
     backfill_performance_scores: bool,
     backfill_aliases: bool,
     backfill_lusr: bool,
+    user_timezone: str = "Europe/Paris",
 ) -> AppSettings:
     """Construit un AppSettings à partir des valeurs UI actuelles."""
 
@@ -88,6 +90,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
         lang=_s("lang", "fr"),
         discord_lang=_s("discord_lang", "fr"),
         cli_lang=_s("cli_lang", "fr"),
+        user_timezone=str(user_timezone or "Europe/Paris").strip(),
         # Champs non exposés dans l'UI — préservés tels quels depuis les settings actuels
         discord_notifications_enabled=_b("discord_notifications_enabled"),
         discord_webhook_url=_s("discord_webhook_url"),
@@ -98,7 +101,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
     )
 
 
-def render_settings_page(  # noqa: PLR0915
+def render_settings_page(
     settings: AppSettings,
     *,
     get_local_dbs_fn: Callable[[], list[str]],
@@ -122,6 +125,11 @@ def render_settings_page(  # noqa: PLR0915
     """
     st.subheader(t("settings_title"))
 
+    with st.expander(t("xbox_connect_section_title"), expanded=True):
+        from src.ui.xbox_oauth_ui import render_xbox_login_section
+
+        render_xbox_login_section()
+
     with st.expander("Source", expanded=False):
         st.caption(t("set_db_mgmt"))
         default_db = get_default_db_path()
@@ -131,131 +139,10 @@ def render_settings_page(  # noqa: PLR0915
             on_clear_caches=on_clear_caches_fn,
         )
 
-    with st.expander(t("set_sync_title"), expanded=False):
-        st.caption(t("settings_sync_help"))
-
-        st.info(t("set_arch_v5_info"))
-
-        max_matches = st.number_input(
-            t("set_sync_max_matches"),
-            min_value=10,
-            max_value=5000,
-            value=int(getattr(settings, "spnkr_refresh_max_matches", 500) or 500),
-            step=10,
-        )
-
-        rps = st.number_input(
-            t("set_sync_rate"),
-            min_value=1,
-            max_value=50,
-            value=int(getattr(settings, "spnkr_refresh_rps", 3) or 3),
-            step=1,
-        )
-
-    with st.expander(t("set_refresh_options"), expanded=False):
-        st.caption(t("settings_backfill_caption"))
-
-        # Option pour activer le backfill complet
-        backfill_enabled = st.toggle(
-            t("settings_backfill_enable"),
-            value=bool(getattr(settings, "spnkr_refresh_with_backfill", False)),
-        )
-
-        st.markdown(f"**{t('settings_backfill_data_label')}**")
-        backfill_all = st.checkbox(
-            t("backfill_all_data"),
-            value=False,
-            help=t("settings_backfill_all_help"),
-            disabled=not backfill_enabled,
-        )
-
-        if backfill_all and backfill_enabled:
-            backfill_medals = True
-            backfill_events = True
-            backfill_skill = True
-            backfill_personal_scores = True
-            backfill_performance_scores = True
-            backfill_aliases = True
-        else:
-            col1, col2 = st.columns(2)
-            with col1:
-                backfill_medals = st.checkbox(
-                    t("set_backfill_medals"),
-                    value=bool(getattr(settings, "spnkr_refresh_backfill_medals", False)),
-                    disabled=not backfill_enabled,
-                )
-                backfill_events = st.checkbox(
-                    t("set_backfill_events"),
-                    value=bool(getattr(settings, "spnkr_refresh_backfill_events", False)),
-                    disabled=not backfill_enabled,
-                )
-                backfill_skill = st.checkbox(
-                    t("set_backfill_skill"),
-                    value=bool(getattr(settings, "spnkr_refresh_backfill_skill", False)),
-                    disabled=not backfill_enabled,
-                )
-            with col2:
-                backfill_personal_scores = st.checkbox(
-                    t("set_backfill_personal_scores"),
-                    value=bool(getattr(settings, "spnkr_refresh_backfill_personal_scores", False)),
-                    disabled=not backfill_enabled,
-                )
-                backfill_performance_scores = st.checkbox(
-                    t("set_backfill_scores"),
-                    value=bool(
-                        getattr(settings, "spnkr_refresh_backfill_performance_scores", True)
-                    ),
-                    help=t("set_backfill_score_help"),
-                )
-                backfill_aliases = st.checkbox(
-                    t("set_backfill_aliases"),
-                    value=bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
-                    disabled=not backfill_enabled,
-                )
-                backfill_lusr = st.checkbox(
-                    t("set_backfill_lusr"),
-                    value=bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
-                    disabled=not backfill_enabled,
-                    help=t("set_backfill_lusr_help"),
-                )
-
-    with st.expander(t("set_media_title"), expanded=True):
-        st.info(t("set_media_arch_info"))
-        media_captures_base_dir = directory_input(
-            t("set_media_screenshots"),
-            value=str(getattr(settings, "media_captures_base_dir", "") or ""),
-            key="settings_media_captures_base_dir",
-            help=t("set_media_root_help"),
-            placeholder="Ex: D:/Captures",
-        )
-        media_tolerance_minutes = st.slider(
-            t("set_media_tolerance"),
-            min_value=0,
-            max_value=30,
-            value=int(settings.media_tolerance_minutes or 0),
-            step=1,
-        )
-        # Bouton reset index médias
-        if st.button(t("ml_rescan"), key="settings_reset_media_index"):
-            from src.data.media_indexer import MediaIndexer
-
-            db_path = st.session_state.get("db_path") or get_default_db_path()
-            if db_path:
-                try:
-                    idx = MediaIndexer(Path(db_path))
-                    idx.reset_media_tables()
-                    st.success(t("settings_index_reset"))
-                except Exception as e:
-                    st.error(t("error_loading", error=e))
-
-    with st.expander(t("set_experience_title"), expanded=True):
-        refresh_clears_caches = st.toggle(
-            t("set_clear_cache_title"),
-            value=bool(getattr(settings, "refresh_clears_caches", False)),
-            help="Utile si la DB change en dehors de l'app (NAS / import externe).",
-        )
-
-    # Architecture v5 : DuckDB avec shared_matches (valeurs fixes, plus d'UI dédiée)
+    max_matches, rps = _render_sync_section(settings)
+    backfill_vals = _render_backfill_section(settings)
+    media_captures_base_dir, media_tolerance_minutes = _render_media_section(settings)
+    refresh_clears_caches, user_timezone = _render_experience_section(settings)
 
     cols = st.columns(2)
     if cols[0].button(t("btn_save"), width="stretch"):
@@ -266,14 +153,8 @@ def render_settings_page(  # noqa: PLR0915
             refresh_clears_caches=bool(refresh_clears_caches),
             max_matches=int(max_matches),
             rps=int(rps),
-            backfill_enabled=bool(backfill_enabled),
-            backfill_medals=bool(backfill_medals),
-            backfill_events=bool(backfill_events),
-            backfill_skill=bool(backfill_skill),
-            backfill_personal_scores=bool(backfill_personal_scores),
-            backfill_performance_scores=bool(backfill_performance_scores),
-            backfill_aliases=bool(backfill_aliases),
-            backfill_lusr=bool(backfill_lusr),
+            **backfill_vals,
+            user_timezone=str(user_timezone or "Europe/Paris"),
         )
         ok, err = save_settings(new_settings)
         if ok:
@@ -291,3 +172,154 @@ def render_settings_page(  # noqa: PLR0915
         return reloaded
 
     return settings
+
+
+def _render_sync_section(settings: AppSettings) -> tuple[int, int]:
+    """Rend le bloc 'Synchronisation' et retourne (max_matches, rps)."""
+    with st.expander(t("set_sync_title"), expanded=False):
+        st.caption(t("settings_sync_help"))
+        st.info(t("set_arch_v5_info"))
+        max_matches = st.number_input(
+            t("set_sync_max_matches"),
+            min_value=10,
+            max_value=5000,
+            value=int(getattr(settings, "spnkr_refresh_max_matches", 500) or 500),
+            step=10,
+        )
+        rps = st.number_input(
+            t("set_sync_rate"),
+            min_value=1,
+            max_value=50,
+            value=int(getattr(settings, "spnkr_refresh_rps", 3) or 3),
+            step=1,
+        )
+    return int(max_matches), int(rps)
+
+
+def _render_backfill_section(settings: AppSettings) -> dict:  # noqa: PLR0912
+    """Rend le bloc 'Options de rafraîchissement' et retourne les flags backfill."""
+    with st.expander(t("set_refresh_options"), expanded=False):
+        st.caption(t("settings_backfill_caption"))
+        backfill_enabled = st.toggle(
+            t("settings_backfill_enable"),
+            value=bool(getattr(settings, "spnkr_refresh_with_backfill", False)),
+        )
+        st.markdown(f"**{t('settings_backfill_data_label')}**")
+        backfill_all = st.checkbox(
+            t("backfill_all_data"),
+            value=False,
+            help=t("settings_backfill_all_help"),
+            disabled=not backfill_enabled,
+        )
+        if backfill_all and backfill_enabled:
+            return {
+                "backfill_enabled": True,
+                "backfill_medals": True,
+                "backfill_events": True,
+                "backfill_skill": True,
+                "backfill_personal_scores": True,
+                "backfill_performance_scores": True,
+                "backfill_aliases": True,
+                "backfill_lusr": True,
+            }
+        col1, col2 = st.columns(2)
+        with col1:
+            backfill_medals = st.checkbox(
+                t("set_backfill_medals"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_medals", False)),
+                disabled=not backfill_enabled,
+            )
+            backfill_events = st.checkbox(
+                t("set_backfill_events"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_events", False)),
+                disabled=not backfill_enabled,
+            )
+            backfill_skill = st.checkbox(
+                t("set_backfill_skill"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_skill", False)),
+                disabled=not backfill_enabled,
+            )
+        with col2:
+            backfill_personal_scores = st.checkbox(
+                t("set_backfill_personal_scores"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_personal_scores", False)),
+                disabled=not backfill_enabled,
+            )
+            backfill_performance_scores = st.checkbox(
+                t("set_backfill_scores"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_performance_scores", True)),
+                help=t("set_backfill_score_help"),
+            )
+            backfill_aliases = st.checkbox(
+                t("set_backfill_aliases"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
+                disabled=not backfill_enabled,
+            )
+            backfill_lusr = st.checkbox(
+                t("set_backfill_lusr"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
+                disabled=not backfill_enabled,
+                help=t("set_backfill_lusr_help"),
+            )
+    return {
+        "backfill_enabled": bool(backfill_enabled),
+        "backfill_medals": bool(backfill_medals),
+        "backfill_events": bool(backfill_events),
+        "backfill_skill": bool(backfill_skill),
+        "backfill_personal_scores": bool(backfill_personal_scores),
+        "backfill_performance_scores": bool(backfill_performance_scores),
+        "backfill_aliases": bool(backfill_aliases),
+        "backfill_lusr": bool(backfill_lusr),
+    }
+
+
+def _render_media_section(settings: AppSettings) -> tuple[str, int]:
+    """Rend le bloc 'Médias' et retourne (media_captures_base_dir, media_tolerance_minutes)."""
+    with st.expander(t("set_media_title"), expanded=True):
+        st.info(t("set_media_arch_info"))
+        media_captures_base_dir = directory_input(
+            t("set_media_screenshots"),
+            value=str(getattr(settings, "media_captures_base_dir", "") or ""),
+            key="settings_media_captures_base_dir",
+            help=t("set_media_root_help"),
+            placeholder="Ex: D:/Captures",
+        )
+        media_tolerance_minutes = st.slider(
+            t("set_media_tolerance"),
+            min_value=0,
+            max_value=30,
+            value=int(settings.media_tolerance_minutes or 0),
+            step=1,
+        )
+        if st.button(t("ml_rescan"), key="settings_reset_media_index"):
+            from src.data.media_indexer import MediaIndexer
+
+            db_path = st.session_state.get("db_path") or get_default_db_path()
+            if db_path:
+                try:
+                    idx = MediaIndexer(Path(db_path))
+                    idx.reset_media_tables()
+                    st.success(t("settings_index_reset"))
+                except Exception as e:
+                    st.error(t("error_loading", error=e))
+    return str(media_captures_base_dir or ""), int(media_tolerance_minutes)
+
+
+def _render_experience_section(settings: AppSettings) -> tuple[bool, str]:
+    """Rend le bloc 'Expérience' et retourne (refresh_clears_caches, user_timezone)."""
+    with st.expander(t("set_experience_title"), expanded=True):
+        refresh_clears_caches = st.toggle(
+            t("set_clear_cache_title"),
+            value=bool(getattr(settings, "refresh_clears_caches", False)),
+            help="Utile si la DB change en dehors de l'app (NAS / import externe).",
+        )
+        _tz_current = str(getattr(settings, "user_timezone", "Europe/Paris") or "Europe/Paris")
+        if _tz_current not in CURATED_TZ_LIST:
+            _tz_current = "Europe/Paris"
+        user_timezone = st.selectbox(
+            t("set_timezone_label"),
+            options=CURATED_TZ_LIST,
+            index=CURATED_TZ_LIST.index(_tz_current),
+            help=t("set_timezone_help"),
+        )
+    return bool(refresh_clears_caches), str(user_timezone or "Europe/Paris")

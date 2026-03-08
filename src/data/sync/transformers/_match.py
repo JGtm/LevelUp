@@ -312,6 +312,9 @@ def extract_participants(match_json: dict[str, Any]) -> list[MatchParticipantRow
             m = XUID_RE.search(pid)
             if m:
                 xuid = m.group(1)
+            elif pid.strip().lower().startswith("bid("):
+                # Bot Halo Infinite : PlayerId direct de la forme "bid(0.0)"
+                xuid = pid.strip()
         elif isinstance(pid, dict):
             xuid_val = pid.get("Xuid") or pid.get("xuid")
             if xuid_val is not None:

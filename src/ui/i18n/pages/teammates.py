@@ -11,6 +11,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Historique — matchs avec mes coéquipiers",
         "en": "History — matches with my teammates",
     },
+    "tm_history_tz_caption": {
+        "fr": "Dates et heures en heure locale ({tz}).",
+        "en": "Dates and times displayed in local time ({tz}).",
+    },
     "tm_medals": {
         "fr": "Médailles (matchs partagés)",
         "en": "Medals (shared matches)",
@@ -80,8 +84,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "🏆 Ranking",
     },
     "tm_impact_legend": {
-        "fr": "⚡ Premier sang | 🎯 Finisseur | 💀 Boulet | 🐌 Plus lent | 🪦 Première victime",
-        "en": "⚡ First Blood | 🎯 Finisher | 💀 Dead Weight | 🐌 Slowest | 🪦 First Victim",
+        "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier à obtenir son 1er kill\n- 🪦 **Première victime** — première mort du match, toutes équipes confondues",
+        "en": "- ⚡ **First Blood** — first kill of the match, across all teams\n- 🎯 **Finisher** — last kill of a won match\n- 💀 **Dead Weight** — last death of a lost match\n- 🐌 **Tourist** — last to get their first kill\n- 🪦 **First Casualty** — first death of the match, across all teams",
     },
     # ── Page Match View ──────────────────────────────────────────────────────
     "tm_computing_teammate": {
@@ -181,6 +185,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "tm_select_teammates": {"fr": "Coéquipiers", "en": "Teammates"},
     "tm_session_trend": {"fr": "Tendance de session", "en": "Session trend"},
+    "tm_solo_session_info": {
+        "fr": "Cette session est en solo — les stats de coéquipiers ne sont pas disponibles.",
+        "en": "You played solo this session — teammate stats are not available.",
+    },
     # ── Teammates impact ────────────────────────────────────────────────────
     "tmi_first_blood": {"fr": "🟢 Premier Sang", "en": "🟢 First Blood"},
     "tmi_finisher": {"fr": "🟡 Finisseur", "en": "🟡 Finisher"},

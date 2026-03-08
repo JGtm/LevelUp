@@ -349,7 +349,8 @@ def test_associate_with_matches_explicit_timestamps(tmp_path: Path) -> None:
     with (
         patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs,
         patch(
-            "src.data.media_indexer.get_shared_matches_path_from_player", return_value=shared_path
+            "src.data.media_indexer_matchers.get_shared_matches_path_from_player",
+            return_value=shared_path,
         ),
     ):
         mock_dbs.return_value = [(db_path, "test_xuid")]
@@ -456,7 +457,8 @@ def test_association_closest_match_when_multiple_candidates(tmp_path: Path) -> N
     with (
         patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs,
         patch(
-            "src.data.media_indexer.get_shared_matches_path_from_player", return_value=shared_path
+            "src.data.media_indexer_matchers.get_shared_matches_path_from_player",
+            return_value=shared_path,
         ),
     ):
         mock_dbs.return_value = [(db_path, "xuid_1")]
@@ -541,7 +543,8 @@ def test_association_multi_players_same_media(tmp_path: Path) -> None:
     with (
         patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs,
         patch(
-            "src.data.media_indexer.get_shared_matches_path_from_player", return_value=shared_path
+            "src.data.media_indexer_matchers.get_shared_matches_path_from_player",
+            return_value=shared_path,
         ),
     ):
         mock_dbs.return_value = [(db_a, "xuid_a"), (db_b, "xuid_b")]
@@ -616,7 +619,8 @@ def test_association_map_id_map_name_stored(tmp_path: Path) -> None:
     with (
         patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs,
         patch(
-            "src.data.media_indexer.get_shared_matches_path_from_player", return_value=shared_path
+            "src.data.media_indexer_matchers.get_shared_matches_path_from_player",
+            return_value=shared_path,
         ),
     ):
         mock_dbs.return_value = [(db_path, "u1")]
@@ -777,7 +781,8 @@ def test_association_search_all_player_dbs(tmp_path: Path) -> None:
     with (
         patch.object(MediaIndexer, "_get_all_player_dbs") as mock_dbs,
         patch(
-            "src.data.media_indexer.get_shared_matches_path_from_player", return_value=shared_path
+            "src.data.media_indexer_matchers.get_shared_matches_path_from_player",
+            return_value=shared_path,
         ),
     ):
         mock_dbs.return_value = [(db_current, "xuid_current"), (db_other, "xuid_other")]

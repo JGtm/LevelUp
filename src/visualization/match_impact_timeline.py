@@ -4,7 +4,7 @@ Affiche un graphe chronologique montrant l'accumulation des kills et deaths
 du joueur principal au cours du match, avec des marqueurs annotés pour :
 - ⚡ Premier sang (premier kill du match, tous joueurs confondus)
 - 🎯 Finisseur (dernier kill d'une victoire)
-- 🐌 Plus lent (le joueur le plus lent à obtenir son 1er kill)
+- 🐌 Touriste (le joueur le plus lent à obtenir son 1er kill)
 - 🪦 Première victime (première mort du match, tous joueurs confondus)
 """
 
@@ -303,7 +303,7 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if not highlight_events:
         return None
 
-    from src.config import BOT_MAP
+    from src.config import get_bot_name
     from src.visualization.antagonist_charts import PLAYER_COLORS
 
     me_xuid = str(me_xuid).strip()
@@ -362,7 +362,7 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 return g
         # Bots
         if xu.lower().startswith("bid("):
-            bot = BOT_MAP.get(xu)
+            bot = get_bot_name(xu)
             if isinstance(bot, str) and bot.strip():
                 return bot.strip()
         # Gamertag de l'event

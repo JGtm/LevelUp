@@ -67,9 +67,9 @@ def get_identity_from_secrets() -> PlayerIdentity:
         gt = xu = wp = ""
 
     # Env vars (utile Docker/CLI)
-    gt = gt or str(os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip()
-    xu = xu or str(os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip()
-    wp = wp or str(os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or "").strip() or gt
+    gt = gt or str(os.environ.get("LEVELUP_DEFAULT_GAMERTAG") or "").strip()
+    xu = xu or str(os.environ.get("LEVELUP_DEFAULT_XUID") or "").strip()
+    wp = wp or str(os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") or "").strip() or gt
 
     # Fallback constants
     gt = gt or str(DEFAULT_PLAYER_GAMERTAG or "").strip()
@@ -142,12 +142,12 @@ def propagate_identity_to_env(identity: PlayerIdentity) -> None:
         wp = identity.waypoint_player
 
         if gt and not str(gt).strip().isdigit() and xuid:
-            if not str(os.environ.get("OPENSPARTAN_DEFAULT_GAMERTAG") or "").strip():
-                os.environ["OPENSPARTAN_DEFAULT_GAMERTAG"] = str(gt).strip()
-            if not str(os.environ.get("OPENSPARTAN_DEFAULT_XUID") or "").strip():
-                os.environ["OPENSPARTAN_DEFAULT_XUID"] = str(xuid).strip()
-        if wp and not str(os.environ.get("OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER") or "").strip():
-            os.environ["OPENSPARTAN_DEFAULT_WAYPOINT_PLAYER"] = str(wp).strip()
+            if not str(os.environ.get("LEVELUP_DEFAULT_GAMERTAG") or "").strip():
+                os.environ["LEVELUP_DEFAULT_GAMERTAG"] = str(gt).strip()
+            if not str(os.environ.get("LEVELUP_DEFAULT_XUID") or "").strip():
+                os.environ["LEVELUP_DEFAULT_XUID"] = str(xuid).strip()
+        if wp and not str(os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") or "").strip():
+            os.environ["LEVELUP_DEFAULT_WAYPOINT_PLAYER"] = str(wp).strip()
     except Exception:
         pass
 

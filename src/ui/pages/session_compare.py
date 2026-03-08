@@ -13,6 +13,16 @@ from src.ui.components.performance import (
     render_performance_score_card,
 )
 from src.ui.i18n import t
+from src.ui.pages._session_compare_extra import (
+    render_map_table,
+    render_match_highlights,
+    render_modes_breakdown,
+)
+from src.ui.pages._session_compare_viz import (
+    render_kd_progression,
+    render_outcomes_distribution,
+    render_session_temporal_header,
+)
 from src.ui.pages.session_compare_charts import (
     SESSION_COLORS,  # noqa: F401 — re-exported
     render_comparison_bar_chart,
@@ -21,6 +31,7 @@ from src.ui.pages.session_compare_charts import (
     render_session_history_table,
 )
 from src.ui.pages.session_compare_logic import (
+    build_skill_series,
     compute_historical_context,
     compute_similar_sessions_average,  # noqa: F401 — re-exported
     format_seconds_to_mmss,
@@ -214,34 +225,25 @@ def _render_score_cards(perf_a: dict, perf_b: dict) -> None:
 
 
 def _render_detailed_metrics(perf_a: dict, perf_b: dict) -> None:
-    """Affiche la section des métriques détaillées."""
+    """Affiche la section des métriques détaillées (condensée)."""
     st.markdown(t("sc_detailed_metrics"))
-
-    # En-têtes
     col_h1, col_h2, col_h3 = st.columns([2, 1, 1])
-    with col_h1:
-        st.markdown(t("sc_metric_label"))
     with col_h2:
         st.markdown(f"**{t('sc_session_a')}**")
     with col_h3:
         st.markdown(f"**{t('sc_session_b')}**")
 
-    st.markdown("---")
-
     render_metric_comparison_row(t("sc_match_count"), perf_a["matches"], perf_b["matches"], "{}")
-    render_metric_comparison_row(t("sc_kda_label"), perf_a["kda"], perf_b["kda"], "{:.2f}")
     render_metric_comparison_row(
         t("sc_win_rate"), perf_a["win_rate"], perf_b["win_rate"], "{:.1f}%"
     )
+    render_metric_comparison_row(t("sc_kda_label"), perf_a["kda"], perf_b["kda"], "{:.2f}")
     render_metric_comparison_row(
         t("sc_avg_life"),
         perf_a["avg_life_seconds"],
         perf_b["avg_life_seconds"],
         format_seconds_to_mmss,
     )
-
-    st.markdown("---")
-
     render_metric_comparison_row(t("sc_total_kills"), perf_a["kills"], perf_b["kills"], "{}")
     render_metric_comparison_row(
         t("sc_total_deaths"), perf_a["deaths"], perf_b["deaths"], "{}", higher_is_better=False
@@ -283,6 +285,7 @@ def _render_cumulative_section(
     df_session_b: DataFrameLike,
     session_a_label: str,
     session_b_label: str,
+    db_path: str | None = None,
 ) -> None:
     """Affiche la section du net score cumulé par session."""
     df_session_a = ensure_polars(df_session_a)
@@ -294,8 +297,26 @@ def _render_cumulative_section(
         return
 
     try:
-        pl_a = df_session_a.sort("start_time").select(_req)
-        pl_b = df_session_b.sort("start_time").select(_req)
+        sorted_a = df_session_a.sort("start_time")
+        sorted_b = df_session_b.sort("start_time")
+        pl_a = sorted_a.select(_req)
+        pl_b = sorted_b.select(_req)
+
+        rank_a, label_a = build_skill_series(sorted_a, db_path)
+        rank_b, label_b = build_skill_series(sorted_b, db_path)
+        rank_label = label_a if rank_a else label_b
+
+        def _perf_series(df: pl.DataFrame) -> list[float | None] | None:
+            if "performance_score" not in df.columns:
+                return None
+            return [
+                float(v) if v is not None else None
+                for v in df.get_column("performance_score").to_list()
+            ]
+
+        perf_a = _perf_series(sorted_a)
+        perf_b = _perf_series(sorted_b)
+
         if not pl_a.is_empty() and not pl_b.is_empty():
             st.markdown(t("sc_net_score_cumul"))
             st.caption(t("sc_net_score_desc"))
@@ -306,6 +327,11 @@ def _render_cumulative_section(
                     label_a=session_a_label,
                     label_b=session_b_label,
                     title="",
+                    rank_a=rank_a,
+                    rank_b=rank_b,
+                    rank_label=rank_label,
+                    perf_a=perf_a,
+                    perf_b=perf_b,
                 )
                 if fig_cumul is not None:
                     st.plotly_chart(fig_cumul, width="stretch", config=PLOTLY_CLEAN_CONFIG)
@@ -315,53 +341,58 @@ def _render_cumulative_section(
         pass
 
 
-@fragment_if_available
-def render_session_comparison_page(
-    all_sessions_df: DataFrameLike,
-    df_full: DataFrameLike | None = None,
-    *,
-    db_path: str | None = None,
-    xuid: str | None = None,
+def _render_comparative_charts(
+    perf_a: object,
+    perf_b: object,
+    hist_avg: dict | None,
+    session_type_label: str,
+    compare_label: str,
 ) -> None:
-    """Rend la page de comparaison de sessions (orchestrateur)."""
-    all_sessions_df = ensure_polars(all_sessions_df)
-    if df_full is not None:
-        df_full = ensure_polars(df_full)
-    # Récupérer db_path et xuid depuis session_state si non fournis
-    if db_path is None:
-        db_path = st.session_state.get("db_path", "")
-    if xuid is None:
-        xuid = st.session_state.get("xuid", "")
-    st.caption(t("sc_loading_caption"))
+    """Affiche le titre comparatif + radar + barres de métriques."""
+    st.markdown("---")
+    if hist_avg and hist_avg.get("session_count", 0) >= 1:
+        st.markdown(
+            f"{t('sc_comparative_charts')}\n"
+            f"*Session {session_type_label} — Moyenne historique : {compare_label}*"
+        )
+    else:
+        st.markdown(f"{t('sc_comparative_charts')}\n*Session {session_type_label}*")
+    col_radar, col_bars = st.columns(2)
+    with col_radar:
+        st.markdown(t("sc_radar_view"))
+        render_comparison_radar_chart(perf_a, perf_b, hist_avg=hist_avg)
+    with col_bars:
+        st.markdown(t("sc_metric_comparison"))
+        render_comparison_bar_chart(perf_a, perf_b, hist_avg=hist_avg)
 
-    if all_sessions_df.is_empty():
-        st.info(t("sc_no_sessions"))
-        return
 
-    # Liste des sessions triées (plus récente en premier)
-    session_info = (
-        all_sessions_df.group_by(["session_id", "session_label"])
-        .agg(pl.col("start_time").max().alias("last_match_time"), pl.len().alias("count"))
-        .sort("last_match_time", descending=True)
-    )
-    session_labels = session_info.get_column("session_label").to_list()
+def _render_match_history_tabs(
+    df_session_a: pl.DataFrame,
+    df_session_b: pl.DataFrame,
+    df_full: pl.DataFrame | None,
+) -> None:
+    """Affiche les onglets d'historique de parties."""
+    st.markdown("---")
+    st.markdown(t("sc_match_history"))
+    tab_hist_a, tab_hist_b = st.tabs([t("sc_session_a"), t("sc_session_b")])
+    with tab_hist_a:
+        render_session_history_table(df_session_a, "Session A", df_full=df_full)
+    with tab_hist_b:
+        render_session_history_table(df_session_b, "Session B", df_full=df_full)
 
-    if len(session_labels) < 2:
-        st.warning(t("sc_need_two_sessions"))
-        return
 
-    # Sélecteurs de sessions
-    session_a_label, session_b_label = _select_sessions(session_labels)
+@fragment_if_available
+def _compute_session_context(
+    all_sessions_df: pl.DataFrame,
+    df_session_a: pl.DataFrame,
+    df_session_b: pl.DataFrame,
+    session_a_label: str,
+    session_b_label: str,
+) -> tuple:
+    """Calcule contexte historique + labels pour la comparaison de sessions.
 
-    # Filtrer les DataFrames
-    df_session_a = all_sessions_df.filter(pl.col("session_label") == session_a_label)
-    df_session_b = all_sessions_df.filter(pl.col("session_label") == session_b_label)
-
-    # Calculer les scores de performance (v2)
-    perf_a = compute_session_performance_score_v2_ui(df_session_a)
-    perf_b = compute_session_performance_score_v2_ui(df_session_b)
-
-    # Contexte historique
+    Retourne (hist_avg, compare_mode, session_type_label, compare_label).
+    """
     session_a_id = (
         df_session_a[0, "session_id"]
         if not df_session_a.is_empty() and "session_id" in df_session_a.columns
@@ -388,48 +419,72 @@ def render_session_comparison_page(
         compare_mode,
         session_b_category,
     )
+    return hist_avg, compare_mode, session_type_label, compare_label
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # Sections de la page
-    # ══════════════════════════════════════════════════════════════════════════
+
+def render_session_comparison_page(
+    all_sessions_df: DataFrameLike,
+    df_full: DataFrameLike | None = None,
+    *,
+    db_path: str | None = None,
+    xuid: str | None = None,
+) -> None:
+    """Rend la page de comparaison de sessions (orchestrateur)."""
+    all_sessions_df = ensure_polars(all_sessions_df)
+    if df_full is not None:
+        df_full = ensure_polars(df_full)
+    if db_path is None:
+        db_path = st.session_state.get("db_path", "")
+    if xuid is None:
+        xuid = st.session_state.get("xuid", "")
+    st.caption(t("sc_loading_caption"))
+
+    if all_sessions_df.is_empty():
+        st.info(t("sc_no_sessions"))
+        return
+
+    session_info = (
+        all_sessions_df.group_by(["session_id", "session_label"])
+        .agg(pl.col("start_time").max().alias("last_match_time"), pl.len().alias("count"))
+        .sort("last_match_time", descending=True)
+    )
+    session_labels = session_info.get_column("session_label").to_list()
+    if len(session_labels) < 2:
+        st.warning(t("sc_need_two_sessions"))
+        return
+
+    session_a_label, session_b_label = _select_sessions(session_labels)
+    df_session_a = all_sessions_df.filter(pl.col("session_label") == session_a_label)
+    df_session_b = all_sessions_df.filter(pl.col("session_label") == session_b_label)
+
+    perf_a = compute_session_performance_score_v2_ui(df_session_a)
+    perf_b = compute_session_performance_score_v2_ui(df_session_b)
+    hist_avg, _, session_type_label, compare_label = _compute_session_context(
+        all_sessions_df,
+        df_session_a,
+        df_session_b,
+        session_a_label,
+        session_b_label,
+    )
+
+    render_session_temporal_header(df_session_a, df_session_b)
     _render_score_cards(perf_a, perf_b)
+    render_outcomes_distribution(df_session_a, df_session_b)
+    render_match_highlights(df_session_a, df_session_b)
     _render_detailed_metrics(perf_a, perf_b)
     _render_mmr_comparison(perf_a, perf_b)
 
-    # Graphiques comparatifs
-    st.markdown("---")
-    if hist_avg and hist_avg.get("session_count", 0) >= 1:
-        st.markdown(
-            f"{t('sc_comparative_charts')}\n"
-            f"*Session {session_type_label} — Moyenne historique : {compare_label}*"
-        )
-    else:
-        st.markdown(f"{t('sc_comparative_charts')}\n*Session {session_type_label}*")
-
-    col_radar, col_bars = st.columns(2)
-    with col_radar:
-        st.markdown(t("sc_radar_view"))
-        render_comparison_radar_chart(perf_a, perf_b, hist_avg=hist_avg)
-    with col_bars:
-        st.markdown(t("sc_metric_comparison"))
-        render_comparison_bar_chart(perf_a, perf_b, hist_avg=hist_avg)
-
-    # Net score cumulé
-    _render_cumulative_section(df_session_a, df_session_b, session_a_label, session_b_label)
-
-    # Tendance de participation (PersonalScores) - Sprint 8.2
+    _render_comparative_charts(perf_a, perf_b, hist_avg, session_type_label, compare_label)
+    _render_cumulative_section(
+        df_session_a, df_session_b, session_a_label, session_b_label, db_path=db_path
+    )
+    render_kd_progression(df_session_a, df_session_b, session_a_label, session_b_label)
+    render_modes_breakdown(df_session_a, df_session_b)
+    render_map_table(df_session_a, df_session_b)
     render_participation_trend_section(
         df_session_a=df_session_a,
         df_session_b=df_session_b,
         db_path=db_path,
         xuid=xuid,
     )
-
-    # Tableau historique des parties
-    st.markdown("---")
-    st.markdown(t("sc_match_history"))
-    tab_hist_a, tab_hist_b = st.tabs([t("sc_session_a"), t("sc_session_b")])
-    with tab_hist_a:
-        render_session_history_table(df_session_a, "Session A", df_full=df_full)
-    with tab_hist_b:
-        render_session_history_table(df_session_b, "Session B", df_full=df_full)
+    _render_match_history_tabs(df_session_a, df_session_b, df_full)

@@ -420,10 +420,10 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
             continue
 
         st.markdown(
-            f"<h3 style='margin-top:1.5rem'>{html.escape(cat)}</h3>",
+            f"<h2 style='margin-top:1.2rem; margin-bottom:0.25rem'>{html.escape(cat)}</h2>"
+            "<hr style='margin:0.2rem 0 0.6rem 0;opacity:0.4'>",
             unsafe_allow_html=True,
         )
-        st.divider()
 
         if cat in _SUBCAT_ORDER:
             _SUBCAT_DISPLAY: dict[str, dict[str, str]] = {
@@ -439,8 +439,8 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
                 if subcat is not None:
                     subcat_label = _SUBCAT_DISPLAY.get(lang, {}).get(subcat, subcat)
                     st.markdown(
-                        f"<h4 style='margin-top:1rem'>{html.escape(subcat_label)}</h4>"
-                        "<hr style='margin:0.25rem 0 0.75rem 0;opacity:0.3'>",
+                        f"<h4 style='margin-top:0.5rem'>{html.escape(subcat_label)}</h4>"
+                        "<hr style='margin:0.15rem 0 0.5rem 0;opacity:0.3'>",
                         unsafe_allow_html=True,
                     )
                 _render_citation_row(

@@ -1,6 +1,6 @@
 # src/ai/__init__.py
 """
-Module IA pour OpenSpartan Graph.
+Module IA pour LevelUp.
 
 Composants:
 - RAG: Retrieval-Augmented Generation avec ChromaDB

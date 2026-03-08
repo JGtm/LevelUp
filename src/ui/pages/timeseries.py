@@ -7,6 +7,8 @@ Graphes d'évolution des statistiques dans le temps.
 
 from __future__ import annotations
 
+import re
+
 import polars as pl
 import streamlit as st
 
@@ -21,10 +23,10 @@ from src.visualization.distributions import (
     plot_kda_distribution,
 )
 from src.visualization.performance import (
-    plot_cumulative_kd,
-    plot_cumulative_net_score,
-    plot_rolling_kd,
-    plot_session_trend,
+    plot_cumulative_kd_with_ci,
+    plot_ewma_kd,
+    plot_net_score_per_hour,
+    plot_regression_trend,
 )
 from src.visualization.timeseries import (
     plot_assists_timeseries,
@@ -108,41 +110,110 @@ def _render_kda_section(dff: pl.DataFrame, lang: str = "fr") -> None:
 
 @fragment_if_available
 def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
-    """Affiche les graphes de performance cumulée et tendance (Sprint 6)."""
+    """Affiche les graphes de progression cumulée et de forme récente (refonte)."""
     st.subheader(t("ts_cumulative"))
     st.caption(t("ts_cumulative_caption"))
+
     cumul = TimeseriesService.compute_cumulative_metrics(dff)
-    if cumul is not None:
-        with safe_chart_render():
-            st.plotly_chart(
-                plot_cumulative_net_score(
-                    cumul.cumul_net, time_played_seconds=cumul.time_played_seconds, lang=lang
-                ),
-                width="stretch",
-                config=PLOTLY_CLEAN_CONFIG,
-            )
-            st.plotly_chart(
-                plot_cumulative_kd(
-                    cumul.cumul_kd, time_played_seconds=cumul.time_played_seconds, lang=lang
-                ),
-                width="stretch",
-                config=PLOTLY_CLEAN_CONFIG,
-            )
-            st.plotly_chart(
-                plot_rolling_kd(cumul.rolling_kd, window_size=5, lang=lang),
-                width="stretch",
-                config=PLOTLY_CLEAN_CONFIG,
-            )
-            if cumul.has_enough_for_trend:
-                st.plotly_chart(
-                    plot_session_trend(cumul.pl_df, lang=lang),
-                    width="stretch",
-                    config=PLOTLY_STATIC_CONFIG,
-                )
-            else:
-                st.info(t("ts_trend_min_matches"))
-    else:
+    if cumul is None:
         st.info(t("ts_col_missing_cumul"))
+        return
+
+    # ── Contrôles ────────────────────────────────────────────────────────────
+    col_alpha, col_outcome = st.columns([3, 1])
+    with col_alpha:
+        alpha = st.slider(
+            t("ts_ewma_alpha_label"),
+            min_value=0.10,
+            max_value=0.50,
+            value=0.20,
+            step=0.05,
+            help=t("ts_ewma_alpha_help"),
+        )
+    with col_outcome:
+        show_outcomes = st.checkbox(t("ts_show_outcome_markers"), value=True)
+
+    outcome_values: list[int | None] | None = None
+    if show_outcomes and "outcome" in dff.columns:
+        outcome_values = dff.sort("start_time")["outcome"].to_list()
+
+    # ── Section : Bilan cumulatif ─────────────────────────────────────────────
+    st.markdown(f"#### {t('ts_section_cumulative')}")
+
+    nph_data = TimeseriesService.compute_rolling_net_score_per_hour(dff)
+    if nph_data is not None:
+        with safe_chart_render():
+            fig_nph = plot_net_score_per_hour(
+                nph_data,
+                lang=lang,
+                outcome_values=outcome_values,
+            )
+            st.plotly_chart(fig_nph, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+        _render_note(t("ts_note_nph"))
+    else:
+        st.info(t("ts_nph_unavailable"))
+
+    ci_data = TimeseriesService.compute_cumulative_kd_with_ci(dff)
+    with safe_chart_render():
+        fig_ci = plot_cumulative_kd_with_ci(
+            ci_data,
+            lang=lang,
+            outcome_values=outcome_values,
+        )
+        st.plotly_chart(fig_ci, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+    _render_note(t("ts_note_ci"))
+
+    # ── Section : Forme récente ───────────────────────────────────────────────
+    st.markdown(f"#### {t('ts_section_recent')}")
+
+    ewma_data = TimeseriesService.compute_ewma_kd(dff, alpha=alpha)
+    regression = TimeseriesService.compute_linear_regression_kd(ewma_data)
+
+    with safe_chart_render():
+        fig_ewma = plot_ewma_kd(
+            ewma_data,
+            lang=lang,
+            regression_data=regression,
+            outcome_values=outcome_values,
+        )
+        st.plotly_chart(fig_ewma, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+    _render_note(t("ts_note_ewma"))
+
+    if cumul.has_enough_for_trend:
+        st.markdown(f"##### {t('ts_regression_subheader')}")
+        with safe_chart_render():
+            fig_reg = plot_regression_trend(regression, lang=lang)
+            st.plotly_chart(fig_reg, width="stretch", config=PLOTLY_STATIC_CONFIG)
+        _render_note(t("ts_note_regression"))
+    else:
+        st.info(t("ts_trend_min_matches"))
+
+
+def _render_note(text: str) -> None:
+    """Encadré conclusif discret sous chaque graphe (thème Halo)."""
+    lines = text.split("\n")
+    parts: list[str] = []
+    in_list = False
+    for line in lines:
+        if line.startswith("- "):
+            if not in_list:
+                parts.append("<ul>")
+                in_list = True
+            item = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line[2:])
+            parts.append(f"<li>{item}</li>")
+        else:
+            if in_list:
+                parts.append("</ul>")
+                in_list = False
+            if line.strip():
+                item = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line)
+                parts.append(f"<p>{item}</p>")
+    if in_list:
+        parts.append("</ul>")
+    st.markdown(
+        f'<div class="ts-note">{"".join(parts)}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 @fragment_if_available

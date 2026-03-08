@@ -1,7 +1,6 @@
 # BACKLOG — Tâches et TODO centralisés
 
-> Généré le 2026-02-26 à partir du `thought_log.md`, du code source et des fichiers `.ai/`.
-> Mettre à jour ce fichier après chaque session significative.
+> Mis à jour le 2026-03-08 — **Backlog 100% traité**.
 
 ---
 
@@ -132,6 +131,24 @@ Tokens stockés par joueur dans `sync_meta` (`oauth_refresh_token`).
 
 | Date | Item |
 |------|------|
+| 2026-03-08 | Bug #0 : match invisible post-sync — suppression `_filters_loaded_*` dans `_clear_app_caches()` |
+| 2026-03-08 | Bug #1 : `win_rate` unifié sur `NULLIF(WIN+LOSS, 0)` dans `analytics.py` et `trends.py` |
+| 2026-03-08 | Bug #5 : NaN-check fragile dans `match_view.py` → `is not None` |
+| 2026-03-08 | Dette #2 : guard obsolète `_PERF_SCORE_AVAILABLE` supprimé dans `_performance.py` |
+| 2026-03-08 | Dette #3 : dead code `_ensure_performance_score_column()` supprimé |
+| 2026-03-08 | Dette #4 : magic number `outcome == 4` → `Outcome.DID_NOT_FINISH` |
+| 2026-03-08 | Dette #6 : magic SQL `2`/`3` → constantes `_WIN`/`_LOSS` dans `analytics.py` |
+| 2026-03-08 | i18n-1 : clés tronquées `PAIR_FR` restaurées dans `translations.py` |
+| 2026-03-08 | i18n-2 : 342 entrées redondantes supprimées de `PAIR_FR` (399 → 57) |
+| 2026-03-08 | i18n-3 : doublon `tm_session_trend` supprimé dans `widgets.py` |
+| 2026-03-08 | Kwargs legacy SyncScope — dépréciés + `scope=SyncScope(...)` opérationnel ; kwargs conservés pour rétro-compat (suppression conditionnelle : quand tous les appelants migrés) |
+| 2026-03-08 | `career.py` migré vers `get_cached_repository_st()` (plus de `duckdb.connect()` nu) |
+| 2026-03-08 | Perf UI — vues matérialisées reconstruites uniquement post-sync dans `engine.py` |
+| 2026-03-08 | Perf UI — lazy-loading `match_view` via `st.tabs` + `@fragment_if_available` |
+| 2026-03-08 | Perf UI — pagination SQL `LIMIT/OFFSET` sur `mv_player_matches` |
+| 2026-03-08 | Perf UI — projections Polars fines par page dans `cache_loaders.py` |
+| 2026-03-08 | i18n câblage `t()` dans les pages/widgets Streamlit |
+| 2026-03-08 | CI/CD — détection de régression + pre-commit hook |
 | 2026-02-26 | Quick wins perf UI (cache TTL, `@lru_cache`, `@st.cache_data`) |
 | 2026-02-25 | v5.3 LUSR stabilisation + UI Carrière |
 | 2026-02-25 | i18n Phase 1b — traductions EN registres |

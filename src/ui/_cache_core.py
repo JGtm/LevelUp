@@ -20,6 +20,13 @@ logger = logging.getLogger(__name__)
 PARIS_TZ_NAME = "Europe/Paris"
 
 
+class SharedDBUnavailableError(RuntimeError):
+    """Levée quand shared_matches.duckdb est verrouillé par un autre processus.
+
+    Non cachée par @st.cache_data → le prochain appel retente l'ATTACH.
+    """
+
+
 # ─── Cache Repository (v5.1 perf) ──────────────────────────────────────────
 # Connexion persistante via @st.cache_resource pour éviter les reconnexions
 # coûteuses (ATTACH × 3 = 50-100ms par instanciation).
@@ -48,6 +55,16 @@ def get_cached_repository_st(
     repo = DuckDBRepository(db_path, xuid, read_only=True)
     # Warm-up : forcer la connexion + ATTACH immédiatement
     repo._get_connection()
+    # Ne PAS cacher un repo sans shared si le fichier existe : raise pour
+    # empêcher @st.cache_resource de stocker un repo cassé. Le prochain
+    # appel retentera l'ATTACH.
+    if not repo.has_shared and repo._shared_db_path.exists():
+        repo.close()
+        raise SharedDBUnavailableError(
+            "shared_matches.duckdb est verrouillé par un autre processus "
+            "et ne peut pas être attaché. Fermez toute connexion DuckDB "
+            "externe (extension VS Code, CLI) et rechargez la page."
+        )
     return repo
 
 
@@ -96,7 +113,7 @@ COLUMNS_COMPUTED: list[str] = [
 ]
 
 
-def db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
+def db_cache_key(db_path: str) -> tuple[int, int, int, int, int] | None:
     """Retourne une signature stable des DBs pour invalider les caches.
 
     Surveille à la fois *stats.duckdb* (player) ET *shared_matches.duckdb*
@@ -104,8 +121,15 @@ def db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
     dans stats. Sans ce second composant, le cache @st.cache_data ne voit
     pas les matchs ajoutés après la dernière lecture.
 
+    Le 5e composant, ``wal_sentinel``, prend la valeur ``mtime_ns`` du WAL
+    de shared s'il existe, sinon 0. Cela ferme la race condition entre
+    l'écriture WAL (mtime principal inchangé) et le checkpoint DuckDB :
+    dès que le WAL est créé par un sync en cours, le cache est invalidé
+    sans attendre le checkpoint.
+
     Returns:
-        (mtime_ns_player, size_player, mtime_ns_shared, size_shared) ou None.
+        (mtime_ns_player, size_player, mtime_ns_shared, size_shared,
+        wal_sentinel) ou None.
     """
     try:
         st_ = os.stat(db_path)
@@ -118,6 +142,7 @@ def db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
     # Chemin shared_matches.duckdb déduit du chemin joueur
     mtime_shared = 0
     size_shared = 0
+    wal_sentinel = 0
     try:
         from src.utils.paths import get_shared_matches_path_from_player
 
@@ -126,10 +151,27 @@ def db_cache_key(db_path: str) -> tuple[int, int, int, int] | None:
             st_shared = os.stat(shared_path)
             mtime_shared = int(getattr(st_shared, "st_mtime_ns", int(st_shared.st_mtime * 1e9)))
             size_shared = int(st_shared.st_size)
+            # WAL sentinel : si le WAL existe, on inclut son mtime dans la clé.
+            # Cela force un cache miss dès qu'un sync commence à écrire,
+            # même avant le checkpoint DuckDB (qui met à jour le fichier principal).
+            wal_path = shared_path.with_suffix(shared_path.suffix + ".wal")
+            if wal_path.exists():
+                st_wal = os.stat(wal_path)
+                wal_sentinel = int(getattr(st_wal, "st_mtime_ns", int(st_wal.st_mtime * 1e9)))
+                logger.debug("WAL shared détecté — cache invalidé (wal_mtime_ns=%d)", wal_sentinel)
     except Exception:
         pass
 
-    return mtime_player, size_player, mtime_shared, size_shared
+    logger.debug(
+        "db_cache_key(%s): mtime_player=%d size_player=%d mtime_shared=%d size_shared=%d wal=%d",
+        os.path.basename(db_path),
+        mtime_player,
+        size_player,
+        mtime_shared,
+        size_shared,
+        wal_sentinel,
+    )
+    return mtime_player, size_player, mtime_shared, size_shared, wal_sentinel
 
 
 def _resolve_player_xuid(db_path: str) -> str:

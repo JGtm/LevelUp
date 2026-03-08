@@ -35,9 +35,29 @@ def diagnose(db_path: str) -> dict[str, Any]:
     Returns:
         Un dictionnaire contenant des informations de diagnostic.
     """
-    from scripts._archive.diagnose_player_db import diagnose as _diagnose
+    import duckdb
 
-    return _diagnose(db_path)
+    result: dict[str, Any] = {"db_path": db_path, "tables": {}, "errors": []}
+    try:
+        conn = duckdb.connect(str(db_path), read_only=True)
+    except Exception as e:
+        result["errors"].append(f"Impossible d'ouvrir: {e}")
+        return result
+
+    try:
+        tables = conn.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+        ).fetchall()
+        for (table_name,) in tables:
+            try:
+                count = conn.execute(f'SELECT COUNT(*) FROM "{table_name}"').fetchone()
+                result["tables"][table_name] = {"count": count[0] if count else 0}
+            except Exception as e:
+                result["tables"][table_name] = {"error": str(e)}
+    finally:
+        conn.close()
+
+    return result
 
 
 def audit_player_db_types(db_path: str) -> dict[str, Any]:
@@ -148,9 +168,9 @@ def main() -> int:
     total_critical = 0
 
     for gamertag, db_path in player_dbs:
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"Joueur: {gamertag}")
-        logger.info(f"{'='*60}")
+        logger.info(f"{'=' * 60}")
 
         if args.audit_types:
             result = audit_player_db_types(str(db_path))

@@ -4,14 +4,54 @@
 
 ## Table des Matières
 
-- [Configuration Azure](#configuration-azure)
+- [Setup Wizard (recommandé)](#setup-wizard-recommandé)
+- [Configuration Azure détaillée](#configuration-azure-détaillée)
 - [Profils Joueurs](#profils-joueurs)
 - [Variables d'Environnement](#variables-denvironnement)
 - [Paramètres Application](#paramètres-application)
 
 ---
 
-## Configuration Azure
+## Setup Wizard (recommandé)
+
+**LevelUp configure tout automatiquement via un wizard intégré.**
+Après avoir double-cliqué sur `LevelUp.bat`, le wizard s'ouvre dans le navigateur et guide les étapes suivantes :
+
+| Étape | Parcours Xbox Express | Parcours Azure manuel |
+|-------|----------------------|----------------------|
+| 1 | Saisir Client ID + Secret Azure | Saisir Client ID + Secret Azure |
+| 2 | Cliquer "Se connecter avec Xbox" (OAuth automatique) | Lancer `spnkr_get_refresh_token.py` + coller le token |
+| 3 | *(automatique)* gamertag + XUID résolus, profil créé | Saisir le gamertag manuellement |
+
+**Le wizard gère automatiquement :**
+- Création de `.env.local` avec les credentials
+- Obtention et stockage du refresh token OAuth (dans `stats.duckdb/sync_meta`)
+- Création du profil joueur dans `db_profiles.json`
+- Smoke test de vérification sur 20 matchs
+
+> Si le wizard ne s'affiche pas, c'est que la configuration est déjà complète.
+> Pour forcer son réaffichage : supprimer `.env.local` ou `db_profiles.json`.
+
+---
+
+## Configuration Azure détaillée
+
+### À propos de l'inscription Azure
+
+> **Pourquoi Azure demande-t-il une carte bancaire ?**
+>
+> Azure demande une carte de crédit ou de débit lors de l'inscription principalement pour **vérifier l'identité de l'utilisateur et prévenir les fraudes**. Même si de nombreux services Azure proposent des crédits gratuits ou des niveaux gratuits, Microsoft a besoin d'un moyen de paiement valide pour :
+> - Vérifier l'identité de l'utilisateur
+> - Éviter les abus et les créations multiples de comptes gratuits
+> - Activer la facturation automatique si l'utilisation dépasse les limites gratuites
+>
+> **Cela ne signifie pas que des frais seront prélevés immédiatement.** Des frais ne s'appliquent que si des services payants sont utilisés au-delà des limites gratuites.
+>
+> **Pour ce projet, vous ne dépasserez jamais le niveau gratuit.** LevelUp enregistre uniquement une application OAuth dans Azure Active Directory (Microsoft Entra ID), ce qui est entièrement gratuit et sans quota d’utilisation. Aucun service Azure payant n’est consommé.
+
+> **Azure for Students — Aucune carte bancaire requise**
+>
+> Si vous disposez d'une adresse e-mail universitaire ou scolaire valide, vous pouvez vous inscrire à [Azure for Students](https://azure.microsoft.com/fr-fr/free/students/) gratuitement, sans carte bancaire.
 
 ### Prérequis
 
@@ -24,34 +64,76 @@ Pour utiliser l'API Halo Infinite via SPNKr, vous devez :
 ### 1. Créer une Application Azure
 
 1. Aller sur [Azure Portal](https://portal.azure.com/)
-2. Naviguer vers **Azure Active Directory** → **App registrations**
+2. Naviguer vers **Microsoft Entra ID** → **App registrations**
+
+   ![Microsoft Entra ID](../screenshots/azure-setup/01-entra-id.png)
+
 3. Cliquer sur **New registration**
+
+   ![Add App Registration](../screenshots/azure-setup/02-add-app-registration.png)
+
 4. Configurer :
    - **Name** : `LevelUp Halo`
    - **Supported account types** : Personal Microsoft accounts only
    - **Redirect URI** : `https://localhost` (Web)
 5. Cliquer sur **Register**
 
+   ![Register Application](../screenshots/azure-setup/03-register-application.png)
+
+6. Après l'enregistrement, Azure redirige vers la page **Overview** de l'application. **Copier l'Application (client) ID** — c'est votre `SPNKR_AZURE_CLIENT_ID`.
+
+   ![Overview — Application (client) ID](../screenshots/azure-setup/03b-overview-client-id.png)
+
+   > Il ressemble à : `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (format GUID)
+
 ### 2. Configurer les Permissions
 
-1. Dans votre application, aller à **API permissions**
-2. Cliquer sur **Add a permission**
-3. Sélectionner **Microsoft Graph** → **Delegated permissions**
-4. Ajouter : `User.Read`, `offline_access`
+1. Dans votre application, aller à **API permissions** et cliquer sur **Add a permission**
+
+   ![API Permissions](../screenshots/azure-setup/04-api-permissions.png)
+
+2. Sélectionner **Microsoft Graph** → **Delegated permissions**
+
+   ![Select Microsoft Graph](../screenshots/azure-setup/05-select-microsoft-graph.png)
+
+3. Ajouter `offline_access`
+
+   ![Add offline_access](../screenshots/azure-setup/06-permission-offline-access.png)
+
+4. Ajouter `User.Read`
+
+   ![Add User.Read](../screenshots/azure-setup/07-permission-user-read.png)
+
 5. Ajouter aussi les permissions Xbox Live (si disponibles)
 
 ### 3. Créer un Secret Client
 
-1. Aller à **Certificates & secrets**
-2. Cliquer sur **New client secret**
-3. Donner un nom et choisir une expiration
-4. **Copier immédiatement la valeur** (elle ne sera plus visible après)
+1. Aller à **Certificates & secrets** et cliquer sur **New client secret**
 
-### 4. Configurer le Fichier .env.local
+   ![Certificates & Secrets](../screenshots/azure-setup/08-certificates-secrets.png)
+
+2. Donner une description et choisir une expiration
+
+   ![New Client Secret](../screenshots/azure-setup/09-new-client-secret.png)
+
+3. **Copier immédiatement la colonne `Value`** — c'est votre `SPNKR_AZURE_CLIENT_SECRET`. Elle disparaît dès que vous naviguez ailleurs.
+
+   > ⚠️ Ne pas copier le **Secret ID** (l'autre colonne) — vous avez besoin de la **Value**.
+
+   ![Copy Secret Value](../screenshots/azure-setup/10-copy-secret.png)
+
+> **Récapitulatif — à ce stade vous devriez avoir deux valeurs en main :**
+> - `SPNKR_AZURE_CLIENT_ID` → copié depuis la page **Overview** de l'app (étape 1.6)
+> - `SPNKR_AZURE_CLIENT_SECRET` → copié depuis **Certificates & secrets** (étape 3.3)
+
+> ✅ **Si vous utilisez le Setup Wizard (recommandé)** : collez ces deux valeurs dans les champs
+> du wizard. Il sauvegarde `.env.local` et gère le reste automatiquement.
+
+### 4. Configurer le Fichier .env.local (méthode manuelle — avancé)
 
 ```bash
 # Copier le template
-cp .env.example .env.local
+cp .env.local.example .env.local
 ```
 
 Éditer `.env.local` :
@@ -66,7 +148,10 @@ SPNKR_AZURE_REDIRECT_URI=https://localhost
 SPNKR_OAUTH_REFRESH_TOKEN=
 ```
 
-### 5. Obtenir le Refresh Token
+### 5. Obtenir le Refresh Token (méthode manuelle — avancé)
+
+> **Si vous utilisez Xbox Express** dans le wizard, cette étape est inutile.
+> Le token est obtenu automatiquement via OAuth et stocké en base de données.
 
 ```bash
 python scripts/spnkr_get_refresh_token.py
@@ -81,6 +166,9 @@ Ce script :
 ---
 
 ## Profils Joueurs
+
+> **Si vous utilisez le Setup Wizard** : le profil est créé automatiquement.
+> Cette section est utile pour ajouter des joueurs supplémentaires ou en mode CLI.
 
 ### Structure du Fichier db_profiles.json
 
@@ -122,13 +210,33 @@ Plusieurs méthodes :
 
 ### Ajouter un Nouveau Joueur
 
+**Méthode 1 — Automatique via CLI (recommandée) :**
+
+```bash
+# Par gamertag
+python scripts/sync.py --add-player NouveauJoueur
+
+# Par XUID
+python scripts/sync.py --add-player 2533274823110022
+
+# Ajout + sync complète en une seule commande
+python scripts/sync.py --add-player NouveauJoueur --full --max-matches 500
+```
+
+Cette commande :
+- Résout le gamertag/XUID via l'API
+- Crée l'entrée dans `db_profiles.json`
+- Crée le dossier `data/players/<gamertag>/`
+
+**Méthode 2 — Manuelle :**
+
 ```bash
 # Créer le dossier
 mkdir -p data/players/NouveauJoueur
 
-# Ajouter au fichier db_profiles.json
+# Ajouter l'entrée dans db_profiles.json (voir structure ci-dessus)
 # Puis synchroniser
-python scripts/sync.py --gamertag NouveauJoueur --full
+python scripts/sync.py --player NouveauJoueur --full
 ```
 
 ---
@@ -175,17 +283,17 @@ SPNKR_OAUTH_REFRESH_TOKEN_SPARTANC=votre_refresh_token
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
-| `OPENSPARTAN_DB` | Chemin vers la DB par défaut | Auto |
-| `OPENSPARTAN_DB_PATH` | Alias pour OPENSPARTAN_DB | Auto |
-| `OPENSPARTAN_DB_READONLY` | Mode lecture seule | `0` |
+| `LEVELUP_DB` | Chemin vers la DB par défaut | Auto |
+| `LEVELUP_DB_PATH` | Alias pour LEVELUP_DB | Auto |
+| `LEVELUP_DB_READONLY` | Mode lecture seule | `0` |
 | `SPNKR_PLAYER` | Joueur par défaut pour sync | Premier profil |
 
 #### Debug
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
-| `OPENSPARTAN_DEBUG` | Mode debug global | `0` |
-| `OPENSPARTAN_DEBUG_ANTAGONISTS` | Debug calcul antagonistes | `0` |
+| `LEVELUP_DEBUG` | Mode debug global | `0` |
+| `LEVELUP_DEBUG_ANTAGONISTS` | Debug calcul antagonistes | `0` |
 | `STREAMLIT_DEBUG` | Debug Streamlit | `0` |
 
 ---
@@ -255,7 +363,7 @@ python scripts/spnkr_get_refresh_token.py
 En production (Docker, serveur) :
 
 ```env
-OPENSPARTAN_DB_READONLY=1
+LEVELUP_DB_READONLY=1
 ```
 
 Cela empêche les modifications accidentelles de la base.

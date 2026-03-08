@@ -61,9 +61,6 @@ from src.app.helpers import (
 from src.app.kpis import (
     KPIStats,
     compute_kpi_stats,
-    render_all_kpis,
-    render_career_kpis,
-    render_matches_summary,
 )
 from src.app.kpis_render import (
     render_kpis_section,
@@ -73,7 +70,6 @@ from src.app.main_helpers import (
     load_match_dataframe,
     load_profile_api,
     render_profile_hero,
-    render_sidebar_header,
     resolve_xuid_from_input,
     validate_and_fix_db_path,
 )
@@ -169,9 +165,6 @@ __all__ = [
     # KPIs
     "KPIStats",
     "compute_kpi_stats",
-    "render_matches_summary",
-    "render_career_kpis",
-    "render_all_kpis",
     # Data Loader
     "default_identity_from_secrets",
     "propagate_identity_env",
@@ -189,7 +182,6 @@ __all__ = [
     "apply_settings_overrides_main",
     "validate_and_fix_db_path",
     "resolve_xuid_from_input",
-    "render_sidebar_header",
     "load_profile_api",
     "render_profile_hero",
     "load_match_dataframe",

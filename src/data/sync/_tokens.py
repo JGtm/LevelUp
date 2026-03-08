@@ -10,6 +10,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from src.utils.env import load_dotenv_if_present, normalize_gamertag_for_env
@@ -125,6 +126,26 @@ async def get_tokens_from_env() -> Tokens:
                 oauth_refresh_token = value.strip()
                 break
 
+    # Fallback DB : chercher le token dans sync_meta du premier joueur configuré
+    if not oauth_refresh_token and azure_client_id and azure_client_secret:
+        try:
+            from src.ui.xbox_oauth import load_refresh_token as _load_rt
+            from src.utils.profiles import load_profiles as _load_profiles
+
+            _profiles = _load_profiles()
+            for _gt, _prof in _profiles.items():
+                _db = _prof.get("db_path", "")
+                if _db and Path(_db).exists():
+                    _rt = _load_rt(_db)
+                    if _rt:
+                        oauth_refresh_token = _rt
+                        logger.debug(
+                            "SPNKR_OAUTH_REFRESH_TOKEN chargé depuis sync_meta de '%s'.", _gt
+                        )
+                        break
+        except Exception:
+            pass
+
     if azure_client_id and azure_client_secret and oauth_refresh_token:
         return await _get_tokens_via_oauth(
             azure_client_id,
@@ -172,6 +193,23 @@ async def get_tokens_for_player(gamertag: str) -> Tokens | None:
 
     key = get_player_token_env_key(gamertag)
     player_refresh_token = (os.environ.get(key) or "").strip()
+
+    # Fallback DB : token dans sync_meta (connexion Xbox OAuth via UI)
+    if not player_refresh_token:
+        try:
+            from src.ui.xbox_oauth import load_refresh_token as _load_rt
+
+            _repo_root = Path(__file__).resolve().parents[3]
+            _player_db = _repo_root / "data" / "players" / gamertag / "stats.duckdb"
+            if _player_db.exists():
+                _rt = _load_rt(_player_db)
+                if _rt:
+                    player_refresh_token = _rt
+                    logger.debug(
+                        "Token joueur '%s' chargé depuis sync_meta (Xbox OAuth UI).", gamertag
+                    )
+        except Exception:
+            pass
 
     if not player_refresh_token:
         return None

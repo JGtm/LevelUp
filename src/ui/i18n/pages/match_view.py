@@ -118,6 +118,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Impact du match",
         "en": "Match impact",
     },
+    "mv_impact_legend": {
+        "fr": "- ⚡ **Premier sang** — premier kill du match, toutes équipes confondues\n- 🎯 **Finisseur** — dernier kill d'un match remporté\n- 💀 **Boulet** — dernière mort d'une défaite\n- 🐌 **Touriste** — dernier à obtenir son 1er kill\n- 🪦 **Première victime** — première mort du match, toutes équipes confondues",
+        "en": "- ⚡ **First Blood** — first kill of the match, across all teams\n- 🎯 **Finisher** — last kill of a won match\n- 💀 **Dead Weight** — last death of a lost match\n- 🐌 **Tourist** — last to get their first kill\n- 🪦 **First Casualty** — first death of the match, across all teams",
+    },
     "mv_impact_no_events": {
         "fr": "Données d'impact indisponibles (highlight events manquants).",
         "en": "Impact data unavailable (missing highlight events).",
@@ -204,6 +208,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "mv_stats_unavailable": {
         "fr": "Stats détaillées indisponibles pour ce match. Essaie un backfill.",
         "en": "Detailed stats unavailable for this match. Try a backfill.",
+    },
+    "mv_abandoned_match": {
+        "fr": "Match abandonné",
+        "en": "Abandoned match",
+    },
+    "mv_abandoned_match_desc": {
+        "fr": "Ce match s'est terminé avant qu'aucun joueur ne marque de points (crash serveur ou partie non disputée). Les statistiques détaillées et les graphiques de combat sont indisponibles.",
+        "en": "This match ended before any player scored (server crash or match not played). Detailed statistics and combat charts are unavailable.",
     },
     "mv_medal_fallback": {"fr": "Médaille #{n}", "en": "Medal #{n}"},
     "mv_open_waypoint": {"fr": "Ouvrir sur HaloWaypoint", "en": "Open on HaloWaypoint"},
@@ -316,7 +328,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "You win often with this player on your team (≥ 65% win rate, min. 2 games)",
     },
     "legend_badge_coriace": {
-        "fr": "Tu as du mal à battre ce joueur quand il est en face (≤ 35% de victoires, min. 3 duels)",
+        "fr": "Tu as du mal à battre ce joueur quand il est dans l'équipe adverse (≤ 35% de victoires, min. 3 duels)",
         "en": "You struggle to beat this player as an opponent (≤ 35% win rate, min. 3 duels)",
     },
     # Ordinal de rencontre — "{ordinal} rencontre" / "{ordinal} encounter"

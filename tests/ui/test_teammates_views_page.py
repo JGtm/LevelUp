@@ -195,13 +195,6 @@ class TestRenderSingleTeammateView:
             patch.object(mod, "_render_shared_stats_metrics"),
             patch.object(mod, "_render_shared_medals"),
             patch.object(mod, "display_name_from_xuid", return_value="FriendName"),
-            patch.object(mod, "compute_aggregated_stats", return_value={}),
-            patch.object(mod, "compute_global_ratio", return_value=1.5),
-            patch.object(
-                mod,
-                "compute_outcome_rates",
-                return_value=MagicMock(wins=5, losses=3, draws=2, total=10),
-            ),
             patch.object(
                 mod,
                 "compute_map_breakdown",

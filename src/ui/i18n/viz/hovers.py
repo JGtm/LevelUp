@@ -141,6 +141,18 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "<b>%{x}</b><br>K/D Glissant: %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>Rolling K/D: %{y:.2f}<extra></extra>",
     },
+    "hover_kd_ewma": {
+        "fr": "<b>%{x}</b><br>K/D Lissé (EWMA): %{y:.2f}<extra></extra>",
+        "en": "<b>%{x}</b><br>Smoothed K/D (EWMA): %{y:.2f}<extra></extra>",
+    },
+    "hover_nph_raw": {
+        "fr": "<b>%{x}</b><br>Net/h: %{y:+.1f}<extra></extra>",
+        "en": "<b>%{x}</b><br>Net/h: %{y:+.1f}<extra></extra>",
+    },
+    "hover_nph_rolling": {
+        "fr": "<b>%{x}</b><br>Net/h lissé: %{y:+.1f}<extra></extra>",
+        "en": "<b>%{x}</b><br>Smoothed Net/h: %{y:+.1f}<extra></extra>",
+    },
     "hover_kd_match": {
         "fr": "<b>%{x}</b><br>K/D Match: %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>Match K/D: %{y:.2f}<extra></extra>",

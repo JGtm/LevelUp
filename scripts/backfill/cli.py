@@ -248,6 +248,21 @@ def create_argument_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ── Teammates signature ──
+    parser.add_argument(
+        "--teammates-sig",
+        action="store_true",
+        help=(
+            "Reconstruire teammates_signature + is_with_friends depuis shared_matches "
+            "pour les matchs où teammates_signature IS NULL."
+        ),
+    )
+    parser.add_argument(
+        "--force-teammates-sig",
+        action="store_true",
+        help="Recalculer teammates_signature + is_with_friends pour TOUS les matchs.",
+    )
+
     # ── Citations ──
     parser.add_argument(
         "--citations",
@@ -540,6 +555,17 @@ def create_argument_parser() -> argparse.ArgumentParser:
             "Détecte les matchs syncés avec une version SPNKr obsolète "
             "(highlight_events potentiellement corrompus). Affiche un rapport "
             "sans modifier les données."
+        ),
+    )
+
+    # ── Career Rank XP total (local, sans API) ───────────────────────────────────
+    parser.add_argument(
+        "--xp-total",
+        action="store_true",
+        help=(
+            "Recalcule xp_total et xp_for_next_rank dans career_progression "
+            "pour tous les joueurs, depuis les vraies valeurs metadata.duckdb. "
+            "Corrige l'ancienne formule approximative hardcodée. Local, sans API."
         ),
     )
 

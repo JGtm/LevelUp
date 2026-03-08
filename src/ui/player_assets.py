@@ -81,7 +81,7 @@ def resolve_local_image_path(value: str | None) -> str | None:
 
 def _build_auth_headers() -> dict[str, str]:
     """Construit les headers d'authentification pour les endpoints Halo Waypoint."""
-    headers: dict[str, str] = {"User-Agent": "OpenSpartan-Graphs"}
+    headers: dict[str, str] = {"User-Agent": "LevelUp"}
     clearance = str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip()
     spartan = str(os.environ.get("SPNKR_SPARTAN_TOKEN") or "").strip()
     if clearance:
@@ -180,7 +180,7 @@ async def _build_spnkr_coro(  # noqa: PLR0913
     if use_direct_get:
         headers = {
             "Accept": "image/png, image/*;q=0.9, */*;q=0.8",
-            "User-Agent": "OpenSpartan-Graphs",
+            "User-Agent": "LevelUp",
         }
         if spartan_token:
             headers["x-343-authorization-spartan"] = spartan_token
@@ -194,17 +194,22 @@ async def _build_spnkr_coro(  # noqa: PLR0913
             resp.raise_for_status()
             return await resp.read()
 
-    from spnkr.client import HaloInfiniteClient
-
-    async with aiohttp.ClientSession(timeout=timeout_obj) as session:
-        client = HaloInfiniteClient(
-            session,
-            spartan_token=spartan_token,
-            clearance_token=clearance_token,
-            requests_per_second=3,
-        )
-        img_resp = await client.gamecms_hacs.get_image(rel)
-        return await img_resp.read()
+    # Fallback : appel HTTP direct au GameCMS (pas besoin de HaloInfiniteClient)
+    gamecms_url = f"https://gamecms-hacs.svc.halowaypoint.com{rel}"
+    headers = {
+        "Accept": "image/png, image/*;q=0.9, */*;q=0.8",
+        "User-Agent": "OpenSpartan-Graphs",
+    }
+    if spartan_token:
+        headers["x-343-authorization-spartan"] = spartan_token
+    if clearance_token:
+        headers["343-clearance"] = clearance_token
+    async with (
+        aiohttp.ClientSession(timeout=timeout_obj) as session,
+        session.get(gamecms_url, headers=headers) as resp,
+    ):
+        resp.raise_for_status()
+        return await resp.read()
 
 
 def _extract_image_url_from_json(obj: object) -> str | None:  # noqa: C901

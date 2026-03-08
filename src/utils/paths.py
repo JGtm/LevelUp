@@ -1,4 +1,4 @@
-"""Gestion centralisée des chemins pour le projet OpenSpartan Graph.
+"""Gestion centralisée des chemins pour le projet LevelUp.
 
 Ce module définit tous les chemins utilisés par l'architecture v4 (DuckDB unifiée) :
 - data/players/{gamertag}/stats.duckdb : DB joueur
@@ -26,17 +26,45 @@ def _find_repo_root() -> Path:
             return parent
 
     # Fallback : CWD ou variable d'environnement
-    if env_root := os.environ.get("OPENSPARTAN_ROOT"):
+    if env_root := os.environ.get("LEVELUP_ROOT"):
         return Path(env_root)
 
     return Path.cwd()
 
 
-# Racine du projet OpenSpartan Graph
+def _is_dev_mode() -> bool:
+    """Détecte si on est en mode développeur (.venv présent à la racine)."""
+    return (REPO_ROOT / ".venv").is_dir()
+
+
+def _resolve_data_root() -> Path:
+    """Détermine le dossier racine des données.
+
+    - Mode dev (.venv présent) : ./data/ (dans le repo)
+    - Mode portable (%APPDATA%/LevelUp/) : données isolées par utilisateur
+    - Variable d'environnement LEVELUP_DATA : override explicite
+    """
+    if env_data := os.environ.get("LEVELUP_DATA"):
+        return Path(env_data)
+
+    if _is_dev_mode():
+        return REPO_ROOT / "data"
+
+    # Mode portable / installé → %APPDATA%/LevelUp
+    if os.name == "nt":
+        appdata = os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming")
+        return Path(appdata) / "LevelUp"
+
+    # Linux/macOS → XDG_DATA_HOME ou ~/.local/share
+    xdg = os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")
+    return Path(xdg) / "levelup"
+
+
+# Racine du projet LevelUp
 REPO_ROOT: Path = _find_repo_root()
 
-# Dossier des données
-DATA_DIR: Path = REPO_ROOT / "data"
+# Dossier des données (./data/ en dev, %APPDATA%/LevelUp en portable)
+DATA_DIR: Path = _resolve_data_root()
 
 # Dossier des données joueurs (architecture v4)
 PLAYERS_DIR: Path = DATA_DIR / "players"

@@ -1,10 +1,109 @@
 # Journal des modifications
 
-> Version française du [CHANGELOG.md](../../CHANGELOG.md) racine.
+> Version française du [CHANGELOG.md](../CHANGELOG.md) racine.
 
 Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
+
+## [5.5.0] - 2026-03-06
+
+### Ajouté
+
+- **Page Comparaison de sessions entièrement revue** (`src/ui/pages/session_compare.py` et modules associés)
+  - Répartition des résultats : 2 donuts W/L/T/DNF par session avec taux de victoire au centre
+  - Highlights : meilleur/pire match par session (ratio F/D, nom du mode)
+  - Courbe F/D + précision : K/D renommé F/D, précision sur axe Y secondaire (tirets), durée de vie en hover
+  - Modes joués : barres horizontales groupées par session
+  - Tableau par carte : victoires/défaites par carte pour chaque session
+  - Net score cumulé : coloration des marqueurs par score de performance (vert ≥70 / orange ≥45 / rouge <45) + overlay LUSR ou CSR sur axe secondaire (détecté automatiquement depuis `match_skill_rank`)
+  - Profil de participation : radar opaque remplacé par barres horizontales groupées ; seuils mis à l'échelle par nombre de matchs
+
+- **Wizard de configuration — Configuration initiale guidée** (`src/ui/pages/setup_wizard.py` + `setup_wizard_logic.py`)
+  - Deux parcours : **Xbox Express** (recommandé, 2 étapes) et **Azure manuel** (avancé, 3 étapes)
+  - Cards CSS personnalisées avec icônes, barre de progression animée, étapes numérotées
+  - Logique séparée de l'UI (`SetupStatus`, `validate_azure_credentials()`, `validate_gamertag()`, `create_player_profile()`, `save_azure_credentials()`)
+  - Guard dans `main()` : le wizard s'affiche automatiquement si credentials ou joueur manquants
+  - i18n FR/EN (~49 clés) dans `src/ui/i18n/setup.py`
+
+- **Xbox OAuth — Connexion Xbox en 1 clic** (`src/ui/xbox_oauth.py` + `xbox_oauth_ui.py`)
+  - Flux complet : URL Microsoft → callback `?code=XXX&state=YYY` → échange code → refresh_token → spartan/clearance tokens → résolution gamertag+XUID → provisionnement automatique
+  - `xbox_oauth.py` (436L) : logique OAuth pure sans dépendance Streamlit
+  - `xbox_oauth_ui.py` (163L) : composant Streamlit intégré dans Paramètres (bouton login, statut, déconnexion)
+  - Protection CSRF avec `state` aléatoire validé au retour du callback
+  - i18n FR/EN dans `src/ui/i18n/pages/xbox.py`
+
+- **Provisionnement automatique** (`src/app/player_provisioning.py`)
+  - `provision_player()` : crée `data/players/{gamertag}/stats.duckdb` + table `sync_meta` + enregistre dans `db_profiles.json` — idempotent
+
+- **État d'authentification** (`src/utils/auth.py`)
+  - `AuthStatus` dataclass + `get_auth_status()`, `check_credentials()`, `write_env_local()` (écriture/mise à jour de `.env.local` en préservant les commentaires)
+
+- **Compatibilité macOS / Linux** — `LevelUp.sh` (nouveau) : lanceur premier-lancement équivalent à `LevelUp.bat` pour macOS/Linux, écrit en POSIX sh (sans bashism — compatible macOS bash 3.2, dash, zsh). Détecte Python 3.10+ via binaires versionnnés (`python3.12` → Homebrew), chemins Homebrew Intel/Apple Silicon (`/opt/homebrew`, `/usr/local`), puis générique. Messages d'aide ciblés par distribution. `run.sh` corrigé cross-platform. `launcher.py` enrichi : candidats Python versionnnés, chemins Homebrew, `doctor` cross-platform.
+
+- **`launcher.py setup`** — Commande d'installation interactive : détecte Python (py launcher → PATH → emplacements standard → installation via winget), crée le `.venv`, installe les dépendances (`pip install -e ".[spnkr]"`). Supporte `--update` pour mettre à jour un environnement existant.
+
+- **`launcher.py doctor`** — Diagnostic complet de l'environnement : OS, Python, venv, versions des packages critiques vs attendues, nombre de joueurs configurés, présence de `metadata.duckdb`
+
+- **Packaging portable** (`packaging/build_release.py`)
+  - Génère un zip autonome `LevelUp-v{version}-win64-portable.zip` contenant Python Embeddable 3.12 (~15 Mo) + le projet complet
+  - Premier lancement : installation automatique des dépendances via pip
+
+- **Release GitHub Actions** (`.github/workflows/release.yml`)
+  - Déclenché sur push de tag `v*.*.*`
+  - Build du zip portable + publication automatique en GitHub Release
+
+- **Mode portable `%APPDATA%`** (`src/utils/paths.py`, `auth.py`, `env.py`)
+  - Données stockées dans `%APPDATA%/LevelUp/` (Windows) ou `$XDG_DATA_HOME/levelup/` (Linux) quand pas de `.venv` à la racine
+  - Mode développeur : `./data/` si `.venv` existe
+  - Override possible via variable d'environnement `LEVELUP_DATA`
+  - `.env.local` cherché dans `DATA_DIR` en priorité, puis à la racine du repo
+
+- **Fallback token DB** (`src/ui/profile_api_tokens.py`)
+  - Fallback 3 : lecture du refresh_token depuis `sync_meta` de la DB joueur si absent des variables d'environnement
+
+- **Documentation**
+  - `docs/CONFIGURATION.md` : réécriture complète avec sommaire, guide Azure pas-à-pas avec 11 captures d'écran annotées
+  - `docs/FR/CONFIGURATION.md` : version FR mise à jour
+  - `docs/SYNC_GUIDE.md` : réécriture avec architecture sync v5.1, diagramme ASCII
+  - `docs/FR/SYNC_GUIDE.md` : mise à jour
+
+- **Migrations de schéma automatiques** (`src/data/migration/`) — runner versionné appliqué automatiquement au démarrage (`launcher.py → _run_migrations()`). Chaque DB (`player`, `shared`, `shared_pve`) trace les migrations dans une table `schema_migrations`. 11 migrations initiales enregistrées. Pour ajouter un changement de schéma : créer une fonction `ensure_xxx` idempotente dans `src/data/sync/migrations.py`, créer le step dans `src/data/migration/steps/` et l'importer dans `steps/__init__.py`.
+
+### Corrigé
+
+- **CSRF** (`streamlit_app.py`) — Correction comparaison `_xbox_state != _xbox_state` (auto-comparaison, toujours False) → `_xbox_state != _expected_state`
+- **`_repo_root` indéfini** (`src/ui/profile_api_tokens.py`) — `_repo_root()` jamais importée → remplacée par `REPO_ROOT` depuis `src.utils.paths`
+- **DuckDB retry élargi** (`src/data/sync/_engine_connections.py`) — `except duckdb.IOException` → `except duckdb.Error` + délai retry `0.15s → 0.5s`
+- **GC mode sync** (`src/ui/_sync_duckdb_ops.py`) — `gc.collect()` + `time.sleep(0.3)` pour libérer les handles fichiers DuckDB sous Windows
+- **Guard OAuth consumed** (`streamlit_app.py`) — Flag `_xbox_oauth_consumed` pour éviter le double-traitement du callback au rerun Streamlit
+- **Isolation test webhook** (`tests/test_monitor_uptime.py`) — Patch `get_secret` au lieu de manipuler `os.environ` pour éviter le rechargement `.env.local`
+
+### Tests
+
+- **75 tests ajoutés** (1 482 lignes) couvrant l'ensemble des nouveaux modules :
+  - `test_auth.py` (13 tests) : `AuthStatus`, `get_auth_status()`, `write_env_local()`
+  - `test_setup_wizard_logic.py` (20+ tests) : `SetupStatus`, validations, création de profil
+  - `test_xbox_oauth.py` (18 tests) : URL OAuth, échange de code, store/load token, provisionnement
+  - `test_xbox_oauth_callback_e2e.py` (9 tests) : flux complet code→player, erreurs, CSRF
+  - `test_setup_wizard_page.py` (15 tests) : UI mockée (MockStreamlit), modes Xbox/Azure, progression
+
+### Supprimé
+
+- **`scripts/_archive/`** — 89 fichiers de code mort supprimés (anciens scripts d'analyse d'armes, diagnostics, patchs i18n, utilitaires obsolètes)
+- **`requirements.txt`** — Supprimé, remplacé par `pyproject.toml` (source unique de vérité pour les dépendances)
+- **`setup.bat`** — Remplacé par `LevelUp.bat` (détection Python améliorée, installation via winget, utilisation de `pip install -e .`)
+- **`scripts/install_dependencies.py`** — Workaround MSYS2 SSL, utilisait `requirements.txt`
+- **`scripts/setup_env.ps1`**, **`scripts/setup_env.sh`**, **`scripts/activate_env.sh`** — Remplacés par `launcher.py setup`
+- **`tests/test_spnkr_refactoring.py`** — Tests pour du code archivé supprimé
+
+### Maintenance
+
+- Rangement racine : `ACKNOWLEDGMENTS.md`, `CHANGELOG.md`, `CONTRIBUTING.md` déplacés vers `docs/`
+- Scripts déplacés : `activate_env.sh`, `run_monitor_hidden.vbs` → `scripts/`
+- `LevelUp.bat` remplace `setup.bat` comme point d'entrée Windows
+- `Dockerfile` et `e2e-browser-optional.yml` mis à jour pour utiliser `pyproject.toml` au lieu de `requirements.txt`
+- `run.sh` redirige vers `launcher.py setup` au lieu de `activate_env.sh`
 
 ## [5.4.0] - 2026-03-06
 
@@ -147,6 +246,18 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 - **Ancrage mu_opp sur `state.mu`** : `compute_enemy_strength` utilise `player_mu=state.mu` comme base d'estimation des adversaires (matchmaking met des joueurs de niveau similaire)
 - **Paramètres d'inactivité réduits** : `INACTIVITY_SIGMA_PER_DAY` 3.5→1.0, `MAX_INACTIVITY_DAYS` 30→14 — évite les swings de ±200 pts après une longue pause
 - **Seed sigma CSR réduit** : `PlayerState.from_csr()` démarre à `sigma=MIN_SIGMA` (60) au lieu de `INITIAL_SIGMA × 0.6` (210) — le CSR est un ancrage fort, démarrer en état stable évite la volatilité initiale
+
+- **Page Carrière — Comparaison XP & projections multi-joueurs** (`src/ui/pages/career.py`, `career_logic.py`, `career_data.py`)
+  - Pour chaque joueur possédant un refresh token, le graphe affiche désormais ses courbes côte à côte avec le joueur courant :
+    - Courbe XP réelle (lignes + marqueurs, couleur distincte par joueur)
+    - Courbe XP estimée pré-sync (pointillés même couleur) — interpolation linéaire sur les matchs antérieurs au premier sync
+    - Projection « à ce rythme » → Héros (tirets) et projection optimiste défis + boost×2 (tirets-points)
+    - Toutes les courbes secondaires masquées par défaut — cliquer dans la légende pour les afficher
+  - **Niveau de précision variable** selon l’historique disponible :
+    - Niveau 1 (fallback) : XP total / jours depuis le premier match connu — actif dès le première sync
+    - Niveau 2 (delta réel) : delta XP inter-snapshots / jours actifs — plus précis, s’active automatiquement quand le joueur a joué entre deux syncs
+  - Nouvelles clés i18n : `career_xp_other_estimated`, `career_projection_other_hero`, `career_projection_other_optimistic`
+  - `_compute_fallback_xp_per_day()` ajoutée dans `career_logic.py`
 
 - **Page Carrière — Courbe XP estimée pré-sync** (`src/ui/pages/career.py`)
   - Trace violette pointillée estimant l'XP pour les ~561 matchs joués avant le premier sync

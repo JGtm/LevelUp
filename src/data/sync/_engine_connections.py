@@ -16,6 +16,101 @@ import duckdb
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# Bootstrap shared_matches.duckdb
+# =============================================================================
+
+_SHARED_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS match_registry (
+    match_id VARCHAR PRIMARY KEY,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP,
+    playlist_id VARCHAR, playlist_name VARCHAR,
+    map_id VARCHAR, map_name VARCHAR,
+    pair_id VARCHAR, pair_name VARCHAR,
+    game_variant_id VARCHAR, game_variant_name VARCHAR,
+    mode_category VARCHAR,
+    is_ranked BOOLEAN DEFAULT FALSE,
+    is_firefight BOOLEAN DEFAULT FALSE,
+    duration_seconds INTEGER,
+    team_0_score SMALLINT, team_1_score SMALLINT,
+    backfill_completed INTEGER DEFAULT 0,
+    participants_loaded BOOLEAN DEFAULT FALSE,
+    events_loaded BOOLEAN DEFAULT FALSE,
+    medals_loaded BOOLEAN DEFAULT FALSE,
+    first_sync_by VARCHAR, first_sync_at TIMESTAMP,
+    last_updated_at TIMESTAMP, player_count SMALLINT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS match_participants (
+    match_id VARCHAR NOT NULL, xuid VARCHAR NOT NULL,
+    gamertag VARCHAR, team_id INTEGER, outcome INTEGER,
+    rank SMALLINT, score INTEGER,
+    kills SMALLINT, deaths SMALLINT, assists SMALLINT,
+    shots_fired INTEGER, shots_hit INTEGER,
+    damage_dealt FLOAT, damage_taken FLOAT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (match_id, xuid)
+);
+CREATE SEQUENCE IF NOT EXISTS highlight_events_id_seq;
+CREATE TABLE IF NOT EXISTS highlight_events (
+    id INTEGER PRIMARY KEY DEFAULT nextval('highlight_events_id_seq'),
+    match_id VARCHAR NOT NULL, event_type VARCHAR NOT NULL,
+    time_ms INTEGER,
+    xuid VARCHAR, gamertag VARCHAR,
+    type_hint INTEGER, raw_json VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS killer_victim_pairs (
+    match_id VARCHAR NOT NULL,
+    killer_xuid VARCHAR NOT NULL, killer_gamertag VARCHAR,
+    victim_xuid VARCHAR NOT NULL, victim_gamertag VARCHAR,
+    kill_count INTEGER DEFAULT 1, time_ms INTEGER,
+    is_validated BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS medals_earned (
+    match_id VARCHAR NOT NULL, xuid VARCHAR NOT NULL,
+    medal_name_id BIGINT NOT NULL, count SMALLINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (match_id, xuid, medal_name_id)
+);
+CREATE TABLE IF NOT EXISTS xuid_aliases (
+    xuid VARCHAR PRIMARY KEY, gamertag VARCHAR NOT NULL,
+    last_seen TIMESTAMP, source VARCHAR,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS schema_version (
+    version INTEGER PRIMARY KEY,
+    description VARCHAR NOT NULL,
+    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+
+def _bootstrap_shared_matches_db(db_path) -> None:  # type: ignore[no-untyped-def]  # noqa: C901, PLR0915
+    """Crée shared_matches.duckdb avec le schéma v5 de base (idempotent)."""
+    import pathlib
+
+    path = pathlib.Path(db_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = duckdb.connect(str(path), read_only=False)
+    try:
+        for stmt in _SHARED_SCHEMA_SQL.split(";"):
+            s = stmt.strip()
+            if s:
+                conn.execute(s)
+        # Insérer la version de schéma seulement si absente
+        conn.execute(
+            "INSERT OR IGNORE INTO schema_version (version, description) "
+            "VALUES (1, 'v5.0 — Création initiale du schéma shared_matches')"
+        )
+        logger.info("shared_matches.duckdb initialisé : %s", path)
+    finally:
+        conn.close()
+
+
 class ConnectionMixin:
     """Mixin de gestion des connexions DuckDB pour DuckDBSyncEngine."""
 
@@ -40,17 +135,23 @@ class ConnectionMixin:
 
         return self._connection
 
-    def _get_shared_connection(self) -> duckdb.DuckDBPyConnection | None:  # noqa: PLR0912
+    def _get_shared_connection(self) -> duckdb.DuckDBPyConnection | None:  # noqa: PLR0912, C901
         """Retourne une connexion vers shared_matches.duckdb (R/W).
 
+        Returns None si la base n'existe pas — l'initialisation est assurée
+        par _ensure_warehouse_dbs() dans le launcher (jamais en mode silencieux ici).
+
         Returns:
-            Connexion DuckDB ou None si la base n'existe pas.
+            Connexion DuckDB ou None si la base est absente ou inaccessible.
         """
         if self._shared_connection is not None:
             return self._shared_connection
 
-        if self._shared_db_path is None or not self._shared_db_path.exists():
-            logger.debug("shared_matches.duckdb absent, mode legacy v4")
+        if self._shared_db_path is None:
+            return None
+
+        # Retourner None si absent — pas de bootstrap silencieux ici
+        if not self._shared_db_path.exists():
             return None
 
         def _open_shared() -> duckdb.DuckDBPyConnection:
@@ -58,7 +159,7 @@ class ConnectionMixin:
 
         try:
             self._shared_connection = _open_shared()
-        except duckdb.IOException as e:
+        except duckdb.Error as e:
             err = str(e).lower()
             if "unique file handle conflict" in err or "already attached" in err:
                 logger.warning(
@@ -71,8 +172,16 @@ class ConnectionMixin:
                 except Exception:
                     pass
                 gc.collect()
-                time.sleep(0.15)
-                self._shared_connection = _open_shared()
+                time.sleep(0.5)
+                try:
+                    self._shared_connection = _open_shared()
+                except duckdb.Error as e2:
+                    # 2ème tentative aussi échouée : log + return None
+                    # pour éviter de faire remonter le Binder Error dans result.errors.
+                    logger.warning(
+                        "shared_matches.duckdb : retry échoué (%s) — shared non disponible", e2
+                    )
+                    return None
             else:
                 raise
 

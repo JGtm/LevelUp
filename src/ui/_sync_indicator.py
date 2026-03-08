@@ -14,7 +14,7 @@ import streamlit as st
 from src.ui._sync_utils import _get_sync_metadata_smart
 
 
-def render_sync_indicator(db_path: str) -> None:
+def render_sync_indicator(db_path: str, xuid: str | None = None) -> None:
     """Affiche l'indicateur de dernière synchronisation dans la sidebar.
 
     Couleurs:
@@ -24,11 +24,12 @@ def render_sync_indicator(db_path: str) -> None:
 
     Args:
         db_path: Chemin vers la base de données.
+        xuid: XUID du joueur (permet d'utiliser le repo caché).
     """
     if not db_path or not os.path.exists(db_path):
         return
 
-    meta = _get_sync_metadata_smart(db_path)
+    meta = _get_sync_metadata_smart(db_path, xuid=xuid)
     last_sync = meta.get("last_sync_at")
     total_matches = meta.get("total_matches", 0)
 

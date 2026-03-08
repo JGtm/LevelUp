@@ -37,6 +37,10 @@ from src.data.repositories._medals_repo import MedalsMixin
 from src.data.repositories._metadata_resolution import MetadataResolutionMixin
 from src.data.repositories._roster_loader import RosterLoaderMixin
 from src.data.repositories._schema_introspection import SchemaIntrospectionMixin
+from src.data.repositories._write_lease import (
+    db_write_lease,  # noqa: F401 — re-export pour les consommateurs
+    wait_for_write_leases_cleared,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +273,11 @@ class DuckDBRepository(
                 raise FileNotFoundError(
                     f"Base de données joueur non trouvée: {self._player_db_path}"
                 )
+
+            # Attendre que le MediaIndexer (ou tout autre writer) ait libéré sa connexion
+            # read_write avant d'ouvrir en read_only — évite le conflit DuckDB
+            # « different configuration than existing connections ».
+            wait_for_write_leases_cleared(self._player_db_path)
 
             # Connexion à la DB joueur — retry si conflit de configuration ou lock OS (Windows)
             max_retries = 3

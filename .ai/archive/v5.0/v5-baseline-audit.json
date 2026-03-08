@@ -2,7 +2,7 @@
   {
     "gamertag": "Chocoboflor",
     "xuid": "2535469190789936",
-    "db_path": "C:\\Users\\Guillaume\\Downloads\\Scripts\\Openspartan-graph\\data\\players\\Chocoboflor\\stats.duckdb",
+    "db_path": "<REPO_ROOT>\\data\\players\\Chocoboflor\\stats.duckdb",
     "file_size_mb": 64.76,
     "tables": [
       "antagonists",
@@ -72,7 +72,7 @@
   {
     "gamertag": "JGtm",
     "xuid": "2533274823110022",
-    "db_path": "C:\\Users\\Guillaume\\Downloads\\Scripts\\Openspartan-graph\\data\\players\\JGtm\\stats.duckdb",
+    "db_path": "<REPO_ROOT>\\data\\players\\JGtm\\stats.duckdb",
     "file_size_mb": 73.76,
     "tables": [
       "antagonists",
@@ -146,7 +146,7 @@
   {
     "gamertag": "Madina97294",
     "xuid": "2533274858283686",
-    "db_path": "C:\\Users\\Guillaume\\Downloads\\Scripts\\Openspartan-graph\\data\\players\\Madina97294\\stats.duckdb",
+    "db_path": "<REPO_ROOT>\\data\\players\\Madina97294\\stats.duckdb",
     "file_size_mb": 115.76,
     "tables": [
       "antagonists",
@@ -221,7 +221,7 @@
   {
     "gamertag": "XxDaemonGamerxX",
     "xuid": "2533274833178266",
-    "db_path": "C:\\Users\\Guillaume\\Downloads\\Scripts\\Openspartan-graph\\data\\players\\XxDaemonGamerxX\\stats.duckdb",
+    "db_path": "<REPO_ROOT>\\data\\players\\XxDaemonGamerxX\\stats.duckdb",
     "file_size_mb": 8.01,
     "tables": [
       "career_progression",

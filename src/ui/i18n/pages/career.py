@@ -113,6 +113,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "career_max_rank": {"fr": "Rang maximum atteint", "en": "Maximum rank reached"},
     "career_hero_rank": {"fr": "Rang Héros atteint !", "en": "Hero rank reached!"},
     "career_xp_estimated": {"fr": "XP estimé (pré-sync)", "en": "Estimated XP (pre-sync)"},
+    "career_xp_estimated_note": {
+        "fr": "\u26a0\ufe0f La courbe pointillée est une estimation. Les Career Ranks ont été introduits le 20 juin 2023 — tous les joueurs partaient de 0 à cette date. Seuls les matchs joués après cette date sont pris en compte dans le calcul.",
+        "en": "\u26a0\ufe0f The dotted curve is an estimate. Career Ranks were introduced on June 20, 2023 — all players started at 0 on that date. Only matches played after that date are included in the calculation.",
+    },
     "career_xp_estimated_hover": {
         "fr": "Estimation · {date}<br>~{xp} XP",
         "en": "Estimate · {date}<br>~{xp} XP",
@@ -123,8 +127,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Projection · {date}<br>{xp} XP",
     },
     "career_projection_optimistic": {
-        "fr": "Projection optimiste (défis + x2)",
-        "en": "Optimistic (challenges + x2)",
+        "fr": "Projection optimiste (défis + boosts x2)",
+        "en": "Optimistic (challenges + boosts x2)",
     },
     "career_projection_optimistic_hover": {
         "fr": "Optimiste · {date}<br>{xp} XP",
@@ -133,6 +137,26 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "career_hero_threshold": {"fr": "Seuil Héros", "en": "Hero threshold"},
     "career_xp_other_player": {"fr": "{gamertag}", "en": "{gamertag}"},
     "career_xp_other_player_hover": {
+        "fr": "{gamertag} · {date}<br>{xp} XP",
+        "en": "{gamertag} · {date}<br>{xp} XP",
+    },
+    "career_xp_other_estimated": {
+        "fr": "{gamertag} (estimé)",
+        "en": "{gamertag} (est.)",
+    },
+    "career_xp_other_estimated_hover": {
+        "fr": "{gamertag} · {date} (estimé)<br>~{xp} XP",
+        "en": "{gamertag} · {date} (est.)<br>~{xp} XP",
+    },
+    "career_projection_other_hero": {
+        "fr": "Proj. {gamertag} → Héros",
+        "en": "Proj. {gamertag} → Hero",
+    },
+    "career_projection_other_optimistic": {
+        "fr": "Proj. {gamertag} (optimiste)",
+        "en": "Proj. {gamertag} (optimistic)",
+    },
+    "career_projection_other_hover": {
         "fr": "{gamertag} · {date}<br>{xp} XP",
         "en": "{gamertag} · {date}<br>{xp} XP",
     },

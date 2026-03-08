@@ -129,11 +129,11 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         profile_api_mod = _load_module(
-            "openspartan_profile_api",
+            "levelup_profile_api",
             repo_root / "src" / "ui" / "profile_api.py",
         )
         player_assets_mod = _load_module(
-            "openspartan_player_assets",
+            "levelup_player_assets",
             repo_root / "src" / "ui" / "player_assets.py",
         )
     except Exception as e:

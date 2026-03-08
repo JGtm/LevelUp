@@ -25,12 +25,12 @@ _DEFAULT_PROFILES_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
     "db_profiles.json",
 )
-PROFILES_PATH = os.environ.get("OPENSPARTAN_PROFILES_PATH") or _DEFAULT_PROFILES_PATH
+PROFILES_PATH = os.environ.get("LEVELUP_PROFILES_PATH") or _DEFAULT_PROFILES_PATH
 
 
 def get_profiles_path() -> str:
     """Retourne le chemin du fichier de profils (env override supporté)."""
-    override = os.environ.get("OPENSPARTAN_PROFILES_PATH")
+    override = os.environ.get("LEVELUP_PROFILES_PATH")
     if isinstance(override, str) and override.strip():
         return override.strip()
     return _DEFAULT_PROFILES_PATH
@@ -105,15 +105,9 @@ def save_profiles(profiles: dict[str, dict[str, str]]) -> tuple[bool, str]:
 
 
 def list_local_dbs() -> list[str]:
-    """Liste les fichiers .db dans le dossier OpenSpartan.Workshop.
-
-    Note: Depuis DuckDB v4/v5, les bases SQLite legacy ne sont plus supportées.
-    Cette fonction retourne toujours une liste vide.
-    Les données joueurs sont dans data/players/{gamertag}/stats.duckdb.
+    """Retourne une liste vide (bases SQLite legacy supprimées en v4/v5).
 
     Returns:
-        Liste vide (bases SQLite legacy non supportées).
+        Liste vide.
     """
-    # Ne cherche plus de bases SQLite legacy
-    # (migration DuckDB v4/v5 complétée)
     return []

@@ -461,7 +461,7 @@ def _resolve_gamertag_from_xuid_via_spnkr(xuid: str) -> str | None:
 
     async def _run() -> str | None:
         try:
-            from src.data.sync.api_client import SPNKrAPIClient
+            from src.data.sync.api_factory import create_api_client
         except ImportError:
             return None
 
@@ -469,13 +469,11 @@ def _resolve_gamertag_from_xuid_via_spnkr(xuid: str) -> str | None:
         if not x.isdigit():
             return None
 
-        async with SPNKrAPIClient(requests_per_second=2) as api_client:
-            resp = await api_client.client.profile.get_users_by_id([x])
-            users = resp.data if hasattr(resp, "data") else await resp.parse()
+        async with create_api_client(requests_per_second=2) as api_client:
+            users = await api_client.get_users_by_id([x])
             if not users:
                 return None
-            user = users[0]
-            gt = str(getattr(user, "gamertag", "") or "").strip()
+            gt = users[0].get("gamertag", "").strip()
             return gt or None
 
     try:

@@ -32,6 +32,8 @@ setup_app_logging()
 
 logger = logging.getLogger("streamlit_app")
 
+# Phase 4 refactoring: Main helpers
+from src.app.cache_control import invalidate_after_sync
 from src.app.data_loader import (
     ensure_h5g_commendations_repo,
     init_source_state,
@@ -59,8 +61,6 @@ from src.app.kpis_render import (
     render_kpis_section,
     render_performance_info,
 )
-
-# Phase 4 refactoring: Main helpers
 from src.app.main_helpers import (
     load_match_dataframe,
     load_profile_api,
@@ -115,7 +115,6 @@ from src.ui.filter_state import (
     save_filter_preferences,
 )
 from src.ui.formatting import (
-    PARIS_TZ,
     format_datetime_fr_hm,
     format_score_label,
     score_css_color,
@@ -135,6 +134,7 @@ from src.ui.sync import (
     render_sync_indicator,
     sync_all_players_duckdb,
 )
+from src.ui.tz import get_tz  # timezone dynamique depuis app_settings
 from src.visualization import (
     plot_multi_metric_bars_by_match,
 )
@@ -252,7 +252,7 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
         st.markdown(load_css(), unsafe_allow_html=True)
 
     # Référentiel Citations (opt-in via env)
-    if str(os.environ.get("OPENSPARTAN_CITATIONS_AUTOGEN") or "").strip() in {
+    if str(os.environ.get("LEVELUP_CITATIONS_AUTOGEN") or "").strip() in {
         "1",
         "true",
         "True",
@@ -306,6 +306,13 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
     DEFAULT_DB = get_default_db_path()
     init_source_state(DEFAULT_DB, settings)
 
+    # Guard : IS_SYNCING ne doit pas survivre à un crash/redémarrage du process.
+    # On le réinitialise une seule fois à False au premier rerun de la session.
+    if "_app_session_init_done" not in st.session_state:
+        st.session_state[SK.IS_SYNCING] = False
+        st.session_state["_app_session_init_done"] = True
+        logger.debug("Session init: IS_SYNCING réinitialisé à False")
+
     return settings, DEFAULT_DB, cfg_warnings, cfg_errors
 
 
@@ -320,6 +327,88 @@ def _start_background_services(settings: AppSettings, DEFAULT_DB: str) -> None:
         if not is_funnel_started():
             threading.Thread(target=_tailscale_worker, daemon=True, name="tailscale-funnel").start()
             logger.info("Tailscale funnel thread lancé (port 8501)")
+
+
+def _handle_xbox_oauth_callback() -> None:
+    """Consomme le callback ?code=XXX&state=YYY de Microsoft après auth Xbox.
+
+    Microsoft redirige vers cette URL après la connexion de l'utilisateur.
+    Le callback est traité en priorité, avant les query params de navigation.
+    Doit être appelé depuis main() après le démarrage de Tailscale.
+    """
+    _xbox_code = _qp_first(dict(st.query_params).get("code"))
+    _xbox_state = _qp_first(dict(st.query_params).get("state"))
+    if not _xbox_code or st.session_state.get(SK.XBOX_OAUTH_CONSUMED):
+        return
+
+    logger.info("Callback OAuth Xbox détecté (code=%s…)", _xbox_code[:8])
+
+    _expected_state = st.session_state.get(SK.XBOX_OAUTH_STATE)
+    if not _expected_state or _xbox_state != _expected_state:
+        logger.warning(
+            "Callback OAuth Xbox : état CSRF invalide (attendu=%s, reçu=%s)",
+            _expected_state,
+            _xbox_state,
+        )
+        st.error("❌ Erreur CSRF : état OAuth invalide. Veuillez réessayer la connexion Xbox.")
+        st.query_params.clear()
+        return
+
+    _azure_id = str(os.environ.get("SPNKR_AZURE_CLIENT_ID") or "").strip()
+    _azure_secret = str(os.environ.get("SPNKR_AZURE_CLIENT_SECRET") or "").strip()
+    _azure_redir = (
+        str(os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "").strip() or "http://localhost:8501"
+    )
+
+    if not (_azure_id and _azure_secret):
+        return
+
+    from src.app.player_provisioning import provision_player
+    from src.ui.xbox_oauth import run_xbox_oauth_callback
+    from src.ui.xbox_oauth_ui import handle_pending_xbox_result
+
+    st.session_state[SK.XBOX_OAUTH_CONSUMED] = True
+    with st.spinner("🎮 Connexion Xbox en cours…"):
+        _result = run_xbox_oauth_callback(
+            _xbox_code,
+            client_id=_azure_id,
+            client_secret=_azure_secret,
+            redirect_uri=_azure_redir,
+        )
+
+    if "error" not in _result:
+        _gt = _result["gamertag"]
+        _xuid = _result["xuid"]
+        _token = _result["refresh_token"]
+        logger.info("OAuth Xbox : tokens obtenus pour %s (xuid=%s)", _gt, _xuid)
+        try:
+            _db = provision_player(_gt, _xuid)
+            handle_pending_xbox_result(_gt, _xuid, str(_db), _token)
+            logger.info("OAuth Xbox : joueur %s provisionné avec succès", _gt)
+            # Invalider le cache du sélecteur joueur pour que le nouveau joueur
+            # apparaisse immédiatement sans attendre la fin du TTL (1800s)
+            with contextlib.suppress(Exception):
+                from src.ui.multiplayer import list_duckdb_v4_players
+
+                list_duckdb_v4_players.clear()
+            logger.info(
+                "Cache list_duckdb_v4_players invalidé après provisionnement Xbox (%s)", _gt
+            )
+            # Basculer vers le profil du joueur nouvellement connecté
+            st.session_state[SK.DB_PATH] = str(_db)
+            st.session_state[SK.XUID_INPUT] = _gt
+            st.session_state[SK.WAYPOINT_PLAYER] = _gt
+        except Exception as _prov_err:
+            logger.error("Provisionnement Xbox OAuth échoué: %s", _prov_err)
+            st.session_state[SK.XBOX_OAUTH_RESULT] = {"error": str(_prov_err)}
+    else:
+        logger.warning("OAuth Xbox : erreur retournée par le callback : %s", _result.get("error"))
+        st.session_state[SK.XBOX_OAUTH_RESULT] = _result
+
+    st.query_params.clear()
+    # Supprimer le guard pour permettre une reconnexion future
+    st.session_state.pop(SK.XBOX_OAUTH_CONSUMED, None)
+    st.rerun()
 
 
 def _parse_query_params() -> None:
@@ -466,7 +555,7 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
 
         # Indicateur de dernière synchronisation
         if db_path and os.path.exists(db_path):
-            render_sync_indicator(db_path)
+            render_sync_indicator(db_path, xuid=xuid)
 
         # Sélecteur multi-joueurs
         if db_path and os.path.exists(db_path):
@@ -559,17 +648,7 @@ def _render_main_sidebar(db_path: str, xuid: str, settings: AppSettings) -> tupl
                     # Notification Discord
                     _send_sync_discord_notification(sync_started_at, sync_finished_at, msg)
 
-                    _clear_app_caches()
-                    cache_buster_val = st.session_state.get("_cache_buster", 0)
-                    logger.info("Caches invalidés après sync, cache_buster=%d", cache_buster_val)
-                    st.session_state[SK.CACHE_BUSTER] = cache_buster_val + 1
-
-                    # Mettre à jour le db_key AVANT rerun pour éviter le reset
-                    # des filtres (render_filters_sidebar détecte db_key changé)
-                    new_db_key = db_cache_key(db_path)
-                    player_key = _get_player_key(xuid, db_path)
-                    st.session_state[f"_filters_db_key_{player_key}"] = new_db_key
-
+                    invalidate_after_sync()
                     st.rerun()
                 else:
                     logger.error("Sync échoué: %s", msg)
@@ -714,7 +793,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
         load_highlight_events_fn=cached_load_highlight_events_for_match,
         load_match_gamertags_fn=cached_load_match_player_gamertags,
         load_match_rosters_fn=cached_load_match_rosters,
-        paris_tz=PARIS_TZ,
+        paris_tz=get_tz(),
     )
 
     return PageContext(
@@ -768,7 +847,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
             friends_xuids=friends_tuple,
         )
         all_sessions_pl = _to_polars(all_sessions_df)
-        df_pl = _to_polars(ctx.df)
+        df_pl = _to_polars(ctx.dff)
         if (
             not all_sessions_pl.is_empty()
             and "match_id" in df_pl.columns
@@ -784,7 +863,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
             )
         else:
             sessions_for_compare = all_sessions_pl
-        render_session_comparison_page(sessions_for_compare, df_full=ctx.df)
+        render_session_comparison_page(sessions_for_compare, df_full=ctx.dff)
 
     def _page_last_match() -> None:
         from src.ui.pages import render_last_match_page
@@ -913,6 +992,20 @@ def main() -> None:
     """Point d'entrée principal de l'application Streamlit."""
     # 1. Initialisation (config, CSS, settings, validation)
     settings, DEFAULT_DB, cfg_warnings, cfg_errors = _initialize_app()
+
+    # 1b. Callback OAuth Xbox (doit être traité AVANT le wizard guard,
+    #     car le redirect ?code=XXX peut arriver pendant le setup)
+    _handle_xbox_oauth_callback()
+
+    # 1c. Wizard de configuration initiale si config incomplète
+    from src.ui.pages.setup_wizard_logic import get_setup_status
+
+    setup_status = get_setup_status()
+    if setup_status.needs_setup:
+        from src.ui.pages.setup_wizard import render_setup_wizard_page
+
+        render_setup_wizard_page()
+        return
 
     # 2. Services d'arrière-plan (media indexing, Tailscale)
     _start_background_services(settings, DEFAULT_DB)

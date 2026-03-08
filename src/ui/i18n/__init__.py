@@ -32,20 +32,21 @@ def _build_registry() -> dict[str, dict[str, dict[str, str]]]:
     """
     import logging
 
-    from src.ui.i18n import cli, common, pages, viz, widgets
+    from src.ui.i18n import cli, common, pages, setup, viz, widgets
 
     logger = logging.getLogger(__name__)
     registry: dict[str, dict[str, dict[str, str]]] = {}
     aliases: dict[str, str] = {}  # clé alias → clé cible
-    # Ordre de priorité : common > pages > widgets > viz > cli
+    # Ordre de priorité : common > pages > widgets > viz > cli > setup
     _module_names = {
         id(common.STRINGS): "common",
         id(pages.STRINGS): "pages",
         id(widgets.STRINGS): "widgets",
         id(viz.STRINGS): "viz",
         id(cli.STRINGS): "cli",
+        id(setup.STRINGS): "setup",
     }
-    for module in (common, pages, widgets, viz, cli):
+    for module in (common, pages, widgets, viz, cli, setup):
         mod_name = _module_names.get(id(module.STRINGS), "?")
         for key, translations in module.STRINGS.items():
             # Alias : valeur est un str → pointer vers une autre clé

@@ -1,7 +1,8 @@
 # Problèmes de logique identifiés — 2026-03-03
 
+> **Mis à jour le 2026-03-08 — tous les items ci-dessous ont été traités et corrigés.**
+
 Liste des bugs et dettes techniques détectés par analyse statique du code.
-À traiter en priorité lors d'un prochain sprint dédié.
 
 ---
 
