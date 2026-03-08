@@ -364,22 +364,81 @@ def render_comparison_bar_chart(
 
 
 @fragment_if_available
+def _load_participation_profiles(  # noqa: PLR0913
+    repo: object,
+    match_ids_a: list,
+    match_ids_b: list,
+    df_session_a: pl.DataFrame,
+    df_session_b: pl.DataFrame,
+    db_path: str,
+) -> list:
+    """Charge et construit les profils de participation pour les deux sessions."""
+    from src.visualization.participation_radar import (
+        compute_participation_profile,
+        get_radar_thresholds,
+    )
+
+    def _match_row_from_df(dff: pl.DataFrame) -> dict | None:
+        if dff.is_empty():
+            return None
+        return {
+            "deaths": int(dff.get_column("deaths").sum()) if "deaths" in dff.columns else 0,
+            "time_played_seconds": float(dff.get_column("time_played_seconds").sum())
+            if "time_played_seconds" in dff.columns
+            else 600.0 * len(dff),
+            "pair_name": dff[0, "pair_name"]
+            if "pair_name" in dff.columns and len(dff) > 0
+            else None,
+        }
+
+    thresholds = get_radar_thresholds(db_path) if db_path else None
+    _SCALE_KEYS = ("objectifs", "combat", "support", "score")
+
+    def _session_thresholds(base: dict | None, n_matches: int) -> dict | None:
+        if base is None or n_matches <= 1:
+            return base
+        return {k: v * n_matches if k in _SCALE_KEYS else v for k, v in base.items()}
+
+    profiles = []
+    df_a = repo.load_personal_score_awards_as_polars(match_ids=match_ids_a) if match_ids_a else None  # type: ignore[union-attr]
+    df_b = repo.load_personal_score_awards_as_polars(match_ids=match_ids_b) if match_ids_b else None  # type: ignore[union-attr]
+
+    if (df_a is None or df_a.is_empty()) and (df_b is None or df_b.is_empty()):
+        return []
+
+    if df_a is not None and not df_a.is_empty():
+        match_row_a = _match_row_from_df(df_session_a)
+        profile_a = compute_participation_profile(
+            df_a,
+            match_row=match_row_a,
+            name="Session A",
+            color=SESSION_COLORS["session_a"],
+            pair_name=match_row_a.get("pair_name") if match_row_a else None,
+            thresholds=_session_thresholds(thresholds, len(match_ids_a)),
+        )
+        profiles.append(profile_a)
+
+    if df_b is not None and not df_b.is_empty():
+        match_row_b = _match_row_from_df(df_session_b)
+        profile_b = compute_participation_profile(
+            df_b,
+            match_row=match_row_b,
+            name="Session B",
+            color=SESSION_COLORS["session_b"],
+            pair_name=match_row_b.get("pair_name") if match_row_b else None,
+            thresholds=_session_thresholds(thresholds, len(match_ids_b)),
+        )
+        profiles.append(profile_b)
+    return profiles
+
+
 def render_participation_trend_section(  # noqa: C901
     df_session_a: DataFrameLike,
     df_session_b: DataFrameLike,
     db_path: str,
     xuid: str,
 ) -> None:
-    """Affiche la tendance de participation entre deux sessions (Sprint 8.2).
-
-    Utilise les PersonalScores pour montrer l'évolution du profil de jeu.
-
-    Args:
-        df_session_a: DataFrame de la session A.
-        df_session_b: DataFrame de la session B.
-        db_path: Chemin vers la base de données.
-        xuid: XUID du joueur.
-    """
+    """Affiche la tendance de participation entre deux sessions (Sprint 8.2)."""
     from src.data.repositories import DuckDBRepository
 
     df_session_a = ensure_polars(df_session_a)
@@ -388,100 +447,35 @@ def render_participation_trend_section(  # noqa: C901
     try:
         repo = DuckDBRepository(db_path, xuid)
         if not repo.has_personal_score_awards():
-            return  # Pas de données PersonalScores
+            return
 
-        # Récupérer les match_ids de chaque session
         match_ids_a = (
             df_session_a.get_column("match_id").to_list() if not df_session_a.is_empty() else []
         )
         match_ids_b = (
             df_session_b.get_column("match_id").to_list() if not df_session_b.is_empty() else []
         )
-
         if not match_ids_a and not match_ids_b:
             return
 
-        # Charger les données de participation
-        df_a = (
-            repo.load_personal_score_awards_as_polars(match_ids=match_ids_a)
-            if match_ids_a
-            else None
+        profiles = _load_participation_profiles(
+            repo, match_ids_a, match_ids_b, df_session_a, df_session_b, db_path
         )
-        df_b = (
-            repo.load_personal_score_awards_as_polars(match_ids=match_ids_b)
-            if match_ids_b
-            else None
-        )
-
-        if (df_a is None or df_a.is_empty()) and (df_b is None or df_b.is_empty()):
-            return
-
-        from src.ui.components.radar_chart import create_participation_profile_radar
-        from src.visualization.participation_radar import (
-            compute_participation_profile,
-            get_radar_axis_lines,
-            get_radar_thresholds,
-        )
-
-        thresholds = get_radar_thresholds(db_path) if db_path else None
-
-        def _match_row_from_df(dff: pl.DataFrame) -> dict | None:
-            if dff.is_empty():
-                return None
-            return {
-                "deaths": int(dff.get_column("deaths").sum()) if "deaths" in dff.columns else 0,
-                "time_played_seconds": float(dff.get_column("time_played_seconds").sum())
-                if "time_played_seconds" in dff.columns
-                else 600.0 * len(dff),
-                "pair_name": dff[0, "pair_name"]
-                if "pair_name" in dff.columns and len(dff) > 0
-                else None,
-            }
-
-        profiles = []
-
-        if df_a is not None and not df_a.is_empty():
-            match_row_a = _match_row_from_df(df_session_a)
-            profile_a = compute_participation_profile(
-                df_a,
-                match_row=match_row_a,
-                name="Session A",
-                color=SESSION_COLORS["session_a"],
-                pair_name=match_row_a.get("pair_name") if match_row_a else None,
-                thresholds=thresholds,
-            )
-            profiles.append(profile_a)
-
-        if df_b is not None and not df_b.is_empty():
-            match_row_b = _match_row_from_df(df_session_b)
-            profile_b = compute_participation_profile(
-                df_b,
-                match_row=match_row_b,
-                name="Session B",
-                color=SESSION_COLORS["session_b"],
-                pair_name=match_row_b.get("pair_name") if match_row_b else None,
-                thresholds=thresholds,
-            )
-            profiles.append(profile_b)
-
         if not profiles:
             return
+
+        from src.ui.pages._session_compare_viz import _build_participation_bar_chart
 
         st.markdown("---")
         st.markdown(t("sc_participation_profile"))
         st.caption(t("sc_participation_comparison"))
 
-        col_radar, col_legend = st.columns([2, 1])
-        with col_radar, safe_chart_render():
-            fig = create_participation_profile_radar(profiles, title="", height=380)
+        with safe_chart_render():
+            fig = _build_participation_bar_chart(profiles)
             if fig is not None:
                 st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
-        with col_legend:
-            st.markdown(f"**{t('mvp_axes_label')}**")
-            for line in get_radar_axis_lines():
-                st.markdown(line)
 
     except Exception:
-        pass  # Ne pas bloquer la page en cas d'erreur
+        pass

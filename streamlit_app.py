@@ -847,7 +847,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
             friends_xuids=friends_tuple,
         )
         all_sessions_pl = _to_polars(all_sessions_df)
-        df_pl = _to_polars(ctx.df)
+        df_pl = _to_polars(ctx.dff)
         if (
             not all_sessions_pl.is_empty()
             and "match_id" in df_pl.columns
@@ -863,7 +863,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
             )
         else:
             sessions_for_compare = all_sessions_pl
-        render_session_comparison_page(sessions_for_compare, df_full=ctx.df)
+        render_session_comparison_page(sessions_for_compare, df_full=ctx.dff)
 
     def _page_last_match() -> None:
         from src.ui.pages import render_last_match_page

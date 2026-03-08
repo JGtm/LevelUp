@@ -135,6 +135,86 @@ def plot_session_trend(
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
+def _perf_color(p: float | None, fallback: str) -> str:
+    """Retourne la couleur Plotly selon le score de performance."""
+    if p is None:
+        return fallback
+    return "#27AE60" if float(p) >= 70 else "#F39C12" if float(p) >= 45 else "#E74C3C"
+
+
+def _add_session_trace(  # noqa: PLR0913
+    fig: go.Figure,
+    df: pl.DataFrame,
+    label: str,
+    color: str,
+    lang: str,
+    perf_scores: list[float | None] | None = None,
+) -> None:
+    """Ajoute la trace du score cumulé d'une session sur la figure."""
+    from src.analysis.cumulative import compute_cumulative_net_score_series_polars
+
+    if df.is_empty():
+        return
+    cumul = compute_cumulative_net_score_series_polars(df)
+    if cumul.is_empty():
+        return
+    data = cumul.to_dicts()
+    x_values = list(range(len(data)))
+    y_values = [d.get("cumulative_net_score", 0) for d in data]
+    n = len(data)
+
+    if perf_scores and len(perf_scores) >= n:
+        marker_colors: list[str] | str = [_perf_color(perf_scores[i], color) for i in range(n)]
+        customdata = [[f"{float(p):.0f}" if p is not None else "—"] for p in perf_scores[:n]]
+        hover = (
+            f"<b>{label}</b><br>Match #%{{x}}<br>Cumulé: %{{y:+d}}"
+            "<br>⭐ Perf: %{customdata[0]}<extra></extra>"
+        )
+    else:
+        marker_colors = color
+        customdata = None
+        hover = viz_t("hover_match_cumul", lang, label=label)
+
+    trace_kwargs = {
+        "x": x_values,
+        "y": y_values,
+        "mode": "lines+markers",
+        "name": label,
+        "line": {"color": color, "width": 2},
+        "marker": {"size": 6, "color": marker_colors},
+        "hovertemplate": hover,
+    }
+    if customdata is not None:
+        trace_kwargs["customdata"] = customdata
+    fig.add_trace(go.Scatter(**trace_kwargs))
+
+
+def _add_rank_trace(
+    fig: go.Figure,
+    ranks: list[float | None],
+    label: str,
+    color: str,
+    rank_label: str,
+) -> None:
+    """Ajoute la trace LUSR/CSR (axe Y secondaire) sur la figure."""
+    valid = [(i, r) for i, r in enumerate(ranks) if r is not None and float(r) > 0]
+    if not valid:
+        return
+    fig.add_trace(
+        go.Scatter(
+            x=[v[0] for v in valid],
+            y=[float(v[1]) for v in valid],
+            mode="lines+markers",
+            name=f"{label} {rank_label}",
+            line={"color": color, "width": 1, "dash": "dot"},
+            marker={"size": 5, "symbol": "diamond", "color": color},
+            yaxis="y2",
+            opacity=0.7,
+            hovertemplate=f"{label} {rank_label}: %{{y:.0f}}<extra></extra>",
+        )
+    )
+
+
 def plot_cumulative_comparison(  # noqa: PLR0913
     session_a_df: pl.DataFrame,
     session_b_df: pl.DataFrame,
@@ -142,43 +222,27 @@ def plot_cumulative_comparison(  # noqa: PLR0913
     label_a: str = "Session A",
     label_b: str = "Session B",
     title: str | None = None,
-    height: int = 400,
+    height: int = 420,
     lang: str = "fr",
+    rank_a: list[float | None] | None = None,
+    rank_b: list[float | None] | None = None,
+    rank_label: str = "CSR",
+    perf_a: list[float | None] | None = None,
+    perf_b: list[float | None] | None = None,
 ) -> go.Figure:
     """Compare deux sessions avec leurs courbes de net score cumulé."""
-    fig = go.Figure()
-
     if title is None:
         title = viz_t("title_session_comparison", lang)
 
-    from src.analysis.cumulative import compute_cumulative_net_score_series_polars
+    fig = go.Figure()
+    _add_session_trace(fig, session_a_df, label_a, PERFORMANCE_COLORS["neutral"], lang, perf_a)
+    _add_session_trace(fig, session_b_df, label_b, PERFORMANCE_COLORS["kd_line"], lang, perf_b)
 
-    def add_session_trace(df: pl.DataFrame, label: str, color: str) -> None:
-        if df.is_empty():
-            return
-
-        cumul = compute_cumulative_net_score_series_polars(df)
-        if cumul.is_empty():
-            return
-
-        data = cumul.to_dicts()
-        x_values = list(range(len(data)))
-        y_values = [d.get("cumulative_net_score", 0) for d in data]
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_values,
-                y=y_values,
-                mode="lines+markers",
-                name=label,
-                line={"color": color, "width": 2},
-                marker={"size": 6, "color": color},
-                hovertemplate=viz_t("hover_match_cumul", lang, label=label),
-            )
-        )
-
-    add_session_trace(session_a_df, label_a, PERFORMANCE_COLORS["neutral"])
-    add_session_trace(session_b_df, label_b, PERFORMANCE_COLORS["kd_line"])
+    has_rank = bool(rank_a or rank_b)
+    if rank_a:
+        _add_rank_trace(fig, rank_a, label_a, PERFORMANCE_COLORS["neutral"], rank_label)
+    if rank_b:
+        _add_rank_trace(fig, rank_b, label_b, PERFORMANCE_COLORS["kd_line"], rank_label)
 
     fig.add_hline(
         y=0,
@@ -188,14 +252,22 @@ def plot_cumulative_comparison(  # noqa: PLR0913
         annotation_position="right",
     )
 
-    fig.update_layout(
-        xaxis_title=viz_t("axis_match_number", lang),
-        yaxis_title=viz_t("axis_cumul_net_score", lang),
-        hovermode="x unified",
-        showlegend=True,
-        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
-    )
-
+    layout_kwargs: dict = {
+        "xaxis_title": viz_t("axis_match_number", lang),
+        "yaxis_title": viz_t("axis_cumul_net_score", lang),
+        "hovermode": "x unified",
+        "showlegend": True,
+        "legend": {"orientation": "h", "yanchor": "top", "y": -0.18, "xanchor": "center", "x": 0.5},
+    }
+    if has_rank:
+        layout_kwargs["yaxis2"] = {
+            "title": rank_label,
+            "overlaying": "y",
+            "side": "right",
+            "showgrid": False,
+            "rangemode": "tozero",
+        }
+    fig.update_layout(**layout_kwargs)
     return apply_halo_plot_style(fig, title=title, height=height)
 
 
