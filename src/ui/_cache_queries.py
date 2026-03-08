@@ -218,9 +218,9 @@ def cached_load_match_player_gamertags(
     if _is_duckdb_v4_path(db_path):
         try:
             # Utiliser le repo caché pour récupérer les XUIDs et résoudre les gamertags
-            # Résolution XUID : on utilise un xuid temporaire, resolve_gamertags_batch
-            # ne dépend pas du xuid du repo
-            repo = get_cached_repository_st(db_path, "")
+            # Résolution XUID : on résout le xuid réel pour éviter une entrée cache orpheline
+            player_xuid = _resolve_player_xuid(db_path)
+            repo = get_cached_repository_st(db_path, player_xuid)
 
             # Récupérer tous les XUIDs du match via le repo (highlight_events)
             events = repo.load_highlight_events(match_id)
@@ -300,6 +300,7 @@ def clear_app_caches() -> None:
         st.cache_data.clear()
     with contextlib.suppress(Exception):
         st.cache_resource.clear()
+    logger.debug("clear_app_caches: cache_data + cache_resource vidés")
 
 
 @st.cache_data(show_spinner=False)

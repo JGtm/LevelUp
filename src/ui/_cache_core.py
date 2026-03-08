@@ -162,6 +162,15 @@ def db_cache_key(db_path: str) -> tuple[int, int, int, int, int] | None:
     except Exception:
         pass
 
+    logger.debug(
+        "db_cache_key(%s): mtime_player=%d size_player=%d mtime_shared=%d size_shared=%d wal=%d",
+        os.path.basename(db_path),
+        mtime_player,
+        size_player,
+        mtime_shared,
+        size_shared,
+        wal_sentinel,
+    )
     return mtime_player, size_player, mtime_shared, size_shared, wal_sentinel
 
 
