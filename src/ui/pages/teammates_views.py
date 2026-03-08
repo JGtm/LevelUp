@@ -304,7 +304,7 @@ def _render_map_breakdown(
         with safe_chart_render():
             view_all = breakdown_all.head(20).reverse()
             title = t("tm_ratio_map_header", n=min_matches_maps_friends)
-            fig_map = plot_map_ratio_with_winloss(view_all, title=title)
+            fig_map = plot_map_ratio_with_winloss(view_all, title=title, absolute_counts=True)
             if fig_map is not None:
                 st.plotly_chart(fig_map, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:

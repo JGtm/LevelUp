@@ -124,6 +124,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Précision moyenne",
         "en": "Avg. accuracy",
     },
+    "wl_metric_performance": {
+        "fr": "Performance moyenne",
+        "en": "Avg. performance",
+    },
+    "wl_session_map_note": {
+        "fr": "ℹ️ En vue session (peu de matchs par carte), le ratio et le taux de victoires ne sont pas représentatifs — affiché : métriques de performance.",
+        "en": "ℹ️ In session view (few matches per map), win ratio and win rate are not meaningful — showing performance metrics instead.",
+    },
     "wl_personal_score_y_axis": {
         "fr": "Score personnel",
         "en": "Personal score",
