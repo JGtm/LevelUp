@@ -61,9 +61,6 @@ from src.app.helpers import (
 from src.app.kpis import (
     KPIStats,
     compute_kpi_stats,
-    render_all_kpis,
-    render_career_kpis,
-    render_matches_summary,
 )
 from src.app.kpis_render import (
     render_kpis_section,
@@ -168,9 +165,6 @@ __all__ = [
     # KPIs
     "KPIStats",
     "compute_kpi_stats",
-    "render_matches_summary",
-    "render_career_kpis",
-    "render_all_kpis",
     # Data Loader
     "default_identity_from_secrets",
     "propagate_identity_env",
