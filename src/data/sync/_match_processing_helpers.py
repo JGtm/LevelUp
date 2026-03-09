@@ -141,6 +141,26 @@ class MatchProcessingHelpersMixin:
                     ),
                 )
 
+    async def _upsert_skill_new_match(
+        self: _SyncProtocol,
+        match_id: str,
+        skill_json: dict | None,
+        skill_row: Any,
+    ) -> None:
+        """Écrit les données skill dans shared.match_participants pour un nouveau match.
+
+        Si skill_json est disponible, met à jour TOUS les participants (team_mmr,
+        enemy_mmr, expected/stddev). Sinon, met à jour uniquement le joueur courant.
+        Cela corrige le bug où seul le premier joueur à syncer obtenait son MMR.
+        """
+        if skill_json:
+            async with self._shared_db_lock:
+                shared_conn = self._get_shared_connection()
+                if shared_conn:
+                    self._upsert_skill_to_shared_participants(shared_conn, match_id, skill_json)
+        else:
+            await self._upsert_single_player_skill_to_shared(match_id, skill_row)
+
     async def _write_player_enrichments(
         self: _SyncProtocol,
         match_id: str,

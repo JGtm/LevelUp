@@ -408,7 +408,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                 match_id,
                 skill_json,
             )
-            await self._upsert_single_player_skill_to_shared(match_id, skill_row)
+            await self._upsert_skill_new_match(match_id, skill_json, skill_row)
             await self._write_player_enrichments(
                 match_id,
                 match_row,
