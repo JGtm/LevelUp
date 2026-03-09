@@ -200,22 +200,11 @@ def notify_operation_done(  # noqa: PLR0913
             return
 
         if skip_idle:
-            all_players = players
             players = [p for p in players if p.matches_synced > 0 or p.error]
             if not players:
-                logger.info("[Discord] Tous les joueurs à jour — envoi embed allégé")
-                payload = build_embed_payload(
-                    operation=operation,
-                    started_at=started_at,
-                    finished_at=finished_at,
-                    players=all_players,
-                    success=success,
+                logger.info(
+                    "[Discord] Tous les joueurs à jour (skip_idle=True) — pas de notification"
                 )
-                ok = send_discord_notification(payload, webhook_url)
-                if ok:
-                    logger.info("[Discord] Notification 'déjà à jour' envoyée")
-                else:
-                    logger.warning("[Discord] Notification non reçue par Discord (voir logs)")
                 return
 
         payload = build_embed_payload(
