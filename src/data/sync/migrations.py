@@ -868,6 +868,8 @@ def _create_index_safe(conn: duckdb.DuckDBPyConnection, sql: str, index_name: st
         err = str(e).lower()
         if "already exists" in err or "read only" in err:
             logger.debug("Index %s ignoré: %s", index_name, e)
+        elif "does not exist" in err or "table with name" in err:
+            logger.debug("Index %s ignoré (table absente): %s", index_name, e)
         else:
             logger.warning("Index %s non créé: %s", index_name, e)
 
