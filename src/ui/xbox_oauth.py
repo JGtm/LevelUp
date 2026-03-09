@@ -249,6 +249,10 @@ async def resolve_player_identity(
 
 _SYNC_META_OAUTH_KEY = "oauth_refresh_token"  # pragma: allowlist secret
 
+# Cache process-level : évite N ouvertures DuckDB par session (185×/session observé).
+# Invalidé dès qu'un nouveau token est écrit via store_refresh_token().
+_rt_cache: dict[str, str | None] = {}
+
 _SYNC_META_DDL = """
 CREATE TABLE IF NOT EXISTS sync_meta (
     key VARCHAR PRIMARY KEY,
@@ -276,6 +280,7 @@ def store_refresh_token(db_path: str | Path, refresh_token: str) -> None:
                VALUES (?, ?, CURRENT_TIMESTAMP)""",
             (_SYNC_META_OAUTH_KEY, refresh_token),
         )
+    _rt_cache[str(Path(db_path).resolve())] = refresh_token.strip()
 
 
 def load_refresh_token(db_path: str | Path) -> str | None:
@@ -291,6 +296,10 @@ def load_refresh_token(db_path: str | Path) -> str | None:
     if not path.exists():
         return None
 
+    cache_key = str(path.resolve())
+    if cache_key in _rt_cache:
+        return _rt_cache[cache_key]
+
     try:
         from src.utils.db import duckdb_read_only
 
@@ -300,10 +309,13 @@ def load_refresh_token(db_path: str | Path) -> str | None:
                 (_SYNC_META_OAUTH_KEY,),
             ).fetchone()
             if row and row[0] and str(row[0]).strip():
-                return str(row[0]).strip()
+                result = str(row[0]).strip()
+                _rt_cache[cache_key] = result
+                return result
     except Exception as exc:
         logger.debug("Impossible de lire oauth_refresh_token depuis %s: %s", db_path, exc)
 
+    _rt_cache[cache_key] = None
     return None
 
 
