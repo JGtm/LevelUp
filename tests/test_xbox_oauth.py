@@ -286,6 +286,28 @@ def test_load_refresh_token_exception_retourne_none(tmp_path):
     assert result is None
 
 
+def test_load_refresh_token_valeur_vide_retourne_none(tmp_path):
+    """Une ligne sync_meta avec valeur vide retourne None (branche row non-None mais vide)."""
+    import duckdb
+
+    from src.ui.xbox_oauth import _SYNC_META_OAUTH_KEY, load_refresh_token
+
+    db = tmp_path / "stats.duckdb"
+    # Créer la table et insérer une valeur vide directement
+    with duckdb.connect(str(db)) as conn:
+        conn.execute(
+            "CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR, "
+            "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+        )
+        conn.execute(
+            "INSERT INTO sync_meta (key, value) VALUES (?, ?)",
+            (_SYNC_META_OAUTH_KEY, "   "),  # Valeur whitespace seulement
+        )
+
+    result = load_refresh_token(db)
+    assert result is None
+
+
 # ===========================================================================
 # complete_device_code_flow — chemin ThreadPoolExecutor (RuntimeError)
 # ===========================================================================
@@ -301,6 +323,7 @@ def test_complete_device_code_flow_runtime_error_bascule_executor():
     def _patched_run(coro):
         call_count[0] += 1
         if call_count[0] == 1:
+            coro.close()  # Fermer proprement la coroutine abandonnée
             raise RuntimeError("This event loop is already running.")
         return original_run(coro)
 
