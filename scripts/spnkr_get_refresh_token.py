@@ -117,6 +117,20 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
             "auto: tente SPNKr/login.live.com puis fallback v2 si invalid_client."
         ),
     )
+    ap.add_argument(
+        "--device-code",
+        action="store_true",
+        help=(
+            "Mode Device Code Flow (MSAL). "
+            "N'exige pas de `client_secret` ni de `redirect_uri` Azure. "
+            "Requires: `pip install msal` et --client-id ou SPNKR_AZURE_CLIENT_ID."
+        ),
+    )
+    ap.add_argument(
+        "--client-id",
+        default=None,
+        help="Azure Application (client) ID (public client). Surcharge SPNKR_AZURE_CLIENT_ID.",
+    )
     return ap.parse_args(argv)
 
 
@@ -215,9 +229,86 @@ def _upsert_env_key(path: Path, key: str, value: str) -> None:
     path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
 
+def _device_code_flow_main(args: argparse.Namespace, env_path: Path) -> int:
+    """Exécute le Device Code Flow MSAL (mode non-interactif simplifié).
+
+    Seul `client_id` est requis. Pas de `client_secret`, pas de `redirect_uri`.
+    L'utilisateur visite https://microsoft.com/devicelogin et entre le code affiché.
+    """
+    import sys  # noqa: PLC0415
+
+    try:
+        import sys  # noqa: F811, PLC0415
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+        from src.utils.msal_device_flow import (
+            DeviceFlowError,
+            acquire_token_blocking,
+            initiate_device_flow,
+        )
+    except ImportError as exc:
+        raise SystemExit(
+            "Impossible d'importer msal_device_flow. "
+            "Lance depuis la racine du projet avec `python -m scripts.spnkr_get_refresh_token`."
+        ) from exc
+
+    client_id = (args.client_id or "").strip() or os.environ.get(
+        "SPNKR_AZURE_CLIENT_ID", ""
+    ).strip()
+    if not client_id:
+        raise SystemExit(
+            "Client ID manquant. Utilise --client-id <uuid> ou renseigne SPNKR_AZURE_CLIENT_ID."
+        )
+
+    print("\n[Device Code Flow — Mode Public Client (sans client_secret)]")
+    print(f"Application ID : {client_id}")
+    print("\nInitialisation du Device Code Flow...")
+    try:
+        dc_result, app = initiate_device_flow(client_id)
+    except DeviceFlowError as exc:
+        raise SystemExit(f"Erreur Device Flow : {exc.code} — {exc.detail}") from exc
+
+    print(f"\n{'=' * 60}")
+    print(f"Code d'accès : {dc_result.user_code}")
+    print(f"URL          : {dc_result.verification_url}")
+    print(f"Expire dans  : {dc_result.expires_in}s")
+    print("=" * 60)
+    print("\n1. Ouvre un navigateur et va sur :", dc_result.verification_url)
+    print("2. Entre le code :", dc_result.user_code)
+    print("3. Connecte-toi avec ton compte Microsoft / Xbox.")
+    print("\nEn attente de la confirmation... (Ctrl+C pour annuler)\n")
+
+    try:
+        refresh_token = acquire_token_blocking(app, dc_result._flow)
+    except DeviceFlowError as exc:
+        raise SystemExit(f"Échec Device Code Flow : {exc.code} — {exc.detail}") from exc
+
+    if not args.no_write_env_local:
+        _upsert_env_key(env_path, "SPNKR_OAUTH_REFRESH_TOKEN", refresh_token)
+        print(f"\nOK: refresh token écrit dans {env_path}")
+    else:
+        print("\nOK: refresh token récupéré (non écrit dans un fichier).")
+
+    if args.print_token or args.no_write_env_local:
+        print("\n=== SPNKr OAuth refresh token ===\n")
+        print(refresh_token)
+
+    return 0
+
+
 async def main(argv: list[str]) -> int:
     args = _parse_args(argv)
     _load_dotenv_if_present()
+
+    env_path = (
+        Path(args.env_file)
+        if args.env_file
+        else (Path(__file__).resolve().parent.parent / ".env.local")
+    )
+
+    # Mode Device Code Flow (public client — sans client_secret)
+    if args.device_code:
+        return _device_code_flow_main(args, env_path)
 
     client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID")
     client_secret = os.environ.get("SPNKR_AZURE_CLIENT_SECRET")
@@ -373,11 +464,6 @@ async def main(argv: list[str]) -> int:
 
     # Si on est passé par un fallback, refresh_token est déjà défini.
 
-    env_path = (
-        Path(args.env_file)
-        if args.env_file
-        else (Path(__file__).resolve().parent.parent / ".env.local")
-    )
     if not args.no_write_env_local:
         _upsert_env_key(env_path, "SPNKR_OAUTH_REFRESH_TOKEN", refresh_token)
         print(f"\nOK: refresh token écrit dans {env_path}")

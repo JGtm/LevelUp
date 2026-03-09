@@ -32,12 +32,12 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "Xbox Login",
     },
     "setup_xbox_card_desc": {
-        "fr": "Connectez-vous avec votre compte Microsoft. Votre profil sera créé automatiquement.",
-        "en": "Sign in with your Microsoft account. Your profile will be created automatically.",
+        "fr": "Code à 8 chiffres sur microsoft.com/devicelogin. Pas de secret Azure, pas de Redirect URI.",
+        "en": "8-character code at microsoft.com/devicelogin. No Azure secret, no Redirect URI.",
     },
     "setup_xbox_card_badge": {
-        "fr": "✨ Recommandé",
-        "en": "✨ Recommended",
+        "fr": "✨ Recommandé — Le plus simple",
+        "en": "✨ Recommended — Simplest",
     },
     "setup_xbox_card_btn": {
         "fr": "🎮 Choisir Xbox",
@@ -60,8 +60,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "☁️ Choose Azure",
     },
     "setup_footer_note": {
-        "fr": "Les deux méthodes nécessitent une App Azure. La méthode Xbox simplifie l'obtention du token et la création du profil.",
-        "en": "Both methods require an Azure App. The Xbox method simplifies token acquisition and profile creation.",
+        "fr": "Les deux méthodes nécessitent une App Azure. La méthode Xbox (Device Code) est de loin la plus simple : pas de secret ni de Redirect URI.",
+        "en": "Both methods require an Azure App. The Xbox (Device Code) method is by far the simplest: no secret or Redirect URI needed.",
     },
     # ── Parcours Xbox ──────────────────────────────────────────────────────
     "setup_xbox_step1_title": {
@@ -416,5 +416,64 @@ STRINGS: dict[str, dict[str, str]] = {
     "smoke_btn_retry": {
         "fr": "🔄 Relancer le test",
         "en": "🔄 Retry test",
+    },
+    # ── Parcours Xbox — Device Code Flow ────────────────────────────────────────────
+    "setup_dc_step1_title": {
+        "fr": "Application (client) ID Azure",
+        "en": "Azure Application (client) ID",
+    },
+    "setup_dc_step1_help": {
+        "fr": (
+            "Créez une **App Azure Public Client** (à faire une seule fois) :\n\n"
+            "1. [portal.azure.com](https://portal.azure.com) → **App registrations** → **New registration**\n"
+            "2. **Name** : LevelUp (ou autre)\n"
+            "3. **Supported account types** : *Personal Microsoft accounts only*\n"
+            "4. **Redirect URI** : laisser vide\n"
+            "5. Cliquer **Register**\n"
+            "6. Aller dans **Authentication** → *Allow public client flows* → **Yes** → **Save**\n"
+            "7. Copier l'**Application (client) ID** ci-dessous."
+        ),
+        "en": (
+            "Create an **Azure Public Client App** (one time only):\n\n"
+            "1. [portal.azure.com](https://portal.azure.com) → **App registrations** → **New registration**\n"
+            "2. **Name**: LevelUp (or any name)\n"
+            "3. **Supported account types**: *Personal Microsoft accounts only*\n"
+            "4. **Redirect URI**: leave blank\n"
+            "5. Click **Register**\n"
+            "6. Go to **Authentication** → *Allow public client flows* → **Yes** → **Save**\n"
+            "7. Copy the **Application (client) ID** below."
+        ),
+    },
+    "setup_dc_client_id_label": {
+        "fr": "Application (client) ID",
+        "en": "Application (client) ID",
+    },
+    "setup_dc_start_btn": {
+        "fr": "🔑 Générer le code de connexion",
+        "en": "🔑 Generate login code",
+    },
+    "setup_dc_client_id_empty": {
+        "fr": "Veuillez saisir l'Application (client) ID.",
+        "en": "Please enter the Application (client) ID.",
+    },
+    "setup_dc_code_title": {
+        "fr": "Entrez ce code sur [microsoft.com/devicelogin](https://microsoft.com/devicelogin)",
+        "en": "Enter this code at [microsoft.com/devicelogin](https://microsoft.com/devicelogin)",
+    },
+    "setup_dc_verify_btn": {
+        "fr": "✅ J'ai confirmé — Continuer",
+        "en": "✅ I confirmed — Continue",
+    },
+    "setup_dc_waiting": {
+        "fr": "⏳ Code pas encore confirmé. Retournez sur microsoft.com/devicelogin.",
+        "en": "⏳ Code not confirmed yet. Go back to microsoft.com/devicelogin.",
+    },
+    "setup_dc_cancel_btn": {
+        "fr": "← Recommencer",
+        "en": "← Start over",
+    },
+    "setup_dc_getting_profile": {
+        "fr": "Récupération du profil Xbox…",
+        "en": "Fetching Xbox profile…",
     },
 }

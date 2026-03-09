@@ -1,17 +1,16 @@
-"""Logique d'authentification Xbox OAuth pour LevelUp.
+"""Logique d'authentification Xbox pour LevelUp — Device Code Flow.
 
 Ce module est SANS dépendance Streamlit — toutes les fonctions sont pures
 ou async, testables unitairement avec des mocks HTTP.
 
-Flux OAuth Microsoft supporté :
-  1. ``build_xbox_auth_url()`` → URL Microsoft → ouvert dans le navigateur
-  2. Microsoft redirige vers ``<redirect_uri>?code=XXX&state=YYY``
-  3. ``exchange_code_for_refresh_token()`` → refresh_token longue durée
-  4. ``get_spartan_tokens_from_refresh()`` → spartan_token + clearance_token
-  5. ``resolve_player_identity()`` → gamertag + XUID
-  6. ``store_refresh_token()`` → persisté dans stats.duckdb/sync_meta
+Flux Device Code Flow (MSAL) :
+  1. ``msal_device_flow.initiate_device_flow()`` → code de 8 caractères
+  2. Utilisateur visite microsoft.com/devicelogin et entre le code
+  3. ``msal_device_flow.acquire_token_blocking()`` → refresh_token
+  4. ``complete_device_code_flow()`` → gamertag + XUID (via API Halo)
+  5. ``store_refresh_token()`` → persisté dans stats.duckdb/sync_meta
 
-Gestion des tokens stockés en DB (multi-joueurs, sans .env par joueur) :
+Persistance multi-joueurs (sans .env par joueur) :
   - ``store_refresh_token(db_path, refresh_token)``
   - ``load_refresh_token(db_path) → str | None``
 """
@@ -21,115 +20,12 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import logging
-import secrets
 from pathlib import Path
-from urllib.parse import quote_plus
 
 logger = logging.getLogger(__name__)
 
-# Scopes Microsoft pour Xbox Live
-_XBOX_SCOPES = "Xboxlive.signin Xboxlive.offline_access"
-
-# Durée max (secondes) pour les appels réseau OAuth
+# Durée max (secondes) pour les appels réseau OAuth (résolution identité)
 _OAUTH_TIMEOUT_S = 20
-
-
-# =============================================================================
-# Construction de l'URL d'autorisation
-# =============================================================================
-
-
-def build_xbox_auth_url(client_id: str, redirect_uri: str, state: str) -> str:
-    """Construit l'URL d'autorisation Microsoft/Xbox.
-
-    L'utilisateur est redirigé vers cette URL pour se connecter avec son
-    compte Microsoft. Après authentification, Microsoft le renvoie vers
-    ``redirect_uri?code=XXX&state=YYY``.
-
-    Args:
-        client_id: Client ID de l'app Azure (SPNKR_AZURE_CLIENT_ID).
-        redirect_uri: URI de redirection enregistrée dans Azure Portal.
-        state: Valeur CSRF aléatoire générée par ``generate_oauth_state()``.
-
-    Returns:
-        URL complète à ouvrir dans le navigateur.
-    """
-    return (
-        "https://login.live.com/oauth20_authorize.srf"
-        f"?client_id={quote_plus(client_id)}"
-        "&response_type=code"
-        "&approval_prompt=auto"
-        f"&scope={quote_plus(_XBOX_SCOPES)}"
-        f"&redirect_uri={quote_plus(redirect_uri)}"
-        f"&state={quote_plus(state)}"
-    )
-
-
-def generate_oauth_state() -> str:
-    """Génère un token CSRF aléatoire pour la protection contre les attaques CSRF.
-
-    Returns:
-        Chaîne hexadécimale de 32 caractères.
-    """
-    return secrets.token_hex(16)
-
-
-# =============================================================================
-# Échange du code OAuth contre un refresh_token
-# =============================================================================
-
-
-async def exchange_code_for_refresh_token(
-    session,
-    *,
-    client_id: str,
-    client_secret: str,
-    redirect_uri: str,
-    code: str,
-) -> str:
-    """Échange le code OAuth contre un refresh_token longue durée.
-
-    Utilise l'endpoint Microsoft identity platform v2 (consumers).
-
-    Args:
-        session: Session aiohttp active.
-        client_id: Client ID Azure.
-        client_secret: Client Secret Azure.
-        redirect_uri: Doit correspondre exactement à la valeur enregistrée.
-        code: Code reçu dans le query param ``code=`` du callback.
-
-    Returns:
-        Le refresh_token Microsoft.
-
-    Raises:
-        ValueError: Si la réponse ne contient pas de refresh_token ou en cas d'erreur.
-    """
-    url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
-    data = {
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": redirect_uri,
-        "scope": _XBOX_SCOPES,
-    }
-
-    resp = await session.post(url, data=data)
-    payload = await resp.json(content_type=None)
-
-    if resp.status >= 400:
-        err = payload.get("error", "unknown_error")
-        desc = payload.get("error_description", "")
-        raise ValueError(f"Échec OAuth code→token (status={resp.status}): {err} — {desc}")
-
-    refresh_token = payload.get("refresh_token")
-    if not isinstance(refresh_token, str) or not refresh_token.strip():
-        raise ValueError(
-            "Réponse OAuth ne contient pas de refresh_token. "
-            "Vérifiez que le scope 'Xboxlive.offline_access' est activé."
-        )
-
-    return refresh_token.strip()
 
 
 # =============================================================================
@@ -147,8 +43,8 @@ async def get_spartan_tokens_from_refresh(
 ) -> tuple[str, str]:
     """Obtient spartan_token + clearance_token depuis un refresh_token.
 
-    Essaie d'abord via ``spnkr.refresh_player_tokens``, puis fallback
-    sur le flux OAuth v2 manuel (nécessaire avec certaines versions).
+    Supporte les clients publics (``client_secret=""``  pour le Device Code Flow)
+    et confidentiels.
 
     Args:
         session: Session aiohttp active.
@@ -308,60 +204,37 @@ def load_refresh_token(db_path: str | Path) -> str | None:
 
 
 # =============================================================================
-# Point d'entrée synchrone (compatible Streamlit ThreadPoolExecutor)
+# Résolution identité + completion du Device Code Flow
 # =============================================================================
 
 
-def run_xbox_oauth_callback(
-    code: str,
-    *,
-    client_id: str,
-    client_secret: str,
-    redirect_uri: str,
-) -> dict:
-    """Exécute le flux OAuth de façon synchrone (compatible Streamlit).
+def complete_device_code_flow(refresh_token: str, client_id: str) -> dict:
+    """Complète le flux Device Code : résout l'identité Xbox depuis le refresh_token.
 
-    Appelé depuis ``ThreadPoolExecutor`` dans ``streamlit_app.py``
-    après réception du callback ``?code=XXX``.
+    À appeler après ``msal_device_flow.acquire_token_blocking()``.
+    Obtient spartan/clearance tokens puis résout le gamertag et le XUID.
 
     Args:
-        code: Code OAuth reçu dans ``st.query_params["code"]``.
-        client_id: SPNKR_AZURE_CLIENT_ID.
-        client_secret: SPNKR_AZURE_CLIENT_SECRET.
-        redirect_uri: SPNKR_AZURE_REDIRECT_URI.
+        refresh_token: Token obtenu via MSAL Device Code Flow.
+        client_id: Application (client) ID Azure (public client, sans secret).
 
     Returns:
-        Dict avec les clés ``gamertag``, ``xuid``, ``refresh_token``
-        en cas de succès, ou ``error`` en cas d'échec.
+        Dict avec ``gamertag``, ``xuid``, ``refresh_token``, ``spartan_token``,
+        ``clearance_token`` en cas de succès, ou ``error`` (str) en cas d'échec.
     """
 
     async def _run() -> dict:
         try:
-            import aiohttp
-
-            timeout = aiohttp.ClientTimeout(total=float(_OAUTH_TIMEOUT_S))
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                # 1. Échanger le code contre un refresh_token
-                refresh_token = await exchange_code_for_refresh_token(
-                    session,
-                    client_id=client_id,
-                    client_secret=client_secret,
-                    redirect_uri=redirect_uri,
-                    code=code,
-                )
-
-                # 2. Obtenir les tokens Halo
-                spartan_token, clearance_token = await get_spartan_tokens_from_refresh(
-                    session,
-                    client_id=client_id,
-                    client_secret=client_secret,
-                    redirect_uri=redirect_uri,
-                    refresh_token=refresh_token,
-                )
-
-            # 3. Résoudre l'identité (session séparée pour le client Halo)
+            # Client public : client_secret et redirect_uri vides
+            spartan_token, clearance_token = await get_spartan_tokens_from_refresh(
+                None,
+                client_id=client_id,
+                client_secret="",
+                redirect_uri="",
+                refresh_token=refresh_token,
+            )
             gamertag, xuid = await resolve_player_identity(spartan_token, clearance_token)
-
+            logger.info("Device Code Flow complet : gamertag=%s xuid=%s", gamertag, xuid)
             return {
                 "gamertag": gamertag,
                 "xuid": xuid,
@@ -370,10 +243,9 @@ def run_xbox_oauth_callback(
                 "clearance_token": clearance_token,
             }
         except Exception as exc:
-            logger.exception("Erreur lors du callback Xbox OAuth")
+            logger.exception("Erreur lors de la résolution identity (Device Code Flow)")
             return {"error": str(exc)}
 
-    # Exécution compatible avec une boucle asyncio déjà en cours
     try:
         return asyncio.run(_run())
     except RuntimeError:
