@@ -297,16 +297,27 @@ async def _get_tokens_oauth_v2_fallback(
     # Client secret omis pour les clients publics (device code flow)
     if app.client_secret:
         data["client_secret"] = app.client_secret
+
+    logger.debug(
+        "OAuth v2 fallback : échange refresh_token → access_token (client_id=%s…)",
+        app.client_id[:8],
+    )
     resp = await session.post(url, data=data)
     payload = await resp.json()
 
     if resp.status >= 400:
+        logger.error(
+            "OAuth v2 fallback : échec HTTP status=%d error=%s",
+            resp.status,
+            payload.get("error"),
+        )
         raise ValueError(
             f"Échec refresh OAuth v2: status={resp.status} error={payload.get('error')}"
         )
 
     access_token = payload.get("access_token")
     if not access_token:
+        logger.error("OAuth v2 fallback : pas de access_token dans la réponse")
         raise ValueError("OAuth v2: pas de access_token")
 
     user_token = await request_user_token(session, access_token)
@@ -315,6 +326,7 @@ async def _get_tokens_oauth_v2_fallback(
     spartan_token = await request_spartan_token(session, halo_xsts_token.token)
     clearance_token = await request_clearance_token(session, spartan_token.token)
 
+    logger.debug("OAuth v2 fallback : tokens Halo obtenus (spartan + clearance)")
     return Tokens(
         spartan_token=str(spartan_token.token),
         clearance_token=str(clearance_token.token),

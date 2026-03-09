@@ -155,3 +155,52 @@ def test_logging_warning_sur_timeout(caplog):
 
     messages = " ".join(caplog.messages)
     assert "timeout" in messages.lower() or "expir" in messages.lower()
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Cas additionnels : code_expired, unknown, DeviceFlowError.detail, logging init
+# ────────────────────────────────────────────────────────────────────────────────
+
+
+def test_code_expired_leve_timeout():
+    """code_expired (alt. de expired_token) doit aussi lever code='timeout'."""
+    mock_app = _make_mock_app(
+        token_result={"error": "code_expired", "error_description": "Code expired"}
+    )
+    with pytest.raises(DeviceFlowError) as exc_info:
+        acquire_token_blocking(mock_app, _FAKE_FLOW)
+    assert exc_info.value.code == "timeout"
+
+
+def test_unknown_error_leve_erreur_generique():
+    """Une erreur MSAL inconnue doit lever DeviceFlowError(code='unknown')."""
+    mock_app = _make_mock_app(
+        token_result={"error": "some_unknown_msal_error", "error_description": "?"}
+    )
+    with pytest.raises(DeviceFlowError) as exc_info:
+        acquire_token_blocking(mock_app, _FAKE_FLOW)
+    assert exc_info.value.code == "unknown"
+    assert "some_unknown_msal_error" in exc_info.value.detail
+
+
+def test_device_flow_error_attributs():
+    """DeviceFlowError expose .code et .detail (contrat public)."""
+    err = DeviceFlowError("declined", "L'utilisateur a refusé.")
+    assert err.code == "declined"
+    assert err.detail == "L'utilisateur a refusé."
+    assert str(err) == "L'utilisateur a refusé."
+
+
+def test_logging_error_sur_init_failure(caplog):
+    """Un échec d'initiation (error dans le flow) doit logger ERROR."""
+    bad_flow = dict(_FAKE_FLOW, error="invalid_client", error_description="Bad")
+    mock_app = _make_mock_app(flow=bad_flow)
+    with (
+        patch("src.utils.msal_device_flow.msal") as mock_msal,
+        caplog.at_level(logging.ERROR, logger="src.utils.msal_device_flow"),
+        pytest.raises(DeviceFlowError),
+    ):
+        mock_msal.PublicClientApplication.return_value = mock_app
+        initiate_device_flow(_VALID_CLIENT_ID)
+
+    assert any("invalid_client" in m or "échec" in m.lower() for m in caplog.messages)
