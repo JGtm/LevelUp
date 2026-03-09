@@ -144,13 +144,13 @@ class TestRenderSetupWizardPage:
         ms.calls["markdown"].assert_called()
 
     def test_xbox_mode_avec_credentials(self, mock_st) -> None:
-        """Mode Xbox : affiche le bouton de connexion si credentials OK."""
+        """Mode Xbox DC Flow : affiche bouton démarrage si client_id présent."""
         from src.ui.pages import setup_wizard as mod
 
         ms = mock_st(mod)
         _setup_wizard_mocks(ms)
 
-        status = _make_status(has_id=True, has_secret=True)
+        status = _make_status(has_id=True)  # has_secret inutile en DC flow
         ms.session_state["_setup_mode"] = "xbox"
 
         with (
@@ -159,18 +159,14 @@ class TestRenderSetupWizardPage:
                 "os.environ",
                 {"SPNKR_AZURE_CLIENT_ID": "12345678-1234-1234-1234-123456789abc"},
             ),
-            patch("src.ui.xbox_oauth.build_xbox_auth_url", return_value="https://fake"),
-            patch("src.ui.xbox_oauth.generate_oauth_state", return_value="state123"),
+            patch("src.ui.xbox_oauth_ui.check_dc_queue", return_value=None),
         ):
             mod.render_setup_wizard_page()
 
-        # link_button doit être appelé avec l'URL OAuth
-        ms.calls["link_button"].assert_called_once()
-        call_kwargs = ms.calls["link_button"].call_args
-        assert "https://fake" in str(call_kwargs)
-        # Vérifie width="stretch" (pas use_container_width déprécié)
-        assert call_kwargs.kwargs.get("use_container_width") is None
-        assert call_kwargs.kwargs.get("width") == "stretch"
+        # Device Code Flow : pas de link_button OAuth redirect
+        ms.calls["link_button"].assert_not_called()
+        # Le bouton "Démarrer le Device Code" est rendu
+        assert ms.calls["button"].call_count >= 1
 
     def test_azure_mode_etape1(self, mock_st) -> None:
         """Mode Azure : affiche étape 1 si pas de credentials."""

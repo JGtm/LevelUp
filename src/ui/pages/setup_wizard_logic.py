@@ -141,6 +141,40 @@ def save_azure_credentials(
     logger.info("Credentials Azure sauvegardées dans .env.local")
 
 
+def validate_dc_credentials(client_id: str) -> list[str]:
+    """Valide le client_id Azure pour un public client (sans secret).
+
+    Args:
+        client_id: Azure Application (client) ID.
+
+    Returns:
+        Liste d'erreurs (vide si tout est valide).
+    """
+    errors: list[str] = []
+    client_id = client_id.strip()
+    if not client_id:
+        errors.append("Le Client ID est requis.")
+    elif not re.match(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        client_id,
+        re.IGNORECASE,
+    ):
+        errors.append("Le Client ID doit être un UUID (ex: 12345678-1234-1234-1234-123456789abc).")
+    return errors
+
+
+def save_dc_credentials(client_id: str) -> None:
+    """Sauvegarde uniquement le client_id Azure (public client, sans secret).
+
+    Args:
+        client_id: Azure Application (client) ID.
+    """
+    clean = client_id.strip()
+    write_env_local({"SPNKR_AZURE_CLIENT_ID": clean})
+    os.environ["SPNKR_AZURE_CLIENT_ID"] = clean
+    logger.info("Client ID Azure (public client) sauvegardé dans .env.local")
+
+
 def validate_gamertag(gamertag: str) -> list[str]:
     """Valide le format d'un gamertag Xbox.
 
