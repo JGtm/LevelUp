@@ -204,3 +204,37 @@ def test_logging_error_sur_init_failure(caplog):
         initiate_device_flow(_VALID_CLIENT_ID)
 
     assert any("invalid_client" in m or "échec" in m.lower() for m in caplog.messages)
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Cas pending : authorization_pending / slow_down → traduit "unknown" (pas de handler dédié)
+# ────────────────────────────────────────────────────────────────────────────────
+
+
+def test_authorization_pending_traite_comme_unknown():
+    """authorization_pending est dans _ERROR_MAP mais n'a pas de handler dédié → unknown."""
+    mock_app = _make_mock_app(
+        token_result={
+            "error": "authorization_pending",
+            "error_description": "User has not yet authorized.",
+        }
+    )
+    with pytest.raises(DeviceFlowError) as exc_info:
+        acquire_token_blocking(mock_app, _FAKE_FLOW)
+    # Pas de handler pour "pending" → tombe sur la branche générique
+    assert exc_info.value.code == "unknown"
+    assert "authorization_pending" in exc_info.value.detail
+
+
+def test_slow_down_traite_comme_unknown():
+    """slow_down est dans _ERROR_MAP avec valeur 'pending' → tombe sur branche unknown."""
+    mock_app = _make_mock_app(
+        token_result={
+            "error": "slow_down",
+            "error_description": "Pool interval too fast.",
+        }
+    )
+    with pytest.raises(DeviceFlowError) as exc_info:
+        acquire_token_blocking(mock_app, _FAKE_FLOW)
+    assert exc_info.value.code == "unknown"
+    assert "slow_down" in exc_info.value.detail

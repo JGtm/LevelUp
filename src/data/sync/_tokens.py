@@ -139,7 +139,7 @@ async def get_tokens_from_env() -> Tokens:
                     _rt = _load_rt(_db)
                     if _rt:
                         oauth_refresh_token = _rt
-                        logger.debug(
+                        logger.info(
                             "SPNKR_OAUTH_REFRESH_TOKEN chargé depuis sync_meta de '%s'.", _gt
                         )
                         break
