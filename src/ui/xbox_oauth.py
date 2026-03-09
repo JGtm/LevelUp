@@ -246,9 +246,11 @@ def complete_device_code_flow(refresh_token: str, client_id: str) -> dict:
             logger.exception("Erreur lors de la résolution identity (Device Code Flow)")
             return {"error": str(exc)}
 
+    coro = _run()
     try:
-        return asyncio.run(_run())
+        return asyncio.run(coro)
     except RuntimeError:
+        coro.close()  # Ferme proprement si asyncio.run échoue (event loop déjà actif)
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
             fut = ex.submit(lambda: asyncio.run(_run()))
             return fut.result(timeout=float(_OAUTH_TIMEOUT_S) + 30)
