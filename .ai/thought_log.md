@@ -7,6 +7,50 @@
 
 ## Journal
 
+### [2026-03-09] — FIX : cache process-level pour load_refresh_token
+
+**Statut** : Complété ✅
+
+**Contexte** : Audit des logs révélait 185 appels à `load_refresh_token()` par session — chacun ouvrant/fermant une connexion DuckDB R/O sur `sync_meta`.
+
+**Décision technique** :
+- Ajout de `_rt_cache: dict[str, str | None]` (niveau module) dans `src/ui/xbox_oauth.py`.
+- `load_refresh_token()` vérifie le cache avant d'ouvrir DuckDB ; peuple le cache au premier accès.
+- `store_refresh_token()` invalide + met à jour le cache avec la valeur trimée (cohérent avec le comportement de lecture depuis DB).
+- Aucun couplage Streamlit, aucun impact sur le sync engine.
+
+**Résultats** : 9/9 tests `test_xbox_oauth_callback_e2e.py` passent. Fix trimming du cache aligné sur le comportement DB.
+
+**Commit** : `fix(oauth): cache process-level pour load_refresh_token`
+
+---
+
+### [2026-03-09] — DIFFÉRÉ : conflit shared_matches.duckdb (339 warnings/sync)
+
+**Statut** : En attente ⏸ — décision consciente de ne pas traiter maintenant
+
+**Contexte** : `_engine_connections.py::_get_shared_connection()` tente d'ouvrir `shared_matches.duckdb` en R/W direct pendant que Streamlit en a une connexion R/O via `@st.cache_resource`. Le retry appelle `release_all_db_connections()` (WeakSet) mais le `@st.cache_resource` rétablit une nouvelle connexion R/O dès le rerun suivant → conflit cyclique.
+
+**Pourquoi différé** : App stable après refactoring. Corriger cela touche `_engine_connections.py`, `duckdb_repo.py` et `streamlit_app.py` — zone trop sensible pour un gain purement cosmétique (logs plus propres, pas de panne fonctionnelle).
+
+**Plan documenté (à implémenter quand le sync est stable depuis ≥ 1 semaine)** :
+
+Option retenue : **fix minimal dans `DuckDBRepository._get_connection()`**
+- Si `_sync_mode.is_set()` est actif ET que `shared_matches` est attaché → le DETACHER immédiatement avant de retourner la connexion.
+- Cela empêche le cycle : engine R/W → release → Streamlit réattache R/O → conflit.
+- Fichiers : `src/data/repositories/duckdb_repo.py` uniquement (~10 lignes dans `_get_connection()`).
+- Test : `tests/test_sync_engine_connections.py` ou nouveau `test_sync_mode_detach.py`.
+
+Option alternative si le minimal ne suffit pas : **hook pré-sync**
+- `_engine_connections.py` expose `register_pre_sync_hook(fn)`.
+- `_cache_core.py` expose `clear_cached_repositories()` → appelle `st.cache_resource.clear()`.
+- `streamlit_app.py` enregistre le hook au démarrage.
+- Effet de bord : cold start de ~100ms après chaque sync (cache Streamlit vidé).
+
+**Signal de déclenchement** : une vraie panne (sync retourne `None` pour shared sur plusieurs runs consécutifs) OU refactoring planifié du sync engine.
+
+---
+
 ### [2026-03-08] — INVESTIGATION : inv92 modele de champs pour les phases `b1eb`
 
 **Statut** : Complété ✅

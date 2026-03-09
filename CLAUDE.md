@@ -16,6 +16,17 @@
 
 **APRÈS CHAQUE MODIFICATION SIGNIFICATIVE** : Mettre à jour ces fichiers.
 
+**THOUGHT LOG — RÈGLE OBLIGATOIRE** :
+Avant tout commit (ou à défaut avant de rendre la main à l'utilisateur), ajouter une entrée dans `.ai/thought_log.md` avec :
+- La date `[YYYY-MM-DD]`
+- Le titre de la tâche
+- Le statut (En cours / Complété)
+- La décision technique principale
+- Les résultats observés
+- La conclusion / prochaine étape
+
+Ne pas sauter cette étape même pour des modifications « mineures ». L'absence d'entrée thought_log = tâche non terminée.
+
 **Documentation architecture** : `docs/ARCHITECTURE_V5.md`
 **Plans archivés** : `.ai/archive/v5.0/` (plans, audits, rapports de migration)
 
@@ -143,7 +154,7 @@ python scripts/backfill_data.py --player MonGT --participants-shots --force-part
 3. **Backfill** : Pour tout backfill ou création de nouvelles fonctions de backfill, utiliser `scripts/backfill_data.py`. Ne pas créer de scripts backfill séparés ; ajouter une option dédiée (ex. `--sessions`, `--killer-victim`) dans `backfill_data.py`.
 4. **Pandas est PROSCRIT** - Utiliser **Polars** uniquement pour les DataFrames et séries (voir § Pandas interdit ci-dessous)
 5. Utiliser DuckDBRepository pour l'accès aux données
-6. Documenter les décisions dans `.ai/thought_log.md`
+6. **Documenter les décisions dans `.ai/thought_log.md` — OBLIGATOIRE avant de rendre la main** (voir § Workflow Agentique pour le format)
 7. **SQLite est PROSCRIT** - Aucun fallback SQLite, tout le code doit utiliser DuckDB uniquement
 8. **Streamlit** : Ne jamais utiliser `use_container_width=True` (déprécié). Utiliser `width="stretch"` à la place (`width="content"` si besoin). Pour `st.button`, `st.image`, `st.plotly_chart`, etc.
 9. **Plotly** : Tout `st.plotly_chart` doit inclure `config=` (utiliser `PLOTLY_CLEAN_CONFIG` ou `PLOTLY_STATIC_CONFIG` de `src/ui/streamlit_modern.py`)
