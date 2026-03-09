@@ -171,7 +171,7 @@ Tokens stockés par joueur dans `sync_meta` (`oauth_refresh_token`).
 - [x] **2.** Modifier `streamlit_app.py` — `_handle_xbox_oauth_callback()` (L332) détecte `code`+`state` dans `st.query_params`, vérifie CSRF, appelle `run_xbox_oauth_callback()`
 - [x] **3.** Intégré dans `src/ui/pages/settings.py` (`render_xbox_login_section()`) et `src/ui/pages/setup_wizard.py` (`_render_xbox_flow()`) — pas de page standalone mais approche plus cohérente
 - [x] **4.** `src/ui/profile_api_tokens.py` — `_load_refresh_token_from_db()` comme fallback dans `get_api_tokens()`
-- [ ] **5.** Sidebar `streamlit_app.py` — indicateur "Connecté en tant que {gamertag}" + bouton "Changer de compte" — **non implémenté**
+- ~~**5.** Sidebar `streamlit_app.py` — indicateur "Connecté en tant que {gamertag}" + bouton "Changer de compte"~~ — abandonné (pas de valeur suffisante)
 - [x] **6.** `engine.py` préserve `oauth_refresh_token` — `_update_sync_meta()` écrit uniquement des clés spécifiques (`last_sync_at`, etc.), la clé oauth est préservée par défaut
 - [x] **7.** Navigation assurée via les pages settings et setup_wizard (toutes deux enregistrées dans le routing)
 - [x] **8.** `tests/test_xbox_oauth.py` + `tests/test_xbox_oauth_callback_e2e.py` (9 tests) existent
