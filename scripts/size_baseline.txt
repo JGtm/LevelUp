@@ -20,7 +20,6 @@ FUNC:src/app/filters_render.py:373:render_filters_sidebar:112L
 FUNC:src/app/main_helpers.py:184:render_profile_hero:140L
 FUNC:src/app/profile.py:187:load_profile_assets:101L
 FUNC:src/app/sidebar.py:174:render_sync_button:120L
-FUNC:src/data/citations_backfill.py:30:backfill_citations_for_player:98L
 FUNC:src/data/infrastructure/database/duckdb_engine.py:139:load_matches:82L
 FUNC:src/data/media_indexer.py:238:scan_and_index:91L
 FUNC:src/data/media_indexer.py:94:ensure_schema:138L
@@ -67,7 +66,7 @@ FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
 FUNC:src/ui/pages/_session_compare_history.py:20:_build_history_dataframe:139L
 FUNC:src/ui/pages/_teammates_trio.py:30:render_trio_view:116L
 FUNC:src/ui/pages/citations.py:19:render_citations_page:169L
-FUNC:src/ui/pages/match_history.py:173:_render_history_table:147L
+FUNC:src/ui/pages/match_history.py:173:_render_history_table:151L
 FUNC:src/ui/pages/match_history.py:31:render_match_history_page:139L
 FUNC:src/ui/pages/match_view_charts.py:276:_render_spree_headshots:124L
 FUNC:src/ui/pages/match_view_charts.py:43:render_expected_vs_actual:230L
