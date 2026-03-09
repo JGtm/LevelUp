@@ -54,12 +54,6 @@ class SQLiteForbiddenError(Exception):
         super().__init__(f"SQLite interdit – utilisez DuckDB v4: {db_path}")
 
 
-# Configuration du logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
 logger = logging.getLogger(__name__)
 
 
@@ -1026,6 +1020,11 @@ def print_stats(db_path: str, player: str | None = None) -> None:
 
 def main() -> int:
     """Point d'entrée principal."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
     parser = argparse.ArgumentParser(
         description="Script de synchronisation unifié pour OpenSpartan Graph\n\n"
         "IMPORTANT: Toutes les données sont toujours récupérées pour chaque match :\n"
