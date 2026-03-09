@@ -314,12 +314,13 @@ class DuckDBSyncEngine(
             conn = self._get_connection()
             conn.commit()
 
-            # Post-sync : performance scores, sessions, citations
+            # Post-sync : performance scores, sessions, citations, LUSR
             if result.matches_inserted > 0:
                 self._run_post_sync_compute(options)
 
             # LUSR toujours recalculé — même sans nouveaux matchs
             # (rattrapage des ratings manquants suite à un sync partiel)
+            self._detach_shared_from_player_conn()
             self._run_lusr_post_sync()
 
         except Exception as e:
@@ -363,6 +364,28 @@ class DuckDBSyncEngine(
                 logger.info("LUSR calculés post-sync : %d matchs", lusr_count)
         except Exception as e:
             logger.warning("Erreur calcul LUSR post-sync (non bloquant) : %s", e)
+
+    def _detach_shared_from_player_conn(self) -> None:
+        """Détache shared_matches.duckdb de la connexion joueur si attaché.
+
+        Nécessaire après des opérations qui ATTACH shared en READ_ONLY
+        sur la connexion joueur (ex: citations_backfill), pour libérer
+        le file handle et permettre à batch_compute_lusr d'ouvrir
+        shared_matches.duckdb en R/W.
+        """
+        try:
+            conn = self._get_connection()
+            dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
+            for db_name, db_path_val in dbs:
+                if (
+                    db_path_val
+                    and "shared_matches.duckdb" in str(db_path_val).lower()
+                    and db_name != "memory"
+                ):
+                    conn.execute(f"DETACH {db_name}")
+                    logger.debug("Détaché %s de la connexion joueur", db_name)
+        except Exception as e:
+            logger.debug("_detach_shared_from_player_conn (non bloquant): %s", e)
 
     def _run_post_sync_compute(self, options: SyncOptions) -> None:
         """Exécute les traitements post-sync : perf scores, sessions, citations.
