@@ -22,7 +22,6 @@ from src.utils.auth import AuthStatus
 def _make_status(
     *,
     has_id: bool = False,
-    has_secret: bool = False,
     has_token: bool = False,
     has_players: bool = False,
     player_count: int = 0,
@@ -31,7 +30,6 @@ def _make_status(
     return SetupStatus(
         auth=AuthStatus(
             has_client_id=has_id,
-            has_client_secret=has_secret,
             has_refresh_token=has_token,
         ),
         has_players=has_players,
@@ -93,7 +91,6 @@ class TestRenderSetupWizardPage:
 
         status = _make_status(
             has_id=True,
-            has_secret=True,
             has_token=True,
             has_players=True,
             player_count=1,
@@ -191,7 +188,7 @@ class TestRenderSetupWizardPage:
         ms = mock_st(mod)
         _setup_wizard_mocks(ms)
 
-        status = _make_status(has_id=True, has_secret=True)
+        status = _make_status(has_id=True)
         ms.session_state["_setup_mode"] = "azure"
 
         with patch.object(mod, "get_setup_status", return_value=status):
@@ -207,7 +204,7 @@ class TestRenderSetupWizardPage:
         ms = mock_st(mod)
         _setup_wizard_mocks(ms)
 
-        status = _make_status(has_id=True, has_secret=True, has_token=True)
+        status = _make_status(has_id=True, has_token=True)
         ms.session_state["_setup_mode"] = "azure"
 
         with patch.object(mod, "get_setup_status", return_value=status):

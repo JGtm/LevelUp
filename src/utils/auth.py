@@ -23,12 +23,6 @@ from src.utils.paths import DATA_DIR, REPO_ROOT
 
 logger = logging.getLogger(__name__)
 
-# Clés requises dans .env.local pour le flow Azure (actuel)
-_AZURE_REQUIRED_KEYS = (
-    "SPNKR_AZURE_CLIENT_ID",
-    "SPNKR_AZURE_CLIENT_SECRET",
-)
-
 
 def _env_local_path() -> Path:
     """Chemin vers .env.local (DATA_DIR en portable, REPO_ROOT en dev)."""
@@ -45,14 +39,13 @@ class AuthStatus:
 
     has_env_file: bool = False
     has_client_id: bool = False
-    has_client_secret: bool = False
     has_refresh_token: bool = False
     missing_keys: list[str] = field(default_factory=list)
 
     @property
     def has_credentials(self) -> bool:
-        """Retourne True si les credentials Azure sont configurées."""
-        return self.has_client_id and self.has_client_secret
+        """Retourne True si le Client ID Azure est configuré (public client)."""
+        return self.has_client_id
 
     @property
     def is_fully_configured(self) -> bool:
@@ -72,21 +65,17 @@ def get_auth_status() -> AuthStatus:
 
     has_env = _env_local_path().exists()
     client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "").strip()
-    client_secret = os.environ.get("SPNKR_AZURE_CLIENT_SECRET", "").strip()
     refresh_token = os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN", "").strip()
 
     missing: list[str] = []
     if not client_id:
         missing.append("SPNKR_AZURE_CLIENT_ID")
-    if not client_secret:
-        missing.append("SPNKR_AZURE_CLIENT_SECRET")
     if not refresh_token:
         missing.append("SPNKR_OAUTH_REFRESH_TOKEN")
 
     return AuthStatus(
         has_env_file=has_env,
         has_client_id=bool(client_id),
-        has_client_secret=bool(client_secret),
         has_refresh_token=bool(refresh_token),
         missing_keys=missing,
     )

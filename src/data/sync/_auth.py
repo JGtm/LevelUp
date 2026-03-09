@@ -83,8 +83,6 @@ async def refresh_halo_tokens_from_env(
 
     # Mode OAuth
     client_id = (os.environ.get("SPNKR_AZURE_CLIENT_ID") or "").strip()
-    client_secret = (os.environ.get("SPNKR_AZURE_CLIENT_SECRET") or "").strip()
-    redirect_uri = (os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "").strip() or "https://localhost"
 
     # Chercher le refresh token
     rt = ""
@@ -96,17 +94,16 @@ async def refresh_halo_tokens_from_env(
     if not rt:
         rt = (os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN") or "").strip()
 
-    if not (client_id and client_secret and rt):
+    if not (client_id and rt):
         raise RuntimeError(
             "Tokens manquants : configurer SPNKR_SPARTAN_TOKEN + SPNKR_CLEARANCE_TOKEN, "
-            "ou SPNKR_AZURE_CLIENT_ID + SPNKR_AZURE_CLIENT_SECRET + SPNKR_OAUTH_REFRESH_TOKEN."
+            "ou SPNKR_AZURE_CLIENT_ID + SPNKR_OAUTH_REFRESH_TOKEN."
         )
 
     tokens = await refresh_halo_tokens(
         session,
         client_id=client_id,
-        client_secret=client_secret,
-        redirect_uri=redirect_uri,
+        client_secret="",
         refresh_token=rt,
     )
 

@@ -24,8 +24,8 @@ from src.ui.pages.setup_wizard_logic import (
     create_player_profile,
     get_setup_status,
     get_token_script_path,
-    save_azure_credentials,
-    validate_azure_credentials,
+    save_dc_credentials,
+    validate_dc_credentials,
     validate_gamertag,
 )
 
@@ -392,32 +392,23 @@ def _render_step_header(step_num: int, title: str, current: int) -> None:
 
 
 def _render_azure_form(redirect_default: str = "https://localhost") -> None:
-    """Formulaire de saisie des credentials Azure."""
+    """Formulaire de saisie du Client ID Azure (public client, sans secret)."""
     with st.form("azure_credentials_form"):
         client_id = st.text_input(
             t("setup_client_id"),
             placeholder="12345678-1234-1234-1234-123456789abc",
         )
-        client_secret = st.text_input(
-            t("setup_client_secret"),
-            type="password",
-            placeholder="~xY8Q.secret.value",
-        )
-        redirect_uri = st.text_input(
-            t("setup_redirect_uri"),
-            value=redirect_default,
-        )
         submitted = st.form_submit_button(t("setup_save_credentials"), type="primary")
 
     if submitted:
-        errors = validate_azure_credentials(client_id, client_secret)
+        errors = validate_dc_credentials(client_id)
         if errors:
             for err in errors:
                 st.error(err)
         else:
-            save_azure_credentials(client_id, client_secret, redirect_uri)
+            save_dc_credentials(client_id)
             st.success(t("setup_credentials_saved"))
-            logger.info("Wizard : credentials Azure sauvegardées")
+            logger.info("Wizard : Client ID Azure (public client) sauvegardé")
             st.rerun()
 
 

@@ -190,6 +190,7 @@ def _render_dc_waiting(dc_flow) -> None:
             st.rerun()
 
     if col_cancel.button(t("xbox_dc_cancel_btn"), key="dc_cancel"):
+        logger.info("Device Code Flow annulé par l'utilisateur.")
         reset_device_flow()
         st.rerun()
 

@@ -5,7 +5,7 @@ Gère la validation, la création de profil joueur et la génération de config.
 
 Usage :
     from src.ui.pages.setup_wizard_logic import (
-        validate_azure_credentials,
+        validate_dc_credentials,
         validate_gamertag,
         create_player_profile,
         get_setup_status,
@@ -76,69 +76,6 @@ def get_setup_status() -> SetupStatus:
         has_players=player_count > 0,
         player_count=player_count,
     )
-
-
-def validate_azure_credentials(
-    client_id: str,
-    client_secret: str,
-) -> list[str]:
-    """Valide le format des credentials Azure.
-
-    Args:
-        client_id: Azure Application (client) ID.
-        client_secret: Azure client secret value.
-
-    Returns:
-        Liste d'erreurs (vide si tout est valide).
-    """
-    errors: list[str] = []
-
-    client_id = client_id.strip()
-    client_secret = client_secret.strip()
-
-    if not client_id:
-        errors.append("Le Client ID est requis.")
-    elif not re.match(
-        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-        client_id,
-        re.IGNORECASE,
-    ):
-        errors.append(
-            "Le Client ID doit être un UUID " "(ex: 12345678-1234-1234-1234-123456789abc)."
-        )
-
-    if not client_secret:
-        errors.append("Le Client Secret est requis.")
-    elif len(client_secret) < 10:
-        errors.append("Le Client Secret semble trop court.")
-
-    return errors
-
-
-def save_azure_credentials(
-    client_id: str,
-    client_secret: str,
-    redirect_uri: str = "https://localhost",
-) -> None:
-    """Sauvegarde les credentials Azure dans .env.local.
-
-    Args:
-        client_id: Azure Application (client) ID.
-        client_secret: Azure client secret value.
-        redirect_uri: Redirect URI (défaut: https://localhost).
-    """
-    write_env_local(
-        {
-            "SPNKR_AZURE_CLIENT_ID": client_id.strip(),
-            "SPNKR_AZURE_CLIENT_SECRET": client_secret.strip(),
-            "SPNKR_AZURE_REDIRECT_URI": redirect_uri.strip(),
-        }
-    )
-    # Mettre à jour l'environnement courant
-    os.environ["SPNKR_AZURE_CLIENT_ID"] = client_id.strip()
-    os.environ["SPNKR_AZURE_CLIENT_SECRET"] = client_secret.strip()
-    os.environ["SPNKR_AZURE_REDIRECT_URI"] = redirect_uri.strip()
-    logger.info("Credentials Azure sauvegardées dans .env.local")
 
 
 def validate_dc_credentials(client_id: str) -> list[str]:
