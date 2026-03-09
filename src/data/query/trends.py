@@ -398,13 +398,13 @@ class TrendAnalyzer:
 
         # Calculer les moyennes récentes
         recent_stats = self.engine.execute_with_parquet(
-            """
+            f"""
             SELECT
                 AVG(kda) as recent_kda,
                 AVG(accuracy) as recent_accuracy,
                 {WIN_RATE_EXPR} as recent_win_rate,
                 COUNT(*) as match_count
-            FROM {table}
+            FROM {{table}}
             WHERE start_time >= NOW() - INTERVAL '7 days'
             """,
             "match_facts",
