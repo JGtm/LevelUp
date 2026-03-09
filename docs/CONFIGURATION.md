@@ -23,16 +23,16 @@ on first launch in the browser at `http://localhost:8501`.
 
 | | 🎮 Xbox Express | ☁️ Azure Manual |
 |-|----------------|----------------|
-| Azure application (Client ID + Secret) | Required | Required |
-| Refresh token | **Auto** (1-click Xbox sign-in) | Manual (run script) |
+| Azure application (Client ID only, no secret) | Required | Required |
+| Refresh token | **Auto** (device code sign-in) | Manual (run script) |
 | gamertag + XUID | **Auto** (resolved via OAuth) | Manual |
 | Player profile in `db_profiles.json` | **Auto** (created by wizard) | Manual |
 | Token storage | `stats.duckdb` (sync_meta) | `.env.local` |
 | Steps in wizard | **2** | **3** |
 
 **Xbox Express is the recommended path.** The only unavoidable step is creating a free
-Azure application (Microsoft mandates this for the Halo Infinite API). See [INSTALL.md](INSTALL.md)
-for the illustrated walkthrough.
+Azure application (Microsoft mandates this for the Halo Infinite API) — no client secret
+or redirect URI required. See [INSTALL.md](INSTALL.md) for the illustrated walkthrough.
 
 The manual steps below (§ Azure Configuration) describe the advanced / headless path.
 
@@ -79,7 +79,7 @@ To use the Halo Infinite API via SPNKr, you need:
 4. Configure:
    - **Name**: `LevelUp Halo`
    - **Supported account types**: Personal Microsoft accounts only
-   - **Redirect URI**: `https://localhost` (Web)
+   - **Redirect URI**: leave empty
 5. Click **Register**
 
    ![Register Application](screenshots/azure-setup/03-register-application.png)
@@ -90,45 +90,19 @@ To use the Halo Infinite API via SPNKr, you need:
 
    > It looks like: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (GUID format)
 
-### 2. Configure Permissions
+### 2. Enable Device Code Flow (Public Client)
 
-1. In your application, go to **API permissions** and click **Add a permission**
+1. In your application, go to **Authentication**
+2. Scroll down to **Advanced settings**
+3. Set **Allow public client flows** to **Yes**
+4. Click **Save**
 
-   ![API Permissions](screenshots/azure-setup/04-api-permissions.png)
+> This is the only required setting beyond registration. No client secret, no redirect URI.
 
-2. Select **Microsoft Graph**
-
-   ![Select Microsoft Graph](screenshots/azure-setup/05-select-microsoft-graph.png)
-
-3. Search, select and add permission `offline_access`
-
-   ![Add offline_access](screenshots/azure-setup/06-permission-offline-access.png)
-
-4. Search, select and add permission `User.Read`
-
-   ![Add User.Read](screenshots/azure-setup/07-permission-user-read.png)
-
-### 3. Create a Client Secret
-
-1. In the left sidebar, go to **Certificates & secrets** and click **New client secret**
-
-   ![Certificates & Secrets](screenshots/azure-setup/08-certificates-secrets.png)
-
-2. Give it a description, choose an expiration then click **Add**
-
-   ![New Client Secret](screenshots/azure-setup/09-new-client-secret.png)
-
-3. **Copy the `Value` column immediately** — this is your `SPNKR_AZURE_CLIENT_SECRET`. It disappears as soon as you navigate away.
-
-   > ⚠️ Do not copy the **Secret ID** (the other column) — you need the **Value**.
-
-   ![Copy Secret Value](screenshots/azure-setup/10-copy-secret.png)
-
-> **Recap — at this point you should have two values ready:**
+> **Recap — at this point you only need one value:**
 > - `SPNKR_AZURE_CLIENT_ID` → copied from the app's **Overview** page (step 1.6)
-> - `SPNKR_AZURE_CLIENT_SECRET` → copied from **Certificates & secrets** (step 3.3)
 
-### 4. Set Up the .env.local File (manual method — advanced)
+### 3. Set Up the .env.local File (manual method — advanced)
 
 > **If you used the Xbox Express wizard**, this file is created automatically — skip to
 > [Player Profiles](#player-profiles).
@@ -144,29 +118,26 @@ Copy-Item .env.local.example .env.local
 Edit `.env.local`:
 
 ```env
-# Azure Application
+# Azure Application (client ID only — no secret required)
 SPNKR_AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-SPNKR_AZURE_CLIENT_SECRET=your_client_secret
-SPNKR_AZURE_REDIRECT_URI=https://localhost
 
 # OAuth token (obtained via the script below)
 SPNKR_OAUTH_REFRESH_TOKEN=
 ```
 
-### 5. Obtain the Refresh Token (manual method — advanced)
+### 4. Obtain the Refresh Token (manual method — advanced)
 
 > **If you used the Xbox Express wizard**, the token was stored automatically in your
 > player database (`stats.duckdb`, table `sync_meta`) — skip this step.
 
 ```bash
-python scripts/spnkr_get_refresh_token.py
+python scripts/spnkr_get_refresh_token.py --device-code
 ```
 
 This script:
-1. Opens a browser for Microsoft authentication
-2. Retrieves the authorization code
-3. Exchanges it for a refresh token
-4. Displays the token to copy into `.env.local`
+1. Displays a short code (e.g. `ABCD-1234`) and the URL `https://microsoft.com/devicelogin`
+2. You visit the URL and enter the code in your browser
+3. After sign-in, the refresh token is printed and saved to `.env.local` automatically
 
 ---
 
@@ -267,9 +238,7 @@ python scripts/sync.py --player NewPlayer --full
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `SPNKR_AZURE_CLIENT_ID` | Azure application ID | Yes |
-| `SPNKR_AZURE_CLIENT_SECRET` | Azure client secret | Yes |
-| `SPNKR_AZURE_REDIRECT_URI` | Redirect URI | Yes |
+| `SPNKR_AZURE_CLIENT_ID` | Azure application ID (public client, no secret) | Yes |
 | `SPNKR_OAUTH_REFRESH_TOKEN` | Global refresh token | Yes |
 | `SPNKR_OAUTH_REFRESH_TOKEN_<GT>` | Per-player token (player-gated endpoints) | No |
 
@@ -440,14 +409,10 @@ They are already listed in `.gitignore`.
 
 ### Token Rotation
 
-Azure refresh tokens expire after:
-- 90 days of inactivity
-- Or according to your organization's policy
-
-To renew:
+Azure refresh tokens expire after 90 days of inactivity. To renew:
 
 ```bash
-python scripts/spnkr_get_refresh_token.py
+python scripts/spnkr_get_refresh_token.py --device-code
 ```
 
 ### Production Mode
@@ -472,24 +437,24 @@ Error: invalid_grant
 
 **Solution**: Regenerate the refresh token:
 ```bash
-python scripts/spnkr_get_refresh_token.py
+python scripts/spnkr_get_refresh_token.py --device-code
 ```
 
 ### Invalid Client ID
 
 ```
-Error: unauthorized_client
+Error: unauthorized_client / bad_client_id
 ```
 
-**Solution**: Check the Client ID in Azure Portal.
+**Solution**: Check the Client ID in Azure Portal (Overview page). Make sure **Allow public client flows** is set to **Yes** in Authentication.
 
-### Permission Denied
+### Device Code Expired
 
 ```
-Error: access_denied
+Error: timeout — code expired
 ```
 
-**Solution**: Check the API permissions in Azure Portal.
+**Solution**: The code is valid for 15 minutes. Re-run the script and complete sign-in promptly.
 
 ### Database Not Found
 
