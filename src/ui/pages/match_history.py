@@ -267,7 +267,11 @@ def _render_history_table(dff_table: pl.DataFrame) -> None:  # noqa: C901, PLR09
     body_rows: list[str] = []
     for r in view.to_dicts():
         mid = str(r.get("match_id") or "").strip()
-        app = app_url("Explorer", match_id=mid)
+        app = app_url(
+            "Explorer",
+            match_id=mid,
+            gamertag=str(st.session_state.get("waypoint_player") or "").strip(),
+        )
         match_link = (
             f"<a href='{html_lib.escape(app)}' target='_self'>{html_lib.escape(lbl_open)}</a>"
             if mid

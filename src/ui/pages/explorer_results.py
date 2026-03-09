@@ -33,11 +33,22 @@ def render_filter_results(
     df: pl.DataFrame,
     params: MatchViewParams,
 ) -> None:
-    """Affiche le tableau de résultats filtres et la vue match si sélectionné."""
+    """Affiche le tableau de résultats filtres et la vue match si sélectionné.
+
+    Si un match précis est sélectionné via le selectbox, affiche directement
+    sa vue détaillée sans passer par le tableau récapitulatif.
+    """
     if filtered.is_empty():
         st.warning(t("exp_no_results"))
         return
 
+    mid = selected_match_id or st.session_state.get(_SK_SELECTED_MATCH)
+    if mid:
+        # Match précis sélectionné → vue détaillée uniquement
+        show_single_match(df, mid, params)
+        return
+
+    # Aucun match précis → tableau de tous les résultats filtrés
     waypoint_player = params["waypoint_player"]
     df_full = params.get("df_full")
     enriched = enrich_for_table(filtered, waypoint_player, df_full)
@@ -45,11 +56,6 @@ def render_filter_results(
 
     html = render_match_table_html(enriched, waypoint_player=waypoint_player)
     st.markdown(html, unsafe_allow_html=True)
-
-    # Si un match est sélectionné via le selectbox, afficher sa vue
-    mid = selected_match_id or st.session_state.get(_SK_SELECTED_MATCH)
-    if mid:
-        show_single_match(df, mid, params)
 
 
 # ---------------------------------------------------------------------------

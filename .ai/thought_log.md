@@ -7,6 +7,260 @@
 
 ## Journal
 
+### [2026-03-08] — INVESTIGATION : inv92 modele de champs pour les phases `b1eb`
+
+**Statut** : Complété ✅
+
+**Contexte** : Après inv91, l'hypothèse "`b1eb` = marqueur de phase locale" était déjà solide qualitativement, mais il restait à vérifier si les champs bruts du header local supportaient eux aussi cette lecture.
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv92_b1eb_phase_field_model.py` pour agréger chaque famille exacte `b1eb` avec ses champs compacts (`state_byte`, `flag_byte`, `field67_le`, `field89_le`) et lui attribuer un rôle heuristique (`bootstrap`, `silent_transition`, `late_lock`, `active`, `active_tail`).
+- Validation du modèle sur toutes les occurrences de `00162144` avec détails chunk par chunk afin de vérifier que les rôles ne reposent pas seulement sur l'intuition issue des co-occurrences inv91.
+
+**Resultats** :
+- `field89` suit une progression stricte et propre: `0x0894 -> 0x1894 -> 0x1895 -> 0x189a`, qui recolle exactement à la chaîne `6c_early -> 6c_middle -> 6c_late -> 6f`.
+- Seule la famille `6c_late` active `flag_byte=0x80` et fait tomber le high bit de `field67` (`0x8271 -> 0x0272`), ce qui en fait le meilleur candidat pour un marqueur de verrouillage/commit tardif.
+- `6f` reste la famille active dominante, maintenant soutenue à la fois par les co-occurrences Formula C visibles et par la stabilité de ses champs (`field89=0x189a`, `flag=0x00`, `field67=0x8274`).
+- `5a` reste hors de la chaîne `6c/6f`: même rôle silencieux que dans inv91, mais avec une signature de champ distincte (`field89=0x184a`, `field67=0x824c`), ce qui favorise une branche de reset/silence plutôt qu'un simple stade normal de la progression.
+
+**Conclusion de travail** :
+- `b1eb` dispose maintenant d'un petit modèle de travail explicite: `field89` ≈ rang/avancement de phase, `flag_byte` + high bit de `field67` ≈ verrouillage tardif, `5a` ≈ branche hors-bande de reset/silence.
+- Ce n'est pas encore une sémantique gameplay complète, mais ce n'est plus seulement une lecture descriptive des chunks: les champs eux-mêmes supportent la structure de phase locale.
+- La prochaine étape utile est d'utiliser ce modèle pour voir si certaines transitions `b1eb` peuvent servir d'heuristique exploitable pour reconstruire l'activité non-POV ou les bascules internes du sous-système Formula C.
+
+### [2026-03-08] — INVESTIGATION : inv91 alignement de phase `b1eb` vs autres etats Formula C
+
+**Statut** : Complété ✅
+
+**Contexte** : Après inv88 et inv90, le meilleur axe local n'était plus d'ajouter du corpus, mais de savoir si `b1eb` décrit une timeline indépendante ou s'il sert de marqueur de phase pour le sous-système Formula C de `00162144`.
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv91_b1eb_phase_alignment.py` pour aligner chaque occurrence exacte de `b1eb` avec les états Formula C visibles dans le même chunk et dans les chunks adjacents (`edff`, `831d`, `f951`).
+- Agrégation par famille exacte `b1eb` (`5a`, `6c_early`, `6c_middle`, `6c_late`, `6f`) afin de distinguer les familles co-actives des familles de transition.
+
+**Resultats** :
+- `6f` est la seule famille `b1eb` qui coexiste régulièrement avec les autres états Formula C visibles (`ck06`: `831d+edff+f951`, `ck09/10`: `edff`, `ck13`: `831d+edff`). C'est donc la meilleure candidate pour une phase "active/steady".
+- `5a` et `6c_middle` sont des familles silencieuses: dans leurs chunks (`ck11`, `ck15`, `ck17`), aucun autre wid Formula C n'est visible, mais les chunks voisins portent encore `edff`/`831d`. Elles ressemblent à des états de transition ou de reset locaux.
+- `6c_late` est couplée au plateau tardif `edff:65`: `ck18` coexiste avec `831d:67` et `edff:65`, `ck20` avec `edff:65` seul. Elle n'apparait pas dans les phases précoces/médianes.
+- `6c_early` reste un bootstrap solitaire en `ck01`, avant que les autres wids Formula C visibles n'apparaissent dans le corpus observé.
+
+**Conclusion de travail** :
+- `b1eb` ressemble de plus en plus à un marqueur de phase locale du sous-système Formula C, pas à une simple timeline indépendante comparable à `edff`.
+- Lecture actuelle la plus utile : `6f` = phase active, `5a` / `6c_middle` = transitions silencieuses, `6c_late` = verrouillage de phase tardive corrélé au plateau `edff:65`.
+- La prochaine étape locale utile est de voir si les bytes qui bougent dans `b1eb` (inv88) suivent ces phases d'une manière assez régulière pour être renommés en compteurs/flags de phase plutôt qu'en simples champs anonymes.
+
+### [2026-03-08] — INVESTIGATION : inv90 probe recent sur `f3bc46ab` + `73284037`
+
+**Statut** : Complété ✅
+
+**Contexte** : Après avoir réduit Formula C à une petite branche structurée dans `00162144`, le besoin immédiat était de savoir si cette branche réapparaissait dans des matchs récents du corpus élargi. `f3bc46ab` était déjà chunké localement; `73284037` existait dans les logs/shared mais pas encore dans `data/investigation/chunks/`.
+
+**Decision technique** :
+- Réactivation du pipeline de téléchargement Discovery UGC `spectate` avec le helper d'auth du repo LevelUp et le vrai GUID complet `73284037-692a-4e1b-a3dc-58d3583e1ee3`.
+- Téléchargement et décompression des 27 fichiers film (`type1` + `type2` + `type3`) vers `data/investigation/chunks/73284037/`, puis création d'alias `chunk_00..26.bin` pour compatibilité avec les scripts existants.
+- Ajout de `scripts/experimental/inv90_recent_formula_c_probe.py` pour geler un probe reproductible sur `f3bc46ab` et `73284037`.
+
+**Resultats** :
+- `73284037` a été téléchargé avec succès : 27 chunks décompressés.
+- `f3bc46ab` : 0 occurrence Formula C; occurrences cibles limitées à `edff` en Formula A (`state=e2`, `pb=226`), `b1eb` en Formula A (`state=e1`, `pb=225`) et un outlier `b1eb` non ponté (`state=20`).
+- `73284037` : 0 occurrence Formula C; occurrences cibles limitées à `edff` en Formula A (`state=a6`, `pb=166`), `f951` en Formula A (`state=ab`, `pb=171`) et un outlier `edff` non ponté (`state=91`).
+- Le faux lead initial "`edff state=91` ressemble au manifold cible" a été refermé après inspection locale: il n'y a ni `20 00 02` ni `20 00 03` à proximité utile, donc ce cas ne constitue pas une réapparition de Formula C mais un contexte non ponté d'un autre type.
+
+**Conclusion de travail** :
+- Le corpus récent étendu ne reproduit toujours pas Formula C hors `00162144`.
+- `00162144` reste donc le seul match confirmé portant une branche `20 00 03` cohérente; Formula C doit être traitée comme une branche rare ou contextuelle, pas comme le format récent normal.
+- La prochaine exploration utile redevient locale: soit trouver un autre match complet avec la même branche via mapping short-id -> GUID + téléchargement, soit continuer la sémantique interne de `b1eb`/Formula C sur `00162144`.
+
+### [2026-03-08] — INVESTIGATION : inv79 audit du champ `pb` dans la branche `20 00 03`
+
+**Statut** : Complété ✅
+
+**Contexte** : Après inv77-78, la question n'etait plus "est-ce que `20 00 03` existe ?" mais "est-ce que `pb` y recode simplement le `pi` deja vu via le voisinage `pi5/pi6` ?".
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv79_formula_c_pb_context_audit.py` pour recroiser chaque occurrence `20 00 03 [pb] ... wid` de `00162144` avec la classe de voisinage la plus proche (`831d` cote `pi=5`, `6683` cote `pi=6`).
+- Mesure des distributions `pb_lo x contexte` et `(weapon, pb) x contexte` afin de distinguer les couples stables des couples traversant plusieurs contextes.
+
+**Resultats** :
+- Les bits bas de `pb` ne se reduisent pas au contexte `pi5/pi6`: les buckets `lo=0`, `3`, `4`, `5`, `7` apparaissent dans plusieurs contextes.
+- `831d+103` reste colle a `pi5`; `f951+94` reste vu une seule fois cote `pi5`.
+- A l'inverse, `edff+88/91/101` et `b1eb+108/111` traversent plusieurs contextes, ce qui exclut l'hypothese "`pb` = player index masque".
+
+**Conclusion de travail** :
+- La branche `20 00 03` est coherente, mais son champ `pb` n'est pas un clone de Formula A.
+- Hypothese courante: `pb` melange plusieurs dimensions (famille/sous-type/etat/entite) dans un espace de snapshots distinct.
+
+**Suite probable** :
+- Chercher si `pb` s'aligne mieux sur des transitions intra-chunk, des familles `pre16/post16`, ou des trajectoires par wid plutot que sur le voisinage `pi`.
+
+### [2026-03-08] — INVESTIGATION : inv80 pont `pb == pre16[0]` sur la branche `20 00 03`
+
+**Statut** : Complété ✅
+
+**Contexte** : inv79 a montre que `pb` ne recode pas directement le contexte `pi5/pi6`. Il fallait donc verifier si `pb` etait au moins relie a une structure locale deja visible autour du wid.
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv80_formula_c_pb_pre16_bridge.py` pour tester l'hypothese simple `pb == premier octet de pre16` sur toutes les occurrences `20 00 03 [pb] ... wid` de `00162144`.
+
+**Resultats** :
+- 37 occurrences teste es, 0 mismatch.
+- Le pont vaut pour les 4 wids actuellement observes dans la branche (`edff`, `f951`, `831d`, `b1eb`).
+- Exemples: `edff` `58.. -> pb=88`, `5b.. -> pb=91`, `65.. -> pb=101`; `f951` `5e.. -> pb=94`; `831d` `67.. -> pb=103`; `b1eb` `6c.. -> pb=108`, `6f.. -> pb=111`.
+
+**Conclusion de travail** :
+- `pb` n'est pas un index joueur cache, mais ce n'est pas non plus un champ opaque autonome.
+- Dans la branche `20 00 03`, `pb` est un byte-pont qui duplique le premier octet du header local `pre16`.
+- La bonne question devient donc: que signifient les familles `pre16/post16` elles-memes et leurs transitions, plutot que "que signifie `pb` tout seul ?".
+
+### [2026-03-08] — INVESTIGATION : inv81 generalisation du pont sur `20 00 02` + `20 00 03`
+
+**Statut** : Complété ✅
+
+**Contexte** : Après inv80, il fallait savoir si le pont `pb == pre16[0]` était une bizarrerie de `00162144` ou un invariant plus profond du format snapshot.
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv81_prefix_pre16_bridge_generalization.py` pour tester la même relation sur les branches `20 00 02` et `20 00 03` à travers les matchs train, récents et cible.
+
+**Resultats** :
+- 0 mismatch sur tous les matchs testés.
+- Le prefixe pertinent reste toujours à delta `-19`.
+- La branche `20 00 02` confirme que `pb` transporte bien le header local complet: ses bits hauts donnent le `pi` Formula A, mais tout le byte recopie déjà `pre16[0]`.
+- La branche `20 00 03` partage donc la même charpente locale, même si ses bits hauts n'exposent plus la même sémantique joueur visible.
+
+**Conclusion de travail** :
+- `20 00 02` et `20 00 03` sont des branches sœurs structurelles, pas deux formats indépendants.
+- La cible de reverse-engineering la plus rentable devient le header local complet (`pre16/post16`) et ses transitions, plutôt que le prefixe ou `pb` pris isolément.
+
+### [2026-03-08] — INVESTIGATION : inv82 cartographie des trajectoires d'etats locale
+
+**Statut** : Complété ✅
+
+**Contexte** : Une fois les branches unifiées structurellement, l'etape utile suivante etait de transformer les familles locales de `00162144` en trajectoires par wid, pas seulement en signatures isolees.
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv82_formula_c_state_trajectory_map.py` pour suivre `pre16[0]` par chunk et par wid sur `00162144`, puis calculer les transitions et co-occurrences intra-chunk.
+
+**Resultats** :
+- `831d` est stable sur un etat unique `67` dans tout le corpus visible.
+- `f951` est stable sur un etat unique `5e` dans son unique occurrence visible.
+- `edff` montre une petite machine d'etats `58/5b/59/65`, avec `65` dominant en fin de timeline et des doubles observations `5b+65` dans le meme chunk.
+- `b1eb` montre une machine d'etats `5a/6c/6f`, avec doubles observations `5a+6c` et `6c+6f` dans certains chunks.
+
+**Conclusion de travail** :
+- La branche `20 00 03` de `00162144` se comporte comme un ensemble de petites machines d'etats par wid, pas comme une simple liste de familles statiques.
+- La suite logique est de recouper ces trajectoires avec les ancres/contexte chunk pour voir si certains etats, et non plus seulement certains wids, portent un signal d'attribution joueur/slot.
+
+### [2026-03-08] — INVESTIGATION : inv83 audit etat local -> contexte d'ancrage
+
+**Statut** : Complété ✅
+
+**Contexte** : Après inv82, il fallait vérifier si le signal d'attribution se jouait au niveau du wid entier ou au niveau des états locaux `pre16[0]`.
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv83_formula_c_state_context_audit.py` pour recroiser chaque couple `(wid, etat)` de `00162144` avec le contexte d'ancrage local `pi5/pi6`.
+
+**Resultats** :
+- `831d:67` reste proprement `pi5`.
+- `f951:5e` n'apparait qu'une fois, cote `pi5`.
+- `edff` se scinde par etat: `58`, `59` et `5b` penchent `pi6`, alors que `65` penche `pi5`.
+- `b1eb` montre aussi un decoupage par etat, mais avec un signal plus faible et plus de contextes `none`.
+
+**Conclusion de travail** :
+- Le signal d'attribution n'est pas purement porte par le wid; il existe au moins partiellement au niveau de l'etat local.
+- La prochaine bonne cible est de comparer ces etats Formula C aux familles Formula A homologues pour voir quelles parties du header suivent le joueur et quelles parties suivent l'etat arme.
+
+### [2026-03-08] — INVESTIGATION : inv84 ecart de manifold entre etats Formula C et Formula A
+
+**Statut** : Complété ✅
+
+**Contexte** : Après inv83, il fallait tester l'hypothese la plus simple: certains etats Formula C de `00162144` sont-ils deja visibles dans les matchs Formula A du corpus pour les memes wids ?
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv84_formula_c_state_manifold_gap.py` pour comparer les etats `pre16[0]`, puis les familles exactes `pre16/post16`, entre le corpus train/recent Formula A et la cible Formula C.
+
+**Resultats** :
+- Aucun overlap d'etat simple sur `edff`, `f951`, `831d`.
+- Aucun overlap de famille exacte `pre16/post16` non plus.
+- Les etats Formula C (`58/59/5b/65`, `5e`, `67`) vivent donc hors du manifold visible Formula A courant (`ab/ad/b9/...`, `b7/b9/...`, `bb/bc`).
+
+**Conclusion de travail** :
+- La piste "transfert simple depuis les etats Formula A connus" est close sur le corpus actuel.
+- Pour avancer, il faudra soit etendre le corpus jusqu'a rencontrer ces etats cote Formula A, soit decoder les familles Formula C pour elles-memes sans supposer une correspondance directe deja observee.
+
+### [2026-03-08] — INVESTIGATION : inv85 cartographie de grammaire locale des etats Formula C
+
+**Statut** : Complété ✅
+
+**Contexte** : Une fois le manifold Formula C confirmé séparé, l'étape suivante était de savoir si les états visibles étaient eux-mêmes instables ou s'ils correspondaient déjà à des enregistrements binaires déterministes.
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv85_formula_c_state_grammar_map.py` pour mesurer les positions byte variables de `pre16/post16` à l'échelle du wid entier puis à l'échelle de chaque état local.
+
+**Resultats** :
+- `edff`: chaque état (`58`, `59`, `5b`, `65`) est déjà une famille exacte stable.
+- `831d:67` et `f951:5e` sont eux aussi des familles exactes stables.
+- `b1eb:5a` et `b1eb:6f` sont stables; `b1eb:6c` reste le seul état composite avec une petite variabilité interne.
+
+**Conclusion de travail** :
+- La plupart des états Formula C ne sont plus des clusters à raffiner: ce sont déjà des enregistrements déterministes.
+- La vraie dette de décodage se concentre donc sur quelques branches résiduelles, principalement `b1eb:6c`, plus l'interprétation sémantique de ces familles stables.
+
+### [2026-03-08] — INVESTIGATION : inv86 decomposition fine de `b1eb`
+
+**Statut** : Complété ✅
+
+**Contexte** : Après inv85, la seule branche encore composite de manière utile était `b1eb`, surtout l'état `6c`.
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv86_b1eb_subbranch_split.py` pour decomposer `b1eb` en familles exactes, recroiser chaque famille avec le contexte local et mesurer les diffs byte-à-byte entre variantes.
+
+**Resultats** :
+- `b1eb` se decompose en 5 familles exactes.
+- `5a` et `6f` sont chacun une famille stable unique.
+- `6c` se scinde en seulement 3 variantes exactes: `...9408...`, `...9418...`, et `6c80...95018...` avec un post-header distinct.
+- Les variantes `6c` couvrent des positions temporelles différentes et des contextes mixtes/vides, ce qui les rend beaucoup plus ciblables pour la suite.
+
+**Conclusion de travail** :
+- La branche residuelle n'est plus floue: c'est un petit arbre local de quelques familles exactes.
+- La suite la plus rentable est de tester si ces sous-variantes `6c` suivent une logique temporelle simple, ou si elles se recalent sur une entité/slot particulier via leurs octets variables.
+
+### [2026-03-08] — INVESTIGATION : inv87 staging temporel des variantes `b1eb:6c`
+
+**Statut** : Complété ✅
+
+**Contexte** : Après inv86, il restait à savoir si les 3 variantes `6c` formaient une vraie progression ou juste un petit ensemble sans ordre.
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv87_b1eb_6c_temporal_staging.py` pour ordonner les occurrences `6c` par chunk et mesurer les bascules entre familles exactes.
+
+**Resultats** :
+- La variante `...9408...` n'apparait qu'au tout debut (chunk 1).
+- La variante `...9418...` occupe une phase intermediaire (chunks 11, 17).
+- La variante `6c80...95018...` apparait ensuite en phase tardive (chunks 18, 20).
+- La seule bascule immediate nette est `17 -> 18`, puis la variante tardive reste stable.
+
+**Conclusion de travail** :
+- Le sous-arbre `b1eb:6c` ressemble davantage a une progression locale par paliers qu'a un bruit combinatoire.
+- La prochaine question utile est de comprendre si les octets qui changent entre ces paliers suivent une logique d'etat interne de l'arme, d'entite, ou de phase de session/chunk.
+
+### [2026-03-08] — INVESTIGATION : inv88 progression de champs dans `b1eb`
+
+**Statut** : Complété ✅
+
+**Contexte** : Après inv87, il fallait descendre d'un cran et voir si la progression par paliers de `b1eb` se lisait déjà dans quelques champs simples du header local.
+
+**Decision technique** :
+- Ajout de `scripts/experimental/inv88_b1eb_field_progression.py` pour parser quelques champs courts de `pre16`, en particulier bytes `6:8`, `8:10`, et le byte 1 comme drapeau.
+
+**Resultats** :
+- Le champ little-endian bytes `8:10` suit une progression non aléatoire: `0x0894 -> 0x1894 -> 0x1895 -> 0x189a`.
+- La variante tardive `6c` active en plus un drapeau (`byte1: 0x00 -> 0x80`) tout en faisant tomber le high bit du champ `6:8`.
+- `tail_le` reste constant (`0x0300`) sur toute la sous-branche `b1eb`.
+
+**Conclusion de travail** :
+- La branche residuelle `b1eb` commence a ressembler a une petite machine d'etats locale avec au moins un champ numerique et un drapeau de stade tardif.
+- La prochaine etape utile est de voir si ces champs reparaissent ailleurs dans le corpus, ou s'ils se recalent sur des contextes de chunk plus generaux.
+
 ### [2026-03-07] — Robustesse sync/multiplayer : lease write, fallback shared, unification des paths
 
 **Statut** : Correctifs structurels en cours ✅ (tests ciblés verts)
@@ -2222,6 +2476,105 @@ GrenadeKills, HeadshotKills, MeleeKills, PowerWeaponKills (compteurs agrégés u
 **Documentation** : Voir `.ai/archive/BINARY_CHUNK_ANALYSIS_FINAL.md` section "Limites de l'API"
 
 **Impact** : Le projet ne peut pas implémenter de statistiques par arme. Cette limitation est côté 343 Industries, pas côté LevelUp.
+
+---
+
+### [2026-03-08] - INVESTIGATION : Extension du corpus film + validation inv75
+
+**Contexte** :
+Le worktree `experimental/film-weapon-extraction` etait bloque sur un corpus local de 3 matchs chunkes. L'utilisateur a autorise le telechargement de matchs recents de JGtm pour verifier si le pipeline `edff`/`831d` se generalise et si `f951` reste un cas a part.
+
+**Ce qui a ete fait** :
+1. Retrouve la chaine de telechargement film via l'historique Git du script supprime `refetch_film_roster.py`
+2. Confirme que le manifest utilise toujours Discovery UGC: `/hi/films/matches/{match_id}/spectate`
+3. Telecharge et decompresse 3 matchs matchmaking recents de JGtm dans `LevelUp-film-weapons/data/investigation/chunks/`
+    - `1bd7303b`
+    - `ebfb64f2`
+    - `000d5950`
+4. Generalise `scripts/experimental/inv73_cross_match_occurrence_report.py` pour scanner automatiquement tous les dossiers de chunks du corpus
+5. Cree `scripts/experimental/inv75_recent_match_signal_validation.py` pour figer 2 validations positives (`edff`/`831d`) et 1 contre-exemple `f951`
+
+**Resultats** :
+- `000d5950` confirme la transferabilite du pipeline reusable :
+   - `edff0e9642c9679f` : 2 occurrences `Formula A pi=5` classees `pi5` par voisinage
+   - `831d801242c9679f` : 1 occurrence `Formula A pi=5` classee `pi5`
+- `ebfb64f2` renforce la frontiere negative `f951` :
+   - `f951480042c9679f` : 1 occurrence `Formula A pi=5` mais contexte local `pi6`
+- `1bd7303b` n'apporte qu'un signal faible : 1 `edff` oriente `pi6` par contexte, sans Formula A locale
+
+**Conclusion** :
+L'ajout de matchs recents ne change pas la conclusion courante, il la durcit :
+- `edff` et `831d` gagnent un vrai match de validation supplementaire hors train initial
+- `f951` gagne un contre-exemple supplementaire, donc doit rester un probleme separe
+
+---
+
+### [2026-03-08] - INVESTIGATION : inv76 modele partiel familles/bandes pour f951
+
+**Contexte** :
+Apres `inv75`, la question suivante etait de savoir si `f951` etait totalement non-modelisable, ou seulement non-transferable avec la mauvaise heuristique (voisinage d'ancres). Un audit brut a montre que sur les matchs train, `f951` suit des familles locales tres structurees.
+
+**Ce qui a ete fait** :
+1. Audite toutes les occurrences raw de `f951480042c9679f` sur `d9329229`, `63d6f727`, `ebfb64f2` et `00162144`
+2. Verifie la purete des familles exactes `pre16/post16` sur les matchs train
+3. Teste un modele plus faible base sur le premier byte de `pre16`
+4. Cree `scripts/experimental/inv76_f951_family_band_validation.py`
+
+**Resultats** :
+- Sur le train, les 11 familles exactes observees sont toutes pures par `pi`
+- Le premier byte de `pre16` reste lui aussi pur sur le train :
+   - `b9/ba/bc/be/bf` -> `pi=5`
+   - `c0/c1/d7` -> `pi=6`
+- `ebfb64f2` a `pre16=b7...` et `post16=4344...` : famille hors-manifold train
+- `00162144` a `pre16=5e8...` et `post16=5eca...` : famille hors-manifold train egalement
+
+**Conclusion** :
+`f951` n'est pas un signal anarchique. Il a un modele de famille coherent a l'interieur du manifold train. Mais ce modele ne resout toujours pas le cas cible, car les familles `ebfb64f2` et `00162144` tombent hors de ce manifold. La limite n'est donc plus "pas de modele du tout", mais "modele intra-manifold seulement".
+
+---
+
+### [2026-03-08] - INVESTIGATION : inv77 audit du variant de prefixe `20 00 03`
+
+**Contexte** :
+En auditant les lignes hors-manifold de `f951`, un detail structurel nouveau est apparu : `00162144` montre localement `20 00 03 [pb]` a la meme position relative (`-19`) ou les matchs train utilisent `20 00 02 [pb]`.
+
+**Ce qui a ete fait** :
+1. Scanne les prefixes `20 00 02` et `20 00 03` dans une fenetre locale autour de `edff`, `f951` et `831d`
+2. Compare les deltas et les valeurs `pb` sur les matchs train, recents et cible
+3. Cree `scripts/experimental/inv77_prefix_variant_audit.py`
+
+**Resultats** :
+- Train + matchs recents valides (`d9329229`, `63d6f727`, `000d5950`, `ebfb64f2`) : structure stable `20 00 02 [pb]` a delta `-19`
+- Match cible `00162144` : structure stable `20 00 03 [pb]` a delta `-19` pour `edff`, `f951` et `831d`
+- Valeurs `pb` coherentes a l'interieur de `00162144` :
+   - `edff` -> `88/89/91/101`
+   - `f951` -> `94`
+   - `831d` -> `103`
+
+**Conclusion** :
+`00162144` n'est probablement pas un cas "sans prefixe". Il semble plutot appartenir a une branche structurelle soeur de Formula A, occupant le meme slot mais avec `20 00 03` au lieu de `20 00 02`. La prochaine etape n'est plus de chercher un prefixe absent, mais d'interpreter la semantique de ce variant `20 00 03`.
+
+---
+
+### [2026-03-08] - INVESTIGATION : inv78 scan de branche `20 00 03`
+
+**Contexte** :
+Apres `inv77`, il fallait verifier si `20 00 03` n'etait qu'un artefact local colle a `edff/f951/831d`, ou bien une vraie branche de snapshots plus large dans `00162144`.
+
+**Ce qui a ete fait** :
+1. Scanne tous les prefixes `20 00 03` de `00162144`
+2. Conserve seulement les cas ou `prefix+19` pointe vers un wid 8 bytes avec suffixe `42c9679f`
+3. Resume les couples `(pb, wid)` et la distribution des bits hauts/bas de `pb`
+4. Cree `scripts/experimental/inv78_formula_c_branch_scan.py`
+
+**Resultats** :
+- La branche `20 00 03` ne couvre pas seulement `edff/f951/831d`
+- Un 4e wid inconnu recurrent apparait dans cette branche : `b1eb695e42c9679f`
+- Les bits bas de `pb` couvrent tout l'espace `0..7` sur `00162144`
+- Les bits hauts de `pb` restent limites a `2..3`
+
+**Conclusion** :
+`20 00 03` ressemble a un sous-systeme snapshot coherent, pas a une exception locale. Le prochain axe pertinent est d'interpreter la semantique de `pb` dans cette branche, en particulier pour savoir si les bits bas codent un index d'entite/slot pendant que les bits hauts codent une classe ou un type de record.
 
 ---
 
