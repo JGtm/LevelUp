@@ -28,6 +28,10 @@ from src.data.sync.api_port import HaloAPIPort
 logger = logging.getLogger(__name__)
 
 
+_CHUNK_TIMEOUT_S = 30.0  # timeout par chunk téléchargé
+_MAX_CONCURRENT_CHUNKS = 5  # semaphore parallélisme HTTP
+
+
 class WeaponExtractionService:
     """Orchestre l'extraction d'armes pour un match donné."""
 
@@ -40,6 +44,7 @@ class WeaponExtractionService:
         self._api = api
         self._conn = conn
         self._cache_dir = cache_dir
+        self._chunk_sem = asyncio.Semaphore(_MAX_CONCURRENT_CHUNKS)
 
     async def process_match(
         self,
@@ -110,7 +115,7 @@ class WeaponExtractionService:
 
     # ── Privées ──────────────────────────────────────────────────────────
 
-    async def _download_needed_chunks(
+    async def _download_needed_chunks(  # noqa: C901, PLR0912
         self,
         match_id: str,
         kill_times_ms: list[int],
@@ -155,12 +160,35 @@ class WeaponExtractionService:
                 to_download.append(ch)
 
         if to_download:
-            tasks = [self._download_chunk(ch, blob_prefix, match_cache) for ch in to_download]
-            for idx, data, start_ms, dur_ms in await asyncio.gather(*tasks):
+            tasks = [
+                self._download_chunk_with_sem(ch, blob_prefix, match_cache) for ch in to_download
+            ]
+            try:
+                gathered = await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True),
+                    timeout=_CHUNK_TIMEOUT_S * len(to_download),
+                )
+            except TimeoutError:
+                logger.warning(
+                    "Match %s : timeout téléchargement chunks (%ds)", match_id[:8], _CHUNK_TIMEOUT_S
+                )
+                return result
+            for item in gathered:
+                if isinstance(item, Exception):
+                    logger.debug("Chunk download exception : %s", item)
+                    continue
+                idx, data, start_ms, dur_ms = item
                 if data is not None:
                     result[idx] = (data, start_ms, dur_ms)
 
         return result
+
+    async def _download_chunk_with_sem(
+        self, ch, blob_prefix: str, match_cache: Path
+    ) -> tuple[int, bytes | None, int, int]:
+        """Télécharge un chunk avec contrôle de concurrence (semaphore)."""
+        async with self._chunk_sem:
+            return await self._download_chunk(ch, blob_prefix, match_cache)
 
     async def _download_chunk(
         self, ch, blob_prefix: str, match_cache: Path
