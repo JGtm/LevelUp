@@ -1,0 +1,605 @@
+inv44b — Deep dive: T0 fire events in raw data + Section isolation
+Match: d9329229
+
+============================================================================
+  PHASE 1 — Section 2 (post-frame-marker) RAW scan (d9329229)
+============================================================================
+  Section 2 RAW weapon suffix hits: 91
+
+  ck= 2  abs=  529953  s2=   14983  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c eb 48 c1 9d 2d 42 c9 67 9f 14 60 30 08 43 81
+    before:      42 4f d2 00 20 10 00 00 00 00 c0 00 0c 00 49 0d 82 48 6c eb
+    after:       14 60 30 08 43 81 30 d5
+
+  ck= 2  abs=  530990  s2=   16020  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c eb 48 c1 9d 2d 42 c9 67 9f 15 40 30 08 43 81
+    before:      44 50 2e 00 20 10 00 00 00 00 c0 00 0c 08 49 0d 82 48 6c eb
+    after:       15 40 30 08 43 81 30 d5
+
+  ck= 2  abs=  532517  s2=   17547  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c eb 48 c1 9d 2d 42 c9 67 9f 16 90 30 04 43 81
+    before:      4c 6f d2 00 20 10 00 00 00 00 c0 00 0c 28 49 0d 82 48 6c eb
+    after:       16 90 30 04 43 81 30 d5
+
+  ck= 2  abs=  532892  s2=   17922  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c eb 48 c1 9d 2d 42 c9 67 9f 17 00 30 04 43 81
+    before:      4e 6c 72 00 20 10 00 00 00 00 c0 00 0c 30 49 0d 82 48 6c eb
+    after:       17 00 30 04 43 81 30 d5
+
+  ck= 4  abs=  610054  s2=   82930  weapon=MA40 AR
+    20B context: 3d 26 02 40 c0 21 48 c1 9d 2d 42 c9 67 9f 76 05 61 d3 e9 08
+    before:      54 04 84 00 01 5e 71 d0 00 82 5a 32 ab e6 3d 26 02 40 c0 21
+    after:       76 05 61 d3 e9 08 af 0c
+
+  ck= 4  abs=  758428  s2=  231304  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 10 30 08 43 81
+    before:      44 58 e6 00 20 10 00 00 00 00 c0 00 09 60 49 0d 82 48 6c c3
+    after:       16 10 30 08 43 81 30 d5
+
+  ck= 5  abs=  816877  s2=  296278  weapon=BR75
+    20B context: 4d 26 0c 42 28 13 2b 18 24 d5 42 c9 67 9f 15 41 68 40 01 7e
+    before:      54 06 84 00 0f 61 81 f0 00 ca 4f b3 0a 66 4d 26 0c 42 28 13
+    after:       15 41 68 40 01 7e 1b 1f
+
+  ck= 6  abs=  521313  s2=     655  weapon=BR75
+    20B context: 1d 26 0a 41 d8 73 2b 18 24 d5 42 c9 67 9f 55 40 68 40 00 f5
+    before:      54 16 84 00 04 de 8d d0 01 82 3f a3 91 e2 1d 26 0a 41 d8 73
+    after:       55 40 68 40 00 f5 e8 1e
+
+  ck= 6  abs=  654123  s2=  133465  weapon=MA40 AR
+    20B context: 7d 26 08 41 80 21 48 c1 9d 2d 42 c9 67 9f 76 09 60 bc 27 07
+    before:      54 10 84 00 0f 5e 89 e0 01 12 35 64 fd 64 7d 26 08 41 80 21
+    after:       76 09 60 bc 27 07 81 95
+
+  ck= 6  abs=  851977  s2=  331319  weapon=BR75
+    20B context: 3d 26 0f 42 10 73 2b 18 24 d5 42 c9 67 9f 15 40 68 40 00 f5
+    before:      54 1e 84 00 0f 5e 81 e0 00 5a 3b f4 65 e3 3d 26 0f 42 10 73
+    after:       15 40 68 40 00 f5 f8 9e
+
+  ck= 7  abs=  700183  s2=  179709  weapon=MA40 AR
+    20B context: a5 26 0e 40 3c 11 48 c1 9d 2d 42 c9 67 9f 55 41 28 40 00 4e
+    before:      54 1c 84 00 04 dc 8a 20 01 aa 37 0d 2e 66 a5 26 0e 40 3c 11
+    after:       55 41 28 40 00 4e 28 5c
+
+  ck= 7  abs=  723561  s2=  203087  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 15 60 30 08 43 81
+    before:      40 46 26 00 20 10 00 00 00 00 c0 00 0d a8 49 0d 82 48 6c c3
+    after:       15 60 30 08 43 81 30 d5
+
+  ck= 7  abs=  745177  s2=  224703  weapon=MA40 AR
+    20B context: 8d 26 10 42 40 21 48 c1 9d 2d 42 c9 67 9f 55 42 28 40 00 a5
+    before:      54 20 84 00 00 e2 7e 10 00 ba 31 bd ae 65 8d 26 10 42 40 21
+    after:       55 42 28 40 00 a5 e8 21
+
+  ck= 7  abs=  797952  s2=  277478  weapon=Dynamo Grenade v2
+    20B context: 02 6a 16 a8 10 01 3a d5 5d a4 42 c9 67 9f 00 00 55 c0 1c 00
+    before:      19 a8 81 d4 2c 81 ac cf 0b ee 4d ed ee 80 02 6a 16 a8 10 01
+    after:       00 00 55 c0 1c 00 00 00
+
+  ck= 7  abs=  820546  s2=  300072  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 17 b0 30 04 43 81
+    before:      4a 6b c2 00 20 10 00 00 00 00 c0 00 0a 50 49 0d 82 48 6c c3
+    after:       17 b0 30 04 43 81 30 d5
+
+  ck= 7  abs=  821691  s2=  301217  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 17 d0 30 08 43 81
+    before:      42 4b be 00 20 10 00 00 00 00 c0 00 0a 70 49 0d 82 48 6c c3
+    after:       17 d0 30 08 43 81 30 d5
+
+  ck= 8  abs=  550099  s2=   27967  weapon=M392 Bandit
+    20B context: c5 55 80 f8 1e 27 2f b2 1c 87 42 c9 67 9f 14 90 29 21 91 fd
+    before:      2b 2c 00 54 1f 01 13 bb 79 a8 92 21 34 90 c5 55 80 f8 1e 27
+    after:       14 90 29 21 91 fd e8 07
+
+  ck= 8  abs=  618074  s2=   95942  weapon=BR75
+    20B context: 95 26 0f 43 50 73 2b 18 24 d5 42 c9 67 9f 15 42 88 40 00 f5
+    before:      54 28 84 00 0f 5d 85 f0 00 1a 21 1c 23 64 95 26 0f 43 50 73
+    after:       15 42 88 40 00 f5 d7 df
+
+  ck= 8  abs=  625620  s2=  103488  weapon=M392 Bandit
+    20B context: ed 26 13 41 80 43 2f b2 1c 87 42 c9 67 9f 76 14 60 10 25 8c
+    before:      54 28 84 00 0f 5d 81 f0 01 ba 27 eb b8 e4 ed 26 13 41 80 43
+    after:       76 14 60 10 25 8c e3 00
+
+  ck= 8  abs=  850504  s2=  328372  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 15 e0 30 08 43 81
+    before:      42 50 06 00 20 10 00 00 00 00 c0 00 08 d8 49 0d 82 48 6c c3
+    after:       15 e0 30 08 43 81 30 d5
+
+  ck= 9  abs=  647706  s2=  107993  weapon=MA40 AR
+    20B context: 5d 26 11 43 a8 61 48 c1 9d 2d 42 c9 67 9f 55 43 48 40 00 1a
+    before:      54 22 84 00 0f 60 89 e0 01 22 39 db 85 62 5d 26 11 43 a8 61
+    after:       55 43 48 40 00 1a 08 e2
+
+  ck= 9  abs=  670777  s2=  131064  weapon=BR75
+    20B context: f5 26 1b 40 84 53 2b 18 24 d5 42 c9 67 9f 15 42 e8 40 00 19
+    before:      54 2e 84 00 02 5e 85 f0 00 0a 2f d4 d1 64 f5 26 1b 40 84 53
+    after:       15 42 e8 40 00 19 ea 1f
+
+  ck= 9  abs=  680729  s2=  141016  weapon=BR75
+    20B context: 5d 26 0f 40 4c 73 2b 18 24 d5 42 c9 67 9f 54 09 d0 84 00 00
+    before:      54 22 84 00 0f 5e 81 e0 01 7a 3a d3 86 e2 5d 26 0f 40 4c 73
+    after:       54 09 d0 84 00 00 20 4d
+
+  ck= 9  abs=  727344  s2=  187631  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 c0 30 08 43 81
+    before:      40 45 56 00 20 10 00 00 00 00 c0 00 08 40 49 0d 82 48 6c c3
+    after:       16 c0 30 08 43 81 30 d5
+
+  ck= 9  abs=  801999  s2=  262286  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 17 d0 30 08 43 81
+    before:      44 45 56 00 20 10 00 00 00 00 c0 00 0a 58 49 0d 82 48 6c c3
+    after:       17 d0 30 08 43 81 30 d5
+
+  ck=11  abs=  640266  s2=  119038  weapon=BR75
+    20B context: fd 26 1f 42 c4 13 2b 18 24 d5 42 c9 67 9f 15 43 28 40 00 f6
+    before:      54 3e 84 00 0f 5e 79 e0 01 ca 56 22 50 e5 fd 26 1f 42 c4 13
+    after:       15 43 28 40 00 f6 08 5d
+
+  ck=11  abs=  654475  s2=  133247  weapon=BR75
+    20B context: 6d 26 21 41 6c 73 2b 18 24 d5 42 c9 67 9f 15 43 e8 40 00 19
+    before:      f7 61 f6 14 24 64 92 08 61 c2 54 52 1e 64 6d 26 21 41 6c 73
+    after:       15 43 e8 40 00 19 e9 61
+
+  ck=11  abs=  706426  s2=  185198  weapon=MA40 AR
+    20B context: 55 26 1e 41 9c 61 48 c1 9d 2d 42 c9 67 9f 55 43 a8 40 00 1a
+    before:      54 42 84 00 08 a0 7e 10 00 92 52 4c 69 e6 55 26 1e 41 9c 61
+    after:       55 43 a8 40 00 1a 28 1f
+
+  ck=11  abs=  806276  s2=  285048  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 70 30 08 43 81
+    before:      42 4d 56 00 20 10 00 00 00 00 c0 00 0e 38 49 0d 82 48 6c c3
+    after:       16 70 30 08 43 81 30 d5
+
+  ck=11  abs=  823486  s2=  302258  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 60 30 04 43 81
+    before:      48 6f fa 00 20 10 00 00 00 00 c0 00 08 c8 49 0d 82 48 6c c3
+    after:       16 60 30 04 43 81 30 d5
+
+  ck=12  abs=  537093  s2=   14716  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 c0 30 08 43 81
+    before:      44 45 76 00 20 10 00 00 00 00 c0 00 0c d0 49 0d 82 48 6c c3
+    after:       16 c0 30 08 43 81 30 d5
+
+  ck=12  abs=  558494  s2=   36117  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 17 00 30 04 43 81
+    before:      4a 79 d2 00 20 10 00 00 00 00 c0 00 0f c8 49 0d 82 48 6c c3
+    after:       17 00 30 04 43 81 30 d5
+
+  ck=12  abs=  770773  s2=  248396  weapon=BR75
+    20B context: 4d 26 22 43 e4 13 2b 18 24 d5 42 c9 67 9f 15 44 68 40 00 f5
+    before:      54 44 84 00 04 e0 7d c0 01 02 56 44 d1 e5 4d 26 22 43 e4 13
+    after:       15 44 68 40 00 f5 e8 5e
+
+  ck=13  abs=  619464  s2=   95804  weapon=BR75
+    20B context: 35 26 26 43 a8 33 2b 18 24 d5 42 c9 67 9f 15 44 68 40 00 4a
+    before:      54 4e 84 00 00 dd 81 e0 01 7a 5f 8d 77 e4 35 26 26 43 a8 33
+    after:       15 44 68 40 00 4a 08 60
+
+  ck=13  abs=  620679  s2=   97019  weapon=BR75
+    20B context: 35 26 26 43 b0 33 2b 18 24 d5 42 c9 67 9f 15 44 68 40 00 15
+    before:      54 4e 84 00 00 dc 7a 00 01 22 5f bd 77 64 35 26 26 43 b0 33
+    after:       15 44 68 40 00 15 e6 5f
+
+  ck=13  abs=  629528  s2=  105868  weapon=BR75
+    20B context: e5 26 26 43 c8 33 2b 18 24 d5 42 c9 67 9f 15 44 68 40 00 4d
+    before:      54 46 84 00 00 e1 76 00 01 02 49 e4 35 e5 e5 26 26 43 c8 33
+    after:       15 44 68 40 00 4d e7 5d
+
+  ck=13  abs=  644516  s2=  120856  weapon=MA40 AR
+    20B context: 6d 26 24 43 40 21 48 c1 9d 2d 42 c9 67 9f 55 44 68 40 00 42
+    before:      54 4c 84 00 01 5e 79 e0 01 f2 46 35 20 e4 6d 26 24 43 40 21
+    after:       55 44 68 40 00 42 18 1f
+
+  ck=13  abs=  705829  s2=  182169  weapon=BR75
+    20B context: a5 26 22 40 b0 13 2b 18 24 d5 42 c9 67 9f 15 44 a8 40 00 a5
+    before:      54 44 84 00 0c a1 86 00 01 12 4a e5 2d e4 a5 26 22 40 b0 13
+    after:       15 44 a8 40 00 a5 e7 de
+
+  ck=13  abs=  717987  s2=  194327  weapon=BR75
+    20B context: 35 26 25 43 14 53 2b 18 24 d5 42 c9 67 9f 36 22 60 0c 2a 47
+    before:      f7 62 56 04 08 a8 92 10 21 2a 3e ac a9 e5 35 26 25 43 14 53
+    after:       36 22 60 0c 2a 47 e3 40
+
+  ck=13  abs=  742086  s2=  218426  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 14 b0 30 08 43 81
+    before:      40 47 c2 00 20 10 00 00 00 00 c0 00 08 00 49 0d 82 48 6c c3
+    after:       14 b0 30 08 43 81 30 d5
+
+  ck=13  abs=  808150  s2=  284490  weapon=MA40 AR
+    20B context: d5 26 22 41 a8 11 48 c1 9d 2d 42 c9 67 9f 55 44 e8 40 00 f6
+    before:      54 44 84 00 0f 5e 85 e0 01 e2 40 3c dd e3 d5 26 22 41 a8 11
+    after:       55 44 e8 40 00 f6 18 5e
+
+  ck=14  abs=  526189  s2=    2072  weapon=BR75
+    20B context: 57 07 92 0b c3 c3 2b 18 24 d5 42 c9 67 9f 14 d0 30 04 47 cb
+    before:      06 74 b5 0b 25 9e 7c 51 40 c0 11 0e 04 c3 57 07 92 0b c3 c3
+    after:       14 d0 30 04 47 cb 78 25
+
+  ck=14  abs=  578810  s2=   54693  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 f0 30 04 43 81
+    before:      4c 58 c2 00 20 10 00 00 00 00 c0 00 0c c0 49 0d 82 48 6c c3
+    after:       16 f0 30 04 43 81 30 d5
+
+  ck=14  abs=  667077  s2=  142960  weapon=BR75
+    20B context: d5 26 2d 41 b8 13 2b 18 24 d5 42 c9 67 9f 14 07 04 84 00 00
+    before:      54 56 84 00 0f 5d 81 f0 01 8a 3e 9c a4 e3 d5 26 2d 41 b8 13
+    after:       14 07 04 84 00 00 23 22
+
+  ck=14  abs=  675085  s2=  150968  weapon=BR75
+    20B context: 4d 26 2d 41 c8 13 2b 18 24 d5 42 c9 67 9f 15 45 68 40 01 7e
+    before:      54 54 84 00 0f 60 85 d0 00 4a 55 f4 da e5 4d 26 2d 41 c8 13
+    after:       15 45 68 40 01 7e 08 e0
+
+  ck=14  abs=  676437  s2=  152320  weapon=BR75
+    20B context: 4d 26 2d 41 d0 13 2b 18 24 d5 42 c9 67 9f 15 45 68 40 01 7d
+    before:      54 54 84 00 0f 60 85 d0 00 c2 56 04 d5 e5 4d 26 2d 41 d0 13
+    after:       15 45 68 40 01 7d f7 62
+
+  ck=14  abs=  736948  s2=  212831  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 90 30 04 43 81
+    before:      4e 64 ba 00 20 10 00 00 00 00 c0 00 0e 08 49 0d 82 48 6c c3
+    after:       16 90 30 04 43 81 30 d5
+
+  ck=14  abs=  753480  s2=  229363  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 60 30 04 43 81
+    before:      48 44 32 00 20 10 00 00 00 00 c0 00 08 40 49 0d 82 48 6c c3
+    after:       16 60 30 04 43 81 30 d5
+
+  ck=15  abs=  602407  s2=   79797  weapon=BR75
+    20B context: 35 26 31 40 a4 33 2b 18 24 d5 42 c9 67 9f 15 45 c8 40 00 ca
+    before:      54 60 84 00 09 9f 85 e0 00 da 4f ec 5b e6 35 26 31 40 a4 33
+    after:       15 45 c8 40 00 ca 18 20
+
+  ck=15  abs=  633688  s2=  111078  weapon=MA40 AR
+    20B context: 85 26 30 40 5c 21 48 c1 9d 2d 42 c9 67 9f 55 45 e8 40 00 e6
+    before:      00 c2 cb 0e 36 c5 6c 31 80 aa 5e a4 c7 e6 85 26 30 40 5c 21
+    after:       55 45 e8 40 00 e6 17 e1
+
+  ck=15  abs=  636880  s2=  114270  weapon=MA40 AR
+    20B context: 55 26 30 40 6c 21 48 c1 9d 2d 42 c9 67 9f 55 45 e8 40 00 62
+    before:      54 50 84 00 0f 5f 89 d0 01 3a 4f bc 2d e6 55 26 30 40 6c 21
+    after:       55 45 e8 40 00 62 08 5e
+
+  ck=15  abs=  722156  s2=  199546  weapon=Fuel Rod SPNKr
+    20B context: 75 c7 c0 68 06 23 9d 6a ae d2 42 c9 67 9f 16 20 29 cc cc 8a
+    before:      38 00 b2 f3 f5 56 07 9d 79 4c 32 0b f6 8c 75 c7 c0 68 06 23
+    after:       16 20 29 cc cc 8a 3e 07
+
+  ck=15  abs=  765642  s2=  243032  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 15 c0 30 08 43 81
+    before:      42 6a aa 00 20 10 00 00 00 00 c0 00 0d 98 49 0d 82 48 6c c3
+    after:       15 c0 30 08 43 81 30 d5
+
+  ck=16  abs=  741082  s2=  218696  weapon=BR75
+    20B context: 65 26 34 41 28 53 2b 18 24 d5 42 c9 67 9f 15 46 48 40 00 e9
+    before:      54 68 84 00 04 1e 7d f0 00 ca 56 32 88 e7 65 26 34 41 28 53
+    after:       15 46 48 40 00 e9 f7 e1
+
+  ck=16  abs=  776405  s2=  254019  weapon=BR75
+    20B context: d5 26 33 41 5c 43 2b 18 24 d5 42 c9 67 9f 76 35 60 a8 26 10
+    before:      f7 63 36 1d 88 91 0b f7 e1 d2 5e ca 26 e5 d5 26 33 41 5c 43
+    after:       76 35 60 a8 26 10 22 00
+
+  ck=18  abs=  743148  s2=  213593  weapon=MA40 AR
+    20B context: 6d 26 3a 42 04 21 48 c1 9d 2d 42 c9 67 9f 55 46 c8 40 00 19
+    before:      40 42 24 00 03 a5 82 00 15 80 61 4a 04 5a 6d 26 3a 42 04 21
+    after:       55 46 c8 40 00 19 f8 e2
+
+  ck=19  abs=  529138  s2=    7495  weapon=BR75
+    20B context: 25 26 39 42 88 53 2b 18 24 d5 42 c9 67 9f 15 46 e8 40 00 f6
+    before:      f7 63 36 1c 24 a8 7a 10 21 62 63 6a 6f e6 25 26 39 42 88 53
+    after:       15 46 e8 40 00 f6 18 61
+
+  ck=19  abs=  606668  s2=   85025  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 90 30 04 43 81
+    before:      4c 6b c2 00 20 10 00 00 00 00 c0 00 0c 68 49 0d 82 48 6c c3
+    after:       16 90 30 04 43 81 30 d5
+
+  ck=19  abs=  662429  s2=  140786  weapon=BR75
+    20B context: d5 26 28 40 84 03 2b 18 24 d5 42 c9 67 9f 55 47 68 40 00 e9
+    before:      54 50 84 00 06 9c 8e 20 00 da 58 c3 05 e6 d5 26 28 40 84 03
+    after:       55 47 68 40 00 e9 e7 5f
+
+  ck=19  abs=  726186  s2=  204543  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 14 e0 30 04 43 81
+    before:      4a 76 1e 00 20 10 00 00 00 00 c0 00 0c 50 49 0d 82 48 6c c3
+    after:       14 e0 30 04 43 81 30 d5
+
+  ck=19  abs=  728518  s2=  206875  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 a0 30 08 43 81
+    before:      42 7d 56 00 20 10 00 00 00 00 c0 00 0c 98 49 0d 82 48 6c c3
+    after:       16 a0 30 08 43 81 30 d5
+
+  ck=19  abs=  751952  s2=  230309  weapon=BR75
+    20B context: ad 26 3e 43 d4 43 2b 18 24 d5 42 c9 67 9f 15 47 88 40 00 4e
+    before:      54 7a 84 00 04 e1 8d d0 01 02 62 cb 83 66 ad 26 3e 43 d4 43
+    after:       15 47 88 40 00 4e 28 9c
+
+  ck=19  abs=  752891  s2=  231248  weapon=BR75
+    20B context: ad 26 3e 43 dc 43 2b 18 24 d5 42 c9 67 9f 55 47 88 40 00 ea
+    before:      6e 84 00 0a 5d 89 fa 82 30 ba 63 1c 0e 66 ad 26 3e 43 dc 43
+    after:       55 47 88 40 00 ea 07 60
+
+  ck=20  abs=  617991  s2=   95373  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 17 b0 30 08 43 81
+    before:      46 44 ee 00 20 10 00 00 00 00 c0 00 09 38 49 0d 82 48 6c c3
+    after:       17 b0 30 08 43 81 30 d5
+
+  ck=20  abs=  635304  s2=  112686  weapon=Fuel Rod SPNKr
+    20B context: 94 59 c0 38 04 23 9d 6a ae d2 42 c9 67 9f 16 20 29 cc cc 8a
+    before:      80 00 0c 14 52 81 18 94 10 f9 5c ec cb 63 94 59 c0 38 04 23
+    after:       16 20 29 cc cc 8a 3e 07
+
+  ck=21  abs=  597382  s2=   71616  weapon=BR75
+    20B context: 5d 26 41 41 98 73 2b 18 24 d5 42 c9 67 9f 14 07 0e 84 00 00
+    before:      54 7e 84 00 0e 9f 6e 00 00 3a 4f 13 65 66 5d 26 41 41 98 73
+    after:       14 07 0e 84 00 00 20 26
+
+  ck=21  abs=  732489  s2=  206723  weapon=M392 Bandit
+    20B context: 35 26 44 40 e8 43 2f b2 1c 87 42 c9 67 9f 55 47 88 40 00 4d
+    before:      54 88 84 00 04 dc 7d f0 01 92 62 15 64 64 35 26 44 40 e8 43
+    after:       55 47 88 40 00 4d c7 df
+
+  ck=22  abs=  672768  s2=  142630  weapon=MA40 AR
+    20B context: ad 26 46 43 28 61 48 c1 9d 2d 42 c9 67 9f 55 49 48 40 00 4d
+    before:      54 8c 84 00 0f 61 85 d0 00 e2 61 03 7b e6 ad 26 46 43 28 61
+    after:       55 49 48 40 00 4d c9 20
+
+  ck=22  abs=  767434  s2=  237296  weapon=M392 Bandit
+    20B context: 4d 26 44 41 98 43 2f b2 1c 87 42 c9 67 9f 55 48 e8 40 00 a5
+    before:      54 92 84 00 0a 5d 85 f0 01 52 5e 54 db 65 4d 26 44 41 98 43
+    after:       55 48 e8 40 00 a5 e8 20
+
+  ck=23  abs=  553582  s2=   24485  weapon=BR75
+    20B context: 75 26 47 41 28 13 2b 18 24 d5 42 c9 67 9f 15 48 88 40 00 a5
+    before:      f7 64 76 05 14 e0 4a 48 41 ba 21 5c 93 66 75 26 47 41 28 13
+    after:       15 48 88 40 00 a5 d8 a1
+
+  ck=23  abs=  565018  s2=   35921  weapon=BR75
+    20B context: fd 26 47 41 40 13 2b 18 24 d5 42 c9 67 9f 15 48 88 40 00 c9
+    before:      f7 64 76 04 49 d4 5b 99 60 52 21 bc 59 e5 fd 26 47 41 40 13
+    after:       15 48 88 40 00 c9 f9 1e
+
+  ck=23  abs=  679187  s2=  150090  weapon=Fuel Rod SPNKr
+    20B context: 00 c1 00 18 07 23 9d 6a ae d2 42 c9 67 9f 16 20 29 cc cc 8a
+    before:      00 30 45 cd 0b 62 b8 17 85 a3 76 01 00 00 00 c1 00 18 07 23
+    after:       16 20 29 cc cc 8a 3e 07
+
+  ck=23  abs=  704902  s2=  175805  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 b0 30 08 43 81
+    before:      40 40 42 00 20 10 00 00 00 00 c0 00 0c b0 49 0d 82 48 6c c3
+    after:       16 b0 30 08 43 81 30 d5
+
+  ck=23  abs=  724383  s2=  195286  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 17 30 30 08 43 81
+    before:      44 7f f2 00 20 10 00 00 00 00 c0 00 0f 98 49 0d 82 48 6c c3
+    after:       17 30 30 08 43 81 30 d5
+
+  ck=23  abs=  730924  s2=  201827  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 17 b0 30 04 43 81
+    before:      4a 57 4e 00 20 10 00 00 00 00 c0 00 08 70 49 0d 82 48 6c c3
+    after:       17 b0 30 04 43 81 30 d5
+
+  ck=23  abs=  822581  s2=  293484  weapon=BR75
+    20B context: 3d 26 4b 43 f0 63 2b 18 24 d5 42 c9 67 9f 55 49 c8 40 00 4e
+    before:      54 96 84 00 0e 9f 72 00 01 c2 36 94 be 64 3d 26 4b 43 f0 63
+    after:       55 49 c8 40 00 4e 18 dd
+
+  ck=24  abs=  590104  s2=   66596  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 50 30 08 43 81
+    before:      42 69 2e 00 20 10 00 00 00 00 c0 00 0a f8 49 0d 82 48 6c c3
+    after:       16 50 30 08 43 81 30 d5
+
+  ck=24  abs=  645494  s2=  121986  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 15 c0 30 04 43 81
+    before:      4c 44 32 00 20 10 00 00 00 00 c0 00 0a 68 49 0d 82 48 6c c3
+    after:       15 c0 30 04 43 81 30 d5
+
+  ck=24  abs=  805624  s2=  282116  weapon=BR75
+    20B context: 55 26 4e 42 4c 03 2b 18 24 d5 42 c9 67 9f 14 0e 88 84 00 00
+    before:      26 a1 00 03 d8 60 86 48 41 0a 50 7b d5 66 55 26 4e 42 4c 03
+    after:       14 0e 88 84 00 00 1f 61
+
+  ck=24  abs=  827158  s2=  303650  weapon=MA40 AR
+    20B context: ad 26 4f 40 e0 21 48 c1 9d 2d 42 c9 67 9f 55 49 a8 40 00 26
+    before:      54 9a 84 00 00 e0 86 30 00 42 5e 4b 5b 66 ad 26 4f 40 e0 21
+    after:       55 49 a8 40 00 26 19 df
+
+  ck=24  abs=  830718  s2=  307210  weapon=MA40 AR
+    20B context: 75 26 4f 40 f0 21 48 c1 9d 2d 42 c9 67 9f 55 49 a8 40 00 12
+    before:      54 9e 84 00 04 dc 8e 10 00 52 59 8a 18 e5 75 26 4f 40 f0 21
+    after:       55 49 a8 40 00 12 28 5f
+
+  ck=25  abs=  721454  s2=  199073  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 40 30 08 43 81
+    before:      42 6e fa 00 20 10 00 00 00 00 c0 00 0b 60 49 0d 82 48 6c c3
+    after:       16 40 30 08 43 81 30 d5
+
+  ck=26  abs=  575309  s2=   53319  weapon=MA40 AR
+    20B context: a5 26 57 43 78 41 48 c1 9d 2d 42 c9 67 9f 55 4b 28 40 00 f5
+    before:      54 b2 84 00 06 9d 8e 00 00 ba 57 bc 1b 67 a5 26 57 43 78 41
+    after:       55 4b 28 40 00 f5 d8 1f
+
+  ck=26  abs=  579728  s2=   57738  weapon=MA40 AR
+    20B context: 3d 26 57 43 90 41 48 c1 9d 2d 42 c9 67 9f 55 4b 28 40 00 f5
+    before:      54 a6 84 00 0f 5e 85 e0 01 c2 53 94 c2 65 3d 26 57 43 90 41
+    after:       55 4b 28 40 00 f5 e7 9e
+
+  ck=26  abs=  759312  s2=  237322  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 18 00 30 04 43 81
+    before:      48 57 ce 00 20 10 00 00 00 00 c0 00 0a b8 49 0d 82 48 6c c3
+    after:       18 00 30 04 43 81 30 d5
+
+  ck=26  abs=  760161  s2=  238171  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 18 30 30 08 43 81
+    before:      46 79 d2 00 20 10 00 00 00 00 c0 00 0a c8 49 0d 82 48 6c c3
+    after:       18 30 30 08 43 81 30 d5
+
+  ck=27  abs=  599632  s2=   75502  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 18 70 30 08 43 81
+    before:      44 6d 56 00 20 10 00 00 00 00 c0 00 0c e8 49 0d 82 48 6c c3
+    after:       18 70 30 08 43 81 30 d5
+
+  ck=27  abs=  800616  s2=  276486  weapon=MA40 AR
+    20B context: 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 70 30 08 43 81
+    before:      46 4f fe 00 20 10 00 00 00 00 c0 00 0a a0 49 0d 82 48 6c c3
+    after:       16 70 30 08 43 81 30 d5
+
+  ck=27  abs=  825453  s2=  301323  weapon=BR75
+    20B context: 65 26 5f 40 d4 43 2b 18 24 d5 42 c9 67 9f 36 56 60 0c 26 bb
+    before:      54 bc 84 00 0a 5e 85 e0 00 d2 38 f4 0b 63 65 26 5f 40 d4 43
+    after:       36 56 60 0c 26 bb c2 40
+
+  ck=27  abs=  826781  s2=  302651  weapon=BR75
+    20B context: 4d 26 5d 42 64 53 2b 18 24 d5 42 c9 67 9f 15 4b c8 40 00 f5
+    before:      54 ac 84 00 04 dc 92 00 00 3a 59 44 05 e6 4d 26 5d 42 64 53
+    after:       15 4b c8 40 00 f5 e8 1e
+
+  ck=27  abs=  843862  s2=  319732  weapon=MA40 AR
+    20B context: 4d 26 56 40 18 01 48 c1 9d 2d 42 c9 67 9f 55 4b e8 40 00 f5
+    before:      54 ac 84 00 06 1e 81 f0 00 52 55 13 ff 66 4d 26 56 40 18 01
+    after:       55 4b e8 40 00 f5 f7 9d
+
+
+============================================================================
+  PHASE 2 — Section 1 classification (d9329229)
+============================================================================
+  Section 1 classifications:
+    s1_unknown               : 224
+    s1_fire_like             : 20
+    s1_0792_pattern          : 7
+
+  Non-formula events (251):
+    ck= 1 pos=  391830 [raw] s1_unknown           weapon=Spike Grenade v2
+      71 bb 81 28 18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 dc 00 00
+    ck= 1 pos=  540795 [raw] s1_unknown           weapon=MLRS-2 Hydra v2
+      9a 01 f7 00 00 01 01 28 0b 34 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 20 00
+    ck= 1 pos=  546687 [raw] s1_unknown           weapon=Scattershot
+      00 04 af ff ff 81 01 2c 83 34 0c 00 6d 32 c7 dc 42 c9 67 9f 43 1e 00 0a
+    ck= 1 pos=  548426 [raw] s1_unknown           weapon=Spike Grenade v2
+      00 00 01 ff ff ff e1 2d 1b 34 0c 80 66 83 25 7c 42 c9 67 9f 44 e0 00 0a
+    ck= 1 pos=  392147 [nibble] s1_unknown           weapon=Spike Grenade v2
+      71 bc 81 2a 18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 e0 00 00
+    ck= 1 pos=  540905 [nibble] s1_unknown           weapon=MLRS-2 Hydra v2
+      9a 01 f5 00 00 01 01 28 2b 34 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 a0 00
+    ck= 1 pos=  547545 [nibble] s1_unknown           weapon=Spike Grenade v2
+      1a 00 b0 00 00 81 01 2c d3 34 0c 80 66 83 25 7c 42 c9 67 9f 44 ce 00 0a
+    ck= 2 pos=  377114 [raw] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 28 00 01 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 00 00
+    ck= 2 pos=  377337 [raw] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 29 00 03 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 40 00
+    ck= 2 pos=  377560 [raw] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 2a 00 05 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 80 00
+    ck= 2 pos=  377225 [nibble] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 28 80 02 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 20 00
+    ck= 2 pos=  377448 [nibble] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 29 80 04 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 60 00
+    ck= 2 pos=  377671 [nibble] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 2a 80 06 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 a0 00
+    ck= 3 pos=  368379 [raw] s1_0792_pattern      weapon=BR75
+      57 c0 c0 11 0e 04 c3 57 07 92 08 eb 2b 18 24 d5 42 c9 67 9f 16 00 30 04
+    ck= 3 pos=  369033 [raw] s1_unknown           weapon=MA40 AR
+      60 00 49 0d 80 0c 00 00 30 00 00 eb 48 c1 9d 2d 42 c9 67 9f 16 90 30 04
+    ck= 3 pos=  379749 [raw] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 28 00 01 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 00 00
+    ck= 3 pos=  379972 [raw] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 29 00 03 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 40 00
+    ck= 3 pos=  380195 [raw] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 2a 00 05 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 80 00
+    ck= 3 pos=  393166 [raw] s1_unknown           weapon=Scattershot
+      71 9d 80 ec 18 00 00 00 03 44 0c 00 6d 32 c7 dc 42 c9 67 9f 43 20 00 00
+    ck= 3 pos=  394894 [raw] s1_unknown           weapon=Spike Grenade v2
+      71 ba 01 25 18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 d6 00 00
+    ck= 3 pos=  395415 [raw] s1_unknown           weapon=Spike Grenade v2
+      71 bb 81 28 18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 dc 00 00
+    ck= 3 pos=  367026 [nibble] s1_0792_pattern      weapon=BR75
+      4f c0 c0 21 0e 04 c3 57 07 92 00 eb 2b 18 24 d5 42 c9 67 9f 14 10 30 08
+    ck= 3 pos=  367680 [nibble] s1_unknown           weapon=MA40 AR
+      60 00 49 0d 80 0c 00 00 30 00 00 eb 48 c1 9d 2d 42 c9 67 9f 15 40 30 08
+    ck= 3 pos=  379860 [nibble] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 28 80 02 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 20 00
+    ck= 3 pos=  380083 [nibble] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 29 80 04 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 60 00
+    ck= 3 pos=  380306 [nibble] s1_unknown           weapon=MLRS-2 Hydra v2
+      71 2a 80 06 18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 a0 00
+    ck= 3 pos=  392560 [nibble] s1_unknown           weapon=Scattershot
+      71 9b 80 e8 18 00 00 00 03 44 0c 00 6d 32 c7 dc 42 c9 67 9f 43 1c 00 00
+    ck= 4 pos=  367028 [raw] s1_unknown           weapon=BR75
+      f8 a8 81 4e 66 64 51 f0 3c 93 b8 63 2b 18 24 d5 42 c9 67 9f 14 10 30 08
+    ck= 4 pos=  368677 [raw] s1_0792_pattern      weapon=BR75
+      59 00 c0 11 0e 04 c3 57 07 92 0a 27 2b 18 24 d5 42 c9 67 9f 16 50 30 04
+    ck= 4 pos=  369334 [raw] s1_0792_pattern      weapon=BR75
+      5c 00 c0 11 0e 04 c3 57 07 92 0e 27 2b 18 24 d5 42 c9 67 9f 17 10 30 04
+
+============================================================================
+  PHASE 3 — Raw Section 2 fire events, relaxed b1 (d9329229)
+============================================================================
+  Raw Section 2 fire events: 51
+  pi distribution: {1: 51}
+  b1_lo5 distribution: {6: 51}
+
+  NON-POV events: 0
+
+  POV events: 51
+    BR75: 31
+    MA40 AR: 17
+    M392 Bandit: 3
+
+============================================================================
+  PHASE 4 — Search for 0d XX 40 + weapon pattern in raw (d9329229)
+============================================================================
+  Total: 47 weapon_ids with 0x0D marker within 3-11 bytes before
+
+  0x0D offset distribution (distance before wid_start):
+    -5: 35
+    -9: 12
+
+  Standard fire pattern (0x0D at -6, 0x40 at -3): 0
+
+  Alternative offset with 0x40 (not -6): 0
+  Offset distribution: {}
+
+============================================================================
+  PHASE 5 — Section 2 only, all 8 bit-shifts (d9329229)
+============================================================================
+  shift=0:    25 suffix hits,    12 fire-like  [pi1=12]
+  shift=1:    26 suffix hits,     6 fire-like  [pi1=6]
+  shift=2:    31 suffix hits,    15 fire-like  [pi1=15]
+  shift=3:    43 suffix hits,    34 fire-like  [pi1=34]
+  shift=4:   859 suffix hits,   851 fire-like  [pi1=851]
+  shift=5:     4 suffix hits,     3 fire-like  [pi1=3]
+  shift=6:     8 suffix hits,     5 fire-like  [pi1=5]
+  shift=7:    26 suffix hits,     8 fire-like  [pi1=8]
+
+============================================================================
+  PHASE 6 — Raw vs nibble-shifted Section 2 cross-reference (d9329229)
+============================================================================
+
+  Chunk 1: raw=0 nibble=0 raw_only=0
+
+  Chunk 2: raw=4 nibble=2 raw_only=4
+    pos=   14983 weapon=MA40 AR
+      c0 00 0c 00 49 0d 82 48 6c eb 48 c1 9d 2d 42 c9 67 9f 14 60 30 08 43 81
+    pos=   16020 weapon=MA40 AR
+      c0 00 0c 08 49 0d 82 48 6c eb 48 c1 9d 2d 42 c9 67 9f 15 40 30 08 43 81
+    pos=   17547 weapon=MA40 AR
+      c0 00 0c 28 49 0d 82 48 6c eb 48 c1 9d 2d 42 c9 67 9f 16 90 30 04 43 81
+    pos=   17922 weapon=MA40 AR
+      c0 00 0c 30 49 0d 82 48 6c eb 48 c1 9d 2d 42 c9 67 9f 17 00 30 04 43 81
+
+  Chunk 3: raw=0 nibble=54 raw_only=0
+
+  Chunk 4: raw=2 nibble=197 raw_only=2
+    pos=   82930 weapon=MA40 AR
+      5a 32 ab e6 3d 26 02 40 c0 21 48 c1 9d 2d 42 c9 67 9f 76 05 61 d3 e9 08
+    pos=  231304 weapon=MA40 AR
+      c0 00 09 60 49 0d 82 48 6c c3 48 c1 9d 2d 42 c9 67 9f 16 10 30 08 43 81
+
+  Chunk 5: raw=1 nibble=81 raw_only=1
+    pos=  296278 weapon=BR75
+      4f b3 0a 66 4d 26 0c 42 28 13 2b 18 24 d5 42 c9 67 9f 15 41 68 40 01 7e
+
+============================================================================
+  inv44b DONE
+============================================================================

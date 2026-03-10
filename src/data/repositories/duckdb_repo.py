@@ -37,6 +37,7 @@ from src.data.repositories._medals_repo import MedalsMixin
 from src.data.repositories._metadata_resolution import MetadataResolutionMixin
 from src.data.repositories._roster_loader import RosterLoaderMixin
 from src.data.repositories._schema_introspection import SchemaIntrospectionMixin
+from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
 from src.data.repositories._write_lease import (
     db_write_lease,  # noqa: F401 — re-export pour les consommateurs
     wait_for_write_leases_cleared,
@@ -153,6 +154,7 @@ class DuckDBRepository(
     DiagnosticMixin,
     AwardsMixin,
     LegacyCompatMixin,
+    WeaponKillsMixin,
 ):
     """
     Repository utilisant DuckDB natif exclusivement.

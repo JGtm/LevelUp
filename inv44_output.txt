@@ -1,0 +1,369 @@
+inv44 — T0 Fire Events Hunt: all hypotheses
+Match: d9329229
+
+============================================================================
+  H1 — Unconstrained b1 scan (d9329229)
+============================================================================
+
+  [nibble-shifted] Total weapon suffix hits with b0 LSBs=0x05: 2895
+
+  b1 value distribution (top 20):
+    b1=0x26  pi=1  low5=0x06  count= 2895  STANDARD
+
+  Events by player_index (b1 >> 5):
+    pi=1: 2895 total, 2895 standard (b1=0x26), 0 non-standard
+
+============================================================================
+  H2 — Unknown suffix hit anatomy (d9329229)
+============================================================================
+  Unknown suffix hits (not fire, not melee): 123
+  By section: {'s1_state': 106, 's2_frames': 17}
+  By weapon: [('BR75', 33), ('MA40 AR', 27), ('Spike Grenade v2', 21), ('MLRS-2 Hydra v2', 19), ('Scattershot', 16), ('Dynamo Grenade v2', 3), ('Sentinel Beam v2', 1), ('VK78 Commando', 1), ('Stalker Rifle', 1), ('Fuel Rod SPNKr', 1)]
+
+  First 30 unknown events:
+    ck= 1 pos=  392147 [s1_state] weapon=Spike Grenade v2
+      before: 20 00 02 d1 80 00 00 13 71 bc 81 2a 18 00 00 00 03 44 0c 80
+      wid:    6683257c42c9679f
+      after:  44 e0 00 00 00 00 6e 43
+    ck= 1 pos=  540905 [s1_state] weapon=MLRS-2 Hydra v2
+      before: f0 00 10 00 09 9a 71 e1 9a 01 f5 00 00 01 01 28 2b 34 0c 81
+      wid:    5ded6cf242c9679f
+      after:  80 00 a0 00 4c d3 8f 0c
+    ck= 1 pos=  547545 [s1_state] weapon=Spike Grenade v2
+      before: 00 45 40 20 0a 00 80 00 1a 00 b0 00 00 81 01 2c d3 34 0c 80
+      wid:    6683257c42c9679f
+      after:  44 ce 00 0a 80 11 27 1e
+    ck= 2 pos=  377225 [s1_state] weapon=MLRS-2 Hydra v2
+      before: 20 00 02 80 80 00 00 13 71 28 80 02 18 00 00 00 03 44 0c 81
+      wid:    5ded6cf242c9679f
+      after:  80 00 20 00 00 00 03 72
+    ck= 2 pos=  377448 [s1_state] weapon=MLRS-2 Hydra v2
+      before: 20 00 02 81 80 00 00 13 71 29 80 04 18 00 00 00 03 44 0c 81
+      wid:    5ded6cf242c9679f
+      after:  80 00 60 00 00 00 03 72
+    ck= 2 pos=  377671 [s1_state] weapon=MLRS-2 Hydra v2
+      before: 20 00 02 82 80 00 00 13 71 2a 80 06 18 00 00 00 03 44 0c 81
+      wid:    5ded6cf242c9679f
+      after:  80 00 a0 00 00 00 03 72
+    ck= 2 pos=  529021 [s2_frames] weapon=BR75
+      before: 23 06 74 b5 0b 25 9e 7c 4f c0 c0 21 0e 04 c3 57 07 92 00 eb
+      wid:    2b1824d542c9679f
+      after:  14 10 30 08 47 cb 78 25
+    ck= 2 pos=  531382 [s2_frames] weapon=BR75
+      before: 23 06 74 b5 0b 25 9e 7c 56 40 c0 21 0e 04 c3 57 07 92 06 eb
+      wid:    2b1824d542c9679f
+      after:  15 b0 30 08 47 cb 78 25
+    ck= 3 pos=  367026 [s1_state] weapon=BR75
+      before: 23 06 74 b5 0b 25 9e 7c 4f c0 c0 21 0e 04 c3 57 07 92 00 eb
+      wid:    2b1824d542c9679f
+      after:  14 10 30 08 47 cb 78 25
+    ck= 3 pos=  367680 [s1_state] weapon=MA40 AR
+      before: 00 00 00 0a 00 00 12 43 60 00 49 0d 80 0c 00 00 30 00 00 eb
+      wid:    48c19d2d42c9679f
+      after:  15 40 30 08 43 81 30 d5
+    ck= 3 pos=  379860 [s1_state] weapon=MLRS-2 Hydra v2
+      before: 20 00 02 80 80 00 00 13 71 28 80 02 18 00 00 00 03 44 0c 81
+      wid:    5ded6cf242c9679f
+      after:  80 00 20 00 00 00 03 72
+    ck= 3 pos=  380083 [s1_state] weapon=MLRS-2 Hydra v2
+      before: 20 00 02 81 80 00 00 13 71 29 80 04 18 00 00 00 03 44 0c 81
+      wid:    5ded6cf242c9679f
+      after:  80 00 60 00 00 00 03 72
+    ck= 3 pos=  380306 [s1_state] weapon=MLRS-2 Hydra v2
+      before: 20 00 02 82 80 00 00 13 71 2a 80 06 18 00 00 00 03 44 0c 81
+      wid:    5ded6cf242c9679f
+      after:  80 00 a0 00 00 00 03 72
+    ck= 3 pos=  392560 [s1_state] weapon=Scattershot
+      before: 20 00 02 c7 00 00 00 13 71 9b 80 e8 18 00 00 00 03 44 0c 00
+      wid:    6d32c7dc42c9679f
+      after:  43 1c 00 00 00 00 6e 42
+    ck= 3 pos=  732191 [s2_frames] weapon=BR75
+      before: 0d 1b 4a a8 50 00 00 00 0d 34 11 30 4a 68 22 60 95 10 44 25
+      wid:    2b1824d542c9679f
+      after:  11 03 da 10 27 a2 00 46
+    ck= 4 pos=  367359 [s1_state] weapon=BR75
+      before: 23 06 74 b5 0b 25 9e 7c 51 80 c0 21 0e 04 c3 57 07 92 02 27
+      wid:    2b1824d542c9679f
+      after:  14 70 30 08 47 cb 78 25
+    ck= 4 pos=  368348 [s1_state] weapon=BR75
+      before: 23 06 74 b5 0b 25 9e 7c 57 c0 c0 11 0e 04 c3 57 07 92 08 27
+      wid:    2b1824d542c9679f
+      after:  16 00 30 04 47 cb 78 25
+    ck= 4 pos=  369005 [s1_state] weapon=BR75
+      before: 23 06 74 b5 0b 25 9e 7c 5a 40 c0 11 0e 04 c3 57 07 92 0c 27
+      wid:    2b1824d542c9679f
+      after:  16 b0 30 04 47 cb 78 25
+    ck= 4 pos=  392797 [s1_state] weapon=Scattershot
+      before: 20 00 02 c8 00 00 00 13 71 9c 80 ea 18 00 00 00 03 44 0c 00
+      wid:    6d32c7dc42c9679f
+      after:  43 1e 00 00 00 00 6e 40
+    ck= 4 pos=  394187 [s1_state] weapon=Spike Grenade v2
+      before: 20 00 02 cd 00 00 00 13 71 b8 01 21 18 00 00 00 03 44 0c 80
+      wid:    6683257c42c9679f
+      after:  44 ce 00 00 00 00 6e 41
+    ck= 4 pos=  813537 [s2_frames] weapon=MA40 AR
+      before: 0a 28 9c 78 60 00 00 00 0d 34 05 30 1a 68 0a 60 35 10 14 25
+      wid:    48c19d2d42c9679f
+      after:  05 03 da 10 3f 62 00 4a
+    ck= 5 pos=  368873 [s1_state] weapon=BR75
+      before: 06 74 b5 0b 25 9e 7c 58 40 c0 21 0e 04 c3 57 07 92 05 31 c3
+      wid:    2b1824d542c9679f
+      after:  16 60 30 08 47 cb 78 25
+    ck= 5 pos=  392645 [s1_state] weapon=Scattershot
+      before: 20 00 02 c8 00 00 00 13 71 9c 80 ea 18 00 00 00 03 44 0c 00
+      wid:    6d32c7dc42c9679f
+      after:  43 1e 00 00 00 00 6e 40
+    ck= 5 pos=  394035 [s1_state] weapon=Spike Grenade v2
+      before: 20 00 02 cd 00 00 00 13 71 b8 01 21 18 00 00 00 03 44 0c 80
+      wid:    6683257c42c9679f
+      after:  44 ce 00 00 00 00 6e 41
+    ck= 5 pos=  655915 [s2_frames] weapon=Sentinel Beam v2
+      before: 0e 1c a4 41 69 80 65 e7 ea ac 11 f8 df 18 d2 72 8f a8 fa 23
+      wid:    a0955e9e42c9679f
+      after:  14 c0 29 cf 26 6d 13 07
+    ck= 5 pos=  778761 [s2_frames] weapon=BR75
+      before: 0d 00 0f 78 70 00 00 00 0d 34 35 30 4a 68 6a 60 95 10 d4 2d
+      wid:    2b1824d542c9679f
+      after:  12 3c 0d df 03 20 80 00
+    ck= 6 pos=  392779 [s1_state] weapon=Scattershot
+      before: 20 00 02 c7 00 00 00 13 71 9b 80 e8 18 00 00 00 03 44 0c 00
+      wid:    6d32c7dc42c9679f
+      after:  43 1c 00 00 00 00 6e 42
+    ck= 7 pos=  367424 [s1_state] weapon=MA40 AR
+      before: 00 00 00 0a 00 00 12 46 c0 00 3b 13 80 0c 00 00 30 00 00 27
+      wid:    48c19d2d42c9679f
+      after:  15 90 30 08 43 81 30 d5
+    ck= 7 pos=  392291 [s1_state] weapon=Scattershot
+      before: 20 00 02 c7 00 00 00 13 71 9b 80 e8 18 00 00 00 03 44 0c 00
+      wid:    6d32c7dc42c9679f
+      after:  43 1c 00 00 00 00 6e 42
+    ck= 8 pos=  368897 [s1_state] weapon=BR75
+      before: 06 74 b5 0b 25 9e 7c 5f 80 c0 21 0e 04 c3 57 07 92 07 52 c7
+      wid:    2b1824d542c9679f
+      after:  18 00 30 08 47 cb 78 25
+
+  Byte pattern analysis (2 bytes before weapon_id):
+    0c 80: 21
+    0c 81: 19
+    0c 00: 16
+    00 c7: 16
+    00 c3: 6
+    00 eb: 3
+    00 27: 3
+    10 01: 2
+    06 eb: 1
+    44 25: 1
+    02 27: 1
+    08 27: 1
+    0c 27: 1
+    14 25: 1
+    31 c3: 1
+
+  4-byte prefix pattern:
+    03 44 0c 80: 20
+    03 44 0c 81: 18
+    03 44 0c 00: 16
+    30 00 00 c7: 16
+    30 00 00 c3: 6
+    30 00 00 27: 3
+    07 92 00 eb: 2
+    0a 88 10 01: 2
+    2b 34 0c 81: 1
+    d3 34 0c 80: 1
+    07 92 06 eb: 1
+    30 00 00 eb: 1
+    95 10 44 25: 1
+    07 92 02 27: 1
+    07 92 08 27: 1
+
+============================================================================
+  H3 — Multi-bit-shift scan (d9329229)
+============================================================================
+  Testing 5 chunks with shifts 0-7
+  shift=0:     2 fire events  [pi=1:2]
+  shift=1:     2 fire events  [pi=1:2]
+  shift=2:     7 fire events  [pi=1:7]
+  shift=3:    12 fire events  [pi=1:12]
+  shift=4:   331 fire events  [pi=1:331]
+  shift=5:     2 fire events  [pi=1:2]
+  shift=6:     1 fire events  [pi=1:1]
+  shift=7:     3 fire events  [pi=1:3]
+
+============================================================================
+  H4 — Section 1 (pre-frame-marker) weapon suffix scan (d9329229)
+============================================================================
+  Total Section 1 bytes: 14,701,721
+  Weapon suffix hits in Section 1: 251
+  By layer: {'raw': 125, 'nibble': 126}
+  By weapon: [('Spike Grenade v2', 64), ('BR75', 61), ('MA40 AR', 41), ('MLRS-2 Hydra v2', 38), ('Scattershot', 37), ('Dynamo Grenade v2', 4), ('Stalker Rifle', 2), ('Fuel Rod SPNKr', 1), ('Vestige Carbine', 1), ('Pulse Carbine', 1)]
+    ck= 1 pos=  391830 [raw] weapon=Spike Grenade v2
+      18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 dc 00 00
+    ck= 1 pos=  540795 [raw] weapon=MLRS-2 Hydra v2
+      00 01 01 28 0b 34 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 20 00
+    ck= 1 pos=  546687 [raw] weapon=Scattershot
+      ff 81 01 2c 83 34 0c 00 6d 32 c7 dc 42 c9 67 9f 43 1e 00 0a
+    ck= 1 pos=  548426 [raw] weapon=Spike Grenade v2
+      ff ff e1 2d 1b 34 0c 80 66 83 25 7c 42 c9 67 9f 44 e0 00 0a
+    ck= 1 pos=  392147 [nibble] weapon=Spike Grenade v2
+      18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 e0 00 00
+    ck= 1 pos=  540905 [nibble] weapon=MLRS-2 Hydra v2
+      00 01 01 28 2b 34 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 a0 00
+    ck= 1 pos=  547545 [nibble] weapon=Spike Grenade v2
+      00 81 01 2c d3 34 0c 80 66 83 25 7c 42 c9 67 9f 44 ce 00 0a
+    ck= 2 pos=  377114 [raw] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 00 00
+    ck= 2 pos=  377337 [raw] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 40 00
+    ck= 2 pos=  377560 [raw] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 80 00
+    ck= 2 pos=  377225 [nibble] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 20 00
+    ck= 2 pos=  377448 [nibble] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 60 00
+    ck= 2 pos=  377671 [nibble] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 a0 00
+    ck= 3 pos=  368379 [raw] weapon=BR75
+      0e 04 c3 57 07 92 08 eb 2b 18 24 d5 42 c9 67 9f 16 00 30 04
+    ck= 3 pos=  369033 [raw] weapon=MA40 AR
+      80 0c 00 00 30 00 00 eb 48 c1 9d 2d 42 c9 67 9f 16 90 30 04
+    ck= 3 pos=  379749 [raw] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 00 00
+    ck= 3 pos=  379972 [raw] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 40 00
+    ck= 3 pos=  380195 [raw] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 80 00
+    ck= 3 pos=  393166 [raw] weapon=Scattershot
+      18 00 00 00 03 44 0c 00 6d 32 c7 dc 42 c9 67 9f 43 20 00 00
+    ck= 3 pos=  394894 [raw] weapon=Spike Grenade v2
+      18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 d6 00 00
+    ck= 3 pos=  395415 [raw] weapon=Spike Grenade v2
+      18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 dc 00 00
+    ck= 3 pos=  367026 [nibble] weapon=BR75
+      0e 04 c3 57 07 92 00 eb 2b 18 24 d5 42 c9 67 9f 14 10 30 08
+    ck= 3 pos=  367680 [nibble] weapon=MA40 AR
+      80 0c 00 00 30 00 00 eb 48 c1 9d 2d 42 c9 67 9f 15 40 30 08
+    ck= 3 pos=  379860 [nibble] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 20 00
+    ck= 3 pos=  380083 [nibble] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 60 00
+    ck= 3 pos=  380306 [nibble] weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 a0 00
+    ck= 3 pos=  392560 [nibble] weapon=Scattershot
+      18 00 00 00 03 44 0c 00 6d 32 c7 dc 42 c9 67 9f 43 1c 00 00
+    ck= 4 pos=  367028 [raw] weapon=BR75
+      66 64 51 f0 3c 93 b8 63 2b 18 24 d5 42 c9 67 9f 14 10 30 08
+    ck= 4 pos=  368677 [raw] weapon=BR75
+      0e 04 c3 57 07 92 0a 27 2b 18 24 d5 42 c9 67 9f 16 50 30 04
+    ck= 4 pos=  369334 [raw] weapon=BR75
+      0e 04 c3 57 07 92 0e 27 2b 18 24 d5 42 c9 67 9f 17 10 30 04
+    ck= 4 pos=  392184 [raw] weapon=Scattershot
+      18 00 00 00 03 44 0c 00 6d 32 c7 dc 42 c9 67 9f 43 1a 00 00
+    ck= 4 pos=  393403 [raw] weapon=Scattershot
+      18 00 00 00 03 44 0c 00 6d 32 c7 dc 42 c9 67 9f 43 22 00 00
+    ck= 4 pos=  396198 [raw] weapon=Spike Grenade v2
+      18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 e6 00 00
+    ck= 4 pos=  397237 [raw] weapon=Spike Grenade v2
+      18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 f2 00 00
+    ck= 4 pos=  367359 [nibble] weapon=BR75
+      0e 04 c3 57 07 92 02 27 2b 18 24 d5 42 c9 67 9f 14 70 30 08
+    ck= 4 pos=  368348 [nibble] weapon=BR75
+      0e 04 c3 57 07 92 08 27 2b 18 24 d5 42 c9 67 9f 16 00 30 04
+    ck= 4 pos=  369005 [nibble] weapon=BR75
+      0e 04 c3 57 07 92 0c 27 2b 18 24 d5 42 c9 67 9f 16 b0 30 04
+    ck= 4 pos=  392797 [nibble] weapon=Scattershot
+      18 00 00 00 03 44 0c 00 6d 32 c7 dc 42 c9 67 9f 43 1e 00 00
+    ck= 4 pos=  394187 [nibble] weapon=Spike Grenade v2
+      18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 ce 00 00
+    ck= 4 pos=  522702 [nibble] weapon=BR75
+      00 00 0d 26 01 40 00 13 2b 18 24 d5 42 c9 67 9f 36 07 61 a4
+
+============================================================================
+  H5 — Total weapon suffix classification (d9329229)
+============================================================================
+  Total weapon suffix hits: 3018
+
+  By event type:
+    fire                : 2895
+    unknown             : 123
+
+  Non-standard-fire events: 123
+
+  Non-fire b0 LSB3 distribution:
+    0x00 (0b000): 84
+    0x07 (0b111): 20
+    0x02 (0b010): 9
+    0x03 (0b011): 6
+    0x01 (0b001): 4
+
+  Non-fire b1 low-5 distribution:
+    0x00: 90
+    0x07: 20
+    0x17: 6
+    0x10: 2
+    0x08: 1
+    0x0c: 1
+    0x12: 1
+    0x0b: 1
+    0x0a: 1
+
+============================================================================
+  H6 — Relaxed fire: b0+b3+suffix only, no b1 constraint (d9329229)
+============================================================================
+  Total relaxed fire events: 2895
+  Standard (b1_lo5=0x06): 2895
+  Non-standard: 0
+
+============================================================================
+  H7 — Raw layer unconstrained suffix scan (d9329229)
+============================================================================
+  Total raw weapon suffix hits: 216
+  By type: {'raw_unknown': 163, 'raw_fire_standard': 51, 'raw_fire_lead_only': 2}
+
+  raw_unknown (163 hits):
+    pi distribution: {0: 152, 1: 3, 2: 4, 3: 1, 6: 1, 7: 2} *** NON-POV! ***
+    ck= 1 pos=  391830 pi=0 weapon=Spike Grenade v2
+      18 00 00 00 03 44 0c 80 66 83 25 7c 42 c9 67 9f 44 dc 00 00
+    ck= 1 pos=  540795 pi=1 weapon=MLRS-2 Hydra v2
+      00 01 01 28 0b 34 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 20 00
+    ck= 1 pos=  546687 pi=1 weapon=Scattershot
+      ff 81 01 2c 83 34 0c 00 6d 32 c7 dc 42 c9 67 9f 43 1e 00 0a
+    ck= 1 pos=  548426 pi=1 weapon=Spike Grenade v2
+      ff ff e1 2d 1b 34 0c 80 66 83 25 7c 42 c9 67 9f 44 e0 00 0a
+    ck= 2 pos=  377114 pi=0 weapon=MLRS-2 Hydra v2
+      18 00 00 00 03 44 0c 81 5d ed 6c f2 42 c9 67 9f 80 00 00 00
+
+  raw_fire_standard (51 hits):
+    pi distribution: {1: 51}
+    ck= 4 pos=  610054 pi=1 weapon=MA40 AR
+      ab e6 3d 26 02 40 c0 21 48 c1 9d 2d 42 c9 67 9f 76 05 61 d3
+    ck= 5 pos=  816877 pi=1 weapon=BR75
+      0a 66 4d 26 0c 42 28 13 2b 18 24 d5 42 c9 67 9f 15 41 68 40
+    ck= 6 pos=  521313 pi=1 weapon=BR75
+      91 e2 1d 26 0a 41 d8 73 2b 18 24 d5 42 c9 67 9f 55 40 68 40
+    ck= 6 pos=  654123 pi=1 weapon=MA40 AR
+      fd 64 7d 26 08 41 80 21 48 c1 9d 2d 42 c9 67 9f 76 09 60 bc
+    ck= 6 pos=  851977 pi=1 weapon=BR75
+      65 e3 3d 26 0f 42 10 73 2b 18 24 d5 42 c9 67 9f 15 40 68 40
+
+  raw_fire_lead_only (2 hits):
+    pi distribution: {2: 1, 6: 1} *** NON-POV! ***
+    ck= 8 pos=  550099 pi=2 weapon=M392 Bandit
+      34 90 c5 55 80 f8 1e 27 2f b2 1c 87 42 c9 67 9f 14 90 29 21
+    ck=15 pos=  722156 pi=6 weapon=Fuel Rod SPNKr
+      f6 8c 75 c7 c0 68 06 23 9d 6a ae d2 42 c9 67 9f 16 20 29 cc
+
+============================================================================
+  H8 — All bit shifts 0-7 suffix-first (d9329229)
+============================================================================
+  shift=0:    70 suffix hits  [pi0=49, pi1=15, pi2=4, pi3=1, pi7=1] *** NON-POV! ***
+  shift=1:    69 suffix hits  [pi0=56, pi1=8, pi2=4, pi3=1] *** NON-POV! ***
+  shift=2:    74 suffix hits  [pi0=49, pi1=18, pi2=5, pi3=1, pi7=1] *** NON-POV! ***
+  shift=3:    78 suffix hits  [pi0=31, pi1=36, pi2=5, pi4=5, pi7=1] *** NON-POV! ***
+  shift=4:   909 suffix hits  [pi0=32, pi1=865, pi2=6, pi3=6] *** NON-POV! ***
+  shift=5:    45 suffix hits  [pi0=37, pi1=5, pi2=1, pi4=1, pi7=1] *** NON-POV! ***
+  shift=6:    46 suffix hits  [pi0=34, pi1=7, pi2=2, pi3=2, pi7=1] *** NON-POV! ***
+  shift=7:    69 suffix hits  [pi0=55, pi1=11, pi2=2, pi3=1] *** NON-POV! ***
+
+============================================================================
+  inv44 DONE
+============================================================================

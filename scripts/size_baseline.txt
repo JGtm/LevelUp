@@ -30,6 +30,7 @@ FUNC:src/data/repositories/_materialized_views.py:96:refresh_materialized_views:
 FUNC:src/data/repositories/_roster_loader.py:36:load_match_rosters:201L
 FUNC:src/data/repositories/_roster_loader.py:371:load_match_scoreboard:88L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
+FUNC:src/data/sync/_engine_connections.py:138:_get_shared_connection:81L
 FUNC:src/data/sync/_match_processing.py:262:_backfill_known_match_shared:85L
 FUNC:src/data/sync/_match_processing.py:38:_process_matches:96L
 FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
@@ -80,6 +81,7 @@ FUNC:src/ui/pages/match_view_players_nemesis.py:170:render_nemesis_section:208L
 FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
+FUNC:src/ui/pages/match_view_scoreboard.py:321:render_match_scoreboard:90L
 FUNC:src/ui/pages/media_library_data.py:206:load_match_windows_from_db:142L
 FUNC:src/ui/pages/media_library_data.py:366:load_media_from_db:100L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
@@ -89,7 +91,7 @@ FUNC:src/ui/pages/teammates.py:74:render_teammates_page:199L
 FUNC:src/ui/pages/teammates_charts.py:26:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_charts.py:273:render_trio_charts:134L
 FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:122L
-FUNC:src/ui/pages/teammates_views.py:57:render_single_teammate_view:110L
+FUNC:src/ui/pages/teammates_views.py:57:render_single_teammate_view:115L
 FUNC:src/ui/pages/win_loss.py:300:_render_ratio_by_map_section:94L
 FUNC:src/ui/pages/win_loss.py:397:_render_map_table:131L
 FUNC:src/ui/styles.py:44:get_hero_html:146L
@@ -110,7 +112,7 @@ FUNC:src/visualization/distributions.py:32:plot_kda_distribution:87L
 FUNC:src/visualization/distributions_outcomes.py:173:plot_win_ratio_heatmap:105L
 FUNC:src/visualization/distributions_outcomes.py:286:plot_matches_at_top_by_week:117L
 FUNC:src/visualization/distributions_outcomes.py:28:plot_outcomes_over_time:90L
-FUNC:src/visualization/friends_impact_heatmap.py:60:plot_friends_impact_heatmap:174L
+FUNC:src/visualization/friends_impact_heatmap.py:60:plot_friends_impact_heatmap:188L
 FUNC:src/visualization/match_bars.py:118:plot_multi_metric_bars_by_match:211L
 FUNC:src/visualization/match_bars.py:18:plot_metric_bars_by_match:97L
 FUNC:src/visualization/match_impact_timeline.py:277:plot_all_players_frags_timeline:190L
@@ -131,5 +133,6 @@ FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:139L
 MODULE:src/data/query/trends.py:534L
 MODULE:src/data/services/teammates_service.py:536L
+MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/win_loss.py:529L

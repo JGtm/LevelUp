@@ -1,0 +1,218 @@
+inv44e — Frame-level structural analysis for T0 fire events
+Match: d9329229
+
+Chunk 7: 836,354 bytes
+  Section 2 starts at: 520,474
+  Frame markers (raw): 458
+  Frame markers (nibble-shifted): 2
+
+============================================================================
+  H1 — Frame anatomy: size distribution (chunk 7)
+============================================================================
+
+  Total frames: 1
+  Frames with POV fire: 1 (100.0%)
+  Frames without fire:  0
+
+  Size histogram (50-byte buckets):
+     4600- 4649: FIRE=  1  NOFIRE=  0
+
+============================================================================
+  H2 — Fire event position within frame
+============================================================================
+
+  Fire events found: 5
+  Relative position in frame:
+    min=354  max=4212  avg=2450
+    as %: min=7.7%  max=91.2%  avg=53.1%
+
+  Position distribution (% of frame):
+      0-  9%:   1 #
+     40- 49%:   1 #
+     50- 59%:   1 #
+     60- 69%:   1 #
+     90- 99%:   1 #
+
+  Example fire frames (first 5 with 2+ events):
+
+  Frame 0 (size=4616, 5 events):
+    rel= 354 (7.7%) fc= 96 BR75
+    rel=2065 (44.7%) fc=104 BR75
+    rel=2430 (52.6%) fc=176 BR75
+    rel=3187 (69.0%) fc=112 BR75
+    rel=4212 (91.2%) fc=184 BR75
+
+============================================================================
+  H3 — '08 01 01' sub-block analysis in frames
+============================================================================
+
+  Byte following '08 01 01' (top 10):
+    0x08:  1081
+    0x04:    93
+
+  Byte preceding '08 01 01' (top 10):
+    0x00:  1174
+
+============================================================================
+  H4 — Between consecutive POV fire events: pattern search
+============================================================================
+
+  Total inter-event gaps: 4
+  Gap sizes: min=345  max=1691  avg=944  median=1005
+
+  Compact candidates in gaps (non-POV, b1_lo5=0x06):
+    pi=0 b0_lo3=0x04 b3_masked=0x00:     4
+    pi=0 b0_lo3=0x02 b3_masked=0x00:     3
+    pi=0 b0_lo3=0x00 b3_masked=0x78:     2
+    pi=4 b0_lo3=0x07 b3_masked=0xb0:     2
+    pi=2 b0_lo3=0x00 b3_masked=0x0c:     2
+    pi=2 b0_lo3=0x06 b3_masked=0xac:     2
+    pi=5 b0_lo3=0x02 b3_masked=0x90:     2
+    pi=0 b0_lo3=0x01 b3_masked=0x38:     2
+    pi=2 b0_lo3=0x00 b3_masked=0x30:     2
+    pi=2 b0_lo3=0x03 b3_masked=0xf0:     1
+    pi=3 b0_lo3=0x02 b3_masked=0x80:     1
+    pi=5 b0_lo3=0x05 b3_masked=0x98:     1
+    pi=2 b0_lo3=0x05 b3_masked=0x20:     1
+    pi=3 b0_lo3=0x04 b3_masked=0x9c:     1
+    pi=7 b0_lo3=0x00 b3_masked=0xc8:     1
+    pi=3 b0_lo3=0x03 b3_masked=0x78:     1
+    pi=3 b0_lo3=0x03 b3_masked=0x40:     1
+    pi=0 b0_lo3=0x06 b3_masked=0x00:     1
+    pi=2 b0_lo3=0x01 b3_masked=0x04:     1
+    pi=6 b0_lo3=0x01 b3_masked=0x14:     1
+
+  Non-POV pi distribution in first 50 inter-event gaps:
+    pi=0 (Nilton410): 1174
+    pi=4 (xuid:...0668): 448
+    pi=2 (Chocoboflor): 409
+    pi=3 (JGtm): 344
+    pi=6 (xuid:...1261): 338
+    pi=7 (xuid:...5155): 323
+    pi=5 (xuid:...3020): 315
+
+============================================================================
+  H5 — Non-POV player_byte1 patterns at ALL b0 LSB values
+============================================================================
+
+  pi=0 (Nilton410): b1=0x06
+    b0_lo3=0x00:   756  [b3m=0x00:209, b3m=0xf8:69, b3m=0xf0:21]
+    b0_lo3=0x01:   556  [b3m=0x9c:51, b3m=0x00:36, b3m=0x10:29]
+    b0_lo3=0x02:   446  [b3m=0x00:127, b3m=0xa4:105, b3m=0x80:30]
+    b0_lo3=0x03:    83  [b3m=0x10:6, b3m=0x44:5, b3m=0x5c:5]
+    b0_lo3=0x04:   319  [b3m=0x00:192, b3m=0x40:8, b3m=0x08:8]
+    b0_lo3=0x05:   121  [b3m=0x00:32, b3m=0x10:26, b3m=0x1c:5] **FIRE-LIKE**
+    b0_lo3=0x06:   225  [b3m=0x00:124, b3m=0x90:6, b3m=0x28:6]
+    b0_lo3=0x07:    86  [b3m=0x40:4, b3m=0x80:4, b3m=0x1c:4]
+
+  pi=2 (Chocoboflor): b1=0x46
+    b0_lo3=0x00:   193  [b3m=0x90:21, b3m=0x2c:10, b3m=0xac:9]
+    b0_lo3=0x01:   122  [b3m=0x2c:19, b3m=0x20:13, b3m=0x28:5]
+    b0_lo3=0x02:   154  [b3m=0x2c:30, b3m=0x20:16, b3m=0x80:6]
+    b0_lo3=0x03:   111  [b3m=0x2c:36, b3m=0x40:22, b3m=0x00:7]
+    b0_lo3=0x04:   101  [b3m=0x2c:21, b3m=0x20:8, b3m=0x40:6]
+    b0_lo3=0x05:    84  [b3m=0x20:19, b3m=0x40:11, b3m=0x2c:9] **FIRE-LIKE**
+    b0_lo3=0x06:   134  [b3m=0xac:11, b3m=0x2c:9, b3m=0xe0:6]
+    b0_lo3=0x07:   113  [b3m=0x2c:30, b3m=0x20:19, b3m=0xac:18]
+
+  pi=3 (JGtm): b1=0x66
+    b0_lo3=0x00:   144  [b3m=0x1c:10, b3m=0x48:9, b3m=0x00:7]
+    b0_lo3=0x01:    82  [b3m=0x44:8, b3m=0xf8:4, b3m=0x00:4]
+    b0_lo3=0x02:    95  [b3m=0x80:17, b3m=0x00:6, b3m=0x10:6]
+    b0_lo3=0x03:    98  [b3m=0xa8:15, b3m=0x44:12, b3m=0x48:11]
+    b0_lo3=0x04:    66  [b3m=0x44:9, b3m=0x00:5, b3m=0x84:4]
+    b0_lo3=0x05:    92  [b3m=0x34:9, b3m=0x28:8, b3m=0x30:7] **FIRE-LIKE**
+    b0_lo3=0x06:    62  [b3m=0x44:6, b3m=0x00:6, b3m=0x48:6]
+    b0_lo3=0x07:    55  [b3m=0x00:5, b3m=0x28:4, b3m=0x04:4]
+
+  pi=4 (xuid:...0668): b1=0x86
+    b0_lo3=0x00:   117  [b3m=0x94:13, b3m=0x04:7, b3m=0x00:6]
+    b0_lo3=0x01:   157  [b3m=0x94:25, b3m=0x2c:16, b3m=0x50:10]
+    b0_lo3=0x02:    65  [b3m=0x48:7, b3m=0x68:4, b3m=0x00:3]
+    b0_lo3=0x03:    93  [b3m=0x90:5, b3m=0x10:5, b3m=0x28:4]
+    b0_lo3=0x04:    80  [b3m=0xdc:10, b3m=0x00:5, b3m=0x34:5]
+    b0_lo3=0x05:    86  [b3m=0xa0:9, b3m=0x1c:6, b3m=0x28:5] **FIRE-LIKE**
+    b0_lo3=0x06:    88  [b3m=0x00:20, b3m=0x88:5, b3m=0x08:5]
+    b0_lo3=0x07:    76  [b3m=0x00:6, b3m=0xb0:6, b3m=0x08:5]
+
+  pi=5 (xuid:...3020): b1=0xa6
+    b0_lo3=0x00:   131  [b3m=0x00:10, b3m=0xe8:10, b3m=0x44:9]
+    b0_lo3=0x01:   101  [b3m=0x00:29, b3m=0xa0:10, b3m=0x44:6]
+    b0_lo3=0x02:    86  [b3m=0x34:22, b3m=0x48:6, b3m=0xbc:5]
+    b0_lo3=0x03:    63  [b3m=0x48:8, b3m=0x44:7, b3m=0x10:5]
+    b0_lo3=0x04:    75  [b3m=0x10:12, b3m=0x48:7, b3m=0x44:6]
+    b0_lo3=0x05:    52  [b3m=0x44:7, b3m=0x48:4, b3m=0xbc:3] **FIRE-LIKE**
+    b0_lo3=0x06:    51  [b3m=0x70:11, b3m=0x00:4, b3m=0x44:4]
+    b0_lo3=0x07:    59  [b3m=0x10:8, b3m=0x58:6, b3m=0x48:6]
+
+  pi=6 (xuid:...1261): b1=0xc6
+    b0_lo3=0x00:    80  [b3m=0x00:8, b3m=0xfc:7, b3m=0x08:5]
+    b0_lo3=0x01:    55  [b3m=0xcc:4, b3m=0x90:3, b3m=0x3c:3]
+    b0_lo3=0x02:    76  [b3m=0x10:9, b3m=0x80:6, b3m=0x14:4]
+    b0_lo3=0x03:    60  [b3m=0x10:6, b3m=0x84:5, b3m=0x40:4]
+    b0_lo3=0x04:    78  [b3m=0xf0:21, b3m=0x10:5, b3m=0x40:4]
+    b0_lo3=0x05:    43  [b3m=0x04:3, b3m=0xa0:3, b3m=0x80:3] **FIRE-LIKE**
+    b0_lo3=0x06:    71  [b3m=0x00:8, b3m=0x04:8, b3m=0x98:5]
+    b0_lo3=0x07:    52  [b3m=0x10:5, b3m=0x00:5, b3m=0x90:3]
+
+  pi=7 (xuid:...5155): b1=0xe6
+    b0_lo3=0x00:   157  [b3m=0xf0:22, b3m=0xe4:14, b3m=0x08:14]
+    b0_lo3=0x01:    70  [b3m=0x48:15, b3m=0x44:7, b3m=0x40:6]
+    b0_lo3=0x02:    65  [b3m=0x44:13, b3m=0x40:4, b3m=0x00:4]
+    b0_lo3=0x03:    56  [b3m=0x48:13, b3m=0x44:5, b3m=0x90:4]
+    b0_lo3=0x04:   144  [b3m=0x00:50, b3m=0x20:27, b3m=0x40:5]
+    b0_lo3=0x05:    68  [b3m=0x48:6, b3m=0x04:5, b3m=0xe0:5] **FIRE-LIKE**
+    b0_lo3=0x06:    71  [b3m=0xe4:13, b3m=0x48:7, b3m=0xe8:5]
+    b0_lo3=0x07:    78  [b3m=0x48:14, b3m=0x78:12, b3m=0x98:6]
+
+============================================================================
+  H6 — Detailed FIRE-LIKE non-POV hits (b0_lo3=0x05, b3_masked=0x40)
+============================================================================
+
+  pi=0 (Nilton410): 1 fire-like hits (no wid filter)
+    pos= 155139 b0=0xf5 b2=0x99 b3=0x41 b4=0x80 wid=00942c1e415107a5          [UNKNOWN]
+
+  pi=2 (Chocoboflor): 11 fire-like hits (no wid filter)
+    pos= 204921 b0=0x85 b2=0x08 b3=0x41 b4=0xcd wid=28082c9cc1668648          [UNKNOWN]
+    pos= 207716 b0=0x85 b2=0x08 b3=0x41 b4=0xcd wid=0c0b343240010830          [UNKNOWN]
+    pos= 213713 b0=0x85 b2=0x08 b3=0x41 b4=0xcd wid=10082d7781268648          [UNKNOWN]
+    pos= 220222 b0=0x85 b2=0x08 b3=0x41 b4=0xcd wid=1c09273a41668648          [UNKNOWN]
+    pos= 220455 b0=0x85 b2=0x08 b3=0x41 b4=0xcd wid=1c0b343240010830          [UNKNOWN]
+    pos= 222116 b0=0x85 b2=0x08 b3=0x41 b4=0xcd wid=180926a740668648          [UNKNOWN]
+    pos= 222603 b0=0x85 b2=0x08 b3=0x41 b4=0xcd wid=1809253742668646          [UNKNOWN]
+    pos= 224330 b0=0x85 b2=0x08 b3=0x41 b4=0xcd wid=180926a740268646          [UNKNOWN]
+    pos= 227500 b0=0x85 b2=0x08 b3=0x41 b4=0xcd wid=18082ce4c0268a48          [UNKNOWN]
+    pos= 234749 b0=0x85 b2=0x08 b3=0x41 b4=0xcd wid=180b345230420e51          [UNKNOWN]
+    pos= 259390 b0=0x95 b2=0x08 b3=0x41 b4=0xd4 wid=aef734ba3001082d          [UNKNOWN]
+
+  pi=3 (JGtm): 1 fire-like hits (no wid filter)
+    pos=  93122 b0=0x8d b2=0x70 b3=0x42 b4=0x1e wid=1421e67348002106          [UNKNOWN]
+
+  pi=4 (xuid:...0668): 2 fire-like hits (no wid filter)
+    pos= 203642 b0=0xf5 b2=0xd3 b3=0x43 b4=0x24 wid=10830c2d2c38fc13          [UNKNOWN]
+    pos= 228788 b0=0x25 b2=0x06 b3=0x41 b4=0x00 wid=000083fa6b10ed03          [UNKNOWN]
+
+  pi=5 (xuid:...3020): 3 fire-like hits (no wid filter)
+    pos= 150968 b0=0x0d b2=0x7f b3=0x42 b4=0xa1 wid=2a0009a0d2000841          [UNKNOWN]
+    pos= 221623 b0=0xfd b2=0x3b b3=0x42 b4=0xd0 wid=2a2a040012d339a2          [UNKNOWN]
+    pos= 233042 b0=0x25 b2=0x06 b3=0x41 b4=0x00 wid=000080dce6d0f103          [UNKNOWN]
+
+  pi=6 (xuid:...1261): 0 fire-like hits
+
+  pi=7 (xuid:...5155): 3 fire-like hits (no wid filter)
+    pos=  63377 b0=0xd5 b2=0x44 b3=0x42 b4=0x01 wid=0000069000000048          [UNKNOWN]
+    pos= 159579 b0=0x35 b2=0xd4 b3=0x40 b4=0x77 wid=8102dfbe04175ff8          [UNKNOWN]
+    pos= 248973 b0=0x25 b2=0x06 b3=0x41 b4=0x00 wid=000082666d10f103          [UNKNOWN]
+
+============================================================================
+  BONUS — Frame size vs POV fire count correlation
+============================================================================
+Traceback (most recent call last):
+  File "C:\Users\Guillaume\Downloads\Scripts\LevelUp-film-weapons\scripts\experimental\inv44e_frame_structure.py", line 480, in <module>
+    main()
+  File "C:\Users\Guillaume\Downloads\Scripts\LevelUp-film-weapons\scripts\experimental\inv44e_frame_structure.py", line 467, in main
+    print(f"\n  Fire_count  \u2192  n_frames  avg_size  med_size")
+  File "C:\Users\Guillaume\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 16: character maps to <undefined>

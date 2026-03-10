@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [5.6.0-beta] - 2026-03-08
+
+> ⚠️ **Bêta** — la précision de l’attribution n’est pas encore garantie dans tous les cas (couverture estimée à 70–100 % selon les matchs) ; le catalogue d’armes est en cours de complétion.
+
+### Added
+
+- **Extraction d'armes depuis les films SPNKr** (`src/analysis/weapon_parser.py`, `src/data/services/weapon_extraction_service.py`)
+  - Analyse des chunks `REPLICATION_DATA` des films de match pour identifier l'arme utilisée à chaque kill POV (player_index=1, invariant universel)
+  - Corrélation kill→last fire event dans une fenêtre de 2 000 ms ; kills melee/grenade/véhicule détectés via médailles (`MELEE_API_ID=1`, `GRENADE_API_ID=0`)
+  - Couverture POV : ~87,5 % des kills couverts
+  - Architecture hexagonale : `weapon_parser.py` (domaine pur, zéro IO), `HaloAPIPort` étendu, `WeaponExtractionService` (orchestration), `WeaponKillsMixin` enrichi (upsert, backfill bit, requêtes)
+  - Table `weapon_kills (match_id, xuid, weapon_id, kills)` dans `shared_matches.duckdb` (PRIMARY KEY `match_id, xuid, weapon_id`) + index `idx_wk_match_xuid`
+  - Migration `add_weapon_kills` (`target_db="shared"`) enregistrée dans le système de migrations automatiques
+  - Cache local des chunks téléchargés dans `data/investigation/chunks/<match_id>/`
+
+- **Backfill weapon_kills** (`scripts/backfill/backfill_weapon_kills.py`)
+  - `--gamertag <GT> --matches <N> [--force] [--dry-run] [--data-dir <path>]`
+  - Bit `MatchBits.WEAPON_KILLS` (1 << 21) posé sur `match_registry.backfill_completed` après traitement
+
+- **Section Armes utilisées dans Match View** (`src/ui/pages/match_view.py`)
+  - Onglet Résumé : tableau des kills par arme pour le joueur POV
+
+- **51 tests unitaires** (`tests/test_weapon_parser.py`, `tests/test_weapon_service.py`)
+  - Constantes, `find_frame_positions`, `build_frame_estimator`, `correlate_kills_to_weapons`, `count_kills_by_api_weapon`
+  - `WeaponExtractionService` avec mocks (no kills, no film, dry-run, upsert, caching, erreurs)
+  - `WeaponKillsMixin` repo (upsert/conflit, bit marking, missing matches, gamertag lookup)
+
+---
+
 ## [5.5.0] - 2026-03-07
 
 ### Added

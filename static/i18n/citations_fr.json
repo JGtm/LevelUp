@@ -298,5 +298,100 @@
         "name": "Seul contre tous",
         "description": "Remportez une partie en Mêlée générale.",
         "category": "Mode de jeu"
+    },
+    "br75_mastery": {
+        "name": "Maîtrise du BR75",
+        "description": "Éliminez des Spartans avec le BR75.",
+        "category": "Arme"
+    },
+    "ma40_mastery": {
+        "name": "Maîtrise du MA40",
+        "description": "Éliminez des Spartans avec le MA40 AR.",
+        "category": "Arme"
+    },
+    "sidekick_mastery": {
+        "name": "Maîtrise du Sidekick",
+        "description": "Éliminez des Spartans avec le MK50 Sidekick.",
+        "category": "Arme"
+    },
+    "commando_mastery": {
+        "name": "Maîtrise du Commando",
+        "description": "Éliminez des Spartans avec le VK78 Commando.",
+        "category": "Arme"
+    },
+    "sniper_mastery": {
+        "name": "Maîtrise du Sniper",
+        "description": "Éliminez des Spartans avec le S7 Sniper.",
+        "category": "Arme"
+    },
+    "spnkr_mastery": {
+        "name": "Maîtrise du SPNKr",
+        "description": "Éliminez des Spartans avec le M41 SPNKr.",
+        "category": "Arme"
+    },
+    "bulldog_mastery": {
+        "name": "Maîtrise du Bulldog",
+        "description": "Éliminez des Spartans avec le CQS48 Bulldog.",
+        "category": "Arme"
+    },
+    "bandit_mastery": {
+        "name": "Maîtrise du Bandit",
+        "description": "Éliminez des Spartans avec le Bandit EVO.",
+        "category": "Arme"
+    },
+    "stalker_mastery": {
+        "name": "Maîtrise du Stalker",
+        "description": "Éliminez des Spartans avec le Fusil Stalker.",
+        "category": "Arme"
+    },
+    "needler_mastery": {
+        "name": "Maîtrise de l'Aiguillonneur",
+        "description": "Éliminez des Spartans avec l'Aiguillonneur.",
+        "category": "Arme"
+    },
+    "energy_sword_mastery": {
+        "name": "Maîtrise de l'Épée",
+        "description": "Éliminez des Spartans avec l'Épée à énergie.",
+        "category": "Arme"
+    },
+    "mangler_mastery": {
+        "name": "Maîtrise du Mangler",
+        "description": "Éliminez des Spartans avec le Mangler.",
+        "category": "Arme"
+    },
+    "skewer_mastery": {
+        "name": "Maîtrise du Skewer",
+        "description": "Éliminez des Spartans avec le Skewer.",
+        "category": "Arme"
+    },
+    "gravity_hammer_mastery": {
+        "name": "Maîtrise du Marteau",
+        "description": "Éliminez des Spartans avec le Marteau gravitationnel.",
+        "category": "Arme"
+    },
+    "heatwave_mastery": {
+        "name": "Maîtrise du Heatwave",
+        "description": "Éliminez des Spartans avec le Heatwave.",
+        "category": "Arme"
+    },
+    "cindershot_mastery": {
+        "name": "Maîtrise du Cindershot",
+        "description": "Éliminez des Spartans avec le Cindershot.",
+        "category": "Arme"
+    },
+    "human_weapons_mastery": {
+        "name": "Maîtrise des armes UNSC",
+        "description": "Obtenez toutes les citations de maîtrise d'armes UNSC.",
+        "category": "Arme"
+    },
+    "covenant_weapons_mastery": {
+        "name": "Maîtrise des armes Covenant",
+        "description": "Obtenez toutes les citations de maîtrise d'armes Covenant.",
+        "category": "Arme"
+    },
+    "banished_weapons_mastery": {
+        "name": "Maîtrise des armes Bannis",
+        "description": "Obtenez toutes les citations de maîtrise d'armes bannies.",
+        "category": "Arme"
     }
 }

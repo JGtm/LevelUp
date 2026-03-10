@@ -15,6 +15,7 @@ from src.data.migration.steps import (
     add_pve_schema,
     add_skill_rating_table,
     add_spnkr_version,
+    add_weapon_kills,
     fix_bot_xuid,
 )
 
@@ -29,5 +30,6 @@ __all__ = [
     "add_pve_schema",
     "add_skill_rating_table",
     "add_spnkr_version",
+    "add_weapon_kills",
     "fix_bot_xuid",
 ]

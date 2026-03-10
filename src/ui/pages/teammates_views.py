@@ -166,6 +166,11 @@ def render_single_teammate_view(
             top_medals_fn,
         )
 
+        # Stats par arme (v5.5)
+        from src.ui.pages.teammates_weapons import render_weapon_kills_table
+
+        render_weapon_kills_table(db_path, friend_xuid, list(shared_ids))
+
 
 def render_multi_teammate_view(  # noqa: PLR0913
     df: DataFrameLike,
