@@ -252,6 +252,10 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
 
             shared_conn = self._get_shared_connection()
             await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
+            if options.with_weapons:
+                result["weapon_kills"] = await self._try_extract_weapon_kills(
+                    client, match_id, shared_conn
+                )
             result["inserted"] = True
 
         except Exception as e:
@@ -392,6 +396,13 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
 
             shared_conn = self._get_shared_connection()
             await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
+            if options.with_weapons:
+                result["weapon_kills"] = await self._try_extract_weapon_kills(
+                    client,
+                    match_id,
+                    shared_conn,
+                    is_firefight=bool(getattr(registry_data, "is_firefight", False)),
+                )
 
             match_row = transform_match_stats(
                 stats_json,

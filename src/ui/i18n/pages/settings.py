@@ -93,6 +93,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Calcule le LUSR (LevelUp Skill Rank) pour les matchs non classés — calcul local, pas d'API requise",
         "en": "Computes LUSR (LevelUp Skill Rank) for unranked matches — local computation, no API required",
     },
+    "set_backfill_weapons": {
+        "fr": "Kills par arme (films SPNKr)",
+        "en": "Weapon kills (SPNKr films)",
+    },
+    "set_backfill_weapons_help": {
+        "fr": "Télécharge les chunks film SPNKr pour extraire les kills par arme (POV uniquement, ~87% de couverture). Nécessite tokens API valides.",
+        "en": "Downloads SPNKr film chunks to extract per-weapon kills (POV only, ~87% coverage). Requires valid API tokens.",
+    },
     "set_media_arch_info": {
         "fr": "ℹ️ **Architecture v5** : La section Médias est toujours active. Configurez le dossier de base et la tolérance temporelle.",
         "en": "ℹ️ **Architecture v5**: The Media section is always active. Configure the base folder and time tolerance.",

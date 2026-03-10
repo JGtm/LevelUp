@@ -230,6 +230,7 @@ def render_sync_button(  # noqa: C901, PLR0912
                     bool(getattr(settings, "spnkr_refresh_backfill_performance_scores", True)),
                     bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
                     bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
+                    bool(getattr(settings, "spnkr_refresh_backfill_weapons", False)),
                 ]
             )
 
@@ -251,6 +252,7 @@ def render_sync_button(  # noqa: C901, PLR0912
                     ),
                     aliases=bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
                     lusr=bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
+                    weapons=bool(getattr(settings, "spnkr_refresh_backfill_weapons", False)),
                     all_data=backfill_enabled,
                 )
                 _backfill_scope.resolve()
