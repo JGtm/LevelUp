@@ -1,7 +1,7 @@
 # Plan d'optimisation — weapon kills sync & backfill
 
-> Créé : 2026-03-10 | Branche cible : `feat/weapon-kills-perf` (à créer)
-> Statut : PLANIFICATION — aucun code modifié
+> Créé : 2026-03-10 | Branche : `feat/msal-device-code-flow`
+> Statut : EN COURS — Phases 2+3+4 complètes ✅ | Points A+B implémentés ✅
 
 ---
 
@@ -357,7 +357,7 @@ Phase 5 — Bulk insert (si Phase 1 montre DB write significatif)
 | `src/data/services/weapon_extraction_service.py` | Phase 2+3+4 : batch kills, write_lock, to_thread |
 | `src/data/repositories/_weapon_kills_repo.py` | Phase 2+5 : load_all_kills_for_match, bulk insert |
 | `scripts/backfill/strategies.py` | Aucun changement (delègue à _weapon_kills_logic) |
-| `scripts/backfill/orchestrator.py` | Aucun changement (appel inchangé) |
+| `scripts/backfill/orchestrator.py` | **Point A** : guard bit + **Point B** : `_PARALLEL_WEAPON_KILLS_IN_SYNC`, collecte `_pending_weapon_ids`, batch post-boucle ✅ |
 | `src/analysis/weapon_parser.py` | Aucun changement (fonctions pures) |
 | `tests/test_weapon_parser.py` | Adapter si signature change |
 
@@ -373,6 +373,151 @@ Phase 5 — Bulk insert (si Phase 1 montre DB write significatif)
 | Régression attribution (confiance) | Faible | Tests existants `test_weapon_parser.py` couvrent le domaine pur |
 | Chunk cache corrompue (writes concurrents) | Faible | Un chunk par fichier séparé → pas de conflit |
 | GIL annule to_thread | Probable (bitstring Python pur) | to_thread libère event loop même sans gain CPU |
+
+---
+
+---
+
+## Point A — Guard universel WEAPON_KILLS (tous les chemins)
+
+> Ajout 2026-03-10 — suite à l'analyse multi-joueurs
+
+### Problème : incohérence entre chemins
+
+Le service `WeaponExtractionService.process_match` traite **tous les joueurs du match** en une
+passe (pas juste le joueur demandé). Dès que le service tourne pour un match X (quel que soit
+le joueur déclencheur), les kills de Chocoboflor, Madina97294, etc. sont **déjà insérés** et le
+bit `WEAPON_KILLS` est posé sur `match_registry`.
+
+Mais les trois chemins d'appel ne se comportent pas de la même façon :
+
+| Chemin | Filtre bit WEAPON_KILLS ? | Comportement si bit déjà posé |
+|--------|--------------------------|-------------------------------|
+| CLI `--weapons` | ✅ `detection.py:444` filtre en amont | skip ✅ |
+| Orchestrateur sync (app/CLI delta) | ❌ `_backfill_weapon_kills_for_match` ne vérifie pas | retraite ❌ |
+| Sync app (streamlit) | ❌ passe par l'orchestrateur | retraite ❌ |
+
+**Conséquence concrète** : si xxdaemongamerxx synce match X → tous les joueurs traités + bit posé.
+Puis Chocoboflor synce → `_backfill_weapon_kills_for_match` appelle quand même le service →
+re-télécharge chunks (cache → rapide) + re-scanne CPU + re-insère (idempotent DELETE+INSERT).
+Pas de corruption, mais travail inutile × N joueurs.
+
+### Solution : guard early-return dans `_backfill_weapon_kills_for_match`
+
+**Fichier : `scripts/backfill/orchestrator.py`**
+
+Ajouter au début de `_backfill_weapon_kills_for_match`, avant d'instancier le service :
+
+```python
+if not force:
+    row = shared_conn.execute(
+        "SELECT COALESCE(backfill_completed, 0) & ? FROM match_registry WHERE match_id = ?",
+        (MatchBits.WEAPON_KILLS, match_id),
+    ).fetchone()
+    if row and row[0]:
+        logger.debug("weapon_kills %s : déjà traité (bit posé), skip", match_id[:8])
+        return 0
+```
+
+Cette logique est exactement celle de `detection.py:444` — source unique de vérité.
+
+### Alignement detection.py ↔ orchestrateur
+
+Après ce fix, les deux lignes de défense sont :
+1. **En amont** (CLI `--weapons`) : `detection.py` filtre les `match_ids` → le service n'est
+   jamais appelé pour les matchs déjà traités
+2. **Inline** (orchestrateur sync) : `_backfill_weapon_kills_for_match` early-return si bit posé
+
+L'idempotence du service (DELETE+INSERT) reste le filet de sécurité si les deux gardes échouent.
+
+### Tests à ajouter
+
+Dans `tests/test_weapon_service.py` :
+- `test_backfill_weapon_kills_skip_if_bit_set` : mock `shared_conn.execute` retourne bit posé →
+  vérifie que le service n'est jamais appelé et retourne 0
+- `test_backfill_weapon_kills_force_ignores_bit` : idem avec `force=True` → service appelé
+
+---
+
+## Point B — Batch post-boucle dans l'orchestrateur (parallélisation sync)
+
+> Ajout 2026-03-10 — dépend de Point A
+
+### Contexte
+
+Dans `_backfill_with_api`, la boucle principale traite les matchs séquentiellement pour
+**tous les types de données** (events, medals, skill, weapons...). Extraire les weapons de cette
+boucle permet de les traiter en batch parallèle via `run_weapon_kills_backfill`.
+
+### Solution : flag réversible + collecte post-boucle
+
+**Fichier : `scripts/backfill/orchestrator.py`**
+
+```python
+# Constante module-level — mettre False pour revenir au comportement séquentiel
+_PARALLEL_WEAPON_KILLS_IN_SYNC: bool = True
+```
+
+Dans la boucle match (là où `if weapons:` est actuellement) :
+
+```python
+# ── Weapon kills → shared.weapon_kills (v5.5) ──
+if weapons:
+    if _PARALLEL_WEAPON_KILLS_IN_SYNC:
+        _pending_weapon_ids.append(match_id)   # collecte pour batch post-boucle
+    else:
+        n = await _backfill_weapon_kills_for_match(
+            client, match_id, gamertag, xuid, shared_conn, force=force_weapons
+        )
+        totals["weapon_kills_inserted"] += n
+```
+
+Initialiser `_pending_weapon_ids: list[str] = []` juste avant la boucle.
+
+Après le bloc `async with create_api_client(...):`, dans la section `# ── Backfill local post-API ──` :
+
+```python
+if weapons and _PARALLEL_WEAPON_KILLS_IN_SYNC and _pending_weapon_ids:
+    from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
+    logger.info("Backfill weapons batch (%d matchs)...", len(_pending_weapon_ids))
+    n = await run_weapon_kills_backfill(
+        gamertag, xuid, _pending_weapon_ids, shared_conn, force=force_weapons
+    )
+    totals["weapon_kills_inserted"] += n
+    logger.info("✅ %d lignes weapon_kills insérées (batch)", n)
+```
+
+### Pourquoi c'est safe
+
+- `run_weapon_kills_backfill` crée son propre client et tokens → plus de client SPNKr ouvert
+  depuis le `async with create_api_client` (ce bloc est terminé)
+- `run_weapon_kills_backfill` utilise un `asyncio.Lock` interne → écritures sérialisées
+- Cohérent avec `killer_victim` et `end_time` qui sont aussi post-boucle
+- Le guard Point A garantit que les matchs déjà traités sont skippés même dans la liste
+  `_pending_weapon_ids` (double protection)
+- Pour revenir en arrière : `_PARALLEL_WEAPON_KILLS_IN_SYNC = False` → une ligne
+
+### Commit + DuckDB
+
+Après le retour de `run_weapon_kills_backfill`, les writes sont auto-commités (DuckDB sans
+transaction ouverte à ce stade — le dernier `shared_conn.commit()` a eu lieu à la fin de la
+boucle). Pas besoin de commit explicite.
+
+### Impact attendu
+
+- Sync 10 matchs avec weapons : ~40s séquentiel → ~15s batch (×2-3 selon cache chunks)
+- Chunks souvent en cache après un premier sync → gain principalement sur les nouveaux matchs
+
+### Ordre d'implémentation
+
+```
+[ ] Point A : guard dans _backfill_weapon_kills_for_match
+[ ] Point A : tests unitaires (skip + force)
+[ ] Point B : constante _PARALLEL_WEAPON_KILLS_IN_SYNC + collecte _pending_weapon_ids
+[ ] Point B : appel run_weapon_kills_backfill post-boucle
+[ ] Point B : test intégration manuel (sync --delta --weapons sur 5 matchs)
+[ ] Point B : vérifier intégrité bit WEAPON_KILLS après sync multi-joueurs
+```
 
 ---
 

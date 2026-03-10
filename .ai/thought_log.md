@@ -3093,3 +3093,41 @@ docs/DATA_ARCHITECTURE.md        # MAJ
 - [ ] 8ter.5 : st.navigation lazy loading (reporté)
 - [ ] Tests unitaires vectorize_helpers.py (à ajouter)
 - [x] Commit : `012b52b` — 2877 tests, 0 échec ✅
+
+---
+
+### [2026-03-10] — OPTIM : weapon kills — guard universel + batch parallèle sync
+
+**Statut** : Implémenté ✅ | Branche : `feat/msal-device-code-flow`
+
+**Contexte** :
+Le service `WeaponExtractionService.process_match` traite **tous les joueurs d'un match** en une
+passe. Dès qu'un match est traité pour un joueur, le bit `WEAPON_KILLS` est posé sur
+`match_registry`. En escouade (xxdaemongamerxx + Chocoboflor + Madina97294 sur le même match),
+le deuxième joueur à sync retraitait inutilement le match.
+
+**Décision — Point A : guard universel dans `_backfill_weapon_kills_for_match`** :
+- Ajout d'un early-return si `COALESCE(backfill_completed, 0) & WEAPON_KILLS != 0` (sauf `force=True`)
+- Aligné avec `detection.py:444` qui filtre déjà en amont pour le chemin CLI `--weapons`
+- Source de vérité unique : `WEAPON_KILLS` sur `match_registry`
+- 3 tests ajoutés : skip si bit posé, force bypass, exception guard → fallthrough
+
+**Décision — Point B : batch parallèle post-boucle dans `_backfill_with_api`** :
+- Constante `_PARALLEL_WEAPON_KILLS_IN_SYNC = True` (une ligne pour revenir en arrière)
+- Dans la boucle match : si flag actif → collecte dans `_pending_weapon_ids` au lieu de traiter inline
+- Après le `async with create_api_client` : appel de `run_weapon_kills_backfill(_pending_weapon_ids)`
+  → 4 matchs en parallèle, client API séparé, `asyncio.Lock` interne
+- Cohérent avec `killer_victim` et `end_time` déjà en post-boucle
+- Double protection : guard Point A + filtre detection.py → matchs déjà traités ignorés
+
+**Correction post-review** : Guard aussi ajouté dans `_process_one` de `run_weapon_kills_backfill`
+— la liste `_pending_weapon_ids` peut contenir des matchs avec bit posé (OR detection conditions).
+Import inutilisé `WeaponKillsMixin` retiré. Tests batch guard ajoutés.
+
+**Fichiers modifiés** :
+- `scripts/backfill/orchestrator.py` — guard + constante + collecte + batch post-boucle
+- `scripts/backfill/_weapon_kills_logic.py` — guard dans `_process_one`
+- `tests/test_weapon_service.py` — `TestBackfillWeaponKillsGuard` (3) + `TestRunWeaponKillsBackfillGuard` (2) = 5 nouveaux tests
+- `.ai/plan-weapon-kills-perf.md` — sections Point A et Point B ajoutées
+
+**Résultat** : 4181 tests, 0 échec

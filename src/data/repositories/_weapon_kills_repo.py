@@ -288,3 +288,68 @@ class WeaponKillsMixin:
                 }
             )
         return kills
+
+    @staticmethod
+    def load_all_kills_for_match(
+        conn: duckdb.DuckDBPyConnection,
+        match_id: str,
+    ) -> dict[str, list[dict]]:
+        """Charge kills + médailles de TOUS les joueurs en 2 requêtes.
+
+        Remplace N appels à load_player_kills_for_match pour un traitement batch.
+
+        Returns:
+            {xuid: [{"time_ms", "gamertag", "xuid", "medals_nearby",
+                     "is_melee", "is_grenade"}, ...]}
+        """
+        from src.analysis.weapon_parser import GRENADE_MEDALS, MELEE_MEDALS
+
+        try:
+            kill_rows = conn.execute(
+                "SELECT he.time_ms, he.gamertag, he.xuid "
+                "FROM highlight_events he "
+                "WHERE he.match_id = ? AND he.event_type = 'kill' "
+                "ORDER BY he.xuid, he.time_ms",
+                (match_id,),
+            ).fetchall()
+
+            medal_rows = conn.execute(
+                "SELECT he.xuid, he.time_ms, "
+                "json_extract_string(he.raw_json, '$.medal_name') AS medal_name "
+                "FROM highlight_events he "
+                "WHERE he.match_id = ? AND he.event_type = 'medal' "
+                "AND json_extract_string(he.raw_json, '$.is_medal') = 'true' "
+                "ORDER BY he.xuid, he.time_ms",
+                (match_id,),
+            ).fetchall()
+        except Exception as exc:
+            logger.debug("load_all_kills_for_match %s : %s", match_id[:8], exc)
+            return {}
+
+        medals_by_xuid: dict[str, list[tuple[int, str]]] = {}
+        for xuid, t, name in medal_rows:
+            if name:
+                medals_by_xuid.setdefault(xuid, []).append((t, name))
+
+        result: dict[str, list[dict]] = {}
+        for time_ms, gt, xuid in kill_rows:
+            nearby = [
+                name for (mt, name) in medals_by_xuid.get(xuid, []) if abs(mt - time_ms) <= 500
+            ]
+            result.setdefault(xuid, []).append(
+                {
+                    "time_ms": time_ms,
+                    "gamertag": gt,
+                    "xuid": xuid,
+                    "medals_nearby": nearby,
+                    "is_melee": any(m in MELEE_MEDALS for m in nearby),
+                    "is_grenade": any(m in GRENADE_MEDALS for m in nearby),
+                }
+            )
+        logger.debug(
+            "load_all_kills_for_match %s : %d kills pour %d joueurs",
+            match_id[:8],
+            len(kill_rows),
+            len(result),
+        )
+        return result

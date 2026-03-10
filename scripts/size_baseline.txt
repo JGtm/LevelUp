@@ -136,7 +136,7 @@ FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:153L
 MODULE:src/data/query/trends.py:534L
 MODULE:src/data/services/teammates_service.py:536L
-MODULE:src/data/services/weapon_extraction_service.py:509L
+MODULE:src/data/services/weapon_extraction_service.py:543L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/_teammates_trio.py:543L
