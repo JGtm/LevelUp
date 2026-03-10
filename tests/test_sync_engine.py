@@ -228,6 +228,38 @@ class TestSyncResult:
         assert d["aliases_updated"] == 10
         assert d["duration_seconds"] == 3.5
 
+    def test_weapon_kills_in_to_message(self):
+        """weapon_kills_inserted apparaît dans to_message() si > 0."""
+        from src.data.sync.models import SyncResult
+
+        result = SyncResult(matches_inserted=3, weapon_kills_inserted=42)
+        msg = result.to_message()
+        assert "42 kills/arme" in msg
+
+    def test_weapon_kills_zero_not_in_to_message(self):
+        """weapon_kills_inserted = 0 n'apparaît pas dans to_message()."""
+        from src.data.sync.models import SyncResult
+
+        result = SyncResult(matches_inserted=3, weapon_kills_inserted=0)
+        msg = result.to_message()
+        assert "kills/arme" not in msg
+
+    def test_weapon_kills_in_to_dict(self):
+        """weapon_kills_inserted est présent dans to_dict()."""
+        from src.data.sync.models import SyncResult
+
+        result = SyncResult(weapon_kills_inserted=17)
+        d = result.to_dict()
+        assert "weapon_kills_inserted" in d
+        assert d["weapon_kills_inserted"] == 17
+
+    def test_sync_options_with_weapons_default_true(self):
+        """with_weapons vaut True par défaut dans SyncOptions."""
+        from src.data.sync.models import SyncOptions
+
+        opts = SyncOptions()
+        assert opts.with_weapons is True
+
 
 # =============================================================================
 # Tests des Transformers

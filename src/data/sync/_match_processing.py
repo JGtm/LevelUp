@@ -97,6 +97,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                     result.highlight_events_inserted += match_result.get("events", 0)
                     result.skill_records_inserted += match_result.get("skill", 0)
                     result.aliases_updated += match_result.get("aliases", 0)
+                    result.weapon_kills_inserted += match_result.get("weapon_kills", 0)
                     existing_ids.add(match_id)
 
                     # Sprint 6 : Commit intermédiaire tous les N matchs

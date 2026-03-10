@@ -37,7 +37,7 @@ class SyncOptions:
     parallel_matches: int = 5  # Sprint 6: augmenté de 3 à 5
     defer_performance_score: bool = True  # Sprint 6: calcul batch post-sync
     batch_commit_size: int = 10  # Sprint 6: commit tous les 10 matchs
-    with_weapons: bool = False  # v5.5 : extraire kills par arme depuis films SPNKr
+    with_weapons: bool = True  # v5.5 : extraire kills par arme depuis films SPNKr
 
 
 @dataclass
@@ -87,6 +87,8 @@ class SyncResult:
             parts.append(f"{self.highlight_events_inserted} events")
         if self.aliases_updated > 0:
             parts.append(f"{self.aliases_updated} aliases")
+        if self.weapon_kills_inserted > 0:
+            parts.append(f"{self.weapon_kills_inserted} kills/arme")
 
         if not parts:
             parts.append("Déjà à jour")
@@ -108,6 +110,7 @@ class SyncResult:
             "skill_records_inserted": self.skill_records_inserted,
             "aliases_updated": self.aliases_updated,
             "assets_imported": self.assets_imported,
+            "weapon_kills_inserted": self.weapon_kills_inserted,
             "errors": self.errors,
             "warnings": self.warnings,
             "duration_seconds": self.duration_seconds,

@@ -21,6 +21,7 @@ from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.participation_radar import (
+    RADAR_THRESHOLDS,
     compute_participation_profile,
     get_radar_axis_lines,
     get_radar_thresholds,
@@ -49,29 +50,48 @@ def _compute_player_profile(  # noqa: PLR0913
         Profil dict ou None si données indisponibles.
     """
     df_player = ensure_polars(df_player)
-    if not repo.has_personal_score_awards():
+    if df_player.is_empty():
         return None
 
-    ps = repo.load_personal_score_awards_as_polars(match_ids=shared_match_ids)
+    # Récupérer les personal_score_awards (peut être vide pour les coéquipiers sans DB)
+    ps: pl.DataFrame = pl.DataFrame()
+    if repo.has_personal_score_awards():
+        ps = repo.load_personal_score_awards_as_polars(match_ids=shared_match_ids)
+
     if ps.is_empty():
         return None
+
+    # Nombre de matchs uniques dans les awards (pour scaler les seuils)
+    n_matches = max(1, len(shared_match_ids))
+    if "match_id" in ps.columns:
+        n_matches = max(1, ps["match_id"].n_unique())
 
     match_row = {
         "deaths": int(df_player["deaths"].sum()) if "deaths" in df_player.columns else 0,
         "time_played_seconds": float(df_player["time_played_seconds"].sum())
         if "time_played_seconds" in df_player.columns
         else 600.0 * len(df_player),
+        "avg_life_seconds": float(df_player["average_life_seconds"].mean())
+        if "average_life_seconds" in df_player.columns
+        else 0.0,
         "pair_name": df_player["pair_name"].item(0)
         if "pair_name" in df_player.columns and len(df_player) > 0
         else None,
     }
+
+    # Les seuils sont calibrés par match unique → scaler par n_matches pour les axes absolus
+    # Les axes Impact et Survie sont des rates (pts/min, morts/min) → pas de scaling
+    scaled_th = dict(thresholds or RADAR_THRESHOLDS)
+    for _key in ("objectifs", "combat", "support", "score"):
+        scaled_th[_key] = scaled_th[_key] * n_matches
+
     return compute_participation_profile(
         ps,
         match_row=match_row,
         name=name,
         color=color,
         pair_name=match_row.get("pair_name"),
-        thresholds=thresholds,
+        thresholds=scaled_th,
     )
 
 
