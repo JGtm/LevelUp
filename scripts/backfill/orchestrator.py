@@ -1309,7 +1309,7 @@ async def _backfill_weapon_kills_for_match(
     from src.data.services.weapon_extraction_service import WeaponExtractionService
     from src.data.sync._engine_weapon_kills import _resolve_cache_dir
     from src.data.sync.constants import MatchBits
-    from src.utils.paths import get_player_duckdb_path
+    from src.ui.sync import get_player_duckdb_path
 
     try:
         db_path = get_player_duckdb_path(gamertag)
