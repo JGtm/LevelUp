@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-5.5.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.5.0)
+[![Version](https://img.shields.io/badge/Version-5.6.0--beta-orange.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.6.0-beta)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -13,8 +13,13 @@
 
 ## What's new
 
+**v5.6 (beta) — MSAL Device Code Flow & Weapon Extraction**
+- Token acquisition replaced with **MSAL Device Code Flow** — enter a code on xbox.com/activate, no redirect URI or client secret required
+- **Weapon kills from SPNKr films** *(beta — estimated coverage 70–100 % depending on matches, weapon catalog in progress)* — binary film parsing identifies the weapon used for each POV kill; kills-by-weapon in Match View and Teammates tabs; auto-extraction at sync configurable via Settings
+- **Impact Matrix** — vertical match separators for improved readability; renamed from "Impact Heatmap"
+
 **v5.5 — Setup Wizard & Multi-platform**
-- Guided first-time setup with Xbox one-click login (OAuth) or manual Azure token flow
+- Guided first-time setup with Xbox one-click login (Device Code Flow) or manual Azure token flow
 - `LevelUp.bat` launcher for Windows and `LevelUp.sh` launcher for macOS & Linux
 - Portable Windows release (self-contained zip, no Python install required)
 - Timezone selector in Settings (~40 zones, defaults to Europe/Paris)
@@ -65,7 +70,7 @@
 - **Multi-DB ATTACH** — DuckDB `ATTACH` for seamless cross-DB reads
 - **LUSR/CSR** — TrueSkill 2 ratings per group stored in `match_skill_rank` (player DB)
 - **Performance** — DuckDB queries < 30ms (warm), native Polars DataFrames, materialized views
-- **Xbox OAuth** — Microsoft OAuth 2.0 flow with CSRF protection, refresh token stored in player DB
+- **Device Code Flow (MSAL)** — Token acquisition via xbox.com/activate, no redirect URI or client secret; refresh token stored in player DB
 - **Setup Wizard** — Guided configuration with auto-detection of missing credentials/players
 
 ---
@@ -205,19 +210,19 @@ pip install -e .
 cp .env.example .env.local
 ```
 
-### 2. Configure Azure tokens
+### 2. Configure your Azure Client ID
 
 ```env
 SPNKR_AZURE_CLIENT_ID=your_client_id
-SPNKR_AZURE_CLIENT_SECRET=your_secret
-SPNKR_AZURE_REDIRECT_URI=https://localhost
-SPNKR_OAUTH_REFRESH_TOKEN=your_refresh_token
 ```
 
-### 3. Get your refresh token
+> `client_secret` and `redirect_uri` are no longer required — authentication uses MSAL Device Code Flow.
+
+### 3. Obtain your refresh token (Device Code Flow)
 
 ```bash
-python scripts/spnkr_get_refresh_token.py
+python scripts/spnkr_get_refresh_token.py --device-code
+# Or use the in-app Setup Wizard (recommended)
 ```
 
 **Detailed docs**: [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
@@ -251,6 +256,7 @@ data/
 | `shared_matches` | `match_registry` | Central registry (1 row per match) |
 | `shared_matches` | `match_participants` | All player stats (31 cols, incl. MMR) |
 | `shared_matches` | `medals_earned`, `highlight_events` | Medals and recorded highlight events |
+| `shared_matches` | `weapon_kills` | Weapon kills per player per match (extracted from SPNKr films) |
 | `shared_pve` | `pve_match_stats` | Firefight stats per player/match |
 | player `stats` | `player_match_enrichment` | performance_score, session_id |
 | player `stats` | `match_skill_rank` | LUSR/CSR rating per match |
@@ -304,7 +310,7 @@ Contributions are welcome! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guide
 
 ## Known limitations
 
-- **Halo API**: Depends on SPNKr — some endpoints can be unstable or rate-limited. Weapon stats are not available via the API (verified 2026-02-02).
+- **Halo API**: Depends on SPNKr — some endpoints can be unstable or rate-limited. Weapon kills are extracted from match film binary data (SPNKr), not from the stats API; POV coverage ~87.5 %.
 
 ---
 

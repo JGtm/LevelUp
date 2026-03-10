@@ -6,35 +6,68 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
-## [5.6.0-beta] - 2026-03-08
+## [5.6.0-beta] - 2026-03-10
 
-> ⚠️ **Bêta** — la précision de l’attribution n’est pas encore garantie dans tous les cas (couverture estimée à 70–100 % selon les matchs) ; le catalogue d’armes est en cours de complétion.
+> ⚠️ **Beta** — weapon attribution accuracy not yet guaranteed in all cases (estimated coverage 70–100 % depending on matches); weapon catalog in progress.
 
 ### Added
 
-- **Extraction d'armes depuis les films SPNKr** (`src/analysis/weapon_parser.py`, `src/data/services/weapon_extraction_service.py`)
-  - Analyse des chunks `REPLICATION_DATA` des films de match pour identifier l'arme utilisée à chaque kill POV (player_index=1, invariant universel)
-  - Corrélation kill→last fire event dans une fenêtre de 2 000 ms ; kills melee/grenade/véhicule détectés via médailles (`MELEE_API_ID=1`, `GRENADE_API_ID=0`)
-  - Couverture POV : ~87,5 % des kills couverts
-  - Architecture hexagonale : `weapon_parser.py` (domaine pur, zéro IO), `HaloAPIPort` étendu, `WeaponExtractionService` (orchestration), `WeaponKillsMixin` enrichi (upsert, backfill bit, requêtes)
-  - Table `weapon_kills (match_id, xuid, weapon_id, kills)` dans `shared_matches.duckdb` (PRIMARY KEY `match_id, xuid, weapon_id`) + index `idx_wk_match_xuid`
-  - Migration `add_weapon_kills` (`target_db="shared"`) enregistrée dans le système de migrations automatiques
-  - Cache local des chunks téléchargés dans `data/investigation/chunks/<match_id>/`
+- **Weapon extraction from SPNKr films** (`src/analysis/weapon_parser.py`, `src/data/services/weapon_extraction_service.py`)
+  - Parses `REPLICATION_DATA` chunks from match films to identify the weapon used for each POV kill (player_index=1, universal invariant)
+  - kill→last fire event correlation within a 2 000 ms window; melee/grenade/vehicle kills detected via medals (`MELEE_API_ID=1`, `GRENADE_API_ID=0`)
+  - POV coverage: ~87.5 % of kills
+  - Hexagonal architecture: `weapon_parser.py` (pure domain, zero IO), extended `HaloAPIPort`, `WeaponExtractionService` (orchestration), enriched `WeaponKillsMixin` (upsert, backfill bit, queries)
+  - Table `weapon_kills (match_id, xuid, weapon_id, kills)` in `shared_matches.duckdb` (PRIMARY KEY `match_id, xuid, weapon_id`) + index `idx_wk_match_xuid`
+  - Migration `add_weapon_kills` (`target_db="shared"`) registered in the automatic migrations system
+  - Local cache of downloaded chunks in `data/investigation/chunks/<match_id>/`
 
-- **Backfill weapon_kills** (`scripts/backfill/backfill_weapon_kills.py`)
-  - `--gamertag <GT> --matches <N> [--force] [--dry-run] [--data-dir <path>]`
-  - Bit `MatchBits.WEAPON_KILLS` (1 << 21) posé sur `match_registry.backfill_completed` après traitement
+- **Sync integration** (`src/data/sync/_engine_weapon_kills.py`)
+  - Automatic weapon extraction on new matches via `WeaponKillsEngineMixin`
+  - Controlled by `SyncOptions.with_weapons`; configurable via `spnkr_refresh_backfill_weapons` in `app_settings.json` and the Settings page checkbox
 
-- **Section Armes utilisées dans Match View** (`src/ui/pages/match_view.py`)
-  - Onglet Résumé : tableau des kills par arme pour le joueur POV
+- **Backfill weapon_kills** (`scripts/backfill_data.py --weapons`)
+  - `--weapons [--force-weapons] [--gamertag <GT>]` via the unified backfill CLI
+  - Bit `MatchBits.WEAPON_KILLS` (1 << 21) set on `match_registry.backfill_completed` after processing
 
-- **51 tests unitaires** (`tests/test_weapon_parser.py`, `tests/test_weapon_service.py`)
-  - Constantes, `find_frame_positions`, `build_frame_estimator`, `correlate_kills_to_weapons`, `count_kills_by_api_weapon`
-  - `WeaponExtractionService` avec mocks (no kills, no film, dry-run, upsert, caching, erreurs)
-  - `WeaponKillsMixin` repo (upsert/conflit, bit marking, missing matches, gamertag lookup)
+- **Weapon kills section in Match View** (`src/ui/pages/match_view_weapon_kills.py`)
+  - Summary tab: kills-by-weapon table for the POV player
+
+- **Teammates Weapons tab** (`src/ui/pages/teammates_weapons.py`)
+  - Per-weapon kill breakdown for all teammates on shared matches
+
+- **MSAL Device Code Flow** (`src/utils/msal_device_flow.py`, `src/ui/xbox_oauth_ui.py`)
+  - Replaces the OAuth redirect flow: user enters a short code on xbox.com/activate (no redirect URI or client secret required)
+  - Pure MSAL wrapper: `initiate_device_flow()`, `acquire_token_blocking()`, `DeviceCodeResult`, `DeviceFlowError`
+  - Streamlit UI component: start / polling / reset (integrated in Setup Wizard step 2 and Settings)
+  - `setup_wizard_xbox.py` extracted from `setup_wizard.py` to stay within the 500-line module limit
+  - `--device-code` flag added to `scripts/spnkr_get_refresh_token.py` for CLI token acquisition
+  - `msal>=1.28.0` added as optional dependency
+  - Azure configuration simplified: only `client_id` required (no `client_secret`, no `redirect_uri`)
+
+- **Friends Impact matrix** (`src/visualization/friends_impact_heatmap.py`)
+  - Vertical separators (Plotly shapes) between each match column for improved readability
+  - Renamed from "Impact Heatmap" to "Impact Matrix" (FR i18n update)
+
+- **Documentation** (`docs/CONFIGURATION.md`)
+  - Azure guide simplified for Device Code Flow — `client_secret` and `redirect_uri` steps removed
+
+### Fixed
+
+- **Discord notifier** (`src/utils/discord_notifier.py`) — Lightweight embed restored when all players are idle (was accidentally suppressed in a previous commit)
+
+### Tests
+
+- **51 unit tests** (`tests/test_weapon_parser.py`, `tests/test_weapon_service.py`): constants, `find_frame_positions`, `build_frame_estimator`, `correlate_kills_to_weapons`, `count_kills_by_api_weapon`, `WeaponExtractionService` mocks (no kills, no film, dry-run, upsert, caching, errors), `WeaponKillsMixin` repo (upsert/conflict, bit marking, missing matches, gamertag lookup)
+- **28 tests added/rewritten** for Device Code Flow (`tests/test_msal_device_flow.py`, `tests/test_auth.py`, `tests/test_xbox_oauth.py`, `tests/test_setup_wizard_logic.py`, `tests/test_setup_wizard_page.py`): `authorization_pending`, `slow_down`, DC Flow no-secret pattern, `get_spartan_tokens`, `resolve_player_identity`, `complete_device_code_flow`
+- **4 041 tests total, 0 failures**
+
+### Removed
+
+- **Xbox OAuth redirect flow** — `build_xbox_auth_url()`, `generate_oauth_state()`, `exchange_code_for_refresh_token()`, `run_xbox_oauth_callback()`, `_handle_xbox_oauth_callback()` removed; replaced by Device Code Flow
+- **`client_secret` / `redirect_uri`** — No longer required for token acquisition; `SPNKR_AZURE_CLIENT_SECRET` and `SPNKR_AZURE_REDIRECT_URI` environment variables are deprecated
+- **`scripts/backfill/backfill_weapon_kills.py`** — Standalone backfill script removed (violated CLAUDE.md: all backfill must go through `scripts/backfill_data.py`)
 
 ---
-
 ## [5.5.0] - 2026-03-07
 
 ### Added

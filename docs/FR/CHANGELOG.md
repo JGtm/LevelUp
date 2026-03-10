@@ -6,27 +6,65 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
-## [5.6.0-bêta] - 2026-03-08
+## [5.6.0-bêta] - 2026-03-10
 
-> ⚠️ **Bêta** — la précision de l’attribution n’est pas encore garantie dans tous les cas (couverture estimée à 70–100 % selon les matchs) ; le catalogue d’armes est en cours de complétion.
+> ⚠️ **Bêta** — la précision de l’attribution n’est pas encore garantie dans tous les cas (couverture estimée à 70–100 % selon les matchs) ; le catalogue d’armes est en cours de complétion.
 
 ### Ajouté
 
-- **Extraction d'armes depuis les films SPNKr** (`src/analysis/weapon_parser.py`, `src/data/services/weapon_extraction_service.py`)
-  - Analyse des chunks `REPLICATION_DATA` des films de match pour identifier l'arme utilisée à chaque kill POV (player_index=1, invariant universel)
-  - Corrélation kill→dernier fire event dans une fenêtre de 2 000 ms ; kills melee/grenade/véhicule détectés via médailles
+- **Extraction d’armes depuis les films SPNKr** (`src/analysis/weapon_parser.py`, `src/data/services/weapon_extraction_service.py`)
+  - Analyse des chunks `REPLICATION_DATA` des films de match pour identifier l’arme utilisée à chaque kill POV (player_index=1, invariant universel)
+  - Corrélation kill→dernier fire event dans une fenêtre de 2 000 ms ; kills melee/grenade/véhicule détectés via médailles
   - Table `weapon_kills (match_id, xuid, weapon_id, kills)` dans `shared_matches.duckdb` + migration automatique
-  - Architecture hexagonale : domaine pur (`weapon_parser.py`), service d'orchestration, port API étendu
+  - Architecture hexagonale : domaine pur (`weapon_parser.py`), service d’orchestration, port API étendu
 
-- **Backfill weapon_kills** (`scripts/backfill/backfill_weapon_kills.py`)
-  - `--gamertag <GT> --matches <N> [--force] [--dry-run]`
+- **Câblage sync** (`src/data/sync/_engine_weapon_kills.py`)
+  - Extraction automatique au sync des nouveaux matchs via `WeaponKillsEngineMixin`
+  - Contrôlé par `SyncOptions.with_weapons` et `spnkr_refresh_backfill_weapons` dans `app_settings.json` (case à cocher dans Paramètres)
 
-- **Section Armes utilisées dans Match View**
+- **Backfill weapon_kills** (`scripts/backfill_data.py --weapons`)
+  - `--weapons [--force-weapons] [--gamertag <GT>]` via le CLI backfill unifié
+  - Bit `MatchBits.WEAPON_KILLS` (1 << 21) posé sur `match_registry.backfill_completed` après traitement
 
-- **51 tests unitaires** (`tests/test_weapon_parser.py`, `tests/test_weapon_service.py`)
+- **Section armes dans Match View** (`src/ui/pages/match_view_weapon_kills.py`)
+  - Onglet Résumé : tableau des kills par arme pour le joueur POV
+
+- **Onglet Armes coéquipiers** (`src/ui/pages/teammates_weapons.py`)
+  - Kills par arme pour tous les coéquipiers sur les matchs partagés
+
+- **MSAL Device Code Flow** (`src/utils/msal_device_flow.py`, `src/ui/xbox_oauth_ui.py`)
+  - Remplace le flux OAuth redirect : l’utilisateur entre un code court sur xbox.com/activate (sans URI de redirection ni `client_secret`)
+  - Wrapper MSAL pur : `initiate_device_flow()`, `acquire_token_blocking()`, `DeviceCodeResult`, `DeviceFlowError`
+  - Composant Streamlit : démarrage / polling / réinitialisation (intégré dans le Wizard étape 2 et Paramètres)
+  - `setup_wizard_xbox.py` extrait de `setup_wizard.py` pour respecter la limite 500 lignes
+  - Option `--device-code` ajoutée dans `scripts/spnkr_get_refresh_token.py` pour acquisition CLI
+  - `msal>=1.28.0` ajouté comme dépendance optionnelle
+  - Configuration Azure simplifiée : seul `client_id` requis (ni `client_secret`, ni `redirect_uri`)
+
+- **Matrice d’impact** (`src/visualization/friends_impact_heatmap.py`)
+  - Séparateurs verticaux (Plotly shapes) entre chaque colonne de match pour améliorer la lisibilité
+  - Renommage i18n FR : « Heatmap d’Impact » → « Matrice d’Impact »
+
+- **Documentation** (`docs/FR/CONFIGURATION.md`)
+  - Guide Azure simplifié pour le Device Code Flow — étapes `client_secret` et `redirect_uri` supprimées
+
+### Corrigé
+
+- **Discord notifier** (`src/utils/discord_notifier.py`) — Embed allégé restauré quand tous les joueurs sont inactifs (avait été accidentellement supprimé)
+
+### Tests
+
+- **51 tests unitaires** (`tests/test_weapon_parser.py`, `tests/test_weapon_service.py`) : constantes, `find_frame_positions`, `build_frame_estimator`, `correlate_kills_to_weapons`, `WeaponExtractionService` (mocks, dry-run, upsert, erreurs), `WeaponKillsMixin` (upsert/conflit, bit marking)
+- **28 tests** ajoutés/réécrits pour le Device Code Flow (`tests/test_msal_device_flow.py`, `tests/test_auth.py`, `tests/test_xbox_oauth.py`) : `authorization_pending`, `slow_down`, pattern sans secret, `get_spartan_tokens`, `resolve_player_identity`
+- **4 041 tests, 0 failure**
+
+### Supprimé
+
+- **Flux OAuth redirect Xbox** — `build_xbox_auth_url()`, `generate_oauth_state()`, `exchange_code_for_refresh_token()`, `run_xbox_oauth_callback()`, `_handle_xbox_oauth_callback()` supprimés ; remplacés par le Device Code Flow
+- **`client_secret` / `redirect_uri`** — Plus nécessaires pour l’obtention du token ; variables `SPNKR_AZURE_CLIENT_SECRET` et `SPNKR_AZURE_REDIRECT_URI` dépréciées
+- **`scripts/backfill/backfill_weapon_kills.py`** — Script standalone supprimé (violait CLAUDE.md : le backfill doit passer par `scripts/backfill_data.py`)
 
 ---
-
 ## [5.5.0] - 2026-03-06
 
 ### Ajouté
