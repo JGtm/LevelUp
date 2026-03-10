@@ -789,11 +789,45 @@ async def _backfill_with_api(
     # Point B : liste des matchs à traiter en batch weapons post-boucle
     _pending_weapon_ids: list[str] = []
 
+    # Shortcut weapons-only : si aucun autre flag API n'est demandé, la boucle
+    # séquentielle ne ferait qu'appeler get_match_stats pour rien (les weapon kills
+    # viennent des chunks film dans run_weapon_kills_backfill, pas de match_stats).
+    # On alimente _pending_weapon_ids directement et on saute la boucle.
+    _loop_api_needed = any(
+        [
+            medals,
+            events,
+            skill,
+            personal_scores,
+            performance_scores,
+            aliases,
+            accuracy,
+            enemy_mmr,
+            assets,
+            participants,
+            pve_stats,
+            shots,
+            participants_scores,
+            participants_kda,
+            participants_shots,
+            participants_damage,
+            participants_avg_life,
+        ]
+    )
+    _weapons_only_shortcut = weapons and _PARALLEL_WEAPON_KILLS_IN_SYNC and not _loop_api_needed
+    if _weapons_only_shortcut:
+        _pending_weapon_ids = list(match_ids)
+        logger.info(
+            "Weapons-only : boucle séquentielle ignorée, %d matchs → batch direct", len(match_ids)
+        )
+
     async with create_api_client(
         tokens=tokens,
         requests_per_second=requests_per_second,
     ) as client:
         for i, match_id in enumerate(match_ids, 1):
+            if _weapons_only_shortcut:
+                continue  # _pending_weapon_ids déjà alimenté, pas d'appel API nécessaire
             try:
                 logger.info(f"[{i}/{len(match_ids)}] Traitement {match_id}...")
 

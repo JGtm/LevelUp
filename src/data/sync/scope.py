@@ -277,9 +277,10 @@ class SyncScope:
     # ── Flags force PVE ──────────────────────────────────────────────────
     force_pve_stats: bool = False  # Re-traiter même si MatchBits.PVE_STATS déjà posé
 
-    # ── Weapon kills — v5.5 ──────────────────────────────────────────
+    # ── Weapon kills — v5.5 / v5.6 ──────────────────────────────────
     weapons: bool = False  # Extraire les kills par arme → shared.weapon_kills
     force_weapons: bool = False  # Re-traiter même si MatchBits.WEAPON_KILLS posé
+    force_no_film: bool = False  # Re-tenter matchs NO_FILM (film 404/expiré)
 
     # ── LUSR / CSR / Skill Rank — v5.3 ──────────────────────────────
     lusr: bool = False  # Calculer le LUSR pour les matchs non classés (local-only)

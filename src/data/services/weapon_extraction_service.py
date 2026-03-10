@@ -71,6 +71,14 @@ class WeaponExtractionService:
             write_lock if write_lock is not None else contextlib.nullcontext()
         )
 
+    async def _mark_done(self, match_id: str, *, no_film: bool) -> None:
+        """Pose le bit approprié selon que le film était disponible ou non."""
+        async with self._write_lock:
+            if no_film:
+                WeaponKillsMixin.mark_weapon_no_film(self._conn, match_id)
+            else:
+                WeaponKillsMixin.mark_weapon_backfill_done(self._conn, match_id)
+
     async def process_match(
         self,
         match_id: str,
@@ -83,11 +91,8 @@ class WeaponExtractionService:
 
         Utilise Section 2 (fire events) pour le POV et Formula A (Section 1)
         pour les coéquipiers T1. Tous joueurs dont le player_index est
-        détectable via acurtis sont traités.
-
-        Returns:
-            Dict résumé {match_id, kills_total, kills_attributed,
-            rows_inserted, players_processed, error?}.
+        détectable via acurtis sont traités. Retourne un dict résumé
+        {match_id, kills_total, kills_attributed, rows_inserted, error?}.
         """
         summary: dict = {
             "match_id": match_id,
@@ -104,6 +109,7 @@ class WeaponExtractionService:
 
             kill_times_all = self._load_all_kill_times(match_id, list(all_participants))
             if not kill_times_all:
+                await self._mark_done(match_id, no_film=False)
                 summary["error"] = "aucun kill trouvé"
                 return summary
 
@@ -111,7 +117,8 @@ class WeaponExtractionService:
                 match_id, [t for times in kill_times_all.values() for t in times]
             )
             if not chunks:
-                summary["error"] = "aucun chunk téléchargé"
+                await self._mark_done(match_id, no_film=True)
+                summary["error"] = "aucun chunk téléchargé (404 ou expiré)"
                 return summary
 
             logger.debug("Match %s : %d chunks", match_id[:8], len(chunks))
