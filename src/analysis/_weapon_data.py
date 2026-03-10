@@ -57,11 +57,6 @@ WEAPON_ID_MAP: dict[bytes, str] = {
     bytes.fromhex("ab879f1e42c9679f"): "Spike Grenade (alt)",  # pragma: allowlist secret
     bytes.fromhex("e3a0a51842c9679f"): "Dynamo Grenade (alt)",  # pragma: allowlist secret
     bytes.fromhex("18e1fea042c9679f"): "Dynamo Grenade (proj)",  # pragma: allowlist secret
-    # ── Spike Grenade skins (FINDINGS slot 0x80/len=16 — même famille confirmée)
-    bytes.fromhex("91eb16de42c9679f"): "Spike Grenade",  # pragma: allowlist secret
-    bytes.fromhex("67fed82c42c9679f"): "Spike Grenade",  # pragma: allowlist secret
-    bytes.fromhex("60f1d51242c9679f"): "Spike Grenade",  # pragma: allowlist secret
-    bytes.fromhex("87fab1d442c9679f"): "Spike Grenade",  # pragma: allowlist secret
     # ── Variantes / skins (suffixe standard confirmé) ────────────────────
     bytes.fromhex("7e53b3c642c9679f"): "Pulse Carbine (alt)",  # pragma: allowlist secret
     bytes.fromhex("04e7f00b42c9679f"): "Plasma Pistol (alt)",  # pragma: allowlist secret
