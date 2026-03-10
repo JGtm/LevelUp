@@ -133,23 +133,55 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PL
 
 
 def _select_sessions(session_labels: list[str]) -> tuple[str, str]:
-    """Affiche les sélecteurs de sessions A et B et retourne les labels choisis."""
+    """Affiche les sélecteurs de sessions A et B et retourne les labels choisis.
+
+    Si une session est sélectionnée dans la sidebar, pré-sélectionne :
+    - Session B = la session active de la sidebar
+    - Session A = la session précédente (la suivante dans la liste, ordre décroissant)
+    """
+    picked = st.session_state.get("picked_session_label", "(toutes)")
+    last_picked = st.session_state.get("_last_picked_for_compare")
+
+    # Si la session globale a changé, réinitialiser les selectbox de comparaison
+    if picked != last_picked:
+        st.session_state["_last_picked_for_compare"] = picked
+        st.session_state.pop("compare_session_a", None)
+        st.session_state.pop("compare_session_b", None)
+
+    # Calculer les defaults selon la session active
+    if picked and picked != "(toutes)" and picked in session_labels:
+        idx_b = session_labels.index(picked)
+        default_b = session_labels[idx_b]
+        # Session A = la précédente chronologiquement (indice supérieur = plus ancienne)
+        idx_a = idx_b + 1 if idx_b + 1 < len(session_labels) else idx_b
+        default_a = session_labels[idx_a]
+    else:
+        default_b = session_labels[0]
+        default_a = session_labels[1] if len(session_labels) > 1 else session_labels[0]
+
+    # Injecter les defaults dans session_state uniquement si pas encore initialisés
+    if "compare_session_b" not in st.session_state:
+        st.session_state["compare_session_b"] = default_b
+    if "compare_session_a" not in st.session_state:
+        st.session_state["compare_session_a"] = default_a
+
     col_sel_a, col_sel_b = st.columns(2)
     with col_sel_a:
-        # Session A = avant-dernière par défaut
-        default_a = session_labels[1] if len(session_labels) > 1 else session_labels[0]
         session_a_label = st.selectbox(
             t("sc_session_a_ref"),
             options=session_labels,
-            index=session_labels.index(default_a) if default_a in session_labels else 1,
+            index=session_labels.index(st.session_state["compare_session_a"])
+            if st.session_state.get("compare_session_a") in session_labels
+            else session_labels.index(default_a),
             key="compare_session_a",
         )
     with col_sel_b:
-        # Session B = dernière par défaut
         session_b_label = st.selectbox(
             t("sc_session_b_cmp"),
             options=session_labels,
-            index=0,
+            index=session_labels.index(st.session_state["compare_session_b"])
+            if st.session_state.get("compare_session_b") in session_labels
+            else session_labels.index(default_b),
             key="compare_session_b",
         )
     return session_a_label, session_b_label
