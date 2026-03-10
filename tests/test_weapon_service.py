@@ -457,3 +457,478 @@ class TestReconcileApiAggregates:
         # Pas de MEDIUM à promouvoir → résultat inchangé
         result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
         assert result[2]["confidence"] == "high"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests load_all_kills_for_match (Phase 2 — batch SQL)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestLoadAllKillsForMatch:
+    """Vérifie le chargement batch kills+médailles pour tous les joueurs."""
+
+    @pytest.fixture()
+    def conn(self):
+        c = duckdb.connect(":memory:")
+        c.execute(
+            "CREATE TABLE highlight_events ("
+            "match_id VARCHAR, xuid VARCHAR, event_type VARCHAR, time_ms INTEGER, "
+            "gamertag VARCHAR, raw_json VARCHAR)"
+        )
+        return c
+
+    def test_empty_match_returns_empty_dict(self, conn):
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        assert WeaponKillsMixin.load_all_kills_for_match(conn, "m1") == {}
+
+    def test_single_player_single_kill(self, conn):
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',5000,'P1','{}')")
+        result = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")
+        assert list(result.keys()) == ["x1"]
+        k = result["x1"][0]
+        assert k["time_ms"] == 5000
+        assert k["gamertag"] == "P1"
+        assert k["xuid"] == "x1"
+        assert k["is_melee"] is False
+        assert k["is_grenade"] is False
+        assert k["medals_nearby"] == []
+
+    def test_two_players_grouped_separately(self, conn):
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',5000,'P1','{}')")
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x2','kill',8000,'P2','{}')")
+        result = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")
+        assert set(result.keys()) == {"x1", "x2"}
+        assert len(result["x1"]) == 1
+        assert len(result["x2"]) == 1
+
+    def test_multiple_kills_per_player(self, conn):
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',5000,'P1','{}')")
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',9000,'P1','{}')")
+        result = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")
+        assert len(result["x1"]) == 2
+
+    def test_melee_medal_within_500ms_detected(self, conn):
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',5000,'P1','{}')")
+        conn.execute(
+            "INSERT INTO highlight_events VALUES "
+            "('m1','x1','medal',5100,'P1','{\"is_medal\":\"true\",\"medal_name\":\"Pummel\"}')"
+        )
+        result = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")
+        k = result["x1"][0]
+        assert k["is_melee"] is True
+        assert "Pummel" in k["medals_nearby"]
+
+    def test_grenade_medal_within_500ms_detected(self, conn):
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',5000,'P1','{}')")
+        conn.execute(
+            "INSERT INTO highlight_events VALUES "
+            "('m1','x1','medal',5200,'P1','{\"is_medal\":\"true\",\"medal_name\":\"Stick\"}')"
+        )
+        result = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")
+        assert result["x1"][0]["is_grenade"] is True
+
+    def test_medal_at_500ms_boundary_included(self, conn):
+        """Médaille exactement à 500ms de distance → incluse (<=)."""
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',5000,'P1','{}')")
+        conn.execute(
+            "INSERT INTO highlight_events VALUES "
+            "('m1','x1','medal',5500,'P1','{\"is_medal\":\"true\",\"medal_name\":\"Pummel\"}')"
+        )
+        result = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")
+        assert result["x1"][0]["is_melee"] is True
+
+    def test_medal_outside_500ms_window_ignored(self, conn):
+        """Médaille à 501ms → exclue."""
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',5000,'P1','{}')")
+        conn.execute(
+            "INSERT INTO highlight_events VALUES "
+            "('m1','x1','medal',5501,'P1','{\"is_medal\":\"true\",\"medal_name\":\"Pummel\"}')"
+        )
+        result = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")
+        assert result["x1"][0]["is_melee"] is False
+
+    def test_medals_from_other_player_not_crossed(self, conn):
+        """Les médailles de x2 n'affectent pas les kills de x1."""
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',5000,'P1','{}')")
+        conn.execute(
+            "INSERT INTO highlight_events VALUES "
+            "('m1','x2','medal',5100,'P2','{\"is_medal\":\"true\",\"medal_name\":\"Pummel\"}')"
+        )
+        result = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")
+        assert result["x1"][0]["is_melee"] is False
+
+    def test_kills_from_other_match_excluded(self, conn):
+        """Un kill dans m2 ne doit pas apparaître pour m1."""
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',5000,'P1','{}')")
+        conn.execute("INSERT INTO highlight_events VALUES ('m2','x1','kill',8000,'P1','{}')")
+        result = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")
+        assert len(result["x1"]) == 1
+        assert result["x1"][0]["time_ms"] == 5000
+
+    def test_db_exception_returns_empty(self, conn):
+        """Exception DB (table absente) → retourne {} sans lever."""
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("DROP TABLE highlight_events")
+        result = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")
+        assert result == {}
+
+    def test_consistent_with_load_player_kills(self, conn):
+        """load_all_kills_for_match retourne les mêmes données que load_player_kills_for_match."""
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("INSERT INTO highlight_events VALUES ('m1','x1','kill',5000,'P1','{}')")
+        conn.execute(
+            "INSERT INTO highlight_events VALUES "
+            "('m1','x1','medal',5100,'P1','{\"is_medal\":\"true\",\"medal_name\":\"Pummel\"}')"
+        )
+        batch = WeaponKillsMixin.load_all_kills_for_match(conn, "m1")["x1"]
+        single = WeaponKillsMixin.load_player_kills_for_match(conn, "m1", "x1")
+        assert len(batch) == len(single)
+        assert batch[0]["time_ms"] == single[0]["time_ms"]
+        assert batch[0]["is_melee"] == single[0]["is_melee"]
+        assert batch[0]["medals_nearby"] == single[0]["medals_nearby"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests write_lock + parallélisme (Phase 3)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestWriteLock:
+    """Vérifie que write_lock est accepté et n'altère pas le résultat."""
+
+    def test_write_lock_none_backward_compat(self, in_memory_conn, tmp_cache):
+        """Sans write_lock, le service fonctionne comme avant."""
+        api = FakeAPIPort()
+        service = WeaponExtractionService(api, in_memory_conn, tmp_cache)
+        summary = asyncio.run(service.process_match("m1234567", "P", "xuid123"))
+        assert "error" in summary  # aucun kill → erreur attendue
+
+    def test_write_lock_explicit_accepted(self, in_memory_conn, tmp_cache):
+        """write_lock=Lock() est accepté sans erreur."""
+        lock = asyncio.Lock()
+        api = FakeAPIPort()
+        service = WeaponExtractionService(api, in_memory_conn, tmp_cache, write_lock=lock)
+        summary = asyncio.run(service.process_match("m1234567", "P", "xuid123"))
+        assert "error" in summary  # aucun kill → erreur attendue
+
+    def test_write_lock_isolates_concurrent_writes(self, tmp_cache):
+        """Deux process_match concurrents avec write_lock partagé n'écrivent pas en double."""
+        xuid = "2533274823110022"
+        conn = duckdb.connect(":memory:")
+        conn.execute(
+            "CREATE TABLE weapon_kills (match_id VARCHAR, xuid VARCHAR, time_ms INTEGER, "
+            "weapon_name VARCHAR, delta_ms INTEGER, confidence VARCHAR DEFAULT 'none', "
+            "swap_detected BOOLEAN DEFAULT FALSE, delayed_damage BOOLEAN DEFAULT FALSE)"
+        )
+        conn.execute(
+            "CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, "
+            "backfill_completed INTEGER DEFAULT 0)"
+        )
+        conn.execute("INSERT INTO match_registry VALUES ('ma123456', 0)")
+        conn.execute("INSERT INTO match_registry VALUES ('mb123456', 0)")
+        conn.execute("CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR)")
+        conn.execute(
+            "CREATE TABLE highlight_events (match_id VARCHAR, xuid VARCHAR, "
+            "event_type VARCHAR, time_ms INTEGER, gamertag VARCHAR, raw_json VARCHAR)"
+        )
+        conn.execute("CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)")
+        # Insérer un kill melee dans chaque match
+        conn.execute(
+            f"INSERT INTO highlight_events VALUES "
+            f"('ma123456','{xuid}','kill',5000,'P','{{}}'),"
+            f"('ma123456','{xuid}','medal',5100,'P',"
+            f'\'{{"is_medal":"true","medal_name":"Pummel"}}\'),'
+            f"('mb123456','{xuid}','kill',5000,'P','{{}}'),"
+            f"('mb123456','{xuid}','medal',5100,'P',"
+            f'\'{{"is_medal":"true","medal_name":"Pummel"}}\');'
+        )
+
+        film = _make_film(n_chunks=1, chunk_duration_ms=10000)
+        lock = asyncio.Lock()
+
+        async def _run():
+            api = FakeAPIPort(film=film, chunk_data=b"\x00" * 200)
+            s = WeaponExtractionService(api, conn, tmp_cache, write_lock=lock)
+            await asyncio.gather(
+                s.process_match("ma123456", "P", xuid),
+                s.process_match("mb123456", "P", xuid),
+            )
+
+        asyncio.run(_run())
+        # Chaque match doit avoir exactement 1 ligne (kill melee)
+        for mid in ("ma123456", "mb123456"):
+            count = conn.execute(
+                "SELECT COUNT(*) FROM weapon_kills WHERE match_id=?", (mid,)
+            ).fetchone()[0]
+            assert count == 1, f"Match {mid} : attendu 1, got {count}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests run_weapon_kills_backfill (Phase 3 — parallélisme)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestRunWeaponKillsBackfill:
+    def test_empty_match_ids_returns_zero(self):
+        """Liste vide → retour immédiat sans appel API."""
+        from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
+
+        conn = duckdb.connect(":memory:")
+        result = asyncio.run(run_weapon_kills_backfill("GT", "xuid", [], conn))
+        assert result == 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests _backfill_weapon_kills_for_match — guard WEAPON_KILLS (Point A)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestBackfillWeaponKillsGuard:
+    """Vérifie que _backfill_weapon_kills_for_match respecte le bit WEAPON_KILLS.
+
+    Le service traite TOUS les joueurs d'un match → une fois le bit posé,
+    il ne faut pas retraiter (économie CPU + réseau).
+    Aligné avec detection.py:444 (chemin CLI --weapons).
+    """
+
+    _MATCH_ID = "ab123456-0000-0000-0000-000000000000"
+    _GAMERTAG = "TestPlayer"
+    _XUID = "1234567890123456"
+
+    def _make_shared_conn(self, *, bit_set: bool):
+        """Mock shared_conn dont execute().fetchone() retourne le bit demandé."""
+        from unittest.mock import MagicMock
+
+        conn = MagicMock()
+        conn.execute.return_value.fetchone.return_value = (1 if bit_set else 0,)
+        return conn
+
+    def test_skip_if_weapon_kills_bit_set(self):
+        """force=False + bit posé → retour 0 sans instancier le service."""
+        from unittest.mock import MagicMock, patch
+
+        from scripts.backfill.orchestrator import _backfill_weapon_kills_for_match
+
+        conn = self._make_shared_conn(bit_set=True)
+
+        with patch(
+            "src.data.services.weapon_extraction_service.WeaponExtractionService"
+        ) as mock_cls:
+            result = asyncio.run(
+                _backfill_weapon_kills_for_match(
+                    client=MagicMock(),
+                    match_id=self._MATCH_ID,
+                    gamertag=self._GAMERTAG,
+                    xuid=self._XUID,
+                    shared_conn=conn,
+                    force=False,
+                )
+            )
+
+        assert result == 0
+        # Service jamais instancié
+        mock_cls.assert_not_called()
+        # Une seule requête execute : la vérification du bit
+        assert conn.execute.call_count == 1
+
+    def test_force_bypasses_bit_guard(self, tmp_path):
+        """force=True → guard ignoré, service process_match appelé."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from scripts.backfill.orchestrator import _backfill_weapon_kills_for_match
+
+        # Bit posé, mais force=True doit ignorer le guard
+        conn = self._make_shared_conn(bit_set=True)
+        # process_match retourne 0 lignes insérées (match vide suffit)
+        mock_instance = MagicMock()
+        mock_instance.process_match = AsyncMock(return_value={"rows_inserted": 0})
+        mock_cls = MagicMock(return_value=mock_instance)
+
+        with (
+            patch(
+                "src.data.services.weapon_extraction_service.WeaponExtractionService",
+                mock_cls,
+            ),
+            patch(
+                "src.data.sync._engine_weapon_kills._resolve_cache_dir",
+                return_value=tmp_path,
+            ),
+            patch(
+                "src.ui.sync.get_player_duckdb_path",
+                return_value=tmp_path / "stats.duckdb",
+            ),
+        ):
+            result = asyncio.run(
+                _backfill_weapon_kills_for_match(
+                    client=MagicMock(),
+                    match_id=self._MATCH_ID,
+                    gamertag=self._GAMERTAG,
+                    xuid=self._XUID,
+                    shared_conn=conn,
+                    force=True,
+                )
+            )
+
+        # Service instancié et process_match appelé malgré le bit posé
+        mock_cls.assert_called_once()
+        mock_instance.process_match.assert_awaited_once()
+        assert result == 0
+
+    def test_guard_exception_falls_through(self, tmp_path):
+        """Si la requête guard échoue → on continue (non bloquant)."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from scripts.backfill.orchestrator import _backfill_weapon_kills_for_match
+
+        conn = MagicMock()
+        # Simuler une erreur DB sur le guard
+        conn.execute.side_effect = Exception("DB error")
+
+        mock_instance = MagicMock()
+        mock_instance.process_match = AsyncMock(return_value={"rows_inserted": 3})
+        mock_cls = MagicMock(return_value=mock_instance)
+
+        with (
+            patch(
+                "src.data.services.weapon_extraction_service.WeaponExtractionService",
+                mock_cls,
+            ),
+            patch(
+                "src.data.sync._engine_weapon_kills._resolve_cache_dir",
+                return_value=tmp_path,
+            ),
+            patch(
+                "src.ui.sync.get_player_duckdb_path",
+                return_value=tmp_path / "stats.duckdb",
+            ),
+        ):
+            result = asyncio.run(
+                _backfill_weapon_kills_for_match(
+                    client=MagicMock(),
+                    match_id=self._MATCH_ID,
+                    gamertag=self._GAMERTAG,
+                    xuid=self._XUID,
+                    shared_conn=conn,
+                    force=False,
+                )
+            )
+
+        # Erreur guard → on continue, service appelé
+        mock_instance.process_match.assert_awaited_once()
+        assert result == 3
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests run_weapon_kills_backfill — guard batch (Point A côté batch)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestRunWeaponKillsBackfillGuard:
+    """Vérifie que le guard WEAPON_KILLS est appliqué dans _process_one.
+
+    La liste _pending_weapon_ids peut contenir des matchs dont le bit est posé
+    (ex: detection OR conditions, match traité par un autre joueur en escouade).
+    Le batch doit les ignorer sans appeler le service.
+    """
+
+    _MATCH_ID = "ab123456-0000-0000-0000-000000000000"
+
+    def _make_conn_with_bit(self, *, bit_set: bool):
+        """DuckDB in-memory avec match_registry et bit configuré."""
+        conn = duckdb.connect(":memory:")
+        conn.execute(
+            "CREATE TABLE match_registry "
+            "(match_id VARCHAR PRIMARY KEY, backfill_completed INTEGER DEFAULT 0)"
+        )
+        bit_value = 1 << 21 if bit_set else 0  # MatchBits.WEAPON_KILLS
+        conn.execute("INSERT INTO match_registry VALUES (?, ?)", (self._MATCH_ID, bit_value))
+        return conn
+
+    def test_batch_skips_match_if_bit_set(self):
+        """Bit WEAPON_KILLS posé → _process_one retourne 0 sans appel API."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
+
+        conn = self._make_conn_with_bit(bit_set=True)
+
+        mock_service = MagicMock()
+        mock_service.process_match = AsyncMock(return_value={"rows_inserted": 99})
+        mock_api_instance = AsyncMock()
+
+        # Imports locaux à la fonction → patcher à la source
+        with (
+            patch(
+                "src.data.sync.api_client.get_tokens_from_env",
+                new_callable=AsyncMock,
+                return_value=MagicMock(),
+            ),
+            patch("src.data.sync.api_client.SPNKrAPIClient") as mock_api_cls,
+            patch(
+                "src.data.services.weapon_extraction_service.WeaponExtractionService",
+                return_value=mock_service,
+            ),
+        ):
+            mock_api_cls.return_value.__aenter__ = AsyncMock(return_value=mock_api_instance)
+            mock_api_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            result = asyncio.run(
+                run_weapon_kills_backfill("GT", "1234", [self._MATCH_ID], conn, force=False)
+            )
+
+        assert result == 0
+        mock_service.process_match.assert_not_awaited()
+
+    def test_batch_force_ignores_bit(self):
+        """force=True → guard ignoré dans _process_one, service appelé."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
+
+        conn = self._make_conn_with_bit(bit_set=True)
+
+        mock_service = MagicMock()
+        mock_service.process_match = AsyncMock(return_value={"rows_inserted": 5})
+
+        with (
+            patch(
+                "src.data.sync.api_client.get_tokens_from_env",
+                new_callable=AsyncMock,
+                return_value=MagicMock(),
+            ),
+            patch("src.data.sync.api_client.SPNKrAPIClient") as mock_api_cls,
+            patch(
+                "src.data.services.weapon_extraction_service.WeaponExtractionService",
+                return_value=mock_service,
+            ),
+        ):
+            mock_api_cls.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
+            mock_api_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            result = asyncio.run(
+                run_weapon_kills_backfill("GT", "1234", [self._MATCH_ID], conn, force=True)
+            )
+
+        assert result == 5
+        mock_service.process_match.assert_awaited_once()

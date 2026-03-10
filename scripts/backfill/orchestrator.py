@@ -41,6 +41,13 @@ logger = logging.getLogger(__name__)
 # Répertoire racine du projet
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+# Weapon kills — parallélisation dans le sync (Point B).
+# True  : les matchs weapons sont collectés pendant la boucle principale puis
+#         traités en batch parallèle APRÈS (via run_weapon_kills_backfill, 4 //).
+# False : comportement séquentiel d'origine (1 match à la fois dans la boucle).
+# Changer cette constante suffit pour revenir en arrière.
+_PARALLEL_WEAPON_KILLS_IN_SYNC: bool = True
+
 
 def _get_shared_connection(db_path: Path) -> Any | None:
     """Ouvre une connexion vers shared_matches.duckdb (v5).
@@ -779,6 +786,9 @@ async def _backfill_with_api(
     totals["matches_checked"] = len(match_ids)
     totals["matches_missing_data"] = len(match_ids)
 
+    # Point B : liste des matchs à traiter en batch weapons post-boucle
+    _pending_weapon_ids: list[str] = []
+
     async with create_api_client(
         tokens=tokens,
         requests_per_second=requests_per_second,
@@ -956,10 +966,15 @@ async def _backfill_with_api(
 
                 # ── Weapon kills → shared.weapon_kills (v5.5) ──
                 if weapons:
-                    n = await _backfill_weapon_kills_for_match(
-                        client, match_id, gamertag, xuid, shared_conn, force=force_weapons
-                    )
-                    totals["weapon_kills_inserted"] += n
+                    if _PARALLEL_WEAPON_KILLS_IN_SYNC:
+                        # Point B : collecte pour traitement batch parallèle post-boucle.
+                        # Le guard bit (Point A) s'appliquera dans run_weapon_kills_backfill.
+                        _pending_weapon_ids.append(match_id)
+                    else:
+                        n = await _backfill_weapon_kills_for_match(
+                            client, match_id, gamertag, xuid, shared_conn, force=force_weapons
+                        )
+                        totals["weapon_kills_inserted"] += n
 
                 # Marquer le bitmask backfill_completed pour tous les types demandés
                 requested_types = scope.requested_types
@@ -996,6 +1011,31 @@ async def _backfill_with_api(
 
                 traceback.print_exc()
                 continue
+
+    # ── Weapon kills batch parallèle post-API (Point B) ──────────────────────
+    # Traité ici plutôt que dans la boucle pour :
+    #   1. Éviter de partager le client API avec d'autres I/O en cours
+    #   2. Permettre la parallélisation (run_weapon_kills_backfill ouvre son propre client)
+    #   3. Cohérent avec killer_victim et end_time qui sont aussi post-boucle
+    # Guard WEAPON_KILLS (Point A) appliqué dans _process_one de run_weapon_kills_backfill :
+    # les matchs déjà traités (bit posé, ex. par un autre joueur en escouade) sont ignorés.
+    if weapons and _PARALLEL_WEAPON_KILLS_IN_SYNC and _pending_weapon_ids:
+        from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
+
+        logger.info(
+            "Weapon kills batch : %d matchs à traiter (parallèle)...",
+            len(_pending_weapon_ids),
+        )
+        n = await run_weapon_kills_backfill(
+            gamertag,
+            xuid,
+            _pending_weapon_ids,
+            shared_conn,
+            force=force_weapons,
+        )
+        totals["weapon_kills_inserted"] += n
+        if n > 0:
+            logger.info("✅ %d lignes weapon_kills insérées (batch parallèle)", n)
 
     # ── Backfill local post-API ──
     if killer_victim:
@@ -1310,6 +1350,22 @@ async def _backfill_weapon_kills_for_match(
     from src.data.sync._engine_weapon_kills import _resolve_cache_dir
     from src.data.sync.constants import MatchBits
     from src.ui.sync import get_player_duckdb_path
+
+    # Guard : skip si le bit WEAPON_KILLS est déjà posé (sauf force=True).
+    # Le service traite TOUS les joueurs du match → une fois posé, tout le monde est couvert.
+    # Aligné avec detection.py:444 qui filtre en amont pour le chemin CLI --weapons.
+    if not force:
+        try:
+            row = shared_conn.execute(
+                "SELECT COALESCE(backfill_completed, 0) & ? "
+                "FROM match_registry WHERE match_id = ?",
+                (MatchBits.WEAPON_KILLS, match_id),
+            ).fetchone()
+            if row and row[0]:
+                logger.debug("weapon_kills %s : bit déjà posé, skip", match_id[:8])
+                return 0
+        except Exception as e:
+            logger.debug("weapon_kills guard %s : %s", match_id[:8], e)
 
     try:
         db_path = get_player_duckdb_path(gamertag)

@@ -15,6 +15,7 @@ Algorithme v5.6 (FINDINGS §6a/b) :
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from pathlib import Path
 
@@ -58,11 +59,17 @@ class WeaponExtractionService:
         api: HaloAPIPort,
         conn: duckdb.DuckDBPyConnection,
         cache_dir: Path,
+        *,
+        write_lock: asyncio.Lock | None = None,
     ) -> None:
         self._api = api
         self._conn = conn
         self._cache_dir = cache_dir
         self._chunk_sem = asyncio.Semaphore(_MAX_CONCURRENT_CHUNKS)
+        # Sérialiseur d'écritures DuckDB (requis si plusieurs matchs en parallèle)
+        self._write_lock: asyncio.Lock | contextlib.AbstractAsyncContextManager = (
+            write_lock if write_lock is not None else contextlib.nullcontext()
+        )
 
     async def process_match(
         self,
@@ -108,33 +115,32 @@ class WeaponExtractionService:
                 return summary
 
             logger.debug("Match %s : %d chunks", match_id[:8], len(chunks))
-            # Résoudre les pi acurtis pour Formula A (T1 coéquipiers)
-            xuid_int_to_pi = self._resolve_player_indices(chunks, all_participants)
+            (
+                xuid_int_to_pi,
+                timeline,
+                swap_pis,
+                timing,
+                all_kills_by_xuid,
+            ) = await self._prepare_match_data(match_id, chunks, all_participants)
+            chunks_sorted = sorted(chunks.keys())
             # Le joueur cible (xuid) est celui pour qui on fait la Section 2 (POV pi=1).
             # L'espace pi Section 2 est indépendant de l'acurtis pi — ne pas confondre.
-            actual_pov_xuid = xuid
-            logger.debug(
-                "Match %s : Section 2 cible = %s",
-                match_id[:8],
-                xuid[:8] if xuid else "?",
-            )
-            timeline, swap_pis, timing = build_weapon_timeline(chunks)
-            chunks_sorted = sorted(chunks.keys())
-
-            kt, ka, rt = self._attribute_all_players(
+            kt, ka, rt = await self._attribute_all_players(
                 match_id,
                 all_participants,
-                actual_pov_xuid,
+                xuid,
                 chunks,
                 chunks_sorted,
                 timeline,
                 swap_pis,
                 timing,
                 xuid_int_to_pi,
+                all_kills_by_xuid,
                 dry_run,
             )
             if not dry_run:
-                WeaponKillsMixin.mark_weapon_backfill_done(self._conn, match_id)
+                async with self._write_lock:
+                    WeaponKillsMixin.mark_weapon_backfill_done(self._conn, match_id)
 
             summary["kills_total"] = kt
             summary["kills_attributed"] = ka
@@ -145,6 +151,31 @@ class WeaponExtractionService:
             summary["error"] = str(exc)
 
         return summary
+
+    async def _prepare_match_data(
+        self,
+        match_id: str,
+        chunks: dict,
+        all_participants: dict[str, str],
+    ) -> tuple[dict, dict, dict, list, dict]:
+        """Résout player_indices, construit la timeline et charge les kills batch.
+
+        CPU-bound (bitstring) offloadé sur thread pool pour libérer l'event loop.
+        Batch SQL : 2 requêtes pour tous les joueurs (Phase 2 + Phase 4).
+        """
+        xuid_int_to_pi = await asyncio.to_thread(
+            self._resolve_player_indices, chunks, all_participants
+        )
+        timeline, swap_pis, timing = await asyncio.to_thread(build_weapon_timeline, chunks)
+        all_kills_by_xuid = WeaponKillsMixin.load_all_kills_for_match(self._conn, match_id)
+        logger.debug(
+            "Match %s : %d pi résolus, %d chunks timeline, %d joueurs avec kills",
+            match_id[:8],
+            len(xuid_int_to_pi),
+            len(timeline),
+            len(all_kills_by_xuid),
+        )
+        return xuid_int_to_pi, timeline, swap_pis, timing, all_kills_by_xuid
 
     def _resolve_player_indices(
         self,
@@ -157,7 +188,7 @@ class WeaponExtractionService:
         pi_to_xuid_int = detect_player_indices(first_chunk_data, xuid_int_map)
         return {v: k for k, v in pi_to_xuid_int.items()}
 
-    def _attribute_all_players(  # noqa: PLR0913
+    async def _attribute_all_players(  # noqa: PLR0913
         self,
         match_id: str,
         all_participants: dict[str, str],
@@ -168,6 +199,7 @@ class WeaponExtractionService:
         swap_pis: dict[int, set[int]],
         timing: list,
         xuid_int_to_pi: dict[int, int],
+        all_kills_by_xuid: dict[str, list[dict]],
         dry_run: bool,
     ) -> tuple[int, int, int]:
         """Itère sur tous les participants, attribue les kills, écrit en DB.
@@ -188,11 +220,11 @@ class WeaponExtractionService:
             if player_index is None:
                 player_index = 0  # dummy : non utilisé pour Section 2 (pi=1 invariant)
 
-            kills = WeaponKillsMixin.load_player_kills_for_match(self._conn, match_id, xuid_str)
+            kills = all_kills_by_xuid.get(xuid_str, [])
             if not kills:
                 continue
 
-            kill_rows = self._attribute_kills(
+            kill_rows = await self._attribute_kills(
                 kills,
                 chunks,
                 chunks_sorted,
@@ -212,9 +244,10 @@ class WeaponExtractionService:
                 1 for r in kill_rows if r["weapon_name"] not in ("NON TROUVE", "UNKNOWN")
             )
             if not dry_run and kill_rows:
-                rows = WeaponKillsMixin.insert_weapon_kill_rows(
-                    self._conn, match_id, xuid_str, kill_rows
-                )
+                async with self._write_lock:
+                    rows = WeaponKillsMixin.insert_weapon_kill_rows(
+                        self._conn, match_id, xuid_str, kill_rows
+                    )
                 rows_total += rows
                 logger.debug(
                     "Match %s %s (pi=%d) : %d lignes", match_id[:8], gt, player_index, rows
@@ -223,7 +256,7 @@ class WeaponExtractionService:
 
     # ── Attribution ───────────────────────────────────────────────────────
 
-    def _attribute_kills(  # noqa: PLR0913
+    async def _attribute_kills(  # noqa: PLR0913
         self,
         kills: list[dict],
         chunks: dict,
@@ -240,7 +273,8 @@ class WeaponExtractionService:
         if is_pov:
             # Section 2 : le POV est TOUJOURS à pi=1 (inv §6a / inv #6/#23/#27/#41)
             # L'espace pi Section 2 est indépendant du pi acurtis — ne pas utiliser player_index
-            fire_events = self._scan_player_chunks(chunks, 1)
+            # CPU-bound bitstring : offload sur thread pour libérer l'event loop (Phase 4)
+            fire_events = await asyncio.to_thread(self._scan_player_chunks, chunks, 1)
             return correlate_kills_to_weapons(kills, fire_events)
         return self._attribute_t1_kills(
             kills, chunks_sorted, timeline, swap_pis, timing, player_index
