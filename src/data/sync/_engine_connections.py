@@ -292,7 +292,13 @@ class ConnectionMixin:
         """Charge les IDs des matchs existants depuis shared + player DB (V5 finale).
 
         Un match est considéré « déjà traité » seulement si le joueur est présent
-        dans shared.match_participants **ET** dans player_match_enrichment.
+        dans shared.match_participants **ET** dans player_match_enrichment **ET** soit :
+        - a des personal_score_awards dans la player DB, OU
+        - a personal_score = 0 dans shared.match_participants (légitimement vide).
+
+        Les matchs avec enrichment mais sans personal_score_awards alors que
+        personal_score > 0 (ex : sync partiel dû à un bug antérieur) sont exclus
+        pour être retraités via _process_known_match().
         """
         if self._existing_match_ids is not None:
             return self._existing_match_ids
@@ -302,15 +308,21 @@ class ConnectionMixin:
         shared_conn = self._get_shared_connection()
         if shared_conn is not None and self._xuid:
             try:
-                shared_ids_result = shared_conn.execute(
-                    "SELECT DISTINCT match_id FROM match_participants WHERE xuid = ?", [self._xuid]
+                # Matchs de ce joueur dans shared, avec leur personal_score
+                shared_rows = shared_conn.execute(
+                    "SELECT match_id, COALESCE(personal_score, 0) FROM match_participants WHERE xuid = ?",
+                    [self._xuid],
                 ).fetchall()
-                shared_ids = {str(r[0]) for r in shared_ids_result if r[0]}
+                shared_ids = {str(r[0]) for r in shared_rows if r[0]}
+                shared_score_zero = {str(r[0]) for r in shared_rows if r[0] and (r[1] or 0) == 0}
                 logger.debug(
-                    "Chargé %d match IDs depuis shared.match_participants", len(shared_ids)
+                    "Chargé %d match IDs depuis shared.match_participants (%d avec score=0)",
+                    len(shared_ids),
+                    len(shared_score_zero),
                 )
 
                 enriched_ids: set[str] = set()
+                scored_ids: set[str] = set()
                 conn = self._get_connection()
                 try:
                     enr_result = conn.execute(
@@ -320,12 +332,30 @@ class ConnectionMixin:
                 except Exception:
                     pass
 
-                ids = shared_ids & enriched_ids
+                try:
+                    scored_result = conn.execute(
+                        "SELECT DISTINCT match_id FROM personal_score_awards"
+                    ).fetchall()
+                    scored_ids = {str(r[0]) for r in scored_result if r[0]}
+                except Exception:
+                    pass
+
+                # Un match est "terminé" s'il a enrichment ET (personal_score_awards OU score=0)
+                enriched_and_done = enriched_ids & (scored_ids | shared_score_zero)
+                ids = shared_ids & enriched_and_done
+
+                missing_personal_scores = (shared_ids & enriched_ids) - enriched_and_done
                 skipped = shared_ids - enriched_ids
                 if skipped:
                     logger.info(
                         "%d match(s) dans shared mais sans enrichment → seront re-traités",
                         len(skipped),
+                    )
+                if missing_personal_scores:
+                    logger.info(
+                        "%d match(s) avec enrichment mais sans personal_score_awards "
+                        "(personal_score > 0) → seront re-traités",
+                        len(missing_personal_scores),
                     )
             except Exception as e:
                 logger.debug("Impossible de lire shared.match_participants: %s", e)

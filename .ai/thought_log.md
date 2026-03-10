@@ -7,6 +7,17 @@
 
 ## Journal
 
+### [2026-03-10] — DIAGNOSTIC : personal_score_awards et sync app
+
+**Statut** : Résolu — pas de bug ✅
+
+**Contexte** : Investigation sur l'écriture des `personal_score_awards` lors des syncs app multi-joueurs.
+
+**Conclusion** :
+- Le sync engine écrit déjà les personal scores nativement pour chaque nouveau match via `_process_known_match()` / `_process_new_match()` → `_extract_personal_data()` → `_write_player_enrichments()` → `_insert_personal_score_rows()`.
+- Le gap observé (~2% de matchs sans personal scores) est légitime : l'API Halo retourne `PersonalScores[]` vide pour certains matchs (`personal_score=0`).
+- Un backfill safeguard avait été ajouté par erreur dans `src/ui/sync.py` → supprimé car redondant avec le flux natif.
+
 ### [2026-03-08] — INVESTIGATION : inv92 modele de champs pour les phases `b1eb`
 
 **Statut** : Complété ✅
