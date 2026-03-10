@@ -1,13 +1,12 @@
 """Mixin – requêtes weapon_kills (shared_matches.duckdb).
 
-Fournit les méthodes de lecture des kills par arme pour un match
-ou un ensemble de matchs, et les méthodes d'écriture (upsert, backfill).
+Schéma v5.7 per-kill : (match_id, xuid, time_ms, weapon_name, delta_ms,
+confidence, swap_detected, delayed_damage).
 """
 
 from __future__ import annotations
 
 import logging
-from collections import Counter
 
 import duckdb
 import polars as pl
@@ -17,7 +16,6 @@ from src.data.repositories._arrow_bridge import result_to_polars
 logger = logging.getLogger(__name__)
 
 # Bit WEAPON_KILLS (1 << 21) — copie locale pour éviter import circulaire
-# avec src.data.sync.constants
 _WEAPON_KILLS_BIT = 1 << 21
 
 
@@ -27,39 +25,41 @@ class WeaponKillsMixin:
     # ── Match-level ──────────────────────────────────────────────────────
 
     def load_weapon_kills_for_match(self, match_id: str) -> pl.DataFrame:
-        """Charge les kills par arme pour tous les joueurs d'un match.
+        """Charge les kills agrégés par arme pour tous les joueurs d'un match.
 
         Returns:
-            DataFrame (xuid, weapon_id, kills).
+            DataFrame (xuid, weapon_name, kills) trié par kills DESC.
         """
         try:
             conn = self._get_connection()
             result = conn.execute(
-                "SELECT xuid, weapon_id, kills "
+                "SELECT xuid, weapon_name, COUNT(*)::INTEGER AS kills "
                 "FROM shared.weapon_kills "
                 "WHERE match_id = ? "
+                "GROUP BY xuid, weapon_name "
                 "ORDER BY kills DESC",
                 (match_id,),
             )
             return result_to_polars(result)
         except Exception as exc:
             logger.debug("weapon_kills match %s : %s", match_id, exc)
-            return pl.DataFrame(schema={"xuid": pl.Utf8, "weapon_id": pl.Int32, "kills": pl.Int16})
+            return pl.DataFrame(schema={"xuid": pl.Utf8, "weapon_name": pl.Utf8, "kills": pl.Int32})
 
-    def load_top_weapon_per_player(self, match_id: str) -> dict[str, tuple[int, int]]:
+    def load_top_weapon_per_player(self, match_id: str) -> dict[str, tuple[str, int]]:
         """Retourne l'arme avec le plus de kills par joueur.
 
         Returns:
-            ``{xuid: (weapon_id, kills)}`` — une entrée par joueur.
+            ``{xuid: (weapon_name, kills)}`` — une entrée par joueur.
         """
         try:
             conn = self._get_connection()
             rows = conn.execute(
-                "SELECT xuid, weapon_id, kills FROM ("
-                "  SELECT xuid, weapon_id, kills,"
-                "    ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY kills DESC) AS rn"
+                "SELECT xuid, weapon_name, kills FROM ("
+                "  SELECT xuid, weapon_name, COUNT(*)::INTEGER AS kills,"
+                "    ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn"
                 "  FROM shared.weapon_kills"
                 "  WHERE match_id = ?"
+                "  GROUP BY xuid, weapon_name"
                 ") sub WHERE rn = 1",
                 (match_id,),
             ).fetchall()
@@ -75,29 +75,27 @@ class WeaponKillsMixin:
     ) -> pl.DataFrame:
         """Charge les kills par arme d'un joueur sur un ensemble de matchs.
 
-        Args:
-            xuid: XUID du joueur.
-            match_ids: Liste de match_id. Si ``None``, tous les matchs.
-
         Returns:
-            DataFrame (match_id, weapon_id, kills).
+            DataFrame (match_id, weapon_name, kills).
         """
         try:
             conn = self._get_connection()
             if match_ids:
                 placeholders = ", ".join("?" for _ in match_ids)
                 result = conn.execute(
-                    f"SELECT match_id, weapon_id, kills "
+                    f"SELECT match_id, weapon_name, COUNT(*)::INTEGER AS kills "
                     f"FROM shared.weapon_kills "
                     f"WHERE xuid = ? AND match_id IN ({placeholders}) "
+                    f"GROUP BY match_id, weapon_name "
                     f"ORDER BY match_id, kills DESC",
                     [xuid, *match_ids],
                 )
             else:
                 result = conn.execute(
-                    "SELECT match_id, weapon_id, kills "
+                    "SELECT match_id, weapon_name, COUNT(*)::INTEGER AS kills "
                     "FROM shared.weapon_kills "
                     "WHERE xuid = ? "
+                    "GROUP BY match_id, weapon_name "
                     "ORDER BY match_id, kills DESC",
                     (xuid,),
                 )
@@ -105,11 +103,7 @@ class WeaponKillsMixin:
         except Exception as exc:
             logger.debug("weapon_kills player %s : %s", xuid, exc)
             return pl.DataFrame(
-                schema={
-                    "match_id": pl.Utf8,
-                    "weapon_id": pl.Int32,
-                    "kills": pl.Int16,
-                }
+                schema={"match_id": pl.Utf8, "weapon_name": pl.Utf8, "kills": pl.Int32}
             )
 
     def load_weapon_kills_aggregated(
@@ -118,59 +112,76 @@ class WeaponKillsMixin:
         """Agrège les kills par arme d'un joueur (total sur plusieurs matchs).
 
         Returns:
-            DataFrame (weapon_id, total_kills) trié par total_kills DESC.
+            DataFrame (weapon_name, total_kills) trié par total_kills DESC.
         """
         try:
             conn = self._get_connection()
             if match_ids:
                 placeholders = ", ".join("?" for _ in match_ids)
                 result = conn.execute(
-                    f"SELECT weapon_id, SUM(kills)::INTEGER AS total_kills "
+                    f"SELECT weapon_name, COUNT(*)::INTEGER AS total_kills "
                     f"FROM shared.weapon_kills "
                     f"WHERE xuid = ? AND match_id IN ({placeholders}) "
-                    f"GROUP BY weapon_id ORDER BY total_kills DESC",
+                    f"GROUP BY weapon_name ORDER BY total_kills DESC",
                     [xuid, *match_ids],
                 )
             else:
                 result = conn.execute(
-                    "SELECT weapon_id, SUM(kills)::INTEGER AS total_kills "
+                    "SELECT weapon_name, COUNT(*)::INTEGER AS total_kills "
                     "FROM shared.weapon_kills "
                     "WHERE xuid = ? "
-                    "GROUP BY weapon_id ORDER BY total_kills DESC",
+                    "GROUP BY weapon_name ORDER BY total_kills DESC",
                     (xuid,),
                 )
             return result_to_polars(result)
         except Exception as exc:
             logger.debug("weapon_kills_agg player %s : %s", xuid, exc)
-            return pl.DataFrame(schema={"weapon_id": pl.Int32, "total_kills": pl.Int32})
+            return pl.DataFrame(schema={"weapon_name": pl.Utf8, "total_kills": pl.Int32})
 
     # ── Write operations (accept explicit connection) ────────────────────
 
     @staticmethod
-    def upsert_weapon_kills(
+    def insert_weapon_kill_rows(
         conn: duckdb.DuckDBPyConnection,
         match_id: str,
         xuid: str,
-        counts: Counter,
+        kill_rows: list[dict],
     ) -> int:
-        """Upsert les lignes (match_id, xuid, weapon_id, kills).
+        """Insère les lignes per-kill (schéma v5.7).
 
-        Retourne le nombre de lignes upsertées.
+        Chaque dict doit contenir : time_ms, weapon_name, delta_ms (ou None),
+        confidence, swap_detected, delayed_damage.
+        Retourne le nombre de lignes insérées.
         """
-        if not counts:
+        if not kill_rows:
             return 0
-        rows = 0
-        for weapon_id, kills in counts.items():
-            conn.execute(
-                "INSERT INTO weapon_kills (match_id, xuid, weapon_id, kills) "
-                "VALUES (?, ?, ?, ?) "
-                "ON CONFLICT (match_id, xuid, weapon_id) "
-                "DO UPDATE SET kills = EXCLUDED.kills",
-                (match_id, xuid, weapon_id, kills),
-            )
-            rows += 1
-        logger.debug("upsert_weapon_kills %s : %d lignes", match_id[:8], rows)
-        return rows
+        conn.execute(
+            "DELETE FROM weapon_kills WHERE match_id = ? AND xuid = ?",
+            (match_id, xuid),
+        )
+        conn.executemany(
+            "INSERT INTO weapon_kills "
+            "(match_id, xuid, time_ms, weapon_name, delta_ms, confidence, "
+            " swap_detected, delayed_damage) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    match_id,
+                    xuid,
+                    r["time_ms"],
+                    r["weapon_name"],
+                    r.get("delta_ms"),
+                    r.get("confidence", "none"),
+                    bool(r.get("swap_detected", False)),
+                    bool(r.get("delayed_damage", False)),
+                )
+                for r in kill_rows
+            ],
+        )
+        logger.debug(
+            "insert_weapon_kill_rows %s %s : %d lignes", match_id[:8], xuid[:8], len(kill_rows)
+        )
+        return len(kill_rows)
 
     @staticmethod
     def mark_weapon_backfill_done(
@@ -231,45 +242,46 @@ class WeaponKillsMixin:
     def load_player_kills_for_match(
         conn: duckdb.DuckDBPyConnection,
         match_id: str,
-        gamertag: str,
+        xuid: str,
     ) -> list[dict]:
-        """Charge les kills POV du joueur + médailles proches depuis highlight_events.
+        """Charge les kills du joueur + médailles proches depuis highlight_events.
 
-        Retourne une liste de dicts avec time_ms, gamertag, xuid,
-        medals_nearby, is_melee, is_grenade.
+        Returns:
+            Liste de dicts avec time_ms, gamertag, xuid,
+            medals_nearby, is_melee, is_grenade.
         """
         from src.analysis.weapon_parser import GRENADE_MEDALS, MELEE_MEDALS
 
         kill_rows = conn.execute(
             "SELECT he.time_ms, he.gamertag, he.xuid "
             "FROM highlight_events he "
-            "WHERE he.match_id = ? AND he.gamertag ILIKE ? "
+            "WHERE he.match_id = ? AND he.xuid = ? "
             "AND he.event_type = 'kill' "
             "ORDER BY he.time_ms",
-            (match_id, gamertag),
+            (match_id, xuid),
         ).fetchall()
 
         medal_rows = conn.execute(
             "SELECT he.time_ms, "
             "json_extract_string(he.raw_json, '$.medal_name') AS medal_name "
             "FROM highlight_events he "
-            "WHERE he.match_id = ? AND he.gamertag ILIKE ? "
+            "WHERE he.match_id = ? AND he.xuid = ? "
             "AND he.event_type = 'medal' "
             "AND json_extract_string(he.raw_json, '$.is_medal') = 'true' "
             "ORDER BY he.time_ms",
-            (match_id, gamertag),
+            (match_id, xuid),
         ).fetchall()
 
         medals_by_time = [(t, name) for t, name in medal_rows if name]
 
         kills = []
-        for time_ms, gt, xuid in kill_rows:
+        for time_ms, gt, xuid_val in kill_rows:
             nearby = [name for (mt, name) in medals_by_time if abs(mt - time_ms) <= 500]
             kills.append(
                 {
                     "time_ms": time_ms,
                     "gamertag": gt,
-                    "xuid": xuid,
+                    "xuid": xuid_val,
                     "medals_nearby": nearby,
                     "is_melee": any(m in MELEE_MEDALS for m in nearby),
                     "is_grenade": any(m in GRENADE_MEDALS for m in nearby),

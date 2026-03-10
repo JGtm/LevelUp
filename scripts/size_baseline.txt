@@ -31,9 +31,7 @@ FUNC:src/data/repositories/_roster_loader.py:36:load_match_rosters:201L
 FUNC:src/data/repositories/_roster_loader.py:371:load_match_scoreboard:88L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sync/_engine_connections.py:138:_get_shared_connection:81L
-FUNC:src/data/sync/_match_processing.py:267:_backfill_known_match_shared:85L
-FUNC:src/data/sync/_match_processing.py:354:_process_new_match:81L
-FUNC:src/data/sync/_match_processing.py:38:_process_matches:97L
+FUNC:src/data/sync/_match_processing.py:37:_process_matches:97L
 FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
 FUNC:src/data/sync/_skill_rating.py:127:batch_compute_lusr:198L
 FUNC:src/data/sync/_skill_rating.py:41:_upsert_csr_rating:84L
@@ -96,7 +94,6 @@ FUNC:src/ui/pages/teammates.py:74:render_teammates_page:199L
 FUNC:src/ui/pages/teammates_charts.py:277:render_trio_charts:163L
 FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:122L
-FUNC:src/ui/pages/teammates_synergy.py:212:render_trio_synergy_radar:102L
 FUNC:src/ui/pages/teammates_views.py:57:render_single_teammate_view:115L
 FUNC:src/ui/pages/win_loss.py:300:_render_ratio_by_map_section:94L
 FUNC:src/ui/pages/win_loss.py:397:_render_map_table:131L

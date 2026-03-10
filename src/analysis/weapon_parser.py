@@ -14,74 +14,11 @@ from collections import Counter
 
 from bitstring import Bits
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Constantes : Weapon IDs (8 bytes, Andy Curtis / filmshell)
-# ══════════════════════════════════════════════════════════════════════════════
-
-WEAPON_ID_MAP: dict[bytes, str] = {
-    # ── Liste confirmée Andy Curtis ──────────────────────────────────────
-    bytes.fromhex("6acdc44d42c9679f"): "Bandit Evo",  # pragma: allowlist secret
-    bytes.fromhex("2b1824d542c9679f"): "BR75",  # pragma: allowlist secret
-    bytes.fromhex("230447b142c9679f"): "Cindershot",  # pragma: allowlist secret
-    bytes.fromhex("b619d84a42c9679f"): "CQS48 Bulldog",  # pragma: allowlist secret
-    bytes.fromhex("84bd29ed42c9679f"): "Disruptor",  # pragma: allowlist secret
-    bytes.fromhex("9d6aaed242c9679f"): "Fuel Rod SPNKr",  # pragma: allowlist secret
-    bytes.fromhex("2ac9c2ff42c9679f"): "Heatwave",  # pragma: allowlist secret
-    bytes.fromhex("71ab0a2c42c9679f"): "M41 SPNKr",  # pragma: allowlist secret
-    bytes.fromhex("2fb21c8742c9679f"): "M392 Bandit",  # pragma: allowlist secret
-    bytes.fromhex("48c19d2d42c9679f"): "MA40 AR",  # pragma: allowlist secret
-    bytes.fromhex("f5c335dfe7232c0b"): "MA5K Avenger",  # pragma: allowlist secret
-    bytes.fromhex("80977ba542c9679f"): "Mangler",  # pragma: allowlist secret
-    bytes.fromhex("767db96d42c9679f"): "MLRS-2 Hydra",  # pragma: allowlist secret
-    bytes.fromhex("f408190f42c9679f"): "Mk51 Sidekick",  # pragma: allowlist secret
-    bytes.fromhex("d791556542c9679f"): "Mutilator",  # pragma: allowlist secret
-    bytes.fromhex("b533957e42c9679f"): "Needler",  # pragma: allowlist secret
-    bytes.fromhex("c354294642c9679f"): "Plasma Pistol",  # pragma: allowlist secret
-    bytes.fromhex("30484ea642c9679f"): "Pulse Carbine",  # pragma: allowlist secret
-    bytes.fromhex("c30d87c742c9679f"): "Ravager",  # pragma: allowlist secret
-    bytes.fromhex("0a1992bc42c9679f"): "S7 Sniper",  # pragma: allowlist secret
-    bytes.fromhex("9387a8b942c9679f"): "Shock Rifle",  # pragma: allowlist secret
-    bytes.fromhex("0d20c46942c9679f"): "Skewer",  # pragma: allowlist secret
-    bytes.fromhex("daf193c742c9679f"): "Stalker Rifle",  # pragma: allowlist secret
-    bytes.fromhex("fd98554c42c9679f"): "VK78 Commando",  # pragma: allowlist secret
-    bytes.fromhex("3e07021742c9679f"): "Vestige Carbine",  # pragma: allowlist secret
-    # ── IDs filmshell / Andy Curtis (MAJ 2026-02-28) ─────────────────────
-    bytes.fromhex("a0955e9e42c9679f"): "Sentinel Beam",  # pragma: allowlist secret
-    bytes.fromhex("841ac5e5a730e49f"): "Gravity Hammer",  # pragma: allowlist secret
-    bytes.fromhex("4ff3937e8978aa7a"): "Energy Sword",  # pragma: allowlist secret
-    bytes.fromhex("b6dbead842c9679f"): "Frag Grenade",  # pragma: allowlist secret
-    bytes.fromhex("c1e1bab042c9679f"): "Plasma Grenade",  # pragma: allowlist secret
-    # ── Nouveaux IDs (acurtis 2026-02-28) ────────────────────────────────
-    bytes.fromhex("1a22fee642c9679f"): "Shock Rifle (Ranked)",  # pragma: allowlist secret
-    bytes.fromhex("880fe0bc42c9679f"): "Sandwich",  # pragma: allowlist secret
-    bytes.fromhex("b7262ca1c8fb11d0"): "Mythic Sandwich",  # pragma: allowlist secret
-    # ── IDs filmshell alternatifs (possible variante PvE ou MAJ jeu) ─────
-    bytes.fromhex("7e53b3c642c9679f"): "Pulse Carbine (alt)",  # pragma: allowlist secret
-    bytes.fromhex("04e7f00b42c9679f"): "Plasma Pistol (alt)",  # pragma: allowlist secret
-    bytes.fromhex("3d34488542c9679f"): "Heatwave (alt)",  # pragma: allowlist secret
-    bytes.fromhex("f5ef3bdb42c9679f"): "Stalker Rifle (alt)",  # pragma: allowlist secret
-    bytes.fromhex("fcc6aa7642c9679f"): "Shock Rifle (alt)",  # pragma: allowlist secret
-    bytes.fromhex("7deb133f42c9679f"): "Mangler (alt)",  # pragma: allowlist secret
-    bytes.fromhex("cb30ec5e42c9679f"): "Disruptor (alt)",  # pragma: allowlist secret
-    bytes.fromhex("2b1d61e442c9679f"): "Ravager (alt)",  # pragma: allowlist secret
-    bytes.fromhex("7a11aeef42c9679f"): "Skewer (alt)",  # pragma: allowlist secret
-    bytes.fromhex("c2a6d5e042c9679f"): "Cindershot (alt)",  # pragma: allowlist secret
-    bytes.fromhex("1f6ae65542c9679f"): "MLRS-2 Hydra (alt)",  # pragma: allowlist secret
-    # ── State blocks (grenades au sol, pas en fire event) ────────────────
-    bytes.fromhex("6683257c42c9679f"): "Spike Grenade (state-block)",  # pragma: allowlist secret
-    bytes.fromhex("6d32c7dc42c9679f"): "Dynamo Grenade (state-block)",  # pragma: allowlist secret
-}
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Médailles indiquant un kill melee ou grenade (à exclure)
-# ══════════════════════════════════════════════════════════════════════════════
-
-MELEE_MEDALS: frozenset[str] = frozenset(
-    {"Pummel", "Assassination", "Back Smack", "Melee", "Quigley"}
-)
-
-GRENADE_MEDALS: frozenset[str] = frozenset(
-    {"Sticky Fingers", "Grenadier", "Boom!", "Kong", "Stick", "Grenade Stick"}
+from src.analysis._weapon_data import (
+    GRENADE_MEDALS,  # noqa: F401  (re-export public API)
+    MELEE_MEDALS,  # noqa: F401  (re-export public API)
+    WEAPON_ID_MAP,
+    WEAPON_TIMING,
 )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -92,6 +29,9 @@ FRAME_MARKER = bytes([0xA0, 0x7B, 0x42])
 KILL_WINDOW_MS = 2000
 
 COMMON_WEAPON_SUFFIX = bytes.fromhex("42c9679f")
+
+# Pattern Section 1 (état snapshot) — Formula A : [20 00 02 pb ... wid:8B]
+FORMULA_A_PATTERN = bytes.fromhex("200002")
 
 _WEAPON_BIT_OFFSET = 40  # bits après event_start → weapon_id (64 bits)
 
@@ -107,62 +47,91 @@ for _wid_bytes, _wname in WEAPON_ID_MAP.items():
 # Mapping film_bytes → API weapon_id (entier)
 # ══════════════════════════════════════════════════════════════════════════════
 
-FILM_NAME_TO_API_ID: dict[str, int] = {
-    # UNSC
-    "Bandit Evo": 10090,
-    "BR75": 41533,
-    "CQS48 Bulldog": 36844,
-    "M41 SPNKr": 75491,
-    "MA40 AR": 73886,
-    "MLRS-2 Hydra": 4447,
-    "Mk51 Sidekick": 19954,
-    "S7 Sniper": 79993,
-    "VK78 Commando": 94689,
-    # Covenant
-    "Energy Sword": 95667,
-    "Needler": 76498,
-    "Plasma Pistol": 117,
-    "Pulse Carbine": 44817,
-    "Stalker Rifle": 59527,
-    # Banished
-    "Gravity Hammer": 6943,
-    "Mangler": 14717,
-    "Ravager": 7717,
-    "Skewer": 103477,
-    # Forerunner
-    "Cindershot": 38834,
-    "Disruptor": 77817,
-    "Heatwave": 22223,
-    "Sentinel Beam": 69099,
-    "Shock Rifle": 58947,
-    "Shock Rifle (Ranked)": 58947,
-    # Grenades → API ID 0 (générique)
-    "Frag Grenade": 0,
-    "Plasma Grenade": 0,
-}
-
-FILM_BYTES_TO_API_ID: dict[bytes, int | None] = {}
-for _wbytes, _wname in WEAPON_ID_MAP.items():
-    _canon = _wname.split(" (")[0]  # retire "(alt)", "(state-block)", etc.
-    if _canon in FILM_NAME_TO_API_ID:
-        FILM_BYTES_TO_API_ID[_wbytes] = FILM_NAME_TO_API_ID[_canon]
-    elif _wname in FILM_NAME_TO_API_ID:
-        FILM_BYTES_TO_API_ID[_wbytes] = FILM_NAME_TO_API_ID[_wname]
-    else:
-        FILM_BYTES_TO_API_ID[_wbytes] = None
-
 # POV player_index (invariant universel — inv #6, #23, #27, #41)
 POV_PLAYER_INDEX = 1
 
-# API IDs synthétiques pour melee/grenade/véhicule
-MELEE_API_ID = 1
-GRENADE_API_ID = 0
-VEHICLE_API_ID = 2
+# IDs synthétiques (réservés, ne collident pas avec les uint64 film)
+MELEE_FILM_ID = 1
+GRENADE_FILM_ID = 0
+VEHICLE_FILM_ID = 2
+
+# Aliases pour compatibilité (à supprimer après migration complète)
+MELEE_API_ID = MELEE_FILM_ID
+GRENADE_API_ID = GRENADE_FILM_ID
+VEHICLE_API_ID = VEHICLE_FILM_ID
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Fonctions de parsing pur
 # ══════════════════════════════════════════════════════════════════════════════
+
+
+def scan_formula_a(data: bytes) -> list[tuple[int, int, bytes]]:
+    """Scanne les mises à jour d'état arme Section 1 (Formula A).
+
+    Pattern : ``[20 00 02 pb ... wid:8B]`` où ``pi = pb >> 5``.
+    Utilisé pour l'attribution T1 (coéquipiers non-POV).
+
+    Returns:
+        Liste de ``(offset, player_index, weapon_id_bytes)``.
+    """
+    results: list[tuple[int, int, bytes]] = []
+    pos = 0
+    while True:
+        pos = data.find(FORMULA_A_PATTERN, pos)
+        if pos == -1 or pos + 4 > len(data):
+            break
+        pb = data[pos + 3]
+        pi = pb >> 5
+        end = min(pos + 68, len(data))
+        sx = data.find(COMMON_WEAPON_SUFFIX, pos + 4, end)
+        if sx >= 4:
+            ws = sx - 4
+            if ws > pos + 3:
+                results.append((pos, pi, data[ws : ws + 8]))
+        pos += 4
+    return results
+
+
+def build_weapon_timeline(
+    chunks: dict[int, tuple[bytes, int, int]],
+) -> tuple[dict[int, dict[int, bytes]], list[tuple[int, int]]]:
+    """Construit la timeline arme par chunk (Formula A, Section 1).
+
+    Args:
+        chunks: ``{chunk_idx: (data, start_ms, dur_ms)}``.
+
+    Returns:
+        ``(timeline, timing)`` où :
+        - ``timeline[chunk_idx][pi]`` = dernière arme vue pour pi dans ce chunk
+        - ``timing`` = liste de ``(start_ms, end_ms)`` par chunk_idx ordonnée
+    """
+    timeline: dict[int, dict[int, bytes]] = {}
+    timing: list[tuple[int, int]] = []
+    for idx in sorted(chunks):
+        data, start_ms, dur_ms = chunks[idx]
+        events = scan_formula_a(data)
+        chunk_state: dict[int, bytes] = {}
+        for _, pi, wid in events:
+            chunk_state[pi] = wid  # dernière mise à jour = état à la fin du chunk
+        timeline[idx] = chunk_state
+        timing.append((start_ms, start_ms + dur_ms))
+    return timeline, timing
+
+
+def find_chunk_at_time(
+    chunks_sorted: list[int],
+    timing: list[tuple[int, int]],
+    t_ms: int,
+) -> int:
+    """Retourne l'index de chunk couvrant ``t_ms``.
+
+    Fallback : dernier chunk si ``t_ms`` est après la fin.
+    """
+    for chunk_idx, (start, end) in zip(chunks_sorted, timing, strict=False):
+        if start <= t_ms < end:
+            return chunk_idx
+    return chunks_sorted[-1] if chunks_sorted else 0
 
 
 def find_frame_positions(data: bytes) -> list[int]:
@@ -306,12 +275,25 @@ def scan_all_players(
 # ══════════════════════════════════════════════════════════════════════════════
 
 
+def _get_confidence(weapon_name: str, delta_ms: int | None) -> str:
+    """Calcule la confidence d'une attribution POV selon les zones FINDINGS §6a."""
+    if delta_ms is None:
+        return "none"
+    swap_ms, travel_max = WEAPON_TIMING.get(weapon_name, (650, 2000))
+    if delta_ms < swap_ms:
+        return "high"  # Zone A — swap physiquement impossible
+    if delta_ms <= travel_max:
+        return "medium"  # Zone B — fenêtre ambiguë
+    return "low"  # Zone C — delayed damage
+
+
 def correlate_kills_to_weapons(
     kills: list[dict],
     fire_events_all: list[dict],
 ) -> list[dict]:
     """Pour chaque kill à T, cherche le dernier fire event dans [T-KILL_WINDOW, T].
 
+    Calcule delta_ms et confidence selon les zones FINDINGS §6a.
     Exclut les kills melee/grenade de la recherche fire event.
     """
     results = []
@@ -321,9 +303,12 @@ def correlate_kills_to_weapons(
             results.append(
                 {
                     **kill,
-                    "weapon_name": "MELEE (exclu)",
+                    "weapon_name": "MELEE",
                     "matched_fire_event": None,
                     "delta_ms": None,
+                    "confidence": "none",
+                    "swap_detected": False,
+                    "delayed_damage": False,
                 }
             )
             continue
@@ -331,9 +316,12 @@ def correlate_kills_to_weapons(
             results.append(
                 {
                     **kill,
-                    "weapon_name": "GRENADE (exclu)",
+                    "weapon_name": "GRENADE",
                     "matched_fire_event": None,
                     "delta_ms": None,
+                    "confidence": "none",
+                    "swap_detected": False,
+                    "delayed_damage": False,
                 }
             )
             continue
@@ -346,13 +334,22 @@ def correlate_kills_to_weapons(
         best: dict | None = None
         if candidates:
             best = max(candidates, key=lambda e: e["timestamp_ms"])
+
+        wname = best["weapon_name"] if best else "NON TROUVE"
+        delta = int(kill_t - best["timestamp_ms"]) if best else None
+        swap_ms, travel_max = WEAPON_TIMING.get(wname, (650, 2000))
+        swap_detected = best is not None and delta is not None and delta >= swap_ms
+        delayed = best is not None and delta is not None and delta > travel_max
         results.append(
             {
                 **kill,
-                "weapon_name": best["weapon_name"] if best else "NON TROUVE",
+                "weapon_name": wname,
                 "fire_seq": best["fire_seq"] if best else None,
                 "matched_fire_event": best,
-                "delta_ms": int(kill_t - best["timestamp_ms"]) if best else None,
+                "delta_ms": delta,
+                "confidence": _get_confidence(wname, delta),
+                "swap_detected": swap_detected,
+                "delayed_damage": delayed,
             }
         )
     return results
@@ -363,19 +360,21 @@ def correlate_kills_to_weapons(
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-def count_kills_by_api_weapon(correlated: list[dict]) -> Counter:
-    """Agrège les kills corrélés en Counter {api_weapon_id: n_kills}.
+def count_kills_by_film_weapon(correlated: list[dict]) -> Counter:
+    """Agrège les kills corrélés en Counter {film_weapon_uint64: n_kills}.
 
-    Kills melee → weapon_id=1, grenade → weapon_id=0.
-    Kills sans match / armes non mappées → ignorés.
+    Kills melee → MELEE_FILM_ID=1, grenade → GRENADE_FILM_ID=0.
+    L'ID stocké est le uint64 big-endian des 8 bytes film (WEAPON_ID_MAP key).
+    Kills sans match → ignorés ; armes inconnues → incluses si le uint64 est
+    dans WEAPON_IDS_INT (enum validé).
     """
     counts: Counter = Counter()
     for r in correlated:
         if r.get("is_melee"):
-            counts[MELEE_API_ID] += 1
+            counts[MELEE_FILM_ID] += 1
             continue
         if r.get("is_grenade"):
-            counts[GRENADE_API_ID] += 1
+            counts[GRENADE_FILM_ID] += 1
             continue
         ev = r.get("matched_fire_event")
         if not ev:
@@ -383,8 +382,77 @@ def count_kills_by_api_weapon(correlated: list[dict]) -> Counter:
         wbytes = ev.get("weapon_bytes")
         if not wbytes:
             continue
-        api_id = FILM_BYTES_TO_API_ID.get(wbytes)
-        if api_id is None:
-            continue
-        counts[api_id] += 1
+        weapon_uint64 = int.from_bytes(wbytes, byteorder="big")
+        if weapon_uint64 in WEAPON_IDS_INT:
+            counts[weapon_uint64] += 1
     return counts
+
+
+# Alias de compatibilité — préférer count_kills_by_film_weapon
+count_kills_by_api_weapon = count_kills_by_film_weapon
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Détection player_index via méthode acurtis (inv #26)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def get_player_index_acurtis(bits: Bits, xuid_int: int) -> int | None:
+    """Retourne le player_index d'un joueur depuis son XUID (méthode acurtis).
+
+    Cherche le XUID (little-endian uint64, non-byte-aligned) dans le bitstream
+    et lit les 5 bits qui le précèdent.
+
+    Source : acurtis 2026-03-03 (inv #26), confirmé sur 3 matchs JGtm.
+
+    Args:
+        bits: Bitstring du chunk REPLICATION_DATA.
+        xuid_int: XUID du joueur sous forme d'entier.
+
+    Returns:
+        player_index (0-7) ou None si XUID absent du chunk.
+    """
+    from bitstring import Bits as _Bits  # import local pour éviter dep obligatoire
+
+    term = _Bits(uintle=xuid_int, length=64)
+    position = bits.find(term, bytealigned=False)
+    if not position:
+        return None
+    bit_pos = position[0]
+    if bit_pos < 5:
+        return None
+    return bits[bit_pos - 5 : bit_pos].uint
+
+
+def detect_player_indices(
+    chunk_data: bytes,
+    xuid_ints: dict[int, str],
+) -> dict[int, int]:
+    """Mappe player_index → xuid_int pour tous les joueurs du match.
+
+    Utilise la méthode acurtis (inv #26) sur les données brutes d'un chunk.
+
+    Args:
+        chunk_data: Données brutes d'un chunk REPLICATION_DATA.
+        xuid_ints: {xuid_int: gamertag} pour tous les joueurs du match.
+
+    Returns:
+        {player_index: xuid_int} — les joueurs non trouvés sont absents.
+    """
+    from bitstring import Bits as _Bits
+
+    bits = _Bits(bytes=chunk_data)
+    result: dict[int, int] = {}
+    seen_indices: set[int] = set()
+
+    for xuid_int, _gamertag in xuid_ints.items():
+        pi = get_player_index_acurtis(bits, xuid_int)
+        if pi is None:
+            continue
+        if pi in seen_indices:
+            # Collision de player_index (inv #110) — on garde le premier
+            continue
+        result[pi] = xuid_int
+        seen_indices.add(pi)
+
+    return result

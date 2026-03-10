@@ -18,7 +18,6 @@ def _build_weapon_kills_df(db_path: str, match_id: str, xuid: str, lang: str) ->
         DataFrame (weapon_name, kills) trié par kills DESC, filtré sur kills > 0.
     """
     from src.data.repositories import DuckDBRepository
-    from src.ui.i18n.weapons import get_weapon_label
 
     try:
         repo = DuckDBRepository(db_path, xuid=xuid, read_only=True)
@@ -30,13 +29,9 @@ def _build_weapon_kills_df(db_path: str, match_id: str, xuid: str, lang: str) ->
         return pl.DataFrame(schema={"weapon_name": pl.Utf8, "kills": pl.Int32})
 
     xuid_norm = str(xuid).strip()
-    df = df.filter(pl.col("xuid") == xuid_norm).filter(pl.col("kills") > 0)
-    if df.is_empty():
-        return pl.DataFrame(schema={"weapon_name": pl.Utf8, "kills": pl.Int32})
-
-    names = [get_weapon_label(int(wid), lang) for wid in df["weapon_id"].to_list()]
     return (
-        df.with_columns(pl.Series("weapon_name", names))
+        df.filter(pl.col("xuid") == xuid_norm)
+        .filter(pl.col("kills") > 0)
         .select(["weapon_name", "kills"])
         .sort("kills", descending=True)
     )
