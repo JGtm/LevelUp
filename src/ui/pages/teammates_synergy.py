@@ -19,6 +19,7 @@ from src.ui.chart_utils import safe_chart_render
 from src.ui.components.radar_chart import create_participation_profile_radar
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
+from src.utils.db import duckdb_read_only
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.participation_radar import (
     RADAR_THRESHOLDS,
@@ -26,6 +27,48 @@ from src.visualization.participation_radar import (
     get_radar_axis_lines,
     get_radar_thresholds,
 )
+
+
+def _extract_player_xuid(df_player: pl.DataFrame) -> str | None:
+    """Extrait le xuid d'un DataFrame joueur si disponible."""
+    if "xuid" not in df_player.columns or df_player.is_empty():
+        return None
+    xuid_val = str(df_player["xuid"].item(0) or "").strip()
+    return xuid_val or None
+
+
+def _db_has_xuid(db_path: Path, xuid: str) -> bool:
+    """Vérifie si une DB joueur correspond au xuid attendu via sync_meta."""
+    try:
+        with duckdb_read_only(db_path) as conn:
+            row = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid' LIMIT 1").fetchone()
+        return bool(row and str(row[0]).strip() == xuid)
+    except Exception:
+        return False
+
+
+def _resolve_player_db_path(
+    base_dir: Path, player_name: str, player_xuid: str | None
+) -> Path | None:
+    """Résout le chemin DB joueur en priorisant le dossier nominal puis le xuid."""
+    preferred = base_dir / player_name / "stats.duckdb"
+    if preferred.exists() and not player_xuid:
+        return preferred
+    if preferred.exists() and player_xuid and _db_has_xuid(preferred, player_xuid):
+        return preferred
+    if not player_xuid:
+        return preferred if preferred.exists() else None
+
+    # Fallback robuste: retrouver le dossier joueur par xuid dans data/players/*/stats.duckdb
+    for db_path in base_dir.glob("*/stats.duckdb"):
+        if _db_has_xuid(db_path, player_xuid):
+            logger.info(
+                "teammates_synergy: DB résolue par xuid pour '%s' -> %s",
+                player_name,
+                db_path,
+            )
+            return db_path
+    return preferred if preferred.exists() else None
 
 
 def _compute_player_profile(  # noqa: PLR0913
@@ -53,18 +96,15 @@ def _compute_player_profile(  # noqa: PLR0913
     if df_player.is_empty():
         return None
 
-    # Récupérer les personal_score_awards (peut être vide pour les coéquipiers sans DB)
-    ps: pl.DataFrame = pl.DataFrame()
-    if repo.has_personal_score_awards():
-        ps = repo.load_personal_score_awards_as_polars(match_ids=shared_match_ids)
+    if not repo.has_personal_score_awards():
+        return None
 
+    ps = repo.load_personal_score_awards_as_polars(match_ids=shared_match_ids)
     if ps.is_empty():
         return None
 
-    # Nombre de matchs uniques dans les awards (pour scaler les seuils)
+    # n_matches identique pour tous les joueurs → même échelle sur le radar
     n_matches = max(1, len(shared_match_ids))
-    if "match_id" in ps.columns:
-        n_matches = max(1, ps["match_id"].n_unique())
 
     match_row = {
         "deaths": int(df_player["deaths"].sum()) if "deaths" in df_player.columns else 0,
@@ -189,13 +229,15 @@ def render_synergy_radar(  # noqa: PLR0913
 
     # Profil du coéquipier (depuis sa DB)
     base_dir = Path(db_path).parent.parent
-    friend_db_path = base_dir / friend_name / "stats.duckdb"
-    if friend_db_path.exists():
+    friend_df = ensure_polars(friend_sub)
+    friend_xuid_resolved = friend_xuid or _extract_player_xuid(friend_df)
+    friend_db_path = _resolve_player_db_path(base_dir, friend_name, friend_xuid_resolved)
+    if friend_db_path is not None:
         try:
             friend_repo = DuckDBRepository(str(friend_db_path), "")
             profile = _compute_player_profile(
                 friend_repo,
-                friend_sub,
+                friend_df,
                 shared_match_ids,
                 friend_name,
                 colors_by_name.get(friend_name, "#EF553B"),
@@ -209,7 +251,88 @@ def render_synergy_radar(  # noqa: PLR0913
     _render_radar_display(profiles)
 
 
-def render_trio_synergy_radar(  # noqa: PLR0913, C901
+_SquadPlayer = tuple[str, DataFrameLike, Path | None, str]
+
+
+def _build_squad_player_list(  # noqa: PLR0913
+    me_name: str,
+    me_df: pl.DataFrame,
+    f1_name: str,
+    f1_df: pl.DataFrame,
+    f2_name: str,
+    f2_df: pl.DataFrame,
+    f3_name: str | None,
+    f3_df: pl.DataFrame | None,
+    base_dir: Path,
+    db_path: str,
+    colors_by_name: dict[str, str],
+) -> list[_SquadPlayer]:
+    """Construit la liste (name, df, db_path, color) pour chaque membre de l'escouade."""
+    players: list[_SquadPlayer] = [
+        (me_name, me_df, Path(db_path), colors_by_name.get(me_name, OKABE_ITO_PALETTE[0])),
+        (
+            f1_name,
+            f1_df,
+            _resolve_player_db_path(base_dir, f1_name, _extract_player_xuid(f1_df)),
+            colors_by_name.get(f1_name, OKABE_ITO_PALETTE[1]),
+        ),
+        (
+            f2_name,
+            f2_df,
+            _resolve_player_db_path(base_dir, f2_name, _extract_player_xuid(f2_df)),
+            colors_by_name.get(f2_name, OKABE_ITO_PALETTE[2]),
+        ),
+    ]
+    if f3_name and f3_df is not None:
+        players.append(
+            (
+                f3_name,
+                f3_df,
+                _resolve_player_db_path(
+                    base_dir, f3_name, _extract_player_xuid(ensure_polars(f3_df))
+                ),
+                colors_by_name.get(f3_name, OKABE_ITO_PALETTE[3]),
+            )
+        )
+    return players
+
+
+def _compute_profiles_from_squad(
+    players: list[_SquadPlayer],
+    shared_match_ids: list[str],
+    thresholds: dict | None,
+) -> list[dict]:
+    """Calcule les profils radar pour chaque membre de l'escouade."""
+    profiles: list[dict] = []
+    for name, df_player, player_db, color in players:
+        if ensure_polars(df_player).is_empty():
+            logger.warning("render_trio_synergy_radar: '%s' ignoré — DataFrame vide", name)
+            continue
+        if player_db is None or not Path(player_db).exists():
+            logger.warning(
+                "render_trio_synergy_radar: '%s' — stats.duckdb introuvable → %s",
+                name,
+                player_db,
+            )
+            continue
+        try:
+            repo = DuckDBRepository(str(player_db), "")
+            profile = _compute_player_profile(
+                repo, df_player, shared_match_ids, name, color, thresholds
+            )
+            if profile:
+                profiles.append(profile)
+            else:
+                logger.debug(
+                    "render_trio_synergy_radar: profil None pour '%s' (personal_score_awards vide?)",
+                    name,
+                )
+        except Exception:
+            logger.exception("render_trio_synergy_radar: erreur profil '%s'", name)
+    return profiles
+
+
+def render_trio_synergy_radar(  # noqa: PLR0913
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
     f2_df: DataFrameLike,
@@ -232,83 +355,33 @@ def render_trio_synergy_radar(  # noqa: PLR0913, C901
     if db_path is None:
         db_path = st.session_state.get("db_path", "")
 
-    def _match_ids_set(df: pl.DataFrame) -> set[str]:
+    def _ids(df: pl.DataFrame) -> set[str]:
         if df.is_empty() or "match_id" not in df.columns:
             return set()
         return set(df["match_id"].cast(pl.Utf8).to_list())
 
     to_intersect = [me_df, f1_df, f2_df] + ([f3_df] if f3_df is not None else [])
-    shared_match_ids_set = _match_ids_set(ensure_polars(to_intersect[0]))
+    shared = _ids(ensure_polars(to_intersect[0]))
     for _df in to_intersect[1:]:
-        shared_match_ids_set &= _match_ids_set(ensure_polars(_df))
-    shared_match_ids = list(shared_match_ids_set)
+        shared &= _ids(ensure_polars(_df))
+    shared_match_ids = list(shared)
     if not shared_match_ids:
         return
 
-    thresholds = get_radar_thresholds(db_path) if db_path else None
     base_dir = Path(db_path).parent.parent
-    profiles: list[dict] = []
-
-    players = [
-        (me_name, me_df, db_path, colors_by_name.get(me_name, OKABE_ITO_PALETTE[0])),
-        (
-            f1_name,
-            f1_df,
-            str(base_dir / f1_name / "stats.duckdb"),
-            colors_by_name.get(f1_name, OKABE_ITO_PALETTE[1]),
-        ),
-        (
-            f2_name,
-            f2_df,
-            str(base_dir / f2_name / "stats.duckdb"),
-            colors_by_name.get(f2_name, OKABE_ITO_PALETTE[2]),
-        ),
-    ]
-    if f3_name and f3_df is not None:
-        players.append(
-            (
-                f3_name,
-                f3_df,
-                str(base_dir / f3_name / "stats.duckdb"),
-                colors_by_name.get(f3_name, OKABE_ITO_PALETTE[3]),
-            )
-        )
-
-    for name, df_player, player_db, color in players:
-        if ensure_polars(df_player).is_empty():
-            logger.debug("render_trio_synergy_radar: %s ignoré (DataFrame vide)", name)
-            continue
-        if not Path(player_db).exists():
-            logger.warning(
-                "render_trio_synergy_radar: DB introuvable pour '%s' → %s",
-                name,
-                player_db,
-            )
-            continue
-        try:
-            repo = DuckDBRepository(player_db, "")
-            profile = _compute_player_profile(
-                repo,
-                df_player,
-                shared_match_ids,
-                name,
-                color,
-                thresholds,
-            )
-            if profile:
-                profiles.append(profile)
-            else:
-                logger.debug(
-                    "render_trio_synergy_radar: profil None pour '%s' (personal_score_awards vide?)",
-                    name,
-                )
-        except Exception:
-            logger.exception("render_trio_synergy_radar: erreur profil '%s'", name)
-
-    # Trio : lignes uniquement (show_fill=False) + légende cliquable (static_plot=False)
-    _render_radar_display(
-        profiles,
-        title=t("tms_trio_title"),
-        show_fill=False,
-        static_plot=False,
+    thresholds = get_radar_thresholds(db_path) if db_path else None
+    players = _build_squad_player_list(
+        me_name,
+        me_df,
+        f1_name,
+        f1_df,
+        f2_name,
+        f2_df,
+        f3_name,
+        ensure_polars(f3_df) if f3_df is not None else None,
+        base_dir,
+        db_path,
+        colors_by_name,
     )
+    profiles = _compute_profiles_from_squad(players, shared_match_ids, thresholds)
+    _render_radar_display(profiles, title=t("tms_trio_title"), show_fill=False, static_plot=False)
