@@ -1107,34 +1107,55 @@ def ensure_fix_bot_xuid_shared(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Schéma weapon_kills — shared_matches.duckdb (v5.5)
+# Schéma weapon_kills — shared_matches.duckdb (v5.7, per-kill avec confidence)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _WEAPON_KILLS_DDL = """\
 CREATE TABLE IF NOT EXISTS weapon_kills (
-    match_id   VARCHAR   NOT NULL,
-    xuid       VARCHAR   NOT NULL,
-    weapon_id  INTEGER   NOT NULL,
-    kills      SMALLINT  NOT NULL,
-    PRIMARY KEY (match_id, xuid, weapon_id)
+    match_id       VARCHAR  NOT NULL,
+    xuid           VARCHAR  NOT NULL,
+    time_ms        INTEGER  NOT NULL,
+    weapon_name    VARCHAR  NOT NULL,
+    delta_ms       INTEGER,
+    confidence     VARCHAR  NOT NULL DEFAULT 'none',
+    swap_detected  BOOLEAN  NOT NULL DEFAULT FALSE,
+    delayed_damage BOOLEAN  NOT NULL DEFAULT FALSE
 )
 """
+
+_WEAPON_KILLS_LEGACY_COLUMNS = {"weapon_id", "kills"}
+
+
+def _migrate_weapon_kills_schema(conn: duckdb.DuckDBPyConnection) -> None:
+    """Migre weapon_kills vers le schéma per-kill v5.7 si nécessaire."""
+    try:
+        cols = {
+            r[0]
+            for r in conn.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'weapon_kills'"
+            ).fetchall()
+        }
+        if cols & _WEAPON_KILLS_LEGACY_COLUMNS:
+            logger.info("Migration weapon_kills → schéma per-kill v5.7 (DROP+CREATE)")
+            conn.execute("DROP TABLE weapon_kills")
+    except Exception:
+        pass  # table absente → sera créée par _WEAPON_KILLS_DDL
 
 
 def ensure_weapon_kills_table(conn: duckdb.DuckDBPyConnection) -> None:
     """Crée la table ``weapon_kills`` si elle n'existe pas (idempotente).
 
-    Stocke le nombre de kills par arme·joueur·match.
+    Schéma per-kill v5.7 : une ligne par kill, avec weapon_name (TEXT),
+    delta_ms, confidence, swap_detected, delayed_damage.
     À appeler sur la connexion ``shared_matches.duckdb``.
-
-    Args:
-        conn: Connexion DuckDB vers shared_matches.duckdb.
     """
     try:
+        _migrate_weapon_kills_schema(conn)
         conn.execute(_WEAPON_KILLS_DDL)
         try:
             conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_wk_match_xuid " "ON weapon_kills(match_id, xuid)"
+                "CREATE INDEX IF NOT EXISTS idx_wk_match_xuid ON weapon_kills(match_id, xuid)"
             )
         except Exception as e:
             err = str(e).lower()

@@ -48,8 +48,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Unable to determine the match list for medals aggregation.",
     },
     "tm_trio_session": {
-        "fr": "Dernière session trio détectée : {label}.",
-        "en": "Latest trio session detected: {label}.",
+        "fr": "Dernière session détectée : {label}.",
+        "en": "Latest session detected: {label}.",
     },
     "tm_trio_session_unknown": {
         "fr": "Impossible de déterminer une session trio (données insuffisantes).",

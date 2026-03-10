@@ -7,6 +7,23 @@
 
 ## Journal
 
+### [2026-03-10] — FIX : alimentation killer_victim_pairs sur nouveaux matchs
+
+**Statut** : Corrige en code ✅
+
+**Contexte** : Des matchs recents avaient `highlight_events` remplis mais `killer_victim_pairs` vide, avec un comportement heterogene selon l'historique de backfill.
+
+**Decision technique** :
+- Ajout d'une ecriture K/V native dans le pipeline de sync shared, sans dependre d'un backfill manuel.
+- Nouvelle methode `SharedWritesMixin._insert_shared_killer_victim_pairs(...)` qui calcule les paires depuis les events bruts avec `compute_killer_victim_pairs(..., tolerance_ms=5)` (meme algorithme que le backfill historique).
+- Appel de cette methode dans:
+  - `_insert_new_match_shared(...)` pour chaque nouveau match avec events.
+  - `_backfill_known_match_shared(...)` quand `events_loaded` etait `FALSE` et que les events sont enfin insertes.
+
+**Impact** :
+- Les nouveaux matchs synchronises alimentent immediatement `killer_victim_pairs`.
+- Le backfill `--killer-victim` reste utile pour rattraper les matchs historiques deja presents.
+
 ### [2026-03-10] — DIAGNOSTIC : personal_score_awards et sync app
 
 **Statut** : Résolu — pas de bug ✅

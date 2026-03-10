@@ -35,11 +35,25 @@ def _load_weapons_json(lang: str = "fr") -> dict[str, dict[str, str]]:
 
 
 def get_weapon_label(weapon_id: int, lang: str = "fr") -> str:
-    """Retourne le nom localisé d'une arme, ou ``weapon_{id}``."""
+    """Retourne le nom localisé d'une arme, ou le nom film (WEAPON_INT_TO_NAME).
+
+    Priorité : weapons_{lang}.json → WEAPON_INT_TO_NAME → ``weapon_{id}``.
+    Les IDs film (uint64) sont reconnus via WEAPON_INT_TO_NAME sans mise à jour
+    du JSON.
+    """
     data = _load_weapons_json(lang)
     entry = data.get(str(weapon_id))
     if entry and "name" in entry:
         return entry["name"]
+    # Fallback : ID film direct (uint64 → nom depuis WEAPON_ID_MAP)
+    try:
+        from src.analysis.weapon_parser import WEAPON_INT_TO_NAME
+
+        name = WEAPON_INT_TO_NAME.get(weapon_id)
+        if name:
+            return name.split(" (")[0]  # retire "(alt)", "(state-block)"
+    except Exception:
+        pass
     return f"weapon_{weapon_id}"
 
 
