@@ -44,7 +44,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "page_media": {"fr": "Médias", "en": "Media"},
     "page_citations": {"fr": "Citations", "en": "Commendations"},
     "page_win_loss": {"fr": "Victoires/Défaites", "en": "Wins/Losses"},
-    "page_teammates": {"fr": "Mes coéquipiers", "en": "My Teammates"},
+    "page_teammates": {"fr": "Escouade", "en": "Squad"},
     "page_match_history": {"fr": "Historique des parties", "en": "Match History"},
     "page_career": {"fr": "Carrière", "en": "Career"},
     "page_settings": {"fr": "Paramètres", "en": "Settings"},

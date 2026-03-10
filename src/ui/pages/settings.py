@@ -35,6 +35,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
     backfill_performance_scores: bool,
     backfill_aliases: bool,
     backfill_lusr: bool,
+    backfill_weapons: bool,
     user_timezone: str = "Europe/Paris",
 ) -> AppSettings:
     """Construit un AppSettings à partir des valeurs UI actuelles."""
@@ -71,6 +72,7 @@ def _build_settings_from_ui(  # noqa: PLR0913
         spnkr_refresh_backfill_performance_scores=bool(backfill_performance_scores),
         spnkr_refresh_backfill_aliases=bool(backfill_aliases),
         spnkr_refresh_backfill_lusr=bool(backfill_lusr),
+        spnkr_refresh_backfill_weapons=bool(backfill_weapons),
         aliases_path=_s("aliases_path"),
         profiles_path=_s("profiles_path"),
         profile_assets_download_enabled=_b("profile_assets_download_enabled"),
@@ -221,6 +223,7 @@ def _render_backfill_section(settings: AppSettings) -> dict:  # noqa: PLR0912
                 "backfill_performance_scores": True,
                 "backfill_aliases": True,
                 "backfill_lusr": True,
+                "backfill_weapons": False,
             }
         col1, col2 = st.columns(2)
         with col1:
@@ -261,6 +264,12 @@ def _render_backfill_section(settings: AppSettings) -> dict:  # noqa: PLR0912
                 disabled=not backfill_enabled,
                 help=t("set_backfill_lusr_help"),
             )
+            backfill_weapons = st.checkbox(
+                t("set_backfill_weapons"),
+                value=bool(getattr(settings, "spnkr_refresh_backfill_weapons", False)),
+                disabled=not backfill_enabled,
+                help=t("set_backfill_weapons_help"),
+            )
     return {
         "backfill_enabled": bool(backfill_enabled),
         "backfill_medals": bool(backfill_medals),
@@ -270,6 +279,7 @@ def _render_backfill_section(settings: AppSettings) -> dict:  # noqa: PLR0912
         "backfill_performance_scores": bool(backfill_performance_scores),
         "backfill_aliases": bool(backfill_aliases),
         "backfill_lusr": bool(backfill_lusr),
+        "backfill_weapons": bool(backfill_weapons),
     }
 
 

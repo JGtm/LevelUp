@@ -37,6 +37,7 @@ class SyncOptions:
     parallel_matches: int = 5  # Sprint 6: augmenté de 3 à 5
     defer_performance_score: bool = True  # Sprint 6: calcul batch post-sync
     batch_commit_size: int = 10  # Sprint 6: commit tous les 10 matchs
+    with_weapons: bool = False  # v5.5 : extraire kills par arme depuis films SPNKr
 
 
 @dataclass
@@ -53,6 +54,7 @@ class SyncResult:
     skill_records_inserted: int = 0
     aliases_updated: int = 0
     assets_imported: int = 0
+    weapon_kills_inserted: int = 0
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     duration_seconds: float = 0.0

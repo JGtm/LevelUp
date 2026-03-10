@@ -19,7 +19,7 @@ FUNC:src/app/filters.py:206:render_session_filters:94L
 FUNC:src/app/filters_render.py:373:render_filters_sidebar:112L
 FUNC:src/app/main_helpers.py:184:render_profile_hero:140L
 FUNC:src/app/profile.py:187:load_profile_assets:101L
-FUNC:src/app/sidebar.py:174:render_sync_button:120L
+FUNC:src/app/sidebar.py:174:render_sync_button:122L
 FUNC:src/data/infrastructure/database/duckdb_engine.py:139:load_matches:82L
 FUNC:src/data/media_indexer.py:238:scan_and_index:91L
 FUNC:src/data/media_indexer.py:94:ensure_schema:138L
@@ -31,7 +31,8 @@ FUNC:src/data/repositories/_roster_loader.py:36:load_match_rosters:201L
 FUNC:src/data/repositories/_roster_loader.py:371:load_match_scoreboard:88L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sync/_engine_connections.py:138:_get_shared_connection:81L
-FUNC:src/data/sync/_match_processing.py:262:_backfill_known_match_shared:85L
+FUNC:src/data/sync/_match_processing.py:266:_backfill_known_match_shared:85L
+FUNC:src/data/sync/_match_processing.py:353:_process_new_match:81L
 FUNC:src/data/sync/_match_processing.py:38:_process_matches:96L
 FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
 FUNC:src/data/sync/_skill_rating.py:127:batch_compute_lusr:198L
@@ -65,7 +66,9 @@ FUNC:src/ui/components/radar_chart.py:98:create_stats_per_minute_radar:87L
 FUNC:src/ui/filter_state.py:235:apply_filter_preferences:142L
 FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
 FUNC:src/ui/pages/_session_compare_history.py:20:_build_history_dataframe:139L
-FUNC:src/ui/pages/_teammates_trio.py:30:render_trio_view:116L
+FUNC:src/ui/pages/_teammates_trio.py:35:render_trio_view:183L
+FUNC:src/ui/pages/_teammates_trio.py:396:_render_trio_performance_charts:100L
+FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:19:render_citations_page:169L
 FUNC:src/ui/pages/match_history.py:173:_render_history_table:151L
 FUNC:src/ui/pages/match_history.py:31:render_match_history_page:139L
@@ -87,10 +90,13 @@ FUNC:src/ui/pages/media_library_data.py:366:load_media_from_db:100L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
 FUNC:src/ui/pages/session_compare_charts.py:245:_build_bar_chart_figure:89L
 FUNC:src/ui/pages/session_compare_charts.py:51:render_comparison_radar_chart:82L
+FUNC:src/ui/pages/settings.py:201:_render_backfill_section:82L
+FUNC:src/ui/pages/settings.py:22:_build_settings_from_ui:81L
 FUNC:src/ui/pages/teammates.py:74:render_teammates_page:199L
-FUNC:src/ui/pages/teammates_charts.py:26:render_comparison_charts:119L
-FUNC:src/ui/pages/teammates_charts.py:273:render_trio_charts:134L
+FUNC:src/ui/pages/teammates_charts.py:277:render_trio_charts:163L
+FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:122L
+FUNC:src/ui/pages/teammates_synergy.py:192:render_trio_synergy_radar:102L
 FUNC:src/ui/pages/teammates_views.py:57:render_single_teammate_view:115L
 FUNC:src/ui/pages/win_loss.py:300:_render_ratio_by_map_section:94L
 FUNC:src/ui/pages/win_loss.py:397:_render_map_table:131L
@@ -130,9 +136,10 @@ FUNC:src/visualization/timeseries.py:317:plot_per_minute_timeseries:91L
 FUNC:src/visualization/timeseries_combat.py:268:plot_damage_dealt_taken:81L
 FUNC:src/visualization/timeseries_combat.py:352:plot_shots_accuracy:92L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
-FUNC:src/visualization/trio.py:12:plot_trio_metric:139L
+FUNC:src/visualization/trio.py:12:plot_trio_metric:153L
 MODULE:src/data/query/trends.py:534L
 MODULE:src/data/services/teammates_service.py:536L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
+MODULE:src/ui/pages/_teammates_trio.py:543L
 MODULE:src/ui/pages/win_loss.py:529L

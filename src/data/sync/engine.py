@@ -45,6 +45,7 @@ from src.data.sync._aggregates import AggregatesMixin
 from src.data.sync._career import CareerMixin
 from src.data.sync._engine_connections import ConnectionMixin
 from src.data.sync._engine_schema import SchemaMixin
+from src.data.sync._engine_weapon_kills import WeaponKillsEngineMixin
 from src.data.sync._engine_writes import EnrichedWritesMixin
 from src.data.sync._match_processing import MatchProcessingMixin
 from src.data.sync._performance import PerformanceMixin
@@ -85,6 +86,7 @@ class DuckDBSyncEngine(
     SkillRatingMixin,
     CareerMixin,
     AggregatesMixin,
+    WeaponKillsEngineMixin,
     MatchProcessingMixin,
     EnrichedWritesMixin,
 ):

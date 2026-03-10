@@ -5,11 +5,15 @@ Extraits de teammates.py (Sprint 16 — refactoring Phase A).
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import polars as pl
 import streamlit as st
 
+logger = logging.getLogger(__name__)
+
+from src.config import OKABE_ITO_PALETTE
 from src.data.repositories import DuckDBRepository
 from src.ui.chart_utils import safe_chart_render
 from src.ui.components.radar_chart import create_participation_profile_radar
@@ -185,7 +189,7 @@ def render_synergy_radar(  # noqa: PLR0913
     _render_radar_display(profiles)
 
 
-def render_trio_synergy_radar(  # noqa: PLR0913
+def render_trio_synergy_radar(  # noqa: PLR0913, C901
     me_df: DataFrameLike,
     f1_df: DataFrameLike,
     f2_df: DataFrameLike,
@@ -195,8 +199,10 @@ def render_trio_synergy_radar(  # noqa: PLR0913
     colors_by_name: dict[str, str],
     *,
     db_path: str | None = None,
+    f3_df: DataFrameLike | None = None,
+    f3_name: str | None = None,
 ) -> None:
-    """Radar complémentarité trio (6 axes) : moi + 2 coéquipiers."""
+    """Radar complémentarité escouade (6 axes) : moi + 2 ou 3 coéquipiers."""
     me_df = ensure_polars(me_df)
     f1_df = ensure_polars(f1_df)
     f2_df = ensure_polars(f2_df)
@@ -211,7 +217,11 @@ def render_trio_synergy_radar(  # noqa: PLR0913
             return set()
         return set(df["match_id"].cast(pl.Utf8).to_list())
 
-    shared_match_ids = list(_match_ids_set(me_df) & _match_ids_set(f1_df) & _match_ids_set(f2_df))
+    to_intersect = [me_df, f1_df, f2_df] + ([f3_df] if f3_df is not None else [])
+    shared_match_ids_set = _match_ids_set(ensure_polars(to_intersect[0]))
+    for _df in to_intersect[1:]:
+        shared_match_ids_set &= _match_ids_set(ensure_polars(_df))
+    shared_match_ids = list(shared_match_ids_set)
     if not shared_match_ids:
         return
 
@@ -220,23 +230,40 @@ def render_trio_synergy_radar(  # noqa: PLR0913
     profiles: list[dict] = []
 
     players = [
-        (me_name, me_df, db_path, colors_by_name.get(me_name, "#636EFA")),
+        (me_name, me_df, db_path, colors_by_name.get(me_name, OKABE_ITO_PALETTE[0])),
         (
             f1_name,
             f1_df,
             str(base_dir / f1_name / "stats.duckdb"),
-            colors_by_name.get(f1_name, "#EF553B"),
+            colors_by_name.get(f1_name, OKABE_ITO_PALETTE[1]),
         ),
         (
             f2_name,
             f2_df,
             str(base_dir / f2_name / "stats.duckdb"),
-            colors_by_name.get(f2_name, "#00CC96"),
+            colors_by_name.get(f2_name, OKABE_ITO_PALETTE[2]),
         ),
     ]
+    if f3_name and f3_df is not None:
+        players.append(
+            (
+                f3_name,
+                f3_df,
+                str(base_dir / f3_name / "stats.duckdb"),
+                colors_by_name.get(f3_name, OKABE_ITO_PALETTE[3]),
+            )
+        )
 
     for name, df_player, player_db, color in players:
-        if ensure_polars(df_player).is_empty() or not Path(player_db).exists():
+        if ensure_polars(df_player).is_empty():
+            logger.debug("render_trio_synergy_radar: %s ignoré (DataFrame vide)", name)
+            continue
+        if not Path(player_db).exists():
+            logger.warning(
+                "render_trio_synergy_radar: DB introuvable pour '%s' → %s",
+                name,
+                player_db,
+            )
             continue
         try:
             repo = DuckDBRepository(player_db, "")
@@ -250,8 +277,13 @@ def render_trio_synergy_radar(  # noqa: PLR0913
             )
             if profile:
                 profiles.append(profile)
+            else:
+                logger.debug(
+                    "render_trio_synergy_radar: profil None pour '%s' (personal_score_awards vide?)",
+                    name,
+                )
         except Exception:
-            pass
+            logger.exception("render_trio_synergy_radar: erreur profil '%s'", name)
 
     # Trio : lignes uniquement (show_fill=False) + légende cliquable (static_plot=False)
     _render_radar_display(

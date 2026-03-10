@@ -88,6 +88,7 @@ def _empty_result() -> dict[str, int]:
         "citations_computed": 0,
         "participants_enriched": 0,
         "pve_stats_inserted": 0,
+        "weapon_kills_inserted": 0,
         "lusr_computed": 0,
         "csr_fetched": 0,
         "csr_backfilled": 0,
@@ -712,6 +713,8 @@ async def _backfill_with_api(
     force_citations = scope.force_citations
     pve_stats = getattr(scope, "pve_stats", False)
     force_pve_stats = getattr(scope, "force_pve_stats", False)
+    weapons = getattr(scope, "weapons", False)
+    force_weapons = getattr(scope, "force_weapons", False)
     from src.data.sync.api_client import get_tokens_from_env
     from src.data.sync.api_factory import create_api_client
     from src.data.sync.migrations import ensure_match_participants_columns
@@ -950,6 +953,13 @@ async def _backfill_with_api(
                         force=force_pve_stats,
                     )
                     totals["pve_stats_inserted"] += n
+
+                # ── Weapon kills → shared.weapon_kills (v5.5) ──
+                if weapons:
+                    n = await _backfill_weapon_kills_for_match(
+                        client, match_id, gamertag, xuid, shared_conn, force=force_weapons
+                    )
+                    totals["weapon_kills_inserted"] += n
 
                 # Marquer le bitmask backfill_completed pour tous les types demandés
                 requested_types = scope.requested_types
@@ -1271,6 +1281,57 @@ async def _backfill_pve_for_match(
         return inserted
     except Exception as e:
         logger.warning(f"Backfill PVE échoué pour {match_id}: {e}")
+        return 0
+
+
+async def _backfill_weapon_kills_for_match(
+    client: Any,
+    match_id: str,
+    gamertag: str,
+    xuid: str,
+    shared_conn: Any,
+    *,
+    force: bool = False,
+) -> int:
+    """Extrait et stocke les kills par arme pour un match (non bloquant).
+
+    Args:
+        client: Client API SPNKr authentifié.
+        match_id: ID du match.
+        gamertag: Gamertag du joueur.
+        xuid: XUID du joueur.
+        shared_conn: Connexion shared_matches.duckdb.
+        force: Si True, re-traiter même si MatchBits.WEAPON_KILLS posé.
+
+    Returns:
+        Nombre de lignes weapon_kills insérées (0 si erreur ou skip).
+    """
+    from src.data.services.weapon_extraction_service import WeaponExtractionService
+    from src.data.sync._engine_weapon_kills import _resolve_cache_dir
+    from src.data.sync.constants import MatchBits
+    from src.utils.paths import get_player_duckdb_path
+
+    try:
+        db_path = get_player_duckdb_path(gamertag)
+        cache_dir = _resolve_cache_dir(db_path)
+        service = WeaponExtractionService(client, shared_conn, cache_dir)
+        summary = await service.process_match(match_id, gamertag, xuid)
+        rows = summary.get("rows_inserted", 0)
+        if rows > 0:
+            try:
+                shared_conn.execute(
+                    "UPDATE match_registry "
+                    "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                    "WHERE match_id = ?",
+                    (MatchBits.WEAPON_KILLS, match_id),
+                )
+            except Exception as e:
+                logger.debug("Guard WEAPON_KILLS pour %s : %s", match_id[:8], e)
+        elif "error" in summary:
+            logger.debug("weapon_kills %s : %s", match_id[:8], summary["error"])
+        return rows
+    except Exception as exc:
+        logger.debug("_backfill_weapon_kills_for_match %s (non bloquant) : %s", match_id[:8], exc)
         return 0
 
 
