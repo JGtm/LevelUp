@@ -280,7 +280,7 @@ class WeaponExtractionService:
                 results.append(_attribution_row(kill, "UNKNOWN"))
                 continue
 
-            wname = WEAPON_ID_MAP.get(wid, f"?{wid.hex()[:8]}")
+            wname = WEAPON_ID_MAP.get(wid, f"?{wid.hex()}")
             conf = "high" if wid in WEAPON_ID_MAP else "low"
             # MEDIUM si ce pi a eu plusieurs armes distinctes dans ce chunk
             # (swap intra-chunk ~19s — FINDINGS §6b Step 3)
