@@ -29,12 +29,30 @@ def _build_weapon_kills_df(db_path: str, match_id: str, xuid: str, lang: str) ->
         return pl.DataFrame(schema={"weapon_name": pl.Utf8, "kills": pl.Int32})
 
     xuid_norm = str(xuid).strip()
-    return (
+    from src.analysis._weapon_data import WEAPON_FUSION_MAP
+    from src.ui.i18n.weapons import translate_weapon_name
+
+    filtered = (
         df.filter(pl.col("xuid") == xuid_norm)
         .filter(pl.col("kills") > 0)
-        .select(["weapon_name", "kills"])
-        .sort("kills", descending=True)
+        .filter(~pl.col("weapon_name").is_in(["MELEE", "GRENADE", "UNKNOWN", "NON TROUVE"]))
     )
+    if filtered.is_empty():
+        return pl.DataFrame(schema={"weapon_name": pl.Utf8, "kills": pl.Int32})
+
+    # Fusion + traduction
+    fused = (
+        filtered.with_columns(pl.col("weapon_name").replace(WEAPON_FUSION_MAP).alias("weapon_name"))
+        .group_by("weapon_name")
+        .agg(pl.col("kills").sum())
+    )
+    # Traduction vers la langue courante
+    translated = fused.with_columns(
+        pl.col("weapon_name")
+        .map_elements(lambda n: translate_weapon_name(n, lang), return_dtype=pl.Utf8)
+        .alias("weapon_name")
+    )
+    return translated.sort("kills", descending=True)
 
 
 def _render_weapon_pie(df: pl.DataFrame, colors: dict) -> None:

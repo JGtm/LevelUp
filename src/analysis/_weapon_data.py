@@ -73,6 +73,48 @@ WEAPON_ID_MAP: dict[bytes, str] = {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Fusion de variantes : nom filmshell → nom canonique
+# Appliquer après attribution pour regrouper sous la même citation.
+# ══════════════════════════════════════════════════════════════════════════════
+
+WEAPON_FUSION_MAP: dict[str, str] = {
+    # Bandit : deux références filmshell pour le même canon
+    "M392 Bandit": "Bandit Evo",
+    # SPNKr : variante Fuel Rod comptée avec le SPNKr de base
+    "Fuel Rod SPNKr": "M41 SPNKr",
+}
+
+# Traductions EN → FR des noms canoniques filmshell
+# Utilisé dans l’UI pour afficher les noms localisés.
+WEAPON_NAME_FR: dict[str, str] = {
+    "Bandit Evo": "Bandit EVO",
+    "BR75": "BR75",
+    "Cindershot": "Crémateur",
+    "CQS48 Bulldog": "CQS48 Bulldog",
+    "Disruptor": "Disrupteur",
+    "Energy Sword": "Épée à énergie",
+    "Gravity Hammer": "Marteau antigravité",
+    "Heatwave": "Calcineur",
+    "M41 SPNKr": "M41 SPNKr",
+    "MA40 AR": "MA40 AR",
+    "Mangler": "Déchiqueteur",
+    "Mk51 Sidekick": "MK50 Sidekick",
+    "MLRS-2 Hydra": "Hydra",
+    "Mutilator": "Mutilateur",
+    "Needler": "Needler",
+    "Plasma Pistol": "Pistolet à plasma",
+    "Pulse Carbine": "Carabine à impulsion",
+    "Ravager": "Ravageur",
+    "S7 Sniper": "S7 Sniper",
+    "Sentinel Beam": "Rayon de Sentinelle",
+    "Shock Rifle": "Fusil électrique",
+    "Skewer": "Empaleur",
+    "Stalker Rifle": "Fusil traqueur",
+    "VK78 Commando": "VK78 Commando",
+    "Vestige Carbine": "Carabine Vestige",
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Médailles indiquant un kill melee ou grenade
 # ══════════════════════════════════════════════════════════════════════════════
 

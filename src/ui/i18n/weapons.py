@@ -89,3 +89,17 @@ def get_weapon_ids_by_faction(faction: str, lang: str = "fr") -> list[int]:
             except ValueError:
                 continue
     return result
+
+
+def translate_weapon_name(name: str, lang: str = "fr") -> str:
+    """Traduit un nom canonique filmshell EN vers la langue demandée.
+
+    Applique d'abord WEAPON_FUSION_MAP, puis WEAPON_NAME_FR si lang='fr'.
+    Retourne le nom original si aucune traduction trouvée.
+    """
+    from src.analysis._weapon_data import WEAPON_FUSION_MAP, WEAPON_NAME_FR
+
+    canonical = WEAPON_FUSION_MAP.get(name, name)
+    if lang == "fr":
+        return WEAPON_NAME_FR.get(canonical, canonical)
+    return canonical

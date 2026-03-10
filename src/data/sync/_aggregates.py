@@ -58,9 +58,14 @@ class AggregatesMixin:
                     self._xuid,
                     read_only=False,
                 )
-                repo.refresh_materialized_views()
-                result["materialized_views"] = 1
-                repo.close()
+                try:
+                    repo.refresh_materialized_views()
+                    result["materialized_views"] = 1
+                finally:
+                    # CRITIQUE : fermer repo même si refresh_materialized_views lève une
+                    # exception, pour libérer le handle sur shared_matches.duckdb et
+                    # permettre à _get_shared_connection() de rouvrir la connexion.
+                    repo.close()
             except Exception as e:
                 logger.debug("refresh_materialized_views non disponible: %s", e)
 
