@@ -6,7 +6,7 @@ Orchestre les ports (API), le domaine pur (weapon_parser) et le repo
 Architecture hexagonale : le service accepte un ``HaloAPIPort`` (Protocol)
 et un ``duckdb.DuckDBPyConnection`` pour les écritures.
 
-Algorithme v5.7 (FINDINGS §6a/b) :
+Algorithme v5.6 (FINDINGS §6a/b) :
 - Section 2 fire events  → attribution POV (avec confidence zones)
 - Formula A Section 1   → attribution T1 coéquipiers (snapshot)
 - Tous joueurs traités  → player_index via méthode acurtis (inv #26)
@@ -36,6 +36,18 @@ logger = logging.getLogger(__name__)
 
 _CHUNK_TIMEOUT_S = 30.0
 _MAX_CONCURRENT_CHUNKS = 5
+
+
+def _attribution_row(kill: dict, weapon_name: str, confidence: str = "none") -> dict:
+    """Construit une ligne d'attribution (weapon_name, confidence) depuis un kill brut."""
+    return {
+        **kill,
+        "weapon_name": weapon_name,
+        "delta_ms": None,
+        "confidence": confidence,
+        "swap_detected": False,
+        "delayed_damage": False,
+    }
 
 
 class WeaponExtractionService:
@@ -100,16 +112,17 @@ class WeaponExtractionService:
             t1_xuids = self._load_pov_team(match_id, xuid) or set(all_participants)
             t1_participants = {x: gt for x, gt in all_participants.items() if x in t1_xuids}
             xuid_int_to_pi = self._resolve_player_indices(chunks, t1_participants, xuid)
-            timeline, timing = build_weapon_timeline(chunks)
+            timeline, swap_pis, timing = build_weapon_timeline(chunks)
             chunks_sorted = sorted(chunks.keys())
 
             kt, ka, rt = self._attribute_all_players(
                 match_id,
-                t1_participants,
+                all_participants,
                 xuid,
                 chunks,
                 chunks_sorted,
                 timeline,
+                swap_pis,
                 timing,
                 xuid_int_to_pi,
                 dry_run,
@@ -152,6 +165,7 @@ class WeaponExtractionService:
         chunks: dict,
         chunks_sorted: list[int],
         timeline: dict,
+        swap_pis: dict[int, set[int]],
         timing: list,
         xuid_int_to_pi: dict[int, int],
         dry_run: bool,
@@ -180,11 +194,16 @@ class WeaponExtractionService:
                 chunks,
                 chunks_sorted,
                 timeline,
+                swap_pis,
                 timing,
                 player_index,
                 xuid_str,
                 pov_xuid,
             )
+            if xuid_str == pov_xuid:
+                kill_rows = self._reconcile_api_aggregates(
+                    kill_rows, self._conn, match_id, xuid_str
+                )
             kills_total += len(kills)
             kills_attributed += sum(
                 1 for r in kill_rows if r["weapon_name"] not in ("NON TROUVE", "UNKNOWN")
@@ -207,6 +226,7 @@ class WeaponExtractionService:
         chunks: dict,
         chunks_sorted: list[int],
         timeline: dict,
+        swap_pis: dict[int, set[int]],
         timing: list,
         player_index: int,
         xuid_str: str,
@@ -217,13 +237,16 @@ class WeaponExtractionService:
         if is_pov:
             fire_events = self._scan_player_chunks(chunks, player_index)
             return correlate_kills_to_weapons(kills, fire_events)
-        return self._attribute_t1_kills(kills, chunks_sorted, timeline, timing, player_index)
+        return self._attribute_t1_kills(
+            kills, chunks_sorted, timeline, swap_pis, timing, player_index
+        )
 
     @staticmethod
-    def _attribute_t1_kills(
+    def _attribute_t1_kills(  # noqa: PLR0913
         kills: list[dict],
         chunks_sorted: list[int],
         timeline: dict,
+        swap_pis: dict[int, set[int]],
         timing: list,
         player_index: int,
     ) -> list[dict]:
@@ -237,28 +260,10 @@ class WeaponExtractionService:
         results = []
         for kill in kills:
             if kill.get("is_melee"):
-                results.append(
-                    {
-                        **kill,
-                        "weapon_name": "MELEE",
-                        "delta_ms": None,
-                        "confidence": "none",
-                        "swap_detected": False,
-                        "delayed_damage": False,
-                    }
-                )
+                results.append(_attribution_row(kill, "MELEE"))
                 continue
             if kill.get("is_grenade"):
-                results.append(
-                    {
-                        **kill,
-                        "weapon_name": "GRENADE",
-                        "delta_ms": None,
-                        "confidence": "none",
-                        "swap_detected": False,
-                        "delayed_damage": False,
-                    }
-                )
+                results.append(_attribution_row(kill, "GRENADE"))
                 continue
 
             t_ms = kill["time_ms"]
@@ -267,34 +272,16 @@ class WeaponExtractionService:
                 player_index
             )
             if wid is None:
-                results.append(
-                    {
-                        **kill,
-                        "weapon_name": "UNKNOWN",
-                        "delta_ms": None,
-                        "confidence": "none",
-                        "swap_detected": False,
-                        "delayed_damage": False,
-                    }
-                )
+                results.append(_attribution_row(kill, "UNKNOWN"))
                 continue
 
             wname = WEAPON_ID_MAP.get(wid, f"?{wid.hex()[:8]}")
             conf = "high" if wid in WEAPON_ID_MAP else "low"
-            # Swap check : plusieurs wids pour ce pi dans ce chunk = MEDIUM
-            chunk_state = timeline.get(ck, {})
-            if len(chunk_state) > 1 and conf == "high":
+            # MEDIUM si ce pi a eu plusieurs armes distinctes dans ce chunk
+            # (swap intra-chunk ~19s — FINDINGS §6b Step 3)
+            if player_index in swap_pis.get(ck, set()) and conf == "high":
                 conf = "medium"
-            results.append(
-                {
-                    **kill,
-                    "weapon_name": wname,
-                    "delta_ms": None,
-                    "confidence": conf,
-                    "swap_detected": False,
-                    "delayed_damage": False,
-                }
-            )
+            results.append(_attribution_row(kill, wname, conf))
         return results
 
     # ── Privées ──────────────────────────────────────────────────────────
@@ -437,6 +424,65 @@ class WeaponExtractionService:
             ch.chunk_start_time_offset_milliseconds,
             ch.duration_milliseconds,
         )
+
+    @staticmethod
+    def _reconcile_api_aggregates(
+        kill_rows: list[dict],
+        conn: duckdb.DuckDBPyConnection,
+        match_id: str,
+        xuid_str: str,
+    ) -> list[dict]:
+        """Réconcilie la confidence POV avec les agrégats API (FINDINGS §6a Step 4).
+
+        - Step 4a : si HIGH weapon kills > api → demote les moins certains (grand delta)
+        - Step 4c : si HIGH weapon kills < api → promouvoir des MEDIUM en HIGH
+        """
+        try:
+            row = conn.execute(
+                "SELECT COALESCE(grenade_kills, 0), COALESCE(melee_kills, 0) "
+                "FROM match_participants WHERE match_id = ? AND xuid = ?",
+                (match_id, xuid_str),
+            ).fetchone()
+        except Exception:
+            return kill_rows
+        if row is None:
+            return kill_rows
+        api_grenade = int(row[0])
+        api_melee = int(row[1])
+        api_weapon_kills = max(len(kill_rows) - api_grenade - api_melee, 0)
+        _excluded = ("MELEE", "GRENADE", "NON TROUVE", "UNKNOWN")
+        weapon_high = [
+            r
+            for r in kill_rows
+            if r.get("confidence") == "high" and r.get("weapon_name") not in _excluded
+        ]
+        # Step 4a — surdétection : demote les HIGH les moins certains
+        if len(weapon_high) > api_weapon_kills:
+            excess = len(weapon_high) - api_weapon_kills
+            for r in sorted(weapon_high, key=lambda x: x.get("delta_ms") or 0, reverse=True)[
+                :excess
+            ]:
+                r["confidence"] = "medium"
+            return kill_rows
+        # Step 4c — sous-détection : promouvoir des MEDIUM en HIGH jusqu'à combler le déficit
+        high_after = sum(
+            1
+            for r in kill_rows
+            if r.get("confidence") == "high" and r.get("weapon_name") not in _excluded
+        )
+        if high_after < api_weapon_kills:
+            deficit = api_weapon_kills - high_after
+            medium_kills = sorted(
+                [
+                    r
+                    for r in kill_rows
+                    if r.get("confidence") == "medium" and r.get("weapon_name") not in _excluded
+                ],
+                key=lambda x: x.get("delta_ms") or 0,  # plus certains en premier
+            )
+            for r in medium_kills[:deficit]:
+                r["confidence"] = "high"
+        return kill_rows
 
     @staticmethod
     def _scan_player_chunks(
