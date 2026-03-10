@@ -216,10 +216,24 @@ def plot_friends_impact_heatmap(  # noqa: C901, PLR0912, PLR0915
                 }
             )
 
+    # Ajouter des lignes verticales entre chaque match pour séparer visuellement
+    n_rows = len(y_labels)
+    for x_idx in range(n_matches - 1):
+        shapes.append(
+            {
+                "type": "line",
+                "x0": x_idx + 0.5,
+                "x1": x_idx + 0.5,
+                "y0": -0.5,
+                "y1": n_rows - 0.5,
+                "line": {"color": "rgba(255, 255, 255, 0.55)", "width": 1.5},
+                "layer": "above",
+            }
+        )
+
     fig.update_layout(shapes=shapes)
 
     # Calculer la hauteur dynamique
-    n_rows = len(y_labels)
     calc_height = height or max(300, 50 * n_rows + 100)
 
     fig.update_layout(

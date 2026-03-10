@@ -76,7 +76,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "No impact events found for the selected players.",
     },
     "tm_impact_heatmap": {
-        "fr": "Heatmap d'Impact",
+        "fr": "Matrice d'Impact",
         "en": "Impact heatmap",
     },
     "tm_impact_ranking": {
@@ -111,6 +111,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tm_trio_header": {
         "fr": "Tous les trois — {f1} + {f2}",
         "en": "All three — {f1} + {f2}",
+    },
+    "tm_squad_header": {
+        "fr": "Escouade — {names}",
+        "en": "Squad — {names}",
     },
     # ── Page Match View — manquants ───────────────────────────────────────────
     "tm_map_stats_no_data": {

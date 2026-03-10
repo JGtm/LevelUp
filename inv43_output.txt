@@ -1,0 +1,445 @@
+inv43 — Melee events CORRECTED + Fire event burst/hit-miss bits
+Matches: d9329229, 00162144, 63d6f727
+
+============================================================================
+  PHASE 1 — Suffix-first scan (d9329229)
+============================================================================
+  28 chunks loaded
+
+  [nibble-shifted] Total suffix hits (known weapon IDs):
+    Fire events:  2895
+    Melee events: 0
+    Other/unknown: 123
+    → fire: 2895
+    → unknown: 123
+
+  [raw] Total suffix hits (known weapon IDs):
+    Fire events:  51
+    Melee events: 0
+    Other/unknown: 165
+    → unknown: 165
+    → fire: 51
+
+============================================================================
+  PHASE 1 — Suffix-first scan (00162144)
+============================================================================
+  23 chunks loaded
+
+  [nibble-shifted] Total suffix hits (known weapon IDs):
+    Fire events:  2030
+    Melee events: 0
+    Other/unknown: 149
+    → fire: 2030
+    → unknown: 149
+
+  [raw] Total suffix hits (known weapon IDs):
+    Fire events:  14
+    Melee events: 0
+    Other/unknown: 82
+    → unknown: 82
+    → fire: 14
+
+============================================================================
+  PHASE 1 — Suffix-first scan (63d6f727)
+============================================================================
+  27 chunks loaded
+
+  [nibble-shifted] Total suffix hits (known weapon IDs):
+    Fire events:  2334
+    Melee events: 0
+    Other/unknown: 119
+    → fire: 2334
+    → unknown: 119
+
+  [raw] Total suffix hits (known weapon IDs):
+    Fire events:  17
+    Melee events: 0
+    Other/unknown: 45
+    → unknown: 45
+    → fire: 17
+
+============================================================================
+  PHASE 2 — Pattern-first melee d3+40 (d9329229)
+============================================================================
+
+  [nibble-shifted] Melee events (b0&0x07==0x03, b1==0x40, known wid nearby):
+    Total: 17
+    Weapon ID offset distribution:
+      offset 18: 15 events
+      offset 14: 2 events
+
+    First 15 events:
+      ck= 4  pos=  590855  b0=0x03  wid_off=18  anim=0x41  weapon=MA40 AR
+        before: 03 40 10 00 0c 39 ef a8 50 00 00 00 0d 26 04 40 68 41
+        after:  76 01 60 28 29 e9 82 5a c9 02
+      ck= 4  pos=  596333  b0=0x03  wid_off=18  anim=0x21  weapon=MA40 AR
+        before: 03 40 10 00 09 77 4f f8 50 00 00 00 0d 26 02 40 78 21
+        after:  55 40 a8 40 00 15 e7 20 00 12
+      ck= 5  pos=  761528  b0=0x03  wid_off=18  anim=0x53  weapon=BR75
+        before: 03 40 10 00 0d e7 7e 78 70 00 00 00 0d 26 09 41 a0 53
+        after:  36 08 61 d8 2c d0 80 05 c9 3b
+      ck= 6  pos=  637097  b0=0x03  wid_off=18  anim=0x53  weapon=BR75
+        before: 03 40 10 00 06 17 57 18 80 00 00 00 0d 26 09 42 70 53
+        after:  15 41 08 40 00 a5 e8 1e 00 14
+      ck= 6  pos=  843861  b0=0x03  wid_off=18  anim=0x73  weapon=BR75
+        before: 03 40 10 00 02 cc 53 88 90 00 00 00 0d 26 0f 41 f8 73
+        after:  36 03 60 8c 25 d4 42 80 01 64
+      ck=11  pos=  623253  b0=0x03  wid_off=18  anim=0x73  weapon=BR75
+        before: 03 40 10 00 0f 49 e8 38 e0 00 00 00 0d 26 21 41 14 73
+        after:  36 18 61 08 2b 3f a3 c0 03 24
+      ck=16  pos=  687406  b0=0x0b  wid_off=14  anim=0x41  weapon=MA40 AR
+        before: 0b 40 cb 29 40 00 00 00 0d 26 33 40 94 41
+        after:  76 31 61 b4 29 53 02 95 04 60
+      ck=16  pos=  723892  b0=0x03  wid_off=18  anim=0x53  weapon=BR75
+        before: 03 40 10 00 04 f5 0c f9 40 00 00 00 0d 26 34 40 f8 53
+        after:  15 46 48 40 00 f6 18 1e 00 13
+      ck=17  pos=  773494  b0=0x03  wid_off=18  anim=0x63  weapon=BR75
+        before: 03 40 10 00 0f 02 74 b9 60 00 00 00 0d 26 2c 40 38 63
+        after:  14 0b 18 84 00 00 1f d5 ee a4
+      ck=17  pos=  793330  b0=0x03  wid_off=18  anim=0x43  weapon=BR75
+        before: 03 40 10 00 08 6b 95 d9 60 00 00 00 0d 26 33 41 94 43
+        after:  15 46 e8 40 00 f6 18 5d 00 c1
+      ck=18  pos=  748017  b0=0x03  wid_off=18  anim=0x21  weapon=MA40 AR
+        before: 03 40 10 00 07 2a 64 59 70 00 00 00 0d 26 3a 42 1c 21
+        after:  76 36 61 5a fd c8 ac 0a 18 a4
+      ck=21  pos=  701149  b0=0x03  wid_off=18  anim=0x01  weapon=Fuel Rod SPNKr
+        before: 03 40 10 00 0c ab ba 39 a0 00 00 00 0d 26 42 40 ac 01
+        after:  76 3f 61 a0 2e 46 c6 00 00 84
+      ck=21  pos=  743035  b0=0x03  wid_off=18  anim=0x63  weapon=BR75
+        before: 03 40 10 00 0c 22 7c 99 a0 00 00 00 0d 26 46 42 b8 63
+        after:  55 48 68 40 00 15 e7 61 00 16
+      ck=22  pos=  767391  b0=0x0b  wid_off=14  anim=0x73  weapon=BR75
+        before: 0b 40 82 c9 c0 00 00 00 0d 26 41 42 f0 73
+        after:  15 49 28 40 00 a5 d8 5f 00 15
+      ck=23  pos=  765525  b0=0x03  wid_off=18  anim=0x11  weapon=M392 Bandit
+        before: 03 40 10 00 01 8c 44 f9 d0 00 00 00 0d 26 47 41 70 11
+        after:  55 49 68 40 00 f5 e7 9d 00 02
+
+    Weapons held during melee:
+      BR75: 9
+      MA40 AR: 6
+      Fuel Rod SPNKr: 1
+      M392 Bandit: 1
+
+    Animation type distribution:
+      0x41: 3
+      0x21: 3
+      0x53: 3
+      0x73: 3
+      0x63: 2
+      0x43: 1
+      0x01: 1
+      0x11: 1
+
+    Lead byte (b0) distribution:
+      0x03 (bin=00000011): 15
+      0x0b (bin=00001011): 2
+
+  [raw] Melee events (b0&0x07==0x03, b1==0x40, known wid nearby):
+    Total: 2
+    Weapon ID offset distribution:
+      offset 14: 1 events
+      offset 13: 1 events
+
+    First 2 events:
+      ck= 5  pos=  367032  b0=0x03  wid_off=14  anim=0x63  weapon=Fuel Rod SPNKr
+        before: 03 40 10 00 49 0d 80 0c 00 00 30 00 00 63
+        after:  15 10 29 cc cc 8a 3e 07 92 77
+      ck= 5  pos=  369193  b0=0x5b  wid_off=13  anim=0xc7  weapon=BR75
+        before: 5b 40 c0 11 0e 04 c3 57 07 92 0b 91 c7
+        after:  17 10 30 04 47 cb 78 25 40 c9
+
+    Weapons held during melee:
+      Fuel Rod SPNKr: 1
+      BR75: 1
+
+    Animation type distribution:
+      0x63: 1
+      0xc7: 1
+
+    Lead byte (b0) distribution:
+      0x03 (bin=00000011): 1
+      0x5b (bin=01011011): 1
+
+============================================================================
+  PHASE 2 — Pattern-first melee d3+40 (00162144)
+============================================================================
+
+  [nibble-shifted] Melee events (b0&0x07==0x03, b1==0x40, known wid nearby):
+    Total: 11
+    Weapon ID offset distribution:
+      offset 18: 8 events
+      offset 13: 3 events
+
+    First 11 events:
+      ck= 4  pos=  738413  b0=0x03  wid_off=18  anim=0x21  weapon=Vestige Carbine
+        before: 03 40 10 00 0e 0e 52 14 a0 00 00 00 0d 26 09 40 c0 21
+        after:  55 40 e8 40 00 59 e7 de 00 13
+      ck= 5  pos=  642211  b0=0xbb  wid_off=13  anim=0x03  weapon=Mk51 Sidekick
+        before: bb 40 34 b0 00 00 00 0d 26 00 40 68 03
+        after:  76 01 61 5d 05 c7 bd 82 c2 82
+      ck= 8  pos=  833980  b0=0x0b  wid_off=18  anim=0x13  weapon=Stalker Rifle
+        before: 0b 40 00 00 02 fb 04 a4 f0 00 00 00 0d 26 01 42 00 13
+        after:  61 a4 48 2b 00 00 a1 03 da 10
+      ck=10  pos=  767325  b0=0x03  wid_off=18  anim=0x61  weapon=MA40 AR
+        before: 03 40 10 00 0e 59 26 15 10 00 00 00 0d 26 26 43 a8 61
+        after:  55 44 a8 40 00 f6 17 9d bc 30
+      ck=12  pos=  588221  b0=0xb3  wid_off=13  anim=0x23  weapon=Mk51 Sidekick
+        before: b3 40 b5 30 00 00 00 0d 26 28 41 7c 23
+        after:  61 d0 c1 99 80 01 24 ab 49 43
+      ck=12  pos=  695827  b0=0x03  wid_off=18  anim=0x11  weapon=MA40 AR
+        before: 03 40 10 00 0b 34 b7 15 30 00 00 00 0d 26 30 43 d8 11
+        after:  76 2a 60 c8 29 cd 00 00 09 47
+      ck=14  pos=  737906  b0=0x03  wid_off=18  anim=0x61  weapon=MA40 AR
+        before: 03 40 10 00 01 ca 1f 15 50 00 00 00 0d 26 38 42 c4 61
+        after:  76 35 61 dd 4b 53 21 02 08 25
+      ck=14  pos=  775338  b0=0x03  wid_off=18  anim=0x01  weapon=MA40 AR
+        before: 03 40 10 00 0c 66 70 f5 60 00 00 00 0d 26 3d 41 cc 01
+        after:  55 47 68 40 00 4d f8 dc 8e 10
+      ck=15  pos=  721512  b0=0xab  wid_off=13  anim=0xc3  weapon=Mk51 Sidekick
+        before: ab 40 c0 11 0e 04 c3 57 07 92 03 63 c3
+        after:  2c b0 30 04 41 bc 5e 0a 01 e4
+      ck=16  pos=  872783  b0=0x03  wid_off=18  anim=0x53  weapon=Mk51 Sidekick
+        before: 03 40 10 00 04 af c9 25 80 00 00 00 0d 26 47 43 60 53
+        after:  76 45 61 90 22 e9 03 97 80 63
+      ck=17  pos=  696201  b0=0x03  wid_off=18  anim=0x13  weapon=Mk51 Sidekick
+        before: 03 40 10 00 0b aa d6 05 90 00 00 00 0d 26 49 43 1c 13
+        after:  64 90 d2 bc 5c 0b 60 a4 b3 1b
+
+    Weapons held during melee:
+      Mk51 Sidekick: 5
+      MA40 AR: 4
+      Vestige Carbine: 1
+      Stalker Rifle: 1
+
+    Animation type distribution:
+      0x13: 2
+      0x61: 2
+      0x21: 1
+      0x03: 1
+      0x23: 1
+      0x11: 1
+      0x01: 1
+      0xc3: 1
+      0x53: 1
+
+    Lead byte (b0) distribution:
+      0x03 (bin=00000011): 7
+      0xbb (bin=10111011): 1
+      0x0b (bin=00001011): 1
+      0xb3 (bin=10110011): 1
+      0xab (bin=10101011): 1
+
+  [raw] Melee events (b0&0x07==0x03, b1==0x40, known wid nearby):
+    Total: 0
+
+============================================================================
+  PHASE 2 — Pattern-first melee d3+40 (63d6f727)
+============================================================================
+
+  [nibble-shifted] Melee events (b0&0x07==0x03, b1==0x40, known wid nearby):
+    Total: 19
+    Weapon ID offset distribution:
+      offset 18: 13 events
+      offset 13: 6 events
+
+    First 15 events:
+      ck= 2  pos=  674612  b0=0x03  wid_off=18  anim=0x03  weapon=BR75
+        before: 03 40 10 00 03 18 c2 85 60 10 00 00 0d 26 00 40 38 03
+        after:  15 40 68 40 00 f5 d8 1f 00 0e
+      ck= 4  pos=  761299  b0=0x03  wid_off=18  anim=0x01  weapon=MA40 AR
+        before: 03 40 10 00 0f f1 26 55 80 10 00 00 0d 26 00 42 50 01
+        after:  55 41 88 40 00 69 c8 61 f0 70
+      ck= 5  pos=  554846  b0=0x03  wid_off=18  anim=0x73  weapon=BR75
+        before: 03 40 10 00 05 35 bc 85 80 10 00 00 0d 26 07 41 70 73
+        after:  36 0a 60 ce b7 48 00 00 48 f8
+      ck= 6  pos=  776270  b0=0x83  wid_off=13  anim=0xc3  weapon=BR75
+        before: 83 40 c0 21 0e 04 c3 57 07 92 01 65 c3
+        after:  20 f0 30 08 47 cb 78 25 40 c9
+      ck=13  pos=  527050  b0=0x83  wid_off=13  anim=0xc3  weapon=BR75
+        before: 83 40 c0 21 0e 04 c3 57 07 92 0b 29 c3
+        after:  20 e0 30 08 47 cb 78 25 40 c9
+      ck=13  pos=  758226  b0=0x0b  wid_off=18  anim=0x01  weapon=MA40 AR
+        before: 0b 40 30 00 05 6a 42 c6 30 10 00 00 0d 26 23 40 00 01
+        after:  61 1a df 5a 3f bf 02 12 06 83
+      ck=14  pos=  660317  b0=0x03  wid_off=18  anim=0x13  weapon=BR75
+        before: 03 40 10 00 0a 95 2e d6 30 10 00 00 0d 26 27 40 1c 13
+        after:  55 45 68 40 00 69 b7 a1 00 16
+      ck=15  pos=  650190  b0=0x83  wid_off=13  anim=0xc3  weapon=BR75
+        before: 83 40 c0 21 0e 04 c3 57 07 92 01 94 c3
+        after:  20 e0 30 08 47 cb 78 25 40 c9
+      ck=17  pos=  777118  b0=0x0b  wid_off=18  anim=0x23  weapon=BR75
+        before: 0b 40 00 00 0f a1 ed b6 70 10 00 00 0d 26 2d 42 e8 23
+        after:  76 37 60 b4 20 ba c3 00 18 b9
+      ck=18  pos=  618176  b0=0x03  wid_off=18  anim=0x43  weapon=BR75
+        before: 03 40 10 00 05 42 89 f6 80 10 00 00 0d 26 34 43 44 43
+        after:  60 6d 55 4f 40 02 84 79 b8 cd
+      ck=19  pos=  578333  b0=0x0b  wid_off=18  anim=0x11  weapon=MA40 AR
+        before: 0b 40 00 00 02 b2 18 b6 90 10 00 00 0d 26 35 40 18 11
+        after:  76 38 61 44 66 0a a1 02 1d a4
+      ck=19  pos=  750338  b0=0x03  wid_off=18  anim=0x63  weapon=BR75
+        before: 03 40 10 00 0f a7 e5 46 a0 10 00 00 0d 26 3a 40 f0 63
+        after:  25 c4 11 de 20 01 d4 82 5a d3
+      ck=20  pos=  657760  b0=0x83  wid_off=13  anim=0xc3  weapon=BR75
+        before: 83 40 c0 21 0e 04 c3 57 07 92 09 c2 c3
+        after:  20 e0 30 08 47 cb 78 25 40 c9
+      ck=22  pos=  648221  b0=0x03  wid_off=18  anim=0x51  weapon=S7 Sniper
+        before: 03 40 10 00 0e d9 47 36 d0 10 00 00 0d 26 40 42 14 51
+        after:  55 47 48 40 00 29 f7 9f 00 1c
+      ck=22  pos=  789622  b0=0xdb  wid_off=13  anim=0x21  weapon=MA40 AR
+        before: db 40 56 e0 10 00 00 0d 26 43 40 24 21
+        after:  55 48 e8 40 00 19 e9 60 fc e0
+
+    Weapons held during melee:
+      BR75: 12
+      MA40 AR: 6
+      S7 Sniper: 1
+
+    Animation type distribution:
+      0xc3: 5
+      0x01: 4
+      0x13: 2
+      0x03: 1
+      0x73: 1
+      0x23: 1
+      0x43: 1
+      0x11: 1
+      0x63: 1
+      0x51: 1
+      0x21: 1
+
+    Lead byte (b0) distribution:
+      0x03 (bin=00000011): 9
+      0x83 (bin=10000011): 5
+      0x0b (bin=00001011): 4
+      0xdb (bin=11011011): 1
+
+  [raw] Melee events (b0&0x07==0x03, b1==0x40, known wid nearby):
+    Total: 1
+    Weapon ID offset distribution:
+      offset 13: 1 events
+
+    First 1 events:
+      ck=18  pos=  367233  b0=0x83  wid_off=13  anim=0x67  weapon=BR75
+        before: 83 40 c0 29 0e 04 c3 57 07 92 01 c5 67
+        after:  21 e0 30 04 47 cb 78 25 40 c9
+
+    Weapons held during melee:
+      BR75: 1
+
+    Animation type distribution:
+      0x67: 1
+
+    Lead byte (b0) distribution:
+      0x83 (bin=10000011): 1
+
+============================================================================
+  PHASE 3 — Relaxed melee (b0&0x07==0x03, any b1) (d9329229)
+============================================================================
+  [nibble-shifted] Total melee positions scanned: many
+  Events with known weapon nearby: 1234
+
+  b1 distribution (events WITH valid weapon):
+    b1=0x71: 58  (pi_if_fire=3)
+    b1=0x29: 23  (pi_if_fire=1)
+    b1=0x39: 20  (pi_if_fire=1)
+    b1=0x49: 20  (pi_if_fire=2)
+    b1=0x60: 18  (pi_if_fire=3)
+    b1=0x99: 18  (pi_if_fire=4)
+    b1=0xd8: 17  (pi_if_fire=6)
+    b1=0x09: 17  (pi_if_fire=0)
+    b1=0x08: 16  (pi_if_fire=0)
+    b1=0xb9: 16  (pi_if_fire=5)
+    b1=0xf9: 16  (pi_if_fire=7)
+    b1=0x78: 15  (pi_if_fire=3)
+    b1=0xe8: 15  (pi_if_fire=7)
+    b1=0xa9: 15  (pi_if_fire=5)
+    b1=0x79: 15  (pi_if_fire=3)
+
+  Events with b1 != 0x40: 1232
+  First 10 non-0x40 events:
+    ck= 1 pos=  392134 b0=0x13 b1=0x71 weapon=Spike Grenade v2 anim=0x80
+    ck= 2 pos=  377212 b0=0x13 b1=0x71 weapon=MLRS-2 Hydra v2 anim=0x81
+    ck= 2 pos=  377435 b0=0x13 b1=0x71 weapon=MLRS-2 Hydra v2 anim=0x81
+    ck= 2 pos=  377658 b0=0x13 b1=0x71 weapon=MLRS-2 Hydra v2 anim=0x81
+    ck= 3 pos=  367667 b0=0x43 b1=0x60 weapon=MA40 AR anim=0xeb
+    ck= 3 pos=  379847 b0=0x13 b1=0x71 weapon=MLRS-2 Hydra v2 anim=0x81
+    ck= 3 pos=  380070 b0=0x13 b1=0x71 weapon=MLRS-2 Hydra v2 anim=0x81
+    ck= 3 pos=  380293 b0=0x13 b1=0x71 weapon=MLRS-2 Hydra v2 anim=0x81
+    ck= 3 pos=  392547 b0=0x13 b1=0x71 weapon=Scattershot anim=0x00
+    ck= 3 pos=  392549 b0=0x9b b1=0x80 weapon=Scattershot anim=0x00
+
+============================================================================
+  PHASE 4 — Melee anatomy full dump (d9329229)
+============================================================================
+  Melee events found: 0
+
+  After dedup (±5 bytes): 0
+
+============================================================================
+  PHASE 5 — Fire event burst/hit-miss bits (d9329229)
+============================================================================
+
+  BR75: 1183 fire events
+    fc=  0  byte14=0x36  bits=00110110  burst_bit=1  hit/miss=1  after=36 01 60 14
+    fc=  8  byte14=0x36  bits=00110110  burst_bit=1  hit/miss=1  after=36 01 60 52
+    fc= 16  byte14=0x76  bits=01110110  burst_bit=1  hit/miss=1  after=76 01 60 52
+    fc= 24  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 48 40
+    fc= 32  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 48 40
+    fc= 40  byte14=0x55  bits=01010101  burst_bit=0  hit/miss=1  after=55 40 48 40
+    fc= 48  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 48 40
+    fc= 56  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 48 40
+    fc= 64  byte14=0x55  bits=01010101  burst_bit=0  hit/miss=1  after=55 40 48 40
+    fc= 72  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 48 40
+    fc= 80  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 48 40
+    fc= 88  byte14=0x76  bits=01110110  burst_bit=1  hit/miss=1  after=76 02 60 bc
+    fc= 96  byte14=0x22  bits=00100010  burst_bit=1  hit/miss=0  after=22 04 56 d1
+    fc=104  byte14=0x36  bits=00110110  burst_bit=1  hit/miss=1  after=36 00 61 52
+    fc=112  byte14=0x76  bits=01110110  burst_bit=1  hit/miss=1  after=76 00 60 52
+    fc=120  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 08 40
+    fc=128  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 08 40
+    fc=136  byte14=0x55  bits=01010101  burst_bit=0  hit/miss=1  after=55 40 08 40
+    fc=144  byte14=0x36  bits=00110110  burst_bit=1  hit/miss=1  after=36 00 60 50
+    fc=152  byte14=0x36  bits=00110110  burst_bit=1  hit/miss=1  after=36 00 60 51
+    fc=160  byte14=0x76  bits=01110110  burst_bit=1  hit/miss=1  after=76 00 60 51
+    fc=168  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 68 40
+    fc=184  byte14=0x55  bits=01010101  burst_bit=0  hit/miss=1  after=55 40 68 40
+    fc=192  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 68 40
+    fc=200  byte14=0x15  bits=00010101  burst_bit=0  hit/miss=1  after=15 40 68 40
+    fc=208  byte14=0x55  bits=01010101  burst_bit=0  hit/miss=1  after=55 40 68 40
+    fc=  0  byte14=0x36  bits=00110110  burst_bit=1  hit/miss=1  after=36 07 61 a4
+    fc=  8  byte14=0x36  bits=00110110  burst_bit=1  hit/miss=1  after=36 07 61 98
+    fc= 16  byte14=0x76  bits=01110110  burst_bit=1  hit/miss=1  after=76 07 60 58
+    fc= 24  byte14=0x20  bits=00100000  burst_bit=0  hit/miss=0  after=20 f6 84 3e
+    0-0-1 burst pattern (bit 1): 46/394 triplets
+
+    Alt interpretation: 2nd/3rd BYTE after weapon ID:
+    fc=  0  byte[14]=0x36(00110110)  byte[15]=0x01(00000001)  byte[16]=0x60(01100000)
+    fc=  8  byte[14]=0x36(00110110)  byte[15]=0x01(00000001)  byte[16]=0x60(01100000)
+    fc= 16  byte[14]=0x76(01110110)  byte[15]=0x01(00000001)  byte[16]=0x60(01100000)
+    fc= 24  byte[14]=0x15(00010101)  byte[15]=0x40(01000000)  byte[16]=0x48(01001000)
+    fc= 32  byte[14]=0x15(00010101)  byte[15]=0x40(01000000)  byte[16]=0x48(01001000)
+    fc= 40  byte[14]=0x55(01010101)  byte[15]=0x40(01000000)  byte[16]=0x48(01001000)
+    fc= 48  byte[14]=0x15(00010101)  byte[15]=0x40(01000000)  byte[16]=0x48(01001000)
+    fc= 56  byte[14]=0x15(00010101)  byte[15]=0x40(01000000)  byte[16]=0x48(01001000)
+    fc= 64  byte[14]=0x55(01010101)  byte[15]=0x40(01000000)  byte[16]=0x48(01001000)
+    fc= 72  byte[14]=0x15(00010101)  byte[15]=0x40(01000000)  byte[16]=0x48(01001000)
+    fc= 80  byte[14]=0x15(00010101)  byte[15]=0x40(01000000)  byte[16]=0x48(01001000)
+    fc= 88  byte[14]=0x76(01110110)  byte[15]=0x02(00000010)  byte[16]=0x60(01100000)
+    fc= 96  byte[14]=0x22(00100010)  byte[15]=0x04(00000100)  byte[16]=0x56(01010110)
+    fc=104  byte[14]=0x36(00110110)  byte[15]=0x00(00000000)  byte[16]=0x61(01100001)
+    fc=112  byte[14]=0x76(01110110)  byte[15]=0x00(00000000)  byte[16]=0x60(01100000)
+
+  All weapons — burst_bit and hit/miss distribution:
+    BR75                       events=1183  burst(0/1)=810/373  hit/miss(0/1)=151/1032
+    Fuel Rod SPNKr             events=  39  burst(0/1)=5/34  hit/miss(0/1)=3/36
+    M392 Bandit                events=  33  burst(0/1)=25/8  hit/miss(0/1)=3/30
+    MA40 AR                    events= 540  burst(0/1)=362/178  hit/miss(0/1)=45/495
+    Pulse Carbine              events=  13  burst(0/1)=0/13  hit/miss(0/1)=0/13
+    Stalker Rifle              events=  19  burst(0/1)=13/6  hit/miss(0/1)=2/17
+    VK78 Commando              events=  35  burst(0/1)=22/13  hit/miss(0/1)=7/28
+    Vestige Carbine            events=  15  burst(0/1)=10/5  hit/miss(0/1)=2/13
+
+============================================================================
+  inv43 DONE
+============================================================================

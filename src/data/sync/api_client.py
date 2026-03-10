@@ -429,6 +429,38 @@ class SPNKrAPIClient:
             logger.warning("Erreur get_users_by_id(%s XUIDs): %s", len(xuids), e)
             return []
 
+    # =========================================================================
+    # Film (weapon extraction)
+    # =========================================================================
+
+    async def get_film_by_match_id(self, match_id: str) -> Any | None:
+        """Récupère les métadonnées film d'un match (chunks, blob prefix)."""
+
+        async def _fetch():
+            resp = await self.client.discovery_ugc.get_film_by_match_id(match_id)
+            return await resp.parse()
+
+        try:
+            return await request_with_retries(_fetch)
+        except Exception as e:
+            logger.warning("Erreur get_film_by_match_id(%s): %s", match_id[:8], e)
+            return None
+
+    async def download_film_chunk(self, url: str) -> bytes | None:
+        """Télécharge et décompresse un blob Azure (chunk film)."""
+        import zlib
+
+        if self._session is None:
+            raise RuntimeError("Session non initialisée")
+        try:
+            resp = await self._session.get(url)
+            resp.raise_for_status()
+            raw = await resp.read()
+            return zlib.decompress(raw)
+        except Exception as e:
+            logger.warning("Erreur download_film_chunk: %s", e)
+            return None
+
     async def get_spartan_token_xuid(self) -> str | None:
         """Récupère le XUID du joueur authentifié depuis le token Spartan."""
         if self._tokens is None:

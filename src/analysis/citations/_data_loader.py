@@ -256,3 +256,29 @@ class CitationDataLoaderMixin:
                 return []
             except Exception:
                 return []
+
+    # ------------------------------------------------------------------
+    # Weapon kills (v5.5)
+    # ------------------------------------------------------------------
+
+    def load_match_weapon_kills(self, match_id: str) -> dict[int, int]:
+        """Charge les kills par arme du joueur courant pour un match.
+
+        Interroge ``shared.weapon_kills`` filtré par xuid.
+
+        Returns:
+            ``{weapon_id: kills}`` ou ``{}`` si absent.
+        """
+        with self._read_conn() as conn:
+            try:
+                shared_alias = self._get_shared_alias(conn)
+                if not shared_alias:
+                    return {}
+                rows = conn.execute(
+                    f"SELECT weapon_id, kills FROM {shared_alias}.weapon_kills "
+                    "WHERE match_id = ? AND xuid = ?",
+                    [match_id, self._xuid],
+                ).fetchall()
+                return {int(r[0]): int(r[1]) for r in rows}
+            except Exception:
+                return {}

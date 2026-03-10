@@ -61,6 +61,8 @@ _FORCE_MAP: dict[str, str] = {
     "force_core_stats": "core_stats",
     # ── PVE v5.2 ──
     "force_pve_stats": "pve_stats",
+    # ── Weapon kills v5.5 ──
+    "force_weapons": "weapons",
     # ── LUSR / CSR / Skill Rank v5.3 ──
     "force_lusr": "lusr",
     "force_csr": "csr",
@@ -113,6 +115,8 @@ _ALL_DATA_FIELDS: tuple[str, ...] = (
     "core_stats",
     # ── PVE v5.2 ──
     "pve_stats",
+    # ── Weapon kills v5.5 ──
+    "weapons",
     # ── LUSR / CSR / Skill Rank v5.3 ──
     "lusr",
     "csr",
@@ -141,6 +145,8 @@ _REQUESTED_TYPE_MAP: dict[str, str] = {
     "participants_avg_life": "participants_avg_life",
     # ── PVE stats (v5.2) ──
     "pve_stats": "pve_stats",
+    # ── Weapon kills (v5.5) ──
+    "weapons": "weapons",
     # ── LUSR / CSR (v5.3) — bitmask backfill_completed sur match_registry ──
     "lusr": "lusr",
     "csr": "csr",
@@ -270,6 +276,10 @@ class SyncScope:
 
     # ── Flags force PVE ──────────────────────────────────────────────────
     force_pve_stats: bool = False  # Re-traiter même si MatchBits.PVE_STATS déjà posé
+
+    # ── Weapon kills — v5.5 ──────────────────────────────────────────
+    weapons: bool = False  # Extraire les kills par arme → shared.weapon_kills
+    force_weapons: bool = False  # Re-traiter même si MatchBits.WEAPON_KILLS posé
 
     # ── LUSR / CSR / Skill Rank — v5.3 ──────────────────────────────
     lusr: bool = False  # Calculer le LUSR pour les matchs non classés (local-only)

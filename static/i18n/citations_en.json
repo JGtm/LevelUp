@@ -298,5 +298,100 @@
         "name": "Lone Wolf",
         "description": "Win a Free-For-All game.",
         "category": "Game mode"
+    },
+    "br75_mastery": {
+        "name": "BR75 Mastery",
+        "description": "Eliminate Spartans with the BR75.",
+        "category": "Weapon"
+    },
+    "ma40_mastery": {
+        "name": "MA40 Mastery",
+        "description": "Eliminate Spartans with the MA40 AR.",
+        "category": "Weapon"
+    },
+    "sidekick_mastery": {
+        "name": "Sidekick Mastery",
+        "description": "Eliminate Spartans with the MK50 Sidekick.",
+        "category": "Weapon"
+    },
+    "commando_mastery": {
+        "name": "Commando Mastery",
+        "description": "Eliminate Spartans with the VK78 Commando.",
+        "category": "Weapon"
+    },
+    "sniper_mastery": {
+        "name": "Sniper Mastery",
+        "description": "Eliminate Spartans with the S7 Sniper.",
+        "category": "Weapon"
+    },
+    "spnkr_mastery": {
+        "name": "SPNKr Mastery",
+        "description": "Eliminate Spartans with the M41 SPNKr.",
+        "category": "Weapon"
+    },
+    "bulldog_mastery": {
+        "name": "Bulldog Mastery",
+        "description": "Eliminate Spartans with the CQS48 Bulldog.",
+        "category": "Weapon"
+    },
+    "bandit_mastery": {
+        "name": "Bandit Mastery",
+        "description": "Eliminate Spartans with the Bandit EVO.",
+        "category": "Weapon"
+    },
+    "stalker_mastery": {
+        "name": "Stalker Mastery",
+        "description": "Eliminate Spartans with the Stalker Rifle.",
+        "category": "Weapon"
+    },
+    "needler_mastery": {
+        "name": "Needler Mastery",
+        "description": "Eliminate Spartans with the Needler.",
+        "category": "Weapon"
+    },
+    "energy_sword_mastery": {
+        "name": "Energy Sword Mastery",
+        "description": "Eliminate Spartans with the Energy Sword.",
+        "category": "Weapon"
+    },
+    "mangler_mastery": {
+        "name": "Mangler Mastery",
+        "description": "Eliminate Spartans with the Mangler.",
+        "category": "Weapon"
+    },
+    "skewer_mastery": {
+        "name": "Skewer Mastery",
+        "description": "Eliminate Spartans with the Skewer.",
+        "category": "Weapon"
+    },
+    "gravity_hammer_mastery": {
+        "name": "Gravity Hammer Mastery",
+        "description": "Eliminate Spartans with the Gravity Hammer.",
+        "category": "Weapon"
+    },
+    "heatwave_mastery": {
+        "name": "Heatwave Mastery",
+        "description": "Eliminate Spartans with the Heatwave.",
+        "category": "Weapon"
+    },
+    "cindershot_mastery": {
+        "name": "Cindershot Mastery",
+        "description": "Eliminate Spartans with the Cindershot.",
+        "category": "Weapon"
+    },
+    "human_weapons_mastery": {
+        "name": "UNSC Weapons Mastery",
+        "description": "Earn all UNSC weapon mastery commendations.",
+        "category": "Weapon"
+    },
+    "covenant_weapons_mastery": {
+        "name": "Covenant Weapons Mastery",
+        "description": "Earn all Covenant weapon mastery commendations.",
+        "category": "Weapon"
+    },
+    "banished_weapons_mastery": {
+        "name": "Banished Weapons Mastery",
+        "description": "Earn all Banished weapon mastery commendations.",
+        "category": "Weapon"
     }
 }

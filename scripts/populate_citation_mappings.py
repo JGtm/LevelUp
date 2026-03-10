@@ -211,6 +211,66 @@ _VEHICLE_CHILDREN = [
     "wasp_destroyer",
 ]
 
+# ── Citations armes (v5.5) ─────────────────────────────────────────────────
+# fmt: off
+WEAPON_CITATIONS: list[tuple] = [
+    ("br75_mastery", "Maîtrise du BR75", "weapon_stat", None, None, "weapon_kills:41533", None, None, None, None, "high", "Kills avec BR75", True,
+     None, "Arme", "Éliminez des Spartans avec le BR75.", "25,50,100,200,500"),
+    ("ma40_mastery", "Maîtrise du MA40", "weapon_stat", None, None, "weapon_kills:73886", None, None, None, None, "high", "Kills avec MA40 AR", True,
+     None, "Arme", "Éliminez des Spartans avec le MA40 AR.", "25,50,100,200,500"),
+    ("sidekick_mastery", "Maîtrise du Sidekick", "weapon_stat", None, None, "weapon_kills:19954", None, None, None, None, "high", "Kills avec MK50 Sidekick", True,
+     None, "Arme", "Éliminez des Spartans avec le MK50 Sidekick.", "10,25,50,100,250"),
+    ("commando_mastery", "Maîtrise du Commando", "weapon_stat", None, None, "weapon_kills:94689", None, None, None, None, "high", "Kills avec VK78 Commando", True,
+     None, "Arme", "Éliminez des Spartans avec le VK78 Commando.", "10,25,50,100,250"),
+    ("sniper_mastery", "Maîtrise du Sniper", "weapon_stat", None, None, "weapon_kills:79993", None, None, None, None, "high", "Kills avec S7 Sniper", True,
+     None, "Arme", "Éliminez des Spartans avec le S7 Sniper.", "10,20,40,80,200"),
+    ("spnkr_mastery", "Maîtrise du SPNKr", "weapon_stat", None, None, "weapon_kills:75491", None, None, None, None, "high", "Kills avec M41 SPNKr", True,
+     None, "Arme", "Éliminez des Spartans avec le M41 SPNKr.", "10,20,40,80,200"),
+    ("bulldog_mastery", "Maîtrise du Bulldog", "weapon_stat", None, None, "weapon_kills:36844", None, None, None, None, "high", "Kills avec CQS48 Bulldog", True,
+     None, "Arme", "Éliminez des Spartans avec le CQS48 Bulldog.", "10,25,50,100,250"),
+    ("bandit_mastery", "Maîtrise du Bandit", "weapon_stat", None, None, "weapon_kills:10090", None, None, None, None, "high", "Kills avec Bandit EVO", True,
+     None, "Arme", "Éliminez des Spartans avec le Bandit EVO.", "10,25,50,100,250"),
+    ("stalker_mastery", "Maîtrise du Stalker", "weapon_stat", None, None, "weapon_kills:59527", None, None, None, None, "high", "Kills avec Fusil Stalker", True,
+     None, "Arme", "Éliminez des Spartans avec le Fusil Stalker.", "10,25,50,100,250"),
+    ("needler_mastery", "Maîtrise de l'Aiguillonneur", "weapon_stat", None, None, "weapon_kills:76498", None, None, None, None, "high", "Kills avec Aiguillonneur", True,
+     None, "Arme", "Éliminez des Spartans avec l'Aiguillonneur.", "10,25,50,100,250"),
+    ("energy_sword_mastery", "Maîtrise de l'Épée", "weapon_stat", None, None, "weapon_kills:95667", None, None, None, None, "high", "Kills avec Épée à énergie", True,
+     None, "Arme", "Éliminez des Spartans avec l'Épée à énergie.", "10,20,40,80,200"),
+    ("mangler_mastery", "Maîtrise du Mangler", "weapon_stat", None, None, "weapon_kills:14717", None, None, None, None, "high", "Kills avec Mangler", True,
+     None, "Arme", "Éliminez des Spartans avec le Mangler.", "10,25,50,100,250"),
+    ("skewer_mastery", "Maîtrise du Skewer", "weapon_stat", None, None, "weapon_kills:103477", None, None, None, None, "high", "Kills avec Skewer", True,
+     None, "Arme", "Éliminez des Spartans avec le Skewer.", "5,10,20,40,100"),
+    ("gravity_hammer_mastery", "Maîtrise du Marteau", "weapon_stat", None, None, "weapon_kills:6943", None, None, None, None, "high", "Kills avec Marteau gravitationnel", True,
+     None, "Arme", "Éliminez des Spartans avec le Marteau gravitationnel.", "10,20,40,80,200"),
+    ("heatwave_mastery", "Maîtrise du Heatwave", "weapon_stat", None, None, "weapon_kills:22223", None, None, None, None, "high", "Kills avec Heatwave", True,
+     None, "Arme", "Éliminez des Spartans avec le Heatwave.", "10,25,50,100,250"),
+    ("cindershot_mastery", "Maîtrise du Cindershot", "weapon_stat", None, None, "weapon_kills:38834", None, None, None, None, "high", "Kills avec Cindershot", True,
+     None, "Arme", "Éliminez des Spartans avec le Cindershot.", "10,20,40,80,200"),
+]
+# fmt: on
+
+# ── Composites faction armes (v5.5) ───────────────────────────────────────
+_HUMAN_WEAPON_CHILDREN = [
+    "br75_mastery",
+    "ma40_mastery",
+    "sidekick_mastery",
+    "commando_mastery",
+    "sniper_mastery",
+    "spnkr_mastery",
+    "bulldog_mastery",
+    "bandit_mastery",
+]
+_COVENANT_WEAPON_CHILDREN = [
+    "stalker_mastery",
+    "needler_mastery",
+    "energy_sword_mastery",
+]
+_BANISHED_WEAPON_CHILDREN = [
+    "mangler_mastery",
+    "skewer_mastery",
+    "gravity_hammer_mastery",
+]
+
 # fmt: off
 COMPOSITE_CITATIONS: list[tuple] = [
     ("covenant_destroyer", "Destructeur de Covenants", "composite", None, None, None, None, None, None,
@@ -225,10 +285,22 @@ COMPOSITE_CITATIONS: list[tuple] = [
      "[" + ", ".join(f'"{c}"' for c in _VEHICLE_CHILDREN) + "]",
      "high", "Obtenez toutes les citations de véhicule", True,
      "static/commendations/h5g/Vehicle_Mastery.png", "Véhicule", "Obtenez toutes les citations de véhicule.", None, "Général"),
+    ("human_weapons_mastery", "Maîtrise des armes UNSC", "composite", None, None, None, None, None, None,
+     "[" + ", ".join(f'"{c}"' for c in _HUMAN_WEAPON_CHILDREN) + "]",
+     "high", "Obtenez toutes les citations d'armes UNSC", True,
+     None, "Arme", "Obtenez toutes les citations de maîtrise d'armes UNSC.", None),
+    ("covenant_weapons_mastery", "Maîtrise des armes Covenant", "composite", None, None, None, None, None, None,
+     "[" + ", ".join(f'"{c}"' for c in _COVENANT_WEAPON_CHILDREN) + "]",
+     "high", "Obtenez toutes les citations d'armes Covenant", True,
+     None, "Arme", "Obtenez toutes les citations de maîtrise d'armes Covenant.", None),
+    ("banished_weapons_mastery", "Maîtrise des armes Bannis", "composite", None, None, None, None, None, None,
+     "[" + ", ".join(f'"{c}"' for c in _BANISHED_WEAPON_CHILDREN) + "]",
+     "high", "Obtenez toutes les citations d'armes bannies", True,
+     None, "Arme", "Obtenez toutes les citations de maîtrise d'armes bannies.", None),
 ]
 # fmt: on
 
-ALL_CITATIONS = PVP_CITATIONS + PVE_CITATIONS + COMPOSITE_CITATIONS
+ALL_CITATIONS = PVP_CITATIONS + PVE_CITATIONS + WEAPON_CITATIONS + COMPOSITE_CITATIONS
 
 UPSERT_SQL = """
     INSERT INTO citation_mappings (

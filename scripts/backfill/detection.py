@@ -131,6 +131,8 @@ def find_matches_missing_data(
 
     pve_stats = getattr(scope, "pve_stats", False) if scope is not None else False
     force_pve_stats = getattr(scope, "force_pve_stats", False) if scope is not None else False
+    weapons = getattr(scope, "weapons", False) if scope is not None else False
+    force_weapons = getattr(scope, "force_weapons", False) if scope is not None else False
 
     # Détecter le type de flags demandés
     local_data_requested = any(
@@ -146,6 +148,7 @@ def find_matches_missing_data(
             assets,
             participants,
             pve_stats,
+            weapons,
         ]
     )
     participants_data_requested = any(
@@ -205,6 +208,8 @@ def find_matches_missing_data(
         force_participants=force_participants,
         force_skill=force_skill,
         force_pve_stats=force_pve_stats,
+        weapons=weapons,
+        force_weapons=force_weapons,
     )
 
     # Fusionner résultats locaux + shared (dédoublonner, garder l'ordre)
@@ -312,6 +317,8 @@ def _find_matches_in_shared_all(
     force_participants: bool = False,
     force_skill: bool = False,  # Ajouté v5.1 : force le rescan skill pour tous les matchs
     force_pve_stats: bool = False,  # v5.2 : force le rescan PVE pour tous les Firefight
+    weapons: bool = False,  # v5.5 : kills par arme → shared.weapon_kills
+    force_weapons: bool = False,  # v5.5 : ignorer MatchBits.WEAPON_KILLS
 ) -> list[str]:
     """Détection V5 FINALE : tous les flags via shared DB.
 
@@ -424,6 +431,17 @@ def _find_matches_in_shared_all(
             conditions.append(
                 f"mr.is_firefight = TRUE AND (COALESCE(mr.backfill_completed, 0) & {pve_bit}) = 0"
             )
+
+    # Weapon kills — v5.5
+    # Guard : WEAPON_KILLS bit non posé dans backfill_completed
+    if weapons:
+        from src.data.sync.constants import MatchBits
+
+        wk_bit = MatchBits.WEAPON_KILLS
+        if force_weapons:
+            conditions.append("1=1")
+        else:
+            conditions.append(f"(COALESCE(mr.backfill_completed, 0) & {wk_bit}) = 0")
 
     if not conditions:
         return []

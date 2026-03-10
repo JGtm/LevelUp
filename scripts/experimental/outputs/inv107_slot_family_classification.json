@@ -1,0 +1,1334 @@
+{
+  "67fed82c": {
+    "n_events": 39,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 39
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "9ed65a38": {
+    "n_events": 13,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 13
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "6d32c7dc": {
+    "n_events": 93,
+    "n_matches": 6,
+    "n_distinct_pi": 6,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 93
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "edff0e96": {
+    "n_events": 33,
+    "n_matches": 5,
+    "n_distinct_pi": 6,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 15,
+    "len_distribution": {
+      "15": 33
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=15)"
+  },
+  "b1eb695e": {
+    "n_events": 15,
+    "n_matches": 4,
+    "n_distinct_pi": 5,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 15,
+    "len_distribution": {
+      "15": 15
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=15)"
+  },
+  "831d8012": {
+    "n_events": 7,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 15,
+    "len_distribution": {
+      "15": 7
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=15)"
+  },
+  "6683257c": {
+    "n_events": 43,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 43
+    },
+    "is_known": true,
+    "known_label": "Spike Grenade",
+    "classification": "KNOWN: Spike Grenade"
+  },
+  "94c3a67a": {
+    "n_events": 50,
+    "n_matches": 3,
+    "n_distinct_pi": 5,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 50
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "da43eff0": {
+    "n_events": 75,
+    "n_matches": 2,
+    "n_distinct_pi": 3,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 75
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "0131ea10": {
+    "n_events": 44,
+    "n_matches": 3,
+    "n_distinct_pi": 6,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 44
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "fc6e400a": {
+    "n_events": 6,
+    "n_matches": 4,
+    "n_distinct_pi": 5,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 6
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "9212e428": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "1cd9bb38": {
+    "n_events": 2,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 1,
+      "24": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "5ded6cf2": {
+    "n_events": 23,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 23
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "25b726f8": {
+    "n_events": 11,
+    "n_matches": 2,
+    "n_distinct_pi": 3,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 11
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "c0e34c44": {
+    "n_events": 2,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 2
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "097a53da": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 5,
+    "dom_pre_wid_len": 11,
+    "len_distribution": {
+      "11": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "UNKNOWN_FAMILY (slot=0x05, len=11)"
+  },
+  "c0645d86": {
+    "n_events": 18,
+    "n_matches": 2,
+    "n_distinct_pi": 3,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 18
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "6a672afc": {
+    "n_events": 8,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 20,
+    "len_distribution": {
+      "6": 1,
+      "20": 7
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "DYNAMO_FAMILY"
+  },
+  "1f1efb6a": {
+    "n_events": 16,
+    "n_matches": 3,
+    "n_distinct_pi": 3,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 16
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "70a499ac": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "91eb16de": {
+    "n_events": 38,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 38
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "1a56e530": {
+    "n_events": 3,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 3
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "d0b802c4": {
+    "n_events": 40,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 40
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "9a2119e0": {
+    "n_events": 7,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 7
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "63229492": {
+    "n_events": 11,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 11
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "82a3f54a": {
+    "n_events": 30,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 30
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "f2b458ec": {
+    "n_events": 23,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 23
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "92f99df4": {
+    "n_events": 61,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 61
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "4b2806b0": {
+    "n_events": 16,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 16
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "a2007354": {
+    "n_events": 9,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 9
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "d48d9b84": {
+    "n_events": 107,
+    "n_matches": 2,
+    "n_distinct_pi": 3,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 107
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "41001e24": {
+    "n_events": 46,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 46
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "f55c4bd2": {
+    "n_events": 44,
+    "n_matches": 2,
+    "n_distinct_pi": 4,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 44
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "79c4392c": {
+    "n_events": 23,
+    "n_matches": 1,
+    "n_distinct_pi": 3,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 23
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "2abadee0": {
+    "n_events": 40,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 40
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "eab25bee": {
+    "n_events": 14,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 14
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "8337fc24": {
+    "n_events": 41,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 41
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "658355a2": {
+    "n_events": 17,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 17
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "71e174bc": {
+    "n_events": 15,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 15
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "f0cfbb3a": {
+    "n_events": 3,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 3
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "1a219914": {
+    "n_events": 12,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 12
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "0348dbcc": {
+    "n_events": 10,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 10
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "9576120e": {
+    "n_events": 2,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 2
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "7969ef96": {
+    "n_events": 6,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 6
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "fb579c44": {
+    "n_events": 7,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 7
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "611cb36e": {
+    "n_events": 19,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 19
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "0c0191be": {
+    "n_events": 15,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 15
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "fe480042": {
+    "n_events": 7,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 7
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "a80959de": {
+    "n_events": 10,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 10
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "91833a5a": {
+    "n_events": 5,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 4,
+    "dom_pre_wid_len": 45,
+    "len_distribution": {
+      "4": 1,
+      "45": 2,
+      "61": 1,
+      "20": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "UNKNOWN_FAMILY (slot=0x04, len=45)"
+  },
+  "ef414e52": {
+    "n_events": 11,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 11
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "b078c0c4": {
+    "n_events": 8,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 8
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "3928c7d6": {
+    "n_events": 4,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 4
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "4e9c3640": {
+    "n_events": 14,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 14
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "6c587a12": {
+    "n_events": 7,
+    "n_matches": 4,
+    "n_distinct_pi": 5,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 5,
+      "50": 2
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "83bca75a": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "0af3952e": {
+    "n_events": 6,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 6
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "293957d8": {
+    "n_events": 2,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 2
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "ed419f6e": {
+    "n_events": 4,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 4
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "df78716c": {
+    "n_events": 9,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 9
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "f9514800": {
+    "n_events": 47,
+    "n_matches": 3,
+    "n_distinct_pi": 4,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 15,
+    "len_distribution": {
+      "15": 47
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=15)"
+  },
+  "7259931e": {
+    "n_events": 6,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 6
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "b7229fec": {
+    "n_events": 6,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 6
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "a4d688c8": {
+    "n_events": 19,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 19
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "af22aaca": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 7,
+    "len_distribution": {
+      "7": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=7)"
+  },
+  "a5ced240": {
+    "n_events": 8,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 8
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "efd74160": {
+    "n_events": 5,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 5
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "ca632c44": {
+    "n_events": 10,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 10
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "56c82662": {
+    "n_events": 5,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 5
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "e36467cc": {
+    "n_events": 5,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 5
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "14332578": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 20,
+    "len_distribution": {
+      "20": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=20)"
+  },
+  "b0171062": {
+    "n_events": 3,
+    "n_matches": 2,
+    "n_distinct_pi": 3,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 3
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "510f248a": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "e54f1b22": {
+    "n_events": 4,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 4
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "0d20c469": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 39,
+    "dom_pre_wid_len": 18,
+    "len_distribution": {
+      "18": 1
+    },
+    "is_known": true,
+    "known_label": "Skewer",
+    "classification": "KNOWN: Skewer"
+  },
+  "4d426006": {
+    "n_events": 8,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 8
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "b3ba9860": {
+    "n_events": 6,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 6
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "e34fee90": {
+    "n_events": 9,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 9
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "1d60d24c": {
+    "n_events": 11,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 11
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "dd015e62": {
+    "n_events": 7,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 7
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "60f1d512": {
+    "n_events": 23,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 23
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "87fab1d4": {
+    "n_events": 31,
+    "n_matches": 1,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 31
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "b2ac806c": {
+    "n_events": 7,
+    "n_matches": 2,
+    "n_distinct_pi": 2,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 7
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "71fedf70": {
+    "n_events": 4,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 15,
+    "len_distribution": {
+      "15": 4
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=15)"
+  },
+  "18cbc0bc": {
+    "n_events": 3,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 3
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "dc5c02b8": {
+    "n_events": 4,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 4
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "3ad55da4": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 20,
+    "len_distribution": {
+      "20": 1
+    },
+    "is_known": true,
+    "known_label": "Dynamo (hand)",
+    "classification": "KNOWN: Dynamo (hand)"
+  },
+  "d2083fb8": {
+    "n_events": 6,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 6
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "559385fe": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 20,
+    "len_distribution": {
+      "20": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=20)"
+  },
+  "7c0fbcd6": {
+    "n_events": 3,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 128,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 3
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "SPIKE_GRENADE_FAMILY"
+  },
+  "7c0e042e": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 20,
+    "len_distribution": {
+      "20": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=20)"
+  },
+  "b5e3278e": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 20,
+    "len_distribution": {
+      "20": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "DYNAMO_FAMILY"
+  },
+  "67acd9c8": {
+    "n_events": 2,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 2
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "fdcd2c64": {
+    "n_events": 3,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 3
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "b13870d6": {
+    "n_events": 2,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 129,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 2
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x81, len=16)"
+  },
+  "658f71e6": {
+    "n_events": 2,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 15,
+    "len_distribution": {
+      "15": 2
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=15)"
+  },
+  "53cf6182": {
+    "n_events": 11,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 11
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "ee68685e": {
+    "n_events": 14,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 14
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "7afe6588": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  },
+  "bc2e0c60": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 1,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "GRENADE_VARIANT (slot=0x01, len=16)"
+  },
+  "3b2567d4": {
+    "n_events": 1,
+    "n_matches": 1,
+    "n_distinct_pi": 1,
+    "dom_slot_byte": 0,
+    "dom_pre_wid_len": 16,
+    "len_distribution": {
+      "16": 1
+    },
+    "is_known": false,
+    "known_label": "",
+    "classification": "WEAPON_VARIANT (slot=0x00, len=16)"
+  }
+}

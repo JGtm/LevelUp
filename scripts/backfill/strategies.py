@@ -1491,3 +1491,41 @@ def cleanup_player_dbs_legacy(players_dir: str | Any = "data/players") -> dict[s
             results[gt] = -1
 
     return results
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Weapon kills — backfill stub (v5.5)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def backfill_weapon_kills(
+    shared_conn: Any,
+    xuid: str,
+    match_ids: list[str],
+    *,
+    force: bool = False,
+) -> int:
+    """Backfill des kills par arme pour un joueur sur une liste de matchs.
+
+    **Stub** — la logique d'extraction n'est pas encore implémentée.
+    Ne pose PAS le bit ``MatchBits.WEAPON_KILLS`` : les matchs restent
+    détectables pour un futur backfill.
+
+    Args:
+        shared_conn: Connexion shared_matches.duckdb.
+        xuid: XUID du joueur.
+        match_ids: Matchs à traiter.
+        force: Si True, re-traiter même si déjà backfillé.
+
+    Returns:
+        Nombre de matchs traités (toujours 0 pour le stub).
+    """
+    if not match_ids:
+        return 0
+    logger.info(
+        "weapon_kills stub : %d match(s) à traiter pour %s (force=%s) — NON IMPLÉMENTÉ",
+        len(match_ids),
+        xuid,
+        force,
+    )
+    return 0

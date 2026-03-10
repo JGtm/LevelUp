@@ -209,6 +209,13 @@ class ConnectionMixin:
         except Exception as e:
             logger.debug("Migration sync_spnkr_version shared: %s", e)
 
+        try:
+            from src.data.sync.migrations import ensure_weapon_kills_table
+
+            ensure_weapon_kills_table(self._shared_connection)
+        except Exception as e:
+            logger.debug("Migration weapon_kills shared: %s", e)
+
         return self._shared_connection
 
     def _get_pve_connection(self) -> duckdb.DuckDBPyConnection:

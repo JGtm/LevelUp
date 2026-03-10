@@ -6,6 +6,27 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [5.6.0-bêta] - 2026-03-08
+
+> ⚠️ **Bêta** — la précision de l’attribution n’est pas encore garantie dans tous les cas (couverture estimée à 70–100 % selon les matchs) ; le catalogue d’armes est en cours de complétion.
+
+### Ajouté
+
+- **Extraction d'armes depuis les films SPNKr** (`src/analysis/weapon_parser.py`, `src/data/services/weapon_extraction_service.py`)
+  - Analyse des chunks `REPLICATION_DATA` des films de match pour identifier l'arme utilisée à chaque kill POV (player_index=1, invariant universel)
+  - Corrélation kill→dernier fire event dans une fenêtre de 2 000 ms ; kills melee/grenade/véhicule détectés via médailles
+  - Table `weapon_kills (match_id, xuid, weapon_id, kills)` dans `shared_matches.duckdb` + migration automatique
+  - Architecture hexagonale : domaine pur (`weapon_parser.py`), service d'orchestration, port API étendu
+
+- **Backfill weapon_kills** (`scripts/backfill/backfill_weapon_kills.py`)
+  - `--gamertag <GT> --matches <N> [--force] [--dry-run]`
+
+- **Section Armes utilisées dans Match View**
+
+- **51 tests unitaires** (`tests/test_weapon_parser.py`, `tests/test_weapon_service.py`)
+
+---
+
 ## [5.5.0] - 2026-03-06
 
 ### Ajouté

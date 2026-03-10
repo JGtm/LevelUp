@@ -105,6 +105,7 @@ class MatchBits:
     PVE_STATS = 1 << 20  # 1048576 — stats PvE tentées pour ce match (v5.2)
     # Guard : posé même si match non-Firefight (évite re-détection infinie)
     # Valeur dans pve_match_stats : utiliser PveBits dans shared_pve.duckdb
+    WEAPON_KILLS = 1 << 21  # 2097152 — weapon_kills chargés (v5.5)
 
 
 class PveBits(IntFlag):
