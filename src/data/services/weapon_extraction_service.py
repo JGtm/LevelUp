@@ -108,17 +108,23 @@ class WeaponExtractionService:
                 return summary
 
             logger.debug("Match %s : %d chunks", match_id[:8], len(chunks))
-            # Filtrer sur T1 uniquement : Formula A ne contient pas les données T0
-            t1_xuids = self._load_pov_team(match_id, xuid) or set(all_participants)
-            t1_participants = {x: gt for x, gt in all_participants.items() if x in t1_xuids}
-            xuid_int_to_pi = self._resolve_player_indices(chunks, t1_participants, xuid)
+            # Résoudre les pi acurtis pour Formula A (T1 coéquipiers)
+            xuid_int_to_pi = self._resolve_player_indices(chunks, all_participants)
+            # Le joueur cible (xuid) est celui pour qui on fait la Section 2 (POV pi=1).
+            # L'espace pi Section 2 est indépendant de l'acurtis pi — ne pas confondre.
+            actual_pov_xuid = xuid
+            logger.debug(
+                "Match %s : Section 2 cible = %s",
+                match_id[:8],
+                xuid[:8] if xuid else "?",
+            )
             timeline, swap_pis, timing = build_weapon_timeline(chunks)
             chunks_sorted = sorted(chunks.keys())
 
             kt, ka, rt = self._attribute_all_players(
                 match_id,
                 all_participants,
-                xuid,
+                actual_pov_xuid,
                 chunks,
                 chunks_sorted,
                 timeline,
@@ -144,18 +150,12 @@ class WeaponExtractionService:
         self,
         chunks: dict,
         all_participants: dict[str, str],
-        pov_xuid: str,
     ) -> dict[int, int]:
-        """Résout XUID → player_index via acurtis (inv #26), fallback pi=1 pour POV."""
+        """Résout XUID → player_index via acurtis (inv #26)."""
         first_chunk_data = next(iter(v[0] for v in chunks.values()))
         xuid_int_map = {int(x): x for x in all_participants if x.isdigit()}
         pi_to_xuid_int = detect_player_indices(first_chunk_data, xuid_int_map)
-        xuid_int_to_pi = {v: k for k, v in pi_to_xuid_int.items()}
-        pov_int = int(pov_xuid) if pov_xuid and pov_xuid.isdigit() else None
-        if pov_int and pov_int not in xuid_int_to_pi:
-            xuid_int_to_pi[pov_int] = 1
-            logger.debug("Fallback pi=1 pour POV %s", pov_xuid[:8] if pov_xuid else "?")
-        return xuid_int_to_pi
+        return {v: k for k, v in pi_to_xuid_int.items()}
 
     def _attribute_all_players(  # noqa: PLR0913
         self,
@@ -181,9 +181,12 @@ class WeaponExtractionService:
             if xuid_i is None:
                 continue
             player_index = xuid_int_to_pi.get(xuid_i)
-            if player_index is None:
+            is_target = xuid_str == pov_xuid
+            if player_index is None and not is_target:
                 logger.debug("Match %s : pi inconnu pour %s", match_id[:8], gt)
                 continue
+            if player_index is None:
+                player_index = 0  # dummy : non utilisé pour Section 2 (pi=1 invariant)
 
             kills = WeaponKillsMixin.load_player_kills_for_match(self._conn, match_id, xuid_str)
             if not kills:
@@ -235,7 +238,9 @@ class WeaponExtractionService:
         """Attribution POV (fire events §6a) ou T1 (Formula A §6b)."""
         is_pov = xuid_str == pov_xuid
         if is_pov:
-            fire_events = self._scan_player_chunks(chunks, player_index)
+            # Section 2 : le POV est TOUJOURS à pi=1 (inv §6a / inv #6/#23/#27/#41)
+            # L'espace pi Section 2 est indépendant du pi acurtis — ne pas utiliser player_index
+            fire_events = self._scan_player_chunks(chunks, 1)
             return correlate_kills_to_weapons(kills, fire_events)
         return self._attribute_t1_kills(
             kills, chunks_sorted, timeline, swap_pis, timing, player_index
@@ -299,25 +304,6 @@ class WeaponExtractionService:
         except Exception as exc:
             logger.debug("_load_participants %s : %s", match_id[:8], exc)
             return {}
-
-    def _load_pov_team(self, match_id: str, pov_xuid: str) -> set[str]:
-        """Retourne les xuids de l'équipe du POV (T1). T0 = hors portée Formula A."""
-        try:
-            row = self._conn.execute(
-                "SELECT team_id FROM match_participants WHERE match_id=? AND xuid=?",
-                (match_id, pov_xuid),
-            ).fetchone()
-            if row is None:
-                return set()
-            team_id = row[0]
-            rows = self._conn.execute(
-                "SELECT xuid FROM match_participants WHERE match_id=? AND team_id=?",
-                (match_id, team_id),
-            ).fetchall()
-            return {x for (x,) in rows}
-        except Exception as exc:
-            logger.debug("_load_pov_team %s : %s", match_id[:8], exc)
-            return set()
 
     def _load_all_kill_times(self, match_id: str, xuids: list[str]) -> dict[str, list[int]]:
         if not xuids:
