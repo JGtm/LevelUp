@@ -287,6 +287,16 @@ class WeaponExtractionService:
             if player_index in swap_pis.get(ck, set()) and conf == "high":
                 conf = "medium"
             results.append(_attribution_row(kill, wname, conf))
+        n_unknown_wid = sum(1 for r in results if r["weapon_name"].startswith("?"))
+        n_unknown = sum(1 for r in results if r["weapon_name"] == "UNKNOWN")
+        if n_unknown_wid or n_unknown:
+            logger.debug(
+                "_attribute_t1 pi=%d : %d kills, %d ?hex, %d UNKNOWN",
+                player_index,
+                len(results),
+                n_unknown_wid,
+                n_unknown,
+            )
         return results
 
     # ── Privées ──────────────────────────────────────────────────────────
@@ -445,6 +455,14 @@ class WeaponExtractionService:
         # Step 4a — surdétection : demote les HIGH les moins certains
         if len(weapon_high) > api_weapon_kills:
             excess = len(weapon_high) - api_weapon_kills
+            logger.debug(
+                "_reconcile %s %s : step4a demote %d→%d (−%d)",
+                match_id[:8],
+                xuid_str[:8],
+                len(weapon_high),
+                api_weapon_kills,
+                excess,
+            )
             for r in sorted(weapon_high, key=lambda x: x.get("delta_ms") or 0, reverse=True)[
                 :excess
             ]:
@@ -458,6 +476,14 @@ class WeaponExtractionService:
         )
         if high_after < api_weapon_kills:
             deficit = api_weapon_kills - high_after
+            logger.debug(
+                "_reconcile %s %s : step4c promote %d→%d (+%d)",
+                match_id[:8],
+                xuid_str[:8],
+                high_after,
+                api_weapon_kills,
+                deficit,
+            )
             medium_kills = sorted(
                 [
                     r
