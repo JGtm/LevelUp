@@ -96,13 +96,16 @@ class WeaponExtractionService:
                 return summary
 
             logger.debug("Match %s : %d chunks", match_id[:8], len(chunks))
-            xuid_int_to_pi = self._resolve_player_indices(chunks, all_participants, xuid)
+            # Filtrer sur T1 uniquement : Formula A ne contient pas les données T0
+            t1_xuids = self._load_pov_team(match_id, xuid) or set(all_participants)
+            t1_participants = {x: gt for x, gt in all_participants.items() if x in t1_xuids}
+            xuid_int_to_pi = self._resolve_player_indices(chunks, t1_participants, xuid)
             timeline, timing = build_weapon_timeline(chunks)
             chunks_sorted = sorted(chunks.keys())
 
             kt, ka, rt = self._attribute_all_players(
                 match_id,
-                all_participants,
+                t1_participants,
                 xuid,
                 chunks,
                 chunks_sorted,
@@ -309,6 +312,25 @@ class WeaponExtractionService:
         except Exception as exc:
             logger.debug("_load_participants %s : %s", match_id[:8], exc)
             return {}
+
+    def _load_pov_team(self, match_id: str, pov_xuid: str) -> set[str]:
+        """Retourne les xuids de l'équipe du POV (T1). T0 = hors portée Formula A."""
+        try:
+            row = self._conn.execute(
+                "SELECT team_id FROM match_participants WHERE match_id=? AND xuid=?",
+                (match_id, pov_xuid),
+            ).fetchone()
+            if row is None:
+                return set()
+            team_id = row[0]
+            rows = self._conn.execute(
+                "SELECT xuid FROM match_participants WHERE match_id=? AND team_id=?",
+                (match_id, team_id),
+            ).fetchall()
+            return {x for (x,) in rows}
+        except Exception as exc:
+            logger.debug("_load_pov_team %s : %s", match_id[:8], exc)
+            return set()
 
     def _load_all_kill_times(self, match_id: str, xuids: list[str]) -> dict[str, list[int]]:
         if not xuids:

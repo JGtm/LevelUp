@@ -12,7 +12,7 @@ from __future__ import annotations
 WEAPON_ID_MAP: dict[bytes, str] = {
     # ── Armes confirmées (liste maître 2026-03-10) ───────────────────────
     bytes.fromhex("6acdc44d42c9679f"): "Bandit Evo",  # pragma: allowlist secret
-    bytes.fromhex("2b1824d542c9679f"): "BR75",  # pragma: allowlist secret
+    bytes.fromhex("2b1824d542c9679f"): "BR75",  # pragma: allowlist secret  (= BR75 Ranked, même ID)
     bytes.fromhex("230447b142c9679f"): "Cindershot",  # pragma: allowlist secret
     bytes.fromhex("b619d84a42c9679f"): "CQS48 Bulldog",  # pragma: allowlist secret
     bytes.fromhex("84bd29ed42c9679f"): "Disruptor",  # pragma: allowlist secret
@@ -22,7 +22,7 @@ WEAPON_ID_MAP: dict[bytes, str] = {
     bytes.fromhex("71ab0a2c42c9679f"): "M41 SPNKr",  # pragma: allowlist secret
     bytes.fromhex("2fb21c8742c9679f"): "M392 Bandit",  # pragma: allowlist secret
     bytes.fromhex("48c19d2d42c9679f"): "MA40 AR",  # pragma: allowlist secret
-    bytes.fromhex("f5c335dfe7232c0b"): "MA5K Avenger",  # pragma: allowlist secret
+    bytes.fromhex("f5c335dfe7232c0f"): "MA5K Avenger",  # pragma: allowlist secret
     bytes.fromhex("80977ba542c9679f"): "Mangler",  # pragma: allowlist secret
     bytes.fromhex("767db96d42c9679f"): "MLRS-2 Hydra",  # pragma: allowlist secret
     bytes.fromhex("f408190f42c9679f"): "Mk51 Sidekick",  # pragma: allowlist secret
