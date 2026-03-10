@@ -283,6 +283,13 @@ class CitationDataLoaderMixin:
                     "GROUP BY weapon_name",
                     [match_id, self._xuid],
                 ).fetchall()
-                return {str(r[0]): int(r[1]) for r in rows}
+                # Appliquer les fusions de variantes avant de retourner
+                from src.analysis._weapon_data import WEAPON_FUSION_MAP
+
+                result: dict[str, int] = {}
+                for weapon_name, kills in rows:
+                    canonical = WEAPON_FUSION_MAP.get(str(weapon_name), str(weapon_name))
+                    result[canonical] = result.get(canonical, 0) + int(kills)
+                return result
             except Exception:
                 return {}

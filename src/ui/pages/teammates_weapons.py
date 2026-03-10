@@ -12,8 +12,7 @@ from typing import Any
 
 import streamlit as st
 
-from src.ui.i18n import get_lang, t
-from src.ui.i18n.weapons import get_weapon_faction, get_weapon_label
+from src.ui.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -48,18 +47,16 @@ def render_weapon_kills_table(
     if df.is_empty():
         return
 
-    lang = get_lang()
     header = title or t("section_weapon_stats")
     st.markdown(f"##### {html.escape(header)}")
 
     # Construire les lignes de données
     rows: list[dict[str, Any]] = []
     for row in df.iter_rows(named=True):
-        wid = int(row["weapon_id"])
         rows.append(
             {
-                "name": get_weapon_label(wid, lang),
-                "faction": get_weapon_faction(wid, lang),
+                "name": row["weapon_name"],
+                "faction": "—",
                 "kills": int(row["total_kills"]),
             }
         )

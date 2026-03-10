@@ -15,7 +15,6 @@ import streamlit as st
 from src.data.services.timeseries_service import TimeseriesService
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
-from src.ui.i18n.weapons import get_weapon_label
 from src.ui.pages._timeseries_distributions import render_correlations, render_distributions
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -141,7 +140,7 @@ def _render_weapon_kills_chart(
 
     weapons_data = [
         {
-            "weapon_name": get_weapon_label(row["weapon_id"], lang),
+            "weapon_name": row["weapon_name"],
             "total_kills": row["total_kills"],
             "headshot_rate": 0.0,
             "accuracy": 0.0,
