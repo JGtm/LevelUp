@@ -26,7 +26,7 @@ from src.analysis._weapon_data import (
 # ══════════════════════════════════════════════════════════════════════════════
 
 FRAME_MARKER = bytes([0xA0, 0x7B, 0x42])
-KILL_WINDOW_MS = 2000
+KILL_WINDOW_MS = 5000  # §6a Step 1 — Cindershot/Ravager/Disruptor ont travel_max=5000ms
 
 COMMON_WEAPON_SUFFIX = bytes.fromhex("42c9679f")
 
@@ -42,6 +42,9 @@ for _wid_bytes, _wname in WEAPON_ID_MAP.items():
     _val = int.from_bytes(_wid_bytes, byteorder="big")
     WEAPON_IDS_INT.add(_val)
     WEAPON_INT_TO_NAME[_val] = _wname
+
+# Suffixes 4B distincts (Formula A multi-suffixe — Energy Sword variants, Hammer variants…)
+_ALL_FORMULA_A_SUFFIXES: frozenset[bytes] = frozenset(k[4:] for k in WEAPON_ID_MAP if len(k) == 8)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Mapping film_bytes → API weapon_id (entier)
@@ -70,6 +73,8 @@ def scan_formula_a(data: bytes) -> list[tuple[int, int, bytes]]:
     """Scanne les mises à jour d'état arme Section 1 (Formula A).
 
     Pattern : ``[20 00 02 pb ... wid:8B]`` où ``pi = pb >> 5``.
+    Supporte tous les suffixes 4B de WEAPON_ID_MAP (Energy Sword variants,
+    Hammer variants, etc.).
     Utilisé pour l'attribution T1 (coéquipiers non-POV).
 
     Returns:
@@ -84,9 +89,22 @@ def scan_formula_a(data: bytes) -> list[tuple[int, int, bytes]]:
         pb = data[pos + 3]
         pi = pb >> 5
         end = min(pos + 68, len(data))
-        sx = data.find(COMMON_WEAPON_SUFFIX, pos + 4, end)
-        if sx >= 4:
-            ws = sx - 4
+        # Chercher la première occurrence valide de n'importe quel suffixe connu
+        best_sx = -1
+        for suffix in _ALL_FORMULA_A_SUFFIXES:
+            sx_c = data.find(suffix, pos + 4, end)
+            if sx_c < 4:
+                continue
+            ws_c = sx_c - 4
+            if ws_c <= pos + 3:
+                continue
+            # Suffixe non-standard : valider contre WEAPON_ID_MAP (éviter faux positifs)
+            if suffix != COMMON_WEAPON_SUFFIX and data[ws_c : ws_c + 8] not in WEAPON_ID_MAP:
+                continue
+            if best_sx == -1 or sx_c < best_sx:
+                best_sx = sx_c
+        if best_sx >= 4:
+            ws = best_sx - 4
             if ws > pos + 3:
                 results.append((pos, pi, data[ws : ws + 8]))
         pos += 4
@@ -95,28 +113,34 @@ def scan_formula_a(data: bytes) -> list[tuple[int, int, bytes]]:
 
 def build_weapon_timeline(
     chunks: dict[int, tuple[bytes, int, int]],
-) -> tuple[dict[int, dict[int, bytes]], list[tuple[int, int]]]:
+) -> tuple[dict[int, dict[int, bytes]], dict[int, set[int]], list[tuple[int, int]]]:
     """Construit la timeline arme par chunk (Formula A, Section 1).
 
     Args:
         chunks: ``{chunk_idx: (data, start_ms, dur_ms)}``.
 
     Returns:
-        ``(timeline, timing)`` où :
+        ``(timeline, swap_pis, timing)`` où :
         - ``timeline[chunk_idx][pi]`` = dernière arme vue pour pi dans ce chunk
+        - ``swap_pis[chunk_idx]`` = ensemble des pi ayant eu > 1 arme distincte
+          dans le chunk (swap intra-chunk → confidence MEDIUM per FINDINGS §6b Step 3)
         - ``timing`` = liste de ``(start_ms, end_ms)`` par chunk_idx ordonnée
     """
     timeline: dict[int, dict[int, bytes]] = {}
+    swap_pis: dict[int, set[int]] = {}
     timing: list[tuple[int, int]] = []
     for idx in sorted(chunks):
         data, start_ms, dur_ms = chunks[idx]
         events = scan_formula_a(data)
         chunk_state: dict[int, bytes] = {}
+        pi_seen_wids: dict[int, set[bytes]] = {}
         for _, pi, wid in events:
             chunk_state[pi] = wid  # dernière mise à jour = état à la fin du chunk
+            pi_seen_wids.setdefault(pi, set()).add(wid)
         timeline[idx] = chunk_state
+        swap_pis[idx] = {pi for pi, wids in pi_seen_wids.items() if len(wids) > 1}
         timing.append((start_ms, start_ms + dur_ms))
-    return timeline, timing
+    return timeline, swap_pis, timing
 
 
 def find_chunk_at_time(
@@ -338,6 +362,20 @@ def correlate_kills_to_weapons(
         wname = best["weapon_name"] if best else "NON TROUVE"
         delta = int(kill_t - best["timestamp_ms"]) if best else None
         swap_ms, travel_max = WEAPON_TIMING.get(wname, (650, 2000))
+        conf = _get_confidence(wname, delta)
+        # Zone B W2 check (FINDINGS §6a Step 2) : si MEDIUM, chercher un fire W2
+        # dans [kill_t, kill_t + swap_ms] — preuve que W2 était équipé au moment du kill
+        if conf == "medium" and best is not None:
+            post_swap = [
+                ev
+                for ev in fire_events_all
+                if kill_t < ev["timestamp_ms"] <= kill_t + swap_ms and ev["weapon_name"] != wname
+            ]
+            if post_swap:
+                w2_ev = min(post_swap, key=lambda e: e["timestamp_ms"])
+                wname = w2_ev["weapon_name"]
+                swap_ms, travel_max = WEAPON_TIMING.get(wname, (650, 2000))
+                conf = "high"
         swap_detected = best is not None and delta is not None and delta >= swap_ms
         delayed = best is not None and delta is not None and delta > travel_max
         results.append(
@@ -347,7 +385,7 @@ def correlate_kills_to_weapons(
                 "fire_seq": best["fire_seq"] if best else None,
                 "matched_fire_event": best,
                 "delta_ms": delta,
-                "confidence": _get_confidence(wname, delta),
+                "confidence": conf,
                 "swap_detected": swap_detected,
                 "delayed_damage": delayed,
             }

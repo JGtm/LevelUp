@@ -1,6 +1,6 @@
 """Mixin – requêtes weapon_kills (shared_matches.duckdb).
 
-Schéma v5.7 per-kill : (match_id, xuid, time_ms, weapon_name, delta_ms,
+Schéma v5.6 per-kill : (match_id, xuid, time_ms, weapon_name, delta_ms,
 confidence, swap_detected, delayed_damage).
 """
 
@@ -147,7 +147,7 @@ class WeaponKillsMixin:
         xuid: str,
         kill_rows: list[dict],
     ) -> int:
-        """Insère les lignes per-kill (schéma v5.7).
+        """Insère les lignes per-kill (schéma v5.6).
 
         Chaque dict doit contenir : time_ms, weapon_name, delta_ms (ou None),
         confidence, swap_detected, delayed_damage.

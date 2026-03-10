@@ -1107,7 +1107,7 @@ def ensure_fix_bot_xuid_shared(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Schéma weapon_kills — shared_matches.duckdb (v5.7, per-kill avec confidence)
+# Schéma weapon_kills — shared_matches.duckdb (v5.6, per-kill avec confidence)
 # ─────────────────────────────────────────────────────────────────────────────
 
 _WEAPON_KILLS_DDL = """\
@@ -1127,7 +1127,7 @@ _WEAPON_KILLS_LEGACY_COLUMNS = {"weapon_id", "kills"}
 
 
 def _migrate_weapon_kills_schema(conn: duckdb.DuckDBPyConnection) -> None:
-    """Migre weapon_kills vers le schéma per-kill v5.7 si nécessaire."""
+    """Migre weapon_kills vers le schéma per-kill v5.6 si nécessaire."""
     try:
         cols = {
             r[0]
@@ -1137,7 +1137,7 @@ def _migrate_weapon_kills_schema(conn: duckdb.DuckDBPyConnection) -> None:
             ).fetchall()
         }
         if cols & _WEAPON_KILLS_LEGACY_COLUMNS:
-            logger.info("Migration weapon_kills → schéma per-kill v5.7 (DROP+CREATE)")
+            logger.info("Migration weapon_kills → schéma per-kill v5.6 (DROP+CREATE)")
             conn.execute("DROP TABLE weapon_kills")
     except Exception:
         pass  # table absente → sera créée par _WEAPON_KILLS_DDL
@@ -1146,7 +1146,7 @@ def _migrate_weapon_kills_schema(conn: duckdb.DuckDBPyConnection) -> None:
 def ensure_weapon_kills_table(conn: duckdb.DuckDBPyConnection) -> None:
     """Crée la table ``weapon_kills`` si elle n'existe pas (idempotente).
 
-    Schéma per-kill v5.7 : une ligne par kill, avec weapon_name (TEXT),
+    Schéma per-kill v5.6 : une ligne par kill, avec weapon_name (TEXT),
     delta_ms, confidence, swap_detected, delayed_damage.
     À appeler sur la connexion ``shared_matches.duckdb``.
     """
