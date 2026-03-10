@@ -313,3 +313,147 @@ class TestWeaponKillsMixinRepo:
         from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
 
         assert WeaponKillsMixin.get_xuid_by_gamertag(conn, "UnknownPlayer") is None
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests _reconcile_api_aggregates (FINDINGS §6a Steps 4a/4c)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestReconcileApiAggregates:
+    """Tests unitaires directs de la méthode statique _reconcile_api_aggregates."""
+
+    @pytest.fixture()
+    def conn(self):
+        c = duckdb.connect(":memory:")
+        c.execute(
+            "CREATE TABLE match_participants ("
+            "match_id VARCHAR, xuid VARCHAR, "
+            "grenade_kills INTEGER, melee_kills INTEGER)"
+        )
+        return c
+
+    @staticmethod
+    def _weapon_rows(n: int, conf: str = "high", base_delta: int = 100) -> list[dict]:
+        return [
+            {
+                "weapon_name": "BR75",
+                "confidence": conf,
+                "delta_ms": base_delta * (i + 1),
+                "swap_detected": False,
+                "delayed_damage": False,
+            }
+            for i in range(n)
+        ]
+
+    def test_no_participant_row_returns_unchanged(self, conn):
+        """Sans ligne dans match_participants, kill_rows retourné inchangé."""
+        rows = self._weapon_rows(3)
+        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
+        assert result is rows  # même objet
+        assert all(r["confidence"] == "high" for r in result)
+
+    def test_db_exception_returns_unchanged(self, conn):
+        """Exception DB → retourne kill_rows sans modification."""
+        # Supprimer la table pour provoquer une erreur
+        conn.execute("DROP TABLE match_participants")
+        rows = self._weapon_rows(2)
+        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
+        assert all(r["confidence"] == "high" for r in result)
+
+    def test_step4a_demotes_excess_high_kills(self, conn):
+        """Plus de HIGH que api_weapon_kills → dégrader les moins certains (grand delta_ms)."""
+        # kill_rows = 5 weapon HIGH, grenade_kills=2 → api_weapon=max(5-2-0,0)=3 → demote 2
+        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',2,0)")
+        rows = self._weapon_rows(5, "high", base_delta=100)
+        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
+        high_count = sum(1 for r in result if r["confidence"] == "high")
+        medium_count = sum(1 for r in result if r["confidence"] == "medium")
+        assert high_count == 3
+        assert medium_count == 2
+
+    def test_step4a_demotes_highest_delta_first(self, conn):
+        """Step 4a : les kills avec le plus grand delta_ms sont dégradés en premier."""
+        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',1,0)")
+        rows = [
+            {
+                "weapon_name": "BR75",
+                "confidence": "high",
+                "delta_ms": 100,
+                "swap_detected": False,
+                "delayed_damage": False,
+            },
+            {
+                "weapon_name": "BR75",
+                "confidence": "high",
+                "delta_ms": 200,
+                "swap_detected": False,
+                "delayed_damage": False,
+            },
+            {
+                "weapon_name": "BR75",
+                "confidence": "high",
+                "delta_ms": 999,
+                "swap_detected": False,
+                "delayed_damage": False,
+            },
+        ]
+        # grenade_kills=1, melee_kills=0 → api_weapon=max(3-1-0,0)=2 → demote 1 (le delta=999)
+        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
+        assert result[2]["confidence"] == "medium"  # delta=999, le plus grand
+        assert result[0]["confidence"] == "high"
+        assert result[1]["confidence"] == "high"
+
+    def test_step4c_promotes_medium_to_high(self, conn):
+        """Moins de HIGH que api_weapon_kills → promouvoir les MEDIUM (petit delta en premier)."""
+        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',0,0)")
+        # 3 HIGH + 2 MEDIUM → api_weapon=max(5-0-0,0)=5 → promote 2 MEDIUM
+        rows = self._weapon_rows(3, "high", base_delta=100) + self._weapon_rows(
+            2, "medium", base_delta=700
+        )
+        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
+        high_count = sum(
+            1
+            for r in result
+            if r["confidence"] == "high"
+            and r["weapon_name"] not in ("MELEE", "GRENADE", "NON TROUVE", "UNKNOWN")
+        )
+        assert high_count == 5
+
+    def test_no_change_when_counts_match(self, conn):
+        """Exact match api_weapon_kills == len(HIGH) → aucune modification."""
+        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',0,0)")
+        rows = self._weapon_rows(3, "high", base_delta=100)
+        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
+        assert all(r["confidence"] == "high" for r in result)
+
+    def test_excluded_names_not_counted(self, conn):
+        """MELEE et GRENADE ne comptent pas dans weapon_high."""
+        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',0,0)")
+        rows = [
+            {
+                "weapon_name": "MELEE",
+                "confidence": "none",
+                "delta_ms": None,
+                "swap_detected": False,
+                "delayed_damage": False,
+            },
+            {
+                "weapon_name": "GRENADE",
+                "confidence": "none",
+                "delta_ms": None,
+                "swap_detected": False,
+                "delayed_damage": False,
+            },
+            {
+                "weapon_name": "BR75",
+                "confidence": "high",
+                "delta_ms": 200,
+                "swap_detected": False,
+                "delayed_damage": False,
+            },
+        ]
+        # api_weapon = max(3-0-0,0) = 3; weapon_high = 1 (seulement BR75); 1 < 3 → step4c
+        # Pas de MEDIUM à promouvoir → résultat inchangé
+        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
+        assert result[2]["confidence"] == "high"
