@@ -309,13 +309,13 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "col_last_seen": {"fr": "Dernier match", "en": "Last match"},
     "mv_encounter_legend": {
         "fr": (
-            "**% Vict. allié / ennemi** — ton taux de victoires sur les matchs joués avec ou contre ce joueur · "
-            "**Frags/Morts** — nombre de fois où tu l'as éliminé / où il t'a éliminé dans vos matchs communs · "
+            "**% Vict. allié / ennemi** — ton taux de victoires sur les matchs joués avec ou contre ce joueur  \n"
+            "**Frags/Morts** — nombre de fois où tu l'as éliminé / où il t'a éliminé dans vos matchs communs  \n"
             "**Dernier match** — date du dernier match partagé"
         ),
         "en": (
-            "**Win% (ally/enemy)** — your win rate on shared matches, by team side · "
-            "**Kills/Deaths** — how many times you eliminated them / they eliminated you across shared matches · "
+            "**Win% (ally/enemy)** — your win rate on shared matches by team side  \n"
+            "**Kills/Deaths** — how many times you eliminated them / they eliminated you across shared matches  \n"
             "**Last match** — date of the last shared match"
         ),
     },
