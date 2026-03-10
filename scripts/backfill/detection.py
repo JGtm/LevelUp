@@ -133,6 +133,11 @@ def find_matches_missing_data(
     force_pve_stats = getattr(scope, "force_pve_stats", False) if scope is not None else False
     weapons = getattr(scope, "weapons", False) if scope is not None else False
     force_weapons = getattr(scope, "force_weapons", False) if scope is not None else False
+    force_no_film = getattr(scope, "force_no_film", False) if scope is not None else False
+    # --force-no-film implique --weapons et traite les matchs NO_FILM comme force_weapons
+    if force_no_film:
+        weapons = True
+        force_weapons = True
 
     # Détecter le type de flags demandés
     local_data_requested = any(
@@ -432,16 +437,23 @@ def _find_matches_in_shared_all(
                 f"mr.is_firefight = TRUE AND (COALESCE(mr.backfill_completed, 0) & {pve_bit}) = 0"
             )
 
-    # Weapon kills — v5.5
-    # Guard : WEAPON_KILLS bit non posé dans backfill_completed
+    # Weapon kills — v5.5 / v5.6
+    # Guard : WEAPON_KILLS bit non posé dans backfill_completed.
+    # WEAPON_KILLS_NO_FILM : film 404/expiré → exclus par défaut, inclus avec force_weapons.
     if weapons:
         from src.data.sync.constants import MatchBits
 
         wk_bit = MatchBits.WEAPON_KILLS
+        no_film_bit = MatchBits.WEAPON_KILLS_NO_FILM
         if force_weapons:
+            # --force-weapons : re-tenter tout, y compris les matchs NO_FILM
             conditions.append("1=1")
         else:
-            conditions.append(f"(COALESCE(mr.backfill_completed, 0) & {wk_bit}) = 0")
+            # Exclure WEAPON_KILLS (traité) ET WEAPON_KILLS_NO_FILM (film expiré)
+            conditions.append(
+                f"(COALESCE(mr.backfill_completed, 0) & {wk_bit}) = 0"
+                f" AND (COALESCE(mr.backfill_completed, 0) & {no_film_bit}) = 0"
+            )
 
     if not conditions:
         return []

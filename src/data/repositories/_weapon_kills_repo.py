@@ -15,8 +15,9 @@ from src.data.repositories._arrow_bridge import result_to_polars
 
 logger = logging.getLogger(__name__)
 
-# Bit WEAPON_KILLS (1 << 21) — copie locale pour éviter import circulaire
+# Bits weapon_kills — copies locales pour éviter import circulaire
 _WEAPON_KILLS_BIT = 1 << 21
+_WEAPON_KILLS_NO_FILM_BIT = 1 << 22
 
 
 class WeaponKillsMixin:
@@ -197,6 +198,26 @@ class WeaponKillsMixin:
         )
         logger.debug(
             "mark_weapon_backfill_done %s : bit 0x%x posé", match_id[:8], _WEAPON_KILLS_BIT
+        )
+
+    @staticmethod
+    def mark_weapon_no_film(
+        conn: duckdb.DuckDBPyConnection,
+        match_id: str,
+    ) -> None:
+        """Pose le bit WEAPON_KILLS_NO_FILM (film 404/expiré).
+
+        N'affecte PAS WEAPON_KILLS : le match pourra être re-tenté via
+        --force-no-film si les films redeviennent disponibles sur Halo servers.
+        """
+        conn.execute(
+            "UPDATE match_registry "
+            "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+            "WHERE match_id = ?",
+            (_WEAPON_KILLS_NO_FILM_BIT, match_id),
+        )
+        logger.debug(
+            "mark_weapon_no_film %s : bit 0x%x posé", match_id[:8], _WEAPON_KILLS_NO_FILM_BIT
         )
 
     @staticmethod

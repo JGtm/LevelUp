@@ -106,6 +106,10 @@ class MatchBits:
     # Guard : posé même si match non-Firefight (évite re-détection infinie)
     # Valeur dans pve_match_stats : utiliser PveBits dans shared_pve.duckdb
     WEAPON_KILLS = 1 << 21  # 2097152 — weapon_kills chargés (v5.5)
+    WEAPON_KILLS_NO_FILM = 1 << 22  # 4194304 — film 404/expiré, 0 chunk dispo (v5.6)
+    # WEAPON_KILLS_NO_FILM : posé à la place de WEAPON_KILLS quand tous les chunks
+    # sont introuvables. Le match n'est PAS marqué WEAPON_KILLS, ce qui permet de
+    # le re-tenter via --force-no-film si les films redeviennent disponibles.
 
 
 class PveBits(IntFlag):
