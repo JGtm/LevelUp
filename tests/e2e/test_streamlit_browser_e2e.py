@@ -115,11 +115,11 @@ def test_streamlit_homepage_loads_in_real_browser(running_streamlit_app: str) ->
 
         content = page.content()
         expected_labels = [
-            "Séries temporelles",
+            "Séries",
             "Victoires/Défaites",
             "Mes coéquipiers",
             "Paramètres",
-            "Historique des parties",
+            "Historique",
             "Carrière",
             "Objectifs",
             "Médias",
@@ -167,7 +167,7 @@ def test_streamlit_can_navigate_main_pages_without_front_error(running_streamlit
         page = browser.new_page()
         page.goto(running_streamlit_app, wait_until="domcontentloaded", timeout=120000)
 
-        tabs = ["Séries temporelles", "Victoires/Défaites", "Mes coéquipiers", "Paramètres"]
+        tabs = ["Séries", "Victoires/Défaites", "Mes coéquipiers", "Paramètres"]
         visible_any = False
         for tab in tabs:
             locator = page.get_by_text(tab)
@@ -199,7 +199,7 @@ def test_streamlit_filters_and_sessions_interaction_smoke(running_streamlit_app:
         page.goto(running_streamlit_app, wait_until="domcontentloaded", timeout=120000)
 
         # Aller sur la page temporelle quand disponible
-        timeseries_tab = page.get_by_text("Séries temporelles")
+        timeseries_tab = page.get_by_text("Séries")
         if timeseries_tab.count() > 0:
             timeseries_tab.first.click(timeout=20000)
             page.wait_for_timeout(1000)
@@ -228,7 +228,7 @@ def test_streamlit_filters_and_sessions_interaction_smoke(running_streamlit_app:
 
 @pytest.mark.e2e_browser
 def test_e2e_001_playlist_filter_changes_visible_results(running_streamlit_app: str) -> None:
-    """E2E-001: le filtre playlist modifie visiblement l'écran Séries temporelles."""
+    """E2E-001: le filtre playlist modifie visiblement l'écran Séries."""
     playwright = pytest.importorskip("playwright.sync_api")
 
     with playwright.sync_playwright() as p:
@@ -236,7 +236,7 @@ def test_e2e_001_playlist_filter_changes_visible_results(running_streamlit_app: 
         page = browser.new_page()
         page.goto(running_streamlit_app, wait_until="domcontentloaded", timeout=120000)
 
-        timeseries_tab = page.get_by_text("Séries temporelles")
+        timeseries_tab = page.get_by_text("Séries")
         if timeseries_tab.count() == 0:
             _assert_no_front_error(page)
             browser.close()
@@ -398,7 +398,7 @@ def test_e2e_004_deeplink_match_query_params(running_streamlit_app: str) -> None
 
 @pytest.mark.e2e_browser
 def test_e2e_005_navigation_historique_to_match(running_streamlit_app: str) -> None:
-    """E2E-005: navigation Historique des parties -> Match."""
+    """E2E-005: navigation Historique -> Match."""
     playwright = pytest.importorskip("playwright.sync_api")
 
     with playwright.sync_playwright() as p:
@@ -406,7 +406,7 @@ def test_e2e_005_navigation_historique_to_match(running_streamlit_app: str) -> N
         page = browser.new_page()
         page.goto(running_streamlit_app, wait_until="domcontentloaded", timeout=120000)
 
-        history_tab = page.get_by_text("Historique des parties")
+        history_tab = page.get_by_text("Historique")
         if history_tab.count() == 0:
             _assert_no_front_error(page)
             browser.close()
@@ -479,7 +479,7 @@ def test_e2e_006_navigation_medias_to_match(running_streamlit_app: str) -> None:
 
 @pytest.mark.e2e_browser
 def test_e2e_007_session_comparison_selection_stability(running_streamlit_app: str) -> None:
-    """E2E-007: stabilité de la sélection A/B dans Comparaison de sessions."""
+    """E2E-007: stabilité de la sélection A/B dans Sessions."""
     playwright = pytest.importorskip("playwright.sync_api")
 
     with playwright.sync_playwright() as p:
@@ -487,7 +487,7 @@ def test_e2e_007_session_comparison_selection_stability(running_streamlit_app: s
         page = browser.new_page()
         page.goto(running_streamlit_app, wait_until="domcontentloaded", timeout=120000)
 
-        compare_tab = page.get_by_text("Comparaison de sessions")
+        compare_tab = page.get_by_text("Sessions")
         if compare_tab.count() == 0:
             _assert_no_front_error(page)
             browser.close()

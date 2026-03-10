@@ -37,15 +37,15 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "No citation progressed in this match.",
     },
     # ── Match View ────────────────────────────────────────────────────────────
-    "page_timeseries": {"fr": "Séries temporelles", "en": "Time Series"},
-    "page_session_compare": {"fr": "Comparaison de sessions", "en": "Session Comparison"},
+    "page_timeseries": {"fr": "Séries", "en": "Time Series"},
+    "page_session_compare": {"fr": "Sessions", "en": "Session Comparison"},
     "page_last_match": {"fr": "Dernier match", "en": "Last Match"},
     "page_match": "col_match",  # alias → common
     "page_media": {"fr": "Médias", "en": "Media"},
     "page_citations": {"fr": "Citations", "en": "Commendations"},
     "page_win_loss": {"fr": "Victoires/Défaites", "en": "Wins/Losses"},
     "page_teammates": {"fr": "Escouade", "en": "Squad"},
-    "page_match_history": {"fr": "Historique des parties", "en": "Match History"},
+    "page_match_history": {"fr": "Historique", "en": "Match History"},
     "page_career": {"fr": "Carrière", "en": "Career"},
     "page_settings": {"fr": "Paramètres", "en": "Settings"},
     # ── KPIs ─────────────────────────────────────────────────────────────────
