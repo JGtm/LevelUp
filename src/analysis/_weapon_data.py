@@ -107,6 +107,8 @@ WEAPON_FUSION_MAP: dict[str, str] = {
     "M392 Bandit": "Bandit Evo",
     # SPNKr : variante Fuel Rod comptée avec le SPNKr de base
     "Fuel Rod SPNKr": "M41 SPNKr",
+    # Hydra : variante alt fusionnée avec la canonique
+    "MLRS-2 Hydra (alt)": "MLRS-2 Hydra",
 }
 
 # Fusion par weapon_id (int → int canonique)

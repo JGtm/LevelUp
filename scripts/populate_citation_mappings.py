@@ -230,11 +230,13 @@ WEAPON_CITATIONS: list[tuple] = [
     ("sniper_mastery", "Maîtrise du S7 Sniper", "weapon_stat", None, None, "weapon_kills:S7 Sniper", None, None, None, None, "high", "Kills avec S7 Sniper", True,
      _WP + "H5G_citation_Fusil_sniper.png", "Arme", "Éliminez des Spartans avec le S7 Sniper.", "10,20,40,80,200", "UNSC"),
     ("spnkr_mastery", "Maîtrise du M41 SPNKr", "weapon_stat", None, None, "weapon_kills:M41 SPNKr", None, None, None, None, "high", "Kills avec M41 SPNKr", True,
-     _WP + "H5G_citation_Lance-roquettes.png", "Arme", "Éliminez des Spartans avec le M41 SPNKr.", "10,20,40,80,200", "UNSC"),
+     _WP + "H5G_citation_SPNKR.png", "Arme", "Éliminez des Spartans avec le M41 SPNKr.", "10,20,40,80,200", "UNSC"),
     ("bulldog_mastery", "Maîtrise du CQS48 Bulldog", "weapon_stat", None, None, "weapon_kills:CQS48 Bulldog", None, None, None, None, "high", "Kills avec CQS48 Bulldog", True,
      _WP + "H5G_citation_Fusil_%C3%A0_pompe.png", "Arme", "Éliminez des Spartans avec le CQS48 Bulldog.", "10,25,50,100,250", "UNSC"),
     ("bandit_mastery", "Maîtrise du Bandit EVO", "weapon_stat", None, None, "weapon_kills:Bandit Evo", None, None, None, None, "high", "Kills avec Bandit EVO", True,
      _WP + "H5G_citation_Carnage_au_DMR.png", "Arme", "Éliminez des Spartans avec le Bandit EVO.", "10,25,50,100,250", "UNSC"),
+    ("hydra_mastery", "Maîtrise du MLRS-2 Hydra", "weapon_stat", None, None, "weapon_kills:MLRS-2 Hydra", None, None, None, None, "high", "Kills avec MLRS-2 Hydra", True,
+     _WP + "H5G_citation_Hydra.png", "Arme", "Éliminez des Spartans avec le MLRS-2 Hydra.", "5,10,20,40,100", "UNSC"),
     # Paria (armes Covenant + Banished fusionnées)
     ("stalker_mastery", "Maîtrise du Fusil traqueur", "weapon_stat", None, None, "weapon_kills:Stalker Rifle", None, None, None, None, "high", "Kills avec Fusil traqueur", True,
      None, "Arme", "Éliminez des Spartans avec le Fusil traqueur.", "10,25,50,100,250", "Paria"),
@@ -268,6 +270,7 @@ _HUMAN_WEAPON_CHILDREN = [
     "spnkr_mastery",
     "bulldog_mastery",
     "bandit_mastery",
+    "hydra_mastery",
 ]
 _PARIA_WEAPON_CHILDREN = [
     "stalker_mastery",
