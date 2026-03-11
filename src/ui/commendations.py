@@ -207,6 +207,26 @@ def _img_data_uri(abs_path: str, mtime: float | None = None) -> str | None:
 # ── Rendu d'une rangée de citations ────────────────────────────────────────
 
 
+def _resolve_citation_progress(
+    item: dict,
+    current_full: int,
+) -> tuple[str, str, bool, float]:
+    """Retourne (level_label, counter_label, is_master, progress_ratio) pour un item citation.
+
+    Pour les composites, la progression est directe (N/total).
+    Pour les citations normales, délègue à ``_compute_mastery_display``.
+    """
+    composite_total = item.get("composite_total")
+    if composite_total:
+        n_total = composite_total
+        is_master = current_full >= n_total
+        progress_ratio = 1.0 if is_master else current_full / n_total
+        level_label = t("cit_mastery_master") if is_master else ""
+        counter_label = str(current_full) if is_master else f"{current_full}/{n_total}"
+        return level_label, counter_label, is_master, progress_ratio
+    return _compute_mastery_display(current_full, item["tiers"])
+
+
 def _render_citation_row(
     items: list[dict],
     cols_per_row: int,
@@ -221,14 +241,13 @@ def _render_citation_row(
         name = item["name"]
         desc = item["description"]
         norm_name = item["norm"]
-        tiers = item["tiers"]
 
         current_full = citations_full.get(norm_name, 0)
         current_filtered = citations_filtered.get(norm_name, 0) if is_filtered else current_full
         delta_citation = current_filtered if (is_filtered and current_filtered > 0) else 0
 
-        level_label, counter_label, is_master, progress_ratio = _compute_mastery_display(
-            current_full, tiers
+        level_label, counter_label, is_master, progress_ratio = _resolve_citation_progress(
+            item, current_full
         )
 
         with col:
@@ -351,17 +370,21 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
         composite_children = cit.get("composite_children")
         mapping_type = cit.get("mapping_type", "")
 
-        # Tiers : pour les composites, 1 tier par enfant activé
+        # Tiers : pour les composites, 1 seul tier = total enfants activés
+        # → progression directe N/total, pas "Niveau N+1"
         if mapping_type == "composite" and composite_children:
             try:
                 children = _json.loads(composite_children)
             except Exception:
                 children = []
             n_enabled = sum(1 for c in children if _normalize_name(c) in enabled_norms)
-            tiers = [{"tier": i + 1, "target_count": i + 1} for i in range(n_enabled)]
+            tiers = [{"tier": 1, "target_count": n_enabled}] if n_enabled > 0 else []
         else:
             tiers = _parse_tier_targets(tier_targets)
 
+        composite_total = (
+            n_enabled if (mapping_type == "composite" and composite_children) else None
+        )
         items.append(
             {
                 "name": name,
@@ -371,6 +394,7 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
                 "subcategory": cit.get("subcategory"),
                 "image_path": image_path,
                 "tiers": tiers,
+                "composite_total": composite_total,
             }
         )
 
