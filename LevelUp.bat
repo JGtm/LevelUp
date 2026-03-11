@@ -89,6 +89,13 @@ if defined CURRENT_TS (
 
 :: Venv OK → lancer l'app
 .venv\Scripts\python.exe launcher.py !PASS_ARGS!
+set "EXIT_CODE=!ERRORLEVEL!"
+if !EXIT_CODE! neq 0 (
+    echo.
+    echo   [ERREUR] LevelUp s'est arrete avec le code !EXIT_CODE!.
+    echo   Appuie sur une touche pour fermer cette fenetre.
+    pause >nul
+)
 goto :end
 
 :: ── Premier lancement ─────────────────────────────────────────────────────────
@@ -243,5 +250,17 @@ echo.
 
 :: Mode interactif (gère onboarding + dashboard)
 .venv\Scripts\python.exe launcher.py !PASS_ARGS!
+set "EXIT_CODE=!ERRORLEVEL!"
+if !EXIT_CODE! neq 0 (
+    echo.
+    echo   [ERREUR] LevelUp s'est arrete avec le code !EXIT_CODE!.
+    echo   Appuie sur une touche pour fermer cette fenetre.
+    pause >nul
+)
 
 :end
+:: Si lancé par double-clic, la fenêtre se fermerait sinon sans laisser le temps
+:: de lire les messages. On affiche un message et on attend une touche.
+echo.
+echo   Appuie sur une touche pour fermer cette fenetre...
+pause >nul
