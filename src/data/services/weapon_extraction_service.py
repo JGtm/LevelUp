@@ -21,6 +21,11 @@ from pathlib import Path
 
 import duckdb
 
+from src.analysis.packet_index import (
+    detect_pi_from_metadata,
+    extract_metadata_payload,
+    index_chunk,
+)
 from src.analysis.weapon_parser import (
     KILL_WINDOW_MS,
     build_weapon_timeline,
@@ -189,9 +194,24 @@ class WeaponExtractionService:
         chunks: dict,
         all_participants: dict[str, str],
     ) -> dict[int, int]:
-        """Résout XUID → player_index via acurtis (inv #26)."""
+        """Résout XUID → player_index via METADATA packet puis fallback acurtis.
+
+        Ordre de résolution (inv #130) :
+        1. PLAYER_METADATA packet (~25KB) — rapide et fiable
+        2. Fallback méthode acurtis (inv #26) sur le chunk complet (~700KB)
+        """
         first_chunk_data = next(iter(v[0] for v in chunks.values()))
         xuid_int_map = {int(x): x for x in all_participants if x.isdigit()}
+
+        # Méthode 1 : PLAYER_METADATA packet (inv #130)
+        packets = index_chunk(first_chunk_data)
+        metadata = extract_metadata_payload(first_chunk_data, packets)
+        if metadata is not None:
+            pi_to_xuid_int = detect_pi_from_metadata(metadata, xuid_int_map)
+            if pi_to_xuid_int:
+                return {v: k for k, v in pi_to_xuid_int.items()}
+
+        # Fallback : méthode acurtis (inv #26) sur chunk complet
         pi_to_xuid_int = detect_player_indices(first_chunk_data, xuid_int_map)
         return {v: k for k, v in pi_to_xuid_int.items()}
 
@@ -548,6 +568,9 @@ class WeaponExtractionService:
     ) -> list[dict]:
         all_events: list[dict] = []
         for _idx, (chunk_data, start_ms, dur_ms) in sorted(chunks.items()):
-            all_events.extend(scan_fire_events(chunk_data, player_index, start_ms, dur_ms))
+            packets = index_chunk(chunk_data)
+            all_events.extend(
+                scan_fire_events(chunk_data, player_index, start_ms, dur_ms, packets=packets)
+            )
         all_events.sort(key=lambda e: e["timestamp_ms"])
         return all_events

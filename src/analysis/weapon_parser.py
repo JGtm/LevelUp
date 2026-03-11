@@ -273,9 +273,21 @@ def scan_fire_events(
     player_index: int,
     chunk_start_ms: int,
     chunk_duration_ms: int,
+    *,
+    packets: list | None = None,
 ) -> list[dict]:
-    """Scanne les fire events d'un chunk REPLICATION_DATA pour un player_index."""
-    estimate_ts = build_frame_estimator(chunk_data, chunk_start_ms, chunk_duration_ms)
+    """Scanne les fire events d'un chunk REPLICATION_DATA pour un player_index.
+
+    Si ``packets`` (index structurel via ``index_chunk()``) est fourni,
+    utilise les timestamps µs réels des paquets FRAME au lieu de
+    l'interpolation par marqueurs A0 7B 42.
+    """
+    if packets is not None:
+        from src.analysis.packet_index import build_packet_estimator
+
+        estimate_ts = build_packet_estimator(packets, chunk_start_ms)
+    else:
+        estimate_ts = build_frame_estimator(chunk_data, chunk_start_ms, chunk_duration_ms)
     return _scan_fire_events_bitstring(chunk_data, player_index, estimate_ts)
 
 
