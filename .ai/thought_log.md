@@ -7,6 +7,26 @@
 
 ## Journal
 
+### [2026-03-11] — FIX : citations composites — progression directe N/total
+
+**Statut** : Corrigé ✅
+
+**Contexte** : Les citations composites (Maîtrise armes UNSC, Parias, Forerunner) affichaient "Niveau 6" avec compteur "5/6" pour 5 enfants masterisés sur 9, au lieu de la progression directe "5/9".
+
+**Cause** : Dans `src/ui/commendations.py`, les tiers des composites étaient générés sous forme de N tiers individuels `[target=1, target=2, ..., target=9]`. La fonction `_compute_mastery_display` calcule `level = completed + 1` → pour 5 enfants masterisés, `level=6` et `counter="5/6"` (vers palier suivant).
+
+**Decision technique** :
+- Les composites ne doivent pas utiliser la logique "paliers de niveau" des citations normales.
+- Correction dans la boucle de rendu : ajout d'un champ `composite_total` dans les items composites.
+- Pour les items composites, calcul direct de `progress_ratio = N/total`, `counter = "N/total"`, `level_label = ""` (vide) ou "Maître" à l'atteinte du total.
+- La génération des tiers pour les composites (backup) est simplifiée à `[{tier:1, target_count:n_enabled}]` mais le rendu n'en dépend plus.
+
+**Résultats** :
+- 5 armes UNSC masterisées → barre à 55%, compteur "5/9", pas de label de niveau
+- 9 armes → "Maître", barre pleine
+- Idem Parias et Forerunner
+- 172 tests passent ✅
+
 ### [2026-03-10] — FIX : alimentation killer_victim_pairs sur nouveaux matchs
 
 **Statut** : Corrige en code ✅
