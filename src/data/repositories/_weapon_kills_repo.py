@@ -152,10 +152,28 @@ class WeaponKillsMixin:
 
         Chaque dict doit contenir : time_ms, weapon_name, delta_ms (ou None),
         confidence, swap_detected, delayed_damage.
+        Ne remplace pas des données existantes de meilleure qualité par du UNKNOWN.
         Retourne le nombre de lignes insérées.
         """
         if not kill_rows:
             return 0
+        _unresolved = ("UNKNOWN", "NON TROUVE")
+        new_good = sum(1 for r in kill_rows if r.get("weapon_name") not in _unresolved)
+        if new_good < len(kill_rows):
+            existing_good = conn.execute(
+                "SELECT COUNT(*) FROM weapon_kills WHERE match_id = ? AND xuid = ?"
+                " AND weapon_name NOT IN ('UNKNOWN', 'NON TROUVE')",
+                (match_id, xuid),
+            ).fetchone()[0]
+            if new_good <= existing_good:
+                logger.debug(
+                    "insert_weapon_kill_rows %s %s : skip (new_good=%d <= existing_good=%d)",
+                    match_id[:8],
+                    xuid[:8],
+                    new_good,
+                    existing_good,
+                )
+                return 0
         conn.execute(
             "DELETE FROM weapon_kills WHERE match_id = ? AND xuid = ?",
             (match_id, xuid),
@@ -228,23 +246,41 @@ class WeaponKillsMixin:
         *,
         force: bool = False,
     ) -> list[str]:
-        """Retourne les match_ids récents sans WEAPON_KILLS (non-Firefight)."""
-        bit_filter = (
-            "" if force else f"AND (COALESCE(r.backfill_completed, 0) & {_WEAPON_KILLS_BIT}) = 0"
-        )
-        rows = conn.execute(
-            f"""
-            SELECT DISTINCT mp.match_id
-            FROM match_participants mp
-            JOIN match_registry r ON r.match_id = mp.match_id
-            WHERE mp.xuid = ?
-              AND r.is_firefight = FALSE
-              {bit_filter}
-            ORDER BY r.start_time DESC
-            LIMIT ?
-            """,
-            (xuid, limit),
-        ).fetchall()
+        """Retourne les match_ids récents où le joueur n'a pas de bonnes données d'armes.
+
+        Inclut :
+        - les matchs sans WEAPON_KILLS_BIT (jamais traités)
+        - les matchs avec WEAPON_KILLS_BIT mais où le joueur n'a que du UNKNOWN
+          (traité depuis le POV d'un coéquipier, T1 ayant échoué)
+        Le flag ``force`` ignore toutes les conditions et retourne tous les matchs.
+        """
+        if force:
+            rows = conn.execute(
+                """
+                SELECT DISTINCT mp.match_id
+                FROM match_participants mp
+                JOIN match_registry r ON r.match_id = mp.match_id
+                WHERE mp.xuid = ?
+                  AND r.is_firefight = FALSE
+                ORDER BY r.start_time DESC
+                LIMIT ?
+                """,
+                (xuid, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                f"""
+                SELECT DISTINCT mp.match_id
+                FROM match_participants mp
+                JOIN match_registry r ON r.match_id = mp.match_id
+                WHERE mp.xuid = ?
+                  AND r.is_firefight = FALSE
+                  AND (COALESCE(r.backfill_completed, 0) & {_WEAPON_KILLS_BIT}) = 0
+                ORDER BY r.start_time DESC
+                LIMIT ?
+                """,
+                (xuid, limit),
+            ).fetchall()
         return [r[0] for r in rows]
 
     @staticmethod
