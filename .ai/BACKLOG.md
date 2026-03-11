@@ -1,6 +1,28 @@
 # BACKLOG — Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-09.
+> Mis à jour le 2026-03-11.
+
+---
+
+## ✅ Traité
+
+### Citations d'armes — Refactoring catégories et images
+> Traité le 2026-03-11 — commit `56c68d7` + `7158626`
+
+- Images incorrectes retirées sur 6 citations (VK78 Commando, Fusil traqueur, Déchiqueteur, Empaleur, Calcineur, Crémateur)
+- Covenant + Banished fusionnés en sous-catégorie **Paria** (6 armes)
+- Nouvelle sous-catégorie **Forerunner** : Calcineur, Crémateur, Rayon de Sentinelle (nouvelle citation avec image H5G)
+- Composites `covenant_weapons_mastery` + `banished_weapons_mastery` remplacés par `paria_weapons_mastery` + `forerunner_weapons_mastery`
+- Nouveau composite général `all_weapons_mastery` — Maîtrise en armement (avec image)
+- `_SUBCAT_ORDER` Arme mis à jour : Général > UNSC > Paria > Forerunner > Grenade
+- i18n FR/EN mis à jour
+
+---
+
+## 🔴 Bugs actifs
+
+### ~~Images citations d'armes incorrectes~~
+> ✅ Traité le 2026-03-11 — voir section **Traité** ci-dessus.
 
 ---
 
@@ -39,64 +61,54 @@
 
 ---
 
-## 🟠 Conflit `shared_matches.duckdb` — sync depuis UI Streamlit
+### Migration : noms d'assets résolus → IDs bruts en BDD
+> Dans `match_registry`, les noms d'assets sont stockés en parallèle des IDs bruts (redondance + risque de stale data). À terme, l'UI doit résoudre les noms à la lecture depuis `metadata.duckdb`, pas les lire depuis les colonnes `*_name`.
 
-> Source : audit logs 2026-03-09 — 339 warnings/sync, app stable, pas de panne fonctionnelle.  
-> **Ne pas traiter tant que le sync n'est pas stable depuis ≥ 1 semaine.**  
-> Signal de déclenchement : sync retourne `None` pour shared sur plusieurs runs consécutifs.
+**Contexte** : Au moment de l'insertion (sync initial), les noms publics (ex. `"Aquarius"`, `"Ranked Arena"`) sont récupérés depuis l'API SPNKr et stockés directement en BDD — en plus de l'ID brut. La `weapon_kills` (v5.7) et `medals_earned` montrent le bon modèle : ID brut uniquement, résolution à la lecture.
 
-### Contexte
+**Colonnes concernées dans `shared_matches.duckdb`** :
 
-Quand le sync est lancé depuis l'UI Streamlit, `_engine_connections.py::_get_shared_connection()` tente d'ouvrir `shared_matches.duckdb` en **R/W direct**. Simultanément, Streamlit maintient une connexion **R/O + ATTACH** sur le même fichier via `@st.cache_resource` (ttl=3600, `get_cached_repository_st`). DuckDB refuse qu'un même fichier soit ouvert sous deux modes dans le même processus.
+| Table | Colonnes ID (OK) | Colonnes nom résolu (à migrer) |
+|-------|-----------------|-------------------------------|
+| `match_registry` | `map_id`, `playlist_id`, `pair_id`, `game_variant_id` | `map_name`, `playlist_name`, `pair_name`, `game_variant_name` |
+| `match_participants` | `xuid` | `gamertag` (redondant avec `xuid_aliases`) |
+| `highlight_events` | `xuid` | `gamertag` (peut devenir stale si alias change) |
 
-Le retry appelle `release_all_db_connections()` (WeakSet), mais le repo du cache Streamlit rétablit sa connexion R/O dès le rerun suivant → **cycle conflit → release → reconnexion R/O → conflit**.
+**Modèles de référence (déjà corrects)** :
+- `medals_earned.medal_name_id` → UBIGINT, résolution via `metadata.duckdb`
+- `weapon_kills.weapon_id` → UBIGINT post v5.7 (migré depuis `weapon_name`)
 
----
+**Actions** :
+- [ ] Auditer les usages UI/query des colonnes `*_name` dans `match_registry` pour identifier ce qui lit directement le nom stocké vs ce qui joint `metadata.duckdb`
+- [ ] Créer une vue `v_match_registry` qui résout les noms à la lecture via JOIN sur les tables de référence `metadata.duckdb` (maps, playlists, game_variants)
+- [ ] Migrer les requêtes consommatrices (pages Streamlit, repositories) vers la vue — supprimer les colonnes `*_name` de `match_registry` une fois toutes les requêtes migrées
+- [ ] `match_participants.gamertag` et `highlight_events.gamertag` : évaluer si ces colonnes sont utilisées en lecture directe ou si le JOIN sur `xuid_aliases` est systématique — supprimer si redondant
+- [ ] Ajouter un test de non-régression : aucune colonne `*_name` dans les nouvelles tables shared (hors `xuid_aliases`)
 
-### Option A — Fix minimal dans `DuckDBRepository._get_connection()` ⭐ Recommandée
-
-**Mécanique** : Si `_sync_mode.is_set()` est actif ET que `shared_matches` est attaché → le DETACHER immédiatement avant de retourner la connexion. Le repo continue à fonctionner pour les requêtes ne touchant pas shared ; shared sera réattaché automatiquement à la fin du sync via `end_sync_mode()`.
-
-**Fichiers** : `src/data/repositories/duckdb_repo.py` uniquement (~10-15 lignes dans `_get_connection()`).
-
-**Effort** : S  
-**Risque** : Faible — ne touche pas au moteur de sync, pas de nouveau fichier.  
-**Effet de bord** : Pendant le sync, les requêtes UI nécessitant shared retournent données partielles (déjà le cas aujourd'hui via `SharedDBUnavailableError`).
-
-```python
-# Dans _get_connection(), après avoir obtenu self._connection :
-if _sync_mode.is_set() and "shared" in self._attached_dbs:
-    try:
-        self._connection.execute("DETACH shared")
-        self._attached_dbs.discard("shared")
-    except Exception:
-        pass
-```
+**Complexité** : L (impact UI + repositories + migrations)  
+**Fichiers clés** : [`src/data/sync/migrations.py`](../src/data/sync/migrations.py), [`src/data/sync/_shared_writes.py`](../src/data/sync/_shared_writes.py), [`src/data/sync/transformers/_match.py`](../src/data/sync/transformers/_match.py), `data/warehouse/shared_matches.duckdb`
 
 ---
 
-### Option B — Hook pré-sync enregistrable
+### Couverture tests `migrations.py` (lacunes v5.5–v5.7)
+> [`src/data/sync/migrations.py`](../src/data/sync/migrations.py) — ~1290 lignes, couverture actuelle ~60%. Trois blocs sans aucun test depuis les versions 5.5–5.7.
 
-**Mécanique** : Avant d'ouvrir la connexion R/W, l'engine appelle tous les hooks enregistrés. L'UI Streamlit enregistre un hook qui appelle `st.cache_resource.clear()` → vide le cache de tous les repos, plus aucun conflit possible.
+| Fonction | Version ajoutée | Couverture actuelle |
+|----------|----------------|---------------------|
+| `ensure_weapon_kills_table()` | v5.7 | ❌ Aucun test |
+| `ensure_bot_teammate_column()` | v5.5 | ❌ Aucun test |
+| `add_spartan_id_to_career_progression()` | v5.x | ❌ Aucun test |
+| `_recreate_highlight_events_with_sequence()` | v5.x | ⚠️ Chemin idempotent non testé |
 
-**Fichiers** :
-- `src/data/sync/_engine_connections.py` → `register_pre_sync_hook()` + appel avant `_open_shared()`
-- `src/ui/_cache_core.py` → `clear_cached_repositories()` exposant `st.cache_resource.clear()`
-- `streamlit_app.py` → `register_pre_sync_hook(clear_cached_repositories)` au démarrage
+**Actions** :
+- [ ] `ensure_weapon_kills_table()` : tester création de table, conversion `weapon_name→weapon_id`, type BIGINT→UBIGINT, idempotence
+- [ ] `ensure_bot_teammate_column()` : tester ajout de colonne, valeur par défaut, idempotence (double appel = même schéma)
+- [ ] `add_spartan_id_to_career_progression()` : tester ajout colonne, contrainte, idempotence
+- [ ] `_recreate_highlight_events_with_sequence()` : tester le chemin déjà-migré (si `nextval` existe, pas de double création)
+- [ ] Viser couverture ≥ 85% sur `migrations.py` (mesurer via `python -m pytest --cov=src/data/sync/migrations`)
 
-**Effort** : M  
-**Risque** : Moyen — 3 fichiers modifiés dont `_engine_connections.py` (zone sensible).  
-**Effet de bord** : `st.cache_resource.clear()` vide **tous** les caches resource, pas seulement les repos → cold start de ~100ms après chaque sync.
-
----
-
-### Option C — Ouvrir shared en R/O pour le sync (refactoring profond)
-
-**Mécanique** : Supprimer `duckdb.connect(shared, read_only=False)`. À la place, écrire dans shared via `ATTACH shared AS s (READ_WRITE)` depuis la connexion player, ou passer par un contexte de connexion partagé unique géré par un singleton.
-
-**Effort** : XL — refactoring complet du sync engine  
-**Risque** : Élevé  
-**Verdict** : À réserver à une refonte complète du moteur de sync.
+**Complexité** : M  
+**Fichiers** : [`tests/test_migrations.py`](../tests/test_migrations.py), [`src/data/sync/migrations.py`](../src/data/sync/migrations.py)
 
 ---
 
@@ -129,15 +141,22 @@ if _sync_mode.is_set() and "shared" in self._attached_dbs:
 - **Gain estimé** : −30% mémoire.
 - **Approche** : Étendre les projections par page dans `cache_loaders.py` aux pages sans projection fine.
 
+### 6. Scan bitstring POV FRAME-only 📋
+- **Contexte** : `_scan_fire_events_bitstring()` scanne le chunk entier (~700 KB) alors que les fire events n'existent que dans les payloads FRAME (32% du chunk, ~230 KB). Les 68% restants (INIT_STATE ~155 KB, METADATA ~25 KB, headers…) ne peuvent pas contenir de fire events.
+- **Gain mesuré** : −46% temps de scan bitstring (458 ms → 247 ms sur match 000d5950, 24 chunks).
+- **Note** : Cette optimisation ne concerne que le POV — les fire events Section 2 sont exclusifs au joueur filmé. Les coéquipiers T1 restent sur Formula A (snapshots par chunk), le film ne contient tout simplement pas leurs fire events.
+- **Approche** : Ajouter `extract_frame_data(chunk_data, packets)` dans `packet_index.py` → concatène les payloads FRAME + adapte l'estimateur de position. Modifier `_scan_player_chunks` pour extraire les FRAMEs avant de passer les données à `_scan_fire_events_bitstring`.
+- **Coût secondaire** : concat FRAME payloads ~3 ms/match (négligeable vs 211 ms économisés).
+
 ---
 
 ## 🟡 i18n — Câblage `t()` dans l'UI Streamlit
 
 > Source : `thought_log.md` [2026-02-25] — traductions EN remplies (Phase 1b ✅), câblage UI non fait.
 
-- [x] Câbler la fonction `t()` dans les pages/widgets Streamlit — 53 fichiers utilisent `from src.ui.i18n`
-- [x] Modifier `src/ui/translations.py` pour utiliser le registre i18n — utilise `from src.ui.i18n.data_labels import label, load_domain`
-- [x] Supprimer (ou archiver) les commentaires `⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO"` dans :
+- [ ] Câbler la fonction `t()` dans les pages/widgets Streamlit
+- [ ] Modifier `src/ui/translations.py` pour utiliser le registre i18n
+- [ ] Supprimer (ou archiver) les commentaires `⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO"` dans :
   - `src/ui/i18n/common.py`
   - `src/ui/i18n/pages.py`
   - `src/ui/i18n/viz.py`
@@ -146,11 +165,34 @@ if _sync_mode.is_set() and "shared" in self._attached_dbs:
 
 ---
 
+## 🟡 Hover thumbnail sur les noms de cartes (tableaux HTML)
+
+> Commencé le 2026-03-11 — bloqué sur le rendu.
+
+**Objectif** : Au survol d'un nom de carte dans les tableaux HTML (Historique, Explorer, Win/Loss), afficher la miniature correspondante `static/maps/*.jpg|png`.
+
+**Ce qui a été fait** :
+- `enableStaticServing = true` activé dans `.streamlit/config.toml`
+- `map_thumb_url()` + `_build_map_url_index()` (lru_cache) ajoutés dans `match_table_html.py`
+- Cellule `map_name` injecte `<span class='map-cell' data-thumb-url='...'>`
+- `win_loss_table_style.py` et `_render_map_table()` réécrits en HTML pur (sans pandas `.style`), avec coloration win/loss/ratio/performance conservée
+- Tooltip JS `position:fixed` injecté via `_MAP_TOOLTIP_SCRIPT` dans `load_css()` pour contourner le clipping `overflow-x:auto` du `.os-table-wrap`
+
+**Problème restant** : Le tooltip ne s'affiche pas en pratique — cause probable : le JS injecté via `st.markdown(unsafe_allow_html=True)` est sandboxé par Streamlit (les `<script>` inline sont retirés du DOM). Il faut soit un composant custom Streamlit (`st.components.v1.html`), soit utiliser les images en base64 encodées directement dans une fausse balise `<img>` qui contourne le sandbox.
+
+**Actions restantes** :
+- [ ] Remplacer le rendu `st.markdown` par `st.components.v1.html()` pour le tableau entier (contourne le sandbox JS Streamlit qui retire les `<script>` inline)
+- [ ] Encoder les miniatures en base64 et les injecter directement dans les cellules `<img src="data:image/jpeg;base64,...">` (pas de dépendance au serveur de fichiers statiques)
+- [ ] Améliorer `_build_map_url_index()` dans `match_table_html.py` : passer `lru_cache(maxsize=None)` (actuellement `maxsize=1`, très fragile) et normaliser les noms via `unicodedata.normalize('NFC', name)` pour gérer les accents
+- [ ] Créer une table de correspondance explicite `nom API Halo → fichier PNG` pour les maps avec caractères spéciaux ou noms divergents
+
+---
+
 ## 🟡 CI/CD & Outillage
 
 > Source : `scripts/demo_regression_detection.py` L122-123.
 
-- [x] Ajouter la détection de régression au CI/CD (`.github/workflows/`) — intégré dans `ci.yml` (step "Run filters/visualization non-regression")
+- [ ] Ajouter la détection de régression au CI/CD (`.github/workflows/`)
 - [ ] Créer un pre-commit hook pour la détection de régression
 
 ---
@@ -167,14 +209,14 @@ Tokens stockés par joueur dans `sync_meta` (`oauth_refresh_token`).
 
 ### Étapes
 
-- [x] **1.** Créer `src/ui/xbox_oauth.py` — toutes les fonctions présentes (`build_xbox_auth_url`, `exchange_code_for_refresh_token`, `resolve_player_identity`, `store_refresh_token`, `load_refresh_token`) + UI dans `src/ui/xbox_oauth_ui.py`
-- [x] **2.** Modifier `streamlit_app.py` — `_handle_xbox_oauth_callback()` (L332) détecte `code`+`state` dans `st.query_params`, vérifie CSRF, appelle `run_xbox_oauth_callback()`
-- [x] **3.** Intégré dans `src/ui/pages/settings.py` (`render_xbox_login_section()`) et `src/ui/pages/setup_wizard.py` (`_render_xbox_flow()`) — pas de page standalone mais approche plus cohérente
-- [x] **4.** `src/ui/profile_api_tokens.py` — `_load_refresh_token_from_db()` comme fallback dans `get_api_tokens()`
-- ~~**5.** Sidebar `streamlit_app.py` — indicateur "Connecté en tant que {gamertag}" + bouton "Changer de compte"~~ — abandonné (pas de valeur suffisante)
-- [x] **6.** `engine.py` préserve `oauth_refresh_token` — `_update_sync_meta()` écrit uniquement des clés spécifiques (`last_sync_at`, etc.), la clé oauth est préservée par défaut
-- [x] **7.** Navigation assurée via les pages settings et setup_wizard (toutes deux enregistrées dans le routing)
-- [x] **8.** `tests/test_xbox_oauth.py` + `tests/test_xbox_oauth_callback_e2e.py` (9 tests) existent
+- [ ] **1.** Créer `src/ui/xbox_login.py` — `build_xbox_auth_url()`, `exchange_code_for_refresh_token()`, `resolve_player_identity()`, `create_player_profile()`, `store_refresh_token_in_db()`, `load_refresh_token_from_db()`
+- [ ] **2.** Modifier `streamlit_app.py` (~L431-450) — détecter `code` + `state` dans `st.query_params`, vérifier CSRF, déclencher `handle_xbox_callback()` via `ThreadPoolExecutor`
+- [ ] **3.** Créer `src/ui/pages/login.py` — bouton "Se connecter avec Xbox 🎮" (`st.link_button`), spinner, confirmation/erreur
+- [ ] **4.** Modifier `src/ui/profile_api_tokens.py → ensure_spnkr_tokens()` — lire `refresh_token` depuis `sync_meta` si `db_path` de session disponible (tokens par session, pas globaux)
+- [ ] **5.** Modifier sidebar `streamlit_app.py` (~L453) — indicateur "Connecté en tant que {gamertag}" + bouton "Changer de compte"
+- [ ] **6.** Modifier `src/data/sync/engine.py` — préserver la clé `oauth_refresh_token` dans `sync_meta` lors des syncs
+- [ ] **7.** Enregistrer la page `login` dans la navigation (`streamlit_app.py` ou `src/app/routing.py`)
+- [ ] **8.** Écrire `tests/test_xbox_login.py` — mock HTTP pour `exchange_code_for_refresh_token`
 
 **Décisions clés** : `st.query_params` comme callback receiver (natif, pas de serveur HTTP séparé) · tokens dans `sync_meta` (isolation par joueur, multi-user) · `SPNKR_AZURE_REDIRECT_URI=http://localhost:8501` (variable déjà supportée).
 
@@ -198,9 +240,6 @@ Tokens stockés par joueur dans `sync_meta` (`oauth_refresh_token`).
 | 2026-03-08 | Dette #2 : guard obsolète `_PERF_SCORE_AVAILABLE` supprimé dans `_performance.py` |
 | 2026-03-08 | Dette #3 : dead code `_ensure_performance_score_column()` supprimé |
 | 2026-03-08 | Dette #4 : magic number `outcome == 4` → `Outcome.DID_NOT_FINISH` |
-| 2026-03-09 | Fix logging : `basicConfig` déplacé dans `main()` de `scripts/sync.py` — élimine 142 artefacts de test dans `sync.log` |
-| 2026-03-09 | Fix migrations : `_create_index_safe()` — branche DEBUG pour tables absentes — élimine ~2134 warnings/sync dans `sync.log` |
-| 2026-03-09 | Fix oauth : cache process-level `_rt_cache` dans `load_refresh_token()` — 185 ouvertures DuckDB/session → 1 par joueur |
 | 2026-03-08 | Dette #6 : magic SQL `2`/`3` → constantes `_WIN`/`_LOSS` dans `analytics.py` |
 | 2026-03-08 | i18n-1 : clés tronquées `PAIR_FR` restaurées dans `translations.py` |
 | 2026-03-08 | i18n-2 : 342 entrées redondantes supprimées de `PAIR_FR` (399 → 57) |

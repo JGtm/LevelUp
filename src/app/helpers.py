@@ -10,7 +10,7 @@ import re
 import polars as pl
 import streamlit as st
 
-from src.config import HALO_COLORS
+from src.config import OKABE_ITO_PALETTE
 from src.ui import translate_pair_name
 from src.ui.i18n import get_lang, t
 from src.utils.polars_compat import ensure_polars as _to_polars
@@ -224,15 +224,7 @@ def assign_player_colors(names: list[str]) -> dict[str, str]:
     Returns:
         Mapping {nom: couleur_hex}.
     """
-    palette = HALO_COLORS.as_dict()
-    cycle = [
-        palette["cyan"],
-        palette["violet"],
-        palette["amber"],
-        palette["red"],
-        palette["green"],
-        palette["slate"],
-    ]
+    cycle = OKABE_ITO_PALETTE
     state_key = "_os_player_colors"
     persisted = st.session_state.get(state_key)
     if not isinstance(persisted, dict):

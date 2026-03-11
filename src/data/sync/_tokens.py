@@ -116,7 +116,7 @@ async def get_tokens_from_env() -> Tokens:
     oauth_refresh_token = os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN")
 
     # Fallback : si SPNKR_OAUTH_REFRESH_TOKEN absent, chercher SPNKR_OAUTH_REFRESH_TOKEN_<GT>
-    if not oauth_refresh_token and azure_client_id and azure_client_secret:
+    if not oauth_refresh_token and azure_client_id:
         for key, value in os.environ.items():
             if key.startswith("SPNKR_OAUTH_REFRESH_TOKEN_") and value.strip():
                 logger.debug(
@@ -127,7 +127,7 @@ async def get_tokens_from_env() -> Tokens:
                 break
 
     # Fallback DB : chercher le token dans sync_meta du premier joueur configuré
-    if not oauth_refresh_token and azure_client_id and azure_client_secret:
+    if not oauth_refresh_token and azure_client_id:
         try:
             from src.ui.xbox_oauth import load_refresh_token as _load_rt
             from src.utils.profiles import load_profiles as _load_profiles
@@ -139,17 +139,17 @@ async def get_tokens_from_env() -> Tokens:
                     _rt = _load_rt(_db)
                     if _rt:
                         oauth_refresh_token = _rt
-                        logger.debug(
+                        logger.info(
                             "SPNKR_OAUTH_REFRESH_TOKEN chargé depuis sync_meta de '%s'.", _gt
                         )
                         break
         except Exception:
             pass
 
-    if azure_client_id and azure_client_secret and oauth_refresh_token:
+    if azure_client_id and oauth_refresh_token:
         return await _get_tokens_via_oauth(
             azure_client_id,
-            azure_client_secret,
+            azure_client_secret or "",
             azure_redirect_uri,
             oauth_refresh_token,
         )
@@ -218,10 +218,10 @@ async def get_tokens_for_player(gamertag: str) -> Tokens | None:
     azure_client_secret = (os.environ.get("SPNKR_AZURE_CLIENT_SECRET") or "").strip()
     azure_redirect_uri = os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "https://localhost"
 
-    if not azure_client_id or not azure_client_secret:
+    if not azure_client_id:
         logger.warning(
-            "Token joueur '%s' trouvé (%s) mais SPNKR_AZURE_CLIENT_ID/SECRET "
-            "manquants dans .env.local — token ignoré.",
+            "Token joueur '%s' trouvé (%s) mais SPNKR_AZURE_CLIENT_ID "
+            "manquant dans .env.local — token ignoré.",
             gamertag,
             key,
         )
@@ -230,7 +230,7 @@ async def get_tokens_for_player(gamertag: str) -> Tokens | None:
     logger.debug("Utilisation du token joueur '%s' (%s)", gamertag, key)
     return await _get_tokens_via_oauth(
         azure_client_id,
-        azure_client_secret,
+        azure_client_secret or "",
         azure_redirect_uri,
         player_refresh_token,
     )
@@ -259,6 +259,11 @@ async def _get_tokens_via_oauth(
     app = AzureApp(client_id, client_secret, redirect_uri)
 
     async with ClientSession(timeout=ClientTimeout(total=45)) as session:
+        # Client public (device code flow) : pas de client_secret → v2 directement
+        if not client_secret:
+            logger.debug("Client public détecté (client_secret vide) — OAuth v2 direct")
+            return await _get_tokens_oauth_v2_fallback(session, app, refresh_token)
+
         try:
             player = await refresh_player_tokens(session, app, refresh_token)
             return Tokens(
@@ -283,23 +288,36 @@ async def _get_tokens_oauth_v2_fallback(
     from spnkr.auth.xbox import request_user_token, request_xsts_token
 
     url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
-    data = {
+    data: dict[str, str] = {
         "client_id": app.client_id,
-        "client_secret": app.client_secret,
         "grant_type": "refresh_token",
         "refresh_token": refresh_token,
         "scope": "Xboxlive.signin Xboxlive.offline_access",
     }
+    # Client secret omis pour les clients publics (device code flow)
+    if app.client_secret:
+        data["client_secret"] = app.client_secret
+
+    logger.debug(
+        "OAuth v2 fallback : échange refresh_token → access_token (client_id=%s…)",
+        app.client_id[:8],
+    )
     resp = await session.post(url, data=data)
     payload = await resp.json()
 
     if resp.status >= 400:
+        logger.error(
+            "OAuth v2 fallback : échec HTTP status=%d error=%s",
+            resp.status,
+            payload.get("error"),
+        )
         raise ValueError(
             f"Échec refresh OAuth v2: status={resp.status} error={payload.get('error')}"
         )
 
     access_token = payload.get("access_token")
     if not access_token:
+        logger.error("OAuth v2 fallback : pas de access_token dans la réponse")
         raise ValueError("OAuth v2: pas de access_token")
 
     user_token = await request_user_token(session, access_token)
@@ -308,6 +326,7 @@ async def _get_tokens_oauth_v2_fallback(
     spartan_token = await request_spartan_token(session, halo_xsts_token.token)
     clearance_token = await request_clearance_token(session, spartan_token.token)
 
+    logger.debug("OAuth v2 fallback : tokens Halo obtenus (spartan + clearance)")
     return Tokens(
         spartan_token=str(spartan_token.token),
         clearance_token=str(clearance_token.token),

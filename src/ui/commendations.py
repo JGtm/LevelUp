@@ -394,8 +394,8 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
     }
     _CATEGORY_ORDER = _CATEGORY_ORDER_BY_LANG.get(lang, _CATEGORY_ORDER_BY_LANG["en"])
     _SUBCAT_ORDER: dict[str, list[str]] = {
-        "Arme": ["Grenade"],
-        "Weapon": ["Grenade"],
+        "Arme": ["Général", "UNSC", "Paria", "Forerunner", "Grenade"],
+        "Weapon": ["General", "UNSC", "Paria", "Forerunner", "Grenade"],
         "Véhicule": ["Général", "UNSC", "Covenant"],
         "Vehicle": ["Général", "UNSC", "Covenant"],
         "Ennemi": ["Covenant", "Banished"],

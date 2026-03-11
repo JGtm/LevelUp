@@ -18,7 +18,6 @@ if TYPE_CHECKING:
 
 
 from src.data.sync._match_processing_helpers import MatchProcessingHelpersMixin
-from src.data.sync.migrations import BACKFILL_FLAGS
 from src.data.sync.models import SyncOptions, SyncResult
 from src.data.sync.transformers import (
     extract_aliases,
@@ -97,6 +96,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                     result.highlight_events_inserted += match_result.get("events", 0)
                     result.skill_records_inserted += match_result.get("skill", 0)
                     result.aliases_updated += match_result.get("aliases", 0)
+                    result.weapon_kills_inserted += match_result.get("weapon_kills", 0)
                     existing_ids.add(match_id)
 
                     # Sprint 6 : Commit intermédiaire tous les N matchs
@@ -252,6 +252,10 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
 
             shared_conn = self._get_shared_connection()
             await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
+            if options.with_weapons:
+                result["weapon_kills"] = await self._try_extract_weapon_kills(
+                    client, match_id, shared_conn
+                )
             result["inserted"] = True
 
         except Exception as e:
@@ -297,20 +301,9 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                     )
 
             if not events_loaded and highlight_events:
-                event_rows = transform_highlight_events(highlight_events, match_id)
-                self._insert_shared_events(shared_conn, event_rows)
-                shared_conn.execute(
-                    "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = ?",
-                    (match_id,),
-                )
-                result["events"] = len(event_rows)
+                n_events = self._backfill_events_block(shared_conn, match_id, highlight_events)
+                result["events"] = n_events
                 backfill_needed.append("events")
-                shared_conn.execute(
-                    "UPDATE match_registry "
-                    "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
-                    "WHERE match_id = ?",
-                    (BACKFILL_FLAGS["events"], match_id),
-                )
 
             if not medals_loaded:
                 medals_all = extract_all_medals(stats_json)
@@ -385,6 +378,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                 participants,
                 medals_all,
                 event_rows,
+                highlight_events,
                 alias_rows,
                 options,
                 result,
@@ -392,35 +386,47 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
 
             shared_conn = self._get_shared_connection()
             await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
+            if options.with_weapons:
+                result["weapon_kills"] = await self._try_extract_weapon_kills(
+                    client,
+                    match_id,
+                    shared_conn,
+                    is_firefight=bool(getattr(registry_data, "is_firefight", False)),
+                )
 
-            match_row = transform_match_stats(
-                stats_json,
-                self._xuid,
-                skill_json=skill_json,
-                metadata_resolver=self._metadata_resolver,
-            )
-            if match_row is None:
-                result["error"] = f"Transformation match_stats échouée pour {match_id}"
+            ok = await self._save_player_data_new_match(match_id, stats_json, skill_json, result)
+            if not ok:
                 return result
-
-            skill_row, personal_score_rows = self._extract_personal_data(
-                stats_json,
-                match_id,
-                skill_json,
-            )
-            await self._upsert_skill_new_match(match_id, skill_json, skill_row)
-            await self._write_player_enrichments(
-                match_id,
-                match_row,
-                personal_score_rows,
-                skill_row,
-            )
             result["inserted"] = True
 
         except Exception as e:
             result["error"] = f"Erreur traitement new {match_id}: {e}"
             logger.warning(result["error"])
         return result
+
+    async def _save_player_data_new_match(
+        self: _SyncProtocol,
+        match_id: str,
+        stats_json: dict,
+        skill_json: dict | None,
+        result: dict[str, Any],
+    ) -> bool:
+        """Transforme et persiste les données joueur pour un nouveau match."""
+        match_row = transform_match_stats(
+            stats_json,
+            self._xuid,
+            skill_json=skill_json,
+            metadata_resolver=self._metadata_resolver,
+        )
+        if match_row is None:
+            result["error"] = f"Transformation match_stats échouée pour {match_id}"
+            return False
+        skill_row, personal_score_rows = self._extract_personal_data(
+            stats_json, match_id, skill_json
+        )
+        await self._upsert_skill_new_match(match_id, skill_json, skill_row)
+        await self._write_player_enrichments(match_id, match_row, personal_score_rows, skill_row)
+        return True
 
     async def _insert_new_match_shared(  # noqa: PLR0913
         self: _SyncProtocol,
@@ -429,6 +435,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
         participants: list,
         medals_all: list,
         event_rows: list,
+        highlight_events: list,
         alias_rows: list,
         options: SyncOptions,
         result: dict[str, Any],
@@ -454,6 +461,11 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             if event_rows:
                 self._insert_shared_events(shared_conn, event_rows)
                 result["events"] = len(event_rows)
+                self._insert_shared_killer_victim_pairs(
+                    shared_conn,
+                    match_id,
+                    highlight_events,
+                )
 
             if alias_rows:
                 self._insert_shared_aliases(shared_conn, alias_rows)

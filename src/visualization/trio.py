@@ -1,9 +1,9 @@
-"""Graphiques pour la comparaison trio (3 joueurs)."""
+"""Graphiques pour la comparaison escouade (3 ou 4 joueurs)."""
 
 import plotly.graph_objects as go
 import polars as pl
 
-from src.config import HALO_COLORS, PLOT_CONFIG
+from src.config import OKABE_ITO_PALETTE, PLOT_CONFIG
 from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
@@ -15,39 +15,53 @@ def plot_trio_metric(  # noqa: PLR0913
     d_f2: DataFrameLike,
     *,
     metric: str,
-    names: tuple[str, str, str],
+    names: tuple[str, ...],
     title: str,
     y_title: str,
     y_suffix: str = "",
     y_format: str = "",
     smooth_window: int = 7,
     lang: str = "fr",
+    d_f3: DataFrameLike | None = None,
+    colors_by_name: dict[str, str] | None = None,
 ) -> go.Figure:
-    """Graphique comparant une métrique entre 3 joueurs.
+    """Graphique comparant une métrique entre 3 ou 4 joueurs.
 
-    Les 3 DataFrames doivent être alignés sur les mêmes matchs.
+    Les DataFrames doivent être pré-alignés sur les mêmes matchs.
 
     Args:
         d_self: DataFrame du joueur principal.
-        d_f1: DataFrame du premier ami.
-        d_f2: DataFrame du deuxième ami.
+        d_f1: DataFrame du premier coéquipier.
+        d_f2: DataFrame du deuxième coéquipier.
         metric: Nom de la colonne à comparer.
-        names: Tuple des 3 noms (self, ami1, ami2).
+        names: Tuple des noms (3 ou 4 éléments).
         title: Titre du graphique.
         y_title: Titre de l'axe Y.
         y_suffix: Suffixe pour les valeurs Y (ex: "%").
         y_format: Format pour le hover (ex: ".2f").
+        d_f3: DataFrame optionnel du 3ème coéquipier (4ème joueur total).
+        colors_by_name: Mapping nom → couleur hex. Si None, utilise OKABE_ITO_PALETTE.
 
     Returns:
         Figure Plotly.
     """
-    colors = HALO_COLORS.as_dict()
-    color_list = [colors["cyan"], colors["red"], colors["green"]]
+    all_input_dfs = [d_self, d_f1, d_f2]
+    if d_f3 is not None:
+        all_input_dfs.append(d_f3)
+
+    # Palette couleurs : colors_by_name en priorité, sinon Okabe-Ito
+    if colors_by_name is not None:
+        color_list = [
+            colors_by_name.get(n, OKABE_ITO_PALETTE[i % len(OKABE_ITO_PALETTE)])
+            for i, n in enumerate(names)
+        ]
+    else:
+        color_list = [
+            OKABE_ITO_PALETTE[i % len(OKABE_ITO_PALETTE)] for i in range(len(all_input_dfs))
+        ]
 
     # Normaliser les entrées en Polars
-    d_self_pl = ensure_polars(d_self)
-    d_f1_pl = ensure_polars(d_f1)
-    d_f2_pl = ensure_polars(d_f2)
+    pl_dfs = [ensure_polars(df) for df in all_input_dfs]
 
     def _prep(df: pl.DataFrame, alias: str) -> pl.DataFrame:
         """Prépare un DataFrame : sélection, cast datetime, tri."""
@@ -60,12 +74,13 @@ def plot_trio_metric(  # noqa: PLR0913
         out = out.drop_nulls(subset=["start_time"]).sort("start_time").rename({metric: alias})
         return out
 
-    a0 = _prep(d_self_pl, "v0")
-    a1 = _prep(d_f1_pl, "v1")
-    a2 = _prep(d_f2_pl, "v2")
+    col_names = [f"v{i}" for i in range(len(pl_dfs))]
+    prepped = [_prep(df, col) for df, col in zip(pl_dfs, col_names, strict=False)]
 
-    # Aligne sur l'intersection des timestamps (les DFs sont censés être alignés, mais on reste robuste).
-    aligned = a0.join(a1, on="start_time", how="inner").join(a2, on="start_time", how="inner")
+    # Aligne sur l'intersection des timestamps
+    aligned = prepped[0]
+    for p_df in prepped[1:]:
+        aligned = aligned.join(p_df, on="start_time", how="inner")
 
     fig = go.Figure()
     if aligned.is_empty():
@@ -83,12 +98,11 @@ def plot_trio_metric(  # noqa: PLR0913
     ticktext = aligned["start_time"].dt.strftime("%d/%m").fill_null("").to_list()
     xs = list(range(len(aligned)))
 
-    col_names = ["v0", "v1", "v2"]
     series_lists = [aligned[col].to_list() for col in col_names]
     series_cols = [aligned[col] for col in col_names]
 
-    # Moyenne horizontale des 3 séries
-    avg_all = aligned.select(pl.mean_horizontal("v0", "v1", "v2")).to_series()
+    # Moyenne horizontale de toutes les séries
+    avg_all = aligned.select(pl.mean_horizontal(*col_names)).to_series()
 
     for _idx, (s_list, s_col, name, color) in enumerate(
         zip(series_lists, series_cols, names, color_list, strict=False)
@@ -118,8 +132,8 @@ def plot_trio_metric(  # noqa: PLR0913
             )
         )
 
-    # Moyenne lissée des 3 (pointillés)
-    avg_color = colors.get("amber", "rgba(255, 255, 255, 0.85)")
+    # Moyenne lissée de tous les joueurs (ligne neutre pointillée)
+    avg_color = "rgba(255, 255, 255, 0.55)"
     hover_format_avg = (
         f"%{{customdata}}<br>%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
     )

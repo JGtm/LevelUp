@@ -2,7 +2,7 @@
 
 > **Analysez vos performances Halo Infinite avec des visualisations avancées et une architecture DuckDB v5 ultra-rapide.**
 
-[![Version](https://img.shields.io/badge/Version-5.5.0-green.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.5.0)
+[![Version](https://img.shields.io/badge/Version-5.6.0--beta-orange.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.6.0-beta)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -13,6 +13,7 @@
 
 ## Dernières nouveautés
 
+- **v5.6 (bêta) — MSAL Device Code Flow & Extraction d’armes** — Le flux OAuth redirect est remplacé par le Device Code Flow MSAL : l’utilisateur entre un code sur xbox.com/activate, sans `client_secret` ni URI de redirection. **Kills par arme depuis les films SPNKr** *(bêta — couverture estimée 70–100 % selon les matchs, catalogue d’armes en cours)* ; kills par arme dans Match View et l’onglet Coéquipiers ; extraction automatique au sync. **Matrice d’Impact** — séparateurs verticaux entre matchs ; renommée depuis "Heatmap". **4 041 tests**.
 - **v5.5 — Wizard & Xbox OAuth & macOS/Linux** — Wizard de configuration initiale avec deux parcours (Xbox Express / Azure manuel). Connexion Xbox en 1 clic. `LevelUp.sh` pour macOS/Linux (POSIX sh, Homebrew, APT…). Documentation réécrite. **75 nouveaux tests**. Page **Comparaison de sessions** entièrement revue : donuts résultats, courbe F/D + précision, highlights match, répartition modes/cartes, overlay LUSR/CSR sur le score cumulé. **Comparaison XP & rang Héros multi-joueurs** sur la page Carrière — précision variable selon l’historique de sync.
 - **v5.4 — Explorer & Rencontres** — Page Explorer unifiée. Historique des rencontres. Refactoring massif (72 sous-modules). **3693 tests**, 0 failure.
 - **v5.3 — LUSR/CSR** — Système de rating TrueSkill 2 per-groupe (ranked/arena/btb/tactical/social/fun) avec calibration empirique. Notifications Discord post-sync/backfill.
@@ -44,7 +45,7 @@
 - **ATTACH multi-DB** — DuckDB ATTACH pour lecture transparente cross-DB
 - **LUSR/CSR** — Ratings TrueSkill 2 per-groupe stockés dans `match_skill_rank` (player DB)
 - **Performance** — Requêtes DuckDB < 30ms (warm), DataFrame Polars natifs, vues matérialisées
-- **Xbox OAuth** — Flux Microsoft OAuth 2.0 avec protection CSRF, refresh token stocké en DB joueur
+- **Device Code Flow (MSAL)** — Acquisition du token via xbox.com/activate, sans URI de redirection ni client secret ; refresh token stocké en DB joueur
 - **Wizard Setup** — Configuration guidée avec détection automatique des credentials/joueurs manquants
 
 ---
@@ -83,19 +84,19 @@ pip install -e .
 cp .env.example .env.local
 ```
 
-### 2. Configurer les tokens Azure
+### 2. Configurer votre Client ID Azure
 
 ```env
 SPNKR_AZURE_CLIENT_ID=votre_client_id
-SPNKR_AZURE_CLIENT_SECRET=votre_secret
-SPNKR_AZURE_REDIRECT_URI=https://localhost
-SPNKR_OAUTH_REFRESH_TOKEN=votre_refresh_token
 ```
 
-### 3. Récupérer le refresh token
+> `client_secret` et `redirect_uri` ne sont plus nécessaires — l’authentification utilise le MSAL Device Code Flow.
+
+### 3. Obtenir le refresh token (Device Code Flow)
 
 ```bash
-python scripts/spnkr_get_refresh_token.py
+python scripts/spnkr_get_refresh_token.py --device-code
+# Ou utiliser le Wizard de configuration intégré (recommandé)
 ```
 
 **Documentation détaillée** : [CONFIGURATION.md](CONFIGURATION.md)
@@ -129,6 +130,7 @@ data/
 | `shared_matches` | `match_registry` | Registre central (1 ligne/match) |
 | `shared_matches` | `match_participants` | Stats de tous les joueurs (31 col, MMR) |
 | `shared_matches` | `medals_earned`, `highlight_events` | Médailles et événements filmés |
+| `shared_matches` | `weapon_kills` | Kills par arme par joueur par match (extraits des films SPNKr) |
 | `shared_pve` | `pve_match_stats` | Stats Firefight par joueur/match |
 | player `stats` | `player_match_enrichment` | performance_score, session_id |
 | player `stats` | `match_skill_rank` | Rating LUSR/CSR par match |

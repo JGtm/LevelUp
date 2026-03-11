@@ -440,6 +440,7 @@ def _sync_all_players_loop(  # noqa: PLR0913
                 logger.info("[App Sync] %s: OK — %s", gamertag, msg)
             else:
                 logger.error("[App Sync] %s: échec — %s", gamertag, msg)
+
             results.append((gamertag, ok, msg))
     finally:
         _deactivate_sync_mode()

@@ -41,6 +41,13 @@ logger = logging.getLogger(__name__)
 # Répertoire racine du projet
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+# Weapon kills — parallélisation dans le sync (Point B).
+# True  : les matchs weapons sont collectés pendant la boucle principale puis
+#         traités en batch parallèle APRÈS (via run_weapon_kills_backfill, 4 //).
+# False : comportement séquentiel d'origine (1 match à la fois dans la boucle).
+# Changer cette constante suffit pour revenir en arrière.
+_PARALLEL_WEAPON_KILLS_IN_SYNC: bool = True
+
 
 def _get_shared_connection(db_path: Path) -> Any | None:
     """Ouvre une connexion vers shared_matches.duckdb (v5).
@@ -88,6 +95,7 @@ def _empty_result() -> dict[str, int]:
         "citations_computed": 0,
         "participants_enriched": 0,
         "pve_stats_inserted": 0,
+        "weapon_kills_inserted": 0,
         "lusr_computed": 0,
         "csr_fetched": 0,
         "csr_backfilled": 0,
@@ -712,6 +720,8 @@ async def _backfill_with_api(
     force_citations = scope.force_citations
     pve_stats = getattr(scope, "pve_stats", False)
     force_pve_stats = getattr(scope, "force_pve_stats", False)
+    weapons = getattr(scope, "weapons", False)
+    force_weapons = getattr(scope, "force_weapons", False)
     from src.data.sync.api_client import get_tokens_from_env
     from src.data.sync.api_factory import create_api_client
     from src.data.sync.migrations import ensure_match_participants_columns
@@ -776,11 +786,48 @@ async def _backfill_with_api(
     totals["matches_checked"] = len(match_ids)
     totals["matches_missing_data"] = len(match_ids)
 
+    # Point B : liste des matchs à traiter en batch weapons post-boucle
+    _pending_weapon_ids: list[str] = []
+
+    # Shortcut weapons-only : si aucun autre flag API n'est demandé, la boucle
+    # séquentielle ne ferait qu'appeler get_match_stats pour rien (les weapon kills
+    # viennent des chunks film dans run_weapon_kills_backfill, pas de match_stats).
+    # On alimente _pending_weapon_ids directement et on saute la boucle.
+    _loop_api_needed = any(
+        [
+            medals,
+            events,
+            skill,
+            personal_scores,
+            performance_scores,
+            aliases,
+            accuracy,
+            enemy_mmr,
+            assets,
+            participants,
+            pve_stats,
+            shots,
+            participants_scores,
+            participants_kda,
+            participants_shots,
+            participants_damage,
+            participants_avg_life,
+        ]
+    )
+    _weapons_only_shortcut = weapons and _PARALLEL_WEAPON_KILLS_IN_SYNC and not _loop_api_needed
+    if _weapons_only_shortcut:
+        _pending_weapon_ids = list(match_ids)
+        logger.info(
+            "Weapons-only : boucle séquentielle ignorée, %d matchs → batch direct", len(match_ids)
+        )
+
     async with create_api_client(
         tokens=tokens,
         requests_per_second=requests_per_second,
     ) as client:
         for i, match_id in enumerate(match_ids, 1):
+            if _weapons_only_shortcut:
+                continue  # _pending_weapon_ids déjà alimenté, pas d'appel API nécessaire
             try:
                 logger.info(f"[{i}/{len(match_ids)}] Traitement {match_id}...")
 
@@ -951,6 +998,18 @@ async def _backfill_with_api(
                     )
                     totals["pve_stats_inserted"] += n
 
+                # ── Weapon kills → shared.weapon_kills (v5.5) ──
+                if weapons:
+                    if _PARALLEL_WEAPON_KILLS_IN_SYNC:
+                        # Point B : collecte pour traitement batch parallèle post-boucle.
+                        # Le guard bit (Point A) s'appliquera dans run_weapon_kills_backfill.
+                        _pending_weapon_ids.append(match_id)
+                    else:
+                        n = await _backfill_weapon_kills_for_match(
+                            client, match_id, gamertag, xuid, shared_conn, force=force_weapons
+                        )
+                        totals["weapon_kills_inserted"] += n
+
                 # Marquer le bitmask backfill_completed pour tous les types demandés
                 requested_types = scope.requested_types
 
@@ -986,6 +1045,31 @@ async def _backfill_with_api(
 
                 traceback.print_exc()
                 continue
+
+    # ── Weapon kills batch parallèle post-API (Point B) ──────────────────────
+    # Traité ici plutôt que dans la boucle pour :
+    #   1. Éviter de partager le client API avec d'autres I/O en cours
+    #   2. Permettre la parallélisation (run_weapon_kills_backfill ouvre son propre client)
+    #   3. Cohérent avec killer_victim et end_time qui sont aussi post-boucle
+    # Guard WEAPON_KILLS (Point A) appliqué dans _process_one de run_weapon_kills_backfill :
+    # les matchs déjà traités (bit posé, ex. par un autre joueur en escouade) sont ignorés.
+    if weapons and _PARALLEL_WEAPON_KILLS_IN_SYNC and _pending_weapon_ids:
+        from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
+
+        logger.info(
+            "Weapon kills batch : %d matchs à traiter (parallèle)...",
+            len(_pending_weapon_ids),
+        )
+        n = await run_weapon_kills_backfill(
+            gamertag,
+            xuid,
+            _pending_weapon_ids,
+            shared_conn,
+            force=force_weapons,
+        )
+        totals["weapon_kills_inserted"] += n
+        if n > 0:
+            logger.info("✅ %d lignes weapon_kills insérées (batch parallèle)", n)
 
     # ── Backfill local post-API ──
     if killer_victim:
@@ -1271,6 +1355,73 @@ async def _backfill_pve_for_match(
         return inserted
     except Exception as e:
         logger.warning(f"Backfill PVE échoué pour {match_id}: {e}")
+        return 0
+
+
+async def _backfill_weapon_kills_for_match(
+    client: Any,
+    match_id: str,
+    gamertag: str,
+    xuid: str,
+    shared_conn: Any,
+    *,
+    force: bool = False,
+) -> int:
+    """Extrait et stocke les kills par arme pour un match (non bloquant).
+
+    Args:
+        client: Client API SPNKr authentifié.
+        match_id: ID du match.
+        gamertag: Gamertag du joueur.
+        xuid: XUID du joueur.
+        shared_conn: Connexion shared_matches.duckdb.
+        force: Si True, re-traiter même si MatchBits.WEAPON_KILLS posé.
+
+    Returns:
+        Nombre de lignes weapon_kills insérées (0 si erreur ou skip).
+    """
+    from src.data.services.weapon_extraction_service import WeaponExtractionService
+    from src.data.sync._engine_weapon_kills import _resolve_cache_dir
+    from src.data.sync.constants import MatchBits
+    from src.ui.sync import get_player_duckdb_path
+
+    # Guard : skip si le bit WEAPON_KILLS est déjà posé (sauf force=True).
+    # Le service traite TOUS les joueurs du match → une fois posé, tout le monde est couvert.
+    # Aligné avec detection.py:444 qui filtre en amont pour le chemin CLI --weapons.
+    if not force:
+        try:
+            row = shared_conn.execute(
+                "SELECT COALESCE(backfill_completed, 0) & ? "
+                "FROM match_registry WHERE match_id = ?",
+                (MatchBits.WEAPON_KILLS, match_id),
+            ).fetchone()
+            if row and row[0]:
+                logger.debug("weapon_kills %s : bit déjà posé, skip", match_id[:8])
+                return 0
+        except Exception as e:
+            logger.debug("weapon_kills guard %s : %s", match_id[:8], e)
+
+    try:
+        db_path = get_player_duckdb_path(gamertag)
+        cache_dir = _resolve_cache_dir(db_path)
+        service = WeaponExtractionService(client, shared_conn, cache_dir)
+        summary = await service.process_match(match_id, gamertag, xuid)
+        rows = summary.get("rows_inserted", 0)
+        if rows > 0:
+            try:
+                shared_conn.execute(
+                    "UPDATE match_registry "
+                    "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                    "WHERE match_id = ?",
+                    (MatchBits.WEAPON_KILLS, match_id),
+                )
+            except Exception as e:
+                logger.debug("Guard WEAPON_KILLS pour %s : %s", match_id[:8], e)
+        elif "error" in summary:
+            logger.debug("weapon_kills %s : %s", match_id[:8], summary["error"])
+        return rows
+    except Exception as exc:
+        logger.debug("_backfill_weapon_kills_for_match %s (non bloquant) : %s", match_id[:8], exc)
         return 0
 
 

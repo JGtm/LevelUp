@@ -1491,3 +1491,38 @@ def cleanup_player_dbs_legacy(players_dir: str | Any = "data/players") -> dict[s
             results[gt] = -1
 
     return results
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Weapon kills — backfill stub (v5.5)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def backfill_weapon_kills(
+    shared_conn: Any,
+    xuid: str,
+    match_ids: list[str],
+    gamertag: str,
+    *,
+    force: bool = False,
+) -> int:
+    """Backfill des kills par arme pour un joueur sur une liste de matchs.
+
+    Télécharge les chunks film SPNKr, scanne les fire events POV et
+    upserte dans ``shared_matches.weapon_kills``.
+
+    Args:
+        shared_conn: Connexion shared_matches.duckdb.
+        xuid: XUID du joueur.
+        match_ids: Matchs à traiter.
+        gamertag: Gamertag du joueur (pour charger les kills POV).
+        force: Si True, re-traiter même si MatchBits.WEAPON_KILLS déjà posé.
+
+    Returns:
+        Nombre total de lignes weapon_kills insérées.
+    """
+    if not match_ids:
+        return 0
+    from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
+
+    return await run_weapon_kills_backfill(gamertag, xuid, match_ids, shared_conn, force=force)

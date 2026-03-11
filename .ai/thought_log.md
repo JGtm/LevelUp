@@ -7,49 +7,33 @@
 
 ## Journal
 
-### [2026-03-09] — FIX : cache process-level pour load_refresh_token
+### [2026-03-10] — FIX : alimentation killer_victim_pairs sur nouveaux matchs
 
-**Statut** : Complété ✅
+**Statut** : Corrige en code ✅
 
-**Contexte** : Audit des logs révélait 185 appels à `load_refresh_token()` par session — chacun ouvrant/fermant une connexion DuckDB R/O sur `sync_meta`.
+**Contexte** : Des matchs recents avaient `highlight_events` remplis mais `killer_victim_pairs` vide, avec un comportement heterogene selon l'historique de backfill.
 
-**Décision technique** :
-- Ajout de `_rt_cache: dict[str, str | None]` (niveau module) dans `src/ui/xbox_oauth.py`.
-- `load_refresh_token()` vérifie le cache avant d'ouvrir DuckDB ; peuple le cache au premier accès.
-- `store_refresh_token()` invalide + met à jour le cache avec la valeur trimée (cohérent avec le comportement de lecture depuis DB).
-- Aucun couplage Streamlit, aucun impact sur le sync engine.
+**Decision technique** :
+- Ajout d'une ecriture K/V native dans le pipeline de sync shared, sans dependre d'un backfill manuel.
+- Nouvelle methode `SharedWritesMixin._insert_shared_killer_victim_pairs(...)` qui calcule les paires depuis les events bruts avec `compute_killer_victim_pairs(..., tolerance_ms=5)` (meme algorithme que le backfill historique).
+- Appel de cette methode dans:
+  - `_insert_new_match_shared(...)` pour chaque nouveau match avec events.
+  - `_backfill_known_match_shared(...)` quand `events_loaded` etait `FALSE` et que les events sont enfin insertes.
 
-**Résultats** : 9/9 tests `test_xbox_oauth_callback_e2e.py` passent. Fix trimming du cache aligné sur le comportement DB.
+**Impact** :
+- Les nouveaux matchs synchronises alimentent immediatement `killer_victim_pairs`.
+- Le backfill `--killer-victim` reste utile pour rattraper les matchs historiques deja presents.
 
-**Commit** : `fix(oauth): cache process-level pour load_refresh_token`
+### [2026-03-10] — DIAGNOSTIC : personal_score_awards et sync app
 
----
+**Statut** : Résolu — pas de bug ✅
 
-### [2026-03-09] — DIFFÉRÉ : conflit shared_matches.duckdb (339 warnings/sync)
+**Contexte** : Investigation sur l'écriture des `personal_score_awards` lors des syncs app multi-joueurs.
 
-**Statut** : En attente ⏸ — décision consciente de ne pas traiter maintenant
-
-**Contexte** : `_engine_connections.py::_get_shared_connection()` tente d'ouvrir `shared_matches.duckdb` en R/W direct pendant que Streamlit en a une connexion R/O via `@st.cache_resource`. Le retry appelle `release_all_db_connections()` (WeakSet) mais le `@st.cache_resource` rétablit une nouvelle connexion R/O dès le rerun suivant → conflit cyclique.
-
-**Pourquoi différé** : App stable après refactoring. Corriger cela touche `_engine_connections.py`, `duckdb_repo.py` et `streamlit_app.py` — zone trop sensible pour un gain purement cosmétique (logs plus propres, pas de panne fonctionnelle).
-
-**Plan documenté (à implémenter quand le sync est stable depuis ≥ 1 semaine)** :
-
-Option retenue : **fix minimal dans `DuckDBRepository._get_connection()`**
-- Si `_sync_mode.is_set()` est actif ET que `shared_matches` est attaché → le DETACHER immédiatement avant de retourner la connexion.
-- Cela empêche le cycle : engine R/W → release → Streamlit réattache R/O → conflit.
-- Fichiers : `src/data/repositories/duckdb_repo.py` uniquement (~10 lignes dans `_get_connection()`).
-- Test : `tests/test_sync_engine_connections.py` ou nouveau `test_sync_mode_detach.py`.
-
-Option alternative si le minimal ne suffit pas : **hook pré-sync**
-- `_engine_connections.py` expose `register_pre_sync_hook(fn)`.
-- `_cache_core.py` expose `clear_cached_repositories()` → appelle `st.cache_resource.clear()`.
-- `streamlit_app.py` enregistre le hook au démarrage.
-- Effet de bord : cold start de ~100ms après chaque sync (cache Streamlit vidé).
-
-**Signal de déclenchement** : une vraie panne (sync retourne `None` pour shared sur plusieurs runs consécutifs) OU refactoring planifié du sync engine.
-
----
+**Conclusion** :
+- Le sync engine écrit déjà les personal scores nativement pour chaque nouveau match via `_process_known_match()` / `_process_new_match()` → `_extract_personal_data()` → `_write_player_enrichments()` → `_insert_personal_score_rows()`.
+- Le gap observé (~2% de matchs sans personal scores) est légitime : l'API Halo retourne `PersonalScores[]` vide pour certains matchs (`personal_score=0`).
+- Un backfill safeguard avait été ajouté par erreur dans `src/ui/sync.py` → supprimé car redondant avec le flux natif.
 
 ### [2026-03-08] — INVESTIGATION : inv92 modele de champs pour les phases `b1eb`
 
@@ -3109,3 +3093,41 @@ docs/DATA_ARCHITECTURE.md        # MAJ
 - [ ] 8ter.5 : st.navigation lazy loading (reporté)
 - [ ] Tests unitaires vectorize_helpers.py (à ajouter)
 - [x] Commit : `012b52b` — 2877 tests, 0 échec ✅
+
+---
+
+### [2026-03-10] — OPTIM : weapon kills — guard universel + batch parallèle sync
+
+**Statut** : Implémenté ✅ | Branche : `feat/msal-device-code-flow`
+
+**Contexte** :
+Le service `WeaponExtractionService.process_match` traite **tous les joueurs d'un match** en une
+passe. Dès qu'un match est traité pour un joueur, le bit `WEAPON_KILLS` est posé sur
+`match_registry`. En escouade (xxdaemongamerxx + Chocoboflor + Madina97294 sur le même match),
+le deuxième joueur à sync retraitait inutilement le match.
+
+**Décision — Point A : guard universel dans `_backfill_weapon_kills_for_match`** :
+- Ajout d'un early-return si `COALESCE(backfill_completed, 0) & WEAPON_KILLS != 0` (sauf `force=True`)
+- Aligné avec `detection.py:444` qui filtre déjà en amont pour le chemin CLI `--weapons`
+- Source de vérité unique : `WEAPON_KILLS` sur `match_registry`
+- 3 tests ajoutés : skip si bit posé, force bypass, exception guard → fallthrough
+
+**Décision — Point B : batch parallèle post-boucle dans `_backfill_with_api`** :
+- Constante `_PARALLEL_WEAPON_KILLS_IN_SYNC = True` (une ligne pour revenir en arrière)
+- Dans la boucle match : si flag actif → collecte dans `_pending_weapon_ids` au lieu de traiter inline
+- Après le `async with create_api_client` : appel de `run_weapon_kills_backfill(_pending_weapon_ids)`
+  → 4 matchs en parallèle, client API séparé, `asyncio.Lock` interne
+- Cohérent avec `killer_victim` et `end_time` déjà en post-boucle
+- Double protection : guard Point A + filtre detection.py → matchs déjà traités ignorés
+
+**Correction post-review** : Guard aussi ajouté dans `_process_one` de `run_weapon_kills_backfill`
+— la liste `_pending_weapon_ids` peut contenir des matchs avec bit posé (OR detection conditions).
+Import inutilisé `WeaponKillsMixin` retiré. Tests batch guard ajoutés.
+
+**Fichiers modifiés** :
+- `scripts/backfill/orchestrator.py` — guard + constante + collecte + batch post-boucle
+- `scripts/backfill/_weapon_kills_logic.py` — guard dans `_process_one`
+- `tests/test_weapon_service.py` — `TestBackfillWeaponKillsGuard` (3) + `TestRunWeaponKillsBackfillGuard` (2) = 5 nouveaux tests
+- `.ai/plan-weapon-kills-perf.md` — sections Point A et Point B ajoutées
+
+**Résultat** : 4181 tests, 0 échec

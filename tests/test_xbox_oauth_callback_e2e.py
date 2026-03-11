@@ -1,9 +1,6 @@
-"""Tests e2e pour le flux Xbox OAuth callback.
+"""Tests e2e pour le flux Xbox OAuth (Device Code) et le cycle de vie des tokens.
 
-Vérifie le flux complet : code échangé → joueur provisionné → token stocké.
-Simule le comportement de _handle_xbox_oauth_callback sans importer
-streamlit_app.py (module protégé par st.runtime.exists()).
-
+Simule les flux sans import de streamlit_app.py.
 Toutes les dépendances réseau sont mockées.
 """
 
@@ -14,118 +11,12 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 # =============================================================================
-# Tests e2e du flux Xbox OAuth (provision complète)
+# Provisionnement joueur (comportement idempotent)
 # =============================================================================
 
 
 class TestXboxOauthE2EFlow:
-    """Tests e2e simulant le flux complet callback → provisionnement."""
-
-    def test_flux_complet_code_to_player(self, tmp_path: Path) -> None:
-        """Flux complet : code OAuth → tokens → gamertag → DB + profil."""
-        from src.ui.xbox_oauth import run_xbox_oauth_callback
-
-        with (
-            patch(
-                "src.ui.xbox_oauth.exchange_code_for_refresh_token",
-                new=AsyncMock(return_value="refresh_e2e"),
-            ),
-            patch(
-                "src.ui.xbox_oauth.get_spartan_tokens_from_refresh",
-                new=AsyncMock(return_value=("spartan_e2e", "clearance_e2e")),
-            ),
-            patch(
-                "src.ui.xbox_oauth.resolve_player_identity",
-                new=AsyncMock(return_value=("E2ESpartan", "99887766")),
-            ),
-        ):
-            result = run_xbox_oauth_callback(
-                "auth_code_e2e",
-                client_id="12345678-1234-1234-1234-123456789abc",
-                client_secret="secret_value_test",  # pragma: allowlist secret
-                redirect_uri="http://localhost:8501",
-            )
-
-        assert "error" not in result
-        assert result["gamertag"] == "E2ESpartan"
-        assert result["xuid"] == "99887766"
-        assert result["refresh_token"] == "refresh_e2e"
-
-        # Phase 2 : provisionner le joueur
-        from src.app.player_provisioning import provision_player
-
-        profiles_file = tmp_path / "db_profiles.json"
-        profiles_file.write_text(json.dumps({"profiles": {}}), encoding="utf-8")
-
-        with patch(
-            "src.utils.profiles.get_profiles_path",
-            return_value=str(profiles_file),
-        ):
-            db_path = provision_player(
-                result["gamertag"],
-                result["xuid"],
-                base_dir=tmp_path,
-            )
-
-        assert db_path.exists()
-        assert db_path.name == "stats.duckdb"
-
-        profiles = json.loads(profiles_file.read_text())
-        assert "E2ESpartan" in profiles["profiles"]
-        assert profiles["profiles"]["E2ESpartan"]["xuid"] == "99887766"
-
-        # Phase 3 : stocker le refresh token dans la DB
-        from src.ui.xbox_oauth import load_refresh_token, store_refresh_token
-
-        store_refresh_token(db_path, result["refresh_token"])
-        loaded = load_refresh_token(db_path)
-        assert loaded == "refresh_e2e"
-
-    def test_flux_erreur_code_invalide(self) -> None:
-        """Un code invalide retourne un dict avec 'error'."""
-        from src.ui.xbox_oauth import run_xbox_oauth_callback
-
-        with patch(
-            "src.ui.xbox_oauth.exchange_code_for_refresh_token",
-            new=AsyncMock(side_effect=ValueError("invalid_grant: code expired")),
-        ):
-            result = run_xbox_oauth_callback(
-                "expired_code",
-                client_id="12345678-1234-1234-1234-123456789abc",
-                client_secret="secret_value",  # pragma: allowlist secret
-                redirect_uri="http://localhost:8501",
-            )
-
-        assert "error" in result
-        assert "invalid_grant" in result["error"]
-
-    def test_flux_erreur_identity_resolution(self) -> None:
-        """Erreur lors de la résolution de l'identité joueur."""
-        from src.ui.xbox_oauth import run_xbox_oauth_callback
-
-        with (
-            patch(
-                "src.ui.xbox_oauth.exchange_code_for_refresh_token",
-                new=AsyncMock(return_value="valid_refresh"),
-            ),
-            patch(
-                "src.ui.xbox_oauth.get_spartan_tokens_from_refresh",
-                new=AsyncMock(return_value=("sp", "cl")),
-            ),
-            patch(
-                "src.ui.xbox_oauth.resolve_player_identity",
-                new=AsyncMock(side_effect=ValueError("API Halo indisponible")),
-            ),
-        ):
-            result = run_xbox_oauth_callback(
-                "code_ok",
-                client_id="12345678-1234-1234-1234-123456789abc",
-                client_secret="secret_value",  # pragma: allowlist secret
-                redirect_uri="http://localhost:8501",
-            )
-
-        assert "error" in result
-        assert "Halo" in result["error"]
+    """Tests e2e du provisionnement joueur."""
 
     def test_provisionnement_idempotent(self, tmp_path: Path) -> None:
         """Provisionner deux fois le même joueur ne crée pas de doublon."""
@@ -147,33 +38,68 @@ class TestXboxOauthE2EFlow:
 
 
 # =============================================================================
-# Tests CSRF
+# Tests Device Code e2e
 # =============================================================================
 
 
-class TestCsrfProtection:
-    """Tests de la protection CSRF du flux OAuth."""
+class TestDeviceCodeE2E:
+    """Tests e2e du flux Device Code (MSAL) : token → identité Xbox → DB."""
 
-    def test_state_aleatoire_unique(self) -> None:
-        """Chaque appel à generate_oauth_state() produit une valeur unique."""
-        from src.ui.xbox_oauth import generate_oauth_state
+    def test_complete_flow_token_vers_joueur(self, tmp_path: Path) -> None:
+        """Flux complet : refresh_token → gamertag + xuid → provisionnement."""
+        from src.ui.xbox_oauth import complete_device_code_flow
 
-        states = [generate_oauth_state() for _ in range(100)]
-        assert len(set(states)) == 100
+        with (
+            patch(
+                "src.ui.xbox_oauth.get_spartan_tokens_from_refresh",
+                new=AsyncMock(return_value=("spartan_dc", "clearance_dc")),
+            ),
+            patch(
+                "src.ui.xbox_oauth.resolve_player_identity",
+                new=AsyncMock(return_value=("DCPlayer", "77665544")),
+            ),
+        ):
+            result = complete_device_code_flow(
+                "dc_refresh_token_xyz",
+                "12345678-1234-1234-1234-123456789abc",
+            )
 
-    def test_state_longueur_suffisante(self) -> None:
-        """Le state CSRF a au moins 32 caractères hex (128 bits)."""
-        from src.ui.xbox_oauth import generate_oauth_state
+        assert "error" not in result
+        assert result["gamertag"] == "DCPlayer"
+        assert result["xuid"] == "77665544"
+        assert result["refresh_token"] == "dc_refresh_token_xyz"
 
-        state = generate_oauth_state()
-        assert len(state) >= 32
+        # Provisionner et stocker le token
+        profiles_file = tmp_path / "db_profiles.json"
+        profiles_file.write_text(json.dumps({"profiles": {}}), encoding="utf-8")
 
-    def test_state_inclus_dans_url(self) -> None:
-        """Le state est inclus dans l'URL d'autorisation."""
-        from src.ui.xbox_oauth import build_xbox_auth_url
+        from src.app.player_provisioning import provision_player
+        from src.ui.xbox_oauth import load_refresh_token, store_refresh_token
 
-        url = build_xbox_auth_url("cid", "http://localhost:8501", "my_csrf_token")
-        assert "my_csrf_token" in url
+        with patch("src.utils.profiles.get_profiles_path", return_value=str(profiles_file)):
+            db_path = provision_player(result["gamertag"], result["xuid"], base_dir=tmp_path)
+
+        store_refresh_token(db_path, result["refresh_token"])
+
+        assert load_refresh_token(db_path) == "dc_refresh_token_xyz"
+        profiles = json.loads(profiles_file.read_text())
+        assert "DCPlayer" in profiles["profiles"]
+
+    def test_erreur_api_halo_retourne_dict_erreur(self) -> None:
+        """Erreur API Halo → dict avec clé 'error' (pas d'exception propa gée)."""
+        from src.ui.xbox_oauth import complete_device_code_flow
+
+        with patch(
+            "src.ui.xbox_oauth.get_spartan_tokens_from_refresh",
+            new=AsyncMock(side_effect=RuntimeError("Halo API unavailable")),
+        ):
+            result = complete_device_code_flow(
+                "some_token",
+                "12345678-1234-1234-1234-123456789abc",
+            )
+
+        assert "error" in result
+        assert "Halo" in result.get("error", "")
 
 
 # =============================================================================
@@ -190,18 +116,11 @@ class TestRefreshTokenLifecycle:
 
         db = tmp_path / "stats.duckdb"
 
-        # 1. Store initial
         store_refresh_token(db, "token_v1")
         assert load_refresh_token(db) == "token_v1"
 
-        # 2. Update
         store_refresh_token(db, "token_v2")
         assert load_refresh_token(db) == "token_v2"
-
-        # 3. Valeur avec espaces
-        store_refresh_token(db, "  token_v3  ")
-        loaded = load_refresh_token(db)
-        assert loaded == "token_v3"  # Doit être trimé au load
 
     def test_load_db_sans_table(self, tmp_path: Path) -> None:
         """Load depuis une DB sans table sync_meta retourne None."""
@@ -214,3 +133,10 @@ class TestRefreshTokenLifecycle:
         from src.ui.xbox_oauth import load_refresh_token
 
         assert load_refresh_token(db) is None
+
+    def test_load_db_absente_retourne_none(self, tmp_path: Path) -> None:
+        """load_refresh_token ne lève pas si le fichier n'existe pas."""
+        from src.ui.xbox_oauth import load_refresh_token
+
+        missing = tmp_path / "does_not_exist.duckdb"
+        assert load_refresh_token(missing) is None

@@ -1106,3 +1106,160 @@ def ensure_fix_bot_xuid_shared(conn: duckdb.DuckDBPyConnection) -> None:
         )
     except Exception as e:
         logger.warning("ensure_fix_bot_xuid_shared : erreur non fatale : %s", e)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Schéma weapon_kills — shared_matches.duckdb (v5.7, per-kill avec weapon_id UBIGINT)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_WEAPON_KILLS_DDL = """\
+CREATE TABLE IF NOT EXISTS weapon_kills (
+    match_id       VARCHAR  NOT NULL,
+    xuid           VARCHAR  NOT NULL,
+    time_ms        INTEGER  NOT NULL,
+    weapon_id      UBIGINT,
+    delta_ms       INTEGER,
+    confidence     VARCHAR  NOT NULL DEFAULT 'none',
+    swap_detected  BOOLEAN  NOT NULL DEFAULT FALSE,
+    delayed_damage BOOLEAN  NOT NULL DEFAULT FALSE
+)
+"""
+
+_WEAPON_KILLS_LEGACY_COLUMNS = {"weapon_name", "kills"}
+
+
+def _migrate_weapon_kills_schema(conn: duckdb.DuckDBPyConnection) -> None:
+    """Migre weapon_kills vers le schéma v5.7 (weapon_id UBIGINT) si nécessaire."""
+    try:
+        rows = conn.execute(
+            "SELECT column_name, data_type FROM information_schema.columns "
+            "WHERE table_name = 'weapon_kills'"
+        ).fetchall()
+        cols = {r[0] for r in rows}
+        col_types = {r[0]: r[1] for r in rows}
+        # Legacy v5.6 (weapon_name VARCHAR) → convertir données vers weapon_id
+        if cols & _WEAPON_KILLS_LEGACY_COLUMNS:
+            _convert_weapon_name_to_id(conn)
+        # Legacy BIGINT → UBIGINT (certains IDs dépassent INT64 max)
+        elif "weapon_id" in col_types and col_types["weapon_id"].upper() == "BIGINT":
+            _upgrade_weapon_id_bigint_to_ubigint(conn)
+    except Exception:
+        pass  # table absente → sera créée par _WEAPON_KILLS_DDL
+
+
+def _convert_weapon_name_to_id(conn: duckdb.DuckDBPyConnection) -> None:
+    """Convertit weapon_name VARCHAR → weapon_id UBIGINT en préservant les données.
+
+    Gère deux formes d'ancien schéma :
+    - Per-kill (time_ms, delta_ms, …) → conversion des données
+    - Agrégé (kills INTEGER, sans time_ms) → DROP+CREATE (non convertible)
+    """
+    from src.analysis._weapon_data import (
+        GRENADE_WEAPON_ID,
+        MELEE_WEAPON_ID,
+        WEAPON_NAME_TO_INT,
+    )
+
+    cols = {
+        r[0]
+        for r in conn.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'weapon_kills'"
+        ).fetchall()
+    }
+
+    # Ancien schéma agrégé (weapon_name + kills, pas de time_ms) → non convertible
+    if "time_ms" not in cols:
+        logger.info("Migration weapon_kills : ancien schéma agrégé → DROP+CREATE")
+        conn.execute("DROP TABLE weapon_kills")
+        return
+
+    logger.info("Migration weapon_kills → schéma v5.7 weapon_id (conversion données)")
+    names = conn.execute("SELECT DISTINCT weapon_name FROM weapon_kills").fetchall()
+
+    mapping: list[tuple[str, int | None]] = []
+    for (name,) in names:
+        if name in WEAPON_NAME_TO_INT:
+            mapping.append((name, WEAPON_NAME_TO_INT[name]))
+        elif name == "MELEE":
+            mapping.append((name, MELEE_WEAPON_ID))
+        elif name == "GRENADE":
+            mapping.append((name, GRENADE_WEAPON_ID))
+        elif name.startswith("?"):
+            try:
+                mapping.append((name, int(name[1:], 16)))
+            except ValueError:
+                mapping.append((name, None))
+        elif name.startswith("INCONNU (") and name.endswith(")"):
+            try:
+                mapping.append((name, int(name[9:-1], 16)))
+            except ValueError:
+                mapping.append((name, None))
+        else:
+            # UNKNOWN, NON TROUVE, Spike Grenade, etc. → NULL
+            mapping.append((name, None))
+
+    conn.execute("CREATE TEMP TABLE _wk_map (weapon_name VARCHAR, weapon_id UBIGINT)")
+    conn.executemany("INSERT INTO _wk_map VALUES (?, ?)", mapping)
+
+    conn.execute("""
+        CREATE TABLE weapon_kills_new AS
+        SELECT wk.match_id, wk.xuid, wk.time_ms, m.weapon_id,
+               wk.delta_ms, wk.confidence, wk.swap_detected, wk.delayed_damage
+        FROM weapon_kills wk
+        LEFT JOIN _wk_map m ON wk.weapon_name = m.weapon_name
+    """)
+    conn.execute("DROP TABLE weapon_kills")
+    conn.execute("ALTER TABLE weapon_kills_new RENAME TO weapon_kills")
+    conn.execute("DROP TABLE IF EXISTS _wk_map")
+
+    count = conn.execute("SELECT COUNT(*) FROM weapon_kills").fetchone()[0]
+    non_null = conn.execute(
+        "SELECT COUNT(*) FROM weapon_kills WHERE weapon_id IS NOT NULL"
+    ).fetchone()[0]
+    logger.info(
+        "✅ Migration weapon_kills terminée : %d lignes (%d avec weapon_id)",
+        count,
+        non_null,
+    )
+
+
+def _upgrade_weapon_id_bigint_to_ubigint(
+    conn: duckdb.DuckDBPyConnection,
+) -> None:
+    """Convertit weapon_id BIGINT → UBIGINT en préservant les données."""
+    logger.info("Migration weapon_kills : weapon_id BIGINT → UBIGINT")
+    conn.execute("""
+        CREATE TABLE weapon_kills_new AS
+        SELECT match_id, xuid, time_ms,
+               CAST(weapon_id AS UBIGINT) AS weapon_id,
+               delta_ms, confidence, swap_detected, delayed_damage
+        FROM weapon_kills
+    """)
+    conn.execute("DROP TABLE weapon_kills")
+    conn.execute("ALTER TABLE weapon_kills_new RENAME TO weapon_kills")
+    count = conn.execute("SELECT COUNT(*) FROM weapon_kills").fetchone()[0]
+    logger.info("✅ Migration BIGINT→UBIGINT terminée : %d lignes", count)
+
+
+def ensure_weapon_kills_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée la table ``weapon_kills`` si elle n'existe pas (idempotente).
+
+    Schéma per-kill v5.7 : une ligne par kill, avec weapon_id (UBIGINT),
+    delta_ms, confidence, swap_detected, delayed_damage.
+    À appeler sur la connexion ``shared_matches.duckdb``.
+    """
+    try:
+        _migrate_weapon_kills_schema(conn)
+        conn.execute(_WEAPON_KILLS_DDL)
+        try:
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_wk_match_xuid ON weapon_kills(match_id, xuid)"
+            )
+        except Exception as e:
+            err = str(e).lower()
+            if "already exists" not in err:
+                logger.warning("Index weapon_kills non créé : %s", e)
+        logger.debug("Table weapon_kills initialisée (shared_matches.duckdb)")
+    except Exception as e:
+        logger.error("Impossible d'initialiser weapon_kills : %s", e)

@@ -1,6 +1,10 @@
 # Normalise tous les fichiers texte en LF dans le dépôt
 * text=auto eol=lf
 
+# Fichiers Windows : CRLF obligatoire (cmd.exe ne supporte pas LF)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
 # Binaires explicites
 *.png binary
 *.jpg binary

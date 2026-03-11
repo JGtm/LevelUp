@@ -61,6 +61,9 @@ spnkr = [
     "aiohttp-client-cache>=0.11.0",
     "aiosqlite>=0.19.0",  # Backend SQLite pour aiohttp-client-cache
 ]
+msal = [
+    "msal>=1.28.0",
+]
 
 [project.scripts]
 levelup = "launcher:main"
@@ -102,8 +105,9 @@ exclude = '''
 line-length = 100
 target-version = "py310"
 exclude = [
-    "scripts/_archive",   # Scripts archivés, non maintenus
-    "scripts/migration",  # Scripts de migration legacy, non maintenus
+    "scripts/_archive",      # Scripts archivés, non maintenus
+    "scripts/migration",     # Scripts de migration legacy, non maintenus
+    "scripts/experimental",  # Scripts de recherche/exploration, non soumis aux règles qualité
 ]
 
 [tool.ruff.lint]

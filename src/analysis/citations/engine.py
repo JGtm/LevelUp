@@ -272,7 +272,7 @@ class CitationEngine(CitationDataLoaderMixin):
                 return match_medals.get(int(medal_id), 0)
             return 0
 
-        if mtype in ("stat", "pve_stat"):
+        if mtype in ("stat", "pve_stat", "weapon_stat"):
             stat_name = mapping.get("stat_name", "")
             if stat_name and match_stats:
                 try:
@@ -422,6 +422,14 @@ class CitationEngine(CitationDataLoaderMixin):
         pve_stats = self.load_match_pve_stats(match_id)
         if pve_stats:
             match_stats = {**match_stats, **pve_stats}
+
+        # Fusionner les weapon kills dans match_stats (v5.5)
+        weapon_kills = self.load_match_weapon_kills(match_id)
+        if weapon_kills:
+            match_stats = {
+                **match_stats,
+                **{f"weapon_kills:{wid}": kills for wid, kills in weapon_kills.items()},
+            }
 
         # Calculer les citations
         citations = self.compute_all_for_match(

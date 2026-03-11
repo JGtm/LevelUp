@@ -48,8 +48,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Unable to determine the match list for medals aggregation.",
     },
     "tm_trio_session": {
-        "fr": "Dernière session trio détectée : {label}.",
-        "en": "Latest trio session detected: {label}.",
+        "fr": "Dernière session détectée : {label}.",
+        "en": "Latest session detected: {label}.",
     },
     "tm_trio_session_unknown": {
         "fr": "Impossible de déterminer une session trio (données insuffisantes).",
@@ -76,7 +76,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "No impact events found for the selected players.",
     },
     "tm_impact_heatmap": {
-        "fr": "Heatmap d'Impact",
+        "fr": "Matrice d'Impact",
         "en": "Impact heatmap",
     },
     "tm_impact_ranking": {
@@ -112,6 +112,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Tous les trois — {f1} + {f2}",
         "en": "All three — {f1} + {f2}",
     },
+    "tm_squad_header": {
+        "fr": "Escouade — {names}",
+        "en": "Squad — {names}",
+    },
     # ── Page Match View — manquants ───────────────────────────────────────────
     "tm_map_stats_no_data": {
         "fr": "Données insuffisantes pour le ratio par carte.",
@@ -132,12 +136,13 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Select at least one teammate.",
     },
     # ── Match View ────────────────────────────────────────────────────────────
+    "tm_weapon_kills_chart": {"fr": "Armes les plus utilisées", "en": "Kill Weapons"},
     "tm_killing_spree": {"fr": "Folie meurtrière (max)", "en": "Killing Spree (max)"},
     "tm_headshots": {"fr": "Tirs à la tête", "en": "Headshots"},
     "tm_perfect_kills": {"fr": "Frags parfaits", "en": "Perfect kills"},
     "tm_kills": "col_kills",  # alias → common
     "tm_deaths": "col_deaths",  # alias → common
-    "tm_assists": {"fr": "Assists", "en": "Assists"},
+    "tm_assists": {"fr": "Assistances", "en": "Assists"},
     # ── Match View Participation ──────────────────────────────────────────────
     "tm_kda": "col_kda",  # alias → common
     "tm_accuracy": "col_accuracy",  # alias → common

@@ -501,14 +501,34 @@ def _print_summary_player(result: dict, scope: object) -> None:
 
 def _print_totals(totals: dict, scope: object) -> None:  # noqa: C901, PLR0912
     """Affiche les totaux du backfill."""
-    logger.info(f"Matchs vérifiés: {totals.get('matches_checked', 0)}")
-    logger.info(f"Matchs avec données manquantes: {totals.get('matches_missing_data', 0)}")
-    logger.info(f"Médailles insérées: {totals.get('medals_inserted', 0)}")
-    logger.info(f"Events insérés: {totals.get('events_inserted', 0)}")
-    logger.info(f"Skill inséré: {totals.get('skill_inserted', 0)}")
-    logger.info(f"Personal scores insérés: {totals.get('personal_scores_inserted', 0)}")
-    logger.info(f"Scores de performance calculés: {totals.get('performance_scores_inserted', 0)}")
-    logger.info(f"Aliases insérés: {totals.get('aliases_inserted', 0)}")
+    checked = totals.get("matches_checked", 0)
+    missing = totals.get("matches_missing_data", 0)
+    has_force = any(getattr(scope, f, False) for f in dir(scope) if f.startswith("force_"))
+    # scope_is_default : True si aucun flag "spécifique" n'est activé (= backfill standard)
+    _specific_fields = [
+        "accuracy", "shots", "enemy_mmr", "assets", "participants",
+        "participants_scores", "participants_kda", "participants_shots",
+        "participants_damage", "participants_avg_life", "killer_victim",
+        "end_time", "sessions", "citations", "teammates_sig",
+        "participants_enrich", "weapons", "team_scores", "pve_stats",
+    ]
+    scope_is_default = not any(getattr(scope, f, False) for f in _specific_fields)
+    missing_label = "Matchs sélectionnés (force)" if has_force and missing == checked else "Matchs avec données manquantes"
+    logger.info(f"Matchs vérifiés: {checked}")
+    logger.info(f"{missing_label}: {missing}")
+    # Types "core" : affichés seulement si demandés ou si valeur > 0
+    _core = [
+        ("medals", "medals_inserted", "Médailles insérées"),
+        ("events", "events_inserted", "Events insérés"),
+        ("skill", "skill_inserted", "Skill inséré"),
+        ("personal_scores", "personal_scores_inserted", "Personal scores insérés"),
+        ("performance_scores", "performance_scores_inserted", "Scores de performance calculés"),
+        ("aliases", "aliases_inserted", "Aliases insérés"),
+    ]
+    for field, key, core_label in _core:
+        val = totals.get(key, 0)
+        if val > 0 or getattr(scope, field, False) or scope_is_default:
+            logger.info(f"{core_label}: {val}")
 
     if getattr(scope, "accuracy", False):
         logger.info(f"Accuracy mis à jour: {totals.get('accuracy_updated', 0)}")
@@ -542,6 +562,8 @@ def _print_totals(totals: dict, scope: object) -> None:  # noqa: C901, PLR0912
         logger.info(f"Citations calculées: {totals.get('citations_computed', 0)}")
     if getattr(scope, "participants_enrich", False):
         logger.info(f"Participants enrichis: {totals.get('participants_enriched', 0)}")
+    if getattr(scope, "weapons", False):
+        logger.info(f"Weapon kills insérés: {totals.get('weapon_kills_inserted', 0)}")
     if getattr(scope, "team_scores", False):
         logger.info(f"Team scores mis à jour: {totals.get('team_scores_updated', 0)}")
 

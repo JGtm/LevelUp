@@ -329,88 +329,6 @@ def _start_background_services(settings: AppSettings, DEFAULT_DB: str) -> None:
             logger.info("Tailscale funnel thread lancé (port 8501)")
 
 
-def _handle_xbox_oauth_callback() -> None:
-    """Consomme le callback ?code=XXX&state=YYY de Microsoft après auth Xbox.
-
-    Microsoft redirige vers cette URL après la connexion de l'utilisateur.
-    Le callback est traité en priorité, avant les query params de navigation.
-    Doit être appelé depuis main() après le démarrage de Tailscale.
-    """
-    _xbox_code = _qp_first(dict(st.query_params).get("code"))
-    _xbox_state = _qp_first(dict(st.query_params).get("state"))
-    if not _xbox_code or st.session_state.get(SK.XBOX_OAUTH_CONSUMED):
-        return
-
-    logger.info("Callback OAuth Xbox détecté (code=%s…)", _xbox_code[:8])
-
-    _expected_state = st.session_state.get(SK.XBOX_OAUTH_STATE)
-    if not _expected_state or _xbox_state != _expected_state:
-        logger.warning(
-            "Callback OAuth Xbox : état CSRF invalide (attendu=%s, reçu=%s)",
-            _expected_state,
-            _xbox_state,
-        )
-        st.error("❌ Erreur CSRF : état OAuth invalide. Veuillez réessayer la connexion Xbox.")
-        st.query_params.clear()
-        return
-
-    _azure_id = str(os.environ.get("SPNKR_AZURE_CLIENT_ID") or "").strip()
-    _azure_secret = str(os.environ.get("SPNKR_AZURE_CLIENT_SECRET") or "").strip()
-    _azure_redir = (
-        str(os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "").strip() or "http://localhost:8501"
-    )
-
-    if not (_azure_id and _azure_secret):
-        return
-
-    from src.app.player_provisioning import provision_player
-    from src.ui.xbox_oauth import run_xbox_oauth_callback
-    from src.ui.xbox_oauth_ui import handle_pending_xbox_result
-
-    st.session_state[SK.XBOX_OAUTH_CONSUMED] = True
-    with st.spinner("🎮 Connexion Xbox en cours…"):
-        _result = run_xbox_oauth_callback(
-            _xbox_code,
-            client_id=_azure_id,
-            client_secret=_azure_secret,
-            redirect_uri=_azure_redir,
-        )
-
-    if "error" not in _result:
-        _gt = _result["gamertag"]
-        _xuid = _result["xuid"]
-        _token = _result["refresh_token"]
-        logger.info("OAuth Xbox : tokens obtenus pour %s (xuid=%s)", _gt, _xuid)
-        try:
-            _db = provision_player(_gt, _xuid)
-            handle_pending_xbox_result(_gt, _xuid, str(_db), _token)
-            logger.info("OAuth Xbox : joueur %s provisionné avec succès", _gt)
-            # Invalider le cache du sélecteur joueur pour que le nouveau joueur
-            # apparaisse immédiatement sans attendre la fin du TTL (1800s)
-            with contextlib.suppress(Exception):
-                from src.ui.multiplayer import list_duckdb_v4_players
-
-                list_duckdb_v4_players.clear()
-            logger.info(
-                "Cache list_duckdb_v4_players invalidé après provisionnement Xbox (%s)", _gt
-            )
-            # Basculer vers le profil du joueur nouvellement connecté
-            st.session_state[SK.DB_PATH] = str(_db)
-            st.session_state[SK.XUID_INPUT] = _gt
-            st.session_state[SK.WAYPOINT_PLAYER] = _gt
-        except Exception as _prov_err:
-            logger.error("Provisionnement Xbox OAuth échoué: %s", _prov_err)
-            st.session_state[SK.XBOX_OAUTH_RESULT] = {"error": str(_prov_err)}
-    else:
-        logger.warning("OAuth Xbox : erreur retournée par le callback : %s", _result.get("error"))
-        st.session_state[SK.XBOX_OAUTH_RESULT] = _result
-
-    st.query_params.clear()
-    # Supprimer le guard pour permettre une reconnexion future
-    st.session_state.pop(SK.XBOX_OAUTH_CONSUMED, None)
-    st.rerun()
-
-
 def _parse_query_params() -> None:
     """Consomme les query params (?page=...&match_id=...) pour navigation interne."""
     try:
@@ -993,11 +911,7 @@ def main() -> None:
     # 1. Initialisation (config, CSS, settings, validation)
     settings, DEFAULT_DB, cfg_warnings, cfg_errors = _initialize_app()
 
-    # 1b. Callback OAuth Xbox (doit être traité AVANT le wizard guard,
-    #     car le redirect ?code=XXX peut arriver pendant le setup)
-    _handle_xbox_oauth_callback()
-
-    # 1c. Wizard de configuration initiale si config incomplète
+    # 1b. Wizard de configuration initiale si config incomplète
     from src.ui.pages.setup_wizard_logic import get_setup_status
 
     setup_status = get_setup_status()

@@ -40,6 +40,7 @@ class MatchProcessingHelpersMixin:
             "skill": 0,
             "aliases": 0,
             "api_calls_saved": 0,
+            "weapon_kills": 0,
             "error": None,
         }
 
