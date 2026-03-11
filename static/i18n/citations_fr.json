@@ -379,19 +379,29 @@
     "description": "Éliminez des Spartans avec le Crémateur.",
     "category": "Arme"
   },
+  "sentinel_beam_mastery": {
+    "name": "Maîtrise du Rayon de Sentinelle",
+    "description": "Éliminez des Spartans avec le Rayon de Sentinelle.",
+    "category": "Arme"
+  },
   "human_weapons_mastery": {
     "name": "Maîtrise des armes UNSC",
     "description": "Obtenez toutes les citations de maîtrise d'armes UNSC.",
     "category": "Arme"
   },
-  "covenant_weapons_mastery": {
-    "name": "Maîtrise des armes Covenant",
-    "description": "Obtenez toutes les citations de maîtrise d'armes Covenant.",
+  "paria_weapons_mastery": {
+    "name": "Maîtrise des armes Parias",
+    "description": "Obtenez toutes les citations de maîtrise d'armes Parias.",
     "category": "Arme"
   },
-  "banished_weapons_mastery": {
-    "name": "Maîtrise des armes Bannis",
-    "description": "Obtenez toutes les citations de maîtrise d'armes bannies.",
+  "forerunner_weapons_mastery": {
+    "name": "Maîtrise des armes Forerunner",
+    "description": "Obtenez toutes les citations de maîtrise d'armes Forerunner.",
+    "category": "Arme"
+  },
+  "all_weapons_mastery": {
+    "name": "Maîtrise en armement",
+    "description": "Obtenez toutes les citations d'armement.",
     "category": "Arme"
   }
 }
