@@ -254,8 +254,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     # ── Armes (onglet K/D/A)
     "ts_top_weapons_title": {
-        "fr": "🔫 Armes les plus utilisées",
-        "en": "🔫 Top weapons",
+        "fr": "Outils de destruction",
+        "en": "Tools of destruction",
     },
     # ── Onglets (navigation)
     "ts_tab_kda": {"fr": "⚔️ F/D/A", "en": "⚔️ K/D/A"},

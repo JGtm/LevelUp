@@ -16,6 +16,61 @@ from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG
 
 logger = logging.getLogger(__name__)
 
+# IDs sentinel pour grenades/mêlée (définis dans EXCLUDED_WEAPON_IDS, ici réutilisés)
+_GRENADE_WEAPON_ID = 0
+_MELEE_WEAPON_ID = 1
+# weapon_ids à exclure du film (incomplet) avant réinjection API
+_FILM_EXCLUDED_IDS = {_GRENADE_WEAPON_ID, _MELEE_WEAPON_ID}
+
+
+def _resolve_weapon_name(wid: int, lang: str) -> str:
+    """Résout l'ID arme en nom d'affichage, avec gestion des IDs synthétiques."""
+    from src.analysis._weapon_data import resolve_weapon_display
+
+    if wid == _GRENADE_WEAPON_ID:
+        return t("col_grenade_kills", lang=lang)
+    if wid == _MELEE_WEAPON_ID:
+        return t("col_melee", lang=lang)
+    return resolve_weapon_display(wid, lang=lang) or "?"
+
+
+def _append_grenade_melee(
+    conn: Any, xuid: str, match_ids: list[str], df: pl.DataFrame
+) -> pl.DataFrame:
+    """Ajoute grenade_kills et melee_kills depuis shared.match_participants."""
+    try:
+        xuid_str = str(xuid).strip()
+        if match_ids:
+            placeholders = ", ".join("?" * len(match_ids))
+            row = conn.execute(
+                f"SELECT COALESCE(SUM(grenade_kills), 0), COALESCE(SUM(melee_kills), 0) "
+                f"FROM shared.match_participants "
+                f"WHERE xuid = ? AND match_id IN ({placeholders})",
+                [xuid_str, *match_ids],
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT COALESCE(SUM(grenade_kills), 0), COALESCE(SUM(melee_kills), 0) "
+                "FROM shared.match_participants WHERE xuid = ?",
+                [xuid_str],
+            ).fetchone()
+    except Exception:
+        return df
+
+    if not row:
+        return df
+
+    extras = []
+    if row[0] > 0:
+        extras.append({"weapon_id": _GRENADE_WEAPON_ID, "total_kills": int(row[0])})
+    if row[1] > 0:
+        extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": int(row[1])})
+    if not extras:
+        return df
+    return pl.concat(
+        [df, pl.DataFrame(extras, schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32})]
+    )
+
 
 def render_weapon_kills_table(
     db_path: str,
@@ -47,33 +102,38 @@ def render_weapon_kills_table(
     if df.is_empty():
         return
 
+    # Retirer les entrées film pour grenade/mêlée, réinjecter depuis l'API
+    df = df.filter(~pl.col("weapon_id").is_in(list(_FILM_EXCLUDED_IDS)))
+    try:
+        conn = repo._get_connection()
+        df = _append_grenade_melee(conn, xuid, match_ids, df)
+    except Exception as exc:
+        logger.debug(
+            "render_weapon_kills_table: grenade/melee enrich failed xuid=%s : %s", xuid, exc
+        )
+
     header = title or t("section_weapon_stats")
     st.markdown(f"##### {html.escape(header)}")
 
-    from src.analysis._weapon_data import resolve_weapon_display
     from src.ui.i18n import get_lang
 
     lang = get_lang()
-    # Construire les lignes de données
     rows: list[dict[str, Any]] = []
     for row in df.iter_rows(named=True):
         rows.append(
             {
-                "name": resolve_weapon_display(row["weapon_id"], lang=lang) or "?",
+                "name": _resolve_weapon_name(int(row["weapon_id"]), lang=lang),
                 "faction": "—",
                 "kills": int(row["total_kills"]),
             }
         )
 
-    # Tri par kills décroissant
     rows.sort(key=lambda r: r["kills"], reverse=True)
 
-    # En-tête HTML
     col_weapon = html.escape(t("col_weapon_name"))
     col_faction = html.escape(t("col_weapon_kills"))
     th = f"<th>{col_weapon}</th><th>Faction</th><th>{col_faction}</th>"
 
-    # Lignes
     body = []
     for r in rows:
         name_esc = html.escape(r["name"])
@@ -99,24 +159,30 @@ def load_weapon_kills_data(
     player_infos: list[tuple[str, str, list[str]]],
     db_path: str,
 ) -> list[tuple[str, pl.DataFrame]]:
-    """Charge les données de kills par arme depuis la DB.
+    """Charge les données de kills par arme depuis la DB, avec grenades/mêlée API.
 
     Args:
         player_infos: Liste de (nom, xuid, match_ids).
         db_path: Chemin DB (shared_matches accessible).
 
     Returns:
-        Liste de (nom, DataFrame top-N armes) pour les joueurs avec données.
+        Liste de (nom, DataFrame top-N armes + grenades/mêlée) pour les joueurs avec données.
     """
     from src.data.repositories import DuckDBRepository
 
     data: list[tuple[str, pl.DataFrame]] = []
     try:
         repo = DuckDBRepository(db_path, xuid="", read_only=True)
+        conn = repo._get_connection()
         for name, xuid, match_ids in player_infos:
             df = repo.load_weapon_kills_aggregated(xuid, match_ids or [])
+            # Retirer les entrées film (incomplètes) pour grenade/mêlée
+            df = df.filter(~pl.col("weapon_id").is_in(list(_FILM_EXCLUDED_IDS)))
+            df = df.head(_TOP_N_WEAPONS)
+            # Réinjecter depuis l'API (fiable)
+            df = _append_grenade_melee(conn, xuid, match_ids or [], df)
             if not df.is_empty():
-                data.append((name, df.head(_TOP_N_WEAPONS)))
+                data.append((name, df))
     except Exception as exc:
         logger.warning("load_weapon_kills_data: %s", exc)
     return data
@@ -142,22 +208,20 @@ def render_weapon_kills_bar_chart(
         st.caption("ℹ Aucune donnée d'armes pour ces matchs")
         return
 
-    from src.analysis._weapon_data import resolve_weapon_display
     from src.ui.i18n import get_lang
 
     lang = get_lang()
-    # Union de toutes les armes (top N par joueur) triées par total global
     all_weapons: dict[int, int] = {}
     for _, df in data:
         for row in df.iter_rows(named=True):
-            wid = row["weapon_id"]
+            wid = int(row["weapon_id"])
             all_weapons[wid] = all_weapons.get(wid, 0) + row["total_kills"]
     weapons_sorted_ids = sorted(all_weapons.keys(), key=lambda w: all_weapons[w])
-    weapons_sorted = [resolve_weapon_display(wid, lang=lang) or "?" for wid in weapons_sorted_ids]
+    weapons_sorted = [_resolve_weapon_name(wid, lang=lang) for wid in weapons_sorted_ids]
 
     fig = go.Figure()
     for idx, (name, df) in enumerate(data):
-        kills_map = {r["weapon_id"]: r["total_kills"] for r in df.iter_rows(named=True)}
+        kills_map = {int(r["weapon_id"]): r["total_kills"] for r in df.iter_rows(named=True)}
         kills = [kills_map.get(wid, 0) for wid in weapons_sorted_ids]
         color = colors_by_name.get(name, OKABE_ITO_PALETTE[idx % len(OKABE_ITO_PALETTE)])
         fig.add_trace(
