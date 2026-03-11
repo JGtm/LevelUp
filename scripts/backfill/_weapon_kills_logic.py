@@ -15,6 +15,25 @@ _DEFAULT_CACHE_DIR = _PROJECT_ROOT / "data" / "investigation" / "chunks"
 # Nombre de matchs traités en parallèle (limité pour ne pas saturer l'API SPNKr)
 _MATCH_CONCURRENCY = 4
 
+# Intervalle d'affichage progression (tous les N matchs)
+_PROGRESS_INTERVAL = 25
+
+
+def _log_weapon_progress(progress: dict, total: int) -> None:
+    """Affiche la progression du backfill weapon_kills tous les _PROGRESS_INTERVAL matchs."""
+    done = progress["done"]
+    if done % _PROGRESS_INTERVAL == 0 or done == total:
+        pct = done * 100 // total if total else 100
+        logger.info(
+            "⚔️  Weapon kills : %d/%d matchs (%d%%) — %d lignes, %d skips, %d erreurs",
+            done,
+            total,
+            pct,
+            progress["rows"],
+            progress["skipped"],
+            progress["errors"],
+        )
+
 
 async def run_weapon_kills_backfill(
     gamertag: str,
@@ -59,6 +78,8 @@ async def run_weapon_kills_backfill(
 
     async with SPNKrAPIClient(tokens=tokens) as api:
         service = WeaponExtractionService(api, shared_conn, cache, write_lock=write_lock)
+        progress = {"done": 0, "rows": 0, "skipped": 0, "errors": 0}
+        total_matches = len(match_ids)
 
         async def _process_one(match_id: str) -> int:
             async with match_sem:
@@ -75,12 +96,17 @@ async def run_weapon_kills_backfill(
                         ).fetchone()
                         if row and row[0]:
                             logger.debug("weapon_kills batch %s : bit posé, skip", match_id[:8])
+                            progress["done"] += 1
+                            progress["skipped"] += 1
+                            _log_weapon_progress(progress, total_matches)
                             return 0
                     except Exception as exc:
                         logger.debug("weapon_kills guard batch %s : %s", match_id[:8], exc)
                 try:
                     summary = await service.process_match(match_id, gamertag, xuid)
                     rows = summary.get("rows_inserted", 0)
+                    progress["done"] += 1
+                    progress["rows"] += rows
                     if rows > 0:
                         logger.debug(
                             "weapon_kills backfill %s : %d lignes (%d/%d kills)",
@@ -96,8 +122,12 @@ async def run_weapon_kills_backfill(
                             "weapon_kills %s : 0 lignes (match sans kills attribuables)",
                             match_id[:8],
                         )
+                    _log_weapon_progress(progress, total_matches)
                     return rows
                 except Exception as exc:
+                    progress["done"] += 1
+                    progress["errors"] += 1
+                    _log_weapon_progress(progress, total_matches)
                     logger.warning(
                         "weapon_kills backfill %s : erreur non fatale : %s", match_id[:8], exc
                     )

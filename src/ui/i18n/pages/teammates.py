@@ -136,6 +136,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Select at least one teammate.",
     },
     # ── Match View ────────────────────────────────────────────────────────────
+    "tm_weapon_kills_chart": {"fr": "Armes les plus utilisées", "en": "Kill Weapons"},
     "tm_killing_spree": {"fr": "Folie meurtrière (max)", "en": "Killing Spree (max)"},
     "tm_headshots": {"fr": "Tirs à la tête", "en": "Headshots"},
     "tm_perfect_kills": {"fr": "Frags parfaits", "en": "Perfect kills"},

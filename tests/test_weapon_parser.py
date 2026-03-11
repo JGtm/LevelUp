@@ -27,7 +27,7 @@ from src.analysis.weapon_parser import (
     WEAPON_ID_MAP,
     WEAPON_IDS_INT,
     WEAPON_INT_TO_NAME,
-    WEAPON_TIMING,
+    WEAPON_TIMING_BY_ID,
     build_frame_estimator,
     build_weapon_timeline,
     correlate_kills_to_weapons,
@@ -91,16 +91,18 @@ class TestConstants:
         assert "Stick" in GRENADE_MEDALS
 
     def test_weapon_timing_present(self):
-        assert "BR75" in WEAPON_TIMING
-        assert "Mk51 Sidekick" in WEAPON_TIMING
-        assert "Gravity Hammer" in WEAPON_TIMING
+        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
+
+        assert WEAPON_NAME_TO_INT["BR75"] in WEAPON_TIMING_BY_ID
+        assert WEAPON_NAME_TO_INT["Mk51 Sidekick"] in WEAPON_TIMING_BY_ID
+        assert WEAPON_NAME_TO_INT["Gravity Hammer"] in WEAPON_TIMING_BY_ID
 
     def test_weapon_timing_tuples(self):
-        for name, (swap, travel) in WEAPON_TIMING.items():
-            assert isinstance(swap, int), f"{name}: swap non entier"
-            assert isinstance(travel, int), f"{name}: travel non entier"
-            assert swap > 0, f"{name}: swap <= 0"
-            assert travel > 0, f"{name}: travel <= 0"
+        for wid, (swap, travel) in WEAPON_TIMING_BY_ID.items():
+            assert isinstance(swap, int), f"{wid}: swap non entier"
+            assert isinstance(travel, int), f"{wid}: travel non entier"
+            assert swap > 0, f"{wid}: swap <= 0"
+            assert travel > 0, f"{wid}: travel <= 0"
 
     def test_formula_a_pattern_correct(self):
         assert bytes.fromhex("200002") == FORMULA_A_PATTERN
@@ -280,16 +282,20 @@ class TestCorrelateKillsToWeapons:
         assert correlate_kills_to_weapons([], []) == []
 
     def test_melee_kill_excluded(self):
+        from src.analysis._weapon_data import MELEE_WEAPON_ID
+
         kills = [{"time_ms": 5000, "is_melee": True, "is_grenade": False}]
         result = correlate_kills_to_weapons(kills, [])
-        assert result[0]["weapon_name"] == "MELEE"
+        assert result[0]["weapon_id"] == MELEE_WEAPON_ID
         assert result[0]["matched_fire_event"] is None
         assert result[0]["confidence"] == "none"
 
     def test_grenade_kill_excluded(self):
+        from src.analysis._weapon_data import GRENADE_WEAPON_ID
+
         kills = [{"time_ms": 5000, "is_melee": False, "is_grenade": True}]
         result = correlate_kills_to_weapons(kills, [])
-        assert result[0]["weapon_name"] == "GRENADE"
+        assert result[0]["weapon_id"] == GRENADE_WEAPON_ID
         assert result[0]["confidence"] == "none"
 
     def test_kill_matches_closest_fire_event(self, br75_bytes):
@@ -309,7 +315,8 @@ class TestCorrelateKillsToWeapons:
             },
         ]
         result = correlate_kills_to_weapons(kills, fire_events)
-        assert result[0]["weapon_name"] == "BR75"
+        br75_int = int.from_bytes(br75_bytes, "big")
+        assert result[0]["weapon_id"] == br75_int
         assert result[0]["delta_ms"] == 200  # 5000 - 4800
 
     def test_kill_no_fire_event_returns_not_found(self, br75_bytes):
@@ -323,7 +330,7 @@ class TestCorrelateKillsToWeapons:
             },
         ]
         result = correlate_kills_to_weapons(kills, fire_events)
-        assert result[0]["weapon_name"] == "NON TROUVE"
+        assert result[0]["weapon_id"] is None
         assert result[0]["delta_ms"] is None
         assert result[0]["confidence"] == "none"
 
@@ -370,7 +377,7 @@ class TestCorrelateKillsToWeapons:
             },
         ]
         result = correlate_kills_to_weapons(kills, fire_events)
-        assert result[0]["weapon_name"] == "NON TROUVE"
+        assert result[0]["weapon_id"] is None
 
     def test_multiple_kills_independent(self, br75_bytes):
         sidekick_bytes = bytes.fromhex("f408190f42c9679f")
@@ -393,8 +400,10 @@ class TestCorrelateKillsToWeapons:
             },
         ]
         result = correlate_kills_to_weapons(kills, fire_events)
-        assert result[0]["weapon_name"] == "BR75"
-        assert result[1]["weapon_name"] == "Mk51 Sidekick"
+        br75_int = int.from_bytes(br75_bytes, "big")
+        sidekick_int = int.from_bytes(sidekick_bytes, "big")
+        assert result[0]["weapon_id"] == br75_int
+        assert result[1]["weapon_id"] == sidekick_int
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -411,59 +420,39 @@ class TestCountKillsByApiWeapon:
         assert count_kills_by_api_weapon([]) == Counter()
 
     def test_melee_counted_as_api_id_1(self):
-        correlated = [{"is_melee": True, "is_grenade": False, "matched_fire_event": None}]
+        correlated = [{"weapon_id": MELEE_API_ID}]
         counts = count_kills_by_api_weapon(correlated)
         assert counts[MELEE_API_ID] == 1
 
     def test_grenade_counted_as_api_id_0(self):
-        correlated = [{"is_melee": False, "is_grenade": True, "matched_fire_event": None}]
+        correlated = [{"weapon_id": GRENADE_API_ID}]
         counts = count_kills_by_api_weapon(correlated)
         assert counts[GRENADE_API_ID] == 1
 
     def test_weapon_mapped_to_film_uint64(self, br75_bytes):
         """BR75 → uint64 big-endian de ses 8 bytes film."""
         br75_uint64 = int.from_bytes(br75_bytes, "big")
-        correlated = [
-            {
-                "is_melee": False,
-                "is_grenade": False,
-                "matched_fire_event": {"weapon_bytes": br75_bytes},
-            },
-        ]
+        correlated = [{"weapon_id": br75_uint64}]
         counts = count_kills_by_api_weapon(correlated)
         assert counts[br75_uint64] == 1
 
     def test_unknown_weapon_ignored(self):
-        correlated = [
-            {
-                "is_melee": False,
-                "is_grenade": False,
-                "matched_fire_event": {"weapon_bytes": b"\x00" * 8},
-            },
-        ]
+        correlated = [{"weapon_id": None}]
         counts = count_kills_by_api_weapon(correlated)
         assert len(counts) == 0
 
     def test_no_fire_event_ignored(self):
-        correlated = [{"is_melee": False, "is_grenade": False, "matched_fire_event": None}]
+        correlated = [{"weapon_id": None}]
         assert len(count_kills_by_api_weapon(correlated)) == 0
 
     def test_mixed_kills_aggregation(self, br75_bytes):
         br75_uint64 = int.from_bytes(br75_bytes, "big")
         correlated = [
-            {"is_melee": True, "is_grenade": False, "matched_fire_event": None},
-            {"is_melee": False, "is_grenade": True, "matched_fire_event": None},
-            {
-                "is_melee": False,
-                "is_grenade": False,
-                "matched_fire_event": {"weapon_bytes": br75_bytes},
-            },
-            {
-                "is_melee": False,
-                "is_grenade": False,
-                "matched_fire_event": {"weapon_bytes": br75_bytes},
-            },
-            {"is_melee": False, "is_grenade": False, "matched_fire_event": None},
+            {"weapon_id": MELEE_API_ID},
+            {"weapon_id": GRENADE_API_ID},
+            {"weapon_id": br75_uint64},
+            {"weapon_id": br75_uint64},
+            {"weapon_id": None},
         ]
         counts = count_kills_by_api_weapon(correlated)
         assert counts[MELEE_API_ID] == 1
@@ -509,31 +498,39 @@ class TestFindChunkAtTime:
 class TestGetConfidence:
     """Tests de _get_confidence (import via module interne)."""
 
-    def _conf(self, weapon: str, delta: int | None) -> str:
+    def _conf(self, weapon_id: int | None, delta: int | None) -> str:
         from src.analysis.weapon_parser import _get_confidence
 
-        return _get_confidence(weapon, delta)
+        return _get_confidence(weapon_id, delta)
 
-    def test_none_delta_returns_none(self):
-        assert self._conf("BR75", None) == "none"
+    @pytest.fixture()
+    def br75_id(self):
+        return int.from_bytes(bytes.fromhex("2b1824d542c9679f"), "big")
 
-    def test_zone_a_high(self):
+    @pytest.fixture()
+    def hw_id(self):
+        return int.from_bytes(bytes.fromhex("2ac9c2ff42c9679f"), "big")
+
+    def test_none_delta_returns_none(self, br75_id):
+        assert self._conf(br75_id, None) == "none"
+
+    def test_zone_a_high(self, br75_id):
         """delta < swap_ms(BR75=650) → high."""
-        assert self._conf("BR75", 300) == "high"
+        assert self._conf(br75_id, 300) == "high"
 
-    def test_zone_b_medium(self):
+    def test_zone_b_medium(self, hw_id):
         """swap_ms ≤ delta ≤ travel_max pour Heatwave (650/2000) → medium."""
-        assert self._conf("Heatwave", 1000) == "medium"
+        assert self._conf(hw_id, 1000) == "medium"
 
-    def test_zone_c_low_delayed_damage(self):
+    def test_zone_c_low_delayed_damage(self, hw_id):
         """delta > travel_max(Heatwave=2000) → low."""
-        assert self._conf("Heatwave", 3000) == "low"
+        assert self._conf(hw_id, 3000) == "low"
 
     def test_unknown_weapon_uses_defaults(self):
         """Arme inconnue → defaults (swap=650, travel=2000)."""
-        assert self._conf("ArmeInconnue", 100) == "high"
-        assert self._conf("ArmeInconnue", 1500) == "medium"
-        assert self._conf("ArmeInconnue", 3000) == "low"
+        assert self._conf(999999, 100) == "high"
+        assert self._conf(999999, 1500) == "medium"
+        assert self._conf(999999, 3000) == "low"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -560,7 +557,8 @@ class TestZoneBW2Upgrade:
             {"timestamp_ms": 5300, "weapon_name": "BR75", "weapon_bytes": self._br, "fire_seq": 2},
         ]
         result = correlate_kills_to_weapons(kills, fire_events)
-        assert result[0]["weapon_name"] == "BR75"
+        br75_int = int.from_bytes(self._br, "big")
+        assert result[0]["weapon_id"] == br75_int
         assert result[0]["confidence"] == "high"
 
     def test_medium_stays_medium_without_w2(self):
@@ -575,7 +573,8 @@ class TestZoneBW2Upgrade:
             },
         ]
         result = correlate_kills_to_weapons(kills, fire_events)
-        assert result[0]["weapon_name"] == "Heatwave"
+        hw_int = int.from_bytes(self._hw, "big")
+        assert result[0]["weapon_id"] == hw_int
         assert result[0]["confidence"] == "medium"
 
     def test_w2_outside_window_ignored(self):
@@ -592,7 +591,8 @@ class TestZoneBW2Upgrade:
             {"timestamp_ms": 5800, "weapon_name": "BR75", "weapon_bytes": self._br, "fire_seq": 2},
         ]
         result = correlate_kills_to_weapons(kills, fire_events)
-        assert result[0]["weapon_name"] == "Heatwave"
+        hw_int = int.from_bytes(self._hw, "big")
+        assert result[0]["weapon_id"] == hw_int
         assert result[0]["confidence"] == "medium"
 
 

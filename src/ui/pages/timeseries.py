@@ -138,14 +138,17 @@ def _render_weapon_kills_chart(
     if df_w.is_empty():
         return
 
+    from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS, resolve_weapon_display
+
     weapons_data = [
         {
-            "weapon_name": row["weapon_name"],
+            "weapon_name": resolve_weapon_display(row["weapon_id"], lang) or "?",
             "total_kills": row["total_kills"],
             "headshot_rate": 0.0,
             "accuracy": 0.0,
         }
         for row in df_w.iter_rows(named=True)
+        if row["weapon_id"] not in EXCLUDED_WEAPON_IDS
     ]
 
     st.divider()

@@ -29,30 +29,33 @@ def _build_weapon_kills_df(db_path: str, match_id: str, xuid: str, lang: str) ->
         return pl.DataFrame(schema={"weapon_name": pl.Utf8, "kills": pl.Int32})
 
     xuid_norm = str(xuid).strip()
-    from src.analysis._weapon_data import WEAPON_FUSION_MAP
-    from src.ui.i18n.weapons import translate_weapon_name
+    from src.analysis._weapon_data import (
+        EXCLUDED_WEAPON_IDS,
+        WEAPON_FUSION_MAP_ID,
+        resolve_weapon_display,
+    )
 
     filtered = (
         df.filter(pl.col("xuid") == xuid_norm)
         .filter(pl.col("kills") > 0)
-        .filter(~pl.col("weapon_name").is_in(["MELEE", "GRENADE", "UNKNOWN", "NON TROUVE"]))
+        .filter(~pl.col("weapon_id").is_in(list(EXCLUDED_WEAPON_IDS)))
     )
     if filtered.is_empty():
         return pl.DataFrame(schema={"weapon_name": pl.Utf8, "kills": pl.Int32})
 
-    # Fusion + traduction
+    # Fusion variantes → canonical weapon_id
     fused = (
-        filtered.with_columns(pl.col("weapon_name").replace(WEAPON_FUSION_MAP).alias("weapon_name"))
-        .group_by("weapon_name")
+        filtered.with_columns(pl.col("weapon_id").replace(WEAPON_FUSION_MAP_ID).alias("weapon_id"))
+        .group_by("weapon_id")
         .agg(pl.col("kills").sum())
     )
-    # Traduction vers la langue courante
-    translated = fused.with_columns(
-        pl.col("weapon_name")
-        .map_elements(lambda n: translate_weapon_name(n, lang), return_dtype=pl.Utf8)
+    # Résolution weapon_id → nom d'affichage
+    resolved = fused.with_columns(
+        pl.col("weapon_id")
+        .map_elements(lambda wid: resolve_weapon_display(wid, lang) or "?", return_dtype=pl.Utf8)
         .alias("weapon_name")
-    )
-    return translated.sort("kills", descending=True)
+    ).select("weapon_name", "kills")
+    return resolved.sort("kills", descending=True)
 
 
 def _render_weapon_pie(df: pl.DataFrame, colors: dict) -> None:
