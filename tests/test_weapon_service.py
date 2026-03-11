@@ -370,20 +370,31 @@ class TestReconcileApiAggregates:
         result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
         assert all(r["confidence"] == "high" for r in result)
 
-    def test_step4a_demotes_excess_high_kills(self, conn):
-        """Plus de HIGH que api_weapon_kills → dégrader les moins certains (grand delta_ms)."""
-        # kill_rows = 5 weapon HIGH, grenade_kills=2 → api_weapon=max(5-2-0,0)=3 → demote 2
+    def test_step4b_handles_grenade_deficit_before_step4a(self, conn):
+        """Avec grenade_kills=2 API et 0 détectés, step4b injecte 2 GRENADE avant step4a.
+
+        Avant step4b, on aurait demoted 2 kills en MEDIUM. Maintenant, step4b
+        les reclassifie correctement en GRENADE — résultat plus précis.
+        """
+        from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS, GRENADE_WEAPON_ID
+
         conn.execute("INSERT INTO match_participants VALUES ('m1','x1',2,0)")
         rows = self._weapon_rows(5, "high", base_delta=100)
         result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
-        high_count = sum(1 for r in result if r["confidence"] == "high")
-        medium_count = sum(1 for r in result if r["confidence"] == "medium")
-        assert high_count == 3
-        assert medium_count == 2
+        grenade_count = sum(1 for r in result if r["weapon_id"] == GRENADE_WEAPON_ID)
+        weapon_high = sum(
+            1
+            for r in result
+            if r["confidence"] == "high"
+            and r["weapon_id"] is not None
+            and r["weapon_id"] not in EXCLUDED_WEAPON_IDS
+        )
+        assert grenade_count == 2  # step4b a injecté exactement 2 GRENADE
+        assert weapon_high == 3  # api_weapon_kills = max(5-2-0,0) = 3
 
-    def test_step4a_demotes_highest_delta_first(self, conn):
-        """Step 4a : les kills avec le plus grand delta_ms sont dégradés en premier."""
-        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
+    def test_step4b_handles_grenade_largest_delta_first(self, conn):
+        """Step4b prend les kills avec le plus grand delta_ms en premier (moins certains)."""
+        from src.analysis._weapon_data import GRENADE_WEAPON_ID, WEAPON_NAME_TO_INT
 
         br75_id = WEAPON_NAME_TO_INT["BR75"]
         conn.execute("INSERT INTO match_participants VALUES ('m1','x1',1,0)")
@@ -410,11 +421,11 @@ class TestReconcileApiAggregates:
                 "delayed_damage": False,
             },
         ]
-        # grenade_kills=1, melee_kills=0 → api_weapon=max(3-1-0,0)=2 → demote 1 (le delta=999)
+        # grenade_kills=1 → step4b injecte 1 GRENADE depuis le kill avec delta=999
         result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
-        assert result[2]["confidence"] == "medium"  # delta=999, le plus grand
-        assert result[0]["confidence"] == "high"
-        assert result[1]["confidence"] == "high"
+        assert result[2]["weapon_id"] == GRENADE_WEAPON_ID  # delta=999, le plus incertain
+        assert result[0]["weapon_id"] == br75_id
+        assert result[1]["weapon_id"] == br75_id
 
     def test_step4c_promotes_medium_to_high(self, conn):
         """Moins de HIGH que api_weapon_kills → promouvoir les MEDIUM (petit delta en premier)."""
@@ -950,3 +961,229 @@ class TestRunWeaponKillsBackfillGuard:
 
         assert result == 5
         mock_service.process_match.assert_awaited_once()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests directs _step4a_demote / _step4c_promote
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestStep4aStep4cHelpers:
+    """Tests unitaires des helpers _step4a_demote et _step4c_promote."""
+
+    @pytest.fixture(autouse=True)
+    def _imports(self):
+        from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS, WEAPON_NAME_TO_INT
+        from src.data.services.weapon_extraction_service import _step4a_demote, _step4c_promote
+
+        self.step4a = _step4a_demote
+        self.step4c = _step4c_promote
+        self.EXCLUDED = EXCLUDED_WEAPON_IDS
+        self.BR75 = WEAPON_NAME_TO_INT["BR75"]
+        self.MA40 = WEAPON_NAME_TO_INT["MA40 AR"]
+
+    def _weapon_high_rows(self, n, base_delta=100):
+        return [
+            {
+                "weapon_id": self.BR75,
+                "confidence": "high",
+                "delta_ms": base_delta * (i + 1),
+                "swap_detected": False,
+            }
+            for i in range(n)
+        ]
+
+    def test_step4a_noop_when_exact(self):
+        rows = self._weapon_high_rows(3)
+        fired = self.step4a(rows, 3, "mX", "xX")
+        assert fired is False
+        assert all(r["confidence"] == "high" for r in rows)
+
+    def test_step4a_demotes_excess_and_returns_true(self):
+        rows = self._weapon_high_rows(5, base_delta=100)  # delta: 100,200,300,400,500
+        fired = self.step4a(rows, 3, "mX", "xX")
+        assert fired is True
+        high_c = sum(1 for r in rows if r["confidence"] == "high")
+        medium_c = sum(1 for r in rows if r["confidence"] == "medium")
+        assert high_c == 3
+        assert medium_c == 2
+
+    def test_step4a_demotes_largest_delta_first(self):
+        rows = [
+            {"weapon_id": self.BR75, "confidence": "high", "delta_ms": 100, "swap_detected": False},
+            {"weapon_id": self.BR75, "confidence": "high", "delta_ms": 999, "swap_detected": False},
+            {"weapon_id": self.BR75, "confidence": "high", "delta_ms": 50, "swap_detected": False},
+        ]
+        self.step4a(rows, 2, "mX", "xX")
+        assert rows[1]["confidence"] == "medium"  # delta=999 dégradé en premier
+        assert rows[0]["confidence"] == "high"
+        assert rows[2]["confidence"] == "high"
+
+    def test_step4c_noop_when_exact(self):
+        rows = [
+            {"weapon_id": self.BR75, "confidence": "high", "delta_ms": 100, "swap_detected": False},
+            {"weapon_id": self.MA40, "confidence": "high", "delta_ms": 200, "swap_detected": False},
+        ]
+        self.step4c(rows, 2, self.EXCLUDED, "mX", "xX")
+        assert all(r["confidence"] == "high" for r in rows)
+
+    def test_step4c_promotes_medium_smallest_delta_first(self):
+        rows = [
+            {"weapon_id": self.BR75, "confidence": "high", "delta_ms": 100, "swap_detected": False},
+            {
+                "weapon_id": self.MA40,
+                "confidence": "medium",
+                "delta_ms": 700,
+                "swap_detected": False,
+            },
+            {
+                "weapon_id": self.BR75,
+                "confidence": "medium",
+                "delta_ms": 300,
+                "swap_detected": False,
+            },
+        ]
+        self.step4c(rows, 3, self.EXCLUDED, "mX", "xX")
+        high_ids = [r["weapon_id"] for r in rows if r["confidence"] == "high"]
+        assert self.BR75 in high_ids  # delta=300, promu en premier
+        assert len(high_ids) == 3
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests _inject_missing_sentinels (Step 4b — fix Chocoboflor)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestInjectMissingSentinels:
+    """Vérifie la reclassification melee/grenade quand les médailles sont absentes."""
+
+    @pytest.fixture(autouse=True)
+    def _imports(self):
+        from src.analysis._weapon_data import (
+            EXCLUDED_WEAPON_IDS,
+            GRENADE_WEAPON_ID,
+            MELEE_WEAPON_ID,
+            WEAPON_NAME_TO_INT,
+        )
+        from src.data.services.weapon_extraction_service import _inject_missing_sentinels
+
+        self.fn = _inject_missing_sentinels
+        self.MELEE = MELEE_WEAPON_ID
+        self.GRENADE = GRENADE_WEAPON_ID
+        self.EXCLUDED = EXCLUDED_WEAPON_IDS
+        self.BR75 = WEAPON_NAME_TO_INT["BR75"]
+        self.SIDEKICK = WEAPON_NAME_TO_INT["Mk51 Sidekick"]
+        self.MA40 = WEAPON_NAME_TO_INT["MA40 AR"]
+
+    def _row(self, weapon_id, conf="high", delta=200, swap=False):
+        return {
+            "weapon_id": weapon_id,
+            "confidence": conf,
+            "delta_ms": delta,
+            "swap_detected": swap,
+            "delayed_damage": False,
+        }
+
+    def test_no_deficit_is_noop(self):
+        """Aucun déficit → kill_rows non modifié."""
+        rows = [self._row(self.MELEE), self._row(self.BR75)]
+        snapshot = [dict(r) for r in rows]
+        self.fn(rows, 1, 0, self.MELEE, self.GRENADE, self.EXCLUDED, "mABC", "xABC")
+        assert rows == snapshot
+
+    def test_melee_deficit_reclassifies_least_certain(self):
+        """2 melee_kills API, 0 détectés → 2 kills weapon reclassifiés en MELEE."""
+        rows = [
+            self._row(self.SIDEKICK, conf="high", delta=500),
+            self._row(self.MA40, conf="high", delta=200),
+            self._row(self.BR75, conf="high", delta=100),
+        ]
+        self.fn(rows, 2, 0, self.MELEE, self.GRENADE, self.EXCLUDED, "m1234567", "x1234567")
+        melee_count = sum(1 for r in rows if r["weapon_id"] == self.MELEE)
+        assert melee_count == 2
+        # Les 2 kills avec les plus grands delta sont reclassifiés (500, 200) → MELEE
+        melee_rows = [r for r in rows if r["weapon_id"] == self.MELEE]
+        assert all(r["confidence"] == "high" for r in melee_rows)
+        assert all(r["swap_detected"] is False for r in melee_rows)
+
+    def test_grenade_deficit_reclassifies_least_certain(self):
+        """1 grenade_kill API, 0 détectés → 1 kill reclassifié en GRENADE."""
+        rows = [
+            self._row(self.SIDEKICK, conf="high", delta=800),
+            self._row(self.MA40, conf="high", delta=150),
+        ]
+        self.fn(rows, 0, 1, self.MELEE, self.GRENADE, self.EXCLUDED, "m1234567", "x1234567")
+        grenade_count = sum(1 for r in rows if r["weapon_id"] == self.GRENADE)
+        assert grenade_count == 1
+        # Le plus grand delta (800) reclassifié
+        assert rows[0]["weapon_id"] == self.GRENADE
+
+    def test_chocoboflor_scenario(self):
+        """Reproduce le bug Chocoboflor : 12 kills weapon, api_melee=2, api_grenade=1."""
+        # Tous les kills étaient weapon HIGH, sans aucune sentinelle détectée
+        rows = [
+            self._row(self.SIDEKICK, conf="high", delta=d)
+            for d in [100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650]
+        ]
+        self.fn(rows, 2, 1, self.MELEE, self.GRENADE, self.EXCLUDED, "20fd2c23", "25354691")
+        melee_count = sum(1 for r in rows if r["weapon_id"] == self.MELEE)
+        grenade_count = sum(1 for r in rows if r["weapon_id"] == self.GRENADE)
+        weapon_count = sum(1 for r in rows if r["weapon_id"] == self.SIDEKICK)
+        assert melee_count == 2
+        assert grenade_count == 1
+        assert weapon_count == 9
+
+    def test_priority_low_before_none_before_medium_before_high(self):
+        """Ordre de reclassification : low < none < medium < high."""
+        rows = [
+            self._row(self.BR75, conf="high", delta=100),
+            self._row(self.MA40, conf="medium", delta=100),
+            self._row(self.SIDEKICK, conf="none", delta=100),
+            self._row(self.BR75, conf="low", delta=100),
+        ]
+        # 1 melee déficit → doit prendre le "low" en premier
+        self.fn(rows, 1, 0, self.MELEE, self.GRENADE, self.EXCLUDED, "mX", "xX")
+        assert rows[3]["weapon_id"] == self.MELEE  # la ligne "low"
+        assert rows[0]["weapon_id"] == self.BR75  # "high" → non touché
+        assert rows[1]["weapon_id"] == self.MA40  # "medium" → non touché
+        assert rows[2]["weapon_id"] == self.SIDEKICK  # "none" → non touché (low pris en premier)
+
+    def test_high_swap_treated_before_high_no_swap(self):
+        """high+swap est reclassifié avant high sans swap (rank équivalent à medium)."""
+        rows = [
+            self._row(self.BR75, conf="high", delta=100, swap=False),
+            self._row(self.MA40, conf="high", delta=100, swap=True),
+        ]
+        # 1 melee déficit → doit prendre le high+swap en premier
+        self.fn(rows, 1, 0, self.MELEE, self.GRENADE, self.EXCLUDED, "mX", "xX")
+        assert rows[1]["weapon_id"] == self.MELEE  # high+swap reclassifié
+        assert rows[0]["weapon_id"] == self.BR75  # high non touché
+
+    def test_step4b_via_reconcile_flow(self):
+        """Intégration : _reconcile_api_aggregates appelle correctement step4b."""
+        import duckdb
+
+        conn = duckdb.connect(":memory:")
+        conn.execute(
+            "CREATE TABLE match_participants "
+            "(match_id VARCHAR, xuid VARCHAR, grenade_kills INTEGER, melee_kills INTEGER)"
+        )
+        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',1,2)")
+        # 5 weapon kills tous HIGH, aucune sentinelle détectée
+        rows = [
+            self._row(wid, conf="high", delta=d)
+            for wid, d in [
+                (self.SIDEKICK, 673),
+                (self.SIDEKICK, 557),
+                (self.MA40, 300),
+                (self.MA40, 200),
+                (self.SIDEKICK, 288),
+            ]
+        ]
+        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
+        melee_count = sum(1 for r in result if r["weapon_id"] == self.MELEE)
+        grenade_count = sum(1 for r in result if r["weapon_id"] == self.GRENADE)
+        weapon_count = sum(1 for r in result if r["weapon_id"] not in self.EXCLUDED)
+        assert melee_count == 2
+        assert grenade_count == 1
+        assert weapon_count == 2  # api_weapon_kills = max(5-1-2,0) = 2
