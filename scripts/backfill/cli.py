@@ -481,6 +481,26 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Force le backfill PVE même si déjà tenté (MatchBits.PVE_STATS ignoré)",
     )
 
+    # ── Weapon kills (v5.5) ────────────────────────────────────────────────
+    parser.add_argument(
+        "--weapons",
+        action="store_true",
+        help="Backfill kills par arme → shared.weapon_kills (v5.5)",
+    )
+    parser.add_argument(
+        "--force-weapons",
+        action="store_true",
+        help="Force le backfill armes même si MatchBits.WEAPON_KILLS déjà posé",
+    )
+    parser.add_argument(
+        "--force-no-film",
+        action="store_true",
+        help=(
+            "Re-tenter les matchs marqués WEAPON_KILLS_NO_FILM (film 404/expiré). "
+            "Implique --weapons. Utile si les films Halo redeviennent disponibles."
+        ),
+    )
+
     # ── LUSR / CSR — LevelUp Skill Rank (v5.2) ────────────────────────────
     parser.add_argument(
         "--lusr",

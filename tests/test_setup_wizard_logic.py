@@ -12,7 +12,8 @@ from src.ui.pages.setup_wizard_logic import (
     get_setup_status,
     get_sync_command,
     get_token_script_path,
-    validate_azure_credentials,
+    save_dc_credentials,
+    validate_dc_credentials,
     validate_gamertag,
 )
 from src.utils.auth import AuthStatus
@@ -27,7 +28,7 @@ class TestSetupStatus:
 
     def test_needs_setup_no_credentials(self) -> None:
         status = SetupStatus(
-            auth=AuthStatus(has_client_id=False, has_client_secret=False),
+            auth=AuthStatus(has_client_id=False),
             has_players=True,
             player_count=1,
         )
@@ -35,7 +36,7 @@ class TestSetupStatus:
 
     def test_needs_setup_no_players(self) -> None:
         status = SetupStatus(
-            auth=AuthStatus(has_client_id=True, has_client_secret=True),
+            auth=AuthStatus(has_client_id=True),
             has_players=False,
             player_count=0,
         )
@@ -43,7 +44,7 @@ class TestSetupStatus:
 
     def test_no_setup_needed(self) -> None:
         status = SetupStatus(
-            auth=AuthStatus(has_client_id=True, has_client_secret=True),
+            auth=AuthStatus(has_client_id=True),
             has_players=True,
             player_count=1,
         )
@@ -51,7 +52,7 @@ class TestSetupStatus:
 
     def test_current_step_1(self) -> None:
         status = SetupStatus(
-            auth=AuthStatus(has_client_id=False, has_client_secret=False),
+            auth=AuthStatus(has_client_id=False),
             has_players=False,
             player_count=0,
         )
@@ -61,7 +62,6 @@ class TestSetupStatus:
         status = SetupStatus(
             auth=AuthStatus(
                 has_client_id=True,
-                has_client_secret=True,
                 has_refresh_token=False,
             ),
             has_players=False,
@@ -73,7 +73,6 @@ class TestSetupStatus:
         status = SetupStatus(
             auth=AuthStatus(
                 has_client_id=True,
-                has_client_secret=True,
                 has_refresh_token=True,
             ),
             has_players=False,
@@ -85,52 +84,12 @@ class TestSetupStatus:
         status = SetupStatus(
             auth=AuthStatus(
                 has_client_id=True,
-                has_client_secret=True,
                 has_refresh_token=True,
             ),
             has_players=True,
             player_count=2,
         )
         assert status.current_step == 0
-
-
-# =============================================================================
-# validate_azure_credentials
-# =============================================================================
-
-
-class TestValidateAzureCredentials:
-    """Tests de validate_azure_credentials()."""
-
-    def test_valid_credentials(self) -> None:
-        errors = validate_azure_credentials(
-            "12345678-1234-1234-1234-123456789abc",
-            "a_long_secret_value_here_123",
-        )
-        assert errors == []
-
-    def test_empty_client_id(self) -> None:
-        errors = validate_azure_credentials("", "secret")
-        assert any("Client ID" in e for e in errors)
-
-    def test_invalid_uuid_format(self) -> None:
-        errors = validate_azure_credentials("not-a-uuid", "secret_long_enough")
-        assert any("UUID" in e for e in errors)
-
-    def test_empty_client_secret(self) -> None:
-        errors = validate_azure_credentials("12345678-1234-1234-1234-123456789abc", "")
-        assert any("Client Secret" in e and "requis" in e for e in errors)
-
-    def test_short_client_secret(self) -> None:
-        errors = validate_azure_credentials("12345678-1234-1234-1234-123456789abc", "short")
-        assert any("trop court" in e for e in errors)
-
-    def test_whitespace_trimmed(self) -> None:
-        errors = validate_azure_credentials(
-            "  12345678-1234-1234-1234-123456789abc  ",
-            "  a_long_secret_value_here_123  ",
-        )
-        assert errors == []
 
 
 # =============================================================================
@@ -293,7 +252,6 @@ class TestGetSetupStatus:
         ):
             mock_auth.return_value = AuthStatus(
                 has_client_id=True,
-                has_client_secret=True,
             )
             status = get_setup_status()
 
@@ -313,7 +271,6 @@ class TestGetSetupStatus:
         ):
             mock_auth.return_value = AuthStatus(
                 has_client_id=True,
-                has_client_secret=True,
             )
             status = get_setup_status()
 
@@ -334,7 +291,6 @@ class TestGetSetupStatus:
         ):
             mock_auth.return_value = AuthStatus(
                 has_client_id=True,
-                has_client_secret=True,
             )
             status = get_setup_status()
 
@@ -354,7 +310,6 @@ class TestGetSetupStatus:
         ):
             mock_auth.return_value = AuthStatus(
                 has_client_id=True,
-                has_client_secret=True,
             )
             status = get_setup_status()
 
@@ -435,28 +390,67 @@ class TestCreatePlayerProfileEdgeCases:
 # =============================================================================
 
 
-class TestSaveAzureCredentials:
-    """Tests de save_azure_credentials."""
+# =============================================================================
+# validate_dc_credentials
+# =============================================================================
+
+
+class TestValidateDcCredentials:
+    """Tests de validate_dc_credentials() — public client, pas de secret."""
+
+    def test_client_id_valide(self) -> None:
+        errors = validate_dc_credentials("12345678-1234-1234-1234-123456789abc")
+        assert errors == []
+
+    def test_client_id_vide(self) -> None:
+        errors = validate_dc_credentials("")
+        assert any("requis" in e or "Client ID" in e for e in errors)
+
+    def test_client_id_format_invalide(self) -> None:
+        errors = validate_dc_credentials("not-a-uuid")
+        assert any("UUID" in e for e in errors)
+
+    def test_whitespace_trimme(self) -> None:
+        """Espaces autour d'un UUID valide → aucune erreur."""
+        errors = validate_dc_credentials("  12345678-1234-1234-1234-123456789abc  ")
+        assert errors == []
+
+    def test_pas_de_secret_requis(self) -> None:
+        """validate_dc_credentials ne demande qu'un seul argument (pas de secret)."""
+        import inspect
+
+        sig = inspect.signature(validate_dc_credentials)
+        assert len(sig.parameters) == 1
+
+
+# =============================================================================
+# save_dc_credentials
+# =============================================================================
+
+
+class TestSaveDcCredentials:
+    """Tests de save_dc_credentials() — sauvegarde client_id sans secret."""
 
     def test_updates_environ(self, tmp_path: Path) -> None:
-        """Vérifie que os.environ est mis à jour après sauvegarde."""
+        """Vérifie que os.environ est mis à jour et write_env_local appelé."""
         import os
 
-        env_file = tmp_path / ".env.local"
+        with patch("src.ui.pages.setup_wizard_logic.write_env_local") as mock_write:
+            save_dc_credentials("  12345678-1234-1234-1234-123456789abc  ")
 
-        with (
-            patch("src.utils.auth._env_local_path", return_value=env_file),
-            patch("src.ui.pages.setup_wizard_logic.write_env_local") as _mock_write,
-        ):
-            from src.ui.pages.setup_wizard_logic import save_azure_credentials
-
-            save_azure_credentials(
-                "  12345678-1234-1234-1234-123456789abc  ",
-                "  my_secret  ",
-                "  https://localhost  ",
-            )
-
-        # Vérifie que les valeurs sont trimées dans os.environ
         assert os.environ.get("SPNKR_AZURE_CLIENT_ID") == "12345678-1234-1234-1234-123456789abc"
-        assert os.environ.get("SPNKR_AZURE_CLIENT_SECRET") == "my_secret"
-        assert os.environ.get("SPNKR_AZURE_REDIRECT_URI") == "https://localhost"
+        mock_write.assert_called_once_with(
+            {"SPNKR_AZURE_CLIENT_ID": "12345678-1234-1234-1234-123456789abc"}
+        )
+
+    def test_secret_non_ecrit(self, tmp_path: Path) -> None:
+        """save_dc_credentials n'écrit jamais SPNKR_AZURE_CLIENT_SECRET."""
+        import os
+
+        os.environ.pop("SPNKR_AZURE_CLIENT_SECRET", None)
+
+        with patch("src.ui.pages.setup_wizard_logic.write_env_local") as mock_write:
+            save_dc_credentials("12345678-1234-1234-1234-123456789abc")
+
+        written_keys = list(mock_write.call_args[0][0].keys())
+        assert "SPNKR_AZURE_CLIENT_SECRET" not in written_keys

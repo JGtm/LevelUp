@@ -1,13 +1,14 @@
-"""Composant UI Streamlit pour la connexion Xbox via OAuth.
+"""Composant UI Streamlit — Connexion Xbox via Device Code Flow (MSAL).
 
-Affiche une section "Connexion Xbox" dans la page Paramètres.
-La logique métier est dans ``src/ui/xbox_oauth.py`` (testable sans Streamlit).
+La logique métier est dans ``src/utils/msal_device_flow.py`` et
+``src/ui/xbox_oauth.py`` (testables sans Streamlit).
 """
 
 from __future__ import annotations
 
 import logging
-import os
+import queue
+import threading
 
 import streamlit as st
 
@@ -16,25 +17,12 @@ from src.ui.i18n import t
 
 logger = logging.getLogger(__name__)
 
-# Clé session_state pour le token CSRF anti-replay
-_STATE_KEY = SK.XBOX_OAUTH_STATE
-# Clé session_state pour afficher le résultat du callback
+# Clés session_state internes (module-private)
 _RESULT_KEY = SK.XBOX_OAUTH_RESULT
-
-
-def _get_azure_config() -> tuple[str, str, str]:
-    """Lit les variables Azure depuis l'environnement.
-
-    Returns:
-        Tuple ``(client_id, client_secret, redirect_uri)``.
-        Les valeurs manquantes sont des chaînes vides.
-    """
-    client_id = str(os.environ.get("SPNKR_AZURE_CLIENT_ID") or "").strip()
-    client_secret = str(os.environ.get("SPNKR_AZURE_CLIENT_SECRET") or "").strip()
-    redirect_uri = (
-        str(os.environ.get("SPNKR_AZURE_REDIRECT_URI") or "").strip() or "http://localhost:8501"
-    )
-    return client_id, client_secret, redirect_uri
+_DC_FLOW_KEY = SK.DC_FLOW
+_DC_APP_KEY = SK.DC_MSAL_APP
+_DC_QUEUE_KEY = SK.DC_RESULT_QUEUE
+_DC_CLIENT_ID_KEY = SK.DC_CLIENT_ID
 
 
 def _get_current_db_path() -> str | None:
@@ -49,75 +37,162 @@ def _get_current_gamertag() -> str | None:
     return str(gt).strip() if gt and str(gt).strip() else None
 
 
+def check_dc_queue() -> dict | None:
+    """Vérifie la queue du device flow sans bloquer. Retourne le résultat si prêt."""
+    q = st.session_state.get(_DC_QUEUE_KEY)
+    if q is None:
+        return None
+    try:
+        return q.get_nowait()
+    except queue.Empty:
+        return None
+
+
+def reset_device_flow() -> None:
+    """Nettoie l'état du device flow en cours."""
+    for key in (_DC_FLOW_KEY, _DC_APP_KEY, _DC_QUEUE_KEY, _DC_CLIENT_ID_KEY):
+        st.session_state.pop(key, None)
+
+
+def start_device_flow(client_id: str) -> None:
+    """Initie le device flow MSAL et démarre le thread de polling."""
+    from src.utils.msal_device_flow import (
+        DeviceFlowError,
+        acquire_token_blocking,
+        initiate_device_flow,
+    )
+
+    result, app = initiate_device_flow(client_id)
+    q: queue.Queue[dict] = queue.Queue(maxsize=1)
+
+    def _poll() -> None:
+        try:
+            token = acquire_token_blocking(app, result._flow)
+            q.put({"refresh_token": token})
+            logger.info("Device flow thread : token obtenu (client_id=%s…)", client_id[:8])
+        except DeviceFlowError as exc:
+            logger.warning("Device flow thread : erreur=%s — %s", exc.code, exc.detail)
+            q.put({"error": exc.code, "detail": exc.detail})
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Device flow thread : exception inattendue: %s", exc)
+            q.put({"error": "unknown", "detail": str(exc)})
+
+    thread = threading.Thread(target=_poll, daemon=True, name="msal-device-flow")
+    thread.start()
+
+    st.session_state[_DC_APP_KEY] = app
+    st.session_state[_DC_FLOW_KEY] = result
+    st.session_state[_DC_QUEUE_KEY] = q
+    st.session_state[_DC_CLIENT_ID_KEY] = client_id
+    logger.info("Device flow initié (client_id=%s… user_code=%s)", client_id[:8], result.user_code)
+
+
 def render_xbox_login_section() -> None:
-    """Rend la section 'Connexion Xbox' dans la page Paramètres.
-
-    Affiche selon l'état :
-    - Configuration Azure manquante → instructions de setup
-    - Joueur déjà connecté (refresh_token en sync_meta) → statut + déconnexion
-    - Non connecté → bouton "Se connecter avec Xbox"
-    """
-    client_id, client_secret, redirect_uri = _get_azure_config()
-
-    # ── 1. Configuration Azure absente ────────────────────────────────────
-    if not client_id or not client_secret:
-        st.info(t("xbox_auth_missing_config"))
-        with st.expander(t("xbox_auth_setup_help_title"), expanded=False):
-            st.markdown(t("xbox_auth_setup_help_body"))
-        return
-
-    # ── 2. Afficher le résultat du dernier callback OAuth ─────────────────
+    """Rend la section 'Connexion Xbox' dans la page Paramètres."""
+    # ── Afficher le résultat du dernier callback ────────────────────────────────
     oauth_result = st.session_state.pop(_RESULT_KEY, None)
     if oauth_result:
         if "error" in oauth_result:
-            st.error(f"{t('xbox_auth_error')} {oauth_result['error']}")
+            st.error(f"{t('xbox_auth_error')} {oauth_result.get('detail', oauth_result['error'])}")
         else:
             gt = oauth_result.get("gamertag", "")
             st.success(t("xbox_auth_success").format(gamertag=gt))
 
-    # ── 3. Statut du joueur courant ────────────────────────────────────────
     db_path = _get_current_db_path()
     gamertag = _get_current_gamertag()
-    has_token = False
 
+    # ── Déjà connecté ─────────────────────────────────────────────────────────────────────
     if db_path:
         from src.ui.xbox_oauth import load_refresh_token
 
-        token_in_db = load_refresh_token(db_path)
-        has_token = bool(token_in_db)
+        if load_refresh_token(db_path):
+            st.success(f"🎮 {t('xbox_connected_as').format(gamertag=gamertag or '?')}")
+            col_a, col_b = st.columns([3, 1])
+            col_a.caption(t("xbox_token_stored"))
+            if col_b.button(t("xbox_disconnect"), key="xbox_disconnect_btn"):
+                _revoke_local_token(db_path)
+                reset_device_flow()
+                st.rerun()
+            return
 
-    if has_token and gamertag:
-        # Connecté
-        st.success(f"🎮 {t('xbox_connected_as').format(gamertag=gamertag)}")
-        col_a, col_b = st.columns([3, 1])
-        col_a.caption(t("xbox_token_stored"))
-        if col_b.button(t("xbox_disconnect"), key="xbox_disconnect_btn"):
-            _revoke_local_token(db_path)
-            st.rerun()
+    # ── Vérifier si un flow en cours vient de terminer ─────────────────────────────────────
+    dc_result = check_dc_queue()
+    if dc_result is not None:
+        reset_device_flow()
+        if "error" in dc_result:
+            logger.warning("Connexion Xbox Device Code : erreur=%s", dc_result.get("error"))
+            st.error(f"{t('xbox_auth_error')} {dc_result.get('detail', dc_result['error'])}")
+        else:
+            st.success(t("xbox_dc_token_ready"))
+            st.session_state["_dc_refresh_token_pending"] = dc_result["refresh_token"]
+        st.rerun()
         return
 
-    # ── 4. Bouton de connexion ─────────────────────────────────────────────
+    # ── Flow en cours ──────────────────────────────────────────────────────────────────────────
+    dc_flow = st.session_state.get(_DC_FLOW_KEY)
+    if dc_flow is not None:
+        _render_dc_waiting(dc_flow)
+        return
+
+    # ── Pas de flow : afficher la section d'initiation ─────────────────────────────────
     st.caption(t("xbox_auth_intro"))
+    _render_dc_start()
 
-    # Générer un state CSRF si absent
-    if _STATE_KEY not in st.session_state:
-        from src.ui.xbox_oauth import generate_oauth_state
 
-        st.session_state[_STATE_KEY] = generate_oauth_state()
+def _render_dc_start() -> None:
+    """Formulaire de saisie du client_id pour démarrer le device flow."""
+    with st.form("dc_start_form"):
+        client_id = st.text_input(
+            t("xbox_dc_client_id_label"),
+            placeholder="12345678-1234-1234-1234-123456789abc",
+            help=t("xbox_dc_client_id_help"),
+        )
+        submitted = st.form_submit_button(t("xbox_dc_start_btn"), type="primary")
 
-    state = str(st.session_state[_STATE_KEY])
+    if submitted:
+        client_id = client_id.strip()
+        if not client_id:
+            st.warning(t("xbox_dc_client_id_empty"))
+            return
+        try:
+            start_device_flow(client_id)
+        except Exception as exc:
+            logger.error("Échec initiation device flow: %s", exc)
+            st.error(str(exc))
+            return
+        st.rerun()
 
-    from src.ui.xbox_oauth import build_xbox_auth_url
 
-    auth_url = build_xbox_auth_url(client_id, redirect_uri, state)
+def _render_dc_waiting(dc_flow) -> None:
+    """Affiche le code device + bouton pour vérifier."""
+    from src.utils.msal_device_flow import DeviceCodeResult
 
-    st.link_button(
-        label=t("xbox_connect_btn"),
-        url=auth_url,
-        help=t("xbox_connect_help"),
+    result: DeviceCodeResult = dc_flow
+
+    st.markdown(
+        f"**{t('xbox_dc_code_title')}** " f"[{result.verification_url}]({result.verification_url})"
     )
+    st.code(result.user_code, language=None)
 
-    st.caption(t("xbox_redirect_notice").format(redirect_uri=redirect_uri))
+    col_verify, col_cancel = st.columns([2, 1])
+    if col_verify.button(t("xbox_dc_verify_btn"), type="primary", key="dc_verify"):
+        dc_result = check_dc_queue()
+        if dc_result is None:
+            st.info(t("xbox_dc_waiting"))
+        elif "error" in dc_result:
+            reset_device_flow()
+            st.error(f"{t('xbox_auth_error')} {dc_result.get('detail', dc_result['error'])}")
+            st.rerun()
+        else:
+            st.session_state["_dc_refresh_token_pending"] = dc_result["refresh_token"]
+            reset_device_flow()
+            st.success(t("xbox_dc_token_ready"))
+            st.rerun()
+
+    if col_cancel.button(t("xbox_dc_cancel_btn"), key="dc_cancel"):
+        logger.info("Device Code Flow annulé par l'utilisateur.")
+        reset_device_flow()
+        st.rerun()
 
 
 def _revoke_local_token(db_path: str | None) -> None:
@@ -131,7 +206,6 @@ def _revoke_local_token(db_path: str | None) -> None:
     """
     if not db_path:
         return
-
     try:
         from src.utils.db import duckdb_read_write
 
@@ -143,9 +217,7 @@ def _revoke_local_token(db_path: str | None) -> None:
 
 
 def handle_pending_xbox_result(gamertag: str, xuid: str, db_path: str, refresh_token: str) -> None:
-    """Enregistre les données OAuth dans session_state après un callback réussi.
-
-    Appelé depuis ``streamlit_app.py`` après l'échange du code OAuth.
+    """Enregistre les données OAuth dans session_state après un flow réussi.
 
     Args:
         gamertag: Gamertag Xbox résolu.
@@ -157,8 +229,4 @@ def handle_pending_xbox_result(gamertag: str, xuid: str, db_path: str, refresh_t
 
     store_refresh_token(db_path, refresh_token)
     st.session_state[_RESULT_KEY] = {"gamertag": gamertag, "xuid": xuid}
-
-    # Nettoyer le state CSRF
-    st.session_state.pop(_STATE_KEY, None)
-
-    logger.info("Connexion Xbox OAuth complète pour %s (xuid=%s)", gamertag, xuid)
+    logger.info("Connexion Xbox Device Code complète pour %s (xuid=%s)", gamertag, xuid)

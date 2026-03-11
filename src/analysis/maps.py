@@ -41,6 +41,34 @@ def compute_map_breakdown(df: pl.DataFrame, df_history: pl.DataFrame | None = No
     if df_pl.is_empty():
         return pl.DataFrame(schema=empty_schema)
 
+    # Normaliser les map_name bruts (UUID non résolu : map_name == map_id)
+    # Si une autre ligne a le même map_id avec un vrai nom, on l'utilise.
+    if "map_id" in df_pl.columns:
+        resolved = (
+            df_pl.filter(
+                pl.col("map_name").is_not_null()
+                & (pl.col("map_name") != pl.col("map_id"))
+                & (pl.col("map_name").str.strip_chars() != "")
+            )
+            .select(["map_id", "map_name"])
+            .unique(subset=["map_id"])
+        )
+        if not resolved.is_empty():
+            df_pl = (
+                df_pl.join(
+                    resolved.rename({"map_name": "_resolved_name"}),
+                    on="map_id",
+                    how="left",
+                )
+                .with_columns(
+                    pl.when(pl.col("map_name") == pl.col("map_id"))
+                    .then(pl.col("_resolved_name"))
+                    .otherwise(pl.col("map_name"))
+                    .alias("map_name")
+                )
+                .drop("_resolved_name")
+            )
+
     # Filtrer les map_name vides
     d = df_pl.with_columns(pl.col("map_name").fill_null(""))
     d = d.filter(pl.col("map_name").str.strip_chars() != "")

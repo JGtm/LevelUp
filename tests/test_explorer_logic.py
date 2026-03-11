@@ -411,3 +411,116 @@ class TestMatchTableHTML:
         html = render_match_table_html(df)
         assert "<table" in html
         assert "<tbody></tbody>" in html
+
+    # ------------------------------------------------------------------
+    # map_thumb_url
+    # ------------------------------------------------------------------
+
+    def test_map_thumb_url_none_input(self) -> None:
+        from src.ui.pages.match_table_html import map_thumb_url
+
+        assert map_thumb_url(None) is None
+
+    def test_map_thumb_url_empty_string(self) -> None:
+        from src.ui.pages.match_table_html import map_thumb_url
+
+        assert map_thumb_url("") is None
+
+    def test_map_thumb_url_found(self) -> None:
+        from unittest.mock import patch
+
+        from src.ui.pages import match_table_html
+
+        fake_index = {
+            "aquarius": "/app/static/maps/Aquarius.png",
+            "aquarius_": "/app/static/maps/Aquarius.png",
+        }
+        with patch.object(match_table_html, "_build_map_url_index", return_value=fake_index):
+            url = match_table_html.map_thumb_url("Aquarius")
+        assert url == "/app/static/maps/Aquarius.png"
+
+    def test_map_thumb_url_case_insensitive(self) -> None:
+        from unittest.mock import patch
+
+        from src.ui.pages import match_table_html
+
+        fake_index = {"aquarius": "/app/static/maps/Aquarius.png"}
+        with patch.object(match_table_html, "_build_map_url_index", return_value=fake_index):
+            assert match_table_html.map_thumb_url("AQUARIUS") == "/app/static/maps/Aquarius.png"
+            assert match_table_html.map_thumb_url("aquarius") == "/app/static/maps/Aquarius.png"
+
+    def test_map_thumb_url_spaces_vs_underscores(self) -> None:
+        from unittest.mock import patch
+
+        from src.ui.pages import match_table_html
+
+        fake_index = {"live_fire": "/app/static/maps/Live_Fire.png"}
+        with patch.object(match_table_html, "_build_map_url_index", return_value=fake_index):
+            # "Live Fire" → key "live fire" → .replace(" ", "_") = "live_fire" → trouvé
+            url = match_table_html.map_thumb_url("Live Fire")
+        assert url == "/app/static/maps/Live_Fire.png"
+
+    def test_map_thumb_url_not_found(self) -> None:
+        from unittest.mock import patch
+
+        from src.ui.pages import match_table_html
+
+        fake_index = {"aquarius": "/app/static/maps/Aquarius.png"}
+        with patch.object(match_table_html, "_build_map_url_index", return_value=fake_index):
+            url = match_table_html.map_thumb_url("UnknownMap")
+        assert url is None
+
+    def test_build_map_url_index_missing_dir(self, tmp_path: pytest.TempPathFactory) -> None:
+        """Retourne un dict vide si le répertoire n'existe pas."""
+        from unittest.mock import patch
+
+        from src.ui.pages import match_table_html
+
+        missing = tmp_path / "no_such_dir"  # type: ignore[operator]
+        # Vérifier via map_thumb_url : si le répertoire n'existe pas → None
+        match_table_html._build_map_url_index.cache_clear()
+        with patch("src.ui.pages.match_table_html.get_repo_root", return_value=str(missing)):
+            url = match_table_html.map_thumb_url("Aquarius")
+        assert url is None
+        match_table_html._build_map_url_index.cache_clear()
+
+    def test_render_map_name_cell_with_thumb(self) -> None:
+        """_render_cell avec map_name connu → contient data-thumb-url et map-cell."""
+        from datetime import datetime
+        from unittest.mock import patch
+
+        from src.ui.pages import match_table_html
+
+        fake_index = {"aquarius": "/app/static/maps/Aquarius.png"}
+        df = pl.DataFrame(
+            {
+                "match_id": ["abc123"],
+                "start_time": [datetime(2025, 1, 10, 14, 0)],
+                "start_time_fr": ["10/01/2025 14:00"],
+                "map_name": ["Aquarius"],
+                "playlist_fr": ["Quick Play"],
+                "mode_ui": ["Slayer"],
+                "outcome": [2],
+                "outcome_label": ["Victoire"],
+                "score": ["50 - 40"],
+                "performance": [85],
+                "team_mmr": [1200.0],
+                "enemy_mmr": [1150.0],
+                "delta_mmr": [50.0],
+                "kda": [2.5],
+                "kills": [15],
+                "deaths": [6],
+                "max_killing_spree": [5],
+                "headshot_kills": [8],
+                "average_life_mmss": ["1:30"],
+                "assists": [3],
+                "accuracy": [0.45],
+                "ratio": [2.5],
+                "match_url": ["https://halowaypoint.com/..."],
+            }
+        )
+        with patch.object(match_table_html, "_build_map_url_index", return_value=fake_index):
+            html = match_table_html.render_match_table_html(df, waypoint_player="TestGT")
+        assert "map-cell" in html
+        assert "data-thumb-url" in html
+        assert "Aquarius" in html

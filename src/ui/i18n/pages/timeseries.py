@@ -252,6 +252,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Pas assez de données ({count} matchs). Il en faut au moins {min} pour la corrélation.",
         "en": "Not enough data ({count} matches). At least {min} are needed for the correlation.",
     },
+    # ── Armes (onglet K/D/A)
+    "ts_top_weapons_title": {
+        "fr": "🔫 Armes les plus utilisées",
+        "en": "🔫 Top weapons",
+    },
     # ── Onglets (navigation)
     "ts_tab_kda": {"fr": "⚔️ F/D/A", "en": "⚔️ K/D/A"},
     "ts_tab_progression": {"fr": "📈 Progression", "en": "📈 Progression"},

@@ -21,6 +21,7 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.distributions import (
     plot_first_event_distribution,
     plot_kda_distribution,
+    plot_top_weapons,
 )
 from src.visualization.performance import (
     plot_cumulative_kd_with_ci,
@@ -80,7 +81,13 @@ def _downsample_for_plot(df: pl.DataFrame, max_points: int = MAX_PLOT_POINTS) ->
 
 
 @fragment_if_available
-def _render_kda_section(dff: pl.DataFrame, lang: str = "fr") -> None:
+def _render_kda_section(
+    dff: pl.DataFrame,
+    lang: str = "fr",
+    *,
+    db_path: str | None = None,
+    xuid: str | None = None,
+) -> None:
     """Affiche le graphe KDA et sa distribution."""
     with safe_chart_render():
         # 8bis.A6 : Downsampling pour performance
@@ -106,6 +113,49 @@ def _render_kda_section(dff: pl.DataFrame, lang: str = "fr") -> None:
                 st.plotly_chart(fig_dist, width="stretch", config=PLOTLY_STATIC_CONFIG)
             else:
                 st.info(t("insufficient_data_chart"))
+
+    if db_path and xuid:
+        _render_weapon_kills_chart(dff, db_path=db_path, xuid=xuid, lang=lang)
+
+
+def _render_weapon_kills_chart(
+    dff: pl.DataFrame,
+    *,
+    db_path: str,
+    xuid: str,
+    lang: str,
+) -> None:
+    """Affiche le graphe des kills par arme (barres horizontales)."""
+    from src.data.repositories.duckdb_repo import DuckDBRepository
+
+    match_ids = dff["match_id"].to_list() if "match_id" in dff.columns else None
+    try:
+        repo = DuckDBRepository(db_path, xuid, read_only=True)
+        df_w = repo.load_weapon_kills_aggregated(xuid, match_ids=match_ids)
+    except Exception:
+        return
+
+    if df_w.is_empty():
+        return
+
+    from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS, resolve_weapon_display
+
+    weapons_data = [
+        {
+            "weapon_name": resolve_weapon_display(row["weapon_id"], lang) or "?",
+            "total_kills": row["total_kills"],
+            "headshot_rate": 0.0,
+            "accuracy": 0.0,
+        }
+        for row in df_w.iter_rows(named=True)
+        if row["weapon_id"] not in EXCLUDED_WEAPON_IDS
+    ]
+
+    st.divider()
+    st.subheader(t("ts_top_weapons_title"))
+    with safe_chart_render():
+        fig_w = plot_top_weapons(weapons_data, lang=lang)
+        st.plotly_chart(fig_w, width="stretch", config=PLOTLY_STATIC_CONFIG)
 
 
 @fragment_if_available
@@ -407,7 +457,7 @@ def render_timeseries_page(
     )
 
     with _tab_kda:
-        _render_kda_section(dff, lang=lang)
+        _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
 
     with _tab_prog:
         _render_cumulative_performance(dff, lang=lang)

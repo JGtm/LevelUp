@@ -1,141 +1,15 @@
-"""Tests unitaires pour le flux Xbox OAuth (src/ui/xbox_oauth.py).
+"""Tests unitaires pour src/ui/xbox_oauth.py — Device Code Flow & persistence.
 
 Toutes les dépendances réseau sont mockées ; pas d'appel réel à Microsoft/Halo.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-# ===========================================================================
-# build_xbox_auth_url
-# ===========================================================================
-
-
-def test_build_xbox_auth_url_contient_client_id():
-    from src.ui.xbox_oauth import build_xbox_auth_url
-
-    url = build_xbox_auth_url("MY_CLIENT_ID", "http://localhost:8501", "mystate123")
-    assert "MY_CLIENT_ID" in url
-
-
-def test_build_xbox_auth_url_contient_scopes():
-    from src.ui.xbox_oauth import build_xbox_auth_url
-
-    url = build_xbox_auth_url("id", "http://localhost:8501", "s")
-    assert "Xboxlive.signin" in url
-    assert "Xboxlive.offline_access" in url
-
-
-def test_build_xbox_auth_url_contient_state():
-    from src.ui.xbox_oauth import build_xbox_auth_url
-
-    url = build_xbox_auth_url("id", "http://localhost:8501", "csrf_token_xyz")
-    assert "csrf_token_xyz" in url
-
-
-def test_build_xbox_auth_url_domaine_microsoft():
-    from src.ui.xbox_oauth import build_xbox_auth_url
-
-    url = build_xbox_auth_url("id", "http://localhost:8501", "s")
-    assert "login.live.com" in url
-
-
-# ===========================================================================
-# generate_oauth_state
-# ===========================================================================
-
-
-def test_generate_oauth_state_longueur():
-    from src.ui.xbox_oauth import generate_oauth_state
-
-    state = generate_oauth_state()
-    # token_hex(16) → 32 hex chars
-    assert len(state) == 32
-
-
-def test_generate_oauth_state_aleatoire():
-    from src.ui.xbox_oauth import generate_oauth_state
-
-    states = {generate_oauth_state() for _ in range(10)}
-    # Tous différents (collisions quasi-impossibles)
-    assert len(states) == 10
-
-
-# ===========================================================================
-# exchange_code_for_refresh_token
-# ===========================================================================
-
-
-@pytest.mark.asyncio
-async def test_exchange_code_succes():
-    from src.ui.xbox_oauth import exchange_code_for_refresh_token
-
-    mock_session = AsyncMock()
-    mock_resp = AsyncMock()
-    mock_resp.status = 200
-    mock_resp.json = AsyncMock(return_value={"refresh_token": "my_refresh_token_abc"})
-    mock_session.post.return_value = mock_resp
-
-    token = await exchange_code_for_refresh_token(
-        mock_session,
-        client_id="cid",
-        client_secret="csecret",  # pragma: allowlist secret
-        redirect_uri="http://localhost:8501",
-        code="auth_code_xyz",
-    )
-
-    assert token == "my_refresh_token_abc"
-    mock_session.post.assert_called_once()
-    _, kwargs = mock_session.post.call_args
-    assert kwargs["data"]["grant_type"] == "authorization_code"
-    assert kwargs["data"]["code"] == "auth_code_xyz"
-
-
-@pytest.mark.asyncio
-async def test_exchange_code_erreur_http():
-    from src.ui.xbox_oauth import exchange_code_for_refresh_token
-
-    mock_session = AsyncMock()
-    mock_resp = AsyncMock()
-    mock_resp.status = 400
-    mock_resp.json = AsyncMock(
-        return_value={"error": "invalid_grant", "error_description": "Code expiré"}
-    )
-    mock_session.post.return_value = mock_resp
-
-    with pytest.raises(ValueError, match="invalid_grant"):
-        await exchange_code_for_refresh_token(
-            mock_session,
-            client_id="cid",
-            client_secret="csecret",  # pragma: allowlist secret
-            redirect_uri="http://localhost:8501",
-            code="bad_code",
-        )
-
-
-@pytest.mark.asyncio
-async def test_exchange_code_sans_refresh_token():
-    from src.ui.xbox_oauth import exchange_code_for_refresh_token
-
-    mock_session = AsyncMock()
-    mock_resp = AsyncMock()
-    mock_resp.status = 200
-    mock_resp.json = AsyncMock(return_value={"access_token": "only_access"})
-    mock_session.post.return_value = mock_resp
-
-    with pytest.raises(ValueError, match="refresh_token"):
-        await exchange_code_for_refresh_token(
-            mock_session,
-            client_id="cid",
-            client_secret="csecret",  # pragma: allowlist secret
-            redirect_uri="http://localhost:8501",
-            code="code_without_offline_access",
-        )
-
 
 # ===========================================================================
 # store_refresh_token / load_refresh_token
@@ -147,7 +21,6 @@ def test_store_and_load_refresh_token(tmp_path):
     from src.ui.xbox_oauth import load_refresh_token, store_refresh_token
 
     db_path = tmp_path / "stats.duckdb"
-    # La DB n'existe pas encore — store_refresh_token doit la créer
     store_refresh_token(db_path, "refresh_token_value_12345")
 
     loaded = load_refresh_token(db_path)
@@ -168,7 +41,7 @@ def test_store_refresh_token_idempotent(tmp_path):
 
     db = tmp_path / "stats.duckdb"
     store_refresh_token(db, "token_v1")
-    store_refresh_token(db, "token_v2")  # Mise à jour
+    store_refresh_token(db, "token_v2")
 
     assert load_refresh_token(db) == "token_v2"
 
@@ -188,7 +61,6 @@ def test_create_player_db(tmp_path):
     assert db_path.name == "stats.duckdb"
     assert db_path.parent.name == "TestPlayer"
 
-    # Vérifier sync_meta existe
     import duckdb
 
     conn = duckdb.connect(str(db_path))
@@ -246,55 +118,228 @@ def test_provision_player_full(tmp_path):
 
 
 # ===========================================================================
-# run_xbox_oauth_callback (synchrone, mock réseau)
+# complete_device_code_flow (Device Code Flow)
 # ===========================================================================
 
 
-def test_run_xbox_oauth_callback_succes():
-    """Mock complet du flux OAuth → résultat dict avec gamertag + xuid."""
-    from src.ui.xbox_oauth import run_xbox_oauth_callback
+def test_complete_device_code_flow_succes():
+    """complete_device_code_flow retourne gamertag + xuid en cas de succès."""
+    from src.ui.xbox_oauth import complete_device_code_flow
 
     with (
-        patch(
-            "src.ui.xbox_oauth.exchange_code_for_refresh_token",
-            new=AsyncMock(return_value="my_refresh"),
-        ),
         patch(
             "src.ui.xbox_oauth.get_spartan_tokens_from_refresh",
             new=AsyncMock(return_value=("spartan_tok", "clearance_tok")),
         ),
         patch(
             "src.ui.xbox_oauth.resolve_player_identity",
-            new=AsyncMock(return_value=("SpartanC", "123456789")),
+            new=AsyncMock(return_value=("SpartanK117", "111222333")),
         ),
     ):
-        result = run_xbox_oauth_callback(
-            "auth_code_test",
-            client_id="cid",
-            client_secret="csecret",  # pragma: allowlist secret
-            redirect_uri="http://localhost:8501",
+        result = complete_device_code_flow(
+            "my_refresh_token",
+            "12345678-1234-1234-1234-123456789abc",
         )
 
-    assert result.get("gamertag") == "SpartanC"
-    assert result.get("xuid") == "123456789"
-    assert result.get("refresh_token") == "my_refresh"
+    assert result.get("gamertag") == "SpartanK117"
+    assert result.get("xuid") == "111222333"
+    assert result.get("refresh_token") == "my_refresh_token"
     assert "error" not in result
 
 
-def test_run_xbox_oauth_callback_erreur():
-    """En cas d'exception réseau → résultat dict avec clé 'error'."""
-    from src.ui.xbox_oauth import run_xbox_oauth_callback
+def test_complete_device_code_flow_erreur_api():
+    """En cas d'exception API, retourne un dict avec clé 'error'."""
+    from src.ui.xbox_oauth import complete_device_code_flow
 
     with patch(
-        "src.ui.xbox_oauth.exchange_code_for_refresh_token",
-        new=AsyncMock(side_effect=ValueError("connection refused")),
+        "src.ui.xbox_oauth.get_spartan_tokens_from_refresh",
+        new=AsyncMock(side_effect=RuntimeError("xbox service unavailable")),
     ):
-        result = run_xbox_oauth_callback(
-            "bad_code",
-            client_id="cid",
-            client_secret="csecret",  # pragma: allowlist secret
-            redirect_uri="http://localhost:8501",
+        result = complete_device_code_flow(
+            "my_refresh_token",
+            "12345678-1234-1234-1234-123456789abc",
         )
 
     assert "error" in result
-    assert "connection refused" in result["error"]
+    assert "xbox service unavailable" in result["error"]
+
+
+# ===========================================================================
+# get_spartan_tokens_from_refresh — couverture lignes manquantes
+# ===========================================================================
+
+
+def test_get_spartan_tokens_retourne_tuple():
+    """Happy path : retourne (spartan_token, clearance_token)."""
+    from src.ui.xbox_oauth import get_spartan_tokens_from_refresh
+
+    mock_tokens = MagicMock()
+    mock_tokens.spartan_token = "st_abc"
+    mock_tokens.clearance_token = "ct_xyz"
+
+    with patch(
+        "src.data.sync._auth.refresh_halo_tokens",
+        new=AsyncMock(return_value=mock_tokens),
+    ):
+        result = asyncio.run(
+            get_spartan_tokens_from_refresh(
+                None,
+                client_id="cid",
+                client_secret="",
+                redirect_uri="",
+                refresh_token="rt",
+            )
+        )
+
+    assert result == ("st_abc", "ct_xyz")
+
+
+# ===========================================================================
+# resolve_player_identity — couverture lignes manquantes
+# ===========================================================================
+
+
+def _make_aiohttp_mocks(profile_resp: dict, profile_resp2: dict | None = None):
+    """Construit les mocks aiohttp + spnkr pour resolve_player_identity."""
+    mock_resp1 = AsyncMock()
+    mock_resp1.json = AsyncMock(return_value=profile_resp)
+
+    mock_resp2 = AsyncMock()
+    mock_resp2.json = AsyncMock(return_value=profile_resp2 or {})
+
+    mock_client = MagicMock()
+    mock_client.profile.get_current_user = AsyncMock(return_value=mock_resp1)
+    mock_client.profile.get_current_player = AsyncMock(return_value=mock_resp2)
+
+    mock_session = AsyncMock()
+
+    mock_aiohttp = MagicMock()
+    mock_aiohttp.ClientTimeout = MagicMock(return_value=MagicMock())
+    mock_aiohttp.ClientSession = MagicMock(return_value=mock_session)
+
+    mock_spnkr = MagicMock()
+    mock_spnkr.HaloInfiniteClient = MagicMock(return_value=mock_client)
+
+    return mock_aiohttp, mock_spnkr, mock_client
+
+
+def test_resolve_player_identity_via_get_current_user():
+    """Résout via get_current_user (chemin principal)."""
+    from src.ui.xbox_oauth import resolve_player_identity
+
+    mock_aiohttp, mock_spnkr, mock_client = _make_aiohttp_mocks(
+        {"xuid": "111", "gamertag": "SpartanHz"}
+    )
+
+    with patch.dict("sys.modules", {"aiohttp": mock_aiohttp, "spnkr": mock_spnkr}):
+        result = asyncio.run(resolve_player_identity("sp_tok", "cl_tok"))
+
+    assert result == ("SpartanHz", "111")
+    mock_client.profile.get_current_user.assert_called_once()
+
+
+def test_resolve_player_identity_fallback_get_current_player():
+    """get_current_user échoue → fallback sur get_current_player."""
+    from src.ui.xbox_oauth import resolve_player_identity
+
+    mock_aiohttp, mock_spnkr, mock_client = _make_aiohttp_mocks(
+        {"xuid": "", "gamertag": ""},  # mauvaise réponse → pas de xuid/gamertag
+        {"xuid": "222", "gamertag": "SpartanFB"},  # fallback ok
+    )
+
+    with patch.dict("sys.modules", {"aiohttp": mock_aiohttp, "spnkr": mock_spnkr}):
+        result = asyncio.run(resolve_player_identity("sp_tok", "cl_tok"))
+
+    assert result == ("SpartanFB", "222")
+
+
+def test_resolve_player_identity_both_fail_raises_valueerror():
+    """Les deux endpoints échouent → ValueError."""
+    from src.ui.xbox_oauth import resolve_player_identity
+
+    mock_aiohttp, mock_spnkr, mock_client = _make_aiohttp_mocks({})
+    mock_client.profile.get_current_user = AsyncMock(side_effect=Exception("erreur1"))
+    mock_client.profile.get_current_player = AsyncMock(side_effect=Exception("erreur2"))
+
+    with (
+        patch.dict("sys.modules", {"aiohttp": mock_aiohttp, "spnkr": mock_spnkr}),
+        pytest.raises(ValueError, match="gamertag"),
+    ):
+        asyncio.run(resolve_player_identity("sp_tok", "cl_tok"))
+
+
+# ===========================================================================
+# load_refresh_token — chemin exception
+# ===========================================================================
+
+
+def test_load_refresh_token_exception_retourne_none(tmp_path):
+    """Une exception lors de la lecture retourne None (robustesse)."""
+    from src.ui.xbox_oauth import load_refresh_token
+
+    db = tmp_path / "stats.duckdb"
+    db.touch()  # Le fichier existe, mais la lecture va planter
+
+    with patch("src.utils.db.duckdb_read_only", side_effect=Exception("connexion impossible")):
+        result = load_refresh_token(db)
+
+    assert result is None
+
+
+def test_load_refresh_token_valeur_vide_retourne_none(tmp_path):
+    """Une ligne sync_meta avec valeur vide retourne None (branche row non-None mais vide)."""
+    import duckdb
+
+    from src.ui.xbox_oauth import _SYNC_META_OAUTH_KEY, load_refresh_token
+
+    db = tmp_path / "stats.duckdb"
+    # Créer la table et insérer une valeur vide directement
+    with duckdb.connect(str(db)) as conn:
+        conn.execute(
+            "CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR, "
+            "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+        )
+        conn.execute(
+            "INSERT INTO sync_meta (key, value) VALUES (?, ?)",
+            (_SYNC_META_OAUTH_KEY, "   "),  # Valeur whitespace seulement
+        )
+
+    result = load_refresh_token(db)
+    assert result is None
+
+
+# ===========================================================================
+# complete_device_code_flow — chemin ThreadPoolExecutor (RuntimeError)
+# ===========================================================================
+
+
+def test_complete_device_code_flow_runtime_error_bascule_executor():
+    """RuntimeError sur asyncio.run → bascule sur ThreadPoolExecutor."""
+    from src.ui.xbox_oauth import complete_device_code_flow
+
+    call_count = [0]
+    original_run = asyncio.run
+
+    def _patched_run(coro):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            coro.close()  # Fermer proprement la coroutine abandonnée
+            raise RuntimeError("This event loop is already running.")
+        return original_run(coro)
+
+    with (
+        patch(
+            "src.ui.xbox_oauth.get_spartan_tokens_from_refresh",
+            new=AsyncMock(return_value=("sp_tok", "cl_tok")),
+        ),
+        patch(
+            "src.ui.xbox_oauth.resolve_player_identity",
+            new=AsyncMock(return_value=("GTfoo", "xuidfoo")),
+        ),
+        patch.object(asyncio, "run", side_effect=_patched_run),
+    ):
+        result = complete_device_code_flow("rt123", "client_id_abc")
+
+    assert result.get("gamertag") == "GTfoo"
+    assert result.get("xuid") == "xuidfoo"
+    assert call_count[0] == 2

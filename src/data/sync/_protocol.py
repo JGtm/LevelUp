@@ -70,3 +70,9 @@ class _SyncProtocol(Protocol):
     # ------------------------------------------------------------------
     def _insert_personal_score_rows(self, rows: list) -> None: ...
     def _insert_enrichment_row(self, match_id: str, match_row: MatchStatsRow) -> None: ...
+    def _insert_shared_killer_victim_pairs(
+        self,
+        shared_conn: duckdb.DuckDBPyConnection,
+        match_id: str,
+        highlight_events: list,
+    ) -> int: ...

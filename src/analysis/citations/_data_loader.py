@@ -256,3 +256,48 @@ class CitationDataLoaderMixin:
                 return []
             except Exception:
                 return []
+
+    # ------------------------------------------------------------------
+    # Weapon kills (v5.5)
+    # ------------------------------------------------------------------
+
+    def load_match_weapon_kills(self, match_id: str) -> dict[str, int]:
+        """Charge les kills par arme du joueur courant pour un match.
+
+        Interroge ``shared.weapon_kills`` (schéma per-kill v5.7) et agrège
+        par ``weapon_id`` en excluant les sentinelles, puis résout les noms.
+
+        Returns:
+            ``{weapon_name: kills}`` ou ``{}`` si absent.
+        """
+        with self._read_conn() as conn:
+            try:
+                shared_alias = self._get_shared_alias(conn)
+                if not shared_alias:
+                    return {}
+                rows = conn.execute(
+                    f"SELECT weapon_id, COUNT(*) AS kills "
+                    f"FROM {shared_alias}.weapon_kills "
+                    "WHERE match_id = ? AND xuid = ? "
+                    "AND weapon_id IS NOT NULL "
+                    "GROUP BY weapon_id",
+                    [match_id, self._xuid],
+                ).fetchall()
+                from src.analysis._weapon_data import (
+                    EXCLUDED_WEAPON_IDS,
+                    WEAPON_FUSION_MAP_ID,
+                    resolve_weapon_display,
+                )
+
+                result: dict[str, int] = {}
+                for weapon_id, kills in rows:
+                    wid = int(weapon_id)
+                    if wid in EXCLUDED_WEAPON_IDS:
+                        continue
+                    canonical_id = WEAPON_FUSION_MAP_ID.get(wid, wid)
+                    # lang="en" : clé canonique filmshell, cohérente avec stat_name des citations
+                    name = resolve_weapon_display(canonical_id, lang="en") or "NON TROUVE"
+                    result[name] = result.get(name, 0) + int(kills)
+                return result
+            except Exception:
+                return {}

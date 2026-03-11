@@ -5,11 +5,15 @@ Fonctions de visualisation pour comparer les performances avec les coéquipiers.
 
 from __future__ import annotations
 
+import logging
+
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
 
-from src.config import HALO_COLORS
+logger = logging.getLogger(__name__)
+
+from src.config import OKABE_ITO_PALETTE
 from src.ui.i18n import get_lang, t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization import (
@@ -163,68 +167,31 @@ def render_metric_bar_charts(
         plot_fn: Fonction de tracé.
     """
     _lang = get_lang()
-    fig_spree = plot_fn(
-        series,
-        metric_col="max_killing_spree",
-        title=t("tm_killing_spree"),
-        y_axis_title=t("tm_killing_spree"),
-        hover_label=t("tm_killing_spree"),
-        colors=colors_by_name,
-        smooth_window=10,
-        show_smooth_lines=show_smooth,
-        lang=_lang,
-    )
-    if fig_spree is None:
-        st.info(t("insufficient_data_chart"))
-    else:
-        st.plotly_chart(
-            fig_spree,
-            width="stretch",
-            key=f"friend_spree_multi_{key_suffix}",
-            config=PLOTLY_CLEAN_CONFIG,
+    for metric_col, label, key_prefix in [
+        ("max_killing_spree", t("tm_killing_spree"), "friend_spree_multi"),
+        ("headshot_kills", t("tm_headshots"), "friend_hs_multi"),
+        ("perfect_kills", t("tm_perfect_kills"), "friend_pk_multi"),
+    ]:
+        fig = plot_fn(
+            series,
+            metric_col=metric_col,
+            title=label,
+            y_axis_title=label,
+            hover_label=label,
+            colors=colors_by_name,
+            smooth_window=10,
+            show_smooth_lines=show_smooth,
+            lang=_lang,
         )
-
-    fig_hs = plot_fn(
-        series,
-        metric_col="headshot_kills",
-        title=t("tm_headshots"),
-        y_axis_title=t("tm_headshots"),
-        hover_label=t("tm_headshots"),
-        colors=colors_by_name,
-        smooth_window=10,
-        show_smooth_lines=show_smooth,
-        lang=_lang,
-    )
-    if fig_hs is None:
-        st.info(t("insufficient_data_chart"))
-    else:
-        st.plotly_chart(
-            fig_hs,
-            width="stretch",
-            key=f"friend_hs_multi_{key_suffix}",
-            config=PLOTLY_CLEAN_CONFIG,
-        )
-
-    fig_pk = plot_fn(
-        series,
-        metric_col="perfect_kills",
-        title=t("tm_perfect_kills"),
-        y_axis_title=t("tm_perfect_kills"),
-        hover_label=t("tm_perfect_kills"),
-        colors=colors_by_name,
-        smooth_window=10,
-        show_smooth_lines=show_smooth,
-        lang=_lang,
-    )
-    if fig_pk is None:
-        st.info(t("insufficient_data_chart"))
-    else:
-        st.plotly_chart(
-            fig_pk,
-            width="stretch",
-            key=f"friend_pk_multi_{key_suffix}",
-            config=PLOTLY_CLEAN_CONFIG,
-        )
+        if fig is None:
+            st.info(t("insufficient_data_chart"))
+        else:
+            st.plotly_chart(
+                fig,
+                width="stretch",
+                key=f"{key_prefix}_{key_suffix}",
+                config=PLOTLY_CLEAN_CONFIG,
+            )
 
 
 def render_outcome_bar_chart(dfr: DataFrameLike) -> None:
@@ -255,13 +222,13 @@ def render_outcome_bar_chart(dfr: DataFrameLike) -> None:
     counts_df = dfr.group_by("my_outcome_label").len().rename({"len": "count"})
     all_labels = pl.DataFrame({"my_outcome_label": ordered_labels})
     counts_df = all_labels.join(counts_df, on="my_outcome_label", how="left").fill_null(0)
-    colors = HALO_COLORS.as_dict()
+    colors = OKABE_ITO_PALETTE
     fig = go.Figure(
         data=[
             go.Bar(
                 x=counts_df["my_outcome_label"].to_list(),
                 y=counts_df["count"].to_list(),
-                marker_color=colors["cyan"],
+                marker_color=colors[0],
             )
         ]
     )
@@ -279,8 +246,13 @@ def render_trio_charts(  # noqa: PLR0913
     f2_name: str,
     f1_xuid: str,
     f2_xuid: str,
+    *,
+    d_f3: DataFrameLike | None = None,
+    f3_name: str | None = None,
+    f3_xuid: str | None = None,
+    colors_by_name: dict[str, str] | None = None,
 ) -> None:
-    """Affiche les graphes trio (moi + 2 coéquipiers).
+    """Affiche les graphes d'escouade (3 ou 4 joueurs).
 
     Args:
         d_self: DataFrame du joueur principal.
@@ -291,8 +263,18 @@ def render_trio_charts(  # noqa: PLR0913
         f2_name: Nom du deuxième coéquipier.
         f1_xuid: XUID du premier coéquipier.
         f2_xuid: XUID du deuxième coéquipier.
+        d_f3: DataFrame optionnel du 3ème coéquipier.
+        f3_name: Nom optionnel du 3ème coéquipier.
+        f3_xuid: XUID optionnel du 3ème coéquipier.
+        colors_by_name: Mapping nom → couleur hex (Okabe-Ito recommandé).
     """
-    names = (me_name, f1_name, f2_name)
+    names: tuple[str, ...] = (me_name, f1_name, f2_name)
+    if f3_name:
+        names = names + (f3_name,)
+
+    key_suffix = f"{f1_xuid}_{f2_xuid}"
+    if f3_xuid:
+        key_suffix += f"_{f3_xuid}"
 
     _lang = get_lang()
     st.plotly_chart(
@@ -305,9 +287,11 @@ def render_trio_charts(  # noqa: PLR0913
             title=t("tm_kills"),
             y_title=t("tm_kills"),
             lang=_lang,
+            d_f3=d_f3,
+            colors_by_name=colors_by_name,
         ),
         width="stretch",
-        key=f"trio_kills_{f1_xuid}_{f2_xuid}",
+        key=f"trio_kills_{key_suffix}",
         config=PLOTLY_CLEAN_CONFIG,
     )
     st.plotly_chart(
@@ -320,9 +304,11 @@ def render_trio_charts(  # noqa: PLR0913
             title=t("tm_deaths"),
             y_title=t("tm_deaths"),
             lang=_lang,
+            d_f3=d_f3,
+            colors_by_name=colors_by_name,
         ),
         width="stretch",
-        key=f"trio_deaths_{f1_xuid}_{f2_xuid}",
+        key=f"trio_deaths_{key_suffix}",
         config=PLOTLY_CLEAN_CONFIG,
     )
     st.plotly_chart(
@@ -335,9 +321,11 @@ def render_trio_charts(  # noqa: PLR0913
             title=t("tm_assists"),
             y_title=t("tm_assists"),
             lang=_lang,
+            d_f3=d_f3,
+            colors_by_name=colors_by_name,
         ),
         width="stretch",
-        key=f"trio_assists_{f1_xuid}_{f2_xuid}",
+        key=f"trio_assists_{key_suffix}",
         config=PLOTLY_CLEAN_CONFIG,
     )
     st.plotly_chart(
@@ -351,9 +339,11 @@ def render_trio_charts(  # noqa: PLR0913
             y_title=t("tm_kda"),
             y_format=".3f",
             lang=_lang,
+            d_f3=d_f3,
+            colors_by_name=colors_by_name,
         ),
         width="stretch",
-        key=f"trio_ratio_{f1_xuid}_{f2_xuid}",
+        key=f"trio_ratio_{key_suffix}",
         config=PLOTLY_CLEAN_CONFIG,
     )
     st.plotly_chart(
@@ -368,9 +358,11 @@ def render_trio_charts(  # noqa: PLR0913
             y_suffix="%",
             y_format=".2f",
             lang=_lang,
+            d_f3=d_f3,
+            colors_by_name=colors_by_name,
         ),
         width="stretch",
-        key=f"trio_accuracy_{f1_xuid}_{f2_xuid}",
+        key=f"trio_accuracy_{key_suffix}",
         config=PLOTLY_CLEAN_CONFIG,
     )
     st.plotly_chart(
@@ -384,9 +376,11 @@ def render_trio_charts(  # noqa: PLR0913
             y_title=t("tm_seconds"),
             y_format=".1f",
             lang=_lang,
+            d_f3=d_f3,
+            colors_by_name=colors_by_name,
         ),
         width="stretch",
-        key=f"trio_life_{f1_xuid}_{f2_xuid}",
+        key=f"trio_life_{key_suffix}",
         config=PLOTLY_CLEAN_CONFIG,
     )
     st.plotly_chart(
@@ -400,8 +394,10 @@ def render_trio_charts(  # noqa: PLR0913
             y_title=t("tm_score"),
             y_format=".1f",
             lang=_lang,
+            d_f3=d_f3,
+            colors_by_name=colors_by_name,
         ),
         width="stretch",
-        key=f"trio_performance_{f1_xuid}_{f2_xuid}",
+        key=f"trio_performance_{key_suffix}",
         config=PLOTLY_CLEAN_CONFIG,
     )

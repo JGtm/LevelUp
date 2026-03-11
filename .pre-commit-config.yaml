@@ -45,6 +45,7 @@ repos:
       - id: check-added-large-files
         args: [--maxkb=2000]
       - id: debug-statements          # Détecte print(), pdb, breakpoint()
+        exclude: ^scripts/experimental/
       - id: check-merge-conflict      # Conflits git non résolus
       - id: detect-private-key        # Clés privées accidentelles
       - id: check-case-conflict       # Fichiers qui diffèrent par la casse

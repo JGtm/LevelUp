@@ -60,6 +60,17 @@ def _create_player_db(db_path: Path, *, with_match_stats: bool = False) -> None:
         )
     """)
 
+    # personal_score_awards (enrichissements joueur v5.1)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS personal_score_awards (
+            match_id VARCHAR,
+            xuid VARCHAR,
+            name_id VARCHAR,
+            count INTEGER DEFAULT 0,
+            total_score INTEGER DEFAULT 0
+        )
+    """)
+
     # xuid_aliases
     conn.execute("""
         CREATE TABLE IF NOT EXISTS xuid_aliases (
@@ -132,7 +143,8 @@ def _create_shared_db(db_path: Path) -> None:
             kills SMALLINT DEFAULT 0,
             deaths SMALLINT DEFAULT 0,
             assists SMALLINT DEFAULT 0,
-            score INTEGER DEFAULT 0
+            score INTEGER DEFAULT 0,
+            personal_score INTEGER DEFAULT 0
         )
     """)
 
@@ -327,6 +339,135 @@ class TestLoadExistingMatchIds:
         # car absents de player_match_enrichment → seront re-traités
         assert MATCH_ID_2 not in ids
         assert MATCH_ID_3 not in ids
+        assert len(ids) == 1
+
+    def test_match_with_enrichment_but_missing_personal_scores_is_reprocessed(
+        self, tmp_path: Path
+    ) -> None:
+        """Match avec enrichment mais sans personal_score_awards (personal_score > 0)
+
+        Ces matchs doivent être EXCLUS de existing_ids pour être retraités via
+        _process_known_match() et récupérer les personal scores depuis l'API.
+        Scénario : bug antérieur ou revert a écrit player_match_enrichment
+        sans écrire personal_score_awards.
+        """
+        players_dir = tmp_path / "data" / "players" / PLAYER_GAMERTAG
+        db = players_dir / "stats.duckdb"
+        db.parent.mkdir(parents=True, exist_ok=True)
+
+        # Player DB : MATCH_ID_1 enrichi + personal scores présents
+        #             MATCH_ID_2 enrichi MAIS sans personal scores (le gap)
+        conn = duckdb.connect(str(db))
+        conn.execute("""
+            CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR, updated_at VARCHAR)
+        """)
+        conn.execute("""
+            CREATE TABLE player_match_enrichment (
+                match_id VARCHAR PRIMARY KEY,
+                performance_score FLOAT DEFAULT 0
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE personal_score_awards (
+                match_id VARCHAR,
+                xuid VARCHAR,
+                name_id VARCHAR,
+                count INTEGER DEFAULT 0,
+                total_score INTEGER DEFAULT 0
+            )
+        """)
+        conn.execute("INSERT INTO player_match_enrichment (match_id) VALUES (?)", (MATCH_ID_1,))
+        conn.execute("INSERT INTO player_match_enrichment (match_id) VALUES (?)", (MATCH_ID_2,))
+        # MATCH_ID_1 a des personal scores
+        conn.execute(
+            "INSERT INTO personal_score_awards (match_id, xuid, name_id, count, total_score) "
+            "VALUES (?, ?, 'kills', 5, 500)",
+            (MATCH_ID_1, PLAYER_XUID),
+        )
+        # MATCH_ID_2 n'a PAS de personal scores (gap)
+        conn.close()
+
+        # Shared DB : MATCH_ID_1 et MATCH_ID_2 avec personal_score > 0
+        #             MATCH_ID_3 avec personal_score = 0 (légitimement vide)
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        _create_shared_db(shared_db)
+        # Mettre personal_score > 0 pour MATCH_ID_2 (prouve qu'il devrait avoir des awards)
+        shared_conn = duckdb.connect(str(shared_db))
+        shared_conn.execute(
+            "UPDATE match_participants SET personal_score = 1000 WHERE match_id = ? AND xuid = ?",
+            (MATCH_ID_2, PLAYER_XUID),
+        )
+        # MATCH_ID_3 reste à personal_score = 0
+        shared_conn.close()
+
+        from src.data.sync.engine import DuckDBSyncEngine
+
+        engine = DuckDBSyncEngine(
+            player_db_path=db,
+            xuid=PLAYER_XUID,
+            gamertag=PLAYER_GAMERTAG,
+            shared_db_path=shared_db,
+        )
+        ids = engine._load_existing_match_ids()
+
+        # MATCH_ID_1 : enrichment + personal_score_awards → considéré terminé
+        assert MATCH_ID_1 in ids
+        # MATCH_ID_2 : enrichment + personal_score > 0 mais SANS personal_score_awards
+        #              → doit être exclu pour être retraité
+        assert MATCH_ID_2 not in ids
+        # MATCH_ID_3 : pas d'enrichment → pas traité
+        assert MATCH_ID_3 not in ids
+        assert len(ids) == 1
+
+    def test_match_with_enrichment_and_score_zero_is_not_reprocessed(self, tmp_path: Path) -> None:
+        """Match avec enrichment, personal_score = 0, sans personal_score_awards.
+
+        Cas légitime : l'API retourne PersonalScores[] vide pour ce match.
+        Ces matchs NE doivent PAS être retraités.
+        """
+        players_dir = tmp_path / "data" / "players" / PLAYER_GAMERTAG
+        db = players_dir / "stats.duckdb"
+        db.parent.mkdir(parents=True, exist_ok=True)
+
+        conn = duckdb.connect(str(db))
+        conn.execute("""
+            CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR, updated_at VARCHAR)
+        """)
+        conn.execute("""
+            CREATE TABLE player_match_enrichment (
+                match_id VARCHAR PRIMARY KEY,
+                performance_score FLOAT DEFAULT 0
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE personal_score_awards (
+                match_id VARCHAR,
+                xuid VARCHAR,
+                name_id VARCHAR,
+                count INTEGER DEFAULT 0,
+                total_score INTEGER DEFAULT 0
+            )
+        """)
+        # MATCH_ID_1 enrichi, sans personal scores, mais personal_score = 0 → légitime
+        conn.execute("INSERT INTO player_match_enrichment (match_id) VALUES (?)", (MATCH_ID_1,))
+        conn.close()
+
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        _create_shared_db(shared_db)
+        # personal_score reste à 0 pour MATCH_ID_1 (défaut du helper)
+
+        from src.data.sync.engine import DuckDBSyncEngine
+
+        engine = DuckDBSyncEngine(
+            player_db_path=db,
+            xuid=PLAYER_XUID,
+            gamertag=PLAYER_GAMERTAG,
+            shared_db_path=shared_db,
+        )
+        ids = engine._load_existing_match_ids()
+
+        # personal_score = 0 + enrichment → considéré terminé (pas de retraitement)
+        assert MATCH_ID_1 in ids
         assert len(ids) == 1
 
     def test_empty_db_returns_empty_set(self, tmp_path: Path) -> None:

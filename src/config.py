@@ -131,6 +131,16 @@ class HaloColors:
 
 HALO_COLORS = HaloColors()
 
+# Palette Okabe-Ito — optimisée pour daltoniens (5 slots : moi + 4 coéquipiers max)
+# Source : Okabe & Ito (2008), "Color Universal Design"
+OKABE_ITO_PALETTE: list[str] = [
+    "#56B4E9",  # Sky Blue       — joueur principal (moi)
+    "#E69F00",  # Orange         — coéquipier 1
+    "#009E73",  # Bluish Green   — coéquipier 2
+    "#CC79A7",  # Reddish Purple — coéquipier 3
+    "#D55E00",  # Vermilion      — coéquipier 4
+]
+
 
 @dataclass(frozen=True)
 class ThemeColors:

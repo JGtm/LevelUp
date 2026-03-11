@@ -40,6 +40,7 @@ from src.ui.pages.teammates_views_shared import (
     _render_shared_medals,
     _render_shared_stats_metrics,
 )
+from src.ui.pages.teammates_weapons import render_weapon_kills_bar_chart
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.ui.tz import get_tz_name
 from src.visualization import plot_map_ratio_with_winloss
@@ -137,6 +138,16 @@ def render_single_teammate_view(
         colors_by_name = assign_player_colors_fn([n for n, _ in series])
         series = enrich_series_fn(series, db_path)
 
+        render_weapon_kills_bar_chart(
+            player_infos=[
+                (me_name, xuid, list(shared_ids)),
+                (name, friend_xuid, list(shared_ids)),
+            ],
+            colors_by_name=colors_by_name,
+            db_path=db_path,
+            key_suffix=friend_xuid,
+        )
+
         render_metric_bar_charts(
             series=series,
             colors_by_name=colors_by_name,
@@ -165,6 +176,11 @@ def render_single_teammate_view(
             db_key,
             top_medals_fn,
         )
+
+        # Stats par arme (v5.5)
+        from src.ui.pages.teammates_weapons import render_weapon_kills_table
+
+        render_weapon_kills_table(db_path, friend_xuid, list(shared_ids))
 
 
 def render_multi_teammate_view(  # noqa: PLR0913
@@ -236,14 +252,43 @@ def render_multi_teammate_view(  # noqa: PLR0913
         )
 
     if not rendered_bottom_charts:
-        series = enrich_series_fn(series, db_path)
-        render_metric_bar_charts(
-            series=series,
+        _render_bottom_charts(sub_all, series, colors_by_name, ctx, filters, callbacks)
+
+
+def _render_bottom_charts(  # noqa: PLR0913
+    sub_all: DataFrameLike,
+    series: list,
+    colors_by_name: dict,
+    ctx: TeammateContext,
+    filters: TeammateFilterOptions,
+    callbacks: TeammateCallbacks,
+) -> None:
+    """Affiche les graphes d'armes et de métriques en bas de la vue multi."""
+    db_path = ctx["db_path"]
+    show_smooth = filters["show_smooth"]
+    enrich_series_fn = callbacks["enrich_series_fn"]
+    plot_multi_metric_bars_fn = callbacks["plot_multi_metric_bars_fn"]
+
+    series = enrich_series_fn(series, db_path)
+    _match_ids = sub_all["match_id"].cast(pl.Utf8).to_list() if not sub_all.is_empty() else []
+    if _match_ids:
+        _player_infos = [(ctx["me_name"], ctx["xuid"], _match_ids)]
+        for fx in ctx["picked_xuids"]:
+            fx_name = display_name_from_xuid(str(fx), db_path=db_path)
+            _player_infos.append((fx_name, str(fx), _match_ids))
+        render_weapon_kills_bar_chart(
+            player_infos=_player_infos,
             colors_by_name=colors_by_name,
-            show_smooth=show_smooth,
-            key_suffix=f"{len(series)}",
-            plot_fn=plot_multi_metric_bars_fn,
+            db_path=db_path,
+            key_suffix=f"multi_{len(series)}",
         )
+    render_metric_bar_charts(
+        series=series,
+        colors_by_name=colors_by_name,
+        show_smooth=show_smooth,
+        key_suffix=f"{len(series)}",
+        plot_fn=plot_multi_metric_bars_fn,
+    )
 
 
 def _auto_reset_min_matches_slider(

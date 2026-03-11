@@ -120,85 +120,99 @@ class MaterializedViewsMixin:
 
         # ─── mv_map_stats ───
         conn.execute("DELETE FROM mv_map_stats")
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO mv_map_stats
             SELECT
-                map_id,
-                map_name,
+                mr.map_id,
+                mr.map_name,
                 COUNT(*) as matches_played,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN outcome = 3 THEN 1 ELSE 0 END) as losses,
-                SUM(CASE WHEN outcome = 1 THEN 1 ELSE 0 END) as ties,
-                AVG(CAST(kills AS DOUBLE)) as avg_kills,
-                AVG(CAST(deaths AS DOUBLE)) as avg_deaths,
-                AVG(CAST(assists AS DOUBLE)) as avg_assists,
-                AVG(accuracy) as avg_accuracy,
-                AVG(kda) as avg_kda,
+                SUM(CASE WHEN mp.outcome = 2 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN mp.outcome = 3 THEN 1 ELSE 0 END) as losses,
+                SUM(CASE WHEN mp.outcome = 1 THEN 1 ELSE 0 END) as ties,
+                AVG(CAST(mp.kills AS DOUBLE)) as avg_kills,
+                AVG(CAST(mp.deaths AS DOUBLE)) as avg_deaths,
+                AVG(CAST(mp.assists AS DOUBLE)) as avg_assists,
+                AVG(mp.accuracy) as avg_accuracy,
+                AVG(mp.kda) as avg_kda,
                 CASE WHEN COUNT(*) > 0
-                     THEN SUM(CASE WHEN outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
+                     THEN SUM(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
                      ELSE 0 END as win_rate,
                 CURRENT_TIMESTAMP as updated_at
-            FROM match_stats
-            WHERE map_id IS NOT NULL
-            GROUP BY map_id, map_name
-        """)
+            FROM shared.match_participants mp
+            JOIN shared.match_registry mr ON mr.match_id = mp.match_id
+            WHERE mp.xuid = ?
+              AND mr.map_id IS NOT NULL
+            GROUP BY mr.map_id, mr.map_name
+            """,
+            [self._xuid],
+        )
         results["mv_map_stats"] = conn.execute("SELECT COUNT(*) FROM mv_map_stats").fetchone()[0]
 
         # ─── mv_mode_category_stats ───
         # Catégorisation basée sur pair_name ou playlist_name
         conn.execute("DELETE FROM mv_mode_category_stats")
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO mv_mode_category_stats
             SELECT
                 COALESCE(
                     CASE
-                        WHEN pair_name LIKE '%Slayer%' OR pair_name LIKE '%Tuerie%' THEN 'Slayer'
-                        WHEN pair_name LIKE '%CTF%' OR pair_name LIKE '%Flag%' OR pair_name LIKE '%Drapeau%' THEN 'CTF'
-                        WHEN pair_name LIKE '%Stronghold%' OR pair_name LIKE '%Forteresse%' THEN 'Strongholds'
-                        WHEN pair_name LIKE '%Oddball%' OR pair_name LIKE '%Balle%' THEN 'Oddball'
-                        WHEN pair_name LIKE '%Total%Control%' OR pair_name LIKE '%Contrôle%' THEN 'Total Control'
-                        WHEN pair_name LIKE '%Attrition%' THEN 'Attrition'
-                        WHEN pair_name LIKE '%KOTH%' OR pair_name LIKE '%King%' OR pair_name LIKE '%Roi%' THEN 'King of the Hill'
-                        WHEN pair_name LIKE '%Extraction%' THEN 'Extraction'
-                        WHEN pair_name LIKE '%Firefight%' OR pair_name LIKE '%Sentry%' THEN 'Firefight'
-                        WHEN pair_name LIKE '%FFA%' OR pair_name LIKE '%Free%For%All%' THEN 'FFA'
+                        WHEN mr.pair_name LIKE '%Slayer%' OR mr.pair_name LIKE '%Tuerie%' THEN 'Slayer'
+                        WHEN mr.pair_name LIKE '%CTF%' OR mr.pair_name LIKE '%Flag%' OR mr.pair_name LIKE '%Drapeau%' THEN 'CTF'
+                        WHEN mr.pair_name LIKE '%Stronghold%' OR mr.pair_name LIKE '%Forteresse%' THEN 'Strongholds'
+                        WHEN mr.pair_name LIKE '%Oddball%' OR mr.pair_name LIKE '%Balle%' THEN 'Oddball'
+                        WHEN mr.pair_name LIKE '%Total%Control%' OR mr.pair_name LIKE '%Contrôle%' THEN 'Total Control'
+                        WHEN mr.pair_name LIKE '%Attrition%' THEN 'Attrition'
+                        WHEN mr.pair_name LIKE '%KOTH%' OR mr.pair_name LIKE '%King%' OR mr.pair_name LIKE '%Roi%' THEN 'King of the Hill'
+                        WHEN mr.pair_name LIKE '%Extraction%' THEN 'Extraction'
+                        WHEN mr.pair_name LIKE '%Firefight%' OR mr.pair_name LIKE '%Sentry%' THEN 'Firefight'
+                        WHEN mr.pair_name LIKE '%FFA%' OR mr.pair_name LIKE '%Free%For%All%' THEN 'FFA'
                         ELSE 'Autre'
                     END,
                     'Autre'
                 ) as mode_category,
                 COUNT(*) as matches_played,
-                AVG(CAST(kills AS DOUBLE)) as avg_kills,
-                AVG(CAST(deaths AS DOUBLE)) as avg_deaths,
-                AVG(CAST(assists AS DOUBLE)) as avg_assists,
-                AVG(kda) as avg_kda,
-                AVG(accuracy) as avg_accuracy,
+                AVG(CAST(mp.kills AS DOUBLE)) as avg_kills,
+                AVG(CAST(mp.deaths AS DOUBLE)) as avg_deaths,
+                AVG(CAST(mp.assists AS DOUBLE)) as avg_assists,
+                AVG(mp.kda) as avg_kda,
+                AVG(mp.accuracy) as avg_accuracy,
                 CASE WHEN COUNT(*) > 0
-                     THEN SUM(CASE WHEN outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
+                     THEN SUM(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
                      ELSE 0 END as win_rate,
                 CURRENT_TIMESTAMP as updated_at
-            FROM match_stats
+            FROM shared.match_participants mp
+            JOIN shared.match_registry mr ON mr.match_id = mp.match_id
+            WHERE mp.xuid = ?
             GROUP BY mode_category
-        """)
+            """,
+            [self._xuid],
+        )
         results["mv_mode_category_stats"] = conn.execute(
             "SELECT COUNT(*) FROM mv_mode_category_stats"
         ).fetchone()[0]
 
         # ─── mv_global_stats ───
         conn.execute("DELETE FROM mv_global_stats")
-        global_stats = conn.execute("""
+        global_stats = conn.execute(
+            """
             SELECT
                 COUNT(*) as total_matches,
-                SUM(kills) as total_kills,
-                SUM(deaths) as total_deaths,
-                SUM(assists) as total_assists,
-                SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN outcome = 3 THEN 1 ELSE 0 END) as losses,
-                AVG(kda) as avg_kda,
-                AVG(accuracy) as avg_accuracy,
-                SUM(time_played_seconds) / 3600.0 as total_hours,
-                AVG(avg_life_seconds) as avg_life_seconds
-            FROM match_stats
-        """).fetchone()
+                SUM(mp.kills) as total_kills,
+                SUM(mp.deaths) as total_deaths,
+                SUM(mp.assists) as total_assists,
+                SUM(CASE WHEN mp.outcome = 2 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN mp.outcome = 3 THEN 1 ELSE 0 END) as losses,
+                AVG(mp.kda) as avg_kda,
+                AVG(mp.accuracy) as avg_accuracy,
+                SUM(mp.time_played_seconds) / 3600.0 as total_hours,
+                AVG(mp.avg_life_seconds) as avg_life_seconds
+            FROM shared.match_participants mp
+            WHERE mp.xuid = ?
+            """,
+            [self._xuid],
+        ).fetchone()
 
         if global_stats:
             stats_data = [
@@ -225,41 +239,47 @@ class MaterializedViewsMixin:
         ).fetchone()[0]
 
         # mv_session_stats : Nécessite les sessions pré-calculées
-        # On skip si session_id n'est pas dans match_stats
+        # On skip si session_id n'est pas disponible dans player_match_enrichment
         try:
             has_sessions = (
                 conn.execute(
                     "SELECT COUNT(*) FROM information_schema.columns "
-                    "WHERE table_name = 'match_stats' AND column_name = 'session_id'"
+                    "WHERE table_name = 'player_match_enrichment' AND column_name = 'session_id'"
                 ).fetchone()[0]
                 > 0
             )
 
             if has_sessions:
                 conn.execute("DELETE FROM mv_session_stats")
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO mv_session_stats
                     SELECT
-                        session_id,
+                        pme.session_id,
                         COUNT(*) as match_count,
-                        MIN(start_time) as start_time,
-                        MAX(start_time) as end_time,
-                        SUM(kills) as total_kills,
-                        SUM(deaths) as total_deaths,
-                        SUM(assists) as total_assists,
-                        CASE WHEN SUM(deaths) > 0
-                             THEN CAST(SUM(kills) AS DOUBLE) / SUM(deaths)
-                             ELSE SUM(kills) END as kd_ratio,
+                        MIN(mr.start_time) as start_time,
+                        MAX(mr.start_time) as end_time,
+                        SUM(mp.kills) as total_kills,
+                        SUM(mp.deaths) as total_deaths,
+                        SUM(mp.assists) as total_assists,
+                        CASE WHEN SUM(mp.deaths) > 0
+                             THEN CAST(SUM(mp.kills) AS DOUBLE) / SUM(mp.deaths)
+                             ELSE SUM(mp.kills) END as kd_ratio,
                         CASE WHEN COUNT(*) > 0
-                             THEN SUM(CASE WHEN outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
+                             THEN SUM(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
                              ELSE 0 END as win_rate,
-                        AVG(accuracy) as avg_accuracy,
-                        AVG(avg_life_seconds) as avg_life_seconds,
+                        AVG(mp.accuracy) as avg_accuracy,
+                        AVG(mp.avg_life_seconds) as avg_life_seconds,
                         CURRENT_TIMESTAMP as updated_at
-                    FROM match_stats
-                    WHERE session_id IS NOT NULL
-                    GROUP BY session_id
-                """)
+                    FROM player_match_enrichment pme
+                    JOIN shared.match_participants mp
+                        ON mp.match_id = pme.match_id AND mp.xuid = ?
+                    JOIN shared.match_registry mr ON mr.match_id = pme.match_id
+                    WHERE pme.session_id IS NOT NULL
+                    GROUP BY pme.session_id
+                    """,
+                    [self._xuid],
+                )
                 results["mv_session_stats"] = conn.execute(
                     "SELECT COUNT(*) FROM mv_session_stats"
                 ).fetchone()[0]

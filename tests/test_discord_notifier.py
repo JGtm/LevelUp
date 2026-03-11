@@ -620,8 +620,8 @@ class TestNotifyOperationDone:
             assert any("Active" in n for n in field_names)
             assert not any("Idle" in n for n in field_names)
 
-    def test_skip_idle_all_zero_skips_entirely(self):
-        """skip_idle=True avec tous les joueurs à 0 matchs → pas de notification."""
+    def test_skip_idle_all_zero_sends_lightweight_embed(self):
+        """skip_idle=True avec tous les joueurs à 0 matchs → embed allégé envoyé (tous à jour)."""
         t0, t1 = _NOW - timedelta(minutes=1), _NOW
         mock_settings = {"discord_notifications_enabled": True}
         idle1 = _player(gamertag="Idle1", matches_synced=0)
@@ -629,12 +629,22 @@ class TestNotifyOperationDone:
         with (
             patch("src.utils.discord_notifier._load_app_settings", return_value=mock_settings),
             patch("os.environ", {**os.environ, "DISCORD_WEBHOOK_URL": _WEBHOOK}),
-            patch("urllib.request.urlopen") as mock_http,
+            patch(
+                "urllib.request.urlopen",
+                side_effect=lambda _r, _timeout=None: _mock_urlopen_ok(204),
+            ) as mock_http,
         ):
             notify_operation_done(
                 "sync_delta", t0, t1, [idle1, idle2], success=True, skip_idle=True
             )
-            mock_http.assert_not_called()
+            # Un embed allégé "déjà à jour" doit être envoyé
+            mock_http.assert_called_once()
+            call_args = mock_http.call_args[0][0]
+            body = json.loads(call_args.data.decode("utf-8"))
+            # Les champs contiennent les joueurs idle (embed allégé)
+            fields = body["embeds"][0]["fields"]
+            field_names = [f["name"] for f in fields]
+            assert any("Idle1" in n or "Idle2" in n for n in field_names)
 
     def test_skip_idle_keeps_error_players(self):
         """skip_idle=True garde les joueurs en erreur même à 0 matchs."""

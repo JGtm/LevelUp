@@ -60,8 +60,10 @@ class SK:
     MIN_MATCHES_MAPS_FRIENDS: str = "min_matches_maps_friends"
 
     # ------------------------------------------------------------------
-    # OAuth Xbox (partagées entre streamlit_app, xbox_oauth_ui, setup_wizard)
+    # OAuth Xbox — Device Code Flow
     # ------------------------------------------------------------------
-    XBOX_OAUTH_STATE: str = "_xbox_oauth_state"
     XBOX_OAUTH_RESULT: str = "_xbox_oauth_result"
-    XBOX_OAUTH_CONSUMED: str = "_xbox_oauth_consumed"
+    DC_FLOW: str = "_dc_flow"
+    DC_MSAL_APP: str = "_dc_msal_app"
+    DC_RESULT_QUEUE: str = "_dc_result_queue"
+    DC_CLIENT_ID: str = "_dc_client_id"

@@ -49,6 +49,23 @@ def _get_logs_dir() -> Path:
     return logs_dir
 
 
+def _handler_already_attached(logger_name: str, target_path: str) -> bool:
+    """Vérifie si un RotatingFileHandler vers *target_path* est déjà attaché au logger.
+
+    Utilisé pour éviter les doublons quand Streamlit ré-importe le module
+    (hot-reload / imports via chemins différents), ce qui réinitialise
+    ``_logging_configured`` et passe le guard threading.Event.
+    """
+    lg = logging.getLogger(logger_name)
+    for h in lg.handlers:
+        if (
+            isinstance(h, logging.handlers.BaseRotatingHandler)
+            and Path(h.baseFilename).resolve() == Path(target_path).resolve()
+        ):
+            return True
+    return False
+
+
 def setup_app_logging() -> None:
     """Configure le logging pour l'application Streamlit (guard process-level).
 
@@ -60,10 +77,12 @@ def setup_app_logging() -> None:
 
     formatter = logging.Formatter(LOG_FORMAT, datefmt=LOG_DATEFMT)
     logs_dir = _get_logs_dir()
+    sync_log_path = logs_dir / "sync.log"
+    app_log_path = logs_dir / "app.log"
 
     # Fichier app — tous les loggers src/scripts/streamlit_app, niveau DEBUG
     app_file_handler = logging.handlers.RotatingFileHandler(
-        logs_dir / "app.log",
+        app_log_path,
         maxBytes=APP_LOG_MAX_BYTES,
         backupCount=APP_LOG_BACKUP_COUNT,
         encoding="utf-8",
@@ -73,7 +92,7 @@ def setup_app_logging() -> None:
 
     # Fichier sync (séparé pour src.data.sync et scripts.backfill)
     sync_file_handler = logging.handlers.RotatingFileHandler(
-        logs_dir / "sync.log",
+        sync_log_path,
         maxBytes=SYNC_LOG_MAX_BYTES,
         backupCount=SYNC_LOG_BACKUP_COUNT,
         encoding="utf-8",
@@ -85,11 +104,13 @@ def setup_app_logging() -> None:
     for name in ("src", "scripts", "streamlit_app"):
         lg = logging.getLogger(name)
         lg.setLevel(logging.DEBUG)
-        lg.addHandler(app_file_handler)
+        if not _handler_already_attached(name, str(app_log_path)):
+            lg.addHandler(app_file_handler)
 
     # Loggers sync/backfill → fichier sync en plus
     for name in ("src.data.sync", "scripts.backfill"):
-        logging.getLogger(name).addHandler(sync_file_handler)
+        if not _handler_already_attached(name, str(sync_log_path)):
+            logging.getLogger(name).addHandler(sync_file_handler)
 
     # Silencer les loggers bruyants
     for logger_name, logger_level in _NOISY_LOGGERS.items():

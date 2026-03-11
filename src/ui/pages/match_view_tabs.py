@@ -24,6 +24,7 @@ from src.ui.pages.match_view_players import (
     render_nemesis_section,
     render_team_dominance_section,
 )
+from src.ui.pages.match_view_weapon_kills import render_weapon_kills_section
 
 
 def _render_summary_tab(  # noqa: PLR0913
@@ -45,6 +46,12 @@ def _render_summary_tab(  # noqa: PLR0913
         st.info(t("mv_stats_unavailable"))
     else:
         render_expected_vs_actual(row, pm, colors, df_full=df_full, db_path=db_path, xuid=xuid)
+    render_weapon_kills_section(
+        db_path=db_path,
+        match_id=match_id,
+        xuid=xuid,
+        colors=colors,
+    )
     render_participation_section(
         db_path=db_path,
         match_id=match_id,

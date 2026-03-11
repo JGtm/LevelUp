@@ -17,7 +17,6 @@ import os
 
 import streamlit as st
 
-from src.app.session_keys import SK
 from src.ui.i18n import t
 from src.ui.pages.setup_smoke_test import render_smoke_test
 from src.ui.pages.setup_wizard_logic import (
@@ -25,8 +24,8 @@ from src.ui.pages.setup_wizard_logic import (
     create_player_profile,
     get_setup_status,
     get_token_script_path,
-    save_azure_credentials,
-    validate_azure_credentials,
+    save_dc_credentials,
+    validate_dc_credentials,
     validate_gamertag,
 )
 
@@ -232,58 +231,61 @@ def _render_mode_selection() -> None:
 
 
 # =============================================================================
-# Parcours Xbox Express
+# Parcours Xbox Express (Device Code Flow)
 # =============================================================================
 
 
 def _render_xbox_flow(status: SetupStatus) -> None:
-    """Parcours Xbox en 2 étapes : credentials Azure + connexion Xbox."""
+    """Parcours Xbox Express en 2 étapes : client_id + Device Code Flow MSAL."""
     _render_back_button()
 
     total_steps = 2
-    current = 1 if not status.auth.has_credentials else 2
+    current = 1 if not status.auth.has_client_id else 2
     _render_progress_bar(current, total_steps)
 
-    # ── Étape 1 : Credentials Azure (toujours nécessaires) ────────────────
-    _render_step_header(1, t("setup_xbox_step1_title"), current)
+    # ── Étape 1 : Client ID Azure (public client, sans secret) ───────────
+    _render_step_header(1, t("setup_dc_step1_title"), current)
 
-    if status.auth.has_credentials:
+    if status.auth.has_client_id:
         st.success(t("setup_credentials_ok"))
     else:
-        st.markdown(t("setup_xbox_step1_help"))
-        _render_azure_form(redirect_default="http://localhost:8501")
-        return  # bloquer tant que pas rempli
+        st.markdown(t("setup_dc_step1_help"))
+        _render_dc_client_id_form()
+        return
 
     st.divider()
 
-    # ── Étape 2 : Bouton "Se connecter avec Xbox" ─────────────────────────
+    # ── Étape 2 : Device Code Flow ────────────────────────────────────────
     _render_step_header(2, t("setup_xbox_step2_title"), current)
+    _render_wizard_dc_flow()
 
-    st.markdown(t("setup_xbox_step2_help"))
 
-    client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "").strip()
-    redirect_uri = os.environ.get("SPNKR_AZURE_REDIRECT_URI", "").strip() or "http://localhost:8501"
+def _render_dc_client_id_form() -> None:
+    """Formulaire de saisie du client_id Azure (public client, sans secret)."""
+    from src.ui.pages.setup_wizard_xbox import render_dc_client_id_form
 
-    if client_id:
-        logger.debug("Wizard Xbox : génération URL OAuth (client_id=%s…)", client_id[:8])
-        from src.ui.xbox_oauth import build_xbox_auth_url, generate_oauth_state
+    render_dc_client_id_form()
 
-        if SK.XBOX_OAUTH_STATE not in st.session_state:
-            st.session_state[SK.XBOX_OAUTH_STATE] = generate_oauth_state()
 
-        state = st.session_state[SK.XBOX_OAUTH_STATE]
-        auth_url = build_xbox_auth_url(client_id, redirect_uri, state)
+def _render_wizard_dc_flow() -> None:
+    """Étape 2 du wizard Xbox : démarrage et vérification du Device Code."""
+    from src.ui.pages.setup_wizard_xbox import render_wizard_dc_flow
 
-        st.markdown("")
-        st.link_button(
-            t("setup_xbox_connect_btn"),
-            url=auth_url,
-            width="stretch",
-        )
-        st.caption(t("setup_xbox_redirect_note", redirect_uri=redirect_uri))
-    else:
-        logger.warning("Wizard Xbox : client_id absent, bouton désactivé")
-        st.warning(t("setup_credentials_missing"))
+    render_wizard_dc_flow()
+
+
+def _render_wizard_dc_waiting(dc_flow) -> None:
+    """Affiche le code Device Code + bouton Vérifier dans le wizard."""
+    from src.ui.pages.setup_wizard_xbox import render_wizard_dc_waiting
+
+    render_wizard_dc_waiting(dc_flow)
+
+
+def _handle_wizard_dc_result(dc_result: dict) -> None:
+    """Traite le résultat du Device Code Flow dans le wizard (token ou erreur)."""
+    from src.ui.pages.setup_wizard_xbox import handle_wizard_dc_result
+
+    handle_wizard_dc_result(dc_result)
 
 
 # =============================================================================
@@ -390,32 +392,23 @@ def _render_step_header(step_num: int, title: str, current: int) -> None:
 
 
 def _render_azure_form(redirect_default: str = "https://localhost") -> None:
-    """Formulaire de saisie des credentials Azure."""
+    """Formulaire de saisie du Client ID Azure (public client, sans secret)."""
     with st.form("azure_credentials_form"):
         client_id = st.text_input(
             t("setup_client_id"),
             placeholder="12345678-1234-1234-1234-123456789abc",
         )
-        client_secret = st.text_input(
-            t("setup_client_secret"),
-            type="password",
-            placeholder="~xY8Q.secret.value",
-        )
-        redirect_uri = st.text_input(
-            t("setup_redirect_uri"),
-            value=redirect_default,
-        )
         submitted = st.form_submit_button(t("setup_save_credentials"), type="primary")
 
     if submitted:
-        errors = validate_azure_credentials(client_id, client_secret)
+        errors = validate_dc_credentials(client_id)
         if errors:
             for err in errors:
                 st.error(err)
         else:
-            save_azure_credentials(client_id, client_secret, redirect_uri)
+            save_dc_credentials(client_id)
             st.success(t("setup_credentials_saved"))
-            logger.info("Wizard : credentials Azure sauvegardées")
+            logger.info("Wizard : Client ID Azure (public client) sauvegardé")
             st.rerun()
 
 

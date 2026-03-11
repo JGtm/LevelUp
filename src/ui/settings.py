@@ -71,6 +71,7 @@ class AppSettings(BaseModel):
     spnkr_refresh_backfill_performance_scores: bool = True  # Par défaut activé
     spnkr_refresh_backfill_aliases: bool = False
     spnkr_refresh_backfill_lusr: bool = True  # LUSR local (sans API) — par défaut activé
+    spnkr_refresh_backfill_weapons: bool = False  # v5.5 : kills par arme depuis films SPNKr
 
     # Fichiers (overrides optionnels)
     aliases_path: str = ""

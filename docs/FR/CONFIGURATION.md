@@ -19,8 +19,8 @@ Après avoir double-cliqué sur `LevelUp.bat`, le wizard s'ouvre dans le navigat
 
 | Étape | Parcours Xbox Express | Parcours Azure manuel |
 |-------|----------------------|----------------------|
-| 1 | Saisir Client ID + Secret Azure | Saisir Client ID + Secret Azure |
-| 2 | Cliquer "Se connecter avec Xbox" (OAuth automatique) | Lancer `spnkr_get_refresh_token.py` + coller le token |
+| 1 | Saisir le Client ID Azure (sans secret) | Saisir le Client ID Azure |
+| 2 | Cliquer “Se connecter avec Xbox” (device code automatique) | Lancer `spnkr_get_refresh_token.py --device-code` + coller le token |
 | 3 | *(automatique)* gamertag + XUID résolus, profil créé | Saisir le gamertag manuellement |
 
 **Le wizard gère automatiquement :**
@@ -75,7 +75,7 @@ Pour utiliser l'API Halo Infinite via SPNKr, vous devez :
 4. Configurer :
    - **Name** : `LevelUp Halo`
    - **Supported account types** : Personal Microsoft accounts only
-   - **Redirect URI** : `https://localhost` (Web)
+   - **Redirect URI** : laisser vide
 5. Cliquer sur **Register**
 
    ![Register Application](../screenshots/azure-setup/03-register-application.png)
@@ -86,50 +86,19 @@ Pour utiliser l'API Halo Infinite via SPNKr, vous devez :
 
    > Il ressemble à : `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (format GUID)
 
-### 2. Configurer les Permissions
+### 2. Activer le Device Code Flow (Client Public)
 
-1. Dans votre application, aller à **API permissions** et cliquer sur **Add a permission**
+1. Dans votre application, aller à **Authentication**
+2. Descendre jusqu'à **Advanced settings**
+3. Mettre **Allow public client flows** à **Yes**
+4. Cliquer sur **Save**
 
-   ![API Permissions](../screenshots/azure-setup/04-api-permissions.png)
+> C'est le seul paramètre nécessaire en plus de l'enregistrement. Pas de secret client, pas de redirect URI.
 
-2. Sélectionner **Microsoft Graph** → **Delegated permissions**
-
-   ![Select Microsoft Graph](../screenshots/azure-setup/05-select-microsoft-graph.png)
-
-3. Ajouter `offline_access`
-
-   ![Add offline_access](../screenshots/azure-setup/06-permission-offline-access.png)
-
-4. Ajouter `User.Read`
-
-   ![Add User.Read](../screenshots/azure-setup/07-permission-user-read.png)
-
-5. Ajouter aussi les permissions Xbox Live (si disponibles)
-
-### 3. Créer un Secret Client
-
-1. Aller à **Certificates & secrets** et cliquer sur **New client secret**
-
-   ![Certificates & Secrets](../screenshots/azure-setup/08-certificates-secrets.png)
-
-2. Donner une description et choisir une expiration
-
-   ![New Client Secret](../screenshots/azure-setup/09-new-client-secret.png)
-
-3. **Copier immédiatement la colonne `Value`** — c'est votre `SPNKR_AZURE_CLIENT_SECRET`. Elle disparaît dès que vous naviguez ailleurs.
-
-   > ⚠️ Ne pas copier le **Secret ID** (l'autre colonne) — vous avez besoin de la **Value**.
-
-   ![Copy Secret Value](../screenshots/azure-setup/10-copy-secret.png)
-
-> **Récapitulatif — à ce stade vous devriez avoir deux valeurs en main :**
+> **Récapitulatif — à ce stade vous n'avez besoin que d'une seule valeur :**
 > - `SPNKR_AZURE_CLIENT_ID` → copié depuis la page **Overview** de l'app (étape 1.6)
-> - `SPNKR_AZURE_CLIENT_SECRET` → copié depuis **Certificates & secrets** (étape 3.3)
 
-> ✅ **Si vous utilisez le Setup Wizard (recommandé)** : collez ces deux valeurs dans les champs
-> du wizard. Il sauvegarde `.env.local` et gère le reste automatiquement.
-
-### 4. Configurer le Fichier .env.local (méthode manuelle — avancé)
+### 3. Configurer le Fichier .env.local (méthode manuelle — avancé)
 
 ```bash
 # Copier le template
@@ -139,29 +108,26 @@ cp .env.local.example .env.local
 Éditer `.env.local` :
 
 ```env
-# Azure Application
+# Azure Application (client ID uniquement — pas de secret requis)
 SPNKR_AZURE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-SPNKR_AZURE_CLIENT_SECRET=votre_secret_client
-SPNKR_AZURE_REDIRECT_URI=https://localhost
 
-# Token OAuth (à obtenir via le script)
+# Token OAuth (à obtenir via le script ci-dessous)
 SPNKR_OAUTH_REFRESH_TOKEN=
 ```
 
-### 5. Obtenir le Refresh Token (méthode manuelle — avancé)
+### 4. Obtenir le Refresh Token (méthode manuelle — avancé)
 
 > **Si vous utilisez Xbox Express** dans le wizard, cette étape est inutile.
-> Le token est obtenu automatiquement via OAuth et stocké en base de données.
+> Le token est obtenu automatiquement via le device code flow et stocké en base de données.
 
 ```bash
-python scripts/spnkr_get_refresh_token.py
+python scripts/spnkr_get_refresh_token.py --device-code
 ```
 
 Ce script :
-1. Ouvre un navigateur pour l'authentification Microsoft
-2. Récupère le code d'autorisation
-3. Échange contre un refresh token
-4. Affiche le token à copier dans `.env.local`
+1. Affiche un code court (ex. `ABCD-1234`) et l'URL `https://microsoft.com/devicelogin`
+2. Vous visitez l'URL et entrez le code dans votre navigateur
+3. Après connexion, le refresh token est affiché et sauvegardé automatiquement dans `.env.local`
 
 ---
 
@@ -257,9 +223,7 @@ python scripts/sync.py --player NouveauJoueur --full
 
 | Variable | Description | Requis |
 |----------|-------------|--------|
-| `SPNKR_AZURE_CLIENT_ID` | ID de l'application Azure | Oui |
-| `SPNKR_AZURE_CLIENT_SECRET` | Secret client Azure | Oui |
-| `SPNKR_AZURE_REDIRECT_URI` | URI de redirection | Oui |
+| `SPNKR_AZURE_CLIENT_ID` | ID de l’application Azure (client public, sans secret) | Oui |
 | `SPNKR_OAUTH_REFRESH_TOKEN` | Token de rafraîchissement global | Oui |
 | `SPNKR_OAUTH_REFRESH_TOKEN_<GT>` | Token per-player (endpoints player-gated) | Non |
 
