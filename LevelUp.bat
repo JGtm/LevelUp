@@ -166,7 +166,12 @@ if not defined PY (
     where winget >nul 2>&1
     if !ERRORLEVEL! neq 0 (
         echo   winget non disponible sur ce systeme.
-        echo   Installez Python manuellement : https://www.python.org/downloads/
+        echo.
+        echo   Installez Python 3.12 manuellement :
+        echo     https://www.python.org/downloads/
+        echo.
+        echo   Puis relancez LevelUp.bat.
+        start "" "https://www.python.org/downloads/"
         goto :end
     )
     echo   Voulez-vous installer Python 3.12 automatiquement via winget ?
