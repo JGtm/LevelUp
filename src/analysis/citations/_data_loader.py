@@ -295,7 +295,8 @@ class CitationDataLoaderMixin:
                     if wid in EXCLUDED_WEAPON_IDS:
                         continue
                     canonical_id = WEAPON_FUSION_MAP_ID.get(wid, wid)
-                    name = resolve_weapon_display(canonical_id) or "NON TROUVE"
+                    # lang="en" : clé canonique filmshell, cohérente avec stat_name des citations
+                    name = resolve_weapon_display(canonical_id, lang="en") or "NON TROUVE"
                     result[name] = result.get(name, 0) + int(kills)
                 return result
             except Exception:
