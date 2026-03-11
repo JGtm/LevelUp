@@ -50,7 +50,7 @@ class TestConstants:
     """Vérifie la cohérence des constantes."""
 
     def test_weapon_id_map_has_entries(self):
-        assert len(WEAPON_ID_MAP) >= 40
+        assert len(WEAPON_ID_MAP) >= 35
 
     def test_all_weapon_ids_are_8_bytes(self):
         for wid in WEAPON_ID_MAP:
@@ -68,7 +68,7 @@ class TestConstants:
     def test_most_weapons_have_common_suffix(self):
         """La majorité des armes utilisent le suffixe commun."""
         with_suffix = sum(1 for w in WEAPON_ID_MAP if w[4:] == COMMON_WEAPON_SUFFIX)
-        assert with_suffix >= 35
+        assert with_suffix >= 30
 
     def test_pov_player_index(self):
         assert POV_PLAYER_INDEX == 1

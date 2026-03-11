@@ -7,6 +7,16 @@
 
 ## Journal
 
+### [2026-03-11] — CLEANUP : Purge des entrées armes non confirmées dans _weapon_data.py
+- **Statut** : Complété
+- **Décision technique** :
+  1. Supprimé toutes les entrées non vérifiées de `WEAPON_ID_MAP` : 3 variantes Dynamo Grenade (alt/proj/state) et 11 variantes "(alt)" (Pulse Carbine, Plasma Pistol, Heatwave, Stalker Rifle, Shock Rifle, Mangler, Disruptor, Ravager, Skewer, Cindershot, MLRS-2 Hydra)
+  2. Nettoyé `WEAPON_TIMING` : supprimé 14 entrées timing correspondantes aux variantes supprimées
+  3. Nettoyé `WEAPON_FUSION_MAP` : supprimé `MLRS-2 Hydra (alt) → MLRS-2 Hydra`
+  4. Ajusté les seuils de tests (`test_weapon_parser.py`) : `>= 40 → >= 35` et `>= 35 → >= 30`
+- **Résultat** : WEAPON_ID_MAP passe de 53 à 39 entrées (36 confirmées + 3 grenades non vérifiées). 162 tests passent.
+- **Conclusion** : Seules les armes vérifiées par investigation filmshell restent. Les grenades (Frag/Plasma/Dynamo base) sont conservées comme "non confirmées" mais gardées car plausibles.
+
 ### [2026-03-11] — FIX : Corrections LevelUp.bat + setup_wizard
 - **Statut** : Complété
 - **Décision technique** :
