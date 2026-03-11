@@ -1,6 +1,6 @@
 # BACKLOG — Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-08 — **Backlog 100% traité**.
+> Mis à jour le 2026-03-11.
 
 ---
 
@@ -67,6 +67,13 @@
 - **Problème** : `load_df_optimized` charge `COLUMNS_COMMON` (30+ colonnes) pour pages n'en utilisant que 5-8.
 - **Gain estimé** : −30% mémoire.
 - **Approche** : Étendre les projections par page dans `cache_loaders.py` aux pages sans projection fine.
+
+### 6. Scan bitstring POV FRAME-only 📋
+- **Contexte** : `_scan_fire_events_bitstring()` scanne le chunk entier (~700 KB) alors que les fire events n'existent que dans les payloads FRAME (32% du chunk, ~230 KB). Les 68% restants (INIT_STATE ~155 KB, METADATA ~25 KB, headers…) ne peuvent pas contenir de fire events.
+- **Gain mesuré** : −46% temps de scan bitstring (458 ms → 247 ms sur match 000d5950, 24 chunks).
+- **Note** : Cette optimisation ne concerne que le POV — les fire events Section 2 sont exclusifs au joueur filmé. Les coéquipiers T1 restent sur Formula A (snapshots par chunk), le film ne contient tout simplement pas leurs fire events.
+- **Approche** : Ajouter `extract_frame_data(chunk_data, packets)` dans `packet_index.py` → concatène les payloads FRAME + adapte l'estimateur de position. Modifier `_scan_player_chunks` pour extraire les FRAMEs avant de passer les données à `_scan_fire_events_bitstring`.
+- **Coût secondaire** : concat FRAME payloads ~3 ms/match (négligeable vs 211 ms économisés).
 
 ---
 
