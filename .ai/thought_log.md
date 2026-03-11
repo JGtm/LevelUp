@@ -3151,3 +3151,22 @@ Import inutilisé `WeaponKillsMixin` retiré. Tests batch guard ajoutés.
 - `.ai/plan-weapon-kills-perf.md` — sections Point A et Point B ajoutées
 
 **Résultat** : 4181 tests, 0 échec
+
+---
+
+## [2026-03-11] Fix Step 4b — Reclassification melee/grenade manquants dans `_reconcile_api_aggregates`
+
+**Statut** : Complété
+
+**Contexte** : Sur le dernier match de Chocoboflor (`20fd2c23`), les 2 corps à corps et 1 grenade (confirmés par `match_participants.melee_kills=2` / `grenade_kills=1`) étaient attribués au Sidekick et MA40 par le pipeline weapon. Cause : les médailles contextuelles (Pummel, Back Smack, Stick…) absentes de `highlight_events` → `is_melee=False` / `is_grenade=False` sur tous les kills → tous passaient dans la branche Formula A snapshot.
+
+**Décision technique** : Ajout d'un **Step 4b** dans `_reconcile_api_aggregates` (avant Step 4a), qui compare les sentinelles déjà détectées avec les agrégats API et reclassifie les kills weapon les moins certains (priorité : `low` → `none` → `medium` → `high+swap` → `high`, à égalité : delta_ms desc) en `MELEE_WEAPON_ID` / `GRENADE_WEAPON_ID` avec `confidence='high'`.
+
+**Résultats observés** :
+- Avant : `{'Sidekick': 7, 'MA40 AR': 5}` — 0 melee, 0 grenade
+- Après : `{'Corps à corps': 2, 'Sidekick': 5, 'MA40 AR': 4, 'Grenade': 1}` — conforme à l'API ✓
+- Backfill Chocoboflor : 288 matchs, 6200 lignes, 0 erreurs
+
+**Fichier modifié** : `src/data/services/weapon_extraction_service.py` — `_reconcile_api_aggregates()`
+
+**Conclusion** : Fix minimal, sans régression sur les matchs où melee/grenade sont détectés via médailles (dans ce cas `detected == api`, le step 4b ne fait rien). Backfill global `--all --weapons --force-weapons` lancé en parallèle pour les 3 autres joueurs.

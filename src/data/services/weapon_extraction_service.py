@@ -56,6 +56,123 @@ def _attribution_row(kill: dict, weapon_id: int | None, confidence: str = "none"
     }
 
 
+def _inject_missing_sentinels(  # noqa: PLR0913
+    kill_rows: list[dict],
+    api_melee: int,
+    api_grenade: int,
+    melee_id: int,
+    grenade_id: int,
+    excluded_ids: frozenset,
+    match_id: str,
+    xuid_str: str,
+) -> None:
+    """Step 4b — reclassifie les kills weapon les moins certains en melee/grenade.
+
+    Appelé quand les médailles contextuelles sont absentes de highlight_events et
+    que le nombre de sentinelles détectées est inférieur aux agrégats API.
+    Modifie kill_rows en place.
+    """
+    detected_melee = sum(1 for r in kill_rows if r.get("weapon_id") == melee_id)
+    detected_grenade = sum(1 for r in kill_rows if r.get("weapon_id") == grenade_id)
+    melee_deficit = api_melee - detected_melee
+    grenade_deficit = api_grenade - detected_grenade
+    if melee_deficit <= 0 and grenade_deficit <= 0:
+        return
+
+    def _uncertainty_key(r: dict) -> tuple:
+        conf = r.get("confidence", "none")
+        rank = {"low": 0, "none": 1, "medium": 2, "high": 3}.get(conf, 1)
+        if conf == "high" and r.get("swap_detected"):
+            rank = 2  # high+swap → traité comme medium
+        return (rank, -(r.get("delta_ms") or 0))
+
+    pool = iter(
+        sorted(
+            [r for r in kill_rows if r.get("weapon_id") not in excluded_ids | {None}],
+            key=_uncertainty_key,
+        )
+    )
+    for sentinel_id, deficit, label in [
+        (melee_id, melee_deficit, "melee"),
+        (grenade_id, grenade_deficit, "grenade"),
+    ]:
+        if deficit <= 0:
+            continue
+        logger.debug(
+            "_reconcile %s %s : step4b inject %d %s", match_id[:8], xuid_str[:8], deficit, label
+        )
+        for _ in range(deficit):
+            r = next(pool, None)
+            if r is None:
+                break
+            r["weapon_id"] = sentinel_id
+            r["confidence"] = "high"
+            r["swap_detected"] = False
+
+
+def _step4a_demote(
+    weapon_high: list[dict],
+    api_weapon_kills: int,
+    match_id: str,
+    xuid_str: str,
+) -> bool:
+    """Step 4a — demote les HIGH surnuméraires vers MEDIUM. Retourne True si appliqué."""
+    if len(weapon_high) <= api_weapon_kills:
+        return False
+    excess = len(weapon_high) - api_weapon_kills
+    logger.debug(
+        "_reconcile %s %s : step4a demote %d→%d (−%d)",
+        match_id[:8],
+        xuid_str[:8],
+        len(weapon_high),
+        api_weapon_kills,
+        excess,
+    )
+    for r in sorted(weapon_high, key=lambda x: x.get("delta_ms") or 0, reverse=True)[:excess]:
+        r["confidence"] = "medium"
+    return True
+
+
+def _step4c_promote(
+    kill_rows: list[dict],
+    api_weapon_kills: int,
+    excluded_ids: frozenset,
+    match_id: str,
+    xuid_str: str,
+) -> None:
+    """Step 4c — promeut des MEDIUM en HIGH pour combler un déficit de weapon kills."""
+    high_after = sum(
+        1
+        for r in kill_rows
+        if r.get("confidence") == "high"
+        and r.get("weapon_id") is not None
+        and r.get("weapon_id") not in excluded_ids
+    )
+    if high_after >= api_weapon_kills:
+        return
+    deficit = api_weapon_kills - high_after
+    logger.debug(
+        "_reconcile %s %s : step4c promote %d→%d (+%d)",
+        match_id[:8],
+        xuid_str[:8],
+        high_after,
+        api_weapon_kills,
+        deficit,
+    )
+    medium_kills = sorted(
+        [
+            r
+            for r in kill_rows
+            if r.get("confidence") == "medium"
+            and r.get("weapon_id") is not None
+            and r.get("weapon_id") not in excluded_ids
+        ],
+        key=lambda x: x.get("delta_ms") or 0,
+    )
+    for r in medium_kills[:deficit]:
+        r["confidence"] = "high"
+
+
 class WeaponExtractionService:
     """Orchestre l'extraction d'armes pour un match donné."""
 
@@ -488,8 +605,7 @@ class WeaponExtractionService:
     ) -> list[dict]:
         """Réconcilie la confidence POV avec les agrégats API (FINDINGS §6a Step 4).
 
-        - Step 4a : si HIGH weapon kills > api → demote les moins certains (grand delta)
-        - Step 4c : si HIGH weapon kills < api → promouvoir des MEDIUM en HIGH
+        Délègue à _inject_missing_sentinels (4b), _step4a_demote (4a), _step4c_promote (4c).
         """
         try:
             row = conn.execute(
@@ -504,8 +620,23 @@ class WeaponExtractionService:
         api_grenade = int(row[0])
         api_melee = int(row[1])
         api_weapon_kills = max(len(kill_rows) - api_grenade - api_melee, 0)
-        from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS
+        from src.analysis._weapon_data import (
+            EXCLUDED_WEAPON_IDS,
+            GRENADE_WEAPON_ID,
+            MELEE_WEAPON_ID,
+        )
 
+        # Step 4b — reclassification melee/grenade manquants (médailles absentes)
+        _inject_missing_sentinels(
+            kill_rows,
+            api_melee,
+            api_grenade,
+            MELEE_WEAPON_ID,
+            GRENADE_WEAPON_ID,
+            EXCLUDED_WEAPON_IDS,
+            match_id,
+            xuid_str,
+        )
         weapon_high = [
             r
             for r in kill_rows
@@ -513,52 +644,10 @@ class WeaponExtractionService:
             and r.get("weapon_id") is not None
             and r.get("weapon_id") not in EXCLUDED_WEAPON_IDS
         ]
-        # Step 4a — surdétection : demote les HIGH les moins certains
-        if len(weapon_high) > api_weapon_kills:
-            excess = len(weapon_high) - api_weapon_kills
-            logger.debug(
-                "_reconcile %s %s : step4a demote %d→%d (−%d)",
-                match_id[:8],
-                xuid_str[:8],
-                len(weapon_high),
-                api_weapon_kills,
-                excess,
-            )
-            for r in sorted(weapon_high, key=lambda x: x.get("delta_ms") or 0, reverse=True)[
-                :excess
-            ]:
-                r["confidence"] = "medium"
+        # Steps 4a/4c — ajustement niveau weapon kills
+        if _step4a_demote(weapon_high, api_weapon_kills, match_id, xuid_str):
             return kill_rows
-        # Step 4c — sous-détection : promouvoir des MEDIUM en HIGH jusqu'à combler le déficit
-        high_after = sum(
-            1
-            for r in kill_rows
-            if r.get("confidence") == "high"
-            and r.get("weapon_id") is not None
-            and r.get("weapon_id") not in EXCLUDED_WEAPON_IDS
-        )
-        if high_after < api_weapon_kills:
-            deficit = api_weapon_kills - high_after
-            logger.debug(
-                "_reconcile %s %s : step4c promote %d→%d (+%d)",
-                match_id[:8],
-                xuid_str[:8],
-                high_after,
-                api_weapon_kills,
-                deficit,
-            )
-            medium_kills = sorted(
-                [
-                    r
-                    for r in kill_rows
-                    if r.get("confidence") == "medium"
-                    and r.get("weapon_id") is not None
-                    and r.get("weapon_id") not in EXCLUDED_WEAPON_IDS
-                ],
-                key=lambda x: x.get("delta_ms") or 0,  # plus certains en premier
-            )
-            for r in medium_kills[:deficit]:
-                r["confidence"] = "high"
+        _step4c_promote(kill_rows, api_weapon_kills, EXCLUDED_WEAPON_IDS, match_id, xuid_str)
         return kill_rows
 
     @staticmethod
