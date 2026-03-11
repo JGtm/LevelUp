@@ -4,30 +4,25 @@
 
 ---
 
+## ✅ Traité
+
+### Citations d'armes — Refactoring catégories et images
+> Traité le 2026-03-11 — commit `56c68d7` + `7158626`
+
+- Images incorrectes retirées sur 6 citations (VK78 Commando, Fusil traqueur, Déchiqueteur, Empaleur, Calcineur, Crémateur)
+- Covenant + Banished fusionnés en sous-catégorie **Paria** (6 armes)
+- Nouvelle sous-catégorie **Forerunner** : Calcineur, Crémateur, Rayon de Sentinelle (nouvelle citation avec image H5G)
+- Composites `covenant_weapons_mastery` + `banished_weapons_mastery` remplacés par `paria_weapons_mastery` + `forerunner_weapons_mastery`
+- Nouveau composite général `all_weapons_mastery` — Maîtrise en armement (avec image)
+- `_SUBCAT_ORDER` Arme mis à jour : Général > UNSC > Paria > Forerunner > Grenade
+- i18n FR/EN mis à jour
+
+---
+
 ## 🔴 Bugs actifs
 
-### Images citations d'armes incorrectes
-> Certaines armes affichent une image incorrecte (ou absente) dans la section Citations — page Commendations et vue Match.
-
-| Fichier | Rôle |
-|---------|------|
-| [`src/ui/commendations.py`](../src/ui/commendations.py) | `_img_src()` + `_img_data_uri()` — résolution chemin → base64 |
-| [`src/ui/pages/match_view_citations.py`](../src/ui/pages/match_view_citations.py) | Consomme `item["image_path"]` directement depuis la BDD |
-| `data/warehouse/metadata.duckdb` | Table `citation_mappings.image_path` — source des chemins |
-| `static/commendations/h5g/` | 208 fichiers PNG (noms FR accentués) |
-| [`scripts/populate_citation_mappings.py`](../scripts/populate_citation_mappings.py) | Script de peuplement — suspect principal |
-
-**Causes probables** :
-- Noms d'armes FR avec accents (`é`, `à`, `ô`…) normalisés différemment entre le nom de fichier réel et la valeur stockée dans `citation_mappings.image_path`
-- Séparateurs inconsistants (`Lance-roquettes` vs `Lance_roquettes`) ou casse différente
-
-**Actions** :
-- [ ] Auditer la BDD : `SELECT name, image_path FROM citation_mappings ORDER BY name` — repérer les chemins NULL ou mal formés
-- [ ] Croiser avec les fichiers réels dans `static/commendations/h5g/` pour identifier les écarts
-- [ ] Corriger `populate_citation_mappings.py` : normaliser accents (`unicodedata.normalize`), casse et séparateurs avant de stocker le chemin
-- [ ] Ajouter `tests/test_citation_image_paths.py` : vérifie que chaque `image_path` non-NULL pointe vers un fichier existant
-
-**Complexité** : M
+### ~~Images citations d'armes incorrectes~~
+> ✅ Traité le 2026-03-11 — voir section **Traité** ci-dessus.
 
 ---
 
