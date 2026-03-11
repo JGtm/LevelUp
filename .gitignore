@@ -118,3 +118,8 @@ To do.txt
 
 # Logs locaux (non trackés)
 data/logs/*
+
+# Scripts temporaires / de débogage locaux
+*_tmp.py
+query_weapons_tmp.py
+kill_python.bat
