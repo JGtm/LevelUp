@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import functools
 import html as html_lib
+import logging
 import urllib.parse
 from collections.abc import Callable
 from pathlib import Path
+
+_log = logging.getLogger(__name__)
 
 import polars as pl
 
@@ -141,6 +144,9 @@ def _build_map_url_index() -> dict[str, str]:
     maps_dir = Path(get_repo_root()) / "static" / "maps"
     index: dict[str, str] = {}
     if not maps_dir.exists():
+        _log.warning(
+            "Répertoire static/maps/ introuvable — thumbnails de cartes désactivés (%s)", maps_dir
+        )
         return index
     for f in maps_dir.iterdir():
         if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
@@ -148,6 +154,7 @@ def _build_map_url_index() -> dict[str, str]:
             url = f"/app/static/maps/{f.name}"
             index[stem] = url
             index[stem.replace(" ", "_")] = url
+    _log.debug("Index thumbnails cartes : %d entrées chargées depuis %s", len(index), maps_dir)
     return index
 
 
