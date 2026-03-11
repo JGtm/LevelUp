@@ -10,15 +10,23 @@ dans le service d'orchestration et le backfill.
 
 from __future__ import annotations
 
+import logging
 from collections import Counter
 
 from bitstring import Bits
 
+logger = logging.getLogger(__name__)
+
 from src.analysis._weapon_data import (
     GRENADE_MEDALS,  # noqa: F401  (re-export public API)
+    GRENADE_WEAPON_ID,
     MELEE_MEDALS,  # noqa: F401  (re-export public API)
+    MELEE_WEAPON_ID,
+    WEAPON_BYTES_TO_INT,
     WEAPON_ID_MAP,
-    WEAPON_TIMING,
+    WEAPON_IDS_INT,
+    WEAPON_INT_TO_NAME,
+    WEAPON_TIMING_BY_ID,  # noqa: F401  (re-export public API)
 )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -35,14 +43,6 @@ FORMULA_A_PATTERN = bytes.fromhex("200002")
 
 _WEAPON_BIT_OFFSET = 40  # bits après event_start → weapon_id (64 bits)
 
-# Sets pré-calculés pour validation rapide
-WEAPON_IDS_INT: set[int] = set()
-WEAPON_INT_TO_NAME: dict[int, str] = {}
-for _wid_bytes, _wname in WEAPON_ID_MAP.items():
-    _val = int.from_bytes(_wid_bytes, byteorder="big")
-    WEAPON_IDS_INT.add(_val)
-    WEAPON_INT_TO_NAME[_val] = _wname
-
 # Suffixes 4B distincts (Formula A multi-suffixe — Energy Sword variants, Hammer variants…)
 _ALL_FORMULA_A_SUFFIXES: frozenset[bytes] = frozenset(k[4:] for k in WEAPON_ID_MAP if len(k) == 8)
 
@@ -53,12 +53,10 @@ _ALL_FORMULA_A_SUFFIXES: frozenset[bytes] = frozenset(k[4:] for k in WEAPON_ID_M
 # POV player_index (invariant universel — inv #6, #23, #27, #41)
 POV_PLAYER_INDEX = 1
 
-# IDs synthétiques (réservés, ne collident pas avec les uint64 film)
-MELEE_FILM_ID = 1
-GRENADE_FILM_ID = 0
-VEHICLE_FILM_ID = 2
-
 # Aliases pour compatibilité (à supprimer après migration complète)
+MELEE_FILM_ID = MELEE_WEAPON_ID
+GRENADE_FILM_ID = GRENADE_WEAPON_ID
+VEHICLE_FILM_ID = 2
 MELEE_API_ID = MELEE_FILM_ID
 GRENADE_API_ID = GRENADE_FILM_ID
 VEHICLE_API_ID = VEHICLE_FILM_ID
@@ -299,11 +297,11 @@ def scan_all_players(
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-def _get_confidence(weapon_name: str, delta_ms: int | None) -> str:
+def _get_confidence(weapon_id: int, delta_ms: int | None) -> str:
     """Calcule la confidence d'une attribution POV selon les zones FINDINGS §6a."""
     if delta_ms is None:
         return "none"
-    swap_ms, travel_max = WEAPON_TIMING.get(weapon_name, (650, 2000))
+    swap_ms, travel_max = WEAPON_TIMING_BY_ID.get(weapon_id, (650, 2000))
     if delta_ms < swap_ms:
         return "high"  # Zone A — swap physiquement impossible
     if delta_ms <= travel_max:
@@ -319,78 +317,116 @@ def correlate_kills_to_weapons(
 
     Calcule delta_ms et confidence selon les zones FINDINGS §6a.
     Exclut les kills melee/grenade de la recherche fire event.
+    Produit weapon_id (int) : MELEE_WEAPON_ID, GRENADE_WEAPON_ID ou uint64 film.
+    weapon_id=None si aucun fire event trouvé.
     """
     results = []
+    n_melee = n_grenade = n_matched = n_unresolved = 0
     for kill in kills:
         kill_t = kill["time_ms"]
         if kill["is_melee"]:
-            results.append(
-                {
-                    **kill,
-                    "weapon_name": "MELEE",
-                    "matched_fire_event": None,
-                    "delta_ms": None,
-                    "confidence": "none",
-                    "swap_detected": False,
-                    "delayed_damage": False,
-                }
-            )
+            n_melee += 1
+            results.append(_make_sentinel_result(kill, MELEE_WEAPON_ID))
             continue
         if kill["is_grenade"]:
-            results.append(
-                {
-                    **kill,
-                    "weapon_name": "GRENADE",
-                    "matched_fire_event": None,
-                    "delta_ms": None,
-                    "confidence": "none",
-                    "swap_detected": False,
-                    "delayed_damage": False,
-                }
-            )
+            n_grenade += 1
+            results.append(_make_sentinel_result(kill, GRENADE_WEAPON_ID))
             continue
 
-        candidates = [
-            ev
-            for ev in fire_events_all
-            if (kill_t - KILL_WINDOW_MS) <= ev["timestamp_ms"] <= kill_t
-        ]
-        best: dict | None = None
-        if candidates:
-            best = max(candidates, key=lambda e: e["timestamp_ms"])
-
-        wname = best["weapon_name"] if best else "NON TROUVE"
-        delta = int(kill_t - best["timestamp_ms"]) if best else None
-        swap_ms, travel_max = WEAPON_TIMING.get(wname, (650, 2000))
-        conf = _get_confidence(wname, delta)
-        # Zone B W2 check (FINDINGS §6a Step 2) : si MEDIUM, chercher un fire W2
-        # dans [kill_t, kill_t + swap_ms] — preuve que W2 était équipé au moment du kill
-        if conf == "medium" and best is not None:
-            post_swap = [
-                ev
-                for ev in fire_events_all
-                if kill_t < ev["timestamp_ms"] <= kill_t + swap_ms and ev["weapon_name"] != wname
-            ]
-            if post_swap:
-                w2_ev = min(post_swap, key=lambda e: e["timestamp_ms"])
-                wname = w2_ev["weapon_name"]
-                swap_ms, travel_max = WEAPON_TIMING.get(wname, (650, 2000))
-                conf = "high"
-        swap_detected = best is not None and delta is not None and delta >= swap_ms
-        delayed = best is not None and delta is not None and delta > travel_max
-        results.append(
-            {
-                **kill,
-                "weapon_name": wname,
-                "fire_seq": best["fire_seq"] if best else None,
-                "matched_fire_event": best,
-                "delta_ms": delta,
-                "confidence": conf,
-                "swap_detected": swap_detected,
-                "delayed_damage": delayed,
-            }
-        )
+        matched, result = _match_kill_to_fire_event(kill, kill_t, fire_events_all)
+        if matched:
+            n_matched += 1
+        else:
+            n_unresolved += 1
+        results.append(result)
+    logger.debug(
+        "correlate: %d kills → %d matched, %d melee, %d grenade, %d unresolved",
+        len(kills),
+        n_matched,
+        n_melee,
+        n_grenade,
+        n_unresolved,
+    )
     return results
+
+
+def _make_sentinel_result(kill: dict, weapon_id: int) -> dict:
+    """Construit un résultat pour un kill melee/grenade (sentinel weapon_id)."""
+    return {
+        **kill,
+        "weapon_id": weapon_id,
+        "matched_fire_event": None,
+        "delta_ms": None,
+        "confidence": "none",
+        "swap_detected": False,
+        "delayed_damage": False,
+    }
+
+
+def _match_kill_to_fire_event(
+    kill: dict,
+    kill_t: int,
+    fire_events_all: list[dict],
+) -> tuple[bool, dict]:
+    """Associe un kill à son fire event le plus proche. Retourne (matched, result)."""
+    candidates = [
+        ev for ev in fire_events_all if (kill_t - KILL_WINDOW_MS) <= ev["timestamp_ms"] <= kill_t
+    ]
+    best: dict | None = None
+    if candidates:
+        best = max(candidates, key=lambda e: e["timestamp_ms"])
+
+    if best is None:
+        wid_int: int | None = None
+    else:
+        wid_int = WEAPON_BYTES_TO_INT.get(best["weapon_bytes"])
+        if wid_int is None:
+            wid_int = int.from_bytes(best["weapon_bytes"], byteorder="big")
+    delta = int(kill_t - best["timestamp_ms"]) if best else None
+    conf = _get_confidence(wid_int, delta) if wid_int is not None else "none"
+    swap_ms, travel_max = WEAPON_TIMING_BY_ID.get(wid_int, (650, 2000)) if wid_int else (650, 2000)
+    # Zone B W2 check (FINDINGS §6a Step 2)
+    if conf == "medium" and best is not None:
+        wid_int, conf = _check_zone_b_swap(kill_t, best, fire_events_all, swap_ms, wid_int, conf)
+    swap_detected = best is not None and delta is not None and delta >= swap_ms
+    delayed = best is not None and delta is not None and delta > travel_max
+    return (
+        best is not None,
+        {
+            **kill,
+            "weapon_id": wid_int,
+            "fire_seq": best["fire_seq"] if best else None,
+            "matched_fire_event": best,
+            "delta_ms": delta,
+            "confidence": conf,
+            "swap_detected": swap_detected,
+            "delayed_damage": delayed,
+        },
+    )
+
+
+def _check_zone_b_swap(  # noqa: PLR0913
+    kill_t: int,
+    best: dict,
+    fire_events_all: list[dict],
+    swap_ms: int,
+    wid_int: int | None,
+    conf: str,
+) -> tuple[int | None, str]:
+    """Zone B W2 check (FINDINGS §6a Step 2) : cherche un fire W2 post-swap."""
+    post_swap = [
+        ev
+        for ev in fire_events_all
+        if kill_t < ev["timestamp_ms"] <= kill_t + swap_ms
+        and ev["weapon_bytes"] != best["weapon_bytes"]
+    ]
+    if post_swap:
+        w2_ev = min(post_swap, key=lambda e: e["timestamp_ms"])
+        w2_int = WEAPON_BYTES_TO_INT.get(w2_ev["weapon_bytes"])
+        if w2_int is None:
+            w2_int = int.from_bytes(w2_ev["weapon_bytes"], byteorder="big")
+        return w2_int, "high"
+    return wid_int, conf
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -399,30 +435,16 @@ def correlate_kills_to_weapons(
 
 
 def count_kills_by_film_weapon(correlated: list[dict]) -> Counter:
-    """Agrège les kills corrélés en Counter {film_weapon_uint64: n_kills}.
+    """Agrège les kills corrélés en Counter {weapon_id_uint64: n_kills}.
 
-    Kills melee → MELEE_FILM_ID=1, grenade → GRENADE_FILM_ID=0.
-    L'ID stocké est le uint64 big-endian des 8 bytes film (WEAPON_ID_MAP key).
-    Kills sans match → ignorés ; armes inconnues → incluses si le uint64 est
-    dans WEAPON_IDS_INT (enum validé).
+    Kills melee → MELEE_WEAPON_ID=1, grenade → GRENADE_WEAPON_ID=0.
+    Kills sans match (weapon_id=None) → ignorés.
     """
     counts: Counter = Counter()
     for r in correlated:
-        if r.get("is_melee"):
-            counts[MELEE_FILM_ID] += 1
-            continue
-        if r.get("is_grenade"):
-            counts[GRENADE_FILM_ID] += 1
-            continue
-        ev = r.get("matched_fire_event")
-        if not ev:
-            continue
-        wbytes = ev.get("weapon_bytes")
-        if not wbytes:
-            continue
-        weapon_uint64 = int.from_bytes(wbytes, byteorder="big")
-        if weapon_uint64 in WEAPON_IDS_INT:
-            counts[weapon_uint64] += 1
+        wid = r.get("weapon_id")
+        if wid is not None:
+            counts[wid] += 1
     return counts
 
 
@@ -434,63 +456,8 @@ count_kills_by_api_weapon = count_kills_by_film_weapon
 # Détection player_index via méthode acurtis (inv #26)
 # ══════════════════════════════════════════════════════════════════════════════
 
-
-def get_player_index_acurtis(bits: Bits, xuid_int: int) -> int | None:
-    """Retourne le player_index d'un joueur depuis son XUID (méthode acurtis).
-
-    Cherche le XUID (little-endian uint64, non-byte-aligned) dans le bitstream
-    et lit les 5 bits qui le précèdent.
-
-    Source : acurtis 2026-03-03 (inv #26), confirmé sur 3 matchs JGtm.
-
-    Args:
-        bits: Bitstring du chunk REPLICATION_DATA.
-        xuid_int: XUID du joueur sous forme d'entier.
-
-    Returns:
-        player_index (0-7) ou None si XUID absent du chunk.
-    """
-    from bitstring import Bits as _Bits  # import local pour éviter dep obligatoire
-
-    term = _Bits(uintle=xuid_int, length=64)
-    position = bits.find(term, bytealigned=False)
-    if not position:
-        return None
-    bit_pos = position[0]
-    if bit_pos < 5:
-        return None
-    return bits[bit_pos - 5 : bit_pos].uint
-
-
-def detect_player_indices(
-    chunk_data: bytes,
-    xuid_ints: dict[int, str],
-) -> dict[int, int]:
-    """Mappe player_index → xuid_int pour tous les joueurs du match.
-
-    Utilise la méthode acurtis (inv #26) sur les données brutes d'un chunk.
-
-    Args:
-        chunk_data: Données brutes d'un chunk REPLICATION_DATA.
-        xuid_ints: {xuid_int: gamertag} pour tous les joueurs du match.
-
-    Returns:
-        {player_index: xuid_int} — les joueurs non trouvés sont absents.
-    """
-    from bitstring import Bits as _Bits
-
-    bits = _Bits(bytes=chunk_data)
-    result: dict[int, int] = {}
-    seen_indices: set[int] = set()
-
-    for xuid_int, _gamertag in xuid_ints.items():
-        pi = get_player_index_acurtis(bits, xuid_int)
-        if pi is None:
-            continue
-        if pi in seen_indices:
-            # Collision de player_index (inv #110) — on garde le premier
-            continue
-        result[pi] = xuid_int
-        seen_indices.add(pi)
-
-    return result
+# Déplacé vers src/analysis/player_index.py — ré-exports pour compatibilité
+from src.analysis.player_index import (  # noqa: F401, E402
+    detect_player_indices,
+    get_player_index_acurtis,
+)

@@ -167,68 +167,31 @@ def render_metric_bar_charts(
         plot_fn: Fonction de tracé.
     """
     _lang = get_lang()
-    fig_spree = plot_fn(
-        series,
-        metric_col="max_killing_spree",
-        title=t("tm_killing_spree"),
-        y_axis_title=t("tm_killing_spree"),
-        hover_label=t("tm_killing_spree"),
-        colors=colors_by_name,
-        smooth_window=10,
-        show_smooth_lines=show_smooth,
-        lang=_lang,
-    )
-    if fig_spree is None:
-        st.info(t("insufficient_data_chart"))
-    else:
-        st.plotly_chart(
-            fig_spree,
-            width="stretch",
-            key=f"friend_spree_multi_{key_suffix}",
-            config=PLOTLY_CLEAN_CONFIG,
+    for metric_col, label, key_prefix in [
+        ("max_killing_spree", t("tm_killing_spree"), "friend_spree_multi"),
+        ("headshot_kills", t("tm_headshots"), "friend_hs_multi"),
+        ("perfect_kills", t("tm_perfect_kills"), "friend_pk_multi"),
+    ]:
+        fig = plot_fn(
+            series,
+            metric_col=metric_col,
+            title=label,
+            y_axis_title=label,
+            hover_label=label,
+            colors=colors_by_name,
+            smooth_window=10,
+            show_smooth_lines=show_smooth,
+            lang=_lang,
         )
-
-    fig_hs = plot_fn(
-        series,
-        metric_col="headshot_kills",
-        title=t("tm_headshots"),
-        y_axis_title=t("tm_headshots"),
-        hover_label=t("tm_headshots"),
-        colors=colors_by_name,
-        smooth_window=10,
-        show_smooth_lines=show_smooth,
-        lang=_lang,
-    )
-    if fig_hs is None:
-        st.info(t("insufficient_data_chart"))
-    else:
-        st.plotly_chart(
-            fig_hs,
-            width="stretch",
-            key=f"friend_hs_multi_{key_suffix}",
-            config=PLOTLY_CLEAN_CONFIG,
-        )
-
-    fig_pk = plot_fn(
-        series,
-        metric_col="perfect_kills",
-        title=t("tm_perfect_kills"),
-        y_axis_title=t("tm_perfect_kills"),
-        hover_label=t("tm_perfect_kills"),
-        colors=colors_by_name,
-        smooth_window=10,
-        show_smooth_lines=show_smooth,
-        lang=_lang,
-    )
-    if fig_pk is None:
-        st.info(t("insufficient_data_chart"))
-    else:
-        st.plotly_chart(
-            fig_pk,
-            width="stretch",
-            key=f"friend_pk_multi_{key_suffix}",
-            config=PLOTLY_CLEAN_CONFIG,
-        )
+        if fig is None:
+            st.info(t("insufficient_data_chart"))
+        else:
+            st.plotly_chart(
+                fig,
+                width="stretch",
+                key=f"{key_prefix}_{key_suffix}",
+                config=PLOTLY_CLEAN_CONFIG,
+            )
 
 
 def render_outcome_bar_chart(dfr: DataFrameLike) -> None:

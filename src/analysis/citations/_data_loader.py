@@ -264,8 +264,8 @@ class CitationDataLoaderMixin:
     def load_match_weapon_kills(self, match_id: str) -> dict[str, int]:
         """Charge les kills par arme du joueur courant pour un match.
 
-        Interroge ``shared.weapon_kills`` (schéma per-kill v5.6) et agrège
-        par ``weapon_name`` en excluant les kills non attribués.
+        Interroge ``shared.weapon_kills`` (schéma per-kill v5.7) et agrège
+        par ``weapon_id`` en excluant les sentinelles, puis résout les noms.
 
         Returns:
             ``{weapon_name: kills}`` ou ``{}`` si absent.
@@ -276,20 +276,27 @@ class CitationDataLoaderMixin:
                 if not shared_alias:
                     return {}
                 rows = conn.execute(
-                    f"SELECT weapon_name, COUNT(*) AS kills "
+                    f"SELECT weapon_id, COUNT(*) AS kills "
                     f"FROM {shared_alias}.weapon_kills "
                     "WHERE match_id = ? AND xuid = ? "
-                    "AND weapon_name NOT IN ('MELEE', 'GRENADE', 'UNKNOWN', 'NON TROUVE') "
-                    "GROUP BY weapon_name",
+                    "AND weapon_id IS NOT NULL "
+                    "GROUP BY weapon_id",
                     [match_id, self._xuid],
                 ).fetchall()
-                # Appliquer les fusions de variantes avant de retourner
-                from src.analysis._weapon_data import WEAPON_FUSION_MAP
+                from src.analysis._weapon_data import (
+                    EXCLUDED_WEAPON_IDS,
+                    WEAPON_FUSION_MAP_ID,
+                    resolve_weapon_display,
+                )
 
                 result: dict[str, int] = {}
-                for weapon_name, kills in rows:
-                    canonical = WEAPON_FUSION_MAP.get(str(weapon_name), str(weapon_name))
-                    result[canonical] = result.get(canonical, 0) + int(kills)
+                for weapon_id, kills in rows:
+                    wid = int(weapon_id)
+                    if wid in EXCLUDED_WEAPON_IDS:
+                        continue
+                    canonical_id = WEAPON_FUSION_MAP_ID.get(wid, wid)
+                    name = resolve_weapon_display(canonical_id) or "NON TROUVE"
+                    result[name] = result.get(name, 0) + int(kills)
                 return result
             except Exception:
                 return {}

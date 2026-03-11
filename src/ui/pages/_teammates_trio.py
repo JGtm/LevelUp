@@ -24,6 +24,7 @@ from src.ui.i18n import t
 from src.ui.medals import render_medals_grid
 from src.ui.pages.teammates_charts import render_metric_bar_charts, render_trio_charts
 from src.ui.pages.teammates_synergy import render_trio_synergy_radar
+from src.ui.pages.teammates_weapons import render_weapon_kills_bar_chart
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.visualization._compat import DataFrameLike, ensure_polars
 
@@ -190,16 +191,33 @@ def render_trio_view(  # noqa: PLR0913, PLR0915
         series.append((f3_name, f3_df))
     colors_by_name = assign_player_colors_fn([n for n, _ in series])
     series = enrich_series_fn(series, db_path)
+
+    squad_match_ids = me_df["match_id"].cast(pl.Utf8).to_list() if not me_df.is_empty() else []
+
+    # Graphe des armes de kill par joueur (escouade)
+    _weapon_player_infos = [
+        (me_name, xuid, squad_match_ids),
+        (f1_name, f1_xuid, squad_match_ids),
+        (f2_name, f2_xuid, squad_match_ids),
+    ]
+    if f3_xuid and f3_name:
+        _weapon_player_infos.append((f3_name, f3_xuid, squad_match_ids))
+    render_weapon_kills_bar_chart(
+        player_infos=_weapon_player_infos,
+        colors_by_name=colors_by_name,
+        db_path=db_path,
+        key_suffix=f"trio_{len(_weapon_player_infos)}",
+    )
+
     render_metric_bar_charts(
         series=series,
         colors_by_name=colors_by_name,
         show_smooth=show_smooth,
-        key_suffix=f"{len(series)}",
+        key_suffix=f"trio_{len(series)}",
         plot_fn=plot_multi_metric_bars_fn,
     )
 
     # Médailles escouade
-    squad_match_ids = me_df["match_id"].cast(pl.Utf8).to_list() if not me_df.is_empty() else []
     _render_trio_medals(
         squad_match_ids,
         db_path,

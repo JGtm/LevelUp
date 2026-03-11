@@ -39,11 +39,11 @@ _CHUNK_TIMEOUT_S = 30.0
 _MAX_CONCURRENT_CHUNKS = 5
 
 
-def _attribution_row(kill: dict, weapon_name: str, confidence: str = "none") -> dict:
-    """Construit une ligne d'attribution (weapon_name, confidence) depuis un kill brut."""
+def _attribution_row(kill: dict, weapon_id: int | None, confidence: str = "none") -> dict:
+    """Construit une ligne d'attribution (weapon_id, confidence) depuis un kill brut."""
     return {
         **kill,
-        "weapon_name": weapon_name,
+        "weapon_id": weapon_id,
         "delta_ms": None,
         "confidence": confidence,
         "swap_detected": False,
@@ -247,9 +247,7 @@ class WeaponExtractionService:
                     kill_rows, self._conn, match_id, xuid_str
                 )
             kills_total += len(kills)
-            kills_attributed += sum(
-                1 for r in kill_rows if r["weapon_name"] not in ("NON TROUVE", "UNKNOWN")
-            )
+            kills_attributed += sum(1 for r in kill_rows if r["weapon_id"] is not None)
             if not dry_run and kill_rows:
                 async with self._write_lock:
                     rows = WeaponKillsMixin.insert_weapon_kill_rows(
@@ -300,43 +298,42 @@ class WeaponExtractionService:
 
         Pour chaque kill à T : chunk couvrant T → weapon_A[chunk][pi].
         Fallback chunk-1 si aucune MAJ dans ce chunk.
+        Produit weapon_id (int) au lieu de weapon_name.
         """
-        from src.analysis.weapon_parser import WEAPON_ID_MAP
+        from src.analysis._weapon_data import GRENADE_WEAPON_ID, MELEE_WEAPON_ID, WEAPON_ID_MAP
 
         results = []
         for kill in kills:
             if kill.get("is_melee"):
-                results.append(_attribution_row(kill, "MELEE"))
+                results.append(_attribution_row(kill, MELEE_WEAPON_ID))
                 continue
             if kill.get("is_grenade"):
-                results.append(_attribution_row(kill, "GRENADE"))
+                results.append(_attribution_row(kill, GRENADE_WEAPON_ID))
                 continue
 
             t_ms = kill["time_ms"]
             ck = find_chunk_at_time(chunks_sorted, timing, t_ms)
-            wid = timeline.get(ck, {}).get(player_index) or timeline.get(ck - 1, {}).get(
+            wid_bytes = timeline.get(ck, {}).get(player_index) or timeline.get(ck - 1, {}).get(
                 player_index
             )
-            if wid is None:
-                results.append(_attribution_row(kill, "UNKNOWN"))
+            if wid_bytes is None:
+                results.append(_attribution_row(kill, None))
                 continue
 
-            wname = WEAPON_ID_MAP.get(wid, f"?{wid.hex()}")
-            conf = "high" if wid in WEAPON_ID_MAP else "low"
+            wid_int = int.from_bytes(wid_bytes, byteorder="big")
+            conf = "high" if wid_bytes in WEAPON_ID_MAP else "low"
             # MEDIUM si ce pi a eu plusieurs armes distinctes dans ce chunk
             # (swap intra-chunk ~19s — FINDINGS §6b Step 3)
             if player_index in swap_pis.get(ck, set()) and conf == "high":
                 conf = "medium"
-            results.append(_attribution_row(kill, wname, conf))
-        n_unknown_wid = sum(1 for r in results if r["weapon_name"].startswith("?"))
-        n_unknown = sum(1 for r in results if r["weapon_name"] == "UNKNOWN")
-        if n_unknown_wid or n_unknown:
+            results.append(_attribution_row(kill, wid_int, conf))
+        n_none = sum(1 for r in results if r["weapon_id"] is None)
+        if n_none:
             logger.debug(
-                "_attribute_t1 pi=%d : %d kills, %d ?hex, %d UNKNOWN",
+                "_attribute_t1 pi=%d : %d kills, %d unresolved",
                 player_index,
                 len(results),
-                n_unknown_wid,
-                n_unknown,
+                n_none,
             )
         return results
 
@@ -487,11 +484,14 @@ class WeaponExtractionService:
         api_grenade = int(row[0])
         api_melee = int(row[1])
         api_weapon_kills = max(len(kill_rows) - api_grenade - api_melee, 0)
-        _excluded = ("MELEE", "GRENADE", "NON TROUVE", "UNKNOWN")
+        from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS
+
         weapon_high = [
             r
             for r in kill_rows
-            if r.get("confidence") == "high" and r.get("weapon_name") not in _excluded
+            if r.get("confidence") == "high"
+            and r.get("weapon_id") is not None
+            and r.get("weapon_id") not in EXCLUDED_WEAPON_IDS
         ]
         # Step 4a — surdétection : demote les HIGH les moins certains
         if len(weapon_high) > api_weapon_kills:
@@ -513,7 +513,9 @@ class WeaponExtractionService:
         high_after = sum(
             1
             for r in kill_rows
-            if r.get("confidence") == "high" and r.get("weapon_name") not in _excluded
+            if r.get("confidence") == "high"
+            and r.get("weapon_id") is not None
+            and r.get("weapon_id") not in EXCLUDED_WEAPON_IDS
         )
         if high_after < api_weapon_kills:
             deficit = api_weapon_kills - high_after
@@ -529,7 +531,9 @@ class WeaponExtractionService:
                 [
                     r
                     for r in kill_rows
-                    if r.get("confidence") == "medium" and r.get("weapon_name") not in _excluded
+                    if r.get("confidence") == "medium"
+                    and r.get("weapon_id") is not None
+                    and r.get("weapon_id") not in EXCLUDED_WEAPON_IDS
                 ],
                 key=lambda x: x.get("delta_ms") or 0,  # plus certains en premier
             )

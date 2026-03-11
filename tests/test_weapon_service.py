@@ -1,6 +1,6 @@
 """Tests unitaires — WeaponExtractionService + WeaponKillsMixin.
 
-Schéma v5.7 per-kill : weapon_name TEXT, time_ms, delta_ms, confidence, …
+Schéma v5.7 per-kill : weapon_id UBIGINT, time_ms, delta_ms, confidence, …
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def _weapon_kills_ddl() -> str:
         match_id       VARCHAR  NOT NULL,
         xuid           VARCHAR  NOT NULL,
         time_ms        INTEGER  NOT NULL,
-        weapon_name    VARCHAR  NOT NULL,
+        weapon_id      UBIGINT,
         delta_ms       INTEGER,
         confidence     VARCHAR  NOT NULL DEFAULT 'none',
         swap_detected  BOOLEAN  NOT NULL DEFAULT FALSE,
@@ -111,7 +111,7 @@ class TestWeaponExtractionService:
         )
         service = WeaponExtractionService(api, in_memory_conn, tmp_cache)
         summary = asyncio.run(service.process_match("m1234567", "TestPlayer", "xuid123"))
-        assert summary["error"] == "aucun chunk téléchargé"
+        assert summary["error"] == "aucun chunk téléchargé (404 ou expiré)"
 
     def test_dry_run_no_write(self, in_memory_conn, tmp_cache):
         """En dry_run, aucune écriture DB."""
@@ -145,10 +145,10 @@ class TestWeaponExtractionService:
         assert summary["kills_total"] == 1
         assert summary["rows_inserted"] == 1
         row = in_memory_conn.execute(
-            "SELECT weapon_name, confidence FROM weapon_kills WHERE match_id='m1234567'"
+            "SELECT weapon_id, confidence FROM weapon_kills WHERE match_id='m1234567'"
         ).fetchone()
         assert row is not None
-        assert row[0] == "MELEE"
+        assert row[0] == 1  # MELEE_WEAPON_ID
         assert row[1] == "none"
 
     def test_chunk_caching(self, in_memory_conn, tmp_cache):
@@ -196,12 +196,15 @@ class TestWeaponKillsMixinRepo:
 
     def test_insert_and_count(self, conn):
         """insert_weapon_kill_rows crée les lignes per-kill."""
+        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
         from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
 
+        br75_id = WEAPON_NAME_TO_INT["BR75"]
+        sidekick_id = WEAPON_NAME_TO_INT["Mk51 Sidekick"]
         rows = [
             {
                 "time_ms": 5000,
-                "weapon_name": "BR75",
+                "weapon_id": br75_id,
                 "delta_ms": 300,
                 "confidence": "high",
                 "swap_detected": False,
@@ -209,7 +212,7 @@ class TestWeaponKillsMixinRepo:
             },
             {
                 "time_ms": 12000,
-                "weapon_name": "Mk51 Sidekick",
+                "weapon_id": sidekick_id,
                 "delta_ms": 200,
                 "confidence": "high",
                 "swap_detected": False,
@@ -230,12 +233,15 @@ class TestWeaponKillsMixinRepo:
 
     def test_insert_replaces_previous(self, conn):
         """Un second insert supprime les lignes précédentes (DELETE+INSERT)."""
+        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
         from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
 
+        br75_id = WEAPON_NAME_TO_INT["BR75"]
+        ma40_id = WEAPON_NAME_TO_INT["MA40 AR"]
         rows1 = [
             {
                 "time_ms": 5000,
-                "weapon_name": "BR75",
+                "weapon_id": br75_id,
                 "delta_ms": 300,
                 "confidence": "high",
                 "swap_detected": False,
@@ -246,7 +252,7 @@ class TestWeaponKillsMixinRepo:
         rows2 = [
             {
                 "time_ms": 6000,
-                "weapon_name": "MA40 AR",
+                "weapon_id": ma40_id,
                 "delta_ms": 100,
                 "confidence": "high",
                 "swap_detected": False,
@@ -254,7 +260,7 @@ class TestWeaponKillsMixinRepo:
             },
             {
                 "time_ms": 7000,
-                "weapon_name": "MA40 AR",
+                "weapon_id": ma40_id,
                 "delta_ms": 150,
                 "confidence": "high",
                 "swap_detected": False,
@@ -335,9 +341,12 @@ class TestReconcileApiAggregates:
 
     @staticmethod
     def _weapon_rows(n: int, conf: str = "high", base_delta: int = 100) -> list[dict]:
+        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
+
+        br75_id = WEAPON_NAME_TO_INT["BR75"]
         return [
             {
-                "weapon_name": "BR75",
+                "weapon_id": br75_id,
                 "confidence": conf,
                 "delta_ms": base_delta * (i + 1),
                 "swap_detected": False,
@@ -374,24 +383,27 @@ class TestReconcileApiAggregates:
 
     def test_step4a_demotes_highest_delta_first(self, conn):
         """Step 4a : les kills avec le plus grand delta_ms sont dégradés en premier."""
+        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
+
+        br75_id = WEAPON_NAME_TO_INT["BR75"]
         conn.execute("INSERT INTO match_participants VALUES ('m1','x1',1,0)")
         rows = [
             {
-                "weapon_name": "BR75",
+                "weapon_id": br75_id,
                 "confidence": "high",
                 "delta_ms": 100,
                 "swap_detected": False,
                 "delayed_damage": False,
             },
             {
-                "weapon_name": "BR75",
+                "weapon_id": br75_id,
                 "confidence": "high",
                 "delta_ms": 200,
                 "swap_detected": False,
                 "delayed_damage": False,
             },
             {
-                "weapon_name": "BR75",
+                "weapon_id": br75_id,
                 "confidence": "high",
                 "delta_ms": 999,
                 "swap_detected": False,
@@ -412,11 +424,14 @@ class TestReconcileApiAggregates:
             2, "medium", base_delta=700
         )
         result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
+        from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS
+
         high_count = sum(
             1
             for r in result
-            if r["confidence"] == "high"
-            and r["weapon_name"] not in ("MELEE", "GRENADE", "NON TROUVE", "UNKNOWN")
+            if r.get("confidence") == "high"
+            and r.get("weapon_id") is not None
+            and r.get("weapon_id") not in EXCLUDED_WEAPON_IDS
         )
         assert high_count == 5
 
@@ -429,24 +444,27 @@ class TestReconcileApiAggregates:
 
     def test_excluded_names_not_counted(self, conn):
         """MELEE et GRENADE ne comptent pas dans weapon_high."""
+        from src.analysis._weapon_data import GRENADE_WEAPON_ID, MELEE_WEAPON_ID, WEAPON_NAME_TO_INT
+
+        br75_id = WEAPON_NAME_TO_INT["BR75"]
         conn.execute("INSERT INTO match_participants VALUES ('m1','x1',0,0)")
         rows = [
             {
-                "weapon_name": "MELEE",
+                "weapon_id": MELEE_WEAPON_ID,
                 "confidence": "none",
                 "delta_ms": None,
                 "swap_detected": False,
                 "delayed_damage": False,
             },
             {
-                "weapon_name": "GRENADE",
+                "weapon_id": GRENADE_WEAPON_ID,
                 "confidence": "none",
                 "delta_ms": None,
                 "swap_detected": False,
                 "delayed_damage": False,
             },
             {
-                "weapon_name": "BR75",
+                "weapon_id": br75_id,
                 "confidence": "high",
                 "delta_ms": 200,
                 "swap_detected": False,
@@ -638,7 +656,7 @@ class TestWriteLock:
         conn = duckdb.connect(":memory:")
         conn.execute(
             "CREATE TABLE weapon_kills (match_id VARCHAR, xuid VARCHAR, time_ms INTEGER, "
-            "weapon_name VARCHAR, delta_ms INTEGER, confidence VARCHAR DEFAULT 'none', "
+            "weapon_id UBIGINT, delta_ms INTEGER, confidence VARCHAR DEFAULT 'none', "
             "swap_detected BOOLEAN DEFAULT FALSE, delayed_damage BOOLEAN DEFAULT FALSE)"
         )
         conn.execute(

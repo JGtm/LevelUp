@@ -52,9 +52,9 @@ WEAPON_ID_MAP: dict[bytes, str] = {
     # ── Grenades (Formula A / état inventaire) ────────────────────────────
     bytes.fromhex("b6dbead842c9679f"): "Frag Grenade",  # pragma: allowlist secret
     bytes.fromhex("c1e1bab042c9679f"): "Plasma Grenade",  # pragma: allowlist secret
-    bytes.fromhex("6683257c42c9679f"): "Spike Grenade",  # pragma: allowlist secret
+    # 6683257c42c9679f → association "Spike Grenade" REJETÉE (faible confiance — state-block uniquement)
+    # ab879f1e42c9679f → association "Spike Grenade (alt)" REJETÉE (faible confiance — non vérifiée)
     bytes.fromhex("3ad55da442c9679f"): "Dynamo Grenade",  # pragma: allowlist secret
-    bytes.fromhex("ab879f1e42c9679f"): "Spike Grenade (alt)",  # pragma: allowlist secret
     bytes.fromhex("e3a0a51842c9679f"): "Dynamo Grenade (alt)",  # pragma: allowlist secret
     bytes.fromhex("18e1fea042c9679f"): "Dynamo Grenade (proj)",  # pragma: allowlist secret
     # ── Variantes / skins (suffixe standard confirmé) ────────────────────
@@ -73,6 +73,31 @@ WEAPON_ID_MAP: dict[bytes, str] = {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Dérivés indexés par uint64 (pour stockage DB et lookups rapides)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# IDs sentinelles (réservés, ne collident pas avec les uint64 film)
+MELEE_WEAPON_ID: int = 1
+GRENADE_WEAPON_ID: int = 0
+VEHICLE_WEAPON_ID: int = 2
+
+# bytes → int
+WEAPON_BYTES_TO_INT: dict[bytes, int] = {
+    k: int.from_bytes(k, byteorder="big") for k in WEAPON_ID_MAP
+}
+
+# int → name (pour résolution à l'affichage)
+WEAPON_INT_TO_NAME: dict[int, str] = {
+    int.from_bytes(k, byteorder="big"): v for k, v in WEAPON_ID_MAP.items()
+}
+
+# name → int (reverse — pour migration backfill)
+WEAPON_NAME_TO_INT: dict[str, int] = {v: k for k, v in WEAPON_INT_TO_NAME.items()}
+
+# int → set (pour validation rapide)
+WEAPON_IDS_INT: set[int] = set(WEAPON_INT_TO_NAME)
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Fusion de variantes : nom filmshell → nom canonique
 # Appliquer après attribution pour regrouper sous la même citation.
 # ══════════════════════════════════════════════════════════════════════════════
@@ -82,6 +107,13 @@ WEAPON_FUSION_MAP: dict[str, str] = {
     "M392 Bandit": "Bandit Evo",
     # SPNKr : variante Fuel Rod comptée avec le SPNKr de base
     "Fuel Rod SPNKr": "M41 SPNKr",
+}
+
+# Fusion par weapon_id (int → int canonique)
+WEAPON_FUSION_MAP_ID: dict[int, int] = {
+    WEAPON_NAME_TO_INT[k]: WEAPON_NAME_TO_INT[v]
+    for k, v in WEAPON_FUSION_MAP.items()
+    if k in WEAPON_NAME_TO_INT and v in WEAPON_NAME_TO_INT
 }
 
 # Traductions EN → FR des noms canoniques filmshell
@@ -180,9 +212,50 @@ WEAPON_TIMING: dict[str, tuple[int, int]] = {
     "Infected Energy Sword": (1100, 1400),
     "Frag Grenade": (950, 1650),
     "Plasma Grenade": (950, 1350),
-    "Spike Grenade": (950, 1550),
-    "Spike Grenade (alt)": (950, 1550),
     "Dynamo Grenade": (950, 1500),
     "Dynamo Grenade (alt)": (950, 1500),
     "Dynamo Grenade (proj)": (950, 1500),
 }
+
+# Timing indexé par weapon_id (int) — pour lookups dans weapon_parser
+WEAPON_TIMING_BY_ID: dict[int, tuple[int, int]] = {
+    WEAPON_NAME_TO_INT[name]: timing
+    for name, timing in WEAPON_TIMING.items()
+    if name in WEAPON_NAME_TO_INT
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Résolution weapon_id → nom d'affichage (appelé côté UI uniquement)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# IDs à exclure des graphes « armes les plus utilisées »
+EXCLUDED_WEAPON_IDS: frozenset[int] = frozenset(
+    {MELEE_WEAPON_ID, GRENADE_WEAPON_ID, VEHICLE_WEAPON_ID}
+)
+
+
+def resolve_weapon_display(weapon_id: int | None, lang: str = "fr") -> str | None:
+    """Résout un weapon_id en nom d'affichage localisé.
+
+    Chaîne : weapon_id → WEAPON_INT_TO_NAME → WEAPON_FUSION_MAP → WEAPON_NAME_FR.
+    Retourne None si weapon_id est None (kill non résolu).
+    """
+    if weapon_id is None:
+        return None
+    # Sentinelles
+    if weapon_id == MELEE_WEAPON_ID:
+        return "Corps à corps" if lang == "fr" else "Melee"
+    if weapon_id == GRENADE_WEAPON_ID:
+        return "Grenade"
+    if weapon_id == VEHICLE_WEAPON_ID:
+        return "Véhicule" if lang == "fr" else "Vehicle"
+    # Nom filmshell
+    name = WEAPON_INT_TO_NAME.get(weapon_id)
+    if name is None:
+        return f"weapon_{weapon_id}"
+    # Fusion variantes
+    canonical = WEAPON_FUSION_MAP.get(name, name)
+    # Traduction
+    if lang == "fr":
+        return WEAPON_NAME_FR.get(canonical, canonical)
+    return canonical

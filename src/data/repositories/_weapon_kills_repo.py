@@ -1,7 +1,8 @@
 """Mixin – requêtes weapon_kills (shared_matches.duckdb).
 
-Schéma v5.6 per-kill : (match_id, xuid, time_ms, weapon_name, delta_ms,
+Schéma v5.7 per-kill : (match_id, xuid, time_ms, weapon_id, delta_ms,
 confidence, swap_detected, delayed_damage).
+weapon_id est un UBIGINT (uint64 filmshell), NULL si non résolu.
 """
 
 from __future__ import annotations
@@ -29,38 +30,38 @@ class WeaponKillsMixin:
         """Charge les kills agrégés par arme pour tous les joueurs d'un match.
 
         Returns:
-            DataFrame (xuid, weapon_name, kills) trié par kills DESC.
+            DataFrame (xuid, weapon_id, kills) trié par kills DESC.
         """
         try:
             conn = self._get_connection()
             result = conn.execute(
-                "SELECT xuid, weapon_name, COUNT(*)::INTEGER AS kills "
+                "SELECT xuid, weapon_id, COUNT(*)::INTEGER AS kills "
                 "FROM shared.weapon_kills "
-                "WHERE match_id = ? "
-                "GROUP BY xuid, weapon_name "
+                "WHERE match_id = ? AND weapon_id IS NOT NULL "
+                "GROUP BY xuid, weapon_id "
                 "ORDER BY kills DESC",
                 (match_id,),
             )
             return result_to_polars(result)
         except Exception as exc:
             logger.debug("weapon_kills match %s : %s", match_id, exc)
-            return pl.DataFrame(schema={"xuid": pl.Utf8, "weapon_name": pl.Utf8, "kills": pl.Int32})
+            return pl.DataFrame(schema={"xuid": pl.Utf8, "weapon_id": pl.UInt64, "kills": pl.Int32})
 
-    def load_top_weapon_per_player(self, match_id: str) -> dict[str, tuple[str, int]]:
+    def load_top_weapon_per_player(self, match_id: str) -> dict[str, tuple[int, int]]:
         """Retourne l'arme avec le plus de kills par joueur.
 
         Returns:
-            ``{xuid: (weapon_name, kills)}`` — une entrée par joueur.
+            ``{xuid: (weapon_id, kills)}`` — une entrée par joueur.
         """
         try:
             conn = self._get_connection()
             rows = conn.execute(
-                "SELECT xuid, weapon_name, kills FROM ("
-                "  SELECT xuid, weapon_name, COUNT(*)::INTEGER AS kills,"
+                "SELECT xuid, weapon_id, kills FROM ("
+                "  SELECT xuid, weapon_id, COUNT(*)::INTEGER AS kills,"
                 "    ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn"
                 "  FROM shared.weapon_kills"
-                "  WHERE match_id = ?"
-                "  GROUP BY xuid, weapon_name"
+                "  WHERE match_id = ? AND weapon_id IS NOT NULL"
+                "  GROUP BY xuid, weapon_id"
                 ") sub WHERE rn = 1",
                 (match_id,),
             ).fetchall()
@@ -77,26 +78,27 @@ class WeaponKillsMixin:
         """Charge les kills par arme d'un joueur sur un ensemble de matchs.
 
         Returns:
-            DataFrame (match_id, weapon_name, kills).
+            DataFrame (match_id, weapon_id, kills).
         """
         try:
             conn = self._get_connection()
             if match_ids:
                 placeholders = ", ".join("?" for _ in match_ids)
                 result = conn.execute(
-                    f"SELECT match_id, weapon_name, COUNT(*)::INTEGER AS kills "
+                    f"SELECT match_id, weapon_id, COUNT(*)::INTEGER AS kills "
                     f"FROM shared.weapon_kills "
                     f"WHERE xuid = ? AND match_id IN ({placeholders}) "
-                    f"GROUP BY match_id, weapon_name "
+                    f"AND weapon_id IS NOT NULL "
+                    f"GROUP BY match_id, weapon_id "
                     f"ORDER BY match_id, kills DESC",
                     [xuid, *match_ids],
                 )
             else:
                 result = conn.execute(
-                    "SELECT match_id, weapon_name, COUNT(*)::INTEGER AS kills "
+                    "SELECT match_id, weapon_id, COUNT(*)::INTEGER AS kills "
                     "FROM shared.weapon_kills "
-                    "WHERE xuid = ? "
-                    "GROUP BY match_id, weapon_name "
+                    "WHERE xuid = ? AND weapon_id IS NOT NULL "
+                    "GROUP BY match_id, weapon_id "
                     "ORDER BY match_id, kills DESC",
                     (xuid,),
                 )
@@ -104,7 +106,7 @@ class WeaponKillsMixin:
         except Exception as exc:
             logger.debug("weapon_kills player %s : %s", xuid, exc)
             return pl.DataFrame(
-                schema={"match_id": pl.Utf8, "weapon_name": pl.Utf8, "kills": pl.Int32}
+                schema={"match_id": pl.Utf8, "weapon_id": pl.UInt64, "kills": pl.Int32}
             )
 
     def load_weapon_kills_aggregated(
@@ -113,31 +115,32 @@ class WeaponKillsMixin:
         """Agrège les kills par arme d'un joueur (total sur plusieurs matchs).
 
         Returns:
-            DataFrame (weapon_name, total_kills) trié par total_kills DESC.
+            DataFrame (weapon_id, total_kills) trié par total_kills DESC.
         """
         try:
             conn = self._get_connection()
             if match_ids:
                 placeholders = ", ".join("?" for _ in match_ids)
                 result = conn.execute(
-                    f"SELECT weapon_name, COUNT(*)::INTEGER AS total_kills "
+                    f"SELECT weapon_id, COUNT(*)::INTEGER AS total_kills "
                     f"FROM shared.weapon_kills "
                     f"WHERE xuid = ? AND match_id IN ({placeholders}) "
-                    f"GROUP BY weapon_name ORDER BY total_kills DESC",
+                    f"AND weapon_id IS NOT NULL "
+                    f"GROUP BY weapon_id ORDER BY total_kills DESC",
                     [xuid, *match_ids],
                 )
             else:
                 result = conn.execute(
-                    "SELECT weapon_name, COUNT(*)::INTEGER AS total_kills "
+                    "SELECT weapon_id, COUNT(*)::INTEGER AS total_kills "
                     "FROM shared.weapon_kills "
-                    "WHERE xuid = ? "
-                    "GROUP BY weapon_name ORDER BY total_kills DESC",
+                    "WHERE xuid = ? AND weapon_id IS NOT NULL "
+                    "GROUP BY weapon_id ORDER BY total_kills DESC",
                     (xuid,),
                 )
             return result_to_polars(result)
         except Exception as exc:
             logger.debug("weapon_kills_agg player %s : %s", xuid, exc)
-            return pl.DataFrame(schema={"weapon_name": pl.Utf8, "total_kills": pl.Int32})
+            return pl.DataFrame(schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32})
 
     # ── Write operations (accept explicit connection) ────────────────────
 
@@ -148,21 +151,20 @@ class WeaponKillsMixin:
         xuid: str,
         kill_rows: list[dict],
     ) -> int:
-        """Insère les lignes per-kill (schéma v5.6).
+        """Insère les lignes per-kill (schéma v5.7).
 
-        Chaque dict doit contenir : time_ms, weapon_name, delta_ms (ou None),
+        Chaque dict doit contenir : time_ms, weapon_id (int|None), delta_ms,
         confidence, swap_detected, delayed_damage.
-        Ne remplace pas des données existantes de meilleure qualité par du UNKNOWN.
+        Ne remplace pas des données existantes de meilleure qualité.
         Retourne le nombre de lignes insérées.
         """
         if not kill_rows:
             return 0
-        _unresolved = ("UNKNOWN", "NON TROUVE")
-        new_good = sum(1 for r in kill_rows if r.get("weapon_name") not in _unresolved)
+        new_good = sum(1 for r in kill_rows if r.get("weapon_id") is not None)
         if new_good < len(kill_rows):
             existing_good = conn.execute(
                 "SELECT COUNT(*) FROM weapon_kills WHERE match_id = ? AND xuid = ?"
-                " AND weapon_name NOT IN ('UNKNOWN', 'NON TROUVE')",
+                " AND weapon_id IS NOT NULL",
                 (match_id, xuid),
             ).fetchone()[0]
             if new_good <= existing_good:
@@ -180,7 +182,7 @@ class WeaponKillsMixin:
         )
         conn.executemany(
             "INSERT INTO weapon_kills "
-            "(match_id, xuid, time_ms, weapon_name, delta_ms, confidence, "
+            "(match_id, xuid, time_ms, weapon_id, delta_ms, confidence, "
             " swap_detected, delayed_damage) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
@@ -188,7 +190,7 @@ class WeaponKillsMixin:
                     match_id,
                     xuid,
                     r["time_ms"],
-                    r["weapon_name"],
+                    r.get("weapon_id"),
                     r.get("delta_ms"),
                     r.get("confidence", "none"),
                     bool(r.get("swap_detected", False)),

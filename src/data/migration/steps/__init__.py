@@ -17,6 +17,7 @@ from src.data.migration.steps import (
     add_spnkr_version,
     add_weapon_kills,
     fix_bot_xuid,
+    migrate_weapon_kills_to_ubigint,
 )
 
 __all__ = [
@@ -32,4 +33,5 @@ __all__ = [
     "add_spnkr_version",
     "add_weapon_kills",
     "fix_bot_xuid",
+    "migrate_weapon_kills_to_ubigint",
 ]

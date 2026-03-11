@@ -114,7 +114,7 @@ WEAPON_ID_MAP: dict[bytes, str] = {
     # ── IDs identifiés par analyse state blocks (grenades au sol — Inv. #17) ──
     # Ces IDs apparaissent UNIQUEMENT dans les state blocks (fire_event=0), jamais en 0x0D fire event.
     # Ils correspondent aux grenades posées sur la map (ramassables), pas aux grenades en inventaire joueur.
-    bytes.fromhex("6683257c42c9679f"): "Spike Grenade (state-block)",  # pragma: allowlist secret
+    # 6683257c42c9679f → association "Spike Grenade" REJETÉE (faible confiance)
     bytes.fromhex("6d32c7dc42c9679f"): "Dynamo Grenade (state-block)",  # pragma: allowlist secret
 }
 
