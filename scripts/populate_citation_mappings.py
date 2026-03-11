@@ -215,39 +215,44 @@ _VEHICLE_CHILDREN = [
 # stat_name = "weapon_kills:<weapon_name>" tel que stocké dans shared.weapon_kills
 # Les variantes (alt) ne sont PAS fusionnées ici (à valider séparément).
 # fmt: off
+_WP = "static/commendations/h5g/"  # préfixe commun images H5G
+
 WEAPON_CITATIONS: list[tuple] = [
+    # UNSC
     ("br75_mastery", "Maîtrise du BR75", "weapon_stat", None, None, "weapon_kills:BR75", None, None, None, None, "high", "Kills avec BR75", True,
-     None, "Arme", "Éliminez des Spartans avec le BR75.", "25,50,100,200,500", "UNSC"),
+     _WP + "H5G_citation_Carnage_au_fusil_de_combat.png", "Arme", "Éliminez des Spartans avec le BR75.", "25,50,100,200,500", "UNSC"),
     ("ma40_mastery", "Maîtrise du MA40 AR", "weapon_stat", None, None, "weapon_kills:MA40 AR", None, None, None, None, "high", "Kills avec MA40 AR", True,
-     None, "Arme", "Éliminez des Spartans avec le MA40 AR.", "25,50,100,200,500", "UNSC"),
+     _WP + "H5G_citation_Carnage_au_fusil_d%27assaut.png", "Arme", "Éliminez des Spartans avec le MA40 AR.", "25,50,100,200,500", "UNSC"),
     ("sidekick_mastery", "Maîtrise du MK50 Sidekick", "weapon_stat", None, None, "weapon_kills:Mk51 Sidekick", None, None, None, None, "high", "Kills avec MK50 Sidekick", True,
-     None, "Arme", "Éliminez des Spartans avec le MK50 Sidekick.", "10,25,50,100,250", "UNSC"),
+     _WP + "H5G_citation_Magnum.png", "Arme", "Éliminez des Spartans avec le MK50 Sidekick.", "10,25,50,100,250", "UNSC"),
     ("commando_mastery", "Maîtrise du VK78 Commando", "weapon_stat", None, None, "weapon_kills:VK78 Commando", None, None, None, None, "high", "Kills avec VK78 Commando", True,
-     None, "Arme", "Éliminez des Spartans avec le VK78 Commando.", "10,25,50,100,250", "UNSC"),
+     _WP + "H5G_citation_Fusil_l%C3%A9ger.png", "Arme", "Éliminez des Spartans avec le VK78 Commando.", "10,25,50,100,250", "UNSC"),
     ("sniper_mastery", "Maîtrise du S7 Sniper", "weapon_stat", None, None, "weapon_kills:S7 Sniper", None, None, None, None, "high", "Kills avec S7 Sniper", True,
-     None, "Arme", "Éliminez des Spartans avec le S7 Sniper.", "10,20,40,80,200", "UNSC"),
+     _WP + "H5G_citation_Fusil_sniper.png", "Arme", "Éliminez des Spartans avec le S7 Sniper.", "10,20,40,80,200", "UNSC"),
     ("spnkr_mastery", "Maîtrise du M41 SPNKr", "weapon_stat", None, None, "weapon_kills:M41 SPNKr", None, None, None, None, "high", "Kills avec M41 SPNKr", True,
-     None, "Arme", "Éliminez des Spartans avec le M41 SPNKr.", "10,20,40,80,200", "UNSC"),
+     _WP + "H5G_citation_Lance-roquettes.png", "Arme", "Éliminez des Spartans avec le M41 SPNKr.", "10,20,40,80,200", "UNSC"),
     ("bulldog_mastery", "Maîtrise du CQS48 Bulldog", "weapon_stat", None, None, "weapon_kills:CQS48 Bulldog", None, None, None, None, "high", "Kills avec CQS48 Bulldog", True,
-     None, "Arme", "Éliminez des Spartans avec le CQS48 Bulldog.", "10,25,50,100,250", "UNSC"),
+     _WP + "H5G_citation_Fusil_%C3%A0_pompe.png", "Arme", "Éliminez des Spartans avec le CQS48 Bulldog.", "10,25,50,100,250", "UNSC"),
     ("bandit_mastery", "Maîtrise du Bandit EVO", "weapon_stat", None, None, "weapon_kills:Bandit Evo", None, None, None, None, "high", "Kills avec Bandit EVO", True,
-     None, "Arme", "Éliminez des Spartans avec le Bandit EVO.", "10,25,50,100,250", "UNSC"),
+     _WP + "H5G_citation_Carnage_au_DMR.png", "Arme", "Éliminez des Spartans avec le Bandit EVO.", "10,25,50,100,250", "UNSC"),
+    # Covenant
     ("stalker_mastery", "Maîtrise du Fusil traqueur", "weapon_stat", None, None, "weapon_kills:Stalker Rifle", None, None, None, None, "high", "Kills avec Fusil traqueur", True,
-     None, "Arme", "Éliminez des Spartans avec le Fusil traqueur.", "10,25,50,100,250", "Covenant"),
+     _WP + "H5G_citation_Fusil_Storm.png", "Arme", "Éliminez des Spartans avec le Fusil traqueur.", "10,25,50,100,250", "Covenant"),
     ("needler_mastery", "Maîtrise du Needler", "weapon_stat", None, None, "weapon_kills:Needler", None, None, None, None, "high", "Kills avec Needler", True,
-     None, "Arme", "Éliminez des Spartans avec le Needler.", "10,25,50,100,250", "Covenant"),
+     _WP + "H5G_citation_Needler.png", "Arme", "Éliminez des Spartans avec le Needler.", "10,25,50,100,250", "Covenant"),
     ("energy_sword_mastery", "Maîtrise de l'Épée à énergie", "weapon_stat", None, None, "weapon_kills:Energy Sword", None, None, None, None, "high", "Kills avec Épée à énergie", True,
-     None, "Arme", "Éliminez des Spartans avec l'Épée à énergie.", "10,20,40,80,200", "Covenant"),
+     _WP + "H5G_citation_%C3%89p%C3%A9e_%C3%A0_%C3%A9nergie.png", "Arme", "Éliminez des Spartans avec l'Épée à énergie.", "10,20,40,80,200", "Covenant"),
     ("heatwave_mastery", "Maîtrise du Calcineur", "weapon_stat", None, None, "weapon_kills:Heatwave", None, None, None, None, "high", "Kills avec Calcineur", True,
-     None, "Arme", "Éliminez des Spartans avec le Calcineur.", "10,25,50,100,250", "Covenant"),
+     _WP + "H5G_citation_Pistolet_%C3%A0_combustible.png", "Arme", "Éliminez des Spartans avec le Calcineur.", "10,25,50,100,250", "Covenant"),
+    # Banished
     ("mangler_mastery", "Maîtrise du Déchiqueteur", "weapon_stat", None, None, "weapon_kills:Mangler", None, None, None, None, "high", "Kills avec Déchiqueteur", True,
-     None, "Arme", "Éliminez des Spartans avec le Déchiqueteur.", "10,25,50,100,250", "Banished"),
+     _WP + "H5G_citation_Pistolet_%C3%A0_particules.png", "Arme", "Éliminez des Spartans avec le Déchiqueteur.", "10,25,50,100,250", "Banished"),
     ("skewer_mastery", "Maîtrise de l'Empaleur", "weapon_stat", None, None, "weapon_kills:Skewer", None, None, None, None, "high", "Kills avec Empaleur", True,
-     None, "Arme", "Éliminez des Spartans avec l'Empaleur.", "5,10,20,40,100", "Banished"),
+     _WP + "H5G_citation_Fusil_%C3%A0_plasma_brute.png", "Arme", "Éliminez des Spartans avec l'Empaleur.", "5,10,20,40,100", "Banished"),
     ("gravity_hammer_mastery", "Maîtrise du Marteau antigravité", "weapon_stat", None, None, "weapon_kills:Gravity Hammer", None, None, None, None, "high", "Kills avec Marteau antigravité", True,
-     None, "Arme", "Éliminez des Spartans avec le Marteau antigravité.", "10,20,40,80,200", "Banished"),
+     _WP + "H5G_citation_Marteau_antigrav.png", "Arme", "Éliminez des Spartans avec le Marteau antigravité.", "10,20,40,80,200", "Banished"),
     ("cindershot_mastery", "Maîtrise du Crémateur", "weapon_stat", None, None, "weapon_kills:Cindershot", None, None, None, None, "high", "Kills avec Crémateur", True,
-     None, "Arme", "Éliminez des Spartans avec le Crémateur.", "10,20,40,80,200", "Banished"),
+     _WP + "H5G_citation_Canon_incendiaire.png", "Arme", "Éliminez des Spartans avec le Crémateur.", "10,20,40,80,200", "Banished"),
 ]
 # fmt: on
 
