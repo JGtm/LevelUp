@@ -29,8 +29,7 @@ rôle du parser est de :
    `WEAPON_ID_MAP` (construit à partir d'investigations manuelles sur le film)
 3. **Les associer** à un kill précis via la fenêtre temporelle
 
-La découverte ou la mise à jour des weapon_ids est un travail d'**investigation
-film** séparé (acurtis166, JGtm, etc.) — pas une responsabilité du parser.
+La découverte ou la mise à jour des weapon_ids est un travail d'**investigation** pas une responsabilité du parser.
 
 ---
 
@@ -93,7 +92,7 @@ seule** entrée. Clé de déduplication : `(weapon_id, fire_counter)` par chunk.
 
 **Limitation fondamentale** : la Section 2 ne contient que les tirs du POV.
 Les adversaires et coéquipiers ne tirent pas dans "son" film — ou du moins pas
-de manière fiable et continue. Confirmé expérimentalement (JGtm, mars 2026) :
+de manière fiable et continue. Confirmé expérimentalement :
 même avec les 8 XUID et player_index de tous les joueurs résolus, seul l'index 1
 (le recorder) produit des fire events.
 
@@ -108,7 +107,7 @@ même avec les 8 XUID et player_index de tous les joueurs résolus, seul l'index
 Note : les variantes d'une même arme (ex. BR75 Ranked, S7 Flexfire)
 partagent le **même weapon_id** que l'arme de base.
 
-**Liste des armes confirmées** (source : acurtis166 + JGtm, février-mars 2026) :
+**Liste des armes confirmées** (source : acurtis166, février-mars 2026) :
 
 | Arme | weapon_id (hex) |
 |------|----------------|

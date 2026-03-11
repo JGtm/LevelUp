@@ -27,8 +27,7 @@ set by the game and encoded as-is in the film. The parser's role is to:
    from manual film investigations)
 3. **Associate them** with a specific kill via the time window
 
-Discovering or updating weapon_ids is a separate **film investigation** task
-(acurtis166, JGtm, etc.) — not the parser's responsibility.
+Discovering or updating weapon_ids is a separate **film investigation** task not the parser's responsibility.
 
 ---
 
@@ -90,7 +89,7 @@ key: `(weapon_id, fire_counter)` per chunk.
 
 **Fundamental limitation**: Section 2 only contains the POV's shots. Opponents and
 teammates do not fire in "their" film — at least not reliably and continuously.
-Experimentally confirmed (JGtm, March 2026): even with all 8 XUIDs and player_indices
+Experimentally confirmed: even with all 8 XUIDs and player_indices
 resolved, only index 1 (the recorder) produces fire events.
 
 > **Design decision**: opponents will **not be processed**.
@@ -104,7 +103,7 @@ resolved, only index 1 (the recorder) produces fire events.
 Note: weapon variants (e.g. BR75 Ranked, S7 Flexfire) share the **same weapon_id**
 as the base weapon.
 
-**Confirmed weapon list** (source: acurtis166 + JGtm, February-March 2026):
+**Confirmed weapon list** (source: acurtis166, February-March 2026):
 
 | Weapon | weapon_id (hex) |
 |--------|----------------|
