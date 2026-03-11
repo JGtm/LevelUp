@@ -226,7 +226,7 @@ WEAPON_CITATIONS: list[tuple] = [
     ("sidekick_mastery", "Maîtrise du MK50 Sidekick", "weapon_stat", None, None, "weapon_kills:Mk51 Sidekick", None, None, None, None, "high", "Kills avec MK50 Sidekick", True,
      _WP + "H5G_citation_Magnum.png", "Arme", "Éliminez des Spartans avec le MK50 Sidekick.", "10,25,50,100,250", "UNSC"),
     ("commando_mastery", "Maîtrise du VK78 Commando", "weapon_stat", None, None, "weapon_kills:VK78 Commando", None, None, None, None, "high", "Kills avec VK78 Commando", True,
-     _WP + "H5G_citation_Fusil_l%C3%A9ger.png", "Arme", "Éliminez des Spartans avec le VK78 Commando.", "10,25,50,100,250", "UNSC"),
+     None, "Arme", "Éliminez des Spartans avec le VK78 Commando.", "10,25,50,100,250", "UNSC"),
     ("sniper_mastery", "Maîtrise du S7 Sniper", "weapon_stat", None, None, "weapon_kills:S7 Sniper", None, None, None, None, "high", "Kills avec S7 Sniper", True,
      _WP + "H5G_citation_Fusil_sniper.png", "Arme", "Éliminez des Spartans avec le S7 Sniper.", "10,20,40,80,200", "UNSC"),
     ("spnkr_mastery", "Maîtrise du M41 SPNKr", "weapon_stat", None, None, "weapon_kills:M41 SPNKr", None, None, None, None, "high", "Kills avec M41 SPNKr", True,
@@ -235,24 +235,26 @@ WEAPON_CITATIONS: list[tuple] = [
      _WP + "H5G_citation_Fusil_%C3%A0_pompe.png", "Arme", "Éliminez des Spartans avec le CQS48 Bulldog.", "10,25,50,100,250", "UNSC"),
     ("bandit_mastery", "Maîtrise du Bandit EVO", "weapon_stat", None, None, "weapon_kills:Bandit Evo", None, None, None, None, "high", "Kills avec Bandit EVO", True,
      _WP + "H5G_citation_Carnage_au_DMR.png", "Arme", "Éliminez des Spartans avec le Bandit EVO.", "10,25,50,100,250", "UNSC"),
-    # Covenant
+    # Paria (armes Covenant + Banished fusionnées)
     ("stalker_mastery", "Maîtrise du Fusil traqueur", "weapon_stat", None, None, "weapon_kills:Stalker Rifle", None, None, None, None, "high", "Kills avec Fusil traqueur", True,
-     _WP + "H5G_citation_Fusil_Storm.png", "Arme", "Éliminez des Spartans avec le Fusil traqueur.", "10,25,50,100,250", "Covenant"),
+     None, "Arme", "Éliminez des Spartans avec le Fusil traqueur.", "10,25,50,100,250", "Paria"),
     ("needler_mastery", "Maîtrise du Needler", "weapon_stat", None, None, "weapon_kills:Needler", None, None, None, None, "high", "Kills avec Needler", True,
-     _WP + "H5G_citation_Needler.png", "Arme", "Éliminez des Spartans avec le Needler.", "10,25,50,100,250", "Covenant"),
+     _WP + "H5G_citation_Needler.png", "Arme", "Éliminez des Spartans avec le Needler.", "10,25,50,100,250", "Paria"),
     ("energy_sword_mastery", "Maîtrise de l'Épée à énergie", "weapon_stat", None, None, "weapon_kills:Energy Sword", None, None, None, None, "high", "Kills avec Épée à énergie", True,
-     _WP + "H5G_citation_%C3%89p%C3%A9e_%C3%A0_%C3%A9nergie.png", "Arme", "Éliminez des Spartans avec l'Épée à énergie.", "10,20,40,80,200", "Covenant"),
-    ("heatwave_mastery", "Maîtrise du Calcineur", "weapon_stat", None, None, "weapon_kills:Heatwave", None, None, None, None, "high", "Kills avec Calcineur", True,
-     _WP + "H5G_citation_Pistolet_%C3%A0_combustible.png", "Arme", "Éliminez des Spartans avec le Calcineur.", "10,25,50,100,250", "Covenant"),
-    # Banished
+     _WP + "H5G_citation_%C3%89p%C3%A9e_%C3%A0_%C3%A9nergie.png", "Arme", "Éliminez des Spartans avec l'Épée à énergie.", "10,20,40,80,200", "Paria"),
     ("mangler_mastery", "Maîtrise du Déchiqueteur", "weapon_stat", None, None, "weapon_kills:Mangler", None, None, None, None, "high", "Kills avec Déchiqueteur", True,
-     _WP + "H5G_citation_Pistolet_%C3%A0_particules.png", "Arme", "Éliminez des Spartans avec le Déchiqueteur.", "10,25,50,100,250", "Banished"),
+     None, "Arme", "Éliminez des Spartans avec le Déchiqueteur.", "10,25,50,100,250", "Paria"),
     ("skewer_mastery", "Maîtrise de l'Empaleur", "weapon_stat", None, None, "weapon_kills:Skewer", None, None, None, None, "high", "Kills avec Empaleur", True,
-     _WP + "H5G_citation_Fusil_%C3%A0_plasma_brute.png", "Arme", "Éliminez des Spartans avec l'Empaleur.", "5,10,20,40,100", "Banished"),
+     None, "Arme", "Éliminez des Spartans avec l'Empaleur.", "5,10,20,40,100", "Paria"),
     ("gravity_hammer_mastery", "Maîtrise du Marteau antigravité", "weapon_stat", None, None, "weapon_kills:Gravity Hammer", None, None, None, None, "high", "Kills avec Marteau antigravité", True,
-     _WP + "H5G_citation_Marteau_antigrav.png", "Arme", "Éliminez des Spartans avec le Marteau antigravité.", "10,20,40,80,200", "Banished"),
+     _WP + "H5G_citation_Marteau_antigrav.png", "Arme", "Éliminez des Spartans avec le Marteau antigravité.", "10,20,40,80,200", "Paria"),
+    # Forerunner
+    ("heatwave_mastery", "Maîtrise du Calcineur", "weapon_stat", None, None, "weapon_kills:Heatwave", None, None, None, None, "high", "Kills avec Calcineur", True,
+     None, "Arme", "Éliminez des Spartans avec le Calcineur.", "10,25,50,100,250", "Forerunner"),
     ("cindershot_mastery", "Maîtrise du Crémateur", "weapon_stat", None, None, "weapon_kills:Cindershot", None, None, None, None, "high", "Kills avec Crémateur", True,
-     _WP + "H5G_citation_Canon_incendiaire.png", "Arme", "Éliminez des Spartans avec le Crémateur.", "10,20,40,80,200", "Banished"),
+     None, "Arme", "Éliminez des Spartans avec le Crémateur.", "10,20,40,80,200", "Forerunner"),
+    ("sentinel_beam_mastery", "Maîtrise du Rayon de Sentinelle", "weapon_stat", None, None, "weapon_kills:Sentinel Beam", None, None, None, None, "high", "Kills avec Rayon de Sentinelle", True,
+     _WP + "H5G_citation_Rayon_de_sentinelle.png", "Arme", "Éliminez des Spartans avec le Rayon de Sentinelle.", "10,25,50,100,250", "Forerunner"),
 ]
 # fmt: on
 
@@ -267,15 +269,24 @@ _HUMAN_WEAPON_CHILDREN = [
     "bulldog_mastery",
     "bandit_mastery",
 ]
-_COVENANT_WEAPON_CHILDREN = [
+_PARIA_WEAPON_CHILDREN = [
     "stalker_mastery",
     "needler_mastery",
     "energy_sword_mastery",
-]
-_BANISHED_WEAPON_CHILDREN = [
     "mangler_mastery",
     "skewer_mastery",
     "gravity_hammer_mastery",
+]
+_FORERUNNER_WEAPON_CHILDREN = [
+    "heatwave_mastery",
+    "cindershot_mastery",
+    "sentinel_beam_mastery",
+]
+_ALL_WEAPON_MASTERY_CHILDREN = [
+    "human_weapons_mastery",
+    "paria_weapons_mastery",
+    "forerunner_weapons_mastery",
+    "grenade_mastery",
 ]
 
 # fmt: off
@@ -296,14 +307,18 @@ COMPOSITE_CITATIONS: list[tuple] = [
      "[" + ", ".join(f'"{c}"' for c in _HUMAN_WEAPON_CHILDREN) + "]",
      "high", "Obtenez toutes les citations d'armes UNSC", True,
      None, "Arme", "Obtenez toutes les citations de maîtrise d'armes UNSC.", None, "UNSC"),
-    ("covenant_weapons_mastery", "Maîtrise des armes Covenant", "composite", None, None, None, None, None, None,
-     "[" + ", ".join(f'"{c}"' for c in _COVENANT_WEAPON_CHILDREN) + "]",
-     "high", "Obtenez toutes les citations d'armes Covenant", True,
-     None, "Arme", "Obtenez toutes les citations de maîtrise d'armes Covenant.", None, "Covenant"),
-    ("banished_weapons_mastery", "Maîtrise des armes Bannis", "composite", None, None, None, None, None, None,
-     "[" + ", ".join(f'"{c}"' for c in _BANISHED_WEAPON_CHILDREN) + "]",
-     "high", "Obtenez toutes les citations d'armes bannies", True,
-     None, "Arme", "Obtenez toutes les citations de maîtrise d'armes bannies.", None, "Banished"),
+    ("paria_weapons_mastery", "Maîtrise des armes Parias", "composite", None, None, None, None, None, None,
+     "[" + ", ".join(f'"{c}"' for c in _PARIA_WEAPON_CHILDREN) + "]",
+     "high", "Obtenez toutes les citations d'armes Parias", True,
+     None, "Arme", "Obtenez toutes les citations de maîtrise d'armes Parias.", None, "Paria"),
+    ("forerunner_weapons_mastery", "Maîtrise des armes Forerunner", "composite", None, None, None, None, None, None,
+     "[" + ", ".join(f'"{c}"' for c in _FORERUNNER_WEAPON_CHILDREN) + "]",
+     "high", "Obtenez toutes les citations d'armes Forerunner", True,
+     "static/commendations/h5g/H5G_Maîtrise_en_armes_lourdes_forerunners.png", "Arme", "Obtenez toutes les citations de maîtrise d'armes Forerunner.", None, "Forerunner"),
+    ("all_weapons_mastery", "Maîtrise en armement", "composite", None, None, None, None, None, None,
+     "[" + ", ".join(f'"{c}"' for c in _ALL_WEAPON_MASTERY_CHILDREN) + "]",
+     "high", "Obtenez toutes les citations d'armement", True,
+     "static/commendations/h5g/H5G_Maîtrise_en_armement.png", "Arme", "Obtenez toutes les citations d'armement.", None, "Général"),
 ]
 # fmt: on
 

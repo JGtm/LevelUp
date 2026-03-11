@@ -379,19 +379,29 @@
     "description": "Eliminate Spartans with the Cindershot.",
     "category": "Weapon"
   },
+  "sentinel_beam_mastery": {
+    "name": "Sentinel Beam Mastery",
+    "description": "Eliminate Spartans with the Sentinel Beam.",
+    "category": "Weapon"
+  },
   "human_weapons_mastery": {
     "name": "UNSC Weapons Mastery",
     "description": "Earn all UNSC weapon mastery commendations.",
     "category": "Weapon"
   },
-  "covenant_weapons_mastery": {
-    "name": "Covenant Weapons Mastery",
-    "description": "Earn all Covenant weapon mastery commendations.",
-    "category": "Weapon"
-  },
-  "banished_weapons_mastery": {
+  "paria_weapons_mastery": {
     "name": "Banished Weapons Mastery",
     "description": "Earn all Banished weapon mastery commendations.",
+    "category": "Weapon"
+  },
+  "forerunner_weapons_mastery": {
+    "name": "Forerunner Weapons Mastery",
+    "description": "Earn all Forerunner weapon mastery commendations.",
+    "category": "Weapon"
+  },
+  "all_weapons_mastery": {
+    "name": "Weapons Mastery",
+    "description": "Earn all weapon mastery commendations.",
     "category": "Weapon"
   }
 }
