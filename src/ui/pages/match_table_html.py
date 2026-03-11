@@ -8,13 +8,15 @@ Fournit aussi ``app_url()`` (URL interne) et ``gamertag_link()`` (lien joueur).
 
 from __future__ import annotations
 
+import functools
 import html as html_lib
 import urllib.parse
 from collections.abc import Callable
+from pathlib import Path
 
 import polars as pl
 
-from src.config import HALO_COLORS, OUTCOME_CODES
+from src.config import HALO_COLORS, OUTCOME_CODES, get_repo_root
 from src.ui.components.performance import get_score_class
 from src.ui.i18n import t
 
@@ -126,6 +128,36 @@ def mmr_gap_style(v: object) -> str:
     except Exception:
         pass
     return ""
+
+
+# ---------------------------------------------------------------------------
+# Miniature de carte (tooltip hover)
+# ---------------------------------------------------------------------------
+
+
+@functools.lru_cache(maxsize=1)
+def _build_map_url_index() -> dict[str, str]:
+    """Scanne static/maps/ une fois et retourne {stem_lower: url_statique}."""
+    maps_dir = Path(get_repo_root()) / "static" / "maps"
+    index: dict[str, str] = {}
+    if not maps_dir.exists():
+        return index
+    for f in maps_dir.iterdir():
+        if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
+            stem = f.stem.lower()
+            url = f"/app/static/maps/{f.name}"
+            index[stem] = url
+            index[stem.replace(" ", "_")] = url
+    return index
+
+
+def map_thumb_url(map_name: str | None) -> str | None:
+    """Retourne l'URL statique Streamlit de la miniature pour un nom de carte."""
+    if not map_name:
+        return None
+    key = str(map_name).strip().lower()
+    idx = _build_map_url_index()
+    return idx.get(key) or idx.get(key.replace(" ", "_"))
 
 
 # ---------------------------------------------------------------------------
@@ -247,6 +279,15 @@ def _render_cell(r: dict, key: str, outcome_code: object) -> str:
         val = fmt_value(r.get(key))
         style = outcome_style(outcome_code, val)
         return f"<td style='{style}'>{html_lib.escape(val)}</td>"
+
+    if key == "map_name":
+        val = fmt_value(r.get(key))
+        url = map_thumb_url(r.get(key))
+        if url:
+            esc_url = html_lib.escape(url)
+            esc_val = html_lib.escape(val)
+            return f"<td><span class='map-cell' data-thumb-url='{esc_url}'>{esc_val}</span></td>"
+        return f"<td>{html_lib.escape(val)}</td>"
 
     if key == "performance":
         perf_val = r.get("performance")
