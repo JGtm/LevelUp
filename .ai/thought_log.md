@@ -16,23 +16,28 @@
 - **Résultats** : 48/48 tests wizard passent
 - **Prochaine étape** : RAS
 
-### [2026-03-11] — FEAT : Renommage "Outils de destruction" + frags/grenades API
+### [2026-03-11] — FEAT : Renommage "Outils de destruction" + intégration grenades/mêlée API
 
-**Statut** : Complété
+**Statut** : Complété (2e itération — intégration dans les graphiques existants)
 
 **Décision technique** :
-- Renommer les 3 graphiques d'armes en "💀 Outils de destruction" (match_view, timeseries, teammates) via i18n
-- Ajouter les stats `grenade_kills`, `melee_kills`, `power_weapon_kills` depuis `shared.match_participants` (API CoreStats, 100% fiable vs extraction film)
-- Dans match_view : 3 métriques sous le pie chart existant (si les valeurs sont non nulles)
-- Dans timeseries : totaux agrégés sur la période filtrée, affichés sous le graphe top armes
-- Extraction dans `_timeseries_weapons.py` (sous-module) pour respecter la limite 500L de timeseries.py (471→433L)
+- Renommer les 3 graphiques en "Outils de destruction" (sans emoji) via i18n
+- Intégrer `grenade_kills` et `melee_kills` directement dans les graphiques/tableaux existants (pie chart, barres timeseries, barres teammates)
+- Filtrer weapon_id 0/1 du film d'extraction (incomplet) avant réinjection API — évite double-comptage
+- `power_weapon_kills` retiré (redondant avec le détail des armes)
+- `col_grenade_kills` ajouté dans `common.py` (partagé entre pages)
+- Nouveau sous-module `_timeseries_weapons.py` (timeseries.py 471→433L)
 
-**Résultats** :
-- 5 fichiers modifiés, 1 nouveau sous-module créé
-- `test_ruff_no_errors` pré-existant échoue (UnicodeDecodeError cp1252, non lié)
-- 663 tests passent, ruff clean sur les fichiers modifiés
+**Résultats** : 6 fichiers modifiés, 1 sous-module créé, 4285 tests passent, ruff clean
 
-**Prochaine étape** : Aucune — fonctionnalité complète
+**Vérification finale (3e passe)** :
+- Logging ajouté dans `match_view_weapon_kills.py` et `_timeseries_weapons.py` (debug + xuid + match_id)
+- Logging ajouté dans `teammates_weapons.py` pour l'except `_append_grenade_melee`
+- `_resolve_weapon_name` passe maintenant `lang=lang` à `t()` pour les sentinels
+- 31 nouveaux tests dans `tests/ui/test_weapon_kills_pages.py` : i18n keys, pure functions, DB in-memory, flux UI avec mock_st
+- Couverture : `_resolve_weapon_name`, `_append_grenade_melee`, `_enrich_with_grenade_melee`, `_load_grenade_melee_totals`, `render_weapon_kills_section`, `render_weapon_kills_chart`
+
+**Prochaine étape** : Aucune
 
 ---
 

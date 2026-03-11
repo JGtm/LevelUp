@@ -16,12 +16,12 @@ from src.data.services.timeseries_service import TimeseriesService
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.pages._timeseries_distributions import render_correlations, render_distributions
+from src.ui.pages._timeseries_weapons import render_weapon_kills_chart as _render_weapon_kills_chart
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.distributions import (
     plot_first_event_distribution,
     plot_kda_distribution,
-    plot_top_weapons,
 )
 from src.visualization.performance import (
     plot_cumulative_kd_with_ci,
@@ -116,46 +116,6 @@ def _render_kda_section(
 
     if db_path and xuid:
         _render_weapon_kills_chart(dff, db_path=db_path, xuid=xuid, lang=lang)
-
-
-def _render_weapon_kills_chart(
-    dff: pl.DataFrame,
-    *,
-    db_path: str,
-    xuid: str,
-    lang: str,
-) -> None:
-    """Affiche le graphe des kills par arme (barres horizontales)."""
-    from src.data.repositories.duckdb_repo import DuckDBRepository
-
-    match_ids = dff["match_id"].to_list() if "match_id" in dff.columns else None
-    try:
-        repo = DuckDBRepository(db_path, xuid, read_only=True)
-        df_w = repo.load_weapon_kills_aggregated(xuid, match_ids=match_ids)
-    except Exception:
-        return
-
-    if df_w.is_empty():
-        return
-
-    from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS, resolve_weapon_display
-
-    weapons_data = [
-        {
-            "weapon_name": resolve_weapon_display(row["weapon_id"], lang) or "?",
-            "total_kills": row["total_kills"],
-            "headshot_rate": 0.0,
-            "accuracy": 0.0,
-        }
-        for row in df_w.iter_rows(named=True)
-        if row["weapon_id"] not in EXCLUDED_WEAPON_IDS
-    ]
-
-    st.divider()
-    st.subheader(t("ts_top_weapons_title"))
-    with safe_chart_render():
-        fig_w = plot_top_weapons(weapons_data, lang=lang)
-        st.plotly_chart(fig_w, width="stretch", config=PLOTLY_STATIC_CONFIG)
 
 
 @fragment_if_available

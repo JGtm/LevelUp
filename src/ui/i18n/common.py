@@ -193,6 +193,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "col_shots_fired": {"fr": "Tirs", "en": "Shots fired"},
     "col_shots_hit": {"fr": "Tirs au but", "en": "Shots hit"},
     "col_melee": {"fr": "Corps à corps", "en": "Melee"},
+    "col_grenade_kills": {"fr": "Grenades", "en": "Grenades"},
     "col_power_weapon": {"fr": "Armes lourdes", "en": "Power weapons"},
     "col_weapon_of_destruction": {"fr": "Arme de destruction", "en": "Top weapon"},
     "col_weapon_name": {"fr": "Arme", "en": "Weapon"},

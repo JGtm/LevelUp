@@ -369,8 +369,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "mv_tab_team": {"fr": "👥 Équipe", "en": "👥 Team"},
     "mv_tab_citations_medals": {"fr": "🏅 Citations & Médailles", "en": "🏅 Citations & Medals"},
     "mv_tab_media": {"fr": "🎬 Médias", "en": "🎬 Media"},
-    # Section armes
-    "mv_weapon_kills_title": {"fr": "🔫 Armes utilisées", "en": "🔫 Weapons used"},
+    # Section armes / outils de destruction
+    "mv_weapon_kills_title": {"fr": "Outils de destruction", "en": "Tools of destruction"},
     "mv_weapon_kills_col_weapon": {"fr": "Arme", "en": "Weapon"},
     "mv_weapon_kills_col_frags": {"fr": "Frags", "en": "Frags"},
     "mv_weapon_kills_no_data": {

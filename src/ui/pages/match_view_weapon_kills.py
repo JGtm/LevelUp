@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
@@ -22,7 +26,8 @@ def _build_weapon_kills_df(db_path: str, match_id: str, xuid: str, lang: str) ->
     try:
         repo = DuckDBRepository(db_path, xuid=xuid, read_only=True)
         df = repo.load_weapon_kills_for_match(match_id)
-    except Exception:
+    except Exception as exc:
+        logger.debug("_build_weapon_kills_df match=%s xuid=%s : %s", match_id, xuid, exc)
         return pl.DataFrame(schema={"weapon_name": pl.Utf8, "kills": pl.Int32})
 
     if df.is_empty():
@@ -108,6 +113,37 @@ def _render_weapon_table(df: pl.DataFrame) -> None:
     st.markdown(table_html, unsafe_allow_html=True)
 
 
+def _enrich_with_grenade_melee(
+    df: pl.DataFrame, db_path: str, match_id: str, xuid: str
+) -> pl.DataFrame:
+    """Ajoute grenade_kills et melee_kills (API) comme lignes dans le df weapon_name/kills."""
+    from src.data.repositories import DuckDBRepository
+
+    try:
+        repo = DuckDBRepository(db_path, xuid=xuid, read_only=True)
+        conn = repo._get_connection()
+        row = conn.execute(
+            "SELECT COALESCE(grenade_kills, 0), COALESCE(melee_kills, 0) "
+            "FROM shared.match_participants WHERE match_id = ? AND xuid = ?",
+            [match_id, str(xuid).strip()],
+        ).fetchone()
+    except Exception as exc:
+        logger.debug("_enrich_with_grenade_melee match=%s xuid=%s : %s", match_id, xuid, exc)
+        return df
+
+    if not row:
+        return df
+
+    extras = []
+    if row[0] > 0:
+        extras.append({"weapon_name": t("col_grenade_kills"), "kills": int(row[0])})
+    if row[1] > 0:
+        extras.append({"weapon_name": t("col_melee"), "kills": int(row[1])})
+    if not extras:
+        return df
+    return pl.concat([df, pl.DataFrame(extras, schema={"weapon_name": pl.Utf8, "kills": pl.Int32})])
+
+
 @fragment_if_available
 def render_weapon_kills_section(*, db_path: str, match_id: str, xuid: str, colors: dict) -> None:
     """Affiche camembert + tableau des kills par arme du joueur pour un match."""
@@ -115,6 +151,7 @@ def render_weapon_kills_section(*, db_path: str, match_id: str, xuid: str, color
 
     lang = get_lang()
     df = _build_weapon_kills_df(db_path, match_id, xuid, lang)
+    df = _enrich_with_grenade_melee(df, db_path, match_id, xuid)
 
     st.subheader(t("mv_weapon_kills_title"))
     if df.is_empty():
