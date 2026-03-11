@@ -7,6 +7,62 @@
 
 ## Journal
 
+### [2026-03-11] — FIX : Corrections LevelUp.bat + setup_wizard
+- **Statut** : Complété
+- **Décision technique** :
+  1. `LevelUp.bat` : fingerprint `pyproject.toml` migré de `%%~tf %%~zf` (timestamp locale-dépendant) vers `certutil -hashfile MD5` — insensible à la locale Windows
+  2. `setup_wizard.py` : slider `max_matches` orphelin supprimé (valeur jamais transmise à `create_player_profile`)
+  3. `setup_wizard.py` : fonctions mortes `_render_wizard_dc_waiting` / `_handle_wizard_dc_result` supprimées (jamais appelées hors définition)
+- **Résultats** : 48/48 tests wizard passent
+- **Prochaine étape** : RAS
+
+### [2026-03-11] — FEAT : Renommage "Outils de destruction" + frags/grenades API
+
+**Statut** : Complété
+
+**Décision technique** :
+- Renommer les 3 graphiques d'armes en "💀 Outils de destruction" (match_view, timeseries, teammates) via i18n
+- Ajouter les stats `grenade_kills`, `melee_kills`, `power_weapon_kills` depuis `shared.match_participants` (API CoreStats, 100% fiable vs extraction film)
+- Dans match_view : 3 métriques sous le pie chart existant (si les valeurs sont non nulles)
+- Dans timeseries : totaux agrégés sur la période filtrée, affichés sous le graphe top armes
+- Extraction dans `_timeseries_weapons.py` (sous-module) pour respecter la limite 500L de timeseries.py (471→433L)
+
+**Résultats** :
+- 5 fichiers modifiés, 1 nouveau sous-module créé
+- `test_ruff_no_errors` pré-existant échoue (UnicodeDecodeError cp1252, non lié)
+- 663 tests passent, ruff clean sur les fichiers modifiés
+
+**Prochaine étape** : Aucune — fonctionnalité complète
+
+---
+
+### [2026-07-16] — FIX : attribution melee/grenade manquants (Step 4b)
+
+**Statut** : Corrigé ✅ — commit `e26a0ce` sur `main`
+
+**Contexte** : Sur le dernier match de Chocoboflor (`20fd2c23…`), 100 % des kills étaient attribués à Sidekick/MA40, alors que les stats API indiquaient 2 melee_kills et 1 grenade_kill. Les médailles contextuelles (Pummel, Back Smack, Stick…) étaient absentes de `highlight_events` → `is_melee=False`, `is_grenade=False` → tous les kills tombaient dans la branche weapon.
+
+**Cause racine** : `_reconcile_api_aggregates` utilisait `api_melee` et `api_grenade` uniquement pour calculer `api_weapon_kills`, sans injecter les sentinelles manquantes.
+
+**Décision technique** :
+- Ajout du Step 4b **avant** les Steps 4a/4c : reclassifier les kills weapon les moins certains (confiance `low` → `none` → `medium` → `high+swap` → `high`, puis `delta_ms` desc) en sentinelles `MELEE_WEAPON_ID` / `GRENADE_WEAPON_ID`.
+- Extraction en 3 helpers module-level pour respecter les seuils (≤ 80L) :
+  - `_inject_missing_sentinels()` — Step 4b, `# noqa: PLR0913` (8 args)
+  - `_step4a_demote()` — Step 4a
+  - `_step4c_promote()` — Step 4c
+- `_reconcile_api_aggregates` réduit à ~40L.
+
+**Backfill** : Chocoboflor (288 matchs, 6 200 lignes) ✅. Autres joueurs lancés en fond.
+
+**Validation** :
+- Résumé Chocoboflor : `Corps à corps: 2, Sidekick: 5, MA40 AR: 4, Grenade: 1` ✓ (correspond aux stats API : kills=12, melee=2, grenade=1)
+
+**Résultats hooks** : ruff ✅ ruff-format ✅ check-code-size ✅ (baseline 641L documenté)
+
+**Prochaine étape** : Vérifier la complétion du backfill global (`--all --weapons --force-weapons`) pour les autres joueurs.
+
+---
+
 ### [2026-03-11] — FIX : citations composites — progression directe N/total
 
 **Statut** : Corrigé ✅

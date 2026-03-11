@@ -65,9 +65,11 @@ if !ERRORLEVEL! neq 0 (
     goto :first_launch
 )
 
-:: 3. pyproject.toml modifie ? (fingerprint via taille + date de modification)
+:: 3. pyproject.toml modifie ? (fingerprint MD5 via certutil)
 set "CURRENT_TS="
-for %%f in ("pyproject.toml") do set "CURRENT_TS=%%~tf %%~zf"
+for /f "skip=1 tokens=*" %%h in ('certutil -hashfile "pyproject.toml" MD5 2^>nul') do (
+    if not defined CURRENT_TS set "CURRENT_TS=%%h"
+)
 set "STORED_TS="
 if exist "!PYPROJECT_HASH!" for /f "usebackq delims=" %%l in ("!PYPROJECT_HASH!") do set "STORED_TS=%%l"
 if defined CURRENT_TS (
@@ -237,7 +239,9 @@ if !ERRORLEVEL! neq 0 (
 
 :: Enregistrer le fingerprint de pyproject.toml
 set "NEW_TS="
-for %%f in ("pyproject.toml") do set "NEW_TS=%%~tf %%~zf"
+for /f "skip=1 tokens=*" %%h in ('certutil -hashfile "pyproject.toml" MD5 2^>nul') do (
+    if not defined NEW_TS set "NEW_TS=%%h"
+)
 if defined NEW_TS echo !NEW_TS!>"!PYPROJECT_HASH!"
 
 echo   OK - Environnement pret.
