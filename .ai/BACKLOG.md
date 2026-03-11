@@ -112,6 +112,65 @@
 
 ---
 
+## 🟠 Conflit `shared_matches.duckdb` — sync depuis UI Streamlit
+
+> Source : audit logs 2026-03-09 — 339 warnings/sync, app stable, pas de panne fonctionnelle.
+> **Ne pas traiter tant que le sync n'est pas stable depuis ≥ 1 semaine.**
+> Signal de déclenchement : sync retourne `None` pour shared sur plusieurs runs consécutifs.
+
+### Contexte
+
+Quand le sync est lancé depuis l'UI Streamlit, `_engine_connections.py::_get_shared_connection()` tente d'ouvrir `shared_matches.duckdb` en **R/W direct**. Simultanément, Streamlit maintient une connexion **R/O + ATTACH** sur le même fichier via `@st.cache_resource` (ttl=3600, `get_cached_repository_st`). DuckDB refuse qu'un même fichier soit ouvert sous deux modes dans le même processus.
+
+Le retry appelle `release_all_db_connections()` (WeakSet), mais le repo du cache Streamlit rétablit sa connexion R/O dès le rerun suivant → **cycle conflit → release → reconnexion R/O → conflit**.
+
+### Option A — Fix minimal dans `DuckDBRepository._get_connection()` ⭐ Recommandée
+
+**Mécanique** : Si `_sync_mode.is_set()` est actif ET que `shared_matches` est attaché → le DETACHER immédiatement avant de retourner la connexion. Le repo continue à fonctionner pour les requêtes ne touchant pas shared ; shared sera réattaché automatiquement à la fin du sync via `end_sync_mode()`.
+
+**Fichiers** : `src/data/repositories/duckdb_repo.py` uniquement (~10-15 lignes dans `_get_connection()`).
+
+**Effort** : S
+**Risque** : Faible — ne touche pas au moteur de sync, pas de nouveau fichier.
+**Effet de bord** : Pendant le sync, les requêtes UI nécessitant shared retournent données partielles (déjà le cas aujourd'hui via `SharedDBUnavailableError`).
+
+```python
+# Dans _get_connection(), après avoir obtenu self._connection :
+if _sync_mode.is_set() and "shared" in self._attached_dbs:
+    try:
+        self._connection.execute("DETACH shared")
+        self._attached_dbs.discard("shared")
+    except Exception:
+        pass
+```
+
+---
+
+### Option B — Hook pré-sync enregistrable
+
+**Mécanique** : Avant d'ouvrir la connexion R/W, l'engine appelle tous les hooks enregistrés. L'UI Streamlit enregistre un hook qui appelle `st.cache_resource.clear()` → vide le cache de tous les repos, plus aucun conflit possible.
+
+**Fichiers** :
+- `src/data/sync/_engine_connections.py` → `register_pre_sync_hook()` + appel avant `_open_shared()`
+- `src/ui/_cache_core.py` → `clear_cached_repositories()` exposant `st.cache_resource.clear()`
+- `streamlit_app.py` → `register_pre_sync_hook(clear_cached_repositories)` au démarrage
+
+**Effort** : M
+**Risque** : Moyen — 3 fichiers modifiés dont `_engine_connections.py` (zone sensible).
+**Effet de bord** : `st.cache_resource.clear()` vide **tous** les caches resource, pas seulement les repos → cold start de ~100ms après chaque sync.
+
+---
+
+### Option C — Ouvrir shared en R/O pour le sync (refactoring profond)
+
+**Mécanique** : Supprimer `duckdb.connect(shared, read_only=False)`. À la place, écrire dans shared via `ATTACH shared AS s (READ_WRITE)` depuis la connexion player, ou passer par un contexte de connexion partagé unique géré par un singleton.
+
+**Effort** : XL — refactoring complet du sync engine
+**Risque** : Élevé
+**Verdict** : À réserver à une refonte complète du moteur de sync.
+
+---
+
 ## 🟠 Performance UI (Roadmap optimisations profondes)
 
 > Contexte : ROG Ally (Ryzen Z1), DuckDB CPU-bound, Streamlit re-renders.  
@@ -150,21 +209,6 @@
 
 ---
 
-## 🟡 i18n — Câblage `t()` dans l'UI Streamlit
-
-> Source : `thought_log.md` [2026-02-25] — traductions EN remplies (Phase 1b ✅), câblage UI non fait.
-
-- [ ] Câbler la fonction `t()` dans les pages/widgets Streamlit
-- [ ] Modifier `src/ui/translations.py` pour utiliser le registre i18n
-- [ ] Supprimer (ou archiver) les commentaires `⚠️ ChatGPT : remplir toutes les valeurs marquées "TODO"` dans :
-  - `src/ui/i18n/common.py`
-  - `src/ui/i18n/pages.py`
-  - `src/ui/i18n/viz.py`
-  - `src/ui/i18n/widgets.py`
-  - `src/ui/i18n/cli.py`
-
----
-
 ## 🟡 Hover thumbnail sur les noms de cartes (tableaux HTML)
 
 > Commencé le 2026-03-11 — bloqué sur le rendu.
@@ -185,40 +229,6 @@
 - [ ] Encoder les miniatures en base64 et les injecter directement dans les cellules `<img src="data:image/jpeg;base64,...">` (pas de dépendance au serveur de fichiers statiques)
 - [ ] Améliorer `_build_map_url_index()` dans `match_table_html.py` : passer `lru_cache(maxsize=None)` (actuellement `maxsize=1`, très fragile) et normaliser les noms via `unicodedata.normalize('NFC', name)` pour gérer les accents
 - [ ] Créer une table de correspondance explicite `nom API Halo → fichier PNG` pour les maps avec caractères spéciaux ou noms divergents
-
----
-
-## 🟡 CI/CD & Outillage
-
-> Source : `scripts/demo_regression_detection.py` L122-123.
-
-- [ ] Ajouter la détection de régression au CI/CD (`.github/workflows/`)
-- [ ] Créer un pre-commit hook pour la détection de régression
-
----
-
-## � Connexion Xbox via OAuth (Streamlit)
-
-> Source : `.ai/plan-xboxLogin.prompt.md` — plan rédigé le 2026-02-24, **non démarré**.
-
-Ajouter un flux d'authentification Xbox (OAuth Microsoft) dans l'app Streamlit.  
-Mécanisme : Microsoft redirige vers `http://localhost:8501/?code=XXXX` → `st.query_params["code"]` → échange contre tokens SPNKr → profil créé automatiquement.  
-Tokens stockés par joueur dans `sync_meta` (`oauth_refresh_token`).
-
-**Prérequis** : Ajouter `http://localhost:8501` dans Azure Portal → App Registration → Redirect URIs (action manuelle unique).
-
-### Étapes
-
-- [ ] **1.** Créer `src/ui/xbox_login.py` — `build_xbox_auth_url()`, `exchange_code_for_refresh_token()`, `resolve_player_identity()`, `create_player_profile()`, `store_refresh_token_in_db()`, `load_refresh_token_from_db()`
-- [ ] **2.** Modifier `streamlit_app.py` (~L431-450) — détecter `code` + `state` dans `st.query_params`, vérifier CSRF, déclencher `handle_xbox_callback()` via `ThreadPoolExecutor`
-- [ ] **3.** Créer `src/ui/pages/login.py` — bouton "Se connecter avec Xbox 🎮" (`st.link_button`), spinner, confirmation/erreur
-- [ ] **4.** Modifier `src/ui/profile_api_tokens.py → ensure_spnkr_tokens()` — lire `refresh_token` depuis `sync_meta` si `db_path` de session disponible (tokens par session, pas globaux)
-- [ ] **5.** Modifier sidebar `streamlit_app.py` (~L453) — indicateur "Connecté en tant que {gamertag}" + bouton "Changer de compte"
-- [ ] **6.** Modifier `src/data/sync/engine.py` — préserver la clé `oauth_refresh_token` dans `sync_meta` lors des syncs
-- [ ] **7.** Enregistrer la page `login` dans la navigation (`streamlit_app.py` ou `src/app/routing.py`)
-- [ ] **8.** Écrire `tests/test_xbox_login.py` — mock HTTP pour `exchange_code_for_refresh_token`
-
-**Décisions clés** : `st.query_params` comme callback receiver (natif, pas de serveur HTTP séparé) · tokens dans `sync_meta` (isolation par joueur, multi-user) · `SPNKR_AZURE_REDIRECT_URI=http://localhost:8501` (variable déjà supportée).
 
 ---
 
