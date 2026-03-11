@@ -230,10 +230,6 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": "Gamertag Xbox",
         "en": "Xbox Gamertag",
     },
-    "setup_max_matches": {
-        "fr": "Nombre de matchs à récupérer",
-        "en": "Number of matches to fetch",
-    },
     "setup_create_profile": {
         "fr": "👤 Créer le profil",
         "en": "👤 Create profile",

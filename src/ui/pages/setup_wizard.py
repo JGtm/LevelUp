@@ -274,20 +274,6 @@ def _render_wizard_dc_flow() -> None:
     render_wizard_dc_flow()
 
 
-def _render_wizard_dc_waiting(dc_flow) -> None:
-    """Affiche le code Device Code + bouton Vérifier dans le wizard."""
-    from src.ui.pages.setup_wizard_xbox import render_wizard_dc_waiting
-
-    render_wizard_dc_waiting(dc_flow)
-
-
-def _handle_wizard_dc_result(dc_result: dict) -> None:
-    """Traite le résultat du Device Code Flow dans le wizard (token ou erreur)."""
-    from src.ui.pages.setup_wizard_xbox import handle_wizard_dc_result
-
-    handle_wizard_dc_result(dc_result)
-
-
 # =============================================================================
 # Parcours Azure classique
 # =============================================================================
@@ -436,13 +422,6 @@ def _render_player_form() -> None:
     """Formulaire de création de profil joueur."""
     with st.form("player_form"):
         gamertag = st.text_input(t("setup_gamertag"), placeholder="MonGamertag")
-        st.slider(
-            t("setup_max_matches"),
-            min_value=50,
-            max_value=1000,
-            value=200,
-            step=50,
-        )
         submitted = st.form_submit_button(t("setup_create_profile"), type="primary")
 
     if submitted:
