@@ -85,6 +85,27 @@
 
 ---
 
+## 🟡 Hover thumbnail sur les noms de cartes (tableaux HTML)
+
+> Commencé le 2026-03-11 — bloqué sur le rendu.
+
+**Objectif** : Au survol d'un nom de carte dans les tableaux HTML (Historique, Explorer, Win/Loss), afficher la miniature correspondante `static/maps/*.jpg|png`.
+
+**Ce qui a été fait** :
+- `enableStaticServing = true` activé dans `.streamlit/config.toml`
+- `map_thumb_url()` + `_build_map_url_index()` (lru_cache) ajoutés dans `match_table_html.py`
+- Cellule `map_name` injecte `<span class='map-cell' data-thumb-url='...'>`
+- `win_loss_table_style.py` et `_render_map_table()` réécrits en HTML pur (sans pandas `.style`), avec coloration win/loss/ratio/performance conservée
+- Tooltip JS `position:fixed` injecté via `_MAP_TOOLTIP_SCRIPT` dans `load_css()` pour contourner le clipping `overflow-x:auto` du `.os-table-wrap`
+
+**Problème restant** : Le tooltip ne s'affiche pas en pratique — cause probable : le JS injecté via `st.markdown(unsafe_allow_html=True)` est sandboxé par Streamlit (les `<script>` inline sont retirés du DOM). Il faut soit un composant custom Streamlit (`st.components.v1.html`), soit utiliser les images en base64 encodées directement dans une fausse balise `<img>` qui contourne le sandbox.
+
+**Pistes** :
+- [ ] Encoder les miniatures en base64 et les injecter directement dans un `<img src='data:image/...'>`  via `st.components.v1.html()` dans un composant dédié
+- [ ] Ou utiliser `st.components.v1.html()` pour rendre le tableau entier avec JS (hors contexte Streamlit markdown sandbox)
+
+---
+
 ## 🟡 CI/CD & Outillage
 
 > Source : `scripts/demo_regression_detection.py` L122-123.

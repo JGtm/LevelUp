@@ -140,6 +140,11 @@
     text-decoration: underline;
 }
 
+/* Miniature carte au survol (tooltip JS position:fixed) */
+.map-cell {
+    cursor: default;
+}
+
 /* Session history table (variante) */
 .session-history-table {
     width: 100%;

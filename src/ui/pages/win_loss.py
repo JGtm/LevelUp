@@ -5,6 +5,8 @@ Analyse des victoires et défaites par période et par carte.
 
 from __future__ import annotations
 
+import html as html_lib
+
 import polars as pl
 import streamlit as st
 
@@ -12,10 +14,15 @@ from src.config import HALO_COLORS
 from src.data.services.win_loss_service import WinLossService
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
-from src.ui.pages.win_loss_table_style import (  # noqa: F401
-    _style_map_table_row,
+from src.ui.pages.win_loss_table_style import (
     _styler_map,
     _to_float,
+    loss_rate_cell_html,
+    map_name_cell_html,
+    perf_cell_html,
+    plain_cell_html,
+    ratio_cell_html,
+    win_rate_cell_html,
 )
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.ui.tz import get_tz_name
@@ -394,18 +401,19 @@ def _render_ratio_by_map_section(  # noqa: PLR0913
     _render_map_table(breakdown, base_scope)
 
 
-def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None:
-    """Affiche le tableau détaillé par carte."""
+def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None:  # noqa: PLR0912, PLR0915, C901
+    """Affiche le tableau détaillé par carte (HTML pur, sans pandas)."""
     from src.ui.translations import translate_playlist_name
 
-    # Transformations internes en Polars
+    # -- Transformations numériques (Polars)
+    has_perf = "performance_avg" in breakdown.columns
     cols_expr = [
         (pl.col("win_rate") * 100).round(1).alias("win_rate"),
         (pl.col("loss_rate") * 100).round(1).alias("loss_rate"),
         pl.col("accuracy_avg").cast(pl.Float64, strict=False).round(2).alias("accuracy_avg"),
         pl.col("ratio_global").cast(pl.Float64, strict=False).round(2).alias("ratio_global"),
     ]
-    if "performance_avg" in breakdown.columns:
+    if has_perf:
         cols_expr.append(
             pl.col("performance_avg")
             .cast(pl.Float64, strict=False)
@@ -420,7 +428,7 @@ def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None
             vals = sorted({str(x).strip() for x in values if x is not None and str(x).strip()})
         except Exception:
             return "-"
-        if len(vals) == 0:
+        if not vals:
             return "-"
         if len(vals) == 1:
             return vals[0]
@@ -441,7 +449,7 @@ def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None
     if "playlist_ui" in base_scope.columns:
         playlist_ctx = _single_or_multi_label(base_scope["playlist_ui"].drop_nulls().to_list())
     else:
-        # Vectorisation: build_mapping + replace_strict au lieu de map_elements
+
         def _clean_then_translate(s: str | None) -> str | None:
             return translate_playlist_name(_clean_asset_label(s), lang=get_lang())
 
@@ -458,7 +466,6 @@ def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None
     if "mode_ui" in base_scope.columns:
         mode_ctx = _single_or_multi_label(base_scope["mode_ui"].drop_nulls().to_list())
     else:
-        # Vectorisation: build_mapping + replace_strict au lieu de map_elements
         _mode_map = build_mapping(base_scope["pair_name"], _normalize_mode_label)
         mode_vals = (
             base_scope["pair_name"]
@@ -475,54 +482,62 @@ def _render_map_table(breakdown: pl.DataFrame, base_scope: pl.DataFrame) -> None
             pl.lit(mode_ctx).alias("mode_ctx"),
         ]
     )
-    rename_map = {
-        "map_name": t("wl_col_map"),
-        "matches": t("wl_col_matches"),
-        "accuracy_avg": t("wl_col_accuracy_avg"),
-        "performance_avg": t("wl_col_performance_avg"),
-        "win_rate": t("wl_col_win_rate"),
-        "loss_rate": t("wl_col_loss_rate"),
-        "ratio_global": t("wl_col_ratio"),
-        "playlist_ctx": t("wl_col_playlist"),
-        "mode_ctx": t("wl_col_mode"),
-    }
-    tbl = tbl.rename({k: v for k, v in rename_map.items() if k in tbl.columns})
 
-    _col_map = t("wl_col_map")
-    _col_playlist = t("wl_col_playlist")
-    _col_mode = t("wl_col_mode")
-    _col_matches = t("wl_col_matches")
-    _col_acc = t("wl_col_accuracy_avg")
-    _col_perf = t("wl_col_performance_avg")
-    _col_win = t("wl_col_win_rate")
-    _col_loss = t("wl_col_loss_rate")
-    _col_ratio = t("wl_col_ratio")
-    ordered_cols = [
-        _col_map,
-        _col_playlist,
-        _col_mode,
-        _col_matches,
-        _col_acc,
-        _col_perf,
-        _col_win,
-        _col_loss,
-        _col_ratio,
+    # -- Définition des colonnes (clé interne → label traduit)
+    col_defs: list[tuple[str, str]] = [
+        ("map_name", t("wl_col_map")),
+        ("playlist_ctx", t("wl_col_playlist")),
+        ("mode_ctx", t("wl_col_mode")),
+        ("matches", t("wl_col_matches")),
+        ("accuracy_avg", t("wl_col_accuracy_avg")),
     ]
-    tbl = tbl.select([c for c in ordered_cols if c in tbl.columns])
+    if has_perf:
+        col_defs.append(("performance_avg", t("wl_col_performance_avg")))
+    col_defs += [
+        ("win_rate", t("wl_col_win_rate")),
+        ("loss_rate", t("wl_col_loss_rate")),
+        ("ratio_global", t("wl_col_ratio")),
+    ]
+    col_defs = [(k, lbl) for k, lbl in col_defs if k in tbl.columns]
 
-    # Conversion pandas à la frontière .style
-    tbl_pd = tbl.to_pandas()
-    tbl_styled = tbl_pd.style.apply(_style_map_table_row, axis=1)
-    st.dataframe(
-        tbl_styled,
-        width="stretch",
-        hide_index=True,
-        column_config={
-            _col_matches: st.column_config.NumberColumn(_col_matches, format="%d"),
-            _col_acc: st.column_config.NumberColumn(_col_acc, format="%.2f"),
-            _col_perf: st.column_config.NumberColumn(_col_perf, format="%.1f"),
-            _col_win: st.column_config.NumberColumn(_col_win, format="%.1f"),
-            _col_loss: st.column_config.NumberColumn(_col_loss, format="%.1f"),
-            _col_ratio: st.column_config.NumberColumn(_col_ratio, format="%.2f"),
-        },
+    # -- En-têtes
+    head = (
+        "<thead><tr>"
+        + "".join(f"<th>{html_lib.escape(lbl)}</th>" for _, lbl in col_defs)
+        + "</tr></thead>"
+    )
+
+    # -- Lignes
+    rows_html: list[str] = []
+    for r in tbl.to_dicts():
+        win_pct = _to_float(r.get("win_rate"))
+        loss_pct = _to_float(r.get("loss_rate"))
+        tds: list[str] = []
+        for key, _ in col_defs:
+            if key == "map_name":
+                tds.append(map_name_cell_html(r.get(key)))
+            elif key == "win_rate":
+                display = f"{win_pct:.1f}" if win_pct is not None else "-"
+                tds.append(win_rate_cell_html(win_pct, loss_pct, display))
+            elif key == "loss_rate":
+                display = f"{loss_pct:.1f}" if loss_pct is not None else "-"
+                tds.append(loss_rate_cell_html(win_pct, loss_pct, display))
+            elif key == "ratio_global":
+                rv = _to_float(r.get(key))
+                display = f"{rv:.2f}" if rv is not None else "-"
+                tds.append(ratio_cell_html(rv, display))
+            elif key == "performance_avg":
+                tds.append(perf_cell_html(r.get(key)))
+            elif key == "matches":
+                tds.append(plain_cell_html(r.get(key), fmt="%d"))
+            elif key == "accuracy_avg":
+                tds.append(plain_cell_html(r.get(key), fmt="%.2f"))
+            else:
+                tds.append(plain_cell_html(r.get(key)))
+        rows_html.append("<tr>" + "".join(tds) + "</tr>")
+
+    body = "<tbody>" + "".join(rows_html) + "</tbody>"
+    st.markdown(
+        f"<div class='os-table-wrap'><table class='os-table'>{head}{body}</table></div>",
+        unsafe_allow_html=True,
     )
