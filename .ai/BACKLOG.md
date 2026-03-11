@@ -4,6 +4,33 @@
 
 ---
 
+## 🔴 Bugs actifs
+
+### Images citations d'armes incorrectes
+> Certaines armes affichent une image incorrecte (ou absente) dans la section Citations — page Commendations et vue Match.
+
+| Fichier | Rôle |
+|---------|------|
+| [`src/ui/commendations.py`](../src/ui/commendations.py) | `_img_src()` + `_img_data_uri()` — résolution chemin → base64 |
+| [`src/ui/pages/match_view_citations.py`](../src/ui/pages/match_view_citations.py) | Consomme `item["image_path"]` directement depuis la BDD |
+| `data/warehouse/metadata.duckdb` | Table `citation_mappings.image_path` — source des chemins |
+| `static/commendations/h5g/` | 208 fichiers PNG (noms FR accentués) |
+| [`scripts/populate_citation_mappings.py`](../scripts/populate_citation_mappings.py) | Script de peuplement — suspect principal |
+
+**Causes probables** :
+- Noms d'armes FR avec accents (`é`, `à`, `ô`…) normalisés différemment entre le nom de fichier réel et la valeur stockée dans `citation_mappings.image_path`
+- Séparateurs inconsistants (`Lance-roquettes` vs `Lance_roquettes`) ou casse différente
+
+**Actions** :
+- [ ] Auditer la BDD : `SELECT name, image_path FROM citation_mappings ORDER BY name` — repérer les chemins NULL ou mal formés
+- [ ] Croiser avec les fichiers réels dans `static/commendations/h5g/` pour identifier les écarts
+- [ ] Corriger `populate_citation_mappings.py` : normaliser accents (`unicodedata.normalize`), casse et séparateurs avant de stocker le chemin
+- [ ] Ajouter `tests/test_citation_image_paths.py` : vérifie que chaque `image_path` non-NULL pointe vers un fichier existant
+
+**Complexité** : M
+
+---
+
 ## 🔴 Dette Technique (code source)
 
 ### Cleanup kwargs legacy SyncScope
@@ -36,6 +63,57 @@
 
 ### Traductions FR manquantes dans migration metadata
 > [`scripts/migration/migrate_metadata_to_duckdb.py`](../scripts/migration/migrate_metadata_to_duckdb.py#L72) L72 — `# TODO: ajouter traductions FR`
+
+---
+
+### Migration : noms d'assets résolus → IDs bruts en BDD
+> Dans `match_registry`, les noms d'assets sont stockés en parallèle des IDs bruts (redondance + risque de stale data). À terme, l'UI doit résoudre les noms à la lecture depuis `metadata.duckdb`, pas les lire depuis les colonnes `*_name`.
+
+**Contexte** : Au moment de l'insertion (sync initial), les noms publics (ex. `"Aquarius"`, `"Ranked Arena"`) sont récupérés depuis l'API SPNKr et stockés directement en BDD — en plus de l'ID brut. La `weapon_kills` (v5.7) et `medals_earned` montrent le bon modèle : ID brut uniquement, résolution à la lecture.
+
+**Colonnes concernées dans `shared_matches.duckdb`** :
+
+| Table | Colonnes ID (OK) | Colonnes nom résolu (à migrer) |
+|-------|-----------------|-------------------------------|
+| `match_registry` | `map_id`, `playlist_id`, `pair_id`, `game_variant_id` | `map_name`, `playlist_name`, `pair_name`, `game_variant_name` |
+| `match_participants` | `xuid` | `gamertag` (redondant avec `xuid_aliases`) |
+| `highlight_events` | `xuid` | `gamertag` (peut devenir stale si alias change) |
+
+**Modèles de référence (déjà corrects)** :
+- `medals_earned.medal_name_id` → UBIGINT, résolution via `metadata.duckdb`
+- `weapon_kills.weapon_id` → UBIGINT post v5.7 (migré depuis `weapon_name`)
+
+**Actions** :
+- [ ] Auditer les usages UI/query des colonnes `*_name` dans `match_registry` pour identifier ce qui lit directement le nom stocké vs ce qui joint `metadata.duckdb`
+- [ ] Créer une vue `v_match_registry` qui résout les noms à la lecture via JOIN sur les tables de référence `metadata.duckdb` (maps, playlists, game_variants)
+- [ ] Migrer les requêtes consommatrices (pages Streamlit, repositories) vers la vue — supprimer les colonnes `*_name` de `match_registry` une fois toutes les requêtes migrées
+- [ ] `match_participants.gamertag` et `highlight_events.gamertag` : évaluer si ces colonnes sont utilisées en lecture directe ou si le JOIN sur `xuid_aliases` est systématique — supprimer si redondant
+- [ ] Ajouter un test de non-régression : aucune colonne `*_name` dans les nouvelles tables shared (hors `xuid_aliases`)
+
+**Complexité** : L (impact UI + repositories + migrations)  
+**Fichiers clés** : [`src/data/sync/migrations.py`](../src/data/sync/migrations.py), [`src/data/sync/_shared_writes.py`](../src/data/sync/_shared_writes.py), [`src/data/sync/transformers/_match.py`](../src/data/sync/transformers/_match.py), `data/warehouse/shared_matches.duckdb`
+
+---
+
+### Couverture tests `migrations.py` (lacunes v5.5–v5.7)
+> [`src/data/sync/migrations.py`](../src/data/sync/migrations.py) — ~1290 lignes, couverture actuelle ~60%. Trois blocs sans aucun test depuis les versions 5.5–5.7.
+
+| Fonction | Version ajoutée | Couverture actuelle |
+|----------|----------------|---------------------|
+| `ensure_weapon_kills_table()` | v5.7 | ❌ Aucun test |
+| `ensure_bot_teammate_column()` | v5.5 | ❌ Aucun test |
+| `add_spartan_id_to_career_progression()` | v5.x | ❌ Aucun test |
+| `_recreate_highlight_events_with_sequence()` | v5.x | ⚠️ Chemin idempotent non testé |
+
+**Actions** :
+- [ ] `ensure_weapon_kills_table()` : tester création de table, conversion `weapon_name→weapon_id`, type BIGINT→UBIGINT, idempotence
+- [ ] `ensure_bot_teammate_column()` : tester ajout de colonne, valeur par défaut, idempotence (double appel = même schéma)
+- [ ] `add_spartan_id_to_career_progression()` : tester ajout colonne, contrainte, idempotence
+- [ ] `_recreate_highlight_events_with_sequence()` : tester le chemin déjà-migré (si `nextval` existe, pas de double création)
+- [ ] Viser couverture ≥ 85% sur `migrations.py` (mesurer via `python -m pytest --cov=src/data/sync/migrations`)
+
+**Complexité** : M  
+**Fichiers** : [`tests/test_migrations.py`](../tests/test_migrations.py), [`src/data/sync/migrations.py`](../src/data/sync/migrations.py)
 
 ---
 
@@ -107,9 +185,11 @@
 
 **Problème restant** : Le tooltip ne s'affiche pas en pratique — cause probable : le JS injecté via `st.markdown(unsafe_allow_html=True)` est sandboxé par Streamlit (les `<script>` inline sont retirés du DOM). Il faut soit un composant custom Streamlit (`st.components.v1.html`), soit utiliser les images en base64 encodées directement dans une fausse balise `<img>` qui contourne le sandbox.
 
-**Pistes** :
-- [ ] Encoder les miniatures en base64 et les injecter directement dans un `<img src='data:image/...'>`  via `st.components.v1.html()` dans un composant dédié
-- [ ] Ou utiliser `st.components.v1.html()` pour rendre le tableau entier avec JS (hors contexte Streamlit markdown sandbox)
+**Actions restantes** :
+- [ ] Remplacer le rendu `st.markdown` par `st.components.v1.html()` pour le tableau entier (contourne le sandbox JS Streamlit qui retire les `<script>` inline)
+- [ ] Encoder les miniatures en base64 et les injecter directement dans les cellules `<img src="data:image/jpeg;base64,...">` (pas de dépendance au serveur de fichiers statiques)
+- [ ] Améliorer `_build_map_url_index()` dans `match_table_html.py` : passer `lru_cache(maxsize=None)` (actuellement `maxsize=1`, très fragile) et normaliser les noms via `unicodedata.normalize('NFC', name)` pour gérer les accents
+- [ ] Créer une table de correspondance explicite `nom API Halo → fichier PNG` pour les maps avec caractères spéciaux ou noms divergents
 
 ---
 
