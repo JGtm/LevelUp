@@ -141,5 +141,5 @@ MODULE:src/data/services/weapon_extraction_service.py:666L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/_teammates_trio.py:561L
-MODULE:src/ui/pages/session_compare.py:523L
+MODULE:src/ui/pages/session_compare.py:519L
 MODULE:src/ui/pages/win_loss.py:544L

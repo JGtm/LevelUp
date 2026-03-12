@@ -31,9 +31,11 @@ from src.ui.pages.session_compare_charts import (
     render_session_history_table,
 )
 from src.ui.pages.session_compare_logic import (
+    _get_category_fr,
     build_skill_series,
     compute_historical_context,
     compute_similar_sessions_average,  # noqa: F401 — re-exported
+    find_best_matching_previous_session,
     format_seconds_to_mmss,
     get_session_friends_signature,  # noqa: F401 — re-exported
     infer_session_dominant_category,
@@ -46,18 +48,6 @@ from src.visualization._compat import (
     ensure_polars,
 )
 from src.visualization.performance import plot_cumulative_comparison
-
-
-def _get_category_fr() -> dict[str, str]:
-    """Retourne les labels de catégories traduits."""
-    return {
-        "Assassin": "Assassin",
-        "Fiesta": "Fiesta",
-        "BTB": t("cat_btb"),
-        "Ranked": t("cat_ranked"),
-        "Firefight": t("cat_firefight"),
-        "Other": t("cat_other"),
-    }
 
 
 def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PLR0912
@@ -132,12 +122,16 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PL
     return names
 
 
-def _select_sessions(session_labels: list[str]) -> tuple[str, str]:
+def _select_sessions(
+    session_labels: list[str],
+    all_sessions_df: pl.DataFrame,
+) -> tuple[str, str]:
     """Affiche les sélecteurs de sessions A et B et retourne les labels choisis.
 
     Si une session est sélectionnée dans la sidebar, pré-sélectionne :
     - Session B = la session active de la sidebar
-    - Session A = la session précédente (la suivante dans la liste, ordre décroissant)
+    - Session A = la session précédente la plus similaire (même catégorie, même
+      statut ami/solo, mêmes amis si possible) — fallback chronologique.
     """
     picked = st.session_state.get("picked_session_label", "(toutes)")
     last_picked = st.session_state.get("_last_picked_for_compare")
@@ -150,14 +144,16 @@ def _select_sessions(session_labels: list[str]) -> tuple[str, str]:
 
     # Calculer les defaults selon la session active
     if picked and picked != "(toutes)" and picked in session_labels:
-        idx_b = session_labels.index(picked)
-        default_b = session_labels[idx_b]
-        # Session A = la précédente chronologiquement (indice supérieur = plus ancienne)
-        idx_a = idx_b + 1 if idx_b + 1 < len(session_labels) else idx_b
-        default_a = session_labels[idx_a]
+        default_b = picked
+        # Session A = session antérieure la plus similaire (catégorie + amis)
+        default_a = find_best_matching_previous_session(all_sessions_df, picked, session_labels)
     else:
         default_b = session_labels[0]
-        default_a = session_labels[1] if len(session_labels) > 1 else session_labels[0]
+        default_a = (
+            find_best_matching_previous_session(all_sessions_df, default_b, session_labels)
+            if len(session_labels) > 1
+            else session_labels[0]
+        )
 
     # Injecter les defaults dans session_state uniquement si pas encore initialisés
     if "compare_session_b" not in st.session_state:
@@ -485,7 +481,7 @@ def render_session_comparison_page(
         st.warning(t("sc_need_two_sessions"))
         return
 
-    session_a_label, session_b_label = _select_sessions(session_labels)
+    session_a_label, session_b_label = _select_sessions(session_labels, all_sessions_df)
     df_session_a = all_sessions_df.filter(pl.col("session_label") == session_a_label)
     df_session_b = all_sessions_df.filter(pl.col("session_label") == session_b_label)
 

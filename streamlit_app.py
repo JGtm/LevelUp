@@ -765,7 +765,9 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
             friends_xuids=friends_tuple,
         )
         all_sessions_pl = _to_polars(all_sessions_df)
-        df_pl = _to_polars(ctx.dff)
+        # Utiliser ctx.df (tous les matchs, non filtrés) pour que la page de comparaison
+        # dispose de toutes les sessions même si une seule session est active dans la sidebar.
+        df_pl = _to_polars(ctx.df)
         if (
             not all_sessions_pl.is_empty()
             and "match_id" in df_pl.columns
