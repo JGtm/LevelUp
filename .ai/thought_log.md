@@ -3286,6 +3286,20 @@ Import inutilisé `WeaponKillsMixin` retiré. Tests batch guard ajoutés.
 
 ---
 
+## [2026-03-12] Analyse faisabilité — Détection de langue système dans `LevelUp.sh` / `LevelUp.bat`
+
+**Statut** : Complété ✅
+
+**Demande** : Déterminer si la détection de la langue système est possible dans les scripts lanceurs, et documenter la feature dans le backlog.
+
+**Décision technique** :
+- **`LevelUp.sh`** : Détection via variables POSIX `$LC_ALL` > `$LC_MESSAGES` > `$LANG` (ex. `fr_FR.UTF-8`). Extraction des 2 premières lettres via `cut -c1-2`. Compatible POSIX strict (dash/bash/zsh, macOS/Linux/WSL2). Aucune commande externe requise.
+- **`LevelUp.bat`** : Détection via `REG QUERY "HKCU\Control Panel\International" /v LocaleName` (retourne `fr-FR`, `en-US`…). Disponible sur Windows Vista+, aucune dépendance externe. Alternative PowerShell documentée.
+- **Pattern d'implémentation** : Variables nommées `msg_<key>_fr` / `msg_<key>_en` avec macro de résolution — compatible POSIX sh strict et CMD sans tableaux associatifs.
+
+**Résultat** : Section ajoutée dans `.ai/BACKLOG.md` avec inventaire complet des ~35 (sh) + ~30 (bat) chaînes à traduire, exemples de code de détection, plan en 6 étapes, complexité M.
+
+**Conclusion** : Feature entièrement faisable, documentée et prête à implémenter. Aucun fichier de code modifié (tâche de backlog uniquement).
 ## [2026-03-12] Azure Auto-Registration — Suppression du client_secret et Device Code Flow
 
 **Statut** : Complété
