@@ -3241,3 +3241,35 @@ Import inutilisé `WeaponKillsMixin` retiré. Tests batch guard ajoutés.
 **Fichier modifié** : `src/data/services/weapon_extraction_service.py` — `_reconcile_api_aggregates()`
 
 **Conclusion** : Fix minimal, sans régression sur les matchs où melee/grenade sont détectés via médailles (dans ce cas `detected == api`, le step 4b ne fait rien). Backfill global `--all --weapons --force-weapons` lancé en parallèle pour les 3 autres joueurs.
+
+---
+
+## [2026-03-12] Azure Auto-Registration — Suppression du client_secret et Device Code Flow
+
+**Statut** : Complété
+
+**Contexte** :
+L'utilisateur souhaitait que `LevelUp.bat` / `LevelUp.sh` dispensent l'utilisateur de visiter
+portal.azure.com pour configurer l'application Azure. Le wizard CLI (`_wizard_azure_creds()`)
+demandait encore `client_id` + `client_secret` (ancien flux Authorization Code), alors que le
+wizard web (`setup_wizard.py`) utilisait déjà le Device Code Flow (client_id uniquement).
+
+**Décisions techniques** :
+1. **Ajout de `_try_azure_auto_register()`** dans `launcher.py` : si `az` CLI est disponible,
+   crée automatiquement l'application Azure « LevelUp Halo » (public client, Device Code Flow)
+   sans visiter portal.azure.com. Vérifie si une app existe déjà avant de la créer.
+2. **Refonte de `_wizard_azure_creds()`** : tente d'abord `_try_azure_auto_register()`, sinon
+   saisie manuelle du `client_id` uniquement (plus de `client_secret`). Ouvre portal.azure.com
+   dans le navigateur et affiche le conseil d'installer `az` CLI.
+3. **Refonte de `_wizard_oauth_token()`** : remplace le flux Authorization Code + client_secret
+   par MSAL Device Code Flow (import depuis `src.utils.msal_device_flow`). Pas de redirect URI.
+4. **Mise à jour de `_onboard_first_player()`** : ne vérifie plus `SPNKR_AZURE_CLIENT_SECRET`.
+5. **Mise à jour de `_cmd_add_player()`** : idem, seul `SPNKR_AZURE_CLIENT_ID` requis.
+6. **Mise à jour de `_env_check_for_player()`** : suppression de la clé `client_secret`.
+7. **Mise à jour de `_print_token_setup_instructions()`** : instructions Device Code Flow.
+
+**Résultats** : 649 tests passent (2 échecs pre-existants liés à l'environnement CI :
+`check_code_size.py` absent + `ruff` non installé).
+
+**Conclusion** : Avec `az` CLI installé, zéro visite du portail Azure requise.
+Sans `az`, seul le `client_id` est demandé (plus simple qu'avant).
