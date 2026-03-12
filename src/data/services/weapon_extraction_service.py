@@ -56,6 +56,49 @@ def _attribution_row(kill: dict, weapon_id: int | None, confidence: str = "none"
     }
 
 
+def _is_resolved_weapon_row(row: dict) -> bool:
+    """Retourne True si la ligne est une attribution arme résolue."""
+    from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS
+
+    wid = row.get("weapon_id")
+    return wid is not None and wid not in EXCLUDED_WEAPON_IDS
+
+
+def _fire_row_beats_t1_row(fire_row: dict, t1_row: dict) -> bool:
+    """Décide si l'attribution fire-event doit remplacer la snapshot T1.
+
+    Règle conservative : le fire event remplace T1 uniquement si T1 est faible
+    (none/low ou non résolu) et que le fire event est exploitable.
+    """
+    fire_conf = fire_row.get("confidence", "none")
+    t1_conf = t1_row.get("confidence", "none")
+    if not _is_resolved_weapon_row(fire_row) or fire_conf == "none":
+        return False
+    if not _is_resolved_weapon_row(t1_row):
+        return True
+    if t1_conf in {"none", "low"} and fire_conf in {"medium", "high"}:
+        return True
+    return False
+
+
+def _merge_non_pov_attributions(
+    t1_rows: list[dict],
+    fire_rows: list[dict],
+) -> list[dict]:
+    """Fusionne les attributions non-POV en privilégiant les fire events utiles."""
+    if not fire_rows:
+        return t1_rows
+
+    merged: list[dict] = []
+    for idx, t1_row in enumerate(t1_rows):
+        if idx >= len(fire_rows):
+            merged.append(t1_row)
+            continue
+        fire_row = fire_rows[idx]
+        merged.append(fire_row if _fire_row_beats_t1_row(fire_row, t1_row) else t1_row)
+    return merged
+
+
 def _inject_missing_sentinels(  # noqa: PLR0913
     kill_rows: list[dict],
     api_melee: int,
@@ -418,9 +461,15 @@ class WeaponExtractionService:
             # CPU-bound bitstring : offload sur thread pour libérer l'event loop (Phase 4)
             fire_events = await asyncio.to_thread(self._scan_player_chunks, chunks, 1)
             return correlate_kills_to_weapons(kills, fire_events)
-        return self._attribute_t1_kills(
+
+        t1_rows = self._attribute_t1_kills(
             kills, chunks_sorted, timeline, swap_pis, timing, player_index
         )
+        # Tentative Section 2 non-POV : on scanne avec le player_index détecté puis
+        # on fusionne de façon conservative avec T1 (fallback robuste si scan vide).
+        fire_events = await asyncio.to_thread(self._scan_player_chunks, chunks, player_index)
+        fire_rows = correlate_kills_to_weapons(kills, fire_events)
+        return _merge_non_pov_attributions(t1_rows, fire_rows)
 
     @staticmethod
     def _attribute_t1_kills(  # noqa: PLR0913

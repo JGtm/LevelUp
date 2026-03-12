@@ -12,7 +12,10 @@ from unittest.mock import patch
 import duckdb
 import pytest
 
-from src.data.services.weapon_extraction_service import WeaponExtractionService
+from src.data.services.weapon_extraction_service import (
+    WeaponExtractionService,
+    _merge_non_pov_attributions,
+)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Helpers et fixtures
@@ -172,6 +175,26 @@ class TestWeaponExtractionService:
             summary = asyncio.run(service.process_match("m1234567", "TestPlayer", "xuid123"))
         assert "error" in summary
         assert "DB inacc." in summary["error"]
+
+
+class TestNonPovAttributionMerge:
+    def test_prefers_fire_event_when_t1_unresolved(self):
+        """Un fire event résolu remplace une attribution T1 non résolue."""
+        t1_rows = [{"weapon_id": None, "confidence": "none", "time_ms": 1000}]
+        fire_rows = [{"weapon_id": 123, "confidence": "high", "time_ms": 1000}]
+
+        merged = _merge_non_pov_attributions(t1_rows, fire_rows)
+        assert merged[0]["weapon_id"] == 123
+        assert merged[0]["confidence"] == "high"
+
+    def test_keeps_t1_when_t1_is_strong(self):
+        """Une attribution T1 déjà strong n'est pas écrasée par un fire event."""
+        t1_rows = [{"weapon_id": 111, "confidence": "high", "time_ms": 1000}]
+        fire_rows = [{"weapon_id": 222, "confidence": "high", "time_ms": 1000}]
+
+        merged = _merge_non_pov_attributions(t1_rows, fire_rows)
+        assert merged[0]["weapon_id"] == 111
+        assert merged[0]["confidence"] == "high"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

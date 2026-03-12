@@ -7,6 +7,18 @@
 
 ## Journal
 
+### [2026-03-12] — FIX : parcours Section 2 étendu aux non-POV avec fusion conservative
+
+- **Statut** : Complété
+- **Contexte** : La logique d'attribution armes n'appelait `scan_fire_events()` que pour le joueur POV (`pi=1`), puis forçait tous les autres joueurs sur Formula A snapshot, malgré un parseur capable de scanner n'importe quel `player_index`.
+- **Décision technique** :
+   1. Conserver la voie POV existante (`pi=1`) pour éviter les régressions.
+   2. Pour les non-POV, lancer aussi un scan Section 2 avec `player_index` détecté.
+   3. Fusionner Section 2 et Formula A via une règle conservative : ne remplacer T1 que si T1 est non résolu/faible (`none/low`) et que le fire event est résolu (`medium/high`).
+   4. Ajouter des tests unitaires ciblés sur la fusion (`_merge_non_pov_attributions`).
+- **Résultats observés** : Le service parcourt désormais l'arborescence fire-events pour chaque joueur non-POV sans dégrader les attributions T1 déjà solides.
+- **Conclusion / prochaine étape** : Valider en environnement complet (`pytest`) dès qu'un interpréteur projet avec `pytest` est disponible (absence de `.venv` dans ce workspace).
+
 ### [2026-03-11] — FIX : Corrections LevelUp.bat + setup_wizard
 - **Statut** : Complété
 - **Décision technique** :
