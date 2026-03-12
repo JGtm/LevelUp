@@ -1,6 +1,6 @@
 # BACKLOG — Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-11.
+> Mis à jour le 2026-03-12.
 
 ---
 
@@ -381,7 +381,104 @@ echo !MSG_REINSTALL!
 ---
 
 ## �🟢 Améliorations futures / Backlog bas
+### [UI] Heatmap performance par joueur × carte — Page Teammates
+> Ajouté le 2026-03-12.
 
+**Objectif** : Visualiser en un coup d'œil l'efficacité de chaque joueur (toi + coéquipier(s) sélectionnés) sur chaque carte des matchs filtrés.
+
+**Format** : Heatmap Plotly (`go.Heatmap`) — lignes = cartes, colonnes = joueurs, valeur de cellule = `performance_score` moyen sur la carte.
+
+**Option "Outcome"** : superposer en annotation le win_rate de l'équipe sur chaque carte (ex. `62%` affiché dans la cellule, ou couleur de contour Win/Loss).
+
+**Données nécessaires** :
+- `performance_score` : disponible dans `player_match_enrichment` (joueur principal) et calculable depuis `shared.match_participants` (coéquipier) via `compute_performance_series`
+- `map_name` : disponible dans `match_registry` via `mv_player_matches`
+- `outcome` : disponible dans `shared.match_participants`
+- La logique de `compute_map_breakdown` est réutilisable — l'appliquer par joueur sur les `match_ids` communs
+
+**Placement suggéré** : Nouvel onglet ou section dans la vue "single coéquipier" (après les graphes de comparaison existants). À adapter pour la vue multi-coéquipiers.
+
+**Implémentation** :
+- [ ] `compute_map_performance_matrix(players_dfs: dict[str, pl.DataFrame]) -> pl.DataFrame` dans `src/analysis/maps.py` — retourne un DataFrame long `(player, map_name, perf_avg, win_rate, n_matches)`
+- [ ] `plot_map_performance_heatmap(df_matrix, show_outcome: bool = False) -> go.Figure` dans `src/visualization/maps.py`
+- [ ] Intégration dans `teammates_charts.py` ou nouveau `teammates_maps.py` si >80L
+- [ ] Clés i18n à ajouter dans `src/ui/i18n/pages/teammates.py`
+- [ ] Filtre minimum de matchs (ex. ≥ 3 sur la carte) pour éviter les cellules non représentatives
+
+**Complexité** : M
+
+### [UI] Performance par carte vs historique — vues escouade et joueur
+> Ajouté / recadré le 2026-03-12.
+
+**Objectif produit** : démontrer l'efficacité sur les cartes des matchs sélectionnés par les filtres, en la comparant à l'historique sur ces mêmes cartes.
+
+**Décision UX actuelle** :
+- **Escouade** : graphe principal en barres horizontales par carte, centré sur le **delta de performance**.
+- **Win rate** : affiché en **colonne texte à droite**, pas comme seconde série graphique.
+- **Logique d'escouade** : conserver strictement la logique déjà utilisée sur la page (`amis sélectionnés + x joueurs inconnus de l'équipe`), sans redéfinir le périmètre pour ce composant.
+
+**Définition escouade** :
+- `perf_escouade_filtrée(carte)` = moyenne de la performance moyenne de l'équipe sur les matchs filtrés de cette carte
+- `perf_escouade_historique(carte)` = même calcul sur tout l'historique de cette carte
+- `delta_perf(carte)` = `perf_escouade_filtrée - perf_escouade_historique`
+- Colonne droite : `WR filtré | WR historique`
+
+**Format recommandé — vue escouade** :
+- barre horizontale divergente, axe centré sur `0`
+- valeur affichée = `delta_perf`
+- sous-texte discret = `perf filtrée vs perf historique`
+- colonne droite = `WR 63% | 54%`
+- volume affiché discrètement = `n filtré / n hist`
+
+**Piste à préciser — vue hors escouade / joueur seul** :
+- comparer la performance moyenne du joueur sur les cartes filtrées à son historique personnel sur ces mêmes cartes
+- éviter un simple doublon de la vue escouade : privilégier une lecture plus individuelle (constance, spécialisation map, forme récente)
+- conserver le win rate en info secondaire légère
+
+**Implémentation** :
+- [ ] Créer un agrégat par carte pour la vue escouade : `(map_name, perf_filtered, perf_history, delta_perf, wr_filtered, wr_history, n_filtered, n_history)`
+- [ ] Réutiliser la logique d'escouade existante de la page teammates pour définir le périmètre des matchs et de l'équipe
+- [ ] Créer un composant de visualisation dédié avec barres de delta + colonne de win rate à droite
+- [ ] Ajouter un seuil minimal de volume (`n`) et un traitement visuel des faibles échantillons
+- [ ] Définir la vue "joueur seul" correspondante avant implémentation UI, pour éviter deux graphes redondants
+- [ ] Ajouter les clés i18n nécessaires dans `src/ui/i18n/pages/teammates.py` et/ou `src/ui/i18n/pages/timeseries.py`
+
+**Complexité** : M
+**Dépendances** : `compute_map_breakdown` (existant), `shared.match_participants`, `player_match_enrichment`
+
+#### [UI] Variante visuelle validée — superposition des deltas + transparence
+> Ajouté le 2026-03-12 (complément, sans remplacement des pistes existantes).
+
+**Contexte** : pour la vue par carte, conserver le `delta_perf` comme signal principal, et ajouter le `delta_ratio` sans surcharger le graphe.
+
+**Décision de représentation (Option 1)** :
+- Superposer `delta_perf` et `delta_ratio` **après normalisation** (échelles différentes)
+- Conserver les **valeurs brutes en texte** à côté pour éviter l'ambiguïté
+- Garder le `win rate` en colonne texte à droite (`WR filtré | WR hist`)
+
+**Encodage visuel proposé** :
+- Barre principale (pleine) : `delta_perf_norm`
+- Barre secondaire (fine/contour) : `delta_ratio_norm`
+- Couleur selon le signe (positif/négatif)
+- Transparence plus faible en cas de sous-performance (négatif)
+
+**Règles de lisibilité / confiance** :
+- Opacité modulée par le volume `n_filtered` (faible n = plus transparent)
+- Afficher systématiquement : `Δ perf`, `Δ ratio`, `n filtré / n hist`
+- Si `n_filtered` sous seuil minimum : état visuel atténué + tooltip explicite
+
+**Calculs à afficher (valeurs brutes)** :
+- `delta_perf = perf_filtered - perf_history`
+- `delta_ratio = ratio_filtered - ratio_history`
+
+**Implémentation (complémentaire aux tâches déjà listées)** :
+- [ ] Ajouter les champs `ratio_filtered`, `ratio_history`, `delta_ratio` à l'agrégat par carte
+- [ ] Ajouter une normalisation robuste (`clamp` / bornes percentiles) pour la superposition des barres
+- [ ] Implémenter la superposition visuelle (barre pleine + barre fine/contour) dans le composant chart
+- [ ] Ajouter un mapping d'opacité basé sur `n_filtered` et le signe du delta
+- [ ] Vérifier l'accessibilité (contraste couleurs + lecture sans couleur via labels)
+
+---
 - **Audit Pandas → Polars** : des usages Pandas résiduels subsistent à la frontière avec Streamlit/Plotly. Voir audit à jour dans les commentaires de code.
 - **START_HERE.md** : Le fichier `.ai/START_HERE.md` référence des phases 5-10 d'une migration v5 qui semblent antérieures à v5.1. À vérifier si encore pertinent ou à archiver dans `.ai/archive/`.
 - **Benchmark perf** : Réaliser un benchmark avant/après les optimisations UI profondes ci-dessus (outil : `scripts/benchmark_pages.py`).
