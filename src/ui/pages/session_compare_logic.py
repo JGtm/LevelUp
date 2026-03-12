@@ -9,13 +9,23 @@ import polars as pl
 
 from src.analysis.mode_categories import infer_custom_category_from_pair_name
 from src.data.domain.refdata import Outcome
-from src.ui.i18n import get_weekdays
+from src.ui.i18n import get_weekdays, t
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 # ------------------------------------------------------------------
 # Catégorisation
 # ------------------------------------------------------------------
+
+
+def _get_category_fr() -> dict[str, str]:
+    """Labels traduits des catégories (Assassin/Fiesta absents : fallback .get(cat, cat))."""
+    return {
+        "BTB": t("cat_btb"),
+        "Ranked": t("cat_ranked"),
+        "Firefight": t("cat_firefight"),
+        "Other": t("cat_other"),
+    }
 
 
 def infer_session_dominant_category(df_session: DataFrameLike) -> str:
@@ -389,3 +399,101 @@ def build_skill_series(
     label = "LUSR" if types.count("LUSR") >= types.count("CSR") else "CSR"
     series = [rating_map[mid][0] if mid in rating_map else None for mid in match_ids]
     return (None, label) if all(v is None for v in series) else (series, label)
+
+
+# ------------------------------------------------------------------
+# Sélection de la session de comparaison
+# ------------------------------------------------------------------
+
+
+def _first_matching_label(
+    ordered_labels: list[str],
+    session_chars: dict[str, tuple],
+    predicate,
+) -> str | None:
+    """Retourne le premier label dont les caractéristiques satisfont ``predicate``."""
+    for lbl in ordered_labels:
+        ch = session_chars.get(lbl)
+        if ch and predicate(ch):
+            return lbl
+    return None
+
+
+def _build_session_chars(
+    df_cands: pl.DataFrame,
+    older_labels: list[str],
+    has_friends_col: bool,
+) -> dict[str, tuple]:
+    """Précalcule (catégorie, statut_amis, amis_xuids) pour chaque session candidate."""
+    chars: dict[str, tuple] = {}
+    for grp in df_cands.partition_by("session_label", maintain_order=True):
+        lbl = str(grp[0, "session_label"])
+        cat = infer_session_dominant_category(grp)
+        wf = is_session_with_friends(grp) if has_friends_col else None
+        fx = get_session_friends_signature(grp) if (has_friends_col and wf) else set()
+        chars[lbl] = (cat, wf, fx)
+    return chars
+
+
+def find_best_matching_previous_session(
+    all_sessions_df: DataFrameLike,
+    picked_label: str,
+    session_labels: list[str],
+) -> str:
+    """Trouve la session précédente la plus similaire à ``picked_label``.
+
+    ``session_labels`` est trié du plus récent au plus ancien (index croissant = plus vieux).
+    La session retournée est parmi ``session_labels[idx_b + 1:]`` (antérieures à B).
+
+    Cascade de correspondance (du plus exigeant au moins exigeant) :
+    1. Même catégorie + mêmes amis (sous-ensemble exact)
+    2. Même catégorie + même statut ami/solo
+    3. Même catégorie seulement
+    4. Fallback chronologique (session immédiatement précédente)
+    """
+    all_sessions_df = ensure_polars(all_sessions_df)
+
+    if picked_label not in session_labels or "session_label" not in all_sessions_df.columns:
+        return session_labels[0] if session_labels else picked_label
+
+    idx_b = session_labels.index(picked_label)
+    older_labels = session_labels[idx_b + 1 :]
+
+    if not older_labels:
+        return session_labels[idx_b - 1] if idx_b > 0 else picked_label
+
+    df_b = all_sessions_df.filter(pl.col("session_label") == picked_label)
+    if df_b.is_empty():
+        return older_labels[0]
+
+    category_b = infer_session_dominant_category(df_b)
+    has_friends_col = "is_with_friends" in df_b.columns
+    with_friends_b = is_session_with_friends(df_b) if has_friends_col else None
+    friends_b = (
+        get_session_friends_signature(df_b) if (has_friends_col and with_friends_b) else set()
+    )
+
+    df_cands = all_sessions_df.filter(pl.col("session_label").is_in(older_labels))
+    chars = _build_session_chars(df_cands, older_labels, has_friends_col)
+
+    # Niveau 1 : même catégorie + mêmes amis (subset)
+    if friends_b and has_friends_col:
+        match = _first_matching_label(
+            older_labels, chars, lambda ch: ch[0] == category_b and ch[2] and friends_b <= ch[2]
+        )
+        if match:
+            return match
+
+    # Niveau 2 : même catégorie + même statut ami/solo
+    if has_friends_col and with_friends_b is not None:
+        match = _first_matching_label(
+            older_labels, chars, lambda ch: ch[0] == category_b and ch[1] == with_friends_b
+        )
+        if match:
+            return match
+
+    # Niveau 3 : même catégorie seulement
+    return (
+        _first_matching_label(older_labels, chars, lambda ch: ch[0] == category_b)
+        or older_labels[0]
+    )
