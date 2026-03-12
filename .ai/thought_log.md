@@ -7,6 +7,18 @@
 
 ## Journal
 
+### [2026-03-12] — DESIGN : ajout backlog superposition delta perf/ratio avec transparence
+- **Statut** : En cours
+- **Décision technique** : Ajouter une variante visuelle dédiée pour la vue par carte : superposition des deltas (`delta_perf` principal + `delta_ratio` secondaire) après normalisation, avec modulation de transparence pour la lisibilité et la confiance (volume `n`).
+- **Résultat** : Le backlog conserve l'ensemble des pistes existantes et ajoute explicitement cette option comme complément indépendant, sans suppression.
+- **Conclusion** : Direction visuelle validée ; prochaine étape = figer la normalisation et les seuils d'opacité avant implémentation UI.
+
+### [2026-03-12] — DESIGN : backlog visualisation performance par carte vs historique
+- **Statut** : En cours
+- **Décision technique** : Recadrage de la piste UI teammates/timeseries autour d'un comparatif `performance filtrée vs historique same-map`, avec delta de performance comme signal principal et win rate relégué en colonne texte à droite.
+- **Résultat** : Le backlog conserve la heatmap par joueur × carte comme piste indépendante, et ajoute en parallèle une vue escouade/joueur en delta de performance vs historique, cohérente avec la logique existante (`amis sélectionnés + inconnus de l'équipe`).
+- **Conclusion** : Les deux directions sont conservées ; prochaine étape = définir la représentation hors escouade sans dupliquer inutilement la lecture collective.
+
 ### [2026-03-12] — DOCS : Découplage API reconciliation / sentinels dans la doc parser armes
 - **Statut** : Complété
 - **Décision technique** : Clarification dans `.ai/weapon_parser_how_it_works_en.md` que la réconciliation API et l'assignation des sentinels sont des couches de post-traitement découplées du parser film, activables/désactivables indépendamment.
