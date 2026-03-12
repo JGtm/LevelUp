@@ -1128,7 +1128,7 @@ def _env_check_for_player(gamertag: str) -> dict[str, object]:
     """Vérifie la présence des variables d'env requises pour un gamertag.
 
     Returns:
-        Dictionnaire avec les clés « client_id », « client_secret »,
+        Dictionnaire avec les clés « client_id »,
         « player_token » (bool) et « player_token_key » (str).
     """
     _load_dotenv_for_launcher()
@@ -1136,7 +1136,6 @@ def _env_check_for_player(gamertag: str) -> dict[str, object]:
     token_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{gt_norm}"
     return {
         "client_id": bool(os.environ.get("SPNKR_AZURE_CLIENT_ID")),
-        "client_secret": bool(os.environ.get("SPNKR_AZURE_CLIENT_SECRET")),
         "player_token": bool(
             os.environ.get(token_key) or os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN")
         ),
@@ -1146,33 +1145,19 @@ def _env_check_for_player(gamertag: str) -> dict[str, object]:
 
 def _print_token_setup_instructions(gamertag: str, token_key: str) -> None:
     """Affiche les instructions pour obtenir et configurer le refresh token OAuth."""
-    client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "<CLIENT_ID>")
-    auth_url = (
-        f"https://login.live.com/oauth20_authorize.srf"
-        f"?client_id={client_id}"
-        "&response_type=code"
-        "&redirect_uri=https%3A%2F%2Flocalhost"
-        "&scope=Xboxlive.signin+Xboxlive.offline_access"
-    )
     print()
     print("  ┌────────────────────────────────────────────────────────┐")
     print("  │          Configuration du token OAuth Azure            │")
     print("  └────────────────────────────────────────────────────────┘")
     print()
-    print("  1) Ouvre ce lien dans ton navigateur :")
-    print(f"\n     {auth_url}\n")
-    print("  2) Connecte-toi avec ton compte Xbox puis copie")
-    print("     l'URL de redirection (https://localhost/?code=...)")
+    print("  Token manquant. Lance la commande suivante pour l'obtenir")
+    print("  via Device Code Flow (sans client_secret, sans redirect URI) :")
     print()
-    print("  3) Lance :")
-    print("       python scripts/spnkr_get_refresh_token.py \\")
-    print("         --oauth-endpoint v2 \\")
-    print('         --auth-code "<URL copiée>"')
+    print("       python scripts/spnkr_get_refresh_token.py --device-code")
     print()
-    print("  4) Ajoute dans .env.local :")
-    print(f"       {token_key}=<refresh_token_obtenu>")
+    print(f"  Puis vérifie que {token_key} est bien défini dans .env.local")
     print()
-    print("  5) Relance LevelUp")
+    print("  Relance LevelUp une fois le token configuré.")
     print()
 
 
@@ -1269,108 +1254,234 @@ async def _async_exchange_oauth_code_v2(
     return token.strip()
 
 
-def _wizard_azure_creds() -> bool:
-    """Wizard interactif : saisie et sauvegarde des credentials Azure App.
+def _try_azure_auto_register() -> str | None:
+    """Tente d'inscrire automatiquement une app Azure via la CLI az.
 
-    Retourne True si configurés avec succès, False sinon.
+    Vérifie la présence de az, se connecte si nécessaire, crée l'app
+    « LevelUp Halo » (compte Microsoft personnel, public client flow),
+    et retourne l'appId (client_id) en cas de succès, None sinon.
+    """
+    import json as _json
+    import shutil
+
+    if shutil.which("az") is None:
+        return None
+
+    print("  🔍 Azure CLI (az) détecté — inscription automatique possible.")
+    print()
+
+    # Vérifier si déjà connecté
+    check = subprocess.run(
+        ["az", "account", "show", "--output", "json"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    if check.returncode != 0:
+        print("  → Connexion à votre compte Microsoft (az login)…")
+        print("     (Une fenêtre de navigateur va s'ouvrir)")
+        print()
+        login = subprocess.run(
+            ["az", "login", "--allow-no-subscriptions"],
+            timeout=180,
+        )
+        if login.returncode != 0:
+            print("  ❌ Connexion az échouée.")
+            return None
+
+    # Vérifier si une app LevelUp Halo existe déjà
+    existing = subprocess.run(
+        [
+            "az",
+            "ad",
+            "app",
+            "list",
+            "--display-name",
+            "LevelUp Halo",
+            "--query",
+            "[0].appId",
+            "--output",
+            "tsv",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if existing.returncode == 0 and existing.stdout.strip():
+        existing_id = existing.stdout.strip()
+        print(f"  ✅ Application existante trouvée. Client ID : {existing_id}")
+        return existing_id
+
+    # Créer l'application
+    print("  → Création de l'application Azure « LevelUp Halo »…")
+    create = subprocess.run(
+        [
+            "az",
+            "ad",
+            "app",
+            "create",
+            "--display-name",
+            "LevelUp Halo",
+            "--sign-in-audience",
+            "AzureADandPersonalMicrosoftAccount",
+            "--output",
+            "json",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if create.returncode != 0:
+        print(f"  ❌ Création app échouée : {create.stderr[:300]}")
+        return None
+
+    try:
+        app_data = _json.loads(create.stdout)
+        client_id = str(app_data.get("appId", "")).strip()
+        if not client_id:
+            return None
+    except (_json.JSONDecodeError, KeyError, AttributeError):
+        return None
+
+    # Activer le public client flow (Device Code — pas de secret, pas de redirect URI)
+    subprocess.run(
+        [
+            "az",
+            "ad",
+            "app",
+            "update",
+            "--id",
+            client_id,
+            "--set",
+            "isFallbackPublicClient=true",
+            "--output",
+            "none",
+        ],
+        capture_output=True,
+        timeout=30,
+    )
+
+    print(f"  ✅ Application créée ! Client ID : {client_id}")
+    return client_id
+
+
+def _wizard_azure_creds() -> bool:
+    """Wizard interactif : configuration de l'Azure App Registration.
+
+    Tente d'abord l'inscription automatique via az CLI (aucune visite du
+    portail Azure requise). En cas d'échec ou d'absence de az, guide
+    l'utilisateur pour la saisie manuelle du Client ID uniquement
+    (Device Code Flow — pas de client_secret requis).
+
+    Retourne True si configuré avec succès, False sinon.
     """
     print()
     print("  ┌────────────────────────────────────────────────────────┐")
     print("  │     Configuration Azure App Registration               │")
     print("  └────────────────────────────────────────────────────────┘")
     print()
-    print("  Pour accéder à l'API Halo, il te faut une Azure App :")
-    print("    1) https://portal.azure.com → App registrations → New registration")
-    print("       Nom : LevelUp | Account type : Personal Microsoft accounts")
-    print("       Redirect URI : Web → https://localhost")
-    print("    2) Copie l'« Application (client) ID »")
-    print("    3) Certificates & secrets → New client secret → copie la VALUE")
-    print()
-    try:
-        client_id = input("  Client ID (Application ID) : ").strip()
-        if not client_id:
+
+    # Tenter l'inscription automatique via az CLI
+    client_id = _try_azure_auto_register()
+
+    if not client_id:
+        # Fallback : saisie manuelle du client_id uniquement (public client)
+        print("  Pour accéder à l'API Halo, il te faut une Azure App (public client) :")
+        print("    1) https://portal.azure.com → App registrations → New registration")
+        print("       Nom : LevelUp Halo | Account type : Personal Microsoft accounts")
+        print("       Laisser Redirect URI vide → Register")
+        print("    2) Copie l'« Application (client) ID »")
+        print("    3) Authentication → Advanced settings → Allow public client flows = Yes → Save")
+        print()
+        print("  💡 Astuce : installez Azure CLI (https://aka.ms/installazurecli) pour")
+        print("     que LevelUp crée l'application automatiquement sans visiter le portail.")
+        print()
+        with contextlib.suppress(Exception):
+            webbrowser.open(
+                "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps"
+                "/CreateApplicationBlade"
+            )
+        try:
+            client_id = input("  Client ID (Application ID) : ").strip()
+            if not client_id:
+                return False
+        except (EOFError, KeyboardInterrupt):
             return False
-        client_secret = input("  Client Secret (Value)     : ").strip()
-        if not client_secret:
-            return False
-    except (EOFError, KeyboardInterrupt):
-        return False
+
     env_local = REPO_ROOT / ".env.local"
     try:
         _upsert_env_key(env_local, "SPNKR_AZURE_CLIENT_ID", client_id)
-        _upsert_env_key(env_local, "SPNKR_AZURE_CLIENT_SECRET", client_secret)
         os.environ["SPNKR_AZURE_CLIENT_ID"] = client_id
-        os.environ["SPNKR_AZURE_CLIENT_SECRET"] = client_secret
-        print("  ✅ Credentials sauvegardés dans .env.local")
+        print("  ✅ Client ID sauvegardé dans .env.local")
         return True
     except Exception as exc:
         print(f"  ❌ Sauvegarde impossible : {exc}")
         return False
 
 
-def _wizard_oauth_token(gamertag: str, client_id: str, client_secret: str) -> str | None:
-    """Wizard interactif : obtention et sauvegarde du refresh token OAuth Xbox Live.
+def _wizard_oauth_token(gamertag: str, client_id: str) -> str | None:
+    """Wizard interactif : obtention du refresh token via MSAL Device Code Flow.
 
-    Ouvre le navigateur, demande l'URL de redirection, échange le code,
-    écrit le token dans .env.local. Retourne le token ou None si échec.
+    Affiche le code à entrer sur https://microsoft.com/devicelogin, attend la
+    confirmation, sauvegarde le refresh token dans .env.local.
+    Retourne le token ou None si échec.
     """
-    from urllib.parse import quote_plus
-
-    redirect_uri = os.environ.get("SPNKR_AZURE_REDIRECT_URI", "https://localhost")
-    scope = "Xboxlive.signin Xboxlive.offline_access"
-    auth_url = (
-        "https://login.live.com/oauth20_authorize.srf"
-        f"?client_id={quote_plus(client_id)}"
-        "&response_type=code&approval_prompt=auto"
-        f"&scope={quote_plus(scope)}"
-        f"&redirect_uri={quote_plus(redirect_uri)}"
-    )
     print()
     print("  ┌────────────────────────────────────────────────────────┐")
-    print("  │       Connexion Xbox Live — OAuth                      │")
+    print("  │       Connexion Xbox Live — Device Code Flow           │")
     print("  └────────────────────────────────────────────────────────┘")
     print()
-    print("  Je vais ouvrir ton navigateur pour te connecter à Xbox Live.")
-    print("  → Tu seras redirigé vers https://localhost (page d'erreur : normal).")
-    print("  → Copie l'URL complète de la barre d'adresse et colle-la ici.")
+
+    try:
+        from src.utils.msal_device_flow import (
+            DeviceFlowError,
+            acquire_token_blocking,
+            initiate_device_flow,
+        )
+    except ImportError:
+        print("  ❌ Module msal_device_flow introuvable.")
+        return None
+
+    print("  Initialisation du Device Code Flow…")
+    try:
+        dc_result, app = initiate_device_flow(client_id)
+    except Exception as exc:  # noqa: BLE001
+        code = getattr(exc, "code", "unknown")
+        detail = getattr(exc, "detail", str(exc))
+        print(f"  ❌ Erreur : {code} — {detail}")
+        return None
+
+    print()
+    print(f"  1) Visite : {dc_result.verification_url}")
+    print(f"  2) Entre le code : {dc_result.user_code}")
+    print(f"     (expire dans {dc_result.expires_in // 60} min)")
     print()
     with contextlib.suppress(Exception):
-        webbrowser.open(auth_url)
-    print(f"  (Lien de secours : {auth_url})")
+        webbrowser.open(dc_result.verification_url)
+    print("  En attente de votre connexion Xbox… (ne fermez pas cette fenêtre)")
     print()
+
     try:
-        redirect_url = input("  Colle ici l'URL de redirection : ").strip()
-    except (EOFError, KeyboardInterrupt):
+        token = acquire_token_blocking(app, dc_result._flow)
+    except Exception as exc:  # noqa: BLE001
+        code = getattr(exc, "code", "unknown")
+        detail = getattr(exc, "detail", str(exc))
+        print(f"  ❌ Échec : {code} — {detail}")
         return None
-    if not redirect_url:
-        return None
-    err, desc = _extract_oauth_error_from_url(redirect_url)
-    if err:
-        print(f"  ❌ Erreur OAuth : {err}" + (f" — {desc}" if desc else ""))
-        return None
-    auth_code = _extract_code_from_url(redirect_url)
-    if not auth_code:
-        print("  ❌ Impossible d'extraire le code OAuth de l'URL.")
-        return None
-    print("  Échange du code contre un token OAuth…")
-    try:
-        token = asyncio.run(
-            _async_exchange_oauth_code_v2(auth_code, client_id, client_secret, redirect_uri)
-        )
-    except Exception as exc:
-        print(f"  ❌ Échec de l'échange OAuth : {exc}")
-        return None
+
     gt_norm = gamertag.upper().replace(" ", "_").replace("-", "_")
     token_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{gt_norm}"
     env_local = REPO_ROOT / ".env.local"
     try:
         _upsert_env_key(env_local, token_key, token)
+        _upsert_env_key(env_local, "SPNKR_OAUTH_REFRESH_TOKEN", token)
         print(f"  ✅ Token sauvegardé dans .env.local ({token_key})")
     except Exception as exc:
         print(f"  ⚠  Sauvegarde impossible ({exc}) — ajoute manuellement dans .env.local :")
         print(f"     {token_key}={token}")
     # Toujours injecter en mémoire pour le sync qui suit (même si l'écriture a échoué)
     os.environ[token_key] = token
+    os.environ.setdefault("SPNKR_OAUTH_REFRESH_TOKEN", token)
     return token
 
 
@@ -1405,21 +1516,18 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
 
     _load_dotenv_for_launcher()
 
-    # ── Étape 1 : Credentials Azure ───────────────────────────────────────────
-    if not (
-        os.environ.get("SPNKR_AZURE_CLIENT_ID") and os.environ.get("SPNKR_AZURE_CLIENT_SECRET")
-    ):
+    # ── Étape 1 : Credentials Azure (client_id uniquement — public client) ───
+    if not os.environ.get("SPNKR_AZURE_CLIENT_ID"):
         print()
-        print("  ❌ Credentials Azure non configurés")
+        print("  ❌ Client ID Azure non configuré")
         ok = _wizard_azure_creds()
         if not ok:
-            print("  → Configure les credentials Azure et relance LevelUp.")
+            print("  → Configure le Client ID Azure et relance LevelUp.")
             return 2
     else:
-        print("  ✓ Credentials Azure présents")
+        print("  ✓ Client ID Azure présent")
 
     client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "")
-    client_secret = os.environ.get("SPNKR_AZURE_CLIENT_SECRET", "")
 
     # ── Étape 2 : Token OAuth joueur ──────────────────────────────────────────
     gt_norm = gamertag.upper().replace(" ", "_").replace("-", "_")
@@ -1427,7 +1535,7 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
     has_token = bool(os.environ.get(token_key) or os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN"))
     if not has_token:
         print(f"  ❌ Token OAuth manquant ({token_key})")
-        token = _wizard_oauth_token(gamertag, client_id, client_secret)
+        token = _wizard_oauth_token(gamertag, client_id)
         if not token:
             print("  → Obtiens le token et relance LevelUp.")
             return 2
@@ -1474,9 +1582,9 @@ def _cmd_add_player(args: argparse.Namespace) -> int:
     _load_dotenv_for_launcher()
     env_info = _env_check_for_player(gamertag)
 
-    if not env_info["client_id"] or not env_info["client_secret"]:
+    if not env_info["client_id"]:
         print(
-            "  ❌ Credentials Azure manquants (SPNKR_AZURE_CLIENT_ID / SPNKR_AZURE_CLIENT_SECRET)"
+            "  ❌ Client ID Azure manquant (SPNKR_AZURE_CLIENT_ID)"
         )
         return 2
 
