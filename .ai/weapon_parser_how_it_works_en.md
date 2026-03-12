@@ -17,8 +17,12 @@ The parser reads this binary file and maps each kill to its weapon.
 | Layer | File | Role |
 |-------|------|------|
 | **Parser** | `weapon_parser.py` | Reads the film, correlates kills↔fire events, returns an in-memory list of dicts. **Never writes to DB.** |
-| **Extraction service** | `weapon_extraction_service.py` | Orchestrates the parser for all players in the match, applies API reconciliation, produces the final `kill_rows`. **Also never writes to DB.** |
+| **Extraction service** | `weapon_extraction_service.py` | Orchestrates the parser for all players in the match, optionally applies post-processing layers such as API reconciliation and sentinel assignment, produces the final `kill_rows`. **Also never writes to DB.** |
 | **Repository** | `_weapon_kills_repo.py` → `insert_weapon_kill_rows()` | Sole writer to the `weapon_kills` table (shared_matches.duckdb). Called by the service after it has finalized the data. |
+
+**Storage note (rewrite opportunity):** beyond parsing itself, the data model may evolve
+to expose weapon attribution directly in kill-pair analytics (`killer_victim_pairs`).
+This is a downstream storage/design concern, not a parser responsibility.
 
 The parser **does not produce** weapon_ids. Weapon_ids (8 bytes) are binary identifiers
 set by the game and encoded as-is in the film. The parser's role is to:
@@ -28,6 +32,14 @@ set by the game and encoded as-is in the film. The parser's role is to:
 3. **Associate them** with a specific kill via the time window
 
 Discovering or updating weapon_ids is a separate **film investigation** task not the parser's responsibility.
+
+**Design rule: parser output first, optional reconciliation second.**
+Film parsing/correlation must remain valid on its own. API reconciliation and sentinel
+assignment are **decoupled post-processing phases** layered on top of the raw film
+result, not part of the parser contract. They must be switchable independently at any
+time. Today they stay **enabled by default** because the current API and film signals
+still leave gaps they help cover, but if the API later exposes reliable per-kill
+attribution these phases should be disableable without redesigning the parser.
 
 ---
 
@@ -87,16 +99,26 @@ key: `(weapon_id, fire_counter)` per chunk.
 - 3rd bit ≈ hit/miss (`0`=hit, `1`=miss), not 100% reliable; a second bit further in
   the structure confirms
 
-**Fundamental limitation**: Section 2 only contains the POV's shots. Opponents and
-teammates do not fire in "their" film — at least not reliably and continuously.
-Experimentally confirmed: even with all 8 XUIDs and player_indices
-resolved, only index 1 (the recorder) produces fire events.
+**Current working assumption**: Section 2 is reliably available for the POV, while
+non-POV coverage is still under investigation. The historical pipeline treated fire
+events as POV-only, but recent service-level findings suggest this may have been at
+least partly a routing limitation rather than a hard parser limitation.
 
-> **Design decision**: opponents will **not be processed**.
-> Neither Section 2 (fire events) nor Section 1 (Formula A snapshots) provide
-> usable weapon data from another player's film.
-> Attempting to cover them produces 63% NULLs in the database (see table below).
-> Only the POV and teammates whose player_index is resolved are in scope.
+> **Rewrite prerequisite**: before locking the final architecture, start with an
+> **initial exploration phase** based on [.ai/NON_POV_FIRE_EVENTS_CONCLUSIONS_2026-03-12.md].
+> The goal is to measure whether non-POV fire events are present and reliable enough
+> across real matches to support attribution for teammates broadly, not just for the
+> film owner.
+
+> **Current scope decision (rewrite baseline)**: opponents are **out of scope for
+> now**.
+> Historical results indicate very low exploitable coverage for opponents and a high
+> NULL rate when trying to include them (see table below). For the rewrite baseline,
+> only the POV and teammates with a resolved `player_index` are targeted.
+> Opponent coverage is explicitly **gated by the initial exploration phase**:
+> if that phase (including acurtis-confirmed findings) delivers strong, repeatable
+> non-POV fire-event attribution quality, opponents should be brought into scope;
+> otherwise, they remain excluded in the hybrid baseline.
 
 ---
 
@@ -168,8 +190,21 @@ Known packet types:
 | 6 | `TYPE_6` | — |
 | 7 | `END_CHUNK` | Chunk end — marks end of iteration |
 | 8 | `PLAYER_METADATA` | Player metadata |
+| 9 | `HIGHLIGHT_EVENTS_START` | Highlight-events section marker |
 | 10 | `TYPE_10` | Interleaved with frames |
 | 12 | `TYPE_12` | — |
+
+**Rewrite recommendation (acurtis packet model):** use packet-indexed traversal as a
+first-class primitive, not just raw byte scanning. In practice, this brings two major
+benefits:
+- **Targeted search in useful data only**: quickly focus on relevant packet zones
+  (e.g. replication/frame payloads) and avoid scanning unrelated payload regions.
+- **More reliable timing/correlation**: rely on packet microsecond timestamps instead
+  of approximate marker interpolation, which improves kill↔event matching stability.
+
+This packet-aware approach should be used together with chunk-level filtering so the
+pipeline downloads/parses only time windows that can actually contribute to weapon
+attribution.
 
 ---
 
@@ -216,6 +251,29 @@ packet is absent or does not cover all players.
 For each player in a match, the pipeline selects a path depending on whether they
 are the POV or not.
 
+### Rewrite phase 0 — validate the non-POV fire-event hypothesis
+
+The rewrite should **not** immediately freeze the current two-path model as a final
+truth. It should begin with an explicit exploration phase driven by the findings in
+[.ai/NON_POV_FIRE_EVENTS_CONCLUSIONS_2026-03-12.md].
+
+What must be validated:
+- whether Section 2 fire events can be detected for non-POV players consistently
+- whether detected non-POV events are frequent and reliable enough to replace T1
+  snapshot attribution in practice
+- whether a conservative merge remains necessary because non-POV fire-event coverage
+  is partial or uneven across matches/players
+
+Decision rule for the rewrite:
+- if non-POV fire events are confirmed as broadly reliable for all in-scope players,
+  the architecture can move toward **Path A only** (fire-event-driven attribution)
+- otherwise, keep the **two-path model**: Path A where fire events are strong,
+  Path B as fallback/backup where Section 2 coverage is missing or weak
+
+This exploration is meant to happen **before** deeper parser redesign, because it
+directly determines whether the rewrite should converge toward a single attribution
+path or preserve the current hybrid architecture.
+
 ### Path A — POV (Section 2, fire events)
 **Who**: the player elected as "owner" of the film via a private, undocumented
 Microsoft method.
@@ -237,11 +295,15 @@ Ravager, etc.). Short delta = high confidence, long delta = reduced confidence
 **Who**: teammates whose `player_index` can be resolved in the film.
 **Out of scope**: opponents — their data is not accessible.
 
-**No fire events available for non-POV T1 players.** Section 2 does not encode
-other players' shots. Even with all teammate `player_index` values correctly resolved,
-scanning the film for their fire events returns nothing. Attempting to retrieve them
-is pointless in the current state — there is simply nothing exploitable in the film
-for them on the fire events side.
+**Status of non-POV fire events: unresolved, must be explored first.** Historically,
+Path B existed because the service routed non-POV players straight to Formula A
+snapshots, and field observations suggested Section 2 was POV-centric. However, the
+findings captured in [.ai/NON_POV_FIRE_EVENTS_CONCLUSIONS_2026-03-12.md] indicate the
+parser can scan arbitrary `player_index` values and that non-POV Section 2 attempts
+should be evaluated explicitly during the rewrite.
+
+**Practical consequence:** Path B remains the safe fallback model unless and until
+that exploration proves Section 2 coverage is strong enough to replace it.
 
 **How (Section 1 only)**:
 
@@ -313,6 +375,12 @@ naturally in the film — they never collide with real IDs. If `weapon_id = 0`
 appears in the database, it means medal detection classified the kill as a grenade,
 **not** that a hex `000...0` was read from the film.
 
+**Important design constraint:** sentinels are an **optional compatibility layer**,
+not a core parser output. The system must be able to turn them off entirely and keep
+serving raw film attribution only. They are currently kept **active by default**
+because they remain necessary to compensate for present-day data gaps, but they should
+be easy to disable or remove if the API eventually makes them obsolete.
+
 ### Design note: should multiple weapon_ids per kill be stored?
 
 **Intuition**: sentinels are fallbacks. If detection improves in the future, rows
@@ -371,6 +439,11 @@ never `weapon_id` alone.
 
 ## Sentinels (melee, grenade, vehicle)
 
+Sentinel assignment must be implemented as a **separate, optional phase** after raw
+film attribution has been computed. It should never be entangled with low-level film
+parsing. Current default: **enabled**, because sentinel inference is still needed in
+today's data pipeline.
+
 ### Current detection: medals
 
 The current method uses **medals** obtained within 500ms around the kill to classify
@@ -420,6 +493,12 @@ The Halo API provides, per match and **per player** (table `match_participants`)
 columns `grenade_kills` and `melee_kills`. These end-of-match aggregates are available
 for **all** players — POV and teammates alike.
 
+**Design rule:** API reconciliation is a **decoupled, optional post-processing phase**.
+The parser/service must be able to run without it and keep the unreconciled film
+result. In practice, reconciliation is **enabled today** because it is still useful to
+compensate for missing or ambiguous film data, but it must remain easy to switch off
+at any time if the API evolves and makes this layer unnecessary.
+
 The current parser only uses them for the POV (T1 reconciliation is absent). For the
 new parser, this signal can also be used for teammates: if the parser attributes 3
 grenade kills to a teammate but the API counts 1, there is an overestimate.
@@ -439,6 +518,11 @@ the API.
 **Opportunity for the new parser**: extend grenade/melee validation via
 `match_participants.grenade_kills` / `melee_kills` to teammates as well, not just
 the POV.
+
+**Interaction with the non-POV exploration phase:** if Section 2 proves reliable for
+non-POV players, API reconciliation should be evaluated on top of those fire-event
+results first. If Section 2 remains partial, reconciliation must continue to support
+the hybrid model and work across both Path A and Path B outputs.
 
 ---
 
@@ -460,6 +544,56 @@ The table below shows the reality in the database (85,247 kills total):
 NULLs come almost exclusively from the T1 path for opponents — which is why they
 are excluded from the new parser's scope: a player's film encodes neither fire events
 nor weapon snapshots for opposing players in any exploitable way.
+
+---
+
+## Data model opportunity (outside parser scope)
+
+During the rewrite, it is worth explicitly challenging where weapon attribution should
+live for analytics consumers:
+
+### Candidate A — keep `weapon_kills` canonical, enrich `killer_victim_pairs`
+
+Current approach remains: parser/service produce kill-level weapon attribution in
+`weapon_kills` (canonical source), then a downstream step enriches
+`killer_victim_pairs` with weapon fields (or a dedicated view joins both).
+
+Pros:
+- clear separation of concerns (parsing vs analytics projection)
+- low risk for parser rewrite (no coupling to pair-generation internals)
+- preserves full weapon metadata (`confidence`, source, reconciliation details)
+
+Cons:
+- requires a stable join key strategy and synchronization discipline
+- risk of drift if enrichment pipeline is not strictly managed
+
+### Candidate B — move/merge weapon attribution into `killer_victim_pairs`
+
+Alternative: make `killer_victim_pairs` the primary storage for weapon-attributed kill
+events, potentially reducing joins for downstream queries.
+
+Pros:
+- simpler consumption for rivalry/duel analytics
+- fewer joins in some dashboards
+
+Cons:
+- tighter coupling between parser outcomes and pair-building logic
+- potential loss/flattening of parser-specific metadata unless schema is expanded
+- higher migration risk during rewrite
+
+### Recommended baseline for rewrite
+
+Start with **Candidate A** (canonical `weapon_kills`, enrichment/projection into
+`killer_victim_pairs`) and evaluate Candidate B only if query complexity/performance
+remains a proven issue after the parser redesign.
+
+If `killer_victim_pairs` is enriched, retain at least:
+- effective weapon id (`COALESCE(reconciled_as, weapon_id)` semantics)
+- raw `weapon_id` (film value)
+- `confidence`
+- attribution source/path (`section2_fire_event`, `formula_a_snapshot`, `reconciled`)
+
+This keeps analytics-friendly storage without losing parser-level traceability.
 
 ---
 
@@ -594,6 +728,18 @@ parsing.
 
 > **Design rule**: `kill_times_ms` come from `highlight_events`, loaded before
 > chunk downloads.
+
+### 4. Packet-aware filtering inside kept chunks
+
+After chunk-level filtering, packet indexing (`<HBBIQ`) should be used to reduce work
+inside each kept chunk. Instead of scanning the whole byte payload blindly, the parser
+can prioritize packet ranges that are known to carry actionable data and ignore
+irrelevant packet sections.
+
+Expected benefits:
+- lower parsing cost on large chunks
+- fewer false positives from random byte patterns
+- cleaner and more reproducible event correlation when combined with packet timestamps
 
 ---
 
