@@ -7,6 +7,48 @@
 
 ## Journal
 
+### [2026-03-12] — DOCS : Découplage API reconciliation / sentinels dans la doc parser armes
+- **Statut** : Complété
+- **Décision technique** : Clarification dans `.ai/weapon_parser_how_it_works_en.md` que la réconciliation API et l'assignation des sentinels sont des couches de post-traitement découplées du parser film, activables/désactivables indépendamment.
+- **Résultat** : La doc précise désormais qu'elles restent actives par défaut aujourd'hui car nécessaires, mais qu'elles doivent pouvoir être coupées sans refonte si l'API évolue et fournit un meilleur signal.
+- **Conclusion** : Contrat d'architecture rendu explicite : parser/corrélation film autonome, réconciliation optionnelle au-dessus.
+
+### [2026-03-12] — DOCS : Ajout de la phase d'exploration NON_POV dans la base de rewrite parser armes
+- **Statut** : Complété
+- **Décision technique** : Mise à jour de `.ai/weapon_parser_how_it_works_en.md` pour intégrer `.ai/NON_POV_FIRE_EVENTS_CONCLUSIONS_2026-03-12.md` comme phase 0 de la réécriture, avant de figer l'architecture finale.
+- **Résultat** : La doc formule maintenant une règle de décision explicite : basculer vers Path A only si les fire events non-POV sont confirmés comme suffisamment fiables, sinon conserver le modèle hybride à deux paths.
+- **Conclusion** : La base de design n'enferme plus la réécriture dans l'hypothèse historique "POV-only" et laisse la place à une validation structurée en amont.
+
+### [2026-03-12] — DOCS : Assouplissement de la section "opponents" dans la spec parser
+- **Statut** : Complété
+- **Décision technique** : Remplacement d'une formulation absolue ("opponents will not be processed") par une formulation de scope pragmatique et révisable.
+- **Résultat** : La section indique désormais que les opponents sont hors scope pour la baseline de rewrite (faible couverture exploitable + taux élevé de NULL), avec possibilité de réévaluation si de nouvelles preuves solides apparaissent.
+- **Conclusion** : Le document reste cohérent avec la posture d'exploration progressive plutôt qu'un verrou définitif.
+
+### [2026-03-12] — DOCS : Piste data model sur `killer_victim_pairs` vs `weapon_kills`
+- **Statut** : Complété
+- **Décision technique** : Ajout dans `.ai/weapon_parser_how_it_works_en.md` d'une section dédiée au design de stockage (hors parsing) pour challenger l'idée d'enrichir `killer_victim_pairs` avec les armes.
+- **Résultat** : Le doc formalise 2 options (A: `weapon_kills` canonique + projection/enrichissement K/V, B: fusion vers K/V), leurs trade-offs et une recommandation baseline (A d'abord).
+- **Conclusion** : La réécriture couvre désormais aussi la couche modèle de données analytics, sans confondre responsabilités parser vs stockage.
+
+### [2026-03-12] — DOCS : Scope opponents conditionné par la phase exploratoire
+- **Statut** : Complété
+- **Décision technique** : Reformulation dans `.ai/weapon_parser_how_it_works_en.md` pour lier explicitement l'inclusion des adversaires aux résultats de la phase exploratoire non-POV.
+- **Résultat** : Le texte indique maintenant que si la phase exploratoire (incluant les constats confirmés par acurtis) démontre une attribution non-POV fiable et répétable, les adversaires passent en scope ; sinon ils restent hors scope.
+- **Conclusion** : La décision de scope devient conditionnelle et pilotée par des critères de validation, pas figée a priori.
+
+### [2026-03-12] — DOCS : Intégration du modèle packets acurtis (incl. type 9) dans la spec de rewrite
+- **Statut** : Complété
+- **Décision technique** : Ajout dans `.ai/weapon_parser_how_it_works_en.md` du packet type `9` (`HIGHLIGHT_EVENTS_START`) et d'une recommandation explicite d'indexation packet-aware (`<HBBIQ`) pour la réécriture.
+- **Résultat** : Le doc explique désormais les bénéfices attendus : scan ciblé des zones utiles, réduction des faux positifs, timestamps plus fiables pour la corrélation, et nouvelle optimisation "packet-aware filtering inside kept chunks".
+- **Conclusion** : La base de design formalise que le gain de perf/fiabilité vient du couple "filtrage des chunks utiles" + "filtrage packet interne".
+
+### [2026-03-12] — FIX : Suppression message msstore dans LevelUp.bat
+- **Statut** : Complété
+- **Décision technique** : Ajout de `--source winget` à la commande `winget install` (ligne 186). Sans ce flag, winget consulte toutes les sources dont `msstore`, ce qui génère un message informatif sur les conditions Microsoft Store. En spécifiant `--source winget`, on restreint la recherche au dépôt officiel winget où Python.Python.3.12 est disponible.
+- **Résultat** : Le message "La source 'msstore' nécessite que vous consultiez les contrats..." n'apparaîtra plus lors de l'installation automatique de Python.
+- **Conclusion** : Fix minimal et chirurgical — 1 ligne modifiée dans LevelUp.bat.
+
 ### [2026-03-11] — CLEANUP : Purge des entrées armes non confirmées dans _weapon_data.py
 - **Statut** : Complété
 - **Décision technique** :
@@ -3258,3 +3300,56 @@ Import inutilisé `WeaponKillsMixin` retiré. Tests batch guard ajoutés.
 **Résultat** : Section ajoutée dans `.ai/BACKLOG.md` avec inventaire complet des ~35 (sh) + ~30 (bat) chaînes à traduire, exemples de code de détection, plan en 6 étapes, complexité M.
 
 **Conclusion** : Feature entièrement faisable, documentée et prête à implémenter. Aucun fichier de code modifié (tâche de backlog uniquement).
+## [2026-03-12] Azure Auto-Registration — Suppression du client_secret et Device Code Flow
+
+**Statut** : Complété
+
+**Contexte** :
+L'utilisateur souhaitait que `LevelUp.bat` / `LevelUp.sh` dispensent l'utilisateur de visiter
+portal.azure.com pour configurer l'application Azure. Le wizard CLI (`_wizard_azure_creds()`)
+demandait encore `client_id` + `client_secret` (ancien flux Authorization Code), alors que le
+wizard web (`setup_wizard.py`) utilisait déjà le Device Code Flow (client_id uniquement).
+
+**Décisions techniques** :
+1. **Ajout de `_try_azure_auto_register()`** dans `launcher.py` : si `az` CLI est disponible,
+   crée automatiquement l'application Azure « LevelUp Halo » (public client, Device Code Flow)
+   sans visiter portal.azure.com. Vérifie si une app existe déjà avant de la créer.
+2. **Refonte de `_wizard_azure_creds()`** : tente d'abord `_try_azure_auto_register()`, sinon
+   saisie manuelle du `client_id` uniquement (plus de `client_secret`). Ouvre portal.azure.com
+   dans le navigateur et affiche le conseil d'installer `az` CLI.
+3. **Refonte de `_wizard_oauth_token()`** : remplace le flux Authorization Code + client_secret
+   par MSAL Device Code Flow (import depuis `src.utils.msal_device_flow`). Pas de redirect URI.
+4. **Mise à jour de `_onboard_first_player()`** : ne vérifie plus `SPNKR_AZURE_CLIENT_SECRET`.
+5. **Mise à jour de `_cmd_add_player()`** : idem, seul `SPNKR_AZURE_CLIENT_ID` requis.
+6. **Mise à jour de `_env_check_for_player()`** : suppression de la clé `client_secret`.
+7. **Mise à jour de `_print_token_setup_instructions()`** : instructions Device Code Flow.
+
+**Résultats** : 649 tests passent (2 échecs pre-existants liés à l'environnement CI :
+`check_code_size.py` absent + `ruff` non installé).
+
+**Conclusion** : Avec `az` CLI installé, zéro visite du portail Azure requise.
+Sans `az`, seul le `client_id` est demandé (plus simple qu'avant).
+
+---
+
+## [2026-03-12] Azure CLI — Proposition d'installation automatique
+
+**Statut** : Complété
+
+**Contexte** :
+Après avoir implémenté `_try_azure_auto_register()`, l'utilisateur demande explicitement
+que LevelUp propose d'*installer* Azure CLI si celui-ci n'est pas trouvé sur le système.
+
+**Décisions techniques** :
+- `_offer_install_azure_cli()` : si `az` introuvable + terminal interactif → affiche le contexte
+  et demande confirmation [O/n]
+- `_run_az_install(platform)` : délégation par plateforme :
+  - Windows (`win32`) : `winget install --id Microsoft.AzureCLI -e` (si winget disponible)
+  - macOS (`darwin`) : `brew install azure-cli` (si brew disponible)
+  - Linux : `curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash`
+  - Fallback universel : lien `https://aka.ms/installazurecli`
+- `_try_azure_auto_register()` : appelle `_offer_install_azure_cli()` si `az` absent, puis
+  re-vérifie avec `shutil.which("az")` après installation (avertit de redémarrer le terminal
+  si az reste introuvable — cas winget sur Windows).
+
+**Résultats** : 4250 tests passent (24 échecs pre-existants, aucune régression).
