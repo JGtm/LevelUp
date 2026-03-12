@@ -1257,6 +1257,8 @@ async def _async_exchange_oauth_code_v2(
 def _try_azure_auto_register() -> str | None:
     """Tente d'inscrire automatiquement une app Azure via la CLI az.
 
+    Si az n'est pas trouvé, propose de l'installer (winget/brew/curl selon
+    la plateforme) et réessaie après installation.
     Vérifie la présence de az, se connecte si nécessaire, crée l'app
     « LevelUp Halo » (compte Microsoft personnel, public client flow),
     et retourne l'appId (client_id) en cas de succès, None sinon.
@@ -1265,7 +1267,13 @@ def _try_azure_auto_register() -> str | None:
     import shutil
 
     if shutil.which("az") is None:
-        return None
+        if not _offer_install_azure_cli():
+            return None
+        # Recheck after attempted install
+        if shutil.which("az") is None:
+            print("  ⚠  Azure CLI introuvable après installation.")
+            print("     Fermez et rouvrez votre terminal, puis relancez LevelUp.")
+            return None
 
     print("  🔍 Azure CLI (az) détecté — inscription automatique possible.")
     print()
@@ -1363,6 +1371,139 @@ def _try_azure_auto_register() -> str | None:
 
     print(f"  ✅ Application créée ! Client ID : {client_id}")
     return client_id
+
+
+def _offer_install_azure_cli() -> bool:
+    """Propose d'installer Azure CLI si absent.
+
+    Adapté à la plateforme :
+    - Windows : winget install Microsoft.AzureCLI
+    - macOS   : brew install azure-cli  (si brew disponible)
+    - Linux   : script officiel curl | bash
+
+    Retourne True si l'installation a été lancée (ou déjà présente),
+    False si l'utilisateur a refusé ou si le terminal est non interactif.
+    """
+    import shutil
+
+    if not sys.stdin.isatty():
+        return False
+
+    platform = sys.platform
+    print("  💡 Azure CLI (az) n'est pas installé.")
+    print("     Avec az, LevelUp peut créer l'application Azure automatiquement")
+    print("     sans que vous ayez à visiter le portail Azure.")
+    print()
+
+    if platform == "win32":
+        _print_az_install_option_windows()
+    elif platform == "darwin":
+        _print_az_install_option_macos()
+    else:
+        _print_az_install_option_linux()
+
+    print()
+    try:
+        choice = input("  Installer Azure CLI maintenant ? [O/n] : ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return False
+
+    if choice in ("n", "non", "no"):
+        return False
+
+    return _run_az_install(platform)
+
+
+def _print_az_install_option_windows() -> None:
+    """Affiche l'option d'installation az sur Windows."""
+    import shutil
+
+    if shutil.which("winget"):
+        print("  Installation via winget (recommandé) :")
+        print("    winget install --id Microsoft.AzureCLI -e")
+    else:
+        print("  Téléchargement manuel : https://aka.ms/installazurecli")
+
+
+def _print_az_install_option_macos() -> None:
+    """Affiche l'option d'installation az sur macOS."""
+    import shutil
+
+    if shutil.which("brew"):
+        print("  Installation via Homebrew :")
+        print("    brew install azure-cli")
+    else:
+        print("  Installation via script officiel :")
+        print("    curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash")
+        print("  Documentation complète : https://aka.ms/installazurecli")
+
+
+def _print_az_install_option_linux() -> None:
+    """Affiche l'option d'installation az sur Linux."""
+    print("  Installation via script officiel Microsoft :")
+    print("    curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash")
+    print("  Documentation complète : https://aka.ms/installazurecli")
+
+
+def _run_az_install(platform: str) -> bool:
+    """Lance l'installation d'Azure CLI pour la plateforme donnée.
+
+    Retourne True si la commande d'installation a été lancée sans erreur fatale,
+    False sinon.
+    """
+    import shutil
+
+    print()
+    if platform == "win32" and shutil.which("winget"):
+        print("  → Installation d'Azure CLI via winget…")
+        result = subprocess.run(
+            [
+                "winget",
+                "install",
+                "--id",
+                "Microsoft.AzureCLI",
+                "-e",
+                "--accept-source-agreements",
+                "--accept-package-agreements",
+            ],
+            timeout=300,
+        )
+        if result.returncode != 0:
+            print("  ❌ Installation via winget échouée.")
+            print("     Installez manuellement : https://aka.ms/installazurecli")
+            return False
+        print("  ✅ Azure CLI installé.")
+        print("  ⚠  Redémarrez votre terminal puis relancez LevelUp pour continuer.")
+        return True
+
+    if platform == "darwin" and shutil.which("brew"):
+        print("  → Installation d'Azure CLI via Homebrew…")
+        result = subprocess.run(["brew", "install", "azure-cli"], timeout=300)
+        if result.returncode != 0:
+            print("  ❌ Installation via brew échouée.")
+            print("     Installez manuellement : https://aka.ms/installazurecli")
+            return False
+        print("  ✅ Azure CLI installé.")
+        return True
+
+    if platform not in ("win32", "darwin") and shutil.which("curl"):
+        print("  → Installation d'Azure CLI via le script officiel Microsoft…")
+        print("     (sudo peut demander votre mot de passe)")
+        result = subprocess.run(
+            "curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash",
+            shell=True,  # noqa: S602
+            timeout=300,
+        )
+        if result.returncode != 0:
+            print("  ❌ Installation échouée.")
+            print("     Installez manuellement : https://aka.ms/installazurecli")
+            return False
+        print("  ✅ Azure CLI installé.")
+        return True
+
+    print("  ❌ Impossible d'installer automatiquement sur cette plateforme.")
+    print("     Installez manuellement : https://aka.ms/installazurecli")
+    return False
 
 
 def _wizard_azure_creds() -> bool:
