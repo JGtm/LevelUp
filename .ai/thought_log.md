@@ -7,6 +7,12 @@
 
 ## Journal
 
+### [2026-03-12] — FIX : Suppression message msstore dans LevelUp.bat
+- **Statut** : Complété
+- **Décision technique** : Ajout de `--source winget` à la commande `winget install` (ligne 186). Sans ce flag, winget consulte toutes les sources dont `msstore`, ce qui génère un message informatif sur les conditions Microsoft Store. En spécifiant `--source winget`, on restreint la recherche au dépôt officiel winget où Python.Python.3.12 est disponible.
+- **Résultat** : Le message "La source 'msstore' nécessite que vous consultiez les contrats..." n'apparaîtra plus lors de l'installation automatique de Python.
+- **Conclusion** : Fix minimal et chirurgical — 1 ligne modifiée dans LevelUp.bat.
+
 ### [2026-03-11] — CLEANUP : Purge des entrées armes non confirmées dans _weapon_data.py
 - **Statut** : Complété
 - **Décision technique** :

@@ -183,7 +183,7 @@ if not defined PY (
         echo   Installez Python depuis https://www.python.org/downloads/
         goto :end
     )
-    winget install --id Python.Python.3.12 --scope user --accept-source-agreements --accept-package-agreements
+    winget install --id Python.Python.3.12 --source winget --scope user --accept-source-agreements --accept-package-agreements
     if !ERRORLEVEL! neq 0 (
         echo   Echec. Installez Python depuis https://www.python.org/downloads/
         goto :end
