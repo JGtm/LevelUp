@@ -7,6 +7,42 @@
 
 ## Journal
 
+### [2026-03-12] — DOCS : Découplage API reconciliation / sentinels dans la doc parser armes
+- **Statut** : Complété
+- **Décision technique** : Clarification dans `.ai/weapon_parser_how_it_works_en.md` que la réconciliation API et l'assignation des sentinels sont des couches de post-traitement découplées du parser film, activables/désactivables indépendamment.
+- **Résultat** : La doc précise désormais qu'elles restent actives par défaut aujourd'hui car nécessaires, mais qu'elles doivent pouvoir être coupées sans refonte si l'API évolue et fournit un meilleur signal.
+- **Conclusion** : Contrat d'architecture rendu explicite : parser/corrélation film autonome, réconciliation optionnelle au-dessus.
+
+### [2026-03-12] — DOCS : Ajout de la phase d'exploration NON_POV dans la base de rewrite parser armes
+- **Statut** : Complété
+- **Décision technique** : Mise à jour de `.ai/weapon_parser_how_it_works_en.md` pour intégrer `.ai/NON_POV_FIRE_EVENTS_CONCLUSIONS_2026-03-12.md` comme phase 0 de la réécriture, avant de figer l'architecture finale.
+- **Résultat** : La doc formule maintenant une règle de décision explicite : basculer vers Path A only si les fire events non-POV sont confirmés comme suffisamment fiables, sinon conserver le modèle hybride à deux paths.
+- **Conclusion** : La base de design n'enferme plus la réécriture dans l'hypothèse historique "POV-only" et laisse la place à une validation structurée en amont.
+
+### [2026-03-12] — DOCS : Assouplissement de la section "opponents" dans la spec parser
+- **Statut** : Complété
+- **Décision technique** : Remplacement d'une formulation absolue ("opponents will not be processed") par une formulation de scope pragmatique et révisable.
+- **Résultat** : La section indique désormais que les opponents sont hors scope pour la baseline de rewrite (faible couverture exploitable + taux élevé de NULL), avec possibilité de réévaluation si de nouvelles preuves solides apparaissent.
+- **Conclusion** : Le document reste cohérent avec la posture d'exploration progressive plutôt qu'un verrou définitif.
+
+### [2026-03-12] — DOCS : Piste data model sur `killer_victim_pairs` vs `weapon_kills`
+- **Statut** : Complété
+- **Décision technique** : Ajout dans `.ai/weapon_parser_how_it_works_en.md` d'une section dédiée au design de stockage (hors parsing) pour challenger l'idée d'enrichir `killer_victim_pairs` avec les armes.
+- **Résultat** : Le doc formalise 2 options (A: `weapon_kills` canonique + projection/enrichissement K/V, B: fusion vers K/V), leurs trade-offs et une recommandation baseline (A d'abord).
+- **Conclusion** : La réécriture couvre désormais aussi la couche modèle de données analytics, sans confondre responsabilités parser vs stockage.
+
+### [2026-03-12] — DOCS : Scope opponents conditionné par la phase exploratoire
+- **Statut** : Complété
+- **Décision technique** : Reformulation dans `.ai/weapon_parser_how_it_works_en.md` pour lier explicitement l'inclusion des adversaires aux résultats de la phase exploratoire non-POV.
+- **Résultat** : Le texte indique maintenant que si la phase exploratoire (incluant les constats confirmés par acurtis) démontre une attribution non-POV fiable et répétable, les adversaires passent en scope ; sinon ils restent hors scope.
+- **Conclusion** : La décision de scope devient conditionnelle et pilotée par des critères de validation, pas figée a priori.
+
+### [2026-03-12] — DOCS : Intégration du modèle packets acurtis (incl. type 9) dans la spec de rewrite
+- **Statut** : Complété
+- **Décision technique** : Ajout dans `.ai/weapon_parser_how_it_works_en.md` du packet type `9` (`HIGHLIGHT_EVENTS_START`) et d'une recommandation explicite d'indexation packet-aware (`<HBBIQ`) pour la réécriture.
+- **Résultat** : Le doc explique désormais les bénéfices attendus : scan ciblé des zones utiles, réduction des faux positifs, timestamps plus fiables pour la corrélation, et nouvelle optimisation "packet-aware filtering inside kept chunks".
+- **Conclusion** : La base de design formalise que le gain de perf/fiabilité vient du couple "filtrage des chunks utiles" + "filtrage packet interne".
+
 ### [2026-03-12] — FIX : Suppression message msstore dans LevelUp.bat
 - **Statut** : Complété
 - **Décision technique** : Ajout de `--source winget` à la commande `winget install` (ligne 186). Sans ce flag, winget consulte toutes les sources dont `msstore`, ce qui génère un message informatif sur les conditions Microsoft Store. En spécifiant `--source winget`, on restreint la recherche au dépôt officiel winget où Python.Python.3.12 est disponible.
