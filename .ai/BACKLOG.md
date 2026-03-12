@@ -4,21 +4,6 @@
 
 ---
 
-## ✅ Traité
-
-### Citations d'armes — Refactoring catégories et images
-> Traité le 2026-03-11 — commit `56c68d7` + `7158626`
-
-- Images incorrectes retirées sur 6 citations (VK78 Commando, Fusil traqueur, Déchiqueteur, Empaleur, Calcineur, Crémateur)
-- Covenant + Banished fusionnés en sous-catégorie **Paria** (6 armes)
-- Nouvelle sous-catégorie **Forerunner** : Calcineur, Crémateur, Rayon de Sentinelle (nouvelle citation avec image H5G)
-- Composites `covenant_weapons_mastery` + `banished_weapons_mastery` remplacés par `paria_weapons_mastery` + `forerunner_weapons_mastery`
-- Nouveau composite général `all_weapons_mastery` — Maîtrise en armement (avec image)
-- `_SUBCAT_ORDER` Arme mis à jour : Général > UNSC > Paria > Forerunner > Grenade
-- i18n FR/EN mis à jour
-
----
-
 ## 🔴 Bugs actifs
 
 ### ~~Images citations d'armes incorrectes~~
@@ -28,31 +13,8 @@
 
 ## 🔴 Dette Technique (code source)
 
-### Cleanup kwargs legacy SyncScope
-> Supprimer les 30+ kwargs individuels marqués `LEGACY` une fois tous les appelants migrés vers `scope=SyncScope(...)`.
-
-| Fichier | Ligne | Nature |
-|---------|-------|--------|
-| [scripts/backfill/detection.py](../scripts/backfill/detection.py#L46) | L46 | `# TODO(cleanup): supprimer ces kwargs quand tous les appelants…` |
-| [scripts/backfill/orchestrator.py](../scripts/backfill/orchestrator.py#L104) | L104 | idem |
-| [scripts/backfill/orchestrator.py](../scripts/backfill/orchestrator.py#L435) | L435 | idem |
-| [scripts/backfill/orchestrator.py](../scripts/backfill/orchestrator.py#L774) | L774 | idem |
-
-**Condition de suppression** : Tous les appelants externes (scripts, tests, UI) passent `scope=SyncScope(...)`.
-
----
-
-### Migration `career.py` vers DuckDBRepository
-> `src/ui/pages/career.py` L27 et L69 utilise `duckdb.connect()` directement (bypass `DuckDBRepository`).  
-> SQL correctement paramétré → pas de risque injection, mais dette d'architecture traçable.
-
-**Action** : Refactorer pour passer par `get_cached_repository_st()`.
-
----
-
-### TODO `custom_rules.py:103`
-> [`src/analysis/citations/custom_rules.py`](../src/analysis/citations/custom_rules.py#L103) — amélioration future dépendant de données API non disponibles actuellement.  
-> Conservé volontairement en l'état jusqu'à disponibilité des données.
+### Kwargs legacy SyncScope — nettoyage différé
+> `scope=SyncScope(...)` opérationnel. Les 30+ kwargs `LEGACY` dans `detection.py` (L46) et `orchestrator.py` (L104, L435, L774) sont intentionnellement conservés pour rétro-compat — pas une urgence. À supprimer lors d'un prochain passage sur ces fichiers.
 
 ---
 
@@ -124,110 +86,36 @@ Quand le sync est lancé depuis l'UI Streamlit, `_engine_connections.py::_get_sh
 
 Le retry appelle `release_all_db_connections()` (WeakSet), mais le repo du cache Streamlit rétablit sa connexion R/O dès le rerun suivant → **cycle conflit → release → reconnexion R/O → conflit**.
 
-### Option A — Fix minimal dans `DuckDBRepository._get_connection()` ⭐ Recommandée
+### Plan — Refactoring connexion shared (branche dédiée)
 
-**Mécanique** : Si `_sync_mode.is_set()` est actif ET que `shared_matches` est attaché → le DETACHER immédiatement avant de retourner la connexion. Le repo continue à fonctionner pour les requêtes ne touchant pas shared ; shared sera réattaché automatiquement à la fin du sync via `end_sync_mode()`.
+**Mécanique** : Supprimer `duckdb.connect(shared, read_only=False)`. À la place, écrire dans shared via `ATTACH shared AS s (READ_WRITE)` depuis la connexion player, ou passer par un contexte de connexion partagé unique géré par un singleton. Supprime la cause racine — le conflit devient structurellement impossible.
 
-**Fichiers** : `src/data/repositories/duckdb_repo.py` uniquement (~10-15 lignes dans `_get_connection()`).
-
-**Effort** : S
-**Risque** : Faible — ne touche pas au moteur de sync, pas de nouveau fichier.
-**Effet de bord** : Pendant le sync, les requêtes UI nécessitant shared retournent données partielles (déjà le cas aujourd'hui via `SharedDBUnavailableError`).
-
-```python
-# Dans _get_connection(), après avoir obtenu self._connection :
-if _sync_mode.is_set() and "shared" in self._attached_dbs:
-    try:
-        self._connection.execute("DETACH shared")
-        self._attached_dbs.discard("shared")
-    except Exception:
-        pass
-```
-
----
-
-### Option B — Hook pré-sync enregistrable
-
-**Mécanique** : Avant d'ouvrir la connexion R/W, l'engine appelle tous les hooks enregistrés. L'UI Streamlit enregistre un hook qui appelle `st.cache_resource.clear()` → vide le cache de tous les repos, plus aucun conflit possible.
-
-**Fichiers** :
-- `src/data/sync/_engine_connections.py` → `register_pre_sync_hook()` + appel avant `_open_shared()`
-- `src/ui/_cache_core.py` → `clear_cached_repositories()` exposant `st.cache_resource.clear()`
-- `streamlit_app.py` → `register_pre_sync_hook(clear_cached_repositories)` au démarrage
-
-**Effort** : M
-**Risque** : Moyen — 3 fichiers modifiés dont `_engine_connections.py` (zone sensible).
-**Effet de bord** : `st.cache_resource.clear()` vide **tous** les caches resource, pas seulement les repos → cold start de ~100ms après chaque sync.
-
----
-
-### Option C — Ouvrir shared en R/O pour le sync (refactoring profond)
-
-**Mécanique** : Supprimer `duckdb.connect(shared, read_only=False)`. À la place, écrire dans shared via `ATTACH shared AS s (READ_WRITE)` depuis la connexion player, ou passer par un contexte de connexion partagé unique géré par un singleton.
-
-**Effort** : XL — refactoring complet du sync engine
-**Risque** : Élevé
-**Verdict** : À réserver à une refonte complète du moteur de sync.
-
----
-
-## 🟠 Performance UI (Roadmap optimisations profondes)
-
-> Contexte : ROG Ally (Ryzen Z1), DuckDB CPU-bound, Streamlit re-renders.  
-> Source : `thought_log.md` [2026-02-26].
-
-### 1. Vues matérialisées DuckDB — reconstruction hors UI 📋
-- **Problème** : `mv_map_stats`, `mv_mode_category_stats`, `mv_session_stats` reconstruites à chaque rafraîchissement (full-table scan `match_participants`).
-- **Gain estimé** : −70% temps d'affichage pages stats.
-- **Approche** : Déclencher la reconstruction uniquement dans `engine.py` post-sync, pas dans l'UI.
-
-### 2. Lazy-loading `match_view` 📋
-- **Problème** : Toutes les sections (scoreboard, nemesis, KD timeline, médailles, roster) chargées même si non consultées.
-- **Gain estimé** : −40% premier rendu d'un match.
-- **Approche** : `st.tabs` + `@fragment_if_available` + session state par onglet actif.
-
-### 3. Pagination / virtualisation liste de matchs 📋
-- **Problème** : 2000+ matchs → `mv_player_matches` chargé entièrement en Polars avant filtrage Python.
-- **Gain estimé** : −50% RAM + temps chargement initial.
-- **Approche** : Pousser filtres (map, mode, outcome, date range) en SQL DuckDB avec `LIMIT/OFFSET`.
-
-### 4. Pré-calcul `performance_score` au sync 📋
-- **Problème** : `compute_relative_performance_score` appelé à l'affichage pour certains contextes.
-- **Approche** : Auditer les call sites, s'assurer que l'UI lit toujours depuis `player_match_enrichment.performance_score`.
-
-### 5. Projections Polars fines par page 📋
-- **Problème** : `load_df_optimized` charge `COLUMNS_COMMON` (30+ colonnes) pour pages n'en utilisant que 5-8.
-- **Gain estimé** : −30% mémoire.
-- **Approche** : Étendre les projections par page dans `cache_loaders.py` aux pages sans projection fine.
-
-### 6. Scan bitstring POV FRAME-only 📋
-- **Contexte** : `_scan_fire_events_bitstring()` scanne le chunk entier (~700 KB) alors que les fire events n'existent que dans les payloads FRAME (32% du chunk, ~230 KB). Les 68% restants (INIT_STATE ~155 KB, METADATA ~25 KB, headers…) ne peuvent pas contenir de fire events.
-- **Gain mesuré** : −46% temps de scan bitstring (458 ms → 247 ms sur match 000d5950, 24 chunks).
-- **Note** : Cette optimisation ne concerne que le POV — les fire events Section 2 sont exclusifs au joueur filmé. Les coéquipiers T1 restent sur Formula A (snapshots par chunk), le film ne contient tout simplement pas leurs fire events.
-- **Approche** : Ajouter `extract_frame_data(chunk_data, packets)` dans `packet_index.py` → concatène les payloads FRAME + adapte l'estimateur de position. Modifier `_scan_player_chunks` pour extraire les FRAMEs avant de passer les données à `_scan_fire_events_bitstring`.
-- **Coût secondaire** : concat FRAME payloads ~3 ms/match (négligeable vs 211 ms économisés).
+**Effort** : XL — refactoring complet du sync engine  
+**Risque** : Élevé — à traiter dans une branche dédiée, isolée de la prod
 
 ---
 
 ## 🟡 Hover thumbnail sur les noms de cartes (tableaux HTML)
 
-> Commencé le 2026-03-11 — bloqué sur le rendu.
+> Commencé le 2026-03-11 — solution identifiée le 2026-03-12.
 
 **Objectif** : Au survol d'un nom de carte dans les tableaux HTML (Historique, Explorer, Win/Loss), afficher la miniature correspondante `static/maps/*.jpg|png`.
 
-**Ce qui a été fait** :
-- `enableStaticServing = true` activé dans `.streamlit/config.toml`
-- `map_thumb_url()` + `_build_map_url_index()` (lru_cache) ajoutés dans `match_table_html.py`
-- Cellule `map_name` injecte `<span class='map-cell' data-thumb-url='...'>`
-- `win_loss_table_style.py` et `_render_map_table()` réécrits en HTML pur (sans pandas `.style`), avec coloration win/loss/ratio/performance conservée
-- Tooltip JS `position:fixed` injecté via `_MAP_TOOLTIP_SCRIPT` dans `load_css()` pour contourner le clipping `overflow-x:auto` du `.os-table-wrap`
+**Solution retenue** : CSS pur avec classes uniques par élément via `st.markdown` — pas de JS, pas de sandbox.  
+Source : https://github.com/everydaydigital/streamlit-image_hover_tooltip  
+Principe : classes CSS `hoverable_i` / `tooltip_i` / `image-popup_i` générées par cellule, popup via `background-image` + `:hover { display: block }`.
 
-**Problème restant** : Le tooltip ne s'affiche pas en pratique — cause probable : le JS injecté via `st.markdown(unsafe_allow_html=True)` est sandboxé par Streamlit (les `<script>` inline sont retirés du DOM). Il faut soit un composant custom Streamlit (`st.components.v1.html`), soit utiliser les images en base64 encodées directement dans une fausse balise `<img>` qui contourne le sandbox.
+**Ce qui a été fait (à nettoyer)** :
+- `_MAP_TOOLTIP_SCRIPT` dans `src/ui/styles.py` — script JS injecté via `load_css()`, **ne fonctionne pas** (sandboxé par Streamlit), à supprimer
+- `<span class='map-cell' data-thumb-url='...'>` dans `match_table_html.py` L296 et `win_loss_table_style.py` L53 — attributs `data-*` liés au JS, à remplacer
+
+**Ce qui est réutilisable** :
+- `map_thumb_url()` + `_build_map_url_index()` dans `match_table_html.py` — logique de résolution d'URL valide, à conserver
 
 **Actions restantes** :
-- [ ] Remplacer le rendu `st.markdown` par `st.components.v1.html()` pour le tableau entier (contourne le sandbox JS Streamlit qui retire les `<script>` inline)
-- [ ] Encoder les miniatures en base64 et les injecter directement dans les cellules `<img src="data:image/jpeg;base64,...">` (pas de dépendance au serveur de fichiers statiques)
-- [ ] Améliorer `_build_map_url_index()` dans `match_table_html.py` : passer `lru_cache(maxsize=None)` (actuellement `maxsize=1`, très fragile) et normaliser les noms via `unicodedata.normalize('NFC', name)` pour gérer les accents
+- [ ] Supprimer `_MAP_TOOLTIP_SCRIPT` de `src/ui/styles.py` et son injection dans `load_css()`
+- [ ] Remplacer les `<span class='map-cell' data-thumb-url='...'>` par des divs CSS hover (classes uniques `hoverable_i` par ligne de tableau)
+- [ ] `_build_map_url_index()` : passer `lru_cache(maxsize=None)` (actuellement `maxsize=1`, très fragile) et normaliser les noms via `unicodedata.normalize('NFC', name)`
 - [ ] Créer une table de correspondance explicite `nom API Halo → fichier PNG` pour les maps avec caractères spéciaux ou noms divergents
 
 ---
@@ -297,81 +185,14 @@ for /f %%L in ('powershell -NoProfile -Command "[System.Globalization.CultureInf
 
 ---
 
-### Messages à traduire
-
-#### `LevelUp.sh` — inventaire des messages utilisateur
-
-| Section | Messages FR à traduire |
-|---------|----------------------|
-| Avertissement WSL2 | `⚠ WSL2 : projet sur un chemin Windows...` (3 lignes) |
-| --reinstall | `🔄 Suppression du venv (--reinstall)...` |
-| Venv invalide | `⚠ Interpréteur du venv inaccessible...`, `⚠ Environnement incomplet détecté...` |
-| Mise à jour deps | `🔄 pyproject.toml modifié — mise à jour...`, `✓ Dépendances à jour.`, `⚠ Mise à jour partielle...` |
-| Premier lancement | Bannière `LevelUp - Premier lancement` + messages installation (17 echo) |
-| Python introuvable | `❌ Python 3.10+ introuvable...` + suggestions par OS |
-| venv absent | `❌ Le module 'venv' est absent...` |
-| Installation | `Création de l'environnement...`, `Mise à jour de pip...`, `Installation des dépendances...`, `✓ Environnement prêt.` |
-| Erreurs install | `❌ Impossible de créer le venv.`, `❌ Échec de l'installation.` + causes (6 lignes) |
-
-**Total** : ~35 chaînes localisables.
-
-#### `LevelUp.bat` — inventaire des messages utilisateur
-
-| Section | Messages FR à traduire |
-|---------|----------------------|
-| --reinstall | `Suppression du venv (--reinstall)...` |
-| Venv invalide | `Interpreteur du venv inaccessible...`, `Environnement incomplet detecte...` |
-| Mise à jour deps | `pyproject.toml modifie - mise a jour...`, `OK - Dependances a jour.`, `Mise a jour partielle...` |
-| Erreur post-launch | `[ERREUR] LevelUp s'est arrete avec le code...` |
-| Premier lancement | Bannière + Python non trouvé (5 echo) |
-| Python introuvable | `Python 3.10+ non trouve sur ce systeme.` + winget prompt + URL |
-| Proposition winget | `Voulez-vous installer Python 3.12 automatiquement...` + `[O]ui / [N]on` |
-| Installation | `Creation de l'environnement...`, `Mise a jour de pip...`, `Installation des dependances...`, `OK - Environnement pret.` |
-| Erreurs install | `Echec de l'installation...` + causes (5 lignes) |
-| Fin | `Appuie sur une touche pour fermer...` |
-
-**Total** : ~30 chaînes localisables.
-
----
-
-### Approche d'implémentation recommandée
-
-**Pattern "messages nommés par langue"** — compatible POSIX sh strict et CMD sans tableaux associatifs :
-
-```sh
-# LevelUp.sh — variables nommées par langue, appelées via eval
-msg_reinstall_fr="  🔄 Suppression du venv (--reinstall)..."
-msg_reinstall_en="  🔄 Removing virtual environment (--reinstall)..."
-
-_msg() {
-    eval "_m=\"\${msg_${1}_${SCRIPT_LANG}:-}\""
-    [ -z "$_m" ] && eval "_m=\"\${msg_${1}_en}\""
-    printf '%s\n' "$_m"
-}
-_msg reinstall
-```
-
-```bat
-:: LevelUp.bat — variables nommées par langue
-set "MSG_REINSTALL_fr=  Suppression du venv (--reinstall)..."
-set "MSG_REINSTALL_en=  Removing virtual environment (--reinstall)..."
-
-:: Macro de résolution
-set "MSG_REINSTALL=!MSG_REINSTALL_%LANG_CODE%!"
-if not defined MSG_REINSTALL set "MSG_REINSTALL=!MSG_REINSTALL_en!"
-echo !MSG_REINSTALL!
-```
-
----
-
 ### Plan d'implémentation
 
 - [ ] **Étape 1** : Ajouter la détection de langue en tête de `LevelUp.sh` et `LevelUp.bat`
-- [ ] **Étape 2** : Extraire toutes les chaînes localisables dans un bloc de définition par langue (section `# ── Messages ──` en haut de chaque script)
-- [ ] **Étape 3** : Traduire les ~35 messages `LevelUp.sh` en anglais
-- [ ] **Étape 4** : Traduire les ~30 messages `LevelUp.bat` en anglais (+ corriger les accents manquants dans les messages FR actuels — `chcp 65001` déjà présent)
+- [ ] **Étape 2** : Inventaire exhaustif des chaînes localisables (passe préparatoire sur les deux scripts — les ~35 SH / ~30 BAT listés initialement sont non exhaustifs)
+- [ ] **Étape 3** : Extraire toutes les chaînes dans un bloc de définition par langue (`# ── Messages ──` en haut de chaque script)
+- [ ] **Étape 4** : Traduire en anglais + corriger les accents manquants dans les messages FR `.bat` (`chcp 65001` déjà présent)
 - [ ] **Étape 5** : Remplacer les `echo` littéraux par des appels à la macro/variable traduite
-- [ ] **Étape 6** : Test manuel : `LANG=en_US.UTF-8 ./LevelUp.sh` sur Linux + WSL2 ; `REG ADD ... /v LocaleName /d "en-US"` sur Windows ou test sur système EN
+- [ ] **Étape 6** : Test manuel : `LANG=en_US.UTF-8 ./LevelUp.sh` sur Linux + WSL2 ; test sur système EN Windows
 
 **Langues cibles** : FR (actuel), EN (ajout prioritaire). Autres langues (DE, ES, PT…) extensibles au même pattern sans refactoring.
 
@@ -479,9 +300,40 @@ echo !MSG_REINSTALL!
 - [ ] Vérifier l'accessibilité (contraste couleurs + lecture sans couleur via labels)
 
 ---
-- **Audit Pandas → Polars** : des usages Pandas résiduels subsistent à la frontière avec Streamlit/Plotly. Voir audit à jour dans les commentaires de code.
+- **Audit Pandas → Polars** : audit complet réalisé le 2026-03-12. Résultats détaillés ci-dessous.
 - **START_HERE.md** : Le fichier `.ai/START_HERE.md` référence des phases 5-10 d'une migration v5 qui semblent antérieures à v5.1. À vérifier si encore pertinent ou à archiver dans `.ai/archive/`.
-- **Benchmark perf** : Réaliser un benchmark avant/après les optimisations UI profondes ci-dessus (outil : `scripts/benchmark_pages.py`).
+
+### Résidus Pandas — état audit 2026-03-12
+
+#### 🔒 Légitimes, intouchables
+
+| Fichier | Motif |
+|---------|-------|
+| `src/visualization/_compat.py` | Module frontière intentionnel (`to_pandas_for_plotly`, `ensure_polars`, etc.) |
+| `src/ui/pages/win_loss.py` | `pd.DataFrame.style` pour styling conditionnel Streamlit — pas d'équivalent Polars (exception documentée dans `test_legacy_free_ui_viz_wave_a.py`) |
+| `src/ai/rag.py` | `self.table.to_pandas()` — API LanceDB retourne nativement Pandas ; `iterrows()` dans la logique de recherche — hors périmètre code métier |
+| `src/utils/polars_compat.py` | `pl.from_pandas()` — rôle utilitaire de conversion |
+| `src/data/repositories/_arrow_bridge.py` | `pl.from_pandas()` — pont Arrow/Polars |
+
+#### 🟢 Remplaçables immédiatement (aucune dépendance externe)
+
+- [ ] **`src/visualization/participation_charts.py`** (3 occurrences) : `.to_pandas()` + `.map(lambda)` + filtre `.pdf[col < 0]` + `.iloc[::-1]` → remplacer par `pl.col().map_elements()`, `filter()`, `reverse()`. Passer `.to_list()` à Plotly.
+- [ ] **`src/visualization/participation_charts_extra.py`** (1 occurrence) : même pattern sunburst → Polars pur.
+- [ ] **`src/ui/pages/objective_analysis.py`** (3 occurrences) : `.to_pandas()` + rename colonnes + `st.dataframe()` → `st.dataframe()` accepte Polars nativement depuis Streamlit 1.25 ; utiliser `.with_columns(pl.col().map_elements(...))` + `.rename({})`.
+- [ ] **`src/ui/components/duckdb_analytics.py`** (1 occurrence) : `chart_df.to_pandas().set_index("Match")` → `st.line_chart(chart_df, x="Match", y="KDA", width="stretch")`.
+
+#### 🔴 Dead code à supprimer
+
+- [ ] **`src/analysis/_performance_relative.py`** : guard `was_pandas = not isinstance(df, pl.DataFrame)` + retour conditionnel `.to_pandas()` — **tous les appelants identifiés** (`maps.py`, `timeseries_service.py`, `_timeseries_progression.py`, `match_history.py`, `_session_compare_history.py`, `_teammates_trio.py`) passent exclusivement du Polars. Chemin Pandas jamais emprunté.
+
+#### 🟡 Guards probablement inutiles (vérifier avant de supprimer)
+
+- [ ] **`src/analysis/sessions.py` L56** : `pl.from_pandas(df)` dans `compute_sessions()` — vérifier si un appelant passe encore du Pandas.
+- [ ] **`src/analysis/_performance_relative_helpers.py` L26** : `_normalize_df()` — même vérification.
+
+#### 🟡 À évaluer (breaking change potentiel)
+
+- [ ] **`src/data/integration/streamlit_bridge.py`** : `matches_to_dataframe()` a un contrat "retourne Pandas" (construction Polars → `to_pandas()` → timezone via `pd.to_datetime().dt.tz_convert()`). Migration possible mais nécessite d'auditer tous les appelants d'abord.
 
 ---
 
@@ -501,6 +353,8 @@ echo !MSG_REINSTALL!
 | 2026-03-08 | i18n-3 : doublon `tm_session_trend` supprimé dans `widgets.py` |
 | 2026-03-08 | Kwargs legacy SyncScope — dépréciés + `scope=SyncScope(...)` opérationnel ; kwargs conservés pour rétro-compat (suppression conditionnelle : quand tous les appelants migrés) |
 | 2026-03-08 | `career.py` migré vers `get_cached_repository_st()` (plus de `duckdb.connect()` nu) |
+| 2026-03-12 | `custom_rules.py:103` — TODO disparu, `compute_annexion_forcee` implémentée (extrapolation documentée) |
+| 2026-03-12 | Pandas éliminé du code métier — résidus légitimes uniquement : `_compat.py` (frontière UI) + `distributions.py` (`TYPE_CHECKING` only, pas d'import runtime) |
 | 2026-03-08 | Perf UI — vues matérialisées reconstruites uniquement post-sync dans `engine.py` |
 | 2026-03-08 | Perf UI — lazy-loading `match_view` via `st.tabs` + `@fragment_if_available` |
 | 2026-03-08 | Perf UI — pagination SQL `LIMIT/OFFSET` sur `mv_player_matches` |
