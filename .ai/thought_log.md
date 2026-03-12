@@ -3273,3 +3273,27 @@ wizard web (`setup_wizard.py`) utilisait déjà le Device Code Flow (client_id u
 
 **Conclusion** : Avec `az` CLI installé, zéro visite du portail Azure requise.
 Sans `az`, seul le `client_id` est demandé (plus simple qu'avant).
+
+---
+
+## [2026-03-12] Azure CLI — Proposition d'installation automatique
+
+**Statut** : Complété
+
+**Contexte** :
+Après avoir implémenté `_try_azure_auto_register()`, l'utilisateur demande explicitement
+que LevelUp propose d'*installer* Azure CLI si celui-ci n'est pas trouvé sur le système.
+
+**Décisions techniques** :
+- `_offer_install_azure_cli()` : si `az` introuvable + terminal interactif → affiche le contexte
+  et demande confirmation [O/n]
+- `_run_az_install(platform)` : délégation par plateforme :
+  - Windows (`win32`) : `winget install --id Microsoft.AzureCLI -e` (si winget disponible)
+  - macOS (`darwin`) : `brew install azure-cli` (si brew disponible)
+  - Linux : `curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash`
+  - Fallback universel : lien `https://aka.ms/installazurecli`
+- `_try_azure_auto_register()` : appelle `_offer_install_azure_cli()` si `az` absent, puis
+  re-vérifie avec `shutil.which("az")` après installation (avertit de redémarrer le terminal
+  si az reste introuvable — cas winget sur Windows).
+
+**Résultats** : 4250 tests passent (24 échecs pre-existants, aucune régression).
