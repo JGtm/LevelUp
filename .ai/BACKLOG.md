@@ -232,6 +232,154 @@ if _sync_mode.is_set() and "shared" in self._attached_dbs:
 
 ---
 
+## 🟢 Détection de langue système dans `LevelUp.sh` / `LevelUp.bat`
+
+> Ajouté le 2026-03-12. Faisabilité confirmée pour les deux scripts.
+
+**Objectif** : Détecter la langue du système au démarrage et afficher les messages du lanceur dans la langue de l'utilisateur (FR/EN minimum). Actuellement tous les messages sont en français.
+
+### Faisabilité
+
+#### `LevelUp.sh` (POSIX sh — macOS / Linux / WSL2)
+
+**Oui, faisable** via les variables d'environnement POSIX standard, disponibles sur tous les systèmes :
+
+| Variable | Exemple | Priorité |
+|----------|---------|----------|
+| `$LC_ALL` | `fr_FR.UTF-8` | Priorité maximale |
+| `$LC_MESSAGES` | `en_US.UTF-8` | Messages uniquement |
+| `$LANG` | `fr_FR.UTF-8` | Fallback général |
+
+Logique de détection (POSIX strict, pas de bashisme) :
+
+```sh
+# Déterminer la langue (2 premières lettres de la locale)
+_locale="${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}"
+_lang_code=$(echo "$_locale" | cut -c1-2 | tr '[:upper:]' '[:lower:]')
+# Valider le code : doit être 2 lettres a-z (exclut C, POSIX, chaîne vide)
+case "$_lang_code" in
+    [a-z][a-z]) : ;;  # valide
+    *)           _lang_code="" ;;
+esac
+case "$_lang_code" in
+    fr) SCRIPT_LANG="fr" ;;
+    *)  SCRIPT_LANG="en" ;;  # anglais par défaut (inclut C, POSIX, non défini)
+esac
+```
+
+**Couverture** : macOS (bash/zsh), Ubuntu (dash), Arch, Fedora, WSL2 — tous exposent ces variables. Si aucune n'est définie → fallback anglais.
+
+---
+
+#### `LevelUp.bat` (Windows CMD)
+
+**Oui, faisable** via le registre Windows — toujours disponible (Vista+) sans dépendance externe :
+
+```bat
+:: Lire LocaleName depuis le registre (ex : "fr-FR", "en-US", "de-DE")
+set "WIN_LOCALE="
+for /f "tokens=3" %%L in ('reg query "HKCU\Control Panel\International" /v LocaleName 2^>nul') do set "WIN_LOCALE=%%L"
+
+:: Extraire les 2 premières lettres
+set "LANG_CODE=en"
+if defined WIN_LOCALE (
+    set "_tmp=!WIN_LOCALE:~0,2!"
+    if /i "!_tmp!"=="fr" set "LANG_CODE=fr"
+)
+```
+
+**Alternative via PowerShell** (plus robuste, PowerShell disponible depuis Windows 7) :
+```bat
+for /f %%L in ('powershell -NoProfile -Command "[System.Globalization.CultureInfo]::CurrentUICulture.TwoLetterISOLanguageName" 2^>nul') do set "LANG_CODE=%%L"
+```
+
+**Recommandation** : Priorité registre (pas de dépendance PowerShell), fallback `en` si introuvable. L'alternative PowerShell via `TwoLetterISOLanguageName` peut retourner des résultats inconsistants pour les variantes régionales (ex. `zh` pour `zh-CN` et `zh-TW` — même code, encodages différents) ; la lecture directe du registre (`LocaleName` = `fr-FR`, `en-US`) est plus fiable.
+
+---
+
+### Messages à traduire
+
+#### `LevelUp.sh` — inventaire des messages utilisateur
+
+| Section | Messages FR à traduire |
+|---------|----------------------|
+| Avertissement WSL2 | `⚠ WSL2 : projet sur un chemin Windows...` (3 lignes) |
+| --reinstall | `🔄 Suppression du venv (--reinstall)...` |
+| Venv invalide | `⚠ Interpréteur du venv inaccessible...`, `⚠ Environnement incomplet détecté...` |
+| Mise à jour deps | `🔄 pyproject.toml modifié — mise à jour...`, `✓ Dépendances à jour.`, `⚠ Mise à jour partielle...` |
+| Premier lancement | Bannière `LevelUp - Premier lancement` + messages installation (17 echo) |
+| Python introuvable | `❌ Python 3.10+ introuvable...` + suggestions par OS |
+| venv absent | `❌ Le module 'venv' est absent...` |
+| Installation | `Création de l'environnement...`, `Mise à jour de pip...`, `Installation des dépendances...`, `✓ Environnement prêt.` |
+| Erreurs install | `❌ Impossible de créer le venv.`, `❌ Échec de l'installation.` + causes (6 lignes) |
+
+**Total** : ~35 chaînes localisables.
+
+#### `LevelUp.bat` — inventaire des messages utilisateur
+
+| Section | Messages FR à traduire |
+|---------|----------------------|
+| --reinstall | `Suppression du venv (--reinstall)...` |
+| Venv invalide | `Interpreteur du venv inaccessible...`, `Environnement incomplet detecte...` |
+| Mise à jour deps | `pyproject.toml modifie - mise a jour...`, `OK - Dependances a jour.`, `Mise a jour partielle...` |
+| Erreur post-launch | `[ERREUR] LevelUp s'est arrete avec le code...` |
+| Premier lancement | Bannière + Python non trouvé (5 echo) |
+| Python introuvable | `Python 3.10+ non trouve sur ce systeme.` + winget prompt + URL |
+| Proposition winget | `Voulez-vous installer Python 3.12 automatiquement...` + `[O]ui / [N]on` |
+| Installation | `Creation de l'environnement...`, `Mise a jour de pip...`, `Installation des dependances...`, `OK - Environnement pret.` |
+| Erreurs install | `Echec de l'installation...` + causes (5 lignes) |
+| Fin | `Appuie sur une touche pour fermer...` |
+
+**Total** : ~30 chaînes localisables.
+
+---
+
+### Approche d'implémentation recommandée
+
+**Pattern "messages nommés par langue"** — compatible POSIX sh strict et CMD sans tableaux associatifs :
+
+```sh
+# LevelUp.sh — variables nommées par langue, appelées via eval
+msg_reinstall_fr="  🔄 Suppression du venv (--reinstall)..."
+msg_reinstall_en="  🔄 Removing virtual environment (--reinstall)..."
+
+_msg() {
+    eval "_m=\"\${msg_${1}_${SCRIPT_LANG}:-}\""
+    [ -z "$_m" ] && eval "_m=\"\${msg_${1}_en}\""
+    printf '%s\n' "$_m"
+}
+_msg reinstall
+```
+
+```bat
+:: LevelUp.bat — variables nommées par langue
+set "MSG_REINSTALL_fr=  Suppression du venv (--reinstall)..."
+set "MSG_REINSTALL_en=  Removing virtual environment (--reinstall)..."
+
+:: Macro de résolution
+set "MSG_REINSTALL=!MSG_REINSTALL_%LANG_CODE%!"
+if not defined MSG_REINSTALL set "MSG_REINSTALL=!MSG_REINSTALL_en!"
+echo !MSG_REINSTALL!
+```
+
+---
+
+### Plan d'implémentation
+
+- [ ] **Étape 1** : Ajouter la détection de langue en tête de `LevelUp.sh` et `LevelUp.bat`
+- [ ] **Étape 2** : Extraire toutes les chaînes localisables dans un bloc de définition par langue (section `# ── Messages ──` en haut de chaque script)
+- [ ] **Étape 3** : Traduire les ~35 messages `LevelUp.sh` en anglais
+- [ ] **Étape 4** : Traduire les ~30 messages `LevelUp.bat` en anglais (+ corriger les accents manquants dans les messages FR actuels — `chcp 65001` déjà présent)
+- [ ] **Étape 5** : Remplacer les `echo` littéraux par des appels à la macro/variable traduite
+- [ ] **Étape 6** : Test manuel : `LANG=en_US.UTF-8 ./LevelUp.sh` sur Linux + WSL2 ; `REG ADD ... /v LocaleName /d "en-US"` sur Windows ou test sur système EN
+
+**Langues cibles** : FR (actuel), EN (ajout prioritaire). Autres langues (DE, ES, PT…) extensibles au même pattern sans refactoring.
+
+**Complexité** : M — modification chirurgicale de 2 scripts, aucune dépendance externe, totalement backward-compatible.  
+**Fichiers** : [`LevelUp.sh`](../LevelUp.sh), [`LevelUp.bat`](../LevelUp.bat)
+
+---
+
 ## �🟢 Améliorations futures / Backlog bas
 
 - **Audit Pandas → Polars** : des usages Pandas résiduels subsistent à la frontière avec Streamlit/Plotly. Voir audit à jour dans les commentaires de code.
