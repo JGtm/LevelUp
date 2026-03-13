@@ -1384,7 +1384,6 @@ def _offer_install_azure_cli() -> bool:
     Retourne True si l'installation a été lancée (ou déjà présente),
     False si l'utilisateur a refusé ou si le terminal est non interactif.
     """
-    import shutil
 
     if not sys.stdin.isatty():
         return False
@@ -1575,7 +1574,6 @@ def _wizard_oauth_token(gamertag: str, client_id: str) -> str | None:
 
     try:
         from src.utils.msal_device_flow import (
-            DeviceFlowError,
             acquire_token_blocking,
             initiate_device_flow,
         )
@@ -1724,9 +1722,7 @@ def _cmd_add_player(args: argparse.Namespace) -> int:
     env_info = _env_check_for_player(gamertag)
 
     if not env_info["client_id"]:
-        print(
-            "  ❌ Client ID Azure manquant (SPNKR_AZURE_CLIENT_ID)"
-        )
+        print("  ❌ Client ID Azure manquant (SPNKR_AZURE_CLIENT_ID)")
         return 2
 
     if not env_info["player_token"]:
@@ -1813,7 +1809,7 @@ def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
         if choice in {"q", "quit", "exit"}:
             return 0
 
-        if choice in {"1", ""}:
+        if choice == "1":
             rc = _onboard_first_player()
             if rc != 0:
                 return rc
