@@ -29,9 +29,11 @@ from src.analysis.packet_index import (
 from src.analysis.weapon_parser import (
     KILL_WINDOW_MS,
     build_weapon_timeline,
+    build_weapon_timeline_ns,
     correlate_kills_to_weapons,
     detect_player_indices,
     find_chunk_at_time,
+    map_b2_to_player,
     scan_fire_events,
 )
 from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
@@ -250,6 +252,7 @@ class WeaponExtractionService:
                 swap_pis,
                 timing,
                 all_kills_by_xuid,
+                pi_to_fire_events,
             ) = await self._prepare_match_data(match_id, chunks, all_participants)
             chunks_sorted = sorted(chunks.keys())
             # Le joueur cible (xuid) est celui pour qui on fait la Section 2 (POV pi=1).
@@ -265,6 +268,7 @@ class WeaponExtractionService:
                 timing,
                 xuid_int_to_pi,
                 all_kills_by_xuid,
+                pi_to_fire_events,
                 dry_run,
             )
             if not dry_run:
@@ -286,25 +290,43 @@ class WeaponExtractionService:
         match_id: str,
         chunks: dict,
         all_participants: dict[str, str],
-    ) -> tuple[dict, dict, dict, list, dict]:
+    ) -> tuple[dict, dict, dict, list, dict, dict]:
         """Résout player_indices, construit la timeline et charge les kills batch.
 
         CPU-bound (bitstring) offloadé sur thread pool pour libérer l'event loop.
         Batch SQL : 2 requêtes pour tous les joueurs (Phase 2 + Phase 4).
+
+        Returns:
+            ``(xuid_int_to_pi, timeline, swap_pis, timing, all_kills_by_xuid,
+              pi_to_fire_events)``
+
+            ``pi_to_fire_events`` : dict[player_index → fire_events] obtenu via
+            b2_stream ↔ Formula A (inv #131). Utilisé pour l'attribution T2
+            des coéquipiers non-POV à la place du fallback Formula A seul.
         """
         xuid_int_to_pi = await asyncio.to_thread(
             self._resolve_player_indices, chunks, all_participants
         )
         timeline, swap_pis, timing = await asyncio.to_thread(build_weapon_timeline, chunks)
+        timeline_ns: dict[int, dict[int, bytes]] = await asyncio.to_thread(
+            build_weapon_timeline_ns, chunks
+        )
         all_kills_by_xuid = WeaponKillsMixin.load_all_kills_for_match(self._conn, match_id)
+        chunks_sorted = sorted(chunks.keys())
+        # T2 : attribution multi-joueurs via b2_stream (inv #131) — CPU-bound offloadé
+        pi_to_fire_events: dict[int, list[dict]] = await asyncio.to_thread(
+            self._build_pi_to_fire_events, chunks, timeline_ns, timing, chunks_sorted
+        )
         logger.debug(
-            "Match %s : %d pi résolus, %d chunks timeline, %d joueurs avec kills",
+            "Match %s : %d pi résolus, %d chunks timeline, %d joueurs avec kills, "
+            "%d pi avec fire events T2",
             match_id[:8],
             len(xuid_int_to_pi),
             len(timeline),
             len(all_kills_by_xuid),
+            len(pi_to_fire_events),
         )
-        return xuid_int_to_pi, timeline, swap_pis, timing, all_kills_by_xuid
+        return xuid_int_to_pi, timeline, swap_pis, timing, all_kills_by_xuid, pi_to_fire_events
 
     def _resolve_player_indices(
         self,
@@ -344,6 +366,7 @@ class WeaponExtractionService:
         timing: list,
         xuid_int_to_pi: dict[int, int],
         all_kills_by_xuid: dict[str, list[dict]],
+        pi_to_fire_events: dict[int, list[dict]],
         dry_run: bool,
     ) -> tuple[int, int, int]:
         """Itère sur tous les participants, attribue les kills, écrit en DB.
@@ -378,6 +401,7 @@ class WeaponExtractionService:
                 player_index,
                 xuid_str,
                 pov_xuid,
+                pi_to_fire_events,
             )
             if xuid_str == pov_xuid:
                 kill_rows = self._reconcile_api_aggregates(
@@ -409,8 +433,15 @@ class WeaponExtractionService:
         player_index: int,
         xuid_str: str,
         pov_xuid: str,
+        pi_to_fire_events: dict[int, list[dict]] | None = None,
     ) -> list[dict]:
-        """Attribution POV (fire events §6a) ou T1 (Formula A §6b)."""
+        """Attribution POV (fire events §6a), T2 (b2_stream §inv131) ou T1 (Formula A §6b).
+
+        Ordre de priorité :
+        1. POV (xuid == pov_xuid) → Section 2 pi=1 (invariant universel).
+        2. Non-POV + fire events T2 disponibles → corrélation fire events b2-attribués.
+        3. Non-POV fallback → Formula A snapshot (T1).
+        """
         is_pov = xuid_str == pov_xuid
         if is_pov:
             # Section 2 : le POV est TOUJOURS à pi=1 (inv §6a / inv #6/#23/#27/#41)
@@ -418,6 +449,19 @@ class WeaponExtractionService:
             # CPU-bound bitstring : offload sur thread pour libérer l'event loop (Phase 4)
             fire_events = await asyncio.to_thread(self._scan_player_chunks, chunks, 1)
             return correlate_kills_to_weapons(kills, fire_events)
+
+        # T2 : fire events attribués via b2_stream (inv #131)
+        if pi_to_fire_events:
+            t2_events = pi_to_fire_events.get(player_index)
+            if t2_events:
+                logger.debug(
+                    "_attribute_kills T2 pi=%d : %d fire events b2-attribués",
+                    player_index,
+                    len(t2_events),
+                )
+                return correlate_kills_to_weapons(kills, t2_events)
+
+        # T1 fallback : Formula A snapshot
         return self._attribute_t1_kills(
             kills, chunks_sorted, timeline, swap_pis, timing, player_index
         )
@@ -663,3 +707,40 @@ class WeaponExtractionService:
             )
         all_events.sort(key=lambda e: e["timestamp_ms"])
         return all_events
+
+    @staticmethod
+    def _build_pi_to_fire_events(
+        chunks: dict[int, tuple[bytes, int, int]],
+        timeline: dict[int, dict[int, bytes]],
+        timing: list[tuple[int, int]],
+        chunks_sorted: list[int],
+    ) -> dict[int, list[dict]]:
+        """Attribue tous les fire events du match à leur player_index via b2_stream.
+
+        Inv #131 : byte[1]=0x26 est un marqueur figé → pi=1 capture TOUT.
+        Le champ fire_seq (b2_stream) est stable par vie joueur.
+        On croise b2 ↔ Formula A timeline pour retrouver le vrai pi.
+
+        Returns:
+            ``{player_index: [fire_events]}``
+        """
+        # Scanner tous les events avec pi=1 (capture universelle)
+        all_events = WeaponExtractionService._scan_player_chunks(chunks, 1)
+        if not all_events:
+            return {}
+
+        # Mapper b2_stream → player_index via Formula A
+        b2_to_pi = map_b2_to_player(all_events, timeline, timing, chunks_sorted)
+
+        # Grouper par pi attribué
+        result: dict[int, list[dict]] = {}
+        unresolved = 0
+        for ev in all_events:
+            pi = b2_to_pi.get(ev["fire_seq"])
+            if pi is not None:
+                result.setdefault(pi, []).append(ev)
+            else:
+                unresolved += 1
+        if unresolved:
+            logger.debug("_build_pi_to_fire_events : %d events non résolus", unresolved)
+        return result

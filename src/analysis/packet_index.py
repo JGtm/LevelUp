@@ -17,9 +17,9 @@ Fournit :
 from __future__ import annotations
 
 import struct
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Callable
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Structures
@@ -31,14 +31,14 @@ HEADER_STRUCT = struct.Struct("<HBBIQ")  # 16 bytes
 class PacketType(IntEnum):
     """Types de paquets REPLICATION_DATA (inv #130)."""
 
-    FRAME = 0              # ~258B, données de jeu (~60fps)
-    START_CHUNK = 1        # Début de chunk
-    INIT_STATE = 2         # ~155KB, état initial
-    CHUNK_INIT = 6         # 4B
-    END_CHUNK = 7          # Fin de chunk
-    PLAYER_METADATA = 8   # ~25KB, contient mapping pi→xuid
-    HEARTBEAT = 10         # 10B, sync
-    INIT_MARKER = 12       # 4B zeros
+    FRAME = 0  # ~258B, données de jeu (~60fps)
+    START_CHUNK = 1  # Début de chunk
+    INIT_STATE = 2  # ~155KB, état initial
+    CHUNK_INIT = 6  # 4B
+    END_CHUNK = 7  # Fin de chunk
+    PLAYER_METADATA = 8  # ~25KB, contient mapping pi→xuid
+    HEARTBEAT = 10  # 10B, sync
+    INIT_MARKER = 12  # 4B zeros
 
 
 @dataclass(slots=True)
@@ -70,10 +70,14 @@ def index_chunk(data: bytes) -> list[Packet]:
     while pos + 16 <= data_len:
         pkt_type, _b2, _b3, size, microseconds = unpack(data, pos)
         payload_offset = pos + 16
-        packets.append(Packet(
-            type=pkt_type, size=size,
-            microseconds=microseconds, offset=payload_offset,
-        ))
+        packets.append(
+            Packet(
+                type=pkt_type,
+                size=size,
+                microseconds=microseconds,
+                offset=payload_offset,
+            )
+        )
         if pkt_type == end_type:
             break
         pos = payload_offset + size
@@ -88,7 +92,8 @@ def index_chunk(data: bytes) -> list[Packet]:
 
 
 def build_packet_estimator(
-    packets: list[Packet], chunk_start_ms: float,
+    packets: list[Packet],
+    chunk_start_ms: float,
 ) -> Callable[[int], float]:
     """Construit un estimateur ``byte_pos → timestamp_ms`` depuis l'index.
 
@@ -100,11 +105,10 @@ def build_packet_estimator(
     """
     frame_type = PacketType.FRAME
     frames = [
-        (p.offset, p.offset + p.size, p.microseconds)
-        for p in packets if p.type == frame_type
+        (p.offset, p.offset + p.size, p.microseconds) for p in packets if p.type == frame_type
     ]
     if not frames:
-        return lambda byte_pos: chunk_start_ms
+        return lambda _: chunk_start_ms  # noqa: ARG005
 
     base_us = frames[0][2]
 
@@ -130,7 +134,8 @@ def build_packet_estimator(
 
 
 def extract_metadata_payload(
-    chunk_data: bytes, packets: list[Packet],
+    chunk_data: bytes,
+    packets: list[Packet],
 ) -> bytes | None:
     """Extrait le payload PLAYER_METADATA (~25KB) d'un chunk indexé."""
     meta_type = PacketType.PLAYER_METADATA
