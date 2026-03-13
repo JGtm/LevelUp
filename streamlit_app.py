@@ -737,7 +737,7 @@ def _dispatch_pages(ctx: PageContext) -> None:
     _dispatch_navigation(ctx)
 
 
-def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
+def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
     """Dispatch via st.navigation (Streamlit ≥ 1.36) avec lazy-loading."""
 
     def _page_timeseries() -> None:
@@ -781,6 +781,15 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
                 on="match_id",
                 how="inner",
             )
+            # Fallback : si le join élimine trop de sessions, utiliser all_sessions_pl
+            n_sessions = (
+                sessions_for_compare.select("session_label").n_unique()
+                if "session_label" in sessions_for_compare.columns
+                and not sessions_for_compare.is_empty()
+                else 0
+            )
+            if n_sessions < 2:
+                sessions_for_compare = all_sessions_pl
         else:
             sessions_for_compare = all_sessions_pl
         render_session_comparison_page(sessions_for_compare, df_full=ctx.dff)

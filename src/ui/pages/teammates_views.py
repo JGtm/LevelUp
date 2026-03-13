@@ -241,7 +241,14 @@ def render_multi_teammate_view(  # noqa: PLR0913
 
     if len(picked_xuids) >= 2:
         impact_match_ids = (
-            sub_all["match_id"].cast(pl.Utf8).unique().to_list() if not sub_all.is_empty() else []
+            sub_all.sort("start_time")["match_id"]
+            .cast(pl.Utf8)
+            .unique(maintain_order=True)
+            .to_list()
+            if not sub_all.is_empty() and "start_time" in sub_all.columns
+            else sub_all["match_id"].cast(pl.Utf8).unique().to_list()
+            if not sub_all.is_empty()
+            else []
         )
         render_impact_taquinerie(
             db_path=db_path,
