@@ -1975,23 +1975,26 @@ def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
     options: list[tuple[str, str]] = []
 
     if not state.has_client_id:
-        options.append(("config-az", "🔧 Azure CLI  (détection automatique + Device Code Flow)"))
+        options.append(("config-az", "🔧 Azure CLI  (crée l'app automatiquement)"))
         options.append(
             (
                 "config-noaz",
-                "🔑 MSAL Device Code Flow  (portail Azure minimal — recommandé, no secret)",
+                "🌐 Portail Azure  (créer une app public client en 2 clics → MSAL Device Code ensuite)",
             )
         )
         options.append(
             (
                 "paste-id",
-                "📋 Coller un Client ID  (tu as déjà créé ton app Azure, on s'occupe du reste)",
+                "📋 Coller un Client ID existant  (tu as déjà l'app → MSAL Device Code ensuite)",
             )
         )
     else:
         for gt in state.players_missing_token:
             options.append(
-                (f"reauth:{gt}", f"🔑 MSAL Device Code Flow  (renouveler l'accès Halo pour {gt})")
+                (
+                    f"reauth:{gt}",
+                    f"🔑 MSAL Device Code Flow  (code court sur microsoft.com/devicelogin pour {gt})",
+                )
             )
         options.append(("launch", "🚀 Lancer quand même  (tu synchroniseras plus tard)"))
 
