@@ -148,19 +148,16 @@ class TestParisEpochSeconds:
         assert paris_epoch_seconds(None) is None
 
     def test_aware_datetime(self):
-        # ZoneInfo n'a pas .localize() donc seules les datetimes aware passent
         aware = datetime(2025, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("Europe/Paris"))
         result = paris_epoch_seconds(aware)
-        # La fonction interne essaie localize() qui n'existe pas sur ZoneInfo
-        # Donc elle retourne None via except (bug connu dans le code)
-        # On vérifie juste que ça ne plante pas
-        assert result is None or isinstance(result, float)
+        assert isinstance(result, float)
+        # 2025-01-01 00:00 Paris = 2024-12-31 23:00 UTC = 1735686000
+        assert result == aware.timestamp()
 
-    def test_naive_datetime_returns_none(self):
-        # Naïf → to_paris_naive retourne la même valeur → localize échoue
+    def test_naive_datetime(self):
+        # Naïf → convention UTC → converti en TZ utilisateur → timestamp
         result = paris_epoch_seconds(datetime(2025, 1, 1, 0, 0, 0))
-        # Bug connu : ZoneInfo.localize n'existe pas
-        assert result is None or isinstance(result, float)
+        assert isinstance(result, float)
 
     def test_invalid(self):
         assert paris_epoch_seconds("not_a_date") is None

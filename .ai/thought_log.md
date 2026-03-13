@@ -7,6 +7,45 @@
 
 ## Journal
 
+### [2026-03-13] — Feature #8 : Détection domination/humiliation (Steaktacular)
+
+- **Statut** : Complété (Phases 1-5 + tests)
+- **Tâche** : Implémenter la détection de la médaille "À table" (Steaktacular) pour qualifier les matchs en "Domination totale" ou "Humiliation totale"
+
+**Décision technique** : Stocker dans `player_match_enrichment.dominance_flag` (TINYINT) plutôt que dans la shared DB — cohérent avec le pattern `had_bot_teammate`, évite les JOINs cross-DB dans les vues matérialisées.
+
+**Fichiers créés :**
+- `src/analysis/_medal_verdicts.py` — `DominanceFlag(IntEnum)` + `MEDAL_STEAKTACULAR_ID`
+- `src/data/dominance_backfill.py` — helper réutilisable `compute_dominance_for_player()`
+- `src/data/migration/steps/add_dominance_flag.py` — migration auto-enregistrée
+- `tests/test_dominance.py` — 8 tests unitaires (enum, backfill, idempotence, force)
+
+**Fichiers modifiés :**
+- `src/data/sync/migrations.py` — `ensure_dominance_flag_column()`
+- `src/data/migration/steps/__init__.py` — import de la migration
+- `scripts/backfill/cli.py` — args `--dominance` / `--force-dominance`
+- `scripts/backfill_data.py` — refactorisé pour utiliser le helper centralisé
+- `src/data/sync/engine.py` — hook `_compute_dominance_post_sync()` dans le pipeline sync
+- `src/ui/pages/match_view_logic.py` — `load_enrichment()` retourne maintenant un 3-tuple (had_bot, perf, dominance_flag)
+- `src/ui/pages/match_view.py` — badge visuel "Domination totale" / "Humiliation totale" sur la carte Résultat
+- `src/ui/i18n/common.py` — clés `outcome_domination` et `outcome_humiliation` (FR/EN)
+
+**Résultat** : 8/8 tests passent, ruff OK, SRP OK. Le badge s'affiche sous le score dans la carte KPI Résultat avec couleur distinctive (vert foncé pour domination, violet foncé pour humiliation).
+
+### [2025-07-16] — Vérification finale bugs #9, #16, #23, #24, #26
+
+- **Statut** : Complété
+- **Tâche** : Audit de couverture logging et tests pour tous les changements de la session
+
+**Corrections apportées :**
+- `tests/test_formatting.py` : Commentaires obsolètes corrigés dans `TestParisEpochSeconds` (`.localize()` n'existe plus, `.replace(tzinfo=tz)` fonctionne). Assertions renforcées (`assert isinstance(result, float)`)
+- `tests/test_timezone_settings.py` : 7 nouveaux tests ajoutés — `TestUtcToLocal` (3 tests : naïf→UTC, aware→converti, cross-TZ) + `TestLocalToUtc` (3 tests : naïf→TZ user, aware→UTC, round-trip)
+- `src/ui/pages/career.py` : try/except ajouté autour de `utc_to_local(recorded_at)` → résilience si conversion TZ échoue
+- `scripts/size_baseline.txt` : Baseline mise à jour (136 violations)
+
+**Résultats** : 4478 tests passés, 9 échecs (6 PVE intégration pré-existants + 2 map-cell CSS pré-existants + 1 code_quality résolu)
+- **Conclusion** : Tous les changements bugs #9, #16, #23, #24, #26 sont complets, testés et robustes.
+
 ### [2025-07-15] — Weapon Parser v2 : Audit final qualité (logging + tests)
 
 - **Statut** : Complété
@@ -94,6 +133,14 @@
 **Résultats :** 230 tests weapon-related passent (79 parser v1 + 124 migrations + 35 service + 33+10+10+11 v2 nouveaux = 302... re : 230 sur les fichiers testés). Suite complète hors intégration/e2e : 4377 passed.
 
 **Prochaine étape** : Git commit sur `analysis/weapon-parser-rewrite`
+
+### [2026-03-13] — Colonne "Outil de destruction" dans le scoreboard
+
+- **Statut** : Complété
+- **Décision technique** : Source = table `weapon_kills` (shared_matches.duckdb), sous-requête ROW_NUMBER() OVER PARTITION BY xuid pour isoler l'arme top par joueur. `weapon_id NOT IN (0,1,2)` pour exclure mélee/grenade/véhicule sentinelles. Résolution en nom via `resolve_weapon_display()`, inconnu → `-`.
+- **Résultats** : Colonne `top_weapon_id` ajoutée dans `load_match_scoreboard` (`_roster_loader.py`), activée dans `_get_scoreboard_cols()` après `kda`, skip highlight, formatage dans `_fmt_scoreboard_cell`. Traduction mise à jour : "Outil de destruction" / "Top weapon".
+- **Limites connues** : Coverage dictionnaire `WEAPON_INT_TO_NAME` partielle — les weapon_ids absents affichent `-`. Normal car weapon_parser est en cours.
+- **Prochaine étape** : RAS
 
 ### [2026-03-14] — Traitement bugs ANALYSE_BUGS_2026-03-13.md (28 bugs)
 
@@ -193,6 +240,23 @@
 
 **Résultats** : 4468 tests passés, 2 échecs pré-existants (map-cell CSS, chantier D).
 **Leçon** : Ne jamais hardcoder un fuseau horaire — utiliser la config utilisateur. Convention DB : "naive = UTC" → jamais assumer que naive = local.
+
+### [2026-03-14] — Correction bug #24 : switch de joueur via deep link
+
+- **Statut** : Complété
+- **Tâche** : Empêcher le switch de joueur principal quand on clique un lien gamertag ou match.
+
+**Root cause (2 problèmes) :**
+1. **`init_source_state()` lit `st.query_params["gamertag"]` et switch la DB/joueur** : Le commentaire dans le code reconnaissait le problème de timing (`_parse_query_params()` s'exécute après). Le workaround créé (lire le gamertag dans init) est erroné : `gamertag` est un paramètre de **navigation** (cible Explorer), pas un switch de joueur. Si `gamertag=Madina97294` est dans l'URL et que Madina a un dossier `data/players/Madina97294/stats.duckdb`, la DB est switchée.
+2. **`gamertag_link()` utilise `target='_blank'`** : Nouvel onglet = nouveau `session_state` vide → `init_source_state` lit le query param gamertag et switch la DB. Même si le guard `if "db_path" not in st.session_state` protège les reruns normaux, un nouvel onglet n'a pas de session_state → le guard est traversé.
+
+**Fix :**
+- `data_loader.py` : Suppression de la lecture `st.query_params["gamertag"]` dans `init_source_state()`. Le gamertag en URL est géré par `_parse_query_params()` → `PENDING_GAMERTAG` → consommé par Explorer.
+- `match_table_html.py` : `gamertag_link()` → `target='_self'` au lieu de `target='_blank'`, pour rester dans le même onglet et préserver le session_state (joueur actif).
+- `test_explorer_logic.py` : Test `target='_blank'` → `target='_self'`.
+
+**Résultats** : 4468 tests passés, 0 régression.
+**Leçon** : Les query params sont des paramètres de navigation, pas d'état. L'initialisation de l'état applicatif (joueur actif) ne doit JAMAIS dépendre de query params volatils.
 
 ---
 

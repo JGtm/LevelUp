@@ -197,6 +197,77 @@ class TestTzModule:
 
 
 # =============================================================================
+# Tests utc_to_local / local_to_utc
+# =============================================================================
+
+
+class TestUtcToLocal:
+    """Tests pour src.ui.tz.utc_to_local()."""
+
+    def test_naive_treated_as_utc(self):
+        """Un datetime naïf est traité comme UTC."""
+        from src.ui.tz import utc_to_local
+
+        naive_utc = datetime(2025, 7, 1, 12, 0, 0)
+        result = utc_to_local(naive_utc)
+        # Fallback Paris = UTC+2 en été
+        assert result.hour == 14
+        assert result.tzinfo is not None
+
+    def test_aware_utc_converted(self):
+        """Un datetime aware UTC est converti."""
+        from datetime import timezone
+
+        from src.ui.tz import utc_to_local
+
+        aware_utc = datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
+        result = utc_to_local(aware_utc)
+        # Paris = UTC+1 en hiver
+        assert result.hour == 11
+
+    def test_aware_other_tz(self):
+        """Un datetime aware dans une autre TZ est converti en TZ utilisateur."""
+        from src.ui.tz import utc_to_local
+
+        # 10h Tokyo (UTC+9) = 01h UTC = 02h Paris (hiver)
+        tokyo = datetime(2025, 1, 15, 10, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+        result = utc_to_local(tokyo)
+        assert result.hour == 2
+
+
+class TestLocalToUtc:
+    """Tests pour src.ui.tz.local_to_utc()."""
+
+    def test_naive_treated_as_user_tz(self):
+        """Un datetime naïf est traité comme TZ utilisateur."""
+        from src.ui.tz import local_to_utc
+
+        naive_local = datetime(2025, 7, 1, 14, 0, 0)
+        result = local_to_utc(naive_local)
+        # Paris UTC+2 en été → 12h UTC
+        assert result.hour == 12
+
+    def test_aware_converted(self):
+        """Un datetime aware est converti en UTC."""
+        from src.ui.tz import local_to_utc
+
+        aware_paris = datetime(2025, 1, 15, 11, 0, 0, tzinfo=ZoneInfo("Europe/Paris"))
+        result = local_to_utc(aware_paris)
+        assert result.hour == 10
+
+    def test_roundtrip(self):
+        """utc_to_local → local_to_utc est un round-trip."""
+        from datetime import timezone
+
+        from src.ui.tz import local_to_utc, utc_to_local
+
+        original = datetime(2025, 3, 15, 8, 30, 0, tzinfo=timezone.utc)
+        local = utc_to_local(original)
+        back = local_to_utc(local)
+        assert abs((back - original).total_seconds()) < 1
+
+
+# =============================================================================
 # Tests _convert_timezone respecte tz_name
 # =============================================================================
 
