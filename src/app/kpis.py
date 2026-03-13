@@ -12,7 +12,7 @@ from typing import NamedTuple
 import polars as pl
 
 from src.analysis import compute_aggregated_stats, compute_global_ratio, compute_outcome_rates
-from src.app.helpers import avg_match_duration_seconds, compute_total_play_seconds
+from src.app.helpers import avg_match_duration_seconds, compute_session_span_seconds
 from src.utils.polars_compat import ensure_polars as _to_polars
 
 # =============================================================================
@@ -89,7 +89,7 @@ def compute_kpi_stats(df: pl.DataFrame) -> KPIStats:
 
     # Time
     avg_match_s = avg_match_duration_seconds(df_pl)
-    total_play_s = compute_total_play_seconds(df_pl)
+    total_play_s = compute_session_span_seconds(df_pl)
 
     return KPIStats(
         win_rate=win_rate,
