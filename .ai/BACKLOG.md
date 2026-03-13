@@ -27,11 +27,76 @@
 - [ ] Auditer les usages UI/query des colonnes `*_name` dans `match_registry` pour identifier ce qui lit directement le nom stocké vs ce qui joint `metadata.duckdb`
 - [ ] Créer une vue `v_match_registry` qui résout les noms à la lecture via JOIN sur les tables de référence `metadata.duckdb` (maps, playlists, game_variants)
 - [ ] Migrer les requêtes consommatrices (pages Streamlit, repositories) vers la vue — supprimer les colonnes `*_name` de `match_registry` une fois toutes les requêtes migrées
-- [ ] `match_participants.gamertag` et `highlight_events.gamertag` : évaluer si ces colonnes sont utilisées en lecture directe ou si le JOIN sur `xuid_aliases` est systématique — supprimer si redondant
+- [ ] Auditer les usages UI/query des colonnes `*_name` dans `match_registry` pour identifier ce qui lit directement le nom stocké vs ce qui joint `metadata.duckdb`
+- [ ] Créer une vue `v_match_registry` qui résout les noms à la lecture via JOIN sur les tables de référence `metadata.duckdb` (maps, playlists, game_variants)
+- [ ] Migrer les requêtes consommatrices (pages Streamlit, repositories) vers la vue — supprimer les colonnes `*_name` de `match_registry` une fois toutes les requêtes migrées
+- [ ] `match_participants.gamertag` et `highlight_events.gamertag` : voir item dédié ci-dessous
 - [ ] Ajouter un test de non-régression : aucune colonne `*_name` dans les nouvelles tables shared (hors `xuid_aliases`)
 
 **Complexité** : L (impact UI + repositories + migrations)  
 **Fichiers clés** : [`src/data/sync/migrations.py`](../src/data/sync/migrations.py), [`src/data/sync/_shared_writes.py`](../src/data/sync/_shared_writes.py), [`src/data/sync/transformers/_match.py`](../src/data/sync/transformers/_match.py), `data/warehouse/shared_matches.duckdb`
+
+---
+
+### Cohérence XUID↔Gamertag — source de vérité et stale data
+
+> **Diagnostic complet (2026-03-13)** : trois emplacements stockent la relation XUID→Gamertag dans `shared_matches.duckdb`, avec des rôles et qualités différentes, et une cascade de résolution dont l'ordre est inversé par rapport à la logique attendue.
+
+#### État actuel des 3 sources
+
+| Table | Rôle réel | Qualité | Stale possible |
+|-------|-----------|---------|:--------------:|
+| `xuid_aliases.gamertag` | Gamertag **courant** — source de vérité, UPSERT à chaque sync | ✅ Normalisé | Non |
+| `match_participants.gamertag` | Snapshot figé à la date du sync du match | ✅ Normalisé | **Oui** |
+| `highlight_events.gamertag` | Champ brut de l'API events, sans normalisation complète | ⚠️ NUL bytes connus | **Oui** |
+
+#### Problème identifié : cascade inversée dans `_gamertag_resolver.py`
+
+La fonction `load_match_player_gamertags()` ([`src/data/repositories/_gamertag_resolver.py`](../src/data/repositories/_gamertag_resolver.py)) utilise cet ordre de priorité :
+
+1. `shared.match_participants` ← **prioritaire** (snapshot figé)
+2. local `match_participants` (fallback v4 legacy)
+3. `shared.highlight_events` (données corrompues)
+4. `shared.xuid_aliases` ← source de vérité… en **dernier**
+
+Conséquence : si un joueur change de gamertag, le scoreboard affiche l'ancien nom alors que la page Rencontres (qui fait `COALESCE(xuid_aliases, match_participants)`) affiche le bon — incohérence visuelle entre pages pour le même joueur.
+
+#### Plan d'implémentation
+
+**Étape 1 — Fix immédiat, sans migration (priorité haute)**
+
+- [ ] Dans `_gamertag_resolver.py`, inverser l'ordre de la cascade dans `load_match_player_gamertags()` :
+  ```
+  Nouvel ordre : xuid_aliases → match_participants → highlight_events
+  ```
+- [ ] Vérifier que `resolve_gamertag()` (source #1 = `match_participants`) applique le même correctif
+- [ ] Valider que la page Rencontres reste cohérente (son `COALESCE(xuid_aliases, match_participants)` est déjà correct)
+- [ ] Ajouter un test unitaire dans `tests/` vérifiant que `load_match_player_gamertags` préfère `xuid_aliases` quand les deux sources diffèrent
+
+**Étape 2 — Suppression de `highlight_events.gamertag` (priorité moyenne)**
+
+- [ ] Confirmer qu'aucun code ne lit `highlight_events.gamertag` directement hors de `_gamertag_resolver.py`
+- [ ] Retirer la colonne `gamertag` du schéma `highlight_events` dans `_engine_connections.py`
+- [ ] Retirer la colonne `gamertag` du transformateur `transformers/_events.py`
+- [ ] Supprimer la source #3 (`highlight_events`) dans `load_match_player_gamertags()` — `xuid_aliases` couvre le même cas avec meilleure qualité
+- [ ] Créer une migration `add_drop_highlight_events_gamertag.py` dans `src/data/migration/steps/`
+- [ ] Ajouter l'import dans `src/data/migration/steps/__init__.py`
+
+**Étape 3 — Statut de `match_participants.gamertag` (à décider)**
+
+- [ ] Décider si la colonne est conservée comme fallback historique ou supprimée :
+  - **Conserver** : utile pour XUIDs absents de `xuid_aliases` (matchs très anciens, bots, edge cases API) — mais jamais comme source prioritaire
+  - **Supprimer** : simplifie le schéma, force le passage complet par `xuid_aliases`
+- [ ] Si conservée : s'assurer que son rôle est documenté en commentaire dans les schémas et le resolver
+- [ ] Si supprimée : créer la migration correspondante et retirer du transformateur `_match.py`
+
+**Étape 4 — Test de non-régression**
+
+- [ ] Test : un gamertag modifié dans `xuid_aliases` est affiché correctement dans toutes les pages (scoreboard, Rencontres, antagonistes, sélecteur joueur)
+- [ ] Test : pas de régression sur les matchs anciens dont le joueur n'est plus dans `xuid_aliases`
+
+**Complexité** : M (étape 1 = S, étapes 2-3 = M chacune)  
+**Fichiers clés** : [`src/data/repositories/_gamertag_resolver.py`](../src/data/repositories/_gamertag_resolver.py), [`src/data/sync/_engine_connections.py`](../src/data/sync/_engine_connections.py), [`src/data/sync/transformers/_events.py`](../src/data/sync/transformers/_events.py), [`src/data/migration/steps/`](../src/data/migration/steps/)
 
 ---
 
