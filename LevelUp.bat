@@ -191,7 +191,9 @@ where py >nul 2>&1
 if !ERRORLEVEL! equ 0 (
     for %%v in (3.13 3.12 3.11 3.10) do (
         if not defined PY (
-            for /f "tokens=*" %%i in ('py -%%v -c "import sys; print(sys.executable)" 2^>nul') do set "PY=%%i"
+            for /f "tokens=*" %%i in ('py -%%v -c "import sys; print(sys.executable)" 2^>nul') do (
+                if exist "%%i" set "PY=%%i"
+            )
         )
     )
 )
