@@ -138,9 +138,11 @@ def mmr_gap_style(v: object) -> str:
 # ---------------------------------------------------------------------------
 
 
-@functools.lru_cache(maxsize=1)
+@functools.cache
 def _build_map_url_index() -> dict[str, str]:
     """Scanne static/maps/ une fois et retourne {stem_lower: url_statique}."""
+    import unicodedata
+
     maps_dir = Path(get_repo_root()) / "static" / "maps"
     index: dict[str, str] = {}
     if not maps_dir.exists():
@@ -150,7 +152,7 @@ def _build_map_url_index() -> dict[str, str]:
         return index
     for f in maps_dir.iterdir():
         if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
-            stem = f.stem.lower()
+            stem = unicodedata.normalize("NFC", f.stem.lower())
             url = f"/app/static/maps/{f.name}"
             index[stem] = url
             index[stem.replace(" ", "_")] = url
@@ -293,7 +295,10 @@ def _render_cell(r: dict, key: str, outcome_code: object) -> str:
         if url:
             esc_url = html_lib.escape(url)
             esc_val = html_lib.escape(val)
-            return f"<td><span class='map-cell' data-thumb-url='{esc_url}'>{esc_val}</span></td>"
+            return (
+                f"<td><span class='map-hover'>{esc_val}"
+                f"<img class='map-popup' src='{esc_url}' alt='' /></span></td>"
+            )
         return f"<td>{html_lib.escape(val)}</td>"
 
     if key == "performance":
