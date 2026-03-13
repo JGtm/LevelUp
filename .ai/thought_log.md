@@ -7,6 +7,109 @@
 
 ## Journal
 
+### [2026-03-13] — Mise à jour PLAN_WEAPON_PARSER_V2.md suite aux découvertes how_it_works
+
+- **Statut** : Complété
+- **Tâche** : Adapter le plan parser v2 pour refléter les découvertes documentées dans `weapon_parser_how_it_works_en.md` (inv #131, T2 path, NS layer, melee events)
+
+**Décisions techniques :**
+
+1. **`scan_fire_events` → `scan_fire_events_all`** : scanner match-level sans filtre pi. `byte[1]=0x26` est constant → `scan_fire_events(pi)` était conceptuellement incorrect. Un seul scan par chunk capture tous les fire events.
+
+2. **T2 path formalisé** : `map_b2_to_player(events, timeline_ns, chunks)` + `group_events_by_pi()` introduits dans un nouveau module `_player_attribution.py` (≤150 L). Couverture ~21% sur test match — fallback T1 pour le reste.
+
+3. **NS vs raw distinction documentée** : `scan_formula_a` (raw) → instance handles (jamais dans WEAPON_ID_MAP → `confidence="low"` systématique). `scan_formula_a_ns()` + `build_weapon_timeline_ns()` → TYPE IDs → branches `high`/`medium` atteignables pour T1.
+
+4. **Melee events film** : `scan_melee_events()` (marqueur `0xd340`) documenté comme nouvelle fonction parser. POV uniquement. Attribution sans médailles.
+
+5. **`scan_fire_events_multi_pi` supprimé** : concept incorrect (il n'y a pas de filtre pi possible dans le scan). Remplacé par le pipeline `scan_fire_events_all + map_b2_to_player + group_events_by_pi`.
+
+6. **Attribution paths mis à jour** : `{"fire_event", "melee_event", "t2_b2_stream", "formula_a", "none"}`.
+
+7. **`ScanResult`** : enrichi de `timeline_ns`, `timeline_raw`, `melee_events`, `b2_to_pi`.
+
+8. **Tests** : grouped B (scan_fire_events_all ×10), groupe C remplacé par T2 path (×13), F24-F26 ajoutés, S17-S18 ajoutés. Total estimé passe de ~180 à ~210 tests.
+
+**Résultats** : PLAN_WEAPON_PARSER_V2.md passe de 1322 à 1501 lignes. 16 patches appliqués, 0 régression détectée.
+
+**Prochaine étape** : démarrer les phases 1→2 (migration schéma + parser v2 couche pure).
+
+---
+
+### [2026-03-14] — inv131 : Implémentation map_b2_to_player() + scanner NS Section 1
+
+- **Statut** : Complété
+- **Tâche** : Implémenter `map_b2_to_player()` pour croiser b2_stream ↔ Formula A timeline → attribution non-POV fire events par joueur
+
+**Découverte critique — couche NS vs raw :**
+
+6. **Formula A (raw) retourne des instance handles** : les weapon_bytes de `scan_formula_a` (`87fab1d442c9679f` etc.) sont des handles d'instance par-match, JAMAIS dans `WEAPON_ID_MAP`. Intersection = 0 sur tous les chunks du match 147ffd4d.
+
+7. **Couche NS Section 1 retourne des TYPE IDs** : en cherchant les TYPE IDs de `WEAPON_ID_MAP` dans la couche nibble-shiftée (`ns = nibble_shift(data)`), on trouve les mêmes identifiants canoniques que dans les fire events. Filtre fire events : `ns[wid_pos - 5] != 0x26`. Décodage pi : `pi = ns[wid_pos - 1] >> 5` (même formule `pb = pi << 5 | low_bits` que Formula A raw).
+
+8. **Validation sur match 147ffd4d** :
+   - `build_weapon_timeline` (raw) → 48 snapshots, 0% résolution b2→pi
+   - `build_weapon_timeline_ns` (NS layer) → 33 snapshots, **21% résolution** (255/1177 fire events)
+   - Pi=6 (shoxyy) : 179 fire events résolus vs API 182 shots_fired (quasi-exact ✓)
+   - Pi=1 (AceHellRaiser13) : 76 fire events résolus (attribution partielle, POV utilise un autre chemin)
+   - 69 b2 valeurs non résolues = joueurs peu visibles dans le film (non-observés en Section 1)
+
+**Implémentation :**
+
+- `scan_formula_a_ns(data)` ajouté à `weapon_parser.py` — scanne NS layer pour TYPE IDs
+- `build_weapon_timeline_ns(chunks)` — timeline NS (TYPE IDs) complémentaire à `build_weapon_timeline` (instance handles)
+- `weapon_extraction_service.py::_prepare_match_data()` — construit `timeline_ns` séparément et le passe à `_build_pi_to_fire_events`
+- Attribution tri-path dans `_attribute_kills()` :
+  1. POV → Section 2 pi=1 (invariant, inchangé)
+  2. Non-POV + T2 disponible (`pi_to_fire_events`) → `correlate_kills_to_weapons()`
+  3. Fallback T1 → `_attribute_t1_kills()` via Formula A (inchangé)
+
+**Résultat observé :**
+- T2 attribution opérationnelle pour joueurs visibles (pi=6 = shoxyy très bien couvert)
+- 8 autres joueurs continuent sur T1 (Formula A snapshot) — acceptable
+- 203 tests weapon passent — aucune régression
+
+**Prochaine étape :**
+- Couverture T2 limitée à ~21% car NS Section 1 ne voit que les joueurs "observés" par la POV. Pour améliorer, chercher d'autres patterns en NS Section 1 capturant d'autres pi. Ou : utiliser l'API `shots_fired` par joueur pour valider l'attribution.
+- T1 attribution : `_attribute_t1_kills` utilise toujours les instance handles (raw Formula A) → `wid_bytes in WEAPON_ID_MAP` = toujours False → confidence "low". Améliorable en passant T1 à `build_weapon_timeline_ns`.
+
+---
+
+### [2026-03-13] — inv131 : Diagnostic attribution joueur dans les fire events Section 2
+
+- **Statut** : Complété
+- **Question** : Comment acurtis répartit les fire events entre joueurs alors que `scan_fire_events(pi≠1)` est à 0 ?
+- **Script** : `scripts/experimental/inv131_fire_event_player_attribution.py`
+
+**Résultats diagnostics (match 147ffd4d, chunk_07 + multi-chunk 03..27) :**
+
+1. **Sans filtre weapon_id** : le marqueur `_build_marker(pi)` retourne des centaines d'occurrences pour tous les pi (pi=1: 554, pi=2: 335, pi=3: 598...). Ce ne sont donc pas "seulement" les events pi=1 dans les données brutes.
+
+2. **Alignement nibble-shift confirmé** : les 17 vrais fire events de chunk_07 sont **TOUS à `pos % 8 == 1`**, ce qui correspond exactement à l'offset `NS_i*8 + 9 mod 8 = 1` de la couche nibble-shiftée. Le scan non-aligné dans les données brutes trouve bien les events nibble-shiftés à cet offset.
+
+3. **byte[1] = 0x26 CONSTANT** : pour pi=2..7, aucune occurrence à `pos%8=1` ne passe le filtre weapon_id (0 valid events). Cela confirme que **byte[1] = 0x26 est invariant pour TOUS les vrais fire events**, quel que soit le joueur. Ce n'est pas un player_index mais un marqueur de type d'événement fixe dans la grammaire binaire du film.
+
+4. **Dump NS révèle la structure complète** : `[pad 80 00 00 00][0d][26][b2][b3][fc][b5][wid×8][post...]` — le bloc `80 00 00 00` précède systématiquement chaque fire event dans la couche NS.
+
+5. **b2_stream = identifiant d'instance d'arme** : sur le match complet (25 chunks), ~40 valeurs de b2_stream distinctes pour 10 joueurs. Chaque valeur b2 correspond à une "arme tenue par un joueur pendant une vie" :
+   - `b2=0x06` : 60 tirs BR75, séquence continue chunk 3-5 → 1 joueur avec BR75
+   - `b2=0x3e` : 46 tirs BR75, depuis chunk 19 → autre joueur/vie avec BR75
+   - `b2=0x01` : 23 events, Cindershot (chunks 3-4) puis Mangler (chunks 6-11) → 1 joueur changeant d'arme (b2 constant pendant la vie, même en changeant d'arme !)
+   - `b2=0x1d` : 29 tirs Needler exclusivement sur chunk 10
+   - Un joueur peut avoir plusieurs b2_stream distincts sur un match (un par vie/spawn)
+
+**Conséquence pour l'attribution :**
+- Le player_index n'est **pas encodé dans les fire events eux-mêmes** (byte[1] toujours 0x26).
+- **b2_stream est l'identifiant de vie d'un joueur** (stable pendant une vie, change au respawn).
+- **Attribution possible via Formula A** : `(b2_stream, weapon_id)` → joueur J qui tenait cette arme selon Section 1 au moment des tirs → intégration via corrélation temporelle b2 ↔ Formula A timeline.
+
+**Impact et prochaine étape :**
+- Notre `scan_fire_events(pi=1)` est correct et capture tous les fire events.
+- L'attribution "tous les fire events sont du POV" était une simplification qui fonctionnait pour les kills du POV, mais est fondamentalement incorrecte pour les non-POV.
+- Piste concrète : implémenter `map_b2_to_player()` (corrèle b2_stream + weapon_id → player_index via Formula A pour les chunks où les deux coexistent) pour lever l'ambiguïté match-level.
+
+---
+
 ### [2026-03-13] — Comparaison parser vs acurtis — match 147ffd4d (Super Fiesta Bazaar)
 - **Statut** : Complété
 - **Décision technique** : Script de comparaison créé dans `scripts/experimental/compare_acurtis_147ffd4d.py`

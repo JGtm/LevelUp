@@ -24,6 +24,12 @@
 - **Kwargs legacy SyncScope** — rétro-compat maintenue, nettoyage différé
 - **Migration noms d'assets résolus → IDs bruts** — chantier L, impact trop large
 
+### 🔜 Backlog v5.8+ (dépendances non réunies)
+
+| # | Chantier | Bloqué par | Complexité |
+|---|----------|-----------|------------|
+| H | Top 10 meilleurs / pires matchs (onglet carrière) | Récupération médailles équipes alliée/ennemie via API | L |
+
 ---
 
 ## Stratégie de branche
@@ -828,3 +834,181 @@ Le tag `v5.7.0` déclenche automatiquement `.github/workflows/release.yml` qui :
 ```bash
 python -m pytest --cov=src --cov-report=term-missing --ignore=tests/integration -q
 ```
+
+---
+
+## H — Top 10 meilleurs / pires matchs (onglet carrière) [BACKLOG v5.8+]
+
+> **⛔ BLOQUÉ** : ce chantier nécessite la récupération des médailles par équipe (alliée et ennemie)
+> via l'API Halo. La table `medals_earned` (shared_matches) couvre uniquement les médailles du
+> joueur suivi — on n'a pas encore les agrégats par équipe adverse. À planifier **après** l'implémentation
+> du backfill des médailles équipes.
+
+### H.1 — Objectif
+
+Afficher dans l'onglet Carrière deux tableaux :
+- **Top 10 meilleures performances** : matchs dans lesquels le joueur a le plus brillé
+- **Top 10 pires performances** : matchs les plus difficiles ou dominés par l'adversaire
+
+Les matchs sélectionnés doivent être **nets** : victoire ou défaite franche, sans pollution
+par des robots, des déconnexions ou des matchs abandonnés.
+
+### H.2 — Critères d'exclusion (filtre préalable)
+
+Les matchs suivants sont **retirés du pool** avant tout classement :
+
+| Critère | Source | Logique |
+|---------|--------|---------|
+| Bots dans n'importe quelle équipe | `match_participants` — si au moins 1 participant a un flag bot (à confirmer via SPNKr) | Exclure — match non-fair quelle que soit l'équipe |
+| Match non terminé (DNF) | `match_registry.outcome = DNF` (outcome code) | Exclure |
+| Résultat nul (TIE) | `outcome = TIE` | Exclure — pas de vainqueur/perdant net |
+| Durée anormalement courte | `match_registry.duration_seconds < MIN_MATCH_DURATION_SECONDS` (constante à calibrer sur p5 percentile) | Exclure — rage quit probable très tôt, le match n'a pas eu lieu |
+
+> **Note bots** : La colonne `had_bot_teammate` (player_match_enrichment) ne couvre que
+> l'équipe alliée. La détection correcte **passe par `match_participants`** : si au moins
+> 1 ligne de `match_participants` pour ce `match_id` correspond à un bot (flag à confirmer
+> selon schéma SPNKr — field `bot_attributes` ou pattern xuid), le match entier est exclu
+> quelle que soit l'équipe impactée.
+
+> **Note rage quit partiel** : Un coéquipier qui déconnecte en cours de match (mais le
+> match continue) n'est pas exclu — les matchs courts sont le proxy correct pour les arrêts
+> prématurés complets. Un match qui dure suffisamment longtemps avec 1 DC reste valide.
+
+### H.3 — Critères de scoring
+
+**Logique retenue : 3 niveaux de priorité**
+
+Le scoring est intentionnellement simple et mode-agnostique grâce à la médaille "À table" :
+
+| Priorité | Critère | Explication |
+|----------|---------|-------------|
+| **1 (principal)** | Présence de la médaille "À table" dans une équipe | Critère de domination mode-agnostique, fourni directement par le moteur Halo — pas besoin de normaliser le score par mode |
+| **2 (départage)** | Durée du match (`duration_seconds`) courte | Court = une équipe a écrasé l'autre rapidement. Longue = le match était serré ou en overtime |
+| **3 (départage fin)** | Écart de score brut | Différentiel points/kills/caps selon le mode, pour distinguer à l'intérieur d'un même groupe durée |
+
+**Logique de sélection :**
+
+- **Top 10 meilleures performances** :
+  1. D'abord les matchs où l'équipe alliée a reçu "À table" (triés par durée croissante — plus court = domination plus nette)
+  2. Puis les matchs de victoire sans "À table" (triés par écart de score décroissant)
+  
+- **Top 10 pires performances** :
+  1. D'abord les matchs où l'équipe ennemie a reçu "À table" (triés par durée croissante — plus court = humiliation plus nette)
+  2. Puis les matchs de défaite sans "À table" (triés par écart de score croissant — défaite la plus large)
+
+> **Sur la durée courte = mauvais signe** : Si c'est serré, les deux équipes se sont défendues
+> et c'est un bon match. Une domination/humiliation nette se manifeste précisément par une
+> durée courte (l'équipe dominée n'a pas pu résister). Ce critère est cohérent.
+
+> **"À table" / Steaktacular (ID `1169390319`)** : Décernée à TOUTE l'équipe gagnante en
+> cas de victoire parfaite ou quasi-parfaite. Aucune relevance individuelle — c'est exactement
+> ce qu'on veut : un proxy de domination collective, indépendant du mode de jeu.
+
+### H.4 — Questions ouvertes / Décisions différées
+
+| # | Question | Impact | Statut |
+|---|----------|--------|--------|
+| H.4.1 | Rage quit partiel (1 DC en cours, match continue) | Faible | **Résolu** : non exclu si durée suffisante — proxy durée min suffit |
+| H.4.2 | Seuil de durée minimale | Faible | **Décision** : calibrer sur p5 percentile de l'historique du joueur. Constante `MIN_MATCH_DURATION_SECONDS` dans `src/analysis/_match_quality_filter.py` |
+| H.4.3 | Bots ennemis : critère de détection dans `match_participants` | **Bloquant partiel** | Investiguer flag bot SPNKr dans le schéma — champ `bot_attributes` ? Ou pattern xuid `bot_*` ? À confirmer avant implémentation du filtre |
+| H.4.4 | Agrégat médailles par équipe (alliée vs ennemie) | **Bloquant principal** | Nécessite `medals_earned` jointé avec `match_participants.team_id` pour séparer les deux équipes. Non disponible actuellement |
+| H.4.5 | Modes FFA (Free-for-All) | Faible | Pas d'équipes formelles → "À table" non applicable → utiliser uniquement écart de score + durée pour ces modes |
+
+### H.5 — Architecture de données envisagée
+
+Une fois les médailles équipes disponibles (agrégat par `team_id`) :
+
+```sql
+-- CTE filtre de qualité (matchs "propres")
+WITH clean_matches AS (
+    SELECT mr.match_id
+    FROM match_registry mr
+    JOIN match_participants mp ON mp.match_id = mr.match_id AND mp.xuid = :player_xuid
+    WHERE mr.outcome NOT IN ('DNF', 'TIE')
+      AND mr.duration_seconds >= :min_duration            -- constante MIN_MATCH_DURATION_SECONDS
+      AND NOT EXISTS (                                    -- aucun bot dans quelque équipe que ce soit
+          SELECT 1 FROM match_participants bp
+          WHERE bp.match_id = mr.match_id AND bp.is_bot = TRUE  -- flag à confirmer §H.4.3
+      )
+),
+
+-- CTE médailles par équipe (bloquant — à construire avec team_id)
+medals_by_team AS (
+    SELECT
+        me.match_id,
+        mp.team_id,
+        SUM(CASE WHEN me.medal_name_id = 1169390319 THEN me.count ELSE 0 END) AS steaktacular_count,
+        SUM(me.count) AS total_medals
+    FROM medals_earned me
+    JOIN match_participants mp ON mp.match_id = me.match_id AND mp.xuid = me.xuid
+    GROUP BY me.match_id, mp.team_id
+),
+
+-- Score final
+match_scores AS (
+    SELECT
+        mr.match_id,
+        mr.mode,
+        mr.outcome,
+        mr.duration_seconds,
+        mr.start_time,
+        mr.map_id,
+        mp.score          AS player_score,
+        mp.team_id        AS my_team_id,
+        -- Médaille "À table" côté allié vs ennemi
+        COALESCE(ally.steaktacular_count, 0)  > 0 AS ally_got_steaktacular,
+        COALESCE(enemy.steaktacular_count, 0) > 0 AS enemy_got_steaktacular,
+        -- Score brut de l'équipe (pour départage L3)
+        (SELECT SUM(team_score) FROM match_participants tp
+         WHERE tp.match_id = mr.match_id AND tp.team_id = mp.team_id LIMIT 1) AS ally_team_score,
+        (SELECT SUM(team_score) FROM match_participants tp
+         WHERE tp.match_id = mr.match_id AND tp.team_id != mp.team_id LIMIT 1) AS enemy_team_score
+    FROM match_registry mr
+    JOIN clean_matches cm ON cm.match_id = mr.match_id
+    JOIN match_participants mp ON mp.match_id = mr.match_id AND mp.xuid = :player_xuid
+    LEFT JOIN medals_by_team ally   ON ally.match_id = mr.match_id  AND ally.team_id = mp.team_id
+    LEFT JOIN medals_by_team enemy  ON enemy.match_id = mr.match_id AND enemy.team_id != mp.team_id
+)
+
+-- Top 10 meilleures performances
+SELECT * FROM match_scores
+WHERE outcome = 'WIN'
+ORDER BY
+    ally_got_steaktacular DESC,   -- priorité 1 : on a eu "À table"
+    duration_seconds ASC,         -- priorité 2 : plus court = domination plus nette
+    (ally_team_score - enemy_team_score) DESC  -- priorité 3 : écart de score
+LIMIT 10;
+
+-- Top 10 pires performances (même CTE, clause ORDER BY inversée)
+SELECT * FROM match_scores
+WHERE outcome = 'LOSS'
+ORDER BY
+    enemy_got_steaktacular DESC,  -- priorité 1 : ennemis ont eu "À table"
+    duration_seconds ASC,         -- priorité 2 : plus court = humiliation plus nette
+    (enemy_team_score - ally_team_score) DESC  -- priorité 3 : écart de score
+LIMIT 10;
+```
+
+### H.6 — UI envisagée
+
+```
+[Onglet Carrière]
+  └── Section "Matchs marquants"
+        ├── 🏆 Top 10 meilleures performances
+        │     Tableau : Date | Mode | Carte | Résultat | Écart score | Médailles alliées | Durée
+        └── 💀 Top 10 pires performances
+              Tableau : idem
+              
+  [Filtre optionnel] : Mode de jeu | Saison
+```
+
+- Tri par défaut : écart score normalisé (desc victoires, desc défaites)
+- Chaque ligne cliquable → ouvre le détail du match (lien vers vue match existante)
+- Badge coloré sur l'écart de score (vert gradient pour victoires, rouge pour défaites)
+
+### H.7 — Pré-requis avant implémentation
+
+- [ ] **[Bloquant]** Confirmer le flag de détection bot dans `match_participants` (§H.4.3) — champ `is_bot` ? pattern xuid ? à valider avec schéma SPNKr/API
+- [ ] **[Bloquant]** Construire l'agrégat médailles par équipe : `medals_earned` JOIN `match_participants` sur `(match_id, xuid)` → agréger par `team_id` → inclure `steaktacular_count` (medal_name_id = `1169390319`)
+- [ ] Décision sur `MIN_MATCH_DURATION_SECONDS` — calibrer sur p5 percentile de l'historique (ex. 3 min = 180 s comme point de départ)
+- [ ] Valider comportement FFA (§H.4.5) — "À table" applicable ou non ?
