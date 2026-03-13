@@ -19,7 +19,7 @@ En v5.1, les stats coéquipiers sont chargées depuis `shared.match_participants
 
 Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score_awards` uniquement.
 
-## État Actuel (2026-03-05) — v5.4 Refactoring
+## État Actuel (2026-03-13) — v5.7 Stable
 
 ### Historique des versions
 
@@ -27,6 +27,9 @@ Le sync écrit dans les player DBs : `player_match_enrichment` + `personal_score
 - **v5.2** : Filtres intent-based, Stats PvE Firefight (`shared_pve.duckdb`), Scoreboard, palette Okabe-Ito ✅
 - **v5.3** : LUSR/CSR TrueSkill 2 per-groupe, Notifications Discord, 20 tests corrigés ✅
 - **v5.4** : i18n split, logging centralisé, SyncScope cleanup, refactoring modules >500L (Phases 0-6, 72 sous-modules) ✅
+- **v5.5** : Setup Wizard, Xbox OAuth → Device Code Flow, comparaison sessions, compatibilité macOS/Linux ✅
+- **v5.6** : Extraction armes depuis films SPNKr (`weapon_kills`), Friends Impact Matrix ✅
+- **v5.7** : Top 10 meilleurs/pires matchs (Carrière), détection Domination/Humiliation, CSS map hover, Pandas→Polars, launchers bilingues ✅
 
 ### Architecture v5.3
 
@@ -50,6 +53,8 @@ data/
 - `src/data/repositories/duckdb_repo.py` : Repository principal DuckDB (splitté: `_awards_repo`, `_diagnostic_repo`, `_legacy_compat`, `_match_queries_helpers`, `_match_queries_polars`, `_metadata_resolution`, `_schema_introspection`, `_archives_repo`, `_events_repo`, `_medals_repo`, `_gamertag_resolver`)
 - `src/data/repositories/factory.py` : Factory pattern
 - `src/data/sync/engine.py` : Moteur de synchronisation (8 mixins MRO : `_shared_writes`, `_performance`, `_skill_rating`, `_career`, `_aggregates`, `_match_processing`, `_engine_connections`, `_engine_schema` + `_protocol.py`)
+- `src/data/sync/_engine_weapon_kills.py` : Mixin extraction armes depuis films (`WeaponKillsEngineMixin`) — v5.6
+- `src/data/services/weapon_extraction_service.py` : Service hexagonal extraction armes (`WeaponExtractionService`) — v5.6
 - `src/data/media_indexer.py` : Indexation médias (splitté: `media_helpers`, `media_loaders`, `media_thumbnails`)
 
 ### Analyse
@@ -58,6 +63,7 @@ data/
 - `src/analysis/sessions.py` : Détection sessions
 - `src/analysis/performance_score.py` : Score de performance (splitté: `_performance_relative`, `_performance_session`)
 - `src/analysis/objective_participation.py` : Participation objectifs (splitté: `_objective_helpers`, `_objective_profile`, `_objective_summary`)
+- `src/analysis/weapon_parser.py` : Parser pur d'armes depuis films SPNKr (0 IO, architecture hexagonale) — v5.6
 - `src/data/sync/transformers/` : Package (7 sous-modules: `_helpers`, `_match`, `_skill`, `_events`, `_medals`, `_personal_scores`, `_pve`)
 
 ### Visualisation & UI (splits phases 4-6)
@@ -78,6 +84,13 @@ data/
 
 ### UI
 - `src/ui/pages/` : Pages du dashboard
+- `src/ui/pages/career_top_matches_data.py` + `career_top_matches_render.py` : Top 10 meilleures/pires performances (Carrière) — v5.7
+- `src/ui/pages/match_view_weapon_kills.py` : Section armes dans vue match — v5.6
+- `src/ui/pages/teammates_weapons.py` : Onglet armes coéquipiers — v5.6
+- `src/ui/pages/setup_wizard.py` + `setup_wizard_logic.py` + `setup_wizard_xbox.py` : Assistant configuration initiale — v5.5
+- `src/ui/xbox_oauth_ui.py` + `src/utils/msal_device_flow.py` : Device Code Flow Xbox OAuth — v5.5
+- `src/app/player_provisioning.py` : Provisionnement automatique joueur — v5.5
+- `src/utils/auth.py` : `AuthStatus` + gestion credentials — v5.5
 - `src/ui/pages/teammates_views.py` : Vues coéquipiers (splitté: `_teammates_trio.py`)
 - `src/ui/components/radar_chart.py` : Radar charts (splitté: `_radar_participation`, `_radar_teammates`)
 - `src/ui/cache_loaders.py` : Cache Streamlit (splitté: `_cache_core`, `_cache_queries`)
@@ -88,6 +101,8 @@ data/
 - `src/utils/safe_types.py` / `async_compat.py` / `env.py` : Utilitaires partagés — v5.4
 - `src/visualization/` : Graphiques Plotly
 - `src/visualization/timeseries_combat.py` : Séries temporelles (splitté: `_timeseries_helpers`, `_timeseries_progression`)
+- `src/visualization/friends_impact_heatmap.py` : Friends Impact Matrix (séparateurs verticaux, renommé depuis Heatmap) — v5.6
+- `src/ui/i18n/ranks.py` : Traductions FR des rangs Halo (17 rangs + 6 tiers CSR) — v5.7
 
 ## Tables DuckDB
 
@@ -101,6 +116,7 @@ data/
 | `medals_earned` | Médailles de tous les joueurs |
 | `killer_victim_pairs` | Paires killer→victim |
 | `xuid_aliases` | Mapping global XUID→Gamertag |
+| `weapon_kills` | Kills par arme par joueur par match (weapon_id UBIGINT, PK=match_id+xuid+weapon_id) — **v5.6** |
 
 ### Base Joueur stats.duckdb (v5.3 — enrichissements uniquement)
 
@@ -186,15 +202,18 @@ data/
 
 Aucun problème bloquant connu.
 
-## État technique (v5.4)
+## État technique (v5.7)
 
-- **3693 tests** passent, 0 échecs
+- **4479 tests** passent, 0 échecs
 - **Architecture DuckDB v5.3** : shared_matches + shared_pve + player enrichments
 - **Polars** comme moteur DataFrame (0 Pandas dans code métier)
 - **0 SQLite** dans le code runtime
 - **Streamlit ≥1.37** avec @st.fragment, st.navigation, column_config
 - **Taille player DB** : ~4 MB (vs ~30 MB en v5.0)
-- **Refactoring v5.4** : 72 nouveaux sous-modules (phases 0-6), 191 violations restantes (25 modules >500L, 166 fonctions >80L)
+- **Refactoring v5.4** : 72 nouveaux sous-modules (phases 0-6)
+- **weapon_kills** : extraction armes via films SPNKr (~87.5% couverture POV) — v5.6
+- **Setup Wizard + Device Code Flow** : configuration guidée sans redirect URI — v5.5
+- **CSS map thumbnails** : hover pur CSS, sans JS sandboxé — v5.7
 
 ## Exploration Complète du Projet
 
@@ -216,7 +235,10 @@ Consulter ce fichier pour une cartographie exhaustive ; le présent `project_map
 
 ## Dernière Mise à Jour
 
-**2026-03-05** : **v5.4 Refactoring** — Phases 0-6 split modules >500L, 72 sous-modules, 3693 tests, baseline 191 violations
-**2026-02-25** : **v5.3.0** — LUSR/CSR TrueSkill 2 per-groupe, Notifications Discord, 3323 tests
+**2026-03-13** : **v5.7.0** — Top 10 meilleurs/pires matchs, CSS map hover, Pandas→Polars, launchers bilingues, 4479 tests
+**2026-03-10** : **v5.6.0** — weapon_kills (extraction armes films), Device Code Flow Xbox, Friends Impact Matrix
+**2026-03-07** : **v5.5.0** — Setup Wizard, Xbox OAuth, comparaison sessions, macOS/Linux, packaging portable
+**2026-03-05** : **v5.4** — Refactoring modules >500L, 72 sous-modules, SyncScope, logging centralisé
+**2026-02-25** : **v5.3.0** — LUSR/CSR TrueSkill 2 per-groupe, Notifications Discord
 **2026-02-20** : **v5.2.0** — Filtres intent-based, Stats PvE shared_pve.duckdb, Scoreboard, Okabe-Ito
 **2026-02-17** : **v5.1.0 Release** — Documentation finale, archivage, release tag

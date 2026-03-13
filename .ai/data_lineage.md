@@ -1,7 +1,7 @@
 # Data Lineage - Traçabilité des Données Halo
 
 > Ce fichier trace l'origine, les transformations et la destination de chaque flux de données.
-> Mis à jour : 2026-03-05
+> Mis à jour : 2026-03-13
 
 ## Architecture v5.1 - Shared Matches + Player Enrichments
 
@@ -150,7 +150,29 @@ Destination: data/warehouse/shared_pve.duckdb → pve_match_stats
   + bit guard MatchBits.PVE_STATS (1 << 20) dans match_registry.backfill_completed
 ```
 
-### 8. Dossiers médias → DuckDB (Onglet Médias)
+### 8. Films SPNKr → weapon_kills (Extraction Armes) — v5.6
+
+```
+Source: API Halo Infinite (film chunks REPLICATION_DATA)
+     ↓
+src/analysis/weapon_parser.py (domaine pur, 0 IO)
+  - Corrélation kill → dernier événement fire dans fenêtre 2000 ms
+  - Melee/grenade/véhicule via médailles (MELEE_API_ID=1, GRENADE_API_ID=0)
+  - POV coverage : ~87,5% des kills
+     ↓
+src/data/services/weapon_extraction_service.py (WeaponExtractionService)
+  - Orchestration : téléchargement chunks, appel parser, agrégation
+  - Cache local dans data/investigation/chunks/<match_id>/
+     ↓
+src/data/sync/_engine_weapon_kills.py (WeaponKillsEngineMixin)
+  - Contrôlé par SyncOptions.with_weapons
+  - Bit MatchBits.WEAPON_KILLS (1 << 21) dans match_registry.backfill_completed
+     ↓
+Destination: data/warehouse/shared_matches.duckdb → weapon_kills
+  (PK = match_id, xuid, weapon_id UBIGINT ; index idx_wk_match_xuid)
+```
+
+### 9. Dossiers médias → DuckDB (Onglet Médias)
 
 ```
 Source: Dossiers configurés (Paramètres → media_screens_dir, media_videos_dir)
@@ -195,6 +217,7 @@ Lancement : thread en arrière-plan au démarrage de l’app (`_background_media
 | `medals_earned` | M:N | Médailles de tous les joueurs |
 | `killer_victim_pairs` | N:1 par match | Paires killer→victim |
 | `xuid_aliases` | 1:1 | Mapping global XUID→Gamertag |
+| `weapon_kills` | N:1 par match | Kills par arme par joueur (weapon_id UBIGINT, ~87,5% POV) — **v5.6** |
 
 ### Données Joueur stats.duckdb (v5.3 — enrichissements uniquement)
 
