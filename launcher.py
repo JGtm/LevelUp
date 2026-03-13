@@ -1863,6 +1863,35 @@ def _cmd_reauth(args: argparse.Namespace) -> int:
     return 0
 
 
+def _wizard_save_client_id() -> bool:
+    """Wizard minimal : demande uniquement le Client ID et le sauvegarde.
+
+    Pour les utilisateurs qui ont déjà créé leur app Azure et connaissent
+    leur Client ID.  Le Device Code Flow (MSAL) est ensuite déclenché
+    normalement par ``_wizard_oauth_token()``.
+    """
+    print()
+    print("  Colle ton Application (client) ID Azure :")
+    print("  (Disponible dans portal.azure.com → App registrations → ton app → Overview)")
+    print()
+    try:
+        client_id = input("  Client ID : ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    if not client_id:
+        print("  Annulé.")
+        return False
+    env_local = REPO_ROOT / ".env.local"
+    try:
+        _upsert_env_key(env_local, "SPNKR_AZURE_CLIENT_ID", client_id)
+        os.environ["SPNKR_AZURE_CLIENT_ID"] = client_id
+        print("  ✅ Client ID sauvegardé.")
+        return True
+    except Exception as exc:
+        print(f"  ❌ Sauvegarde impossible : {exc}")
+        return False
+
+
 # =============================================================================
 # Détection d'état au démarrage + menu de récupération
 # =============================================================================
@@ -1953,6 +1982,12 @@ def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
                 "🔑 MSAL Device Code Flow  (portail Azure minimal — recommandé, no secret)",
             )
         )
+        options.append(
+            (
+                "paste-id",
+                "📋 Coller un Client ID  (tu as déjà créé ton app Azure, on s'occupe du reste)",
+            )
+        )
     else:
         for gt in state.players_missing_token:
             options.append(
@@ -1996,6 +2031,13 @@ def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
 
     if action == "config-noaz":
         ok = _wizard_azure_creds(no_az=True)
+        return _interactive() if ok else 2
+
+    if action == "paste-id":
+        # L'utilisateur a déjà son app Azure — on demande juste le client_id,
+        # puis on relance _interactive() qui détectera le token manquant et
+        # proposera le Device Code Flow (MSAL) automatiquement.
+        ok = _wizard_save_client_id()
         return _interactive() if ok else 2
 
     if action.startswith("reauth:"):
