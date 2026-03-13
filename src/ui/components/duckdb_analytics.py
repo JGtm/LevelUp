@@ -23,6 +23,7 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import streamlit as st
@@ -31,6 +32,8 @@ from src.ui.i18n import t
 
 if TYPE_CHECKING:
     pass
+
+_log = logging.getLogger(__name__)
 
 
 def _is_analytics_enabled() -> bool:
@@ -110,6 +113,7 @@ def render_global_stats_card(
         return True
 
     except Exception as e:
+        _log.warning("Erreur analytics DuckDB global stats", exc_info=True)
         st.warning(f"Erreur analytics DuckDB: {e}")
         return False
 
@@ -160,7 +164,7 @@ def render_kda_trend_chart(
             pl.col("rolling_kda").alias("KDA"),
         )
 
-        st.line_chart(chart_df.to_pandas().set_index("Match"), width="stretch")
+        st.line_chart(chart_df, x="Match", y="KDA", width="stretch")
 
         # Stats récentes vs anciennes
         if len(df) >= window_size * 2:
@@ -186,6 +190,7 @@ def render_kda_trend_chart(
         return True
 
     except Exception as e:
+        _log.warning("Erreur graphique KDA", exc_info=True)
         st.warning(f"Erreur graphique KDA: {e}")
         return False
 
@@ -252,6 +257,7 @@ def render_performance_by_map(
         return True
 
     except Exception as e:
+        _log.warning("Erreur performances par carte", exc_info=True)
         st.warning(f"Erreur performances par carte: {e}")
         return False
 

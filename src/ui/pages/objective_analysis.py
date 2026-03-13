@@ -6,6 +6,7 @@ et à la valorisation des joueurs support.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 # Polars
@@ -30,6 +31,8 @@ from src.visualization.objective_charts import (
 
 if TYPE_CHECKING:
     from src.data.repositories.duckdb_repo import DuckDBRepository
+
+_log = logging.getLogger(__name__)
 
 
 def _format_score(value: float | None) -> str:
@@ -67,6 +70,7 @@ def _load_awards_data(
                 awards_df = repo.query_df("SELECT * FROM personal_score_awards")
                 match_stats_df = repo.query_df("SELECT * FROM match_stats ORDER BY start_time ASC")
         except Exception as e:
+            _log.warning("Échec chargement awards", exc_info=True)
             st.error(t("error_loading", error=e))
             st.info(t("obj_sync_hint"))
             return None, None
@@ -238,12 +242,15 @@ def _render_assists_section(my_awards_df: pl.DataFrame) -> None:
     with col_table:
         st.markdown(f"### {t('obj_assist_detail')}")
         if not assist_by_type.is_empty():
-            assist_table = assist_by_type.to_pandas()
-            assist_table["award_name"] = assist_table["award_name"].map(
-                lambda x: i18n_label("awards", x, lang=get_lang()) or x
+            tbl = assist_by_type.with_columns(
+                pl.col("award_name").map_elements(
+                    lambda x: i18n_label("awards", x, lang=get_lang()) or x,
+                    return_dtype=pl.Utf8,
+                )
+            ).rename(
+                {"award_name": "Type d'assistance", "total_points": "Points", "count": "Nombre"}
             )
-            assist_table.columns = ["Type d'assistance", "Points", "Nombre"]
-            st.dataframe(assist_table, width="stretch", hide_index=True)
+            st.dataframe(tbl, width="stretch", hide_index=True)
 
 
 def _render_awards_frequency(my_awards_df: pl.DataFrame) -> None:
@@ -259,11 +266,9 @@ def _render_awards_frequency(my_awards_df: pl.DataFrame) -> None:
             top_n=10,
         )
         if not obj_freq.is_empty():
-            tbl = obj_freq.to_pandas()
-            tbl.iloc[:, 0] = tbl.iloc[:, 0].map(
-                lambda x: i18n_label("awards", x, lang=get_lang()) or x
+            tbl = obj_freq.select("display_name", "total_points", "count").rename(
+                {"display_name": "Award", "total_points": "Points", "count": "Occurrences"}
             )
-            tbl.columns = ["Award", "Points", "Occurrences"]
             st.dataframe(tbl, width="stretch", hide_index=True)
         else:
             st.info(t("obj_no_awards"))
@@ -272,11 +277,9 @@ def _render_awards_frequency(my_awards_df: pl.DataFrame) -> None:
         st.markdown("### Tous les Awards")
         all_freq = compute_award_frequency_polars(my_awards_df, top_n=10)
         if not all_freq.is_empty():
-            tbl = all_freq.to_pandas()
-            tbl.iloc[:, 0] = tbl.iloc[:, 0].map(
-                lambda x: i18n_label("awards", x, lang=get_lang()) or x
+            tbl = all_freq.select("display_name", "total_points", "count").rename(
+                {"display_name": "Award", "total_points": "Points", "count": "Occurrences"}
             )
-            tbl.columns = ["Award", "Points", "Occurrences"]
             st.dataframe(tbl, width="stretch", hide_index=True)
         else:
             st.info(t("obj_no_awards_generic"))
@@ -365,4 +368,5 @@ def render_objective_analysis_page_from_session_state() -> None:
         repo = DuckDBRepository(db_path, xuid)
         render_objective_analysis_page(repo, xuid)
     except Exception as e:
+        _log.error("Erreur page objectifs", exc_info=True)
         st.error(t("error_loading", error=e))
