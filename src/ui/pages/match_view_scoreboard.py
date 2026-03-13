@@ -37,6 +37,7 @@ def _get_scoreboard_cols() -> list[tuple[str, str]]:
         (t("col_deaths"), "deaths"),
         (t("col_assists_short"), "assists"),
         (t("col_kda"), "kda"),
+        (t("col_weapon_of_destruction"), "top_weapon_id"),
         (t("col_killing_spree"), "max_killing_spree"),
         (t("col_headshots"), "headshot_kills"),
         (t("col_perfect_kills"), "perfect_kills"),
@@ -45,8 +46,6 @@ def _get_scoreboard_cols() -> list[tuple[str, str]]:
         (t("col_accuracy"), "accuracy"),
         (t("col_melee"), "melee_kills"),
         (t("col_power_weapon"), "power_weapon_kills"),
-        # TODO(api-update): décommenter quand l'API expose l'arme de frag ennemie
-        # (t("col_weapon_of_destruction"), "weapon_of_destruction"),
         (t("col_dmg_dealt"), "damage_dealt"),
         (t("col_dmg_taken"), "damage_taken"),
         (t("mv_scoreboard_avg_life"), "avg_life_seconds"),
@@ -54,7 +53,7 @@ def _get_scoreboard_cols() -> list[tuple[str, str]]:
 
 
 # Colonnes non comparables (texte / ordinal) : pas de highlight min/max
-_SB_SKIP_HIGHLIGHT: set[str] = {"gamertag", "rank"}
+_SB_SKIP_HIGHLIGHT: set[str] = {"gamertag", "rank", "top_weapon_id"}
 
 # Colonnes inversées : moins = mieux (vert), plus = pire (rouge)
 _SB_INVERTED: set[str] = {"deaths", "damage_taken"}
@@ -117,11 +116,17 @@ def _sb_cell_class(
 
 def _fmt_scoreboard_cell(key: str, value: Any) -> str:
     """Formate une valeur pour l'affichage dans le scoreboard."""
+    if key == "top_weapon_id":
+        from src.analysis._weapon_data import resolve_weapon_display
+
+        if value is None:
+            return "-"
+        name = resolve_weapon_display(int(value))
+        if name is None or name.startswith("weapon_"):
+            return "-"
+        return name
     if value is None:
         return "—"
-    # TODO(api-update): décommenter quand la feature weapon_of_destruction est réactivée
-    # if key == "weapon_of_destruction":
-    #     return str(value) if value else "—"
     if key == "gamertag":
         s = str(value).strip()
         if not s or s.isdigit() or s.lower().startswith("xuid(") or s == "?":
@@ -351,27 +356,6 @@ def render_match_scoreboard(
         return
 
     me_xu = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
-
-    # ── Arme de destruction (désactivée) ─────────────────────────────────
-    # Désactivée : les fire events film ne couvrent que le POV du joueur.
-    # L'API stats ne retourne pas l'arme des ennemis pour le moment.
-    # TODO(api-update): Réactiver le bloc ci-dessous si l'API l'expose un jour.
-    # top_weapon: dict[str, tuple[int, int]] = {}
-    # try:
-    #     from src.data.repositories import DuckDBRepository
-    #     repo = DuckDBRepository(db_path, xuid="", read_only=True)
-    #     top_weapon = repo.load_top_weapon_per_player(match_id.strip())
-    # except Exception:
-    #     pass
-    # lang = get_lang()  # utilisé par get_weapon_label ci-dessous
-    # for p in players:
-    #     p_xu = str(p.get("xuid") or "").strip()
-    #     if p_xu in top_weapon:
-    #         wid, wkills = top_weapon[p_xu]
-    #         label = get_weapon_label(wid, lang)
-    #         p["weapon_of_destruction"] = f"{label} ({wkills})"
-    #     else:
-    #         p["weapon_of_destruction"] = None
 
     gt_map: dict[str, str] = load_match_gamertags_fn(db_path, match_id.strip(), db_key=db_key) or {}
     logger.debug("Résolution gamertags scoreboard match=%s: %d entrées", match_id, len(gt_map))

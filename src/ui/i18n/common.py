@@ -147,6 +147,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "outcome_draw": {"fr": "Égalité", "en": "Draw"},
     "outcome_dnf": {"fr": "Non terminé", "en": "Did Not Finish"},
     "outcome_unknown": {"fr": "?", "en": "?"},
+    "outcome_domination": {"fr": "Domination totale", "en": "Total Domination"},
+    "outcome_humiliation": {"fr": "Humiliation totale", "en": "Total Humiliation"},
     # ── Colonnes / métriques communes ───────────────────────────────────────
     "col_kills": {"fr": "Frags", "en": "Kills"},
     "col_deaths": {"fr": "Morts", "en": "Deaths"},
@@ -195,7 +197,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "col_melee": {"fr": "Corps à corps", "en": "Melee"},
     "col_grenade_kills": {"fr": "Grenades", "en": "Grenades"},
     "col_power_weapon": {"fr": "Armes lourdes", "en": "Power weapons"},
-    "col_weapon_of_destruction": {"fr": "Arme de destruction", "en": "Top weapon"},
+    "col_weapon_of_destruction": {"fr": "Outil de destruction", "en": "Top weapon"},
     "col_weapon_name": {"fr": "Arme", "en": "Weapon"},
     "col_weapon_kills": {"fr": "Kills arme", "en": "Weapon kills"},
     "col_total_weapon_kills": {"fr": "Total kills arme", "en": "Total weapon kills"},

@@ -52,6 +52,20 @@ def _create_shared_db(path: Path) -> None:
     conn.execute(
         "CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER)"
     )
+    conn.execute(
+        """
+        CREATE TABLE weapon_kills (
+            match_id        VARCHAR,
+            xuid            VARCHAR,
+            time_ms         INTEGER,
+            weapon_id       UBIGINT,
+            delta_ms        INTEGER,
+            confidence      VARCHAR,
+            swap_detected   BOOLEAN,
+            delayed_damage  BOOLEAN
+        )
+        """
+    )
     conn.close()
 
 
@@ -135,6 +149,23 @@ def _insert_medal(
 def _insert_alias(shared_path: Path, xuid: str, gamertag: str) -> None:
     conn = duckdb.connect(str(shared_path))
     conn.execute("INSERT INTO xuid_aliases VALUES (?, ?)", [xuid, gamertag])
+    conn.close()
+
+
+def _insert_weapon_kill(
+    shared_path: Path,
+    match_id: str,
+    xuid: str,
+    weapon_id: int,
+    n: int = 1,
+) -> None:
+    """Insère n lignes weapon_kill pour (match_id, xuid, weapon_id)."""
+    conn = duckdb.connect(str(shared_path))
+    for _ in range(n):
+        conn.execute(
+            "INSERT INTO weapon_kills VALUES (?, ?, 0, ?, NULL, 'high', false, false)",
+            [match_id, xuid, weapon_id],
+        )
     conn.close()
 
 
@@ -364,8 +395,153 @@ class TestLoadMatchScoreboard:
             "damage_taken",
             "avg_life_seconds",
             "perfect_kills",
+            "top_weapon_id",
         }
         assert expected_keys == set(rows[0].keys())
+
+
+# =============================================================================
+# Tests top_weapon_id dans load_match_scoreboard
+# =============================================================================
+
+
+class TestTopWeaponIdScoreboard:
+    """Tests pour la colonne top_weapon_id ajoutée au scoreboard."""
+
+    @pytest.fixture
+    def shared_path(self, tmp_path: Path) -> Path:
+        path = tmp_path / "shared_matches.duckdb"
+        _create_shared_db(path)
+        return path
+
+    @pytest.fixture
+    def repo(self, tmp_path: Path, shared_path: Path):
+        from src.data.repositories import DuckDBRepository
+
+        player_db = tmp_path / "stats.duckdb"
+        _create_empty_player_db(player_db)
+        return DuckDBRepository(
+            player_db_path=player_db,
+            xuid="100000000000001",
+            shared_db_path=shared_path,
+            metadata_db_path=tmp_path / "meta_inexistant.duckdb",
+            read_only=False,
+        )
+
+    def test_top_weapon_id_none_when_no_weapon_kills(self, repo, shared_path: Path) -> None:
+        """Joueur sans weapon_kills → top_weapon_id=None."""
+        _insert_participant(shared_path, "w001", "P1", team_id=0, rank=1)
+        rows = repo.load_match_scoreboard("w001")
+        assert len(rows) == 1
+        assert rows[0]["top_weapon_id"] is None
+
+    def test_top_weapon_id_most_frequent(self, repo, shared_path: Path) -> None:
+        """L'arme avec le plus de kills est retournée."""
+        # BR75 = weapon_id connu
+        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
+
+        br75_id = WEAPON_NAME_TO_INT["BR75"]
+        sidekick_id = WEAPON_NAME_TO_INT["Mk51 Sidekick"]
+        _insert_participant(shared_path, "w002", "P2", team_id=0, rank=1)
+        # 5 kills BR75, 2 kills Sidekick
+        _insert_weapon_kill(shared_path, "w002", "P2", br75_id, n=5)
+        _insert_weapon_kill(shared_path, "w002", "P2", sidekick_id, n=2)
+
+        rows = repo.load_match_scoreboard("w002")
+        assert rows[0]["top_weapon_id"] == br75_id
+
+    def test_top_weapon_id_excludes_sentinels(self, repo, shared_path: Path) -> None:
+        """Les weapon_id sentinelles (0=grenade, 1=melee, 2=vehicle) sont exclus."""
+        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
+
+        br75_id = WEAPON_NAME_TO_INT["BR75"]
+        _insert_participant(shared_path, "w003", "P3", team_id=0, rank=1)
+        # 10 kills melee (1) — exclus, 2 kills BR75
+        _insert_weapon_kill(shared_path, "w003", "P3", 1, n=10)  # melee sentinel
+        _insert_weapon_kill(shared_path, "w003", "P3", 0, n=5)  # grenade sentinel
+        _insert_weapon_kill(shared_path, "w003", "P3", br75_id, n=2)
+
+        rows = repo.load_match_scoreboard("w003")
+        # top_weapon_id doit être BR75, pas la sentinelle
+        assert rows[0]["top_weapon_id"] == br75_id
+
+    def test_top_weapon_id_only_sentinels_returns_none(self, repo, shared_path: Path) -> None:
+        """Si seules des sentinelles sont présentes, top_weapon_id=None."""
+        _insert_participant(shared_path, "w004", "P4", team_id=0, rank=1)
+        _insert_weapon_kill(shared_path, "w004", "P4", 1, n=5)  # melee
+        _insert_weapon_kill(shared_path, "w004", "P4", 0, n=3)  # grenade
+
+        rows = repo.load_match_scoreboard("w004")
+        assert rows[0]["top_weapon_id"] is None
+
+    def test_top_weapon_id_isolated_per_player(self, repo, shared_path: Path) -> None:
+        """Chaque joueur a bien SON arme principale, pas celle du voisin."""
+        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
+
+        br75_id = WEAPON_NAME_TO_INT["BR75"]
+        sidekick_id = WEAPON_NAME_TO_INT["Mk51 Sidekick"]
+        _insert_participant(shared_path, "w005", "PA", team_id=0, rank=1)
+        _insert_participant(shared_path, "w005", "PB", team_id=0, rank=2)
+        _insert_weapon_kill(shared_path, "w005", "PA", br75_id, n=8)
+        _insert_weapon_kill(shared_path, "w005", "PB", sidekick_id, n=6)
+
+        rows = repo.load_match_scoreboard("w005")
+        by_xuid = {r["xuid"]: r["top_weapon_id"] for r in rows}
+        assert by_xuid["PA"] == br75_id
+        assert by_xuid["PB"] == sidekick_id
+
+
+# =============================================================================
+# Tests _fmt_scoreboard_cell pour top_weapon_id
+# =============================================================================
+
+
+class TestFmtScoreboardCellTopWeapon:
+    """Tests du formatage de la colonne top_weapon_id dans le scoreboard."""
+
+    def test_none_returns_dash(self) -> None:
+        """top_weapon_id=None affiche '-'."""
+        from src.ui.pages.match_view_scoreboard import _fmt_scoreboard_cell
+
+        assert _fmt_scoreboard_cell("top_weapon_id", None) == "-"
+
+    def test_known_weapon_id_returns_localized_name(self) -> None:
+        """Un weapon_id connu retourne le nom localisé FR."""
+        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
+        from src.ui.pages.match_view_scoreboard import _fmt_scoreboard_cell
+
+        sidekick_id = WEAPON_NAME_TO_INT["Mk51 Sidekick"]
+        result = _fmt_scoreboard_cell("top_weapon_id", sidekick_id)
+        assert result == "MK50 Sidekick"  # nom FR
+
+    def test_translated_weapon_name_fr(self) -> None:
+        """Cindershot → Crémateur (traduction FR appliquée)."""
+        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
+        from src.ui.pages.match_view_scoreboard import _fmt_scoreboard_cell
+
+        cid = WEAPON_NAME_TO_INT["Cindershot"]
+        assert _fmt_scoreboard_cell("top_weapon_id", cid) == "Crémateur"
+
+    def test_unknown_weapon_id_returns_dash(self) -> None:
+        """weapon_id inconnu (non dans WEAPON_INT_TO_NAME) retourne '-'."""
+        from src.ui.pages.match_view_scoreboard import _fmt_scoreboard_cell
+
+        # ID arbitraire sans entrée dans WEAPON_INT_TO_NAME
+        assert _fmt_scoreboard_cell("top_weapon_id", 9999999999999) == "-"
+
+    def test_not_in_skip_highlight(self) -> None:
+        """top_weapon_id est dans _SB_SKIP_HIGHLIGHT (pas de colorisation)."""
+        from src.ui.pages.match_view_scoreboard import _SB_SKIP_HIGHLIGHT
+
+        assert "top_weapon_id" in _SB_SKIP_HIGHLIGHT
+
+    def test_other_columns_unaffected_by_weapon_logic(self) -> None:
+        """Les autres colonnes ne sont pas impactées par le nouveau branchement."""
+        from src.ui.pages.match_view_scoreboard import _fmt_scoreboard_cell
+
+        assert _fmt_scoreboard_cell("kda", 1.5) == "1.50"
+        assert _fmt_scoreboard_cell("kills", 5) == "5"
+        assert _fmt_scoreboard_cell("kills", None) == "—"
 
 
 # =============================================================================
