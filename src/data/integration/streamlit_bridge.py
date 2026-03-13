@@ -2,6 +2,10 @@
 Bridge entre le nouveau système de données et l'UI Streamlit.
 (Bridge between new data system and Streamlit UI)
 
+# v5.7 : frontière Pandas légitime — migration évaluée pour v5.8+
+# Ce module utilise pd.to_datetime().dt.tz_convert() pour la timezone,
+# pas d'équivalent simple en Polars pur.
+
 HOW IT WORKS:
 Ce module fournit des fonctions qui :
 1. Créent les repositories/engines avec le bon mode
