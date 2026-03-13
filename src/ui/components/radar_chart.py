@@ -95,6 +95,41 @@ def create_radar_chart(  # noqa: PLR0913
     return fig
 
 
+def _add_permin_radar_trace(  # noqa: PLR0913
+    fig: go.Figure,
+    player: dict,
+    categories: list[str],
+    ref_kpm: float,
+    ref_dpm: float,
+    ref_apm: float,
+) -> None:
+    """Ajoute une trace Scatterpolar normalisée pour les stats/min."""
+    name = player.get("name", "")
+    color = player.get("color")
+    orig = [
+        player.get("kills_per_min") or 0,
+        player.get("deaths_per_min") or 0,
+        player.get("assists_per_min") or 0,
+    ]
+    normed = [min(orig[0] / ref_kpm, 1.0), min(orig[1] / ref_dpm, 1.0), min(orig[2] / ref_apm, 1.0)]
+    values = normed + [normed[0]]
+    theta = categories + [categories[0]]
+    customdata = [[v] for v in orig] + [[orig[0]]]
+    fig.add_trace(
+        go.Scatterpolar(
+            r=values,
+            theta=theta,
+            name=name,
+            fill="toself",
+            line={"width": 2, "color": color} if color else {"width": 2},
+            fillcolor=color,
+            opacity=0.3,
+            customdata=customdata,
+            hovertemplate="%{theta}: %{customdata[0]:.2f}<extra>%{fullData.name}</extra>",
+        )
+    )
+
+
 def create_stats_per_minute_radar(
     players: list[dict[str, Any]],
     *,
@@ -133,39 +168,8 @@ def create_stats_per_minute_radar(
     fig = go.Figure()
 
     for player in players:
-        name = player.get("name", "")
-        color = player.get("color")
-
-        orig_kills = player.get("kills_per_min") or 0
-        orig_deaths = player.get("deaths_per_min") or 0
-        orig_assists = player.get("assists_per_min") or 0
-
-        kills = min(orig_kills / ref_kills_per_min, 1.0)
-        deaths = min(orig_deaths / ref_deaths_per_min, 1.0)
-        assists = min(orig_assists / ref_assists_per_min, 1.0)
-
-        values = [kills, deaths, assists, kills]  # Fermer le polygone
-        theta = categories + [categories[0]]
-
-        customdata = [
-            [orig_kills],
-            [orig_deaths],
-            [orig_assists],
-            [orig_kills],
-        ]
-
-        fig.add_trace(
-            go.Scatterpolar(
-                r=values,
-                theta=theta,
-                name=name,
-                fill="toself",
-                line={"width": 2, "color": color} if color else {"width": 2},
-                fillcolor=color,
-                opacity=0.3,
-                customdata=customdata,
-                hovertemplate="%{theta}: %{customdata[0]:.2f}<extra>%{fullData.name}</extra>",
-            )
+        _add_permin_radar_trace(
+            fig, player, categories, ref_kills_per_min, ref_deaths_per_min, ref_assists_per_min
         )
 
     fig.update_layout(
@@ -183,6 +187,50 @@ def create_stats_per_minute_radar(
     )
 
     return fig
+
+
+def _add_radar_player_traces(  # noqa: PLR0913
+    fig: go.Figure,
+    players: list[dict[str, Any]],
+    categories: list[str],
+    max_obj: float,
+    max_kills: float,
+    max_deaths: float,
+    max_assists: float,
+) -> None:
+    """Ajoute les traces radar pour chaque joueur."""
+    theta = categories + [categories[0]]
+    for player in players:
+        name = player.get("name", "")
+        color = player.get("color")
+
+        obj = (player.get("objective_score") or 0) / max_obj
+        kills_norm = (player.get("kills") or 0) / max_kills
+        deaths_raw = player.get("deaths") or 0
+        survival = 1 - (deaths_raw / max_deaths) if max_deaths > 0 else 0
+        assists_norm = (player.get("assists") or 0) / max_assists
+
+        orig_obj = player.get("objective_score") or 0
+        customdata = [
+            [f"{orig_obj:.1f}"],
+            [f"{player.get('kills') or 0}"],
+            [f"{deaths_raw} {t('radar_hover_deaths')}"],
+            [f"{player.get('assists') or 0}"],
+            [f"{orig_obj:.1f}"],
+        ]
+        fig.add_trace(
+            go.Scatterpolar(
+                r=[obj, kills_norm, survival, assists_norm, obj],
+                theta=theta,
+                name=name,
+                fill="toself",
+                line={"width": 2, "color": color} if color else {"width": 2},
+                fillcolor=color,
+                opacity=0.3,
+                customdata=customdata,
+                hovertemplate="%{theta}: %{customdata[0]}<extra>%{fullData.name}</extra>",
+            )
+        )
 
 
 def create_performance_radar(
@@ -222,46 +270,7 @@ def create_performance_radar(
     max_assists = max((p.get("assists") or 0) for p in players) or 1
 
     fig = go.Figure()
-
-    for player in players:
-        name = player.get("name", "")
-        color = player.get("color")
-
-        obj = (player.get("objective_score") or 0) / max_obj
-        kills_norm = (player.get("kills") or 0) / max_kills
-        deaths_raw = player.get("deaths") or 0
-        survival = 1 - (deaths_raw / max_deaths) if max_deaths > 0 else 0
-        assists_norm = (player.get("assists") or 0) / max_assists
-
-        values = [obj, kills_norm, survival, assists_norm, obj]
-        theta = categories + [categories[0]]
-
-        orig_obj = player.get("objective_score") or 0
-        orig_kills = player.get("kills") or 0
-        orig_deaths = deaths_raw
-        orig_assists = player.get("assists") or 0
-
-        customdata = [
-            [f"{orig_obj:.1f}"],
-            [f"{orig_kills}"],
-            [f"{orig_deaths} {t('radar_hover_deaths')}"],
-            [f"{orig_assists}"],
-            [f"{orig_obj:.1f}"],
-        ]
-
-        fig.add_trace(
-            go.Scatterpolar(
-                r=values,
-                theta=theta,
-                name=name,
-                fill="toself",
-                line={"width": 2, "color": color} if color else {"width": 2},
-                fillcolor=color,
-                opacity=0.3,
-                customdata=customdata,
-                hovertemplate="%{theta}: %{customdata[0]}<extra>%{fullData.name}</extra>",
-            )
-        )
+    _add_radar_player_traces(fig, players, categories, max_obj, max_kills, max_deaths, max_assists)
 
     fig.update_layout(
         polar={

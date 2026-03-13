@@ -18,6 +18,57 @@ from src.ui.i18n import t
 from src.ui.sections import render_source_section
 from src.ui.tz import CURATED_TZ_LIST  # liste curated des timezones disponibles
 
+_ALL_BACKFILL_FLAGS: dict = {
+    "backfill_enabled": True,
+    "backfill_medals": True,
+    "backfill_events": True,
+    "backfill_skill": True,
+    "backfill_personal_scores": True,
+    "backfill_performance_scores": True,
+    "backfill_aliases": True,
+    "backfill_lusr": True,
+    "backfill_weapons": False,
+}
+
+
+def _get_preserved_settings(settings: AppSettings) -> dict:
+    """Champs non exposés dans l'UI — préservés tels quels depuis les settings actuels."""
+
+    def _s(attr: str, default: str = "") -> str:
+        return str(getattr(settings, attr, default) or default).strip()
+
+    def _b(attr: str, default: bool = False) -> bool:
+        return bool(getattr(settings, attr, default))
+
+    def _i(attr: str, default: int = 0) -> int:
+        return int(getattr(settings, attr, default) or 0)
+
+    return {
+        "aliases_path": _s("aliases_path"),
+        "profiles_path": _s("profiles_path"),
+        "profile_assets_download_enabled": _b("profile_assets_download_enabled"),
+        "profile_assets_auto_refresh_hours": _i("profile_assets_auto_refresh_hours", 24),
+        "profile_api_enabled": _b("profile_api_enabled"),
+        "profile_api_auto_refresh_hours": _i("profile_api_auto_refresh_hours", 6),
+        "profile_banner": _s("profile_banner"),
+        "profile_emblem": _s("profile_emblem"),
+        "profile_backdrop": _s("profile_backdrop"),
+        "profile_nameplate": _s("profile_nameplate"),
+        "profile_service_tag": _s("profile_service_tag"),
+        "profile_id_badge_text_color": _s("profile_id_badge_text_color"),
+        "profile_rank_label": _s("profile_rank_label"),
+        "profile_rank_subtitle": _s("profile_rank_subtitle"),
+        "lang": _s("lang", "fr"),
+        "discord_lang": _s("discord_lang", "fr"),
+        "cli_lang": _s("cli_lang", "fr"),
+        "discord_notifications_enabled": _b("discord_notifications_enabled"),
+        "discord_webhook_url": _s("discord_webhook_url"),
+        "tailscale_funnel_enabled": _b("tailscale_funnel_enabled"),
+        "doppler_enabled": _b("doppler_enabled"),
+        "doppler_project": _s("doppler_project"),
+        "doppler_config": _s("doppler_config"),
+    }
+
 
 def _build_settings_from_ui(  # noqa: PLR0913
     *,
@@ -39,17 +90,6 @@ def _build_settings_from_ui(  # noqa: PLR0913
     user_timezone: str = "Europe/Paris",
 ) -> AppSettings:
     """Construit un AppSettings à partir des valeurs UI actuelles."""
-
-    # Conserver les valeurs non exposées dans l'UI
-    def _s(attr: str, default: str = "") -> str:
-        return str(getattr(settings, attr, default) or default).strip()
-
-    def _b(attr: str, default: bool = False) -> bool:
-        return bool(getattr(settings, attr, default))
-
-    def _i(attr: str, default: int = 0) -> int:
-        return int(getattr(settings, attr, default) or 0)
-
     return AppSettings(
         media_enabled=True,
         media_screens_dir="",
@@ -73,33 +113,10 @@ def _build_settings_from_ui(  # noqa: PLR0913
         spnkr_refresh_backfill_aliases=bool(backfill_aliases),
         spnkr_refresh_backfill_lusr=bool(backfill_lusr),
         spnkr_refresh_backfill_weapons=bool(backfill_weapons),
-        aliases_path=_s("aliases_path"),
-        profiles_path=_s("profiles_path"),
-        profile_assets_download_enabled=_b("profile_assets_download_enabled"),
-        profile_assets_auto_refresh_hours=_i("profile_assets_auto_refresh_hours", 24),
-        profile_api_enabled=_b("profile_api_enabled"),
-        profile_api_auto_refresh_hours=_i("profile_api_auto_refresh_hours", 6),
-        profile_banner=_s("profile_banner"),
-        profile_emblem=_s("profile_emblem"),
-        profile_backdrop=_s("profile_backdrop"),
-        profile_nameplate=_s("profile_nameplate"),
-        profile_service_tag=_s("profile_service_tag"),
-        profile_id_badge_text_color=_s("profile_id_badge_text_color"),
-        profile_rank_label=_s("profile_rank_label"),
-        profile_rank_subtitle=_s("profile_rank_subtitle"),
         repository_mode="duckdb",
         enable_duckdb_analytics=True,
-        lang=_s("lang", "fr"),
-        discord_lang=_s("discord_lang", "fr"),
-        cli_lang=_s("cli_lang", "fr"),
         user_timezone=str(user_timezone or "Europe/Paris").strip(),
-        # Champs non exposés dans l'UI — préservés tels quels depuis les settings actuels
-        discord_notifications_enabled=_b("discord_notifications_enabled"),
-        discord_webhook_url=_s("discord_webhook_url"),
-        tailscale_funnel_enabled=_b("tailscale_funnel_enabled"),
-        doppler_enabled=_b("doppler_enabled"),
-        doppler_project=_s("doppler_project"),
-        doppler_config=_s("doppler_config"),
+        **_get_preserved_settings(settings),
     )
 
 
@@ -214,17 +231,7 @@ def _render_backfill_section(settings: AppSettings) -> dict:  # noqa: PLR0912
             disabled=not backfill_enabled,
         )
         if backfill_all and backfill_enabled:
-            return {
-                "backfill_enabled": True,
-                "backfill_medals": True,
-                "backfill_events": True,
-                "backfill_skill": True,
-                "backfill_personal_scores": True,
-                "backfill_performance_scores": True,
-                "backfill_aliases": True,
-                "backfill_lusr": True,
-                "backfill_weapons": False,
-            }
+            return _ALL_BACKFILL_FLAGS
         col1, col2 = st.columns(2)
         with col1:
             backfill_medals = st.checkbox(

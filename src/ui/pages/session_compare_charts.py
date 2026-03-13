@@ -10,8 +10,6 @@ session_compare.py pour respecter la limite de 800 lignes par fichier :
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
@@ -27,10 +25,6 @@ from src.visualization._compat import (
     ensure_polars,
 )
 
-if TYPE_CHECKING:
-    pass
-
-
 # Couleurs distinctes pour les sessions (contraste élevé, accessible daltoniens)
 SESSION_COLORS = {
     "session_a": "#E74C3C",  # Rouge corail
@@ -40,6 +34,33 @@ SESSION_COLORS = {
     "historical": "#9B59B6",  # Violet
     "historical_fill": "rgba(155, 89, 182, 0.2)",
 }
+
+
+def _add_radar_trace(  # noqa: PLR0913
+    fig: go.Figure,
+    categories: list[str],
+    values: list[float],
+    *,
+    name: str,
+    line_color: str,
+    fillcolor: str,
+    dash: str | None = None,
+) -> None:
+    """Ajoute une trace Scatterpolar fermée au radar."""
+    line_opts: dict = {"color": line_color}
+    if dash:
+        line_opts["dash"] = dash
+    fig.add_trace(
+        go.Scatterpolar(
+            r=values + [values[0]],
+            theta=categories + [categories[0]],
+            fill="toself",
+            name=name,
+            line_color=line_color,
+            fillcolor=fillcolor,
+            line=line_opts if dash else None,
+        )
+    )
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -80,38 +101,32 @@ def render_comparison_radar_chart(
             hist_avg.get("kd_ratio"), hist_avg.get("win_rate"), hist_avg.get("accuracy")
         )
         suffix = " ⚠️" if hist_n < 3 else ""
-        fig_radar.add_trace(
-            go.Scatterpolar(
-                r=values_hist + [values_hist[0]],
-                theta=categories + [categories[0]],
-                fill="toself",
-                name=t("sc_hist_avg_trace", n=hist_n, suffix=suffix),
-                line_color=SESSION_COLORS["historical"],
-                fillcolor=SESSION_COLORS["historical_fill"],
-                line={"dash": "dot"},
-            )
+        _add_radar_trace(
+            fig_radar,
+            categories,
+            values_hist,
+            name=t("sc_hist_avg_trace", n=hist_n, suffix=suffix),
+            line_color=SESSION_COLORS["historical"],
+            fillcolor=SESSION_COLORS["historical_fill"],
+            dash="dot",
         )
 
-    fig_radar.add_trace(
-        go.Scatterpolar(
-            r=values_a + [values_a[0]],  # Fermer le polygone
-            theta=categories + [categories[0]],
-            fill="toself",
-            name="Session A",
-            line_color=SESSION_COLORS["session_a"],
-            fillcolor=SESSION_COLORS["session_a_fill"],
-        )
+    _add_radar_trace(
+        fig_radar,
+        categories,
+        values_a,
+        name="Session A",
+        line_color=SESSION_COLORS["session_a"],
+        fillcolor=SESSION_COLORS["session_a_fill"],
     )
 
-    fig_radar.add_trace(
-        go.Scatterpolar(
-            r=values_b + [values_b[0]],
-            theta=categories + [categories[0]],
-            fill="toself",
-            name="Session B",
-            line_color=SESSION_COLORS["session_b"],
-            fillcolor=SESSION_COLORS["session_b_fill"],
-        )
+    _add_radar_trace(
+        fig_radar,
+        categories,
+        values_b,
+        name="Session B",
+        line_color=SESSION_COLORS["session_b"],
+        fillcolor=SESSION_COLORS["session_b_fill"],
     )
 
     fig_radar.update_layout(
@@ -131,11 +146,6 @@ def render_comparison_radar_chart(
             st.plotly_chart(fig_radar, width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-
-
-# ════════════════════════════════════════════════════════════════════════════
-# Graphique en barres comparatif
-# ════════════════════════════════════════════════════════════════════════════
 
 
 def _prepare_bar_metrics(
@@ -242,6 +252,61 @@ def _add_historical_traces(
     )
 
 
+def _add_bar_comparison_traces(
+    fig: go.Figure,
+    metrics: dict,
+    left_metrics: list[str],
+    right_metric: str,
+) -> None:
+    """Ajoute les traces de comparaison A/B (axes gauche et droit)."""
+    fig.add_trace(
+        go.Bar(
+            name="Session A",
+            x=left_metrics,
+            y=metrics["a_left"],
+            marker_color=SESSION_COLORS["session_a"],
+            hovertemplate="%{x} (A): %{y:.2f}<extra></extra>",
+            legendgroup="A",
+            showlegend=True,
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            name="Session B",
+            x=left_metrics,
+            y=metrics["b_left"],
+            marker_color=SESSION_COLORS["session_b"],
+            hovertemplate="%{x} (B): %{y:.2f}<extra></extra>",
+            legendgroup="B",
+            showlegend=True,
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            name="Session A",
+            x=[right_metric],
+            y=[metrics["a_wr"]],
+            marker_color=SESSION_COLORS["session_a"],
+            hovertemplate="%{x} (A): %{y:.1f}%<extra></extra>",
+            legendgroup="A",
+            showlegend=False,
+            yaxis="y2",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            name="Session B",
+            x=[right_metric],
+            y=[metrics["b_wr"]],
+            marker_color=SESSION_COLORS["session_b"],
+            hovertemplate="%{x} (B): %{y:.1f}%<extra></extra>",
+            legendgroup="B",
+            showlegend=False,
+            yaxis="y2",
+        )
+    )
+
+
 def _build_bar_chart_figure(metrics: dict) -> go.Figure:
     """Construit la figure Plotly du graphique en barres comparatif.
 
@@ -256,55 +321,7 @@ def _build_bar_chart_figure(metrics: dict) -> go.Figure:
 
     fig_bar = go.Figure()
 
-    # Axe gauche : frags/morts/ratio
-    fig_bar.add_trace(
-        go.Bar(
-            name="Session A",
-            x=left_metrics,
-            y=metrics["a_left"],
-            marker_color=SESSION_COLORS["session_a"],
-            hovertemplate="%{x} (A): %{y:.2f}<extra></extra>",
-            legendgroup="A",
-            showlegend=True,
-        )
-    )
-    fig_bar.add_trace(
-        go.Bar(
-            name="Session B",
-            x=left_metrics,
-            y=metrics["b_left"],
-            marker_color=SESSION_COLORS["session_b"],
-            hovertemplate="%{x} (B): %{y:.2f}<extra></extra>",
-            legendgroup="B",
-            showlegend=True,
-        )
-    )
-
-    # Axe droit : victoire (%)
-    fig_bar.add_trace(
-        go.Bar(
-            name="Session A",
-            x=[right_metric],
-            y=[metrics["a_wr"]],
-            marker_color=SESSION_COLORS["session_a"],
-            hovertemplate="%{x} (A): %{y:.1f}%<extra></extra>",
-            legendgroup="A",
-            showlegend=False,
-            yaxis="y2",
-        )
-    )
-    fig_bar.add_trace(
-        go.Bar(
-            name="Session B",
-            x=[right_metric],
-            y=[metrics["b_wr"]],
-            marker_color=SESSION_COLORS["session_b"],
-            hovertemplate="%{x} (B): %{y:.1f}%<extra></extra>",
-            legendgroup="B",
-            showlegend=False,
-            yaxis="y2",
-        )
-    )
+    _add_bar_comparison_traces(fig_bar, metrics, left_metrics, right_metric)
 
     # Ajouter la moyenne historique si disponible
     if "hist" in metrics:
@@ -356,11 +373,6 @@ def render_comparison_bar_chart(
             st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
-
-
-# ════════════════════════════════════════════════════════════════════════════
-# Tendance de participation (PersonalScores)
-# ════════════════════════════════════════════════════════════════════════════
 
 
 @fragment_if_available

@@ -18,6 +18,28 @@ from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG, fragment_if_available
 logger = logging.getLogger(__name__)
 
 
+def _load_participation_awards(db_path: str, match_id: str, xuid: str) -> Any | None:
+    """Charge les PersonalScoreAwards pour un match. Retourne None si vide/absent."""
+    from src.data.repositories import DuckDBRepository
+
+    try:
+        repo = DuckDBRepository(db_path, xuid)
+        if not repo.has_personal_score_awards():
+            return None
+        df = repo.load_personal_score_awards_as_polars(match_id=match_id)
+        if df.is_empty():
+            logger.debug("participation: aucun award pour match=%s", match_id)
+            return None
+        return df
+    except Exception:
+        logger.warning(
+            "participation: erreur chargement awards match=%s",
+            match_id,
+            exc_info=True,
+        )
+        return None
+
+
 @fragment_if_available
 def render_participation_section(
     db_path: str,
@@ -41,7 +63,6 @@ def render_participation_section(
                    pour Impact et Survie. Optionnel.
     """
     logger.debug("participation: rendu section match=%s xuid=%s", match_id, xuid)
-    from src.data.repositories import DuckDBRepository
     from src.ui.components.radar_chart import create_participation_profile_radar
     from src.visualization.participation_radar import (
         compute_participation_profile,
@@ -49,24 +70,8 @@ def render_participation_section(
         get_radar_thresholds,
     )
 
-    # Charger les données
-    try:
-        repo = DuckDBRepository(db_path, xuid)
-        if not repo.has_personal_score_awards():
-            return
-
-        df = repo.load_personal_score_awards_as_polars(match_id=match_id)
-
-        if df.is_empty():
-            logger.debug("participation: aucun award pour match=%s", match_id)
-            return
-
-    except Exception:
-        logger.warning(
-            "participation: erreur chargement awards match=%s",
-            match_id,
-            exc_info=True,
-        )
+    df = _load_participation_awards(db_path, match_id, xuid)
+    if df is None:
         return
 
     # Convertir match_row en dict si Series
@@ -107,6 +112,38 @@ def render_participation_section(
             st.markdown(line)
 
 
+def _build_comparison_profiles(  # noqa: PLR0913
+    repo: Any,
+    match_ids: list[str],
+    labels: list[str],
+    colors: list[str],
+    match_rows: list[dict[str, Any]] | None,
+    thresholds: dict,
+) -> list:
+    """Construit les profils de participation pour chaque match."""
+    from src.visualization.participation_radar import compute_participation_profile
+
+    profiles: list = []
+    for i, mid in enumerate(match_ids):
+        df = repo.load_personal_score_awards_as_polars(match_id=mid)
+        if df.is_empty():
+            continue
+        row = None
+        if match_rows and i < len(match_rows):
+            r = match_rows[i]
+            row = r.to_dict() if hasattr(r, "to_dict") else (r if isinstance(r, dict) else None)
+        profile = compute_participation_profile(
+            df,
+            match_row=row,
+            name=labels[i] if i < len(labels) else f"Match {i + 1}",
+            color=colors[i] if i < len(colors) else None,
+            pair_name=row.get("pair_name") if row else None,
+            thresholds=thresholds,
+        )
+        profiles.append(profile)
+    return profiles
+
+
 def render_participation_comparison(  # noqa: C901, PLR0912, PLR0913
     db_path: str,
     match_ids: list[str],
@@ -130,7 +167,6 @@ def render_participation_comparison(  # noqa: C901, PLR0912, PLR0913
     from src.data.repositories import DuckDBRepository
     from src.ui.components.radar_chart import create_participation_profile_radar
     from src.visualization.participation_radar import (
-        compute_participation_profile,
         get_radar_axis_lines,
         get_radar_thresholds,
     )
@@ -150,26 +186,9 @@ def render_participation_comparison(  # noqa: C901, PLR0912, PLR0913
             return
 
         thresholds = get_radar_thresholds(db_path)
-        profiles = []
-        for i, mid in enumerate(match_ids):
-            df = repo.load_personal_score_awards_as_polars(match_id=mid)
-            if df.is_empty():
-                continue
-
-            row = None
-            if match_rows and i < len(match_rows):
-                r = match_rows[i]
-                row = r.to_dict() if hasattr(r, "to_dict") else (r if isinstance(r, dict) else None)
-
-            profile = compute_participation_profile(
-                df,
-                match_row=row,
-                name=labels[i] if i < len(labels) else f"Match {i + 1}",
-                color=colors[i] if i < len(colors) else None,
-                pair_name=row.get("pair_name") if row else None,
-                thresholds=thresholds,
-            )
-            profiles.append(profile)
+        profiles = _build_comparison_profiles(
+            repo, match_ids, labels, colors, match_rows, thresholds
+        )
 
         if not profiles:
             return

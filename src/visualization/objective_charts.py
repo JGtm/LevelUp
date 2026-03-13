@@ -20,6 +20,24 @@ from src.visualization.objective_charts_extra import (  # noqa: F401
 )
 from src.visualization.theme import apply_halo_plot_style
 
+
+def _get_ranking_attr(r: Any, attr: str, default: Any = 0) -> Any:
+    """Extrait un attribut d'un ranking (objet ou dict)."""
+    if hasattr(r, attr) or isinstance(r, dict):
+        return getattr(r, attr, r.get(attr, default)) if hasattr(r, attr) else r.get(attr, default)
+    return default
+
+
+def _extract_ranking_data(
+    rankings: list[Any],
+) -> tuple[list[str], list[float], list[int]]:
+    """Extrait gamertags, scores et matches depuis une liste de rankings."""
+    gamertags = [str(_get_ranking_attr(r, "gamertag", "?")) for r in rankings]
+    scores = [_get_ranking_attr(r, "total_objective_score", 0) for r in rankings]
+    matches = [_get_ranking_attr(r, "matches_count", 0) for r in rankings]
+    return gamertags, scores, matches
+
+
 # =============================================================================
 # Graphique: Score objectifs vs Kills
 # =============================================================================
@@ -285,25 +303,7 @@ def plot_top_players_objective_bars(
     # Limiter au top N
     top_rankings = rankings[:top_n]
 
-    # Extraire les données
-    gamertags = [
-        getattr(r, "gamertag", r.get("gamertag", "?"))
-        if hasattr(r, "gamertag") or isinstance(r, dict)
-        else str(r)
-        for r in top_rankings
-    ]
-    scores = [
-        getattr(r, "total_objective_score", r.get("total_objective_score", 0))
-        if hasattr(r, "total_objective_score") or isinstance(r, dict)
-        else 0
-        for r in top_rankings
-    ]
-    matches = [
-        getattr(r, "matches_count", r.get("matches_count", 0))
-        if hasattr(r, "matches_count") or isinstance(r, dict)
-        else 0
-        for r in top_rankings
-    ]
+    gamertags, scores, matches = _extract_ranking_data(top_rankings)
 
     # Inverser pour avoir le meilleur en haut
     gamertags = gamertags[::-1]

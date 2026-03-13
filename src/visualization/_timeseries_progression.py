@@ -20,6 +20,18 @@ from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal
 from src.visualization.timeseries import _normalize_df, _rolling_mean
 
 
+def _ensure_performance_column(d: pl.DataFrame, history: pl.DataFrame) -> pl.DataFrame:
+    """Calcule la colonne performance si absente ou entièrement nulle."""
+    from src.analysis.performance_score import compute_performance_series
+
+    if "performance" not in d.columns or d["performance"].is_null().all():
+        perf_series = compute_performance_series(d, history)
+        if isinstance(perf_series, pl.Series):
+            return d.with_columns(perf_series.alias("performance"))
+        return d.with_columns(pl.Series("performance", perf_series.to_list()))
+    return d
+
+
 def plot_performance_timeseries(
     df: "DataFrameLike",
     df_history: "DataFrameLike | None" = None,
@@ -38,7 +50,6 @@ def plot_performance_timeseries(
     Returns:
         Figure Plotly.
     """
-    from src.analysis.performance_score import compute_performance_series
 
     d = _normalize_df(df)
     if title is None:
@@ -52,12 +63,7 @@ def plot_performance_timeseries(
 
     # Calculer le score de performance RELATIF
     history = history_pl if history_pl is not None else d
-    if "performance" not in d.columns or d["performance"].is_null().all():
-        perf_series = compute_performance_series(d, history)
-        if isinstance(perf_series, pl.Series):
-            d = d.with_columns(perf_series.alias("performance"))
-        else:
-            d = d.with_columns(pl.Series("performance", perf_series.to_list()))
+    d = _ensure_performance_column(d, history)
 
     performance = d["performance"].cast(pl.Float64, strict=False)
     bar_colors = [_perf_color(v) for v in performance.to_list()]

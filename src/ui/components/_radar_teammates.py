@@ -12,6 +12,52 @@ import plotly.graph_objects as go
 from src.ui.i18n import t
 
 
+def _add_synergy_trace(fig: go.Figure, player: dict, categories: list[str]) -> None:
+    """Ajoute une trace Scatterpolar normalisée pour un joueur."""
+    name = player.get("name", "")
+    color = player.get("color")
+
+    raw = {
+        "kills_pct": player.get("kills_pct") or 0,
+        "assists_pct": player.get("assists_pct") or 0,
+        "objectives_pct": player.get("objectives_pct") or 0,
+        "kd_ratio": player.get("kd_ratio") or 0,
+        "accuracy": player.get("accuracy") or 0,
+    }
+    values = [
+        raw["kills_pct"] / 100,
+        raw["assists_pct"] / 100,
+        raw["objectives_pct"] / 100,
+        min(raw["kd_ratio"] / 3, 1),
+        raw["accuracy"] / 100,
+    ]
+    values.append(values[0])
+    theta = categories + [categories[0]]
+
+    customdata = [
+        [f"{raw['kills_pct']:.1f}%"],
+        [f"{raw['assists_pct']:.1f}%"],
+        [f"{raw['objectives_pct']:.1f}%"],
+        [f"{raw['kd_ratio']:.2f}"],
+        [f"{raw['accuracy']:.1f}%"],
+        [f"{raw['kills_pct']:.1f}%"],
+    ]
+
+    fig.add_trace(
+        go.Scatterpolar(
+            r=values,
+            theta=theta,
+            name=name,
+            fill="toself",
+            line={"width": 2, "color": color} if color else {"width": 2},
+            fillcolor=color,
+            opacity=0.3,
+            customdata=customdata,
+            hovertemplate="%{theta}: %{customdata[0]}<extra>%{fullData.name}</extra>",
+        )
+    )
+
+
 def create_teammate_synergy_radar(
     me_data: dict[str, Any],
     teammate_data: dict[str, Any],
@@ -43,46 +89,7 @@ def create_teammate_synergy_radar(
     fig = go.Figure()
 
     for player in [me_data, teammate_data]:
-        name = player.get("name", "")
-        color = player.get("color")
-
-        kills_pct = (player.get("kills_pct") or 0) / 100
-        assists_pct = (player.get("assists_pct") or 0) / 100
-        obj_pct = (player.get("objectives_pct") or 0) / 100
-        kd = min((player.get("kd_ratio") or 0) / 3, 1)  # Cap à 3.0 K/D
-        acc = (player.get("accuracy") or 0) / 100
-
-        values = [kills_pct, assists_pct, obj_pct, kd, acc, kills_pct]
-        theta = categories + [categories[0]]
-
-        orig_kills = player.get("kills_pct") or 0
-        orig_assists = player.get("assists_pct") or 0
-        orig_obj = player.get("objectives_pct") or 0
-        orig_kd = player.get("kd_ratio") or 0
-        orig_acc = player.get("accuracy") or 0
-
-        customdata = [
-            [f"{orig_kills:.1f}%"],
-            [f"{orig_assists:.1f}%"],
-            [f"{orig_obj:.1f}%"],
-            [f"{orig_kd:.2f}"],
-            [f"{orig_acc:.1f}%"],
-            [f"{orig_kills:.1f}%"],
-        ]
-
-        fig.add_trace(
-            go.Scatterpolar(
-                r=values,
-                theta=theta,
-                name=name,
-                fill="toself",
-                line={"width": 2, "color": color} if color else {"width": 2},
-                fillcolor=color,
-                opacity=0.3,
-                customdata=customdata,
-                hovertemplate="%{theta}: %{customdata[0]}<extra>%{fullData.name}</extra>",
-            )
-        )
+        _add_synergy_trace(fig, player, categories)
 
     fig.update_layout(
         polar={

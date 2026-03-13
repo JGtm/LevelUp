@@ -44,6 +44,27 @@ OBJECTIVE_COLORS = {
 }
 
 
+def _extract_assist_values(
+    assist_breakdown: Any,
+) -> tuple[int, int, int, int] | None:
+    """Extrait les 4 compteurs d'assistances depuis un objet ou dict."""
+    if hasattr(assist_breakdown, "kill_assists"):
+        return (
+            assist_breakdown.kill_assists,
+            assist_breakdown.mark_assists,
+            assist_breakdown.emp_assists,
+            getattr(assist_breakdown, "other_assists", 0),
+        )
+    if isinstance(assist_breakdown, dict):
+        return (
+            assist_breakdown.get("kill_assists", 0),
+            assist_breakdown.get("mark_assists", 0),
+            assist_breakdown.get("emp_assists", 0),
+            assist_breakdown.get("other_assists", 0),
+        )
+    return None
+
+
 def plot_assist_breakdown_pie(
     assist_breakdown: Any,  # AssistBreakdownResult
     *,
@@ -64,18 +85,8 @@ def plot_assist_breakdown_pie(
     title = title or viz_t("title_assist_breakdown", lang)
     fig = go.Figure()
 
-    # Extraire les données selon le type
-    if hasattr(assist_breakdown, "kill_assists"):
-        kill_assists = assist_breakdown.kill_assists
-        mark_assists = assist_breakdown.mark_assists
-        emp_assists = assist_breakdown.emp_assists
-        other_assists = getattr(assist_breakdown, "other_assists", 0)
-    elif isinstance(assist_breakdown, dict):
-        kill_assists = assist_breakdown.get("kill_assists", 0)
-        mark_assists = assist_breakdown.get("mark_assists", 0)
-        emp_assists = assist_breakdown.get("emp_assists", 0)
-        other_assists = assist_breakdown.get("other_assists", 0)
-    else:
+    assists = _extract_assist_values(assist_breakdown)
+    if assists is None:
         fig.add_annotation(
             text=viz_t("empty_no_data", lang),
             xref="paper",
@@ -85,6 +96,8 @@ def plot_assist_breakdown_pie(
             showarrow=False,
         )
         return apply_halo_plot_style(fig, title=title, height=height)
+
+    kill_assists, mark_assists, emp_assists, other_assists = assists
 
     labels = [
         viz_t("label_kill_assists", lang),

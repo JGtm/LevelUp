@@ -119,6 +119,30 @@ def plot_killer_victim_stacked_bars(  # noqa: PLR0913
     return apply_halo_plot_style(fig, title=title, height=plot_height)
 
 
+def _add_kd_cumulative_trace(
+    fig: go.Figure,
+    minutes: list,
+    timeseries_df: pl.DataFrame,
+    colors: dict,
+    lang: str,
+) -> None:
+    """Ajoute la trace cumulative K/D en overlay si disponible."""
+    cumulative = timeseries_df["cumulative_net_kd"].to_list()
+    final_color = colors["positive_kd"] if cumulative[-1] >= 0 else colors["negative_kd"]
+    fig.add_trace(
+        go.Scatter(
+            name=viz_t("trace_kd_cumul", lang),
+            x=minutes,
+            y=cumulative,
+            mode="lines+markers",
+            line={"color": final_color, "width": 3},
+            marker={"size": 6},
+            yaxis="y2",
+            hovertemplate=viz_t("hover_net_kd_cumul", lang),
+        )
+    )
+
+
 def plot_kd_timeseries(
     timeseries_df: pl.DataFrame,
     *,
@@ -171,21 +195,7 @@ def plot_kd_timeseries(
     )
 
     if show_cumulative and "cumulative_net_kd" in timeseries_df.columns:
-        cumulative = timeseries_df["cumulative_net_kd"].to_list()
-        final_color = colors["positive_kd"] if cumulative[-1] >= 0 else colors["negative_kd"]
-
-        fig.add_trace(
-            go.Scatter(
-                name=viz_t("trace_kd_cumul", lang),
-                x=minutes,
-                y=cumulative,
-                mode="lines+markers",
-                line={"color": final_color, "width": 3},
-                marker={"size": 6},
-                yaxis="y2",
-                hovertemplate=viz_t("hover_net_kd_cumul", lang),
-            )
-        )
+        _add_kd_cumulative_trace(fig, minutes, timeseries_df, colors, lang)
 
     fig.update_layout(
         barmode="relative",

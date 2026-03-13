@@ -107,9 +107,19 @@ def _build_friend_df_from_match_ids_v4(  # noqa: PLR0913
         return pl.DataFrame(schema=_FRIEND_DF_EMPTY_SCHEMA)
 
     # Traduction des libellés playlist / pair
+    dfr = _translate_playlist_pair_columns(dfr)
+
+    # Conversion timezone UTC → tz_name → naïve
+    dfr = _convert_start_time_timezone(dfr, tz_name)
+
+    return dfr.sort("start_time", descending=True)
+
+
+def _translate_playlist_pair_columns(dfr: pl.DataFrame) -> pl.DataFrame:
+    """Traduit les colonnes playlist_name et pair_name."""
     _pl_map = build_mapping(dfr["playlist_name"], translate_playlist_name)
     _pair_map = build_mapping(dfr["pair_name"], translate_pair_name)
-    dfr = dfr.with_columns(
+    return dfr.with_columns(
         pl.col("playlist_name").replace_strict(
             _pl_map, default=pl.col("playlist_name"), return_dtype=pl.Utf8
         ),
@@ -118,9 +128,11 @@ def _build_friend_df_from_match_ids_v4(  # noqa: PLR0913
         ),
     )
 
-    # Conversion timezone UTC → ← tz_name → naïve
+
+def _convert_start_time_timezone(dfr: pl.DataFrame, tz_name: str) -> pl.DataFrame:
+    """Convertit start_time de UTC vers le fuseau local (naïf)."""
     try:
-        dfr = dfr.with_columns(
+        return dfr.with_columns(
             pl.col("start_time")
             .cast(pl.Datetime("us", "UTC"))
             .dt.convert_time_zone(tz_name)
@@ -136,6 +148,7 @@ def _build_friend_df_from_match_ids_v4(  # noqa: PLR0913
                 .dt.convert_time_zone(tz_name)
                 .dt.replace_time_zone(None)
             )
+        return dfr
 
     return dfr.sort("start_time", descending=True)
 
