@@ -30,6 +30,33 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _scoreboard_row_to_dict(idx: int, row: tuple) -> dict:
+    """Convertit une ligne DuckDB du scoreboard en dict métier."""
+    return {
+        "xuid": str(row[0] or "").strip(),
+        "gamertag": str(row[1] or row[0] or "").strip(),
+        "team_id": int(row[2]) if row[2] is not None else None,
+        "rank": int(row[3]) if row[3] is not None else idx + 1,
+        "score": int(row[4]) if row[4] is not None else None,
+        "kills": int(row[5]) if row[5] is not None else None,
+        "deaths": int(row[6]) if row[6] is not None else None,
+        "assists": int(row[7]) if row[7] is not None else None,
+        "kda": float(row[8]) if row[8] is not None else None,
+        "max_killing_spree": int(row[9]) if row[9] is not None else None,
+        "headshot_kills": int(row[10]) if row[10] is not None else None,
+        "shots_fired": int(row[11]) if row[11] is not None else None,
+        "shots_hit": int(row[12]) if row[12] is not None else None,
+        "accuracy": float(row[13]) if row[13] is not None else None,
+        "melee_kills": int(row[14]) if row[14] is not None else None,
+        "power_weapon_kills": int(row[15]) if row[15] is not None else None,
+        "damage_dealt": float(row[16]) if row[16] is not None else None,
+        "damage_taken": float(row[17]) if row[17] is not None else None,
+        "avg_life_seconds": float(row[18]) if row[18] is not None else None,
+        "perfect_kills": int(row[19]) if row[19] is not None else 0,
+        "top_weapon_id": int(row[20]) if row[20] is not None else None,
+    }
+
+
 class RosterLoaderMixin(GamertagResolverMixin):
     """Mixin fournissant le chargement des rosters et la résolution des gamertags pour DuckDBRepository."""
 
@@ -372,7 +399,8 @@ class RosterLoaderMixin(GamertagResolverMixin):
         """Charge le tableau de bord complet de tous les joueurs d'un match.
 
         Récupère toutes les colonnes de match_participants + le compte de médailles
-        Perfect Kill (ID 1512363953) par joueur.
+        Perfect Kill (ID 1512363953) + l'arme la plus utilisée pour les kills
+        (top_weapon_id, depuis weapon_kills, hors sentinelles 0/1/2).
 
         Args:
             match_id: ID du match.
@@ -382,7 +410,8 @@ class RosterLoaderMixin(GamertagResolverMixin):
             xuid, gamertag, team_id, rank, score, kills, deaths, assists,
             kda, max_killing_spree, headshot_kills, shots_fired, shots_hit,
             accuracy, melee_kills, power_weapon_kills, damage_dealt,
-            damage_taken, avg_life_seconds, perfect_kills.
+            damage_taken, avg_life_seconds, perfect_kills, top_weapon_id.
+            top_weapon_id vaut None si aucun kill d'arme n'est enregistré.
         """
         if not match_id:
             return []
@@ -412,7 +441,8 @@ class RosterLoaderMixin(GamertagResolverMixin):
                     p.damage_dealt,
                     p.damage_taken,
                     p.avg_life_seconds,
-                    COALESCE(pk.perfect_kills, 0) AS perfect_kills
+                    COALESCE(pk.perfect_kills, 0) AS perfect_kills,
+                    wk.weapon_id AS top_weapon_id
                 FROM shared.match_participants p
                 LEFT JOIN shared.xuid_aliases a ON a.xuid = p.xuid
                 LEFT JOIN (
@@ -421,38 +451,28 @@ class RosterLoaderMixin(GamertagResolverMixin):
                     WHERE match_id = ? AND medal_name_id = 1512363953
                     GROUP BY xuid
                 ) pk ON pk.xuid = p.xuid
+                LEFT JOIN (
+                    SELECT xuid, weapon_id
+                    FROM (
+                        SELECT xuid, weapon_id,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY xuid ORDER BY COUNT(*) DESC
+                               ) AS rn
+                        FROM shared.weapon_kills
+                        WHERE match_id = ? AND weapon_id NOT IN (0, 1, 2)
+                        GROUP BY xuid, weapon_id
+                    )
+                    WHERE rn = 1
+                ) wk ON wk.xuid = p.xuid
                 WHERE p.match_id = ?
                 ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST
                 """,
-                [match_id, match_id],
+                [match_id, match_id, match_id],
             ).fetchall()
 
             result = []
             for idx, row in enumerate(rows):
-                result.append(
-                    {
-                        "xuid": str(row[0] or "").strip(),
-                        "gamertag": str(row[1] or row[0] or "").strip(),
-                        "team_id": int(row[2]) if row[2] is not None else None,
-                        "rank": int(row[3]) if row[3] is not None else idx + 1,
-                        "score": int(row[4]) if row[4] is not None else None,
-                        "kills": int(row[5]) if row[5] is not None else None,
-                        "deaths": int(row[6]) if row[6] is not None else None,
-                        "assists": int(row[7]) if row[7] is not None else None,
-                        "kda": float(row[8]) if row[8] is not None else None,
-                        "max_killing_spree": int(row[9]) if row[9] is not None else None,
-                        "headshot_kills": int(row[10]) if row[10] is not None else None,
-                        "shots_fired": int(row[11]) if row[11] is not None else None,
-                        "shots_hit": int(row[12]) if row[12] is not None else None,
-                        "accuracy": float(row[13]) if row[13] is not None else None,
-                        "melee_kills": int(row[14]) if row[14] is not None else None,
-                        "power_weapon_kills": int(row[15]) if row[15] is not None else None,
-                        "damage_dealt": float(row[16]) if row[16] is not None else None,
-                        "damage_taken": float(row[17]) if row[17] is not None else None,
-                        "avg_life_seconds": float(row[18]) if row[18] is not None else None,
-                        "perfect_kills": int(row[19]) if row[19] is not None else 0,
-                    }
-                )
+                result.append(_scoreboard_row_to_dict(idx, row))
             return result
         except Exception as e:
             logger.debug("Erreur load_match_scoreboard shared: %s", e)
