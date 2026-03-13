@@ -42,16 +42,31 @@ def fuzzy_search_gamertags(
 
     q_lower = query.strip().casefold()
 
+    # Normalisation leetspeak pour améliorer la recherche (0↔o, 1↔l, etc.)
+    _LEET_MAP = str.maketrans("01345", "oleas")
+
+    def _normalize_leet(s: str) -> str:
+        return s.casefold().translate(_LEET_MAP)
+
+    q_normalized = _normalize_leet(query.strip())
+
     # 1) difflib — correspondance floue globale
     close = difflib.get_close_matches(query, all_gamertags, n=n, cutoff=cutoff)
 
     # 2) Fallback substring — match partiel exact
     substring_matches = [gt for gt in all_gamertags if q_lower in gt.casefold()]
 
+    # 3) Fallback leetspeak — match partiel avec normalisation
+    leet_matches = [
+        gt
+        for gt in all_gamertags
+        if q_normalized in _normalize_leet(gt) and gt not in substring_matches
+    ]
+
     # Fusionner sans doublons, difflib en priorité
     seen: set[str] = set()
     result: list[str] = []
-    for gt in close + substring_matches:
+    for gt in close + substring_matches + leet_matches:
         if gt not in seen:
             seen.add(gt)
             result.append(gt)

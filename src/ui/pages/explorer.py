@@ -29,6 +29,7 @@ from src.ui.pages.explorer_logic import (
     filter_by_date,
     filter_by_squad,
     find_closest_date,
+    fuzzy_search_gamertags,
     get_distinct_dates,
 )
 from src.ui.pages.explorer_results import (
@@ -67,6 +68,10 @@ def render_explorer_page(
     player_gt, player_xuid = _render_player_search(params["db_path"], pending_gt)
 
     search_clicked = st.button(t("btn_search"), width="stretch", type="primary")
+
+    # Réinitialiser la sélection de match quand une nouvelle recherche est lancée
+    if search_clicked:
+        st.session_state.pop("_explorer_selected_match", None)
 
     if pending_mid and isinstance(pending_mid, str) and pending_mid.strip():
         show_single_match(df, pending_mid.strip(), params)
@@ -337,25 +342,40 @@ def _render_player_search(
     st.subheader(t("exp_player_search"))
     all_gts = _cached_all_gamertags(db_path)
 
-    # Pré-sélection si un gamertag est passé en paramètre (ex: navigation)
-    default_index: int | None = None
+    # Pré-remplir si un gamertag est passé en paramètre (deep link)
+    # Forcer le session_state du widget pour écraser la valeur persistée
     if pending_gt:
-        pending_lower = pending_gt.strip().casefold()
-        for i, gt in enumerate(all_gts):
-            if gt.casefold() == pending_lower:
-                default_index = i
-                break
+        st.session_state["_exp_player_input"] = pending_gt
 
-    picked = st.selectbox(
+    query = st.text_input(
         t("exp_player_hint"),
-        options=all_gts,
-        index=default_index,
         key="_exp_player_input",
         label_visibility="collapsed",
         placeholder=t("exp_player_hint"),
     )
 
-    gt_value = (picked or "").strip()
+    query = (query or "").strip()
+    if not query:
+        return "", None
+
+    # Recherche fuzzy parmi tous les gamertags connus
+    matches = fuzzy_search_gamertags(query, all_gts, n=10)
+
+    if not matches:
+        st.caption(t("exp_no_results"))
+        return query, resolve_gamertag_to_xuid(db_path, query)
+
+    if len(matches) == 1:
+        gt_value = matches[0]
+    else:
+        gt_value = st.selectbox(
+            t("exp_player_hint"),
+            options=matches,
+            key="_exp_player_pick",
+            label_visibility="collapsed",
+        )
+
+    gt_value = (gt_value or "").strip()
     resolved_xuid = resolve_gamertag_to_xuid(db_path, gt_value) if gt_value else None
 
     return gt_value, resolved_xuid
