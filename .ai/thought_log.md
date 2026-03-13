@@ -7,6 +7,30 @@
 
 ## Journal
 
+### [2025-07-17] — Audit code + commits propres (3 commits)
+
+- **Statut** : Complété
+- **Tâche** : Compléter l'audit code (bare connects, bare exceptions, tests analysis/), corriger les violations de taille post-ruff-format, committer proprement
+
+**Décision technique** :
+- Bare connects : 1 corrigé (player_provisioning.py try/finally→with)
+- Bare exceptions : 5 convertis en logging (duckdb_repo, api_client, _tokens, teammates_service)
+- Tests : 6 fichiers, 75 tests pour modules analysis/ non couverts
+- Size violations post-format : 5 nouvelles violations corrigées par extraction de helpers :
+  - `_add_radar_player_traces` (radar_chart.py)
+  - `_add_shots_traces` (timeseries_combat.py)
+  - `_add_bar_comparison_traces` (session_compare_charts.py)
+  - `_load_lusr_match_data` + `_upsert_lusr_ratings` + `_LUSR_UPSERT_SQL` (_skill_rating.py)
+
+**Commits** :
+1. `refactor: reduction baseline violations 135→106` (23 fichiers)
+2. `fix(logging): bare connect + exceptions logging` (5 fichiers)
+3. `test(analysis): couverture tests modules analysis/` (6 fichiers, 75 tests)
+
+**Résultats** : 4560 passed, 1 failed (pré-existant test_sync_ui), baseline ratchet 106
+
+---
+
 ### [2025-07-17] — Audit code complet : corrections + couverture tests analysis/
 
 - **Statut** : Complété

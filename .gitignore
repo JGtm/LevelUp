@@ -123,3 +123,4 @@ data/logs/*
 *_tmp.py
 query_weapons_tmp.py
 kill_python.bat
+data/.sync.lock
