@@ -109,6 +109,39 @@ def scan_formula_a(data: bytes) -> list[tuple[int, int, bytes]]:
     return results
 
 
+def scan_formula_a_ns(data: bytes) -> list[tuple[int, int, bytes]]:
+    """Scanne Section 1 dans la couche nibble-shiftée pour les TYPE IDs canoniques.
+
+    Inv #131 : ``scan_formula_a`` (raw) retourne des handles d'instance, pas des
+    TYPE IDs. Cette variante NS lit la couche nibble-shiftée et y trouve les TYPE
+    IDs présents dans ``WEAPON_ID_MAP``.
+
+    Structure fire event NS : ``[0d][26][b2][b3][fc][b5][wid:8B]``.
+    → ``ns[wid_pos - 5] == 0x26`` identifie un fire event (Section 2 → exclure).
+    → ``pi = ns[wid_pos - 1] >> 5`` décode le player_index de Section 1.
+
+    Returns:
+        Liste de ``(ns_pos, player_index, weapon_bytes)`` où ``weapon_bytes ∈ WEAPON_ID_MAP``.
+    """
+    ns = bytes((data[i] << 4 | data[i + 1] >> 4) & 0xFF for i in range(len(data) - 1))
+    results: list[tuple[int, int, bytes]] = []
+    for wb in WEAPON_ID_MAP:
+        if len(wb) != 8:
+            continue
+        pos = 0
+        while True:
+            p = ns.find(wb, pos)
+            if p == -1:
+                break
+            # p = début des 8 bytes weapon dans le NS layer
+            if p >= 5 and ns[p - 5] != 0x26:  # exclure fire events (Section 2)
+                pi = ns[p - 1] >> 5
+                results.append((p, pi, wb))
+            pos = p + 1
+    results.sort(key=lambda x: x[0])
+    return results
+
+
 def build_weapon_timeline(
     chunks: dict[int, tuple[bytes, int, int]],
 ) -> tuple[dict[int, dict[int, bytes]], dict[int, set[int]], list[tuple[int, int]]]:
@@ -139,6 +172,29 @@ def build_weapon_timeline(
         swap_pis[idx] = {pi for pi, wids in pi_seen_wids.items() if len(wids) > 1}
         timing.append((start_ms, start_ms + dur_ms))
     return timeline, swap_pis, timing
+
+
+def build_weapon_timeline_ns(
+    chunks: dict[int, tuple[bytes, int, int]],
+) -> dict[int, dict[int, bytes]]:
+    """Construit la timeline arme (NS layer, TYPE IDs) par chunk.
+
+    Complémentaire de ``build_weapon_timeline`` : utilise ``scan_formula_a_ns``
+    qui retourne des TYPE IDs canoniques (vs handles d'instance dans la version raw).
+    Utilisée par ``map_b2_to_player`` pour le cross-référencement b2 ↔ TYPE ID.
+
+    Returns:
+        ``timeline_ns[chunk_idx][pi]`` = dernière arme TYPE ID vue pour pi.
+    """
+    timeline_ns: dict[int, dict[int, bytes]] = {}
+    for idx in sorted(chunks):
+        data, _, _ = chunks[idx]
+        events = scan_formula_a_ns(data)
+        chunk_state: dict[int, bytes] = {}
+        for _, pi, wid in events:
+            chunk_state[pi] = wid  # dernière mise à jour = state à la fin du chunk
+        timeline_ns[idx] = chunk_state
+    return timeline_ns
 
 
 def find_chunk_at_time(
@@ -462,6 +518,57 @@ def count_kills_by_film_weapon(correlated: list[dict]) -> Counter:
 
 # Alias de compatibilité — préférer count_kills_by_film_weapon
 count_kills_by_api_weapon = count_kills_by_film_weapon
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Attribution multi-joueurs via b2_stream (inv #131)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def map_b2_to_player(
+    all_fire_events: list[dict],
+    timeline: dict[int, dict[int, bytes]],
+    timing: list[tuple[int, int]],
+    chunks_sorted: list[int],
+) -> dict[int, int]:
+    """Mappe b2_stream → player_index par cross-référence avec Formula A.
+
+    Découverte inv #131 : byte[1]=0x26 dans la couche NS est un marqueur
+    d'event-type fixe, pas un player_index. Le champ ``fire_seq`` (b2_stream)
+    est un identifiant d'arme stable par vie (constant pour toute la durée
+    d'une vie d'un joueur avec cette arme).
+
+    Algorithme :
+        1. Pour chaque fire event, trouve le chunk couvrant son timestamp.
+        2. Dans ``timeline[chunk]``, cherche le ``pi`` dont l'arme correspond
+           aux ``weapon_bytes`` de l'event (Formula A Section 1).
+        3. Vote par majorité par ``b2_stream`` → pl stable par vie.
+
+    Args:
+        all_fire_events: Tous les fire events du match (scannés avec pi=1).
+        timeline: ``{chunk_idx: {player_index: weapon_bytes}}`` (Formula A).
+        timing: Liste de ``(start_ms, end_ms)`` par chunk (ordre chunks_sorted).
+        chunks_sorted: Indices de chunks triés.
+
+    Returns:
+        ``{b2_stream_value: player_index}`` — seuls les b2 résolvables sont inclus.
+    """
+    b2_votes: dict[int, Counter] = {}
+
+    for ev in all_fire_events:
+        b2 = ev["fire_seq"]
+        weapon_bytes = ev["weapon_bytes"]
+        t_ms = int(ev["timestamp_ms"])
+
+        chunk_idx = find_chunk_at_time(chunks_sorted, timing, t_ms)
+        chunk_state = timeline.get(chunk_idx, {})
+
+        for pi, pi_wid in chunk_state.items():
+            if pi_wid == weapon_bytes:
+                b2_votes.setdefault(b2, Counter())[pi] += 1
+                break
+
+    return {b2: ctr.most_common(1)[0][0] for b2, ctr in b2_votes.items() if ctr}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
