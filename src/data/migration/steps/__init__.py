@@ -7,6 +7,7 @@ dans le registre via ``register()``.
 from src.data.migration.steps import (
     add_bot_teammate_column,
     add_career_progression_sequence,
+    add_dominance_flag,
     add_highlight_events_autoincrement,
     add_match_participants_columns,
     add_medals_bigint,
@@ -24,6 +25,7 @@ from src.data.migration.steps import (
 __all__ = [
     "add_bot_teammate_column",
     "add_career_progression_sequence",
+    "add_dominance_flag",
     "add_highlight_events_autoincrement",
     "add_match_participants_columns",
     "add_medals_bigint",
