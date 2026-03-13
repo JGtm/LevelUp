@@ -205,36 +205,29 @@ def compute_relative_performance_score(
 
 
 def compute_performance_series(
-    df: pl.DataFrame | Any,
-    df_history: pl.DataFrame | Any | None = None,
-) -> pl.Series | Any:
+    df: pl.DataFrame,
+    df_history: pl.DataFrame | None = None,
+) -> pl.Series:
     """Calcule le score de performance pour chaque match d'un DataFrame.
 
     Args:
-        df: DataFrame des matchs à évaluer.
+        df: DataFrame Polars des matchs à évaluer.
         df_history: Historique complet pour le calcul relatif. Si None, utilise df.
 
     Returns:
-        Series avec les scores de performance.
+        Series Polars avec les scores de performance.
     """
-    was_pandas = not isinstance(df, pl.DataFrame)
-    df_pl = _normalize_df(df)
-    history_pl = _normalize_df(df_history) if df_history is not None else None
+    if df.is_empty():
+        return pl.Series("performance", [], dtype=pl.Float64)
 
-    if df_pl.is_empty():
-        result = pl.Series("performance", [], dtype=pl.Float64)
-        return result.to_pandas() if was_pandas else result
-
-    history = history_pl if history_pl is not None else df_pl
+    history = df_history if df_history is not None else df
 
     if len(history) < MIN_MATCHES_FOR_RELATIVE:
-        result = _fallback_kda_percentile(df_pl)
-        return result.to_pandas() if was_pandas else result
+        return _fallback_kda_percentile(df)
 
     scores = [
         compute_relative_performance_score(row_dict, history)
-        for row_dict in df_pl.iter_rows(named=True)
+        for row_dict in df.iter_rows(named=True)
     ]
 
-    result = pl.Series("performance", scores, dtype=pl.Float64)
-    return result.to_pandas() if was_pandas else result
+    return pl.Series("performance", scores, dtype=pl.Float64)
