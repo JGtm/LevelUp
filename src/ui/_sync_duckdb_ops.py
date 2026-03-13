@@ -11,11 +11,27 @@ import logging
 import os
 import time
 from pathlib import Path
+from typing import Any
 
 from src.ui._sync_utils import _shared_path, get_player_duckdb_path
 from src.utils.paths import REPO_ROOT
 
 logger = logging.getLogger(__name__)
+
+
+def _finalize_sync_result(sync_result: Any, db_file: Path) -> tuple[bool, str]:
+    """Vérifie le résultat de sync et invalide les caches mtime."""
+    if sync_result is not None and sync_result.errors:
+        return False, f"Erreur: {'; '.join(sync_result.errors)}"
+
+    # Forcer la mise à jour du mtime pour invalider les caches @st.cache_data
+    for path in (str(db_file), str(_shared_path(db_file))):
+        with contextlib.suppress(Exception):
+            os.utime(path, None)
+
+    if sync_result is not None:
+        return True, sync_result.to_message()
+    return True, "Sync terminé."
 
 
 def _sync_duckdb_player(  # noqa: C901, PLR0915
@@ -111,18 +127,7 @@ def _sync_duckdb_player(  # noqa: C901, PLR0915
         if _sync_error is not None:
             return False, f"Erreur sync: {_sync_error}"
 
-        sync_result = _sync_result
-        if sync_result is not None and sync_result.errors:
-            return False, f"Erreur: {'; '.join(sync_result.errors)}"
-
-        # Forcer la mise à jour du mtime pour invalider les caches @st.cache_data
-        for path in (str(db_file), str(_shared_path(db_file))):
-            with contextlib.suppress(Exception):
-                os.utime(path, None)
-
-        if sync_result is not None:
-            return True, sync_result.to_message()
-        return True, "Sync terminé."
+        return _finalize_sync_result(_sync_result, db_file)
 
     try:
         from src.utils.sync_lock import SyncAlreadyRunning, SyncLock

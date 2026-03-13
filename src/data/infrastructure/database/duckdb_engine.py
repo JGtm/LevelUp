@@ -28,6 +28,37 @@ import duckdb
 from src.data.domain.models.stats import MatchRow
 
 
+def _row_to_match_row(r: dict[str, Any]) -> MatchRow:
+    """Convertit un dict de ligne Parquet en MatchRow."""
+    return MatchRow(
+        match_id=r["match_id"],
+        start_time=r["start_time"],
+        map_id=r.get("map_id"),
+        map_name=r.get("map_name"),
+        playlist_id=r.get("playlist_id"),
+        playlist_name=r.get("playlist_name"),
+        map_mode_pair_id=None,
+        map_mode_pair_name=None,
+        game_variant_id=r.get("game_variant_id"),
+        game_variant_name=r.get("game_variant_name"),
+        outcome=r.get("outcome"),
+        last_team_id=r.get("last_team_id"),
+        kda=r.get("kda"),
+        max_killing_spree=r.get("max_killing_spree"),
+        headshot_kills=r.get("headshot_kills"),
+        average_life_seconds=r.get("average_life_seconds"),
+        time_played_seconds=r.get("time_played_seconds"),
+        kills=r.get("kills", 0),
+        deaths=r.get("deaths", 0),
+        assists=r.get("assists", 0),
+        accuracy=r.get("accuracy"),
+        my_team_score=r.get("my_team_score"),
+        enemy_team_score=r.get("enemy_team_score"),
+        team_mmr=r.get("team_mmr"),
+        enemy_mmr=r.get("enemy_mmr"),
+    )
+
+
 class DuckDBEngine:
     """
     Moteur de requête DuckDB pour l'architecture v5.
@@ -189,36 +220,7 @@ class DuckDBEngine:
 
         rows = self.query(sql, tuple(params))
 
-        return [
-            MatchRow(
-                match_id=r["match_id"],
-                start_time=r["start_time"],
-                map_id=r.get("map_id"),
-                map_name=r.get("map_name"),
-                playlist_id=r.get("playlist_id"),
-                playlist_name=r.get("playlist_name"),
-                map_mode_pair_id=None,
-                map_mode_pair_name=None,
-                game_variant_id=r.get("game_variant_id"),
-                game_variant_name=r.get("game_variant_name"),
-                outcome=r.get("outcome"),
-                last_team_id=r.get("last_team_id"),
-                kda=r.get("kda"),
-                max_killing_spree=r.get("max_killing_spree"),
-                headshot_kills=r.get("headshot_kills"),
-                average_life_seconds=r.get("average_life_seconds"),
-                time_played_seconds=r.get("time_played_seconds"),
-                kills=r.get("kills", 0),
-                deaths=r.get("deaths", 0),
-                assists=r.get("assists", 0),
-                accuracy=r.get("accuracy"),
-                my_team_score=r.get("my_team_score"),
-                enemy_team_score=r.get("enemy_team_score"),
-                team_mmr=r.get("team_mmr"),
-                enemy_mmr=r.get("enemy_mmr"),
-            )
-            for r in rows
-        ]
+        return [_row_to_match_row(r) for r in rows]
 
     def close(self) -> None:
         """Ferme la connexion DuckDB. (Close DuckDB connection)"""

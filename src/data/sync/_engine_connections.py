@@ -187,36 +187,40 @@ class ConnectionMixin:
 
         self._shared_connection.execute("SET enable_object_cache = true")
 
-        # Migrations shared
+        self._run_shared_migrations(self._shared_connection)
+
+        return self._shared_connection
+
+    @staticmethod
+    def _run_shared_migrations(conn: duckdb.DuckDBPyConnection) -> None:
+        """Applique les migrations sur la connexion shared."""
         try:
             from src.data.sync.migrations import ensure_match_participants_columns
 
-            ensure_match_participants_columns(self._shared_connection)
+            ensure_match_participants_columns(conn)
         except Exception as e:
             logger.debug("Migration match_participants shared: %s", e)
 
         try:
             from src.data.sync.migrations import ensure_performance_indexes
 
-            ensure_performance_indexes(self._shared_connection)
+            ensure_performance_indexes(conn)
         except Exception as e:
             logger.debug("Index performance shared: %s", e)
 
         try:
             from src.data.sync.migrations import ensure_match_registry_spnkr_version
 
-            ensure_match_registry_spnkr_version(self._shared_connection)
+            ensure_match_registry_spnkr_version(conn)
         except Exception as e:
             logger.debug("Migration sync_spnkr_version shared: %s", e)
 
         try:
             from src.data.sync.migrations import ensure_weapon_kills_table
 
-            ensure_weapon_kills_table(self._shared_connection)
+            ensure_weapon_kills_table(conn)
         except Exception as e:
             logger.debug("Migration weapon_kills shared: %s", e)
-
-        return self._shared_connection
 
     def _get_pve_connection(self) -> duckdb.DuckDBPyConnection:
         """Retourne (lazy) la connexion vers shared_pve.duckdb."""
