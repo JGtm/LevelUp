@@ -97,7 +97,7 @@ FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:122L
 FUNC:src/ui/pages/teammates_views.py:58:render_single_teammate_view:125L
 FUNC:src/ui/pages/win_loss.py:254:_render_ratio_by_map_section:91L
-FUNC:src/ui/styles.py:83:get_hero_html:146L
+FUNC:src/ui/styles.py:44:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
 FUNC:src/visualization/_antagonist_kv.py:122:plot_kd_timeseries:83L
@@ -124,9 +124,9 @@ FUNC:src/visualization/objective_charts.py:152:plot_objective_breakdown_bars:96L
 FUNC:src/visualization/objective_charts.py:251:plot_top_players_objective_bars:81L
 FUNC:src/visualization/objective_charts.py:28:plot_objective_vs_kills_scatter:121L
 FUNC:src/visualization/objective_charts_extra.py:47:plot_assist_breakdown_pie:83L
-FUNC:src/visualization/participation_charts.py:137:plot_participation_bars:104L
-FUNC:src/visualization/participation_charts.py:35:plot_participation_pie:94L
-FUNC:src/visualization/participation_charts_extra.py:66:create_participation_indicator:97L
+FUNC:src/visualization/participation_charts.py:144:plot_participation_bars:108L
+FUNC:src/visualization/participation_charts.py:38:plot_participation_pie:98L
+FUNC:src/visualization/participation_charts_extra.py:69:create_participation_indicator:97L
 FUNC:src/visualization/team_dominance_timeline.py:101:detect_streaks:99L
 FUNC:src/visualization/team_dominance_timeline.py:208:plot_dominance_chart:135L
 FUNC:src/visualization/timeseries.py:317:plot_per_minute_timeseries:91L
@@ -134,10 +134,8 @@ FUNC:src/visualization/timeseries_combat.py:268:plot_damage_dealt_taken:81L
 FUNC:src/visualization/timeseries_combat.py:352:plot_shots_accuracy:92L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:153L
-MODULE:src/analysis/weapon_parser.py:583L
 MODULE:src/data/query/trends.py:534L
 MODULE:src/data/services/teammates_service.py:536L
-MODULE:src/data/services/weapon_extraction_service.py:747L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/_teammates_trio.py:561L
