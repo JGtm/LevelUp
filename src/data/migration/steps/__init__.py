@@ -16,6 +16,7 @@ from src.data.migration.steps import (
     add_skill_rating_table,
     add_spnkr_version,
     add_weapon_kills,
+    add_weapon_kills_reconciled_as,
     fix_bot_xuid,
     migrate_weapon_kills_to_ubigint,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "add_skill_rating_table",
     "add_spnkr_version",
     "add_weapon_kills",
+    "add_weapon_kills_reconciled_as",
     "fix_bot_xuid",
     "migrate_weapon_kills_to_ubigint",
 ]

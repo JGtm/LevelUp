@@ -1,0 +1,127 @@
+"""Logging structuré pour le weapon parser v2.
+
+Chaque décision d'attribution est traçable sans relancer le parser.
+Le collecteur est optionnel — le parser fonctionne sans (log_callback=None).
+"""
+
+from __future__ import annotations
+
+import logging
+from collections import Counter
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.analysis._kill_attribution import KillAttribution
+
+logger = logging.getLogger("levelup.weapon_parser")
+
+
+@dataclass
+class MatchLogCollector:
+    """Collecteur de logs structurés pour un match."""
+
+    match_id: str
+    steps: list[dict] = field(default_factory=list)
+    kill_decisions: list[dict] = field(default_factory=list)
+    reconciliation_decisions: list[dict] = field(default_factory=list)
+    warnings: list[dict] = field(default_factory=list)
+
+    def record_step(self, step_name: str, **kwargs: object) -> None:
+        """Enregistre une étape du pipeline."""
+        entry = {"step": step_name, **kwargs}
+        self.steps.append(entry)
+        logger.debug("match=%s step=%s %s", self.match_id, step_name, kwargs)
+
+    def kill_decision(
+        self,
+        kill: dict,
+        attribution: KillAttribution,
+        details: dict,
+    ) -> None:
+        """Enregistre la décision d'attribution pour un kill."""
+        entry = {
+            "xuid": kill.get("xuid", ""),
+            "time_ms": kill.get("time_ms", 0),
+            "weapon_id": attribution.weapon_id,
+            "confidence": attribution.confidence,
+            "attribution_path": attribution.attribution_path,
+            "delta_ms": attribution.delta_ms,
+            "candidates_count": details.get("candidates_count", 0),
+            "claimed_event_ts": details.get("claimed_event_ts"),
+            "fallback_used": details.get("fallback_used", False),
+        }
+        self.kill_decisions.append(entry)
+        logger.debug(
+            "match=%s kill xuid=%s t=%dms → weapon=%s conf=%s path=%s delta=%s",
+            self.match_id,
+            kill.get("xuid", "?"),
+            kill.get("time_ms", 0),
+            attribution.weapon_id,
+            attribution.confidence,
+            attribution.attribution_path,
+            attribution.delta_ms,
+        )
+
+    def reconciliation_decision(  # noqa: PLR0913
+        self,
+        action: str,
+        kill_time_ms: int,
+        xuid: str,
+        before: dict,
+        after: dict,
+    ) -> None:
+        """Enregistre une décision de réconciliation."""
+        entry = {
+            "action": action,
+            "xuid": xuid,
+            "time_ms": kill_time_ms,
+            "before": before,
+            "after": after,
+        }
+        self.reconciliation_decisions.append(entry)
+        logger.info(
+            "match=%s reconcile %s xuid=%s t=%dms: %s → %s",
+            self.match_id,
+            action,
+            xuid,
+            kill_time_ms,
+            before,
+            after,
+        )
+
+    def warn(self, message: str, **context: object) -> None:
+        """Enregistre un warning."""
+        entry = {"message": message, **context}
+        self.warnings.append(entry)
+        logger.warning("match=%s %s %s", self.match_id, message, context)
+
+    def summary(self) -> dict:
+        """Résumé JSON-sérialisable du traitement."""
+        return {
+            "match_id": self.match_id,
+            "steps_count": len(self.steps),
+            "kills_decided": len(self.kill_decisions),
+            "reconciliations": len(self.reconciliation_decisions),
+            "warnings": len(self.warnings),
+            "confidence_distribution": self._confidence_dist(),
+            "path_distribution": self._path_dist(),
+        }
+
+    def _confidence_dist(self) -> dict[str, int]:
+        return dict(Counter(d["confidence"] for d in self.kill_decisions))
+
+    def _path_dist(self) -> dict[str, int]:
+        return dict(Counter(d["attribution_path"] for d in self.kill_decisions))
+
+    def flush(self) -> None:
+        """Écrit le résumé dans le logger INFO."""
+        s = self.summary()
+        logger.info(
+            "match=%s COMPLETE kills=%d conf=%s paths=%s warnings=%d",
+            self.match_id,
+            s["kills_decided"],
+            s["confidence_distribution"],
+            s["path_distribution"],
+            s["warnings"],
+        )

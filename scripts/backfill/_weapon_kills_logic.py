@@ -104,7 +104,7 @@ async def run_weapon_kills_backfill(
                         logger.debug("weapon_kills guard batch %s : %s", match_id[:8], exc)
                 try:
                     summary = await service.process_match(match_id, gamertag, xuid)
-                    rows = summary.get("rows_inserted", 0)
+                    rows = summary.rows_inserted
                     progress["done"] += 1
                     progress["rows"] += rows
                     if rows > 0:
@@ -112,11 +112,11 @@ async def run_weapon_kills_backfill(
                             "weapon_kills backfill %s : %d lignes (%d/%d kills)",
                             match_id[:8],
                             rows,
-                            summary.get("kills_attributed", 0),
-                            summary.get("kills_total", 0),
+                            summary.kills_attributed,
+                            summary.kills_total,
                         )
-                    elif "error" in summary:
-                        logger.debug("weapon_kills %s : %s", match_id[:8], summary["error"])
+                    elif summary.error:
+                        logger.debug("weapon_kills %s : %s", match_id[:8], summary.error)
                     else:
                         logger.debug(
                             "weapon_kills %s : 0 lignes (match sans kills attribuables)",

@@ -1263,3 +1263,23 @@ def ensure_weapon_kills_table(conn: duckdb.DuckDBPyConnection) -> None:
         logger.debug("Table weapon_kills initialisée (shared_matches.duckdb)")
     except Exception as e:
         logger.error("Impossible d'initialiser weapon_kills : %s", e)
+
+
+def ensure_weapon_kills_reconciled_as(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute les colonnes reconciled_as, attribution_path, player_index à weapon_kills.
+
+    Parser v2 : reconciled_as stocke le sentinel API sans écraser weapon_id,
+    attribution_path trace la source (fire_event/formula_a/none),
+    player_index identifie le joueur dans le film.
+    Idempotente.
+    """
+    _add_column_if_missing(conn, "weapon_kills", "reconciled_as", "UBIGINT")
+    _add_column_if_missing(conn, "weapon_kills", "attribution_path", "VARCHAR DEFAULT 'none'")
+    _add_column_if_missing(conn, "weapon_kills", "player_index", "INTEGER")
+
+    # Vue v_weapon_kills : COALESCE(reconciled_as, weapon_id)
+    conn.execute(
+        "CREATE OR REPLACE VIEW v_weapon_kills AS "
+        "SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id "
+        "FROM weapon_kills"
+    )
