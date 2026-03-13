@@ -76,8 +76,8 @@ nibble_shifted = bytes(
 | Offset | Value | Description |
 |--------|-------|-------------|
 | [0] | `0x0D` or `0x05` | Lead byte |
-| [1] | `(player_index << 5) \| 0x06` | e.g. POV (idx=1) = `0x26`, player 2 = `0x46` |
-| [2] | variable | `b2_stream` — dual-stream discriminator |
+| [1] | `0x26` (constant) | **Fixed structural marker** — not player-index-dependent. All fire events from all players share this byte. `(1 << 5) \| 0x06 = 0x26` coincides with the POV formula but is always constant (inv #131, 2026-03-13). |
+| [2] | variable | `b2_stream` — per-life weapon-instance discriminator (stable for the duration of a player's life with a given weapon; resets on respawn) |
 | [3] | `0x40`–`0x43` | Constant (filter: `byte[3] & 0xFC == 0x40`) |
 | [4] | `0`–`248` (step 8) | `fire_counter` — shot counter (0–127 then reset); can skip values (lost frames) |
 | [5] | variable | `b5_correlated` — correlated with `b2_stream` |
@@ -90,6 +90,14 @@ nibble_shifted = bytes(
 nibble-shifted layer, then validate that the 64 bits at offset +40 bits (`_WEAPON_OFFSET`)
 match a known `weapon_id` in the `Weapon` enum.
 
+> **Key finding (inv #131, 2026-03-13):** because byte[1] = `0x26` is constant for
+> all fire events, `scan_fire_events(pi=1)` **captures ALL fire events of the entire
+> match**, not just the POV's. `scan_fire_events(pi≠1)` returns 0 results because
+> `(pi << 5) | 0x06` ≠ `0x26` for any pi ≥ 2. Consequence: the Section 2
+> scanner is universal (match-level) — **player attribution cannot come from
+> byte[1]**. The per-player discriminator is `b2_stream` (byte[2]), cross-referenced
+> with the Section 1 NS timeline to map each b2 value to its `player_index`.
+
 **Automatic weapons — dual-stream**: BR75, MA40 AR and similar generate **two**
 entries per shot with different `b2_stream` values but the same `fire_counter`.
 Semi-auto weapons (Bandit, Stalker, Commando) produce **one** entry. Deduplication
@@ -100,10 +108,12 @@ key: `(weapon_id, fire_counter)` per chunk.
 - 3rd bit ≈ hit/miss (`0`=hit, `1`=miss), not 100% reliable; a second bit further in
   the structure confirms
 
-**Current working assumption**: Section 2 is reliably available for the POV, while
-non-POV coverage is still under investigation. The historical pipeline treated fire
-events as POV-only, but recent service-level findings suggest this may have been at
-least partly a routing limitation rather than a hard parser limitation.
+**Finding (inv #131, 2026-03-13):** Section 2 fire events are match-wide — the
+single `scan_fire_events(pi=1)` call captures all players' shots (confirmed:
+1177 events on test match vs 1178 Σ acurtis). Non-POV attribution is now partially
+available via the **T2 path** described below (`map_b2_to_player` + NS Section 1
+timeline). Coverage is partial (~21% on the test match) — T1 Formula A remains
+the fallback for uncovered players.
 
 > **Rewrite prerequisite**: before locking the final architecture, start with an
 > **initial exploration phase** based on [.ai/NON_POV_FIRE_EVENTS_CONCLUSIONS_2026-03-12.md].
@@ -292,26 +302,56 @@ Microsoft method.
 Ravager, etc.). Short delta = high confidence, long delta = reduced confidence
 (possibly a missed shot just before?).
 
-### Path B — T1 teammates (Section 1, snapshots)
-**Who**: teammates whose `player_index` can be resolved in the film.
+### Path T2 — non-POV via b2_stream + NS Section 1 (2026-03-13)
+**Who**: all non-POV players whose `b2_stream` values can be cross-referenced with
+the Section 1 NS timeline.
+**Coverage on test match (147ffd4d)**: ~21% of fire events resolved (255/1177).
+pi=6 (shoxyy): 179 events attributed vs 182 shots_fired API (quasi-exact ✓).
+Remaining ~79% fall back to Path T1.
+
+**How**:
+1. `scan_fire_events(pi=1)` captures **all** fire events of the match (universal capture).
+2. `build_weapon_timeline_ns(chunks)` — scans the **nibble-shifted layer** of Section 1
+   for canonical TYPE IDs (from `WEAPON_ID_MAP`). Decodes `pi = ns[wid_pos - 1] >> 5`,
+   filters out fire events via `ns[wid_pos - 5] != 0x26`.
+3. `map_b2_to_player(all_events, timeline_ns, timing, chunks_sorted)` — for each
+   fire event: finds the chunk covering its timestamp, looks up the pi whose TYPE ID
+   matches `event["weapon_bytes"]` in that chunk, votes by majority per b2 value.
+   Returns `{b2_value: player_index}`.
+4. Events are then grouped by the resolved pi → `{pi: [fire_events]}`.
+5. Attribution: `correlate_kills_to_weapons(kills, t2_events)` — same mechanism as Path A.
+
+> **Critical distinction — raw Formula A vs NS layer:** `scan_formula_a` (raw bytes)
+> returns **instance handles** — per-match object identifiers unique to each weapon
+> instance. These handles are **never** in `WEAPON_ID_MAP` and thus cannot be used
+> for cross-referencing with fire events. TYPE IDs (weapon names, `WEAPON_ID_MAP`)
+> appear exclusively in the **nibble-shifted layer** of Section 1, hence the
+> requirement for `scan_formula_a_ns` / `build_weapon_timeline_ns`.
+
+**Why coverage is partial (~21%):** the NS Section 1 scanner only sees players
+*observed* by the POV — players not present in Section 1 snapshots for a given
+chunk produce no b2→pi mapping. Unresolved b2 values fall through to Path T1.
+
+---
+
+### Path T1 — Formula A snapshots (Section 1, raw)
+**Who**: teammates whose `player_index` can be resolved in the film, **and** whose
+`b2_stream` was not resolved by Path T2.
 **Out of scope**: opponents — their data is not accessible.
 
-**Status of non-POV fire events: unresolved, must be explored first.** Historically,
-Path B existed because the service routed non-POV players straight to Formula A
-snapshots, and field observations suggested Section 2 was POV-centric. However, the
-findings captured in [.ai/NON_POV_FIRE_EVENTS_CONCLUSIONS_2026-03-12.md] indicate the
-parser can scan arbitrary `player_index` values and that non-POV Section 2 attempts
-should be evaluated explicitly during the rewrite.
-
-**Practical consequence:** Path B remains the safe fallback model unless and until
-that exploration proves Section 2 coverage is strong enough to replace it.
-
-**How (Section 1 only)**:
+**How (Section 1 raw layer)**:
 
 Section 1 contains **Formula A** events (`scan_formula_a`): each time a player swaps
 or picks up a weapon, the film records a snapshot `[20 00 02 pb ... wid:8B]`
 where `pi = pb >> 5`. These events are scanned to reconstruct a chunk-granularity
 timeline.
+
+> **Important limitation:** `scan_formula_a` (raw bytes) returns **instance handles**,
+> not canonical TYPE IDs. The raw weapon bytes from Formula A are *never* present in
+> `WEAPON_ID_MAP`. Consequently, `_attribute_t1_kills` currently produces
+> `confidence = "low"` for **every** T1 kill — the `confidence = "high"` / `"medium"`
+> branches in the T1 code are unreachable in practice until `_attribute_t1_kills`
+> is ported to use `build_weapon_timeline_ns` (which returns TYPE IDs).
 
 `build_weapon_timeline` produces for each chunk:
 - `timeline[chunk_idx][pi]` = **last** weapon seen for this `pi` (state at end of chunk)
@@ -329,11 +369,15 @@ T1 attribution for a kill at `t_ms`:
 `timeline[chunk - 1]` (the previous chunk).
 
 **Reliability**:
-- `confidence=high`: player did not change weapon during the chunk — solid attribution
-- `confidence=medium`: a Formula A swap was detected in the same chunk (~19s).
-  The stored weapon is the **last** one held in that chunk, not necessarily the one
-  used for the kill. This is the main source of T1 inaccuracy.
-- `confidence=low`: held weapon identified (hex present) but not in `WEAPON_ID_MAP`
+- `confidence=low` **(current reality)**: raw Formula A instance handles are never
+  in `WEAPON_ID_MAP` → `_attribute_t1_kills` always produces `confidence="low"`.
+  The `high`/`medium` branches only become reachable once T1 is ported to
+  `build_weapon_timeline_ns` (TYPE IDs).
+- `confidence=high` *(target, after NS migration)*: player held a known TYPE ID,
+  no intra-chunk swap detected.
+- `confidence=medium` *(target, after NS migration)*: a Formula A swap detected in
+  the same ~19s chunk; stored weapon is the last one held, not necessarily the kill weapon.
+- `confidence=low` *(target, after NS migration)*: weapon hex present but not in `WEAPON_ID_MAP`.
 
 **Possible improvement**: Formula A events have a byte position within the chunk.
 Combined with `build_frame_estimator` (timestamp interpolation by byte position),

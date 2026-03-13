@@ -30,7 +30,7 @@
 
 | # | Objectif | Mesure de succès |
 |---|----------|-----------------|
-| O1 | **Unifier l'attribution** : POV et coéquipiers utilisent Section 2 (fire events) quand disponible | Taux de `confidence=high` ≥ 70 % sur POV+T1 (vs ~12.5 % actuellement sur tout le dataset) |
+| O1 | **Unifier l'attribution** : tous les joueurs du lobby utilisent le même pipeline (fire events quand disponible, formula_a en fallback) | Taux de `confidence=high` ≥ 70 % sur tout le lobby (vs ~12.5 % actuellement) |
 | O2 | **Éliminer la perte de données film** : `weapon_id` ne doit jamais être écrasé par un sentinel | 0 overwrites de hex réels ; sentinels dans `reconciled_as` uniquement |
 | O3 | **Claim-and-remove** : chaque fire event ne peut être attribué qu'à un seul kill | 0 doublons `(fire_event → kill)` vérifiable par test |
 | O4 | **Cross-chunk** : un kill à la frontière de chunk trouve les fire events du chunk précédent | Test avec kill à t=19050ms corrélé à fire event t=18800ms |
@@ -47,6 +47,7 @@
 | N3 | Fusion `weapon_kills` ↔ `killer_victim_pairs` | **JAMAIS.** Décision architecturale définitive et documentée (2026-03-12) : les deux tables restent séparées, liées par la clé naturelle `(match_id, xuid, time_ms)`. |
 | N4 | Découverte de nouveaux weapon_ids | Tâche d'investigation film distincte, pas du rôle du parser. Le parser stocke les hex inconnus as-is pour résolution future. |
 | N5 | Optimisation ProcessPoolExecutor | Évaluer après v2, seulement si CPU > 40 % mesuré en production. |
+| N6 | **Scan grenade/explosive events film** | Hors scope v2 — architecture préparée : `attribution_path` réserve la valeur `"grenade_event"` et `correlate_kills()` expose un point d'extension explicite avant le fallback formula_a (voir §5.2). Implémentation conditionnelle à la découverte du marqueur film grenades. |
 
 ---
 
@@ -56,27 +57,33 @@
 
 ```
 src/analysis/
-├── weapon_parser.py          # RÉÉCRIT — Couche pure, 0 I/O, 0 DB
-│   ├── scan_fire_events()        # Section 2 — fire events (tout player_index)
-│   ├── scan_formula_a()          # Section 1 — snapshots d'état
-│   ├── build_weapon_timeline()   # Timeline par chunk/pi
-│   ├── correlate_kills()         # Corrélation claim-and-remove
-│   └── compute_confidence()      # Zones A/B/C par arme
+├── weapon_parser.py              # RÉÉCRIT — Couche pure, 0 I/O, 0 DB  (≤ 600 L)
+│   ├── scan_fire_events_all()        # Section 2 — scanner match-level (0 filtre pi, tous joueurs)
+│   ├── scan_melee_events()           # Section 2 — melee events film (marqueur 0xd340)
+│   ├── scan_grenade_events_all()     # FUTUR (v3+) — grenade/explosive events film (marqueur à découvrir)
+│   ├── scan_formula_a()              # Section 1 raw — instance handles (compat tests)
+│   ├── scan_formula_a_ns()           # Section 1 NS layer — TYPE IDs (fallback formula_a)
+│   ├── build_weapon_timeline()       # Timeline raw par chunk/pi (compat tests)
+│   ├── build_weapon_timeline_ns()    # Timeline NS (TYPE IDs) par chunk/pi
+│   ├── map_b2_to_player()            # {b2_value → pi} via NS Section 1 (pipeline unifié)
+│   ├── group_events_by_pi()          # Dispatche all events → {pi: [events]}
+│   ├── correlate_kills()             # Corrélation claim-and-remove (fire_event / formula_a)
+│   └── compute_confidence()          # Zones A/B/C par arme
 │
-├── _weapon_data.py           # ÉTENDU — Constantes + 5 hex manquants
-│   ├── WEAPON_ID_MAP             # +5 entrées confirmées
-│   ├── WEAPON_TIMING_BY_ID       # Inchangé
-│   ├── MELEE_MEDALS              # +Ninja, +Pancake
-│   └── GRENADE_MEDALS            # Inchangé
+├── _weapon_data.py               # ÉTENDU — 36 armes confirmées  (≤ 450 L)
+│   ├── WEAPON_ID_MAP                 # 36 entrées (source : acurtis166, mars 2026)
+│   ├── WEAPON_TIMING_BY_ID           # Inchangé
+│   ├── MELEE_MEDALS                  # +Ninja, +Pancake
+│   └── GRENADE_MEDALS                # Inchangé
 │
-├── packet_index.py           # INCHANGÉ — Indexation paquets
-├── player_index.py           # INCHANGÉ — Résolution pi↔xuid
+├── packet_index.py               # INCHANGÉ — Indexation paquets
+├── player_index.py               # INCHANGÉ — Résolution pi↔xuid
 │
-├── reconciliation.py         # NOUVEAU — Post-traitement découplé
-│   ├── reconcile_api_aggregates()  # Steps 4a/4b/4c (corrigé)
-│   └── assign_sentinels()          # Écriture reconciled_as, jamais weapon_id
+├── reconciliation.py             # NOUVEAU — Post-traitement découplé  (≤ 200 L)
+│   ├── reconcile_api_aggregates()    # Steps 4a/4b/4c (corrigé)
+│   └── assign_sentinels()            # Écriture reconciled_as, jamais weapon_id
 │
-└── _parser_logging.py        # NOUVEAU — Logging structuré par match
+└── _parser_logging.py            # NOUVEAU — Logging structuré par match  (≤ 100 L)
 
 src/data/services/
 └── weapon_extraction_service.py  # RÉÉCRIT — Orchestration async
@@ -114,18 +121,21 @@ src/data/migration/steps/
 │  │                                                    │  │
 │  │  5a. Scan Phase (par chunk) :                      │  │
 │  │      - index_chunk() → paquets                     │  │
-│  │      - scan_fire_events(chunk, pi) → events[]      │  │
-│  │      - scan_formula_a(chunk) → snapshots[]         │  │
+│  │      - scan_fire_events_all(chunk) → all events    │  │
+│  │      - scan_melee_events(chunk) → melee events POV │  │
+│  │      - scan_formula_a_ns(chunk) → NS timeline      │  │
 │  │                                                    │  │
-│  │  5b. Accumulation cross-chunk :                    │  │
-│  │      all_fire_events[pi] = flat sorted list        │  │
-│  │      timeline[chunk][pi] = last weapon snapshot    │  │
+│  │  5b. Accumulation + dispatch cross-chunk :         │  │
+│  │      b2_to_pi = map_b2_to_player(events, ns_tl)   │  │
+│  │      fire_events_by_pi = group_events_by_pi(...)   │  │
+│  │      timeline_ns[chunk][pi] = TYPE IDs NS          │  │
+│  │      melee_events[] = accumulation cross-chunk     │  │
 │  │                                                    │  │
 │  │  5c. Correlation Phase (claim-and-remove) :        │  │
-│  │      Pour chaque kill trié par t_ms croissant :    │  │
+│  │      Même logique pour TOUS les joueurs du lobby : │  │
 │  │      - Chercher fire event non-claimé [t-5s, t]    │  │
-│  │      - Si trouvé → attribution Path A              │  │
-│  │      - Sinon → fallback Path B (Formula A)         │  │
+│  │      - Si trouvé → attribution "fire_event"        │  │
+│  │      - Sinon → fallback NS Section 1 ("formula_a") │  │
 │  │      - compute_confidence() → high/medium/low/none │  │
 │  │                                                    │  │
 │  │  Sortie : list[KillAttribution]                    │  │
@@ -161,11 +171,11 @@ class KillAttribution:
     time_ms: int
     weapon_id: int | None        # Hex film brut (UBIGINT). JAMAIS écrasé.
     reconciled_as: int | None    # Sentinel API (0/1/2). NULL si pas de réconciliation.
-    delta_ms: int | None         # Écart kill↔fire event (Path A uniquement)
+    delta_ms: int | None         # Écart kill↔fire event (fire_event uniquement)
     confidence: str              # "high" | "medium" | "low" | "none"
-    attribution_path: str        # "fire_event" | "formula_a" | "fire_event+formula_a"
-    swap_detected: bool          # Swap intra-chunk détecté (Path B)
-    delayed_damage: bool         # delta_ms > travel_max (Path A)
+    attribution_path: str        # "fire_event" | "melee_event" | "grenade_event" (v3+) | "formula_a" | "none"
+    swap_detected: bool          # Swap intra-chunk détecté (formula_a)
+    delayed_damage: bool         # delta_ms > travel_max (fire_event)
     player_index: int | None     # pi résolu pour ce joueur
     source_chunk_idx: int | None # Index du chunk source du fire event
 
@@ -214,10 +224,12 @@ Mesurer si les fire events Section 2 sont fiables pour les coéquipiers non-POV
 
 ### 3.5 Critère de sortie
 
+> **Note** : Ces critères ont été évalués via les sections 3.6–3.8. La découverte du b2_stream (inv #131) a rendu le critère de "couverture non-POV" caduc — la décision finale est le pipeline unifié décrit en §3.8.
+
 | Scénario | Décision architecture v2 |
 |----------|--------------------------|
-| Coverage non-POV ≥ 60 % ET fire_better > t1_better | **Path A unifié** pour POV + T1 (fire events prioritaires, Formula A en fallback) |
-| Coverage non-POV < 60 % OU fire_better ≤ t1_better | **Hybrid maintenu** : POV = Path A, T1 = Path B avec merge conservatif |
+| Coverage non-POV ≥ 60 % ET fire_better > t1_better | **Pipeline unifié** : fire events prioritaires, formula_a en fallback |
+| Coverage non-POV < 60 % OU fire_better ≤ t1_better | **Hybrid** : POV = fire events, coequipiers = formula_a seul |
 
 ### 3.6 Résultats (exécution 2026-03-12)
 
@@ -254,11 +266,67 @@ Le marqueur `_build_marker(pi=1)` = `0b10100100110` est un bit structurel commun
 | fire_better | **0** | 0 % |
 | different | 1 | 0.06 % |
 
-**Décision : NO-GO Path A unifié.**
-- Les fire events Section 2 sont **exclusivement POV** (pi=1).
-- Le modèle **hybrid est maintenu** : POV = Path A (fire events), Non-POV = Path B (Formula A/T1).
-- **N1 (adversaires)** : confirmé hors scope — aucune donnée fire event exploitable.
-- **N2 (melee events)** : 40 événements détectés sur 20 matchs — signal exploitable mais faible (2/match). Piste intéressante pour améliorer la couverture POV (~17.6% de kills non corrélés par fire events, une partie étant des melees).
+**Décision intermédiaire (révisée par §3.8)** :
+- Constat : les fire events Section 2 ne portent pas de player_index — ils sont match-level.
+- Ce constat a déclenché l'investigation inv #131 sur le b2_stream, qui a abouti au pipeline unifié (§3.8).
+- **N1 (adversaires)** : toujours à évaluer — aucune donnée concluante pour l'instant.
+- **N2 (melee events)** : 40 événements détectés sur 20 matchs — signal exploitable.
+
+### 3.8 Découverte T2 path — b2_stream dispatch (2026-03-13)
+
+**Conséquence directe de inv #131** : puisque `byte[1] = 0x26` est constant pour tous les fire events
+(marqueur structurel match-level, pas un filtre par joueur), la distinction par joueur passe par
+`b2_stream` (byte[2]) — un discriminant stable par vie/arme par joueur.
+
+**Mécanisme T2** :
+
+1. `scan_fire_events_all(chunk)` capture **tous** les fire events du match en un seul scan.
+2. `scan_formula_a_ns(chunk)` ou `build_weapon_timeline_ns(chunks)` scanne la **couche
+   nibble-shifted de la Section 1** (pas le raw) pour extraire les TYPE IDs présents dans
+   `WEAPON_ID_MAP`. Chaque entrée encode `pi = ns[wid_pos - 1] >> 5` et filtre les fire
+   events via `ns[wid_pos - 5] != 0x26`.
+3. `map_b2_to_player(events, timeline_ns, chunks)` — pour chaque fire event, cherche le pi
+   dont le TYPE ID correspond à `event["weapon_bytes"]` dans le chunk couvrant le timestamp
+   de l'event, vote par majorité par valeur de `b2`. Retourne `{b2_value: pi}`.
+4. `group_events_by_pi(all_events, b2_to_pi)` dispatche les events → `{pi: [fire_events]}`.
+
+**Couverture mesurée (match 147ffd4d)** : ~21 % des fire events résolus (255/1177).
+pi=6 (shoxyy) : 179 events attribués vs 182 `shots_fired` API (quasi-exact ✓).
+~79 % des fire events tombent en **fallback formula_a** (b2 non encore résolu sur ce match, baseline améliorable).
+
+**⚠️ Distinction critique raw vs NS** :
+
+| Scanner | Couche | Retourne | Dans WEAPON_ID_MAP ? |
+|---------|--------|----------|:-------------------:|
+| `scan_formula_a()` | raw bytes | instance handles | ❌ jamais |
+| `scan_formula_a_ns()` | nibble-shifted | TYPE IDs | ✅ oui |
+| `build_weapon_timeline()` | raw | handles par chunk/pi | ❌ jamais |
+| `build_weapon_timeline_ns()` | nibble-shifted | TYPE IDs par chunk/pi | ✅ oui |
+
+> **Décision architecture v2** : le fallback `formula_a` utilise `build_weapon_timeline_ns`
+> (TYPE IDs NS) pour que `confidence=high`/`medium` soient atteignables. Tant que le
+> fallback utilise la couche raw, **100 % des kills formula_a ont `confidence="low"`** —
+> les branches `high`/`medium` sont du code mort.
+
+**Architecture bi-path (pipeline unifié)** :
+
+> Même algorithme pour tous les joueurs du lobby — POV ou non-POV, il n'y a pas de distinction dans le code.
+
+| Étape | Tous les joueurs | Couverture |
+|-------|-----------------|:----------:|
+| **1. Scan** | `scan_fire_events_all()` — 1 seul scan, capture tous les fire events du match | 100 % des events |
+| **2. Dispatch** | `map_b2_to_player()` — b2_stream → pi via NS Section 1, pour chaque joueur | ≥21 %+ corrects (baseline 1 match, pas un plafond) |
+| **3a. fire_event** | fire event corrélable dans la fenêtre 5s → corrélation temporelle directe (claim-and-remove) | = kills avec fire event disponible |
+| **3b. formula_a** | pas de fire event corrélable → NS Section 1 snapshot (TYPE ID, sans timestamp précis) | fallback pour les kills sans fire event dans la fenêtre |
+
+**Conséquence** : les labels "Path A" et "T2" sont supprimés. `attribution_path` a 4 valeurs (+ 1 réservée v3+) :
+- `fire_event` : fire event corrélable trouvé dans la fenêtre (tous joueurs confondus)
+- `melee_event` : melee event film corrélé (tous joueurs confondus)
+- `grenade_event` *(FUTUR v3+)* : grenade/explosive event film corrélé — extension anticipée, marqueur film à découvrir
+- `formula_a` : pas de fire event dans la fenêtre, snapshot NS (tous joueurs confondus)
+- `none` : aucune source film disponible
+
+La "couverture POV élevée" (82%) vs "non-POV plus basse" n'est pas une différence d'algorithme — c'est simplement l'observation empirique que le POV a statistiquement plus de fire events dans la fenêtre de ses kills.
 
 ---
 
@@ -333,14 +401,20 @@ from src.data.migration.steps import add_reconciled_as  # noqa: F401
 
 | Fonction v1 | Statut v2 | Changements |
 |-------------|-----------|-------------|
-| `scan_formula_a()` | ✅ Conservée | Signature inchangée. Ajout logging via callback optionnel. |
-| `build_weapon_timeline()` | ✅ Conservée | Inchangée. |
+| `scan_formula_a()` | ✅ Conservée (raw) | Retourne instance handles. Utilisée uniquement comme stub de compatibilité. |
+| `build_weapon_timeline()` | ✅ Conservée (raw) | Timeline raw par chunk/pi. Gardée pour compat tests. **Doit être remplacée par NS.** |
+| `scan_formula_a_ns()` | 🆕 Nouvelle | Section 1 couche nibble-shifted → TYPE IDs + pi. Requis pour le fallback formula_a et pour résoudre b2_stream. |
+| `build_weapon_timeline_ns()` | 🆕 Nouvelle | Timeline NS (TYPE IDs) par chunk/pi. Utilisée par `map_b2_to_player` et fallback formula_a. |
+| `scan_fire_events_all()` | 🔄 Renommée | Ex-`scan_fire_events` : scanner **match-level**, 0 filtre pi. Capture tous les fire events du lobby. |
+| `map_b2_to_player()` | 🆕 Nouvelle | `{b2_value → pi}` via NS Section 1 — **pipeline unifié tous joueurs**. Intégrée dans `weapon_parser.py`. |
+| `group_events_by_pi()` | 🆕 Nouvelle | Dispatche all events → `{pi: [events]}` selon b2_to_pi. Intégrée dans `weapon_parser.py`. |
+| `scan_melee_events()` | 🆕 Nouvelle | Marqueur `0xd340`, couche NS. POV uniquement. Même structure que fire events + champ animation. |
+| `scan_grenade_events_all()` | 🔮 FUTUR (v3+) | Scanner match-level grenades/explosifs. Même pattern que `scan_fire_events_all()`. Conditionnel à la découverte du marqueur film. |
 | `find_chunk_at_time()` | ✅ Conservée | Inchangée. |
 | `find_frame_positions()` | ⚠️ Dépréciée | Remplacée par `build_packet_estimator()` (packet_index.py). Gardée pour compat tests. |
 | `build_frame_estimator()` | ⚠️ Dépréciée | Idem. Gardée pour compat tests. |
-| `scan_fire_events()` | ✅ Refactorisée | Accepte n'importe quel player_index (pas seulement POV). |
 | `_get_confidence()` | ✅ Conservée | Renommée `compute_confidence()` (publique). |
-| `_check_zone_b_swap()` | ✅ Conservée | Renommée `check_zone_b_swap()` (publique). Correction logique W1 vs W2. |
+| `_check_zone_b_swap()` | ✅ Conservée | Renommée `check_zone_b_swap()` (publique). Re-évaluer W1 vs W2 (voir how_it_works). |
 
 ### 5.2 Nouvelles fonctions
 
@@ -352,6 +426,7 @@ Cœur de la v2. Remplace `correlate_kills_to_weapons()`.
 def correlate_kills(
     kills: list[dict],
     fire_events_by_pi: dict[int, list[dict]],
+    melee_events_by_pi: dict[int, list[dict]],   # melee events POV (vide pour non-POV)
     timeline: dict[int, dict[int, bytes]],
     swap_pis: dict[int, set[int]],
     timing: list[tuple[int, int, int]],
@@ -359,36 +434,55 @@ def correlate_kills(
     *,
     kill_window_ms: int = KILL_WINDOW_MS,
     log_callback: Callable | None = None,
+    # FUTUR v3+ : grenade_events_by_pi: dict[int, list[dict]] | None = None,
 ) -> list[KillAttribution]:
 ```
 
-**Algorithme (claim-and-remove)** :
+**Algorithme (claim-and-remove) — même logique pour TOUS les joueurs du lobby** :
 
 ```
 1. Trier kills par time_ms croissant
-2. Par joueur (xuid), construire un pool de fire events triés par timestamp_ms
-3. Pour chaque kill :
+2. Par joueur (xuid/pi), construire les pools d'events (tous mutable, pré-triés par timestamp_ms) :
+   - fire_events_by_pi  (après dispatch b2_stream universel)
+   - melee_events_by_pi (POV uniquement pour l'instant)
+   - [FUTUR v3+] grenade_events_by_pi
+3. Pour chaque kill — dispatch en cascade, ordre de priorité strict :
    a. pi = player_pi_map[kill.xuid]
-   b. pool = fire_events_by_pi[pi]  (mutable, pré-trié)
-   c. Chercher le dernier event non-claimé dans [kill.time_ms - kill_window_ms, kill.time_ms]
-   d. Si trouvé :
-      - Retirer l'event du pool (claim)
-      - weapon_id = event.weapon_id
-      - delta_ms = kill.time_ms - event.timestamp_ms
-      - confidence = compute_confidence(weapon_id, delta_ms)
-      - attribution_path = "fire_event"
-      - check_zone_b_swap() si confidence == "medium"
-   e. Sinon (pas de fire event) :
-      - Fallback Formula A
-      - chunk_idx = find_chunk_at_time(timing, kill.time_ms)
-      - weapon_id = timeline[chunk_idx].get(pi)
-      - swap_detected = pi in swap_pis.get(chunk_idx, set())
-      - confidence = "high" si pas swap, "medium" si swap, "low" si hex inconnu
-      - attribution_path = "formula_a"
-   f. Si ni fire event ni snapshot :
-      - weapon_id = None, confidence = "none"
-      - attribution_path = "none"
-   g. log_callback(kill, attribution, decision_details) si fourni
+
+   ► Étape M — Melee (si kill.medals ∩ MELEE_MEDALS ≠ ∅) :
+      melee_pool = melee_events_by_pi.get(pi, [])
+      Si melee_event non-claimé dans [kill.time_ms - kill_window_ms, kill.time_ms] :
+      → claim, attribution_path = "melee_event", confidence = "high", weapon_id = event.weapon_id
+      → fin dispatch pour ce kill
+
+   ► [FUTUR v3+] Étape G — Grenade (si kill.medals ∩ GRENADE_MEDALS ≠ ∅) :
+      # ── Point d'extension : tout nouveau type d'event film s'insère ici, ──
+      # ── avant le fallback formula_a, avec le même pattern claim-and-remove. ──
+      grenade_pool = grenade_events_by_pi.get(pi, [])  # kwarg optionnel
+      Si grenade_event non-claimé dans [kill.time_ms - kill_window_ms, kill.time_ms] :
+      → claim, attribution_path = "grenade_event", confidence = "high", weapon_id = None  # grenade ≠ loadout
+      → fin dispatch pour ce kill
+
+   ► Étape F — Fire event :
+      pool = fire_events_by_pi.get(pi, [])  (mutable, pré-trié)
+      Si fire event non-claimé dans [kill.time_ms - kill_window_ms, kill.time_ms] :
+      → claim, weapon_id = event.weapon_id, delta_ms = kill.time_ms - event.timestamp_ms
+      → confidence = compute_confidence(weapon_id, delta_ms)
+      → attribution_path = "fire_event"  ← même valeur POV ou non-POV
+      → check_zone_b_swap() si confidence == "medium"
+      → fin dispatch pour ce kill
+
+   ► Étape A — Fallback NS Section 1 (formula_a) :
+      chunk_idx = find_chunk_at_time(timing, kill.time_ms)
+      weapon_id = timeline_ns[chunk_idx].get(pi)  ← TYPE ID (NS)
+      swap_detected = pi in swap_pis.get(chunk_idx, set())
+      confidence = "high" si pas swap, "medium" si swap
+      attribution_path = "formula_a"
+
+   ► Étape ∅ — Aucune source :
+      weapon_id = None, confidence = "none", attribution_path = "none"
+
+   log_callback(kill, attribution, decision_details) si fourni
 4. Retourner list[KillAttribution]
 ```
 
@@ -397,27 +491,92 @@ def correlate_kills(
 - Chaque kill produit exactement un KillAttribution
 - `len(output) == len(kills)`
 
-#### `scan_fire_events_multi_pi(chunk_data, player_indices, start_ms, duration_ms, packets) → dict[int, list[dict]]`
+#### `scan_fire_events_all(chunk_data, start_ms, duration_ms, packets) → list[dict]`
 
-Variante de `scan_fire_events` qui scanne plusieurs player_index en un seul passe.
+Scanner match-level. Capture **tous** les fire events du chunk sans filtre player_index
+(byte[1] = `0x26` est constant pour l'ensemble des joueurs, cf. inv #131).
 
 ```python
-def scan_fire_events_multi_pi(
+def scan_fire_events_all(
     chunk_data: bytes,
-    player_indices: set[int],
     start_ms: int,
     duration_ms: int,
     packets: list | None = None,
-) -> dict[int, list[dict]]:
-    """Scanne les fire events pour plusieurs player_index simultanément.
-    
-    Retourne {pi: [fire_events]} pour chaque pi demandé.
-    Avantage : un seul parcours nibble-shift au lieu de N.
+) -> list[dict]:
+    """Scanne tous les fire events du chunk (match-level, 0 filtre pi).
+
+    Retourne une liste de dicts avec les champs :
+      timestamp_ms, weapon_bytes, weapon_id, fire_counter, b2_stream, is_burst_end, is_hit.
+    La clé de déduplication pour les armes automatiques (BR75, MA40) est
+    (weapon_id, fire_counter) — deux entrées par salve avec b2_stream différents.
     """
 ```
 
-**Optimisation** : le parcours nibble-shifted est le plus coûteux (CPU). Scanner N
-player_index en un seul passe divise le coût CPU par N sur les chunks partagés.
+**Déduplication** : `(weapon_id, fire_counter)` par chunk. Les armes automatiques (BR75,
+MA40 AR) génèrent deux entrées par tir avec `b2_stream` différents mais même `fire_counter`.
+
+---
+
+#### `scan_melee_events(chunk_data, start_ms, duration_ms, packets) → list[dict]`
+
+Scanner POV pour les melee events film. Marqueur `0xd340` dans la couche nibble-shifted.
+Structure identique aux fire events + champ `animation_type` (`5` ou `d`).
+
+```python
+def scan_melee_events(
+    chunk_data: bytes,
+    start_ms: int,
+    duration_ms: int,
+    packets: list | None = None,
+) -> list[dict]:
+    """Scanne les melee events POV (marqueur 0xd340).
+
+    Champs retournés : timestamp_ms, weapon_bytes, weapon_id, animation_type.
+    Permet d'attribuer les kills melee directement depuis le film sans médailles.
+    """
+```
+
+**Scope** : POV uniquement (même couche nibble-shifted que fire events → même restriction).
+
+---
+
+#### `scan_formula_a_ns(chunk_data) → list[dict]`
+
+Scanner Section 1 en couche nibble-shifted. Retourne des TYPE IDs (présents dans
+`WEAPON_ID_MAP`), contrairement à `scan_formula_a` (raw) qui retourne des instance handles
+jamais dans `WEAPON_ID_MAP`.
+
+```python
+def scan_formula_a_ns(chunk_data: bytes) -> list[dict]:
+    """Scanne les snapshots Section 1 via couche nibble-shifted.
+
+    Champs : pi (= ns[wid_pos-1] >> 5), weapon_id (TYPE ID), byte_pos.
+    Filtre les fire events parasites via ns[wid_pos-5] != 0x26.
+    TYPE IDs retournés sont directement utilisables pour WEAPON_ID_MAP.
+    """
+```
+
+**Usage** : `build_weapon_timeline_ns` et `map_b2_to_player` dépendent de cette fonction.
+
+---
+
+#### `build_weapon_timeline_ns(chunks_sorted) → tuple[dict, dict]`
+
+Construit la timeline weapon par chunk/pi depuis la couche NS (TYPE IDs).
+Utilisée pour le fallback formula_a et par `map_b2_to_player`.
+
+```python
+def build_weapon_timeline_ns(
+    chunks_sorted: list[tuple[int, bytes, int, int]],  # (idx, data, start_ms, dur_ms)
+) -> tuple[dict[int, dict[int, int]], dict[int, set[int]]]:
+    """Timeline NS : {chunk_idx: {pi: weapon_id_int}}, {chunk_idx: {pi_avec_swap}}.
+
+    Contrairement à build_weapon_timeline (raw), les weapon_id retournés
+    sont des TYPE IDs présents dans WEAPON_ID_MAP → high/medium atteignables dans le fallback formula_a.
+    """
+```
+
+> **Note** : `map_b2_to_player` et `group_events_by_pi` sont dans `weapon_parser.py` au même titre que les autres fonctions du pipeline — pas dans un module séparé.
 
 ### 5.3 Corrections de bugs intégrées
 
@@ -428,6 +587,8 @@ player_index en un seul passe divise le coût CPU par N sur les chunks partagés
 | **W2 retenu au lieu de W1** (Zone B) | Revoir logique `check_zone_b_swap()` : retenir W1 (arme avant swap) sauf preuve contraire | `test_zone_b_retains_w1_not_w2` |
 | **5 hex manquants** | Ajoutés dans `WEAPON_ID_MAP` (Bug D) | `test_all_confirmed_weapons_in_map` |
 | **MELEE_MEDALS incomplet** | `+Ninja`, `+Pancake` (Bug B) | `test_melee_medals_complete` |
+| **formula_a raw vs NS** | Le fallback formula_a utilise `build_weapon_timeline_ns` (TYPE IDs) — `confidence=high`/`medium` atteignables | `test_t1_ns_confidence_high_reachable` |
+| **scan_fire_events match-level** | Renommée `scan_fire_events_all()`, 0 filtre pi — dispatch b2_stream via `map_b2_to_player` (intégré dans weapon_parser.py, même pipeline pour tous les joueurs) | `test_scan_fire_events_all_match_level` |
 
 ### 5.4 Contrat de sortie du parser
 
@@ -435,7 +596,15 @@ Le parser retourne `list[KillAttribution]` avec les garanties :
 - `weapon_id` = hex brut du film ou `None`. **Jamais** un sentinel (0/1/2).
 - `reconciled_as` = `None` systématiquement (pas la responsabilité du parser).
 - `confidence` ∈ `{"high", "medium", "low", "none"}` — jamais `None` Python.
-- `attribution_path` ∈ `{"fire_event", "formula_a", "fire_event+formula_a", "none"}`.
+- `attribution_path` ∈ `{"fire_event", "melee_event", "formula_a", "none"}` — jamais `None` Python.
+
+  | Valeur | Description |
+  |--------|-------------|
+  | `fire_event` | Fire event corrélé via b2_stream (tous joueurs — POV ou non) |
+  | `melee_event` | Melee event film corrélé (marqueur `0xd340`) |
+  | `grenade_event` | *(FUTUR v3+)* Grenade/explosive event corrélé — `weapon_id = None` (grenade ≠ loadout weapon) |
+  | `formula_a` | NS Section 1 snapshot (TYPE ID) — b2_stream non résolu pour ce joueur |
+  | `none` | Aucune source film disponible |
 
 ---
 
@@ -592,48 +761,72 @@ def _resolve_all_player_indices(self, chunks, xuid_ints) -> dict[str, int]:
 ```python
 @dataclass
 class ScanResult:
-    fire_events_by_pi: dict[int, list[dict]]  # {pi: [events triés par timestamp_ms]}
-    timeline: dict[int, dict[int, bytes]]       # {chunk_idx: {pi: weapon_bytes}}
-    swap_pis: dict[int, set[int]]               # {chunk_idx: {pi avec swap}}
-    timing: list[tuple[int, int, int]]          # [(chunk_idx, start_ms, duration_ms)]
+    fire_events_by_pi: dict[int, list[dict]]      # {pi: [events triés par timestamp_ms]}
+    melee_events:       list[dict]                # melee events POV (marqueur 0xd340)
+    timeline_ns:        dict[int, dict[int, int]] # {chunk_idx: {pi: weapon_id_int}} TYPE IDs NS
+    timeline_raw:       dict[int, dict[int, bytes]]# {chunk_idx: {pi: handle}} raw legacy
+    swap_pis:           dict[int, set[int]]       # {chunk_idx: {pi avec swap}}
+    timing:             list[tuple[int, int, int]] # [(chunk_idx, start_ms, duration_ms)]
+    b2_to_pi:           dict[int, int]            # {b2_value: pi} résolu par map_b2_to_player
 
 def _scan_all_chunks(self, chunks, pi_map, log) -> ScanResult:
     """Scan Phase — accumule fire events et timeline sur tous les chunks.
     
     INVARIANT : fire_events_by_pi[pi] est trié par timestamp_ms croissant.
     """
-    all_pis = set(pi_map.values())
-    fire_events_by_pi: dict[int, list[dict]] = {pi: [] for pi in all_pis}
-    timeline = {}
-    swap_pis = {}
-    timing = []
+    all_raw_events: list[dict] = []
+    all_melee_events: list[dict] = []
+    timeline_ns: dict[int, dict[int, int]] = {}
+    timeline_raw: dict[int, dict[int, bytes]] = {}
+    swap_pis: dict[int, set[int]] = {}
+    timing: list[tuple[int, int, int]] = []
     
     for chunk_idx, (chunk_data, start_ms, duration_ms) in sorted(chunks.items()):
         packets = index_chunk(chunk_data)
         timing.append((chunk_idx, start_ms, duration_ms))
         
-        # Section 2 — Fire events pour tous les pi en un seul passe
-        chunk_fire = scan_fire_events_multi_pi(
-            chunk_data, all_pis, start_ms, duration_ms, packets=packets
+        # Section 2 — Fire events match-level (1 scan par chunk, pas de filtre pi)
+        raw_events = scan_fire_events_all(
+            chunk_data, start_ms, duration_ms, packets=packets
         )
-        for pi, events in chunk_fire.items():
-            fire_events_by_pi[pi].extend(events)
-            log.record_step("scan_fire", chunk=chunk_idx, pi=pi, events=len(events))
-        
-        # Section 1 — Formula A (tous les pi)
-        fa_events = scan_formula_a(chunk_data)
-        # Intégrer dans timeline/swap_pis (logique existante build_weapon_timeline)
-        chunk_timeline, chunk_swaps = _process_formula_a_for_chunk(
-            fa_events, chunk_idx, all_pis
+        all_raw_events.extend(raw_events)
+        log.record_step("scan_fire", chunk=chunk_idx, events=len(raw_events))
+
+        # Section 2 — Melee events POV (marqueur 0xd340)
+        chunk_melee = scan_melee_events(
+            chunk_data, start_ms, duration_ms, packets=packets
         )
-        timeline[chunk_idx] = chunk_timeline
+        all_melee_events.extend(chunk_melee)
+
+        # Section 1 NS — TYPE IDs pour map_b2_to_player et fallback formula_a
+        fa_ns = scan_formula_a_ns(chunk_data)
+        chunk_timeline_ns, chunk_swaps = _process_formula_a_for_chunk_ns(fa_ns, chunk_idx)
+        timeline_ns[chunk_idx] = chunk_timeline_ns
         swap_pis[chunk_idx] = chunk_swaps
-    
-    # Tri final par timestamp_ms (garanti par accumulation ordonnée des chunks)
-    for pi in fire_events_by_pi:
-        fire_events_by_pi[pi].sort(key=lambda e: e["timestamp_ms"])
-    
-    return ScanResult(fire_events_by_pi, timeline, swap_pis, timing)
+
+        # Section 1 raw — instance handles (legacy fallback, à terme remplacé par NS)
+        chunk_timeline_raw, _ = _process_formula_a_for_chunk(
+            scan_formula_a(chunk_data), chunk_idx, set(pi_map.values())
+        )
+        timeline_raw[chunk_idx] = chunk_timeline_raw
+
+    # Tri global par timestamp_ms
+    all_raw_events.sort(key=lambda e: e["timestamp_ms"])
+
+    # Dispatch b2_stream → pi via NS timeline (pipeline unifié)
+    b2_to_pi = map_b2_to_player(all_raw_events, timeline_ns, chunks)
+    fire_events_by_pi = group_events_by_pi(all_raw_events, b2_to_pi)
+    log.record_step("b2_dispatch", resolved_b2=len(b2_to_pi), total_events=len(all_raw_events))
+
+    return ScanResult(
+        fire_events_by_pi=fire_events_by_pi,
+        melee_events=all_melee_events,
+        timeline_ns=timeline_ns,
+        timeline_raw=timeline_raw,
+        swap_pis=swap_pis,
+        timing=timing,
+        b2_to_pi=b2_to_pi,
+    )
 ```
 
 ### 6.5 Écriture batch
@@ -671,14 +864,14 @@ def reconcile_api_aggregates(
     Les sentinels sont écrits dans reconciled_as uniquement.
     
     Éligibilité pour reconciled_as :
-    - confidence == "low"  → ✅ (hex inconnu, API plus fiable)
+    - confidence == "low"  → ✅ (timing suspect, signal API potentiellement plus fiable)
     - confidence == "none" → ✅ (pas de donnée film)
     - confidence == "high" → ❌ jamais
     - confidence == "medium" → ❌ jamais
     
     RÈGLE SUPPLÉMENTAIRE (correction Bug F) :
     - weapon_id != None ET weapon_id NOT IN EXCLUDED_WEAPON_IDS → ❌ jamais
-      (ne pas écraser un hex réel, même confidence=low)
+      (ne pas écraser un hex réel, quelle que soit la confidence)
     """
 ```
 
@@ -991,27 +1184,38 @@ tests/
 | A5 | `test_melee_medals_includes_ninja_pancake` | `"Ninja" in MELEE_MEDALS`, `"Pancake" in MELEE_MEDALS` |
 | A6 | `test_kill_window_ms_is_5000` | `KILL_WINDOW_MS == 5000` |
 
-#### Groupe B — scan_fire_events
+#### Groupe B — scan_fire_events_all (match-level)
 
 | # | Test | Setup | Assert |
 |---|------|-------|--------|
-| B1 | `test_scan_fire_events_empty_data` | data = b"" | `[]` |
-| B2 | `test_scan_fire_events_too_small` | data = b"\x00" * 50 | `[]` |
-| B3 | `test_scan_fire_events_valid_pov` | Chunk synthétique avec 1 fire event pi=1 | 1 event, weapon_id correct |
-| B4 | `test_scan_fire_events_non_pov_pi` | Chunk synthétique avec fire event pi=3 | 1 event retourné (v2 supporte tout pi) |
-| B5 | `test_scan_fire_events_dedup_dual_stream` | 2 events même fire_counter, weapon_id BR75 | 1 event après dédup |
-| B6 | `test_scan_fire_events_multi_chunk` | 3 chunks, events répartis | Events accumulés cross-chunk |
-| B7 | `test_scan_fire_events_with_packets` | Chunk + index_chunk → packets | Timestamps µs-precision |
+| B1 | `test_scan_fire_events_all_empty` | data = b"" | `[]` |
+| B2 | `test_scan_fire_events_all_too_small` | data = b"\x00" * 50 | `[]` |
+| B3 | `test_scan_fire_events_all_captures_all_players` | Chunk avec events marqueurs byte[1]=0x26 pour pi=1,3,5 | Tous capturés (match-level) |
+| B4 | `test_scan_fire_events_all_b2_stream_present` | 1 fire event | `e["b2_stream"]` non-`None` |
+| B5 | `test_scan_fire_events_all_dedup_dual_stream` | 2 entries même `fire_counter`, weapon_id BR75 | 1 event après dédup `(weapon_id, fire_counter)` |
+| B6 | `test_scan_fire_events_all_multi_chunk` | 3 chunks, events répartis | Events plats triés par timestamp_ms |
+| B7 | `test_scan_fire_events_all_with_packets` | Chunk + index_chunk → packets | Timestamps µs-precision |
+| B8 | `test_scan_fire_events_all_returns_is_burst_end` | BR75 séquence 0-0-1 | 3e event : `is_burst_end=True` |
+| B9 | `test_scan_melee_events_empty` | data = b"" | `[]` |
+| B10 | `test_scan_melee_events_valid` | Chunk avec marqueur 0xd340 | 1 melee event, animation_type ∈ {5, 13} |
 
-#### Groupe C — scan_fire_events_multi_pi
+#### Groupe C — b2_stream dispatch : `map_b2_to_player` + `group_events_by_pi` (pipeline unifié tous joueurs)
 
 | # | Test | Setup | Assert |
 |---|------|-------|--------|
-| C1 | `test_multi_pi_empty` | data = b"" | `{pi: [] for pi in pis}` |
-| C2 | `test_multi_pi_single_pi` | 1 pi demandé | Résultat identique à scan_fire_events |
-| C3 | `test_multi_pi_multiple_pis` | pi=1 et pi=3, events des deux | Chaque pi a ses events |
-| C4 | `test_multi_pi_ignores_unrequested` | Event pi=5, demandé {1,3} | pi=5 absent du résultat |
-| C5 | `test_multi_pi_dedup_per_pi` | Dual-stream pour pi=1, single pour pi=3 | Dédup correcte par pi |
+| C1 | `test_map_b2_to_player_empty` | events=[], timeline_ns={} | `{}` |
+| C2 | `test_map_b2_to_player_single_player` | events avec b2=42, NS timeline pi=6 weapon BR75 | `{42: 6}` |
+| C3 | `test_map_b2_to_player_majority_vote` | b2=0x3A → 9 events pi=3, 1 event pi=1 | `{0x3A: 3}` (majorité) |
+| C4 | `test_map_b2_to_player_unknown_b2` | b2 absent de NS timeline | non présent dans dict résultat |
+| C5 | `test_map_b2_to_player_multiple_players` | 3 joueurs, b2 distincts | 3 mappings corrects |
+| C6 | `test_group_events_by_pi_empty` | events=[], b2_to_pi={} | `{}` |
+| C7 | `test_group_events_by_pi_resolved` | 5 events b2 résolu → pi=2 | `{2: [5 events]}` |
+| C8 | `test_group_events_by_pi_unresolved` | events b2 non résolu | non présents dans dict |
+| C9 | `test_group_events_sorted_by_ts` | events non triés | Sortie triée par `timestamp_ms` |
+| C10 | `test_attribution_path_values` | `attribution_path` ne peut être que `fire_event`, `melee_event`, `formula_a`, `none` |
+| C11 | `test_scan_formula_a_ns_returns_type_ids` | Chunk NS avec TYPE ID BR75 | weapon_id in WEAPON_ID_MAP |
+| C12 | `test_build_weapon_timeline_ns_basic` | 1 chunk, pi=3, BR75 | timeline_ns[0][3] == BR75_weapon_id |
+| C13 | `test_t1_ns_confidence_high_reachable` | Kill formula_a via NS timeline (TYPE ID connu, pas de swap) | confidence="high" |
 
 #### Groupe D — scan_formula_a
 
@@ -1051,7 +1255,7 @@ tests/
 | F13 | `test_correlate_confidence_low_zone_c` | delta > travel_max | confidence=low, delayed_damage=True |
 | F14 | `test_correlate_zone_b_swap_check` | Zone B + fire event post-kill avec autre arme | confidence upgradé |
 | F15 | `test_correlate_zone_b_swap_retains_w1` | Zone B + swap détecté → W1 (arme avant swap) est retenue | weapon_id = W1 |
-| F16 | `test_correlate_unknown_hex_confidence_low` | weapon_id pas dans WEAPON_IDS_INT | confidence=low |
+| F16 | `test_correlate_confidence_low_zone_c_formula_a` | formula_a, kill à la limite zone C (delta_ms > travel_max) | confidence=low, delayed_damage=True |
 | F17 | `test_correlate_aoe_simultaneous_kills` | 2 kills même t_ms, même killer (Hammer) | Même weapon_id, même fire event (pas de double-claim car même event) |
 | F18 | `test_correlate_output_length_invariant` | N kills → N attributions | `len(output) == len(kills)` |
 | F19 | `test_correlate_weapon_id_never_sentinel` | Toute sortie du parser | `all(a.weapon_id not in {0, 1, 2} for a in output if a.weapon_id)` |
@@ -1059,15 +1263,18 @@ tests/
 | F21 | `test_correlate_log_callback_per_kill` | Mock log_callback | Appelé exactement len(kills) fois |
 | F22 | `test_correlate_multiple_players` | 2 joueurs, kills entrelacés | Attribution indépendante par pi |
 | F23 | `test_correlate_fire_event_after_kill_ignored` | Event à kill_t + 500 | Non retenu (hors fenêtre) |
+| F24 | `test_correlate_melee_event_path` | Kill melee suivi d'1 melee_event dans fenêtre | `attribution_path="melee_event"`, `confidence="high"` |
+| F25 | `test_correlate_non_pov_fire_event_path` | Kill non-POV, b2 résolu via map_b2_to_player | `attribution_path="fire_event"` (même valeur que POV) |
+| F26 | `test_correlate_formula_a_unresolved_b2` | Kill non-POV, b2 non résolu, NS timeline disponible | `attribution_path="formula_a"`, `confidence≠"low"` si TYPE ID connu |
 
 #### Groupe G — compute_confidence
 
 | # | Test | Setup | Assert |
 |---|------|-------|--------|
 | G1 | `test_confidence_known_weapon_zone_a` | BR75, delta=300ms | "high" (300 < 650=swap_ms) |
-| G2 | `test_confidence_known_weapon_zone_b` | BR75, delta=600ms | "medium" (650 > 600 > 500=travel_max) — wait, swap_ms=650 for BR75 so 600 < 650 → still high. Let me use Sidekick: swap_ms=400, delta=350 → high; delta=420 → medium |
+| G2 | `test_confidence_known_weapon_zone_b` | Sidekick (swap_ms=400), delta=420ms | "medium" (420 > swap_ms=400, dans zone B) |
 | G3 | `test_confidence_known_weapon_zone_c` | Cindershot, delta=5500ms | "low" (> 5000=travel_max) |
-| G4 | `test_confidence_unknown_weapon_default` | Hex pas dans WEAPON_TIMING_BY_ID | Utilise default (650, 2000) |
+| G4 | `test_confidence_unknown_weapon_uses_default_timing` | Hex pas dans WEAPON_TIMING_BY_ID | Utilise timing par défaut (650, 2000) — confidence reste déterminée par delta_ms, pas par la présence dans le map |
 | G5 | `test_confidence_delayed_damage_flag` | Zone C → `delayed_damage=True` | Correct |
 
 #### Groupe H — KillAttribution dataclass
@@ -1097,7 +1304,9 @@ tests/
 | S13 | `test_process_match_log_collector` | MatchLogCollector fourni | summary() non-vide |
 | S14 | `test_resolve_pi_metadata_first` | Metadata packet présent | Acurtis non appelé |
 | S15 | `test_resolve_pi_fallback_acurtis` | Pas de metadata packet | Acurtis appelé |
-| S16 | `test_scan_multi_pi_single_pass` | Mock scan_fire_events_multi_pi | Appelé 1× par chunk (pas N×) |
+| S16 | `test_scan_fire_events_all_single_pass` | Mock `scan_fire_events_all` | Appelé 1× par chunk (match-level, pas par joueur) |
+| S17 | `test_b2_dispatch_called_once_after_scan` | Mock `map_b2_to_player` | Appelé 1× après accumulation de tous les chunks, résultat partagé par tous les joueurs |
+| S18 | `test_melee_events_accumulated_cross_chunk` | 2 chunks avec melee events | `scan_result.melee_events` contient les 2 |
 
 ### 10.4 Tests réconciliation — `test_weapon_reconciliation.py`
 
@@ -1209,13 +1418,13 @@ def in_memory_shared_db() -> duckdb.DuckDBPyConnection:
 
 | Module | Tests | Lignes estimées | Couverture cible |
 |--------|:-----:|:---------------:|:----------------:|
-| `weapon_parser.py` | ~80 | ~500 | ≥ 95 % |
-| `weapon_extraction_service.py` | ~40 | ~450 | ≥ 85 % |
-| `reconciliation.py` | ~15 | ~150 | ≥ 95 % |
-| `_parser_logging.py` | ~10 | ~80 | ≥ 90 % |
-| `_weapon_data.py` | ~25 | ~400 | ≥ 90 % |
+| `weapon_parser.py` | ~105 | ~600 | ≥ 95 % |
+| `weapon_extraction_service.py` | ~45 | ~450 | ≥ 85 % |
+| `reconciliation.py` | ~15 | ~200 | ≥ 95 % |
+| `_parser_logging.py` | ~10 | ~100 | ≥ 90 % |
+| `_weapon_data.py` | ~25 | ~450 | ≥ 90 % |
 | `_weapon_kills_repo.py` | ~10 | ~450 | ≥ 80 % |
-| **Total** | **~180** | **~2030** | **≥ 90 %** |
+| **Total** | **~210** | **~2250** | **≥ 90 %** |
 
 ---
 
@@ -1256,7 +1465,7 @@ def in_memory_shared_db() -> duckdb.DuckDBPyConnection:
 | # | Risque | Probabilité | Impact | Mitigation |
 |---|--------|:-----------:|:------:|------------|
 | R1 | Non-POV fire events insuffisants → hybrid obligatoire | Moyenne | Faible (architecture supporte les deux) | Phase 0 décisionnelle avant dev |
-| R2 | `scan_fire_events_multi_pi` plus lent que N appels séparés | Faible | Faible | Benchmark avant/après, fallback = N appels |
+| R2 | `map_b2_to_player` coverage partielle (<60%) sur certains matchs | Faible | Moyen | Fallback formula_a universel ; couverture mesurée à ~21% sur test match (baseline acceptable) |
 | R3 | Migration reconciled_as casse des requêtes UI | Moyenne | Moyen | Vue `v_weapon_kills` isole les consommateurs |
 | R4 | Backfill v2 produit des résultats différents → utilisateur perturbé | Moyenne | Faible | Audit comparatif M4 avant backfill complet |
 | R5 | Performance dégradée (logging overhead) | Faible | Faible | Logger optionnel, `DEBUG` désactivé en prod |
@@ -1281,13 +1490,17 @@ def in_memory_shared_db() -> duckdb.DuckDBPyConnection:
 ### Avant Phase 2
 
 - [ ] `KillAttribution` dataclass définie
-- [ ] `correlate_kills()` implémentée avec claim-and-remove
-- [ ] `scan_fire_events_multi_pi()` implémentée
+- [ ] `correlate_kills()` implémentée avec claim-and-remove (fire_event / formula_a)
+- [ ] `scan_fire_events_all()` implémentée (match-level, 0 filtre pi)
+- [ ] `scan_melee_events()` implémentée (marqueur 0xd340)
+- [ ] `scan_formula_a_ns()` implémentée (NS layer → TYPE IDs)
+- [ ] `build_weapon_timeline_ns()` implémentée (TYPE IDs par chunk/pi)
+- [ ] `map_b2_to_player()` + `group_events_by_pi()` intégrés dans `weapon_parser.py` (pipeline unifié, plus de module `_player_attribution.py` séparé)
 - [ ] `compute_confidence()` publique (ex-`_get_confidence`)
-- [ ] `check_zone_b_swap()` corrigée (W1 retenu)
-- [ ] 5 hex manquants ajoutés à `WEAPON_ID_MAP`
+- [ ] `check_zone_b_swap()` corrigée (W1 vs W2 re-évalué)
+- [ ] 36 armes dans `WEAPON_ID_MAP` (source acurtis166 mars 2026)
 - [ ] `Ninja` + `Pancake` ajoutés à `MELEE_MEDALS`
-- [ ] ~80 tests parser verts
+- [ ] ~90 tests parser verts (groupes A–H + C13 NS)
 
 ### Avant Phase 3
 
