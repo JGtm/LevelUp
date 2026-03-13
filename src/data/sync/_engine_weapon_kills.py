@@ -55,17 +55,17 @@ class WeaponKillsEngineMixin:
                 self._gamertag,
                 self._xuid,
             )
-            rows = summary.get("rows_inserted", 0)
+            rows = summary.rows_inserted
             if rows > 0:
                 logger.debug(
                     "weapon_kills %s : %d lignes (%d/%d kills attribués)",
                     match_id[:8],
                     rows,
-                    summary.get("kills_attributed", 0),
-                    summary.get("kills_total", 0),
+                    summary.kills_attributed,
+                    summary.kills_total,
                 )
-            elif "error" in summary:
-                logger.debug("weapon_kills %s : %s", match_id[:8], summary["error"])
+            elif summary.error:
+                logger.debug("weapon_kills %s : %s", match_id[:8], summary.error)
             return rows
         except Exception as exc:
             logger.debug("_try_extract_weapon_kills %s (non bloquant) : %s", match_id[:8], exc)

@@ -1,18 +1,24 @@
 """Mixin – requêtes weapon_kills (shared_matches.duckdb).
 
-Schéma v5.7 per-kill : (match_id, xuid, time_ms, weapon_id, delta_ms,
-confidence, swap_detected, delayed_damage).
-weapon_id est un UBIGINT (uint64 filmshell), NULL si non résolu.
+Schéma v5.7+ per-kill : (match_id, xuid, time_ms, weapon_id, delta_ms,
+confidence, swap_detected, delayed_damage, reconciled_as, attribution_path,
+player_index).
+weapon_id est un UBIGINT (uint64 film), NULL si non résolu.
+reconciled_as stocke le sentinel API sans écraser weapon_id (v2).
 """
 
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import duckdb
 import polars as pl
 
 from src.data.repositories._arrow_bridge import result_to_polars
+
+if TYPE_CHECKING:
+    from src.analysis._kill_attribution import KillAttribution
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +41,11 @@ class WeaponKillsMixin:
         try:
             conn = self._get_connection()
             result = conn.execute(
-                "SELECT xuid, weapon_id, COUNT(*)::INTEGER AS kills "
-                "FROM shared.weapon_kills "
-                "WHERE match_id = ? AND weapon_id IS NOT NULL "
-                "GROUP BY xuid, weapon_id "
+                "SELECT xuid, effective_weapon_id AS weapon_id, "
+                "COUNT(*)::INTEGER AS kills "
+                "FROM shared.v_weapon_kills "
+                "WHERE match_id = ? AND effective_weapon_id IS NOT NULL "
+                "GROUP BY xuid, effective_weapon_id "
                 "ORDER BY kills DESC",
                 (match_id,),
             )
@@ -57,11 +64,12 @@ class WeaponKillsMixin:
             conn = self._get_connection()
             rows = conn.execute(
                 "SELECT xuid, weapon_id, kills FROM ("
-                "  SELECT xuid, weapon_id, COUNT(*)::INTEGER AS kills,"
+                "  SELECT xuid, effective_weapon_id AS weapon_id, "
+                "    COUNT(*)::INTEGER AS kills,"
                 "    ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn"
-                "  FROM shared.weapon_kills"
-                "  WHERE match_id = ? AND weapon_id IS NOT NULL"
-                "  GROUP BY xuid, weapon_id"
+                "  FROM shared.v_weapon_kills"
+                "  WHERE match_id = ? AND effective_weapon_id IS NOT NULL"
+                "  GROUP BY xuid, effective_weapon_id"
                 ") sub WHERE rn = 1",
                 (match_id,),
             ).fetchall()
@@ -85,20 +93,22 @@ class WeaponKillsMixin:
             if match_ids:
                 placeholders = ", ".join("?" for _ in match_ids)
                 result = conn.execute(
-                    f"SELECT match_id, weapon_id, COUNT(*)::INTEGER AS kills "
-                    f"FROM shared.weapon_kills "
+                    f"SELECT match_id, effective_weapon_id AS weapon_id, "
+                    f"COUNT(*)::INTEGER AS kills "
+                    f"FROM shared.v_weapon_kills "
                     f"WHERE xuid = ? AND match_id IN ({placeholders}) "
-                    f"AND weapon_id IS NOT NULL "
-                    f"GROUP BY match_id, weapon_id "
+                    f"AND effective_weapon_id IS NOT NULL "
+                    f"GROUP BY match_id, effective_weapon_id "
                     f"ORDER BY match_id, kills DESC",
                     [xuid, *match_ids],
                 )
             else:
                 result = conn.execute(
-                    "SELECT match_id, weapon_id, COUNT(*)::INTEGER AS kills "
-                    "FROM shared.weapon_kills "
-                    "WHERE xuid = ? AND weapon_id IS NOT NULL "
-                    "GROUP BY match_id, weapon_id "
+                    "SELECT match_id, effective_weapon_id AS weapon_id, "
+                    "COUNT(*)::INTEGER AS kills "
+                    "FROM shared.v_weapon_kills "
+                    "WHERE xuid = ? AND effective_weapon_id IS NOT NULL "
+                    "GROUP BY match_id, effective_weapon_id "
                     "ORDER BY match_id, kills DESC",
                     (xuid,),
                 )
@@ -122,19 +132,21 @@ class WeaponKillsMixin:
             if match_ids:
                 placeholders = ", ".join("?" for _ in match_ids)
                 result = conn.execute(
-                    f"SELECT weapon_id, COUNT(*)::INTEGER AS total_kills "
-                    f"FROM shared.weapon_kills "
+                    f"SELECT effective_weapon_id AS weapon_id, "
+                    f"COUNT(*)::INTEGER AS total_kills "
+                    f"FROM shared.v_weapon_kills "
                     f"WHERE xuid = ? AND match_id IN ({placeholders}) "
-                    f"AND weapon_id IS NOT NULL "
-                    f"GROUP BY weapon_id ORDER BY total_kills DESC",
+                    f"AND effective_weapon_id IS NOT NULL "
+                    f"GROUP BY effective_weapon_id ORDER BY total_kills DESC",
                     [xuid, *match_ids],
                 )
             else:
                 result = conn.execute(
-                    "SELECT weapon_id, COUNT(*)::INTEGER AS total_kills "
-                    "FROM shared.weapon_kills "
-                    "WHERE xuid = ? AND weapon_id IS NOT NULL "
-                    "GROUP BY weapon_id ORDER BY total_kills DESC",
+                    "SELECT effective_weapon_id AS weapon_id, "
+                    "COUNT(*)::INTEGER AS total_kills "
+                    "FROM shared.v_weapon_kills "
+                    "WHERE xuid = ? AND effective_weapon_id IS NOT NULL "
+                    "GROUP BY effective_weapon_id ORDER BY total_kills DESC",
                     (xuid,),
                 )
             return result_to_polars(result)
@@ -203,6 +215,73 @@ class WeaponKillsMixin:
             "insert_weapon_kill_rows %s %s : %d lignes", match_id[:8], xuid[:8], len(kill_rows)
         )
         return len(kill_rows)
+
+    @staticmethod
+    def insert_weapon_kill_rows_v2(
+        conn: duckdb.DuckDBPyConnection,
+        match_id: str,
+        attributions: list[KillAttribution],
+    ) -> int:
+        """Insertion batch v2 avec reconciled_as, attribution_path, player_index.
+
+        Idempotent : DELETE + INSERT pour match_id.
+        Quality gate : n'écrase pas si existing_good > new_good.
+        """
+        if not attributions:
+            return 0
+
+        new_good = sum(1 for a in attributions if a.weapon_id is not None)
+        existing_good = conn.execute(
+            "SELECT COUNT(*) FROM weapon_kills WHERE match_id = ?" " AND weapon_id IS NOT NULL",
+            (match_id,),
+        ).fetchone()[0]
+        if existing_good > 0 and new_good <= existing_good:
+            logger.debug(
+                "insert_v2 %s : skip (new_good=%d <= existing_good=%d)",
+                match_id[:8],
+                new_good,
+                existing_good,
+            )
+            return 0
+
+        if existing_good > 0:
+            logger.info(
+                "insert_v2 %s : replacing %d existing with %d new (better quality)",
+                match_id[:8],
+                existing_good,
+                new_good,
+            )
+        conn.execute("DELETE FROM weapon_kills WHERE match_id = ?", (match_id,))
+        conn.executemany(
+            "INSERT INTO weapon_kills "
+            "(match_id, xuid, time_ms, weapon_id, delta_ms, confidence, "
+            " swap_detected, delayed_damage, reconciled_as, attribution_path, "
+            " player_index) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    match_id,
+                    a.xuid,
+                    a.time_ms,
+                    a.weapon_id,
+                    a.delta_ms,
+                    a.confidence,
+                    a.swap_detected,
+                    a.delayed_damage,
+                    a.reconciled_as,
+                    a.attribution_path,
+                    a.player_index,
+                )
+                for a in attributions
+            ],
+        )
+        logger.debug(
+            "insert_v2 %s : %d lignes (%d joueurs)",
+            match_id[:8],
+            len(attributions),
+            len({a.xuid for a in attributions}),
+        )
+        return len(attributions)
 
     @staticmethod
     def mark_weapon_backfill_done(

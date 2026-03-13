@@ -1406,7 +1406,7 @@ async def _backfill_weapon_kills_for_match(
         cache_dir = _resolve_cache_dir(db_path)
         service = WeaponExtractionService(client, shared_conn, cache_dir)
         summary = await service.process_match(match_id, gamertag, xuid)
-        rows = summary.get("rows_inserted", 0)
+        rows = summary.rows_inserted
         if rows > 0:
             try:
                 shared_conn.execute(
@@ -1417,8 +1417,8 @@ async def _backfill_weapon_kills_for_match(
                 )
             except Exception as e:
                 logger.debug("Guard WEAPON_KILLS pour %s : %s", match_id[:8], e)
-        elif "error" in summary:
-            logger.debug("weapon_kills %s : %s", match_id[:8], summary["error"])
+        elif summary.error:
+            logger.debug("weapon_kills %s : %s", match_id[:8], summary.error)
         return rows
     except Exception as exc:
         logger.debug("_backfill_weapon_kills_for_match %s (non bloquant) : %s", match_id[:8], exc)

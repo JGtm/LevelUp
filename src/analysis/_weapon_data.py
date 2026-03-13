@@ -140,7 +140,7 @@ WEAPON_NAME_FR: dict[str, str] = {
 # ══════════════════════════════════════════════════════════════════════════════
 
 MELEE_MEDALS: frozenset[str] = frozenset(
-    {"Pummel", "Assassination", "Back Smack", "Melee", "Quigley"}
+    {"Pummel", "Assassination", "Back Smack", "Melee", "Quigley", "Ninja", "Pancake"}
 )
 
 GRENADE_MEDALS: frozenset[str] = frozenset(
