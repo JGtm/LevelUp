@@ -20,9 +20,10 @@ The parser reads this binary file and maps each kill to its weapon.
 | **Extraction service** | `weapon_extraction_service.py` | Orchestrates the parser for all players in the match, optionally applies post-processing layers such as API reconciliation and sentinel assignment, produces the final `kill_rows`. **Also never writes to DB.** |
 | **Repository** | `_weapon_kills_repo.py` → `insert_weapon_kill_rows()` | Sole writer to the `weapon_kills` table (shared_matches.duckdb). Called by the service after it has finalized the data. |
 
-**Storage note (rewrite opportunity):** beyond parsing itself, the data model may evolve
-to expose weapon attribution directly in kill-pair analytics (`killer_victim_pairs`).
-This is a downstream storage/design concern, not a parser responsibility.
+**Storage note:** `weapon_kills` is kept as a separate canonical table. The decision to
+not merge it into `killer_victim_pairs` has been made — the two tables are joined via
+the composite key `(match_id, xuid, time_ms)` (see *Data model* section). This is a
+downstream storage/design concern, not a parser responsibility.
 
 The parser **does not produce** weapon_ids. Weapon_ids (8 bytes) are binary identifiers
 set by the game and encoded as-is in the film. The parser's role is to:
@@ -192,7 +193,7 @@ Known packet types:
 | 8 | `PLAYER_METADATA` | Player metadata |
 | 9 | `HIGHLIGHT_EVENTS_START` | Highlight-events section marker |
 | 10 | `TYPE_10` | Interleaved with frames |
-| 12 | `TYPE_12` | — |
+| 12 | `TYPE_12` | BOT_METADATA |
 
 **Rewrite recommendation (acurtis packet model):** use packet-indexed traversal as a
 first-class primitive, not just raw byte scanning. In practice, this brings two major
@@ -396,8 +397,12 @@ the film hex of a `confidence=low` kill. If that hex is identified later ("oh, t
 was a Needler"), the database row says "melee" and the film data is lost — the film
 would need to be re-parsed.
 
-**Mask approach (adopted proposal)**:
+**Mask approach (decided 2026-03-12 — implementation pending)**:
 Add a `reconciled_as UBIGINT` column (NULL by default) separate from `weapon_id`.
+
+> ⚠️ **Implementation status**: the column does not yet exist in `weapon_kills`.
+> A migration step `src/data/migration/steps/add_reconciled_as.py` must be created
+> before the rewrite can use this mechanism.
 
 | Column | Content | Mutable? |
 |--------|---------|----------|
@@ -421,6 +426,9 @@ FROM weapon_kills;
 ```
 Consumers (UI, aggregates) read `v_weapon_kills.effective_weapon_id`,
 never `weapon_id` alone.
+
+> ⚠️ **Implementation status**: this view does not yet exist. It must be created
+> alongside the `reconciled_as` migration (same step).
 
 **Eligibility rule for `reconciled_as`:**
 
@@ -532,7 +540,8 @@ A NULL kill means the parser found **no information** about the weapon:
 - POV path: no fire event in the 5s before the kill (vehicle kill, edge case)
 - T1 path: the film encoded no snapshot for this player in this chunk
 
-The table below shows the reality in the database (85,247 kills total):
+The table below shows the reality in the database **before the rewrite** (85,247 kills
+total, opponents included — snapshot taken prior to scope decision):
 
 | State | Kills | % |
 |-------|------:|--:|
@@ -540,6 +549,11 @@ The table below shows the reality in the database (85,247 kills total):
 | Unknown hex (`conf=low`) | 15,377 | 18.0% |
 | Identified weapon (`conf=high`) | 10,631 | 12.5% |
 | Melee / Grenade sentinel | 4,447 | 5.2% |
+
+> ⚠️ **Context**: the 63.7% NULL rate is driven almost entirely by opponents, who are
+> **out of scope** for the rewrite. Once the rewrite is applied (POV + teammates only),
+> this distribution is expected to shift significantly. These numbers are kept here as
+> a baseline reference, not as a target for the new parser.
 
 NULLs come almost exclusively from the T1 path for opponents — which is why they
 are excluded from the new parser's scope: a player's film encodes neither fire events
@@ -549,51 +563,74 @@ nor weapon snapshots for opposing players in any exploitable way.
 
 ## Data model opportunity (outside parser scope)
 
-During the rewrite, it is worth explicitly challenging where weapon attribution should
-live for analytics consumers:
+### Decision (2026-03-12) — `weapon_kills` stays separate, linked via natural join key
 
-### Candidate A — keep `weapon_kills` canonical, enrich `killer_victim_pairs`
+`weapon_kills` remains the canonical, separate table for weapon attribution.
+Merging it into `killer_victim_pairs` was evaluated and rejected (see candidates
+below). The two tables are **linked via a natural composite key** — no synthetic
+`kill_id` column needed.
 
-Current approach remains: parser/service produce kill-level weapon attribution in
-`weapon_kills` (canonical source), then a downstream step enriches
-`killer_victim_pairs` with weapon fields (or a dedicated view joins both).
+#### Join key
+
+Both tables derive `time_ms` from the same source — `highlight_events` — which
+assigns each kill a millisecond-precision timestamp at sync time. The join is:
+
+```sql
+SELECT kv.killer_xuid, kv.victim_xuid, wk.weapon_id, wk.confidence
+FROM   killer_victim_pairs kv
+JOIN   weapon_kills wk
+  ON   kv.match_id    = wk.match_id
+  AND  kv.killer_xuid = wk.xuid
+  AND  kv.time_ms     = wk.time_ms
+```
+
+A **UNIQUE index** on `weapon_kills(match_id, xuid, time_ms)` is added to:
+- enforce the 1-to-1 constraint between a kill event and its weapon attribution
+- document the join key in the schema itself
+- accelerate the join at query time
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wk_match_xuid_time
+ON weapon_kills (match_id, xuid, time_ms);
+```
+
+**Edge case — simultaneous AOE kills (Hammer, Cindershot):** two kills may share
+the same `time_ms` for the same killer but they necessarily claim the same fire
+event → same `weapon_id`. The join remains safe and coherent in this case.
+
+#### Why not a synthetic `kill_id`?
+
+A `kill_id` integer propagated across `highlight_events`, `weapon_kills` and
+`killer_victim_pairs` would be cleaner as a FK, but requires a coordinated 3-table
+migration and strict synchronisation at insert time. The benefit is marginal given
+that the natural key `(match_id, xuid, time_ms)` is already unique and indexed.
+Revisit only if a future analytics need (e.g. per-kill grain aggregates across many
+tables) makes the natural key unwieldy.
+
+---
+
+### Candidates evaluated (context)
+
+#### Candidate A — keep `weapon_kills` canonical (adopted)
+
+Parser/service produce kill-level weapon attribution in `weapon_kills` (canonical
+source). Downstream consumers join both tables via the composite key defined above.
 
 Pros:
 - clear separation of concerns (parsing vs analytics projection)
-- low risk for parser rewrite (no coupling to pair-generation internals)
+- zero coupling to pair-generation internals
 - preserves full weapon metadata (`confidence`, source, reconciliation details)
+- join key is sufficient; no schema change to `killer_victim_pairs`
 
-Cons:
-- requires a stable join key strategy and synchronization discipline
-- risk of drift if enrichment pipeline is not strictly managed
+#### Candidate B — move/merge weapon attribution into `killer_victim_pairs` (rejected)
 
-### Candidate B — move/merge weapon attribution into `killer_victim_pairs`
+Make `killer_victim_pairs` the primary storage for weapon-attributed kill events.
 
-Alternative: make `killer_victim_pairs` the primary storage for weapon-attributed kill
-events, potentially reducing joins for downstream queries.
-
-Pros:
-- simpler consumption for rivalry/duel analytics
-- fewer joins in some dashboards
-
-Cons:
+Rejected because:
 - tighter coupling between parser outcomes and pair-building logic
 - potential loss/flattening of parser-specific metadata unless schema is expanded
 - higher migration risk during rewrite
-
-### Recommended baseline for rewrite
-
-Start with **Candidate A** (canonical `weapon_kills`, enrichment/projection into
-`killer_victim_pairs`) and evaluate Candidate B only if query complexity/performance
-remains a proven issue after the parser redesign.
-
-If `killer_victim_pairs` is enriched, retain at least:
-- effective weapon id (`COALESCE(reconciled_as, weapon_id)` semantics)
-- raw `weapon_id` (film value)
-- `confidence`
-- attribution source/path (`section2_fire_event`, `formula_a_snapshot`, `reconciled`)
-
-This keeps analytics-friendly storage without losing parser-level traceability.
+- no meaningful query-simplification gain once the UNIQUE index join is established
 
 ---
 

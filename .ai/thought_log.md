@@ -7,6 +7,46 @@
 
 ## Journal
 
+### [2026-03-13] — Comparaison parser vs acurtis — match 147ffd4d (Super Fiesta Bazaar)
+- **Statut** : Complété
+- **Décision technique** : Script de comparaison créé dans `scripts/experimental/compare_acurtis_147ffd4d.py`
+- **Résultats observés** :
+  - Stats API : 9/10 joueurs identifiés (JGtm absent — sync incomplet pour ce match)
+  - Film pi=1 : **1177 fire events** total vs **1178 chez acurtis** (somme de tous les joueurs)
+  - Film non-POV : **0 détections** avec `scan_fire_events(pi≠1)` vs 20–192 chez acurtis
+- **Découverte clé (2026-03-13)** : `scan_fire_events(pi=1)` capture **TOUS** les fire events du match (1177 ≈ 1178 = Σ acurtis). Le marqueur `_build_marker(pi=1)` correspond à un bit structurel toujours actif dans les fire events, indépendamment du joueur. Les marqueurs `pi≠1` ne matchent rien car la valeur `(pi<<5)|0x06` n'est présente que pour pi=1 dans la Section 2.
+- **Conséquences** :
+  1. Notre parser n'est PAS un parser par joueur pour la Section 2 — il est un parser match-level qui attribue tout au pi=1
+  2. La déduplication `(fire_counter, weapon_bytes)` est intra-chunk seulement, correcte car je le reconfirme ici : 1177 ≈ 1178, pas de sur-comptage majeur
+  3. La Section 2 encode le player_index d'une façon différente de notre hypothèse actuelle — à investiguer en Phase 0
+- **Conclusion** : La baseline Phase 0 est établie. Question ouverte : comment acurtis isole les fire events par joueur depuis la Section 2 ?
+
+### [2026-03-12] — Fix : Fallback comparaison de sessions (ctx.dff → ctx.df + matching similaire)
+- **Statut** : Complété
+- **Décision technique** :
+  - **Fix 1** (`streamlit_app.py`) : `ctx.dff` → `ctx.df` pour que `sessions_for_compare` contienne toutes les sessions même quand une seule est filtrée dans la sidebar.
+  - **Fix 2** (`session_compare_logic.py`) : Ajout de `find_best_matching_previous_session` avec cascade de similarité (catégorie + amis > catégorie + statut ami/solo > catégorie seule > fallback chronologique).
+  - **Fix 3** (`session_compare.py`) : `_select_sessions` utilise désormais `find_best_matching_previous_session` pour le défaut de Session A.
+  - **Helpers** : `_first_matching_label` + `_build_session_chars` extraits pour respecter C901 ≤ 12.
+- **Résultat** : 9 tests de régression dans `tests/test_session_compare_fallback.py`, tous PASS. Ruff propre sur les fichiers modifiés.
+- **Conclusion** : Le fallback sélectionne maintenant la session la plus similaire (classé/non classé, mode, avec/sans amis) plutôt que simplement la précédente chronologiquement.
+- **Statut** : Complété
+- **Décision technique** : Dans `streamlit_app.py::_page_session_compare()`, remplacer `ctx.dff` par `ctx.df` pour construire `sessions_for_compare`.
+- **Cause racine** : Le join inner sur `ctx.dff` (matchs filtrés sur la session sélectionnée) produisait un DataFrame avec 1 seule session → garde `len(session_labels) < 2` déclenchait le warning "Il faut au moins 2 sessions pour comparer" avant même d'atteindre `_select_sessions` et son fallback de pré-sélection.
+- **Résultat** : 3 tests de régression ajoutés dans `tests/test_session_compare_fallback.py`, tous PASS. `test_ruff_no_errors` avait déjà un échec préexistant (violations dans `src/analysis/packet_index.py`, non lié).
+- **Conclusion** : Le fallback (B=session active, A=session précédente) est maintenant atteignable puisque `sessions_for_compare` contient toutes les sessions. Prochain point de vigilance : vérifier que les autres filtres actifs (hors session) n'introduisent pas le même problème.
+
+### [2026-03-12] — PHASE 0 : Script exploration non-POV fire events & melee events
+- **Statut** : Complété
+- **Décision technique** : Création et exécution de `scripts/experimental/explore_non_pov_fire_events.py` — 20 matchs analysés, read-only.
+- **Résultat** :
+  - **POV (pi=1)** : 82.4% de couverture (183/222 kills), fire events Section 2 fiables
+  - **Non-POV (pi≠1)** : 0.1% de couverture (1 seul fire event sur 1560 kills) — le marqueur fire event Section 2 est **exclusivement POV**
+  - **Comparaison T1 vs Fire** : `neither`=973, `t1_only`=586, `fire_better`=0, `different`=1
+  - **Melee events POV** : 40 détectés sur 20 matchs (signal modeste)
+  - **Décision** : **NO-GO Path A unifié**. Hybrid maintenu (POV=Path A fire events, non-POV=Path B Formula A/T1)
+- **Conclusion** : L'architecture v2 conserve le modèle dual-path. Les fire events sont confirmés comme POV-only. Le scope adversaires reste hors-périmètre. Les melee events sont un signal exploitable mais faible.
+
 ### [2026-03-12] — DESIGN : ajout backlog superposition delta perf/ratio avec transparence
 - **Statut** : En cours
 - **Décision technique** : Ajouter une variante visuelle dédiée pour la vue par carte : superposition des deltas (`delta_perf` principal + `delta_ratio` secondaire) après normalisation, avec modulation de transparence pour la lisibilité et la confiance (volume `n`).
