@@ -251,7 +251,7 @@ def create_kd_indicator(
     kills: int,
     deaths: int,
     *,
-    title: str = "K/D",
+    title: str = "F/D",
     height: int = 150,
 ) -> go.Figure:
     """Indicateur K/D unique avec delta par rapport à 1.0."""
