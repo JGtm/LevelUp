@@ -7,6 +7,73 @@
 
 ## Journal
 
+### [2025-07-17] — Audit code complet : corrections + couverture tests analysis/
+
+- **Statut** : Complété
+- **Tâche** : Suite de l'audit code complet — corrections bare connects, bare exceptions, création tests pour modules analysis/ sans couverture
+
+**Décision technique** :
+- Bare connects : 1 corrigé (player_provisioning.py try/finally→with), 7 autres classifiés comme acceptables (long-lived connections, contextmanagers)
+- Bare exceptions : 5 blocs critiques convertis en logging (duckdb_repo, api_client, _tokens, teammates_service), 16 classifiés KEEP (fallback chains légitimes)
+- Tests : 6 nouveaux fichiers, 75 tests créés pour modules analysis/ non couverts
+
+**Fichiers de tests créés** :
+- `test_analysis_stats_extended.py` : compute_aggregated_stats, extract_mode_category, compute_mode_category_averages (11 tests)
+- `test_filters_extended.py` : mark_firefight, build_xuid_option_map (9 tests)
+- `test_trueskill_math.py` : trueskill_update, apply_inactivity_decay, PlayerState (17 tests)
+- `test_composite_score.py` : compute_composite_score, _sigmoid_ratio (14 tests)
+- `test_performance_session.py` : v1, v2, helpers (16 tests)
+- `test_performance_relative.py` : compute_relative_performance_score, compute_performance_series (8 tests)
+
+**Résultats** :
+- Suite complète : 4556 passed, 1 failed (pré-existant test_sync_ui), 10 skipped
+- 0 régression introduite
+- Couverture modules analysis/ significativement améliorée
+
+**Conclusion** : Audit complet terminé — toutes les recommandations actionnables traitées (baseline 135→110, bare connects, bare exceptions, couverture tests).
+
+---
+
+### [2025-07-16] — Menu de récupération conditionnel au démarrage
+
+- **Statut** : Complété
+- **Tâche** : Remplacer le menu statique de `_interactive()` par un comportement conditionnel basé sur l'état de la configuration
+
+**Décision technique** :
+- `_ConfigState` (dataclass) : snapshot de l'état au démarrage (players, has_client_id, players_missing_token) avec propriétés `is_first_launch`, `is_ready`, `is_partial`
+- `_detect_config_state()` : lit `.env.local` + scanne les joueurs, aucun accès réseau
+- `_recovery_menu()` : menu contextuel construit dynamiquement selon ce qui manque — options différentes si pas de client_id (2 chemins de config) vs token expiré (renouveler par joueur)
+- `_interactive()` simplifié : 3 branches claires (premier lancement → wizard, config partielle → recovery_menu, tout OK → Streamlit direct)
+
+**Comportement résultant** :
+- Config complète → Streamlit se lance directement, sans menu
+- Token expiré → menu propose "Renouveler l'accès pour <GT>" et "Lancer quand même"
+- Client ID manquant → menu propose les 2 chemins (Azure CLI ou portail Azure)
+- Après correction → relance du flux (`_interactive()`) pour vérifier l'état
+
+**Commit** : `7cb1099`
+
+---
+
+### [2025-07-16] — Wizard auth : --no-az flag + reauth command + doc flows OAuth
+
+- **Statut** : Complété
+- **Tâche** : Finaliser l'implémentation du flag `--no-az` et de la commande `reauth` dans `launcher.py`, et documenter la distinction entre les deux flows OAuth
+
+**Décision technique** :
+- Ajout du paramètre `no_az: bool = False` à `_onboard_first_player()` (transmis proprement depuis `_cmd_add_player`) au lieu d'un hack d'attribut de fonction
+- `_cmd_reauth()` : renouvelle uniquement le token MSAL en réutilisant le `client_id` existant (`.env.local`) sans recréer l'app Azure
+- Docstring `msal_device_flow.py` : table de comparaison SPNKr classique vs MSAL Device Code (endpoints, credentials requis, config portail Azure)
+
+**Résultats** :
+- `python launcher.py add-player --no-az` : contourne Azure CLI, va directement au chemin portail + Device Code Flow
+- `python launcher.py reauth --gamertag <GT>` : renouvelle le token sans relancer le wizard complet
+- Commit `c30792c`
+
+**Conclusion** : Wizard d'authentification complet — les deux flows sont documentés et accessibles via CLI.
+
+---
+
 ### [2026-03-13] — Mise à jour documentation et RAG (v5.5→v5.7)
 
 - **Statut** : Complété
@@ -3796,3 +3863,53 @@ que LevelUp propose d'*installer* Azure CLI si celui-ci n'est pas trouvé sur le
   si az reste introuvable — cas winget sur Windows).
 
 **Résultats** : 4250 tests passent (24 échecs pre-existants, aucune régression).
+
+### [2026-03-13] — Réduction baseline taille code : 135 → 110 violations
+
+- **Statut** : Complété
+- **Tâche** : Réduire les violations de taille (fonctions > 80L, modules > 500L) de 135 à ≤ 110.
+
+**Décision technique** : Extraire des helpers/sous-fonctions (extract method) pour chaque fonction dépassant 80 lignes, en commençant par les plus petites violations (81-87L).
+
+**Actions (24 fonctions refactorisées dans 23 fichiers) :**
+
+Batch 1 (81-82L) — 10 fonctions :
+- `compute_session_performance_score_v2` → `_build_v2_result()` (keyword-only args)
+- `_get_shared_connection` → `_run_shared_migrations()` (static method)
+- `load_matches` → `_row_to_match_row()` (module-level)
+- `build_thumbnail_html` → `_build_thumbnail_container_html()` (f-string, pas `.format()`)
+- `plot_top_players_objective_bars` → `_extract_ranking_data()` + `_get_ranking_attr()`
+- `render_comparison_radar_chart` → `_add_radar_trace()` (dash optionnel)
+- `_render_backfill_section` → constante `_ALL_BACKFILL_FLAGS`
+- `_sync_async` → `_finalize_sync_result()`
+- `plot_damage_dealt_taken` → `_add_damage_traces()` (paramétrisé)
+- `plot_assist_breakdown_pie` → `_extract_assist_values()`
+
+Batch 2 (83-87L) — 7 fonctions :
+- `create_career_progress_gauge` + `create_hero_progress_gauge` → DRY (`_progress_bar_color()`, `_build_progress_gauge()`)
+- `_extract_mmr_from_skill` → 3 helpers (`_find_player_result`, `_extract_enemy_mmr_from_team_mmrs`, `_extract_enemy_mmr_from_teammates`)
+- `_upsert_csr_rating` → `_build_csr_tier_label()` + constant `_CSR_UPSERT_SQL` + `_ROMAN`
+- `_build_friend_df_from_match_ids_v4` → `_translate_playlist_pair_columns()` + `_convert_start_time_timezone()`
+- `create_teammate_synergy_radar` → `_add_synergy_trace()`
+- `create_stats_per_minute_radar` → `_add_permin_radar_trace()`
+- `_render_media_legacy` → `_scan_media_in_window()` + `_render_legacy_video_selector()`
+
+Batch 3 (81-85L) — 7 fonctions :
+- `_build_settings_from_ui` → `_get_preserved_settings()` (dict de champs non-UI)
+- `plot_cumulative_net_score` → `_add_cumulative_score_traces()`
+- `plot_performance_timeseries` → `_ensure_performance_column()`
+- `plot_kd_timeseries` → `_add_kd_cumulative_trace()`
+- `add_outcome_traces` → `_add_sparse_bar_trace()` (DRY : ties/left)
+- `render_participation_section` → `_load_participation_awards()`
+- `render_participation_comparison` → `_build_comparison_profiles()`
+
+**Corrections additionnelles :**
+- Bug `_run_shared_migrations` : `return self._shared_connection` stale dans `@staticmethod` → supprimé
+- PLR0913 : ajout `# noqa` sur helpers extraits (>5 args inévitables)
+- F401/F821 : nettoyage imports inutilisés post-extraction
+
+**Résultats** :
+- Baseline : 135 → 110 (objectif atteint)
+- 104 fonctions > 80L + 6 modules > 500L
+- Ruff : All checks passed
+- Tests : 4485 passed, 0 regressions (6 échecs pré-existants : verrou fichier shared_matches + test sync)
