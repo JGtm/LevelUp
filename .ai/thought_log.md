@@ -7,6 +7,120 @@
 
 ## Journal
 
+### [2025-07-13] — Plan v5.7.0 : qualité, i18n, migration Polars
+
+- **Statut** : Complété
+- **Tâche** : Livraison du plan PLAN_V5.7.md (7 chantiers A→G)
+
+**Décisions techniques :**
+- A (tests) : A.1–A.3 existaient déjà, seul A.4 (highlight_events sequence idempotent) ajouté → 45/45 tests
+- B (Polars) : 7 appels `.to_pandas()` supprimés dans 4 fichiers UI/viz ; `.to_pandas()` conservé uniquement à la frontière `px.sunburst` (Plotly l'exige)
+- C (dead code) : Guard `was_pandas` supprimé dans `_performance_relative.py`, signature simplifiée
+- D (CSS hover) : JS sandbox supprimé (ne fonctionnait pas dans Streamlit), remplacé par CSS `position:relative/absolute` + `:hover` ; `_build_map_url_index` amélioré avec `unicodedata.normalize`
+- E (i18n launchers) : Détection locale POSIX et Windows Registry, ~30 MSG_ variables FR/EN, `choice /C` dynamique pour bat
+- F (rangs FR) : `src/ui/i18n/ranks.py` avec 17 rangs carrière + 6 tiers CSR + `translate_rank()`
+- G (version) : Bump 5.5.1 → 5.7.0, changelog complet
+
+**Résultats** : 45/45 tests passants, 0 import pandas ajouté, 0 hardcoded French dans les launchers
+**Prochaine étape** : Commit des modifications sur la branche courante `analysis/weapon-parser-rewrite`
+
+---
+
+### [2026-03-13] — Weapon Parser v2 : rewrite claim-and-remove
+
+- **Statut** : Phase 2 complétée (parser pur)
+- **Tâche** : Réécrire le weapon parser avec l'algo claim-and-remove pour tous les joueurs du lobby
+
+**Architecture livrée :**
+
+| Module | Lignes | Rôle |
+|--------|--------|------|
+| `weapon_parser.py` | 460 | Parser v2 : correlate_kills() claim-and-remove + scan haut-niveau |
+| `_weapon_scanners.py` | 199 | NOUVEAU — Scanneurs Section 1/2 (bitstring, formula_a) |
+| `_kill_attribution.py` | 32 | NOUVEAU — Dataclass KillAttribution (résultat unifié) |
+| `_parser_logging.py` | 127 | NOUVEAU — Logging structuré par match |
+| `reconciliation.py` | 162 | NOUVEAU — Réconciliation API découplée (reconciled_as) |
+| `_weapon_parser_compat.py` | 143 | NOUVEAU — Compat v1 (correlate_kills_to_weapons délégué) |
+| `_weapon_data.py` | 236 | Étendu — +Ninja, +Pancake dans MELEE_MEDALS |
+
+**Décisions clés :**
+- `weapon_id` n'est JAMAIS écrasé — réconciliation API via `reconciled_as` uniquement
+- Claim-and-remove : chaque fire event ne peut être attribué qu'à un seul kill
+- Scanners extraits dans `_weapon_scanners.py` pour garder le parser < 500L
+- Rétro-compatibilité totale : 124 tests passent, tous les imports existants fonctionnent
+- Migration `add_weapon_kills_reconciled_as` : ajoute 3 colonnes (reconciled_as, attribution_path, player_index)
+
+### [2025-06-17] — Weapon Parser v2 : Phases 3-5 + tests + callers v2
+
+- **Statut** : Complété
+- **Tâche** : Compléter les phases 3 (service v2), 5 (repo v2), écrire les tests v2, adapter les callers
+
+**Modifications livrées :**
+
+| Module | Action | Détail |
+|--------|--------|--------|
+| `weapon_extraction_service.py` | RÉÉCRIT | 746L → 455L, pipeline claim-and-remove unifié, retour `MatchProcessingResult` (dataclass) |
+| `_weapon_kills_repo.py` | MODIFIÉ | +`insert_weapon_kill_rows_v2()`, 6 SELECT migrés vers `v_weapon_kills` + `effective_weapon_id` |
+| `migrations.py` | MODIFIÉ | +VIEW `v_weapon_kills` dans `ensure_weapon_kills_reconciled_as()` |
+| `_engine_weapon_kills.py` | MODIFIÉ | Callers adaptés : `summary.rows_inserted` au lieu de `summary.get("rows_inserted", 0)` |
+| `orchestrator.py` | MODIFIÉ | Idem callers |
+| `_weapon_kills_logic.py` | MODIFIÉ | Idem callers |
+| `test_weapon_service.py` | MODIFIÉ | Suppression tests v1 obsolètes (Step4a/4c, InjectMissingSentinels, ReconcileApiAggregates), mocks retournent `MatchProcessingResult`, fixture DB v2 |
+| `test_weapon_parser_v2.py` | CRÉÉ | 33 tests (constants, b2 dispatch, correlate_kills, confidence, KillAttribution) |
+| `test_weapon_reconciliation.py` | CRÉÉ | 10 tests (reconcile_api_aggregates, assign_sentinels) |
+| `test_weapon_logging.py` | CRÉÉ | 10 tests (MatchLogCollector) |
+| `test_weapon_migration.py` | CRÉÉ | 11 tests (colonnes, vue, idempotence, insert_weapon_kill_rows_v2) |
+
+**Décisions techniques :**
+- `process_match()` retourne `MatchProcessingResult` (dataclass) au lieu de `dict` — breaking change géré en adaptant les 3 callers et les tests
+- VIEW `v_weapon_kills` avec `COALESCE(reconciled_as, weapon_id) AS effective_weapon_id` — transparence pour les lectures
+- `insert_weapon_kill_rows_v2` inclut quality gate (new_good > existing_good) pour éviter régressions
+- 23 tests v1 obsolètes supprimés de `test_weapon_service.py` (testaient des fonctions supprimées : `_step4a_demote`, `_step4c_promote`, `_inject_missing_sentinels`, `_reconcile_api_aggregates` sur le service)
+
+**Résultats :** 230 tests weapon-related passent (79 parser v1 + 124 migrations + 35 service + 33+10+10+11 v2 nouveaux = 302... re : 230 sur les fichiers testés). Suite complète hors intégration/e2e : 4377 passed.
+
+**Prochaine étape** : Git commit sur `analysis/weapon-parser-rewrite`
+
+### [2026-03-14] — Traitement bugs ANALYSE_BUGS_2026-03-13.md (28 bugs)
+
+- **Statut** : Complété
+- **Tâche** : Traiter systématiquement les 28 bugs documentés dans `.ai/ANALYSE_BUGS_2026-03-13.md`, annoter le doc au fur et à mesure.
+
+**Résumé :**
+
+- **17 bugs corrigés (code)** : #2 (label KPI), #4 (filtre équipe impact), #5 (ordre chrono matrice), #7 (courbe ratio supprimée + priorité opérateur), #10 (durée session span), #11 (formulation némésis), #13 (opacité barres + hachures morts), #14 (date tooltips via #28), #15 (finisseur via #4), #17 (bots MVP/LVP), #18 (leetspeak fuzzy), #19 (reset session_state explorer), #20 (fallback sessions), #21 (LUSR retiré net score), #22 (table carte supprimée), #27 (table période supprimée), #28 (labels axe X #N+carte)
+- **3 bugs investigation/opérationnel** : #3 (LUSR -435, non reproductible → --force-lusr), #6 (perf >80 Chocoboflor), #12 (cache stale → Clear Cache)
+- **2 bugs architecture** : #24 (navigation DB switch), #26 (timezone centralisation, root cause #23)
+- **4 bugs non traités** : #1 (non confirmé), #8 (feature), #9 (non reproductible), #16 (resync opérationnel)
+- **2 bugs liés** : #14→#28, #15→#4, #23→#26, #25 (pas de composant mode sur page Escouade)
+
+**Fichiers modifiés :** `widgets.py`, `match_view.py` (i18n), `win_loss.py`, `match_view_charts.py`, `stats.py`, `kpis.py`, `match_view_scoreboard.py`, `session_compare.py`, `teammates_impact.py`, `_match_impact_events.py`, `trio.py`, `teammates_charts.py`, `explorer.py`, `streamlit_app.py`, `explorer_logic.py`
+
+**Décision technique :** Impact events (#4) — ajout paramètre `team_xuids` plutôt que filtre systématique pour rétrocompatibilité. Trio bars (#13) — hachures Plotly `pattern={"shape":"/"}` pour morts, opacité 0.75. Match labels (#28) — paramètre optionnel `match_labels` pour ne pas casser les contextes non-escouade.
+
+**Conclusion :** Document annoté avec statuts (✅ TRAITÉ / 🔍 INVESTIGATION / ⏸️ NON TRAITÉ / ⏸️ ARCHITECTURE). Prochaines étapes : valider visuellement les changements dans l'app, traiter #3 avec --force-lusr, planifier #26 (timezone).
+
+### [2026-03-14] — Correction bugs #18 et #25 (mauvais diagnostics initiaux)
+
+- **Statut** : Complété
+- **Tâche** : Corriger les deux bugs mal diagnostiqués lors de la première passe.
+
+**Bug #18 — Recherche gamertag "Fadet..." sans résultat (2 couches) :**
+- **Diagnostic initial (faux)** : Problème de leetspeak (0↔o). Fix appliqué : normalisation leetspeak dans `fuzzy_search_gamertags()`.
+- **Couche 1 — UI** : `_render_player_search()` utilisait un `st.selectbox` avec la liste brute de gamertags. Le selectbox Streamlit ne fait que du filtrage par préfixe — pas de recherche substring ni fuzzy. Fix : Remplacé par `st.text_input` + `fuzzy_search_gamertags()` + `st.selectbox` pour les résultats.
+- **Couche 2 — Données** (fix session suivante) : `get_all_gamertags()` ne requêtait que `xuid_aliases` (14 677 gamertags). Or 255 gamertags présents dans `highlight_events` n'existaient pas dans `xuid_aliases` (dont "Fadetonull"). Le scoreboard fonctionnait car `GamertagResolverMixin` cascade sur 3 sources (match_participants → xuid_aliases → highlight_events).
+- **Fix couche 2** : `get_all_gamertags()` → requête UNION `xuid_aliases + highlight_events` (14 677 → 14 932 gamertags). `resolve_gamertag_to_xuid()` → fallback highlight_events quand xuid_aliases ne trouve rien. Fichier modifié : `explorer_data.py`.
+- **Validation** : "Fadetonull" trouvé, résolu vers XUID 2535406000408371. fuzzy_search("Fadet") retourne ["Fadestars", "Fadetonull", ...]. 47/47 tests explorer passent.
+
+**Bug #25 — Modes manquants page Victoires/Défaites :**
+- **Mauvais diagnostic initial** : Conclu que "pas de composant mode sur page Escouade" → non traitable.
+- **Vrai root cause** : `min_matches=2` dans `plot_stacked_outcomes_by_category()` excluait les modes joués une seule fois (ex: 1 match Base, 1 match Drapeau → tous deux exclus).
+- **Fix** : `min_matches=2` → `min_matches=1` dans [win_loss.py](src/ui/pages/win_loss.py) pour le graphe par mode.
+
+**Leçon :** (1) Toujours vérifier que le composant UI est bien branché sur la fonction logique censée le servir. (2) Quand un feature fonctionne ailleurs (scoreboard), suivre son code path pour trouver les sources de données qu'il utilise — ne pas réinventer la roue. (3) Confirmer la page exacte du bug avec l'utilisateur avant d'investiguer.
+
+---
+
 ### [2026-03-13] — Mise à jour PLAN_WEAPON_PARSER_V2.md suite aux découvertes how_it_works
 
 - **Statut** : Complété

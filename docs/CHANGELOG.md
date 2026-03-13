@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [5.7.0] - 2025-07-13
+
+### Added
+
+- **Traductions FR des rangs Halo** (`src/ui/i18n/ranks.py`)
+  - 17 rangs de carrière (Recruit→Recrue, General→Général, Hero→Héros…) + 6 tiers CSR (Silver→Argent, Gold→Or…)
+  - Helper `translate_rank()` avec fallback sur le nom anglais original
+  - Intégré dans le script de migration metadata (`migrate_metadata_to_duckdb.py`)
+
+- **Launchers bilingues FR/EN** (`LevelUp.sh`, `LevelUp.bat`)
+  - Détection automatique de la langue système (POSIX `LC_ALL`/`LANG`, Windows Registry `LocaleName`)
+  - ~30 messages localisés dans chaque launcher (premier lancement, erreurs, winget, etc.)
+
+### Changed
+
+- **Pandas→Polars** : suppression de 7 appels `.to_pandas()` dans les modules UI/viz
+  - `participation_charts.py` (pie, bars, stacked) : Polars natif bout en bout
+  - `participation_charts_extra.py` (sunburst) : `.to_pandas()` conservé uniquement à la frontière `px.sunburst`
+  - `objective_analysis.py` (3 tables assist/awards) : `st.dataframe` Polars natif
+  - `duckdb_analytics.py` (KDA trend) : `st.line_chart` avec `x=`/`y=` Polars natif
+
+- **CSS-only map thumbnails** : remplacement du script JS sandboxé (non fonctionnel) par un système hover CSS pur
+  - Suppression de `_MAP_TOOLTIP_SCRIPT` dans `styles.py` (38 lignes JS)
+  - Classes `.map-hover` + `.map-popup` dans `static/styles.css`
+  - `match_table_html.py` et `win_loss_table_style.py` mis à jour
+  - `_build_map_url_index()` amélioré : `lru_cache(maxsize=None)`, normalisation Unicode
+
+### Removed
+
+- Guard `was_pandas` dans `_performance_relative.py` : `compute_performance_series()` accepte désormais uniquement `pl.DataFrame`
+
+### Tests
+
+- `TestHighlightEventsSequenceIdempotent` ajouté dans `test_migrations.py` (couverture A.4)
+- 45/45 tests migrations passants
+
 ## [5.6.0-beta] - 2026-03-10
 
 > ⚠️ **Beta** — weapon attribution accuracy not yet guaranteed in all cases (estimated coverage 70–100 % depending on matches); weapon catalog in progress.
