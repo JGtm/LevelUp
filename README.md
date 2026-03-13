@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-5.6.0--beta-orange.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.6.0-beta)
+[![Version](https://img.shields.io/badge/Version-5.7.0-blue.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.7.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -12,6 +12,12 @@
 ---
 
 ## What's new
+
+**v5.7 — Bilingual launchers, map hover thumbnails & Polars cleanup**
+- `LevelUp.sh` and `LevelUp.bat` now detect the system language (FR/EN) and display launcher messages accordingly
+- **Map hover thumbnails** — CSS-only hover popups on map names in all HTML tables (replaces the sandboxed JS approach)
+- French translations for all Halo rank names (career ranks + CSR tiers) used in metadata and the Career page
+- Pandas eliminated from UI/viz modules — Polars native end-to-end (7 `.to_pandas()` calls removed)
 
 **v5.6 (beta) — MSAL Device Code Flow & Weapon Extraction**
 - Token acquisition replaced with **MSAL Device Code Flow** — enter a code on xbox.com/activate, no redirect URI or client secret required
