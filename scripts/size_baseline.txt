@@ -11,7 +11,7 @@ FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
 FUNC:src/analysis/maps.py:11:compute_map_breakdown:105L
 FUNC:src/analysis/participation_radar.py:291:compute_participation_profile:109L
 FUNC:src/analysis/participation_radar.py:43:compute_global_radar_thresholds:135L
-FUNC:src/analysis/sessions.py:169:compute_sessions_with_context_polars:122L
+FUNC:src/analysis/sessions.py:168:compute_sessions_with_context_polars:127L
 FUNC:src/analysis/skill_rating.py:194:compute_skill_ratings_batch:198L
 FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
 FUNC:src/app/_filters_apply.py:22:apply_filters:191L
@@ -96,7 +96,7 @@ FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:117L
 FUNC:src/ui/pages/teammates_views.py:58:render_single_teammate_view:125L
 FUNC:src/ui/pages/win_loss.py:254:_render_ratio_by_map_section:91L
-FUNC:src/ui/styles.py:44:get_hero_html:146L
+FUNC:src/ui/styles.py:48:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
 FUNC:src/visualization/_antagonist_kv.py:122:plot_kd_timeseries:83L
@@ -123,8 +123,8 @@ FUNC:src/visualization/objective_charts.py:152:plot_objective_breakdown_bars:96L
 FUNC:src/visualization/objective_charts.py:251:plot_top_players_objective_bars:81L
 FUNC:src/visualization/objective_charts.py:28:plot_objective_vs_kills_scatter:121L
 FUNC:src/visualization/objective_charts_extra.py:47:plot_assist_breakdown_pie:83L
-FUNC:src/visualization/participation_charts.py:144:plot_participation_bars:108L
-FUNC:src/visualization/participation_charts.py:38:plot_participation_pie:98L
+FUNC:src/visualization/participation_charts.py:147:plot_participation_bars:108L
+FUNC:src/visualization/participation_charts.py:38:plot_participation_pie:101L
 FUNC:src/visualization/participation_charts_extra.py:69:create_participation_indicator:97L
 FUNC:src/visualization/team_dominance_timeline.py:101:detect_streaks:99L
 FUNC:src/visualization/team_dominance_timeline.py:208:plot_dominance_chart:135L

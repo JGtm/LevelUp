@@ -6,6 +6,7 @@ et les fonctions annexes utilisées par _performance_relative.py.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import polars as pl
@@ -14,16 +15,19 @@ from src.analysis.performance_config import RELATIVE_WEIGHTS
 from src.data.domain.refdata import Outcome
 from src.utils.safe_types import clamp as _clamp
 
+_log = logging.getLogger(__name__)
+
 # =============================================================================
 # Utilitaires de base
 # =============================================================================
 
 
 def _normalize_df(df: pl.DataFrame | Any) -> pl.DataFrame:
-    """Convertit un DataFrame Pandas en Polars si nécessaire."""
+    """Valide que le DataFrame est Polars (conversion Pandas supprimée v5.7)."""
     if isinstance(df, pl.DataFrame):
         return df
-    return pl.from_pandas(df)
+    _log.warning("Conversion Pandas→Polars inattendue dans _normalize_df")
+    return pl.from_pandas(df)  # garde de sécurité pour appelants externes
 
 
 def _percentile_rank(value: float, series: pl.Series) -> float:
