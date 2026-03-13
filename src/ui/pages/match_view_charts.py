@@ -214,21 +214,6 @@ def render_expected_vs_actual(  # noqa: C901, PLR0912, PLR0913, PLR0915
             secondary_y=False,
         )
 
-    # Ratio moyen historique (si disponible) - affiché comme ligne de référence
-    hist_ratio = hist_avgs.get("avg_ratio")
-    if hist_ratio is not None and hist_avgs.get("match_count", 0) >= 10:
-        exp_fig.add_trace(
-            go.Scatter(
-                x=labels,
-                y=[hist_ratio] * len(labels),
-                mode="lines",
-                name=t("mvc_ratio_avg", category=mode_category),
-                line={"color": HALO_COLORS.violet, "width": 2, "dash": "dash"},
-                hovertemplate=f"{t('mvc_ratio_avg', category=mode_category)}: %{{y:.2f}}<extra></extra>",
-            ),
-            secondary_y=True,
-        )
-
     exp_fig.update_layout(
         barmode="group",
         height=360,
@@ -251,11 +236,7 @@ def render_expected_vs_actual(  # noqa: C901, PLR0912, PLR0913, PLR0915
         ],
     )
     exp_fig.update_yaxes(title_text=t("mvc_fda_title"), rangemode="tozero", secondary_y=False)
-    # Masquer l'axe secondaire si pas de ratio historique (pour éviter confusion)
-    if hist_ratio is None:
-        exp_fig.update_yaxes(visible=False, secondary_y=True)
-    else:
-        exp_fig.update_yaxes(title_text=t("mvc_ratio_title"), secondary_y=True)
+    exp_fig.update_yaxes(visible=False, secondary_y=True)
 
     # K/D/A et Folie meurtrière sur la même rangée
     chart_cols = st.columns(2)

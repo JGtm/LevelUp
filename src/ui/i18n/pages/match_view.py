@@ -233,8 +233,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Indisponible : la DB ne contient pas les highlight events. Si tu utilises une DB SPNKr, relance l'import avec `--with-highlight-events`.",
         "en": "Unavailable: the DB does not contain highlight events. If you are using a SPNKr DB, re-run the import with `--with-highlight-events`.",
     },
-    "mv_deaths_count": {"fr": "{prefix}{n} morts", "en": "{prefix}{n} deaths"},
-    "mv_killed_count": {"fr": "{prefix}Tué {n} fois", "en": "{prefix}Killed {n} times"},
+    "mv_deaths_count": {
+        "fr": "{prefix}T'a victimisé {n} fois",
+        "en": "{prefix}Eliminated you {n} times",
+    },
+    "mv_killed_count": {
+        "fr": "{prefix}Tu l'as persécuté {n} fois",
+        "en": "{prefix}You bullied them {n} times",
+    },
     "mv_team_n": {"fr": "Équipe {n}", "en": "Team {n}"},
     "mv_team_unknown": {"fr": "Équipe inconnue", "en": "Unknown team"},
     "mv_team_label": {"fr": "Équipe {name}", "en": "Team {name}"},

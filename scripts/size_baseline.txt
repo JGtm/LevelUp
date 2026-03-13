@@ -71,8 +71,8 @@ FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:19:render_citations_page:169L
 FUNC:src/ui/pages/match_history.py:173:_render_history_table:151L
 FUNC:src/ui/pages/match_history.py:31:render_match_history_page:139L
-FUNC:src/ui/pages/match_view_charts.py:276:_render_spree_headshots:124L
-FUNC:src/ui/pages/match_view_charts.py:43:render_expected_vs_actual:230L
+FUNC:src/ui/pages/match_view_charts.py:257:_render_spree_headshots:124L
+FUNC:src/ui/pages/match_view_charts.py:43:render_expected_vs_actual:211L
 FUNC:src/ui/pages/match_view_citations.py:19:render_match_citations_section:163L
 FUNC:src/ui/pages/match_view_helpers.py:241:_render_media_legacy:87L
 FUNC:src/ui/pages/match_view_participation.py:110:render_participation_comparison:85L
@@ -83,7 +83,7 @@ FUNC:src/ui/pages/match_view_players_nemesis.py:170:render_nemesis_section:208L
 FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
-FUNC:src/ui/pages/match_view_scoreboard.py:321:render_match_scoreboard:90L
+FUNC:src/ui/pages/match_view_scoreboard.py:329:render_match_scoreboard:90L
 FUNC:src/ui/pages/media_library_data.py:206:load_match_windows_from_db:142L
 FUNC:src/ui/pages/media_library_data.py:366:load_media_from_db:100L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
@@ -96,8 +96,7 @@ FUNC:src/ui/pages/teammates_charts.py:240:render_trio_charts:163L
 FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:122L
 FUNC:src/ui/pages/teammates_views.py:58:render_single_teammate_view:125L
-FUNC:src/ui/pages/win_loss.py:307:_render_ratio_by_map_section:94L
-FUNC:src/ui/pages/win_loss.py:404:_render_map_table:139L
+FUNC:src/ui/pages/win_loss.py:254:_render_ratio_by_map_section:91L
 FUNC:src/ui/styles.py:83:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
@@ -143,4 +142,3 @@ MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/_teammates_trio.py:561L
 MODULE:src/ui/pages/session_compare.py:519L
-MODULE:src/ui/pages/win_loss.py:544L

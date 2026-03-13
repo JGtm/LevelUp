@@ -188,14 +188,22 @@ def _compute_mvp_lvp(
     players: list[dict[str, Any]],
     extremes: dict[str, tuple[float, float]],
 ) -> tuple[str, str]:
-    """Identifie les xuids MVP et LVP.
+    """Identifie les xuids MVP et LVP (bots exclus).
 
     Returns:
         Tuple (mvp_xuid, lvp_xuid). Chaînes vides si pas de distinction.
     """
+    # Filtrer les bots pour ne garder que les humains
+    human_indices = [
+        i for i, p in enumerate(players) if get_bot_name(str(p.get("xuid", ""))) is None
+    ]
+    if not human_indices:
+        return "", ""
+
     player_best: dict[int, int] = {}
     player_worst: dict[int, int] = {}
-    for i, p in enumerate(players):
+    for i in human_indices:
+        p = players[i]
         best = worst = 0
         for _, key in _get_scoreboard_cols():
             cls = _sb_cell_class(key, p.get(key), extremes)
