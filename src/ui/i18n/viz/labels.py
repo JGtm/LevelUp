@@ -51,7 +51,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "K/D",
     },
     "label_kd_ref": {
-        "fr": "K/D = 1.0",
+        "fr": "F/D = 1.0",
         "en": "K/D = 1.0",
     },
     # ── Labels supplémentaires ────────────────────────────────────────────────
@@ -160,7 +160,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "suffix_smoothed": {"fr": "(lissée)", "en": "(smoothed)"},
     "suffix_per_10_matches": {"fr": "/10 matchs", "en": "/10 matches"},
     # ── Régression ────────────────────────────────────────────────────────────
-    "label_kd_slope": {"fr": "Pente K/D", "en": "K/D Slope"},
+    "label_kd_slope": {"fr": "Pente F/D", "en": "K/D Slope"},
     "label_win_rate_slope": {"fr": "Pente Win Rate", "en": "Win Rate Slope"},
     "label_r_squared": {"fr": "R² (solidité)", "en": "R² (strength)"},
     "label_not_significant": {"fr": "⚠ non significatif", "en": "⚠ not significant"},

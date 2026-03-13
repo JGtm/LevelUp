@@ -106,7 +106,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "hit=%{y:.0f}<extra></extra>",
     },
     "hover_net_kd_cumul": {
-        "fr": "Min %{x}<br>Net K/D cumulé: %{y:+d}<extra></extra>",
+        "fr": "Min %{x}<br>Net F/D cumulé: %{y:+d}<extra></extra>",
         "en": "Round %{x}<br>Net K/D cumul: %{y:+d}<extra></extra>",
     },
     "hover_killed_by": {
@@ -134,15 +134,15 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "<b>%{x}</b><br>Cumul: %{y:+d}<extra></extra>",
     },
     "hover_kd_cumul_line": {
-        "fr": "<b>%{x}</b><br>K/D Cumulé: %{y:.2f}<extra></extra>",
+        "fr": "<b>%{x}</b><br>F/D Cumulé: %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>K/D Cumul: %{y:.2f}<extra></extra>",
     },
     "hover_kd_rolling_line": {
-        "fr": "<b>%{x}</b><br>K/D Glissant: %{y:.2f}<extra></extra>",
+        "fr": "<b>%{x}</b><br>F/D Glissant: %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>Rolling K/D: %{y:.2f}<extra></extra>",
     },
     "hover_kd_ewma": {
-        "fr": "<b>%{x}</b><br>K/D Lissé (EWMA): %{y:.2f}<extra></extra>",
+        "fr": "<b>%{x}</b><br>F/D Lissé (EWMA): %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>Smoothed K/D (EWMA): %{y:.2f}<extra></extra>",
     },
     "hover_nph_raw": {
@@ -154,7 +154,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "<b>%{x}</b><br>Smoothed Net/h: %{y:+.1f}<extra></extra>",
     },
     "hover_kd_match": {
-        "fr": "<b>%{x}</b><br>K/D Match: %{y:.2f}<extra></extra>",
+        "fr": "<b>%{x}</b><br>F/D Match: %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>Match K/D: %{y:.2f}<extra></extra>",
     },
     "hover_trend_smooth": {

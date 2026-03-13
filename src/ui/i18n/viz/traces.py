@@ -163,20 +163,20 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Match Net Score",
     },
     "trace_kd_cumul": {
-        "fr": "K/D Cumulé",
+        "fr": "F/D Cumulé",
         "en": "Cumulative K/D",
     },
     "trace_kd_match": {
-        "fr": "K/D du Match",
+        "fr": "F/D du Match",
         "en": "Match K/D",
     },
     "trace_kd_rolling": {
-        "fr": "K/D Glissant ({window})",
+        "fr": "F/D Glissant ({window})",
         "en": "Rolling K/D ({window})",
     },
-    # ── Progression avancée ─────────────────────────────────────────────────
-    "trace_kd_ci_band": {"fr": "IC 90 % K/D", "en": "K/D 90 % CI"},
-    "trace_kd_ewma": {"fr": "K/D Lissé (EWMA)", "en": "Smoothed K/D (EWMA)"},
+    # ── Progression avancée ─────────────────────────────────────────────────────
+    "trace_kd_ci_band": {"fr": "IC 90 % F/D", "en": "K/D 90 % CI"},
+    "trace_kd_ewma": {"fr": "F/D Lissé (EWMA)", "en": "Smoothed K/D (EWMA)"},
     "trace_regression_line": {"fr": "Tendance (régression)", "en": "Trend (regression)"},
     "trace_nph_positive": {"fr": "Efficacité positive", "en": "Positive efficiency"},
     "trace_nph_negative": {"fr": "Efficacité négative", "en": "Negative efficiency"},

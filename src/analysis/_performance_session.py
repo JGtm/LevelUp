@@ -303,7 +303,7 @@ def compute_session_performance_score_v1(df_session: pl.DataFrame | Any) -> dict
 # =============================================================================
 
 _SESSION_COMPONENTS: list[ScoreComponent] = [
-    ScoreComponent(key="kd", label="K/D", weight=0.20, compute=_compute_kd_component),
+    ScoreComponent(key="kd", label="F/D", weight=0.20, compute=_compute_kd_component),
     ScoreComponent(key="win", label="Victoires", weight=0.15, compute=_compute_win_component),
     ScoreComponent(key="acc", label="Précision", weight=0.15, compute=_compute_accuracy_component),
     ScoreComponent(key="kpm", label="Kills/min", weight=0.15, compute=_compute_kpm_component),
