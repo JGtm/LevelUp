@@ -1515,7 +1515,16 @@ def _offer_az_manual_fallback() -> bool:
     """Propose des alternatives après un échec d'installation automatique d'AZ CLI.
 
     Retourne True si az est finalement disponible (install manuelle réussie),
-    False pour basculer vers le flux portail Azure + saisie manuelle du Client ID.
+    False pour basculer vers le flux « portail Azure + Device Code Flow ».
+
+    Les deux méthodes aboutissent au même résultat (un client_id + un refresh
+    token stockés dans .env.local) mais diffèrent par la façon d'obtenir le
+    client_id :
+    - az auto  : az crée l'app programmatiquement, pas de visite du portail
+    - manuel   : l'utilisateur enregistre l'app sur portal.azure.com (2 min),
+                 copie l'Application ID, et le Device Code Flow prend le relai
+                 (pas de client_secret, pas de redirect URI — juste cocher
+                 « Allow public client flows = Yes » dans Authentication)
     """
     import shutil
 
@@ -1525,9 +1534,10 @@ def _offer_az_manual_fallback() -> bool:
     print("  1) Installer Azure CLI manuellement, puis réessayer")
     print("     → https://aka.ms/installazurecli")
     print()
-    print("  2) Continuer sans Azure CLI")
-    print("     → Créer l'app sur portal.azure.com et coller ton Client ID")
-    print("       (le wizard te guidera étape par étape)")
+    print("  2) Continuer sans Azure CLI  [Device Code Flow — recommandé]")
+    print("     → Enregistrer l'app sur portal.azure.com (2 min, gratuit)")
+    print("       puis coller le Client ID — pas de secret, pas de redirect URI")
+    print("       Le wizard te guide étape par étape.")
     print()
     try:
         alt = input("  Ton choix (1/2) : ").strip()
@@ -1555,13 +1565,26 @@ def _offer_az_manual_fallback() -> bool:
     return False
 
 
-def _wizard_azure_creds() -> bool:
+def _wizard_azure_creds(*, no_az: bool = False) -> bool:
     """Wizard interactif : configuration de l'Azure App Registration.
 
-    Tente d'abord l'inscription automatique via az CLI (aucune visite du
-    portail Azure requise). En cas d'échec ou d'absence de az, guide
-    l'utilisateur pour la saisie manuelle du Client ID uniquement
-    (Device Code Flow — pas de client_secret requis).
+    Deux chemins possibles, tous deux débouchent sur le Device Code Flow :
+
+    Chemin A — az CLI automatique (défaut si az est disponible) :
+        az crée l'app programmatiquement → client_id récupéré sans visite du
+        portail. Nécessite Azure CLI installé + connexion az login.
+
+    Chemin B — portail Azure manuel (si az absent/refusé ou ``no_az=True``) :
+        Ouvre portal.azure.com, l'utilisateur enregistre une app « public
+        client » (2 étapes : créer l'app + cocher Allow public client flows),
+        copie le Client ID et le colle ici. Pas de client_secret, pas de
+        redirect URI requis.
+
+    Dans les deux cas, ``_wizard_oauth_token()`` enchaîne avec le Device Code
+    Flow (MSAL) pour obtenir le refresh_token Xbox Live.
+
+    Args:
+        no_az: Si True, saute la tentative az et va directement au chemin B.
 
     Retourne True si configuré avec succès, False sinon.
     """
@@ -1571,11 +1594,16 @@ def _wizard_azure_creds() -> bool:
     print("  └────────────────────────────────────────────────────────┘")
     print()
 
-    # Tenter l'inscription automatique via az CLI
-    client_id = _try_azure_auto_register()
+    # Chemin A : inscription automatique via az CLI (sauf si --no-az)
+    client_id = None if no_az else _try_azure_auto_register()
 
     if not client_id:
-        # Fallback : saisie manuelle du client_id uniquement (public client)
+        # Chemin B : portail Azure + saisie manuelle du Client ID (Device Code Flow)
+        # L'app à créer est une « public client app » — configuration minimale :
+        #   1) Enregistrer l'app (nom : LevelUp Halo, Personal Microsoft accounts)
+        #   2) Authentication → Allow public client flows = Yes → Save
+        #   3) Copier l'Application (client) ID
+        # Pas de client_secret, pas de redirect URI.
         print("  Pour accéder à l'API Halo, il te faut une Azure App (public client) :")
         print("    1) https://portal.azure.com → App registrations → New registration")
         print("       Nom : LevelUp Halo | Account type : Personal Microsoft accounts")
@@ -1674,11 +1702,15 @@ def _wizard_oauth_token(gamertag: str, client_id: str) -> str | None:
     return token
 
 
-def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
+def _onboard_first_player(*, no_az: bool = False) -> int:  # noqa: PLR0912, PLR0915
     """Guide interactif pour configurer et synchroniser un premier joueur.
 
     Wizard zéro-CLI : détecte les credentials manquants et guide l'utilisateur
     pas à pas (Azure App, token OAuth, sync) sans jamais exiger de ligne de commande.
+
+    Args:
+        no_az: Si True, contourne la détection Azure CLI et va directement
+               au chemin portail + Device Code Flow (--no-az).
 
     Returns:
         0 si la synchronisation a réussi, 2 sinon.
@@ -1709,7 +1741,7 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
     if not os.environ.get("SPNKR_AZURE_CLIENT_ID"):
         print()
         print("  ❌ Client ID Azure non configuré")
-        ok = _wizard_azure_creds()
+        ok = _wizard_azure_creds(no_az=no_az)
         if not ok:
             print("  → Configure le Client ID Azure et relance LevelUp.")
             return 2
@@ -1762,9 +1794,10 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
 def _cmd_add_player(args: argparse.Namespace) -> int:
     """Commande: ajoute/synchronise un joueur par son gamertag."""
     gamertag = getattr(args, "gamertag", None)
+    no_az = getattr(args, "no_az", False)
 
     if not gamertag:
-        return _onboard_first_player()
+        return _onboard_first_player(no_az=no_az)
 
     print(f"  → Synchronisation de « {gamertag} »…")
 
@@ -1800,9 +1833,34 @@ def _cmd_add_player(args: argparse.Namespace) -> int:
     return 0
 
 
-# =============================================================================
-# Mode interactif
-# =============================================================================
+def _cmd_reauth(args: argparse.Namespace) -> int:
+    """Commande: renouvelle uniquement le token OAuth d'un joueur.
+
+    Réutilise le client_id déjà configuré dans .env.local et relance
+    uniquement le Device Code Flow MSAL pour obtenir un nouveau refresh_token.
+    Utile quand le token a expiré ou a été révoqué sans avoir à recréer l'app.
+    """
+    gamertag = args.gamertag.strip()
+    _load_dotenv_for_launcher()
+
+    client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "").strip()
+    if not client_id:
+        print("  ❌ Client ID Azure manquant (SPNKR_AZURE_CLIENT_ID)")
+        print("     Lance d'abord : python launcher.py add-player")
+        return 2
+
+    print()
+    print(f"  Renouvellement du token OAuth pour « {gamertag} »…")
+    print(f"  Client ID : {client_id[:8]}…")
+    print()
+
+    token = _wizard_oauth_token(gamertag, client_id)
+    if not token:
+        print("  ❌ Échec du renouvellement.")
+        return 2
+
+    print(f"  ✅ Token renouvelé pour {gamertag}")
+    return 0
 
 
 def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
@@ -2014,7 +2072,20 @@ Architecture v5:
     p_add.add_argument("--gamertag", type=str, default=None, help="Gamertag Xbox du joueur")
     p_add.add_argument("--full", action="store_true", help="Sync complète (pas de delta)")
     p_add.add_argument("--max-matches", type=int, default=200, help="Max matchs (défaut: 200)")
+    p_add.add_argument(
+        "--no-az",
+        action="store_true",
+        help="Saute la tentative az CLI et va directement au portail Azure + Device Code Flow",
+    )
     p_add.set_defaults(func=_cmd_add_player)
+
+    # reauth
+    p_reauth = sub.add_parser(
+        "reauth",
+        help="Renouvelle uniquement le token OAuth d'un joueur (sans recréer l'app Azure)",
+    )
+    p_reauth.add_argument("--gamertag", type=str, required=True, help="Gamertag Xbox du joueur")
+    p_reauth.set_defaults(func=_cmd_reauth)
 
     return ap
 

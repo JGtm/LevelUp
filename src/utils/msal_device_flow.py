@@ -1,11 +1,30 @@
 """Acquisition de refresh_token via MSAL Device Code Flow.
 
-Le Device Code Flow simplifie drastiquement la configuration Azure :
-- Pas de ``client_secret``
-- Pas de ``redirect_uri``
-- L'app Azure nécessite uniquement :
-    - "Supported account types" → Personal Microsoft accounts only
-    - "Allow public client flows" → Yes
+Comparaison des deux flows OAuth disponibles dans LevelUp
+----------------------------------------------------------
+
++----------------------------+-----------------------------+------------------------------+
+| Critère                    | SPNKr classique             | MSAL Device Code (CE MODULE) |
++============================+=============================+==============================+
+| Endpoint                   | login.live.com              | login.microsoftonline.com    |
+| ``client_id``              | ✅ requis                   | ✅ requis                    |
+| ``client_secret``          | ✅ requis                   | ❌ non requis                |
+| ``redirect_uri``           | ✅ requis (localhost:8080)  | ❌ non requis                |
+| Config portail Azure       | App complète (secret + URI) | App « public client » seule  |
+| UX initiale                | Intercepter URL de redirect | Code court sur devicelogin   |
+| Fichiers concernés         | ``_tokens.py``, ``_auth.py``| Ce module + ``launcher.py``  |
++----------------------------+-----------------------------+------------------------------+
+
+**LevelUp utilise exclusivement le Device Code Flow** pour le wizard interactif
+(``launcher.py``, ``setup_wizard.py``). Le flow SPNKr classique reste disponible
+via ``scripts/spnkr_get_refresh_token.py`` (mode ``--auth-code``) pour les cas
+avancés (app avec ``client_secret`` déjà configurée).
+
+Prérequis côté portail Azure pour le Device Code Flow
+------------------------------------------------------
+1. App registration → Supported account types : Personal Microsoft accounts only
+2. Authentication → Advanced settings → Allow public client flows : **Yes** → Save
+3. C'est tout. Pas de secret à générer, pas de redirect URI à configurer.
 
 L'utilisateur visite ``https://microsoft.com/devicelogin`` et entre un code
 court (ex: ``ABCD-1234``). Aucune redirection localhost.
