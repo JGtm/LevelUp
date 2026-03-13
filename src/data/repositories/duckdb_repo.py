@@ -425,7 +425,7 @@ class DuckDBRepository(
                 )
                 return [(row[0], row[1]) for row in result.fetchall()]
             except Exception:
-                pass
+                logger.debug("Erreur chargement coéquipiers fréquents", exc_info=True)
         return []
 
     # =========================================================================
