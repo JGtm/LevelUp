@@ -185,18 +185,13 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
         ).strip()
 
         if not forced_env_db:
-            # 0. Deep link : si l'URL contient gamertag=X, utiliser ce joueur
-            #    directement (navigation depuis l'historique, lien partagé, etc.).
-            #    On lit st.query_params ici car _parse_query_params() s'exécute
-            #    après init_source_state dans main().
-            _url_gt = str(st.query_params.get("gamertag") or "").strip()
-            _url_db = _get_duckdb_v4_players_dir() / _url_gt / "stats.duckdb" if _url_gt else None
-            if _url_gt and _url_db and _url_db.exists():
-                chosen = str(_url_db)
-                st.session_state["_v4_gamertag"] = _url_gt
+            # NOTE: Ne PAS lire st.query_params["gamertag"] ici !
+            # Le param gamertag est un paramètre de navigation vers Explorer
+            # (afficher les matchs communs), PAS un switch de joueur principal.
+            # _parse_query_params() stocke PENDING_GAMERTAG pour Explorer.
 
-            # 1. Sinon, essayer DuckDB v4 (joueur avec le plus d'entrées)
-            elif not st.session_state.get("_v4_gamertag"):
+            # 1. Essayer DuckDB v4 (joueur avec le plus d'entrées)
+            if not st.session_state.get("_v4_gamertag"):
                 v4_player = _pick_best_duckdb_v4_player()
                 if v4_player:
                     chosen, gamertag = v4_player
