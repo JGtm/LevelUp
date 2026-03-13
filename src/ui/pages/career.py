@@ -134,10 +134,13 @@ def _render_rank_header(  # noqa: PLR0913
                 st.markdown(f"### {rank_number}")
         recorded_at = career_data.get("recorded_at")
         if isinstance(recorded_at, datetime):
-            from src.ui.tz import utc_to_local
+            try:
+                from src.ui.tz import utc_to_local
 
-            local_dt = utc_to_local(recorded_at)
-            st.caption(f"Données du {local_dt.strftime('%d/%m/%Y %H:%M')}")
+                local_dt = utc_to_local(recorded_at)
+                st.caption(f"Données du {local_dt.strftime('%d/%m/%Y %H:%M')}")
+            except Exception:
+                logger.debug("Conversion TZ recorded_at échouée", exc_info=True)
 
     with col_info:
         st.subheader(rank_label_fr)
