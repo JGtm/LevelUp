@@ -459,7 +459,7 @@ class TeammatesService:
                 )
                 profiles.append(profile)
             except Exception:
-                pass
+                logger.warning("Échec construction profil coéquipier %s", name, exc_info=True)
 
         return profiles
 

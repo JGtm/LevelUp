@@ -144,7 +144,7 @@ async def get_tokens_from_env() -> Tokens:
                         )
                         break
         except Exception:
-            pass
+            logger.debug("Erreur chargement token depuis sync_meta", exc_info=True)
 
     if azure_client_id and oauth_refresh_token:
         return await _get_tokens_via_oauth(
@@ -209,7 +209,7 @@ async def get_tokens_for_player(gamertag: str) -> Tokens | None:
                         "Token joueur '%s' chargé depuis sync_meta (Xbox OAuth UI).", gamertag
                     )
         except Exception:
-            pass
+            logger.debug("Erreur chargement token joueur '%s'", gamertag, exc_info=True)
 
     if not player_refresh_token:
         return None

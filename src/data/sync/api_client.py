@@ -481,7 +481,7 @@ class SPNKrAPIClient:
                 if xuid:
                     return str(xuid)
         except Exception:
-            pass
+            logger.debug("Échec extraction XUID du token JWT", exc_info=True)
         return None
 
 
