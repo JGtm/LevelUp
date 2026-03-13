@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import html
+import logging
 import os
 
 from src.ui.player_assets import file_to_data_url
+
+_log = logging.getLogger(__name__)
 
 
 def get_css_path() -> str:
@@ -31,6 +34,7 @@ def load_css() -> str:
             css_content = f.read()
         return f"<style>\n{css_content}\n</style>"
     except FileNotFoundError:
+        _log.warning("CSS introuvable: %s — fallback minimal", css_path)
         # Fallback: CSS minimal si le fichier n'existe pas
         return """
         <style>

@@ -83,6 +83,9 @@ def plot_participation_pie(
     penalties = agg.filter(pl.col("total_score") < 0)["total_score"].sum() or 0
     agg_positive = agg.filter(pl.col("total_score") > 0)
 
+    if agg_positive.is_empty():
+        _log.debug("plot_participation_pie: aucune catégorie positive")
+
     fig = go.Figure()
 
     if not agg_positive.is_empty():

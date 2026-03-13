@@ -10,12 +10,14 @@ Pour la plupart des usages, préférer les données pré-calculées depuis Match
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, time, timedelta, timezone
-from typing import Any
 
 import polars as pl
 
 from src.config import SESSION_CONFIG
+
+_log = logging.getLogger(__name__)
 
 # Format de date français (copié depuis ui.date_formats pour éviter couplage UI→analysis)
 FMT_DATE_FR: str = "%d/%m/%Y"
@@ -31,7 +33,7 @@ DEFAULT_SESSION_GAP_MINUTES = 120
 SESSION_CUTOFF_HOUR = 8
 
 
-def compute_sessions(df: pl.DataFrame | Any, gap_minutes: int | None = None) -> pl.DataFrame:
+def compute_sessions(df: pl.DataFrame, gap_minutes: int | None = None) -> pl.DataFrame:
     """Regroupe les parties consécutives en sessions (mode legacy).
 
     ATTENTION: Cette fonction ne prend PAS en compte les coéquipiers.
@@ -42,7 +44,7 @@ def compute_sessions(df: pl.DataFrame | Any, gap_minutes: int | None = None) -> 
     dépasse le seuil défini.
 
     Args:
-        df: DataFrame (Polars ou Pandas) avec colonne start_time.
+        df: DataFrame Polars avec colonne start_time.
         gap_minutes: Écart maximum entre parties (default: SESSION_CONFIG.default_gap_minutes).
 
     Returns:
@@ -51,16 +53,13 @@ def compute_sessions(df: pl.DataFrame | Any, gap_minutes: int | None = None) -> 
     if gap_minutes is None:
         gap_minutes = SESSION_CONFIG.default_gap_minutes
 
-    # Convertir en Polars si nécessaire
-    if not isinstance(df, pl.DataFrame):
-        df = pl.from_pandas(df)
-
     return _compute_sessions_polars(df, gap_minutes)
 
 
 def _compute_sessions_polars(df: pl.DataFrame, gap_minutes: int) -> pl.DataFrame:
     """Version Polars de compute_sessions()."""
     if df.is_empty():
+        _log.debug("compute_sessions: DataFrame vide, aucune session")
         return df.with_columns(
             [
                 pl.lit(None).cast(pl.Int64).alias("session_id"),
@@ -286,6 +285,11 @@ def compute_sessions_with_context_polars(
         session_labels,
         on="session_id",
         how="left",
+    )
+
+    n_sessions = df_result["session_id"].n_unique()
+    _log.debug(
+        "Sessions calculées: %d matchs → %d sessions (gap=%dmin)", len(df), n_sessions, gap_minutes
     )
 
     return df_result
