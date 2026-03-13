@@ -39,6 +39,7 @@ from src.ui.pages.career_logic import (
     _compute_hero_projections,
 )
 from src.ui.pages.career_lusr import _render_lusr_section
+from src.ui.pages.career_top_matches_render import render_top_matches_section
 from src.ui.player_assets import ensure_local_image_path
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 
@@ -324,6 +325,9 @@ def render_career_page(  # noqa: C901, PLR0912, PLR0915
 
     st.divider()
     _render_lusr_section(db_path=db_path, xuid=xuid)
+
+    st.divider()
+    render_top_matches_section(db_path=db_path, xuid=xuid)
 
     st.divider()
     render_encounters_section(db_path=db_path, xuid=xuid)

@@ -7,6 +7,58 @@
 
 ## Journal
 
+### [2026-03-13] — v5.7 : Points restants (B.5, C.2, D.5, G)
+
+- **Statut** : Complété
+- **Tâche** : Finaliser les points ❌ du plan v5.7 (hors chantier H / Steaktacular)
+
+**Actions :**
+1. **B.5** — Tests anti-pandas : ajouté `objective_analysis.py` et `duckdb_analytics.py` dans `test_legacy_free_ui_viz_wave_a.py` (49 tests passent)
+2. **C.2** — Guard Pandas `sessions.py` : supprimé le `if not isinstance(df, pl.DataFrame): df = pl.from_pandas(df)` dans `compute_sessions()` — fonction non appelée directement (tout passe par `compute_sessions_with_context_polars()`). Mise à jour de la docstring `_normalize_df` dans `_performance_relative_helpers.py`
+3. **D.5** — Tests hover CSS : créé `tests/ui/test_match_table_html.py` (7 tests : map_thumb_url, map index unicode, hover HTML avec/sans URL, no-JS in load_css)
+4. **G** — Date CHANGELOG corrigée : `2025-07-13` → `2026-03-13`
+5. **Fix collatéral** — `_roster_loader.py` : `_scoreboard_row_to_dict` était défini au niveau module entre deux méthodes de classe, cassant l'indentation Python. Déplacé en haut du fichier avant la classe. Baseline taille mis à jour.
+6. **Fix collatéral** — Tests `test_explorer_logic.py` et `test_win_loss_table_style.py` : assertions mises à jour (`map-cell` → `map-hover`, `data-thumb-url` → `map-popup`)
+
+**Résultats** : 4439 passed, 1 failed (ruff pré-existant, non lié)
+
+### [2026-03-13] — Vérification finale v5.7 : logging + couverture tests
+
+- **Statut** : Complété
+- **Tâche** : Audit complet logging et tests sur tous les fichiers modifiés en v5.7
+
+**Actions :**
+1. **Logging ajouté** dans 4 modules :
+   - `sessions.py` : logger + debug (empty DF, session count)
+   - `participation_charts.py` : debug quand `agg_positive.is_empty()`
+   - `styles.py` : logger + warning sur `FileNotFoundError` CSS
+   - `_performance_relative_helpers.py` : logger + warning conversion Pandas→Polars inattendue
+2. **3 tests ajoutés** dans `tests/ui/test_match_table_html.py` :
+   - `test_load_css_fallback` : CSS introuvable → fallback `<style>` minimal
+   - `test_scoreboard_row_to_dict_valid` : tuple complet → dict correct
+   - `test_scoreboard_row_to_dict_nulls` : tuple avec None → fallbacks corrects
+3. **Baseline taille** mise à jour (lignes déplacées par ajout logger)
+
+**Résultats** : 4479 passed, 0 failed — suite 100 % verte
+
+### [2026-03-13] — Chantier H : Top 10 meilleurs / pires matchs (Carrière)
+
+- **Statut** : Complété
+- **Tâche** : Afficher dans la page Carrière les Top 10 meilleures performances (victoires dominantes) et Top 10 pires performances (défaites humiliantes)
+
+**Décision technique** : JOIN `mv_player_matches` (shared) ↔ `player_match_enrichment` (player) via ATTACH, tri par dominance_flag d'abord, puis durée croissante, puis écart de score décroissant. Exclusions : bots, firefight, matchs < 3 min, matchs nuls/DNF.
+
+**Fichiers créés :**
+- `src/ui/pages/career_top_matches_data.py` — requête SQL CTE + `load_top_best_matches()` / `load_top_worst_matches()`
+- `src/ui/pages/career_top_matches_render.py` — tableaux HTML `os-sb-table` avec badges Domination/Humiliation, K/D coloré
+- `tests/test_top_matches.py` — 23 tests unitaires (formatage, badges, HTML, XSS escaping)
+
+**Fichiers modifiés :**
+- `src/ui/i18n/pages/career.py` — 10 clés i18n (header, titres, colonnes, badges, empty state)
+- `src/ui/pages/career.py` — import + appel `render_top_matches_section()` entre LUSR et encounters
+
+**Résultat** : 23/23 tests passent. Section affichée en 2 colonnes (best | worst) avec tableau HTML style existant, badge vert "Domination" ou violet "Humiliation" quand applicable.
+
 ### [2026-03-13] — Feature #8 : Détection domination/humiliation (Steaktacular)
 
 - **Statut** : Complété (Phases 1-5 + tests)

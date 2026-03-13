@@ -228,5 +228,58 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Matchs",
         "en": "Matches",
     },
+    # ── Top 10 matchs marquants ─────────────────────────────────────────────
+    "career_top_matches_header": {
+        "fr": "Matchs marquants",
+        "en": "Memorable Matches",
+    },
+    "career_top_best_title": {
+        "fr": "🏆 Meilleures performances",
+        "en": "🏆 Best Performances",
+    },
+    "career_top_worst_title": {
+        "fr": "💀 Pires performances",
+        "en": "💀 Worst Performances",
+    },
+    "career_top_no_data": {
+        "fr": "Pas assez de matchs pour établir un classement.",
+        "en": "Not enough matches to build a ranking.",
+    },
+    "career_top_col_date": {
+        "fr": "Date",
+        "en": "Date",
+    },
+    "career_top_col_map": {
+        "fr": "Carte",
+        "en": "Map",
+    },
+    "career_top_col_mode": {
+        "fr": "Mode",
+        "en": "Mode",
+    },
+    "career_top_col_score": {
+        "fr": "Score",
+        "en": "Score",
+    },
+    "career_top_col_kda": {
+        "fr": "FDA",
+        "en": "KDA",
+    },
+    "career_top_col_kd": {
+        "fr": "K/D",
+        "en": "K/D",
+    },
+    "career_top_col_duration": {
+        "fr": "Durée",
+        "en": "Duration",
+    },
+    "career_top_badge_domination": {
+        "fr": "Domination",
+        "en": "Domination",
+    },
+    "career_top_badge_humiliation": {
+        "fr": "Humiliation",
+        "en": "Humiliation",
+    },
     # ── Citations ───────────────────────────────────────────────────────────
 }
