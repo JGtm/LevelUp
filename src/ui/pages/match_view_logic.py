@@ -40,16 +40,17 @@ def resolve_outcome(
     return outcome_code, outcome_label, outcome_color
 
 
-def load_enrichment(db_path: str, match_id: str) -> tuple[bool, float | None]:
-    """Charge had_bot_teammate et performance_score depuis player_match_enrichment."""
+def load_enrichment(db_path: str, match_id: str) -> tuple[bool, float | None, int | None]:
+    """Charge had_bot_teammate, performance_score et dominance_flag."""
     had_bot = False
     stored_perf: float | None = None
+    dominance_flag: int | None = None
     try:
         from src.utils.db import duckdb_read_only
 
         with duckdb_read_only(db_path) as conn:
             pme_row = conn.execute(
-                "SELECT had_bot_teammate, performance_score"
+                "SELECT had_bot_teammate, performance_score, dominance_flag"
                 " FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
                 [match_id],
             ).fetchone()
@@ -57,9 +58,11 @@ def load_enrichment(db_path: str, match_id: str) -> tuple[bool, float | None]:
             had_bot = bool(pme_row[0])
             if pme_row[1] is not None:
                 stored_perf = float(pme_row[1])
+            if pme_row[2] is not None:
+                dominance_flag = int(pme_row[2])
     except Exception:
         logger.debug("match_view: enrichment introuvable match=%s", match_id)
-    return had_bot, stored_perf
+    return had_bot, stored_perf, dominance_flag
 
 
 def compute_perf_display(

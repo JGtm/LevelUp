@@ -546,6 +546,22 @@ def create_argument_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ── Détection domination (Steaktacular) ───────────────────────────────────
+    parser.add_argument(
+        "--dominance",
+        action="store_true",
+        help=(
+            "Calcule dominance_flag dans player_match_enrichment : "
+            "1=domination totale (notre équipe a Steaktacular), "
+            "2=humiliation totale (équipe ennemie a Steaktacular)."
+        ),
+    )
+    parser.add_argument(
+        "--force-dominance",
+        action="store_true",
+        help="Recalculer dominance_flag pour tous les matchs (même ceux déjà calculés).",
+    )
+
     # ── Gestion des métadonnées (citations) ───────────────────────────────────
     parser.add_argument(
         "--enable-pve-citations",

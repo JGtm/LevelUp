@@ -41,6 +41,25 @@ from src.visualization._compat import ensure_polars
 
 logger = logging.getLogger(__name__)
 
+_DOMINANCE_BADGE_STYLES: dict[int, tuple[str, str, str]] = {
+    # flag → (i18n_key, bg_color, text_color)
+    1: ("outcome_domination", "#2e7d32", "#e8f5e9"),  # vert foncé
+    2: ("outcome_humiliation", "#6a1b9a", "#f3e5f5"),  # violet foncé
+}
+
+
+def _dominance_badge_html(flag: int | None) -> str:
+    """Retourne le HTML d'un badge domination/humiliation, ou '' si non applicable."""
+    if flag is None or flag not in _DOMINANCE_BADGE_STYLES:
+        return ""
+    i18n_key, bg, fg = _DOMINANCE_BADGE_STYLES[flag]
+    label = html.escape(t(i18n_key))
+    return (
+        f"<br><span style='display:inline-block;margin-top:4px;padding:2px 8px;"
+        f"border-radius:4px;font-size:0.75em;font-weight:600;"
+        f"background:{bg};color:{fg}'>{label}</span>"
+    )
+
 
 def _render_kpi_cards(  # noqa: PLR0913
     *,
@@ -52,6 +71,7 @@ def _render_kpi_cards(  # noqa: PLR0913
     perf_display: str,
     perf_color: str | None,
     had_bot: bool,
+    dominance_flag: int | None = None,
 ) -> None:
     """Affiche les 3 cartes KPI : Date, Résultat, Performance."""
     top_cols = st.columns(3)
@@ -63,10 +83,16 @@ def _render_kpi_cards(  # noqa: PLR0913
             if outcome_code == OUTCOME_CODES.WIN
             else ("text-loss" if outcome_code == OUTCOME_CODES.LOSS else "text-tie")
         )
+        score_html = (
+            f"<span class='{outcome_class} fw-bold'>" f"{html.escape(str(score_label))}</span>"
+        )
+        dominance_badge = _dominance_badge_html(dominance_flag)
+        if dominance_badge:
+            score_html += dominance_badge
         os_card(
             t("mv_results"),
             str(outcome_label),
-            f"<span class='{outcome_class} fw-bold'>{html.escape(str(score_label))}</span>",
+            score_html,
             accent=str(outcome_color),
             kpi_color=str(outcome_color),
         )
@@ -170,7 +196,7 @@ def render_match_view(  # noqa: C901, PLR0912
         row.get("my_team_score"), row.get("enemy_team_score")
     )
     match_url = _build_waypoint_url(params["waypoint_player"], match_id)
-    _had_bot, _stored_perf = load_enrichment(db_path, match_id)
+    _had_bot, _stored_perf, _dominance_flag = load_enrichment(db_path, match_id)
     _perf_score, perf_display, perf_color = compute_perf_display(
         row, df_full, _stored_perf, _had_bot
     )
@@ -184,6 +210,7 @@ def render_match_view(  # noqa: C901, PLR0912
         perf_display=perf_display,
         perf_color=perf_color,
         had_bot=_had_bot,
+        dominance_flag=_dominance_flag,
         normalize_mode_label_fn=params["normalize_mode_label_fn"],
         db_path=db_path,
         match_id=match_id,
@@ -231,6 +258,7 @@ def _render_match_header(  # noqa: PLR0913
     perf_display: str,
     perf_color: str | None,
     had_bot: bool,
+    dominance_flag: int | None,
     normalize_mode_label_fn: Any,
     db_path: str,
     match_id: str,
@@ -246,6 +274,7 @@ def _render_match_header(  # noqa: PLR0913
         perf_display=perf_display,
         perf_color=perf_color,
         had_bot=had_bot,
+        dominance_flag=dominance_flag,
     )
     _render_match_info_row(row, normalize_mode_label_fn)
     _render_map_and_rank(

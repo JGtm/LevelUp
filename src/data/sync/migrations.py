@@ -1077,6 +1077,27 @@ def ensure_bot_teammate_column(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Migration player_match_enrichment : colonne dominance_flag (v5.7)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_dominance_flag_column(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute la colonne dominance_flag à player_match_enrichment si absente.
+
+    Qualifie le degré de domination d'un match :
+    - NULL : données médailles absentes (medals_loaded=FALSE)
+    - 0 : match normal (pas de Steaktacular)
+    - 1 : domination totale (notre équipe a obtenu Steaktacular)
+    - 2 : humiliation totale (l'équipe ennemie a obtenu Steaktacular)
+
+    Voir ``src.analysis._medal_verdicts.DominanceFlag``.
+    """
+    if not table_exists(conn, "player_match_enrichment"):
+        return
+    _add_column_if_missing(conn, "player_match_enrichment", "dominance_flag", "TINYINT")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Correction bot XIDs (bug legacy migrate_sqlite) — shared_matches.duckdb
 # ─────────────────────────────────────────────────────────────────────────────
 

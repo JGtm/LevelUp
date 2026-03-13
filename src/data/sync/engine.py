@@ -442,3 +442,37 @@ class DuckDBSyncEngine(
             )
         except Exception as e:
             logger.warning("Erreur calcul citations post-sync : %s", e)
+
+        # Dominance flags (médaille Steaktacular)
+        self._compute_dominance_post_sync()
+
+    def _compute_dominance_post_sync(self) -> None:
+        """Calcule les dominance flags pour les matchs nouvellement synchronisés."""
+        try:
+            from src.data.dominance_backfill import compute_dominance_for_player
+
+            if self._shared_connection is not None:
+                with contextlib.suppress(Exception):
+                    self._shared_connection.close()
+                self._shared_connection = None
+
+            import duckdb as _ddb
+
+            shared_path = self._shared_db_path
+            if shared_path and shared_path.exists():
+                _sconn = _ddb.connect(str(shared_path), read_only=True)
+                try:
+                    dom_result = compute_dominance_for_player(
+                        self._get_connection(), _sconn, self._xuid or ""
+                    )
+                    logger.info(
+                        "Dominance flags post-sync : %d traités "
+                        "(domination: %d, humiliation: %d)",
+                        dom_result["processed"],
+                        dom_result["domination"],
+                        dom_result["humiliation"],
+                    )
+                finally:
+                    _sconn.close()
+        except Exception as e:
+            logger.warning("Erreur calcul dominance post-sync : %s", e)

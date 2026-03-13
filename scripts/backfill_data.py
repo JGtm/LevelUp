@@ -306,6 +306,65 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             logger.error(f"Erreur --bot-detection : {e}")
         return 0
 
+    # --dominance : calcule dominance_flag depuis medals_earned + match_participants
+    _dominance = getattr(args, "dominance", False) or getattr(args, "force_dominance", False)
+    if _dominance:
+        _force_dom = getattr(args, "force_dominance", False)
+        try:
+            from src.data.dominance_backfill import compute_dominance_for_player
+            from src.ui.multiplayer import list_duckdb_v4_players
+
+            _SHARED_DB_DOM = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+            if not _SHARED_DB_DOM.exists():
+                logger.error("shared_matches.duckdb introuvable pour --dominance")
+                return 1
+
+            shared_conn = duckdb.connect(str(_SHARED_DB_DOM), read_only=True)
+            _players_list = list_duckdb_v4_players()
+            total_dom_updated = 0
+
+            for _gt_info in _players_list:
+                _gt = _gt_info.gamertag
+                _db = _gt_info.db_path
+                if not _db.exists():
+                    continue
+                try:
+                    _pconn = duckdb.connect(str(_db), read_only=False)
+                    if _gt_info.xuid:
+                        _xuid = _gt_info.xuid
+                    else:
+                        _xuid_row = _pconn.execute(
+                            "SELECT value FROM sync_meta WHERE key = 'xuid' LIMIT 1"
+                        ).fetchone()
+                        if not _xuid_row:
+                            _pconn.close()
+                            continue
+                        _xuid = _xuid_row[0]
+
+                    result = compute_dominance_for_player(
+                        _pconn, shared_conn, _xuid, force=_force_dom
+                    )
+                    total_dom_updated += result["processed"]
+                    logger.info(
+                        "[%s] dominance: %d matchs traités " "(domination: %d, humiliation: %d)",
+                        _gt,
+                        result["processed"],
+                        result["domination"],
+                        result["humiliation"],
+                    )
+                    _pconn.close()
+                except Exception as _e:
+                    logger.warning("[%s] Erreur --dominance : %s", _gt, _e)
+
+            shared_conn.close()
+            logger.info(
+                "Dominance terminée : %d ligne(s) mise(s) à jour au total",
+                total_dom_updated,
+            )
+        except Exception as e:
+            logger.error("Erreur --dominance : %s", e)
+        return 0
+
     # --enable-pve-citations : active les citations PVE désactivées dans metadata.duckdb
     enable_pve_citations = getattr(args, "enable_pve_citations", False)
     if enable_pve_citations:
@@ -506,14 +565,32 @@ def _print_totals(totals: dict, scope: object) -> None:  # noqa: C901, PLR0912
     has_force = any(getattr(scope, f, False) for f in dir(scope) if f.startswith("force_"))
     # scope_is_default : True si aucun flag "spécifique" n'est activé (= backfill standard)
     _specific_fields = [
-        "accuracy", "shots", "enemy_mmr", "assets", "participants",
-        "participants_scores", "participants_kda", "participants_shots",
-        "participants_damage", "participants_avg_life", "killer_victim",
-        "end_time", "sessions", "citations", "teammates_sig",
-        "participants_enrich", "weapons", "team_scores", "pve_stats",
+        "accuracy",
+        "shots",
+        "enemy_mmr",
+        "assets",
+        "participants",
+        "participants_scores",
+        "participants_kda",
+        "participants_shots",
+        "participants_damage",
+        "participants_avg_life",
+        "killer_victim",
+        "end_time",
+        "sessions",
+        "citations",
+        "teammates_sig",
+        "participants_enrich",
+        "weapons",
+        "team_scores",
+        "pve_stats",
     ]
     scope_is_default = not any(getattr(scope, f, False) for f in _specific_fields)
-    missing_label = "Matchs sélectionnés (force)" if has_force and missing == checked else "Matchs avec données manquantes"
+    missing_label = (
+        "Matchs sélectionnés (force)"
+        if has_force and missing == checked
+        else "Matchs avec données manquantes"
+    )
     logger.info(f"Matchs vérifiés: {checked}")
     logger.info(f"{missing_label}: {missing}")
     # Types "core" : affichés seulement si demandés ou si valeur > 0
