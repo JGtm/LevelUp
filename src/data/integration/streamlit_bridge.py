@@ -34,23 +34,18 @@ from src.data.repositories.factory import (
 )
 from src.data.repositories.protocol import DataRepository
 
-# Timezone Paris (identique à cache.py)
+# Timezone — fallback legacy, préférer get_tz_name() pour la TZ utilisateur
 PARIS_TZ_NAME = "Europe/Paris"
 
 
 def _get_display_tz_name() -> str:
-    """Retourne la timezone depuis app_settings, fallback 'Europe/Paris'."""
+    """Retourne la timezone utilisateur, fallback 'Europe/Paris'."""
     try:
-        import streamlit as st
+        from src.ui.tz import get_tz_name
 
-        settings = st.session_state.get("app_settings")
-        if settings is not None:
-            tz = str(getattr(settings, "user_timezone", "") or "").strip()
-            if tz:
-                return tz
+        return get_tz_name()
     except Exception:
-        pass
-    return PARIS_TZ_NAME
+        return PARIS_TZ_NAME
 
 
 def get_repository_mode_from_settings() -> RepositoryMode:

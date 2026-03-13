@@ -28,15 +28,28 @@ __all__ = [
     "style_score_label",
     "parse_date_fr_input",
     "coerce_int",
+    "to_user_tz_naive",
     "to_paris_naive",
+    "user_tz_epoch_seconds",
     "paris_epoch_seconds",
     "PARIS_TZ",
     "PARIS_TZ_NAME",
 ]
 
-# Timezone Paris pour les conversions
+# Timezone Paris — fallback legacy, préférer get_tz() pour la TZ utilisateur
 PARIS_TZ_NAME = "Europe/Paris"
 PARIS_TZ = ZoneInfo(PARIS_TZ_NAME)
+
+
+def _get_user_tz() -> ZoneInfo:
+    """Retourne la TZ utilisateur (fallback Paris hors contexte Streamlit)."""
+    try:
+        from src.ui.tz import get_tz
+
+        return get_tz()
+    except Exception:
+        return PARIS_TZ
+
 
 _SCORE_LABEL_RE = re.compile(r"^\s*(-?\d+)\s*[-–—]\s*(-?\d+)\s*$")
 _DATE_FR_RE = re.compile(r"^\s*(\d{1,2})\s*[\-/]\s*(\d{1,2})\s*[\-/]\s*(\d{4})\s*$")
@@ -87,11 +100,11 @@ def _parse_datetime(value) -> datetime | None:  # noqa: PLR0912
     return None
 
 
-def to_paris_naive(dt_value) -> datetime | None:
-    """Convertit une date en datetime naïf (sans tzinfo) en heure de Paris.
+def to_user_tz_naive(dt_value) -> datetime | None:
+    """Convertit une date en datetime naïf en timezone utilisateur.
 
-    - tz-aware -> convertit en Europe/Paris puis enlève tzinfo
-    - naïf -> supposé déjà en heure de Paris
+    - tz-aware → convertit en TZ utilisateur puis enlève tzinfo
+    - naïf → supposé en UTC (convention DB) → converti en TZ utilisateur
     """
     if dt_value is None:
         return None
@@ -99,24 +112,37 @@ def to_paris_naive(dt_value) -> datetime | None:
         d = _parse_datetime(dt_value)
         if d is None:
             return None
-
+        user_tz = _get_user_tz()
         if getattr(d, "tzinfo", None) is not None:
-            d = d.astimezone(PARIS_TZ).replace(tzinfo=None)
+            d = d.astimezone(user_tz).replace(tzinfo=None)
+        else:
+            from datetime import timezone as _tz
+
+            d = d.replace(tzinfo=_tz.utc).astimezone(user_tz).replace(tzinfo=None)
         return d
     except Exception:
         return None
 
 
-def paris_epoch_seconds(dt_value) -> float | None:
-    """Retourne un timestamp Unix (UTC) pour une date exprimée en heure de Paris."""
-    d = to_paris_naive(dt_value)
+# Alias rétrocompatible
+to_paris_naive = to_user_tz_naive
+
+
+def user_tz_epoch_seconds(dt_value) -> float | None:
+    """Retourne un timestamp Unix (UTC) pour une date en TZ utilisateur."""
+    d = to_user_tz_naive(dt_value)
     if d is None:
         return None
     try:
-        aware = PARIS_TZ.localize(d) if d.tzinfo is None else d
+        user_tz = _get_user_tz()
+        aware = d.replace(tzinfo=user_tz)
         return aware.timestamp()
     except Exception:
         return None
+
+
+# Alias rétrocompatible
+paris_epoch_seconds = user_tz_epoch_seconds
 
 
 def format_date_fr(dt_value, lang: str = "fr") -> str:

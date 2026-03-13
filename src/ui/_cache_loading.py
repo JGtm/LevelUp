@@ -11,9 +11,19 @@ import logging
 import polars as pl
 import streamlit as st
 
-from src.ui.cache_loaders import PARIS_TZ_NAME
+from src.ui.cache_loaders import PARIS_TZ_NAME  # noqa: F401 (compat)
 
 logger = logging.getLogger(__name__)
+
+
+def _get_user_tz_name() -> str:
+    """TZ utilisateur dynamique, fallback Paris."""
+    try:
+        from src.ui.tz import get_tz_name
+
+        return get_tz_name()
+    except Exception:
+        return PARIS_TZ_NAME
 
 
 # 8bis.A4 : TTL supprimé, l'invalidation se fait via db_key (mtime + size)
@@ -60,7 +70,7 @@ def cached_load_recent_matches(
             return pl.DataFrame()
 
         df = _matches_to_dataframe(matches)
-        return _convert_timezone(df, tz_name or PARIS_TZ_NAME)
+        return _convert_timezone(df, tz_name or _get_user_tz_name())
 
     except ImportError:
         logger.warning("Import DuckDBRepository indisponible pour recent_matches")
@@ -117,7 +127,7 @@ def cached_load_matches_paginated(  # noqa: PLR0913
             return pl.DataFrame(), total_pages
 
         df = _matches_to_dataframe(matches)
-        return _convert_timezone(df, tz_name or PARIS_TZ_NAME), total_pages
+        return _convert_timezone(df, tz_name or _get_user_tz_name()), total_pages
 
     except ImportError:
         logger.warning("Import DuckDBRepository indisponible pour matches_paginated")
@@ -237,8 +247,10 @@ def _matches_to_dataframe(matches: list) -> pl.DataFrame:
     )
 
 
-def _convert_timezone(df: pl.DataFrame, tz_name: str = "Europe/Paris") -> pl.DataFrame:
-    """Convertit start_time UTC → timezone donnée (naïve) et ajoute colonne date."""
+def _convert_timezone(df: pl.DataFrame, tz_name: str = "") -> pl.DataFrame:
+    """Convertit start_time UTC → timezone utilisateur (naïve) et ajoute colonne date."""
+    if not tz_name:
+        tz_name = _get_user_tz_name()
     try:
         df = df.with_columns(
             pl.col("start_time")
