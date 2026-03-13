@@ -121,7 +121,7 @@ def _render_rank_header(  # noqa: PLR0913
                 adornment_db_path,
                 prefix="adornment",
                 download_enabled=True,
-                auto_refresh_hours=0,
+                auto_refresh_hours=24,
             )
             if local_adornment:
                 st.image(local_adornment, width=140)
@@ -132,6 +132,12 @@ def _render_rank_header(  # noqa: PLR0913
                 st.image(str(icon_path), width=120)
             else:
                 st.markdown(f"### {rank_number}")
+        recorded_at = career_data.get("recorded_at")
+        if isinstance(recorded_at, datetime):
+            from src.ui.tz import utc_to_local
+
+            local_dt = utc_to_local(recorded_at)
+            st.caption(f"Données du {local_dt.strftime('%d/%m/%Y %H:%M')}")
 
     with col_info:
         st.subheader(rank_label_fr)

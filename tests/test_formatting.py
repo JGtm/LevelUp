@@ -108,10 +108,13 @@ class TestToParisNaive:
         assert to_paris_naive(None) is None
 
     def test_naive_datetime(self):
+        # Convention DB : naïf = UTC → converti en TZ utilisateur (Paris par défaut)
         dt = datetime(2025, 6, 15, 14, 30)
         result = to_paris_naive(dt)
-        assert result == dt
+        assert result is not None
         assert result.tzinfo is None
+        # UTC+2 en été pour Paris : 14:30 UTC → 16:30 Paris
+        assert result.hour == 16
 
     def test_aware_utc(self):
         utc_dt = datetime(2025, 6, 15, 12, 0, tzinfo=ZoneInfo("UTC"))
@@ -347,9 +350,10 @@ class TestFormatDatetimeFrHm:
         assert format_datetime_fr_hm(None) == "-"
 
     def test_datetime(self):
+        # naive datetime = UTC convention → converti en heure locale (Paris été = UTC+2)
         dt = datetime(2025, 6, 15, 14, 30)
         result = format_datetime_fr_hm(dt)
-        assert "14:30" in result
+        assert "16:30" in result
         assert "15" in result
         assert "juin" in result
 
