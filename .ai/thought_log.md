@@ -7,6 +7,18 @@
 
 ## Journal
 
+### [2026-03-13] — Mise à jour documentation et RAG (v5.5→v5.7)
+
+- **Statut** : Complété
+- **Tâche** : Mettre à jour `project_map.md`, `data_lineage.md` et reconstruire l'index RAG LanceDB pour refléter v5.5, v5.6 et v5.7
+
+**Actions :**
+1. **`project_map.md`** : bump v5.4→v5.7, ajout historique v5.5/v5.6/v5.7, nouveaux modules (`weapon_kills`, `setup_wizard`, `msal_device_flow`, `career_top_matches_*`, `friends_impact_heatmap`, `i18n/ranks.py`), table `weapon_kills` dans shared_matches, compteur tests 3693→4479
+2. **`data_lineage.md`** : flux n°8 "Films SPNKr → weapon_kills" ajouté, table `weapon_kills` dans shared_matches (cardinalité), date mise à jour 2026-03-05→2026-03-13
+3. **RAG** : drop + rebuild complet `data/rag/halo_knowledge.lance` (sources : `docs/`, `.ai/`, `src/`) → **9 694 chunks** indexés (vs idem mais contenu périmé)
+
+**Résultats** : Documentation cohérente avec le code actuel ; RAG à jour pour MCP server
+
 ### [2026-03-13] — v5.7 : Points restants (B.5, C.2, D.5, G)
 
 - **Statut** : Complété
