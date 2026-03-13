@@ -9,7 +9,7 @@ from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
-def plot_trio_metric(  # noqa: PLR0913
+def plot_trio_metric(  # noqa: PLR0913, C901 — graphe multi-joueurs
     d_self: DataFrameLike,
     d_f1: DataFrameLike,
     d_f2: DataFrameLike,
@@ -24,6 +24,8 @@ def plot_trio_metric(  # noqa: PLR0913
     lang: str = "fr",
     d_f3: DataFrameLike | None = None,
     colors_by_name: dict[str, str] | None = None,
+    is_inverse: bool = False,
+    match_labels: list[str] | None = None,
 ) -> go.Figure:
     """Graphique comparant une métrique entre 3 ou 4 joueurs.
 
@@ -95,7 +97,10 @@ def plot_trio_metric(  # noqa: PLR0913
         return s.rolling_mean(window_size=w, min_samples=1).to_list()
 
     # Formatage des dates pour ticktext
-    ticktext = aligned["start_time"].dt.strftime("%d/%m").fill_null("").to_list()
+    if match_labels and len(match_labels) == len(aligned):
+        ticktext = match_labels
+    else:
+        ticktext = aligned["start_time"].dt.strftime("%d/%m").fill_null("").to_list()
     xs = list(range(len(aligned)))
 
     series_lists = [aligned[col].to_list() for col in col_names]
@@ -108,17 +113,25 @@ def plot_trio_metric(  # noqa: PLR0913
         zip(series_lists, series_cols, names, color_list, strict=False)
     ):
         hover_format = f"%{{customdata}}<br>%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
-        fig.add_trace(
-            go.Bar(
-                x=xs,
-                y=s_list,
-                name=f"{name} (match)",
-                marker_color=color,
-                opacity=0.32,
-                customdata=ticktext,
-                hovertemplate=hover_format,
-            )
-        )
+        bar_kwargs: dict = {
+            "x": xs,
+            "y": s_list,
+            "name": f"{name} (match)",
+            "marker_color": color,
+            "opacity": 0.75,
+            "customdata": ticktext,
+            "hovertemplate": hover_format,
+        }
+        if is_inverse:
+            bar_kwargs["marker"] = {
+                "color": color,
+                "pattern": {
+                    "shape": "/",
+                    "fgcolor": "rgba(255, 80, 80, 0.5)",
+                    "solidity": 0.15,
+                },
+            }
+        fig.add_trace(go.Bar(**bar_kwargs))
 
         fig.add_trace(
             go.Scatter(

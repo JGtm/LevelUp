@@ -77,8 +77,8 @@ FUNC:src/ui/pages/match_view_citations.py:19:render_match_citations_section:163L
 FUNC:src/ui/pages/match_view_helpers.py:241:_render_media_legacy:87L
 FUNC:src/ui/pages/match_view_participation.py:110:render_participation_comparison:85L
 FUNC:src/ui/pages/match_view_participation.py:22:render_participation_section:85L
-FUNC:src/ui/pages/match_view_players.py:188:render_match_impact_section:89L
-FUNC:src/ui/pages/match_view_players.py:50:render_roster_section:129L
+FUNC:src/ui/pages/match_view_players.py:191:render_match_impact_section:105L
+FUNC:src/ui/pages/match_view_players.py:53:render_roster_section:129L
 FUNC:src/ui/pages/match_view_players_nemesis.py:170:render_nemesis_section:208L
 FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
@@ -92,9 +92,9 @@ FUNC:src/ui/pages/session_compare_charts.py:51:render_comparison_radar_chart:82L
 FUNC:src/ui/pages/settings.py:201:_render_backfill_section:82L
 FUNC:src/ui/pages/settings.py:22:_build_settings_from_ui:81L
 FUNC:src/ui/pages/teammates.py:74:render_teammates_page:199L
-FUNC:src/ui/pages/teammates_charts.py:240:render_trio_charts:163L
+FUNC:src/ui/pages/teammates_charts.py:240:render_trio_charts:181L
 FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
-FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:122L
+FUNC:src/ui/pages/teammates_impact.py:173:render_impact_taquinerie:117L
 FUNC:src/ui/pages/teammates_views.py:58:render_single_teammate_view:125L
 FUNC:src/ui/pages/win_loss.py:254:_render_ratio_by_map_section:91L
 FUNC:src/ui/styles.py:44:get_hero_html:146L
@@ -105,7 +105,7 @@ FUNC:src/visualization/_antagonist_kv.py:16:plot_killer_victim_stacked_bars:103L
 FUNC:src/visualization/_distributions_advanced.py:151:plot_first_event_distribution:107L
 FUNC:src/visualization/_distributions_advanced.py:18:plot_correlation_scatter:130L
 FUNC:src/visualization/_distributions_outcomes_helpers.py:125:add_outcome_traces:84L
-FUNC:src/visualization/_match_impact_events.py:38:compute_single_match_impact:122L
+FUNC:src/visualization/_match_impact_events.py:38:compute_single_match_impact:127L
 FUNC:src/visualization/_perf_cumulative.py:91:plot_cumulative_net_score:82L
 FUNC:src/visualization/_perf_session.py:21:plot_session_trend:114L
 FUNC:src/visualization/_timeseries_progression.py:183:plot_lusr_timeseries:89L
@@ -133,7 +133,7 @@ FUNC:src/visualization/timeseries.py:317:plot_per_minute_timeseries:91L
 FUNC:src/visualization/timeseries_combat.py:268:plot_damage_dealt_taken:81L
 FUNC:src/visualization/timeseries_combat.py:352:plot_shots_accuracy:92L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
-FUNC:src/visualization/trio.py:12:plot_trio_metric:153L
+FUNC:src/visualization/trio.py:12:plot_trio_metric:166L
 MODULE:src/data/query/trends.py:534L
 MODULE:src/data/services/teammates_service.py:536L
 MODULE:src/data/sync/api_client.py:521L

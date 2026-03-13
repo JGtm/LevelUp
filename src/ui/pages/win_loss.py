@@ -145,7 +145,7 @@ def _render_map_mode_breakdown(dff: pl.DataFrame) -> None:
                     dff_mode,
                     "_mode_short",
                     title=None,
-                    min_matches=2,
+                    min_matches=1,
                     sort_by="total",
                     max_categories=10,
                     lang=get_lang(),

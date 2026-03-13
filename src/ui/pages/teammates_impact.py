@@ -242,20 +242,15 @@ def render_impact_taquinerie(
             return
 
         gamertags = list(scores.keys())
-        sorted_match_ids = sorted(
-            {
-                m
-                for m in match_ids
-                if m
-                in set(
-                    list(first_bloods.keys())
-                    + list(clutch_finishers.keys())
-                    + list(last_casualties.keys())
-                    + list(last_group_kills.keys())
-                    + list(first_group_deaths.keys())
-                )
-            }
+        # Conserver l'ordre chronologique d'origine (match_ids est déjà trié par start_time)
+        impact_match_set = set(
+            list(first_bloods.keys())
+            + list(clutch_finishers.keys())
+            + list(last_casualties.keys())
+            + list(last_group_kills.keys())
+            + list(first_group_deaths.keys())
         )
+        sorted_match_ids = [m for m in match_ids if m in impact_match_set]
 
         # Créer un dict des outcomes pour la heatmap
         match_outcomes = {}

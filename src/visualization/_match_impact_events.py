@@ -35,20 +35,19 @@ def get_impact_labels(lang: str = "fr") -> dict[str, tuple[str, str]]:
     }
 
 
-def compute_single_match_impact(
+def compute_single_match_impact(  # noqa: C901 — complexité inhérente au scoring
     highlight_events: list[dict[str, Any]],
     me_xuid: str,
     outcome: int | None = None,
+    team_xuids: set[str] | None = None,
 ) -> list[MatchImpactEvent]:
     """Identifie les événements d'impact pour un match unique.
-
-    Contrairement à friends_impact.py (multi-matchs, multi-joueurs),
-    cette fonction travaille sur un seul match et tous les joueurs présents.
 
     Args:
         highlight_events: Liste de dicts {event_type, time_ms, xuid, gamertag, ...}.
         me_xuid: XUID du joueur principal.
         outcome: Code outcome (2=win, 3=loss) pour le clutch_finisher.
+        team_xuids: Si fourni, filtre les events pour ne garder que l'équipe alliée.
 
     Returns:
         Liste de MatchImpactEvent identifiés.
@@ -58,6 +57,12 @@ def compute_single_match_impact(
 
     me_xuid = str(me_xuid).strip()
     events: list[MatchImpactEvent] = []
+
+    # Filtrer par équipe si team_xuids est fourni
+    if team_xuids:
+        highlight_events = [
+            e for e in highlight_events if str(e.get("xuid", "")).strip() in team_xuids
+        ]
 
     # Séparer kills et deaths
     kills = [

@@ -276,6 +276,16 @@ def render_trio_charts(  # noqa: PLR0913
     if f3_xuid:
         key_suffix += f"_{f3_xuid}"
 
+    # Construire les étiquettes axe X : #N + carte
+    _d_self_pl = ensure_polars(d_self)
+    _match_labels: list[str] | None = None
+    if not _d_self_pl.is_empty() and "map_name" in _d_self_pl.columns:
+        _sorted = (
+            _d_self_pl.sort("start_time") if "start_time" in _d_self_pl.columns else _d_self_pl
+        )
+        _maps = _sorted["map_name"].fill_null("?").to_list()
+        _match_labels = [f"#{i + 1}<br>{m}" for i, m in enumerate(_maps)]
+
     _lang = get_lang()
     st.plotly_chart(
         plot_trio_metric(
@@ -289,6 +299,7 @@ def render_trio_charts(  # noqa: PLR0913
             lang=_lang,
             d_f3=d_f3,
             colors_by_name=colors_by_name,
+            match_labels=_match_labels,
         ),
         width="stretch",
         key=f"trio_kills_{key_suffix}",
@@ -306,6 +317,8 @@ def render_trio_charts(  # noqa: PLR0913
             lang=_lang,
             d_f3=d_f3,
             colors_by_name=colors_by_name,
+            is_inverse=True,
+            match_labels=_match_labels,
         ),
         width="stretch",
         key=f"trio_deaths_{key_suffix}",
@@ -323,6 +336,7 @@ def render_trio_charts(  # noqa: PLR0913
             lang=_lang,
             d_f3=d_f3,
             colors_by_name=colors_by_name,
+            match_labels=_match_labels,
         ),
         width="stretch",
         key=f"trio_assists_{key_suffix}",
@@ -341,6 +355,7 @@ def render_trio_charts(  # noqa: PLR0913
             lang=_lang,
             d_f3=d_f3,
             colors_by_name=colors_by_name,
+            match_labels=_match_labels,
         ),
         width="stretch",
         key=f"trio_ratio_{key_suffix}",
@@ -360,6 +375,7 @@ def render_trio_charts(  # noqa: PLR0913
             lang=_lang,
             d_f3=d_f3,
             colors_by_name=colors_by_name,
+            match_labels=_match_labels,
         ),
         width="stretch",
         key=f"trio_accuracy_{key_suffix}",
@@ -378,6 +394,7 @@ def render_trio_charts(  # noqa: PLR0913
             lang=_lang,
             d_f3=d_f3,
             colors_by_name=colors_by_name,
+            match_labels=_match_labels,
         ),
         width="stretch",
         key=f"trio_life_{key_suffix}",
@@ -396,6 +413,7 @@ def render_trio_charts(  # noqa: PLR0913
             lang=_lang,
             d_f3=d_f3,
             colors_by_name=colors_by_name,
+            match_labels=_match_labels,
         ),
         width="stretch",
         key=f"trio_performance_{key_suffix}",
