@@ -17,6 +17,85 @@ title LevelUp - Halo Infinite Dashboard
 :: Se placer dans le dossier du script
 cd /d "%~dp0"
 
+:: -- Detection langue systeme ---------------------------------------------------
+set "SCRIPT_LANG=en"
+for /f "tokens=3" %%L in ('reg query "HKCU\Control Panel\International" /v LocaleName 2^>nul') do (
+    set "_WIN_LOCALE=%%L"
+)
+if defined _WIN_LOCALE (
+    set "_TMP=!_WIN_LOCALE:~0,2!"
+    if /i "!_TMP!"=="fr" set "SCRIPT_LANG=fr"
+)
+
+:: -- Messages localises ---------------------------------------------------------
+if /i "!SCRIPT_LANG!"=="fr" (
+    set "MSG_REINSTALL=  Suppression du venv (--reinstall)..."
+    set "MSG_VENV_DEAD=  Interpreteur du venv inaccessible (Python desinstalle ?), recreation..."
+    set "MSG_VENV_INCOMPLETE=  Environnement incomplet detecte, reinstallation..."
+    set "MSG_DEPS_CHANGED=  pyproject.toml modifie - mise a jour des dependances..."
+    set "MSG_DEPS_OK=  OK - Dependances a jour."
+    set "MSG_DEPS_PARTIAL=  Mise a jour partielle"
+    set "MSG_FIRST_LAUNCH_TITLE=      LevelUp - Premier lancement"
+    set "MSG_PYTHON_NOT_FOUND=  Python 3.10+ non trouve sur ce systeme."
+    set "MSG_CREATING_VENV=  Creation de l'environnement virtuel..."
+    set "MSG_PIP_UPDATE=  Mise a jour de pip..."
+    set "MSG_PIP_WARN=  pip non mis a jour (reseau/proxy ?). Poursuite avec la version installee."
+    set "MSG_INSTALLING=  Installation des dependances (quelques minutes a la premiere execution)..."
+    set "MSG_INSTALL_FAIL=  Echec de l'installation des dependances."
+    set "MSG_INSTALL_FAIL_CAUSES=  Causes possibles :"
+    set "MSG_INSTALL_FAIL_NETWORK=  - Pas de connexion internet"
+    set "MSG_INSTALL_FAIL_READONLY=  - Dossier en lecture seule (deplace LevelUp dans Documents)"
+    set "MSG_INSTALL_FAIL_DISK=  - Espace disque insuffisant"
+    set "MSG_READY=  OK - Environnement pret."
+    set "MSG_WINGET_UNAVAIL=  winget non disponible sur ce systeme."
+    set "MSG_INSTALL_MANUAL=  Installez Python 3.12 manuellement :"
+    set "MSG_RELAUNCH=  Puis relancez LevelUp.bat."
+    set "MSG_WINGET_PROMPT=  Voulez-vous installer Python 3.12 automatiquement via winget ?"
+    set "MSG_WINGET_CHOICE=   [O]ui / [N]on : "
+    set "MSG_WINGET_DECLINE=  Installez Python depuis https://www.python.org/downloads/"
+    set "MSG_WINGET_FAIL=  Echec. Installez Python depuis https://www.python.org/downloads/"
+    set "MSG_PYTHON_PATH_FAIL=  Python installe mais chemin introuvable."
+    set "MSG_PYTHON_RESTART=  Fermez cette fenetre, redemarrez et relancez LevelUp.bat."
+    set "MSG_ERROR=  [ERREUR] LevelUp s'est arrete avec le code"
+    set "MSG_PRESS_KEY=  Appuie sur une touche pour fermer cette fenetre..."
+    set "MSG_VENV_FAIL=  Erreur creation du venv."
+    set "MSG_PYTHON_TOO_OLD=  Python 3.%%v detecte (trop ancien), recherche d'une version 3.10+..."
+    set "MSG_CHOICE_KEYS=ON"
+) else (
+    set "MSG_REINSTALL=  Removing venv (--reinstall)..."
+    set "MSG_VENV_DEAD=  Venv interpreter inaccessible (Python uninstalled?), recreating..."
+    set "MSG_VENV_INCOMPLETE=  Incomplete environment detected, reinstalling..."
+    set "MSG_DEPS_CHANGED=  pyproject.toml changed - updating dependencies..."
+    set "MSG_DEPS_OK=  OK - Dependencies up to date."
+    set "MSG_DEPS_PARTIAL=  Partial update"
+    set "MSG_FIRST_LAUNCH_TITLE=      LevelUp - First launch"
+    set "MSG_PYTHON_NOT_FOUND=  Python 3.10+ not found on this system."
+    set "MSG_CREATING_VENV=  Creating virtual environment..."
+    set "MSG_PIP_UPDATE=  Updating pip..."
+    set "MSG_PIP_WARN=  pip not updated (network/proxy?). Continuing with installed version."
+    set "MSG_INSTALLING=  Installing dependencies (this may take a few minutes on first run)..."
+    set "MSG_INSTALL_FAIL=  Dependency installation failed."
+    set "MSG_INSTALL_FAIL_CAUSES=  Possible causes:"
+    set "MSG_INSTALL_FAIL_NETWORK=  - No internet connection"
+    set "MSG_INSTALL_FAIL_READONLY=  - Read-only folder (move LevelUp to Documents)"
+    set "MSG_INSTALL_FAIL_DISK=  - Insufficient disk space"
+    set "MSG_READY=  OK - Environment ready."
+    set "MSG_WINGET_UNAVAIL=  winget not available on this system."
+    set "MSG_INSTALL_MANUAL=  Install Python 3.12 manually:"
+    set "MSG_RELAUNCH=  Then relaunch LevelUp.bat."
+    set "MSG_WINGET_PROMPT=  Would you like to install Python 3.12 automatically via winget?"
+    set "MSG_WINGET_CHOICE=   [Y]es / [N]o : "
+    set "MSG_WINGET_DECLINE=  Install Python from https://www.python.org/downloads/"
+    set "MSG_WINGET_FAIL=  Failed. Install Python from https://www.python.org/downloads/"
+    set "MSG_PYTHON_PATH_FAIL=  Python installed but path not found."
+    set "MSG_PYTHON_RESTART=  Close this window, restart and relaunch LevelUp.bat."
+    set "MSG_ERROR=  [ERROR] LevelUp exited with code"
+    set "MSG_PRESS_KEY=  Press any key to close this window..."
+    set "MSG_VENV_FAIL=  Error creating venv."
+    set "MSG_PYTHON_TOO_OLD=  Python 3.%%v detected (too old), looking for 3.10+..."
+    set "MSG_CHOICE_KEYS=YN"
+)
+
 :: -- Parser les options (les autres args sont transmis a launcher.py) ----------
 set OPT_REINSTALL=0
 set OPT_NO_SPNKR=0
@@ -41,7 +120,7 @@ set "PYPROJECT_HASH=%~dp0.venv\.pyproject_hash"
 :: -- Flag --reinstall -----------------------------------------------------------
 if !OPT_REINSTALL! equ 1 (
     if exist ".venv" (
-        echo   Suppression du venv ^(--reinstall^)...
+        echo !MSG_REINSTALL!
         rmdir /s /q .venv >nul 2>&1
     )
 )
@@ -52,7 +131,7 @@ if not exist ".venv\Scripts\python.exe" goto :first_launch
 :: 1. Interpreteur vivant ? (peut pointer vers un Python desinstalle)
 .venv\Scripts\python.exe -c "import sys; sys.exit(0)" >nul 2>&1
 if !ERRORLEVEL! neq 0 (
-    echo   Interpreteur du venv inaccessible ^(Python desinstalle ?^), recreation...
+    echo !MSG_VENV_DEAD!
     rmdir /s /q .venv >nul 2>&1
     goto :first_launch
 )
@@ -60,7 +139,7 @@ if !ERRORLEVEL! neq 0 (
 :: 2. Imports critiques presents ?
 .venv\Scripts\python.exe -c "import streamlit, duckdb, polars" >nul 2>&1
 if !ERRORLEVEL! neq 0 (
-    echo   Environnement incomplet detecte, reinstallation...
+    echo !MSG_VENV_INCOMPLETE!
     rmdir /s /q .venv >nul 2>&1
     goto :first_launch
 )
@@ -74,7 +153,7 @@ set "STORED_TS="
 if exist "!PYPROJECT_HASH!" for /f "usebackq delims=" %%l in ("!PYPROJECT_HASH!") do set "STORED_TS=%%l"
 if defined CURRENT_TS (
     if "!CURRENT_TS!" neq "!STORED_TS!" (
-        echo   pyproject.toml modifie - mise a jour des dependances...
+        echo !MSG_DEPS_CHANGED!
         set "INSTALL_EXTRA=.[spnkr]"
         if !OPT_NO_SPNKR! equ 1 set "INSTALL_EXTRA=."
         set "PIP_OPTS=--disable-pip-version-check"
@@ -82,9 +161,9 @@ if defined CURRENT_TS (
         .venv\Scripts\python.exe -m pip install -e "!INSTALL_EXTRA!" !PIP_OPTS! >> "!INSTALL_LOG!" 2>&1
         if !ERRORLEVEL! equ 0 (
             echo !CURRENT_TS!>"!PYPROJECT_HASH!"
-            echo   OK - Dependances a jour.
+            echo !MSG_DEPS_OK!
         ) else (
-            echo   Mise a jour partielle ^(details : !INSTALL_LOG!^)
+            echo !MSG_DEPS_PARTIAL! ^(details : !INSTALL_LOG!^)
         )
     )
 )
@@ -93,7 +172,7 @@ if defined CURRENT_TS (
 .venv\Scripts\python.exe launcher.py !PASS_ARGS!
 if !ERRORLEVEL! neq 0 (
     echo.
-    echo   [ERREUR] LevelUp s'est arrete avec le code !ERRORLEVEL!.
+    echo !MSG_ERROR! !ERRORLEVEL!.
 )
 goto :end
 
@@ -101,7 +180,7 @@ goto :end
 :first_launch
 echo.
 echo  ========================================
-echo       LevelUp - Premier lancement
+echo !MSG_FIRST_LAUNCH_TITLE!
 echo  ========================================
 echo.
 
@@ -121,7 +200,7 @@ if !ERRORLEVEL! equ 0 (
 if defined PY (
     for /f "tokens=*" %%v in ('"!PY!" -c "import sys; print(sys.version_info.minor)" 2^>nul') do (
         if %%v LSS 10 (
-            echo   Python 3.%%v detecte ^(trop ancien^), recherche d'une version 3.10+...
+            echo !MSG_PYTHON_TOO_OLD!
             set "PY="
         )
     )
@@ -163,29 +242,29 @@ if not defined PY (
 
 :: -- Python non trouve -> proposer installation via winget ---------------------
 if not defined PY (
-    echo   Python 3.10+ non trouve sur ce systeme.
+    echo !MSG_PYTHON_NOT_FOUND!
     echo.
     where winget >nul 2>&1
     if !ERRORLEVEL! neq 0 (
-        echo   winget non disponible sur ce systeme.
+        echo !MSG_WINGET_UNAVAIL!
         echo.
-        echo   Installez Python 3.12 manuellement :
+        echo !MSG_INSTALL_MANUAL!
         echo     https://www.python.org/downloads/
         echo.
-        echo   Puis relancez LevelUp.bat.
+        echo !MSG_RELAUNCH!
         start "" "https://www.python.org/downloads/"
         goto :end
     )
-    echo   Voulez-vous installer Python 3.12 automatiquement via winget ?
+    echo !MSG_WINGET_PROMPT!
     echo.
-    choice /C ON /N /M "   [O]ui / [N]on : "
+    choice /C !MSG_CHOICE_KEYS! /N /M "!MSG_WINGET_CHOICE!"
     if !ERRORLEVEL! equ 2 (
-        echo   Installez Python depuis https://www.python.org/downloads/
+        echo !MSG_WINGET_DECLINE!
         goto :end
     )
     winget install --id Python.Python.3.12 --source winget --scope user --accept-source-agreements --accept-package-agreements
     if !ERRORLEVEL! neq 0 (
-        echo   Echec. Installez Python depuis https://www.python.org/downloads/
+        echo !MSG_WINGET_FAIL!
         goto :end
     )
     :: Retrouver le chemin reel via py launcher
@@ -197,8 +276,8 @@ if not defined PY (
         ) do if not defined PY if exist %%P set "PY=%%~P"
     )
     if not defined PY (
-        echo   Python installe mais chemin introuvable.
-        echo   Fermez cette fenetre, redemarrez et relancez LevelUp.bat.
+        echo !MSG_PYTHON_PATH_FAIL!
+        echo !MSG_PYTHON_RESTART!
         goto :end
     )
 )
@@ -206,17 +285,17 @@ if not defined PY (
 echo   Python : !PY!
 
 :: -- Creer le venv --------------------------------------------------------------
-echo   Creation de l'environnement virtuel...
+echo !MSG_CREATING_VENV!
 "!PY!" -m venv .venv >> "!INSTALL_LOG!" 2>&1
 if !ERRORLEVEL! neq 0 (
-    echo   Erreur creation du venv. Details : !INSTALL_LOG!
+    echo !MSG_VENV_FAIL! Details : !INSTALL_LOG!
     goto :end
 )
 
 :: -- Mettre a jour pip -----------------------------------------------------------
-echo   Mise a jour de pip...
+echo !MSG_PIP_UPDATE!
 .venv\Scripts\python.exe -m pip install --upgrade pip --disable-pip-version-check -q >> "!INSTALL_LOG!" 2>&1
-if !ERRORLEVEL! neq 0 echo   pip non mis a jour ^(reseau/proxy ?^). Poursuite avec la version installee.
+if !ERRORLEVEL! neq 0 echo !MSG_PIP_WARN!
 
 :: -- Installer les dependances ---------------------------------------------------
 set "INSTALL_EXTRA=.[spnkr]"
@@ -224,15 +303,15 @@ if !OPT_NO_SPNKR! equ 1 set "INSTALL_EXTRA=."
 set "PIP_OPTS=--disable-pip-version-check"
 if !OPT_OFFLINE! equ 1 set "PIP_OPTS=!PIP_OPTS! --no-index"
 
-echo   Installation des dependances ^(quelques minutes a la premiere execution^)...
+echo !MSG_INSTALLING!
 .venv\Scripts\python.exe -m pip install -e "!INSTALL_EXTRA!" !PIP_OPTS! >> "!INSTALL_LOG!" 2>&1
 if !ERRORLEVEL! neq 0 (
     echo.
-    echo   Echec de l'installation des dependances.
-    echo   Causes possibles :
-    echo   - Pas de connexion internet
-    echo   - Dossier en lecture seule ^(deplace LevelUp dans Documents^)
-    echo   - Espace disque insuffisant
+    echo !MSG_INSTALL_FAIL!
+    echo !MSG_INSTALL_FAIL_CAUSES!
+    echo !MSG_INSTALL_FAIL_NETWORK!
+    echo !MSG_INSTALL_FAIL_READONLY!
+    echo !MSG_INSTALL_FAIL_DISK!
     echo   Details : !INSTALL_LOG!
     goto :end
 )
@@ -244,18 +323,18 @@ for /f "skip=1 tokens=*" %%h in ('certutil -hashfile "pyproject.toml" MD5 2^>nul
 )
 if defined NEW_TS echo !NEW_TS!>"!PYPROJECT_HASH!"
 
-echo   OK - Environnement pret.
+echo !MSG_READY!
 echo.
 
 :: Lancer l'app
 .venv\Scripts\python.exe launcher.py !PASS_ARGS!
 if !ERRORLEVEL! neq 0 (
     echo.
-    echo   [ERREUR] LevelUp s'est arrete avec le code !ERRORLEVEL!.
+    echo !MSG_ERROR! !ERRORLEVEL!.
 )
 
 :: -- Fin -- toujours atteint ----------------------------------------------------
 :end
 echo.
-echo   Appuie sur une touche pour fermer cette fenetre...
+echo !MSG_PRESS_KEY!
 pause >nul
