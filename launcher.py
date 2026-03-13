@@ -1266,11 +1266,13 @@ def _try_azure_auto_register() -> str | None:
     import json as _json
     import shutil
 
-    if shutil.which("az") is None:
+    az_cmd = shutil.which("az")
+    if az_cmd is None:
         if not _offer_install_azure_cli():
             return None
         # Recheck after attempted install
-        if shutil.which("az") is None:
+        az_cmd = shutil.which("az")
+        if az_cmd is None:
             print("  ⚠  Azure CLI introuvable après installation.")
             print("     Fermez et rouvrez votre terminal, puis relancez LevelUp.")
             return None
@@ -1280,7 +1282,7 @@ def _try_azure_auto_register() -> str | None:
 
     # Vérifier si déjà connecté
     check = subprocess.run(
-        ["az", "account", "show", "--output", "json"],
+        [az_cmd, "account", "show", "--output", "json"],
         capture_output=True,
         text=True,
         timeout=15,
@@ -1290,7 +1292,7 @@ def _try_azure_auto_register() -> str | None:
         print("     (Une fenêtre de navigateur va s'ouvrir)")
         print()
         login = subprocess.run(
-            ["az", "login", "--allow-no-subscriptions"],
+            [az_cmd, "login", "--allow-no-subscriptions"],
             timeout=180,
         )
         if login.returncode != 0:
@@ -1300,7 +1302,7 @@ def _try_azure_auto_register() -> str | None:
     # Vérifier si une app LevelUp Halo existe déjà
     existing = subprocess.run(
         [
-            "az",
+            az_cmd,
             "ad",
             "app",
             "list",
@@ -1324,7 +1326,7 @@ def _try_azure_auto_register() -> str | None:
     print("  → Création de l'application Azure « LevelUp Halo »…")
     create = subprocess.run(
         [
-            "az",
+            az_cmd,
             "ad",
             "app",
             "create",
@@ -1354,7 +1356,7 @@ def _try_azure_auto_register() -> str | None:
     # Activer le public client flow (Device Code — pas de secret, pas de redirect URI)
     subprocess.run(
         [
-            "az",
+            az_cmd,
             "ad",
             "app",
             "update",
@@ -1410,7 +1412,11 @@ def _offer_install_azure_cli() -> bool:
     if choice in ("n", "non", "no"):
         return False
 
-    return _run_az_install(platform)
+    if _run_az_install(platform):
+        return True
+
+    # L'installation automatique a échoué → proposer les alternatives
+    return _offer_az_manual_fallback()
 
 
 def _print_az_install_option_windows() -> None:
@@ -1502,6 +1508,50 @@ def _run_az_install(platform: str) -> bool:
 
     print("  ❌ Impossible d'installer automatiquement sur cette plateforme.")
     print("     Installez manuellement : https://aka.ms/installazurecli")
+    return False
+
+
+def _offer_az_manual_fallback() -> bool:
+    """Propose des alternatives après un échec d'installation automatique d'AZ CLI.
+
+    Retourne True si az est finalement disponible (install manuelle réussie),
+    False pour basculer vers le flux portail Azure + saisie manuelle du Client ID.
+    """
+    import shutil
+
+    print()
+    print("  L'installation automatique n'a pas abouti. Que veux-tu faire ?")
+    print()
+    print("  1) Installer Azure CLI manuellement, puis réessayer")
+    print("     → https://aka.ms/installazurecli")
+    print()
+    print("  2) Continuer sans Azure CLI")
+    print("     → Créer l'app sur portal.azure.com et coller ton Client ID")
+    print("       (le wizard te guidera étape par étape)")
+    print()
+    try:
+        alt = input("  Ton choix (1/2) : ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return False
+
+    if alt == "1":
+        print()
+        print("  Installe Azure CLI depuis : https://aka.ms/installazurecli")
+        with contextlib.suppress(Exception):
+            webbrowser.open("https://aka.ms/installazurecli")
+        try:
+            input("  Appuie sur Entrée une fois l'installation terminée… ")
+        except (EOFError, KeyboardInterrupt):
+            return False
+        if shutil.which("az") is not None:
+            print("  ✅ Azure CLI détecté !")
+            return True
+        print("  ⚠  Azure CLI toujours introuvable.")
+        print("     Si tu viens de l'installer, ferme et rouvre ton terminal,")
+        print("     puis relance LevelUp pour continuer automatiquement.")
+        print("     En attendant, on passe à la méthode manuelle.")
+
+    # Option 2 ou az toujours absent → basculer vers portail + Client ID manuel
     return False
 
 
