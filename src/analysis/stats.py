@@ -172,12 +172,12 @@ def compute_mode_category_averages(
         val = filtered.select(pl.col("headshot_kills").cast(pl.Float64, strict=False).mean()).item()
         avg_headshot_kills = float(val) if val is not None else None
 
-    # Ratio moyen (somme des frags / somme des morts)
+    # Ratio moyen KDA : (kills + assists/2) / deaths
     total_deaths = filtered.select(pl.col("deaths").sum()).item() or 0
     if total_deaths > 0:
         total_kills = filtered.select(pl.col("kills").sum()).item() or 0
         total_assists = filtered.select(pl.col("assists").sum()).item() or 0
-        avg_ratio = (total_kills + total_assists / 2.0) / total_deaths
+        avg_ratio = (total_kills + (total_assists / 2.0)) / total_deaths
     else:
         avg_ratio = None
 

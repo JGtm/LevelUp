@@ -291,7 +291,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "sidebar_player_label": "col_player",  # alias → common
     # ── KPI — résumé parties sélectionnées ──────────────────────────────────
     "kpi_no_matches": {"fr": "Aucun match sélectionné", "en": "No match selected"},
-    "kpi_selected_matches": {"fr": "Parties sélectionnées", "en": "Selected matches"},
+    "kpi_selected_matches": {"fr": "Matchs joués", "en": "Matches played"},
     "kpi_wins": {"fr": "Victoires", "en": "Wins"},
     "kpi_losses": {"fr": "Défaites", "en": "Losses"},
     "kpi_ties": {"fr": "Égalités", "en": "Ties"},
