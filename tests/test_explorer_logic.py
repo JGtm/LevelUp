@@ -315,7 +315,7 @@ class TestMatchTableHTML:
         assert "Test Player" in html
         assert "gamertag=Test" in html
         assert "<a " in html
-        assert "target='_blank'" in html
+        assert "target='_self'" in html
 
     def test_gamertag_link_escapes_html(self) -> None:
         from src.ui.pages.match_table_html import gamertag_link
@@ -485,7 +485,7 @@ class TestMatchTableHTML:
         match_table_html._build_map_url_index.cache_clear()
 
     def test_render_map_name_cell_with_thumb(self) -> None:
-        """_render_cell avec map_name connu → contient data-thumb-url et map-cell."""
+        """_render_cell avec map_name connu → contient map-hover et map-popup."""
         from datetime import datetime
         from unittest.mock import patch
 
@@ -521,6 +521,6 @@ class TestMatchTableHTML:
         )
         with patch.object(match_table_html, "_build_map_url_index", return_value=fake_index):
             html = match_table_html.render_match_table_html(df, waypoint_player="TestGT")
-        assert "map-cell" in html
-        assert "data-thumb-url" in html
+        assert "map-hover" in html
+        assert "map-popup" in html
         assert "Aquarius" in html

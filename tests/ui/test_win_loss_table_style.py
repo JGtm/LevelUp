@@ -19,8 +19,8 @@ class TestMapNameCellHtml:
         ):
             html = map_name_cell_html("Aquarius")
 
-        assert "map-cell" in html
-        assert "data-thumb-url" in html
+        assert "map-hover" in html
+        assert "map-popup" in html
         assert "/app/static/maps/Aquarius.png" in html
         assert "Aquarius" in html
 
@@ -30,7 +30,7 @@ class TestMapNameCellHtml:
         with patch("src.ui.pages.match_table_html.map_thumb_url", return_value=None):
             html = map_name_cell_html("UnknownMap")
 
-        assert "map-cell" not in html
+        assert "map-hover" not in html
         assert "UnknownMap" in html
 
     def test_none_input(self) -> None:
