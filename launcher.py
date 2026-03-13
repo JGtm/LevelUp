@@ -1863,38 +1863,172 @@ def _cmd_reauth(args: argparse.Namespace) -> int:
     return 0
 
 
-def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
-    """Menu interactif simplifié."""
+# =============================================================================
+# Détection d'état au démarrage + menu de récupération
+# =============================================================================
+
+
+@dataclass
+class _ConfigState:
+    """État global de la configuration détecté au démarrage."""
+
+    players: list[PlayerInfo]
+    has_client_id: bool
+    players_missing_token: list[str]  # gamertags sans token OAuth valide
+
+    @property
+    def is_first_launch(self) -> bool:
+        """Aucun joueur configuré — premier démarrage."""
+        return not self.players
+
+    @property
+    def is_ready(self) -> bool:
+        """Tout est en ordre : peut lancer Streamlit directement."""
+        return bool(self.players) and self.has_client_id and not self.players_missing_token
+
+    @property
+    def is_partial(self) -> bool:
+        """Configuration incomplète : au moins un élément manquant."""
+        return bool(self.players) and not self.is_ready
+
+
+def _detect_config_state() -> _ConfigState:
+    """Évalue l'état global de la configuration au démarrage.
+
+    Lit .env.local, liste les joueurs et vérifie la présence de chaque
+    token OAuth par gamertag.  Aucune connexion réseau n'est effectuée.
+    """
+    players = _list_players()
+    _load_dotenv_for_launcher()
+    has_client_id = bool(os.environ.get("SPNKR_AZURE_CLIENT_ID"))
+    players_missing_token: list[str] = []
+    for p in players:
+        gt_norm = p.gamertag.upper().replace(" ", "_").replace("-", "_")
+        token_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{gt_norm}"
+        has_token = bool(os.environ.get(token_key) or os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN"))
+        if not has_token:
+            players_missing_token.append(p.gamertag)
+    return _ConfigState(
+        players=players,
+        has_client_id=has_client_id,
+        players_missing_token=players_missing_token,
+    )
+
+
+def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
+    """Menu de récupération affiché quand la configuration est incomplète.
+
+    S'adapte à ce qui manque : app Azure, token OAuth, ou les deux.
+    Permet de reprendre ou de changer de méthode sans ligne de commande.
+    Après correction, relance le flux interactif normal.
+    """
+    print()
+    print("  ┌────────────────────────────────────────────────────────┐")
+    print("  │         ⚠  Configuration incomplète détectée          │")
+    print("  └────────────────────────────────────────────────────────┘")
+    print()
+
+    if not state.has_client_id:
+        print("  ✗ Connexion Azure non configurée (identifiant application manquant)")
+    if state.players_missing_token:
+        missing = ", ".join(state.players_missing_token)
+        print(f"  ✗ Accès Halo expiré ou manquant pour : {missing}")
+    print()
+
+    if not sys.stdin.isatty():
+        print("  Terminal non interactif — impossible de procéder.")
+        print("  → python launcher.py add-player   (reconfigurer)")
+        print("  → python launcher.py reauth --gamertag <GT>  (renouveler token)")
+        return 2
+
+    # ── Construire les options selon l'état ───────────────────────────────────
+    # Format : (action_key, label_affiché)
+    options: list[tuple[str, str]] = []
+
+    if not state.has_client_id:
+        options.append(("config-az", "🔧 Configurer via Azure CLI  (détection automatique)"))
+        options.append(
+            ("config-noaz", "🔑 Configurer via portail Azure  (méthode simple, recommandée)")
+        )
+    else:
+        for gt in state.players_missing_token:
+            options.append((f"reauth:{gt}", f"🔑 Renouveler l'accès Halo pour {gt}"))
+        options.append(("launch", "🚀 Lancer quand même  (tu synchroniseras plus tard)"))
+
+    # Quitter toujours en dernier
+    options.append(("quit", "Quitter"))
+
+    for i, (_, label) in enumerate(options[:-1], 1):
+        print(f"  {i}) {label}")
+    print()
+    print(f"  Q) {options[-1][1]}")
+    print()
+
+    keys_str = "/".join(str(i) for i in range(1, len(options))) + "/Q"
+    try:
+        choice = input(f"Ton choix ({keys_str}): ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return 2
+
+    if choice in {"q", "quit", "exit"}:
+        return 0
+
+    try:
+        idx = int(choice) - 1
+    except ValueError:
+        print("  Choix invalide.")
+        return 2
+
+    if not (0 <= idx < len(options) - 1):
+        print("  Choix invalide.")
+        return 2
+
+    action, _ = options[idx]
+
+    if action == "config-az":
+        ok = _wizard_azure_creds(no_az=False)
+        return _interactive() if ok else 2
+
+    if action == "config-noaz":
+        ok = _wizard_azure_creds(no_az=True)
+        return _interactive() if ok else 2
+
+    if action.startswith("reauth:"):
+        gt = action.split(":", 1)[1]
+        client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "").strip()
+        print(f"\n  🔄 Renouvellement du token pour « {gt} »…")
+        token = _wizard_oauth_token(gt, client_id)
+        if not token:
+            print("  ❌ Échec du renouvellement.")
+            return 2
+        return _interactive()
+
+    if action == "launch":
+        return _launch_streamlit(db_path=None, port=None, no_browser=False)
+
+    print("  Choix invalide.")
+    return 2
+
+
+def _interactive() -> int:
+    """Menu interactif principal.
+
+    Branche selon l'état de la configuration :
+    - Premier lancement (aucun joueur) → wizard de configuration
+    - Config incomplète → menu de récupération contextuel
+    - Tout OK → lancement direct de Streamlit
+    """
     print("=" * 60)
     print("        LevelUp - Dashboard Halo Infinite")
     print("        Architecture DuckDB v5")
     print("=" * 60)
 
-    # Lister les joueurs DuckDB
-    players = _list_players()
+    state = _detect_config_state()
 
-    # Afficher l'état actuel
-    print("\n📊 État actuel:")
-
-    if players:
-        total_matches = sum(p.total_matches for p in players)
-        print(f"   Stockage: {_display_path(PLAYERS_DIR)}")
-        print(f"   Joueurs: {len(players)}")
-        for p in players:
-            print(f"      - {p.gamertag}: {p.total_matches} matchs")
-        print(f"   Total: {total_matches} matchs")
-
-        # Vérifier metadata
-        if _metadata_db_exists():
-            print("   Métadonnées: ✅")
-        else:
-            print("   Métadonnées: ⚠ Non trouvées")
-    else:
+    # ── Premier lancement ──────────────────────────────────────────────────────
+    if state.is_first_launch:
+        print("\n📊 État actuel:")
         print("   ❌ Aucun joueur trouvé — premier démarrage")
-
-    # ── Menu différent selon l'état ───────────────────────────────────────────
-    if not players:
-        # Premier démarrage : proposer l'ajout d'un joueur
         print("\n" + "-" * 60)
         print("Choisis une action:\n")
         print("  1) ➕ Ajouter un joueur               [premier démarrage]")
@@ -1904,9 +2038,7 @@ def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
         print()
 
         if not sys.stdin.isatty():
-            print(
-                "⚠ Terminal non interactif — Lance : python launcher.py add-player --gamertag <gt>"
-            )
+            print("⚠ Terminal non interactif → python launcher.py add-player --gamertag <gt>")
             return 2
 
         try:
@@ -1921,8 +2053,8 @@ def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
             rc = _onboard_first_player()
             if rc != 0:
                 return rc
-            players = _list_players()
-            if not players:
+            state = _detect_config_state()
+            if not state.players:
                 return 2
             print()
             try:
@@ -1936,77 +2068,26 @@ def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
         print("Choix invalide.")
         return 2
 
-    # ── Menu joueurs existants ────────────────────────────────────────────────
-    print("\n" + "-" * 60)
-    print("Choisis une action:\n")
-    print("  1) 🚀 Dashboard                       [recommandé]")
-    print("     Lance le dashboard directement")
-    print()
-    print("  2) 🔄 Sync + Dashboard")
-    print("     Synchronise les nouveaux matchs puis lance le dashboard")
-    print()
-    print("  3) 🔄 Sync seul")
-    print("     Synchronise les données sans lancer le dashboard")
-    print()
-    print("  4) 📊 Infos")
-    print("     Affiche les informations détaillées")
-    print()
-    print("  5) ➕ Ajouter un joueur")
-    print("     Configure et synchronise un nouveau compte")
-    print()
-    print("  Q) Quitter")
-    print()
-
-    # Si stdin n'est pas un terminal (IDE, Cursor, pipe), lancer directement
-    if not sys.stdin.isatty():
-        print("⚠ Terminal non interactif détecté → lancement direct du dashboard (option 1).")
-        print("  Pour d'autres actions, utilise la CLI: run / sync / info / add-player")
-        choice = "1"
+    # ── Afficher l'état des joueurs ────────────────────────────────────────────
+    print("\n📊 État actuel:")
+    total_matches = sum(p.total_matches for p in state.players)
+    print(f"   Stockage: {_display_path(PLAYERS_DIR)}")
+    print(f"   Joueurs: {len(state.players)}")
+    for p in state.players:
+        print(f"      - {p.gamertag}: {p.total_matches} matchs")
+    print(f"   Total: {total_matches} matchs")
+    if _metadata_db_exists():
+        print("   Métadonnées: ✅")
     else:
-        try:
-            choice = input("Ton choix (1/2/3/4/5/Q): ").strip().lower()
-        except EOFError:
-            print("\n⚠ stdin fermé ou non connecté (terminal/IDE).")
-            print("  Utilise les arguments CLI :")
-            print("    python launcher.py run          # option 1")
-            print("    python launcher.py sync         # option 3")
-            print("    python launcher.py info         # option 4")
-            print("    python launcher.py add-player   # option 5")
-            return 2
+        print("   Métadonnées: ⚠ Non trouvées")
 
-    if choice in {"q", "quit", "exit"}:
-        return 0
+    # ── Config incomplète → menu de récupération ───────────────────────────────
+    if state.is_partial:
+        return _recovery_menu(state)
 
-    if choice == "1":
-        return _launch_streamlit(db_path=None, port=None, no_browser=False)
-
-    if choice == "2":
-        args = argparse.Namespace(max_matches=100, full=False, run=True)
-        return _cmd_sync(args)
-
-    if choice == "3":
-        args = argparse.Namespace(max_matches=100, full=False, run=False)
-        return _cmd_sync(args)
-
-    if choice == "4":
-        return _cmd_info(argparse.Namespace())
-
-    if choice == "5":
-        rc = _onboard_first_player()
-        if rc == 0:
-            players = _list_players()
-            if players:
-                print()
-                try:
-                    go = input("  Lancer le dashboard maintenant ? [O/n] : ").strip().lower()
-                except (EOFError, KeyboardInterrupt):
-                    return 0
-                if go not in ("n", "non", "no"):
-                    return _launch_streamlit(db_path=None, port=None, no_browser=False)
-        return rc
-
-    print("Choix invalide.")
-    return 2
+    # ── Tout OK → lancement direct ─────────────────────────────────────────────
+    print("\n  ✅ Configuration complète — lancement du dashboard…")
+    return _launch_streamlit(db_path=None, port=None, no_browser=False)
 
 
 def _build_parser() -> argparse.ArgumentParser:
