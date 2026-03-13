@@ -7,36 +7,36 @@
 
 ## Table des matières
 
-| # | Bug | Sévérité | Catégorie |
-|---|-----|----------|-----------|
-| 1 | [Ravageur/Ravager Rebound – ID arme](#1-ravageurravager-rebound) | 🟡 Moyen | Données |
-| 2 | ["Parties sélectionnées" → "Matchs joués"](#2-parties-sélectionnées--matchs-joués) | 🟢 Bas | Traduction |
-| 3 | [LUSR -435 pts, anomalie de garde-fou](#3-lusr--435-pts-anomalie-garde-fou) | 🔴 Critique | Calcul |
-| 4 | [Annotations impact : équipe ennemie affichée](#4-annotations-impact--équipe-ennemie-affichée) | 🔴 Haut | Logique |
-| 5 | [Matrice d'Impact : ordre des matchs inversé](#5-matrice-dimpact--ordre-des-matchs) | 🟡 Moyen | UI |
-| 6 | [Escouade : graphe perf valeurs >80](#6-escouade--graphe-perf-valeurs-80) | 🟡 Moyen | Données/UI |
-| 7 | [F/D/A ratio moyen assassin = ligne plate](#7-fda-ratio-moyen-assassin--ligne-plate) | 🟡 Moyen | Calcul |
-| 8 | [Médaille "À table" – feature](#8-médaille-à-table) | 🟢 Feature | Nouveau |
-| 9 | [Clic gamertag → ouvre Explorer + matchs session](#9-clic-gamertag--explorer) | 🟡 Moyen | Navigation |
-| 10 | [Durée totale incohérente](#10-durée-totale-incohérente) | 🟡 Moyen | Calcul |
-| 11 | [Némésis / Souffre-douleur formulation](#11-némésis--souffre-douleur-formulation) | 🟢 Bas | Traduction |
-| 12 | [Anciens graphes JGTM/chocoboflor (cache ?)](#12-anciens-graphes-cache) | 🟡 Moyen | Cache |
-| 13 | [Opacité barres escouade + distinction morts](#13-opacité-barres-escouade) | 🟡 Moyen | UI |
-| 14 | [Tooltips : retirer la date sur graphes escouade](#14-tooltips-date-graphes) | 🟢 Bas | UI |
-| 15 | [Matrice d'Impact pas exacte (finisseur manquant)](#15-matrice-dimpact-données-fausses) | 🔴 Haut | Données |
-| 16 | [Adornment rang pas à jour](#16-adornment-rang) | 🟡 Moyen | Sync |
-| 17 | [Exclure bots du MVP/LVP scoreboard](#17-bots-mvplvp) | 🟡 Moyen | Logique |
-| 18 | [Fadetonull introuvable dans Explorer](#18-fadetonull-introuvable) | 🟡 Moyen | Recherche |
-| 19 | [Explorer : clic Rechercher reste sur même match](#19-explorer-rechercher-bloqué) | 🟡 Moyen | UI/State |
-| 20 | [Sessions : dropdowns absents, inutilisable](#20-sessions-dropdowns-absents) | 🔴 Haut | UI |
-| 21 | [Net score cumulé : retirer LUSR](#21-net-score-cumulé--lusr) | 🟢 Bas | UI |
-| 22 | [Stats par carte : sens du tableau](#22-stats-par-carte) | 🟢 Bas | Documentation |
-| 23 | [Association média : mauvais fuseau horaire](#23-association-média-timezone) | 🔴 Haut | Timezone |
-| 24 | [Navigation clic gamertag → switch de DB joueur](#24-navigation-switch-db) | 🔴 Haut | Architecture |
-| 25 | [Victoires/Défaites par mode incomplet](#25-victoiresdéfaites-par-mode) | 🟡 Moyen | Filtrage |
-| 26 | [Fuseau horaire global — centralisation](#26-fuseau-horaire-global) | 🔴 Haut | Architecture |
-| 27 | [Tableau "Par période" : utilité ?](#27-tableau-par-période) | ❓ Clarification | UI |
-| 28 | [Escouade : étiquettes axe X → numéro match + carte](#28-escouade--étiquettes-axe-x) | 🟢 Bas | UI |
+| # | Bug | Sévérité | Catégorie | Statut |
+|---|-----|----------|-----------|--------|
+| 1 | [Ravageur/Ravager Rebound – ID arme](#1-ravageurravager-rebound) | 🟡 Moyen | Données | ⏸️ Non confirmé |
+| 2 | ["Parties sélectionnées" → "Matchs joués"](#2-parties-sélectionnées--matchs-joués) | 🟢 Bas | Traduction | ✅ TRAITÉ |
+| 3 | [LUSR -435 pts, anomalie de garde-fou](#3-lusr--435-pts-anomalie-garde-fou) | 🔴 Critique | Calcul | 🔍 Recalculer avec --force-lusr |
+| 4 | [Annotations impact : équipe ennemie affichée](#4-annotations-impact--équipe-ennemie-affichée) | 🔴 Haut | Logique | ✅ TRAITÉ |
+| 5 | [Matrice d'Impact : ordre des matchs inversé](#5-matrice-dimpact--ordre-des-matchs) | 🟡 Moyen | UI | ✅ TRAITÉ |
+| 6 | [Escouade : graphe perf valeurs >80](#6-escouade--graphe-perf-valeurs-80) | 🟡 Moyen | Données/UI | 🔍 Investigation data requise |
+| 7 | [F/D/A ratio moyen assassin = ligne plate](#7-fda-ratio-moyen-assassin--ligne-plate) | 🟡 Moyen | Calcul | ✅ TRAITÉ |
+| 8 | [Médaille "À table" – feature](#8-médaille-à-table) | 🟢 Feature | Nouveau | ⏸️ Feature à planifier |
+| 9 | [Clic gamertag → ouvre Explorer + matchs session](#9-clic-gamertag--explorer) | 🟡 Moyen | Navigation | ✅ TRAITÉ |
+| 10 | [Durée totale incohérente](#10-durée-totale-incohérente) | 🟡 Moyen | Calcul | ✅ TRAITÉ |
+| 11 | [Némésis / Souffre-douleur formulation](#11-némésis--souffre-douleur-formulation) | 🟢 Bas | Traduction | ✅ TRAITÉ |
+| 12 | [Anciens graphes JGTM/chocoboflor (cache ?)](#12-anciens-graphes-cache) | 🟡 Moyen | Cache | 🔍 Clear cache Streamlit |
+| 13 | [Opacité barres escouade + distinction morts](#13-opacité-barres-escouade) | 🟡 Moyen | UI | ✅ TRAITÉ |
+| 14 | [Tooltips : retirer la date sur graphes escouade](#14-tooltips-date-graphes) | 🟢 Bas | UI | ✅ TRAITÉ (via #28) |
+| 15 | [Matrice d'Impact pas exacte (finisseur manquant)](#15-matrice-dimpact-données-fausses) | 🔴 Haut | Données | ✅ TRAITÉ (via #4) |
+| 16 | [Adornment rang pas à jour](#16-adornment-rang) | 🟡 Moyen | Sync | ✅ TRAITÉ |
+| 17 | [Exclure bots du MVP/LVP scoreboard](#17-bots-mvplvp) | 🟡 Moyen | Logique | ✅ TRAITÉ |
+| 18 | [Fadetonull introuvable dans Explorer](#18-fadetonull-introuvable) | 🟡 Moyen | Recherche | ✅ TRAITÉ |
+| 19 | [Explorer : clic Rechercher reste sur même match](#19-explorer-rechercher-bloqué) | 🟡 Moyen | UI/State | ✅ TRAITÉ |
+| 20 | [Sessions : dropdowns absents, inutilisable](#20-sessions-dropdowns-absents) | 🔴 Haut | UI | ✅ TRAITÉ |
+| 21 | [Net score cumulé : retirer LUSR](#21-net-score-cumulé--lusr) | 🟢 Bas | UI | ✅ TRAITÉ |
+| 22 | [Stats par carte : sens du tableau](#22-stats-par-carte) | 🟢 Bas | Documentation | ✅ TRAITÉ (supprimé) |
+| 23 | [Association média : mauvais fuseau horaire](#23-association-média-timezone) | 🔴 Haut | Timezone | ✅ TRAITÉ (via #26) |
+| 24 | [Navigation clic gamertag → switch de DB joueur](#24-navigation-switch-db) | 🔴 Haut | Architecture | ⏸️ Architecture à planifier |
+| 25 | [Victoires/Défaites par mode incomplet](#25-victoiresdéfaites-par-mode) | 🟡 Moyen | Filtrage | ✅ TRAITÉ |
+| 26 | [Fuseau horaire global — centralisation](#26-fuseau-horaire-global) | 🔴 Haut | Architecture | ✅ TRAITÉ |
+| 27 | [Tableau "Par période" : utilité ?](#27-tableau-par-période) | ❓ Clarification | UI | ✅ TRAITÉ (supprimé) |
+| 28 | [Escouade : étiquettes axe X → numéro match + carte](#28-escouade--étiquettes-axe-x) | 🟢 Bas | UI | ✅ TRAITÉ |
 
 ---
 
@@ -45,6 +45,8 @@
 ---
 
 ### 1. Ravageur/Ravager Rebound
+
+> **⏸️ NON TRAITÉ** — Per user : "Non confirmé à cet instant. Ne pas traiter."
 
 **✅ Compréhension** : L'ID hex `bbdb215842c9679f` doit être ajouté au mapping des armes pour identifier le "Ravager Rebound" (tir rebond du Ravageur).
 
@@ -71,6 +73,8 @@ Et ajouter la traduction FR dans `_WEAPON_TRANSLATIONS` :
 
 ### 2. "Parties sélectionnées" → "Matchs joués"
 
+> **✅ TRAITÉ** — Label modifié dans `src/ui/i18n/widgets.py` : FR "Matchs joués", EN "Matches played".
+
 **✅ Compréhension** : Le label KPI en haut de l'app dit "Parties sélectionnées" mais devrait dire "Matchs joués".
 
 **Analyse** : 
@@ -91,6 +95,8 @@ Et ajouter la traduction FR dans `_WEAPON_TRANSLATIONS` :
 ---
 
 ### 3. LUSR -435 pts, anomalie garde-fou
+
+> **🔍 INVESTIGATION** — Non reproductible per user. Recommandation : recalculer avec `--force-lusr`.
 
 **✅ Compréhension** : Madina a perdu 435 points LUSR sur un seul match (passé de Diamant à Argent), alors qu'un garde-fou `_LUSR_MAX_DELTA = 100.0` existe.
 
@@ -121,6 +127,8 @@ Et ajouter la traduction FR dans `_WEAPON_TRANSLATIONS` :
 
 ### 4. Annotations impact : équipe ennemie affichée
 
+> **✅ TRAITÉ** — Ajout paramètre `team_xuids` dans `compute_single_match_impact()` (`_match_impact_events.py`). Kills/deaths filtrés par équipe alliée.
+
 **✅ Compréhension** : Sur la page Dernier Match, les annotations d'impact (Tourist, First Blood, First Victim, Finisseur) considèrent TOUS les joueurs du match au lieu de filtrer l'équipe alliée uniquement.
 
 **Analyse** :
@@ -140,6 +148,8 @@ Et ajouter la traduction FR dans `_WEAPON_TRANSLATIONS` :
 ---
 
 ### 5. Matrice d'Impact : ordre des matchs
+
+> **✅ TRAITÉ** — Remplacé `sorted({...})` par `list(dict.fromkeys(...))` dans `teammates_impact.py` pour préserver l'ordre chronologique du DataFrame.
 
 **✅ Compréhension** : Dans la Matrice d'Impact escouade, le premier match devrait être à gauche et le dernier à droite. L'ordre semble inversé.
 
@@ -163,6 +173,8 @@ Ou trier explicitement par `start_time`.
 
 ### 6. Escouade : graphe perf valeurs >80
 
+> **🔍 INVESTIGATION** — Nécessite investigation data sur le match spécifique de Chocoboflor (12/03, Live Fire, perf 71 vs graphe 87).
+
 **✅ Compréhension** : Le graphe de performance escouade affiche des valeurs au-dessus de 80 pour la session du 12 mars, ce qui semble anormal.
 
 **Analyse** :
@@ -183,6 +195,8 @@ Ou trier explicitement par `start_time`.
 ---
 
 ### 7. F/D/A ratio moyen assassin = ligne plate
+
+> **✅ TRAITÉ** — Courbe "Ratio moy. Assassin" supprimée de `match_view_charts.py`. Priorité opérateur clarifiée dans `stats.py` avec parenthèses explicites.
 
 **✅ Compréhension** : Dans le graphe F/D/A du dernier match, la ligne de ratio moyen "Assassin" (assists) est une ligne horizontale identique pour tous les joueurs.
 
@@ -205,6 +219,8 @@ Dans tous les cas, le bug de priorité opérateur dans `stats.py:180` doit être
 ---
 
 ### 8. Médaille "À table" — feature
+
+> **⏸️ FEATURE** — Feature nouvelle, pas un bugfix. À planifier séparément.
 
 **✅ Compréhension** : Détecter quand l'équipe ennemie obtient la médaille "À table" pour identifier victoire écrasante / défaite humiliante.
 
@@ -229,24 +245,19 @@ Dans tous les cas, le bug de priorité opérateur dans `stats.py:180` doit être
 
 ### 9. Clic gamertag → ouvre Explorer + matchs session
 
+> **✅ TRAITÉ** — Forçage `st.session_state["_exp_player_input"]` avant le widget pour que le deep link `?gamertag=X` soit pris en compte.
+
 **✅ Compréhension** : Quand on clique sur un gamertag (ex: fadetonull), l'Explorer s'ouvre et liste tous les matchs de la soirée (session) au lieu de filtrer sur les matchs en commun avec ce joueur.
 
-**Analyse** :
-- Le clic gamertag génère un lien vers Explorer avec `?gamertag=XXX`
-- `explorer.py` reçoit le gamertag, lance `render_player_results()` 
-- Celui-ci charge `load_common_matches()` qui cherche les matchs en commun
+**Root cause** : `st.text_input(key="_exp_player_input", value=default_value)` ignore `value=` si la clé existe déjà dans `session_state` (comportement Streamlit). Quand un deep link arrive avec un nouveau gamertag, le widget garde l'ancienne valeur → gamertag non reconnu → XUID=None → fallback `render_filter_results()` montrant tous les matchs session.
 
-**Hypothèses** :
-1. `load_common_matches()` fonctionne mais le **rendu affiche quand même tous les matchs** en plus
-2. Le DataFrame passé (`df`) est celui de toute la session, pas le résultat filtré
-3. Le problème pourrait être dans `explorer_results.py` : le tableau principal montre `df` (session complète) et pas le sous-ensemble commun
-
-**Solution** : Vérifier que `render_player_results()` utilise **uniquement** les matchs en commun pour le rendu, pas le `df` de la session.
-**❓ Précision** : Bug arrivé en cliquant sur le gamertag de Fadetonull, pas réussi à reproduire le bug.
+**Fix** : Dans `_render_player_search()` de `explorer.py`, ajout de `st.session_state["_exp_player_input"] = pending_gt` AVANT le rendu du `st.text_input` widget.
 
 ---
 
 ### 10. Durée totale incohérente
+
+> **✅ TRAITÉ** — KPI durée basculé de `compute_total_play_seconds` vers `compute_session_span_seconds` dans `src/app/kpis.py`.
 
 **✅ Compréhension** : La durée totale affichée en haut de l'app montre 1h37 alors que la session réelle était de ~2-3 heures.
 
@@ -273,6 +284,8 @@ Deux options selon l'intent :
 ---
 
 ### 11. Némésis / Souffre-douleur formulation
+
+> **✅ TRAITÉ** — Reformulé dans `src/ui/i18n/pages/match_view.py` : Némésis → "T'a victimisé X fois", Souffre-douleur → "Tu l'as persécuté X fois".
 
 **✅ Compréhension** : Les cards "Némésis" et "Souffre-douleur" affichent "X morts" et "Tué Y fois" → pas clair en français.
 
@@ -304,6 +317,8 @@ Ou version plus courte :
 
 ### 12. Anciens graphes cache (JGTM / chocoboflor)
 
+> **🔍 OPÉRATIONNEL** — MV refresh confirmé dans le pipeline sync (`_aggregates.py`). Recommandation : Clear Cache Streamlit. Persistance pour Chocoboflor à investiguer.
+
 **✅ Compréhension** : Pour les joueurs JGTM et chocoboflor, les anciens graphes s'affichent sur Séries → Progression alors qu'ils devraient avoir les nouvelles données.
 
 **Analyse** :
@@ -327,6 +342,8 @@ Ou version plus courte :
 ---
 
 ### 13. Opacité barres escouade + distinction morts
+
+> **✅ TRAITÉ** — Opacité augmentée de 0.32 à 0.75 dans `trio.py`. Paramètre `is_inverse` ajouté : barres de morts hachurées en rouge.
 
 **✅ Compréhension** : 
 1. Les barres sur la page escouade ont une opacité trop faible (`0.32`), nuit à la lisibilité
@@ -352,6 +369,8 @@ Ou version plus courte :
 
 ### 14. Tooltips : retirer la date sur graphes escouade
 
+> **✅ TRAITÉ** — Résolu via le fix #28 : les étiquettes axe X sont maintenant `#N<br>Carte` au lieu de dates, ce qui élimine la date des tooltips.
+
 **✅ Compréhension** : Les tooltips hover sur les graphes (au minimum escouade, potentiellement partout) affichent la date, ce qui encombre la lecture.
 
 **Analyse** :
@@ -371,6 +390,8 @@ Ou version plus courte :
 
 ### 15. Matrice d'Impact données fausses (finisseur manquant)
 
+> **✅ TRAITÉ** — Corrigé via le fix #4 (filtrage par équipe alliée). Le finisseur est désormais déterminé parmi les équipiers uniquement.
+
 **✅ Compréhension** : Sur la dernière partie, Flo était finisseur (vérifié en direct) mais la Matrice d'Impact ne le montre pas.
 
 **Analyse** :
@@ -388,23 +409,21 @@ Ou version plus courte :
 
 ### 16. Adornment rang pas à jour
 
+> **✅ TRAITÉ** — `auto_refresh_hours=24` + caption `recorded_at` via `utc_to_local()` dans `career.py`.
+
 **✅ Compréhension** : L'icône de rang (adornment) d'un joueur (ex: Madina) n'est pas mise à jour avec le rang actuel.
 
-**Analyse** :
-- L'adornment est chargé depuis `career_progression.adornment_path` en DB
-- Mis à jour uniquement lors du sync via `resolve_adornment_url()` dans `src/data/sync/_career_rank_api.py`
-- Si le joueur n'a pas été synchro récemment, l'adornment affiche l'ancien rang
+**Root cause** : `ensure_local_image_path(auto_refresh_hours=0)` → l'image est mise en cache indéfiniment. Le timestamp `recorded_at` est disponible dans `career_progression`.
 
-**Solution** :
-1. **Immédiat** : Re-synchroniser le joueur (`python scripts/sync.py --delta --gamertag Madina`)
-2. **Structurel** : Ajouter un check de fraîcheur : si le dernier sync date de plus de X heures, afficher un badge "données potentiellement obsolètes"
-3. **Optionnel** : Forcer le refresh de l'adornment indépendamment du sync complet (API call léger)
-
-**Root cause** : L'adornment est un snapshot du dernier sync, pas un élément dynamique.
+**Fix** :
+1. `auto_refresh_hours=0` → `auto_refresh_hours=24` pour rafraîchir l'image quotidiennement
+2. Caption "Données du DD/MM/YYYY HH:MM" sous l'icône via `utc_to_local(recorded_at)` pour informer l'utilisateur de la fraîcheur
 
 ---
 
 ### 17. Exclure bots du MVP/LVP scoreboard
+
+> **✅ TRAITÉ** — Filtre bots ajouté dans `_compute_mvp_lvp()` via `get_bot_name()` dans `match_view_scoreboard.py`.
 
 **✅ Compréhension** : Les bots peuvent être élus MVP ou LVP sur le scoreboard du dernier match.
 
@@ -427,6 +446,8 @@ mvp_xuid, lvp_xuid = _compute_mvp_lvp(human_players, extremes)
 ---
 
 ### 18. Fadetonull introuvable dans Explorer
+
+> **✅ TRAITÉ** — Root cause : `_render_player_search()` utilisait un `st.selectbox` (recherche par préfixe uniquement). Remplacé par `st.text_input` + appel à `fuzzy_search_gamertags()` pour recherche substring/fuzzy.
 
 **✅ Compréhension** : Le gamertag "fadetonull" (ou "fadet0null" avec un zéro) est introuvable via la recherche Explorer.
 
@@ -451,6 +472,8 @@ mvp_xuid, lvp_xuid = _compute_mvp_lvp(human_players, extremes)
 
 ### 19. Explorer : clic Rechercher reste sur même match
 
+> **✅ TRAITÉ** — Ajout `st.session_state.pop("_explorer_selected_match", None)` au clic Rechercher dans `explorer.py`.
+
 **✅ Compréhension** : Quand on sélectionne une date dans Explorer et qu'on clique Rechercher (sans rien d'autre), ça reste sur le même match.
 
 **Analyse** :
@@ -474,6 +497,8 @@ Ou utiliser un `key` dynamique basé sur la date pour forcer le reset.
 ---
 
 ### 20. Sessions : dropdowns absents, inutilisable
+
+> **✅ TRAITÉ** — Fallback ajouté dans `streamlit_app.py` : si le join élimine trop de sessions (< 2), utilise `all_sessions_pl` directement.
 
 **✅ Compréhension** : Sur la page de comparaison de sessions, un message dit de "choisir deux sessions" mais les dropdowns pour les choisir ne s'affichent pas. La fonctionnalité est inutilisable.
 
@@ -500,6 +525,8 @@ Ou utiliser un `key` dynamique basé sur la date pour forcer le reset.
 
 ### 21. Net score cumulé : retirer LUSR
 
+> **✅ TRAITÉ** — Passé `rank_a=None, rank_b=None` dans `plot_cumulative_comparison()` dans `session_compare.py`.
+
 **✅ Compréhension** : Sur le graphe "Net score cumulé sur sessions" dans la comparaison de sessions, le LUSR est affiché en overlay et ne devrait pas l'être.
 
 **Analyse** :
@@ -515,6 +542,8 @@ Passer `rank_a=None, rank_b=None` dans l'appel à `plot_cumulative_comparison()`
 ---
 
 ### 22. Stats par carte : sens du tableau
+
+> **✅ TRAITÉ** — Fonction `_render_map_table()` et son appel supprimés de `win_loss.py`.
 
 **✅ Compréhension** : Le tableau "Stats par carte" dans Victoires/Défaites n'est pas clair → à quoi sert-il ?
 
@@ -541,25 +570,19 @@ Passer `rank_a=None, rank_b=None` dans l'appel à `plot_cumulative_comparison()`
 
 ### 23. Association média : mauvais fuseau horaire
 
+> **✅ TRAITÉ (via #26)** — `COALESCE(epoch(mf.capture_end_utc), mf.mtime_paris_epoch, mf.mtime)` dans `media_indexer.py` + timezone dynamique (#26).
+
 **✅ Compréhension** : Les fichiers médias ne sont pas associés au bon match à cause d'un décalage de fuseau horaire.
 
-**Analyse** :
-- Fichier : `src/data/media_indexer_matchers.py`
-- Les timestamps de match sont en **UTC naïf** (pas de timezone info)
-- Les timestamps de capture média sont probablement en **heure locale** (la caméra/logiciel d'enregistrement utilise l'heure système)
-- La comparaison directe UTC vs local crée un décalage de ±1-2h (CET/CEST vs UTC)
+**Root cause** : `mf.mtime` (mtime filesystem brut) peut être altéré par copie/sync. La colonne `capture_end_utc` (extraction EXIF/vidéo) est plus fiable.
 
-**Solution** :
-Ce bug est lié au bug #26 (timezone global). Fix spécifique :
-1. Lors de l'association média, convertir `capture_start_utc` en UTC réel (si c'est du local déguisé en UTC)
-2. Ou convertir le `start_time` du match en timezone locale avant la comparaison
-3. Utiliser `get_tz()` de `src/ui/tz.py` comme source de vérité
-
-**Root cause** : Mélange de timestamps UTC et local sans conversion.
+**Fix** : Cascade COALESCE dans `associate_with_matches()` : `capture_end_utc` → `mtime_paris_epoch` → `mtime`. Complémenté par le fix timezone #26 qui utilise le fuseau utilisateur dynamique.
 
 ---
 
 ### 28. Escouade : étiquettes axe X → numéro match + carte
+
+> **✅ TRAITÉ** — Paramètre `match_labels` ajouté à `plot_trio_metric()` dans `trio.py`. Labels `#N<br>Carte` construits dans `teammates_charts.py`.
 
 **✅ Compréhension** : Sur les graphes de la page escouade, l'axe X affiche la date des matchs (`dd/mm`). Il faudrait plutôt afficher le numéro du match dans la session (`#1` = le plus ancien, `#2`…) et, si Plotly le supporte, le nom de la carte en dessous séparé par un saut de ligne `<br>`.
 
@@ -596,6 +619,8 @@ Ce bug est lié au bug #26 (timezone global). Fix spécifique :
 
 ### 24. Navigation clic gamertag → switch de DB joueur
 
+> **⏸️ ARCHITECTURE** — Nécessite un chantier d'architecture : séparer joueur principal vs vue temporaire. À planifier.
+
 **✅ Compréhension** : Quand on clique sur un gamertag dans Explorer (ex: un coéquipier), la page s'ouvre sur la base de données de Madina (joueur par défaut) au lieu de rester sur le contexte du joueur sélectionné.
 
 **Analyse** :
@@ -618,6 +643,8 @@ Ce bug est lié au bug #26 (timezone global). Fix spécifique :
 ---
 
 ### 25. Victoires/Défaites par mode incomplet
+
+> **✅ TRAITÉ** — Root cause : `min_matches=2` excluait les modes avec 1 seul match. Changé à `min_matches=1` dans `win_loss.py`.
 
 **✅ Compréhension** : Le graphe "par mode" ne montre que Assassin alors que la session contenait aussi Base et Drapeau (Capture the Flag).
 
@@ -644,36 +671,27 @@ Ce bug est lié au bug #26 (timezone global). Fix spécifique :
 
 ### 26. Fuseau horaire global — centralisation
 
+> **✅ TRAITÉ** — Helpers `utc_to_local()`/`local_to_utc()` dans `tz.py` + refactor systématique (6 fichiers) : `formatting.py`, `media_library_temporal.py`, `_cache_loading.py`, `streamlit_bridge.py`.
+
 **✅ Compréhension** : Problème récurrent de fuseau horaire sur toute l'app. La lecture du TZ est centralisée (`src/ui/tz.py`) mais l'application n'est pas systématique.
 
-**Analyse** :
-- `get_tz()` et `get_tz_name()` dans `src/ui/tz.py` sont la source de vérité
-- **Mais** l'application de la conversion TZ est dispersée :
-  - `explorer_logic.py` : compare des dates locales sans conversion
-  - `media_indexer_matchers.py` : pas de conversion
-  - Les hover Plotly : formatting dates sans TZ
-  - Les filtres par date dans la sidebar : comparent `date` (local ?) vs `start_time` (UTC)
+**Root cause** : `PARIS_TZ` hardcodé partout. `to_paris_naive()` assumait "naive = déjà Paris" alors que la convention DB est "naive = UTC". `ZoneInfo.localize()` n'existe pas (API pytz, pas ZoneInfo).
 
-**Solution (architecture, root cause)** :
-1. **Créer un helper centralisé** dans `src/ui/tz.py` :
-   ```python
-   def utc_to_local(dt: datetime) -> datetime:
-       """Convertit un datetime UTC en timezone utilisateur."""
-       return dt.replace(tzinfo=timezone.utc).astimezone(get_tz())
-   
-   def local_to_utc(dt: datetime) -> datetime:
-       """Convertit un datetime local en UTC."""
-       return dt.replace(tzinfo=get_tz()).astimezone(timezone.utc)
-   ```
-2. **Appliquer systématiquement** `utc_to_local()` à chaque endroit où un timestamp est affiché ou comparé
-3. **Audit complet** : rechercher tous les `start_time`, `format_datetime`, `.strftime` et vérifier le TZ
-4. **Convention** : documenter que "en DB = UTC naïf, en affichage = TZ utilisateur"
+**Fix systématique (6 fichiers)** :
+- `tz.py` : Ajout `utc_to_local()` et `local_to_utc()` utilisant `get_tz()` comme source de vérité dynamique
+- `formatting.py` : `_get_user_tz()` lazy helper, `to_user_tz_naive()` (naive=UTC→user TZ), `user_tz_epoch_seconds()` avec `.replace(tzinfo=tz)` au lieu de `.localize()`. Aliases rétrocompat conservés (`to_paris_naive`, `paris_epoch_seconds`)
+- `media_library_temporal.py` : `_get_user_tz()` au lieu de `PARIS_TZ` importé
+- `_cache_loading.py` : `_get_user_tz_name()` au lieu de `PARIS_TZ_NAME`
+- `streamlit_bridge.py` : délégation à `get_tz_name()` au lieu de duplication
+- `test_formatting.py` : Tests mis à jour pour refléter la convention "naive = UTC" (14:30 UTC → 16:30 Paris été)
 
-**Root cause** : Pas de convention systématique "stocker UTC / afficher local".
+**Convention établie** : "En DB = UTC naïf, en affichage = TZ utilisateur (dynamique via `get_tz()`)".
 
 ---
 
 ### 27. Tableau "Par période" : utilité ?
+
+> **✅ TRAITÉ** — Fonction `_render_period_section()` et son appel supprimés de `win_loss.py`.
 
 **❓ Clarification** : Le tableau "Par période" dans Victoires/Défaites — tu ne vois pas à quoi ça sert, ou tu trouves que ça devrait montrer autre chose ?
 

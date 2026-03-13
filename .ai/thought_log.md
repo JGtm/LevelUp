@@ -7,6 +7,20 @@
 
 ## Journal
 
+### [2025-07-15] — Weapon Parser v2 : Audit final qualité (logging + tests)
+
+- **Statut** : Complété
+- **Commit** : `eb53344` sur `analysis/weapon-parser-rewrite`
+- **Décision technique** : Audit complet des 17 fichiers weapon parser v2, ajout logging structuré + 16 nouveaux tests
+- **Résultats** :
+  - Couverture weapon_parser.py : 93.48% (161/168 statements, 54/62 branches)
+  - 230 tests weapon passent (0 échec)
+  - Logging ajouté : `_scan_all_chunks` (try/except par chunk), `_resolve_player_indices` (debug méthode metadata vs acurtis), `reconcile_api_aggregates` (surplus_exhausted warning, assign_sentinels step count), `insert_weapon_kill_rows_v2` (replacement info)
+  - Tests ajoutés : `test_weapon_reconciliation.py` (13 tests : sentinel logging, surplus exhaustion, resolve_weapon_display), `test_weapon_service.py` (3 tests : mark_no_film, load_for_match, load_aggregated)
+  - Extraction `_with_reconciled()` pour rester sous 80L (reconcile_api_aggregates passé de 82L à ~70L)
+  - Ruff clean, pre-commit passé
+- **Conclusion** : Le weapon parser v2 est complet, testé et prêt. Restent des fichiers non-weapon modifiés (UI/viz) non commités sur cette branche.
+
 ### [2025-07-13] — Plan v5.7.0 : qualité, i18n, migration Polars
 
 - **Statut** : Complété
@@ -147,6 +161,38 @@
 **Résultats** : PLAN_WEAPON_PARSER_V2.md passe de 1322 à 1501 lignes. 16 patches appliqués, 0 régression détectée.
 
 **Prochaine étape** : démarrer les phases 1→2 (migration schéma + parser v2 couche pure).
+
+---
+
+### [2026-03-14] — Correction bugs #9, #16, #23, #26
+
+- **Statut** : Complété
+- **Tâche** : Corriger les 4 derniers bugs restants de l'analyse (hors #1 et #8).
+
+**Bug #9 — Deep link `?gamertag=X` affiche tous les matchs session au lieu des matchs communs :**
+- **Root cause** : `st.text_input(key="_exp_player_input", value=default_value)` ignore `value=` si la clé existe déjà dans `session_state` (comportement Streamlit). Quand un deep link arrive avec un nouveau gamertag, le widget garde l'ancienne valeur.
+- **Fix** : Forcer `st.session_state["_exp_player_input"] = pending_gt` AVANT le rendu du widget, dans `_render_player_search()` de `explorer.py`.
+
+**Bug #16 — Image adornment rang jamais rafraîchie :**
+- **Root cause** : `ensure_local_image_path(auto_refresh_hours=0)` → l'image est mise en cache indéfiniment. Le `recorded_at` timestamp est disponible dans `career_progression`.
+- **Fix** : `auto_refresh_hours=24` + caption "Données du DD/MM/YYYY HH:MM" sous l'icône adornment via `utc_to_local(recorded_at)` dans `career.py`.
+
+**Bug #23 — Association médias ↔ matchs imprécise :**
+- **Root cause** : `mf.mtime` (mtime filesystem brut) peut être altéré par copie/sync. La colonne `capture_end_utc` (extraction EXIF/vidéo) est plus fiable.
+- **Fix** : `COALESCE(epoch(mf.capture_end_utc), mf.mtime_paris_epoch, mf.mtime)` dans `associate_with_matches()` de `media_indexer.py`.
+
+**Bug #26 — Timezone hardcodée Paris :**
+- **Root cause** : `PARIS_TZ`, `PARIS_TZ_NAME`, `to_paris_naive()`, `paris_epoch_seconds()` utilisés partout avec `ZoneInfo("Europe/Paris")` en dur. Convention DB "naive = UTC" violée (`to_paris_naive` assumait "naive = déjà Paris"). `ZoneInfo.localize()` inexistant (API pytz).
+- **Fix systématique (6 fichiers)** :
+  - `tz.py` : Ajout `utc_to_local()` et `local_to_utc()` utilisant `get_tz()` (source de vérité dynamique)
+  - `formatting.py` : `_get_user_tz()` lazy helper, `to_user_tz_naive()` (naive=UTC→user TZ), `user_tz_epoch_seconds()` (fix `.replace(tzinfo=tz)` au lieu de `.localize()`), aliases rétrocompat conservés
+  - `media_library_temporal.py` : `_get_user_tz()` au lieu de `PARIS_TZ`
+  - `_cache_loading.py` : `_get_user_tz_name()` au lieu de `PARIS_TZ_NAME`
+  - `streamlit_bridge.py` : délégation à `get_tz_name()` au lieu de duplication
+  - `test_formatting.py` : `test_naive_datetime` et `test_datetime` mis à jour (14:30 UTC → 16:30 Paris été)
+
+**Résultats** : 4468 tests passés, 2 échecs pré-existants (map-cell CSS, chantier D).
+**Leçon** : Ne jamais hardcoder un fuseau horaire — utiliser la config utilisateur. Convention DB : "naive = UTC" → jamais assumer que naive = local.
 
 ---
 
