@@ -31,6 +31,8 @@ from typing import Any
 # Ajouter le répertoire parent au path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.ui.i18n.ranks import translate_rank
+
 try:
     import duckdb
 except ImportError:
@@ -67,9 +69,9 @@ def load_career_ranks(json_path: Path) -> list[dict[str, Any]]:
         rank = {
             "rank_id": rank_data.get("Rank", 0),
             "tier_name_en": rank_data.get("RankTitle", {}).get("value", ""),
-            "tier_name_fr": rank_data.get("RankTitle", {}).get(
-                "value", ""
-            ),  # TODO: ajouter traductions FR
+            "tier_name_fr": translate_rank(
+                rank_data.get("RankTitle", {}).get("value", "")
+            ),
             "tier_type": rank_data.get("TierType", ""),
             "grade": rank_data.get("RankGrade", 1),
             "xp_required": rank_data.get("XpRequiredForRank", 0),
