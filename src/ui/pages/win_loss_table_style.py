@@ -50,7 +50,10 @@ def map_name_cell_html(map_name: str | None) -> str:
     url = map_thumb_url(map_name)
     if url:
         esc_url = html_lib.escape(url)
-        return f"<td><span class='map-cell' data-thumb-url='{esc_url}'>{val}</span></td>"
+        return (
+            f"<td><span class='map-hover'>{val}"
+            f"<img class='map-popup' src='{esc_url}' alt='' /></span></td>"
+        )
     return f"<td>{val}</td>"
 
 

@@ -140,9 +140,26 @@
     text-decoration: underline;
 }
 
-/* Miniature carte au survol (tooltip JS position:fixed) */
-.map-cell {
+/* ── Map thumbnail hover (CSS-only, pas de JS) ── */
+.map-hover {
+    position: relative;
     cursor: default;
+}
+.map-hover .map-popup {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 220px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.75);
+    pointer-events: none;
+}
+.map-hover:hover .map-popup {
+    display: block;
 }
 
 /* Session history table (variante) */
