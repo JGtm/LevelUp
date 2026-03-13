@@ -7,6 +7,9 @@
 ## 🔴 Dette Technique (code source)
 
 ### Migration : noms d'assets résolus → IDs bruts en BDD
+
+> ⚠️ **Backup impératif** — Cette migration modifie le schéma de `shared_matches.duckdb` (suppression de colonnes). Exécuter `python scripts/backup_player.py` pour tous les joueurs **et** sauvegarder `data/warehouse/shared_matches.duckdb` avant toute action.
+
 > Dans `match_registry`, les noms d'assets sont stockés en parallèle des IDs bruts (redondance + risque de stale data). À terme, l'UI doit résoudre les noms à la lecture depuis `metadata.duckdb`, pas les lire depuis les colonnes `*_name`.
 
 **Contexte** : Au moment de l'insertion (sync initial), les noms publics (ex. `"Aquarius"`, `"Ranked Arena"`) sont récupérés depuis l'API SPNKr et stockés directement en BDD — en plus de l'ID brut. La `weapon_kills` (v5.7) et `medals_earned` montrent le bon modèle : ID brut uniquement, résolution à la lecture.
@@ -39,6 +42,8 @@
 ---
 
 ### Cohérence XUID↔Gamertag — source de vérité et stale data
+
+> ⚠️ **Backup impératif** — Les étapes 2 et 3 impliquent la suppression de colonnes dans `shared_matches.duckdb` (`highlight_events.gamertag`, potentiellement `match_participants.gamertag`). Sauvegarder `data/warehouse/shared_matches.duckdb` avant toute modification de schéma.
 
 > **Diagnostic complet (2026-03-13)** : trois emplacements stockent la relation XUID→Gamertag dans `shared_matches.duckdb`, avec des rôles et qualités différentes, et une cascade de résolution dont l'ordre est inversé par rapport à la logique attendue.
 
