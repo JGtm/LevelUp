@@ -1975,17 +1975,11 @@ def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
     options: list[tuple[str, str]] = []
 
     if not state.has_client_id:
-        options.append(("config-az", "🔧 Azure CLI  (crée l'app automatiquement)"))
-        options.append(
-            (
-                "config-noaz",
-                "🌐 Portail Azure  (créer une app public client en 2 clics → MSAL Device Code ensuite)",
-            )
-        )
+        options.append(("config-az", "🔧 Azure CLI  (crée l'app automatiquement — le plus simple)"))
         options.append(
             (
                 "paste-id",
-                "📋 Coller un Client ID existant  (tu as déjà l'app → MSAL Device Code ensuite)",
+                "📋 Coller un Client ID  (tu as déjà une app Azure → on s'occupe du reste)",
             )
         )
     else:
