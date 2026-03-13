@@ -6,6 +6,43 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [5.7.0] - 2026-03-13
+
+### Ajouté
+
+- **Traductions FR des rangs Halo** (`src/ui/i18n/ranks.py`)
+  - 17 rangs de carrière (Recruit→Recrue, General→Général, Hero→Héros…) + 6 paliers CSR (Silver→Argent, Gold→Or…)
+  - Helper `translate_rank()` avec fallback sur le nom anglais original
+  - Intégré dans le script de migration metadata (`migrate_metadata_to_duckdb.py`)
+
+- **Launchers bilingues FR/EN** (`LevelUp.sh`, `LevelUp.bat`)
+  - Détection automatique de la langue système (POSIX `LC_ALL`/`LANG`, Windows Registry `LocaleName`)
+  - ~30 messages localisés dans chaque launcher (premier lancement, erreurs, winget, etc.)
+
+### Modifié
+
+- **Pandas→Polars** : suppression de 7 appels `.to_pandas()` dans les modules UI/viz
+  - `participation_charts.py` (camembert, barres, empilé) : Polars natif bout en bout
+  - `participation_charts_extra.py` (sunburst) : `.to_pandas()` conservé uniquement à la frontière `px.sunburst`
+  - `objective_analysis.py` (3 tables assist/awards) : `st.dataframe` Polars natif
+  - `duckdb_analytics.py` (tendance KDA) : `st.line_chart` avec `x=`/`y=` Polars natif
+
+- **Miniatures de cartes CSS-only** : remplacement du script JS sandboxé (non fonctionnel) par un système hover CSS pur
+  - Suppression de `_MAP_TOOLTIP_SCRIPT` dans `styles.py` (38 lignes JS)
+  - Classes `.map-hover` + `.map-popup` dans `static/styles.css`
+  - `match_table_html.py` et `win_loss_table_style.py` mis à jour
+  - `_build_map_url_index()` amélioré : `lru_cache(maxsize=None)`, normalisation Unicode
+
+### Supprimé
+
+- Guard `was_pandas` dans `_performance_relative.py` : `compute_performance_series()` accepte désormais uniquement `pl.DataFrame`
+
+### Tests
+
+- `TestHighlightEventsSequenceIdempotent` ajouté dans `test_migrations.py` (couverture A.4)
+- 45/45 tests migrations passants
+
+---
 ## [5.6.0-bêta] - 2026-03-10
 
 > ⚠️ **Bêta** — la précision de l’attribution n’est pas encore garantie dans tous les cas (couverture estimée à 70–100 % selon les matchs) ; le catalogue d’armes est en cours de complétion.
