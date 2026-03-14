@@ -1,11 +1,11 @@
-# PLAN v5.8 — Couche d'Abstraction Complète pour la Résolution d'IDs
+# PLAN v6 — Couche d'Abstraction Complète pour la Résolution d'IDs
 
-> **Version** : v5.8
+> **Version** : v6
 > **Branche** : `refactor/id-resolution-cleanup` (créée à partir de `analysis/weapon-parser-rewrite` = v5.7)
 > Créé le 2026-03-14 · Mis à jour le 2026-03-14.
 > Couvre : cascade gamertag, noms d'assets, paires killer/victim, outcomes, médailles.
 
-### Objectifs v5.8
+### Objectifs v6
 
 1. **Centraliser** toute résolution ID → nom affiché via 3 vues SQL + fonctions Python
 2. **Détecter les incohérences** : un même XUID affichant 2 gamertags différents selon la page, un map_name stale qui ne correspond plus à metadata
@@ -394,7 +394,7 @@ SELECT
     p.name_fr                                    AS playlist_name_fr,
     pp.name_fr                                   AS pair_name_fr,
     gv.name_fr                                   AS game_variant_name_fr,
-    -- Colonnes de normalisation (v5.8+)
+    -- Colonnes de normalisation (v6+)
     gv.mode_name                                 AS mode_name,
     gv.mode_name_fr                              AS mode_name_fr,
     p.playlist_canonical_en                      AS playlist_canonical_en,
@@ -635,7 +635,7 @@ traduit en **français** pour l'UI.
 
 ## Autres Patterns ID→Nom — Résultat de l'audit complémentaire
 
-L'audit a vérifié 8 patterns de résolution non couverts par le plan v5.8 :
+L'audit a vérifié 8 patterns de résolution non couverts par le plan v6 :
 
 | Pattern | Statut | Centralisé ? | Recommandation |
 |---------|:------:|:------------:|----------------|
@@ -644,12 +644,12 @@ L'audit a vérifié 8 patterns de résolution non couverts par le plan v5.8 :
 | Playlist Groups (6 groupes) | ✅ Fonctionnel | `src/analysis/playlist_groups.py` | Catégorisation, pas résolution |
 | Weapon ID → nom | ✅ Fonctionnel | `src/analysis/_weapon_data.py` | Déjà centralisé (v5.7) |
 | Commendation rules | ✅ Fonctionnel | `metadata.duckdb` + Python custom | Complexe, garder séparé |
-| Medal ID → nom | ✅ Fonctionnel | `src/ui/medals.py` (JSON) | Helper DuckDB en v5.8 (Volet D) |
+| Medal ID → nom | ✅ Fonctionnel | `src/ui/medals.py` (JSON) | Helper DuckDB en v6 (Volet D) |
 | Personal Score ID → nom | ✅ Fonctionnel | `src/data/domain/_refdata_personal_scores.py` | Garder séparé |
 | Label normalization | ✅ Fonctionnel | `src/app/helpers.py` | Pas une résolution ID |
 
 > **Aucune lacune critique** : tous les patterns `*_id` → `*_name` sont déjà implémentés.
-> Le plan v5.8 est **complet** pour son scope (centralisation + abstraction SQL).
+> Le plan v6 est **complet** pour son scope (centralisation + abstraction SQL).
 
 ---
 
@@ -657,14 +657,14 @@ L'audit a vérifié 8 patterns de résolution non couverts par le plan v5.8 :
 
 ### Principe
 
-Plutôt que de modifier la DB de production directement, tout le travail v5.8 se fait
+Plutôt que de modifier la DB de production directement, tout le travail v6 se fait
 sur une **copie `shared_matches_v2.duckdb`**. La prod n'est jamais touchée jusqu'au
 bascule final.
 
 ```
-│ Production (intacte)            │  Développement v5.8              │
-│ shared_matches.duckdb           │  shared_matches_v2.duckdb       │
-│ Version v5.7 (current)          │  Version v5.8 (en cours)        │
+│ Production (intacte)            │  Développement v6                │
+│ shared_matches.duckdb           │  shared_matches_v2.duckdb        │
+│ Version v5.7 (current)          │  Version v6 (en cours)           │
 │ Utilisée par l'app Streamlit    │  Utilisée sur la branche refactor│
 │ Ne jamais modifier              │  Toutes les vues + DROP column  │
 ```
@@ -715,7 +715,7 @@ pas `shared_matches_v2.duckdb`. La stratégie v2 n'affecte donc pas la suite de 
 ### Branche : `refactor/id-resolution-cleanup` (depuis `analysis/weapon-parser-rewrite`)
 
 ```bash
-# Création de la branche v5.8
+# Création de la branche v6
 git checkout analysis/weapon-parser-rewrite
 git checkout -b refactor/id-resolution-cleanup
 
@@ -989,7 +989,7 @@ et permettre de valider à chaque étape.
 
 | # | Commit | Objectif |
 |:-:|--------|----------|
-| 10 | `chore(audit): vérification finale abstraction v5.8` | Confirmer qu'aucun accès direct résiduel n'a été oublié |
+| 10 | `chore(audit): vérification finale abstraction v6` | Confirmer qu'aucun accès direct résiduel n'a été oublié |
 | 11 | `refactor(i18n): supprimer couche traduction assets obsolète` | Éliminer les dicts/JSON remplacés par metadata.duckdb |
 
 ---
@@ -1089,7 +1089,7 @@ devient obsolète et doit être supprimée proprement.
 def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
     """Traduit un nom de playlist.
 
-    Depuis v5.8 : les traductions sont dans metadata.duckdb (colonnes name_fr/name_en
+    Depuis v6 : les traductions sont dans metadata.duckdb (colonnes name_fr/name_en
     de v_match_full). Cette fonction ne sert plus que de fallback pour les valeurs non
     résolues (NULL dans la vue) et les UUIDs bruts.
     """
@@ -1454,7 +1454,7 @@ Wave 4 : Migration schéma + médailles
   Commit 9   ──  feat(analysis): helper resolve_medal_name
 
 Wave 5 : Audit + nettoyage couche i18n
-  Commit 10  ──  chore(audit): vérification finale abstraction v5.8
+  Commit 10  ──  chore(audit): vérification finale abstraction v6
   Commit 11  ──  refactor(i18n): supprimer dicts/JSON playlists obsolètes
   Commit 11b ──  refactor(i18n): migrer modes_fr/en.json → metadata.duckdb
 ```
