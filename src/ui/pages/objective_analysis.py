@@ -53,7 +53,7 @@ def _load_awards_data(
     repo: DuckDBRepository,
     match_ids: list[str] | None,
 ) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
-    """Charge les awards et match_stats depuis le repo."""
+    """Charge les awards et les stats matchs depuis le repo."""
     with st.spinner(t("obj_loading")):
         try:
             if match_ids:
@@ -63,12 +63,15 @@ def _load_awards_data(
                     match_ids,
                 )
                 match_stats_df = repo.query_df(
-                    f"SELECT * FROM match_stats WHERE match_id IN ({placeholders}) ORDER BY start_time ASC",
-                    match_ids,
+                    f"SELECT * FROM shared.mv_player_matches WHERE xuid = ? AND match_id IN ({placeholders}) ORDER BY start_time ASC",
+                    [repo.xuid] + match_ids,
                 )
             else:
                 awards_df = repo.query_df("SELECT * FROM personal_score_awards")
-                match_stats_df = repo.query_df("SELECT * FROM match_stats ORDER BY start_time ASC")
+                match_stats_df = repo.query_df(
+                    "SELECT * FROM shared.mv_player_matches WHERE xuid = ? ORDER BY start_time ASC",
+                    [repo.xuid],
+                )
         except Exception as e:
             _log.warning("Échec chargement awards", exc_info=True)
             st.error(t("error_loading", error=e))

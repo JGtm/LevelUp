@@ -10,7 +10,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_DEFAULT_CACHE_DIR = _PROJECT_ROOT / "data" / "investigation" / "chunks"
+_DEFAULT_CACHE_DIR = _PROJECT_ROOT / "data" / "cache" / "film_chunks"
 
 # Nombre de matchs traités en parallèle (limité pour ne pas saturer l'API SPNKr)
 _MATCH_CONCURRENCY = 4

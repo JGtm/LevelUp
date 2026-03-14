@@ -153,11 +153,14 @@ def detect_pi_from_metadata(
 
     Plus rapide (~25KB vs ~700KB) et plus fiable que la recherche plein chunk.
     Cherche toutes les occurrences de chaque XUID et sélectionne celle avec pi ≠ 0.
-    Le POV player (pi=0 uniquement) n'est pas retourné — correct car le POV est
-    toujours pi=1 dans l'espace Section 2.
+
+    Le joueur POV n'a que des occurrences pi=0 dans METADATA et n'est donc PAS
+    retourné ici. Il doit être résolu séparément via acurtis (son pi dans les
+    fire events est aussi 0 — le pi METADATA correspond à l'espace Section 2).
 
     Returns:
         ``{player_index: xuid_int}`` — même format que ``detect_player_indices()``.
+        Le joueur POV (pi=0) est absent ; à résoudre via ``detect_player_indices()``.
     """
     from bitstring import Bits
 

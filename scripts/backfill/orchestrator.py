@@ -452,6 +452,7 @@ def _apply_schema_migrations(
         ensure_match_participants_backfill_bits,
         ensure_match_participants_columns,
         ensure_medals_earned_bigint,
+        ensure_weapon_kills_reconciled_as,
     )
 
     # Migration medals_earned INT32 → BIGINT (shared)
@@ -473,6 +474,10 @@ def _apply_schema_migrations(
     # Colonne backfill_completed dans match_registry (shared)
     with contextlib.suppress(Exception):
         ensure_backfill_completed_column(shared_conn)
+
+    # Colonnes weapon_kills : reconciled_as, attribution_path, player_index
+    with contextlib.suppress(Exception):
+        ensure_weapon_kills_reconciled_as(shared_conn)
 
 
 def _backfill_local_only(
