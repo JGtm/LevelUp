@@ -455,9 +455,9 @@ class TestGetMatchCount:
         """get_match_count retourne le count shared (3 matchs)."""
         assert repo_v5.get_match_count() == 3
 
-    def test_count_v4_fallback(self, repo_v4: DuckDBRepository):
-        """get_match_count retourne le count local (2 matchs) sans shared."""
-        assert repo_v4.get_match_count() == 2
+    def test_count_v4_returns_zero(self, repo_v4: DuckDBRepository):
+        """get_match_count retourne 0 sans shared (v5.1)."""
+        assert repo_v4.get_match_count() == 0
 
 
 # =============================================================================

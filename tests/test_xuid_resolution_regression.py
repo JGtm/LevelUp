@@ -318,12 +318,17 @@ class TestResolvePlayerXuid:
         result = _resolve_player_xuid(str(db_path))
         assert result == PLAYER_XUID
 
-    def test_strategy_2_player_match_stats(self, tmp_path: Path) -> None:
-        """Pas de sync_meta.xuid, mais player_match_stats.xuid existe → fallback."""
+    def test_strategy_2_xuid_aliases(self, tmp_path: Path) -> None:
+        """v5.1 : pas de sync_meta.xuid → fallback vers shared.xuid_aliases."""
         from src.ui.cache_loaders import _resolve_player_xuid
 
-        db_path = tmp_path / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        _create_player_db(db_path, with_player_match_stats=True)
+        warehouse_path = tmp_path / "data" / "warehouse"
+        warehouse_path.mkdir(parents=True, exist_ok=True)
+        shared_db_path = warehouse_path / "shared_matches.duckdb"
+        _create_shared_db(shared_db_path)
+
+        db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
+        _create_player_db(db_path)
 
         result = _resolve_player_xuid(str(db_path))
         assert result == PLAYER_XUID
@@ -358,31 +363,37 @@ class TestResolvePlayerXuid:
         result = _resolve_player_xuid(str(db_path))
         assert result == ""
 
-    def test_priority_sync_meta_over_player_match_stats(self, tmp_path: Path) -> None:
-        """sync_meta a la priorité sur player_match_stats."""
+    def test_priority_sync_meta_over_xuid_aliases(self, tmp_path: Path) -> None:
+        """sync_meta a la priorité sur shared.xuid_aliases."""
         from src.ui.cache_loaders import _resolve_player_xuid
 
-        db_path = tmp_path / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        _create_player_db(
-            db_path,
-            with_sync_meta_xuid=True,
-            with_player_match_stats=True,
-        )
+        warehouse_path = tmp_path / "data" / "warehouse"
+        warehouse_path.mkdir(parents=True, exist_ok=True)
+        shared_db_path = warehouse_path / "shared_matches.duckdb"
+        _create_shared_db(shared_db_path)
 
-        # Modifier player_match_stats pour utiliser un XUID différent
-        conn = duckdb.connect(str(db_path))
-        conn.execute("UPDATE player_match_stats SET xuid = 'other_xuid'")
+        # Modifier xuid_aliases pour un XUID différent
+        conn = duckdb.connect(str(shared_db_path))
+        conn.execute("UPDATE xuid_aliases SET xuid = 'other_xuid'")
         conn.close()
+
+        db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
+        _create_player_db(db_path, with_sync_meta_xuid=True)
 
         result = _resolve_player_xuid(str(db_path))
         assert result == PLAYER_XUID  # sync_meta gagne
 
     def test_sync_meta_empty_value_falls_through(self, tmp_path: Path) -> None:
-        """sync_meta.key='xuid' existe mais valeur vide → tombe dans le fallback."""
+        """sync_meta.key='xuid' existe mais valeur vide → tombe dans shared.xuid_aliases."""
         from src.ui.cache_loaders import _resolve_player_xuid
 
-        db_path = tmp_path / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        _create_player_db(db_path, with_player_match_stats=True)
+        warehouse_path = tmp_path / "data" / "warehouse"
+        warehouse_path.mkdir(parents=True, exist_ok=True)
+        shared_db_path = warehouse_path / "shared_matches.duckdb"
+        _create_shared_db(shared_db_path)
+
+        db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
+        _create_player_db(db_path)
 
         # Insérer un XUID vide dans sync_meta
         conn = duckdb.connect(str(db_path))
@@ -390,7 +401,7 @@ class TestResolvePlayerXuid:
         conn.close()
 
         result = _resolve_player_xuid(str(db_path))
-        assert result == PLAYER_XUID  # player_match_stats prend le relai
+        assert result == PLAYER_XUID  # shared.xuid_aliases prend le relai
 
     def test_nonexistent_db_returns_empty(self) -> None:
         """DB inexistante → retourne chaîne vide sans crash."""
@@ -444,18 +455,18 @@ class TestEndToEndMatchLoading:
             repo.close()
 
     def test_v5_shared_without_sync_meta_xuid(self, tmp_path: Path) -> None:
-        """Régression corrigée : sync_meta sans XUID mais player_match_stats l'a."""
+        """v5.1 : sync_meta sans XUID → résolution via shared.xuid_aliases."""
         from src.ui.cache_loaders import _resolve_player_xuid
 
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
         shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
 
-        _create_player_db(player_db, with_player_match_stats=True)
+        _create_player_db(player_db)
         _create_shared_db(shared_db)
 
-        # Résolution XUID — fallback via player_match_stats
+        # Résolution XUID — fallback via shared.xuid_aliases
         xuid = _resolve_player_xuid(str(player_db))
-        assert xuid == PLAYER_XUID, f"XUID non résolu depuis player_match_stats ! Obtenu: '{xuid}'"
+        assert xuid == PLAYER_XUID, f"XUID non résolu depuis shared.xuid_aliases ! Obtenu: '{xuid}'"
 
         # Chargement — doit fonctionner malgré l'absence de sync_meta.xuid
         repo = DuckDBRepository(
@@ -472,30 +483,19 @@ class TestEndToEndMatchLoading:
         finally:
             repo.close()
 
-    def test_v4_local_match_stats_no_shared(self, tmp_path: Path) -> None:
-        """Architecture v4 pure : données locales, pas de shared_matches."""
-        from src.ui.cache_loaders import _resolve_player_xuid
-
+    def test_v5_no_shared_returns_zero_matches(self, tmp_path: Path) -> None:
+        """v5.1 : sans shared_matches.duckdb, get_match_count retourne 0."""
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        # Pas de shared_db
-
-        _create_player_db(
-            player_db,
-            with_player_match_stats=True,
-            with_match_stats=True,
-        )
-
-        xuid = _resolve_player_xuid(str(player_db))
-        assert xuid == PLAYER_XUID
+        _create_player_db(player_db, with_sync_meta_xuid=True)
 
         repo = DuckDBRepository(
             player_db_path=str(player_db),
-            xuid=xuid,
+            xuid=PLAYER_XUID,
             read_only=True,
         )
         try:
-            matches = repo.load_matches()
-            assert len(matches) == 3
+            count = repo.get_match_count()
+            assert count == 0
         finally:
             repo.close()
 

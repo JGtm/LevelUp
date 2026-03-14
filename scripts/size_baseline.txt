@@ -8,8 +8,8 @@ FUNC:src/ai/mcp_server.py:251:run_stdio_server:103L
 FUNC:src/ai/mcp_server.py:64:get_tools:83L
 FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
 FUNC:src/analysis/maps.py:11:compute_map_breakdown:105L
-FUNC:src/analysis/participation_radar.py:291:compute_participation_profile:109L
-FUNC:src/analysis/participation_radar.py:43:compute_global_radar_thresholds:135L
+FUNC:src/analysis/participation_radar.py:305:compute_participation_profile:109L
+FUNC:src/analysis/participation_radar.py:46:compute_global_radar_thresholds:146L
 FUNC:src/analysis/sessions.py:168:compute_sessions_with_context_polars:127L
 FUNC:src/analysis/skill_rating.py:194:compute_skill_ratings_batch:198L
 FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
@@ -66,8 +66,7 @@ FUNC:src/ui/pages/match_view_players_nemesis.py:170:render_nemesis_section:208L
 FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
-FUNC:src/ui/pages/media_library_data.py:206:load_match_windows_from_db:142L
-FUNC:src/ui/pages/media_library_data.py:366:load_media_from_db:100L
+FUNC:src/ui/pages/media_library_data.py:302:load_media_from_db:101L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
 FUNC:src/ui/pages/teammates.py:74:render_teammates_page:199L
 FUNC:src/ui/pages/teammates_charts.py:240:render_trio_charts:181L
@@ -105,7 +104,7 @@ FUNC:src/visualization/timeseries.py:317:plot_per_minute_timeseries:91L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:166L
 MODULE:src/data/query/trends.py:534L
-MODULE:src/data/services/teammates_service.py:536L
+MODULE:src/data/services/teammates_service.py:532L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/_teammates_trio.py:561L

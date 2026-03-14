@@ -675,7 +675,7 @@ class TestFactoryShared:
 
 
 class TestV4Fallback:
-    """Tests que le mode v4 (sans shared) fonctionne toujours."""
+    """Tests que le mode v4 (sans shared) se comporte correctement."""
 
     def test_load_matches_still_works(self, repo_v4: DuckDBRepository):
         """load_matches fonctionne sans shared (lecture match_stats locale)."""
@@ -683,9 +683,9 @@ class TestV4Fallback:
         assert len(matches) == 2
         assert matches[0].match_id == MATCH_ID_1
 
-    def test_get_match_count_still_works(self, repo_v4: DuckDBRepository):
-        """get_match_count fonctionne sans shared."""
-        assert repo_v4.get_match_count() == 2
+    def test_get_match_count_returns_zero_without_shared(self, repo_v4: DuckDBRepository):
+        """get_match_count retourne 0 sans shared (v5.1 — pas de fallback local)."""
+        assert repo_v4.get_match_count() == 0
 
     def test_load_matches_v5_still_reads_match_stats(self, repo_v5: DuckDBRepository):
         """load_matches lit toujours depuis match_stats (pas modifié en Sprint 4)."""

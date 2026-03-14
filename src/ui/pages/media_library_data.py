@@ -6,6 +6,7 @@ d'association et rendu Streamlit.
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timedelta
 
@@ -18,6 +19,8 @@ from src.ui.pages.media_library_temporal import (  # noqa: F401
 )
 from src.ui.settings import AppSettings
 from src.visualization._compat import DataFrameLike, ensure_polars
+
+logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
 # Fenêtres temporelles des matchs
@@ -265,86 +268,19 @@ def load_match_windows_from_db(db_path: str) -> pl.DataFrame:  # noqa: C901, PLR
                                     "start_time": dt_start,
                                 }
                             )
-                        except Exception:
+                        except Exception as e:
+                            logger.debug("media_library: erreur parsing window entry: %s", e)
                             continue
 
                     if all_windows:
                         return pl.DataFrame(all_windows).sort("start_epoch")
             except Exception:
-                pass  # Fallback vers v4
+                logger.debug("media_library: shared match_registry indisponible, pas de windows")
 
-        # --- Fallback V4 : parcourir les DBs joueurs ---
-        from src.utils.paths import PLAYER_DB_FILENAME
+        return _empty
 
-        all_windows = []
-
-        if PLAYERS_DIR.exists():
-            for player_dir in PLAYERS_DIR.iterdir():
-                if not player_dir.is_dir():
-                    continue
-
-                player_db = player_dir / PLAYER_DB_FILENAME
-                if not player_db.exists():
-                    continue
-
-                try:
-                    with duckdb_read_only(player_db) as conn:
-                        from src.utils.db import has_table
-
-                        if not has_table(conn, "match_stats"):
-                            continue
-
-                        matches = conn.execute(
-                            """
-                            SELECT match_id, start_time, time_played_seconds
-                            FROM match_stats
-                            WHERE start_time IS NOT NULL
-                            """
-                        ).fetchall()
-
-                        if matches:
-                            for match_id, start_time, time_played in matches:
-                                try:
-                                    if isinstance(start_time, datetime):
-                                        dt_start = start_time
-                                    elif isinstance(start_time, str):
-                                        if start_time.endswith("Z"):
-                                            dt_start = datetime.fromisoformat(
-                                                start_time[:-1] + "+00:00"
-                                            )
-                                        elif "+" in start_time or start_time.count("-") > 2:
-                                            dt_start = datetime.fromisoformat(start_time)
-                                        else:
-                                            dt_start = datetime.fromisoformat(start_time + "+00:00")
-                                    else:
-                                        continue
-
-                                    start_epoch = epoch_seconds_paris(dt_start)
-                                    if start_epoch is None:
-                                        continue
-
-                                    duration = float(time_played or 0) if time_played else 12 * 60
-                                    end_epoch = start_epoch + duration
-
-                                    all_windows.append(
-                                        {
-                                            "match_id": str(match_id),
-                                            "start_epoch": start_epoch,
-                                            "end_epoch": end_epoch,
-                                            "start_time": dt_start,
-                                        }
-                                    )
-                                except Exception:
-                                    continue
-                except Exception:
-                    continue
-
-        if not all_windows:
-            return _empty
-
-        return pl.DataFrame(all_windows).sort("start_epoch")
-
-    except Exception:
+    except Exception as e:
+        logger.debug("media_library: load_match_windows échoué: %s", e)
         return _empty
 
 
@@ -462,5 +398,6 @@ def load_media_from_db(
             rows = [dict(zip(_col_names, row, strict=False)) for row in result]
             return pl.DataFrame(rows)
 
-    except Exception:
+    except Exception as e:
+        logger.debug("media_library: load_media_from_db échoué: %s", e)
         return pl.DataFrame()

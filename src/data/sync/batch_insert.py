@@ -27,7 +27,6 @@ from src.data.sync._batch_columns import (  # noqa: F401
     CAST_PLAN,
     CRITICAL_TABLES,
     HIGHLIGHT_EVENT_COLUMNS,
-    MATCH_STATS_COLUMNS,
     MEDAL_COLUMNS,
     PARTICIPANT_ALL_COLUMNS,
     PARTICIPANT_COLUMNS,

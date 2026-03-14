@@ -184,13 +184,13 @@ class TestCountMatchesFromPlayerDb:
         with duckdb.connect(str(db_file), read_only=True) as conn:
             assert _count_matches_from_player_db(conn) == 3
 
-    def test_fallback_to_match_stats(self, tmp_path: Path) -> None:
+    def test_returns_zero_when_no_enrichment(self, tmp_path: Path) -> None:
+        """Sans player_match_enrichment, retourne 0 (match_stats supprimée en v5.1)."""
         db_file = tmp_path / "stats.duckdb"
         with duckdb.connect(str(db_file)) as conn:
-            conn.execute("CREATE TABLE match_stats (match_id TEXT)")
-            conn.execute("INSERT INTO match_stats VALUES ('m1'), ('m2')")
+            conn.execute("CREATE TABLE sync_meta (key TEXT, value TEXT)")
         with duckdb.connect(str(db_file), read_only=True) as conn:
-            assert _count_matches_from_player_db(conn) == 2
+            assert _count_matches_from_player_db(conn) == 0
 
     def test_returns_zero_when_no_tables(self, tmp_path: Path) -> None:
         db_file = tmp_path / "stats.duckdb"
@@ -292,7 +292,10 @@ class TestResolveFromShared:
     def test_skips_when_matches_already_known(self, tmp_path: Path) -> None:
         """Ne requête pas shared si total_matches > 0 et xuid connu."""
         xuid, count = _resolve_from_shared(
-            tmp_path / "stats.duckdb", "GT", "xuid_ok", 42,
+            tmp_path / "stats.duckdb",
+            "GT",
+            "xuid_ok",
+            42,
         )
         assert xuid == "xuid_ok"
         assert count == 42
@@ -304,7 +307,10 @@ class TestResolveFromShared:
             return_value=None,
         ):
             xuid, count = _resolve_from_shared(
-                tmp_path / "stats.duckdb", "GT", None, 0,
+                tmp_path / "stats.duckdb",
+                "GT",
+                None,
+                0,
             )
         assert xuid is None
         assert count == 0

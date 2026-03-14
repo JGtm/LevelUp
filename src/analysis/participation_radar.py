@@ -14,9 +14,12 @@ Le rendu Plotly est dans src/visualization/participation_radar.py.
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import polars as pl
@@ -40,7 +43,7 @@ RADAR_THRESHOLDS: dict[str, float] = {
 _global_thresholds_cache: dict[str, float] | None = None
 
 
-def compute_global_radar_thresholds(  # noqa: C901, PLR0912
+def compute_global_radar_thresholds(  # noqa: C901, PLR0911, PLR0912, PLR0915
     players_base_path: str | Path | None = None,
 ) -> dict[str, float]:
     """Calcule les seuils de normalisation à partir du meilleur match de toutes les DBs.
@@ -72,6 +75,11 @@ def compute_global_radar_thresholds(  # noqa: C901, PLR0912
     if not base.is_dir():
         return RADAR_THRESHOLDS.copy()
 
+    shared_db = base.parent / "warehouse" / "shared_matches.duckdb"
+    if not shared_db.exists():
+        return RADAR_THRESHOLDS.copy()
+    shared_path_sql = str(shared_db).replace("'", "''")
+
     max_kill = max_obj = max_assist = max_score = max_impact = 0.0
     seen_any = False
 
@@ -84,10 +92,15 @@ def compute_global_radar_thresholds(  # noqa: C901, PLR0912
 
         try:
             with duckdb_read_only(str(db_path)) as conn:
+                try:
+                    conn.execute(f"ATTACH '{shared_path_sql}' AS shared (READ_ONLY)")
+                except Exception:
+                    logger.debug("radar_thresholds: ATTACH shared échoué pour %s", db_path)
+                    continue
                 # Exclure Firefight et BTB (scores disproportionnés) pour une référence Arena/Slayer
                 exclude_filter = """
                     AND match_id IN (
-                        SELECT match_id FROM match_stats
+                        SELECT match_id FROM shared.match_registry
                         WHERE (LOWER(COALESCE(pair_name,'')) NOT LIKE '%firefight%')
                           AND (LOWER(COALESCE(pair_name,'')) NOT LIKE '%btb%')
                           AND (LOWER(COALESCE(pair_name,'')) NOT LIKE '%big team%')
@@ -131,24 +144,25 @@ def compute_global_radar_thresholds(  # noqa: C901, PLR0912
                 # Max impact (pts/min) - hors Firefight/BTB
                 try:
                     r3 = conn.execute(f"""
-                        SELECT MAX(agg.total_pos / NULLIF(ms.time_played_seconds / 60.0, 0)) FROM (
+                        SELECT MAX(agg.total_pos / NULLIF(ms.duration_seconds / 60.0, 0)) FROM (
                             SELECT p.match_id, SUM(CASE WHEN p.award_category IN ('kill','assist','objective','vehicle')
                                 AND p.award_score > 0 THEN p.award_score ELSE 0 END) as total_pos
                             FROM personal_score_awards p
                             WHERE 1=1 {exclude_filter}
                             GROUP BY p.match_id
                         ) agg
-                        JOIN match_stats ms ON agg.match_id = ms.match_id
-                        WHERE ms.time_played_seconds > 0
+                        JOIN shared.match_registry ms ON agg.match_id = ms.match_id
+                        WHERE ms.duration_seconds > 0
                         AND (LOWER(COALESCE(ms.pair_name,'')) NOT LIKE '%firefight%')
                         AND (LOWER(COALESCE(ms.pair_name,'')) NOT LIKE '%btb%')
                     """).fetchone()
                     if r3 and r3[0] is not None and float(r3[0]) > 0:
                         max_impact = max(max_impact, float(r3[0]))
                         seen_any = True
-                except Exception:
-                    pass
-        except Exception:
+                except Exception as e:
+                    logger.debug("radar_thresholds: calcul impact échoué pour %s: %s", db_path, e)
+        except Exception as e:
+            logger.debug("radar_thresholds: player_dir %s ignoré: %s", db_path, e)
             continue
 
     if not seen_any:
