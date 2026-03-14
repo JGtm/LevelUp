@@ -221,7 +221,8 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
                 [self._xuid],
             ).fetchone()
         else:
-            result = conn.execute("SELECT COUNT(*) FROM match_stats").fetchone()
+            logger.debug("get_match_count: shared indisponible, retourne 0")
+            return 0
         return result[0] if result else 0
 
     # =========================================================================
@@ -325,33 +326,7 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
                     "load_match_mmr_batch: échec requête shared.match_participants", exc_info=True
                 )
 
-        try:
-            has_pms = self._has_table_cached(conn, "player_match_stats")
-            if has_pms:
-                result = conn.execute(
-                    f"""
-                    SELECT ms.match_id,
-                           COALESCE(ms.team_mmr, pms.team_mmr) as team_mmr,
-                           COALESCE(ms.enemy_mmr, pms.enemy_mmr) as enemy_mmr
-                    FROM match_stats ms
-                    LEFT JOIN player_match_stats pms ON ms.match_id = pms.match_id
-                    WHERE ms.match_id IN ({placeholders})
-                    """,
-                    match_ids,
-                )
-            else:
-                result = conn.execute(
-                    f"""
-                    SELECT match_id, team_mmr, enemy_mmr
-                    FROM match_stats
-                    WHERE match_id IN ({placeholders})
-                    """,
-                    match_ids,
-                )
-            return {row[0]: (row[1], row[2]) for row in result.fetchall()}
-        except Exception:
-            logger.warning("load_match_mmr_batch: échec requête locale", exc_info=True)
-            return {}
+        return {}
 
     def load_match_skill_data(self, match_id: str) -> dict[str, Any] | None:
         """Charge team_mmr, enemy_mmr et kills/deaths/assists expected/stddev."""

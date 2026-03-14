@@ -13,7 +13,6 @@ import contextlib
 import json
 import os
 import tempfile
-from pathlib import Path
 
 import duckdb
 import pytest
@@ -398,47 +397,46 @@ class TestTeamAssignment:
 class TestMissingDataHandling:
     """Tests pour la gestion des données manquantes."""
 
-    def test_cached_load_player_match_result_returns_dict_even_without_mmr(self):
-        """Test que cached_load_player_match_result retourne toujours un dict même sans MMR."""
-        with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as f:
-            db_path = f.name
-
-        # Supprimer le fichier temporaire s'il existe déjà
-        Path(db_path).unlink(missing_ok=True)
-
-        conn = duckdb.connect(db_path)
-
-        conn.execute("""
-            CREATE TABLE match_stats (
-                match_id VARCHAR PRIMARY KEY,
-                start_time TIMESTAMP,
-                team_id INTEGER,
-                team_mmr DOUBLE,
-                enemy_mmr DOUBLE
-            )
-        """)
-
+    def test_cached_load_player_match_result_returns_dict_even_without_mmr(self, tmp_path):
+        """Test que cached_load_player_match_result retourne un dict même sans MMR."""
         match_id = "test_match_3"
         xuid = "1234567890123456"
 
-        # Insérer un match sans MMR (NULL)
-        conn.execute(
-            """
-            INSERT INTO match_stats (match_id, start_time, team_id, team_mmr, enemy_mmr)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            [match_id, "2026-02-05 10:00:00", 0, None, None],
-        )
+        # Structure v5.1 : data/players/TestPlayer/stats.duckdb + warehouse/shared
+        player_dir = tmp_path / "data" / "players" / "TestPlayer"
+        player_dir.mkdir(parents=True)
+        db_path = str(player_dir / "stats.duckdb")
 
-        conn.commit()
+        conn = duckdb.connect(db_path)
+        conn.execute("CREATE TABLE sync_meta (key VARCHAR, value VARCHAR, updated_at TIMESTAMP)")
         conn.close()
 
-        # La fonction devrait retourner un dict même si les MMR sont None
+        # Créer shared DB avec match_participants (MMR NULL)
+        warehouse = tmp_path / "data" / "warehouse"
+        warehouse.mkdir(parents=True)
+        shared_conn = duckdb.connect(str(warehouse / "shared_matches.duckdb"))
+        shared_conn.execute("""
+            CREATE TABLE match_participants (
+                match_id VARCHAR, xuid VARCHAR,
+                team_id INTEGER, team_mmr DOUBLE, enemy_mmr DOUBLE,
+                kills INTEGER, deaths INTEGER, assists INTEGER,
+                kills_expected DOUBLE, kills_stddev DOUBLE,
+                deaths_expected DOUBLE, deaths_stddev DOUBLE,
+                assists_expected DOUBLE, assists_stddev DOUBLE,
+                PRIMARY KEY (match_id, xuid)
+            )
+        """)
+        shared_conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, 0, NULL, NULL, 10, 5, 3, NULL, NULL, NULL, NULL, NULL, NULL)",
+            [match_id, xuid],
+        )
+        shared_conn.execute("CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY)")
+        shared_conn.execute("INSERT INTO match_registry VALUES (?)", [match_id])
+        shared_conn.close()
+
         result = cached_load_player_match_result(db_path, match_id, xuid, db_key=None)
 
-        assert (
-            result is not None
-        ), "cached_load_player_match_result doit retourner un dict même sans MMR"
+        assert result is not None, "doit retourner un dict même sans MMR"
         assert isinstance(result, dict)
         assert result.get("team_mmr") is None
         assert result.get("enemy_mmr") is None
@@ -446,46 +444,46 @@ class TestMissingDataHandling:
         assert "deaths" in result
         assert "assists" in result
 
-        # Libérer la connexion cache_resource avant suppression du fichier
         from src.ui.cache_loaders import clear_app_caches
 
         clear_app_caches()
-        Path(db_path).unlink(missing_ok=True)
 
-    def test_cached_load_player_match_result_with_mmr(self):
+    def test_cached_load_player_match_result_with_mmr(self, tmp_path):
         """Test que cached_load_player_match_result retourne les MMR quand disponibles."""
-        with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as f:
-            db_path = f.name
-
-        # Supprimer le fichier temporaire s'il existe déjà
-        Path(db_path).unlink(missing_ok=True)
-
-        conn = duckdb.connect(db_path)
-
-        conn.execute("""
-            CREATE TABLE match_stats (
-                match_id VARCHAR PRIMARY KEY,
-                start_time TIMESTAMP,
-                team_id INTEGER,
-                team_mmr DOUBLE,
-                enemy_mmr DOUBLE
-            )
-        """)
-
         match_id = "test_match_4"
         xuid = "1234567890123456"
 
-        # Insérer un match avec MMR
-        conn.execute(
-            """
-            INSERT INTO match_stats (match_id, start_time, team_id, team_mmr, enemy_mmr)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            [match_id, "2026-02-05 10:00:00", 0, 1500.0, 1520.0],
-        )
+        # Structure v5.1 : data/players/TestPlayer/stats.duckdb + warehouse/shared
+        player_dir = tmp_path / "data" / "players" / "TestPlayer"
+        player_dir.mkdir(parents=True)
+        db_path = str(player_dir / "stats.duckdb")
 
-        conn.commit()
+        conn = duckdb.connect(db_path)
+        conn.execute("CREATE TABLE sync_meta (key VARCHAR, value VARCHAR, updated_at TIMESTAMP)")
         conn.close()
+
+        # Créer shared DB avec match_participants (MMR renseignés)
+        warehouse = tmp_path / "data" / "warehouse"
+        warehouse.mkdir(parents=True)
+        shared_conn = duckdb.connect(str(warehouse / "shared_matches.duckdb"))
+        shared_conn.execute("""
+            CREATE TABLE match_participants (
+                match_id VARCHAR, xuid VARCHAR,
+                team_id INTEGER, team_mmr DOUBLE, enemy_mmr DOUBLE,
+                kills INTEGER, deaths INTEGER, assists INTEGER,
+                kills_expected DOUBLE, kills_stddev DOUBLE,
+                deaths_expected DOUBLE, deaths_stddev DOUBLE,
+                assists_expected DOUBLE, assists_stddev DOUBLE,
+                PRIMARY KEY (match_id, xuid)
+            )
+        """)
+        shared_conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, 0, 1500.0, 1520.0, 10, 5, 3, NULL, NULL, NULL, NULL, NULL, NULL)",
+            [match_id, xuid],
+        )
+        shared_conn.execute("CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY)")
+        shared_conn.execute("INSERT INTO match_registry VALUES (?)", [match_id])
+        shared_conn.close()
 
         result = cached_load_player_match_result(db_path, match_id, xuid, db_key=None)
 
@@ -493,8 +491,6 @@ class TestMissingDataHandling:
         assert result.get("team_mmr") == 1500.0
         assert result.get("enemy_mmr") == 1520.0
 
-        # Libérer la connexion cache_resource avant suppression du fichier
         from src.ui.cache_loaders import clear_app_caches
 
         clear_app_caches()
-        Path(db_path).unlink(missing_ok=True)

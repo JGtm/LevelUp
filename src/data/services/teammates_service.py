@@ -86,21 +86,13 @@ def _query_impact_events(conn: object, match_ids: list[str], placeholders: str) 
 
 
 def _query_match_outcomes(conn: object, match_ids: list[str], xuid: str, placeholders: str) -> list:
-    """Récupère les outcomes depuis shared.match_participants (avec fallback local)."""
+    """Récupère les outcomes depuis shared.match_participants."""
     result = conn.execute(
         f"SELECT match_id, outcome FROM shared.match_participants"
         f" WHERE match_id IN ({placeholders}) AND xuid = ?",
         [*match_ids, xuid.strip()],
     ).fetchall()
-    if not result:
-        try:
-            result = conn.execute(
-                f"SELECT match_id, outcome FROM match_stats WHERE match_id IN ({placeholders})",
-                match_ids,
-            ).fetchall()
-        except Exception:
-            result = []
-    return result
+    return result or []
 
 
 def _collect_impact_data(
@@ -150,8 +142,10 @@ def _resolve_xuid_from_shared(conn: object, gamertag: str) -> str | None:
         ).fetchone()
         if row:
             return str(row[0]).strip()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(
+            "_resolve_xuid_from_shared: xuid_aliases lookup échoué pour %s: %s", gamertag, e
+        )
     try:
         row = conn.execute(
             "SELECT DISTINCT xuid FROM shared.match_participants WHERE gamertag = ? LIMIT 1",
@@ -159,8 +153,10 @@ def _resolve_xuid_from_shared(conn: object, gamertag: str) -> str | None:
         ).fetchone()
         if row:
             return str(row[0]).strip()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(
+            "_resolve_xuid_from_shared: match_participants lookup échoué pour %s: %s", gamertag, e
+        )
     return None
 
 

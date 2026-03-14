@@ -427,6 +427,6 @@ class TestLoadPerformanceV4Fallback:
         assert elapsed < 2.0, f"load_matches v4 trop lent : {elapsed:.2f}s"
 
     def test_match_count_v4(self, v4_repo: DuckDBRepository) -> None:
-        """V4 count."""
+        """V4 count — retourne 0 sans shared DB (v5.1)."""
         count = v4_repo.get_match_count()
-        assert count == N_MATCHES_LARGE
+        assert count == 0

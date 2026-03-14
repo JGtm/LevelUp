@@ -172,7 +172,7 @@ CAST_PLAN: dict[str, dict[str, str]] = {
 }
 
 #: Tables critiques pour l'audit de typage (Sprint 15.4).
-CRITICAL_TABLES = ["match_stats", "match_participants", "highlight_events"]
+CRITICAL_TABLES = ["match_registry", "match_participants", "highlight_events"]
 
 
 # =============================================================================
@@ -274,37 +274,3 @@ ALIAS_COLUMNS = ["xuid", "gamertag", "last_seen", "source", "updated_at"]
 
 #: v5 Shared Matches — colonnes spécifiques.
 SHARED_MEDAL_COLUMNS = ["match_id", "xuid", "medal_name_id", "count"]
-
-MATCH_STATS_COLUMNS = [
-    "match_id",
-    "start_time",
-    "end_time",
-    "playlist_id",
-    "playlist_name",
-    "map_id",
-    "map_name",
-    "pair_id",
-    "pair_name",
-    "game_variant_id",
-    "game_variant_name",
-    "outcome",
-    "team_id",
-    "kills",
-    "deaths",
-    "assists",
-    "kda",
-    "accuracy",
-    "headshot_kills",
-    "max_killing_spree",
-    "time_played_seconds",
-    "avg_life_seconds",
-    "my_team_score",
-    "enemy_team_score",
-    "team_mmr",
-    "enemy_mmr",
-    "shots_fired",
-    "shots_hit",
-    "is_firefight",
-    "teammates_signature",
-    "updated_at",
-]

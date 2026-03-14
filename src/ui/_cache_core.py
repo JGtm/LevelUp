@@ -179,8 +179,7 @@ def _resolve_player_xuid(db_path: str) -> str:
 
     Stratégie de fallback :
     1. sync_meta (key='xuid') — source canonique v5
-    2. player_match_stats.xuid — source legacy v3/v4 (toujours présente)
-    3. shared.xuid_aliases via gamertag — dernier recours
+    2. shared.xuid_aliases via gamertag — fallback v5.1
 
     Returns:
         XUID en string, ou "" si introuvable.
@@ -197,17 +196,7 @@ def _resolve_player_xuid(db_path: str) -> str:
             except Exception:
                 pass
 
-            # Stratégie 2 : player_match_stats.xuid (legacy v3/v4)
-            try:
-                result = conn.execute(
-                    "SELECT DISTINCT xuid FROM player_match_stats WHERE xuid IS NOT NULL LIMIT 1"
-                ).fetchone()
-                if result and result[0] and str(result[0]).strip():
-                    return str(result[0]).strip()
-            except Exception:
-                pass
-
-        # Stratégie 3 : xuid_aliases via shared_matches.duckdb (v5.1)
+        # Stratégie 2 : xuid_aliases via shared_matches.duckdb (v5.1)
         try:
             from pathlib import Path
 
@@ -225,7 +214,7 @@ def _resolve_player_xuid(db_path: str) -> str:
         except Exception:
             pass
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_resolve_player_xuid: résolution XUID échouée pour %s: %s", db_path, e)
 
     return ""

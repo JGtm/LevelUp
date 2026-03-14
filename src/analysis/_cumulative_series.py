@@ -24,7 +24,7 @@ def compute_cumulative_net_score_series_polars(
         ValueError: Si Polars n'est pas disponible.
 
     Example:
-        >>> df = repo.query_df("SELECT * FROM match_stats ORDER BY start_time")
+        >>> df = repo.load_matches_as_polars()
         >>> result = compute_cumulative_net_score_series_polars(df)
         >>> print(result.head())
     """

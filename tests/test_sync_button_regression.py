@@ -530,14 +530,17 @@ class TestSyncAllPlayersXuidResolution:
     """Vérifie que sync_all_players résout le XUID via _resolve_player_xuid."""
 
     def test_xuid_resolved_for_duckdb_player(self, tmp_path: Path) -> None:
-        """sync_all_players résout le XUID depuis la DB, pas depuis xuid_aliases.last_seen."""
+        """sync_all_players résout le XUID depuis sync_meta."""
         # Créer le chemin attendu: data/players/{gamertag}/stats.duckdb
         players_dir = tmp_path / "players" / PLAYER_GAMERTAG
         db = players_dir / "stats.duckdb"
         _create_player_db(db)
 
-        # Importer sync_all_players — on ne peut pas exécuter la sync réelle
-        # (pas de tokens), mais on peut vérifier la résolution XUID
+        # Ajouter le XUID dans sync_meta (source canonique v5)
+        conn = duckdb.connect(str(db))
+        conn.execute("INSERT INTO sync_meta VALUES ('xuid', ?, NULL)", [PLAYER_XUID])
+        conn.close()
+
         from src.ui.cache_loaders import _resolve_player_xuid
 
         xuid = _resolve_player_xuid(str(db))

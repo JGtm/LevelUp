@@ -119,7 +119,7 @@ class DuckDBPlayerInfo:
 
 def _count_matches_from_player_db(con) -> int:
     """Compte les matchs depuis la player DB (fallback v5 → v4 → v3)."""
-    for table in ("player_match_enrichment", "match_stats", "player_match_stats"):
+    for table in ("player_match_enrichment",):
         try:
             result = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()  # noqa: S608
             if result and result[0] > 0:
@@ -130,17 +130,9 @@ def _count_matches_from_player_db(con) -> int:
 
 
 def _resolve_xuid_from_player_db(con) -> str | None:
-    """Résout le XUID depuis la player DB (sync_meta → player_match_stats)."""
+    """Résout le XUID depuis la player DB (sync_meta)."""
     try:
         result = con.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
-        if result and result[0] and str(result[0]).strip():
-            return str(result[0]).strip()
-    except Exception:
-        pass
-    try:
-        result = con.execute(
-            "SELECT DISTINCT xuid FROM player_match_stats WHERE xuid IS NOT NULL LIMIT 1"
-        ).fetchone()
         if result and result[0] and str(result[0]).strip():
             return str(result[0]).strip()
     except Exception:
@@ -149,7 +141,10 @@ def _resolve_xuid_from_player_db(con) -> str | None:
 
 
 def _resolve_from_shared(
-    db_path: Path, gamertag: str, xuid: str | None, total_matches: int,
+    db_path: Path,
+    gamertag: str,
+    xuid: str | None,
+    total_matches: int,
 ) -> tuple[str | None, int]:
     """Résout xuid et/ou match count depuis shared_matches.duckdb.
 
@@ -189,8 +184,8 @@ def _resolve_from_shared(
                         [gamertag],
                     ).fetchone()
                 total_matches = result[0] if result else 0
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_resolve_from_shared: résolution shared échouée pour %s: %s", db_path, e)
     return xuid, total_matches
 
 
@@ -230,13 +225,16 @@ def list_duckdb_v4_players() -> list[DuckDBPlayerInfo]:
             with duckdb_read_only(str(db_path)) as con:
                 total_matches = _count_matches_from_player_db(con)
                 xuid = _resolve_xuid_from_player_db(con)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("list_duckdb_v4_players: player DB verrouillée pour %s: %s", db_path, e)
 
         # ── Phase 2 : shared DB (indépendante du player DB) ──
         if not xuid or total_matches == 0:
             xuid, total_matches = _resolve_from_shared(
-                db_path, gamertag, xuid, total_matches,
+                db_path,
+                gamertag,
+                xuid,
+                total_matches,
             )
 
         players.append(

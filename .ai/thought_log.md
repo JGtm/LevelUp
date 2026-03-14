@@ -7,6 +7,68 @@
 
 ## Journal
 
+### [2026-03-14] — Plan v5.8 : Couche d'Abstraction Complète (résolution IDs)
+
+**Statut** : Complété (plan documenté, implémentation non démarrée)
+**Version** : v5.8
+**Branche** : `refactor/id-resolution-cleanup` (à créer depuis `analysis/weapon-parser-rewrite`)
+**Décision** : Créer une couche d'abstraction SQL (3 vues) + Python pour centraliser TOUTE la résolution d'IDs → noms affichés (gamertags, noms assets, killer/victim, outcomes, médailles).
+
+**Objectifs v5.8** :
+1. Centraliser résolution ID → nom via vues SQL + fonctions Python
+2. Détecter les incohérences (même XUID = 2 gamertags selon la page, map_name stale)
+3. Éliminer les redondances (~260 emplacements dans 3-5 tables)
+4. Point unique de modification : 1 vue SQL, pas 35 fichiers
+
+**Résultats** :
+- Audit complet : ~260 emplacements dans ~80 fichiers lisant directement des colonnes dénormalisées
+- Plan documenté dans `.ai/PLAN_ABSTRACTION_RESOLUTION.md`
+- 5 volets (A: gamertags, B: outcomes, C: assets, D: médailles, E: killer/victim)
+- 4 waves / 9 commits / 43 tests nouveaux / 3 vues SQL / ~20 fichiers prod modifiés
+- Décision : ON GARDE `match_participants.gamertag` et `kv.killer_gamertag` comme fallback dans les vues
+- BACKLOG.md mis à jour : sections dette technique pointent vers le plan v5.8
+- Principe : "Les tables stockent des IDs. Les vues résolvent les noms."
+
+**Prochaine étape** : Validation utilisateur du plan, puis création branche `refactor/id-resolution-cleanup` et implémentation Wave 1.
+
+### [2025-07-19] — Vérification finale cleanup match_stats : logging + qualité
+
+**Statut** : Complété
+**Décision** : Passe d'audit finale après le cleanup v5.1 (match_stats supprimée). Objectif : vérifier exhaustivité, corriger résidus, assurer logging et couverture tests.
+
+**Corrections appliquées** :
+- **Dead code supprimé** : `MATCH_STATS_COLUMNS` (33 lignes) dans `_batch_columns.py` + import dans `batch_insert.py`
+- **6 docstrings corrigées** : `_cache_core.py`, `multiplayer.py`, `_cumulative_series.py`, `_data_loader.py`, `teammates_service.py`, `media_library_data.py`
+- **Logging ajouté (10 emplacements)** :
+  - `participation_radar.py` : import logging + logger + 3 debug (ATTACH fail, impact fail, player_dir skip)
+  - `media_library_data.py` : import logging + logger + 3 debug (window parse, load_match_windows, load_media_from_db)
+  - `citations/_data_loader.py` : 3 debug (medals, pve_stats, awards exceptions)
+  - `teammates_service.py` : 2 debug (_resolve_xuid_from_shared xuid_aliases + match_participants)
+  - `multiplayer.py` : 2 debug (_resolve_from_shared, list_duckdb_v4_players phase 1)
+  - `_cache_core.py` : 1 debug (_resolve_player_xuid échec global)
+  - `_diagnostic_repo.py` : 2 debug (get_storage_info, _collect_shared_counts)
+  - `_match_queries.py` : 1 debug déjà ajouté session précédente
+- **Bugs résolus** : UnboundLocalError sur `gamertag` dans `_cache_core.py` (remplacé par `db_path`), violations ruff PLR0911/PLR0915 + E501, baseline taille mis à jour
+
+**Résultat** : 4567 tests passent, 0 échec. Code production 100% propre.
+
+### [2025-07-18] — Cleanup match_stats : correction tests (Step 5 final)
+
+**Statut** : Complété  
+**Décision** : Corriger les 18+ tests cassés par le nettoyage des références `match_stats` dans le code production (Steps 1-4 de la conversation précédente).
+
+**Corrections appliquées** :
+- `test_sync_button_regression.py` : ajout XUID dans sync_meta (source canonique v5.1)
+- `test_last_match_fixes.py` : réécriture des 2 tests MMR avec structure v5.1 (shared DB + match_participants)
+- `test_season_archive.py` : ajout shared DB fixture avec match_registry + match_participants + vue mv_player_matches  
+- `test_lazy_loading.py` : restructuration fixture temp_duckdb avec arborescence v5.1 + shared DB + vue mv_player_matches
+- `test_load_v5.py` : assertion `get_match_count()` → 0 (sans shared, comportement attendu v5.1)
+- `test_citation_engine.py` : ATTACH shared DB dans shared_conn pour test_shared_conn_reused_not_closed
+
+**Point clé** : Les shared DB de test nécessitent la vue `mv_player_matches` car `_get_match_source()` lève RuntimeError si match_registry+match_participants existent mais pas la vue.
+
+**Résultat** : 4567 tests passent, 0 échec.
+
 ### [2025-07-17] — Audit code + commits propres (3 commits)
 
 - **Statut** : Complété
@@ -3937,3 +3999,57 @@ Batch 3 (81-85L) — 7 fonctions :
 - 104 fonctions > 80L + 6 modules > 500L
 - Ruff : All checks passed
 - Tests : 4485 passed, 0 regressions (6 échecs pré-existants : verrou fichier shared_matches + test sync)
+
+---
+
+### [2026-03-15] — Backfill weapons --force : correction bugs post-run
+
+- **Statut** : Complété
+- **Tâche** : Analyser le résultat du backfill `--all --force-weapons` (32 369 lignes sur 4 joueurs/1984 matchs), identifier les avertissements `unresolved_player` et corriger les bugs
+
+**Contexte** :
+- Run 1 (~2h45) → 0 lignes insérées : migration `add_weapon_kills_reconciled_as` absente de `_apply_schema_migrations()`. Corrigée manuellement (ensure + insert schema_migrations).
+- Run 2 (~11 min partiel) → 32 369 lignes. Warnings `unresolved_player` sur chaque match.
+
+**Décision technique principale** :
+
+**Bug 1 — `_apply_schema_migrations()` manquait `ensure_weapon_kills_reconciled_as`** :
+- Fichier : `scripts/backfill/orchestrator.py`
+- Fix : ajout de l'import + appel `ensure_weapon_kills_reconciled_as(shared_conn)` dans la fonction
+
+**Bug 2 — `unresolved_player` sur le joueur POV** :
+- Root cause identifiée via inv130 : dans le PLAYER_METADATA packet, chaque joueur non-POV a son XUID 2 fois (une avec pi réel 1-7, une avec pi=0). Le joueur POV n'a **que** des occurrences pi=0.
+- `detect_pi_from_metadata()` saute explicitement pi=0 → le joueur POV n'est jamais retourné.
+- `_resolve_player_indices()` retourne immédiatement si metadata non vide (7/8 joueurs) → le POV est perdu.
+- Le docstring `"le POV est toujours pi=1 dans l'espace Section 2"` était **incorrect** : la cross-validation METADATA vs acurtis (inv130) montre que le POV a pi=0 dans les fire events aussi.
+- Fix : après la résolution METADATA, faire un acurtis ciblé sur les XUIDs manquants → le POV est résolu avec pi=0 via `detect_player_indices(first_chunk_data, missing)`.
+- Fichier : `src/data/services/weapon_extraction_service.py` (`_resolve_player_indices`)
+- Docstring corrigée dans `src/analysis/packet_index.py`
+
+**Résultats observés** :
+- 0 erreurs de lint/type sur les 3 fichiers modifiés
+- Fix proactif : tout futur backfill trouvera les colonnes correctes sans erreur silencieuse
+
+**Conclusion** :
+- Le prochain `--force-weapons` sur de vrais données devrait éliminer les `unresolved_player` et inscrire un `player_index=0` pour le joueur POV, activant ainsi la corrélation fire event + Formula A pour ses kills.
+
+---
+
+### [2026-03-14] — Cache manifest film (bug 3 : appel API redondant)
+
+- **Statut** : Complété
+- **Tâche** : Éviter un appel `get_film_by_match_id` (API Halo) par match sur les re-runs du backfill weapons.
+
+**Root cause** : Sans cache du manifest film, chaque re-run télécharge le manifest depuis l'API même pour des matchs déjà traités. Le manifest (~2KB JSON) contient uniquement le `blob_prefix` et la liste des chunks (index, timestamps, `file_relative_path`), données stables et réutilisables.
+
+**Décision technique** :
+- Nouveau module `src/data/services/_film_manifest_cache.py` : `write_manifest_cache()`, `load_manifest_cache()`, `compute_needed_chunks()`.
+- Le manifest est sérialisé en JSON dans `data/investigation/chunks/{match_id[:8]}/manifest.json` (~2KB/match).
+- `_download_needed_chunks` tente d'abord `load_manifest_cache` avant tout appel API. Si miss → appel API + sauvegarde.
+- `_compute_needed_chunks` déplacé dans `_film_manifest_cache.py` (même sémantique : analyse métadonnées chunks).
+- `_download_chunk_with_sem` + `_download_chunk` fusionnés pour rester sous 500L.
+
+**Résultats** :
+- `weapon_extraction_service.py` : 505L → 495L (sous la limite)
+- `_film_manifest_cache.py` : nouveau module 73L
+- 1984 manifests seront créés au premier run → les re-runs n'auront plus aucun appel API manifest
