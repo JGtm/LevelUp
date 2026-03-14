@@ -7,7 +7,20 @@
 
 ## Journal
 
-### [2026-03-14] — Commit 1 : 3 vues SQL de résolution d'IDs + ensure_metadata_attached
+### [2026-03-14] — Commit 2 : cascade gamertag via v_gamertag_lookup
+
+**Statut** : Complété
+
+**Décision technique** :
+1. `_gamertag_resolver.py` refactorisé : cascade 5-sources → vue `v_gamertag_lookup` unique
+2. Fallback conservé quand la vue n'existe pas encore (`_resolve_gamertag_without_view`) : shared.xuid_aliases puis shared.match_participants — nécessaire pour les tests existants qui ne créent pas la vue
+3. `_resolve_from_highlight_events()` extrait en méthode dédiée (fallback transitoire, Commit 8)
+4. `load_match_player_gamertags()` : 4 requêtes séquentielles → 1 JOIN `match_participants LEFT JOIN v_gamertag_lookup`
+5. Fallback `_load_gamertags_fallback()` si la vue n'est pas disponible
+
+**Résultats** : 4578 tests passent, ruff OK, `_gamertag_resolver.py` = 289L (whitelist non requise)
+
+---
 
 **Statut** : Complété
 
