@@ -40,6 +40,11 @@ from src.analysis.weapon_parser import (
     scan_fire_events_all,
 )
 from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+from src.data.services._film_manifest_cache import (
+    compute_needed_chunks,
+    load_manifest_cache,
+    write_manifest_cache,
+)
 from src.data.sync.api_port import HaloAPIPort
 
 logger = logging.getLogger(__name__)
@@ -81,17 +86,19 @@ class ScanResult:
 class WeaponExtractionService:
     """Orchestre l'extraction d'armes v2 pour un match donné."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         api: HaloAPIPort,
         conn: duckdb.DuckDBPyConnection,
         cache_dir: Path,
         *,
+        manifest_dir: Path | None = None,
         write_lock: asyncio.Lock | None = None,
     ) -> None:
         self._api = api
         self._conn = conn
         self._cache_dir = cache_dir
+        self._manifest_dir = manifest_dir or cache_dir.parent / "film_manifests"
         self._chunk_sem = asyncio.Semaphore(_MAX_CONCURRENT_CHUNKS)
         self._write_lock: asyncio.Lock | contextlib.AbstractAsyncContextManager = (
             write_lock if write_lock is not None else contextlib.nullcontext()
@@ -319,10 +326,24 @@ class WeaponExtractionService:
         if metadata is not None:
             pi_to_xuid_int = detect_pi_from_metadata(metadata, xuid_int_map)
             if pi_to_xuid_int:
+                # Résoudre les joueurs absents du METADATA (joueur POV → pi=0)
+                # Le joueur POV n'a que des occurrences pi=0 dans METADATA donc
+                # detect_pi_from_metadata ne le retourne pas. On le résout via
+                # acurtis qui trouve son XUID avec pi=0 dans les données brutes.
+                resolved = set(pi_to_xuid_int.values())
+                missing = {x: g for x, g in xuid_int_map.items() if x not in resolved}
+                if missing:
+                    pov_result = detect_player_indices(first_chunk_data, missing)
+                    pi_to_xuid_int.update(pov_result)
+                    logger.debug(
+                        "resolve_pi: POV résolu via acurtis (%d/%d)",
+                        len(pov_result),
+                        len(missing),
+                    )
                 logger.debug("resolve_pi: metadata OK (%d joueurs)", len(pi_to_xuid_int))
                 return {v: k for k, v in pi_to_xuid_int.items()}
 
-        # Fallback : méthode acurtis
+        # Fallback : méthode acurtis (metadata absente ou vide)
         logger.debug("resolve_pi: fallback acurtis (metadata=%s)", metadata is not None)
         pi_to_xuid_int = detect_player_indices(first_chunk_data, xuid_int_map)
         return {v: k for k, v in pi_to_xuid_int.items()}
@@ -385,23 +406,31 @@ class WeaponExtractionService:
 
     # ── Téléchargement chunks ────────────────────────────────────────────
 
-    async def _download_needed_chunks(
+    async def _download_needed_chunks(  # noqa: PLR0912
         self,
         match_id: str,
         kill_times_ms: list[int],
     ) -> dict[int, tuple[bytes, int, int]]:
-        """Télécharge les chunks REPLICATION_DATA couvrant les kill_times."""
+        """Télécharge les chunks REPLICATION_DATA couvrant les kill_times.
+
+        Le manifest (blob_prefix + chunk metadata) est mis en cache dans
+        manifest.json pour éviter un appel API par match sur les re-runs.
+        """
         match_cache = self._cache_dir / match_id[:8]
         match_cache.mkdir(parents=True, exist_ok=True)
 
-        film = await self._api.get_film_by_match_id(match_id)
-        if film is None:
-            return {}
+        cached = load_manifest_cache(self._manifest_dir, match_id)
+        if cached is not None:
+            blob_prefix, chunks_meta = cached
+        else:
+            film = await self._api.get_film_by_match_id(match_id)
+            if film is None:
+                return {}
+            blob_prefix = film.blob_storage_path_prefix
+            chunks_meta = film.custom_data.chunks
+            write_manifest_cache(self._manifest_dir, match_id, blob_prefix, chunks_meta)
 
-        blob_prefix = film.blob_storage_path_prefix
-        chunks_meta = film.custom_data.chunks
-
-        needed = _compute_needed_chunks(kill_times_ms, chunks_meta)
+        needed = compute_needed_chunks(kill_times_ms, chunks_meta, KILL_WINDOW_MS)
         result: dict[int, tuple[bytes, int, int]] = {}
         to_download = []
 
@@ -420,9 +449,7 @@ class WeaponExtractionService:
                 to_download.append(ch)
 
         if to_download:
-            tasks = [
-                self._download_chunk_with_sem(ch, blob_prefix, match_cache) for ch in to_download
-            ]
+            tasks = [self._download_chunk(ch, blob_prefix, match_cache) for ch in to_download]
             try:
                 gathered = await asyncio.wait_for(
                     asyncio.gather(*tasks, return_exceptions=True),
@@ -445,47 +472,21 @@ class WeaponExtractionService:
 
         return result
 
-    async def _download_chunk_with_sem(
-        self,
-        ch,
-        blob_prefix: str,
-        match_cache: Path,
-    ) -> tuple[int, bytes | None, int, int]:
-        async with self._chunk_sem:
-            return await self._download_chunk(ch, blob_prefix, match_cache)
-
     async def _download_chunk(
         self,
         ch,
         blob_prefix: str,
         match_cache: Path,
     ) -> tuple[int, bytes | None, int, int]:
-        url = blob_prefix + ch.file_relative_path.lstrip("/")
-        data = await self._api.download_film_chunk(url)
-        if data is not None:
-            cache_path = match_cache / f"chunk_{ch.index:02d}.bin"
-            cache_path.write_bytes(data)
-        return (
-            ch.index,
-            data,
-            ch.chunk_start_time_offset_milliseconds,
-            ch.duration_milliseconds,
-        )
-
-
-def _compute_needed_chunks(
-    kill_times_ms: list[int],
-    chunks_meta: list,
-) -> set[int]:
-    """Identifie les chunks couvrant les fenêtres [kill_t - 5s, kill_t]."""
-    needed: set[int] = set()
-    for kill_t in kill_times_ms:
-        window_start = kill_t - KILL_WINDOW_MS
-        for ch in chunks_meta:
-            if ch.chunk_type.value != 2:
-                continue
-            ch_start = ch.chunk_start_time_offset_milliseconds
-            ch_end = ch_start + ch.duration_milliseconds
-            if ch_end >= window_start and ch_start <= kill_t:
-                needed.add(ch.index)
-    return needed
+        async with self._chunk_sem:
+            url = blob_prefix + ch.file_relative_path.lstrip("/")
+            data = await self._api.download_film_chunk(url)
+            if data is not None:
+                cache_path = match_cache / f"chunk_{ch.index:02d}.bin"
+                cache_path.write_bytes(data)
+            return (
+                ch.index,
+                data,
+                ch.chunk_start_time_offset_milliseconds,
+                ch.duration_milliseconds,
+            )

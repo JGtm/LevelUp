@@ -76,7 +76,7 @@ def _resolve_cache_dir(player_db_path: Path) -> Path:
     """Retourne le répertoire cache chunks depuis le chemin player DB.
 
     ``player_db_path`` = ``data/players/{gt}/stats.duckdb``
-    → cache = ``data/investigation/chunks``
+    → cache = ``data/cache/film_chunks``
     """
     data_dir = player_db_path.parents[2]
-    return data_dir / "investigation" / "chunks"
+    return data_dir / "cache" / "film_chunks"
