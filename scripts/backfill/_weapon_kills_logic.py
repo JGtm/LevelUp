@@ -35,6 +35,61 @@ def _log_weapon_progress(progress: dict, total: int) -> None:
         )
 
 
+async def collect_weapon_match_ids_all_players(
+    players: list,
+    shared_conn: Any,
+    *,
+    force: bool = False,
+    limit_per_player: int = 5000,
+) -> list[str]:
+    """Collecte l'union dédupliquée des match_ids weapons pour tous les joueurs.
+
+    Avec la v2 du parser (scan_fire_events_all + correlate_all_players), un
+    match est traité pour **tous les joueurs en une seule passe**. Appeler
+    run_weapon_kills_backfill par joueur causerait N re-téléchargements inutiles
+    des mêmes films pour les matchs partagés (escouade).
+
+    Cette fonction collecte les match_ids manquants de chaque joueur et les
+    déduplique avant de passer l'union à run_weapon_kills_backfill.
+
+    Args:
+        players: Liste de DuckDBPlayerInfo (champ xuid optionnel).
+        shared_conn: Connexion ouverte vers shared_matches.duckdb.
+        force: Si True, inclure aussi les matchs déjà traités.
+        limit_per_player: Limite de matchs par joueur (garde-fou).
+
+    Returns:
+        Liste de match_ids uniques, sans ordre garanti.
+    """
+    from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+    all_ids: set[str] = set()
+    n_players = 0
+
+    for player_info in players:
+        xuid = getattr(player_info, "xuid", None)
+        if not xuid:
+            xuid = WeaponKillsMixin.get_xuid_by_gamertag(shared_conn, player_info.gamertag)
+        if not xuid:
+            logger.warning(
+                "collect_weapon_match_ids : xuid introuvable pour %s — ignoré",
+                player_info.gamertag,
+            )
+            continue
+        ids = WeaponKillsMixin.get_matches_missing_weapons(
+            shared_conn, xuid, limit=limit_per_player, force=force
+        )
+        all_ids.update(ids)
+        n_players += 1
+
+    logger.info(
+        "collect_weapon_match_ids : %d match_ids uniques issus de %d joueur(s)",
+        len(all_ids),
+        n_players,
+    )
+    return list(all_ids)
+
+
 async def run_weapon_kills_backfill(
     gamertag: str,
     xuid: str,
