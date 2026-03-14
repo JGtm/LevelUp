@@ -7,6 +7,27 @@
 
 ## Journal
 
+### [2026-03-14] — Commit 1 : 3 vues SQL de résolution d'IDs + ensure_metadata_attached
+
+**Statut** : Complété
+
+**Décision technique** :
+1. `ensure_metadata_attached(conn)` ajouté dans `src/utils/db.py` — modèle de `ensure_shared_attached()`, vérifie l'alias existant avant d'attacher
+2. `ensure_resolution_views(conn)` ajouté dans `src/data/sync/migrations.py` avec 4 helpers privés :
+   - `_detect_shared_prefix()` : détecte catalog ("shared." ou "") sans dépendre de duckdb_databases()
+   - `_create_v_gamertag_lookup()` : FULL OUTER JOIN xuid_aliases + match_participants MAX
+   - `_create_v_match_full()` : LEFT JOINs meta.maps/playlists/pairs/game_variants si metadata disponible, sinon NULL pour les colonnes FR
+   - `_create_v_killer_victim_full()` : JOIN v_gamertag_lookup pour killer et victim
+   - `_try_attach_meta_for_views()` : attache metadata.duckdb ET vérifie que `meta.maps` existe avant d'activer les JOINs (évite erreur quand metadata.duckdb n'a pas encore Commit 0)
+3. `tests/test_resolution_views.py` créé — 11 tests couvrant : priorité aliases, fallback match_participants, filtre NULL, dédup, colonnes EN non nulles, colonnes FR NULL sans metadata, résolution avec metadata, idempotence, gamertag killer/victim, fallback snapshot, fallback xuid brut
+4. Vues créées dans `shared_matches_v2.duckdb` : v_gamertag_lookup, v_match_full, v_killer_victim_full
+
+**Résultats** : 4578 tests passent (11 nouveaux + 4567 existants), ruff OK
+
+**Branche** : `refactor/id-resolution-cleanup`
+
+---
+
 ### [2026-03-14] — Commit 0 : populate_metadata_from_discovery + conformité 500/80L
 
 **Statut** : Complété

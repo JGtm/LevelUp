@@ -1304,3 +1304,205 @@ def ensure_weapon_kills_reconciled_as(conn: duckdb.DuckDBPyConnection) -> None:
         "SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id "
         "FROM weapon_kills"
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# v6 — Vues de résolution d'IDs (abstraction couche SQL)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _detect_shared_prefix(conn: duckdb.DuckDBPyConnection, table: str) -> str | None:
+    """Retourne le préfixe catalog ("shared." ou "") pour une table dans shared.
+
+    Retourne None si la table n'est pas trouvée.
+    """
+    try:
+        rows = conn.execute(
+            "SELECT database_name FROM duckdb_tables() WHERE table_name = ?",
+            [table],
+        ).fetchall()
+        for row in rows:
+            db_name = row[0]
+            if db_name == "shared":
+                return "shared."
+            if db_name:
+                return ""
+    except Exception:
+        pass
+    return None
+
+
+def _create_v_gamertag_lookup(conn: duckdb.DuckDBPyConnection, prefix: str) -> None:
+    """Crée la vue v_gamertag_lookup dans shared_matches.duckdb.
+
+    Résolution XUID → gamertag courant.
+    Priorité : xuid_aliases > match_participants (FULL OUTER JOIN).
+    Filtre les lignes dont le gamertag est NULL.
+    """
+    conn.execute(f"""
+        CREATE OR REPLACE VIEW {prefix}v_gamertag_lookup AS
+        SELECT
+            COALESCE(xa.xuid, mp.xuid) AS xuid,
+            COALESCE(xa.gamertag, mp.gamertag) AS gamertag
+        FROM {prefix}xuid_aliases xa
+        FULL OUTER JOIN (
+            SELECT xuid, MAX(gamertag) AS gamertag
+            FROM {prefix}match_participants
+            WHERE gamertag IS NOT NULL
+            GROUP BY xuid
+        ) mp ON xa.xuid = mp.xuid
+        WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL
+    """)
+    logger.info("✅ Vue v_gamertag_lookup créée/mise à jour")
+
+
+def _create_v_match_full(
+    conn: duckdb.DuckDBPyConnection,
+    prefix: str,
+    meta_alias: str | None,
+) -> None:
+    """Crée la vue v_match_full dans shared_matches.duckdb.
+
+    Résout les noms d'assets depuis metadata.duckdb (via meta_alias) si disponible.
+    Si meta_alias est None, les colonnes *_fr et mode_* sont NULL,
+    et les colonnes EN tombent en fallback sur match_registry (comportement actuel).
+    """
+    if meta_alias:
+        map_en = "COALESCE(m.name_en, mr.map_name)"
+        pl_en = "COALESCE(p.name_en, mr.playlist_name)"
+        pp_en = "COALESCE(pp.name_en, mr.pair_name)"
+        gv_en = "COALESCE(gv.name_en, mr.game_variant_name)"
+        joins = f"""
+        LEFT JOIN {meta_alias}.maps m ON mr.map_id = m.asset_id
+        LEFT JOIN {meta_alias}.playlists p ON mr.playlist_id = p.asset_id
+        LEFT JOIN {meta_alias}.playlist_map_mode_pairs pp ON mr.pair_id = pp.asset_id
+        LEFT JOIN {meta_alias}.game_variants gv ON mr.game_variant_id = gv.asset_id"""
+        fr_cols = """
+        m.name_fr                                    AS map_name_fr,
+        p.name_fr                                    AS playlist_name_fr,
+        pp.name_fr                                   AS pair_name_fr,
+        gv.name_fr                                   AS game_variant_name_fr,
+        gv.mode_name                                 AS mode_name,
+        gv.mode_name_fr                              AS mode_name_fr,
+        p.playlist_canonical_en                      AS playlist_canonical_en,
+        p.playlist_canonical_fr                      AS playlist_canonical_fr"""
+    else:
+        map_en = "mr.map_name"
+        pl_en = "mr.playlist_name"
+        pp_en = "mr.pair_name"
+        gv_en = "mr.game_variant_name"
+        joins = ""
+        fr_cols = """
+        NULL AS map_name_fr,
+        NULL AS playlist_name_fr,
+        NULL AS pair_name_fr,
+        NULL AS game_variant_name_fr,
+        NULL AS mode_name,
+        NULL AS mode_name_fr,
+        NULL AS playlist_canonical_en,
+        NULL AS playlist_canonical_fr"""
+
+    conn.execute(f"""
+        CREATE OR REPLACE VIEW {prefix}v_match_full AS
+        SELECT
+            mr.match_id,
+            mr.start_time,
+            mr.duration_seconds,
+            mr.map_id,
+            mr.playlist_id,
+            mr.pair_id,
+            mr.game_variant_id,
+            mr.team_0_score,
+            mr.team_1_score,
+            mr.is_firefight,
+            mr.is_ranked,
+            mr.backfill_completed,
+            mr.sync_spnkr_version,
+            {map_en}                                 AS map_name,
+            {pl_en}                                  AS playlist_name,
+            {pp_en}                                  AS pair_name,
+            {gv_en}                                  AS game_variant_name,
+            {fr_cols}
+        FROM {prefix}match_registry mr{joins}
+    """)
+    logger.info("✅ Vue v_match_full créée/mise à jour (meta_alias=%s)", meta_alias)
+
+
+def _create_v_killer_victim_full(conn: duckdb.DuckDBPyConnection, prefix: str) -> None:
+    """Crée la vue v_killer_victim_full dans shared_matches.duckdb.
+
+    Résout killer_gamertag / victim_gamertag via v_gamertag_lookup.
+    Chaîne : vue (courant) > snapshot figé > xuid brut.
+    """
+    conn.execute(f"""
+        CREATE OR REPLACE VIEW {prefix}v_killer_victim_full AS
+        SELECT
+            kv.match_id,
+            kv.killer_xuid,
+            COALESCE(vk.gamertag, kv.killer_gamertag, kv.killer_xuid) AS killer_gamertag,
+            kv.victim_xuid,
+            COALESCE(vv.gamertag, kv.victim_gamertag, kv.victim_xuid) AS victim_gamertag,
+            kv.kill_count,
+            kv.time_ms,
+            kv.is_validated
+        FROM {prefix}killer_victim_pairs kv
+        LEFT JOIN {prefix}v_gamertag_lookup vk ON kv.killer_xuid = vk.xuid
+        LEFT JOIN {prefix}v_gamertag_lookup vv ON kv.victim_xuid = vv.xuid
+    """)
+    logger.info("✅ Vue v_killer_victim_full créée/mise à jour")
+
+
+def ensure_resolution_views(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ou met à jour les 3 vues de résolution d'IDs dans shared_matches.duckdb.
+
+    Vues créées (idempotentes via CREATE OR REPLACE VIEW) :
+    - v_gamertag_lookup : XUID → gamertag courant
+    - v_match_full      : match_registry + noms résolus depuis metadata.duckdb
+    - v_killer_victim_full : killer_victim_pairs + gamertags résolus
+
+    Précondition : la connexion doit pointer sur shared_matches.duckdb
+    (directement ou via ATTACH AS shared).
+    """
+    prefix = _detect_shared_prefix(conn, "match_registry")
+    if prefix is None:
+        logger.warning("ensure_resolution_views: match_registry introuvable, vues non créées")
+        return
+
+    _create_v_gamertag_lookup(conn, prefix)
+
+    meta_alias = _try_attach_meta_for_views(conn)
+    _create_v_match_full(conn, prefix, meta_alias)
+    _create_v_killer_victim_full(conn, prefix)
+
+    logger.info("✅ Vues de résolution v6 créées/mises à jour")
+
+
+def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
+    """Tente d'attacher metadata.duckdb pour que v_match_full puisse résoudre les noms FR.
+
+    Retourne l'alias si réussi ET que la table maps existe, None sinon.
+    """
+    import contextlib
+
+    from src.utils.db import ensure_metadata_attached
+
+    alias = None
+    with contextlib.suppress(Exception):
+        alias = ensure_metadata_attached(conn)
+
+    if alias is None:
+        return None
+
+    # Vérifier que les tables i18n sont bien peuplées (Commit 0 requis)
+    with contextlib.suppress(Exception):
+        rows = conn.execute(
+            "SELECT table_name FROM duckdb_tables() WHERE table_name = 'maps'"
+        ).fetchall()
+        for _row in rows:
+            # Si la table est dans le bon catalog
+            db_name_rows = conn.execute(
+                "SELECT database_name FROM duckdb_tables() WHERE table_name = 'maps'"
+            ).fetchall()
+            if any(r[0] == alias for r in db_name_rows):
+                return alias
+    return None
