@@ -7,11 +7,29 @@
 
 ## Journal
 
+### [2026-03-14] — perf(weapons) : déduplication match_ids dans backfill --all
+
+**Statut** : Complété
+
+**Décision technique** : Avec le parser v2 (`scan_fire_events_all` + `correlate_all_players`), un match est traité pour tous les joueurs en une seule passe. `backfill_all_players` relançait `run_weapon_kills_backfill` par joueur → N re-téléchargements inutiles des mêmes films pour les matchs d'escouade partagés.
+
+**Solution** :
+- Ajout de `collect_weapon_match_ids_all_players()` dans `_weapon_kills_logic.py` : collecte l'union dédupliquée des match_ids de tous les joueurs
+- `backfill_all_players()` : quand `scope.weapons=True`, la boucle tourne avec `scope_for_loop` (sans weapons), puis une phase post-boucle appelle `run_weapon_kills_backfill()` une seule fois sur l'union
+- Le guard bit `WEAPON_KILLS` dans `_process_one` reste actif pour le mode `backfill_player_data` seul
+
+**Résultats** : 289 tests weapon → OK, ruff → OK. Commit `66420a5` sur `analysis/weapon-parser-rewrite`.
+
+**Branche** : `analysis/weapon-parser-rewrite`
+
+---
+
 ### [2026-03-14] — Plan v5.8 : Couche d'Abstraction Complète (résolution IDs)
 
 **Statut** : Complété (plan documenté, implémentation non démarrée)
 **Version** : v5.8
-**Branche** : `refactor/id-resolution-cleanup` (à créer depuis `analysis/weapon-parser-rewrite`)
+**Branche** : `refactor/id-resolution-cleanup`
+
 **Décision** : Créer une couche d'abstraction SQL (3 vues) + Python pour centraliser TOUTE la résolution d'IDs → noms affichés (gamertags, noms assets, killer/victim, outcomes, médailles).
 
 **Objectifs v5.8** :
@@ -24,18 +42,31 @@
 - Audit complet : ~260 emplacements dans ~80 fichiers lisant directement des colonnes dénormalisées
 - Plan documenté dans `.ai/PLAN_ABSTRACTION_RESOLUTION.md`
 - 5 volets (A: gamertags, B: outcomes, C: assets, D: médailles, E: killer/victim)
-- 4 waves / 9 commits / 43 tests nouveaux / 3 vues SQL / ~25 fichiers prod modifiés
+- 4 waves / 11b commits / 43+ tests nouveaux / 3 vues SQL / ~25 fichiers prod modifiés
 - Décision : ON GARDE `match_participants.gamertag` et `kv.killer_gamertag` comme fallback dans les vues
-- BACKLOG.md mis à jour : sections dette technique pointent vers le plan v5.8
 - Principe : "Les tables stockent des IDs. Les vues résolvent les noms."
 
-**Audit complémentaire (3 agents)** :
-- **Agent SQL** : 62 nouveaux hits SQL non couverts dans le plan initial (orchestrator.py 12 hits, _weapon_kills_repo.py 7 hits, career_encounters_data.py 7 hits, _discord_queries.py 6 hits, etc.)
-- **Agent Polars** : 259 opérations Polars auditées → AUCUN changement code requis (les vues résolvent les noms en SQL avant Polars)
-- **Agent Patterns** : 8 patterns ID→nom vérifiés (teams, ranks, playlists, weapons, commendations, medals, personal scores, labels) → tous déjà fonctionnels, aucune lacune critique
-- Plan mis à jour avec fichiers supplémentaires dans A.3, C.2.3, E.0 + sections Impact Polars et Autres Patterns
+**Décisions architecturales prises en review (session 2026-03-14)** :
+- **Option B** : peupler `maps`/`playlists`/`game_variants`/`playlist_map_mode_pairs` dans `metadata.duckdb` via `populate_metadata_from_discovery.py` (Commit 0)
+- **Enrichissement schéma Commit 0** : ajouter `name_en`, `name_fr`, `mode_name`, `mode_name_fr` dans `game_variants` ; `name_en`, `name_fr`, `playlist_canonical_en`, `playlist_canonical_fr` dans `playlists`
+- **Normalisation modes** : 313 variantes `game_variant_name` → 27 `mode_name` distincts via `TRIM(SPLIT_PART(SPLIT_PART(public_name, ':', 2), ' on ', 1))`
+- **Fichier d'erreurs** : `metadata_populate_errors.txt` à la racine pour corrections manuelles (non-bloquant)
+- **Vue `v_match_full`** : colonnes EN préservées pour la logique métier (`mark_firefight`, `participation_radar`), colonnes FR additionnelles (`playlist_name_fr`, `map_name_fr`, etc.) exposées en plus
+- **Règle DB → EN** : la couche DB sert de l'EN (identifiants SPNKr stables), traduction FR uniquement à l'affichage
+- **Wave 5 étendue** : Commit 11 (nettoyage `PLAYLIST_FR`/`PLAYLIST_EN` dicts + JSON) + Commit 11b (migration `modes_fr/en.json` → 4 tables `metadata.duckdb`)
+- **Commit 11b** : 4 tables (`mode_prefix_names`, `mode_name_tr`, `mode_pair_overrides`, `mode_lang_settings`) → `translate_pair_name()` passe de 80L (`noqa: C901`) à ~30L sans dette ; ajouter une langue = 56 INSERT SQL, 0 ligne Python
 
-**Prochaine étape** : Création branche `refactor/id-resolution-cleanup` depuis `analysis/weapon-parser-rewrite` et implémentation Wave 1.
+**7 corrections appliquées au plan initial** :
+1. Commit 0 ajouté (tables metadata manquantes)
+2. Trailing comma SQL dans `v_match_full`
+3. `meta.map_mode_pairs` → `meta.playlist_map_mode_pairs`
+4. `SELECT DISTINCT xuid, gamertag` → `GROUP BY xuid / MAX(gamertag)` dans sous-requête
+5. `teammates_service.py:76` réattribué Volet A (accès `highlight_events.gamertag`)
+6. `career_encounters_data.py` ajouté commit 4
+7. `test_xuid_resolution_regression.py` ajouté Wave 1 checklist
+
+**Prochaine étape** : Commit 0 — arrêter l'app (libérer le verrou `shared_matches.duckdb`), modifier et exécuter `populate_metadata_from_discovery.py`.
+
 
 ### [2025-07-19] — Vérification finale cleanup match_stats : logging + qualité
 

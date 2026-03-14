@@ -153,9 +153,10 @@ SELECT
     COALESCE(xa.gamertag, mp.gamertag) AS gamertag
 FROM xuid_aliases xa
 FULL OUTER JOIN (
-    SELECT DISTINCT xuid, gamertag
+    SELECT xuid, MAX(gamertag) AS gamertag
     FROM match_participants
     WHERE gamertag IS NOT NULL
+    GROUP BY xuid
 ) mp ON xa.xuid = mp.xuid
 WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL;
 ```
@@ -245,6 +246,7 @@ Les fichiers qui bypass le repo (SQL direct sur `gamertag`) doivent être migré
 | `explorer_data.py:67` | `SELECT gamertag FROM highlight_events UNION xuid_aliases` | → `SELECT gamertag FROM v_gamertag_lookup` |
 | `explorer_data.py:106` | `SELECT xuid FROM highlight_events WHERE gamertag = ?` | → `SELECT xuid FROM v_gamertag_lookup WHERE LOWER(gamertag) = LOWER(?)` |
 | `teammates_impact.py:51` | `SELECT ... gamertag FROM highlight_events` | → JOIN `v_gamertag_lookup` sur xuid |
+| `teammates_service.py:76` | Query `highlight_events.gamertag` pour events kill/death | → Résoudre via xuid + JOIN `v_gamertag_lookup` (lors du drop `highlight_events.gamertag` en Wave 4) |
 | `teammates_service.py:149` | `SELECT xuid FROM match_participants WHERE gamertag = ?` | → `SELECT xuid FROM v_gamertag_lookup WHERE LOWER(gamertag) = LOWER(?)` |
 #### 🆕 Fichiers supplémentaires découverts
 
@@ -379,19 +381,42 @@ SELECT
     mr.is_ranked,
     mr.backfill_completed,
     mr.sync_spnkr_version,
-    -- Noms résolus : metadata prioritaire, match_registry fallback
-    COALESCE(m.public_name, mr.map_name)            AS map_name,
-    COALESCE(p.public_name, mr.playlist_name)        AS playlist_name,
-    COALESCE(pp.public_name, mr.pair_name)           AS pair_name,
-    COALESCE(gv.public_name, mr.game_variant_name)   AS game_variant_name,
+    -- Noms EN : metadata prioritaire, match_registry fallback
+    -- ⚠️ Garder EN obligatoirement : mark_firefight(), participation_radar et
+    --    _is_objective_mode_from_pair_name() parsent ces colonnes avec des patterns EN.
+    COALESCE(m.name_en,  mr.map_name)            AS map_name,
+    COALESCE(p.name_en,  mr.playlist_name)       AS playlist_name,
+    COALESCE(pp.name_en, mr.pair_name)           AS pair_name,
+    COALESCE(gv.name_en, mr.game_variant_name)   AS game_variant_name,
+    -- Noms FR : colonnes additionnelles pour l'affichage UI
+    -- NULL si metadata.duckdb pas encore peuplée (avant Commit 0) → fallback dans translate_*()
+    m.name_fr                                    AS map_name_fr,
+    p.name_fr                                    AS playlist_name_fr,
+    pp.name_fr                                   AS pair_name_fr,
+    gv.name_fr                                   AS game_variant_name_fr,
+    -- Colonnes de normalisation (v5.8+)
+    gv.mode_name                                 AS mode_name,
+    gv.mode_name_fr                              AS mode_name_fr,
+    p.playlist_canonical_en                      AS playlist_canonical_en,
+    p.playlist_canonical_fr                      AS playlist_canonical_fr
 FROM match_registry mr
 LEFT JOIN meta.maps m ON mr.map_id = m.asset_id
 LEFT JOIN meta.playlists p ON mr.playlist_id = p.asset_id
-LEFT JOIN meta.map_mode_pairs pp ON mr.pair_id = pp.asset_id
+LEFT JOIN meta.playlist_map_mode_pairs pp ON mr.pair_id = pp.asset_id
 LEFT JOIN meta.game_variants gv ON mr.game_variant_id = gv.asset_id;
 ```
 
-> La vue expose des colonnes avec les **mêmes noms** (`map_name`, `playlist_name`, etc.)
+> **⚠️ Pré-requis (Commit 0)** : Les tables `meta.maps`, `meta.playlists`, `meta.playlist_map_mode_pairs`
+> et `meta.game_variants` doivent exister dans `metadata.duckdb` et contenir `name_en`, `name_fr`
+> avant que la vue soit pleinement opérationnelle. Avant Commit 0, les colonnes `*_fr` seront `NULL`
+> et les colonnes EN tomberont en fallback sur `match_registry` (comportement actuel préservé).
+>
+> **Principe** : les colonnes `map_name` / `playlist_name` / `pair_name` / `game_variant_name`
+> restent EN pour toute la logique métier. Les colonnes `*_fr` sont ajoutées **en plus** pour
+> l'affichage. À terme, `translate_playlist_name()` pourra s'alimenter de `playlist_name_fr`
+> directement au lieu des dicts hardcodés — sans toucher aux colonnes EN.
+>
+> La vue expose des colonnes avec les **mêmes noms** pour l'EN (`map_name`, `playlist_name`, etc.)
 > → les consommateurs Python/Polars n'ont **rien à changer** dans leur code `col("map_name")`.
 
 **Phase C.2.2 — Mise à jour `mv_player_matches`**
@@ -429,6 +454,36 @@ La vue matérialisée doit pointer sur `v_match_full` au lieu de `match_registry
 > Les pages UI qui passent par `load_matches()` → `mv_player_matches` sont couvertes
 > automatiquement par C.2.2.
 
+> **⚠️ Impacts UI — dropdowns sidebar à surveiller impérativement lors de Volet C**
+>
+> Le pipeline de traduction des filtres cascade opère ainsi :
+> `playlist_name` (DB, EN) → `translate_playlist_name()` → `playlist_ui` (FR, dropdown)
+>
+> La vue `v_match_full` retourne `public_name` (EN) via `COALESCE(x.public_name, mr.x_name)`.
+> Le comportement est **identique à aujourd'hui** : `translate_playlist_name()` reçoit de l'EN et
+> traduit en FR. **Pas de changement de comportement UI.**
+>
+> **Règle rappelée** : ne jamais injecter `name_fr` dans les colonnes `playlist_name` /
+> `pair_name` de la vue — `mark_firefight()`, `participation_radar.py` et
+> `_is_objective_mode_from_pair_name()` sont EN-dépendants et casseraient silencieusement.
+>
+> **Risque 1 — Mode EN** : ✅ OK — `translate_playlist_name(EN, "en")` lookup JSON → EN correct.
+>
+> **Risque 2 — `ranked_cond`** (`str.contains("classé|ranked")`) : ✅ OK — la colonne `playlist_ui`
+> (post-traduction FR) contient "Arène classée" → "classé" matche.
+>
+> **Risque 3 — Détection Firefight** : ✅ OK — `_FIREFIGHT_PATTERNS` dans
+> `checkbox_filter.py:461` inclut "baptême du feu" pour la `playlist_ui` (post-traduction).
+> La `playlist_name` brute (EN) continue de contenir "Firefight" → `mark_firefight()` OK.
+>
+> **Risque 4 — `participation_radar.py` LIKE queries** : ✅ OK — `participation_radar.py` lit
+> directement `shared.match_registry` (ligne 103), pas via `v_match_full`. Les LIKE
+> `'%firefight%'` opèrent sur l'EN stocké dans `match_registry` → non impacté.
+>
+> **Risque 5 — `session_state` filter persistence** : ✅ OK — les valeurs stockées dans
+> `session_state["filter_playlists"]` = labels `playlist_ui` (FR). Avant et après migration,
+> `playlist_ui` reste FR.
+
 **Phase C.2.4 — Suppression des colonnes `*_name` de `match_registry` (futur)**
 
 Quand tous les consommateurs passent par `v_match_full` ou `mv_player_matches` :
@@ -452,7 +507,7 @@ Quand tous les consommateurs passent par `v_match_full` ou `mv_player_matches` :
 |-----------|:--------:|:------------:|
 | Schéma + Modèles | 4 | `_engine_connections.py`, `_batch_columns.py`, `_kv_types.py`, `models.py` |
 | Écritures (INSERT) | 2 | `_shared_writes.py:75`, `strategies.py:183` |
-| Lectures SQL | 2 prod | `_killer_victim_repo.py:73`, `teammates_service.py:76` |
+| Lectures SQL | 1 prod | `_killer_victim_repo.py:73` |
 | Polars GROUP BY / Agrégations | 5 prod | `_killer_victim_repo.py`, `_killer_victim_polars.py`, `_antagonist_kv.py`, `match_view_players_nemesis.py`, `friends_impact_heatmap.py` |
 | Tests | 10 | Données de test, assertions, schéma |
 | **Total surface** | **14 prod + 10 tests** | **82+ emplacements** |
@@ -502,7 +557,7 @@ LEFT JOIN v_gamertag_lookup vv ON kv.victim_xuid = vv.xuid;
 | Fichier | Requête actuelle | Migration |
 |---------|-----------------|-----------|
 | `_killer_victim_repo.py:73` | `SELECT ... FROM killer_victim_pairs` | → FROM `v_killer_victim_full` |
-| `teammates_service.py:76` | `COALESCE(killer_gamertag, killer_xuid::TEXT)` | → FROM `v_killer_victim_full` (le COALESCE est dans la vue) |
+| `career_encounters_data.py` | 4× `SELECT ... FROM killer_victim_pairs` (bypass le repo) | → FROM `v_killer_victim_full` |
 
 Les opérations Polars en aval (`_killer_victim_polars.py`, `_antagonist_kv.py`,
 `match_view_players_nemesis.py`) ne changent **rien** — elles lisent des colonnes
@@ -664,9 +719,128 @@ pas `shared_matches_v2.duckdb`. La stratégie v2 n'affecte donc pas la suite de 
 git checkout analysis/weapon-parser-rewrite
 git checkout -b refactor/id-resolution-cleanup
 
-# Setup DB v2 (avant de commencer)
+# Setup DB v2 (avant de commencer) — arrêter l'app Streamlit avant la copie
 cp data/warehouse/shared_matches.duckdb data/warehouse/shared_matches_v2.duckdb
 ```
+
+#### Commit 0 — Pré-requis metadata (avant Wave 1)
+
+| # | Commit | Volet | Risque | Action |
+|:-:|--------|:-----:|:------:|--------|
+| 0 | `chore(metadata): peupler maps/playlists/game_variants` | C (pré-requis) | FAIBLE | Modifier + exécuter `populate_metadata_from_discovery.py` |
+
+> Les tables `meta.maps`, `meta.playlists`, `meta.playlist_map_mode_pairs` et `meta.game_variants`
+> sont absentes de `metadata.duckdb` par défaut. Elles sont nécessaires pour que `v_match_full`
+> résolve les noms depuis la source de vérité plutôt que depuis le cache `match_registry`.
+>
+> **Avant d'exécuter le script**, il faut enrichir son schéma avec les colonnes i18n et de
+> normalisation décrites ci-dessous.
+
+##### Enrichissement du schéma `game_variants`
+
+La table actuelle n'a que `asset_id` et `public_name` (EN). Il faut ajouter :
+
+| Colonne | Type | Dérivation |
+|---------|------|-----------|
+| `name_en` | `VARCHAR` | = `public_name` (alias explicite) |
+| `name_fr` | `VARCHAR` | via `mode_translations` sur le `public_name` exact → mécanisme de migration one-shot |
+| `mode_name` | `VARCHAR` | extrait programmatiquement : `TRIM(SPLIT_PART(SPLIT_PART(public_name, ':', 2), ' on ', 1))` |
+| `mode_name_fr` | `VARCHAR` | `mode_translations.name_fr` du `mode_name` correspondant, ou `NULL` si absent |
+
+**Règle d'extraction `mode_name`** :
+- `"Arena:Attrition on Catalyst"` → `"Attrition"` ✅
+- `"FFA Slayer"` (sans `:`) → colonne vide → écrire dans le fichier d'erreurs
+- Résultat attendu : **27 `mode_name` distincts** sur 313 variantes
+
+Les 313 entrées de `mode_translations` deviennent une **source de migration one-shot** pour peupler
+`name_fr` et `mode_name_fr`. Une fois le populate effectué, `mode_translations` sera conservée
+mais ne sera plus interrogée par les vues (obsolescence planifiée Wave 5).
+
+##### Enrichissement du schéma `playlists`
+
+La table actuelle n'a que `asset_id` et `public_name` (EN). Même souci de variantes qu'avec les
+modes : 3 entrées EN distinctes partagent la même traduction FR "Grande bataille en équipe"
+("Big Team Battle", "Big Team Battle: Refresh", "Big Team Social"). Ajouter :
+
+| Colonne | Type | Dérivation |
+|---------|------|-----------|
+| `name_en` | `VARCHAR` | = `public_name` (alias explicite) |
+| `name_fr` | `VARCHAR` | via `playlist_translations.name_fr` sur `playlist_id` exact |
+| `playlist_canonical_en` | `VARCHAR` | `TRIM(SPLIT_PART(public_name, ':', 1))` (préfixe avant ":") |
+| `playlist_canonical_fr` | `VARCHAR` | = `name_fr` (la traduction FR IS déjà le regroupement sémantique) |
+
+**Différence avec les modes** : les playlists sont UUID-keyed (robustes), la `name_fr` issue de
+`playlist_translations` sert directement de canonique FR. Le `playlist_canonical_en` est simplement
+le préfixe avant ":" (ex: "Big Team Battle: Refresh" → "Big Team Battle").
+
+> **Résultat attendu** : "Big Team Battle", "Big Team Battle: Refresh", "Big Team Social" →
+> tous `playlist_canonical_fr = "Grande bataille en équipe"`, mais `playlist_canonical_en` distincts
+> pour les deux derniers ("Big Team Battle" vs "Big Team Social").
+
+##### Mécanisme de fichier d'erreurs
+
+Lors du populate, tout cas non résolu doit être tracé dans **`metadata_populate_errors.txt`** à la
+racine du projet (chemin relatif du repo). Ce fichier est destiné aux corrections manuelles.
+
+Format :
+```
+[2025-01-15 14:32:00] game_variants | asset_id=abc123 | public_name="FFA Slayer" | raison=mode_name_extraction_failed (pas de ':')
+[2025-01-15 14:32:01] playlists     | asset_id=xyz789 | public_name="Custom Mode" | raison=no_translation_found (UUID absent de playlist_translations)
+```
+
+Le fichier est **appendé** à chaque exécution (pas écrasé). L'utilisateur le consulte et apporte les
+corrections directement dans `metadata.duckdb` via SQL si nécessaire.
+
+> **Ce fichier ne bloque pas l'exécution** — le populate continue même si des entrées échouent.
+> `mode_name` et `name_fr` restent `NULL` pour les cas non résolus.
+
+> ```bash
+> python scripts/populate_metadata_from_discovery.py
+> ```
+>
+> **Pré-condition** : tokens API SPNKr configurés dans `.env.local` (`SPNKR_CLIENT_ID`, `SPNKR_CLIENT_SECRET`, `SPNKR_REFRESH_TOKEN`).
+
+<details>
+<summary>✅ Checklist Commit 0</summary>
+
+- [ ] `scripts/populate_metadata_from_discovery.py` modifié avec les nouvelles colonnes
+- [ ] `python scripts/populate_metadata_from_discovery.py` exécuté sans erreur bloquante
+- [ ] Table `maps` présente et peuplée dans `metadata.duckdb`
+- [ ] Table `playlists` présente avec colonnes `name_fr`, `playlist_canonical_en`, `playlist_canonical_fr`
+- [ ] Table `playlist_map_mode_pairs` présente et peuplée
+- [ ] Table `game_variants` présente avec colonnes `name_fr`, `mode_name`, `mode_name_fr`
+- [ ] 27 `mode_name` distincts dans `game_variants`
+- [ ] `playlist_canonical_fr` correctement peuplé pour les 3 variantes BTB
+- [ ] `metadata_populate_errors.txt` créé à la racine (peut être vide si tout résolu)
+- [ ] Contenu du fichier d'erreurs consulté et cas notés si non-vide
+
+</details>
+
+> **⚠️ Impact UI / requêtes — non-bloquant mais à surveiller**
+>
+> La vue `v_match_full` utilise `COALESCE(x.public_name, mr.x_name)` → retourne **toujours de l'EN**.
+> Le comportement actuel est **préservé à l'identique** : translate_playlist_name() reçoit de l'EN,
+> traduit en FR, et le dropdown affiche du FR. Aucune régression.
+>
+> **RÈGLE ARCHITECTURALE — NE PAS ENFREINDRE** : la couche DB sert de l'EN (identifiants SPNKr
+> stables), la traduction FR se fait uniquement à l'affichage. Ne pas injecter `name_fr` dans les
+> colonnes `playlist_name` / `pair_name` / `map_name` de la vue `v_match_full`. Raisons :
+>
+> - `filters.py::mark_firefight` utilise `r"(?i)\bfirefight\b"` sur `playlist_name` brut → rate
+>   "Baptême du feu"
+> - `participation_radar.py` LIKE `'%firefight%'` et `'%btb%'` sur `pair_name` brut
+> - `_is_objective_mode_from_pair_name()` parse les patterns EN ("ctf", "oddball", "capture"…)
+>
+> Ces fonctions d'analyse **doivent recevoir de l'EN** pour fonctionner correctement.
+>
+> **Pour afficher des noms FR** dans l'UI depuis les nouvelles colonnes `name_fr`, la bonne approche
+> est d'ajouter des colonnes dédiées dans la vue uniquement pour l'affichage (sans écraser les
+> colonnes EN) — ou de continuer à passer par `translate_playlist_name()` qui pourra un jour
+> être alimentée depuis `metadata.duckdb` plutôt que des dicts hardcodés.
+>
+> `src/data/sync/metadata_resolver.py:193` détecte déjà `name_fr` dynamiquement → ✅ déjà prêt.
+> `src/data/query/engine.py:362` et `_metadata_resolution.py:71-84` : ne pas basculer vers
+> `COALESCE(name_fr, ...)` avant d'avoir migré toute la logique métier EN-dépendante.
 
 Le travail est découpé en **waves** (groupes de commits) pour limiter le risque
 et permettre de valider à chaque étape.
@@ -706,6 +880,7 @@ et permettre de valider à chaque étape.
 
 **Validation globale**
 - [ ] `python -m pytest tests/ -q --ignore=tests/integration` → 0 fail
+- [ ] `tests/test_xuid_resolution_regression.py` (732L, existant) → 0 régression
 
 </details>
 
@@ -714,7 +889,7 @@ et permettre de valider à chaque étape.
 | # | Commit | Volet | Risque | Fichiers modif. |
 |:-:|--------|:-----:|:------:|:---------------:|
 | 3 | `refactor(gamertag): consommateurs directs → v_gamertag_lookup` | A.3 | FAIBLE | 4 (explorer_data, teammates_impact, teammates_service, events_repo) |
-| 4 | `refactor(kv): killer_victim_repo + teammates_service → v_killer_victim_full` | E.3 | FAIBLE | 2 (_killer_victim_repo.py, teammates_service.py) |
+| 4 | `refactor(kv): killer_victim_repo + career_encounters_data → v_killer_victim_full` | E.3 | FAIBLE | 2 (_killer_victim_repo.py, career_encounters_data.py) |
 | 5 | `refactor(assets): requêtes directes match_registry → v_match_full` | C.2.2–C.2.3 | FAIBLE | 4 (strategies.py, detection.py, _data_loader.py, migrations.py pour mv_player_matches) |
 
 > Après cette wave : **tous les consommateurs** passent par les vues.
@@ -732,7 +907,7 @@ et permettre de valider à chaque étape.
 
 **Commit 4 — Killer/Victim consommateurs**
 - [ ] `_killer_victim_repo.py` migré → utilise `v_killer_victim_full`
-- [ ] `teammates_service.py` migré (section kv)
+- [ ] `career_encounters_data.py` migré (4 accès directs `killer_victim_pairs`)
 - [ ] `tests/test_killer_victim_views.py` créé — 3 tests passent
 
 **Commit 5 — Assets consommateurs**
@@ -808,13 +983,18 @@ et permettre de valider à chaque étape.
 
 </details>
 
-#### Wave 5 — Audit de clôture (1 commit)
+#### Wave 5 — Audit de clôture + nettoyage couche traduction (2 commits)
 
 > **Obligatoire avant de merger sur main.**
 
 | # | Commit | Objectif |
 |:-:|--------|----------|
 | 10 | `chore(audit): vérification finale abstraction v5.8` | Confirmer qu'aucun accès direct résiduel n'a été oublié |
+| 11 | `refactor(i18n): supprimer couche traduction assets obsolète` | Éliminer les dicts/JSON remplacés par metadata.duckdb |
+
+---
+
+##### Commit 10 — Audit de clôture
 
 **Procédure d'audit** :
 
@@ -857,7 +1037,7 @@ mv data/warehouse/shared_matches_v2.duckdb data/warehouse/shared_matches.duckdb
 echo "Bascule OK — v2 est maintenant la prod"
 ```
 
-**Critères de succès — Checklist Wave 5 (condition de merge)**
+**Critères de succès — Checklist commit 10 (condition de merge)**
 
 > Toutes les cases doivent être cochées avant de merger sur `main`. Sans exception.
 
@@ -872,45 +1052,435 @@ echo "Bascule OK — v2 est maintenant la prod"
 - [ ] `db_profiles.json` remis sur le chemin par défaut (`shared_matches.duckdb`)
 - [ ] Thought log mis à jour avec le bilan final
 
+---
+
+##### Commit 11 — Nettoyage couche traduction assets (Wave 5)
+
+Une fois Commit 0 exécuté et validé, les données de traduction sont dans `metadata.duckdb`
+(colonnes `name_fr`, `mode_name_fr`, `playlist_canonical_fr`). La couche de fallback statique
+devient obsolète et doit être supprimée proprement.
+
+**Inventaire complet de ce qui devient obsolète :**
+
+| Artifact | Fichier | Obsolète car | Action |
+|----------|---------|-------------|--------|
+| `PLAYLIST_FR` dict (18 entrées) | `src/ui/translations.py` | Remplacé par `playlists.name_fr` | Supprimer |
+| `PLAYLIST_EN` dict (14 entrées) | `src/ui/translations.py` | Remplacé par `playlists.name_en` | Supprimer |
+| `PAIR_FR` dict (vide, kept for compat) | `src/ui/translations.py` | Déjà vide | Supprimer |
+| `static/i18n/playlists_fr.json` | `static/i18n/` | Remplacé par `playlists.name_fr` | Supprimer |
+| `static/i18n/playlists_en.json` | `static/i18n/` | Remplacé par `playlists.name_en` | Supprimer |
+| `mode_translations` table | `metadata.duckdb` | Données migrées vers `game_variants.mode_name_fr` | DROP TABLE (migration step) |
+| `playlist_translations` table | `metadata.duckdb` | Données migrées vers `playlists.name_fr` | DROP TABLE (migration step) |
+| `MetadataResolver._resolve_from_table()` fallback dynamique | `src/data/sync/metadata_resolver.py` | Schéma stable : colonnes `name_en`/`name_fr` garanties | Simplifier (supprimer autodétection) |
+| `_metadata_resolution.py` dynamic join | `src/data/repositories/_metadata_resolution.py` | Remplacé par `v_match_full` | Supprimer si Volet C complet |
+
+**Ce qui reste (non obsolète) :**
+
+| Artifact | Raison |
+|----------|--------|
+| `translate_pair_name()` + `modes_fr.json` | `pair_name` = "Arena:CTF on Aquarius" — logique combinatoire préfixe+mode nécessaire sauf si `pair_name_fr` **complètement** peuplé dans `playlist_map_mode_pairs` (à évaluer) |
+| `static/i18n/modes_fr.json`, `modes_en.json` | Alimentent `translate_pair_name()` — à garder tant que la logique combinatoire est active |
+| `static/i18n/weapons_fr/en.json`, `ranks_fr/en.json`, `citations_fr/en.json`, `awards_fr/en.json` | Non concernés par ce plan |
+| `translate_playlist_name()` signature | Garder mais réécrire : lire `playlist_name_fr` depuis le DataFrame au lieu du JSON |
+
+**Réécriture cible de `translate_playlist_name()`** :
+
+```python
+def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
+    """Traduit un nom de playlist.
+
+    Depuis v5.8 : les traductions sont dans metadata.duckdb (colonnes name_fr/name_en
+    de v_match_full). Cette fonction ne sert plus que de fallback pour les valeurs non
+    résolues (NULL dans la vue) et les UUIDs bruts.
+    """
+    if name is None:
+        return None
+    s = str(name).strip()
+    if not s:
+        return None
+    if _is_uuid_like(s):
+        logger.warning("playlist_name non résolu (UUID brut) : %s — metadata.duckdb incomplet ?", s)
+        return label("playlists", "_unknown", lang=lang)
+    # Si on reçoit un nom EN et que la DB est peuplée, on ne devrait pas arriver ici.
+    # Log pour détecter les cas résiduels.
+    logger.debug("translate_playlist_name fallback pour '%s' (hors DB) — à investiguer", s)
+    # Fallback minimal : retourner tel quel (EN ou FR selon ce qui arrive)
+    return s
+```
+
+**Spécifications de logging obligatoires (à implémenter dès Commit 0) :**
+
+| Situation | Niveau | Message |
+|-----------|--------|---------|
+| `mode_name` extraction échoue (pas de `:` dans `public_name`) | `WARNING` | `"mode_name extraction failed for game_variant asset_id=%s public_name=%s"` |
+| UUID non résolu dans `translate_playlist_name()` après migration | `WARNING` | `"playlist_name unresolved UUID %s — metadata.duckdb may be incomplete"` |
+| `translate_playlist_name()` reçoit un nom **EN** non trouvé en DB (fallback dict) | `DEBUG` | `"translate_playlist_name fallback to static dict for '%s'"` |
+| `MetadataResolver.resolve()` hits le fallback (non trouvé en DB) | `DEBUG` | `"MetadataResolver: %s/%s not found in metadata.duckdb"` (déjà présent) |
+| Commit 0 populate : N erreurs écrites dans `metadata_populate_errors.txt` | `WARNING` | `"populate_metadata: %d errors written to metadata_populate_errors.txt"` |
+
+**Tests requis (à ajouter dans `tests/test_metadata_i18n.py`) :**
+
+```python
+# 1. v_match_full colonnes EN préservées pour la logique métier
+def test_v_match_full_playlist_name_is_english(): ...
+    # assert "Firefight" in playlist_name (pas "Baptême du feu")
+
+# 2. v_match_full colonnes FR disponibles
+def test_v_match_full_playlist_name_fr_populated(): ...
+    # assert playlist_name_fr is not NULL pour matchs avec playlist connue
+
+# 3. mark_firefight() fonctionne après migration (EN dans playlist_name)
+def test_mark_firefight_still_works_after_v_match_full(): ...
+    # build DataFrame with playlist_name="Firefight" → is_firefight=True
+
+# 4. translate_playlist_name() devient passthrough pour noms déjà traduits
+def test_translate_playlist_name_uuid_logs_warning(caplog): ...
+    # assert WARNING logged, returns "_unknown" label
+
+# 5. mode_name extraction : 27 modes distincts
+def test_game_variants_mode_name_count(): ...
+    # query metadata.duckdb → assert len(DISTINCT mode_name) == 27
+
+# 6. Régression : playlist_canonical_fr regroupe bien les 3 variantes BTB
+def test_btb_variants_share_canonical_fr(): ...
+    # "Big Team Battle", "Big Team Battle: Refresh", "Big Team Social"
+    # → all playlist_canonical_fr == "Grande bataille en équipe"
+
+# 7. metadata_populate_errors.txt créé si extraction échoue
+def test_populate_errors_file_created_on_failure(tmp_path): ...
+    # mock une game_variant sans ":" → assert fichier créé avec 1 ligne
+```
+
+<details>
+<summary>✅ Checklist Commit 11</summary>
+
+- [ ] `PLAYLIST_FR`, `PLAYLIST_EN`, `PAIR_FR` supprimés de `translations.py`
+- [ ] `static/i18n/playlists_fr.json` et `playlists_en.json` supprimés
+- [ ] `translate_playlist_name()` réécrite (passthrough + warning UUID)
+- [ ] `mode_translations` et `playlist_translations` droppées via migration step
+- [ ] `MetadataResolver._resolve_from_table()` nettoyé (autodétection supprimée)
+- [ ] `tests/test_metadata_i18n.py` créé avec les 7 tests ci-dessus
+- [ ] `python -m pytest tests/test_metadata_i18n.py -v` → tous verts
+- [ ] Aucun import de `PLAYLIST_FR`/`PLAYLIST_EN` résiduel (`grep -rn PLAYLIST_FR src/`)
+- [ ] `grep -rn "playlists_fr.json\|playlists_en.json" src/` → 0 hit
+
+</details>
+
+---
+
+##### Commit 11b — Refactor système de traduction des modes (Wave 5)
+
+> **Objectif** : remplacer la logique JSON à 3 niveaux imbriqués (`_prefixes` + mode keys +
+> `_pairs` overrides) par 4 tables dans `metadata.duckdb`. Ajouter une langue = N INSERTs SQL,
+> zéro ligne de Python.
+
+**`refactor(i18n): migrer modes_fr/en.json vers metadata.duckdb`**
+
+**Problème actuel** : `modes_fr.json` + `translate_pair_name()` (80L, `noqa: C901`) gère
+434 combinaisons implicites (14 préfixes × 31 modes) via une cascade 6 étapes difficile à
+auditer et à étendre. Ajouter l'espagnol = créer `modes_es.json` + tester toutes les variantes.
+
+###### DDL — 4 nouvelles tables dans `metadata.duckdb`
+
+```sql
+-- Noms localisés des catégories ("Arena" → "Arène", "BTB" → "Grande bataille...")
+CREATE TABLE IF NOT EXISTS mode_prefix_names (
+    prefix_en  VARCHAR NOT NULL,
+    lang       VARCHAR NOT NULL,
+    name       VARCHAR NOT NULL,
+    PRIMARY KEY (prefix_en, lang)
+);
+
+-- Noms localisés des modes ("Slayer" → "Assassin", "CTF" → "Capture du drapeau")
+CREATE TABLE IF NOT EXISTS mode_name_tr (
+    mode_en    VARCHAR NOT NULL,
+    lang       VARCHAR NOT NULL,
+    name       VARCHAR NOT NULL,
+    PRIMARY KEY (mode_en, lang)
+);
+
+-- Overrides pour cas non combinatoires (préfixes trompeurs, noms complexes sans ":")
+CREATE TABLE IF NOT EXISTS mode_pair_overrides (
+    pattern    VARCHAR NOT NULL,   -- ex: "Assault:Neutral Bomb" (sans " on <carte>")
+    lang       VARCHAR NOT NULL,
+    name       VARCHAR NOT NULL,
+    PRIMARY KEY (pattern, lang)
+);
+
+-- Séparateur de la combinaison préfixe + mode selon la langue
+CREATE TABLE IF NOT EXISTS mode_lang_settings (
+    lang       VARCHAR NOT NULL PRIMARY KEY,
+    separator  VARCHAR NOT NULL DEFAULT ' : '
+);
+```
+
+Volume : **14 + 31 + 11 entrées × 2 langues = 112 lignes** au total. Cache dict Python
+au premier appel (process-level), zéro requête répétée ensuite.
+
+###### Migration depuis les JSON existants
+
+Script à créer : `scripts/migrate_modes_json_to_db.py`
+
+```python
+"""Migration one-shot : modes_fr.json + modes_en.json → metadata.duckdb."""
+import json
+from pathlib import Path
+import duckdb
+
+ROOT = Path(__file__).parent.parent
+LANGS = {"fr": ROOT / "static/i18n/modes_fr.json",
+         "en": ROOT / "static/i18n/modes_en.json"}
+
+def migrate(db_path: Path) -> None:
+    with duckdb.connect(str(db_path)) as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS mode_prefix_names ...")  # DDL ci-dessus
+        # ... (idem autres tables)
+
+        for lang, path in LANGS.items():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            sep = data.get("_separator", ": ")
+            conn.execute("INSERT OR REPLACE INTO mode_lang_settings VALUES (?, ?)", [lang, sep])
+
+            for prefix_en, name in data.get("_prefixes", {}).items():
+                conn.execute(
+                    "INSERT OR REPLACE INTO mode_prefix_names VALUES (?, ?, ?)",
+                    [prefix_en, lang, name],
+                )
+            for mode_en, name in data.items():
+                if not mode_en.startswith("_"):
+                    conn.execute(
+                        "INSERT OR REPLACE INTO mode_name_tr VALUES (?, ?, ?)",
+                        [mode_en, lang, name],
+                    )
+            for pattern, name in data.get("_pairs", {}).items():
+                # Normaliser : strip " on <carte>" pour uniformiser les clés
+                key = pattern.split(" on ", 1)[0].strip()
+                conn.execute(
+                    "INSERT OR REPLACE INTO mode_pair_overrides VALUES (?, ?, ?)",
+                    [key, lang, name],
+                )
+        print(f"Migration OK → {db_path}")
+
+if __name__ == "__main__":
+    migrate(ROOT / "data/warehouse/metadata.duckdb")
+```
+
+###### Nouvelle `translate_pair_name()` — ~30L, sans `noqa`
+
+```python
+# src/ui/translations.py  — version post-migration
+
+def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:
+    """Traduit un pair_name depuis metadata.duckdb.
+
+    Résolution en 3 étapes :
+    1. Override exact (mode_pair_overrides) pour les cas non combinatoires
+    2. Combinatoire générique : préfixe localisé + séparateur + mode localisé
+    3. Mode seul (sans catégorie)
+    """
+    if not name:
+        return None
+    s = str(name).strip()
+    if _is_uuid_like(s):
+        logger.warning("pair_name UUID non résolu : %s", s)
+        return _mode_label("_unknown", lang)
+
+    no_map = s.split(" on ", 1)[0].strip()
+    candidate = _normalize_pair_case(no_map)
+
+    # 1) Override
+    if result := _mode_db_lookup("mode_pair_overrides", candidate, lang):
+        return result
+
+    # 2) Combinatoire
+    if ":" in candidate:
+        prefix_en, mode_en = candidate.split(":", 1)
+        sep = _mode_sep(lang)
+        prefix_loc = _mode_db_lookup("mode_prefix_names", prefix_en.strip(), lang) or prefix_en.strip()
+        mode_loc = _mode_db_lookup("mode_name_tr", mode_en.strip(), lang) or mode_en.strip()
+        return f"{prefix_loc}{sep}{mode_loc}"
+
+    # 3) Mode seul
+    return _mode_db_lookup("mode_name_tr", candidate, lang) or candidate
+
+
+# Helpers cachés (process-level, chargés une fois par langue)
+@lru_cache(maxsize=8)
+def _load_mode_tables(lang: str) -> dict[str, dict[str, str]]:
+    """Charge les 4 tables mode depuis metadata.duckdb en mémoire."""
+    from src.data.repositories._db_context import get_metadata_conn
+    conn = get_metadata_conn()
+    return {
+        "mode_prefix_names":  dict(conn.execute("SELECT prefix_en, name FROM mode_prefix_names WHERE lang=?", [lang]).fetchall()),
+        "mode_name_tr":       dict(conn.execute("SELECT mode_en, name FROM mode_name_tr WHERE lang=?", [lang]).fetchall()),
+        "mode_pair_overrides": dict(conn.execute("SELECT pattern, name FROM mode_pair_overrides WHERE lang=?", [lang]).fetchall()),
+        "separator":          (conn.execute("SELECT separator FROM mode_lang_settings WHERE lang=?", [lang]).fetchone() or (" : ",))[0],
+    }
+
+def _mode_db_lookup(table: str, key: str, lang: str) -> str | None:
+    return _load_mode_tables(lang).get(table, {}).get(key)
+
+def _mode_sep(lang: str) -> str:
+    return _load_mode_tables(lang).get("separator", ": ")
+```
+
+###### Nettoyage après migration
+
+| Action | Artifact |
+|--------|----------|
+| Supprimer | `static/i18n/modes_fr.json` |
+| Supprimer | `static/i18n/modes_en.json` |
+| Supprimer | `load_domain("modes", ...)` dans `translate_pair_name()` |
+| Supprimer | logique à 6 étapes de l'ancienne `translate_pair_name()` |
+| Supprimer | `_normalize_pair_case()` si non utilisée ailleurs |
+| Conserver | `static/i18n/ranks_fr/en.json`, `weapons_fr/en.json`, etc. — hors scope |
+| Archiver  | `scripts/migrate_modes_json_to_db.py` → `scripts/_archive/` après exécution |
+
+**Ajouter une nouvelle langue** (exemple : espagnol) :
+
+```sql
+-- C'est tout ce qu'il faut faire :
+INSERT INTO mode_lang_settings VALUES ('es', ' : ');
+INSERT INTO mode_prefix_names VALUES ('Arena', 'es', 'Arena');
+INSERT INTO mode_prefix_names VALUES ('BTB', 'es', 'Gran Batalla de Equipos');
+-- ... (14 prefixes + 31 modes + 11 overrides = 56 lignes)
+```
+
+###### Tests — `tests/test_translate_pair_name.py`
+
+```python
+# 1. Combinatoire générique
+def test_arena_slayer_fr():
+    assert translate_pair_name("Arena:Slayer on Aquarius", "fr") == "Arène : Assassin"
+
+def test_btb_ctf_fr():
+    assert translate_pair_name("BTB:CTF on Fragmentation", "fr") == "Grande bataille en équipe : Capture du drapeau"
+
+def test_arena_slayer_en():
+    assert translate_pair_name("Arena:Slayer on Aquarius", "en") == "Arena: Slayer"
+
+# 2. Override _pairs
+def test_assault_neutral_bomb_override():
+    assert translate_pair_name("Assault:Neutral Bomb on Curfew", "fr") == "Arène : Bombe neutre"
+
+def test_survive_undead_override():
+    # Cas sans ":" — ne passe PAS par le combinatoire
+    assert translate_pair_name("Survive The Undead 3.0 on TFF | Night Of The Undead", "fr") == "Survivre aux morts-vivants 3.0"
+
+# 3. Mode seul (sans catégorie)
+def test_mode_alone_fr():
+    assert translate_pair_name("Slayer", "fr") == "Assassin"
+
+# 4. Strip " on <carte>" avant lookup
+def test_strip_map_suffix():
+    assert translate_pair_name("Arena:Oddball on Recharge", "fr") == "Arène : Oddball"
+
+# 5. UUID → warning + label inconnu
+def test_uuid_logs_warning(caplog):
+    import logging
+    with caplog.at_level(logging.WARNING):
+        result = translate_pair_name("a446725e-b281-414c-a21e-12345678abcd", "fr")
+    assert "UUID" in caplog.text
+    assert result is not None  # label "_unknown"
+
+# 6. None / vide → None
+def test_none_input():
+    assert translate_pair_name(None, "fr") is None
+    assert translate_pair_name("", "fr") is None
+
+# 7. Cache process-level : 2 appels identiques = 1 seule requête DB
+def test_lru_cache_hit(mocker):
+    load_spy = mocker.spy(translations, "_load_mode_tables")
+    translate_pair_name("Arena:Slayer on Aquarius", "fr")
+    translate_pair_name("Arena:CTF on Recharge", "fr")
+    assert load_spy.call_count == 1  # chargé une fois, pas deux
+
+# 8. Nouvelle langue absente → fallback gracieux (retourne EN brut)
+def test_unknown_lang_fallback():
+    result = translate_pair_name("Arena:Slayer on Aquarius", "de")
+    assert result == "Arena : Slayer"  # préfixe + mode EN (pas de crash)
+
+# 9. Régression : tous les _pairs existants traduits correctement
+@pytest.mark.parametrize("raw,expected", [
+    ("Community:Fiesta Slayer on High Ground", "Fiesta"),
+    ("Husky Raid:Assault on Urban Raid", "Husky Raid"),
+    ("Arena:Shotty Snipes Slayer", "Fusils snipers à grenaille"),
+])
+def test_pairs_overrides_regression(raw, expected):
+    assert translate_pair_name(raw, "fr") == expected
+```
+
+<details>
+<summary>✅ Checklist Commit 11b</summary>
+
+- [ ] `scripts/migrate_modes_json_to_db.py` créé et exécuté sans erreur
+- [ ] 4 tables présentes dans `metadata.duckdb` : `mode_prefix_names`, `mode_name_tr`, `mode_pair_overrides`, `mode_lang_settings`
+- [ ] `SELECT COUNT(*) FROM mode_prefix_names` → 28 (14 × 2 langues)
+- [ ] `SELECT COUNT(*) FROM mode_name_tr` → 62 (31 × 2 langues)
+- [ ] `SELECT COUNT(*) FROM mode_pair_overrides` → 22 (11 × 2 langues)
+- [ ] Nouvelle `translate_pair_name()` implémentée (~30L, sans `noqa: C901`)
+- [ ] `_normalize_pair_case()` supprimée ou conservée si autre usage
+- [ ] `load_domain("modes", ...)` supprimé de `translations.py`
+- [ ] `static/i18n/modes_fr.json` et `modes_en.json` supprimés
+- [ ] `scripts/migrate_modes_json_to_db.py` archivé → `scripts/_archive/`
+- [ ] `tests/test_translate_pair_name.py` créé avec les 9 tests ci-dessus
+- [ ] `python -m pytest tests/test_translate_pair_name.py -v` → tous verts
+- [ ] `grep -rn "modes_fr.json\|modes_en.json\|load_domain.*modes" src/` → 0 hit
+- [ ] Test de régression : `translate_pair_name("Arena:Slayer on Aquarius", "fr")` == `"Arène : Assassin"`
+
+</details>
+
 #### Récapitulatif
 
 ```
+Pré-requis :
+  Commit 0   ──  chore(metadata): peupler maps/playlists/game_variants dans metadata.duckdb
+
 Wave 1 : Fondation (vues SQL + refactor resolver)
-  Commit 1  ──  feat(db): vues v_gamertag_lookup + v_match_full + v_killer_victim_full
-  Commit 2  ──  refactor(resolver): cascade gamertag via v_gamertag_lookup
+  Commit 1   ──  feat(db): vues v_gamertag_lookup + v_match_full + v_killer_victim_full
+  Commit 2   ──  refactor(resolver): cascade gamertag via v_gamertag_lookup
 
 Wave 2 : Migration consommateurs
-  Commit 3  ──  refactor(gamertag): consommateurs directs → vue
-  Commit 4  ──  refactor(kv): killer_victim_repo → v_killer_victim_full
-  Commit 5  ──  refactor(assets): match_registry → v_match_full
+  Commit 3   ──  refactor(gamertag): consommateurs directs → vue
+  Commit 4   ──  refactor(kv): killer_victim_repo → v_killer_victim_full
+  Commit 5   ──  refactor(assets): match_registry → v_match_full
 
 Wave 3 : Nettoyage
-  Commit 6  ──  refactor(xuid): supprimer wrapper inutile
-  Commit 7  ──  refactor(outcome): supprimer dead code
+  Commit 6   ──  refactor(xuid): supprimer wrapper inutile
+  Commit 7   ──  refactor(outcome): supprimer dead code
 
 Wave 4 : Migration schéma + médailles
-  Commit 8  ──  feat(migration): supprimer highlight_events.gamertag
-  Commit 9  ──  feat(analysis): helper resolve_medal_name
+  Commit 8   ──  feat(migration): supprimer highlight_events.gamertag
+  Commit 9   ──  feat(analysis): helper resolve_medal_name
 
-Wave 5 : Audit de clôture
-  Commit 10 ──  chore(audit): vérification finale abstraction v5.8
+Wave 5 : Audit + nettoyage couche i18n
+  Commit 10  ──  chore(audit): vérification finale abstraction v5.8
+  Commit 11  ──  refactor(i18n): supprimer dicts/JSON playlists obsolètes
+  Commit 11b ──  refactor(i18n): migrer modes_fr/en.json → metadata.duckdb
 ```
 
 ### Dépendances entre commits
 
 ```
+Commit 0 (metadata pré-requis)
+  └──→ Commit 1 (vues SQL)
+        └──→ Commit 11b (migration modes → metadata.duckdb)
+
 Commit 1 (vues SQL)
   ├──→ Commit 2 (resolver)
   │       └──→ Commit 3 (gamertag consommateurs)
   │               └──→ Commit 8 (drop highlight_events.gamertag)
   ├──→ Commit 4 (kv consommateurs)
   └──→ Commit 5 (assets consommateurs)
+        └──→ Commit 11 (nettoyage playlists i18n)
 
 Commit 6 (xuid wrapper)     ← indépendant
 Commit 7 (outcomes)          ← indépendant
 Commit 9 (médailles)         ← indépendant
 
 Commit 10 (audit de clôture) ← dépend de TOUS les commits précédents
+Commit 11 (playlists i18n)   ← après Commit 5 (assets via v_match_full)
+Commit 11b (modes i18n)      ← après Commit 0 (metadata.duckdb peuplée)
 ```
 
 ---
