@@ -61,9 +61,11 @@ class KillerVictimMixin:
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
         limit_sql = f"LIMIT {int(limit)}" if limit else ""
 
-        # Déterminer la source : shared (v5) ou locale (compat)
+        # Déterminer la source : vue v6 > shared v5 > locale (compat)
         table_ref = "killer_victim_pairs"
-        if self._has_shared_table("killer_victim_pairs"):
+        if self._has_shared_view("v_killer_victim_full"):
+            table_ref = "shared.v_killer_victim_full"
+        elif self._has_shared_table("killer_victim_pairs"):
             table_ref = "shared.killer_victim_pairs"
 
         sql = f"""
@@ -156,7 +158,13 @@ class KillerVictimMixin:
         """
         conn = self._get_connection()
 
-        # Vérifier shared d'abord (v5)
+        # Vérifier vue v6 puis shared v5 (compat)
+        if self._has_shared_view("v_killer_victim_full"):
+            try:
+                row = conn.execute("SELECT 1 FROM shared.v_killer_victim_full LIMIT 1").fetchone()
+                return row is not None
+            except Exception:
+                return False
         if self._has_shared_table("killer_victim_pairs"):
             try:
                 row = conn.execute("SELECT 1 FROM shared.killer_victim_pairs LIMIT 1").fetchone()
