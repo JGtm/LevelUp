@@ -60,8 +60,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "en": "☁️ Choose Azure",
     },
     "setup_footer_note": {
-        "fr": "Les deux méthodes nécessitent une App Azure. La méthode Xbox (Device Code) est de loin la plus simple : pas de secret ni de Redirect URI.",
-        "en": "Both methods require an Azure App. The Xbox (Device Code) method is by far the simplest: no secret or Redirect URI needed.",
+        "fr": (
+            "Les deux méthodes nécessitent une App Azure. La méthode Xbox (Device Code) est de loin la plus simple : pas de secret ni de Redirect URI.\n\n"
+            "📖 Pas encore d'App Azure ? Consultez [docs/FR/CONFIGURATION.md](docs/FR/CONFIGURATION.md) — **étapes 1 et 2** de la section *Configuration Azure*."
+        ),
+        "en": (
+            "Both methods require an Azure App. The Xbox (Device Code) method is by far the simplest: no secret or Redirect URI needed.\n\n"
+            "📖 No Azure App yet? See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) — **steps 1 and 2** of the *Azure Configuration* section."
+        ),
     },
     # ── Parcours Xbox ──────────────────────────────────────────────────────
     "setup_xbox_step1_title": {
@@ -73,13 +79,15 @@ STRINGS: dict[str, dict[str, str]] = {
             "Même avec la connexion Xbox, une **App Azure** est nécessaire (elle sert de passerelle OAuth).\n\n"
             "**Important** : dans Azure Portal → Authentication, ajoutez `http://localhost:8501` "
             "comme **Redirect URI** (type Web).\n\n"
-            "📖 [Guide pas à pas avec captures d'écran](docs/CONFIGURATION.md#azure-configuration)"
+            "📖 [Guide de configuration avec captures d'écran](docs/FR/CONFIGURATION.md) "
+            "— suivez les **étapes 1 et 2** (Créer l'app + Activer Device Code Flow)."
         ),
         "en": (
             "Even with Xbox login, an **Azure App** is needed (it serves as the OAuth gateway).\n\n"
             "**Important**: in Azure Portal → Authentication, add `http://localhost:8501` "
             "as a **Redirect URI** (Web type).\n\n"
-            "📖 [Step-by-step guide with screenshots](docs/CONFIGURATION.md#azure-configuration)"
+            "📖 [Configuration guide with screenshots](docs/CONFIGURATION.md) "
+            "— follow **steps 1 and 2** (Create the app + Enable Device Code Flow)."
         ),
     },
     "setup_xbox_step2_title": {
@@ -136,12 +144,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "fr": (
             "Pour accéder à l'API Halo Infinite, vous devez créer une application "
             "dans [Azure Portal](https://portal.azure.com/) → **App registrations**.\n\n"
-            "📖 [Guide détaillé](docs/CONFIGURATION.md#azure-configuration)"
+            "📖 [Guide de configuration avec captures d'écran](docs/FR/CONFIGURATION.md) "
+            "— suivez les **étapes 1 et 2** de la section *Configuration Azure*."
         ),
         "en": (
             "To access the Halo Infinite API, you need to create an application "
             "in [Azure Portal](https://portal.azure.com/) → **App registrations**.\n\n"
-            "📖 [Detailed guide](docs/CONFIGURATION.md#azure-configuration)"
+            "📖 [Configuration guide with screenshots](docs/CONFIGURATION.md) "
+            "— follow **steps 1 and 2** of the *Azure Configuration* section."
         ),
     },
     "setup_client_id": {
