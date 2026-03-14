@@ -60,17 +60,10 @@ def get_all_gamertags(db_path: str) -> list[str]:
     try:
         with duckdb_read_only(shared) as conn:
             rows = conn.execute(
-                """
-                SELECT DISTINCT gamertag FROM (
-                    SELECT gamertag FROM xuid_aliases WHERE gamertag IS NOT NULL
-                    UNION
-                    SELECT gamertag FROM highlight_events WHERE gamertag IS NOT NULL
-                )
-                ORDER BY gamertag
-                """
+                "SELECT DISTINCT gamertag FROM v_gamertag_lookup ORDER BY gamertag"
             ).fetchall()
         result = [str(r[0]) for r in rows if r[0]]
-        logger.debug("%d gamertags chargés (xuid_aliases + highlight_events)", len(result))
+        logger.debug("%d gamertags chargés (v_gamertag_lookup)", len(result))
         return result
     except Exception:
         logger.error("get_all_gamertags échoué", exc_info=True)
@@ -96,14 +89,7 @@ def resolve_gamertag_to_xuid(db_path: str, gamertag: str) -> str | None:
     try:
         with duckdb_read_only(shared) as conn:
             row = conn.execute(
-                "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
-                [gamertag],
-            ).fetchone()
-            if row:
-                return str(row[0])
-            # Fallback : highlight_events (gamertags absents de xuid_aliases)
-            row = conn.execute(
-                "SELECT xuid FROM highlight_events WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
+                "SELECT xuid FROM v_gamertag_lookup WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
                 [gamertag],
             ).fetchone()
         return str(row[0]) if row else None

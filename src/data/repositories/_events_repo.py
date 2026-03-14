@@ -93,15 +93,29 @@ class EventsMixin:
         conn = self._get_connection()
 
         try:
-            result = conn.execute(
-                """
-                SELECT event_type, time_ms, xuid, gamertag, type_hint
-                FROM shared.highlight_events
-                WHERE match_id = ?
-                ORDER BY time_ms ASC NULLS LAST
-                """,
-                [match_id],
-            )
+            if self._has_shared_view("v_gamertag_lookup"):
+                result = conn.execute(
+                    """
+                    SELECT he.event_type, he.time_ms, he.xuid,
+                           COALESCE(vg.gamertag, he.gamertag) AS gamertag,
+                           he.type_hint
+                    FROM shared.highlight_events he
+                    LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = he.xuid
+                    WHERE he.match_id = ?
+                    ORDER BY he.time_ms ASC NULLS LAST
+                    """,
+                    [match_id],
+                )
+            else:
+                result = conn.execute(
+                    """
+                    SELECT event_type, time_ms, xuid, gamertag, type_hint
+                    FROM shared.highlight_events
+                    WHERE match_id = ?
+                    ORDER BY time_ms ASC NULLS LAST
+                    """,
+                    [match_id],
+                )
             columns = ["event_type", "time_ms", "xuid", "gamertag", "type_hint"]
             return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
         except Exception as e:

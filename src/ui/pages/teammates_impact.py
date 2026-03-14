@@ -47,11 +47,29 @@ def _load_highlight_events(
     except Exception:
         return None
 
-    events_query = f"""
-        SELECT match_id, xuid::TEXT as xuid, gamertag, event_type, time_ms
-        FROM {shared_alias}.highlight_events
-        WHERE match_id IN ({{}})
-    """.format(", ".join(["?" for _ in match_ids]))
+    # Utiliser v_gamertag_lookup si disponible pour résoudre les gamertags correctement
+    has_view = False
+    try:
+        conn.execute(f"SELECT 1 FROM {shared_alias}.v_gamertag_lookup LIMIT 1")
+        has_view = True
+    except Exception:
+        pass
+
+    if has_view:
+        events_query = (
+            f"SELECT he.match_id, he.xuid::TEXT as xuid, "
+            f"COALESCE(vg.gamertag, he.gamertag) as gamertag, "
+            f"he.event_type, he.time_ms "
+            f"FROM {shared_alias}.highlight_events he "
+            f"LEFT JOIN {shared_alias}.v_gamertag_lookup vg ON vg.xuid = he.xuid::TEXT "
+            f"WHERE he.match_id IN ({', '.join(['?' for _ in match_ids])})"
+        )
+    else:
+        events_query = (
+            f"SELECT match_id, xuid::TEXT as xuid, gamertag, event_type, time_ms "
+            f"FROM {shared_alias}.highlight_events "
+            f"WHERE match_id IN ({', '.join(['?' for _ in match_ids])})"
+        )
 
     events_result = conn.execute(events_query, match_ids).fetchall()
 
@@ -170,6 +188,68 @@ def _render_ranking_table(
             summary_cols[1].error(t("tmi_boulet_label", boulet=boulet))
 
 
+def _render_impact_from_events(
+    events_df: pl.DataFrame,
+    matches_df: pl.DataFrame,
+    match_ids: list[str],
+    friend_xuids: list[str],
+    xuid: str,
+) -> None:
+    """Calcule les métriques d'impact et affiche heatmap + ranking."""
+    all_friend_xuids = {str(x) for x in friend_xuids}
+    all_friend_xuids.add(str(xuid).strip())
+
+    (
+        first_bloods,
+        clutch_finishers,
+        last_casualties,
+        last_group_kills,
+        first_group_deaths,
+        scores,
+    ) = get_all_impact_events(events_df, matches_df, friend_xuids=all_friend_xuids)
+
+    if not scores:
+        st.info(t("tm_impact_no_events_players"))
+        return
+
+    gamertags = list(scores.keys())
+    impact_match_set = set(
+        list(first_bloods.keys())
+        + list(clutch_finishers.keys())
+        + list(last_casualties.keys())
+        + list(last_group_kills.keys())
+        + list(first_group_deaths.keys())
+    )
+    sorted_match_ids = [m for m in match_ids if m in impact_match_set]
+
+    match_outcomes: dict[str, int] = {}
+    if not matches_df.is_empty():
+        for row in matches_df.iter_rows(named=True):
+            match_outcomes[str(row["match_id"])] = int(row["outcome"])
+
+    impact_matrix = build_impact_matrix(
+        first_bloods,
+        clutch_finishers,
+        last_casualties,
+        last_group_kills,
+        first_group_deaths,
+        match_ids=sorted_match_ids,
+        gamertags=gamertags,
+        match_outcomes=match_outcomes,
+    )
+
+    st.subheader(t("tm_impact_heatmap"))
+    fig = plot_friends_impact_heatmap(
+        impact_matrix,
+        title=None,
+        max_matches=len(sorted_match_ids),
+    )
+    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+
+    st.subheader(t("tm_impact_ranking"))
+    _render_ranking_table(scores, first_bloods, clutch_finishers, last_casualties)
+
+
 def render_impact_taquinerie(
     db_path: str,
     xuid: str,
@@ -177,15 +257,7 @@ def render_impact_taquinerie(
     friend_xuids: list[str],
     db_key: tuple[int, int] | None = None,
 ) -> None:
-    """Affiche l'onglet Impact (Sprint 12).
-
-    Args:
-        db_path: Chemin vers la DB principale.
-        xuid: XUID du joueur principal.
-        match_ids: Liste des match_id à analyser.
-        friend_xuids: Liste des XUIDs des coéquipiers sélectionnés.
-        db_key: Clé de cache (optionnel).
-    """
+    """Affiche l'onglet Impact (Sprint 12)."""
     st.subheader(t("tm_impact_header"))
 
     if len(friend_xuids) < 2:
@@ -202,7 +274,6 @@ def render_impact_taquinerie(
         repo = DuckDBRepository(db_path, xuid.strip())
         conn = repo._get_connection()
 
-        # Attacher shared_matches.duckdb
         _shared_db = get_shared_matches_path_from_player(db_path)
         shared_alias = (
             ensure_shared_attached(conn, _shared_db) if _shared_db and _shared_db.exists() else None
@@ -211,7 +282,6 @@ def render_impact_taquinerie(
             st.warning(t("tmi_no_shared_db"))
             return
 
-        # Charger les événements depuis shared_matches
         events_df = _load_highlight_events(conn, match_ids, shared_alias)
         if events_df is None:
             st.info(t("tmi_no_events"))
@@ -220,71 +290,8 @@ def render_impact_taquinerie(
             st.info(t("tm_impact_no_events_matches"))
             return
 
-        # Charger les outcomes depuis shared_matches
         matches_df = _load_match_outcomes(conn, match_ids, xuid, shared_alias)
-
-        # Inclure le joueur principal + tous les amis sélectionnés
-        all_friend_xuids = {str(x) for x in friend_xuids}
-        all_friend_xuids.add(str(xuid).strip())
-
-        # Calculer les événements d'impact
-        (
-            first_bloods,
-            clutch_finishers,
-            last_casualties,
-            last_group_kills,
-            first_group_deaths,
-            scores,
-        ) = get_all_impact_events(events_df, matches_df, friend_xuids=all_friend_xuids)
-
-        if not scores:
-            st.info(t("tm_impact_no_events_players"))
-            return
-
-        gamertags = list(scores.keys())
-        # Conserver l'ordre chronologique d'origine (match_ids est déjà trié par start_time)
-        impact_match_set = set(
-            list(first_bloods.keys())
-            + list(clutch_finishers.keys())
-            + list(last_casualties.keys())
-            + list(last_group_kills.keys())
-            + list(first_group_deaths.keys())
-        )
-        sorted_match_ids = [m for m in match_ids if m in impact_match_set]
-
-        # Créer un dict des outcomes pour la heatmap
-        match_outcomes = {}
-        if not matches_df.is_empty():
-            for row in matches_df.iter_rows(named=True):
-                match_outcomes[str(row["match_id"])] = int(row["outcome"])
-
-        # Construire la matrice d'impact
-        impact_matrix = build_impact_matrix(
-            first_bloods,
-            clutch_finishers,
-            last_casualties,
-            last_group_kills,
-            first_group_deaths,
-            match_ids=sorted_match_ids,
-            gamertags=gamertags,
-            match_outcomes=match_outcomes,
-        )
-
-        # Métriques résumées (masquées à la demande de l'utilisateur)
-        # _render_impact_stats(first_bloods, clutch_finishers, last_casualties)
-
-        # Heatmap
-        st.subheader(t("tm_impact_heatmap"))
-        fig = plot_friends_impact_heatmap(
-            impact_matrix,
-            title=None,
-            max_matches=len(sorted_match_ids),
-        )
-        st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-
-        # Tableau de ranking
-        st.subheader(t("tm_impact_ranking"))
-        _render_ranking_table(scores, first_bloods, clutch_finishers, last_casualties)
+        _render_impact_from_events(events_df, matches_df, match_ids, friend_xuids, xuid)
 
     except Exception as e:
         st.warning(t("error_chart", error=e))
