@@ -24,12 +24,18 @@
 - Audit complet : ~260 emplacements dans ~80 fichiers lisant directement des colonnes dénormalisées
 - Plan documenté dans `.ai/PLAN_ABSTRACTION_RESOLUTION.md`
 - 5 volets (A: gamertags, B: outcomes, C: assets, D: médailles, E: killer/victim)
-- 4 waves / 9 commits / 43 tests nouveaux / 3 vues SQL / ~20 fichiers prod modifiés
+- 4 waves / 9 commits / 43 tests nouveaux / 3 vues SQL / ~25 fichiers prod modifiés
 - Décision : ON GARDE `match_participants.gamertag` et `kv.killer_gamertag` comme fallback dans les vues
 - BACKLOG.md mis à jour : sections dette technique pointent vers le plan v5.8
 - Principe : "Les tables stockent des IDs. Les vues résolvent les noms."
 
-**Prochaine étape** : Validation utilisateur du plan, puis création branche `refactor/id-resolution-cleanup` et implémentation Wave 1.
+**Audit complémentaire (3 agents)** :
+- **Agent SQL** : 62 nouveaux hits SQL non couverts dans le plan initial (orchestrator.py 12 hits, _weapon_kills_repo.py 7 hits, career_encounters_data.py 7 hits, _discord_queries.py 6 hits, etc.)
+- **Agent Polars** : 259 opérations Polars auditées → AUCUN changement code requis (les vues résolvent les noms en SQL avant Polars)
+- **Agent Patterns** : 8 patterns ID→nom vérifiés (teams, ranks, playlists, weapons, commendations, medals, personal scores, labels) → tous déjà fonctionnels, aucune lacune critique
+- Plan mis à jour avec fichiers supplémentaires dans A.3, C.2.3, E.0 + sections Impact Polars et Autres Patterns
+
+**Prochaine étape** : Création branche `refactor/id-resolution-cleanup` depuis `analysis/weapon-parser-rewrite` et implémentation Wave 1.
 
 ### [2025-07-19] — Vérification finale cleanup match_stats : logging + qualité
 
