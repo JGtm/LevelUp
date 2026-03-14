@@ -598,6 +598,63 @@ L'audit a vérifié 8 patterns de résolution non couverts par le plan v5.8 :
 
 ---
 
+## Stratégie DB : Travailler sur une copie `shared_matches_v2.duckdb`
+
+### Principe
+
+Plutôt que de modifier la DB de production directement, tout le travail v5.8 se fait
+sur une **copie `shared_matches_v2.duckdb`**. La prod n'est jamais touchée jusqu'au
+bascule final.
+
+```
+│ Production (intacte)            │  Développement v5.8              │
+│ shared_matches.duckdb           │  shared_matches_v2.duckdb       │
+│ Version v5.7 (current)          │  Version v5.8 (en cours)        │
+│ Utilisée par l'app Streamlit    │  Utilisée sur la branche refactor│
+│ Ne jamais modifier              │  Toutes les vues + DROP column  │
+```
+
+### Setup (avant Wave 1)
+
+```bash
+# 1. Copier la DB de prod
+cp data/warehouse/shared_matches.duckdb data/warehouse/shared_matches_v2.duckdb
+
+# 2. Pointer db_profiles.json vers la v2 pour le dev
+# (modifier le champ "shared_db_path" ou équivalent)
+# OU utiliser une variable d'environnement :
+export LEVELUP_SHARED_DB=data/warehouse/shared_matches_v2.duckdb
+```
+
+> Vérifier comment `db_profiles.json` définit le chemin de `shared_matches.duckdb`
+> et adapter la stratégie de surcharge en conséquence.
+
+### Bascule finale (après Wave 5 — audit OK)
+
+```bash
+# La v1 devient l'archive, la v2 devient prod
+mv data/warehouse/shared_matches.duckdb data/warehouse/shared_matches_v1_backup_$(date +%Y%m%d).duckdb
+mv data/warehouse/shared_matches_v2.duckdb data/warehouse/shared_matches.duckdb
+
+# Remettre db_profiles.json sur le chemin par défaut (shared_matches.duckdb)
+```
+
+### Avantages
+
+| Avant (modif directe) | Avec copie v2 |
+|-----------------------|---------------|
+| Backup manuel obligatoire avant commit 8 | La v1 est l'archive automatique |
+| Erreur = rollback complexe | Rollback = supprimer v2, relancer avec v1 |
+| App Streamlit potentiellement cassée pendant dev | App tourne sur v1 (stable) pendant tout le chantier |
+| `DROP COLUMN` irréversible en prod | `DROP COLUMN` sur la copie seulement |
+
+### Remarque sur les tests
+
+Les tests unitaires créent leurs propres DB temporaires `tmp_path` — ils ne lisent
+pas `shared_matches_v2.duckdb`. La stratégie v2 n'affecte donc pas la suite de tests.
+
+---
+
 ## Ordonnancement par Commits
 
 ### Branche : `refactor/id-resolution-cleanup` (depuis `analysis/weapon-parser-rewrite`)
@@ -606,6 +663,9 @@ L'audit a vérifié 8 patterns de résolution non couverts par le plan v5.8 :
 # Création de la branche v5.8
 git checkout analysis/weapon-parser-rewrite
 git checkout -b refactor/id-resolution-cleanup
+
+# Setup DB v2 (avant de commencer)
+cp data/warehouse/shared_matches.duckdb data/warehouse/shared_matches_v2.duckdb
 ```
 
 Le travail est découpé en **waves** (groupes de commits) pour limiter le risque
@@ -646,7 +706,8 @@ et permettre de valider à chaque étape.
 | 8 | `feat(migration): supprimer highlight_events.gamertag + nettoyer resolver` | A.4 | ÉLEVé | 7 (resolver, engine_connections, _events.py, migration step, __init__, explorer_data, +tests) |
 | 9 | `feat(analysis): helper resolve_medal_name depuis metadata.duckdb` | D | FAIBLE | 2 + 1 test |
 
-> ⚠️ **Backup impératif** avant le commit 8 : `shared_matches.duckdb`.
+> ✅ **Aucun backup manuel requis** : on travaille sur `shared_matches_v2.duckdb`.
+> La v1 de prod reste intacte. En cas de problème : `rm shared_matches_v2.duckdb` et recommencer.
 
 #### Wave 5 — Audit de clôture (1 commit)
 
@@ -664,10 +725,10 @@ grep -rn "match_participants.*gamertag\|highlight_events.*gamertag" src/ scripts
 grep -rn "match_registry.*map_name\|match_registry.*playlist_name" src/ scripts/ --include="*.py"
 grep -rn "killer_victim_pairs.*killer_gamertag\|killer_victim_pairs.*victim_gamertag" src/ scripts/ --include="*.py"
 
-# 2. Vérifier que les vues existent dans la DB
+# 2. Vérifier que les vues existent dans la DB v2
 python -c "
 import duckdb
-conn = duckdb.connect('data/warehouse/shared_matches.duckdb')
+conn = duckdb.connect('data/warehouse/shared_matches_v2.duckdb')
 views = conn.execute(\"SELECT view_name FROM information_schema.views WHERE table_schema = 'main'\").fetchall()
 expected = {'v_gamertag_lookup', 'v_match_full', 'v_killer_victim_full'}
 found = {v[0] for v in views}
@@ -680,16 +741,21 @@ conn.close()
 # 3. Lancer la suite de tests complète
 python -m pytest tests/ -q --ignore=tests/integration
 
-# 4. Vérifier que highlight_events.gamertag n'existe plus
+# 4. Vérifier que highlight_events.gamertag n'existe plus dans v2
 python -c "
 import duckdb
-conn = duckdb.connect('data/warehouse/shared_matches.duckdb')
+conn = duckdb.connect('data/warehouse/shared_matches_v2.duckdb')
 cols = conn.execute(\"SELECT column_name FROM information_schema.columns WHERE table_name='highlight_events'\").fetchall()
 cols = [c[0] for c in cols]
 assert 'gamertag' not in cols, 'ERREUR : gamertag encore présent dans highlight_events'
 print('OK : gamertag absent de highlight_events')
 conn.close()
 "
+
+# 5. Bascule finale (si tous les critères OK)
+mv data/warehouse/shared_matches.duckdb data/warehouse/shared_matches_v1_backup_$(date +%Y%m%d).duckdb
+mv data/warehouse/shared_matches_v2.duckdb data/warehouse/shared_matches.duckdb
+echo "Bascule OK — v2 est maintenant la prod"
 ```
 
 **Critères de succès** :
