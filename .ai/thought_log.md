@@ -7,6 +7,30 @@
 
 ## Journal
 
+### [2026-03-14] — Commit 0 : populate_metadata_from_discovery + conformité 500/80L
+
+**Statut** : Complété
+
+**Décision technique** :
+1. `scripts/populate_metadata_from_discovery.py` entièrement réécrit pour v5.1+ :
+   - `get_unique_asset_ids_from_players()` (lisait `match_stats` supprimée) → `get_unique_asset_ids()` (lit `match_registry` dans shared_matches.duckdb)
+   - DDL étendu avec colonnes i18n (name_en, name_fr, mode_name, playlist_canonical_*)
+   - INSERTs avec ON CONFLICT + name_en
+   - `enrich_i18n()` ajoutée (calcul FR depuis mode_translations / playlist_translations)
+   - `--all-players` supprimé (obsolète en v5.1)
+2. Conformité 500/80L : DDL + enrich_i18n extraits dans `scripts/_metadata_db.py` (230L)
+   - populate_metadata_from_discovery.py : 359L, max fonction = 79L ✓
+   - _metadata_db.py : 230L, max fonction = 41L ✓
+3. Deux bugs de régression corrigés (pré-existants sur la branche, non liés à Commit 0) :
+   - `_data_loader.py` : fallback `match_stats` player DB quand shared est indisponible (corrections tests citations integration)
+   - `test_pve_scoreboard_integration.py` : ajout table `weapon_kills` dans fixture + `top_weapon_id` dans expected_keys
+
+**Résultats** : 4567 tests stables passent, 18 tests intégration passent (0 échec)
+
+**Branche** : `refactor/id-resolution-cleanup`
+
+---
+
 ### [2026-03-14] — perf(weapons) : déduplication match_ids dans backfill --all
 
 **Statut** : Complété

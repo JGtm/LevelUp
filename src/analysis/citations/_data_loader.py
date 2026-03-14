@@ -98,6 +98,21 @@ class CitationDataLoaderMixin:
                         columns = [desc[0] for desc in result.description]
                         return dict(zip(columns, row, strict=False))
 
+                # Fallback : table match_stats locale (tests / environnements sans shared)
+                tables = conn.execute(
+                    "SELECT table_name FROM information_schema.tables "
+                    "WHERE table_schema = 'main' AND table_name = 'match_stats'"
+                ).fetchall()
+                if tables:
+                    result = conn.execute(
+                        "SELECT * FROM match_stats WHERE match_id = ? LIMIT 1",
+                        [match_id],
+                    )
+                    row = result.fetchone()
+                    if row is not None:
+                        columns = [desc[0] for desc in result.description]
+                        return dict(zip(columns, row, strict=False))
+
                 return {}
             except Exception:
                 logger.debug("load_match_stats: erreur pour match_id=%s", match_id, exc_info=True)
