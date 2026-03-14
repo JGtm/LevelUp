@@ -345,6 +345,24 @@ def _create_shared_for_scoreboard(tmp_path: Path) -> tuple[Path, Path, Path]:
     # Autre médaille (non Perfect Kill) pour xuid_a → ne doit PAS être comptée
     sh.execute("INSERT INTO medals_earned VALUES ('match-sc01', 'xuid_a', 9999999999, 5)")
 
+    # weapon_kills : requis par load_match_scoreboard (top_weapon_id)
+    sh.execute("""
+        CREATE TABLE IF NOT EXISTS weapon_kills (
+            match_id   VARCHAR NOT NULL,
+            xuid       VARCHAR NOT NULL,
+            weapon_id  INTEGER NOT NULL
+        )
+    """)
+    # xuid_a a tué 3 fois avec l'arme 100
+    sh.executemany(
+        "INSERT INTO weapon_kills VALUES (?, ?, ?)",
+        [
+            ("match-sc01", "xuid_a", 100),
+            ("match-sc01", "xuid_a", 100),
+            ("match-sc01", "xuid_a", 100),
+        ],
+    )
+
     sh.close()
     return stats_path, shared_path, meta_path
 
@@ -526,6 +544,7 @@ class TestScoreboardIntegration:
             "damage_taken",
             "avg_life_seconds",
             "perfect_kills",
+            "top_weapon_id",
         }
         assert len(result) == 5
         for entry in result:
