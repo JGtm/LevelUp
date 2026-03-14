@@ -256,8 +256,20 @@ Les fichiers qui bypass le repo (SQL direct sur `gamertag`) doivent être migré
 | `career_encounters_data.py` | 3× `match_participants.gamertag` | → JOIN `v_gamertag_lookup` |
 | `_discord_queries.py` | `match_participants.gamertag` combiné | → JOIN `v_gamertag_lookup` |
 | `_calibration_loaders.py` | 3× requêtes avec gamertag | → JOIN `v_gamertag_lookup` |
-Les fichiers qui passent par le repo (`_roster_loader.py`, `_encounter_loader.py`,
-`_events_repo.py`) sont OK — ils seront mis à jour indirectement via le refactoring du mixin.
+> **`_roster_loader.py`**, **`_encounter_loader.py`** et **`_events_repo.py`** : couverts
+> **indirectement** par Commit 2 — ils appellent `self.resolve_gamertag()` via le mixin,
+> pas de SQL direct sur les colonnes gamertag. Aucune modification requise dans ces fichiers.
+
+#### Décision explicite — fichiers découverts sans commit assigné
+
+| Fichier | Mécanisme | Décision |
+|---------|-----------|----------|
+| `_performance.py`, `_skill_rating.py` | Via mixin → `resolve_gamertag()` | ✅ Couverts par Commit 2 |
+| `_calibration_loaders.py` | Via mixin / repo | ✅ Couvert par Commit 2 |
+| `_weapon_kills_repo.py` | SQL direct `highlight_events.gamertag` ×4 | → Ajouter à Commit 3 |
+| `_discord_queries.py` | SQL direct `match_participants.gamertag` + noms assets | → Commit 3 (gamertag) + Commit 5 (assets) |
+| `media_library_data.py`, `match_view_logic.py` | Passent par `load_matches()` | ✅ Couverts par C.2.2 (`mv_player_matches`) |
+| `setup_smoke_test_logic.py` | 3 requêtes diagnostiques intentionnellement directes | **Garder direct** — ne pas migrer |
 
 ### A.4 Suppression `highlight_events.gamertag`
 
@@ -266,7 +278,7 @@ Après A.1–A.3 :
 - Le resolver ne l'utilise plus (ou en fallback transitoire)
 - `explorer_data.py` migré sur la vue
 
-→ Migration de schéma pour supprimer la colonne (voir Phase D pour les détails migration).
+→ Migration de schéma pour supprimer la colonne (migration step détaillé en Wave 4, Commit 8).
 
 ### A.5 Décision `match_participants.gamertag`
 
@@ -316,14 +328,29 @@ variante légitime pour les pages média.
 2. **Garder** `get_outcome_map(lang)` comme référence canonique (i18n, multilingue).
 3. **Garder** `resolve_outcome(row)` — ce n'est pas un doublon, elle ajoute la résolution
    couleur (responsabilité UI légitime). Mais documenter qu'elle dépend de `get_outcome_map()`.
-4. **Ajouter un alias** dans `refdata.py` qui pointe vers `get_outcome_map` pour que les
-   modules domain puissent l'utiliser sans importer `i18n` :
+4. **Déplacer `get_outcome_map()`** vers `src/data/domain/_refdata_outcomes.py` (couche data)
+   pour éviter l'import circulaire `data → ui` :
+
+   > ⚠️ **Règle architecturale** : `data → ui` est interdit. La solution est de déplacer
+   > `get_outcome_map()` dans la couche data en remplaçant l'appel `t()` par un dict
+   > statique FR/EN (4 outcomes stables, ne changent pas). `src/ui/i18n/__init__.py`
+   > devient un re-export de la version data.
+
    ```python
-   # Dans refdata.py — pour usage hors UI (scripts, analysis)
-   def get_outcome_label(outcome: int, lang: str = "fr") -> str:
-       """Retourne le label traduit d'un code outcome."""
-       from src.ui.i18n import get_outcome_map
-       return get_outcome_map(lang).get(outcome, "?")
+   # src/data/domain/_refdata_outcomes.py
+   _OUTCOME_LABELS: dict[str, dict[int, str]] = {
+       "fr": {1: "Égalité", 2: "Victoire", 3: "Défaite", 4: "Non terminé"},
+       "en": {1: "Tie", 2: "Win", 3: "Loss", 4: "Did Not Finish"},
+   }
+
+   def get_outcome_map(lang: str = "fr") -> dict[int, str]:
+       """Retourne {code: label} pour les outcomes. Aucune dépendance vers ui."""
+       return _OUTCOME_LABELS.get(lang, _OUTCOME_LABELS["fr"])
+   ```
+
+   `src/ui/i18n/__init__.py` : remplacer l'implémentation existante par :
+   ```python
+   from src.data.domain._refdata_outcomes import get_outcome_map  # re-export
    ```
 
 ---
@@ -365,7 +392,9 @@ les 4 colonnes `*_name` et est la source principale des pages UI via `load_match
 Remplace les accès directs à `match_registry` pour toute requête ayant besoin de noms :
 
 ```sql
--- Requiert ATTACH 'metadata.duckdb' AS meta (déjà fait dans le repo)
+-- Requiert ATTACH 'metadata.duckdb' AS meta à chaque connexion qui requête v_match_full.
+-- ⚠️ Pas encore fait dans le repo — créer ensure_metadata_attached(conn) dans src/utils/db.py
+--    sur le modèle de ensure_shared_attached() (ligne 128). À intégrer au Commit 1.
 CREATE OR REPLACE VIEW v_match_full AS
 SELECT
     mr.match_id,
@@ -499,9 +528,9 @@ Quand tous les consommateurs passent par `v_match_full` ou `mv_player_matches` :
 
 ---
 
-## Volet E — Paires Killer/Victim (killer_gamertag, victim_gamertag)
+## Volet D — Paires Killer/Victim (killer_gamertag, victim_gamertag)
 
-### E.0 Audit de surface (révisé)
+### D.0 Audit de surface (révisé)
 
 | Catégorie | Fichiers | Emplacements |
 |-----------|:--------:|:------------:|
@@ -520,7 +549,7 @@ Quand tous les consommateurs passent par `v_match_full` ou `mv_player_matches` :
 | `_encounter_loader.py` | 1 | `killer_victim_pairs` direct (supplémentaire) |
 | `weapon_extraction_service.py` | 2 | `killer_gamertag` / `victim_gamertag` dans extraction |
 
-### E.1 Problème
+### D.1 Problème
 
 Les colonnes `killer_gamertag` et `victim_gamertag` dans `killer_victim_pairs` sont des
 **snapshots figés** au moment du sync, exactement comme `match_participants.gamertag`.
@@ -529,7 +558,7 @@ Si un joueur change de gamertag, les paires K/V affichent l'ancien nom.
 De plus, la source est `highlight_events.gamertag` (données brutes, possiblement corrompues
 avec NUL bytes) → les paires K/V héritent des défauts de la source.
 
-### E.2 Vue SQL — `v_killer_victim_full`
+### D.2 Vue SQL — `v_killer_victim_full`
 
 ```sql
 CREATE OR REPLACE VIEW v_killer_victim_full AS
@@ -552,7 +581,7 @@ LEFT JOIN v_gamertag_lookup vv ON kv.victim_xuid = vv.xuid;
 2. `kv.killer_gamertag` (snapshot figé) = fallback si XUID inconnu
 3. `kv.killer_xuid` (brut) = dernier recours
 
-### E.3 Migration des consommateurs
+### D.3 Migration des consommateurs
 
 | Fichier | Requête actuelle | Migration |
 |---------|-----------------|-----------|
@@ -564,13 +593,13 @@ Les opérations Polars en aval (`_killer_victim_polars.py`, `_antagonist_kv.py`,
 nommées `killer_gamertag` / `victim_gamertag` qui sortent maintenant de la vue avec
 des noms à jour.
 
-### E.4 Conservation des colonnes dans la table
+### D.4 Conservation des colonnes dans la table
 
 Comme pour `match_participants.gamertag` : **on garde** les colonnes `killer_gamertag`
 et `victim_gamertag` dans la table brute comme fallback dans la vue. Elles ne seront
 supprimées que quand `xuid_aliases` couvrira 100% des XUIDs connus.
 
-### E.5 Mise à jour du transformateur (écriture)
+### D.5 Mise à jour du transformateur (écriture)
 
 Pas de changement immédiat : le sync continue d'écrire `killer_gamertag` / `victim_gamertag`
 dans `killer_victim_pairs`. C'est un cache — la vue résout toujours le nom courant en priorité.
@@ -580,9 +609,9 @@ dans `killer_victim_pairs`. C'est un cache — la vue résout toujours le nom co
 
 ---
 
-## Volet D — Médailles (medal_name_id → nom)
+## Volet E — Médailles (medal_name_id → nom)
 
-### D.1 État actuel
+### E.1 État actuel
 
 Pas de helper centralisé dans le code Python. Les noms de médailles sont :
 - Soit lus directement depuis l'API SPNKr
@@ -592,7 +621,7 @@ Pas de helper centralisé dans le code Python. Les noms de médailles sont :
 > L'audit complémentaire a confirmé **69 emplacements** Polars utilisant `medal_name` dans l'UI,
 > tous alimentés par le JSON statique. Ce helper est fonctionnel mais ne passe pas par DuckDB.
 
-### D.2 Plan
+### E.2 Plan
 
 Créer `src/analysis/_medal_data.py` (analogue à `_weapon_data.py`) :
 
@@ -602,6 +631,12 @@ def resolve_medal_name(medal_name_id: int, lang: str = "fr") -> str:
 ```
 
 Alimenté par la table `medals` de `metadata.duckdb` (si elle existe), sinon fallback `str(id)`.
+
+> **Transition `load_medal_name_maps()`** : la fonction dans `src/ui/medals.py` (JSON statique)
+> est **conservée dans le scope v6** pour compatibilité UI immédiate. Le nouveau `resolve_medal_name()`
+> depuis `metadata.duckdb` sera la source de vérité cible. La refactorisation de `load_medal_name_maps()`
+> pour appeler `resolve_medal_name()` est prévue comme **prochaine étape (v6.1+)** — pas un abandon,
+> une évolution séquentielle.
 
 > ⚠️ Pré-requis : vérifier que `metadata.duckdb` a bien une table `medals` avec les
 > colonnes `medal_name_id` et `name_fr`/`name_en`. Sinon, créer le schéma + populer
@@ -644,7 +679,7 @@ L'audit a vérifié 8 patterns de résolution non couverts par le plan v6 :
 | Playlist Groups (6 groupes) | ✅ Fonctionnel | `src/analysis/playlist_groups.py` | Catégorisation, pas résolution |
 | Weapon ID → nom | ✅ Fonctionnel | `src/analysis/_weapon_data.py` | Déjà centralisé (v5.7) |
 | Commendation rules | ✅ Fonctionnel | `metadata.duckdb` + Python custom | Complexe, garder séparé |
-| Medal ID → nom | ✅ Fonctionnel | `src/ui/medals.py` (JSON) | Helper DuckDB en v6 (Volet D) |
+| Medal ID → nom | ✅ Fonctionnel | `src/ui/medals.py` (JSON) | Helper DuckDB en v6 (Volet E) |
 | Personal Score ID → nom | ✅ Fonctionnel | `src/data/domain/_refdata_personal_scores.py` | Garder séparé |
 | Label normalization | ✅ Fonctionnel | `src/app/helpers.py` | Pas une résolution ID |
 
@@ -675,14 +710,17 @@ bascule final.
 # 1. Copier la DB de prod
 cp data/warehouse/shared_matches.duckdb data/warehouse/shared_matches_v2.duckdb
 
-# 2. Pointer db_profiles.json vers la v2 pour le dev
-# (modifier le champ "shared_db_path" ou équivalent)
-# OU utiliser une variable d'environnement :
-export LEVELUP_SHARED_DB=data/warehouse/shared_matches_v2.duckdb
+# 2. Pour tester la v2 avec l'app Streamlit : swap temporaire de fichiers (app arrêtée)
+# Le chemin est codé dans src/utils/paths.py::SHARED_MATCHES_DB_FILENAME = "shared_matches.duckdb"
+# Aucune variable d'environnement LEVELUP_SHARED_DB n'est supportée dans le code.
+# → Renommer les fichiers temporairement :
+mv data/warehouse/shared_matches.duckdb data/warehouse/shared_matches_prod.duckdb
+cp data/warehouse/shared_matches_v2.duckdb data/warehouse/shared_matches.duckdb
+# L'app et les tests lisent shared_matches.duckdb normalement (= v2).
+# Pour revenir à la prod :
+#   mv data/warehouse/shared_matches.duckdb data/warehouse/shared_matches_v2.duckdb
+#   mv data/warehouse/shared_matches_prod.duckdb data/warehouse/shared_matches.duckdb
 ```
-
-> Vérifier comment `db_profiles.json` définit le chemin de `shared_matches.duckdb`
-> et adapter la stratégie de surcharge en conséquence.
 
 ### Bascule finale (après Wave 5 — audit OK)
 
@@ -803,6 +841,9 @@ corrections directement dans `metadata.duckdb` via SQL si nécessaire.
 <details>
 <summary>✅ Checklist Commit 0</summary>
 
+- [ ] `grep -n "maps\|playlists\|game_variants\|name_fr\|name_en" scripts/populate_metadata_from_discovery.py`
+  confirme que les tables cibles et colonnes i18n sont déjà gérées par le script — sinon
+  identifier la fonction à enrichir avant de lancer quoi que ce soit
 - [ ] `scripts/populate_metadata_from_discovery.py` modifié avec les nouvelles colonnes
 - [ ] `python scripts/populate_metadata_from_discovery.py` exécuté sans erreur bloquante
 - [ ] Table `maps` présente et peuplée dans `metadata.duckdb`
@@ -854,7 +895,7 @@ et permettre de valider à chaque étape.
 
 | # | Commit | Volet | Risque | Fichiers modif. |
 |:-:|--------|:-----:|:------:|:---------------:|
-| 1 | `feat(db): vues v_gamertag_lookup + v_match_full + v_killer_victim_full` | A.1 + C.2.1 + E.2 | MOYEN | 2 (migrations.py + _engine_connections.py) |
+| 1 | `feat(db): vues v_gamertag_lookup + v_match_full + v_killer_victim_full` | A.1 + C.2.1 + D.2 | MOYEN | 2 (migrations.py + _engine_connections.py) |
 | 2 | `refactor(resolver): cascade gamertag via v_gamertag_lookup` | A.2 | MOYEN | 1 (_gamertag_resolver.py) |
 
 > Après cette wave : les vues existent, le resolver les utilise, mais les anciens
@@ -889,7 +930,7 @@ et permettre de valider à chaque étape.
 | # | Commit | Volet | Risque | Fichiers modif. |
 |:-:|--------|:-----:|:------:|:---------------:|
 | 3 | `refactor(gamertag): consommateurs directs → v_gamertag_lookup` | A.3 | FAIBLE | 4 (explorer_data, teammates_impact, teammates_service, events_repo) |
-| 4 | `refactor(kv): killer_victim_repo + career_encounters_data → v_killer_victim_full` | E.3 | FAIBLE | 2 (_killer_victim_repo.py, career_encounters_data.py) |
+| 4 | `refactor(kv): killer_victim_repo + career_encounters_data → v_killer_victim_full` | D.3 | FAIBLE | 2 (_killer_victim_repo.py, career_encounters_data.py) |
 | 5 | `refactor(assets): requêtes directes match_registry → v_match_full` | C.2.2–C.2.3 | FAIBLE | 4 (strategies.py, detection.py, _data_loader.py, migrations.py pour mv_player_matches) |
 
 > Après cette wave : **tous les consommateurs** passent par les vues.
@@ -915,6 +956,10 @@ et permettre de valider à chaque étape.
 - [ ] `detection.py` migré
 - [ ] `_data_loader.py` migré
 - [ ] `migrations.py` (`mv_player_matches`) mis à jour
+- [ ] `mv_player_matches` **re-matérialisée** (DROP + CREATE + INSERT) : la MV n'est **pas**
+  auto-rafraîchie quand sa définition change. La migration `ensure_mv_player_matches()`
+  doit inclure un `DROP TABLE IF EXISTS mv_player_matches` avant la recréation.
+  Durée estimée : 10–30 s selon le volume.
 - [ ] 2 tests supplémentaires dans `test_resolution_views.py` passent
 
 **Vérification manuelle**
@@ -958,7 +1003,7 @@ et permettre de valider à chaque étape.
 | # | Commit | Volet | Risque | Fichiers modif. |
 |:-:|--------|:-----:|:------:|:---------------:|
 | 8 | `feat(migration): supprimer highlight_events.gamertag + nettoyer resolver` | A.4 | ÉLEVé | 7 (resolver, engine_connections, _events.py, migration step, __init__, explorer_data, +tests) |
-| 9 | `feat(analysis): helper resolve_medal_name depuis metadata.duckdb` | D | FAIBLE | 2 + 1 test |
+| 9 | `feat(analysis): helper resolve_medal_name depuis metadata.duckdb` | E | FAIBLE | 2 + 1 test |
 
 > ✅ **Aucun backup manuel requis** : on travaille sur `shared_matches_v2.duckdb`.
 > La v1 de prod reste intacte. En cas de problème : `rm shared_matches_v2.duckdb` et recommencer.
@@ -1032,6 +1077,9 @@ conn.close()
 "
 
 # 5. Bascule finale (si tous les critères OK)
+# ⚠️ Arrêter l'app Streamlit AVANT la bascule (accès concurrent → risque de corruption DB)
+# Ctrl+C sur le process streamlit, ou : pkill -f "streamlit run" (Linux/Mac)
+# Windows : fermer la fenêtre du terminal Streamlit
 mv data/warehouse/shared_matches.duckdb data/warehouse/shared_matches_v1_backup_$(date +%Y%m%d).duckdb
 mv data/warehouse/shared_matches_v2.duckdb data/warehouse/shared_matches.duckdb
 echo "Bascule OK — v2 est maintenant la prod"
@@ -1048,6 +1096,7 @@ echo "Bascule OK — v2 est maintenant la prod"
 - [ ] `highlight_events.gamertag` absent du schéma v2
 - [ ] `python -m pytest tests/ -q --ignore=tests/integration` → 0 fail
 - [ ] Commit 10 `chore(audit)` rédigé avec le résultat des greps en corps de message
+- [ ] App Streamlit arrêtée **avant** les commandes `mv` de bascule
 - [ ] Bascule v2 → prod exécutée (`mv shared_matches.duckdb ...backup... && mv shared_matches_v2.duckdb shared_matches.duckdb`)
 - [ ] `db_profiles.json` remis sur le chemin par défaut (`shared_matches.duckdb`)
 - [ ] Thought log mis à jour avec le bilan final
@@ -1480,7 +1529,8 @@ Commit 9 (médailles)         ← indépendant
 
 Commit 10 (audit de clôture) ← dépend de TOUS les commits précédents
 Commit 11 (playlists i18n)   ← après Commit 5 (assets via v_match_full)
-Commit 11b (modes i18n)      ← après Commit 0 (metadata.duckdb peuplée)
+Commit 11b (modes i18n)      ← après Commit 0 (metadata.duckdb peuplée)
+                             ET Commit 11 (translations.py modifié en parallèle)
 ```
 
 ---
@@ -1503,6 +1553,7 @@ Commit 11b (modes i18n)      ← après Commit 0 (metadata.duckdb peuplée)
 | 8 | `test_v_killer_victim_full_resolves_gamertags` | killer_xuid dans xuid_aliases → killer_gamertag résolu à jour |
 | 9 | `test_v_killer_victim_full_fallback_to_kv_gamertag` | killer_xuid absent de v_gamertag_lookup → retourne kv.killer_gamertag |
 | 10 | `test_v_killer_victim_full_last_resort_xuid` | Les deux fallbacks null → retourne killer_xuid brut |
+| 11 | `test_v_match_full_fr_columns_not_null` | Avec metadata peuplée : `map_name_fr`, `playlist_name_fr`, `game_variant_name_fr` non NULL pour un match avec IDs connus |
 
 **Logging vérifié dans migrations.py** :
 ```python
@@ -1621,8 +1672,8 @@ logger.debug("load_match_player_gamertags(%s): %d joueurs résolus", match_id, l
 
 | Métrique | Valeur |
 |----------|:------:|
-| Waves | 5 |
-| Commits | 10 |
+| Waves | 5 (+ 1 pré-requis Commit 0 hors wave) |
+| Commits | 12 (Commit 0 + Commits 1–9 + Commit 10 + Commits 11 et 11b) |
 | Vues SQL créées | 3 (`v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`) |
 | Vue matérialisée modifiée | 1 (`mv_player_matches`) |
 | Fichiers production modifiés | ~25 |
