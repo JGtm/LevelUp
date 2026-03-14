@@ -9,6 +9,16 @@ from src.utils.paths import get_shared_matches_path
 
 logger = logging.getLogger(__name__)
 
+
+def _get_kv_source(conn: object) -> str:
+    """Retourne la meilleure source killer/victim disponible dans la connexion."""
+    try:
+        conn.execute("SELECT 1 FROM v_killer_victim_full LIMIT 1")  # type: ignore[union-attr]
+        return "v_killer_victim_full"
+    except Exception:
+        return "killer_victim_pairs"
+
+
 # ── Chargement top encounters / antagonistes ────────────────────────────────
 
 _TOP_ENCOUNTERED_SQL = """
@@ -50,7 +60,7 @@ kvp_agg AS (
              ELSE k.killer_xuid END AS opp,
         SUM(CASE WHEN k.killer_xuid = ? THEN k.kill_count ELSE 0 END) AS kills_dealt,
         SUM(CASE WHEN k.victim_xuid = ? THEN k.kill_count ELSE 0 END) AS deaths_suffered
-    FROM killer_victim_pairs k
+    FROM {kv_table} k
     WHERE k.killer_xuid = ? OR k.victim_xuid = ?
     GROUP BY 1
 )
@@ -86,8 +96,9 @@ def _load_top_encountered(
         sql_limit = limit + extra
 
         with duckdb_read_only(shared_path) as conn:
+            kv_table = _get_kv_source(conn)
             rows = conn.execute(
-                _TOP_ENCOUNTERED_SQL,
+                _TOP_ENCOUNTERED_SQL.format(kv_table=kv_table),
                 [xuid, since, since, xuid, xuid, xuid, xuid, xuid, xuid, sql_limit],
             ).fetchall()
 
@@ -159,13 +170,13 @@ WITH period_matches AS (
 ),
 kills_dealt AS (
     SELECT victim_xuid AS opponent_xuid, SUM(kill_count) AS times_killed
-    FROM killer_victim_pairs
+    FROM {kv_table}
     WHERE killer_xuid = ? AND match_id IN (SELECT match_id FROM period_matches)
     GROUP BY victim_xuid
 ),
 kills_suffered AS (
     SELECT killer_xuid AS opponent_xuid, SUM(kill_count) AS times_killed_by
-    FROM killer_victim_pairs
+    FROM {kv_table}
     WHERE victim_xuid = ? AND match_id IN (SELECT match_id FROM period_matches)
     GROUP BY killer_xuid
 ),
@@ -173,7 +184,7 @@ matches_vs AS (
     SELECT DISTINCT kvp.match_id,
            CASE WHEN kvp.killer_xuid = ? THEN kvp.victim_xuid
                 ELSE kvp.killer_xuid END AS opponent_xuid
-    FROM killer_victim_pairs kvp
+    FROM {kv_table} kvp
     WHERE (kvp.killer_xuid = ? OR kvp.victim_xuid = ?)
       AND kvp.match_id IN (SELECT match_id FROM period_matches)
 ),
@@ -219,9 +230,10 @@ def _load_antagonists_from_shared(
 
         extra = len(exclude_xuids) if exclude_xuids else 0
         order_col = "times_killed_by" if mode == "nemesis" else "times_killed"
-        sql = _ANTAGONISTS_SQL.format(order_col=order_col)
 
         with duckdb_read_only(shared_path) as conn:
+            kv_table = _get_kv_source(conn)
+            sql = _ANTAGONISTS_SQL.format(order_col=order_col, kv_table=kv_table)
             rows = conn.execute(
                 sql,
                 [since, since, xuid, xuid, xuid, xuid, xuid, xuid, limit + extra],
