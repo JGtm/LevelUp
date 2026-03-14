@@ -671,6 +671,11 @@ cp data/warehouse/shared_matches.duckdb data/warehouse/shared_matches_v2.duckdb
 Le travail est découpé en **waves** (groupes de commits) pour limiter le risque
 et permettre de valider à chaque étape.
 
+> **⚠️ Règle d'or : marquer les tâches au fil de l'eau.**
+> Dès qu'un commit est poussé, cocher `[x]` dans la checklist correspondante **avant** de passer à la suite.
+> Ne jamais démarrer la wave N+1 sans avoir coché **toutes** les cases de la wave N.
+> Une case non cochée = soit la tâche n'est pas faite, soit il manque une validation.
+
 #### Wave 1 — Fondation : vues SQL + refactor cascade (2 commits)
 
 | # | Commit | Volet | Risque | Fichiers modif. |
@@ -680,6 +685,29 @@ et permettre de valider à chaque étape.
 
 > Après cette wave : les vues existent, le resolver les utilise, mais les anciens
 > chemins directs fonctionnent encore.
+
+<details>
+<summary>✅ Checklist Wave 1 — à valider avant de démarrer Wave 2</summary>
+
+**Setup**
+- [ ] Branche `refactor/id-resolution-cleanup` créée depuis `analysis/weapon-parser-rewrite`
+- [ ] `shared_matches_v2.duckdb` copié avec succès
+
+**Commit 1 — Vues SQL**
+- [ ] `v_gamertag_lookup` créée dans `shared_matches_v2.duckdb`
+- [ ] `v_match_full` créée dans `shared_matches_v2.duckdb`
+- [ ] `v_killer_victim_full` créée dans `shared_matches_v2.duckdb`
+- [ ] `tests/test_resolution_views.py` créé — 10 tests passent
+- [ ] Logs de création des vues visibles (`logger.info(...)`)
+
+**Commit 2 — Refactor resolver**
+- [ ] `_gamertag_resolver.py` : cascade remplacée par `SELECT` sur `v_gamertag_lookup`
+- [ ] `tests/test_gamertag_resolver.py` créé — 7 tests passent
+
+**Validation globale**
+- [ ] `python -m pytest tests/ -q --ignore=tests/integration` → 0 fail
+
+</details>
 
 #### Wave 2 — Migration des consommateurs directs (3 commits)
 
@@ -692,12 +720,63 @@ et permettre de valider à chaque étape.
 > Après cette wave : **tous les consommateurs** passent par les vues.
 > Les tables brutes ne sont plus lues directement pour des noms résolus.
 
+<details>
+<summary>✅ Checklist Wave 2 — à valider avant de démarrer Wave 3</summary>
+
+**Commit 3 — Gamertag consommateurs**
+- [ ] `explorer_data.py` migré → plus de `SELECT gamertag FROM match_participants / highlight_events` direct
+- [ ] `teammates_impact.py` migré
+- [ ] `teammates_service.py` migré
+- [ ] `events_repo.py` migré
+- [ ] `tests/test_explorer_data.py` créé — 3 tests passent
+
+**Commit 4 — Killer/Victim consommateurs**
+- [ ] `_killer_victim_repo.py` migré → utilise `v_killer_victim_full`
+- [ ] `teammates_service.py` migré (section kv)
+- [ ] `tests/test_killer_victim_views.py` créé — 3 tests passent
+
+**Commit 5 — Assets consommateurs**
+- [ ] `strategies.py` migré → utilise `v_match_full`
+- [ ] `detection.py` migré
+- [ ] `_data_loader.py` migré
+- [ ] `migrations.py` (`mv_player_matches`) mis à jour
+- [ ] 2 tests supplémentaires dans `test_resolution_views.py` passent
+
+**Vérification manuelle**
+- [ ] `grep -rn "FROM match_participants WHERE" src/ scripts/ --include="*.py"` → 0 hit de lecture de noms résolus
+- [ ] `grep -rn "FROM match_registry" src/ scripts/ --include="*.py"` → seuls les writes légitimes restent
+
+**Validation globale**
+- [ ] `python -m pytest tests/ -q --ignore=tests/integration` → 0 fail
+
+</details>
+
 #### Wave 3 — Nettoyage wrappers + dead code (2 commits)
 
 | # | Commit | Volet | Risque | Fichiers modif. |
 |:-:|--------|:-----:|:------:|:---------------:|
 | 6 | `refactor(xuid): supprimer wrapper resolve_xuid_from_input` | A.6 | FAIBLE | 3 (streamlit_app.py, main_helpers.py, __init__.py) |
 | 7 | `refactor(outcome): supprimer dead code get_outcome_name_fr` | B | FAIBLE | 3 (refdata.py, test_refdata.py, +1 nouveau test) |
+
+<details>
+<summary>✅ Checklist Wave 3 — à valider avant de démarrer Wave 4</summary>
+
+**Commit 6 — Suppression wrapper XUID**
+- [ ] `resolve_xuid_from_input` absent de `__all__` dans `__init__.py`
+- [ ] Appels dans `streamlit_app.py` et `main_helpers.py` remplacés par l'appel direct
+- [ ] Tests existants `TestResolveXuidInput` passent sans modification
+
+**Commit 7 — Centralisation Outcomes**
+- [ ] `get_outcome_name_fr` supprimé de `refdata.py`
+- [ ] `OUTCOME_TO_FR` supprimé de `refdata.py`
+- [ ] `tests/test_outcome_resolution.py` créé — 11 tests passent
+- [ ] `tests/test_refdata.py` mis à jour (3 assertions liées à `get_outcome_name_fr` supprimées)
+- [ ] Aucune régression dans les pages UI qui affichent les outcomes
+
+**Validation globale**
+- [ ] `python -m pytest tests/ -q --ignore=tests/integration` → 0 fail
+
+</details>
 
 #### Wave 4 — Migration schéma + helpers (2 commits)
 
@@ -708,6 +787,26 @@ et permettre de valider à chaque étape.
 
 > ✅ **Aucun backup manuel requis** : on travaille sur `shared_matches_v2.duckdb`.
 > La v1 de prod reste intacte. En cas de problème : `rm shared_matches_v2.duckdb` et recommencer.
+
+<details>
+<summary>✅ Checklist Wave 4 — à valider avant de démarrer Wave 5</summary>
+
+**Commit 8 — Suppression `highlight_events.gamertag`**
+- [ ] Step de migration créé dans `src/data/migration/steps/`
+- [ ] Migration idempotente (appliquée 2×, pas d'erreur)
+- [ ] `highlight_events.gamertag` absent de `shared_matches_v2.duckdb` (vérifier avec `information_schema.columns`)
+- [ ] Resolver : branche fallback `highlight_events` retirée de `_gamertag_resolver.py`
+- [ ] `tests/test_gamertag_resolver.py` : 3 nouveaux tests passent (`no_highlight_fallback`, `migration_drops_column`, `migration_idempotent`)
+- [ ] Tests d'intégration mis à jour (`INSERT highlight_events` sans colonne `gamertag`)
+
+**Commit 9 — Helper médailles**
+- [ ] `resolve_medal_name()` implémenté dans un module dédié
+- [ ] `tests/test_medal_data.py` créé — 5 tests passent (FR, EN, inconnu, sans DB, cache)
+
+**Validation globale**
+- [ ] `python -m pytest tests/ -q --ignore=tests/integration` → 0 fail
+
+</details>
 
 #### Wave 5 — Audit de clôture (1 commit)
 
@@ -758,12 +857,20 @@ mv data/warehouse/shared_matches_v2.duckdb data/warehouse/shared_matches.duckdb
 echo "Bascule OK — v2 est maintenant la prod"
 ```
 
-**Critères de succès** :
-- [ ] `grep` ne trouve aucun accès direct non légitime (les writes dans `_shared_writes.py` / `strategies.py` sont légitimes)
-- [ ] Les 3 vues sont présentes dans `shared_matches.duckdb`
-- [ ] `highlight_events.gamertag` est absent du schéma
-- [ ] Tous les tests passent (0 fail)
-- [ ] Relancer les agents d'audit si `grep` retourne des hits inattendus
+**Critères de succès — Checklist Wave 5 (condition de merge)**
+
+> Toutes les cases doivent être cochées avant de merger sur `main`. Sans exception.
+
+- [ ] `grep` gamertag → 0 hit non légitime (writes dans `_shared_writes.py` / `strategies.py` exclus)
+- [ ] `grep` map_name/playlist_name → 0 hit non légitime (writes exclus)
+- [ ] `grep` killer_gamertag/victim_gamertag → 0 hit non légitime
+- [ ] Les 3 vues présentes dans `shared_matches_v2.duckdb`
+- [ ] `highlight_events.gamertag` absent du schéma v2
+- [ ] `python -m pytest tests/ -q --ignore=tests/integration` → 0 fail
+- [ ] Commit 10 `chore(audit)` rédigé avec le résultat des greps en corps de message
+- [ ] Bascule v2 → prod exécutée (`mv shared_matches.duckdb ...backup... && mv shared_matches_v2.duckdb shared_matches.duckdb`)
+- [ ] `db_profiles.json` remis sur le chemin par défaut (`shared_matches.duckdb`)
+- [ ] Thought log mis à jour avec le bilan final
 
 #### Récapitulatif
 
