@@ -330,10 +330,18 @@ async def backfill_all_players(
 ) -> dict[str, Any]:
     """Backfill pour tous les joueurs DuckDB.
 
+    Avec la v2 du parser weapon, un match partagé (escouade) n'est traité
+    qu'une seule fois pour tous les joueurs. Quand ``scope.weapons=True``,
+    la boucle principale tourne *sans* weapons, puis une phase dédiée
+    collecte l'union dédupliquée des match_ids de tous les joueurs et
+    appelle ``run_weapon_kills_backfill`` une seule fois.
+
     Args:
         scope: Périmètre de données (SyncScope). Obligatoire en pratique ;
                si ``None``, un scope vide est créé (aucune action).
     """
+    import dataclasses
+
     # ── Construire le scope si non fourni ──
     if scope is None:
         scope = SyncScope()
@@ -348,6 +356,15 @@ async def backfill_all_players(
 
     logger.info(f"Trouvé {len(players)} joueur(s) DuckDB")
 
+    # Weapons : déléguer à un batch global dédupliqué après la boucle.
+    # La v2 du parser traite tous les joueurs d'un match en une passe
+    # → re-traiter le même match par joueur = N téléchargements inutiles.
+    _weapons_all = getattr(scope, "weapons", False)
+    _force_weapons = getattr(scope, "force_weapons", False)
+    scope_for_loop = (
+        dataclasses.replace(scope, weapons=False, force_weapons=False) if _weapons_all else scope
+    )
+
     total_results = _empty_result()
     per_player_results: dict[str, Any] = {}
 
@@ -358,12 +375,50 @@ async def backfill_all_players(
 
         result = await backfill_player_data(
             player_info.gamertag,
-            scope=scope,
+            scope=scope_for_loop,
         )
 
         for key in total_results:
             total_results[key] += result.get(key, 0)
         per_player_results[player_info.gamertag] = result
+
+    # ── Phase weapons globale dédupliquée ────────────────────────────────
+    if _weapons_all:
+        from scripts.backfill._weapon_kills_logic import (
+            collect_weapon_match_ids_all_players,
+            run_weapon_kills_backfill,
+        )
+
+        shared_conn = _get_shared_connection(
+            _PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+        )
+        if shared_conn is not None:
+            try:
+                all_match_ids = await collect_weapon_match_ids_all_players(
+                    players, shared_conn, force=_force_weapons
+                )
+                if all_match_ids:
+                    logger.info(
+                        "Weapons --all : %d matchs uniques à traiter (dédupliqués, %d joueur(s))",
+                        len(all_match_ids),
+                        len(players),
+                    )
+                    n = await run_weapon_kills_backfill(
+                        "",
+                        "",
+                        all_match_ids,
+                        shared_conn,
+                        force=_force_weapons,
+                    )
+                    total_results["weapon_kills_inserted"] = (
+                        total_results.get("weapon_kills_inserted", 0) + n
+                    )
+                else:
+                    logger.info("Weapons --all : aucun match à traiter")
+            finally:
+                shared_conn.close()
+        else:
+            logger.warning("Weapons --all : shared_conn introuvable, weapons ignorés")
 
     return {
         "players_processed": len(players),
