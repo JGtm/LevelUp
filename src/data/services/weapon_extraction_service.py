@@ -253,10 +253,14 @@ class WeaponExtractionService:
         # Dispatch b2_stream → pi
         b2_to_pi = map_b2_to_player(all_raw_events, timeline_ns, timing, chunks_sorted)
         fire_events_by_pi = group_events_by_pi(all_raw_events, b2_to_pi)
+        _total_raw = len(all_raw_events)
+        _dispatched = sum(len(v) for v in fire_events_by_pi.values())
         log.record_step(
             "b2_dispatch",
             resolved_b2=len(b2_to_pi),
-            total_events=len(all_raw_events),
+            total_events=_total_raw,
+            dispatched_events=_dispatched,
+            dropped_events=_total_raw - _dispatched,
         )
 
         return ScanResult(

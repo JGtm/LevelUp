@@ -106,7 +106,20 @@ class MatchLogCollector:
             "warnings": len(self.warnings),
             "confidence_distribution": self._confidence_dist(),
             "path_distribution": self._path_dist(),
+            "b2_dispatch": self._b2_dispatch_stats(),
         }
+
+    def _b2_dispatch_stats(self) -> dict | None:
+        """Extrait les stats de dispatch b2→pi depuis les steps."""
+        for step in self.steps:
+            if step.get("step") == "b2_dispatch":
+                return {
+                    "total": step.get("total_events", 0),
+                    "dispatched": step.get("dispatched_events", 0),
+                    "dropped": step.get("dropped_events", 0),
+                    "resolved_b2": step.get("resolved_b2", 0),
+                }
+        return None
 
     def _confidence_dist(self) -> dict[str, int]:
         return dict(Counter(d["confidence"] for d in self.kill_decisions))
@@ -117,11 +130,14 @@ class MatchLogCollector:
     def flush(self) -> None:
         """Écrit le résumé dans le logger INFO."""
         s = self.summary()
+        b2 = s.get("b2_dispatch") or {}
+        b2_str = f"b2=[raw={b2['total']} ok={b2['dispatched']} drop={b2['dropped']}] " if b2 else ""
         logger.info(
-            "match=%s COMPLETE kills=%d conf=%s paths=%s warnings=%d",
+            "match=%s COMPLETE kills=%d conf=%s paths=%s %swarnings=%d",
             self.match_id,
             s["kills_decided"],
             s["confidence_distribution"],
             s["path_distribution"],
+            b2_str,
             s["warnings"],
         )
