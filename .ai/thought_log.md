@@ -7,6 +7,18 @@
 
 ## Journal
 
+### [2026-03-15] — Documentation V6.0.0 : CHANGELOG + README
+
+**Statut** : Complété
+
+**Décision technique** : Ajout de la section `[6.0.0] - 2026-03-15` dans `docs/CHANGELOG.md` (EN) et `docs/FR/CHANGELOG.md` (FR), couvrant l'ensemble des travaux de la branche `refactor/id-resolution-cleanup` (anciennement planifiés comme v5.8). Badge de version dans `README.md` mis à jour 5.7.0 → 6.0.0 ; entrée v6.0 ajoutée en tête du bloc "What's new".
+
+**Résultats observés** : 3 fichiers mis à jour, format Keep a Changelog respecté, toutes les fonctionnalités clés documentées (couche résolution IDs, `src/auth/`, `weapon_labels`, navigation Last Match, corrections parser armes).
+
+**Conclusion** : Documentation complète pour la release V6.
+
+---
+
 ### [2026-05-31] — Nettoyage launcher.py : suppression infrastructure Azure/OAuth legacy
 
 **Statut** : Complété
