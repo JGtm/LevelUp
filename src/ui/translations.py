@@ -1,66 +1,26 @@
 """Traductions UI — bilingue FR/EN.
 
-Centralise les mappings de libellés (playlist, mode/pair) afin de :
-- réduire la liste de valeurs distinctes dans l'UI
-- afficher des labels localisés (FR par défaut, EN optionnel)
+Centralise les fonctions de traduction de libellés (playlist, mode/pair).
+
+Depuis v6 : la source de vérité pour les playlists est ``metadata.duckdb``
+(colonnes ``name_fr`` / ``name_en`` exposées via ``v_match_full``).
+``translate_playlist_name()`` est désormais un passthrough de sécurité,
+utilisé uniquement pour les valeurs résiduelles hors-DB (UUIDs bruts).
 
 Toutes les fonctions publiques acceptent un paramètre ``lang: str = "fr"``.
 La valeur ``"fr"`` est le défaut pour assurer la rétrocompatibilité.
-
-Source de vérité : fichiers JSON ``static/i18n/playlists_{lang}.json`` et
-``static/i18n/modes_{lang}.json``.  Les dictionnaires hardcodés ci-dessous
-servent de **fallback** historique.
 """
 
 from __future__ import annotations
 
+import logging
+
 from src.ui.i18n.data_labels import label, load_domain
 
-PLAYLIST_FR: dict[str, str] = {
-    "Big Team Battle": "Grande bataille en équipe",
-    "Big Team Battle: Refresh": "Grande bataille en équipe",
-    "Big Team Social": "Grande bataille sociale",
-    "Firefight": "Baptême du feu",
-    "Firefight: Heroic King of the Hill": "Baptême du feu : Roi de la colline héroïque",
-    "Firefight: Legendary King of the Hill": "Baptême du feu : Roi de la colline légendaire",
-    "Quick Play": "Partie rapide",
-    "Ranked Arena": "Arène classée",
-    "Ranked Slayer": "Assassin classé",
-    "Rumble Pit": "Mêlée générale",
-    "SURVIVE THE UNDEAD": "Survivre aux morts-vivants",
-    "Squad Battle": "Combat d'escouade",
-    "Super Fiesta": "Super Fiesta",
-    "Team Snipers": "Snipers en équipe",
-    # IDs de playlists "Partie rapide" (fallback si nom non résolu)
-    "a446725e-b281-414c-a21e": "Partie rapide",
-    "bdceefb3-1c52-4848-a6b7": "Partie rapide",
-}
+logger = logging.getLogger(__name__)
 
-# Mappings EN — nettoyage des noms de playlists (variants, UUIDs, etc.)
-PLAYLIST_EN: dict[str, str] = {
-    "Big Team Battle": "Big Team Battle",
-    "Big Team Battle: Refresh": "Big Team Battle",
-    "Big Team Social": "Big Team Social",
-    "Firefight": "Firefight",
-    "Firefight: Heroic King of the Hill": "Firefight",
-    "Firefight: Legendary King of the Hill": "Firefight",
-    "Quick Play": "Quick Play",
-    "Ranked Arena": "Ranked Arena",
-    "Ranked Slayer": "Ranked Slayer",
-    "Rumble Pit": "Rumble Pit",
-    "SURVIVE THE UNDEAD": "Survive the Undead",
-    "Squad Battle": "Squad Battle",
-    "Super Fiesta": "Super Fiesta",
-    "Team Snipers": "Team Snipers",
-    "a446725e-b281-414c-a21e": "Quick Play",
-    "bdceefb3-1c52-4848-a6b7": "Quick Play",
-}
-
-
-# NOTE: PAIR_FR est vide — les traductions sont désormais dans
-# static/i18n/modes_fr.json (_pairs pour les overrides, combinateur _prefixes+mode
-# pour le reste). Conserver pour rétrocompatibilité des imports externes.
-PAIR_FR: dict[str, str] = {}
+# Labels de fallback pour UUIDs non résolus (metadata.duckdb incomplet)
+_UNKNOWN_PLAYLIST: dict[str, str] = {"fr": "Inconnue", "en": "Unknown"}
 
 
 def _is_uuid_like(s: str) -> bool:
@@ -72,37 +32,29 @@ def _is_uuid_like(s: str) -> bool:
 
 
 def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
-    """Traduit un nom de playlist dans la langue demandée.
+    """Passthrough de sécurité pour les noms de playlist hors-DB.
 
-    Résolution : JSON i18n → dicts hardcodés → valeur brute.
+    Depuis v6 : les traductions sont dans ``metadata.duckdb`` (colonnes
+    ``name_fr`` / ``name_en`` de ``v_match_full``). Cette fonction n'est
+    appelée que pour les valeurs non résolues par la vue (ex : UUID brut).
 
     Args:
         name: Nom de playlist brut (peut être ``None``).
         lang: ``"fr"`` (défaut) ou ``"en"``.
 
     Returns:
-        Label localisé, ou ``None`` si ``name`` est vide/None.
+        ``name`` inchangé, ou label "inconnue" pour les UUIDs bruts.
     """
     if name is None:
         return None
     s = str(name).strip()
     if not s:
         return None
-    # Détection des UUIDs non résolus
     if _is_uuid_like(s):
-        # Vérifier d'abord dans le JSON (les UUIDs peuvent y être mappés)
-        json_val = label("playlists", s, lang=lang)
-        if json_val != s:
-            return json_val
-        return label("playlists", "_unknown", lang=lang)
-    # 1) JSON i18n
-    json_val = label("playlists", s, lang=lang)
-    if json_val != s:
-        return json_val
-    # 2) Fallback dicts hardcodés
-    if lang == "en":
-        return PLAYLIST_EN.get(s, s)
-    return PLAYLIST_FR.get(s, s)
+        logger.warning("playlist_name non résolu (UUID brut) : %s — metadata.duckdb incomplet ?", s)
+        return _UNKNOWN_PLAYLIST.get(lang, s)
+    logger.debug("translate_playlist_name fallback pour '%s' (hors DB)", s)
+    return s
 
 
 def _normalize_pair_case(s: str) -> str:

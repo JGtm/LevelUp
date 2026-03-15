@@ -7,8 +7,6 @@ from pathlib import Path
 
 from src.analysis.filters import is_allowed_playlist_name
 from src.ui.translations import (
-    PAIR_FR,
-    PLAYLIST_FR,
     translate_pair_name,
     translate_playlist_name,
 )
@@ -19,13 +17,13 @@ from src.ui.translations import (
 
 
 class TestTranslatePlaylistName:
-    """Tests pour translate_playlist_name."""
+    """Tests pour translate_playlist_name (passthrough v6)."""
 
-    def test_known_playlist(self):
-        """Test avec une playlist connue."""
-        assert translate_playlist_name("Quick Play") == "Partie rapide"
-        assert translate_playlist_name("Ranked Arena") == "Arène classée"
-        assert translate_playlist_name("Big Team Battle") == "Grande bataille en équipe"
+    def test_known_playlist_passthrough(self):
+        """Depuis v6 : translate_playlist_name est un passthrough (source = v_match_full)."""
+        assert translate_playlist_name("Quick Play") == "Quick Play"
+        assert translate_playlist_name("Ranked Arena") == "Ranked Arena"
+        assert translate_playlist_name("Big Team Battle") == "Big Team Battle"
 
     def test_unknown_playlist(self):
         """Test avec une playlist inconnue - retourne l'original."""
@@ -36,8 +34,18 @@ class TestTranslatePlaylistName:
         assert translate_playlist_name(None) is None
 
     def test_whitespace_handling(self):
-        """Test avec espaces autour."""
-        assert translate_playlist_name("  Quick Play  ") == "Partie rapide"
+        """Test avec espaces autour — strip appliqué."""
+        assert translate_playlist_name("  Quick Play  ") == "Quick Play"
+
+    def test_uuid_returns_inconnue(self):
+        """UUID brut → label 'Inconnue' + warning loggé."""
+        result = translate_playlist_name("a446725e-b281-414c-a21e-1234567890ab")
+        assert result == "Inconnue"
+
+    def test_uuid_en_label(self):
+        """UUID brut en anglais → 'Unknown'."""
+        result = translate_playlist_name("a446725e-b281-414c-a21e-1234567890ab", lang="en")
+        assert result == "Unknown"
 
 
 class TestTranslatePairName:
@@ -86,16 +94,11 @@ class TestTranslatePairName:
 
 
 class TestTranslationCompleteness:
-    """Tests de complétude des traductions."""
+    """Tests de complétude des traductions modes (modes_fr.json)."""
 
-    def test_playlist_fr_not_empty(self):
-        """Vérifie que PLAYLIST_FR contient des entrées."""
-        assert len(PLAYLIST_FR) >= 10
+    def test_modes_json_pairs_not_empty(self):
+        """La source de vérité modes est modes_fr.json._pairs.
 
-    def test_pair_fr_not_empty(self):
-        """Depuis backlog N, PAIR_FR est vide : la source de vérité est modes_fr.json._pairs.
-
-        On vérifie que le JSON contient bien des overrides.
         Seuil = 8 (au moins quelques entrées _pairs dans modes_fr.json).
         """
         import json
@@ -105,16 +108,6 @@ class TestTranslationCompleteness:
             (pathlib.Path("static/i18n/modes_fr.json")).read_text(encoding="utf-8")
         )
         assert len(modes_fr.get("_pairs", {})) >= 8
-
-    def test_all_playlists_have_french(self):
-        """Vérifie que toutes les playlists ont une traduction non vide."""
-        for en, fr in PLAYLIST_FR.items():
-            assert fr, f"Playlist '{en}' a une traduction vide"
-
-    def test_all_pairs_have_french(self):
-        """Vérifie que tous les modes ont une traduction non vide."""
-        for en, fr in PAIR_FR.items():
-            assert fr, f"Mode '{en}' a une traduction vide"
 
 
 # =============================================================================

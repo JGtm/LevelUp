@@ -33,22 +33,13 @@ def enrich_for_table(
     from src.analysis.performance_score import compute_performance_series
     from src.ui.date_formats import FMT_DATETIME_FR
     from src.ui.i18n import get_outcome_map
-    from src.ui.translations import PAIR_FR, PLAYLIST_FR
 
     result = dff.clone()
 
     if "playlist_fr" not in result.columns and "playlist_name" in result.columns:
-        result = result.with_columns(
-            pl.col("playlist_name")
-            .replace_strict(PLAYLIST_FR, default=pl.col("playlist_name"))
-            .alias("playlist_fr")
-        )
+        result = result.with_columns(pl.col("playlist_name").alias("playlist_fr"))
     if "mode_ui" not in result.columns and "pair_name" in result.columns:
-        result = result.with_columns(
-            pl.col("pair_name")
-            .replace_strict(PAIR_FR, default=pl.col("pair_name"))
-            .alias("mode_ui")
-        )
+        result = result.with_columns(pl.col("pair_name").alias("mode_ui"))
     if "outcome_label" not in result.columns and "outcome" in result.columns:
         result = result.with_columns(
             pl.col("outcome")

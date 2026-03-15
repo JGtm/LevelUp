@@ -52,15 +52,11 @@ def _ensure_migration_table(conn: duckdb.DuckDBPyConnection) -> None:
 
 def _get_applied(conn: duckdb.DuckDBPyConnection) -> dict[str, tuple[bool, bool]]:
     """Retourne les migrations déjà appliquées {name: (schema_done, backfill_done)}."""
-    rows = conn.execute(
-        "SELECT name, schema_done, backfill_done FROM schema_migrations"
-    ).fetchall()
+    rows = conn.execute("SELECT name, schema_done, backfill_done FROM schema_migrations").fetchall()
     return {r[0]: (r[1], r[2]) for r in rows}
 
 
-def _apply_one_schema(
-    conn: duckdb.DuckDBPyConnection, migration: Migration
-) -> None:
+def _apply_one_schema(conn: duckdb.DuckDBPyConnection, migration: Migration) -> None:
     """Applique le DDL d'une migration et l'enregistre."""
     migration.apply_schema(conn)
     now = datetime.now(tz=timezone.utc).isoformat()
@@ -129,9 +125,7 @@ def _run_for_db(
             # Backfill restant
             if schema_done and not backfill_done and mig.apply_backfill is not None:
                 if mig.requires_api and not (backfill_kwargs or {}).get("api"):
-                    logger.info(
-                        "  ⏭ [%s] backfill ignoré (API non disponible)", mig.name
-                    )
+                    logger.info("  ⏭ [%s] backfill ignoré (API non disponible)", mig.name)
                     continue
                 try:
                     _apply_one_backfill(conn, mig, **(backfill_kwargs or {}))
@@ -150,6 +144,7 @@ def apply_pending_migrations(
     player_db_path: Path | None = None,
     shared_db_path: Path | None = None,
     pve_db_path: Path | None = None,
+    metadata_db_path: Path | None = None,
     backfill_kwargs: dict[str, object] | None = None,
 ) -> MigrationReport:
     """Applique toutes les migrations pendantes sur les 3 types de DB.
@@ -158,6 +153,7 @@ def apply_pending_migrations(
         player_db_path: Chemin vers stats.duckdb d'un joueur.
         shared_db_path: Chemin vers shared_matches.duckdb.
         pve_db_path: Chemin vers shared_pve.duckdb.
+        metadata_db_path: Chemin vers metadata.duckdb.
         backfill_kwargs: kwargs supplémentaires pour les fonctions de backfill.
 
     Returns:
@@ -171,6 +167,7 @@ def apply_pending_migrations(
         (shared_db_path, "shared"),
         (pve_db_path, "shared_pve"),
         (player_db_path, "player"),
+        (metadata_db_path, "metadata"),
     ]
 
     for path, target in db_map:
