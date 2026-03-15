@@ -4,7 +4,29 @@
 
 ---
 
-## 🔴 v5.8 — Couche d'abstraction résolution IDs (branche `refactor/id-resolution-cleanup`)
+## � v6 — Instructions de merge (requêtes directes UI à migrer)
+
+> En v6, les pages UI n'émettront plus de requêtes DuckDB directement.
+> Les éléments ci-dessous devront être refactorisés au moment du merge vers la couche de données v6.
+
+### Page Dernier match / match_view
+
+| Fichier | Fonction | DB cible | Requête directe |
+|---|---|---|---|
+| `src/ui/pages/match_view_logic.py` | `load_enrichment()` | `stats.duckdb` | `SELECT ... FROM player_match_enrichment WHERE match_id = ?` |
+| `src/ui/pages/match_view_logic.py` | `detect_abandoned_match()` | `shared_matches.duckdb` | `SELECT COUNT(*) FROM match_participants WHERE match_id = ?` |
+| `src/ui/cache_loaders.py` | `cached_load_player_match_result()` | `shared_matches.duckdb` | `match_participants` |
+| `src/ui/cache_loaders.py` | `cached_load_match_medals_for_player()` | `shared_matches.duckdb` | `medals_earned` |
+| `src/ui/cache_loaders.py` | `cached_load_highlight_events_for_match()` | `shared_matches.duckdb` | `highlight_events` |
+| `src/ui/cache_loaders.py` | `cached_load_match_player_gamertags()` | `shared_matches.duckdb` | `xuid_aliases` |
+| `src/ui/cache_loaders.py` | `cached_load_match_rosters()` | `shared_matches.duckdb` | composition équipes |
+| `src/ui/cache_loaders.py` | `cached_get_match_skill_rank()` | `stats.duckdb` | `match_skill_rank` |
+
+**Action v6** : remplacer chaque appel par un endpoint de la couche de données v6 (ex: `MatchRepository.get_match_detail(match_id)`). Les `cached_load_*` de `cache_loaders.py` seront remplacés par des appels au repository avec cache Streamlit au même niveau.
+
+---
+
+## �🔴 v5.8 — Couche d'abstraction résolution IDs (branche `refactor/id-resolution-cleanup`)
 
 > **Plan détaillé** : [PLAN_ABSTRACTION_RESOLUTION.md](PLAN_ABSTRACTION_RESOLUTION.md)
 > **Branche** : `refactor/id-resolution-cleanup` créée depuis `analysis/weapon-parser-rewrite` (v5.7)

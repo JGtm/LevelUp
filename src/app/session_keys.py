@@ -36,6 +36,8 @@ class SK:
     PENDING_MATCH_ID: str = "_pending_match_id"
     PENDING_GAMERTAG: str = "_pending_gamertag"
     MATCH_ID_INPUT: str = "match_id_input"
+    LAST_MATCH_NAV_INDEX: str = "_last_match_nav_index"
+    LAST_MATCH_NAV_TOTAL: str = "_last_match_nav_total"
 
     # ------------------------------------------------------------------
     # Cycle de vie application

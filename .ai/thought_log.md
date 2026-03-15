@@ -170,6 +170,33 @@
 
 ---
 
+### [2026-03-15] — Vérification finale : couverture 100% sur _global_correlation + _parser_logging
+
+**Statut** : Complété
+**Branche** : `analysis/weapon-parser-rewrite`
+**Commit** : `3bb38fa`
+
+**Travail effectué** :
+- Créé `tests/test_global_correlation.py` (19 tests) : corrélation globale, sentinels, bijection, priorité, log_collector, weapon_bytes inconnu, swap_detected
+- Fix `candidates_count` hardcodé à 0 → désormais `len(candidates)` (correct pour fire_event, 0 pour sentinels)
+- Ajouté `test_b2_dispatch_stats` + `test_b2_dispatch_stats_absent` dans `test_weapon_logging.py`
+
+**Couverture finale** :
+- `_global_correlation.py` : **100%** (38/38 statements, 12/12 branches)
+- `_parser_logging.py` : **100%** (57/57 statements, 10/10 branches)
+
+---
+
+### [2026-03-15] — Navigation match précédent/suivant — Page Dernier match
+
+**Statut** : Complété
+**Branche** : `refactor/id-resolution-cleanup`
+**Décision technique** : Navigation par index dans `dff` trié par `start_time`, stocké dans `session_state` via `SK.LAST_MATCH_NAV_INDEX`. Réinitialisation automatique quand `SK.LAST_MATCH_NAV_TOTAL` diffère du total courant (filtres changés). Boutons positionnés via `st.columns([1, 8, 1])` : ◀ Précédent à gauche, Suivant ▶ à droite. Aucune requête DB supplémentaire.
+**Fichiers modifiés** : `src/ui/pages/last_match.py`, `src/app/session_keys.py`, `src/ui/i18n/pages/last_match.py`.
+**Résultat** : 57 → 62 lignes dans `last_match.py`, dans les limites.
+
+---
+
 ### [2026-03-14] — Plan v5.8 : Couche d'Abstraction Complète (résolution IDs)
 
 **Statut** : Complété (plan documenté, implémentation non démarrée)

@@ -41,5 +41,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Aucun match trouvé dans ±{tol} min autour de {dt}.",
         "en": "No match found within ±{tol} min of {dt}.",
     },
+    # ── Navigation précédent / suivant ───────────────────────────────────────
+    "lm_nav_prev": {
+        "fr": "◀ Précédent",
+        "en": "◀ Previous",
+    },
+    "lm_nav_next": {
+        "fr": "Suivant ▶",
+        "en": "Next ▶",
+    },
     # ── Session compare ─────────────────────────────────────────────────────
 }
