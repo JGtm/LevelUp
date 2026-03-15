@@ -13,7 +13,6 @@ from src.data.domain.refdata import (
     NEGATIVE_SCORES,
     OBJECTIVE_MODE_CATEGORIES,
     OBJECTIVE_SCORES,
-    OUTCOME_TO_FR,
     PERSONAL_SCORE_DISPLAY_NAMES,
     PERSONAL_SCORE_POINTS,
     SLAYER_MODE_CATEGORIES,
@@ -24,7 +23,6 @@ from src.data.domain.refdata import (
     Outcome,
     PersonalScoreNameId,
     get_category_name_fr,
-    get_outcome_name_fr,
     get_personal_score_display_name,
     get_personal_score_points,
     is_assist_score,
@@ -106,12 +104,6 @@ class TestCategoryMappings:
         assert CATEGORY_TO_FR[GameVariantCategory.MULTIPLAYER_ODDBALL] == "Balle"
         assert CATEGORY_TO_FR[GameVariantCategory.MULTIPLAYER_STRONGHOLDS] == "Bastions"
         assert CATEGORY_TO_FR[GameVariantCategory.MULTIPLAYER_INFECTION] == "Infection"
-
-    def test_outcome_to_fr_has_all_values(self):
-        """Vérifie que tous les résultats ont une traduction."""
-        assert OUTCOME_TO_FR[Outcome.WIN] == "Victoire"
-        assert OUTCOME_TO_FR[Outcome.LOSS] == "Défaite"
-        assert OUTCOME_TO_FR[Outcome.TIE] == "Égalité"
 
     def test_personal_score_display_names_coverage(self):
         """Vérifie que les scores principaux ont un nom d'affichage."""
@@ -232,12 +224,6 @@ class TestUtilityFunctions:
         result = get_category_name_fr(9999)
         assert result == "Autre"
 
-    def test_get_outcome_name_fr(self):
-        """Teste get_outcome_name_fr."""
-        assert get_outcome_name_fr(Outcome.WIN) == "Victoire"
-        assert get_outcome_name_fr(2) == "Victoire"
-        assert get_outcome_name_fr(9999) == "Inconnu"
-
     def test_get_personal_score_display_name(self):
         """Teste get_personal_score_display_name."""
         result = get_personal_score_display_name(PersonalScoreNameId.KILLED_PLAYER)
@@ -304,11 +290,3 @@ class TestDataIntegrity:
                 GameVariantCategory(cat_value)
             except ValueError:
                 pytest.fail(f"Catégorie {cat_value} n'est pas un enum valide")
-
-    def test_all_mapped_outcomes_are_valid_enums(self):
-        """Vérifie que tous les résultats mappés sont des enums valides."""
-        for outcome_value in OUTCOME_TO_FR:
-            try:
-                Outcome(outcome_value)
-            except ValueError:
-                pytest.fail(f"Outcome {outcome_value} n'est pas un enum valide")
