@@ -85,11 +85,17 @@ class CitationDataLoaderMixin:
             try:
                 shared_alias = self._get_shared_alias(conn)
                 if shared_alias and self._shared_has_table(conn, "match_participants"):
+                    _mr = f"{shared_alias}.match_registry"
+                    try:
+                        conn.execute(f"SELECT 1 FROM {shared_alias}.v_match_full LIMIT 1")
+                        _mr = f"{shared_alias}.v_match_full"
+                    except Exception:
+                        pass
                     result = conn.execute(
                         f"SELECT p.*, r.map_name, r.playlist_name, r.game_variant_name, "
                         f"r.start_time "
                         f"FROM {shared_alias}.match_participants p "
-                        f"LEFT JOIN {shared_alias}.match_registry r ON p.match_id = r.match_id "
+                        f"LEFT JOIN {_mr} r ON p.match_id = r.match_id "
                         f"WHERE p.match_id = ? AND p.xuid = ?",
                         [match_id, self._xuid],
                     )
@@ -198,11 +204,17 @@ class CitationDataLoaderMixin:
             try:
                 shared_alias = self._get_shared_alias(conn)
                 if shared_alias and self._shared_has_table(conn, "match_participants"):
+                    _mr = f"{shared_alias}.match_registry"
+                    try:
+                        conn.execute(f"SELECT 1 FROM {shared_alias}.v_match_full LIMIT 1")
+                        _mr = f"{shared_alias}.v_match_full"
+                    except Exception:
+                        pass
                     result = conn.execute(
                         f"SELECT p.*, r.map_name, r.playlist_name, r.game_variant_name, "
                         f"r.start_time "
                         f"FROM {shared_alias}.match_participants p "
-                        f"LEFT JOIN {shared_alias}.match_registry r ON p.match_id = r.match_id "
+                        f"LEFT JOIN {_mr} r ON p.match_id = r.match_id "
                         f"WHERE p.match_id = ? AND p.xuid = ?",
                         [match_id, self._xuid],
                     )

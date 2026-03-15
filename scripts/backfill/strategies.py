@@ -13,6 +13,15 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _get_match_source(conn: Any) -> str:
+    """Retourne 'v_match_full' si la vue est disponible, sinon 'match_registry'."""
+    try:
+        conn.execute("SELECT 1 FROM v_match_full LIMIT 1")
+        return "v_match_full"
+    except Exception:
+        return "match_registry"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Killer / Victim pairs
 # ─────────────────────────────────────────────────────────────────────────────
@@ -380,15 +389,16 @@ def compute_lusr_for_player(
             logger.warning("Polars non disponible, skip LUSR")
             return 0
 
+        _mr_src = _get_match_source(shared_conn)
         df_matches = shared_conn.execute(
-            """
+            f"""
             SELECT
                 mr.match_id, mr.start_time, mr.playlist_name, mr.pair_name,
                 mp.outcome, mp.kills, mp.deaths,
                 mp.kills_expected, mp.deaths_expected,
                 mp.damage_dealt, mp.damage_taken, mp.accuracy,
                 mp.team_id
-            FROM match_registry mr
+            FROM {_mr_src} mr
             JOIN match_participants mp ON mr.match_id = mp.match_id
             WHERE mp.xuid = ?
               AND COALESCE(mr.is_ranked, FALSE) = FALSE
@@ -625,10 +635,11 @@ async def backfill_csr_for_player(
         ensure_match_skill_rank_table(conn)
 
         # 1. Charger les matchs classés du joueur
+        _mr_src = _get_match_source(shared_conn)
         df_ranked = shared_conn.execute(
-            """
+            f"""
             SELECT mr.match_id, mr.start_time, mr.playlist_name, mr.pair_name
-            FROM match_registry mr
+            FROM {_mr_src} mr
             JOIN match_participants mp ON mr.match_id = mp.match_id
             WHERE mp.xuid = ?
               AND COALESCE(mr.is_ranked, FALSE) = TRUE
@@ -878,14 +889,15 @@ def compute_performance_score_for_match(
                 return False
 
         # Lire depuis shared.match_participants + match_registry
+        _mr_src = _get_match_source(shared_conn)
         match_data = shared_conn.execute(
-            """
+            f"""
             SELECT mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
                    mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
                    mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr,
                    mp.enemy_mmr, mp.kills_expected, mp.deaths_expected
             FROM match_participants mp
-            JOIN match_registry mr ON mr.match_id = mp.match_id
+            JOIN {_mr_src} mr ON mr.match_id = mp.match_id
             WHERE mp.match_id = ? AND mp.xuid = ?
             """,
             (match_id, xuid),
@@ -901,14 +913,14 @@ def compute_performance_score_for_match(
         # Historique depuis shared
         try:
             history_df = shared_conn.execute(
-                """
+                f"""
                 SELECT
                     mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
                     mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
                     mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr,
                     mp.enemy_mmr, mp.kills_expected, mp.deaths_expected
                 FROM match_participants mp
-                JOIN match_registry mr ON mr.match_id = mp.match_id
+                JOIN {_mr_src} mr ON mr.match_id = mp.match_id
                 WHERE mp.xuid = ?
                   AND mp.match_id != ?
                   AND mr.start_time IS NOT NULL
@@ -1003,11 +1015,12 @@ async def backfill_participants_enrich(
     )
 
     # Détection des matchs à enrichir
+    _mr_src = _get_match_source(shared_conn)
     if force:
         query = (
             "SELECT DISTINCT mp.match_id "
             "FROM match_participants mp "
-            "JOIN match_registry mr ON mp.match_id = mr.match_id "
+            f"JOIN {_mr_src} mr ON mp.match_id = mr.match_id "
         )
         params: list = []
         if xuid:
@@ -1027,7 +1040,7 @@ async def backfill_participants_enrich(
         query = (
             "SELECT DISTINCT mp.match_id "
             "FROM match_participants mp "
-            "JOIN match_registry mr ON mp.match_id = mr.match_id "
+            f"JOIN {_mr_src} mr ON mp.match_id = mr.match_id "
             f"WHERE (mp.headshot_kills IS NULL OR mp.kda IS NULL OR mp.avg_life_seconds IS NULL) "
             f"AND (COALESCE(mr.backfill_completed, 0) & {guard_mask} = 0) "
         )
