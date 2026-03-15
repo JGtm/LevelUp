@@ -4278,7 +4278,7 @@ Batch 3 (81-85L) — 7 fonctions :
 
 ---
 
-### [2025-07-18] — Wave 4 + 5 PLAN_ABSTRACTION_RESOLUTION v6 (Commits 8-10)
+### [2026-03-15] — Wave 4 + 5 PLAN_ABSTRACTION_RESOLUTION v6 (Commits 8-10)
 
 - **Statut** : Complété (Wave 4 + audit Wave 5 partiel)
 - **Branche** : `refactor/id-resolution-cleanup`
