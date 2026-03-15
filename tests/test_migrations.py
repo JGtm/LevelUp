@@ -593,3 +593,86 @@ class TestHighlightEventsSequenceIdempotent:
         )
         new_id = conn.execute("SELECT MAX(id) FROM highlight_events").fetchone()[0]
         assert new_id == 3
+
+
+class TestDropLegacyTranslationTables:
+    """Tests pour la migration drop_legacy_translation_tables (target_db='metadata')."""
+
+    def test_drops_mode_translations(self) -> None:
+        """mode_translations est supprimée si elle existe."""
+        with duckdb.connect(":memory:") as conn:
+            conn.execute("CREATE TABLE mode_translations (name_en VARCHAR, name_fr VARCHAR)")
+            conn.execute("INSERT INTO mode_translations VALUES ('Slayer', 'Assassin')")
+            assert conn.execute("SELECT COUNT(*) FROM mode_translations").fetchone()[0] == 1
+
+            from src.data.migration.steps.drop_legacy_translation_tables import (
+                _drop_legacy_translation_tables,
+            )
+
+            _drop_legacy_translation_tables(conn)
+            has = conn.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_name='mode_translations' LIMIT 1"
+            ).fetchone()
+            assert has is None
+
+    def test_drops_playlist_translations(self) -> None:
+        """playlist_translations est supprimée si elle existe."""
+        with duckdb.connect(":memory:") as conn:
+            conn.execute("CREATE TABLE playlist_translations (uuid VARCHAR, name_fr VARCHAR)")
+            conn.execute("INSERT INTO playlist_translations VALUES ('abc', 'Test')")
+
+            from src.data.migration.steps.drop_legacy_translation_tables import (
+                _drop_legacy_translation_tables,
+            )
+
+            _drop_legacy_translation_tables(conn)
+            has = conn.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_name='playlist_translations' LIMIT 1"
+            ).fetchone()
+            assert has is None
+
+    def test_idempotent_when_tables_absent(self) -> None:
+        """La migration ne lève pas d'erreur si les tables sont déjà absentes."""
+        with duckdb.connect(":memory:") as conn:
+            from src.data.migration.steps.drop_legacy_translation_tables import (
+                _drop_legacy_translation_tables,
+            )
+
+            # Pas d'exception — DROP TABLE IF EXISTS est idempotent
+            _drop_legacy_translation_tables(conn)
+            _drop_legacy_translation_tables(conn)
+
+    def test_migration_targets_metadata_db(self) -> None:
+        """La migration est enregistrée avec target_db='metadata'."""
+        from src.data.migration.registry import MIGRATIONS
+        from src.data.migration.runner import _load_migration_steps
+
+        _load_migration_steps()
+        mig = next((m for m in MIGRATIONS if m.name == "drop_legacy_translation_tables"), None)
+        assert (
+            mig is not None
+        ), "Migration drop_legacy_translation_tables non trouvée dans MIGRATIONS"
+        assert mig.target_db == "metadata"
+        assert mig.apply_backfill is None  # pas de backfill
+
+    def test_apply_pending_runs_on_metadata_path(self, tmp_path: pytest.TempPathFactory) -> None:
+        """apply_pending_migrations exécute la migration sur metadata_db_path."""
+        import duckdb
+
+        from src.data.migration.runner import apply_pending_migrations
+
+        meta_db = tmp_path / "meta_test.duckdb"
+        with duckdb.connect(str(meta_db)) as conn:
+            conn.execute("CREATE TABLE mode_translations (x INTEGER)")
+            conn.execute("CREATE TABLE playlist_translations (x INTEGER)")
+
+        report = apply_pending_migrations(metadata_db_path=meta_db)
+        assert report.schemas_applied >= 1
+        assert not report.errors
+
+        with duckdb.connect(str(meta_db), read_only=True) as conn:
+            for table in ("mode_translations", "playlist_translations"):
+                has = conn.execute(
+                    f"SELECT 1 FROM information_schema.tables WHERE table_name='{table}' LIMIT 1"  # noqa: S608
+                ).fetchone()
+                assert has is None, f"{table} aurait dû être supprimée"

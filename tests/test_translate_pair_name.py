@@ -184,3 +184,54 @@ def test_pairs_overrides_regression(raw: str, expected: str) -> None:
     """Régression : overrides _pairs FR traduits correctement."""
     _skip_if_no_db()
     assert translate_pair_name(raw, "fr") == expected
+
+
+# ---------------------------------------------------------------------------
+# 10. Mode d\u00e9grad\u00e9 : DB absente
+# ---------------------------------------------------------------------------
+
+
+def test_degraded_mode_db_absent(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Sans metadata.duckdb : warning + passthrough du nom brut."""
+    from pathlib import Path
+
+    monkeypatch.setattr(
+        "src.utils.paths.get_metadata_db_path",
+        lambda: Path("/tmp/absent_metadata_xyzzy.duckdb"),
+    )
+    translations._load_mode_tables.cache_clear()
+    with caplog.at_level(logging.WARNING, logger="src.ui.translations"):
+        result = translate_pair_name("Arena:Slayer on Aquarius", "fr")
+    assert "introuvable" in caplog.text
+    # Passthrough : s\u00e9parateur fallback + termes anglais
+    assert result is not None
+    assert "Arena" in result or "Slayer" in result
+
+
+def test_degraded_mode_returns_empty_dict(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_load_mode_tables retourne un dict vide (stable) quand la DB est absente."""
+    from pathlib import Path
+
+    monkeypatch.setattr(
+        "src.utils.paths.get_metadata_db_path",
+        lambda: Path("/tmp/absent_metadata_xyzzy.duckdb"),
+    )
+    translations._load_mode_tables.cache_clear()
+    result = translations._load_mode_tables("fr")
+    assert result["mode_prefix_names"] == {}
+    assert result["mode_name_tr"] == {}
+    assert result["mode_pair_overrides"] == {}
+
+
+def test_degraded_mode_translate_playlist_uuid(caplog: pytest.LogCaptureFixture) -> None:
+    """translate_playlist_name : UUID → 'Inconnue' avec warning."""
+    from src.ui.translations import translate_playlist_name
+
+    with caplog.at_level(logging.WARNING, logger="src.ui.translations"):
+        result_fr = translate_playlist_name("a446725e-b281-414c-a21e-abcdef123456", "fr")
+        result_en = translate_playlist_name("a446725e-b281-414c-a21e-abcdef123456", "en")
+    assert result_fr == "Inconnue"
+    assert result_en == "Unknown"
+    assert "UUID brut" in caplog.text
