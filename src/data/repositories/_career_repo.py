@@ -33,7 +33,7 @@ class CareerMixin:
                 """
                 SELECT rank, rank_name, rank_tier, current_xp,
                        xp_for_next_rank, xp_total, is_max_rank,
-                       adornment_path, recorded_at
+                       adornment_path, recorded_at, spartan_id
                 FROM career_progression
                 WHERE xuid = ?
                 ORDER BY recorded_at DESC
@@ -52,6 +52,7 @@ class CareerMixin:
                     "is_max_rank": bool(result[6]),
                     "adornment_path": result[7],
                     "recorded_at": result[8],
+                    "spartan_id": result[9],
                 }
         except Exception:
             logger.debug("load_career_data: introuvable pour xuid=%s", self._xuid, exc_info=True)

@@ -5,12 +5,6 @@ from src.ui.components.checkbox_filter import (
     render_checkbox_filter,
     render_hierarchical_checkbox_filter,
 )
-from src.ui.components.duckdb_analytics import (
-    render_analytics_section,
-    render_global_stats_card,
-    render_kda_trend_chart,
-    render_performance_by_map,
-)
 from src.ui.components.kpi import (
     render_kpi_cards,
     render_top_summary,

@@ -130,8 +130,7 @@ def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:
 @lru_cache(maxsize=8)
 def _load_mode_tables(lang: str) -> dict[str, object]:
     """Charge les tables modes depuis metadata.duckdb (cache process-level)."""
-    import duckdb
-
+    from src.utils.db import duckdb_read_only
     from src.utils.paths import get_metadata_db_path
 
     _empty: dict[str, object] = {
@@ -145,7 +144,7 @@ def _load_mode_tables(lang: str) -> dict[str, object]:
         logger.warning("metadata.duckdb introuvable — translate_pair_name en mode dégradé")
         return _empty
     try:
-        with duckdb.connect(str(db_path), read_only=True) as conn:
+        with duckdb_read_only(str(db_path)) as conn:
             return {
                 "mode_prefix_names": dict(
                     conn.execute(

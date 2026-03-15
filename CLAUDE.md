@@ -215,6 +215,15 @@ Chaque joueur a sa propre DB : `data/players/{gamertag}/stats.duckdb` (enrichiss
 | **SPNKr** | API Halo Infinite |
 | **SyncScope** | Flags sync/backfill centralisés (`src/data/sync/scope.py`) |
 
+## Règle `src/analysis/` vs `src/data/services/`
+
+| Package | Rôle | Règle |
+|---------|------|-------|
+| `src/analysis/` | **Algorithmes purs** — transformations stateless | Entrée : `pl.DataFrame` / listes · Sortie : résultats calculés · **0 accès DB**, 0 Streamlit |
+| `src/data/services/` | **Orchestration** — combine accès repo + algos | Prend un `DuckDBRepository` + paramètres · délègue les calculs à `analysis/` · retourne dataclasses ou `pl.DataFrame` |
+
+**Règle de décision** : si la fonction n'a pas besoin de toucher la DB → `analysis/`. Si elle doit interroger le repo ET calculer → `services/`.
+
 ## SyncScope (`src/data/sync/scope.py`)
 
 Dataclass centralisant **tous les flags de données** partagés entre sync et backfill.

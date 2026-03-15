@@ -82,26 +82,19 @@ def validate_and_fix_db_path(db_path: str, default_db: str) -> str:
 
 
 def _load_spartan_id_from_db(db_path: str, xuid: str) -> str | None:
-    """Charge le dernier spartan_id depuis career_progression.
+    """Charge le dernier spartan_id depuis career_progression via le repository.
 
     Retourne None si la colonne n'existe pas, la table est vide, ou toute erreur.
     """
     try:
-        from src.utils.db import duckdb_read_only
+        from src.ui._cache_core import get_cached_repository_st
 
-        with duckdb_read_only(db_path) as conn:
-            row = conn.execute(
-                """
-                SELECT spartan_id FROM career_progression
-                WHERE xuid = ?
-                ORDER BY recorded_at DESC LIMIT 1
-                """,
-                (xuid,),
-            ).fetchone()
-            if row and row[0] is not None:
-                return str(row[0]).strip() or None
+        career = get_cached_repository_st(db_path, xuid).load_career_data()
+        if career:
+            val = career.get("spartan_id")
+            return str(val).strip() or None if val is not None else None
     except Exception:
-        pass
+        logger.debug("_load_spartan_id_from_db: échec pour xuid=%s", xuid, exc_info=True)
     return None
 
 
@@ -217,17 +210,11 @@ def render_profile_hero(
     # Utile quand l'API profile est désactivée ou le cache froid.
     if not adornment_value and db_path and str(xuid or "").strip():
         with contextlib.suppress(Exception):
-            from src.utils.db import duckdb_read_only
+            from src.ui._cache_core import get_cached_repository_st
 
-            with duckdb_read_only(db_path) as _conn:
-                _row = _conn.execute(
-                    "SELECT adornment_path FROM career_progression "
-                    "WHERE xuid = ? AND adornment_path IS NOT NULL "
-                    "ORDER BY recorded_at DESC LIMIT 1",
-                    (str(xuid).strip(),),
-                ).fetchone()
-                if _row and _row[0]:
-                    adornment_value = str(_row[0]).strip()
+            career = get_cached_repository_st(db_path, str(xuid).strip()).load_career_data()
+            if career and career.get("adornment_path"):
+                adornment_value = str(career["adornment_path"]).strip()
 
     # Tokens Halo si nécessaire
     if (

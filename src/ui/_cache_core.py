@@ -11,13 +11,12 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
+from src.ui.formatting import PARIS_TZ_NAME  # noqa: F401
+
 if TYPE_CHECKING:
     from src.data.repositories.duckdb_repo import DuckDBRepository
 
 logger = logging.getLogger(__name__)
-
-# Timezone Paris pour les conversions
-PARIS_TZ_NAME = "Europe/Paris"
 
 
 class SharedDBUnavailableError(RuntimeError):

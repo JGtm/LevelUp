@@ -4,23 +4,6 @@
 
 ---
 
-## ✅ v6 — Migration UI → DuckDBRepository (complète)
-
-> Toutes les pages UI n'émettent plus de requêtes DuckDB directement.
-> Architecture v6 DB-abstraction en place côté UI.
-
-| Phase | Périmètre | État |
-|-------|-----------|------|
-| Phase 1 | Accès critiques (`player_provisioning`, `cache_filters`, `multiplayer`) | ✅ |
-| Phase 2 | Pages `career`, `career_lusr`, `explorer` + `CareerMixin` | ✅ |
-| Phase 3 | Pages `career_encounters`, `career_top_matches`, `match_view_encounters`, `media_library`, `session_compare` | ✅ |
-
-**Exception intentionnelle** : `teammates_synergy._db_has_xuid` — scanne des chemins DB arbitraires en boucle, impossible à proxifier via le repo.
-
-> **Dette documentée (priorité basse)** : le fallback de `_resolve_player_db_path` ouvre N connexions DuckDB (O(n) sur `data/players/*/stats.duckdb`) pour identifier une DB par son xuid dans `sync_meta`. Il serait possible de le remplacer par un appel `repo.resolve_gamertag(xuid)` (1 requête `shared.xuid_aliases`) pour obtenir le nom de dossier canonique. Ratio gain/effort défavorable pour l'instant : cas rare en pratique (<10 joueurs), et passer `repo` jusqu'aux callsites nécessiterait de refactoriser `_build_squad_player_list` (déjà PLR0913) en TypedDict/dataclass. À traiter si le scan devient mesurable ou si le nombre de joueurs enregistrés dépasse ~20.
-
----
-
 ## ✅ Récemment complété (référence)
 
 | Date | Item |

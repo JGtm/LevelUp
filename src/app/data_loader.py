@@ -10,27 +10,19 @@ Ce module gère :
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
 import streamlit as st
 
-from src.config import (
-    DEFAULT_PLAYER_GAMERTAG,
-    DEFAULT_PLAYER_XUID,
-    DEFAULT_WAYPOINT_PLAYER,
-    get_repo_root,
-)
+from src.config import get_repo_root
 from src.ui import AppSettings
 from src.ui.cache import db_cache_key, load_df_optimized
 from src.ui.sync import is_spnkr_db_path, pick_latest_spnkr_db_if_any
 from src.utils import (
     guess_xuid_from_db_path,
     infer_spnkr_player_from_db_path,
-    parse_xuid_input,
-    resolve_xuid_from_db,
 )
 
 if TYPE_CHECKING:
@@ -52,31 +44,10 @@ def default_identity_from_secrets() -> tuple[str, str, str]:
     Returns:
         Tuple (xuid_or_gamertag, xuid_fallback, waypoint_player).
     """
-    # Secrets Streamlit: .streamlit/secrets.toml
-    try:
-        player = st.secrets.get("player", {})
-        if isinstance(player, Mapping):
-            gt = str(player.get("gamertag") or "").strip()
-            xu = str(player.get("xuid") or "").strip()
-            wp = str(player.get("waypoint_player") or "").strip()
-        else:
-            gt = xu = wp = ""
-    except Exception:
-        gt = xu = wp = ""
+    from src.app.profile import get_identity_from_secrets
 
-    # Env vars (utile Docker/CLI)
-    gt = gt or str(os.environ.get("LEVELUP_DEFAULT_GAMERTAG") or "").strip()
-    xu = xu or str(os.environ.get("LEVELUP_DEFAULT_XUID") or "").strip()
-    wp = wp or str(os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") or "").strip() or gt
-
-    # Fallback constants
-    gt = gt or str(DEFAULT_PLAYER_GAMERTAG or "").strip()
-    xu = xu or str(DEFAULT_PLAYER_XUID or "").strip()
-    wp = wp or str(DEFAULT_WAYPOINT_PLAYER or "").strip() or gt
-
-    # UI: on préfère afficher le gamertag, tout en conservant xuid en fallback.
-    xuid_or_gt = gt or xu
-    return xuid_or_gt, xu, wp
+    identity = get_identity_from_secrets()
+    return identity.gamertag, identity.xuid, identity.waypoint_player
 
 
 def propagate_identity_env(xuid_or_gt: str, xuid_fallback: str, wp: str) -> None:
@@ -237,34 +208,9 @@ def resolve_xuid_input(xuid_input: str, db_path: str) -> str:
     Returns:
         XUID résolu ou chaîne vide.
     """
-    xraw = (xuid_input or "").strip()
-    xuid_resolved = parse_xuid_input(xraw) or ""
+    from src.app.profile import get_identity_from_secrets, resolve_xuid
 
-    if not xuid_resolved and xraw and not xraw.isdigit() and db_path:
-        xuid_resolved = resolve_xuid_from_db(db_path, xraw) or ""
-        # Fallback: si la DB ne permet pas de résoudre,
-        # utiliser les defaults quand l'entrée correspond au gamertag par défaut.
-        if not xuid_resolved:
-            try:
-                xuid_or_gt, xuid_fallback, _wp = default_identity_from_secrets()
-                if (
-                    xuid_or_gt
-                    and xuid_fallback
-                    and (not str(xuid_or_gt).strip().isdigit())
-                    and str(xuid_or_gt).strip().casefold() == str(xraw).strip().casefold()
-                ):
-                    xuid_resolved = str(xuid_fallback).strip()
-            except Exception:
-                pass
-
-    if not xuid_resolved and not xraw and db_path:
-        xuid_or_gt, xuid_fallback, _wp = default_identity_from_secrets()
-        if xuid_or_gt and not xuid_or_gt.isdigit():
-            xuid_resolved = resolve_xuid_from_db(db_path, xuid_or_gt) or xuid_fallback
-        else:
-            xuid_resolved = xuid_or_gt or xuid_fallback
-
-    return xuid_resolved or ""
+    return resolve_xuid(xuid_input, db_path, identity=get_identity_from_secrets())
 
 
 def validate_db_path(db_path: str, default_db: str) -> str:
