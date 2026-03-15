@@ -7,6 +7,51 @@
 
 ## Journal
 
+### [2026-03-15] — Vérification finale Phase 3 + couverture tests
+
+**Statut** : Complété — 4764/4764 tests passent
+
+**Décision technique** : Audit post-Phase 3 — les 4 nouvelles méthodes repo (`load_friends_xuids_csv`, `load_skill_ratings_batch`, `load_match_registry_raw`, `load_media_files_raw`) n'avaient pas de tests directs au niveau mixin. Création de `tests/test_repo_phase3_methods.py` : 17 tests en 4 classes couvrant les chemins nominaux, les cas limites (table absente, valeur NULL, liste vide, filtrage par xuid/gamertag). Ruff propre sur src/ et tests/. BACKLOG nettoyé : section v6 restructurée en tableau récapitulatif des 3 phases + exception intentionnelle documentée.
+
+**Résultats observés** : 4764/4764 tests passent (4747 préexistants + 17 nouveaux). Aucune violation ruff.
+
+**Conclusion** : Phase 3 entièrement vérifiée. Architecture v6 DB-abstraction complète et testée. ✅
+
+---
+
+
+
+**Statut** : Complété — 4741/4741 tests passent
+
+**Décision technique** :
+Migration systématique des 7 derniers fichiers UI contenant des appels directs `duckdb_read_only` vers le pattern `get_cached_repository_st(db_path, xuid)` → méthodes du repo. Fichiers migrés :
+1. `career_data.py` — dead code `_load_post_sync_match_count` supprimé
+2. `career_top_matches_data.py` — réécrit entièrement ; `_TOP_MATCHES_SQL` et `MIN_MATCH_DURATION_SECONDS` ré-exportés pour compat tests
+3. `career_encounters_data.py` — réécrit : 3 wrappers fins vers `EncounterCareerMixin`
+4. `career_encounters_render.py` — `db_path` ajouté en 2e argument des 3 fonctions
+5. `match_view_encounters.py` — `_fetch_friends_xuids_csv` supprimée, `repo.load_friends_xuids_csv` utilisé
+6. `media_library_data.py` + `media_library.py` — 2 fonctions migrées ; `xuid` ajouté à `load_match_windows_from_db`
+7. `session_compare_logic.py` + `session_compare.py` — `build_skill_series` et `_render_cumulative_section` reçoivent `xuid`
+
+Nouveaux mixins créés : `EncounterCareerMixin` (`_career_encounters_repo.py` ~240L) et `MediaLibraryMixin` (`_media_repo.py` ~100L). 3 nouvelles méthodes dans `_career_repo.py` : `load_friends_xuids_csv`, `load_skill_ratings_batch`, `load_post_sync_match_count`.
+
+Tests adaptés :
+- `test_career_antagonists.py` : patch `src.ui._cache_core.get_cached_repository_st` (import local, pas dans namespace module) ; nouveau `player_db` fixture avec DB DuckDB vide sur disque
+- `test_top_matches.py` : shared DB doit être sur disque pour être attachée en tant que `shared` ; proxy VIEW pour `player_match_enrichment`
+
+Corrections post-migration :
+- `duckdb_repo.py` : imports resortés par ruff (I001 — `_career_encounters_repo` et `_media_repo` hors ordre alphabétique)
+- `career_top_matches_data.py`, `match_view_encounters.py` : I001 ruff
+- `session_compare.py` : PLR0913 (6 args > 5 après ajout `xuid`) → `# noqa: PLR0913` justifié
+
+**Exception intentionnelle** : `teammates_synergy._db_has_xuid` conserve `duckdb_read_only` — scanne des chemins arbitraires en boucle, impossible à proxifier via ce repo.
+
+**Résultats observés** : 4741/4741 tests passent. Baseline taille : 101 violations (resserrée de 2 violations corrigées + 1 nouvelle `session_compare.py:520L` acceptée comme dette connue).
+
+**Conclusion** : Phase 3 soldée. Aucun appel `duckdb_read_only` dans `src/ui/pages/` (hors exception `teammates_synergy`). Architecture v6 DB-abstraction complète côté UI. ✅
+
+---
+
 ### [2026-05-31] — Couche résolution gamertag→XUID : helper + tests de couverture
 
 **Statut** : Complété (commits `5365f2c`, `1798dcd`, `e632add`)
@@ -16,6 +61,22 @@
 **Résultats observés** : Zéro requête directe `xuid_aliases` restante dans `src/`. 11 tests de couverture créés dans `tests/test_lookup_xuid_for_gamertag.py` (vue disponible, fallback, absente, casse, view_prefix, stub mixin sans fichiers temporaires pour éviter verrouillage Windows). 4791/4791 tests passent. Baseline taille : +1 violation préexistante `match_view.py` (81L, non liée).
 
 **Conclusion** : Branche `refactor/id-resolution-cleanup` complète côté XUID resolution. Prête pour merge ou release.
+
+---
+
+### [2026-03-15] — Fixes Phase 1 v6 : accès directs DB critiques
+
+**Statut** : Complété
+
+**Décision technique** : 3 fixes de priorité critique :
+1. `player_provisioning.py` : `duckdb.connect()` bare → `duckdb_read_write()` de `src/utils/db.py` (context manager uniforme).
+2. `cache_filters.py` : `repo._get_connection()` (accès privé) → nouvelle méthode publique `load_friend_match_details(friend_xuid, match_ids)` dans `RosterLoaderMixin`. Retourne un `pl.DataFrame` directement, plus d'accès à la plomberie interne depuis l'UI.
+3. `multiplayer.py` : `_get_duckdb_connection()` (dead code, marquée deprecated, jamais appelée) → supprimée.
+Baseline de taille mise à jour (`scripts/check_code_size.py --update`) car `_roster_loader.py` 479→545L suite à l'ajout de la méthode (dette documentée).
+
+**Résultats observés** : 9/9 tests passent (`test_roster_loader_friend_matches.py` × 6 + `test_code_quality.py` × 3). Aucune régression.
+
+**Conclusion** : Fixes Phase 1 soldées. Aucun `repo._get_connection()` externe, aucun `duckdb.connect()` bare dans l'UI ou app. ✅
 
 ---
 
@@ -4383,3 +4444,30 @@ Audit post-Wave 5 : vérification complète DB, ruff, size baseline, e2e migrati
 - `metadata.duckdb` : 8 tables confirmées ; `mode_translations` + `playlist_translations` legacy supprimées par migration au prochain lancement
 
 **Conclusion** : Audit terminé. Couverture tests complète sur les nouvelles fonctionnalités i18n v6. Branche prête pour merge.
+
+---
+
+### [2026-03-15] — Phase 2 abstraction DB : CareerMixin + explorer_data migration
+
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Migration systématique des appels `duckdb_read_only` directs dans la couche UI vers `DuckDBRepository`. Phase 2 couvre `career_data.py`, `career_lusr.py` et `explorer_data.py`.
+
+**Changements effectués** :
+- `src/data/repositories/_career_repo.py` (NOUVEAU) : `CareerMixin` — 6 méthodes : `load_career_data`, `load_career_history`, `load_pre_sync_match_dates`, `load_lusr_snapshot`, `load_lusr_history`, `load_is_with_friends_batch`
+- `src/data/repositories/_gamertag_resolver.py` : ajout `get_all_gamertags()` → lit `shared.v_gamertag_lookup`
+- `src/data/repositories/_roster_loader.py` : ajout `load_common_matches_df(target_xuid)` → JOIN `match_participants + match_registry`
+- `src/data/repositories/duckdb_repo.py` : `CareerMixin` inséré dans le MRO
+- `src/ui/pages/career_data.py` : 5/6 fonctions migrées (`_load_post_sync_match_count` = dead code conservé)
+- `src/ui/pages/career_lusr.py` : `xuid` threadé dans `_render_lusr_rating_chart`
+- `src/ui/pages/explorer_data.py` : entièrement réécrit — 4 fonctions déléguent au repo, suppression de `duckdb_read_only` et `_shared_db_path`
+- `src/ui/pages/explorer.py` : `xuid` threadé dans `_render_match_filters`, `_render_player_search`, `_cached_all_gamertags`
+- `tests/test_explorer_logic.py` : signatures mises à jour, `test_shared_db_path_derivation` supprimé
+- `scripts/size_baseline.txt` : `_roster_loader.py` mis à jour (545L → 592L)
+
+**Résultats observés** :
+- 4800 / 4800 tests passants (zéro régression)
+- `explorer_data.py` : ~150L → 80L (suppression code dupliqué)
+
+**Conclusion** : Phase 2 complète. Prochaine étape Phase 3 : `main_helpers.py`, `career_top_matches_data.py`, `career_encounters_data.py`, `aliases.py`, `match_view_encounters.py`, `session_compare_logic.py`, `media_library_data.py`.
