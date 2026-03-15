@@ -1162,6 +1162,40 @@ def _env_check_for_player(gamertag: str) -> dict[str, object]:
 # Wizards de configuration interactive (zéro CLI)
 # =============================================================================
 
+_BOOTSTRAP_AUTH_DB = WAREHOUSE_DIR / "bootstrap_auth.duckdb"
+# DB temporaire utilisée lors du premier lancement pour stocker le cache MSAL
+# avant que le gamertag soit connu. Supprimée après transfert vers stats.duckdb.
+
+
+def _transfer_msal_cache(source: Path, target: Path) -> None:
+    """Transfère le cache MSAL depuis la DB source vers la DB target.
+
+    Lit la valeur JSON sérialisée dans ``sync_meta`` de source et l'écrit
+    dans ``sync_meta`` de target (créée si absente).
+    """
+    from src.auth._constants import MSAL_CACHE_DB_KEY
+    from src.utils.db import duckdb_read_only, duckdb_read_write
+
+    with duckdb_read_only(source) as conn:
+        row = conn.execute(
+            "SELECT value FROM sync_meta WHERE key = ?", (MSAL_CACHE_DB_KEY,)
+        ).fetchone()
+    if not row or not row[0]:
+        return
+    serialized = row[0]
+    ddl = (
+        "CREATE TABLE IF NOT EXISTS sync_meta ("
+        "key VARCHAR PRIMARY KEY, value VARCHAR, "
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+    )
+    with duckdb_read_write(target) as conn:
+        conn.execute(ddl)
+        conn.execute(
+            "INSERT OR REPLACE INTO sync_meta (key, value, updated_at)"
+            " VALUES (?, ?, CURRENT_TIMESTAMP)",
+            (MSAL_CACHE_DB_KEY, serialized),
+        )
+
 
 def _wizard_oauth_token(gamertag: str, client_id: str = "") -> bool:  # noqa: ARG001
     """Wizard interactif : connexion Xbox via MSAL Device Code Flow.
@@ -1234,8 +1268,8 @@ def _wizard_oauth_token(gamertag: str, client_id: str = "") -> bool:  # noqa: AR
 def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
     """Guide interactif pour configurer et synchroniser un premier joueur.
 
-    Wizard zéro-CLI : détecte les credentials manquants et guide l'utilisateur
-    pas à pas (token OAuth, sync) sans jamais exiger de ligne de commande.
+    Wizard zéro-CLI : Device Code Flow d'abord, gamertag résolu depuis l'API
+    Halo après authentification — aucune saisie manuelle requise.
 
     Returns:
         0 si la synchronisation a réussi, 2 sinon.
@@ -1251,40 +1285,58 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
         print("  Lance : python launcher.py add-player --gamertag <gamertag>")
         return 2
 
-    try:
-        gamertag = input("  Ton Gamertag Xbox (ex: JGtm) : ").strip()
-    except (EOFError, KeyboardInterrupt):
-        return 2
-
-    if not gamertag:
-        print("  Gamertag vide — annulé.")
-        return 2
-
     _load_dotenv_for_launcher()
 
-    # ── Étape 1 : Connexion Xbox (Device Code Flow — app LevelUp intégrée) ────
-    db_path = _get_player_db_path(gamertag)
-    from src.auth._msal import acquire_token_silent, build_msal_app, load_msal_cache
+    # ── Étape 1 : Connexion Xbox — Device Code Flow (gamertag résolu après auth) ──
+    try:
+        from src.auth.provider import DeviceCodePending, complete_device_flow, start_device_flow
+    except ImportError:
+        print("  ❌ Module src.auth introuvable.")
+        return 2
 
-    _cache = load_msal_cache(db_path)
-    _app = build_msal_app(_cache)
-    has_token = bool(acquire_token_silent(_app))
+    _BOOTSTRAP_AUTH_DB.parent.mkdir(parents=True, exist_ok=True)
+    print("  Initialisation du Device Code Flow…")
+    try:
+        pending: DeviceCodePending = start_device_flow(_BOOTSTRAP_AUTH_DB)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ❌ Erreur : {getattr(exc, 'code', 'unknown')} — {getattr(exc, 'detail', exc)}")
+        return 2
 
-    if not has_token:
-        print("  ❌ Connexion Xbox requise")
-        ok = _wizard_oauth_token(gamertag)
-        if not ok:
-            print("  → Connexion Xbox échouée. Relance LevelUp et réessaie.")
-            return 2
-    else:
-        print("  ✓ Connexion Xbox valide (cache MSAL)")
+    print()
+    print(f"  1) Visite : {pending.verification_url}")
+    print(f"  2) Entre le code : {pending.user_code}")
+    print(f"     (expire dans {pending.expires_in // 60} min)")
+    print()
+    with contextlib.suppress(Exception):
+        webbrowser.open(pending.verification_url)
+    print("  En attente de votre connexion Xbox… (ne fermez pas cette fenêtre)")
+    print()
 
-    # ── Étape 3 : Initialisation des bases de données ─────────────────────────
+    try:
+        gamertag, xuid = asyncio.run(complete_device_flow(_BOOTSTRAP_AUTH_DB, pending))
+        print(f"  ✅ Connecté : {gamertag}  ({xuid})")
+        print()
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ❌ Échec : {getattr(exc, 'code', 'unknown')} — {getattr(exc, 'detail', exc)}")
+        _BOOTSTRAP_AUTH_DB.unlink(missing_ok=True)
+        return 2
+
+    # Transférer le cache MSAL dans stats.duckdb du joueur, puis nettoyer
+    real_db_path = _get_player_db_path(gamertag)
+    real_db_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        _transfer_msal_cache(_BOOTSTRAP_AUTH_DB, real_db_path)
+    except Exception as exc:
+        print(f"  ⚠ Transfert cache MSAL : {exc}")
+    finally:
+        _BOOTSTRAP_AUTH_DB.unlink(missing_ok=True)
+
+    # ── Étape 2 : Initialisation des bases de données ─────────────────────────
     print()
     _ensure_warehouse_dbs()
     _run_migrations()
 
-    # ── Étape 4 : Synchronisation ─────────────────────────────────────────────
+    # ── Étape 3 : Synchronisation ─────────────────────────────────────────────
     print()
     print(f"  → Synchronisation de « {gamertag} » (premier chargement, quelques minutes)…")
     print()
