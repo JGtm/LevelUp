@@ -22,6 +22,18 @@ data/
 
 ## Key tables (high-level)
 
-- `shared.match_registry`: one row per match
-- `shared.match_participants`: per-player stats for all matches
-- player `player_match_enrichment`: performance_score, session_id, etc.
+### metadata.duckdb
+
+- `weapon_labels`: weapon_id (filmshell UBIGINT) → `name_en`, `name_fr` — added v5.4
+- `career_ranks`: rank tier definitions
+- `citation_mappings`: medal → citation mappings
+- `mode_name_tr` / `mode_*`: game mode translations
+
+### shared_matches.duckdb
+
+- `match_registry`: one row per match
+- `match_participants`: per-player stats for all matches
+
+### stats.duckdb (per player)
+
+- `player_match_enrichment`: performance_score, session_id, etc.

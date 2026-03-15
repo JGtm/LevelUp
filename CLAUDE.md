@@ -43,6 +43,18 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 
 ## Tables DuckDB Principales
 
+### metadata.duckdb (référentiels)
+
+| Table | Description |
+|-------|-------------|
+| `career_ranks` | Paliers et noms des rangs Halo |
+| `citation_mappings` | Mappings médaille→citation |
+| `mode_lang_settings` | Paramètres de langue par mode |
+| `mode_name_tr` | Traductions des noms de modes |
+| `mode_pair_overrides` | Surcharges de paires map/mode |
+| `mode_prefix_names` | Préfixes canoniques de modes |
+| `weapon_labels` | Labels EN/FR par weapon_id filmshell (UBIGINT) — **v5.4** |
+
 ### shared_matches.duckdb (centralisée)
 
 | Table | Description |

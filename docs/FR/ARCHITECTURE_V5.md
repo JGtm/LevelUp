@@ -79,7 +79,7 @@ LevelUp v5.1 est l'aboutissement de l'architecture **Shared Matches** avec clean
 ```
 data/
 ├── warehouse/
-│   ├── metadata.duckdb            # Référentiels (maps, playlists, medals, citations)
+│   ├── metadata.duckdb            # Référentiels (modes, medals, citations, weapon_labels)
 │   ├── shared_matches.duckdb      # Base partagée - TOUS les matchs
 │   │   ├── match_registry         # Registre central (1 ligne par match unique)
 │   │   ├── match_participants     # Stats de TOUS les joueurs de TOUS les matchs

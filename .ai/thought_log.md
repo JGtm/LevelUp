@@ -7,6 +7,39 @@
 
 ## Journal
 
+### [2026-03-15] — Migration weapon_kills V1 → V2
+
+**Statut** : Complété
+
+**Décision technique** :
+- Backfill armes de kill effectué sur `shared_matches.duckdb` (V1) → 90 820 lignes
+- `shared_matches_v2.duckdb` (V2) en avait 88 575 → delta de **2 245 lignes** à synchroniser
+- Migration via `INSERT WHERE NOT EXISTS` sur la clé `(match_id, xuid, time_ms)`
+- Composition des 2 245 lignes : high/fire_event=1 844, low/fire_event=214, medium/fire_event=67, none/formula_a=65, none/none=55
+
+**Résultats** : V2 weapon_kills = 90 820 (parité V1), delta restant = 0, `v_weapon_kills` mise à jour automatiquement (vue SQL)
+
+**Prochaine étape** : Suite v5.8 (couche d'abstraction résolution IDs)
+
+---
+
+### [2026-03-15] — weapon_labels : table de référentiel dans metadata.duckdb
+
+**Statut** : Complété
+
+**Décision technique** :
+1. `weapon_labels(weapon_id UBIGINT PK, name_en, name_fr)` créée dans `metadata.duckdb` via migration `add_weapon_labels` (`target_db="metadata"`)
+2. Pattern identique à `_medal_data.py` : `_resolve_weapon_from_db` + `@lru_cache` + fallback dicts Python dans `resolve_weapon_display`
+3. Import `get_metadata_db_path` au niveau module (non dans la fonction) pour permettre le patch en tests
+4. `ui/i18n/weapons.py` nettoyé : `get_weapon_label` délègue à `resolve_weapon_display` ; dead code supprimé (`get_all_weapon_ids`, `get_weapon_ids_by_faction`, `translate_weapon_name`) ; `get_weapon_faction` conserve les JSONs (données de faction non ailleurs)
+5. Zéro changement dans les 5 fichiers UI appelants — abstraction `resolve_weapon_display` inchangée côté signature
+
+**Résultats** : 4686 tests passent, 0 régression, ruff clean
+
+**Prochaine étape** : Committer sur `refactor/id-resolution-cleanup`
+
+---
+
 ### [2026-03-14] — Commit 2 : cascade gamertag via v_gamertag_lookup
 
 **Statut** : Complété
