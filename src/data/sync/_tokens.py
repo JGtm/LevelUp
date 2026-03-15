@@ -94,22 +94,10 @@ class Tokens:
 # =============================================================================
 
 
-async def get_tokens_from_env() -> Tokens:
-    """Récupère les tokens depuis les variables d'environnement.
-
-    Supporte deux modes :
-    1. Tokens manuels : SPNKR_SPARTAN_TOKEN + SPNKR_CLEARANCE_TOKEN
-    2. OAuth Azure : SPNKR_AZURE_CLIENT_ID + SPNKR_AZURE_CLIENT_SECRET + SPNKR_OAUTH_REFRESH_TOKEN
-
-    Raises:
-        SystemExit: Si les tokens sont manquants ou invalides.
-
-    Returns:
-        Tokens validés.
-    """
+async def _get_tokens_from_env_legacy() -> Tokens:  # noqa: PLR0912, C901
+    """Fallback LEGACY : tokens depuis variables d'environnement."""
     load_dotenv_if_present()
 
-    # Mode OAuth Azure
     azure_client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID")
     azure_client_secret = os.environ.get("SPNKR_AZURE_CLIENT_SECRET")
     azure_redirect_uri = os.environ.get("SPNKR_AZURE_REDIRECT_URI", "https://localhost")
@@ -119,10 +107,7 @@ async def get_tokens_from_env() -> Tokens:
     if not oauth_refresh_token and azure_client_id:
         for key, value in os.environ.items():
             if key.startswith("SPNKR_OAUTH_REFRESH_TOKEN_") and value.strip():
-                logger.debug(
-                    "SPNKR_OAUTH_REFRESH_TOKEN absent — utilisation de %s comme token par défaut.",
-                    key,
-                )
+                logger.debug("SPNKR_OAUTH_REFRESH_TOKEN absent — utilisation de %s.", key)
                 oauth_refresh_token = value.strip()
                 break
 
@@ -139,9 +124,7 @@ async def get_tokens_from_env() -> Tokens:
                     _rt = _load_rt(_db)
                     if _rt:
                         oauth_refresh_token = _rt
-                        logger.info(
-                            "SPNKR_OAUTH_REFRESH_TOKEN chargé depuis sync_meta de '%s'.", _gt
-                        )
+                        logger.info("SPNKR_OAUTH_REFRESH_TOKEN chargé depuis '%s'.", _gt)
                         break
         except Exception:
             logger.debug("Erreur chargement token depuis sync_meta", exc_info=True)
@@ -166,6 +149,40 @@ async def get_tokens_from_env() -> Tokens:
         )
 
     return Tokens(spartan_token=spartan, clearance_token=clearance)
+
+
+async def get_tokens_from_env() -> Tokens:
+    """LEGACY — Délègue à ``src.auth.provider.get_halo_tokens`` si possible.
+
+    Conservé pour compatibilité avec les scripts existants.
+    Nouveau code : utiliser ``src.auth.provider.get_halo_tokens(db_path)``.
+    """
+    import warnings
+
+    warnings.warn(
+        "get_tokens_from_env() est déprécié. "
+        "Utiliser src.auth.provider.get_halo_tokens(db_path) à la place.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    # Tenter via la nouvelle couche auth (premier joueur configuré)
+    try:
+        from src.auth.provider import get_halo_tokens as _get_halo_tokens
+        from src.utils.profiles import load_profiles as _load_profiles
+
+        _profiles = _load_profiles()
+        for _prof in _profiles.values():
+            _db = Path(_prof.get("db_path", ""))
+            if _db.exists():
+                logger.debug(
+                    "get_tokens_from_env (LEGACY): délégation à get_halo_tokens(%s)", _db.name
+                )
+                return await _get_halo_tokens(_db)
+    except Exception:
+        logger.debug("get_tokens_from_env: fallback vers env vars", exc_info=True)
+
+    return await _get_tokens_from_env_legacy()
 
 
 def get_player_token_env_key(gamertag: str) -> str:
