@@ -37,6 +37,7 @@ from src.app.cache_control import invalidate_after_sync
 from src.app.data_loader import (
     ensure_h5g_commendations_repo,
     init_source_state,
+    resolve_xuid_input,
 )
 from src.app.filters import (
     build_friends_opts_map,
@@ -66,7 +67,6 @@ from src.app.main_helpers import (
     load_profile_api,
     propagate_identity_to_env,
     render_profile_hero,
-    resolve_xuid_from_input,
     validate_and_fix_db_path,
 )
 from src.app.media_background import background_media_indexing
@@ -593,7 +593,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
     db_path = validate_and_fix_db_path(db_path, DEFAULT_DB)
 
     # Résolution du XUID
-    xuid = resolve_xuid_from_input(xuid, db_path)
+    xuid = resolve_xuid_input(xuid, db_path)
 
     me_name = (
         display_name_from_xuid(xuid.strip(), db_path=db_path)

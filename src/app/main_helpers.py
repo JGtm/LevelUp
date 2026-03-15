@@ -20,7 +20,6 @@ from src.analysis import mark_firefight
 from src.app.data_loader import (
     default_identity_from_secrets,
     propagate_identity_env,
-    resolve_xuid_input,
 )
 from src.ui import (
     display_name_from_xuid,
@@ -80,14 +79,6 @@ def validate_and_fix_db_path(db_path: str, default_db: str) -> str:
             pass
 
     return db_path
-
-
-def resolve_xuid_from_input(xuid_input: str, db_path: str) -> str:
-    """Résout le XUID depuis l'entrée utilisateur.
-
-    Délègue à ``data_loader.resolve_xuid_input`` (implémentation unique).
-    """
-    return resolve_xuid_input(xuid_input, db_path)
 
 
 def _load_spartan_id_from_db(db_path: str, xuid: str) -> str | None:
