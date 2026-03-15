@@ -377,6 +377,15 @@ class WeaponKillsMixin:
         return str(row[0]) if row else None
 
     @staticmethod
+    def _has_gamertag_column(conn: duckdb.DuckDBPyConnection) -> bool:
+        """Vérifie si highlight_events possède encore la colonne gamertag."""
+        try:
+            conn.execute("SELECT gamertag FROM highlight_events LIMIT 0")
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
     def load_player_kills_for_match(
         conn: duckdb.DuckDBPyConnection,
         match_id: str,
@@ -390,8 +399,9 @@ class WeaponKillsMixin:
         """
         from src.analysis.weapon_parser import GRENADE_MEDALS, MELEE_MEDALS
 
+        gt_col = "he.gamertag" if WeaponKillsMixin._has_gamertag_column(conn) else "NULL"
         kill_rows = conn.execute(
-            "SELECT he.time_ms, he.gamertag, he.xuid "
+            f"SELECT he.time_ms, {gt_col}, he.xuid "
             "FROM highlight_events he "
             "WHERE he.match_id = ? AND he.xuid = ? "
             "AND he.event_type = 'kill' "
@@ -442,9 +452,10 @@ class WeaponKillsMixin:
         """
         from src.analysis.weapon_parser import GRENADE_MEDALS, MELEE_MEDALS
 
+        gt_col = "he.gamertag" if WeaponKillsMixin._has_gamertag_column(conn) else "NULL"
         try:
             kill_rows = conn.execute(
-                "SELECT he.time_ms, he.gamertag, he.xuid "
+                f"SELECT he.time_ms, {gt_col}, he.xuid "
                 "FROM highlight_events he "
                 "WHERE he.match_id = ? AND he.event_type = 'kill' "
                 "ORDER BY he.xuid, he.time_ms",
