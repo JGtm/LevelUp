@@ -267,16 +267,34 @@ def get_file_metadata(file_path: Path) -> dict[str, Any] | None:  # noqa: PLR091
         return None
 
 
+def _load_xuid_by_gamertag(shared_path: Path) -> dict[str, str]:
+    """Charge le mapping gamertag (lower) → xuid depuis v_gamertag_lookup."""
+    xuid_by_gamertag: dict[str, str] = {}
+    if not shared_path.exists():
+        return xuid_by_gamertag
+    try:
+        with duckdb.connect(str(shared_path), read_only=True) as sc:
+            try:
+                rows = sc.execute("SELECT xuid, gamertag FROM v_gamertag_lookup").fetchall()
+            except Exception:
+                rows = sc.execute("SELECT xuid, gamertag FROM xuid_aliases").fetchall()
+            for xuid_val, gamertag_val in rows:
+                if gamertag_val and xuid_val:
+                    xuid_by_gamertag[str(gamertag_val).lower()] = str(xuid_val)
+    except Exception as e:
+        logger.debug("_load_xuid_by_gamertag: %s", e)
+    return xuid_by_gamertag
+
+
 def get_all_player_dbs() -> list[tuple[Path, str]]:
     """Retourne les (db_path, xuid) de tous les joueurs.
 
-    Lit les xuids depuis shared_matches.duckdb/xuid_aliases.
+    Lit les xuids depuis shared_matches.duckdb/v_gamertag_lookup.
     """
     player_dbs: list[tuple[Path, str]] = []
     if not PLAYERS_DIR.exists():
         return player_dbs
 
-    xuid_by_gamertag: dict[str, str] = {}
     shared_path = get_shared_matches_path_from_player(PLAYERS_DIR / "_any" / PLAYER_DB_FILENAME)
     for player_dir in PLAYERS_DIR.iterdir():
         if player_dir.is_dir():
@@ -285,15 +303,7 @@ def get_all_player_dbs() -> list[tuple[Path, str]]:
                 shared_path = get_shared_matches_path_from_player(first_db)
                 break
 
-    if shared_path and shared_path.exists():
-        try:
-            with duckdb.connect(str(shared_path), read_only=True) as sc:
-                rows = sc.execute("SELECT xuid, gamertag FROM xuid_aliases").fetchall()
-                for xuid_val, gamertag_val in rows:
-                    if gamertag_val and xuid_val:
-                        xuid_by_gamertag[str(gamertag_val).lower()] = str(xuid_val)
-        except Exception as e:
-            logger.debug("get_all_player_dbs: lecture xuid_aliases: %s", e)
+    xuid_by_gamertag = _load_xuid_by_gamertag(shared_path) if shared_path else {}
 
     for player_dir in sorted(PLAYERS_DIR.iterdir(), key=lambda p: p.name):
         if not player_dir.is_dir():

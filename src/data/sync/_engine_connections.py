@@ -268,21 +268,19 @@ class ConnectionMixin:
                 except Exception:
                     pass
 
-                # 2. xuid_aliases via shared_matches.duckdb (v5.1)
+                # 2. v_gamertag_lookup via shared_matches.duckdb (v5.8)
                 if self._gamertag:
                     try:
                         from src.utils.paths import get_shared_matches_path_from_player
+                        from src.utils.xuid import lookup_xuid_for_gamertag
 
                         shared_path = get_shared_matches_path_from_player(self._player_db_path)
                         if shared_path and shared_path.exists():
                             with duckdb.connect(str(shared_path), read_only=True) as shared_conn:
-                                r = shared_conn.execute(
-                                    "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1",
-                                    [self._gamertag],
-                                ).fetchone()
-                                if r and r[0] and str(r[0]).strip():
-                                    xuid = str(r[0]).strip()
-                                    logger.info("XUID résolu depuis shared.xuid_aliases: %s", xuid)
+                                resolved = lookup_xuid_for_gamertag(shared_conn, self._gamertag)
+                                if resolved:
+                                    xuid = resolved
+                                    logger.info("XUID résolu depuis v_gamertag_lookup: %s", xuid)
                                     return xuid
                     except Exception:
                         pass
