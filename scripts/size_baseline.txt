@@ -101,6 +101,7 @@ FUNC:src/visualization/timeseries.py:317:plot_per_minute_timeseries:91L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:166L
 MODULE:src/data/query/trends.py:534L
+MODULE:src/data/repositories/_weapon_kills_repo.py:505L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/_teammates_trio.py:561L

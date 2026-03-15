@@ -97,7 +97,7 @@ class EventsMixin:
                 result = conn.execute(
                     """
                     SELECT he.event_type, he.time_ms, he.xuid,
-                           COALESCE(vg.gamertag, he.gamertag) AS gamertag,
+                           vg.gamertag AS gamertag,
                            he.type_hint
                     FROM shared.highlight_events he
                     LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = he.xuid
@@ -109,7 +109,7 @@ class EventsMixin:
             else:
                 result = conn.execute(
                     """
-                    SELECT event_type, time_ms, xuid, gamertag, type_hint
+                    SELECT event_type, time_ms, xuid, NULL AS gamertag, type_hint
                     FROM shared.highlight_events
                     WHERE match_id = ?
                     ORDER BY time_ms ASC NULLS LAST

@@ -58,7 +58,7 @@ def _load_highlight_events(
     if has_view:
         events_query = (
             f"SELECT he.match_id, he.xuid::TEXT as xuid, "
-            f"COALESCE(vg.gamertag, he.gamertag) as gamertag, "
+            f"vg.gamertag as gamertag, "
             f"he.event_type, he.time_ms "
             f"FROM {shared_alias}.highlight_events he "
             f"LEFT JOIN {shared_alias}.v_gamertag_lookup vg ON vg.xuid = he.xuid::TEXT "
@@ -66,7 +66,7 @@ def _load_highlight_events(
         )
     else:
         events_query = (
-            f"SELECT match_id, xuid::TEXT as xuid, gamertag, event_type, time_ms "
+            f"SELECT match_id, xuid::TEXT as xuid, NULL as gamertag, event_type, time_ms "
             f"FROM {shared_alias}.highlight_events "
             f"WHERE match_id IN ({', '.join(['?' for _ in match_ids])})"
         )

@@ -51,11 +51,11 @@ class GamertagResolverMixin:
         """Résout un XUID en gamertag via v_gamertag_lookup.
 
         Priorité : xuid_aliases > match_participants (géré par la vue).
-        Fallback transitoire : highlight_events avec extraction ASCII.
+        Fallback pré-vue : xuid_aliases puis match_participants.
 
         Args:
             xuid: XUID du joueur à résoudre.
-            match_id: ID du match (optionnel, utilisé uniquement pour le fallback).
+            match_id: ID du match (optionnel, pour le fallback sans vue).
 
         Returns:
             Gamertag propre ou None si non trouvé.
@@ -87,12 +87,6 @@ class GamertagResolverMixin:
             resolved = self._resolve_gamertag_without_view(conn, xuid, match_id)
             if resolved:
                 return resolved
-
-        # Fallback transitoire : highlight_events (sera supprimé en Commit 8)
-        gt = self._resolve_from_highlight_events(xuid, match_id)
-        if gt:
-            logger.debug("resolve_gamertag(%s): source=highlight_events → %s", xuid, gt)
-            return gt
 
         logger.warning("resolve_gamertag(%s): aucune source", xuid)
         return None
@@ -132,67 +126,6 @@ class GamertagResolverMixin:
             except Exception:
                 pass
         return None
-
-    def _resolve_from_highlight_events(
-        self,
-        xuid: str,
-        match_id: str | None,
-    ) -> str | None:
-        """Fallback transitoire : résolution gamertag depuis highlight_events.
-
-        Données corrompues (NUL bytes) — elles seront supprimées en Commit 8.
-        Méthode extraite pour que resolve_gamertag() reste < 80 L.
-        """
-        if not match_id:
-            return None
-
-        conn = self._get_connection()
-        he_sources = []
-        if self._has_shared_table("highlight_events"):
-            he_sources.append("shared.highlight_events")
-        if self._has_table("highlight_events"):
-            he_sources.append("highlight_events")
-
-        for he_src in he_sources:
-            try:
-                result = conn.execute(
-                    f"SELECT gamertag FROM {he_src} WHERE match_id = ? AND xuid = ? LIMIT 1",
-                    [match_id, xuid],
-                ).fetchone()
-                if result and result[0]:
-                    cleaned = self._extract_ascii_token(result[0])
-                    if cleaned:
-                        return cleaned
-            except Exception:
-                pass
-
-        return None
-
-    def _extract_ascii_token(self, value: str | None) -> str | None:
-        """Extrait un token ASCII plausible depuis un gamertag corrompu.
-
-        Les gamertags provenant de highlight_events peuvent contenir des
-        caractères NUL et de contrôle (ex: 'juan1\\x00\\x00\\x00\\x00').
-        Cette fonction extrait la partie lisible.
-
-        Args:
-            value: Gamertag potentiellement corrompu.
-
-        Returns:
-            Token ASCII nettoyé ou None si rien de plausible.
-        """
-        if value is None:
-            return None
-
-        try:
-            parts = re.findall(r"[A-Za-z0-9]+", str(value or ""))
-            if not parts:
-                return None
-            parts.sort(key=len, reverse=True)
-            token = parts[0]
-            return token if len(token) >= 3 else None
-        except Exception:
-            return None
 
     def resolve_gamertags_batch(
         self,

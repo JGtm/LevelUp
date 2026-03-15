@@ -337,7 +337,6 @@ def _recreate_highlight_events_with_sequence(conn: duckdb.DuckDBPyConnection, ma
             event_type VARCHAR NOT NULL,
             time_ms INTEGER,
             xuid VARCHAR,
-            gamertag VARCHAR,
             type_hint INTEGER,
             raw_json VARCHAR
         )
@@ -345,7 +344,11 @@ def _recreate_highlight_events_with_sequence(conn: duckdb.DuckDBPyConnection, ma
 
     # 4) Restaurer les données
     if table_exists(conn, "highlight_events_backup"):
-        conn.execute("INSERT INTO highlight_events SELECT * FROM highlight_events_backup")
+        conn.execute("""
+            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, type_hint, raw_json)
+            SELECT id, match_id, event_type, time_ms, xuid, type_hint, raw_json
+            FROM highlight_events_backup
+        """)
         conn.execute("DROP TABLE highlight_events_backup")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_highlight_match ON highlight_events(match_id)")
