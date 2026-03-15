@@ -4148,3 +4148,40 @@ Batch 3 (81-85L) — 7 fonctions :
 - `weapon_extraction_service.py` : 505L → 495L (sous la limite)
 - `_film_manifest_cache.py` : nouveau module 73L
 - 1984 manifests seront créés au premier run → les re-runs n'auront plus aucun appel API manifest
+
+---
+
+### [2025-07-18] — Wave 4 + 5 PLAN_ABSTRACTION_RESOLUTION v6 (Commits 8-10)
+
+- **Statut** : Complété (Wave 4 + audit Wave 5 partiel)
+- **Branche** : `refactor/id-resolution-cleanup`
+
+**Commit 8 — `feat(migration): supprimer highlight_events.gamertag + nettoyer resolver`** (0a5c69c)
+- Supprimé `_resolve_from_highlight_events()` et `_extract_ascii_token()` de `_gamertag_resolver.py`
+- `_events_repo.py` : `COALESCE(vg.gamertag, he.gamertag)` → `vg.gamertag` (branche view) ; `NULL AS gamertag` (branche fallback)
+- `teammates_impact.py` : même simplification COALESCE
+- `_encounter_loader.py` : CTE `he_gamertags` entièrement supprimée + `LEFT JOIN` orphelin + paramètre target_xuids orphelin corrigé
+- `_weapon_kills_repo.py` : ajout `_has_gamertag_column()` helper défensif (compatible tests unitaires qui créent la table avec gamertag)
+- `migrations.py` : `_recreate_highlight_events_with_sequence()` — schéma sans gamertag + INSERT colonne-explicite
+- Nouveau step `drop_highlight_events_gamertag.py` : recréation complète (DuckDB ne supporte pas ALTER TABLE DROP COLUMN sur table indexée)
+- Baseline size-ratchet mis à jour (102 violations)
+- 4647 tests passants (+59 vs Commit 7)
+
+**Commit 9 — `feat(analysis): helper resolve_medal_name depuis metadata.duckdb`** (ffdd959)
+- Nouveau module `src/analysis/_medal_data.py` : `resolve_medal_name(medal_name_id, lang="fr")` — Sources : metadata.duckdb si table medals existe, sinon JSON statiques `static/medals/medals_{lang}.json`, fallback `str(id)`
+- 7 tests dans `tests/test_medal_data.py`
+- 4654 tests passants
+
+**Audit Commit 10 — résultats**
+- `grep highlight_events.*gamertag` → 0 hit non légitime (helper migration + docstrings seulement)
+- `grep match_registry.*map_name/playlist_name` → 0 hit
+- `grep killer_victim_pairs.*killer/victim_gamertag` → 0 hit
+- Vues v2 : `v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full` ✅ présentes
+- `highlight_events.gamertag` : supprimée de `shared_matches_v2.duckdb` via migration recréation (239 429 lignes préservées)
+- 4654 tests passants, 0 échec
+
+**Note bascule v2 → prod** : La bascule `shared_matches.duckdb ↔ shared_matches_v2.duckdb` est une opération manuelle à exécuter avec l'app arrêtée. Condition préalable : vérifier `shared_matches.duckdb` (prod actuelle) reçoit aussi la migration `drop_highlight_events_gamertag` au premier prochain démarrage.
+
+**Décision technique principale** : `ALTER TABLE DROP COLUMN` non supporté par DuckDB 1.4 quand des index existent → recréation de table requise (même pattern que `_recreate_highlight_events_with_sequence`).
+
+**Conclusion** : Wave 4 complète. Wave 5 (Commit 11 + 11b — nettoyage traduction assets obsolètes) nécessite analyse préalable des dépendances résiduelles avant suppression. Commits 0-10 sur branche `refactor/id-resolution-cleanup`.
