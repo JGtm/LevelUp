@@ -57,23 +57,9 @@ def render_match_history_page(  # noqa: PLR0913
 
     dff_table = dff.clone()
     if "playlist_fr" not in dff_table.columns:
-        # Vectorisation: utiliser replace_strict() au lieu de map_elements()
-        from src.ui.translations import PLAYLIST_FR
-
-        dff_table = dff_table.with_columns(
-            pl.col("playlist_name")
-            .replace_strict(PLAYLIST_FR, default=pl.col("playlist_name"))
-            .alias("playlist_fr")
-        )
+        dff_table = dff_table.with_columns(pl.col("playlist_name").alias("playlist_fr"))
     if "mode_ui" not in dff_table.columns:
-        # Vectorisation: utiliser replace_strict() avec le dictionnaire PAIR_FR
-        from src.ui.translations import PAIR_FR
-
-        dff_table = dff_table.with_columns(
-            pl.col("pair_name")
-            .replace_strict(PAIR_FR, default=pl.col("pair_name"))
-            .alias("mode_ui")
-        )
+        dff_table = dff_table.with_columns(pl.col("pair_name").alias("mode_ui"))
     dff_table = dff_table.with_columns(
         (
             pl.lit("https://www.halowaypoint.com/halo-infinite/players/")

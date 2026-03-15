@@ -56,6 +56,7 @@ from src.utils.paths import (
     PLAYER_DB_FILENAME,
     PLAYERS_DIR,
     WAREHOUSE_DIR,
+    get_metadata_db_path,
     get_pve_db_path,
     get_shared_matches_path,
 )
@@ -804,9 +805,11 @@ def _run_migrations() -> None:
 
     # Migrations shared (une seule fois)
     try:
+        meta_path = get_metadata_db_path()
         report = apply_pending_migrations(
             shared_db_path=shared_path if shared_path.exists() else None,
             pve_db_path=pve_path if pve_path.exists() else None,
+            metadata_db_path=meta_path if meta_path.exists() else None,
         )
         total_schemas += report.schemas_applied
         total_backfills += report.backfills_applied

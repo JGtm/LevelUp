@@ -19,6 +19,7 @@ from src.data.migration.steps import (
     add_weapon_kills,
     add_weapon_kills_reconciled_as,
     drop_highlight_events_gamertag,
+    drop_legacy_translation_tables,
     fix_bot_xuid,
     migrate_weapon_kills_to_ubigint,
 )
@@ -38,6 +39,7 @@ __all__ = [
     "add_weapon_kills",
     "add_weapon_kills_reconciled_as",
     "drop_highlight_events_gamertag",
+    "drop_legacy_translation_tables",
     "fix_bot_xuid",
     "migrate_weapon_kills_to_ubigint",
 ]

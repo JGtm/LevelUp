@@ -53,8 +53,8 @@ FUNC:src/ui/pages/_teammates_trio.py:36:render_trio_view:200L
 FUNC:src/ui/pages/_teammates_trio.py:414:_render_trio_performance_charts:100L
 FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:19:render_citations_page:169L
-FUNC:src/ui/pages/match_history.py:173:_render_history_table:151L
-FUNC:src/ui/pages/match_history.py:31:render_match_history_page:139L
+FUNC:src/ui/pages/match_history.py:159:_render_history_table:151L
+FUNC:src/ui/pages/match_history.py:31:render_match_history_page:125L
 FUNC:src/ui/pages/match_view_charts.py:257:_render_spree_headshots:124L
 FUNC:src/ui/pages/match_view_charts.py:43:render_expected_vs_actual:211L
 FUNC:src/ui/pages/match_view_citations.py:19:render_match_citations_section:163L
