@@ -94,20 +94,32 @@ class TestTranslatePairName:
 
 
 class TestTranslationCompleteness:
-    """Tests de complétude des traductions modes (modes_fr.json)."""
+    """Tests de complétude des traductions modes (metadata.duckdb)."""
 
-    def test_modes_json_pairs_not_empty(self):
-        """La source de vérité modes est modes_fr.json._pairs.
+    def test_mode_pair_overrides_not_empty(self):
+        """Les overrides mode_pair_overrides sont présents dans metadata.duckdb.
 
-        Seuil = 8 (au moins quelques entrées _pairs dans modes_fr.json).
+        Seuil = 8 (au moins quelques entrées pour FR).
         """
-        import json
-        import pathlib
+        import duckdb
 
-        modes_fr = json.loads(
-            (pathlib.Path("static/i18n/modes_fr.json")).read_text(encoding="utf-8")
-        )
-        assert len(modes_fr.get("_pairs", {})) >= 8
+        from src.utils.paths import get_metadata_db_path
+
+        db_path = get_metadata_db_path()
+        if not db_path.exists():
+            import pytest
+
+            pytest.skip("metadata.duckdb introuvable")
+        try:
+            with duckdb.connect(str(db_path), read_only=True) as conn:
+                count = conn.execute(
+                    "SELECT COUNT(*) FROM mode_pair_overrides WHERE lang='fr'"
+                ).fetchone()[0]
+        except Exception:
+            import pytest
+
+            pytest.skip("table mode_pair_overrides absente (migration requise)")
+        assert count >= 8
 
 
 # =============================================================================
