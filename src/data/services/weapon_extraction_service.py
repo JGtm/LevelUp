@@ -21,6 +21,7 @@ from pathlib import Path
 
 import duckdb
 
+from src.analysis._global_correlation import correlate_kills_global
 from src.analysis._kill_attribution import KillAttribution
 from src.analysis._parser_logging import MatchLogCollector
 from src.analysis.packet_index import (
@@ -33,7 +34,6 @@ from src.analysis.weapon_parser import (
     KILL_WINDOW_MS,
     build_weapon_timeline,
     build_weapon_timeline_ns,
-    correlate_kills,
     detect_player_indices,
     group_events_by_pi,
     map_b2_to_player,
@@ -77,6 +77,7 @@ class ScanResult:
     """Résultat de la phase Scan multi-chunks."""
 
     fire_events_by_pi: dict[int, list[dict]]
+    fire_events_global: list[dict]
     timeline: dict[int, dict[int, bytes]]
     swap_pis: dict[int, set[int]]
     timing: list[tuple[int, int]]
@@ -260,6 +261,7 @@ class WeaponExtractionService:
 
         return ScanResult(
             fire_events_by_pi=fire_events_by_pi,
+            fire_events_global=all_raw_events,
             timeline=timeline,
             swap_pis=swap_pis,
             timing=timing,
@@ -276,32 +278,30 @@ class WeaponExtractionService:
         scan: ScanResult,
         log: MatchLogCollector,
     ) -> list[KillAttribution]:
-        """Corrèle les kills de tous les joueurs via claim-and-remove."""
+        """Corrèle tous les kills via claim-and-remove global (marker 0x26 fixe).
+
+        Le marker des fire events est identique pour tous les joueurs — le
+        bucketing per-pi est non fiable. On traite donc tous les kills dans
+        un pool unique trié par temps.
+        """
         xuid_to_pi = {str(xuid_int): pi for xuid_int, pi in pi_map.items()}
-        all_attributions: list[KillAttribution] = []
 
         for xuid_str, kills in all_kills.items():
-            if not kills:
-                continue
-            pi = xuid_to_pi.get(xuid_str)
-            pi_mapping = {xuid_str: pi} if pi is not None else {}
-
-            attributions = correlate_kills(
-                kills=kills,
-                fire_events_by_pi=scan.fire_events_by_pi,
-                pi_mapping=pi_mapping,
-                timeline=scan.timeline,
-                swap_pis=scan.swap_pis,
-                timing=scan.timing,
-                chunks_sorted=scan.chunks_sorted,
-                match_id=match_id,
-                log_collector=log,
-            )
-            all_attributions.extend(attributions)
-            if pi is None:
+            if kills and xuid_str not in xuid_to_pi:
                 log.warn("unresolved_player", xuid=xuid_str, kills=len(kills))
 
-        return all_attributions
+        kills_flat = [k for kills in all_kills.values() for k in kills]
+        return correlate_kills_global(
+            kills=kills_flat,
+            fire_events_all=scan.fire_events_global,
+            xuid_to_pi=xuid_to_pi,
+            timeline=scan.timeline,
+            swap_pis=scan.swap_pis,
+            timing=scan.timing,
+            chunks_sorted=scan.chunks_sorted,
+            match_id=match_id,
+            log_collector=log,
+        )
 
     # ── Résolution player_index ──────────────────────────────────────────
 
