@@ -251,10 +251,13 @@ class TestLoadTopMatchesDuckDB:
     """Tests d'intégration avec DuckDB en mémoire."""
 
     @pytest.fixture()
-    def shared_conn(self) -> duckdb.DuckDBPyConnection:
-        """Crée une DB shared en mémoire avec la vue mv_player_matches."""
-        conn = duckdb.connect(":memory:")
-        conn.execute("""
+    def shared_conn(self, tmp_path: object) -> duckdb.DuckDBPyConnection:
+        """Crée une DB shared sur disque avec la vue mv_player_matches, attachée comme 'shared'."""
+        import pathlib
+
+        shared_path = str(pathlib.Path(str(tmp_path)) / "shared_matches.duckdb")
+        shared_db = duckdb.connect(shared_path)
+        shared_db.execute("""
             CREATE TABLE match_registry (
                 match_id VARCHAR PRIMARY KEY,
                 start_time TIMESTAMP,
@@ -266,7 +269,7 @@ class TestLoadTopMatchesDuckDB:
                 medals_loaded BOOLEAN DEFAULT TRUE
             )
         """)
-        conn.execute("""
+        shared_db.execute("""
             CREATE TABLE match_participants (
                 match_id VARCHAR,
                 xuid VARCHAR,
@@ -283,7 +286,7 @@ class TestLoadTopMatchesDuckDB:
                 PRIMARY KEY (match_id, xuid)
             )
         """)
-        conn.execute("""
+        shared_db.execute("""
             CREATE VIEW mv_player_matches AS
             SELECT
                 mp.match_id,
@@ -306,6 +309,10 @@ class TestLoadTopMatchesDuckDB:
             FROM match_participants mp
             JOIN match_registry mr ON mr.match_id = mp.match_id
         """)
+        shared_db.close()
+        # Ouvrir une connexion en mémoire et attacher la shared DB comme 'shared'
+        conn = duckdb.connect(":memory:")
+        conn.execute(f"ATTACH '{shared_path}' AS shared")
         return conn
 
     @pytest.fixture()
@@ -332,12 +339,12 @@ class TestLoadTopMatchesDuckDB:
         map_name: str = "Recharge",
     ) -> None:
         conn.execute(
-            "INSERT INTO match_registry VALUES (?,CURRENT_TIMESTAMP,?,?,?,?,?,?)",
+            "INSERT INTO shared.match_registry VALUES (?,CURRENT_TIMESTAMP,?,?,?,?,?,?)",
             [match_id, map_name, "Arena", "Slayer", is_firefight, False, True],
         )
         kda = (kills + assists / 3) / max(deaths, 1)
         conn.execute(
-            "INSERT INTO match_participants VALUES (?,?,0,?,?,?,?,?,0,?,?,?)",
+            "INSERT INTO shared.match_participants VALUES (?,?,0,?,?,?,?,?,0,?,?,?)",
             [
                 match_id,
                 xuid,
@@ -389,6 +396,11 @@ class TestLoadTopMatchesDuckDB:
     ) -> list[dict]:
         """Exécute la requête top matches et retourne les résultats."""
         shared_conn.execute(f"ATTACH '{player_path}' AS player (READ_ONLY)")
+        # Créer une vue proxy dans le schéma memory pour player_match_enrichment
+        shared_conn.execute(
+            "CREATE OR REPLACE VIEW player_match_enrichment AS "
+            "SELECT * FROM player.player_match_enrichment"
+        )
         target = int(Outcome.WIN) if best else int(Outcome.LOSS)
         dom_flag = 1 if best else 2
         result = shared_conn.execute(

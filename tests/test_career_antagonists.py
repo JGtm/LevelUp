@@ -12,6 +12,9 @@ from unittest.mock import patch
 import duckdb
 import pytest
 
+FAKE_DB_PATH = "/fake/stats.duckdb"
+XUID_ME = "XUID_ME"
+
 
 @pytest.fixture()
 def shared_db(tmp_path: Path) -> Path:
@@ -98,22 +101,51 @@ def shared_db(tmp_path: Path) -> Path:
     return db_path
 
 
-def _patch_shared_path(shared_db: Path):
-    """Retourne un context manager qui patche get_shared_matches_path."""
+@pytest.fixture()
+def player_db(tmp_path: Path) -> Path:
+    """Crée une player DB vide (stats.duckdb) pour satisfaire DuckDBRepository."""
+    db_path = tmp_path / "stats.duckdb"
+    with duckdb.connect(str(db_path)) as conn:
+        conn.execute("""
+            CREATE TABLE player_match_enrichment (
+                match_id VARCHAR PRIMARY KEY,
+                dominance_flag TINYINT DEFAULT 0,
+                had_bot_teammate BOOLEAN DEFAULT FALSE
+            )
+        """)
+    return db_path
+
+
+def _make_repo(player_db: Path, shared_db: Path, xuid: str):
+    """Construit un DuckDBRepository pointant vers les DBs de test."""
+    from src.data.repositories.duckdb_repo import DuckDBRepository
+
+    return DuckDBRepository(
+        player_db_path=player_db,
+        xuid=xuid,
+        shared_db_path=shared_db,
+        metadata_db_path=player_db.parent / "metadata.duckdb",  # inexistant = pas attaché
+        read_only=True,
+    )
+
+
+def _patch_repo(player_db: Path, shared_db: Path, xuid: str):
+    """Retourne un context manager qui patche get_cached_repository_st."""
+    repo = _make_repo(player_db, shared_db, xuid)
     return patch(
-        "src.ui.pages.career_encounters_data.get_shared_matches_path",
-        return_value=shared_db,
+        "src.ui._cache_core.get_cached_repository_st",
+        return_value=repo,
     )
 
 
 class TestLoadTopNemeses:
     """Tests pour _load_top_nemeses (adversaires qui nous tuent le plus)."""
 
-    def test_returns_sorted_by_killed_by(self, shared_db: Path) -> None:
+    def test_returns_sorted_by_killed_by(self, player_db: Path, shared_db: Path) -> None:
         from src.ui.pages.career_encounters_data import _load_top_nemeses
 
-        with _patch_shared_path(shared_db):
-            result = _load_top_nemeses("XUID_ME", limit=10)
+        with _patch_repo(player_db, shared_db, XUID_ME):
+            result = _load_top_nemeses(XUID_ME, FAKE_DB_PATH, limit=10)
 
         assert len(result) == 3
         # A me tue 10 fois = top nemesis
@@ -122,20 +154,20 @@ class TestLoadTopNemeses:
         assert result[0]["times_killed"] == 3
         assert result[0]["net_kills"] == -7
 
-    def test_limit_respected(self, shared_db: Path) -> None:
+    def test_limit_respected(self, player_db: Path, shared_db: Path) -> None:
         from src.ui.pages.career_encounters_data import _load_top_nemeses
 
-        with _patch_shared_path(shared_db):
-            result = _load_top_nemeses("XUID_ME", limit=1)
+        with _patch_repo(player_db, shared_db, XUID_ME):
+            result = _load_top_nemeses(XUID_ME, FAKE_DB_PATH, limit=1)
 
         assert len(result) == 1
         assert result[0]["opponent_gamertag"] == "PlayerA"
 
-    def test_empty_for_unknown_xuid(self, shared_db: Path) -> None:
+    def test_empty_for_unknown_xuid(self, player_db: Path, shared_db: Path) -> None:
         from src.ui.pages.career_encounters_data import _load_top_nemeses
 
-        with _patch_shared_path(shared_db):
-            result = _load_top_nemeses("XUID_UNKNOWN", limit=10)
+        with _patch_repo(player_db, shared_db, "XUID_UNKNOWN"):
+            result = _load_top_nemeses("XUID_UNKNOWN", FAKE_DB_PATH, limit=10)
 
         assert result == []
 
@@ -143,11 +175,11 @@ class TestLoadTopNemeses:
 class TestLoadTopVictims:
     """Tests pour _load_top_victims (adversaires qu'on tue le plus)."""
 
-    def test_returns_sorted_by_killed(self, shared_db: Path) -> None:
+    def test_returns_sorted_by_killed(self, player_db: Path, shared_db: Path) -> None:
         from src.ui.pages.career_encounters_data import _load_top_victims
 
-        with _patch_shared_path(shared_db):
-            result = _load_top_victims("XUID_ME", limit=10)
+        with _patch_repo(player_db, shared_db, XUID_ME):
+            result = _load_top_victims(XUID_ME, FAKE_DB_PATH, limit=10)
 
         assert len(result) == 3
         # Je tue B 8 fois = top victim
@@ -156,11 +188,11 @@ class TestLoadTopVictims:
         assert result[0]["times_killed_by"] == 2
         assert result[0]["net_kills"] == 6
 
-    def test_matches_against_correct(self, shared_db: Path) -> None:
+    def test_matches_against_correct(self, player_db: Path, shared_db: Path) -> None:
         from src.ui.pages.career_encounters_data import _load_top_victims
 
-        with _patch_shared_path(shared_db):
-            result = _load_top_victims("XUID_ME", limit=10)
+        with _patch_repo(player_db, shared_db, XUID_ME):
+            result = _load_top_victims(XUID_ME, FAKE_DB_PATH, limit=10)
 
         # B : matchs m1 et m3 → 2 matchs
         player_b = next(r for r in result if r["opponent_gamertag"] == "PlayerB")
@@ -170,11 +202,11 @@ class TestLoadTopVictims:
 class TestLoadTopEncountered:
     """Tests pour _load_top_encountered (joueurs les plus croisés)."""
 
-    def test_returns_sorted_by_encounters(self, shared_db: Path) -> None:
+    def test_returns_sorted_by_encounters(self, player_db: Path, shared_db: Path) -> None:
         from src.ui.pages.career_encounters_data import _load_top_encountered
 
-        with _patch_shared_path(shared_db):
-            result = _load_top_encountered("XUID_ME", limit=10)
+        with _patch_repo(player_db, shared_db, XUID_ME):
+            result = _load_top_encountered(XUID_ME, FAKE_DB_PATH, limit=10)
 
         assert len(result) >= 2
         # A et C apparaissent dans 2 matchs, B dans 2 matchs aussi
@@ -192,21 +224,22 @@ class TestLoadTopEncountered:
         assert "deaths_suffered" in player_a
         assert "last_seen" in player_a
 
-    def test_excludes_self(self, shared_db: Path) -> None:
+    def test_excludes_self(self, player_db: Path, shared_db: Path) -> None:
         from src.ui.pages.career_encounters_data import _load_top_encountered
 
-        with _patch_shared_path(shared_db):
-            result = _load_top_encountered("XUID_ME", limit=10)
+        with _patch_repo(player_db, shared_db, XUID_ME):
+            result = _load_top_encountered(XUID_ME, FAKE_DB_PATH, limit=10)
 
         xuids = [r["xuid"] for r in result]
         assert "XUID_ME" not in xuids
 
-    def test_excludes_friends_by_xuid(self, shared_db: Path) -> None:
+    def test_excludes_friends_by_xuid(self, player_db: Path, shared_db: Path) -> None:
         from src.ui.pages.career_encounters_data import _load_top_encountered
 
-        with _patch_shared_path(shared_db):
+        with _patch_repo(player_db, shared_db, XUID_ME):
             result = _load_top_encountered(
-                "XUID_ME",
+                XUID_ME,
+                FAKE_DB_PATH,
                 limit=10,
                 exclude_xuids={"XUID_A"},
             )
@@ -215,12 +248,13 @@ class TestLoadTopEncountered:
         assert "XUID_A" not in xuids
         assert "XUID_B" in xuids
 
-    def test_excludes_friends_by_gamertag(self, shared_db: Path) -> None:
+    def test_excludes_friends_by_gamertag(self, player_db: Path, shared_db: Path) -> None:
         from src.ui.pages.career_encounters_data import _load_top_encountered
 
-        with _patch_shared_path(shared_db):
+        with _patch_repo(player_db, shared_db, XUID_ME):
             result = _load_top_encountered(
-                "XUID_ME",
+                XUID_ME,
+                FAKE_DB_PATH,
                 limit=10,
                 exclude_xuids={"PlayerB"},
             )
