@@ -4185,3 +4185,27 @@ Batch 3 (81-85L) — 7 fonctions :
 **Décision technique principale** : `ALTER TABLE DROP COLUMN` non supporté par DuckDB 1.4 quand des index existent → recréation de table requise (même pattern que `_recreate_highlight_events_with_sequence`).
 
 **Conclusion** : Wave 4 complète. Wave 5 (Commit 11 + 11b — nettoyage traduction assets obsolètes) nécessite analyse préalable des dépendances résiduelles avant suppression. Commits 0-10 sur branche `refactor/id-resolution-cleanup`.
+
+---
+
+### [2026-03-15] — Wave 5 complète : Commits 11 + 11b — Nettoyage couche i18n
+
+**Statut** : Complété ✅
+
+**Commits** :
+- `57a755c` — refactor(i18n): supprimer dicts/JSON playlists obsolètes
+- `b4ff066` — refactor(i18n): migrer modes_fr/en.json vers metadata.duckdb
+
+**Décision technique principale (Commit 11)** :
+`PLAYLIST_FR`, `PLAYLIST_EN`, `PAIR_FR` supprimés de `translations.py`. `translate_playlist_name()` réécrite en passthrough + UUID warning. Source de vérité : `metadata.duckdb` via `v_match_full.playlist_name_fr`. `match_history.py` et `explorer_enrich.py` migrés vers aliasing passthrough. Migration framework étendu (`target_db="metadata"` + `metadata_db_path` dans `apply_pending_migrations`). `drop_legacy_translation_tables` créé pour supprimer `mode_translations` + `playlist_translations` legacy.
+
+**Décision technique principale (Commit 11b)** :
+`modes_fr/en.json` migrés vers 4 tables DuckDB (`mode_prefix_names`, `mode_name_tr`, `mode_pair_overrides`, `mode_lang_settings`). `translate_pair_name()` réécrite : 35L sans `noqa: C901`, 3 étapes (override → combinatoire → mode seul), cache LRU process-level via `_load_mode_tables(lang)`. Fallback gracieux pour langues inconnues et DB absente. 9 tests dédiés dans `tests/test_translate_pair_name.py`.
+
+**Résultats observés** :
+- Tests avant : 4607 / après Commit 11 : 4607 / après Commit 11b : 4621 (+14 nouveaux tests)
+- Zéro régression sur les 2 commits
+- `mode_pair_overrides` : 15 lignes (vs 22 estimé dans le plan — normal : doublons de maps normalisés + EN moins de paires que FR)
+- Hooks pre-commit : 2 tentatives par commit (ruff-format reformate, 2ème commit propre)
+
+**Conclusion** : Plan v6 PLAN_ABSTRACTION_RESOLUTION.md entièrement complété. Branche `refactor/id-resolution-cleanup` prête pour merge. 12 commits (0-11b) couvrant fondation SQL, migration consommateurs, nettoyage, migrations schéma et couche i18n complète.
