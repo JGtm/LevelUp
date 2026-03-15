@@ -112,5 +112,6 @@ _SRP_EXCEPTIONS: frozenset[str] = frozenset(
         # _compute_and_update_performance_score — découpé en _compute + _update (Phase P5)
         "_render_map_and_rank",  # match_view.py — composant UI composite (carte + rang côte à côte)
         "_exchange_and_cache",  # auth/provider.py — échange access_token → Halo tokens + mise en cache (atomique)
+        "_run_engine_and_cleanup",  # _sync_duckdb_ops.py — exécute sync + engine.close() (try/finally atomique)
     }
 )
