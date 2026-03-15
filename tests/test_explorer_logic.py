@@ -249,30 +249,23 @@ class TestEnrichForTable:
 class TestExplorerData:
     """Tests de l'accès données Explorer."""
 
-    def test_shared_db_path_derivation(self) -> None:
-        from src.ui.pages.explorer_data import _shared_db_path
-
-        path = _shared_db_path("/data/players/TestGT/stats.duckdb")
-        assert path.name == "shared_matches.duckdb"
-        assert "warehouse" in str(path)
-
     def test_load_is_with_friends_empty(self) -> None:
         from src.ui.pages.explorer_data import load_is_with_friends
 
-        # Pas de match_ids → dict vide
-        assert load_is_with_friends("nonexistent.duckdb", []) == {}
+        # Pas de match_ids → dict vide (sans appel DB)
+        assert load_is_with_friends("nonexistent.duckdb", "xuid123", []) == {}
 
     def test_get_all_gamertags_file_missing(self) -> None:
         from src.ui.pages.explorer_data import get_all_gamertags
 
-        # DB inexistante → liste vide (avec warning)
-        result = get_all_gamertags("/nonexistent/path/stats.duckdb")
+        # DB inexistante → liste vide (dégradation gracieuse)
+        result = get_all_gamertags("/nonexistent/path/stats.duckdb", "xuid123")
         assert result == []
 
     def test_resolve_gamertag_file_missing(self) -> None:
         from src.ui.pages.explorer_data import resolve_gamertag_to_xuid
 
-        result = resolve_gamertag_to_xuid("/nonexistent/path/stats.duckdb", "TestGT")
+        result = resolve_gamertag_to_xuid("/nonexistent/path/stats.duckdb", "xuid123", "TestGT")
         assert result is None
 
     def test_load_common_matches_file_missing(self) -> None:
