@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-5.7.0-blue.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.7.0)
+[![Version](https://img.shields.io/badge/Version-6.0.0-blue.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v6.0.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -12,6 +12,15 @@
 ---
 
 ## What's new
+
+**v6.0 — Zero-config auth, ID resolution layer & weapon catalog**
+- **Zero Azure configuration** — `LEVELUP_CLIENT_ID` bundled in the app; first launch: enter gamertag → Device Code on xbox.com/activate → done
+- **Gamertag auto-detection** from Microsoft login via Halo API; launcher cleaned up (−652 lines of Azure/OAuth dead code)
+- **ID resolution layer** — three SQL views (`v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`) consolidate all gamertag/match/kill lookups into reliable single-JOIN queries
+- **`weapon_labels` in `metadata.duckdb`** — DB-first weapon name resolution (EN/FR) with automatic migration; drops hardcoded dicts
+- **i18n fully in DuckDB** — mode translations migrated from JSON files to `metadata.duckdb`; playlists/game_variants seeded with i18n columns
+- **Last Match navigation** — `◀ Previous` / `Next ▶` buttons to browse filtered matches
+- **Weapon parser accuracy** — global fire_event match rate corrected from 15 % → 95 %
 
 **v5.7 — Bilingual launchers, map hover thumbnails & Polars cleanup**
 - `LevelUp.sh` and `LevelUp.bat` now detect the system language (FR/EN) and display launcher messages accordingly
