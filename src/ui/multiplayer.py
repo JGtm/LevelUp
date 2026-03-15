@@ -159,14 +159,11 @@ def _resolve_from_shared(
             return xuid, total_matches
 
         with duckdb_read_only(shared_path) as shared_con:
+            from src.utils.xuid import lookup_xuid_for_gamertag
+
             # Résoudre xuid si manquant
             if not xuid:
-                result = shared_con.execute(
-                    "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1",
-                    [gamertag],
-                ).fetchone()
-                if result and result[0] and str(result[0]).strip():
-                    xuid = str(result[0]).strip()
+                xuid = lookup_xuid_for_gamertag(shared_con, gamertag)
 
             # Compter les matchs si toujours 0
             if total_matches == 0:
@@ -176,11 +173,11 @@ def _resolve_from_shared(
                         [xuid],
                     ).fetchone()
                 else:
-                    # Dernier recours : JOIN gamertag → xuid → count
+                    # Dernier recours via v_gamertag_lookup : count sans xuid connu
                     result = shared_con.execute(
                         "SELECT COUNT(*) FROM match_participants mp "
-                        "JOIN xuid_aliases xa ON mp.xuid = xa.xuid "
-                        "WHERE xa.gamertag = ?",
+                        "JOIN v_gamertag_lookup vg ON mp.xuid = vg.xuid "
+                        "WHERE LOWER(vg.gamertag) = LOWER(?)",
                         [gamertag],
                     ).fetchone()
                 total_matches = result[0] if result else 0

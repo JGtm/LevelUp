@@ -35,20 +35,14 @@ def _detect_shared_db(db_path: Path, explicit_path: str | Path | None) -> Path:
 
 
 def _resolve_xuid_from_gamertag(gamertag: str, shared_db: Path) -> str | None:
-    """Résout le XUID depuis le gamertag via xuid_aliases."""
+    """Résout le XUID depuis le gamertag via v_gamertag_lookup."""
     from src.utils.db import duckdb_read_only
+    from src.utils.xuid import lookup_xuid_for_gamertag
 
     if not shared_db.exists():
         return None
     with duckdb_read_only(shared_db) as conn:
-        try:
-            row = conn.execute(
-                "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
-                [gamertag],
-            ).fetchone()
-            return str(row[0]) if row and row[0] else None
-        except Exception:
-            return None
+        return lookup_xuid_for_gamertag(conn, gamertag)
 
 
 def _compute_individual_mmr_map(
