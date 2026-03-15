@@ -616,6 +616,14 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
     # au fichier (database_name = nom du fichier), pas de prefix.
     prefix = "shared." if catalog == "shared" else ""
 
+    # Utiliser v_match_full (v6) si disponible, sinon match_registry
+    match_source = f"{prefix}match_registry"
+    try:
+        conn.execute(f"SELECT 1 FROM {prefix}v_match_full LIMIT 1")
+        match_source = f"{prefix}v_match_full"
+    except Exception:
+        pass
+
     # Vérifier si la colonne enemy_mmr existe dans match_participants
     # (peut manquer dans les anciennes DBs ou les tests)
     # Note v5.1 : enemy_mmr est désormais correctement peuplé par le pipeline
@@ -692,7 +700,7 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             COALESCE(r.is_firefight, FALSE) AS is_firefight,
             COALESCE(r.is_ranked, FALSE) AS is_ranked
 
-        FROM {prefix}match_registry r
+        FROM {match_source} r
         JOIN {prefix}match_participants p
             ON r.match_id = p.match_id
     """)
