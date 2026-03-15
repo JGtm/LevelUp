@@ -74,6 +74,21 @@ class TestMatchLogCollector:
         assert s["confidence_distribution"]["high"] == 2
         assert s["confidence_distribution"]["medium"] == 1
 
+    def test_confidence_sentinel_vs_no_weapon(self):
+        """sentinel (melee/grenade) et no_weapon (formula_a sans arme) sont distingués."""
+        log = MatchLogCollector("test")
+        kill = {"xuid": "x", "time_ms": 0}
+        # Sentinel : attribution_path="none", confidence="none"
+        log.kill_decision(kill, _attr(conf="none", path="none"), {})
+        log.kill_decision(kill, _attr(conf="none", path="none"), {})
+        # No-weapon : confidence="none", attribution_path="formula_a"
+        log.kill_decision(kill, _attr(conf="none", path="formula_a"), {})
+        s = log.summary()
+        dist = s["confidence_distribution"]
+        assert dist.get("sentinel") == 2
+        assert dist.get("no_weapon") == 1
+        assert "none" not in dist  # l'ancienne clé brute ne doit plus apparaître
+
     def test_path_distribution(self):
         log = MatchLogCollector("test")
         kill = {"xuid": "x", "time_ms": 0}
@@ -90,6 +105,25 @@ class TestMatchLogCollector:
         with caplog.at_level(logging.INFO, logger="levelup.weapon_parser"):
             log.flush()
         assert any("COMPLETE" in r.message for r in caplog.records)
+
+    def test_flush_compact_format(self, caplog):
+        """La ligne COMPLETE est au format compact lisible."""
+        log = MatchLogCollector("abcdef1234")
+        kill = {"xuid": "x", "time_ms": 0}
+        log.kill_decision(kill, _attr(conf="high", path="fire_event"), {})
+        log.kill_decision(kill, _attr(conf="none", path="none"), {})  # sentinel
+        log.kill_decision(kill, _attr(conf="none", path="formula_a"), {})  # no_weapon
+        with caplog.at_level(logging.INFO, logger="levelup.weapon_parser"):
+            log.flush()
+        msg = next(r.message for r in caplog.records if "COMPLETE" in r.message)
+        assert "match=abcdef12…" in msg
+        assert "k=3" in msg
+        assert "H=1" in msg
+        assert "s=1" in msg  # sentinel dans conf
+        assert "?=1" in msg  # no_weapon
+        assert "fe=1" in msg
+        assert "s=1" in msg  # sentinel dans paths
+        assert "warn=0" in msg
 
     def test_serializable_json(self):
         log = MatchLogCollector("test")

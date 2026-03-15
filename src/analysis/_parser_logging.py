@@ -122,22 +122,63 @@ class MatchLogCollector:
         return None
 
     def _confidence_dist(self) -> dict[str, int]:
-        return dict(Counter(d["confidence"] for d in self.kill_decisions))
+        """Distribution des confiances — distingue sentinel (melee/grenade) et no_weapon.
+
+        - ``sentinel`` : kills melee/grenade (attribution_path='none', arme connue).
+        - ``no_weapon`` : kills formula_a sans arme trouvée dans la timeline (weapon_id=None).
+        """
+        result: dict[str, int] = {}
+        for d in self.kill_decisions:
+            if d["attribution_path"] == "none":
+                key = "sentinel"
+            elif d["confidence"] == "none":
+                key = "no_weapon"
+            else:
+                key = d["confidence"]
+            result[key] = result.get(key, 0) + 1
+        return result
 
     def _path_dist(self) -> dict[str, int]:
         return dict(Counter(d["attribution_path"] for d in self.kill_decisions))
 
     def flush(self) -> None:
-        """Écrit le résumé dans le logger INFO."""
+        """Écrit le résumé compact dans le logger INFO.
+
+        Format : ``match=XXXXXXXX… COMPLETE k=N | H=X M=X L=X s=X ?=X | fe=X fa=X s=X | warn=N``
+
+        Sections :
+        - conf   : H=high  M=medium  L=low  s=sentinel  ?=no_weapon
+        - paths  : fe=fire_event  fa=formula_a  s=sentinel (attribution_path='none')
+        - b2     : optionnel, raw/ok/drop
+        """
         s = self.summary()
+        conf = s["confidence_distribution"]
+        paths = s["path_distribution"]
         b2 = s.get("b2_dispatch") or {}
-        b2_str = f"b2=[raw={b2['total']} ok={b2['dispatched']} drop={b2['dropped']}] " if b2 else ""
+
+        conf_parts = [
+            f"{abbr}={conf[key]}"
+            for key, abbr in (
+                ("high", "H"),
+                ("medium", "M"),
+                ("low", "L"),
+                ("sentinel", "s"),
+                ("no_weapon", "?"),
+            )
+            if conf.get(key, 0)
+        ]
+        path_parts = [
+            f"{abbr}={paths[key]}"
+            for key, abbr in (("fire_event", "fe"), ("formula_a", "fa"), ("none", "s"))
+            if paths.get(key, 0)
+        ]
+        b2_str = f" b2=[raw={b2['total']} ok={b2['dispatched']} drop={b2['dropped']}]" if b2 else ""
         logger.info(
-            "match=%s COMPLETE kills=%d conf=%s paths=%s %swarnings=%d",
-            self.match_id,
+            "match=%s\u2026 COMPLETE k=%d | %s | %s | warn=%d%s",
+            self.match_id[:8],
             s["kills_decided"],
-            s["confidence_distribution"],
-            s["path_distribution"],
-            b2_str,
+            " ".join(conf_parts) or "-",
+            " ".join(path_parts) or "-",
             s["warnings"],
+            b2_str,
         )
