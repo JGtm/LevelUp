@@ -7,6 +7,30 @@
 
 ## Journal
 
+### [2026-05-31] — Couche résolution gamertag→XUID : helper + tests de couverture
+
+**Statut** : Complété (commits `5365f2c`, `1798dcd`, `e632add`)
+
+**Décision technique** : Option B retenue — un seul helper bas niveau `lookup_xuid_for_gamertag(conn, gamertag, *, view_prefix="")` dans `src/utils/xuid.py`. Tente `v_gamertag_lookup` en premier, fallback silencieux sur `xuid_aliases`. Symétrie côté mixin : `GamertagResolverMixin.resolve_xuid_from_gamertag()` délègue avec `view_prefix="shared."`. 9 fichiers migrés au total : `_weapon_kills_repo.py`, `_calibration_loaders.py`, `_cache_core.py`, `xuid.resolve_xuid_from_db`, `multiplayer._resolve_from_shared`, `_engine_connections.py`, `media_helpers.py` (+ extraction `_load_xuid_by_gamertag()` pour C901).
+
+**Résultats observés** : Zéro requête directe `xuid_aliases` restante dans `src/`. 11 tests de couverture créés dans `tests/test_lookup_xuid_for_gamertag.py` (vue disponible, fallback, absente, casse, view_prefix, stub mixin sans fichiers temporaires pour éviter verrouillage Windows). 4791/4791 tests passent. Baseline taille : +1 violation préexistante `match_view.py` (81L, non liée).
+
+**Conclusion** : Branche `refactor/id-resolution-cleanup` complète côté XUID resolution. Prête pour merge ou release.
+
+---
+
+### [2026-03-15] — Migration match_view : requêtes directes → DuckDBRepository
+
+**Statut** : Complété + vérifié
+
+**Décision technique** : Ajout de `load_player_match_enrichment(match_id)` et `is_abandoned_match(match_id)` dans `MatchQueriesMixin` (`_match_queries.py`). Suppression des fonctions `load_enrichment()` et `detect_abandoned_match()` de `match_view_logic.py` (qui faisaient des requêtes DuckDB directes). `match_view.py` utilise désormais `get_cached_repository_st()` pour obtenir le repo puis appelle les méthodes haut niveau. Logging enrichi : `exc_info=True` sur les exceptions, log DEBUG dédié quand un match abandonné est détecté. Les tests ont été réécrits avec de vraies DBs DuckDB en mémoire (12 tests couvrant valeurs explicites, NULLs, table absente, shared absente, score seul non-nul, caplog).
+
+**Résultats observés** : 143/143 tests passent sur la suite ciblée. `match_view_logic.py` est logique pure sans aucun import DB.
+
+**Conclusion** : Section match_view du BACKLOG v6 entièrement soldée. ✅
+
+---
+
 ### [2026-03-15] — Documentation V6.0.0 : CHANGELOG + README
 
 **Statut** : Complété
