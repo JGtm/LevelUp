@@ -70,7 +70,6 @@ from src.app.main_helpers import (
     load_match_dataframe,
     load_profile_api,
     render_profile_hero,
-    resolve_xuid_from_input,
     validate_and_fix_db_path,
 )
 
@@ -181,7 +180,6 @@ __all__ = [
     "propagate_identity_env_main",
     "apply_settings_overrides_main",
     "validate_and_fix_db_path",
-    "resolve_xuid_from_input",
     "load_profile_api",
     "render_profile_hero",
     "load_match_dataframe",
