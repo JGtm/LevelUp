@@ -7,7 +7,41 @@
 
 ## Journal
 
-### [2026-03-15] — Vérification finale Phase 3 + couverture tests
+### [2026-03-15] — Vérification finale Architecture Review P1/P2/P3 + couverture tests
+
+**Statut** : Complété — 4753/4753 tests passent (+26 nouveaux)
+
+**Décision technique** : Vérification finale des corrections P1/P2/P3 : identification de 5 lacunes de couverture (load_career_data spartan_id, _load_spartan_id_from_db via repo, default_identity_from_secrets délégation, DataRepository Protocol sans @abstractmethod, cached_friend_matches_df legacy supprimée). Création de `tests/test_architecture_review_p1_p2_p3.py` (26 tests, 6 classes). Ajout de `logger.debug(..., exc_info=True)` dans `_load_spartan_id_from_db()` pour remplacer le `pass` silencieux.
+
+**Correction de patch** : `get_cached_repository_st` est importé localement dans `_load_spartan_id_from_db()` → patch target = `src.ui._cache_core.get_cached_repository_st` (pas `src.app.main_helpers`).
+
+**Résultats** : 26/26 nouveaux tests ✅, suite complète 4753/4753 ✅.
+
+**Conclusion** : Architecture Review V6 entièrement terminée (P0+P1+P2+P3 + tests de couverture).
+
+**Décision technique** : Suppression de toute la chaîne dead code héritée des migrations v4→v5 : `infrastructure/` (DuckDBEngine, ParquetReader/Writer), `query/engine+analytics+trends`, `integration/` (streamlit_bridge), `domain/services/` (package vide), `ui/components/duckdb_analytics.py` (jamais rendu, `enable_duckdb_analytics=False` par défaut). `matches_to_polars()` déplacée de `streamlit_bridge` vers `factory.py` avant suppression. 200 lignes de dead code retirées de `cache_filters.py`, 7 re-exports nettoyés dans `cache.py`, `__getattr__` lazy loader supprimé de `data/__init__.py`. Tests correspondants supprimés (`test_query_module.py` en entier, `TestStreamlitBridge` dans `test_duckdb_repository.py`, classes `duckdb_analytics` dans `test_components.py`, `load_df_hybrid` dans `test_legacy_free_global.py`).
+
+**Résultats observés** : 4727/4727 tests passent (+ 2 skip). Réduction nette : ~15 fichiers supprimés, ~500 lignes de dead code retirées.
+
+**Conclusion** : P0 terminé. Prochaine étape : P1 (violations d'abstraction — connexions DuckDB directes dans l'UI). ✅
+
+---
+
+### [2026-03-15] — P3 Architecture Review : incohérences de conception
+
+**Statut** : Complété — 4727/4727 tests passent
+
+**Décision technique** :
+
+**P3-1** (`src/data/repositories/protocol.py`) : `@abstractmethod` incompatible avec `Protocol` — dans un Protocol Python, le duck typing structurel est garanti par la simple présence des méthodes. `@abstractmethod` est réservé aux `ABC` et est silencieusement ignoré (sans erreur) dans un `Protocol`, ce qui crée une fausse impression de contrat. Suppression des 10 `@abstractmethod` + retrait de `from abc import abstractmethod`. Docstring nettoyée (référençait LegacyRepository/HybridRepository/ShadowRepository, tous supprimés en P0).
+
+**P3-2** (`CLAUDE.md`) : Règle `src/analysis/` vs `src/data/services/` documentée — `analysis/` = algorithmes purs (entrée : DataFrames/listes, 0 accès DB), `services/` = orchestration (repo + algos → résultats). Règle de décision : si la fonction touche la DB → `services/`, sinon → `analysis/`.
+
+**P3-3** (`src/ui/cache_filters.py`) : Branche legacy morte dans `cached_friend_matches_df` — 30 lignes de code inaccessible supprimées. La branche construisait un DataFrame depuis des objets avec attributs `.same_team`, `.match_id`, etc. (format pre-v4). Or `cached_query_matches_with_friend` ne retourne que `list[str]` (match_ids) ou `[]` depuis la migration v4. Import `_is_duckdb_v4_path` devenu orphelin supprimé.
+
+**Résultats observés** : 4727/4727 tests passent. Aucun `@abstractmethod` dans les Protocols. Règle architecture documentée. Dead code `cache_filters.py` retiré.
+
+**Conclusion** : Architecture Review P1+P2+P3 complète. ✅
 
 **Statut** : Complété — 4764/4764 tests passent
 
@@ -16,6 +50,36 @@
 **Résultats observés** : 4764/4764 tests passent (4747 préexistants + 17 nouveaux). Aucune violation ruff.
 
 **Conclusion** : Phase 3 entièrement vérifiée. Architecture v6 DB-abstraction complète et testée. ✅
+
+---
+
+### [2026-03-15] — P1+P2 Architecture Review : violations d'abstraction et duplications
+
+**Statut** : Complété — 4770/4770 tests passent
+
+**Décision technique** :
+
+**P1-1** (`src/ui/translations.py`) : Unique `duckdb.connect()` bare (sans context manager) remplacé par `duckdb_read_only()` de `src.utils.db`. Import `duckdb` direct supprimé.
+
+**P2-3** (`src/ui/_cache_core.py`) : `PARIS_TZ_NAME = "Europe/Paris"` (3e copie) remplacé par `from src.ui.formatting import PARIS_TZ_NAME`. La constante est maintenant définie en un seul endroit (`formatting.py`) et importée dans `_cache_core.py` et `cache_loaders.py`.
+
+**P2-1+P2-2** (`src/app/data_loader.py`) : Deux fonctions dupliquant exactement la logique de `src/app/profile.py` reécrites en délégations :
+- `default_identity_from_secrets()` → délègue à `profile.get_identity_from_secrets()`, retourne `(identity.gamertag, identity.xuid, identity.waypoint_player)`
+- `resolve_xuid_input()` → délègue à `profile.resolve_xuid(..., identity=get_identity_from_secrets())`
+Cinq imports devenus orphelins supprimés : `Mapping`, `DEFAULT_PLAYER_GAMERTAG`, `DEFAULT_PLAYER_XUID`, `DEFAULT_WAYPOINT_PLAYER`, `parse_xuid_input`, `resolve_xuid_from_db`.
+
+**P1-9a** (`src/data/repositories/_career_repo.py`) : `load_career_data()` étendu pour inclure `spartan_id` dans la requête SELECT et le dict retourné (colonne ajoutée via migration `add_spartan_id_to_career_progression`).
+
+**P1-9b/c** (`src/app/main_helpers.py`) : Deux requêtes DuckDB directes dans l'UI supprimées :
+- `_load_spartan_id_from_db()` : remplacée par `get_cached_repository_st(db_path, xuid).load_career_data()["spartan_id"]`
+- `render_profile_hero` adornment fallback : remplacée par `get_cached_repository_st(db_path, xuid).load_career_data()["adornment_path"]`
+Plus aucun `duckdb_read_only` dans `main_helpers.py`.
+
+**Corrections test** : `tests/test_app_sidebar.py` mis à jour pour patcher `src.app.profile.parse_xuid_input` et `src.app.profile.get_identity_from_secrets` (au lieu de `src.app.data_loader.*` qui n'existe plus). Baseline `scripts/size_baseline.txt` mis à jour (100 violations — `render_profile_hero` renommé à nouvelle position de ligne après shrinkage de `_load_spartan_id_from_db`).
+
+**Résultats observés** : 4770/4770 tests passent. 0 échec. P1-1, P1-9, P2-1, P2-2, P2-3 tous résolus.
+
+**Conclusion** : Architecture Review P1+P2 terminée. Plus aucune connexion DuckDB bare dans la codebase. Les duplications d'identité/XUID centralisées dans `profile.py`. ✅
 
 ---
 

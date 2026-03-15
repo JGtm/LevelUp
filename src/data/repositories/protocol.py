@@ -1,20 +1,14 @@
 """
-Protocole (interface) pour les repositories de données.
-(Protocol/interface for data repositories)
+Protocole (interface structurelle) pour les repositories de données.
 
-HOW IT WORKS:
-Ce Protocol définit le contrat que doivent respecter tous les repositories.
-Il utilise le typing.Protocol de Python pour le duck typing structurel.
-
-Cela permet d'avoir :
-- LegacyRepository : utilise l'ancien système (loaders.py)
-- HybridRepository : utilise le nouveau système (Parquet + DuckDB)
-- ShadowRepository : orchestre la migration entre les deux
+Utilise typing.Protocol pour le duck typing structurel :
+toute classe implémentant ces méthodes satisfait DataRepository
+sans héritage explicite.
+Seule implémentation active : DuckDBRepository.
 """
 
 from __future__ import annotations
 
-from abc import abstractmethod
 from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
 
@@ -23,13 +17,7 @@ from src.data.domain.models.stats import MatchRow
 
 @runtime_checkable
 class DataRepository(Protocol):
-    """
-    Interface abstraite pour l'accès aux données.
-    (Abstract interface for data access)
-
-    Toutes les implémentations (Legacy, Hybrid, Shadow) doivent
-    respecter cette interface pour être interchangeables.
-    """
+    """Interface structurelle pour l'accès aux données."""
 
     @property
     def xuid(self) -> str:
@@ -45,8 +33,7 @@ class DataRepository(Protocol):
     # Chargement des matchs
     # =========================================================================
 
-    @abstractmethod
-    def load_matches(
+    def load_matches(  # noqa: PLR0913
         self,
         *,
         playlist_filter: str | None = None,
@@ -71,7 +58,6 @@ class DataRepository(Protocol):
         """
         ...
 
-    @abstractmethod
     def load_matches_in_range(
         self,
         start_date: datetime,
@@ -83,7 +69,6 @@ class DataRepository(Protocol):
         """
         ...
 
-    @abstractmethod
     def get_match_count(self) -> int:
         """
         Retourne le nombre total de matchs.
@@ -95,7 +80,6 @@ class DataRepository(Protocol):
     # Médailles
     # =========================================================================
 
-    @abstractmethod
     def load_top_medals(
         self,
         match_ids: list[str],
@@ -115,7 +99,6 @@ class DataRepository(Protocol):
         """
         ...
 
-    @abstractmethod
     def load_match_medals(self, match_id: str) -> list[dict[str, int]]:
         """
         Charge les médailles pour un match spécifique.
@@ -130,7 +113,6 @@ class DataRepository(Protocol):
     # Coéquipiers et social
     # =========================================================================
 
-    @abstractmethod
     def list_top_teammates(
         self,
         limit: int = 20,
@@ -148,7 +130,6 @@ class DataRepository(Protocol):
     # Métadonnées
     # =========================================================================
 
-    @abstractmethod
     def get_sync_metadata(self) -> dict[str, Any]:
         """
         Récupère les métadonnées de synchronisation.
@@ -163,7 +144,6 @@ class DataRepository(Protocol):
     # Méthodes de diagnostic
     # =========================================================================
 
-    @abstractmethod
     def get_storage_info(self) -> dict[str, Any]:
         """
         Retourne des informations sur le stockage.
@@ -173,7 +153,6 @@ class DataRepository(Protocol):
         """
         ...
 
-    @abstractmethod
     def is_hybrid_available(self) -> bool:
         """
         Vérifie si les données hybrides (Parquet) sont disponibles.

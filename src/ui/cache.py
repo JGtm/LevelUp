@@ -7,18 +7,11 @@ Extrait en Sprint 17 : cache.py (1337L) → cache_loaders.py (722L) + cache_filt
 """
 
 from src.ui.cache_filters import (  # noqa: F401
-    _get_repository_mode,
-    _is_duckdb_analytics_enabled,
     cached_compute_sessions_db,
     cached_friend_matches_df,
-    cached_get_global_stats_duckdb,
-    cached_get_kda_trend_duckdb,
     cached_get_match_count_duckdb,
-    cached_get_migration_status,
-    cached_get_performance_by_map_duckdb,
     cached_load_matches_paginated,
     cached_load_recent_matches,
-    load_df_hybrid,
 )
 from src.ui.cache_loaders import (  # noqa: F401
     PARIS_TZ_NAME,

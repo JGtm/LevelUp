@@ -32,9 +32,12 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import polars as pl
+
 from src.data.repositories.duckdb_repo import DuckDBRepository
 
 if TYPE_CHECKING:
+    from src.data.domain.models.stats import MatchRow
     from src.data.repositories.protocol import DataRepository
 
 
@@ -168,3 +171,52 @@ def get_repository_from_profile(
         shared_db_path=shared_db_path,
         gamertag=gamertag,
     )
+
+
+def matches_to_polars(matches: list[MatchRow]) -> pl.DataFrame:
+    """Convertit une liste de MatchRow en DataFrame Polars.
+
+    Format normalisé — utilisé pour les services et tests.
+
+    Args:
+        matches: Liste de MatchRow.
+
+    Returns:
+        pl.DataFrame avec colonnes typées (inclut stats par minute).
+    """
+    if not matches:
+        return pl.DataFrame()
+
+    data = {
+        "match_id": [m.match_id for m in matches],
+        "start_time": [m.start_time for m in matches],
+        "map_id": [m.map_id for m in matches],
+        "map_name": [m.map_name for m in matches],
+        "playlist_id": [m.playlist_id for m in matches],
+        "playlist_name": [m.playlist_name for m in matches],
+        "pair_id": [m.map_mode_pair_id for m in matches],
+        "pair_name": [m.map_mode_pair_name for m in matches],
+        "outcome": [m.outcome for m in matches],
+        "kills": [m.kills for m in matches],
+        "deaths": [m.deaths for m in matches],
+        "assists": [m.assists for m in matches],
+        "accuracy": [m.accuracy for m in matches],
+        "ratio": [m.ratio for m in matches],
+        "kda": [m.kda for m in matches],
+        "time_played_seconds": [m.time_played_seconds for m in matches],
+        "average_life_seconds": [m.average_life_seconds for m in matches],
+        "personal_score": [m.personal_score for m in matches],
+        "team_mmr": [m.team_mmr for m in matches],
+        "enemy_mmr": [m.enemy_mmr for m in matches],
+    }
+
+    df = pl.DataFrame(data)
+
+    minutes = pl.col("time_played_seconds").cast(pl.Float64) / 60.0
+    df = df.with_columns(
+        (pl.col("kills").cast(pl.Float64) / minutes).alias("kills_per_min"),
+        (pl.col("deaths").cast(pl.Float64) / minutes).alias("deaths_per_min"),
+        (pl.col("assists").cast(pl.Float64) / minutes).alias("assists_per_min"),
+    )
+
+    return df

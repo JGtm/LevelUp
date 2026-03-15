@@ -386,27 +386,6 @@ class TestLoadDbProfiles:
             assert db_path.endswith(".duckdb"), f"{gamertag} devrait avoir un chemin .duckdb"
 
 
-class TestStreamlitBridge:
-    """Tests pour l'intégration Streamlit."""
-
-    def test_import_get_repository_for_player(self):
-        """Vérifie que get_repository_for_player est exporté."""
-        from src.data.integration import get_repository_for_player
-
-        assert callable(get_repository_for_player)
-
-    def test_mode_detection_returns_duckdb(self):
-        """Vérifie que l'auto-détection retourne DUCKDB pour v2.0."""
-        from src.data.integration import get_repository_mode_from_settings
-        from src.data.repositories.factory import RepositoryMode
-
-        # Sans variable d'environnement et avec db_profiles v2.0
-        # devrait retourner DUCKDB
-        mode = get_repository_mode_from_settings()
-
-        assert mode == RepositoryMode.DUCKDB
-
-
 def _has_player_match_enrichment_table() -> bool:
     """Vérifie que la DB de test contient la table player_match_enrichment."""
     db_path = Path("data/players/JGtm/stats.duckdb")
