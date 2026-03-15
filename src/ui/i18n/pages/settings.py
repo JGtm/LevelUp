@@ -93,6 +93,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Calcule le LUSR (LevelUp Skill Rank) pour les matchs non classés — calcul local, pas d'API requise",
         "en": "Computes LUSR (LevelUp Skill Rank) for unranked matches — local computation, no API required",
     },
+    "set_backfill_events_help": {
+        "fr": "Récupère les highlight events (premier frag, première mort, frags parfaits…) pour les matchs déjà en base. Peut être activé sans le toggle Backfill général.",
+        "en": "Fetches highlight events (first kill, first death, perfect kills…) for matches already in the database. Can be enabled without the general Backfill toggle.",
+    },
     "set_backfill_weapons": {
         "fr": "Kills par arme (films SPNKr)",
         "en": "Weapon kills (SPNKr films)",

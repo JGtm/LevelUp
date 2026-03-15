@@ -7,6 +7,37 @@
 
 ## Journal
 
+### [2026-03-15] — Fix tableaux Top Matchs page Carrière (classe CSS manquante)
+
+**Statut** : Complété
+
+**Problème** : Les tableaux "Meilleures performances" / "Pires performances" de la page Carrière étaient affichés sans style (colonnes non formatées, entêtes sans fond, pas de séparateurs).
+
+**Cause** : Dans `src/ui/pages/career_top_matches_render.py`, la balise `<table>` utilisait `class='os-sb-table'`, une classe CSS inexistante. Tous les sélecteurs CSS du projet pour ces tableaux sont définis sous `.os-table.os-scoreboard` (styles globaux dans `static/styles.css` lignes 1403-1630).
+
+**Décision** : Correction minimale — remplacer `os-sb-table` par `os-table os-scoreboard`, cohérent avec `career_encounters_html.py` et `match_view_scoreboard.py`.
+
+**Résultat** : Les styles `.os-table td.os-sb-td`, `.os-table th.os-sb-th`, hover, badges, etc. s'appliquent correctement.
+
+---
+
+### [2026-03-15] — UX Backfill events : correction message + case indépendante
+
+**Statut** : Complété
+
+**Décision technique** : L'utilisateur voyait le message `ts_first_event_no_data` lui demandant d'activer "Backfill events" dans Paramètres. Deux bugs UX identifiés :
+1. Label incorrect dans le message ("Backfill events" au lieu du vrai libellé "Événements")
+2. La case "Événements" était désactivée (`disabled=not backfill_enabled`) à moins que le toggle principal "Activer le backfill" soit ON — mais le message ne le mentionnait pas
+
+**Corrections** :
+- `src/ui/pages/settings.py` : suppression de `disabled=not backfill_enabled` sur la case "Événements" + ajout `help=t("set_backfill_events_help")`. Le backend (`sidebar.py`, `has_any_backfill_option`) supporte déjà l'activation indépendante.
+- `src/ui/i18n/pages/settings.py` : ajout clé `set_backfill_events_help` (tooltip explicatif)
+- `src/ui/i18n/pages/timeseries.py` : messages `ts_first_event_no_data` et `ts_events_unavailable` corrigés (label "Événements", étapes exactes : cocher → sauvegarder → Actualiser)
+
+**Résultat** : La case "Événements" est toujours accessible sans le toggle global. Les messages guidant l'utilisateur sont maintenant précis.
+
+---
+
 ### [2026-03-15] — Vérification finale Architecture Review P1/P2/P3 + couverture tests
 
 **Statut** : Complété — 4753/4753 tests passent (+26 nouveaux)

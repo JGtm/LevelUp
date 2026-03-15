@@ -242,7 +242,7 @@ def _render_backfill_section(settings: AppSettings) -> dict:  # noqa: PLR0912
             backfill_events = st.checkbox(
                 t("set_backfill_events"),
                 value=bool(getattr(settings, "spnkr_refresh_backfill_events", False)),
-                disabled=not backfill_enabled,
+                help=t("set_backfill_events_help"),
             )
             backfill_skill = st.checkbox(
                 t("set_backfill_skill"),

@@ -66,8 +66,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Distribution of timestamps for your first kill and first death. See how fast you get your first kill vs your first death.",
     },
     "ts_first_event_no_data": {
-        "fr": "Données d'événements non disponibles (premier frag / première mort). L'**Actualiser** récupère déjà ces données pour les **nouveaux** matchs. Pour les matchs déjà en base sans événements film, active dans **Paramètres** → **Options du bouton Actualiser** l'option **Backfill events**, puis **Actualiser**.",
-        "en": "Event data is not available (first kill / first death). **Refresh** already fetches these for **new** matches. For existing matches without film events, enable **Backfill events** in **Settings** → **Refresh button options**, then **Refresh**.",
+        "fr": "Données d'événements non disponibles (premier frag / première mort). L'**Actualiser** récupère déjà ces données pour les **nouveaux** matchs. Pour les matchs déjà en base sans événements film : coche **Événements** dans **Paramètres** → **Options du bouton Actualiser**, sauvegarde, puis clique **Actualiser**.",
+        "en": "Event data is not available (first kill / first death). **Refresh** already fetches these for **new** matches. For existing matches without film events: check **Events** in **Settings** → **Refresh button options**, save, then click **Refresh**.",
     },
     "ts_performance": "col_performance",  # alias → common
     "ts_assists": "col_assists",  # alias → common
@@ -241,8 +241,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "ts_mmr_team": {"fr": "MMR Équipe", "en": "Team MMR"},
     "ts_mmr_enemy": {"fr": "MMR Adversaire", "en": "Enemy MMR"},
     "ts_events_unavailable": {
-        "fr": "Données d'événements non disponibles. Lance un backfill events.",
-        "en": "Event data not available. Run an events backfill.",
+        "fr": "Données d'événements non disponibles. Coche **Événements** dans **Paramètres** → **Options du bouton Actualiser**, sauvegarde, puis **Actualiser**.",
+        "en": "Event data not available. Check **Events** in **Settings** → **Refresh button options**, save, then **Refresh**.",
     },
     "ts_not_enough_dist": {
         "fr": "Pas assez de données ({count} matchs). Il en faut au moins {min} pour la distribution.",
