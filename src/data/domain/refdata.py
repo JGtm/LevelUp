@@ -125,16 +125,6 @@ CATEGORY_TO_FR: Final[dict[int, str]] = {
     GameVariantCategory.MULTIPLAYER_FIREFIGHT: "Firefight",
 }
 
-OUTCOME_TO_FR: Final[dict[int, str]] = {
-    Outcome.UNKNOWN: "Inconnu",
-    Outcome.NONE: "Aucun",
-    Outcome.TIE: "Égalité",
-    Outcome.WIN: "Victoire",
-    Outcome.LOSS: "Défaite",
-    Outcome.DID_NOT_FINISH: "Non terminé",
-    Outcome.DID_NOT_START: "Non commencé",
-}
-
 # =============================================================================
 # Sets pour regroupement par type
 # =============================================================================
@@ -302,19 +292,6 @@ def get_category_name_fr(category: int | GameVariantCategory) -> str:
     """
     cat_value = int(category) if isinstance(category, GameVariantCategory) else category
     return CATEGORY_TO_FR.get(cat_value, "Autre")
-
-
-def get_outcome_name_fr(outcome: int | Outcome) -> str:
-    """Retourne le nom français d'un résultat de match.
-
-    Args:
-        outcome: Valeur de Outcome (int ou enum).
-
-    Returns:
-        Nom français du résultat, ou "Inconnu" si non trouvé.
-    """
-    out_value = int(outcome) if isinstance(outcome, Outcome) else outcome
-    return OUTCOME_TO_FR.get(out_value, "Inconnu")
 
 
 def is_objective_score(name_id: int | PersonalScoreNameId) -> bool:
