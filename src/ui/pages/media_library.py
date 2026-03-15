@@ -134,7 +134,7 @@ def _load_media(
             assoc_df = assoc_df.with_columns(pl.lit(None).alias("match_id"))
         if "match_start_time" not in assoc_df.columns:
             assoc_df = assoc_df.with_columns(pl.lit(None).alias("match_start_time"))
-        windows_df = _load_match_windows_from_db(db_path) if db_path else pl.DataFrame()
+        windows_df = _load_match_windows_from_db(db_path, xuid) if db_path else pl.DataFrame()
 
     return assoc_df, using_db, windows_df
 

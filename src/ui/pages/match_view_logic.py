@@ -11,8 +11,6 @@ from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.analysis.performance_score import compute_relative_performance_score
 from src.config import HALO_COLORS, OUTCOME_CODES
 from src.ui.i18n import get_outcome_map
-from src.utils.db import duckdb_read_only
-from src.utils.paths import get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
 
@@ -38,31 +36,6 @@ def resolve_outcome(
     else:
         outcome_color = colors["slate"]
     return outcome_code, outcome_label, outcome_color
-
-
-def load_enrichment(db_path: str, match_id: str) -> tuple[bool, float | None, int | None]:
-    """Charge had_bot_teammate, performance_score et dominance_flag."""
-    had_bot = False
-    stored_perf: float | None = None
-    dominance_flag: int | None = None
-    try:
-        from src.utils.db import duckdb_read_only
-
-        with duckdb_read_only(db_path) as conn:
-            pme_row = conn.execute(
-                "SELECT had_bot_teammate, performance_score, dominance_flag"
-                " FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
-                [match_id],
-            ).fetchone()
-        if pme_row:
-            had_bot = bool(pme_row[0])
-            if pme_row[1] is not None:
-                stored_perf = float(pme_row[1])
-            if pme_row[2] is not None:
-                dominance_flag = int(pme_row[2])
-    except Exception:
-        logger.debug("match_view: enrichment introuvable match=%s", match_id)
-    return had_bot, stored_perf, dominance_flag
 
 
 def compute_perf_display(
@@ -99,29 +72,3 @@ def enrich_pm_from_row(pm: dict[str, Any], row: dict[str, Any]) -> None:
             val = row.get(stat_key)
             if val is not None:
                 pm.setdefault(stat_key, {})["count"] = float(val) if val == val else None
-
-
-def detect_abandoned_match(match_id: str, db_path: str) -> bool:
-    """Retourne True si tous les participants du match ont kills=deaths=score=0.
-
-    Interroge shared_matches.duckdb pour vérifier si le match s'est terminé
-    sans qu'aucun joueur n'ait enregistré de points (crash serveur, partie non disputée).
-    """
-    try:
-        shared_path = get_shared_matches_path_from_player(db_path)
-        if shared_path is None:
-            return False
-        with duckdb_read_only(str(shared_path)) as conn:
-            result = conn.execute(
-                "SELECT COUNT(*) AS n,"
-                " COALESCE(SUM(kills), 0) AS k,"
-                " COALESCE(SUM(deaths), 0) AS d,"
-                " COALESCE(SUM(score), 0) AS s"
-                " FROM match_participants WHERE match_id = ?",
-                [match_id],
-            ).fetchone()
-        if result and result[0] > 0:
-            return result[1] == 0 and result[2] == 0 and result[3] == 0
-    except Exception:
-        logger.debug("detect_abandoned_match: erreur pour match=%s", match_id)
-    return False

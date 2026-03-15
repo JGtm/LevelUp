@@ -27,6 +27,8 @@ import duckdb
 from src.data.repositories._archives_repo import ArchivesMixin
 from src.data.repositories._arrow_bridge import result_to_polars
 from src.data.repositories._awards_repo import AwardsMixin
+from src.data.repositories._career_encounters_repo import EncounterCareerMixin
+from src.data.repositories._career_repo import CareerMixin
 from src.data.repositories._diagnostic_repo import DiagnosticMixin
 from src.data.repositories._events_repo import EventsMixin
 from src.data.repositories._killer_victim_repo import KillerVictimMixin
@@ -34,6 +36,7 @@ from src.data.repositories._legacy_compat import LegacyCompatMixin
 from src.data.repositories._match_queries import MatchQueriesMixin
 from src.data.repositories._materialized_views import MaterializedViewsMixin
 from src.data.repositories._medals_repo import MedalsMixin
+from src.data.repositories._media_repo import MediaLibraryMixin
 from src.data.repositories._metadata_resolution import MetadataResolutionMixin
 from src.data.repositories._roster_loader import RosterLoaderMixin
 from src.data.repositories._schema_introspection import SchemaIntrospectionMixin
@@ -151,8 +154,11 @@ class DuckDBRepository(
     ArchivesMixin,
     SchemaIntrospectionMixin,
     MetadataResolutionMixin,
+    CareerMixin,
+    EncounterCareerMixin,
     DiagnosticMixin,
     AwardsMixin,
+    MediaLibraryMixin,
     LegacyCompatMixin,
     WeaponKillsMixin,
 ):

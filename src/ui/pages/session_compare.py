@@ -308,12 +308,13 @@ def _render_mmr_comparison(perf_a: dict, perf_b: dict) -> None:
 
 
 @fragment_if_available
-def _render_cumulative_section(
+def _render_cumulative_section(  # noqa: PLR0913 — 2 sessions + labels + db_path + xuid
     df_session_a: DataFrameLike,
     df_session_b: DataFrameLike,
     session_a_label: str,
     session_b_label: str,
     db_path: str | None = None,
+    xuid: str | None = None,
 ) -> None:
     """Affiche la section du net score cumulé par session."""
     df_session_a = ensure_polars(df_session_a)
@@ -330,8 +331,8 @@ def _render_cumulative_section(
         pl_a = sorted_a.select(_req)
         pl_b = sorted_b.select(_req)
 
-        rank_a, label_a = build_skill_series(sorted_a, db_path)
-        rank_b, label_b = build_skill_series(sorted_b, db_path)
+        rank_a, label_a = build_skill_series(sorted_a, db_path, xuid)
+        rank_b, label_b = build_skill_series(sorted_b, db_path, xuid)
         rank_label = label_a if rank_a else label_b
 
         def _perf_series(df: pl.DataFrame) -> list[float | None] | None:
@@ -504,7 +505,7 @@ def render_session_comparison_page(
 
     _render_comparative_charts(perf_a, perf_b, hist_avg, session_type_label, compare_label)
     _render_cumulative_section(
-        df_session_a, df_session_b, session_a_label, session_b_label, db_path=db_path
+        df_session_a, df_session_b, session_a_label, session_b_label, db_path=db_path, xuid=xuid
     )
     render_kd_progression(df_session_a, df_session_b, session_a_label, session_b_label)
     render_modes_breakdown(df_session_a, df_session_b)

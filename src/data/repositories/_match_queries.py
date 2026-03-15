@@ -426,3 +426,72 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
                 exc_info=True,
             )
         return team_mmr, enemy_mmr
+
+    # =========================================================================
+    # Enrichissement joueur + détection match abandonné
+    # =========================================================================
+
+    def load_player_match_enrichment(self, match_id: str) -> tuple[bool, float | None, int | None]:
+        """Charge had_bot_teammate, performance_score et dominance_flag.
+
+        Lit depuis la table ``player_match_enrichment`` de la DB joueur.
+
+        Returns:
+            Tuple (had_bot_teammate, performance_score, dominance_flag).
+        """
+        had_bot = False
+        stored_perf: float | None = None
+        dominance_flag: int | None = None
+        try:
+            conn = self._get_connection()
+            pme_row = conn.execute(
+                "SELECT had_bot_teammate, performance_score, dominance_flag"
+                " FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
+                [match_id],
+            ).fetchone()
+            if pme_row:
+                had_bot = bool(pme_row[0])
+                if pme_row[1] is not None:
+                    stored_perf = float(pme_row[1])
+                if pme_row[2] is not None:
+                    dominance_flag = int(pme_row[2])
+        except Exception:
+            logger.debug(
+                "load_player_match_enrichment: introuvable match=%s", match_id, exc_info=True
+            )
+        return had_bot, stored_perf, dominance_flag
+
+    def is_abandoned_match(self, match_id: str) -> bool:
+        """Retourne True si tous les participants du match ont kills=deaths=score=0.
+
+        Interroge ``shared.match_participants`` pour détecter un match terminé
+        sans qu'aucun joueur n'ait enregistré de points (crash serveur, partie
+        non disputée).
+        """
+        if not self._has_shared_table("match_participants"):
+            return False
+        try:
+            conn = self._get_connection()
+            result = conn.execute(
+                "SELECT COUNT(*) AS n,"
+                " COALESCE(SUM(kills), 0) AS k,"
+                " COALESCE(SUM(deaths), 0) AS d,"
+                " COALESCE(SUM(score), 0) AS s"
+                " FROM shared.match_participants WHERE match_id = ?",
+                [match_id],
+            ).fetchone()
+            if result and result[0] > 0:
+                abandoned = result[1] == 0 and result[2] == 0 and result[3] == 0
+                if abandoned:
+                    logger.debug(
+                        "is_abandoned_match: match=%s abandonné (%d participants, k=%s d=%s s=%s)",
+                        match_id,
+                        result[0],
+                        result[1],
+                        result[2],
+                        result[3],
+                    )
+                return abandoned
+        except Exception:
+            logger.debug("is_abandoned_match: erreur pour match=%s", match_id, exc_info=True)
+        return False

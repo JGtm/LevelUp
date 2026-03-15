@@ -41,17 +41,6 @@ def _is_duckdb_file(db_path: str) -> bool:
     return db_path.endswith(".duckdb")
 
 
-def _get_duckdb_connection(db_path: str):
-    """Retourne une connexion DuckDB (read-only).
-
-    .. deprecated:: v5.2
-        Préférer ``with duckdb_read_only(db_path) as conn:`` directement.
-    """
-    from src.utils.db import duckdb_read_only
-
-    return duckdb_read_only(db_path).__enter__()
-
-
 @dataclass
 class PlayerInfo:
     """Informations sur un joueur dans une DB multi-joueurs."""

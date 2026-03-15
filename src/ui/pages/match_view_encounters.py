@@ -27,7 +27,6 @@ from src.ui.pages.match_view_encounters_logic import (
     filter_encounter_xuids,
     ordinal,
 )
-from src.utils.db import duckdb_read_only
 
 logger = logging.getLogger(__name__)
 
@@ -200,25 +199,6 @@ def _build_encounter_table_html(rows_html: list[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Chargement des friends_xuids depuis player_match_enrichment
-# ---------------------------------------------------------------------------
-
-
-def _fetch_friends_xuids_csv(db_path: str, match_id: str) -> str | None:
-    """Lit la colonne friends_xuids depuis player_match_enrichment pour ce match."""
-    try:
-        with duckdb_read_only(db_path) as conn:
-            row = conn.execute(
-                "SELECT friends_xuids FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
-                [match_id],
-            ).fetchone()
-        return str(row[0]) if row and row[0] else None
-    except Exception:
-        logger.debug("Lecture friends_xuids échouée pour match %s", match_id)
-        return None
-
-
-# ---------------------------------------------------------------------------
 # Point d'entrée public
 # ---------------------------------------------------------------------------
 
@@ -314,7 +294,7 @@ def render_encounter_section(
     if not players:
         return
 
-    friends_csv = _fetch_friends_xuids_csv(db_path, match_id)
+    friends_csv = repo.load_friends_xuids_csv(match_id)
     friends_set = build_friends_set(self_xuid, friends_csv)
     target_xuids = filter_encounter_xuids(players, self_xuid, friends_set)
     if not target_xuids:

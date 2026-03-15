@@ -24,9 +24,7 @@ from src.ui.pages.match_view_helpers import (
 )
 from src.ui.pages.match_view_logic import (
     compute_perf_display,
-    detect_abandoned_match,
     enrich_pm_from_row,
-    load_enrichment,
     resolve_outcome,
 )
 from src.ui.pages.match_view_rank import _build_match_rank_html
@@ -190,13 +188,17 @@ def render_match_view(  # noqa: C901, PLR0912
 
     logger.debug("render_match_view match=%s xuid=%s", match_id, xuid)
 
+    from src.ui._cache_core import get_cached_repository_st
+
+    repo = get_cached_repository_st(db_path, str(xuid).strip())
+
     outcome_code, outcome_label, outcome_color = resolve_outcome(row)
     colors = HALO_COLORS.as_dict()
     score_label = params["format_score_label_fn"](
         row.get("my_team_score"), row.get("enemy_team_score")
     )
     match_url = _build_waypoint_url(params["waypoint_player"], match_id)
-    _had_bot, _stored_perf, _dominance_flag = load_enrichment(db_path, match_id)
+    _had_bot, _stored_perf, _dominance_flag = repo.load_player_match_enrichment(match_id)
     _perf_score, perf_display, perf_color = compute_perf_display(
         row, df_full, _stored_perf, _had_bot
     )
@@ -217,7 +219,7 @@ def render_match_view(  # noqa: C901, PLR0912
         db_key=db_key,
     )
 
-    is_abandoned = detect_abandoned_match(match_id, db_path)
+    is_abandoned = repo.is_abandoned_match(match_id)
     if is_abandoned:
         st.warning(
             f"**{t('mv_abandoned_match')}** — {t('mv_abandoned_match_desc')}",

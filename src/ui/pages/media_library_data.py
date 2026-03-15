@@ -206,11 +206,10 @@ def associate_media_to_matches(media_df: pl.DataFrame, windows_df: pl.DataFrame)
 # ------------------------------------------------------------------
 
 
-def load_match_windows_from_db(db_path: str) -> pl.DataFrame:  # noqa: C901, PLR0912, PLR0915
+def load_match_windows_from_db(db_path: str, xuid: str = "") -> pl.DataFrame:  # noqa: C901, PLR0912, PLR0915
     """Charge les fenêtres temporelles des matchs depuis la DB.
 
-    V5 : Utilise shared_matches.duckdb si disponible.
-    Fallback v4 : Parcourt les DBs joueurs individuelles.
+    V5 : Utilise shared_matches.duckdb via le repository.
     """
     _empty = pl.DataFrame(
         schema={
@@ -221,61 +220,48 @@ def load_match_windows_from_db(db_path: str) -> pl.DataFrame:  # noqa: C901, PLR
         }
     )
     try:
-        from src.utils.db import duckdb_read_only
-        from src.utils.paths import PLAYERS_DIR
+        from src.ui._cache_core import get_cached_repository_st
 
-        # --- V5 : requête unique via shared_matches.duckdb ---
-        shared_db = PLAYERS_DIR.parent / "warehouse" / "shared_matches.duckdb"
-        if shared_db.exists():
-            try:
-                with duckdb_read_only(shared_db) as conn:
-                    matches = conn.execute(
-                        """
-                        SELECT match_id, start_time, duration_seconds
-                        FROM match_registry
-                        WHERE start_time IS NOT NULL
-                        """
-                    ).fetchall()
+        repo = get_cached_repository_st(db_path, xuid)
+        matches = repo.load_match_registry_raw()
 
-                if matches:
-                    all_windows: list[dict[str, object]] = []
-                    for match_id, start_time, duration in matches:
-                        try:
-                            if isinstance(start_time, datetime):
-                                dt_start = start_time
-                            elif isinstance(start_time, str):
-                                if start_time.endswith("Z"):
-                                    dt_start = datetime.fromisoformat(start_time[:-1] + "+00:00")
-                                elif "+" in start_time or start_time.count("-") > 2:
-                                    dt_start = datetime.fromisoformat(start_time)
-                                else:
-                                    dt_start = datetime.fromisoformat(start_time + "+00:00")
-                            else:
-                                continue
+        if matches:
+            all_windows: list[dict[str, object]] = []
+            for match_id, start_time, duration in matches:
+                try:
+                    if isinstance(start_time, datetime):
+                        dt_start = start_time
+                    elif isinstance(start_time, str):
+                        if start_time.endswith("Z"):
+                            dt_start = datetime.fromisoformat(start_time[:-1] + "+00:00")
+                        elif "+" in start_time or start_time.count("-") > 2:
+                            dt_start = datetime.fromisoformat(start_time)
+                        else:
+                            dt_start = datetime.fromisoformat(start_time + "+00:00")
+                    else:
+                        continue
 
-                            start_epoch = epoch_seconds_paris(dt_start)
-                            if start_epoch is None:
-                                continue
+                    start_epoch = epoch_seconds_paris(dt_start)
+                    if start_epoch is None:
+                        continue
 
-                            dur = float(duration or 0) if duration else 12 * 60
-                            end_epoch = start_epoch + dur
+                    dur = float(duration or 0) if duration else 12 * 60
+                    end_epoch = start_epoch + dur
 
-                            all_windows.append(
-                                {
-                                    "match_id": str(match_id),
-                                    "start_epoch": start_epoch,
-                                    "end_epoch": end_epoch,
-                                    "start_time": dt_start,
-                                }
-                            )
-                        except Exception as e:
-                            logger.debug("media_library: erreur parsing window entry: %s", e)
-                            continue
+                    all_windows.append(
+                        {
+                            "match_id": str(match_id),
+                            "start_epoch": start_epoch,
+                            "end_epoch": end_epoch,
+                            "start_time": dt_start,
+                        }
+                    )
+                except Exception as e:
+                    logger.debug("media_library: erreur parsing window entry: %s", e)
+                    continue
 
-                    if all_windows:
-                        return pl.DataFrame(all_windows).sort("start_epoch")
-            except Exception:
-                logger.debug("media_library: shared match_registry indisponible, pas de windows")
+            if all_windows:
+                return pl.DataFrame(all_windows).sort("start_epoch")
 
         return _empty
 
@@ -328,75 +314,16 @@ def load_media_from_db(
         "xuid",
     ]
     try:
-        from src.utils.db import duckdb_read_only
+        from src.ui._cache_core import get_cached_repository_st
 
-        with duckdb_read_only(db_path) as conn:
-            from src.utils.db import has_table
-
-            if not has_table(conn, "media_files"):
-                return pl.DataFrame()
-
-            if xuid or gamertag:
-                uids = [u for u in (xuid, gamertag) if u]
-                uids = list(dict.fromkeys(uids))
-                if not uids:
-                    uid_filter = "1=0"
-                    params: list[str] = []
-                elif len(uids) == 1:
-                    uid_filter = "mma.xuid = ?"
-                    params = [uids[0]]
-                else:
-                    uid_filter = "(mma.xuid = ? OR mma.xuid = ?)"
-                    params = list(uids[:2])
-                result = conn.execute(
-                    f"""
-                    SELECT DISTINCT
-                        mf.file_path AS path,
-                        mf.mtime,
-                        mf.mtime_paris_epoch,
-                        mf.file_ext AS ext,
-                        mf.kind,
-                        mf.file_name AS basename,
-                        mf.thumbnail_path,
-                        mma.match_id,
-                        mma.match_start_time,
-                        mma.association_confidence,
-                        mma.xuid
-                    FROM media_files mf
-                    LEFT JOIN media_match_associations mma
-                        ON mf.file_path = mma.media_path
-                        AND ({uid_filter})
-                    ORDER BY mf.mtime_paris_epoch DESC
-                    """,
-                    params,
-                ).fetchall()
-            else:
-                result = conn.execute(
-                    """
-                    SELECT DISTINCT
-                        mf.file_path AS path,
-                        mf.mtime,
-                        mf.mtime_paris_epoch,
-                        mf.file_ext AS ext,
-                        mf.kind,
-                        mf.file_name AS basename,
-                        mf.thumbnail_path,
-                        mma.match_id,
-                        mma.match_start_time,
-                        mma.association_confidence,
-                        mma.xuid
-                    FROM media_files mf
-                    LEFT JOIN media_match_associations mma
-                        ON mf.file_path = mma.media_path
-                    ORDER BY mf.mtime_paris_epoch DESC
-                    """
-                ).fetchall()
-
-            if not result:
-                return pl.DataFrame()
-
-            rows = [dict(zip(_col_names, row, strict=False)) for row in result]
-            return pl.DataFrame(rows)
+        repo = get_cached_repository_st(db_path, xuid or "")
+        result = repo.load_media_files_raw(xuid, gamertag)
+        if result is None:
+            return pl.DataFrame()
+        if not result:
+            return pl.DataFrame()
+        rows = [dict(zip(_col_names, row, strict=False)) for row in result]
+        return pl.DataFrame(rows)
 
     except Exception as e:
         logger.debug("media_library: load_media_from_db échoué: %s", e)
