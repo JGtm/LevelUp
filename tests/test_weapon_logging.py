@@ -132,6 +132,30 @@ class TestMatchLogCollector:
         # Doit être sérialisable sans erreur
         json.dumps(log.summary())
 
+    def test_b2_dispatch_stats(self):
+        """_b2_dispatch_stats() retourne les stats quand le step b2_dispatch existe."""
+        log = MatchLogCollector("test")
+        log.record_step(
+            "b2_dispatch",
+            total_events=488,
+            dispatched_events=473,
+            dropped_events=15,
+            resolved_b2=8,
+        )
+        s = log.summary()
+        b2 = s["b2_dispatch"]
+        assert b2 is not None
+        assert b2["total"] == 488
+        assert b2["dispatched"] == 473
+        assert b2["dropped"] == 15
+        assert b2["resolved_b2"] == 8
+
+    def test_b2_dispatch_stats_absent(self):
+        """_b2_dispatch_stats() retourne None quand aucun step b2_dispatch."""
+        log = MatchLogCollector("test")
+        log.record_step("scan_fire", chunk=0, events=5)
+        assert log.summary()["b2_dispatch"] is None
+
     def test_parser_works_without_log(self):
         """Parser fonctionne avec log_collector=None."""
         from src.analysis.weapon_parser import correlate_kills

@@ -65,6 +65,7 @@ def correlate_kills_global(  # noqa: PLR0913
     results: list[KillAttribution] = []
 
     for kill in kills_sorted:
+        candidates: list[tuple[int, dict]] = []
         if kill.get("is_melee"):
             attr = _make_sentinel_global(kill, match_id, MELEE_WEAPON_ID)
         elif kill.get("is_grenade"):
@@ -91,7 +92,7 @@ def correlate_kills_global(  # noqa: PLR0913
                 kill,
                 attr,
                 {
-                    "candidates_count": 0,
+                    "candidates_count": len(candidates),
                     "fallback_used": attr.attribution_path == "formula_a",
                 },
             )
