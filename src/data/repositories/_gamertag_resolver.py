@@ -9,6 +9,8 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any
 
+from src.utils.xuid import lookup_xuid_for_gamertag
+
 if TYPE_CHECKING:
     pass
 
@@ -143,6 +145,20 @@ class GamertagResolverMixin:
             Dict {xuid: gamertag} pour chaque XUID.
         """
         return {xuid: self.resolve_gamertag(xuid, match_id=match_id) for xuid in xuids}
+
+    def resolve_xuid_from_gamertag(self, gamertag: str) -> str | None:
+        """Résout un gamertag → XUID via v_gamertag_lookup puis xuid_aliases.
+
+        Symétrique de resolve_gamertag() pour la direction inverse.
+
+        Args:
+            gamertag: Gamertag à résoudre (insensible à la casse).
+
+        Returns:
+            XUID en string, ou None si non trouvé.
+        """
+        conn = self._get_connection()
+        return lookup_xuid_for_gamertag(conn, gamertag, view_prefix="shared.")
 
     def load_match_player_gamertags(self, match_id: str) -> dict[str, str]:
         """Retourne un mapping XUID → Gamertag pour un match via v_gamertag_lookup.

@@ -206,11 +206,11 @@ def _resolve_player_xuid(db_path: str) -> str:
             shared_path = get_shared_matches_path_from_player(db_path)
             if shared_path and shared_path.exists():
                 with duckdb_read_only(shared_path) as shared_con:
-                    result = shared_con.execute(
-                        "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
-                    ).fetchone()
-                    if result and result[0] and str(result[0]).strip():
-                        return str(result[0]).strip()
+                    from src.utils.xuid import lookup_xuid_for_gamertag
+
+                    resolved = lookup_xuid_for_gamertag(shared_con, gamertag)
+                    if resolved:
+                        return resolved
         except Exception:
             pass
 

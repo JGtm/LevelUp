@@ -16,6 +16,7 @@ import duckdb
 import polars as pl
 
 from src.data.repositories._arrow_bridge import result_to_polars
+from src.utils.xuid import lookup_xuid_for_gamertag
 
 if TYPE_CHECKING:
     from src.analysis._kill_attribution import KillAttribution
@@ -369,12 +370,8 @@ class WeaponKillsMixin:
         conn: duckdb.DuckDBPyConnection,
         gamertag: str,
     ) -> str | None:
-        """Résout un gamertag vers son xuid."""
-        row = conn.execute(
-            "SELECT xuid FROM xuid_aliases WHERE gamertag ILIKE ? LIMIT 1",
-            (gamertag,),
-        ).fetchone()
-        return str(row[0]) if row else None
+        """Résout un gamertag vers son xuid via v_gamertag_lookup."""
+        return lookup_xuid_for_gamertag(conn, gamertag)
 
     @staticmethod
     def _has_gamertag_column(conn: duckdb.DuckDBPyConnection) -> bool:

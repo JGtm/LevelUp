@@ -14,6 +14,7 @@ __all__ = [
     "parse_xuid_input",
     "extract_xuid_from_player_id",
     "extract_gamertag_from_player_id",
+    "lookup_xuid_for_gamertag",
     "resolve_xuid_from_db",
     "infer_spnkr_player_from_db_path",
     "guess_xuid_from_db_path",
@@ -102,6 +103,50 @@ def extract_gamertag_from_player_id(player_id: Any) -> str | None:
     return None
 
 
+def lookup_xuid_for_gamertag(
+    conn: Any,
+    gamertag: str,
+    *,
+    view_prefix: str = "",
+) -> str | None:
+    """Résout un gamertag → XUID via v_gamertag_lookup puis xuid_aliases.
+
+    Point d'entrée unique pour la résolution gamertag → XUID, utilisé aussi
+    bien par les connexions directes (view_prefix="") que les connexions
+    avec DB attachée (view_prefix="shared.").
+
+    Args:
+        conn: Connexion DuckDB (directe ou avec schéma attaché).
+        gamertag: Gamertag à résoudre (insensible à la casse).
+        view_prefix: Préfixe de schéma, ex. "shared." si la DB est attachée.
+
+    Returns:
+        XUID en string, ou None si non trouvé.
+    """
+    try:
+        row = conn.execute(
+            f"SELECT xuid FROM {view_prefix}v_gamertag_lookup "
+            "WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
+            [gamertag],
+        ).fetchone()
+        if row and row[0]:
+            return str(row[0])
+    except Exception:
+        pass
+    # Fallback : xuid_aliases (vue non encore disponible)
+    try:
+        row = conn.execute(
+            f"SELECT xuid FROM {view_prefix}xuid_aliases "
+            "WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
+            [gamertag],
+        ).fetchone()
+        if row and row[0]:
+            return str(row[0])
+    except Exception:
+        pass
+    return None
+
+
 def resolve_xuid_from_db(  # noqa: C901, PLR0912
     db_path: str,
     player: str,
@@ -165,12 +210,9 @@ def resolve_xuid_from_db(  # noqa: C901, PLR0912
             shared_path = get_shared_matches_path_from_player(db_path)
             if shared_path and shared_path.exists():
                 with duckdb_read_only(str(shared_path)) as conn:
-                    result = conn.execute(
-                        "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?)",
-                        [p],
-                    ).fetchone()
-                if result and result[0]:
-                    return str(result[0])
+                    resolved = lookup_xuid_for_gamertag(conn, p)
+                if resolved:
+                    return resolved
         except Exception:
             pass
 
