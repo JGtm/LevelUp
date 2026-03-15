@@ -1091,6 +1091,17 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     border-color: rgba(142, 108, 255, 0.20);
 }
 
+.os-top-chip--count {
+    border-color: rgba(100, 160, 255, 0.30);
+    background: rgba(100, 160, 255, 0.08);
+}
+.os-top-chip--count .os-top-chip__value {
+    font-size: 14px;
+    font-weight: 900;
+    background: rgba(100, 160, 255, 0.10);
+    border-color: rgba(100, 160, 255, 0.20);
+}
+
 /* =============================================================================
    KPI du haut (même style que le bandeau résumé)
    ============================================================================= */

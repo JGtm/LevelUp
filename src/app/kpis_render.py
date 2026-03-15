@@ -34,10 +34,8 @@ def render_kpis_section(dff: pl.DataFrame) -> None:
     avg_match_txt = format_duration_hms(kpis.avg_match_seconds)
     total_play_txt = format_duration_dhm(kpis.total_play_seconds)
 
-    st.subheader(t("kpi_matches_header"))
     render_top_summary(len(dff_pl), kpis, avg_duration=avg_match_txt, total_duration=total_play_txt)
 
-    st.subheader(t("kpi_career_header"))
     render_kpi_cards(
         [
             (

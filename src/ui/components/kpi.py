@@ -69,20 +69,21 @@ def render_top_summary(
         val = html_mod.escape(total_duration)
         dur_html += f"<div class='os-top-chip'><span class='os-top-chip__label'>{lbl}</span><span class='os-top-chip__value'>{val}</span></div>"
 
+    count_chip = (
+        f"<div class='os-top-chip os-top-chip--count'>"
+        f"<span class='os-top-chip__label'>{html_mod.escape(t('kpi_selected_matches'))}</span>"
+        f"<span class='os-top-chip__value'>{total_matches}</span>"
+        f"</div>"
+    )
     st.markdown(
         "<div class='os-top-summary'>"
-        "  <div class='os-top-summary__row'>"
-        "    <div class='os-top-summary__left'>"
-        f"      <div class='os-top-summary__kicker'>{t('kpi_selected_matches')}</div>"
-        f"      <div class='os-top-summary__count'>{total_matches}</div>"
-        "    </div>"
-        f"    <div class='os-top-summary__chips'>"
-        f"      {dur_html}"
-        f"      <div class='os-top-chip os-top-chip--win'><span class='os-top-chip__label'>{t('kpi_wins')}</span><span class='os-top-chip__value'>{wins}</span></div>"
-        f"      <div class='os-top-chip os-top-chip--loss'><span class='os-top-chip__label'>{t('kpi_losses')}</span><span class='os-top-chip__value'>{losses}</span></div>"
-        f"      <div class='os-top-chip os-top-chip--tie'><span class='os-top-chip__label'>{t('kpi_ties')}</span><span class='os-top-chip__value'>{ties}</span></div>"
-        f"      <div class='os-top-chip os-top-chip--nf'><span class='os-top-chip__label'>{t('kpi_no_finish')}</span><span class='os-top-chip__value'>{no_finish}</span></div>"
-        "    </div>"
+        f"  <div class='os-top-summary__chips'>"
+        f"    {count_chip}"
+        f"    {dur_html}"
+        f"    <div class='os-top-chip os-top-chip--win'><span class='os-top-chip__label'>{t('kpi_wins')}</span><span class='os-top-chip__value'>{wins}</span></div>"
+        f"    <div class='os-top-chip os-top-chip--loss'><span class='os-top-chip__label'>{t('kpi_losses')}</span><span class='os-top-chip__value'>{losses}</span></div>"
+        f"    <div class='os-top-chip os-top-chip--tie'><span class='os-top-chip__label'>{t('kpi_ties')}</span><span class='os-top-chip__value'>{ties}</span></div>"
+        f"    <div class='os-top-chip os-top-chip--nf'><span class='os-top-chip__label'>{t('kpi_no_finish')}</span><span class='os-top-chip__value'>{no_finish}</span></div>"
         "  </div>"
         "</div>",
         unsafe_allow_html=True,
