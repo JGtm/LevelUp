@@ -7,6 +7,61 @@
 
 ## Journal
 
+### [2026-05-31] — Nettoyage launcher.py : suppression infrastructure Azure/OAuth legacy
+
+**Statut** : Complété
+
+**Décision technique** : Après le refactoring `src/auth/` (LEVELUP_CLIENT_ID hardcodé, MSAL/DuckDB), toute l'infrastructure Azure wizard dans `launcher.py` est devenue du code mort. Suppression en deux phases : (1) 14 fonctions via AST Python (session précédente), (2) 7 simplifications structurelles via multi_replace_string_in_file.
+
+**Résultats observés** :
+- `launcher.py` : −652 lignes net (−28 %), pre-commit hooks 100% verts
+- `_ConfigState.has_client_id` supprimé, `is_ready` simplifié
+- `_recovery_menu` : options `config-az`/`paste-id` supprimées, seul Device Code Flow reste
+- `--no-az` argparse supprimé, `_onboard_first_player` sans paramètres
+- `LevelUp.bat` / `LevelUp.sh` : aucune modification nécessaire (pure system launcher)
+
+**Nouveau flow premier lancement** : gamertag → Device Code Flow → DuckDB MSAL → sync → Streamlit. Zéro Azure portal, zéro `.env.local`, zéro Client ID à saisir.
+
+**Conclusion** : Nettoyage terminé. Branche `refactor/id-resolution-cleanup`.
+
+### [2026-05-30] — Refactoring couche auth : package `src/auth/` + MSAL
+
+**Statut** : Complété
+
+**Objectif** : Supprimer la friction utilisateur (SPNKR_AZURE_CLIENT_ID à configurer manuellement) en intégrant l'App Azure LevelUp (`159544f8-3de6-4d5e-acef-82ef1cdc2832`) directement dans la codebase, et remplacer la gestion manuelle du refresh_token par `msal.SerializableTokenCache` persisté en DuckDB.
+
+**Décision technique** :
+
+**Package `src/auth/` créé (5 modules)** :
+- `_constants.py` : `LEVELUP_CLIENT_ID`, `MSAL_AUTHORITY`, `XBOX_SCOPES`, constantes TTL
+- `_halo_exchange.py` : échange stateless `access_token → (spartan, clearance)` via spnkr.auth
+- `_msal.py` : `SerializableTokenCache` ↔ DuckDB `sync_meta`, `build_msal_app`, primitives Device Code Flow
+- `provider.py` : point d'entrée unique — cache process (4h TTL), MSAL silent, `AuthRequiredError`, `start/complete_device_flow`
+- `__init__.py` : API publique réduite
+
+**Import circulaire résolu (chain découverte)** :
+`provider.py` → top-level `from _tokens import Tokens` → `sync.__init__` → `api_client` → (ancien) re-export `from src.auth.provider import get_halo_tokens`
+- Fix 1 : suppression du re-export cosmétique dans `api_client.py`
+- Fix 2 : import retardé via `_make_tokens(spartan, clearance)` dans `provider.py` (annotations `Any`)
+
+**Migrations callsites** :
+- `_sync_duckdb_ops.py` : utilise `get_halo_tokens_or_raise` + `AuthRequiredError`
+- `_tokens.py` : `get_tokens_from_env()` → wrapper déprécié (délègue à `get_halo_tokens`)
+- `launcher.py` : wizards simplifiés — `_wizard_azure_creds` = stub, `_wizard_oauth_token` utilise Device Code Flow MSAL, `_env_check_for_player` vérifie cache MSAL
+
+**Violations qualité résolues post-implémentation** :
+- `get_tokens_from_env` (94L) → extrait `_get_tokens_from_env_legacy()` + noqa
+- `sync_player_duckdb_async` (97L) → extrait `_maybe_activate_sync_mode()` + `_execute_sync()`
+- `_sync_duckdb_player` (106L) → extrait coroutine `_run_duckdb_player_sync_async()`
+- `test_profile_api_urls.py` : `get_event_loop().run_until_complete()` → `asyncio.run()` (compatibilité Python 3.10+ + isolation asyncio entre tests)
+- Ruff : imports triés dans `auth/__init__.py`, F401 supprimé, SRP exception `_exchange_and_cache`
+
+**Résultats** : 4719/4719 tests passent, Ruff clean, 0 régression
+
+**Prochaine étape** : Si besoin, migrer `src/ui/xbox_oauth.py:complete_device_code_flow` pour déléguer à `src.auth.provider.complete_device_flow` (low priority — path UI séparé)
+
+---
+
 ### [2026-03-15] — Migration weapon_kills V1 → V2
 
 **Statut** : Complété

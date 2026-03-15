@@ -111,5 +111,6 @@ _SRP_EXCEPTIONS: frozenset[str] = frozenset(
         "compute_and_store_for_match",  # citations/engine.py — calcul + écriture citations (atomique)
         # _compute_and_update_performance_score — découpé en _compute + _update (Phase P5)
         "_render_map_and_rank",  # match_view.py — composant UI composite (carte + rang côte à côte)
+        "_exchange_and_cache",  # auth/provider.py — échange access_token → Halo tokens + mise en cache (atomique)
     }
 )
