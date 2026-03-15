@@ -45,11 +45,6 @@ def launcher_mod():
     return mod
 
 
-# ---------------------------------------------------------------------------
-# _find_system_python
-# ---------------------------------------------------------------------------
-
-
 class TestFindSystemPython:
     """Tests pour _find_system_python()."""
 
@@ -188,3 +183,152 @@ class TestCmdSetup:
         ):
             args = argparse.Namespace(update=False)
             assert launcher_mod._cmd_setup(args) == 0
+
+
+# ---------------------------------------------------------------------------
+# _transfer_msal_cache
+# ---------------------------------------------------------------------------
+
+
+class TestTransferMsalCache:
+    """Tests pour _transfer_msal_cache()."""
+
+    def test_copie_le_cache_dans_la_target(self, launcher_mod, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        """Le cache MSAL est copié depuis source vers target."""
+        import duckdb
+
+        source = tmp_path / "bootstrap_auth.duckdb"
+        target = tmp_path / "stats.duckdb"
+
+        # Préparer source avec un cache factice
+        with duckdb.connect(str(source)) as conn:
+            conn.execute(
+                "CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR,"
+                " updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+            )
+            conn.execute(
+                "INSERT INTO sync_meta VALUES ('msal_token_cache', '{\"test\": 1}', CURRENT_TIMESTAMP)"
+            )
+
+        launcher_mod._transfer_msal_cache(source, target)
+
+        # Vérifier que target contient le cache
+        with duckdb.connect(str(target)) as conn:
+            row = conn.execute(
+                "SELECT value FROM sync_meta WHERE key = 'msal_token_cache'"
+            ).fetchone()
+        assert row is not None
+        assert row[0] == '{"test": 1}'
+
+    def test_ne_plante_pas_si_source_sans_cache(self, launcher_mod, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        """Ne lève pas d'exception si la clé msal_token_cache est absente dans source."""
+        import duckdb
+
+        source = tmp_path / "bootstrap_empty.duckdb"
+        target = tmp_path / "stats.duckdb"
+
+        # Source avec sync_meta vide
+        with duckdb.connect(str(source)) as conn:
+            conn.execute(
+                "CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR,"
+                " updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+            )
+
+        # Ne doit pas lever d'exception
+        launcher_mod._transfer_msal_cache(source, target)
+
+        # Target ne doit pas avoir été créée (rien à transférer)
+        assert not target.exists()
+
+    def test_ecrase_cache_existant_dans_target(self, launcher_mod, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        """Remplace le cache existant dans target par celui de source."""
+        import duckdb
+
+        source = tmp_path / "bootstrap.duckdb"
+        target = tmp_path / "stats_existing.duckdb"
+
+        with duckdb.connect(str(source)) as conn:
+            conn.execute(
+                "CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR,"
+                " updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+            )
+            conn.execute(
+                "INSERT INTO sync_meta VALUES ('msal_token_cache', 'NEW_CACHE', CURRENT_TIMESTAMP)"
+            )
+
+        # Target avec un ancien cache
+        with duckdb.connect(str(target)) as conn:
+            conn.execute(
+                "CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR,"
+                " updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+            )
+            conn.execute(
+                "INSERT INTO sync_meta VALUES ('msal_token_cache', 'OLD_CACHE', CURRENT_TIMESTAMP)"
+            )
+
+        launcher_mod._transfer_msal_cache(source, target)
+
+        with duckdb.connect(str(target)) as conn:
+            row = conn.execute(
+                "SELECT value FROM sync_meta WHERE key = 'msal_token_cache'"
+            ).fetchone()
+        assert row is not None
+        assert row[0] == "NEW_CACHE"
+
+
+# ---------------------------------------------------------------------------
+# _onboard_first_player — chemin non-interactif
+# ---------------------------------------------------------------------------
+
+
+class TestOnboardFirstPlayerNonInteractive:
+    """Tests pour _onboard_first_player() en mode non-interactif."""
+
+    def test_retourne_2_en_non_interactif(self, launcher_mod) -> None:  # type: ignore[no-untyped-def]
+        """Retourne 2 si le terminal n'est pas interactif (isatty=False)."""
+        with patch.object(launcher_mod.sys.stdin, "isatty", return_value=False):
+            result = launcher_mod._onboard_first_player()
+        assert result == 2
+
+    def test_retourne_2_si_start_device_flow_echoue(self, launcher_mod, tmp_path: Path) -> None:  # type: ignore[no-untyped-def]
+        """Retourne 2 si start_device_flow lève une exception."""
+        fake_bootstrap = tmp_path / "bootstrap_auth.duckdb"
+        with (
+            patch.object(launcher_mod.sys.stdin, "isatty", return_value=True),
+            patch.object(launcher_mod, "_load_dotenv_for_launcher"),
+            patch.object(launcher_mod, "_BOOTSTRAP_AUTH_DB", fake_bootstrap),
+            # start_device_flow est importé localement — patcher à la source
+            patch("src.auth.provider.start_device_flow", side_effect=Exception("DeviceFlowError")),
+        ):
+            result = launcher_mod._onboard_first_player()
+        assert result == 2
+
+
+# ---------------------------------------------------------------------------
+# _cmd_add_player — routing gamertag présent / absent
+# ---------------------------------------------------------------------------
+
+
+class TestCmdAddPlayerRouting:
+    """Tests de routage _cmd_add_player."""
+
+    def test_sans_gamertag_appelle_onboard(self, launcher_mod) -> None:  # type: ignore[no-untyped-def]
+        """Sans --gamertag, délègue à _onboard_first_player."""
+        args = argparse.Namespace(gamertag=None)
+        with patch.object(launcher_mod, "_onboard_first_player", return_value=0) as mock_onboard:
+            result = launcher_mod._cmd_add_player(args)
+        assert result == 0
+        mock_onboard.assert_called_once()
+
+    def test_avec_gamertag_et_token_valide_sync_directe(self, launcher_mod) -> None:  # type: ignore[no-untyped-def]
+        """Avec --gamertag et token valide, lance directement la sync."""
+        args = argparse.Namespace(gamertag="SpartanTest", full=False, max_matches=100)
+        env_info = {"player_token": True, "client_id": True, "player_token_key": "KEY"}
+        with (
+            patch.object(launcher_mod, "_load_dotenv_for_launcher"),
+            patch.object(launcher_mod, "_env_check_for_player", return_value=env_info),
+            patch.object(launcher_mod, "_sync_player_duckdb", return_value=(0, 10)),
+            patch.object(launcher_mod, "_fetch_profile_assets"),
+        ):
+            result = launcher_mod._cmd_add_player(args)
+        assert result == 0

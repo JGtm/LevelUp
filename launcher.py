@@ -23,6 +23,7 @@ import argparse
 import asyncio
 import contextlib
 import io
+import logging
 import os
 import signal
 import socket
@@ -33,6 +34,8 @@ import time
 import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Forcer l'encodage UTF-8 sur Windows pour les emojis
 if sys.platform == "win32":
@@ -1176,11 +1179,15 @@ def _transfer_msal_cache(source: Path, target: Path) -> None:
     from src.auth._constants import MSAL_CACHE_DB_KEY
     from src.utils.db import duckdb_read_only, duckdb_read_write
 
+    logger.debug("_transfer_msal_cache: %s → %s", source.name, target.name)
     with duckdb_read_only(source) as conn:
         row = conn.execute(
             "SELECT value FROM sync_meta WHERE key = ?", (MSAL_CACHE_DB_KEY,)
         ).fetchone()
     if not row or not row[0]:
+        logger.warning(
+            "_transfer_msal_cache: aucun cache MSAL dans %s — transfert annulé", source.name
+        )
         return
     serialized = row[0]
     ddl = (
@@ -1195,6 +1202,7 @@ def _transfer_msal_cache(source: Path, target: Path) -> None:
             " VALUES (?, ?, CURRENT_TIMESTAMP)",
             (MSAL_CACHE_DB_KEY, serialized),
         )
+    logger.info("_transfer_msal_cache: cache MSAL transféré vers %s", target.name)
 
 
 def _wizard_oauth_token(gamertag: str, client_id: str = "") -> bool:  # noqa: ARG001
