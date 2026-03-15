@@ -1,6 +1,6 @@
 # BACKLOG — Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-14.
+> Mis à jour le 2026-03-15.
 
 ---
 
@@ -51,44 +51,14 @@
 
 ---
 
-## 🟡 Qualité des logs weapon_parser
-
-### Clarté de `conf='none'` dans les logs COMPLETE
-
-Actuellement `none` dans le compteur de confiance ( `conf={'none': 59, ...}`) regroupe **deux cas hétérogènes** sans distinction :
-
-1. **Kills melee/grenade** (sentinels) — arme connue et attribution correcte, `delta_ms=None` par nature.
-2. **Kills réellement non-attribués** — `weapon_id is None`, joueur introuvable dans la timeline.
-
-Tâche : distinguer les deux dans le compteur, ex. `conf={'sentinel': 55, 'no_weapon': 4, 'high': 6, ...}`.
-
----
-
-### Compacité des lignes de log weapon_parser
-
-La ligne COMPLETE actuelle est illisible sur un écran standard (~200 caractères) :
-
-```
-2026-03-14 15:09:22 [INFO ] levelup.weapon_parser        | match=323ec1cf-6cd1-4301-9312-170c1df45849 COMPLETE kills=97 conf={'none': 59, 'high': 6, 'low': 24, 'medium': 8} paths={'formula_a': 78, 'none': 4, 'fire_event': 15} warnings=1
-```
-
-Propositions de reformatage :
-
-- UUID tronqué aux 8 premiers caractères (`323ec1cf…`) — assez pour identifier dans un run
-- `conf` réordonné par ordre logique : `H/M/L/sentinel/unresolved`
-- `paths` abrégé : `fe=15 fa=78 s=4` (fire_event, formula_a, sentinel)
-- Format cible :
-
-```
-match=323ec1cf… COMPLETE k=97 | H=6 M=8 L=24 s=55 ?=4 | fe=15 fa=78 s=4 | warn=1
-```
-
 ---
 
 ## ✅ Récemment complété (référence)
 
 | Date | Item |
 |------|------|
+| 2026-03-15 | Fix weapon-parser : corrélation globale — taux `fire_event` 15% → 95% (`_global_correlation.py`, marker 0x26 fixe) |
+| 2026-03-15 | Qualité logs weapon_parser : `conf='sentinel'`/`'no_weapon'` + format COMPLETE compact (`match=XXXXXXXX… k=N \| H M L s ? \| fe fa s \| warn`) |
 | 2026-03-13 | Couverture tests `migrations.py` (lacunes v5.5–v5.7) |
 | 2026-03-13 | Conflit `shared_matches.duckdb` — sync depuis UI Streamlit |
 | 2026-03-13 | Hover thumbnail sur les noms de cartes (tableaux HTML) |
