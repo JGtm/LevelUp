@@ -73,7 +73,17 @@ def render_last_match_page(
         st.session_state[SK.LAST_MATCH_NAV_INDEX] = idx
         st.session_state[SK.LAST_MATCH_NAV_TOTAL] = total
 
-    col_prev, _spacer, col_next = st.columns([1, 8, 1])
+    st.markdown(
+        "<style>"
+        "div:has(.lm-nav-marker) + div .stButton > button {"
+        "  font-size: 11px !important;"
+        "  white-space: nowrap !important;"
+        "}"
+        "</style>"
+        '<span class="lm-nav-marker"></span>',
+        unsafe_allow_html=True,
+    )
+    col_prev, _spacer, col_next = st.columns([2, 6, 2])
     with col_prev:
         if st.button(t("lm_nav_prev"), disabled=(idx == 0), key="lm_nav_prev", width="stretch"):
             st.session_state[SK.LAST_MATCH_NAV_INDEX] = idx - 1
