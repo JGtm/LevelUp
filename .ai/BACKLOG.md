@@ -75,6 +75,21 @@
 
 ---
 
+## 🟡 Table `weapon_names` dans `metadata.duckdb`
+
+**Contexte** : `weapon_kills.weapon_id` stocke des entiers bruts (ex: `17584332298403800991`). La résolution vers un nom lisible (`Mk51 Sidekick`) est actuellement uniquement en Python via `WEAPON_INT_TO_NAME` dans `src/analysis/_weapon_data.py`. Les requêtes SQL directes (MCP, scripts ad-hoc) retournent des IDs illisibles.
+
+**Objectif** : insérer une table `weapon_names(weapon_id UBIGINT PRIMARY KEY, name VARCHAR)` dans `metadata.duckdb`, populée depuis le dict Python via une migration.
+
+**Plan** :
+1. Créer `ensure_weapon_names(conn)` dans `src/data/sync/migrations.py` — crée la table si absente + upsert depuis `WEAPON_INT_TO_NAME`
+2. Créer `src/data/migration/steps/add_weapon_names.py` avec `target_db="shared"` → ou `metadata`
+3. Ajouter l'import dans `src/data/migration/steps/__init__.py`
+
+**Note archi** : la table est un cache de lecture — `WEAPON_INT_TO_NAME` reste la source de vérité. La migration fait un `INSERT OR REPLACE` complet à chaque fois (idempotente). Si le dict évolue, une nouvelle migration (ou re-run de l'existante avec `force`) suffit.
+
+---
+
 ## ✅ Récemment complété (référence)
 
 | Date | Item |
