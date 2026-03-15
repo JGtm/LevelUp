@@ -47,6 +47,15 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 
 ### Tables Principales
 
+#### metadata.duckdb (référentiels)
+
+| Table | Description |
+|-------|-------------|
+| `career_ranks` | Paliers et noms des rangs Halo |
+| `citation_mappings` | Mappings médaille→citation |
+| `mode_name_tr` / `mode_*` | Traductions et paramètres des modes de jeu |
+| `weapon_labels` | Labels EN/FR par weapon_id filmshell (UBIGINT) — **v5.4** |
+
 #### shared_matches.duckdb (centralisée)
 
 | Table | Description |

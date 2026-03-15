@@ -5,6 +5,13 @@ Séparé de weapon_parser.py pour respecter la limite de 500 lignes par module.
 
 from __future__ import annotations
 
+import logging
+from functools import lru_cache
+
+from src.utils.paths import get_metadata_db_path
+
+logger = logging.getLogger(__name__)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Weapon IDs (8 bytes, format filmshell Andy Curtis)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -209,10 +216,46 @@ EXCLUDED_WEAPON_IDS: frozenset[int] = frozenset(
 )
 
 
+def _resolve_weapon_from_db(weapon_id: int, lang: str) -> str | None:
+    """Résout un weapon_id depuis weapon_labels dans metadata.duckdb.
+
+    Retourne None si la table n'existe pas ou si l'ID est inconnu.
+    """
+    try:
+        import duckdb
+
+        db_path = get_metadata_db_path()
+        if not db_path.exists():
+            return None
+        col = "name_fr" if lang == "fr" else "name_en"
+        with duckdb.connect(str(db_path), read_only=True) as conn:
+            has_table = conn.execute(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_name = 'weapon_labels' LIMIT 1"
+            ).fetchone()
+            if not has_table:
+                return None
+            row = conn.execute(
+                f"SELECT {col} FROM weapon_labels WHERE weapon_id = ?",
+                [weapon_id],
+            ).fetchone()
+            if row and row[0]:
+                return str(row[0]).strip() or None
+    except Exception as exc:
+        logger.debug("_resolve_weapon_from_db(%s, %s) : %s", weapon_id, lang, exc)
+    return None
+
+
+@lru_cache(maxsize=512)
+def _resolve_weapon_cached(weapon_id: int, lang: str) -> str | None:
+    """Wrapper mis en cache de _resolve_weapon_from_db."""
+    return _resolve_weapon_from_db(weapon_id, lang)
+
+
 def resolve_weapon_display(weapon_id: int | None, lang: str = "fr") -> str | None:
     """Résout un weapon_id en nom d'affichage localisé.
 
-    Chaîne : weapon_id → WEAPON_INT_TO_NAME → WEAPON_FUSION_MAP → WEAPON_NAME_FR.
+    Priorité : weapon_labels (metadata.duckdb) → dicts Python statiques.
     Retourne None si weapon_id est None (kill non résolu).
     """
     if weapon_id is None:
@@ -224,13 +267,15 @@ def resolve_weapon_display(weapon_id: int | None, lang: str = "fr") -> str | Non
         return "Grenade"
     if weapon_id == VEHICLE_WEAPON_ID:
         return "Véhicule" if lang == "fr" else "Vehicle"
-    # Nom filmshell
+    # 1. Source DB (lazy, mis en cache)
+    db_label = _resolve_weapon_cached(weapon_id, lang)
+    if db_label is not None:
+        return db_label
+    # 2. Fallback dicts Python
     name = WEAPON_INT_TO_NAME.get(weapon_id)
     if name is None:
         return f"weapon_{weapon_id}"
-    # Fusion variantes
     canonical = WEAPON_FUSION_MAP.get(name, name)
-    # Traduction
     if lang == "fr":
         return WEAPON_NAME_FR.get(canonical, canonical)
     return canonical

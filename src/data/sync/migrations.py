@@ -1517,3 +1517,50 @@ def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
             if any(r[0] == alias for r in db_name_rows):
                 return alias
     return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# metadata.duckdb — Référentiel weapon_labels
+# ─────────────────────────────────────────────────────────────────────────────
+
+_WEAPON_LABELS_DDL = """
+CREATE TABLE IF NOT EXISTS weapon_labels (
+    weapon_id UBIGINT PRIMARY KEY,
+    name_en   VARCHAR NOT NULL,
+    name_fr   VARCHAR NOT NULL
+)
+"""
+
+
+def ensure_weapon_labels(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée et peuple ``weapon_labels`` dans metadata.duckdb (idempotente).
+
+    Stocke les labels EN/FR pour chaque weapon_id filmshell (UBIGINT) et les
+    3 IDs sentinelles (0=Grenade, 1=Melee, 2=Vehicle).
+    Les lignes existantes ne sont jamais écrasées (INSERT OR IGNORE).
+    """
+    from src.analysis._weapon_data import (
+        WEAPON_FUSION_MAP,
+        WEAPON_INT_TO_NAME,
+        WEAPON_NAME_FR,
+    )
+
+    conn.execute(_WEAPON_LABELS_DDL)
+
+    rows: list[tuple[int, str, str]] = [
+        # Sentinelles
+        (0, "Grenade", "Grenade"),
+        (1, "Melee", "Corps à corps"),
+        (2, "Vehicle", "Véhicule"),
+    ]
+
+    for wid, name_en in WEAPON_INT_TO_NAME.items():
+        canonical = WEAPON_FUSION_MAP.get(name_en, name_en)
+        name_fr = WEAPON_NAME_FR.get(canonical, canonical)
+        rows.append((wid, name_en, name_fr))
+
+    conn.executemany(
+        "INSERT OR IGNORE INTO weapon_labels (weapon_id, name_en, name_fr) VALUES (?, ?, ?)",
+        rows,
+    )
+    logger.debug("weapon_labels : %d lignes insérées/ignorées", len(rows))
