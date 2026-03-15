@@ -272,3 +272,19 @@ class TestGetWeaponFaction:
             assert result == "Unknown"
         finally:
             _load_weapons_json.cache_clear()
+
+    def test_json_malformed_returns_unknown_and_logs_error(self, tmp_path) -> None:
+        """JSON invalide → 'Unknown' + logger.error (ligne 32 weapons.py)."""
+        from src.ui.i18n import weapons as weapons_mod
+        from src.ui.i18n.weapons import _load_weapons_json, get_weapon_faction
+
+        malformed = tmp_path / "weapons_fr.json"
+        malformed.write_text("{invalid json{{", encoding="utf-8")
+
+        _load_weapons_json.cache_clear()
+        try:
+            with patch.object(weapons_mod, "_I18N_DIR", tmp_path):
+                result = get_weapon_faction(9999, lang="fr")
+            assert result == "Unknown"
+        finally:
+            _load_weapons_json.cache_clear()
