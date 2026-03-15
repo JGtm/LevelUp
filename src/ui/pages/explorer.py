@@ -60,12 +60,13 @@ def render_explorer_page(
     filtered, selected_mid = _render_match_filters(
         dff,
         params["db_path"],
+        params["xuid"],
         params["format_datetime_fn"],
         params["normalize_mode_label_fn"],
     )
 
     st.divider()
-    player_gt, player_xuid = _render_player_search(params["db_path"], pending_gt)
+    player_gt, player_xuid = _render_player_search(params["db_path"], params["xuid"], pending_gt)
 
     search_clicked = st.button(t("btn_search"), width="stretch", type="primary")
 
@@ -163,6 +164,7 @@ def _inject_explorer_css() -> None:
 def _render_match_filters(
     dff: pl.DataFrame,
     db_path: str,
+    xuid: str,
     format_datetime_fn: Callable[..., Any],
     normalize_mode_label_fn: Callable[[str | None], str | None],
 ) -> tuple[pl.DataFrame, str | None]:
@@ -212,7 +214,7 @@ def _render_match_filters(
     squad_mode = _resolve_squad_mode(squad_pick)
     if squad_mode != "all" and "match_id" in day_df.columns:
         ids = day_df["match_id"].cast(pl.Utf8).to_list()
-        friends_map = load_is_with_friends(db_path, ids)
+        friends_map = load_is_with_friends(db_path, xuid, ids)
         day_df = filter_by_squad(day_df, friends_map, squad_mode)
 
     # Ligne 2 : Type + Playlist + Mode + Carte
@@ -336,11 +338,12 @@ def _render_match_selector(
 
 def _render_player_search(
     db_path: str,
+    xuid: str,
     pending_gt: str | None,
 ) -> tuple[str, str | None]:
     """Rend la section recherche joueur. Retourne (gamertag, xuid|None)."""
     st.subheader(t("exp_player_search"))
-    all_gts = _cached_all_gamertags(db_path)
+    all_gts = _cached_all_gamertags(db_path, xuid)
 
     # Pré-remplir si un gamertag est passé en paramètre (deep link)
     # Forcer le session_state du widget pour écraser la valeur persistée
@@ -363,7 +366,7 @@ def _render_player_search(
 
     if not matches:
         st.caption(t("exp_no_results"))
-        return query, resolve_gamertag_to_xuid(db_path, query)
+        return query, resolve_gamertag_to_xuid(db_path, xuid, query)
 
     if len(matches) == 1:
         gt_value = matches[0]
@@ -376,15 +379,15 @@ def _render_player_search(
         )
 
     gt_value = (gt_value or "").strip()
-    resolved_xuid = resolve_gamertag_to_xuid(db_path, gt_value) if gt_value else None
+    resolved_xuid = resolve_gamertag_to_xuid(db_path, xuid, gt_value) if gt_value else None
 
     return gt_value, resolved_xuid
 
 
 @st.cache_data(ttl=300, show_spinner=False)
-def _cached_all_gamertags(db_path: str) -> list[str]:
+def _cached_all_gamertags(db_path: str, xuid: str) -> list[str]:
     """Cache la liste des gamertags connus (5 min TTL)."""
-    return get_all_gamertags(db_path)
+    return get_all_gamertags(db_path, xuid)
 
 
 # ---------------------------------------------------------------------------

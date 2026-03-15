@@ -110,14 +110,14 @@ def _render_lusr_rank_cards(ordered: list, project_root: Path) -> None:  # noqa:
                 )
 
 
-def _render_lusr_rating_chart(db_path: str) -> None:
+def _render_lusr_rating_chart(db_path: str, xuid: str) -> None:
     """Rend le graphe d'évolution LUSR/CSR avec filtres période et groupe."""
     import polars as pl
 
     from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG
     from src.visualization.timeseries_combat import plot_lusr_timeseries
 
-    history_all = _load_lusr_history(db_path)
+    history_all = _load_lusr_history(db_path, xuid)
     if not history_all:
         return
     df_all = pl.DataFrame(history_all)
@@ -185,7 +185,7 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
         return
 
     st.subheader(f"🏅 {LUSR_TITLE} — {LUSR_SUBTITLE}")
-    snapshot = _load_lusr_snapshot(db_path)
+    snapshot = _load_lusr_snapshot(db_path, xuid)
     if not snapshot:
         st.info(t("career_lusr_no_rating"))
         return
@@ -200,4 +200,4 @@ def _render_lusr_section(*, db_path: str, xuid: str) -> None:
         unsafe_allow_html=True,
     )
     _render_lusr_rank_cards(ordered, project_root)
-    _render_lusr_rating_chart(db_path)
+    _render_lusr_rating_chart(db_path, xuid)

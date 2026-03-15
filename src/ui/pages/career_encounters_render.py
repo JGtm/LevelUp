@@ -45,7 +45,9 @@ def render_encounters_section(*, db_path: str, xuid: str) -> None:
 
     friends_set = _load_friends_from_json(xuid)
 
-    encountered = _load_top_encountered(xuid, limit=10, exclude_xuids=friends_set, since=since)
+    encountered = _load_top_encountered(
+        xuid, db_path, limit=10, exclude_xuids=friends_set, since=since
+    )
     if encountered:
         st.markdown(
             build_encounters_table_html(encountered, t("career_encounters_header")),
@@ -55,8 +57,8 @@ def render_encounters_section(*, db_path: str, xuid: str) -> None:
     else:
         st.info(t("career_encounters_no_data"))
 
-    nemeses = _load_top_nemeses(xuid, limit=10, exclude_xuids=friends_set, since=since)
-    victims = _load_top_victims(xuid, limit=10, exclude_xuids=friends_set, since=since)
+    nemeses = _load_top_nemeses(xuid, db_path, limit=10, exclude_xuids=friends_set, since=since)
+    victims = _load_top_victims(xuid, db_path, limit=10, exclude_xuids=friends_set, since=since)
 
     if nemeses or victims:
         col_nem, col_vic = st.columns(2)

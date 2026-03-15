@@ -369,6 +369,7 @@ def compute_historical_context(
 def build_skill_series(
     df: pl.DataFrame,
     db_path: str | None,
+    xuid: str | None = None,
 ) -> tuple[list[float | None] | None, str]:
     """Charge les ratings LUSR/CSR depuis match_skill_rank pour les matchs de df.
 
@@ -381,20 +382,15 @@ def build_skill_series(
     if not match_ids:
         return None, "CSR"
     try:
-        from src.utils.db import duckdb_read_only
+        from src.ui._cache_core import get_cached_repository_st
 
-        ph = ", ".join(["?"] * len(match_ids))
-        with duckdb_read_only(db_path) as conn:
-            rows = conn.execute(
-                f"SELECT match_id, rating_value, rating_type FROM match_skill_rank "
-                f"WHERE match_id IN ({ph})",
-                match_ids,
-            ).fetchall()
+        rating_map = get_cached_repository_st(db_path, xuid or "").load_skill_ratings_batch(
+            match_ids
+        )
     except Exception:
         return None, "CSR"
-    if not rows:
+    if not rating_map:
         return None, "CSR"
-    rating_map = {r[0]: (float(r[1]), str(r[2])) for r in rows}
     types = [v[1] for v in rating_map.values()]
     label = "LUSR" if types.count("LUSR") >= types.count("CSR") else "CSR"
     series = [rating_map[mid][0] if mid in rating_map else None for mid in match_ids]

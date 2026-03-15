@@ -68,31 +68,7 @@ def _build_friend_df_from_match_ids_v4(  # noqa: PLR0913
         from src.ui._cache_core import get_cached_repository_st
 
         repo = get_cached_repository_st(db_path, self_xuid)
-        conn = repo._get_connection()
-        placeholders = ", ".join(["?"] * len(match_ids))
-        result = conn.execute(
-            f"""
-            SELECT
-                mr.match_id,
-                mr.start_time,
-                mr.playlist_name,
-                mr.pair_name,
-                me.team_id  AS my_team_id,
-                CAST(me.outcome AS VARCHAR) AS my_outcome,
-                fr.team_id  AS friend_team_id,
-                CAST(fr.outcome AS VARCHAR) AS friend_outcome,
-                (me.team_id = fr.team_id) AS same_team
-            FROM shared.match_registry mr
-            LEFT JOIN shared.match_participants me
-                ON mr.match_id = me.match_id AND me.xuid = ?
-            LEFT JOIN shared.match_participants fr
-                ON mr.match_id = fr.match_id AND fr.xuid = ?
-            WHERE mr.match_id IN ({placeholders})
-            ORDER BY mr.start_time ASC
-            """,
-            [self_xuid, friend_xuid, *match_ids],
-        )
-        dfr = result.pl()
+        dfr = repo.load_friend_match_details(friend_xuid, match_ids)
     except Exception:
         logger.debug("_build_friend_df_from_match_ids_v4 erreur", exc_info=True)
         return pl.DataFrame(schema=_FRIEND_DF_EMPTY_SCHEMA)

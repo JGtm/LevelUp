@@ -236,3 +236,24 @@ class GamertagResolverMixin:
             except Exception:
                 pass
         return result
+
+    def get_all_gamertags(self) -> list[str]:
+        """Retourne tous les gamertags connus depuis shared.v_gamertag_lookup.
+
+        Returns:
+            Liste triée de gamertags uniques. [] si shared indisponible.
+        """
+        if not self._has_shared_table("v_gamertag_lookup"):
+            logger.warning("get_all_gamertags: v_gamertag_lookup introuvable dans shared")
+            return []
+        conn = self._get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT DISTINCT gamertag FROM shared.v_gamertag_lookup ORDER BY gamertag"
+            ).fetchall()
+            result = [str(r[0]) for r in rows if r[0]]
+            logger.debug("%d gamertags chargés (v_gamertag_lookup)", len(result))
+            return result
+        except Exception:
+            logger.error("get_all_gamertags: erreur", exc_info=True)
+            return []
