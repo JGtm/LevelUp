@@ -4209,3 +4209,26 @@ Batch 3 (81-85L) — 7 fonctions :
 - Hooks pre-commit : 2 tentatives par commit (ruff-format reformate, 2ème commit propre)
 
 **Conclusion** : Plan v6 PLAN_ABSTRACTION_RESOLUTION.md entièrement complété. Branche `refactor/id-resolution-cleanup` prête pour merge. 12 commits (0-11b) couvrant fondation SQL, migration consommateurs, nettoyage, migrations schéma et couche i18n complète.
+
+---
+
+### [2026-03-15] — Audit final + couverture de tests
+
+**Statut** : Complété ✅
+
+**Commit** : `2878eaa` — test(audit): couverture mode dégradé + migration drop_legacy_translation_tables
+
+**Décision technique** :
+Audit post-Wave 5 : vérification complète DB, ruff, size baseline, e2e migrations. 3 lacunes de couverture identifiées et corrigées :
+1. `translate_pair_name` sans DB (mode dégradé) — monkeypatch sur `src.utils.paths.get_metadata_db_path` (import local à la fonction)
+2. `_load_mode_tables` retourne un dict stable quand DB absente
+3. `TestDropLegacyTranslationTables` : 5 tests e2e migration (`drop_legacy_translation_tables`)
+
+**Bug corrigé** : Target du monkeypatch `"src.ui.translations.get_metadata_db_path"` échoue (import local) → corrigé en `"src.utils.paths.get_metadata_db_path"`.
+
+**Résultats observés** :
+- 4682 tests passants (4621 + 61 nouveaux suite à l'audit complet)
+- Branche `refactor/id-resolution-cleanup` : 13 commits au total
+- `metadata.duckdb` : 8 tables confirmées ; `mode_translations` + `playlist_translations` legacy supprimées par migration au prochain lancement
+
+**Conclusion** : Audit terminé. Couverture tests complète sur les nouvelles fonctionnalités i18n v6. Branche prête pour merge.
