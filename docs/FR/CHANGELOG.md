@@ -6,6 +6,70 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [6.0.0] - 2026-03-15
+
+> ⚠️ **Extraction d'armes toujours en bêta** — la précision de l'attribution n'est pas garantie dans tous les cas (couverture estimée 70–100 % selon les matchs) ; catalogue d'armes en cours de complétion.
+
+### Ajouté
+
+- **Couche d'abstraction résolution IDs** — trois vues SQL dans `shared_matches.duckdb` remplaçant toutes les cascades 5-sources ad hoc :
+  - `v_gamertag_lookup` — FULL OUTER JOIN `xuid_aliases` + `match_participants` avec déduplication et priorité
+  - `v_match_full` — `match_registry` enrichie des métadonnées i18n (cartes, playlists, variantes de jeu)
+  - `v_killer_victim_full` — paires killer/victim avec gamertags résolus
+  - Helper `ensure_metadata_attached(conn)` ajouté dans `src/utils/db.py`
+
+- **Table `weapon_labels`** dans `metadata.duckdb` (`src/data/migration/steps/add_weapon_labels.py`)
+  - Schéma : `weapon_labels(weapon_id UBIGINT PK, name_en VARCHAR, name_fr VARCHAR)`
+  - Résolution DB-first : `_resolve_weapon_from_db()` avec `@lru_cache` + fallback dicts Python
+  - Migration automatique `add_weapon_labels` (`target_db="metadata"`) enregistrée dans le système de migrations
+  - `src/ui/i18n/weapons.py` nettoyé : `get_all_weapon_ids`, `get_weapon_ids_by_faction`, `translate_weapon_name` supprimés
+
+- **Package `src/auth/`** — nouvelle couche d'authentification remplaçant toute configuration Azure/env manuelle :
+  - `LEVELUP_CLIENT_ID` intégré dans la codebase — aucune configuration Azure requise pour l'utilisateur
+  - `_msal.py` : `SerializableTokenCache` persisté en DuckDB (`sync_meta`) via MSAL
+  - `provider.py` : point d'entrée unique — cache process (TTL 4 h), refresh MSAL silencieux, `AuthRequiredError`, `start/complete_device_flow`
+  - `_halo_exchange.py` : échange stateless `access_token → (spartan, clearance)` via spnkr.auth
+
+- **Launcher — SSO automatique** (`launcher.py`)
+  - Gamertag résolu automatiquement depuis le login Microsoft via l'API Halo (plus de saisie manuelle)
+  - Nouveau flux premier lancement : Device Code → DuckDB MSAL → sync → Streamlit (zéro configuration manuelle)
+  - Menu de récupération simplifié : Device Code Flow uniquement
+
+- **Helper `resolve_medal_name`** (`src/analysis/`) — résolution du nom des médailles depuis `metadata.duckdb`, sans dicts codés en dur
+
+- **Dernier match — navigation précédent/suivant** — boutons `◀ Précédent` / `Suivant ▶` pour naviguer entre les matchs filtrés sans rechargement
+
+- **`populate_metadata_from_discovery.py` réécrit** pour v5.1+
+  - Lit `match_registry` dans `shared_matches.duckdb` (remplace `match_stats` dépréciée)
+  - DDL étendu avec colonnes i18n (`name_en`, `name_fr`, `mode_name`, `playlist_canonical_*`)
+  - Logique extraite dans `scripts/_metadata_db.py` (DDL + enrichissement i18n)
+
+### Modifié
+
+- **Resolver gamertag** (`src/data/sync/_gamertag_resolver.py`) — cascade 5-sources remplacée par un JOIN unique sur `v_gamertag_lookup` ; `load_match_player_gamertags()` passe de 4 requêtes séquentielles à 1
+- **Consommateurs `match_registry`** migrés vers `v_match_full` (asset loader, career encounters, etc.)
+- **`killer_victim_repo`** et `career_encounters_data` migrés vers `v_killer_victim_full`
+- **Migration i18n DuckDB** — `modes_fr/en.json` migré dans `metadata.duckdb` ; dicts JSON playlists et variantes supprimés du code source
+- **`get_tokens_from_env()`** (sync) — wrapper déprécié délégant vers `src.auth` ; appelants mis à jour
+- **Parser d'armes — corrélation globale** — taux de correspondance fire_event corrigé de 15 % à 95 % après correction du routage `b2_dispatch` ; logs COMPLETE compacts avec distinction sentinel/no_weapon et taux de rejet `b2_dispatch` exposé
+- **Backfill `--weapons --all`** — déduplication des match_ids sur tous les joueurs, chaque film téléchargé une seule fois
+
+### Supprimé
+
+- **Colonne `highlight_events.gamertag`** — migration `drop_highlight_events_gamertag` ; gamertag résolu via `v_gamertag_lookup`
+- **Wrapper `resolve_xuid_from_input`** — code mort supprimé
+- **`get_outcome_name_fr`** et `_refdata_outcomes`** — remplacés par une résolution via metadata.duckdb
+- **14 fonctions Azure/OAuth** dans `launcher.py` (−652 lignes nettes) : wizard Azure, `has_client_id`, options de récupération `config-az`/`paste-id`, variable d'environnement `SPNKR_AZURE_CLIENT_ID` non requise
+
+### Tests
+
+- `tests/test_resolution_views.py` — 11 tests : priorité des vues, fallback alias/participants, filtre NULL, déduplication, colonnes EN toujours peuplées, colonnes FR NULL sans metadata, idempotence, résolution gamertag killer/victim
+- `tests/test_global_correlation.py` — 19 tests : **couverture 100 %** sur `_global_correlation.py` (38/38 stmts, 12/12 branches)
+- `_parser_logging.py` — **couverture 100 %** (57/57 stmts, 10/10 branches)
+- **4 719 tests au total, 0 échec**
+
+---
+
 ## [5.7.0] - 2026-03-13
 
 ### Ajouté

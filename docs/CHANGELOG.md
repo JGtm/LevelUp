@@ -6,6 +6,70 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [6.0.0] - 2026-03-15
+
+> ⚠️ **Weapon extraction still in beta** — attribution accuracy not guaranteed in all cases (estimated coverage 70–100 % depending on matches); weapon catalog in progress.
+
+### Added
+
+- **ID resolution layer** — three SQL views in `shared_matches.duckdb` replacing all ad-hoc 5-source gamertag cascades:
+  - `v_gamertag_lookup` — FULL OUTER JOIN `xuid_aliases` + `match_participants` with deduplication and priority
+  - `v_match_full` — `match_registry` enriched with i18n metadata (maps, playlists, game variants)
+  - `v_killer_victim_full` — killer/victim pairs with resolved gamertags
+  - `ensure_metadata_attached(conn)` helper added to `src/utils/db.py`
+
+- **`weapon_labels` table** in `metadata.duckdb` (`src/data/migration/steps/add_weapon_labels.py`)
+  - Schema: `weapon_labels(weapon_id UBIGINT PK, name_en VARCHAR, name_fr VARCHAR)`
+  - DB-first resolution: `_resolve_weapon_from_db()` with `@lru_cache` + Python dict fallback
+  - Automatic migration `add_weapon_labels` (`target_db="metadata"`) registered in the migration system
+  - `src/ui/i18n/weapons.py` cleaned up: `get_all_weapon_ids`, `get_weapon_ids_by_faction`, `translate_weapon_name` removed
+
+- **`src/auth/` package** — new auth layer replacing all manual Azure/env configuration:
+  - `LEVELUP_CLIENT_ID` hardcoded — no Azure portal setup required for end users
+  - `_msal.py`: `SerializableTokenCache` persisted in DuckDB (`sync_meta`) via MSAL
+  - `provider.py`: single entry point — process cache (4 h TTL), MSAL silent refresh, `AuthRequiredError`, `start/complete_device_flow`
+  - `_halo_exchange.py`: stateless `access_token → (spartan, clearance)` exchange via spnkr.auth
+
+- **Launcher — SSO auto-detection** (`launcher.py`)
+  - Gamertag automatically resolved from Microsoft login via Halo API (no manual entry required)
+  - New first-launch flow: Device Code → DuckDB MSAL → sync → Streamlit (zero manual configuration)
+  - Recovery menu simplified to Device Code Flow only
+
+- **`resolve_medal_name` helper** (`src/analysis/`) — medal name resolution from `metadata.duckdb`, no hardcoded dicts
+
+- **Last Match — previous/next navigation** — `◀ Previous` / `Next ▶` buttons to navigate between all filtered matches without reloading data
+
+- **`populate_metadata_from_discovery.py` rewritten** for v5.1+
+  - Reads `match_registry` from `shared_matches.duckdb` (replaces deprecated `match_stats`)
+  - Extended DDL with i18n columns (`name_en`, `name_fr`, `mode_name`, `playlist_canonical_*`)
+  - Logic extracted into `scripts/_metadata_db.py` (DDL + i18n enrichment)
+
+### Changed
+
+- **Gamertag resolver** (`src/data/sync/_gamertag_resolver.py`) — 5-source cascade replaced by a single `v_gamertag_lookup` JOIN; `load_match_player_gamertags()` reduced from 4 sequential queries to 1
+- **`match_registry` consumers** migrated to `v_match_full` (asset loader, career encounters, etc.)
+- **`killer_victim_repo`** and `career_encounters_data` migrate to `v_killer_victim_full`
+- **i18n DuckDB migration** — `modes_fr/en.json` migrated to `metadata.duckdb`; playlist and game_variant JSON dicts removed from source code
+- **`get_tokens_from_env()`** (sync) — deprecated wrapper delegating to `src.auth`; internal callers updated
+- **Weapon parser — global correlation** — fire_event match rate corrected from 15 % to 95 % after fixing `b2_dispatch` routing; compact COMPLETE logs with sentinel / no_weapon distinction and `b2_dispatch` drop rate exposed
+- **Backfill `--weapons --all`** — match_ids deduplicated across all players so each film is downloaded only once
+
+### Removed
+
+- **`highlight_events.gamertag` column** — migration `drop_highlight_events_gamertag`; gamertag resolved via `v_gamertag_lookup` instead
+- **`resolve_xuid_from_input` wrapper** — dead code removed
+- **`get_outcome_name_fr`** and `_refdata_outcomes` — replaced by metadata.duckdb lookup
+- **14 Azure/OAuth functions** in `launcher.py` (−652 lines net): Azure wizard, `has_client_id`, `config-az`/`paste-id` recovery options, environment variable `SPNKR_AZURE_CLIENT_ID` no longer required
+
+### Tests
+
+- `tests/test_resolution_views.py` — 11 tests: view priority, alias/participant fallback, NULL filter, deduplication, EN columns always populated, FR columns NULL without metadata, idempotence, gamertag resolution for killer/victim
+- `tests/test_global_correlation.py` — 19 tests: **100 % coverage** on `_global_correlation.py` (38/38 stmts, 12/12 branches)
+- `_parser_logging.py` — **100 % coverage** (57/57 stmts, 10/10 branches)
+- **4 719 tests total, 0 failures**
+
+---
+
 ## [5.7.0] - 2026-03-13
 
 ### Added
