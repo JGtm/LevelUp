@@ -29,7 +29,7 @@ WITH my_matches AS (
 encounters AS (
     SELECT
         p.xuid,
-        MAX(COALESCE(a.gamertag, p.gamertag)) AS gamertag,
+        MAX(COALESCE(vg.gamertag, p.gamertag)) AS gamertag,
         COUNT(*)                                AS total_encounters,
         SUM(CASE WHEN p.team_id = m.team_id   THEN 1 ELSE 0 END) AS ally_count,
         SUM(CASE WHEN p.team_id != m.team_id  THEN 1 ELSE 0 END) AS enemy_count,
@@ -46,7 +46,7 @@ encounters AS (
         MAX(r.start_time) AS last_seen
     FROM shared.match_participants p
     INNER JOIN my_matches m  ON m.match_id = p.match_id
-    LEFT JOIN  shared.xuid_aliases a ON a.xuid = p.xuid
+    LEFT JOIN  shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
     LEFT JOIN  shared.match_registry r ON r.match_id = p.match_id
     WHERE p.xuid != ?
     GROUP BY p.xuid
@@ -109,12 +109,12 @@ combined AS (
     FROM kills_dealt kd
     FULL OUTER JOIN kills_suffered ks ON kd.opponent_xuid = ks.opponent_xuid
 )
-SELECT c.opponent_xuid, COALESCE(xa.gamertag, '') AS opponent_gamertag,
+SELECT c.opponent_xuid, COALESCE(vg.gamertag, '') AS opponent_gamertag,
        c.times_killed, c.times_killed_by,
        COALESCE(mc.matches_against, 0) AS matches_against,
        c.times_killed - c.times_killed_by AS net_kills
 FROM combined c
-LEFT JOIN shared.xuid_aliases xa ON xa.xuid = c.opponent_xuid
+LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = c.opponent_xuid
 LEFT JOIN match_counts mc ON mc.opponent_xuid = c.opponent_xuid
 WHERE c.opponent_xuid != ?
 ORDER BY {order_col} DESC

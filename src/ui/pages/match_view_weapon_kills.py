@@ -25,7 +25,8 @@ def _build_weapon_kills_df(db_path: str, match_id: str, xuid: str, lang: str) ->
 
     try:
         repo = DuckDBRepository(db_path, xuid=xuid, read_only=True)
-        df = repo.load_weapon_kills_for_match(match_id)
+        # load_weapon_kills_for_player filtre directement par xuid en SQL (v_weapon_kills)
+        df = repo.load_weapon_kills_for_player(str(xuid).strip(), match_ids=[match_id])
     except Exception as exc:
         logger.debug("_build_weapon_kills_df match=%s xuid=%s : %s", match_id, xuid, exc)
         return pl.DataFrame(schema={"weapon_name": pl.Utf8, "kills": pl.Int32})
@@ -33,16 +34,15 @@ def _build_weapon_kills_df(db_path: str, match_id: str, xuid: str, lang: str) ->
     if df.is_empty():
         return pl.DataFrame(schema={"weapon_name": pl.Utf8, "kills": pl.Int32})
 
-    xuid_norm = str(xuid).strip()
     from src.analysis._weapon_data import (
         EXCLUDED_WEAPON_IDS,
         WEAPON_FUSION_MAP_ID,
         resolve_weapon_display,
     )
 
+    # df a déjà match_id, weapon_id, kills — on filtre uniquement les exclusions et kills > 0
     filtered = (
-        df.filter(pl.col("xuid") == xuid_norm)
-        .filter(pl.col("kills") > 0)
+        df.filter(pl.col("kills") > 0)
         .filter(~pl.col("weapon_id").is_in(list(EXCLUDED_WEAPON_IDS)))
     )
     if filtered.is_empty():
@@ -121,24 +121,16 @@ def _enrich_with_grenade_melee(
 
     try:
         repo = DuckDBRepository(db_path, xuid=xuid, read_only=True)
-        conn = repo._get_connection()
-        row = conn.execute(
-            "SELECT COALESCE(grenade_kills, 0), COALESCE(melee_kills, 0) "
-            "FROM shared.match_participants WHERE match_id = ? AND xuid = ?",
-            [match_id, str(xuid).strip()],
-        ).fetchone()
+        grenade, melee = repo.load_grenade_melee_kills(str(xuid).strip(), [match_id])
     except Exception as exc:
         logger.debug("_enrich_with_grenade_melee match=%s xuid=%s : %s", match_id, xuid, exc)
         return df
 
-    if not row:
-        return df
-
     extras = []
-    if row[0] > 0:
-        extras.append({"weapon_name": t("col_grenade_kills"), "kills": int(row[0])})
-    if row[1] > 0:
-        extras.append({"weapon_name": t("col_melee"), "kills": int(row[1])})
+    if grenade > 0:
+        extras.append({"weapon_name": t("col_grenade_kills"), "kills": grenade})
+    if melee > 0:
+        extras.append({"weapon_name": t("col_melee"), "kills": melee})
     if not extras:
         return df
     return pl.concat([df, pl.DataFrame(extras, schema={"weapon_name": pl.Utf8, "kills": pl.Int32})])

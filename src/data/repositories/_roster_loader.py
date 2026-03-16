@@ -358,7 +358,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
                 """
                 SELECT
                     p.xuid,
-                    COALESCE(a.gamertag, p.gamertag, p.xuid) AS gamertag,
+                    COALESCE(vg.gamertag, p.gamertag, p.xuid) AS gamertag,
                     p.team_id,
                     p.rank,
                     p.score,
@@ -366,7 +366,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
                     p.deaths,
                     p.assists
                 FROM shared.match_participants p
-                LEFT JOIN shared.xuid_aliases a ON a.xuid = p.xuid
+                LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
                 WHERE p.match_id = ?
                 ORDER BY p.rank ASC NULLS LAST
                 """,
@@ -420,7 +420,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
                 """
                 SELECT
                     p.xuid,
-                    COALESCE(a.gamertag, p.gamertag, p.xuid) AS gamertag,
+                    COALESCE(vg.gamertag, p.gamertag, p.xuid) AS gamertag,
                     p.team_id,
                     p.rank,
                     p.score,
@@ -441,7 +441,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
                     COALESCE(pk.perfect_kills, 0) AS perfect_kills,
                     wk.weapon_id AS top_weapon_id
                 FROM shared.match_participants p
-                LEFT JOIN shared.xuid_aliases a ON a.xuid = p.xuid
+                LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
                 LEFT JOIN (
                     SELECT xuid, SUM(count) AS perfect_kills
                     FROM shared.medals_earned
@@ -449,15 +449,15 @@ class RosterLoaderMixin(GamertagResolverMixin):
                     GROUP BY xuid
                 ) pk ON pk.xuid = p.xuid
                 LEFT JOIN (
-                    SELECT xuid, weapon_id
+                    SELECT xuid, effective_weapon_id AS weapon_id
                     FROM (
-                        SELECT xuid, weapon_id,
+                        SELECT xuid, effective_weapon_id,
                                ROW_NUMBER() OVER (
                                    PARTITION BY xuid ORDER BY COUNT(*) DESC
                                ) AS rn
-                        FROM shared.weapon_kills
-                        WHERE match_id = ? AND weapon_id NOT IN (0, 1, 2)
-                        GROUP BY xuid, weapon_id
+                        FROM shared.v_weapon_kills
+                        WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
+                        GROUP BY xuid, effective_weapon_id
                     )
                     WHERE rn = 1
                 ) wk ON wk.xuid = p.xuid
