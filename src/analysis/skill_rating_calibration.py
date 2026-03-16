@@ -37,6 +37,7 @@ from src.analysis._calibration_loaders import (
     _resolve_xuid_from_gamertag,
 )
 from src.analysis._calibration_scoring import _score_corr, _score_mae
+from src.utils.paths import get_shared_matches_path
 
 logger = logging.getLogger(__name__)
 
@@ -308,9 +309,7 @@ def main(argv: list[str] | None = None) -> int:
     xuid = args.xuid
     if not xuid:
         shared_db_for_resolve = (
-            Path(args.shared_db)
-            if args.shared_db
-            else (root / "data" / "warehouse" / "shared_matches.duckdb")
+            Path(args.shared_db) if args.shared_db else get_shared_matches_path()
         )
         xuid = _resolve_xuid_from_gamertag(args.player, shared_db_for_resolve)
 

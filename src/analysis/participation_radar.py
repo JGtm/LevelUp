@@ -19,6 +19,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from src.utils.paths import get_shared_matches_path
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -75,7 +77,7 @@ def compute_global_radar_thresholds(  # noqa: C901, PLR0911, PLR0912, PLR0915
     if not base.is_dir():
         return RADAR_THRESHOLDS.copy()
 
-    shared_db = base.parent / "warehouse" / "shared_matches.duckdb"
+    shared_db = get_shared_matches_path()
     if not shared_db.exists():
         return RADAR_THRESHOLDS.copy()
     shared_path_sql = str(shared_db).replace("'", "''")

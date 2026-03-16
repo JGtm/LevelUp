@@ -191,7 +191,7 @@ def ensure_shared_attached(
     with contextlib.suppress(Exception):
         dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
         for db_name, db_path_val in dbs:
-            if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
+            if db_path_val and "shared_matches" in str(db_path_val).lower():
                 return db_name
             if db_name and "shared" in db_name.lower():
                 with contextlib.suppress(Exception):
