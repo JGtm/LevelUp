@@ -18,6 +18,7 @@ from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_players_data import load_match_scoreboard
 from src.ui.pages.match_view_scoreboard_detail import (
     SCOREBOARD_JS,
+    ScoreboardRenderConfig,
     build_team_table_html_with_details,
     preload_match_extra_data,
 )
@@ -325,7 +326,8 @@ def render_match_scoreboard(
 
     # Pré-chargement des données extra (médailles, armes, enrichissement)
     lang = get_lang()
-    mid_key = (match_id.strip().replace("-", ""))[:12]
+    # Préfixe court pour les IDs DOM (ex: "os-sbdr-abc123def456-0-1")
+    match_id_short = (match_id.strip().replace("-", ""))[:12]
     extra_data = preload_match_extra_data(
         main_db_path=db_path,
         match_id=match_id.strip(),
@@ -334,6 +336,16 @@ def render_match_scoreboard(
     )
 
     sb_cols = _get_scoreboard_cols()
+    render_cfg = ScoreboardRenderConfig(
+        sb_cols=sb_cols,
+        extremes=extremes,
+        extra_data=extra_data,
+        match_id_key=match_id_short,
+        lang=lang,
+        fmt_cell_fn=_fmt_scoreboard_cell,
+        cell_class_fn=_sb_cell_class,
+        gamertag_link_fn=gamertag_link,
+    )
 
     # Rendu combiné : JS unique + tableaux par équipe avec détails inline
     html_parts: list[str] = [SCOREBOARD_JS]
@@ -345,15 +357,8 @@ def render_match_scoreboard(
             me_xu=me_xu,
             mvp_xuid=mvp_xuid,
             lvp_xuid=lvp_xuid,
-            extremes=extremes,
-            sb_cols=sb_cols,
-            extra_data=extra_data,
-            match_id_key=mid_key,
             team_index=t_idx,
-            lang=lang,
-            fmt_cell_fn=_fmt_scoreboard_cell,
-            cell_class_fn=_sb_cell_class,
-            gamertag_link_fn=gamertag_link,
+            cfg=render_cfg,
         )
         html_parts.append(team_html)
 

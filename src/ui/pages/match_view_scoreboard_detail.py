@@ -18,10 +18,12 @@ SCOREBOARD_JS : str
 from __future__ import annotations
 
 import base64
+import heapq
 import html
 import logging
 import os
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Callable
 
 from src.config import TEAM_MAP, get_bot_name
 from src.ui.i18n import t
@@ -38,20 +40,41 @@ _MAX_WEAPONS = 5
 # Nombre max d'awards
 _MAX_AWARDS = 6
 
+
+# =============================================================================
+# Helpers généraux
+# =============================================================================
+
+
+def _xu_from_player(p: dict[str, Any]) -> str:
+    """Normalise le XUID d'un joueur depuis son dict."""
+    raw = str(p.get("xuid") or "").strip()
+    parsed = parse_xuid_input(raw)
+    return str(parsed).strip() if parsed else raw
+
+
+def _is_bot_player(p_xu: str) -> bool:
+    """Retourne True si le XUID correspond à un bot."""
+    return bool(p_xu and get_bot_name(p_xu) is not None)
+
 # =============================================================================
 # JavaScript unique pour tous les tableaux de la page
 # =============================================================================
 
 SCOREBOARD_JS = """
 <script>
-window.osToggle = window.osToggle || function(id, row) {
-  var dr = document.getElementById(id);
-  if (!dr) return;
-  var open = dr.style.display !== '' && dr.style.display !== 'none';
-  dr.style.display = open ? 'none' : 'table-row';
-  var btn = row ? row.querySelector('.os-sb-expand-btn') : null;
-  if (btn) btn.textContent = open ? '\u25b6' : '\u25bc';
-};
+(function() {
+  if (window.osToggleInitialized) return;
+  window.osToggleInitialized = true;
+  window.osToggle = function(id, row) {
+    var dr = document.getElementById(id);
+    if (!dr) return;
+    var open = dr.style.display !== '' && dr.style.display !== 'none';
+    dr.style.display = open ? 'none' : 'table-row';
+    var btn = row ? row.querySelector('.os-sb-expand-btn') : null;
+    if (btn) btn.textContent = open ? '\u25b6' : '\u25bc';
+  };
+})();
 </script>
 """
 
@@ -69,17 +92,20 @@ def _load_all_medals_for_match(
     Returns:
         ``{xuid: [{name_id: int, count: int}, ...]}``.
     """
-    if not main_db_path or not match_id:
+    if not match_id:
         return {}
     try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
+        from src.utils.db import duckdb_read_only
+        from src.utils.paths import get_shared_matches_path
 
-        repo = DuckDBRepository(main_db_path, xuid="", read_only=True)
-        conn = repo._get_connection()
-        rows = conn.execute(
-            "SELECT xuid, medal_name_id, count FROM shared.medals_earned WHERE match_id = ?",
-            [match_id],
-        ).fetchall()
+        shared_path = get_shared_matches_path()
+        if not shared_path.exists():
+            return {}
+        with duckdb_read_only(shared_path) as conn:
+            rows = conn.execute(
+                "SELECT xuid, medal_name_id, count FROM medals_earned WHERE match_id = ?",
+                [match_id],
+            ).fetchall()
         result: dict[str, list[dict[str, int]]] = {}
         for xuid, nid, cnt in rows:
             result.setdefault(str(xuid), []).append({"name_id": int(nid), "count": int(cnt)})
@@ -97,19 +123,30 @@ def _load_all_weapons_for_match(
     Returns:
         ``{xuid: [(weapon_id, kills), ...]}``, triées par kills DESC.
     """
-    if not main_db_path or not match_id:
+    if not match_id:
         return {}
     try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
+        from src.utils.db import duckdb_read_only
+        from src.utils.paths import get_shared_matches_path
 
-        repo = DuckDBRepository(main_db_path, xuid="", read_only=True)
-        df = repo.load_weapon_kills_for_match(match_id)
-        if df.is_empty():
+        shared_path = get_shared_matches_path()
+        if not shared_path.exists():
             return {}
+        with duckdb_read_only(shared_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT xuid, effective_weapon_id AS weapon_id,
+                       COUNT(*)::INTEGER AS kills
+                FROM v_weapon_kills
+                WHERE match_id = ? AND effective_weapon_id IS NOT NULL
+                GROUP BY xuid, effective_weapon_id
+                ORDER BY kills DESC
+                """,
+                [match_id],
+            ).fetchall()
         result: dict[str, list[tuple[int, int]]] = {}
-        for row in df.to_dicts():
-            xu = str(row["xuid"])
-            result.setdefault(xu, []).append((int(row["weapon_id"]), int(row["kills"])))
+        for xu, wid, kills in rows:
+            result.setdefault(str(xu), []).append((int(wid), int(kills)))
         return result
     except Exception:
         logger.debug("Armes batch indisponibles match=%s", match_id)
@@ -190,15 +227,12 @@ def preload_match_extra_data(
 
     extra: dict[str, dict[str, Any]] = {}
     for p in players:
-        xu = str(
-            parse_xuid_input(str(p.get("xuid") or "").strip())
-            or str(p.get("xuid") or "").strip()
-        ).strip()
+        xu = _xu_from_player(p)
         gamertag = str(p.get("gamertag") or "").strip()
 
         medals = all_medals.get(xu, [])
-        # Trier par count décroissant
-        medals = sorted(medals, key=lambda m: m.get("count", 0), reverse=True)[:_MAX_MEDALS]
+        # Top N médailles par count (heapq.nlargest plus efficace que sort + slice)
+        medals = heapq.nlargest(_MAX_MEDALS, medals, key=lambda m: m.get("count", 0))
 
         weapons_raw = all_weapons.get(xu, [])
         weapons = weapons_raw[:_MAX_WEAPONS]
@@ -336,7 +370,10 @@ def _build_medals_html(medals: list[dict[str, int]], lang: str) -> str:
         nid = int(m.get("name_id", 0))
         cnt = int(m.get("count", 0))
         key = str(nid)
-        name = (fr_map if lang == "fr" else en_map).get(key) or fr_map.get(key) or f"#{nid}"
+        # Fallback: lang préféré → lang opposé → ID brut
+        primary_map = fr_map if lang == "fr" else en_map
+        fallback_map = en_map if lang == "fr" else fr_map
+        name = primary_map.get(key) or fallback_map.get(key) or f"#{nid}"
         img_uri = _medal_icon_b64(nid)
         if img_uri:
             img_tag = (
@@ -439,6 +476,34 @@ def _team_display_name(tid: Any) -> str:
         return t("mv_team_n", n=tid)
 
 
+@dataclass(frozen=True)
+class ScoreboardRenderConfig:
+    """Paramètres de rendu partagés entre toutes les équipes du scoreboard.
+
+    Regroupe les callbacks, la config colonnes et les données pré-chargées.
+
+    Attributes:
+        sb_cols: Liste de (label_traduit, clé_dict) pour les colonnes du tableau.
+        extremes: ``{key: (min_val, max_val)}`` pour le highlight min/max.
+        extra_data: ``{xuid: {medals, weapons, enrichment}}`` pré-chargé.
+        match_id_key: Préfixe court du match_id (sans tirets, max 12 chars)
+            utilisé comme base des IDs DOM des lignes de détail.
+        lang: Code de langue ("fr" ou "en").
+        fmt_cell_fn: ``(key: str, value: Any) -> str`` — formate une valeur.
+        cell_class_fn: ``(key, value, extremes) -> str`` — classe CSS highlight.
+        gamertag_link_fn: ``(gamertag: str) -> str`` — retourne ``<a>...</a>``.
+    """
+
+    sb_cols: list[tuple[str, str]]
+    extremes: dict[str, tuple[float, float]]
+    extra_data: dict[str, dict[str, Any]]
+    match_id_key: str
+    lang: str
+    fmt_cell_fn: Callable[[str, Any], str]
+    cell_class_fn: Callable[[str, Any, dict], str]
+    gamertag_link_fn: Callable[[str], str]
+
+
 def build_team_table_html_with_details(  # noqa: PLR0913
     *,
     team_players: list[dict[str, Any]],
@@ -447,15 +512,8 @@ def build_team_table_html_with_details(  # noqa: PLR0913
     me_xu: str,
     mvp_xuid: str,
     lvp_xuid: str,
-    extremes: dict[str, tuple[float, float]],
-    sb_cols: list[tuple[str, str]],
-    extra_data: dict[str, dict[str, Any]],
-    match_id_key: str,
     team_index: int,
-    lang: str,
-    fmt_cell_fn: Any,
-    cell_class_fn: Any,
-    gamertag_link_fn: Any,
+    cfg: ScoreboardRenderConfig,
 ) -> str:
     """Génère le HTML complet d'une équipe avec lignes de détail inline.
 
@@ -466,15 +524,8 @@ def build_team_table_html_with_details(  # noqa: PLR0913
         me_xu: XUID du joueur courant.
         mvp_xuid: XUID du MVP.
         lvp_xuid: XUID du LVP.
-        extremes: Min/max par colonne (highlight couleur).
-        sb_cols: Colonnes du scoreboard [(label, key), ...].
-        extra_data: Données pré-chargées {xuid: {medals, weapons, enrichment}}.
-        match_id_key: Préfixe unique pour les IDs HTML (ex: match_id[:8]).
         team_index: Indice de l'équipe (pour unicité des IDs).
-        lang: Langue.
-        fmt_cell_fn: Fonction de formatage des cellules.
-        cell_class_fn: Fonction de calcul des classes CSS.
-        gamertag_link_fn: Fonction générant un lien HTML gamertag.
+        cfg: Paramètres de rendu partagés (colonnes, callbacks, données).
 
     Returns:
         Chaîne HTML complète pour cette équipe.
@@ -484,9 +535,9 @@ def build_team_table_html_with_details(  # noqa: PLR0913
     team_css_mod = "os-sb-team--mine" if is_my_team else "os-sb-team--enemy"
     team_label = t("mv_team_label", name=html.escape(raw_name))
 
-    n_cols = len(sb_cols)
+    n_cols = len(cfg.sb_cols)
     th_cells = "".join(
-        f"<th class='os-sb-th'>{html.escape(label)}</th>" for label, _ in sb_cols
+        f"<th class='os-sb-th'>{html.escape(label)}</th>" for label, _ in cfg.sb_cols
     )
     thead = (
         f"<thead>"
@@ -497,10 +548,7 @@ def build_team_table_html_with_details(  # noqa: PLR0913
 
     body_rows: list[str] = []
     for p_idx, p in enumerate(team_players):
-        p_xu = str(
-            parse_xuid_input(str(p.get("xuid") or "").strip())
-            or str(p.get("xuid") or "").strip()
-        ).strip()
+        p_xu = _xu_from_player(p)
         is_me = bool(me_xu and p_xu and p_xu == me_xu)
         row_class = " os-sb-row--me" if is_me else ""
         if p_xu and p_xu == mvp_xuid:
@@ -509,17 +557,17 @@ def build_team_table_html_with_details(  # noqa: PLR0913
             row_class += " os-sb-row--lvp"
 
         # ID unique pour la ligne de détail
-        detail_id = f"os-sbdr-{match_id_key}-{team_index}-{p_idx}"
+        detail_id = f"os-sbdr-{cfg.match_id_key}-{team_index}-{p_idx}"
 
         # Cellules du scoreboard
         cell_parts: list[str] = []
-        for col_idx, (_, key) in enumerate(sb_cols):
-            css = cell_class_fn(key, p.get(key), extremes)
-            raw_val = fmt_cell_fn(key, p.get(key))
+        for _, key in cfg.sb_cols:
+            css = cfg.cell_class_fn(key, p.get(key), cfg.extremes)
+            raw_val = cfg.fmt_cell_fn(key, p.get(key))
             if key == "gamertag" and raw_val != "—" and not is_me:
                 inner = (
                     f"<span class='os-sb-expand-btn'>&#9654;</span> "
-                    + gamertag_link_fn(raw_val)
+                    + cfg.gamertag_link_fn(raw_val)
                 )
             elif key == "gamertag":
                 inner = (
@@ -531,22 +579,16 @@ def build_team_table_html_with_details(  # noqa: PLR0913
             cell_parts.append(f"<td class='os-sb-td{css}'>{inner}</td>")
 
         cells = "".join(cell_parts)
-        # Bot name check — bots ne sont pas clickable
-        is_bot = p_xu.lower().startswith("bid(") if p_xu else False
-        has_bot_name = get_bot_name(p_xu) is not None if p_xu else False
-        clickable_cls = "" if is_bot or has_bot_name else " os-sb-row--clickable"
-        onclick_attr = (
-            f" onclick=\"osToggle('{detail_id}', this)\""
-            if not (is_bot or has_bot_name)
-            else ""
-        )
+        clickable = not _is_bot_player(p_xu)
+        clickable_cls = " os-sb-row--clickable" if clickable else ""
+        onclick_attr = f" onclick=\"osToggle('{detail_id}', this)\"" if clickable else ""
         body_rows.append(
             f"<tr class='os-sb-row{row_class}{clickable_cls}'{onclick_attr}>{cells}</tr>"
         )
 
         # Ligne de détail (cachée par défaut)
-        p_extra = extra_data.get(p_xu, {"medals": [], "weapons": [], "enrichment": {}})
-        detail_cell = _build_detail_cell_html(p, p_extra, n_cols, lang)
+        p_extra = cfg.extra_data.get(p_xu, {"medals": [], "weapons": [], "enrichment": {}})
+        detail_cell = _build_detail_cell_html(p, p_extra, n_cols, cfg.lang)
         body_rows.append(
             f"<tr id='{detail_id}' class='os-sb-detail-row' style='display:none'>"
             f"{detail_cell}"
