@@ -57,7 +57,7 @@ def temp_player_db(tmp_path):
     conn.close()
 
     # Créer shared DB
-    shared_db = warehouse_dir / "shared_matches.duckdb"
+    shared_db = warehouse_dir / "shared_matches_v2.duckdb"
     shared_conn = duckdb.connect(str(shared_db))
 
     shared_conn.execute("""
@@ -220,18 +220,18 @@ class TestBackfillSessionsIntegration:
 
     def test_handles_missing_shared_db_gracefully(self, temp_player_db):
         """Si shared DB manquante, retourne erreur."""
+        from pathlib import Path
         from unittest.mock import patch
-
-        import src.data.sessions_backfill_shared as sb_shared_module
 
         player_db = temp_player_db["player_db"]
 
         # Supprimer shared DB
         temp_player_db["shared_db"].unlink()
 
-        # Patcher __file__ pour que le fallback ne trouve pas la DB de production
-        with patch.object(
-            sb_shared_module, "__file__", "/nonexistent/fake/sessions_backfill_shared.py"
+        # Patcher get_shared_matches_path pour que le fallback ne trouve pas la DB de production
+        with patch(
+            "src.data.sessions_backfill_shared.get_shared_matches_path",
+            return_value=Path("/nonexistent/shared_matches_v2.duckdb"),
         ):
             result = backfill_sessions_for_player(player_db, xuid="1234567890")
 

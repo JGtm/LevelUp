@@ -7,7 +7,52 @@
 
 ## Journal
 
-### [2026-03-16] — Refactoring architectural : src/ports/ + nettoyage src/db/ + documentation src/ai/
+### [2026-03-16] — Vérification finale + cleanup + logging + corrections tests
+
+**Statut** : Complété
+
+**Décision technique** :
+- Vérification finale du refactoring `SHARED_MATCHES_DB_FILENAME` → `get_shared_matches_path()`
+- `_get_shared_connection(db_path: Path)` dans `orchestrator.py` avait un paramètre inutilisé (corrigé : 8 call sites mis à jour)
+- Audit des logs révèle 5/6 fonctions de résolution sans logs → debug logs ajoutés dans `_calibration_loaders`, `sessions_backfill_shared`, `citations_backfill`, `sync/engine`
+- 4 fixtures de tests corrigeaient l'ancien nom `shared_matches.duckdb` → mis à jour vers `shared_matches_v2.duckdb`
+- `test_handles_missing_shared_db_gracefully` patchait `__file__` (mécanisme obsolète) → maintenant patche `get_shared_matches_path` directement
+
+**Résultats** :
+- **4849 tests passent / 7 échecs TOUS pré-existants** (dans `tests/integration/`, dossier exclu par convention)
+- `ruff check src/ scripts/backfill/` propre
+- Sessions_backfill_shared : 68% couverture (branches non couvertes = cas DuckDB edge)
+- Logs ajoutés : détection depuis player, fallback global, DB introuvable
+
+**Prochaine étape** : Commit des changements accumulés sur `refactor/id-resolution-cleanup`
+
+---
+
+### [2026-03-16] — Refactoring architectural : élimination exports SHARED_MATCHES_DB_FILENAME + backfill 21 matchs
+
+**Statut** : Complété
+
+**Décision technique** :
+- `SHARED_MATCHES_DB_FILENAME` était exporté vers 14 fichiers `src/` + 4 scripts `scripts/backfill/` → chemin construit manuellement partout
+- Décision : `SHARED_MATCHES_DB_FILENAME` reste détail d'implémentation interne de `paths.py`
+- Tous les modules extérieurs utilisent désormais uniquement `get_shared_matches_path()` / `get_shared_matches_path_from_player()`
+- Pattern fallback (pour tests + premier sync) : `player_db_path.parent.parent.parent / "warehouse" / get_shared_matches_path().name`
+
+**Corrections supplémentaires découvertes** :
+- `scripts/backfill/orchestrator.py` + `strategies.py` + `migrate_bits.py` : hardcodaient `"shared_matches.duckdb"` (sans _v2) → corrigés
+- `v_match_full` n'exposait pas `events_loaded`, `medals_loaded`, `participants_loaded` → ajouté + vue recréée
+- Flags `events_loaded=True` et `WEAPON_KILLS` bit incorrects dans les 21 matchs migrés du .bak → réinitialisés
+
+**Résultats** :
+- 11/11 tests passent (tests qualité + performance v4)
+- `ruff check src/` propre  
+- Backfill JGtm : 2544 events + 1058 weapon_kills (12 matchs)
+- Backfill Chocoboflor : 1772 events + 703 weapon_kills (9 matchs)
+- **Post-backfill** : 21/21 matchs avec events, 21/21 matchs avec weapons
+
+**Conclusion** : BDD `shared_matches_v2.duckdb` est à jour et complète. Architecture `paths.py` propre.
+
+
 
 **Statut** : Complété  
 **Branche** : `refactor/id-resolution-cleanup`  

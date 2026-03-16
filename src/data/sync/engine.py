@@ -65,7 +65,11 @@ from src.data.sync.models import (
 from src.data.sync.transformers import (
     create_metadata_resolver,
 )
-from src.utils.paths import get_pve_db_path_from_player
+from src.utils.paths import (
+    get_pve_db_path_from_player,
+    get_shared_matches_path,
+    get_shared_matches_path_from_player,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -146,12 +150,18 @@ class DuckDBSyncEngine(
         else:
             self._metadata_db_path = Path(metadata_db_path)
 
-        # Auto-détection du chemin shared_matches.duckdb (v5)
+        # Auto-détection du chemin shared_matches (v5/v6)
         if shared_db_path is None:
-            data_dir = self._player_db_path.parent.parent.parent
-            self._shared_db_path: Path | None = data_dir / "warehouse" / "shared_matches.duckdb"
+            self._shared_db_path: Path | None = (
+                get_shared_matches_path_from_player(self._player_db_path)
+                or self._player_db_path.parent.parent.parent
+                / "warehouse"
+                / get_shared_matches_path().name
+            )
+            logger.debug("SyncEngine: shared_db_path auto-détecté → %s", self._shared_db_path)
         else:
             self._shared_db_path = Path(shared_db_path)
+            logger.debug("SyncEngine: shared_db_path explicit → %s", self._shared_db_path)
 
         self._connection = None
         self._shared_connection = None
@@ -381,7 +391,7 @@ class DuckDBSyncEngine(
             for db_name, db_path_val in dbs:
                 if (
                     db_path_val
-                    and "shared_matches.duckdb" in str(db_path_val).lower()
+                    and "shared_matches" in str(db_path_val).lower()
                     and db_name != "memory"
                 ):
                     conn.execute(f"DETACH {db_name}")
