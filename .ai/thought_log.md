@@ -7,6 +7,56 @@
 
 ## Journal
 
+### [2026-03-16] — Suppression section Xbox de la page Settings
+
+**Statut** : Complété
+
+**Décision technique** : Suppression du bloc "Connexion Xbox" (expander) de la page Paramètres, devenu obsolète depuis que `LEVELUP_CLIENT_ID` est hardcodé dans `src/auth/_msal.py`.
+
+**Changements** :
+1. `src/ui/pages/settings.py` — bloc `with st.expander(t("xbox_connect_section_title"), ...)` retiré
+2. `src/ui/xbox_oauth_ui.py` — fonctions mortes supprimées : `render_xbox_login_section`, `_render_dc_start`, `_render_dc_waiting`, `_revoke_local_token`, `handle_pending_xbox_result`, `_get_current_db_path`, `_get_current_gamertag` + import `t` + constante `_RESULT_KEY`
+
+**Conservé** : `check_dc_queue`, `reset_device_flow`, `start_device_flow` (encore utilisées par `setup_wizard_xbox.py`)
+
+**Résultat** : Aucune erreur — tests OK.
+
+---
+
+### [2026-03-16] — Revue et correctifs architecture v6 (branche refactor/id-resolution-cleanup)
+
+**Statut** : Complété
+
+**Décision technique** : 3 correctifs appliqués suite à revue de code orientée v6 :
+1. **Bug `_backfill_events_block`** (`_shared_writes.py`) : `_insert_shared_killer_victim_pairs` appelée inconditionnellement même quand `n_inserted == 0`. Corrigé : déplacée à l'intérieur du bloc `if n_inserted > 0`, aligné avec `_insert_new_match_shared`.
+2. **Double connexion UI** (`match_view_weapon_kills.py`) : deux `DuckDBRepository` ouverts séquentiellement (un par fonction privée). Refactorisé : repo créé une seule fois dans `render_weapon_kills_section`, passé en paramètre à `_build_weapon_kills_df` et `_enrich_with_grenade_melee`. Ajout `TYPE_CHECKING` import pour annotation propre.
+3. **Test redondant** (`test_weapon_kills_pages.py`) : patch `_enrich_with_grenade_melee` inutile dans les tests de rendu (fonction jamais appelée sur early return). Nettoyé. `TestEnrichWithGrenadeMelee` simplifié — les tests passent maintenant le mock_repo directement sans patcher `DuckDBRepository`.
+
+**Résultats** : 32/32 tests weapon kills passent. 15 failures pre-existantes confirmées (stash round-trip).
+
+**Conclusion** : Le bug KVP (le plus risqué) est corrigé. La dette "double connexion" est résolue proprement. L'oubli architectural v6 (bit `weapon_kills` absent du chemin sync primaire) reste documenté dans le BACKLOG — hors scope de ce refactor.
+
+---
+
+### [2026-03-16] — Application stash : 6 fixes depuis refactor/id-resolution-cleanup
+
+**Statut** : Complété
+
+**Décision technique** : Stash `WIP on refactor/id-resolution-cleanup` contenant 10 fichiers analysé. 6 changements utiles extraits manuellement (pas de `git stash pop` pour éviter une régression sur `_cache_queries.py` dont HEAD était plus avancé).
+
+**Changements appliqués** :
+1. `match_view_weapon_kills.py` — `_enrich_with_grenade_melee` déplacé **après** le check `is_empty()` → évite l'affichage "que grenades" sur matchs sans film (bug regression)
+2. `tests/ui/test_weapon_kills_pages.py` — ajout `test_no_chart_when_film_empty_even_if_grenades_available`
+3. `session_compare.py` — guards `"not in st.session_state"` → `".get(...) not in session_labels"` + suppression `index=` redondant dans `st.selectbox`
+4. `_shared_writes.py` — `_insert_shared_events` retourne `int` (nb réel inséré via `batch_insert_rows`), `_backfill_events_block` conditionne `events_loaded=TRUE` et BACKFILL_FLAGS à `n_inserted > 0`
+5. `_match_processing.py` — import `BACKFILL_FLAGS`, capture `n_events`, `_insert_shared_killer_victim_pairs` + UPDATE BACKFILL_FLAGS uniquement si `n_events > 0`, `events_loaded = n_events > 0` (plus précis que `len(event_rows) > 0`)
+
+**Ignoré** : `_cache_queries.py` (HEAD v6 déjà plus avancé), `_batch_columns.py` (CAST_PLAN déjà sans gamertag en HEAD).
+
+**Conclusion** : Stash supprimable après commit.
+
+---
+
 ### [2026-03-15] — Fix tableaux Top Matchs page Carrière (classe CSS manquante)
 
 **Statut** : Complété
