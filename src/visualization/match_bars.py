@@ -64,7 +64,14 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
     d = d.with_columns(pl.col(metric_col).cast(pl.Float64, strict=False))
     y = d.get_column(metric_col).to_list()
     x_idx = list(range(len(d)))
-    labels = d.get_column("start_time").dt.strftime(FMT_TICK_DATETIME).to_list()
+    labels = (
+        [
+            f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
+            for i, mn in enumerate(d.get_column("map_name").fill_null("").to_list())
+        ]
+        if "map_name" in d.columns
+        else d.get_column("start_time").dt.strftime(FMT_TICK_DATETIME).to_list()
+    )
     step = max(1, len(labels) // 10) if labels else 1
 
     w = int(smooth_window) if smooth_window else 0
@@ -109,6 +116,7 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
+        tickangle=-45,
         type="category",
     )
 
@@ -158,8 +166,9 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if not normalized:
         return None
 
-    # Vérifier si match_id est disponible dans tous les DataFrames
+    # Vérifier si match_id / map_name sont disponibles dans tous les DataFrames
     has_match_id = all("match_id" in df_pl.columns for _, df_pl in normalized)
+    has_map_name = any("map_name" in df_pl.columns for _, df_pl in normalized)
 
     prepared: list[tuple[str, pl.DataFrame]] = []
     all_match_data: list[pl.DataFrame] = []  # Pour construire l'axe X commun
@@ -171,6 +180,9 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         cols_to_use = ["start_time", metric_col]
         if has_match_id:
             cols_to_use.append("match_id")
+        # Inclure map_name si disponible dans ce DataFrame
+        if has_map_name and "map_name" in df_pl.columns:
+            cols_to_use.append("map_name")
 
         d = df_pl.select(cols_to_use)
         # Convertir start_time en Datetime si nécessaire
@@ -195,28 +207,32 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
         # Collecter les données pour l'axe X commun (vectorisé)
         if has_match_id:
-            match_df = d.select(
-                [
-                    pl.col("match_id").cast(pl.String).alias("match_id"),
-                    pl.col("start_time"),
-                ]
-            )
+            map_cols = [pl.col("match_id").cast(pl.String).alias("match_id"), pl.col("start_time")]
+            if "map_name" in d.columns:
+                map_cols.append(pl.col("map_name").fill_null(""))
+            match_df = d.select(map_cols)
         else:
-            match_df = d.select(
-                [
-                    pl.col("start_time").dt.strftime("%Y-%m-%dT%H:%M:%S").alias("match_id"),
-                    pl.col("start_time"),
-                ]
-            )
+            map_cols_no_id = [
+                pl.col("start_time").dt.strftime("%Y-%m-%dT%H:%M:%S").alias("match_id"),
+                pl.col("start_time"),
+            ]
+            if "map_name" in d.columns:
+                map_cols_no_id.append(pl.col("map_name").fill_null(""))
+            match_df = d.select(map_cols_no_id)
         all_match_data.append(match_df)
 
     if not prepared or not all_match_data:
         return None
 
     # Construire l'axe X commun (vectorisé)
-    combined = pl.concat(all_match_data, how="vertical")
-    # Garder le premier start_time par match_id (le plus ancien)
-    match_times = combined.group_by("match_id").agg(pl.col("start_time").min()).sort("start_time")
+    combined = pl.concat(
+        all_match_data, how="diagonal"
+    )  # diagonal pour tolérer colonnes manquantes
+    # Garder le premier start_time (et map_name si dispo) par match_id
+    agg_exprs = [pl.col("start_time").min()]
+    if "map_name" in combined.columns:
+        agg_exprs.append(pl.col("map_name").first())
+    match_times = combined.group_by("match_id").agg(agg_exprs).sort("start_time")
 
     match_ids_ordered = match_times.get_column("match_id").to_list()
     idx_map_df = pl.DataFrame(
@@ -226,9 +242,16 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         }
     )
 
-    # Labels pour l'axe X (dates)
-    labels = match_times.get_column("start_time").dt.strftime(FMT_SHORT_DATETIME_FR).to_list()
-    step = max(1, len(labels) // 10) if labels else 1
+    # Labels pour l'axe X : #N + map_name si disponible, sinon dates
+    n_matches = len(match_ids_ordered)
+    if "map_name" in match_times.columns:
+        labels = [
+            f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
+            for i, mn in enumerate(match_times.get_column("map_name").fill_null("").to_list())
+        ]
+    else:
+        labels = match_times.get_column("start_time").dt.strftime(FMT_SHORT_DATETIME_FR).to_list()
+    step = max(1, n_matches // 10) if n_matches else 1
 
     fig = go.Figure()
     w = int(smooth_window) if smooth_window else 0
@@ -323,6 +346,7 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         tickmode="array",
         tickvals=list(range(len(labels)))[::step],
         ticktext=labels[::step],
+        tickangle=-45,
         type="category",
     )
 
