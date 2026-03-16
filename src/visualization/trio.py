@@ -127,7 +127,7 @@ def plot_trio_metric(  # noqa: PLR0913, C901 — graphe multi-joueurs
     for _idx, (s_list, s_col, name, color) in enumerate(
         zip(series_lists, series_cols, names, color_list, strict=False)
     ):
-        hover_format = f"%{{customdata}}<br>%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
+        hover_format = f"%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
         bar_kwargs: dict = {
             "x": xs,
             "y": s_list,
@@ -162,9 +162,7 @@ def plot_trio_metric(  # noqa: PLR0913, C901 — graphe multi-joueurs
 
     # Moyenne lissée de tous les joueurs (ligne neutre pointillée)
     avg_color = "rgba(255, 255, 255, 0.55)"
-    hover_format_avg = (
-        f"%{{customdata}}<br>%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
-    )
+    hover_format_avg = f"%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
     fig.add_trace(
         go.Scatter(
             x=xs,
