@@ -7,6 +7,77 @@
 
 ## Journal
 
+### [2026-03-16] — Application stash : correctifs + refactor taille
+
+- **Statut** : Complété
+- **Tâche** : Appliquer manuellement les changes utiles du stash, corriger les tests cassés, et respecter les limites de taille.
+
+**Changes appliqués depuis stash :**
+1. `match_view_weapon_kills`: `_enrich_with_grenade_melee` déplacé après `is_empty()` check
+2. `session_compare`: guards `.get()` + suppression `index=` redondant sur selectboxes
+3. `_shared_writes`: `_insert_shared_events` retourne `int` (nb lignes insérées)
+4. `_match_processing`: `n_events` conditionne `_insert_shared_killer_victim_pairs`
+5. `teammates_weapons`: recréation de `_append_grenade_melee` + extraction `_build_weapon_table_html`
+6. `data_loader`: ignore auto-sélection si navigation via lien gamertag
+
+**Refactors taille (pre-commit):**
+- `_process_matches` 97L → ~75L : extraction `_accumulate_match_result`, `_maybe_batch_commit`, `_report_progress` → `_match_processing_helpers.py`
+- `render_weapon_kills_table` 85L → ~55L : extraction `_build_weapon_table_html`
+- `_match_processing.py` 503L → 478L
+
+**Tests (depuis stash + corrections):**
+- Fixtures `v_gamertag_lookup` + `v_weapon_kills` ajoutées à `test_v52_new_features.py`
+- Assert `gamertag is None` (v6 a supprimé `highlight_events.gamertag`)
+- Mocks corrigés pour `load_grenade_melee_kills` (direct au lieu de `_get_connection`)
+- Nouveau test `test_no_chart_when_film_empty_even_if_grenades_available`
+- Résultat final : 4785 passing, 22 failing (toutes préexistantes sur la branche)
+
+### [2026-03-16] — Bug #24-ter : suppression de _pick_best_duckdb_v4_player()
+
+- **Statut** : Complété
+- **Tâche** : Supprimer l'heuristique obsolète "joueur avec le plus de matchs" qui était la vraie root cause du bug récurrent Madina97294.
+
+**Analyse :**
+- `_pick_best_duckdb_v4_player()` ouvre chaque DB de `data/players/` pour compter les matchs → O(N × DB), coûteux au démarrage
+- Résultat non-déterministe (change à chaque sync)
+- Nommée "v4" alors que l'architecture est v6 — dette de nommage
+- `get_default_db_path()` dans `src/config.py` fait déjà le même travail de manière déterministe (premier joueur alphabétique)
+- Si `LEVELUP_DEFAULT_GAMERTAG` est dans les secrets/env, `get_identity_from_secrets()` le retourne — mais cette fonction n'influençait pas le choix de DB dans `init_source_state`
+
+**Supprimé :**
+- `_get_duckdb_v4_players_dir()` + `_pick_best_duckdb_v4_player()` (52 lignes)
+- Références `_v4_gamertag` dans `init_source_state`
+- Import `Path` et `get_repo_root` devenus inutiles
+
+**Nouvelle logique `init_source_state` :**
+1. Env `LEVELUP_DB` / `LEVELUP_DB_PATH` → forcé
+2. SPNKr DB si `prefer_spnkr_db_if_available`
+3. `default_db` (fourni par `get_default_db_path()`, premier alphabétique, déterministe)
+
+**Tests :** 5 tests mis à jour dans `tests/test_player_nav_no_switch.py`, 68 tests passent, 0 régression.
+
+**Leçon** : Une heuristique "intelligente" mais non-déterministe est pire qu'un comportement simple et prévisible. Le premier joueur alphabétique est prédictible ; le "meilleur" joueur par matchs est une source de surprises.
+
+---
+
+### [2026-03-16] — Bug #24-bis : switch joueur sur lien gamertag (régression post-patch)
+
+- **Statut** : Complété
+- **Tâche** : Corriger le switch systématique sur Madina97294 lors d'un clic sur un lien gamertag vers Explorer.
+
+**Root cause (incomplète dans le patch #24) :**
+Le premier patch (2026-03-14) avait supprimé la lecture directe de `st.query_params["gamertag"]` dans `init_source_state()`. Mais il restait `_pick_best_duckdb_v4_player()` qui choisit toujours le joueur avec le plus de matchs. Or, un clic sur un `<a target='_self'>` en HTML injecté dans Streamlit provoque une navigation complète → nouvelle session WebSocket → `session_state` vide → `_pick_best_duckdb_v4_player()` est appelée → Madina97294 (joueur le plus actif) est systématiquement sélectionnée, peu importe le joueur réellement ciblé.
+
+**Fix :**
+- `src/app/data_loader.py` : Ajout de `_is_nav_link = bool(st.query_params.get("gamertag"))` avant l'auto-sélection. Si ce flag est True, `_pick_best_duckdb_v4_player()` est ignoré, et la `default_db` (premier joueur alphabétique) est utilisée. L'`elif` pour SPNKr est aussi conditionné à `not _is_nav_link`.
+- `tests/test_player_nav_no_switch.py` : 5 nouveaux tests couvrant les 3 scénarios (nav link présent / absent / rerun avec db_path existant).
+
+**Résultats** : 5 tests ajoutés, 52 passent, 0 régression.
+
+**Leçon** : La présence de `st.query_params["gamertag"]` sert maintenant à DEUX fins dans `init_source_state` : (1) ne pas lire sa valeur pour switcher de joueur (patch #24), (2) ne pas appeler l'heuristique d'auto-sélection par matchs (patch #24-bis). La vérification de présence (sans utiliser la valeur) est nécessaire et correcte.
+
+---
+
 ### [2026-03-16] — Suppression section Xbox de la page Settings
 
 **Statut** : Complété
