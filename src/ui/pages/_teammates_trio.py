@@ -341,7 +341,14 @@ def _render_per_minute_stats(  # noqa: PLR0913
                 name=_pm_name,
                 x=_pm_metrics,
                 y=_pm_vals,
-                marker_color=_pm_color,
+                marker={
+                    "color": _pm_color,
+                    "pattern": {
+                        "shape": ["", "/", ""],
+                        "fgcolor": ["", "rgba(255, 80, 80, 0.5)", ""],
+                        "solidity": 0.15,
+                    },
+                },
                 text=[f"{v:.2f}" for v in _pm_vals],
                 textposition="auto",
             )
