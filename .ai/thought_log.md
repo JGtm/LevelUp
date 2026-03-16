@@ -7,6 +7,62 @@
 
 ## Journal
 
+### [2026-03-16] — Refactoring architectural : src/ports/ + nettoyage src/db/ + documentation src/ai/
+
+**Statut** : Complété  
+**Branche** : `refactor/id-resolution-cleanup`  
+**Commit** : `45702f8`
+
+**Contexte** : Audit de l'architecture des couches du projet. Trois anomalies identifiées.
+
+**Décisions techniques** :
+
+1. **Suppression `src/db/`** — dossier ne contenant qu'une docstring, zéro import actif. Supprimé proprement (test `test_legacy_free_global.py::test_no_src_db_import` le validait déjà).
+
+2. **Création `src/ports/`** (couche hexagonale) :
+   - `DataRepository` déplacé de `src/data/repositories/protocol.py` → `src/ports/repository.py`
+   - `HaloAPIPort` déplacé de `src/data/sync/api_port.py` → `src/ports/api.py`
+   - 10 imports migrés dans : `src/data/`, sync, services, scripts, tests
+   - Les anciens fichiers deviennent des shims de re-export (compatibilité maintenue)
+   - Import circulaire résolu : `src/ports/api.py` utilise `TYPE_CHECKING` pour les imports `src.data.sync.models`
+   - `get_tools()` dans MCP refactoré : définitions extraites en `_MCP_TOOLS` (constante module) pour rester sous 80L
+
+3. **Documentation `src/ai/`** — couche fonctionnelle (RAG + MCP) ajoutée dans `CLAUDE.md` et `copilot-instructions.md`. Descriptions outils MCP mises à jour pour mentionner `src/ports/` et la cartographie des couches.
+
+**Résultats** :
+- 4778/4781 tests passent (2 failures pré-existantes DB réelle, 1 obsolescence pré-existante)
+- Tous les pre-commit hooks passent
+- Architecture : DAG propre confirmé, 0 import circulaire
+
+**Dette restante** :
+- `src/data/repositories/protocol.py` et `src/data/sync/api_port.py` sont des shims — peuvent être supprimés quand tous les consommateurs externes auront migré
+- `run_stdio_server` dans `mcp_server.py` : 103L (pré-existant, dans le baseline)
+
+---
+
+### [2026-03-16] — Audit BDD v2 : diagnostic trous de données + correction chemins hardcodés
+
+**Statut** : Complété
+
+**Contexte** : Vérification que `shared_matches_v2.duckdb` ne manque pas de données récentes.
+
+**Diagnostic** :
+- Cause racine : tous les modules Python hardcodaient `"shared_matches.duckdb"` alors que le fichier de production est maintenant `shared_matches_v2.duckdb`. La dernière sync (15/03 20:43) a écrit dans un `shared_matches.duckdb` fantôme (maintenant `.bak`), laissant 21 matchs (13-15/03) absents de v2.
+
+**Décision technique** :
+1. **14 fichiers corrigés** pour utiliser `SHARED_MATCHES_DB_FILENAME` depuis `src/utils/paths.py` (source de vérité unique déjà correcte) + gardes de détachement `"shared_matches.duckdb" in path` → `"shared_matches" in path`
+2. **21 matchs récupérés** depuis `shared_matches.duckdb.bak` via INSERT sélectifs (match_registry, match_participants, medals_earned, highlight_events, weapon_kills, killer_victim_pairs, xuid_aliases)
+3. **highlight_events / weapon_kills** : absents aussi dans le .bak → nécessitent un backfill API (`--events`) pour ces 21 matchs
+
+**Résultats** :
+- `shared_matches_v2.duckdb` : 1453 matchs, dernier = 2026-03-15 21:34
+- Intégrité <10j : match_participants=0 manquant · medals=0 · killer_victim=0 · highlights=21 (API) · weapon_kills=21 (API)
+- 14 fichiers syntaxiquement valides, 0 hardcode restant (hors fallback compat tests dans `paths.py`)
+
+**Conclusion** : La prochaine sync écrira correctement dans `shared_matches_v2.duckdb`. Pour les 21 matchs sans events/weapon_kills, lancer : `python scripts/backfill_data.py --all --events`
+
+---
+
 ### [2026-03-16] — Sprint améliorations v6 : splits, weapon_kills bit, audit BDD
 
 **Statut** : Complété
