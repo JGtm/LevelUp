@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 
 from src.data.sync._match_processing_helpers import MatchProcessingHelpersMixin
+from src.data.sync.migrations import BACKFILL_FLAGS
 from src.data.sync.models import SyncOptions, SyncResult
 from src.data.sync.transformers import (
     extract_aliases,
@@ -92,40 +93,16 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                     )
 
                 if match_result.get("inserted"):
-                    result.matches_inserted += 1
-                    result.highlight_events_inserted += match_result.get("events", 0)
-                    result.skill_records_inserted += match_result.get("skill", 0)
-                    result.aliases_updated += match_result.get("aliases", 0)
-                    result.weapon_kills_inserted += match_result.get("weapon_kills", 0)
+                    self._accumulate_match_result(result, match_result)
                     existing_ids.add(match_id)
-
-                    # Sprint 6 : Commit intermédiaire tous les N matchs
-                    if (
-                        options.batch_commit_size > 0
-                        and result.matches_inserted % options.batch_commit_size == 0
-                    ):
-                        conn = self._get_connection()
-                        conn.commit()
-                        logger.debug(
-                            "Commit intermédiaire après %s matchs", result.matches_inserted
-                        )
+                    self._maybe_batch_commit(result.matches_inserted, options.batch_commit_size)
 
                 if match_result.get("error"):
                     result.warnings.append(match_result["error"])
 
                 remaining -= 1
                 start += 1
-
-                # Callback de progression
-                if progress_callback:
-                    progress_callback(
-                        options.max_matches - remaining,
-                        options.max_matches,
-                    )
-
-                # Log de progression
-                if result.matches_inserted > 0 and result.matches_inserted % 10 == 0:
-                    logger.info("Importé %s matchs...", result.matches_inserted)
+                self._report_progress(result, options, remaining, progress_callback)
 
             # Fin du batch
             if len(history) < batch_size:
@@ -458,14 +435,22 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                 )
             self._insert_shared_medals(shared_conn, medals_all)
 
+            n_events = 0
             if event_rows:
-                self._insert_shared_events(shared_conn, event_rows)
-                result["events"] = len(event_rows)
-                self._insert_shared_killer_victim_pairs(
-                    shared_conn,
-                    match_id,
-                    highlight_events,
-                )
+                n_events = self._insert_shared_events(shared_conn, event_rows)
+                result["events"] = n_events
+                if n_events > 0:
+                    self._insert_shared_killer_victim_pairs(
+                        shared_conn,
+                        match_id,
+                        highlight_events,
+                    )
+                    shared_conn.execute(
+                        "UPDATE match_registry "
+                        "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                        "WHERE match_id = ?",
+                        (BACKFILL_FLAGS["events"], match_id),
+                    )
 
             if alias_rows:
                 self._insert_shared_aliases(shared_conn, alias_rows)
@@ -481,7 +466,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                     first_sync_at = ?,
                     player_count = 1
                 WHERE match_id = ?""",
-                (inserted > 0, len(event_rows) > 0, self._gamertag, _utc_now, match_id),
+                (inserted > 0, n_events > 0, self._gamertag, _utc_now, match_id),
             )
             bf_mask = self._compute_backfill_mask(options)
             shared_conn.execute(

@@ -27,7 +27,6 @@ FUNC:src/data/repositories/_materialized_views.py:96:refresh_materialized_views:
 FUNC:src/data/repositories/_roster_loader.py:350:load_match_scoreboard:81L
 FUNC:src/data/repositories/_roster_loader.py:65:load_match_rosters:151L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
-FUNC:src/data/sync/_match_processing.py:37:_process_matches:97L
 FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
 FUNC:src/data/sync/transformers/_match.py:284:extract_participants:141L
 FUNC:src/data/sync/transformers/_match.py:428:extract_match_registry_data:105L
@@ -68,7 +67,6 @@ FUNC:src/ui/pages/teammates.py:74:render_teammates_page:199L
 FUNC:src/ui/pages/teammates_charts.py:240:render_trio_charts:164L
 FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
 FUNC:src/ui/pages/teammates_views.py:58:render_single_teammate_view:125L
-FUNC:src/ui/pages/teammates_weapons.py:37:render_weapon_kills_table:85L
 FUNC:src/ui/pages/win_loss.py:254:_render_ratio_by_map_section:91L
 FUNC:src/ui/styles.py:48:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
@@ -104,4 +102,4 @@ MODULE:src/data/repositories/_weapon_kills_repo.py:531L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/_teammates_trio.py:568L
-MODULE:src/ui/pages/session_compare.py:522L
+MODULE:src/ui/pages/session_compare.py:518L

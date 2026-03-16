@@ -268,18 +268,23 @@ class SharedWritesMixin:
         self,
         shared_conn: duckdb.DuckDBPyConnection,
         event_rows: list,
-    ) -> None:
+    ) -> int:
         """Insère les highlight events dans shared.highlight_events.
 
         Args:
             shared_conn: Connexion vers shared_matches.duckdb.
             event_rows: Liste de HighlightEventRow.
+
+        Returns:
+            Nombre de lignes effectivement insérées.
         """
         if not event_rows:
-            return
+            return 0
         from src.data.sync.batch_insert import HIGHLIGHT_EVENT_COLUMNS, batch_insert_rows
 
-        batch_insert_rows(shared_conn, "highlight_events", event_rows, HIGHLIGHT_EVENT_COLUMNS)
+        return batch_insert_rows(
+            shared_conn, "highlight_events", event_rows, HIGHLIGHT_EVENT_COLUMNS
+        )
 
     def _insert_shared_medals(
         self,
@@ -333,16 +338,17 @@ class SharedWritesMixin:
     ) -> int:
         """Insère events + killer/victim + marque flags dans match_registry."""
         event_rows = transform_highlight_events(highlight_events, match_id)
-        self._insert_shared_events(shared_conn, event_rows)
-        self._insert_shared_killer_victim_pairs(shared_conn, match_id, highlight_events)
-        shared_conn.execute(
-            "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = ?",
-            (match_id,),
-        )
-        shared_conn.execute(
-            "UPDATE match_registry "
-            "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
-            "WHERE match_id = ?",
-            (BACKFILL_FLAGS["events"], match_id),
-        )
-        return len(event_rows)
+        n_inserted = self._insert_shared_events(shared_conn, event_rows)
+        if n_inserted > 0:
+            self._insert_shared_killer_victim_pairs(shared_conn, match_id, highlight_events)
+            shared_conn.execute(
+                "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = ?",
+                (match_id,),
+            )
+            shared_conn.execute(
+                "UPDATE match_registry "
+                "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                "WHERE match_id = ?",
+                (BACKFILL_FLAGS["events"], match_id),
+            )
+        return n_inserted

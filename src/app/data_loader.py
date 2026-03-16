@@ -10,13 +10,12 @@ Ce module gère :
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
 import streamlit as st
 
-from src.config import get_repo_root
+from src.config import get_repo_root  # noqa: F401 — réexporté implicitement
 from src.ui import AppSettings
 from src.ui.cache import db_cache_key, load_df_optimized
 from src.ui.sync import is_spnkr_db_path, pick_latest_spnkr_db_if_any
@@ -72,64 +71,6 @@ def propagate_identity_env(xuid_or_gt: str, xuid_fallback: str, wp: str) -> None
 # =============================================================================
 
 
-def _get_duckdb_v4_players_dir() -> Path:
-    """Retourne le chemin vers data/players/."""
-    return Path(get_repo_root(__file__)) / "data" / "players"
-
-
-def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
-    """Détecte le meilleur joueur DuckDB v5.1 disponible.
-
-    Returns:
-        Tuple (db_path, gamertag) du joueur avec le plus de matchs, ou None.
-    """
-    from src.utils.db import duckdb_read_only
-
-    players_dir = _get_duckdb_v4_players_dir()
-    if not players_dir.exists():
-        return None
-
-    best_player = None
-    best_count = -1
-
-    for player_dir in players_dir.iterdir():
-        if not player_dir.is_dir():
-            continue
-
-        db_path = player_dir / "stats.duckdb"
-        if not db_path.exists():
-            continue
-
-        gamertag = player_dir.name
-        try:
-            with duckdb_read_only(db_path) as con:
-                # V5.1: player_match_enrichment est la seule table match locale
-                # Fallback sur v_match_stats (vue vers shared) si enrichment absente
-                result = con.execute(
-                    """
-                    SELECT COUNT(*) FROM (
-                        SELECT 1 FROM information_schema.tables
-                        WHERE table_name = 'player_match_enrichment'
-                    )
-                    """
-                ).fetchone()
-                if result and result[0] > 0:
-                    count_result = con.execute(
-                        "SELECT COUNT(*) FROM player_match_enrichment"
-                    ).fetchone()
-                else:
-                    count_result = con.execute("SELECT COUNT(*) FROM v_match_stats").fetchone()
-                count = count_result[0] if count_result else 0
-
-            if count > best_count:
-                best_count = count
-                best_player = (str(db_path), gamertag)
-        except Exception:
-            continue
-
-    return best_player
-
-
 # =============================================================================
 # Initialisation source state
 # =============================================================================
@@ -138,42 +79,30 @@ def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
 def init_source_state(default_db: str, settings: AppSettings) -> None:
     """Initialise l'état source (DB path, xuid, waypoint) en session_state.
 
-    Architecture DuckDB v5.1 uniquement :
-    - stats.duckdb par joueur : data/players/{gamertag}/stats.duckdb
-    - shared_matches.duckdb : data/warehouse/shared_matches.duckdb
-    - metadata.duckdb : data/warehouse/metadata.duckdb
+    Priorité pour la DB :
+    1. ``LEVELUP_DB`` / ``LEVELUP_DB_PATH`` (env) — forcé, immuable
+    2. SPNKr DB si ``prefer_spnkr_db_if_available`` est activé dans les settings
+    3. ``default_db`` (premier joueur alphabétique fourni par ``get_default_db_path()``)
+
+    Note : ``?gamertag=`` dans l'URL est un paramètre de navigation vers Explorer,
+    PAS un switch de joueur. Il est consommé par ``_parse_query_params()`` →
+    ``PENDING_GAMERTAG``. L'initialisation ne doit jamais en tenir compte.
 
     Args:
-        default_db: Chemin par défaut de la DB.
+        default_db: Chemin par défaut de la DB (résultat de ``get_default_db_path()``).
         settings: Paramètres de l'application.
     """
     if "db_path" not in st.session_state:
         chosen = str(default_db or "")
 
-        # Si l'utilisateur force une DB via env, ne pas l'écraser
         forced_env_db = str(
             os.environ.get("LEVELUP_DB") or os.environ.get("LEVELUP_DB_PATH") or ""
         ).strip()
 
-        if not forced_env_db:
-            # NOTE: Ne PAS lire st.query_params["gamertag"] ici !
-            # Le param gamertag est un paramètre de navigation vers Explorer
-            # (afficher les matchs communs), PAS un switch de joueur principal.
-            # _parse_query_params() stocke PENDING_GAMERTAG pour Explorer.
-
-            # 1. Essayer DuckDB v4 (joueur avec le plus d'entrées)
-            if not st.session_state.get("_v4_gamertag"):
-                v4_player = _pick_best_duckdb_v4_player()
-                if v4_player:
-                    chosen, gamertag = v4_player
-                    # Pré-remplir aussi le gamertag
-                    st.session_state["_v4_gamertag"] = gamertag
-
-            # 2. Sinon, essayer SPNKr DB si préféré
-            elif bool(getattr(settings, "prefer_spnkr_db_if_available", False)):
-                spnkr = pick_latest_spnkr_db_if_any()
-                if spnkr and os.path.exists(spnkr) and os.path.getsize(spnkr) > 0:
-                    chosen = spnkr
+        if not forced_env_db and bool(getattr(settings, "prefer_spnkr_db_if_available", False)):
+            spnkr = pick_latest_spnkr_db_if_any()
+            if spnkr and os.path.exists(spnkr) and os.path.getsize(spnkr) > 0:
+                chosen = spnkr
 
         st.session_state["db_path"] = chosen
 
@@ -182,20 +111,15 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
         guessed = guess_xuid_from_db_path(st.session_state.get("db_path", "") or "") or ""
         xuid_or_gt, _xuid_fallback, _wp = default_identity_from_secrets()
 
-        # Pour DuckDB v4, utiliser le gamertag détecté
-        v4_gamertag = str(st.session_state.get("_v4_gamertag", "") or "").strip()
-
         # Pour les DB SPNKr, pré-remplir avec le joueur déduit du nom de DB.
         inferred = (
             infer_spnkr_player_from_db_path(str(st.session_state.get("db_path", "") or "")) or ""
         )
-        st.session_state["xuid_input"] = legacy or v4_gamertag or inferred or guessed or xuid_or_gt
+        st.session_state["xuid_input"] = legacy or inferred or guessed or xuid_or_gt
 
     if "waypoint_player" not in st.session_state:
         _xuid_or_gt, _xuid_fallback, wp = default_identity_from_secrets()
-        # Pour DuckDB v4, utiliser le gamertag
-        v4_gamertag = str(st.session_state.get("_v4_gamertag", "") or "").strip()
-        st.session_state["waypoint_player"] = v4_gamertag or wp
+        st.session_state["waypoint_player"] = wp
 
 
 def resolve_xuid_input(xuid_input: str, db_path: str) -> str:

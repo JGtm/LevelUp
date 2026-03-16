@@ -158,28 +158,24 @@ def _select_sessions(
         )
 
     # Injecter les defaults dans session_state uniquement si pas encore initialisés
-    if "compare_session_b" not in st.session_state:
+    # ou si la valeur stockée n'est plus dans les options disponibles
+    if st.session_state.get("compare_session_b") not in session_labels:
         st.session_state["compare_session_b"] = default_b
-    if "compare_session_a" not in st.session_state:
+    if st.session_state.get("compare_session_a") not in session_labels:
         st.session_state["compare_session_a"] = default_a
 
     col_sel_a, col_sel_b = st.columns(2)
     with col_sel_a:
+        # Pas d'index= : session_state est déjà initialisé, évite le warning Streamlit
         session_a_label = st.selectbox(
             t("sc_session_a_ref"),
             options=session_labels,
-            index=session_labels.index(st.session_state["compare_session_a"])
-            if st.session_state.get("compare_session_a") in session_labels
-            else session_labels.index(default_a),
             key="compare_session_a",
         )
     with col_sel_b:
         session_b_label = st.selectbox(
             t("sc_session_b_cmp"),
             options=session_labels,
-            index=session_labels.index(st.session_state["compare_session_b"])
-            if st.session_state.get("compare_session_b") in session_labels
-            else session_labels.index(default_b),
             key="compare_session_b",
         )
     return session_a_label, session_b_label
