@@ -247,6 +247,18 @@
 }
 
 /* =============================================================================
+   Fond spatial — image panoramique avec effet parallax
+   ============================================================================= */
+
+.stApp {
+    background-image: url('/app/static/bg_space.webp');
+    background-size: cover;
+    background-position: center center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+}
+
+/* =============================================================================
    Layout principal
    ============================================================================= */
 
@@ -304,8 +316,8 @@ h4, .stMarkdown h4 {
 }
 
 section.main {
-    /* Fond global : utilise la variable centralisée */
-    background: var(--bg-main);
+    /* Fond semi-transparent pour laisser transparaître l'image de fond */
+    background: rgba(10, 15, 22, 0.74);
     color: var(--text);
     position: relative;
     z-index: 1;
