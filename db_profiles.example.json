@@ -1,0 +1,12 @@
+{
+  "version": "2.1",
+  "warehouse_path": "data/warehouse",
+  "metadata_db": "data/warehouse/metadata.duckdb",
+  "profiles": {
+    "VotreGamertag": {
+      "db_path": "data/players/VotreGamertag/stats.duckdb",
+      "xuid": "0000000000000000",
+      "waypoint_player": "VotreGamertag"
+    }
+  }
+}
