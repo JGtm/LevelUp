@@ -87,7 +87,7 @@ def compute_single_match_impact(  # noqa: C901 — complexité inhérente au sco
             MatchImpactEvent(
                 event_type="first_blood",
                 xuid=xu,
-                gamertag=str(first_kill.get("gamertag", "?")),
+                gamertag=first_kill.get("gamertag") or "?",
                 time_ms=int(first_kill["time_ms"]),
                 is_me=(xu == me_xuid),
             )
@@ -101,7 +101,7 @@ def compute_single_match_impact(  # noqa: C901 — complexité inhérente au sco
             MatchImpactEvent(
                 event_type="clutch_finisher",
                 xuid=xu,
-                gamertag=str(last_kill.get("gamertag", "?")),
+                gamertag=last_kill.get("gamertag") or "?",
                 time_ms=int(last_kill["time_ms"]),
                 is_me=(xu == me_xuid),
             )
@@ -115,7 +115,7 @@ def compute_single_match_impact(  # noqa: C901 — complexité inhérente au sco
             MatchImpactEvent(
                 event_type="last_casualty",
                 xuid=xu,
-                gamertag=str(last_death.get("gamertag", "?")),
+                gamertag=last_death.get("gamertag") or "?",
                 time_ms=int(last_death["time_ms"]),
                 is_me=(xu == me_xuid),
             )
@@ -142,7 +142,7 @@ def compute_single_match_impact(  # noqa: C901 — complexité inhérente au sco
                 MatchImpactEvent(
                     event_type="last_group_kill",
                     xuid=xu,
-                    gamertag=str(slowest.get("gamertag", "?")),
+                    gamertag=slowest.get("gamertag") or "?",
                     time_ms=int(slowest["time_ms"]),
                     is_me=(xu == me_xuid),
                 )
@@ -156,7 +156,7 @@ def compute_single_match_impact(  # noqa: C901 — complexité inhérente au sco
             MatchImpactEvent(
                 event_type="first_group_death",
                 xuid=xu,
-                gamertag=str(first_death.get("gamertag", "?")),
+                gamertag=first_death.get("gamertag") or "?",
                 time_ms=int(first_death["time_ms"]),
                 is_me=(xu == me_xuid),
             )
