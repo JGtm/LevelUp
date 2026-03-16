@@ -286,11 +286,11 @@ class CitationDataLoaderMixin:
                 if not shared_alias:
                     return {}
                 rows = conn.execute(
-                    f"SELECT weapon_id, COUNT(*) AS kills "
-                    f"FROM {shared_alias}.weapon_kills "
+                    f"SELECT effective_weapon_id AS weapon_id, COUNT(*) AS kills "
+                    f"FROM {shared_alias}.v_weapon_kills "
                     "WHERE match_id = ? AND xuid = ? "
-                    "AND weapon_id IS NOT NULL "
-                    "GROUP BY weapon_id",
+                    "AND effective_weapon_id IS NOT NULL "
+                    "GROUP BY effective_weapon_id",
                     [match_id, self._xuid],
                 ).fetchall()
                 from src.analysis._weapon_data import (

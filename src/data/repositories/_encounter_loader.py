@@ -50,7 +50,7 @@ def _build_encounter_sql(n_targets: int) -> str:
     encounters AS (
         SELECT
             p.xuid,
-            MAX(COALESCE(a.gamertag, p.gamertag)) AS gamertag,
+            MAX(COALESCE(vg.gamertag, p.gamertag)) AS gamertag,
             COUNT(*)                                AS total_encounters,
             SUM(CASE WHEN p.team_id = m.team_id   THEN 1 ELSE 0 END) AS ally_count,
             SUM(CASE WHEN p.team_id != m.team_id  THEN 1 ELSE 0 END) AS enemy_count,
@@ -68,7 +68,7 @@ def _build_encounter_sql(n_targets: int) -> str:
         FROM match_participants p
         INNER JOIN my_matches m  ON m.match_id = p.match_id
         INNER JOIN match_registry r ON r.match_id = p.match_id
-        LEFT JOIN  xuid_aliases a ON a.xuid = p.xuid
+        LEFT JOIN  v_gamertag_lookup vg ON vg.xuid = p.xuid
         WHERE p.xuid IN ({ph})
         GROUP BY p.xuid
     ),

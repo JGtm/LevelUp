@@ -155,6 +155,42 @@ class WeaponKillsMixin:
             logger.debug("weapon_kills_agg player %s : %s", xuid, exc)
             return pl.DataFrame(schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32})
 
+    def load_grenade_melee_kills(
+        self, xuid: str, match_ids: list[str] | None = None
+    ) -> tuple[int, int]:
+        """Retourne (grenade_kills, melee_kills) depuis shared.match_participants.
+
+        Agrège sur un ensemble de matchs si match_ids est fourni, sinon sur tous
+        les matchs du joueur. Utilisé par l'UI pour enrichir les tableaux d'armes.
+
+        Returns:
+            Tuple (grenade_kills, melee_kills).
+        """
+        try:
+            conn = self._get_connection()
+            xuid_str = str(xuid).strip()
+            if match_ids:
+                placeholders = ", ".join("?" * len(match_ids))
+                row = conn.execute(
+                    f"SELECT COALESCE(SUM(grenade_kills), 0), "
+                    f"COALESCE(SUM(melee_kills), 0) "
+                    f"FROM shared.match_participants "
+                    f"WHERE xuid = ? AND match_id IN ({placeholders})",
+                    [xuid_str, *match_ids],
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT COALESCE(SUM(grenade_kills), 0), "
+                    "COALESCE(SUM(melee_kills), 0) "
+                    "FROM shared.match_participants WHERE xuid = ?",
+                    [xuid_str],
+                ).fetchone()
+            if row:
+                return int(row[0]), int(row[1])
+        except Exception as exc:
+            logger.debug("load_grenade_melee_kills xuid=%s : %s", xuid, exc)
+        return 0, 0
+
     # ── Write operations (accept explicit connection) ────────────────────
 
     @staticmethod
@@ -374,15 +410,6 @@ class WeaponKillsMixin:
         return lookup_xuid_for_gamertag(conn, gamertag)
 
     @staticmethod
-    def _has_gamertag_column(conn: duckdb.DuckDBPyConnection) -> bool:
-        """Vérifie si highlight_events possède encore la colonne gamertag."""
-        try:
-            conn.execute("SELECT gamertag FROM highlight_events LIMIT 0")
-            return True
-        except Exception:
-            return False
-
-    @staticmethod
     def load_player_kills_for_match(
         conn: duckdb.DuckDBPyConnection,
         match_id: str,
@@ -396,7 +423,7 @@ class WeaponKillsMixin:
         """
         from src.analysis.weapon_parser import GRENADE_MEDALS, MELEE_MEDALS
 
-        gt_col = "he.gamertag" if WeaponKillsMixin._has_gamertag_column(conn) else "NULL"
+        # highlight_events.gamertag supprimé en v6 (migration drop_highlight_events_gamertag)
         kill_rows = conn.execute(
             f"SELECT he.time_ms, {gt_col}, he.xuid "
             "FROM highlight_events he "
@@ -449,10 +476,10 @@ class WeaponKillsMixin:
         """
         from src.analysis.weapon_parser import GRENADE_MEDALS, MELEE_MEDALS
 
-        gt_col = "he.gamertag" if WeaponKillsMixin._has_gamertag_column(conn) else "NULL"
+        # highlight_events.gamertag supprimé en v6 (migration drop_highlight_events_gamertag)
         try:
             kill_rows = conn.execute(
-                f"SELECT he.time_ms, {gt_col}, he.xuid "
+                "SELECT he.time_ms, NULL, he.xuid "
                 "FROM highlight_events he "
                 "WHERE he.match_id = ? AND he.event_type = 'kill' "
                 "ORDER BY he.xuid, he.time_ms",

@@ -47,29 +47,15 @@ def _load_highlight_events(
     except Exception:
         return None
 
-    # Utiliser v_gamertag_lookup si disponible pour résoudre les gamertags correctement
-    has_view = False
-    try:
-        conn.execute(f"SELECT 1 FROM {shared_alias}.v_gamertag_lookup LIMIT 1")
-        has_view = True
-    except Exception:
-        pass
-
-    if has_view:
-        events_query = (
-            f"SELECT he.match_id, he.xuid::TEXT as xuid, "
-            f"vg.gamertag as gamertag, "
-            f"he.event_type, he.time_ms "
-            f"FROM {shared_alias}.highlight_events he "
-            f"LEFT JOIN {shared_alias}.v_gamertag_lookup vg ON vg.xuid = he.xuid::TEXT "
-            f"WHERE he.match_id IN ({', '.join(['?' for _ in match_ids])})"
-        )
-    else:
-        events_query = (
-            f"SELECT match_id, xuid::TEXT as xuid, NULL as gamertag, event_type, time_ms "
-            f"FROM {shared_alias}.highlight_events "
-            f"WHERE match_id IN ({', '.join(['?' for _ in match_ids])})"
-        )
+    # v6 : v_gamertag_lookup est toujours présente (ensure_v6_views)
+    events_query = (
+        f"SELECT he.match_id, he.xuid::TEXT as xuid, "
+        f"vg.gamertag as gamertag, "
+        f"he.event_type, he.time_ms "
+        f"FROM {shared_alias}.highlight_events he "
+        f"LEFT JOIN {shared_alias}.v_gamertag_lookup vg ON vg.xuid = he.xuid::TEXT "
+        f"WHERE he.match_id IN ({', '.join(['?' for _ in match_ids])})"
+    )
 
     events_result = conn.execute(events_query, match_ids).fetchall()
 
