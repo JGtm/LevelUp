@@ -7,6 +7,28 @@
 
 ## Journal
 
+### [2026-03-16] — Fix étiquettes axe X page Escouade (#N + nom de map)
+
+**Statut** : Complété
+
+**Décision technique** :
+- Diagnostic : `_STAT_COLS` et `me_cols` dans `_merge_trio_dataframes` n'incluaient pas `map_name` → `d_self` passé à `plot_trio_metric()` ne possédait jamais la colonne → la condition `if "map_name" in _ref_pl.columns` était toujours `False` → labels en `%d/%m` au lieu de `#N<br>map_name`
+- Même problème pour tous les autres graphes de la page : `plot_timeseries()`, `plot_per_minute_timeseries()`, `plot_metric_bars_by_match()`, `plot_multi_metric_bars_by_match()`, `prepare_time_axis()` — aucun ne lisait `map_name`
+- Fix 1 : Ajouter `map_name` dans `_STAT_COLS` et `me_cols` (`_teammates_trio_helpers.py`), `map_name` rendu optionnel dans la validation pour robustesse
+- Fix 2 : `prepare_time_axis()` + `apply_chrono_xaxis()` dans `_timeseries_helpers.py` — labels auto `#N<br>map_name` si colonne présente + `tickangle=-45`
+- Fix 3 : `plot_timeseries()` et `plot_per_minute_timeseries()` dans `timeseries.py`
+- Fix 4 : `plot_metric_bars_by_match()` dans `match_bars.py`
+- Fix 5 : `plot_multi_metric_bars_by_match()` dans `match_bars.py` — collecte `map_name` dans `all_match_data`, agrégation via `diagonal` concat, construction labels
+
+**Résultats** :
+- 287 tests ciblés passent (suite `teammate|squad|trio|timeseries|match_bar`)
+- Zéro erreur de compilation
+- Les étiquettes affichent maintenant `#1<br>Recharge`, `#2<br>Highpower`, etc. sur tous les graphes par match de la page Escouade
+
+**Prochaine étape** : Commit sur la branche courante
+
+---
+
 ### [2026-03-16] — Vérification finale + cleanup + logging + corrections tests
 
 **Statut** : Complété

@@ -142,7 +142,7 @@ def _render_per_minute_stats(  # noqa: PLR0913
                     "color": _pm_color,
                     "pattern": {
                         "shape": ["", "/", ""],
-                        "fgcolor": ["", "rgba(255, 80, 80, 0.5)", ""],
+                        "fgcolor": ["rgba(0,0,0,0)", "rgba(255, 80, 80, 0.5)", "rgba(0,0,0,0)"],
                         "solidity": 0.15,
                     },
                 },
@@ -190,6 +190,7 @@ def _merge_trio_dataframes(
     me_cols = [
         "match_id",
         "start_time",
+        "map_name",
         "kills",
         "deaths",
         "assists",
@@ -199,7 +200,9 @@ def _merge_trio_dataframes(
         "time_played_seconds",
     ]
     # Vérifier que tous les DataFrames ont les colonnes requises
-    missing_me = [c for c in me_cols if c not in me_df.columns]
+    # map_name est optionnelle (présente si COLUMNS_COMMON est complet)
+    _me_required = [c for c in me_cols if c != "map_name"]
+    missing_me = [c for c in _me_required if c not in me_df.columns]
     missing_f1 = [c for c in friend_cols if c not in f1_df.columns]
     missing_f2 = [c for c in friend_cols if c not in f2_df.columns]
     if (
@@ -213,12 +216,14 @@ def _merge_trio_dataframes(
         return pl.DataFrame()
     _opt = ["performance_score"]
     me_opt = [c for c in _opt if c in me_df.columns]
+    # Sélectionner seulement les colonnes me réellement présentes (map_name peut manquer)
+    me_cols_actual = [c for c in me_cols if c in me_df.columns]
     f1_ext = friend_cols + [c for c in _opt if c in f1_df.columns]
     f2_ext = friend_cols + [c for c in _opt if c in f2_df.columns]
     f1_sel = f1_df.select(f1_ext).rename({c: f"f1_{c}" for c in f1_ext})
     f2_sel = f2_df.select(f2_ext).rename({c: f"f2_{c}" for c in f2_ext})
     return (
-        me_df.select(me_cols + me_opt)
+        me_df.select(me_cols_actual + me_opt)
         .join(f1_sel, left_on="match_id", right_on="f1_match_id", how="inner")
         .join(f2_sel, left_on="match_id", right_on="f2_match_id", how="inner")
     )
@@ -230,6 +235,7 @@ def _merge_trio_dataframes(
 
 _STAT_COLS = [
     "start_time",
+    "map_name",
     "kills",
     "deaths",
     "assists",

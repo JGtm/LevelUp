@@ -159,13 +159,21 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
     )
     fig.update_yaxes(title_text=viz_t("axis_ratio", lang), secondary_y=True)
 
-    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
+    labels = (
+        [
+            f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
+            for i, mn in enumerate(d["map_name"].fill_null("").to_list())
+        ]
+        if "map_name" in d.columns
+        else d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
+    )
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
     fig.update_xaxes(
         title_text=viz_t("axis_match_number", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
+        tickangle=-45,
     )
 
     add_extreme_annotations(
@@ -332,7 +340,14 @@ def plot_per_minute_timeseries(
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
     x_idx = list(range(len(d)))
-    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
+    labels = (
+        [
+            f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
+            for i, mn in enumerate(d["map_name"].fill_null("").to_list())
+        ]
+        if "map_name" in d.columns
+        else d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
+    )
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
 
     time_played = d["time_played_seconds"].cast(pl.Float64, strict=False)
@@ -402,6 +417,7 @@ def plot_per_minute_timeseries(
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
+        tickangle=-45,
         type="category",
     )
 
