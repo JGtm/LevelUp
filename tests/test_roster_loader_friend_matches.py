@@ -207,3 +207,156 @@ class TestLoadFriendMatchDetails:
 
         assert dfr.shape[0] == 1
         assert dfr["match_id"][0] == _MATCH_A
+
+
+# ---------------------------------------------------------------------------
+# load_common_matches_df
+# ---------------------------------------------------------------------------
+
+_TARGET_XUID = "0099"
+_MATCH_C = "match-ccc"
+
+
+def _build_shared_db_full(path: Path) -> None:
+    """Crée une shared DB avec les colonnes complètes pour load_common_matches_df."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = duckdb.connect(str(path))
+    conn.execute("""
+        CREATE TABLE match_registry (
+            match_id VARCHAR PRIMARY KEY,
+            start_time TIMESTAMP,
+            playlist_name VARCHAR,
+            pair_name VARCHAR,
+            map_name VARCHAR
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE match_participants (
+            match_id VARCHAR,
+            xuid VARCHAR,
+            team_id INTEGER,
+            outcome INTEGER,
+            kills INTEGER,
+            deaths INTEGER,
+            assists INTEGER,
+            kda FLOAT,
+            score INTEGER
+        )
+    """)
+    conn.close()
+
+
+def _insert_common_match(conn: duckdb.DuckDBPyConnection, match_id: str) -> None:
+    """Insère un match avec self + target dans les participants."""
+    conn.execute(
+        "INSERT INTO match_registry VALUES (?, ?, ?, ?, ?)",
+        [
+            match_id,
+            datetime(2024, 3, 1, 10, 0, 0, tzinfo=timezone.utc),
+            "Ranked",
+            "RSSLAYER",
+            "Bazaar",
+        ],
+    )
+    conn.execute(
+        "INSERT INTO match_participants VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [match_id, _SELF_XUID, 0, 2, 12, 4, 3, 3.75, 1200],
+    )
+    conn.execute(
+        "INSERT INTO match_participants VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [match_id, _TARGET_XUID, 0, 2, 8, 5, 2, 2.0, 900],
+    )
+
+
+class TestLoadCommonMatchesDf:
+    """Tests pour DuckDBRepository.load_common_matches_df()."""
+
+    def test_returns_polars_dataframe(self, tmp_path: Path) -> None:
+        """Retourne un pl.DataFrame avec les colonnes attendues."""
+        import polars as pl
+
+        player_db = tmp_path / "stats.duckdb"
+        shared_db = tmp_path / "shared.duckdb"
+        _build_player_db(player_db)
+        _build_shared_db_full(shared_db)
+
+        conn = duckdb.connect(str(shared_db))
+        _insert_common_match(conn, _MATCH_C)
+        conn.close()
+
+        repo = _make_repo(player_db, shared_db)
+        dfr = repo.load_common_matches_df(_TARGET_XUID)
+
+        assert isinstance(dfr, pl.DataFrame)
+        assert not dfr.is_empty()
+        assert "match_id" in dfr.columns
+        assert "kills" in dfr.columns
+        assert dfr["match_id"][0] == _MATCH_C
+
+    def test_returns_only_common_matches(self, tmp_path: Path) -> None:
+        """Ne retourne que les matchs où self ET target ont joué."""
+        import polars as pl
+
+        player_db = tmp_path / "stats.duckdb"
+        shared_db = tmp_path / "shared.duckdb"
+        _build_player_db(player_db)
+        _build_shared_db_full(shared_db)
+
+        conn = duckdb.connect(str(shared_db))
+        _insert_common_match(conn, _MATCH_C)
+        # Match où seulement self joue (pas target)
+        conn.execute(
+            "INSERT INTO match_registry VALUES (?, ?, ?, ?, ?)",
+            [
+                "match-solo",
+                datetime(2024, 3, 2, 10, 0, 0, tzinfo=timezone.utc),
+                "Ranked",
+                "RSSLAYER",
+                "Bazaar",
+            ],
+        )
+        conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ["match-solo", _SELF_XUID, 0, 2, 5, 3, 1, 1.67, 600],
+        )
+        conn.close()
+
+        repo = _make_repo(player_db, shared_db)
+        dfr = repo.load_common_matches_df(_TARGET_XUID)
+
+        assert isinstance(dfr, pl.DataFrame)
+        assert dfr.shape[0] == 1
+        assert dfr["match_id"][0] == _MATCH_C
+
+    def test_returns_empty_when_no_shared_table(self, tmp_path: Path) -> None:
+        """Retourne un DataFrame vide si shared DB est indisponible."""
+        import polars as pl
+
+        player_db = tmp_path / "stats.duckdb"
+        _build_player_db(player_db)
+
+        repo = DuckDBRepository(
+            player_db_path=player_db,
+            xuid=_SELF_XUID,
+            shared_db_path=None,
+            read_only=False,
+        )
+        dfr = repo.load_common_matches_df(_TARGET_XUID)
+
+        assert isinstance(dfr, pl.DataFrame)
+        assert dfr.is_empty()
+
+    def test_returns_empty_when_no_common_matches(self, tmp_path: Path) -> None:
+        """Retourne un DataFrame vide si aucun match commun."""
+        import polars as pl
+
+        player_db = tmp_path / "stats.duckdb"
+        shared_db = tmp_path / "shared.duckdb"
+        _build_player_db(player_db)
+        _build_shared_db_full(shared_db)
+
+        repo = _make_repo(player_db, shared_db)
+        dfr = repo.load_common_matches_df("xuid-inconnu")
+
+        assert isinstance(dfr, pl.DataFrame)
+        assert dfr.is_empty()

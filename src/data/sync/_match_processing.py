@@ -230,9 +230,21 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             shared_conn = self._get_shared_connection()
             await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
             if options.with_weapons:
-                result["weapon_kills"] = await self._try_extract_weapon_kills(
-                    client, match_id, shared_conn
-                )
+                wk_rows = await self._try_extract_weapon_kills(client, match_id, shared_conn)
+                result["weapon_kills"] = wk_rows
+                logger.debug("weapon_kills extraits pour %s : %d", match_id, wk_rows)
+                if wk_rows > 0 and shared_conn is not None:
+                    shared_conn.execute(
+                        "UPDATE match_registry "
+                        "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                        "WHERE match_id = ?",
+                        (BACKFILL_FLAGS["weapon_kills"], match_id),
+                    )
+                    logger.debug(
+                        "Bit weapon_kills (0x%x) posé dans match_registry pour %s",
+                        BACKFILL_FLAGS["weapon_kills"],
+                        match_id,
+                    )
             result["inserted"] = True
 
         except Exception as e:
@@ -364,12 +376,26 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             shared_conn = self._get_shared_connection()
             await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
             if options.with_weapons:
-                result["weapon_kills"] = await self._try_extract_weapon_kills(
+                wk_rows = await self._try_extract_weapon_kills(
                     client,
                     match_id,
                     shared_conn,
                     is_firefight=bool(getattr(registry_data, "is_firefight", False)),
                 )
+                result["weapon_kills"] = wk_rows
+                logger.debug("weapon_kills extraits pour %s : %d", match_id, wk_rows)
+                if wk_rows > 0 and shared_conn is not None:
+                    shared_conn.execute(
+                        "UPDATE match_registry "
+                        "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                        "WHERE match_id = ?",
+                        (BACKFILL_FLAGS["weapon_kills"], match_id),
+                    )
+                    logger.debug(
+                        "Bit weapon_kills (0x%x) posé dans match_registry pour %s",
+                        BACKFILL_FLAGS["weapon_kills"],
+                        match_id,
+                    )
 
             ok = await self._save_player_data_new_match(match_id, stats_json, skill_json, result)
             if not ok:

@@ -236,6 +236,58 @@ def render_outcome_bar_chart(dfr: DataFrameLike) -> None:
     st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
 
 
+def _plot_trio_metric_chart(  # noqa: PLR0913
+    *,
+    d_self: DataFrameLike,
+    d_f1: DataFrameLike,
+    d_f2: DataFrameLike,
+    d_f3: DataFrameLike | None,
+    names: tuple[str, ...],
+    lang: str,
+    colors_by_name: dict[str, str] | None,
+    metric: str,
+    title: str,
+    y_title: str,
+    key: str,
+    y_suffix: str = "",
+    y_format: str = "",
+    is_inverse: bool = False,
+) -> None:
+    """Rend un seul graphique trio_metric via st.plotly_chart."""
+    st.plotly_chart(
+        plot_trio_metric(
+            d_self,
+            d_f1,
+            d_f2,
+            metric=metric,
+            names=names,
+            title=title,
+            y_title=y_title,
+            y_suffix=y_suffix,
+            y_format=y_format,
+            lang=lang,
+            d_f3=d_f3,
+            colors_by_name=colors_by_name,
+            is_inverse=is_inverse,
+        ),
+        width="stretch",
+        key=key,
+        config=PLOTLY_CLEAN_CONFIG,
+    )
+
+
+# (metric, title_key, ytitle_key, key_prefix, extra_kwargs)
+_TRIO_METRIC_SPECS: list[tuple[str, str, str, str, dict]] = [
+    ("kills", "tm_kills", "tm_kills", "trio_kills", {}),
+    ("deaths", "tm_deaths", "tm_deaths", "trio_deaths", {"is_inverse": True}),
+    ("assists", "tm_assists", "tm_assists", "trio_assists", {}),
+    ("ratio", "tm_kda", "tm_kda", "trio_ratio", {"y_format": ".3f"}),
+    ("accuracy", "tm_accuracy", None, "trio_accuracy", {"y_suffix": "%", "y_format": ".2f"}),
+    ("average_life_seconds", "tm_avg_life", "tm_seconds", "trio_life", {"y_format": ".1f"}),
+    ("performance", "tm_performance", "tm_score", "trio_performance", {"y_format": ".1f"}),
+]
+
+
 @fragment_if_available
 def render_trio_charts(  # noqa: PLR0913
     d_self: DataFrameLike,
@@ -252,153 +304,25 @@ def render_trio_charts(  # noqa: PLR0913
     f3_xuid: str | None = None,
     colors_by_name: dict[str, str] | None = None,
 ) -> None:
-    """Affiche les graphes d'escouade (3 ou 4 joueurs).
-
-    Args:
-        d_self: DataFrame du joueur principal.
-        d_f1: DataFrame du premier coéquipier.
-        d_f2: DataFrame du deuxième coéquipier.
-        me_name: Nom du joueur principal.
-        f1_name: Nom du premier coéquipier.
-        f2_name: Nom du deuxième coéquipier.
-        f1_xuid: XUID du premier coéquipier.
-        f2_xuid: XUID du deuxième coéquipier.
-        d_f3: DataFrame optionnel du 3ème coéquipier.
-        f3_name: Nom optionnel du 3ème coéquipier.
-        f3_xuid: XUID optionnel du 3ème coéquipier.
-        colors_by_name: Mapping nom → couleur hex (Okabe-Ito recommandé).
-    """
-    names: tuple[str, ...] = (me_name, f1_name, f2_name)
-    if f3_name:
-        names = names + (f3_name,)
-
-    key_suffix = f"{f1_xuid}_{f2_xuid}"
-    if f3_xuid:
-        key_suffix += f"_{f3_xuid}"
-
+    """Affiche les 7 graphes de métriques pour une escouade de 3 ou 4 joueurs."""
+    names: tuple[str, ...] = (me_name, f1_name, f2_name) + ((f3_name,) if f3_name else ())
+    key_suffix = f"{f1_xuid}_{f2_xuid}" + (f"_{f3_xuid}" if f3_xuid else "")
     _lang = get_lang()
-    st.plotly_chart(
-        plot_trio_metric(
-            d_self,
-            d_f1,
-            d_f2,
-            metric="kills",
-            names=names,
-            title=t("tm_kills"),
-            y_title=t("tm_kills"),
-            lang=_lang,
-            d_f3=d_f3,
-            colors_by_name=colors_by_name,
-        ),
-        width="stretch",
-        key=f"trio_kills_{key_suffix}",
-        config=PLOTLY_CLEAN_CONFIG,
-    )
-    st.plotly_chart(
-        plot_trio_metric(
-            d_self,
-            d_f1,
-            d_f2,
-            metric="deaths",
-            names=names,
-            title=t("tm_deaths"),
-            y_title=t("tm_deaths"),
-            lang=_lang,
-            d_f3=d_f3,
-            colors_by_name=colors_by_name,
-            is_inverse=True,
-        ),
-        width="stretch",
-        key=f"trio_deaths_{key_suffix}",
-        config=PLOTLY_CLEAN_CONFIG,
-    )
-    st.plotly_chart(
-        plot_trio_metric(
-            d_self,
-            d_f1,
-            d_f2,
-            metric="assists",
-            names=names,
-            title=t("tm_assists"),
-            y_title=t("tm_assists"),
-            lang=_lang,
-            d_f3=d_f3,
-            colors_by_name=colors_by_name,
-        ),
-        width="stretch",
-        key=f"trio_assists_{key_suffix}",
-        config=PLOTLY_CLEAN_CONFIG,
-    )
-    st.plotly_chart(
-        plot_trio_metric(
-            d_self,
-            d_f1,
-            d_f2,
-            metric="ratio",
-            names=names,
-            title=t("tm_kda"),
-            y_title=t("tm_kda"),
-            y_format=".3f",
-            lang=_lang,
-            d_f3=d_f3,
-            colors_by_name=colors_by_name,
-        ),
-        width="stretch",
-        key=f"trio_ratio_{key_suffix}",
-        config=PLOTLY_CLEAN_CONFIG,
-    )
-    st.plotly_chart(
-        plot_trio_metric(
-            d_self,
-            d_f1,
-            d_f2,
-            metric="accuracy",
-            names=names,
-            title=t("tm_accuracy"),
-            y_title="%",
-            y_suffix="%",
-            y_format=".2f",
-            lang=_lang,
-            d_f3=d_f3,
-            colors_by_name=colors_by_name,
-        ),
-        width="stretch",
-        key=f"trio_accuracy_{key_suffix}",
-        config=PLOTLY_CLEAN_CONFIG,
-    )
-    st.plotly_chart(
-        plot_trio_metric(
-            d_self,
-            d_f1,
-            d_f2,
-            metric="average_life_seconds",
-            names=names,
-            title=t("tm_avg_life"),
-            y_title=t("tm_seconds"),
-            y_format=".1f",
-            lang=_lang,
-            d_f3=d_f3,
-            colors_by_name=colors_by_name,
-        ),
-        width="stretch",
-        key=f"trio_life_{key_suffix}",
-        config=PLOTLY_CLEAN_CONFIG,
-    )
-    st.plotly_chart(
-        plot_trio_metric(
-            d_self,
-            d_f1,
-            d_f2,
-            metric="performance",
-            names=names,
-            title=t("tm_performance"),
-            y_title=t("tm_score"),
-            y_format=".1f",
-            lang=_lang,
-            d_f3=d_f3,
-            colors_by_name=colors_by_name,
-        ),
-        width="stretch",
-        key=f"trio_performance_{key_suffix}",
-        config=PLOTLY_CLEAN_CONFIG,
-    )
+    _shared: dict = {
+        "d_self": d_self,
+        "d_f1": d_f1,
+        "d_f2": d_f2,
+        "d_f3": d_f3,
+        "names": names,
+        "lang": _lang,
+        "colors_by_name": colors_by_name,
+    }
+    for metric, title_key, ytitle_key, key_prefix, extra in _TRIO_METRIC_SPECS:
+        _plot_trio_metric_chart(
+            **_shared,
+            metric=metric,
+            title=t(title_key),
+            y_title=t(ytitle_key) if ytitle_key else "%",
+            key=f"{key_prefix}_{key_suffix}",
+            **extra,
+        )

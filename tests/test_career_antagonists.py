@@ -98,6 +98,21 @@ def shared_db(tmp_path: Path) -> Path:
             ('m2', '2025-01-02 10:00:00'),
             ('m3', '2025-01-03 10:00:00')
         """)
+
+        # Vue v_gamertag_lookup requise par les queries v6
+        conn.execute("""
+            CREATE VIEW v_gamertag_lookup AS
+            SELECT COALESCE(xa.xuid, mp.xuid) AS xuid,
+                   COALESCE(xa.gamertag, mp.gamertag) AS gamertag
+            FROM xuid_aliases xa
+            FULL OUTER JOIN (
+                SELECT xuid, MAX(gamertag) AS gamertag
+                FROM match_participants
+                WHERE gamertag IS NOT NULL
+                GROUP BY xuid
+            ) mp ON xa.xuid = mp.xuid
+            WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL
+        """)
     return db_path
 
 

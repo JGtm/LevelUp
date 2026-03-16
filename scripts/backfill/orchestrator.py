@@ -5,10 +5,8 @@ Ce module contient la logique principale de backfill :
 - backfill_all_players  : itération sur tous les joueurs DuckDB
 
 Note architecture (v5.2+) :
-    Les fonctions publiques acceptent un paramètre ``scope: SyncScope``
-    qui remplace les 30+ kwargs individuels.  Les kwargs sont conservés
-    temporairement pour rétro-compatibilité (marqués ``LEGACY``).
-    Nouveau code : toujours passer ``scope=SyncScope(...)``.
+    Les fonctions publiques et privées acceptent ``scope: SyncScope``.
+    Les 30+ kwargs individuels legacy ont été supprimés (nettoyage v6).
 """
 
 from __future__ import annotations
@@ -661,89 +659,15 @@ async def _backfill_with_api(
     xuid: str,
     match_ids: list[str],
     *,
-    scope: SyncScope | None = None,
-    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
-    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
-    #   utilisent SyncScope.
-    # ─────────────────────────────────────────────────────────────────────
-    requests_per_second: int = 5,
-    medals: bool = False,
-    events: bool = False,
-    skill: bool = False,
-    personal_scores: bool = False,
-    performance_scores: bool = False,
-    aliases: bool = False,
-    accuracy: bool = False,
-    enemy_mmr: bool = False,
-    assets: bool = False,
-    participants: bool = False,
-    participants_scores: bool = False,
-    participants_kda: bool = False,
-    participants_shots: bool = False,
-    participants_damage: bool = False,
-    participants_avg_life: bool = False,
-    killer_victim: bool = False,
-    end_time: bool = False,
-    sessions: bool = False,
-    force_medals: bool = False,
-    force_accuracy: bool = False,
-    force_shots: bool = False,
-    force_performance_scores: bool = False,
-    force_enemy_mmr: bool = False,
-    force_end_time: bool = False,
-    force_sessions: bool = False,
-    force_participants_shots: bool = False,
-    force_participants_damage: bool = False,
-    force_participants_avg_life: bool = False,
-    shots: bool = False,
-    citations: bool = False,
-    force_citations: bool = False,
+    scope: SyncScope,
     gamertag: str = "",
-    dry_run: bool = False,
     existing_shared_conn: Any | None = None,
 ) -> dict[str, int]:
     """Traitement des matchs via l'API SPNKr.
 
-    .. deprecated:: v5.2
-        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+    Args:
+        scope: Périmètre de backfill (SyncScope résolu).
     """
-    # ── Construire / résoudre le scope ──
-    if scope is None:
-        scope = SyncScope(
-            dry_run=dry_run,
-            requests_per_second=requests_per_second,
-            medals=medals,
-            events=events,
-            skill=skill,
-            personal_scores=personal_scores,
-            performance_scores=performance_scores,
-            aliases=aliases,
-            accuracy=accuracy,
-            enemy_mmr=enemy_mmr,
-            assets=assets,
-            participants=participants,
-            participants_scores=participants_scores,
-            participants_kda=participants_kda,
-            participants_shots=participants_shots,
-            participants_damage=participants_damage,
-            participants_avg_life=participants_avg_life,
-            killer_victim=killer_victim,
-            end_time=end_time,
-            sessions=sessions,
-            shots=shots,
-            citations=citations,
-            force_medals=force_medals,
-            force_accuracy=force_accuracy,
-            force_shots=force_shots,
-            force_performance_scores=force_performance_scores,
-            force_participants_shots=force_participants_shots,
-            force_participants_damage=force_participants_damage,
-            force_participants_avg_life=force_participants_avg_life,
-            force_enemy_mmr=force_enemy_mmr,
-            force_end_time=force_end_time,
-            force_sessions=force_sessions,
-            force_citations=force_citations,
-        )
     scope.resolve()
 
     # Extraire les valeurs résolues en variables locales
@@ -769,7 +693,6 @@ async def _backfill_with_api(
     sessions = scope.sessions
     shots = scope.shots
     citations = scope.citations
-    force_medals = scope.force_medals
     force_accuracy = scope.force_accuracy
     force_shots = scope.force_shots
     # force_skill est utilisé via scope dans find_matches_missing_data()
@@ -1451,8 +1374,7 @@ async def _backfill_weapon_kills_for_match(
     if not force:
         try:
             row = shared_conn.execute(
-                "SELECT COALESCE(backfill_completed, 0) & ? "
-                "FROM match_registry WHERE match_id = ?",
+                "SELECT COALESCE(backfill_completed, 0) & ? FROM match_registry WHERE match_id = ?",
                 (MatchBits.WEAPON_KILLS, match_id),
             ).fetchone()
             if row and row[0]:

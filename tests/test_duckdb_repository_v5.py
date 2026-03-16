@@ -293,6 +293,21 @@ def _create_shared_db(db_path: Path) -> None:
         ('xuid_enemy_2', 'EnemyBeta', 'api')
     """)
 
+    # Vue v_gamertag_lookup (requis par les queries v6)
+    conn.execute("""
+        CREATE OR REPLACE VIEW v_gamertag_lookup AS
+        SELECT COALESCE(xa.xuid, mp.xuid) AS xuid,
+               COALESCE(xa.gamertag, mp.gamertag) AS gamertag
+        FROM xuid_aliases xa
+        FULL OUTER JOIN (
+            SELECT xuid, MAX(gamertag) AS gamertag
+            FROM match_participants
+            WHERE gamertag IS NOT NULL
+            GROUP BY xuid
+        ) mp ON xa.xuid = mp.xuid
+        WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL
+    """)
+
     # 8bis.A5 : Création de mv_player_matches (requis en v5.1)
     conn.execute("""
         CREATE OR REPLACE VIEW mv_player_matches AS

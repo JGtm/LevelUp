@@ -730,3 +730,113 @@ class TestGetMatchTableName:
 
         # v5.1 : plus de match_stats locale → None
         assert table is None
+
+
+# =============================================================================
+# Tests résolution via v_gamertag_lookup (vue v6) et shared_matches_v2.duckdb
+# =============================================================================
+
+
+def _create_shared_db_v6(db_path: Path) -> None:
+    """Crée une shared_matches_v2.duckdb avec v_gamertag_lookup (schéma v6)."""
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = duckdb.connect(str(db_path))
+    conn.execute("""
+        CREATE TABLE match_registry (
+            match_id VARCHAR PRIMARY KEY,
+            start_time TIMESTAMP NOT NULL
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE match_participants (
+            match_id VARCHAR,
+            xuid VARCHAR,
+            gamertag VARCHAR,
+            PRIMARY KEY (match_id, xuid)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE xuid_aliases (
+            xuid VARCHAR PRIMARY KEY,
+            gamertag VARCHAR
+        )
+    """)
+    conn.execute(
+        "INSERT INTO xuid_aliases VALUES (?, ?)",
+        [PLAYER_XUID, PLAYER_GAMERTAG],
+    )
+    # Créer la vue canonique v6
+    conn.execute("""
+        CREATE OR REPLACE VIEW v_gamertag_lookup AS
+        SELECT
+            COALESCE(xa.xuid, mp.xuid) AS xuid,
+            COALESCE(xa.gamertag, mp.gamertag) AS gamertag
+        FROM xuid_aliases xa
+        FULL OUTER JOIN (
+            SELECT xuid, MAX(gamertag) AS gamertag
+            FROM match_participants
+            WHERE gamertag IS NOT NULL
+            GROUP BY xuid
+        ) mp ON xa.xuid = mp.xuid
+        WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL
+    """)
+    conn.close()
+
+
+class TestXuidResolutionViaV6Schema:
+    """Vérifie la résolution XUID via v_gamertag_lookup et shared_matches_v2.duckdb."""
+
+    def test_strategy_via_v_gamertag_lookup(self, tmp_path: Path) -> None:
+        """Résolution réussit via v_gamertag_lookup dans la DB v6."""
+        from src.ui.cache_loaders import _resolve_player_xuid
+
+        warehouse = tmp_path / "data" / "warehouse"
+        warehouse.mkdir(parents=True, exist_ok=True)
+        shared_db_path = warehouse / "shared_matches.duckdb"
+        _create_shared_db_v6(shared_db_path)
+
+        db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
+        _create_player_db(db_path)  # pas de sync_meta.xuid
+
+        result = _resolve_player_xuid(str(db_path))
+        assert result == PLAYER_XUID
+
+    def test_strategy_via_shared_matches_v2(self, tmp_path: Path) -> None:
+        """Résolution réussit via shared_matches_v2.duckdb (nouveau nom v6)."""
+        from src.ui.cache_loaders import _resolve_player_xuid
+
+        warehouse = tmp_path / "data" / "warehouse"
+        warehouse.mkdir(parents=True, exist_ok=True)
+        # Utiliser le nom v2 (nouveau nom de production)
+        shared_db_path = warehouse / "shared_matches_v2.duckdb"
+        _create_shared_db_v6(shared_db_path)
+
+        db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
+        _create_player_db(db_path)  # pas de sync_meta.xuid
+
+        result = _resolve_player_xuid(str(db_path))
+        assert result == PLAYER_XUID
+
+    def test_v2_preferred_over_v1_when_both_present(self, tmp_path: Path) -> None:
+        """shared_matches_v2 est résolu en priorité si les deux existent."""
+        from src.ui.cache_loaders import _resolve_player_xuid
+
+        warehouse = tmp_path / "data" / "warehouse"
+        warehouse.mkdir(parents=True, exist_ok=True)
+
+        # v1 avec un XUID différent (pour valider que c'est v2 qui est lu)
+        shared_v1 = warehouse / "shared_matches.duckdb"
+        _create_shared_db_v6(shared_v1)
+        conn = duckdb.connect(str(shared_v1))
+        conn.execute("UPDATE xuid_aliases SET xuid = 'wrong-xuid-v1'")
+        conn.close()
+
+        # v2 avec le bon XUID
+        shared_v2 = warehouse / "shared_matches_v2.duckdb"
+        _create_shared_db_v6(shared_v2)
+
+        db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
+        _create_player_db(db_path)
+
+        result = _resolve_player_xuid(str(db_path))
+        assert result == PLAYER_XUID

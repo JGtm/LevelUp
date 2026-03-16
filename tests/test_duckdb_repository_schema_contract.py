@@ -231,7 +231,6 @@ def test_repository_methods_still_work_with_expected_schema(
                 event_type VARCHAR,
                 time_ms INTEGER,
                 xuid VARCHAR,
-                gamertag VARCHAR,
                 type_hint INTEGER
             )
         """)
@@ -243,8 +242,13 @@ def test_repository_methods_still_work_with_expected_schema(
                 team_id INTEGER
             )
         """)
+        conn.execute("""
+            CREATE VIEW v_gamertag_lookup AS
+            SELECT xuid, gamertag FROM match_participants WHERE gamertag IS NOT NULL
+        """)
         conn.execute("INSERT INTO medals_earned VALUES ('m1', 'x_me', 1512363953, 1)")
         conn.execute("INSERT INTO highlight_events VALUES ('m1', 'Kill', 1000, 'x_me', 50)")
+        conn.execute("INSERT INTO match_participants VALUES ('m1', 'x_me', 'TestPlayer', 0)")
     finally:
         conn.close()
 

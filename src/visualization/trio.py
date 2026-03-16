@@ -105,6 +105,7 @@ def plot_trio_metric(  # noqa: PLR0913, C901 — graphe multi-joueurs
             zip(
                 _ref_clean["start_time"].to_list(),
                 _ref_clean["map_name"].fill_null("?").to_list(),
+                strict=False,
             )
         )
         ticktext = [

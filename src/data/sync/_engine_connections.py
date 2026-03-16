@@ -222,6 +222,13 @@ class ConnectionMixin:
         except Exception as e:
             logger.debug("Migration weapon_kills shared: %s", e)
 
+        try:
+            from src.data.sync.migrations import ensure_resolution_views
+
+            ensure_resolution_views(conn)
+        except Exception as e:
+            logger.debug("ensure_resolution_views shared: %s", e)
+
     def _get_pve_connection(self) -> duckdb.DuckDBPyConnection:
         """Retourne (lazy) la connexion vers shared_pve.duckdb."""
         if self._pve_connection is not None:
@@ -288,6 +295,10 @@ class ConnectionMixin:
         except Exception as e:
             logger.debug("Impossible de résoudre le XUID depuis la DB: %s", e)
 
+        logger.warning(
+            "XUID non résolu après tous les fallbacks (sync_meta + v_gamertag_lookup) pour %s",
+            self._player_db_path,
+        )
         return ""
 
     def _load_existing_match_ids(self) -> set[str]:

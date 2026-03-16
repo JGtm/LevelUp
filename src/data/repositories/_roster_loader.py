@@ -11,25 +11,104 @@ extraites de DuckDBRepository :
 - load_match_scoreboard
 
 La résolution XUID → Gamertag est dans ``_gamertag_resolver.py``.
+Les requêtes de relations (matchs communs, détails ami) sont dans ``_match_relations.py``.
 """
 
 from __future__ import annotations
 
-import contextlib
 import logging
-from typing import TYPE_CHECKING, Any
-
-import polars as pl
+from typing import Any
 
 from src.data.repositories._gamertag_resolver import (
     GamertagResolverMixin,
     _clean_gamertag_static,
 )
 
-if TYPE_CHECKING:
-    pass
-
 logger = logging.getLogger(__name__)
+
+
+def _get_my_team_id(conn, match_id: str, my_xuid_str: str) -> int | None:
+    """Retourne le team_id du joueur principal pour un match, ou None."""
+    try:
+        row = conn.execute(
+            "SELECT team_id FROM shared.match_participants WHERE match_id = ? AND xuid = ?",
+            [match_id, my_xuid_str],
+        ).fetchone()
+        return int(row[0]) if row and row[0] is not None else None
+    except Exception:
+        return None
+
+
+def _load_participants_data(
+    conn, match_id: str
+) -> tuple[dict[str, int | None], dict[str, str | None]] | None:
+    """Charge les participants d'un match depuis shared.match_participants.
+
+    Returns:
+        (team_by_xuid, gamertag_by_xuid) ou None si la table est indisponible.
+    """
+
+    try:
+        rows = conn.execute(
+            "SELECT xuid, team_id, gamertag FROM shared.match_participants WHERE match_id = ?",
+            [match_id],
+        ).fetchall()
+    except Exception as e:
+        logger.debug("Erreur lecture match_participants: %s", e)
+        return None
+
+    if not rows:
+        return None
+
+    team_by_xuid: dict[str, int | None] = {}
+    gamertag_by_xuid: dict[str, str | None] = {}
+    for xuid, team_id, mp_gt in rows:
+        xu = str(xuid).strip()
+        if not xu:
+            continue
+        team_by_xuid[xu] = team_id
+        gt = _clean_gamertag_static(mp_gt)
+        if gt:
+            gamertag_by_xuid[xu] = gt
+
+    return team_by_xuid, gamertag_by_xuid
+
+
+def _assemble_roster(
+    team_by_xuid: dict[str, int | None],
+    gamertag_by_xuid: dict[str, str | None],
+    resolved_gamertags: dict[str, str],
+    my_xuid_str: str,
+    my_team_id: int,
+) -> tuple[list, list]:
+    """Construit les listes my_team / enemy_team triées."""
+    my_team: list = []
+    enemy_team: list = []
+
+    for xuid_str in team_by_xuid:
+        is_me = xuid_str == my_xuid_str
+        cleaned_gamertag = resolved_gamertags.get(xuid_str) or gamertag_by_xuid.get(xuid_str)
+        display_name = cleaned_gamertag if cleaned_gamertag else xuid_str
+        player_team_id = team_by_xuid.get(xuid_str, None if not is_me else my_team_id)
+        player_data = {
+            "xuid": xuid_str,
+            "gamertag": cleaned_gamertag,
+            "team_id": player_team_id,
+            "is_me": is_me,
+            "is_bot": False,
+            "display_name": display_name,
+        }
+        if player_team_id == my_team_id or is_me:
+            my_team.append(player_data)
+        else:
+            enemy_team.append(player_data)
+
+    def _sort_key(r: dict) -> tuple[int, str]:
+        return (0 if r.get("is_me") else 1, str(r.get("gamertag") or r.get("xuid") or "").lower())
+
+    my_team.sort(key=_sort_key)
+    enemy_team.sort(key=_sort_key)
+    return my_team, enemy_team
 
 
 def _scoreboard_row_to_dict(idx: int, row: tuple) -> dict:
@@ -62,147 +141,48 @@ def _scoreboard_row_to_dict(idx: int, row: tuple) -> dict:
 class RosterLoaderMixin(GamertagResolverMixin):
     """Mixin fournissant le chargement des rosters et la résolution des gamertags pour DuckDBRepository."""
 
-    def load_match_rosters(  # noqa: C901, PLR0912, PLR0915
+    def load_match_rosters(
         self,
         match_id: str,
     ) -> dict[str, Any] | None:
-        """Charge les rosters d'un match depuis killer_victim_pairs ou highlight_events.
-
-        Utilise killer_victim_pairs si disponible (source fiable), sinon
-        analyse les patterns de kills dans highlight_events.
+        """Charge les rosters d'un match depuis shared.match_participants.
 
         Returns:
             None si le match n'existe pas ou si les données sont insuffisantes.
-            Sinon un dict avec la structure:
-            {
-                "my_team_id": int,
-                "my_team": [{"xuid": str, "gamertag": str|None, "team_id": int|None, "is_me": bool}],
-                "enemy_team": [...],
-            }
+            Sinon un dict avec : my_team_id, my_team, enemy_team.
         """
+        if not self._has_shared_table("match_participants"):
+            return None
+
         conn = self._get_connection()
+        my_xuid_str = str(self._xuid).strip()
 
         try:
-            # V5.1 : shared.match_participants est la source canonique du team_id
-            my_xuid_str = str(self._xuid).strip()
-            match_info = None
-
-            if self._has_shared_table("match_participants"):
-                with contextlib.suppress(Exception):
-                    match_info = conn.execute(
-                        "SELECT team_id FROM shared.match_participants WHERE match_id = ? AND xuid = ?",
-                        [match_id, my_xuid_str],
-                    ).fetchone()
-
-            # NOTE v5.1 : match_stats supprimée, pas de fallback legacy
-            if not match_info:
-                return None
-
-            my_team_id = match_info[0]
+            my_team_id = _get_my_team_id(conn, match_id, my_xuid_str)
             if my_team_id is None:
                 return None
 
-            # Alias local pour la fonction de nettoyage module-level
-            _clean_gamertag = _clean_gamertag_static
-
-            # ======================================================================
-            # MÉTHODE 0 (PRIORITAIRE) : Utiliser match_participants.team_id
-            # C'est la source la plus fiable car elle vient directement de l'API
-            # ======================================================================
-            team_by_xuid: dict[str, int | None] = {}
-            gamertag_by_xuid: dict[str, str | None] = {}
-            mp_success = False
-
-            if self._has_shared_table("match_participants"):
-                try:
-                    # Requête de base : match_participants seul (toujours présent en v5.1)
-                    mp_result = conn.execute(
-                        """
-                        SELECT xuid, team_id, gamertag
-                        FROM shared.match_participants
-                        WHERE match_id = ?
-                        """,
-                        [match_id],
-                    ).fetchall()
-
-                    if mp_result and len(mp_result) > 0:
-                        for xuid, team_id, mp_gt in mp_result:
-                            xu = str(xuid).strip()
-                            if not xu:
-                                continue
-
-                            # Stocker le team_id (source fiable)
-                            team_by_xuid[xu] = team_id
-
-                            # Gamertag depuis match_participants (fallback si resolve_gamertags_batch échoue)
-                            gt = _clean_gamertag(mp_gt)
-                            if gt:
-                                gamertag_by_xuid[xu] = gt
-
-                        # v6 : l'enrichissement gamertag est délégué à resolve_gamertags_batch()
-                        # qui utilise shared.v_gamertag_lookup (xuid_aliases ∪ match_participants).
-                        mp_success = len(team_by_xuid) >= 1
-                        logger.debug(
-                            "MÉTHODE 0: %d participants chargés depuis match_participants",
-                            len(team_by_xuid),
-                        )
-
-                except Exception as e:
-                    logger.debug("Erreur lecture match_participants: %s", e)
-
-            # ======================================================================
-            # V5.1 : match_participants.team_id est la source canonique.
-            # Pas de fallback killer_victim_pairs/highlight_events (obsolète).
-            # ======================================================================
-            if not mp_success:
-                # En v5.1, match_participants devrait toujours être disponible
+            participants = _load_participants_data(conn, match_id)
+            if participants is None:
                 logger.warning("match_participants manquant pour %s", match_id)
                 return None
 
-            all_xuids: set[str] = set(team_by_xuid.keys())
+            team_by_xuid, gamertag_by_xuid = participants
+            if len(team_by_xuid) < 1:
+                return None
 
-            # ======================================================================
-            # Construire les listes d'équipes
-            # ======================================================================
-            # Sprint Gamertag Roster Fix : Utiliser resolve_gamertags_batch pour
-            # obtenir des gamertags propres depuis match_participants/xuid_aliases
-            resolved_gamertags = self.resolve_gamertags_batch(list(all_xuids), match_id=match_id)
-
-            my_team = []
-            enemy_team = []
-
-            for xuid_str in all_xuids:
-                is_me = xuid_str == my_xuid_str
-                # Priorité : gamertag résolu > gamertag extrait > XUID
-                cleaned_gamertag = resolved_gamertags.get(xuid_str) or gamertag_by_xuid.get(
-                    xuid_str
-                )
-                display_name = cleaned_gamertag if cleaned_gamertag else xuid_str
-                player_team_id = team_by_xuid.get(xuid_str, None if not is_me else my_team_id)
-
-                player_data = {
-                    "xuid": xuid_str,
-                    "gamertag": cleaned_gamertag,
-                    "team_id": player_team_id,
-                    "is_me": is_me,
-                    "is_bot": False,
-                    "display_name": display_name,
-                }
-
-                if player_team_id == my_team_id or is_me:
-                    my_team.append(player_data)
-                else:
-                    enemy_team.append(player_data)
-
-            # Trier: moi en premier, puis alphabétique
-            def _sort_key(r: dict[str, Any]) -> tuple[int, str]:
-                me_rank = 0 if r.get("is_me") else 1
-                name = str(r.get("gamertag") or r.get("xuid") or "").strip().lower()
-                return (me_rank, name)
-
-            my_team.sort(key=_sort_key)
-            enemy_team.sort(key=_sort_key)
-
+            logger.debug(
+                "load_match_rosters: %d participants chargés pour %s",
+                len(team_by_xuid),
+                match_id,
+            )
+            # v6 : résolution gamertag via v_gamertag_lookup (xuid_aliases ∪ match_participants)
+            resolved_gamertags = self.resolve_gamertags_batch(
+                list(team_by_xuid.keys()), match_id=match_id
+            )
+            my_team, enemy_team = _assemble_roster(
+                team_by_xuid, gamertag_by_xuid, resolved_gamertags, my_xuid_str, my_team_id
+            )
             return {
                 "my_team_id": int(my_team_id),
                 "my_team_name": None,
@@ -429,109 +409,3 @@ class RosterLoaderMixin(GamertagResolverMixin):
         except Exception as e:
             logger.debug("Erreur load_match_scoreboard shared: %s", e)
             return []
-
-    def load_friend_match_details(
-        self,
-        friend_xuid: str,
-        match_ids: list[str],
-    ) -> pl.DataFrame:
-        """Charge les détails de matchs partagés entre ce joueur et un ami.
-
-        Args:
-            friend_xuid: XUID de l'ami.
-            match_ids: Liste des IDs de matchs communs.
-
-        Returns:
-            DataFrame Polars avec colonnes match_id, start_time, playlist_name,
-            pair_name, my_team_id, my_outcome, friend_team_id, friend_outcome, same_team.
-            Retourne un DataFrame vide avec le schéma correct si aucun résultat.
-        """
-        _empty_schema: dict[str, pl.PolarsDataType] = {
-            "match_id": pl.Utf8,
-            "start_time": pl.Datetime,
-            "playlist_name": pl.Utf8,
-            "pair_name": pl.Utf8,
-            "my_team_id": pl.Int64,
-            "my_outcome": pl.Utf8,
-            "friend_team_id": pl.Int64,
-            "friend_outcome": pl.Utf8,
-            "same_team": pl.Boolean,
-        }
-        if not match_ids:
-            return pl.DataFrame(schema=_empty_schema)
-
-        conn = self._get_connection()
-        placeholders = ", ".join(["?"] * len(match_ids))
-        try:
-            result = conn.execute(
-                f"""
-                SELECT
-                    mr.match_id,
-                    mr.start_time,
-                    mr.playlist_name,
-                    mr.pair_name,
-                    me.team_id  AS my_team_id,
-                    CAST(me.outcome AS VARCHAR) AS my_outcome,
-                    fr.team_id  AS friend_team_id,
-                    CAST(fr.outcome AS VARCHAR) AS friend_outcome,
-                    (me.team_id = fr.team_id) AS same_team
-                FROM shared.match_registry mr
-                LEFT JOIN shared.match_participants me
-                    ON mr.match_id = me.match_id AND me.xuid = ?
-                LEFT JOIN shared.match_participants fr
-                    ON mr.match_id = fr.match_id AND fr.xuid = ?
-                WHERE mr.match_id IN ({placeholders})
-                ORDER BY mr.start_time ASC
-                """,  # noqa: S608
-                [str(self._xuid), friend_xuid, *match_ids],
-            )
-            dfr = result.pl()
-            return dfr if not dfr.is_empty() else pl.DataFrame(schema=_empty_schema)
-        except Exception:
-            logger.debug("load_friend_match_details: erreur friend=%s", friend_xuid, exc_info=True)
-            return pl.DataFrame(schema=_empty_schema)
-
-    def load_common_matches_df(self, target_xuid: str) -> pl.DataFrame:
-        """Charge les matchs communs entre le joueur courant et target_xuid.
-
-        Args:
-            target_xuid: XUID du joueur recherché.
-
-        Returns:
-            DataFrame Polars avec match_id, start_time, player_team_id,
-            target_team_id, map_name, playlist_name, pair_name, outcome,
-            kills, deaths, assists, kda. Vide si shared indisponible.
-        """
-        if not self._has_shared_table("match_participants"):
-            return pl.DataFrame()
-        conn = self._get_connection()
-        try:
-            result = conn.execute(
-                """
-                SELECT
-                    p.match_id,
-                    r.start_time,
-                    p.team_id  AS player_team_id,
-                    t.team_id  AS target_team_id,
-                    r.map_name,
-                    r.playlist_name,
-                    r.pair_name,
-                    p.outcome,
-                    p.kills,
-                    p.deaths,
-                    p.assists,
-                    p.kda
-                FROM shared.match_participants p
-                INNER JOIN shared.match_participants t
-                    ON t.match_id = p.match_id AND t.xuid = ?
-                INNER JOIN shared.match_registry r
-                    ON r.match_id = p.match_id
-                WHERE p.xuid = ?
-                ORDER BY r.start_time DESC
-                """,
-                [target_xuid, str(self._xuid)],
-            )
-            return result.pl()
-        except Exception:
-            logger.debug("load_common_matches_df: erreur target=%s", target_xuid, exc_info=True)
-            return pl.DataFrame()

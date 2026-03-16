@@ -1,6 +1,6 @@
 ﻿# BACKLOG — Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-15.
+> Mis à jour le 2026-03-16.
 
 ---
 
@@ -8,6 +8,8 @@
 
 | Date | Item |
 |------|------|
+| 2026-03-16 | Audit post-V6 : `weapon_kills` bit sync + logging, `v_gamertag_lookup` systématique, `shared_matches_v2.duckdb` production, LEGACY SyncScope supprimés, 17 nouveaux tests (paths fallback, bitmask, XUID v6, common matches) — 4799 tests passent |
+| 2026-03-16 | Sprint refactor : splits fonctions/modules >80/500L, `_teammates_trio_helpers`, `_match_relations`, `_roster_loader` helpers, `render_trio_charts` DRY |
 | 2026-03-15 | Phase 3 v6 : migration complète `duckdb_read_only` UI → repo — 7 fichiers migrés, 17 tests + 9 tests antagonistes, 4764 tests passent |
 | 2026-03-15 | Phase 2 v6 : `career`, `career_lusr`, `explorer` migrés + `CareerMixin` créé |
 | 2026-03-15 | Migration last_match : requêtes directes → DuckDBRepository (`load_player_match_enrichment`, `is_abandoned_match`) — 12 tests |
@@ -48,32 +50,4 @@
 
 ---
 
-## 🔲 À faire — Post-migration V6
-
-### [DB] Audit nettoyage schémas & backfill données
-
-> Priorité : **haute** — à traiter avant la prochaine feature majeure.
-
-#### 1. Audit tables / colonnes obsolètes en BDD
-
-- [ ] Inventorier toutes les tables/colonnes stales dans chaque DB (`shared_matches`, `stats.duckdb` par joueur, `metadata`, `shared_pve`) suite aux suppressions v6
-- [ ] Vérifier que les 8 tables supprimées de `stats.duckdb` (v5.1) sont bien absentes sur tous les profils joueurs existants
-- [ ] Vérifier l’absence de `highlight_events.gamertag` sur toutes les instances (migration `drop_highlight_events_gamertag`)
-- [ ] Identifier les colonnes/index orphelins pouvant être droppés via de nouvelles migrations idempotentes
-- [ ] Libérer l’espace disque avec `VACUUM` / `CHECKPOINT` après nettoyage
-
-#### 2. Backfill données synchronisées post-V6
-
-- [ ] Identifier les matchs synchronisés **avant** la V6 qui n’ont pas encore de données dans les nouvelles structures (`weapon_kills`, `v_weapon_kills`, etc.)
-- [ ] Vérifier la couverture `MatchBits` sur `match_registry.backfill_completed` pour chaque type de données (medals, weapons, personal_scores…)
-- [ ] Lancer un backfill ciblé sur les matchs antérieurs V6 avec données manquantes (`scripts/backfill_data.py --all`)
-- [ ] Valider que `v_gamertag_lookup` résout 100 % des XUIDs pour les matchs anciens (pas de gamertag `NULL` restant)
-- [ ] Vérifier la complétude de `weapon_labels` dans `metadata.duckdb` pour tous les `weapon_id` présents dans `weapon_kills`
-
-#### 3. Correctifs pérennes — sync V6 à 100 %
-
-- [ ] Auditer `_engine_*.py` (sync mixins) : s’assurer que chaque type de données est bien déclenché sur les nouveaux matchs post-V6
-- [ ] Vérifier que `SyncOptions` / `SyncScope` couvrent tous les nouveaux champs V6 (notamment `weapon_kills`)
-- [ ] S’assurer que `get_tokens_from_env()` délègue correctement à `src.auth` sans régresser le fallback `SPNKR_AZURE_CLIENT_ID`
-- [ ] Contrôler que la résolution gamertag via `v_gamertag_lookup` est systématique dans tous les chemins de sync (pas de fallback direct sur `xuid_aliases`)
-- [ ] Ajouter un test d’intégration vérifiant qu’un cycle sync complet post-V6 peuple toutes les tables attendues
+## 🔄 Aucune tâche en cours
