@@ -214,25 +214,14 @@ def cached_load_match_player_gamertags(
     """
     _ = db_key
     # DuckDB v4 : utiliser le repository pour résolution centralisée
+    # NOTE v6 : ne pas dériver les XUIDs depuis highlight_events (roster incomplet).
+    # Source de vérité : match_participants JOIN v_gamertag_lookup (COALESCE xuid_aliases / mp).
     logger.debug("Gamertags résolus: %s", match_id)
     if _is_duckdb_v4_path(db_path):
         try:
-            # Utiliser le repo caché pour récupérer les XUIDs et résoudre les gamertags
-            # Résolution XUID : on résout le xuid réel pour éviter une entrée cache orpheline
             player_xuid = _resolve_player_xuid(db_path)
             repo = get_cached_repository_st(db_path, player_xuid)
-
-            # Récupérer tous les XUIDs du match via le repo (highlight_events)
-            events = repo.load_highlight_events(match_id)
-            xuids = list({str(e["xuid"]) for e in events if e.get("xuid")})
-            if not xuids:
-                return {}
-
-            return {
-                xuid: gt
-                for xuid, gt in repo.resolve_gamertags_batch(xuids, match_id=match_id).items()
-                if gt
-            }
+            return repo.load_match_player_gamertags(match_id)
         except Exception:
             return {}
 

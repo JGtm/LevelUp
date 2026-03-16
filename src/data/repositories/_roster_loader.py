@@ -161,33 +161,28 @@ class RosterLoaderMixin(GamertagResolverMixin):
                             except Exception:
                                 pass
 
-                        # Enrichir les gamertags depuis highlight_events (optionnel)
-                        if self._has_shared_table("highlight_events"):
+                        # Enrichir les gamertags depuis v_gamertag_lookup (v6 — remplace
+                        # highlight_events.gamertag supprimée par migration drop_highlight_events_gamertag)
+                        if self._has_shared_view("v_gamertag_lookup"):
                             try:
-                                he_result = conn.execute(
-                                    """
-                                    SELECT xuid, gamertag
-                                    FROM (
-                                        SELECT xuid, gamertag,
-                                               ROW_NUMBER() OVER (
-                                                   PARTITION BY xuid
-                                                   ORDER BY LENGTH(COALESCE(gamertag, '')) DESC
-                                               ) as rn
-                                        FROM shared.highlight_events
-                                        WHERE match_id = ? AND xuid IS NOT NULL AND xuid != ''
-                                    ) sub
-                                    WHERE rn = 1
-                                    """,
-                                    [match_id],
-                                ).fetchall()
-                                for xuid, he_gt in he_result:
-                                    xu = str(xuid).strip()
-                                    gt = _clean_gamertag(he_gt)
-                                    if gt and (
-                                        xu not in gamertag_by_xuid
-                                        or len(gt) > len(gamertag_by_xuid.get(xu) or "")
-                                    ):
-                                        gamertag_by_xuid[xu] = gt
+                                missing_xuids = [
+                                    xu for xu in team_by_xuid if xu not in gamertag_by_xuid
+                                ]
+                                if missing_xuids:
+                                    placeholders = ", ".join(["?" for _ in missing_xuids])
+                                    vg_result = conn.execute(
+                                        f"SELECT xuid, gamertag FROM shared.v_gamertag_lookup"
+                                        f" WHERE xuid IN ({placeholders}) AND gamertag IS NOT NULL",
+                                        missing_xuids,
+                                    ).fetchall()
+                                    for xuid, vg_gt in vg_result:
+                                        xu = str(xuid).strip()
+                                        gt = _clean_gamertag(vg_gt)
+                                        if gt and (
+                                            xu not in gamertag_by_xuid
+                                            or len(gt) > len(gamertag_by_xuid.get(xu) or "")
+                                        ):
+                                            gamertag_by_xuid[xu] = gt
                             except Exception:
                                 pass
 
