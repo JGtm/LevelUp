@@ -67,10 +67,9 @@ def load_participants(match_id: str) -> list[dict]:
             [match_id],
         ).fetchall()
 
+        # v6 : gamertag supprimé de highlight_events — résolution via xuid_aliases
         gt_he = con.execute(
-            "SELECT DISTINCT xuid, gamertag FROM highlight_events "
-            "WHERE match_id = ? AND gamertag IS NOT NULL",
-            [match_id],
+            "SELECT DISTINCT xuid, gamertag FROM xuid_aliases WHERE gamertag IS NOT NULL",
         ).fetchall()
 
         gt_xa = con.execute(

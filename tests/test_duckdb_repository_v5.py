@@ -270,20 +270,18 @@ def _create_shared_db(db_path: Path) -> None:
         ('{MATCH_ID_2}', '{PLAYER_XUID}', 100000001, 2)
     """)
 
-    # Highlight events (v5.1 structure: xuid/gamertag directly)
-    # Un kill = event_type='kill' avec xuid du killer
-    # Une death = event_type='death' avec xuid de la victime
+    # Highlight events (v6 structure: gamertag supprimé, résolution via v_gamertag_lookup)
     conn.execute(f"""
-        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
-        VALUES ('{MATCH_ID_1}', 'kill', 5000, '{PLAYER_XUID}', 'PlayerOne')
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
+        VALUES ('{MATCH_ID_1}', 'kill', 5000, '{PLAYER_XUID}')
     """)
     conn.execute(f"""
-        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
-        VALUES ('{MATCH_ID_1}', 'death', 8000, '{PLAYER_XUID}', 'PlayerOne')
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
+        VALUES ('{MATCH_ID_1}', 'death', 8000, '{PLAYER_XUID}')
     """)
     conn.execute(f"""
-        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
-        VALUES ('{MATCH_ID_1}', 'kill', 12000, '{PLAYER_XUID}', 'PlayerOne')
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
+        VALUES ('{MATCH_ID_1}', 'kill', 12000, '{PLAYER_XUID}')
     """)
 
     # xuid_aliases

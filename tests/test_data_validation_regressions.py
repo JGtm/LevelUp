@@ -106,25 +106,24 @@ def test_db_with_events(tmp_path):
             match_id VARCHAR,
             event_type VARCHAR,
             time_ms INTEGER,
-            xuid VARCHAR,
-            gamertag VARCHAR
+            xuid VARCHAR
         )
     """)
 
     conn.execute(
         """
-        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
+        VALUES (?, ?, ?, ?)
     """,
-        ["match_1", "Kill", 1000, "2533274823110022", "Player1"],
+        ["match_1", "Kill", 1000, "2533274823110022"],
     )
 
     conn.execute(
         """
-        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
+        VALUES (?, ?, ?, ?)
     """,
-        ["match_1", "Death", 2000, "2533274823110022", "Player1"],
+        ["match_1", "Death", 2000, "2533274823110022"],
     )
 
     conn.commit()

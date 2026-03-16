@@ -10,7 +10,7 @@ Ce fichier définit les conventions et règles à suivre lors de modifications s
 
 - **Stack** : Python 3.10+, Streamlit, DuckDB, SPNKr (API Halo)
 - **Langue UI** : Français (traductions dans `src/ui/translations.py`)
-- **Architecture** : DuckDB v5 (shared matches)
+- **Architecture** : DuckDB v6 (shared matches + SQL views)
 
 ---
 
@@ -35,7 +35,7 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 
 ---
 
-## Architecture des Données (v5)
+## Architecture des Données (v6)
 
 | Données | Stockage | Chemin |
 |---------|----------|--------|
@@ -44,6 +44,7 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 | Enrichissements joueur | DuckDB | `data/players/{gamertag}/stats.duckdb` |
 | Archives | Parquet | `data/players/{gamertag}/archive/` |
 | Config | JSON | `db_profiles.json` |
+| Auth / token cache | DuckDB (`sync_meta`) + MSAL | `src/auth/` |
 
 ### Tables Principales
 
@@ -54,7 +55,7 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 | `career_ranks` | Paliers et noms des rangs Halo |
 | `citation_mappings` | Mappings médaille→citation |
 | `mode_name_tr` / `mode_*` | Traductions et paramètres des modes de jeu |
-| `weapon_labels` | Labels EN/FR par weapon_id filmshell (UBIGINT) — **v5.4** |
+| `weapon_labels` | Labels EN/FR par weapon_id filmshell (UBIGINT) |
 
 #### shared_matches.duckdb (centralisée)
 
@@ -62,9 +63,19 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 |-------|-------------|
 | `match_registry` | Registre central (1 ligne par match unique) |
 | `match_participants` | Stats de tous les joueurs de tous les matchs |
-| `highlight_events` | Événements filmés de tous les matchs |
+| `highlight_events` | Événements filmés (`gamertag` **supprimé** en v6 — résolu via `v_gamertag_lookup`) |
 | `medals_earned` | Médailles de tous les joueurs |
 | `xuid_aliases` | Mapping global xuid→gamertag |
+| `weapon_kills` | Kills par arme par joueur par match (filmshell) |
+
+**Vues SQL garanties présentes en v6** (ne jamais recréer de guards `_has_shared_view`) :
+
+| Vue | Description |
+|-----|-------------|
+| `v_gamertag_lookup` | FULL OUTER JOIN `xuid_aliases` + `match_participants` — résolution gamertag unifiée |
+| `v_match_full` | `match_registry` enrichi avec métadonnées i18n (maps, playlists, game variants) |
+| `v_killer_victim_full` | Paires killer/victim avec gamertags résolus |
+| `v_weapon_kills` | `weapon_kills` avec `effective_weapon_id = COALESCE(reconciled_as, weapon_id)` |
 
 #### stats.duckdb (par joueur) — v5.1 allégée
 
@@ -80,15 +91,29 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 | `media_files` | Fichiers médias indexés |
 | `media_match_associations` | Associations médias↔matchs |
 | `sessions` | Sessions groupées |
-| `sync_meta` | Métadonnées sync |
+| `sync_meta` | Métadonnées sync + cache MSAL sérialisé (token Microsoft) |
 | `mv_*` | Vues matérialisées |
 
-### Règles Streamlit v5.1
+### Règles Streamlit v6
 
 - Tout `st.plotly_chart` doit inclure `config=` (PLOTLY_CLEAN_CONFIG ou PLOTLY_STATIC_CONFIG)
 - Préférer `@fragment_if_available` pour les sections interactives multi-charts
 - Coéquipiers chargés depuis `shared.match_participants` (pas les DBs individuelles)
 - `width="stretch"` au lieu de `use_container_width=True` (déprécié)
+- Gamertag résolu **exclusivement** via `v_gamertag_lookup` — pas de `LEFT JOIN xuid_aliases` ad hoc
+- Armes lues via `v_weapon_kills` — pas la table `weapon_kills` directement
+- **Pas de guards** `_has_shared_view` / `_has_shared_table` — les vues V6 sont garanties présentes
+
+---
+
+## Authentification (`src/auth/`)
+
+- **Entry point** : `src/auth/provider.py` — process cache (4 h TTL), MSAL silent refresh, `AuthRequiredError`, `start/complete_device_flow`
+- **`LEVELUP_CLIENT_ID`** hardcodé dans `src/auth/_msal.py` — les utilisateurs finaux n'ont **plus** besoin de configurer Azure
+- **`SPNKR_AZURE_CLIENT_ID`** (env var) reste supporté comme **fallback backend** — ne pas supprimer les fonctions qui l'exploitent ni celles gérant le refresh token
+- Le cache MSAL est persisté en DuckDB dans `sync_meta` via `SerializableTokenCache`
+- L'échange `access_token → (spartan_token, clearance)` est géré par `src/auth/_halo_exchange.py` (sans état)
+- **Interdit** : recréer un wizard de configuration Azure dans l'UI ou des popups de saisie de `client_id`
 
 ---
 
@@ -204,7 +229,7 @@ Les fonctions `backfill_player_data`, `backfill_all_players`, `_backfill_with_ap
 
 ## Migrations de Schéma DuckDB
 
-Quand tu ajoutes ou modifies une colonne, une table ou un index dans une DB DuckDB (`player`, `shared`, `shared_pve`) :
+Quand tu ajoutes ou modifies une colonne, une table ou un index dans une DB DuckDB (`player`, `shared`, `shared_pve`, `metadata`) :
 
 **Étapes obligatoires :**
 
@@ -235,7 +260,7 @@ Quand tu ajoutes ou modifies une colonne, une table ou un index dans une DB Duck
 - Les migrations sont appliquées **automatiquement** au prochain lancement via `launcher.py → _run_migrations()`
 - Chaque DB trace les migrations dans une table `schema_migrations` (colonnes : `name`, `applied_at`, `schema_done`, `backfill_done`)
 - Une migration déjà appliquée ne tourne **jamais** deux fois (idempotence garantie)
-- `target_db` détermine quelle DB reçoit la migration : `"player"` (stats.duckdb de chaque joueur), `"shared"` (shared_matches.duckdb), `"shared_pve"` (shared_pve.duckdb)
+- `target_db` détermine quelle DB reçoit la migration : `"player"` (stats.duckdb de chaque joueur), `"shared"` (shared_matches.duckdb), `"shared_pve"` (shared_pve.duckdb), `"metadata"` (metadata.duckdb)
 
 ---
 

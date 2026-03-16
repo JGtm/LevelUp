@@ -84,7 +84,6 @@ def conn_with_events():
             event_type VARCHAR,
             time_ms INTEGER,
             xuid VARCHAR,
-            gamertag VARCHAR,
             type_hint INTEGER,
             raw_json VARCHAR
         )
@@ -190,14 +189,14 @@ class TestBackfillKillerVictimPairs:
         conn = conn_with_events
         # Insert kill and death events at same time
         conn.execute(
-            "INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag) "
-            "VALUES (?, ?, ?, ?, ?)",
-            ["m1", "Kill", 5000, "killer1", "KillerGT"],
+            "INSERT INTO highlight_events (match_id, event_type, time_ms, xuid) "
+            "VALUES (?, ?, ?, ?)",
+            ["m1", "Kill", 5000, "killer1"],
         )
         conn.execute(
-            "INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag) "
-            "VALUES (?, ?, ?, ?, ?)",
-            ["m1", "Death", 5000, "victim1", "VictimGT"],
+            "INSERT INTO highlight_events (match_id, event_type, time_ms, xuid) "
+            "VALUES (?, ?, ?, ?)",
+            ["m1", "Death", 5000, "victim1"],
         )
         n = backfill_killer_victim_pairs(conn, "xuid1")
         assert n >= 1
@@ -223,14 +222,14 @@ class TestBackfillKillerVictimPairs:
 
         conn = conn_with_events
         conn.execute(
-            "INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag) "
-            "VALUES (?, ?, ?, ?, ?)",
-            ["m1", "Kill", 5000, "k1", "K1"],
+            "INSERT INTO highlight_events (match_id, event_type, time_ms, xuid) "
+            "VALUES (?, ?, ?, ?)",
+            ["m1", "Kill", 5000, "k1"],
         )
         conn.execute(
-            "INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag) "
-            "VALUES (?, ?, ?, ?, ?)",
-            ["m1", "Death", 5000, "v1", "V1"],
+            "INSERT INTO highlight_events (match_id, event_type, time_ms, xuid) "
+            "VALUES (?, ?, ?, ?)",
+            ["m1", "Death", 5000, "v1"],
         )
         n1 = backfill_killer_victim_pairs(conn, "xuid1")
         assert n1 == 1
@@ -244,9 +243,9 @@ class TestBackfillKillerVictimPairs:
 
         conn = conn_with_events
         conn.execute(
-            "INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag) "
-            "VALUES (?, ?, ?, ?, ?)",
-            ["m1", "Kill", 5000, "k1", "K1"],
+            "INSERT INTO highlight_events (match_id, event_type, time_ms, xuid) "
+            "VALUES (?, ?, ?, ?)",
+            ["m1", "Kill", 5000, "k1"],
         )
         n = backfill_killer_victim_pairs(conn, "xuid1")
         assert n == 0

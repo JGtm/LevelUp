@@ -427,7 +427,7 @@ class WeaponKillsMixin:
 
         # highlight_events.gamertag supprimé en v6 (migration drop_highlight_events_gamertag)
         kill_rows = conn.execute(
-            f"SELECT he.time_ms, {gt_col}, he.xuid "
+            "SELECT he.time_ms, NULL AS gamertag, he.xuid "
             "FROM highlight_events he "
             "WHERE he.match_id = ? AND he.xuid = ? "
             "AND he.event_type = 'kill' "
