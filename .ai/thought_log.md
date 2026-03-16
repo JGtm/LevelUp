@@ -4791,3 +4791,30 @@ Migration systématique des appels `duckdb_read_only` directs dans la couche UI 
 - `explorer_data.py` : ~150L → 80L (suppression code dupliqué)
 
 **Conclusion** : Phase 2 complète. Prochaine étape Phase 3 : `main_helpers.py`, `career_top_matches_data.py`, `career_encounters_data.py`, `aliases.py`, `match_view_encounters.py`, `session_compare_logic.py`, `media_library_data.py`.
+
+---
+
+### [2026-03-16] — Scoreboard : panneau détails joueur (expandable)
+
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Ajout d'accordéons `st.expander` par joueur sous le tableau des scores. Approche hybride : le tableau HTML existant est conservé tel quel (bonne lisibilité comparative), et une section "Détails par joueur" est ajoutée en dessous avec un expander Streamlit par joueur.
+
+**Changements effectués** :
+- `src/ui/pages/match_view_scoreboard_detail.py` (NOUVEAU, 402L) : module complet avec 8 fonctions :
+  - `_load_player_medals`, `_load_player_top_weapons`, `_load_player_db_enrichment` : chargement de données
+  - `_fmt_stat`, `_render_stats_grid`, `_render_damage_row`, `_render_weapons_section`, `_render_medals_section`, `_render_player_db_section` : rendu
+  - `render_scoreboard_detail_expanders` : façade principale
+- `src/ui/pages/match_view_scoreboard.py` : import + appel de `render_scoreboard_detail_expanders` en fin de `render_match_scoreboard`
+- `src/ui/i18n/pages/match_view.py` : 9 nouvelles clés i18n FR+EN (`sb_detail_*`)
+
+**Logique d'affichage** :
+- Toujours disponible : stats complètes (grille 4 colonnes), dégâts, top armes (shared DB), médailles (shared DB)
+- Si le joueur a sa propre DB (`data/players/{gamertag}/stats.duckdb`) : performance score, session, awards, citations
+
+**Résultats observés** :
+- 125 tests match_view/scoreboard passants, 0 régression
+- Tous les fichiers < 500L, toutes les fonctions < 80L
+
+**Conclusion** : Fonctionnalité complète. Le panneau s'ouvre proprement en cliquant sur le nom du joueur dans la liste des accordéons.

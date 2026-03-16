@@ -383,4 +383,37 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Aucun kill par arme enregistré pour ce match.",
         "en": "No weapon kill data recorded for this match.",
     },
+    # ── Scoreboard — Détails joueur ──────────────────────────────────────────
+    "sb_detail_section_title": {
+        "fr": "Détails par joueur",
+        "en": "Player details",
+    },
+    "sb_detail_top_weapons": {
+        "fr": "🔫 Top armes (kills)",
+        "en": "🔫 Top weapons (kills)",
+    },
+    "sb_detail_medals": {
+        "fr": "🏅 Médailles",
+        "en": "🏅 Medals",
+    },
+    "sb_detail_player_db": {
+        "fr": "Données de ta DB joueur",
+        "en": "Data from your player DB",
+    },
+    "sb_detail_no_enrichment": {
+        "fr": "Aucune donnée d'enrichissement disponible pour ce match.",
+        "en": "No enrichment data available for this match.",
+    },
+    "sb_detail_session": {
+        "fr": "Session",
+        "en": "Session",
+    },
+    "sb_detail_awards": {
+        "fr": "🎯 Awards de participation",
+        "en": "🎯 Participation awards",
+    },
+    "sb_detail_citations": {
+        "fr": "💬 Citations",
+        "en": "💬 Citations",
+    },
 }

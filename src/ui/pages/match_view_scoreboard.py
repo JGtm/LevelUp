@@ -16,6 +16,9 @@ from src.config import TEAM_MAP, get_bot_name
 from src.ui.i18n import t
 from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_players_data import load_match_scoreboard
+from src.ui.pages.match_view_scoreboard_detail import (
+    render_scoreboard_detail_expanders,
+)
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG  # noqa: F401 — re-export éventuel
 from src.utils import parse_xuid_input
 
@@ -401,3 +404,10 @@ def render_match_scoreboard(
 
     if n_real_teams > 1:
         st.caption(t("mv_scoreboard_rank_note"))
+
+    render_scoreboard_detail_expanders(
+        players=players,
+        main_db_path=db_path,
+        match_id=match_id.strip(),
+        me_xuid=me_xu,
+    )
