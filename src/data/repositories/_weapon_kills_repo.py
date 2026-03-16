@@ -211,6 +211,8 @@ class WeaponKillsMixin:
             return 0
         new_good = sum(1 for r in kill_rows if r.get("weapon_id") is not None)
         if new_good < len(kill_rows):
+            # weapon_kills brute légitime : les méthodes insert_* et delete_* opèrent
+            # sur la table source. v_weapon_kills est réservée aux lectures.
             existing_good = conn.execute(
                 "SELECT COUNT(*) FROM weapon_kills WHERE match_id = ? AND xuid = ?"
                 " AND weapon_id IS NOT NULL",
