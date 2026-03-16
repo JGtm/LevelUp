@@ -97,7 +97,21 @@ def plot_trio_metric(  # noqa: PLR0913, C901 — graphe multi-joueurs
         return s.rolling_mean(window_size=w, min_samples=1).to_list()
 
     # Formatage des dates pour ticktext
-    if match_labels and len(match_labels) == len(aligned):
+    # Construction post-alignement pour garantir longueur == len(aligned) et numérotation correcte
+    _ref_pl = pl_dfs[0]
+    if "map_name" in _ref_pl.columns and not _ref_pl.is_empty():
+        _ref_clean = _ref_pl.drop_nulls(subset=["start_time"])
+        _ts_to_map: dict = dict(
+            zip(
+                _ref_clean["start_time"].to_list(),
+                _ref_clean["map_name"].fill_null("?").to_list(),
+            )
+        )
+        ticktext = [
+            f"#{i + 1}<br>{_ts_to_map.get(ts, '?')}"
+            for i, ts in enumerate(aligned["start_time"].to_list())
+        ]
+    elif match_labels and len(match_labels) == len(aligned):
         ticktext = match_labels
     else:
         ticktext = aligned["start_time"].dt.strftime("%d/%m").fill_null("").to_list()
