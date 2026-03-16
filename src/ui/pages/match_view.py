@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from src.app._page_context import MatchViewParams
 from src.app.helpers import normalize_map_label
@@ -290,6 +291,34 @@ def _render_match_header(  # noqa: PLR0913
     )
 
 
+def _render_match_id_badge(match_id: str) -> None:
+    """Affiche un badge discret avec le match ID court et un bouton copier."""
+    if not match_id:
+        return
+    short_id = match_id[:8] if len(match_id) >= 8 else match_id
+    badge_html = f"""<!DOCTYPE html>
+<html><head><style>
+html,body{{margin:0;padding:0;background:transparent;overflow:hidden;}}
+.badge{{display:inline-flex;align-items:center;gap:7px;padding:1px 0;}}
+.mid{{font-size:11px;color:#8a8a8a;font-family:'Courier New',monospace;user-select:none;}}
+.mid-val{{color:#c0c0c0;}}
+.btn{{background:transparent;border:1px solid #484848;border-radius:4px;
+  color:#888;cursor:pointer;font-size:10px;padding:0 6px;line-height:1.75;
+  transition:all 0.15s;font-family:sans-serif;}}
+.btn:hover{{border-color:#888;color:#ccc;}}
+</style></head>
+<body><div class="badge">
+  <span class="mid">ID&thinsp;<span class="mid-val">{short_id}&hellip;</span></span>
+  <button class="btn" id="b" title="Copier le match ID complet"
+    onclick="navigator.clipboard.writeText('{match_id}').then(()=>{{
+      var b=document.getElementById('b');
+      b.textContent='&#x2713;';b.style.color='#4caf50';b.style.borderColor='#4caf50';
+      setTimeout(()=>{{b.textContent='&#x1F4CB;';b.style.color='#888';b.style.borderColor='#484848';}},1500);
+    }});">&#x1F4CB;</button>
+</div></body></html>"""
+    components.html(badge_html, height=26, scrolling=False)
+
+
 def _render_match_tabs(  # noqa: PLR0913
     *,
     row: dict,
@@ -308,6 +337,7 @@ def _render_match_tabs(  # noqa: PLR0913
     is_abandoned: bool = False,
 ) -> None:
     """Affiche les 5 onglets du match."""
+    _render_match_id_badge(match_id)
     tabs = st.tabs(
         [
             t("mv_tab_summary"),
