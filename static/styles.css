@@ -251,11 +251,13 @@
    ============================================================================= */
 
 .stApp {
-    background-image: url('/app/static/bg_space.webp');
-    background-size: cover;
-    background-position: center center;
-    background-attachment: fixed;
-    background-repeat: no-repeat;
+    background-image:
+        linear-gradient(rgba(5, 8, 14, 0.88), rgba(5, 8, 14, 0.88)),
+        url('/app/static/bg_space.webp');
+    background-size: auto, cover;
+    background-position: center center, center center;
+    background-attachment: fixed, fixed;
+    background-repeat: no-repeat, no-repeat;
 }
 
 /* =============================================================================
