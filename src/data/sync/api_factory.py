@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.data.sync._tokens import Tokens
-    from src.data.sync.api_port import HaloAPIPort
+    from src.ports.api import HaloAPIPort
 
 
 def create_api_client(

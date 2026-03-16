@@ -4,8 +4,7 @@
 # Format FUNC: FUNC:<fichier>:<ligne>:<nom>:<taille>L
 # Format MODULE: MODULE:<fichier>:<taille>L
 #
-FUNC:src/ai/mcp_server.py:251:run_stdio_server:103L
-FUNC:src/ai/mcp_server.py:64:get_tools:83L
+FUNC:src/ai/mcp_server.py:257:run_stdio_server:103L
 FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
 FUNC:src/analysis/maps.py:11:compute_map_breakdown:105L
 FUNC:src/analysis/participation_radar.py:305:compute_participation_profile:109L

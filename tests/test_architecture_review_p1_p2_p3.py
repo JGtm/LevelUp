@@ -360,7 +360,7 @@ class TestDataRepositoryProtocol:
         """Aucune méthode du Protocol ne doit être décorée avec @abstractmethod."""
         import inspect
 
-        from src.data.repositories.protocol import DataRepository
+        from src.ports.repository import DataRepository
 
         for name, method in inspect.getmembers(DataRepository, predicate=inspect.isfunction):
             assert not getattr(
@@ -390,7 +390,7 @@ class TestDataRepositoryProtocol:
 
     def test_protocol_is_runtime_checkable(self):
         """DataRepository doit rester @runtime_checkable."""
-        from src.data.repositories.protocol import DataRepository
+        from src.ports.repository import DataRepository
 
         assert hasattr(DataRepository, "__protocol_attrs__") or getattr(
             DataRepository, "_is_protocol", False

@@ -117,6 +117,20 @@ Healthcheck (à lancer avant de diagnostiquer un souci d'environnement) :
 
 ---
 
+## Couche `src/ai/` (outillage développeur)
+
+| Fichier | Rôle |
+|---------|------|
+| `rag.py` | `HaloKnowledgeBase` — indexation + recherche sémantique (ChromaDB) |
+| `_rag_models.py` | Modèles Pydantic : `RAGConfig`, `Document`, `SearchResult` |
+| `_rag_chunker.py` | `TextChunker` — découpage de docs en chunks |
+| `_rag_github.py` | `GitHubIndexer` — indexation de repos GitHub |
+| `mcp_server.py` | Serveur MCP (protocole Model Context Protocol) pour Cursor |
+
+**Règle** : `src/ai/` est réservé à l'**outillage développeur** (RAG docs, MCP). Aucune logique métier Halo ne doit y résider. Pas d'import de `src.data` ni de `src.ui` dans ce module.
+
+---
+
 ## Workflow d'Interaction IA
 
 ### Avant toute modification

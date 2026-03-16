@@ -38,7 +38,7 @@ from src.data.repositories.duckdb_repo import DuckDBRepository
 
 if TYPE_CHECKING:
     from src.data.domain.models.stats import MatchRow
-    from src.data.repositories.protocol import DataRepository
+    from src.ports.repository import DataRepository
 
 
 class RepositoryMode(Enum):
