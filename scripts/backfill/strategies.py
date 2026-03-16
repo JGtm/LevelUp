@@ -376,8 +376,15 @@ def compute_lusr_for_player(
             import duckdb
 
             shared_path = (
-                Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
+                Path(__file__).resolve().parents[2]
+                / "data"
+                / "warehouse"
+                / "shared_matches_v2.duckdb"
             )
+            if not shared_path.exists():
+                from src.utils.paths import get_shared_matches_path
+
+                shared_path = get_shared_matches_path()
             if not shared_path.exists():
                 logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
                 return 0
@@ -628,8 +635,15 @@ async def backfill_csr_for_player(
     if shared_conn is None:
         try:
             shared_path = (
-                Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
+                Path(__file__).resolve().parents[2]
+                / "data"
+                / "warehouse"
+                / "shared_matches_v2.duckdb"
             )
+            if not shared_path.exists():
+                from src.utils.paths import get_shared_matches_path
+
+                shared_path = get_shared_matches_path()
             if not shared_path.exists():
                 logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
                 return 0

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from src.utils.db import duckdb_read_only
-from src.utils.paths import WAREHOUSE_DIR
+from src.utils.paths import get_shared_matches_path
 
 logger = logging.getLogger(__name__)
 
@@ -117,14 +117,14 @@ def verify_data_integrity(
     """Vérifie l'intégrité de toutes les données après sync+backfill."""
     result = SmokeTestResult()
     db_path = Path(db_path)
-    shared_path = WAREHOUSE_DIR / "shared_matches.duckdb"
+    shared_path = get_shared_matches_path()
 
     if shared_path.exists():
         _check_shared_tables(shared_path, result)
     else:
         result.checks.append(
             TableCheck(
-                table="shared_matches.duckdb",
+                table=shared_path.name,
                 db_label="shared",
                 expected=True,
                 detail="Fichier introuvable",
@@ -372,9 +372,9 @@ def _check_performance_scores() -> TableCheck:
         db_label="player (via shared)",
         expected=True,
     )
-    shared_path = WAREHOUSE_DIR / "shared_matches.duckdb"
+    shared_path = get_shared_matches_path()
     if not shared_path.exists():
-        check.detail = "shared_matches.duckdb introuvable"
+        check.detail = f"{shared_path.name} introuvable"
         check.ok = True
         check.warn = True
         return check

@@ -114,7 +114,12 @@ def _get_sync_metadata_smart(db_path: str, xuid: str | None = None) -> dict:
     créer une connexion DuckDB supplémentaire à chaque rerun.
     """
     if not db_path.endswith(".duckdb"):
-        return {"last_sync_at": None, "total_matches": 0, "last_match_time": None, "player_xuid": None}
+        return {
+            "last_sync_at": None,
+            "total_matches": 0,
+            "last_match_time": None,
+            "player_xuid": None,
+        }
 
     resolved_xuid = str(xuid or "").strip()
     # Tenter le repo caché (pas de coût de connexion)
@@ -141,11 +146,11 @@ def _get_sync_metadata_smart(db_path: str, xuid: str | None = None) -> dict:
 
 def _shared_path(player_db: Path) -> Path:
     """Résout le chemin vers shared_matches.duckdb depuis le chemin joueur."""
-    from src.utils.paths import get_shared_matches_path_from_player
+    from src.utils.paths import get_shared_matches_path, get_shared_matches_path_from_player
 
     return (
         get_shared_matches_path_from_player(str(player_db))
-        or player_db.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+        or player_db.parent.parent.parent / "warehouse" / get_shared_matches_path().name
     )
 
 

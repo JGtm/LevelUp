@@ -14,6 +14,7 @@ import duckdb
 import polars as pl
 
 from src.utils.db import duckdb_read_only
+from src.utils.paths import get_shared_matches_path, get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,12 @@ def _get_shared_db_path(db_path: str) -> Path:
     Returns:
         Chemin résolu vers data/warehouse/shared_matches.duckdb.
     """
-    return Path(db_path).resolve().parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+    return (
+        get_shared_matches_path_from_player(db_path)
+        or Path(db_path).resolve().parent.parent.parent
+        / "warehouse"
+        / get_shared_matches_path().name
+    )
 
 
 def _build_encounter_sql(n_targets: int, *, has_gamertag_lookup: bool = True) -> str:

@@ -210,10 +210,17 @@ class DuckDBRepository(
         else:
             self._metadata_db_path = Path(metadata_db_path)
 
-        # Auto-détection du chemin shared_matches.duckdb (v5)
+        # Auto-détection du chemin shared_matches.duckdb (v5/v6)
         if shared_db_path is None:
-            data_dir = self._player_db_path.parent.parent.parent
-            self._shared_db_path = data_dir / "warehouse" / "shared_matches.duckdb"
+            from src.utils.paths import get_shared_matches_path, get_shared_matches_path_from_player
+
+            detected = get_shared_matches_path_from_player(self._player_db_path)
+            if detected is not None:
+                self._shared_db_path = detected
+            else:
+                # Fallback : chemin canonique dérivé du player, même si le fichier n'existe pas encore
+                data_dir = self._player_db_path.parent.parent.parent
+                self._shared_db_path = data_dir / "warehouse" / get_shared_matches_path().name
         else:
             self._shared_db_path = Path(shared_db_path)
 

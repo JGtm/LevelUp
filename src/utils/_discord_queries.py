@@ -14,7 +14,10 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_SHARED_DB = _PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+
+from src.utils.paths import get_shared_matches_path  # noqa: E402
+
+_SHARED_DB = get_shared_matches_path()
 
 
 def _load_friends_defaults() -> dict[str, list[str]]:
