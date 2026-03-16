@@ -34,6 +34,58 @@ def _resolve_weapon_name(wid: int, lang: str) -> str:
     return resolve_weapon_display(wid, lang=lang) or "?"
 
 
+def _append_grenade_melee(
+    conn: Any,
+    xuid: str,
+    match_ids: list[str],
+    df: pl.DataFrame,
+) -> pl.DataFrame:
+    """Réinjecte les kills grenade/mêlée depuis shared.match_participants.
+
+    Args:
+        conn: Connexion DuckDB (schéma shared doit contenir match_participants).
+        xuid: XUID du joueur.
+        match_ids: Matchs à considérer (vide = tous les matchs du joueur).
+        df: DataFrame existant (weapon_id: UInt64, total_kills: Int32).
+
+    Returns:
+        DataFrame enrichi avec les lignes grenade/mêlée si leurs totaux > 0.
+    """
+    try:
+        if match_ids:
+            placeholders = ", ".join("?" * len(match_ids))
+            row = conn.execute(
+                f"SELECT COALESCE(SUM(grenade_kills), 0), COALESCE(SUM(melee_kills), 0) "
+                f"FROM shared.match_participants "
+                f"WHERE xuid = ? AND match_id IN ({placeholders})",
+                [xuid, *match_ids],
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT COALESCE(SUM(grenade_kills), 0), COALESCE(SUM(melee_kills), 0) "
+                "FROM shared.match_participants WHERE xuid = ?",
+                [xuid],
+            ).fetchone()
+        if not row:
+            return df
+        grenade, melee = int(row[0]), int(row[1])
+        extras = []
+        if grenade > 0:
+            extras.append({"weapon_id": _GRENADE_WEAPON_ID, "total_kills": grenade})
+        if melee > 0:
+            extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": melee})
+        if extras:
+            return pl.concat(
+                [
+                    df,
+                    pl.DataFrame(extras, schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32}),
+                ]
+            )
+    except Exception as exc:
+        logger.debug("_append_grenade_melee xuid=%s : %s", xuid, exc)
+    return df
+
+
 def render_weapon_kills_table(
     db_path: str,
     xuid: str,
@@ -88,6 +140,11 @@ def render_weapon_kills_table(
     from src.ui.i18n import get_lang
 
     lang = get_lang()
+    st.markdown(_build_weapon_table_html(df, lang), unsafe_allow_html=True)
+
+
+def _build_weapon_table_html(df: pl.DataFrame, lang: str) -> str:
+    """Construit le HTML du tableau d'armes trié par kills décroissants."""
     rows: list[dict[str, Any]] = []
     for row in df.iter_rows(named=True):
         rows.append(
@@ -97,7 +154,6 @@ def render_weapon_kills_table(
                 "kills": int(row["total_kills"]),
             }
         )
-
     rows.sort(key=lambda r: r["kills"], reverse=True)
 
     col_weapon = html.escape(t("col_weapon_name"))
@@ -111,15 +167,13 @@ def render_weapon_kills_table(
         body.append(
             f"<tr><td>{name_esc}</td>" f"<td>{faction_esc}</td>" f"<td>{r['kills']}</td></tr>"
         )
-
-    table_html = (
+    return (
         "<div class='os-table-wrap'>"
         "<table class='os-table'>"
         f"<thead><tr>{th}</tr></thead>"
         f"<tbody>{''.join(body)}</tbody>"
         "</table></div>"
     )
-    st.markdown(table_html, unsafe_allow_html=True)
 
 
 _TOP_N_WEAPONS = 12
@@ -157,7 +211,12 @@ def load_weapon_kills_data(
                 extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": melee})
             if extras:
                 df = pl.concat(
-                    [df, pl.DataFrame(extras, schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32})]
+                    [
+                        df,
+                        pl.DataFrame(
+                            extras, schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32}
+                        ),
+                    ]
                 )
             if not df.is_empty():
                 data.append((name, df))

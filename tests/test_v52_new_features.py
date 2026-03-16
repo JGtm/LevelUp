@@ -66,6 +66,23 @@ def _create_shared_db(path: Path) -> None:
         )
         """
     )
+    # Vues v6 requises par load_match_scoreboard
+    conn.execute(
+        "CREATE VIEW v_gamertag_lookup AS "
+        "SELECT COALESCE(xa.xuid, mp.xuid) AS xuid, "
+        "COALESCE(xa.gamertag, mp.gamertag) AS gamertag "
+        "FROM xuid_aliases xa "
+        "FULL OUTER JOIN ("
+        "    SELECT xuid, MAX(gamertag) AS gamertag "
+        "    FROM match_participants WHERE gamertag IS NOT NULL GROUP BY xuid"
+        ") mp ON xa.xuid = mp.xuid "
+        "WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL"
+    )
+    conn.execute(
+        "CREATE VIEW v_weapon_kills AS "
+        "SELECT *, COALESCE(weapon_id, weapon_id) AS effective_weapon_id "
+        "FROM weapon_kills"
+    )
     conn.close()
 
 

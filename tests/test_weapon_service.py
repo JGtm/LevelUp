@@ -443,7 +443,7 @@ class TestLoadAllKillsForMatch:
         assert list(result.keys()) == ["x1"]
         k = result["x1"][0]
         assert k["time_ms"] == 5000
-        assert k["gamertag"] == "P1"
+        assert k["gamertag"] is None  # highlight_events.gamertag supprimé en v6
         assert k["xuid"] == "x1"
         assert k["is_melee"] is False
         assert k["is_grenade"] is False
