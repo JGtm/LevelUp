@@ -9,13 +9,13 @@ Ce module gère :
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import TYPE_CHECKING
 
 import polars as pl
 import streamlit as st
 
-from src.config import get_repo_root  # noqa: F401 — réexporté implicitement
 from src.ui import AppSettings
 from src.ui.cache import db_cache_key, load_df_optimized
 from src.ui.sync import is_spnkr_db_path, pick_latest_spnkr_db_if_any
@@ -26,6 +26,8 @@ from src.utils import (
 
 if TYPE_CHECKING:
     from src.data.repositories.duckdb_repo import DuckDBRepository
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Identité joueur depuis secrets/env
@@ -67,11 +69,6 @@ def propagate_identity_env(xuid_or_gt: str, xuid_fallback: str, wp: str) -> None
 
 
 # =============================================================================
-# DuckDB v4 Player Detection
-# =============================================================================
-
-
-# =============================================================================
 # Initialisation source state
 # =============================================================================
 
@@ -99,11 +96,16 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
             os.environ.get("LEVELUP_DB") or os.environ.get("LEVELUP_DB_PATH") or ""
         ).strip()
 
-        if not forced_env_db and bool(getattr(settings, "prefer_spnkr_db_if_available", False)):
+        if forced_env_db:
+            chosen = forced_env_db
+            logger.debug("init_source_state: DB forcée via env → %s", forced_env_db)
+        elif bool(getattr(settings, "prefer_spnkr_db_if_available", False)):
             spnkr = pick_latest_spnkr_db_if_any()
             if spnkr and os.path.exists(spnkr) and os.path.getsize(spnkr) > 0:
                 chosen = spnkr
+                logger.debug("init_source_state: SPNKr DB sélectionnée → %s", spnkr)
 
+        logger.debug("init_source_state: db_path=%s", chosen or "(vide)")
         st.session_state["db_path"] = chosen
 
     if "xuid_input" not in st.session_state:
@@ -115,10 +117,19 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
         inferred = (
             infer_spnkr_player_from_db_path(str(st.session_state.get("db_path", "") or "")) or ""
         )
-        st.session_state["xuid_input"] = legacy or inferred or guessed or xuid_or_gt
+        xuid_input = legacy or inferred or guessed or xuid_or_gt
+        logger.debug(
+            "init_source_state: xuid_input=%s (legacy=%r inferred=%r guessed=%r)",
+            xuid_input or "(vide)",
+            bool(legacy),
+            bool(inferred),
+            bool(guessed),
+        )
+        st.session_state["xuid_input"] = xuid_input
 
     if "waypoint_player" not in st.session_state:
         _xuid_or_gt, _xuid_fallback, wp = default_identity_from_secrets()
+        logger.debug("init_source_state: waypoint_player=%s", wp or "(vide)")
         st.session_state["waypoint_player"] = wp
 
 
