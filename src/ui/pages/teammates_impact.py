@@ -258,6 +258,9 @@ def render_impact_taquinerie(
 
     try:
         repo = DuckDBRepository(db_path, xuid.strip())
+        # _get_connection() légitime : conn est passée aux helpers _load_highlight_events
+        # et _load_match_outcomes qui effectuent les requêtes via shared attaché.
+        # Pas de query inline ici — rôle purement d'orchestration.
         conn = repo._get_connection()
 
         _shared_db = get_shared_matches_path_from_player(db_path)

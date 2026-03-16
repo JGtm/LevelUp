@@ -93,6 +93,8 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PL
                 from src.ui.cache_loaders import get_cached_repository_st
 
                 repo = get_cached_repository_st(db_path, xuid)
+                # _get_connection() légitime : accès à la table `friends` (domaine
+                # joueur isolé, pas shared). Aucun équivalent dans le repo pattern.
                 conn = repo._get_connection()
                 # Vérifier si la table existe
                 from src.utils.db import has_table

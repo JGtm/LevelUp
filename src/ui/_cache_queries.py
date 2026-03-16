@@ -372,6 +372,9 @@ def cached_get_match_skill_rank(
 
     try:
         with DuckDBRepository(str(db_path), "", read_only=True) as repo:
+            # _get_connection() légitime : query sur match_skill_rank (table joueur,
+            # pas shared), à l'intérieur du context manager `with repo` qui gère
+            # la durée de vie de la connexion. Pas d'anti-pattern ici.
             row = (
                 repo._get_connection()
                 .execute(
