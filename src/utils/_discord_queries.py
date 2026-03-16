@@ -61,9 +61,9 @@ def _fetch_squad_info(
         if my_friends_gt:
             rows = conn.execute(
                 """
-                SELECT DISTINCT xa.gamertag
+                SELECT DISTINCT vg.gamertag
                 FROM match_participants mp
-                JOIN xuid_aliases xa ON mp.xuid = xa.xuid
+                JOIN v_gamertag_lookup vg ON mp.xuid = vg.xuid
                 WHERE mp.match_id = ?
                   AND mp.xuid != ?
                   AND mp.team_id = (
