@@ -19,6 +19,13 @@ from src.utils.paths import get_player_db_path
 
 logger = logging.getLogger(__name__)
 
+# Nombre max d'awards affichés dans le panneau de détail
+_MAX_AWARDS_DISPLAY = 8
+# Nombre max de citations affichées
+_MAX_CITATIONS_DISPLAY = 6
+# Nombre de colonnes de la grille de médailles
+_MEDALS_COLS_PER_ROW = 8
+
 
 # =============================================================================
 # Chargement de données
@@ -102,41 +109,51 @@ def _load_player_db_enrichment(
     result["has_db"] = True
 
     try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
+        from src.utils.db import duckdb_read_only
 
-        repo = DuckDBRepository(str(player_db), xuid=xuid, read_only=True)
-        conn = repo._get_connection()
+        with duckdb_read_only(player_db) as conn:
+            # Performance score + session
+            try:
+                row = conn.execute(
+                    "SELECT performance_score, session_label"
+                    " FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
+                    [match_id],
+                ).fetchone()
+                if row:
+                    result["performance_score"] = row[0]
+                    result["session_label"] = row[1]
+            except Exception:
+                pass
 
-        # Performance score + session
-        try:
-            row = conn.execute(
-                "SELECT performance_score, session_label"
-                " FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
-                [match_id],
-            ).fetchone()
-            if row:
-                result["performance_score"] = row[0]
-                result["session_label"] = row[1]
-        except Exception:
-            pass
+            # PersonalScoreAwards
+            try:
+                rows_awards = conn.execute(
+                    "SELECT award_name, award_category, award_count, award_score"
+                    " FROM personal_score_awards WHERE match_id = ?"
+                    " ORDER BY award_score DESC",
+                    [match_id],
+                ).fetchall()
+                result["awards"] = [
+                    {
+                        "award_name": r[0],
+                        "award_category": r[1],
+                        "award_count": r[2],
+                        "award_score": r[3],
+                    }
+                    for r in rows_awards
+                ]
+            except Exception:
+                pass
 
-        # PersonalScoreAwards
-        try:
-            awards_df = repo.load_personal_score_awards_as_polars(match_id=match_id)
-            if not awards_df.is_empty():
-                result["awards"] = awards_df.to_dicts()
-        except Exception:
-            pass
-
-        # Citations
-        try:
-            rows = conn.execute(
-                "SELECT citation_name_norm, value FROM match_citations WHERE match_id = ?",
-                [match_id],
-            ).fetchall()
-            result["citations"] = [{"name": r[0], "value": r[1]} for r in rows]
-        except Exception:
-            pass
+            # Citations
+            try:
+                rows_cit = conn.execute(
+                    "SELECT citation_name_norm, value FROM match_citations WHERE match_id = ?",
+                    [match_id],
+                ).fetchall()
+                result["citations"] = [{"name": r[0], "value": r[1]} for r in rows_cit]
+            except Exception:
+                pass
 
     except Exception:
         logger.debug("Enrichissement DB indisponible gamertag=%s", gamertag)
@@ -273,7 +290,7 @@ def _render_medals_section(
 
     st.caption(t("sb_detail_medals"))
     lang = get_lang()
-    render_medals_grid(medals, cols_per_row=8, lang=lang)
+    render_medals_grid(medals, cols_per_row=_MEDALS_COLS_PER_ROW, lang=lang)
 
 
 def _render_player_db_section(enrichment: dict[str, Any]) -> None:
@@ -309,7 +326,7 @@ def _render_player_db_section(enrichment: dict[str, Any]) -> None:
     if awards:
         st.caption(t("sb_detail_awards"))
         award_parts = []
-        for aw in sorted(awards, key=lambda a: a.get("award_score", 0), reverse=True)[:8]:
+        for aw in sorted(awards, key=lambda a: a.get("award_score", 0), reverse=True)[:_MAX_AWARDS_DISPLAY]:
             name = str(aw.get("award_name") or aw.get("award_category") or "?")
             count = aw.get("award_count", 0)
             award_parts.append(f"**{name}** ×{count}")
@@ -319,7 +336,7 @@ def _render_player_db_section(enrichment: dict[str, Any]) -> None:
     if citations:
         st.caption(t("sb_detail_citations"))
         citation_parts = []
-        for cit in citations[:6]:
+        for cit in citations[:_MAX_CITATIONS_DISPLAY]:
             name = str(cit.get("name") or "?").replace("_", " ").title()
             val = cit.get("value", 0)
             citation_parts.append(f"**{name}** ={val}")
