@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import duckdb
 import polars as pl
+
+from src.utils.paths import get_shared_matches_path, get_shared_matches_path_from_player
+
+logger = logging.getLogger(__name__)
 
 
 def _find_or_attach_shared(  # noqa: C901, PLR0912
@@ -60,12 +65,17 @@ def _find_or_attach_shared(  # noqa: C901, PLR0912
 
 
 def _resolve_shared_db_path(player_db_path: Path) -> Path | None:
-    """Trouve le chemin vers shared_matches.duckdb."""
-    shared_db = player_db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
-    if shared_db.exists():
-        return shared_db
-    shared_db = Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
-    return shared_db if shared_db.exists() else None
+    """Trouve le chemin vers shared_matches (v6 : shared_matches_v2.duckdb)."""
+    detected = get_shared_matches_path_from_player(player_db_path)
+    if detected is not None:
+        logger.debug("shared_matches détecté depuis player → %s", detected)
+        return detected
+    p = get_shared_matches_path()
+    if p.exists():
+        logger.debug("shared_matches fallback global → %s", p)
+        return p
+    logger.warning("shared_matches introuvable pour %s", player_db_path)
+    return None
 
 
 def _load_matches_from_shared(

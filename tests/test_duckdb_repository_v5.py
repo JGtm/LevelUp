@@ -424,7 +424,7 @@ class TestSharedAttach:
             player_db_path=db_path,
             xuid=PLAYER_XUID,
         )
-        expected = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        expected = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
         assert repo._shared_db_path == expected
 
     def test_has_shared_table_true(self, repo_v5: DuckDBRepository):

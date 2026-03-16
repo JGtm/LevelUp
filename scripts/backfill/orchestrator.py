@@ -47,15 +47,17 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _PARALLEL_WEAPON_KILLS_IN_SYNC: bool = True
 
 
-def _get_shared_connection(db_path: Path) -> Any | None:
+def _get_shared_connection() -> Any | None:
     """Ouvre une connexion vers shared_matches.duckdb (v5).
 
-    Le chemin est dérivé depuis la racine du projet.
+    Le chemin est dérivé depuis la racine du projet via get_shared_matches_path().
     Retourne None si la base n'existe pas.
     """
     import duckdb
 
-    shared_path = _PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+    from src.utils.paths import get_shared_matches_path
+
+    shared_path = get_shared_matches_path()
     if not shared_path.exists():
         logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
         return None
@@ -177,7 +179,7 @@ async def backfill_player_data(
     conn = duckdb.connect(str(db_path), read_only=False)
 
     # V5 FINAL : Toujours ouvrir shared_conn (source principale depuis migration V5)
-    shared_conn_for_detection = _get_shared_connection(db_path)
+    shared_conn_for_detection = _get_shared_connection()
     if shared_conn_for_detection is None:
         logger.error(
             f"❌ {gamertag}: shared_matches.duckdb introuvable — "
@@ -387,9 +389,7 @@ async def backfill_all_players(
             run_weapon_kills_backfill,
         )
 
-        shared_conn = _get_shared_connection(
-            _PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
-        )
+        shared_conn = _get_shared_connection()
         if shared_conn is not None:
             try:
                 all_match_ids = await collect_weapon_match_ids_all_players(
@@ -558,7 +558,7 @@ def _backfill_local_only(
     if killer_victim:
         logger.info("Backfill des paires killer/victim depuis highlight_events...")
         # Ouvrir une connexion vers shared_matches.duckdb (v5)
-        shared_conn = _get_shared_connection(db_path)
+        shared_conn = _get_shared_connection()
         n = backfill_killer_victim_pairs(conn, xuid, shared_conn=shared_conn)
         if shared_conn is not None:
             shared_conn.close()
@@ -570,7 +570,7 @@ def _backfill_local_only(
 
     if end_time:
         logger.info("Backfill de l'heure de fin des matchs (end_time)...")
-        shared_conn = _get_shared_connection(db_path)
+        shared_conn = _get_shared_connection()
         n = backfill_end_time(conn, force=force_end_time, shared_conn=shared_conn)
         if shared_conn is not None:
             shared_conn.close()
@@ -726,7 +726,7 @@ async def _backfill_with_api(
         return _empty_result()
 
     # Réutiliser la connexion shared existante ou en ouvrir une nouvelle
-    shared_conn = existing_shared_conn or _get_shared_connection(db_path)
+    shared_conn = existing_shared_conn or _get_shared_connection()
     owns_shared_conn = existing_shared_conn is None  # True si on a ouvert nous-même
     if shared_conn is not None:
         from src.data.sync.migrations import ensure_match_participants_columns as _ensure_mp
@@ -1057,7 +1057,7 @@ async def _backfill_with_api(
     # ── Backfill local post-API ──
     if killer_victim:
         logger.info("Backfill des paires killer/victim depuis highlight_events...")
-        kv_shared = shared_conn or _get_shared_connection(db_path)
+        kv_shared = shared_conn or _get_shared_connection()
         n = backfill_killer_victim_pairs(conn, xuid, shared_conn=kv_shared)
         if kv_shared is not shared_conn and kv_shared is not None:
             kv_shared.close()
@@ -1106,7 +1106,7 @@ async def _backfill_with_api(
 
         logger.info("Calcul du LUSR (LevelUp Skill Rank) pour les matchs non classés...")
         # Ouvrir shared_conn si fermé (citations l'a peut-être fermé)
-        _lusr_shared = _get_shared_connection(db_path) if shared_conn is None else shared_conn
+        _lusr_shared = _get_shared_connection() if shared_conn is None else shared_conn
         n = compute_lusr_for_player(
             conn, db_path, xuid, force=force_lusr_flag, shared_conn=_lusr_shared
         )

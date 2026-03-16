@@ -480,7 +480,7 @@ class TestSyncEngineSharedConfig:
             xuid="123",
             gamertag="Test",
         )
-        expected = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        expected = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
         assert engine._shared_db_path == expected
         engine.close()
 
