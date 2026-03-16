@@ -57,7 +57,6 @@ def temp_duckdb_with_match():
             event_type VARCHAR,
             time_ms INTEGER,
             xuid VARCHAR,
-            gamertag VARCHAR,
             type_hint VARCHAR,
             raw_json VARCHAR
         )
@@ -91,7 +90,6 @@ def temp_duckdb_with_match():
             "Kill",
             1000,
             xuid_teammate,
-            "Teammate",
             "kill",
             json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy1}),
         ),
@@ -102,7 +100,6 @@ def temp_duckdb_with_match():
             "Death",
             1000,
             xuid_enemy1,
-            "Enemy1",
             "death",
             json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy1}),
         ),
@@ -113,7 +110,6 @@ def temp_duckdb_with_match():
             "Kill",
             2000,
             xuid_enemy1,
-            "Enemy1",
             "kill",
             json.dumps({"killer_xuid": xuid_enemy1, "victim_xuid": xuid_player}),
         ),
@@ -124,7 +120,6 @@ def temp_duckdb_with_match():
             "Death",
             2000,
             xuid_player,
-            "Player",
             "death",
             json.dumps({"killer_xuid": xuid_enemy1, "victim_xuid": xuid_player}),
         ),
@@ -135,7 +130,6 @@ def temp_duckdb_with_match():
             "Kill",
             3000,
             xuid_teammate,
-            "Teammate",
             "kill",
             json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy2}),
         ),
@@ -146,7 +140,6 @@ def temp_duckdb_with_match():
             "Death",
             3000,
             xuid_enemy2,
-            "Enemy2",
             "death",
             json.dumps({"killer_xuid": xuid_teammate, "victim_xuid": xuid_enemy2}),
         ),
@@ -154,8 +147,8 @@ def temp_duckdb_with_match():
 
     conn.executemany(
         """
-        INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag, type_hint, raw_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, type_hint, raw_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         events,
     )
@@ -203,13 +196,13 @@ class TestGamertagCleaning:
         """Test que les caractères de contrôle sont supprimés."""
         db_path, match_id, xuid, shared_db_path = temp_duckdb_with_match
 
-        # Insérer un event avec un gamertag contenant des caractères de contrôle
-        # Utiliser une nouvelle connexion pour éviter les problèmes de read-only
+        # Insérer un event avec un joueur contenant des caractères de contrôle dans le gamertag
+        # v6 : gamertag dans match_participants (shared), plus dans highlight_events
         conn = duckdb.connect(db_path)
         conn.execute(
             """
-            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag, type_hint, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, type_hint, raw_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 999,
@@ -217,13 +210,21 @@ class TestGamertagCleaning:
                 "Kill",
                 5000,
                 "9999999999999999",
-                "Test\x00\x1f\x7fPlayer",
                 "kill",
                 None,
             ],
         )
         conn.commit()
         conn.close()
+
+        # Ajouter le joueur dans shared.match_participants avec gamertag corrompu
+        shared_conn = duckdb.connect(shared_db_path)
+        shared_conn.execute(
+            "INSERT OR IGNORE INTO match_participants VALUES (?, ?, ?, ?)",
+            [match_id, "9999999999999999", "Test\x00\x1f\x7fPlayer", 0],
+        )
+        shared_conn.commit()
+        shared_conn.close()
 
         # Créer le repository et charger les rosters (v5.1: shared_db_path requis)
         repo = DuckDBRepository(db_path, xuid, shared_db_path=shared_db_path)
@@ -245,15 +246,14 @@ class TestGamertagCleaning:
         """Test que le caractère de remplacement Unicode (�) est supprimé."""
         db_path, match_id, xuid, shared_db_path = temp_duckdb_with_match
 
-        # Insérer un event avec un gamertag contenant le caractère de remplacement
-        # Utiliser une nouvelle connexion pour éviter les problèmes de read-only
+        # Insérer un event (v6 : gamertag dans match_participants, plus dans highlight_events)
         conn = duckdb.connect(db_path)
         conn.execute(
             """
-            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag, type_hint, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, type_hint, raw_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            [998, match_id, "Kill", 6000, "8888888888888888", "Test\ufffdPlayer", "kill", None],
+            [998, match_id, "Kill", 6000, "8888888888888888", "kill", None],
         )
         conn.commit()
         conn.close()
@@ -293,8 +293,8 @@ class TestGamertagCleaning:
             # Essayer d'insérer des données qui pourraient causer des problèmes d'encodage
             conn.execute(
                 """
-                INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag, type_hint, raw_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, type_hint, raw_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     997,
@@ -302,7 +302,6 @@ class TestGamertagCleaning:
                     "Kill",
                     7000,
                     "7777777777777777",
-                    "Test\xc0\x80Player",
                     "kill",
                     None,
                 ],

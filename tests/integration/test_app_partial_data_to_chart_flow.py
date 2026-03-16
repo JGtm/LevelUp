@@ -54,8 +54,7 @@ def app_partial_flow_db(tmp_path):
                 match_id VARCHAR,
                 event_type VARCHAR,
                 time_ms INTEGER,
-                xuid VARCHAR,
-                gamertag VARCHAR
+                xuid VARCHAR
             )
             """
         )
@@ -80,10 +79,10 @@ def app_partial_flow_db(tmp_path):
 
         conn.execute(
             """
-            INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
+            INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
             VALUES
-                ('m1', 'Kill', 1200, 'x_me', 'Me'),
-                ('m2', 'Death', 1800, 'x_me', 'Me')
+                ('m1', 'Kill', 1200, 'x_me'),
+                ('m2', 'Death', 1800, 'x_me')
             """
         )
     finally:
@@ -120,7 +119,7 @@ def test_app_partial_data_to_chart_flow_graceful(app_partial_flow_db) -> None:
         conn = duckdb.connect(str(app_partial_flow_db), read_only=True)
         try:
             events_rows = conn.execute(
-                "SELECT match_id, xuid, gamertag, event_type, time_ms FROM highlight_events"
+                "SELECT match_id, xuid, NULL AS gamertag, event_type, time_ms FROM highlight_events"
             ).fetchall()
             match_rows = conn.execute("SELECT match_id, outcome FROM match_stats").fetchall()
         finally:

@@ -38,7 +38,6 @@ def repo_with_data(tmp_path):
             event_type VARCHAR,
             time_ms INTEGER,
             xuid VARCHAR,
-            gamertag VARCHAR,
             type_hint INTEGER,
             raw_json VARCHAR
         )
@@ -89,10 +88,10 @@ def repo_with_data(tmp_path):
     ):
         conn.execute(
             """
-            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid)
+            VALUES (?, ?, ?, ?, ?)
         """,
-            [idx, mid, evt, tm, uid, gt],
+            [idx, mid, evt, tm, uid],
         )
 
     conn.commit()

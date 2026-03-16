@@ -81,7 +81,6 @@ def temp_repo_contract_db(tmp_path):
                 event_type VARCHAR,
                 time_ms INTEGER,
                 xuid VARCHAR,
-                gamertag VARCHAR,
                 type_hint INTEGER
             )
             """
@@ -151,8 +150,8 @@ def temp_repo_contract_db(tmp_path):
         )
         conn.execute(
             """
-            INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag, type_hint)
-            VALUES ('m1', 'Kill', 1000, 'x_me', 'Me', 50)
+            INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint)
+            VALUES ('m1', 'Kill', 1000, 'x_me', 50)
             """
         )
     finally:
@@ -186,7 +185,7 @@ def test_repository_critical_schema_contract(temp_repo_contract_db) -> None:
         _assert_has_columns(
             conn,
             "highlight_events",
-            {"match_id", "event_type", "time_ms", "xuid", "gamertag"},
+            {"match_id", "event_type", "time_ms", "xuid"},
         )
         _assert_has_columns(
             conn,
@@ -245,7 +244,7 @@ def test_repository_methods_still_work_with_expected_schema(
             )
         """)
         conn.execute("INSERT INTO medals_earned VALUES ('m1', 'x_me', 1512363953, 1)")
-        conn.execute("INSERT INTO highlight_events VALUES ('m1', 'Kill', 1000, 'x_me', 'Me', 50)")
+        conn.execute("INSERT INTO highlight_events VALUES ('m1', 'Kill', 1000, 'x_me', 50)")
     finally:
         conn.close()
 

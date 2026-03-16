@@ -59,9 +59,17 @@ def backfill_killer_victim_pairs(
     target_conn = shared_conn if shared_conn is not None else conn
     events_source = "highlight_events"  # même nom dans les deux DBs
 
-    # highlight_events utilise les colonnes xuid/gamertag
+    # highlight_events.gamertag supprimé en v6 (migration drop_highlight_events_gamertag)
+    # Vérifier si la colonne gamertag existe encore dans la table cible
     events_xuid_expr = "xuid"
-    events_gt_expr = "gamertag"
+    try:
+        _has_gt = target_conn.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'highlight_events' AND column_name = 'gamertag'"
+        ).fetchone()
+        events_gt_expr = "gamertag" if _has_gt else "NULL AS gamertag"
+    except Exception:
+        events_gt_expr = "NULL AS gamertag"
 
     if force:
         target_conn.execute("DROP TABLE IF EXISTS killer_victim_pairs")

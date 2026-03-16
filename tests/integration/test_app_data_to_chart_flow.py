@@ -50,18 +50,17 @@ def app_flow_dbs(tmp_path):
                 match_id VARCHAR,
                 event_type VARCHAR,
                 time_ms INTEGER,
-                xuid VARCHAR,
-                gamertag VARCHAR
+                xuid VARCHAR
             )
             """
         )
         conn_shared.execute(
             """
-            INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag) VALUES
-                ('m1', 'Kill', 1000, 'x_me', 'Me'),
-                ('m1', 'Kill', 2500, 'x_friend', 'Friend'),
-                ('m2', 'Death', 1800, 'x_friend', 'Friend'),
-                ('m2', 'Death', 3000, 'x_me', 'Me')
+            INSERT INTO highlight_events (match_id, event_type, time_ms, xuid) VALUES
+                ('m1', 'Kill', 1000, 'x_me'),
+                ('m1', 'Kill', 2500, 'x_friend'),
+                ('m2', 'Death', 1800, 'x_friend'),
+                ('m2', 'Death', 3000, 'x_me')
             """
         )
         conn_shared.execute(
@@ -297,7 +296,7 @@ def test_app_data_to_chart_flow(app_flow_dbs) -> None:
         conn = duckdb.connect(str(shared_path), read_only=True)
         try:
             events_rows = conn.execute(
-                "SELECT match_id, xuid, gamertag, event_type, time_ms FROM highlight_events"
+                "SELECT match_id, xuid, NULL AS gamertag, event_type, time_ms FROM highlight_events"
             ).fetchall()
         finally:
             conn.close()
