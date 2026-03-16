@@ -32,7 +32,7 @@ from src.data.repositories.factory import (
     get_repository_from_profile,
     load_db_profiles,
 )
-from src.data.repositories.protocol import DataRepository
+from src.ports.repository import DataRepository
 
 __all__ = [
     "get_repository",

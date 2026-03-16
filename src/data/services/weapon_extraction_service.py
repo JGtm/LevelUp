@@ -45,7 +45,7 @@ from src.data.services._film_manifest_cache import (
     load_manifest_cache,
     write_manifest_cache,
 )
-from src.data.sync.api_port import HaloAPIPort
+from src.ports.api import HaloAPIPort
 
 logger = logging.getLogger(__name__)
 

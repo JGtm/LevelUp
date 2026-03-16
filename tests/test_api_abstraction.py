@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from src.data.sync.api_factory import create_api_client
-from src.data.sync.api_port import HaloAPIPort
+from src.ports.api import HaloAPIPort
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 

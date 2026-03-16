@@ -40,7 +40,7 @@ from _metadata_db import create_metadata_db, enrich_i18n
 
 from src.data.sync.api_client import get_tokens_from_env
 from src.data.sync.api_factory import create_api_client
-from src.data.sync.api_port import HaloAPIPort
+from src.ports.api import HaloAPIPort
 
 logging.basicConfig(
     level=logging.INFO,
