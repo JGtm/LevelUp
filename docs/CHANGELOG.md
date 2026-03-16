@@ -6,45 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
-## [Unreleased] — refactor/id-resolution-cleanup
-
-### Changed
-
-- **`v_weapon_kills` view enforced app-wide** — all read queries now use `shared.v_weapon_kills`
-  (exposes `effective_weapon_id = COALESCE(reconciled_as, weapon_id)`) instead of the raw
-  `weapon_kills` table. Affected files: `match_view_weapon_kills.py`,
-  `citations/_data_loader.py`, `_roster_loader.py` (scoreboard top-weapon subquery).
-
-- **`load_weapon_kills_for_player` replaces `load_weapon_kills_for_match`** in
-  `match_view_weapon_kills.py` — the old method loaded all players then filtered in Python;
-  the new one filters by `xuid` in SQL.
-
-- **`WeaponKillsMixin.load_grenade_melee_kills(xuid, match_ids)`** — new repo method querying
-  `shared.match_participants` for grenade/melee totals. All UI code now calls this method
-  instead of using `repo._get_connection()` directly
-  (`_timeseries_weapons.py`, `match_view_weapon_kills.py`, `teammates_weapons.py`).
-  The helper function `_append_grenade_melee()` in `teammates_weapons.py` deleted (dead code).
-
-- **`v_gamertag_lookup` enforced app-wide** — all `LEFT JOIN xuid_aliases` patterns replaced
-  by `LEFT JOIN v_gamertag_lookup`. No guards (`_has_shared_view`, `_has_shared_table`) needed:
-  the view is guaranteed present in v6 via `ensure_v6_views()`. Affected files:
-  `_encounter_loader.py`, `_career_encounters_repo.py` (`_TOP_ENCOUNTERED_SQL` +
-  `_ANTAGONISTS_SQL`), `_roster_loader.py` (`load_match_players_stats` +
-  `load_match_scoreboard`), `_events_repo.py`, `_discord_queries.py`.
-
-- **`load_match_roster()` simplified** — removed two redundant Python enrichment passes
-  (inline `xuid_aliases` query + inline `v_gamertag_lookup` query with dead guards).
-  Gamertag enrichment is now delegated exclusively to `resolve_gamertags_batch()` which
-  already uses `v_gamertag_lookup` internally. ~45 lines removed.
-
-### Removed
-
-- **`_has_gamertag_column()`** helper in `_weapon_kills_repo.py` — dead code since migration
-  `drop_highlight_events_gamertag`; callers now hardcode `NULL AS gamertag` directly.
-- **Dead guards** `_has_shared_view("v_gamertag_lookup")` in `teammates_impact.py` and
-  `_events_repo.py` — the view is always present; the `else` branches returning `NULL AS
-  gamertag` are removed.
-
 ## [6.0.0] - 2026-03-15
 
 > ⚠️ **Weapon extraction still in beta** — attribution accuracy not guaranteed in all cases (estimated coverage 70–100 % depending on matches); weapon catalog in progress.
@@ -83,6 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Extended DDL with i18n columns (`name_en`, `name_fr`, `mode_name`, `playlist_canonical_*`)
   - Logic extracted into `scripts/_metadata_db.py` (DDL + i18n enrichment)
 
+- **`WeaponKillsMixin.load_grenade_melee_kills(xuid, match_ids)`** — new repo method querying
+  `shared.match_participants` for grenade/melee totals. Replaces all direct `_get_connection()`
+  calls in UI code (`_timeseries_weapons.py`, `match_view_weapon_kills.py`, `teammates_weapons.py`).
+
 ### Changed
 
 - **Gamertag resolver** (`src/data/sync/_gamertag_resolver.py`) — 5-source cascade replaced by a single `v_gamertag_lookup` JOIN; `load_match_player_gamertags()` reduced from 4 sequential queries to 1
@@ -92,6 +57,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`get_tokens_from_env()`** (sync) — deprecated wrapper delegating to `src.auth`; internal callers updated
 - **Weapon parser — global correlation** — fire_event match rate corrected from 15 % to 95 % after fixing `b2_dispatch` routing; compact COMPLETE logs with sentinel / no_weapon distinction and `b2_dispatch` drop rate exposed
 - **Backfill `--weapons --all`** — match_ids deduplicated across all players so each film is downloaded only once
+- **`v_weapon_kills` view enforced app-wide** — all read queries now use `shared.v_weapon_kills`
+  (exposes `effective_weapon_id = COALESCE(reconciled_as, weapon_id)`) instead of the raw
+  `weapon_kills` table. Affected: `match_view_weapon_kills.py`, `citations/_data_loader.py`,
+  `_roster_loader.py` (scoreboard top-weapon subquery).
+- **`load_weapon_kills_for_player` replaces `load_weapon_kills_for_match`** in
+  `match_view_weapon_kills.py` — SQL-level filter by `xuid` instead of Python post-filter.
+- **`v_gamertag_lookup` enforced app-wide** — all remaining `LEFT JOIN xuid_aliases` patterns
+  replaced; guards `_has_shared_view` / `_has_shared_table` removed (view guaranteed present
+  in v6). Affected: `_encounter_loader.py`, `_career_encounters_repo.py`, `_roster_loader.py`,
+  `_events_repo.py`, `_discord_queries.py`.
+- **`load_match_roster()` simplified** — two redundant Python gamertag enrichment passes
+  (inline `xuid_aliases` + `v_gamertag_lookup` queries with dead guards) removed; enrichment
+  delegated exclusively to `resolve_gamertags_batch()`. ~45 lines removed.
 
 ### Removed
 
@@ -99,6 +77,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`resolve_xuid_from_input` wrapper** — dead code removed
 - **`get_outcome_name_fr`** and `_refdata_outcomes` — replaced by metadata.duckdb lookup
 - **14 Azure/OAuth functions** in `launcher.py` (−652 lines net): Azure wizard, `has_client_id`, `config-az`/`paste-id` recovery options, environment variable `SPNKR_AZURE_CLIENT_ID` no longer required
+- **`_has_gamertag_column()`** helper in `_weapon_kills_repo.py` — dead code since `drop_highlight_events_gamertag`
+- **Dead guards** `_has_shared_view("v_gamertag_lookup")` in `teammates_impact.py` and `_events_repo.py` — `else` branches returning `NULL AS gamertag` removed
+- **`_append_grenade_melee()`** helper in `teammates_weapons.py` — replaced by `load_grenade_melee_kills()`
 
 ### Tests
 
