@@ -77,7 +77,6 @@ CAST_PLAN: dict[str, dict[str, str]] = {
         "event_type": "VARCHAR",
         "time_ms": "INTEGER",
         "xuid": "VARCHAR",
-        "gamertag": "VARCHAR",
         "type_hint": "INTEGER",
         "raw_json": "VARCHAR",
     },
@@ -186,7 +185,6 @@ HIGHLIGHT_EVENT_COLUMNS = [
     "event_type",
     "time_ms",
     "xuid",
-    "gamertag",
     "type_hint",
     "raw_json",
 ]

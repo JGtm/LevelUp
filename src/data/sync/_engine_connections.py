@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS highlight_events (
     id INTEGER PRIMARY KEY DEFAULT nextval('highlight_events_id_seq'),
     match_id VARCHAR NOT NULL, event_type VARCHAR NOT NULL,
     time_ms INTEGER,
-    xuid VARCHAR, gamertag VARCHAR,
+    xuid VARCHAR,
     type_hint INTEGER, raw_json VARCHAR,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
