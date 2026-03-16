@@ -358,7 +358,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
                 """
                 SELECT
                     p.xuid,
-                    COALESCE(p.gamertag, a.gamertag, p.xuid) AS gamertag,
+                    COALESCE(a.gamertag, p.gamertag, p.xuid) AS gamertag,
                     p.team_id,
                     p.rank,
                     p.score,
@@ -420,7 +420,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
                 """
                 SELECT
                     p.xuid,
-                    COALESCE(p.gamertag, a.gamertag, p.xuid) AS gamertag,
+                    COALESCE(a.gamertag, p.gamertag, p.xuid) AS gamertag,
                     p.team_id,
                     p.rank,
                     p.score,
