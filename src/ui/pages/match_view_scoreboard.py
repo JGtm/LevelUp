@@ -13,11 +13,13 @@ from typing import Any
 import streamlit as st
 
 from src.config import TEAM_MAP, get_bot_name
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_players_data import load_match_scoreboard
 from src.ui.pages.match_view_scoreboard_detail import (
-    render_scoreboard_detail_expanders,
+    SCOREBOARD_JS,
+    build_team_table_html_with_details,
+    preload_match_extra_data,
 )
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG  # noqa: F401 — re-export éventuel
 from src.utils import parse_xuid_input
@@ -257,79 +259,6 @@ def _compute_mvp_lvp(
 
 
 # =============================================================================
-# Rendu HTML par équipe
-# =============================================================================
-
-
-def _render_team_table(  # noqa: PLR0913
-    *,
-    team_players: list[dict[str, Any]],
-    tid: Any,
-    my_team_id: Any,
-    me_xu: str,
-    mvp_xuid: str,
-    lvp_xuid: str,
-    extremes: dict[str, tuple[float, float]],
-) -> None:
-    """Rend le tableau HTML d'une équipe."""
-    try:
-        raw_name = (
-            TEAM_MAP.get(int(tid), t("mv_team_n", n=tid))
-            if tid is not None
-            else t("mv_team_unknown")
-        )
-    except (ValueError, TypeError):
-        raw_name = t("mv_team_n", n=tid) if tid is not None else t("mv_team_unknown")
-
-    is_my_team = tid == my_team_id
-    team_css_mod = "os-sb-team--mine" if is_my_team else "os-sb-team--enemy"
-    team_label = t("mv_team_label", name=html.escape(raw_name))
-
-    sb_cols = _get_scoreboard_cols()
-    th_cells = "".join(f"<th class='os-sb-th'>{html.escape(label)}</th>" for label, _ in sb_cols)
-    n_cols = len(sb_cols)
-    thead = (
-        f"<thead>"
-        f"<tr><th class='os-sb-team {team_css_mod}' colspan='{n_cols}'>{team_label}</th></tr>"
-        f"<tr>{th_cells}</tr>"
-        f"</thead>"
-    )
-
-    body_rows = []
-    for p in team_players:
-        p_xu = str(
-            parse_xuid_input(str(p.get("xuid") or "").strip()) or str(p.get("xuid") or "").strip()
-        ).strip()
-        is_me = bool(me_xu and p_xu and p_xu == me_xu)
-        row_class = " os-sb-row--me" if is_me else ""
-        if p_xu and p_xu == mvp_xuid:
-            row_class += " os-sb-row--mvp"
-        elif p_xu and p_xu == lvp_xuid:
-            row_class += " os-sb-row--lvp"
-        cell_parts = []
-        for _, key in sb_cols:
-            css = _sb_cell_class(key, p.get(key), extremes)
-            raw = _fmt_scoreboard_cell(key, p.get(key))
-            if key == "gamertag" and raw != "—" and not is_me:
-                content = gamertag_link(raw)
-            else:
-                content = html.escape(raw)
-            cell_parts.append(f"<td class='os-sb-td{css}'>{content}</td>")
-        cells = "".join(cell_parts)
-        body_rows.append(f"<tr class='os-sb-row{row_class}'>{cells}</tr>")
-
-    table_html = (
-        "<div class='os-table-wrap os-sb-wrap'>"
-        "<table class='os-table os-scoreboard'>"
-        f"{thead}"
-        "<tbody>" + "".join(body_rows) + "</tbody>"
-        "</table>"
-        "</div>"
-    )
-    st.markdown(table_html, unsafe_allow_html=True)
-
-
-# =============================================================================
 # Fonction principale
 # =============================================================================
 
@@ -343,6 +272,9 @@ def render_match_scoreboard(
     load_match_gamertags_fn: Any,
 ) -> None:
     """Rend les tableaux de scores par équipe pour un match.
+
+    Chaque ligne joueur est cliquable (▶/▼) pour révéler les stats détaillées,
+    médailles et armes inline dans le tableau — sans section séparée.
 
     Args:
         match_id: Identifiant du match.
@@ -391,8 +323,22 @@ def render_match_scoreboard(
     extremes = _compute_scoreboard_extremes(players)
     mvp_xuid, lvp_xuid = _compute_mvp_lvp(players, extremes)
 
-    for tid, team_players in teams.items():
-        _render_team_table(
+    # Pré-chargement des données extra (médailles, armes, enrichissement)
+    lang = get_lang()
+    mid_key = (match_id.strip().replace("-", ""))[:12]
+    extra_data = preload_match_extra_data(
+        main_db_path=db_path,
+        match_id=match_id.strip(),
+        players=players,
+        lang=lang,
+    )
+
+    sb_cols = _get_scoreboard_cols()
+
+    # Rendu combiné : JS unique + tableaux par équipe avec détails inline
+    html_parts: list[str] = [SCOREBOARD_JS]
+    for t_idx, (tid, team_players) in enumerate(teams.items()):
+        team_html = build_team_table_html_with_details(
             team_players=team_players,
             tid=tid,
             my_team_id=my_team_id,
@@ -400,14 +346,18 @@ def render_match_scoreboard(
             mvp_xuid=mvp_xuid,
             lvp_xuid=lvp_xuid,
             extremes=extremes,
+            sb_cols=sb_cols,
+            extra_data=extra_data,
+            match_id_key=mid_key,
+            team_index=t_idx,
+            lang=lang,
+            fmt_cell_fn=_fmt_scoreboard_cell,
+            cell_class_fn=_sb_cell_class,
+            gamertag_link_fn=gamertag_link,
         )
+        html_parts.append(team_html)
+
+    st.markdown("\n".join(html_parts), unsafe_allow_html=True)
 
     if n_real_teams > 1:
         st.caption(t("mv_scoreboard_rank_note"))
-
-    render_scoreboard_detail_expanders(
-        players=players,
-        main_db_path=db_path,
-        match_id=match_id.strip(),
-        me_xuid=me_xu,
-    )

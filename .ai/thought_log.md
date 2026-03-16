@@ -4818,3 +4818,32 @@ Ajout d'accordéons `st.expander` par joueur sous le tableau des scores. Approch
 - Tous les fichiers < 500L, toutes les fonctions < 80L
 
 **Conclusion** : Fonctionnalité complète. Le panneau s'ouvre proprement en cliquant sur le nom du joueur dans la liste des accordéons.
+
+---
+
+### [2026-03-16] — Scoreboard : lignes cliquables inline (JS + HTML)
+
+**Statut** : Complété ✅
+
+**Contexte** : L'utilisateur a rejeté l'approche `st.expander` séparée et souhaite que le déroulement des détails se fasse directement dans le tableau HTML existant — en cliquant sur une ligne joueur.
+
+**Décision technique principale** :
+Remplacement complet des accordéons Streamlit par un système HTML/JS pur intégré au tableau existant. Chaque ligne joueur est clickable (▶/▼) et révèle une ligne cachée (`<tr style="display:none">`) directement en dessous. Tout le contenu est pré-calculé en Python côté serveur avant le rendu.
+
+**Changements effectués** :
+- `match_view_scoreboard_detail.py` (RÉÉCRIT, 563L) : module HTML pur sans `st.*`
+  - `preload_match_extra_data()` : 2 requêtes batch pour médailles + armes tous joueurs
+  - `build_team_table_html_with_details()` : génère HTML complet avec lignes de détail inline
+  - `SCOREBOARD_JS` : fonction `window.osToggle` avec guard anti-double-déclaration
+  - Médailles avec icônes base64 PNG embarquées (jusqu'à 10 par joueur)
+- `match_view_scoreboard.py` (simplifié) :
+  - Suppression `_render_team_table` / `render_scoreboard_detail_expanders`
+  - `render_match_scoreboard` pré-charge les données et rend tout via `st.markdown` unique
+- `static/styles.css` : ~80 lignes CSS nouvelles pour les classes `os-sb-row--clickable`, `os-sb-detail-row`, `os-sb-detail-grid`, `os-sb-kpi`, `os-sb-weapon-tag`, `os-sb-medal-chip`, `os-sb-enrich-chip`
+
+**Résultats observés** :
+- 125 tests match_view/scoreboard passants
+- Structure HTML validée (assertions sur `os-sb-detail-row`, `osToggle`, etc.)
+- Tous fichiers < 500L, toutes fonctions < 80L
+
+**Conclusion** : Le tableau conserve exactement son style actuel. Cliquer sur n'importe quelle ligne joueur déplie inline les stats complètes, médailles avec icônes, et top armes. Si le joueur a une DB locale, le score de performance, la session et les awards sont aussi affichés.

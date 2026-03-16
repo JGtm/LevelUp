@@ -1,105 +1,132 @@
-"""Détails d'un joueur dans le scoreboard — panneau d'expansion.
+"""Détails joueur intégrés au scoreboard — panneau inline cliquable.
 
-Charge les données étendues (médailles, armes, enrichissement joueur)
-et rend un panneau accordéon par joueur après le tableau des scores.
+Chaque ligne joueur est cliquable (▶ / ▼) et révèle une ligne cachée
+directement sous elle dans le tableau HTML — pas d'accordéon séparé.
+
+Fonctions publiques
+-------------------
+preload_match_extra_data(main_db_path, match_id, players, lang) → dict
+    Pré-charge médailles + armes pour tous les joueurs en 2 requêtes.
+
+build_team_table_html_with_details(...) → str
+    Génère le HTML complet d'une équipe avec lignes de détail intégrées.
+
+SCOREBOARD_JS : str
+    Fonction JS osToggle() à injecter une fois par rendu.
 """
 
 from __future__ import annotations
 
+import base64
+import html
 import logging
+import os
 from typing import Any
 
-import streamlit as st
-
-from src.config import TEAM_MAP
-from src.ui.i18n import get_lang, t
-from src.ui.medals import render_medals_grid
+from src.config import TEAM_MAP, get_bot_name
+from src.ui.i18n import t
+from src.ui.medals import get_local_medals_icons_dir, load_medal_name_maps
 from src.utils import parse_xuid_input
 from src.utils.paths import get_player_db_path
 
 logger = logging.getLogger(__name__)
 
-# Nombre max d'awards affichés dans le panneau de détail
-_MAX_AWARDS_DISPLAY = 8
-# Nombre max de citations affichées
-_MAX_CITATIONS_DISPLAY = 6
-# Nombre de colonnes de la grille de médailles
-_MEDALS_COLS_PER_ROW = 8
+# Nombre max de médailles affichées dans le panneau inline
+_MAX_MEDALS = 10
+# Nombre max d'armes affichées
+_MAX_WEAPONS = 5
+# Nombre max d'awards
+_MAX_AWARDS = 6
+
+# =============================================================================
+# JavaScript unique pour tous les tableaux de la page
+# =============================================================================
+
+SCOREBOARD_JS = """
+<script>
+window.osToggle = window.osToggle || function(id, row) {
+  var dr = document.getElementById(id);
+  if (!dr) return;
+  var open = dr.style.display !== '' && dr.style.display !== 'none';
+  dr.style.display = open ? 'none' : 'table-row';
+  var btn = row ? row.querySelector('.os-sb-expand-btn') : null;
+  if (btn) btn.textContent = open ? '\u25b6' : '\u25bc';
+};
+</script>
+"""
 
 
 # =============================================================================
-# Chargement de données
+# Chargement de données (batch)
 # =============================================================================
 
 
-def _load_player_medals(main_db_path: str, match_id: str, xuid: str) -> list[dict[str, int]]:
-    """Charge les médailles d'un joueur pour un match depuis la DB partagée."""
-    if not main_db_path or not xuid:
-        return []
-    try:
-        from src.data.repositories.duckdb_repo import DuckDBRepository
-
-        repo = DuckDBRepository(main_db_path, xuid=xuid, read_only=True)
-        return repo.load_match_medals(match_id)
-    except Exception:
-        logger.debug("Médailles indisponibles pour xuid=%s match=%s", xuid, match_id)
-        return []
-
-
-def _load_player_top_weapons(
-    main_db_path: str, match_id: str, xuid: str
-) -> list[tuple[int, int]]:
-    """Charge les armes les plus utilisées par un joueur dans un match.
+def _load_all_medals_for_match(
+    main_db_path: str, match_id: str
+) -> dict[str, list[dict[str, int]]]:
+    """Charge TOUTES les médailles de tous les joueurs en une seule requête.
 
     Returns:
-        Liste de (weapon_id, kills) triée par kills décroissant, max 5.
+        ``{xuid: [{name_id: int, count: int}, ...]}``.
     """
-    if not main_db_path or not xuid:
-        return []
+    if not main_db_path or not match_id:
+        return {}
     try:
-        import polars as pl
-
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
-        repo = DuckDBRepository(main_db_path, xuid=xuid, read_only=True)
-        df = repo.load_weapon_kills_for_player(xuid=xuid, match_ids=[match_id])
-        if df.is_empty():
-            return []
-        top_df = (
-            df.filter(pl.col("match_id") == match_id)
-            .sort("kills", descending=True)
-            .head(5)
-        )
-        wids = top_df["weapon_id"].to_list()
-        kills = top_df["kills"].to_list()
-        return list(zip(wids, kills))
+        repo = DuckDBRepository(main_db_path, xuid="", read_only=True)
+        conn = repo._get_connection()
+        rows = conn.execute(
+            "SELECT xuid, medal_name_id, count FROM shared.medals_earned WHERE match_id = ?",
+            [match_id],
+        ).fetchall()
+        result: dict[str, list[dict[str, int]]] = {}
+        for xuid, nid, cnt in rows:
+            result.setdefault(str(xuid), []).append({"name_id": int(nid), "count": int(cnt)})
+        return result
     except Exception:
-        logger.debug("Armes indisponibles pour xuid=%s match=%s", xuid, match_id)
-        return []
+        logger.debug("Médailles batch indisponibles match=%s", match_id)
+        return {}
 
 
-def _load_player_db_enrichment(
+def _load_all_weapons_for_match(
+    main_db_path: str, match_id: str
+) -> dict[str, list[tuple[int, int]]]:
+    """Charge les kills par arme pour tous les joueurs en une seule requête.
+
+    Returns:
+        ``{xuid: [(weapon_id, kills), ...]}``, triées par kills DESC.
+    """
+    if not main_db_path or not match_id:
+        return {}
+    try:
+        from src.data.repositories.duckdb_repo import DuckDBRepository
+
+        repo = DuckDBRepository(main_db_path, xuid="", read_only=True)
+        df = repo.load_weapon_kills_for_match(match_id)
+        if df.is_empty():
+            return {}
+        result: dict[str, list[tuple[int, int]]] = {}
+        for row in df.to_dicts():
+            xu = str(row["xuid"])
+            result.setdefault(xu, []).append((int(row["weapon_id"]), int(row["kills"])))
+        return result
+    except Exception:
+        logger.debug("Armes batch indisponibles match=%s", match_id)
+        return {}
+
+
+def _load_enrichment_for_gamertag(
     match_id: str, gamertag: str, xuid: str
 ) -> dict[str, Any]:
-    """Charge l'enrichissement depuis la DB propre du joueur si disponible.
-
-    Returns:
-        Dict avec clés :
-        - ``has_db``: bool
-        - ``performance_score``: float | None
-        - ``session_label``: str | None
-        - ``awards``: list[dict]
-        - ``citations``: list[dict]
-    """
+    """Charge l'enrichissement depuis la DB propre du joueur si disponible."""
     result: dict[str, Any] = {
         "has_db": False,
         "performance_score": None,
         "session_label": None,
         "awards": [],
-        "citations": [],
     }
-
-    if not gamertag:
+    if not gamertag or gamertag == "?":
         return result
 
     player_db = get_player_db_path(gamertag)
@@ -107,12 +134,10 @@ def _load_player_db_enrichment(
         return result
 
     result["has_db"] = True
-
     try:
         from src.utils.db import duckdb_read_only
 
         with duckdb_read_only(player_db) as conn:
-            # Performance score + session
             try:
                 row = conn.execute(
                     "SELECT performance_score, session_label"
@@ -125,49 +150,90 @@ def _load_player_db_enrichment(
             except Exception:
                 pass
 
-            # PersonalScoreAwards
             try:
-                rows_awards = conn.execute(
+                rows_a = conn.execute(
                     "SELECT award_name, award_category, award_count, award_score"
                     " FROM personal_score_awards WHERE match_id = ?"
                     " ORDER BY award_score DESC",
                     [match_id],
                 ).fetchall()
                 result["awards"] = [
-                    {
-                        "award_name": r[0],
-                        "award_category": r[1],
-                        "award_count": r[2],
-                        "award_score": r[3],
-                    }
-                    for r in rows_awards
+                    {"name": r[0] or r[1] or "?", "count": r[2]}
+                    for r in rows_a
                 ]
             except Exception:
                 pass
-
-            # Citations
-            try:
-                rows_cit = conn.execute(
-                    "SELECT citation_name_norm, value FROM match_citations WHERE match_id = ?",
-                    [match_id],
-                ).fetchall()
-                result["citations"] = [{"name": r[0], "value": r[1]} for r in rows_cit]
-            except Exception:
-                pass
-
     except Exception:
         logger.debug("Enrichissement DB indisponible gamertag=%s", gamertag)
-
     return result
 
 
+def preload_match_extra_data(
+    main_db_path: str,
+    match_id: str,
+    players: list[dict[str, Any]],
+    lang: str = "fr",
+) -> dict[str, dict[str, Any]]:
+    """Pré-charge médailles, armes et enrichissement pour tous les joueurs.
+
+    Args:
+        main_db_path: DB du joueur courant (accès shared).
+        match_id: ID du match.
+        players: Liste des dicts joueur du scoreboard.
+        lang: Langue ("fr" ou "en").
+
+    Returns:
+        ``{xuid: {medals, weapons, enrichment}}``
+    """
+    all_medals = _load_all_medals_for_match(main_db_path, match_id)
+    all_weapons = _load_all_weapons_for_match(main_db_path, match_id)
+
+    extra: dict[str, dict[str, Any]] = {}
+    for p in players:
+        xu = str(
+            parse_xuid_input(str(p.get("xuid") or "").strip())
+            or str(p.get("xuid") or "").strip()
+        ).strip()
+        gamertag = str(p.get("gamertag") or "").strip()
+
+        medals = all_medals.get(xu, [])
+        # Trier par count décroissant
+        medals = sorted(medals, key=lambda m: m.get("count", 0), reverse=True)[:_MAX_MEDALS]
+
+        weapons_raw = all_weapons.get(xu, [])
+        weapons = weapons_raw[:_MAX_WEAPONS]
+
+        enrichment = _load_enrichment_for_gamertag(match_id, gamertag, xu)
+
+        extra[xu] = {
+            "medals": medals,
+            "weapons": weapons,
+            "enrichment": enrichment,
+        }
+    return extra
+
+
 # =============================================================================
-# Formatage
+# Helpers HTML (icônes, formatage)
 # =============================================================================
 
 
-def _fmt_stat(key: str, value: Any) -> str:
-    """Formate une valeur de stat pour l'affichage dans le panneau."""
+def _medal_icon_b64(nid: int) -> str | None:
+    """Retourne le data-URI base64 d'une icône de médaille, ou None."""
+    icons_dir = get_local_medals_icons_dir()
+    path = os.path.join(icons_dir, f"{int(nid)}.png")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+        return "data:image/png;base64," + base64.b64encode(data).decode("ascii")
+    except Exception:
+        return None
+
+
+def _fmt_detail(key: str, value: Any) -> str:
+    """Formate une valeur pour le panneau de détail (version concise)."""
     if value is None:
         return "—"
     if key == "kda":
@@ -180,7 +246,7 @@ def _fmt_stat(key: str, value: Any) -> str:
             v = float(value)
             if v <= 1.0:
                 v *= 100.0
-            return f"{v:.1f}\u202f%"
+            return f"{v:.1f}%"
         except (ValueError, TypeError):
             return str(value)
     if key == "avg_life_seconds":
@@ -197,77 +263,48 @@ def _fmt_stat(key: str, value: Any) -> str:
     return str(value)
 
 
-# =============================================================================
-# Rendu du panneau de détail
-# =============================================================================
+def _kpi_html(label: str, value: str, highlight: str = "") -> str:
+    """Génère un chip KPI pour le panneau de détail."""
+    cls = f" os-sb-kpi--{highlight}" if highlight else ""
+    return (
+        f"<div class='os-sb-kpi{cls}'>"
+        f"<span class='os-sb-kpi-val'>{html.escape(value)}</span>"
+        f"<span class='os-sb-kpi-lbl'>{html.escape(label)}</span>"
+        f"</div>"
+    )
 
 
-def _render_stats_grid(player: dict[str, Any]) -> None:
-    """Affiche les stats du joueur en grille de métriques."""
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.metric(t("col_score"), _fmt_stat("score", player.get("score")))
-        st.metric(t("col_rank"), _fmt_stat("rank", player.get("rank")))
-        st.metric(t("col_kda"), _fmt_stat("kda", player.get("kda")))
-
-    with col2:
-        st.metric(t("col_kills"), _fmt_stat("kills", player.get("kills")))
-        st.metric(t("col_deaths"), _fmt_stat("deaths", player.get("deaths")))
-        st.metric(t("col_assists_short"), _fmt_stat("assists", player.get("assists")))
-
-    with col3:
-        st.metric(t("col_headshots"), _fmt_stat("headshots", player.get("headshot_kills")))
-        st.metric(t("col_melee"), _fmt_stat("melee", player.get("melee_kills")))
-        st.metric(t("col_power_weapon"), _fmt_stat("power", player.get("power_weapon_kills")))
-
-    with col4:
-        st.metric(
-            t("col_accuracy"), _fmt_stat("accuracy", player.get("accuracy"))
-        )
-        st.metric(
+def _build_stats_html(player: dict[str, Any]) -> str:
+    """Génère la section KPI du panneau de détail."""
+    kpis = [
+        _kpi_html(t("col_score"), _fmt_detail("score", player.get("score"))),
+        _kpi_html(t("col_kills"), _fmt_detail("kills", player.get("kills"))),
+        _kpi_html(t("col_deaths"), _fmt_detail("deaths", player.get("deaths"))),
+        _kpi_html(t("col_assists_short"), _fmt_detail("assists", player.get("assists"))),
+        _kpi_html(t("col_kda"), _fmt_detail("kda", player.get("kda"))),
+        _kpi_html(t("col_accuracy"), _fmt_detail("accuracy", player.get("accuracy"))),
+        _kpi_html(t("col_headshots"), str(player.get("headshot_kills") or 0)),
+        _kpi_html(t("col_melee"), str(player.get("melee_kills") or 0)),
+        _kpi_html(t("col_power_weapon"), str(player.get("power_weapon_kills") or 0)),
+        _kpi_html(t("col_dmg_dealt"), _fmt_detail("damage_dealt", player.get("damage_dealt"))),
+        _kpi_html(t("col_dmg_taken"), _fmt_detail("damage_taken", player.get("damage_taken"))),
+        _kpi_html(
             t("mv_scoreboard_avg_life"),
-            _fmt_stat("avg_life_seconds", player.get("avg_life_seconds")),
-        )
-        st.metric(
-            t("col_killing_spree"),
-            _fmt_stat("spree", player.get("max_killing_spree")),
-        )
+            _fmt_detail("avg_life_seconds", player.get("avg_life_seconds")),
+        ),
+    ]
+    return (
+        f"<div class='os-sb-detail-section'>"
+        f"<div class='os-sb-detail-kpis'>{''.join(kpis)}</div>"
+        f"</div>"
+    )
 
 
-def _render_damage_row(player: dict[str, Any]) -> None:
-    """Affiche les stats de dégâts et de tirs."""
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric(
-            t("col_dmg_dealt"), _fmt_stat("damage_dealt", player.get("damage_dealt"))
-        )
-    with c2:
-        st.metric(
-            t("col_dmg_taken"), _fmt_stat("damage_taken", player.get("damage_taken"))
-        )
-    with c3:
-        shots_fired = player.get("shots_fired")
-        shots_hit = player.get("shots_hit")
-        if shots_fired and shots_hit:
-            st.metric(
-                t("col_shots_fired_short"),
-                f"{_fmt_stat('shots_fired', shots_fired)} / {_fmt_stat('shots_hit', shots_hit)}",
-            )
-        else:
-            st.metric(t("col_shots_fired_short"), "—")
-
-
-def _render_weapons_section(
-    main_db_path: str, match_id: str, xuid: str
-) -> None:
-    """Charge et affiche le top des armes utilisées."""
-    weapons = _load_player_top_weapons(main_db_path, match_id, xuid)
+def _build_weapons_html(weapons: list[tuple[int, int]], lang: str) -> str:
+    """Génère la section armes du panneau de détail."""
     if not weapons:
-        return
+        return ""
 
-    lang = get_lang()
-    st.caption(t("sb_detail_top_weapons"))
     parts = []
     for wid, kills in weapons:
         try:
@@ -276,144 +313,251 @@ def _render_weapons_section(
             name = resolve_weapon_display(int(wid), lang=lang) or f"#{wid}"
         except Exception:
             name = f"#{wid}"
-        parts.append(f"**{name}** ({kills})")
-    st.write(" · ".join(parts))
+        parts.append(
+            f"<span class='os-sb-weapon-tag'>{html.escape(name)} ({kills})</span>"
+        )
+    title = html.escape(t("sb_detail_top_weapons"))
+    return (
+        f"<div class='os-sb-detail-section'>"
+        f"<span class='os-sb-det-title'>{title}</span>"
+        f"<div class='os-sb-weapon-list'>{''.join(parts)}</div>"
+        f"</div>"
+    )
 
 
-def _render_medals_section(
-    main_db_path: str, match_id: str, xuid: str
-) -> None:
-    """Charge et affiche la grille de médailles."""
-    medals = _load_player_medals(main_db_path, match_id, xuid)
+def _build_medals_html(medals: list[dict[str, int]], lang: str) -> str:
+    """Génère la section médailles du panneau de détail."""
     if not medals:
-        return
+        return ""
 
-    st.caption(t("sb_detail_medals"))
-    lang = get_lang()
-    render_medals_grid(medals, cols_per_row=_MEDALS_COLS_PER_ROW, lang=lang)
+    fr_map, en_map = load_medal_name_maps()
+    chips = []
+    for m in medals:
+        nid = int(m.get("name_id", 0))
+        cnt = int(m.get("count", 0))
+        key = str(nid)
+        name = (fr_map if lang == "fr" else en_map).get(key) or fr_map.get(key) or f"#{nid}"
+        img_uri = _medal_icon_b64(nid)
+        if img_uri:
+            img_tag = (
+                f"<img src='{img_uri}' width='24' height='24' "
+                f"title='{html.escape(name)}' loading='lazy' />"
+            )
+        else:
+            img_tag = f"<span title='{html.escape(name)}'>🏅</span>"
+        chips.append(
+            f"<div class='os-sb-medal-chip' title='{html.escape(name)}'>"
+            f"{img_tag}"
+            f"<span class='os-sb-medal-chip-cnt'>×{cnt}</span>"
+            f"</div>"
+        )
+    title = html.escape(t("sb_detail_medals"))
+    return (
+        f"<div class='os-sb-detail-section'>"
+        f"<span class='os-sb-det-title'>{title}</span>"
+        f"<div class='os-sb-medal-row'>{''.join(chips)}</div>"
+        f"</div>"
+    )
 
 
-def _render_player_db_section(enrichment: dict[str, Any]) -> None:
-    """Affiche les données provenant de la DB propre du joueur."""
+def _build_enrichment_html(enrichment: dict[str, Any]) -> str:
+    """Génère la section enrichissement DB joueur si disponible."""
     if not enrichment.get("has_db"):
-        return
-
-    st.divider()
-    st.caption(f"📊 {t('sb_detail_player_db')}")
+        return ""
 
     perf = enrichment.get("performance_score")
     session = enrichment.get("session_label")
-    awards = enrichment.get("awards") or []
-    citations = enrichment.get("citations") or []
+    awards = (enrichment.get("awards") or [])[:_MAX_AWARDS]
 
-    has_any = perf is not None or session or awards or citations
+    has_any = perf is not None or session or awards
     if not has_any:
-        st.caption(t("sb_detail_no_enrichment"))
-        return
-
-    c1, c2 = st.columns(2)
-    with c1:
-        if perf is not None:
-            try:
-                st.metric(t("col_performance"), f"{float(perf):.0f}")
-            except (ValueError, TypeError):
-                st.metric(t("col_performance"), str(perf))
-    with c2:
-        if session:
-            st.metric(t("sb_detail_session"), str(session))
-
-    # PersonalScoreAwards
-    if awards:
-        st.caption(t("sb_detail_awards"))
-        award_parts = []
-        for aw in sorted(awards, key=lambda a: a.get("award_score", 0), reverse=True)[:_MAX_AWARDS_DISPLAY]:
-            name = str(aw.get("award_name") or aw.get("award_category") or "?")
-            count = aw.get("award_count", 0)
-            award_parts.append(f"**{name}** ×{count}")
-        st.write(" · ".join(award_parts))
-
-    # Citations
-    if citations:
-        st.caption(t("sb_detail_citations"))
-        citation_parts = []
-        for cit in citations[:_MAX_CITATIONS_DISPLAY]:
-            name = str(cit.get("name") or "?").replace("_", " ").title()
-            val = cit.get("value", 0)
-            citation_parts.append(f"**{name}** ={val}")
-        st.write(" · ".join(citation_parts))
-
-
-# =============================================================================
-# Expanders par joueur
-# =============================================================================
-
-
-def _team_label_for_player(tid: Any) -> str:
-    """Retourne le label court de l'équipe d'un joueur."""
-    if tid is None:
         return ""
+
+    chips = []
+    if perf is not None:
+        try:
+            chips.append(
+                f"<span class='os-sb-enrich-chip'>"
+                f"{html.escape(t('col_performance'))} {float(perf):.0f}"
+                f"</span>"
+            )
+        except (ValueError, TypeError):
+            pass
+    if session:
+        chips.append(
+            f"<span class='os-sb-enrich-chip'>"
+            f"📅 {html.escape(str(session))}"
+            f"</span>"
+        )
+    for aw in awards:
+        name = str(aw.get("name") or "?")
+        cnt = aw.get("count", 0)
+        chips.append(
+            f"<span class='os-sb-enrich-chip'>{html.escape(name)} ×{cnt}</span>"
+        )
+    title = html.escape(t("sb_detail_player_db"))
+    return (
+        f"<div class='os-sb-detail-section'>"
+        f"<span class='os-sb-det-title'>📊 {title}</span>"
+        f"<div class='os-sb-enrichment'>{''.join(chips)}</div>"
+        f"</div>"
+    )
+
+
+def _build_detail_cell_html(
+    player: dict[str, Any],
+    extra: dict[str, Any],
+    n_cols: int,
+    lang: str,
+) -> str:
+    """Construit la cellule de détail (colspan) pour un joueur."""
+    stats_html = _build_stats_html(player)
+    weapons_html = _build_weapons_html(extra.get("weapons", []), lang)
+    medals_html = _build_medals_html(extra.get("medals", []), lang)
+    enrichment_html = _build_enrichment_html(extra.get("enrichment", {}))
+
+    inner = stats_html + weapons_html + medals_html + enrichment_html
+    return (
+        f"<td colspan='{n_cols}' class='os-sb-detail-td'>"
+        f"<div class='os-sb-detail-grid'>{inner}</div>"
+        f"</td>"
+    )
+
+
+# =============================================================================
+# Rendu du tableau d'équipe avec lignes de détail intégrées
+# =============================================================================
+
+
+def _team_display_name(tid: Any) -> str:
+    """Retourne le nom d'affichage d'une équipe."""
+    if tid is None:
+        return t("mv_team_unknown")
     try:
-        return TEAM_MAP.get(int(tid), f"Équipe {tid}")
+        return TEAM_MAP.get(int(tid), t("mv_team_n", n=tid))
     except (ValueError, TypeError):
-        return str(tid)
+        return t("mv_team_n", n=tid)
 
 
-def render_scoreboard_detail_expanders(
+def build_team_table_html_with_details(  # noqa: PLR0913
     *,
-    players: list[dict[str, Any]],
-    main_db_path: str,
-    match_id: str,
-    me_xuid: str,
-) -> None:
-    """Rend les accordéons de détail joueur sous le tableau des scores.
-
-    Chaque accordéon porte le nom du joueur en titre. En l'ouvrant,
-    l'utilisateur accède aux stats complètes, médailles et armes.
-    Si le joueur possède sa propre DB, des données supplémentaires
-    (performance, session, awards, citations) sont également affichées.
+    team_players: list[dict[str, Any]],
+    tid: Any,
+    my_team_id: Any,
+    me_xu: str,
+    mvp_xuid: str,
+    lvp_xuid: str,
+    extremes: dict[str, tuple[float, float]],
+    sb_cols: list[tuple[str, str]],
+    extra_data: dict[str, dict[str, Any]],
+    match_id_key: str,
+    team_index: int,
+    lang: str,
+    fmt_cell_fn: Any,
+    cell_class_fn: Any,
+    gamertag_link_fn: Any,
+) -> str:
+    """Génère le HTML complet d'une équipe avec lignes de détail inline.
 
     Args:
-        players: Liste des dicts joueur (tels que retournés par load_match_scoreboard).
-        main_db_path: Chemin vers la DB du joueur courant (accès shared).
-        match_id: Identifiant du match.
-        me_xuid: XUID du joueur courant (mis en avant dans le titre).
+        team_players: Liste des joueurs de l'équipe.
+        tid: team_id (None = inconnu).
+        my_team_id: team_id du joueur courant.
+        me_xu: XUID du joueur courant.
+        mvp_xuid: XUID du MVP.
+        lvp_xuid: XUID du LVP.
+        extremes: Min/max par colonne (highlight couleur).
+        sb_cols: Colonnes du scoreboard [(label, key), ...].
+        extra_data: Données pré-chargées {xuid: {medals, weapons, enrichment}}.
+        match_id_key: Préfixe unique pour les IDs HTML (ex: match_id[:8]).
+        team_index: Indice de l'équipe (pour unicité des IDs).
+        lang: Langue.
+        fmt_cell_fn: Fonction de formatage des cellules.
+        cell_class_fn: Fonction de calcul des classes CSS.
+        gamertag_link_fn: Fonction générant un lien HTML gamertag.
+
+    Returns:
+        Chaîne HTML complète pour cette équipe.
     """
-    if not players:
-        return
+    raw_name = _team_display_name(tid)
+    is_my_team = tid == my_team_id
+    team_css_mod = "os-sb-team--mine" if is_my_team else "os-sb-team--enemy"
+    team_label = t("mv_team_label", name=html.escape(raw_name))
 
-    st.markdown(f"#### {t('sb_detail_section_title')}")
+    n_cols = len(sb_cols)
+    th_cells = "".join(
+        f"<th class='os-sb-th'>{html.escape(label)}</th>" for label, _ in sb_cols
+    )
+    thead = (
+        f"<thead>"
+        f"<tr><th class='os-sb-team {team_css_mod}' colspan='{n_cols}'>{team_label}</th></tr>"
+        f"<tr>{th_cells}</tr>"
+        f"</thead>"
+    )
 
-    for p in players:
+    body_rows: list[str] = []
+    for p_idx, p in enumerate(team_players):
         p_xu = str(
             parse_xuid_input(str(p.get("xuid") or "").strip())
             or str(p.get("xuid") or "").strip()
         ).strip()
+        is_me = bool(me_xu and p_xu and p_xu == me_xu)
+        row_class = " os-sb-row--me" if is_me else ""
+        if p_xu and p_xu == mvp_xuid:
+            row_class += " os-sb-row--mvp"
+        elif p_xu and p_xu == lvp_xuid:
+            row_class += " os-sb-row--lvp"
 
-        gamertag = str(p.get("gamertag") or "").strip() or "?"
-        kills = p.get("kills") or 0
-        deaths = p.get("deaths") or 0
-        assists = p.get("assists") or 0
-        team_label = _team_label_for_player(p.get("team_id"))
+        # ID unique pour la ligne de détail
+        detail_id = f"os-sbdr-{match_id_key}-{team_index}-{p_idx}"
 
-        is_me = bool(me_xuid and p_xu and p_xu == me_xuid)
-        me_tag = " 🎮" if is_me else ""
+        # Cellules du scoreboard
+        cell_parts: list[str] = []
+        for col_idx, (_, key) in enumerate(sb_cols):
+            css = cell_class_fn(key, p.get(key), extremes)
+            raw_val = fmt_cell_fn(key, p.get(key))
+            if key == "gamertag" and raw_val != "—" and not is_me:
+                inner = (
+                    f"<span class='os-sb-expand-btn'>&#9654;</span> "
+                    + gamertag_link_fn(raw_val)
+                )
+            elif key == "gamertag":
+                inner = (
+                    f"<span class='os-sb-expand-btn'>&#9654;</span> "
+                    + html.escape(raw_val)
+                )
+            else:
+                inner = html.escape(raw_val)
+            cell_parts.append(f"<td class='os-sb-td{css}'>{inner}</td>")
 
-        # Titre de l'accordéon : Gamertag — Équipe | K/D/A
-        expander_label = (
-            f"{gamertag}{me_tag}"
-            f"{'  —  ' + team_label if team_label else ''}"
-            f"  ·  {kills} / {deaths} / {assists}"
+        cells = "".join(cell_parts)
+        # Bot name check — bots ne sont pas clickable
+        is_bot = p_xu.lower().startswith("bid(") if p_xu else False
+        has_bot_name = get_bot_name(p_xu) is not None if p_xu else False
+        clickable_cls = "" if is_bot or has_bot_name else " os-sb-row--clickable"
+        onclick_attr = (
+            f" onclick=\"osToggle('{detail_id}', this)\""
+            if not (is_bot or has_bot_name)
+            else ""
+        )
+        body_rows.append(
+            f"<tr class='os-sb-row{row_class}{clickable_cls}'{onclick_attr}>{cells}</tr>"
         )
 
-        with st.expander(expander_label, expanded=False):
-            _render_stats_grid(p)
-            _render_damage_row(p)
+        # Ligne de détail (cachée par défaut)
+        p_extra = extra_data.get(p_xu, {"medals": [], "weapons": [], "enrichment": {}})
+        detail_cell = _build_detail_cell_html(p, p_extra, n_cols, lang)
+        body_rows.append(
+            f"<tr id='{detail_id}' class='os-sb-detail-row' style='display:none'>"
+            f"{detail_cell}"
+            f"</tr>"
+        )
 
-            if p_xu and main_db_path:
-                _render_weapons_section(main_db_path, match_id, p_xu)
-                _render_medals_section(main_db_path, match_id, p_xu)
-
-            # Enrichissement depuis la DB propre du joueur (si disponible)
-            if gamertag and gamertag != "?":
-                enrichment = _load_player_db_enrichment(match_id, gamertag, p_xu)
-                _render_player_db_section(enrichment)
+    return (
+        "<div class='os-table-wrap os-sb-wrap'>"
+        "<table class='os-table os-scoreboard os-sb-expandable'>"
+        f"{thead}"
+        f"<tbody>{''.join(body_rows)}</tbody>"
+        "</table>"
+        "</div>"
+    )
