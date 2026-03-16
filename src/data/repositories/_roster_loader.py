@@ -134,58 +134,13 @@ class RosterLoaderMixin(GamertagResolverMixin):
                             # Stocker le team_id (source fiable)
                             team_by_xuid[xu] = team_id
 
-                            # Gamertag depuis match_participants
+                            # Gamertag depuis match_participants (fallback si resolve_gamertags_batch échoue)
                             gt = _clean_gamertag(mp_gt)
                             if gt:
                                 gamertag_by_xuid[xu] = gt
 
-                        # Enrichir les gamertags depuis xuid_aliases (optionnel)
-                        if self._has_shared_table("xuid_aliases"):
-                            try:
-                                alias_result = conn.execute(
-                                    """
-                                    SELECT xuid, gamertag
-                                    FROM shared.xuid_aliases
-                                    WHERE xuid IN (SELECT xuid FROM shared.match_participants WHERE match_id = ?)
-                                    """,
-                                    [match_id],
-                                ).fetchall()
-                                for xuid, alias_gt in alias_result:
-                                    xu = str(xuid).strip()
-                                    gt = _clean_gamertag(alias_gt)
-                                    if gt and (
-                                        xu not in gamertag_by_xuid
-                                        or len(gt) > len(gamertag_by_xuid.get(xu) or "")
-                                    ):
-                                        gamertag_by_xuid[xu] = gt
-                            except Exception:
-                                pass
-
-                        # Enrichir les gamertags depuis v_gamertag_lookup (v6 — remplace
-                        # highlight_events.gamertag supprimée par migration drop_highlight_events_gamertag)
-                        if self._has_shared_view("v_gamertag_lookup"):
-                            try:
-                                missing_xuids = [
-                                    xu for xu in team_by_xuid if xu not in gamertag_by_xuid
-                                ]
-                                if missing_xuids:
-                                    placeholders = ", ".join(["?" for _ in missing_xuids])
-                                    vg_result = conn.execute(
-                                        f"SELECT xuid, gamertag FROM shared.v_gamertag_lookup"
-                                        f" WHERE xuid IN ({placeholders}) AND gamertag IS NOT NULL",
-                                        missing_xuids,
-                                    ).fetchall()
-                                    for xuid, vg_gt in vg_result:
-                                        xu = str(xuid).strip()
-                                        gt = _clean_gamertag(vg_gt)
-                                        if gt and (
-                                            xu not in gamertag_by_xuid
-                                            or len(gt) > len(gamertag_by_xuid.get(xu) or "")
-                                        ):
-                                            gamertag_by_xuid[xu] = gt
-                            except Exception:
-                                pass
-
+                        # v6 : l'enrichissement gamertag est délégué à resolve_gamertags_batch()
+                        # qui utilise shared.v_gamertag_lookup (xuid_aliases ∪ match_participants).
                         mp_success = len(team_by_xuid) >= 1
                         logger.debug(
                             "MÉTHODE 0: %d participants chargés depuis match_participants",
