@@ -86,8 +86,8 @@ PLAYER_DB_FILENAME = "stats.duckdb"
 # Nom du fichier DB des référentiels partagés
 METADATA_DB_FILENAME = "metadata.duckdb"
 
-# Nom du fichier DB des matchs partagés (v5)
-SHARED_MATCHES_DB_FILENAME = "shared_matches.duckdb"
+# Nom du fichier DB des matchs partagés (v6 — schéma complet avec vues de résolution)
+SHARED_MATCHES_DB_FILENAME = "shared_matches_v2.duckdb"
 
 # Nom du fichier DB des stats PVE/Firefight (v5.2)
 SHARED_PVE_DB_FILENAME = "shared_pve.duckdb"
@@ -170,22 +170,27 @@ def get_pve_db_path_from_player(player_db_path: str | Path) -> Path:
 
 
 def get_shared_matches_path_from_player(player_db_path: str | Path) -> Path | None:
-    """Retourne le chemin vers shared_matches.duckdb depuis un path joueur.
+    """Retourne le chemin vers la shared DB des matchs depuis un path joueur.
+
+    Essaie d'abord SHARED_MATCHES_DB_FILENAME (v6), puis l'ancien nom
+    shared_matches.duckdb (compatibilité tests et DBs non migrées).
 
     Args:
         player_db_path: Chemin vers une DB joueur (stats.duckdb).
 
     Returns:
-        Chemin vers shared_matches.duckdb ou None si impossible à déduire.
+        Chemin vers la shared DB ou None si introuvable.
     """
     db_path = Path(player_db_path)
-    # data/players/{gamertag}/stats.duckdb -> data/warehouse/shared_matches.duckdb
+    # data/players/{gamertag}/stats.duckdb -> data/warehouse/shared_matches*.duckdb
     if "players" in db_path.parts:
         idx = db_path.parts.index("players")
         data_root = Path(*db_path.parts[:idx])
-        shared_path = data_root / "warehouse" / SHARED_MATCHES_DB_FILENAME
-        if shared_path.exists():
-            return shared_path
+        warehouse = data_root / "warehouse"
+        for filename in (SHARED_MATCHES_DB_FILENAME, "shared_matches.duckdb"):
+            candidate = warehouse / filename
+            if candidate.exists():
+                return candidate
     return None
 
 

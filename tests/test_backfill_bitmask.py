@@ -555,8 +555,10 @@ class TestSyncEngineBackfillBitmask:
         bf_mask |= BACKFILL_FLAGS["lusr"]
         # backfill-only : CSR écrit lors du sync pour les matchs classés
         bf_mask |= BACKFILL_FLAGS["csr"]
+        # weapon_kills : bit set après extraction réussie depuis les films SPNKr
+        bf_mask |= BACKFILL_FLAGS["weapon_kills"]
 
-        # Tous les 17 bits doivent être activés
+        # Tous les 18 bits doivent être activés
         expected_all = sum(BACKFILL_FLAGS.values())
         assert bf_mask == expected_all, f"Mask={bf_mask}, attendu={expected_all}"
 

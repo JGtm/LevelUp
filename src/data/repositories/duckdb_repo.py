@@ -34,6 +34,7 @@ from src.data.repositories._events_repo import EventsMixin
 from src.data.repositories._killer_victim_repo import KillerVictimMixin
 from src.data.repositories._legacy_compat import LegacyCompatMixin
 from src.data.repositories._match_queries import MatchQueriesMixin
+from src.data.repositories._match_relations import MatchRelationsMixin
 from src.data.repositories._materialized_views import MaterializedViewsMixin
 from src.data.repositories._medals_repo import MedalsMixin
 from src.data.repositories._media_repo import MediaLibraryMixin
@@ -147,6 +148,7 @@ def release_all_db_connections() -> int:
 class DuckDBRepository(
     MatchQueriesMixin,
     RosterLoaderMixin,
+    MatchRelationsMixin,
     MaterializedViewsMixin,
     KillerVictimMixin,
     MedalsMixin,

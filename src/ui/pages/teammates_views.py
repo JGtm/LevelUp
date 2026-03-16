@@ -19,10 +19,8 @@ from src.ui.cache import (
 )
 from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import t
-from src.ui.pages._teammates_trio import (
-    _merge_trio_dataframes,
-    render_trio_view,
-)
+from src.ui.pages._teammates_trio import render_trio_view
+from src.ui.pages._teammates_trio_helpers import _merge_trio_dataframes
 from src.ui.pages.teammates_charts import (
     render_comparison_charts,
     render_metric_bar_charts,

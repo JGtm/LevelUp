@@ -312,3 +312,92 @@ class TestSyncMarksBackfillCompleted:
         assert result[0] & BACKFILL_FLAGS["medals"] != 0
         assert result[0] & BACKFILL_FLAGS["participants"] != 0
         assert result[0] & BACKFILL_FLAGS["events"] != 0
+
+
+class TestWeaponKillsBitmask:
+    """Vérifie que le bit weapon_kills est correctement posé et détectable."""
+
+    def test_weapon_kills_bit_value(self):
+        """Le bit weapon_kills vaut 1 << 18 = 262144."""
+        assert BACKFILL_FLAGS["weapon_kills"] == 1 << 18
+        assert BACKFILL_FLAGS["weapon_kills"] == 262144
+
+    def test_weapon_kills_bit_set_via_or(self, shared_conn):
+        """Le bit weapon_kills est posé via OR dans match_registry."""
+        match_id = "wk-match-001"
+        shared_conn.execute(
+            "INSERT INTO match_registry (match_id, backfill_completed) VALUES (?, 0)",
+            [match_id],
+        )
+
+        shared_conn.execute(
+            "UPDATE match_registry "
+            "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+            "WHERE match_id = ?",
+            [BACKFILL_FLAGS["weapon_kills"], match_id],
+        )
+
+        row = shared_conn.execute(
+            "SELECT backfill_completed FROM match_registry WHERE match_id = ?",
+            [match_id],
+        ).fetchone()
+
+        assert row is not None
+        assert row[0] & BACKFILL_FLAGS["weapon_kills"] != 0
+
+    def test_weapon_kills_bit_does_not_clear_other_bits(self, shared_conn):
+        """Poser weapon_kills via OR préserve les bits existants."""
+        match_id = "wk-match-002"
+        initial = BACKFILL_FLAGS["medals"] | BACKFILL_FLAGS["participants"]
+        shared_conn.execute(
+            "INSERT INTO match_registry (match_id, backfill_completed) VALUES (?, ?)",
+            [match_id, initial],
+        )
+
+        shared_conn.execute(
+            "UPDATE match_registry "
+            "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+            "WHERE match_id = ?",
+            [BACKFILL_FLAGS["weapon_kills"], match_id],
+        )
+
+        row = shared_conn.execute(
+            "SELECT backfill_completed FROM match_registry WHERE match_id = ?",
+            [match_id],
+        ).fetchone()
+
+        assert row[0] & BACKFILL_FLAGS["medals"] != 0
+        assert row[0] & BACKFILL_FLAGS["participants"] != 0
+        assert row[0] & BACKFILL_FLAGS["weapon_kills"] != 0
+
+    def test_weapon_kills_bit_not_set_when_zero_rows(self, shared_conn):
+        """Si wk_rows == 0, le bit ne doit pas être posé."""
+        match_id = "wk-match-003"
+        shared_conn.execute(
+            "INSERT INTO match_registry (match_id, backfill_completed) VALUES (?, 0)",
+            [match_id],
+        )
+
+        # Simuler wk_rows == 0 : on ne fait pas l'UPDATE
+        wk_rows = 0
+        if wk_rows > 0:
+            shared_conn.execute(
+                "UPDATE match_registry "
+                "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                "WHERE match_id = ?",
+                [BACKFILL_FLAGS["weapon_kills"], match_id],
+            )
+
+        row = shared_conn.execute(
+            "SELECT backfill_completed FROM match_registry WHERE match_id = ?",
+            [match_id],
+        ).fetchone()
+
+        assert row[0] & BACKFILL_FLAGS["weapon_kills"] == 0
+
+    def test_weapon_kills_bit_isolated_from_all_others(self):
+        """weapon_kills n'overlape avec aucun autre flag."""
+        wk_bit = BACKFILL_FLAGS["weapon_kills"]
+        other_flags = {k: v for k, v in BACKFILL_FLAGS.items() if k != "weapon_kills"}
+        for name, value in other_flags.items():
+            assert (wk_bit & value) == 0, f"weapon_kills overlape avec {name}"

@@ -367,13 +367,21 @@ class TestLoadDbProfiles:
         assert "profiles" in profiles
 
     def test_profiles_version_2(self):
-        """Vérifie que la version est >= 2.0 pour DuckDB."""
+        """Vérifie que la version est >= 2.0 pour DuckDB (skip si fichier absent)."""
+        from pathlib import Path
+
+        import pytest
+
         from src.data.repositories.factory import load_db_profiles
+
+        profiles_file = Path(__file__).parent.parent / "db_profiles.json"
+        if not profiles_file.exists():
+            pytest.skip("db_profiles.json absent sur cette machine")
 
         profiles = load_db_profiles()
         version = profiles.get("version", "1.0")
 
-        assert version >= "2.0", "db_profiles.json devrait être en version 2.0+"
+        assert float(version) >= 2.0, "db_profiles.json devrait être en version 2.0+"
 
     def test_profiles_contain_duckdb_paths(self):
         """Vérifie que les profils pointent vers des fichiers .duckdb."""

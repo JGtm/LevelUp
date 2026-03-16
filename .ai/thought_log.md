@@ -7,6 +7,54 @@
 
 ## Journal
 
+### [2026-03-16] — Sprint améliorations v6 : splits, weapon_kills bit, audit BDD
+
+**Statut** : Complété
+
+**Décision technique** :
+7 améliorations appliquées sur la branche `refactor/id-resolution-cleanup` :
+
+1. **13 tests cassés** → fixtures `v_gamertag_lookup` ajoutées dans 3 fichiers de tests
+2. **Ruff B905** → `strict=False` ajouté aux `zip()` concernés dans `trio.py` + baseline ratchet à jour
+3. **Split fonctions >100L** :
+   - `render_trio_charts` (164L→45L) : extraction `_plot_trio_metric_chart()` dans `teammates_charts.py`
+   - `load_match_rosters` (151L→55L) : extraction `_get_my_team_id`, `_load_participants_data`, `_assemble_roster` dans `_roster_loader.py`
+   - `_render_trio_performance_charts` (100L→65L) : extraction `_extract_player_df`, `_align_f3_to_merged`
+4. **Split modules >500L** :
+   - `_teammates_trio.py` 568L→237L : 5 helpers privés déplacés vers `_teammates_trio_helpers.py`
+   - `_roster_loader.py` 538L→416L : `load_friend_match_details` + `load_common_matches_df` → `_match_relations.py` (nouveau mixin)
+5. **Bit `weapon_kills` dans sync** : `BACKFILL_FLAGS["weapon_kills"] = 1 << 18` ajouté, bit posé après chaque `_try_extract_weapon_kills` réussi dans `_match_processing.py`
+6. **LEGACY SyncScope** : 30+ kwargs LEGACY supprimés de `_backfill_with_api` (orchestrator.py) — seul appelant utilise `scope=`
+7. **Audit BDD** :
+   - `v_gamertag_lookup` absente de `shared_matches.duckdb` → créée via `ensure_resolution_views`
+   - `_run_shared_migrations` mis à jour pour créer les vues à chaque ouverture (idempotent)
+   - `SHARED_MATCHES_DB_FILENAME` mis à jour → `shared_matches_v2.duckdb` (schéma v6 complet)
+
+**Résultats** : 4766 tests passent, 3 skipped, 2 failures pré-existantes (TestDuckDBRepositoryWithRealData — data réelle non montée en CI).
+
+**Correction post-session** : fix ruff (C408 `dict()` → littéral, F401 imports inutilisés, I001 tri imports), C901 noqa ajouté à `render_trio_view`, bitmask test mis à jour pour inclure `weapon_kills`, baseline size ratchet mis à jour (94 violations).
+
+**Prochaine étape** : Commit + test visuel app avec shared_matches_v2.
+
+### [2026-03-16] — Fix bug #6 : performance_score escouade incorrect (87 vs 71)
+
+**Statut** : Complété
+
+**Décision technique** :
+- Root cause : `_render_trio_performance_charts` recalculait `performance_score` via `compute_performance_series(df, df)` en utilisant uniquement les N matchs communs du trio comme historique de référence (inner join). Sur un petit échantillon, les percentiles divergent fortement des scores stockés en DB (calculés sur l'historique complet du joueur).
+- Fix : charger `performance_score` depuis `player_match_enrichment` (DB individuelle de chaque joueur) via un nouveau service method `TeammatesService.enrich_with_performance_score`. Utiliser le score stocké en priorité, recalcul uniquement en fallback (joueur non tracké).
+- Respecte la contrainte "zéro requête DB dans l'UI" : toute la logique DB est dans `_teammates_perf_queries.py` (nouveau sous-module) + méthode `TeammatesService`.
+
+**Fichiers modifiés** :
+- `src/data/services/_teammates_perf_queries.py` — nouveau, fonction `load_performance_scores_from_player_db`
+- `src/data/services/teammates_service.py` — `enrich_with_performance_score` statique + import
+- `src/ui/pages/_teammates_trio_helpers.py` — `_STAT_COLS`, `_F_RENAME`, `_merge_trio_dataframes` (colonnes optionnelles), `_use_or_compute_performance`, `_render_trio_performance_charts`
+- `src/ui/pages/_teammates_trio.py` — import + 4 appels d'enrichissement
+
+**Résultats** : 218 tests passent, zéro régression. `teammates_service.py` maintenu à 495 lignes (sous 500L).
+
+**Prochaine étape** : Vérification visuelle en app (match Chocoboflor 12/03 Live Fire, 71 attendu).
+
 ### [2026-03-16] — Application stash : correctifs + refactor taille
 
 - **Statut** : Complété

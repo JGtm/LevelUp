@@ -499,6 +499,8 @@ BACKFILL_FLAGS: dict[str, int] = {
     # ── LUSR / CSR (v5.3) ──
     "lusr": 1 << 16,  # 65536  — LUSR calculé localement (non classé)
     "csr": 1 << 17,  # 131072 — CSR récupéré via API (classé)
+    # ── Weapon kills (v5.5) ──
+    "weapon_kills": 1 << 18,  # 262144 — kills par arme extraits depuis les films SPNKr
 }
 
 

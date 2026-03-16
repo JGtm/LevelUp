@@ -24,9 +24,9 @@ FUNC:src/data/media_indexer.py:238:scan_and_index:91L
 FUNC:src/data/media_indexer.py:94:ensure_schema:138L
 FUNC:src/data/repositories/_archives_repo.py:135:load_matches_from_archives:102L
 FUNC:src/data/repositories/_materialized_views.py:96:refresh_materialized_views:196L
-FUNC:src/data/repositories/_roster_loader.py:350:load_match_scoreboard:81L
-FUNC:src/data/repositories/_roster_loader.py:65:load_match_rosters:151L
+FUNC:src/data/repositories/_roster_loader.py:330:load_match_scoreboard:81L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
+FUNC:src/data/sync/_match_processing.py:168:_process_known_match:85L
 FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
 FUNC:src/data/sync/transformers/_match.py:284:extract_participants:141L
 FUNC:src/data/sync/transformers/_match.py:428:extract_match_registry_data:105L
@@ -46,8 +46,7 @@ FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
 FUNC:src/ui/filter_state.py:235:apply_filter_preferences:142L
 FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
 FUNC:src/ui/pages/_session_compare_history.py:20:_build_history_dataframe:139L
-FUNC:src/ui/pages/_teammates_trio.py:36:render_trio_view:200L
-FUNC:src/ui/pages/_teammates_trio.py:421:_render_trio_performance_charts:100L
+FUNC:src/ui/pages/_teammates_trio.py:36:render_trio_view:214L
 FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:19:render_citations_page:169L
 FUNC:src/ui/pages/match_history.py:159:_render_history_table:151L
@@ -64,9 +63,8 @@ FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_sectio
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
 FUNC:src/ui/pages/teammates.py:74:render_teammates_page:199L
-FUNC:src/ui/pages/teammates_charts.py:240:render_trio_charts:164L
 FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
-FUNC:src/ui/pages/teammates_views.py:58:render_single_teammate_view:125L
+FUNC:src/ui/pages/teammates_views.py:56:render_single_teammate_view:125L
 FUNC:src/ui/pages/win_loss.py:254:_render_ratio_by_map_section:91L
 FUNC:src/ui/styles.py:48:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
@@ -96,10 +94,9 @@ FUNC:src/visualization/team_dominance_timeline.py:101:detect_streaks:99L
 FUNC:src/visualization/team_dominance_timeline.py:208:plot_dominance_chart:135L
 FUNC:src/visualization/timeseries.py:317:plot_per_minute_timeseries:91L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
-FUNC:src/visualization/trio.py:12:plot_trio_metric:180L
-MODULE:src/data/repositories/_roster_loader.py:538L
+FUNC:src/visualization/trio.py:12:plot_trio_metric:181L
 MODULE:src/data/repositories/_weapon_kills_repo.py:531L
+MODULE:src/data/sync/_match_processing.py:505L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
-MODULE:src/ui/pages/_teammates_trio.py:568L
 MODULE:src/ui/pages/session_compare.py:518L

@@ -16,6 +16,9 @@ from typing import Any
 import polars as pl
 
 from src.data.services._teammates_impact_queries import _collect_impact_data
+from src.data.services._teammates_perf_queries import (
+    load_performance_scores_from_player_db as _load_performance_scores_from_player_db,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -267,6 +270,34 @@ class TeammatesService:
 
     # 8bis.A7 : _load_teammate_stats_legacy supprimé (v5.1)
     # Toutes les données coéquipiers sont dans shared_matches.duckdb
+
+    @staticmethod
+    def enrich_with_performance_score(
+        df: pl.DataFrame,
+        gamertag: str,
+        reference_db_path: str,
+        *,
+        is_main: bool = False,
+    ) -> pl.DataFrame:
+        """Ajoute performance_score depuis player_match_enrichment du joueur.
+
+        Lit la DB individuelle du joueur (ou la DB principale si is_main=True).
+        Retourne df inchangé si la DB n'existe pas ou n'a pas les données.
+        """
+        if df.is_empty() or "match_id" not in df.columns:
+            return df
+        base_dir = Path(reference_db_path).parent.parent
+        player_db = reference_db_path if is_main else str(base_dir / gamertag / "stats.duckdb")
+        match_ids = df["match_id"].cast(pl.Utf8).to_list()
+        scores = _load_performance_scores_from_player_db(player_db, match_ids)
+        if not scores:
+            return df
+        perf = (
+            df["match_id"]
+            .cast(pl.Utf8)
+            .map_elements(lambda m: scores.get(m), return_dtype=pl.Float64)
+        )
+        return df.with_columns(perf.alias("performance_score"))
 
     @staticmethod
     def enrich_series_with_perfect_kills(

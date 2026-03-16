@@ -89,22 +89,5 @@ class TestDropHighlightEventsGamertag:
         drop_gamertag_column(conn)  # second appel : colonne déjà absente → skip silencieux
 
 
-# ---------------------------------------------------------------------------
-# Tests _has_gamertag_column (WeaponKillsMixin helper)
-# ---------------------------------------------------------------------------
-
-
-class TestHasGamertainColumn:
-    """Vérifie le helper _has_gamertag_column."""
-
-    def test_returns_true_when_column_present(self) -> None:
-        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
-
-        conn = _make_conn_with_gamertag()
-        assert WeaponKillsMixin._has_gamertag_column(conn) is True
-
-    def test_returns_false_when_column_absent(self) -> None:
-        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
-
-        conn = _make_conn_without_gamertag()
-        assert WeaponKillsMixin._has_gamertag_column(conn) is False
+# _has_gamertag_column a été supprimée de WeaponKillsMixin lors du refactor v6
+# (résolution gamertag déléguée à v_gamertag_lookup, pas de fallback colonne)
