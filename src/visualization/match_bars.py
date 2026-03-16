@@ -19,7 +19,7 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
     df_: DataFrameLike,
     *,
     metric_col: str,
-    title: str,
+    title: str | None = None,
     y_axis_title: str,
     hover_label: str,
     bar_color: str,
@@ -50,7 +50,8 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
     if metric_col not in df_pl.columns or "start_time" not in df_pl.columns:
         return None
 
-    d = df_pl.select(["start_time", metric_col])
+    extra_cols = [c for c in ("map_name",) if c in df_pl.columns]
+    d = df_pl.select(["start_time", metric_col, *extra_cols])
     # Convertir start_time en Datetime si nécessaire
     st_dtype = d.schema["start_time"]
     if st_dtype == pl.String or st_dtype == pl.Utf8:
@@ -104,12 +105,14 @@ def plot_metric_bars_by_match(  # noqa: PLR0913
             hovertemplate=viz_t("hover_avg_smoothed", lang),
         )
     )
-    fig.update_layout(
-        title=title,
-        margin={"l": 40, "r": 20, "t": 40, "b": 90},
-        hovermode="x unified",
-        legend=get_legend_horizontal_bottom(),
-    )
+    layout_kwargs: dict = {
+        "margin": {"l": 40, "r": 20, "t": 40 if title else 10, "b": 90},
+        "hovermode": "x unified",
+        "legend": get_legend_horizontal_bottom(),
+    }
+    if title is not None:
+        layout_kwargs["title"] = title
+    fig.update_layout(**layout_kwargs)
     fig.update_yaxes(title_text=y_axis_title, rangemode="tozero")
     fig.update_xaxes(
         title_text=viz_t("axis_match_number", lang),
@@ -347,7 +350,6 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
         tickvals=list(range(len(labels)))[::step],
         ticktext=labels[::step],
         tickangle=-45,
-        type="category",
     )
 
     return apply_halo_plot_style(fig, height=320)
