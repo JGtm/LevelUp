@@ -1463,6 +1463,7 @@ div[data-testid="stNumberInput"] input:focus {
 }
 
 .os-table-wrap--map-hover {
+    overflow-x: visible;
     overflow-y: visible;
     max-height: none;
     clip-path: none;

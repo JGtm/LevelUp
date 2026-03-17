@@ -137,6 +137,16 @@ def test_load_css_fallback(tmp_path: Path):
     assert ".hero" in result
 
 
+def test_load_css_map_hover_wrapper_allows_horizontal_overflow():
+    """Le wrapper map-hover ne doit pas couper les popups en horizontal."""
+    from src.ui.styles import load_css
+
+    css_output = load_css()
+
+    assert ".os-table-wrap--map-hover {" in css_output
+    assert "overflow-x: visible;" in css_output
+
+
 # ---------------------------------------------------------------------------
 # _scoreboard_row_to_dict
 # ---------------------------------------------------------------------------
