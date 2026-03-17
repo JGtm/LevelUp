@@ -94,8 +94,6 @@ class _MatchQueriesPolarsMixin:
 
         if ctx.is_shared:
             mp_table = "shared.match_participants"
-        elif self._has_shared_table("match_participants"):
-            mp_table = "match_participants"
         else:
             return "", "NULL as rank"
 

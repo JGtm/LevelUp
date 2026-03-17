@@ -253,7 +253,7 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
         conn = self._get_connection()
         placeholders = ", ".join(["?" for _ in match_ids])
 
-        if self._has_shared_table("match_participants"):
+        if self.has_shared:
             try:
                 result = conn.execute(
                     f"""
@@ -278,7 +278,7 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
         """Charge team_mmr, enemy_mmr et kills/deaths/assists expected/stddev."""
         conn = self._get_connection()
 
-        if not self._has_shared_table("match_participants"):
+        if not self.has_shared:
             return None
 
         try:
@@ -414,10 +414,10 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
         sans qu'aucun joueur n'ait enregistré de points (crash serveur, partie
         non disputée).
         """
-        if not self._has_shared_table("match_participants"):
+        conn = self._get_connection()
+        if not self.has_shared:
             return False
         try:
-            conn = self._get_connection()
             result = conn.execute(
                 "SELECT COUNT(*) AS n,"
                 " COALESCE(SUM(kills), 0) AS k,"

@@ -178,9 +178,9 @@ class EncounterCareerMixin:
         Returns:
             Liste de dicts avec xuid, gamertag, total_encounters, etc.
         """
-        if not self._has_shared_table("match_participants"):
-            return []
         conn = self._get_connection()
+        if not self.has_shared:
+            return []
         kv_table = "shared.v_killer_victim_full"
         xuid = str(self._xuid)
         extra = len(exclude_xuids) if exclude_xuids else 0
@@ -279,7 +279,7 @@ class EncounterCareerMixin:
         Returns:
             Liste de dicts avec les colonnes du match.
         """
-        if not self._has_shared_table("mv_player_matches"):
+        if not self.has_shared:
             return []
         conn = self._get_connection()
         target_outcome = int(Outcome.WIN) if best else int(Outcome.LOSS)

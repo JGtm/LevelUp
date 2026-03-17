@@ -151,10 +151,10 @@ class RosterLoaderMixin(GamertagResolverMixin):
             None si le match n'existe pas ou si les données sont insuffisantes.
             Sinon un dict avec : my_team_id, my_team, enemy_team.
         """
-        if not self._has_shared_table("match_participants"):
+        conn = self._get_connection()
+        if not self.has_shared:
             return None
 
-        conn = self._get_connection()
         my_xuid_str = str(self._xuid).strip()
 
         try:
