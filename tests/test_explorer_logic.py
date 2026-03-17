@@ -389,8 +389,43 @@ class TestMatchTableHTML:
         html = render_match_table_html(df, waypoint_player="TestGT")
         assert "<table" in html
         assert "os-table" in html
+        assert "os-table-wrap--map-hover" in html
         assert "Aquarius" in html
         assert "abc123" in html
+
+    def test_render_match_table_html_page_params(self) -> None:
+        from src.ui.pages.match_table_html import render_match_table_html
+
+        df = pl.DataFrame(
+            {
+                "match_id": ["abc123"],
+                "start_time": [datetime(2025, 1, 10, 14, 0)],
+                "start_time_fr": ["10/01/2025 14:00"],
+                "map_name": ["Aquarius"],
+                "playlist_fr": ["Quick Play"],
+                "mode_ui": ["Slayer"],
+                "outcome": [2],
+                "outcome_label": ["Victoire"],
+                "score": ["50 - 40"],
+                "performance": [85],
+                "team_mmr": [1200.0],
+                "enemy_mmr": [1150.0],
+                "delta_mmr": [50.0],
+                "kda": [2.5],
+                "kills": [15],
+                "deaths": [6],
+                "max_killing_spree": [5],
+                "headshot_kills": [8],
+                "average_life_mmss": ["1:30"],
+                "assists": [3],
+                "accuracy": [0.45],
+                "ratio": [2.5],
+            }
+        )
+
+        html = render_match_table_html(df, page_params={"gamertag": "TestGT"})
+
+        assert "gamertag=TestGT" in html
 
     def test_render_match_table_html_empty(self) -> None:
         from src.ui.pages.match_table_html import render_match_table_html
