@@ -299,6 +299,11 @@ class CitationEngine(CitationDataLoaderMixin):
                 try:
                     return func(df_match) if df_match is not None else 0
                 except Exception:
+                    logger.debug(
+                        "compute_citation_for_match: fonction custom '%s' a échoué",
+                        func_name,
+                        exc_info=True,
+                    )
                     return 0
 
         return 0
