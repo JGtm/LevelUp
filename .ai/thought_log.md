@@ -7,6 +7,63 @@
 
 ## Journal
 
+### [2026-03-17] — Fix 3 erreurs runtime pages Coéquipiers / Win-Loss
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Bug `fgcolor [None, None]`** : Plotly rejette `"rgba(0,0,0,0)"` (alpha=0) dans une liste pour `bar.marker.pattern.fgcolor`. Fix dans `_teammates_trio_helpers.py` : remplacer la liste `["rgba(0,0,0,0)", "rgba(255,80,80,0.5)", "rgba(0,0,0,0)"]` par une couleur unique `"rgba(255, 80, 80, 0.5)"` (les barres avec `shape=""` ignorent le fgcolor de toute façon).
+- **Bug `ColumnNotFoundError: kills_per_min`** : `friend_sub` vient de `shared.match_participants` qui n'a pas de colonnes `*_per_min` pré-calculées. Fix dans `timeseries.py` : calcul des colonnes `kills_per_min`, `deaths_per_min`, `assists_per_min` à la volée dans `plot_per_minute_timeseries` quand elles sont absentes (`kills / (time_played_seconds / 60)`), avec `fill_nan(0.0)` pour éviter les divisions par zéro.
+- **Bug `title` requis** : déjà corrigé dans commit `e8f5c76` (`title: str` → `title: str | None = None`). Disparaît après rechargement Streamlit.
+
+**Fichiers modifiés** :
+- `src/ui/pages/_teammates_trio_helpers.py`
+- `src/visualization/timeseries.py`
+
+**Résultats** : Page Coéquipiers (vue trio et vue comparaison 1-1) et page Win/Loss ne produisent plus d'erreurs à l'affichage des graphiques.
+
+---
+
+### [2026-03-17] — Fix graphe "Score personnel par match" (win/loss page)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Bug "undefined"** : `plot_metric_bars_by_match` appelait `fig.update_layout(title=None)` — Plotly.js sérialisait `null` en `undefined` côté JS. Fix : ne passer `title` dans l'update_layout que si non-`None` (via `layout_kwargs` conditionnel). La marge top passe de 40 à 10 quand il n'y a pas de titre pour éviter l'espace vide.
+- **Labels sans map** : le `select(["start_time", metric_col])` excluait `map_name`, donc la branche `if "map_name" in d.columns` ne prenait jamais effet et les ticks affichaient la date/heure au lieu de `#N<br>MapName`. Fix : sélectionner `map_name` conditionnellement avec `extra_cols = [c for c in ("map_name",) if c in df_pl.columns]`.
+
+**Fichiers modifiés** :
+- `src/visualization/match_bars.py`
+
+**Résultats** : Plus de titre "undefined" affiché, les ticks X montrent maintenant `#1`, `#2`… avec le nom de map en dessous (comme le graphe streak).
+
+---
+
+### [2026-03-17] — Fix adornment rang carrière manquant pour JGtm / Chocoboflor
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Cause 1 — `profile.py` incomplet** : `ProfileAssets` ne contenait pas `adornment_path`, `load_profile_assets()` n'extrayait pas `adornment_image_url` de l'API, et `render_profile_header()` ne le passait pas à `get_hero_html()`. Fix : ajout du champ + résolution + passage.
+- **Cause 2 — URL malformée dans `_build_spnkr_coro`** (bug principal) : Dans `_resolve_spnkr_strategy`, les URLs gamecms `/hi/images/file/` extrayaient un `rel` sans `/`, et `_build_spnkr_coro` reconstruisait `https://gamecms-hacs.svc.halowaypoint.com<rel>` (hostname invalide `...halowaypoint.comcareer_rank/...`). Conséquence : `_try_spnkr_fetch_bytes` échouait → fallback `urllib` sans tokens → 401 Unauthorized.
+- **Fix** : Changer la branche `/hi/images/file/` dans `_resolve_spnkr_strategy` pour utiliser `use_direct_get=True, direct_url=raw` (GET direct avec auth headers, comme les autres URLs complètes). Uniform avec la stratégie des URLs `/hi/waypoint/file/images/`.
+- **Pourquoi MAdina fonctionnait** : Son cache JSON profile API avait `adornment_image_url` non-null (obtenu lors d'un fetch API antérieur avec tokens valides + le fichier était déjà en cache disque). JGtm/Chocoboflor avaient `adornment_image_url=null` dans leur cache (endpoint career rank player-gated sans leurs tokens propres) ; le DB fallback fournissait l'URL mais le download échouait à cause du bug URL.
+
+**Fichiers modifiés** :
+- `src/app/profile.py` : ajout `adornment_path` dans `ProfileAssets` + `load_profile_assets` + `render_profile_header`
+- `src/ui/player_assets.py` : fix stratégie GET direct pour URLs gamecms `/hi/images/file/`
+- `src/ui/profile_api_tokens.py` : `ensure_spnkr_tokens` accepte `db_path`; fallback LevelUp MSAL (cache process + silent refresh) si SPNKR_AZURE_CLIENT_ID non configuré
+- `src/app/main_helpers.py` : transmet `db_path` à `ensure_spnkr_tokens`
+
+**Résultats** :
+- Après fix, `_resolve_spnkr_strategy` retourne `use_direct_get=True` pour toutes les URLs gamecms complètes
+- `ensure_spnkr_tokens` tente maintenant (1) env direct, (2) SPNKR_AZURE_CLIENT_ID legacy, (3) LevelUp MSAL — permet d'obtenir les tokens même sans config Azure legacy
+- La prochaine visite d'une page JGtm/Chocoboflor déclenchera le téléchargement via les tokens LevelUp et l'image sera mise en cache
+
+**Prochaine étape** : Commit
+
+---
+
 ### [2026-03-16] — Fix étiquettes axe X page Escouade (#N + nom de map)
 
 **Statut** : Complété
