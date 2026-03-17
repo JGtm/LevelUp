@@ -468,6 +468,14 @@ def _fallback_formula_a(  # noqa: PLR0913
             ns_wb = timeline_ns.get(chunk_idx, {}).get(pi)
             if ns_wb:
                 wid_int = WEAPON_BYTES_TO_INT.get(ns_wb)
+                if wid_int is not None:
+                    logger.debug(
+                        "fallback_formula_a match=%s pi=%s chunk=%s → NS resolved weapon_id=%s",
+                        match_id,
+                        pi,
+                        chunk_idx,
+                        wid_int,
+                    )
 
         # 2. Fallback : raw FA timeline
         if wid_int is None:
@@ -477,6 +485,13 @@ def _fallback_formula_a(  # noqa: PLR0913
                 wid_int = WEAPON_BYTES_TO_INT.get(wid_bytes)
                 if wid_int is None:
                     wid_int = int.from_bytes(wid_bytes, byteorder="big")
+                logger.debug(
+                    "fallback_formula_a match=%s pi=%s chunk=%s → raw FA resolved weapon_id=%s",
+                    match_id,
+                    pi,
+                    chunk_idx,
+                    wid_int,
+                )
 
     conf = (
         "medium" if wid_int is not None and not swap else "low" if wid_int is not None else "none"

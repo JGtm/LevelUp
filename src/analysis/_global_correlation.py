@@ -10,6 +10,7 @@ d'events, toutes têtes triées par temps, claim-and-remove global bijection.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from src.analysis._kill_attribution import KillAttribution
@@ -22,6 +23,8 @@ from src.analysis._weapon_data import (
 
 if TYPE_CHECKING:
     from src.analysis._parser_logging import MatchLogCollector
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_TIMING = (650, 2000)
 
@@ -156,6 +159,14 @@ def _attribution_from_event(  # noqa: PLR0913
             ns_wb = timeline_ns.get(chunk_idx, {}).get(pi)
             if ns_wb:
                 wid_int = WEAPON_BYTES_TO_INT.get(ns_wb)
+                if wid_int is not None:
+                    logger.debug(
+                        "match=%s NS lookup hit pi=%s chunk=%s → weapon_id=%s",
+                        match_id,
+                        pi,
+                        chunk_idx,
+                        wid_int,
+                    )
     if wid_int is None:
         wid_int = int.from_bytes(ev["weapon_bytes"], byteorder="big")
     delta = int(kill["time_ms"] - ev["timestamp_ms"])
