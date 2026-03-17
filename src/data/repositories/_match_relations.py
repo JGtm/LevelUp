@@ -90,9 +90,9 @@ class MatchRelationsMixin(GamertagResolverMixin):
             target_team_id, map_name, playlist_name, pair_name, outcome,
             kills, deaths, assists, kda. Vide si shared indisponible.
         """
-        if not self._has_shared_table("match_participants"):
-            return pl.DataFrame()
         conn = self._get_connection()
+        if not self.has_shared:
+            return pl.DataFrame()
         try:
             result = conn.execute(
                 """

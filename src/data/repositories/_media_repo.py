@@ -23,9 +23,9 @@ class MediaLibraryMixin:
         Returns:
             Liste de tuples (match_id, start_time, duration_seconds). [] si indisponible.
         """
-        if not self._has_shared_table("match_registry"):
-            return []
         conn = self._get_connection()
+        if not self.has_shared:
+            return []
         try:
             return conn.execute(
                 """

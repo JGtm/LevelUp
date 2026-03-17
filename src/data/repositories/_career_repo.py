@@ -112,9 +112,9 @@ class CareerMixin:
         Returns:
             Liste de datetime ou [] si shared non disponible.
         """
-        if not self._has_shared_table("match_participants"):
-            return []
         conn = self._get_connection()
+        if not self.has_shared:
+            return []
         try:
             rows = conn.execute(
                 """
@@ -265,9 +265,9 @@ class CareerMixin:
         Returns:
             Nombre de matchs après le sync, 0 si shared indisponible.
         """
-        if not self._has_shared_table("match_participants"):
-            return 0
         conn = self._get_connection()
+        if not self.has_shared:
+            return 0
         try:
             row = conn.execute(
                 """

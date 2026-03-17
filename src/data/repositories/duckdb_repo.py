@@ -420,7 +420,7 @@ class DuckDBRepository(
         """
         conn = self._get_connection()
 
-        if self._has_shared_table("match_participants"):
+        if self.has_shared:
             try:
                 result = conn.execute(
                     """

@@ -39,7 +39,7 @@ class LegacyCompatMixin:
 
     def _collect_xuids_shared(self, conn, xuids: set[str], limit: int) -> None:
         """Collecte les XUIDs depuis shared.match_participants."""
-        if not self._has_shared_table("match_participants"):
+        if not self.has_shared:
             return
         try:
             rows = conn.execute(
