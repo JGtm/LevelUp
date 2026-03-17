@@ -86,6 +86,7 @@ data/
 - `src/ui/pages/` : Pages du dashboard
 - `src/ui/pages/career_top_matches_data.py` + `career_top_matches_render.py` : Top 10 meilleures/pires performances (Carrière) — v5.7
 - `src/ui/pages/match_view_weapon_kills.py` : Section armes dans vue match — v5.6
+- `src/ui/pages/match_view_scoreboard_detail.py` : Détails inline du scoreboard match (POC CSS-only, ligne dépliable) — v5.7
 - `src/ui/pages/teammates_weapons.py` : Onglet armes coéquipiers — v5.6
 - `src/ui/pages/setup_wizard.py` + `setup_wizard_logic.py` + `setup_wizard_xbox.py` : Assistant configuration initiale — v5.5
 - `src/ui/xbox_oauth_ui.py` + `src/utils/msal_device_flow.py` : Device Code Flow Xbox OAuth — v5.5

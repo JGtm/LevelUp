@@ -1681,6 +1681,141 @@ div[data-testid="stNumberInput"] input:focus {
     border-left: 4px solid rgba(213, 94, 0, 0.85);
 }
 
+.os-table.os-scoreboard tbody.os-sb-player .os-sb-detail-row {
+    display: none;
+}
+
+.os-table.os-scoreboard tbody.os-sb-player:has(.os-sb-toggle:checked) .os-sb-detail-row {
+    display: table-row;
+}
+
+.os-table.os-scoreboard tbody.os-sb-player:has(.os-sb-toggle:checked) tr.os-sb-row td.os-sb-td {
+    background: rgba(65, 214, 255, 0.08);
+}
+
+.os-table.os-scoreboard tbody.os-sb-player:has(.os-sb-toggle:checked) tr.os-sb-row td.os-sb-td:first-child {
+    color: #7ee7ff;
+}
+
+.os-table.os-scoreboard td.os-sb-detail-cell {
+    padding: 0;
+    border-top: 0;
+}
+
+.os-sb-toggle {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.os-sb-hit {
+    display: block;
+    width: 100%;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.os-sb-detail-panel {
+    padding: 14px 16px 16px;
+    background:
+        linear-gradient(180deg, rgba(18, 24, 34, 0.96), rgba(11, 16, 24, 0.98)),
+        radial-gradient(circle at top right, rgba(65, 214, 255, 0.10), transparent 45%);
+    border-top: 1px solid rgba(65, 214, 255, 0.18);
+    border-bottom: 1px solid rgba(65, 214, 255, 0.10);
+}
+
+.os-sb-detail-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.os-sb-detail-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(126, 231, 255, 0.24);
+    background: rgba(65, 214, 255, 0.08);
+    font-size: 0.72rem;
+    color: rgba(205, 238, 255, 0.86);
+}
+
+.os-sb-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.os-sb-detail-section {
+    padding: 12px;
+    border: 1px solid rgba(126, 231, 255, 0.10);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.os-sb-detail-title {
+    margin-bottom: 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(182, 196, 214, 0.76);
+}
+
+.os-sb-detail-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.os-sb-detail-item,
+.os-sb-detail-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.os-sb-detail-item--medal {
+    min-height: 42px;
+}
+
+.os-sb-detail-medal-icon {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    object-fit: contain;
+    border-radius: 6px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+.os-sb-detail-item-label {
+    font-size: 0.73rem;
+    color: rgba(182, 196, 214, 0.76);
+}
+
+.os-sb-detail-item-value,
+.os-sb-detail-pill-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #edf7ff;
+}
+
+@media (max-width: 720px) {
+    .os-sb-detail-head {
+        justify-content: flex-start;
+    }
+
+    .os-sb-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Citations (Halo 5) */
 .os-citation-top-gap {
     height: 10px;

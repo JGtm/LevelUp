@@ -7,6 +7,57 @@
 
 ## Journal
 
+### [2026-03-17] — Correction traduction FR des noms de playlists dans les tableaux
+
+**Statut** : Complété
+
+**Décision technique** :
+- `translate_playlist_name()` est un passthrough (prévu pour les UUIDs bruts uniquement). La traduction réelle devait venir de `meta.playlists.name_fr` via la vue `v_match_full`, mais les chemins de chargement (`mv_player_matches` MV et requêtes directes) ne sélectionnaient que `public_name` (EN).
+- Solution : ajouter une colonne `playlist_name_fr` dans le SELECT SQL (via `build_match_select`) en utilisant `COALESCE(p_meta.name_fr, p_meta.public_name, playlist_name)`.
+- Pour le chemin MV (`uses_mv=True`), ajout conditionnel d'un `LEFT JOIN meta.playlists p_meta` dans `resolve_query_context` si `meta` est attaché et que `name_fr` existe.
+- Pour le chemin non-MV, `_build_metadata_resolution` retourne maintenant un 5-tuple inclunt `playlist_name_fr_expr` (helper `_resolve_playlist_fr_expr` extrait pour garder la fonction <80L).
+- `_add_derived_columns` utilise `playlist_name_fr` directement comme `playlist_fr` si la colonne est présente.
+
+**Résultats** :
+- Tests repo + filters : 32 passed
+- Ruff sur fichiers modifiés : aucune erreur
+- `_metadata_resolution_cache` mis à jour en 5-tuple (breaking change interne géré)
+
+**Fichiers modifiés** :
+- `src/data/repositories/_metadata_resolution.py` — 5-tuple + helper `_resolve_playlist_fr_expr`
+- `src/data/repositories/_match_queries_helpers.py` — `QueryContext.playlist_name_fr_expr` + `build_match_select` + `resolve_query_context`
+- `src/app/_filters_apply.py` — utilise `playlist_name_fr` si disponible
+
+---
+
+### [2026-03-17] — POC scoreboard cliquable avec détail inline sans JavaScript
+
+**Statut** : Complété
+
+**Décision technique** :
+- La contrainte majeure n'était pas le HTML du tableau, mais le fait qu'un clic sur une ligne HTML rendue via `st.markdown(...)` ne peut pas rappeler proprement du Python sans rerun/navigation et donc sans risque de perdre l'onglet actif.
+- La POC retenue évite ce piège : chaque ligne du scoreboard devient un toggle purement HTML/CSS (`input[type=checkbox]` + `label`) et insère une vraie ligne de détail juste en dessous dans le même tableau.
+- L'ouverture reste donc inline, sans JavaScript applicatif ni query params, et le style du tableau existant est conservé.
+- Les détails affichés sont chargés côté serveur avant rendu : armes et médailles depuis shared, enrichissements/citations seulement si la DB locale du joueur existe.
+- Le panneau a ensuite été allégé pour supprimer les redondances visuelles (résumé KPI, gamertag répété, lien profil) et garder un layout compact.
+- Les médailles utilisent maintenant les icônes locales `static/medals/icons/*.png` dans des pastilles à hauteur fixe pour rester denses visuellement.
+
+**Fichiers modifiés** :
+- `src/ui/pages/match_view_scoreboard.py`
+- `src/ui/pages/match_view_scoreboard_detail.py`
+- `src/ui/i18n/pages/match_view.py`
+- `static/styles.css`
+- `tests/ui/test_match_view_scoreboard_expand.py`
+
+**Résultats observés** :
+- Le scoreboard reste visuellement un tableau HTML unique
+- Chaque cellule devient cliquable pour déplier le détail de sa ligne
+- Les enrichissements locaux restent opportunistes, sans casser les lignes de joueurs non synchronisés
+- Les médailles affichent une icône compacte quand le PNG local existe
+- 35 tests ciblés passent
+
+**Conclusion / prochaine étape** : la POC est stable et commitable telle quelle ; les prochaines itérations peuvent se concentrer sur le contenu métier du panneau (duels, rang historique, ouverture exclusive d'une seule ligne).
+
 ### [2026-03-17] — Fix clipping horizontal des miniatures de cartes dans les tableaux
 
 **Statut** : Complété

@@ -106,6 +106,30 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Tableau des scores",
         "en": "Scoreboard",
     },
+    "mv_scoreboard_detail_click_hint": {
+        "fr": "Clique sur une ligne pour afficher les détails inline.",
+        "en": "Click a row to expand inline details.",
+    },
+    "mv_scoreboard_detail_weapons": {
+        "fr": "Armes",
+        "en": "Weapons",
+    },
+    "mv_scoreboard_detail_local": {
+        "fr": "Enrichissements",
+        "en": "Enrichments",
+    },
+    "mv_scoreboard_detail_player_db": {
+        "fr": "DB joueur disponible",
+        "en": "Player DB available",
+    },
+    "mv_scoreboard_detail_shared_only": {
+        "fr": "Données shared uniquement",
+        "en": "Shared data only",
+    },
+    "mv_scoreboard_detail_bot_note": {
+        "fr": "Contexte",
+        "en": "Context",
+    },
     "mv_scoreboard_no_data": {
         "fr": "Statistiques des joueurs indisponibles pour ce match.",
         "en": "Player stats unavailable for this match.",
