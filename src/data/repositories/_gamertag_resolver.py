@@ -163,8 +163,8 @@ class GamertagResolverMixin:
     def load_match_player_gamertags(self, match_id: str) -> dict[str, str]:
         """Retourne un mapping XUID → Gamertag pour un match via v_gamertag_lookup.
 
-        Résolution : COALESCE(v_gamertag_lookup.gamertag, match_participants.gamertag).
-        Fallback si la vue n'est pas disponible : match_participants seul.
+        Résolution v6 : COALESCE(v_gamertag_lookup.gamertag, match_participants.gamertag).
+        La vue v_gamertag_lookup est garantie présente (architecture v6).
 
         Args:
             match_id: ID du match.
@@ -176,30 +176,26 @@ class GamertagResolverMixin:
             return {}
 
         conn = self._get_connection()
-        result: dict[str, str] = {}
-
         try:
-            if self._has_shared_view("v_gamertag_lookup") and self._has_shared_table(
-                "match_participants"
-            ):
-                return self._load_gamertags_via_view(conn, match_id)
-
-            # Fallback : match_participants seul (sans vue)
-            return self._load_gamertags_fallback(conn, match_id, result)
+            return self._load_gamertags_via_view(conn, match_id)
         except Exception as e:
             logger.debug("Erreur load_match_player_gamertags: %s", e)
-            return result
+            return {}
 
     def _load_gamertags_via_view(self, conn: object, match_id: str) -> dict[str, str]:
-        """Charge les gamertags via JOIN match_participants + v_gamertag_lookup."""
+        """Charge les gamertags via JOIN match_participants + v_gamertag_lookup.
+
+        Architecture v6 : xuid_aliases peuplée depuis highlight_events.raw_json
+        lors du sync (voir _shared_writes._upsert_event_aliases). La vue
+        v_gamertag_lookup est la source unifiée de résolution.
+        """
         result: dict[str, str] = {}
         rows = conn.execute(  # type: ignore[union-attr]
             """
             SELECT mp.xuid, COALESCE(vg.gamertag, mp.gamertag) AS gamertag
             FROM shared.match_participants mp
             LEFT JOIN shared.v_gamertag_lookup vg ON mp.xuid = vg.xuid
-            WHERE mp.match_id = ?
-              AND mp.xuid IS NOT NULL
+            WHERE mp.match_id = ? AND mp.xuid IS NOT NULL
             """,
             [match_id],
         ).fetchall()
@@ -209,32 +205,6 @@ class GamertagResolverMixin:
                 result[str(xuid)] = cleaned
         if not result:
             logger.debug("load_match_player_gamertags(%s): aucun joueur résolu", match_id)
-        return result
-
-    def _load_gamertags_fallback(
-        self,
-        conn: object,
-        match_id: str,
-        result: dict[str, str],
-    ) -> dict[str, str]:
-        """Fallback : charge les gamertags depuis les tables brutes (sans vue)."""
-        for src in ("shared.match_participants", "match_participants"):
-            table = src.split(".")[-1]
-            if (src.startswith("shared.") and not self._has_shared_table(table)) or (
-                not src.startswith("shared.") and not self._has_table(table)
-            ):
-                continue
-            try:
-                rows = conn.execute(  # type: ignore[union-attr]
-                    f"SELECT DISTINCT xuid, gamertag FROM {src} "
-                    "WHERE match_id = ? AND xuid IS NOT NULL AND gamertag IS NOT NULL",
-                    [match_id],
-                ).fetchall()
-                for xuid, gt in rows:
-                    if xuid and gt and str(xuid) not in result:
-                        result[str(xuid)] = str(gt)
-            except Exception:
-                pass
         return result
 
     def get_all_gamertags(self) -> list[str]:

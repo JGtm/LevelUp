@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,93 @@ def _get_match_source(conn: Any) -> str:
         return "v_match_full"
     except Exception:
         return "match_registry"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Aliases xuid → gamertag depuis highlight_events.raw_json
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def backfill_xuid_aliases_from_events(
+    shared_conn: Any,
+    *,
+    force: bool = False,
+) -> int:
+    """Backfille xuid_aliases depuis highlight_events.raw_json.
+
+    L'API stats Halo (/hi/matches/{id}/stats) ne retourne pas PlayerGamertag.
+    La source fiable des gamertags est le JSON des highlight events (film).
+    Cette fonction comble le manque en peuplant xuid_aliases à partir des raw_json.
+
+    En mode normal : ne traite que les XUIDs absents de xuid_aliases.
+    En mode force  : met à jour TOUS les XUIDs (écrase les gamertags existants).
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        force: Si True, met à jour même les XUIDs déjà présents.
+
+    Returns:
+        Nombre d'aliases insérés/mis à jour.
+    """
+    from src.data.sync.transformers._helpers import _normalize_gamertag
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    if force:
+        # Mode force : upsert sur tous les XUIDs avec gamertag dans raw_json
+        query = """
+            SELECT DISTINCT
+                he.xuid,
+                json_extract_string(he.raw_json, '$.gamertag') AS gamertag
+            FROM highlight_events he
+            WHERE he.xuid IS NOT NULL
+              AND json_extract_string(he.raw_json, '$.gamertag') IS NOT NULL
+              AND json_extract_string(he.raw_json, '$.gamertag') <> ''
+        """
+    else:
+        # Mode normal : seulement les XUIDs absents de xuid_aliases
+        query = """
+            SELECT DISTINCT
+                he.xuid,
+                json_extract_string(he.raw_json, '$.gamertag') AS gamertag
+            FROM highlight_events he
+            WHERE he.xuid IS NOT NULL
+              AND json_extract_string(he.raw_json, '$.gamertag') IS NOT NULL
+              AND json_extract_string(he.raw_json, '$.gamertag') <> ''
+              AND he.xuid NOT IN (
+                  SELECT xuid FROM xuid_aliases WHERE gamertag IS NOT NULL
+              )
+        """
+
+    rows = shared_conn.execute(query).fetchall()
+    if not rows:
+        logger.info("backfill_xuid_aliases_from_events: aucun alias à insérer")
+        return 0
+
+    # Normaliser les gamertags avant insertion
+    valid_rows = []
+    for xuid, gamertag_raw in rows:
+        gt = _normalize_gamertag(gamertag_raw)
+        if gt:
+            valid_rows.append((xuid, gt, None, "highlight_events", now))
+
+    if not valid_rows:
+        logger.info("backfill_xuid_aliases_from_events: aucun gamertag valide")
+        return 0
+
+    shared_conn.executemany(
+        """
+        INSERT INTO xuid_aliases (xuid, gamertag, last_seen, source, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (xuid) DO UPDATE SET
+            gamertag = EXCLUDED.gamertag,
+            source   = EXCLUDED.source,
+            updated_at = EXCLUDED.updated_at
+        """,
+        valid_rows,
+    )
+    logger.info("backfill_xuid_aliases_from_events: %d alias insérés/mis à jour", len(valid_rows))
+    return len(valid_rows)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

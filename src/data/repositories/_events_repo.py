@@ -96,7 +96,7 @@ class EventsMixin:
             result = conn.execute(
                 """
                 SELECT he.event_type, he.time_ms, he.xuid,
-                       vg.gamertag AS gamertag,
+                       vg.gamertag,
                        he.type_hint
                 FROM shared.highlight_events he
                 LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = he.xuid
