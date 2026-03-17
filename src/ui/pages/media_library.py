@@ -48,7 +48,7 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
     """Rend la page Bibliothèque médias."""
     st.subheader(t("media_library_title"))
 
-    if not bool(getattr(settings, "media_enabled", True)):
+    if not settings.media_enabled:
         st.info(t("media_disabled"))
         return
 
@@ -180,7 +180,7 @@ def _apply_media_filters(
     elif windows_df.is_empty() and assigned.is_empty():
         st.warning(t("ml_no_match_windows"))
     elif assigned.is_empty() and not unassigned.is_empty() and using_db:
-        tolerance = int(getattr(settings, "media_tolerance_minutes", 5) or 5)
+        tolerance = settings.media_tolerance_minutes
         st.warning(t("ml_no_associations", tol=tolerance))
 
     return assigned, unassigned

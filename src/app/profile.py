@@ -372,10 +372,7 @@ def render_profile_header(
             banner_path=assets.banner_path,
             backdrop_path=assets.backdrop_path,
             nameplate_path=assets.nameplate_path,
-            id_badge_text_color=str(
-                getattr(settings, "profile_id_badge_text_color", "") or ""
-            ).strip()
-            or None,
+            id_badge_text_color=settings.profile_id_badge_text_color.strip() or None,
             emblem_path=assets.emblem_path,
         ),
         unsafe_allow_html=True,
