@@ -21,6 +21,7 @@ from src.ui import (
 from src.ui.cache import cached_load_player_match_result
 from src.ui.date_formats import FMT_DATETIME_FR
 from src.ui.i18n import t
+from src.ui.pages.win_loss_table_style import map_name_cell_html
 from src.ui.player_assets import ensure_local_image_path
 from src.ui.vectorize_helpers import build_mapping
 from src.visualization._compat import DataFrameLike, ensure_polars
@@ -364,6 +365,8 @@ def _build_html_rows(  # noqa: C901, PLR0912
                 except Exception:
                     display = "-"
                 tds.append(f"<td style='{style}'>{html_lib.escape(display)}</td>")
+            elif key == "map_name":
+                tds.append(map_name_cell_html(r.get(key)))
             else:
                 val = _fmt_value(r.get(key))
                 tds.append(f"<td>{html_lib.escape(val)}</td>")
@@ -403,7 +406,7 @@ def render_friends_history_table(
     body_rows = _build_html_rows(view, cols, HALO_COLORS.as_dict())
 
     st.markdown(
-        "<div class='os-table-wrap'><table class='os-table'><thead><tr>"
+        "<div class='os-table-wrap os-table-wrap--map-hover'><table class='os-table'><thead><tr>"
         + head
         + "</tr></thead><tbody>"
         + "".join(body_rows)

@@ -7,6 +7,28 @@
 
 ## Journal
 
+### [2026-03-17] — Déploiement global du hover maps sur les tableaux HTML
+
+**Statut** : Complété
+
+**Décision technique** :
+- Le hover miniature était déjà actif sur Explorer/Historique via `render_match_table_html(...)`, mais plusieurs tableaux HTML rendaient encore la colonne map manuellement.
+- Approche retenue : réutiliser `map_name_cell_html(...)` pour éviter une troisième implémentation du HTML hover, et ajouter systématiquement le wrapper `os-table-wrap--map-hover` quand un tableau HTML contient une colonne carte.
+- Tableaux couverts dans cette passe : Top carrière, historique coéquipiers, historique comparaison de session.
+- Les pages qui utilisaient déjà `render_match_table_html(...)` n'ont pas été retouchées.
+
+**Fichiers modifiés** :
+- `src/ui/pages/career_top_matches_render.py`
+- `src/ui/pages/teammates_helpers.py`
+- `src/ui/pages/_session_compare_history.py`
+- `tests/ui/test_map_hover_table_rollout.py`
+
+**Résultats** :
+- Les tableaux HTML avec noms de maps utilisent maintenant le même pattern hover miniature
+- 41 tests ciblés passent
+
+**Conclusion** : la propagation du hover doit se faire au niveau de la cellule map ET du wrapper de table ; sans wrapper non-clippant, le HTML hover seul ne suffit pas.
+
 ### [2026-03-17] — Fix hover miniatures de maps dans les tableaux Streamlit
 
 **Statut** : Complété
