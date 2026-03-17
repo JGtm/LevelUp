@@ -13,6 +13,7 @@ from src.ui.pages.career_top_matches_data import (
     load_top_best_matches,
     load_top_worst_matches,
 )
+from src.ui.pages.win_loss_table_style import map_name_cell_html
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +120,6 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
         badge = _badge_html(dom_flag, best=best)
 
         mode = html.escape(str(row.get("game_variant_name") or row.get("playlist_name") or "—"))
-        map_name = html.escape(str(row.get("map_name") or "—"))
         score = html.escape(_format_score(row.get("my_team_score"), row.get("enemy_team_score")))
         kda = html.escape(_format_kda(row))
         kd = _kd_ratio(row)
@@ -132,7 +132,7 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
             f"<tr class='os-sb-row'>"
             f"<td class='os-sb-td' style='white-space:nowrap'>{date_str}</td>"
             f"<td class='os-sb-td'>{mode}</td>"
-            f"<td class='os-sb-td'>{map_name}</td>"
+            f"{map_name_cell_html(row.get('map_name')).replace('<td', "<td class='os-sb-td'", 1)}"
             f"<td class='os-sb-td' style='font-weight:600'>{score}</td>"
             f"<td class='os-sb-td'>{kda}</td>"
             f"<td class='os-sb-td'{kd_style}>{html.escape(kd)}</td>"
@@ -142,10 +142,12 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
         )
 
     return (
+        "<div class='os-table-wrap os-table-wrap--map-hover'>"
         f"<table class='os-sb-table' style='width:100%'>"
         f"<thead><tr>{head_cells}</tr></thead>"
         f"<tbody>{''.join(body)}</tbody>"
         f"</table>"
+        "</div>"
     )
 
 
