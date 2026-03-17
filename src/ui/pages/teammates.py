@@ -159,10 +159,11 @@ def render_teammates_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
         [lbl for lbl in _persisted if lbl in opts_map] if isinstance(_persisted, list) else []
     )
     _effective_default = _valid_persisted if _valid_persisted else default_labels
+    if "teammates_picked_labels" not in st.session_state:
+        st.session_state["teammates_picked_labels"] = _effective_default
     picked_labels = st.multiselect(
         t("tm_select_teammates"),
         options=list(opts_map.keys()),
-        default=_effective_default,
         key="teammates_picked_labels",
         max_selections=3,
     )
