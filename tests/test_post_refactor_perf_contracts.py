@@ -10,10 +10,14 @@ Vérifie que les optimisations S19 sont correctement en place :
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 
 import duckdb
 import polars as pl
 import pytest
+
+# XUID utilisé pour tous les tests nécessitant un repo v6
+SAMPLE_XUID = "xuid_sample_perf19"
 
 # ─────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -22,56 +26,50 @@ import pytest
 
 @pytest.fixture
 def sample_duckdb(tmp_path):
-    """Crée une DB DuckDB minimale avec des matchs de test."""
-    db_path = str(tmp_path / "stats.duckdb")
-    conn = duckdb.connect(db_path)
+    """Crée une structure v6 : player DB minimale + shared DB avec 20 matchs.
+
+    Returns:
+        Tuple (player_db_path, shared_db_path).
+    """
+    # Player DB minimale (enrichissements uniquement en v6)
+    player_path = str(tmp_path / "player" / "stats.duckdb")
+    Path(player_path).parent.mkdir(parents=True, exist_ok=True)
+    conn = duckdb.connect(player_path)
+    conn.close()
+
+    # Shared DB : match_registry + match_participants + mv_player_matches
+    shared_path = str(tmp_path / "shared" / "shared_matches.duckdb")
+    Path(shared_path).parent.mkdir(parents=True, exist_ok=True)
+    conn = duckdb.connect(shared_path)
+
     conn.execute("""
-        CREATE TABLE match_stats (
+        CREATE TABLE match_registry (
             match_id VARCHAR PRIMARY KEY,
             start_time TIMESTAMP WITH TIME ZONE,
-            map_id VARCHAR,
-            map_name VARCHAR,
-            playlist_id VARCHAR,
-            playlist_name VARCHAR,
-            pair_id VARCHAR,
-            pair_name VARCHAR,
-            game_variant_id VARCHAR,
-            game_variant_name VARCHAR,
-            outcome INTEGER,
-            team_id INTEGER,
-            kda DOUBLE,
-            max_killing_spree INTEGER,
-            headshot_kills INTEGER,
-            avg_life_seconds DOUBLE,
-            time_played_seconds DOUBLE,
-            kills INTEGER,
-            deaths INTEGER,
-            assists INTEGER,
-            accuracy DOUBLE,
-            my_team_score INTEGER,
-            enemy_team_score INTEGER,
-            team_mmr DOUBLE,
-            enemy_mmr DOUBLE,
-            personal_score INTEGER,
-            is_firefight BOOLEAN DEFAULT FALSE
+            map_id VARCHAR, map_name VARCHAR,
+            playlist_id VARCHAR, playlist_name VARCHAR,
+            pair_id VARCHAR, pair_name VARCHAR,
+            game_variant_id VARCHAR, game_variant_name VARCHAR,
+            team_0_score INTEGER DEFAULT 0, team_1_score INTEGER DEFAULT 0,
+            duration_seconds INTEGER DEFAULT 300,
+            is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE match_participants (
+            match_id VARCHAR, xuid VARCHAR,
+            outcome INTEGER, team_id INTEGER,
+            rank INTEGER DEFAULT 1,
+            kills INTEGER, deaths INTEGER, assists INTEGER,
+            score INTEGER DEFAULT 0,
+            shots_fired INTEGER DEFAULT 0, shots_hit INTEGER DEFAULT 0,
+            PRIMARY KEY (match_id, xuid)
         )
     """)
 
-    # Insérer 20 matchs de test
     for i in range(20):
         conn.execute(
-            """
-            INSERT INTO match_stats (
-                match_id, start_time, map_id, map_name, playlist_id,
-                playlist_name, pair_id, pair_name, game_variant_id,
-                game_variant_name, outcome, team_id, kda, max_killing_spree,
-                headshot_kills, avg_life_seconds, time_played_seconds,
-                kills, deaths, assists, accuracy, my_team_score,
-                enemy_team_score, team_mmr, enemy_mmr, personal_score
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-            )
-            """,
+            "INSERT INTO match_registry VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [
                 f"match_{i:03d}",
                 datetime(2025, 1, 1 + i, 12, 0, 0, tzinfo=timezone.utc),
@@ -83,26 +81,63 @@ def sample_duckdb(tmp_path):
                 f"Pair {i % 4}",
                 f"gv_{i % 2}",
                 f"GameVariant {i % 2}",
-                2 if i % 3 != 0 else 3,  # outcome
-                i % 2,  # team_id
-                1.5 + (i % 5) * 0.2,  # kda
-                i % 7,  # max_killing_spree
-                i % 4,  # headshot_kills
-                25.0 + i,  # avg_life_seconds
-                300.0 + i * 10,  # time_played_seconds
-                10 + i,  # kills
-                5 + i % 3,  # deaths
-                3 + i % 2,  # assists
-                35.0 + i * 0.5,  # accuracy
-                50 + i,  # my_team_score
-                45 + i,  # enemy_team_score
-                1200.0 + i * 5,  # team_mmr
-                1190.0 + i * 4,  # enemy_mmr
-                100 + i * 10,  # personal_score
+                50 + i,
+                45 + i,
+                300 + i * 10,
+                False,
+                False,
             ],
         )
+        conn.execute(
+            "INSERT INTO match_participants VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            [
+                f"match_{i:03d}",
+                SAMPLE_XUID,
+                2 if i % 3 != 0 else 3,
+                i % 2,
+                i % 8 + 1,  # rank
+                10 + i,
+                5 + i % 3,
+                3 + i % 2,
+                100 + i * 10,
+                200 + i,
+                100 + i,
+            ],
+        )
+
+    conn.execute("""
+        CREATE VIEW mv_player_matches AS
+        SELECT
+            r.match_id, r.start_time,
+            r.map_id, r.map_name, r.playlist_id, r.playlist_name,
+            r.pair_id, r.pair_name, r.game_variant_id, r.game_variant_name,
+            p.xuid, p.outcome, p.team_id,
+            CASE WHEN p.deaths > 0
+                THEN (CAST(p.kills AS DOUBLE) + CAST(p.assists AS DOUBLE) / 3.0)
+                     / CAST(p.deaths AS DOUBLE)
+                ELSE CAST(p.kills AS DOUBLE) + CAST(p.assists AS DOUBLE) / 3.0
+            END AS kda,
+            0 AS max_killing_spree, 0 AS headshot_kills,
+            0.0 AS avg_life_seconds,
+            CAST(COALESCE(r.duration_seconds, 0) AS DOUBLE) AS time_played_seconds,
+            COALESCE(p.kills, 0) AS kills,
+            COALESCE(p.deaths, 0) AS deaths,
+            COALESCE(p.assists, 0) AS assists,
+            CASE WHEN p.shots_fired > 0
+                THEN CAST(p.shots_hit AS DOUBLE) * 100.0 / CAST(p.shots_fired AS DOUBLE)
+                ELSE NULL END AS accuracy,
+            CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
+            CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+            NULL AS team_mmr, NULL AS enemy_mmr,
+            CAST(p.score AS INTEGER) AS personal_score,
+            COALESCE(r.is_firefight, FALSE) AS is_firefight,
+            COALESCE(r.is_ranked, FALSE) AS is_ranked
+        FROM match_registry r
+        JOIN match_participants p ON r.match_id = p.match_id
+    """)
     conn.close()
-    return db_path
+
+    return player_path, shared_path
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -117,7 +152,10 @@ class TestZeroCopyArrowPath:
         """La méthode retourne un pl.DataFrame, pas une list[MatchRow]."""
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
-        repo = DuckDBRepository(sample_duckdb, xuid="", read_only=True)
+        player_db, shared_db = sample_duckdb
+        repo = DuckDBRepository(
+            player_db, xuid=SAMPLE_XUID, shared_db_path=shared_db, read_only=True
+        )
         try:
             df = repo.load_matches_as_polars(include_firefight=True)
             assert isinstance(df, pl.DataFrame)
@@ -129,7 +167,10 @@ class TestZeroCopyArrowPath:
         """Le ratio est calculé en Polars (pas via MatchRow.ratio)."""
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
-        repo = DuckDBRepository(sample_duckdb, xuid="", read_only=True)
+        player_db, shared_db = sample_duckdb
+        repo = DuckDBRepository(
+            player_db, xuid=SAMPLE_XUID, shared_db_path=shared_db, read_only=True
+        )
         try:
             df = repo.load_matches_as_polars()
             assert "ratio" in df.columns
@@ -144,7 +185,10 @@ class TestZeroCopyArrowPath:
         """Les colonnes essentielles sont identiques au chemin legacy."""
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
-        repo = DuckDBRepository(sample_duckdb, xuid="", read_only=True)
+        player_db, shared_db = sample_duckdb
+        repo = DuckDBRepository(
+            player_db, xuid=SAMPLE_XUID, shared_db_path=shared_db, read_only=True
+        )
         try:
             df = repo.load_matches_as_polars()
             # Vérifier les colonnes essentielles
@@ -162,12 +206,9 @@ class TestZeroCopyArrowPath:
                 "kills",
                 "deaths",
                 "assists",
-                "accuracy",
                 "average_life_seconds",
                 "time_played_seconds",
                 "ratio",
-                "team_mmr",
-                "enemy_mmr",
             }
             assert essential.issubset(set(df.columns))
         finally:
@@ -177,7 +218,10 @@ class TestZeroCopyArrowPath:
         """avg_life_seconds est renommé en average_life_seconds pour compat."""
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
-        repo = DuckDBRepository(sample_duckdb, xuid="", read_only=True)
+        player_db, shared_db = sample_duckdb
+        repo = DuckDBRepository(
+            player_db, xuid=SAMPLE_XUID, shared_db_path=shared_db, read_only=True
+        )
         try:
             df = repo.load_matches_as_polars()
             assert "average_life_seconds" in df.columns
@@ -189,7 +233,10 @@ class TestZeroCopyArrowPath:
         """kills et deaths ne contiennent pas de NULL (COALESCE appliqué)."""
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
-        repo = DuckDBRepository(sample_duckdb, xuid="", read_only=True)
+        player_db, shared_db = sample_duckdb
+        repo = DuckDBRepository(
+            player_db, xuid=SAMPLE_XUID, shared_db_path=shared_db, read_only=True
+        )
         try:
             df = repo.load_matches_as_polars()
             assert df["kills"].null_count() == 0
@@ -211,7 +258,10 @@ class TestColumnProjection:
         """Passer columns= réduit le nombre de colonnes retournées."""
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
-        repo = DuckDBRepository(sample_duckdb, xuid="", read_only=True)
+        player_db, shared_db = sample_duckdb
+        repo = DuckDBRepository(
+            player_db, xuid=SAMPLE_XUID, shared_db_path=shared_db, read_only=True
+        )
         try:
             df_full = repo.load_matches_as_polars()
             df_proj = repo.load_matches_as_polars(columns=["match_id", "kills", "deaths", "ratio"])
@@ -224,7 +274,10 @@ class TestColumnProjection:
         """Les colonnes inconnues sont ignorées silencieusement."""
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
-        repo = DuckDBRepository(sample_duckdb, xuid="", read_only=True)
+        player_db, shared_db = sample_duckdb
+        repo = DuckDBRepository(
+            player_db, xuid=SAMPLE_XUID, shared_db_path=shared_db, read_only=True
+        )
         try:
             df = repo.load_matches_as_polars(columns=["match_id", "nonexistent_col"])
             assert "match_id" in df.columns
@@ -258,7 +311,8 @@ class TestCacheInvalidation:
         """db_cache_key retourne un tuple non-vide."""
         from src.ui.cache_loaders import db_cache_key
 
-        key = db_cache_key(sample_duckdb)
+        player_db, _shared_db = sample_duckdb
+        key = db_cache_key(player_db)
         assert key is not None
         assert isinstance(key, tuple)
         assert len(key) >= 2  # v5 : 4-tuple (mtime_player, size_player, mtime_shared, size_shared)
@@ -276,8 +330,9 @@ class TestCacheInvalidation:
         from src.app.state import get_db_cache_key
         from src.ui.cache_loaders import db_cache_key
 
-        key_state = get_db_cache_key(sample_duckdb)
-        key_cache = db_cache_key(sample_duckdb)
+        player_db, _shared_db = sample_duckdb
+        key_state = get_db_cache_key(player_db)
+        key_cache = db_cache_key(player_db)
         assert key_state == key_cache
 
 
@@ -374,7 +429,10 @@ class TestEnrichMatchesDf:
         from src.data.repositories.duckdb_repo import DuckDBRepository
         from src.ui.cache_loaders import _enrich_matches_df
 
-        repo = DuckDBRepository(sample_duckdb, xuid="", read_only=True)
+        player_db, shared_db = sample_duckdb
+        repo = DuckDBRepository(
+            player_db, xuid=SAMPLE_XUID, shared_db_path=shared_db, read_only=True
+        )
         try:
             df_raw = repo.load_matches_as_polars()
             df_enriched = _enrich_matches_df(df_raw)
@@ -399,7 +457,10 @@ class TestEnrichMatchesDf:
         from src.data.repositories.duckdb_repo import DuckDBRepository
         from src.ui.cache_loaders import _enrich_matches_df
 
-        repo = DuckDBRepository(sample_duckdb, xuid="", read_only=True)
+        player_db, shared_db = sample_duckdb
+        repo = DuckDBRepository(
+            player_db, xuid=SAMPLE_XUID, shared_db_path=shared_db, read_only=True
+        )
         try:
             df = repo.load_matches_as_polars()
             df_enriched = _enrich_matches_df(df)

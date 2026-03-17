@@ -113,6 +113,21 @@ def shared_db(tmp_path: Path) -> Path:
             ) mp ON xa.xuid = mp.xuid
             WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL
         """)
+        # Vue v_killer_victim_full requise par _killer_victim_repo.py (v6)
+        conn.execute("""
+            CREATE VIEW v_killer_victim_full AS
+            SELECT
+                kv.match_id,
+                kv.killer_xuid,
+                COALESCE(vk.gamertag, kv.killer_gamertag, kv.killer_xuid) AS killer_gamertag,
+                kv.victim_xuid,
+                COALESCE(vv.gamertag, kv.victim_gamertag, kv.victim_xuid) AS victim_gamertag,
+                kv.kill_count,
+                kv.time_ms
+            FROM killer_victim_pairs kv
+            LEFT JOIN v_gamertag_lookup vk ON kv.killer_xuid = vk.xuid
+            LEFT JOIN v_gamertag_lookup vv ON kv.victim_xuid = vv.xuid
+        """)
     return db_path
 
 

@@ -340,6 +340,19 @@ def _create_shared_for_scoreboard(tmp_path: Path) -> tuple[Path, Path, Path]:
     # Alias pour xuid_d (gamertag NULL dans match_participants → résolu via xuid_aliases)
     sh.execute("INSERT INTO xuid_aliases VALUES ('xuid_d', 'Delta')")
 
+    sh.execute("""
+        CREATE VIEW v_gamertag_lookup AS
+        WITH mp_agg AS (
+            SELECT xuid, MAX(gamertag) AS gamertag
+            FROM match_participants WHERE gamertag IS NOT NULL GROUP BY xuid
+        )
+        SELECT COALESCE(xa.xuid, mp.xuid) AS xuid,
+               COALESCE(xa.gamertag, mp.gamertag) AS gamertag
+        FROM xuid_aliases xa
+        FULL OUTER JOIN mp_agg mp ON xa.xuid = mp.xuid
+        WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL
+    """)
+
     # Perfect Kills pour xuid_a : 2 médailles
     sh.execute("INSERT INTO medals_earned VALUES ('match-sc01', 'xuid_a', 1512363953, 2)")
     # Autre médaille (non Perfect Kill) pour xuid_a → ne doit PAS être comptée
@@ -362,6 +375,11 @@ def _create_shared_for_scoreboard(tmp_path: Path) -> tuple[Path, Path, Path]:
             ("match-sc01", "xuid_a", 100),
         ],
     )
+    sh.execute("""
+        CREATE VIEW v_weapon_kills AS
+        SELECT match_id, xuid, weapon_id, weapon_id AS effective_weapon_id
+        FROM weapon_kills
+    """)
 
     sh.close()
     return stats_path, shared_path, meta_path

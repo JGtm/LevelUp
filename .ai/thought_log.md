@@ -7,6 +7,36 @@
 
 ## Journal
 
+### [2026-03-17] — Adaptation tests v6 : architecture shared_matches obligatoire
+
+**Statut** : Complété
+
+**Décision technique** :
+Mise à jour de l'ensemble de la suite de tests pour refléter l'architecture v6 où `DuckDBRepository` exige obligatoirement une `shared_matches.duckdb` avec `mv_player_matches`. Sans shared DB → `RuntimeError("shared_matches.duckdb indisponible")`. Sans XUID → `RuntimeError("XUID manquant")`.
+
+Fichiers modifiés (16 fichiers, 0 régression) :
+- **`test_xuid_resolution_regression.py`** : ajout `import pytest` manquant, renommage test empty-xuid vers `test_empty_xuid_with_shared_raises_error` (attend RuntimeError)
+- **`test_performance_optimizations.py`** : 3 tests renommés pour valider les RuntimeError v6
+- **`test_post_refactor_perf_contracts.py`** : fixture `sample_duckdb` → tuple (player, shared) avec `match_registry + match_participants(+rank) + mv_player_matches`; 9 tests mis à jour
+- **`test_career_antagonists.py`** : ajout `v_killer_victim_full` dans shared fixture
+- **`test_duckdb_repository_v5.py`** + **`test_repository_shared_v5.py`** : tests sans shared DB → expect RuntimeError
+- **`test_duckdb_repository_schema_contract.py`** : shared DB + `match_registry + mv_player_matches` dans le test des méthodes
+- **`tests/integration/test_app_data_to_chart_flow.py`** : shared DB enrichie (`match_registry + v_gamertag_lookup + mv_player_matches`)
+- **`tests/integration/test_app_partial_data_to_chart_flow.py`** : fixture → tuple (player, shared), shared créée avec `match_registry + match_participants + mv_player_matches + v_gamertag_lookup`
+- **`tests/integration/test_app_partial_participants_flow.py`** : ajout `v_gamertag_lookup` dans shared
+- **`tests/integration/test_pve_scoreboard_integration.py`** : `v_gamertag_lookup` (CTE) + `v_weapon_kills` ajoutés dans shared; création de `v_weapon_kills` après `weapon_kills`
+- **`tests/integration/test_refdata_antagonists.py`** : shared fixture complète avec toutes les vues v6; `v_gamertag_lookup` simplifiée (source=xuid_aliases only, car match_participants sans colonne gamertag dans ce fixture)
+- **`tests/performance/test_load_v5.py`** : `test_load_1000_matches_v4_under_2s` → expect RuntimeError en mode sans shared
+
+**Résultats** :
+- 4941 tests passent, 2 skipped, 0 échec — suite complète (unit + intégration + performance)
+- Pré-existants : 2 skips sur données réelles non montées (inchangés)
+
+**Conclusion** :
+Tous les tests reflètent fidèlement l'architecture v6. Plus aucun test ne suppose un fallback local `match_stats`. La dette accumulée par le refactor id-resolution-cleanup est soldée.
+
+---
+
 ### [2026-03-17] — Audit correctifs A-H : Guard E, qualité weapon_kills, documentation bitmask
 
 **Statut** : Complété
