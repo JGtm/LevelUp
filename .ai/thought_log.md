@@ -7,6 +7,23 @@
 
 ## Journal
 
+### [2026-03-17] — Optimisations pipeline weapon_kills (P1-P4)
+
+**Statut** : Complété
+
+**Décision technique** :
+- P1 : Suppression du doublon `UPDATE match_registry SET backfill_completed` posé deux fois (service + `_match_processing.py`). `mark_weapon_backfill_done()` dans le service suffit.
+- P2 : Fusion des deux `asyncio.to_thread` séquentiels (`_resolve_player_indices` + `_scan_all_chunks`) en un seul `_run_scan_phase`. Évite le double `index_chunk()` sur le chunk 0.
+- P3 : Ajout de `build_weapon_timelines()` dans `weapon_parser.py` — raw + NS en une seule boucle sur les chunks. Wrappers `build_weapon_timeline` / `build_weapon_timeline_ns` conservés pour les tests.
+- P4 : `load_all_kills_for_match` réécrit avec un seul LEFT JOIN SQL au lieu de 2 requêtes + join Python O(kills × medals). Filtre `ABS(time_ms) <= 500` délégué à DuckDB.
+- Renommage `_scan_and_resolve` → `_run_scan_phase` (règle SRP : pas de `_and_` dans les noms).
+
+**Résultats** : 117/117 tests weapon verts. Ruff propre sur les 4 fichiers modifiés. 4 échecs pré-existants non liés sur la branche.
+
+**Fichiers** : `_match_processing.py`, `weapon_parser.py`, `weapon_extraction_service.py`, `_weapon_kills_repo.py`.
+
+**Prochaine étape** : P5 (streaming download/scan intra-match) — sprint dédié.
+
 ### [2026-03-17] — Correction traduction FR des noms de playlists dans les tableaux
 
 **Statut** : Complété
