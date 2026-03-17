@@ -161,16 +161,6 @@ LIMIT 10
 class EncounterCareerMixin:
     """Mixin fournissant les données de rencontres et top matchs pour DuckDBRepository."""
 
-    def _get_kv_source_shared(self) -> str:
-        """Retourne la meilleure source killer/victim disponible dans shared.
-
-        Returns:
-            Nom qualifié de la table (shared.v_killer_victim_full ou shared.killer_victim_pairs).
-        """
-        if self._has_shared_table("v_killer_victim_full"):
-            return "shared.v_killer_victim_full"
-        return "shared.killer_victim_pairs"
-
     def load_top_encountered(
         self,
         limit: int = 10,
@@ -191,7 +181,7 @@ class EncounterCareerMixin:
         if not self._has_shared_table("match_participants"):
             return []
         conn = self._get_connection()
-        kv_table = self._get_kv_source_shared()
+        kv_table = "shared.v_killer_victim_full"
         xuid = str(self._xuid)
         extra = len(exclude_xuids) if exclude_xuids else 0
         sql_limit = limit + extra
@@ -245,10 +235,8 @@ class EncounterCareerMixin:
         Returns:
             Liste de dicts avec opponent_xuid, opponent_gamertag, times_killed, etc.
         """
-        if not self._has_shared_table("killer_victim_pairs"):
-            return []
         conn = self._get_connection()
-        kv_table = self._get_kv_source_shared()
+        kv_table = "shared.v_killer_victim_full"
         xuid = str(self._xuid)
         order_col = "times_killed_by" if mode == "nemesis" else "times_killed"
         extra = len(exclude_xuids) if exclude_xuids else 0
