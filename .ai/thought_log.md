@@ -7,6 +7,25 @@
 
 ## Journal
 
+### [2026-03-17] — Fix clipping horizontal des miniatures de cartes dans les tableaux
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Cause racine** : le mode `.os-table-wrap--map-hover` supprimait déjà la coupe verticale (`overflow-y: visible`) mais héritait encore de `overflow-x: auto` depuis `.os-table-wrap`. Résultat : les popups `.map-popup` pouvaient dépasser en hauteur, mais restaient tronqués dès qu'ils sortaient à droite du tableau.
+- **Fix retenu** : forcer aussi `overflow-x: visible` sur `.os-table-wrap--map-hover` pour que les miniatures puissent dépasser librement du conteneur sur les tableaux HTML qui utilisent le hover map.
+- **Garde-fou** : ajout d'un test ciblé sur `load_css()` pour vérifier que le wrapper map-hover expose bien `overflow-x: visible`.
+
+**Fichiers modifiés** :
+- `static/styles.css`
+- `tests/ui/test_match_table_html.py`
+
+**Résultats** :
+- Les miniatures de cartes ne sont plus coupées quand elles débordent horizontalement du tableau
+- 14 tests ciblés passent
+
+**Conclusion** : pour ces tooltips CSS-only, il faut lever le clipping sur les deux axes ; corriger uniquement `overflow-y` ne suffit pas.
+
 ### [2026-03-17] — Déploiement global du hover maps sur les tableaux HTML
 
 **Statut** : Complété
