@@ -22,7 +22,7 @@ from src.ui.medals import render_medals_grid
 from src.ui.pages.teammates_charts import render_trio_charts
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.visualization._compat import DataFrameLike, ensure_polars
-from src.visualization.theme import apply_halo_plot_style
+from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 # ---------------------------------------------------------------------------
 # Session trio
@@ -142,7 +142,7 @@ def _render_per_minute_stats(  # noqa: PLR0913
                     "color": _pm_color,
                     "pattern": {
                         "shape": ["", "/", ""],
-                        "fgcolor": ["rgba(0,0,0,0)", "rgba(255, 80, 80, 0.5)", "rgba(0,0,0,0)"],
+                        "fgcolor": "rgba(255, 80, 80, 0.5)",
                         "solidity": 0.15,
                     },
                 },
@@ -153,8 +153,8 @@ def _render_per_minute_stats(  # noqa: PLR0913
     fig_pm.update_layout(
         barmode="group",
         height=350,
-        margin={"l": 40, "r": 20, "t": 30, "b": 40},
-        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "x": 0.5, "xanchor": "center"},
+        margin={"l": 40, "r": 20, "t": 30, "b": 80},
+        legend=get_legend_horizontal_bottom(),
     )
     fig_pm = apply_halo_plot_style(fig_pm, title=None, height=None)
     with safe_chart_render():

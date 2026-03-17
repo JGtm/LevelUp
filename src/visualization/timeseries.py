@@ -339,6 +339,24 @@ def plot_per_minute_timeseries(
     title = title or viz_t("title_permin", lang)
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
+    if "kills_per_min" not in d.columns:
+        _tps = pl.col("time_played_seconds").cast(pl.Float64, strict=False)
+        d = d.with_columns(
+            [
+                (pl.col("kills").cast(pl.Float64, strict=False) / (_tps / 60))
+                .fill_nan(0.0)
+                .fill_null(0.0)
+                .alias("kills_per_min"),
+                (pl.col("deaths").cast(pl.Float64, strict=False) / (_tps / 60))
+                .fill_nan(0.0)
+                .fill_null(0.0)
+                .alias("deaths_per_min"),
+                (pl.col("assists").cast(pl.Float64, strict=False) / (_tps / 60))
+                .fill_nan(0.0)
+                .fill_null(0.0)
+                .alias("assists_per_min"),
+            ]
+        )
     x_idx = list(range(len(d)))
     labels = (
         [
