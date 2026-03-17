@@ -114,6 +114,18 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Armes",
         "en": "Weapons",
     },
+    "mv_scoreboard_detail_antagonist": {
+        "fr": "Antagoniste",
+        "en": "Antagonist",
+    },
+    "mv_scoreboard_detail_nemesis": {
+        "fr": "Némésis",
+        "en": "Nemesis",
+    },
+    "mv_scoreboard_detail_bully": {
+        "fr": "Souffre-douleur",
+        "en": "Punching Bag",
+    },
     "mv_scoreboard_detail_local": {
         "fr": "Enrichissements",
         "en": "Enrichments",
@@ -125,6 +137,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "mv_scoreboard_detail_shared_only": {
         "fr": "Données shared uniquement",
         "en": "Shared data only",
+    },
+    "mv_scoreboard_detail_explore_player": {
+        "fr": "Explorer les matchs avec {player}",
+        "en": "Explore matches with {player}",
     },
     "mv_scoreboard_detail_bot_note": {
         "fr": "Contexte",

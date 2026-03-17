@@ -314,11 +314,11 @@ def _render_team_table(  # noqa: PLR0913
     sb_cols = _get_scoreboard_cols()
     th_cells = "".join(f"<th class='os-sb-th'>{html.escape(label)}</th>" for label, _ in sb_cols)
     n_cols = len(sb_cols)
-    thead = (
-        f"<thead>"
+    header_rows = (
+        "<tbody class='os-sb-head'>"
         f"<tr><th class='os-sb-team {team_css_mod}' colspan='{n_cols}'>{team_label}</th></tr>"
         f"<tr>{th_cells}</tr>"
-        f"</thead>"
+        "</tbody>"
     )
 
     body_rows = []
@@ -357,7 +357,7 @@ def _render_team_table(  # noqa: PLR0913
     table_html = (
         "<div class='os-table-wrap os-sb-wrap'>"
         "<table class='os-table os-scoreboard'>"
-        f"{thead}" + "".join(body_rows) + "</table>" + "</div>"
+        f"{header_rows}" + "".join(body_rows) + "</table>" + "</div>"
     )
     st.markdown(table_html, unsafe_allow_html=True)
 
