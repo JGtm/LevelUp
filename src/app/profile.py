@@ -182,6 +182,7 @@ class ProfileAssets(NamedTuple):
     service_tag: str | None
     rank_label: str | None
     rank_subtitle: str | None
+    adornment_path: str | None = None
 
 
 def load_profile_assets(
@@ -235,6 +236,7 @@ def load_profile_assets(
         getattr(api_app, "rank_subtitle", None) if api_app else ""
     )
     rank_icon_value = (getattr(api_app, "rank_image_url", None) if api_app else "") or ""
+    adornment_value = (getattr(api_app, "adornment_image_url", None) if api_app else "") or ""
 
     # Configuration du téléchargement
     dl_enabled = bool(getattr(settings, "profile_assets_download_enabled", False)) or bool(
@@ -250,6 +252,7 @@ def load_profile_assets(
             _needs_halo_auth(backdrop_value)
             or _needs_halo_auth(rank_icon_value)
             or _needs_halo_auth(nameplate_value)
+            or _needs_halo_auth(adornment_value)
         )
     ):
         ensure_spnkr_tokens(timeout_seconds=12)
@@ -273,6 +276,12 @@ def load_profile_assets(
     rank_icon_path = ensure_local_image_path(
         rank_icon_value, prefix="rank", download_enabled=dl_enabled, auto_refresh_hours=refresh_h
     )
+    adornment_path = ensure_local_image_path(
+        adornment_value,
+        prefix="adornment",
+        download_enabled=dl_enabled,
+        auto_refresh_hours=refresh_h,
+    )
 
     assets = ProfileAssets(
         banner_path=banner_path,
@@ -283,6 +292,7 @@ def load_profile_assets(
         service_tag=str(service_tag_value or "").strip() or None,
         rank_label=str(rank_label_value or "").strip() or None,
         rank_subtitle=str(rank_subtitle_value or "").strip() or None,
+        adornment_path=adornment_path,
     )
 
     return assets, api_err
@@ -360,6 +370,7 @@ def render_profile_header(
             rank_label=assets.rank_label,
             rank_subtitle=assets.rank_subtitle,
             rank_icon_path=assets.rank_icon_path,
+            adornment_path=assets.adornment_path,
             banner_path=assets.banner_path,
             backdrop_path=assets.backdrop_path,
             nameplate_path=assets.nameplate_path,

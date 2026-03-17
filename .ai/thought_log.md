@@ -49,16 +49,19 @@
 - **Fix** : Changer la branche `/hi/images/file/` dans `_resolve_spnkr_strategy` pour utiliser `use_direct_get=True, direct_url=raw` (GET direct avec auth headers, comme les autres URLs complètes). Uniform avec la stratégie des URLs `/hi/waypoint/file/images/`.
 - **Pourquoi MAdina fonctionnait** : Son cache JSON profile API avait `adornment_image_url` non-null (obtenu lors d'un fetch API antérieur avec tokens valides + le fichier était déjà en cache disque). JGtm/Chocoboflor avaient `adornment_image_url=null` dans leur cache (endpoint career rank player-gated sans leurs tokens propres) ; le DB fallback fournissait l'URL mais le download échouait à cause du bug URL.
 
+- **Cause 3 — `azure_client_secret` incorrectement requis** : Dans `get_tokens()`, la condition `if not (azure_client_id and azure_client_secret and oauth_refresh_token)` bloquait l'acquisition de tokens pour un client public (pas de secret). Fix : condition simplifiée à `if not (azure_client_id and oauth_refresh_token)`.
+- **Cause 4 — gamertag non transmis → refresh token per-player introuvable** : `ensure_spnkr_tokens` appelait `get_tokens()` sans `gamertag`, donc `SPNKR_OAUTH_REFRESH_TOKEN_JGTM` n'était jamais recherché. Fix en 2 lieux : `ensure_spnkr_tokens` accepte `gamertag: str | None` et le transmet à `get_tokens`; `render_profile_hero` passe `gamertag=_gamertag_for_tokens` (= `me_name`).
+
 **Fichiers modifiés** :
 - `src/app/profile.py` : ajout `adornment_path` dans `ProfileAssets` + `load_profile_assets` + `render_profile_header`
 - `src/ui/player_assets.py` : fix stratégie GET direct pour URLs gamecms `/hi/images/file/`
-- `src/ui/profile_api_tokens.py` : `ensure_spnkr_tokens` accepte `db_path`; fallback LevelUp MSAL (cache process + silent refresh) si SPNKR_AZURE_CLIENT_ID non configuré
-- `src/app/main_helpers.py` : transmet `db_path` à `ensure_spnkr_tokens`
+- `src/ui/profile_api_tokens.py` : suppression `azure_client_secret` de la guard; `ensure_spnkr_tokens` + `get_tokens` acceptent `gamertag`; fallback LevelUp MSAL
+- `src/app/main_helpers.py` : transmet `db_path` et `gamertag=me_name` à `ensure_spnkr_tokens`
 
 **Résultats** :
 - Après fix, `_resolve_spnkr_strategy` retourne `use_direct_get=True` pour toutes les URLs gamecms complètes
-- `ensure_spnkr_tokens` tente maintenant (1) env direct, (2) SPNKR_AZURE_CLIENT_ID legacy, (3) LevelUp MSAL — permet d'obtenir les tokens même sans config Azure legacy
-- La prochaine visite d'une page JGtm/Chocoboflor déclenchera le téléchargement via les tokens LevelUp et l'image sera mise en cache
+- `ensure_spnkr_tokens(gamertag="JGtm")` → `get_tokens(gamertag="JGtm")` → cherche `SPNKR_OAUTH_REFRESH_TOKEN_JGTM` → tokens obtenus → image téléchargée avec succès
+- La prochaine visite d'une page JGtm/Chocoboflor déclenchera le téléchargement et l'adornment sera mis en cache
 
 **Prochaine étape** : Commit
 
