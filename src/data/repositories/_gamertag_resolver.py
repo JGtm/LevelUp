@@ -48,16 +48,16 @@ class GamertagResolverMixin:
         self,
         xuid: str,
         *,
-        match_id: str | None = None,
+        match_id: str | None = None,  # noqa: ARG002 — conservé pour compatibilité API
     ) -> str | None:
-        """Résout un XUID en gamertag via v_gamertag_lookup.
+        """Résout un XUID en gamertag via shared.v_gamertag_lookup.
 
         Priorité : xuid_aliases > match_participants (géré par la vue).
-        Fallback pré-vue : xuid_aliases puis match_participants.
+        La vue v_gamertag_lookup est garantie présente en architecture v6.
 
         Args:
             xuid: XUID du joueur à résoudre.
-            match_id: ID du match (optionnel, pour le fallback sans vue).
+            match_id: Ignoré en v6 (conservé pour compatibilité de signature).
 
         Returns:
             Gamertag propre ou None si non trouvé.
@@ -68,65 +68,22 @@ class GamertagResolverMixin:
         conn = self._get_connection()
         xuid = str(xuid).strip()
 
-        # Source unique : vue v_gamertag_lookup (xuid_aliases > match_participants)
-        if self._has_shared_view("v_gamertag_lookup"):
-            try:
-                result = conn.execute(
-                    "SELECT gamertag FROM shared.v_gamertag_lookup WHERE xuid = ?",
-                    [xuid],
-                ).fetchone()
-                if result and result[0]:
-                    cleaned = _clean_gamertag_static(result[0])
-                    if cleaned:
-                        logger.debug(
-                            "resolve_gamertag(%s): source=v_gamertag_lookup → %s", xuid, cleaned
-                        )
-                        return cleaned
-            except Exception:
-                pass
-        else:
-            # Fallback pré-vue : shared.xuid_aliases puis shared.match_participants
-            resolved = self._resolve_gamertag_without_view(conn, xuid, match_id)
-            if resolved:
-                return resolved
+        try:
+            result = conn.execute(
+                "SELECT gamertag FROM shared.v_gamertag_lookup WHERE xuid = ?",
+                [xuid],
+            ).fetchone()
+            if result and result[0]:
+                cleaned = _clean_gamertag_static(result[0])
+                if cleaned:
+                    logger.debug(
+                        "resolve_gamertag(%s): source=v_gamertag_lookup → %s", xuid, cleaned
+                    )
+                    return cleaned
+        except Exception:
+            logger.warning("resolve_gamertag(%s): erreur v_gamertag_lookup", xuid, exc_info=True)
 
         logger.warning("resolve_gamertag(%s): aucune source", xuid)
-        return None
-
-    def _resolve_gamertag_without_view(
-        self,
-        conn: object,
-        xuid: str,
-        match_id: str | None,
-    ) -> str | None:
-        """Fallback quand v_gamertag_lookup n'est pas encore disponible.
-
-        Ordre : shared.xuid_aliases, shared.match_participants (si match_id fourni).
-        """
-        if self._has_shared_table("xuid_aliases"):
-            try:
-                result = conn.execute(  # type: ignore[union-attr]
-                    "SELECT gamertag FROM shared.xuid_aliases WHERE xuid = ?",
-                    [xuid],
-                ).fetchone()
-                if result and result[0]:
-                    cleaned = _clean_gamertag_static(result[0])
-                    if cleaned:
-                        return cleaned
-            except Exception:
-                pass
-        if match_id and self._has_shared_table("match_participants"):
-            try:
-                result = conn.execute(  # type: ignore[union-attr]
-                    "SELECT gamertag FROM shared.match_participants WHERE match_id = ? AND xuid = ?",
-                    [match_id, xuid],
-                ).fetchone()
-                if result and result[0]:
-                    cleaned = _clean_gamertag_static(result[0])
-                    if cleaned:
-                        return cleaned
-            except Exception:
-                pass
         return None
 
     def resolve_gamertags_batch(
@@ -210,12 +167,11 @@ class GamertagResolverMixin:
     def get_all_gamertags(self) -> list[str]:
         """Retourne tous les gamertags connus depuis shared.v_gamertag_lookup.
 
+        La vue v_gamertag_lookup est garantie présente en architecture v6.
+
         Returns:
-            Liste triée de gamertags uniques. [] si shared indisponible.
+            Liste triée de gamertags uniques. [] en cas d'erreur.
         """
-        if not self._has_shared_table("v_gamertag_lookup"):
-            logger.warning("get_all_gamertags: v_gamertag_lookup introuvable dans shared")
-            return []
         conn = self._get_connection()
         try:
             rows = conn.execute(
