@@ -982,6 +982,8 @@ class TestRunScanPhase:
         scan, pi_map = service._run_scan_phase(chunks, {}, log)
         assert isinstance(scan, ScanResult)
         assert 0 in scan.timeline
+        assert isinstance(scan.timeline_ns, dict)
+        assert 0 in scan.timeline_ns  # chunk 0 présent dans timeline_ns
         assert scan.chunks_sorted == [0]
         assert len(scan.timing) == 1
         assert scan.timing[0] == (0, 5000)
