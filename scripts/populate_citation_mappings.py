@@ -215,48 +215,51 @@ _VEHICLE_CHILDREN = [
 # stat_name = "weapon_kills:<weapon_name>" tel que stocké dans shared.weapon_kills
 # Les variantes (alt) ne sont PAS fusionnées ici (à valider séparément).
 # fmt: off
-_WP = "static/commendations/h5g/"  # préfixe commun images H5G
+_WP = "static/commendations/h5g/"   # préfixe commun images H5G (conservé pour les armes gardées)
+_WP_HI = "static/commendations/hi/"  # préfixe images Halo Infinite natives
 
 WEAPON_CITATIONS: list[tuple] = [
     # UNSC
     ("br75_mastery", "Maîtrise du BR75", "weapon_stat", None, None, "weapon_kills:BR75", None, None, None, None, "high", "Kills avec BR75", True,
-     _WP + "H5G_citation_Carnage_au_fusil_de_combat.png", "Arme", "Éliminez des Spartans avec le BR75.", "25,50,100,200,500", "UNSC"),
+     _WP_HI + "HI_Commendations_BR75.png", "Arme", "Éliminez des Spartans avec le BR75.", "25,50,100,200,500", "UNSC"),
     ("ma40_mastery", "Maîtrise du MA40 AR", "weapon_stat", None, None, "weapon_kills:MA40 AR", None, None, None, None, "high", "Kills avec MA40 AR", True,
-     _WP + "H5G_citation_Carnage_au_fusil_d%27assaut.png", "Arme", "Éliminez des Spartans avec le MA40 AR.", "25,50,100,200,500", "UNSC"),
+     _WP_HI + "HI_Commendations_MA40.png", "Arme", "Éliminez des Spartans avec le MA40 AR.", "25,50,100,200,500", "UNSC"),
     ("sidekick_mastery", "Maîtrise du MK50 Sidekick", "weapon_stat", None, None, "weapon_kills:Mk51 Sidekick", None, None, None, None, "high", "Kills avec MK50 Sidekick", True,
-     _WP + "H5G_citation_Magnum.png", "Arme", "Éliminez des Spartans avec le MK50 Sidekick.", "10,25,50,100,250", "UNSC"),
+     _WP_HI + "HI_Commendations_Sidekick.png", "Arme", "Éliminez des Spartans avec le MK50 Sidekick.", "10,25,50,100,250", "UNSC"),
     ("commando_mastery", "Maîtrise du VK78 Commando", "weapon_stat", None, None, "weapon_kills:VK78 Commando", None, None, None, None, "high", "Kills avec VK78 Commando", True,
-     None, "Arme", "Éliminez des Spartans avec le VK78 Commando.", "10,25,50,100,250", "UNSC"),
+     _WP_HI + "HI_Commendations_Commando.png", "Arme", "Éliminez des Spartans avec le VK78 Commando.", "10,25,50,100,250", "UNSC"),
     ("sniper_mastery", "Maîtrise du S7 Sniper", "weapon_stat", None, None, "weapon_kills:S7 Sniper", None, None, None, None, "high", "Kills avec S7 Sniper", True,
-     _WP + "H5G_citation_Fusil_sniper.png", "Arme", "Éliminez des Spartans avec le S7 Sniper.", "10,20,40,80,200", "UNSC"),
+     _WP_HI + "HI_Commendations_Sniper-S7.png", "Arme", "Éliminez des Spartans avec le S7 Sniper.", "10,20,40,80,200", "UNSC"),
     ("spnkr_mastery", "Maîtrise du M41 SPNKr", "weapon_stat", None, None, "weapon_kills:M41 SPNKr", None, None, None, None, "high", "Kills avec M41 SPNKr", True,
      _WP + "H5G_citation_SPNKR.png", "Arme", "Éliminez des Spartans avec le M41 SPNKr.", "10,20,40,80,200", "UNSC"),
     ("bulldog_mastery", "Maîtrise du CQS48 Bulldog", "weapon_stat", None, None, "weapon_kills:CQS48 Bulldog", None, None, None, None, "high", "Kills avec CQS48 Bulldog", True,
-     _WP + "H5G_citation_Fusil_%C3%A0_pompe.png", "Arme", "Éliminez des Spartans avec le CQS48 Bulldog.", "10,25,50,100,250", "UNSC"),
+     _WP_HI + "HI_Commendations_Bulldog.png", "Arme", "Éliminez des Spartans avec le CQS48 Bulldog.", "10,25,50,100,250", "UNSC"),
     ("bandit_mastery", "Maîtrise du Bandit EVO", "weapon_stat", None, None, "weapon_kills:Bandit Evo", None, None, None, None, "high", "Kills avec Bandit EVO", True,
-     _WP + "H5G_citation_Carnage_au_DMR.png", "Arme", "Éliminez des Spartans avec le Bandit EVO.", "10,25,50,100,250", "UNSC"),
+     _WP_HI + "HI_Commendations_Bandit.png", "Arme", "Éliminez des Spartans avec le Bandit EVO.", "10,25,50,100,250", "UNSC"),
     ("hydra_mastery", "Maîtrise du MLRS-2 Hydra", "weapon_stat", None, None, "weapon_kills:MLRS-2 Hydra", None, None, None, None, "high", "Kills avec MLRS-2 Hydra", True,
-     _WP + "H5G_citation_Hydra.png", "Arme", "Éliminez des Spartans avec le MLRS-2 Hydra.", "5,10,20,40,100", "UNSC"),
+     _WP_HI + "HI_Commendations_Hydra.png", "Arme", "Éliminez des Spartans avec le MLRS-2 Hydra.", "5,10,20,40,100", "UNSC"),
     # Paria (armes Covenant + Banished fusionnées)
     ("stalker_mastery", "Maîtrise du Fusil traqueur", "weapon_stat", None, None, "weapon_kills:Stalker Rifle", None, None, None, None, "high", "Kills avec Fusil traqueur", True,
-     None, "Arme", "Éliminez des Spartans avec le Fusil traqueur.", "10,25,50,100,250", "Paria"),
+     _WP_HI + "HI_Commendations_Stalker.png", "Arme", "Éliminez des Spartans avec le Fusil traqueur.", "10,25,50,100,250", "Paria"),
     ("needler_mastery", "Maîtrise du Needler", "weapon_stat", None, None, "weapon_kills:Needler", None, None, None, None, "high", "Kills avec Needler", True,
      _WP + "H5G_citation_Needler.png", "Arme", "Éliminez des Spartans avec le Needler.", "10,25,50,100,250", "Paria"),
     ("energy_sword_mastery", "Maîtrise de l'Épée à énergie", "weapon_stat", None, None, "weapon_kills:Energy Sword", None, None, None, None, "high", "Kills avec Épée à énergie", True,
      _WP + "H5G_citation_%C3%89p%C3%A9e_%C3%A0_%C3%A9nergie.png", "Arme", "Éliminez des Spartans avec l'Épée à énergie.", "10,20,40,80,200", "Paria"),
     ("mangler_mastery", "Maîtrise du Déchiqueteur", "weapon_stat", None, None, "weapon_kills:Mangler", None, None, None, None, "high", "Kills avec Déchiqueteur", True,
-     None, "Arme", "Éliminez des Spartans avec le Déchiqueteur.", "10,25,50,100,250", "Paria"),
+     _WP_HI + "HI_Commendations_Mangler.png", "Arme", "Éliminez des Spartans avec le Déchiqueteur.", "10,25,50,100,250", "Paria"),
     ("skewer_mastery", "Maîtrise de l'Empaleur", "weapon_stat", None, None, "weapon_kills:Skewer", None, None, None, None, "high", "Kills avec Empaleur", True,
-     None, "Arme", "Éliminez des Spartans avec l'Empaleur.", "5,10,20,40,100", "Paria"),
+     _WP_HI + "HI_Commendations_Skewer.png", "Arme", "Éliminez des Spartans avec l'Empaleur.", "5,10,20,40,100", "Paria"),
     ("gravity_hammer_mastery", "Maîtrise du Marteau antigravité", "weapon_stat", None, None, "weapon_kills:Gravity Hammer", None, None, None, None, "high", "Kills avec Marteau antigravité", True,
      _WP + "H5G_citation_Marteau_antigrav.png", "Arme", "Éliminez des Spartans avec le Marteau antigravité.", "10,20,40,80,200", "Paria"),
+    ("pulse_carbine_mastery", "Maîtrise de la Carabine à impulsion", "weapon_stat", None, None, "weapon_kills:Pulse Carbine", None, None, None, None, "high", "Kills avec Carabine à impulsion", True,
+     _WP_HI + "HI_Commendations_Carabine.png", "Arme", "Éliminez des Spartans avec la Carabine à impulsion.", "10,25,50,100,250", "Paria"),
     # Forerunner
     ("heatwave_mastery", "Maîtrise du Calcineur", "weapon_stat", None, None, "weapon_kills:Heatwave", None, None, None, None, "high", "Kills avec Calcineur", True,
-     None, "Arme", "Éliminez des Spartans avec le Calcineur.", "10,25,50,100,250", "Forerunner"),
+     _WP_HI + "HI_Commendations_Heatwave.png", "Arme", "Éliminez des Spartans avec le Calcineur.", "10,25,50,100,250", "Forerunner"),
     ("cindershot_mastery", "Maîtrise du Crémateur", "weapon_stat", None, None, "weapon_kills:Cindershot", None, None, None, None, "high", "Kills avec Crémateur", True,
-     None, "Arme", "Éliminez des Spartans avec le Crémateur.", "10,20,40,80,200", "Forerunner"),
+     _WP_HI + "HI_Commendations_Cremator.png", "Arme", "Éliminez des Spartans avec le Crémateur.", "10,20,40,80,200", "Forerunner"),
     ("sentinel_beam_mastery", "Maîtrise du Rayon de Sentinelle", "weapon_stat", None, None, "weapon_kills:Sentinel Beam", None, None, None, None, "high", "Kills avec Rayon de Sentinelle", True,
-     _WP + "H5G_citation_Rayon_de_sentinelle.png", "Arme", "Éliminez des Spartans avec le Rayon de Sentinelle.", "10,25,50,100,250", "Forerunner"),
+     _WP_HI + "HI_Commendations_Sentinel.png", "Arme", "Éliminez des Spartans avec le Rayon de Sentinelle.", "10,25,50,100,250", "Forerunner"),
 ]
 # fmt: on
 
@@ -279,6 +282,7 @@ _PARIA_WEAPON_CHILDREN = [
     "mangler_mastery",
     "skewer_mastery",
     "gravity_hammer_mastery",
+    "pulse_carbine_mastery",
 ]
 _FORERUNNER_WEAPON_CHILDREN = [
     "heatwave_mastery",
@@ -309,11 +313,11 @@ COMPOSITE_CITATIONS: list[tuple] = [
     ("human_weapons_mastery", "Maîtrise des armes UNSC", "composite", None, None, None, None, None, None,
      "[" + ", ".join(f'"{c}"' for c in _HUMAN_WEAPON_CHILDREN) + "]",
      "high", "Obtenez toutes les citations d'armes UNSC", True,
-     None, "Arme", "Obtenez toutes les citations de maîtrise d'armes UNSC.", None, "UNSC"),
+     "static/commendations/h5g/H5G_Ma\u00eetrise_en_armes_UNSC.png", "Arme", "Obtenez toutes les citations de maîtrise d'armes UNSC.", None, "UNSC"),
     ("paria_weapons_mastery", "Maîtrise des armes Parias", "composite", None, None, None, None, None, None,
      "[" + ", ".join(f'"{c}"' for c in _PARIA_WEAPON_CHILDREN) + "]",
      "high", "Obtenez toutes les citations d'armes Parias", True,
-     None, "Arme", "Obtenez toutes les citations de maîtrise d'armes Parias.", None, "Paria"),
+     _WP_HI + "HI_Ma\u00eetrise_en_armes_lourdes_Parias.png", "Arme", "Obtenez toutes les citations de maîtrise d'armes Parias.", None, "Paria"),
     ("forerunner_weapons_mastery", "Maîtrise des armes Forerunner", "composite", None, None, None, None, None, None,
      "[" + ", ".join(f'"{c}"' for c in _FORERUNNER_WEAPON_CHILDREN) + "]",
      "high", "Obtenez toutes les citations d'armes Forerunner", True,
