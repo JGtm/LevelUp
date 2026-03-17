@@ -591,13 +591,10 @@ class TestGetMatchSourceOptimized:
         assert params[0] == PLAYER_XUID
         assert uses_mv is True
 
-    def test_fallback_v5_legacy_without_view(self, repo_without_view: DuckDBRepository):
-        """8bis.A5: _get_match_source raise RuntimeError si vue manquante (v5.1)."""
-        conn = repo_without_view._get_connection()
-
-        # En v5.1, absence de mv_player_matches déclenche une erreur
-        with pytest.raises(RuntimeError, match="mv_player_matches non trouvée"):
-            repo_without_view._get_match_source(conn)
+    def test_raises_on_missing_view(self, repo_without_view: DuckDBRepository):
+        """En v6, absence de mv_player_matches lève une erreur lors du chargement."""
+        with pytest.raises(Exception):  # noqa: B017 — DuckDB ou RuntimeError selon contexte
+            repo_without_view.load_matches()
 
     def test_load_matches_with_view(self, repo_with_view: DuckDBRepository):
         """load_matches fonctionne avec la vue."""
@@ -611,8 +608,8 @@ class TestGetMatchSourceOptimized:
         for m in matches:
             assert not getattr(m, "is_firefight", False)
 
-    def test_v4_mode_unchanged(self, player_db: Path):
-        """Mode v4 (sans shared) n'est pas affecté par les changements."""
+    def test_v6_requires_shared_db(self, player_db: Path):
+        """En v6, shared_matches.duckdb indisponible lève RuntimeError."""
         repo = DuckDBRepository(
             player_db_path=player_db,
             xuid=PLAYER_XUID,
@@ -620,17 +617,12 @@ class TestGetMatchSourceOptimized:
             gamertag="TestPerf",
             read_only=True,
         )
-        conn = repo._get_connection()
-        source, params, uses_mv = repo._get_match_source(conn)
-
-        assert "match_stats" in source
-        assert "mv_player_matches" not in source
-        assert params == []
-        assert uses_mv is False
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            repo.load_matches()
         repo.close()
 
-    def test_empty_xuid_mode_unchanged(self, player_db: Path, shared_db: Path):
-        """Avec XUID vide, reste en mode local."""
+    def test_v6_requires_xuid(self, player_db: Path, shared_db: Path):
+        """En v6, XUID vide lève RuntimeError."""
         repo = DuckDBRepository(
             player_db_path=player_db,
             xuid="",
@@ -638,13 +630,8 @@ class TestGetMatchSourceOptimized:
             gamertag="TestPerf",
             read_only=True,
         )
-        conn = repo._get_connection()
-        source, params, uses_mv = repo._get_match_source(conn)
-
-        assert "match_stats" in source
-        assert "mv_player_matches" not in source
-        assert params == []
-        assert uses_mv is False
+        with pytest.raises(RuntimeError, match="XUID manquant"):
+            repo.load_matches()
         repo.close()
 
     def test_match_data_consistency(self, repo_with_view: DuckDBRepository):

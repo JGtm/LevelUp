@@ -18,6 +18,7 @@ from pathlib import Path
 
 import duckdb
 import polars as pl
+import pytest
 
 from src.data.repositories.duckdb_repo import DuckDBRepository
 
@@ -499,8 +500,8 @@ class TestEndToEndMatchLoading:
         finally:
             repo.close()
 
-    def test_empty_xuid_with_shared_returns_zero_matches(self, tmp_path: Path) -> None:
-        """Garde-fou : XUID vide + shared DB → mode local fallback, pas de crash."""
+    def test_empty_xuid_with_shared_raises_error(self, tmp_path: Path) -> None:
+        """En v6, XUID vide lève RuntimeError (pas de fallback local)."""
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
         shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
 
@@ -514,10 +515,8 @@ class TestEndToEndMatchLoading:
             read_only=True,
         )
         try:
-            matches = repo.load_matches()
-            # Avec XUID vide, on tombe en mode local (match_stats)
-            # -> doit quand même charger les données locales
-            assert len(matches) == 3
+            with pytest.raises(RuntimeError, match="XUID manquant"):
+                repo.load_matches()
         finally:
             repo.close()
 
@@ -664,72 +663,6 @@ class TestZeroMatchesRegression:
             ), f"Cas SpartanD : enrichment vide mais shared a 3 matchs, obtenu {len(matches)}"
         finally:
             repo.close()
-
-
-# =============================================================================
-# Tests du fallback _get_match_table_name (v4 → v3)
-# =============================================================================
-
-
-class TestGetMatchTableName:
-    """Teste la détection de la table de matchs locale."""
-
-    def test_match_stats_preferred(self, tmp_path: Path) -> None:
-        """match_stats (v4) est préféré à player_match_stats (v3)."""
-        player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        _create_player_db(
-            player_db,
-            with_match_stats=True,
-            with_player_match_stats=True,
-        )
-
-        repo = DuckDBRepository(
-            player_db_path=str(player_db),
-            xuid="",
-            read_only=True,
-        )
-        conn = repo._get_connection()
-        table = repo._get_match_table_name(conn)
-        repo.close()
-
-        assert table == "match_stats"
-
-    def test_fallback_to_player_match_stats(self, tmp_path: Path) -> None:
-        """8bis: En v5.1, player_match_stats n'est plus reconnu — retourne None."""
-        player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        _create_player_db(
-            player_db,
-            with_player_match_stats=True,
-        )
-
-        repo = DuckDBRepository(
-            player_db_path=str(player_db),
-            xuid="",
-            read_only=True,
-        )
-        conn = repo._get_connection()
-        table = repo._get_match_table_name(conn)
-        repo.close()
-
-        # v5.1 : match_stats absent (données dans shared) → None
-        assert table is None
-
-    def test_no_table_defaults_to_match_stats(self, tmp_path: Path) -> None:
-        """Aucune table de matchs → retourne None (v5.1 — données dans shared)."""
-        player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        _create_player_db(player_db)
-
-        repo = DuckDBRepository(
-            player_db_path=str(player_db),
-            xuid="",
-            read_only=True,
-        )
-        conn = repo._get_connection()
-        table = repo._get_match_table_name(conn)
-        repo.close()
-
-        # v5.1 : plus de match_stats locale → None
-        assert table is None
 
 
 # =============================================================================

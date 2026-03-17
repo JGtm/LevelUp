@@ -690,11 +690,10 @@ class TestFactoryShared:
 class TestV4Fallback:
     """Tests que le mode v4 (sans shared) se comporte correctement."""
 
-    def test_load_matches_still_works(self, repo_v4: DuckDBRepository):
-        """load_matches fonctionne sans shared (lecture match_stats locale)."""
-        matches = repo_v4.load_matches()
-        assert len(matches) == 2
-        assert matches[0].match_id == MATCH_ID_1
+    def test_load_matches_raises_without_shared(self, repo_v4: DuckDBRepository):
+        """En v6, load_matches sans shared DB disponible lève RuntimeError."""
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            repo_v4.load_matches()
 
     def test_get_match_count_returns_zero_without_shared(self, repo_v4: DuckDBRepository):
         """get_match_count retourne 0 sans shared (v5.1 — pas de fallback local)."""

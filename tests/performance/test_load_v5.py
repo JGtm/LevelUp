@@ -418,13 +418,11 @@ class TestLoadPerformanceV4Fallback:
         repo.close()
 
     def test_load_1000_matches_v4_under_2s(self, v4_repo: DuckDBRepository) -> None:
-        """load_matches v4 en < 2s."""
-        start = time.time()
-        matches = v4_repo.load_matches()
-        elapsed = time.time() - start
+        """En v6, load_matches sans shared DB lève RuntimeError."""
+        import pytest
 
-        assert len(matches) == N_MATCHES_LARGE
-        assert elapsed < 2.0, f"load_matches v4 trop lent : {elapsed:.2f}s"
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            v4_repo.load_matches()
 
     def test_match_count_v4(self, v4_repo: DuckDBRepository) -> None:
         """V4 count — retourne 0 sans shared DB (v5.1)."""

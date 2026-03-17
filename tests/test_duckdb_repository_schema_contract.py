@@ -246,6 +246,39 @@ def test_repository_methods_still_work_with_expected_schema(
             CREATE VIEW v_gamertag_lookup AS
             SELECT xuid, gamertag FROM match_participants WHERE gamertag IS NOT NULL
         """)
+        conn.execute("""
+            CREATE TABLE match_registry (
+                match_id VARCHAR PRIMARY KEY,
+                start_time TIMESTAMP WITH TIME ZONE,
+                map_id VARCHAR DEFAULT 'map1', map_name VARCHAR DEFAULT 'TestMap',
+                playlist_id VARCHAR DEFAULT 'pl1', playlist_name VARCHAR DEFAULT 'TestPlaylist',
+                pair_id VARCHAR DEFAULT 'pair1', pair_name VARCHAR DEFAULT 'TestPair',
+                game_variant_id VARCHAR DEFAULT 'gv1', game_variant_name VARCHAR DEFAULT 'Slayer',
+                team_0_score INTEGER DEFAULT 0, team_1_score INTEGER DEFAULT 0,
+                duration_seconds INTEGER DEFAULT 600,
+                is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE
+            )
+        """)
+        conn.execute("""
+            INSERT INTO match_registry (match_id, start_time) VALUES ('m1', '2025-01-01 12:00:00+00')
+        """)
+        conn.execute("""
+            CREATE VIEW mv_player_matches AS
+            SELECT r.match_id, r.start_time,
+                   r.map_id, r.map_name, r.playlist_id, r.playlist_name,
+                   r.pair_id, r.pair_name, r.game_variant_id, r.game_variant_name,
+                   p.xuid, 2 AS outcome, p.team_id,
+                   0.0 AS kda, 0 AS max_killing_spree, 0 AS headshot_kills,
+                   0.0 AS avg_life_seconds, 0.0 AS time_played_seconds,
+                   0 AS kills, 0 AS deaths, 0 AS assists, NULL AS accuracy,
+                   r.team_0_score AS my_team_score, r.team_1_score AS enemy_team_score,
+                   NULL AS team_mmr, NULL AS enemy_mmr,
+                   0 AS personal_score,
+                   COALESCE(r.is_firefight, FALSE) AS is_firefight,
+                   COALESCE(r.is_ranked, FALSE) AS is_ranked
+            FROM match_registry r
+            JOIN match_participants p ON r.match_id = p.match_id
+        """)
         conn.execute("INSERT INTO medals_earned VALUES ('m1', 'x_me', 1512363953, 1)")
         conn.execute("INSERT INTO highlight_events VALUES ('m1', 'Kill', 1000, 'x_me', 50)")
         conn.execute("INSERT INTO match_participants VALUES ('m1', 'x_me', 'TestPlayer', 0)")
