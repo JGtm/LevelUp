@@ -99,7 +99,7 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
         if forced_env_db:
             chosen = forced_env_db
             logger.debug("init_source_state: DB forcée via env → %s", forced_env_db)
-        elif bool(getattr(settings, "prefer_spnkr_db_if_available", False)):
+        elif settings.prefer_spnkr_db_if_available:
             spnkr = pick_latest_spnkr_db_if_any()
             if spnkr and os.path.exists(spnkr) and os.path.getsize(spnkr) > 0:
                 chosen = spnkr

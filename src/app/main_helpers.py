@@ -109,8 +109,8 @@ def load_profile_api(
     Returns:
         (api_appearance, error_message)
     """
-    api_enabled = bool(getattr(settings, "profile_api_enabled", False))
-    api_refresh_h = int(getattr(settings, "profile_api_auto_refresh_hours", 0) or 0)
+    api_enabled = settings.profile_api_enabled
+    api_refresh_h = settings.profile_api_auto_refresh_hours
     api_app = None
     api_err = None
 
@@ -178,29 +178,27 @@ def render_profile_hero(
         else t("app_player_default")
     )
 
-    dl_enabled = bool(getattr(settings, "profile_assets_download_enabled", False)) or bool(
-        getattr(settings, "profile_api_enabled", False)
-    )
-    refresh_h = int(getattr(settings, "profile_assets_auto_refresh_hours", 0) or 0)
+    dl_enabled = settings.profile_assets_download_enabled or settings.profile_api_enabled
+    refresh_h = settings.profile_assets_auto_refresh_hours
 
     # Valeurs manuelles (prioritaires) / sinon auto depuis API
-    banner_value = str(getattr(settings, "profile_banner", "") or "").strip()
-    emblem_value = str(getattr(settings, "profile_emblem", "") or "").strip() or (
+    banner_value = settings.profile_banner.strip()
+    emblem_value = settings.profile_emblem.strip() or (
         getattr(api_app, "emblem_image_url", None) if api_app else ""
     )
-    backdrop_value = str(getattr(settings, "profile_backdrop", "") or "").strip() or (
+    backdrop_value = settings.profile_backdrop.strip() or (
         getattr(api_app, "backdrop_image_url", None) if api_app else ""
     )
-    nameplate_value = str(getattr(settings, "profile_nameplate", "") or "").strip() or (
+    nameplate_value = settings.profile_nameplate.strip() or (
         getattr(api_app, "nameplate_image_url", None) if api_app else ""
     )
-    service_tag_value = str(getattr(settings, "profile_service_tag", "") or "").strip() or (
+    service_tag_value = settings.profile_service_tag.strip() or (
         getattr(api_app, "service_tag", None) if api_app else ""
     )
-    rank_label_value = str(getattr(settings, "profile_rank_label", "") or "").strip() or (
+    rank_label_value = settings.profile_rank_label.strip() or (
         getattr(api_app, "rank_label", None) if api_app else ""
     )
-    rank_subtitle_value = str(getattr(settings, "profile_rank_subtitle", "") or "").strip() or (
+    rank_subtitle_value = settings.profile_rank_subtitle.strip() or (
         getattr(api_app, "rank_subtitle", None) if api_app else ""
     )
     rank_icon_value = (getattr(api_app, "rank_image_url", None) if api_app else "") or ""
@@ -292,10 +290,7 @@ def render_profile_hero(
             banner_path=banner_path,
             backdrop_path=backdrop_path,
             nameplate_path=nameplate_path,
-            id_badge_text_color=str(
-                getattr(settings, "profile_id_badge_text_color", "") or ""
-            ).strip()
-            or None,
+            id_badge_text_color=settings.profile_id_badge_text_color.strip() or None,
             emblem_path=emblem_path,
             spartan_id=spartan_id_value,
         ),
