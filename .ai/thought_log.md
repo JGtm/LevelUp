@@ -7,6 +7,35 @@
 
 ## Journal
 
+### [2026-03-17] — Optimisations pipeline weapon_kills P1–P4
+
+**Statut** : Complété
+
+**Décision technique** :
+Implémentation des 4 optimisations identifiées lors de l'audit du pipeline weapon_kills (sync + backfill) :
+
+- **P1** (`_match_processing.py`) : Suppression des deux blocs `UPDATE match_registry SET backfill_completed ... weapon_kills` redondants dans `_process_known_match` et `_process_new_match`. Le bit est déjà posé par `WeaponKillsMixin.mark_weapon_backfill_done()` appelé dans `WeaponExtractionService._mark_done()`.
+- **P2** (`weapon_extraction_service.py`) : Fusion de `_scan_all_chunks` + `_resolve_player_indices` en `_run_scan_phase` + `_resolve_from_chunk`. Économise un `index_chunk` sur le chunk 0 et réduit de 2 à 1 les appels `asyncio.to_thread` CPU.
+- **P3** (`weapon_parser.py`) : Nouvelle fonction `build_weapon_timelines()` qui construit `timeline` (raw) + `timeline_ns` en une seule passe sur les chunks au lieu de deux passes séparées.
+- **P4** (`_weapon_kills_repo.py`) : `load_all_kills_for_match` réécrit avec un seul `LEFT JOIN` DuckDB (`ABS(m.time_ms - k.time_ms) <= 500` vectorisé) au lieu de 2 requêtes + join Python O(kills × medals).
+
+**Fichiers modifiés** :
+- `src/data/sync/_match_processing.py` (P1)
+- `src/analysis/weapon_parser.py` (P3 — `build_weapon_timelines()`)
+- `src/data/services/weapon_extraction_service.py` (P2+P3)
+- `src/data/repositories/_weapon_kills_repo.py` (P4)
+- `scripts/size_baseline.txt` (ratchet mis à jour — 2 modules passent légèrement >500L : `weapon_parser.py` 525L, `weapon_extraction_service.py` 515L)
+- `tests/test_weapon_parser.py` (nouveaux tests `TestBuildWeaponTimelines`)
+- `tests/test_weapon_service.py` (nouveaux tests `TestResolveFromChunk`, `TestRunScanPhase`)
+
+**Résultats observés** :
+- 131/131 tests weapon verts (+14 nouveaux)
+- `test_no_srp_violation_in_function_names` : vert (nom `_run_scan_phase` conforme, `_scan_and_resolve` rejeté)
+- Ruff clean sur les 4 fichiers de production modifiés
+- `check_code_size` : 0 nouvelle violation (baseline mis à jour via `--update`)
+
+**Conclusion / prochaine étape** : P1–P4 terminés. P5 (pipeline streaming intra-match) prévu dans un sprint dédié.
+
 ### [2026-03-17] — Ajustement fin de la taille des en-têtes du scoreboard
 
 **Statut** : Complété

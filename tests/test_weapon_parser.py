@@ -30,6 +30,7 @@ from src.analysis.weapon_parser import (
     WEAPON_TIMING_BY_ID,
     build_frame_estimator,
     build_weapon_timeline,
+    build_weapon_timelines,
     correlate_kills_to_weapons,
     count_kills_by_api_weapon,
     detect_player_indices,
@@ -241,6 +242,65 @@ class TestBuildWeaponTimeline:
         # chunk 3 avant chunk 7
         assert timing[0][0] == 45000
         assert timing[1][0] == 90000
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# build_weapon_timelines — passe unique (raw + NS)
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+class TestBuildWeaponTimelines:
+    """build_weapon_timelines retourne des résultats cohérents avec les deux fonctions séparées."""
+
+    def test_empty_chunks_returns_empty_structures(self):
+        tl, tl_ns, sp, ti = build_weapon_timelines({})
+        assert tl == {}
+        assert tl_ns == {}
+        assert sp == {}
+        assert ti == []
+
+    def test_timing_matches_build_weapon_timeline(self):
+        chunks = {3: (b"\x00" * 200, 45000, 15000)}
+        tl, tl_ns, sp, ti = build_weapon_timelines(chunks)
+        tl_ref, sp_ref, ti_ref = build_weapon_timeline(chunks)
+        assert ti == ti_ref
+
+    def test_raw_timeline_consistent_with_individual(self):
+        chunks = {
+            3: (b"\x00" * 200, 45000, 15000),
+            7: (b"\x00" * 200, 60000, 15000),
+        }
+        tl, tl_ns, sp, ti = build_weapon_timelines(chunks)
+        tl_ref, sp_ref, ti_ref = build_weapon_timeline(chunks)
+        assert tl == tl_ref
+        assert sp == sp_ref
+        assert ti == ti_ref
+
+    def test_swap_pis_consistent_with_individual(self):
+        chunks = {5: (b"\x00" * 200, 10000, 5000)}
+        _, _, sp, _ = build_weapon_timelines(chunks)
+        _, sp_ref, _ = build_weapon_timeline(chunks)
+        assert sp == sp_ref
+
+    def test_ordering_by_chunk_index(self):
+        chunks = {
+            9: (b"\x00" * 200, 90000, 10000),
+            2: (b"\x00" * 200, 20000, 10000),
+        }
+        _, _, _, ti = build_weapon_timelines(chunks)
+        # chunk 2 avant chunk 9
+        assert ti[0][0] == 20000
+        assert ti[1][0] == 90000
+
+    def test_both_chunk_keys_present_in_all_timelines(self):
+        chunks = {
+            1: (b"\x00" * 200, 0, 5000),
+            2: (b"\x00" * 200, 5000, 5000),
+        }
+        tl, tl_ns, sp, _ = build_weapon_timelines(chunks)
+        assert set(tl.keys()) == {1, 2}
+        assert set(tl_ns.keys()) == {1, 2}
+        assert set(sp.keys()) == {1, 2}
 
 
 # ═══════════════════════════════════════════════════════════════════════════

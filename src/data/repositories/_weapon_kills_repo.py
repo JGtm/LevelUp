@@ -468,7 +468,7 @@ class WeaponKillsMixin:
         conn: duckdb.DuckDBPyConnection,
         match_id: str,
     ) -> dict[str, list[dict]]:
-        """Charge kills + médailles de TOUS les joueurs en 2 requêtes.
+        """Charge kills + médailles de TOUS les joueurs en un seul LEFT JOIN DuckDB.
 
         Remplace N appels à load_player_kills_for_match pour un traitement batch.
 
@@ -480,41 +480,39 @@ class WeaponKillsMixin:
 
         # highlight_events.gamertag supprimé en v6 (migration drop_highlight_events_gamertag)
         try:
-            kill_rows = conn.execute(
-                "SELECT he.time_ms, NULL, he.xuid "
-                "FROM highlight_events he "
-                "WHERE he.match_id = ? AND he.event_type = 'kill' "
-                "ORDER BY he.xuid, he.time_ms",
-                (match_id,),
-            ).fetchall()
-
-            medal_rows = conn.execute(
-                "SELECT he.xuid, he.time_ms, "
-                "json_extract_string(he.raw_json, '$.medal_name') AS medal_name "
-                "FROM highlight_events he "
-                "WHERE he.match_id = ? AND he.event_type = 'medal' "
-                "AND json_extract_string(he.raw_json, '$.is_medal') = 'true' "
-                "ORDER BY he.xuid, he.time_ms",
-                (match_id,),
+            rows = conn.execute(
+                """
+                SELECT
+                    k.time_ms,
+                    k.xuid,
+                    list(m.medal_name) FILTER (WHERE m.medal_name IS NOT NULL) AS medals_nearby
+                FROM highlight_events k
+                LEFT JOIN (
+                    SELECT
+                        xuid,
+                        time_ms,
+                        json_extract_string(raw_json, '$.medal_name') AS medal_name
+                    FROM highlight_events
+                    WHERE match_id = ? AND event_type = 'medal'
+                      AND json_extract_string(raw_json, '$.is_medal') = 'true'
+                ) m ON m.xuid = k.xuid AND ABS(m.time_ms - k.time_ms) <= 500
+                WHERE k.match_id = ? AND k.event_type = 'kill'
+                GROUP BY k.xuid, k.time_ms
+                ORDER BY k.xuid, k.time_ms
+                """,
+                (match_id, match_id),
             ).fetchall()
         except Exception as exc:
             logger.debug("load_all_kills_for_match %s : %s", match_id[:8], exc)
             return {}
 
-        medals_by_xuid: dict[str, list[tuple[int, str]]] = {}
-        for xuid, t, name in medal_rows:
-            if name:
-                medals_by_xuid.setdefault(xuid, []).append((t, name))
-
         result: dict[str, list[dict]] = {}
-        for time_ms, gt, xuid in kill_rows:
-            nearby = [
-                name for (mt, name) in medals_by_xuid.get(xuid, []) if abs(mt - time_ms) <= 500
-            ]
+        for time_ms, xuid, medals_raw in rows:
+            nearby: list[str] = medals_raw if medals_raw else []
             result.setdefault(xuid, []).append(
                 {
                     "time_ms": time_ms,
-                    "gamertag": gt,
+                    "gamertag": None,
                     "xuid": xuid,
                     "medals_nearby": nearby,
                     "is_melee": any(m in MELEE_MEDALS for m in nearby),
@@ -524,7 +522,7 @@ class WeaponKillsMixin:
         logger.debug(
             "load_all_kills_for_match %s : %d kills pour %d joueurs",
             match_id[:8],
-            len(kill_rows),
+            sum(len(v) for v in result.values()),
             len(result),
         )
         return result

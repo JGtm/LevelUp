@@ -900,3 +900,111 @@ class TestRunWeaponKillsBackfillGuard:
 
         assert result == 5
         mock_service.process_match.assert_awaited_once()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests _resolve_from_chunk
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestResolveFromChunk:
+    """Tests unitaires de WeaponExtractionService._resolve_from_chunk."""
+
+    @pytest.fixture()
+    def service(self, tmp_path):
+        api = FakeAPIPort()
+        conn = duckdb.connect(":memory:")
+        return WeaponExtractionService(api, conn, tmp_path)
+
+    def test_empty_data_returns_empty(self, service):
+        """Pas de données → dict vide sans lever d'exception."""
+        result = service._resolve_from_chunk(b"", [], {})
+        assert result == {}
+
+    def test_non_digit_xuids_filtered(self, service):
+        """Les XUIDs non numériques (ex: 'bid(...)') sont ignorés."""
+        participants = {"bid(SomePlayer)": "SomePlayer", "not-a-number": "Other"}
+        result = service._resolve_from_chunk(b"\x00" * 100, [], participants)
+        assert result == {}
+
+    def test_all_zeros_chunk_returns_empty_resolve(self, service):
+        """Données zéro → aucun PLAYER_METADATA, fallback acurtis → aucun mapping."""
+        participants = {"123456789": "Player1"}
+        result = service._resolve_from_chunk(b"\x00" * 200, [], participants)
+        # Pas de metadata ET acurtis ne trouve pas de mapping dans des zéros → {}
+        assert isinstance(result, dict)
+
+    def test_returns_xuid_int_to_pi_mapping(self, service):
+        """Le résultat est bien un dict[int, int] = {xuid_int: player_index}."""
+        result = service._resolve_from_chunk(b"\x00" * 100, [], {"100": "P1", "200": "P2"})
+        assert all(isinstance(k, int) for k in result)
+        assert all(isinstance(v, int) for v in result.values())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests _run_scan_phase
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestRunScanPhase:
+    """Tests unitaires de WeaponExtractionService._run_scan_phase."""
+
+    @pytest.fixture()
+    def service(self, tmp_path):
+        api = FakeAPIPort()
+        conn = duckdb.connect(":memory:")
+        return WeaponExtractionService(api, conn, tmp_path)
+
+    def _make_log(self):
+        from src.analysis._parser_logging import MatchLogCollector
+
+        return MatchLogCollector("test-match-id")
+
+    def test_empty_chunks_returns_empty_scan_and_pi_map(self, service):
+        """Aucun chunk → ScanResult vide, pi_map vide."""
+        from src.data.services.weapon_extraction_service import ScanResult
+
+        log = self._make_log()
+        scan, pi_map = service._run_scan_phase({}, {}, log)
+        assert isinstance(scan, ScanResult)
+        assert scan.fire_events_global == []
+        assert scan.fire_events_by_pi == {}
+        assert scan.timeline == {}
+        assert scan.chunks_sorted == []
+        assert pi_map == {}
+
+    def test_single_chunk_scan_returns_scan_result(self, service):
+        """Un seul chunk all-zero → ScanResult avec chunk dans timeline."""
+        from src.data.services.weapon_extraction_service import ScanResult
+
+        log = self._make_log()
+        chunks = {0: (b"\x00" * 200, 0, 5000)}
+        scan, pi_map = service._run_scan_phase(chunks, {}, log)
+        assert isinstance(scan, ScanResult)
+        assert 0 in scan.timeline
+        assert scan.chunks_sorted == [0]
+        assert len(scan.timing) == 1
+        assert scan.timing[0] == (0, 5000)
+
+    def test_chunks_sorted_by_index(self, service):
+        """Les chunks insérés dans un ordre quelconque sont triés dans chunks_sorted."""
+        log = self._make_log()
+        chunks = {
+            5: (b"\x00" * 200, 50000, 5000),
+            1: (b"\x00" * 200, 10000, 5000),
+            3: (b"\x00" * 200, 30000, 5000),
+        }
+        scan, _ = service._run_scan_phase(chunks, {}, log)
+        assert scan.chunks_sorted == [1, 3, 5]
+        # timing dans l'ordre chunk 1, 3, 5
+        assert scan.timing[0] == (10000, 15000)
+        assert scan.timing[1] == (30000, 35000)
+        assert scan.timing[2] == (50000, 55000)
+
+    def test_pi_map_empty_for_non_digit_participants(self, service):
+        """Participants non numériques → pi_map vide."""
+        log = self._make_log()
+        chunks = {0: (b"\x00" * 200, 0, 5000)}
+        participants = {"bid(Foo)": "Foo", "bar": "bar"}
+        _, pi_map = service._run_scan_phase(chunks, participants, log)
+        assert pi_map == {}

@@ -25,7 +25,6 @@ FUNC:src/data/repositories/_archives_repo.py:135:load_matches_from_archives:102L
 FUNC:src/data/repositories/_materialized_views.py:96:refresh_materialized_views:196L
 FUNC:src/data/repositories/_roster_loader.py:330:load_match_scoreboard:81L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
-FUNC:src/data/sync/_match_processing.py:168:_process_known_match:85L
 FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
 FUNC:src/data/sync/transformers/_match.py:284:extract_participants:141L
 FUNC:src/data/sync/transformers/_match.py:428:extract_match_registry_data:105L
@@ -44,12 +43,9 @@ FUNC:src/ui/components/checkbox_filter.py:224:render_hierarchical_checkbox_filte
 FUNC:src/ui/components/checkbox_filter.py:97:render_checkbox_filter:111L
 FUNC:src/ui/filter_state.py:235:apply_filter_preferences:142L
 FUNC:src/ui/filter_state.py:66:save_filter_preferences:138L
-FUNC:src/ui/pages/_session_compare_history.py:20:_build_history_dataframe:139L
 FUNC:src/ui/pages/_teammates_trio.py:36:render_trio_view:214L
 FUNC:src/ui/pages/career_logic.py:249:_create_xp_history_chart:189L
 FUNC:src/ui/pages/citations.py:19:render_citations_page:169L
-FUNC:src/ui/pages/match_history.py:159:_render_history_table:151L
-FUNC:src/ui/pages/match_history.py:31:render_match_history_page:125L
 FUNC:src/ui/pages/match_view.py:170:render_match_view:81L
 FUNC:src/ui/pages/match_view_charts.py:257:_render_spree_headshots:124L
 FUNC:src/ui/pages/match_view_charts.py:43:render_expected_vs_actual:211L
@@ -94,8 +90,9 @@ FUNC:src/visualization/team_dominance_timeline.py:208:plot_dominance_chart:135L
 FUNC:src/visualization/timeseries.py:325:plot_per_minute_timeseries:117L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:179L
-MODULE:src/data/repositories/_weapon_kills_repo.py:531L
-MODULE:src/data/sync/_match_processing.py:505L
+MODULE:src/analysis/weapon_parser.py:525L
+MODULE:src/data/repositories/_weapon_kills_repo.py:529L
+MODULE:src/data/services/weapon_extraction_service.py:515L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/session_compare.py:518L

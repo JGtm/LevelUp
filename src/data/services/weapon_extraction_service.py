@@ -32,8 +32,7 @@ from src.analysis.packet_index import (
 from src.analysis.reconciliation import reconcile_api_aggregates
 from src.analysis.weapon_parser import (
     KILL_WINDOW_MS,
-    build_weapon_timeline,
-    build_weapon_timeline_ns,
+    build_weapon_timelines,
     detect_player_indices,
     group_events_by_pi,
     map_b2_to_player,
@@ -165,12 +164,8 @@ class WeaponExtractionService:
             await self._mark_done(match_id, no_film=True)
             return MatchProcessingResult(match_id=match_id, error="aucun chunk (404/expiré)")
 
-        # Résolution player_index (metadata + acurtis fallback)
-        pi_map = await asyncio.to_thread(self._resolve_player_indices, chunks, participants)
-        log.record_step("resolve_pi", resolved=len(pi_map), total=len(participants))
-
-        # Scan Phase : fire events + timeline sur tous les chunks
-        scan = await asyncio.to_thread(self._scan_all_chunks, chunks, log)
+        # Scan Phase : fire events + timelines + résolution player_index (passe unique CPU)
+        scan, pi_map = await asyncio.to_thread(self._run_scan_phase, chunks, participants, log)
 
         # Correlation Phase : claim-and-remove par joueur
         all_attributions = self._correlate_all_players(
@@ -220,15 +215,25 @@ class WeaponExtractionService:
 
     # ── Scan Phase ───────────────────────────────────────────────────────
 
-    def _scan_all_chunks(
+    def _run_scan_phase(
         self,
         chunks: dict[int, tuple[bytes, int, int]],
+        all_participants: dict[str, str],
         log: MatchLogCollector,
-    ) -> ScanResult:
-        """Scanne fire events et timeline Section 1 sur tous les chunks."""
+    ) -> tuple[ScanResult, dict[int, int]]:
+        """Scanne fire events + timelines et résout player_index en une seule passe CPU.
+
+        Évite le double index_chunk sur le chunk 0 : les packets indexés lors
+        du scan sont réutilisés directement pour la résolution XUID → pi.
+
+        Returns:
+            (ScanResult, pi_map) où pi_map = {xuid_int: player_index}
+        """
         all_raw_events: list[dict] = []
         timing: list[tuple[int, int]] = []
         chunks_sorted: list[int] = []
+        first_data: bytes = b""
+        first_packets: list = []
 
         for idx in sorted(chunks):
             data, start_ms, dur_ms = chunks[idx]
@@ -237,6 +242,10 @@ class WeaponExtractionService:
             except Exception as exc:
                 log.warn("index_chunk_failed", chunk=idx, error=str(exc))
                 packets = []
+            if not chunks_sorted:
+                # Conserver le premier chunk indexé pour la résolution XUID → pi
+                first_data = data
+                first_packets = packets
             chunks_sorted.append(idx)
             timing.append((start_ms, start_ms + dur_ms))
 
@@ -246,9 +255,8 @@ class WeaponExtractionService:
 
         all_raw_events.sort(key=lambda e: e["timestamp_ms"])
 
-        # Timeline Section 1 (raw + NS)
-        timeline, swap_pis, _ = build_weapon_timeline(chunks)
-        timeline_ns = build_weapon_timeline_ns(chunks)
+        # Timelines Section 1 (raw + NS) — passe unique
+        timeline, timeline_ns, swap_pis, _ = build_weapon_timelines(chunks)
 
         # Dispatch b2_stream → pi
         b2_to_pi = map_b2_to_player(all_raw_events, timeline_ns, timing, chunks_sorted)
@@ -263,7 +271,7 @@ class WeaponExtractionService:
             dropped_events=_total_raw - _dispatched,
         )
 
-        return ScanResult(
+        scan = ScanResult(
             fire_events_by_pi=fire_events_by_pi,
             fire_events_global=all_raw_events,
             timeline=timeline,
@@ -271,6 +279,12 @@ class WeaponExtractionService:
             timing=timing,
             chunks_sorted=chunks_sorted,
         )
+
+        # Résolution player_index — réutilise first_packets déjà indexés
+        pi_map = self._resolve_from_chunk(first_data, first_packets, all_participants)
+        log.record_step("resolve_pi", resolved=len(pi_map), total=len(all_participants))
+
+        return scan, pi_map
 
     # ── Correlation Phase ────────────────────────────────────────────────
 
@@ -309,23 +323,27 @@ class WeaponExtractionService:
 
     # ── Résolution player_index ──────────────────────────────────────────
 
-    def _resolve_player_indices(
+    def _resolve_from_chunk(
         self,
-        chunks: dict[int, tuple[bytes, int, int]],
+        first_chunk_data: bytes,
+        first_packets: list,
         all_participants: dict[str, str],
     ) -> dict[int, int]:
-        """Résout XUID → player_index via METADATA packet puis fallback acurtis."""
-        first_chunk_data = next(iter(v[0] for v in chunks.values()))
+        """Résout XUID → player_index depuis les packets déjà indexés du premier chunk.
+
+        Méthode 1 : PLAYER_METADATA packet (précis, 16 joueurs).
+        Fallback   : acurtis detect_player_indices (heuristique).
+        """
+        if not first_chunk_data:
+            return {}
+
         xuid_int_map = {int(x): x for x in all_participants if x.isdigit()}
 
-        # Méthode 1 : PLAYER_METADATA packet
         try:
-            packets = index_chunk(first_chunk_data)
-            metadata = extract_metadata_payload(first_chunk_data, packets)
+            metadata = extract_metadata_payload(first_chunk_data, first_packets)
         except Exception as exc:
-            logger.debug("resolve_pi: index_chunk/metadata failed: %s", exc)
+            logger.debug("resolve_pi: metadata failed: %s", exc)
             metadata = None
-            packets = []
 
         if metadata is not None:
             pi_to_xuid_int = detect_pi_from_metadata(metadata, xuid_int_map)
