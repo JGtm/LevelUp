@@ -197,9 +197,6 @@ def plot_streak_chart(
         Figure Plotly.
     """
     d = _normalize_df(df)
-    if title is None:
-        title = viz_t("title_streaks", lang)
-
     d = d.sort("start_time")
 
     # Filtrer : ne garder que V/D
@@ -215,7 +212,7 @@ def plot_streak_chart(
             showarrow=False,
             font={"size": 16},
         )
-        return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.short_height)
+        return apply_halo_plot_style(fig, title=title or None, height=PLOT_CONFIG.short_height)
 
     x_idx, labels, step = prepare_time_axis(d)
 
@@ -254,11 +251,13 @@ def plot_streak_chart(
         )
     )
 
-    fig.update_layout(
-        title=title,
-        margin={"l": 40, "r": 20, "t": 40, "b": 90},
-        hovermode="x unified",
-    )
+    layout_kwargs: dict = {
+        "margin": {"l": 40, "r": 20, "t": 40 if title else 10, "b": 90},
+        "hovermode": "x unified",
+    }
+    if title is not None:
+        layout_kwargs["title"] = title
+    fig.update_layout(**layout_kwargs)
     fig.update_yaxes(title_text=viz_t("axis_streak", lang), zeroline=True)
     apply_chrono_xaxis(fig, x_idx, labels, step, lang)
 

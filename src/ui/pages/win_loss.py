@@ -237,7 +237,6 @@ def _render_personal_score_section(dff: pl.DataFrame) -> None:
     fig_ps = plot_metric_bars_by_match(
         dff,
         metric_col="personal_score",
-        title=None,
         y_axis_title=t("wl_personal_score_y_axis"),
         hover_label=t("wl_personal_score_hover"),
         bar_color=colors["amber"],
