@@ -44,6 +44,28 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - DDL étendu avec colonnes i18n (`name_en`, `name_fr`, `mode_name`, `playlist_canonical_*`)
   - Logique extraite dans `scripts/_metadata_db.py` (DDL + enrichissement i18n)
 
+- **Scoreboard — panel détail joueur inline** — un clic sur une ligne dérouler un panel inline (toggle checkbox HTML/CSS pur, sans rerun Streamlit)
+  - 4 meilleures armes, 5 meilleures médailles, antagoniste principal résolu via `v_killer_victim_full`
+  - Score de performance, citations et contexte de session affichés si la DB locale du joueur est disponible
+  - Nouveau fichier `match_view_scoreboard_detail.py` : `load_scoreboard_player_extra_data()` + `render_scoreboard_player_detail_html()`
+
+- **Badges Domination / Humiliation** — enrichissement du résultat basé sur la médaille Steaktacular ("À table")
+  - Enum `DominanceFlag` (`NONE / DOMINATION / HUMILIATION`) + `dominance_backfill.py` persistant le flag dans `player_match_enrichment.dominance_flag`
+  - Domination : l'équipe du joueur obtient Steaktacular, l'adversaire non ; Humiliation : l'inverse
+  - Badge coloré dans l'en-tête du résumé du match (vert = domination, violet = humiliation)
+  - Backfill : `python scripts/backfill_data.py --dominance` (ou `--force-dominance`)
+
+- **Carrière — Top meilleurs / pires matchs** — nouvelle section "Top matchs" en bas de la page Carrière
+  - Top 10 meilleurs matchs (score de performance le plus élevé) et Top 10 pires, côte à côte
+  - Chaque carte : K/D/A, carte, mode/playlist, durée, score, date — avec lien direct vers Match View
+  - Badge Domination/Humiliation affiché sur les cartes concernées
+  - Implémenté dans `career_top_matches_data.py` + `career_top_matches_render.py`
+
+- **Images commendations — citations d'armes** — illustrations H5G ajoutées pour les 16 commendations d'armes (UNSC, Covenant, Banished)
+  - Nouvelle citation : *Maîtrise du MLRS-2 Hydra* avec image dédiée `H5G_citation_Hydra.png`
+  - Correction image SPNKr : `H5G_citation_Lance-roquettes.png` → `H5G_citation_SPNKR.png`
+  - `WEAPON_FUSION_MAP` : les kills MLRS-2 Hydra (variante alt) comptent désormais vers la citation Hydra de base
+
 ### Modifié
 
 - **Resolver gamertag** (`src/data/sync/_gamertag_resolver.py`) — cascade 5-sources remplacée par un JOIN unique sur `v_gamertag_lookup` ; `load_match_player_gamertags()` passe de 4 requêtes séquentielles à 1
