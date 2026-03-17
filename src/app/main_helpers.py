@@ -216,7 +216,8 @@ def render_profile_hero(
             if career and career.get("adornment_path"):
                 adornment_value = str(career["adornment_path"]).strip()
 
-    # Tokens Halo si nécessaire
+    # Tokens Halo si nécessaire (gamertag transmis pour les refresh tokens per-player)
+    _gamertag_for_tokens = str(me_name or "").strip() or None
     if (
         dl_enabled
         and (not str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip())
@@ -227,7 +228,7 @@ def render_profile_hero(
             or _needs_halo_auth(adornment_value)
         )
     ):
-        ensure_spnkr_tokens(timeout_seconds=12)
+        ensure_spnkr_tokens(timeout_seconds=12, db_path=db_path, gamertag=_gamertag_for_tokens)
 
     # Résolution des chemins locaux
     banner_path = ensure_local_image_path(

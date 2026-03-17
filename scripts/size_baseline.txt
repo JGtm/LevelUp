@@ -16,8 +16,8 @@ FUNC:src/app/_filters_apply.py:22:apply_filters:191L
 FUNC:src/app/_filters_cascade.py:326:_render_cascade_filters:101L
 FUNC:src/app/filters.py:206:render_session_filters:94L
 FUNC:src/app/filters_render.py:373:render_filters_sidebar:112L
-FUNC:src/app/main_helpers.py:168:render_profile_hero:134L
-FUNC:src/app/profile.py:187:load_profile_assets:101L
+FUNC:src/app/main_helpers.py:168:render_profile_hero:135L
+FUNC:src/app/profile.py:188:load_profile_assets:110L
 FUNC:src/app/sidebar.py:174:render_sync_button:122L
 FUNC:src/data/media_indexer.py:238:scan_and_index:91L
 FUNC:src/data/media_indexer.py:94:ensure_schema:138L

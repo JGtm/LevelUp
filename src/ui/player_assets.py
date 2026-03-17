@@ -149,8 +149,9 @@ def _resolve_spnkr_strategy(raw: str, is_full_url: bool) -> tuple[bool, str, str
                 use_direct_get = True
                 direct_url = raw
             elif "/hi/images/file/" in path_lower:
-                marker = "/hi/images/file/"
-                rel = (p.path or "")[path_lower.index(marker) + len(marker) :]
+                # URL complète gamecms → GET direct avec auth (évite la reconstruction d'URL)
+                use_direct_get = True
+                direct_url = raw
             else:
                 use_direct_get = True
                 direct_url = raw
