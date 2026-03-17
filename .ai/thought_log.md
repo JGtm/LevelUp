@@ -7,6 +7,38 @@
 
 ## Journal
 
+### [2026-07-14] — Fix NS timeline substitution pour weapon_id inconnus
+
+**Statut** : Complété
+
+**Contexte** :
+- Investigation multi-session sur les weapon_ids inconnus (raw FA handles) dans weapon_kills
+- Problème racine : pour les joueurs non-NS-scannés, `_attribution_from_event` et `_fallback_formula_a` tombent sur `WEAPON_BYTES_TO_INT.get(wb) = None` → stockent `int.from_bytes(wb)` = raw FA handle non résolu
+- La NS timeline (`timeline_ns`) contient les weapon_bytes canoniques par `(chunk, pi)` → fournit la substitution nécessaire
+
+**Validations effectuées** :
+- 7/7 ground truth sur formule `fire_seq % n_players = pi` (inv132)
+- 100 matchs corpus : NS dispatch = 62% coverage, 37% drop → formule = 0% drop
+- Cohérence xuid→player_index dans weapon_kills : 1 seul match incohérent / toute la DB
+- Contenu WEAPON_BYTES_TO_INT : 32 raw FA connus + 7 NS TYPE_IDs = 39 entrées
+- Tests hors intégration : 4872 passés, 0 échec
+
+**Décision technique** :
+- Ajouter `timeline_ns` dans `ScanResult`
+- Propager `timeline_ns` depuis `_run_scan_phase` → `_correlate_all_players` → `correlate_kills_global`
+- Dans `_attribution_from_event` : si `WEAPON_BYTES_TO_INT.get(wb)` = None et `player_index` connu → chercher `timeline_ns[chunk_at_time][pi]` → retenter la résolution
+- Dans `_fallback_formula_a` : priorité NS timeline avant raw FA timeline
+- `timeline_ns=None` par défaut → rétro-compatible avec les callers qui ne la passent pas
+
+**Fichiers modifiés** :
+- `src/analysis/_global_correlation.py` — signature `correlate_kills_global`, `_attribution_from_event` 
+- `src/analysis/weapon_parser.py` — `_fallback_formula_a` avec NS lookup prioritaire
+- `src/data/services/weapon_extraction_service.py` — `ScanResult` + propagation
+
+**Conclusion** : Le fix s'active pour les armes inconnues uniquement (les 39 armes déjà dans WEAPON_BYTES_TO_INT ne sont pas affectées). Impact attendu sur la réduction des weapon_id `0xXXXX42c9679f` inconnus en DB lors du prochain backfill.
+
+---
+
 ### [2026-03-17] — Fix Ruff f-string Python 3.10 (career_top_matches_render.py) + vérification finale
 
 **Statut** : Complété

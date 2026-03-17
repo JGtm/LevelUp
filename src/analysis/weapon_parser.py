@@ -448,21 +448,35 @@ def _fallback_formula_a(  # noqa: PLR0913
     timing: list[tuple[int, int]],
     chunks_sorted: list[int],
     match_id: str,
+    *,
+    timeline_ns: dict[int, dict[int, bytes]] | None = None,
 ) -> KillAttribution:
-    """Fallback Formula A NS : arme tenue à t_ms selon timeline Section 1."""
+    """Fallback Formula A NS : arme tenue à t_ms selon timeline Section 1.
+
+    Priorité : NS timeline (TYPE IDs canoniques) → raw FA timeline → handle brut.
+    """
     t_ms = kill["time_ms"]
     wid_int = None
     swap = False
 
     if pi is not None and chunks_sorted:
         chunk_idx = find_chunk_at_time(chunks_sorted, timing, t_ms)
-        chunk_state = timeline.get(chunk_idx, {})
-        wid_bytes = chunk_state.get(pi)
-        if wid_bytes is not None:
-            wid_int = WEAPON_BYTES_TO_INT.get(wid_bytes)
-            if wid_int is None:
-                wid_int = int.from_bytes(wid_bytes, byteorder="big")
         swap = pi in swap_pis.get(chunk_idx, set())
+
+        # 1. Préférer NS timeline (TYPE IDs canoniques)
+        if timeline_ns:
+            ns_wb = timeline_ns.get(chunk_idx, {}).get(pi)
+            if ns_wb:
+                wid_int = WEAPON_BYTES_TO_INT.get(ns_wb)
+
+        # 2. Fallback : raw FA timeline
+        if wid_int is None:
+            chunk_state = timeline.get(chunk_idx, {})
+            wid_bytes = chunk_state.get(pi)
+            if wid_bytes is not None:
+                wid_int = WEAPON_BYTES_TO_INT.get(wid_bytes)
+                if wid_int is None:
+                    wid_int = int.from_bytes(wid_bytes, byteorder="big")
 
     conf = (
         "medium" if wid_int is not None and not swap else "low" if wid_int is not None else "none"
