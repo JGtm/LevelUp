@@ -1392,6 +1392,23 @@ Baseline de taille mise à jour (`scripts/check_code_size.py --update`) car `_ro
 **Prochaine étape** : Commit 0 — arrêter l'app (libérer le verrou `shared_matches.duckdb`), modifier et exécuter `populate_metadata_from_discovery.py`.
 
 
+### [2025-07-20] — Cleanup fallbacks excessifs : getattr(settings) + _has_shared_table → has_shared
+
+**Statut** : Complété
+**Décision** : Elimination des 3 groupes d'anti-patterns post-Ph1-Ph6 identifiés lors de l'audit :
+1. `getattr(settings, "field", default)` → accès direct `settings.field` (Pydantic v2 garantit la présence)
+2. `_has_shared_table("mv_player_matches")` → simple `self.has_shared`
+3. `_has_shared_table("match_participants")` / `_has_shared_table("match_registry")` → `self.has_shared` + reorder conn
+
+**Corrections appliquées** :
+- 9 fichiers `getattr(settings,...)` nettoyés : sidebar.py (21 occurrences), state.py, tz.py, match_view_helpers.py, media_library_filters.py, media_library_data.py, media_library.py, profile.py
+- Branche `_match_queries_polars.py` v4 locale supprimée (vestige)
+- 9 fichiers repository : guards `_has_shared_table` → `has_shared` (idiomatic)
+- **Bug introduit puis corrigé** : `has_shared` vérifie `_attached_dbs` qui n'est peuplé qu'après `_get_connection()` ; 7 fonctions avaient le guard AVANT l'appel à `_get_connection()` → 16 tests échouaient → correctif : déplacer `conn = self._get_connection()` AVANT `if not self.has_shared:`
+- Baseline taille mis à jour (render_sync_button 116L)
+
+**Résultat** : 4941 tests passent, 0 échec. 2 commits sur `refactor/id-resolution-cleanup`.
+
 ### [2025-07-19] — Vérification finale cleanup match_stats : logging + qualité
 
 **Statut** : Complété
