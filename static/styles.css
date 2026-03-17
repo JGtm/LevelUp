@@ -1599,7 +1599,7 @@ div[data-testid="stNumberInput"] input:focus {
     background: rgba(10, 14, 20, 0.80);
     color: rgba(182, 196, 214, 0.80);
     font-family: var(--font-body);
-    font-size: 0.72rem;
+    font-size: 0.6em;
     font-weight: 600;
     text-align: center;
     padding: 5px 8px;
@@ -1725,14 +1725,6 @@ div[data-testid="stNumberInput"] input:focus {
     border-bottom: 1px solid rgba(65, 214, 255, 0.10);
 }
 
-.os-sb-detail-head {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-bottom: 12px;
-}
-
 .os-sb-detail-badge {
     padding: 4px 10px;
     border-radius: 999px;
@@ -1761,7 +1753,7 @@ div[data-testid="stNumberInput"] input:focus {
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: rgba(182, 196, 214, 0.76);
+    color: #ffffff;
 }
 
 .os-sb-detail-list {
@@ -1782,13 +1774,17 @@ div[data-testid="stNumberInput"] input:focus {
 }
 
 .os-sb-detail-item--medal {
-    min-height: 42px;
+    min-height: 36px;
+    padding: 2px 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
 }
 
 .os-sb-detail-medal-icon {
-    width: 26px;
-    height: 26px;
-    flex: 0 0 26px;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
     object-fit: contain;
     border-radius: 6px;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
@@ -1806,13 +1802,34 @@ div[data-testid="stNumberInput"] input:focus {
     color: #edf7ff;
 }
 
-@media (max-width: 720px) {
-    .os-sb-detail-head {
-        justify-content: flex-start;
-    }
+.os-sb-detail-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+}
 
+.os-sb-detail-link {
+    color: #ffffff;
+    text-decoration: underline;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.os-sb-detail-link:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+@media (max-width: 720px) {
     .os-sb-detail-grid {
         grid-template-columns: 1fr;
+    }
+
+    .os-sb-detail-footer {
+        justify-content: flex-start;
     }
 }
 

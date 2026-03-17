@@ -7,6 +7,46 @@
 
 ## Journal
 
+### [2026-03-17] — Ajout d'une section Antagoniste au détail inline du scoreboard
+
+**Statut** : Complété
+
+**Décision technique** :
+- La section inline du scoreboard réutilise les données déjà présentes dans `shared.killer_victim_pairs` via `load_killer_victim_pairs_as_polars(match_id=...)` au lieu d'introduire une nouvelle source.
+- Le calcul est fait par joueur de ligne avec `compute_personal_antagonists_from_pairs_polars(...)`, ce qui permet d'afficher une section légère et déterministe pour le match courant.
+- Le rendu retenu reste compact : un bloc `Antagoniste` avec deux lignes maximum, `Némésis` et `Souffre-douleur`, au format `Nom (compte)`.
+
+**Fichiers modifiés** :
+- `src/ui/pages/match_view_scoreboard_detail.py`
+- `src/ui/i18n/pages/match_view.py`
+- `tests/ui/test_match_view_scoreboard_expand.py`
+
+**Résultats observés** :
+- La ligne dépliée du scoreboard peut maintenant afficher le principal antagoniste du joueur dans ce match
+- Aucune nouvelle erreur dans les fichiers modifiés
+- Les tests ciblés du scoreboard inline restent verts
+
+**Conclusion / prochaine étape** : si besoin, on peut enrichir ensuite cette section avec un mini différentiel direct (`morts subies` vs `frags infligés`) ou la masquer explicitement quand aucune interaction killer/victim n'est disponible.
+
+### [2026-03-17] — Coloration du score de performance dans le détail inline du scoreboard
+
+**Statut** : Complété
+
+**Décision technique** :
+- Le projet a déjà une codification centralisée du score de performance via `get_score_class()` dans `src/ui/components/performance.py` et les classes CSS globales `text-excellent|good|average|poor|bad`.
+- Pour éviter une seconde logique de seuils dans le scoreboard, le rendu inline réutilise directement cette classe existante uniquement sur la valeur numérique du score de performance.
+- Le reste de la section locale conserve son rendu neutre, ce qui répond au besoin sans recolorer les autres badges/citations.
+
+**Fichiers modifiés** :
+- `src/ui/pages/match_view_scoreboard_detail.py`
+- `tests/ui/test_match_view_scoreboard_expand.py`
+
+**Résultats observés** :
+- La valeur numérique du score de performance dans le panneau inline hérite maintenant de la palette officielle du produit
+- Une régression vérifie la présence de la classe attendue dans le HTML rendu
+
+**Conclusion / prochaine étape** : si besoin, la même approche peut être propagée à d'autres emplacements HTML où le score de performance est encore affiché en texte neutre.
+
 ### [2026-03-17] — Optimisations pipeline weapon_kills (P1-P4)
 
 **Statut** : Complété

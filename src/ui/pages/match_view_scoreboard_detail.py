@@ -12,11 +12,14 @@ from pathlib import Path
 
 import polars as pl
 
+from src.analysis import compute_personal_antagonists_from_pairs_polars
 from src.analysis._medal_data import resolve_medal_name
 from src.analysis._weapon_data import resolve_weapon_display
 from src.config import get_bot_name, get_repo_root
+from src.ui.components.performance import get_score_class
 from src.ui.i18n import get_lang, t
 from src.ui.i18n.data_labels import label_obj
+from src.ui.pages.match_table_html import app_url
 from src.utils import parse_xuid_input
 from src.utils.paths import get_player_db_path, player_db_exists
 
@@ -43,10 +46,12 @@ class ScoreboardPlayerExtraData:
 
     weapons: list[tuple[str, int]] = field(default_factory=list)
     medals: list[MedalDetailItem] = field(default_factory=list)
+    antagonist_items: list[tuple[str, str]] = field(default_factory=list)
     citations: list[tuple[str, int]] = field(default_factory=list)
     performance_score: float | None = None
     had_bot_teammate: bool = False
     has_local_db: bool = False
+    profile_link_html: str | None = None
 
 
 def load_scoreboard_player_extra_data(
@@ -60,7 +65,7 @@ def load_scoreboard_player_extra_data(
     lang = get_lang()
     normalized_xuid = _normalize_xuid(xuid)
     clean_gamertag = _clean_gamertag(gamertag)
-    extra = ScoreboardPlayerExtraData()
+    extra = ScoreboardPlayerExtraData(profile_link_html=_build_profile_link(clean_gamertag))
 
     if not normalized_xuid:
         return extra
@@ -71,6 +76,7 @@ def load_scoreboard_player_extra_data(
         shared_repo = DuckDBRepository(db_path, xuid=normalized_xuid, read_only=True)
         extra.weapons = _load_weapon_items(shared_repo, normalized_xuid, match_id, lang)
         extra.medals = _load_medal_items(shared_repo, match_id, lang)
+        extra.antagonist_items = _load_antagonist_items(shared_repo, normalized_xuid, match_id)
     except Exception:
         logger.debug(
             "scoreboard detail: chargement shared impossible match=%s xuid=%s",
@@ -126,21 +132,24 @@ def render_scoreboard_player_detail_html(
         )
     if extra.medals:
         sections.append(_render_medals_section(extra.medals))
-    local_items = _build_local_items(extra)
-    if local_items:
+    if extra.antagonist_items:
         sections.append(
             _render_items_section(
-                title=t("mv_scoreboard_detail_local"),
-                items=local_items,
+                title=t("mv_scoreboard_detail_antagonist"),
+                items=extra.antagonist_items,
             )
         )
+    local_section = _render_local_section(extra)
+    if local_section:
+        sections.append(local_section)
 
     return (
         "<div class='os-sb-detail-panel'>"
-        "<div class='os-sb-detail-head'>"
-        f"<div class='os-sb-detail-badge'>{html.escape(badge_text)}</div>"
-        "</div>"
-        "<div class='os-sb-detail-grid'>" + "".join(sections) + "</div>" + "</div>"
+        "<div class='os-sb-detail-grid'>"
+        + "".join(sections)
+        + "</div>"
+        + _render_profile_footer(extra.profile_link_html, badge_text)
+        + "</div>"
     )
 
 
@@ -168,6 +177,14 @@ def _resolve_player_db_path(gamertag: str) -> str | None:
     if not player_db_exists(gamertag):
         return None
     return str(get_player_db_path(gamertag))
+
+
+def _build_profile_link(gamertag: str) -> str | None:
+    if not gamertag or get_bot_name(gamertag) is not None:
+        return None
+    href = html.escape(app_url("Explorer", gamertag=gamertag))
+    label = html.escape(t("mv_scoreboard_detail_explore_player", player=gamertag))
+    return f"<a class='os-sb-detail-link' href='{href}' target='_self'>" f"{label}" "</a>"
 
 
 def _load_weapon_items(repo: object, xuid: str, match_id: str, lang: str) -> list[tuple[str, int]]:
@@ -237,14 +254,68 @@ def _load_citation_items(
     return items[:_DETAIL_LIMIT_CITATIONS]
 
 
+def _load_antagonist_items(repo: object, xuid: str, match_id: str) -> list[tuple[str, str]]:
+    pairs_df = repo.load_killer_victim_pairs_as_polars(match_id=match_id)
+    if not isinstance(pairs_df, pl.DataFrame) or pairs_df.is_empty():
+        return []
+    result = compute_personal_antagonists_from_pairs_polars(pairs_df, xuid)
+    items: list[tuple[str, str]] = []
+    if result.nemesis_times_killed_by > 0:
+        items.append(
+            (
+                t("mv_scoreboard_detail_nemesis"),
+                _format_antagonist_value(result.nemesis_gamertag, result.nemesis_times_killed_by),
+            )
+        )
+    if result.victim_times_killed > 0:
+        items.append(
+            (
+                t("mv_scoreboard_detail_bully"),
+                _format_antagonist_value(result.victim_gamertag, result.victim_times_killed),
+            )
+        )
+    return items
+
+
+def _format_antagonist_value(gamertag: str | None, count: int) -> str:
+    name = _clean_gamertag(gamertag) or "—"
+    return f"{name} ({int(count)})"
+
+
 def _build_local_items(extra: ScoreboardPlayerExtraData) -> list[tuple[str, str]]:
     items: list[tuple[str, str]] = []
-    if extra.performance_score is not None:
-        items.append((t("mv_performance"), f"{float(extra.performance_score):.1f}"))
     if extra.had_bot_teammate:
         items.append((t("mv_scoreboard_detail_bot_note"), t("mv_bot_teammate_note")))
     items.extend((name, str(count)) for name, count in extra.citations)
     return items
+
+
+def _render_local_section(extra: ScoreboardPlayerExtraData) -> str:
+    rows: list[str] = []
+    if extra.performance_score is not None:
+        score_value = f"{float(extra.performance_score):.1f}"
+        score_class = get_score_class(extra.performance_score)
+        rows.append(
+            "<div class='os-sb-detail-item'>"
+            f"<span class='os-sb-detail-item-label'>{html.escape(str(t('mv_performance')))}</span>"
+            f"<span class='os-sb-detail-item-value {html.escape(score_class)}'>{html.escape(score_value)}</span>"
+            "</div>"
+        )
+    for label, value in _build_local_items(extra):
+        rows.append(
+            "<div class='os-sb-detail-item'>"
+            f"<span class='os-sb-detail-item-label'>{html.escape(str(label))}</span>"
+            f"<span class='os-sb-detail-item-value'>{html.escape(str(value))}</span>"
+            "</div>"
+        )
+    if not rows:
+        return ""
+    return (
+        "<section class='os-sb-detail-section'>"
+        f"<div class='os-sb-detail-title'>{html.escape(t('mv_scoreboard_detail_local'))}</div>"
+        f"<div class='os-sb-detail-list'>{''.join(rows)}</div>"
+        "</section>"
+    )
 
 
 def _render_items_section(
@@ -270,6 +341,14 @@ def _render_items_section(
         f"<div class='os-sb-detail-list'>{''.join(rows)}</div>"
         "</section>"
     )
+
+
+def _render_profile_footer(profile_link_html: str | None, badge_text: str) -> str:
+    """Construit la ligne footer avec badge DB et lien Explorer."""
+    badge_html = f"<div class='os-sb-detail-badge'>{html.escape(badge_text)}</div>"
+    if not profile_link_html:
+        return f"<div class='os-sb-detail-footer'>{badge_html}</div>"
+    return f"<div class='os-sb-detail-footer'>{badge_html}{profile_link_html}</div>"
 
 
 @functools.cache

@@ -70,10 +70,12 @@ def test_render_match_scoreboard_emits_expandable_detail_rows(mock_st) -> None:
                 icon_url="/app/static/medals/icons/1512363953.png",
             )
         ],
+        antagonist_items=[("Némésis", "Bravo (3)")],
         citations=[("Tireur d'elite", 2)],
         performance_score=87.5,
         had_bot_teammate=True,
         has_local_db=True,
+        profile_link_html="<a class='os-sb-detail-link' href='/?page=Explorer&amp;gamertag=Alpha'>Explorer les matchs avec Alpha</a>",
     )
 
     with (
@@ -92,12 +94,16 @@ def test_render_match_scoreboard_emits_expandable_detail_rows(mock_st) -> None:
     assert "os-sb-toggle" in rendered_html
     assert "os-sb-detail-row" in rendered_html
     assert "os-sb-detail-panel" in rendered_html
+    assert "os-sb-team os-sb-team--mine" in rendered_html
+    assert "Équipe Eagle" in rendered_html
     assert "BR75" in rendered_html
     assert "Perfection" in rendered_html
+    assert "Antagoniste" in rendered_html
+    assert "Bravo (3)" in rendered_html
     assert "/app/static/medals/icons/1512363953.png" in rendered_html
     assert "os-sb-detail-medal-icon" in rendered_html
     assert "Tireur d&#x27;elite" in rendered_html
-    assert "Profil" not in rendered_html
+    assert "Explorer les matchs avec Alpha" in rendered_html
     assert "Résumé" not in rendered_html
     ms.calls["caption"].assert_called()
 
@@ -126,8 +132,48 @@ def test_render_scoreboard_player_detail_html_handles_shared_only() -> None:
     assert "/app/static/medals/icons/1512363953.png" in html_out
     assert "Données shared uniquement" in html_out
     assert "os-sb-detail-badge" in html_out
-    assert "Profil" not in html_out
+    assert "Explorer les matchs avec" not in html_out
     assert "Résumé" not in html_out
+
+
+def test_render_scoreboard_player_detail_html_renders_antagonist_section() -> None:
+    from src.ui.pages.match_view_scoreboard_detail import (
+        ScoreboardPlayerExtraData,
+        render_scoreboard_player_detail_html,
+    )
+
+    html_out = render_scoreboard_player_detail_html(
+        extra=ScoreboardPlayerExtraData(
+            antagonist_items=[
+                ("Némésis", "Bravo (3)"),
+                ("Souffre-douleur", "Charlie (2)"),
+            ]
+        ),
+    )
+
+    assert "Antagoniste" in html_out
+    assert "Némésis" in html_out
+    assert "Bravo (3)" in html_out
+    assert "Souffre-douleur" in html_out
+    assert "Charlie (2)" in html_out
+
+
+def test_render_scoreboard_player_detail_html_colors_performance_score_value() -> None:
+    from src.ui.components.performance import get_score_class
+    from src.ui.pages.match_view_scoreboard_detail import (
+        ScoreboardPlayerExtraData,
+        render_scoreboard_player_detail_html,
+    )
+
+    html_out = render_scoreboard_player_detail_html(
+        extra=ScoreboardPlayerExtraData(
+            performance_score=87.5,
+            has_local_db=True,
+        ),
+    )
+
+    assert f"os-sb-detail-item-value {get_score_class(87.5)}" in html_out
+    assert ">87.5<" in html_out
 
 
 def test_scoreboard_styles_define_inline_expansion_rules() -> None:
@@ -139,3 +185,4 @@ def test_scoreboard_styles_define_inline_expansion_rules() -> None:
     assert ".os-sb-toggle" in css_text
     assert "tbody.os-sb-player:has(.os-sb-toggle:checked) .os-sb-detail-row" in css_text
     assert ".os-sb-detail-medal-icon" in css_text
+    assert "font-size: 0.6em;" in css_text
