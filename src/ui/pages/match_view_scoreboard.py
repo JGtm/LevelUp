@@ -14,8 +14,12 @@ import streamlit as st
 
 from src.config import TEAM_MAP, get_bot_name
 from src.ui.i18n import t
-from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_players_data import load_match_scoreboard
+from src.ui.pages.match_view_scoreboard_detail import (
+    load_scoreboard_player_extra_data,
+    render_scoreboard_player_detail_html,
+    scoreboard_toggle_id,
+)
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG  # noqa: F401 — re-export éventuel
 from src.utils import parse_xuid_input
 
@@ -254,13 +258,38 @@ def _compute_mvp_lvp(
 
 
 # =============================================================================
-# Rendu HTML par équipe
-# =============================================================================
+def _build_scoreboard_row_html(  # noqa: PLR0913
+    *,
+    player: dict[str, Any],
+    sb_cols: list[tuple[str, str]],
+    row_class: str,
+    toggle_id: str,
+    extremes: dict[str, tuple[float, float]],
+) -> str:
+    """Construit la ligne HTML principale du scoreboard."""
+    cell_parts = []
+    for index, (_, key) in enumerate(sb_cols):
+        css = _sb_cell_class(key, player.get(key), extremes)
+        raw = _fmt_scoreboard_cell(key, player.get(key))
+        label_html = (
+            f"<label class='os-sb-hit' for='{html.escape(toggle_id)}'>"
+            f"{html.escape(raw)}"
+            "</label>"
+        )
+        if index == 0:
+            label_html = (
+                f"<input id='{html.escape(toggle_id)}' class='os-sb-toggle' type='checkbox'>"
+                + label_html
+            )
+        cell_parts.append(f"<td class='os-sb-td{css}'>{label_html}</td>")
+    return f"<tr class='os-sb-row{row_class}'>{''.join(cell_parts)}</tr>"
 
 
 def _render_team_table(  # noqa: PLR0913
     *,
     team_players: list[dict[str, Any]],
+    match_id: str,
+    db_path: str,
     tid: Any,
     my_team_id: Any,
     me_xu: str,
@@ -293,7 +322,7 @@ def _render_team_table(  # noqa: PLR0913
     )
 
     body_rows = []
-    for p in team_players:
+    for row_index, p in enumerate(team_players):
         p_xu = str(
             parse_xuid_input(str(p.get("xuid") or "").strip()) or str(p.get("xuid") or "").strip()
         ).strip()
@@ -303,25 +332,32 @@ def _render_team_table(  # noqa: PLR0913
             row_class += " os-sb-row--mvp"
         elif p_xu and p_xu == lvp_xuid:
             row_class += " os-sb-row--lvp"
-        cell_parts = []
-        for _, key in sb_cols:
-            css = _sb_cell_class(key, p.get(key), extremes)
-            raw = _fmt_scoreboard_cell(key, p.get(key))
-            if key == "gamertag" and raw != "—" and not is_me:
-                content = gamertag_link(raw)
-            else:
-                content = html.escape(raw)
-            cell_parts.append(f"<td class='os-sb-td{css}'>{content}</td>")
-        cells = "".join(cell_parts)
-        body_rows.append(f"<tr class='os-sb-row{row_class}'>{cells}</tr>")
+        toggle_id = scoreboard_toggle_id(tid, p_xu, row_index)
+        extra = load_scoreboard_player_extra_data(
+            db_path=db_path,
+            match_id=match_id,
+            xuid=p_xu,
+            gamertag=_fmt_scoreboard_cell("gamertag", p.get("gamertag")),
+        )
+        detail_html = render_scoreboard_player_detail_html(extra=extra)
+        row_html = _build_scoreboard_row_html(
+            player=p,
+            sb_cols=sb_cols,
+            row_class=row_class,
+            toggle_id=toggle_id,
+            extremes=extremes,
+        )
+        body_rows.append(
+            "<tbody class='os-sb-player'>"
+            f"{row_html}"
+            f"<tr class='os-sb-detail-row'><td class='os-sb-detail-cell' colspan='{n_cols}'>{detail_html}</td></tr>"
+            "</tbody>"
+        )
 
     table_html = (
         "<div class='os-table-wrap os-sb-wrap'>"
         "<table class='os-table os-scoreboard'>"
-        f"{thead}"
-        "<tbody>" + "".join(body_rows) + "</tbody>"
-        "</table>"
-        "</div>"
+        f"{thead}" + "".join(body_rows) + "</table>" + "</div>"
     )
     st.markdown(table_html, unsafe_allow_html=True)
 
@@ -349,6 +385,7 @@ def render_match_scoreboard(
         load_match_gamertags_fn: Fonction de résolution gamertags injectée.
     """
     st.subheader(t("mv_scoreboard"))
+    st.caption(t("mv_scoreboard_detail_click_hint"))
 
     players = load_match_scoreboard(db_path, match_id.strip())
     if not players:
@@ -391,6 +428,8 @@ def render_match_scoreboard(
     for tid, team_players in teams.items():
         _render_team_table(
             team_players=team_players,
+            match_id=match_id,
+            db_path=db_path,
             tid=tid,
             my_team_id=my_team_id,
             me_xu=me_xu,
