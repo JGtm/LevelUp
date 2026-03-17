@@ -118,6 +118,21 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
             infer_spnkr_player_from_db_path(str(st.session_state.get("db_path", "") or "")) or ""
         )
         xuid_input = legacy or inferred or guessed or xuid_or_gt
+
+        # Si l'entrée n'est pas un XUID numérique, tenter de résoudre depuis sync_meta
+        # (même logique que render_player_selector_unified au switch de joueur).
+        _current_db = str(st.session_state.get("db_path", "") or "").strip()
+        if xuid_input and not xuid_input.isdigit() and _current_db and os.path.exists(_current_db):
+            try:
+                from src.ui._cache_core import _resolve_player_xuid
+
+                resolved = _resolve_player_xuid(_current_db)
+                if resolved:
+                    xuid_input = resolved
+                    logger.debug("init_source_state: XUID résolu depuis sync_meta → %s", resolved)
+            except Exception:
+                pass
+
         logger.debug(
             "init_source_state: xuid_input=%s (legacy=%r inferred=%r guessed=%r)",
             xuid_input or "(vide)",
