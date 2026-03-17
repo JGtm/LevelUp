@@ -36,6 +36,7 @@ def correlate_kills_global(  # noqa: PLR0913
     chunks_sorted: list[int],
     match_id: str = "",
     *,
+    timeline_ns: dict[int, dict[int, bytes]] | None = None,
     log_collector: MatchLogCollector | None = None,
 ) -> list[KillAttribution]:
     """Corrélation globale tous joueurs — claim-and-remove sur pool unique.
@@ -80,11 +81,26 @@ def correlate_kills_global(  # noqa: PLR0913
             if candidates:
                 best_idx, best_ev = max(candidates, key=lambda x: x[1]["timestamp_ms"])
                 available.pop(best_idx)
-                attr = _attribution_from_event(kill, best_ev, match_id, compute_confidence)
+                attr = _attribution_from_event(
+                    kill,
+                    best_ev,
+                    match_id,
+                    compute_confidence,
+                    timeline_ns=timeline_ns,
+                    timing=timing,
+                    chunks_sorted=chunks_sorted,
+                )
             else:
                 pi = xuid_to_pi.get(kill["xuid"])
                 attr = _fallback_formula_a(
-                    kill, pi, timeline, swap_pis, timing, chunks_sorted, match_id
+                    kill,
+                    pi,
+                    timeline,
+                    swap_pis,
+                    timing,
+                    chunks_sorted,
+                    match_id,
+                    timeline_ns=timeline_ns,
                 )
 
         if log_collector:
@@ -119,14 +135,27 @@ def _make_sentinel_global(kill: dict, match_id: str, weapon_id: int) -> KillAttr
     )
 
 
-def _attribution_from_event(
+def _attribution_from_event(  # noqa: PLR0913
     kill: dict,
     ev: dict,
     match_id: str,
     compute_confidence_fn,
+    *,
+    timeline_ns: dict | None = None,
+    timing: list | None = None,
+    chunks_sorted: list | None = None,
 ) -> KillAttribution:
     """Construit un KillAttribution depuis un fire event claimé."""
     wid_int = WEAPON_BYTES_TO_INT.get(ev["weapon_bytes"])
+    if wid_int is None and timeline_ns and timing is not None and chunks_sorted is not None:
+        pi = ev.get("player_index")
+        if pi is not None:
+            from src.analysis.weapon_parser import find_chunk_at_time  # noqa: PLC0415
+
+            chunk_idx = find_chunk_at_time(chunks_sorted, timing, int(ev["timestamp_ms"]))
+            ns_wb = timeline_ns.get(chunk_idx, {}).get(pi)
+            if ns_wb:
+                wid_int = WEAPON_BYTES_TO_INT.get(ns_wb)
     if wid_int is None:
         wid_int = int.from_bytes(ev["weapon_bytes"], byteorder="big")
     delta = int(kill["time_ms"] - ev["timestamp_ms"])

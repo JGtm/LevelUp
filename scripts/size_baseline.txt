@@ -5,6 +5,7 @@
 # Format MODULE: MODULE:<fichier>:<taille>L
 #
 FUNC:src/ai/mcp_server.py:257:run_stdio_server:103L
+FUNC:src/analysis/_global_correlation.py:29:correlate_kills_global:88L
 FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
 FUNC:src/analysis/maps.py:11:compute_map_breakdown:105L
 FUNC:src/analysis/participation_radar.py:307:compute_participation_profile:109L
@@ -90,9 +91,10 @@ FUNC:src/visualization/team_dominance_timeline.py:208:plot_dominance_chart:135L
 FUNC:src/visualization/timeseries.py:325:plot_per_minute_timeseries:117L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:12:plot_trio_metric:179L
-MODULE:src/analysis/weapon_parser.py:525L
+MODULE:src/analysis/weapon_parser.py:539L
 MODULE:src/data/repositories/_weapon_kills_repo.py:529L
-MODULE:src/data/services/weapon_extraction_service.py:515L
+MODULE:src/data/services/weapon_extraction_service.py:518L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
+MODULE:src/ui/pages/match_view_scoreboard_detail.py:528L
 MODULE:src/ui/pages/session_compare.py:518L

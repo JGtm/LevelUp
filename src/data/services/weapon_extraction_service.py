@@ -78,6 +78,7 @@ class ScanResult:
     fire_events_by_pi: dict[int, list[dict]]
     fire_events_global: list[dict]
     timeline: dict[int, dict[int, bytes]]
+    timeline_ns: dict[int, dict[int, bytes]]
     swap_pis: dict[int, set[int]]
     timing: list[tuple[int, int]]
     chunks_sorted: list[int]
@@ -275,6 +276,7 @@ class WeaponExtractionService:
             fire_events_by_pi=fire_events_by_pi,
             fire_events_global=all_raw_events,
             timeline=timeline,
+            timeline_ns=timeline_ns,
             swap_pis=swap_pis,
             timing=timing,
             chunks_sorted=chunks_sorted,
@@ -318,6 +320,7 @@ class WeaponExtractionService:
             timing=scan.timing,
             chunks_sorted=scan.chunks_sorted,
             match_id=match_id,
+            timeline_ns=scan.timeline_ns,
             log_collector=log,
         )
 
