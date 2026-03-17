@@ -127,12 +127,13 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
         kd_style = f" style='color:{kd_c};font-weight:700;'" if kd_c else ""
         duration = html.escape(_format_duration(row.get("time_played_seconds")))
         date_str = html.escape(_format_date(row.get("start_time")))
+        map_td = map_name_cell_html(row.get("map_name")).replace("<td", "<td class='os-sb-td'", 1)
 
         body.append(
             f"<tr class='os-sb-row'>"
             f"<td class='os-sb-td' style='white-space:nowrap'>{date_str}</td>"
             f"<td class='os-sb-td'>{mode}</td>"
-            f"{map_name_cell_html(row.get('map_name')).replace('<td', "<td class='os-sb-td'", 1)}"
+            f"{map_td}"
             f"<td class='os-sb-td' style='font-weight:600'>{score}</td>"
             f"<td class='os-sb-td'>{kda}</td>"
             f"<td class='os-sb-td'{kd_style}>{html.escape(kd)}</td>"

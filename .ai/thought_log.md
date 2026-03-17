@@ -7,6 +7,26 @@
 
 ## Journal
 
+### [2026-03-17] — Fix Ruff f-string Python 3.10 (career_top_matches_render.py) + vérification finale
+
+**Statut** : Complété
+
+**Décision technique** :
+- Vérification finale de toutes les modifications du jour après 15 commits.
+- Une violation Ruff (`invalid-syntax`) existait dans `career_top_matches_render.py` ligne 135 : utilisation du même caractère de guillemet dans un f-string embedded (`"<td class='os-sb-td'", 1)`). Cette syntaxe n'est valide qu'à partir de Python 3.12 mais le projet vise Python 3.10+.
+- Fix retenu : extraction de la valeur dans une variable temporaire `map_td` avant le `body.append(...)`, ce qui supprime le besoin des guillemets embedded et améliore aussi la lisibilité.
+
+**Fichiers modifiés** :
+- `src/ui/pages/career_top_matches_render.py` — variable `map_td` + f-string propre
+
+**Résultats** :
+- `test_ruff_no_errors` : vert ✅
+- Suite complète hors intégration : **4827 passés, 2 skipped, 0 échec** ✅
+
+**Conclusion** : toutes les modifications du jour sont couvertes par des tests et conformes Ruff.
+
+---
+
 ### [2026-03-17] — Optimisations pipeline weapon_kills P1–P4
 
 **Statut** : Complété
