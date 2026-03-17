@@ -190,7 +190,7 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
         ).strip()
 
         # Auto-sélection SPNKr si préféré
-        if (not forced_env_db) and bool(getattr(settings, "prefer_spnkr_db_if_available", False)):
+        if (not forced_env_db) and settings.prefer_spnkr_db_if_available:
             spnkr = pick_latest_spnkr_db_if_any()
             if spnkr and os.path.exists(spnkr) and os.path.getsize(spnkr) > 0:
                 chosen = spnkr
@@ -274,21 +274,15 @@ def apply_settings_path_overrides(settings: AppSettings) -> None:
         settings: Paramètres de l'application.
     """
     # Aliases path
-    try:
-        aliases_override = str(getattr(settings, "aliases_path", "") or "").strip()
-        if aliases_override:
-            os.environ["LEVELUP_ALIASES_PATH"] = aliases_override
-        else:
-            os.environ.pop("LEVELUP_ALIASES_PATH", None)
-    except Exception:
-        pass
+    aliases_override = settings.aliases_path.strip()
+    if aliases_override:
+        os.environ["LEVELUP_ALIASES_PATH"] = aliases_override
+    else:
+        os.environ.pop("LEVELUP_ALIASES_PATH", None)
 
     # Profiles path
-    try:
-        profiles_override = str(getattr(settings, "profiles_path", "") or "").strip()
-        if profiles_override:
-            os.environ["LEVELUP_PROFILES_PATH"] = profiles_override
-        else:
-            os.environ.pop("LEVELUP_PROFILES_PATH", None)
-    except Exception:
-        pass
+    profiles_override = settings.profiles_path.strip()
+    if profiles_override:
+        os.environ["LEVELUP_PROFILES_PATH"] = profiles_override
+    else:
+        os.environ.pop("LEVELUP_PROFILES_PATH", None)

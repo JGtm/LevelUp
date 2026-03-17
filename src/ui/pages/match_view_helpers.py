@@ -247,13 +247,13 @@ def _render_media_legacy(
     gamertag: str | None,
 ) -> None:
     """Rendu legacy : scan de dossiers par fenêtre temporelle du match."""
-    tol = int(getattr(settings, "media_tolerance_minutes", 0) or 0)
+    tol = settings.media_tolerance_minutes
     t0, t1, duration_known = match_time_window(row, tolerance_minutes=tol, paris_tz=paris_tz)
     if t0 is None or t1 is None:
         return
 
-    screens_dir = str(getattr(settings, "media_screens_dir", "") or "").strip()
-    videos_dir = str(getattr(settings, "media_videos_dir", "") or "").strip()
+    screens_dir = settings.media_screens_dir.strip()
+    videos_dir = settings.media_videos_dir.strip()
 
     if not screens_dir and not videos_dir:
         return
@@ -352,7 +352,7 @@ def render_media_section(  # noqa: PLR0913
     les captures de tous les joueurs avec indication du propriétaire.
     Si la BDD ne retourne rien, fallback sur le scan de dossiers (legacy).
     """
-    if not bool(getattr(settings, "media_enabled", True)):
+    if not settings.media_enabled:
         return
 
     match_id = str(row.get("match_id") or "").strip()

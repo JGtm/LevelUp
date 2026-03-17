@@ -43,7 +43,7 @@ def compute_match_windows(df_full: DataFrameLike, settings: AppSettings) -> pl.D
     if df_full.is_empty():
         return _empty
 
-    tol_min = int(getattr(settings, "media_tolerance_minutes", 0) or 0)
+    tol_min = settings.media_tolerance_minutes
     tol = timedelta(minutes=max(0, tol_min))
 
     needed = {"match_id", "start_time"}
@@ -96,8 +96,8 @@ def compute_match_windows(df_full: DataFrameLike, settings: AppSettings) -> pl.D
 
 def index_all_media(settings: AppSettings) -> pl.DataFrame:
     """Indexe les médias configurés (captures + vidéos) depuis le disque."""
-    screens_dir = str(getattr(settings, "media_screens_dir", "") or "").strip()
-    videos_dir = str(getattr(settings, "media_videos_dir", "") or "").strip()
+    screens_dir = settings.media_screens_dir.strip()
+    videos_dir = settings.media_videos_dir.strip()
     frames: list[pl.DataFrame] = []
 
     if screens_dir and os.path.isdir(screens_dir):

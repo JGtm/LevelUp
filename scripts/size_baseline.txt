@@ -19,7 +19,7 @@ FUNC:src/app/filters.py:206:render_session_filters:94L
 FUNC:src/app/filters_render.py:373:render_filters_sidebar:112L
 FUNC:src/app/main_helpers.py:168:render_profile_hero:130L
 FUNC:src/app/profile.py:188:load_profile_assets:108L
-FUNC:src/app/sidebar.py:174:render_sync_button:122L
+FUNC:src/app/sidebar.py:174:render_sync_button:116L
 FUNC:src/data/media_indexer.py:238:scan_and_index:91L
 FUNC:src/data/media_indexer.py:94:ensure_schema:138L
 FUNC:src/data/repositories/_archives_repo.py:135:load_matches_from_archives:102L

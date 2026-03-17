@@ -83,7 +83,7 @@ def get_tz_name() -> str:
 
         settings = st.session_state.get("app_settings")
         if settings is not None:
-            tz = str(getattr(settings, "user_timezone", "") or "").strip()
+            tz = settings.user_timezone.strip()
             if tz:
                 return tz
     except Exception:
