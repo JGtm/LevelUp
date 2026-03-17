@@ -314,13 +314,34 @@ class WeaponKillsMixin:
                 for a in attributions
             ],
         )
-        logger.debug(
-            "insert_v2 %s : %d lignes (%d joueurs)",
-            match_id[:8],
-            len(attributions),
-            len({a.xuid for a in attributions}),
+        # Quality threshold logging (Task H)
+        total = len(attributions)
+        null_wid = sum(1 for a in attributions if a.weapon_id is None)
+        formula_a_null = sum(
+            1
+            for a in attributions
+            if a.weapon_id is None and getattr(a, "attribution_path", "") == "formula_a"
         )
-        return len(attributions)
+        null_ratio = null_wid / total if total else 0.0
+        if null_ratio > 0.5:
+            logger.warning(
+                "insert_v2 %s : %d/%d weapon_id=NULL (%.0f%%) — "
+                "%d via formula_a ; données partielles",
+                match_id[:8],
+                null_wid,
+                total,
+                null_ratio * 100,
+                formula_a_null,
+            )
+        else:
+            logger.debug(
+                "insert_v2 %s : %d lignes (%d joueurs, %d NULL wid)",
+                match_id[:8],
+                total,
+                len({a.xuid for a in attributions}),
+                null_wid,
+            )
+        return total
 
     @staticmethod
     def mark_weapon_backfill_done(

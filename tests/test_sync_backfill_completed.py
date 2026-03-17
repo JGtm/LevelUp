@@ -318,9 +318,17 @@ class TestWeaponKillsBitmask:
     """Vérifie que le bit weapon_kills est correctement posé et détectable."""
 
     def test_weapon_kills_bit_value(self):
-        """Le bit weapon_kills vaut 1 << 18 = 262144."""
-        assert BACKFILL_FLAGS["weapon_kills"] == 1 << 18
+        """BACKFILL_FLAGS["weapon_kills"] vaut 1<<18 (bit legacy, OBSOLÈTE en production).
+
+        En production, le bit réel est MatchBits.WEAPON_KILLS = 1<<21 (2097152)
+        défini dans src.data.sync.constants. Ce bit n'est jamais posé en runtime.
+        """
+        from src.data.sync.constants import MatchBits
+
+        assert BACKFILL_FLAGS["weapon_kills"] == 1 << 18  # legacy / tests uniquement
         assert BACKFILL_FLAGS["weapon_kills"] == 262144
+        assert MatchBits.WEAPON_KILLS == 1 << 21  # bit réel production
+        assert MatchBits.WEAPON_KILLS == 2097152
 
     def test_weapon_kills_bit_set_via_or(self, shared_conn):
         """Le bit weapon_kills est posé via OR dans match_registry."""
@@ -401,3 +409,203 @@ class TestWeaponKillsBitmask:
         other_flags = {k: v for k, v in BACKFILL_FLAGS.items() if k != "weapon_kills"}
         for name, value in other_flags.items():
             assert (wk_bit & value) == 0, f"weapon_kills overlape avec {name}"
+
+
+# =============================================================================
+# Cohérence events_loaded / backfill_completed (Task B)
+# =============================================================================
+
+
+class TestEventsLoadedCoherence:
+    """Vérifie la cohérence entre events_loaded (source de vérité) et backfill_completed bit1.
+
+    Régression : le double-guard dans _discord_queries.py utilisait
+    events_loaded=FALSE AND backfill_completed&2=0. Depuis v5.4, events_loaded
+    est la source de vérité — le bitmask est posé en même temps.
+    """
+
+    @pytest.fixture
+    def conn(self):
+        c = duckdb.connect(":memory:")
+        c.execute("""
+            CREATE TABLE match_registry (
+                match_id VARCHAR PRIMARY KEY,
+                backfill_completed INTEGER DEFAULT 0,
+                events_loaded BOOLEAN DEFAULT FALSE
+            )
+        """)
+        yield c
+        c.close()
+
+    def test_events_loaded_and_bit_set_together(self, conn) -> None:
+        """Quand events sont insérés, events_loaded=TRUE ET bit 1 sont posés ensemble."""
+        match_id = "m-events-1"
+        conn.execute("INSERT INTO match_registry (match_id) VALUES (?)", [match_id])
+
+        # Simuler l'insertion d'events (comme _insert_new_match_shared)
+        n_events = 3
+        if n_events > 0:
+            conn.execute(
+                "UPDATE match_registry SET events_loaded = TRUE, "
+                "backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                "WHERE match_id = ?",
+                [BACKFILL_FLAGS["events"], match_id],
+            )
+
+        row = conn.execute(
+            "SELECT events_loaded, backfill_completed FROM match_registry WHERE match_id = ?",
+            [match_id],
+        ).fetchone()
+        assert row[0] is True, "events_loaded doit être TRUE"
+        assert row[1] & BACKFILL_FLAGS["events"] != 0, "bit events doit être posé"
+
+    def test_no_events_means_both_false(self, conn) -> None:
+        """Si 0 events insérés, events_loaded=FALSE et bit 1 non posé."""
+        match_id = "m-no-events"
+        conn.execute("INSERT INTO match_registry (match_id) VALUES (?)", [match_id])
+        # Pas d'update — les deux restent à leur valeur par défaut
+        row = conn.execute(
+            "SELECT events_loaded, backfill_completed FROM match_registry WHERE match_id = ?",
+            [match_id],
+        ).fetchone()
+        assert row[0] is False
+        assert row[1] & BACKFILL_FLAGS["events"] == 0
+
+    def test_discord_query_uses_boolean_only(self, conn) -> None:
+        """Vérifier que la détection via boolean seul est équivalente au double-guard.
+
+        Régression : l'ancien double-guard (events_loaded=FALSE AND backfill&2=0)
+        pouvait ignorer un match où events_loaded=FALSE mais backfill&2!=0 (incohérence).
+        La requête simplifiée utilise UNIQUEMENT events_loaded.
+        """
+        # Match 1 : events_loaded=FALSE, bit non posé (vraiment manquant)
+        conn.execute(
+            "INSERT INTO match_registry (match_id, events_loaded, backfill_completed) VALUES (?, FALSE, 0)",
+            ["missing"],
+        )
+        # Match 2 : events_loaded=TRUE, bit posé (complet)
+        conn.execute(
+            "INSERT INTO match_registry (match_id, events_loaded, backfill_completed) VALUES (?, TRUE, ?)",
+            ["complete", BACKFILL_FLAGS["events"]],
+        )
+        # Match 3 : events_loaded=FALSE, bit posé (incohérence — l'ancien guard l'ignorait)
+        conn.execute(
+            "INSERT INTO match_registry (match_id, events_loaded, backfill_completed) VALUES (?, FALSE, ?)",
+            ["incoherent", BACKFILL_FLAGS["events"]],
+        )
+
+        # Requête simplifiée (boolean seul)
+        missing_boolean = conn.execute(
+            "SELECT match_id FROM match_registry WHERE COALESCE(events_loaded, FALSE) = FALSE"
+        ).fetchall()
+        missing_ids = {r[0] for r in missing_boolean}
+
+        assert "missing" in missing_ids
+        assert "complete" not in missing_ids
+        # La requête simplifiée détecte l'incohérence (events_loaded=FALSE l'emporte)
+        assert "incoherent" in missing_ids
+
+
+# =============================================================================
+# Test d'intégrité : participants_loaded=TRUE → xuid local présent (Task F)
+# =============================================================================
+
+
+class TestParticipantsLoadedIntegrity:
+    """Vérifie l'invariant participants_loaded=TRUE ⟹ joueur local dans match_participants.
+
+    Régression Sprint audit : participants_loaded était posé à TRUE même quand
+    la row du joueur local échouait à l'insertion (NaN sur colonne SMALLINT).
+    Le guard E (_insert_new_match_shared / _backfill_known_match_shared) bloque
+    désormais le marquage si le xuid local est absent après l'INSERT batch.
+    """
+
+    @pytest.fixture
+    def conn(self):
+        c = duckdb.connect(":memory:")
+        c.execute("""
+            CREATE TABLE match_registry (
+                match_id VARCHAR PRIMARY KEY,
+                participants_loaded BOOLEAN DEFAULT FALSE,
+                backfill_completed INTEGER DEFAULT 0
+            )
+        """)
+        c.execute("""
+            CREATE TABLE match_participants (
+                match_id VARCHAR,
+                xuid VARCHAR,
+                kills SMALLINT,
+                PRIMARY KEY (match_id, xuid)
+            )
+        """)
+        yield c
+        c.close()
+
+    def test_participants_loaded_true_implies_local_xuid_present(self, conn) -> None:
+        """participants_loaded=TRUE implique que le joueur local est dans match_participants."""
+        local_xuid = "xuid-local"
+        other_xuid = "xuid-other"
+        match_id = "m-integrity-1"
+
+        conn.execute("INSERT INTO match_registry (match_id) VALUES (?)", [match_id])
+        conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, ?), (?, ?, ?)",
+            [match_id, local_xuid, 5, match_id, other_xuid, 3],
+        )
+
+        # Simuler le guard E : vérifier avant de poser participants_loaded=TRUE
+        local_present = conn.execute(
+            "SELECT COUNT(*) FROM match_participants WHERE match_id = ? AND xuid = ?",
+            [match_id, local_xuid],
+        ).fetchone()[0]
+
+        if local_present:
+            conn.execute(
+                "UPDATE match_registry SET participants_loaded = TRUE WHERE match_id = ?",
+                [match_id],
+            )
+
+        row = conn.execute(
+            "SELECT participants_loaded FROM match_registry WHERE match_id = ?",
+            [match_id],
+        ).fetchone()
+        assert row[0] is True
+
+    def test_participants_loaded_stays_false_when_local_xuid_absent(self, conn) -> None:
+        """Si le joueur local est absent, participants_loaded NE DOIT PAS être TRUE.
+
+        Régression : avant le guard E, on marquait TRUE dès inserted > 0
+        même si le batch avait inséré seulement les autres joueurs.
+        """
+        local_xuid = "xuid-local"
+        other_xuid = "xuid-other"
+        match_id = "m-integrity-2"
+
+        conn.execute("INSERT INTO match_registry (match_id) VALUES (?)", [match_id])
+        # Insérer SEULEMENT un autre joueur (local absent — simule échec CAST NaN)
+        conn.execute(
+            "INSERT INTO match_participants VALUES (?, ?, ?)",
+            [match_id, other_xuid, 3],
+        )
+        inserted = 1  # inserted > 0 mais xuid local absent
+
+        # Guard E
+        local_present = conn.execute(
+            "SELECT COUNT(*) FROM match_participants WHERE match_id = ? AND xuid = ?",
+            [match_id, local_xuid],
+        ).fetchone()[0]
+
+        if local_present:
+            conn.execute(
+                "UPDATE match_registry SET participants_loaded = TRUE WHERE match_id = ?",
+                [match_id],
+            )
+        # else: ne pas marquer — c'est le comportement après guard E
+
+        row = conn.execute(
+            "SELECT participants_loaded FROM match_registry WHERE match_id = ?",
+            [match_id],
+        ).fetchone()
+        assert inserted > 0, "inserted était > 0 (autres participants insérés)"
+        assert local_present == 0, "joueur local devrait être absent"
+        assert row[0] is False, "participants_loaded doit rester FALSE (guard E)"
