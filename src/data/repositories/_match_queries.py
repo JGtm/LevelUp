@@ -34,71 +34,26 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
     # Source de données matchs (v5 shared / v4 local)
     # =========================================================================
 
-    def _get_match_table_name(self, conn) -> str | None:
-        """Détecte la table de matchs disponible (avec cache).
+    def _get_match_source(self, _conn) -> tuple[str, list[str], bool]:
+        """Retourne l'expression FROM pour les matchs (v6 shared uniquement).
 
-        Returns:
-            Nom de la table "match_stats" si elle existe localement, None sinon (v5.1+).
-        """
-        cache_key = "local_table:match_stats"
-        if hasattr(self, "_table_cache") and cache_key in self._table_cache:
-            return "match_stats" if self._table_cache[cache_key] else None
-
-        try:
-            result = conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = 'main' AND table_name = 'match_stats'"
-            ).fetchone()
-            if result and result[0] > 0:
-                if hasattr(self, "_table_cache"):
-                    self._table_cache[cache_key] = True
-                return "match_stats"
-        except Exception:
-            pass
-
-        if hasattr(self, "_table_cache"):
-            self._table_cache[cache_key] = False
-        return None
-
-    def _get_match_source(self, conn) -> tuple[str, list[str], bool]:  # noqa: C901
-        """Retourne l'expression FROM pour les matchs (v5 shared ou v4 local).
+        La vue mv_player_matches dans shared_matches.duckdb est garantie présente
+        en architecture v6. L'utilisation de tables locales match_stats (v4/v3)
+        n'est plus supportée depuis v5.1.
 
         Returns:
             Tuple (from_expression, params, uses_mv).
         """
-        # Forcer mode local si XUID vide ou None (DBs v3/legacy)
         if not self._xuid or self._xuid.strip() == "":
-            match_table = self._get_match_table_name(conn)
-            if match_table is None:
-                raise RuntimeError(
-                    "Table match_stats absente (v5.1+) et XUID vide. "
-                    "Impossible de charger les matchs."
-                )
-            logger.debug("Mode v4/v3 (XUID vide) : requête via table locale %s", match_table)
-            if match_table == "match_stats":
-                return match_table, [], False
-            return f"{match_table} AS match_stats", [], False
-
-        # Forcer mode local si tables shared absentes
-        if not (
-            self.has_shared
-            and self._has_shared_table("match_registry")
-            and self._has_shared_table("match_participants")
-        ):
-            match_table = self._get_match_table_name(conn)
-            if match_table is None:
-                raise RuntimeError(
-                    "shared_matches.duckdb indisponible et table locale match_stats absente. "
-                    "Fermez les scripts en cours puis relancez l'app."
-                )
-            logger.debug("Mode v4/v3 : requête via table locale %s", match_table)
-            if match_table == "match_stats":
-                return match_table, [], False
-            return f"{match_table} AS match_stats", [], False
-
-        # Mode v5.1 : vue mv_player_matches (optimisé)
-        if self._has_shared_view("mv_player_matches"):
-            source = """(SELECT
+            raise RuntimeError(
+                "XUID manquant. Impossible de charger les matchs (architecture v6 requiert un XUID)."
+            )
+        if not self.has_shared:
+            raise RuntimeError(
+                "shared_matches.duckdb indisponible. "
+                "Fermez les scripts en cours puis relancez l'app."
+            )
+        source = """(SELECT
             match_id, start_time, map_id, map_name,
             playlist_id, playlist_name, pair_id, pair_name,
             game_variant_id, game_variant_name, outcome, team_id,
@@ -110,13 +65,8 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
         FROM shared.mv_player_matches
         WHERE xuid = ?
         ) AS match_stats"""
-            logger.debug("Mode v5.1 : requête via vue mv_player_matches")
-            return source, [self._xuid], True
-
-        raise RuntimeError(
-            "Vue mv_player_matches non trouvée dans shared_matches.duckdb. "
-            "Exécutez 'python scripts/rebuild_shared_views.py' pour créer les vues."
-        )
+        logger.debug("Mode v6 : requête via vue mv_player_matches")
+        return source, [self._xuid], True
 
     # =========================================================================
     # Chargement des matchs
@@ -211,17 +161,13 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
     def get_match_count(self) -> int:
         """Retourne le nombre total de matchs."""
         conn = self._get_connection()
-        if (
-            self.has_shared
-            and self._has_shared_table("match_registry")
-            and self._has_shared_table("match_participants")
-        ):
+        try:
             result = conn.execute(
                 "SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?",
                 [self._xuid],
             ).fetchone()
-        else:
-            logger.debug("get_match_count: shared indisponible, retourne 0")
+        except Exception:
+            logger.debug("get_match_count: erreur shared.match_participants", exc_info=True)
             return 0
         return result[0] if result else 0
 
