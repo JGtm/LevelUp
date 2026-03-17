@@ -200,8 +200,8 @@ def load_profile_assets(
     Returns:
         Tuple (ProfileAssets, erreur API ou None).
     """
-    api_enabled = bool(getattr(settings, "profile_api_enabled", False))
-    api_refresh_h = int(getattr(settings, "profile_api_auto_refresh_hours", 0) or 0)
+    api_enabled = settings.profile_api_enabled
+    api_refresh_h = settings.profile_api_auto_refresh_hours
     api_app = None
     api_err = None
 
@@ -216,33 +216,31 @@ def load_profile_assets(
             api_app, api_err = None, str(e)
 
     # Valeurs manuelles (prioritaires) / sinon auto depuis API
-    banner_value = str(getattr(settings, "profile_banner", "") or "").strip()
-    emblem_value = str(getattr(settings, "profile_emblem", "") or "").strip() or (
+    banner_value = settings.profile_banner.strip()
+    emblem_value = settings.profile_emblem.strip() or (
         getattr(api_app, "emblem_image_url", None) if api_app else ""
     )
-    backdrop_value = str(getattr(settings, "profile_backdrop", "") or "").strip() or (
+    backdrop_value = settings.profile_backdrop.strip() or (
         getattr(api_app, "backdrop_image_url", None) if api_app else ""
     )
-    nameplate_value = str(getattr(settings, "profile_nameplate", "") or "").strip() or (
+    nameplate_value = settings.profile_nameplate.strip() or (
         getattr(api_app, "nameplate_image_url", None) if api_app else ""
     )
-    service_tag_value = str(getattr(settings, "profile_service_tag", "") or "").strip() or (
+    service_tag_value = settings.profile_service_tag.strip() or (
         getattr(api_app, "service_tag", None) if api_app else ""
     )
-    rank_label_value = str(getattr(settings, "profile_rank_label", "") or "").strip() or (
+    rank_label_value = settings.profile_rank_label.strip() or (
         getattr(api_app, "rank_label", None) if api_app else ""
     )
-    rank_subtitle_value = str(getattr(settings, "profile_rank_subtitle", "") or "").strip() or (
+    rank_subtitle_value = settings.profile_rank_subtitle.strip() or (
         getattr(api_app, "rank_subtitle", None) if api_app else ""
     )
     rank_icon_value = (getattr(api_app, "rank_image_url", None) if api_app else "") or ""
     adornment_value = (getattr(api_app, "adornment_image_url", None) if api_app else "") or ""
 
     # Configuration du téléchargement
-    dl_enabled = bool(getattr(settings, "profile_assets_download_enabled", False)) or bool(
-        api_enabled
-    )
-    refresh_h = int(getattr(settings, "profile_assets_auto_refresh_hours", 0) or 0)
+    dl_enabled = settings.profile_assets_download_enabled or api_enabled
+    refresh_h = settings.profile_assets_auto_refresh_hours
 
     # Authentification si nécessaire pour les assets protégés
     if (
@@ -314,8 +312,8 @@ def warn_missing_assets(
         rank_icon_value: URL de l'icône de rang.
         rank_icon_path: Chemin local de l'icône ou None.
     """
-    dl_enabled = bool(getattr(settings, "profile_assets_download_enabled", False))
-    api_enabled = bool(getattr(settings, "profile_api_enabled", False))
+    dl_enabled = settings.profile_assets_download_enabled
+    api_enabled = settings.profile_api_enabled
     dl_enabled = dl_enabled or api_enabled
 
     def _warn_asset(prefix: str, url: str, path: str | None) -> None:
