@@ -240,6 +240,19 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             logger.warning(result["error"])
         return result
 
+    def _local_xuid_in_participants(
+        self: _SyncProtocol,
+        shared_conn: Any,
+        match_id: str,
+    ) -> bool:
+        """Guard E : vérifie que le joueur local est bien dans match_participants."""
+        return bool(
+            shared_conn.execute(
+                "SELECT COUNT(*) FROM match_participants WHERE match_id = ? AND xuid = ?",
+                (match_id, self._xuid),
+            ).fetchone()[0]
+        )
+
     async def _backfill_known_match_shared(  # noqa: PLR0913
         self: _SyncProtocol,
         match_id: str,
@@ -263,16 +276,25 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             if not participants_loaded:
                 participants = extract_participants(stats_json)
                 inserted = self._insert_shared_participants(shared_conn, participants)
-                if inserted > 0:
+                if inserted > 0 and self._local_xuid_in_participants(shared_conn, match_id):
                     shared_conn.execute(
                         "UPDATE match_registry SET participants_loaded = TRUE WHERE match_id = ?",
                         (match_id,),
                     )
                     backfill_needed.append("participants")
+                elif inserted > 0:
+                    logger.error(
+                        "%s (xuid=%s) absent match_participants après %d inserts match=%s "
+                        "— participants_loaded NON marqué",
+                        self._gamertag,
+                        self._xuid,
+                        inserted,
+                        match_id,
+                    )
                 elif participants:
                     logger.warning(
-                        "_backfill_known_match_shared: 0/%d participants insérés pour "
-                        "match=%s — participants_loaded NON marqué, backfill relancé au prochain sync",
+                        "0/%d participants insérés pour match=%s "
+                        "— participants_loaded NON marqué",
                         len(participants),
                         match_id,
                     )
@@ -430,11 +452,19 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             inserted = self._insert_shared_participants(shared_conn, participants)
             if inserted == 0 and participants:
                 logger.warning(
-                    "_insert_new_match_shared: 0/%d participants insérés pour match=%s "
-                    "— participants_loaded reste FALSE",
+                    "0/%d participants insérés pour match=%s — participants_loaded reste FALSE",
                     len(participants),
                     match_id,
                 )
+            elif inserted > 0 and not self._local_xuid_in_participants(shared_conn, match_id):
+                logger.error(
+                    "%s (xuid=%s) absent match_participants après %d inserts match=%s",
+                    self._gamertag,
+                    self._xuid,
+                    inserted,
+                    match_id,
+                )
+                inserted = 0  # Bloquer participants_loaded=TRUE
             self._insert_shared_medals(shared_conn, medals_all)
 
             n_events = 0

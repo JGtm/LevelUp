@@ -216,6 +216,11 @@ def count_matches_missing_data(xuid: str) -> int:
                 JOIN match_participants mp ON mr.match_id = mp.match_id
                 WHERE mp.xuid = ?
                   AND (
+                      -- Double-guard : boolean ET bitmask doivent tous les deux indiquer
+                      -- "absent" pour qu'un match soit compté comme incomplet.
+                      -- Raison : données historiques où medals_loaded/events_loaded=FALSE
+                      -- mais backfill_completed a été posé par un sync antérieur.
+                      -- Source de vérité préférée : boolean (plus fiable depuis v5.4).
                       (COALESCE(mr.medals_loaded, FALSE) = FALSE
                        AND (COALESCE(mr.backfill_completed, 0) & 1) = 0)
                       OR

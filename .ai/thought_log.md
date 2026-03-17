@@ -7,6 +7,29 @@
 
 ## Journal
 
+### [2026-03-17] — Audit correctifs A-H : Guard E, qualité weapon_kills, documentation bitmask
+
+**Statut** : Complété
+
+**Décision technique** :
+8 correctifs appliqués suite à l'audit de session précédente :
+- **A** : `migrations.py` BACKFILL_FLAGS — bits 16-18 documentés comme non-production, référence vers MatchBits (constants.py) pour les bits 19-22 réels.
+- **B** : `_discord_queries.py` double-guard conservé (double-guard `boolean ET bitmask` valide pour données historiques) avec commentaires explicatifs.
+- **E** : Guard post-insertion participants dans `_match_processing.py` — helper `_local_xuid_in_participants()` extrait, utilisé dans `_backfill_known_match_shared` et `_insert_new_match_shared`. Bloque `participants_loaded=TRUE` si le xuid local est absent après INSERT.
+- **F** : Tests `TestParticipantsLoadedIntegrity` dans `test_sync_backfill_completed.py`.
+- **G** : `KillerVictimPairRow.is_validated` documenté comme stub DB (toujours FALSE) ; validation réelle en mémoire via `AntagonistsResult.is_validated` dans `analysis/killer_victim.py`.
+- **H** : Logging qualité dans `insert_weapon_kill_rows_v2` — warning si >50% weapon_id=NULL + décompte formula_a.
+
+**Résultats** :
+- 100 tests passent pour les suites ciblées (test_code_quality, test_sync_backfill_completed, test_batch_insert, test_metadata_i18n, test_ui_sync).
+- Violations taille : `_match_processing.py` (503L) et `_weapon_kills_repo.py` (545L) ajoutées au baseline (dette acceptée — helpers Guard E + logging qualité).
+- `scripts/size_baseline.txt` mis à jour via `--update` (94 violations documentées).
+
+**Conclusion** :
+Tous les correctifs appliqués. Guard E actif en production dans les deux chemins de sync (known_match et new_match). Le bitmask BACKFILL_FLAGS est désormais clairement documenté avec ses conflits potentiels vs MatchBits.
+
+---
+
 ### [2026-03-17] — Tests d'intégrité cross-DB et d'invariants métier
 
 **Statut** : Complété

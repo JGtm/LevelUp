@@ -496,11 +496,22 @@ BACKFILL_FLAGS: dict[str, int] = {
     "participants_damage": 1 << 13,  # 8192
     "aliases": 1 << 14,  # 16384
     "participants_avg_life": 1 << 15,  # 32768 - Ajouté pour éviter détection infinie
-    # ── LUSR / CSR (v5.3) ──
-    "lusr": 1 << 16,  # 65536  — LUSR calculé localement (non classé)
-    "csr": 1 << 17,  # 131072 — CSR récupéré via API (classé)
-    # ── Weapon kills (v5.5) ──
-    "weapon_kills": 1 << 18,  # 262144 — kills par arme extraits depuis les films SPNKr
+    # ── LUSR / CSR (v5.3) — non écrits en production ──
+    # ⚠️ Conflit potentiel avec MatchBits.EVENTS/ASSETS (bits 16-17) de constants.py.
+    # Ces entrées ne sont jamais posées sur match_registry.backfill_completed.
+    # Conservées pour rétrocompatibilité des tests uniquement.
+    "lusr": 1 << 16,  # 65536  — non utilisé en production
+    "csr": 1 << 17,  # 131072 — non utilisé en production
+    # ── Weapon kills (v5.5) — OBSOLÈTE ──
+    # Ce bit (18 = 262144) n'est jamais posé en production.
+    # Source de vérité : MatchBits.WEAPON_KILLS = 1 << 21 dans constants.py.
+    # Conservé pour rétrocompatibilité des tests uniquement.
+    "weapon_kills": 1 << 18,  # 262144 — OBSOLÈTE, voir MatchBits.WEAPON_KILLS (1<<21)
+    # ── Bits 19-22 : définis dans src.data.sync.constants.MatchBits ──
+    # KILLER_VICTIM_LOADED = 1 << 19  (524288)
+    # PVE_STATS            = 1 << 20  (1048576)
+    # WEAPON_KILLS         = 1 << 21  (2097152) ← source de vérité weapon_kills
+    # WEAPON_KILLS_NO_FILM = 1 << 22  (4194304)
 }
 
 
