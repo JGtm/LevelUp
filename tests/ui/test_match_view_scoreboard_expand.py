@@ -58,16 +58,23 @@ def _sample_scoreboard_players() -> list[dict[str, object]]:
 
 def test_render_match_scoreboard_emits_expandable_detail_rows(mock_st) -> None:
     from src.ui.pages import match_view_scoreboard as mod
-    from src.ui.pages.match_view_scoreboard_detail import MedalDetailItem, ScoreboardPlayerExtraData
+    from src.ui.pages.match_view_scoreboard_detail import (
+        MedalDetailItem,
+        ScoreboardPlayerExtraData,
+        WeaponDetailItem,
+    )
 
     ms = mock_st(mod)
     extra = ScoreboardPlayerExtraData(
-        weapons=[("BR75", 8)],
+        weapons=[
+            WeaponDetailItem(name="BR75", count=8, asset_url="/app/static/weapons-assets/BR75.png")
+        ],
         medals=[
             MedalDetailItem(
                 name="Perfection",
                 count=1,
                 icon_url="/app/static/medals/icons/1512363953.png",
+                description="Gagnez un match sans mourir.",
             )
         ],
         antagonist_items=[("Némésis", "Bravo (3)")],
@@ -96,12 +103,15 @@ def test_render_match_scoreboard_emits_expandable_detail_rows(mock_st) -> None:
     assert "os-sb-detail-panel" in rendered_html
     assert "os-sb-team os-sb-team--mine" in rendered_html
     assert "Équipe Eagle" in rendered_html
-    assert "BR75" in rendered_html
+    assert "/app/static/weapons-assets/BR75.png" in rendered_html
+    assert "os-sb-detail-list--weapons" in rendered_html
+    assert "os-sb-detail-weapon-asset" in rendered_html
     assert "Perfection" in rendered_html
     assert "Antagoniste" in rendered_html
     assert "Bravo (3)" in rendered_html
     assert "/app/static/medals/icons/1512363953.png" in rendered_html
     assert "os-sb-detail-medal-icon" in rendered_html
+    assert "Gagnez un match sans mourir." in rendered_html
     assert "Tireur d&#x27;elite" in rendered_html
     assert "Explorer les matchs avec Alpha" in rendered_html
     assert "Résumé" not in rendered_html
@@ -112,28 +122,55 @@ def test_render_scoreboard_player_detail_html_handles_shared_only() -> None:
     from src.ui.pages.match_view_scoreboard_detail import (
         MedalDetailItem,
         ScoreboardPlayerExtraData,
+        WeaponDetailItem,
         render_scoreboard_player_detail_html,
     )
 
     html_out = render_scoreboard_player_detail_html(
         extra=ScoreboardPlayerExtraData(
-            weapons=[("Needler", 4)],
+            weapons=[
+                WeaponDetailItem(
+                    name="Needler",
+                    count=4,
+                    asset_url="/app/static/weapons-assets/Needler-1.png",
+                )
+            ],
             medals=[
                 MedalDetailItem(
                     name="Perfection",
                     count=1,
                     icon_url="/app/static/medals/icons/1512363953.png",
+                    description="Gagnez un match sans mourir.",
                 )
             ],
         ),
     )
 
-    assert "Needler" in html_out
+    assert "/app/static/weapons-assets/Needler-1.png" in html_out
     assert "/app/static/medals/icons/1512363953.png" in html_out
+    assert "title='Gagnez un match sans mourir." in html_out
     assert "Données shared uniquement" in html_out
     assert "os-sb-detail-badge" in html_out
     assert "Explorer les matchs avec" not in html_out
     assert "Résumé" not in html_out
+
+
+def test_render_scoreboard_player_detail_html_uses_weapon_text_fallback_without_asset() -> None:
+    from src.ui.pages.match_view_scoreboard_detail import (
+        ScoreboardPlayerExtraData,
+        WeaponDetailItem,
+        render_scoreboard_player_detail_html,
+    )
+
+    html_out = render_scoreboard_player_detail_html(
+        extra=ScoreboardPlayerExtraData(
+            weapons=[WeaponDetailItem(name="Arme Mystere", count=2, asset_url=None)],
+        ),
+    )
+
+    assert "os-sb-detail-weapon-fallback" in html_out
+    assert "Arme Mystere" in html_out
+    assert ">2<" in html_out
 
 
 def test_render_scoreboard_player_detail_html_renders_antagonist_section() -> None:
@@ -185,4 +222,9 @@ def test_scoreboard_styles_define_inline_expansion_rules() -> None:
     assert ".os-sb-toggle" in css_text
     assert "tbody.os-sb-player:has(.os-sb-toggle:checked) .os-sb-detail-row" in css_text
     assert ".os-sb-detail-medal-icon" in css_text
+    assert ".os-sb-detail-weapon-asset" in css_text
+    assert ".os-sb-detail-list--weapons" in css_text
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in css_text
+    assert "max-width: 30px;" in css_text
+    assert "max-height: 30px;" in css_text
     assert "font-size: 0.68em;" in css_text

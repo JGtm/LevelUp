@@ -247,3 +247,41 @@ class TestAttributionFromEvent:
         # delta=10000ms, très largement au-delà de tout threshold
         attr = _attribution_from_event(kill, ev, "m", self._compute_conf)
         assert attr.swap_detected is True
+
+    def test_ns_timeline_resolves_unknown_bytes(self):
+        """weapon_bytes inconnu + timeline_ns fournie → weapon_id résolu via NS lookup."""
+        kill = _kill(time_ms=2000)
+        ev = {
+            "timestamp_ms": 1900,
+            "weapon_bytes": _UNKNOWN_WEAPON_BYTES,  # inconnu → sans NS → int=0
+            "player_index": 3,
+            "chunk_idx": 0,
+        }
+        # NS timeline : chunk 0, pi 3 → arme connue
+        timeline_ns = {0: {3: _KNOWN_WEAPON_BYTES}}
+        timing = [(0, 5000)]
+        chunks_sorted = [0]
+        attr = _attribution_from_event(
+            kill,
+            ev,
+            "m",
+            self._compute_conf,
+            timeline_ns=timeline_ns,
+            timing=timing,
+            chunks_sorted=chunks_sorted,
+        )
+        assert attr.weapon_id == _KNOWN_WEAPON_ID  # NS a résolu, pas le fallback brut `0`
+        assert attr.attribution_path == "fire_event"
+        assert attr.delta_ms == 100
+
+    def test_ns_timeline_absent_falls_back_to_raw_int(self):
+        """Sans timeline_ns, weapon_bytes inconnu → fallback int.from_bytes (inchangé)."""
+        kill = _kill(time_ms=5000)
+        ev = {
+            "timestamp_ms": 4900,
+            "weapon_bytes": _UNKNOWN_WEAPON_BYTES,
+            "player_index": 3,
+            "chunk_idx": 0,
+        }
+        attr = _attribution_from_event(kill, ev, "m", self._compute_conf)
+        assert attr.weapon_id == 0  # 8 zéros → int.from_bytes → 0

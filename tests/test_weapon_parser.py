@@ -823,3 +823,83 @@ class TestDetectPlayerIndices:
         # Le second sera ignoré si même pi=0 (collision) — ce test vérifie au moins 1
         assert len(result) >= 1
         assert self._XUID_A in result.values() or self._XUID_B in result.values()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# _fallback_formula_a — priorité NS timeline
+# ═════════════════════════════════════════════════════════════════════════════
+
+# Deux armes connues distinctes pour les tests de priorité
+_WEAPON_ITER = iter(WEAPON_ID_MAP.items())
+_FA_WB_A, _FA_WB_A_NAME = next(_WEAPON_ITER)
+_FA_WB_B, _FA_WB_B_NAME = next(_WEAPON_ITER)
+_FA_WID_A = int.from_bytes(_FA_WB_A, "big")
+_FA_WID_B = int.from_bytes(_FA_WB_B, "big")
+
+
+def _fa_kill(t_ms: int = 1000) -> dict:
+    return {"xuid": "x1", "time_ms": t_ms, "is_melee": False, "is_grenade": False, "match_id": "m"}
+
+
+class TestFallbackFormulaA:
+    """Tests unitaires de _fallback_formula_a — priorité NS > raw FA > brut."""
+
+    def test_ns_timeline_takes_priority_over_raw_fa(self):
+        """NS timeline prime sur raw FA quand les deux sont présents."""
+        from src.analysis.weapon_parser import _fallback_formula_a  # noqa: PLC2701
+
+        kill = _fa_kill(t_ms=1000)
+        pi = 1
+        timing = [(0, 5000)]
+        chunks_sorted = [0]
+        # raw FA contient WB_B, NS timeline contient WB_A → NS doit l'emporter
+        timeline = {0: {pi: _FA_WB_B}}
+        timeline_ns = {0: {pi: _FA_WB_A}}
+        attr = _fallback_formula_a(
+            kill, pi, timeline, {}, timing, chunks_sorted, "m", timeline_ns=timeline_ns
+        )
+        assert (
+            attr.weapon_id == _FA_WID_A
+        ), f"NS ({_FA_WB_A_NAME}={_FA_WID_A}) doit primer sur raw FA ({_FA_WB_B_NAME}={_FA_WID_B})"
+        assert attr.attribution_path == "formula_a"
+
+    def test_raw_fa_used_when_no_ns_timeline(self):
+        """Sans timeline_ns, raw FA timeline est utilisé."""
+        from src.analysis.weapon_parser import _fallback_formula_a  # noqa: PLC2701
+
+        kill = _fa_kill(t_ms=1000)
+        pi = 1
+        timing = [(0, 5000)]
+        chunks_sorted = [0]
+        timeline = {0: {pi: _FA_WB_B}}
+        attr = _fallback_formula_a(
+            kill, pi, timeline, {}, timing, chunks_sorted, "m", timeline_ns=None
+        )
+        assert attr.weapon_id == _FA_WID_B
+        assert attr.attribution_path == "formula_a"
+
+    def test_no_pi_returns_none_weapon(self):
+        """pi=None → weapon_id=None, confidence='none'."""
+        from src.analysis.weapon_parser import _fallback_formula_a  # noqa: PLC2701
+
+        kill = _fa_kill(t_ms=1000)
+        attr = _fallback_formula_a(kill, None, {}, {}, [(0, 5000)], [0], "m")
+        assert attr.weapon_id is None
+        assert attr.confidence == "none"
+        assert attr.attribution_path == "formula_a"
+
+    def test_ns_timeline_missing_entry_falls_back_to_raw_fa(self):
+        """NS timeline présente mais sans entrée pour ce (chunk, pi) → raw FA utilisé."""
+        from src.analysis.weapon_parser import _fallback_formula_a  # noqa: PLC2701
+
+        kill = _fa_kill(t_ms=1000)
+        pi = 2
+        timing = [(0, 5000)]
+        chunks_sorted = [0]
+        # NS ne contient pas pi=2, raw FA oui
+        timeline = {0: {pi: _FA_WB_B}}
+        timeline_ns = {0: {99: _FA_WB_A}}  # pi=99, pas pi=2
+        attr = _fallback_formula_a(
+            kill, pi, timeline, {}, timing, chunks_sorted, "m", timeline_ns=timeline_ns
+        )
+        assert attr.weapon_id == _FA_WID_B  # raw FA utilisé en fallback

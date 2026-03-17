@@ -425,6 +425,14 @@ class TestDuckDBRepositoryWithRealData:
         """Crée un repository avec des vraies données."""
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
+        shared_v2 = Path("data/warehouse/shared_matches_v2.duckdb")
+        if shared_v2.exists():
+            try:
+                conn = duckdb.connect(str(shared_v2), read_only=True)
+                conn.close()
+            except duckdb.IOException:
+                pytest.skip("shared_matches_v2.duckdb verrouillé par un autre processus")
+
         repo = DuckDBRepository(
             player_db_path="data/players/JGtm/stats.duckdb",
             xuid="2533274823110022",

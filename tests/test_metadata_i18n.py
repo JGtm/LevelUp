@@ -28,7 +28,10 @@ def test_v_match_full_playlist_name_is_english() -> None:
     if not v2.exists():
         pytest.skip("shared_matches_v2.duckdb non disponible")
 
-    conn = duckdb.connect(str(v2), read_only=True)
+    try:
+        conn = duckdb.connect(str(v2), read_only=True)
+    except duckdb.IOException:
+        pytest.skip("shared_matches_v2.duckdb verrouillé par un autre processus")
     try:
         sample = conn.execute(
             "SELECT DISTINCT playlist_name FROM v_match_full "
