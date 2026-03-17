@@ -2,23 +2,22 @@
 
 from __future__ import annotations
 
-import functools
 import html
 import logging
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from pathlib import Path
 
 import polars as pl
 
 from src.analysis import compute_personal_antagonists_from_pairs_polars
-from src.analysis._medal_data import resolve_medal_name
+from src.analysis._medal_data import resolve_medal_description, resolve_medal_name
 from src.analysis._weapon_data import resolve_weapon_display
-from src.config import get_bot_name, get_repo_root
+from src.config import get_bot_name
 from src.ui.components.performance import get_score_class
 from src.ui.i18n import get_lang, t
 from src.ui.i18n.data_labels import label_obj
+from src.ui.pages._scoreboard_asset_urls import medal_icon_url, weapon_asset_url
 from src.ui.pages.match_table_html import app_url
 from src.utils import parse_xuid_input
 from src.utils.paths import get_player_db_path, player_db_exists
@@ -38,13 +37,23 @@ class MedalDetailItem:
     name: str
     count: int
     icon_url: str | None = None
+    description: str | None = None
+
+
+@dataclass(slots=True)
+class WeaponDetailItem:
+    """Arme affichable dans le panneau scoreboard."""
+
+    name: str
+    count: int
+    asset_url: str | None = None
 
 
 @dataclass(slots=True)
 class ScoreboardPlayerExtraData:
     """Données complémentaires affichées dans la ligne dépliée."""
 
-    weapons: list[tuple[str, int]] = field(default_factory=list)
+    weapons: list[WeaponDetailItem] = field(default_factory=list)
     medals: list[MedalDetailItem] = field(default_factory=list)
     antagonist_items: list[tuple[str, str]] = field(default_factory=list)
     citations: list[tuple[str, int]] = field(default_factory=list)
@@ -124,12 +133,7 @@ def render_scoreboard_player_detail_html(
     )
     sections: list[str] = []
     if extra.weapons:
-        sections.append(
-            _render_items_section(
-                title=t("mv_scoreboard_detail_weapons"),
-                items=[(name, str(count)) for name, count in extra.weapons],
-            )
-        )
+        sections.append(_render_weapons_section(extra.weapons))
     if extra.medals:
         sections.append(_render_medals_section(extra.medals))
     if extra.antagonist_items:
@@ -187,7 +191,7 @@ def _build_profile_link(gamertag: str) -> str | None:
     return f"<a class='os-sb-detail-link' href='{href}' target='_self'>" f"{label}" "</a>"
 
 
-def _load_weapon_items(repo: object, xuid: str, match_id: str, lang: str) -> list[tuple[str, int]]:
+def _load_weapon_items(repo: object, xuid: str, match_id: str, lang: str) -> list[WeaponDetailItem]:
     df = repo.load_weapon_kills_for_player(xuid, [match_id])
     if not isinstance(df, pl.DataFrame) or df.is_empty():
         return []
@@ -197,7 +201,7 @@ def _load_weapon_items(repo: object, xuid: str, match_id: str, lang: str) -> lis
         .sort(["kills", "weapon_id"], descending=[True, False])
         .head(_DETAIL_LIMIT_WEAPONS)
     )
-    items: list[tuple[str, int]] = []
+    items: list[WeaponDetailItem] = []
     for row in aggregated.iter_rows(named=True):
         weapon_id = row.get("weapon_id")
         if weapon_id is None:
@@ -205,7 +209,13 @@ def _load_weapon_items(repo: object, xuid: str, match_id: str, lang: str) -> lis
         weapon_name = resolve_weapon_display(int(weapon_id), lang=lang) or "-"
         if weapon_name == "-":
             continue
-        items.append((weapon_name, int(row.get("kills") or 0)))
+        items.append(
+            WeaponDetailItem(
+                name=weapon_name,
+                count=int(row.get("kills") or 0),
+                asset_url=weapon_asset_url(weapon_name),
+            )
+        )
     return items
 
 
@@ -215,7 +225,8 @@ def _load_medal_items(repo: object, match_id: str, lang: str) -> list[MedalDetai
         MedalDetailItem(
             name=resolve_medal_name(int(row["name_id"]), lang=lang),
             count=int(row["count"]),
-            icon_url=_medal_icon_url(int(row["name_id"])),
+            icon_url=medal_icon_url(int(row["name_id"])),
+            description=resolve_medal_description(int(row["name_id"]), lang=lang),
         )
         for row in rows
         if row.get("name_id") is not None and int(row.get("count") or 0) > 0
@@ -351,41 +362,19 @@ def _render_profile_footer(profile_link_html: str | None, badge_text: str) -> st
     return f"<div class='os-sb-detail-footer'>{badge_html}{profile_link_html}</div>"
 
 
-@functools.cache
-def _build_medal_icon_url_index() -> dict[int, str]:
-    """Construit l'index medal_id -> URL statique Streamlit."""
-    icons_dir = Path(get_repo_root()) / "static" / "medals" / "icons"
-    index: dict[int, str] = {}
-    if not icons_dir.exists():
-        return index
-    for icon_file in icons_dir.iterdir():
-        if not icon_file.is_file() or icon_file.suffix.lower() != ".png":
-            continue
-        try:
-            medal_id = int(icon_file.stem)
-        except ValueError:
-            continue
-        index[medal_id] = f"/app/static/medals/icons/{icon_file.name}"
-    return index
-
-
-def _medal_icon_url(medal_id: int) -> str | None:
-    """Retourne l'URL statique d'une icône de médaille si disponible."""
-    return _build_medal_icon_url_index().get(int(medal_id))
-
-
 def _render_medals_section(medals: Sequence[MedalDetailItem]) -> str:
     """Construit la section médailles avec icônes compactes."""
     rows = []
     for medal in medals:
+        tooltip_text = html.escape(medal.description or medal.name)
         icon_html = ""
         if medal.icon_url:
             icon_html = (
                 f"<img class='os-sb-detail-medal-icon' src='{html.escape(medal.icon_url)}' "
-                f"alt='{html.escape(medal.name)}'>"
+                f"alt='{html.escape(medal.name)}' title='{tooltip_text}'>"
             )
         rows.append(
-            "<div class='os-sb-detail-item os-sb-detail-item--medal'>"
+            f"<div class='os-sb-detail-item os-sb-detail-item--medal' title='{tooltip_text}'>"
             f"{icon_html}"
             f"<span class='os-sb-detail-item-label'>{html.escape(medal.name)}</span>"
             f"<span class='os-sb-detail-item-value'>{html.escape(str(medal.count))}</span>"
@@ -399,9 +388,40 @@ def _render_medals_section(medals: Sequence[MedalDetailItem]) -> str:
     )
 
 
+def _render_weapons_section(weapons: Sequence[WeaponDetailItem]) -> str:
+    """Construit la section armes avec assets, sans effet pastille."""
+    rows = []
+    for weapon in weapons:
+        asset_html = ""
+        if weapon.asset_url:
+            asset_html = (
+                f"<img class='os-sb-detail-weapon-asset' src='{html.escape(weapon.asset_url)}' "
+                f"alt='{html.escape(weapon.name)}' title='{html.escape(weapon.name)}'>"
+            )
+        else:
+            asset_html = (
+                f"<span class='os-sb-detail-weapon-fallback' title='{html.escape(weapon.name)}'>"
+                f"{html.escape(weapon.name)}"
+                "</span>"
+            )
+        rows.append(
+            "<div class='os-sb-detail-item os-sb-detail-item--weapon'>"
+            f"{asset_html}"
+            f"<span class='os-sb-detail-item-value'>{html.escape(str(weapon.count))}</span>"
+            "</div>"
+        )
+    return (
+        "<section class='os-sb-detail-section'>"
+        f"<div class='os-sb-detail-title'>{html.escape(t('mv_scoreboard_detail_weapons'))}</div>"
+        f"<div class='os-sb-detail-list os-sb-detail-list--weapons'>{''.join(rows)}</div>"
+        "</section>"
+    )
+
+
 __all__ = [
     "MedalDetailItem",
     "ScoreboardPlayerExtraData",
+    "WeaponDetailItem",
     "load_scoreboard_player_extra_data",
     "render_scoreboard_player_detail_html",
     "scoreboard_toggle_id",
