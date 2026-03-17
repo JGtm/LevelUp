@@ -7,6 +7,169 @@
 
 ## Journal
 
+### [2026-03-17] — Tests d'intégrité cross-DB et d'invariants métier
+
+**Statut** : Complété
+
+**Décision technique** :
+Création de `tests/test_cross_db_integrity.py` (24 tests, 5 groupes) pour couvrir les invariants
+que DuckDB ne peut pas enforcer via des FK cross-DB :
+1. **Intégrité référentielle** : 7 tables satellites (player_match_enrichment, match_skill_rank,
+   medals_earned, weapon_kills, killer_victim_pairs, highlight_events, pve_match_stats)
+   → toutes leurs match_id doivent exister dans match_registry. Tests de détection positifs inclus.
+2. **Cohérence flags** : participants_loaded / events_loaded / MatchBits.WEAPON_KILLS corrélés
+   avec la présence effective de lignes dans les tables correspondantes.
+3. **PvE sémantique** : pve_match_stats uniquement sur des matchs is_firefight=TRUE.
+4. **Domaines de valeur** : outcome ∈ {1,2,3,4}, confidence ∈ 5 valeurs, rating_type ∈ {LUSR,CSR}.
+5. **Invariants métier** : v_weapon_kills.effective_weapon_id, weapon_id=0+high (INV-113),
+   performance_score ≥ 0, v_gamertag_lookup couvre tous les XUIDs connus.
+
+**Résultat** : 24/24 ✅ en 1,76s. Pas d'import src/ — tests 100% autonomes via tmp_path + ATTACH.
+
+**Prochaine étape** : Exécuter Ph-1 à Ph-6 du plan de suppression des fallbacks v6.
+
+---
+
+### [2026-03-18] — Suppression des fallbacks v6 et nettoyage de la couche repositories
+
+**Statut** : Complété
+
+**Décision technique** :
+Implémentation complète du plan `.ai/PLAN_FALLBACK_CLEANUP.md` sur la branche
+`refactor/id-resolution-cleanup`. 6 phases exécutées, 2 fichiers de tests créés/mis à jour.
+
+**Ph-1a — `_gamertag_resolver.py`** :
+- Suppression du guard `_has_shared_view("v_gamertag_lookup")` dans `resolve_gamertag()`
+- Suppression de `_resolve_gamertag_without_view()` (fallback sans vue)
+- Correction du guard erroné `_has_shared_table("v_gamertag_lookup")` dans `get_all_gamertags()`
+  (une vue n'est pas une table — bug silencieux depuis la migration v6)
+
+**Ph-1b — `_killer_victim_repo.py`** :
+- Remplacement du triple fallback (vue v6 → table shared → local) par accès direct
+  `shared.v_killer_victim_full` dans `load_killer_victim_pairs_as_polars()` et
+  `has_killer_victim_pairs()`
+
+**Ph-1c — `_career_encounters_repo.py`** :
+- Suppression de `_get_kv_source_shared()` (vérifiait `_has_shared_table("v_killer_victim_full")`
+  — même bug : vue ≠ table)
+- Inlining de `"shared.v_killer_victim_full"` dans `load_top_encountered()` et
+  `load_antagonists()`
+
+**Ph-2 — `_match_queries.py`** :
+- Suppression de `_get_match_table_name()` (scannait les tables locales v4)
+- Simplification de `_get_match_source()` : raise `RuntimeError` si XUID manquant ou
+  shared indisponible (au lieu de silencieusement retourner des données locales obsolètes)
+- Suppression du guard `_has_shared_view("mv_player_matches")`
+- Simplification de `get_match_count()` : requête directe avec try/except
+
+**Ph-3 — `_legacy_compat.py`** :
+- Suppression de `_collect_xuids_local()` (interrogeait `highlight_events`,
+  `match_participants`, `antagonists` — 3 tables supprimées en v5.1)
+- Suppression de son appel dans `list_other_player_xuids()`
+
+**Ph-5 — `getattr(settings, ...)` → accès direct** :
+- `main_helpers.py`, `profile.py`, `data_loader.py`, `media_background.py`
+- Tous les `getattr(settings, "field", default)` remplacés par `settings.field`
+  (AppSettings est Pydantic v2, tous les champs sont garantis présents avec defaults)
+
+**Ph-6 — Logging sur `except Exception:` silencieux** :
+- `_data_loader.py` : 3 blocs externes (load_match_df, load_match_highlight_events,
+  load_match_weapon_kills) enrichis avec `logger.debug(..., exc_info=True)`
+- `engine.py` : bloc interne dans la gestion des fonctions custom enrichi
+
+**Ph-4 — ignorée** : `multiplayer.py` — `render_player_selector` toujours utilisé par
+`sidebar.py`, `PlayerInfo` toujours importé dans les tests. Conservation en l'état.
+
+**Résultats tests** :
+- `tests/test_fallback_cleanup_v6.py` : 26 tests créés, tous ✅
+- `tests/test_v5_match_queries.py` : 5 tests mis à jour (v4 fallback → RuntimeError v6), 35 ✅
+- Total : 61 tests verts post-modifications
+
+**Conclusion** :
+Tous les guards de compatibilité v4/v3 supprimés des repositories. L'architecture v6 invariante
+(vues SQL garanties présentes dans shared_matches.duckdb) est désormais assumée dans le code.
+Les erreurs inattendues sont maintenant visibles dans les logs DEBUG au lieu d'être silencieuses.
+
+---
+
+### [2026-03-17] — Plan de stabilisation : suppression fallbacks excessifs
+
+**Statut** : En cours (plan rédigé, implémentation à démarrer)
+
+**Décision technique** :
+Analyse complète de `src/` révèle 4 familles de fallbacks excessifs à supprimer selon les règles v6 :
+1. Guards `_has_shared_view` / `_has_shared_table` sur vues garanties (interdit par copilot-instructions)
+2. Branches dead code v4/v3 dans `_get_match_source()` + tables locales supprimées v5.1
+3. Dead code SQLite dans `ui/multiplayer.py` (~370L)
+4. `except Exception: pass` sans log dans des fonctions de calcul métier (citations engine)
+
+Décision : ne pas toucher aux fallbacks légitimes (MMR depuis coéquipier, career_ranks JSON → dicts FR, I/O externe).
+
+**Plan** : `.ai/PLAN_FALLBACK_CLEANUP.md` — 9 commits séquentiels, branche `refactor/id-resolution-cleanup`.
+
+**Prochaine étape** : Commencer par Ph-1 (guards gamertag resolver + killer_victim).
+
+---
+
+### [2026-03-17] — Fix batch_insert : CAST_PLAN incomplet + fallback silencieux
+
+**Statut** : Complété
+
+**Décision technique** :
+Correction de la cause racine des participants JGtm manquants. Le fallback row-by-row dans `_executemany_with_fallback` masquait silencieusement des erreurs de type en laissant `participants_loaded=TRUE` même quand certaines lignes échouaient.
+
+**Résultats** :
+- `CAST_PLAN["match_participants"]` complété : 9 colonnes ajoutées (`headshot_kills`, `max_killing_spree`, `kda`, `accuracy`, `time_played_seconds`, `grenade_kills`, `melee_kills`, `power_weapon_kills`, `personal_score`). Avant : 15 colonnes couvertes sur 24.
+- `_executemany_with_fallback` simplifié : suppression du fallback row-by-row silencieux. Si le batch échoue après coercition, l'exception se propage — pas d'insertion partielle masquée.
+- 2 nouveaux tests dans `test_batch_insert.py` : couverture CAST_PLAN vs PARTICIPANT_COLUMNS (régression) + NaN sur toutes les colonnes SMALLINT/INTEGER/FLOAT.
+- Fix données JGtm : reset `participants_loaded=FALSE` pour 166 matchs → `--force-participants` → 6257 participants réinsérés → 669/669 matchs maintenant couverts.
+- 98 tests passent.
+
+**Conclusion / Prochaines étapes** :
+Le bug ne peut plus se reproduire : CAST_PLAN couvre 100% de PARTICIPANT_COLUMNS, et toute défaillance d'insertion est désormais bruyante (exception propagée). Le test de régression garantit que les deux structures restent synchronisées.
+
+---
+
+### [2026-03-17] — Audit complétude données matchs et joueurs
+
+**Statut** : Complété
+
+**Décision technique** :
+Audit complet en lecture seule de `shared_matches_v2.duckdb` et des `stats.duckdb` individuels.
+
+**Résultats** :
+
+*Backfills exécutés :*
+- Sessions (`session_id`) : Chocoboflor (309), JGtm (669), Madina97294 (1010) → toutes mises à jour
+
+*shared_matches_v2 (1457 matchs) :*
+- **medals / participants** : 100% OK
+- **events** : 53.6% (781/1457) — 607 sont des matchs solo/PvE (normaux), 69 sont multi sans events (Assassin/Fiesta) + 102 ont des données mais le bit n'est pas posé → désynchronisation flag
+- **weapon_kills** : bit21 (nouveau, 1<<21=2097152) posé sur 100% matchs — mais bit18 dans migrations.py est obsolète (seulement 4 matchs). `migrations.py` documente mal le bon bit.
+- **bit20** (1048576) : 238 matchs, non documenté dans migrations.py → à identifier
+- **enemy_mmr / team_mmr** : 84.8% NULL dans match_participants — attendu (données API limitées selon les matchs)
+- **is_validated** dans killer_victim_pairs : 0% validé (208487 lignes toutes is_validated=False) — probablement jamais implémenté
+
+*Problème critique — JGtm :*
+- 166 matchs présents dans `player_match_enrichment` ET `match_registry` mais **absents de `match_participants`**
+- Modes : Fiesta (114) + Assassin (52), période fév-mars 2026
+- Impact : stats de ces 166 matchs invisibles dans la shared DB (KD, score, etc.)
+
+*weapon_kills qualité :*
+- `fire_event` (60669) : 100% qualité
+- `formula_a` (29465) : 89% weapon_id=NULL — faible qualité
+- `none` (2826) : sentinels/raw — bruit, script `_fix_weapon_kills_sentinel.py` créé pour nettoyer
+
+*Madina97294 weapon_kills :* seulement 41.4% couverture (418/1010) — matchs anciens non processés
+
+**Conclusion / Prochaines étapes** :
+1. **CRITIQUE** : Backfill participants pour les 166 matchs Fiesta+Assassin de JGtm
+2. **DETTE DOCS** : Mettre à jour `migrations.py` pour documenter bit21 (weapon_kills réel) et identifier bit20
+3. **OPTIONNEL** : Exécuter `_fix_weapon_kills_sentinel.py` pour nettoyer les sentinels dans weapon_kills
+4. **OPTIONNEL** : Corriger la désynchronisation du bit events (102 matchs avec données mais sans flag)
+
+---
+
 ### [2026-03-17] — Tooltip natif de description au survol des médailles du scoreboard
 
 **Statut** : Complété
