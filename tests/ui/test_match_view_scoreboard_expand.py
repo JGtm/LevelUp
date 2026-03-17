@@ -185,4 +185,4 @@ def test_scoreboard_styles_define_inline_expansion_rules() -> None:
     assert ".os-sb-toggle" in css_text
     assert "tbody.os-sb-player:has(.os-sb-toggle:checked) .os-sb-detail-row" in css_text
     assert ".os-sb-detail-medal-icon" in css_text
-    assert "font-size: 0.6em;" in css_text
+    assert "font-size: 0.68em;" in css_text

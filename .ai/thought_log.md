@@ -7,6 +7,24 @@
 
 ## Journal
 
+### [2026-03-17] — Ajustement fin de la taille des en-têtes du scoreboard
+
+**Statut** : Complété
+
+**Décision technique** :
+- L'ajustement demandé est limité au sélecteur `.os-table.os-scoreboard th.os-sb-th` pour ne pas impacter les titres d'équipe ni les autres tableaux HTML.
+- La taille passe de `0.6em` à `0.68em`, avec la régression CSS ciblée mise à jour pour verrouiller ce réglage.
+
+**Fichiers modifiés** :
+- `static/styles.css`
+- `tests/ui/test_match_view_scoreboard_expand.py`
+
+**Résultats observés** :
+- Les en-têtes restent compacts mais plus lisibles
+- La suite ciblée du scoreboard reste verte
+
+**Conclusion / prochaine étape** : aucun changement structurel, uniquement un ajustement de typographie localisé.
+
 ### [2026-03-17] — Ajout d'une section Antagoniste au détail inline du scoreboard
 
 **Statut** : Complété

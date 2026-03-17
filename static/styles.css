@@ -1599,7 +1599,7 @@ div[data-testid="stNumberInput"] input:focus {
     background: rgba(10, 14, 20, 0.80);
     color: rgba(182, 196, 214, 0.80);
     font-family: var(--font-body);
-    font-size: 0.6em;
+    font-size: 0.68em;
     font-weight: 600;
     text-align: center;
     padding: 5px 8px;
