@@ -157,6 +157,51 @@ def build_weapon_timeline_ns(
     return timeline_ns
 
 
+def build_weapon_timelines(
+    chunks: dict[int, tuple[bytes, int, int]],
+) -> tuple[
+    dict[int, dict[int, bytes]],
+    dict[int, dict[int, bytes]],
+    dict[int, set[int]],
+    list[tuple[int, int]],
+]:
+    """Construit timeline raw + NS en une seule passe sur les chunks.
+
+    Équivalent de build_weapon_timeline() + build_weapon_timeline_ns()
+    mais avec un seul tri et une seule itération.
+
+    Returns:
+        (timeline, timeline_ns, swap_pis, timing)
+    """
+    timeline: dict[int, dict[int, bytes]] = {}
+    timeline_ns: dict[int, dict[int, bytes]] = {}
+    swap_pis: dict[int, set[int]] = {}
+    timing: list[tuple[int, int]] = []
+
+    for idx in sorted(chunks):
+        data, start_ms, dur_ms = chunks[idx]
+
+        # Raw timeline (Formula A, Section 1) + swap detection
+        raw_events = scan_formula_a(data)
+        chunk_raw: dict[int, bytes] = {}
+        pi_seen_wids: dict[int, set[bytes]] = {}
+        for _, pi, wid in raw_events:
+            chunk_raw[pi] = wid
+            pi_seen_wids.setdefault(pi, set()).add(wid)
+        timeline[idx] = chunk_raw
+        swap_pis[idx] = {pi for pi, wids in pi_seen_wids.items() if len(wids) > 1}
+        timing.append((start_ms, start_ms + dur_ms))
+
+        # NS timeline (TYPE IDs) — même chunk, pas de second sort
+        ns_events = scan_formula_a_ns(data)
+        chunk_ns: dict[int, bytes] = {}
+        for _, pi, wid in ns_events:
+            chunk_ns[pi] = wid
+        timeline_ns[idx] = chunk_ns
+
+    return timeline, timeline_ns, swap_pis, timing
+
+
 def find_chunk_at_time(
     chunks_sorted: list[int],
     timing: list[tuple[int, int]],
