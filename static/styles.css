@@ -152,7 +152,9 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 9999;
-    width: 220px;
+    width: min(61vw, 500px) !important;
+    max-width: none !important;
+    height: auto !important;
     border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.75);
@@ -1458,6 +1460,42 @@ div[data-testid="stNumberInput"] input:focus {
 
 .os-table a:hover {
     text-decoration: underline;
+}
+
+.os-table-wrap--map-hover {
+    overflow-y: visible;
+    max-height: none;
+    clip-path: none;
+    isolation: isolate;
+    z-index: 4;
+}
+
+.os-table-wrap--map-hover::before {
+    clip-path: none;
+    border-radius: 10px;
+}
+
+.os-table-wrap--map-hover .map-hover {
+    display: inline-flex;
+    align-items: center;
+}
+
+.os-table-wrap--map-hover .map-hover .map-popup {
+    display: block;
+    bottom: calc(100% + 10px);
+    width: min(61vw, 500px) !important;
+    max-width: none !important;
+    height: auto !important;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 120ms ease, visibility 120ms ease;
+    background: rgba(10, 14, 20, 0.96);
+}
+
+.os-table-wrap--map-hover .map-hover:hover .map-popup,
+.os-table-wrap--map-hover .map-hover:focus-within .map-popup {
+    opacity: 1;
+    visibility: visible;
 }
 
 /* =============================================================================

@@ -7,6 +7,30 @@
 
 ## Journal
 
+### [2026-03-17] — Fix hover miniatures de maps dans les tableaux Streamlit
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Cause racine** : le hover image n'était pas bloqué par l'absence de JavaScript mais par le conteneur HTML des tableaux. `.os-table-wrap` appliquait `overflow-y:auto` + `clip-path`, ce qui coupait visuellement les popups `.map-popup` même si le HTML et le CSS de hover existaient déjà.
+- **Approche retenue** : garder un hover CSS-only, sans JS, mais introduire un mode de conteneur non-clippant pour les tableaux de matchs avec miniatures (`.os-table-wrap--map-hover`). Ce mode retire la coupe verticale (`overflow-y: visible`, `max-height: none`, `clip-path: none`) et rend l'image via `opacity/visibility` plutôt que `display:none/block` pour un rendu plus stable.
+- **Unification** : `match_history.py` utilisait encore un renderer HTML dupliqué qui ne profitait pas du helper partagé. Le tableau Historique appelle maintenant `render_match_table_html(...)`, ce qui aligne le comportement avec Explorer et évite une divergence future.
+- **Navigation** : ajout d'un paramètre `page_params` au helper partagé pour préserver `gamertag` dans les liens internes depuis l'historique.
+
+**Fichiers modifiés** :
+- `src/ui/pages/match_table_html.py`
+- `src/ui/pages/match_history.py`
+- `static/styles.css`
+- `tests/test_explorer_logic.py`
+- `tests/ui/test_match_history_page.py`
+
+**Résultats** :
+- Le hover des noms de maps ne dépend plus d'un hack JavaScript
+- Les tableaux Historique et Explorer utilisent le même renderer HTML
+- 68 tests ciblés passent
+
+**Conclusion** : pour les tooltips visuels dans Streamlit, le point critique est souvent la hiérarchie HTML/CSS (overflow/clip-path/z-index), pas l'exécution JS. Une solution CSS-only reste viable tant que le conteneur n'écrase pas le popup.
+
 ### [2026-03-17] — Fix résolution gamertag page Dernier Match (Némésis/Souffre-douleur)
 
 **Statut** : Complété

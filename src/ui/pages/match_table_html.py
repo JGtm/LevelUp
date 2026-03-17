@@ -208,6 +208,7 @@ def render_match_table_html(  # noqa: PLR0913 — kwargs keyword-only, interface
     waypoint_player: str | None = None,
     header_css_class: str = "",
     page_slug: str = "Explorer",
+    page_params: dict[str, str] | None = None,
     max_rows: int = 250,
     hide_empty_cols: bool = False,
 ) -> str:
@@ -218,6 +219,7 @@ def render_match_table_html(  # noqa: PLR0913 — kwargs keyword-only, interface
         waypoint_player: Nom Waypoint pour les liens Halo Waypoint (None = pas de colonne).
         header_css_class: Classe CSS additionnelle pour le ``<thead>`` (ex: couleur d'équipe).
         page_slug: Slug de la page cible pour le lien "Ouvrir".
+        page_params: Paramètres query string supplémentaires pour les liens internes.
         max_rows: Nombre maximum de lignes à afficher.
         hide_empty_cols: Si True, masque les colonnes entièrement nulles (inconnus).
 
@@ -244,23 +246,30 @@ def render_match_table_html(  # noqa: PLR0913 — kwargs keyword-only, interface
 
     # Corps
     rows_html = [
-        _render_row(r, cols, lbl_open, waypoint_player, page_slug) for r in view.to_dicts()
+        _render_row(r, cols, lbl_open, waypoint_player, page_slug, page_params)
+        for r in view.to_dicts()
     ]
     body = "<tbody>" + "".join(rows_html) + "</tbody>"
 
-    return f"<div class='os-table-wrap'><table class='os-table'>{head}{body}</table></div>"
+    return (
+        "<div class='os-table-wrap os-table-wrap--map-hover'>"
+        f"<table class='os-table'>{head}{body}</table>"
+        "</div>"
+    )
 
 
-def _render_row(
+def _render_row(  # noqa: PLR0913
     r: dict,
     cols: list[tuple[str, str]],
     lbl_open: str,
     waypoint_player: str | None,
     page_slug: str,
+    page_params: dict[str, str] | None,
 ) -> str:
     """Génère une ligne ``<tr>`` pour un match."""
     mid = str(r.get("match_id") or "").strip()
-    url = app_url(page_slug, match_id=mid)
+    extra_params = page_params or {}
+    url = app_url(page_slug, match_id=mid, **extra_params)
     match_link = (
         f"<a href='{html_lib.escape(url)}' target='_self'>{html_lib.escape(lbl_open)}</a>"
         if mid
