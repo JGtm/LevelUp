@@ -232,6 +232,7 @@ class CitationDataLoaderMixin:
 
                 return pl.DataFrame()
             except Exception:
+                logger.debug("load_match_df: erreur pour match_id=%s", match_id, exc_info=True)
                 return pl.DataFrame()
 
     # ------------------------------------------------------------------
@@ -265,6 +266,9 @@ class CitationDataLoaderMixin:
                     return [(int(r[0]), str(r[1])) for r in rows]
                 return []
             except Exception:
+                logger.debug(
+                    "load_match_highlight_events: erreur pour match_id=%s", match_id, exc_info=True
+                )
                 return []
 
     # ------------------------------------------------------------------
@@ -310,4 +314,7 @@ class CitationDataLoaderMixin:
                     result[name] = result.get(name, 0) + int(kills)
                 return result
             except Exception:
+                logger.debug(
+                    "load_match_weapon_kills: erreur pour match_id=%s", match_id, exc_info=True
+                )
                 return {}
