@@ -562,6 +562,22 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Recalculer dominance_flag pour tous les matchs (même ceux déjà calculés).",
     )
 
+    # ── Aliases XUID → Gamertag depuis highlight_events ───────────────────────
+    parser.add_argument(
+        "--aliases-from-events",
+        action="store_true",
+        help=(
+            "Backfille xuid_aliases depuis highlight_events.raw_json. "
+            "Corrige les XUIDs manquants (l'API stats Halo ne retourne pas PlayerGamertag). "
+            "Opération locale, sans appel API."
+        ),
+    )
+    parser.add_argument(
+        "--force-aliases-from-events",
+        action="store_true",
+        help="Met à jour TOUS les aliases depuis events, même les XUIDs déjà présents.",
+    )
+
     # ── Gestion des métadonnées (citations) ───────────────────────────────────
     parser.add_argument(
         "--enable-pve-citations",

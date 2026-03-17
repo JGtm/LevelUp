@@ -73,11 +73,11 @@ setup_script_logging(sync_log=True)
 
 logger = logging.getLogger(__name__)
 
-_SHARED_DB = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
-
 
 def _open_shared_conn() -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(str(_SHARED_DB))
+    from src.utils.paths import get_shared_matches_path
+
+    return duckdb.connect(str(get_shared_matches_path()))
 
 
 def main() -> int:  # noqa: C901, PLR0912, PLR0915
@@ -306,10 +306,28 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             logger.error(f"Erreur --bot-detection : {e}")
         return 0
 
+    # --aliases-from-events : backfille xuid_aliases depuis highlight_events.raw_json
+    _aliases_from_events = getattr(args, "aliases_from_events", False)
+    _force_aliases = getattr(args, "force_aliases_from_events", False)
+    if _aliases_from_events or _force_aliases:
+        try:
+            from scripts.backfill.strategies import backfill_xuid_aliases_from_events
+
+            shared_conn = _open_shared_conn()
+            n = backfill_xuid_aliases_from_events(shared_conn, force=_force_aliases)
+            shared_conn.close()
+            logger.info(f"Aliases depuis events : {n} alias insérés/mis à jour")
+        except Exception as e:
+            logger.error(f"Erreur --aliases-from-events : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
     # --dominance : calcule dominance_flag depuis medals_earned + match_participants
     _dominance = getattr(args, "dominance", False) or getattr(args, "force_dominance", False)
+    _force_dom = getattr(args, "force_dominance", False)
     if _dominance:
-        _force_dom = getattr(args, "force_dominance", False)
         try:
             from src.data.dominance_backfill import compute_dominance_for_player
             from src.ui.multiplayer import list_duckdb_v4_players

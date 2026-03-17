@@ -7,6 +7,34 @@
 
 ## Journal
 
+### [2026-03-17] — Fix résolution gamertag page Dernier Match (Némésis/Souffre-douleur)
+
+**Statut** : Complété
+
+**Décision technique** :
+- **Cause racine** : L'API Halo `/hi/matches/{id}/stats` ne retourne PAS `PlayerGamertag` dans le modèle `PlayerStats` de SPNKr. Donc `extract_participants()` et `extract_aliases()` obtiennent toujours `gamertag=None`. La table `xuid_aliases` n'avait que les 14 694 entrées de la migration initiale (fév. 2026), jamais mises à jour depuis.
+- **Source fiable identifiée** : `highlight_events.raw_json` stocke `{"gamertag": "frannajera", ...}` — l'API film/events inclut bien les gamertags. 186 gamertags uniques valides dans les données existantes.
+- **Fix sync futur** : Dans `_shared_writes.py` → `_insert_shared_events()` appelle maintenant `_upsert_event_aliases()` qui extrait les paires `xuid→gamertag` de chaque événement filmé et les insère dans `xuid_aliases` (source `"highlight_events"`).
+- **Backfill historique** : `backfill_xuid_aliases_from_events()` dans `strategies.py` — lit `json_extract_string(raw_json, '$.gamertag')` sur toute la table `highlight_events`, insère/met à jour `xuid_aliases` via `ON CONFLICT DO UPDATE`. Résultat : **6 389 aliases insérés/mis à jour**.
+- **Nettoyage** : fallbacks ad hoc supprimés de `_events_repo.py` (COALESCE `raw_json`) et `_gamertag_resolver.py` (méthode `_load_gamertags_fallback` entière).
+- **Correction `_open_shared_conn`** : le chemin était hardcodé sur l'ancien `shared_matches.duckdb` (vide). Remplacé par `get_shared_matches_path()` → pointe bien vers `shared_matches_v2.duckdb`.
+
+**Fichiers modifiés** :
+- `src/data/sync/_shared_writes.py` : `_upsert_event_aliases()` + appel depuis `_insert_shared_events()`
+- `src/data/repositories/_events_repo.py` : fallback COALESCE retiré
+- `src/data/repositories/_gamertag_resolver.py` : `_load_gamertags_fallback()` supprimée, logique simplifiée
+- `scripts/backfill/strategies.py` : `backfill_xuid_aliases_from_events()` ajoutée
+- `scripts/backfill/cli.py` : `--aliases-from-events` + `--force-aliases-from-events` ajoutés
+- `scripts/backfill_data.py` : handler pour ces flags + fix `_open_shared_conn` → `get_shared_matches_path()`
+
+**Résultats** :
+- XUID `2533274825169524` → résolu en `"frannajera"` ✅
+- `v_gamertag_lookup` retourne bien `frannajera` ✅
+- Total `xuid_aliases` : 15 043 (était 14 694 avant backfill) ✅
+- Pipeline sync : les futurs matchs peupleront automatiquement `xuid_aliases` via les events filmés
+
+---
+
 ### [2026-03-17] — Fix 3 erreurs runtime pages Coéquipiers / Win-Loss
 
 **Statut** : Complété
