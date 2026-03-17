@@ -131,6 +131,38 @@ f"sb_selected_team_{match_id}"   # Any | None
 
 ---
 
+## Gestion des formats de match
+
+### FFA (chacun pour soi)
+
+**Détection — structurelle, sans requête supplémentaire :**
+```python
+is_ffa = (
+    all(len(players_in_team) == 1 for players_in_team in teams.values())
+    and len(teams) > 2
+)
+```
+Couverture : FFA 8/12/16 joueurs → détecté. 1v1 (2 équipes de 1) et tous les modes multi-équipes normaux → non affecté.
+
+**Layout FFA :**
+- Un **tableau unique** sans en-tête d'équipe (pas de bandeau "Eagle" / "Cobra").
+- Joueurs triés par `score` décroissant (classement naturel FFA).
+- **Une seule rangée de pills** sous le tableau (tous les joueurs).
+- Si > 8 joueurs : pills en `overflow-x: auto` (scroll horizontal) ou grille 2 colonnes — seuil `MAX_PILLS_INLINE = 8` à définir dans `match_view_scoreboard.py`.
+
+**Implémentation :**
+- Ajouter `is_ffa` dans `render_match_scoreboard` avant la boucle d'équipes.
+- Si FFA : appeler `_render_team_table` avec `tid=None` sur tous les joueurs triés + pills global unique.
+- Si non-FFA : comportement actuel inchangé (N tableaux + N rangées de pills).
+- Note de classement (`mv_scoreboard_rank_note`) : afficher aussi en FFA.
+
+### Autres formats (BTB 16 joueurs, 4 équipes de 2…)
+
+Aucune adaptation nécessaire : la boucle `teams` gère N équipes de taille quelconque.
+Pills > 8 par équipe : même règle `MAX_PILLS_INLINE` que FFA.
+
+---
+
 ## Points de vigilance
 
 - Les pills utilisent `st.button` → chaque clic déclenche un rerun partiel (fragment).
@@ -139,3 +171,5 @@ f"sb_selected_team_{match_id}"   # Any | None
 - `has_player_db` est déterminé par l'existence du fichier `data/players/{gamertag}/stats.duckdb`
   **et** la présence de `player_match_enrichment` — utiliser `has_table_duckdb` existant.
 - Ne pas faire de requête DB si le panel est fermé (lazy loading).
+- **FFA + 1v1 ambiguïté** : le seuil `> 2` équipes évite de traiter le 1v1 comme FFA.
+  Si un jour Halo ajoute un mode 3 équipes de 1, il sera traité en FFA — acceptable.
