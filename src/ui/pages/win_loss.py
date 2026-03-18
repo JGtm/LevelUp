@@ -16,7 +16,10 @@ from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, f
 from src.ui.tz import get_tz_name
 from src.visualization import (
     plot_map_comparison,
-    plot_map_ratio_with_winloss,
+    plot_map_lollipop,
+    plot_map_outcome_timeline,
+    plot_map_perf_vs_history,
+    plot_map_winrate_bullet,
     plot_matches_at_top_by_week,
     plot_metric_bars_by_match,
     plot_outcomes_over_time,
@@ -67,7 +70,7 @@ def render_win_loss_page(  # noqa: PLR0913
         _render_top_by_week(dff)
         _render_streak_section(dff)
         _render_personal_score_section(dff)
-        _render_ratio_by_map_section(dff, base, db_path, xuid, db_key, is_session_scope)
+        _render_ratio_by_map_section(dff, base, is_session_scope)
 
 
 def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str:
@@ -250,34 +253,15 @@ def _render_personal_score_section(dff: pl.DataFrame) -> None:
 
 
 @fragment_if_available
-def _render_ratio_by_map_section(  # noqa: PLR0913
+def _render_ratio_by_map_section(
     dff: pl.DataFrame,
     base: pl.DataFrame,
-    db_path: str,
-    xuid: str,
-    db_key: tuple[int, int] | None,
     is_session_scope: bool = False,
 ) -> None:
-    """Affiche le ratio par cartes avec sélection du scope."""
+    """Affiche la section par carte : lollipop, timeline, bullet, perf vs historique."""
     st.divider()
     st.subheader(t("wl_ratio_by_map"))
     st.caption(t("wl_ratio_caption"))
-
-    _scope_labels: dict[str, str] = {
-        "Moi (filtres actuels)": t("wl_scope_me_filtered"),
-        "Moi (toutes les parties)": t("wl_scope_me_all"),
-    }
-    scope = st.radio(
-        t("wl_scope_label"),
-        options=[
-            "Moi (filtres actuels)",
-            "Moi (toutes les parties)",
-            "Avec SpartanA",
-            "Avec SpartanB",
-        ],
-        format_func=lambda k: _scope_labels.get(k, k),
-        horizontal=True,
-    )
     min_matches = st.slider(
         t("wl_min_matches_map_slider"),
         1,
@@ -288,57 +272,63 @@ def _render_ratio_by_map_section(  # noqa: PLR0913
         on_change=_clear_min_matches_maps_auto,
     )
 
-    base_scope_pl = WinLossService.get_friend_scope_df(
-        scope,
-        dff,
-        base,
-        db_path,
-        xuid,
-        db_key,
-    )
-
     with st.spinner(t("wl_computing_map")):
-        map_result = WinLossService.compute_map_breakdown(base_scope_pl, min_matches)
-        breakdown = map_result.breakdown if not map_result.is_empty else pl.DataFrame()
+        map_result = WinLossService.compute_map_breakdown(dff, min_matches)
+        breakdown_history = WinLossService.compute_map_breakdown(base, 1).breakdown
 
     if map_result.is_empty:
         st.warning(t("wl_not_enough_map"))
         return
 
-    if is_session_scope:
-        st.caption(t("wl_session_map_note"))
-        metric_options = [
-            ("performance_avg", t("wl_metric_performance")),
-            ("accuracy_avg", t("wl_metric_accuracy")),
-        ]
-    else:
-        metric_options = [
-            ("performance_avg", t("wl_metric_performance")),
-            ("ratio_global", t("wl_metric_ratio")),
-            ("win_rate", t("wl_metric_win_rate")),
-            ("accuracy_avg", t("wl_metric_accuracy")),
-        ]
-    metric = st.selectbox(
-        t("wl_metric_label"),
-        options=metric_options,
-        format_func=lambda x: x[1],
-    )
-    key, label = metric
+    view = map_result.breakdown.head(20).reverse()
+    session_ids = dff["match_id"].cast(pl.Utf8).to_list()
+    lang = get_lang()
 
-    view = breakdown.head(20).reverse()
+    # A — Lollipop (toujours affiché)
+    st.markdown(f"##### {t('wl_map_lollipop_title')}")
     with safe_chart_render():
-        if key == "ratio_global":
-            fig = plot_map_ratio_with_winloss(view, title=label, absolute_counts=True)
-        else:
-            fig = plot_map_comparison(
-                view, key, title=label, color_by_sign=(key == "performance_avg")
-            )
+        st.plotly_chart(
+            plot_map_lollipop(view, lang=lang), width="stretch", config=PLOTLY_CLEAN_CONFIG
+        )
 
-        if fig is not None:
-            if key in ("win_rate",):
-                fig.update_xaxes(tickformat=".0%")
-            if key in ("accuracy_avg",):
-                fig.update_xaxes(ticksuffix="%")
-            st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+    # B — Timeline chronologique (toujours affiché)
+    st.markdown(f"##### {t('wl_map_timeline_title')}")
+    st.caption(t("wl_map_timeline_caption"))
+    with safe_chart_render():
+        fig_tl = plot_map_outcome_timeline(base, session_match_ids=session_ids, lang=lang)
+        if fig_tl is not None:
+            st.plotly_chart(fig_tl, width="stretch", config=PLOTLY_CLEAN_CONFIG)
         else:
             st.info(t("insufficient_data_chart"))
+
+    if is_session_scope:
+        return
+
+    # C — Bullet win rate vs historique
+    st.markdown(f"##### {t('wl_map_bullet_title')}")
+    st.caption(t("wl_map_bullet_caption"))
+    with safe_chart_render():
+        fig_bullet = plot_map_winrate_bullet(view, breakdown_history, lang=lang)
+        if fig_bullet is not None:
+            st.plotly_chart(fig_bullet, width="stretch", config=PLOTLY_STATIC_CONFIG)
+
+    # Feature 2 — Performance vs historique
+    st.markdown(f"##### {t('wl_perf_vs_history_title')}")
+    with safe_chart_render():
+        fig_perf = plot_map_perf_vs_history(view, breakdown_history, lang=lang)
+        if fig_perf is not None:
+            st.plotly_chart(fig_perf, width="stretch", config=PLOTLY_STATIC_CONFIG)
+
+    _render_map_ratio_accuracy(view, lang)
+
+
+def _render_map_ratio_accuracy(view: pl.DataFrame, lang: str) -> None:
+    """Affiche les charts ratio F/M et précision par carte."""
+    with safe_chart_render():
+        fig_r = plot_map_comparison(view, "ratio_global", title=t("wl_metric_ratio"))
+        st.plotly_chart(fig_r, width="stretch", config=PLOTLY_STATIC_CONFIG)
+    with safe_chart_render():
+        if view.filter(pl.col("accuracy_avg").is_not_null()).is_empty():
+            return
+        fig_a = plot_map_comparison(view, "accuracy_avg", title=t("wl_metric_accuracy"))
+        st.plotly_chart(fig_a, width="stretch", config=PLOTLY_STATIC_CONFIG)

@@ -22,9 +22,16 @@ from src.visualization.distributions import (
     plot_top_weapons,
     plot_win_ratio_heatmap,
 )
+from src.visualization.friends_impact_heatmap import plot_squad_map_heatmap
 from src.visualization.maps import (
     plot_map_comparison,
     plot_map_ratio_with_winloss,
+)
+from src.visualization.maps_outcome import (
+    plot_map_lollipop,
+    plot_map_outcome_timeline,
+    plot_map_perf_vs_history,
+    plot_map_winrate_bullet,
 )
 from src.visualization.match_bars import (
     plot_metric_bars_by_match,
@@ -107,6 +114,11 @@ __all__ = [
     "plot_top_weapons",
     "plot_map_comparison",
     "plot_map_ratio_with_winloss",
+    "plot_map_lollipop",
+    "plot_map_outcome_timeline",
+    "plot_map_winrate_bullet",
+    "plot_map_perf_vs_history",
+    "plot_squad_map_heatmap",
     "plot_trio_metric",
     "plot_metric_bars_by_match",
     "plot_multi_metric_bars_by_match",

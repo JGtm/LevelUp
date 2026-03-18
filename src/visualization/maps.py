@@ -1,4 +1,8 @@
-"""Graphiques par carte (map)."""
+"""Graphiques par carte (map) — ratio win/loss et comparaison de métriques.
+
+Les graphiques outcome-focused (lollipop, timeline, bullet, perf vs historique)
+sont dans ``maps_outcome.py``.
+"""
 
 import plotly.graph_objects as go
 import polars as pl

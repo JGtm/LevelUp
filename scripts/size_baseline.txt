@@ -62,8 +62,7 @@ FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
 FUNC:src/ui/pages/teammates.py:74:render_teammates_page:200L
 FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
-FUNC:src/ui/pages/teammates_views.py:56:render_single_teammate_view:125L
-FUNC:src/ui/pages/win_loss.py:253:_render_ratio_by_map_section:91L
+FUNC:src/ui/pages/teammates_views.py:58:render_single_teammate_view:133L
 FUNC:src/ui/styles.py:48:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
@@ -78,7 +77,7 @@ FUNC:src/visualization/distributions.py:32:plot_kda_distribution:87L
 FUNC:src/visualization/distributions_outcomes.py:173:plot_win_ratio_heatmap:105L
 FUNC:src/visualization/distributions_outcomes.py:286:plot_matches_at_top_by_week:117L
 FUNC:src/visualization/distributions_outcomes.py:28:plot_outcomes_over_time:90L
-FUNC:src/visualization/friends_impact_heatmap.py:60:plot_friends_impact_heatmap:188L
+FUNC:src/visualization/friends_impact_heatmap.py:61:plot_friends_impact_heatmap:188L
 FUNC:src/visualization/match_bars.py:129:plot_multi_metric_bars_by_match:226L
 FUNC:src/visualization/match_bars.py:18:plot_metric_bars_by_match:108L
 FUNC:src/visualization/match_impact_timeline.py:277:plot_all_players_frags_timeline:190L

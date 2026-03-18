@@ -243,4 +243,29 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "{player} — Life span (with {partner})",
     },
     # ── Historique des rencontres (v5.4) ─────────────────────────────────────
+    # ── Nouveaux graphiques par carte (coéquipiers) ──────────────────────────
+    "tm_map_lollipop_title": {
+        "fr": "V/D par carte",
+        "en": "W/L by map",
+    },
+    "tm_map_timeline_title": {
+        "fr": "Évolution chronologique par carte",
+        "en": "Chronological map evolution",
+    },
+    "tm_map_timeline_caption": {
+        "fr": "Chaque cercle = 1 match ensemble. La sélection courante est mise en évidence.",
+        "en": "Each dot = 1 match together. Current selection highlighted.",
+    },
+    "tm_map_bullet_title": {
+        "fr": "Win rate session vs historique",
+        "en": "Session win rate vs history",
+    },
+    "tm_perf_vs_history_title": {
+        "fr": "Performance vs historique",
+        "en": "Performance vs history",
+    },
+    "tm_map_squad_heatmap_title": {
+        "fr": "Performance par joueur × carte",
+        "en": "Performance by player × map",
+    },
 }
