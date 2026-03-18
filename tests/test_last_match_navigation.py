@@ -146,6 +146,54 @@ class TestResolveNavIndexSessionKey:
         assert reset is True
         assert idx == 3  # dernier des 4 matchs filtrés
 
+    def test_stored_session_key_none_premier_render_force_reset(self) -> None:
+        """Premier render (stored=None) avec session_key active → reset."""
+        idx, reset = _resolve_nav_index(
+            total=4,
+            stored_index=None,
+            stored_total=None,
+            session_key="17/03/2026 20:09\u201320:58 (4)",
+            stored_session_key=None,
+        )
+        assert reset is True
+        assert idx == 3
+
+    def test_session_toutes_stable_pas_de_reset(self) -> None:
+        """(toutes) → (toutes) inchangé → pas de reset par session."""
+        idx, reset = _resolve_nav_index(
+            total=673,
+            stored_index=42,
+            stored_total=673,
+            session_key="(toutes)",
+            stored_session_key="(toutes)",
+        )
+        assert reset is False
+        assert idx == 42
+
+    def test_bug_exact_origin_match(
+        self,
+    ) -> None:
+        """Reproduction du bug exact : JGtm sélectionne session 17/03 (4 matchs).
+
+        Situation avant fix :
+          - dff = 673 matchs (filtre silencieux raté)
+          - stored_total = 673 = total → pas de reset
+          - stored_index = 660 → match Origin affiché
+
+        Avec session_key :
+          - session_key = "17/03/2026 20:09–20:58 (4)" ≠ stored "(toutes)"
+          - reset forcé → idx = 672 (dernier = Behemoth)
+        """
+        idx, reset = _resolve_nav_index(
+            total=673,
+            stored_index=660,  # index du match Origin
+            stored_total=673,  # total inchangé (filtre raté silencieux)
+            session_key="17/03/2026 20:09\u201320:58 (4)",
+            stored_session_key="(toutes)",
+        )
+        assert reset is True
+        assert idx == 672  # dernier match = Behemoth, pas Origin
+
 
 # =============================================================================
 # _resolve_nav_index — clamping (index hors bornes sans changement de total)
@@ -288,3 +336,51 @@ class TestRenderLastMatchPageContract:
 
         assert hasattr(pages, "render_last_match_page")
         assert callable(pages.render_last_match_page)
+
+
+# =============================================================================
+# _warn_session_filter_empty — logging
+# =============================================================================
+
+
+class TestWarnSessionFilterEmpty:
+    """Vérifie que _warn_session_filter_empty émet bien un WARNING."""
+
+    def test_emet_warning_level(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Un seul WARNING est émis avec le nom du label concerné."""
+        import logging
+
+        import polars as pl
+
+        from src.app._filters_apply import _warn_session_filter_empty
+
+        base_s = pl.DataFrame(
+            {"match_id": ["m1", "m2"], "session_label": ["Session X", "Session X"]}
+        )
+        dff = pl.DataFrame({"match_id": ["m3", "m4", "m5"]})
+
+        with caplog.at_level(logging.WARNING, logger="src.app._filters_apply"):
+            _warn_session_filter_empty(["Session X"], base_s, dff)
+
+        assert len(caplog.records) == 1
+        rec = caplog.records[0]
+        assert rec.levelname == "WARNING"
+        assert "Session X" in rec.message
+
+    def test_message_contient_tailles(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Le WARNING inclut le nombre de lignes de base_s et dff pour le diagnostic."""
+        import logging
+
+        import polars as pl
+
+        from src.app._filters_apply import _warn_session_filter_empty
+
+        base_s = pl.DataFrame({"match_id": ["m1"], "session_label": ["S"]})
+        dff = pl.DataFrame({"match_id": [f"x{i}" for i in range(673)]})
+
+        with caplog.at_level(logging.WARNING, logger="src.app._filters_apply"):
+            _warn_session_filter_empty(["S"], base_s, dff)
+
+        msg = caplog.records[0].message
+        assert "1" in msg  # taille base_s
+        assert "673" in msg  # taille dff
