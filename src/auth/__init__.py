@@ -27,6 +27,7 @@ from src.auth.provider import (
     get_halo_tokens,
     get_halo_tokens_or_raise,
     invalidate_token_cache,
+    set_preferred_auth_method,
     start_device_flow,
 )
 
@@ -40,6 +41,8 @@ __all__ = [
     "DeviceCodePending",
     # Gestion du cache
     "invalidate_token_cache",
+    # Configuration auth
+    "set_preferred_auth_method",
     # Exceptions
     "AuthRequiredError",
     "DeviceFlowError",

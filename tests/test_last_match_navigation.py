@@ -86,6 +86,68 @@ class TestResolveNavIndexReset:
 
 
 # =============================================================================
+# _resolve_nav_index — session_key (bug filtre silencieux + même total)
+# =============================================================================
+
+
+class TestResolveNavIndexSessionKey:
+    """Réinitialisation basée sur le changement de session_key.
+
+    Reproduit le bug original : filtre de session silencieusement raté
+    → dff reste à 673 matchs → total inchangé → index stale → mauvais match.
+    Avec session_key, le changement de label force le reset même si total = même.
+    """
+
+    def test_session_changee_meme_total_force_reset(self) -> None:
+        """session_key différente → reset même si total identique."""
+        idx, reset = _resolve_nav_index(
+            total=673,
+            stored_index=660,
+            stored_total=673,
+            session_key="17/03/2026 20:09–20:58 (4)",
+            stored_session_key="(toutes)",
+        )
+        assert reset is True
+        assert idx == 672  # dernier match dans dff (le plus récent)
+
+    def test_session_inchangee_pas_de_reset(self) -> None:
+        """Même session_key → pas de reset, index préservé."""
+        idx, reset = _resolve_nav_index(
+            total=4,
+            stored_index=2,
+            stored_total=4,
+            session_key="17/03/2026 20:09–20:58 (4)",
+            stored_session_key="17/03/2026 20:09–20:58 (4)",
+        )
+        assert reset is False
+        assert idx == 2
+
+    def test_session_key_none_ignore(self) -> None:
+        """session_key=None → comportement legacy (pas de reset par session)."""
+        idx, reset = _resolve_nav_index(
+            total=10,
+            stored_index=5,
+            stored_total=10,
+            session_key=None,
+            stored_session_key="old session",
+        )
+        assert reset is False
+        assert idx == 5
+
+    def test_session_key_prend_precedence_sur_total(self) -> None:
+        """session_key change ET total change → reset (les deux conditions)."""
+        idx, reset = _resolve_nav_index(
+            total=4,
+            stored_index=8,
+            stored_total=673,
+            session_key="session A",
+            stored_session_key="(toutes)",
+        )
+        assert reset is True
+        assert idx == 3  # dernier des 4 matchs filtrés
+
+
+# =============================================================================
 # _resolve_nav_index — clamping (index hors bornes sans changement de total)
 # =============================================================================
 
@@ -134,11 +196,20 @@ class TestSessionKeys:
         assert isinstance(SK.LAST_MATCH_NAV_TOTAL, str)
         assert SK.LAST_MATCH_NAV_TOTAL
 
+    def test_last_match_nav_session_key_exists(self) -> None:
+        from src.app.session_keys import SK
+
+        assert hasattr(SK, "LAST_MATCH_NAV_SESSION_KEY")
+        assert isinstance(SK.LAST_MATCH_NAV_SESSION_KEY, str)
+        assert SK.LAST_MATCH_NAV_SESSION_KEY
+
     def test_nav_keys_distincts(self) -> None:
-        """Les deux clés ne doivent pas être identiques (collision session_state)."""
+        """Les trois clés ne doivent pas être identiques (collision session_state)."""
         from src.app.session_keys import SK
 
         assert SK.LAST_MATCH_NAV_INDEX != SK.LAST_MATCH_NAV_TOTAL
+        assert SK.LAST_MATCH_NAV_INDEX != SK.LAST_MATCH_NAV_SESSION_KEY
+        assert SK.LAST_MATCH_NAV_TOTAL != SK.LAST_MATCH_NAV_SESSION_KEY
 
 
 # =============================================================================

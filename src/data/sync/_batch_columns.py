@@ -166,6 +166,8 @@ CAST_PLAN: dict[str, dict[str, str]] = {
         "duration_seconds": "INTEGER",
         "team_0_score": "SMALLINT",
         "team_1_score": "SMALLINT",
+        "team_0_ps_score": "INTEGER",
+        "team_1_ps_score": "INTEGER",
         "backfill_completed": "INTEGER",
         "participants_loaded": "BOOLEAN",
         "events_loaded": "BOOLEAN",

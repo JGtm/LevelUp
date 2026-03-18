@@ -108,7 +108,49 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 )
                 if not candidate.is_empty():
                     dff = candidate
-                # else : dff reste inchangé (tous les matchs) — cas anormal
+                elif filter_state.picked_session_labels:
+                    # Désynchronisation base_s_ui / dff : le label est connu dans
+                    # base_s_ui mais les match_ids correspondants sont absents de dff.
+                    # Tentative de recalcul à chaud (ignorant base_s_ui).
+                    logger.warning(
+                        "Filtre session vide pour labels=%s "
+                        "(base_s=%d lignes, dff=%d matchs) — recalcul de secours...",
+                        filter_state.picked_session_labels,
+                        len(base_s),
+                        len(dff),
+                    )
+                    if db_path and xuid:
+                        base_s_fresh = _to_polars(
+                            cached_compute_sessions_db(
+                                db_path,
+                                xuid.strip(),
+                                db_key,
+                                True,
+                                filter_state.gap_minutes,
+                                friends_xuids=filter_state.friends_tuple,
+                            )
+                        )
+                        if not base_s_fresh.is_empty():
+                            session_subset_fresh = base_s_fresh.filter(
+                                pl.col("session_label").is_in(filter_state.picked_session_labels)
+                            )
+                            ids_fresh = set(
+                                session_subset_fresh["match_id"].cast(pl.Utf8).to_list()
+                            )
+                            candidate_fresh = dff.filter(
+                                pl.col("match_id").cast(pl.Utf8).is_in(list(ids_fresh))
+                            )
+                            if not candidate_fresh.is_empty():
+                                logger.info(
+                                    "Recalcul de secours réussi : %d matchs trouvés",
+                                    len(candidate_fresh),
+                                )
+                                dff = candidate_fresh
+                            else:
+                                logger.warning(
+                                    "Recalcul de secours aussi vide — dff inchangé (%d matchs)",
+                                    len(dff),
+                                )
         else:
             dff = dff.clone()
 
@@ -142,7 +184,11 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
             if "playlist_ui" in dff.columns
             else []
         )
-        dff = _apply_experience_filter(dff, filter_state.experience_types_selected, _exp_all_pls)
+        _cand_exp = _apply_experience_filter(
+            dff, filter_state.experience_types_selected, _exp_all_pls
+        )
+        if not _cand_exp.is_empty():
+            dff = _cand_exp
         _dff_after_experience = len(dff)
 
     # Conversion explicite set→list pour compatibilité Polars is_in()

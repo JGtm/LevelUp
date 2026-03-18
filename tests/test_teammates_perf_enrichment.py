@@ -46,8 +46,7 @@ class TestLoadPerformanceScoresFromPlayerDb:
         db_path = str(tmp_path / "stats.duckdb")
         with duckdb.connect(db_path) as conn:
             conn.execute(
-                "CREATE TABLE player_match_enrichment "
-                "(match_id VARCHAR, performance_score FLOAT)"
+                "CREATE TABLE player_match_enrichment (match_id VARCHAR, performance_score FLOAT)"
             )
             conn.execute(
                 "INSERT INTO player_match_enrichment VALUES "
@@ -105,8 +104,7 @@ class TestEnrichWithPerformanceScore:
         db_path = str(tmp_path / "stats.duckdb")
         with duckdb.connect(db_path) as conn:
             conn.execute(
-                "CREATE TABLE player_match_enrichment "
-                "(match_id VARCHAR, performance_score FLOAT)"
+                "CREATE TABLE player_match_enrichment (match_id VARCHAR, performance_score FLOAT)"
             )
             conn.execute("INSERT INTO player_match_enrichment VALUES ('m1', 71.0)")
 
@@ -132,8 +130,7 @@ class TestEnrichWithPerformanceScore:
         friend_db = str(tmp_path / "Chocoboflor" / "stats.duckdb")
         with duckdb.connect(friend_db) as conn:
             conn.execute(
-                "CREATE TABLE player_match_enrichment "
-                "(match_id VARCHAR, performance_score FLOAT)"
+                "CREATE TABLE player_match_enrichment (match_id VARCHAR, performance_score FLOAT)"
             )
             conn.execute("INSERT INTO player_match_enrichment VALUES ('m1', 87.0)")
 

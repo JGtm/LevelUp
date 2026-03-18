@@ -702,6 +702,13 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             CASE WHEN p.team_id = 0 THEN r.team_1_score
                  ELSE r.team_0_score END AS enemy_team_score,
 
+            -- Somme des scores personnels par équipe (toujours cohérente entre équipes)
+            -- Fiable même quand CoreStats.Score de l'API mélange score objectif et somme perso
+            CASE WHEN p.team_id = 0 THEN r.team_0_ps_score
+                 ELSE r.team_1_ps_score END AS my_team_ps_score,
+            CASE WHEN p.team_id = 0 THEN r.team_1_ps_score
+                 ELSE r.team_0_ps_score END AS enemy_team_ps_score,
+
             -- MMR (enrichi depuis skill API)
             p.team_mmr,
             {enemy_mmr_expr},
@@ -1154,6 +1161,28 @@ def ensure_fix_bot_xuid_shared(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Scores PS (personal score sums) — shared_matches.duckdb
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_team_ps_scores(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute team_0_ps_score / team_1_ps_score à match_registry.
+
+    Ces colonnes stockent la somme des scores personnels de chaque équipe
+    calculée depuis match_participants, indépendamment du champ API
+    team_0_score / team_1_score (CoreStats.Score) qui peut mélanger le score
+    objectif et la somme des scores perso selon les versions de l'API Halo.
+
+    Idempotente : utilise ADD COLUMN IF NOT EXISTS.
+    """
+    if not table_exists(conn, "match_registry"):
+        return
+    _add_column_if_missing(conn, "match_registry", "team_0_ps_score", "INTEGER")
+    _add_column_if_missing(conn, "match_registry", "team_1_ps_score", "INTEGER")
+    logger.info("✅ ensure_team_ps_scores : colonnes team_0/1_ps_score présentes")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Schéma weapon_kills — shared_matches.duckdb (v5.7, per-kill avec weapon_id UBIGINT)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1208,8 +1237,7 @@ def _convert_weapon_name_to_id(conn: duckdb.DuckDBPyConnection) -> None:
     cols = {
         r[0]
         for r in conn.execute(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = 'weapon_kills'"
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'weapon_kills'"
         ).fetchall()
     }
 
@@ -1438,6 +1466,8 @@ def _create_v_match_full(
             mr.game_variant_id,
             mr.team_0_score,
             mr.team_1_score,
+            mr.team_0_ps_score,
+            mr.team_1_ps_score,
             mr.is_firefight,
             mr.is_ranked,
             mr.backfill_completed,

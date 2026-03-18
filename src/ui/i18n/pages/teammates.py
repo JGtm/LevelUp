@@ -79,6 +79,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Matrice d'Impact",
         "en": "Impact heatmap",
     },
+    "tmi_viz_heatmap": {
+        "fr": "Matrice (original)",
+        "en": "Matrix (original)",
+    },
+    "tmi_viz_scatter": {
+        "fr": "Points (symboles)",
+        "en": "Dots (symbols)",
+    },
     "tm_impact_ranking": {
         "fr": "🏆 Classement",
         "en": "🏆 Ranking",
@@ -203,10 +211,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tmi_col_rank": "col_rank",  # alias → common
     "tmi_col_player": "col_player",  # alias → common
     "tmi_col_score": "col_score",  # alias → common
-    "tmi_col_first_blood": {"fr": "⚡ Premier Sang", "en": "⚡ First Blood"},
-    "tmi_col_finisher": {"fr": "🎯 Finisseur", "en": "🎯 Finisher"},
-    "tmi_col_casualty": {"fr": "💀 Boulet", "en": "💀 Liability"},
-    "tmi_mvp_label": {"fr": "🏆 Brute de la Soirée : {mvp}", "en": "🏆 MVP of the Night: {mvp}"},
+    "tmi_col_first_blood": {"fr": "⚡", "en": "⚡"},
+    "tmi_col_finisher": {"fr": "🎯", "en": "🎯"},
+    "tmi_col_casualty": {"fr": "💀", "en": "💀"},
+    "tmi_mvp_label": {"fr": "🏆 Champion : {mvp}", "en": "🏆 MVP of the Night: {mvp}"},
     "tmi_boulet_label": {"fr": "🍌 Maillon Faible : {boulet}", "en": "🍌 Weak Link: {boulet}"},
     "tmi_no_shared_db": {
         "fr": "Impossible d'accéder à shared_matches.duckdb pour les événements.",
@@ -257,7 +265,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Each dot = 1 match together. Current selection highlighted.",
     },
     "tm_map_bullet_title": {
-        "fr": "Win rate session vs historique",
+        "fr": "Taux de victoires vs historique",
         "en": "Session win rate vs history",
     },
     "tm_perf_vs_history_title": {

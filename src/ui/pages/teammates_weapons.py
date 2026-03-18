@@ -164,9 +164,7 @@ def _build_weapon_table_html(df: pl.DataFrame, lang: str) -> str:
     for r in rows:
         name_esc = html.escape(r["name"])
         faction_esc = html.escape(r["faction"])
-        body.append(
-            f"<tr><td>{name_esc}</td>" f"<td>{faction_esc}</td>" f"<td>{r['kills']}</td></tr>"
-        )
+        body.append(f"<tr><td>{name_esc}</td><td>{faction_esc}</td><td>{r['kills']}</td></tr>")
     return (
         "<div class='os-table-wrap'>"
         "<table class='os-table'>"

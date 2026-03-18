@@ -139,7 +139,7 @@
 
 | Last match | Scoreboard |
 |:-:|:-:|
-| ![Summary](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/Scorebard-commendations.png) |
+| ![Summary](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/scoreboard.png) |
 | Impact & Dominance | Antagonists |
 | ![Impact & Dominance](docs/screenshots/impact-dominance.png) | ![Antagonists](docs/screenshots/antagonist.png) |
 
@@ -161,9 +161,10 @@
 
 ### Career progression, Ranks & Path to Hero
 
-| Career | Ranks (LUSR/CSR) | Path to Hero |
-|:-:|:-:|:-:|
-| ![Career](docs/screenshots/career.png) | ![Ranks](docs/screenshots/LUSRs.png) | ![Path to Hero](docs/screenshots/path-hero.png) |
+| Career | Ranks (LUSR/CSR) |
+|:-:|:-:|
+| ![Career](docs/screenshots/career.png) | ![Ranks](docs/screenshots/LUSRs.png) |
+| ![Path to Hero](docs/screenshots/path-hero.png) | ![Memorable Matches](docs/screenshots/memorable-matches.png) |
 
 *Rank history, progression to Hero, LUSR/CSR per playlist group*
 

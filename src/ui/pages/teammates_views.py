@@ -26,7 +26,6 @@ from src.ui.pages.teammates_charts import (
     render_outcome_bar_chart,
 )
 from src.ui.pages.teammates_helpers import (
-    _clear_min_matches_maps_friends_auto,
     render_friends_history_table,
 )
 from src.ui.pages.teammates_impact import render_impact_taquinerie
@@ -306,52 +305,10 @@ def _render_bottom_charts(  # noqa: PLR0913
     )
 
 
-def _auto_reset_min_matches_slider(
-    picked_session_labels: list,
-    latest_session_label: str | None,
-    trio_latest_label: str | None,
-) -> int:
-    """Gère l'auto-reset du slider si la dernière session est sélectionnée.
-
-    Retourne la valeur courante du slider min_matches_maps_friends.
-    """
-    current_mode = st.session_state.get("filter_mode")
-    selected_session = None
-    if (
-        current_mode == "Sessions"
-        and isinstance(picked_session_labels, list)
-        and len(picked_session_labels) == 1
-    ):
-        selected_session = picked_session_labels[0]
-
-    is_last_session = bool(selected_session and selected_session == latest_session_label)
-    is_last_trio_session = bool(
-        selected_session
-        and isinstance(trio_latest_label, str)
-        and selected_session == trio_latest_label
-    )
-    if is_last_session or is_last_trio_session:
-        last_applied = st.session_state.get("_friends_min_matches_last_session_label")
-        if last_applied != selected_session:
-            st.session_state["min_matches_maps_friends"] = 1
-            st.session_state["_min_matches_maps_friends_auto"] = True
-            st.session_state["_friends_min_matches_last_session_label"] = selected_session
-
-    return st.slider(
-        t("tm_min_matches_map"),
-        1,
-        30,
-        step=1,
-        key="min_matches_maps_friends",
-        on_change=_clear_min_matches_maps_friends_auto,
-    )
-
-
 def _render_map_breakdown(
     sub_all: DataFrameLike,
     full_squad_df: DataFrameLike,
     breakdown_all: DataFrameLike,
-    min_matches_maps_friends: int,
     ctx: TeammateContext,
 ) -> None:
     """Affiche lollipop + timeline + bullet + perf vs historique, puis tableau d'historique."""
@@ -360,9 +317,7 @@ def _render_map_breakdown(
     db_key = ctx["db_key"]
     waypoint_player = ctx["waypoint_player"]
 
-    render_map_charts_section(
-        sub_all, full_squad_df, breakdown_all, min_matches_maps_friends, lang=get_lang()
-    )
+    render_map_charts_section(sub_all, full_squad_df, breakdown_all, lang=get_lang())
 
     st.subheader(t("tm_history"))
     st.caption(t("tm_history_tz_caption", tz=get_tz_name()))
@@ -388,7 +343,6 @@ def _render_map_history_section(
     db_path = ctx["db_path"]
     db_key = ctx["db_key"]
     picked_xuids = ctx["picked_xuids"]
-    picked_session_labels = ctx["picked_session_labels"]
     apply_current_filters = filters["apply_current_filters"]
     same_team_only = filters["same_team_only"]
     assign_player_colors_fn = callbacks["assign_player_colors_fn"]
@@ -398,14 +352,7 @@ def _render_map_history_section(
     dff = ensure_polars(dff)
     rendered_bottom_charts = False
 
-    st.subheader(t("tm_by_map"))
     with st.spinner(t("tm_computing_map")):
-        latest_session_label = st.session_state.get("_latest_session_label")
-        trio_latest_label = st.session_state.get("_trio_latest_session_label")
-        min_matches_maps_friends = _auto_reset_min_matches_slider(
-            picked_session_labels, latest_session_label, trio_latest_label
-        )
-
         base_for_friends_all = dff if apply_current_filters else df
         all_match_ids, per_friend_ids = _collect_friend_match_ids(
             db_path, xuid, picked_xuids, same_team_only, db_key
@@ -440,11 +387,10 @@ def _render_map_history_section(
 
         colors_by_name = assign_player_colors_fn([n for n, _ in series])
         breakdown_all = ensure_polars(compute_map_breakdown(sub_all))
-        breakdown_all = breakdown_all.filter(pl.col("matches") >= int(min_matches_maps_friends))
 
         # full_squad_df = tous les matchs avec ces amis (non filtré par session/date)
         full_squad_df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(all_match_ids)))
-        _render_map_breakdown(sub_all, full_squad_df, breakdown_all, min_matches_maps_friends, ctx)
+        _render_map_breakdown(sub_all, full_squad_df, breakdown_all, ctx)
         render_squad_heatmap(series, lang=get_lang())
 
     return sub_all, series, colors_by_name, rendered_bottom_charts

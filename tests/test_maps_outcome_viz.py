@@ -178,8 +178,8 @@ class TestPlotMapWinrateBullet:
         fig = plot_map_winrate_bullet(bd, bd)
         assert fig is not None
         assert isinstance(fig, go.Figure)
-        # 2 traces : historique + session
-        assert len(fig.data) == 2
+        # 4 barres overlay + 3 entrées légende couleur (vert/ambre/rouge)
+        assert len(fig.data) == 7
 
     def test_retourne_none_sans_cartes_communes(self) -> None:
         bd_curr = _make_breakdown(1)

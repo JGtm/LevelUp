@@ -126,8 +126,12 @@ def _render_ranking_table(
     first_bloods: dict,
     clutch_finishers: dict,
     last_casualties: dict,
-) -> None:
-    """Affiche le tableau de classement MVP/Boulet."""
+) -> tuple[str | None, str | None]:
+    """Affiche le tableau de classement MVP/Boulet.
+
+    Returns:
+        (mvp_gamertag, boulet_gamertag) — None si absent.
+    """
     fb_counts = count_events_by_player(first_bloods)
     clutch_counts = count_events_by_player(clutch_finishers)
     casualty_counts = count_events_by_player(last_casualties)
@@ -139,39 +143,44 @@ def _render_ranking_table(
         casualty_counts=casualty_counts,
     )
 
-    if not ranking_df.is_empty():
-        # Sprint 19 : renommer les colonnes en Polars sans conversion Pandas
-        display_df = ranking_df.rename(
-            dict(
-                zip(
-                    ranking_df.columns,
-                    [
-                        t("tmi_col_rank"),
-                        t("tmi_col_player"),
-                        t("tmi_col_score"),
-                        t("tmi_col_first_blood"),
-                        t("tmi_col_finisher"),
-                        t("tmi_col_casualty"),
-                        t("tmi_badge"),
-                    ],
-                    strict=False,
-                )
-            )
-        )
-        st.dataframe(display_df, width="stretch", hide_index=True)
+    if ranking_df.is_empty():
+        return None, None
 
-        mvp = ranking_df[0, "gamertag"] if len(ranking_df) > 0 else None
-        boulet = (
-            ranking_df[-1, "gamertag"]
-            if len(ranking_df) > 1 and ranking_df[-1, "score"] < 0
-            else None
-        )
+    col_cfg = {
+        "rang": st.column_config.NumberColumn(label=t("tmi_col_rank"), width=50),
+        "gamertag": st.column_config.TextColumn(label=t("tmi_col_player"), width=140),
+        "score": st.column_config.NumberColumn(label=t("tmi_col_score"), width=60),
+        "fb": st.column_config.NumberColumn(label="⚡", width=45),
+        "clutch": st.column_config.NumberColumn(label="🎯", width=45),
+        "boulet": st.column_config.NumberColumn(label="💀", width=45),
+        "badge": st.column_config.TextColumn(label=t("tmi_badge"), width=110),
+    }
+    st.dataframe(ranking_df, width="content", hide_index=True, column_config=col_cfg)
 
-        summary_cols = st.columns(2)
+    mvp = ranking_df[0, "gamertag"] if len(ranking_df) > 0 else None
+    boulet = (
+        ranking_df[-1, "gamertag"] if len(ranking_df) > 1 and ranking_df[-1, "score"] < 0 else None
+    )
+    return mvp, boulet
+
+
+def _render_impact_ranking_section(
+    scores: dict,
+    first_bloods: dict,
+    clutch_finishers: dict,
+    last_casualties: dict,
+) -> None:
+    """Affiche la légende, le tableau de classement et les badges MVP/Boulet."""
+    col_leg, col_rank, col_mvp = st.columns([1, 1.6, 0.8])
+    with col_leg:
+        st.caption(t("tm_impact_legend"))
+    with col_rank:
+        mvp, boulet = _render_ranking_table(scores, first_bloods, clutch_finishers, last_casualties)
+    with col_mvp:
         if mvp:
-            summary_cols[0].success(t("tmi_mvp_label", mvp=mvp))
+            st.success(t("tmi_mvp_label", mvp=mvp))
         if boulet:
-            summary_cols[1].error(t("tmi_boulet_label", boulet=boulet))
+            st.error(t("tmi_boulet_label", boulet=boulet))
 
 
 def _render_impact_from_events(
@@ -225,15 +234,30 @@ def _render_impact_from_events(
     )
 
     st.subheader(t("tm_impact_heatmap"))
-    fig = plot_friends_impact_heatmap(
-        impact_matrix,
-        title=None,
-        max_matches=len(sorted_match_ids),
+    viz_mode = st.radio(
+        "viz_mode",
+        options=["heatmap", "scatter"],
+        format_func=lambda x: t(f"tmi_viz_{x}"),
+        horizontal=True,
+        key="impact_viz_mode",
+        label_visibility="collapsed",
     )
-    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+    if viz_mode == "scatter":
+        from src.visualization.friends_impact_scatter import plot_friends_impact_scatter
 
-    st.subheader(t("tm_impact_ranking"))
-    _render_ranking_table(scores, first_bloods, clutch_finishers, last_casualties)
+        fig = plot_friends_impact_scatter(
+            impact_matrix,
+            title=None,
+            max_matches=len(sorted_match_ids),
+        )
+    else:
+        fig = plot_friends_impact_heatmap(
+            impact_matrix,
+            title=None,
+            max_matches=len(sorted_match_ids),
+        )
+    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+    _render_impact_ranking_section(scores, first_bloods, clutch_finishers, last_casualties)
 
 
 def render_impact_taquinerie(
@@ -244,8 +268,6 @@ def render_impact_taquinerie(
     db_key: tuple[int, int] | None = None,
 ) -> None:
     """Affiche l'onglet Impact (Sprint 12)."""
-    st.subheader(t("tm_impact_header"))
-
     if len(friend_xuids) < 2:
         st.info(t("tm_impact_select_two"))
         return
@@ -253,8 +275,6 @@ def render_impact_taquinerie(
     if not match_ids:
         st.warning(t("tm_impact_no_matches"))
         return
-
-    st.caption(t("tm_impact_legend"))
 
     try:
         repo = DuckDBRepository(db_path, xuid.strip())

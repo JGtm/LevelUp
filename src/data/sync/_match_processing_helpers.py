@@ -297,6 +297,8 @@ class MatchProcessingHelpersMixin:
         result.skill_records_inserted += match_result.get("skill", 0)
         result.aliases_updated += match_result.get("aliases", 0)
         result.weapon_kills_inserted += match_result.get("weapon_kills", 0)
+        if mid := match_result.get("match_id"):
+            result.inserted_match_ids.append(str(mid))
 
     def _maybe_batch_commit(self: _SyncProtocol, n_inserted: int, batch_size: int) -> None:
         """Effectue un commit intermédiaire si le batch_size est atteint."""

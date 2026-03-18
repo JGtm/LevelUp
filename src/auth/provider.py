@@ -42,6 +42,18 @@ from src.auth._msal import (
 
 logger = logging.getLogger(__name__)
 
+# Méthode d'auth préférée (configurable via AppSettings.auth_method)
+# "refresh_token" : OAuth v2 direct (skip Device Code Flow)
+# "msal"          : MSAL Device Code Flow (comportement historique)
+_preferred_auth_method: str = "refresh_token"
+
+
+def set_preferred_auth_method(method: str) -> None:
+    """Définit la méthode d'auth préférée (appelé au démarrage depuis AppSettings)."""
+    global _preferred_auth_method
+    _preferred_auth_method = method if method in ("refresh_token", "msal") else "refresh_token"
+    logger.debug("Auth method: %s", _preferred_auth_method)
+
 
 # =============================================================================
 # Types internes (évite l'import circulaire avec src.data.sync._tokens)
@@ -311,6 +323,16 @@ async def _get_access_token_interactive(db_path: Path) -> str:
     if access_token:
         save_msal_cache_if_changed(db_path, cache)
         return access_token
+
+    # Si auth_method=refresh_token, ne pas lancer le Device Code Flow interactif
+    # (le caller doit utiliser les refresh tokens OAuth v2 via get_tokens_for_player)
+    if _preferred_auth_method == "refresh_token":
+        from src.auth._msal import DeviceFlowError
+
+        raise DeviceFlowError(
+            "auth_method=refresh_token : Device Code Flow interactif désactivé. "
+            "Configurer SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> dans .env.local."
+        )
 
     # Device Code Flow interactif
     info = initiate_device_flow(app)

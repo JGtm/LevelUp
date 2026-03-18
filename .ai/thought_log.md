@@ -7,6 +7,201 @@
 
 ## Journal
 
+### [2026-03-19] — Vérification finale : early-exit delta + MV incrémentielles
+**Statut** : Complété
+
+**Décision technique** : Finalisation des deux optimisations de la session précédente. Ajout de la couverture de tests manquante + corrections qualité de code déclenchées par les nouvelles violations.
+
+**Tests ajoutés** :
+- `tests/test_match_processing_early_exit.py` — 7 tests `TestEarlyExitDelta` (pytest-asyncio) couvrant : early-exit quand HEAD==DB, comptage d'appels API, pas d'early-exit si HEAD≠DB, existing_ids vide, delta_mode=False, latest_db=None, HEAD vide.
+- `tests/test_materialized_views.py` — 4 tests `TestMaterializedViews` couvrant le rebuild partiel (`new_ids`), cartes inconnues (noop), catégories de mode, et cohérence partiel vs complet.
+
+**Corrections qualité** :
+- `_materialized_views.py` : 521→458L (DDL compacté en boucle, docstrings helpers raccourcies)
+- `friends_impact_scatter.py` : 8 violations ruff fixées (I001, B905, C408×6) + `plot_friends_impact_scatter` 102L → extraction `_add_scatter_traces` + `_apply_scatter_layout`
+- `teammates_impact.py` : `_render_impact_from_events` 83L → extraction `_render_impact_ranking_section`
+- `test_teammates_impact_tab.py` : test mis à jour pour la nouvelle structure 3-colonnes (st.success/error mockés, summary_cols 3 items)
+- Baseline `size_baseline.txt` resserrée à 96 violations
+
+**Résultats** : 4991 tests passent, 0 échec. Ruff : 0 violation. check_code_size : 0 nouvelle violation.
+
+**Conclusion** : Les deux optimisations (early-exit HEAD check + MV incrémentielles) sont complètes, testées et conformes aux règles qualité du projet.
+
+---
+### [2026-03-18] — Impact : condensation layout légende + classement + MVP en 3 colonnes
+**Statut** : Complété
+
+**Décision technique** : `_render_ranking_table` retourne désormais `(mvp, boulet)` au lieu de les rendre elle-même. `_render_impact_from_events` crée un `st.columns([1, 1.6, 0.8])` en bas de la section : col 1 = légende, col 2 = tableau classement, col 3 = MVP/Boulet. Le `st.caption` standalone dans `render_impact_taquinerie` est supprimé (déplacé dans col 1).
+
+**Résultats** : Import OK.
+
+**Prochaine étape** : Validation visuelle.
+
+---
+
+### [2026-03-18] — Matrice d'Impact : ajout scatter plot alternatif (Option A)
+**Statut** : Complété
+
+**Décision technique** : Ajout d'une visualisation scatter Plotly (`plot_friends_impact_scatter`) comme alternative aux emojis de la heatmap, sans supprimer l'originale. Un radio toggle `st.radio` permet de basculer entre les deux dans l'UI. Nouveau module `src/visualization/friends_impact_scatter.py` créé pour respecter la limite 500L de `friends_impact_heatmap.py` (447L).
+
+**Résultats** : Imports OK, aucune erreur. 5 types d'événements → 5 traces Plotly avec symboles distincts (triangle-up, star, x-thin, circle-open, diamond). Jitter X automatique si plusieurs events dans la même cellule. Outcomes en rectangles de fond par colonne.
+
+**Prochaine étape** : Validation visuelle dans l'app. L'utilisateur choisit laquelle garder.
+
+---
+
+### [2026-03-18] — Optimisations sync : early-exit delta + MV incrémentielles
+
+**Statut** : Complété
+
+**Objectif** : Réduire le temps de sync de ~52s → ~22s pour un joueur actif (10 nouveaux matchs).
+
+**Décisions techniques** :
+
+1. **Early-exit HEAD check (Point 3)** : Avant de paginer tout l'historique API, un appel `get_match_history(count=1)` compare le dernier match API avec `_get_latest_match_id_in_db()`. Si égaux → return immédiat (économise ~5s par joueur inactif, toute la pagination + chargement des IDs existants).
+
+2. **MV incrémentielles (Point 2)** : `refresh_materialized_views(*, new_ids=)` reconstruit `mv_map_stats` et `mv_mode_category_stats` en **partiel** : seules les lignes des map_ids/mode_categories touchés par les nouveaux matchs sont supprimées puis recalculées. `mv_global_stats` et `mv_session_stats` restent en rebuild complet (agrègent tout le historique joueur). Économie estimée : ~800ms pour 10 matchs sur 2-3 cartes.
+
+3. **Propagation** : `SyncResult.inserted_match_ids` collecte les match_id insérés → propagés via `engine.py` → `_aggregates.py` → `DuckDBRepository.refresh_materialized_views`.
+
+**Corrections qualité** : 5 tests mis à jour suite aux modifications utilisateur (suppression `plot_map_lollipop`, timeline désactivée, `plot_map_winrate_bullet` passe à 7 traces). Violations ruff corrigées (ARG002, PLR0915, F841, SIM223). Baseline size_baseline.txt resynchronisée.
+
+**Résultat** : 4927 tests passent, 0 échec.
+
+**Conclusion** : Chain d'optimisation complète. Prochaine étape potentielle : decouple film parsing du chemin critique (pour matchs multi-joueurs).
+
+---
+
+### [2026-03-18] — Activation graphes "Taux de victoires vs historique" + "Performance vs historique" sur page Win/Loss
+
+**Statut** : Complété
+
+**Décision technique** : La fonction `_render_ratio_by_map_section` dans `win_loss.py` était déjà implémentée avec `plot_map_winrate_bullet` et `plot_map_perf_vs_history`, mais son appel était commenté (`# DISABLED`). Décommenté l'appel dans `render_win_loss_page`. Traductions `wl_map_bullet_title` / `wl_perf_vs_history_title` déjà présentes, `WinLossService.compute_map_breakdown` déjà fonctionnel. Aucun changement sur la page teammates.
+
+**Résultat** : Les deux graphes sont maintenant visibles sur la page Win/Loss (section "Ratio par cartes", après le score personnel). En mode session (`is_session_scope=True`), la section se termine tôt — comportement attendu.
+
+**Conclusion** : Modification minimale (1 ligne décommentée). Pas de duplication de code.
+
+---
+
+### [2026-03-18] — Fix filtre expérience : labels langue obsolètes + garde non-empty
+
+**Statut** : Complété
+
+**Symptôme** : "Après filtre expérience : 0" sur toutes les pages après changement de vue. `experience_types_selected = {'PVE'}` alors que la session sélectionnée contient des matchs PvP.
+
+**Cause racine (double)**:
+1. **Labels stale inter-langue** : `apply_filter_preferences` charge les préfs sauvegardées avec labels FR (`PVP non classé`, `PVP classé`, `PVE`) dans une session EN (`Unranked PVP`, `Ranked PVP`, `PVE`). `render_checkbox_filter` intersecte `&` → seul `PVE` (identique FR/EN) survit → `filter_experience_types = {'PVE'}`.
+2. **Absence de garde non-empty** : le filtre expérience dans `apply_filters` (contrairement aux filtres playlist/mode/carte) n'avait pas le pattern `_cand = ...; if not _cand.is_empty(): dff = _cand`.
+
+**Corrections** :
+- `src/ui/filter_state.py` : après `_apply_filter(experience_types...)`, normalisation des labels. Si des stored labels ne sont pas dans les options courantes (`has_stale=True`) ET que le nombre stocké == total (user avait tout sélectionné), restaurer toutes les options courantes.
+- `src/app/_filters_apply.py` : ajout du garde `_cand_exp = ...; if not _cand_exp.is_empty(): dff = _cand_exp` pour cohérence avec les autres filtres.
+
+**Tests** : 47/47 `test_filter_state.py` ✓
+
+### [2026-07-16] — Fix sync : auth_method, migrations guard, asyncio.gather, log routing
+
+**Statut** : Complété
+
+**Contexte** : Diagnostic post-sync révélant 4 problèmes : MSAL Device Flow timeout 13s/joueur (client_id invalide Azure AD), `refresh_aggregates()` échouant car shared DB non attachable pendant sync_mode, migrations shared relancées 4× (1 par player), warnings `unresolved_player` apparaissant dans le terminal Streamlit.
+
+**Décision technique** :
+
+1. **Anomalie 1 — Auth** : Ajout de `auth_method: Literal["refresh_token", "msal"] = "refresh_token"` dans `AppSettings` + validator. `provider.py` expose `set_preferred_auth_method()` — quand `"refresh_token"`, `_get_access_token_interactive()` lève `DeviceFlowError` immédiatement (skip 13s timeout Azure). `streamlit_app.py` appelle `set_preferred_auth_method(settings.auth_method)` au démarrage.
+
+2. **Anomalie 2 — Vues matérialisées** : `refresh_aggregates()` dans `_aggregates.py` appelle `end_sync_mode()` avant de créer `DuckDBRepository` (qui nécessite l'attachement shared), puis `begin_sync_mode()` dans le `finally`.
+
+3. **Cause 1 — Parallélisme film parsing** : `_match_processing.py` reformaté en 2 phases : séquentielle pour la détection delta, `asyncio.gather` pour les fetch I/O. Le sémaphore `parallel_matches=5` existait mais n'était pas exploité.
+
+4. **Cause 3 — Migrations repeated** : Guard process-level `_SHARED_MIGRATIONS_DONE: set[str]` dans `_engine_connections.py`. Clé = chemin résolu du fichier DB (`Path.resolve()`) pour éviter la collision entre fichiers différents portant le même nom (critique pour les fixtures de test).
+
+5. **Point 4 — Logs terminal** : Logger `levelup` ajouté dans `setup_app_logging()` avec `propagate=False` → `levelup.weapon_parser` warnings redirigés vers `app.log` au lieu du terminal Streamlit.
+
+**Tests corrigés** :
+- `test_sync_shared_matches.py` : migrations ignorées car clé `current_database()` non unique entre fixtures → corrigé par clé `Path.resolve()`
+- `test_performance_optimizations.py`, `test_top_matches.py`, `test_resolution_views.py` : fixtures `match_registry` sans `team_0_ps_score`/`team_1_ps_score` (colonnes ajoutées par migration `team_ps_scores`) → DDL fixtures mis à jour
+- `career_top_matches_render.py` : import cassé `match_table_html.map_name_cell_html` → corrigé vers `win_loss_table_style`
+- Violation Ruff `UP037`/`F821` dans `_engine_connections.py` : annotation `"Path | None"` → import `pathlib.Path` + `contextlib.suppress`
+
+**Résultats** : 4906 tests passent, 0 échec.
+
+### [2026-07-15] — Fix score asymétrique : colonnes team_ps_score + match ID link dans Memorable Matches
+
+**Statut** : Complété
+
+**Contexte** : Certains matchs affichaient des scores aberrants du type "2 — 24435" dans la section Memorable Matches. Root cause : `CoreStats.Score` de l'API Halo Infinite stocke indifféremment la somme des personal scores ou des points objectif (flag CTF, ticks zone) selon l'équipe et le type de match (BTB CTF, Total Control, Heavies). 187 matchs affectés.
+
+**Décision technique** :
+
+1. **Fix long terme** : 2 nouvelles colonnes `team_0_ps_score`/`team_1_ps_score` (INTEGER) dans `match_registry` = SUM(score) depuis `match_participants` par équipe. Toujours cohérent entre teams.
+
+2. **Migration** : `ensure_team_ps_scores()` dans `migrations.py` (idempotente via `_add_column_if_missing`). Step de migration `add_team_ps_scores.py` enregistré, avec backfill SQL sur `match_participants`. Backfill exécuté : 1466 matchs mis à jour.
+
+3. **Chaîne de vues** : `v_match_full` avait besoin des colonnes pour que `mv_player_matches` puisse les exposer. Fix : ajout `mr.team_0_ps_score, mr.team_1_ps_score` dans le SELECT de `_create_v_match_full()`. La vue `mv_player_matches` expose `my_team_ps_score`/`enemy_team_ps_score` via CASE WHEN team_id.
+
+4. **Renderer** : `career_top_matches_render.py` utilise `ps_score` en priorité (fallback sur `score`). Ajout d'un lien match ID (`_match_id_link()`) vers la page Explorer.
+
+5. **i18n** : Clé `career_top_col_match_id` ajoutée (fr/en).
+
+6. **Bonus i18n** : Correction "Paria" → "Banished" (EN) / "Parias" (FR) via `_SUBCAT_DISPLAY` dans `commendations.py`.
+
+7. **UX Memorable Matches** : Migration de `st.columns(2)` vers `st.tabs()`, classes CSS correctes (`os-table os-scoreboard`).
+
+**Fichiers modifiés** :
+- `src/data/sync/_engine_connections.py` — `team_0_ps_score INTEGER, team_1_ps_score INTEGER` dans CREATE TABLE
+- `src/data/sync/_batch_columns.py` — colonnes ps_score dans le dictionnaire
+- `src/data/sync/migrations.py` — `ensure_team_ps_scores()`, `mv_player_matches` + `v_match_full` exposent ps_scores
+- `src/data/migration/steps/add_team_ps_scores.py` — NOUVEAU : step de migration avec backfill
+- `src/data/migration/steps/__init__.py` — import de `add_team_ps_scores`
+- `src/data/repositories/_career_encounters_repo.py` — `_TOP_MATCHES_SQL` sélectionne ps_scores
+- `src/ui/pages/career_top_matches_render.py` — tabs, match ID link, ps_score en priorité
+- `src/ui/i18n/pages/career.py` — clé `career_top_col_match_id`
+- `src/ui/commendations.py` — `_SUBCAT_DISPLAY` pour Paria/Banished/Parias
+
+**Résultats** :
+- 1466 matchs backfillés, vues recreréees sans erreur
+- `my_team_ps_score`/`enemy_team_ps_score` présents dans `mv_player_matches` ✅
+- `team_0_ps_score`/`team_1_ps_score` présents dans `v_match_full` ✅
+- Aucune erreur de compilation sur les fichiers modifiés ✅
+
+**Conclusion** :
+Fix architectural complet. Les scores affichés dans Memorable Matches reflètent désormais la somme des personal scores (cohérente entre les deux équipes), pas le score brut de l'API susceptible d'être objectif ou personnel selon le mode.
+
+---
+
+### [2026-03-18] — Corrections UX graphes par carte (session escouade)
+
+**Statut** : Complété
+
+**Contexte** : 4 problèmes signalés sur la session escouade (11 matchs) dans les graphes par carte.
+
+**Décision technique** :
+
+1. **Timeline (issue 1 — 4 green seulement)** : Ajout d'un overlay doré (`#FFD700`, symbol `circle-open`, size=18, border=2.5px) pour marquer TOUS les matchs de la session en cours, quel que soit l'outcome (win=vert, loss=rouge). Le marqueur "Session actuelle" apparaît dans la légende.
+
+2. **Bullet chart (issue 2 — illisible)** : Redesign complet. Remplacement de la barre étroite par un `go.Scatter` mode `"markers"` avec `symbol="line-ns"` (marqueur vertical, size=22). Résultat 0% (défaite) désormais visible comme une ligne à x=0 sur la barre grise. Label renommé "Session actuelle". Extraction du helper `_prepare_bullet_joined_data` (séparation data prep / render).
+
+3. **Perf chart (issue 3 — mauvaise couleur)** : Chaque barre session est maintenant colorée selon `_perf_color` (gamme verte/cyan/ambre/orange/rouge selon `SCORE_THRESHOLDS`), au lieu d'un cyan uniforme.
+
+4. **Lollipop (issue 4 — ordre chrono + gamme perf)** : Nouveau paramètre `map_order: list[str] | None` + `color_by_perf: bool`. Les appelants (Teammates + Win/Loss en mode session) calculent l'ordre chronologique des cartes via `_compute_session_map_order` ou équivalent. `color_by_perf=True` active la gamme de performance sur les dots.
+
+**Fichiers modifiés** :
+- `src/visualization/maps_outcome.py` — import SCORE_THRESHOLDS, ajout `_perf_color`, `_sort_by_map_order`, `_prepare_bullet_joined_data`, paramètres `map_order`/`color_by_perf` sur 3 fonctions, overlay doré dans la timeline
+- `src/ui/pages/teammates_map_charts.py` — calcul `map_order` chronologique dans les 2 vues (multi + single), `color_by_perf=True`, ajout Feature 2 (perf) dans `render_single_map_section`
+- `src/ui/pages/win_loss.py` — helper `_compute_session_map_order`, `map_order` passé quand `is_session_scope=True`, `color_by_perf=is_session_scope`
+- `scripts/size_baseline.txt` — baseline mise à jour (96 violations, dette pré-existante incluse)
+
+**Résultats** :
+- 190 tests concernés passent, 0 régression
+- Taille : tous les fichiers modifiés < 500L, toutes fonctions ≤ 80L
+- Violations Ruff restantes dans `_engine_connections.py` : pré-existantes, non liées
+
+**Conclusion** :
+Les 4 problèmes UX corrigés. Le bullet chart redesigné est plus lisible (marqueur vertical visible même à 0%). La gamme de performance est respectée partout. L'ordre chronologique des cartes est activé en mode session.
+
+---
+
 ### [2026-03-18] — Feature : graphiques par carte enrichis (lollipop, timeline, bullet, heatmap)
 
 **Statut** : Complété

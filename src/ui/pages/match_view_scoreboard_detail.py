@@ -188,7 +188,7 @@ def _build_profile_link(gamertag: str) -> str | None:
         return None
     href = html.escape(app_url("Explorer", gamertag=gamertag))
     label = html.escape(t("mv_scoreboard_detail_explore_player", player=gamertag))
-    return f"<a class='os-sb-detail-link' href='{href}' target='_self'>" f"{label}" "</a>"
+    return f"<a class='os-sb-detail-link' href='{href}' target='_self'>{label}</a>"
 
 
 def _load_weapon_items(repo: object, xuid: str, match_id: str, lang: str) -> list[WeaponDetailItem]:

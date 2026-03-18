@@ -170,7 +170,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Each dot = 1 match. Current selection highlighted (larger, white border).",
     },
     "wl_map_bullet_title": {
-        "fr": "Win rate session vs historique",
+        "fr": "Taux de victoires vs historique",
         "en": "Session win rate vs history",
     },
     "wl_map_bullet_caption": {

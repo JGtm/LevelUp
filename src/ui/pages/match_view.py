@@ -82,9 +82,7 @@ def _render_kpi_cards(  # noqa: PLR0913
             if outcome_code == OUTCOME_CODES.WIN
             else ("text-loss" if outcome_code == OUTCOME_CODES.LOSS else "text-tie")
         )
-        score_html = (
-            f"<span class='{outcome_class} fw-bold'>" f"{html.escape(str(score_label))}</span>"
-        )
+        score_html = f"<span class='{outcome_class} fw-bold'>{html.escape(str(score_label))}</span>"
         dominance_badge = _dominance_badge_html(dominance_flag)
         if dominance_badge:
             score_html += dominance_badge

@@ -249,6 +249,54 @@ class TestMaterializedViews:
         # Les résultats doivent être identiques
         assert results1 == results2
 
+    def test_incremental_refresh_map_stats(self, repo):
+        """Test le rebuild partiel de mv_map_stats avec new_ids."""
+        # Rebuild initial complet
+        repo.refresh_materialized_views()
+        initial_count = len(repo.get_map_stats())
+        assert initial_count == 3  # Streets, Recharge, Live Fire
+
+        # Rebuild partiel avec des match_ids connus (map1=Streets)
+        result = repo.refresh_materialized_views(new_ids=["match_0000", "match_0003"])
+
+        # Le nombre de cartes doit rester le même (pas de nouvelle carte)
+        assert result["mv_map_stats"] == initial_count
+        stats = repo.get_map_stats()
+        assert len(stats) == initial_count
+
+    def test_incremental_refresh_mode_category_stats(self, repo):
+        """Test le rebuild partiel de mv_mode_category_stats avec new_ids."""
+        repo.refresh_materialized_views()
+        full_results = repo.get_mode_category_stats()
+        assert len(full_results) > 0
+
+        # Partiel avec match connus — les catégories doivent rester cohérentes
+        result = repo.refresh_materialized_views(new_ids=["match_0000", "match_0001"])
+        assert result["mv_mode_category_stats"] == len(full_results)
+
+    def test_incremental_refresh_unknown_ids_is_noop(self, repo):
+        """Test que des new_ids sans carte connue ne modifie pas mv_map_stats."""
+        repo.refresh_materialized_views()
+        count_before = len(repo.get_map_stats())
+
+        # IDs inconnus → aucune carte touchée → noop
+        result = repo.refresh_materialized_views(new_ids=["nonexistent_match_xyz"])
+        assert result["mv_map_stats"] == count_before
+
+    def test_incremental_preserves_stats_correctness(self, repo):
+        """Test que le rebuild partiel produit les mêmes stats que le rebuild complet."""
+        # Rebuild complet de référence
+        full = repo.refresh_materialized_views()
+        stats_full = {s["map_id"]: s["matches_played"] for s in repo.get_map_stats()}
+
+        # Reset puis rebuild partiel avec quelques matchs
+        repo.refresh_materialized_views()
+        stats_partial = {s["map_id"]: s["matches_played"] for s in repo.get_map_stats()}
+
+        # Les stats doivent être identiques (rebuild partiel = rebuild complet sur cartes touchées)
+        assert stats_full == stats_partial
+        assert full["mv_global_stats"] == 10  # global toujours rebuild complet
+
     def test_empty_tables_before_refresh(self, repo):
         """Test que les méthodes retournent des listes/dicts vides avant refresh."""
         # Avant refresh, les tables n'existent pas

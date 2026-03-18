@@ -305,7 +305,7 @@ class DuckDBSyncEngine(
                 )
 
             if result.matches_inserted > 0:
-                await self._refresh_aggregates_async()
+                await self._refresh_aggregates_async(new_ids=result.inserted_match_ids)
 
             # Career rank sync
             if options.with_career_rank:
@@ -476,8 +476,7 @@ class DuckDBSyncEngine(
                         self._get_connection(), _sconn, self._xuid or ""
                     )
                     logger.info(
-                        "Dominance flags post-sync : %d traités "
-                        "(domination: %d, humiliation: %d)",
+                        "Dominance flags post-sync : %d traités (domination: %d, humiliation: %d)",
                         dom_result["processed"],
                         dom_result["domination"],
                         dom_result["humiliation"],

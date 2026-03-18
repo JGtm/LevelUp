@@ -31,70 +31,62 @@ class MaterializedViewsMixin:
     def _ensure_mv_tables(self) -> None:
         """Crée les tables de vues matérialisées si elles n'existent pas."""
         conn = self._get_connection()
+        for ddl in (
+            """CREATE TABLE IF NOT EXISTS mv_map_stats (
+                map_id VARCHAR PRIMARY KEY, map_name VARCHAR,
+                matches_played INTEGER, wins INTEGER, losses INTEGER, ties INTEGER,
+                avg_kills DOUBLE, avg_deaths DOUBLE, avg_assists DOUBLE,
+                avg_accuracy DOUBLE, avg_kda DOUBLE, win_rate DOUBLE,
+                updated_at TIMESTAMP)""",
+            """CREATE TABLE IF NOT EXISTS mv_mode_category_stats (
+                mode_category VARCHAR PRIMARY KEY, matches_played INTEGER,
+                avg_kills DOUBLE, avg_deaths DOUBLE, avg_assists DOUBLE,
+                avg_kda DOUBLE, avg_accuracy DOUBLE, win_rate DOUBLE,
+                updated_at TIMESTAMP)""",
+            """CREATE TABLE IF NOT EXISTS mv_session_stats (
+                session_id INTEGER PRIMARY KEY, match_count INTEGER,
+                start_time TIMESTAMP, end_time TIMESTAMP,
+                total_kills INTEGER, total_deaths INTEGER, total_assists INTEGER,
+                kd_ratio DOUBLE, win_rate DOUBLE,
+                avg_accuracy DOUBLE, avg_life_seconds DOUBLE, updated_at TIMESTAMP)""",
+            """CREATE TABLE IF NOT EXISTS mv_global_stats (
+                stat_key VARCHAR PRIMARY KEY, stat_value DOUBLE, updated_at TIMESTAMP)""",
+        ):
+            conn.execute(ddl)
 
-        # mv_map_stats : Stats par carte
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS mv_map_stats (
-                map_id VARCHAR PRIMARY KEY,
-                map_name VARCHAR,
-                matches_played INTEGER,
-                wins INTEGER,
-                losses INTEGER,
-                ties INTEGER,
-                avg_kills DOUBLE,
-                avg_deaths DOUBLE,
-                avg_assists DOUBLE,
-                avg_accuracy DOUBLE,
-                avg_kda DOUBLE,
-                win_rate DOUBLE,
-                updated_at TIMESTAMP
-            )
-        """)
+    # Expression CASE de catégorisation des modes (dupliquée dans _refresh_map_stats/mode_stats)
+    _MODE_CATEGORY_EXPR = """
+        COALESCE(
+            CASE
+                WHEN mr.pair_name LIKE '%Slayer%' OR mr.pair_name LIKE '%Tuerie%' THEN 'Slayer'
+                WHEN mr.pair_name LIKE '%CTF%' OR mr.pair_name LIKE '%Flag%' OR mr.pair_name LIKE '%Drapeau%' THEN 'CTF'
+                WHEN mr.pair_name LIKE '%Stronghold%' OR mr.pair_name LIKE '%Forteresse%' THEN 'Strongholds'
+                WHEN mr.pair_name LIKE '%Oddball%' OR mr.pair_name LIKE '%Balle%' THEN 'Oddball'
+                WHEN mr.pair_name LIKE '%Total%Control%' OR mr.pair_name LIKE '%Contrôle%' THEN 'Total Control'
+                WHEN mr.pair_name LIKE '%Attrition%' THEN 'Attrition'
+                WHEN mr.pair_name LIKE '%KOTH%' OR mr.pair_name LIKE '%King%' OR mr.pair_name LIKE '%Roi%' THEN 'King of the Hill'
+                WHEN mr.pair_name LIKE '%Extraction%' THEN 'Extraction'
+                WHEN mr.pair_name LIKE '%Firefight%' OR mr.pair_name LIKE '%Sentry%' THEN 'Firefight'
+                WHEN mr.pair_name LIKE '%FFA%' OR mr.pair_name LIKE '%Free%For%All%' THEN 'FFA'
+                ELSE 'Autre'
+            END,
+            'Autre'
+        )
+    """.strip()
 
-        # mv_mode_category_stats : Stats par catégorie de mode
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS mv_mode_category_stats (
-                mode_category VARCHAR PRIMARY KEY,
-                matches_played INTEGER,
-                avg_kills DOUBLE,
-                avg_deaths DOUBLE,
-                avg_assists DOUBLE,
-                avg_kda DOUBLE,
-                avg_accuracy DOUBLE,
-                win_rate DOUBLE,
-                updated_at TIMESTAMP
-            )
-        """)
+    def refresh_materialized_views(self, *, new_ids: list[str] | None = None) -> dict[str, int]:
+        """Rafraîchit les vues matérialisées après sync.
 
-        # mv_session_stats : Stats par session (pré-calculées)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS mv_session_stats (
-                session_id INTEGER PRIMARY KEY,
-                match_count INTEGER,
-                start_time TIMESTAMP,
-                end_time TIMESTAMP,
-                total_kills INTEGER,
-                total_deaths INTEGER,
-                total_assists INTEGER,
-                kd_ratio DOUBLE,
-                win_rate DOUBLE,
-                avg_accuracy DOUBLE,
-                avg_life_seconds DOUBLE,
-                updated_at TIMESTAMP
-            )
-        """)
+        Quand ``new_ids`` est fourni (liste de match_id insérés lors de cette
+        sync), effectue un rebuild **partiel** pour ``mv_map_stats`` et
+        ``mv_mode_category_stats`` : seules les lignes affectées par les
+        nouveaux matchs sont supprimées puis réinsérées.  Les vues globales
+        (``mv_global_stats``, ``mv_session_stats``) sont toujours reconstruites
+        en totalité car elles agrègent l'ensemble des matchs du joueur.
 
-        # mv_global_stats : Stats globales du joueur
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS mv_global_stats (
-                stat_key VARCHAR PRIMARY KEY,
-                stat_value DOUBLE,
-                updated_at TIMESTAMP
-            )
-        """)
-
-    def refresh_materialized_views(self) -> dict[str, int]:
-        """Rafraîchit toutes les vues matérialisées après sync.
+        Args:
+            new_ids: Match IDs insérés lors de cette synchronisation, ou
+                ``None`` pour un rebuild complet.
 
         Returns:
             Dict avec le nombre de lignes insérées par table.
@@ -119,9 +111,113 @@ class MaterializedViewsMixin:
         results = {}
 
         # ─── mv_map_stats ───
-        conn.execute("DELETE FROM mv_map_stats")
-        conn.execute(
+        results["mv_map_stats"] = self._refresh_mv_map_stats(conn, new_ids)
+
+        # ─── mv_mode_category_stats ───
+        results["mv_mode_category_stats"] = self._refresh_mv_mode_category_stats(conn, new_ids)
+
+        # ─── mv_global_stats (toujours rebuild complet) ───
+        results["mv_global_stats"] = self._rebuild_global_stats(conn)
+
+        # ─── mv_session_stats (toujours rebuild complet) ───
+        results["mv_session_stats"] = self._rebuild_session_stats(conn)
+
+        logger.info("Vues matérialisées rafraîchies: %s", results)
+        return results
+
+    def _rebuild_global_stats(self, conn: duckdb.DuckDBPyConnection) -> int:
+        """Reconstruit mv_global_stats depuis zéro (compteurs globaux du joueur)."""
+        conn.execute("DELETE FROM mv_global_stats")
+        global_stats = conn.execute(
             """
+            SELECT
+                COUNT(*) as total_matches,
+                SUM(mp.kills) as total_kills,
+                SUM(mp.deaths) as total_deaths,
+                SUM(mp.assists) as total_assists,
+                SUM(CASE WHEN mp.outcome = 2 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN mp.outcome = 3 THEN 1 ELSE 0 END) as losses,
+                AVG(mp.kda) as avg_kda,
+                AVG(mp.accuracy) as avg_accuracy,
+                SUM(mp.time_played_seconds) / 3600.0 as total_hours,
+                AVG(mp.avg_life_seconds) as avg_life_seconds
+            FROM shared.match_participants mp
+            WHERE mp.xuid = ?
+            """,
+            [self._xuid],
+        ).fetchone()
+        if global_stats:
+            stats_data = [
+                ("total_matches", global_stats[0]),
+                ("total_kills", global_stats[1]),
+                ("total_deaths", global_stats[2]),
+                ("total_assists", global_stats[3]),
+                ("wins", global_stats[4]),
+                ("losses", global_stats[5]),
+                ("avg_kda", global_stats[6]),
+                ("avg_accuracy", global_stats[7]),
+                ("total_hours", global_stats[8]),
+                ("avg_life_seconds", global_stats[9]),
+            ]
+            conn.executemany(
+                "INSERT INTO mv_global_stats (stat_key, stat_value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+                stats_data,
+            )
+        return conn.execute("SELECT COUNT(*) FROM mv_global_stats").fetchone()[0]
+
+    def _rebuild_session_stats(self, conn: duckdb.DuckDBPyConnection) -> int:
+        """Reconstruit mv_session_stats (skip si session_id indisponible)."""
+        try:
+            has_sessions = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.columns "
+                    "WHERE table_name = 'player_match_enrichment' AND column_name = 'session_id'"
+                ).fetchone()[0]
+                > 0
+            )
+            if not has_sessions:
+                return 0
+            conn.execute("DELETE FROM mv_session_stats")
+            conn.execute(
+                """
+                INSERT INTO mv_session_stats
+                SELECT
+                    pme.session_id,
+                    COUNT(*) as match_count,
+                    MIN(mr.start_time) as start_time,
+                    MAX(mr.start_time) as end_time,
+                    SUM(mp.kills) as total_kills,
+                    SUM(mp.deaths) as total_deaths,
+                    SUM(mp.assists) as total_assists,
+                    CASE WHEN SUM(mp.deaths) > 0
+                         THEN CAST(SUM(mp.kills) AS DOUBLE) / SUM(mp.deaths)
+                         ELSE SUM(mp.kills) END as kd_ratio,
+                    CASE WHEN COUNT(*) > 0
+                         THEN SUM(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
+                         ELSE 0 END as win_rate,
+                    AVG(mp.accuracy) as avg_accuracy,
+                    AVG(mp.avg_life_seconds) as avg_life_seconds,
+                    CURRENT_TIMESTAMP as updated_at
+                FROM player_match_enrichment pme
+                JOIN shared.match_participants mp
+                    ON mp.match_id = pme.match_id AND mp.xuid = ?
+                JOIN shared.match_registry mr ON mr.match_id = pme.match_id
+                WHERE pme.session_id IS NOT NULL
+                GROUP BY pme.session_id
+                """,
+                [self._xuid],
+            )
+            return conn.execute("SELECT COUNT(*) FROM mv_session_stats").fetchone()[0]
+        except Exception:
+            return 0
+
+    def _refresh_mv_map_stats(
+        self,
+        conn: duckdb.DuckDBPyConnection,
+        new_ids: list[str] | None,
+    ) -> int:
+        """Rebuild mv_map_stats — partiel si new_ids, complet sinon."""
+        _INSERT_SQL = """
             INSERT INTO mv_map_stats
             SELECT
                 mr.map_id,
@@ -143,35 +239,57 @@ class MaterializedViewsMixin:
             JOIN shared.match_registry mr ON mr.match_id = mp.match_id
             WHERE mp.xuid = ?
               AND mr.map_id IS NOT NULL
-            GROUP BY mr.map_id, mr.map_name
-            """,
-            [self._xuid],
-        )
-        results["mv_map_stats"] = conn.execute("SELECT COUNT(*) FROM mv_map_stats").fetchone()[0]
+        """
+        if new_ids:
+            placeholders = ", ".join("?" * len(new_ids))
+            touched = [
+                r[0]
+                for r in conn.execute(
+                    f"""
+                    SELECT DISTINCT mr.map_id
+                    FROM shared.match_registry mr
+                    JOIN shared.match_participants mp ON mp.match_id = mr.match_id
+                    WHERE mr.match_id IN ({placeholders})
+                      AND mp.xuid = ?
+                      AND mr.map_id IS NOT NULL
+                    """,
+                    new_ids + [self._xuid],
+                ).fetchall()
+            ]
+            if not touched:
+                logger.debug(
+                    "mv_map_stats: 0 carte touchée par %d nouveaux matchs — skip", len(new_ids)
+                )
+                return conn.execute("SELECT COUNT(*) FROM mv_map_stats").fetchone()[0]
+            logger.debug(
+                "mv_map_stats: rebuild partiel pour %d carte(s): %s", len(touched), touched
+            )
+            map_ph = ", ".join("?" * len(touched))
+            conn.execute(f"DELETE FROM mv_map_stats WHERE map_id IN ({map_ph})", touched)
+            conn.execute(
+                _INSERT_SQL
+                + f"  AND mr.map_id IN ({map_ph})\n            GROUP BY mr.map_id, mr.map_name",
+                [self._xuid] + touched,
+            )
+        else:
+            logger.debug("mv_map_stats: rebuild complet (new_ids=None)")
+            conn.execute("DELETE FROM mv_map_stats")
+            conn.execute(
+                _INSERT_SQL + "            GROUP BY mr.map_id, mr.map_name",
+                [self._xuid],
+            )
+        return conn.execute("SELECT COUNT(*) FROM mv_map_stats").fetchone()[0]
 
-        # ─── mv_mode_category_stats ───
-        # Catégorisation basée sur pair_name ou playlist_name
-        conn.execute("DELETE FROM mv_mode_category_stats")
-        conn.execute(
-            """
-            INSERT INTO mv_mode_category_stats
+    def _refresh_mv_mode_category_stats(
+        self,
+        conn: duckdb.DuckDBPyConnection,
+        new_ids: list[str] | None,
+    ) -> int:
+        """Rebuild mv_mode_category_stats — partiel si new_ids, complet sinon."""
+        mode_expr = self._MODE_CATEGORY_EXPR
+        _INNER_SQL = f"""
             SELECT
-                COALESCE(
-                    CASE
-                        WHEN mr.pair_name LIKE '%Slayer%' OR mr.pair_name LIKE '%Tuerie%' THEN 'Slayer'
-                        WHEN mr.pair_name LIKE '%CTF%' OR mr.pair_name LIKE '%Flag%' OR mr.pair_name LIKE '%Drapeau%' THEN 'CTF'
-                        WHEN mr.pair_name LIKE '%Stronghold%' OR mr.pair_name LIKE '%Forteresse%' THEN 'Strongholds'
-                        WHEN mr.pair_name LIKE '%Oddball%' OR mr.pair_name LIKE '%Balle%' THEN 'Oddball'
-                        WHEN mr.pair_name LIKE '%Total%Control%' OR mr.pair_name LIKE '%Contrôle%' THEN 'Total Control'
-                        WHEN mr.pair_name LIKE '%Attrition%' THEN 'Attrition'
-                        WHEN mr.pair_name LIKE '%KOTH%' OR mr.pair_name LIKE '%King%' OR mr.pair_name LIKE '%Roi%' THEN 'King of the Hill'
-                        WHEN mr.pair_name LIKE '%Extraction%' THEN 'Extraction'
-                        WHEN mr.pair_name LIKE '%Firefight%' OR mr.pair_name LIKE '%Sentry%' THEN 'Firefight'
-                        WHEN mr.pair_name LIKE '%FFA%' OR mr.pair_name LIKE '%Free%For%All%' THEN 'FFA'
-                        ELSE 'Autre'
-                    END,
-                    'Autre'
-                ) as mode_category,
+                {mode_expr} as mode_category,
                 COUNT(*) as matches_played,
                 AVG(CAST(mp.kills AS DOUBLE)) as avg_kills,
                 AVG(CAST(mp.deaths AS DOUBLE)) as avg_deaths,
@@ -180,116 +298,63 @@ class MaterializedViewsMixin:
                 AVG(mp.accuracy) as avg_accuracy,
                 CASE WHEN COUNT(*) > 0
                      THEN SUM(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
-                     ELSE 0 END as win_rate,
-                CURRENT_TIMESTAMP as updated_at
+                     ELSE 0 END as win_rate
             FROM shared.match_participants mp
             JOIN shared.match_registry mr ON mr.match_id = mp.match_id
             WHERE mp.xuid = ?
             GROUP BY mode_category
-            """,
-            [self._xuid],
-        )
-        results["mv_mode_category_stats"] = conn.execute(
-            "SELECT COUNT(*) FROM mv_mode_category_stats"
-        ).fetchone()[0]
-
-        # ─── mv_global_stats ───
-        conn.execute("DELETE FROM mv_global_stats")
-        global_stats = conn.execute(
-            """
-            SELECT
-                COUNT(*) as total_matches,
-                SUM(mp.kills) as total_kills,
-                SUM(mp.deaths) as total_deaths,
-                SUM(mp.assists) as total_assists,
-                SUM(CASE WHEN mp.outcome = 2 THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN mp.outcome = 3 THEN 1 ELSE 0 END) as losses,
-                AVG(mp.kda) as avg_kda,
-                AVG(mp.accuracy) as avg_accuracy,
-                SUM(mp.time_played_seconds) / 3600.0 as total_hours,
-                AVG(mp.avg_life_seconds) as avg_life_seconds
-            FROM shared.match_participants mp
-            WHERE mp.xuid = ?
-            """,
-            [self._xuid],
-        ).fetchone()
-
-        if global_stats:
-            stats_data = [
-                ("total_matches", global_stats[0]),
-                ("total_kills", global_stats[1]),
-                ("total_deaths", global_stats[2]),
-                ("total_assists", global_stats[3]),
-                ("wins", global_stats[4]),
-                ("losses", global_stats[5]),
-                ("avg_kda", global_stats[6]),
-                ("avg_accuracy", global_stats[7]),
-                ("total_hours", global_stats[8]),
-                ("avg_life_seconds", global_stats[9]),
-            ]
-            conn.executemany(
-                """
-                INSERT INTO mv_global_stats (stat_key, stat_value, updated_at)
-                VALUES (?, ?, CURRENT_TIMESTAMP)
-                """,
-                stats_data,
-            )
-        results["mv_global_stats"] = conn.execute(
-            "SELECT COUNT(*) FROM mv_global_stats"
-        ).fetchone()[0]
-
-        # mv_session_stats : Nécessite les sessions pré-calculées
-        # On skip si session_id n'est pas disponible dans player_match_enrichment
-        try:
-            has_sessions = (
-                conn.execute(
-                    "SELECT COUNT(*) FROM information_schema.columns "
-                    "WHERE table_name = 'player_match_enrichment' AND column_name = 'session_id'"
-                ).fetchone()[0]
-                > 0
-            )
-
-            if has_sessions:
-                conn.execute("DELETE FROM mv_session_stats")
-                conn.execute(
-                    """
-                    INSERT INTO mv_session_stats
-                    SELECT
-                        pme.session_id,
-                        COUNT(*) as match_count,
-                        MIN(mr.start_time) as start_time,
-                        MAX(mr.start_time) as end_time,
-                        SUM(mp.kills) as total_kills,
-                        SUM(mp.deaths) as total_deaths,
-                        SUM(mp.assists) as total_assists,
-                        CASE WHEN SUM(mp.deaths) > 0
-                             THEN CAST(SUM(mp.kills) AS DOUBLE) / SUM(mp.deaths)
-                             ELSE SUM(mp.kills) END as kd_ratio,
-                        CASE WHEN COUNT(*) > 0
-                             THEN SUM(CASE WHEN mp.outcome = 2 THEN 1.0 ELSE 0.0 END) / COUNT(*)
-                             ELSE 0 END as win_rate,
-                        AVG(mp.accuracy) as avg_accuracy,
-                        AVG(mp.avg_life_seconds) as avg_life_seconds,
-                        CURRENT_TIMESTAMP as updated_at
-                    FROM player_match_enrichment pme
-                    JOIN shared.match_participants mp
-                        ON mp.match_id = pme.match_id AND mp.xuid = ?
-                    JOIN shared.match_registry mr ON mr.match_id = pme.match_id
-                    WHERE pme.session_id IS NOT NULL
-                    GROUP BY pme.session_id
+        """
+        if new_ids:
+            placeholders = ", ".join("?" * len(new_ids))
+            touched = [
+                r[0]
+                for r in conn.execute(
+                    f"""
+                    SELECT DISTINCT {mode_expr} as mode_category
+                    FROM shared.match_registry mr
+                    JOIN shared.match_participants mp ON mp.match_id = mr.match_id
+                    WHERE mr.match_id IN ({placeholders}) AND mp.xuid = ?
                     """,
-                    [self._xuid],
+                    new_ids + [self._xuid],
+                ).fetchall()
+            ]
+            if not touched:
+                logger.debug(
+                    "mv_mode_category_stats: 0 catégorie touchée par %d nouveaux matchs — skip",
+                    len(new_ids),
                 )
-                results["mv_session_stats"] = conn.execute(
-                    "SELECT COUNT(*) FROM mv_session_stats"
-                ).fetchone()[0]
-            else:
-                results["mv_session_stats"] = 0
-        except Exception:
-            results["mv_session_stats"] = 0
-
-        logger.info("Vues matérialisées rafraîchies: %s", results)
-        return results
+                return conn.execute("SELECT COUNT(*) FROM mv_mode_category_stats").fetchone()[0]
+            logger.debug("mv_mode_category_stats: rebuild partiel pour catégorie(s): %s", touched)
+            cat_ph = ", ".join("?" * len(touched))
+            conn.execute(
+                f"DELETE FROM mv_mode_category_stats WHERE mode_category IN ({cat_ph})",
+                touched,
+            )
+            conn.execute(
+                f"""
+                INSERT INTO mv_mode_category_stats
+                SELECT sub.mode_category, sub.matches_played, sub.avg_kills,
+                       sub.avg_deaths, sub.avg_assists, sub.avg_kda, sub.avg_accuracy,
+                       sub.win_rate, CURRENT_TIMESTAMP
+                FROM ({_INNER_SQL}) sub
+                WHERE sub.mode_category IN ({cat_ph})
+                """,
+                [self._xuid] + touched,
+            )
+        else:
+            logger.debug("mv_mode_category_stats: rebuild complet (new_ids=None)")
+            conn.execute("DELETE FROM mv_mode_category_stats")
+            conn.execute(
+                f"""
+                INSERT INTO mv_mode_category_stats
+                SELECT sub.mode_category, sub.matches_played, sub.avg_kills,
+                       sub.avg_deaths, sub.avg_assists, sub.avg_kda, sub.avg_accuracy,
+                       sub.win_rate, CURRENT_TIMESTAMP
+                FROM ({_INNER_SQL}) sub
+                """,
+                [self._xuid],
+            )
+        return conn.execute("SELECT COUNT(*) FROM mv_mode_category_stats").fetchone()[0]
 
     def get_map_stats(self, min_matches: int = 1) -> list[dict]:
         """Récupère les stats par carte depuis la vue matérialisée.

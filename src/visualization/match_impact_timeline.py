@@ -415,9 +415,7 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
                     "color": color,
                 },
                 opacity=1.0 if is_me else 0.65,
-                hovertemplate=(
-                    f"<b>{name}</b><br>" f"Score: %{{y:+.0f}}<br>" "%{text}<extra></extra>"
-                ),
+                hovertemplate=(f"<b>{name}</b><br>Score: %{{y:+.0f}}<br>%{{text}}<extra></extra>"),
                 text=labels,
             )
         )

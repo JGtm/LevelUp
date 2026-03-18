@@ -85,8 +85,7 @@ class TestLookupXuidForGamertag:
         conn.execute("CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)")
         conn.execute("INSERT INTO shared.xuid_aliases VALUES ('999', 'Zeta')")
         conn.execute(
-            "CREATE VIEW shared.v_gamertag_lookup AS "
-            "SELECT xuid, gamertag FROM shared.xuid_aliases"
+            "CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases"
         )
         assert lookup_xuid_for_gamertag(conn, "Zeta", view_prefix="shared.") == "999"
 
@@ -132,8 +131,7 @@ class TestResolveXuidFromGamertagMixin:
         conn.execute("CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)")
         conn.execute("INSERT INTO shared.xuid_aliases VALUES ('xuid_abc', 'MyPlayer')")
         conn.execute(
-            "CREATE VIEW shared.v_gamertag_lookup AS "
-            "SELECT xuid, gamertag FROM shared.xuid_aliases"
+            "CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases"
         )
         return conn
 

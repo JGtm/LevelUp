@@ -107,6 +107,13 @@ def setup_app_logging() -> None:
         if not _handler_already_attached(name, str(app_log_path)):
             lg.addHandler(app_file_handler)
 
+    # Logger weapon_parser ("levelup.*") — fichier uniquement, pas de remontée vers root
+    levelup_logger = logging.getLogger("levelup")
+    levelup_logger.setLevel(logging.DEBUG)
+    levelup_logger.propagate = False  # empêche l'affichage terminal via lastResort handler
+    if not _handler_already_attached("levelup", str(app_log_path)):
+        levelup_logger.addHandler(app_file_handler)
+
     # Loggers sync/backfill → fichier sync en plus
     for name in ("src.data.sync", "scripts.backfill"):
         if not _handler_already_attached(name, str(sync_log_path)):

@@ -230,8 +230,7 @@ def _resolve_weapon_from_db(weapon_id: int, lang: str) -> str | None:
         col = "name_fr" if lang == "fr" else "name_en"
         with duckdb.connect(str(db_path), read_only=True) as conn:
             has_table = conn.execute(
-                "SELECT 1 FROM information_schema.tables "
-                "WHERE table_name = 'weapon_labels' LIMIT 1"
+                "SELECT 1 FROM information_schema.tables WHERE table_name = 'weapon_labels' LIMIT 1"
             ).fetchone()
             if not has_table:
                 return None

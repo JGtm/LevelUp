@@ -136,8 +136,7 @@ def lookup_xuid_for_gamertag(
     # Fallback : xuid_aliases (vue non encore disponible)
     try:
         row = conn.execute(
-            f"SELECT xuid FROM {view_prefix}xuid_aliases "
-            "WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
+            f"SELECT xuid FROM {view_prefix}xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
             [gamertag],
         ).fetchone()
         if row and row[0]:

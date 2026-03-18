@@ -114,7 +114,7 @@ def compute_dominance_for_player(
     new_list = [m for m in all_match_ids if m not in existing_set]
     if new_list:
         player_conn.executemany(
-            "INSERT INTO player_match_enrichment " "(match_id, dominance_flag) VALUES (?, ?)",
+            "INSERT INTO player_match_enrichment (match_id, dominance_flag) VALUES (?, ?)",
             [(m, flag_map[m]) for m in new_list],
         )
         n += len(new_list)
