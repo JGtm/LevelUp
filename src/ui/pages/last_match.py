@@ -81,18 +81,26 @@ def render_last_match_page(
     # Permet de détecter un changement de session même si total reste inchangé
     # (ex : filtre silencieusement échoué → dff garde la même taille).
     session_key = str(st.session_state.get("picked_session_label") or "(toutes)")
+    _prev_session_key = st.session_state.get(SK.LAST_MATCH_NAV_SESSION_KEY)
 
     idx, reset = _resolve_nav_index(
         total=total,
         stored_index=st.session_state.get(SK.LAST_MATCH_NAV_INDEX),
         stored_total=st.session_state.get(SK.LAST_MATCH_NAV_TOTAL),
         session_key=session_key,
-        stored_session_key=st.session_state.get(SK.LAST_MATCH_NAV_SESSION_KEY),
+        stored_session_key=_prev_session_key,
     )
     if reset:
         st.session_state[SK.LAST_MATCH_NAV_INDEX] = idx
         st.session_state[SK.LAST_MATCH_NAV_TOTAL] = total
         st.session_state[SK.LAST_MATCH_NAV_SESSION_KEY] = session_key
+        logger.info(
+            "Nav reset → match %d/%d | session=%r (précédent: %r)",
+            idx + 1,
+            total,
+            session_key,
+            _prev_session_key,
+        )
 
     st.markdown(
         "<style>"
