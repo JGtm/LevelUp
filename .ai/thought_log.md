@@ -7,6 +7,24 @@
 
 ## Journal
 
+### [2026-03-18] — Harmonisation armes scoreboard detail avec section "Outils de destruction"
+**Statut** : Complété
+
+**Problème** : les armes affichées dans le panneau dépliable du scoreboard (clic sur un joueur) différaient de la section "Outils de destruction" pour un même match/joueur.
+
+**Causes racines identifiées** :
+1. Fusion variantes absente (`M392 Bandit` et `Fuel Rod SPNKr` non fusionnés vers canonical)
+2. Sentinels `MELEE_WEAPON_ID`, `GRENADE_WEAPON_ID`, `VEHICLE_WEAPON_ID` non filtrés → montaient dans le classement
+3. Limite arbitraire à 4 armes (`.head(4)`) sans justification UI
+4. Grenade/mêlée non enrichies depuis `match_participants` (données API plus fiables)
+
+**Décision technique** : `_load_weapon_items` dans `match_view_scoreboard_detail.py` réécrit pour être strictement équivalent à `_build_weapon_kills_df` (`match_view_weapon_kills.py`), source de vérité. Suppression de `_DETAIL_LIMIT_WEAPONS`.
+
+**Fichiers modifiés** :
+- `src/ui/pages/match_view_scoreboard_detail.py` : `_load_weapon_items` harmonisé
+
+---
+
 ### [2026-03-19] — Fix bug "Dernier match" affichait Origin au lieu de Behemoth
 **Statut** : Complété
 

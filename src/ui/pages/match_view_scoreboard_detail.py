@@ -24,7 +24,6 @@ from src.utils.paths import get_player_db_path, player_db_exists
 
 logger = logging.getLogger(__name__)
 
-_DETAIL_LIMIT_WEAPONS = 4
 _DETAIL_LIMIT_MEDALS = 5
 _DETAIL_LIMIT_CITATIONS = 4
 _INVALID_GAMERTAGS = {"", "-", "?", "\u2014"}
@@ -192,17 +191,23 @@ def _build_profile_link(gamertag: str) -> str | None:
 
 
 def _load_weapon_items(repo: object, xuid: str, match_id: str, lang: str) -> list[WeaponDetailItem]:
+    from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS, WEAPON_FUSION_MAP_ID
+
     df = repo.load_weapon_kills_for_player(xuid, [match_id])
     if not isinstance(df, pl.DataFrame) or df.is_empty():
         return []
-    aggregated = (
-        df.group_by("weapon_id")
+
+    fused = (
+        df.filter(pl.col("kills") > 0)
+        .filter(~pl.col("weapon_id").is_in(list(EXCLUDED_WEAPON_IDS)))
+        .with_columns(pl.col("weapon_id").replace(WEAPON_FUSION_MAP_ID).alias("weapon_id"))
+        .group_by("weapon_id")
         .agg(pl.col("kills").sum().alias("kills"))
         .sort(["kills", "weapon_id"], descending=[True, False])
-        .head(_DETAIL_LIMIT_WEAPONS)
     )
+
     items: list[WeaponDetailItem] = []
-    for row in aggregated.iter_rows(named=True):
+    for row in fused.iter_rows(named=True):
         weapon_id = row.get("weapon_id")
         if weapon_id is None:
             continue
@@ -216,6 +221,17 @@ def _load_weapon_items(repo: object, xuid: str, match_id: str, lang: str) -> lis
                 asset_url=weapon_asset_url(weapon_name),
             )
         )
+
+    # Enrichissement grenade / mêlée depuis match_participants (données API — source de vérité)
+    try:
+        grenade, melee = repo.load_grenade_melee_kills(str(xuid).strip(), [match_id])
+        if grenade > 0:
+            items.append(WeaponDetailItem(name=t("col_grenade_kills"), count=grenade))
+        if melee > 0:
+            items.append(WeaponDetailItem(name=t("col_melee"), count=melee))
+    except Exception:
+        pass
+
     return items
 
 
