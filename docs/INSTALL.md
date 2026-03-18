@@ -40,46 +40,46 @@ Choose your path:
 
 #### 🎮 Xbox Express (recommended — 2 steps)
 
-The simplest path. The only unavoidable requirement: create a free Azure application
-(Microsoft mandates this for access to the official Halo Infinite API).
+**v6 — Zero Azure configuration required.** LevelUp bundles its own client ID.
 
-**Wizard step 1 — Create an Azure application (free, no charge)**
+**Step 1 — Enter your gamertag**
 
-> Azure is Microsoft's cloud service that manages Xbox authentication.
-> LevelUp needs a dedicated "access key" per user.
-> Registration is free; LevelUp uses no paid Azure services.
+Type your Xbox gamertag in the wizard. LevelUp creates your local profile automatically.
 
-1. Go to [portal.azure.com](https://portal.azure.com) — sign in with your Microsoft/Xbox account
-2. Search for **Microsoft Entra ID** → **App registrations** → **New registration**
-3. Fill in:
-   - Name: `LevelUp Halo`
-   - Account type: *Personal Microsoft accounts only*
-   - Redirect URI → **Web** → `http://localhost:8501`
-4. Click **Register**
-5. On the **Overview** page: copy the **Application (client) ID** (format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
-6. Go to **Certificates & secrets** → **New client secret** → give it a name → **Add**
-   → copy the **Value** column immediately (it disappears if you navigate away)
-7. Go to **API permissions** → **Add a permission** → **Microsoft Graph**:
-   add `offline_access` and `User.Read`
+**Step 2 — Authenticate via Device Code**
 
-Paste the Client ID and the Value into the wizard → LevelUp saves everything automatically.
+The wizard displays a short code and the URL `https://xbox.com/activate`.
 
-**Wizard step 2 — Xbox sign-in with one click**
+1. Open [https://xbox.com/activate](https://xbox.com/activate) in your browser
+2. Enter the code shown in the wizard
+3. Sign in with your Microsoft/Xbox account
 
-Click **"Sign in with Xbox"** → a Microsoft window opens → sign in with your Xbox account
-→ LevelUp automatically retrieves your gamertag and XUID, creates your profile,
-and stores the OAuth token in your database.
+That's it — LevelUp retrieves your XUID, stores the token in your player database,
+and proceeds to the smoke test.
 
-#### ☁️ Azure Manual (advanced — 3 steps)
+#### ☁️ Azure Manual (advanced / headless)
 
-Same Azure setup as above, but the refresh token is obtained manually
-(use this if the automatic Xbox flow causes issues, e.g. reverse proxy):
+Use this path if the interactive wizard is not accessible (server, headless, reverse proxy):
 
 ```bash
-python scripts/spnkr_get_refresh_token.py
+python scripts/spnkr_get_refresh_token.py --device-code
 ```
 
-This script opens a browser, authenticates you, and displays the token to copy into `.env.local`.
+This script displays a code to enter at `https://microsoft.com/devicelogin`,
+authenticates you, and saves the refresh token to `.env.local` automatically.
+
+#### 🍴 Note for forks / developers
+
+The bundled client ID is tied to this project's Azure App Registration.
+If you fork LevelUp, please create your own (free) Azure App Registration and set:
+
+```env
+# .env.local
+SPNKR_AZURE_CLIENT_ID=your_own_client_id
+```
+
+See [CONFIGURATION.md](CONFIGURATION.md) for the full Azure registration walkthrough.
+This env var takes precedence over the bundled ID.
 
 ### Step 4 — Smoke test (automatic check on 20 matches)
 
