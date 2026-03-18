@@ -137,6 +137,8 @@ WITH enriched AS (
         mv.time_played_seconds,
         mv.my_team_score,
         mv.enemy_team_score,
+        mv.my_team_ps_score,
+        mv.enemy_team_ps_score,
         COALESCE(pme.dominance_flag, 0) AS dominance_flag,
         COALESCE(pme.had_bot_teammate, FALSE) AS had_bot_teammate
     FROM shared.mv_player_matches mv

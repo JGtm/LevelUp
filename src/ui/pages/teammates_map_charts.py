@@ -19,7 +19,6 @@ from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import t
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG
 from src.visualization import (
-    plot_map_lollipop,
     plot_map_outcome_timeline,
     plot_map_perf_vs_history,
     plot_map_winrate_bullet,
@@ -32,7 +31,6 @@ def render_map_charts_section(
     sub_all: DataFrameLike,
     full_squad_df: DataFrameLike,
     breakdown_all: DataFrameLike,
-    min_matches: int,
     lang: str,
 ) -> None:
     """Affiche lollipop + timeline + bullet + perf vs historique pour la vue multi-coéquipiers.
@@ -40,8 +38,7 @@ def render_map_charts_section(
     Args:
         sub_all: Matchs filtrés avec les coéquipiers (sélection courante).
         full_squad_df: Tous les matchs avec les coéquipiers (historique complet).
-        breakdown_all: Breakdown par carte déjà calculé (filtré + min_matches).
-        min_matches: Seuil min matchs (pour le titre).
+        breakdown_all: Breakdown par carte déjà calculé.
         lang: Langue.
     """
     sub_pl = ensure_polars(sub_all)
@@ -57,15 +54,18 @@ def render_map_charts_section(
     logger.debug("render_map_charts_section: %d cartes, %d matchs session", len(view), len(sub_pl))
     session_ids = sub_pl["match_id"].cast(pl.Utf8).to_list() if not sub_pl.is_empty() else []
 
-    # A — Lollipop
-    st.markdown(f"##### {t('tm_map_lollipop_title')}")
-    with safe_chart_render():
-        fig_lollipop = plot_map_lollipop(view, lang=lang)
-        if fig_lollipop is not None:
-            st.plotly_chart(fig_lollipop, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+    # Ordre chronologique des cartes (oldest first) depuis la sélection courante
+    map_order: list[str] | None = None
+    if not sub_pl.is_empty() and "start_time" in sub_pl.columns:
+        map_order = (
+            sub_pl.sort("start_time")
+            .unique(subset=["map_name"], keep="first", maintain_order=True)
+            .filter(pl.col("map_name").is_not_null())["map_name"]
+            .to_list()
+        )
 
-    # B — Timeline
-    if not full_pl.is_empty():
+    # B — Timeline (DISABLED: désactivé temporairement, conserver le code)
+    if False:  # timeline disabled — conserver le code pour usage futur  # noqa: SIM210
         st.markdown(f"##### {t('tm_map_timeline_title')}")
         st.caption(t("tm_map_timeline_caption"))
         with safe_chart_render():
@@ -78,14 +78,14 @@ def render_map_charts_section(
         bd_history = _compute_history_breakdown(full_pl)
         st.markdown(f"##### {t('tm_map_bullet_title')}")
         with safe_chart_render():
-            fig_bullet = plot_map_winrate_bullet(view, bd_history, lang=lang)
+            fig_bullet = plot_map_winrate_bullet(view, bd_history, lang=lang, map_order=map_order)
             if fig_bullet is not None:
                 st.plotly_chart(fig_bullet, width="stretch", config=PLOTLY_STATIC_CONFIG)
 
         # Feature 2 — Perf vs historique
         st.markdown(f"##### {t('tm_perf_vs_history_title')}")
         with safe_chart_render():
-            fig_perf = plot_map_perf_vs_history(view, bd_history, lang=lang)
+            fig_perf = plot_map_perf_vs_history(view, bd_history, lang=lang, map_order=map_order)
             if fig_perf is not None:
                 st.plotly_chart(fig_perf, width="stretch", config=PLOTLY_STATIC_CONFIG)
 
@@ -134,15 +134,18 @@ def render_single_map_section(
     view = bd_current.sort("win_rate").head(20).reverse()
     session_ids = sub_pl["match_id"].cast(pl.Utf8).to_list()
 
-    # A — Lollipop
-    st.markdown(f"##### {t('tm_map_lollipop_title')}")
-    with safe_chart_render():
-        st.plotly_chart(
-            plot_map_lollipop(view, lang=lang), width="stretch", config=PLOTLY_CLEAN_CONFIG
+    # Ordre chronologique des cartes (oldest first) depuis la sélection courante
+    map_order_single: list[str] | None = None
+    if "start_time" in sub_pl.columns:
+        map_order_single = (
+            sub_pl.sort("start_time")
+            .unique(subset=["map_name"], keep="first", maintain_order=True)
+            .filter(pl.col("map_name").is_not_null())["map_name"]
+            .to_list()
         )
 
-    # B — Timeline
-    if not dfr_pl.is_empty():
+    # B — Timeline (DISABLED: désactivé temporairement, conserver le code)
+    if False:  # timeline disabled — conserver le code pour usage futur  # noqa: SIM210
         st.markdown(f"##### {t('tm_map_timeline_title')}")
         st.caption(t("tm_map_timeline_caption"))
         with safe_chart_render():
@@ -155,11 +158,20 @@ def render_single_map_section(
         bd_history = _compute_history_breakdown(dfr_pl)
         st.markdown(f"##### {t('tm_map_bullet_title')}")
         with safe_chart_render():
-            fig_bullet = plot_map_winrate_bullet(view, bd_history, lang=lang)
+            fig_bullet = plot_map_winrate_bullet(
+                view, bd_history, lang=lang, map_order=map_order_single
+            )
             if fig_bullet is not None:
                 st.plotly_chart(fig_bullet, width="stretch", config=PLOTLY_STATIC_CONFIG)
 
-    # Feature 1 — Heatmap escouade
+        # Feature 2 — Perf vs historique
+        st.markdown(f"##### {t('tm_perf_vs_history_title')}")
+        with safe_chart_render():
+            fig_perf = plot_map_perf_vs_history(
+                view, bd_history, lang=lang, map_order=map_order_single
+            )
+            if fig_perf is not None:
+                st.plotly_chart(fig_perf, width="stretch", config=PLOTLY_STATIC_CONFIG)
     render_squad_heatmap(series, lang=lang)
 
 

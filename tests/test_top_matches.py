@@ -266,7 +266,9 @@ class TestLoadTopMatchesDuckDB:
                 game_variant_name VARCHAR,
                 is_firefight BOOLEAN DEFAULT FALSE,
                 is_ranked BOOLEAN DEFAULT FALSE,
-                medals_loaded BOOLEAN DEFAULT TRUE
+                medals_loaded BOOLEAN DEFAULT TRUE,
+                team_0_ps_score INTEGER,
+                team_1_ps_score INTEGER
             )
         """)
         shared_db.execute("""
@@ -302,6 +304,8 @@ class TestLoadTopMatchesDuckDB:
                 mp.time_played_seconds,
                 mp.my_team_score,
                 mp.enemy_team_score,
+                CASE WHEN mp.team_id = 0 THEN mr.team_0_ps_score ELSE mr.team_1_ps_score END AS my_team_ps_score,
+                CASE WHEN mp.team_id = 0 THEN mr.team_1_ps_score ELSE mr.team_0_ps_score END AS enemy_team_ps_score,
                 mr.is_firefight,
                 mr.is_ranked,
                 mp.xuid,
@@ -339,7 +343,7 @@ class TestLoadTopMatchesDuckDB:
         map_name: str = "Recharge",
     ) -> None:
         conn.execute(
-            "INSERT INTO shared.match_registry VALUES (?,CURRENT_TIMESTAMP,?,?,?,?,?,?)",
+            "INSERT INTO shared.match_registry VALUES (?,CURRENT_TIMESTAMP,?,?,?,?,?,?,NULL,NULL)",
             [match_id, map_name, "Arena", "Slayer", is_firefight, False, True],
         )
         kda = (kills + assists / 3) / max(deaths, 1)

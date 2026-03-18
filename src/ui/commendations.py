@@ -451,7 +451,8 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
 
         if cat in _SUBCAT_ORDER:
             _SUBCAT_DISPLAY: dict[str, dict[str, str]] = {
-                "en": {"Général": "General"},
+                "en": {"Général": "General", "Paria": "Banished"},
+                "fr": {"Paria": "Parias"},
             }
             ordered_keys = _SUBCAT_ORDER[cat]
             extra_keys = sorted(k for k in subcats_dict if k not in ordered_keys and k is not None)

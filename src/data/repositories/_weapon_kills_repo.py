@@ -271,7 +271,7 @@ class WeaponKillsMixin:
 
         new_good = sum(1 for a in attributions if a.weapon_id is not None)
         existing_good = conn.execute(
-            "SELECT COUNT(*) FROM weapon_kills WHERE match_id = ?" " AND weapon_id IS NOT NULL",
+            "SELECT COUNT(*) FROM weapon_kills WHERE match_id = ? AND weapon_id IS NOT NULL",
             (match_id,),
         ).fetchone()[0]
         if existing_good > 0 and new_good <= existing_good:

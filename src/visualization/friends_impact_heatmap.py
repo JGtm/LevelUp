@@ -16,6 +16,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from src.analysis.friends_impact import ImpactEvent
+from src.analysis.performance_config import SCORE_THRESHOLDS
 from src.config import HALO_COLORS
 from src.data.domain.refdata import Outcome
 from src.ui.i18n.viz import viz_t
@@ -414,10 +415,13 @@ def plot_squad_map_heatmap(
         matrix.append([perf_map.get(m) for m in top_maps])
 
     c = HALO_COLORS.as_dict()
+    _max = 100.0
     colorscale = [
         [0.0, c["red"]],
-        [0.4, c["amber"]],
-        [0.7, c["cyan"]],
+        [SCORE_THRESHOLDS["below_average"] / _max, "#FF8C00"],
+        [SCORE_THRESHOLDS["average"] / _max, c["amber"]],
+        [SCORE_THRESHOLDS["good"] / _max, c["cyan"]],
+        [SCORE_THRESHOLDS["excellent"] / _max, c["green"]],
         [1.0, c["green"]],
     ]
     perf_lbl = "Perf"
@@ -428,7 +432,8 @@ def plot_squad_map_heatmap(
             x=top_maps,
             y=player_names,
             colorscale=colorscale,
-            zmid=0,
+            zmin=0,
+            zmax=100,
             hovertemplate=f"%{{y}} — %{{x}}<br>{perf_lbl}=%{{z:.1f}}<extra></extra>",
             colorbar={"title": perf_lbl, "thickness": 15},
         )

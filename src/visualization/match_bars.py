@@ -338,9 +338,9 @@ def plot_multi_metric_bars_by_match(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     fig.update_layout(
         title=title,
-        margin={"l": 40, "r": 20, "t": 40, "b": 90},
+        margin={"l": 40, "r": 20, "t": 40, "b": 150},
         hovermode="x unified",
-        legend=get_legend_horizontal_bottom(),
+        legend={**get_legend_horizontal_bottom(), "y": -0.52},
         barmode="group",
     )
     fig.update_yaxes(title_text=y_axis_title, rangemode="tozero")

@@ -60,9 +60,13 @@ def _patch_streamlit(monkeypatch):
     subheader = MagicMock()
     plotly_chart = MagicMock()
     dataframe = MagicMock()
+    success = MagicMock()
+    error = MagicMock()
+    radio = MagicMock(return_value="heatmap")
 
     metric_cols = [MagicMock(), MagicMock(), MagicMock(), MagicMock()]
-    summary_cols = [MagicMock(), MagicMock()]
+    # 3 colonnes : légende, ranking, mvp/boulet
+    summary_cols = [MagicMock(), MagicMock(), MagicMock()]
     columns = MagicMock(return_value=summary_cols)
 
     monkeypatch.setattr(teammates.st, "expander", _fake_expander)
@@ -72,6 +76,9 @@ def _patch_streamlit(monkeypatch):
     monkeypatch.setattr(teammates.st, "subheader", subheader)
     monkeypatch.setattr(teammates.st, "plotly_chart", plotly_chart)
     monkeypatch.setattr(teammates.st, "dataframe", dataframe)
+    monkeypatch.setattr(teammates.st, "success", success)
+    monkeypatch.setattr(teammates.st, "error", error)
+    monkeypatch.setattr(teammates.st, "radio", radio)
     monkeypatch.setattr(teammates.st, "columns", columns)
 
     return {
@@ -81,6 +88,9 @@ def _patch_streamlit(monkeypatch):
         "subheader": subheader,
         "plotly_chart": plotly_chart,
         "dataframe": dataframe,
+        "success": success,
+        "error": error,
+        "radio": radio,
         "columns": columns,
         "metric_cols": metric_cols,
         "summary_cols": summary_cols,
@@ -266,7 +276,7 @@ def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:
 
     assert st_mocks["plotly_chart"].called
     assert st_mocks["dataframe"].called
-    # st.columns est appelé 1 fois (render_impact_stats est désactivé dans la source)
+    # st.columns est appelé 1 fois (3 colonnes : légende, ranking, mvp/boulet)
     assert st_mocks["columns"].call_count == 1
-    st_mocks["summary_cols"][0].success.assert_called_once()
-    st_mocks["summary_cols"][1].error.assert_called_once()
+    st_mocks["success"].assert_called_once()
+    st_mocks["error"].assert_called_once()

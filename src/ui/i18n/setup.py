@@ -123,9 +123,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "Lancez cette commande dans un terminal pour récupérer vos matchs, "
             "puis rechargez la page (F5) :"
         ),
-        "en": (
-            "Run this command in a terminal to fetch your matches, " "then reload the page (F5):"
-        ),
+        "en": ("Run this command in a terminal to fetch your matches, then reload the page (F5):"),
     },
     "setup_credentials_missing": {
         "fr": "⚠️ Complétez l'étape précédente d'abord.",
@@ -250,19 +248,16 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "setup_sync_instructions": {
         "fr": (
-            "Profil créé ! Lancez la commande suivante dans un terminal "
-            "pour récupérer vos matchs :"
+            "Profil créé ! Lancez la commande suivante dans un terminal pour récupérer vos matchs :"
         ),
-        "en": (
-            "Profile created! Run the following command in a terminal " "to fetch your matches:"
-        ),
+        "en": ("Profile created! Run the following command in a terminal to fetch your matches:"),
     },
     "setup_sync_done_hint": {
         "fr": (
             "Une fois la synchronisation terminée, **rechargez cette page** "
             "(F5) pour accéder au dashboard."
         ),
-        "en": ("Once the sync is complete, **reload this page** " "(F5) to access the dashboard."),
+        "en": ("Once the sync is complete, **reload this page** (F5) to access the dashboard."),
     },
     # ── Général ───────────────────────────────────────────────────────────
     "setup_already_configured": {
@@ -283,7 +278,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "On va synchroniser **{count} matchs** pour **{gamertag}** "
             "et vérifier que tout fonctionne."
         ),
-        "en": ("We'll sync **{count} matches** for **{gamertag}** " "and verify everything works."),
+        "en": ("We'll sync **{count} matches** for **{gamertag}** and verify everything works."),
     },
     "smoke_start_btn": {
         "fr": "🚀 Lancer le test de vérification",
@@ -367,8 +362,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "Vérifiez vos credentials Azure et votre token OAuth."
         ),
         "en": (
-            "Synchronization failed: **{message}**\n\n"
-            "Check your Azure credentials and OAuth token."
+            "Synchronization failed: **{message}**\n\nCheck your Azure credentials and OAuth token."
         ),
     },
     "smoke_result_all_ok": {
@@ -390,7 +384,7 @@ STRINGS: dict[str, dict[str, str]] = {
             "⚠️ **{failed}** vérification(s) en échec sur **{total}**. "
             "Consultez le détail ci-dessous."
         ),
-        "en": ("⚠️ **{failed}** check(s) failed out of **{total}**. " "See details below."),
+        "en": ("⚠️ **{failed}** check(s) failed out of **{total}**. See details below."),
     },
     # Actions post-test
     "smoke_next_steps": {

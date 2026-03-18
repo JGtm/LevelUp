@@ -10,10 +10,14 @@ import contextlib
 import gc
 import logging
 import time
+from pathlib import Path
 
 import duckdb
 
 logger = logging.getLogger(__name__)
+
+# Guard process-level : évite de relancer les migrations shared à chaque SyncEngine
+_SHARED_MIGRATIONS_DONE: set[str] = set()
 
 
 # =============================================================================
@@ -34,6 +38,7 @@ CREATE TABLE IF NOT EXISTS match_registry (
     is_firefight BOOLEAN DEFAULT FALSE,
     duration_seconds INTEGER,
     team_0_score SMALLINT, team_1_score SMALLINT,
+    team_0_ps_score INTEGER, team_1_ps_score INTEGER,
     backfill_completed INTEGER DEFAULT 0,
     participants_loaded BOOLEAN DEFAULT FALSE,
     events_loaded BOOLEAN DEFAULT FALSE,
@@ -187,13 +192,29 @@ class ConnectionMixin:
 
         self._shared_connection.execute("SET enable_object_cache = true")
 
-        self._run_shared_migrations(self._shared_connection)
+        self._run_shared_migrations(self._shared_connection, self._shared_db_path)
 
         return self._shared_connection
 
     @staticmethod
-    def _run_shared_migrations(conn: duckdb.DuckDBPyConnection) -> None:
+    def _run_shared_migrations(  # noqa: PLR0912
+        conn: duckdb.DuckDBPyConnection,
+        db_path: Path | None = None,
+    ) -> None:
         """Applique les migrations sur la connexion shared."""
+        # Guard process-level : clé = chemin résolu pour éviter collision entre
+        # fichiers différents portant le même nom (ex. fixtures de test)
+        db_key: str | None = None
+        if db_path is not None:
+            with contextlib.suppress(Exception):
+                db_key = str(Path(db_path).resolve())
+        if not db_key:
+            with contextlib.suppress(Exception):
+                db_key = conn.execute("SELECT current_database()").fetchone()[0]  # type: ignore[index]
+        if db_key and db_key in _SHARED_MIGRATIONS_DONE:
+            return
+        if db_key:
+            _SHARED_MIGRATIONS_DONE.add(db_key)
         try:
             from src.data.sync.migrations import ensure_match_participants_columns
 
@@ -375,6 +396,21 @@ class ConnectionMixin:
 
         self._existing_match_ids = ids
         return ids
+
+    def _get_latest_match_id_in_db(self) -> str | None:
+        """Retourne le match_id le plus récent du joueur en DB (sans charger tous les IDs)."""
+        shared_conn = self._get_shared_connection()
+        if shared_conn is None or not self._xuid:
+            return None
+        with contextlib.suppress(Exception):
+            row = shared_conn.execute(
+                "SELECT mr.match_id FROM match_registry mr "
+                "JOIN match_participants mp ON mr.match_id = mp.match_id "
+                "WHERE mp.xuid = ? ORDER BY mr.start_time DESC LIMIT 1",
+                [self._xuid],
+            ).fetchone()
+            return str(row[0]) if row else None
+        return None
 
     # =========================================================================
     # Fermeture

@@ -372,7 +372,7 @@ class TestWeaponKillsMigration:
         """L'index idx_wk_match_xuid est créé."""
         ensure_weapon_kills_table(conn)
         indexes = conn.execute(
-            "SELECT index_name FROM duckdb_indexes() " "WHERE table_name = 'weapon_kills'"
+            "SELECT index_name FROM duckdb_indexes() WHERE table_name = 'weapon_kills'"
         ).fetchall()
         index_names = {r[0] for r in indexes}
         assert "idx_wk_match_xuid" in index_names
@@ -508,7 +508,7 @@ class TestBotTeammateColumn:
         count = conn.execute("SELECT COUNT(*) FROM player_match_enrichment").fetchone()[0]
         assert count == 2
         score = conn.execute(
-            "SELECT performance_score FROM player_match_enrichment " "WHERE match_id = 'm1'"
+            "SELECT performance_score FROM player_match_enrichment WHERE match_id = 'm1'"
         ).fetchone()[0]
         assert score == 85.0
 
@@ -527,9 +527,7 @@ class TestSpartanIdCareerProgression:
 
     def test_add_spartan_id_adds_column(self, conn):
         """Ajoute spartan_id VARCHAR si absent."""
-        conn.execute(
-            "CREATE TABLE career_progression " "(id INTEGER PRIMARY KEY, rank_name VARCHAR)"
-        )
+        conn.execute("CREATE TABLE career_progression (id INTEGER PRIMARY KEY, rank_name VARCHAR)")
         add_spartan_id_to_career_progression(conn)
         assert column_exists(conn, "career_progression", "spartan_id")
         col_type = conn.execute(
@@ -541,9 +539,7 @@ class TestSpartanIdCareerProgression:
 
     def test_add_spartan_id_idempotent(self, conn):
         """Double appel → schéma identique."""
-        conn.execute(
-            "CREATE TABLE career_progression " "(id INTEGER PRIMARY KEY, rank_name VARCHAR)"
-        )
+        conn.execute("CREATE TABLE career_progression (id INTEGER PRIMARY KEY, rank_name VARCHAR)")
         add_spartan_id_to_career_progression(conn)
         add_spartan_id_to_career_progression(conn)
         cols = get_table_columns(conn, "career_progression")
@@ -589,7 +585,7 @@ class TestHighlightEventsSequenceIdempotent:
 
         # Nextval fonctionne toujours
         conn.execute(
-            "INSERT INTO highlight_events (match_id, event_type) " "VALUES ('match2', 'assist')"
+            "INSERT INTO highlight_events (match_id, event_type) VALUES ('match2', 'assist')"
         )
         new_id = conn.execute("SELECT MAX(id) FROM highlight_events").fetchone()[0]
         assert new_id == 3

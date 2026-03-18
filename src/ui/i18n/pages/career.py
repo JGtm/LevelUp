@@ -245,6 +245,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Pas assez de matchs pour établir un classement.",
         "en": "Not enough matches to build a ranking.",
     },
+    "career_top_col_match_id": {
+        "fr": "Match",
+        "en": "Match",
+    },
     "career_top_col_date": {
         "fr": "Date",
         "en": "Date",
@@ -280,6 +284,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "career_top_badge_humiliation": {
         "fr": "Humiliation",
         "en": "Humiliation",
+    },
+    "career_top_legend_domination": {
+        "fr": 'Votre équipe a reçu la médaille "À table" (Steaktacular)',
+        "en": 'Your team received the "Steaktacular" medal',
+    },
+    "career_top_legend_humiliation": {
+        "fr": 'L\'équipe adverse a reçu la médaille "À table" (Steaktacular)',
+        "en": 'The enemy team received the "Steaktacular" medal',
     },
     # ── Citations ───────────────────────────────────────────────────────────
 }

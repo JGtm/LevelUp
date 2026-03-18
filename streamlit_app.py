@@ -236,7 +236,7 @@ def _tailscale_worker() -> None:
         print(f"[Tailscale] worker erreur inattendue : {_e}", flush=True)
 
 
-def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
+def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:  # noqa: PLR0912
     """Configure la page Streamlit, charge les settings et valide la config.
 
     Returns:
@@ -263,6 +263,14 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
     settings: AppSettings = load_settings()
     st.session_state[SK.APP_SETTINGS] = settings
     logger.info("Settings chargées: lang=%s", getattr(settings, "lang", "fr"))
+
+    # Appliquer la méthode d'auth préférée issue d'app_settings.json
+    try:
+        from src.auth.provider import set_preferred_auth_method
+
+        set_preferred_auth_method(getattr(settings, "auth_method", "refresh_token"))
+    except Exception:
+        pass
 
     # Chargement des secrets (Doppler ou .env.local) — une seule fois par session
     if not st.session_state.get("_secrets_loaded"):

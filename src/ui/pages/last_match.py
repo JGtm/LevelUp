@@ -22,6 +22,8 @@ def _resolve_nav_index(
     total: int,
     stored_index: int | None,
     stored_total: int | None,
+    session_key: str | None = None,
+    stored_session_key: str | None = None,
 ) -> tuple[int, bool]:
     """Calcule l'index de navigation courant — logique pure, sans Streamlit.
 
@@ -29,13 +31,24 @@ def _resolve_nav_index(
         total: Nombre de matchs dans le DataFrame filtré courant.
         stored_index: Index stocké en session_state (None si absent).
         stored_total: Total précédemment stocké (None si absent).
+        session_key: Clé de session active (label sélectionné), pour détecter
+            les changements de session même quand le total reste inchangé
+            (ex : filtre silencieux échoué → dff garde le même total).
+        stored_session_key: Valeur précédemment stockée de session_key.
 
     Returns:
         Tuple (index, reset) où reset=True indique que les filtres ont changé
         et que l'index a été réinitialisé au dernier match.
     """
-    if stored_total != total:
-        logger.debug("Filtres changés : total %s → %d, reset index", stored_total, total)
+    session_changed = session_key is not None and session_key != stored_session_key
+    if stored_total != total or session_changed:
+        logger.debug(
+            "Filtres changés : total %s → %d, session %r → %r, reset index",
+            stored_total,
+            total,
+            stored_session_key,
+            session_key,
+        )
         return total - 1, True
     idx = stored_index if stored_index is not None else total - 1
     clamped = max(0, min(idx, total - 1))
@@ -64,14 +77,22 @@ def render_last_match_page(
     sorted_df = dff.sort("start_time")
     total = len(sorted_df)
 
+    # Clé de session = label actif sélectionné dans le filtre sidebar.
+    # Permet de détecter un changement de session même si total reste inchangé
+    # (ex : filtre silencieusement échoué → dff garde la même taille).
+    session_key = str(st.session_state.get("picked_session_label") or "(toutes)")
+
     idx, reset = _resolve_nav_index(
         total=total,
         stored_index=st.session_state.get(SK.LAST_MATCH_NAV_INDEX),
         stored_total=st.session_state.get(SK.LAST_MATCH_NAV_TOTAL),
+        session_key=session_key,
+        stored_session_key=st.session_state.get(SK.LAST_MATCH_NAV_SESSION_KEY),
     )
     if reset:
         st.session_state[SK.LAST_MATCH_NAV_INDEX] = idx
         st.session_state[SK.LAST_MATCH_NAV_TOTAL] = total
+        st.session_state[SK.LAST_MATCH_NAV_SESSION_KEY] = session_key
 
     st.markdown(
         "<style>"

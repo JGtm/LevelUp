@@ -49,7 +49,7 @@ def _resolve_text_from_db(medal_name_id: int, lang: str, columns: list[str]) -> 
 
         with duckdb.connect(str(db_path), read_only=True) as conn:
             has_table = conn.execute(
-                "SELECT 1 FROM information_schema.tables " "WHERE table_name = 'medals' LIMIT 1"
+                "SELECT 1 FROM information_schema.tables WHERE table_name = 'medals' LIMIT 1"
             ).fetchone()
             if not has_table:
                 return None

@@ -272,9 +272,7 @@ def _build_scoreboard_row_html(  # noqa: PLR0913
         css = _sb_cell_class(key, player.get(key), extremes)
         raw = _fmt_scoreboard_cell(key, player.get(key))
         label_html = (
-            f"<label class='os-sb-hit' for='{html.escape(toggle_id)}'>"
-            f"{html.escape(raw)}"
-            "</label>"
+            f"<label class='os-sb-hit' for='{html.escape(toggle_id)}'>{html.escape(raw)}</label>"
         )
         if index == 0:
             label_html = (

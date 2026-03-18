@@ -48,6 +48,26 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
         result = SyncResult()
         result.started_at = datetime.now(timezone.utc)
 
+        # ─ Early-exit delta : HEAD check 1 appel API  ────────────────────────
+        # Si le match le plus récent de l'API est déjà en DB → joueur à jour,
+        # on évite de charger existing_ids + paginer l'historique complet.
+        if delta_mode and existing_ids:
+            head = await client.get_match_history(
+                self._gamertag,
+                match_type=options.match_type,
+                start=0,
+                count=1,
+            )
+            if head:
+                latest_db = self._get_latest_match_id_in_db()
+                if latest_db and head[0].match_id == latest_db:
+                    logger.info(
+                        "[DELTA] %s : aucun nouveau match (HEAD %s = DB) — skip total",
+                        self._gamertag,
+                        head[0].match_id[:8],
+                    )
+                    return result
+
         start = 0
         remaining = options.max_matches
         semaphore = asyncio.Semaphore(options.parallel_matches)
@@ -67,42 +87,54 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                 break
 
             # Traiter les matchs
+            # ─ Phase 1 : collecter les IDs nouveaux du batch (détection delta séquentielle)
+            new_ids: list[str] = []
+            delta_stop = False
             for item in history:
                 if remaining <= 0:
                     break
-
                 match_id = item.match_id
-
-                # Vérifier si le match existe déjà
                 if match_id in existing_ids:
                     if delta_mode:
                         logger.info("[DELTA] Match %s déjà connu — arrêt", match_id)
-                        return result
-                    else:
-                        result.matches_skipped += 1
-                        remaining -= 1
-                        start += 1
-                        continue
+                        delta_stop = True
+                        break
+                    result.matches_skipped += 1
+                    start += 1
+                    remaining -= 1
+                    continue
+                new_ids.append(match_id)
+                remaining -= 1
 
-                # Récupérer et traiter le match
+            if not new_ids and delta_stop:
+                return result
+
+            # ─ Phase 2 : traiter les matchs nouveaux en parallèle (I/O overlap)
+            async def _bounded(mid: str) -> dict:
                 async with semaphore:
-                    match_result = await self._process_single_match(
-                        client,
-                        match_id,
-                        options,
-                    )
+                    return await self._process_single_match(client, mid, options)
 
+            batch_results = await asyncio.gather(
+                *(_bounded(mid) for mid in new_ids),
+                return_exceptions=True,
+            )
+
+            for i, match_result in enumerate(batch_results):
+                if isinstance(match_result, BaseException):
+                    result.warnings.append(str(match_result))
+                    start += 1
+                    continue
                 if match_result.get("inserted"):
                     self._accumulate_match_result(result, match_result)
-                    existing_ids.add(match_id)
+                    existing_ids.add(new_ids[i])
                     self._maybe_batch_commit(result.matches_inserted, options.batch_commit_size)
-
                 if match_result.get("error"):
                     result.warnings.append(match_result["error"])
-
-                remaining -= 1
                 start += 1
                 self._report_progress(result, options, remaining, progress_callback)
+
+            if delta_stop:
+                return result
 
             # Fin du batch
             if len(history) < batch_size:
@@ -234,6 +266,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                 result["weapon_kills"] = wk_rows
                 logger.debug("weapon_kills extraits pour %s : %d", match_id, wk_rows)
             result["inserted"] = True
+            result["match_id"] = match_id
 
         except Exception as e:
             result["error"] = f"Erreur traitement known {match_id}: {e}"
@@ -293,8 +326,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                     )
                 elif participants:
                     logger.warning(
-                        "0/%d participants insérés pour match=%s "
-                        "— participants_loaded NON marqué",
+                        "0/%d participants insérés pour match=%s — participants_loaded NON marqué",
                         len(participants),
                         match_id,
                     )
@@ -399,6 +431,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             if not ok:
                 return result
             result["inserted"] = True
+            result["match_id"] = match_id
 
         except Exception as e:
             result["error"] = f"Erreur traitement new {match_id}: {e}"

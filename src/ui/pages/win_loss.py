@@ -16,7 +16,6 @@ from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, f
 from src.ui.tz import get_tz_name
 from src.visualization import (
     plot_map_comparison,
-    plot_map_lollipop,
     plot_map_outcome_timeline,
     plot_map_perf_vs_history,
     plot_map_winrate_bullet,
@@ -70,7 +69,8 @@ def render_win_loss_page(  # noqa: PLR0913
         _render_top_by_week(dff)
         _render_streak_section(dff)
         _render_personal_score_section(dff)
-        _render_ratio_by_map_section(dff, base, is_session_scope)
+        _render_winrate_perf_vs_history(dff, base)
+        # _render_ratio_by_map_section(dff, base, is_session_scope)  # DISABLED
 
 
 def _render_outcomes_over_time(dff: pl.DataFrame, is_session_scope: bool) -> str:
@@ -253,6 +253,54 @@ def _render_personal_score_section(dff: pl.DataFrame) -> None:
 
 
 @fragment_if_available
+def _render_winrate_perf_vs_history(dff: pl.DataFrame, base: pl.DataFrame) -> None:
+    """Affiche les graphes Taux de victoires vs historique et Performance vs historique."""
+    from src.analysis import compute_map_breakdown
+
+    bd_current = compute_map_breakdown(dff)
+    bd_history = compute_map_breakdown(base)
+    if bd_current.is_empty() or bd_history.is_empty():
+        return
+
+    lang = get_lang()
+    map_order: list[str] | None = None
+    if "start_time" in dff.columns:
+        map_order = (
+            dff.sort("start_time")
+            .unique(subset=["map_name"], keep="first", maintain_order=True)
+            .filter(pl.col("map_name").is_not_null())["map_name"]
+            .to_list()
+        )
+
+    view = bd_current.head(20).reverse()
+
+    st.divider()
+    st.markdown(f"##### {t('wl_map_bullet_title')}")
+    st.caption(t("wl_map_bullet_caption"))
+    with safe_chart_render():
+        fig_bullet = plot_map_winrate_bullet(view, bd_history, lang=lang, map_order=map_order)
+        if fig_bullet is not None:
+            st.plotly_chart(fig_bullet, width="stretch", config=PLOTLY_STATIC_CONFIG)
+
+    st.markdown(f"##### {t('wl_perf_vs_history_title')}")
+    with safe_chart_render():
+        fig_perf = plot_map_perf_vs_history(view, bd_history, lang=lang, map_order=map_order)
+        if fig_perf is not None:
+            st.plotly_chart(fig_perf, width="stretch", config=PLOTLY_STATIC_CONFIG)
+
+
+def _compute_session_map_order(dff: pl.DataFrame) -> list[str] | None:
+    """Retourne l'ordre chronologique des cartes depuis les matchs d'une session."""
+    if "start_time" not in dff.columns:
+        return None
+    return (
+        dff.sort("start_time")
+        .unique(subset=["map_name"], keep="first", maintain_order=True)
+        .filter(pl.col("map_name").is_not_null())["map_name"]
+        .to_list()
+    )
+
+
 def _render_ratio_by_map_section(
     dff: pl.DataFrame,
     base: pl.DataFrame,
@@ -262,11 +310,12 @@ def _render_ratio_by_map_section(
     st.divider()
     st.subheader(t("wl_ratio_by_map"))
     st.caption(t("wl_ratio_caption"))
+    if "min_matches_maps" not in st.session_state:
+        st.session_state["min_matches_maps"] = 1
     min_matches = st.slider(
         t("wl_min_matches_map_slider"),
         1,
         30,
-        1,
         step=1,
         key="min_matches_maps",
         on_change=_clear_min_matches_maps_auto,
@@ -284,22 +333,16 @@ def _render_ratio_by_map_section(
     session_ids = dff["match_id"].cast(pl.Utf8).to_list()
     lang = get_lang()
 
-    # A — Lollipop (toujours affiché)
-    st.markdown(f"##### {t('wl_map_lollipop_title')}")
-    with safe_chart_render():
-        st.plotly_chart(
-            plot_map_lollipop(view, lang=lang), width="stretch", config=PLOTLY_CLEAN_CONFIG
-        )
-
-    # B — Timeline chronologique (toujours affiché)
-    st.markdown(f"##### {t('wl_map_timeline_title')}")
-    st.caption(t("wl_map_timeline_caption"))
-    with safe_chart_render():
-        fig_tl = plot_map_outcome_timeline(base, session_match_ids=session_ids, lang=lang)
-        if fig_tl is not None:
-            st.plotly_chart(fig_tl, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-        else:
-            st.info(t("insufficient_data_chart"))
+    # B — Timeline chronologique (DISABLED: désactivé temporairement, conserver le code)
+    if False:  # noqa: SIM210
+        st.markdown(f"##### {t('wl_map_timeline_title')}")
+        st.caption(t("wl_map_timeline_caption"))
+        with safe_chart_render():
+            fig_tl = plot_map_outcome_timeline(base, session_match_ids=session_ids, lang=lang)
+            if fig_tl is not None:
+                st.plotly_chart(fig_tl, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+            else:
+                st.info(t("insufficient_data_chart"))
 
     if is_session_scope:
         return

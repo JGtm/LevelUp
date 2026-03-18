@@ -73,7 +73,7 @@ class TestMigrationReconciledAs:
         views = {
             r[0]
             for r in shared_conn.execute(
-                "SELECT table_name FROM information_schema.tables " "WHERE table_type = 'VIEW'"
+                "SELECT table_name FROM information_schema.tables WHERE table_type = 'VIEW'"
             ).fetchall()
         }
         assert "v_weapon_kills" in views

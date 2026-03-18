@@ -67,7 +67,6 @@ class TestRenderMapChartsSection:
             sub_all=_make_match_df(),
             full_squad_df=_make_match_df(),
             breakdown_all=pl.DataFrame(),
-            min_matches=3,
             lang="fr",
         )
         ms.calls["info"].assert_called()
@@ -78,57 +77,48 @@ class TestRenderMapChartsSection:
         ms = mock_st(mod)
         bd = _make_breakdown()
 
-        with patch.object(mod, "plot_map_lollipop", return_value=MagicMock(spec=[])):
-            mod.render_map_charts_section(
-                sub_all=_make_match_df(),
-                full_squad_df=_make_match_df(),
-                breakdown_all=bd,
-                min_matches=1,
-                lang="fr",
-            )
+        mod.render_map_charts_section(
+            sub_all=_make_match_df(),
+            full_squad_df=_make_match_df(),
+            breakdown_all=bd,
+            lang="fr",
+        )
 
         ms.calls["plotly_chart"].assert_called()
 
-    def test_rend_timeline_si_full_squad_non_vide(self, mock_st) -> None:
+    def test_rend_bullet_si_full_squad_non_vide(self, mock_st) -> None:
         import src.ui.pages.teammates_map_charts as mod
 
-        mock_st(mod)
+        ms = mock_st(mod)
         bd = _make_breakdown()
         fig_mock = MagicMock()
 
-        with (
-            patch.object(mod, "plot_map_lollipop", return_value=fig_mock),
-            patch.object(mod, "plot_map_outcome_timeline", return_value=fig_mock) as mock_tl,
-        ):
+        with patch.object(mod, "plot_map_winrate_bullet", return_value=fig_mock) as mock_bullet:
             mod.render_map_charts_section(
                 sub_all=_make_match_df(),
                 full_squad_df=_make_match_df(),
                 breakdown_all=bd,
-                min_matches=1,
                 lang="fr",
             )
 
-        mock_tl.assert_called_once()
+        mock_bullet.assert_called_once()
+        ms.calls["plotly_chart"].assert_called()
 
-    def test_skip_timeline_si_full_squad_vide(self, mock_st) -> None:
+    def test_skip_bullet_si_full_squad_vide(self, mock_st) -> None:
         import src.ui.pages.teammates_map_charts as mod
 
         mock_st(mod)
         bd = _make_breakdown()
 
-        with (
-            patch.object(mod, "plot_map_lollipop", return_value=MagicMock()),
-            patch.object(mod, "plot_map_outcome_timeline", return_value=None) as mock_tl,
-        ):
+        with patch.object(mod, "plot_map_winrate_bullet", return_value=None) as mock_bullet:
             mod.render_map_charts_section(
                 sub_all=_make_match_df(),
                 full_squad_df=pl.DataFrame(),
                 breakdown_all=bd,
-                min_matches=1,
                 lang="fr",
             )
 
-        mock_tl.assert_not_called()
+        mock_bullet.assert_not_called()
 
 
 # =============================================================================
@@ -199,7 +189,7 @@ class TestRenderSingleMapSection:
             )
         ms.calls["plotly_chart"].assert_not_called()
 
-    def test_rend_lollipop_avec_donnees_valides(self, mock_st) -> None:
+    def test_rend_bullet_avec_donnees_valides(self, mock_st) -> None:
         import src.ui.pages.teammates_map_charts as mod
 
         ms = mock_st(mod)
@@ -208,7 +198,7 @@ class TestRenderSingleMapSection:
 
         with (
             patch.object(mod, "compute_map_breakdown", return_value=bd),
-            patch.object(mod, "plot_map_lollipop", return_value=fig_mock),
+            patch.object(mod, "plot_map_winrate_bullet", return_value=fig_mock) as mock_bullet,
         ):
             mod.render_single_map_section(
                 sub=_make_match_df(),
@@ -217,4 +207,5 @@ class TestRenderSingleMapSection:
                 lang="fr",
             )
 
+        mock_bullet.assert_called_once()
         ms.calls["plotly_chart"].assert_called()

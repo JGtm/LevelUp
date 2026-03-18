@@ -55,6 +55,8 @@ def _make_shared_db() -> duckdb.DuckDBPyConnection:
             game_variant_name VARCHAR,
             team_0_score INTEGER,
             team_1_score INTEGER,
+            team_0_ps_score INTEGER,
+            team_1_ps_score INTEGER,
             is_firefight BOOLEAN DEFAULT FALSE,
             is_ranked BOOLEAN DEFAULT FALSE,
             events_loaded BOOLEAN DEFAULT FALSE,

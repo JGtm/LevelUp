@@ -53,6 +53,8 @@ def _create_shared_with_data(db_path: Path) -> None:
             duration_seconds INTEGER,
             team_0_score SMALLINT,
             team_1_score SMALLINT,
+            team_0_ps_score INTEGER,
+            team_1_ps_score INTEGER,
             player_count SMALLINT DEFAULT 8,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

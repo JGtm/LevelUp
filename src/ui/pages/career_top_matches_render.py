@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import logging
+import urllib.parse
 from datetime import datetime
 
 import streamlit as st
@@ -35,6 +36,19 @@ def _format_duration(seconds: int | float | None) -> str:
 def _format_score(my: int | None, enemy: int | None) -> str:
     """Formate le score sous forme 'my — enemy'."""
     return f"{my or 0} — {enemy or 0}"
+
+
+def _match_id_link(match_id: str) -> str:
+    """Lien HTML tronqué vers la page Explorer pour ce match."""
+    if not match_id:
+        return "—"
+    href = "/?" + urllib.parse.urlencode({"page": "Explorer", "match_id": match_id})
+    short = html.escape(match_id[:8] + "…")
+    return (
+        f"<a href='{html.escape(href)}' target='_self' "
+        f"style='font-family:monospace;font-size:0.75em;"
+        f"color:var(--accent,#33d6ff);text-decoration:none;'>{short}</a>"
+    )
 
 
 def _format_kda(row: dict) -> str:
@@ -100,9 +114,32 @@ def _badge_html(dom_flag: int, *, best: bool) -> str:
     return ""
 
 
+def _build_match_badge_legend_html(*, best: bool) -> str:
+    """Légende inline pour le badge Domination ou Humiliation."""
+    if best:
+        label = html.escape(t("career_top_badge_domination"))
+        text = html.escape(t("career_top_legend_domination"))
+        bg, fg = _BG_DOMINATION, _FG_DOMINATION
+    else:
+        label = html.escape(t("career_top_badge_humiliation"))
+        text = html.escape(t("career_top_legend_humiliation"))
+        bg, fg = _BG_HUMILIATION, _FG_HUMILIATION
+    badge = (
+        f"<span style='padding:1px 6px;border-radius:3px;font-size:0.75em;"
+        f"font-weight:600;background:{bg};color:{fg}'>{label}</span>"
+    )
+    return (
+        f"<div style='font-size:0.78em;opacity:0.72;margin-top:4px;line-height:1.8;'>"
+        f"{badge} {text}"
+        f"</div>"
+    )
+
+
 def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
     """Construit le tableau HTML pour le Top 10."""
+    title = t("career_top_best_title") if best else t("career_top_worst_title")
     headers = [
+        t("career_top_col_match_id"),
         t("career_top_col_date"),
         t("career_top_col_mode"),
         t("career_top_col_map"),
@@ -112,6 +149,7 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
         t("career_top_col_duration"),
         "",
     ]
+    col_count = len(headers)
     head_cells = "".join(f"<th class='os-sb-th'>{html.escape(h)}</th>" for h in headers)
 
     body = []
@@ -119,8 +157,12 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
         dom_flag = row.get("dominance_flag", 0) or 0
         badge = _badge_html(dom_flag, best=best)
 
+        mid = str(row.get("match_id") or "")
+        match_link = _match_id_link(mid)
         mode = html.escape(str(row.get("game_variant_name") or row.get("playlist_name") or "—"))
+
         score = html.escape(_format_score(row.get("my_team_score"), row.get("enemy_team_score")))
+
         kda = html.escape(_format_kda(row))
         kd = _kd_ratio(row)
         kd_c = _kd_color(row)
@@ -131,6 +173,7 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
 
         body.append(
             f"<tr class='os-sb-row'>"
+            f"<td class='os-sb-td'>{match_link}</td>"
             f"<td class='os-sb-td' style='white-space:nowrap'>{date_str}</td>"
             f"<td class='os-sb-td'>{mode}</td>"
             f"{map_td}"
@@ -144,8 +187,11 @@ def _build_top_table_html(rows: list[dict], *, best: bool) -> str:
 
     return (
         "<div class='os-table-wrap os-table-wrap--map-hover'>"
-        f"<table class='os-sb-table' style='width:100%'>"
-        f"<thead><tr>{head_cells}</tr></thead>"
+        f"<table class='os-table os-scoreboard' style='width:100%'>"
+        f"<thead>"
+        f"<tr><th class='os-sb-team' colspan='{col_count}'>{html.escape(title)}</th></tr>"
+        f"<tr>{head_cells}</tr>"
+        f"</thead>"
         f"<tbody>{''.join(body)}</tbody>"
         f"</table>"
         "</div>"
@@ -164,23 +210,17 @@ def render_top_matches_section(*, db_path: str, xuid: str) -> None:
         st.info(t("career_top_no_data"))
         return
 
-    col_best, col_worst = st.columns(2)
-    with col_best:
-        st.markdown(f"**{t('career_top_best_title')}**")
+    tab_best, tab_worst = st.tabs([t("career_top_best_title"), t("career_top_worst_title")])
+    with tab_best:
         if best:
-            st.markdown(
-                _build_top_table_html(best, best=True),
-                unsafe_allow_html=True,
-            )
+            st.markdown(_build_top_table_html(best, best=True), unsafe_allow_html=True)
+            st.markdown(_build_match_badge_legend_html(best=True), unsafe_allow_html=True)
         else:
             st.info(t("career_top_no_data"))
 
-    with col_worst:
-        st.markdown(f"**{t('career_top_worst_title')}**")
+    with tab_worst:
         if worst:
-            st.markdown(
-                _build_top_table_html(worst, best=False),
-                unsafe_allow_html=True,
-            )
+            st.markdown(_build_top_table_html(worst, best=False), unsafe_allow_html=True)
+            st.markdown(_build_match_badge_legend_html(best=False), unsafe_allow_html=True)
         else:
             st.info(t("career_top_no_data"))
