@@ -1,8 +1,8 @@
 # LevelUp - Dashboard Halo Infinite
 
-> **Analysez vos performances Halo Infinite avec des visualisations avancées et une architecture DuckDB v5 ultra-rapide.**
+> **Analysez vos performances Halo Infinite avec des visualisations avancées et une architecture DuckDB ultra-rapide.**
 
-[![Version](https://img.shields.io/badge/Version-5.6.0--beta-orange.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.6.0-beta)
+[![Version](https://img.shields.io/badge/Version-6.0.0-blue.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v6.0.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -39,14 +39,14 @@
 - **Corrélations** - Scatter plots durée de vie vs kills
 - **Top armes** - Statistiques par arme avec headshot rate
 
-### Architecture v5.5 - DuckDB Multi-DB
+### Architecture v6 - DuckDB Multi-DB
 - **Shared Matches** — `shared_matches.duckdb` centralise tous les matchs (registry, participants, events, médailles)
 - **PvE Firefight** — `shared_pve.duckdb` isole les stats Firefight (waves, boss, ennemis par type)
+- **Couche de résolution v6** — vues SQL garanties : `v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`, `v_weapon_kills`
 - **ATTACH multi-DB** — DuckDB ATTACH pour lecture transparente cross-DB
 - **LUSR/CSR** — Ratings TrueSkill 2 per-groupe stockés dans `match_skill_rank` (player DB)
 - **Performance** — Requêtes DuckDB < 30ms (warm), DataFrame Polars natifs, vues matérialisées
-- **Device Code Flow (MSAL)** — Acquisition du token via xbox.com/activate, sans URI de redirection ni client secret ; refresh token stocké en DB joueur
-- **Wizard Setup** — Configuration guidée avec détection automatique des credentials/joueurs manquants
+- **Zéro configuration** — client ID intégré ; authentification via xbox.com/activate en 2 étapes
 
 ---
 
@@ -105,7 +105,7 @@ python scripts/spnkr_get_refresh_token.py --device-code
 
 ## Architecture
 
-### Structure des Données (v5.3)
+### Structure des Données (v6)
 
 ```
 data/

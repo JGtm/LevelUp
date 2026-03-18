@@ -191,62 +191,78 @@
 
 ## Quick start
 
-**Prerequisites**: Python 3.12+ recommended (3.10 minimum). Windows note: avoid Python 3.14 if you hit native crashes during `pytest`.
+**Prerequisites**: Python 3.12+ recommended (3.10 minimum).
+
+### Windows (no technical knowledge required)
+
+```
+1. Download and extract the ZIP (or git clone)
+2. Double-click LevelUp.bat
+   → Python is installed automatically if missing
+   → .venv created, dependencies installed
+   → browser opens at http://localhost:8501
+3. In the browser: enter your gamertag
+4. Go to https://xbox.com/activate and enter the displayed code
+   → LevelUp retrieves your profile and starts the initial sync
+```
+
+**No Azure configuration required** — the app bundles its own client ID.
+
+### macOS / Linux
 
 ```bash
-# Clone the repo
 git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
 cd LevelUp_with_SPNKr
-
-# Create a virtual environment
-python -m venv .venv
-
-# Activate (Windows)
-.venv\Scripts\activate
-
-# Activate (Linux/macOS)
-source .venv/bin/activate
-
-# Install dependencies
-pip install -e .
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[spnkr]"
+python launcher.py run
 ```
+
+Then follow the in-browser wizard (same 2-step flow).
 
 **Detailed docs**: [docs/INSTALL.md](docs/INSTALL.md)
 
-**French README (archived)**: [docs/FR/README.md](docs/FR/README.md)
+**French README**: [docs/FR/README.md](docs/FR/README.md)
 
 ---
 
 ## Configuration
 
-### 1. Copy the environment file
+**v6 — Zero configuration.** LevelUp bundles its own Azure client ID.
+Just launch the app, enter your gamertag, and authenticate via Device Code Flow
+(`https://xbox.com/activate`). No `.env.local` file or Azure account required.
 
-```bash
-cp .env.example .env.local
-```
+### Refresh token (advanced / headless)
 
-### 2. Configure your Azure Client ID
-
-```env
-SPNKR_AZURE_CLIENT_ID=your_client_id
-```
-
-> `client_secret` and `redirect_uri` are no longer required — authentication uses MSAL Device Code Flow.
-
-### 3. Obtain your refresh token (Device Code Flow)
+If you cannot use the interactive wizard (e.g. server/headless setup):
 
 ```bash
 python scripts/spnkr_get_refresh_token.py --device-code
-# Or use the in-app Setup Wizard (recommended)
 ```
 
-**Detailed docs**: [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+This prints a code to enter at `https://xbox.com/activate`, then saves the token
+automatically to `.env.local`.
+
+### Note for forks / developers
+
+The bundled `LEVELUP_CLIENT_ID` is an Azure App Registration tied to this project.
+**If you fork LevelUp**, please create your own free Azure App Registration
+(see [docs/CONFIGURATION.md](docs/CONFIGURATION.md)) and set:
+
+```env
+# .env.local
+SPNKR_AZURE_CLIENT_ID=your_own_client_id
+```
+
+This env var takes precedence over the bundled ID.
+
+**Full configuration reference**: [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 
 ---
 
 ## Architecture
 
-### Data layout (v5.4)
+### Data layout (v6)
 
 ```
 data/
