@@ -7,6 +7,35 @@
 
 ## Journal
 
+### [2026-03-18] — Feature : graphiques par carte enrichis (lollipop, timeline, bullet, heatmap)
+
+**Statut** : Complété
+
+**Décision technique** :
+Le graphique de barres empilées W/D/L par carte était peu informatif sur de courtes sessions (1 match par carte = monochrome). Implémentation de 5 nouvelles visualisations outcome/performance-focused :
+
+**Nouveaux modules créés** :
+- `src/visualization/maps_outcome.py` — 4 fonctions de visualisation : `plot_map_lollipop`, `plot_map_outcome_timeline`, `plot_map_winrate_bullet`, `plot_map_perf_vs_history`
+- `src/ui/pages/teammates_map_charts.py` — rendu Streamlit des charts par carte (extrait de `teammates_views.py` pour rester sous 500L)
+
+**Modules modifiés** :
+- `src/visualization/maps.py` — restauré à ~215L (les 4 nouvelles fonctions déplacées dans `maps_outcome.py`)
+- `src/visualization/friends_impact_heatmap.py` — ajout `plot_squad_map_heatmap` (heatmap perf × joueur × carte)
+- `src/visualization/__init__.py` — exports mis à jour
+- `src/ui/i18n/pages/wl.py` + `teammates.py` — 6 nouvelles clés i18n chacun
+- `src/ui/pages/win_loss.py` — `_render_ratio_by_map_section` refactorisé (lollipop + timeline + bullet + perf)
+- `src/ui/pages/teammates_views.py` — appels vers `teammates_map_charts`
+
+**Résultats** :
+- 4886 tests passent, 2 skipped, 0 régression
+- Ruff clean (0 violation)
+- Size baseline mise à jour (95 violations documentées)
+
+**Conclusion** :
+Feature complète. Baseline mise à jour. Tests verts.
+
+---
+
 ### [2026-03-17] — Adaptation tests v6 : architecture shared_matches obligatoire
 
 **Statut** : Complété

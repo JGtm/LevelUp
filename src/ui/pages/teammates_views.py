@@ -17,8 +17,7 @@ from src.ui import display_name_from_xuid
 from src.ui.cache import (
     cached_friend_matches_df,
 )
-from src.ui.chart_utils import safe_chart_render
-from src.ui.i18n import t
+from src.ui.i18n import get_lang, t
 from src.ui.pages._teammates_trio import render_trio_view
 from src.ui.pages._teammates_trio_helpers import _merge_trio_dataframes
 from src.ui.pages.teammates_charts import (
@@ -31,6 +30,11 @@ from src.ui.pages.teammates_helpers import (
     render_friends_history_table,
 )
 from src.ui.pages.teammates_impact import render_impact_taquinerie
+from src.ui.pages.teammates_map_charts import (
+    render_map_charts_section,
+    render_single_map_section,
+    render_squad_heatmap,
+)
 from src.ui.pages.teammates_synergy import render_synergy_radar
 from src.ui.pages.teammates_views_shared import (
     _collect_friend_match_ids,
@@ -39,9 +43,7 @@ from src.ui.pages.teammates_views_shared import (
     _render_shared_stats_metrics,
 )
 from src.ui.pages.teammates_weapons import render_weapon_kills_bar_chart
-from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.ui.tz import get_tz_name
-from src.visualization import plot_map_ratio_with_winloss
 from src.visualization._compat import DataFrameLike, ensure_polars
 
 # Ré-exports pour compatibilité (tests importent depuis ce module)
@@ -179,6 +181,14 @@ def render_single_teammate_view(
         from src.ui.pages.teammates_weapons import render_weapon_kills_table
 
         render_weapon_kills_table(db_path, friend_xuid, list(shared_ids))
+
+        # Graphiques par carte (lollipop, timeline, bullet, heatmap)
+        render_single_map_section(
+            sub=sub,
+            dfr=dfr,
+            series=[(me_name, sub)] + ([(name, friend_sub)] if not friend_sub.is_empty() else []),
+            lang=get_lang(),
+        )
 
 
 def render_multi_teammate_view(  # noqa: PLR0913
@@ -339,31 +349,24 @@ def _auto_reset_min_matches_slider(
 
 def _render_map_breakdown(
     sub_all: DataFrameLike,
+    full_squad_df: DataFrameLike,
     breakdown_all: DataFrameLike,
     min_matches_maps_friends: int,
     ctx: TeammateContext,
 ) -> None:
-    """Affiche le graphe de répartition par carte et le tableau d'historique."""
+    """Affiche lollipop + timeline + bullet + perf vs historique, puis tableau d'historique."""
     db_path = ctx["db_path"]
     xuid = ctx["xuid"]
     db_key = ctx["db_key"]
     waypoint_player = ctx["waypoint_player"]
-    if breakdown_all.is_empty():
-        st.info(t("tm_not_enough_matches"))
-    else:
-        with safe_chart_render():
-            view_all = breakdown_all.head(20).reverse()
-            title = t("tm_ratio_map_header", n=min_matches_maps_friends)
-            fig_map = plot_map_ratio_with_winloss(view_all, title=title, absolute_counts=True)
-            if fig_map is not None:
-                st.plotly_chart(fig_map, width="stretch", config=PLOTLY_STATIC_CONFIG)
-            else:
-                st.info(t("insufficient_data_chart"))
 
-        st.subheader(t("tm_history"))
-        st.caption(t("tm_history_tz_caption", tz=get_tz_name()))
+    render_map_charts_section(
+        sub_all, full_squad_df, breakdown_all, min_matches_maps_friends, lang=get_lang()
+    )
 
-    if sub_all.is_empty():
+    st.subheader(t("tm_history"))
+    st.caption(t("tm_history_tz_caption", tz=get_tz_name()))
+    if ensure_polars(sub_all).is_empty():
         st.info(t("tm_no_matches_filter"))
     else:
         render_friends_history_table(sub_all, db_path, xuid, db_key, waypoint_player)
@@ -438,7 +441,11 @@ def _render_map_history_section(
         colors_by_name = assign_player_colors_fn([n for n, _ in series])
         breakdown_all = ensure_polars(compute_map_breakdown(sub_all))
         breakdown_all = breakdown_all.filter(pl.col("matches") >= int(min_matches_maps_friends))
-        _render_map_breakdown(sub_all, breakdown_all, min_matches_maps_friends, ctx)
+
+        # full_squad_df = tous les matchs avec ces amis (non filtré par session/date)
+        full_squad_df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(all_match_ids)))
+        _render_map_breakdown(sub_all, full_squad_df, breakdown_all, min_matches_maps_friends, ctx)
+        render_squad_heatmap(series, lang=get_lang())
 
     return sub_all, series, colors_by_name, rendered_bottom_charts
 

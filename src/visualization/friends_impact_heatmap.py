@@ -19,6 +19,7 @@ from src.analysis.friends_impact import ImpactEvent
 from src.config import HALO_COLORS
 from src.data.domain.refdata import Outcome
 from src.ui.i18n.viz import viz_t
+from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style
 
 if TYPE_CHECKING:
@@ -354,3 +355,87 @@ def render_impact_summary_stats(
         "total_casualty": len(last_casualties),
         "total_matches": len(all_match_ids),
     }
+
+
+# ─── Feature 1 — Heatmap joueur × carte ─────────────────────────────────────
+
+
+def plot_squad_map_heatmap(
+    series: list[tuple[str, DataFrameLike]],
+    lang: str = "fr",
+) -> go.Figure | None:
+    """Heatmap de performance par joueur × carte.
+
+    Chaque cellule = performance_avg du joueur sur cette carte (top 15 cartes par fréquence).
+
+    Args:
+        series: Liste de (nom_joueur, df_matchs) pour chaque membre de l'escouade.
+        lang: Langue.
+
+    Returns:
+        Figure Plotly ou None si données insuffisantes.
+    """
+    from src.analysis import compute_map_breakdown  # noqa: PLC0415
+
+    if not series:
+        return None
+
+    player_bds: list[pl.DataFrame] = []
+    for name, df in series:
+        df_pl = ensure_polars(df)
+        if df_pl.is_empty():
+            continue
+        bd = compute_map_breakdown(df_pl)
+        if not bd.is_empty():
+            player_bds.append(bd.with_columns(pl.lit(name).alias("_player")))
+
+    if not player_bds:
+        return None
+
+    all_bd = pl.concat(player_bds, how="diagonal_relaxed")
+    top_maps = (
+        all_bd.group_by("map_name")
+        .agg(pl.col("matches").sum())
+        .sort("matches", descending=True)
+        .head(15)["map_name"]
+        .to_list()
+    )
+    all_bd = all_bd.filter(pl.col("map_name").is_in(top_maps))
+    if all_bd.is_empty():
+        return None
+
+    player_names = [n for n, _ in series]
+    matrix = []
+    for name in player_names:
+        row_bd = all_bd.filter(pl.col("_player") == name)
+        perf_map = dict(
+            zip(row_bd["map_name"].to_list(), row_bd["performance_avg"].to_list(), strict=False)
+        )
+        matrix.append([perf_map.get(m) for m in top_maps])
+
+    c = HALO_COLORS.as_dict()
+    colorscale = [
+        [0.0, c["red"]],
+        [0.4, c["amber"]],
+        [0.7, c["cyan"]],
+        [1.0, c["green"]],
+    ]
+    perf_lbl = "Perf"
+    height = max(180, len(player_names) * 60 + 100)
+    fig = go.Figure(
+        go.Heatmap(
+            z=matrix,
+            x=top_maps,
+            y=player_names,
+            colorscale=colorscale,
+            zmid=0,
+            hovertemplate=f"%{{y}} — %{{x}}<br>{perf_lbl}=%{{z:.1f}}<extra></extra>",
+            colorbar={"title": perf_lbl, "thickness": 15},
+        )
+    )
+    fig.update_layout(
+        height=height,
+        margin={"l": 40, "r": 80, "t": 30, "b": 120},
+        xaxis={"tickangle": -35},
+    )
+    return apply_halo_plot_style(fig, height=height)

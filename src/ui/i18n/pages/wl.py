@@ -16,7 +16,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "By mode",
     },
     "wl_heatmap_title": {
-        "fr": "Win Rate par jour et heure",
+        "fr": "Taux de victoires par jour et heure",
         "en": "Win rate by day and hour",
     },
     "wl_heatmap_caption": {
@@ -156,5 +156,30 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "wl_period_col_unfinished": {"fr": "Non terminés", "en": "Unfinished"},
     "wl_period_col_total": {"fr": "Total", "en": "Total"},
     "wl_period_col_win_rate": {"fr": "Taux de victoires", "en": "Win rate"},
+    # ── Nouveaux graphiques par carte ────────────────────────────────────────
+    "wl_map_lollipop_title": {
+        "fr": "V/D par carte",
+        "en": "W/L by map",
+    },
+    "wl_map_timeline_title": {
+        "fr": "Évolution chronologique par carte",
+        "en": "Chronological map evolution",
+    },
+    "wl_map_timeline_caption": {
+        "fr": "Chaque cercle = 1 match. Les matchs de la sélection courante sont mis en évidence (plus grands, contour blanc).",
+        "en": "Each dot = 1 match. Current selection highlighted (larger, white border).",
+    },
+    "wl_map_bullet_title": {
+        "fr": "Win rate session vs historique",
+        "en": "Session win rate vs history",
+    },
+    "wl_map_bullet_caption": {
+        "fr": "Barre grise = taux de victoires sur toute ta carrière. Barre fine colorée = sélection actuelle (vert = meilleur, rouge = moins bien, ambre = équivalent).",
+        "en": "Gray bar = lifetime win rate. Thin colored bar = current selection (green = better, red = worse, amber = similar).",
+    },
+    "wl_perf_vs_history_title": {
+        "fr": "Performance vs historique",
+        "en": "Performance vs history",
+    },
     # ── Teammates ───────────────────────────────────────────────────────────
 }
