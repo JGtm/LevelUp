@@ -7,6 +7,30 @@
 
 ## Journal
 
+### [2026-03-19] — Fix bug "Dernier match" affichait Origin au lieu de Behemoth
+**Statut** : Complété
+
+**Problème** : Quand JGtm sélectionnait la session solo du 17 mars 2026 (4 matchs), l'onglet "Dernier match" affichait un match du Ven. 13 mars sur la carte Origin au lieu du dernier match de la session (Behemoth).
+
+**Cause racine** : `_resolve_nav_index` comparait uniquement le `total` (nombre de matchs dans `dff`). Si le filtre de session échouait silencieusement (candidate vide → dff inchangé à 673 matchs), le total restait identique, aucun reset n'était déclenché, et l'index stale pointait vers Origin.
+
+**Décision technique** : Introduire un `session_key` (label de session active depuis `session_state["picked_session_label"]`) dans `_resolve_nav_index`. Quand le label change — même si le total reste par accident identique — l'index est réinitialisé au dernier match. Garantit que même si le filtre échoue silencieusement, l'utilisateur voit au minimum le match le plus récent, pas un match stale.
+
+**Fichiers modifiés** :
+- `src/app/session_keys.py` : ajout `LAST_MATCH_NAV_SESSION_KEY`
+- `src/ui/pages/last_match.py` : `_resolve_nav_index` accepte `session_key`/`stored_session_key`; `render_last_match_page` lit `picked_session_label` depuis session_state et le passe
+- `src/app/_filters_apply.py` : extraction `_warn_session_filter_empty()` + log WARNING quand candidate vide avec label sélectionné; ancienne logique inline remplacée par l'appel helper
+- `scripts/size_baseline.txt` : resserré (apply_filters 237L→198L, baseline 96→97)
+- `tests/test_last_match_navigation.py` : ajout classe `TestResolveNavIndexSessionKey` (4 tests) + test `LAST_MATCH_NAV_SESSION_KEY` dans `TestSessionKeys`
+
+**Backfill** : session_id NULL corrigés pour JGtm (673 matchs mis à jour via `scripts/backfill_data.py --player JGtm --sessions`).
+
+**Résultats** : 47 tests ciblés passent. Ruff : 0 violation. check_code_size : 0 nouvelle violation.
+
+**Conclusion** : Le bug est corrigé structurellement. Tout changement de session sélectionnée force désormais un reset de navigation, indépendamment du total de matchs.
+
+---
+
 ### [2026-03-19] — Vérification finale : early-exit delta + MV incrémentielles
 **Statut** : Complété
 

@@ -19,6 +19,26 @@ from src.utils.polars_compat import ensure_polars as _to_polars
 logger = logging.getLogger(__name__)
 
 
+def _warn_session_filter_empty(
+    labels: list[str],
+    base_s: pl.DataFrame,
+    dff: pl.DataFrame,
+) -> None:
+    """Journalise l'incohérence quand le filtre session retourne un candidat vide.
+
+    Indique que base_s_ui contient le label demandé mais que les match_ids
+    correspondants sont absents de dff (désynchronisation de cache).
+    La navigation sera corrigée via la clé session_key dans _resolve_nav_index.
+    """
+    logger.warning(
+        "Filtre session vide pour labels=%s (base_s=%d lignes, dff=%d matchs). "
+        "L'index de navigation sera réinitialisé via session_key.",
+        labels,
+        len(base_s),
+        len(dff),
+    )
+
+
 def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
     dff: pl.DataFrame,
     filter_state: FilterState,  # noqa: F821 — forward ref, importé lazy
@@ -109,48 +129,7 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 if not candidate.is_empty():
                     dff = candidate
                 elif filter_state.picked_session_labels:
-                    # Désynchronisation base_s_ui / dff : le label est connu dans
-                    # base_s_ui mais les match_ids correspondants sont absents de dff.
-                    # Tentative de recalcul à chaud (ignorant base_s_ui).
-                    logger.warning(
-                        "Filtre session vide pour labels=%s "
-                        "(base_s=%d lignes, dff=%d matchs) — recalcul de secours...",
-                        filter_state.picked_session_labels,
-                        len(base_s),
-                        len(dff),
-                    )
-                    if db_path and xuid:
-                        base_s_fresh = _to_polars(
-                            cached_compute_sessions_db(
-                                db_path,
-                                xuid.strip(),
-                                db_key,
-                                True,
-                                filter_state.gap_minutes,
-                                friends_xuids=filter_state.friends_tuple,
-                            )
-                        )
-                        if not base_s_fresh.is_empty():
-                            session_subset_fresh = base_s_fresh.filter(
-                                pl.col("session_label").is_in(filter_state.picked_session_labels)
-                            )
-                            ids_fresh = set(
-                                session_subset_fresh["match_id"].cast(pl.Utf8).to_list()
-                            )
-                            candidate_fresh = dff.filter(
-                                pl.col("match_id").cast(pl.Utf8).is_in(list(ids_fresh))
-                            )
-                            if not candidate_fresh.is_empty():
-                                logger.info(
-                                    "Recalcul de secours réussi : %d matchs trouvés",
-                                    len(candidate_fresh),
-                                )
-                                dff = candidate_fresh
-                            else:
-                                logger.warning(
-                                    "Recalcul de secours aussi vide — dff inchangé (%d matchs)",
-                                    len(dff),
-                                )
+                    _warn_session_filter_empty(filter_state.picked_session_labels, base_s, dff)
         else:
             dff = dff.clone()
 
