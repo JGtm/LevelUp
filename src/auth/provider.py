@@ -330,8 +330,9 @@ async def _get_access_token_interactive(db_path: Path) -> str:
         from src.auth._msal import DeviceFlowError
 
         raise DeviceFlowError(
+            "refresh_token_mode",
             "auth_method=refresh_token : Device Code Flow interactif désactivé. "
-            "Configurer SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> dans .env.local."
+            "Configurer SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> dans .env.local.",
         )
 
     # Device Code Flow interactif
