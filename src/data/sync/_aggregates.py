@@ -68,8 +68,11 @@ class AggregatesMixin:
                         self._xuid,
                         read_only=False,
                     )
+                    # Forcer l'initialisation de la connexion ET l'ATTACH de shared
+                    # pendant que sync_mode est encore désactivé (connexion lazy).
+                    repo._get_connection()
                 finally:
-                    begin_sync_mode()  # Rétablir immédiatement pour protéger la suite
+                    begin_sync_mode()  # Rétablir après que la connexion est établie
 
                 try:
                     repo.refresh_materialized_views(new_ids=new_ids)
