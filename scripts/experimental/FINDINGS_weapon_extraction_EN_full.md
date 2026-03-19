@@ -1,7 +1,50 @@
-# Weapon Extraction — Research Summary (Investigations #1–125)
+# Weapon Extraction — Research Summary (Investigations #1–134)
 
 > Branch: `experimental/film-weapon-extraction`
-> Last updated: 2026-03-09
+> Last updated: 2026-03-19
+
+---
+
+## ⚠️ ERRATUM — 2026-03-19 (inv#134 + acurtis document 2026-03-18)
+
+L'ERRATUM du 2026-03-18 concernant `fire_seq % n_players` était une **APPROXIMATION**, pas la formule définitive. La formule correcte est dans b5 :
+
+**Formule definitive (inv#134, validée sur 3 matchs)** :
+```
+b5 = nibble-shifted bitstream byte at event_start+32 bits
+player_index = b5 >> 4   (4 bits de poids fort)
+slot         = b5 & 0x03  (1 = primary, 3 = secondary)
+```
+
+Valeurs b5 observées : `{3, 17, 19, 33, 35, 49, 51, 65, 81, 83, 97, 99, 113, 115}` = 8 players × 2 slots.
+
+**Résultats de validation (inv#134, 2026-03-19)** :
+| Match | Mode | Kills | Conf (<500ms) | Taux |
+|-------|------|-------|---------------|------|
+| a974fdeb | Quick Play | 87 | 73 | 84% |
+| f2f81265 | Quick Play | 98 | 87 | 89% |
+| d9329229 | Quick Play | 97 | 92 | 95% |
+
+Script de référence : `scripts/experimental/inv134_b5_pi_attribution.py`
+
+---
+
+## ⚠️ ERRATUM — 2026-03-18 (inv#131–132 + confirmation acurtis)
+
+Plusieurs conclusions de ce document sont **INVALIDÉES** :
+
+| Section | Affirmation incorrecte | Réalité établie |
+|---|---|---|
+| §1 diagramme Section 2 | `Per-frame fire events — POV only (pi=1)` | **FAUX** — tous les joueurs présents dans chaque chunk |
+| §1 fire event struct `[1] (pi<<5)\|0x06 = pi=1 POV` | byte[1]=0x26 encode le player_index=1 du POV | byte[1]=0x26 est un **marqueur structurel fixe** universel (même valeur pour tous les joueurs) |
+| §1 `Marker: 0b101 0010 0110 (LSBs=101, then 0x26 = pi=1 POV)` | Idem | Le marqueur 11-bit est fixe, pas lié au POV |
+| §1 Player Index table `Fire events: pi = pb >> 5 / pi=1 POV` | Le pi du feu event se lit dans byte[1] | **FAUX** — byte[1]=0x26 est constant. Le pi se lit dans **b5 >> 4** (pas fire_seq % n) |
+| §3 `T0 opponent fire events \| Impossible` | Le serveur ne réplique pas les events adverses | **FAUX** — confirmé par acurtis. Tous les fire events de tous les joueurs sont présents. |
+| §2a titre `POV Fire Events` | Ne concerne que le POV | Les fire events couvrent tous les joueurs. |
+
+**Note** : La formule `fire_seq % n_players` (inv#132) était une approximation qui fonctionnait sur d9329229 (8 joueurs, modulo exact) mais échouait sur a974fdeb (9 joueurs, n_eff incorrect). La vraie formule est b5>>4 ci-dessus.
+
+---
 > Main dataset: `d9329229` — Team Slayer 4v4, 8 players, ~545s, 97 kills, 28 chunks
 > Reference match: `04f7d9d5` — Slayer Arena, 11/11 kills (100%)
 
@@ -49,7 +92,7 @@ Each match film is split into ~28 chunks. Every chunk has two sections:
 │  SECTION 2 — Frame Stream  (last ~12–20% of chunk)          │
 │                                                              │
 │  Frame markers: A0 7B 42  (~565–691 per chunk, ~30fps)      │
-│  Per-frame fire events — POV only (pi=1)                    │
+│  Per-frame fire events — ALL players (⚠️ NOT POV-only)       │
 │  Nibble-shifted (4-bit offset), not byte-aligned            │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -58,12 +101,13 @@ Each match film is split into ~28 chunks. Every chunk has two sections:
 
 ```
 Bitstring scan: 11-bit marker search at all bit positions (bytealigned=False)
-Marker: 0b101 0010 0110  (LSBs=101, then 0x26 = pi=1 POV)
+Marker: 0b101 0010 0110  (LSBs=101, then 0x26 — FIXED for ALL players ⚠️ NOT pi=1)
 
 [0]    (variable:5 | 0b101:3)   lead byte — only 3 LSBs constant
                                 correct filter: (byte[0] & 0x07) == 0x05
-[1]    (pi << 5) | 0x06        e.g. 0x26 = pi=1 (POV)
-[2]    b2_stream                dual-stream discriminator
+[1]    0x26                     FIXED structural marker — same for ALL players
+                                ⚠️ ERRATUM: was incorrectly described as (pi<<5)|0x06 = pi=1
+[2]    fire_seq                 player attribution: pi = fire_seq % n_players  ← KEY FIELD
 [3]    0x40–0x43                filter: (byte3 & 0xFC) == 0x40
 [4]    fire_counter             tick-indexed, increments by 8, wraps at 256
 [5]    b5                       correlated with b2
@@ -74,14 +118,14 @@ Marker: 0b101 0010 0110  (LSBs=101, then 0x26 = pi=1 POV)
 > Scanning method: `bitstring` 11-bit search at all bit positions (inv #54).
 > Yields +6.1% events vs legacy double-pass (5247 vs 4947 on 3 matches, 79 chunks).
 
-### Player Index: Two Conflicting Schemes
+### Player Index: Two Independent Schemes
 
-| Stream | Scheme | POV value | Formula |
+| Stream | Field | Formula | Note |
 |---|---|---|---|
-| Fire events (Section 2) | `pi = pb >> 5` | pi = 1 | upper 3 bits of payload byte |
-| Snapshot events (Section 1, Formula A/B) | `pi = pb & 0x07` | pi = 3 | lower 3 bits |
+| Fire events (Section 2) | byte[2] = `fire_seq` | `pi = fire_seq % n_players` | ⚠️ ERRATUM: was incorrectly `pb >> 5` from byte[1] |
+| Snapshot events (Section 1, Formula A/B) | `pb` byte | `pi = pb & 0x07` (Formula B) or `pb >> 5` (Formula A) | unchanged |
 
-**0% concordance** — these are independent numbering systems.
+**0% concordance** — these are independent numbering systems (different pi values for the same player).
 
 ### Player Index Detection (non-POV, inv #26)
 
