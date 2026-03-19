@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import logging
 from datetime import datetime
+from pathlib import Path
 
 import streamlit as st
 
@@ -101,7 +103,7 @@ def _render_rank_section(  # noqa: C901, PLR0912, PLR0915
     _render_xp_history(db_path, xuid, is_max, xp_total)
 
 
-def _render_rank_header(  # noqa: PLR0913
+def _render_rank_header(  # noqa: PLR0913, PLR0912
     career_data: dict,
     rank_number: int,
     rank_label_fr: str,
@@ -125,12 +127,30 @@ def _render_rank_header(  # noqa: PLR0913
                 auto_refresh_hours=24,
             )
             if local_adornment:
-                st.image(local_adornment, width=140)
-                displayed_icon = True
+                # data URI base64 : stable entre re-runs (pas d'ID éphémère Streamlit)
+                try:
+                    data = base64.b64encode(Path(local_adornment).read_bytes()).decode()
+                    st.markdown(
+                        f'<img src="data:image/png;base64,{data}" width="140">',
+                        unsafe_allow_html=True,
+                    )
+                    displayed_icon = True
+                except Exception:
+                    logger.debug("career: lecture adornment échouée, fallback st.image")
+                    st.image(local_adornment, width=140)
+                    displayed_icon = True
         if not displayed_icon:
             icon_path = get_rank_icon_path(rank_number) if rank_number else None
             if icon_path and icon_path.exists():
-                st.image(str(icon_path), width=120)
+                try:
+                    data = base64.b64encode(icon_path.read_bytes()).decode()
+                    st.markdown(
+                        f'<img src="data:image/png;base64,{data}" width="120">',
+                        unsafe_allow_html=True,
+                    )
+                except Exception:
+                    logger.debug("career: lecture rank icon échouée, fallback st.image")
+                    st.image(str(icon_path), width=120)
             else:
                 st.markdown(f"### {rank_number}")
         recorded_at = career_data.get("recorded_at")

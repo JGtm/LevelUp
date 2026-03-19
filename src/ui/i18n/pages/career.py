@@ -286,11 +286,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Humiliation",
     },
     "career_top_legend_domination": {
-        "fr": 'Votre équipe a reçu la médaille "À table" (Steaktacular)',
+        "fr": 'Votre équipe a reçu la médaille "À table"',
         "en": 'Your team received the "Steaktacular" medal',
     },
     "career_top_legend_humiliation": {
-        "fr": 'L\'équipe adverse a reçu la médaille "À table" (Steaktacular)',
+        "fr": 'L\'équipe adverse a reçu la médaille "À table"',
         "en": 'The enemy team received the "Steaktacular" medal',
     },
     # ── Citations ───────────────────────────────────────────────────────────
