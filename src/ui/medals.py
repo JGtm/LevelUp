@@ -1,18 +1,20 @@
 """Gestion des médailles : labels, icônes et affichage en grille.
 
-Ce module centralise les fonctions liées aux médailles Halo Infinite :
-- Chargement des labels (DB-first, JSON-fallback)
+Ce module centralise les fonctions UI liées aux médailles Halo Infinite :
+- Chargement des labels depuis ``medal_definitions`` (metadata.duckdb)
 - Récupération des icônes embarquées (static/medals/icons/)
 - Affichage d'une grille de médailles dans Streamlit
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 
 import streamlit as st
+
+from src.utils.db import duckdb_read_only
+from src.utils.paths import get_metadata_db_path
 
 __all__ = [
     "load_medal_name_maps",
@@ -26,102 +28,29 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
-def _medals_json_mtime() -> float:
-    """Date de modification des JSON médailles (pour invalider le cache)."""
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    base = os.path.join(repo_root, "static", "medals")
-    t = 0.0
-    for name in ("medals_fr.json", "medals_en.json"):
-        p = os.path.join(base, name)
-        if os.path.exists(p):
-            t = max(t, os.path.getmtime(p))
-    return t
-
-
 @st.cache_data(show_spinner=False)
-def load_medal_name_maps(_json_mtime: float = 0.0) -> tuple[dict[str, str], dict[str, str]]:
-    """Charge les labels de médailles (DB-first, JSON-fallback).
-
-    Stratégie :
-    1. Tente de charger depuis ``metadata.medal_definitions`` via DuckDB.
-    2. Si >= 100 entrées → construit les dicts depuis le DataFrame.
-    3. Sinon → fallback JSON classique.
+def load_medal_name_maps() -> tuple[dict[str, str], dict[str, str]]:
+    """Charge les labels de médailles depuis ``metadata.medal_definitions``.
 
     Returns:
         Tuple (fr_map, en_map) où chaque map est {str(NameId): "Label"}.
     """
-    # ── Tentative DB ──
-    fr_map, en_map = _load_from_db()
-    if len(fr_map) >= 100:
-        logger.info("Medal definitions chargées depuis DB : %d entrées", len(fr_map))
-        return fr_map, en_map
+    db_path = get_metadata_db_path()
+    if not db_path.exists():
+        logger.warning("metadata.duckdb introuvable : %s", db_path)
+        return {}, {}
 
-    # ── Fallback JSON ──
-    logger.warning("Fallback JSON médailles actif (DB vide ou inaccessible)")
-    return _load_from_json()
-
-
-def _load_from_db() -> tuple[dict[str, str], dict[str, str]]:
-    """Charge les labels médailles depuis metadata.duckdb."""
-    try:
-        import duckdb
-
-        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        meta_path = os.path.join(repo_root, "data", "warehouse", "metadata.duckdb")
-        if not os.path.exists(meta_path):
-            logger.debug("metadata.duckdb introuvable : %s", meta_path)
-            return {}, {}
-        conn = duckdb.connect(meta_path, read_only=True)
+    with duckdb_read_only(db_path) as conn:
         try:
             rows = conn.execute(
                 "SELECT medal_name_id, name_fr, name_en FROM medal_definitions"
             ).fetchall()
-        except Exception as e:
-            logger.debug("Erreur requête medal_definitions : %s", e)
-            return {}, {}
-        finally:
-            conn.close()
-        fr_map = {str(r[0]): r[1] for r in rows if r[1]}
-        en_map = {str(r[0]): r[2] for r in rows if r[2]}
-        return fr_map, en_map
-    except Exception as e:
-        logger.debug("Erreur chargement medal_definitions depuis DB : %s", e)
-        return {}, {}
-
-
-def _load_from_json() -> tuple[dict[str, str], dict[str, str]]:
-    """Charge les labels médailles depuis les fichiers JSON statiques."""
-
-    def _load(path: str) -> dict[str, str]:
-        if not os.path.exists(path):
-            return {}
-        try:
-            with open(path, encoding="utf-8") as f:
-                raw = json.load(f) or {}
         except Exception:
-            return {}
-        if not isinstance(raw, dict):
-            return {}
+            logger.debug("Erreur requête medal_definitions")
+            return {}, {}
 
-        out: dict[str, str] = {}
-        for k, v in raw.items():
-            kid = str(k)
-            if isinstance(v, str) and v.strip():
-                out[kid] = v.strip()
-                continue
-            if isinstance(v, dict):
-                for key in ("fr", "name_fr", "nameFr", "label_fr", "labelFr", "label", "name"):
-                    val = v.get(key)
-                    if isinstance(val, str) and val.strip():
-                        out[kid] = val.strip()
-                        break
-        return out
-
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    fr_map = _load(os.path.join(repo_root, "static", "medals", "medals_fr.json"))
-    en_map = _load(os.path.join(repo_root, "static", "medals", "medals_en.json"))
-    if not en_map:
-        en_map = _load(os.path.join(repo_root, "static", "medals", "medals.json"))
+    fr_map = {str(r[0]): r[1] for r in rows if r[1]}
+    en_map = {str(r[0]): r[2] for r in rows if r[2]}
     return fr_map, en_map
 
 
@@ -144,7 +73,7 @@ def medal_has_known_label(nid: int) -> bool:
     Returns:
         True si un label existe, False sinon.
     """
-    fr_map, en_map = load_medal_name_maps(_json_mtime=_medals_json_mtime())
+    fr_map, en_map = load_medal_name_maps()
     key = str(int(nid))
     return key in fr_map or key in en_map
 
@@ -159,7 +88,7 @@ def medal_label(nid: int, lang: str = "fr") -> str:
     Returns:
         Label de la médaille ou générique si inconnu.
     """
-    fr_map, en_map = load_medal_name_maps(_json_mtime=_medals_json_mtime())
+    fr_map, en_map = load_medal_name_maps()
     key = str(int(nid))
     if lang == "en":
         return en_map.get(key) or fr_map.get(key) or f"Medal #{nid}"

@@ -36,7 +36,7 @@ FUNC:src/data/sync/transformers/_skill.py:127:transform_all_skill_stats:142L
 FUNC:src/data/sync/transformers/_skill.py:24:transform_skill_stats:100L
 FUNC:src/ui/_cache_sessions.py:21:cached_compute_sessions_db:198L
 FUNC:src/ui/cache_loaders.py:207:load_df_optimized:96L
-FUNC:src/ui/commendations.py:312:render_h5g_commendations_section:163L
+FUNC:src/ui/commendations.py:283:render_h5g_commendations_section:163L
 FUNC:src/ui/components/_radar_participation.py:151:create_participation_profile_radar:140L
 FUNC:src/ui/components/_radar_participation.py:17:create_participation_radar:131L
 FUNC:src/ui/components/_radar_teammates.py:112:create_session_trend_radar:94L
@@ -72,7 +72,6 @@ FUNC:src/visualization/_distributions_advanced.py:18:plot_correlation_scatter:13
 FUNC:src/visualization/_match_impact_events.py:72:compute_single_match_impact:133L
 FUNC:src/visualization/_perf_session.py:21:plot_session_trend:114L
 FUNC:src/visualization/_timeseries_progression.py:189:plot_lusr_timeseries:89L
-FUNC:src/visualization/_timeseries_progression.py:197:plot_lusr_timeseries:89L
 FUNC:src/visualization/distributions.py:183:plot_histogram:107L
 FUNC:src/visualization/distributions.py:32:plot_kda_distribution:87L
 FUNC:src/visualization/distributions_outcomes.py:173:plot_win_ratio_heatmap:105L
@@ -96,7 +95,6 @@ FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:38:plot_trio_metric:183L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:550L
-MODULE:src/data/services/teammates_service.py:502L
 MODULE:src/data/sync/_match_processing.py:544L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L

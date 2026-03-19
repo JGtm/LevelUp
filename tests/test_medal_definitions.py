@@ -176,74 +176,55 @@ def test_get_medal_label_no_metadata(tmp_path):
     assert repo.get_medal_label(17866865, "fr") is None
 
 
-# ── Phase 5 : UI fallback ────────────────────────────────────────────────────
+# ── Phase 5 : UI — DB-only, pas de fallback JSON ─────────────────────────────
 
 
-def test_json_fallback_on_empty_db(tmp_path, caplog):
-    """DB vide → fallback JSON avec WARNING loggé."""
-    # Créer une metadata DB avec table vide
-    db_path = tmp_path / "metadata.duckdb"
-    conn = duckdb.connect(str(db_path))
+def test_empty_db_returns_empty_maps(tmp_path):
+    """DB vide → dicts vides (pas de fallback JSON)."""
+    from unittest.mock import patch as _patch
+
     from src.data.sync.migrations import ensure_medal_definitions_table
 
+    db_path = tmp_path / "metadata.duckdb"
+    conn = duckdb.connect(str(db_path))
     ensure_medal_definitions_table(conn)
     conn.close()
 
-    from src.ui.medals import _load_from_db
+    from src.ui.medals import load_medal_name_maps
 
-    fr_map, en_map = (
-        _load_from_db.__wrapped__(db_path=str(db_path))
-        if hasattr(_load_from_db, "__wrapped__")
-        else _try_load_from_db_direct(db_path)
-    )
-    # La DB a 0 entrées → dicts vides
+    with _patch("src.ui.medals.get_metadata_db_path", return_value=db_path):
+        load_medal_name_maps.clear()
+        fr_map, en_map = load_medal_name_maps()
+
     assert len(fr_map) == 0
-
-
-def _try_load_from_db_direct(db_path):
-    """Helper pour tester _load_from_db directement."""
-    import duckdb as _duckdb
-
-    conn = _duckdb.connect(str(db_path), read_only=True)
-    try:
-        rows = conn.execute(
-            "SELECT medal_name_id, name_fr, name_en FROM medal_definitions"
-        ).fetchall()
-    except Exception:
-        return {}, {}
-    finally:
-        conn.close()
-    fr_map = {str(r[0]): r[1] for r in rows if r[1]}
-    en_map = {str(r[0]): r[2] for r in rows if r[2]}
-    return fr_map, en_map
+    assert len(en_map) == 0
 
 
 def test_db_path_used_when_available(tmp_metadata_db):
-    """Quand la DB a des entrées, _load_from_db les retourne."""
-    conn = duckdb.connect(str(tmp_metadata_db), read_only=True)
-    rows = conn.execute("SELECT medal_name_id, name_fr, name_en FROM medal_definitions").fetchall()
-    conn.close()
-    fr_map = {str(r[0]): r[1] for r in rows if r[1]}
+    """Quand la DB a des entrées, load_medal_name_maps les retourne."""
+    from unittest.mock import patch as _patch
+
+    from src.ui.medals import load_medal_name_maps
+
+    with _patch("src.ui.medals.get_metadata_db_path", return_value=tmp_metadata_db):
+        load_medal_name_maps.clear()
+        fr_map, en_map = load_medal_name_maps()
+
     assert len(fr_map) >= 2
     assert "17866865" in fr_map
     assert fr_map["17866865"] == "Affection"
 
 
-def test_json_fallback_on_db_error(tmp_path):
-    """Si la DB n'existe pas, _load_from_db retourne des dicts vides."""
+def test_missing_db_returns_empty_maps(tmp_path):
+    """Si la DB n'existe pas, retourne des dicts vides."""
+    from unittest.mock import patch as _patch
 
-    def patched():
-        fake_path = str(tmp_path / "nonexistent.duckdb")
-        # Simulate by calling with non-existent path
-        try:
-            import duckdb
+    from src.ui.medals import load_medal_name_maps
 
-            conn = duckdb.connect(fake_path, read_only=True)
-            conn.close()
-        except Exception:
-            pass
-        return {}, {}
+    absent = tmp_path / "nonexistent.duckdb"
+    with _patch("src.ui.medals.get_metadata_db_path", return_value=absent):
+        load_medal_name_maps.clear()
+        fr_map, en_map = load_medal_name_maps()
 
-    fr_map, en_map = patched()
     assert fr_map == {}
     assert en_map == {}

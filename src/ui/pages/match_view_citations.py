@@ -25,17 +25,17 @@ def render_match_citations_section(  # noqa: C901, PLR0912, PLR0915
     import os as _os
 
     from src.analysis.citations.engine import CitationEngine
+    from src.data.citation_definitions import load_citation_definitions
     from src.ui.commendations import (
         _compute_mastery_display,
         _img_data_uri,
         _img_src,
-        _load_citations_from_db,
         _parse_tier_targets,
     )
 
     logger.debug("Chargement citations match=%s xuid=%s", match_id, xuid)
 
-    citations_db = _load_citations_from_db()
+    citations_db = load_citation_definitions()
     if not citations_db:
         st.caption(t("mv_citations_unavailable"))
         return
