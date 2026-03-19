@@ -226,9 +226,21 @@ def _load_weapon_items(repo: object, xuid: str, match_id: str, lang: str) -> lis
     try:
         grenade, melee = repo.load_grenade_melee_kills(str(xuid).strip(), [match_id])
         if grenade > 0:
-            items.append(WeaponDetailItem(name=t("col_grenade_kills"), count=grenade))
+            items.append(
+                WeaponDetailItem(
+                    name=t("col_grenade_kills"),
+                    count=grenade,
+                    asset_url=weapon_asset_url("Grenade"),
+                )
+            )
         if melee > 0:
-            items.append(WeaponDetailItem(name=t("col_melee"), count=melee))
+            items.append(
+                WeaponDetailItem(
+                    name=t("col_melee"),
+                    count=melee,
+                    asset_url=weapon_asset_url("Melee"),
+                )
+            )
     except Exception:
         pass
 
@@ -382,7 +394,10 @@ def _render_medals_section(medals: Sequence[MedalDetailItem]) -> str:
     """Construit la section médailles avec icônes compactes."""
     rows = []
     for medal in medals:
-        tooltip_text = html.escape(medal.description or medal.name)
+        if medal.description:
+            tooltip_text = html.escape(f"{medal.name} : {medal.description}")
+        else:
+            tooltip_text = html.escape(medal.name)
         icon_html = ""
         if medal.icon_url:
             icon_html = (
@@ -392,7 +407,6 @@ def _render_medals_section(medals: Sequence[MedalDetailItem]) -> str:
         rows.append(
             f"<div class='os-sb-detail-item os-sb-detail-item--medal' title='{tooltip_text}'>"
             f"{icon_html}"
-            f"<span class='os-sb-detail-item-label'>{html.escape(medal.name)}</span>"
             f"<span class='os-sb-detail-item-value'>{html.escape(str(medal.count))}</span>"
             "</div>"
         )
