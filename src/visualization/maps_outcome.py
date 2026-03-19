@@ -351,6 +351,7 @@ def _add_bullet_bar_traces(  # noqa: PLR0913
     _mn = d["map_name"]  # type: ignore[index]
     for trace_kwargs in (
         {
+            # 1er : hist arrière-plan pour le cas under
             "x": under_hist_x,
             "name": hist_lbl,
             "legendgroup": "hist",
@@ -360,15 +361,7 @@ def _add_bullet_bar_traces(  # noqa: PLR0913
             "hovertemplate": h_tmpl,
         },
         {
-            "x": under_sess_x,
-            "name": sess_lbl,
-            "legendgroup": "sess",
-            "marker": {"color": under_colors, "line": {"width": 0}},
-            "showlegend": True,
-            "customdata": sess_cd,
-            "hovertemplate": s_tmpl,
-        },
-        {
+            # 2e : barre session arrière pour le cas over (60% opacité)
             "x": over_sess_x,
             "name": sess_lbl,
             "legendgroup": "sess",
@@ -379,6 +372,7 @@ def _add_bullet_bar_traces(  # noqa: PLR0913
             "hovertemplate": s_tmpl,
         },
         {
+            # 3e : hist cap au premier plan pour le cas over
             "x": over_hist_x,
             "name": hist_lbl,
             "legendgroup": "hist",
@@ -386,6 +380,16 @@ def _add_bullet_bar_traces(  # noqa: PLR0913
             "showlegend": False,
             "customdata": hist_cd,
             "hovertemplate": h_tmpl,
+        },
+        {
+            # 4e (LAST = premier plan Plotly) : barre session pour le cas under
+            "x": under_sess_x,
+            "name": sess_lbl,
+            "legendgroup": "sess",
+            "marker": {"color": under_colors, "line": {"width": 0}},
+            "showlegend": True,
+            "customdata": sess_cd,
+            "hovertemplate": s_tmpl,
         },
     ):
         fig.add_trace(go.Bar(y=_mn, **trace_kwargs, **_bar))
@@ -424,8 +428,10 @@ def _add_bullet_overlay_traces(  # noqa: PLR0913
     lang: str = "fr",
 ) -> None:
     """4 traces overlay + entrées légende couleur pour le bullet chart win rate."""
-    rose_behind = "rgba(204,121,167,0.35)"
-    rose_front = "rgba(204,121,167,0.88)"
+    # rose_behind = rose_front : under_sess est en dernier (premier plan), donc la barre rose
+    # n'est visible que là où elle dépasse la barre de session — pas besoin de transparence.
+    rose_behind = _OKABE_ROSE
+    rose_front = _OKABE_ROSE
     transp = "rgba(0,0,0,0)"
     under = [not ov for ov in over_mask]
     under_colors = [c if u else transp for c, u in zip(curr_colors, under, strict=False)]
@@ -434,6 +440,28 @@ def _add_bullet_overlay_traces(  # noqa: PLR0913
         fig, d, over_mask, under_colors, over_colors, rose_behind, rose_front, hist_lbl, sess_lbl
     )
     _add_bullet_color_legend_traces(fig, colors, lang)
+
+    # Marqueurs visibles pour les cartes où le win rate session = 0 %
+    # (barre de longueur 0 = invisible sans cet indicateur)
+    zero_maps = [m for m, wr in zip(d["map_name"], d["win_rate"], strict=False) if float(wr) == 0.0]  # type: ignore[index]
+    if zero_maps:
+        _wr0_lbl = "0% (toutes défaites)" if lang == "fr" else "0% (all losses)"
+        fig.add_trace(
+            go.Scatter(
+                x=[0.0] * len(zero_maps),
+                y=zero_maps,
+                mode="markers",
+                marker={
+                    "symbol": "line-ns",
+                    "size": 14,
+                    "color": colors["red"],
+                    "line": {"color": colors["red"], "width": 3},
+                },
+                name=_wr0_lbl,
+                showlegend=False,
+                hovertemplate=f"%{{y}}<br>{sess_lbl}=0%<extra></extra>",
+            )
+        )
 
 
 def plot_map_winrate_bullet(
