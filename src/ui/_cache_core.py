@@ -101,6 +101,7 @@ COLUMNS_COMMON: list[str] = [
     "enemy_team_score",
     "team_mmr",
     "enemy_mmr",
+    "performance_score",  # pré-calculé all-time depuis player_match_enrichment
 ]
 
 # Colonnes calculées ajoutées par _enrich_matches_df (post-chargement)
