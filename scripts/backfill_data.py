@@ -364,7 +364,7 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
                     )
                     total_dom_updated += result["processed"]
                     logger.info(
-                        "[%s] dominance: %d matchs traités " "(domination: %d, humiliation: %d)",
+                        "[%s] dominance: %d matchs traités (domination: %d, humiliation: %d)",
                         _gt,
                         result["processed"],
                         result["domination"],
@@ -453,6 +453,25 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             logger.info(f"Vengeur : {n} médaille(s) insérée(s)/mise(s) à jour")
         except Exception as e:
             logger.error(f"Erreur --avenger : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
+    # --medal-metadata : peuple medal_definitions dans metadata.duckdb (one-shot)
+    _medal_metadata = getattr(args, "medal_metadata", False)
+    if _medal_metadata:
+        try:
+            from scripts.populate_medal_metadata import populate_medal_definitions
+
+            _force_mm = getattr(args, "force", False)
+            n = populate_medal_definitions(
+                dry_run=getattr(args, "dry_run", False),
+                force=_force_mm,
+            )
+            logger.info(f"Medal metadata : {n} médaille(s) insérée(s)/mise(s) à jour")
+        except Exception as e:
+            logger.error(f"Erreur --medal-metadata : {e}")
             import traceback
 
             traceback.print_exc()

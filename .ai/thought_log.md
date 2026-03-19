@@ -7,6 +7,64 @@
 
 ## Journal
 
+### [2026-03-19] — Audit lecture DB performance_score : 5 recalculs inutiles corrigés
+**Statut** : Complété ✅
+
+**Contexte** : Audit demandé après les modifications de graphes FDA, performances, heatmaps (Fix 7–10 du 2026-03-19 précédent). Vérifier que les données pré-calculées en DB (`performance_score` dans `player_match_enrichment`) sont bien lues plutôt que recalculées.
+
+**Décision technique principale** :
+`performance_score` (colonne DB, source de vérité all-time) était ignoré par 4 sites de rendu graphique qui appellaient `compute_performance_series` systématiquement. Résultat : recalcul O(N) à chaque affichage malgré les données disponibles.
+
+**Sites corrigés** (priorité : `performance_score` DB → `performance` calculé en fallback) :
+
+1. **`src/visualization/_timeseries_progression.py::_ensure_performance_column`** — vérifiait `"performance"` mais ignorait `"performance_score"`. La colonne DB est maintenant reconnue en priorité (comme déjà fait dans `_teammates_trio_helpers.py::_use_or_compute_performance`).
+2. **`src/ui/pages/match_history.py::_add_performance_column`** — appelait toujours `compute_performance_series` sans vérifier `performance_score`.
+3. **`src/ui/pages/explorer_enrich.py::enrich_for_table`** — vérifiait `"performance" not in columns` mais ignorait `performance_score`.
+4. **`src/ui/pages/_session_compare_history.py::_add_performance_display`** — appelait toujours `compute_performance_series`.
+5. **`src/data/services/teammates_service.py::enrich_with_performance_score`** — pour le joueur principal, relisait la DB même si `performance_score` était déjà dans le df (celui-ci venant de `load_matches_as_polars` avec JOIN `player_match_enrichment`).
+
+**Pattern correct** (déjà présent dans `_use_or_compute_performance` de teammates) :
+```python
+if "performance_score" in df.columns and df["performance_score"].drop_nulls().len() > 0:
+    return df.with_columns(pl.col("performance_score").alias("performance"))
+# sinon fallback recalcul
+```
+
+**Résultats** : 4968 tests passent. Baseline taille mise à jour (97 violations connues).
+
+**Contexte FDA** : "FDA" dans la page Séries temporelles = section `ts_fda` (statistiques KDA / distribution, incluant `plot_kda_distribution`). La section est alimentée par `dff["kda"]` lu directement depuis `shared.match_participants` via `load_matches_as_polars` — aucun recalcul identifié dans ce flux.
+
+**Conclusion** : Tous les graphes de performance lisent désormais `performance_score` depuis la DB quand disponible. Le fallback percentile relatif est conservé uniquement pour les coéquipiers non-enrichis.
+
+---
+
+### [2026-03-19] — Table medal_definitions dans metadata.duckdb
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Création d'une table `medal_definitions` dans `metadata.duckdb` comme source canonique des labels et descriptions de médailles (FR/EN), remplaçant les JSON `static/medals/medals_{lang}.json` comme source primaire. Stratégie DB-first avec fallback JSON pour transition progressive.
+
+**Implémentation** (7 phases) :
+1. **Migration** : `ensure_medal_definitions_table()` dans `migrations.py` + step `add_medal_definitions`
+2. **Population** : `scripts/populate_medal_metadata.py` — charge 167 médailles depuis 4 JSON (labels + descriptions FR/EN), détecte custom (>= 9B), UPSERT via INSERT OR REPLACE/IGNORE
+3. **CLI** : `--medal-metadata [--force]` dans `backfill_data.py` — opération one-shot globale
+4. **Repository** : `load_medal_definitions()` (Polars) + `get_medal_label()` dans `MedalsMixin`
+5. **UI** : `load_medal_name_maps()` dans `medals.py` → DB-first (>= 100 entrées), sinon fallback JSON + WARNING
+6. **Audit citations** : aucun doublon trouvé (citations déjà DB-sourced via `citation_mappings`)
+7. **Tests** : 14 tests unitaires + 2 tests intégration
+
+**Résultat** : 167 médailles (dont 1 custom Vengeur) insérées, 117 tests medal-related passent.
+
+**Vérification finale** (logging + tests) :
+- Bare DB connection corrigée dans `populate_medal_metadata.py` main() (try/finally)
+- Logging ajouté : `_load_from_db()` silent except → debug log, `_medals_repo.py` meta-not-attached → debug log
+- Tests ajoutés : `test_load_medal_definitions_no_metadata`, `test_get_medal_label_no_metadata`, `test_load_medal_name_maps_uses_db` (integ)
+- **Total** : 16 tests unitaires + 4 tests intégration, 5097 tests suite complète — 0 régression
+
+**Prochaine étape** : Phase 8 (cleanup post-migration) — à exécuter après 2 semaines de prod sans WARNING "Fallback JSON médailles actif".
+
+---
+
 ### [2026-03-19] — Filtrage des joueurs fantômes (ghost players)
 **Statut** : Complété ✅
 
