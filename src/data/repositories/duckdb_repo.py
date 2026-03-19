@@ -39,7 +39,7 @@ from src.data.repositories._materialized_views import MaterializedViewsMixin
 from src.data.repositories._medals_repo import MedalsMixin
 from src.data.repositories._media_repo import MediaLibraryMixin
 from src.data.repositories._metadata_resolution import MetadataResolutionMixin
-from src.data.repositories._roster_loader import RosterLoaderMixin
+from src.data.repositories._roster_loader import _SQL_NOT_GHOST, RosterLoaderMixin
 from src.data.repositories._schema_introspection import SchemaIntrospectionMixin
 from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
 from src.data.repositories._write_lease import (
@@ -433,21 +433,21 @@ class DuckDBRepository(
                      AND mp1.team_id = mp2.team_id
                     WHERE mp1.xuid = ?
                       AND NOT LOWER(CAST(mp2.xuid AS VARCHAR)) LIKE 'bid(%'
-                      AND NOT (
-                          COALESCE(mp2.kills, 0) = 0
-                          AND COALESCE(mp2.deaths, 0) = 0
-                          AND COALESCE(mp2.assists, 0) = 0
-                          AND COALESCE(mp2.score, 0) = 0
-                          AND (mp2.kills IS NOT NULL OR mp2.deaths IS NOT NULL
-                               OR mp2.assists IS NOT NULL OR mp2.score IS NOT NULL)
-                      )
+                      AND """
+                    + _SQL_NOT_GHOST.format(p="mp2")
+                    + """
                     GROUP BY mp2.xuid
                     ORDER BY matches_together DESC
                     LIMIT ?
                     """,
                     [self._xuid, limit],
                 )
-                return [(row[0], row[1]) for row in result.fetchall()]
+                teammates = [(row[0], row[1]) for row in result.fetchall()]
+                logger.debug(
+                    "list_top_teammates: %d coéquipier(s) (bots/fantômes exclus)",
+                    len(teammates),
+                )
+                return teammates
             except Exception:
                 logger.debug("Erreur chargement coéquipiers fréquents", exc_info=True)
         return []

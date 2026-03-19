@@ -122,6 +122,51 @@ def _assemble_roster(
     return my_team, enemy_team
 
 
+# Requête SQL complète du scoreboard (match_participants + médailles + arme top).
+# Params positionnels : (match_id, match_id, match_id).
+_SCOREBOARD_SQL = (
+    """
+SELECT
+    p.xuid,
+    COALESCE(vg.gamertag, p.gamertag, p.xuid) AS gamertag,
+    p.team_id, p.rank, p.score,
+    p.kills, p.deaths, p.assists, p.kda,
+    p.max_killing_spree, p.headshot_kills,
+    p.shots_fired, p.shots_hit, p.accuracy,
+    p.melee_kills, p.power_weapon_kills,
+    p.damage_dealt, p.damage_taken, p.avg_life_seconds,
+    COALESCE(pk.perfect_kills, 0) AS perfect_kills,
+    wk.weapon_id AS top_weapon_id
+FROM shared.match_participants p
+LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
+LEFT JOIN (
+    SELECT xuid, SUM(count) AS perfect_kills
+    FROM shared.medals_earned
+    WHERE match_id = ? AND medal_name_id = 1512363953
+    GROUP BY xuid
+) pk ON pk.xuid = p.xuid
+LEFT JOIN (
+    SELECT xuid, effective_weapon_id AS weapon_id
+    FROM (
+        SELECT xuid, effective_weapon_id,
+               ROW_NUMBER() OVER (
+                   PARTITION BY xuid ORDER BY COUNT(*) DESC
+               ) AS rn
+        FROM shared.v_weapon_kills
+        WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
+        GROUP BY xuid, effective_weapon_id
+    )
+    WHERE rn = 1
+) wk ON wk.xuid = p.xuid
+WHERE p.match_id = ?
+  AND """
+    + _SQL_NOT_GHOST.format(p="p")
+    + """
+ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST
+"""
+)
+
+
 def _scoreboard_row_to_dict(idx: int, row: tuple) -> dict:
     """Convertit une ligne DuckDB du scoreboard en dict métier."""
     return {
@@ -333,6 +378,11 @@ class RosterLoaderMixin(GamertagResolverMixin):
                         "assists": int(row[7]) if row[7] is not None else 0,
                     }
                 )
+            logger.debug(
+                "load_match_players_stats(%s): %d joueur(s) après filtrage",
+                match_id,
+                len(result),
+            )
             return result
         except Exception as e:
             logger.debug("Erreur load_match_players_stats shared: %s", e)
@@ -363,58 +413,16 @@ class RosterLoaderMixin(GamertagResolverMixin):
 
         try:
             rows = conn.execute(
-                """
-                SELECT
-                    p.xuid,
-                    COALESCE(vg.gamertag, p.gamertag, p.xuid) AS gamertag,
-                    p.team_id,
-                    p.rank,
-                    p.score,
-                    p.kills,
-                    p.deaths,
-                    p.assists,
-                    p.kda,
-                    p.max_killing_spree,
-                    p.headshot_kills,
-                    p.shots_fired,
-                    p.shots_hit,
-                    p.accuracy,
-                    p.melee_kills,
-                    p.power_weapon_kills,
-                    p.damage_dealt,
-                    p.damage_taken,
-                    p.avg_life_seconds,
-                    COALESCE(pk.perfect_kills, 0) AS perfect_kills,
-                    wk.weapon_id AS top_weapon_id
-                FROM shared.match_participants p
-                LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
-                LEFT JOIN (
-                    SELECT xuid, SUM(count) AS perfect_kills
-                    FROM shared.medals_earned
-                    WHERE match_id = ? AND medal_name_id = 1512363953
-                    GROUP BY xuid
-                ) pk ON pk.xuid = p.xuid
-                LEFT JOIN (
-                    SELECT xuid, effective_weapon_id AS weapon_id
-                    FROM (
-                        SELECT xuid, effective_weapon_id,
-                               ROW_NUMBER() OVER (
-                                   PARTITION BY xuid ORDER BY COUNT(*) DESC
-                               ) AS rn
-                        FROM shared.v_weapon_kills
-                        WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
-                        GROUP BY xuid, effective_weapon_id
-                    )
-                    WHERE rn = 1
-                ) wk ON wk.xuid = p.xuid
-                WHERE p.match_id = ?
-                  AND {ghost}
-                ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST""".format(
-                    ghost=_SQL_NOT_GHOST.format(p="p")
-                ),
+                _SCOREBOARD_SQL,
                 [match_id, match_id, match_id],
             ).fetchall()
 
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    "load_match_scoreboard(%s): %d joueur(s) après filtrage fantômes",
+                    match_id,
+                    len(rows),
+                )
             return [_scoreboard_row_to_dict(idx, row) for idx, row in enumerate(rows)]
         except Exception as e:
             logger.debug("Erreur load_match_scoreboard shared: %s", e)

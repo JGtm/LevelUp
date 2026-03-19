@@ -7,7 +7,7 @@
 
 ## Journal
 
-### [2025-07-17] — Filtrage des joueurs fantômes (ghost players)
+### [2026-03-19] — Filtrage des joueurs fantômes (ghost players)
 **Statut** : Complété ✅
 
 **Décision technique principale** :
@@ -37,8 +37,19 @@ NOT (COALESCE(p.kills,0)=0 AND COALESCE(p.deaths,0)=0
 
 **Résultats observés** :
 - Match exemple `a974fdeb...` : 10 → 8 joueurs après filtrage (2 fantômes exclus : 1 humain all-0, 1 bot all-0)
-- 5057/5057 tests passent, 0 échecs
+- 5084/5084 tests passent, 0 échecs
 - Baseline `size_baseline.txt` mis à jour (violation `load_match_scoreboard` résolue par extraction constante)
+
+**Vérification finale (2026-03-19)** :
+- DRY : `_SQL_NOT_GHOST` centralisé dans `_roster_loader.py`, réimporté dans `_career_encounters_repo.py` et `duckdb_repo.py` (plus aucune copie inline)
+- Logging : `load_match_scoreboard`, `load_match_players_stats` et `list_top_teammates` logguent le nombre de joueurs après filtrage en mode DEBUG
+- Tests dédiés : `tests/test_ghost_player_filter.py` — 21 tests couvrant :
+  - `_SQL_NOT_GHOST` (10 cas edge : ghost, NULL, partiel, mixte)
+  - `load_match_scoreboard` (4 tests : ghost, NULL, mix, all-ghosts)
+  - `load_match_players_stats` (2 tests)
+  - `list_top_teammates` (3 tests : ghost, bot, NULL)
+  - `_load_top_encountered` (2 tests : ghost, bot)
+- Requête SQL scoreboard extraite en constante `_SCOREBOARD_SQL` → fonction ≤ 80L
 
 **Conclusion** :
 Filtrage uniforme sur toutes les surfaces. `_SQL_NOT_GHOST` est réutilisable pour d'autres requêtes sur `match_participants`.

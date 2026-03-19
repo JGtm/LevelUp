@@ -12,13 +12,18 @@ from datetime import datetime
 
 from src.analysis._medal_verdicts import DominanceFlag
 from src.data.domain.refdata import Outcome
+from src.data.repositories._roster_loader import _SQL_NOT_GHOST
 
 logger = logging.getLogger(__name__)
+
+# Filtre ghost pré-résolu pour alias 'p' (réutilisé dans _TOP_ENCOUNTERED_SQL).
+_GHOST_FILTER_P = _SQL_NOT_GHOST.format(p="p")
 
 # Durée minimale d'un match "valide" (en secondes).
 MIN_MATCH_DURATION_SECONDS: int = 180
 
-_TOP_ENCOUNTERED_SQL = """
+_TOP_ENCOUNTERED_SQL = (
+    """
 WITH my_matches AS (
     SELECT mp.match_id, mp.team_id, mp.outcome
     FROM shared.match_participants mp
@@ -49,14 +54,9 @@ encounters AS (
     LEFT JOIN  shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
     LEFT JOIN  shared.match_registry r ON r.match_id = p.match_id
     WHERE p.xuid != ?
-      AND NOT (
-          COALESCE(p.kills, 0) = 0
-          AND COALESCE(p.deaths, 0) = 0
-          AND COALESCE(p.assists, 0) = 0
-          AND COALESCE(p.score, 0) = 0
-          AND (p.kills IS NOT NULL OR p.deaths IS NOT NULL
-               OR p.assists IS NOT NULL OR p.score IS NOT NULL)
-      )
+      AND """
+    + _GHOST_FILTER_P
+    + """
       AND NOT LOWER(CAST(p.xuid AS VARCHAR)) LIKE 'bid(%'
     GROUP BY p.xuid
 ),
@@ -80,7 +80,8 @@ FROM encounters e
 LEFT JOIN kvp_agg kvp ON kvp.opp = e.xuid
 ORDER BY e.total_encounters DESC
 LIMIT ?
-"""  # noqa: S608
+"""
+)  # noqa: S608
 
 _ANTAGONISTS_SQL = """
 WITH period_matches AS (
