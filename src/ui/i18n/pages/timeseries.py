@@ -120,11 +120,9 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "ts_note_ewma": {
         "fr": "- Regarde la **direction générale** de la courbe lissée, pas les sommets ou creux individuels\n"
-        "- La droite pointillée confirme une vraie tendance si la courbe lissée la suit de près — sinon les résultats sont trop irréguliers\n"
-        "- Réactivité élevée : utile pour détecter rapidement une rupture de forme dans la session",
+        "- La droite pointillée confirme une vraie tendance si la courbe lissée la suit de près — sinon les résultats sont trop irréguliers",
         "en": "- Focus on the **general direction** of the smoothed curve, not individual peaks or dips\n"
-        "- The dotted line confirms a real trend if the smoothed curve follows it closely — otherwise results are too irregular\n"
-        "- High reactivity: useful for quickly detecting a shift in form during the session",
+        "- The dotted line confirms a real trend if the smoothed curve follows it closely — otherwise results are too irregular",
     },
     "ts_note_regression": {
         "fr": "- **F/D en hausse** → tu progresses sur la session, pas juste de la chance\n"
