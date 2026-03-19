@@ -7,6 +7,49 @@
 
 ## Journal
 
+### [2026-03-19] — Heatmap perf joueur×carte : enrichissement performance_score + colorscale discret
+**Statut** : Complété ✅
+
+**Décision technique** :
+1. **Bug data** : Dans `_render_map_history_section` (vue multi-coéquipiers), ni `sub_all` ni `fr_sub` n'étaient enrichis avec `performance_score` avant d'alimenter `render_squad_heatmap`. `compute_map_breakdown` tombait en fallback percentile relatif au seul subset visible → scores faux. Fix : appel à `TeammatesService.enrich_with_performance_score` après construction de `sub_all` et après filtrage de chaque `fr_sub`, comme le fait déjà la vue single-coéquipier.
+2. **Bug couleurs** : Le colorscale Plotly utilisait une interpolation linéaire entre les seuils → dégradé au lieu de paliers. Fix : colorscale avec ancres dupliquées (`seuil - ε` / `seuil`) pour simuler une transition abrupte, identique à `_perf_color` (rouge/orange/ambre/cyan/vert).
+
+**Fichiers modifiés** : `src/ui/pages/teammates_views.py`, `src/visualization/friends_impact_heatmap.py`
+
+**Résultat** : Heatmap affiche les vrais performance_score stockés en DB pour chaque joueur suivi, et les couleurs correspondent exactement aux paliers de `_perf_color`. Fallback percentile supprimé de `compute_map_breakdown` — absence de données → cellule vide (None), pas de valeur trompeuse.
+
+**Prochaine étape** : Aucune.
+
+---
+
+### [2026-03-19] — Alignement complet formules KDA sur convention A/3 + garde D=0
+**Statut** : Complété ✅
+
+**Contexte** : Après la suppression des fallbacks KDA, l'utilisateur a signalé deux problèmes :
+1. L'API peut retourner des KDA négatifs — nos formules maison avec `max(1, D)` masquent ce cas.
+2. Les indicateurs dérivés agrégés (`_cumulative_series.py`, `cumulative.py`) utilisaient `K + A` au lieu de `K + A/3`, divergeant de la source de vérité.
+
+**Investigation** :
+- `match_participants.kda` = valeur brute API SPNKr (peut être négative, mais nécessite `K < 0`, rare)
+- `mv_player_matches.kda` = recalcul SQL `(K + A/3) / D`, D=0 → `K + A/3` (toujours >= 0 car K/A/D >= 0)
+- Le DataFrame Python reçoit `mv_player_matches.kda` — jamais négatif avec les données actuelles
+- Les formules `max(1, D)` et `K + A` dans les fonctions d'analyse étaient des divergences par rapport à la convention du projet
+
+**Sites corrigés** :
+1. **`stats.py:MatchRow.ratio`** — A/2 → A/3
+2. **`stats.py:AggregatedStats.global_ratio`** — A/2 → A/3
+3. **`stats.py (module):compute_global_ratio`** — A/2 → A/3
+4. **`_performance_relative.py`** — fallback `(K+A)/max(1,D)` → `(K+A/3)/D` avec D=0 → `K+A/3`
+5. **`_performance_relative_helpers.py`** — fallback `(K+A)/D` (D≥1 forcé) → `(K+A/3)/D` avec D=0 → `K+A/3`
+6. **`_cumulative_series.py`** — indicateur dérivé : `(K+A)/max(1,D)` → `(K+A/3)/D` avec D=0 → `K+A/3` (par match et cumulatif)
+7. **`cumulative.py`** — indicateur dérivé : `(ΣK+ΣA)/max(1,ΣD)` → `(ΣK+ΣA/3)/ΣD` avec ΣD=0 → `ΣK+ΣA/3`
+
+**Convention D=0** : quand D=0, retourner `K + A/3` (pas de division, valeur brute positive) — cohérent avec la vue SQL.
+
+**Tests mis à jour** : `test_models.py`, `test_performance_cumulative.py`, `test_analysis.py`, `test_polars_migration.py`, `test_squad_colors.py` (correction assertion marker.color tuple).
+
+**Résultats** : 5066 tests passent, 2 fails pré-existants (sessions.py size + PLR0913).
+
 ### [2026-03-19] — Fix superposition étiquettes "Impact du match" — Complété
 
 **Statut** : Complété
