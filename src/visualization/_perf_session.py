@@ -391,7 +391,7 @@ def _r2_indicator(r_sq: float, is_sig: bool, lang: str) -> go.Indicator:
     return go.Indicator(
         mode="number",
         value=round(r_sq, 2),
-        number={"font": {"size": 32, "color": color}, "suffix": suffix, "valueformat": ".2f"},
+        number={"font": {"size": 32, "color": color}, "suffix": suffix, "valueformat": ".0%"},
         title={"text": viz_t("label_r_squared", lang), "font": {"size": 13}},
     )
 
