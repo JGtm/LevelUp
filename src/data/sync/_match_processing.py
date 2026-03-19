@@ -74,6 +74,12 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
         # matchs "en vol" (fetch + transform) pendant que d'autres font du DB.
         fetch_slots = max(options.parallel_fetch, options.parallel_matches)
         semaphore = asyncio.Semaphore(fetch_slots)
+        logger.debug(
+            "_process_matches: fetch_slots=%d (parallel_fetch=%d, parallel_matches=%d)",
+            fetch_slots,
+            options.parallel_fetch,
+            options.parallel_matches,
+        )
 
         while remaining > 0:
             # Récupérer un batch d'historique

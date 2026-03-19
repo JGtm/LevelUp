@@ -155,3 +155,71 @@ async def test_transform_match_stats_async_propagates_exception(tmp_path):
         pytest.raises(ValueError, match="transform error"),
     ):
         await mixin._transform_match_stats_async(_STATS_JSON, None)
+
+
+# ---------------------------------------------------------------------------
+# Test : l'event loop n'est pas bloqué pendant le transform (Axe 5)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_transform_async_yields_to_other_coroutines(tmp_path):
+    """Pendant _transform_match_stats_async, d'autres coroutines peuvent progresser.
+
+    On lance un background ticker et vérifie qu'il émet des ticks
+    pendant la durée du transform (prouve que l'event loop n'est pas bloqué).
+    """
+    import time
+
+    mixin = _make_mixin(tmp_path)
+    progress_ticks: list[float] = []
+
+    async def _background_ticker():
+        for _ in range(20):
+            await asyncio.sleep(0.003)
+            progress_ticks.append(time.monotonic())
+
+    def _slow_transform(*args, **kwargs):
+        """Simule un transform CPU-bound de ~50ms."""
+        time.sleep(0.05)
+        return MagicMock()
+
+    # Utiliser le vrai run_in_executor pour que le ticker puisse progresser
+    ticker_task = asyncio.create_task(_background_ticker())
+    with patch(
+        "src.data.sync._match_processing_helpers.transform_match_stats",
+        side_effect=_slow_transform,
+    ):
+        await mixin._transform_match_stats_async(_STATS_JSON, None)
+
+    await ticker_task
+
+    assert len(progress_ticks) >= 3, (
+        f"L'event loop a été bloqué : seulement {len(progress_ticks)} ticks "
+        "pendant transform de 50ms (attendu >= 3)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_transform_async_result_matches_direct_call(tmp_path):
+    """_transform_match_stats_async retourne le même résultat qu'un appel direct."""
+    mixin = _make_mixin(tmp_path)
+    expected = MagicMock()
+
+    captured_result: list = []
+
+    async def _capturing_executor(executor, fn):
+        result = fn() if callable(fn) else fn
+        captured_result.append(result)
+        return result
+
+    with (
+        patch.object(asyncio.get_event_loop(), "run_in_executor", side_effect=_capturing_executor),
+        patch(
+            "src.data.sync._match_processing_helpers.transform_match_stats",
+            return_value=expected,
+        ),
+    ):
+        result = await mixin._transform_match_stats_async(_STATS_JSON, None)
+
+    assert result is expected

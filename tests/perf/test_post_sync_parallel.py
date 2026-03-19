@@ -233,3 +233,41 @@ def test_post_sync_citations_sync_fallback(tmp_path):
         result = engine._post_sync_citations_sync()
 
     assert result == {"matches_processed": 0, "citations_computed": 0}
+
+
+# ---------------------------------------------------------------------------
+# Test : log de démarrage et timing émis (Axe 1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_post_sync_logs_start_and_timing(tmp_path, caplog):
+    """_run_post_sync_compute doit loguer démarrage et timing à INFO."""
+    import logging
+
+    engine = _make_engine(tmp_path)
+    options = _make_options()
+
+    future: asyncio.Future = asyncio.get_event_loop().create_future()
+    future.set_result({"matches_processed": 3, "citations_computed": 3})
+
+    loop = asyncio.get_event_loop()
+    with (
+        caplog.at_level(logging.INFO, logger="src.data.sync.engine"),
+        patch.object(loop, "run_in_executor", return_value=future),
+        patch.object(engine, "batch_compute_performance_scores", return_value=5),
+        patch.object(engine, "_compute_dominance_post_sync"),
+        patch(
+            "src.data.sessions_backfill.backfill_sessions_for_player",
+            side_effect=Exception("skip"),
+        ),
+    ):
+        await engine._run_post_sync_compute(options)
+
+    messages = [r.message for r in caplog.records if r.levelno == logging.INFO]
+    assert any(
+        "post_sync" in m and "démarrage" in m for m in messages
+    ), f"Log démarrage post_sync introuvable. Messages INFO : {messages}"
+    assert any(
+        "post_sync" in m and "terminé" in m for m in messages
+    ), f"Log timing post_sync introuvable. Messages INFO : {messages}"
