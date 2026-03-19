@@ -86,7 +86,7 @@ PVP_CITATIONS: list[tuple] = [
      "static/commendations/h5g/H5G_citation_Grenade_%C3%A0_fragmentation.png", "Arme", "Tuez un Spartan adverse à l'aide d'une grenade à fragmentation.", "5,10,15,25,50", "Grenade"),
     ("plasma_grenade", "Grenade à plasma", "medal", 3655682764, None, None, None, None, None, None, "high", "Arme — Médaille Collage (stick plasma)", True,
      "static/commendations/h5g/H5G_citation_Grenade_%C3%A0_plasma.png", "Arme", "Tuez un Spartan adverse à l'aide d'une grenade à plasma.", "2,4,6,10,20", "Grenade"),
-    # ── GROUPE 3 : Multijoueur (9) ─────────────────────────────────────────
+    # ── GROUPE 3 : Multijoueur (10) ────────────────────────────────────────
     ("assassin", "Assassin", "medal", 548533137, None, None, None, None, None, None, "high", "Multijoueur — Médaille Par derrière", True,
      "static/commendations/h5g/H5G_citation_Assassin.png", "Multijoueur", "Assassinez des Spartans adverses.", "5,10,15,25,50", None),
     ("spartan_carnage", "Carnage de Spartans", "stat", None, None, "max_killing_spree", None, None, None, None, "high", "Multijoueur — max killing spree", True,
@@ -105,6 +105,8 @@ PVP_CITATIONS: list[tuple] = [
      "static/commendations/h5g/H5G_citation_Tueur_de_Spartans.png", "Multijoueur", "Éliminez les Spartans ennemis.", "20,40,60,100,200", None),
     ("eagle_eye", "\u0152il de lynx", "medal", 1512363953, None, None, None, None, None, None, "high", "Multijoueur — Médaille Parfait", True,
      "static/commendations/h5g/H5G_citation_%C5%92il_de_lynx.png", "Multijoueur", "Tuez un Spartan adverse en pleine santé à l'aide d'une arme de précision sans manquer un seul coup.", "10,20,30,50,100", None),
+    ("avenger", "Vengeur", "medal", 9000000001, None, None, None, None, None, None, "high", "Multijoueur — Médaille Vengeur", True,
+     "static/commendations/h5g/Assassin_commendation.png", "Multijoueur", "Tuez l'ennemi responsable de votre mort précédente.", "5,15,30,55,105", None),
     # ── GROUPE 4 : Spartan Companies (16) ───────────────────────────────────
     ("flag_em_down", "Sors les drapeaux", "custom", None, None, None, None, None, "compute_flag_em_down", None, "high", "SC — Combine CTF awards", True,
      "static/commendations/h5g/H5G_citation_Flag_%27em_down.png", "Spartan Companies", "Obtenir une des médailles suivantes : Interception, Bataille de drapeaux, Frag du porteur, Retour du drapeau, Défense du drapeau", "1000,2000,3000,4800,9700", None),
