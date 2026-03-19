@@ -113,5 +113,6 @@ _SRP_EXCEPTIONS: frozenset[str] = frozenset(
         "_render_map_and_rank",  # match_view.py — composant UI composite (carte + rang côte à côte)
         "_exchange_and_cache",  # auth/provider.py — échange access_token → Halo tokens + mise en cache (atomique)
         "_run_engine_and_cleanup",  # _sync_duckdb_ops.py — exécute sync + engine.close() (try/finally atomique)
+        "_render_single_teammate_weapon_and_map",  # teammates_views.py — composant UI composite (armes + carte, toujours affichés ensemble)
     }
 )
