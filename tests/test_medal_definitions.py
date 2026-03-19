@@ -192,7 +192,7 @@ def test_empty_db_returns_empty_maps(tmp_path):
 
     from src.ui.medals import load_medal_name_maps
 
-    with _patch("src.ui.medals.get_metadata_db_path", return_value=db_path):
+    with _patch("src.data.medal_definitions.get_metadata_db_path", return_value=db_path):
         load_medal_name_maps.clear()
         fr_map, en_map = load_medal_name_maps()
 
@@ -206,7 +206,7 @@ def test_db_path_used_when_available(tmp_metadata_db):
 
     from src.ui.medals import load_medal_name_maps
 
-    with _patch("src.ui.medals.get_metadata_db_path", return_value=tmp_metadata_db):
+    with _patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_metadata_db):
         load_medal_name_maps.clear()
         fr_map, en_map = load_medal_name_maps()
 
@@ -222,7 +222,7 @@ def test_missing_db_returns_empty_maps(tmp_path):
     from src.ui.medals import load_medal_name_maps
 
     absent = tmp_path / "nonexistent.duckdb"
-    with _patch("src.ui.medals.get_metadata_db_path", return_value=absent):
+    with _patch("src.data.medal_definitions.get_metadata_db_path", return_value=absent):
         load_medal_name_maps.clear()
         fr_map, en_map = load_medal_name_maps()
 
