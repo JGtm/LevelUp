@@ -1,11 +1,11 @@
 """Corrélation globale fire events → kills (claim-and-remove sans bucketing pi).
 
 Dans le protocole film Halo Infinite, tous les fire events partagent le même
-marker fixe (0x26) indépendamment du joueur — le bucketing per-pi via
-scan_fire_events_bitstring est donc non fiable.
+marker universel (0b10100100110). Le player_index est extrait directement de
+b5 >> 4 (inv134) lors du scan — pas de bucketing per-player_index nécessaire.
 
 Ce module fournit correlate_kills_global() qui opère sur un pool unique
-d'events, toutes têtes triées par temps, claim-and-remove global bijection.
+d'events triés par temps, avec filtre player_index == killer_pi (claim-and-remove).
 """
 
 from __future__ import annotations
@@ -42,21 +42,10 @@ def correlate_kills_global(  # noqa: PLR0913
     timeline_ns: dict[int, dict[int, bytes]] | None = None,
     log_collector: MatchLogCollector | None = None,
 ) -> list[KillAttribution]:
-    """Corrélation globale tous joueurs — claim-and-remove sur pool unique.
+    """Corrélation claim-and-remove par joueur via player_index.
 
-    Remplace correlate_kills() quand le marker de fire event est fixe (0x26)
-    et que le bucketing per-pi ne discrimine pas les joueurs.
-
-    Tri kills par temps → claim-and-remove : chaque fire event ne sert qu'une
-    fois, la priorité va au kill le plus précoce.
-
-    Args:
-        kills: Tous les kills de tous les joueurs du match (avec "xuid").
-        fire_events_all: Pool global de tous les fire events (tous pi fusionnés).
-        xuid_to_pi: {xuid: pi} pour le fallback Formula A.
-        timeline/swap_pis/timing/chunks_sorted: état Section 1 pour Formula A.
-        match_id: Pour le logging.
-        log_collector: Collecteur de logs structurés (optionnel).
+    Chaque kill ne consomme que les fire events dont player_index correspond
+    au pi du tueur (b5>>4, extrait lors du scan — inv134).
     """
     from src.analysis.weapon_parser import (
         KILL_WINDOW_MS,
@@ -76,10 +65,12 @@ def correlate_kills_global(  # noqa: PLR0913
             attr = _make_sentinel_global(kill, match_id, GRENADE_WEAPON_ID)
         else:
             t_ms = kill["time_ms"]
+            killer_pi = xuid_to_pi.get(kill["xuid"])
             candidates = [
                 (i, ev)
                 for i, ev in enumerate(available)
                 if (t_ms - KILL_WINDOW_MS) <= ev["timestamp_ms"] <= t_ms
+                and (killer_pi is None or ev.get("player_index") == killer_pi)
             ]
             if candidates:
                 best_idx, best_ev = max(candidates, key=lambda x: x[1]["timestamp_ms"])
