@@ -97,7 +97,7 @@ def plot_friends_impact_heatmap(  # noqa: C901, PLR0912, PLR0915
 
     # Récupérer les valeurs uniques
     all_gamertags = sorted(impact_matrix["gamertag"].unique().to_list())
-    match_ids = impact_matrix["match_id"].unique().to_list()
+    match_ids = impact_matrix["match_id"].unique(maintain_order=True).to_list()
 
     # Séparer la ligne "Résultat" des joueurs et extraire les outcomes
     gamertags = [g for g in all_gamertags if g != "Résultat"]

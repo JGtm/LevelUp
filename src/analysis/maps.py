@@ -1,8 +1,12 @@
 """Analyse par carte (map)."""
 
+import logging
+
 import polars as pl
 
 from src.analysis.performance_score import compute_performance_series
+
+logger = logging.getLogger(__name__)
 from src.analysis.stats import compute_global_ratio, compute_outcome_rates
 from src.data.domain.models.stats import MapBreakdown
 from src.utils.polars_compat import ensure_polars as _to_polars
@@ -88,16 +92,23 @@ def compute_map_breakdown(df: pl.DataFrame, df_history: pl.DataFrame | None = No
             acc_val = g.select(pl.col("accuracy").cast(pl.Float64, strict=False).mean()).item()
             acc = float(acc_val) if acc_val is not None else None
 
-        # Calcul de la performance moyenne RELATIVE pour cette carte
-        # compute_performance_series accepte Polars nativement
-        perf_series = compute_performance_series(g, history_pl)
-        if isinstance(perf_series, pl.Series):
-            perf_clean = perf_series.drop_nulls()
-            perf_avg = float(perf_clean.mean()) if len(perf_clean) > 0 else None
+        # Calcul de la performance moyenne pour cette carte.
+        # Priorité : colonne performance_score pré-calculée (all-time, source de vérité).
+        # Fallback : recalcul percentile relatif à history_pl (moins précis).
+        perf_avg: float | None = None
+        if "performance_score" in g.columns:
+            perf_vals = g["performance_score"].drop_nulls()
+            perf_avg = float(perf_vals.mean()) if len(perf_vals) > 0 else None
         else:
-            # Fallback Pandas Series
-            perf_scores = perf_series.dropna()
-            perf_avg = float(perf_scores.mean()) if not perf_scores.empty else None
+            logger.debug("compute_map_breakdown: performance_score absent pour %s → fallback percentile", map_name)
+            perf_series = compute_performance_series(g, history_pl)
+            if isinstance(perf_series, pl.Series):
+                perf_clean = perf_series.drop_nulls()
+                perf_avg = float(perf_clean.mean()) if len(perf_clean) > 0 else None
+            else:
+                # Fallback Pandas Series
+                perf_scores = perf_series.dropna()
+                perf_avg = float(perf_scores.mean()) if not perf_scores.empty else None
 
         rows.append(
             {
