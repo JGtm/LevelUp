@@ -8,6 +8,32 @@ from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
+# Couleurs "négatives" explicites, une par slot Okabe-Ito.
+# Toutes dans la famille rouge-orange, variées en luminance/teinte pour
+# rester distinguables y compris pour les daltoniens (variation de luminance).
+# Slot 0 (Sky Blue)       → rouge cramoisi clair
+# Slot 1 (Orange)         → rouge brique saturé
+# Slot 2 (Bluish Green)   → rouge sombre (basse luminance)
+# Slot 3 (Reddish Purple) → vermillon chaud
+# Slot 4 (Vermilion)      → rouge profond / bordeaux
+_OKABE_NEGATIVE_COLORS: dict[str, str] = {
+    "#56B4E9": "#c0392b",  # cramoisi clair
+    "#E69F00": "#e55b2c",  # brique orangé
+    "#009E73": "#8b1a1a",  # rouge sombre
+    "#CC79A7": "#d44000",  # vermillon chaud
+    "#D55E00": "#7b1829",  # bordeaux profond
+}
+_NEGATIVE_FALLBACK = "#b41414"
+
+
+def _negative_color(hex_color: str) -> str:
+    """Retourne la teinte négative (rouge) associée à une couleur Okabe-Ito.
+
+    Chaque slot de la palette Okabe-Ito a un rouge distinct, distinguable
+    même en deutéranopie (variation de luminance, pas seulement de teinte).
+    """
+    return _OKABE_NEGATIVE_COLORS.get(hex_color, _NEGATIVE_FALLBACK)
+
 
 def plot_trio_metric(  # noqa: PLR0913, C901 — graphe multi-joueurs
     d_self: DataFrameLike,
@@ -128,18 +154,20 @@ def plot_trio_metric(  # noqa: PLR0913, C901 — graphe multi-joueurs
         zip(series_lists, series_cols, names, color_list, strict=False)
     ):
         hover_format = f"%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
+        neg_color = _negative_color(color)
+        bar_colors = [color if (v is not None and v >= 0) else neg_color for v in s_list]
         bar_kwargs: dict = {
             "x": xs,
             "y": s_list,
             "name": f"{name} (match)",
-            "marker_color": color,
+            "marker_color": bar_colors,
             "opacity": 0.75,
             "customdata": ticktext,
             "hovertemplate": hover_format,
         }
         if is_inverse:
             bar_kwargs["marker"] = {
-                "color": color,
+                "color": bar_colors,
                 "pattern": {
                     "shape": "/",
                     "fgcolor": "rgba(255, 80, 80, 0.5)",
@@ -183,7 +211,9 @@ def plot_trio_metric(  # noqa: PLR0913, C901 — graphe multi-joueurs
         barmode="group",
     )
     fig.update_xaxes(tickmode="array", tickvals=xs, ticktext=ticktext, title_text="")
-    fig.update_yaxes(title_text=y_title)
+    fig.update_yaxes(
+        title_text=y_title, zeroline=True, zerolinecolor="rgba(255,255,255,0.3)", zerolinewidth=1
+    )
 
     if y_suffix:
         fig.update_yaxes(ticksuffix=y_suffix)
