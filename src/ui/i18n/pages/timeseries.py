@@ -131,23 +131,23 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "ts_note_ewma": {
         "fr": "- Regarde la **direction générale** de la courbe lissée, pas les sommets ou creux individuels\n"
-        "- La droite pointillée confirme une **vraie tendance** si R² ≥ 0,3 — en dessous, c'est du bruit\n"
-        "- α élevé : utile pour détecter rapidement une rupture de forme dans la session",
+        "- La droite pointillée confirme une vraie tendance si les points s'en rapprochent — sinon c'est de la variabilité normale\n"
+        "- Réactivité élevée : utile pour détecter rapidement une rupture de forme dans la session",
         "en": "- Focus on the **general direction** of the smoothed curve, not individual peaks or dips\n"
-        "- The dotted line confirms a **real trend** if R² ≥ 0.3 — below that threshold, it's noise\n"
-        "- High α: useful for quickly detecting a shift in form during the session",
+        "- The dotted line confirms a real trend if the points follow it closely — otherwise it's just normal variability\n"
+        "- High reactivity: useful for quickly detecting a shift in form during the session",
     },
     "ts_note_regression": {
-        "fr": "- **Pente positive + R² ≥ 0,3** → progression réelle sur la session, pas un hasard\n"
-        "- **R² < 0,3** → résultats trop éparpillés, impossible de tirer une conclusion fiable\n"
-        "- Win rate en hausse + pente positive → double confirmation que la forme et les résultats s'alignent",
-        "en": "- **Positive slope + R² ≥ 0.3** → genuine improvement across the session, not luck\n"
-        "- **R² < 0.3** → results too scattered, no reliable conclusion possible\n"
-        "- Rising win rate + positive slope → double confirmation that form and results align",
+        "fr": "- **La droite monte** → tu progresses sur la session, pas juste de la chance\n"
+        "- **Les points trop éparpillés** → la session est trop irrégulière pour conclure\n"
+        "- Win rate en hausse + droite qui monte → les deux s'accordent, forme et résultats s'alignent",
+        "en": "- **The line goes up** → you're improving across the session, not just getting lucky\n"
+        "- **Points too scattered** → the session is too irregular to draw any conclusion\n"
+        "- Rising win rate + upward line → both agree, form and results are aligned",
     },
     "ts_regression_subheader": {
-        "fr": "Tendance (régression linéaire)",
-        "en": "Trend (linear regression)",
+        "fr": "Tendance",
+        "en": "Trend",
     },
     # ── Page Coéquipiers ─────────────────────────────────────────────────────
     "ts_computing": {
