@@ -32,18 +32,19 @@ def _is_uuid_like(s: str) -> bool:
 
 
 def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
-    """Passthrough de sécurité pour les noms de playlist hors-DB.
+    """Traduit un nom de playlist via les fichiers JSON i18n (``static/i18n/playlists_*.json``).
 
-    Depuis v6 : les traductions sont dans ``metadata.duckdb`` (colonnes
-    ``name_fr`` / ``name_en`` de ``v_match_full``). Cette fonction n'est
-    appelée que pour les valeurs non résolues par la vue (ex : UUID brut).
+    Résolution en 3 étapes :
+    1. UUID brut → label "Inconnue"/"Unknown"
+    2. Lookup dans ``static/i18n/playlists_{lang}.json`` via ``label()``
+    3. Passthrough (retourne le nom tel quel si aucune traduction trouvée)
 
     Args:
         name: Nom de playlist brut (peut être ``None``).
         lang: ``"fr"`` (défaut) ou ``"en"``.
 
     Returns:
-        ``name`` inchangé, ou label "inconnue" pour les UUIDs bruts.
+        Nom traduit, ou label "inconnue" pour les UUIDs bruts.
     """
     if name is None:
         return None
@@ -53,7 +54,12 @@ def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
     if _is_uuid_like(s):
         logger.warning("playlist_name non résolu (UUID brut) : %s — metadata.duckdb incomplet ?", s)
         return _UNKNOWN_PLAYLIST.get(lang, s)
-    logger.debug("translate_playlist_name fallback pour '%s' (hors DB)", s)
+    # Lookup i18n (static/i18n/playlists_{lang}.json)
+    from src.ui.i18n.data_labels import label as _label
+
+    translated = _label("playlists", s, lang=lang)
+    if translated != s:
+        return translated
     return s
 
 
