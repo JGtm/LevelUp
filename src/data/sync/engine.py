@@ -44,6 +44,7 @@ from pathlib import Path
 from src.data.sync._aggregates import AggregatesMixin
 from src.data.sync._career import CareerMixin
 from src.data.sync._engine_connections import ConnectionMixin
+from src.data.sync._engine_fanout import FanoutEnrichmentMixin
 from src.data.sync._engine_schema import SchemaMixin
 from src.data.sync._engine_weapon_kills import WeaponKillsEngineMixin
 from src.data.sync._engine_writes import EnrichedWritesMixin
@@ -93,6 +94,7 @@ class DuckDBSyncEngine(
     WeaponKillsEngineMixin,
     MatchProcessingMixin,
     EnrichedWritesMixin,
+    FanoutEnrichmentMixin,
 ):
     """Moteur de synchronisation API → DuckDB unifié.
 
@@ -105,14 +107,15 @@ class DuckDBSyncEngine(
     Thread-safe via lock asyncio pour les écritures DB.
 
     Mixins :
-        ConnectionMixin      — connexions DuckDB + résolution XUID
-        SchemaMixin          — schéma DDL + migrations
-        SharedWritesMixin    — insertions dans shared_matches.duckdb
-        PerformanceMixin     — calcul des scores de performance
-        SkillRatingMixin     — CSR + LUSR (TrueSkill 2)
-        CareerMixin          — rang carrière
-        AggregatesMixin      — rafraîchissement agrégats
-        MatchProcessingMixin — traitement des matchs
+        ConnectionMixin       — connexions DuckDB + résolution XUID
+        SchemaMixin           — schéma DDL + migrations
+        SharedWritesMixin     — insertions dans shared_matches.duckdb
+        PerformanceMixin      — calcul des scores de performance
+        SkillRatingMixin      — CSR + LUSR (TrueSkill 2)
+        CareerMixin           — rang carrière
+        AggregatesMixin       — rafraîchissement agrégats
+        MatchProcessingMixin  — traitement des matchs
+        FanoutEnrichmentMixin — enrichissement des coéquipiers post-sync
     """
 
     def __init__(  # noqa: PLR0913
@@ -307,18 +310,7 @@ class DuckDBSyncEngine(
             if result.matches_inserted > 0:
                 await self._refresh_aggregates_async(new_ids=result.inserted_match_ids)
 
-            # Career rank sync
-            if options.with_career_rank:
-                try:
-                    career_data = await self.sync_career_rank()
-                    if career_data:
-                        logger.info(
-                            "Career rank sync: %s → Rang %s",
-                            self._gamertag,
-                            career_data.current_rank,
-                        )
-                except Exception as e:
-                    logger.warning("Career rank sync échoué (non bloquant): %s", e)
+            await self._run_career_rank_if_needed(options)
 
             # Métadonnées de sync
             self._save_sync_metadata(delta_mode, result.matches_inserted)
@@ -334,6 +326,10 @@ class DuckDBSyncEngine(
             # (rattrapage des ratings manquants suite à un sync partiel)
             self._detach_shared_from_player_conn()
             self._run_lusr_post_sync()
+
+            # Fan-out après detach — shared libéré (voir _engine_fanout.py)
+            if result.inserted_match_ids:
+                self._enrich_other_registered_players(result.inserted_match_ids)
 
         except Exception as e:
             result.errors.append(str(e))
@@ -351,6 +347,19 @@ class DuckDBSyncEngine(
             result.duration_seconds,
         )
         return result
+
+    async def _run_career_rank_if_needed(self, options: SyncOptions) -> None:
+        """Synchronise le rang carrière si demandé dans les options (non bloquant)."""
+        if not options.with_career_rank:
+            return
+        try:
+            career_data = await self.sync_career_rank()
+            if career_data:
+                logger.info(
+                    "Career rank sync: %s → Rang %s", self._gamertag, career_data.current_rank
+                )
+        except Exception as e:
+            logger.warning("Career rank sync échoué (non bloquant): %s", e)
 
     def _run_lusr_post_sync(self) -> None:
         """Calcule les ratings LUSR manquants — appelé inconditionnellement après tout sync.
