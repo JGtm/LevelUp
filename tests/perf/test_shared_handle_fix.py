@@ -315,3 +315,36 @@ class TestGracefulDegradation:
         result = backfill_citations_for_player(player_db, xuid="9999999999")
         assert result["matches_processed"] == 0
         assert result["citations_computed"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Test : shared_matches est ouvert en read_only=True — guard anti-régression
+# ---------------------------------------------------------------------------
+
+
+class TestSharedOpenedReadOnly:
+    def test_citations_source_uses_read_only_true(self):
+        """Guard : citations_backfill.py doit appeler duckdb.connect avec read_only=True."""
+        import inspect
+
+        import src.data.citations_backfill as _mod
+
+        src_code = inspect.getsource(_mod)
+        assert "read_only=True" in src_code, (
+            "citations_backfill doit ouvrir shared_matches en read_only=True. "
+            "Risque de régression Axe 2 : vérifier la présence de "
+            "duckdb.connect(str(shared_path), read_only=True)"
+        )
+
+    def test_sessions_source_uses_read_only_true(self):
+        """Guard : sessions_backfill.py doit appeler duckdb.connect avec read_only=True."""
+        import inspect
+
+        import src.data.sessions_backfill as _mod
+
+        src_code = inspect.getsource(_mod)
+        assert "read_only=True" in src_code, (
+            "sessions_backfill doit ouvrir shared_matches en read_only=True. "
+            "Risque de régression Axe 2 : vérifier la présence de "
+            "duckdb.connect(str(shared_path), read_only=True)"
+        )

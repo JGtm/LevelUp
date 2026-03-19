@@ -431,6 +431,11 @@ class DuckDBSyncEngine(
 
         Note : le LUSR est calculé séparément dans _run_lusr_post_sync().
         """
+        import time as _time
+
+        _t0 = _time.perf_counter()
+        logger.info("post_sync: démarrage (citations en thread, writes player DB sérialisées)")
+
         loop = asyncio.get_running_loop()
         if self._shared_connection is not None:
             with contextlib.suppress(Exception):
@@ -438,10 +443,12 @@ class DuckDBSyncEngine(
             self._shared_connection = None
         cit_future = loop.run_in_executor(None, self._post_sync_citations_sync)
 
+        perf_count = 0
         if options.defer_performance_score:
             perf_count = self.batch_compute_performance_scores()
             logger.info("Performance scores calculés en batch : %d", perf_count)
 
+        sess_created = sess_updated = 0
         try:
             from src.data.sessions_backfill import backfill_sessions_for_player
 
@@ -450,10 +457,12 @@ class DuckDBSyncEngine(
                 xuid=self._xuid,
                 conn=self._get_connection(),
             )
+            sess_created = sess.get("sessions_created", 0)
+            sess_updated = sess.get("sessions_updated", 0)
             logger.info(
                 "Sessions post-sync : %d créées, %d màj",
-                sess.get("sessions_created", 0),
-                sess.get("sessions_updated", 0),
+                sess_created,
+                sess_updated,
             )
         except Exception as e:
             logger.warning("Sessions post-sync : %s", e)
@@ -461,8 +470,13 @@ class DuckDBSyncEngine(
         self._compute_dominance_post_sync()
 
         cit_result = await cit_future
+        elapsed = _time.perf_counter() - _t0
         logger.info(
-            "Citations post-sync : %d/%d matchs",
+            "post_sync: terminé en %.1fs (perf=%d sessions=%d/%d citations=%d/%d)",
+            elapsed,
+            perf_count,
+            sess_created,
+            sess_updated,
             cit_result["citations_computed"],
             cit_result["matches_processed"],
         )

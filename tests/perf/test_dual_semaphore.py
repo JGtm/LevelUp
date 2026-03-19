@@ -174,3 +174,53 @@ async def test_bounded_respects_semaphore_concurrency():
     assert (
         concurrency_tracker["max"] <= 3
     ), f"Concurrence max={concurrency_tracker['max']} > parallel_matches=3"
+
+
+# ---------------------------------------------------------------------------
+# Test : fetch_slots loggué au niveau DEBUG (Axe 3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_fetch_slots_logged_at_debug(caplog):
+    """_process_matches doit loguer fetch_slots au niveau DEBUG."""
+    import logging
+
+    from src.data.sync._match_processing import MatchProcessingMixin
+
+    mixin = MatchProcessingMixin.__new__(MatchProcessingMixin)
+    mixin._gamertag = "TestPlayer"
+    mixin._get_latest_match_id_in_db = MagicMock(return_value=None)
+    mixin._process_single_match = AsyncMock(return_value={"inserted": True, "match_id": "m1"})
+    mixin._accumulate_match_result = MagicMock()
+    mixin._maybe_batch_commit = MagicMock()
+    mixin._report_progress = MagicMock()
+
+    item = MagicMock()
+    item.match_id = "match-log-001"
+    client = MagicMock()
+    client.get_match_history = AsyncMock(side_effect=[[item], []])
+
+    options = SyncOptions(
+        max_matches=1,
+        parallel_fetch=12,
+        parallel_matches=5,
+        batch_commit_size=0,
+    )
+
+    with caplog.at_level(logging.DEBUG, logger="src.data.sync._match_processing"):
+        await mixin._process_matches(
+            client=client,
+            options=options,
+            existing_ids=set(),
+            delta_mode=False,
+        )
+
+    debug_messages = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+    assert any(
+        "fetch_slots" in m for m in debug_messages
+    ), f"Log 'fetch_slots' introuvable dans les messages DEBUG : {debug_messages}"
+    # fetch_slots = max(12, 5) = 12 — vérifie que la valeur correcte est loggée
+    assert any(
+        "12" in m and "fetch_slots" in m for m in debug_messages
+    ), f"fetch_slots=12 introuvable dans les messages DEBUG : {debug_messages}"
