@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,11 +19,13 @@ import polars as pl
 
 from src.data.sessions_backfill_shared import (
     _find_or_attach_shared,
-    _load_matches_from_shared,
+    _load_matches_split,
     _resolve_shared_db_path,
 )
 from src.utils.db import duckdb_read_only, duckdb_read_write
 from src.utils.paths import get_shared_matches_path_from_player
+
+logger = logging.getLogger(__name__)
 
 
 def get_friends_xuids_for_backfill(  # noqa: C901, PLR0912
@@ -250,14 +253,60 @@ def _upsert_session_rows(  # noqa: PLR0912
     return updated, skipped, errors
 
 
+def _top_teammates_ro(
+    shared_ro: duckdb.DuckDBPyConnection,
+    xuid: str,
+    limit: int = 2,
+) -> frozenset[str]:
+    """Top N coéquipiers depuis shared_ro direct (pas d'ATTACH)."""
+    try:
+        rows = shared_ro.execute(
+            "SELECT mp2.xuid, COUNT(DISTINCT mp2.match_id) AS cnt"
+            " FROM match_participants mp1"
+            " JOIN match_participants mp2"
+            "   ON mp1.match_id=mp2.match_id AND mp1.team_id=mp2.team_id AND mp1.xuid<>mp2.xuid"
+            " WHERE mp1.xuid=? GROUP BY mp2.xuid ORDER BY cnt DESC LIMIT ?",
+            [xuid, limit],
+        ).fetchall()
+        return frozenset(str(r[0]).strip() for r in rows if r[0])
+    except Exception:
+        return frozenset()
+
+
+def _fetch_shared_context_ro(
+    player_conn: duckdb.DuckDBPyConnection,
+    path: Path,
+    xuid: str | None,
+    shared_ro: duckdb.DuckDBPyConnection,
+) -> tuple[str | None, pl.DataFrame, frozenset[str], list[str]]:
+    """Résout xuid, charge amis et matchs via shared_ro direct (Option A — pas d'ATTACH)."""
+    if not xuid:
+        row = shared_ro.execute(
+            "SELECT DISTINCT xuid FROM xuid_aliases WHERE xuid IS NOT NULL LIMIT 1"
+        ).fetchone()
+        xuid = str(row[0]).strip() if row and row[0] else None
+    if not xuid:
+        return None, pl.DataFrame(), frozenset(), ["XUID non trouvé"]
+
+    # get_friends_xuids_for_backfill fonctionne avec shared_ro car il lit
+    # xuid_aliases sans le préfixe 'shared.' (fallback alias_table = "xuid_aliases")
+    friends = get_friends_xuids_for_backfill(path, xuid, conn=shared_ro)
+    if not friends:
+        friends = _top_teammates_ro(shared_ro, xuid)
+
+    df = _load_matches_split(player_conn, shared_ro, xuid)
+    return xuid, df, frozenset(friends) if friends else frozenset(), []
+
+
 def _fetch_shared_context(
     conn: duckdb.DuckDBPyConnection,
     path: Path,
     xuid: str | None,
 ) -> tuple[str | None, pl.DataFrame, frozenset[str], list[str]]:
-    """Attache shared, résout xuid, charge amis et matchs.
+    """Attache shared, résout xuid, charge amis et matchs (legacy — ATTACH).
 
-    Retourne (xuid, df_matches, friends, errors).
+    Conservé pour backfill_teammates_signatures (pas dans le chemin critique sync).
+    Pour backfill_sessions_for_player, utiliser _fetch_shared_context_ro.
     """
     errors: list[str] = []
     shared_db = _resolve_shared_db_path(path)
@@ -283,6 +332,8 @@ def _fetch_shared_context(
     if not friends:
         friends = get_top_two_teammate_xuids(path, xuid, limit=2, conn=conn)
 
+    from src.data.sessions_backfill_shared import _load_matches_from_shared
+
     df = _load_matches_from_shared(conn, shared_alias, xuid)
 
     if owns_shared_attach:
@@ -290,6 +341,14 @@ def _fetch_shared_context(
             conn.execute(f"DETACH {shared_alias}")
 
     return xuid, df, frozenset(friends) if friends else frozenset(), errors
+
+
+def _dry_run_count(df_sessions: pl.DataFrame, include_recent: bool, threshold: float) -> int:
+    """Compte les matchs qui seraient mis à jour en mode dry-run."""
+    to_update = df_sessions.filter(~pl.col("_ts").is_null())
+    if not include_recent:
+        to_update = to_update.filter(pl.col("_ts") <= threshold)
+    return len(to_update)
 
 
 def backfill_sessions_for_player(  # noqa: PLR0913
@@ -312,17 +371,24 @@ def backfill_sessions_for_player(  # noqa: PLR0913
 
     path = Path(db_path)
     results: dict[str, Any] = {"updated": 0, "skipped_recent": 0, "errors": []}
-    stability_hours = SESSION_CONFIG.session_stability_hours
 
     if not path.exists():
         results["errors"].append("DB non trouvée")
+        return results
+
+    shared_path = _resolve_shared_db_path(path)
+    if shared_path is None:
+        results["errors"].append("shared_matches.duckdb introuvable")
         return results
 
     ctx = duckdb_read_write(str(path)) if conn is None else nullcontext(conn)
     with ctx as conn:
         _ensure_enrichment_table(conn)
 
-        xuid, df, friends_set, fetch_errors = _fetch_shared_context(conn, path, xuid)
+        with duckdb.connect(str(shared_path), read_only=True) as shared_ro:
+            xuid, df, friends_set, fetch_errors = _fetch_shared_context_ro(
+                conn, path, xuid, shared_ro
+            )
         results["errors"].extend(fetch_errors)
         if not xuid or df.is_empty():
             return results
@@ -340,17 +406,15 @@ def backfill_sessions_for_player(  # noqa: PLR0913
             ranked_column="is_ranked" if "is_ranked" in df.columns else None,
         )
 
-        now = datetime.now(timezone.utc)
-        threshold = now.timestamp() - (stability_hours * 3600)
+        threshold = datetime.now(timezone.utc).timestamp() - (
+            SESSION_CONFIG.session_stability_hours * 3600
+        )
         df_sessions = df_sessions.with_columns(
             pl.col("start_time").dt.epoch(time_unit="s").alias("_ts")
         )
 
         if dry_run:
-            to_update = df_sessions.filter(~pl.col("_ts").is_null())
-            if not include_recent:
-                to_update = to_update.filter(pl.col("_ts") <= threshold)
-            results["updated"] = len(to_update)
+            results["updated"] = _dry_run_count(df_sessions, include_recent, threshold)
             return results
 
         updated, skipped, errors = _upsert_session_rows(
