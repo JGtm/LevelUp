@@ -66,6 +66,19 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
   - Correction image SPNKr : `H5G_citation_Lance-roquettes.png` → `H5G_citation_SPNKR.png`
   - `WEAPON_FUSION_MAP` : les kills MLRS-2 Hydra (variante alt) comptent désormais vers la citation Hydra de base
 
+- **Médaille custom Vengeur (Avenger)** — détecte les kills de vengeance (tuer l'adversaire responsable de votre mort précédente)
+  - ID custom `9 000 000 001` (au-delà de la plage officielle Halo)
+  - Backfill global via `killer_victim_pairs` : sous-requête corrélée identifiant pour chaque kill si la victime est l'auteur de la mort précédente du joueur
+  - CLI : `python scripts/backfill_data.py --avenger` (ou `--force-avenger` pour recalcul complet)
+  - Noms (`medals_fr/en.json`) et descriptions (`medals_descriptions_fr/en.json`) en fichiers JSON statiques
+  - `resolve_medal_description()` enrichi d'un fallback JSON quand `metadata.duckdb` ne contient pas de table `medals`
+  - 18 tests (12 backfill + 6 description)
+
+- **Étiquette Top Gun** 🔫 — badge sur la timeline d'Impact pour le premier joueur de votre équipe à atteindre 10 kills dans un match
+  - Constante `TOP_GUN_KILL_THRESHOLD = 10` ; fonction `_find_top_gun_event()` scanne les `highlight_events` en ordre chronologique
+  - Intégré dans le pipeline d'événements d'impact existant (aucune modification des pages UI appelantes)
+  - Labels bilingues : « As de la gâchette » (FR) / « Top Gun » (EN)
+
 ### Modifié
 
 - **Resolver gamertag** (`src/data/sync/_gamertag_resolver.py`) — cascade 5-sources remplacée par un JOIN unique sur `v_gamertag_lookup` ; `load_match_player_gamertags()` passe de 4 requêtes séquentielles à 1
