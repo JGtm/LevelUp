@@ -41,6 +41,7 @@ _FRIEND_DF_EMPTY_SCHEMA: dict[str, pl.PolarsDataType] = {
     "start_time": pl.Datetime,
     "playlist_name": pl.Utf8,
     "pair_name": pl.Utf8,
+    "map_name": pl.Utf8,
     "same_team": pl.Boolean,
     "my_team_id": pl.Int64,
     "my_outcome": pl.Utf8,
