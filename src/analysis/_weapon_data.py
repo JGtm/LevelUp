@@ -254,7 +254,9 @@ def _resolve_weapon_cached(weapon_id: int, lang: str) -> str | None:
 def resolve_weapon_display(weapon_id: int | None, lang: str = "fr") -> str | None:
     """Résout un weapon_id en nom d'affichage localisé.
 
-    Priorité : weapon_labels (metadata.duckdb) → dicts Python statiques.
+    Priorité : fusion → weapon_labels (metadata.duckdb) → dicts Python statiques.
+    La fusion est appliquée en premier pour que les variantes (ex. M392 Bandit)
+    soient toujours regroupées sous leur nom canonique (ex. Bandit Evo).
     Retourne None si weapon_id est None (kill non résolu).
     """
     if weapon_id is None:
@@ -266,6 +268,10 @@ def resolve_weapon_display(weapon_id: int | None, lang: str = "fr") -> str | Non
         return "Grenade"
     if weapon_id == VEHICLE_WEAPON_ID:
         return "Véhicule" if lang == "fr" else "Vehicle"
+    # 0. Fusion : redirecter vers l'ID canonique avant tout lookup
+    canonical_id = WEAPON_FUSION_MAP_ID.get(weapon_id, weapon_id)
+    if canonical_id != weapon_id:
+        return resolve_weapon_display(canonical_id, lang)
     # 1. Source DB (lazy, mis en cache)
     db_label = _resolve_weapon_cached(weapon_id, lang)
     if db_label is not None:
