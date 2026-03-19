@@ -322,7 +322,7 @@ class DuckDBSyncEngine(
 
             # Post-sync : performance scores, sessions, citations, LUSR
             if result.matches_inserted > 0:
-                self._run_post_sync_compute(options)
+                await self._run_post_sync_compute(options)
 
             # LUSR toujours recalculé — même sans nouveaux matchs
             # (rattrapage des ratings manquants suite à un sync partiel)
@@ -410,62 +410,62 @@ class DuckDBSyncEngine(
         except Exception as e:
             logger.debug("_detach_shared_from_player_conn (non bloquant): %s", e)
 
-    def _run_post_sync_compute(self, options: SyncOptions) -> None:
-        """Exécute les traitements post-sync : perf scores, sessions, citations.
+    def _post_sync_citations_sync(self) -> dict[str, int]:
+        """Wrapper citations pour run_in_executor — ouvre sa propre connexion R/W.
 
-        Note : le LUSR est calculé séparément dans _run_lusr_post_sync(),
-        appelé inconditionnellement dans _sync_internal.
+        Thread-safe via DuckDB MVCC : écrit dans ``match_citations`` uniquement.
         """
-        # Performance scores en batch
+        try:
+            from src.data.citations_backfill import backfill_citations_for_player
+
+            return backfill_citations_for_player(
+                db_path=self._player_db_path,
+                xuid=self._xuid or "",
+            )
+        except Exception as e:
+            logger.warning("Citations post-sync (thread) : %s", e)
+            return {"matches_processed": 0, "citations_computed": 0}
+
+    async def _run_post_sync_compute(self, options: SyncOptions) -> None:
+        """Axe 1 : citations en thread parallèle, perf→sessions→dominance sérialisés.
+
+        Note : le LUSR est calculé séparément dans _run_lusr_post_sync().
+        """
+        loop = asyncio.get_running_loop()
+        if self._shared_connection is not None:
+            with contextlib.suppress(Exception):
+                self._shared_connection.close()
+            self._shared_connection = None
+        cit_future = loop.run_in_executor(None, self._post_sync_citations_sync)
+
         if options.defer_performance_score:
-            if self._shared_connection is not None:
-                with contextlib.suppress(Exception):
-                    self._shared_connection.close()
-                self._shared_connection = None
             perf_count = self.batch_compute_performance_scores()
             logger.info("Performance scores calculés en batch : %d", perf_count)
 
-        # Recalculer les sessions
         try:
             from src.data.sessions_backfill import backfill_sessions_for_player
 
-            sess_result = backfill_sessions_for_player(
+            sess = backfill_sessions_for_player(
                 db_path=self._player_db_path,
                 xuid=self._xuid,
                 conn=self._get_connection(),
             )
-            updated = sess_result.get("sessions_updated", 0)
-            created = sess_result.get("sessions_created", 0)
             logger.info(
-                "Sessions recalculées post-sync : %d créées, %d mises à jour", created, updated
+                "Sessions post-sync : %d créées, %d màj",
+                sess.get("sessions_created", 0),
+                sess.get("sessions_updated", 0),
             )
         except Exception as e:
-            logger.warning("Erreur recalcul sessions post-sync : %s", e)
+            logger.warning("Sessions post-sync : %s", e)
 
-        # Citations
-        try:
-            from src.data.citations_backfill import backfill_citations_for_player
-
-            if self._shared_connection is not None:
-                with contextlib.suppress(Exception):
-                    self._shared_connection.close()
-                self._shared_connection = None
-
-            cit_result = backfill_citations_for_player(
-                db_path=self._player_db_path,
-                xuid=self._xuid or "",
-                conn=self._get_connection(),
-            )
-            logger.info(
-                "Citations post-sync : %d matchs traités sur %d",
-                cit_result["citations_computed"],
-                cit_result["matches_processed"],
-            )
-        except Exception as e:
-            logger.warning("Erreur calcul citations post-sync : %s", e)
-
-        # Dominance flags (médaille Steaktacular)
         self._compute_dominance_post_sync()
+
+        cit_result = await cit_future
+        logger.info(
+            "Citations post-sync : %d/%d matchs",
+            cit_result["citations_computed"],
+            cit_result["matches_processed"],
+        )
 
     def _compute_dominance_post_sync(self) -> None:
         """Calcule les dominance flags pour les matchs nouvellement synchronisés."""
