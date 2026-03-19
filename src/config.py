@@ -222,6 +222,9 @@ class SessionConfig:
     # Stockage sessions : matchs < N heures = calcul à la volée (session instable)
     session_stability_hours: float = 4.0
 
+    # Coupure de session lors d'une transition classé ↔ non-classé
+    split_on_ranked_change: bool = True
+
 
 SESSION_CONFIG = SessionConfig()
 

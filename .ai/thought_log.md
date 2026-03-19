@@ -7,6 +7,68 @@
 
 ## Journal
 
+### [2026-03-19] — Sessions : coupure classé/non-classé
+**Statut** : Complété ✅
+
+**Contexte** : La logique de détection des sessions ne distinguait pas les matchs classés des matchs non-classés. Une session pouvait mélanger les deux types sans coupure.
+
+**Décision technique principale** :
+- Ajout de `split_on_ranked_change: bool = True` dans `SessionConfig` (`src/config.py`)
+- `_load_matches_from_shared` enrichi avec `COALESCE(mr.is_ranked, FALSE)` pour récupérer le statut ranked depuis `match_registry`
+- `compute_sessions_with_context_polars` : nouveau paramètre `ranked_column` + calcul d'un `ranked_break` (transition classé↔non-classé = nouvelle session)
+- `backfill_sessions_for_player` passe `is_ranked` à l'algo si disponible dans le DataFrame
+- `session_compare.py` : helper `_build_ranked_badge_map` + `format_func=_fmt` sur les deux selectbox pour afficher `[Classé]` devant les sessions ranked
+- Fixture test `match_registry` mise à jour avec colonne `is_ranked`
+
+**Résultats** : 158 tests sessions verts. Échec pré-existant `test_performance_cumulative` (colonne `kda`, sans rapport).
+
+**Conclusion** : Feature active dès le prochain backfill `--sessions`. Les sessions existantes sans `is_ranked` restent inchangées (pas de recalcul forcé).
+
+---
+
+### [2025-07-17] — Centralisation médailles/citations : DB-only, suppression JSON fallbacks
+**Statut** : Complété ✅
+
+**Contexte** : Suite de l'audit bilan — 3 chemins indépendants vers medal_definitions, JSON fallbacks encore actifs dans `_medal_data.py` et `medals.py`, `label_obj()` dead code, `_load_citations_from_db()` dans le module UI au lieu de la couche données.
+
+**Décision technique principale** :
+1. Créé `src/data/citation_definitions.py` — couche données centralisée pour les citations (DB-only, sans dépendance Streamlit).
+2. Réécrit `_medal_data.py` : supprimé tout import/fallback JSON, utilise `duckdb_read_only()`.
+3. Réécrit `medals.py` : supprimé `_load_from_json()`, `_medals_json_mtime()`, `_load_from_db()` (bare connect). Utilise `duckdb_read_only()` + `get_metadata_db_path()`.
+4. Supprimé `label_obj()` (~50 lignes dead code) dans `data_labels.py`.
+5. Migré `match_view_citations.py` et `match_view_scoreboard_detail.py` vers `citation_definitions`.
+6. `commendations._load_citations_from_db()` délègue maintenant à `citation_definitions.load_citation_definitions()`.
+7. Réécrit 5 fichiers de tests (DB-only, plus de JSON mocking).
+
+**Résultats** :
+- Commit `b22ae2a` — 13 fichiers, +665/-559 lignes
+- 79 tests ciblés passent, 2152 tests totaux passent
+- Baseline taille mis à jour (-3 violations corrigées)
+- Zero import JSON dans les modules médailles/citations
+
+**Conclusion** : Médailles et citations sont maintenant exclusivement DB-sourced avec une couche d'abstraction centralisée. Les fichiers JSON `static/medals/*.json` restent comme référence mais ne sont plus importés par le code applicatif.
+
+---
+
+### [2025-07-17] — medal_definitions DB-first + suppression label_obj citations mort
+**Statut** : Complété ✅
+
+**Contexte** : Implémentation de la feature "Noms et descriptions des médailles/citations en BDD" du BACKLOG. Puis audit de cohérence.
+
+**Décision technique principale** :
+1. Créée table `medal_definitions` dans `metadata.duckdb` (167 médailles, 6 colonnes).
+2. Corrigé `_medal_data.py` qui référençait `medals` au lieu de `medal_definitions`.
+3. Découvert que `label_obj("citations", norm)` renvoyait toujours la clé brute (JSON supprimés → fallback cassé silencieux). Supprimé l'appel dans 3 fichiers UI ; remplacé par accès direct aux champs DB (`citation_name_display`, `description`).
+
+**Résultats** :
+- 3 commits : `dbf5f9a` (feat), `dac2e44` (fix _medal_data), `c031d5e` (fix label_obj)
+- 16 tests unitaires + 4 intégration passent
+- Citations affichent désormais les noms FR (et non les clés normalisées)
+
+**Conclusion** : Médailles et citations sont maintenant 100% DB-sourced. Le chemin `label_obj("citations", ...)` est mort et peut être nettoyé de `data_labels.py` si plus aucun domaine ne l'utilise.
+
+---
+
 ### [2026-03-19] — Audit lecture DB performance_score : 5 recalculs inutiles corrigés
 **Statut** : Complété ✅
 
@@ -35,6 +97,54 @@ if "performance_score" in df.columns and df["performance_score"].drop_nulls().le
 **Contexte FDA** : "FDA" dans la page Séries temporelles = section `ts_fda` (statistiques KDA / distribution, incluant `plot_kda_distribution`). La section est alimentée par `dff["kda"]` lu directement depuis `shared.match_participants` via `load_matches_as_polars` — aucun recalcul identifié dans ce flux.
 
 **Conclusion** : Tous les graphes de performance lisent désormais `performance_score` depuis la DB quand disponible. Le fallback percentile relatif est conservé uniquement pour les coéquipiers non-enrichis.
+
+---
+
+### [2026-03-19] — Suppression fallbacks recalcul performance (coéquipiers)
+**Statut** : Complété ✅
+
+**Contexte** : Suite de l'audit DB performance_score. L'utilisateur refuse les fallbacks qui recalculent `compute_performance_series` sur un sous-ensemble quand `performance_score` n'est pas en DB — le score évolue progressivement sur tout l'historique, un recalcul partiel produit des nombres biaisés.
+
+**Décision technique** : Supprimer tout recalcul approximatif. Si `performance_score` n'est pas stocké en DB (joueur externe sans DB individuelle), la colonne `performance` est null → graphe vide/absent plutôt que valeur fausse.
+
+**Sites modifiés** :
+1. **`_teammates_trio_helpers.py::_use_or_compute_performance`** — supprimé `compute_performance_series(df, df)` en fallback → retourne `pl.lit(None)` + supprimé l'import `compute_performance_series`
+2. **`_timeseries_progression.py::_ensure_performance_column`** — supprimé l'étape 3 (recalcul percentile relatif) → retourne colonne null + supprimé l'import lazy `compute_performance_series`
+
+**Effet** : Les graphes trio utilisent Plotly qui ignore naturellement les null (pas de barres, pas de lignes). `_perf_color(None)` retourne gris. Comportement honnête : pas de données = pas d'affichage.
+
+**Fix connexe** : `tests/test_squad_colors.py` — 2 tests préexistants échouaient (`marker.color` retourne un tuple quand `marker_color=[list]`). Corrigé assertion pour extraire les couleurs du tuple.
+
+**Résultats** : 5100 tests passent (1 seul fail préexistant `test_medal_data` non lié).
+
+---
+
+### [2026-03-19] — Audit KDA/ratio : suppression totale des fallbacks recalcul
+**Statut** : Complété ✅
+
+**Contexte** : L'utilisateur veut que le KDA (FDA en français) soit TOUJOURS lu depuis la DB (`kda` dans `match_participants`), jamais recalculé via un fallback custom. Le `kda` est toujours présent car il vient de l'API lors du sync.
+
+**Problèmes découverts** :
+1. **Code mort** : 4 sites avaient des fallbacks recalcul KDA avec des formules divergentes (A/1, A/2 au lieu de A/3 API). Ces fallbacks ne s'exécutaient jamais car `kda` est toujours présent en DB. → **Supprimés**.
+2. **`MatchRow.ratio`** et **`AggregatedStats.global_ratio`** : formule `A/2` corrigée en `A/3` (propriétés calculées, pas de colonne DB équivalente).
+3. **`match_view_charts.py`** : fallback recalcul ratio si DB null → **supprimé**, annotation absente si null.
+4. **`match_view_logic.py::compute_perf_display`** : fallback `compute_relative_performance_score` → **supprimé**, affiche "-" si null.
+
+**Corrections (approche "DB-only, pas de fallback")** :
+1. **`_performance_relative.py`** — fallback supprimé → `_safe_float(row.get("kda"))`, null si absent
+2. **`_performance_relative_helpers.py`** — fallback supprimé → `pl.lit(None)` si colonne `kda` absente
+3. **`_cumulative_series.py`** — recalcul supprimé → lit `pl.col("kda")` DB directement, cumul via `cum_sum()/cum_count()`
+4. **`cumulative.py`** — recalcul supprimé → `mean(kda)` depuis colonne DB
+5. **`match_view_charts.py`** — fallback supprimé → annotation conditionnelle si kda non-null
+6. **`match_view_logic.py`** — fallback supprimé → `stored_perf` direct ou "-"
+7. **`stats.py::MatchRow.ratio`** — formule corrigée `A/3` (propriété calculée)
+8. **`stats.py::AggregatedStats.global_ratio`** — formule corrigée `A/3`
+
+**Tests mis à jour** : `test_models.py` (valeurs A/3) + `test_performance_cumulative.py` (fixture `kda` ajoutée, valeurs cum_mean).
+
+**Backfill nécessaire** : NON — les fallbacks étaient du code mort qui ne s'exécutait jamais.
+
+**Résultats** : 5110 tests passent (3 fails préexistants non liés — tests médailles).
 
 ---
 

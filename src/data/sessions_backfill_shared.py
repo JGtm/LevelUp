@@ -95,6 +95,7 @@ def _load_matches_from_shared(
     return conn.execute(
         f"SELECT pme.match_id, mr.start_time,"
         f" COALESCE(pme.teammates_signature, ({s1}), ({s2})) AS teammates_signature,"
+        f" COALESCE(mr.is_ranked, FALSE) AS is_ranked,"
         f" pme.session_id FROM player_match_enrichment pme"
         f" LEFT JOIN {a}.match_registry mr ON mr.match_id=pme.match_id"
         f" WHERE mr.start_time IS NOT NULL ORDER BY mr.start_time ASC",

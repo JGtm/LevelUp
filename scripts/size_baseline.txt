@@ -9,7 +9,7 @@ FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
 FUNC:src/analysis/maps.py:15:compute_map_breakdown:112L
 FUNC:src/analysis/participation_radar.py:307:compute_participation_profile:109L
 FUNC:src/analysis/participation_radar.py:48:compute_global_radar_thresholds:146L
-FUNC:src/analysis/sessions.py:168:compute_sessions_with_context_polars:127L
+FUNC:src/analysis/sessions.py:168:compute_sessions_with_context_polars:155L
 FUNC:src/analysis/skill_rating.py:194:compute_skill_ratings_batch:198L
 FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
 FUNC:src/app/_filters_apply.py:42:apply_filters:196L
@@ -98,5 +98,5 @@ MODULE:src/data/repositories/_weapon_kills_repo.py:550L
 MODULE:src/data/sync/_match_processing.py:544L
 MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
-MODULE:src/ui/pages/session_compare.py:518L
+MODULE:src/ui/pages/session_compare.py:536L
 MODULE:src/visualization/maps_outcome.py:587L
