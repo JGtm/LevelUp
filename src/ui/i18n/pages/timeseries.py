@@ -257,6 +257,12 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Outils de destruction",
         "en": "Tools of destruction",
     },
+    # ── Skill rank (LUSR/CSR)
+    "ts_skill_rank_evolution": {
+        "fr": "Évolution du rating (LUSR / CSR)",
+        "en": "Rating evolution (LUSR / CSR)",
+    },
+    "ts_skill_rank_type": {"fr": "Type de rating :", "en": "Rating type:"},
     # ── Onglets (navigation)
     "ts_tab_kda": {"fr": "⚔️ F/D/A", "en": "⚔️ K/D/A"},
     "ts_tab_progression": {"fr": "📈 Progression", "en": "📈 Progression"},
