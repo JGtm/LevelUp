@@ -358,6 +358,77 @@ def render_impact_summary_stats(
     }
 
 
+def _top_maps_by_frequency(all_bd: pl.DataFrame) -> list[str]:
+    """Retourne les 15 cartes les plus jouées."""
+    return (
+        all_bd.group_by("map_name")
+        .agg(pl.col("matches").sum())
+        .sort("matches", descending=True)
+        .head(15)["map_name"]
+        .to_list()
+    )
+
+
+def _order_maps_by_first_seen(
+    series: list[tuple[str, DataFrameLike]], maps: list[str]
+) -> list[str]:
+    """Trie les cartes par première apparition chronologique dans les données brutes."""
+    raw_frames: list[pl.DataFrame] = []
+    for _, df in series:
+        df_pl = ensure_polars(df)
+        if not df_pl.is_empty() and "start_time" in df_pl.columns and "map_name" in df_pl.columns:
+            raw_frames.append(df_pl.select(["map_name", "start_time"]))
+
+    if not raw_frames:
+        return maps
+
+    first_seen = (
+        pl.concat(raw_frames, how="diagonal_relaxed")
+        .filter(pl.col("map_name").is_in(maps))
+        .group_by("map_name")
+        .agg(pl.col("start_time").min().alias("first_seen"))
+        .sort("first_seen")
+    )
+    ordered = first_seen["map_name"].to_list()
+    return ordered + [m for m in maps if m not in ordered]
+
+
+def _build_perf_matrix(
+    all_bd: pl.DataFrame,
+    player_names: list[str],
+    maps: list[str],
+) -> list[list[object]]:
+    """Construit la matrice joueur × carte des performances."""
+    matrix: list[list[object]] = []
+    for name in player_names:
+        row_bd = all_bd.filter(pl.col("_player") == name)
+        perf_map = dict(
+            zip(row_bd["map_name"].to_list(), row_bd["performance_avg"].to_list(), strict=False)
+        )
+        matrix.append([perf_map.get(m) for m in maps])
+    return matrix
+
+
+def _discrete_perf_colorscale() -> list[list[object]]:
+    """Colorscale à paliers discrets cohérente avec _perf_color."""
+    c = HALO_COLORS.as_dict()
+    _max = 100.0
+    _eps = 1e-4
+    _orange = "#FF8C00"
+    return [
+        [0.0, c["red"]],
+        [SCORE_THRESHOLDS["below_average"] / _max - _eps, c["red"]],
+        [SCORE_THRESHOLDS["below_average"] / _max, _orange],
+        [SCORE_THRESHOLDS["average"] / _max - _eps, _orange],
+        [SCORE_THRESHOLDS["average"] / _max, c["amber"]],
+        [SCORE_THRESHOLDS["good"] / _max - _eps, c["amber"]],
+        [SCORE_THRESHOLDS["good"] / _max, c["cyan"]],
+        [SCORE_THRESHOLDS["excellent"] / _max - _eps, c["cyan"]],
+        [SCORE_THRESHOLDS["excellent"] / _max, c["green"]],
+        [1.0, c["green"]],
+    ]
+
+
 # ─── Feature 1 — Heatmap joueur × carte ─────────────────────────────────────
 
 
@@ -394,36 +465,16 @@ def plot_squad_map_heatmap(
         return None
 
     all_bd = pl.concat(player_bds, how="diagonal_relaxed")
-    top_maps = (
-        all_bd.group_by("map_name")
-        .agg(pl.col("matches").sum())
-        .sort("matches", descending=True)
-        .head(15)["map_name"]
-        .to_list()
-    )
+    top_maps = _order_maps_by_first_seen(series, _top_maps_by_frequency(all_bd))
+
     all_bd = all_bd.filter(pl.col("map_name").is_in(top_maps))
     if all_bd.is_empty():
         return None
 
     player_names = [n for n, _ in series]
-    matrix = []
-    for name in player_names:
-        row_bd = all_bd.filter(pl.col("_player") == name)
-        perf_map = dict(
-            zip(row_bd["map_name"].to_list(), row_bd["performance_avg"].to_list(), strict=False)
-        )
-        matrix.append([perf_map.get(m) for m in top_maps])
+    matrix = _build_perf_matrix(all_bd, player_names, top_maps)
 
-    c = HALO_COLORS.as_dict()
-    _max = 100.0
-    colorscale = [
-        [0.0, c["red"]],
-        [SCORE_THRESHOLDS["below_average"] / _max, "#FF8C00"],
-        [SCORE_THRESHOLDS["average"] / _max, c["amber"]],
-        [SCORE_THRESHOLDS["good"] / _max, c["cyan"]],
-        [SCORE_THRESHOLDS["excellent"] / _max, c["green"]],
-        [1.0, c["green"]],
-    ]
+    colorscale = _discrete_perf_colorscale()
     perf_lbl = "Perf"
     height = max(180, len(player_names) * 60 + 100)
     fig = go.Figure(

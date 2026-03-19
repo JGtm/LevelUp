@@ -118,6 +118,21 @@ def outcome_style(outcome: object, label: str) -> str:
     return "opacity:0.92"
 
 
+def win_rate_style(v: object) -> str:
+    """Retourne le style CSS inline pour un taux de victoire cumulatif."""
+    try:
+        f = float(v)  # type: ignore[arg-type]
+        if f != f:
+            return ""
+        if f >= 55.0:
+            return f"color:{_COLORS['green']}; font-weight:700"
+        if f <= 45.0:
+            return f"color:{_COLORS['red']}; font-weight:700"
+        return f"color:{_COLORS['cyan']}; font-weight:700"
+    except Exception:
+        return ""
+
+
 def mmr_gap_style(v: object) -> str:
     """Retourne le style CSS inline pour un delta MMR."""
     try:
@@ -185,6 +200,7 @@ def _build_default_columns() -> list[tuple[str, str]]:
         (t("col_playlist"), "playlist_fr"),
         (t("col_mode"), "mode_ui"),
         (t("col_result"), "outcome_label"),
+        (t("col_win_rate_hist"), "win_rate_hist"),
         (t("col_score"), "score"),
         (t("mv_performance"), "performance"),
         (t("col_mmr_team"), "team_mmr"),
@@ -297,6 +313,15 @@ def _render_cell(r: dict, key: str, outcome_code: object) -> str:
         val = fmt_value(r.get(key))
         style = outcome_style(outcome_code, val)
         return f"<td style='{style}'>{html_lib.escape(val)}</td>"
+
+    if key == "win_rate_hist":
+        val = r.get(key)
+        style = win_rate_style(val)
+        try:
+            display = f"{int(round(float(val)))}%"  # type: ignore[arg-type]
+        except Exception:
+            display = "-"
+        return f"<td style='{style}'>{html_lib.escape(display)}</td>"
 
     if key == "map_name":
         val = fmt_value(r.get(key))
