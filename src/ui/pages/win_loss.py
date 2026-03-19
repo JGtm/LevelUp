@@ -257,7 +257,7 @@ def _render_winrate_perf_vs_history(dff: pl.DataFrame, base: pl.DataFrame) -> No
     """Affiche les graphes Taux de victoires vs historique et Performance vs historique."""
     from src.analysis import compute_map_breakdown
 
-    bd_current = compute_map_breakdown(dff)
+    bd_current = compute_map_breakdown(dff, df_history=base)
     bd_history = compute_map_breakdown(base)
     if bd_current.is_empty() or bd_history.is_empty():
         return
@@ -322,7 +322,7 @@ def _render_ratio_by_map_section(
     )
 
     with st.spinner(t("wl_computing_map")):
-        map_result = WinLossService.compute_map_breakdown(dff, min_matches)
+        map_result = WinLossService.compute_map_breakdown(dff, min_matches, df_history=base)
         breakdown_history = WinLossService.compute_map_breakdown(base, 1).breakdown
 
     if map_result.is_empty:
