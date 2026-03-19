@@ -7,6 +7,242 @@
 
 ## Journal
 
+### [2026-03-19] — Vérification finale migration b5>>4 + couverture de tests
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Ajout de 25 tests unitaires couvrant `scan_fire_events_b5` via des chunks binaires synthétiques construits avec `bitstring.BitArray`. Construction du layout exact : `[prefix_bits zeros][11b marker][8b fire_seq][8b b3=0x40][8b fire_counter][8b b5=(pi<<4)|slot][64b weapon][32b post]`.
+
+**Résultats observés** :
+- 191 tests passent dans les 4 fichiers de test weapon (dont 25 nouveaux dans `test_scan_fire_events_b5.py`)
+- Suite complète : 4968 passent, 2 skipped, 0 failures
+- Couverture : extraction player_index (pi=0..15), slot, b5, filtre weapon (suffix 42c9679f), tous les champs du dict, déduplication par proximité byte_pos, tri par timestamp
+
+**Fichiers modifiés** :
+- `tests/test_scan_fire_events_b5.py` — créé (217L, 25 tests, 5 classes)
+
+**Conclusion** :
+Migration b5>>4 entièrement validée. Aucune régression. Prochaine étape : commit sur `refactor/id-resolution-cleanup`.
+
+---
+
+### [2026-03-19] — Migration production b5>>4 — suppression fire_seq%n
+
+**Statut** : Complété
+
+**Décision technique** : Remplacement de `fire_seq % n_players` par `b5 >> 4` en production pour l'attribution player_index dans les fire events.
+
+**Fichiers modifiés** :
+- `src/analysis/_weapon_scanners.py` : nouvelle fonction `scan_fire_events_b5()` (marker universel, `player_index = b5>>4`, dédup par `byte_pos` proximity)
+- `src/analysis/weapon_parser.py` : `scan_fire_events_all()` sans `n_players`, suppression de `map_b2_to_player`, `group_events_by_pi`, `POV_PLAYER_INDEX`, alias morts
+- `src/data/services/weapon_extraction_service.py` : `_run_scan_phase` sans `n_players` ni dispatch b2→pi, `ScanResult` sans `fire_events_by_pi`
+- Tests mis à jour (suppression des classes de test du code mort)
+
+**Conservé intentionnellement** : `scan_fire_events_bitstring` + `_build_marker` (utilisés par `_weapon_parser_compat.py` — pipeline legacy v1)
+
+**Résultats** : 4968 tests passent, 2 skipped, 0 failure. Baseline qualité : 2 violations corrigées, 0 ajoutées.
+
+**Conclusion** : `fire_seq%n_players` entièrement éliminé du code actif. La production utilise désormais `b5>>4`.
+
+---
+
+### [2026-03-19] — Implémentation backlog : fixes 1-11 + tests
+
+**Statut** : Complété
+
+**Décision technique principale** : Implémentation de 11 correctifs identifiés dans le backlog, avec couverture de tests pour les cas critiques et correction de la régression ghost player détectée lors des tests.
+
+**Correctifs appliqués** :
+1. **Fix 1 (ColumnNotFoundError)** : `map_name` ajouté dans `_match_relations.py` SELECT + `_FRIEND_DF_EMPTY_SCHEMA` dans `cache_filters.py`
+2. **Fix 2 (Bots bid(33.0))** : `get_bot_name()` appelé dans `_build_encounter_rows` avant le fallback `xuid[:8]`
+3. **Fix 3 (Matrice d'impact ordre)** : `.unique(maintain_order=True)` dans `friends_impact_heatmap.py`
+4. **Fix 4 (FDA ratio)** : `ratio = kda.alias("ratio")` dans `_finalize_polars_df` et `p.kda AS ratio` dans `_query_teammate_shared_stats` — source unique (API)
+5. **Fix 5 (Joueurs fantômes)** : Filtre ghost uniquement dans `filter_encounter_xuids` (encounters). Retiré du scoreboard (`load_match_scoreboard`) après régression détectée — les joueurs légitimes peuvent avoir 0 sur toutes les stats
+6. **Fix 6 (MediaFileStorageError)** : Images rang encodées en base64 data URI dans `career.py` pour éviter les IDs Streamlit éphémères
+7. **Fix 7 (Performance vue 1 coéquipier)** : `enrich_with_performance_score` appelé pour me_df et friend_df dans `render_single_teammate_view`
+8. **Fix 8 (Heatmap monochrome)** : `compute_map_breakdown` utilise `performance_score` column directement (`.mean()`) quand disponible, sans recalcul relatif biaisé
+9. **Fix 9 (Radar)** : `radar_squad_ids` sauvegardé avant le filtre UI ; DFs séparés `radar_me_df/f1/f2/f3` pour `render_trio_synergy_radar`
+10. **Fix 10 (Performance vs historique)** : JOIN `player_match_enrichment` dans `load_matches_as_polars`, `performance_score` dans `COLUMNS_COMMON`, propagation `df_history` dans `WinLossService`
+11. **Fix 11 (Fan-out P0)** : `FanoutEnrichmentMixin` créé dans `_engine_fanout.py`, branché dans `engine.py` APRÈS `_detach_shared_from_player_conn()` + `_run_lusr_post_sync()`. Career rank extrait en `_run_career_rank_if_needed()` pour réduire `_sync_internal` sous 80L.
+
+**Correction de régression** : Le ghost filter dans `load_match_scoreboard` filtrait des joueurs légitimes avec stats=0 (tests `TestLoadMatchScoreboard` cassés). Solution : filtre retiré du scoreboard, conservé uniquement dans les encounters.
+
+**Tests** : 25 tests dans `tests/test_backlog_fixes.py` couvrant fixes 1, 2, 3, 4, 5, 8, 10, 11.
+
+**Suite qualité** : `ruff` clean, baseline taille mis à jour (97 violations documentées), `_sync_internal` sous 80L après extraction `_run_career_rank_if_needed`.
+
+**Régressions corrigées en session de continuation** :
+- `TestLoadFriendMatchDetails` : `match_registry` dans le fixture manquait `map_name VARCHAR` → ajouté dans `test_roster_loader_friend_matches.py`
+- `test_cached_compute_sessions_db_returns_expected_contract` : `player_match_enrichment` dans le fixture manquait `is_with_friends BOOLEAN` → ajouté dans `test_data_contract_sessions.py`
+- `test_no_new_size_violations` : `render_trio_view` passé de 238L à 233L (amélioration C401) → baseline mis à jour à 97 violations
+- `test_weapon_data.py` (2 fusion) : `resolve_weapon_display` donnait priorité au label DB sur la fusion map → fusion appliquée en premier dans `_weapon_data.py` (étape 0 : redirect canonical_id avant DB lookup)
+
+**Résultats** : 4969 tests passent, 2 skipped. Aucune failure.
+
+**Conclusion** : Tous les fixes du backlog implémentés, tous les tests passent. Branche : `refactor/id-resolution-cleanup`.
+
+---
+
+### [2026-03-19] — Backfill enrichissement JGtm + Madina97294 + nettoyage BACKLOG
+
+**Statut** : Complété ✅
+
+**Contexte** : Après la mise en place du fan-out (Fix 11), les matchs du 18 mars n'avaient pas encore été enrichis pour JGtm (8 matchs manquants) et Madina97294 (8 matchs manquants) car le fan-out ne s'applique qu'aux syncs futurs.
+
+**Actions exécutées** :
+- Backfill `--performance-scores --sessions --citations` pour JGtm : 8/8 matchs enrichis, 8 performance scores, 682 sessions, 8 citations ✓
+- Backfill `--performance-scores --sessions --citations` pour Madina97294 : 8/8 matchs enrichis, 8 performance scores, 1018 sessions, 8 citations ✓
+
+**Nettoyage BACKLOG.md** : Tous les 11 fixes + bonus weapon fusion déplacés dans la table "Récemment complété" avec dates. Descriptions détaillées retirées (code implémenté). Seuls 2 items restent en backlog actif : migration b5>>4 et perf `_MAX_CONCURRENT_CHUNKS`.
+
+**Couverture de tests finale** : 4973 passent, 2 skipped, 0 failures (suite complète hors intégration).
+
+**Conclusion** : Tous les enrichissements à jour pour tous les joueurs enregistrés. Root causes (Fix 11 fan-out) en place pour les prochains syncs.
+
+---
+
+### [2026-03-19] — Revue backlog : validation diagnostics + précisions solutions
+
+**Statut** : Complété
+
+**Décision technique principale** : Revue croisée de tous les diagnostics/solutions du backlog contre le code source. Corrections apportées sur 6 points.
+
+**Corrections apportées** :
+1. **P0 Fan-out** : placement du fan-out corrigé — doit être **après** `_detach_shared_from_player_conn()` (et non après `_run_post_sync_compute`) pour éviter le conflit d'accès exclusif DuckDB sur `shared_matches_v2.duckdb`. Ajout : précision sur la résolution du XUID des autres joueurs (via `sync_meta` dans leur `stats.duckdb` ou `shared.xuid_aliases`).
+2. **Bug Radar** : précision du mécanisme interne (`render_trio_synergy_radar` recalcule `shared_match_ids` depuis les DFs passés — passer les DFs historiques suffit). Ajout d'un test suggéré.
+3. **Bug FDA ratio** : ajout de la nuance NULL vs NaN — après le fix `kda.alias("ratio")`, les graphes doivent gérer NULL et NaN de façon identique (`.drop_nulls()` vs `.drop_nans()`).
+4. **Bug ColumnNotFoundError** : ajout de la mise à jour docstring comme 3e point du fix.
+5. **Bug MediaFileStorageError** : précision sur l'accessibilité de `_path_to_data_uri` (fonction privée), avec alternative inline recommandée.
+6. **Perf Film chunks** : ajout d'une mise en garde — aucune donnée sur les limites CDN Azure, approche incrémentale (5→7→10) recommandée, vérification du retry 429 préalable.
+
+**Diagnostics confirmés corrects** : Joueurs fantômes, Bug 4 (matrice d'impact ordre), Bug 5 (heatmap monochrome), Performance vs historique, Bug Performance vue 1 coéquipier. Précisions mineures ajoutées pour la robustesse.
+
+**Résultats observés** : Aucun code modifié — revue documentaire uniquement.
+
+**Conclusion / prochaine étape** : Backlog à jour avec des solutions robustes et testables. Priorités suggérées d'implémentation : (1) Bug ColumnNotFoundError map_name (crash systématique), (2) Bug FDA ratio (data integrity), (3) Bug Radar (UX), (4) Joueurs fantômes, (5) P0 Fan-out.
+
+---
+
+### [2026-03-19] — inv134 : player_index via b5>>4 confirme, attribution armes par joueur
+
+**Statut** : Complété (script experimental, documentation, prod non encore migrée)
+
+**Contexte** : Investigation inv133/inv134 pour résoudre l'attribution croisée des armes de kill dans les binaires film Halo Infinite. Objectif : identifier QUEL joueur a utilisé QUELLE arme pour chaque kill, via les fire events filmshell.
+
+**Décision technique** :
+Le byte b5 de chaque fire event (nibble-shifted bitstream, offset +32 bits depuis event_start) encode directement le player_index dans ses 4 bits de poids fort : `player_index = b5 >> 4`. Ce fait a été confirmé par la documentation acurtis 2026-03-18.
+
+**Structure fire event (nibble-shifted)** :
+- Marker 11b : `0b10100100110` (=`0d 26`, fixe pour TOUS les joueurs — b1=0x26 est universel)
+- event_start = marker_pos + 3
+- b2 [+8..+15] : fire_seq
+- b4 [+24..+31] : fire_counter (8 bits, wraparound)
+- b5 [+32..+39] : `(player_index << 4) | slot`
+- weapon [+40..+103] : 8 bytes big-endian
+
+**Théories invalidées** :
+- `fire_seq % n_players` (inv132) : validée sur d9329229 mais ne généralise pas (échec sur a974fdeb)
+- POV player only theory : INVALIDE — tous les joueurs ont leurs fire events dans chaque chunk
+- Dédup par `(fire_counter, weapon)` : INCORRECT car fire_counter boucle à 255 → supprime des events légitimes sur armes auto
+
+**Fix dédup** : Par proximité byte_pos (< 2 bytes = même event physique), pas par (fc, weapon).
+
+**Attribution** : Pour chaque kill, chercher le fire event le plus récent AVANT le kill pour le bon pi. Les kills avec gap > 500ms sont flaggés "?" (grenade/melee/pause).
+
+**Résultats sur 3 matchs** :
+- a974fdeb (Quick Play) : 87 kills, 73 conf (84%), armes cohérentes
+- f2f81265 (Quick Play) : 98 kills, 87 conf (89%), Skewer/Sniper identifiés
+- d9329229 (Quick Play) : 97 kills, 92 conf (95%), BR75 dominant (ranked-style), Stalker Rifle/Fuel Rod identifiés
+
+**Cas non résolu** : TypeRsamurai (pi=9 dans PLAYER_METADATA mais b5>>4 ne retourne que 0-7 sur ce match — peut-être joueur arrivé tard ou cas edge des 9 joueurs).
+
+**Fichiers** :
+- `scripts/experimental/inv133_fire_seq_attribution.py` : ancienne approche fire_seq % n
+- `scripts/experimental/inv134_b5_pi_attribution.py` : approche correcte b5>>4 (**VALIDEE**)
+
+**Prochaine étape** : Intégrer b5>>4 dans `scan_fire_events_all` (weapon_parser.py) pour remplacer `fire_seq % n_players`. Mettre à jour FINDINGS_weapon_extraction_EN_full.md.
+
+---
+
+### [2026-03-19] — inv136 : validation experimentale du marqueur melee (couche NS)
+
+**Statut** : Complété (validation expérimentale, non migré en production)
+
+**Objectif** : Confirmer la structure exacte des melee events dans la couche nibble-shiftée (NS) et valider que `b5 >> 4 = player_index` s'y applique également, sur 3 matchs (a974fdeb, f2f81265, d9329229).
+
+**Structure melee confirmée (couche NS, offset depuis mel_start)** :
+- `[0]` b0 : `(b0 & 0x07) == 0x03` (lead byte — invariant sur le low nibble)
+- `[1]` b1 : **constante par match** (0x40 pour a974fdeb) — seul discriminant fiable melee/fire
+- `[2]` b2 : compteur incrémental
+- `[3]` b3 : **0x20** (CONSTANT — discriminant primaire melee vs fire en NS)
+- `[4]` b4 : 0x00 (CONSTANT)
+- `[5]` b5ctx : 0x00 (CONSTANT)
+- `[6]` b6 : 0x0d (lead fire event intégré)
+- `[7]` b7 : 0x26 (b1 fire event = fixe)
+- `[8]` b5_melee : `(pi << 4) | slot` → **pi = b5 >> 4** ✓ (même formule que fire events)
+- `[9]` b9 : `0x40–0x43` (fire b3, CONSTANT à 0xFC mask)
+- `[12:20]` weapon_id (8 bytes)
+
+**Résultats par match** :
+- **a974fdeb** (b1=0x40) : 9 events melee détectés, API = 18 melee kills → **50% détection**. Pi confirmés {1,3,4,5} via b5>>4 cohérent avec `detect_pi_from_metadata`.
+- **d9329229** : 0 events — b3 ≠ 0x20 pour tous les candidats (structure NS différente ou b3 non constant sur ce match).
+- **f2f81265** : structure présente (318 events avec filtre fort seul) mais b1 inconnu → impossible de filtrer sans connaître la valeur b1 du match.
+
+**Problème fondamental identifié** : Superposition fire/melee dans la couche NS. Un fire event situé 6 bytes avant mel_start satisfait aussi les contraintes (b3=0x20, b6=0x0d, b7=0x26) car son weapon (offset +6 depuis sa propre start) atterrit exactement à l'offset +12 du mel_start. Le byte b1 est le **seul discriminant** entre les deux types, mais il est match-specific et non connu a priori.
+
+**Conclusion** : L'approche directe melee NS n'est pas encore généralisable en production. La valeur b1 semble être une constante par match (voire par playlist/version) mais aucune règle de calcul n'a été identifiée. Pour la production, **inv135 sentinel API reste la solution robuste** : les totaux `grenade_kills`/`melee_kills` API bornent le quota et donnent gun_diff=0 sur 282 kills.
+
+**Script** : `scripts/experimental/inv136_melee_marker.py`
+
+---
+
+### [2026-03-19] — Titre rang absent sous adornment du header principal
+
+**Statut** : Complété
+
+**Décision technique** : L'endpoint Economy player-gated (`/hi/players/xuid(...)/rewardtracks/careerranks/careerrank1`) requiert les tokens du joueur spécifique. Pour les joueurs sans `SPNKR_OAUTH_REFRESH_TOKEN_<GT>` configuré, `_fetch_career_progress` retourne `None` → `rank_label=None` dans le `ProfileAppearance`. L'adornment (via `gamecms_hacs`, non player-gated) peut être présent dans le cache, mais le `rank_label` reste absent.
+
+Le fallback DB existant ne couvrait que `adornment_value` (activé avec `if not adornment_value`). Si l'adornment était déjà résolu, on n'entrait pas dans le bloc, et `rank_label_value` restait None.
+
+**Correction** (`src/app/main_helpers.py`) :
+- La condition d'entrée dans le fallback DB est maintenant `(not adornment_value or not rank_label_value)` (au lieu de `not adornment_value` seul)
+- Si `rank_label_value` est absent, le bloc tente : `get_rank_info(career["rank"]).full_label_fr` (metadata.duckdb), puis fallback sur `format_career_rank_label_fr(rank_name, rank_tier)`.
+
+**Résultat** : le titre de rang (ex. « Lieutenant-colonel - Or I ») s'affiche sous l'adornment pour tous les joueurs, même sans token player-gated configuré, tant que `career_progression` contient une entrée.
+
+---
+
+### [2026-03-19] — Fix graphe "Taux de victoires vs historique" — barres de défaites invisibles
+
+**Statut** : Complété
+
+**Problème** : Dans le bullet chart `plot_map_winrate_bullet`, les barres de session (colorées) n'étaient pas visibles, seules les barres historiques roses semi-transparentes apparaissaient.
+
+**Cause duale** :
+1. **Z-ordering** : La trace `under_sess` (session < historique) était ajoutée en 2ème position. Dans Plotly `barmode="overlay"`, la **dernière trace est au premier plan**. Avec `over_hist` en 4ème position (dernier), les barres session du cas `under` se retrouvaient derrière les barres historiques du cas `over`. Réordonné : `under_hist (1er)` → `over_sess (2e)` → `over_hist (3e)` → `under_sess (4e, LAST = premier plan)`.
+2. **Win rate = 0%** : Une carte où la session a 0% de victoires (toutes défaites) génère une barre Plotly de longueur 0 → visuellement invisible. Ajout d'une trace `go.Scatter` avec marqueur vertical rouge (`line-ns`) à x=0 pour ces cartes, visible au hover avec "0% (toutes défaites)".
+
+**Résultats** : 5/5 tests `TestPlotMapWinrateBullet` passent, aucune erreur lint.
+
+**Conclusion** : Les barres rouges/ambre (session pire que historique) sont maintenant visibles devant les barres roses. Les cartes 100% défaites affichent un marqueur `×` rouge à x=0.
+
+---
+
+### [2026-03-18] — Alignement weapon_labels avec référentiel acurtis166
+
+**Statut** : Complété
+
+**Décision technique** : Comparaison de `metadata.duckdb::weapon_labels` avec la table de weapon IDs publiée par acurtis166 (GitHub dend/blog-comments#5, commentaire 3976503944). 35/36 IDs alignés.
+
+**Corrections appliquées** :
+1. `MA5K Avenger` — ID corrigé `0xF5C335DFE7232C0F` → `0xF5C335DFE7232C0B` (ni l'un ni l'autre présent dans weapon_kills, confiance donnée à acurtis)
+2. `Fuel Rod SPNKr` — `name_fr` corrigé `"M41 SPNKr"` → `"Fuel Rod SPNKr"`
+3. `M392 Bandit` — `name_fr` corrigé `"Bandit EVO"` → `"M392 Bandit"`
+
+**Non-problème** : acurtis écrit "Distruptor" (typo) — notre `name_en = "Disruptor"` est correct.
+
+**Conclusion** : Table weapon_labels à jour et fiable.
+
 ### [2026-03-18] — Harmonisation armes scoreboard detail avec section "Outils de destruction"
 **Statut** : Complété
 
@@ -5861,3 +6097,22 @@ et tooltip description sur les médailles.
 
 **Conclusion** : Le scoreboard inline affiche désormais les assets visuels des armes avec fallback texte, et les médailles ont un tooltip avec leur description.
 Prochaine étape : commit + push.
+
+---
+
+### [2026-03-18] — Session escouade du 18/03 classée "solo" en UI
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Utiliser `player_match_enrichment.is_with_friends` comme source de vérité pour la classification Solo/Escouade, au lieu de dépendre uniquement de `teammates_signature` + sélection d'amis UI.
+
+**Résultats observés** :
+- Audit DB sur les matchs concernés : pas d'anomalie (`is_with_friends=TRUE` sur les matchs trio).
+- Le mauvais classement venait de la couche UI qui pouvait marquer une session en solo selon le contexte de sélection d'amis.
+
+**Changements code** :
+- `src/app/_filters_session.py` : `_classify_sessions_solo_squad()` priorise `is_with_friends` si présent.
+- `src/ui/_cache_sessions.py` : `cached_compute_sessions_db()` charge et propage `is_with_friends` (SQL, schémas vides, retour Cas A/B, chemin d'erreur).
+
+**Conclusion** :
+La session du 18/03 est désormais classée escouade selon le flag BDD persistant, même si la sélection d'amis UI change.
