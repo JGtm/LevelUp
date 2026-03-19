@@ -61,14 +61,24 @@ class _MatchQueriesPolarsMixin:
         # JOIN rank du joueur principal depuis match_participants
         rank_join, rank_select = self._build_rank_join(ctx)
 
+        # JOIN performance_score depuis player_match_enrichment (même DB que stats.duckdb)
+        # LEFT JOIN → NULL si le match n'est pas encore enrichi (fan-out incomplet OK)
+        perf_join = (
+            "\n                    LEFT JOIN player_match_enrichment pme"
+            "\n                    ON match_stats.match_id = pme.match_id"
+        )
+
         all_select = f"""
                 {select_cols},
-                {rank_select}
+                {rank_select},
+                pme.performance_score
         """
 
         limit_clause = f"LIMIT {int(max_matches)}" if max_matches else ""
 
-        sql = self._build_polars_query(all_select, ctx, rank_join, where_sql, limit_clause)
+        sql = self._build_polars_query(
+            all_select, ctx, rank_join + perf_join, where_sql, limit_clause
+        )
 
         try:
             result = (
@@ -172,17 +182,14 @@ class _MatchQueriesPolarsMixin:
 
     @staticmethod
     def _finalize_polars_df(df: pl.DataFrame, columns: list[str] | None) -> pl.DataFrame:
-        """Ajoute ratio, renomme avg_life_seconds, projette les colonnes."""
-        # Ratio KDA calculé en Polars
-        df = df.with_columns(
-            pl.when(pl.col("deaths") > 0)
-            .then(
-                (pl.col("kills").cast(pl.Float64) + pl.col("assists").cast(pl.Float64) / 2.0)
-                / pl.col("deaths").cast(pl.Float64)
-            )
-            .otherwise(pl.lit(float("nan")))
-            .alias("ratio")
-        )
+        """Ajoute ratio (alias de kda API), renomme avg_life_seconds, projette les colonnes."""
+        # ratio = kda officiel de l'API (source unique pour cohérence inter-panneaux)
+        # kda peut être NULL (match sans morts/stats), laissé tel quel — les graphes
+        # utilisent drop_nulls() ou fill_null() selon le contexte.
+        if "kda" in df.columns:
+            df = df.with_columns(pl.col("kda").alias("ratio"))
+        else:
+            df = df.with_columns(pl.lit(None).cast(pl.Float64).alias("ratio"))
 
         # Alias pour compat code existant
         if "avg_life_seconds" in df.columns:
