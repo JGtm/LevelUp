@@ -7,6 +7,21 @@
 
 ## Journal
 
+### [2026-03-19] — Citation Mutilateur + asset — Complété
+
+**Tâche** : Intégrer le nouvel asset arme Mutilator et la nouvelle image de citation pour cette arme Paria.
+
+**Décision technique** : Citation de type `weapon_stat` avec `stat_name="weapon_kills:Mutilator"` (nom canonique déjà défini dans `_weapon_data.py`). Ajout dans la section Paria de `WEAPON_CITATIONS` et dans `_PARIA_WEAPON_CHILDREN` (composite `paria_weapons_mastery`).
+
+**Résultats** :
+- `static/weapons-assets/Mutilator.png` — déjà présent (ajouté par l'utilisateur)
+- `static/commendations/hi/HI_Commendations_Mutilator.png` — image citation ajoutée par l'utilisateur
+- `scripts/populate_citation_mappings.py` — ajout `mutilator_mastery` + mise à jour `_PARIA_WEAPON_CHILDREN`
+- DB `metadata.duckdb` — 84 citations upsertées (20 weapon_stat)
+- Backfill `--force-citations --all` → 2046 citations recalculées pour 4 joueurs
+
+**Conclusion** : Le Mutilateur est maintenant visible dans la page Citations avec son image, et ses kills sont comptabilisés dans la citation composite Maîtrise des armes Parias.
+
 ### [2026-03-19] — Verbosité backfill weapon_kills — Complété
 
 **Tâche** : Réduire la verbosité du backfill weapon_kills (59 lignes de progression pour 1472 matchs).
