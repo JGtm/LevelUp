@@ -283,10 +283,9 @@ def _load_citation_items(
         return []
 
     items = []
-    # Construire un index norm -> display_name depuis citation_mappings
-    from src.ui.commendations import _load_citations_from_db
+    from src.data.citation_definitions import load_citation_definitions
 
-    citations_db = _load_citations_from_db()
+    citations_db = load_citation_definitions()
     norm_to_name: dict[str, str] = {
         c["citation_name_norm"]: c["citation_name_display"] for c in citations_db
     }

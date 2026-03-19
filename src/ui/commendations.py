@@ -24,9 +24,6 @@ from src.utils.paths import REPO_ROOT
 
 logger = logging.getLogger(__name__)
 
-# ── Chemin vers metadata.duckdb ─────────────────────────────────────────────
-_METADATA_DB_REL = os.path.join("data", "warehouse", "metadata.duckdb")
-
 
 # ── Utilitaires internes ────────────────────────────────────────────────────
 
@@ -73,40 +70,14 @@ def _parse_tier_targets(csv_targets: str | None) -> list[dict[str, Any]]:
 
 @st.cache_data(show_spinner=False, ttl=300)
 def _load_citations_from_db() -> list[dict[str, Any]]:
-    """Charge toutes les citations activées depuis ``citation_mappings``."""
-    db_path = _abs_from_repo(_METADATA_DB_REL)
-    if not os.path.exists(db_path):
-        logger.warning("metadata.duckdb introuvable : %s", db_path)
-        return []
+    """Charge toutes les citations activées depuis ``citation_mappings``.
 
-    from src.utils.db import duckdb_read_only
+    Délègue à ``src.data.citation_definitions.load_citation_definitions()``
+    avec un cache Streamlit (TTL 300s).
+    """
+    from src.data.citation_definitions import load_citation_definitions
 
-    with duckdb_read_only(db_path) as conn:
-        try:
-            rows = conn.execute(
-                "SELECT citation_name_norm, citation_name_display, mapping_type, "
-                "       image_path, category, description, tier_targets, "
-                "       composite_children, subcategory "
-                "FROM citation_mappings "
-                "WHERE enabled IS NOT FALSE "
-                "ORDER BY category, CASE WHEN mapping_type = 'composite' THEN 0 ELSE 1 END, citation_name_display"
-            ).fetchall()
-
-            columns = [
-                "citation_name_norm",
-                "citation_name_display",
-                "mapping_type",
-                "image_path",
-                "category",
-                "description",
-                "tier_targets",
-                "composite_children",
-                "subcategory",
-            ]
-            return [dict(zip(columns, row, strict=False)) for row in rows]
-        except Exception:
-            logger.exception("Erreur chargement citation_mappings")
-            return []
+    return load_citation_definitions()
 
 
 # ── Mastery / progression ───────────────────────────────────────────────────

@@ -101,13 +101,14 @@ def test_join_medals_earned_to_definitions():
 
 @skip_no_data
 def test_load_medal_name_maps_uses_db(caplog):
-    """load_medal_name_maps() charge depuis la DB et logge le message INFO attendu."""
+    """load_medal_name_maps() charge depuis la DB."""
     import logging
 
-    from src.ui.medals import _load_from_db
+    from src.ui.medals import load_medal_name_maps
 
     with caplog.at_level(logging.DEBUG, logger="src.ui.medals"):
-        fr_map, en_map = _load_from_db()
+        load_medal_name_maps.clear()
+        fr_map, en_map = load_medal_name_maps()
 
     assert len(fr_map) >= 100, f"Seulement {len(fr_map)} labels FR depuis DB"
     assert len(en_map) >= 100, f"Seulement {len(en_map)} labels EN depuis DB"
