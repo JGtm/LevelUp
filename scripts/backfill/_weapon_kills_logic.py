@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -15,14 +16,16 @@ _DEFAULT_CACHE_DIR = _PROJECT_ROOT / "data" / "cache" / "film_chunks"
 # Nombre de matchs traités en parallèle (limité pour ne pas saturer l'API SPNKr)
 _MATCH_CONCURRENCY = 4
 
-# Intervalle d'affichage progression (tous les N matchs)
-_PROGRESS_INTERVAL = 25
+# Intervalle d'affichage progression (toutes les N secondes)
+_PROGRESS_INTERVAL_SECS = 10.0
 
 
 def _log_weapon_progress(progress: dict, total: int) -> None:
-    """Affiche la progression du backfill weapon_kills tous les _PROGRESS_INTERVAL matchs."""
+    """Affiche la progression du backfill weapon_kills toutes les _PROGRESS_INTERVAL_SECS secondes."""
     done = progress["done"]
-    if done % _PROGRESS_INTERVAL == 0 or done == total:
+    is_final = done == total
+    now = time.monotonic()
+    if is_final or (now - progress["last_log"]) >= _PROGRESS_INTERVAL_SECS:
         pct = done * 100 // total if total else 100
         logger.info(
             "⚔️  Weapon kills : %d/%d matchs (%d%%) — %d lignes, %d skips, %d erreurs",
@@ -33,6 +36,7 @@ def _log_weapon_progress(progress: dict, total: int) -> None:
             progress["skipped"],
             progress["errors"],
         )
+        progress["last_log"] = now
 
 
 async def collect_weapon_match_ids_all_players(
@@ -133,8 +137,9 @@ async def run_weapon_kills_backfill(
 
     async with SPNKrAPIClient(tokens=tokens) as api:
         service = WeaponExtractionService(api, shared_conn, cache, write_lock=write_lock)
-        progress = {"done": 0, "rows": 0, "skipped": 0, "errors": 0}
         total_matches = len(match_ids)
+        logger.info("⚔️  Weapon kills : démarrage — %d matchs à traiter", total_matches)
+        progress = {"done": 0, "rows": 0, "skipped": 0, "errors": 0, "last_log": time.monotonic()}
 
         async def _process_one(match_id: str) -> int:
             async with match_sem:
@@ -191,7 +196,4 @@ async def run_weapon_kills_backfill(
         results = await asyncio.gather(*[_process_one(mid) for mid in match_ids])
         total = sum(r for r in results if isinstance(r, int))
 
-    logger.info(
-        "weapon_kills backfill terminé : %d lignes insérées (%d matchs)", total, len(match_ids)
-    )
     return total

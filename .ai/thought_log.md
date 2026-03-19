@@ -7,6 +7,18 @@
 
 ## Journal
 
+### [2026-03-19] — Verbosité backfill weapon_kills — Complété
+
+**Tâche** : Réduire la verbosité du backfill weapon_kills (59 lignes de progression pour 1472 matchs).
+
+**Décision technique** : Remplacer l'intervalle basé sur le nombre de matchs (`_PROGRESS_INTERVAL = 25`) par un intervalle temporel (`_PROGRESS_INTERVAL_SECS = 10.0`). Ajout d'un log initial "démarrage". Suppression du log final redondant (le log à 100% suffit).
+
+**Résultats** : 3 lignes max pour tout le backfill : démarrage → progression(s) toutes les 10s → 100%.
+
+**Conclusion** : Terminé, pas de prochaine étape.
+
+---
+
 ### [2026-03-19] — Traductions playlists FR manquantes — Complété
 
 **Tâche** : Les noms de playlists n'étaient pas traduits en français dans l'UI (filtre sidebar).
