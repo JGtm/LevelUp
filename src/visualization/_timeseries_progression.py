@@ -265,9 +265,9 @@ def plot_lusr_timeseries(  # noqa: PLR0913
 
     fig.update_layout(
         title=title,
-        margin={"l": 40, "r": 20, "t": 60, "b": 90},
+        margin={"l": 40, "r": 20, "t": 60, "b": 140},
         hovermode="x unified",
-        legend=get_legend_horizontal_bottom(),
+        legend={**get_legend_horizontal_bottom(), "y": -0.45},
     )
     fig.update_yaxes(
         title_text=viz_t("trace_lusr_axis", lang),
