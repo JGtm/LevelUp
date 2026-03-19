@@ -209,7 +209,7 @@ class SkillRatingMixin:
                 start_time_map[m_row["match_id"]] = m_row["start_time"]
 
         prev_rating: dict[str, float] = {}
-        updates = 0
+        rows_to_insert: list[tuple] = []
 
         for row in ratings_df.iter_rows(named=True):
             mid = row["match_id"]
@@ -241,8 +241,7 @@ class SkillRatingMixin:
                 continue
 
             tier_obj, sub = get_tier_for_rating(rating_value)
-            conn.execute(
-                _LUSR_UPSERT_SQL,
+            rows_to_insert.append(
                 (
                     mid,
                     rating_value,
@@ -256,11 +255,12 @@ class SkillRatingMixin:
                     start_time_map.get(mid),
                     now,
                     now,
-                ),
+                )
             )
-            updates += 1
 
-        if updates:
+        updates = len(rows_to_insert)
+        if rows_to_insert:
+            conn.executemany(_LUSR_UPSERT_SQL, rows_to_insert)
             conn.commit()
             logger.info("LUSR batch : %s matchs mis à jour", updates)
         return updates
