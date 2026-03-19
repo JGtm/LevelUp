@@ -1,7 +1,7 @@
 """Résolution medal_name_id → nom / description FR/EN.
 
 Sources par ordre de priorité :
-1. Table ``medals`` dans ``metadata.duckdb`` (quand elle existe)
+1. Table ``medal_definitions`` dans ``metadata.duckdb``
 2. Fichiers JSON statiques ``static/medals/medals_{lang}.json``
 3. Fallback : ``str(medal_name_id)``
 """
@@ -63,21 +63,21 @@ def _resolve_text_from_db(medal_name_id: int, lang: str, columns: list[str]) -> 
 
         with duckdb.connect(str(db_path), read_only=True) as conn:
             has_table = conn.execute(
-                "SELECT 1 FROM information_schema.tables WHERE table_name = 'medals' LIMIT 1"
+                "SELECT 1 FROM information_schema.tables WHERE table_name = 'medal_definitions' LIMIT 1"
             ).fetchone()
             if not has_table:
                 return None
             available_columns = {
                 str(row[0])
                 for row in conn.execute(
-                    "SELECT column_name FROM information_schema.columns WHERE table_name = 'medals'"
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = 'medal_definitions'"
                 ).fetchall()
             }
             selected_col = next((col for col in columns if col in available_columns), None)
             if not selected_col:
                 return None
             row = conn.execute(
-                f"SELECT {selected_col} FROM medals WHERE medal_name_id = ?",
+                f"SELECT {selected_col} FROM medal_definitions WHERE medal_name_id = ?",
                 [medal_name_id],
             ).fetchone()
             if row and row[0]:
