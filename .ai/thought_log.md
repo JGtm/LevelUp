@@ -7,6 +7,29 @@
 
 ## Journal
 
+### [2026-03-19] — Traductions playlists FR manquantes — Complété
+
+**Tâche** : Les noms de playlists n'étaient pas traduits en français dans l'UI (filtre sidebar).
+
+**Diagnostic** :
+- `translate_playlist_name` était un passthrough pur — "Quick Play" restait "Quick Play"
+- Le système `label("playlists", ...)` existait dans `data_labels.py` mais `playlists_fr.json` / `playlists_en.json` n'existaient pas
+- La vue `v_match_full` a tous les champs `_fr` hardcodés à `NULL` (non implémentés)
+- Les modes sont 99.5% traduits via `translate_pair_name` + `mode_name_tr` (metadata.duckdb) ✅
+
+**Décision technique** : Créer les fichiers JSON i18n et connecter `translate_playlist_name` au système `label()` existant (cohérent avec awards, ranks, weapons).
+
+**Résultats** :
+- `static/i18n/playlists_fr.json` : 14 playlists traduits (Quick Play → Partie rapide, etc.)
+- `static/i18n/playlists_en.json` : mapping identité EN
+- `translate_playlist_name` appelle désormais `label("playlists", s, lang=lang)` avant le passthrough
+- Test mis à jour (`test_known_playlist_passthrough` → `test_known_playlist_fr/en`)
+- `preferred_order` dans `_filters_cascade.py` fonctionne maintenant (["Partie rapide", "Arène classée", "Assassin classé"] ↔ translations)
+
+**Conclusion** : Playlists correctement traduits en FR/EN. Les modes étaient déjà traduits (pas de bug là).
+
+---
+
 ### [2026-03-19] — Heatmap perf joueur×carte : enrichissement performance_score + colorscale discret
 **Statut** : Complété ✅
 
