@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import logging
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -22,7 +25,7 @@ class SyncOptions:
         requests_per_second: Rate limiting API (requêtes/seconde).
         parallel_matches: Nombre de matchs traités en parallèle.
         defer_performance_score: Différer le calcul du score de performance en batch post-sync.
-        batch_commit_size: Nombre de matchs entre chaque commit intermédiaire (0 = commit final uniquement).
+        batch_commit_size: Taille du batch de commits (-1 = auto, 0 = commit final uniquement, >0 = fixe).
     """
 
     match_type: str = "matchmaking"
@@ -33,11 +36,34 @@ class SyncOptions:
     with_participants: bool = True  # Sprint Gamertag Roster Fix
     with_assets: bool = True
     with_career_rank: bool = True  # Sync progression de rang carrière
-    requests_per_second: int = 10  # Sprint 6: augmenté de 5 à 10
-    parallel_matches: int = 5  # Sprint 6: augmenté de 3 à 5
+    requests_per_second: int = 15  # Sprint 6: augmenté de 5→10, benchmark: 15 optimal
+    parallel_matches: int = 10  # Sprint 6: augmenté de 3→5, benchmark: 10 optimal
     defer_performance_score: bool = True  # Sprint 6: calcul batch post-sync
-    batch_commit_size: int = 10  # Sprint 6: commit tous les 10 matchs
+    batch_commit_size: int = -1  # -1 = auto (adaptatif), 0 = commit final, >0 = fixe
     with_weapons: bool = True  # v5.5 : extraire kills par arme depuis films SPNKr
+
+    @staticmethod
+    def compute_optimal_batch_size(max_matches: int) -> int:
+        """Calcule le batch_commit_size optimal selon le volume attendu.
+
+        Plus le volume est grand, plus on espace les commits pour réduire
+        le nombre d'opérations fsync sur la DB joueur.
+        """
+        if max_matches <= 25:
+            return 0  # commit final uniquement
+        if max_matches <= 100:
+            return 25
+        if max_matches <= 500:
+            return 50
+        return 100
+
+    def with_resolved_batch_size(self) -> SyncOptions:
+        """Retourne une copie avec batch_commit_size résolu si auto (-1)."""
+        if self.batch_commit_size != -1:
+            return self
+        resolved = self.compute_optimal_batch_size(self.max_matches)
+        _logger.debug("batch_commit_size auto → %d (max_matches=%d)", resolved, self.max_matches)
+        return replace(self, batch_commit_size=resolved)
 
 
 @dataclass
