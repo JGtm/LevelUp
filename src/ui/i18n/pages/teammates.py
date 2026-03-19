@@ -197,6 +197,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Toggle rolling average curves over the entire period.",
     },
     "tm_select_teammates": {"fr": "Coéquipiers", "en": "Teammates"},
+    "tm_search_placeholder": {"fr": "Taper pour filtrer...", "en": "Type to filter..."},
     "tm_session_trend": {"fr": "Tendance de session", "en": "Session trend"},
     "tm_solo_session_info": {
         "fr": "Cette session est en solo — les stats de coéquipiers ne sont pas disponibles.",

@@ -16,11 +16,11 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
+from src.app._filters_friends import build_teammates_opts_map
 from src.config import CORE_STAT_COLUMNS
 from src.data.services.teammates_service import TeammatesService
 from src.ui.cache import cached_has_cache_tables
 from src.ui.i18n import t
-from src.ui.pages.teammates_helpers import render_teammate_cards
 from src.ui.pages.teammates_views import (
     render_multi_teammate_view,
     render_single_teammate_view,
@@ -133,24 +133,8 @@ def render_teammates_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
             st.warning(t("tm_loading_slow"), icon="⚠️")
             st.session_state["_cache_warning_shown"] = True
 
-    apply_current_filters_teammates = st.toggle(
-        t("tm_apply_filters"),
-        value=True,
-        key="apply_current_filters_teammates",
-    )
-    same_team_only_teammates = st.checkbox(
-        t("tm_same_team"), value=True, key="teammates_same_team_only"
-    )
-
-    show_smooth_teammates = st.toggle(
-        t("tm_show_smoothed"),
-        value=bool(st.session_state.get("teammates_show_smooth", True)),
-        key="teammates_show_smooth",
-        help=t("tm_smoothed_help"),
-    )
-
     with perf_section("teammates/build_friends_opts_map"):
-        opts_map, default_labels = build_friends_opts_map_fn(
+        opts_map, default_labels = build_teammates_opts_map(
             db_path, xuid.strip(), db_key, aliases_key
         )
     # Préférer la sélection persistée dans FilterPreferences (v5.3)
@@ -161,17 +145,14 @@ def render_teammates_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
     _effective_default = _valid_persisted if _valid_persisted else default_labels
     if "teammates_picked_labels" not in st.session_state:
         st.session_state["teammates_picked_labels"] = _effective_default
+
     picked_labels = st.multiselect(
-        t("tm_select_teammates"),
+        label=t("tm_select_teammates"),
         options=list(opts_map.keys()),
         key="teammates_picked_labels",
         max_selections=3,
     )
     picked_xuids = [opts_map[lbl] for lbl in picked_labels if lbl in opts_map]
-
-    # Spartan ID cards des coéquipiers sélectionnés
-    with perf_section("teammates/render_cards"):
-        render_teammate_cards(picked_xuids, settings, db_path=db_path)
 
     # Tendance de session (matchs affichés) — multi-joueurs
     _req_trend = CORE_STAT_COLUMNS
@@ -241,9 +222,9 @@ def render_teammates_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
         "waypoint_player": waypoint_player,
     }
     _filters = {
-        "apply_current_filters": apply_current_filters_teammates,
-        "same_team_only": same_team_only_teammates,
-        "show_smooth": show_smooth_teammates,
+        "apply_current_filters": True,
+        "same_team_only": True,
+        "show_smooth": True,
     }
     _callbacks = {
         "assign_player_colors_fn": assign_player_colors_fn,

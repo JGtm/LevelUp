@@ -90,6 +90,10 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901
         squad_ids = squad_ids & ids_d
 
     base_for_trio = dff if apply_current_filters else df
+    # Sauvegarder l'ensemble complet AVANT le filtre UI :
+    # le radar de complémentarité utilise l'historique all-time (profil de style de jeu global).
+    # Les DFs timeline/graphes utilisent squad_ids filtré.
+    radar_squad_ids = squad_ids.copy()
     squad_ids = squad_ids & set(base_for_trio["match_id"].cast(pl.Utf8).to_list())
 
     logger.debug(
@@ -152,17 +156,32 @@ def render_trio_view(  # noqa: PLR0913, PLR0915, C901
         f3_name=f3_name,
     )
 
-    # Radar de complémentarité escouade
+    # Radar de complémentarité escouade — utilise l'historique all-time (radar_squad_ids)
+    # pour que les PSA soient disponibles même si les filtres UI excluent les matchs récents.
+    radar_me_df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(radar_squad_ids)))
+    radar_ids_str = {str(x) for x in radar_squad_ids}
+    radar_f1_df = ensure_polars(load_teammate_stats_fn(f1_name, radar_ids_str, db_path))
+    radar_f2_df = ensure_polars(load_teammate_stats_fn(f2_name, radar_ids_str, db_path))
+    radar_f3_df: pl.DataFrame | None = (
+        ensure_polars(load_teammate_stats_fn(f3_name, radar_ids_str, db_path))
+        if f3_name
+        else None
+    )
+    logger.debug(
+        "render_trio_view: radar squad_ids=%d (all-time) vs squad_ids=%d (filtrés)",
+        len(radar_squad_ids),
+        len(squad_ids),
+    )
     render_trio_synergy_radar(
-        me_df=me_df,
-        f1_df=f1_df,
-        f2_df=f2_df,
+        me_df=radar_me_df,
+        f1_df=radar_f1_df,
+        f2_df=radar_f2_df,
         me_name=me_name,
         f1_name=f1_name,
         f2_name=f2_name,
         colors_by_name=colors_by_name,
         db_path=db_path,
-        f3_df=f3_df,
+        f3_df=radar_f3_df,
         f3_name=f3_name,
     )
 

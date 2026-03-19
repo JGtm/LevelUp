@@ -13,6 +13,7 @@ from src.analysis import (
     compute_map_breakdown,
 )
 from src.app._page_context import TeammateCallbacks, TeammateContext, TeammateFilterOptions
+from src.data.services.teammates_service import TeammatesService
 from src.ui import display_name_from_xuid
 from src.ui.cache import (
     cached_friend_matches_df,
@@ -118,6 +119,15 @@ def render_single_teammate_view(
             filtered_match_ids = sub["match_id"].cast(pl.Utf8).to_list()
             friend_sub = friend_sub.filter(
                 pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids)
+            )
+
+        # Enrichir avec les performance_score stockés dans player_match_enrichment
+        # → évite le recalcul percentile relatif au seul subset affiché (biais)
+        me_name = display_name_from_xuid(xuid.strip(), db_path=db_path)
+        sub = TeammatesService.enrich_with_performance_score(sub, me_name, db_path, is_main=True)
+        if not friend_sub.is_empty():
+            friend_sub = TeammatesService.enrich_with_performance_score(
+                friend_sub, name, db_path
             )
 
         # Graphes côte à côte
