@@ -7,6 +7,85 @@
 
 ## Journal
 
+### [2026-03-19] — Fix superposition étiquettes "Impact du match" — Complété
+
+**Statut** : Complété
+
+**Décision technique** : Remplacement de l'algo de décalage vertical mono-axe (3 niveaux `ay` uniquement, avec modulo cassé) par une grille 2D de 6 slots `(ax, ay)` et une coloration temporelle correcte (tous les voisins proches sont considérés, pas seulement le précédent). Fichier : `src/visualization/match_impact_timeline.py` lignes 136-159.
+
+**Problèmes corrigés** :
+- `ax=0` fixe → labels empilés en colonne sur le même X quand events simultanés
+- Vérification uniquement du voisin précédent → collisions sautées si alternance de types
+- `ay_level_idx % 3` → le 4ème event au même instant revenait au slot 0 (re-collision)
+
+**Résultats** : 6 slots `(0,-50) (-75,-55) (75,-55) (-40,-105) (40,-105) (0,-115)` distribuent les labels en éventail ; le `next(i for i in range(6) if i not in used)` garantit l'unicité par fenêtre 30 s.
+
+**Conclusion** : Aucun test existant à casser (logique purement visuelle). Déployable immédiatement.
+
+---
+
+### [2026-03-19] — Ajout citation "Vengeur" (avenger) — Complété
+
+**Statut** : Complété
+
+**Décision technique** : Ajout d'une citation de type `medal` liée à la médaille "Avenger" (ID `9000000001`) dans `scripts/populate_citation_mappings.py`, catégorie Multijoueur, seuils `5,15,30,55,105` (5 paliers). Pas d'image disponible (`image_path=None`).
+
+**Résultats** :
+- Citation insérée dans `metadata.duckdb`
+- Backfill `--force-citations --all` : 2 046 matchs recalculés (4 joueurs)
+- Totaux : Madina97294 = 3 831 | JGtm = 3 122 | Chocoboflor = 1 745 | XxDaemonGamerxX = 54
+
+**Conclusion** : Citation opérationnelle. Tous les joueurs sont au niveau Master sauf XxDaemonGamerxX (palier 5, 54/55).
+
+---
+
+### [2026-03-19] — Colonne "Taux victoire (%)" dans tableaux Historique et Escouade
+
+**Statut** : Complété
+
+**Décision technique** : Calcul cumulatif chronologique (`cum_sum(outcome==2) / rank * 100`) effectué avant le tri descending affiché, via join sur `match_id`. Colonne ajoutée après "Résultat" dans les deux tableaux.
+
+**Résultats** :
+- `match_history.py` : `_add_win_rate_column()` — group_by `map_name` → taux victoires global sur la carte
+- `match_table_html.py` : `win_rate_style()`, colonne `win_rate_hist` + label `col_win_rate_hist`
+- `teammates_helpers.py` : même calcul, `_win_rate_td()` extraite (≤80L), colonne `win_rate_hist`
+- `i18n/common.py` : clé `col_win_rate_hist` → "Taux historique (%)"
+- Colorimétrie : vert ≥55%, rouge ≤45%, cyan (#35D0FF) 45–55%
+- Correction v1 : calcul cumulatif chronologique → group_by carte
+- Correction v2 : base = df filtré → `df_full` pour historique, `full_squad_df` (tous matchs escouade sans filtre) pour escouade
+
+**Prochaine étape** : —
+
+---
+
+### [2026-03-19] — Couche centralisée médailles : medal_definitions.py
+**Statut** : Complété ✅
+
+**Contexte** : Suite du refactoring centralisation (citations déjà commités en `b22ae2a`). Les médailles avaient encore 3 chemins indépendants vers `metadata.duckdb` : `_medal_data.py` (analyse), `medals.py` (UI), `_medals_repo.py` (repo).
+
+**Décision technique principale** :
+1. Créé `src/data/medal_definitions.py` — source canonique unique :
+   - `load_medal_name_maps()` → tuple `(fr_map, en_map)`
+   - `resolve_medal_name(medal_name_id, lang)` → str
+   - `resolve_medal_description(medal_name_id, lang)` → str | None
+   - `_resolve_text_from_db(medal_name_id, columns)` — 2 args (sans lang, interroge les 2 colonnes en séquence)
+2. Réécrit `_medal_data.py` en **thin re-export** (9 lignes, compat. import)
+3. Réécrit `medals.py` — `load_medal_name_maps` = `@st.cache_data` wrapper délégant à `_load_medal_name_maps` (import depuis `medal_definitions`)
+4. `_medals_repo.py` — `load_medal_definitions()` et `get_medal_label()` délèguent à `medal_definitions`
+5. `match_view_scoreboard_detail.py` — import direct depuis `src.data.medal_definitions`
+6. Tests : patch target uniformisé sur `src.data.medal_definitions.get_metadata_db_path` dans 3 fichiers de test
+
+**Problèmes résolus** :
+- `medals.py` avait été corrigé en première passe mais implémentait toujours sa propre logique DB au lieu de déléguer → corrigé
+- `_medal_data.py` avait encore son implémentation complète → réécrit en re-export
+- `TestAnalysisReExport` : test `is` échouait (deux copies de fonctions en mémoire quand importées via `from X import Y` dans deux tests différents) → corrigé avec accès via `sys.modules`
+
+**Résultats** : Commit `88d5cf0` — 6 fichiers, +221/-137 lignes. 51 tests passent, 1 skipped (intégration sans données).
+
+**Conclusion** : 3 chemins indépendants → 1 source canonique. Patch target unifié facilite les tests futurs. Même pattern que `citation_definitions.py`.
+
+---
+
 ### [2026-03-19] — Sessions : coupure classé/non-classé
 **Statut** : Complété ✅
 

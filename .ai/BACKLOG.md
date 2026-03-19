@@ -8,7 +8,8 @@
 
 | Date | Item |
 |------|------|
-| 2026-03-19 | **Medal definitions en BDD** — table `medal_definitions` dans `metadata.duckdb` (167 médailles, DB-first + JSON-fallback). Migration, script population, CLI `--medal-metadata`, `MedalsMixin.load_medal_definitions()` / `get_medal_label()`, UI DB-first dans `medals.py`, 16 tests unitaires + 4 intégration. Orphan `citations_{fr,en}.json` supprimés. Phase 8 cleanup planifiée. |
+| 2026-03-19 | **Medal definitions en BDD** — table `medal_definitions` dans `metadata.duckdb` (167 médailles, DB-first + JSON-fallback). Migration, script population, CLI `--medal-metadata`, `MedalsMixin.load_medal_definitions()` / `get_medal_label()`, UI DB-first dans `medals.py`, 16 tests unitaires + 4 intégration. Orphan `citations_{fr,en}.json` supprimés. |
+| 2026-03-19 | **Phase 8 — Couche centralisée médailles** (`medal_definitions.py`) — `src/data/medal_definitions.py` source canonique unique ; `_medal_data.py` thin re-export ; `medals.py` wrapper `@st.cache_data` délégant ; `_medals_repo.py` délègue. 3 chemins DB indépendants → 1. Fallbacks JSON applicatifs supprimés de `medals.py`. JSON `static/medals/*.json` conservés (source pour `populate_medal_metadata.py`). 51 tests passent. Commit `88d5cf0`. |
 | 2026-03-19 | **Migration `b5>>4`** — `scan_fire_events_b5` implémenté, `fire_seq%n_players` supprimé, `map_b2_to_player`/`group_events_by_pi`/`POV_PLAYER_INDEX` retirés, 25 nouveaux tests — 4968 tests passent. Relancer `--force-weapons --all` pour re-extraire. |
 | 2026-03-19 | **Backfill enrichissement** JGtm + Madina97294 — 8 matchs du 18 mars rattrapés (performance_score, sessions, citations) |
 | 2026-03-19 | **Fix 11 — Fan-out multi-joueurs** : `FanoutEnrichmentMixin` (`_engine_fanout.py`) + branchement dans `engine.py` après `_detach_shared_from_player_conn()`. Résout le manquement d'enrichissement local pour les joueurs qui ne sync pas eux-mêmes. |
@@ -89,16 +90,12 @@ Passer de 5 à 7 (puis 10 si stable) connexions concurrentes au CDN Azure. Objec
 
 ---
 
-### Cleanup post-migration medal_definitions (Phase 8)
+### ~~Cleanup post-migration medal_definitions (Phase 8)~~ — COMPLÉTÉ ✅
 
-**Statut : En attente** — À déclencher après 2 semaines de prod sans WARNING `"Fallback JSON médailles actif"`.
+**Réalisé le 2026-03-19** — Commit `88d5cf0`.
 
-**Critère** : `grep "Fallback JSON médailles actif" logs/` → 0 occurrence sur 14 jours.
-
-**Étapes** :
-1. Audit accès directs JSON : `grep -r "medals_fr.json\|medals_en.json\|medals_descriptions" src/ scripts/ tests/`
-2. Retirer le fallback JSON dans `medals.py` (WARNING → ERROR + re-raise)
-3. Archiver les 4 JSON dans `static/medals/archive/`
-4. Nettoyer `medals.py` (supprimer `_load_from_json`, import `json`)
-5. Remplacer tests fallback par `test_raises_on_empty_db`
-6. Checklist : 0 ref JSON hors archive, tests verts, pas de WARNING au démarrage
+- ✅ Étape 1 : Audit — seul `populate_medal_metadata.py` + tests légitimes référencent les JSON. Aucun fallback applicatif.
+- ✅ Étapes 2 & 4 : `medals.py` ne contient plus `_load_from_json` ni import `json`. Délègue à `medal_definitions.py`.
+- N/A Étape 3 : Les 4 JSON (`medals_fr.json`, `medals_en.json`, `medals_descriptions_*.json`) **restent** dans `static/medals/` — source nécessaire pour `populate_medal_metadata.py`.
+- ✅ Étape 5 : Tests mis à jour — `test_empty_db_returns_empty_maps`, `test_missing_db_returns_empty_maps` remplacent les anciens tests fallback JSON.
+- ✅ Étape 6 : 0 ref JSON hors `populate_medal_metadata.py` + tests de ce script. Tests verts.
