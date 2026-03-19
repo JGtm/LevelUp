@@ -38,6 +38,7 @@ class SyncOptions:
     with_career_rank: bool = True  # Sync progression de rang carrière
     requests_per_second: int = 15  # Sprint 6: augmenté de 5→10, benchmark: 15 optimal
     parallel_matches: int = 10  # Sprint 6: augmenté de 3→5, benchmark: 10 optimal
+    parallel_fetch: int = 15  # Axe 3 : slots I/O réseau (>= parallel_matches)
     defer_performance_score: bool = True  # Sprint 6: calcul batch post-sync
     batch_commit_size: int = -1  # -1 = auto (adaptatif), 0 = commit final, >0 = fixe
     with_weapons: bool = True  # v5.5 : extraire kills par arme depuis films SPNKr
