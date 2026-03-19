@@ -127,7 +127,6 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "ts_note_regression": {
         "fr": "- **F/D en hausse** → tu progresses sur la session, pas juste de la chance\n"
         "- **Confirmation de la tendance** : proche de 100 % → direction nette et fiable · proche de 0 % → résultats de la session trop incohérents pour conclure\n"
-        "- **Résultats trop éparpillés** → la session est trop irrégulière pour conclure\n"
         "- Taux de victoire en hausse + F/D en hausse → les deux s'accordent, forme et résultats s'alignent",
         "en": "- **K/D improving** → you're getting better across the session, not just getting lucky\n"
         "- **Trend confirmation**: near 100 % → clear and reliable direction · near 0 % → too chaotic to draw any conclusion\n"
