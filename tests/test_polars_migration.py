@@ -118,7 +118,7 @@ class TestAnalysisPolars:
         )
 
         result = compute_global_ratio(df)
-        assert result == pytest.approx(2.16)
+        assert result == pytest.approx(2.04)  # (45 + 18/3) / 25 = 51 / 25 = 2.04  (A/3)
 
     def test_compute_map_breakdown_polars(self):
         """Test compute_map_breakdown avec Polars."""
@@ -312,4 +312,4 @@ class TestEdgeCasesPolars:
 
         result = compute_global_ratio(df)
         assert result is not None
-        assert result == pytest.approx(2.4)  # (10 + 4/2) / 5 = 12 / 5 = 2.4
+        assert result == pytest.approx(2.2667, abs=1e-4)  # (10 + 4/3) / 5 ≈ 2.267  (A/3)

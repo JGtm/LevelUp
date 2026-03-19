@@ -34,9 +34,9 @@ class TestComputeGlobalRatio:
             }
         )
         # Total: kills=45, deaths=25, assists=18
-        # Ratio = (45 + 18/2) / 25 = 54 / 25 = 2.16
+        # Ratio = (45 + 18/3) / 25 = 51 / 25 = 2.04  (formule API : A/3)
         result = compute_global_ratio(df)
-        assert result == pytest.approx(2.16)
+        assert result == pytest.approx(2.04)
 
     @pytest.mark.skipif(pl is None, reason="Polars not available")
     def test_normal_values_polars(self):
@@ -49,9 +49,9 @@ class TestComputeGlobalRatio:
             }
         )
         # Total: kills=45, deaths=25, assists=18
-        # Ratio = (45 + 18/2) / 25 = 54 / 25 = 2.16
+        # Ratio = (45 + 18/3) / 25 = 51 / 25 = 2.04  (formule API : A/3)
         result = compute_global_ratio(df)
-        assert result == pytest.approx(2.16)
+        assert result == pytest.approx(2.04)
 
     def test_empty_dataframe(self):
         """Test avec DataFrame vide (Pandas)."""

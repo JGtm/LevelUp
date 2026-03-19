@@ -72,7 +72,7 @@ def compute_outcome_rates(df: pl.DataFrame) -> OutcomeRates:
 
 
 def compute_global_ratio(df: pl.DataFrame) -> float | None:
-    """Calcule le ratio global (K + A/2) / D sur un DataFrame.
+    """Calcule le ratio global (K + A/3) / D — formule API.
 
     Args:
         df: DataFrame Polars avec colonnes kills, deaths, assists.
@@ -99,7 +99,7 @@ def compute_global_ratio(df: pl.DataFrame) -> float | None:
     )
     if deaths <= 0:
         return None
-    return (kills + (assists / 2.0)) / deaths
+    return (kills + (assists / 3.0)) / deaths
 
 
 def extract_mode_category(pair_name: str | None) -> str:
