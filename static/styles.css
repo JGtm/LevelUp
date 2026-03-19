@@ -1797,10 +1797,19 @@ div[data-testid="stNumberInput"] input:focus {
     border-radius: 0;
 }
 
-.os-sb-detail-medal-icon {
+.os-sb-detail-medal-icon-wrap {
     width: 32px;
     height: 32px;
     flex: 0 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.os-sb-detail-medal-icon {
+    max-width: 32px;
+    max-height: 32px;
     object-fit: contain;
     border-radius: 6px;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
@@ -1961,6 +1970,21 @@ div[data-testid="stNumberInput"] input:focus {
 }
 
 /* --- Medals grid (Streamlit columns) --- */
+.os-medal-icon-wrap {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.os-medal-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 .os-medal-caption {
     text-align: center;
     font-size: 0.85rem;

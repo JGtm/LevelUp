@@ -8,6 +8,7 @@ Ce module centralise les fonctions UI liées aux médailles Halo Infinite :
 
 from __future__ import annotations
 
+import base64
 import logging
 import os
 
@@ -80,6 +81,23 @@ def medal_label(nid: int, lang: str = "fr") -> str:
     return fr_map.get(key) or en_map.get(key) or f"Médaille #{nid}"
 
 
+@st.cache_data(show_spinner=False)
+def _medal_icon_b64(path: str) -> str:
+    """Encode une icône PNG en data URI base64 (mis en cache)."""
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+
+def _medal_icon_html(path: str) -> str:
+    """Retourne le HTML d'une icône médaille avec wrapper carré uniforme."""
+    b64 = _medal_icon_b64(path)
+    return (
+        "<div class='os-medal-icon-wrap'>"
+        f"<img class='os-medal-icon' src='data:image/png;base64,{b64}' alt=''>"
+        "</div>"
+    )
+
+
 def medal_icon_path(nid: int) -> str | None:
     """Retourne le chemin de l'icône PNG d'une médaille si elle existe.
 
@@ -140,7 +158,7 @@ def render_medals_grid(
         icon = medal_icon_path(nid)
 
         if icon:
-            col.image(icon, width="stretch")
+            col.markdown(_medal_icon_html(icon), unsafe_allow_html=True)
         else:
             col.markdown(
                 f"<div class='os-medal-missing'>#{nid}</div>",

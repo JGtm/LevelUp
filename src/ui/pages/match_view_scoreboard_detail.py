@@ -405,8 +405,10 @@ def _render_medals_section(medals: Sequence[MedalDetailItem]) -> str:
         icon_html = ""
         if medal.icon_url:
             icon_html = (
+                f"<div class='os-sb-detail-medal-icon-wrap'>"
                 f"<img class='os-sb-detail-medal-icon' src='{html.escape(medal.icon_url)}' "
                 f"alt='{html.escape(medal.name)}' title='{tooltip_text}'>"
+                f"</div>"
             )
         rows.append(
             f"<div class='os-sb-detail-item os-sb-detail-item--medal' title='{tooltip_text}'>"
