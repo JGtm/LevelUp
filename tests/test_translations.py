@@ -130,10 +130,10 @@ class TestTranslatePairNameEN:
 
 
 class TestTranslatePlaylistNameFR:
-    def test_known_playlist_passthrough(self) -> None:
-        """Depuis v6 : passthrough — les traductions viennent de v_match_full."""
-        assert translate_playlist_name("Quick Play") == "Quick Play"
-        assert translate_playlist_name("Ranked Arena") == "Ranked Arena"
+    def test_known_playlist_fr(self) -> None:
+        """Playlists connues traduites en FR via static/i18n/playlists_fr.json."""
+        assert translate_playlist_name("Quick Play") == "Partie rapide"
+        assert translate_playlist_name("Ranked Arena") == "Arène classée"
 
     def test_uuid_playlist_returns_inconnue(self) -> None:
         """UUID brut → 'Inconnue' (metadata.duckdb incomplet)."""

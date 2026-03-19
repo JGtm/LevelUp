@@ -17,16 +17,21 @@ from src.ui.translations import (
 
 
 class TestTranslatePlaylistName:
-    """Tests pour translate_playlist_name (passthrough v6)."""
+    """Tests pour translate_playlist_name (traduction via i18n/playlists_*.json)."""
 
-    def test_known_playlist_passthrough(self):
-        """Depuis v6 : translate_playlist_name est un passthrough (source = v_match_full)."""
-        assert translate_playlist_name("Quick Play") == "Quick Play"
-        assert translate_playlist_name("Ranked Arena") == "Ranked Arena"
-        assert translate_playlist_name("Big Team Battle") == "Big Team Battle"
+    def test_known_playlist_fr(self):
+        """Playlists connues traduites en FR via static/i18n/playlists_fr.json."""
+        assert translate_playlist_name("Quick Play", lang="fr") == "Partie rapide"
+        assert translate_playlist_name("Ranked Arena", lang="fr") == "Arène classée"
+        assert translate_playlist_name("Big Team Battle", lang="fr") == "Grande Bataille en Équipe"
+
+    def test_known_playlist_en(self):
+        """Playlists connues restent identiques en EN."""
+        assert translate_playlist_name("Quick Play", lang="en") == "Quick Play"
+        assert translate_playlist_name("Ranked Arena", lang="en") == "Ranked Arena"
 
     def test_unknown_playlist(self):
-        """Test avec une playlist inconnue - retourne l'original."""
+        """Test avec une playlist inconnue - retourne l'original (passthrough)."""
         assert translate_playlist_name("Unknown Playlist") == "Unknown Playlist"
 
     def test_none_value(self):
@@ -34,8 +39,8 @@ class TestTranslatePlaylistName:
         assert translate_playlist_name(None) is None
 
     def test_whitespace_handling(self):
-        """Test avec espaces autour — strip appliqué."""
-        assert translate_playlist_name("  Quick Play  ") == "Quick Play"
+        """Test avec espaces autour — strip appliqué puis traduit."""
+        assert translate_playlist_name("  Quick Play  ") == "Partie rapide"
 
     def test_uuid_returns_inconnue(self):
         """UUID brut → label 'Inconnue' + warning loggé."""
