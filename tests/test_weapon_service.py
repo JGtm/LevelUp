@@ -968,7 +968,6 @@ class TestRunScanPhase:
         scan, pi_map = service._run_scan_phase({}, {}, log)
         assert isinstance(scan, ScanResult)
         assert scan.fire_events_global == []
-        assert scan.fire_events_by_pi == {}
         assert scan.timeline == {}
         assert scan.chunks_sorted == []
         assert pi_map == {}

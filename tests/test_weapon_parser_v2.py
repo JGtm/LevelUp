@@ -1,4 +1,4 @@
-"""Tests parser v2 — claim-and-remove, KillAttribution, confidence, b2 dispatch."""
+"""Tests parser v2 — claim-and-remove, KillAttribution, confidence."""
 
 from __future__ import annotations
 
@@ -13,11 +13,8 @@ from src.analysis._weapon_data import (
 )
 from src.analysis.weapon_parser import (
     KILL_WINDOW_MS,
-    POV_PLAYER_INDEX,
     compute_confidence,
     correlate_kills,
-    group_events_by_pi,
-    map_b2_to_player,
 )
 
 # ── Fixtures ──
@@ -58,9 +55,6 @@ def _fire(t_ms: int, weapon_bytes: bytes = BR75_BYTES, pi: int = 1, seq: int = 1
 
 
 class TestConstants:
-    def test_pov_player_index_is_1(self):
-        assert POV_PLAYER_INDEX == 1
-
     def test_sentinel_values_cannot_collide_with_film(self):
         for sentinel in (0, 1, 2):
             assert sentinel not in WEAPON_IDS_INT
@@ -80,52 +74,6 @@ class TestConstants:
 
     def test_kill_window_ms_is_5000(self):
         assert KILL_WINDOW_MS == 5000
-
-
-# ══════════════════════════════════════════════════════════════════════
-# Groupe C — b2_stream dispatch : map_b2_to_player + group_events_by_pi
-# ══════════════════════════════════════════════════════════════════════
-
-
-class TestMapB2ToPlayer:
-    def test_empty(self):
-        assert map_b2_to_player([], {}, [], []) == {}
-
-    def test_single_player(self):
-        events = [_fire(1000, BR75_BYTES, pi=6, seq=42)]
-        timeline_ns = {0: {6: BR75_BYTES}}
-        result = map_b2_to_player(events, timeline_ns, [(0, 20000)], [0])
-        assert result[42] == 6
-
-    def test_majority_vote(self):
-        events = [_fire(i * 100, BR75_BYTES, pi=3, seq=0x3A) for i in range(9)]
-        events.append(_fire(1000, BR75_BYTES, pi=1, seq=0x3A))
-        timeline_ns = {0: {3: BR75_BYTES, 1: BR75_BYTES}}
-        result = map_b2_to_player(events, timeline_ns, [(0, 20000)], [0])
-        assert result[0x3A] == 3
-
-    def test_unknown_b2(self):
-        events = [_fire(1000, BR75_BYTES, seq=99)]
-        timeline_ns = {0: {}}  # aucun pi ne match
-        result = map_b2_to_player(events, timeline_ns, [(0, 20000)], [0])
-        assert 99 not in result
-
-
-class TestGroupEventsByPi:
-    def test_empty(self):
-        assert group_events_by_pi([], {}) == {}
-
-    def test_resolved(self):
-        events = [_fire(i * 100, seq=1) for i in range(5)]
-        b2_to_pi = {1: 2}
-        result = group_events_by_pi(events, b2_to_pi)
-        assert len(result[2]) == 5
-
-    def test_unresolved_excluded(self):
-        events = [_fire(100, seq=99)]
-        b2_to_pi = {1: 2}
-        result = group_events_by_pi(events, b2_to_pi)
-        assert 99 not in result and not result
 
 
 # ══════════════════════════════════════════════════════════════════════

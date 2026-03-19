@@ -23,7 +23,6 @@ from src.analysis.weapon_parser import (
     KILL_WINDOW_MS,
     MELEE_API_ID,
     MELEE_MEDALS,
-    POV_PLAYER_INDEX,
     WEAPON_ID_MAP,
     WEAPON_IDS_INT,
     WEAPON_INT_TO_NAME,
@@ -70,9 +69,6 @@ class TestConstants:
         """La majorité des armes utilisent le suffixe commun."""
         with_suffix = sum(1 for w in WEAPON_ID_MAP if w[4:] == COMMON_WEAPON_SUFFIX)
         assert with_suffix >= 30
-
-    def test_pov_player_index(self):
-        assert POV_PLAYER_INDEX == 1
 
     def test_melee_api_id(self):
         assert MELEE_API_ID == 1
@@ -743,13 +739,14 @@ class TestSwapPisDetection:
 
 
 class TestScanAllPlayers:
-    def test_returns_dict_keyed_by_index(self):
-        result = scan_all_players(b"\x00" * 80, 0, 5000, n_players=4)
-        assert set(result.keys()) == {0, 1, 2, 3}
+    def test_returns_dict_of_lists(self):
+        result = scan_all_players(b"\x00" * 80, 0, 5000)
+        assert isinstance(result, dict)
+        assert all(isinstance(v, list) for v in result.values())
 
-    def test_empty_data_all_empty(self):
-        result = scan_all_players(b"\x00" * 50, 0, 1000, n_players=3)
-        assert all(v == [] for v in result.values())
+    def test_empty_data_returns_empty_dict(self):
+        result = scan_all_players(b"\x00" * 50, 0, 1000)
+        assert result == {}
 
 
 # ═══════════════════════════════════════════════════════════════════════════

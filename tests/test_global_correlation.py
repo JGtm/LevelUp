@@ -37,11 +37,11 @@ def _kill(
     }
 
 
-def _event(timestamp_ms: int, weapon_bytes: bytes = _KNOWN_WEAPON_BYTES) -> dict:
+def _event(timestamp_ms: int, weapon_bytes: bytes = _KNOWN_WEAPON_BYTES, player_index: int = 1) -> dict:
     return {
         "timestamp_ms": timestamp_ms,
         "weapon_bytes": weapon_bytes,
-        "player_index": 1,
+        "player_index": player_index,
         "chunk_idx": 0,
     }
 
@@ -96,14 +96,18 @@ class TestCorrelateKillsGlobal:
         assert result[0].attribution_path == "none"
 
     def test_bijection_two_players(self):
-        """Claim-and-remove : chaque event n'est claimé qu'une seule fois."""
+        """Claim-and-remove : chaque event n'est claimé qu'une seule fois.
+
+        Chaque event porte le player_index de son joueur — le filtre pi garantit
+        que x1 (pi=1) ne peut pas clamer l'event de x2 (pi=2) et vice-versa.
+        """
         kills = [
             _kill(xuid="x1", time_ms=3000),
             _kill(xuid="x2", time_ms=5000),
         ]
         events = [
-            _event(timestamp_ms=2900),  # pour x1
-            _event(timestamp_ms=4900),  # pour x2
+            _event(timestamp_ms=2900, player_index=1),  # pour x1
+            _event(timestamp_ms=4900, player_index=2),  # pour x2
         ]
         result = correlate_kills_global(kills, events, {"x1": 1, "x2": 2}, {}, {}, [], [])
         assert all(r.attribution_path == "fire_event" for r in result)
@@ -143,7 +147,7 @@ class TestCorrelateKillsGlobal:
             _kill(xuid="x1", time_ms=3000, is_melee=True),
             _kill(xuid="x2", time_ms=5000),
         ]
-        events = [_event(timestamp_ms=4800)]
+        events = [_event(timestamp_ms=4800, player_index=2)]  # event de x2 (pi=2)
         result = correlate_kills_global(kills, events, {"x1": 1, "x2": 2}, {}, {}, [], [])
         assert result[0].attribution_path == "none"  # sentinel
         assert result[1].attribution_path == "fire_event"  # event non consommé

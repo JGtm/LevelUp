@@ -148,7 +148,7 @@ def test_render_scoreboard_player_detail_html_handles_shared_only() -> None:
 
     assert "/app/static/weapons-assets/Needler-1.png" in html_out
     assert "/app/static/medals/icons/1512363953.png" in html_out
-    assert "title='Gagnez un match sans mourir." in html_out
+    assert "title='Perfection : Gagnez un match sans mourir." in html_out
     assert "Données shared uniquement" in html_out
     assert "os-sb-detail-badge" in html_out
     assert "Explorer les matchs avec" not in html_out
