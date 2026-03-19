@@ -164,7 +164,7 @@ class TestZeroCopyArrowPath:
             repo.close()
 
     def test_load_matches_as_polars_has_ratio(self, sample_duckdb):
-        """Le ratio est calculé en Polars (pas via MatchRow.ratio)."""
+        """ratio est un alias de kda (valeur API directe, pas recalculée)."""
         from src.data.repositories.duckdb_repo import DuckDBRepository
 
         player_db, shared_db = sample_duckdb
@@ -174,10 +174,10 @@ class TestZeroCopyArrowPath:
         try:
             df = repo.load_matches_as_polars()
             assert "ratio" in df.columns
-            # Vérifier que le ratio est correct pour le premier match
+            assert "kda" in df.columns
+            # ratio doit être identique à kda — même source (Fix 4 backlog)
             first = df.row(0, named=True)
-            expected_ratio = (first["kills"] + first["assists"] / 2.0) / first["deaths"]
-            assert abs(first["ratio"] - expected_ratio) < 0.001
+            assert first["ratio"] == first["kda"]
         finally:
             repo.close()
 

@@ -123,7 +123,8 @@ def test_cached_compute_sessions_db_returns_expected_contract(tmp_path) -> None:
                 match_id VARCHAR PRIMARY KEY,
                 teammates_signature VARCHAR,
                 session_id VARCHAR,
-                session_label VARCHAR
+                session_label VARCHAR,
+                is_with_friends BOOLEAN
             )
         """)
         for mid, sig, sid, slabel in [
@@ -132,8 +133,8 @@ def test_cached_compute_sessions_db_returns_expected_contract(tmp_path) -> None:
             ("m3", "a;d;e", "s2", "Session 2"),
         ]:
             player_conn.execute(
-                "INSERT INTO player_match_enrichment VALUES (?, ?, ?, ?)",
-                [mid, sig, sid, slabel],
+                "INSERT INTO player_match_enrichment VALUES (?, ?, ?, ?, ?)",
+                [mid, sig, sid, slabel, False],
             )
     finally:
         player_conn.close()

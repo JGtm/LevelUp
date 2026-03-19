@@ -33,7 +33,8 @@ def _build_shared_db(path: Path) -> None:
             match_id VARCHAR PRIMARY KEY,
             start_time TIMESTAMP,
             playlist_name VARCHAR,
-            pair_name VARCHAR
+            pair_name VARCHAR,
+            map_name VARCHAR
         )
     """)
     conn.execute("""
@@ -87,8 +88,8 @@ def _insert_match(
     """Insère un match dans registry + participants pour les deux joueurs."""
     ts = start_time or datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     conn.execute(
-        "INSERT INTO match_registry VALUES (?, ?, ?, ?)",
-        [match_id, ts, "Ranked", "RSSLAYER"],
+        "INSERT INTO match_registry VALUES (?, ?, ?, ?, ?)",
+        [match_id, ts, "Ranked", "RSSLAYER", None],
     )
     conn.execute(
         "INSERT INTO match_participants VALUES (?, ?, ?, ?, ?, ?, ?)",
