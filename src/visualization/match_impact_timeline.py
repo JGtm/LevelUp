@@ -170,7 +170,7 @@ def plot_match_kill_death_timeline(  # noqa: C901, PLR0912, PLR0915
         t_ms = ie.time_ms
         event_base = ie.event_type
 
-        if event_base in ("first_blood", "clutch_finisher", "last_group_kill"):
+        if event_base in ("first_blood", "clutch_finisher", "last_group_kill", "top_gun"):
             if my_kills:
                 first_t = int(my_kills[0]["time_ms"])
                 last_t = int(my_kills[-1]["time_ms"])

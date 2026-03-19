@@ -7,6 +7,23 @@
 
 ## Journal
 
+### [2026-03-19] — Badge "Top Gun" / "As de la gâchette" sur le graphe Impact du match
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Ajout d'un 6e type d'événement d'impact `top_gun` : premier joueur de l'équipe alliée à atteindre 10 kills dans le match. Constante `TOP_GUN_KILL_THRESHOLD = 10` pour éviter le magic number. L'événement s'intègre naturellement dans le pipeline existant : il est automatiquement affiché dans les `os_card` au-dessus du graphe ET annoté sur la courbe kills avec le mécanisme anti-superposition existant.
+
+**Résultats observés** :
+- 3 fichiers modifiés, 0 erreurs
+- Emoji 🔫 choisi pour "As de la gâchette"
+- Routage sur courbe kills (via ajout de `"top_gun"` dans le groupe `first_blood/clutch_finisher/last_group_kill`)
+- Si personne n'atteint 10 kills dans le match → aucun badge affiché (comportement silencieux correct)
+
+**Conclusion** :
+Implémentation minimale, aucun nouveau fichier, aucune modification de l'UI caller (`match_view_players.py`) car le badge s'affiche automatiquement via la boucle sur `impact_events`.
+
+---
+
 ### [2026-03-19] — Vérification finale migration b5>>4 + couverture de tests
 **Statut** : Complété ✅
 

@@ -110,6 +110,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "impact_last_group_kill": {"fr": "Touriste", "en": "Tourist"},
     "impact_first_group_death": {"fr": "Première victime", "en": "First Casualty"},
     "impact_last_casualty": {"fr": "Boulet", "en": "Weakest Link"},
+    "impact_top_gun": {"fr": "As de la gâchette", "en": "Top Gun"},
     # ── Messages vides ────────────────────────────────────────────────────────
     "empty_no_data": "no_data",
     "empty_no_duel": {"fr": "Aucun duel trouvé.", "en": "No duel found."},
