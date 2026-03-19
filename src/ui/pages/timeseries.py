@@ -130,21 +130,9 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.info(t("ts_col_missing_cumul"))
         return
 
-    col_alpha, col_outcome = st.columns([3, 1])
-    with col_alpha:
-        alpha = st.slider(
-            t("ts_ewma_alpha_label"),
-            min_value=0.10,
-            max_value=0.50,
-            value=0.20,
-            step=0.05,
-            help=t("ts_ewma_alpha_help"),
-        )
-    with col_outcome:
-        show_outcomes = st.checkbox(t("ts_show_outcome_markers"), value=True)
-
+    alpha = 0.20
     outcome_values: list[int | None] | None = None
-    if show_outcomes and "outcome" in dff.columns:
+    if "outcome" in dff.columns:
         outcome_values = dff.sort("start_time")["outcome"].to_list()
     st.markdown(f"#### {t('ts_section_cumulative')}")
 

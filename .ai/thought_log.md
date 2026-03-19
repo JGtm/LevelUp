@@ -7,6 +7,20 @@
 
 ## Journal
 
+### [2026-03-19] — UX timeseries : nettoyage complet légendes et contrôles — Complété
+
+**Statut** : Complété
+**Décision technique** : Suppression slider α et checkbox V/D, nettoyage de tout le jargon dans traces/titres/labels des graphes Progression.
+**Changements** :
+- `timeseries.py` UI : slider EWMA supprimé (alpha=0.20 fixe), checkbox V/D supprimée (toujours affiché), caption simplifiée
+- `traces.py` : IC 90 % → Zone de stabilité, EWMA retiré des noms, régression → Tendance, Net/h (brut/lissé) → Score/h (match/courbe)
+- `titles.py` : F/D Cumulé (IC 90 %) → F/D Cumulé, F/D Lissé (EWMA) → F/D Lissé, Tendance (régression linéaire) → Tendance
+- `labels.py` : Pente F/D → Variation F/D, Pente Win Rate → Variation du taux de victoire, R² (solidité) → Régularité, non significatif → trop variable
+- `ts_note_regression` : "La droite monte" → "F/D en hausse"
+**Conclusion** : Interface lisible sans bagage statistique.
+
+---
+
 ### [2026-03-19] — UX timeseries : remplacement du jargon statistique — Complété
 
 **Statut** : Complété
@@ -6581,3 +6595,168 @@ Utiliser `player_match_enrichment.is_with_friends` comme source de vérité pour
 
 **Conclusion** :
 La session du 18/03 est désormais classée escouade selon le flag BDD persistant, même si la sélection d'amis UI change.
+
+---
+
+### [2025-07-18] — Axe 7 : batch_commit_size adaptatif (Phase 1 perf/sync)
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Remplacer la valeur fixe `batch_commit_size=25` par un mode auto (`-1`) qui résout la taille optimale selon `max_matches`. Logique encapsulée dans `SyncOptions.with_resolved_batch_size()` pour garder `engine.py` sous la limite 500L.
+
+**Résultats observés** :
+- 74 tests ciblés verts (tests/perf + test_sync_engine + test_sync_sprint6)
+- engine.py : 510L → 498L  
+- _sync_internal : 85L → 75L (limites respectées sans `# noqa`)
+- Commit : `149fa3f` sur branche `perf/batch-commit-auto`
+
+**Changements code** :
+- `src/data/sync/models_sync.py` : import `replace` + `logging`, + `with_resolved_batch_size()`, + `compute_optimal_batch_size()`
+- `src/data/sync/engine.py` : supprimé `dc_replace`, bloc 11L → `options.with_resolved_batch_size()` (1L)
+- `tests/perf/test_batch_commit_adaptive.py` : 11 tests (nouveau fichier)
+- `tests/test_sync_engine.py` + `test_sync_sprint6_optimizations.py` : 4 assertions stale corrigées
+
+**Conclusion** :
+Axe 7 implémenté et validé. Prochaine étape : Axe 6 — LUSR UPSERT vectorisé (`_skill_rating.py`).
+
+---
+
+### [2025-07-18] — Axe 6 : LUSR UPSERT vectorisé (Phase 1 perf/sync)
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Remplacer les N `conn.execute()` individuels dans `_upsert_lusr_ratings` par une
+liste `rows_to_insert` + un unique `conn.executemany(_LUSR_UPSERT_SQL, rows_to_insert)`.
+Guard-rail ±100 pts séquentiel préservé (dicté par `prev_rating[pg]`) — seul le flush est vectorisé.
+
+**Résultats observés** :
+- 11 + 85 = 96 tests verts (tests/perf/test_lusr_batch_upsert + tests existants skill_rating)
+- Commit : `b0771f1` sur branche `perf/lusr-vectorized`
+
+**Changements code** :
+- `src/data/sync/_skill_rating.py` : `_upsert_lusr_ratings` collecte `rows_to_insert` puis flush via `executemany`
+- `tests/perf/test_lusr_batch_upsert.py` : 11 tests (nouveau fichier)
+
+**Conclusion** :
+Axe 6 validé. Branche mergée dans `perf/shared-handle-fix`.
+
+---
+
+### [2025-07-18] — Axe 2 : shared_matches R/O direct sans ATTACH (Phase 1 perf/sync)
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Option A — remplacer `ensure_shared_attached(player_conn, ...)` par `duckdb.connect(shared_path, read_only=True)` (connexion directe R/O). DuckDB supporte DIRECT+DIRECT (MVCC) mais pas ATTACH+DIRECT sur le même fichier.
+
+Découverte clé : DuckDB partage le catalogue entre TOUTES les connexions au même fichier. Un ATTACH sur `cit_conn` est visible depuis `player_conn`. Solution : `try/finally` qui DETACH avant fermeture, même en cas de retour anticipé.
+
+**Résultats observés** :
+- 42 tests verts (tests/perf × 3 + test_sessions_integration)
+- Commit : `a5e5ed1` sur branche `perf/shared-handle-fix`
+- `sessions_backfill.py` : 488L (sous 500L), `backfill_sessions_for_player` : 79L (sous 80L)
+
+**Changements code** :
+- `src/data/citations_backfill.py` : `_process_citations_batch` avec `try/finally DETACH`
+- `src/data/sessions_backfill.py` : `_fetch_shared_context_ro` + `_dry_run_count` helper
+- `src/data/sessions_backfill_shared.py` : `_load_matches_split` (2 connexions directes + Polars join)
+- `tests/perf/test_shared_handle_fix.py` : 9 tests (nouveau fichier)
+
+**Conclusion** :
+Axe 2 validé. Prochaine étape : Axe 4 — Citations batch SQL.
+
+---
+
+### [2025-07-18] — Axe 4 : Citations bulk SQL + executemany (Phase 2 perf/sync)
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Remplacer la boucle N×(6 SQL queries + 1 INSERT) par 6 bulk queries + 1 executemany INSERT.
+CitationEngine reçoit les données pré-chargées via `compute_all_for_match()` (0 SQL à l'intérieur).
+Plus d'ATTACH sur `cit_conn` depuis Axe 4 — `shared_ro` direct R/O suffit.
+
+**Distribution des mappings** (discovery matrix) :
+- `weapon_stat` : 20 — batchable via `v_weapon_kills`
+- `medal` : 15 — batchable via `medals_earned`
+- `custom` : 12 — Python pur, données pré-chargées (df_match construit depuis match_stats)
+- `stat` : 11 — batchable via `match_participants`
+- `award` : 9 — batchable via `personal_score_awards`
+- `composite` : 7 — non par-match
+- `pve_stat` : 6 — batchable via `shared_pve.duckdb` séparé
+
+**Résultats observés** :
+- 44 tests verts (tests/perf × 4)
+- citations_backfill.py : 331L (sous 500L), toutes fonctions ≤80L
+- Commit : `3183fa1` sur branche `perf/citations-batch-sql`
+
+**Changements code** :
+- `src/data/citations_backfill.py` : 6 fonctions `_bulk_*` + `_build_match_data_map` + `_process_citations_batch` refactoré
+- `tests/perf/test_citations_batch.py` : 11 tests (nouveau fichier)
+
+**Conclusion** :
+Axe 4 validé. Prochaine étape : Axe 1 — Post-sync partiellement parallèle.
+
+---
+
+### [2025-07-18] — Axe 1 : Post-sync partiellement parallèle (Phase 3 perf/sync)
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Rendre `_run_post_sync_compute` async et lancer les citations via `run_in_executor` (thread pool)
+pendant que perf_score → sessions → dominance s'exécutent séquentiellement.
+Pas de conflit de tables : `match_citations` (citations) vs `player_match_enrichment` (perf/sessions/dominance).
+DuckDB MVCC garantit la cohérence avec plusieurs connexions R/W simultanées sur le même fichier.
+
+**Stratégie de parallélisation** :
+- `cit_future = loop.run_in_executor(None, self._post_sync_citations_sync)` lancé avant le bloc sériel
+- `_post_sync_citations_sync` ouvre sa propre connexion R/W DuckDB (thread-safe, MVCC)
+- `_shared_connection` fermée **avant** le scatter pour éviter tout conflit de catalogue
+- `await cit_future` à la fin — le bloc sériel se termine avant d'attendre les citations
+
+**Contrainte taille** :
+- `engine.py` était 498L après trim (ajout ~57L, suppression old 55L = +2L net)
+- Deux sessions de trim de commentaires/blancs pour rester ≤500L
+
+**Résultats observés** :
+- 6 tests verts : coroutine, run_in_executor, close-before-executor, exception-fallback, future-awaited, sync-fallback
+- engine.py : 498L (sous 500L)
+- Commit : `cc90e7b` sur branche `perf/post-sync-parallel`
+
+**Changements code** :
+- `src/data/sync/engine.py` : `_run_post_sync_compute` → async + `_post_sync_citations_sync` wrapper ajouté
+- `tests/perf/test_post_sync_parallel.py` : 6 tests (nouveau fichier)
+
+**Conclusion** :
+Axe 1 validé. Prochaines étapes : Axe 5 (run_in_executor MetadataResolver) puis Axe 3 (dual semaphore).
+
+---
+
+### [2025-07-18] — Axe 5 : Transformations CPU-bound via run_in_executor (Phase 3 perf/sync)
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Pré-requis bloquant résolu en premier : `threading.RLock()` ajouté dans `MetadataResolver` pour
+protéger `_cache` et `_conn` en cas d'accès multi-thread (Axe 5 + futur Axe 3).
+Ensuite `_transform_match_stats_async` ajouté dans `_match_processing_helpers.py` — utilise
+`functools.partial + loop.run_in_executor(None, fn)` pour exécuter `transform_match_stats`
+dans le thread pool default (libère l'event loop 50-200ms par match).
+
+**Stratégie** :
+- `_transform_match_stats_async` dans helpers (308→327L, sous 500L)
+- `_match_processing.py` migré vers `await self._transform_match_stats_async(stats_json, skill_json)`
+- Import `transform_match_stats` retiré de `_match_processing.py` → 543L → 539L (gain net)
+- `size_baseline.txt` mis à jour (ratchet) : décalages de lignes suite aux edits
+
+**Résultats observés** :
+- 6 tests verts : RLock, thread-safety 10 threads, run_in_executor, partial kwargs, exception
+- metadata_resolver.py : 230L → 234L (sous 500L)
+- Commit : `0c7d7dd` sur branche `perf/post-sync-parallel`
+
+**Changements code** :
+- `src/data/sync/metadata_resolver.py` : `threading.RLock()` + `resolve()` protégé par lock
+- `src/data/sync/_match_processing_helpers.py` : ajout `asyncio`, `functools`, `transform_match_stats` import + `_transform_match_stats_async`
+- `src/data/sync/_match_processing.py` : 2 callers migrés, import retiré, -4L net
+- `scripts/size_baseline.txt` : ratchet mis à jour
+- `tests/perf/test_transform_async.py` : 6 tests (nouveau fichier)
+
+**Conclusion** :
+Axe 5 validé. Prochaine étape : Axe 3 (dual semaphore fetch/CPU — le plus complexe).

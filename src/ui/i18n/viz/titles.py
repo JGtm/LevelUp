@@ -77,15 +77,15 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "title_session_trend": {"fr": "Tendance de la Session", "en": "Session Trend"},
     "title_nemesis_victim": {"fr": "Némésis et Souffre-douleur", "en": "Nemesis & Punching Bag"},
     # ── Progression avancée ───────────────────────────────────────────────────
-    "title_cumul_kd_ci": {"fr": "F/D Cumulé (IC 90 %)", "en": "Cumulative K/D (90 % CI)"},
+    "title_cumul_kd_ci": {"fr": "F/D Cumulé", "en": "Cumulative K/D"},
     "title_net_score_per_hour": {
-        "fr": "Efficacité — Net Score / heure",
-        "en": "Efficiency — Net Score / hour",
+        "fr": "Efficacité — Score / heure",
+        "en": "Efficiency — Score / hour",
     },
-    "title_ewma_kd": {"fr": "F/D Lissé (EWMA)", "en": "Smoothed K/D (EWMA)"},
+    "title_ewma_kd": {"fr": "F/D Lissé", "en": "Smoothed K/D"},
     "title_regression_trend": {
-        "fr": "Tendance (régression linéaire)",
-        "en": "Trend (linear regression)",
+        "fr": "Tendance",
+        "en": "Trend",
     },
     "title_killer_victim_matrix": {"fr": "Matrice Killer-Victim", "en": "Killer-Victim Matrix"},
     "title_top_antagonists": {"fr": "Top Antagonistes", "en": "Top Antagonists"},
