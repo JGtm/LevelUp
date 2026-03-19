@@ -330,10 +330,14 @@ def backfill_sessions_for_player(  # noqa: PLR0913
         if not force and df.filter(pl.col("session_id").is_null()).is_empty():
             return results
 
+        cols = ["match_id", "start_time", "teammates_signature"]
+        if "is_ranked" in df.columns:
+            cols.append("is_ranked")
         df_sessions = compute_sessions_with_context_polars(
-            df.select(["match_id", "start_time", "teammates_signature"]),
+            df.select(cols),
             gap_minutes=gap_minutes,
             friends_xuids=friends_set if friends_set else None,
+            ranked_column="is_ranked" if "is_ranked" in df.columns else None,
         )
 
         now = datetime.now(timezone.utc)

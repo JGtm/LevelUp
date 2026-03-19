@@ -65,6 +65,7 @@ def temp_player_db(tmp_path):
             match_id VARCHAR PRIMARY KEY,
             start_time TIMESTAMP,
             duration_seconds INTEGER,
+            is_ranked BOOLEAN DEFAULT FALSE,
             backfill_completed INTEGER DEFAULT 0
         )
     """)

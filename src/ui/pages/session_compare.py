@@ -124,6 +124,17 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PL
     return names
 
 
+def _build_ranked_badge_map(all_sessions_df: pl.DataFrame) -> dict[str, bool]:
+    """Retourne un mapping session_label → True si la session est classée."""
+    if "is_ranked" not in all_sessions_df.columns or "session_label" not in all_sessions_df.columns:
+        return {}
+    return dict(
+        all_sessions_df.group_by("session_label")
+        .agg(pl.col("is_ranked").fill_null(False).any().alias("ranked"))
+        .iter_rows()
+    )
+
+
 def _select_sessions(
     session_labels: list[str],
     all_sessions_df: pl.DataFrame,
@@ -164,6 +175,11 @@ def _select_sessions(
     if st.session_state.get("compare_session_a") not in session_labels:
         st.session_state["compare_session_a"] = default_a
 
+    ranked_map = _build_ranked_badge_map(all_sessions_df)
+
+    def _fmt(label: str) -> str:
+        return f"[Classé] {label}" if ranked_map.get(label) else label
+
     col_sel_a, col_sel_b = st.columns(2)
     with col_sel_a:
         # Pas d'index= : session_state est déjà initialisé, évite le warning Streamlit
@@ -171,12 +187,14 @@ def _select_sessions(
             t("sc_session_a_ref"),
             options=session_labels,
             key="compare_session_a",
+            format_func=_fmt,
         )
     with col_sel_b:
         session_b_label = st.selectbox(
             t("sc_session_b_cmp"),
             options=session_labels,
             key="compare_session_b",
+            format_func=_fmt,
         )
     return session_a_label, session_b_label
 

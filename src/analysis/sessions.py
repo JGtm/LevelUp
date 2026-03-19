@@ -165,12 +165,13 @@ def _should_start_new_session_on_teammate_change(
     return bool(curr_friends - prev_friends)
 
 
-def compute_sessions_with_context_polars(
+def compute_sessions_with_context_polars(  # noqa: PLR0913
     df: pl.DataFrame,
     gap_minutes: int = DEFAULT_SESSION_GAP_MINUTES,
     cutoff_hour: int = SESSION_CUTOFF_HOUR,
     teammates_column: str | None = "teammates_signature",
     friends_xuids: frozenset[str] | set[str] | None = None,
+    ranked_column: str | None = "is_ranked",
 ) -> pl.DataFrame:
     """Version Polars de compute_sessions_with_context.
 
@@ -180,7 +181,8 @@ def compute_sessions_with_context_polars(
        - Si friends_xuids fourni (mode jeu avec amis) : seuls les amis comptent,
          les randoms matchmaking sont ignorés (comportement legacy V3)
        - Sinon : tout changement de teammates_signature compte
-    3. Heure de coupure pour sessions "en cours"
+    3. Transition classé ↔ non-classé = nouvelle session (si SESSION_CONFIG.split_on_ranked_change)
+    4. Heure de coupure pour sessions "en cours"
 
     Args:
         df: DataFrame Polars avec colonnes start_time et optionnellement teammates_signature.
@@ -189,6 +191,8 @@ def compute_sessions_with_context_polars(
         teammates_column: Nom de la colonne teammates_signature.
         friends_xuids: XUIDs des amis proches. Si fourni et non vide, seuls les amis
             déclenchent une nouvelle session (randoms ignorés).
+        ranked_column: Nom de la colonne is_ranked. Si présente et SESSION_CONFIG.split_on_ranked_change
+            est True, une transition classé ↔ non-classé déclenche une nouvelle session.
 
     Returns:
         DataFrame avec colonnes session_id et session_label ajoutées.
@@ -246,8 +250,28 @@ def compute_sessions_with_context_polars(
     else:
         teammates_break = pl.lit(0).cast(pl.Int8)
 
-    # Nouvelle session si gap OU changement de coéquipiers
-    new_session_raw = ((gap_break == 1) | (teammates_break == 1)).cast(pl.Int8)
+    # Transition classé ↔ non-classé ?
+    if (
+        ranked_column
+        and ranked_column in df_sorted.columns
+        and SESSION_CONFIG.split_on_ranked_change
+    ):
+        col_r = df_sorted[ranked_column].fill_null(False)
+        prev_r = col_r.shift(1).fill_null(False)
+        ranked_break = (col_r != prev_r).cast(pl.Int8)
+        n_ranked_breaks = int(ranked_break.sum())
+        if n_ranked_breaks > 0:
+            _log.debug(
+                "ranked_break: %d transition(s) classé/non-classé → coupure de session",
+                n_ranked_breaks,
+            )
+    else:
+        ranked_break = pl.lit(0).cast(pl.Int8)
+
+    # Nouvelle session si gap OU changement de coéquipiers OU transition classé/non-classé
+    new_session_raw = ((gap_break == 1) | (teammates_break == 1) | (ranked_break == 1)).cast(
+        pl.Int8
+    )
     new_session_raw = new_session_raw.fill_null(1)
     # Forcer le premier match = premiere session (comportement Pandas)
     row_idx = pl.int_range(0, pl.len())
@@ -289,7 +313,11 @@ def compute_sessions_with_context_polars(
 
     n_sessions = df_result["session_id"].n_unique()
     _log.debug(
-        "Sessions calculées: %d matchs → %d sessions (gap=%dmin)", len(df), n_sessions, gap_minutes
+        "Sessions calculées: %d matchs → %d sessions (gap=%dmin, ranked_split=%s)",
+        len(df),
+        n_sessions,
+        gap_minutes,
+        SESSION_CONFIG.split_on_ranked_change,
     )
 
     return df_result
