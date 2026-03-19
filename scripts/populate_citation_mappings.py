@@ -240,6 +240,8 @@ WEAPON_CITATIONS: list[tuple] = [
      _WP_HI + "HI_Commendations_Bandit.png", "Arme", "Éliminez des Spartans avec le Bandit EVO.", "10,25,50,100,250", "UNSC"),
     ("hydra_mastery", "Maîtrise du MLRS-2 Hydra", "weapon_stat", None, None, "weapon_kills:MLRS-2 Hydra", None, None, None, None, "high", "Kills avec MLRS-2 Hydra", True,
      _WP_HI + "HI_Commendations_Hydra.png", "Arme", "Éliminez des Spartans avec le MLRS-2 Hydra.", "5,10,20,40,100", "UNSC"),
+    ("mutilator_mastery", "Maîtrise du Mutilateur", "weapon_stat", None, None, "weapon_kills:Mutilator", None, None, None, None, "high", "Kills avec Mutilateur", True,
+     _WP_HI + "HI_Commendations_Mutilator.png", "Arme", "Éliminez des Spartans avec le Mutilateur.", "10,25,50,100,250", "UNSC"),
     # Paria (armes Covenant + Banished fusionnées)
     ("stalker_mastery", "Maîtrise du Fusil traqueur", "weapon_stat", None, None, "weapon_kills:Stalker Rifle", None, None, None, None, "high", "Kills avec Fusil traqueur", True,
      _WP_HI + "HI_Commendations_Stalker.png", "Arme", "Éliminez des Spartans avec le Fusil traqueur.", "10,25,50,100,250", "Paria"),
@@ -276,6 +278,7 @@ _HUMAN_WEAPON_CHILDREN = [
     "bulldog_mastery",
     "bandit_mastery",
     "hydra_mastery",
+    "mutilator_mastery",
 ]
 _PARIA_WEAPON_CHILDREN = [
     "stalker_mastery",
