@@ -1,7 +1,7 @@
 """Gestion des médailles : labels, icônes et affichage en grille.
 
 Ce module centralise les fonctions liées aux médailles Halo Infinite :
-- Chargement des fichiers de traduction (FR/EN)
+- Chargement des labels (DB-first, JSON-fallback)
 - Récupération des icônes embarquées (static/medals/icons/)
 - Affichage d'une grille de médailles dans Streamlit
 """
@@ -9,6 +9,7 @@ Ce module centralise les fonctions liées aux médailles Halo Infinite :
 from __future__ import annotations
 
 import json
+import logging
 import os
 
 import streamlit as st
@@ -21,6 +22,8 @@ __all__ = [
     "medal_icon_path",
     "render_medals_grid",
 ]
+
+logger = logging.getLogger(__name__)
 
 
 def _medals_json_mtime() -> float:
@@ -37,21 +40,57 @@ def _medals_json_mtime() -> float:
 
 @st.cache_data(show_spinner=False)
 def load_medal_name_maps(_json_mtime: float = 0.0) -> tuple[dict[str, str], dict[str, str]]:
-    """Charge les labels de médailles.
+    """Charge les labels de médailles (DB-first, JSON-fallback).
 
-    Le cache est invalidé quand les fichiers JSON sont modifiés (via _json_mtime).
+    Stratégie :
+    1. Tente de charger depuis ``metadata.medal_definitions`` via DuckDB.
+    2. Si >= 100 entrées → construit les dicts depuis le DataFrame.
+    3. Sinon → fallback JSON classique.
 
     Returns:
         Tuple (fr_map, en_map) où chaque map est {str(NameId): "Label"}.
-
-    Notes:
-        - Priorité au fichier FR: static/medals/medals_fr.json
-        - Fallback: static/medals/medals_en.json
-
-    Formats acceptés:
-        {"<NameId>": "Nom"}
-        {"<NameId>": {"name": "...", "label": "...", "fr": "...", "name_fr": "..."}}
     """
+    # ── Tentative DB ──
+    fr_map, en_map = _load_from_db()
+    if len(fr_map) >= 100:
+        logger.info("Medal definitions chargées depuis DB : %d entrées", len(fr_map))
+        return fr_map, en_map
+
+    # ── Fallback JSON ──
+    logger.warning("Fallback JSON médailles actif (DB vide ou inaccessible)")
+    return _load_from_json()
+
+
+def _load_from_db() -> tuple[dict[str, str], dict[str, str]]:
+    """Charge les labels médailles depuis metadata.duckdb."""
+    try:
+        import duckdb
+
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        meta_path = os.path.join(repo_root, "data", "warehouse", "metadata.duckdb")
+        if not os.path.exists(meta_path):
+            logger.debug("metadata.duckdb introuvable : %s", meta_path)
+            return {}, {}
+        conn = duckdb.connect(meta_path, read_only=True)
+        try:
+            rows = conn.execute(
+                "SELECT medal_name_id, name_fr, name_en FROM medal_definitions"
+            ).fetchall()
+        except Exception as e:
+            logger.debug("Erreur requête medal_definitions : %s", e)
+            return {}, {}
+        finally:
+            conn.close()
+        fr_map = {str(r[0]): r[1] for r in rows if r[1]}
+        en_map = {str(r[0]): r[2] for r in rows if r[2]}
+        return fr_map, en_map
+    except Exception as e:
+        logger.debug("Erreur chargement medal_definitions depuis DB : %s", e)
+        return {}, {}
+
+
+def _load_from_json() -> tuple[dict[str, str], dict[str, str]]:
+    """Charge les labels médailles depuis les fichiers JSON statiques."""
 
     def _load(path: str) -> dict[str, str]:
         if not os.path.exists(path):
@@ -80,7 +119,6 @@ def load_medal_name_maps(_json_mtime: float = 0.0) -> tuple[dict[str, str], dict
 
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     fr_map = _load(os.path.join(repo_root, "static", "medals", "medals_fr.json"))
-    # Fallback EN : nouveau fichier généré (et compat avec un éventuel ancien medals.json)
     en_map = _load(os.path.join(repo_root, "static", "medals", "medals_en.json"))
     if not en_map:
         en_map = _load(os.path.join(repo_root, "static", "medals", "medals.json"))

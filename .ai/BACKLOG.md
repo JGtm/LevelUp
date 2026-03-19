@@ -8,6 +8,7 @@
 
 | Date | Item |
 |------|------|
+| 2026-03-19 | **Medal definitions en BDD** — table `medal_definitions` dans `metadata.duckdb` (167 médailles, DB-first + JSON-fallback). Migration, script population, CLI `--medal-metadata`, `MedalsMixin.load_medal_definitions()` / `get_medal_label()`, UI DB-first dans `medals.py`, 16 tests unitaires + 4 intégration. Orphan `citations_{fr,en}.json` supprimés. Phase 8 cleanup planifiée. |
 | 2026-03-19 | **Migration `b5>>4`** — `scan_fire_events_b5` implémenté, `fire_seq%n_players` supprimé, `map_b2_to_player`/`group_events_by_pi`/`POV_PLAYER_INDEX` retirés, 25 nouveaux tests — 4968 tests passent. Relancer `--force-weapons --all` pour re-extraire. |
 | 2026-03-19 | **Backfill enrichissement** JGtm + Madina97294 — 8 matchs du 18 mars rattrapés (performance_score, sessions, citations) |
 | 2026-03-19 | **Fix 11 — Fan-out multi-joueurs** : `FanoutEnrichmentMixin` (`_engine_fanout.py`) + branchement dans `engine.py` après `_detach_shared_from_player_conn()`. Résout le manquement d'enrichissement local pour les joueurs qui ne sync pas eux-mêmes. |
@@ -51,26 +52,6 @@
 
 ## 📋 Backlog
 
-### Migration `b5>>4` — Attribution armes (player_index définitif)
-
-**Statut : NON MIGRÉ en production (2026-03-19)**
-
-La formule `fire_seq % n_players` (actuellement en WD) est approximative. `b5 >> 4` est la solution définitive validée sur 3 matchs / 282 kills (84–95% de confiance). Voir `.ai/PLAYER_INDEX_FIRE-EVENTS_RESOLUTION.md` et `.ai/PLAN_B5_PRODUCTION_MIGRATION.md`.
-
-**Fichiers à modifier** :
-
-| Fichier | Changement |
-|---------|-----------|
-| `src/analysis/_weapon_scanners.py` | Extraire `b5` à chaque event, retourner `player_index = b5 >> 4`. Dédup par `byte_pos` proximity (≤2 bytes), pas par `(fire_counter, weapon)`. |
-| `src/analysis/weapon_parser.py` | `scan_fire_events_all` : supprimer `n_players` et `ev["player_index"] = ev["fire_seq"] % n_players`. Le `player_index` vient du scan b5. |
-| `src/data/services/weapon_extraction_service.py` | Supprimer `n_players = len(all_participants) or 8` passé à `scan_fire_events_all`. |
-
-**Ce qui NE change PAS** : `correlate_kills_global` (filtre `ev["player_index"] == killer_pi` reste), `detect_pi_from_metadata`, `PLAYER_METADATA`.
-
-**Après migration** : lancer `--weapons --force-weapons --all` pour re-extraire tous les matchs avec la formule définitive.
-
----
-
 ### Perf — Film chunks : augmenter `_MAX_CONCURRENT_CHUNKS`
 
 **Fichier** : `src/data/services/weapon_extraction_service.py`
@@ -83,18 +64,41 @@ Passer de 5 à 7 (puis 10 si stable) connexions concurrentes au CDN Azure. Objec
 
 ### Noms et descriptions des médailles/citations en BDD
 
-**Statut : À planifier**
+**Statut : Complété ✅** — Phases 1-7 implémentées le 2026-03-19, vérification finale OK.
 
-Actuellement les noms et descriptions de médailles sont dans des fichiers JSON statiques (`static/medals/medals_{lang}.json`, `medals_descriptions_{lang}.json`). Les noms de citations sont dans `src/ui/translations.py`. Pas de table `medals` peuplée dans `metadata.duckdb`.
+<details>
+<summary>Fichiers créés/modifiés (référence)</summary>
 
-**Objectif** : centraliser noms et descriptions (médailles + citations) dans `metadata.duckdb` pour :
-- Requêtes SQL directes avec JOIN (pas de résolution Python post-query)
-- Source unique de vérité éditable sans redéployer le code
-- Support futur de langues supplémentaires
+**Créés** :
+- `src/data/migration/steps/add_medal_definitions.py` — step migration
+- `scripts/populate_medal_metadata.py` — population JSON→DB (167 médailles)
+- `tests/test_medal_definitions.py` — 10 tests unitaires
+- `tests/test_populate_medal_metadata.py` — 6 tests unitaires
+- `tests/integration/test_medal_definitions_integration.py` — 4 tests intégration
 
-**Approche envisagée** :
-1. Créer/peupler la table `medals` dans `metadata.duckdb` (colonnes : `medal_name_id`, `name_fr`, `name_en`, `description_fr`, `description_en`, `is_custom`)
-2. Créer une table `citation_descriptions` (ou enrichir `citation_mappings`)
-3. Script de population depuis les JSON existants (`scripts/populate_medal_metadata.py`)
-4. Migration step pour les nouvelles colonnes
-5. Les JSON restent en fallback read-only (backward compat)
+**Modifiés** :
+- `src/data/sync/migrations.py` — `ensure_medal_definitions_table()` + DDL
+- `src/data/migration/steps/__init__.py` — import
+- `src/data/repositories/_medals_repo.py` — `load_medal_definitions()` + `get_medal_label()`
+- `src/ui/medals.py` — DB-first / JSON-fallback dans `load_medal_name_maps()`
+- `scripts/backfill/cli.py` — `--medal-metadata`
+- `scripts/backfill_data.py` — dispatch `--medal-metadata`
+
+**Supprimés** : `static/i18n/citations_fr.json`, `static/i18n/citations_en.json` (orphelins)
+</details>
+
+---
+
+### Cleanup post-migration medal_definitions (Phase 8)
+
+**Statut : En attente** — À déclencher après 2 semaines de prod sans WARNING `"Fallback JSON médailles actif"`.
+
+**Critère** : `grep "Fallback JSON médailles actif" logs/` → 0 occurrence sur 14 jours.
+
+**Étapes** :
+1. Audit accès directs JSON : `grep -r "medals_fr.json\|medals_en.json\|medals_descriptions" src/ scripts/ tests/`
+2. Retirer le fallback JSON dans `medals.py` (WARNING → ERROR + re-raise)
+3. Archiver les 4 JSON dans `static/medals/archive/`
+4. Nettoyer `medals.py` (supprimer `_load_from_json`, import `json`)
+5. Remplacer tests fallback par `test_raises_on_empty_db`
+6. Checklist : 0 ref JSON hors archive, tests verts, pas de WARNING au démarrage

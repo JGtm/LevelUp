@@ -637,6 +637,16 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Recalcule la médaille Vengeur pour TOUS les matchs (écrase l'existant).",
     )
 
+    # ── Référentiel médailles (metadata.duckdb, one-shot) ────────────────────
+    parser.add_argument(
+        "--medal-metadata",
+        action="store_true",
+        help=(
+            "Peuple medal_definitions dans metadata.duckdb depuis les JSON. "
+            "Opération one-shot, locale, sans API."
+        ),
+    )
+
     return parser
 
 

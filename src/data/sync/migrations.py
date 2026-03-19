@@ -1610,3 +1610,30 @@ def ensure_weapon_labels(conn: duckdb.DuckDBPyConnection) -> None:
         rows,
     )
     logger.debug("weapon_labels : %d lignes insérées/ignorées", len(rows))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# metadata.duckdb — Référentiel medal_definitions
+# ─────────────────────────────────────────────────────────────────────────────
+
+_MEDAL_DEFINITIONS_DDL = """
+CREATE TABLE IF NOT EXISTS medal_definitions (
+    medal_name_id  BIGINT PRIMARY KEY,
+    name_fr        VARCHAR NOT NULL,
+    name_en        VARCHAR NOT NULL,
+    description_fr VARCHAR DEFAULT '',
+    description_en VARCHAR DEFAULT '',
+    is_custom      BOOLEAN DEFAULT FALSE
+)
+"""
+
+_CUSTOM_MEDAL_THRESHOLD = 9_000_000_000
+
+
+def ensure_medal_definitions_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée la table ``medal_definitions`` dans metadata.duckdb (idempotente).
+
+    Seul le schéma est créé ici. La population depuis les JSON est assurée
+    par ``scripts/populate_medal_metadata.py``.
+    """
+    conn.execute(_MEDAL_DEFINITIONS_DDL)
