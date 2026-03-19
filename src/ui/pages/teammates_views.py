@@ -63,7 +63,6 @@ def render_single_teammate_view(
     callbacks: TeammateCallbacks,
 ) -> None:
     """Vue pour un seul coéquipier sélectionné."""
-    me_name = ctx["me_name"]
     xuid = ctx["xuid"]
     db_path = ctx["db_path"]
     db_key = ctx["db_key"]
@@ -71,11 +70,7 @@ def render_single_teammate_view(
     apply_current_filters = filters["apply_current_filters"]
     same_team_only = filters["same_team_only"]
     show_smooth = filters["show_smooth"]
-    assign_player_colors_fn = callbacks["assign_player_colors_fn"]
-    plot_multi_metric_bars_fn = callbacks["plot_multi_metric_bars_fn"]
-    top_medals_fn = callbacks["top_medals_fn"]
     load_teammate_stats_fn = callbacks["load_teammate_stats_fn"]
-    enrich_series_fn = callbacks["enrich_series_fn"]
 
     df = ensure_polars(df)
     dff = ensure_polars(dff)
@@ -110,94 +105,125 @@ def render_single_teammate_view(
         name = display_name_from_xuid(friend_xuid, db_path=db_path)
 
         _render_shared_stats_metrics(sub)
-
-        # Charger les stats du coéquipier depuis SA propre DB
         friend_sub = ensure_polars(load_teammate_stats_fn(name, shared_ids, db_path))
-
-        # Filtrer friend_sub pour ne garder que les match_ids présents dans sub (après filtres)
-        if not friend_sub.is_empty() and "match_id" in friend_sub.columns:
-            filtered_match_ids = sub["match_id"].cast(pl.Utf8).to_list()
-            friend_sub = friend_sub.filter(
-                pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids)
-            )
-
-        # Enrichir avec les performance_score stockés dans player_match_enrichment
-        # → évite le recalcul percentile relatif au seul subset affiché (biais)
-        me_name = display_name_from_xuid(xuid.strip(), db_path=db_path)
-        sub = TeammatesService.enrich_with_performance_score(sub, me_name, db_path, is_main=True)
-        if not friend_sub.is_empty():
-            friend_sub = TeammatesService.enrich_with_performance_score(
-                friend_sub, name, db_path
-            )
-
-        # Graphes côte à côte
-        render_comparison_charts(
-            sub=sub,
-            friend_sub=friend_sub,
-            me_name=me_name,
-            friend_name=name,
-            friend_xuid=friend_xuid,
-            show_smooth=show_smooth,
-        )
-
-        # Graphes de barres (folie meurtrière, headshots)
-        series = [(me_name, sub)]
-        if not friend_sub.is_empty():
-            series.append((name, friend_sub))
-        colors_by_name = assign_player_colors_fn([n for n, _ in series])
-        series = enrich_series_fn(series, db_path)
-
-        render_weapon_kills_bar_chart(
-            player_infos=[
-                (me_name, xuid, list(shared_ids)),
-                (name, friend_xuid, list(shared_ids)),
-            ],
-            colors_by_name=colors_by_name,
-            db_path=db_path,
-            key_suffix=friend_xuid,
-        )
-
-        render_metric_bar_charts(
-            series=series,
-            colors_by_name=colors_by_name,
-            show_smooth=show_smooth,
-            key_suffix=friend_xuid,
-            plot_fn=plot_multi_metric_bars_fn,
-        )
-
-        # Radar de complémentarité
-        render_synergy_radar(
-            sub=sub,
-            friend_sub=friend_sub,
-            me_name=me_name,
-            friend_name=name,
-            colors_by_name=colors_by_name,
-        )
-
-        # Médailles
-        _render_shared_medals(
-            db_path,
-            xuid,
-            friend_xuid,
-            me_name,
-            name,
-            shared_ids,
-            db_key,
-            top_medals_fn,
-        )
-
-        # Stats par arme (v5.5)
-        from src.ui.pages.teammates_weapons import render_weapon_kills_table
-
-        render_weapon_kills_table(db_path, friend_xuid, list(shared_ids))
-
-        # Graphiques par carte (lollipop, timeline, bullet, heatmap)
-        render_single_map_section(
+        _render_single_teammate_details(  # noqa: PLR0913
             sub=sub,
             dfr=dfr,
-            series=[(me_name, sub)] + ([(name, friend_sub)] if not friend_sub.is_empty() else []),
-            lang=get_lang(),
+            friend_sub=friend_sub,
+            shared_ids=shared_ids,
+            name=name,
+            friend_xuid=friend_xuid,
+            xuid=xuid,
+            db_path=db_path,
+            db_key=db_key,
+            show_smooth=show_smooth,
+            callbacks=callbacks,
         )
+
+
+def _render_single_teammate_details(  # noqa: PLR0913
+    sub: pl.DataFrame,
+    dfr: pl.DataFrame,
+    friend_sub: pl.DataFrame,
+    shared_ids: set[str],
+    name: str,
+    friend_xuid: str,
+    xuid: str,
+    db_path: str,
+    db_key: tuple[int, int] | None,
+    show_smooth: bool,
+    callbacks: TeammateCallbacks,
+) -> None:
+    assign_player_colors_fn = callbacks["assign_player_colors_fn"]
+    plot_multi_metric_bars_fn = callbacks["plot_multi_metric_bars_fn"]
+    top_medals_fn = callbacks["top_medals_fn"]
+    enrich_series_fn = callbacks["enrich_series_fn"]
+    if not friend_sub.is_empty() and "match_id" in friend_sub.columns:
+        filtered_match_ids = sub["match_id"].cast(pl.Utf8).to_list()
+        friend_sub = friend_sub.filter(pl.col("match_id").cast(pl.Utf8).is_in(filtered_match_ids))
+
+    me_name = display_name_from_xuid(xuid.strip(), db_path=db_path)
+    sub = TeammatesService.enrich_with_performance_score(sub, me_name, db_path, is_main=True)
+    if not friend_sub.is_empty():
+        friend_sub = TeammatesService.enrich_with_performance_score(friend_sub, name, db_path)
+
+    render_comparison_charts(
+        sub=sub,
+        friend_sub=friend_sub,
+        me_name=me_name,
+        friend_name=name,
+        friend_xuid=friend_xuid,
+        show_smooth=show_smooth,
+    )
+    series = [(me_name, sub)]
+    if not friend_sub.is_empty():
+        series.append((name, friend_sub))
+    colors_by_name = assign_player_colors_fn([n for n, _ in series])
+    series = enrich_series_fn(series, db_path)
+
+    render_weapon_kills_bar_chart(
+        player_infos=[(me_name, xuid, list(shared_ids)), (name, friend_xuid, list(shared_ids))],
+        colors_by_name=colors_by_name,
+        db_path=db_path,
+        key_suffix=friend_xuid,
+    )
+    render_metric_bar_charts(
+        series=series,
+        colors_by_name=colors_by_name,
+        show_smooth=show_smooth,
+        key_suffix=friend_xuid,
+        plot_fn=plot_multi_metric_bars_fn,
+    )
+    render_synergy_radar(
+        sub=sub,
+        friend_sub=friend_sub,
+        me_name=me_name,
+        friend_name=name,
+        colors_by_name=colors_by_name,
+    )
+    _render_shared_medals(
+        db_path,
+        xuid,
+        friend_xuid,
+        me_name,
+        name,
+        shared_ids,
+        db_key,
+        top_medals_fn,
+    )
+
+    _render_single_teammate_weapon_and_map(
+        sub=sub,
+        dfr=dfr,
+        friend_sub=friend_sub,
+        me_name=me_name,
+        name=name,
+        db_path=db_path,
+        friend_xuid=friend_xuid,
+        shared_ids=shared_ids,
+    )
+
+
+def _render_single_teammate_weapon_and_map(  # noqa: PLR0913
+    sub: pl.DataFrame,
+    dfr: pl.DataFrame,
+    friend_sub: pl.DataFrame,
+    me_name: str,
+    name: str,
+    db_path: str,
+    friend_xuid: str,
+    shared_ids: set[str],
+) -> None:
+    """Rend le tableau d'armes et les graphes par carte en vue single teammate."""
+    from src.ui.pages.teammates_weapons import render_weapon_kills_table
+
+    render_weapon_kills_table(db_path, friend_xuid, list(shared_ids))
+    render_single_map_section(
+        sub=sub,
+        dfr=dfr,
+        series=[(me_name, sub)] + ([(name, friend_sub)] if not friend_sub.is_empty() else []),
+        lang=get_lang(),
+    )
 
 
 def render_multi_teammate_view(  # noqa: PLR0913
@@ -334,7 +360,9 @@ def _render_map_breakdown(
     if ensure_polars(sub_all).is_empty():
         st.info(t("tm_no_matches_filter"))
     else:
-        render_friends_history_table(sub_all, db_path, xuid, db_key, waypoint_player)
+        render_friends_history_table(
+            sub_all, db_path, xuid, db_key, waypoint_player, full_df=full_squad_df
+        )
 
 
 def _render_map_history_section(
@@ -371,6 +399,9 @@ def _render_map_history_section(
             pl.col("match_id").cast(pl.Utf8).is_in(list(all_match_ids))
         )
 
+        sub_all = TeammatesService.enrich_with_performance_score(
+            sub_all, me_name, db_path, is_main=True
+        )
         series: list[tuple[str, DataFrameLike]] = [(me_name, sub_all)]
         filtered_match_ids = (
             sub_all["match_id"].cast(pl.Utf8).to_list() if not sub_all.is_empty() else []
@@ -393,6 +424,9 @@ def _render_map_history_section(
                     )
                 if fr_sub.is_empty():
                     continue
+                fr_sub = TeammatesService.enrich_with_performance_score(
+                    fr_sub, fx_gamertag, db_path
+                )
                 series.append((fx_gamertag, fr_sub))
 
         colors_by_name = assign_player_colors_fn([n for n, _ in series])

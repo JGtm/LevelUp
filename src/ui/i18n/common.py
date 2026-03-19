@@ -190,6 +190,7 @@ STRINGS: dict[str, dict[str, str]] = {
     "col_loss_rate": {"fr": "Taux de défaite", "en": "Loss rate"},
     "col_ratio": {"fr": "Ratio", "en": "Ratio"},
     "col_win_rate_pct": {"fr": "Taux victoire (%)", "en": "Win rate (%)"},
+    "col_win_rate_hist": {"fr": "Taux historique (%)", "en": "Win rate (hist.)"},
     "col_loss_rate_pct": {"fr": "Taux défaite (%)", "en": "Loss rate (%)"},
     "col_global_ratio": {"fr": "Ratio global", "en": "Overall ratio"},
     "col_shots_fired": {"fr": "Tirs", "en": "Shots fired"},

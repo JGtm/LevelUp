@@ -162,12 +162,13 @@ def render_teammate_cards(picked_xuids: list[str], settings: object, db_path: st
                 st.markdown(card_html, unsafe_allow_html=True)
 
 
-def _prepare_friends_table_data(  # noqa: PLR0912
+def _prepare_friends_table_data(  # noqa: PLR0912, PLR0913
     friends_table: pl.DataFrame,
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None,
     waypoint_player: str,
+    full_df: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     """Prépare le DataFrame pour le tableau d'historique coéquipiers.
 
@@ -226,6 +227,7 @@ def _prepare_friends_table_data(  # noqa: PLR0912
         .alias("outcome_label")
     )
     friends_table = _add_score_columns(friends_table)
+    friends_table = _add_win_rate_column(friends_table, full_df)
     friends_table = _add_mmr_columns(friends_table, db_path, xuid, db_key)
     wp = str(waypoint_player or "").strip()
     if wp:
@@ -238,6 +240,23 @@ def _prepare_friends_table_data(  # noqa: PLR0912
     else:
         friends_table = friends_table.with_columns(pl.lit("").alias("match_url"))
     return friends_table
+
+
+def _add_win_rate_column(df: pl.DataFrame, full_df: pl.DataFrame | None) -> pl.DataFrame:
+    """Ajoute win_rate_hist : % victoires sur cette carte sur TOUT l'historique escouade."""
+    if "outcome" not in df.columns or "map_name" not in df.columns:
+        return df.with_columns(pl.lit(None).cast(pl.Float64).alias("win_rate_hist"))
+    base = full_df if full_df is not None else df
+    map_wr = (
+        base.group_by("map_name")
+        .agg(
+            pl.col("outcome").eq(2).cast(pl.Float64).sum().alias("_wins"),
+            pl.len().alias("_total"),
+        )
+        .with_columns((pl.col("_wins") / pl.col("_total") * 100).round(1).alias("win_rate_hist"))
+        .select(["map_name", "win_rate_hist"])
+    )
+    return df.join(map_wr, on="map_name", how="left")
 
 
 def _add_score_columns(df: pl.DataFrame) -> pl.DataFrame:
@@ -317,6 +336,21 @@ def _fmt_mmr_int(v: object) -> str:
         return _fmt_value(v)
 
 
+def _win_rate_td(raw: object, colors: dict[str, str]) -> str:
+    """Génère une cellule <td> colorée pour le taux de victoire cumulatif."""
+    try:
+        f = float(raw)  # type: ignore[arg-type]
+        if f >= 55.0:
+            style = f"color:{colors['green']}; font-weight:700"
+        elif f <= 45.0:
+            style = f"color:{colors['red']}; font-weight:700"
+        else:
+            style = f"color:{colors['cyan']}; font-weight:700"
+        return f"<td style='{style}'>{html_lib.escape(f'{int(round(f))}%')}</td>"
+    except Exception:
+        return "<td>-</td>"
+
+
 def _build_html_rows(  # noqa: C901, PLR0912
     view: pl.DataFrame,
     cols: list[tuple[str, str]],
@@ -374,6 +408,8 @@ def _build_html_rows(  # noqa: C901, PLR0912
             elif key == "outcome_label":
                 val = _fmt_value(r.get(key))
                 tds.append(f"<td style='{_outcome_style(val)}'>{html_lib.escape(val)}</td>")
+            elif key == "win_rate_hist":
+                tds.append(_win_rate_td(r.get(key), colors))
             elif key in ("team_mmr", "enemy_mmr"):
                 val = _fmt_mmr_int(r.get(key))
                 tds.append(f"<td>{html_lib.escape(val)}</td>")
@@ -394,17 +430,19 @@ def _build_html_rows(  # noqa: C901, PLR0912
     return body_rows
 
 
-def render_friends_history_table(
+def render_friends_history_table(  # noqa: PLR0913
     sub_all: DataFrameLike,
     db_path: str,
     xuid: str,
     db_key: tuple[int, int] | None,
     waypoint_player: str,
+    full_df: DataFrameLike | None = None,
 ) -> None:
     """Affiche le tableau d'historique des matchs avec coéquipiers."""
     friends_table = ensure_polars(sub_all)
+    _full = ensure_polars(full_df) if full_df is not None else None
     friends_table = _prepare_friends_table_data(
-        friends_table, db_path, xuid, db_key, waypoint_player
+        friends_table, db_path, xuid, db_key, waypoint_player, full_df=_full
     )
     view = friends_table.sort("start_time", descending=True).head(250)
 
@@ -416,6 +454,7 @@ def render_friends_history_table(
         (t("tmh_col_playlist"), "playlist_fr"),
         (t("tmh_col_mode"), "mode"),
         (t("tmh_col_result"), "outcome_label"),
+        (t("col_win_rate_hist"), "win_rate_hist"),
         (t("tmh_col_score"), "score"),
         (t("tmh_col_team_mmr"), "team_mmr"),
         (t("tmh_col_enemy_mmr"), "enemy_mmr"),

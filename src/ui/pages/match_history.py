@@ -65,7 +65,28 @@ def _prepare_history_table(
     dff_table = _ensure_display_columns(dff_table, waypoint_player)
     dff_table = _add_score_columns(dff_table)
     dff_table = _add_time_columns(dff_table)
+    dff_table = _add_win_rate_column(dff_table, df_full)
     return _add_performance_column(dff_table, df_full)
+
+
+def _add_win_rate_column(
+    dff_table: pl.DataFrame,
+    df_full: DataFrameLike | None,
+) -> pl.DataFrame:
+    """Ajoute win_rate_hist : % victoires sur cette carte sur TOUT l'historique (non filtré)."""
+    if "outcome" not in dff_table.columns or "map_name" not in dff_table.columns:
+        return dff_table.with_columns(pl.lit(None).cast(pl.Float64).alias("win_rate_hist"))
+    base = ensure_polars(df_full) if df_full is not None else dff_table
+    map_wr = (
+        base.group_by("map_name")
+        .agg(
+            pl.col("outcome").eq(2).cast(pl.Float64).sum().alias("_wins"),
+            pl.len().alias("_total"),
+        )
+        .with_columns((pl.col("_wins") / pl.col("_total") * 100).round(1).alias("win_rate_hist"))
+        .select(["map_name", "win_rate_hist"])
+    )
+    return dff_table.join(map_wr, on="map_name", how="left")
 
 
 def _ensure_display_columns(dff_table: pl.DataFrame, waypoint_player: str) -> pl.DataFrame:
