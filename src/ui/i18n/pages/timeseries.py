@@ -101,16 +101,18 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     # ── Notes explicatives sous les graphes de progression ───────────────────
     "ts_note_nph": {
-        "fr": "- Courbe qui **monte** → tu crées plus de valeur que tu n'en perds — bonne dynamique\n"
-        "- **En dessous de 0** → tu meurs plus vite que tu ne fragges\n"
+        "fr": "- 🟢 **Zone verte** → tu fragges plus que tu ne meurs\n"
+        "- 🟠 **Zone orange** → tu meurs plus que tu ne fragges\n"
+        "- Courbe qui **monte** → ta dynamique s'améliore au fil de la session\n"
         "- Un pic isolé ne dit rien ; c'est la direction générale sur plusieurs matchs qui compte",
-        "en": "- **Rising** → you generate more value than you lose — good momentum\n"
-        "- **Below 0** → you die faster than you score kills\n"
+        "en": "- 🟢 **Green area** → you kill more than you die\n"
+        "- 🟠 **Orange area** → you die more than you kill\n"
+        "- **Rising curve** → your momentum is improving across the session\n"
         "- An isolated spike means nothing; the overall direction over several games is what matters",
     },
     "ts_note_ci": {
         "fr": "- Courbe en hausse en fin de session → tu t'es vraiment amélioré par rapport au début\n"
-        "- **Bande étroite** → niveau stable et reproductible ; **bande large** → trop tôt pour conclure\\n"
+        "- **Bande étroite** → niveau stable et reproductible ; **bande large** → trop tôt pour conclure\n"
         "- Cercle très éloigné de la courbe → partie atypique qui tire la moyenne",
         "en": "- Rising curve toward session end → genuine improvement relative to your start\n"
         "- **Narrow CI** → stable, reproducible level; **wide CI** → too early to draw conclusions\n"
@@ -126,7 +128,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "ts_note_regression": {
         "fr": "- **F/D en hausse** → tu progresses sur la session, pas juste de la chance\n"
-        "- **Confirmation de la tendance** : proche de 100 % → direction nette et fiable · proche de 0 % → session trop aléatoire pour conclure\n"
+        "- **Confirmation de la tendance** : proche de 100 % → direction nette et fiable · proche de 0 % → résultats de la session trop incohérents pour conclure\n"
         "- **Résultats trop éparpillés** → la session est trop irrégulière pour conclure\n"
         "- Taux de victoire en hausse + F/D en hausse → les deux s'accordent, forme et résultats s'alignent",
         "en": "- **K/D improving** → you're getting better across the session, not just getting lucky\n"
