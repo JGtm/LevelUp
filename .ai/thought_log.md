@@ -7,6 +7,23 @@
 
 ## Journal
 
+### [2026-03-19] — Fix taille uniforme médailles (Vengeur 2× trop grande) — Complété
+
+**Statut** : Complété
+
+**Problème** : La médaille Vengeur (Avenger) apparaissait 2× plus grande que les autres dans la grille médailles (pages Citations, onglet Citations, Escouade) et dans le menu déroulant du Scoreboard. Cause probable : le PNG du Vengeur a un canvas de dimensions différentes et `col.image(icon, width="stretch")` laisse la hauteur proportionnelle au PNG (pas de contrainte en hauteur).
+
+**Décision technique** :
+1. **`src/ui/medals.py`** : Remplacé `col.image(icon, width="stretch")` par `col.markdown(_medal_icon_html(icon))` qui génère un wrapper div `.os-medal-icon-wrap` (aspect-ratio 1:1) contenant une `<img>` en data URI base64. Toutes les icônes sont ainsi contraintes dans un carré identique, indépendamment des dimensions du PNG.
+2. **`src/ui/pages/match_view_scoreboard_detail.py`** : Ajouté un wrapper `<div class='os-sb-detail-medal-icon-wrap'>` autour du `<img>` pour que le conteneur soit le garant des 32×32px, et non le CSS de l'img qui peut être overridé par les styles globaux de Streamlit.
+3. **`static/styles.css`** : Ajouté `.os-medal-icon-wrap` (aspect-ratio 1:1, flex center) + `.os-medal-icon` (object-fit contain). Remplacé `.os-sb-detail-medal-icon` (width+height fixes) par `.os-sb-detail-medal-icon-wrap` (conteneur 32×32) + `.os-sb-detail-medal-icon` (max-width/max-height).
+
+**Résultat** : Toutes les médailles ont la même taille dans toutes les pages concernées.
+
+**Prochaine étape** : Aucune — correction cosmétique autonome.
+
+---
+
 ### [2026-03-19] — UX timeseries : nettoyage complet légendes et contrôles — Complété
 
 **Statut** : Complété
