@@ -112,10 +112,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     "ts_note_ci": {
         "fr": "- Courbe en hausse en fin de session → tu t'es vraiment amélioré par rapport au début\n"
-        "- **Bande étroite** → niveau stable et reproductible ; **bande large** → trop tôt pour conclure\n"
+        "- **Bande étroite** → ton F/D est stable et fiable ; **bande large** → tes résultats varient trop pour savoir quel est ton vrai niveau\n"
         "- Cercle très éloigné de la courbe → partie atypique qui tire la moyenne",
         "en": "- Rising curve toward session end → genuine improvement relative to your start\n"
-        "- **Narrow CI** → stable, reproducible level; **wide CI** → too early to draw conclusions\n"
+        "- **Narrow band** → your K/D is stable and reliable; **wide band** → results vary too much to know your true level\n"
         "- Circle far from the curve → atypical game skewing the average",
     },
     "ts_note_ewma": {
