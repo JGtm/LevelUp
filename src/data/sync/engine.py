@@ -285,6 +285,8 @@ class DuckDBSyncEngine(
         result.started_at = datetime.now(timezone.utc)
         start_time = time.time()
 
+        options = options.with_resolved_batch_size()
+
         try:
             if self._tokens is None:
                 self._tokens = await get_tokens_from_env()
