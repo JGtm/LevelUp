@@ -61,7 +61,7 @@ def _apply_default_last_session(
     st.session_state["_min_matches_maps_friends_auto"] = True
 
 
-def _classify_sessions_solo_squad(
+def _classify_sessions_solo_squad(  # noqa: C901, PLR0912
     base_s: pl.DataFrame,
     friends_xuids: frozenset[str],
 ) -> tuple[list[str], list[str]]:
@@ -88,6 +88,53 @@ def _classify_sessions_solo_squad(
 
     if base_s.is_empty():
         return [], []
+
+    # Source de vérité prioritaire: flag persisté en base (player_match_enrichment.is_with_friends).
+    # Pour les lignes legacy/nulles, fallback sur teammates_signature + friends_xuids.
+    if "is_with_friends" in base_s.columns:
+        df_marked = base_s.select(
+            ["session_id", "session_label", "start_time", "is_with_friends", "teammates_signature"]
+        )
+
+        if friends_xuids and "teammates_signature" in base_s.columns:
+            sig_col = pl.col("teammates_signature").cast(pl.Utf8).fill_null("")
+            friend_exprs = [sig_col.str.contains(fxuid, literal=True) for fxuid in friends_xuids]
+            has_friend_from_sig = friend_exprs[0]
+            for expr in friend_exprs[1:]:
+                has_friend_from_sig = has_friend_from_sig | expr
+
+            has_friend_expr = pl.when(pl.col("is_with_friends").fill_null(False)).then(True).when(
+                pl.col("is_with_friends").is_null()
+            ).then(has_friend_from_sig).otherwise(False)
+        else:
+            has_friend_expr = pl.col("is_with_friends").fill_null(False).cast(pl.Boolean)
+
+        df_marked = df_marked.with_columns(has_friend_expr.alias("_has_friend"))
+
+        squad_session_ids: set[str] = set(
+            df_marked.filter(pl.col("_has_friend"))["session_id"]
+            .drop_nulls()
+            .cast(pl.Utf8)
+            .to_list()
+        )
+
+        if not squad_session_ids:
+            return _session_labels_ordered_by_last_match(base_s), []
+
+        agg = (
+            base_s.group_by(["session_id", "session_label"])
+            .agg(pl.col("start_time").max())
+            .sort("start_time", descending=True)
+        )
+        solo_labels: list[str] = []
+        squad_labels: list[str] = []
+        for row in agg.iter_rows(named=True):
+            sid = str(row.get("session_id") or "")
+            lbl = str(row.get("session_label") or "")
+            if not lbl:
+                continue
+            (squad_labels if sid in squad_session_ids else solo_labels).append(lbl)
+        return solo_labels, squad_labels
 
     if not friends_xuids or "teammates_signature" not in base_s.columns:
         return _session_labels_ordered_by_last_match(base_s), []

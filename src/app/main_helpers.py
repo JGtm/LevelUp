@@ -165,7 +165,7 @@ def _needs_halo_auth(url: str) -> bool:
     )
 
 
-def render_profile_hero(
+def render_profile_hero(  # noqa: C901
     xuid: str,
     settings: AppSettings,
     api_app: object | None,
@@ -204,15 +204,29 @@ def render_profile_hero(
     rank_icon_value = (getattr(api_app, "rank_image_url", None) if api_app else "") or ""
     adornment_value = (getattr(api_app, "adornment_image_url", None) if api_app else "") or ""
 
-    # Fallback : adornment_path issu de la dernière sync career rank (DB)
+    # Fallback : adornment_path + rank_label issus de la dernière sync career rank (DB)
     # Utile quand l'API profile est désactivée ou le cache froid.
-    if not adornment_value and db_path and str(xuid or "").strip():
+    _needs_db_career = (not adornment_value or not rank_label_value) and db_path and str(xuid or "").strip()
+    if _needs_db_career:
         with contextlib.suppress(Exception):
             from src.ui._cache_core import get_cached_repository_st
+            from src.ui.career_ranks import format_career_rank_label_fr
+            from src.ui.career_ranks import get_rank_info as _get_meta_rank_info
 
             career = get_cached_repository_st(db_path, str(xuid).strip()).load_career_data()
-            if career and career.get("adornment_path"):
-                adornment_value = str(career["adornment_path"]).strip()
+            if career:
+                if not adornment_value and career.get("adornment_path"):
+                    adornment_value = str(career["adornment_path"]).strip()
+                if not rank_label_value and career.get("rank"):
+                    _meta = _get_meta_rank_info(int(career["rank"]))
+                    if _meta:
+                        rank_label_value = _meta.full_label_fr or ""
+                    if not rank_label_value:
+                        rank_label_value = format_career_rank_label_fr(
+                            tier=str(career.get("rank_tier") or ""),
+                            title=str(career.get("rank_name") or ""),
+                            grade=None,
+                        )
 
     # Tokens Halo si nécessaire (gamertag transmis pour les refresh tokens per-player)
     _gamertag_for_tokens = str(me_name or "").strip() or None
