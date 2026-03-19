@@ -80,3 +80,63 @@ class TestResolveMedalNameDb:
             result = _resolve_from_db(42, "fr")
 
         assert result is None
+
+
+class TestResolveMedalDescription:
+    """Tests pour resolve_medal_description avec fallback JSON."""
+
+    def test_returns_fr_description_for_avenger(self) -> None:
+        from src.analysis._medal_data import resolve_medal_description
+
+        with patch("src.analysis._medal_data._resolve_text_from_db", return_value=None):
+            result = resolve_medal_description(9_000_000_001, lang="fr")
+
+        assert result is not None
+        assert "mort précédente" in result
+
+    def test_returns_en_description_for_avenger(self) -> None:
+        from src.analysis._medal_data import resolve_medal_description
+
+        with patch("src.analysis._medal_data._resolve_text_from_db", return_value=None):
+            result = resolve_medal_description(9_000_000_001, lang="en")
+
+        assert result is not None
+        assert "previous death" in result
+
+    def test_db_takes_priority_over_json(self) -> None:
+        from src.analysis._medal_data import resolve_medal_description
+
+        with patch(
+            "src.analysis._medal_data._resolve_text_from_db",
+            return_value="Description DB",
+        ):
+            result = resolve_medal_description(9_000_000_001, lang="fr")
+
+        assert result == "Description DB"
+
+    def test_returns_none_for_unknown_id(self) -> None:
+        from src.analysis._medal_data import resolve_medal_description
+
+        with patch("src.analysis._medal_data._resolve_text_from_db", return_value=None):
+            result = resolve_medal_description(999_999_999, lang="fr")
+
+        assert result is None
+
+    def test_fallback_to_other_lang(self) -> None:
+        """Si la langue demandée n'a pas de JSON, tombe sur l'autre langue."""
+        from src.analysis._medal_data import resolve_medal_description
+
+        with patch("src.analysis._medal_data._resolve_text_from_db", return_value=None):
+            # Forcer un cache vide pour lang="de" → fallback EN → fallback FR
+            result = resolve_medal_description(9_000_000_001, lang="de")
+
+        assert result is not None
+
+    def test_default_lang_is_fr(self) -> None:
+        from src.analysis._medal_data import resolve_medal_description
+
+        with patch("src.analysis._medal_data._resolve_text_from_db", return_value=None):
+            result_default = resolve_medal_description(9_000_000_001)
+            result_fr = resolve_medal_description(9_000_000_001, lang="fr")
+
+        assert result_default == result_fr

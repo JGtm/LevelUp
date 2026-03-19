@@ -7,6 +7,76 @@
 
 ## Journal
 
+### [2025-07-17] — Filtrage des joueurs fantômes (ghost players)
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Les "joueurs fantômes" (kills=0, deaths=0, assists=0, score=0 — tous explicitement entiers 0) apparaissaient dans le scoreboard, la liste des coéquipiers et les rencontres de carrière. La difficulté principale était de distinguer un vrai `0` (fantôme) d'un `NULL` (données incomplètes à conserver). Filtre SQL final avec `COALESCE(..., 0) = 0` + guard `IS NOT NULL` pour ne pas exclure les joueurs avec données partielles.
+
+**Filtre SQL centralisé** (`_SQL_NOT_GHOST` dans `_roster_loader.py`) :
+```sql
+NOT (COALESCE(p.kills,0)=0 AND COALESCE(p.deaths,0)=0
+     AND COALESCE(p.assists,0)=0 AND COALESCE(p.score,0)=0
+     AND (p.kills IS NOT NULL OR p.deaths IS NOT NULL
+          OR p.assists IS NOT NULL OR p.score IS NOT NULL))
+```
+
+**Surfaces corrigées** :
+1. `_roster_loader.py` : `load_match_scoreboard` + `load_match_players_stats` (constante `_SQL_NOT_GHOST`)
+2. `_career_encounters_repo.py` : `_TOP_ENCOUNTERED_SQL` (ghost + bot `bid(...)`)
+3. `duckdb_repo.py` : `list_top_teammates` (ghost + bot)
+
+**Surfaces déjà protégées (non modifiées)** :
+- `match_view_encounters_logic.py` : `_is_ghost_player()` existant ✅
+- `_gamertag_resolver.py` : `v_gamertag_lookup` exclut naturellement les bots ✅
+
+**Tests corrigés** :
+- `test_v52_new_features.py` : defaults `_insert_participant` changés (score=100, kills=1, deaths=1) pour ne pas déclencher le filtre
+- `test_career_antagonists.py` : colonnes `assists`/`score` ajoutées au schéma de test + INSERT avec colonnes nommées
+- `_match_impact_events.py` : ajout `PLR0912` au noqa pré-existant (dette technique non liée)
+
+**Résultats observés** :
+- Match exemple `a974fdeb...` : 10 → 8 joueurs après filtrage (2 fantômes exclus : 1 humain all-0, 1 bot all-0)
+- 5057/5057 tests passent, 0 échecs
+- Baseline `size_baseline.txt` mis à jour (violation `load_match_scoreboard` résolue par extraction constante)
+
+**Conclusion** :
+Filtrage uniforme sur toutes les surfaces. `_SQL_NOT_GHOST` est réutilisable pour d'autres requêtes sur `match_participants`.
+
+---
+
+### [2026-03-19] — Médaille custom Vengeur (Avenger)
+**Statut** : Complété ✅
+
+**Décision technique principale** :
+Implémentation de la médaille custom "Vengeur" (Avenger) : obtenue quand un joueur tue l'ennemi responsable de sa mort précédente dans le même match. Stockée dans `medals_earned` (shared) avec l'ID custom `9_000_000_001` (hors plage officielle Halo max ~4.3e9). Choix de la voie médaille plutôt que citation car les médailles sont affichées dans le scoreboard du match alors que les citations sont une agrégation season longue.
+
+**Algorithme** : Requête SQL avec sous-requête corrélée — pour chaque kill (A tue B à t), trouve le tueur le plus récent de A avant t. Si c'est B → avenger kill. GROUP BY (match_id, xuid) pour compter.
+
+**Fichiers modifiés** :
+- `static/medals/medals_fr.json` : `"9000000001": "Vengeur"`
+- `static/medals/medals_en.json` : `"9000000001": "Avenger"`
+- `scripts/backfill/strategies.py` : `AVENGER_MEDAL_ID` + `backfill_avenger_medal()` — calcul SQL + INSERT OR IGNORE/REPLACE dans `medals_earned`
+- `scripts/backfill/cli.py` : `--avenger` + `--force-avenger`
+- `scripts/backfill_data.py` : handler global (comme `--mode-category`, pas de `--player` requis)
+- `tests/test_backfill_strategies.py` : `TestBackfillAvengerMedal` — 12 tests (empty, basic, killer-switch, last-death-wins, multi-avengers, multi-players, multi-matches, force on/off, no-prior-death, ID range)
+
+**Résultats observés** :
+- 12/12 tests `TestBackfillAvengerMedal` ✅
+- 26/26 tests total du fichier ✅ (aucune régression)
+- 54/54 tests backfill+analysis ✅
+
+**Backfill usage** :
+```bash
+python scripts/backfill_data.py --avenger            # incrémental
+python scripts/backfill_data.py --force-avenger      # écrase l'existant
+```
+
+**Conclusion** :
+L'image de la médaille doit être déposée manuellement dans `static/medals/icons/9000000001.png`.
+
+---
+
 ### [2026-03-19] — Badge "Top Gun" / "As de la gâchette" sur le graphe Impact du match
 **Statut** : Complété ✅
 

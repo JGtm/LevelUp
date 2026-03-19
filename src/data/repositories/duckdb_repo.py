@@ -432,6 +432,15 @@ class DuckDBRepository(
                      AND mp1.xuid != mp2.xuid
                      AND mp1.team_id = mp2.team_id
                     WHERE mp1.xuid = ?
+                      AND NOT LOWER(CAST(mp2.xuid AS VARCHAR)) LIKE 'bid(%'
+                      AND NOT (
+                          COALESCE(mp2.kills, 0) = 0
+                          AND COALESCE(mp2.deaths, 0) = 0
+                          AND COALESCE(mp2.assists, 0) = 0
+                          AND COALESCE(mp2.score, 0) = 0
+                          AND (mp2.kills IS NOT NULL OR mp2.deaths IS NOT NULL
+                               OR mp2.assists IS NOT NULL OR mp2.score IS NOT NULL)
+                      )
                     GROUP BY mp2.xuid
                     ORDER BY matches_together DESC
                     LIMIT ?

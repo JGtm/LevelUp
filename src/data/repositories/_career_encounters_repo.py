@@ -49,6 +49,15 @@ encounters AS (
     LEFT JOIN  shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
     LEFT JOIN  shared.match_registry r ON r.match_id = p.match_id
     WHERE p.xuid != ?
+      AND NOT (
+          COALESCE(p.kills, 0) = 0
+          AND COALESCE(p.deaths, 0) = 0
+          AND COALESCE(p.assists, 0) = 0
+          AND COALESCE(p.score, 0) = 0
+          AND (p.kills IS NOT NULL OR p.deaths IS NOT NULL
+               OR p.assists IS NOT NULL OR p.score IS NOT NULL)
+      )
+      AND NOT LOWER(CAST(p.xuid AS VARCHAR)) LIKE 'bid(%'
     GROUP BY p.xuid
 ),
 kvp_agg AS (

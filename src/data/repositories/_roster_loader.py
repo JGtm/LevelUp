@@ -26,6 +26,17 @@ from src.data.repositories._gamertag_resolver import (
 
 logger = logging.getLogger(__name__)
 
+# Filtre SQL excluant les "joueurs fantômes" (tous les stats officiellement à 0,
+# non NULL). Un joueur avec des NULL est partiellement chargé → on le garde.
+_SQL_NOT_GHOST = """NOT (
+                      COALESCE({p}.kills, 0) = 0
+                      AND COALESCE({p}.deaths, 0) = 0
+                      AND COALESCE({p}.assists, 0) = 0
+                      AND COALESCE({p}.score, 0) = 0
+                      AND ({p}.kills IS NOT NULL OR {p}.deaths IS NOT NULL
+                           OR {p}.assists IS NOT NULL OR {p}.score IS NOT NULL)
+                  )"""
+
 
 def _get_my_team_id(conn, match_id: str, my_xuid_str: str) -> int | None:
     """Retourne le team_id du joueur principal pour un match, ou None."""
@@ -303,8 +314,8 @@ class RosterLoaderMixin(GamertagResolverMixin):
                 FROM shared.match_participants p
                 LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
                 WHERE p.match_id = ?
-                ORDER BY p.rank ASC NULLS LAST
-                """,
+                  AND {ghost}
+                ORDER BY p.rank ASC NULLS LAST""".format(ghost=_SQL_NOT_GHOST.format(p="p")),
                 [match_id],
             ).fetchall()
 
@@ -397,8 +408,10 @@ class RosterLoaderMixin(GamertagResolverMixin):
                     WHERE rn = 1
                 ) wk ON wk.xuid = p.xuid
                 WHERE p.match_id = ?
-                ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST
-                """,
+                  AND {ghost}
+                ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST""".format(
+                    ghost=_SQL_NOT_GHOST.format(p="p")
+                ),
                 [match_id, match_id, match_id],
             ).fetchall()
 

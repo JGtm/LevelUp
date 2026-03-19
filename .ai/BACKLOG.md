@@ -1,4 +1,4 @@
-— Tâches et TODO centralisés
+﻿— Tâches et TODO centralisés
 
 > Mis à jour le 2026-03-19.
 
@@ -8,6 +8,7 @@
 
 | Date | Item |
 |------|------|
+| 2026-03-19 | **Migration `b5>>4`** — `scan_fire_events_b5` implémenté, `fire_seq%n_players` supprimé, `map_b2_to_player`/`group_events_by_pi`/`POV_PLAYER_INDEX` retirés, 25 nouveaux tests — 4968 tests passent. Relancer `--force-weapons --all` pour re-extraire. |
 | 2026-03-19 | **Backfill enrichissement** JGtm + Madina97294 — 8 matchs du 18 mars rattrapés (performance_score, sessions, citations) |
 | 2026-03-19 | **Fix 11 — Fan-out multi-joueurs** : `FanoutEnrichmentMixin` (`_engine_fanout.py`) + branchement dans `engine.py` après `_detach_shared_from_player_conn()`. Résout le manquement d'enrichissement local pour les joueurs qui ne sync pas eux-mêmes. |
 | 2026-03-19 | **Fix 10 — Performance vs historique** : `performance_score` ajouté à `COLUMNS_COMMON` + JOIN `player_match_enrichment` dans `load_matches_as_polars` + `df_history` propagé dans `WinLossService` |
@@ -77,3 +78,23 @@ La formule `fire_seq % n_players` (actuellement en WD) est approximative. `b5 >>
 Passer de 5 à 7 (puis 10 si stable) connexions concurrentes au CDN Azure. Objectif : ~14s → ~8s par match.
 
 ⚠️ Non confirmé sans mesure : vérifier d'abord que les 429 sont gérés avec retry exponentiel avant d'augmenter. Tester sur 5+ matchs à 7 concurrent, mesurer taux d'erreur, puis décider.
+
+---
+
+### Noms et descriptions des médailles/citations en BDD
+
+**Statut : À planifier**
+
+Actuellement les noms et descriptions de médailles sont dans des fichiers JSON statiques (`static/medals/medals_{lang}.json`, `medals_descriptions_{lang}.json`). Les noms de citations sont dans `src/ui/translations.py`. Pas de table `medals` peuplée dans `metadata.duckdb`.
+
+**Objectif** : centraliser noms et descriptions (médailles + citations) dans `metadata.duckdb` pour :
+- Requêtes SQL directes avec JOIN (pas de résolution Python post-query)
+- Source unique de vérité éditable sans redéployer le code
+- Support futur de langues supplémentaires
+
+**Approche envisagée** :
+1. Créer/peupler la table `medals` dans `metadata.duckdb` (colonnes : `medal_name_id`, `name_fr`, `name_en`, `description_fr`, `description_en`, `is_custom`)
+2. Créer une table `citation_descriptions` (ou enrichir `citation_mappings`)
+3. Script de population depuis les JSON existants (`scripts/populate_medal_metadata.py`)
+4. Migration step pour les nouvelles colonnes
+5. Les JSON restent en fallback read-only (backward compat)

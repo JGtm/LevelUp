@@ -33,7 +33,8 @@ def shared_db(tmp_path: Path) -> Path:
             CREATE TABLE match_participants (
                 match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR,
                 team_id INTEGER, outcome INTEGER,
-                kills INTEGER DEFAULT 0, deaths INTEGER DEFAULT 0
+                kills INTEGER DEFAULT 0, deaths INTEGER DEFAULT 0,
+                assists INTEGER DEFAULT 0, score INTEGER DEFAULT 0
             )
         """)
         conn.execute("""
@@ -80,7 +81,8 @@ def shared_db(tmp_path: Path) -> Path:
 
         # match_participants pour top encountered
         conn.execute("""
-            INSERT INTO match_participants VALUES
+            INSERT INTO match_participants (match_id, xuid, gamertag, team_id, outcome, kills, deaths)
+            VALUES
             ('m1', 'XUID_ME', 'Me', 1, 2, 10, 5),
             ('m1', 'XUID_A', 'PlayerA', 2, 3, 8, 6),
             ('m1', 'XUID_B', 'PlayerB', 2, 3, 4, 7),
