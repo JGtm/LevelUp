@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 _CHUNK_TIMEOUT_S = 30.0
-_MAX_CONCURRENT_CHUNKS = 20
+_MAX_CONCURRENT_CHUNKS = 50
 
 
 @dataclass
