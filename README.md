@@ -21,6 +21,8 @@
 - **i18n fully in DuckDB** — mode translations migrated from JSON files to `metadata.duckdb`; playlists/game_variants seeded with i18n columns
 - **Last Match navigation** — `◀ Previous` / `Next ▶` buttons to browse filtered matches
 - **Weapon parser accuracy** — global fire_event match rate corrected from 15 % → 95 %
+- **Custom medal: Avenger** — detects revenge kills (you kill the opponent who last killed you) via `killer_victim_pairs`; backfill with `--avenger`
+- **Top Gun label** — 🔫 badge on the Impact timeline for the first player on your team to reach 10 kills in a match
 
 **v5.7 — Bilingual launchers, map hover thumbnails & Polars cleanup**
 - `LevelUp.sh` and `LevelUp.bat` now detect the system language (FR/EN) and display launcher messages accordingly
