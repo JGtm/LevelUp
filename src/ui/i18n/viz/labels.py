@@ -163,7 +163,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     # ── Régression ────────────────────────────────────────────────────────────
     "label_kd_slope": {"fr": "Variation F/D", "en": "K/D Variation"},
     "label_win_rate_slope": {"fr": "Variation du taux de victoire", "en": "Win Rate Variation"},
-    "label_r_squared": {"fr": "Régularité", "en": "Consistency"},
+    "label_r_squared": {"fr": "Confirmation de la tendance", "en": "Trend confirmation"},
     "label_not_significant": {"fr": "⚠ trop variable", "en": "⚠ too variable"},
     # ── Texte divers ──────────────────────────────────────────────────────────
     "text_kills_count": {
