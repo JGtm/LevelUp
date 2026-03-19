@@ -14,6 +14,7 @@ from typing import Any
 
 import streamlit as st
 
+from src.config import get_bot_name
 from src.data.repositories._encounter_loader import load_encounter_stats
 from src.data.repositories.duckdb_repo import DuckDBRepository
 from src.ui.i18n import t
@@ -227,7 +228,10 @@ def _build_encounter_rows(
     rows: list[str] = []
     for record in records:
         xuid = str(record.get("xuid") or "").strip()
-        gamertag = str(record.get("gamertag") or xuid[:8] or "—").strip()
+        raw_gt = record.get("gamertag")
+        if not raw_gt and xuid.lower().startswith("bid("):
+            raw_gt = get_bot_name(xuid)
+        gamertag = str(raw_gt or xuid[:8] or "—").strip()
         total = int(record.get("total_encounters") or 0)
         side = "allié" if xuid_to_team.get(xuid) == my_team_id else "ennemi"
 

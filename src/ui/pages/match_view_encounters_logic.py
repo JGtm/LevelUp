@@ -186,6 +186,24 @@ def build_friends_set(
     return _load_friends_from_json(self_xuid)
 
 
+def _is_ghost_player(p: dict[str, Any]) -> bool:
+    """Retourne True si le joueur est fantôme (stats explicitement toutes à 0).
+
+    N'est considéré fantôme que si les champs kills/deaths/assists/score
+    sont présents dans le dict ET tous à 0 (ou None). Un joueur sans ces
+    champs n'est PAS filtré (données partielles, pas un fantôme API).
+    """
+    stat_keys = {"kills", "deaths", "assists", "score"}
+    if not stat_keys.issubset(p.keys()):
+        return False
+    return (
+        (p.get("kills") or 0) == 0
+        and (p.get("deaths") or 0) == 0
+        and (p.get("assists") or 0) == 0
+        and (p.get("score") or 0) == 0
+    )
+
+
 def filter_encounter_xuids(
     players: list[dict[str, Any]],
     self_xuid: str,
@@ -193,10 +211,12 @@ def filter_encounter_xuids(
 ) -> list[str]:
     """Retourne les XUIDs à analyser dans le tableau des rencontres.
 
-    Exclut le joueur principal et les amis connus du match.
+    Exclut le joueur principal, les amis connus du match, et les joueurs
+    fantômes (0 activité : kills=deaths=assists=score=0).
 
     Args:
-        players: Liste de dicts (champs xuid, gamertag) du scoreboard.
+        players: Liste de dicts (champs xuid, gamertag, kills, deaths, assists, score)
+            du scoreboard.
         self_xuid: XUID du joueur principal (toujours exclu).
         friends_set: Ensemble d'identifiants amis (XUIDs ou gamertags).
 
@@ -217,6 +237,10 @@ def filter_encounter_xuids(
             continue
         # Exclusion ami : via XUID direct ou gamertag (caseless)
         if xuid in friends_set or gamertag in {f.casefold() for f in friends_set}:
+            continue
+        # Exclusion fantôme : aucune activité mesurable
+        if _is_ghost_player(p):
+            logger.debug("filter_encounter_xuids: joueur fantôme exclu — xuid=%s", xuid)
             continue
 
         seen.add(xuid)
