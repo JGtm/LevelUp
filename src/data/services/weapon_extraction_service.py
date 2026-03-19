@@ -1,14 +1,7 @@
 """Service d'extraction des armes depuis les films SPNKr.
 
-Orchestre les ports (API), le domaine pur (weapon_parser v2) et le repo
-(weapon_kills) sans dépendre directement des implémentations concrètes.
-
-v2 — Tous les joueurs traités via claim-and-remove unifié :
-- scan_fire_events_all() → match-level, 0 filtre pi
-- map_b2_to_player() → b2_stream → player_index via NS timeline
-- group_events_by_pi() → dispatch fire events par joueur
-- correlate_kills() → attribution claim-and-remove avec KillAttribution
-- reconcile_api_aggregates() → ajustement optionnel via reconciled_as
+Orchestre les ports (API), le domaine pur (weapon_parser) et le repo (weapon_kills).
+v3 — player_index = b5>>4 (inv134) : scan universel, claim-and-remove par pi.
 """
 
 from __future__ import annotations
@@ -34,8 +27,6 @@ from src.analysis.weapon_parser import (
     KILL_WINDOW_MS,
     build_weapon_timelines,
     detect_player_indices,
-    group_events_by_pi,
-    map_b2_to_player,
     scan_fire_events_all,
 )
 from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
@@ -75,7 +66,6 @@ class MatchProcessingResult:
 class ScanResult:
     """Résultat de la phase Scan multi-chunks."""
 
-    fire_events_by_pi: dict[int, list[dict]]
     fire_events_global: list[dict]
     timeline: dict[int, dict[int, bytes]]
     timeline_ns: dict[int, dict[int, bytes]]
@@ -168,6 +158,10 @@ class WeaponExtractionService:
         # Scan Phase : fire events + timelines + résolution player_index (passe unique CPU)
         scan, pi_map = await asyncio.to_thread(self._run_scan_phase, chunks, participants, log)
 
+        # Le joueur POV a pi=0 dans le système fire_seq — l'ajouter si absent
+        if xuid and xuid.isdigit():
+            pi_map.setdefault(int(xuid), 0)
+
         # Correlation Phase : claim-and-remove par joueur
         all_attributions = self._correlate_all_players(
             match_id,
@@ -259,21 +253,7 @@ class WeaponExtractionService:
         # Timelines Section 1 (raw + NS) — passe unique
         timeline, timeline_ns, swap_pis, _ = build_weapon_timelines(chunks)
 
-        # Dispatch b2_stream → pi
-        b2_to_pi = map_b2_to_player(all_raw_events, timeline_ns, timing, chunks_sorted)
-        fire_events_by_pi = group_events_by_pi(all_raw_events, b2_to_pi)
-        _total_raw = len(all_raw_events)
-        _dispatched = sum(len(v) for v in fire_events_by_pi.values())
-        log.record_step(
-            "b2_dispatch",
-            resolved_b2=len(b2_to_pi),
-            total_events=_total_raw,
-            dispatched_events=_dispatched,
-            dropped_events=_total_raw - _dispatched,
-        )
-
         scan = ScanResult(
-            fire_events_by_pi=fire_events_by_pi,
             fire_events_global=all_raw_events,
             timeline=timeline,
             timeline_ns=timeline_ns,
@@ -298,11 +278,10 @@ class WeaponExtractionService:
         scan: ScanResult,
         log: MatchLogCollector,
     ) -> list[KillAttribution]:
-        """Corrèle tous les kills via claim-and-remove global (marker 0x26 fixe).
+        """Corrèle tous les kills via claim-and-remove par joueur.
 
-        Le marker des fire events est identique pour tous les joueurs — le
-        bucketing per-pi est non fiable. On traite donc tous les kills dans
-        un pool unique trié par temps.
+        Chaque kill ne consomme que les fire events dont player_index == pi du tueur
+        (player_index = b5>>4, extrait directement lors du scan — inv134).
         """
         xuid_to_pi = {str(xuid_int): pi for xuid_int, pi in pi_map.items()}
 

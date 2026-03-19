@@ -128,11 +128,96 @@ def scan_formula_a_ns(data: bytes) -> list[tuple[int, int, bytes]]:
     return results
 
 
-# ── Section 2 — Fire Events (bitstring scan) ──
+# ── Section 2 — Fire Events (b5>>4, inv134) ──
+
+# Marker universel 11 bits : 101 + 0x26 (b1 fixe pour tous les joueurs)
+_UNIVERSAL_MARKER = Bits("0b10100100110")
+_B5_BIT_OFFSET = 32  # bits depuis event_start → b5 : (pi<<4)|slot
+# _WEAPON_BIT_OFFSET = 40  # déjà défini en haut du module
+_B5_DEDUP_PROXIMITY = 2  # bytes — deux hits à ≤2 bytes = même event physique
+
+
+def scan_fire_events_b5(
+    chunk_data: bytes,
+    estimate_ts: Callable,
+) -> list[dict]:
+    """Scanne les fire events via le marker universel et extrait player_index = b5 >> 4.
+
+    Le marker 0b10100100110 est identique pour TOUS les joueurs.
+    b5 (offset +32 bits depuis event_start) encode (player_index << 4) | slot.
+    Déduplication par proximité byte_pos (≤ _B5_DEDUP_PROXIMITY = même event physique).
+    Ne déduplique PAS par (fire_counter, weapon) : fire_counter boucle à 255 et
+    supprimerait des events légitimes sur armes automatiques.
+    """
+    bits = Bits(bytes=chunk_data)
+    total_bits = len(bits)
+    events: list[dict] = []
+
+    for position in bits.findall(_UNIVERSAL_MARKER, bytealigned=False):
+        event_start = position + 3
+        weapon_start = event_start + _WEAPON_BIT_OFFSET
+        b5_start = event_start + _B5_BIT_OFFSET
+
+        if weapon_start + 64 > total_bits:
+            continue
+
+        weapon_int = bits[weapon_start : weapon_start + 64].uint
+        weapon_bytes = weapon_int.to_bytes(8, byteorder="big")
+        if weapon_int not in WEAPON_IDS_INT and weapon_bytes[4:] != COMMON_WEAPON_SUFFIX:
+            continue
+
+        b5_int = bits[b5_start : b5_start + 8].uint
+        fire_seq = (
+            bits[event_start + 8 : event_start + 16].uint if event_start + 16 <= total_bits else 0
+        )
+        fire_counter = (
+            bits[event_start + 24 : event_start + 32].uint if event_start + 32 <= total_bits else 0
+        )
+        weapon_name = WEAPON_INT_TO_NAME.get(
+            weapon_int,
+            WEAPON_ID_MAP.get(weapon_bytes, f"INCONNU ({weapon_bytes.hex()})"),
+        )
+        post_start = weapon_start + 64
+        post_bytes = (
+            bits[post_start : post_start + 32].bytes
+            if post_start + 32 <= total_bits
+            else b"\x00" * 4
+        )
+
+        events.append(
+            {
+                "timestamp_ms": estimate_ts(position // 8),
+                "player_index": b5_int >> 4,
+                "slot": b5_int & 0x03,
+                "b5": b5_int,
+                "weapon_name": weapon_name,
+                "weapon_bytes": weapon_bytes,
+                "fire_seq": fire_seq,
+                "fire_counter": fire_counter,
+                "byte_pos": position // 8,
+                "post_bytes": post_bytes,
+                "burst_end": bool(post_bytes[1] & 0x01) if len(post_bytes) > 1 else False,
+                "hit_likely": bool((post_bytes[2] & 0x01) == 0) if len(post_bytes) > 2 else None,
+            }
+        )
+
+    # Déduplication par proximité byte_pos
+    events.sort(key=lambda x: x["byte_pos"])
+    deduped: list[dict] = []
+    last_pos = -999
+    for ev in events:
+        if ev["byte_pos"] - last_pos > _B5_DEDUP_PROXIMITY:
+            deduped.append(ev)
+            last_pos = ev["byte_pos"]
+
+    return sorted(deduped, key=lambda x: x["timestamp_ms"])
+
+
+# ── Section 2 legacy — scan per-player_index (conservé pour _weapon_parser_compat) ──
 
 
 def _build_marker(player_index: int) -> Bits:
-    """Construit le marqueur 11 bits pour un player_index donné."""
+    """Construit le marqueur 11 bits pour un player_index donné (legacy compat)."""
     byte1 = (player_index << 5) | 0x06
     return Bits(bin=f"0b101{byte1:08b}")
 

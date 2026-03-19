@@ -28,7 +28,8 @@ from src.analysis._weapon_scanners import (
     FRAME_MARKER,  # noqa: F401 (re-export)
     estimate_ts_frames,
     find_frame_positions,  # noqa: F401 (re-export)
-    scan_fire_events_bitstring,
+    scan_fire_events_b5,
+    scan_fire_events_bitstring,  # noqa: F401 (re-export — utilisé par _weapon_parser_compat)
     scan_formula_a,  # noqa: F401 (re-export)
     scan_formula_a_ns,  # noqa: F401 (re-export)
 )
@@ -38,11 +39,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# --- Constantes ---
-
 KILL_WINDOW_MS = 5000
 
-POV_PLAYER_INDEX = 1
 MELEE_FILM_ID = MELEE_WEAPON_ID
 GRENADE_FILM_ID = GRENADE_WEAPON_ID
 VEHICLE_FILM_ID = 2
@@ -51,11 +49,7 @@ GRENADE_API_ID = GRENADE_FILM_ID
 VEHICLE_API_ID = VEHICLE_FILM_ID
 
 _DEFAULT_TIMING = (650, 2000)
-
-# Aliases internes pour compat
-_estimate_ts_frames = estimate_ts_frames
-_scan_fire_events_bitstring = scan_fire_events_bitstring
-build_frame_estimator = estimate_ts_frames
+build_frame_estimator = estimate_ts_frames  # alias compat (tests et scripts)
 
 
 # ── Fonctions de scan haut-niveau ──
@@ -69,14 +63,14 @@ def scan_fire_events(
     *,
     packets: list | None = None,
 ) -> list[dict]:
-    """Scanne les fire events d'un chunk REPLICATION_DATA pour un player_index."""
-    if packets is not None:
-        from src.analysis.packet_index import build_packet_estimator
-
-        ts_fn = build_packet_estimator(packets, chunk_start_ms)
-    else:
-        ts_fn = estimate_ts_frames(chunk_data, chunk_start_ms, chunk_duration_ms)
-    return scan_fire_events_bitstring(chunk_data, player_index, ts_fn)
+    """Scanne les fire events d'un chunk pour un player_index spécifique."""
+    return [
+        ev
+        for ev in scan_fire_events_all(
+            chunk_data, chunk_start_ms, chunk_duration_ms, packets=packets
+        )
+        if ev["player_index"] == player_index
+    ]
 
 
 def scan_fire_events_all(
@@ -85,11 +79,11 @@ def scan_fire_events_all(
     chunk_duration_ms: int,
     *,
     packets: list | None = None,
-    n_players: int = 8,
 ) -> list[dict]:
-    """Scanne les fire events pour TOUS les player_index d'un chunk.
+    """Scanne les fire events de tous les joueurs d'un chunk.
 
-    Chaque event est enrichi avec le champ ``player_index``.
+    Le player_index est extrait directement de b5 >> 4 (inv134).
+    Un seul scan suffit — le marker universel 0b10100100110 couvre tous les joueurs.
     """
     if packets is not None:
         from src.analysis.packet_index import build_packet_estimator
@@ -97,25 +91,19 @@ def scan_fire_events_all(
         ts_fn = build_packet_estimator(packets, chunk_start_ms)
     else:
         ts_fn = estimate_ts_frames(chunk_data, chunk_start_ms, chunk_duration_ms)
-
-    all_events: list[dict] = []
-    for pi in range(n_players):
-        events = scan_fire_events_bitstring(chunk_data, pi, ts_fn)
-        for ev in events:
-            ev["player_index"] = pi
-        all_events.extend(events)
-    return sorted(all_events, key=lambda x: x["timestamp_ms"])
+    return scan_fire_events_b5(chunk_data, ts_fn)
 
 
 def scan_all_players(
     chunk_data: bytes,
     chunk_start_ms: int,
     chunk_duration_ms: int,
-    n_players: int = 8,
 ) -> dict[int, list[dict]]:
-    """Scanne les fire events pour tous les player_index (diagnostic)."""
-    ts_fn = estimate_ts_frames(chunk_data, chunk_start_ms, chunk_duration_ms)
-    return {idx: scan_fire_events_bitstring(chunk_data, idx, ts_fn) for idx in range(n_players)}
+    """Scanne les fire events et les groupe par player_index (diagnostic)."""
+    by_pi: dict[int, list[dict]] = {}
+    for ev in scan_fire_events_all(chunk_data, chunk_start_ms, chunk_duration_ms):
+        by_pi.setdefault(ev["player_index"], []).append(ev)
+    return by_pi
 
 
 # ── Timeline et chunk lookup ──
@@ -212,46 +200,6 @@ def find_chunk_at_time(
         if start <= t_ms < end:
             return chunk_idx
     return chunks_sorted[-1] if chunks_sorted else 0
-
-
-# ── Attribution b2_stream → player_index ──
-
-
-def map_b2_to_player(
-    all_fire_events: list[dict],
-    timeline: dict[int, dict[int, bytes]],
-    timing: list[tuple[int, int]],
-    chunks_sorted: list[int],
-) -> dict[int, int]:
-    """Mappe b2_stream → player_index par cross-référence avec Formula A."""
-    b2_votes: dict[int, Counter] = {}
-    for ev in all_fire_events:
-        b2 = ev["fire_seq"]
-        weapon_bytes = ev["weapon_bytes"]
-        t_ms = int(ev["timestamp_ms"])
-        chunk_idx = find_chunk_at_time(chunks_sorted, timing, t_ms)
-        chunk_state = timeline.get(chunk_idx, {})
-        for pi, pi_wid in chunk_state.items():
-            if pi_wid == weapon_bytes:
-                b2_votes.setdefault(b2, Counter())[pi] += 1
-                break
-    return {b2: ctr.most_common(1)[0][0] for b2, ctr in b2_votes.items() if ctr}
-
-
-def group_events_by_pi(
-    all_fire_events: list[dict],
-    b2_to_pi: dict[int, int],
-) -> dict[int, list[dict]]:
-    """Dispatche les fire events par player_index résolu via b2_to_pi.
-
-    Events dont le b2 n'est pas résolu sont ignorés.
-    """
-    by_pi: dict[int, list[dict]] = {}
-    for ev in all_fire_events:
-        pi = b2_to_pi.get(ev["fire_seq"])
-        if pi is not None:
-            by_pi.setdefault(pi, []).append(ev)
-    return by_pi
 
 
 # ── Confidence ──
