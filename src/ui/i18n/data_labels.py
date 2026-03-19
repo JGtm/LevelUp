@@ -1,8 +1,10 @@
 """Résolution centralisée des labels i18n pour les données de référence.
 
-Chaque domaine (citations, awards, playlists, modes, ranks) est stocké dans
-des fichiers JSON sous ``static/i18n/``, suivant la convention déjà en place
-pour les médailles (``static/medals/medals_fr.json``).
+Domaines supportés : awards, playlists, modes, ranks (fichiers JSON sous
+``static/i18n/``). Les citations sont chargées depuis ``citation_mappings``
+dans ``metadata.duckdb`` via ``_load_citations_from_db()``.
+Les médailles sont chargées depuis ``medal_definitions`` dans
+``metadata.duckdb`` via ``medals.py::load_medal_name_maps()``.
 
 Usage::
 
