@@ -1649,3 +1649,82 @@ async def backfill_weapon_kills(
     from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
 
     return await run_weapon_kills_backfill(gamertag, xuid, match_ids, shared_conn, force=force)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Médaille Vengeur (custom — revenge kill)
+# ─────────────────────────────────────────────────────────────────────────────
+
+#: ID de la médaille custom Vengeur — hors plage officielle Halo (max ~4.3e9).
+AVENGER_MEDAL_ID: int = 9_000_000_001
+
+
+def backfill_avenger_medal(shared_conn: Any, *, force: bool = False) -> int:
+    """Calcule et insère la médaille Vengeur dans medals_earned.
+
+    Un kill de vengeance (avenger) est obtenu lorsqu'un joueur tue l'ennemi
+    responsable de sa mort précédente dans le même match.
+
+    Utilise killer_victim_pairs (trié par time_ms) pour reconstruire la
+    séquence. Pour chaque kill d'un joueur, vérifie si l'ennemi tué est
+    identique à la dernière personne qui l'a tué juste avant (mort la plus
+    récente avant ce kill).
+
+    Requiert que killer_victim_pairs soit peuplé (MatchBits.KILLER_VICTIM_LOADED).
+    Les matchs sans données killer_victim sont ignorés silencieusement.
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        force: Si True, écrase les valeurs déjà présentes (INSERT OR REPLACE).
+               Si False, ignore les paires déjà calculées (INSERT OR IGNORE).
+
+    Returns:
+        Nombre de paires (match_id, xuid) insérées ou mises à jour.
+    """
+    logger.info("Vengeur : calcul des kills de vengeance depuis killer_victim_pairs…")
+
+    rows = shared_conn.execute("""
+        WITH ranked_kills AS (
+            SELECT
+                kv.match_id,
+                kv.killer_xuid AS xuid,
+                kv.victim_xuid AS killed,
+                (
+                    SELECT d.killer_xuid
+                    FROM killer_victim_pairs d
+                    WHERE d.match_id = kv.match_id
+                      AND d.victim_xuid = kv.killer_xuid
+                      AND d.killer_xuid != d.victim_xuid
+                      AND d.time_ms < kv.time_ms
+                    ORDER BY d.time_ms DESC
+                    LIMIT 1
+                ) AS last_killer
+            FROM killer_victim_pairs kv
+            WHERE kv.time_ms IS NOT NULL
+              AND kv.killer_xuid != kv.victim_xuid
+        )
+        SELECT match_id, xuid, CAST(COUNT(*) AS SMALLINT) AS medal_count
+        FROM ranked_kills
+        WHERE killed = last_killer
+        GROUP BY match_id, xuid
+        HAVING COUNT(*) > 0
+    """).fetchall()
+
+    if not rows:
+        logger.info("Vengeur : aucun kill de vengeance détecté")
+        return 0
+
+    logger.info("Vengeur : %d paire(s) match/joueur calculée(s) (force=%s)", len(rows), force)
+
+    insert_sql = (
+        "INSERT OR REPLACE INTO medals_earned (match_id, xuid, medal_name_id, count, created_at)"
+        " VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)"
+        if force
+        else "INSERT OR IGNORE INTO medals_earned (match_id, xuid, medal_name_id, count, created_at)"
+        " VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)"
+    )
+    shared_conn.executemany(insert_sql, [(r[0], r[1], AVENGER_MEDAL_ID, r[2]) for r in rows])
+    shared_conn.commit()
+
+    logger.info("✅ Vengeur : %d médaille(s) insérée(s)/mise(s) à jour", len(rows))
+    return len(rows)

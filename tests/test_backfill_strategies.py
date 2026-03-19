@@ -308,6 +308,228 @@ class TestComputePerformanceScoreForMatch:
         )
         assert result is False
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests backfill_avenger_medal
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def avenger_conn():
+    """DB in-memory avec killer_victim_pairs + medals_earned (schéma shared_matches)."""
+    c = duckdb.connect(":memory:")
+    c.execute("""
+        CREATE TABLE killer_victim_pairs (
+            match_id VARCHAR NOT NULL,
+            killer_xuid VARCHAR NOT NULL,
+            victim_xuid VARCHAR NOT NULL,
+            time_ms INTEGER,
+            kill_count INTEGER DEFAULT 1,
+            killer_gamertag VARCHAR,
+            victim_gamertag VARCHAR,
+            is_validated BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    c.execute("""
+        CREATE TABLE medals_earned (
+            match_id VARCHAR NOT NULL,
+            xuid VARCHAR NOT NULL,
+            medal_name_id BIGINT NOT NULL,
+            count SMALLINT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (match_id, xuid, medal_name_id)
+        )
+    """)
+    yield c
+    c.close()
+
+
+def _insert_kill(conn, match_id: str, killer: str, victim: str, time_ms: int) -> None:
+    conn.execute(
+        "INSERT INTO killer_victim_pairs (match_id, killer_xuid, victim_xuid, time_ms) "
+        "VALUES (?, ?, ?, ?)",
+        [match_id, killer, victim, time_ms],
+    )
+
+
+class TestBackfillAvengerMedal:
+    def test_empty_table_returns_zero(self, avenger_conn):
+        """Table vide → 0 médaille insérée."""
+        from scripts.backfill.strategies import backfill_avenger_medal
+
+        n = backfill_avenger_medal(avenger_conn)
+        assert n == 0
+        assert avenger_conn.execute("SELECT COUNT(*) FROM medals_earned").fetchone()[0] == 0
+
+    def test_basic_revenge_kill(self, avenger_conn):
+        """Scénario simple : B tue A (t=100), A tue B (t=200) → A obtient Vengeur."""
+        from scripts.backfill.strategies import AVENGER_MEDAL_ID, backfill_avenger_medal
+
+        _insert_kill(avenger_conn, "m1", "B", "A", 100)  # B kills A
+        _insert_kill(avenger_conn, "m1", "A", "B", 200)  # A kills B → avenger
+
+        n = backfill_avenger_medal(avenger_conn)
+        assert n == 1
+
+        row = avenger_conn.execute(
+            "SELECT xuid, count FROM medals_earned WHERE match_id='m1' AND medal_name_id=?",
+            [AVENGER_MEDAL_ID],
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "A"
+        assert row[1] == 1
+
+    def test_no_revenge_different_killer(self, avenger_conn):
+        """A est tué par B, puis C tue A, puis A tue B → pas de vengeur (last_killer=C, pas B)."""
+        from scripts.backfill.strategies import backfill_avenger_medal
+
+        _insert_kill(avenger_conn, "m1", "B", "A", 100)  # B kills A
+        _insert_kill(avenger_conn, "m1", "C", "A", 150)  # C kills A (écrase last_killer)
+        _insert_kill(
+            avenger_conn, "m1", "A", "B", 200
+        )  # A kills B → pas vengeur (dernier tueur = C)
+
+        n = backfill_avenger_medal(avenger_conn)
+        assert n == 0
+
+    def test_last_death_determines_killer(self, avenger_conn):
+        """Seul le dernier tueur compte : A tué par B (t=100), A tué par C (t=150), A tue C (t=200) → vengeur."""
+        from scripts.backfill.strategies import AVENGER_MEDAL_ID, backfill_avenger_medal
+
+        _insert_kill(avenger_conn, "m1", "B", "A", 100)
+        _insert_kill(avenger_conn, "m1", "C", "A", 150)  # dernière mort de A → par C
+        _insert_kill(avenger_conn, "m1", "A", "C", 200)  # A tue C → vengeur
+
+        n = backfill_avenger_medal(avenger_conn)
+        assert n == 1
+        row = avenger_conn.execute(
+            "SELECT xuid FROM medals_earned WHERE medal_name_id=?",
+            [AVENGER_MEDAL_ID],
+        ).fetchone()
+        assert row[0] == "A"
+
+    def test_multiple_avengers_in_match(self, avenger_conn):
+        """Deux vengeurs distincts dans le même match → 1 paire, count=2."""
+        from scripts.backfill.strategies import AVENGER_MEDAL_ID, backfill_avenger_medal
+
+        # Séquence 1 : B tue A (t=100), A tue B (t=200) → avenger
+        _insert_kill(avenger_conn, "m1", "B", "A", 100)
+        _insert_kill(avenger_conn, "m1", "A", "B", 200)
+        # Séquence 2 : C tue A (t=300), A tue C (t=400) → avenger
+        _insert_kill(avenger_conn, "m1", "C", "A", 300)
+        _insert_kill(avenger_conn, "m1", "A", "C", 400)
+
+        n = backfill_avenger_medal(avenger_conn)
+        assert n == 1  # 1 paire (match_id, xuid)
+
+        row = avenger_conn.execute(
+            "SELECT count FROM medals_earned WHERE match_id='m1' AND xuid='A' AND medal_name_id=?",
+            [AVENGER_MEDAL_ID],
+        ).fetchone()
+        assert row is not None
+        assert row[0] == 2
+
+    def test_multiple_players_avenger(self, avenger_conn):
+        """A et B obtiennent tous les deux la médaille dans le même match."""
+        from scripts.backfill.strategies import AVENGER_MEDAL_ID, backfill_avenger_medal
+
+        _insert_kill(avenger_conn, "m1", "B", "A", 100)
+        _insert_kill(avenger_conn, "m1", "A", "B", 200)  # A avenge
+        _insert_kill(avenger_conn, "m1", "A", "B", 300)
+        _insert_kill(avenger_conn, "m1", "B", "A", 400)  # B avenge
+
+        n = backfill_avenger_medal(avenger_conn)
+        assert n == 2  # 2 paires (m1,A) et (m1,B)
+
+        xuids = {
+            r[0]
+            for r in avenger_conn.execute(
+                "SELECT xuid FROM medals_earned WHERE medal_name_id=?",
+                [AVENGER_MEDAL_ID],
+            ).fetchall()
+        }
+        assert xuids == {"A", "B"}
+
+    def test_multiple_matches(self, avenger_conn):
+        """Vengeur détecté indépendamment dans deux matchs différents."""
+        from scripts.backfill.strategies import AVENGER_MEDAL_ID, backfill_avenger_medal
+
+        _insert_kill(avenger_conn, "m1", "B", "A", 100)
+        _insert_kill(avenger_conn, "m1", "A", "B", 200)
+
+        _insert_kill(avenger_conn, "m2", "C", "D", 100)
+        _insert_kill(avenger_conn, "m2", "D", "C", 200)
+
+        n = backfill_avenger_medal(avenger_conn)
+        assert n == 2
+
+        match_ids = {
+            r[0]
+            for r in avenger_conn.execute(
+                "SELECT match_id FROM medals_earned WHERE medal_name_id=?",
+                [AVENGER_MEDAL_ID],
+            ).fetchall()
+        }
+        assert match_ids == {"m1", "m2"}
+
+    def test_force_false_does_not_overwrite(self, avenger_conn):
+        """Sans force, une médaille déjà présente n'est pas écrasée (INSERT OR IGNORE)."""
+        from scripts.backfill.strategies import AVENGER_MEDAL_ID, backfill_avenger_medal
+
+        _insert_kill(avenger_conn, "m1", "B", "A", 100)
+        _insert_kill(avenger_conn, "m1", "A", "B", 200)
+
+        # Pré-insérer une valeur différente
+        avenger_conn.execute(
+            "INSERT INTO medals_earned (match_id, xuid, medal_name_id, count) VALUES (?, ?, ?, ?)",
+            ["m1", "A", AVENGER_MEDAL_ID, 99],
+        )
+
+        backfill_avenger_medal(avenger_conn, force=False)
+
+        row = avenger_conn.execute(
+            "SELECT count FROM medals_earned WHERE match_id='m1' AND xuid='A' AND medal_name_id=?",
+            [AVENGER_MEDAL_ID],
+        ).fetchone()
+        assert row[0] == 99  # valeur inchangée
+
+    def test_force_true_overwrites(self, avenger_conn):
+        """Avec force=True, la médaille existante est recalculée et écrasée."""
+        from scripts.backfill.strategies import AVENGER_MEDAL_ID, backfill_avenger_medal
+
+        _insert_kill(avenger_conn, "m1", "B", "A", 100)
+        _insert_kill(avenger_conn, "m1", "A", "B", 200)
+
+        # Pré-insérer une valeur erronée
+        avenger_conn.execute(
+            "INSERT INTO medals_earned (match_id, xuid, medal_name_id, count) VALUES (?, ?, ?, ?)",
+            ["m1", "A", AVENGER_MEDAL_ID, 99],
+        )
+
+        backfill_avenger_medal(avenger_conn, force=True)
+
+        row = avenger_conn.execute(
+            "SELECT count FROM medals_earned WHERE match_id='m1' AND xuid='A' AND medal_name_id=?",
+            [AVENGER_MEDAL_ID],
+        ).fetchone()
+        assert row[0] == 1  # recalculé
+
+    def test_no_avenger_without_prior_death(self, avenger_conn):
+        """A tue B sans jamais avoir été tué avant → pas de vengeur."""
+        from scripts.backfill.strategies import backfill_avenger_medal
+
+        _insert_kill(avenger_conn, "m1", "A", "B", 100)  # A kills B, jamais mort avant
+
+        n = backfill_avenger_medal(avenger_conn)
+        assert n == 0
+
+    def test_avenger_id_is_custom_range(self, avenger_conn):
+        """AVENGER_MEDAL_ID est hors plage officielle Halo (> 4_285_712_605)."""
+        from scripts.backfill.strategies import AVENGER_MEDAL_ID
+
+        assert AVENGER_MEDAL_ID > 4_285_712_605
+
     def test_null_start_time(self, shared_conn, player_conn):
         """Retourne False si start_time est NULL dans match_registry."""
         from scripts.backfill.strategies import compute_performance_score_for_match

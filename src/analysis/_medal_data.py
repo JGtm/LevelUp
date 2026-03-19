@@ -35,6 +35,20 @@ def _load_json_map(lang: str) -> dict[int, str]:
         return {}
 
 
+@cache
+def _load_description_map(lang: str) -> dict[int, str]:
+    """Charge le mapping medal_name_id (int) → description depuis le fichier JSON statique."""
+    path = _STATIC_DIR / f"medals_descriptions_{lang}.json"
+    if not path.exists():
+        return {}
+    try:
+        raw: dict = json.loads(path.read_text(encoding="utf-8"))
+        return {int(k): str(v).strip() for k, v in raw.items() if str(v).strip()}
+    except Exception:
+        logger.debug("_load_description_map(%s): erreur lecture", lang)
+        return {}
+
+
 def _resolve_text_from_db(medal_name_id: int, lang: str, columns: list[str]) -> str | None:
     """Résolution d'un texte de médaille depuis metadata.duckdb.
 
@@ -82,15 +96,25 @@ def _resolve_from_db(medal_name_id: int, lang: str) -> str | None:
 def resolve_medal_description(medal_name_id: int, lang: str = "fr") -> str | None:
     """Résout une description de médaille si disponible.
 
-    Cherche plusieurs noms de colonnes potentiels pour rester compatible avec les
-    variations de schéma observées dans metadata.duckdb.
+    Cherche d'abord dans metadata.duckdb puis dans les fichiers JSON statiques.
     """
     primary = (
         ["description_fr", "desc_fr", "blurb_fr", "description_en", "desc_en", "blurb_en"]
         if lang == "fr"
         else ["description_en", "desc_en", "blurb_en", "description_fr", "desc_fr", "blurb_fr"]
     )
-    return _resolve_text_from_db(medal_name_id, lang, primary)
+    result = _resolve_text_from_db(medal_name_id, lang, primary)
+    if result:
+        return result
+    # Fallback JSON
+    fallback_lang = lang if lang in ("fr", "en") else "en"
+    desc_map = _load_description_map(fallback_lang)
+    desc = desc_map.get(medal_name_id)
+    if desc:
+        return desc
+    # Dernier fallback : langue opposée
+    other = "en" if fallback_lang == "fr" else "fr"
+    return _load_description_map(other).get(medal_name_id)
 
 
 def resolve_medal_name(medal_name_id: int, lang: str = "fr") -> str:

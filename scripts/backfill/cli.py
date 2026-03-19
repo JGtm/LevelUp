@@ -621,6 +621,22 @@ def create_argument_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ── Médaille Vengeur (custom — revenge kill) ─────────────────────────────
+    parser.add_argument(
+        "--avenger",
+        action="store_true",
+        help=(
+            "Calcule et insère la médaille Vengeur (ID 9000000001) dans medals_earned. "
+            "Un vengeur = tuer l'ennemi responsable de sa mort précédente. "
+            "Opération locale, sans API. Requiert killer_victim_pairs peuplé."
+        ),
+    )
+    parser.add_argument(
+        "--force-avenger",
+        action="store_true",
+        help="Recalcule la médaille Vengeur pour TOUS les matchs (écrase l'existant).",
+    )
+
     return parser
 
 
@@ -654,6 +670,10 @@ Exemples:
 
     # Tout recalculer depuis zéro (LUSR + CSR)
     python scripts/backfill_data.py --player SpartanC --force-skill-rank
+
+    # Médaille Vengeur (kill de vengeance — local, sans API)
+    python scripts/backfill_data.py --avenger
+    python scripts/backfill_data.py --force-avenger
 
     # Backfill pour tous les joueurs
     python scripts/backfill_data.py --all --all-data

@@ -440,6 +440,24 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             traceback.print_exc()
         return 0
 
+    # --avenger / --force-avenger : médaille Vengeur (revenge kill) — local, sans API
+    _avenger = getattr(args, "avenger", False) or getattr(args, "force_avenger", False)
+    _force_avenger = getattr(args, "force_avenger", False)
+    if _avenger:
+        try:
+            from scripts.backfill.strategies import backfill_avenger_medal
+
+            shared_conn = _open_shared_conn()
+            n = backfill_avenger_medal(shared_conn, force=_force_avenger)
+            shared_conn.close()
+            logger.info(f"Vengeur : {n} médaille(s) insérée(s)/mise(s) à jour")
+        except Exception as e:
+            logger.error(f"Erreur --avenger : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
     # Validation
     if not args.all and not args.player:
         parser.error("--player ou --all est requis")
