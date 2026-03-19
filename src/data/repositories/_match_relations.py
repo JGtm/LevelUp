@@ -31,7 +31,7 @@ class MatchRelationsMixin(GamertagResolverMixin):
 
         Returns:
             DataFrame Polars avec colonnes match_id, start_time, playlist_name,
-            pair_name, my_team_id, my_outcome, friend_team_id, friend_outcome, same_team.
+            pair_name, map_name, my_team_id, my_outcome, friend_team_id, friend_outcome, same_team.
             Retourne un DataFrame vide avec le schéma correct si aucun résultat.
         """
         _empty_schema: dict[str, pl.PolarsDataType] = {
@@ -39,6 +39,7 @@ class MatchRelationsMixin(GamertagResolverMixin):
             "start_time": pl.Datetime,
             "playlist_name": pl.Utf8,
             "pair_name": pl.Utf8,
+            "map_name": pl.Utf8,
             "my_team_id": pl.Int64,
             "my_outcome": pl.Utf8,
             "friend_team_id": pl.Int64,
@@ -58,6 +59,7 @@ class MatchRelationsMixin(GamertagResolverMixin):
                     mr.start_time,
                     mr.playlist_name,
                     mr.pair_name,
+                    mr.map_name,
                     me.team_id  AS my_team_id,
                     CAST(me.outcome AS VARCHAR) AS my_outcome,
                     fr.team_id  AS friend_team_id,

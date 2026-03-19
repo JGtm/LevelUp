@@ -402,10 +402,7 @@ class RosterLoaderMixin(GamertagResolverMixin):
                 [match_id, match_id, match_id],
             ).fetchall()
 
-            result = []
-            for idx, row in enumerate(rows):
-                result.append(_scoreboard_row_to_dict(idx, row))
-            return result
+            return [_scoreboard_row_to_dict(idx, row) for idx, row in enumerate(rows)]
         except Exception as e:
             logger.debug("Erreur load_match_scoreboard shared: %s", e)
             return []
