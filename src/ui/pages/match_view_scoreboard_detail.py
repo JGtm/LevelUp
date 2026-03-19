@@ -16,7 +16,6 @@ from src.analysis._weapon_data import resolve_weapon_display
 from src.config import get_bot_name
 from src.ui.components.performance import get_score_class
 from src.ui.i18n import get_lang, t
-from src.ui.i18n.data_labels import label_obj
 from src.ui.pages._scoreboard_asset_urls import medal_icon_url, weapon_asset_url
 from src.ui.pages.match_table_html import app_url
 from src.utils import parse_xuid_input
@@ -284,11 +283,17 @@ def _load_citation_items(
         return []
 
     items = []
+    # Construire un index norm -> display_name depuis citation_mappings
+    from src.ui.commendations import _load_citations_from_db
+
+    citations_db = _load_citations_from_db()
+    norm_to_name: dict[str, str] = {
+        c["citation_name_norm"]: c["citation_name_display"] for c in citations_db
+    }
     for norm, value in delta_map.items():
         if norm == "_processed" or int(value or 0) <= 0:
             continue
-        label = label_obj("citations", norm, lang=lang) or {}
-        items.append((str(label.get("name") or norm), int(value)))
+        items.append((norm_to_name.get(norm, norm), int(value)))
     items.sort(key=lambda item: (-item[1], item[0]))
     return items[:_DETAIL_LIMIT_CITATIONS]
 

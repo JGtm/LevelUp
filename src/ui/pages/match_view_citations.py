@@ -10,7 +10,6 @@ import polars as pl
 import streamlit as st
 
 from src.ui.i18n import get_lang, t
-from src.ui.i18n.data_labels import label_obj
 from src.ui.medals import load_medal_name_maps, render_medals_grid
 
 logger = logging.getLogger(__name__)
@@ -77,14 +76,11 @@ def render_match_citations_section(  # noqa: C901, PLR0912, PLR0915
             _, _, was_master_before, _ = _compute_mastery_display(count_before, tiers)
             if was_master_before:
                 continue  # Déjà maître avant ce match → on ne l'affiche pas
-        # Résolution i18n du nom de citation
-        lang = get_lang()
-        i18n = label_obj("citations", norm, lang=lang) or {}
         items.append(
             {
-                "name": i18n.get("name", cit["citation_name_display"]),
+                "name": cit["citation_name_display"],
                 "norm": norm,
-                "description": i18n.get("description", cit.get("description") or ""),
+                "description": cit.get("description") or "",
                 "image_path": cit.get("image_path"),
                 "tiers": tiers,
                 "current_full": current_full,
