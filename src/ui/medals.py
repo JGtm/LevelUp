@@ -13,8 +13,7 @@ import os
 
 import streamlit as st
 
-from src.utils.db import duckdb_read_only
-from src.utils.paths import get_metadata_db_path
+from src.data.medal_definitions import load_medal_name_maps as _load_medal_name_maps
 
 __all__ = [
     "load_medal_name_maps",
@@ -30,28 +29,14 @@ logger = logging.getLogger(__name__)
 
 @st.cache_data(show_spinner=False)
 def load_medal_name_maps() -> tuple[dict[str, str], dict[str, str]]:
-    """Charge les labels de médailles depuis ``metadata.medal_definitions``.
+    """Charge les labels de médailles (wrapper Streamlit cache).
+
+    Délègue à ``src.data.medal_definitions.load_medal_name_maps()``.
 
     Returns:
         Tuple (fr_map, en_map) où chaque map est {str(NameId): "Label"}.
     """
-    db_path = get_metadata_db_path()
-    if not db_path.exists():
-        logger.warning("metadata.duckdb introuvable : %s", db_path)
-        return {}, {}
-
-    with duckdb_read_only(db_path) as conn:
-        try:
-            rows = conn.execute(
-                "SELECT medal_name_id, name_fr, name_en FROM medal_definitions"
-            ).fetchall()
-        except Exception:
-            logger.debug("Erreur requête medal_definitions")
-            return {}, {}
-
-    fr_map = {str(r[0]): r[1] for r in rows if r[1]}
-    en_map = {str(r[0]): r[2] for r in rows if r[2]}
-    return fr_map, en_map
+    return _load_medal_name_maps()
 
 
 def get_local_medals_icons_dir() -> str:

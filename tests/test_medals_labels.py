@@ -46,7 +46,7 @@ class TestLoadMedalNameMaps:
     def test_returns_fr_and_en_maps(self, tmp_medal_db) -> None:
         from src.ui.medals import load_medal_name_maps
 
-        with patch("src.ui.medals.get_metadata_db_path", return_value=tmp_medal_db):
+        with patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_medal_db):
             load_medal_name_maps.clear()
             fr_map, en_map = load_medal_name_maps()
 
@@ -60,7 +60,7 @@ class TestLoadMedalNameMaps:
         from src.ui.medals import load_medal_name_maps
 
         absent = tmp_path / "absent.duckdb"
-        with patch("src.ui.medals.get_metadata_db_path", return_value=absent):
+        with patch("src.data.medal_definitions.get_metadata_db_path", return_value=absent):
             load_medal_name_maps.clear()
             fr_map, en_map = load_medal_name_maps()
 
@@ -74,7 +74,7 @@ class TestMedalLabel:
     def test_medal_label_fr(self, tmp_medal_db) -> None:
         from src.ui.medals import medal_label
 
-        with patch("src.ui.medals.get_metadata_db_path", return_value=tmp_medal_db):
+        with patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_medal_db):
             from src.ui.medals import load_medal_name_maps
 
             load_medal_name_maps.clear()
@@ -85,7 +85,7 @@ class TestMedalLabel:
     def test_medal_label_en(self, tmp_medal_db) -> None:
         from src.ui.medals import medal_label
 
-        with patch("src.ui.medals.get_metadata_db_path", return_value=tmp_medal_db):
+        with patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_medal_db):
             from src.ui.medals import load_medal_name_maps
 
             load_medal_name_maps.clear()
@@ -96,7 +96,7 @@ class TestMedalLabel:
     def test_medal_label_unknown(self, tmp_medal_db) -> None:
         from src.ui.medals import medal_label
 
-        with patch("src.ui.medals.get_metadata_db_path", return_value=tmp_medal_db):
+        with patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_medal_db):
             from src.ui.medals import load_medal_name_maps
 
             load_medal_name_maps.clear()
@@ -107,7 +107,7 @@ class TestMedalLabel:
     def test_medal_has_known_label(self, tmp_medal_db) -> None:
         from src.ui.medals import medal_has_known_label
 
-        with patch("src.ui.medals.get_metadata_db_path", return_value=tmp_medal_db):
+        with patch("src.data.medal_definitions.get_metadata_db_path", return_value=tmp_medal_db):
             from src.ui.medals import load_medal_name_maps
 
             load_medal_name_maps.clear()
