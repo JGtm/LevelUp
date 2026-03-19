@@ -13,21 +13,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Cumulative performance & trend",
     },
     "ts_cumulative_caption": {
-        "fr": "Efficacité (net score/heure), F/D cumulé avec intervalle de confiance à 90 %, F/D lissé EWMA et indicateurs de régression.",
-        "en": "Efficiency (net score/hour), cumulative K/D with 90 % CI, EWMA smoothed K/D, and regression indicators.",
-    },
-    # ── Contrôles section Progression ────────────────────────────────────────
-    "ts_ewma_alpha_label": {
-        "fr": "Réactivité du lissage (α)",
-        "en": "Smoothing reactivity (α)",
-    },
-    "ts_ewma_alpha_help": {
-        "fr": "Petit α (0.10) = très lissé, tend vers la moyenne de long terme.\nGrand α (0.50) = très réactif, reflète ta forme récente.",
-        "en": "Small α (0.10) = very smooth, tends toward long-term average.\nLarge α (0.50) = very reactive, reflects recent form.",
-    },
-    "ts_show_outcome_markers": {
-        "fr": "Afficher V/D sur l'axe",
-        "en": "Show W/L on axis",
+        "fr": "Efficacité (net score/heure), F/D cumulé avec sa zone de stabilité, courbe lissée et droite de tendance.",
+        "en": "Efficiency (net score/hour), cumulative K/D with stability band, smoothed curve, and trend line.",
     },
     "ts_section_cumulative": {
         "fr": "Bilan cumulatif",
@@ -138,12 +125,12 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "- High reactivity: useful for quickly detecting a shift in form during the session",
     },
     "ts_note_regression": {
-        "fr": "- **La droite monte** → tu progresses sur la session, pas juste de la chance\n"
+        "fr": "- **F/D en hausse** → tu progresses sur la session, pas juste de la chance\n"
         "- **Les points trop éparpillés** → la session est trop irrégulière pour conclure\n"
-        "- Win rate en hausse + droite qui monte → les deux s'accordent, forme et résultats s'alignent",
-        "en": "- **The line goes up** → you're improving across the session, not just getting lucky\n"
+        "- Taux de victoire en hausse + F/D en hausse → les deux s'accordent, forme et résultats s'alignent",
+        "en": "- **K/D improving** → you're getting better across the session, not just getting lucky\n"
         "- **Points too scattered** → the session is too irregular to draw any conclusion\n"
-        "- Rising win rate + upward line → both agree, form and results are aligned",
+        "- Rising win rate + improving K/D → both agree, form and results are aligned",
     },
     "ts_regression_subheader": {
         "fr": "Tendance",
