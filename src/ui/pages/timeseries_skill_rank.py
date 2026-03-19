@@ -3,8 +3,9 @@
 import polars as pl
 import streamlit as st
 
+from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import t
-from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, safe_chart_render
+from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG
 
 _MATCH_LABEL_THRESHOLD = 50  # En dessous : #N + carte ; au-dessus : regroupement semaine
 
