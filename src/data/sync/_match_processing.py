@@ -69,7 +69,11 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
 
         start = 0
         remaining = options.max_matches
-        semaphore = asyncio.Semaphore(options.parallel_matches)
+        # Axe 3 : parallel_fetch contrôle l'I/O réseau (large), parallel_matches
+        # contrôle l'écriture DB (étroit). On prend le max pour permettre plus de
+        # matchs "en vol" (fetch + transform) pendant que d'autres font du DB.
+        fetch_slots = max(options.parallel_fetch, options.parallel_matches)
+        semaphore = asyncio.Semaphore(fetch_slots)
 
         while remaining > 0:
             # Récupérer un batch d'historique
