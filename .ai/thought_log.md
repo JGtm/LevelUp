@@ -7,6 +7,33 @@
 
 ## Journal
 
+### [2026-03-19] — UX timeseries : remplacement du jargon statistique — Complété
+
+**Statut** : Complété
+**Décision technique** : Remplacement des termes R², IC, pente, α dans `src/ui/i18n/pages/timeseries.py` par des formulations accessibles à un joueur non-technique.
+**Changements** :
+- `ts_note_ewma` FR/EN : R² ≥ 0,3 → "si les points s'en rapprochent" / "if the points follow it closely" ; α élevé → "Réactivité élevée" / "High reactivity"
+- `ts_note_regression` FR/EN : "Pente positive + R² ≥ 0,3" → "La droite monte" ; "R² < 0,3" → "Les points trop éparpillés" ; pente positive → "droite qui monte"
+- `ts_regression_subheader` FR/EN : "Tendance (régression linéaire)" → "Tendance" / "Trend"
+**Conclusion** : Les notes de l'onglet Progression sont maintenant lisibles sans bagage en statistiques.
+
+---
+
+### [2026-03-19] — Revue critique du plan d'optimisation sync — Complété
+
+**Tâche** : Réviser `docs/SYNC_PERF_OPTIMIZATION_PLAN.md` pour le rendre plus précis et mieux aligné avec le code actuel, sans modifier l'implémentation.
+
+**Décision technique** : Requalifier le document comme plan d'exécution réaliste plutôt que simple brainstorming. Corrections majeures apportées :
+- Axe 1 : suppression de l'hypothèse erronée d'indépendance totale des tâches post-sync ; parallélisme ramené à un recouvrement partiel car plusieurs étapes écrivent dans `player_match_enrichment`
+- Axe 2 : élargissement du problème de handle conflict à `sessions_backfill` en plus de `citations_backfill`
+- Axe 4 : batch citations recadré en batch partiel + fallback exact, après phase de discovery obligatoire
+- Axe 6 : vectorisation LUSR réalignée sur le vrai schéma/runtime (`rating_value`, delta séquentiel par `playlist_group`), avec recommandation `executemany()` plutôt que SQL full-batch
+- Axe 7 : suppression de la proposition ambiguë `batch_commit_size=0` comme mode auto, car `0` signifie déjà « commit final uniquement »
+
+**Résultats** : Le plan est maintenant mieux aligné avec les contraintes DuckDB, les verrous async existants et l'API réelle des fonctions de backfill/post-sync. L'ordre d'implémentation a été révisé pour traiter d'abord les optimisations sûres puis les refactorings async.
+
+**Conclusion** : Le document peut servir de base de travail plus fiable pour les futures branches perf. Prochaine étape naturelle : valider le plan révisé, puis ouvrir la Phase 1 (`batch_commit` ou `LUSR`) sur une branche dédiée.
+
 ### [2026-03-19] — Citation Mutilateur + asset — Complété
 
 **Tâche** : Intégrer le nouvel asset arme Mutilator et la nouvelle image de citation pour cette arme Paria.
