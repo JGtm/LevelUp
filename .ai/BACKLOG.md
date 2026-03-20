@@ -53,6 +53,25 @@
 
 ## 📋 Backlog
 
+### Bug — Frags vs. détail armes incohérent (sentinels + `reconciled_as`)
+
+**Symptôme** : Pour un joueur (ex. Chocoboflor), le total de frags affiché dans le scoreboard est inférieur à la somme du détail armes (3 needler + 2 melee + 6 sidekick = 11 > frags). Certains kills semblent comptés deux fois.
+
+**Cause identifiée** : Double-comptage via sentinels corrompus.
+
+1. `v_weapon_kills` expose `COALESCE(reconciled_as, weapon_id) AS effective_weapon_id`.
+2. Des lignes avec `weapon_id IN (0, 1, 2)` (melee/grenade/vehicle) ont un `reconciled_as` non-null pointant vers une arme réelle (ex. sidekick). Ces lignes passent le filtre `EXCLUDED_WEAPON_IDS` dans `_build_weapon_kills_df()` et sont comptées comme kills d'arme.
+3. Dans le même temps, `match_participants.melee_kills` / `grenade_kills` compte ces mêmes kills → `_enrich_with_grenade_melee()` les rajoute une seconde fois.
+
+**Fichiers concernés** :
+- `src/ui/pages/match_view_weapon_kills.py` → `_build_weapon_kills_df()` : filtrer en plus `weapon_id NOT IN (0,1,2)` (ou `attribution_path != 'none'`) avant export.
+- `src/data/repositories/_weapon_kills_repo.py` → `load_weapon_kills_for_player()` : ajouter clause `AND attribution_path != 'none'` aux requêtes (ou filtrer sur `weapon_id > 3`).
+- Script de nettoyage existant : `scripts/_fix_weapon_kills_sentinel.py` (CAT 2) peut normaliser les lignes corrompues déjà en base.
+
+**Fix minimal recommandé** : Dans `load_weapon_kills_for_player()` (et `load_weapon_kills_for_match()`), exclure les lignes dont `weapon_id` est un sentinel même si `reconciled_as` est non-null — soit via `AND (weapon_id IS NULL OR weapon_id > 3)`, soit via `AND attribution_path != 'none'`.
+
+---
+
 ### Perf — Film chunks : augmenter `_MAX_CONCURRENT_CHUNKS`
 
 **Fichier** : `src/data/services/weapon_extraction_service.py`
