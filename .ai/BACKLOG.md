@@ -204,13 +204,11 @@ Passer de 5 à 7 (puis 10 si stable) connexions concurrentes au CDN Azure. Objec
 
 ### UI — Notation de session escouade (en-tête Page Coéquipiers)
 
-**Objectif** : Remplacer les métriques "Tendance K/D" (bloc `st.metric` par joueur, lignes ~134–173 de `teammates.py`) par un en-tête de session d'équipe plus riche et soigné. Pas d'emojis.
-
-**Périmètre** : vues 1 coéquipier (`render_single_teammate_view`) et multi (`render_multi_teammate_view`). Affiché uniquement quand ≥ 4 matchs communs.
+**Objectif** : Remplacer les métriques "Tendance K/D" (bloc `st.metric` par joueur, lignes ~134–173 de `teammates.py`) par un en-tête de session d'équipe plus riche et soigné. Pas d'emojis sauf les étoiles pour la notation. Réutiliser les scores de performances de chaque joueur pour chaque match si nécécessaire/possible.
 
 #### A — Scores individuels par joueur (côte à côte)
 
-Réutiliser **`compute_session_performance_score_v2_ui`** + **`render_performance_score_card`** sur les matchs communs filtrés (`sub` pour le joueur principal, `_friend_df` pour chaque coéquipier). Une carte par joueur en `st.columns`. Badge ▲/▼ si un joueur se démarque de la moyenne d'équipe.
+Réutiliser **`compute_session_performance_score_v2_ui`** + **`render_performance_score_card`** sur les matchs communs filtrés (`sub` pour le joueur principal, `_friend_df` pour chaque coéquipier). Une carte par joueur en `st.columns`. Badge ▲/▼ si un joueur se démarque de la moyenne d'équipe (ajouter note explicative si nécessaire).
 
 ```python
 perf_me = compute_session_performance_score_v2_ui(sub)
@@ -219,7 +217,7 @@ perf_f1 = compute_session_performance_score_v2_ui(friend_sub)
 
 #### B — Score d'équipe agrégé
 
-Sous les cartes individuelles, un score collectif unique :
+Sous les cartes individuelles, un score collectif unique (ajouter la note de performance moyenne de chaque joueur sur la session ?) :
 
 ```
 Score équipe = moyenne(scores individuels)
@@ -236,11 +234,12 @@ Au-dessus ou à côté du score d'équipe, afficher un grade textuel en majuscul
 
 | Score | Grade |
 |------:|-------|
-| ≥ 88 | LÉGENDAIRE |
+| ≥ 88 | LÉGENDAIRE | 5 emojis étoiles ?
 | ≥ 75 | CARNAGE |
 | ≥ 60 | SOLIDE |
 | ≥ 45 | MOYEN |
-| < 45 | DIFFICILE |
+| < ou égal 45 | DIFFICILE |
+| < 30 | CATASTROPHIQUE |
 
 Ajouter `SQUAD_GRADE_THRESHOLDS` dans `src/analysis/performance_config.py`. Clés i18n `squad_grade_*` dans `src/ui/translations.py`. Style : `font-size: 1.6rem`, majuscules, couleur selon grade (même palette que `get_score_color`).
 
