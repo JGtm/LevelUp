@@ -57,6 +57,126 @@
 
 **Symptôme** : Pour un joueur (ex. Chocoboflor), le total de frags affiché dans le scoreboard est inférieur à la somme du détail armes (3 needler + 2 melee + 6 sidekick = 11 > frags). Certains kills semblent comptés deux fois.
 
+---
+
+#### Phase 0 — Investigation & validation du diagnostic (avant tout fix)
+
+> Objectif : confirmer ou infirmer chaque hypothèse du diagnostic ci-dessous grâce à des requêtes SQL et une lecture de code rigoureuse, avant toute modification.
+
+##### H1 — Vérifier que des sentinels `weapon_id ∈ {0,1,2}` portent un `reconciled_as` non-null en base
+
+```sql
+-- Sur shared_matches.duckdb
+SELECT weapon_id, reconciled_as, attribution_path, confidence, COUNT(*) AS n
+FROM weapon_kills
+WHERE weapon_id IN (0, 1, 2)
+  AND reconciled_as IS NOT NULL
+GROUP BY ALL
+ORDER BY weapon_id, n DESC
+LIMIT 50;
+```
+
+**Attendu si vrai** : au moins une ligne retournée. Ces lignes sont les candidats au double-comptage.
+
+**Si zéro ligne** : le diagnostic est infirmé — la vue `v_weapon_kills` ne peut pas produire de faux positifs par ce chemin. Investiguer alors la logique de `_enrich_with_grenade_melee` indépendamment (H3).
+
+---
+
+##### H2 — Vérifier que le filtre `EXCLUDED_WEAPON_IDS` opère sur l'`effective_weapon_id` post-COALESCE (pas sur `weapon_id` brut)
+
+Lecture de code à confirmer dans `src/ui/pages/match_view_weapon_kills.py` :
+
+```python
+# _build_weapon_kills_df() — le DF reçu de load_weapon_kills_for_player()
+# a déjà weapon_id = effective_weapon_id (alias SQL). Vérifier l'alias exact :
+```
+
+```sql
+-- _weapon_kills_repo.py, load_weapon_kills_for_player :
+SELECT match_id,
+       effective_weapon_id AS weapon_id,   -- ← l'alias écrase weapon_id brut
+       COUNT(*)::INTEGER AS kills
+FROM shared.v_weapon_kills
+WHERE xuid = ? AND match_id IN (...)
+  AND effective_weapon_id IS NOT NULL
+GROUP BY match_id, effective_weapon_id
+```
+
+**Conclusion** : le filtre Polars `~pl.col("weapon_id").is_in(EXCLUDED_WEAPON_IDS)` compare `effective_weapon_id` (post-COALESCE) à `{0, 1, 2}`. Un sentinel `weapon_id=1` avec `reconciled_as=sidekick_id` aura `effective_weapon_id=sidekick_id` → **il passe le filtre**. H2 **confirmée** par lecture de code seule.
+
+---
+
+##### H3 — Vérifier que `_enrich_with_grenade_melee` ajoute bien les valeurs API indépendamment du film
+
+```python
+# _weapon_kills_repo.py, load_grenade_melee_kills :
+SELECT COALESCE(SUM(grenade_kills), 0),
+       COALESCE(SUM(melee_kills), 0)
+FROM shared.match_participants
+WHERE xuid = ? AND match_id IN (...)
+```
+
+Source : colonnes API `match_participants.melee_kills` / `grenade_kills` — **indépendantes** du film.
+
+**Requête de quantification** : pour un match donné et un joueur suspect, comparer `melee_kills` API vs. kills film avec `weapon_id=1` ayant `reconciled_as IS NOT NULL` :
+
+```sql
+-- Valeur API
+SELECT melee_kills, grenade_kills
+FROM shared.match_participants
+WHERE match_id = '<MATCH_ID>' AND xuid = '<XUID>';
+
+-- Kills film sentinels melee avec reconciled_as
+SELECT weapon_id, reconciled_as, COUNT(*) AS n_kills_film
+FROM weapon_kills
+WHERE match_id = '<MATCH_ID>' AND xuid = '<XUID>'
+  AND weapon_id IN (0, 1, 2)
+  AND reconciled_as IS NOT NULL
+GROUP BY weapon_id, reconciled_as;
+```
+
+**Attendu si double-comptage** : `n_kills_film` (via `reconciled_as`) apparu dans le détail armes **ET** `melee_kills`/`grenade_kills` API > 0 pour les mêmes kills.
+
+---
+
+##### H4 — Vérifier l'asymétrie du sentinel `3` (absent de `EXCLUDED_WEAPON_IDS`)
+
+```sql
+-- Lignes weapon_id=3 dans v_weapon_kills
+SELECT COUNT(*) AS n, COUNT(DISTINCT match_id) AS n_matchs
+FROM shared.v_weapon_kills
+WHERE weapon_id = 3 OR effective_weapon_id = 3;
+```
+
+`EXCLUDED_WEAPON_IDS = frozenset({0, 1, 2})` — l'ID 3 (4e catégorie traitée par le script de fix CAT 2) **n'est pas exclu** dans l'UI. Si des lignes `weapon_id=3` existent, elles alimentent le détail armes sans correspondre à une arme réelle identifiable.
+
+---
+
+##### H5 — Vérifier que `_fix_weapon_kills_sentinel.py` cible bien la DB de production
+
+```python
+# Chercher DB_PATH dans le script
+DB_PATH = "data/warehouse/shared_matches_v2.duckdb"  # ← ancienne convention ?
+```
+
+Si le chemin est `shared_matches_v2.duckdb` et non `shared_matches.duckdb`, **le script ne peut pas s'exécuter sur la DB active** sans modification manuelle de ce paramètre.
+
+---
+
+##### Tableau de synthèse attendu après investigation
+
+| Hypothèse | Méthode | Statut attendu |
+|-----------|---------|----------------|
+| H1 — Sentinels `{0,1,2}` avec `reconciled_as` non-null présents | Requête SQL H1 | À vérifier |
+| H2 — Filtre `EXCLUDED_WEAPON_IDS` opère sur post-COALESCE | Lecture code | **Confirmée** (code verbatim) |
+| H3 — `_enrich_with_grenade_melee` source indépendante (API) | Lecture code + SQL H3 | **Confirmée** (code verbatim) |
+| H4 — Sentinel `3` absent de `EXCLUDED_WEAPON_IDS` | Requête SQL H4 | À vérifier |
+| H5 — Script fix cible mauvaise DB | Lecture code | **Confirmée** (chemin `_v2`) |
+
+> **Décision go/no-go** : si H1 retourne au moins une ligne, le double-comptage est avéré et les fixs décrits ci-dessous sont valides. Si H1 est vide, rouvrir l'investigation sur la source du delta (ex. kills API vs. kills film sans sentinel, ou bug de déduplication dans le GROUP BY).
+
+---
+
 **Cause identifiée** : Double-comptage via sentinels corrompus.
 
 1. `v_weapon_kills` expose `COALESCE(reconciled_as, weapon_id) AS effective_weapon_id`.
