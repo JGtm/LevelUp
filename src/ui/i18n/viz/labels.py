@@ -161,8 +161,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "suffix_smoothed": {"fr": "(lissée)", "en": "(smoothed)"},
     "suffix_per_10_matches": {"fr": "/10 matchs", "en": "/10 matches"},
     # ── Régression ────────────────────────────────────────────────────────────
-    "label_kd_slope": {"fr": "Variation F/D", "en": "K/D Variation"},
-    "label_win_rate_slope": {"fr": "Variation du taux de victoire", "en": "Win Rate Variation"},
+    "label_kd_slope": {"fr": "Progression F/D (session)", "en": "K/D Progression (session)"},
+    "label_win_rate_slope": {"fr": "Progression taux de victoires (session)", "en": "Win Rate Progression (session)"},
     "label_r_squared": {"fr": "Confirmation de la tendance", "en": "Trend confirmation"},
     "label_not_significant": {"fr": "⚠ trop variable", "en": "⚠ too variable"},
     # ── Texte divers ──────────────────────────────────────────────────────────

@@ -199,12 +199,15 @@ def compute_linear_regression_kd(
     mean_y = sum(y_values) / n
     is_significant = r_squared >= 0.3
 
+    # Variation relative sur toute la session (slope * n / moyenne)
+    # Calculée inconditionnellement — le R² indique si la tendance est fiable
+    kd_relative_change = round(slope * n / mean_y, 4) if mean_y > 0 else 0.0
+
     # Tendance : variation relative sur toute la période
     if mean_y > 0 and is_significant:
-        relative_change = slope * n / mean_y
-        if relative_change > 0.05:
+        if kd_relative_change > 0.05:
             trend = "improving"
-        elif relative_change < -0.05:
+        elif kd_relative_change < -0.05:
             trend = "declining"
         else:
             trend = "stable"
@@ -219,14 +222,18 @@ def compute_linear_regression_kd(
         "is_significant": is_significant,
         "trend": trend,
         "x_labels": df["start_time"].to_list() if "start_time" in df.columns else list(range(n)),
+        "kd_relative_change": kd_relative_change,
     }
 
     if "outcome" in df.columns:
         wins = [1.0 if v == Outcome.WIN else 0.0 for v in df["outcome"].to_list()]
         wr_slope, _, wr_y_hat, wr_r2 = _ols(wins)
+        mean_wins = sum(wins) / n
+        wr_relative_change = round(wr_slope * n / mean_wins, 4) if mean_wins > 0 else 0.0
         result["win_rate_slope"] = round(wr_slope, 4)
         result["win_rate_r2"] = round(wr_r2, 3)
         result["win_y_hat"] = wr_y_hat
+        result["wr_relative_change"] = wr_relative_change
 
     return result
 
