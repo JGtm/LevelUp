@@ -199,3 +199,58 @@ Si le chemin est `shared_matches_v2.duckdb` et non `shared_matches.duckdb`, **le
 Passer de 5 à 7 (puis 10 si stable) connexions concurrentes au CDN Azure. Objectif : ~14s → ~8s par match.
 
 ⚠️ Non confirmé sans mesure : vérifier d'abord que les 429 sont gérés avec retry exponentiel avant d'augmenter. Tester sur 5+ matchs à 7 concurrent, mesurer taux d'erreur, puis décider.
+
+---
+
+### UI — Notation de session escouade (en-tête Page Coéquipiers)
+
+**Objectif** : Remplacer les métriques "Tendance K/D" (bloc `st.metric` par joueur, lignes ~134–173 de `teammates.py`) par un en-tête de session d'équipe plus riche et soigné. Pas d'emojis.
+
+**Périmètre** : vues 1 coéquipier (`render_single_teammate_view`) et multi (`render_multi_teammate_view`). Affiché uniquement quand ≥ 4 matchs communs.
+
+#### A — Scores individuels par joueur (côte à côte)
+
+Réutiliser **`compute_session_performance_score_v2_ui`** + **`render_performance_score_card`** sur les matchs communs filtrés (`sub` pour le joueur principal, `_friend_df` pour chaque coéquipier). Une carte par joueur en `st.columns`. Badge ▲/▼ si un joueur se démarque de la moyenne d'équipe.
+
+```python
+perf_me = compute_session_performance_score_v2_ui(sub)
+perf_f1 = compute_session_performance_score_v2_ui(friend_sub)
+```
+
+#### B — Score d'équipe agrégé
+
+Sous les cartes individuelles, un score collectif unique :
+
+```
+Score équipe = moyenne(scores individuels)
+             + bonus_winrate   (+5 si win_rate_équipe > 60 %)
+             + bonus_cohesion  (+5 si min(K/D individuel) > 1.0)
+             + bonus_équilibre (+3 si std(kills par joueur) < seuil)
+```
+
+Score plafonné à 100. Afficher via `render_performance_score_card(label="Équipe", ...)`. Créer `compute_squad_performance_score(scores: list[dict]) -> dict` dans `src/analysis/performance_score.py`.
+
+#### D — Grade de carnage (ludique, sans emojis)
+
+Au-dessus ou à côté du score d'équipe, afficher un grade textuel en majuscules :
+
+| Score | Grade |
+|------:|-------|
+| ≥ 88 | LÉGENDAIRE |
+| ≥ 75 | CARNAGE |
+| ≥ 60 | SOLIDE |
+| ≥ 45 | MOYEN |
+| < 45 | DIFFICILE |
+
+Ajouter `SQUAD_GRADE_THRESHOLDS` dans `src/analysis/performance_config.py`. Clés i18n `squad_grade_*` dans `src/ui/translations.py`. Style : `font-size: 1.6rem`, majuscules, couleur selon grade (même palette que `get_score_color`).
+
+#### Fichiers impactés
+
+| Fichier | Modification |
+|---------|-------------|
+| `src/ui/pages/teammates.py` | Supprimer bloc tendance K/D ; ajouter appel `render_squad_session_header()` |
+| `src/ui/pages/teammates_views.py` | Idem si appelé depuis les vues single/multi |
+| `src/analysis/performance_score.py` | Ajouter `compute_squad_performance_score()` |
+| `src/analysis/performance_config.py` | Ajouter `SQUAD_GRADE_THRESHOLDS` |
+| `src/ui/components/performance.py` | Ajouter `render_squad_session_header()` |
+| `src/ui/translations.py` | Clés `squad_grade_*` |
