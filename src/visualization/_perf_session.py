@@ -357,26 +357,27 @@ def get_performance_colors() -> dict[str, str]:
 # =============================================================================
 
 
-def _kd_slope_indicator(slope: float, trend: str, lang: str) -> go.Indicator:
-    """Retourne l'indicateur Plotly pour la pente K/D par 10 matchs."""
+def _kd_progression_indicator(kd_relative_change: float, trend: str, lang: str) -> go.Indicator:
+    """Indicateur de progression F/D sur la session (variation relative en %)."""
     if trend == "improving":
         color = PERFORMANCE_COLORS["trend_up"]
     elif trend == "declining":
         color = PERFORMANCE_COLORS["trend_down"]
     else:
         color = PERFORMANCE_COLORS["baseline"]
+    pct = max(-200.0, min(200.0, round(kd_relative_change * 100, 1)))
     return go.Indicator(
         mode="number+delta",
-        value=round(slope * 10, 3),
+        value=pct,
         number={
             "font": {"size": 32, "color": color},
-            "suffix": viz_t("suffix_per_10_matches", lang),
-            "valueformat": "+.3f",
+            "suffix": "%",
+            "valueformat": "+.1f",
         },
         delta={
             "reference": 0,
             "relative": False,
-            "valueformat": ".3f",
+            "valueformat": ".1f",
             "increasing": {"color": PERFORMANCE_COLORS["trend_up"]},
             "decreasing": {"color": PERFORMANCE_COLORS["trend_down"]},
         },
@@ -396,26 +397,27 @@ def _r2_indicator(r_sq: float, is_sig: bool, lang: str) -> go.Indicator:
     )
 
 
-def _winrate_indicator(wr_slope: float, lang: str) -> go.Indicator:
-    """Retourne l'indicateur Plotly pour la pente win rate par 10 matchs."""
-    if wr_slope > 0.005:
+def _wr_progression_indicator(wr_relative_change: float, lang: str) -> go.Indicator:
+    """Indicateur de progression taux de victoires sur la session (variation relative en %)."""
+    if wr_relative_change > 0.05:
         color = PERFORMANCE_COLORS["trend_up"]
-    elif wr_slope < -0.005:
+    elif wr_relative_change < -0.05:
         color = PERFORMANCE_COLORS["trend_down"]
     else:
         color = PERFORMANCE_COLORS["baseline"]
+    pct = max(-200.0, min(200.0, round(wr_relative_change * 100, 1)))
     return go.Indicator(
         mode="number+delta",
-        value=round(wr_slope * 10, 3),
+        value=pct,
         number={
             "font": {"size": 32, "color": color},
-            "suffix": viz_t("suffix_per_10_matches", lang),
-            "valueformat": "+.3f",
+            "suffix": "%",
+            "valueformat": "+.1f",
         },
         delta={
             "reference": 0,
             "relative": False,
-            "valueformat": ".3f",
+            "valueformat": ".1f",
             "increasing": {"color": PERFORMANCE_COLORS["trend_up"]},
             "decreasing": {"color": PERFORMANCE_COLORS["trend_down"]},
         },
@@ -448,15 +450,19 @@ def plot_regression_trend(
     r_sq = regression_data.get("r_squared", 0.0) or 0.0
     is_sig = regression_data.get("is_significant", False)
     trend = regression_data.get("trend", "stable")
-    wr_slope = regression_data.get("win_rate_slope")
+    kd_relative_change = regression_data.get("kd_relative_change")
+    wr_relative_change = regression_data.get("wr_relative_change")
 
-    n_cols = 3 if wr_slope is not None else 2
+    n_cols = 3 if wr_relative_change is not None else 2
     fig = make_subplots(rows=1, cols=n_cols, specs=[[{"type": "indicator"}] * n_cols])
 
-    fig.add_trace(_kd_slope_indicator(slope, trend, lang), row=1, col=1)
+    if kd_relative_change is not None:
+        fig.add_trace(_kd_progression_indicator(kd_relative_change, trend, lang), row=1, col=1)
+    else:
+        fig.add_trace(_kd_progression_indicator(slope * 10, trend, lang), row=1, col=1)
     fig.add_trace(_r2_indicator(r_sq, is_sig, lang), row=1, col=2)
-    if wr_slope is not None:
-        fig.add_trace(_winrate_indicator(wr_slope, lang), row=1, col=n_cols)
+    if wr_relative_change is not None:
+        fig.add_trace(_wr_progression_indicator(wr_relative_change, lang), row=1, col=n_cols)
 
     # Marges serrées : le titre est géré côté Streamlit (st.markdown) pour
     # éviter tout débordement avec height=160.
