@@ -254,3 +254,48 @@ Ajouter `SQUAD_GRADE_THRESHOLDS` dans `src/analysis/performance_config.py`. Clé
 | `src/analysis/performance_config.py` | Ajouter `SQUAD_GRADE_THRESHOLDS` |
 | `src/ui/components/performance.py` | Ajouter `render_squad_session_header()` |
 | `src/ui/translations.py` | Clés `squad_grade_*` |
+
+---
+
+### CI — Échecs permanents : scripts exclus par `.gitignore`
+
+**Diagnostic (2026-03-20)** : Trois fichiers référencés dans `.github/workflows/ci.yml` et dans les tests ne sont jamais poussés sur GitHub car couverts par la règle `check_*.py` / `diagnose_*.py` du `.gitignore`.
+
+| Fichier manquant | Référencé dans | Impact |
+|------------------|----------------|--------|
+| `scripts/check_code_size.py` | Job `quality` (ci.yml L118) + `test_code_quality.py::test_no_new_size_violations` | Jobs `quality` **et** `test` en rouge |
+| `scripts/check_imports.py` | Job `quality` (ci.yml L121, `\|\| true`) | Erreur silencieuse uniquement |
+| `tests/test_page_router_smoke.py` | Job `streamlit-smoke` (ci.yml L79) | Job `streamlit-smoke` en rouge |
+| `tests/test_page_router_regressions.py` | Job `streamlit-smoke` (ci.yml L79) | Job `streamlit-smoke` en rouge |
+
+> Note : `test_page_router_smoke.py` et `test_page_router_regressions.py` ne sont **pas** couverts par le `.gitignore` — ces fichiers n'ont simplement jamais été créés ou ont été supprimés.
+
+#### Option A — Renommer les scripts (recommandée)
+
+Renommer pour sortir du pattern `check_*.py` :
+
+```
+scripts/check_code_size.py  →  scripts/enforce_size_limits.py
+scripts/check_imports.py    →  scripts/validate_imports.py
+```
+
+Puis mettre à jour les références dans :
+- `.github/workflows/ci.yml` (lignes `quality` job)
+- `tests/test_code_quality.py` (`subprocess.run([..., "scripts/check_code_size.py"])`)
+
+#### Option B — Ajouter des exceptions dans `.gitignore`
+
+Dans `.gitignore`, sous la règle `check_*.py` :
+
+```gitignore
+# Scripts de diagnostic temporaires
+check_*.py
+diagnose_*.py
+# Exceptions CI permanentes
+!scripts/check_code_size.py
+!scripts/check_imports.py
+```
+
+#### Pour les fichiers de tests manquants
+
+Créer `tests/test_page_router_smoke.py` et `tests/test_page_router_regressions.py` (stubs minimes suffisent), **ou** retirer ces deux fichiers de la commande pytest dans le job `streamlit-smoke` si la feature page-router n'est pas encore implémentée.
