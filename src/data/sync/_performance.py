@@ -9,6 +9,8 @@ import logging
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+import polars as pl
+
 from src.analysis.performance_config import MIN_MATCHES_FOR_RELATIVE
 from src.analysis.performance_score import compute_relative_performance_score
 
@@ -17,6 +19,91 @@ if TYPE_CHECKING:
     from src.data.sync.models import MatchStatsRow
 
 logger = logging.getLogger(__name__)
+
+_SHARED_PERF_QUERY = """
+SELECT
+    mr.match_id, mr.start_time,
+    mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
+    mp.time_played_seconds, mp.avg_life_seconds,
+    mp.personal_score, mp.damage_dealt,
+    mp.rank, mp.team_mmr, mp.enemy_mmr,
+    mp.kills_expected, mp.deaths_expected
+FROM {registry} mr
+JOIN {participants} mp ON mr.match_id = mp.match_id
+WHERE mp.xuid = ?
+  AND mr.start_time IS NOT NULL
+ORDER BY mr.start_time ASC
+"""
+
+
+def _load_matches_for_perf(
+    shared_conn: object | None,
+    player_conn: object,
+    xuid: str,
+) -> pl.DataFrame:
+    """Charge tous les matchs depuis shared pour le calcul batch de performance.
+
+    Priorité : connexion standalone shared. Fallback : connexion joueur avec
+    shared déjà attaché (cas du conflit de handle en post-sync).
+    """
+    if shared_conn is not None:
+        query = _SHARED_PERF_QUERY.format(
+            registry="match_registry", participants="match_participants"
+        )
+        return shared_conn.execute(query, [xuid]).pl()
+
+    logger.debug("batch_perf: shared_conn indisponible, fallback connexion joueur (shared.*)")
+    query = _SHARED_PERF_QUERY.format(
+        registry="shared.match_registry", participants="shared.match_participants"
+    )
+    try:
+        return player_conn.execute(query, [xuid]).pl()
+    except Exception as e:
+        logger.warning("batch_perf: fallback connexion joueur échoué: %s", e)
+        return pl.DataFrame()
+
+
+def _compute_perf_updates(
+    all_matches_df: pl.DataFrame,
+    match_ids: list[str],
+    existing_match_ids: set[str],
+) -> list[tuple[str, float, str]] | None:
+    """Calcule les updates de performance_score pour les matchs sans score.
+
+    Returns:
+        Liste de (match_id, score, updated_at) ou None si tous les scores existent.
+    """
+    null_mask = [mid not in existing_match_ids for mid in match_ids]
+    if not any(null_mask):
+        return None
+
+    updates: list[tuple[str, float, str]] = []
+    now = str(datetime.now(timezone.utc))
+
+    for i in range(len(all_matches_df)):
+        if not null_mask[i] or i < MIN_MATCHES_FOR_RELATIVE:
+            continue
+        row = all_matches_df.row(i, named=True)
+        match_dict = {
+            "kills": row.get("kills") or 0,
+            "deaths": row.get("deaths") or 0,
+            "assists": row.get("assists") or 0,
+            "kda": row.get("kda"),
+            "accuracy": row.get("accuracy"),
+            "time_played_seconds": row.get("time_played_seconds") or 600.0,
+            "personal_score": row.get("personal_score"),
+            "damage_dealt": row.get("damage_dealt"),
+            "rank": row.get("rank"),
+            "team_mmr": row.get("team_mmr"),
+            "enemy_mmr": row.get("enemy_mmr"),
+            "kills_expected": row.get("kills_expected"),
+            "deaths_expected": row.get("deaths_expected"),
+        }
+        score = compute_relative_performance_score(match_dict, all_matches_df.slice(0, i))
+        if score is not None:
+            updates.append((match_ids[i], score, now))
+
+    return updates
 
 
 class PerformanceMixin:
@@ -152,32 +239,13 @@ class PerformanceMixin:
             Nombre de matchs mis à jour.
         """
         try:
-            # V5 finale : lire depuis shared.match_participants + match_registry
-            shared_conn = self._get_shared_connection()
-            if shared_conn is None or not self._xuid:
-                logger.warning("shared_connection ou xuid manquant pour batch performance scores")
+            if not self._xuid:
+                logger.warning("xuid manquant pour batch performance scores")
                 return 0
 
             conn = self._get_connection()
-
-            # 1. Charger TOUS les matchs triés par date depuis shared (SANS le JOIN cross-DB)
-            all_matches_df = shared_conn.execute(
-                """
-                SELECT
-                    mr.match_id, mr.start_time,
-                    mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
-                    mp.time_played_seconds, mp.avg_life_seconds,
-                    mp.personal_score, mp.damage_dealt,
-                    mp.rank, mp.team_mmr, mp.enemy_mmr,
-                    mp.kills_expected, mp.deaths_expected
-                FROM match_registry mr
-                JOIN match_participants mp ON mr.match_id = mp.match_id
-                WHERE mp.xuid = ?
-                  AND mr.start_time IS NOT NULL
-                ORDER BY mr.start_time ASC
-                """,
-                [self._xuid],
-            ).pl()
+            shared_conn = self._get_shared_connection()
+            all_matches_df = _load_matches_for_perf(shared_conn, conn, self._xuid)
 
             if all_matches_df.is_empty():
                 return 0
@@ -194,52 +262,14 @@ class PerformanceMixin:
                 # Table peut ne pas exister ou être vide
                 existing_match_ids = set()
 
-            # 3. Identifier les matchs sans score
+            # 3-4. Identifier les matchs sans score et calculer
             match_ids = all_matches_df["match_id"].to_list()
-            null_mask = [mid not in existing_match_ids for mid in match_ids]
+            existing_match_ids_set = set(existing_match_ids)
+            updates = _compute_perf_updates(all_matches_df, match_ids, existing_match_ids_set)
 
-            if not any(null_mask):
+            if updates is None:
                 logger.info("Tous les matchs ont déjà un performance_score")
                 return 0
-
-            # 4. Calculer le score pour chaque match NULL
-            #    en utilisant l'historique des matchs précédents
-            updates: list[tuple[str, float, str]] = []
-            now = datetime.now(timezone.utc)
-
-            for i in range(len(all_matches_df)):
-                if not null_mask[i]:
-                    continue
-
-                # Pas assez d'historique ?
-                if i < MIN_MATCHES_FOR_RELATIVE:
-                    continue
-
-                # Historique = tous les matchs AVANT l'index i
-                history_df = all_matches_df.slice(0, i)
-
-                # Match courant en dict
-                row = all_matches_df.row(i, named=True)
-                match_dict = {
-                    "kills": row.get("kills") or 0,
-                    "deaths": row.get("deaths") or 0,
-                    "assists": row.get("assists") or 0,
-                    "kda": row.get("kda"),
-                    "accuracy": row.get("accuracy"),
-                    "time_played_seconds": row.get("time_played_seconds") or 600.0,
-                    "personal_score": row.get("personal_score"),
-                    "damage_dealt": row.get("damage_dealt"),
-                    "rank": row.get("rank"),
-                    "team_mmr": row.get("team_mmr"),
-                    "enemy_mmr": row.get("enemy_mmr"),
-                    "kills_expected": row.get("kills_expected"),
-                    "deaths_expected": row.get("deaths_expected"),
-                }
-
-                score = compute_relative_performance_score(match_dict, history_df)
-                if score is not None:
-                    # V5 finale : UPDATE player_match_enrichment
-                    updates.append((match_ids[i], score, str(now)))
 
             # 5. Batch UPSERT dans player_match_enrichment
             if updates:
