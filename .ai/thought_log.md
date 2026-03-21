@@ -7,6 +7,21 @@
 
 ## Journal
 
+### [2026-03-22] — i18n FR/EN complète du launcher — Complété
+
+**Tâche** : Internationaliser toutes les chaînes UI de `launcher.py` (détection langue système)
+
+**Décision technique** :
+- Nouveau fichier `src/utils/launcher_i18n.py` (~130 clés, dict `STRINGS: dict[str, dict[str, str]]` + `t()`)
+- Détection dans `_detect_lang()` : `LEVELUP_LANG` env var → `locale.getlocale()` → env vars → winreg
+- `_LANG` module-level + fallback `def _t(key, lang, **kwargs): return key` si pre-venv
+- Toutes les fonctions UI traduites : signal, setup, doctor, migrations, run, sync, info, auth, wizard, onboard, add-player, reauth, recovery, interactive
+- `launcher_i18n.py` ajouté à la whitelist `enforce_size_limits.py` (fichier dict statique)
+
+**Résultats** : Commit `608100c` sur `feat/onboarding-sync-batches`, tous les hooks pre-commit passent
+
+**Prochaine étape** : Merger `feat/onboarding-sync-batches` → `main`
+
 ### [2026-03-21] — Nettoyage des fallbacks — Complété
 
 **Statut** : Complété
