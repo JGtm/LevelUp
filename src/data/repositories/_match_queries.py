@@ -50,7 +50,7 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
             )
         if not self.has_shared:
             raise RuntimeError(
-                "shared_matches.duckdb indisponible. "
+                "shared_matches_v2.duckdb indisponible. "
                 "Fermez les scripts en cours puis relancez l'app."
             )
         source = """(SELECT

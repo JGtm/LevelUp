@@ -162,13 +162,13 @@ class TestResolveXuidFromDb:
         assert result is None
 
     def test_resolve_from_duckdb(self, tmp_path):
-        """8bis: En v5.1, résolution depuis shared_matches.duckdb."""
+        """8bis: En v5.1, résolution depuis shared_matches_v2.duckdb."""
         import duckdb
 
-        # Structure v5.1 : créer shared_matches.duckdb avec xuid_aliases
+        # Structure v5.1 : créer shared_matches_v2.duckdb avec xuid_aliases
         warehouse = tmp_path / "data" / "warehouse"
         warehouse.mkdir(parents=True, exist_ok=True)
-        shared_db = str(warehouse / "shared_matches.duckdb")
+        shared_db = str(warehouse / "shared_matches_v2.duckdb")
         conn = duckdb.connect(shared_db)
         conn.execute("CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)")
         conn.execute("INSERT INTO xuid_aliases VALUES ('2533274823110022', 'SpartanB')")

@@ -31,7 +31,7 @@ MATCH_IDS = ["match_p01", "match_p02", "match_p03"]
 
 
 def _create_shared_with_data(db_path: Path) -> None:
-    """Crée une shared_matches.duckdb avec données de test."""
+    """Crée une shared_matches_v2.duckdb avec données de test."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(str(db_path))
 
@@ -222,8 +222,8 @@ def _create_player_db(db_path: Path) -> None:
 
 @pytest.fixture
 def shared_db(tmp_path: Path) -> Path:
-    """Crée une shared_matches.duckdb temporaire avec données."""
-    db_path = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+    """Crée une shared_matches_v2.duckdb temporaire avec données."""
+    db_path = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
     _create_shared_with_data(db_path)
     return db_path
 
@@ -240,7 +240,7 @@ def player_db(tmp_path: Path) -> Path:
 def repo_with_view(player_db: Path, shared_db: Path) -> DuckDBRepository:
     """DuckDBRepository avec vue mv_player_matches créée.
 
-    La vue est créée directement dans le fichier shared_matches.duckdb
+    La vue est créée directement dans le fichier shared_matches_v2.duckdb
     (connexion directe, sans ATTACH). DuckDB résout correctement les
     références internes de la vue quand le fichier est attaché en READ_ONLY.
     """
@@ -611,15 +611,15 @@ class TestGetMatchSourceOptimized:
             assert not getattr(m, "is_firefight", False)
 
     def test_v6_requires_shared_db(self, player_db: Path):
-        """En v6, shared_matches.duckdb indisponible lève RuntimeError."""
+        """En v6, shared_matches_v2.duckdb indisponible lève RuntimeError."""
         repo = DuckDBRepository(
             player_db_path=player_db,
             xuid=PLAYER_XUID,
-            shared_db_path=Path("/nonexistent/shared_matches.duckdb"),
+            shared_db_path=Path("/nonexistent/shared_matches_v2.duckdb"),
             gamertag="TestPerf",
             read_only=True,
         )
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             repo.load_matches()
         repo.close()
 

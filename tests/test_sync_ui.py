@@ -436,7 +436,7 @@ class TestSyncIntegration:
 
 
 # =============================================================================
-# Tests de régression — sync mode (handle conflict shared_matches.duckdb)
+# Tests de régression — sync mode (handle conflict shared_matches_v2.duckdb)
 # =============================================================================
 
 
@@ -457,7 +457,7 @@ class TestSyncModeHandleConflict:
     """Régression : sync_player_duckdb_async doit activer le sync mode.
 
     Bug original : le DuckDBRepository de Streamlit conservait un ATTACH de
-    shared_matches.duckdb, causant un « Unique file handle conflict ».
+    shared_matches_v2.duckdb, causant un « Unique file handle conflict ».
 
     Architecture implémentée (docs/) :
     - ``_manage_sync_mode=True`` (défaut) : gère activate/deactivate + guard réentrance

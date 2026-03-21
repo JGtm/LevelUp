@@ -38,7 +38,7 @@ _XUID = "1111111111"
 def shared_db(tmp_path):
     """shared_matches_v2.duckdb minimal avec match_participants, medals_earned,
     highlight_events, match_registry."""
-    db_path = tmp_path / "shared_matches.duckdb"
+    db_path = tmp_path / "shared_matches_v2.duckdb"
     with duckdb.connect(str(db_path)) as conn:
         conn.execute("""
             CREATE TABLE match_registry (

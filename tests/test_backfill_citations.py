@@ -65,7 +65,7 @@ def _create_metadata_db(path: Path) -> None:
 
 
 def _create_shared_db(path: Path) -> None:
-    """Crée shared_matches.duckdb avec match_registry, match_participants, medals_earned."""
+    """Crée shared_matches_v2.duckdb avec match_registry, match_participants, medals_earned."""
     conn = duckdb.connect(str(path))
     conn.execute("""
         CREATE TABLE match_registry (
@@ -228,7 +228,7 @@ def backfill_dir(tmp_path: Path) -> Path:
     player_dir.mkdir(parents=True)
 
     _create_metadata_db(warehouse / "metadata.duckdb")
-    _create_shared_db(warehouse / "shared_matches.duckdb")
+    _create_shared_db(warehouse / "shared_matches_v2.duckdb")
     _create_player_db(player_dir / "stats.duckdb")
 
     return tmp_path

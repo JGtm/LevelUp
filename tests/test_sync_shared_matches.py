@@ -4,10 +4,10 @@ Tests Sprint 3 :
 - Détection des matchs partagés (known vs new)
 - Sync allégée pour matchs existants dans shared
 - Sync complète pour nouveaux matchs vers shared
-- Insertions dans shared_matches.duckdb
+- Insertions dans shared_matches_v2.duckdb
 - extract_match_registry_data()
 - _extract_team_scores_by_id()
-- Mode legacy v4 (pas de shared_matches.duckdb)
+- Mode legacy v4 (pas de shared_matches_v2.duckdb)
 """
 
 from __future__ import annotations
@@ -152,8 +152,8 @@ def sample_highlight_events() -> list[dict[str, Any]]:
 
 @pytest.fixture
 def tmp_shared_db(tmp_path: Path) -> Path:
-    """Crée une shared_matches.duckdb temporaire avec le schéma v5."""
-    db_path = tmp_path / "warehouse" / "shared_matches.duckdb"
+    """Crée une shared_matches_v2.duckdb temporaire avec le schéma v5."""
+    db_path = tmp_path / "warehouse" / "shared_matches_v2.duckdb"
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = duckdb.connect(str(db_path))
@@ -274,7 +274,7 @@ def engine_without_shared(tmp_player_db: Path) -> DuckDBSyncEngine:
         tmp_player_db,
         xuid="2535423456789",
         gamertag="SpartanB",
-        shared_db_path=Path("/nonexistent/shared_matches.duckdb"),
+        shared_db_path=Path("/nonexistent/shared_matches_v2.duckdb"),
     )
     return engine
 
@@ -491,7 +491,7 @@ class TestSyncEngineSharedConfig:
 
 
 class TestSyncEngineSharedInsertions:
-    """Tests d'insertion dans shared_matches.duckdb."""
+    """Tests d'insertion dans shared_matches_v2.duckdb."""
 
     def test_insert_shared_registry(
         self, engine_with_shared: DuckDBSyncEngine, sample_match_json: dict

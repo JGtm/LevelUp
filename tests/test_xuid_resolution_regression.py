@@ -39,7 +39,7 @@ MATCH_ID_3 = "eeee-5555-ffff-6666"
 
 
 def _create_shared_db(db_path: Path) -> None:
-    """Crée une shared_matches.duckdb minimale pour les tests."""
+    """Crée une shared_matches_v2.duckdb minimale pour les tests."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(str(db_path))
 
@@ -325,7 +325,7 @@ class TestResolvePlayerXuid:
 
         warehouse_path = tmp_path / "data" / "warehouse"
         warehouse_path.mkdir(parents=True, exist_ok=True)
-        shared_db_path = warehouse_path / "shared_matches.duckdb"
+        shared_db_path = warehouse_path / "shared_matches_v2.duckdb"
         _create_shared_db(shared_db_path)
 
         db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
@@ -337,7 +337,7 @@ class TestResolvePlayerXuid:
     def test_strategy_3_xuid_aliases(self, tmp_path: Path) -> None:
         """8bis: v5.1 — Stratégie 3 utilise shared.xuid_aliases (pas locale).
 
-        Ce test crée le shared_matches.duckdb avec xuid_aliases pour
+        Ce test crée le shared_matches_v2.duckdb avec xuid_aliases pour
         valider la résolution via shared.
         """
         from src.ui.cache_loaders import _resolve_player_xuid
@@ -345,7 +345,7 @@ class TestResolvePlayerXuid:
         # Structure v5.1 : le shared doit exister avec xuid_aliases
         warehouse_path = tmp_path / "data" / "warehouse"
         warehouse_path.mkdir(parents=True, exist_ok=True)
-        shared_db_path = warehouse_path / "shared_matches.duckdb"
+        shared_db_path = warehouse_path / "shared_matches_v2.duckdb"
         _create_shared_db(shared_db_path)  # Contient déjà l'alias
 
         db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
@@ -370,7 +370,7 @@ class TestResolvePlayerXuid:
 
         warehouse_path = tmp_path / "data" / "warehouse"
         warehouse_path.mkdir(parents=True, exist_ok=True)
-        shared_db_path = warehouse_path / "shared_matches.duckdb"
+        shared_db_path = warehouse_path / "shared_matches_v2.duckdb"
         _create_shared_db(shared_db_path)
 
         # Modifier xuid_aliases pour un XUID différent
@@ -390,7 +390,7 @@ class TestResolvePlayerXuid:
 
         warehouse_path = tmp_path / "data" / "warehouse"
         warehouse_path.mkdir(parents=True, exist_ok=True)
-        shared_db_path = warehouse_path / "shared_matches.duckdb"
+        shared_db_path = warehouse_path / "shared_matches_v2.duckdb"
         _create_shared_db(shared_db_path)
 
         db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
@@ -432,7 +432,7 @@ class TestEndToEndMatchLoading:
 
         # Créer l'arborescence
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
 
         _create_player_db(player_db, with_sync_meta_xuid=True)
         _create_shared_db(shared_db)
@@ -460,7 +460,7 @@ class TestEndToEndMatchLoading:
         from src.ui.cache_loaders import _resolve_player_xuid
 
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
 
         _create_player_db(player_db)
         _create_shared_db(shared_db)
@@ -485,7 +485,7 @@ class TestEndToEndMatchLoading:
             repo.close()
 
     def test_v5_no_shared_returns_zero_matches(self, tmp_path: Path) -> None:
-        """v5.1 : sans shared_matches.duckdb, get_match_count retourne 0."""
+        """v5.1 : sans shared_matches_v2.duckdb, get_match_count retourne 0."""
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
         _create_player_db(player_db, with_sync_meta_xuid=True)
 
@@ -503,7 +503,7 @@ class TestEndToEndMatchLoading:
     def test_empty_xuid_with_shared_raises_error(self, tmp_path: Path) -> None:
         """En v6, XUID vide lève RuntimeError (pas de fallback local)."""
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
 
         _create_player_db(player_db, with_match_stats=True)
         _create_shared_db(shared_db)
@@ -525,7 +525,7 @@ class TestEndToEndMatchLoading:
         from src.ui.cache_loaders import _resolve_player_xuid
 
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
 
         _create_player_db(player_db, with_player_match_stats=True)
         _create_shared_db(shared_db)
@@ -555,7 +555,7 @@ class TestZeroMatchesRegression:
     """Tests ciblés sur le scénario exact de la régression.
 
     Scénario réel :
-    - shared_matches.duckdb existe et contient des données
+    - shared_matches_v2.duckdb existe et contient des données
     - sync_meta n'a PAS de ligne xuid (ou valeur NULL/vide)
     - player_match_stats a le XUID dans sa colonne xuid
     → Avant le fix : xuid="" → JOIN WHERE xuid='' → 0 matchs
@@ -568,7 +568,7 @@ class TestZeroMatchesRegression:
 
         # Structure identique aux vraies DBs de l'utilisateur
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
 
         # sync_meta sans xuid + player_match_stats avec xuid
         _create_player_db(player_db, with_player_match_stats=True)
@@ -604,7 +604,7 @@ class TestZeroMatchesRegression:
         from src.ui.cache_loaders import _resolve_player_xuid
 
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
 
         _create_player_db(player_db, with_player_match_stats=True)
         _create_shared_db(shared_db)
@@ -634,7 +634,7 @@ class TestZeroMatchesRegression:
         from src.ui.cache_loaders import _resolve_player_xuid
 
         player_db = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
 
         # player_match_enrichment vide (créée par _create_player_db mais sans insert)
         # player_match_stats a le XUID
@@ -725,7 +725,7 @@ class TestXuidResolutionViaV6Schema:
 
         warehouse = tmp_path / "data" / "warehouse"
         warehouse.mkdir(parents=True, exist_ok=True)
-        shared_db_path = warehouse / "shared_matches.duckdb"
+        shared_db_path = warehouse / "shared_matches_v2.duckdb"
         _create_shared_db_v6(shared_db_path)
 
         db_path = tmp_path / "data" / "players" / PLAYER_GAMERTAG / "stats.duckdb"
@@ -750,19 +750,16 @@ class TestXuidResolutionViaV6Schema:
         result = _resolve_player_xuid(str(db_path))
         assert result == PLAYER_XUID
 
-    def test_v2_preferred_over_v1_when_both_present(self, tmp_path: Path) -> None:
-        """shared_matches_v2 est résolu en priorité si les deux existent."""
+    def test_v2_only_used_legacy_v1_ignored(self, tmp_path: Path) -> None:
+        """shared_matches.duckdb (legacy) est ignoré — seul shared_matches_v2.duckdb est résolu."""
         from src.ui.cache_loaders import _resolve_player_xuid
 
         warehouse = tmp_path / "data" / "warehouse"
         warehouse.mkdir(parents=True, exist_ok=True)
 
-        # v1 avec un XUID différent (pour valider que c'est v2 qui est lu)
+        # Legacy v1 présent : ne doit pas être utilisé
         shared_v1 = warehouse / "shared_matches.duckdb"
         _create_shared_db_v6(shared_v1)
-        conn = duckdb.connect(str(shared_v1))
-        conn.execute("UPDATE xuid_aliases SET xuid = 'wrong-xuid-v1'")
-        conn.close()
 
         # v2 avec le bon XUID
         shared_v2 = warehouse / "shared_matches_v2.duckdb"

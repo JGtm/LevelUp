@@ -71,7 +71,7 @@ class TestLoadPlayerMatchEnrichment:
     def test_returns_enrichment_row(self, tmp_path: Path) -> None:
         """Retourne les valeurs stockées pour un match connu."""
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _build_player_db(player_db)
         _build_shared_db(shared_db)
 
@@ -92,7 +92,7 @@ class TestLoadPlayerMatchEnrichment:
     def test_returns_defaults_when_match_absent(self, tmp_path: Path) -> None:
         """Retourne (False, None, None) si le match_id est inconnu."""
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _build_player_db(player_db)
         _build_shared_db(shared_db)
 
@@ -106,7 +106,7 @@ class TestLoadPlayerMatchEnrichment:
     def test_returns_defaults_when_table_missing(self, tmp_path: Path) -> None:
         """Retourne (False, None, None) si la table n'existe pas encore."""
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         # DB joueur sans la table player_match_enrichment
         player_db.parent.mkdir(parents=True, exist_ok=True)
         duckdb.connect(str(player_db)).close()
@@ -122,7 +122,7 @@ class TestLoadPlayerMatchEnrichment:
     def test_null_performance_score(self, tmp_path: Path) -> None:
         """Retourne perf=None si performance_score est NULL en DB."""
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _build_player_db(player_db)
         _build_shared_db(shared_db)
 
@@ -143,7 +143,7 @@ class TestLoadPlayerMatchEnrichment:
     def test_had_bot_false_explicitly_stored(self, tmp_path: Path) -> None:
         """had_bot=False retourné depuis la DB, pas seulement par défaut."""
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _build_player_db(player_db)
         _build_shared_db(shared_db)
 
@@ -164,7 +164,7 @@ class TestLoadPlayerMatchEnrichment:
     def test_dominance_flag_humiliation(self, tmp_path: Path) -> None:
         """dominance_flag=2 (humiliation) est retourné correctement."""
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _build_player_db(player_db)
         _build_shared_db(shared_db)
 
@@ -192,7 +192,7 @@ class TestIsAbandonedMatch:
     def test_abandoned_when_all_zeros(self, tmp_path: Path) -> None:
         """Retourne True quand tous les participants ont kills=deaths=score=0."""
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _build_player_db(player_db)
         _build_shared_db(shared_db)
 
@@ -210,7 +210,7 @@ class TestIsAbandonedMatch:
     def test_not_abandoned_when_kills_positive(self, tmp_path: Path) -> None:
         """Retourne False quand des kills ont été enregistrés."""
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _build_player_db(player_db)
         _build_shared_db(shared_db)
 
@@ -227,7 +227,7 @@ class TestIsAbandonedMatch:
     def test_returns_false_when_no_participants(self, tmp_path: Path) -> None:
         """Retourne False si aucun participant trouvé (match_id inconnu)."""
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _build_player_db(player_db)
         _build_shared_db(shared_db)
 
@@ -235,7 +235,7 @@ class TestIsAbandonedMatch:
         assert repo.is_abandoned_match("match-unknown") is False
 
     def test_returns_false_when_shared_unavailable(self, tmp_path: Path) -> None:
-        """Retourne False si shared_matches.duckdb n'existe pas."""
+        """Retourne False si shared_matches_v2.duckdb n'existe pas."""
         player_db = tmp_path / "stats.duckdb"
         _build_player_db(player_db)
         # shared_db inexistante — pas de fichier créé
@@ -251,7 +251,7 @@ class TestIsAbandonedMatch:
     def test_not_abandoned_when_only_score_zero(self, tmp_path: Path) -> None:
         """Retourne False si kills/deaths > 0 même si score=0 (partie comptée)."""
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _build_player_db(player_db)
         _build_shared_db(shared_db)
 
@@ -270,7 +270,7 @@ class TestIsAbandonedMatch:
         import logging
 
         player_db = tmp_path / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _build_player_db(player_db)
         _build_shared_db(shared_db)
 

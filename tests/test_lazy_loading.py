@@ -290,10 +290,10 @@ class TestLoadMatchesPaginated:
         return db_path
 
     def _make_shared_db(self, tmp_path: Path, xuid: str, n_matches: int) -> Path:
-        """Crée shared_matches.duckdb minimal avec la vue mv_player_matches."""
+        """Crée shared_matches_v2.duckdb minimal avec la vue mv_player_matches."""
         import duckdb
 
-        db_path = tmp_path / "warehouse" / "shared_matches.duckdb"
+        db_path = tmp_path / "warehouse" / "shared_matches_v2.duckdb"
         db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = duckdb.connect(str(db_path))
         conn.execute("""
@@ -512,7 +512,7 @@ class TestLazyLoadingIntegration:
         # Créer shared DB (v5.1 — get_match_count requiert shared.match_participants)
         warehouse = tmp_path / "warehouse"
         warehouse.mkdir(parents=True)
-        shared_conn = duckdb.connect(str(warehouse / "shared_matches.duckdb"))
+        shared_conn = duckdb.connect(str(warehouse / "shared_matches_v2.duckdb"))
         try:
             shared_conn.execute(
                 "CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP)"

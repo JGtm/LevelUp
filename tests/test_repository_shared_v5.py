@@ -128,7 +128,7 @@ def _create_player_db(db_path: Path) -> None:
 
 
 def _create_shared_db(db_path: Path) -> None:
-    """Crée une shared_matches.duckdb avec le schéma v5."""
+    """Crée une shared_matches_v2.duckdb avec le schéma v5."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(str(db_path))
     conn.execute("""
@@ -338,7 +338,7 @@ def _create_shared_db(db_path: Path) -> None:
 def repo_with_shared(tmp_path: Path) -> DuckDBRepository:
     """Repository v5 avec shared_matches."""
     player_db = tmp_path / "player" / "stats.duckdb"
-    shared_db = tmp_path / "shared_matches.duckdb"
+    shared_db = tmp_path / "shared_matches_v2.duckdb"
     _create_player_db(player_db)
     _create_shared_db(shared_db)
     repo = DuckDBRepository(
@@ -375,7 +375,7 @@ class TestRepositoryContextManager:
 
     def test_with_statement(self, tmp_path: Path) -> None:
         player_db = tmp_path / "player" / "stats.duckdb"
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
         _create_player_db(player_db)
         _create_shared_db(shared_db)
         with DuckDBRepository(
@@ -449,7 +449,7 @@ class TestLoadMatchesFallbackV4:
 
     def test_load_raises_without_shared(self, repo_v4_only: DuckDBRepository) -> None:
         """En v6, sans shared DB, load_matches lève RuntimeError."""
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             repo_v4_only.load_matches()
 
     def test_get_match_count_returns_zero_without_shared(
@@ -608,7 +608,7 @@ class TestLazyReattachShared:
         from src.data.repositories.duckdb_repo import begin_sync_mode, end_sync_mode
 
         player_db = tmp_path / "player" / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _create_player_db(player_db)
         _create_shared_db(shared_db)
 
@@ -638,7 +638,7 @@ class TestLazyReattachShared:
         from src.data.repositories.duckdb_repo import begin_sync_mode, end_sync_mode
 
         player_db = tmp_path / "player" / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _create_player_db(player_db)
         _create_shared_db(shared_db)
 
@@ -665,7 +665,7 @@ class TestLazyReattachShared:
         from src.data.repositories.duckdb_repo import begin_sync_mode, end_sync_mode
 
         player_db = tmp_path / "player" / "stats.duckdb"
-        shared_db = tmp_path / "shared_matches.duckdb"
+        shared_db = tmp_path / "shared_matches_v2.duckdb"
         _create_player_db(player_db)
         _create_shared_db(shared_db)
 

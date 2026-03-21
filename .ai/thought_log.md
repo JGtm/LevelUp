@@ -7,6 +7,23 @@
 
 ## Journal
 
+### [2026-03-21] — Nettoyage des fallbacks — Complété
+
+**Statut** : Complété
+
+**Décision technique principale** : Suppression du fallback DB v5→v6 dans `paths.py` (migration terminée) + renforcement du logging sur 6 points d'absorption silencieuse d'erreurs.
+
+**Résultats observés** :
+- Tâche A : `get_shared_matches_path_from_player` ne cherche plus que `shared_matches_v2.duckdb` — fail-fast si absent
+- Tâche B : 4 fonctions repository passées de `logger.debug` → `logger.warning` (`load_friend_match_details`, `load_common_matches_df`, `load_top_encountered`, `load_antagonists`)
+- Tâche C : `_resolve_player_xuid` — `except Exception: pass` remplacés par `logger.debug(...)` + exception finale passée en `logger.warning`
+- Tâche D : `ensure_shared_attached` — `contextlib.suppress` sur le bloc ATTACH remplacé par `try/except` avec `logger.warning`
+- Message d'erreur dans `_match_queries.py` mis à jour (`shared_matches.duckdb` → `shared_matches_v2.duckdb`)
+- ~50 fichiers de tests mis à jour (`shared_matches.duckdb` → `shared_matches_v2.duckdb`)
+- Tests : 5084 passent, 4 skipped, 0 echecs
+
+**Conclusion / prochaine étape** : Aucun fallback orphelin restant. Prochaine analyse : review des `except Exception` en production pour s'assurer que tous les points critiques sont visibles.
+
 ### [2026-03-21] — Timeline escouade : chargement DB-direct (historique complet) — Complété
 
 **Statut** : Complété

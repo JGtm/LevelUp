@@ -149,7 +149,7 @@ class TestDbCacheKey:
     """Tests de db_cache_key() — clé de cache 5-tuple avec WAL sentinel."""
 
     def _make_player_structure(self, tmp_path, gamertag="TestPlayer"):
-        """Crée la structure data/players/{gt}/stats.duckdb + data/warehouse/shared_matches.duckdb."""
+        """Crée la structure data/players/{gt}/stats.duckdb + data/warehouse/shared_matches_v2.duckdb."""
         import duckdb
 
         player_dir = tmp_path / "data" / "players" / gamertag
@@ -161,7 +161,7 @@ class TestDbCacheKey:
 
         warehouse_dir = tmp_path / "data" / "warehouse"
         warehouse_dir.mkdir(parents=True)
-        shared_path = warehouse_dir / "shared_matches.duckdb"
+        shared_path = warehouse_dir / "shared_matches_v2.duckdb"
         conn2 = duckdb.connect(str(shared_path))
         conn2.execute("CREATE TABLE t (x INT)")
         conn2.close()
@@ -199,10 +199,10 @@ class TestDbCacheKey:
         assert key1 != key2, "La clé doit changer après écriture"
 
     def test_wal_sentinel_nonzero_when_wal_exists(self, tmp_path):
-        """Le wal_sentinel (index 4) est non nul si shared_matches.duckdb.wal existe."""
+        """Le wal_sentinel (index 4) est non nul si shared_matches_v2.duckdb.wal existe."""
         db_path, shared_path = self._make_player_structure(tmp_path)
 
-        # Créer le WAL sur shared_matches.duckdb (chemin attendu par db_cache_key)
+        # Créer le WAL sur shared_matches_v2.duckdb (chemin attendu par db_cache_key)
         wal_path = shared_path.with_suffix(shared_path.suffix + ".wal")
         wal_path.write_bytes(b"fake wal content")
 
@@ -215,7 +215,7 @@ class TestDbCacheKey:
         ), f"WAL sentinel doit être non nul quand shared .wal existe, obtenu {wal_sentinel}"
 
     def test_wal_sentinel_zero_without_wal(self, tmp_path):
-        """Le wal_sentinel (index 4) est 0 si aucun shared_matches.duckdb.wal n'existe."""
+        """Le wal_sentinel (index 4) est 0 si aucun shared_matches_v2.duckdb.wal n'existe."""
         db_path, shared_path = self._make_player_structure(tmp_path)
 
         wal_path = shared_path.with_suffix(shared_path.suffix + ".wal")
