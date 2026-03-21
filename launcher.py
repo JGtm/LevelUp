@@ -1207,22 +1207,26 @@ def _transfer_msal_cache(source: Path, target: Path) -> None:
 
 def _print_device_code(user_code: str, verification_url: str, expires_in: int) -> None:
     """Affiche le code Device Code Flow de façon bien visible (encadré)."""
-    print()
-    print("  ╔══════════════════════════════════════════════════════════╗")
-    print("  ║         🔑 CODE À ENTRER SUR MICROSOFT                  ║")
-    print("  ╠══════════════════════════════════════════════════════════╣")
-    print(f"  ║  URL  : {verification_url:<49}║")
-    print(f"  ║  Code : {user_code:<49}║")
-    print(f"  ║  Expire dans : {expires_in // 60} min{' ' * (44 - len(str(expires_in // 60)))}║")
-    print("  ╚══════════════════════════════════════════════════════════╝")
-    print()
-    # Copier le code dans le presse-papiers Windows si possible
+    # Utilise les caractères simples compatibles cmd.exe (pas les doubles ╔╗║╠╣╚╝)
     import subprocess  # noqa: PLC0415
 
+    print(flush=True)
+    print("  +----------------------------------------------------------+", flush=True)
+    print("  |         CODE A ENTRER SUR MICROSOFT                      |", flush=True)
+    print("  +----------------------------------------------------------+", flush=True)
+    print(f"  |  URL  : {verification_url:<49}|", flush=True)
+    print(f"  |  Code : {user_code:<49}|", flush=True)
+    print(
+        f"  |  Expire dans : {expires_in // 60} min{' ' * (44 - len(str(expires_in // 60)))}|",
+        flush=True,
+    )
+    print("  +----------------------------------------------------------+", flush=True)
+    print(flush=True)
+    # Copier le code dans le presse-papiers Windows si possible
     with contextlib.suppress(Exception):
         subprocess.run(["clip"], input=user_code.encode(), check=False)  # noqa: S603, S607
-        print("  📋 Code copié dans le presse-papiers.")
-    print()
+        print("  >> Code copie dans le presse-papiers (Ctrl+V pour coller).", flush=True)
+    print(flush=True)
 
 
 def _wizard_oauth_token(gamertag: str, client_id: str = "") -> bool:  # noqa: ARG001
