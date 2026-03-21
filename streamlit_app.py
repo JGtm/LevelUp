@@ -126,7 +126,7 @@ from src.ui.multiplayer import (
 )
 
 # render_match_view est toujours nécessaire pour build_match_view_params
-from src.ui.pages import render_match_view
+from src.ui.pages.match_view import render_match_view
 from src.ui.perf import perf_reset_run, perf_section
 from src.ui.sync import (
     cleanup_orphan_tmp_dbs,
