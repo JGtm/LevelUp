@@ -7,6 +7,23 @@
 
 ## Journal
 
+### [2026-03-21] — Prévention god __init__ — hook pre-commit + règle CLAUDE.md — Complété
+
+**Statut** : Complété
+
+**Décision technique** : 3 niveaux de prévention mis en place pour éliminer les `KeyError: 'src.xxx'` et `ImportError` lors des hot-reloads Streamlit causés par les god `__init__.py` :
+1. `src/app/__init__.py` vidé (n'importe plus ses sous-modules)
+2. `streamlit_app.py:129` : `from src.ui.pages import` → `from src.ui.pages.match_view import`
+3. `tests/test_imports.py` — 8 tests automatisés (god __init__ + isolation modules critiques + toplevel streamlit_app)
+4. `.claude/hooks/pre_commit_import_check.py` + hook `PreToolUse` dans `.claude/settings.json` — bloque les `git commit` si les tests imports échouent
+5. Anti-pattern #11 ajouté dans CLAUDE.md
+
+**Résultats** : 8/8 tests verts. Hook pipe-testé (bloque correctement, passe en silence sinon).
+
+**Conclusion** : Committer les changements (`src/app/__init__.py`, `streamlit_app.py`, `tests/test_imports.py`, `.claude/`) pour que `git checkout --` ne restaure plus l'ancien god `__init__.py`.
+
+---
+
 ### [2026-03-21] — Harmonisation libellés score de performance — Complété
 
 **Statut** : Complété

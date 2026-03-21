@@ -299,6 +299,7 @@ Avant d'écrire ou modifier du code, l'agent IA doit vérifier que ses changemen
 8. **"Magic integer"** — `outcome == 2` sans contexte → `Outcome.WIN`  
 9. **"Logique métier dans l'UI"** — Calculs purs mélangés aux appels Streamlit → séparer en `*_logic.py` testable sans Streamlit
 10. **"Alias inutile"** — `_func = func` en tête de fichier sans raison → import direct
+11. **"God __init__"** — `__init__.py` qui importe massivement ses propres sous-modules → `KeyError: 'src.xxx'` lors des hot-reloads Streamlit. Règle : un `__init__.py` ne doit **jamais** importer depuis ses propres sous-modules (sauf si des dizaines de callers existants utilisent déjà `from src.pkg import X` — dans ce cas les imports lazy depuis les fonctions sont tolérés, mais les imports module-level dans `streamlit_app.py` doivent pointer vers le sous-module direct). Test : `tests/test_imports.py`.
 
 ### Patterns à appliquer
 
