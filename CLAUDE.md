@@ -359,9 +359,11 @@ Uniquement si les tâches sont **indépendantes et parallélisables** (ex : deux
 
 1. **Toujours vérifier la branche courante** avant de committer : `git branch --show-current`
 2. **⛔ JAMAIS travailler sur `main`** — sans aucune exception. Si la branche courante est `main`, créer une branche de travail avant toute modification.
-3. **Si aucun nom de branche n'est spécifié** par l'utilisateur, demander ou proposer un nom avant de créer
-4. **Entre sessions** : relire les commits existants (`git log --oneline -10`) pour reprendre sur la bonne branche
-5. **Résumé** : une branche pour le sujet, des commits pour les étapes — pas l'inverse
+3. **Toute nouvelle fonction/feature/fix** → créer une nouvelle branche depuis la branche courante (`git checkout -b <type>/<nom>`), jamais travailler directement sur la branche parente.
+4. **⛔ Ne jamais changer de branche** si un travail différent est déjà en cours sur la branche courante — interrompre la tâche et informer l'utilisateur pour éviter tout conflit entre agents.
+5. **Si aucun nom de branche n'est spécifié** par l'utilisateur, demander ou proposer un nom avant de créer
+6. **Entre sessions** : relire les commits existants (`git log --oneline -10`) pour reprendre sur la bonne branche
+7. **Résumé** : une branche pour le sujet, des commits pour les étapes — pas l'inverse
 
 ---
 
