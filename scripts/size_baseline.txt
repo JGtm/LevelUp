@@ -13,7 +13,7 @@ FUNC:src/analysis/skill_rating.py:194:compute_skill_ratings_batch:198L
 FUNC:src/analysis/win_streaks.py:236:compute_streak_series_polars:96L
 FUNC:src/app/_filters_apply.py:42:apply_filters:196L
 FUNC:src/app/_filters_cascade.py:326:_render_cascade_filters:101L
-FUNC:src/app/_filters_session.py:64:_classify_sessions_solo_squad:114L
+FUNC:src/app/_filters_session.py:64:_classify_sessions_solo_squad:118L
 FUNC:src/app/filters.py:206:render_session_filters:94L
 FUNC:src/app/filters_render.py:373:render_filters_sidebar:112L
 FUNC:src/app/main_helpers.py:168:render_profile_hero:144L
@@ -59,7 +59,6 @@ FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
-FUNC:src/ui/pages/teammates.py:73:render_teammates_page:147L
 FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
 FUNC:src/ui/styles.py:48:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
@@ -69,6 +68,7 @@ FUNC:src/visualization/_distributions_advanced.py:151:plot_first_event_distribut
 FUNC:src/visualization/_distributions_advanced.py:18:plot_correlation_scatter:130L
 FUNC:src/visualization/_match_impact_events.py:72:compute_single_match_impact:133L
 FUNC:src/visualization/_perf_session.py:21:plot_session_trend:114L
+FUNC:src/visualization/_squad_timeline.py:37:plot_squad_performance_timeline:106L
 FUNC:src/visualization/_timeseries_progression.py:189:plot_lusr_timeseries:89L
 FUNC:src/visualization/distributions.py:183:plot_histogram:107L
 FUNC:src/visualization/distributions.py:32:plot_kda_distribution:87L
