@@ -221,22 +221,29 @@ def _load_weapon_items(repo: object, xuid: str, match_id: str, lang: str) -> lis
             )
         )
 
-    # Enrichissement grenade / mêlée depuis match_participants (données API — source de vérité)
+    # Enrichissement grenade / mêlée depuis match_participants (API).
+    # Limité au remainder (api_total - film_kills) pour éviter le double-comptage
+    # des melee kills filmés sous le weapon_id de l'arme tenue.
     try:
         grenade, melee = repo.load_grenade_melee_kills(str(xuid).strip(), [match_id])
-        if grenade > 0:
+        film_kills = sum(item.count for item in items)
+        api_total = repo.load_total_kills_for_player(str(xuid).strip(), [match_id])
+        remainder = max(0, api_total - film_kills)
+        melee_net = min(melee, remainder)
+        grenade_net = min(grenade, max(0, remainder - melee_net))
+        if grenade_net > 0:
             items.append(
                 WeaponDetailItem(
                     name=t("col_grenade_kills"),
-                    count=grenade,
+                    count=grenade_net,
                     asset_url=weapon_asset_url("Grenade"),
                 )
             )
-        if melee > 0:
+        if melee_net > 0:
             items.append(
                 WeaponDetailItem(
                     name=t("col_melee"),
-                    count=melee,
+                    count=melee_net,
                     asset_url=weapon_asset_url("Melee"),
                 )
             )

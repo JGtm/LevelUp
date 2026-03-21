@@ -116,15 +116,22 @@ def render_weapon_kills_table(
     if df.is_empty():
         return
 
-    # Retirer les entrées film pour grenade/mêlée, réinjecter depuis l'API
+    # Retirer les entrées film pour grenade/mêlée, réinjecter depuis l'API.
+    # Limité au remainder (api_total - film_kills) pour éviter le double-comptage
+    # des melee kills filmés sous le weapon_id de l'arme tenue.
     df = df.filter(~pl.col("weapon_id").is_in(list(_FILM_EXCLUDED_IDS)))
     try:
         grenade, melee = repo.load_grenade_melee_kills(xuid, match_ids)
+        film_kills = int(df["total_kills"].sum()) if not df.is_empty() else 0
+        api_total = repo.load_total_kills_for_player(xuid, match_ids)
+        remainder = max(0, api_total - film_kills)
+        melee_net = min(melee, remainder)
+        grenade_net = min(grenade, max(0, remainder - melee_net))
         extras = []
-        if grenade > 0:
-            extras.append({"weapon_id": _GRENADE_WEAPON_ID, "total_kills": grenade})
-        if melee > 0:
-            extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": melee})
+        if grenade_net > 0:
+            extras.append({"weapon_id": _GRENADE_WEAPON_ID, "total_kills": grenade_net})
+        if melee_net > 0:
+            extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": melee_net})
         if extras:
             df = pl.concat(
                 [df, pl.DataFrame(extras, schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32})]
@@ -200,13 +207,19 @@ def load_weapon_kills_data(
             # Retirer les entrées film (incomplètes) pour grenade/mêlée
             df = df.filter(~pl.col("weapon_id").is_in(list(_FILM_EXCLUDED_IDS)))
             df = df.head(_TOP_N_WEAPONS)
-            # Réinjecter depuis l'API (fiable)
+            # Réinjecter depuis l'API, limité au remainder pour éviter le double-comptage
+            # des melee kills filmés sous le weapon_id de l'arme tenue.
             grenade, melee = repo.load_grenade_melee_kills(xuid, match_ids or [])
+            film_kills = int(df["total_kills"].sum()) if not df.is_empty() else 0
+            api_total = repo.load_total_kills_for_player(xuid, match_ids or [])
+            remainder = max(0, api_total - film_kills)
+            melee_net = min(melee, remainder)
+            grenade_net = min(grenade, max(0, remainder - melee_net))
             extras = []
-            if grenade > 0:
-                extras.append({"weapon_id": _GRENADE_WEAPON_ID, "total_kills": grenade})
-            if melee > 0:
-                extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": melee})
+            if grenade_net > 0:
+                extras.append({"weapon_id": _GRENADE_WEAPON_ID, "total_kills": grenade_net})
+            if melee_net > 0:
+                extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": melee_net})
             if extras:
                 df = pl.concat(
                     [

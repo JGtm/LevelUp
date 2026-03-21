@@ -7,6 +7,23 @@
 
 ## Journal
 
+### [2026-03-21] — Bug frags vs. détail armes (double-comptage melee) — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+Investigation Phase 0 complète. H1 (sentinels avec `reconciled_as`) infirmée — 0 lignes en base. La vraie cause : dans le film Halo Infinite, les melee kills (coups de crosse) sont attribués au `weapon_id` de l'arme tenue (ex. MA40 AR), PAS au sentinel 1. Or `_enrich_with_grenade_melee` ajoute `match_participants.melee_kills` (API) en sus → double-comptage systématique.
+
+Exemple confirmé (Chocoboflor, match aaaf6c76) : 21 kills API, film 20 kills armes + 1 grenade sentinel, affichage 28 (= 20 + 7 melee + 1 grenade).
+
+**Fix** : Calcul d'un `remainder = api_total - film_kills` dans les 3 endroits d'enrichissement (`match_view_weapon_kills.py`, `match_view_scoreboard_detail.py`, `teammates_weapons.py`). Le melee/grenade API est limité à ce remainder : si le film couvre déjà tous les kills, aucun ajout. Nouvelle méthode `load_total_kills_for_player()` dans `WeaponKillsMixin`.
+
+**Résultats** : 5005 tests passent (2 failures pré-existantes inchangées). 2 nouveaux tests validant le double-comptage et le cas partiel. Baseline taille mis à jour.
+
+**Prochaine étape** : Aucune — bug résolu.
+
+---
+
 ### [2026-03-21] — Nettoyage scripts et tests obsolètes post-v5/v6 — Complété
 
 **Statut** : Complété (commit `775e9a8`)
