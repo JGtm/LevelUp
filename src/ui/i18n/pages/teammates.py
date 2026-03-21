@@ -199,6 +199,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tm_select_teammates": {"fr": "Coéquipiers", "en": "Teammates"},
     "tm_search_placeholder": {"fr": "Taper pour filtrer...", "en": "Type to filter..."},
     "tm_session_trend": {"fr": "Tendance de session", "en": "Session trend"},
+    # ── En-tête session escouade ──────────────────────────────────────────────
+    "squad_score_header": {"fr": "Score d'équipe", "en": "Squad Score"},
+    "squad_grade_legendaire": {"fr": "LEGENDAIRE", "en": "LEGENDARY"},
+    "squad_grade_carnage": {"fr": "CARNAGE", "en": "CARNAGE"},
+    "squad_grade_solide": {"fr": "SOLIDE", "en": "SOLID"},
+    "squad_grade_moyen": {"fr": "MOYEN", "en": "AVERAGE"},
+    "squad_grade_difficile": {"fr": "DIFFICILE", "en": "ROUGH"},
+    "squad_grade_catastrophique": {"fr": "CATASTROPHIQUE", "en": "CATASTROPHIC"},
     "tm_solo_session_info": {
         "fr": "Cette session est en solo — les stats de coéquipiers ne sont pas disponibles.",
         "en": "You played solo this session — teammate stats are not available.",

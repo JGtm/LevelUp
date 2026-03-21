@@ -17,7 +17,6 @@ import polars as pl
 import streamlit as st
 
 from src.app._filters_friends import build_teammates_opts_map
-from src.config import CORE_STAT_COLUMNS
 from src.data.services.teammates_service import TeammatesService
 from src.ui.cache import cached_has_cache_tables
 from src.ui.i18n import t
@@ -154,19 +153,13 @@ def render_teammates_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
     )
     picked_xuids = [opts_map[lbl] for lbl in picked_labels if lbl in opts_map]
 
-    # Tendance de session (matchs affichés) — multi-joueurs
-    _req_trend = CORE_STAT_COLUMNS
-    if len(dff) >= 4 and all(c in dff.columns for c in _req_trend):
-        from src.analysis.cumulative import compute_session_trend_polars
+    # En-tête de session escouade (remplace la tendance K/D)
+    if len(dff) >= 2:
         from src.ui import display_name_from_xuid
+        from src.ui.components.performance import render_squad_session_header
+        from src.ui.i18n import get_lang
 
-        players_trend: list[tuple[str, dict]] = []
-
-        # Joueur principal
-        pl_dff = dff.sort("start_time").select(_req_trend)
-        players_trend.append((me_name, compute_session_trend_polars(pl_dff)))
-
-        # Coéquipiers sélectionnés
+        players_data: list[tuple[str, object]] = [(me_name, dff)]
         if picked_xuids and "match_id" in dff.columns:
             _match_ids = set(dff["match_id"].cast(pl.Utf8).to_list())
             for _friend_xuid in picked_xuids:
@@ -175,40 +168,12 @@ def render_teammates_page(  # noqa: C901, PLR0912, PLR0913, PLR0915
                     _friend_df = ensure_polars(
                         _load_teammate_stats_from_own_db(_friend_name, _match_ids, db_path)
                     )
-                    if (
-                        not _friend_df.is_empty()
-                        and len(_friend_df) >= 4
-                        and all(c in _friend_df.columns for c in _req_trend)
-                    ):
-                        _friend_pl = _friend_df.sort("start_time").select(_req_trend)
-                        players_trend.append(
-                            (_friend_name, compute_session_trend_polars(_friend_pl))
-                        )
+                    if not _friend_df.is_empty():
+                        players_data.append((_friend_name, _friend_df))
                 except Exception:
                     pass
 
-        st.subheader(t("tm_session_trend"))
-        st.caption(t("tm_kd_half_caption"))
-        _trend_cols = st.columns(len(players_trend))
-        for _col, (_pname, _td) in zip(_trend_cols, players_trend, strict=False):
-            with _col:
-                _first = _td.get("first_half_kd")
-                _second = _td.get("second_half_kd")
-                _pct = _td.get("kd_change_pct", 0) or 0
-                _tr = _td.get("trend", "stable")
-                if _first is None or _second is None:
-                    st.metric(_pname, "N/A")
-                else:
-                    _trend_icon = (
-                        "▲" if _tr == "improving" else ("▼" if _tr == "declining" else "◆")
-                    )
-                    st.metric(
-                        label=f"{_trend_icon} {_pname}",
-                        value=f"{_second:.2f} F/M",
-                        delta=f"{_pct:+.1f}%",
-                        delta_color="normal" if _tr != "stable" else "off",
-                    )
-                    st.caption(f"{_first:.2f} → {_second:.2f}")
+        render_squad_session_header(players_data, lang=get_lang())
 
     _ctx = {
         "me_name": me_name,
