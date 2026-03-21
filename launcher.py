@@ -1397,24 +1397,51 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
             return 2
         return 0
 
-    # ── Test 10 matchs ────────────────────────────────────────────────────────
-    print()
-    print(f"  → Test : synchronisation de 10 matchs pour « {gamertag} »…")
-    print()
-    try:
-        before, after = _sync_player_duckdb(gamertag, delta=False, max_matches=10)
-    except Exception as e:
-        print(_classify_sync_error(str(e), gamertag))
-        return 2
+    # ── Test 10 matchs (avec retry) ──────────────────────────────────────────
+    new_matches = 0
+    after = 0
+    while True:
+        print()
+        print(f"  → Test : synchronisation de 10 matchs pour « {gamertag} »…")
+        print()
+        test_error: str | None = None
+        before = after = 0
+        try:
+            before, after = _sync_player_duckdb(gamertag, delta=False, max_matches=10)
+        except Exception as e:
+            test_error = _classify_sync_error(str(e), gamertag)
 
-    new_matches = after - before
-    if new_matches > 0:
-        print(f"\n  OK  {new_matches} match(s) synchronise(s) — le test est concluant !")
-    elif after > 0:
-        print(f"\n  OK  {after} match(s) deja presents (rien de nouveau sur 10 matchs)")
-    else:
-        print("\n  Aucun match recupere. Verifie ton token ou ta connexion.")
-        return 2
+        new_matches = after - before
+
+        if test_error or (new_matches == 0 and after == 0):
+            if test_error:
+                print(f"\n  Echec du test : {test_error}")
+            else:
+                print("\n  Aucun match recupere. Verifie ton token ou ta connexion.")
+            print()
+            print("  Que veux-tu faire ?")
+            print()
+            print("  1) Reessayer le test")
+            print("  2) Lancer le dashboard quand meme (synchronisation plus tard)")
+            print("  Q) Quitter")
+            print()
+            try:
+                fail_choice = input("  Ton choix (1/2/Q) [2] : ").strip().lower() or "2"
+            except (EOFError, KeyboardInterrupt):
+                fail_choice = "q"
+
+            if fail_choice == "1":
+                continue  # relance le test
+            if fail_choice == "q":
+                return 2
+            return 0  # lancer quand même
+
+        # Test concluant
+        if new_matches > 0:
+            print(f"\n  OK  {new_matches} match(s) synchronise(s) — le test est concluant !")
+        else:
+            print(f"\n  OK  {after} match(s) deja presents (rien de nouveau sur 10 matchs)")
+        break
 
     # ── Proposition de poursuivre ─────────────────────────────────────────────
     print()
