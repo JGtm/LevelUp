@@ -1,6 +1,6 @@
-﻿— Tâches et TODO centralisés
+— Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-19.
+> Mis à jour le 2026-03-21.
 
 ---
 
@@ -8,6 +8,10 @@
 
 | Date | Item |
 |------|------|
+| 2026-03-21 | **UI — Graphe stats/min escouade : morts sous l'axe** — `plot_per_minute_timeseries` : deaths tracées en négatif (`dpm_neg`), `customdata[5]` = valeur absolue, `hover_dpm_neg` i18n, ticks Y absolus via `build_symmetric_abs_ticks` (extrait dans `src/visualization/_permin_helpers.py`). `timeseries.py` à exactement 500L. |
+| 2026-03-21 | **Maintenance — Nettoyage dossier `scripts/`** — 10 scripts investigation → `scripts/investigation/` + README ; `cleanup_legacy_tables.py` + `cleanup_player_dbs_v5.py` → `scripts/_archive/` ; `.tmp.*` supprimés. |
+| 2026-03-21 | **CI — Scripts exclus par `.gitignore`** — `check_code_size.py` → `enforce_size_limits.py` ; `check_imports.py` → `validate_imports.py` ; stubs `test_page_router_smoke.py` + `test_page_router_regressions.py` créés. Références mises à jour dans `ci.yml`, `.pre-commit-config.yaml`, `test_code_quality.py`. |
+| 2026-03-21 | **UI — Notation de session escouade (Page Coéquipiers)** — `compute_squad_performance_score()` dans `src/analysis/_performance_squad.py` ; `SQUAD_GRADE_THRESHOLDS` + `resolve_squad_grade()` dans `performance_config.py` ; `render_squad_session_header()` + `_render_squad_score_block()` dans `src/ui/components/performance.py` ; 7 clés i18n `squad_grade_*` dans `src/ui/i18n/pages/teammates.py` ; bloc tendance K/D remplacé dans `teammates.py` ; 18 tests unitaires. |
 | 2026-03-21 | **Perf — `_MAX_CONCURRENT_CHUNKS`** : déjà à 50 en production (`weapon_extraction_service.py`). Tâche obsolète — objectif déjà atteint. |
 | 2026-03-19 | **Medal definitions en BDD** — table `medal_definitions` dans `metadata.duckdb` (167 médailles, DB-first + JSON-fallback). Migration, script population, CLI `--medal-metadata`, `MedalsMixin.load_medal_definitions()` / `get_medal_label()`, UI DB-first dans `medals.py`, 16 tests unitaires + 4 intégration. Orphan `citations_{fr,en}.json` supprimés. |
 | 2026-03-19 | **Phase 8 — Couche centralisée médailles** (`medal_definitions.py`) — `src/data/medal_definitions.py` source canonique unique ; `_medal_data.py` thin re-export ; `medals.py` wrapper `@st.cache_data` délégant ; `_medals_repo.py` délègue. 3 chemins DB indépendants → 1. Fallbacks JSON applicatifs supprimés de `medals.py`. JSON `static/medals/*.json` conservés (source pour `populate_medal_metadata.py`). 51 tests passent. Commit `88d5cf0`. |
@@ -67,7 +71,7 @@
 ##### H1 — Vérifier que des sentinels `weapon_id ∈ {0,1,2}` portent un `reconciled_as` non-null en base
 
 ```sql
--- Sur shared_matches.duckdb
+-- Sur shared_matches_v2.duckdb (DB de production v6)
 SELECT weapon_id, reconciled_as, attribution_path, confidence, COUNT(*) AS n
 FROM weapon_kills
 WHERE weapon_id IN (0, 1, 2)
@@ -143,7 +147,7 @@ GROUP BY weapon_id, reconciled_as;
 ##### H4 — Vérifier l'asymétrie du sentinel `3` (absent de `EXCLUDED_WEAPON_IDS`)
 
 ```sql
--- Lignes weapon_id=3 dans v_weapon_kills
+-- Lignes weapon_id=3 dans v_weapon_kills (shared_matches_v2.duckdb)
 SELECT COUNT(*) AS n, COUNT(DISTINCT match_id) AS n_matchs
 FROM shared.v_weapon_kills
 WHERE weapon_id = 3 OR effective_weapon_id = 3;
@@ -153,14 +157,9 @@ WHERE weapon_id = 3 OR effective_weapon_id = 3;
 
 ---
 
-##### H5 — Vérifier que `_fix_weapon_kills_sentinel.py` cible bien la DB de production
+##### H5 — Script `_fix_weapon_kills_sentinel.py` et DB de production
 
-```python
-# Chercher DB_PATH dans le script
-DB_PATH = "data/warehouse/shared_matches_v2.duckdb"  # ← ancienne convention ?
-```
-
-Si le chemin est `shared_matches_v2.duckdb` et non `shared_matches.duckdb`, **le script ne peut pas s'exécuter sur la DB active** sans modification manuelle de ce paramètre.
+> **Statut : confirmé correct (v6).** `shared_matches_v2.duckdb` **est** la DB de production depuis v6. Le script qui cible ce chemin opère bien sur les données actives.
 
 ---
 
@@ -172,7 +171,7 @@ Si le chemin est `shared_matches_v2.duckdb` et non `shared_matches.duckdb`, **le
 | H2 — Filtre `EXCLUDED_WEAPON_IDS` opère sur post-COALESCE | Lecture code | **Confirmée** (code verbatim) |
 | H3 — `_enrich_with_grenade_melee` source indépendante (API) | Lecture code + SQL H3 | **Confirmée** (code verbatim) |
 | H4 — Sentinel `3` absent de `EXCLUDED_WEAPON_IDS` | Requête SQL H4 | À vérifier |
-| H5 — Script fix cible mauvaise DB | Lecture code | **Confirmée** (chemin `_v2`) |
+| H5 — Script fix cible DB de production | Lecture code | **Confirmée** (`_v2` = production v6) |
 
 > **Décision go/no-go** : si H1 retourne au moins une ligne, le double-comptage est avéré et les fixs décrits ci-dessous sont valides. Si H1 est vide, rouvrir l'investigation sur la source du delta (ex. kills API vs. kills film sans sentinel, ou bug de déduplication dans le GROUP BY).
 
@@ -190,175 +189,3 @@ Si le chemin est `shared_matches_v2.duckdb` et non `shared_matches.duckdb`, **le
 - Script de nettoyage existant : `scripts/_fix_weapon_kills_sentinel.py` (CAT 2) peut normaliser les lignes corrompues déjà en base.
 
 **Fix minimal recommandé** : Dans `load_weapon_kills_for_player()` (et `load_weapon_kills_for_match()`), exclure les lignes dont `weapon_id` est un sentinel même si `reconciled_as` est non-null — soit via `AND (weapon_id IS NULL OR weapon_id > 3)`, soit via `AND attribution_path != 'none'`.
-
----
-
----
-
-### UI — Notation de session escouade (en-tête Page Coéquipiers)
-
-**Objectif** : Remplacer les métriques "Tendance K/D" (bloc `st.metric` par joueur, lignes ~134–173 de `teammates.py`) par un en-tête de session d'équipe plus riche et soigné. Pas d'emojis sauf les étoiles pour la notation. Réutiliser les scores de performances de chaque joueur pour chaque match si nécécessaire/possible.
-
-#### A — Scores individuels par joueur (côte à côte)
-
-Réutiliser **`compute_session_performance_score_v2_ui`** + **`render_performance_score_card`** sur les matchs communs filtrés (`sub` pour le joueur principal, `_friend_df` pour chaque coéquipier). Une carte par joueur en `st.columns`. Badge ▲/▼ si un joueur se démarque de la moyenne d'équipe (ajouter note explicative si nécessaire).
-
-```python
-perf_me = compute_session_performance_score_v2_ui(sub)
-perf_f1 = compute_session_performance_score_v2_ui(friend_sub)
-```
-
-#### B — Score d'équipe agrégé
-
-Sous les cartes individuelles, un score collectif unique (ajouter la note de performance moyenne de chaque joueur sur la session ?) :
-
-```
-Score équipe = moyenne(scores individuels)
-             + bonus_winrate   (+5 si win_rate_équipe > 60 %)
-             + bonus_cohesion  (+5 si min(K/D individuel) > 1.0)
-             + bonus_équilibre (+3 si std(kills par joueur) < seuil)
-```
-
-Score plafonné à 100. Afficher via `render_performance_score_card(label="Équipe", ...)`. Créer `compute_squad_performance_score(scores: list[dict]) -> dict` dans `src/analysis/performance_score.py`.
-
-#### D — Grade de carnage (ludique, sans emojis)
-
-Au-dessus ou à côté du score d'équipe, afficher un grade textuel en majuscules :
-
-| Score | Grade |
-|------:|-------|
-| ≥ 88 | LÉGENDAIRE | 5 emojis étoiles ?
-| ≥ 75 | CARNAGE |
-| ≥ 60 | SOLIDE |
-| ≥ 45 | MOYEN |
-| < ou égal 45 | DIFFICILE |
-| < 30 | CATASTROPHIQUE |
-
-Ajouter `SQUAD_GRADE_THRESHOLDS` dans `src/analysis/performance_config.py`. Clés i18n `squad_grade_*` dans `src/ui/translations.py`. Style : `font-size: 1.6rem`, majuscules, couleur selon grade (même palette que `get_score_color`).
-
-#### Fichiers impactés
-
-| Fichier | Modification |
-|---------|-------------|
-| `src/ui/pages/teammates.py` | Supprimer bloc tendance K/D ; ajouter appel `render_squad_session_header()` |
-| `src/ui/pages/teammates_views.py` | Idem si appelé depuis les vues single/multi |
-| `src/analysis/performance_score.py` | Ajouter `compute_squad_performance_score()` |
-| `src/analysis/performance_config.py` | Ajouter `SQUAD_GRADE_THRESHOLDS` |
-| `src/ui/components/performance.py` | Ajouter `render_squad_session_header()` |
-| `src/ui/translations.py` | Clés `squad_grade_*` |
-
----
-
-### CI — Échecs permanents : scripts exclus par `.gitignore`
-
-**Diagnostic (2026-03-20)** : Trois fichiers référencés dans `.github/workflows/ci.yml` et dans les tests ne sont jamais poussés sur GitHub car couverts par la règle `check_*.py` / `diagnose_*.py` du `.gitignore`.
-
-| Fichier manquant | Référencé dans | Impact |
-|------------------|----------------|--------|
-| `scripts/check_code_size.py` | Job `quality` (ci.yml L118) + `test_code_quality.py::test_no_new_size_violations` | Jobs `quality` **et** `test` en rouge |
-| `scripts/check_imports.py` | Job `quality` (ci.yml L121, `\|\| true`) | Erreur silencieuse uniquement |
-| `tests/test_page_router_smoke.py` | Job `streamlit-smoke` (ci.yml L79) | Job `streamlit-smoke` en rouge |
-| `tests/test_page_router_regressions.py` | Job `streamlit-smoke` (ci.yml L79) | Job `streamlit-smoke` en rouge |
-
-> Note : `test_page_router_smoke.py` et `test_page_router_regressions.py` ne sont **pas** couverts par le `.gitignore` — ces fichiers n'ont simplement jamais été créés ou ont été supprimés.
-
-#### Option A — Renommer les scripts (recommandée)
-
-Renommer pour sortir du pattern `check_*.py` :
-
-```
-scripts/check_code_size.py  →  scripts/enforce_size_limits.py
-scripts/check_imports.py    →  scripts/validate_imports.py
-```
-
-Puis mettre à jour les références dans :
-- `.github/workflows/ci.yml` (lignes `quality` job)
-- `tests/test_code_quality.py` (`subprocess.run([..., "scripts/check_code_size.py"])`)
-
-#### Option B — Ajouter des exceptions dans `.gitignore`
-
-Dans `.gitignore`, sous la règle `check_*.py` :
-
-```gitignore
-# Scripts de diagnostic temporaires
-check_*.py
-diagnose_*.py
-# Exceptions CI permanentes
-!scripts/check_code_size.py
-!scripts/check_imports.py
-```
-
-#### Pour les fichiers de tests manquants
-
-Créer `tests/test_page_router_smoke.py` et `tests/test_page_router_regressions.py` (stubs minimes suffisent), **ou** retirer ces deux fichiers de la commande pytest dans le job `streamlit-smoke` si la feature page-router n'est pas encore implémentée.
-
----
-
-### Maintenance — Tri et nettoyage du dossier `scripts/`
-
-**Objectif** : réduire le bruit dans `scripts/` en supprimant les scripts obsolètes, en déplaçant les scripts d'investigation/expérimentation dans un sous-dossier dédié, et en archivant les scripts liés à l'ancien monitor de run.
-
-#### Actions prévues
-
-1. **Inventaire** : passer en revue tous les fichiers de `scripts/` et les classer en trois catégories :
-   - *Courant* : scripts actifs, maintenus, utilisés en production ou en CI
-   - *Investigation/exp* : scripts `exp_*`, `analyze_*`, `audit_*`, `diagnose_*`, `demo_*`, `benchmark_*` — à déplacer dans `scripts/investigation/`
-   - *Run monitor* : scripts et helpers dédiés à l'outil de monitoring de run (ex. `monitor_uptime.py`) — à archiver dans `scripts/archive/run_monitor/`
-
-2. **Nettoyage** :
-   - Supprimer les fichiers `.tmp.*` orphelins (`exp_find_pi_offset.py.tmp.*`, `populate_citation_mappings.py.tmp.*`)
-   - Supprimer les scripts rendus obsolètes par les migrations v5/v6 (ex. `cleanup_legacy_tables.py`, `cleanup_player_dbs_v5.py`, `cleanup_rank_from_player_assets.py` si plus utilisés)
-   - Vérifier que les scripts supprimés ne sont pas référencés dans le CI (`.github/workflows/ci.yml`) ou dans des tests
-
-3. **Archivage run monitor** :
-   - Créer `scripts/archive/run_monitor/` et y déplacer `monitor_uptime.py` ainsi que tout helper associé
-   - Ajouter un `README.md` dans ce sous-dossier expliquant pourquoi ces scripts sont archivés
-
-4. **Mise à jour de la doc** : refléter la nouvelle arborescence dans `docs/COMMANDS.md` si nécessaire.
-
-#### Fichiers potentiellement concernés (à confirmer lors de l'inventaire)
-
-| Fichier | Catégorie supposée |
-|---------|-------------------|
-| `analyze_match_overlap.py` | Investigation |
-| `audit_current_data.py` | Investigation |
-| `benchmark_*.py` | Investigation |
-| `demo_regression_detection.py` | Investigation |
-| `diagnose_*.py` | Investigation |
-| `exp_*.py` + `.tmp.*` | Investigation / à supprimer |
-| `monitor_uptime.py` | Run monitor → archive |
-| `cleanup_legacy_tables.py` | Obsolète probable |
-| `cleanup_player_dbs_v5.py` | Obsolète probable (post-v5.1) |
-| `cleanup_rank_from_player_assets.py` | À vérifier |
-
----
-
-### UI — Graphe stats par minute (escouade) : morts sous l'axe en couleurs négatives
-
-**Page** : Onglet Escouade — graphe *Stats par minute* (stats-per-minute chart).
-
-**Objectif** : inverser l'axe des morts (`deaths`) pour les afficher **en-dessous de zéro**, en utilisant la couleur "négative" propre à chaque joueur, afin de mieux distinguer visuellement les kills des morts.
-
-#### Comportement attendu
-
-- Les **kills** restent au-dessus de l'axe X, avec la couleur principale du joueur.
-- Les **morts** sont tracées **sous l'axe X** (valeurs negatives, i.e. `deaths` multiplié par `-1` avant le tracé), avec la **couleur négative** associée au joueur (ex. version désaturée ou complémentaire de sa couleur principale).
-- La légende et les tooltips indiquent toujours la valeur absolue réelle (pas `−3`, mais `3 morts`).
-- L'axe Y affiche des labels absolus (pas de tiret négatif visible pour l'utilisateur final).
-
-#### Fichiers probablement concernés
-
-| Fichier | Rôle attendu |
-|---------|-------------|
-| `src/ui/pages/teammates.py` ou `teammates_views.py` | Appel du graphe stats par minute |
-| Fichier du composant graphe stats/min | Construction des traces Plotly — à identifier |
-| `src/ui/i18n/viz/` | Clés i18n labels axes / légendes si besoin |
-| `src/ui/streamlit_modern.py` | Config Plotly commune |
-
-#### Points de vigilance
-
-- Identifier comment les couleurs "négatives" sont déjà définies (palette joueur) — probablement dans `src/ui/pages/teammates*.py` ou un fichier de constantes couleur.
-- Si la palette négative n'existe pas encore, la créer (ex. `get_player_negative_color(color: str) -> str` par désaturation HSL ou opacité réduite).
-- Vérifier que le composant graphe existant supporte déjà les valeurs négatives sur l'axe Y (Plotly les gère nativement).
-- S'assurer que le formatage du tooltip affiche la valeur absolue (`customdata` + `hovertemplate`).
-- Respecter la règle `width="stretch"` et inclure `config=PLOTLY_CLEAN_CONFIG`.

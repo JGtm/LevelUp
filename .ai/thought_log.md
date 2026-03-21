@@ -7,6 +7,38 @@
 
 ## Journal
 
+### [2026-03-21] — Vérification finale + nettoyage BACKLOG — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+- Backlog nettoyé : Tâches 3/4/5/6 déplacées dans "Récemment complété", note H5 corrigée (`shared_matches_v2.duckdb` est la DB de production v6 — le script cible est correct).
+- Logging ajouté dans `_performance_squad.py` (`logger = logging.getLogger(__name__)` + 2 `logger.debug()`).
+- Nouveau fichier `tests/test_permin_helpers.py` : 11 tests pour `build_symmetric_abs_ticks()` (symétrie, labels absolus, zéro inclus, n_steps, tri croissant).
+
+**Résultats** : 29 tests passent (test_permin_helpers + test_squad_performance). Tâche 1 seule en backlog.
+
+**Prochaine étape** : Tâche 1 (Bug armes — sentinels double-comptage) — investigation SQL H1/H4 d'abord.
+
+---
+
+### [2026-03-21] — Backlog complet : CI + scripts + escouade + graphe morts — Complété
+
+**Statut** : Complété (4 commits sur `refactor/id-resolution-cleanup`)
+
+**Décision technique** :
+1. **Tâche 2 (chunks)** : Marquée réalisée — `_MAX_CONCURRENT_CHUNKS` déjà à 50 en production.
+2. **Tâche 4 (CI)** : `check_code_size.py` → `enforce_size_limits.py`, `check_imports.py` → `validate_imports.py` pour sortir du pattern `check_*.py` du `.gitignore`. `.pre-commit-config.yaml` + `ci.yml` + `test_code_quality.py` mis à jour. Stubs `test_page_router_smoke.py` + `test_page_router_regressions.py` créés (skipped).
+3. **Tâche 5 (scripts)** : 10 scripts → `scripts/investigation/`, 2 scripts legacy v5 → `scripts/_archive/`, `.tmp.*` orphelins supprimés. Scripts non bougés : ceux référencés par des tests (`diagnose_player_db`, `_metadata_db`, `monitor_uptime`, `cleanup_rank_from_player_assets`).
+4. **Tâche 3 (escouade)** : Bloc Tendance K/D remplacé par `render_squad_session_header()`. Nouveau module `_performance_squad.py` avec `compute_squad_performance_score()` (bonus winrate/cohésion/équilibre), `SQUAD_GRADE_THRESHOLDS` + `resolve_squad_grade()` dans `performance_config.py`, 7 clés i18n, 18 tests.
+5. **Tâche 6 (graphe morts)** : `plot_per_minute_timeseries` — deaths tracées en négatif (`dpm_neg`), couleur rouge à 0.4 opacité, hover avec valeur absolue via `customdata[5]`, ticks Y absolus via `build_symmetric_abs_ticks()` (extrait dans `_permin_helpers.py` pour rester sous 500L).
+
+**Résultats** : 21 tests passent, 4 commits propres, pre-commit vert.
+
+**Prochaine étape** : Tâche 1 (Bug armes — sentinels double-comptage) — investigation SQL H1/H4 d'abord.
+
+---
+
 ### [2026-03-19] — Fix taille uniforme médailles (Vengeur 2× trop grande) — Complété
 
 **Statut** : Complété
