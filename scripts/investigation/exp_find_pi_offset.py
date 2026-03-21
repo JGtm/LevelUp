@@ -33,8 +33,8 @@ from bitstring import Bits
 
 from src.analysis._weapon_data import WEAPON_IDS_INT
 from src.analysis._weapon_scanners import (
-    COMMON_WEAPON_SUFFIX,
     _WEAPON_BIT_OFFSET,
+    COMMON_WEAPON_SUFFIX,
     estimate_ts_frames,
 )
 from src.analysis.packet_index import (
@@ -46,12 +46,12 @@ from src.analysis.weapon_parser import detect_player_indices
 
 MATCH_ID = "82f3af9f-c0fa-477b-be9b-df240d62305d"
 CACHE_DIR = ROOT / "data/cache/film_chunks" / MATCH_ID[:8]
-MANIFEST  = ROOT / "data/cache/film_manifests" / f"{MATCH_ID[:8]}.json"
+MANIFEST = ROOT / "data/cache/film_manifests" / f"{MATCH_ID[:8]}.json"
 SHARED_DB = ROOT / "data/warehouse/shared_matches_v2.duckdb"
 
 # Marqueur fixe acurtis (= _build_marker(1) dans le code actuel)
 FIXED_MARKER = Bits(bin="0b10100100110")  # 11 bits
-FIXED_MARKER_LEN = len(FIXED_MARKER)      # 11
+FIXED_MARKER_LEN = len(FIXED_MARKER)  # 11
 
 KILL_WINDOW_MS = 2000  # ms avant le kill pour chercher un fire event
 
@@ -62,6 +62,7 @@ MAX_OFFSET = 50  # tester offset 0..MAX_OFFSET-1 pour chaque base
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def load_chunks() -> dict[int, tuple[bytes, int, int]]:
     manifest = json.loads(MANIFEST.read_text())
@@ -125,6 +126,7 @@ def load_kills() -> list[dict]:
 
 # ── Scan avec marqueur fixe ───────────────────────────────────────────────────
 
+
 def scan_chunk_fixed_marker(
     data: bytes,
     start_ms: int,
@@ -153,10 +155,7 @@ def scan_chunk_fixed_marker(
         weapon_int_a = bits[weapon_start_a : weapon_start_a + 64].uint
         weapon_bytes_a = weapon_int_a.to_bytes(8, byteorder="big")
 
-        valid_a = (
-            weapon_int_a in WEAPON_IDS_INT
-            or weapon_bytes_a[4:] == COMMON_WEAPON_SUFFIX
-        )
+        valid_a = weapon_int_a in WEAPON_IDS_INT or weapon_bytes_a[4:] == COMMON_WEAPON_SUFFIX
 
         # Valider aussi avec base_b
         valid_b = False
@@ -165,10 +164,7 @@ def scan_chunk_fixed_marker(
         if weapon_start_b + 64 <= total_bits:
             weapon_int_b = bits[weapon_start_b : weapon_start_b + 64].uint
             weapon_bytes_b = weapon_int_b.to_bytes(8, byteorder="big")
-            valid_b = (
-                weapon_int_b in WEAPON_IDS_INT
-                or weapon_bytes_b[4:] == COMMON_WEAPON_SUFFIX
-            )
+            valid_b = weapon_int_b in WEAPON_IDS_INT or weapon_bytes_b[4:] == COMMON_WEAPON_SUFFIX
 
         if not valid_a and not valid_b:
             continue
@@ -203,20 +199,22 @@ def scan_chunk_fixed_marker(
         if base_a + 32 <= total_bits:
             fire_counter = bits[base_a + 24 : base_a + 32].uint
 
-        events.append({
-            "t_ms": t_ms,
-            "chunk_idx": chunk_idx,
-            "pos": pos,
-            "byte_pos": byte_pos,
-            "fire_counter": fire_counter,
-            "weapon_bytes_a": weapon_bytes_a if valid_a else None,
-            "weapon_bytes_b": weapon_bytes_b if valid_b else None,
-            "valid_a": valid_a,
-            "valid_b": valid_b,
-            "fields_a": fields_a,   # offset -> 5-bit value (base_a = pos+3)
-            "fields_b": fields_b,   # offset -> 5-bit value (base_b = pos+11)
-            "fields_pre": fields_pre,  # neg offset -> 3-bit value (b0 region before marker)
-        })
+        events.append(
+            {
+                "t_ms": t_ms,
+                "chunk_idx": chunk_idx,
+                "pos": pos,
+                "byte_pos": byte_pos,
+                "fire_counter": fire_counter,
+                "weapon_bytes_a": weapon_bytes_a if valid_a else None,
+                "weapon_bytes_b": weapon_bytes_b if valid_b else None,
+                "valid_a": valid_a,
+                "valid_b": valid_b,
+                "fields_a": fields_a,  # offset -> 5-bit value (base_a = pos+3)
+                "fields_b": fields_b,  # offset -> 5-bit value (base_b = pos+11)
+                "fields_pre": fields_pre,  # neg offset -> 3-bit value (b0 region before marker)
+            }
+        )
 
     # Dedup par (fire_counter, weapon_bytes_a) pour base_a
     deduped: dict[tuple, dict] = {}
@@ -228,6 +226,7 @@ def scan_chunk_fixed_marker(
 
 
 # ── Recherche empirique ───────────────────────────────────────────────────────
+
 
 def find_pi_offset(
     all_events: list[dict],
@@ -242,9 +241,9 @@ def find_pi_offset(
         if k["xuid"] in xuid_to_pi:
             kills_by_xuid[k["xuid"]].append(k["time_ms"])
 
-    votes_a: Counter = Counter()   # base_a (pos+3), 5-bit values
-    votes_b: Counter = Counter()   # base_b (pos+11), 5-bit values
-    votes_pre: Counter = Counter() # before base_a, 3-bit values (b0 region)
+    votes_a: Counter = Counter()  # base_a (pos+3), 5-bit values
+    votes_b: Counter = Counter()  # base_b (pos+11), 5-bit values
+    votes_pre: Counter = Counter()  # before base_a, 3-bit values (b0 region)
     total_matched = 0
     misses = 0
 
@@ -253,8 +252,7 @@ def find_pi_offset(
         for t_kill in kill_times:
             # Trouver le fire event le plus récent dans la fenêtre [t_kill-WINDOW, t_kill]
             candidates = [
-                ev for ev in all_events
-                if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
+                ev for ev in all_events if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
             ]
             if not candidates:
                 misses += 1
@@ -276,19 +274,21 @@ def find_pi_offset(
                     votes_pre[off] += 1
 
     total_kills = sum(len(v) for v in kills_by_xuid.values())
-    print(f"\n[empirique] {total_kills} kills avec pi connu, "
-          f"{total_matched} avec event dans la fenetre, "
-          f"{misses} sans event")
+    print(
+        f"\n[empirique] {total_kills} kills avec pi connu, "
+        f"{total_matched} avec event dans la fenetre, "
+        f"{misses} sans event"
+    )
 
     # Afficher top-10 offsets pour chaque base
-    print(f"\n--- Base A (pos+3, convention actuelle), 5-bit ---")
+    print("\n--- Base A (pos+3, convention actuelle), 5-bit ---")
     _print_top_offsets(votes_a, total_matched)
 
-    print(f"\n--- Base B (pos+11, apres marqueur complet), 5-bit ---")
+    print("\n--- Base B (pos+11, apres marqueur complet), 5-bit ---")
     _print_top_offsets(votes_b, total_matched)
 
-    print(f"\n--- Region b0 AVANT base_a (offsets negatifs), 3-bit ---")
-    print(f"  Theorie: pi = bits[base_a-8 : base_a-5] = offset -8 (3 bits)")
+    print("\n--- Region b0 AVANT base_a (offsets negatifs), 3-bit ---")
+    print("  Theorie: pi = bits[base_a-8 : base_a-5] = offset -8 (3 bits)")
     _print_top_offsets_3bit(votes_pre, total_matched)
 
     # Verification : pour le meilleur offset, afficher la distribution pi
@@ -304,11 +304,11 @@ def find_pi_offset(
         _verify_offset_pre(all_events, kills, xuid_to_pi, best_pre_off)
 
     # Test filtré : si offset 31 est le vrai pi, filtrer par pi AVANT de prendre le plus proche
-    print(f"\n--- TEST FILTRE par fields_a[31] == pi ---")
+    print("\n--- TEST FILTRE par fields_a[31] == pi ---")
     _verify_filtered_by_pi(all_events, kills, xuid_to_pi, 31)
 
     # Distribution fields_a[31] sur TOUS les 773 events
-    print(f"\n--- Distribution fields_a[31] sur TOUS les events ---")
+    print("\n--- Distribution fields_a[31] sur TOUS les events ---")
     dist_all: Counter = Counter()
     for ev in all_events:
         v = ev["fields_a"].get(31)
@@ -318,11 +318,11 @@ def find_pi_offset(
     print(f"  Total events avec valeur: {sum(dist_all.values())}")
 
     # Test spécifique : pi = top-3-bits de b0 (pos-5 à pos-2 dans bitstream)
-    print(f"\n--- TEST DIRECT : top-3-bits de b0 (bits[pos-5:pos-2]) vs pi ---")
+    print("\n--- TEST DIRECT : top-3-bits de b0 (bits[pos-5:pos-2]) vs pi ---")
     _test_b0_top3_vs_pi(all_events, kills, xuid_to_pi)
 
     # Test final : global pool (état actuel) vs filtre POV uniquement
-    print(f"\n--- COMPARAISON : global pool vs filtre POV (pi=1 seulement) ---")
+    print("\n--- COMPARAISON : global pool vs filtre POV (pi=1 seulement) ---")
     _compare_global_vs_pov_filter(all_events, kills, xuid_to_pi)
 
 
@@ -353,8 +353,11 @@ def _compare_global_vs_pov_filter(
         if pi is None:
             continue
         t_ms = k["time_ms"]
-        cands = [(i, ev) for i, ev in enumerate(pool_global)
-                 if (t_ms - KILL_WINDOW_MS) <= ev["t_ms"] <= t_ms]
+        cands = [
+            (i, ev)
+            for i, ev in enumerate(pool_global)
+            if (t_ms - KILL_WINDOW_MS) <= ev["t_ms"] <= t_ms
+        ]
         if cands:
             best_idx, _ = max(cands, key=lambda x: x[1]["t_ms"])
             pool_global.pop(best_idx)
@@ -370,8 +373,11 @@ def _compare_global_vs_pov_filter(
     pov_xuid = next((x for x, p in xuid_to_pi.items() if p == POV_PI), None)
     pov_kills = kills_by_xuid.get(pov_xuid or "", [])
     for t_kill in sorted(pov_kills):
-        cands = [(i, ev) for i, ev in enumerate(pool_pov)
-                 if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill]
+        cands = [
+            (i, ev)
+            for i, ev in enumerate(pool_pov)
+            if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
+        ]
         if cands:
             best_idx, _ = max(cands, key=lambda x: x[1]["t_ms"])
             pool_pov.pop(best_idx)
@@ -384,12 +390,14 @@ def _compare_global_vs_pov_filter(
     print(f"  POV player : pi={POV_PI} xuid={pov_xuid}  kills={pov_total}/{total_kills}")
     print(f"  Events valides disponibles: {len(valid)}")
     print()
-    print(f"  GLOBAL POOL (actuel):")
+    print("  GLOBAL POOL (actuel):")
     print(f"    Total matchés: {matched_global}/{total_kills}")
     print(f"    POV kills matchés: {pov_matched}/{pov_total} (CORRECT)")
-    print(f"    Non-POV kills matchés: {non_pov_matched}/{non_pov_total} (ATTRIBUTION CROISEE = BUG)")
+    print(
+        f"    Non-POV kills matchés: {non_pov_matched}/{non_pov_total} (ATTRIBUTION CROISEE = BUG)"
+    )
     print()
-    print(f"  FILTRE POV (fix proposé):")
+    print("  FILTRE POV (fix proposé):")
     print(f"    POV kills matchés: {matched_pov_only}/{pov_total}")
     print(f"    Non-POV kills matchés: 0/{non_pov_total} (-> fallback Formula A)")
 
@@ -400,7 +408,6 @@ def _test_b0_top3_vs_pi(
     xuid_to_pi: dict[str, int],
 ) -> None:
     """Test direct : extrait les 3 bits MSB de b0 (avant le marqueur) pour les events valides."""
-    from src.analysis._weapon_scanners import COMMON_WEAPON_SUFFIX
 
     # Filtrer les events avec slot valide (les 58 vrais)
     valid: list[dict] = []
@@ -442,10 +449,7 @@ def _test_b0_top3_vs_pi(
     for xuid, kill_times in kills_by_xuid.items():
         pi = xuid_to_pi[xuid]
         for t_kill in kill_times:
-            candidates = [
-                ev for ev in valid
-                if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
-            ]
+            candidates = [ev for ev in valid if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill]
             if not candidates:
                 continue
             best = max(candidates, key=lambda e: e["t_ms"])
@@ -462,14 +466,15 @@ def _test_b0_top3_vs_pi(
     correct_filtered = 0
     no_match_filtered = 0
     total_filtered = 0
-    per_player: dict[int, tuple[int,int]] = {}
+    per_player: dict[int, tuple[int, int]] = {}
     for xuid, kill_times in kills_by_xuid.items():
         pi = xuid_to_pi[xuid]
         pk = len(kill_times)
         pm = 0
         for t_kill in kill_times:
             candidates = [
-                ev for ev in valid
+                ev
+                for ev in valid
                 if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
                 and ev["fields_pre"].get(-5) == pi
             ]
@@ -483,7 +488,7 @@ def _test_b0_top3_vs_pi(
 
     pct2 = correct_filtered * 100 // total_filtered if total_filtered else 0
     print(f"  Filtré par top-3-bits=pi : {correct_filtered}/{total_filtered} ({pct2}%)")
-    print(f"  Par joueur:")
+    print("  Par joueur:")
     for pi in sorted(per_player):
         pk, pm = per_player[pi]
         ppct = pm * 100 // pk if pk else 0
@@ -515,7 +520,6 @@ def _validate_event_structure(
     chunks: dict,
 ) -> None:
     """Valide la structure des events : pos%8, counter div 4, slot in {1,3}."""
-    from src.analysis._weapon_scanners import estimate_ts_frames
 
     pos_mod8: Counter = Counter()
     counter_valid = 0
@@ -557,8 +561,12 @@ def _validate_event_structure(
     total = len(all_events)
     print(f"\n--- Validation structurelle ({total} events) ---")
     print(f"  pos%8 distribution: {dict(sorted(pos_mod8.items()))}")
-    print(f"  counter div4: {counter_valid}/{counter_valid+counter_invalid} ({counter_valid*100//(counter_valid+counter_invalid) if counter_valid+counter_invalid else 0}%)")
-    print(f"  slot in {{1,3}}: {slot_valid}/{slot_valid+slot_invalid} ({slot_valid*100//(slot_valid+slot_invalid) if slot_valid+slot_invalid else 0}%)")
+    print(
+        f"  counter div4: {counter_valid}/{counter_valid+counter_invalid} ({counter_valid*100//(counter_valid+counter_invalid) if counter_valid+counter_invalid else 0}%)"
+    )
+    print(
+        f"  slot in {{1,3}}: {slot_valid}/{slot_valid+slot_invalid} ({slot_valid*100//(slot_valid+slot_invalid) if slot_valid+slot_invalid else 0}%)"
+    )
     print(f"  slot dist top10: {dict(slot_dist.most_common(10))}")
 
 
@@ -578,7 +586,7 @@ def _verify_filtered_by_pi(
         if k["xuid"] in xuid_to_pi:
             kills_by_xuid[k["xuid"]].append(k["time_ms"])
 
-    per_player: dict[int, tuple[int,int]] = {}  # pi -> (total_kills, matched)
+    per_player: dict[int, tuple[int, int]] = {}  # pi -> (total_kills, matched)
 
     for xuid, kill_times in kills_by_xuid.items():
         pi = xuid_to_pi[xuid]
@@ -588,7 +596,8 @@ def _verify_filtered_by_pi(
             pk += 1
             # Filtrer par pi d'abord
             candidates = [
-                ev for ev in all_events
+                ev
+                for ev in all_events
                 if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
                 and ev["fields_a"].get(off) == pi
             ]
@@ -602,7 +611,7 @@ def _verify_filtered_by_pi(
 
     pct = correct * 100 // total if total else 0
     print(f"  Match: {correct}/{total} ({pct}%)  No-match: {no_match}")
-    print(f"  Par joueur (pi: kills_total / matched):")
+    print("  Par joueur (pi: kills_total / matched):")
     for pi in sorted(per_player):
         pk, pm = per_player[pi]
         ppct = pm * 100 // pk if pk else 0
@@ -630,8 +639,7 @@ def _verify_offset_pre(
         pi = xuid_to_pi[xuid]
         for t_kill in kill_times:
             candidates = [
-                ev for ev in all_events
-                if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
+                ev for ev in all_events if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
             ]
             if not candidates:
                 continue
@@ -681,8 +689,7 @@ def _verify_offset(
         pi = xuid_to_pi[xuid]
         for t_kill in kill_times:
             candidates = [
-                ev for ev in all_events
-                if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
+                ev for ev in all_events if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
             ]
             if not candidates:
                 continue
@@ -708,18 +715,20 @@ def _verify_offset(
             pi = xuid_to_pi[xuid]
             for t_kill in kill_times:
                 candidates = [
-                    ev for ev in all_events
-                    if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
+                    ev for ev in all_events if (t_kill - KILL_WINDOW_MS) <= ev["t_ms"] <= t_kill
                 ]
                 if not candidates:
                     continue
                 best = max(candidates, key=lambda e: e["t_ms"])
                 extracted = best[field_key].get(off)
                 if extracted is not None and extracted != pi:
-                    print(f"    xuid={xuid} pi={pi} extracted={extracted} t={t_kill} ev_t={best['t_ms']:.0f}")
+                    print(
+                        f"    xuid={xuid} pi={pi} extracted={extracted} t={t_kill} ev_t={best['t_ms']:.0f}"
+                    )
 
 
 # ── Scan nibble-shifted pour différents b0 ────────────────────────────────────
+
 
 def _read_shifted(data: bytes, i: int) -> int:
     return ((data[i] << 4) | (data[i + 1] >> 4)) & 0xFF
@@ -730,7 +739,7 @@ def _scan_b0_variants(chunks: dict) -> None:
     from src.analysis._weapon_data import WEAPON_IDS_INT
     from src.analysis._weapon_scanners import COMMON_WEAPON_SUFFIX
 
-    b0_candidates = {pi: (0x0d | (pi << 5)) for pi in range(8)}
+    b0_candidates = {pi: (0x0D | (pi << 5)) for pi in range(8)}
     totals: dict[int, int] = {}
     valid_counts: dict[int, int] = {}
 
@@ -760,10 +769,13 @@ def _scan_b0_variants(chunks: dict) -> None:
                 valid += 1
         totals[pi] = total
         valid_counts[pi] = valid
-        print(f"  pi={pi} b0=0x{b0_val:02x} : {total:4d} events (b1=0x26), {valid:3d} avec slot+ctr+weapon valides")
+        print(
+            f"  pi={pi} b0=0x{b0_val:02x} : {total:4d} events (b1=0x26), {valid:3d} avec slot+ctr+weapon valides"
+        )
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     print(f"Match : {MATCH_ID}")

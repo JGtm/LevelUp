@@ -20,8 +20,8 @@ sys.path.insert(0, str(ROOT))
 
 import duckdb
 
+from src.analysis._weapon_data import WEAPON_BYTES_TO_INT, WEAPON_TIMING_BY_ID
 from src.analysis.packet_index import (
-    build_packet_estimator,
     detect_pi_from_metadata,
     extract_metadata_payload,
     index_chunk,
@@ -29,25 +29,25 @@ from src.analysis.packet_index import (
 from src.analysis.weapon_parser import (
     KILL_WINDOW_MS,
     build_weapon_timelines,
+    compute_confidence,
     detect_player_indices,
     find_chunk_at_time,
     group_events_by_pi,
     map_b2_to_player,
     scan_fire_events_all,
-    compute_confidence,
 )
-from src.analysis._weapon_data import WEAPON_BYTES_TO_INT, WEAPON_TIMING_BY_ID
 
 MATCH_ID = "82f3af9f-c0fa-477b-be9b-df240d62305d"
 CACHE_DIR = ROOT / "data/cache/film_chunks" / MATCH_ID[:8]
-MANIFEST  = ROOT / "data/cache/film_manifests" / f"{MATCH_ID[:8]}.json"
+MANIFEST = ROOT / "data/cache/film_manifests" / f"{MATCH_ID[:8]}.json"
 SHARED_DB = ROOT / "data/warehouse/shared_matches_v2.duckdb"
-META_DB   = ROOT / "data/warehouse/metadata.duckdb"
+META_DB = ROOT / "data/warehouse/metadata.duckdb"
 
 _DEFAULT_TIMING = (650, 2000)
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def load_chunks() -> dict[int, tuple[bytes, int, int]]:
     """Charge les chunks REPLICATION_DATA depuis le cache."""
@@ -156,7 +156,8 @@ def correlate_b2_pi(
 
         # Chercher dans la fenêtre
         candidates = [
-            (i, ev) for i, ev in enumerate(pool)
+            (i, ev)
+            for i, ev in enumerate(pool)
             if (t_ms - KILL_WINDOW_MS) <= ev["timestamp_ms"] <= t_ms
         ]
 
@@ -178,20 +179,33 @@ def correlate_b2_pi(
             delta = int(t_ms - best_ev["timestamp_ms"])
             conf = compute_confidence(wid, delta)
             swap_ms, _ = WEAPON_TIMING_BY_ID.get(wid, _DEFAULT_TIMING)
-            results.append({
-                "xuid": xuid, "time_ms": t_ms, "weapon_id": wid,
-                "delta_ms": delta, "confidence": conf,
-                "swap_detected": delta >= swap_ms,
-                "source": "b2_pi",
-                "pi": pi,
-                "ev_pi": best_ev.get("player_index"),
-            })
+            results.append(
+                {
+                    "xuid": xuid,
+                    "time_ms": t_ms,
+                    "weapon_id": wid,
+                    "delta_ms": delta,
+                    "confidence": conf,
+                    "swap_detected": delta >= swap_ms,
+                    "source": "b2_pi",
+                    "pi": pi,
+                    "ev_pi": best_ev.get("player_index"),
+                }
+            )
         else:
-            results.append({
-                "xuid": xuid, "time_ms": t_ms, "weapon_id": None,
-                "delta_ms": None, "confidence": "none",
-                "swap_detected": False, "source": "no_match", "pi": pi, "ev_pi": None,
-            })
+            results.append(
+                {
+                    "xuid": xuid,
+                    "time_ms": t_ms,
+                    "weapon_id": None,
+                    "delta_ms": None,
+                    "confidence": "none",
+                    "swap_detected": False,
+                    "source": "no_match",
+                    "pi": pi,
+                    "ev_pi": None,
+                }
+            )
 
     return results
 
@@ -204,7 +218,7 @@ def print_comparison(
     xuid_to_pi: dict[str, int],
 ) -> None:
     """Affiche tableau comparatif b2_pi vs actuel par joueur."""
-    from collections import defaultdict, Counter
+    from collections import Counter, defaultdict
 
     b2_by_player: dict[str, list] = defaultdict(list)
     for k in kills_b2:
@@ -224,7 +238,9 @@ def print_comparison(
         # b2_pi
         wcount_b2: Counter = Counter()
         for k in kills:
-            name = labels.get(k["weapon_id"], f"ID:{k['weapon_id']}") if k["weapon_id"] else "INCONNU"
+            name = (
+                labels.get(k["weapon_id"], f"ID:{k['weapon_id']}") if k["weapon_id"] else "INCONNU"
+            )
             wcount_b2[name] += 1
 
         # actuel
@@ -234,9 +250,9 @@ def print_comparison(
         print(f"  {'Arme':35}  {'b2_pi':>7}  {'actuel':>7}  {'diff':>6}")
         changed = False
         for w in all_weapons:
-            n_b2  = wcount_b2.get(w, 0)
+            n_b2 = wcount_b2.get(w, 0)
             n_cur = wcount_cur.get(w, 0)
-            diff  = n_b2 - n_cur
+            diff = n_b2 - n_cur
             marker = "  !" if diff != 0 else ""
             print(f"  {w:35}  {n_b2:>7}  {n_cur:>7}  {diff:>+6}{marker}")
             if diff != 0:
@@ -245,10 +261,13 @@ def print_comparison(
         unmatched = sum(1 for k in kills if k["weapon_id"] is None)
         total = len(kills)
         high_conf = sum(1 for k in kills if k["confidence"] == "high")
-        print(f"  -> Total kills: {total}  matched: {total-unmatched}  high_conf: {high_conf}  changed: {changed}")
+        print(
+            f"  -> Total kills: {total}  matched: {total-unmatched}  high_conf: {high_conf}  changed: {changed}"
+        )
 
 
 # ── main ─────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     print(f"Match : {MATCH_ID}")
@@ -291,13 +310,23 @@ def main() -> None:
 
         # Grouper par pi
         fire_by_pi = group_events_by_pi(all_raw, b2_to_pi)
-        print(f"[b2_to_pi] events par pi: { {pi: len(evs) for pi, evs in sorted(fire_by_pi.items())} }")
-        print(f"[b2_to_pi] joueurs sans pool: { {xuid: pi for xuid, pi in xuid_to_pi.items() if pi not in fire_by_pi} }")
+        print(
+            f"[b2_to_pi] events par pi: { {pi: len(evs) for pi, evs in sorted(fire_by_pi.items())} }"
+        )
+        print(
+            f"[b2_to_pi] joueurs sans pool: { {xuid: pi for xuid, pi in xuid_to_pi.items() if pi not in fire_by_pi} }"
+        )
 
         # Corrélation b2_pi
         kills_b2 = correlate_b2_pi(
-            kills, fire_by_pi, xuid_to_pi,
-            timeline, swap_pis, timing, chunks_sorted, timeline_ns,
+            kills,
+            fire_by_pi,
+            xuid_to_pi,
+            timeline,
+            swap_pis,
+            timing,
+            chunks_sorted,
+            timeline_ns,
         )
 
         # Chargement résultats actuels
@@ -323,8 +352,10 @@ def main() -> None:
     high = sum(1 for k in kills_b2 if k["confidence"] == "high")
     no_match = sum(1 for k in kills_b2 if k["source"] == "no_match")
     print()
-    print(f"GLOBAL  total={total}  matched={matched} ({matched*100//total}%)  "
-          f"high_conf={high}  no_match={no_match}")
+    print(
+        f"GLOBAL  total={total}  matched={matched} ({matched*100//total}%)  "
+        f"high_conf={high}  no_match={no_match}"
+    )
 
 
 if __name__ == "__main__":
