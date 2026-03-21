@@ -103,6 +103,17 @@ WEAPON_FUSION_MAP: dict[str, str] = {
     "M392 Bandit": "Bandit Evo",
     # SPNKr : variante Fuel Rod comptée avec le SPNKr de base
     "Fuel Rod SPNKr": "M41 SPNKr",
+    # Shock Rifle : variante Ranked → même arme
+    "Shock Rifle (Ranked)": "Shock Rifle",
+    # Vestige Carbine : variante cosmétique de la Carabine à impulsion
+    "Vestige Carbine": "Pulse Carbine",
+    # Energy Sword : variantes cosmétiques → même arme
+    "Duelist Energy Sword": "Energy Sword",
+    "Elite Bloodblade": "Energy Sword",
+    "Infected Energy Sword": "Energy Sword",
+    # Gravity Hammer : variantes cosmétiques → même arme
+    "Diminisher of Hope": "Gravity Hammer",
+    "Rushdown Hammer": "Gravity Hammer",
 }
 
 # Fusion par weapon_id (int → int canonique)
