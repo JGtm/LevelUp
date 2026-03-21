@@ -16,9 +16,7 @@ from typing import Any
 import polars as pl
 
 from src.data.services._teammates_impact_queries import _collect_impact_data
-from src.data.services._teammates_perf_queries import (
-    load_performance_scores_from_player_db as _load_performance_scores_from_player_db,
-)
+from src.data.services._teammates_perf_queries import load_perf_enrichment_with_session
 
 logger = logging.getLogger(__name__)
 
@@ -274,25 +272,31 @@ class TeammatesService:
         *,
         is_main: bool = False,
     ) -> pl.DataFrame:
-        """Ajoute performance_score depuis player_match_enrichment du joueur.
-
-        Lit la DB individuelle du joueur (ou la DB principale si is_main=True).
-        Retourne df inchangé si la DB n'existe pas ou n'a pas les données.
-        """
+        """Ajoute performance_score, session_id et session_label depuis player_match_enrichment."""
         if df.is_empty() or "match_id" not in df.columns:
             return df
         base_dir = Path(reference_db_path).parent.parent
         player_db = reference_db_path if is_main else str(base_dir / gamertag / "stats.duckdb")
-        match_ids = df["match_id"].cast(pl.Utf8).to_list()
-        scores = _load_performance_scores_from_player_db(player_db, match_ids)
-        if not scores:
+        m_ids = df["match_id"].cast(pl.Utf8)
+        match_ids = m_ids.to_list()
+        enrichment = load_perf_enrichment_with_session(player_db, match_ids)
+        if not enrichment:
             return df
-        perf = (
-            df["match_id"]
-            .cast(pl.Utf8)
-            .map_elements(lambda m: scores.get(m), return_dtype=pl.Float64)
+        perf = m_ids.map_elements(
+            lambda m: enrichment.get(m, {}).get("perf"), return_dtype=pl.Float64
         )
-        return df.with_columns(perf.alias("performance_score"))
+        session_id_col = m_ids.map_elements(
+            lambda m: enrichment.get(m, {}).get("session_id"), return_dtype=pl.Utf8
+        )
+        session_label_col = m_ids.map_elements(
+            lambda m: enrichment.get(m, {}).get("session_label"), return_dtype=pl.Utf8
+        )
+        updates = {"performance_score": perf}
+        if "session_id" not in df.columns:
+            updates["session_id"] = session_id_col
+        if "session_label" not in df.columns:
+            updates["session_label"] = session_label_col
+        return df.with_columns(**updates)
 
     @staticmethod
     def enrich_series_with_perfect_kills(

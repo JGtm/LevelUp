@@ -191,4 +191,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "trace_expected": "lbl_expected",
     "trace_obj_score": {"fr": "Score objectif", "en": "Objective Score"},
     "trace_total_score": {"fr": "Score total", "en": "Total Score"},
+    # ── Traces squad timeline ─────────────────────────────────────────────────
+    "trace_squad_perf": {"fr": "Perf. escouade", "en": "Squad perf."},
+    "trace_team_mmr": {"fr": "MMR équipe", "en": "Team MMR"},
+    "trace_match_count": {"fr": "Matchs", "en": "Matches"},
 }

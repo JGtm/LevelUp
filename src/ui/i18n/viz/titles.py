@@ -91,4 +91,9 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "title_top_antagonists": {"fr": "Top Antagonistes", "en": "Top Antagonists"},
     "title_kd_timeline": {"fr": "F/D", "en": "K/D"},
     "title_elim_victim": {"fr": "Eliminateur-Victime", "en": "Eliminator-Victim"},
+    # ── Squad timeline ────────────────────────────────────────────────────────
+    "title_squad_timeline": {
+        "fr": "Évolution de la performance d'escouade",
+        "en": "Squad performance evolution",
+    },
 }

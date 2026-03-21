@@ -34,6 +34,7 @@ from src.ui.pages.teammates_map_charts import (
     render_map_charts_section,
     render_single_map_section,
     render_squad_heatmap,
+    render_squad_timeline,
 )
 from src.ui.pages.teammates_synergy import render_synergy_radar
 from src.ui.pages.teammates_views_shared import (
@@ -222,6 +223,13 @@ def _render_single_teammate_weapon_and_map(  # noqa: PLR0913
         sub=sub,
         dfr=dfr,
         series=[(me_name, sub)] + ([(name, friend_sub)] if not friend_sub.is_empty() else []),
+        lang=get_lang(),
+    )
+    render_squad_timeline(
+        db_path=db_path,
+        me_name=me_name,
+        friend_names=[name],
+        all_match_ids=list(shared_ids),
         lang=get_lang(),
     )
 
@@ -436,6 +444,13 @@ def _render_map_history_section(
         full_squad_df = df.filter(pl.col("match_id").cast(pl.Utf8).is_in(list(all_match_ids)))
         _render_map_breakdown(sub_all, full_squad_df, breakdown_all, ctx)
         render_squad_heatmap(series, lang=get_lang())
+        render_squad_timeline(
+            db_path=db_path,
+            me_name=me_name,
+            friend_names=[display_name_from_xuid(str(fx), db_path=db_path) for fx in picked_xuids],
+            all_match_ids=list(all_match_ids),
+            lang=get_lang(),
+        )
 
     return sub_all, series, colors_by_name, rendered_bottom_charts
 

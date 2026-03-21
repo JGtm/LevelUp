@@ -1,5 +1,6 @@
 """Module de visualisation (graphiques Plotly)."""
 
+from src.visualization._squad_timeline import plot_squad_performance_timeline
 from src.visualization.antagonist_charts import (
     create_kd_indicator,
     get_antagonist_chart_colors,
@@ -162,4 +163,6 @@ __all__ = [
     "compute_participation_profile",
     "compute_global_radar_thresholds",
     "get_radar_thresholds",
+    # Squad timeline
+    "plot_squad_performance_timeline",
 ]
