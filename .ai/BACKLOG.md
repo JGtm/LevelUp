@@ -8,6 +8,7 @@
 
 | Date | Item |
 |------|------|
+| 2026-03-21 | **Perf — `_MAX_CONCURRENT_CHUNKS`** : déjà à 50 en production (`weapon_extraction_service.py`). Tâche obsolète — objectif déjà atteint. |
 | 2026-03-19 | **Medal definitions en BDD** — table `medal_definitions` dans `metadata.duckdb` (167 médailles, DB-first + JSON-fallback). Migration, script population, CLI `--medal-metadata`, `MedalsMixin.load_medal_definitions()` / `get_medal_label()`, UI DB-first dans `medals.py`, 16 tests unitaires + 4 intégration. Orphan `citations_{fr,en}.json` supprimés. |
 | 2026-03-19 | **Phase 8 — Couche centralisée médailles** (`medal_definitions.py`) — `src/data/medal_definitions.py` source canonique unique ; `_medal_data.py` thin re-export ; `medals.py` wrapper `@st.cache_data` délégant ; `_medals_repo.py` délègue. 3 chemins DB indépendants → 1. Fallbacks JSON applicatifs supprimés de `medals.py`. JSON `static/medals/*.json` conservés (source pour `populate_medal_metadata.py`). 51 tests passent. Commit `88d5cf0`. |
 | 2026-03-19 | **Migration `b5>>4`** — `scan_fire_events_b5` implémenté, `fire_seq%n_players` supprimé, `map_b2_to_player`/`group_events_by_pi`/`POV_PLAYER_INDEX` retirés, 25 nouveaux tests — 4968 tests passent. Relancer `--force-weapons --all` pour re-extraire. |
@@ -192,14 +193,6 @@ Si le chemin est `shared_matches_v2.duckdb` et non `shared_matches.duckdb`, **le
 
 ---
 
-### Perf — Film chunks : augmenter `_MAX_CONCURRENT_CHUNKS`
-
-**Fichier** : `src/data/services/weapon_extraction_service.py`
-
-Passer de 5 à 7 (puis 10 si stable) connexions concurrentes au CDN Azure. Objectif : ~14s → ~8s par match.
-
-⚠️ Non confirmé sans mesure : vérifier d'abord que les 429 sont gérés avec retry exponentiel avant d'augmenter. Tester sur 5+ matchs à 7 concurrent, mesurer taux d'erreur, puis décider.
-
 ---
 
 ### UI — Notation de session escouade (en-tête Page Coéquipiers)
@@ -298,3 +291,74 @@ diagnose_*.py
 #### Pour les fichiers de tests manquants
 
 Créer `tests/test_page_router_smoke.py` et `tests/test_page_router_regressions.py` (stubs minimes suffisent), **ou** retirer ces deux fichiers de la commande pytest dans le job `streamlit-smoke` si la feature page-router n'est pas encore implémentée.
+
+---
+
+### Maintenance — Tri et nettoyage du dossier `scripts/`
+
+**Objectif** : réduire le bruit dans `scripts/` en supprimant les scripts obsolètes, en déplaçant les scripts d'investigation/expérimentation dans un sous-dossier dédié, et en archivant les scripts liés à l'ancien monitor de run.
+
+#### Actions prévues
+
+1. **Inventaire** : passer en revue tous les fichiers de `scripts/` et les classer en trois catégories :
+   - *Courant* : scripts actifs, maintenus, utilisés en production ou en CI
+   - *Investigation/exp* : scripts `exp_*`, `analyze_*`, `audit_*`, `diagnose_*`, `demo_*`, `benchmark_*` — à déplacer dans `scripts/investigation/`
+   - *Run monitor* : scripts et helpers dédiés à l'outil de monitoring de run (ex. `monitor_uptime.py`) — à archiver dans `scripts/archive/run_monitor/`
+
+2. **Nettoyage** :
+   - Supprimer les fichiers `.tmp.*` orphelins (`exp_find_pi_offset.py.tmp.*`, `populate_citation_mappings.py.tmp.*`)
+   - Supprimer les scripts rendus obsolètes par les migrations v5/v6 (ex. `cleanup_legacy_tables.py`, `cleanup_player_dbs_v5.py`, `cleanup_rank_from_player_assets.py` si plus utilisés)
+   - Vérifier que les scripts supprimés ne sont pas référencés dans le CI (`.github/workflows/ci.yml`) ou dans des tests
+
+3. **Archivage run monitor** :
+   - Créer `scripts/archive/run_monitor/` et y déplacer `monitor_uptime.py` ainsi que tout helper associé
+   - Ajouter un `README.md` dans ce sous-dossier expliquant pourquoi ces scripts sont archivés
+
+4. **Mise à jour de la doc** : refléter la nouvelle arborescence dans `docs/COMMANDS.md` si nécessaire.
+
+#### Fichiers potentiellement concernés (à confirmer lors de l'inventaire)
+
+| Fichier | Catégorie supposée |
+|---------|-------------------|
+| `analyze_match_overlap.py` | Investigation |
+| `audit_current_data.py` | Investigation |
+| `benchmark_*.py` | Investigation |
+| `demo_regression_detection.py` | Investigation |
+| `diagnose_*.py` | Investigation |
+| `exp_*.py` + `.tmp.*` | Investigation / à supprimer |
+| `monitor_uptime.py` | Run monitor → archive |
+| `cleanup_legacy_tables.py` | Obsolète probable |
+| `cleanup_player_dbs_v5.py` | Obsolète probable (post-v5.1) |
+| `cleanup_rank_from_player_assets.py` | À vérifier |
+
+---
+
+### UI — Graphe stats par minute (escouade) : morts sous l'axe en couleurs négatives
+
+**Page** : Onglet Escouade — graphe *Stats par minute* (stats-per-minute chart).
+
+**Objectif** : inverser l'axe des morts (`deaths`) pour les afficher **en-dessous de zéro**, en utilisant la couleur "négative" propre à chaque joueur, afin de mieux distinguer visuellement les kills des morts.
+
+#### Comportement attendu
+
+- Les **kills** restent au-dessus de l'axe X, avec la couleur principale du joueur.
+- Les **morts** sont tracées **sous l'axe X** (valeurs negatives, i.e. `deaths` multiplié par `-1` avant le tracé), avec la **couleur négative** associée au joueur (ex. version désaturée ou complémentaire de sa couleur principale).
+- La légende et les tooltips indiquent toujours la valeur absolue réelle (pas `−3`, mais `3 morts`).
+- L'axe Y affiche des labels absolus (pas de tiret négatif visible pour l'utilisateur final).
+
+#### Fichiers probablement concernés
+
+| Fichier | Rôle attendu |
+|---------|-------------|
+| `src/ui/pages/teammates.py` ou `teammates_views.py` | Appel du graphe stats par minute |
+| Fichier du composant graphe stats/min | Construction des traces Plotly — à identifier |
+| `src/ui/i18n/viz/` | Clés i18n labels axes / légendes si besoin |
+| `src/ui/streamlit_modern.py` | Config Plotly commune |
+
+#### Points de vigilance
+
+- Identifier comment les couleurs "négatives" sont déjà définies (palette joueur) — probablement dans `src/ui/pages/teammates*.py` ou un fichier de constantes couleur.
+- Si la palette négative n'existe pas encore, la créer (ex. `get_player_negative_color(color: str) -> str` par désaturation HSL ou opacité réduite).
+- Vérifier que le composant graphe existant supporte déjà les valeurs négatives sur l'axe Y (Plotly les gère nativement).
+- S'assurer que le formatage du tooltip affiche la valeur absolue (`customdata` + `hovertemplate`).
+- Respecter la règle `width="stretch"` et inclure `config=PLOTLY_CLEAN_CONFIG`.
