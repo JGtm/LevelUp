@@ -8,34 +8,34 @@ from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
-# Couleurs "négatives" explicites, une par slot Okabe-Ito.
-# Toutes dans la famille rouge-orange, variées en luminance/teinte pour
-# rester distinguables y compris pour les daltoniens (variation de luminance).
-# Slot 0 (Sky Blue)       → rouge cramoisi clair
-# Slot 1 (Orange)         → rouge brique saturé
-# Slot 2 (Bluish Green)   → rouge sombre (basse luminance)
-# Slot 3 (Reddish Purple) → vermillon chaud
-# Slot 4 (Vermilion)      → rouge profond / bordeaux
+# Couleurs "négatives" : version assombrie (~50% luminosité) de chaque couleur Okabe-Ito.
+# Chaque slot garde sa teinte → le joueur reste reconnaissable par rapport à sa ligne lissée.
+# Fonctionne pour tous les types de daltonisme (la teinte est préservée, seule la luminosité baisse).
+# Calcul : RGB × 0.5 arrondi.
+# Slot 0 (Sky Blue  #56B4E9) → bleu marine foncé
+# Slot 1 (Orange    #E69F00) → ambre foncé
+# Slot 2 (Bl.Green  #009E73) → sarcelle foncée
+# Slot 3 (Rd.Purple #CC79A7) → mauve foncé
+# Slot 4 (Vermilion #D55E00) → brun-sienna foncé
 _OKABE_NEGATIVE_COLORS: dict[str, str] = {
-    "#56B4E9": "#c0392b",  # cramoisi clair
-    "#E69F00": "#e55b2c",  # brique orangé
-    "#009E73": "#8b1a1a",  # rouge sombre
-    "#CC79A7": "#d44000",  # vermillon chaud
-    "#D55E00": "#7b1829",  # bordeaux profond
+    "#56B4E9": "#2b5a74",  # bleu marine foncé
+    "#E69F00": "#734f00",  # ambre foncé
+    "#009E73": "#004f39",  # sarcelle foncée
+    "#CC79A7": "#663c53",  # mauve foncé
+    "#D55E00": "#6a2f00",  # brun-sienna foncé
 }
-_NEGATIVE_FALLBACK = "#b41414"
+_NEGATIVE_FALLBACK = "#5a2020"
 
 
 def _negative_color(hex_color: str) -> str:
-    """Retourne la teinte négative (rouge) associée à une couleur Okabe-Ito.
+    """Retourne la version assombrie (~50% luminosité) de la couleur Okabe-Ito.
 
-    Chaque slot de la palette Okabe-Ito a un rouge distinct, distinguable
-    même en deutéranopie (variation de luminance, pas seulement de teinte).
+    Préserve la teinte du joueur → distinguable pour tous les types de daltonisme.
     """
     return _OKABE_NEGATIVE_COLORS.get(hex_color, _NEGATIVE_FALLBACK)
 
 
-def plot_trio_metric(  # noqa: PLR0913, C901 — graphe multi-joueurs
+def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-joueurs
     d_self: DataFrameLike,
     d_f1: DataFrameLike,
     d_f2: DataFrameLike,
@@ -150,55 +150,77 @@ def plot_trio_metric(  # noqa: PLR0913, C901 — graphe multi-joueurs
     # Moyenne horizontale de toutes les séries
     avg_all = aligned.select(pl.mean_horizontal(*col_names)).to_series()
 
+    # Pour les métriques inverses (morts), tracé sous l'axe X
+    if is_inverse:
+        series_lists = [[-v if v is not None else None for v in s] for s in series_lists]
+        series_cols = [-col for col in series_cols]
+        avg_all = -avg_all
+
     for _idx, (s_list, s_col, name, color) in enumerate(
         zip(series_lists, series_cols, names, color_list, strict=False)
     ):
-        hover_format = f"%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
-        neg_color = _negative_color(color)
-        bar_colors = [color if (v is not None and v >= 0) else neg_color for v in s_list]
+        # Quand is_inverse, y est négatif : afficher la valeur absolue dans le hover via customdata
+        if is_inverse:
+            hover_format = (
+                f"%{{customdata{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
+            )
+            bar_cdata = [abs(v) if v is not None else 0 for v in s_list]
+            roll_vals = _roll(s_col)
+            line_cdata = [abs(v) for v in roll_vals]
+        else:
+            hover_format = f"%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
+            bar_cdata = ticktext
+            roll_vals = _roll(s_col)
+            line_cdata = ticktext
+        # Couleurs : métrique inversée → teinte négative Okabe-Ito du joueur (sous l'axe)
+        # Métrique normale → teinte négative si valeur < 0 (ex: FDA négatif)
+        if is_inverse:
+            bar_colors = [_negative_color(color)] * len(s_list)
+        else:
+            neg_color = _negative_color(color)
+            bar_colors = [color if (v is not None and v >= 0) else neg_color for v in s_list]
         bar_kwargs: dict = {
             "x": xs,
             "y": s_list,
             "name": f"{name} (match)",
             "marker_color": bar_colors,
             "opacity": 0.75,
-            "customdata": ticktext,
+            "customdata": bar_cdata,
             "hovertemplate": hover_format,
         }
-        if is_inverse:
-            bar_kwargs["marker"] = {
-                "color": bar_colors,
-                "pattern": {
-                    "shape": "/",
-                    "fgcolor": "rgba(255, 80, 80, 0.5)",
-                    "solidity": 0.15,
-                },
-            }
         fig.add_trace(go.Bar(**bar_kwargs))
 
         fig.add_trace(
             go.Scatter(
                 x=xs,
-                y=_roll(s_col),
+                y=roll_vals,
                 mode="lines",
                 name=f"{name} {viz_t('suffix_smoothed', lang)}",
                 line={"width": 3, "color": color},
-                customdata=ticktext,
+                customdata=line_cdata,
                 hovertemplate=hover_format,
             )
         )
 
     # Moyenne lissée de tous les joueurs (ligne neutre pointillée)
     avg_color = "rgba(255, 255, 255, 0.55)"
-    hover_format_avg = f"%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
+    avg_rolled = _roll(avg_all)
+    if is_inverse:
+        hover_format_avg = (
+            f"%{{customdata{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
+        )
+        avg_cdata = [abs(v) for v in avg_rolled]
+    else:
+        hover_format_avg = f"%{{y{':' + y_format if y_format else ''}}}{y_suffix}<extra></extra>"
+        avg_cdata = ticktext
     fig.add_trace(
         go.Scatter(
             x=xs,
-            y=_roll(avg_all),
+            y=avg_rolled,
             mode="lines",
             name=viz_t("trace_avg_3_smoothed", lang),
             line={"width": 3, "color": avg_color, "dash": "dot"},
-            customdata=ticktext,
+            customdata=avg_cdata,
             hovertemplate=hover_format_avg,
         )
     )

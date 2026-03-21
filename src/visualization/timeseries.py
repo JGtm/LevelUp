@@ -287,7 +287,7 @@ def _add_permin_rolling_lines(  # noqa: PLR0913
         fig: Figure Plotly à enrichir.
         x_idx: Index des matchs.
         kpm: Série kills per minute.
-        dpm: Série deaths per minute.
+        dpm: Série deaths per minute (valeurs négatives — sous l'axe X).
         apm: Série assists per minute.
         colors: Dict de couleurs HALO.
     """
@@ -301,14 +301,16 @@ def _add_permin_rolling_lines(  # noqa: PLR0913
             hovertemplate=viz_t("hover_avg", lang),
         )
     )
+    dpm_rolling = _rolling_mean(dpm, window=10).to_list()
     fig.add_trace(
         smart_scatter(
             x=x_idx,
-            y=_rolling_mean(dpm, window=10).to_list(),
+            y=dpm_rolling,
             mode="lines",
             name=viz_t("trace_avg_deaths_per_min", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["red"], "dash": "dot"},
-            hovertemplate=viz_t("hover_avg", lang),
+            customdata=[abs(v) for v in dpm_rolling],
+            hovertemplate=viz_t("hover_avg_abs", lang),
         )
     )
     fig.add_trace(
@@ -422,7 +424,7 @@ def plot_per_minute_timeseries(
         )
     )
 
-    _add_permin_rolling_lines(fig, x_idx, kpm, dpm, apm, colors, lang=lang)
+    _add_permin_rolling_lines(fig, x_idx, kpm, -dpm, apm, colors, lang=lang)
 
     tickvals, ticktext = build_symmetric_abs_ticks(
         max(max(kpm.to_list(), default=0.1), max(apm.to_list(), default=0.1)),
