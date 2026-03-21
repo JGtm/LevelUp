@@ -5,6 +5,32 @@
 
 ---
 
+## ⚠️ ERRATUM — 2026-03-18
+
+Les conclusions suivantes de ce document sont **INVALIDÉES** par la suite de l'investigation
+(inv#131–132, confirmé par acurtis) :
+
+| Ligne / Section | Affirmation incorrecte | Réalité |
+|---|---|---|
+| §1 ligne `[1] (pi << 5) \| 0x06  e.g. 0x26 = pi=1 (POV)` | byte[1]=0x26 encode pi=1 (joueur POV) | byte[1]=0x26 est un **marqueur structurel fixe** pour TOUS les joueurs. Il n'encode pas le player_index. |
+| §1 `POV player ONLY (pi=1). Server does not replicate opponent fire events. Architecturally final.` | Les fire events ne concernent que le joueur POV | **FAUX.** Le serveur réplique les fire events de TOUS les joueurs. Chaque chunk contient les events de tous les participants. |
+| §3 `T0 opponent fire events \| Impossible \| Server asymmetric replication` | Récupérer les fire events des adversaires est impossible | **FAUX.** Ils sont présents dans le binaire. |
+| §3 `T0 opponent weapon at kill time \| Impossible` | Idem | **INVALIDÉ** — les fire events de chaque joueur sont récupérables via `fire_seq % n_players`. |
+
+**Origine de l'erreur** : le corpus de 11 matchs utilisé pour les inv#1–125 incluait
+vraisemblablement des matchs où le joueur POV avait tous (ou la quasi-totalité) des kills.
+La coïncidence `_build_marker(1) = 0x26` a renforcé l'interprétation "pi=1=POV".
+
+**Mécanisme correct d'attribution** (inv#132, validé 7/7 points) :
+```
+fire_seq (byte[2] = b2_stream) = player_index + life_number * n_players
+→ player_index = fire_seq % n_players
+```
+
+---
+
+---
+
 ## 1. Film Binary Architecture
 
 Each match film = ~28 chunks × 2 sections:
@@ -20,7 +46,8 @@ Section 1 — State snapshot (~85% of bytes)
 Section 2 — Frame events (~15% of bytes, nibble-shifted)
   Fire events: (byte[0] & 0x07)==0x05, (byte[3] & 0xFC)==0x40, wid in [T-5000ms, T]
   Melee events: byte[0]==0x40, wid at variable offset (13–18B)
-  → POV player ONLY (pi=1). Server does not replicate opponent fire events. Architecturally final.
+  → ~~POV player ONLY (pi=1). Server does not replicate opponent fire events. Architecturally final.~~
+  → ⚠️ INVALIDÉ 2026-03-18 — tous les joueurs présents. Attribution : fire_seq % n_players.
 ```
 
 **Dual-wid architecture (inv #117 — confirmed):**

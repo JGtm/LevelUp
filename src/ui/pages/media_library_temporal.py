@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-from src.ui.formatting import PARIS_TZ
+from src.ui.formatting import _get_user_tz
 
 
 def epoch_seconds_paris(dt_value: datetime | None) -> float | None:
-    """Convertit un datetime en secondes epoch (fuseau Paris)."""
+    """Convertit un datetime en secondes epoch (TZ utilisateur)."""
     if dt_value is None:
         return None
     try:
+        user_tz = _get_user_tz()
         aware = (
-            PARIS_TZ.localize(dt_value)
+            dt_value.replace(tzinfo=user_tz)
             if dt_value.tzinfo is None
-            else dt_value.astimezone(PARIS_TZ)
+            else dt_value.astimezone(user_tz)
         )
         return float(aware.timestamp())
     except Exception:
@@ -23,7 +24,10 @@ def epoch_seconds_paris(dt_value: datetime | None) -> float | None:
 
 
 def to_paris_naive(dt_value: object) -> datetime | None:
-    """Convertit une valeur datetime en datetime naïve (fuseau Paris)."""
+    """Convertit une valeur datetime en datetime naïve (TZ utilisateur).
+
+    Convention DB : les naïfs sont en UTC.
+    """
     try:
         if dt_value is None:
             return None
@@ -38,8 +42,9 @@ def to_paris_naive(dt_value: object) -> datetime | None:
             ts = datetime.fromisoformat(s)
         else:
             return None
+        user_tz = _get_user_tz()
         if ts.tzinfo is None:
-            return ts
-        return ts.astimezone(PARIS_TZ).replace(tzinfo=None)
+            ts = ts.replace(tzinfo=timezone.utc)
+        return ts.astimezone(user_tz).replace(tzinfo=None)
     except Exception:
         return None

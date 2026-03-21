@@ -9,6 +9,8 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any
 
+from src.utils.xuid import lookup_xuid_for_gamertag
+
 if TYPE_CHECKING:
     pass
 
@@ -42,130 +44,47 @@ def _clean_gamertag_static(value: Any) -> str | None:
 class GamertagResolverMixin:
     """Mixin fournissant la résolution XUID → Gamertag pour DuckDBRepository."""
 
-    def resolve_gamertag(  # noqa: C901, PLR0912
+    def resolve_gamertag(
         self,
         xuid: str,
         *,
-        match_id: str | None = None,
+        match_id: str | None = None,  # noqa: ARG002 — conservé pour compatibilité API
     ) -> str | None:
-        """Résout un XUID en gamertag avec cascade de sources.
+        """Résout un XUID en gamertag via shared.v_gamertag_lookup.
 
-        Sprint Gamertag Roster Fix : Fonction centralisée pour obtenir un
-        gamertag propre à partir d'un XUID, en utilisant plusieurs sources.
-
-        Priorité des sources (v5 = shared d'abord):
-        1. shared.match_participants (roster complet, v5)
-        2. shared.xuid_aliases (source officielle API, v5)
-        3. match_participants locale (fallback v4)
-        4. xuid_aliases locale
-        5. highlight_events (nettoyé avec extraction ASCII)
+        Priorité : xuid_aliases > match_participants (géré par la vue).
+        La vue v_gamertag_lookup est garantie présente en architecture v6.
 
         Args:
             xuid: XUID du joueur à résoudre.
-            match_id: ID du match (optionnel, améliore la résolution contextuelle).
+            match_id: Ignoré en v6 (conservé pour compatibilité de signature).
 
         Returns:
             Gamertag propre ou None si non trouvé.
         """
+        if not xuid:
+            return None
+
         conn = self._get_connection()
         xuid = str(xuid).strip()
 
-        # 1. shared.match_participants (v5 — roster complet)
-        if match_id and self._has_shared_table("match_participants"):
-            try:
-                result = conn.execute(
-                    "SELECT gamertag FROM shared.match_participants WHERE match_id = ? AND xuid = ?",
-                    [match_id, xuid],
-                ).fetchone()
-                if result and result[0]:
-                    cleaned = _clean_gamertag_static(result[0])
-                    if cleaned:
-                        return cleaned
-            except Exception:
-                pass
-
-        # 2. shared.xuid_aliases (v5)
-        if self._has_shared_table("xuid_aliases"):
-            try:
-                result = conn.execute(
-                    "SELECT gamertag FROM shared.xuid_aliases WHERE xuid = ?",
-                    [xuid],
-                ).fetchone()
-                if result and result[0]:
-                    cleaned = _clean_gamertag_static(result[0])
-                    if cleaned:
-                        return cleaned
-            except Exception:
-                pass
-
-        # 3. match_participants locale (si match_id fourni et table existe)
-        if match_id and self._has_table("match_participants"):
-            try:
-                result = conn.execute(
-                    "SELECT gamertag FROM match_participants WHERE match_id = ? AND xuid = ?",
-                    [match_id, xuid],
-                ).fetchone()
-                if result and result[0]:
-                    cleaned = _clean_gamertag_static(result[0])
-                    if cleaned:
-                        return cleaned
-            except Exception:
-                pass
-
-        # NOTE v5.1 : xuid_aliases locale supprimé — shared.xuid_aliases utilisé ci-dessus
-
-        # 4. highlight_events avec extraction ASCII (shared d'abord, puis local)
-        if match_id:
-            he_sources = []
-            if self._has_shared_table("highlight_events"):
-                he_sources.append("shared.highlight_events")
-            if self._has_table("highlight_events"):
-                he_sources.append("highlight_events")
-            for he_src in he_sources:
-                try:
-                    result = conn.execute(
-                        f"SELECT gamertag FROM {he_src} WHERE match_id = ? AND xuid = ? LIMIT 1",
-                        [match_id, xuid],
-                    ).fetchone()
-                    if result and result[0]:
-                        cleaned = self._extract_ascii_token(result[0])
-                        if cleaned:
-                            return cleaned
-                except Exception:
-                    pass
-
-        return None
-
-    def _extract_ascii_token(self, value: str | None) -> str | None:
-        """Extrait un token ASCII plausible depuis un gamertag corrompu.
-
-        Les gamertags provenant de highlight_events peuvent contenir des
-        caractères NUL et de contrôle (ex: 'juan1\\x00\\x00\\x00\\x00').
-        Cette fonction extrait la partie lisible.
-
-        Args:
-            value: Gamertag potentiellement corrompu.
-
-        Returns:
-            Token ASCII nettoyé ou None si rien de plausible.
-        """
-        if value is None:
-            return None
-
         try:
-            # Extraire tous les tokens alphanumériques
-            parts = re.findall(r"[A-Za-z0-9]+", str(value or ""))
-            if not parts:
-                return None
-
-            # Prendre le plus long (probablement le gamertag)
-            parts.sort(key=len, reverse=True)
-            token = parts[0]
-
-            # Minimum 3 caractères pour être un gamertag valide
-            return token if len(token) >= 3 else None
+            result = conn.execute(
+                "SELECT gamertag FROM shared.v_gamertag_lookup WHERE xuid = ?",
+                [xuid],
+            ).fetchone()
+            if result and result[0]:
+                cleaned = _clean_gamertag_static(result[0])
+                if cleaned:
+                    logger.debug(
+                        "resolve_gamertag(%s): source=v_gamertag_lookup → %s", xuid, cleaned
+                    )
+                    return cleaned
         except Exception:
-            return None
+            logger.warning("resolve_gamertag(%s): erreur v_gamertag_lookup", xuid, exc_info=True)
+
+        logger.warning("resolve_gamertag(%s): aucune source", xuid)
+        return None
 
     def resolve_gamertags_batch(
         self,
@@ -184,11 +103,25 @@ class GamertagResolverMixin:
         """
         return {xuid: self.resolve_gamertag(xuid, match_id=match_id) for xuid in xuids}
 
-    def load_match_player_gamertags(self, match_id: str) -> dict[str, str]:  # noqa: C901, PLR0912
-        """Retourne un mapping XUID → Gamertag pour un match.
+    def resolve_xuid_from_gamertag(self, gamertag: str) -> str | None:
+        """Résout un gamertag → XUID via v_gamertag_lookup puis xuid_aliases.
 
-        Utilise shared.match_participants (v5) si disponible, sinon la table locale.
-        Complète avec shared.xuid_aliases et les sources locales.
+        Symétrique de resolve_gamertag() pour la direction inverse.
+
+        Args:
+            gamertag: Gamertag à résoudre (insensible à la casse).
+
+        Returns:
+            XUID en string, ou None si non trouvé.
+        """
+        conn = self._get_connection()
+        return lookup_xuid_for_gamertag(conn, gamertag, view_prefix="shared.")
+
+    def load_match_player_gamertags(self, match_id: str) -> dict[str, str]:
+        """Retourne un mapping XUID → Gamertag pour un match via v_gamertag_lookup.
+
+        Résolution v6 : COALESCE(v_gamertag_lookup.gamertag, match_participants.gamertag).
+        La vue v_gamertag_lookup est garantie présente (architecture v6).
 
         Args:
             match_id: ID du match.
@@ -200,79 +133,53 @@ class GamertagResolverMixin:
             return {}
 
         conn = self._get_connection()
-        result: dict[str, str] = {}
-
         try:
-            # 1. Depuis shared.match_participants (v5, prioritaire — roster complet)
-            if self._has_shared_table("match_participants"):
-                rows = conn.execute(
-                    """
-                    SELECT DISTINCT xuid, gamertag
-                    FROM shared.match_participants
-                    WHERE match_id = ? AND xuid IS NOT NULL AND gamertag IS NOT NULL
-                    """,
-                    [match_id],
-                ).fetchall()
-                for xuid, gt in rows:
-                    if xuid and gt:
-                        result[str(xuid)] = str(gt)
-
-            # 2. Compléter depuis match_participants locale (fallback v4)
-            if self._has_table("match_participants"):
-                rows = conn.execute(
-                    """
-                    SELECT DISTINCT xuid, gamertag
-                    FROM match_participants
-                    WHERE match_id = ? AND xuid IS NOT NULL AND gamertag IS NOT NULL
-                    """,
-                    [match_id],
-                ).fetchall()
-                for xuid, gt in rows:
-                    if xuid and gt and str(xuid) not in result:
-                        result[str(xuid)] = str(gt)
-
-            # 3. Compléter depuis highlight_events (shared d'abord, puis local)
-            if self._has_shared_table("highlight_events"):
-                rows = conn.execute(
-                    """
-                    SELECT DISTINCT xuid, gamertag
-                    FROM shared.highlight_events
-                    WHERE match_id = ? AND xuid IS NOT NULL AND gamertag IS NOT NULL
-                    """,
-                    [match_id],
-                ).fetchall()
-                for xuid, gt in rows:
-                    if xuid and gt and str(xuid) not in result:
-                        result[str(xuid)] = str(gt)
-
-            if self._has_table("highlight_events"):
-                rows = conn.execute(
-                    """
-                    SELECT DISTINCT xuid, gamertag
-                    FROM highlight_events
-                    WHERE match_id = ? AND xuid IS NOT NULL AND gamertag IS NOT NULL
-                    """,
-                    [match_id],
-                ).fetchall()
-                for xuid, gt in rows:
-                    if xuid and gt and str(xuid) not in result:
-                        result[str(xuid)] = str(gt)
-
-            # 4. Compléter depuis shared.xuid_aliases (v5.1 — source unique)
-            all_xuids_in_result = list(result.keys())
-            missing = [x for x in all_xuids_in_result if not result.get(x)]
-
-            if missing and self._has_shared_table("xuid_aliases"):
-                placeholders = ", ".join(["?" for _ in missing])
-                rows = conn.execute(
-                    f"SELECT xuid, gamertag FROM shared.xuid_aliases WHERE xuid IN ({placeholders})",
-                    missing,
-                ).fetchall()
-                for xuid, gt in rows:
-                    if xuid and gt:
-                        result[str(xuid)] = str(gt)
-
-            return result
+            return self._load_gamertags_via_view(conn, match_id)
         except Exception as e:
             logger.debug("Erreur load_match_player_gamertags: %s", e)
+            return {}
+
+    def _load_gamertags_via_view(self, conn: object, match_id: str) -> dict[str, str]:
+        """Charge les gamertags via JOIN match_participants + v_gamertag_lookup.
+
+        Architecture v6 : xuid_aliases peuplée depuis highlight_events.raw_json
+        lors du sync (voir _shared_writes._upsert_event_aliases). La vue
+        v_gamertag_lookup est la source unifiée de résolution.
+        """
+        result: dict[str, str] = {}
+        rows = conn.execute(  # type: ignore[union-attr]
+            """
+            SELECT mp.xuid, COALESCE(vg.gamertag, mp.gamertag) AS gamertag
+            FROM shared.match_participants mp
+            LEFT JOIN shared.v_gamertag_lookup vg ON mp.xuid = vg.xuid
+            WHERE mp.match_id = ? AND mp.xuid IS NOT NULL
+            """,
+            [match_id],
+        ).fetchall()
+        for xuid, gt in rows:
+            cleaned = _clean_gamertag_static(gt)
+            if xuid and cleaned:
+                result[str(xuid)] = cleaned
+        if not result:
+            logger.debug("load_match_player_gamertags(%s): aucun joueur résolu", match_id)
+        return result
+
+    def get_all_gamertags(self) -> list[str]:
+        """Retourne tous les gamertags connus depuis shared.v_gamertag_lookup.
+
+        La vue v_gamertag_lookup est garantie présente en architecture v6.
+
+        Returns:
+            Liste triée de gamertags uniques. [] en cas d'erreur.
+        """
+        conn = self._get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT DISTINCT gamertag FROM shared.v_gamertag_lookup ORDER BY gamertag"
+            ).fetchall()
+            result = [str(r[0]) for r in rows if r[0]]
+            logger.debug("%d gamertags chargés (v_gamertag_lookup)", len(result))
             return result
+        except Exception:
+            logger.error("get_all_gamertags: erreur", exc_info=True)
+            return []

@@ -178,17 +178,28 @@ def load_player_kills(match_id: str, gamertag: str, data_dir: Path | None = None
     db_path = base / "warehouse" / "shared_matches.duckdb"
     conn = duckdb.connect(str(db_path), read_only=True)
 
-    # Kills du joueur
+    # v6 : gamertag supprimé de highlight_events — résolution du xuid via xuid_aliases
+    xuid_row = conn.execute(
+        "SELECT xuid FROM xuid_aliases WHERE gamertag ILIKE ? LIMIT 1",
+        (gamertag,),
+    ).fetchone()
+    player_xuid = xuid_row[0] if xuid_row else None
+
+    if player_xuid is None:
+        conn.close()
+        return []
+
+    # Kills du joueur (filtrés par xuid)
     kill_rows = conn.execute(
         """
-        SELECT he.time_ms, he.gamertag, he.xuid
+        SELECT he.time_ms, ? AS gamertag, he.xuid
         FROM highlight_events he
         WHERE he.match_id = ?
-          AND he.gamertag ILIKE ?
+          AND he.xuid = ?
           AND he.event_type = 'kill'
         ORDER BY he.time_ms
         """,
-        (match_id, gamertag),
+        (gamertag, match_id, player_xuid),
     ).fetchall()
 
     # Médailles du joueur (pour détection melee/grenade)
@@ -198,12 +209,12 @@ def load_player_kills(match_id: str, gamertag: str, data_dir: Path | None = None
                json_extract_string(he.raw_json, '$.medal_name') AS medal_name
         FROM highlight_events he
         WHERE he.match_id = ?
-          AND he.gamertag ILIKE ?
+          AND he.xuid = ?
           AND he.event_type = 'medal'
           AND json_extract_string(he.raw_json, '$.is_medal') = 'true'
         ORDER BY he.time_ms
         """,
-        (match_id, gamertag),
+        (match_id, player_xuid),
     ).fetchall()
 
     conn.close()

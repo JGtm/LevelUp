@@ -26,7 +26,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Rank and personal score",
     },
     "title_rolling_kd": {
-        "fr": "K/D Glissant ({window} matchs)",
+        "fr": "F/D Glissant ({window} matchs)",
         "en": "Rolling K/D ({window} matches)",
     },
     "title_session_comparison": {
@@ -38,7 +38,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "title_assists": {"fr": "Assists par match", "en": "Assists per Match"},
     "title_permin": {"fr": "Frags / Morts par minute", "en": "Kills / Deaths per Minute"},
     "title_killer_victim": {"fr": "Duels — Killer vs Victime", "en": "Duels — Killer vs Victim"},
-    "title_kd_per_min": {"fr": "K/D par minute", "en": "K/D per Minute"},
+    "title_kd_per_min": {"fr": "F/D par minute", "en": "K/D per Minute"},
     "title_score_breakdown": {"fr": "Score par catégorie", "en": "Score Breakdown"},
     "title_action_detail": {"fr": "Détail des actions", "en": "Action Detail"},
     "title_participation": {"fr": "Participation par match", "en": "Participation per Match"},
@@ -73,22 +73,27 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "title_top_players_obj": {"fr": "Top joueurs — objectifs", "en": "Top Players — Objectives"},
     # ── Titres supplémentaires (Phase 3) ─────────────────────────────────────
     "title_cumul_net_score": {"fr": "Net Score Cumulé", "en": "Cumulative Net Score"},
-    "title_cumul_kd": {"fr": "K/D Cumulé", "en": "Cumulative K/D"},
+    "title_cumul_kd": {"fr": "F/D Cumulé", "en": "Cumulative K/D"},
     "title_session_trend": {"fr": "Tendance de la Session", "en": "Session Trend"},
     "title_nemesis_victim": {"fr": "Némésis et Souffre-douleur", "en": "Nemesis & Punching Bag"},
     # ── Progression avancée ───────────────────────────────────────────────────
-    "title_cumul_kd_ci": {"fr": "K/D Cumulé (IC 90 %)", "en": "Cumulative K/D (90 % CI)"},
+    "title_cumul_kd_ci": {"fr": "F/D Cumulé", "en": "Cumulative K/D"},
     "title_net_score_per_hour": {
-        "fr": "Efficacité — Net Score / heure",
-        "en": "Efficiency — Net Score / hour",
+        "fr": "Efficacité — Score / heure",
+        "en": "Efficiency — Score / hour",
     },
-    "title_ewma_kd": {"fr": "K/D Lissé (EWMA)", "en": "Smoothed K/D (EWMA)"},
+    "title_ewma_kd": {"fr": "F/D Lissé", "en": "Smoothed K/D"},
     "title_regression_trend": {
-        "fr": "Tendance (régression linéaire)",
-        "en": "Trend (linear regression)",
+        "fr": "Tendance",
+        "en": "Trend",
     },
     "title_killer_victim_matrix": {"fr": "Matrice Killer-Victim", "en": "Killer-Victim Matrix"},
     "title_top_antagonists": {"fr": "Top Antagonistes", "en": "Top Antagonists"},
-    "title_kd_timeline": {"fr": "K/D", "en": "K/D"},
+    "title_kd_timeline": {"fr": "F/D", "en": "K/D"},
     "title_elim_victim": {"fr": "Eliminateur-Victime", "en": "Eliminator-Victim"},
+    # ── Squad timeline ────────────────────────────────────────────────────────
+    "title_squad_timeline": {
+        "fr": "Évolution de la performance d'escouade",
+        "en": "Squad performance evolution",
+    },
 }

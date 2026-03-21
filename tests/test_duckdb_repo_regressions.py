@@ -38,7 +38,6 @@ def repo_with_data(tmp_path):
             event_type VARCHAR,
             time_ms INTEGER,
             xuid VARCHAR,
-            gamertag VARCHAR,
             type_hint INTEGER,
             raw_json VARCHAR
         )
@@ -77,7 +76,7 @@ def repo_with_data(tmp_path):
     )
 
     # Highlight events pour match_id_1 (self + friend dans même équipe)
-    for idx, (mid, evt, tm, uid, gt) in enumerate(
+    for idx, (mid, evt, tm, uid, _gt) in enumerate(
         [
             (match_id_1, "Kill", 1000, xuid_self, "PlayerSelf"),
             (match_id_1, "Kill", 2000, xuid_friend, "PlayerFriend"),
@@ -89,10 +88,10 @@ def repo_with_data(tmp_path):
     ):
         conn.execute(
             """
-            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, gamertag)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid)
+            VALUES (?, ?, ?, ?, ?)
         """,
-            [idx, mid, evt, tm, uid, gt],
+            [idx, mid, evt, tm, uid],
         )
 
     conn.commit()

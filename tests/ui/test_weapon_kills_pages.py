@@ -236,82 +236,122 @@ class TestAppendGrenadeMelee:
 
 
 class TestEnrichWithGrenadeMelee:
-    """Tests avec mock DuckDBRepository (la fonction crée elle-même le repo)."""
+    """Tests — le repo est passé directement, pas de création interne."""
 
-    def _mock_repo_conn(self, grenade_kills: int, melee_kills: int) -> Any:
-        """Crée un mock repo dont _get_connection() retourne une vraie DB in-memory."""
-        conn = _make_shared_conn(grenade_kills=grenade_kills, melee_kills=melee_kills)
+    def _mock_repo(
+        self,
+        grenade_kills: int,
+        melee_kills: int,
+        api_total: int | None = None,
+    ) -> Any:
+        """Crée un mock repo. api_total par défaut = film_kills + grenade + melee (pas de limite)."""
         mock_repo = MagicMock()
-        mock_repo._get_connection.return_value = conn
+        mock_repo.load_grenade_melee_kills.return_value = (grenade_kills, melee_kills)
+        # _weapons_df_with_rows() a 18 kills ; par défaut on laisse tout passer
+        default_total = 18 + grenade_kills + melee_kills
+        mock_repo.load_total_kills_for_player.return_value = (
+            api_total if api_total is not None else default_total
+        )
         return mock_repo
 
     def test_adds_grenade_row_to_df(self) -> None:
         from src.ui.pages.match_view_weapon_kills import _enrich_with_grenade_melee
 
-        mock_repo = self._mock_repo_conn(grenade_kills=5, melee_kills=0)
-        df = _weapons_df_with_rows()
-
-        with patch("src.data.repositories.DuckDBRepository", return_value=mock_repo):
-            result = _enrich_with_grenade_melee(df, "/fake/path", "match_001", "xuid_test")
+        result = _enrich_with_grenade_melee(
+            _weapons_df_with_rows(),
+            self._mock_repo(grenade_kills=5, melee_kills=0),
+            "match_001",
+            "xuid_test",
+        )
 
         assert len(result) == 3
-        names = result["weapon_name"].to_list()
-        assert any("grenade" in n.lower() for n in names)
+        assert any("grenade" in n.lower() for n in result["weapon_name"].to_list())
 
     def test_adds_melee_row_to_df(self) -> None:
         from src.ui.pages.match_view_weapon_kills import _enrich_with_grenade_melee
 
-        mock_repo = self._mock_repo_conn(grenade_kills=0, melee_kills=3)
-        df = _weapons_df_with_rows()
-
-        with patch("src.data.repositories.DuckDBRepository", return_value=mock_repo):
-            result = _enrich_with_grenade_melee(df, "/fake/path", "match_001", "xuid_test")
+        result = _enrich_with_grenade_melee(
+            _weapons_df_with_rows(),
+            self._mock_repo(grenade_kills=0, melee_kills=3),
+            "match_001",
+            "xuid_test",
+        )
 
         assert len(result) == 3
-        names = result["weapon_name"].to_list()
-        assert any("corps" in n.lower() or "melee" in n.lower() for n in names)
+        assert any(
+            "corps" in n.lower() or "melee" in n.lower() for n in result["weapon_name"].to_list()
+        )
 
     def test_no_enrichment_when_both_zero(self) -> None:
         from src.ui.pages.match_view_weapon_kills import _enrich_with_grenade_melee
 
-        mock_repo = self._mock_repo_conn(grenade_kills=0, melee_kills=0)
-        df = _weapons_df_with_rows()
-
-        with patch("src.data.repositories.DuckDBRepository", return_value=mock_repo):
-            result = _enrich_with_grenade_melee(df, "/fake/path", "match_001", "xuid_test")
+        result = _enrich_with_grenade_melee(
+            _weapons_df_with_rows(),
+            self._mock_repo(grenade_kills=0, melee_kills=0),
+            "match_001",
+            "xuid_test",
+        )
 
         assert len(result) == 2  # inchangé
 
     def test_returns_original_df_on_error(self) -> None:
         from src.ui.pages.match_view_weapon_kills import _enrich_with_grenade_melee
 
+        mock_repo = MagicMock()
+        mock_repo.load_grenade_melee_kills.side_effect = RuntimeError("DB error")
         df = _weapons_df_with_rows()
 
-        with patch(
-            "src.data.repositories.DuckDBRepository", side_effect=RuntimeError("DB introuvable")
-        ):
-            result = _enrich_with_grenade_melee(df, "/bad/path", "match_001", "xuid_test")
+        result = _enrich_with_grenade_melee(df, mock_repo, "match_001", "xuid_test")
 
         assert result.equals(df)
 
-    def test_returns_original_df_when_no_participant_row(self) -> None:
-        """Aucune ligne dans match_participants pour ce match/xuid → df inchangé."""
+    def test_returns_original_df_when_load_returns_zeros(self) -> None:
+        """Aucun résultat grenade/mêlée (ex. pas de ligne participant) → df inchangé."""
         from src.ui.pages.match_view_weapon_kills import _enrich_with_grenade_melee
 
-        conn = duckdb.connect(":memory:")
-        conn.execute("CREATE SCHEMA shared")
-        conn.execute(
-            "CREATE TABLE shared.match_participants "
-            "(match_id VARCHAR, xuid VARCHAR, grenade_kills SMALLINT, melee_kills SMALLINT)"
+        result = _enrich_with_grenade_melee(
+            _weapons_df_with_rows(),
+            self._mock_repo(grenade_kills=0, melee_kills=0),
+            "match_001",
+            "xuid_test",
         )
-        mock_repo = MagicMock()
-        mock_repo._get_connection.return_value = conn
-
-        df = _weapons_df_with_rows()
-        with patch("src.data.repositories.DuckDBRepository", return_value=mock_repo):
-            result = _enrich_with_grenade_melee(df, "/fake/path", "match_001", "xuid_test")
 
         assert len(result) == 2  # inchangé
+
+    def test_no_double_count_when_film_covers_melee(self) -> None:
+        """Si le film couvre déjà tous les kills (api_total = film_kills), melee=0 ajouté."""
+        from src.ui.pages.match_view_weapon_kills import _enrich_with_grenade_melee
+
+        # film = 18, api_total = 18 → remainder = 0 → melee_net = 0
+        result = _enrich_with_grenade_melee(
+            _weapons_df_with_rows(),
+            self._mock_repo(grenade_kills=0, melee_kills=7, api_total=18),
+            "match_001",
+            "xuid_test",
+        )
+
+        assert len(result) == 2  # aucune ligne melee ajoutée (déjà dans le film)
+        kills_total = result["kills"].sum()
+        assert kills_total == 18
+
+    def test_partial_melee_added_when_film_partially_covers(self) -> None:
+        """Si film=18, api_total=21, melee=7 → remainder=3 → melee_net=3 seulement."""
+        from src.ui.pages.match_view_weapon_kills import _enrich_with_grenade_melee
+
+        result = _enrich_with_grenade_melee(
+            _weapons_df_with_rows(),
+            self._mock_repo(grenade_kills=0, melee_kills=7, api_total=21),
+            "match_001",
+            "xuid_test",
+        )
+
+        melee_row = [
+            r
+            for r in result.iter_rows(named=True)
+            if "corps" in r["weapon_name"].lower() or "melee" in r["weapon_name"].lower()
+        ]
+        assert melee_row, "Une ligne mêlée doit être ajoutée"
+        assert melee_row[0]["kills"] == 3  # min(7, 21-18)=3
 
 
 # =============================================================================
@@ -323,9 +363,8 @@ class TestLoadGrenadeMeleeTotals:
     """Tests avec mock DuckDBRepository."""
 
     def _mock_repo_conn(self, grenade_kills: int, melee_kills: int) -> Any:
-        conn = _make_shared_conn(grenade_kills=grenade_kills, melee_kills=melee_kills)
         mock_repo = MagicMock()
-        mock_repo._get_connection.return_value = conn
+        mock_repo.load_grenade_melee_kills.return_value = (grenade_kills, melee_kills)
         return mock_repo
 
     def test_returns_correct_totals_with_match_ids(self) -> None:
@@ -351,14 +390,8 @@ class TestLoadGrenadeMeleeTotals:
     def test_returns_zeros_when_no_data(self) -> None:
         from src.ui.pages._timeseries_weapons import _load_grenade_melee_totals
 
-        conn = duckdb.connect(":memory:")
-        conn.execute("CREATE SCHEMA shared")
-        conn.execute(
-            "CREATE TABLE shared.match_participants "
-            "(match_id VARCHAR, xuid VARCHAR, grenade_kills SMALLINT, melee_kills SMALLINT)"
-        )
         mock_repo = MagicMock()
-        mock_repo._get_connection.return_value = conn
+        mock_repo.load_grenade_melee_kills.return_value = (0, 0)
 
         with patch("src.data.repositories.duckdb_repo.DuckDBRepository", return_value=mock_repo):
             g, m = _load_grenade_melee_totals("/fake", "xuid_test", ["no_such_match"])
@@ -382,8 +415,16 @@ class TestLoadGrenadeMeleeTotals:
 # =============================================================================
 
 
+_MOCK_REPO_CTX = "src.data.repositories.DuckDBRepository"
+
+
 class TestRenderWeaponKillsSection:
-    """Tests du flux de rendu avec mock_st."""
+    """Tests du flux de rendu avec mock_st.
+
+    render_weapon_kills_section crée un DuckDBRepository unique qu'il passe
+    aux fonctions privées → tous les tests mockent DuckDBRepository au niveau
+    du module src.data.repositories.
+    """
 
     def test_shows_no_data_caption_when_df_empty(self, mock_st) -> None:
         import src.ui.pages.match_view_weapon_kills as mod
@@ -391,12 +432,33 @@ class TestRenderWeaponKillsSection:
         ms = mock_st(mod)
 
         with (
+            patch(_MOCK_REPO_CTX),
             patch.object(mod, "_build_weapon_kills_df", return_value=_empty_weapons_df()),
-            patch.object(mod, "_enrich_with_grenade_melee", return_value=_empty_weapons_df()),
         ):
             mod.render_weapon_kills_section(db_path="/fake", match_id="m1", xuid="u1", colors={})
 
         ms.calls["caption"].assert_called_once()
+
+    def test_no_chart_when_film_empty_even_if_grenades_available(self, mock_st) -> None:
+        """Régression : quand weapon_kills est vide, _enrich_with_grenade_melee n'est pas appelé
+        (early return) — le message no_data est attendu, pas le pie chart."""
+        import src.ui.pages.match_view_weapon_kills as mod
+
+        ms = mock_st(mod)
+        pie_called: list[bool] = []
+
+        def capture_pie(_df: pl.DataFrame, _colors: dict) -> None:
+            pie_called.append(True)
+
+        with (
+            patch(_MOCK_REPO_CTX),
+            patch.object(mod, "_build_weapon_kills_df", return_value=_empty_weapons_df()),
+            patch.object(mod, "_render_weapon_pie", side_effect=capture_pie),
+        ):
+            mod.render_weapon_kills_section(db_path="/fake", match_id="m1", xuid="u1", colors={})
+
+        ms.calls["caption"].assert_called_once()
+        assert not pie_called, "Le pie chart ne doit pas s'afficher quand weapon_kills est vide"
 
     def test_renders_pie_and_table_when_data_present(self, mock_st) -> None:
         import src.ui.pages.match_view_weapon_kills as mod
@@ -406,6 +468,7 @@ class TestRenderWeaponKillsSection:
 
         df = _weapons_df_with_rows()
         with (
+            patch(_MOCK_REPO_CTX),
             patch.object(mod, "_build_weapon_kills_df", return_value=df),
             patch.object(mod, "_enrich_with_grenade_melee", return_value=df),
             patch.object(mod, "_render_weapon_pie"),
@@ -432,6 +495,7 @@ class TestRenderWeaponKillsSection:
         )
 
         with (
+            patch(_MOCK_REPO_CTX),
             patch.object(mod, "_build_weapon_kills_df", return_value=_weapons_df_with_rows()),
             patch.object(mod, "_enrich_with_grenade_melee", return_value=df_enriched),
             patch.object(mod, "_render_weapon_pie", side_effect=capture_pie),
@@ -440,8 +504,7 @@ class TestRenderWeaponKillsSection:
             mod.render_weapon_kills_section(db_path="/fake", match_id="m1", xuid="u1", colors={})
 
         assert len(captured) == 1
-        names = captured[0]["weapon_name"].to_list()
-        assert "Grenades" in names
+        assert "Grenades" in captured[0]["weapon_name"].to_list()
 
 
 # =============================================================================

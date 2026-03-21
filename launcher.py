@@ -23,6 +23,7 @@ import argparse
 import asyncio
 import contextlib
 import io
+import logging
 import os
 import signal
 import socket
@@ -34,6 +35,8 @@ import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 # Forcer l'encodage UTF-8 sur Windows pour les emojis
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -41,7 +44,6 @@ if sys.platform == "win32":
 
 # Ajouter src au path pour les imports
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-
 
 # =============================================================================
 # Configuration
@@ -56,6 +58,7 @@ from src.utils.paths import (
     PLAYER_DB_FILENAME,
     PLAYERS_DIR,
     WAREHOUSE_DIR,
+    get_metadata_db_path,
     get_pve_db_path,
     get_shared_matches_path,
 )
@@ -385,7 +388,6 @@ async def _sync_player_duckdb_async(
         Tuple (matchs_avant, matchs_après)
     """
     try:
-        from src.data.sync.api_client import get_tokens_from_env
         from src.data.sync.engine import DuckDBSyncEngine
         from src.data.sync.models import SyncOptions
     except ImportError as e:
@@ -400,18 +402,13 @@ async def _sync_player_duckdb_async(
     # Compter les matchs avant
     matches_before = _count_matches_duckdb(db_path)
 
-    # Récupérer les tokens (async)
+    # Récupérer les tokens via la couche auth unifiée (Device Code Flow si nécessaire)
     try:
-        tokens = await get_tokens_from_env()
-    except SystemExit:
-        print("  ⚠ Tokens non configurés (SPNKR_SPARTAN_TOKEN, SPNKR_CLEARANCE_TOKEN)")
-        return (matches_before, matches_before)
+        from src.auth.provider import get_halo_tokens
+
+        tokens = await get_halo_tokens(db_path)
     except Exception as e:
         print(_classify_sync_error(str(e), gamertag))
-        return (matches_before, matches_before)
-
-    if not tokens:
-        print("  ⚠ Tokens non configurés")
         return (matches_before, matches_before)
 
     # Créer le moteur de sync
@@ -804,9 +801,11 @@ def _run_migrations() -> None:
 
     # Migrations shared (une seule fois)
     try:
+        meta_path = get_metadata_db_path()
         report = apply_pending_migrations(
             shared_db_path=shared_path if shared_path.exists() else None,
             pve_db_path=pve_path if pve_path.exists() else None,
+            metadata_db_path=meta_path if meta_path.exists() else None,
         )
         total_schemas += report.schemas_applied
         total_backfills += report.backfills_applied
@@ -1125,260 +1124,160 @@ def _load_dotenv_for_launcher() -> None:
 
 
 def _env_check_for_player(gamertag: str) -> dict[str, object]:
-    """Vérifie la présence des variables d'env requises pour un gamertag.
+    """Vérifie la présence d'un token valide pour un gamertag.
+
+    Avec la nouvelle couche auth (MSAL cache DuckDB), le client_id est
+    intégré dans LevelUp — plus besoin de SPNKR_AZURE_CLIENT_ID.
+    La vérification porte maintenant sur le cache MSAL (stats.duckdb/sync_meta)
+    ou les variables d'env legacy.
 
     Returns:
-        Dictionnaire avec les clés « client_id », « client_secret »,
-        « player_token » (bool) et « player_token_key » (str).
+        Dictionnaire avec les clés ``has_auth`` (bool) et ``player_token_key`` (str).
     """
     _load_dotenv_for_launcher()
     gt_norm = gamertag.upper().replace(" ", "_").replace("-", "_")
     token_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{gt_norm}"
+
+    # Vérifie en priorité le cache MSAL dans la DB joueur
+    has_msal_cache = False
+    try:
+        from src.auth._msal import acquire_token_silent, build_msal_app, load_msal_cache
+
+        db_path = _get_player_db_path(gamertag)
+        if db_path.exists():
+            _cache = load_msal_cache(db_path)
+            _app = build_msal_app(_cache)
+            has_msal_cache = bool(acquire_token_silent(_app))
+    except Exception:
+        pass
+
+    # Fallback : variables d'env legacy
+    has_env_token = bool(os.environ.get(token_key) or os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN"))
+
     return {
-        "client_id": bool(os.environ.get("SPNKR_AZURE_CLIENT_ID")),
-        "client_secret": bool(os.environ.get("SPNKR_AZURE_CLIENT_SECRET")),
-        "player_token": bool(
-            os.environ.get(token_key) or os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN")
-        ),
+        "client_id": True,  # Toujours disponible (app Azure intégrée)
+        "player_token": has_msal_cache or has_env_token,
         "player_token_key": token_key,
     }
-
-
-def _print_token_setup_instructions(gamertag: str, token_key: str) -> None:
-    """Affiche les instructions pour obtenir et configurer le refresh token OAuth."""
-    client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "<CLIENT_ID>")
-    auth_url = (
-        f"https://login.live.com/oauth20_authorize.srf"
-        f"?client_id={client_id}"
-        "&response_type=code"
-        "&redirect_uri=https%3A%2F%2Flocalhost"
-        "&scope=Xboxlive.signin+Xboxlive.offline_access"
-    )
-    print()
-    print("  ┌────────────────────────────────────────────────────────┐")
-    print("  │          Configuration du token OAuth Azure            │")
-    print("  └────────────────────────────────────────────────────────┘")
-    print()
-    print("  1) Ouvre ce lien dans ton navigateur :")
-    print(f"\n     {auth_url}\n")
-    print("  2) Connecte-toi avec ton compte Xbox puis copie")
-    print("     l'URL de redirection (https://localhost/?code=...)")
-    print()
-    print("  3) Lance :")
-    print("       python scripts/spnkr_get_refresh_token.py \\")
-    print("         --oauth-endpoint v2 \\")
-    print('         --auth-code "<URL copiée>"')
-    print()
-    print("  4) Ajoute dans .env.local :")
-    print(f"       {token_key}=<refresh_token_obtenu>")
-    print()
-    print("  5) Relance LevelUp")
-    print()
 
 
 # =============================================================================
 # Wizards de configuration interactive (zéro CLI)
 # =============================================================================
 
-
-def _upsert_env_key(path: Path, key: str, value: str) -> None:
-    """Écrit ou met à jour une clé dans un fichier .env / .env.local."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    lines: list[str] = []
-    if path.exists():
-        with contextlib.suppress(Exception):
-            lines = path.read_text(encoding="utf-8").splitlines()
-    new_lines: list[str] = []
-    replaced = False
-    for line in lines:
-        if line.strip().startswith(f"{key}="):
-            new_lines.append(f"{key}={value}")
-            replaced = True
-        else:
-            new_lines.append(line)
-    if not replaced:
-        if new_lines and new_lines[-1].strip():
-            new_lines.append("")
-        new_lines.append(f"{key}={value}")
-    path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+_BOOTSTRAP_AUTH_DB = WAREHOUSE_DIR / "bootstrap_auth.duckdb"
+# DB temporaire utilisée lors du premier lancement pour stocker le cache MSAL
+# avant que le gamertag soit connu. Supprimée après transfert vers stats.duckdb.
 
 
-def _extract_code_from_url(value: str) -> str:
-    """Extrait le code OAuth depuis une URL de redirection ou retourne la valeur brute."""
-    from urllib.parse import parse_qs, urlparse
+def _transfer_msal_cache(source: Path, target: Path) -> None:
+    """Transfère le cache MSAL depuis la DB source vers la DB target.
 
-    v = (value or "").strip()
-    if not v or ("code=" not in v and "http" not in v):
-        return v
-    try:
-        qs = parse_qs(urlparse(v).query)
-        code = (qs.get("code") or [""])[0]
-        if code:
-            return str(code).strip()
-    except Exception:
-        pass
-    if "code=" in v:
-        return v.split("code=", 1)[1].split("&", 1)[0].strip()
-    return v
-
-
-def _extract_oauth_error_from_url(value: str) -> tuple[str | None, str | None]:
-    """Extrait (error, description) depuis une URL OAuth de redirection."""
-    from urllib.parse import parse_qs, urlparse
-
-    v = (value or "").strip()
-    if "error=" not in v:
-        return None, None
-    try:
-        qs = parse_qs(urlparse(v).query)
-        err = (qs.get("error") or [None])[0]
-        desc = (qs.get("error_description") or [None])[0]
-        if err:
-            return str(err), (str(desc) if desc else None)
-    except Exception:
-        pass
-    err = v.split("error=", 1)[1].split("&", 1)[0].strip() or None
-    return err, None
-
-
-async def _async_exchange_oauth_code_v2(
-    auth_code: str, client_id: str, client_secret: str, redirect_uri: str
-) -> str:
-    """Échange un code OAuth contre un refresh_token (endpoint Microsoft v2 consumers)."""
-    from aiohttp import ClientSession
-
-    url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
-    data = {
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "grant_type": "authorization_code",
-        "code": auth_code,
-        "redirect_uri": redirect_uri,
-        "scope": "Xboxlive.signin Xboxlive.offline_access",
-    }
-    async with ClientSession() as session:
-        resp = await session.post(url, data=data)
-        payload = await resp.json()
-    if resp.status >= 400:
-        err = payload.get("error", "unknown")
-        desc = str(payload.get("error_description", ""))[:200]
-        raise ValueError(f"{err}: {desc}")
-    token = payload.get("refresh_token")
-    if not isinstance(token, str) or not token.strip():
-        raise ValueError("Pas de refresh_token dans la réponse OAuth")
-    return token.strip()
-
-
-def _wizard_azure_creds() -> bool:
-    """Wizard interactif : saisie et sauvegarde des credentials Azure App.
-
-    Retourne True si configurés avec succès, False sinon.
+    Lit la valeur JSON sérialisée dans ``sync_meta`` de source et l'écrit
+    dans ``sync_meta`` de target (créée si absente).
     """
-    print()
-    print("  ┌────────────────────────────────────────────────────────┐")
-    print("  │     Configuration Azure App Registration               │")
-    print("  └────────────────────────────────────────────────────────┘")
-    print()
-    print("  Pour accéder à l'API Halo, il te faut une Azure App :")
-    print("    1) https://portal.azure.com → App registrations → New registration")
-    print("       Nom : LevelUp | Account type : Personal Microsoft accounts")
-    print("       Redirect URI : Web → https://localhost")
-    print("    2) Copie l'« Application (client) ID »")
-    print("    3) Certificates & secrets → New client secret → copie la VALUE")
-    print()
-    try:
-        client_id = input("  Client ID (Application ID) : ").strip()
-        if not client_id:
-            return False
-        client_secret = input("  Client Secret (Value)     : ").strip()
-        if not client_secret:
-            return False
-    except (EOFError, KeyboardInterrupt):
-        return False
-    env_local = REPO_ROOT / ".env.local"
-    try:
-        _upsert_env_key(env_local, "SPNKR_AZURE_CLIENT_ID", client_id)
-        _upsert_env_key(env_local, "SPNKR_AZURE_CLIENT_SECRET", client_secret)
-        os.environ["SPNKR_AZURE_CLIENT_ID"] = client_id
-        os.environ["SPNKR_AZURE_CLIENT_SECRET"] = client_secret
-        print("  ✅ Credentials sauvegardés dans .env.local")
-        return True
-    except Exception as exc:
-        print(f"  ❌ Sauvegarde impossible : {exc}")
-        return False
+    from src.auth._constants import MSAL_CACHE_DB_KEY
+    from src.utils.db import duckdb_read_only, duckdb_read_write
 
-
-def _wizard_oauth_token(gamertag: str, client_id: str, client_secret: str) -> str | None:
-    """Wizard interactif : obtention et sauvegarde du refresh token OAuth Xbox Live.
-
-    Ouvre le navigateur, demande l'URL de redirection, échange le code,
-    écrit le token dans .env.local. Retourne le token ou None si échec.
-    """
-    from urllib.parse import quote_plus
-
-    redirect_uri = os.environ.get("SPNKR_AZURE_REDIRECT_URI", "https://localhost")
-    scope = "Xboxlive.signin Xboxlive.offline_access"
-    auth_url = (
-        "https://login.live.com/oauth20_authorize.srf"
-        f"?client_id={quote_plus(client_id)}"
-        "&response_type=code&approval_prompt=auto"
-        f"&scope={quote_plus(scope)}"
-        f"&redirect_uri={quote_plus(redirect_uri)}"
+    logger.debug("_transfer_msal_cache: %s → %s", source.name, target.name)
+    with duckdb_read_only(source) as conn:
+        row = conn.execute(
+            "SELECT value FROM sync_meta WHERE key = ?", (MSAL_CACHE_DB_KEY,)
+        ).fetchone()
+    if not row or not row[0]:
+        logger.warning(
+            "_transfer_msal_cache: aucun cache MSAL dans %s — transfert annulé", source.name
+        )
+        return
+    serialized = row[0]
+    ddl = (
+        "CREATE TABLE IF NOT EXISTS sync_meta ("
+        "key VARCHAR PRIMARY KEY, value VARCHAR, "
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
     )
+    with duckdb_read_write(target) as conn:
+        conn.execute(ddl)
+        conn.execute(
+            "INSERT OR REPLACE INTO sync_meta (key, value, updated_at)"
+            " VALUES (?, ?, CURRENT_TIMESTAMP)",
+            (MSAL_CACHE_DB_KEY, serialized),
+        )
+    logger.info("_transfer_msal_cache: cache MSAL transféré vers %s", target.name)
+
+
+def _wizard_oauth_token(gamertag: str, client_id: str = "") -> bool:  # noqa: ARG001
+    """Wizard interactif : connexion Xbox via MSAL Device Code Flow.
+
+    Démarre le Device Code Flow via l'app Azure LevelUp intégrée (client_id
+    hardcodé — plus besoin de le passer en paramètre).
+    Le cache MSAL (contenant le refresh_token tourné) est persisté directement
+    dans stats.duckdb du joueur — plus de sauvegarde dans .env.local.
+
+    Args:
+        gamertag: Gamertag Xbox du joueur à authentifier.
+        client_id: Ignoré (app Azure intégrée dans src/auth/_constants.py).
+
+    Returns:
+        True si connexion réussie, False sinon.
+    """
+    import asyncio
+
     print()
     print("  ┌────────────────────────────────────────────────────────┐")
-    print("  │       Connexion Xbox Live — OAuth                      │")
+    print("  │       Connexion Xbox Live — Device Code Flow           │")
     print("  └────────────────────────────────────────────────────────┘")
     print()
-    print("  Je vais ouvrir ton navigateur pour te connecter à Xbox Live.")
-    print("  → Tu seras redirigé vers https://localhost (page d'erreur : normal).")
-    print("  → Copie l'URL complète de la barre d'adresse et colle-la ici.")
+
+    try:
+        from src.auth.provider import DeviceCodePending, start_device_flow
+    except ImportError:
+        print("  ❌ Module src.auth introuvable.")
+        return False
+
+    db_path = _get_player_db_path(gamertag)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    print("  Initialisation du Device Code Flow…")
+    try:
+        pending: DeviceCodePending = start_device_flow(db_path)
+    except Exception as exc:  # noqa: BLE001
+        code = getattr(exc, "code", "unknown")
+        detail = getattr(exc, "detail", str(exc))
+        print(f"  ❌ Erreur : {code} — {detail}")
+        return False
+
+    print()
+    print(f"  1) Visite : {pending.verification_url}")
+    print(f"  2) Entre le code : {pending.user_code}")
+    print(f"     (expire dans {pending.expires_in // 60} min)")
     print()
     with contextlib.suppress(Exception):
-        webbrowser.open(auth_url)
-    print(f"  (Lien de secours : {auth_url})")
+        webbrowser.open(pending.verification_url)
+    print("  En attente de votre connexion Xbox… (ne fermez pas cette fenêtre)")
     print()
+
+    async def _wait() -> tuple[str, str]:
+        from src.auth.provider import complete_device_flow
+
+        return await complete_device_flow(db_path, pending)
+
     try:
-        redirect_url = input("  Colle ici l'URL de redirection : ").strip()
-    except (EOFError, KeyboardInterrupt):
-        return None
-    if not redirect_url:
-        return None
-    err, desc = _extract_oauth_error_from_url(redirect_url)
-    if err:
-        print(f"  ❌ Erreur OAuth : {err}" + (f" — {desc}" if desc else ""))
-        return None
-    auth_code = _extract_code_from_url(redirect_url)
-    if not auth_code:
-        print("  ❌ Impossible d'extraire le code OAuth de l'URL.")
-        return None
-    print("  Échange du code contre un token OAuth…")
-    try:
-        token = asyncio.run(
-            _async_exchange_oauth_code_v2(auth_code, client_id, client_secret, redirect_uri)
-        )
-    except Exception as exc:
-        print(f"  ❌ Échec de l'échange OAuth : {exc}")
-        return None
-    gt_norm = gamertag.upper().replace(" ", "_").replace("-", "_")
-    token_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{gt_norm}"
-    env_local = REPO_ROOT / ".env.local"
-    try:
-        _upsert_env_key(env_local, token_key, token)
-        print(f"  ✅ Token sauvegardé dans .env.local ({token_key})")
-    except Exception as exc:
-        print(f"  ⚠  Sauvegarde impossible ({exc}) — ajoute manuellement dans .env.local :")
-        print(f"     {token_key}={token}")
-    # Toujours injecter en mémoire pour le sync qui suit (même si l'écriture a échoué)
-    os.environ[token_key] = token
-    return token
+        resolved_gamertag, xuid = asyncio.run(_wait())
+        print(f"  ✅ Connecté : {resolved_gamertag} ({xuid})")
+        print("     Token sauvegardé dans stats.duckdb (renouvellement automatique).")
+        return True
+    except Exception as exc:  # noqa: BLE001
+        code = getattr(exc, "code", "unknown")
+        detail = getattr(exc, "detail", str(exc))
+        print(f"  ❌ Échec : {code} — {detail}")
+        return False
 
 
 def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
     """Guide interactif pour configurer et synchroniser un premier joueur.
 
-    Wizard zéro-CLI : détecte les credentials manquants et guide l'utilisateur
-    pas à pas (Azure App, token OAuth, sync) sans jamais exiger de ligne de commande.
+    Wizard zéro-CLI : Device Code Flow d'abord, gamertag résolu depuis l'API
+    Halo après authentification — aucune saisie manuelle requise.
 
     Returns:
         0 si la synchronisation a réussi, 2 sinon.
@@ -1394,52 +1293,58 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
         print("  Lance : python launcher.py add-player --gamertag <gamertag>")
         return 2
 
-    try:
-        gamertag = input("  Ton Gamertag Xbox (ex: JGtm) : ").strip()
-    except (EOFError, KeyboardInterrupt):
-        return 2
-
-    if not gamertag:
-        print("  Gamertag vide — annulé.")
-        return 2
-
     _load_dotenv_for_launcher()
 
-    # ── Étape 1 : Credentials Azure ───────────────────────────────────────────
-    if not (
-        os.environ.get("SPNKR_AZURE_CLIENT_ID") and os.environ.get("SPNKR_AZURE_CLIENT_SECRET")
-    ):
+    # ── Étape 1 : Connexion Xbox — Device Code Flow (gamertag résolu après auth) ──
+    try:
+        from src.auth.provider import DeviceCodePending, complete_device_flow, start_device_flow
+    except ImportError:
+        print("  ❌ Module src.auth introuvable.")
+        return 2
+
+    _BOOTSTRAP_AUTH_DB.parent.mkdir(parents=True, exist_ok=True)
+    print("  Initialisation du Device Code Flow…")
+    try:
+        pending: DeviceCodePending = start_device_flow(_BOOTSTRAP_AUTH_DB)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ❌ Erreur : {getattr(exc, 'code', 'unknown')} — {getattr(exc, 'detail', exc)}")
+        return 2
+
+    print()
+    print(f"  1) Visite : {pending.verification_url}")
+    print(f"  2) Entre le code : {pending.user_code}")
+    print(f"     (expire dans {pending.expires_in // 60} min)")
+    print()
+    with contextlib.suppress(Exception):
+        webbrowser.open(pending.verification_url)
+    print("  En attente de votre connexion Xbox… (ne fermez pas cette fenêtre)")
+    print()
+
+    try:
+        gamertag, xuid = asyncio.run(complete_device_flow(_BOOTSTRAP_AUTH_DB, pending))
+        print(f"  ✅ Connecté : {gamertag}  ({xuid})")
         print()
-        print("  ❌ Credentials Azure non configurés")
-        ok = _wizard_azure_creds()
-        if not ok:
-            print("  → Configure les credentials Azure et relance LevelUp.")
-            return 2
-    else:
-        print("  ✓ Credentials Azure présents")
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ❌ Échec : {getattr(exc, 'code', 'unknown')} — {getattr(exc, 'detail', exc)}")
+        _BOOTSTRAP_AUTH_DB.unlink(missing_ok=True)
+        return 2
 
-    client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "")
-    client_secret = os.environ.get("SPNKR_AZURE_CLIENT_SECRET", "")
+    # Transférer le cache MSAL dans stats.duckdb du joueur, puis nettoyer
+    real_db_path = _get_player_db_path(gamertag)
+    real_db_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        _transfer_msal_cache(_BOOTSTRAP_AUTH_DB, real_db_path)
+    except Exception as exc:
+        print(f"  ⚠ Transfert cache MSAL : {exc}")
+    finally:
+        _BOOTSTRAP_AUTH_DB.unlink(missing_ok=True)
 
-    # ── Étape 2 : Token OAuth joueur ──────────────────────────────────────────
-    gt_norm = gamertag.upper().replace(" ", "_").replace("-", "_")
-    token_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{gt_norm}"
-    has_token = bool(os.environ.get(token_key) or os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN"))
-    if not has_token:
-        print(f"  ❌ Token OAuth manquant ({token_key})")
-        token = _wizard_oauth_token(gamertag, client_id, client_secret)
-        if not token:
-            print("  → Obtiens le token et relance LevelUp.")
-            return 2
-    else:
-        print("  ✓ Token OAuth présent")
-
-    # ── Étape 3 : Initialisation des bases de données ─────────────────────────
+    # ── Étape 2 : Initialisation des bases de données ─────────────────────────
     print()
     _ensure_warehouse_dbs()
     _run_migrations()
 
-    # ── Étape 4 : Synchronisation ─────────────────────────────────────────────
+    # ── Étape 3 : Synchronisation ─────────────────────────────────────────────
     print()
     print(f"  → Synchronisation de « {gamertag} » (premier chargement, quelques minutes)…")
     print()
@@ -1474,17 +1379,15 @@ def _cmd_add_player(args: argparse.Namespace) -> int:
     _load_dotenv_for_launcher()
     env_info = _env_check_for_player(gamertag)
 
-    if not env_info["client_id"] or not env_info["client_secret"]:
-        print(
-            "  ❌ Credentials Azure manquants (SPNKR_AZURE_CLIENT_ID / SPNKR_AZURE_CLIENT_SECRET)"
-        )
-        return 2
-
     if not env_info["player_token"]:
-        print(f"  ❌ Token manquant : {env_info['player_token_key']}")
+        print(f"  ❌ Connexion Xbox manquante pour {gamertag}")
         if sys.stdin.isatty():
-            _print_token_setup_instructions(gamertag, str(env_info["player_token_key"]))
-        return 2
+            ok = _wizard_oauth_token(gamertag)
+            if not ok:
+                return 2
+        else:
+            print("     Lance : python launcher.py add-player --gamertag" + gamertag)
+            return 2
 
     full_sync = getattr(args, "full", False)
     max_matches = int(getattr(args, "max_matches", 200))
@@ -1505,43 +1408,180 @@ def _cmd_add_player(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_reauth(args: argparse.Namespace) -> int:
+    """Commande: renouvelle uniquement le token OAuth d'un joueur.
+
+    Réutilise le client_id déjà configuré dans .env.local et relance
+    uniquement le Device Code Flow MSAL pour obtenir un nouveau refresh_token.
+    Utile quand le token a expiré ou a été révoqué sans avoir à recréer l'app.
+    """
+    gamertag = args.gamertag.strip()
+    _load_dotenv_for_launcher()
+
+    print()
+    print(f"  Renouvellement du token OAuth pour « {gamertag} »…")
+    print()
+
+    ok = _wizard_oauth_token(gamertag)
+    if not ok:
+        print("  ❌ Échec du renouvellement.")
+        return 2
+
+    print(f"  ✅ Token renouvelé pour {gamertag}")
+    return 0
+
+
 # =============================================================================
-# Mode interactif
+# Détection d'état au démarrage + menu de récupération
 # =============================================================================
 
 
-def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
-    """Menu interactif simplifié."""
+@dataclass
+class _ConfigState:
+    """État global de la configuration détecté au démarrage."""
+
+    players: list[PlayerInfo]
+    players_missing_token: list[str]  # gamertags sans token OAuth valide
+
+    @property
+    def is_first_launch(self) -> bool:
+        """Aucun joueur configuré — premier démarrage."""
+        return not self.players
+
+    @property
+    def is_ready(self) -> bool:
+        """Tout est en ordre : peut lancer Streamlit directement."""
+        return bool(self.players) and not self.players_missing_token
+
+    @property
+    def is_partial(self) -> bool:
+        """Configuration incomplète : au moins un élément manquant."""
+        return bool(self.players) and not self.is_ready
+
+
+def _detect_config_state() -> _ConfigState:
+    """Évalue l'état global de la configuration au démarrage.
+
+    Lit .env.local, liste les joueurs et vérifie la présence de chaque
+    token OAuth par gamertag.  Aucune connexion réseau n'est effectuée.
+    """
+    players = _list_players()
+    _load_dotenv_for_launcher()
+    players_missing_token: list[str] = []
+    for p in players:
+        gt_norm = p.gamertag.upper().replace(" ", "_").replace("-", "_")
+        token_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{gt_norm}"
+        has_token = bool(os.environ.get(token_key) or os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN"))
+        if not has_token:
+            players_missing_token.append(p.gamertag)
+    return _ConfigState(
+        players=players,
+        players_missing_token=players_missing_token,
+    )
+
+
+def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
+    """Menu de récupération affiché quand la configuration est incomplète.
+
+    S'adapte à ce qui manque : app Azure, token OAuth, ou les deux.
+    Permet de reprendre ou de changer de méthode sans ligne de commande.
+    Après correction, relance le flux interactif normal.
+    """
+    print()
+    print("  ┌────────────────────────────────────────────────────────┐")
+    print("  │         ⚠  Configuration incomplète détectée          │")
+    print("  └────────────────────────────────────────────────────────┘")
+    print()
+
+    if state.players_missing_token:
+        missing = ", ".join(state.players_missing_token)
+        print(f"  ✗ Accès Halo expiré ou manquant pour : {missing}")
+    print()
+
+    if not sys.stdin.isatty():
+        print("  Terminal non interactif — impossible de procéder.")
+        print("  → python launcher.py add-player   (reconfigurer)")
+        print("  → python launcher.py reauth --gamertag <GT>  (renouveler token)")
+        return 2
+
+    # ── Construire les options selon l'état ───────────────────────────────────
+    # Format : (action_key, label_affiché)
+    options: list[tuple[str, str]] = []
+
+    for gt in state.players_missing_token:
+        options.append(
+            (
+                f"reauth:{gt}",
+                f"🔑 MSAL Device Code Flow  (code court sur microsoft.com/devicelogin pour {gt})",
+            )
+        )
+    options.append(("launch", "🚀 Lancer quand même  (tu synchroniseras plus tard)"))
+
+    # Quitter toujours en dernier
+    options.append(("quit", "Quitter"))
+
+    for i, (_, label) in enumerate(options[:-1], 1):
+        print(f"  {i}) {label}")
+    print()
+    print(f"  Q) {options[-1][1]}")
+    print()
+
+    keys_str = "/".join(str(i) for i in range(1, len(options))) + "/Q"
+    try:
+        choice = input(f"Ton choix ({keys_str}): ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return 2
+
+    if choice in {"q", "quit", "exit"}:
+        return 0
+
+    try:
+        idx = int(choice) - 1
+    except ValueError:
+        print("  Choix invalide.")
+        return 2
+
+    if not (0 <= idx < len(options) - 1):
+        print("  Choix invalide.")
+        return 2
+
+    action, _ = options[idx]
+
+    if action.startswith("reauth:"):
+        gt = action.split(":", 1)[1]
+        print(f"\n  🔄 Renouvellement du token pour « {gt} »…")
+        ok = _wizard_oauth_token(gt)
+        if not ok:
+            print("  ❌ Échec du renouvellement.")
+            return 2
+        return _interactive()
+
+    if action == "launch":
+        return _launch_streamlit(db_path=None, port=None, no_browser=False)
+
+    print("  Choix invalide.")
+    return 2
+
+
+def _interactive() -> int:
+    """Menu interactif principal.
+
+    Branche selon l'état de la configuration :
+    - Premier lancement (aucun joueur) → wizard de configuration
+    - Config incomplète → menu de récupération contextuel
+    - Tout OK → lancement direct de Streamlit
+    """
     print("=" * 60)
     print("        LevelUp - Dashboard Halo Infinite")
     print("        Architecture DuckDB v5")
     print("=" * 60)
 
-    # Lister les joueurs DuckDB
-    players = _list_players()
+    state = _detect_config_state()
 
-    # Afficher l'état actuel
-    print("\n📊 État actuel:")
-
-    if players:
-        total_matches = sum(p.total_matches for p in players)
-        print(f"   Stockage: {_display_path(PLAYERS_DIR)}")
-        print(f"   Joueurs: {len(players)}")
-        for p in players:
-            print(f"      - {p.gamertag}: {p.total_matches} matchs")
-        print(f"   Total: {total_matches} matchs")
-
-        # Vérifier metadata
-        if _metadata_db_exists():
-            print("   Métadonnées: ✅")
-        else:
-            print("   Métadonnées: ⚠ Non trouvées")
-    else:
+    # ── Premier lancement ──────────────────────────────────────────────────────
+    if state.is_first_launch:
+        print("\n📊 État actuel:")
         print("   ❌ Aucun joueur trouvé — premier démarrage")
-
-    # ── Menu différent selon l'état ───────────────────────────────────────────
-    if not players:
-        # Premier démarrage : proposer l'ajout d'un joueur
         print("\n" + "-" * 60)
         print("Choisis une action:\n")
         print("  1) ➕ Ajouter un joueur               [premier démarrage]")
@@ -1551,9 +1591,7 @@ def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
         print()
 
         if not sys.stdin.isatty():
-            print(
-                "⚠ Terminal non interactif — Lance : python launcher.py add-player --gamertag <gt>"
-            )
+            print("⚠ Terminal non interactif → python launcher.py add-player --gamertag <gt>")
             return 2
 
         try:
@@ -1564,12 +1602,12 @@ def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
         if choice in {"q", "quit", "exit"}:
             return 0
 
-        if choice in {"1", ""}:
+        if choice == "1":
             rc = _onboard_first_player()
             if rc != 0:
                 return rc
-            players = _list_players()
-            if not players:
+            state = _detect_config_state()
+            if not state.players:
                 return 2
             print()
             try:
@@ -1583,77 +1621,26 @@ def _interactive() -> int:  # noqa: C901, PLR0912, PLR0915
         print("Choix invalide.")
         return 2
 
-    # ── Menu joueurs existants ────────────────────────────────────────────────
-    print("\n" + "-" * 60)
-    print("Choisis une action:\n")
-    print("  1) 🚀 Dashboard                       [recommandé]")
-    print("     Lance le dashboard directement")
-    print()
-    print("  2) 🔄 Sync + Dashboard")
-    print("     Synchronise les nouveaux matchs puis lance le dashboard")
-    print()
-    print("  3) 🔄 Sync seul")
-    print("     Synchronise les données sans lancer le dashboard")
-    print()
-    print("  4) 📊 Infos")
-    print("     Affiche les informations détaillées")
-    print()
-    print("  5) ➕ Ajouter un joueur")
-    print("     Configure et synchronise un nouveau compte")
-    print()
-    print("  Q) Quitter")
-    print()
-
-    # Si stdin n'est pas un terminal (IDE, Cursor, pipe), lancer directement
-    if not sys.stdin.isatty():
-        print("⚠ Terminal non interactif détecté → lancement direct du dashboard (option 1).")
-        print("  Pour d'autres actions, utilise la CLI: run / sync / info / add-player")
-        choice = "1"
+    # ── Afficher l'état des joueurs ────────────────────────────────────────────
+    print("\n📊 État actuel:")
+    total_matches = sum(p.total_matches for p in state.players)
+    print(f"   Stockage: {_display_path(PLAYERS_DIR)}")
+    print(f"   Joueurs: {len(state.players)}")
+    for p in state.players:
+        print(f"      - {p.gamertag}: {p.total_matches} matchs")
+    print(f"   Total: {total_matches} matchs")
+    if _metadata_db_exists():
+        print("   Métadonnées: ✅")
     else:
-        try:
-            choice = input("Ton choix (1/2/3/4/5/Q): ").strip().lower()
-        except EOFError:
-            print("\n⚠ stdin fermé ou non connecté (terminal/IDE).")
-            print("  Utilise les arguments CLI :")
-            print("    python launcher.py run          # option 1")
-            print("    python launcher.py sync         # option 3")
-            print("    python launcher.py info         # option 4")
-            print("    python launcher.py add-player   # option 5")
-            return 2
+        print("   Métadonnées: ⚠ Non trouvées")
 
-    if choice in {"q", "quit", "exit"}:
-        return 0
+    # ── Config incomplète → menu de récupération ───────────────────────────────
+    if state.is_partial:
+        return _recovery_menu(state)
 
-    if choice == "1":
-        return _launch_streamlit(db_path=None, port=None, no_browser=False)
-
-    if choice == "2":
-        args = argparse.Namespace(max_matches=100, full=False, run=True)
-        return _cmd_sync(args)
-
-    if choice == "3":
-        args = argparse.Namespace(max_matches=100, full=False, run=False)
-        return _cmd_sync(args)
-
-    if choice == "4":
-        return _cmd_info(argparse.Namespace())
-
-    if choice == "5":
-        rc = _onboard_first_player()
-        if rc == 0:
-            players = _list_players()
-            if players:
-                print()
-                try:
-                    go = input("  Lancer le dashboard maintenant ? [O/n] : ").strip().lower()
-                except (EOFError, KeyboardInterrupt):
-                    return 0
-                if go not in ("n", "non", "no"):
-                    return _launch_streamlit(db_path=None, port=None, no_browser=False)
-        return rc
-
-    print("Choix invalide.")
-    return 2
+    # ── Tout OK → lancement direct ─────────────────────────────────────────────
+    print("\n  ✅ Configuration complète — lancement du dashboard…")
+    return _launch_streamlit(db_path=None, port=None, no_browser=False)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -1720,6 +1707,14 @@ Architecture v5:
     p_add.add_argument("--full", action="store_true", help="Sync complète (pas de delta)")
     p_add.add_argument("--max-matches", type=int, default=200, help="Max matchs (défaut: 200)")
     p_add.set_defaults(func=_cmd_add_player)
+
+    # reauth
+    p_reauth = sub.add_parser(
+        "reauth",
+        help="Renouvelle uniquement le token OAuth d'un joueur (sans recréer l'app Azure)",
+    )
+    p_reauth.add_argument("--gamertag", type=str, required=True, help="Gamertag Xbox du joueur")
+    p_reauth.set_defaults(func=_cmd_reauth)
 
     return ap
 

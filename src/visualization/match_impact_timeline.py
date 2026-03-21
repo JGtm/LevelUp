@@ -170,7 +170,7 @@ def plot_match_kill_death_timeline(  # noqa: C901, PLR0912, PLR0915
         t_ms = ie.time_ms
         event_base = ie.event_type
 
-        if event_base in ("first_blood", "clutch_finisher", "last_group_kill"):
+        if event_base in ("first_blood", "clutch_finisher", "last_group_kill", "top_gun"):
             if my_kills:
                 first_t = int(my_kills[0]["time_ms"])
                 last_t = int(my_kills[-1]["time_ms"])
@@ -415,9 +415,7 @@ def plot_all_players_frags_timeline(  # noqa: C901, PLR0912, PLR0913, PLR0915
                     "color": color,
                 },
                 opacity=1.0 if is_me else 0.65,
-                hovertemplate=(
-                    f"<b>{name}</b><br>" f"Score: %{{y:+.0f}}<br>" "%{text}<extra></extra>"
-                ),
+                hovertemplate=(f"<b>{name}</b><br>Score: %{{y:+.0f}}<br>%{{text}}<extra></extra>"),
                 text=labels,
             )
         )

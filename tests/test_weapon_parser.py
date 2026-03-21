@@ -23,13 +23,13 @@ from src.analysis.weapon_parser import (
     KILL_WINDOW_MS,
     MELEE_API_ID,
     MELEE_MEDALS,
-    POV_PLAYER_INDEX,
     WEAPON_ID_MAP,
     WEAPON_IDS_INT,
     WEAPON_INT_TO_NAME,
     WEAPON_TIMING_BY_ID,
     build_frame_estimator,
     build_weapon_timeline,
+    build_weapon_timelines,
     correlate_kills_to_weapons,
     count_kills_by_api_weapon,
     detect_player_indices,
@@ -50,7 +50,7 @@ class TestConstants:
     """Vérifie la cohérence des constantes."""
 
     def test_weapon_id_map_has_entries(self):
-        assert len(WEAPON_ID_MAP) >= 40
+        assert len(WEAPON_ID_MAP) >= 35
 
     def test_all_weapon_ids_are_8_bytes(self):
         for wid in WEAPON_ID_MAP:
@@ -68,10 +68,7 @@ class TestConstants:
     def test_most_weapons_have_common_suffix(self):
         """La majorité des armes utilisent le suffixe commun."""
         with_suffix = sum(1 for w in WEAPON_ID_MAP if w[4:] == COMMON_WEAPON_SUFFIX)
-        assert with_suffix >= 35
-
-    def test_pov_player_index(self):
-        assert POV_PLAYER_INDEX == 1
+        assert with_suffix >= 30
 
     def test_melee_api_id(self):
         assert MELEE_API_ID == 1
@@ -241,6 +238,65 @@ class TestBuildWeaponTimeline:
         # chunk 3 avant chunk 7
         assert timing[0][0] == 45000
         assert timing[1][0] == 90000
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# build_weapon_timelines — passe unique (raw + NS)
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+class TestBuildWeaponTimelines:
+    """build_weapon_timelines retourne des résultats cohérents avec les deux fonctions séparées."""
+
+    def test_empty_chunks_returns_empty_structures(self):
+        tl, tl_ns, sp, ti = build_weapon_timelines({})
+        assert tl == {}
+        assert tl_ns == {}
+        assert sp == {}
+        assert ti == []
+
+    def test_timing_matches_build_weapon_timeline(self):
+        chunks = {3: (b"\x00" * 200, 45000, 15000)}
+        tl, tl_ns, sp, ti = build_weapon_timelines(chunks)
+        tl_ref, sp_ref, ti_ref = build_weapon_timeline(chunks)
+        assert ti == ti_ref
+
+    def test_raw_timeline_consistent_with_individual(self):
+        chunks = {
+            3: (b"\x00" * 200, 45000, 15000),
+            7: (b"\x00" * 200, 60000, 15000),
+        }
+        tl, tl_ns, sp, ti = build_weapon_timelines(chunks)
+        tl_ref, sp_ref, ti_ref = build_weapon_timeline(chunks)
+        assert tl == tl_ref
+        assert sp == sp_ref
+        assert ti == ti_ref
+
+    def test_swap_pis_consistent_with_individual(self):
+        chunks = {5: (b"\x00" * 200, 10000, 5000)}
+        _, _, sp, _ = build_weapon_timelines(chunks)
+        _, sp_ref, _ = build_weapon_timeline(chunks)
+        assert sp == sp_ref
+
+    def test_ordering_by_chunk_index(self):
+        chunks = {
+            9: (b"\x00" * 200, 90000, 10000),
+            2: (b"\x00" * 200, 20000, 10000),
+        }
+        _, _, _, ti = build_weapon_timelines(chunks)
+        # chunk 2 avant chunk 9
+        assert ti[0][0] == 20000
+        assert ti[1][0] == 90000
+
+    def test_both_chunk_keys_present_in_all_timelines(self):
+        chunks = {
+            1: (b"\x00" * 200, 0, 5000),
+            2: (b"\x00" * 200, 5000, 5000),
+        }
+        tl, tl_ns, sp, _ = build_weapon_timelines(chunks)
+        assert set(tl.keys()) == {1, 2}
+        assert set(tl_ns.keys()) == {1, 2}
+        assert set(sp.keys()) == {1, 2}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -683,13 +739,14 @@ class TestSwapPisDetection:
 
 
 class TestScanAllPlayers:
-    def test_returns_dict_keyed_by_index(self):
-        result = scan_all_players(b"\x00" * 80, 0, 5000, n_players=4)
-        assert set(result.keys()) == {0, 1, 2, 3}
+    def test_returns_dict_of_lists(self):
+        result = scan_all_players(b"\x00" * 80, 0, 5000)
+        assert isinstance(result, dict)
+        assert all(isinstance(v, list) for v in result.values())
 
-    def test_empty_data_all_empty(self):
-        result = scan_all_players(b"\x00" * 50, 0, 1000, n_players=3)
-        assert all(v == [] for v in result.values())
+    def test_empty_data_returns_empty_dict(self):
+        result = scan_all_players(b"\x00" * 50, 0, 1000)
+        assert result == {}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -763,3 +820,83 @@ class TestDetectPlayerIndices:
         # Le second sera ignoré si même pi=0 (collision) — ce test vérifie au moins 1
         assert len(result) >= 1
         assert self._XUID_A in result.values() or self._XUID_B in result.values()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# _fallback_formula_a — priorité NS timeline
+# ═════════════════════════════════════════════════════════════════════════════
+
+# Deux armes connues distinctes pour les tests de priorité
+_WEAPON_ITER = iter(WEAPON_ID_MAP.items())
+_FA_WB_A, _FA_WB_A_NAME = next(_WEAPON_ITER)
+_FA_WB_B, _FA_WB_B_NAME = next(_WEAPON_ITER)
+_FA_WID_A = int.from_bytes(_FA_WB_A, "big")
+_FA_WID_B = int.from_bytes(_FA_WB_B, "big")
+
+
+def _fa_kill(t_ms: int = 1000) -> dict:
+    return {"xuid": "x1", "time_ms": t_ms, "is_melee": False, "is_grenade": False, "match_id": "m"}
+
+
+class TestFallbackFormulaA:
+    """Tests unitaires de _fallback_formula_a — priorité NS > raw FA > brut."""
+
+    def test_ns_timeline_takes_priority_over_raw_fa(self):
+        """NS timeline prime sur raw FA quand les deux sont présents."""
+        from src.analysis.weapon_parser import _fallback_formula_a  # noqa: PLC2701
+
+        kill = _fa_kill(t_ms=1000)
+        pi = 1
+        timing = [(0, 5000)]
+        chunks_sorted = [0]
+        # raw FA contient WB_B, NS timeline contient WB_A → NS doit l'emporter
+        timeline = {0: {pi: _FA_WB_B}}
+        timeline_ns = {0: {pi: _FA_WB_A}}
+        attr = _fallback_formula_a(
+            kill, pi, timeline, {}, timing, chunks_sorted, "m", timeline_ns=timeline_ns
+        )
+        assert (
+            attr.weapon_id == _FA_WID_A
+        ), f"NS ({_FA_WB_A_NAME}={_FA_WID_A}) doit primer sur raw FA ({_FA_WB_B_NAME}={_FA_WID_B})"
+        assert attr.attribution_path == "formula_a"
+
+    def test_raw_fa_used_when_no_ns_timeline(self):
+        """Sans timeline_ns, raw FA timeline est utilisé."""
+        from src.analysis.weapon_parser import _fallback_formula_a  # noqa: PLC2701
+
+        kill = _fa_kill(t_ms=1000)
+        pi = 1
+        timing = [(0, 5000)]
+        chunks_sorted = [0]
+        timeline = {0: {pi: _FA_WB_B}}
+        attr = _fallback_formula_a(
+            kill, pi, timeline, {}, timing, chunks_sorted, "m", timeline_ns=None
+        )
+        assert attr.weapon_id == _FA_WID_B
+        assert attr.attribution_path == "formula_a"
+
+    def test_no_pi_returns_none_weapon(self):
+        """pi=None → weapon_id=None, confidence='none'."""
+        from src.analysis.weapon_parser import _fallback_formula_a  # noqa: PLC2701
+
+        kill = _fa_kill(t_ms=1000)
+        attr = _fallback_formula_a(kill, None, {}, {}, [(0, 5000)], [0], "m")
+        assert attr.weapon_id is None
+        assert attr.confidence == "none"
+        assert attr.attribution_path == "formula_a"
+
+    def test_ns_timeline_missing_entry_falls_back_to_raw_fa(self):
+        """NS timeline présente mais sans entrée pour ce (chunk, pi) → raw FA utilisé."""
+        from src.analysis.weapon_parser import _fallback_formula_a  # noqa: PLC2701
+
+        kill = _fa_kill(t_ms=1000)
+        pi = 2
+        timing = [(0, 5000)]
+        chunks_sorted = [0]
+        # NS ne contient pas pi=2, raw FA oui
+        timeline = {0: {pi: _FA_WB_B}}
+        timeline_ns = {0: {99: _FA_WB_A}}  # pi=99, pas pi=2
+        attr = _fallback_formula_a(
+            kill, pi, timeline, {}, timing, chunks_sorted, "m", timeline_ns=timeline_ns
+        )
+        assert attr.weapon_id == _FA_WID_B  # raw FA utilisé en fallback

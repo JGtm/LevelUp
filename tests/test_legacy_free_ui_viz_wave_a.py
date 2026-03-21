@@ -37,6 +37,7 @@ UI_PAGE_FILES = [
     "src/ui/pages/match_view_helpers.py",
     "src/ui/pages/match_view_participation.py",
     "src/ui/pages/media_library.py",
+    "src/ui/pages/objective_analysis.py",
     "src/ui/pages/session_compare.py",
     "src/ui/pages/session_compare_charts.py",
     "src/ui/pages/teammates.py",
@@ -45,6 +46,7 @@ UI_PAGE_FILES = [
     "src/ui/pages/teammates_synergy.py",
     "src/ui/pages/teammates_views.py",
     "src/ui/pages/timeseries.py",
+    "src/ui/components/duckdb_analytics.py",
 ]
 
 # Exceptions documentées : fichiers qui DOIVENT garder pandas au runtime

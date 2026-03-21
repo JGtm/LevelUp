@@ -20,7 +20,7 @@ class Migration:
     """Décrit une migration de schéma (DDL) et/ou un backfill de données."""
 
     name: str
-    target_db: Literal["player", "shared", "shared_pve"]
+    target_db: Literal["player", "shared", "shared_pve", "metadata"]
     description: str
     apply_schema: Callable[[duckdb.DuckDBPyConnection], None]
     apply_backfill: Callable[..., None] | None = field(default=None)

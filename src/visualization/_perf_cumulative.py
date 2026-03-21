@@ -88,6 +88,44 @@ def _add_duration_markers(
 # =============================================================================
 
 
+def _add_cumulative_score_traces(
+    fig: go.Figure,
+    x_values: list,
+    y_cumulative: list,
+    y_match: list,
+    lang: str,
+) -> None:
+    """Ajoute les traces scatter cumulé et bar par match."""
+    line_color = (
+        PERFORMANCE_COLORS["positive"] if y_cumulative[-1] >= 0 else PERFORMANCE_COLORS["negative"]
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=x_values,
+            y=y_cumulative,
+            mode="lines+markers",
+            name=viz_t("trace_net_score_cumul", lang),
+            line={"color": line_color, "width": 3},
+            marker={"size": 8, "color": line_color},
+            hovertemplate=viz_t("hover_cumul_score", lang),
+        )
+    )
+    bar_colors = [
+        PERFORMANCE_COLORS["positive"] if v >= 0 else PERFORMANCE_COLORS["negative"]
+        for v in y_match
+    ]
+    fig.add_trace(
+        go.Bar(
+            x=x_values,
+            y=y_match,
+            name=viz_t("trace_net_score_match", lang),
+            marker_color=bar_colors,
+            opacity=0.5,
+            hovertemplate="<b>%{x}</b><br>Match: %{y:+d}<extra></extra>",
+        )
+    )
+
+
 def plot_cumulative_net_score(  # noqa: PLR0913
     cumulative_df: pl.DataFrame,
     *,
@@ -120,36 +158,7 @@ def plot_cumulative_net_score(  # noqa: PLR0913
     y_cumulative = [d.get("cumulative_net_score", 0) for d in data]
     y_match = [d.get("net_score", 0) for d in data]
 
-    line_color = (
-        PERFORMANCE_COLORS["positive"] if y_cumulative[-1] >= 0 else PERFORMANCE_COLORS["negative"]
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=x_values,
-            y=y_cumulative,
-            mode="lines+markers",
-            name=viz_t("trace_net_score_cumul", lang),
-            line={"color": line_color, "width": 3},
-            marker={"size": 8, "color": line_color},
-            hovertemplate=viz_t("hover_cumul_score", lang),
-        )
-    )
-
-    bar_colors = [
-        PERFORMANCE_COLORS["positive"] if v >= 0 else PERFORMANCE_COLORS["negative"]
-        for v in y_match
-    ]
-    fig.add_trace(
-        go.Bar(
-            x=x_values,
-            y=y_match,
-            name=viz_t("trace_net_score_match", lang),
-            marker_color=bar_colors,
-            opacity=0.5,
-            hovertemplate="<b>%{x}</b><br>Match: %{y:+d}<extra></extra>",
-        )
-    )
+    _add_cumulative_score_traces(fig, x_values, y_cumulative, y_match, lang)
 
     if show_zero_line:
         fig.add_hline(

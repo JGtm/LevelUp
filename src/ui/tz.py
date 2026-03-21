@@ -4,6 +4,7 @@
   avec fallback ``"Europe/Paris"``.
 - ``get_tz()`` retourne le ``ZoneInfo`` correspondant.
 - ``CURATED_TZ_LIST`` : liste curated pour le sélecteur UI (~40 TZ IANA).
+- ``utc_to_local()`` / ``local_to_utc()`` : conversions centralisées.
 
 Le module importe ``streamlit`` en lazy (dans les fonctions) pour rester
 importable hors contexte Streamlit (scripts CLI, tests).
@@ -12,6 +13,7 @@ importable hors contexte Streamlit (scripts CLI, tests).
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -81,7 +83,7 @@ def get_tz_name() -> str:
 
         settings = st.session_state.get("app_settings")
         if settings is not None:
-            tz = str(getattr(settings, "user_timezone", "") or "").strip()
+            tz = settings.user_timezone.strip()
             if tz:
                 return tz
     except Exception:
@@ -92,3 +94,24 @@ def get_tz_name() -> str:
 def get_tz() -> ZoneInfo:
     """Retourne un objet ``ZoneInfo`` pour la timezone utilisateur."""
     return ZoneInfo(get_tz_name())
+
+
+# ─── Conversion UTC ↔ local ─────────────────────────────────────────────────
+
+
+def utc_to_local(dt: datetime) -> datetime:
+    """Convertit un datetime UTC (naïf ou aware) en timezone utilisateur.
+
+    Convention DB : les timestamps sont stockés en UTC naïf.
+    Convention UI : afficher en timezone utilisateur.
+    """
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(get_tz())
+
+
+def local_to_utc(dt: datetime) -> datetime:
+    """Convertit un datetime local (naïf → assume TZ utilisateur) en UTC."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=get_tz())
+    return dt.astimezone(timezone.utc)

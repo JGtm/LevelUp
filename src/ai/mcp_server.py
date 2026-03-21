@@ -35,9 +35,96 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Ajouter le répertoire racine au path
-ROOT_DIR = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(ROOT_DIR))
+# Définitions des outils MCP (module-level pour garder get_tools sous 80 lignes)
+_MCP_TOOLS: list[dict[str, Any]] = [
+    {
+        "name": "search_knowledge",
+        "description": (
+            "Recherche sémantique dans la base de connaissances LevelUp (Halo Infinite). "
+            "Sources indexées : docs/, .ai/, src/ (analyse, data, ui, app, auth, ports, visualization). "
+            "Utiliser pour : trouver de la documentation sur l'API Halo, des exemples de code, "
+            "des patterns du projet, ou l'architecture des couches. "
+            "Couches clés : src/ports/ (interfaces), src/data/ (adaptateurs DB+sync), "
+            "src/analysis/ (algorithmes purs), src/ui/ (Streamlit), src/app/ (orchestration)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Question ou termes de recherche"},
+                "top_k": {
+                    "type": "integer",
+                    "description": "Nombre de résultats (défaut: 5)",
+                    "default": 5,
+                },
+                "source_filter": {
+                    "type": "string",
+                    "description": "Filtrer par type de source: 'github', 'file', 'text'",
+                    "enum": ["github", "file", "text"],
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "get_api_doc",
+        "description": (
+            "Recherche la documentation d'un endpoint, interface ou concept de l'API Halo. "
+            "Optimisé pour : SPNKr, Grunt, authentification MSAL, Spartan Token, match stats. "
+            "Interfaces canoniques : DataRepository (src/ports/repository.py), "
+            "HaloAPIPort (src/ports/api.py). "
+            "Implémentations : DuckDBRepository (src/data/repositories/), "
+            "SPNKrAPIClient (src/data/sync/api_client.py)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "topic": {
+                    "type": "string",
+                    "description": "Sujet à rechercher (ex: 'Spartan Token', 'match stats', 'career rank')",
+                }
+            },
+            "required": ["topic"],
+        },
+    },
+    {
+        "name": "get_context",
+        "description": (
+            "Génère un contexte formaté pour un prompt LLM basé sur une question. "
+            "Retourne les chunks les plus pertinents avec leurs sources."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Question pour laquelle générer le contexte",
+                },
+                "max_tokens": {
+                    "type": "integer",
+                    "description": "Limite approximative de tokens (défaut: 4000)",
+                    "default": 4000,
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "index_file",
+        "description": "Indexe un fichier local dans la base de connaissances.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "Chemin vers le fichier à indexer"}
+            },
+            "required": ["file_path"],
+        },
+    },
+    {
+        "name": "get_stats",
+        "description": "Retourne les statistiques de la base de connaissances.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+]
 
 
 class MCPServer:
@@ -63,88 +150,7 @@ class MCPServer:
 
     def get_tools(self) -> list[dict[str, Any]]:
         """Retourne la liste des outils disponibles."""
-        return [
-            {
-                "name": "search_knowledge",
-                "description": "Recherche sémantique dans la base de connaissances Halo. "
-                "Utiliser pour trouver de la documentation sur l'API, "
-                "des exemples de code, ou des patterns du projet.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Question ou termes de recherche",
-                        },
-                        "top_k": {
-                            "type": "integer",
-                            "description": "Nombre de résultats (défaut: 5)",
-                            "default": 5,
-                        },
-                        "source_filter": {
-                            "type": "string",
-                            "description": "Filtrer par type de source: 'github', 'file', 'text'",
-                            "enum": ["github", "file", "text"],
-                        },
-                    },
-                    "required": ["query"],
-                },
-            },
-            {
-                "name": "get_api_doc",
-                "description": "Recherche la documentation d'un endpoint ou concept de l'API Halo. "
-                "Optimisé pour trouver des infos sur SPNKr, Grunt, authentification, etc.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "topic": {
-                            "type": "string",
-                            "description": "Sujet à rechercher (ex: 'Spartan Token', 'match stats', 'career rank')",
-                        }
-                    },
-                    "required": ["topic"],
-                },
-            },
-            {
-                "name": "get_context",
-                "description": "Génère un contexte formaté pour un prompt LLM basé sur une question. "
-                "Retourne les chunks les plus pertinents avec leurs sources.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Question pour laquelle générer le contexte",
-                        },
-                        "max_tokens": {
-                            "type": "integer",
-                            "description": "Limite approximative de tokens (défaut: 4000)",
-                            "default": 4000,
-                        },
-                    },
-                    "required": ["query"],
-                },
-            },
-            {
-                "name": "index_file",
-                "description": "Indexe un fichier local dans la base de connaissances.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "file_path": {
-                            "type": "string",
-                            "description": "Chemin vers le fichier à indexer",
-                        }
-                    },
-                    "required": ["file_path"],
-                },
-            },
-            {
-                "name": "get_stats",
-                "description": "Retourne les statistiques de la base de connaissances.",
-                "inputSchema": {"type": "object", "properties": {}},
-            },
-        ]
+        return _MCP_TOOLS
 
     def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Exécute un outil et retourne le résultat."""

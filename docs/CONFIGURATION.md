@@ -21,20 +21,35 @@ French version: [FR/CONFIGURATION.md](FR/CONFIGURATION.md)
 The easiest way to configure LevelUp is through the **Setup Wizard**, available automatically
 on first launch in the browser at `http://localhost:8501`.
 
-| | 🎮 Xbox Express | ☁️ Azure Manual |
-|-|----------------|----------------|
-| Azure application (Client ID only, no secret) | Required | Required |
-| Refresh token | **Auto** (device code sign-in) | Manual (run script) |
+**v6 — Zero configuration for standard users.** LevelUp bundles its own Azure client ID.
+The wizard only needs two things from you:
+
+1. **Your gamertag** — typed in the wizard UI
+2. **Device Code authentication** — open `https://xbox.com/activate` and enter the code shown
+
+No Azure account, no App Registration, no `.env.local` required for normal use.
+
+| | 🎮 Xbox Express (v6 default) | ☁️ Azure Manual (advanced) |
+|-|------------------------------|---------------------------|
+| Azure App Registration | **Not required** (bundled) | Required (your own) |
+| Refresh token | **Auto** (Device Code) | Manual (run script) |
 | gamertag + XUID | **Auto** (resolved via OAuth) | Manual |
 | Player profile in `db_profiles.json` | **Auto** (created by wizard) | Manual |
 | Token storage | `stats.duckdb` (sync_meta) | `.env.local` |
 | Steps in wizard | **2** | **3** |
 
-**Xbox Express is the recommended path.** The only unavoidable step is creating a free
-Azure application (Microsoft mandates this for the Halo Infinite API) — no client secret
-or redirect URI required. See [INSTALL.md](INSTALL.md) for the illustrated walkthrough.
+### Note for forks / developers
 
-The manual steps below (§ Azure Configuration) describe the advanced / headless path.
+The bundled `LEVELUP_CLIENT_ID` is tied to this project's Azure App Registration.
+**If you fork LevelUp**, please create your own free Azure App Registration (see
+[§ Azure Configuration](#azure-configuration) below) and override via env var:
+
+```env
+# .env.local
+SPNKR_AZURE_CLIENT_ID=your_own_client_id
+```
+
+This variable takes precedence over the bundled ID (`LEVELUP_CLIENT_ID` in `src/auth/_constants.py`).
 
 ---
 

@@ -44,11 +44,12 @@ class DiagnosticMixin:
 
         # Taille des tables locales
         tables_info = {}
-        for table in ["match_stats", "medals_earned", "antagonists"]:
+        for table in ["player_match_enrichment", "personal_score_awards", "match_citations"]:
             try:
                 count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
                 tables_info[table] = count
-            except Exception:
+            except Exception as e:
+                logger.debug("get_storage_info: COUNT(*) échoué pour %s: %s", table, e)
                 tables_info[table] = 0
 
         # Counts shared
@@ -99,7 +100,8 @@ class DiagnosticMixin:
                 else:
                     count = conn.execute(f"SELECT COUNT(*) FROM shared.{table}").fetchone()[0]
                 shared_info[f"shared_{table}"] = count
-            except Exception:
+            except Exception as e:
+                logger.debug("_collect_shared_counts: COUNT(*) échoué pour shared.%s: %s", table, e)
                 shared_info[f"shared_{table}"] = 0
         return shared_info
 

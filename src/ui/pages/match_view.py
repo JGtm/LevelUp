@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from src.app._page_context import MatchViewParams
 from src.app.helpers import normalize_map_label
@@ -24,9 +25,7 @@ from src.ui.pages.match_view_helpers import (
 )
 from src.ui.pages.match_view_logic import (
     compute_perf_display,
-    detect_abandoned_match,
     enrich_pm_from_row,
-    load_enrichment,
     resolve_outcome,
 )
 from src.ui.pages.match_view_rank import _build_match_rank_html
@@ -41,6 +40,25 @@ from src.visualization._compat import ensure_polars
 
 logger = logging.getLogger(__name__)
 
+_DOMINANCE_BADGE_STYLES: dict[int, tuple[str, str, str]] = {
+    # flag → (i18n_key, bg_color, text_color)
+    1: ("outcome_domination", "#2e7d32", "#e8f5e9"),  # vert foncé
+    2: ("outcome_humiliation", "#6a1b9a", "#f3e5f5"),  # violet foncé
+}
+
+
+def _dominance_badge_html(flag: int | None) -> str:
+    """Retourne le HTML d'un badge domination/humiliation, ou '' si non applicable."""
+    if flag is None or flag not in _DOMINANCE_BADGE_STYLES:
+        return ""
+    i18n_key, bg, fg = _DOMINANCE_BADGE_STYLES[flag]
+    label = html.escape(t(i18n_key))
+    return (
+        f"<br><span style='display:inline-block;margin-top:4px;padding:2px 8px;"
+        f"border-radius:4px;font-size:0.75em;font-weight:600;"
+        f"background:{bg};color:{fg}'>{label}</span>"
+    )
+
 
 def _render_kpi_cards(  # noqa: PLR0913
     *,
@@ -52,6 +70,7 @@ def _render_kpi_cards(  # noqa: PLR0913
     perf_display: str,
     perf_color: str | None,
     had_bot: bool,
+    dominance_flag: int | None = None,
 ) -> None:
     """Affiche les 3 cartes KPI : Date, Résultat, Performance."""
     top_cols = st.columns(3)
@@ -63,10 +82,14 @@ def _render_kpi_cards(  # noqa: PLR0913
             if outcome_code == OUTCOME_CODES.WIN
             else ("text-loss" if outcome_code == OUTCOME_CODES.LOSS else "text-tie")
         )
+        score_html = f"<span class='{outcome_class} fw-bold'>{html.escape(str(score_label))}</span>"
+        dominance_badge = _dominance_badge_html(dominance_flag)
+        if dominance_badge:
+            score_html += dominance_badge
         os_card(
             t("mv_results"),
             str(outcome_label),
-            f"<span class='{outcome_class} fw-bold'>{html.escape(str(score_label))}</span>",
+            score_html,
             accent=str(outcome_color),
             kpi_color=str(outcome_color),
         )
@@ -164,13 +187,17 @@ def render_match_view(  # noqa: C901, PLR0912
 
     logger.debug("render_match_view match=%s xuid=%s", match_id, xuid)
 
+    from src.ui._cache_core import get_cached_repository_st
+
+    repo = get_cached_repository_st(db_path, str(xuid).strip())
+
     outcome_code, outcome_label, outcome_color = resolve_outcome(row)
     colors = HALO_COLORS.as_dict()
     score_label = params["format_score_label_fn"](
         row.get("my_team_score"), row.get("enemy_team_score")
     )
     match_url = _build_waypoint_url(params["waypoint_player"], match_id)
-    _had_bot, _stored_perf = load_enrichment(db_path, match_id)
+    _had_bot, _stored_perf, _dominance_flag = repo.load_player_match_enrichment(match_id)
     _perf_score, perf_display, perf_color = compute_perf_display(
         row, df_full, _stored_perf, _had_bot
     )
@@ -184,13 +211,14 @@ def render_match_view(  # noqa: C901, PLR0912
         perf_display=perf_display,
         perf_color=perf_color,
         had_bot=_had_bot,
+        dominance_flag=_dominance_flag,
         normalize_mode_label_fn=params["normalize_mode_label_fn"],
         db_path=db_path,
         match_id=match_id,
         db_key=db_key,
     )
 
-    is_abandoned = detect_abandoned_match(match_id, db_path)
+    is_abandoned = repo.is_abandoned_match(match_id)
     if is_abandoned:
         st.warning(
             f"**{t('mv_abandoned_match')}** — {t('mv_abandoned_match_desc')}",
@@ -231,6 +259,7 @@ def _render_match_header(  # noqa: PLR0913
     perf_display: str,
     perf_color: str | None,
     had_bot: bool,
+    dominance_flag: int | None,
     normalize_mode_label_fn: Any,
     db_path: str,
     match_id: str,
@@ -246,6 +275,7 @@ def _render_match_header(  # noqa: PLR0913
         perf_display=perf_display,
         perf_color=perf_color,
         had_bot=had_bot,
+        dominance_flag=dominance_flag,
     )
     _render_match_info_row(row, normalize_mode_label_fn)
     _render_map_and_rank(
@@ -257,6 +287,34 @@ def _render_match_header(  # noqa: PLR0913
         had_bot=had_bot,
         outcome_code=outcome_code,
     )
+
+
+def _render_match_id_badge(match_id: str) -> None:
+    """Affiche un badge discret avec le match ID court et un bouton copier."""
+    if not match_id:
+        return
+    short_id = match_id[:8] if len(match_id) >= 8 else match_id
+    badge_html = f"""<!DOCTYPE html>
+<html><head><style>
+html,body{{margin:0;padding:0;background:transparent;overflow:hidden;}}
+.badge{{display:inline-flex;align-items:center;gap:7px;padding:1px 0;}}
+.mid{{font-size:11px;color:#8a8a8a;font-family:'Courier New',monospace;user-select:none;}}
+.mid-val{{color:#c0c0c0;}}
+.btn{{background:transparent;border:1px solid #484848;border-radius:4px;
+  color:#888;cursor:pointer;font-size:10px;padding:0 6px;line-height:1.75;
+  transition:all 0.15s;font-family:sans-serif;}}
+.btn:hover{{border-color:#888;color:#ccc;}}
+</style></head>
+<body><div class="badge">
+  <span class="mid">ID&thinsp;<span class="mid-val">{short_id}&hellip;</span></span>
+  <button class="btn" id="b" title="Copier le match ID complet"
+    onclick="navigator.clipboard.writeText('{match_id}').then(()=>{{
+      var b=document.getElementById('b');
+      b.textContent='&#x2713;';b.style.color='#4caf50';b.style.borderColor='#4caf50';
+      setTimeout(()=>{{b.textContent='&#x1F4CB;';b.style.color='#888';b.style.borderColor='#484848';}},1500);
+    }});">&#x1F4CB;</button>
+</div></body></html>"""
+    components.html(badge_html, height=26, scrolling=False)
 
 
 def _render_match_tabs(  # noqa: PLR0913
@@ -277,6 +335,7 @@ def _render_match_tabs(  # noqa: PLR0913
     is_abandoned: bool = False,
 ) -> None:
     """Affiche les 5 onglets du match."""
+    _render_match_id_badge(match_id)
     tabs = st.tabs(
         [
             t("mv_tab_summary"),

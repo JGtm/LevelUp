@@ -27,7 +27,6 @@ from src.data.sync._batch_columns import (  # noqa: F401
     CAST_PLAN,
     CRITICAL_TABLES,
     HIGHLIGHT_EVENT_COLUMNS,
-    MATCH_STATS_COLUMNS,
     MEDAL_COLUMNS,
     PARTICIPANT_ALL_COLUMNS,
     PARTICIPANT_COLUMNS,
@@ -166,20 +165,15 @@ def _executemany_with_fallback(
     values_list: list[tuple],
     table_name: str,
 ) -> int:
-    """Exécute un batch, fallback row-by-row si échec."""
-    try:
-        conn.executemany(sql, values_list)
-        return len(values_list)
-    except Exception as e:
-        logger.debug("Batch échoué pour %s, fallback row-by-row: %s", table_name, e)
-        inserted = 0
-        for values in values_list:
-            try:
-                conn.execute(sql, values)
-                inserted += 1
-            except Exception as row_err:
-                logger.warning("Insert échoué %s: %s", table_name, row_err)
-        return inserted
+    """Exécute un batch INSERT via executemany.
+
+    Lève l'exception si le batch échoue — pas de fallback silencieux row-by-row.
+    Les types doivent être normalisés en amont via coerce_row_types() + CAST_PLAN
+    avant d'appeler cette fonction, ce qui garantit qu'aucun type-mismatch
+    ne peut causer d'échec ici.
+    """
+    conn.executemany(sql, values_list)
+    return len(values_list)
 
 
 # =============================================================================

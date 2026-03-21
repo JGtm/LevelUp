@@ -8,9 +8,106 @@ from __future__ import annotations
 
 import contextlib
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+def _get_match_source(conn: Any) -> str:
+    """Retourne 'v_match_full' si la vue est disponible, sinon 'match_registry'."""
+    try:
+        conn.execute("SELECT 1 FROM v_match_full LIMIT 1")
+        return "v_match_full"
+    except Exception:
+        return "match_registry"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Aliases xuid → gamertag depuis highlight_events.raw_json
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def backfill_xuid_aliases_from_events(
+    shared_conn: Any,
+    *,
+    force: bool = False,
+) -> int:
+    """Backfille xuid_aliases depuis highlight_events.raw_json.
+
+    L'API stats Halo (/hi/matches/{id}/stats) ne retourne pas PlayerGamertag.
+    La source fiable des gamertags est le JSON des highlight events (film).
+    Cette fonction comble le manque en peuplant xuid_aliases à partir des raw_json.
+
+    En mode normal : ne traite que les XUIDs absents de xuid_aliases.
+    En mode force  : met à jour TOUS les XUIDs (écrase les gamertags existants).
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        force: Si True, met à jour même les XUIDs déjà présents.
+
+    Returns:
+        Nombre d'aliases insérés/mis à jour.
+    """
+    from src.data.sync.transformers._helpers import _normalize_gamertag
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    if force:
+        # Mode force : upsert sur tous les XUIDs avec gamertag dans raw_json
+        query = """
+            SELECT DISTINCT
+                he.xuid,
+                json_extract_string(he.raw_json, '$.gamertag') AS gamertag
+            FROM highlight_events he
+            WHERE he.xuid IS NOT NULL
+              AND json_extract_string(he.raw_json, '$.gamertag') IS NOT NULL
+              AND json_extract_string(he.raw_json, '$.gamertag') <> ''
+        """
+    else:
+        # Mode normal : seulement les XUIDs absents de xuid_aliases
+        query = """
+            SELECT DISTINCT
+                he.xuid,
+                json_extract_string(he.raw_json, '$.gamertag') AS gamertag
+            FROM highlight_events he
+            WHERE he.xuid IS NOT NULL
+              AND json_extract_string(he.raw_json, '$.gamertag') IS NOT NULL
+              AND json_extract_string(he.raw_json, '$.gamertag') <> ''
+              AND he.xuid NOT IN (
+                  SELECT xuid FROM xuid_aliases WHERE gamertag IS NOT NULL
+              )
+        """
+
+    rows = shared_conn.execute(query).fetchall()
+    if not rows:
+        logger.info("backfill_xuid_aliases_from_events: aucun alias à insérer")
+        return 0
+
+    # Normaliser les gamertags avant insertion
+    valid_rows = []
+    for xuid, gamertag_raw in rows:
+        gt = _normalize_gamertag(gamertag_raw)
+        if gt:
+            valid_rows.append((xuid, gt, None, "highlight_events", now))
+
+    if not valid_rows:
+        logger.info("backfill_xuid_aliases_from_events: aucun gamertag valide")
+        return 0
+
+    shared_conn.executemany(
+        """
+        INSERT INTO xuid_aliases (xuid, gamertag, last_seen, source, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (xuid) DO UPDATE SET
+            gamertag = EXCLUDED.gamertag,
+            source   = EXCLUDED.source,
+            updated_at = EXCLUDED.updated_at
+        """,
+        valid_rows,
+    )
+    logger.info("backfill_xuid_aliases_from_events: %d alias insérés/mis à jour", len(valid_rows))
+    return len(valid_rows)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -50,9 +147,17 @@ def backfill_killer_victim_pairs(
     target_conn = shared_conn if shared_conn is not None else conn
     events_source = "highlight_events"  # même nom dans les deux DBs
 
-    # highlight_events utilise les colonnes xuid/gamertag
+    # highlight_events.gamertag supprimé en v6 (migration drop_highlight_events_gamertag)
+    # Vérifier si la colonne gamertag existe encore dans la table cible
     events_xuid_expr = "xuid"
-    events_gt_expr = "gamertag"
+    try:
+        _has_gt = target_conn.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'highlight_events' AND column_name = 'gamertag'"
+        ).fetchone()
+        events_gt_expr = "gamertag" if _has_gt else "NULL AS gamertag"
+    except Exception:
+        events_gt_expr = "NULL AS gamertag"
 
     if force:
         target_conn.execute("DROP TABLE IF EXISTS killer_victim_pairs")
@@ -359,8 +464,15 @@ def compute_lusr_for_player(
             import duckdb
 
             shared_path = (
-                Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
+                Path(__file__).resolve().parents[2]
+                / "data"
+                / "warehouse"
+                / "shared_matches_v2.duckdb"
             )
+            if not shared_path.exists():
+                from src.utils.paths import get_shared_matches_path
+
+                shared_path = get_shared_matches_path()
             if not shared_path.exists():
                 logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
                 return 0
@@ -380,15 +492,16 @@ def compute_lusr_for_player(
             logger.warning("Polars non disponible, skip LUSR")
             return 0
 
+        _mr_src = _get_match_source(shared_conn)
         df_matches = shared_conn.execute(
-            """
+            f"""
             SELECT
                 mr.match_id, mr.start_time, mr.playlist_name, mr.pair_name,
                 mp.outcome, mp.kills, mp.deaths,
                 mp.kills_expected, mp.deaths_expected,
                 mp.damage_dealt, mp.damage_taken, mp.accuracy,
                 mp.team_id
-            FROM match_registry mr
+            FROM {_mr_src} mr
             JOIN match_participants mp ON mr.match_id = mp.match_id
             WHERE mp.xuid = ?
               AND COALESCE(mr.is_ranked, FALSE) = FALSE
@@ -610,8 +723,15 @@ async def backfill_csr_for_player(
     if shared_conn is None:
         try:
             shared_path = (
-                Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb"
+                Path(__file__).resolve().parents[2]
+                / "data"
+                / "warehouse"
+                / "shared_matches_v2.duckdb"
             )
+            if not shared_path.exists():
+                from src.utils.paths import get_shared_matches_path
+
+                shared_path = get_shared_matches_path()
             if not shared_path.exists():
                 logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
                 return 0
@@ -625,10 +745,11 @@ async def backfill_csr_for_player(
         ensure_match_skill_rank_table(conn)
 
         # 1. Charger les matchs classés du joueur
+        _mr_src = _get_match_source(shared_conn)
         df_ranked = shared_conn.execute(
-            """
+            f"""
             SELECT mr.match_id, mr.start_time, mr.playlist_name, mr.pair_name
-            FROM match_registry mr
+            FROM {_mr_src} mr
             JOIN match_participants mp ON mr.match_id = mp.match_id
             WHERE mp.xuid = ?
               AND COALESCE(mr.is_ranked, FALSE) = TRUE
@@ -878,14 +999,15 @@ def compute_performance_score_for_match(
                 return False
 
         # Lire depuis shared.match_participants + match_registry
+        _mr_src = _get_match_source(shared_conn)
         match_data = shared_conn.execute(
-            """
+            f"""
             SELECT mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
                    mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
                    mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr,
                    mp.enemy_mmr, mp.kills_expected, mp.deaths_expected
             FROM match_participants mp
-            JOIN match_registry mr ON mr.match_id = mp.match_id
+            JOIN {_mr_src} mr ON mr.match_id = mp.match_id
             WHERE mp.match_id = ? AND mp.xuid = ?
             """,
             (match_id, xuid),
@@ -901,14 +1023,14 @@ def compute_performance_score_for_match(
         # Historique depuis shared
         try:
             history_df = shared_conn.execute(
-                """
+                f"""
                 SELECT
                     mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
                     mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
                     mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr,
                     mp.enemy_mmr, mp.kills_expected, mp.deaths_expected
                 FROM match_participants mp
-                JOIN match_registry mr ON mr.match_id = mp.match_id
+                JOIN {_mr_src} mr ON mr.match_id = mp.match_id
                 WHERE mp.xuid = ?
                   AND mp.match_id != ?
                   AND mr.start_time IS NOT NULL
@@ -1003,11 +1125,12 @@ async def backfill_participants_enrich(
     )
 
     # Détection des matchs à enrichir
+    _mr_src = _get_match_source(shared_conn)
     if force:
         query = (
             "SELECT DISTINCT mp.match_id "
             "FROM match_participants mp "
-            "JOIN match_registry mr ON mp.match_id = mr.match_id "
+            f"JOIN {_mr_src} mr ON mp.match_id = mr.match_id "
         )
         params: list = []
         if xuid:
@@ -1027,7 +1150,7 @@ async def backfill_participants_enrich(
         query = (
             "SELECT DISTINCT mp.match_id "
             "FROM match_participants mp "
-            "JOIN match_registry mr ON mp.match_id = mr.match_id "
+            f"JOIN {_mr_src} mr ON mp.match_id = mr.match_id "
             f"WHERE (mp.headshot_kills IS NULL OR mp.kda IS NULL OR mp.avg_life_seconds IS NULL) "
             f"AND (COALESCE(mr.backfill_completed, 0) & {guard_mask} = 0) "
         )
@@ -1526,3 +1649,82 @@ async def backfill_weapon_kills(
     from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
 
     return await run_weapon_kills_backfill(gamertag, xuid, match_ids, shared_conn, force=force)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Médaille Vengeur (custom — revenge kill)
+# ─────────────────────────────────────────────────────────────────────────────
+
+#: ID de la médaille custom Vengeur — hors plage officielle Halo (max ~4.3e9).
+AVENGER_MEDAL_ID: int = 9_000_000_001
+
+
+def backfill_avenger_medal(shared_conn: Any, *, force: bool = False) -> int:
+    """Calcule et insère la médaille Vengeur dans medals_earned.
+
+    Un kill de vengeance (avenger) est obtenu lorsqu'un joueur tue l'ennemi
+    responsable de sa mort précédente dans le même match.
+
+    Utilise killer_victim_pairs (trié par time_ms) pour reconstruire la
+    séquence. Pour chaque kill d'un joueur, vérifie si l'ennemi tué est
+    identique à la dernière personne qui l'a tué juste avant (mort la plus
+    récente avant ce kill).
+
+    Requiert que killer_victim_pairs soit peuplé (MatchBits.KILLER_VICTIM_LOADED).
+    Les matchs sans données killer_victim sont ignorés silencieusement.
+
+    Args:
+        shared_conn: Connexion en écriture vers shared_matches.duckdb.
+        force: Si True, écrase les valeurs déjà présentes (INSERT OR REPLACE).
+               Si False, ignore les paires déjà calculées (INSERT OR IGNORE).
+
+    Returns:
+        Nombre de paires (match_id, xuid) insérées ou mises à jour.
+    """
+    logger.info("Vengeur : calcul des kills de vengeance depuis killer_victim_pairs…")
+
+    rows = shared_conn.execute("""
+        WITH ranked_kills AS (
+            SELECT
+                kv.match_id,
+                kv.killer_xuid AS xuid,
+                kv.victim_xuid AS killed,
+                (
+                    SELECT d.killer_xuid
+                    FROM killer_victim_pairs d
+                    WHERE d.match_id = kv.match_id
+                      AND d.victim_xuid = kv.killer_xuid
+                      AND d.killer_xuid != d.victim_xuid
+                      AND d.time_ms < kv.time_ms
+                    ORDER BY d.time_ms DESC
+                    LIMIT 1
+                ) AS last_killer
+            FROM killer_victim_pairs kv
+            WHERE kv.time_ms IS NOT NULL
+              AND kv.killer_xuid != kv.victim_xuid
+        )
+        SELECT match_id, xuid, CAST(COUNT(*) AS SMALLINT) AS medal_count
+        FROM ranked_kills
+        WHERE killed = last_killer
+        GROUP BY match_id, xuid
+        HAVING COUNT(*) > 0
+    """).fetchall()
+
+    if not rows:
+        logger.info("Vengeur : aucun kill de vengeance détecté")
+        return 0
+
+    logger.info("Vengeur : %d paire(s) match/joueur calculée(s) (force=%s)", len(rows), force)
+
+    insert_sql = (
+        "INSERT OR REPLACE INTO medals_earned (match_id, xuid, medal_name_id, count, created_at)"
+        " VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)"
+        if force
+        else "INSERT OR IGNORE INTO medals_earned (match_id, xuid, medal_name_id, count, created_at)"
+        " VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)"
+    )
+    shared_conn.executemany(insert_sql, [(r[0], r[1], AVENGER_MEDAL_ID, r[2]) for r in rows])
+    shared_conn.commit()
+
+    logger.info("✅ Vengeur : %d médaille(s) insérée(s)/mise(s) à jour", len(rows))
+    return len(rows)

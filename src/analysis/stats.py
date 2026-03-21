@@ -72,7 +72,7 @@ def compute_outcome_rates(df: pl.DataFrame) -> OutcomeRates:
 
 
 def compute_global_ratio(df: pl.DataFrame) -> float | None:
-    """Calcule le ratio global (K + A/2) / D sur un DataFrame.
+    """Calcule le ratio global (K + A/3) / D — formule API.
 
     Args:
         df: DataFrame Polars avec colonnes kills, deaths, assists.
@@ -99,7 +99,7 @@ def compute_global_ratio(df: pl.DataFrame) -> float | None:
     )
     if deaths <= 0:
         return None
-    return (kills + (assists / 2.0)) / deaths
+    return (kills + (assists / 3.0)) / deaths
 
 
 def extract_mode_category(pair_name: str | None) -> str:
@@ -172,12 +172,12 @@ def compute_mode_category_averages(
         val = filtered.select(pl.col("headshot_kills").cast(pl.Float64, strict=False).mean()).item()
         avg_headshot_kills = float(val) if val is not None else None
 
-    # Ratio moyen (somme des frags / somme des morts)
+    # Ratio moyen KDA : (kills + assists/2) / deaths
     total_deaths = filtered.select(pl.col("deaths").sum()).item() or 0
     if total_deaths > 0:
         total_kills = filtered.select(pl.col("kills").sum()).item() or 0
         total_assists = filtered.select(pl.col("assists").sum()).item() or 0
-        avg_ratio = (total_kills + total_assists / 2.0) / total_deaths
+        avg_ratio = (total_kills + (total_assists / 2.0)) / total_deaths
     else:
         avg_ratio = None
 

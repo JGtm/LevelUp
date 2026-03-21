@@ -22,8 +22,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Trend (smoothed)",
     },
     "trace_trend_r2": {
-        "fr": "Tendance (R²={r2:.2f})",
-        "en": "Trend (R²={r2:.2f})",
+        "fr": "Tendance",
+        "en": "Trend",
     },
     "trace_avg_smoothed": {
         "fr": "Moy. lissée",
@@ -163,25 +163,25 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Match Net Score",
     },
     "trace_kd_cumul": {
-        "fr": "K/D Cumulé",
+        "fr": "F/D Cumulé",
         "en": "Cumulative K/D",
     },
     "trace_kd_match": {
-        "fr": "K/D du Match",
+        "fr": "F/D du Match",
         "en": "Match K/D",
     },
     "trace_kd_rolling": {
-        "fr": "K/D Glissant ({window})",
+        "fr": "F/D Glissant ({window})",
         "en": "Rolling K/D ({window})",
     },
-    # ── Progression avancée ─────────────────────────────────────────────────
-    "trace_kd_ci_band": {"fr": "IC 90 % K/D", "en": "K/D 90 % CI"},
-    "trace_kd_ewma": {"fr": "K/D Lissé (EWMA)", "en": "Smoothed K/D (EWMA)"},
-    "trace_regression_line": {"fr": "Tendance (régression)", "en": "Trend (regression)"},
+    # ── Progression avancée ─────────────────────────────────────────────────────
+    "trace_kd_ci_band": {"fr": "Zone de stabilité F/D", "en": "K/D Stability Band"},
+    "trace_kd_ewma": {"fr": "F/D Lissé", "en": "Smoothed K/D"},
+    "trace_regression_line": {"fr": "Tendance", "en": "Trend"},
     "trace_nph_positive": {"fr": "Efficacité positive", "en": "Positive efficiency"},
     "trace_nph_negative": {"fr": "Efficacité négative", "en": "Negative efficiency"},
-    "trace_nph_raw": {"fr": "Net/h (brut)", "en": "Net/h (raw)"},
-    "trace_nph_rolling": {"fr": "Net/h (lissé)", "en": "Net/h (smoothed)"},
+    "trace_nph_raw": {"fr": "Score/h (match)", "en": "Score/h (per match)"},
+    "trace_nph_rolling": {"fr": "Score/h (courbe)", "en": "Score/h (smoothed)"},
     "trace_outcome_markers": {"fr": "Résultats", "en": "Outcomes"},
     # ── Traces taux / objectifs ──────────────────────────────────────────────
     "trace_win_rate": {"fr": "Victoires", "en": "Win Rate"},
@@ -191,4 +191,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "trace_expected": "lbl_expected",
     "trace_obj_score": {"fr": "Score objectif", "en": "Objective Score"},
     "trace_total_score": {"fr": "Score total", "en": "Total Score"},
+    # ── Traces squad timeline ─────────────────────────────────────────────────
+    "trace_squad_perf": {"fr": "Perf. escouade", "en": "Squad perf."},
+    "trace_team_mmr": {"fr": "MMR équipe", "en": "Team MMR"},
+    "trace_match_count": {"fr": "Matchs", "en": "Matches"},
 }

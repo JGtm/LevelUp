@@ -9,6 +9,17 @@ Façade re-exportant les classes depuis les sous-modules :
 
 Conserve HaloKnowledgeBase et create_knowledge_base localement.
 
+Sources indexées par défaut : docs/, .ai/, src/
+Architecture des couches src/ :
+- src/ports/         → interfaces (DataRepository, HaloAPIPort)
+- src/data/          → adaptateurs DB, sync API→DuckDB
+- src/analysis/      → algorithmes purs (sans I/O)
+- src/app/           → orchestration Streamlit
+- src/ui/            → rendu (pages, composants, i18n)
+- src/auth/          → authentification MSAL/Xbox
+- src/visualization/ → graphiques Plotly
+- src/utils/         → utilitaires transversaux
+
 Usage:
     from src.ai.rag import HaloKnowledgeBase, RAGConfig
 

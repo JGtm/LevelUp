@@ -7,6 +7,7 @@ les graphiques complexes (indicator, sunburst, radar).
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import plotly.express as px
@@ -18,6 +19,8 @@ from src.visualization.theme import apply_halo_plot_style
 
 if TYPE_CHECKING:
     import polars as pl
+
+_log = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -195,12 +198,20 @@ def plot_participation_sunburst(
         .sort("score", descending=True)
     )
 
-    pdf = agg.to_pandas()
+    # Préparer les colonnes en Polars
+    agg = agg.with_columns(
+        pl.col("award_name")
+        .map_elements(lambda x: i18n_label("awards", x, lang=lang) or x, return_dtype=pl.Utf8)
+        .alias("award_label"),
+        pl.col("award_category")
+        .map_elements(
+            lambda x: cat_labels.get(x, x.capitalize() if x else viz_t("cat_label_other", lang)),
+            return_dtype=pl.Utf8,
+        )
+        .alias("category_label"),
+    )
 
-    # Traduire les award_name techniques en labels localisés
-    pdf["award_label"] = pdf["award_name"].map(lambda x: i18n_label("awards", x, lang=lang) or x)
-
-    if pdf.empty:
+    if agg.is_empty():
         fig = go.Figure()
         fig.add_annotation(
             text=viz_t("empty_no_data", lang),
@@ -212,19 +223,15 @@ def plot_participation_sunburst(
         )
         return apply_halo_plot_style(fig)
 
-    # Mapper les labels de catégorie
-    pdf["category_label"] = pdf["award_category"].map(
-        lambda x: cat_labels.get(x, x.capitalize() if x else viz_t("cat_label_other", lang))
-    )
-
     # Mapper les couleurs
     color_map = {}
     for cat, color in CATEGORY_COLORS.items():
         label = cat_labels.get(cat, cat.capitalize())
         color_map[label] = color
 
+    # px.sunburst exige un DataFrame Pandas — conversion à la frontière Plotly
     fig = px.sunburst(
-        pdf,
+        agg.to_pandas(),
         path=["category_label", "award_label"],
         values="score",
         color="category_label",

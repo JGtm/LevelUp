@@ -66,8 +66,7 @@ def render_wizard_dc_waiting(dc_flow) -> None:
     from src.ui.xbox_oauth_ui import check_dc_queue, reset_device_flow
 
     st.markdown(
-        f"**{t('xbox_dc_code_title')}** "
-        f"[{dc_flow.verification_url}]({dc_flow.verification_url})"
+        f"**{t('xbox_dc_code_title')}** [{dc_flow.verification_url}]({dc_flow.verification_url})"
     )
     st.code(dc_flow.user_code, language=None)
     col_v, col_c = st.columns([2, 1])

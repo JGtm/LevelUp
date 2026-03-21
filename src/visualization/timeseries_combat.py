@@ -197,9 +197,6 @@ def plot_streak_chart(
         Figure Plotly.
     """
     d = _normalize_df(df)
-    if title is None:
-        title = viz_t("title_streaks", lang)
-
     d = d.sort("start_time")
 
     # Filtrer : ne garder que V/D
@@ -215,7 +212,7 @@ def plot_streak_chart(
             showarrow=False,
             font={"size": 16},
         )
-        return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.short_height)
+        return apply_halo_plot_style(fig, title=title or None, height=PLOT_CONFIG.short_height)
 
     x_idx, labels, step = prepare_time_axis(d)
 
@@ -254,15 +251,60 @@ def plot_streak_chart(
         )
     )
 
-    fig.update_layout(
-        title=title,
-        margin={"l": 40, "r": 20, "t": 40, "b": 90},
-        hovermode="x unified",
-    )
+    layout_kwargs: dict = {
+        "margin": {"l": 40, "r": 20, "t": 40 if title else 10, "b": 90},
+        "hovermode": "x unified",
+    }
+    if title is not None:
+        layout_kwargs["title"] = title
+    fig.update_layout(**layout_kwargs)
     fig.update_yaxes(title_text=viz_t("axis_streak", lang), zeroline=True)
     apply_chrono_xaxis(fig, x_idx, labels, step, lang)
 
     return apply_halo_plot_style(fig, height=PLOT_CONFIG.short_height)
+
+
+def _add_damage_traces(  # noqa: PLR0913
+    fig: go.Figure,
+    d: pl.DataFrame,
+    x_idx: list,
+    col: str,
+    color: str,
+    opacity: float,
+    bar_key: str,
+    hover_key: str,
+    avg_key: str,
+    lang: str,
+    *,
+    line_dash: str | None = None,
+) -> None:
+    """Ajoute une paire Bar + rolling mean pour une colonne de dégâts."""
+    if col not in d.columns:
+        return
+    series = d[col].cast(pl.Float64, strict=False).fill_null(0)
+    fig.add_trace(
+        go.Bar(
+            x=x_idx,
+            y=series.to_list(),
+            name=viz_t(bar_key, lang),
+            marker_color=color,
+            opacity=opacity,
+            hovertemplate=viz_t(hover_key, lang),
+        )
+    )
+    line_opts: dict = {"width": PLOT_CONFIG.line_width, "color": color}
+    if line_dash:
+        line_opts["dash"] = line_dash
+    fig.add_trace(
+        smart_scatter(
+            x=x_idx,
+            y=_rolling_mean(series, window=10).to_list(),
+            mode="lines",
+            name=viz_t(avg_key, lang),
+            line=line_opts,
+            hovertemplate=viz_t("hover_avg0", lang),
+        )
+    )
 
 
 def plot_damage_dealt_taken(
@@ -288,51 +330,31 @@ def plot_damage_dealt_taken(
 
     fig = go.Figure()
 
-    if "damage_dealt" in d.columns:
-        dealt = d["damage_dealt"].cast(pl.Float64, strict=False).fill_null(0)
-        fig.add_trace(
-            go.Bar(
-                x=x_idx,
-                y=dealt.to_list(),
-                name=viz_t("trace_dmg_dealt", lang),
-                marker_color=COLORS["cyan"],
-                opacity=0.80,
-                hovertemplate=viz_t("hover_dmg_dealt", lang),
-            )
-        )
-        fig.add_trace(
-            smart_scatter(
-                x=x_idx,
-                y=_rolling_mean(dealt, window=10).to_list(),
-                mode="lines",
-                name=viz_t("trace_dmg_dealt_avg", lang),
-                line={"width": PLOT_CONFIG.line_width, "color": COLORS["cyan"]},
-                hovertemplate=viz_t("hover_avg0", lang),
-            )
-        )
-
-    if "damage_taken" in d.columns:
-        taken = d["damage_taken"].cast(pl.Float64, strict=False).fill_null(0)
-        fig.add_trace(
-            go.Bar(
-                x=x_idx,
-                y=taken.to_list(),
-                name=viz_t("trace_dmg_taken", lang),
-                marker_color=COLORS["red"],
-                opacity=0.65,
-                hovertemplate=viz_t("hover_dmg_taken", lang),
-            )
-        )
-        fig.add_trace(
-            smart_scatter(
-                x=x_idx,
-                y=_rolling_mean(taken, window=10).to_list(),
-                mode="lines",
-                name=viz_t("trace_dmg_taken_avg", lang),
-                line={"width": PLOT_CONFIG.line_width, "color": COLORS["red"], "dash": "dot"},
-                hovertemplate=viz_t("hover_avg0", lang),
-            )
-        )
+    _add_damage_traces(
+        fig,
+        d,
+        x_idx,
+        "damage_dealt",
+        COLORS["cyan"],
+        0.80,
+        "trace_dmg_dealt",
+        "hover_dmg_dealt",
+        "trace_dmg_dealt_avg",
+        lang,
+    )
+    _add_damage_traces(
+        fig,
+        d,
+        x_idx,
+        "damage_taken",
+        COLORS["red"],
+        0.65,
+        "trace_dmg_taken",
+        "hover_dmg_taken",
+        "trace_dmg_taken_avg",
+        lang,
+        line_dash="dot",
+    )
 
     fig.update_layout(
         title=title,
@@ -349,29 +371,13 @@ def plot_damage_dealt_taken(
     return apply_halo_plot_style(fig, height=PLOT_CONFIG.default_height)
 
 
-def plot_shots_accuracy(
-    df: DataFrameLike,
-    title: str | None = None,
-    lang: str = "fr",
-) -> go.Figure:
-    """Graphique des tirs (tirés/touchés) en barres groupées avec courbe de précision.
-
-    Args:
-        df: DataFrame avec colonnes shots_fired, shots_hit, accuracy, start_time.
-        title: Titre du graphique.
-
-    Returns:
-        Figure Plotly avec axe Y secondaire pour la précision.
-    """
-    d = _normalize_df(df)
-    if title is None:
-        title = viz_t("title_shots", lang)
-
-    d = d.sort("start_time")
-    x_idx, labels, step = prepare_time_axis(d)
-
-    fig = make_subplots(rows=1, cols=1, specs=[[{"secondary_y": True}]])
-
+def _add_shots_traces(
+    fig: go.Figure,
+    d: pl.DataFrame,
+    x_idx: list[int],
+    lang: str,
+) -> None:
+    """Ajoute les traces tirs tirés/touchés et précision au graphique."""
     if "shots_fired" in d.columns:
         fired = d["shots_fired"].cast(pl.Float64, strict=False).fill_null(0)
         fig.add_trace(
@@ -419,6 +425,32 @@ def plot_shots_accuracy(
             ),
             secondary_y=True,
         )
+
+
+def plot_shots_accuracy(
+    df: DataFrameLike,
+    title: str | None = None,
+    lang: str = "fr",
+) -> go.Figure:
+    """Graphique des tirs (tirés/touchés) en barres groupées avec courbe de précision.
+
+    Args:
+        df: DataFrame avec colonnes shots_fired, shots_hit, accuracy, start_time.
+        title: Titre du graphique.
+
+    Returns:
+        Figure Plotly avec axe Y secondaire pour la précision.
+    """
+    d = _normalize_df(df)
+    if title is None:
+        title = viz_t("title_shots", lang)
+
+    d = d.sort("start_time")
+    x_idx, labels, step = prepare_time_axis(d)
+
+    fig = make_subplots(rows=1, cols=1, specs=[[{"secondary_y": True}]])
+
+    _add_shots_traces(fig, d, x_idx, lang)
 
     apply_chrono_xaxis(fig, x_idx, labels, step, lang, as_category=False)
 

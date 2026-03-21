@@ -6,11 +6,17 @@ Regroupe les méthodes de requête de médailles extraites de DuckDBRepository :
 - load_match_medals
 - count_medal_by_match
 - count_perfect_kills_by_match
+- load_medal_definitions
+- get_medal_label
 """
 
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import polars as pl
 
 logger = logging.getLogger(__name__)
 
@@ -129,3 +135,82 @@ class MedalsMixin:
             Dict {match_id: perfect_count} pour les matchs avec des Perfect.
         """
         return self.count_medal_by_match(match_ids, medal_name_id=1512363953)
+
+    def load_medal_definitions(self) -> pl.DataFrame:
+        """Charge le référentiel de médailles depuis metadata.medal_definitions.
+
+        Returns:
+            DataFrame Polars avec colonnes : medal_name_id, name_fr, name_en,
+            description_fr, description_en, is_custom.
+            DataFrame vide si la table est absente ou inaccessible.
+        """
+        import polars as pl
+
+        conn = self._get_connection()
+        if "meta" not in self._attached_dbs:
+            logger.debug("metadata DB non attachée, medal_definitions indisponible")
+            return pl.DataFrame(
+                schema={
+                    "medal_name_id": pl.Int64,
+                    "name_fr": pl.Utf8,
+                    "name_en": pl.Utf8,
+                    "description_fr": pl.Utf8,
+                    "description_en": pl.Utf8,
+                    "is_custom": pl.Boolean,
+                }
+            )
+        try:
+            result = conn.execute(
+                "SELECT medal_name_id, name_fr, name_en, "
+                "description_fr, description_en, is_custom "
+                "FROM meta.medal_definitions"
+            ).fetchall()
+            return pl.DataFrame(
+                result,
+                schema={
+                    "medal_name_id": pl.Int64,
+                    "name_fr": pl.Utf8,
+                    "name_en": pl.Utf8,
+                    "description_fr": pl.Utf8,
+                    "description_en": pl.Utf8,
+                    "is_custom": pl.Boolean,
+                },
+                orient="row",
+            )
+        except Exception as e:
+            logger.debug("Erreur load_medal_definitions: %s", e)
+            return pl.DataFrame(
+                schema={
+                    "medal_name_id": pl.Int64,
+                    "name_fr": pl.Utf8,
+                    "name_en": pl.Utf8,
+                    "description_fr": pl.Utf8,
+                    "description_en": pl.Utf8,
+                    "is_custom": pl.Boolean,
+                }
+            )
+
+    def get_medal_label(self, medal_name_id: int, lang: str = "fr") -> str | None:
+        """Lookup unitaire du label d'une médaille depuis metadata.
+
+        Args:
+            medal_name_id: ID de la médaille.
+            lang: Langue cible ("fr" ou "en").
+
+        Returns:
+            Label de la médaille ou None si introuvable.
+        """
+        conn = self._get_connection()
+        if "meta" not in self._attached_dbs:
+            logger.debug("metadata DB non attachée, get_medal_label indisponible")
+            return None
+        col = "name_fr" if lang == "fr" else "name_en"
+        try:
+            row = conn.execute(
+                f"SELECT {col} FROM meta.medal_definitions WHERE medal_name_id = ?",
+                [medal_name_id],
+            ).fetchone()
+            return row[0] if row else None
+        except Exception as e:
+            logger.debug("Erreur get_medal_label(%d): %s", medal_name_id, e)
+            return None

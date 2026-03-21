@@ -56,7 +56,7 @@ def gamertag_link(gt: str) -> str:
     href = app_url("Explorer", gamertag=gt)
     esc = html_lib.escape(gt)
     return (
-        f"<a href='{html_lib.escape(href)}' target='_blank' "
+        f"<a href='{html_lib.escape(href)}' target='_self' "
         f"style='text-decoration:underline;color:inherit;'>{esc}</a>"
     )
 
@@ -118,6 +118,21 @@ def outcome_style(outcome: object, label: str) -> str:
     return "opacity:0.92"
 
 
+def win_rate_style(v: object) -> str:
+    """Retourne le style CSS inline pour un taux de victoire cumulatif."""
+    try:
+        f = float(v)  # type: ignore[arg-type]
+        if f != f:
+            return ""
+        if f >= 55.0:
+            return f"color:{_COLORS['green']}; font-weight:700"
+        if f <= 45.0:
+            return f"color:{_COLORS['red']}; font-weight:700"
+        return f"color:{_COLORS['cyan']}; font-weight:700"
+    except Exception:
+        return ""
+
+
 def mmr_gap_style(v: object) -> str:
     """Retourne le style CSS inline pour un delta MMR."""
     try:
@@ -138,9 +153,11 @@ def mmr_gap_style(v: object) -> str:
 # ---------------------------------------------------------------------------
 
 
-@functools.lru_cache(maxsize=1)
+@functools.cache
 def _build_map_url_index() -> dict[str, str]:
     """Scanne static/maps/ une fois et retourne {stem_lower: url_statique}."""
+    import unicodedata
+
     maps_dir = Path(get_repo_root()) / "static" / "maps"
     index: dict[str, str] = {}
     if not maps_dir.exists():
@@ -150,7 +167,7 @@ def _build_map_url_index() -> dict[str, str]:
         return index
     for f in maps_dir.iterdir():
         if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
-            stem = f.stem.lower()
+            stem = unicodedata.normalize("NFC", f.stem.lower())
             url = f"/app/static/maps/{f.name}"
             index[stem] = url
             index[stem.replace(" ", "_")] = url
@@ -183,6 +200,7 @@ def _build_default_columns() -> list[tuple[str, str]]:
         (t("col_playlist"), "playlist_fr"),
         (t("col_mode"), "mode_ui"),
         (t("col_result"), "outcome_label"),
+        (t("col_win_rate_hist"), "win_rate_hist"),
         (t("col_score"), "score"),
         (t("mv_performance"), "performance"),
         (t("col_mmr_team"), "team_mmr"),
@@ -206,6 +224,7 @@ def render_match_table_html(  # noqa: PLR0913 — kwargs keyword-only, interface
     waypoint_player: str | None = None,
     header_css_class: str = "",
     page_slug: str = "Explorer",
+    page_params: dict[str, str] | None = None,
     max_rows: int = 250,
     hide_empty_cols: bool = False,
 ) -> str:
@@ -216,6 +235,7 @@ def render_match_table_html(  # noqa: PLR0913 — kwargs keyword-only, interface
         waypoint_player: Nom Waypoint pour les liens Halo Waypoint (None = pas de colonne).
         header_css_class: Classe CSS additionnelle pour le ``<thead>`` (ex: couleur d'équipe).
         page_slug: Slug de la page cible pour le lien "Ouvrir".
+        page_params: Paramètres query string supplémentaires pour les liens internes.
         max_rows: Nombre maximum de lignes à afficher.
         hide_empty_cols: Si True, masque les colonnes entièrement nulles (inconnus).
 
@@ -242,23 +262,30 @@ def render_match_table_html(  # noqa: PLR0913 — kwargs keyword-only, interface
 
     # Corps
     rows_html = [
-        _render_row(r, cols, lbl_open, waypoint_player, page_slug) for r in view.to_dicts()
+        _render_row(r, cols, lbl_open, waypoint_player, page_slug, page_params)
+        for r in view.to_dicts()
     ]
     body = "<tbody>" + "".join(rows_html) + "</tbody>"
 
-    return f"<div class='os-table-wrap'><table class='os-table'>{head}{body}</table></div>"
+    return (
+        "<div class='os-table-wrap os-table-wrap--map-hover'>"
+        f"<table class='os-table'>{head}{body}</table>"
+        "</div>"
+    )
 
 
-def _render_row(
+def _render_row(  # noqa: PLR0913
     r: dict,
     cols: list[tuple[str, str]],
     lbl_open: str,
     waypoint_player: str | None,
     page_slug: str,
+    page_params: dict[str, str] | None,
 ) -> str:
     """Génère une ligne ``<tr>`` pour un match."""
     mid = str(r.get("match_id") or "").strip()
-    url = app_url(page_slug, match_id=mid)
+    extra_params = page_params or {}
+    url = app_url(page_slug, match_id=mid, **extra_params)
     match_link = (
         f"<a href='{html_lib.escape(url)}' target='_self'>{html_lib.escape(lbl_open)}</a>"
         if mid
@@ -287,13 +314,25 @@ def _render_cell(r: dict, key: str, outcome_code: object) -> str:
         style = outcome_style(outcome_code, val)
         return f"<td style='{style}'>{html_lib.escape(val)}</td>"
 
+    if key == "win_rate_hist":
+        val = r.get(key)
+        style = win_rate_style(val)
+        try:
+            display = f"{int(round(float(val)))}%"  # type: ignore[arg-type]
+        except Exception:
+            display = "-"
+        return f"<td style='{style}'>{html_lib.escape(display)}</td>"
+
     if key == "map_name":
         val = fmt_value(r.get(key))
         url = map_thumb_url(r.get(key))
         if url:
             esc_url = html_lib.escape(url)
             esc_val = html_lib.escape(val)
-            return f"<td><span class='map-cell' data-thumb-url='{esc_url}'>{esc_val}</span></td>"
+            return (
+                f"<td><span class='map-hover'>{esc_val}"
+                f"<img class='map-popup' src='{esc_url}' alt='' /></span></td>"
+            )
         return f"<td>{html_lib.escape(val)}</td>"
 
     if key == "performance":

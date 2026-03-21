@@ -37,7 +37,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-SHARED_PATH = _PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+from src.utils.paths import get_shared_matches_path
+
+SHARED_PATH = get_shared_matches_path()
 
 
 def _ensure_backfill_bits_column(conn: duckdb.DuckDBPyConnection) -> None:

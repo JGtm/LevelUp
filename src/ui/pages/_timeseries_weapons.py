@@ -23,24 +23,7 @@ def _load_grenade_melee_totals(
 
     try:
         repo = DuckDBRepository(db_path, xuid, read_only=True)
-        conn = repo._get_connection()
-        xuid_str = str(xuid).strip()
-        if match_ids:
-            placeholders = ", ".join("?" * len(match_ids))
-            row = conn.execute(
-                f"SELECT COALESCE(SUM(grenade_kills), 0), COALESCE(SUM(melee_kills), 0) "
-                f"FROM shared.match_participants "
-                f"WHERE xuid = ? AND match_id IN ({placeholders})",
-                [xuid_str, *match_ids],
-            ).fetchone()
-        else:
-            row = conn.execute(
-                "SELECT COALESCE(SUM(grenade_kills), 0), COALESCE(SUM(melee_kills), 0) "
-                "FROM shared.match_participants WHERE xuid = ?",
-                [xuid_str],
-            ).fetchone()
-        if row:
-            return int(row[0]), int(row[1])
+        return repo.load_grenade_melee_kills(xuid, match_ids)
     except Exception as exc:
         logger.debug("_load_grenade_melee_totals xuid=%s : %s", xuid, exc)
     return 0, 0

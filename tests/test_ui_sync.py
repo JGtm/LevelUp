@@ -235,7 +235,7 @@ class TestSyncAllPlayersDuckdb:
             pass
 
         class _FakeSyncLock:
-            def __init__(self, timeout=0):
+            def __init__(self, timeout=0, lock_file=None):
                 self.timeout = timeout
 
             def __enter__(self):
@@ -244,8 +244,9 @@ class TestSyncAllPlayersDuckdb:
             def __exit__(self, exc_type, exc, tb):
                 return None
 
-        with patch("src.utils.sync_lock.SyncLock", _FakeSyncLock), patch(
-            "src.utils.sync_lock.SyncAlreadyRunning", _FakeSyncAlreadyRunning
+        with (
+            patch("src.utils.sync_lock.SyncLock", _FakeSyncLock),
+            patch("src.utils.sync_lock.SyncAlreadyRunning", _FakeSyncAlreadyRunning),
         ):
             ok, msg = sync_all_players_duckdb(repo_root=tmp_path)
 

@@ -21,9 +21,9 @@ from src.utils.paths import get_shared_matches_path_from_player
 from src.visualization.friends_impact_heatmap import (
     build_impact_ranking_df,
     count_events_by_player,
-    plot_friends_impact_heatmap,
     render_impact_summary_stats,
 )
+from src.visualization.friends_impact_scatter import plot_friends_impact_scatter
 
 
 def _load_highlight_events(
@@ -47,11 +47,15 @@ def _load_highlight_events(
     except Exception:
         return None
 
-    events_query = f"""
-        SELECT match_id, xuid::TEXT as xuid, gamertag, event_type, time_ms
-        FROM {shared_alias}.highlight_events
-        WHERE match_id IN ({{}})
-    """.format(", ".join(["?" for _ in match_ids]))
+    # v6 : v_gamertag_lookup est toujours présente (ensure_v6_views)
+    events_query = (
+        f"SELECT he.match_id, he.xuid::TEXT as xuid, "
+        f"vg.gamertag as gamertag, "
+        f"he.event_type, he.time_ms "
+        f"FROM {shared_alias}.highlight_events he "
+        f"LEFT JOIN {shared_alias}.v_gamertag_lookup vg ON vg.xuid = he.xuid::TEXT "
+        f"WHERE he.match_id IN ({', '.join(['?' for _ in match_ids])})"
+    )
 
     events_result = conn.execute(events_query, match_ids).fetchall()
 
@@ -122,8 +126,12 @@ def _render_ranking_table(
     first_bloods: dict,
     clutch_finishers: dict,
     last_casualties: dict,
-) -> None:
-    """Affiche le tableau de classement MVP/Boulet."""
+) -> tuple[str | None, str | None]:
+    """Affiche le tableau de classement MVP/Boulet.
+
+    Returns:
+        (mvp_gamertag, boulet_gamertag) — None si absent.
+    """
     fb_counts = count_events_by_player(first_bloods)
     clutch_counts = count_events_by_player(clutch_finishers)
     casualty_counts = count_events_by_player(last_casualties)
@@ -135,39 +143,105 @@ def _render_ranking_table(
         casualty_counts=casualty_counts,
     )
 
-    if not ranking_df.is_empty():
-        # Sprint 19 : renommer les colonnes en Polars sans conversion Pandas
-        display_df = ranking_df.rename(
-            dict(
-                zip(
-                    ranking_df.columns,
-                    [
-                        t("tmi_col_rank"),
-                        t("tmi_col_player"),
-                        t("tmi_col_score"),
-                        t("tmi_col_first_blood"),
-                        t("tmi_col_finisher"),
-                        t("tmi_col_casualty"),
-                        t("tmi_badge"),
-                    ],
-                    strict=False,
-                )
-            )
-        )
-        st.dataframe(display_df, width="stretch", hide_index=True)
+    if ranking_df.is_empty():
+        return None, None
 
-        mvp = ranking_df[0, "gamertag"] if len(ranking_df) > 0 else None
-        boulet = (
-            ranking_df[-1, "gamertag"]
-            if len(ranking_df) > 1 and ranking_df[-1, "score"] < 0
-            else None
-        )
+    col_cfg = {
+        "rang": st.column_config.NumberColumn(label=t("tmi_col_rank"), width=50),
+        "gamertag": st.column_config.TextColumn(label=t("tmi_col_player"), width=140),
+        "score": st.column_config.NumberColumn(label=t("tmi_col_score"), width=60),
+        "fb": st.column_config.NumberColumn(label="⚡", width=45),
+        "clutch": st.column_config.NumberColumn(label="🎯", width=45),
+        "boulet": st.column_config.NumberColumn(label="💀", width=45),
+        "badge": st.column_config.TextColumn(label=t("tmi_badge"), width=110),
+    }
+    st.dataframe(ranking_df, width="content", hide_index=True, column_config=col_cfg)
 
-        summary_cols = st.columns(2)
+    mvp = ranking_df[0, "gamertag"] if len(ranking_df) > 0 else None
+    boulet = (
+        ranking_df[-1, "gamertag"] if len(ranking_df) > 1 and ranking_df[-1, "score"] < 0 else None
+    )
+    return mvp, boulet
+
+
+def _render_impact_ranking_section(
+    scores: dict,
+    first_bloods: dict,
+    clutch_finishers: dict,
+    last_casualties: dict,
+) -> None:
+    """Affiche la légende, le tableau de classement et les badges MVP/Boulet."""
+    col_leg, col_rank, col_mvp = st.columns([1, 1.6, 0.8])
+    with col_leg:
+        st.caption(t("tm_impact_legend"))
+    with col_rank:
+        mvp, boulet = _render_ranking_table(scores, first_bloods, clutch_finishers, last_casualties)
+    with col_mvp:
         if mvp:
-            summary_cols[0].success(t("tmi_mvp_label", mvp=mvp))
+            st.success(t("tmi_mvp_label", mvp=mvp))
         if boulet:
-            summary_cols[1].error(t("tmi_boulet_label", boulet=boulet))
+            st.error(t("tmi_boulet_label", boulet=boulet))
+
+
+def _render_impact_from_events(
+    events_df: pl.DataFrame,
+    matches_df: pl.DataFrame,
+    match_ids: list[str],
+    friend_xuids: list[str],
+    xuid: str,
+) -> None:
+    """Calcule les métriques d'impact et affiche heatmap + ranking."""
+    all_friend_xuids = {str(x) for x in friend_xuids}
+    all_friend_xuids.add(str(xuid).strip())
+
+    (
+        first_bloods,
+        clutch_finishers,
+        last_casualties,
+        last_group_kills,
+        first_group_deaths,
+        scores,
+    ) = get_all_impact_events(events_df, matches_df, friend_xuids=all_friend_xuids)
+
+    if not scores:
+        st.info(t("tm_impact_no_events_players"))
+        return
+
+    gamertags = list(scores.keys())
+    impact_match_set = set(
+        list(first_bloods.keys())
+        + list(clutch_finishers.keys())
+        + list(last_casualties.keys())
+        + list(last_group_kills.keys())
+        + list(first_group_deaths.keys())
+    )
+    sorted_match_ids = [m for m in match_ids if m in impact_match_set]
+
+    match_outcomes: dict[str, int] = {}
+    if not matches_df.is_empty():
+        for row in matches_df.iter_rows(named=True):
+            match_outcomes[str(row["match_id"])] = int(row["outcome"])
+
+    impact_matrix = build_impact_matrix(
+        first_bloods,
+        clutch_finishers,
+        last_casualties,
+        last_group_kills,
+        first_group_deaths,
+        match_ids=sorted_match_ids,
+        gamertags=gamertags,
+        match_outcomes=match_outcomes,
+    )
+
+    st.subheader(t("tm_impact_heatmap"))
+    fig = plot_friends_impact_scatter(
+        impact_matrix,
+        title=None,
+        max_matches=len(sorted_match_ids),
+        match_ids_order=sorted_match_ids,
+    )
+    st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
+    _render_impact_ranking_section(scores, first_bloods, clutch_finishers, last_casualties)
 
 
 def render_impact_taquinerie(
@@ -177,17 +251,7 @@ def render_impact_taquinerie(
     friend_xuids: list[str],
     db_key: tuple[int, int] | None = None,
 ) -> None:
-    """Affiche l'onglet Impact (Sprint 12).
-
-    Args:
-        db_path: Chemin vers la DB principale.
-        xuid: XUID du joueur principal.
-        match_ids: Liste des match_id à analyser.
-        friend_xuids: Liste des XUIDs des coéquipiers sélectionnés.
-        db_key: Clé de cache (optionnel).
-    """
-    st.subheader(t("tm_impact_header"))
-
+    """Affiche l'onglet Impact (Sprint 12)."""
     if len(friend_xuids) < 2:
         st.info(t("tm_impact_select_two"))
         return
@@ -196,13 +260,13 @@ def render_impact_taquinerie(
         st.warning(t("tm_impact_no_matches"))
         return
 
-    st.caption(t("tm_impact_legend"))
-
     try:
         repo = DuckDBRepository(db_path, xuid.strip())
+        # _get_connection() légitime : conn est passée aux helpers _load_highlight_events
+        # et _load_match_outcomes qui effectuent les requêtes via shared attaché.
+        # Pas de query inline ici — rôle purement d'orchestration.
         conn = repo._get_connection()
 
-        # Attacher shared_matches.duckdb
         _shared_db = get_shared_matches_path_from_player(db_path)
         shared_alias = (
             ensure_shared_attached(conn, _shared_db) if _shared_db and _shared_db.exists() else None
@@ -211,7 +275,6 @@ def render_impact_taquinerie(
             st.warning(t("tmi_no_shared_db"))
             return
 
-        # Charger les événements depuis shared_matches
         events_df = _load_highlight_events(conn, match_ids, shared_alias)
         if events_df is None:
             st.info(t("tmi_no_events"))
@@ -220,76 +283,8 @@ def render_impact_taquinerie(
             st.info(t("tm_impact_no_events_matches"))
             return
 
-        # Charger les outcomes depuis shared_matches
         matches_df = _load_match_outcomes(conn, match_ids, xuid, shared_alias)
-
-        # Inclure le joueur principal + tous les amis sélectionnés
-        all_friend_xuids = {str(x) for x in friend_xuids}
-        all_friend_xuids.add(str(xuid).strip())
-
-        # Calculer les événements d'impact
-        (
-            first_bloods,
-            clutch_finishers,
-            last_casualties,
-            last_group_kills,
-            first_group_deaths,
-            scores,
-        ) = get_all_impact_events(events_df, matches_df, friend_xuids=all_friend_xuids)
-
-        if not scores:
-            st.info(t("tm_impact_no_events_players"))
-            return
-
-        gamertags = list(scores.keys())
-        sorted_match_ids = sorted(
-            {
-                m
-                for m in match_ids
-                if m
-                in set(
-                    list(first_bloods.keys())
-                    + list(clutch_finishers.keys())
-                    + list(last_casualties.keys())
-                    + list(last_group_kills.keys())
-                    + list(first_group_deaths.keys())
-                )
-            }
-        )
-
-        # Créer un dict des outcomes pour la heatmap
-        match_outcomes = {}
-        if not matches_df.is_empty():
-            for row in matches_df.iter_rows(named=True):
-                match_outcomes[str(row["match_id"])] = int(row["outcome"])
-
-        # Construire la matrice d'impact
-        impact_matrix = build_impact_matrix(
-            first_bloods,
-            clutch_finishers,
-            last_casualties,
-            last_group_kills,
-            first_group_deaths,
-            match_ids=sorted_match_ids,
-            gamertags=gamertags,
-            match_outcomes=match_outcomes,
-        )
-
-        # Métriques résumées (masquées à la demande de l'utilisateur)
-        # _render_impact_stats(first_bloods, clutch_finishers, last_casualties)
-
-        # Heatmap
-        st.subheader(t("tm_impact_heatmap"))
-        fig = plot_friends_impact_heatmap(
-            impact_matrix,
-            title=None,
-            max_matches=len(sorted_match_ids),
-        )
-        st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
-
-        # Tableau de ranking
-        st.subheader(t("tm_impact_ranking"))
-        _render_ranking_table(scores, first_bloods, clutch_finishers, last_casualties)
+        _render_impact_from_events(events_df, matches_df, match_ids, friend_xuids, xuid)
 
     except Exception as e:
         st.warning(t("error_chart", error=e))

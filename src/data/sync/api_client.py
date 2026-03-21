@@ -26,7 +26,7 @@ from src.data.sync._tokens import (
     clean_xuid,
     get_player_token_env_key,
     get_tokens_for_player,
-    get_tokens_from_env,
+    get_tokens_from_env,  # LEGACY — utiliser src.auth.provider.get_halo_tokens
 )
 from src.data.sync.models import CareerRankData, MatchData, MatchHistoryItem
 from src.utils.env import normalize_gamertag_for_env as _normalize_gamertag_for_env  # noqa: F401
@@ -481,7 +481,7 @@ class SPNKrAPIClient:
                 if xuid:
                     return str(xuid)
         except Exception:
-            pass
+            logger.debug("Échec extraction XUID du token JWT", exc_info=True)
         return None
 
 

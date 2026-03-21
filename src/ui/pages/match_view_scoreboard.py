@@ -14,8 +14,12 @@ import streamlit as st
 
 from src.config import TEAM_MAP, get_bot_name
 from src.ui.i18n import t
-from src.ui.pages.match_table_html import gamertag_link
 from src.ui.pages.match_view_players_data import load_match_scoreboard
+from src.ui.pages.match_view_scoreboard_detail import (
+    load_scoreboard_player_extra_data,
+    render_scoreboard_player_detail_html,
+    scoreboard_toggle_id,
+)
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG  # noqa: F401 — re-export éventuel
 from src.utils import parse_xuid_input
 
@@ -37,6 +41,7 @@ def _get_scoreboard_cols() -> list[tuple[str, str]]:
         (t("col_deaths"), "deaths"),
         (t("col_assists_short"), "assists"),
         (t("col_kda"), "kda"),
+        (t("col_weapon_of_destruction"), "top_weapon_id"),
         (t("col_killing_spree"), "max_killing_spree"),
         (t("col_headshots"), "headshot_kills"),
         (t("col_perfect_kills"), "perfect_kills"),
@@ -45,8 +50,6 @@ def _get_scoreboard_cols() -> list[tuple[str, str]]:
         (t("col_accuracy"), "accuracy"),
         (t("col_melee"), "melee_kills"),
         (t("col_power_weapon"), "power_weapon_kills"),
-        # TODO(api-update): décommenter quand l'API expose l'arme de frag ennemie
-        # (t("col_weapon_of_destruction"), "weapon_of_destruction"),
         (t("col_dmg_dealt"), "damage_dealt"),
         (t("col_dmg_taken"), "damage_taken"),
         (t("mv_scoreboard_avg_life"), "avg_life_seconds"),
@@ -54,7 +57,7 @@ def _get_scoreboard_cols() -> list[tuple[str, str]]:
 
 
 # Colonnes non comparables (texte / ordinal) : pas de highlight min/max
-_SB_SKIP_HIGHLIGHT: set[str] = {"gamertag", "rank"}
+_SB_SKIP_HIGHLIGHT: set[str] = {"gamertag", "rank", "top_weapon_id"}
 
 # Colonnes inversées : moins = mieux (vert), plus = pire (rouge)
 _SB_INVERTED: set[str] = {"deaths", "damage_taken"}
@@ -117,11 +120,17 @@ def _sb_cell_class(
 
 def _fmt_scoreboard_cell(key: str, value: Any) -> str:
     """Formate une valeur pour l'affichage dans le scoreboard."""
+    if key == "top_weapon_id":
+        from src.analysis._weapon_data import resolve_weapon_display
+
+        if value is None:
+            return "-"
+        name = resolve_weapon_display(int(value))
+        if name is None or name.startswith("weapon_"):
+            return "-"
+        return name
     if value is None:
         return "—"
-    # TODO(api-update): décommenter quand la feature weapon_of_destruction est réactivée
-    # if key == "weapon_of_destruction":
-    #     return str(value) if value else "—"
     if key == "gamertag":
         s = str(value).strip()
         if not s or s.isdigit() or s.lower().startswith("xuid(") or s == "?":
@@ -188,14 +197,22 @@ def _compute_mvp_lvp(
     players: list[dict[str, Any]],
     extremes: dict[str, tuple[float, float]],
 ) -> tuple[str, str]:
-    """Identifie les xuids MVP et LVP.
+    """Identifie les xuids MVP et LVP (bots exclus).
 
     Returns:
         Tuple (mvp_xuid, lvp_xuid). Chaînes vides si pas de distinction.
     """
+    # Filtrer les bots pour ne garder que les humains
+    human_indices = [
+        i for i, p in enumerate(players) if get_bot_name(str(p.get("xuid", ""))) is None
+    ]
+    if not human_indices:
+        return "", ""
+
     player_best: dict[int, int] = {}
     player_worst: dict[int, int] = {}
-    for i, p in enumerate(players):
+    for i in human_indices:
+        p = players[i]
         best = worst = 0
         for _, key in _get_scoreboard_cols():
             cls = _sb_cell_class(key, p.get(key), extremes)
@@ -241,13 +258,36 @@ def _compute_mvp_lvp(
 
 
 # =============================================================================
-# Rendu HTML par équipe
-# =============================================================================
+def _build_scoreboard_row_html(  # noqa: PLR0913
+    *,
+    player: dict[str, Any],
+    sb_cols: list[tuple[str, str]],
+    row_class: str,
+    toggle_id: str,
+    extremes: dict[str, tuple[float, float]],
+) -> str:
+    """Construit la ligne HTML principale du scoreboard."""
+    cell_parts = []
+    for index, (_, key) in enumerate(sb_cols):
+        css = _sb_cell_class(key, player.get(key), extremes)
+        raw = _fmt_scoreboard_cell(key, player.get(key))
+        label_html = (
+            f"<label class='os-sb-hit' for='{html.escape(toggle_id)}'>{html.escape(raw)}</label>"
+        )
+        if index == 0:
+            label_html = (
+                f"<input id='{html.escape(toggle_id)}' class='os-sb-toggle' type='checkbox'>"
+                + label_html
+            )
+        cell_parts.append(f"<td class='os-sb-td{css}'>{label_html}</td>")
+    return f"<tr class='os-sb-row{row_class}'>{''.join(cell_parts)}</tr>"
 
 
 def _render_team_table(  # noqa: PLR0913
     *,
     team_players: list[dict[str, Any]],
+    match_id: str,
+    db_path: str,
     tid: Any,
     my_team_id: Any,
     me_xu: str,
@@ -272,15 +312,15 @@ def _render_team_table(  # noqa: PLR0913
     sb_cols = _get_scoreboard_cols()
     th_cells = "".join(f"<th class='os-sb-th'>{html.escape(label)}</th>" for label, _ in sb_cols)
     n_cols = len(sb_cols)
-    thead = (
-        f"<thead>"
+    header_rows = (
+        "<tbody class='os-sb-head'>"
         f"<tr><th class='os-sb-team {team_css_mod}' colspan='{n_cols}'>{team_label}</th></tr>"
         f"<tr>{th_cells}</tr>"
-        f"</thead>"
+        "</tbody>"
     )
 
     body_rows = []
-    for p in team_players:
+    for row_index, p in enumerate(team_players):
         p_xu = str(
             parse_xuid_input(str(p.get("xuid") or "").strip()) or str(p.get("xuid") or "").strip()
         ).strip()
@@ -290,25 +330,32 @@ def _render_team_table(  # noqa: PLR0913
             row_class += " os-sb-row--mvp"
         elif p_xu and p_xu == lvp_xuid:
             row_class += " os-sb-row--lvp"
-        cell_parts = []
-        for _, key in sb_cols:
-            css = _sb_cell_class(key, p.get(key), extremes)
-            raw = _fmt_scoreboard_cell(key, p.get(key))
-            if key == "gamertag" and raw != "—" and not is_me:
-                content = gamertag_link(raw)
-            else:
-                content = html.escape(raw)
-            cell_parts.append(f"<td class='os-sb-td{css}'>{content}</td>")
-        cells = "".join(cell_parts)
-        body_rows.append(f"<tr class='os-sb-row{row_class}'>{cells}</tr>")
+        toggle_id = scoreboard_toggle_id(tid, p_xu, row_index)
+        extra = load_scoreboard_player_extra_data(
+            db_path=db_path,
+            match_id=match_id,
+            xuid=p_xu,
+            gamertag=_fmt_scoreboard_cell("gamertag", p.get("gamertag")),
+        )
+        detail_html = render_scoreboard_player_detail_html(extra=extra)
+        row_html = _build_scoreboard_row_html(
+            player=p,
+            sb_cols=sb_cols,
+            row_class=row_class,
+            toggle_id=toggle_id,
+            extremes=extremes,
+        )
+        body_rows.append(
+            "<tbody class='os-sb-player'>"
+            f"{row_html}"
+            f"<tr class='os-sb-detail-row'><td class='os-sb-detail-cell' colspan='{n_cols}'>{detail_html}</td></tr>"
+            "</tbody>"
+        )
 
     table_html = (
         "<div class='os-table-wrap os-sb-wrap'>"
         "<table class='os-table os-scoreboard'>"
-        f"{thead}"
-        "<tbody>" + "".join(body_rows) + "</tbody>"
-        "</table>"
-        "</div>"
+        f"{header_rows}" + "".join(body_rows) + "</table>" + "</div>"
     )
     st.markdown(table_html, unsafe_allow_html=True)
 
@@ -336,6 +383,7 @@ def render_match_scoreboard(
         load_match_gamertags_fn: Fonction de résolution gamertags injectée.
     """
     st.subheader(t("mv_scoreboard"))
+    st.caption(t("mv_scoreboard_detail_click_hint"))
 
     players = load_match_scoreboard(db_path, match_id.strip())
     if not players:
@@ -343,27 +391,6 @@ def render_match_scoreboard(
         return
 
     me_xu = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
-
-    # ── Arme de destruction (désactivée) ─────────────────────────────────
-    # Désactivée : les fire events film ne couvrent que le POV du joueur.
-    # L'API stats ne retourne pas l'arme des ennemis pour le moment.
-    # TODO(api-update): Réactiver le bloc ci-dessous si l'API l'expose un jour.
-    # top_weapon: dict[str, tuple[int, int]] = {}
-    # try:
-    #     from src.data.repositories import DuckDBRepository
-    #     repo = DuckDBRepository(db_path, xuid="", read_only=True)
-    #     top_weapon = repo.load_top_weapon_per_player(match_id.strip())
-    # except Exception:
-    #     pass
-    # lang = get_lang()  # utilisé par get_weapon_label ci-dessous
-    # for p in players:
-    #     p_xu = str(p.get("xuid") or "").strip()
-    #     if p_xu in top_weapon:
-    #         wid, wkills = top_weapon[p_xu]
-    #         label = get_weapon_label(wid, lang)
-    #         p["weapon_of_destruction"] = f"{label} ({wkills})"
-    #     else:
-    #         p["weapon_of_destruction"] = None
 
     gt_map: dict[str, str] = load_match_gamertags_fn(db_path, match_id.strip(), db_key=db_key) or {}
     logger.debug("Résolution gamertags scoreboard match=%s: %d entrées", match_id, len(gt_map))
@@ -399,6 +426,8 @@ def render_match_scoreboard(
     for tid, team_players in teams.items():
         _render_team_table(
             team_players=team_players,
+            match_id=match_id,
+            db_path=db_path,
             tid=tid,
             my_team_id=my_team_id,
             me_xu=me_xu,

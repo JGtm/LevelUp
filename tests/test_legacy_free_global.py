@@ -161,7 +161,6 @@ class TestSprintTargetsCacheFacade:
         "cached_compute_sessions_db",
         "cached_list_local_dbs",
         "load_df_optimized",
-        "load_df_hybrid",
         "db_cache_key",
         "clear_app_caches",
         "cached_friend_matches_df",

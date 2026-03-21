@@ -232,7 +232,7 @@ def load_filter_preferences(
         return None
 
 
-def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913
+def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913, PLR0915
     xuid: str,
     db_path: str | None = None,
     preferences: FilterPreferences | None = None,
@@ -375,6 +375,30 @@ def apply_filter_preferences(  # noqa: C901, PLR0912, PLR0913
         "_experience_types_filter_mode",
         "_experience_types_exclusions",
     )
+    # Normalisation des labels d'expérience : si des labels stockés ne correspondent
+    # pas aux options actuelles (ex : changement de langue FR→EN), on corrige.
+    # "PVP non classé" + "PVP classé" (FR) ne matchent pas "Unranked PVP" + "Ranked PVP" (EN)
+    # mais "PVE" est commun — sans normalisation, seul PVE resterait coché.
+    _EXP_TYPES_TOTAL = 3  # Nombre fixe d'options (pvp_unranked, pvp_ranked, pve)
+    if (
+        all_experience_types
+        and preferences.experience_types is not None
+        and "filter_experience_types" in st.session_state
+    ):
+        stored_set = set(preferences.experience_types)
+        current_set = set(all_experience_types)
+        has_stale = bool(stored_set - current_set)
+        if has_stale:
+            valid = stored_set & current_set
+            if len(stored_set) >= _EXP_TYPES_TOTAL:
+                # Tous les types étaient sélectionnés → restaurer tous les types courants
+                st.session_state["filter_experience_types"] = current_set
+            elif valid:
+                # Sélection partielle avec certains labels valides
+                st.session_state["filter_experience_types"] = valid
+            else:
+                # Aucun label valide → sélectionner tout (fallback)
+                st.session_state["filter_experience_types"] = current_set
 
 
 def clear_filter_preferences(xuid: str, db_path: str | None = None) -> None:

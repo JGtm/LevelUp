@@ -340,10 +340,46 @@ def _create_shared_for_scoreboard(tmp_path: Path) -> tuple[Path, Path, Path]:
     # Alias pour xuid_d (gamertag NULL dans match_participants → résolu via xuid_aliases)
     sh.execute("INSERT INTO xuid_aliases VALUES ('xuid_d', 'Delta')")
 
+    sh.execute("""
+        CREATE VIEW v_gamertag_lookup AS
+        WITH mp_agg AS (
+            SELECT xuid, MAX(gamertag) AS gamertag
+            FROM match_participants WHERE gamertag IS NOT NULL GROUP BY xuid
+        )
+        SELECT COALESCE(xa.xuid, mp.xuid) AS xuid,
+               COALESCE(xa.gamertag, mp.gamertag) AS gamertag
+        FROM xuid_aliases xa
+        FULL OUTER JOIN mp_agg mp ON xa.xuid = mp.xuid
+        WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL
+    """)
+
     # Perfect Kills pour xuid_a : 2 médailles
     sh.execute("INSERT INTO medals_earned VALUES ('match-sc01', 'xuid_a', 1512363953, 2)")
     # Autre médaille (non Perfect Kill) pour xuid_a → ne doit PAS être comptée
     sh.execute("INSERT INTO medals_earned VALUES ('match-sc01', 'xuid_a', 9999999999, 5)")
+
+    # weapon_kills : requis par load_match_scoreboard (top_weapon_id)
+    sh.execute("""
+        CREATE TABLE IF NOT EXISTS weapon_kills (
+            match_id   VARCHAR NOT NULL,
+            xuid       VARCHAR NOT NULL,
+            weapon_id  INTEGER NOT NULL
+        )
+    """)
+    # xuid_a a tué 3 fois avec l'arme 100
+    sh.executemany(
+        "INSERT INTO weapon_kills VALUES (?, ?, ?)",
+        [
+            ("match-sc01", "xuid_a", 100),
+            ("match-sc01", "xuid_a", 100),
+            ("match-sc01", "xuid_a", 100),
+        ],
+    )
+    sh.execute("""
+        CREATE VIEW v_weapon_kills AS
+        SELECT match_id, xuid, weapon_id, weapon_id AS effective_weapon_id
+        FROM weapon_kills
+    """)
 
     sh.close()
     return stats_path, shared_path, meta_path
@@ -526,6 +562,7 @@ class TestScoreboardIntegration:
             "damage_taken",
             "avg_life_seconds",
             "perfect_kills",
+            "top_weapon_id",
         }
         assert len(result) == 5
         for entry in result:

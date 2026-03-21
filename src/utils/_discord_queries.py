@@ -14,7 +14,10 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_SHARED_DB = _PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+
+from src.utils.paths import get_shared_matches_path  # noqa: E402
+
+_SHARED_DB = get_shared_matches_path()
 
 
 def _load_friends_defaults() -> dict[str, list[str]]:
@@ -61,9 +64,9 @@ def _fetch_squad_info(
         if my_friends_gt:
             rows = conn.execute(
                 """
-                SELECT DISTINCT xa.gamertag
+                SELECT DISTINCT vg.gamertag
                 FROM match_participants mp
-                JOIN xuid_aliases xa ON mp.xuid = xa.xuid
+                JOIN v_gamertag_lookup vg ON mp.xuid = vg.xuid
                 WHERE mp.match_id = ?
                   AND mp.xuid != ?
                   AND mp.team_id = (
@@ -213,6 +216,11 @@ def count_matches_missing_data(xuid: str) -> int:
                 JOIN match_participants mp ON mr.match_id = mp.match_id
                 WHERE mp.xuid = ?
                   AND (
+                      -- Double-guard : boolean ET bitmask doivent tous les deux indiquer
+                      -- "absent" pour qu'un match soit compté comme incomplet.
+                      -- Raison : données historiques où medals_loaded/events_loaded=FALSE
+                      -- mais backfill_completed a été posé par un sync antérieur.
+                      -- Source de vérité préférée : boolean (plus fiable depuis v5.4).
                       (COALESCE(mr.medals_loaded, FALSE) = FALSE
                        AND (COALESCE(mr.backfill_completed, 0) & 1) = 0)
                       OR

@@ -43,6 +43,18 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 
 ## Tables DuckDB Principales
 
+### metadata.duckdb (référentiels)
+
+| Table | Description |
+|-------|-------------|
+| `career_ranks` | Paliers et noms des rangs Halo |
+| `citation_mappings` | Mappings médaille→citation |
+| `mode_lang_settings` | Paramètres de langue par mode |
+| `mode_name_tr` | Traductions des noms de modes |
+| `mode_pair_overrides` | Surcharges de paires map/mode |
+| `mode_prefix_names` | Préfixes canoniques de modes |
+| `weapon_labels` | Labels EN/FR par weapon_id filmshell (UBIGINT) — **v5.4** |
+
 ### shared_matches.duckdb (centralisée)
 
 | Table | Description |
@@ -202,6 +214,28 @@ Chaque joueur a sa propre DB : `data/players/{gamertag}/stats.duckdb` (enrichiss
 | **Streamlit** | Interface utilisateur |
 | **SPNKr** | API Halo Infinite |
 | **SyncScope** | Flags sync/backfill centralisés (`src/data/sync/scope.py`) |
+| **RAG / MCP** | Recherche sémantique dans la doc + serveur MCP pour Cursor (`src/ai/`) |
+
+## Couche `src/ai/` (outillage développeur)
+
+| Fichier | Rôle |
+|---------|------|
+| `rag.py` | `HaloKnowledgeBase` — indexation + recherche sémantique (ChromaDB) |
+| `_rag_models.py` | Modèles Pydantic : `RAGConfig`, `Document`, `SearchResult` |
+| `_rag_chunker.py` | `TextChunker` — découpage de docs en chunks |
+| `_rag_github.py` | `GitHubIndexer` — indexation de repos GitHub |
+| `mcp_server.py` | Serveur MCP (protocole Model Context Protocol) pour Cursor |
+
+**Règle** : `src/ai/` est réservé à l'**outillage développeur** (RAG docs, MCP). Aucune logique métier Halo ne doit y résider. Pas d'import de `src.data` ni de `src.ui` dans ce module.
+
+## Règle `src/analysis/` vs `src/data/services/`
+
+| Package | Rôle | Règle |
+|---------|------|-------|
+| `src/analysis/` | **Algorithmes purs** — transformations stateless | Entrée : `pl.DataFrame` / listes · Sortie : résultats calculés · **0 accès DB**, 0 Streamlit |
+| `src/data/services/` | **Orchestration** — combine accès repo + algos | Prend un `DuckDBRepository` + paramètres · délègue les calculs à `analysis/` · retourne dataclasses ou `pl.DataFrame` |
+
+**Règle de décision** : si la fonction n'a pas besoin de toucher la DB → `analysis/`. Si elle doit interroger le repo ET calculer → `services/`.
 
 ## SyncScope (`src/data/sync/scope.py`)
 
@@ -265,6 +299,7 @@ Avant d'écrire ou modifier du code, l'agent IA doit vérifier que ses changemen
 8. **"Magic integer"** — `outcome == 2` sans contexte → `Outcome.WIN`  
 9. **"Logique métier dans l'UI"** — Calculs purs mélangés aux appels Streamlit → séparer en `*_logic.py` testable sans Streamlit
 10. **"Alias inutile"** — `_func = func` en tête de fichier sans raison → import direct
+11. **"God __init__"** — `__init__.py` qui importe massivement ses propres sous-modules → `KeyError: 'src.xxx'` lors des hot-reloads Streamlit. Règle : un `__init__.py` ne doit **jamais** importer depuis ses propres sous-modules (sauf si des dizaines de callers existants utilisent déjà `from src.pkg import X` — dans ce cas les imports lazy depuis les fonctions sont tolérés, mais les imports module-level dans `streamlit_app.py` doivent pointer vers le sous-module direct). Test : `tests/test_imports.py`.
 
 ### Patterns à appliquer
 

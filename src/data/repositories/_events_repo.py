@@ -95,10 +95,13 @@ class EventsMixin:
         try:
             result = conn.execute(
                 """
-                SELECT event_type, time_ms, xuid, gamertag, type_hint
-                FROM shared.highlight_events
-                WHERE match_id = ?
-                ORDER BY time_ms ASC NULLS LAST
+                SELECT he.event_type, he.time_ms, he.xuid,
+                       vg.gamertag,
+                       he.type_hint
+                FROM shared.highlight_events he
+                LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = he.xuid
+                WHERE he.match_id = ?
+                ORDER BY he.time_ms ASC NULLS LAST
                 """,
                 [match_id],
             )

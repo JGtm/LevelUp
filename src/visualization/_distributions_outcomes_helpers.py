@@ -122,6 +122,39 @@ def build_outcome_pivot(
     return pivot.head(max_categories)
 
 
+def _add_sparse_bar_trace(  # noqa: PLR0913
+    fig: go.Figure,
+    cats: list,
+    pivot: pl.DataFrame,
+    col: str,
+    name: str,
+    color: str,
+    opacity: float,
+) -> None:
+    """Ajoute une barre conditionnelle (si somme > 0) avec texte masqué pour zéros."""
+    if pivot[col].sum() <= 0:
+        return
+    text_vals = (
+        pivot.select(
+            pl.when(pl.col(col) > 0).then(pl.col(col).cast(pl.String)).otherwise(pl.lit(""))
+        )
+        .to_series()
+        .to_list()
+    )
+    fig.add_trace(
+        go.Bar(
+            x=cats,
+            y=pivot[col].to_list(),
+            name=name,
+            marker_color=color,
+            opacity=opacity,
+            text=text_vals,
+            textposition="inside",
+            hovertemplate=f"%{{x}}<br>{name}: %{{y}}<extra></extra>",
+        )
+    )
+
+
 def add_outcome_traces(
     fig: go.Figure,
     pivot: pl.DataFrame,
@@ -163,50 +196,8 @@ def add_outcome_traces(
             hovertemplate=f"%{{x}}<br>{_losses_lbl}: %{{y}}<extra></extra>",
         )
     )
-    if pivot["ties"].sum() > 0:
-        text_ties = (
-            pivot.select(
-                pl.when(pl.col("ties") > 0)
-                .then(pl.col("ties").cast(pl.String))
-                .otherwise(pl.lit(""))
-            )
-            .to_series()
-            .to_list()
-        )
-        fig.add_trace(
-            go.Bar(
-                x=cats,
-                y=pivot["ties"].to_list(),
-                name=_ties_lbl,
-                marker_color=colors["amber"],
-                opacity=0.70,
-                text=text_ties,
-                textposition="inside",
-                hovertemplate=f"%{{x}}<br>{_ties_lbl}: %{{y}}<extra></extra>",
-            )
-        )
-    if pivot["left"].sum() > 0:
-        text_left = (
-            pivot.select(
-                pl.when(pl.col("left") > 0)
-                .then(pl.col("left").cast(pl.String))
-                .otherwise(pl.lit(""))
-            )
-            .to_series()
-            .to_list()
-        )
-        fig.add_trace(
-            go.Bar(
-                x=cats,
-                y=pivot["left"].to_list(),
-                name=_unfinished_lbl,
-                marker_color=colors["violet"],
-                opacity=0.60,
-                text=text_left,
-                textposition="inside",
-                hovertemplate=f"%{{x}}<br>{_unfinished_lbl}: %{{y}}<extra></extra>",
-            )
-        )
+    _add_sparse_bar_trace(fig, cats, pivot, "ties", _ties_lbl, colors["amber"], 0.70)
+    _add_sparse_bar_trace(fig, cats, pivot, "left", _unfinished_lbl, colors["violet"], 0.60)
 
 
 def determine_top_period(d: pl.DataFrame, lang: str = "fr") -> tuple[pl.DataFrame, str]:

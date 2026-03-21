@@ -13,10 +13,8 @@ Ce fichier teste les nouveaux modules créés lors de la Phase 6 :
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import patch
-
-import pandas as pd
 
 # =============================================================================
 # Tests profile_api_cache.py
@@ -161,7 +159,7 @@ class TestMatchViewHelpers:
         from src.ui.pages.match_view_helpers import safe_dt
 
         paris_tz = pytz.timezone("Europe/Paris")
-        ts = pd.Timestamp("2024-01-15 14:30:00", tz="UTC")
+        ts = datetime(2024, 1, 15, 14, 30, tzinfo=timezone.utc)
         result = safe_dt(ts, paris_tz)
         assert result is not None
         assert isinstance(result, datetime)
@@ -173,12 +171,10 @@ class TestMatchViewHelpers:
         from src.ui.pages.match_view_helpers import match_time_window
 
         paris_tz = pytz.timezone("Europe/Paris")
-        row = pd.Series(
-            {
-                "start_time": "2024-01-15 14:00:00",
-                "time_played_seconds": 600,  # 10 minutes
-            }
-        )
+        row = {
+            "start_time": "2024-01-15 14:00:00",
+            "time_played_seconds": 600,  # 10 minutes
+        }
         t0, t1, duration_known = match_time_window(row, tolerance_minutes=5, paris_tz=paris_tz)
         assert t0 is not None
         assert t1 is not None
@@ -193,12 +189,10 @@ class TestMatchViewHelpers:
         from src.ui.pages.match_view_helpers import match_time_window
 
         paris_tz = pytz.timezone("Europe/Paris")
-        row = pd.Series(
-            {
-                "start_time": "2024-01-15 14:00:00",
-                "time_played_seconds": None,  # Durée inconnue
-            }
-        )
+        row = {
+            "start_time": "2024-01-15 14:00:00",
+            "time_played_seconds": None,  # Durée inconnue
+        }
         t0, t1, duration_known = match_time_window(row, tolerance_minutes=5, paris_tz=paris_tz)
         assert t0 is not None
         assert t1 is not None
@@ -212,7 +206,7 @@ class TestMatchViewHelpers:
         from src.ui.pages.match_view_helpers import match_time_window
 
         paris_tz = pytz.timezone("Europe/Paris")
-        row = pd.Series({"time_played_seconds": 600})
+        row = {"time_played_seconds": 600}
         t0, t1, duration_known = match_time_window(row, tolerance_minutes=5, paris_tz=paris_tz)
         assert t0 is None
         assert t1 is None

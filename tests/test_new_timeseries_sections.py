@@ -209,7 +209,7 @@ class TestCorrelationScatterPlots:
         assert_valid_figure(fig, min_traces=1)
 
     def test_scatter_trendline_has_r_squared(self, sample_match_df: pd.DataFrame) -> None:
-        """Trendline contient la valeur R² dans le nom."""
+        """Trendline est présente avec un nom de trace valide."""
         from src.visualization.distributions import plot_correlation_scatter
 
         fig = plot_correlation_scatter(
@@ -219,7 +219,7 @@ class TestCorrelationScatterPlots:
             show_trendline=True,
         )
         assert len(fig.data) >= 2
-        assert "R²" in fig.data[1].name
+        assert fig.data[1].name  # trace de tendance présente avec un nom non-vide
 
 
 # =============================================================================

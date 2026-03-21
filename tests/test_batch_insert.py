@@ -189,6 +189,48 @@ class TestCoerceRowTypes:
         assert result["kills"] is None
         assert result["accuracy"] is None
 
+    def test_cast_plan_covers_all_participant_columns(self) -> None:
+        """CAST_PLAN[match_participants] doit couvrir toutes les colonnes de PARTICIPANT_COLUMNS.
+
+        Régression : 9 colonnes manquaient (headshot_kills, kda, etc.), ce qui
+        laissait passer des NaN/float bruts vers DuckDB et provoquait des échecs
+        silencieux d'insertion dans _executemany_with_fallback.
+        """
+        from src.data.sync._batch_columns import PARTICIPANT_COLUMNS
+
+        plan = CAST_PLAN["match_participants"]
+        missing = [col for col in PARTICIPANT_COLUMNS if col not in plan]
+        assert missing == [], (
+            f"Colonnes de PARTICIPANT_COLUMNS absentes du CAST_PLAN : {missing}. "
+            "Ajouter leur type DuckDB pour garantir la coercition NaN→None avant INSERT."
+        )
+
+    def test_nan_in_participant_columns_cleaned(self) -> None:
+        """NaN dans les colonnes SMALLINT/INTEGER de match_participants → None."""
+        row = {
+            "match_id": "m1",
+            "xuid": "123",
+            "headshot_kills": float("nan"),
+            "max_killing_spree": float("nan"),
+            "kda": float("nan"),
+            "accuracy": float("inf"),
+            "time_played_seconds": float("nan"),
+            "grenade_kills": float("nan"),
+            "melee_kills": float("nan"),
+            "power_weapon_kills": float("nan"),
+            "personal_score": float("nan"),
+        }
+        result = coerce_row_types(row, "match_participants")
+        assert result["headshot_kills"] is None
+        assert result["max_killing_spree"] is None
+        assert result["kda"] is None
+        assert result["accuracy"] is None
+        assert result["time_played_seconds"] is None
+        assert result["grenade_kills"] is None
+        assert result["melee_kills"] is None
+        assert result["power_weapon_kills"] is None
+        assert result["personal_score"] is None
+
 
 # =============================================================================
 # Tests batch_insert_rows

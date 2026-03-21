@@ -17,6 +17,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from src.utils.db import duckdb_read_write
+
 logger = logging.getLogger(__name__)
 
 # DDL minimal pour bootstrapper une DB joueur fraîchement créée.
@@ -54,10 +56,7 @@ def create_player_db(gamertag: str, *, base_dir: str | Path | None = None) -> Pa
     db_path = player_dir / "stats.duckdb"
 
     if not db_path.exists():
-        import duckdb
-
-        conn = duckdb.connect(str(db_path))
-        try:
+        with duckdb_read_write(str(db_path)) as conn:
             conn.execute(_BOOTSTRAP_DDL)
             conn.execute(
                 "INSERT OR REPLACE INTO sync_meta (key, value, updated_at) "
@@ -65,8 +64,6 @@ def create_player_db(gamertag: str, *, base_dir: str | Path | None = None) -> Pa
                 (gamertag,),
             )
             logger.info("DB joueur créée : %s", db_path)
-        finally:
-            conn.close()
     else:
         logger.debug("DB joueur déjà existante : %s", db_path)
 

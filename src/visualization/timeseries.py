@@ -15,6 +15,7 @@ from src.visualization._compat import (
     ensure_polars_series,
     smart_scatter,
 )
+from src.visualization._permin_helpers import build_symmetric_abs_ticks
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
@@ -159,13 +160,21 @@ def plot_timeseries(df: DataFrameLike, title: str | None = None, lang: str = "fr
     )
     fig.update_yaxes(title_text=viz_t("axis_ratio", lang), secondary_y=True)
 
-    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
+    labels = (
+        [
+            f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
+            for i, mn in enumerate(d["map_name"].fill_null("").to_list())
+        ]
+        if "map_name" in d.columns
+        else d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
+    )
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
     fig.update_xaxes(
         title_text=viz_t("axis_match_number", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
+        tickangle=-45,
     )
 
     add_extreme_annotations(
@@ -278,7 +287,7 @@ def _add_permin_rolling_lines(  # noqa: PLR0913
         fig: Figure Plotly à enrichir.
         x_idx: Index des matchs.
         kpm: Série kills per minute.
-        dpm: Série deaths per minute.
+        dpm: Série deaths per minute (valeurs négatives — sous l'axe X).
         apm: Série assists per minute.
         colors: Dict de couleurs HALO.
     """
@@ -292,14 +301,16 @@ def _add_permin_rolling_lines(  # noqa: PLR0913
             hovertemplate=viz_t("hover_avg", lang),
         )
     )
+    dpm_rolling = _rolling_mean(dpm, window=10).to_list()
     fig.add_trace(
         smart_scatter(
             x=x_idx,
-            y=_rolling_mean(dpm, window=10).to_list(),
+            y=dpm_rolling,
             mode="lines",
             name=viz_t("trace_avg_deaths_per_min", lang),
             line={"width": PLOT_CONFIG.line_width, "color": colors["red"], "dash": "dot"},
-            hovertemplate=viz_t("hover_avg", lang),
+            customdata=[abs(v) for v in dpm_rolling],
+            hovertemplate=viz_t("hover_avg_abs", lang),
         )
     )
     fig.add_trace(
@@ -331,8 +342,33 @@ def plot_per_minute_timeseries(
     title = title or viz_t("title_permin", lang)
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
+    if "kills_per_min" not in d.columns:
+        _tps = pl.col("time_played_seconds").cast(pl.Float64, strict=False)
+        d = d.with_columns(
+            [
+                (pl.col("kills").cast(pl.Float64, strict=False) / (_tps / 60))
+                .fill_nan(0.0)
+                .fill_null(0.0)
+                .alias("kills_per_min"),
+                (pl.col("deaths").cast(pl.Float64, strict=False) / (_tps / 60))
+                .fill_nan(0.0)
+                .fill_null(0.0)
+                .alias("deaths_per_min"),
+                (pl.col("assists").cast(pl.Float64, strict=False) / (_tps / 60))
+                .fill_nan(0.0)
+                .fill_null(0.0)
+                .alias("assists_per_min"),
+            ]
+        )
     x_idx = list(range(len(d)))
-    labels = d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
+    labels = (
+        [
+            f"#{i + 1}<br>{mn}" if mn else f"#{i + 1}"
+            for i, mn in enumerate(d["map_name"].fill_null("").to_list())
+        ]
+        if "map_name" in d.columns
+        else d["start_time"].dt.strftime(FMT_TICK_DATETIME).to_list()
+    )
     step = max(1, len(labels) // 10) if len(labels) > 1 else 1
 
     time_played = d["time_played_seconds"].cast(pl.Float64, strict=False)
@@ -350,6 +386,9 @@ def plot_per_minute_timeseries(
     kpm = d["kills_per_min"].cast(pl.Float64, strict=False)
     dpm = d["deaths_per_min"].cast(pl.Float64, strict=False)
     apm = d["assists_per_min"].cast(pl.Float64, strict=False)
+    dpm_neg = (-dpm).to_list()  # morts sous l'axe X ; abs conservée en customdata[5]
+    customdata_with_dpm = [(*row, a) for row, a in zip(customdata, dpm.to_list(), strict=False)]
+
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
@@ -358,19 +397,19 @@ def plot_per_minute_timeseries(
             name=viz_t("trace_kills_per_min", lang),
             marker_color=colors["cyan"],
             opacity=PLOT_CONFIG.bar_opacity,
-            customdata=customdata,
+            customdata=customdata_with_dpm,
             hovertemplate=viz_t("hover_kpm", lang),
         )
     )
     fig.add_trace(
         go.Bar(
             x=x_idx,
-            y=dpm.to_list(),
+            y=dpm_neg,
             name=viz_t("trace_deaths_per_min", lang),
             marker_color=colors["red"],
-            opacity=PLOT_CONFIG.bar_opacity_secondary,
-            customdata=customdata,
-            hovertemplate=viz_t("hover_dpm", lang),
+            opacity=0.4,  # version désaturée pour indiquer la valeur négative
+            customdata=customdata_with_dpm,
+            hovertemplate=viz_t("hover_dpm_neg", lang),
         )
     )
     fig.add_trace(
@@ -380,13 +419,17 @@ def plot_per_minute_timeseries(
             name=viz_t("trace_assists_per_min", lang),
             marker_color=colors["violet"],
             opacity=PLOT_CONFIG.bar_opacity_secondary,
-            customdata=customdata,
+            customdata=customdata_with_dpm,
             hovertemplate=viz_t("hover_apm", lang),
         )
     )
 
-    _add_permin_rolling_lines(fig, x_idx, kpm, dpm, apm, colors, lang=lang)
+    _add_permin_rolling_lines(fig, x_idx, kpm, -dpm, apm, colors, lang=lang)
 
+    tickvals, ticktext = build_symmetric_abs_ticks(
+        max(max(kpm.to_list(), default=0.1), max(apm.to_list(), default=0.1)),
+        max((abs(v) for v in dpm_neg), default=0.1),
+    )
     fig.update_layout(
         title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 90},
@@ -396,12 +439,17 @@ def plot_per_minute_timeseries(
         bargap=0.15,
         bargroupgap=0.06,
     )
-    fig.update_yaxes(title_text=viz_t("axis_per_minute", lang), rangemode="tozero")
+    fig.update_yaxes(
+        title_text=viz_t("axis_per_minute", lang),
+        tickvals=tickvals,
+        ticktext=ticktext,
+    )
     fig.update_xaxes(
         title_text=viz_t("axis_match_number", lang),
         tickmode="array",
         tickvals=x_idx[::step],
         ticktext=labels[::step],
+        tickangle=-45,
         type="category",
     )
 

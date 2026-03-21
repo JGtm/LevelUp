@@ -25,7 +25,6 @@ Usage:
 
 from src.data.sync.api_client import SPNKrAPIClient, Tokens, get_tokens_from_env
 from src.data.sync.api_factory import create_api_client
-from src.data.sync.api_port import HaloAPIPort
 from src.data.sync.engine import DuckDBSyncEngine
 from src.data.sync.models import (
     CareerRankData,
@@ -46,6 +45,7 @@ from src.data.sync.transformers import (
     transform_match_stats,
     transform_skill_stats,
 )
+from src.ports.api import HaloAPIPort
 
 __all__ = [
     # Models

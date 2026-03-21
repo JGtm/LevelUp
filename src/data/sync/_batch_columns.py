@@ -77,7 +77,6 @@ CAST_PLAN: dict[str, dict[str, str]] = {
         "event_type": "VARCHAR",
         "time_ms": "INTEGER",
         "xuid": "VARCHAR",
-        "gamertag": "VARCHAR",
         "type_hint": "INTEGER",
         "raw_json": "VARCHAR",
     },
@@ -120,6 +119,15 @@ CAST_PLAN: dict[str, dict[str, str]] = {
         "damage_dealt": "FLOAT",
         "damage_taken": "FLOAT",
         "avg_life_seconds": "FLOAT",
+        "headshot_kills": "SMALLINT",
+        "max_killing_spree": "SMALLINT",
+        "kda": "FLOAT",
+        "accuracy": "FLOAT",
+        "time_played_seconds": "INTEGER",
+        "grenade_kills": "SMALLINT",
+        "melee_kills": "SMALLINT",
+        "power_weapon_kills": "SMALLINT",
+        "personal_score": "INTEGER",
     },
     "xuid_aliases": {
         "xuid": "VARCHAR",
@@ -158,6 +166,8 @@ CAST_PLAN: dict[str, dict[str, str]] = {
         "duration_seconds": "INTEGER",
         "team_0_score": "SMALLINT",
         "team_1_score": "SMALLINT",
+        "team_0_ps_score": "INTEGER",
+        "team_1_ps_score": "INTEGER",
         "backfill_completed": "INTEGER",
         "participants_loaded": "BOOLEAN",
         "events_loaded": "BOOLEAN",
@@ -172,7 +182,7 @@ CAST_PLAN: dict[str, dict[str, str]] = {
 }
 
 #: Tables critiques pour l'audit de typage (Sprint 15.4).
-CRITICAL_TABLES = ["match_stats", "match_participants", "highlight_events"]
+CRITICAL_TABLES = ["match_registry", "match_participants", "highlight_events"]
 
 
 # =============================================================================
@@ -186,7 +196,6 @@ HIGHLIGHT_EVENT_COLUMNS = [
     "event_type",
     "time_ms",
     "xuid",
-    "gamertag",
     "type_hint",
     "raw_json",
 ]
@@ -274,37 +283,3 @@ ALIAS_COLUMNS = ["xuid", "gamertag", "last_seen", "source", "updated_at"]
 
 #: v5 Shared Matches — colonnes spécifiques.
 SHARED_MEDAL_COLUMNS = ["match_id", "xuid", "medal_name_id", "count"]
-
-MATCH_STATS_COLUMNS = [
-    "match_id",
-    "start_time",
-    "end_time",
-    "playlist_id",
-    "playlist_name",
-    "map_id",
-    "map_name",
-    "pair_id",
-    "pair_name",
-    "game_variant_id",
-    "game_variant_name",
-    "outcome",
-    "team_id",
-    "kills",
-    "deaths",
-    "assists",
-    "kda",
-    "accuracy",
-    "headshot_kills",
-    "max_killing_spree",
-    "time_played_seconds",
-    "avg_life_seconds",
-    "my_team_score",
-    "enemy_team_score",
-    "team_mmr",
-    "enemy_mmr",
-    "shots_fired",
-    "shots_hit",
-    "is_firefight",
-    "teammates_signature",
-    "updated_at",
-]

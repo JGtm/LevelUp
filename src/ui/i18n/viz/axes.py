@@ -79,7 +79,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Net Score (Kills - Deaths)",
     },
     "axis_kd_ratio": {
-        "fr": "K/D Ratio",
+        "fr": "F/D Ratio",
         "en": "K/D Ratio",
     },
     "axis_match_number": {
@@ -94,7 +94,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "axis_kills": "col_kills",
     "axis_deaths": "col_deaths",
     "axis_kills_deaths": {"fr": "Frags / Morts", "en": "Kills / Deaths"},
-    "axis_ratio": {"fr": "Ratio K/D", "en": "K/D Ratio"},
+    "axis_ratio": {"fr": "Ratio F/D", "en": "K/D Ratio"},
     "axis_fda": {"fr": "FDA", "en": "FDA"},
     "axis_per_min": {"fr": "Par minute", "en": "Per Minute"},
     "axis_time_seconds": {"fr": "Durée (secondes)", "en": "Duration (seconds)"},
@@ -117,4 +117,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "axis_kd_score": {"fr": "Score Frags-Décès", "en": "K/D Score"},
     # ── Progression avancée ───────────────────────────────────────────────────
     "axis_net_per_hour": {"fr": "Net Score / heure", "en": "Net Score / hour"},
+    # ── Axes squad timeline ───────────────────────────────────────────────────
+    "axis_performance": {"fr": "Performance (0-100)", "en": "Performance (0-100)"},
+    "axis_team_mmr": {"fr": "MMR Équipe", "en": "Team MMR"},
+    "axis_sessions": {"fr": "Sessions", "en": "Sessions"},
 }

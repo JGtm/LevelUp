@@ -25,6 +25,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _get_match_source(conn: Any) -> str:
+    """Retourne 'v_match_full' si la vue est disponible, sinon 'match_registry'."""
+    try:
+        conn.execute("SELECT 1 FROM v_match_full LIMIT 1")
+        return "v_match_full"
+    except Exception:
+        return "match_registry"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Re-exports pour rétro-compatibilité (BACKFILL_FLAGS, compute_backfill_mask)
 # Définition canonique : src.data.sync.migrations
@@ -465,10 +474,11 @@ def _find_matches_in_shared_all(
     if medals:
         params.append(xuid)
 
+    _mr_src = _get_match_source(shared_conn)
     query = f"""
         SELECT DISTINCT mp.match_id
         FROM match_participants mp
-        JOIN match_registry mr ON mr.match_id = mp.match_id
+        JOIN {_mr_src} mr ON mr.match_id = mp.match_id
         WHERE mp.xuid = ? AND ({where_clause})
         ORDER BY mr.start_time DESC
     """
@@ -624,10 +634,11 @@ def find_matches_missing_participant_bits(
     else:
         condition = f"(COALESCE(mp.backfill_bits, 0) & {bits_required}) != {bits_required}"
 
+    _mr_src = _get_match_source(shared_conn)
     query = f"""
         SELECT mp.match_id
         FROM match_participants mp
-        JOIN match_registry mr ON mr.match_id = mp.match_id
+        JOIN {_mr_src} mr ON mr.match_id = mp.match_id
         WHERE mp.xuid = ? AND {condition}
         ORDER BY mr.start_time DESC
     """
@@ -667,9 +678,10 @@ def find_matches_missing_match_bits(
     else:
         condition = f"(COALESCE(mr.backfill_completed, 0) & {bits_required}) != {bits_required}"
 
+    _mr_src = _get_match_source(shared_conn)
     query = f"""
         SELECT mr.match_id
-        FROM match_registry mr
+        FROM {_mr_src} mr
         WHERE {condition}
         ORDER BY mr.start_time DESC
     """

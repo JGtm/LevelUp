@@ -546,6 +546,38 @@ def create_argument_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ── Détection domination (Steaktacular) ───────────────────────────────────
+    parser.add_argument(
+        "--dominance",
+        action="store_true",
+        help=(
+            "Calcule dominance_flag dans player_match_enrichment : "
+            "1=domination totale (notre équipe a Steaktacular), "
+            "2=humiliation totale (équipe ennemie a Steaktacular)."
+        ),
+    )
+    parser.add_argument(
+        "--force-dominance",
+        action="store_true",
+        help="Recalculer dominance_flag pour tous les matchs (même ceux déjà calculés).",
+    )
+
+    # ── Aliases XUID → Gamertag depuis highlight_events ───────────────────────
+    parser.add_argument(
+        "--aliases-from-events",
+        action="store_true",
+        help=(
+            "Backfille xuid_aliases depuis highlight_events.raw_json. "
+            "Corrige les XUIDs manquants (l'API stats Halo ne retourne pas PlayerGamertag). "
+            "Opération locale, sans appel API."
+        ),
+    )
+    parser.add_argument(
+        "--force-aliases-from-events",
+        action="store_true",
+        help="Met à jour TOUS les aliases depuis events, même les XUIDs déjà présents.",
+    )
+
     # ── Gestion des métadonnées (citations) ───────────────────────────────────
     parser.add_argument(
         "--enable-pve-citations",
@@ -589,6 +621,32 @@ def create_argument_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ── Médaille Vengeur (custom — revenge kill) ─────────────────────────────
+    parser.add_argument(
+        "--avenger",
+        action="store_true",
+        help=(
+            "Calcule et insère la médaille Vengeur (ID 9000000001) dans medals_earned. "
+            "Un vengeur = tuer l'ennemi responsable de sa mort précédente. "
+            "Opération locale, sans API. Requiert killer_victim_pairs peuplé."
+        ),
+    )
+    parser.add_argument(
+        "--force-avenger",
+        action="store_true",
+        help="Recalcule la médaille Vengeur pour TOUS les matchs (écrase l'existant).",
+    )
+
+    # ── Référentiel médailles (metadata.duckdb, one-shot) ────────────────────
+    parser.add_argument(
+        "--medal-metadata",
+        action="store_true",
+        help=(
+            "Peuple medal_definitions dans metadata.duckdb depuis les JSON. "
+            "Opération one-shot, locale, sans API."
+        ),
+    )
+
     return parser
 
 
@@ -622,6 +680,10 @@ Exemples:
 
     # Tout recalculer depuis zéro (LUSR + CSR)
     python scripts/backfill_data.py --player SpartanC --force-skill-rank
+
+    # Médaille Vengeur (kill de vengeance — local, sans API)
+    python scripts/backfill_data.py --avenger
+    python scripts/backfill_data.py --force-avenger
 
     # Backfill pour tous les joueurs
     python scripts/backfill_data.py --all --all-data

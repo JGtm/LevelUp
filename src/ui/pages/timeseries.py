@@ -17,6 +17,7 @@ from src.ui.chart_utils import safe_chart_render
 from src.ui.i18n import get_lang, t
 from src.ui.pages._timeseries_distributions import render_correlations, render_distributions
 from src.ui.pages._timeseries_weapons import render_weapon_kills_chart as _render_weapon_kills_chart
+from src.ui.pages.timeseries_skill_rank import render_skill_rank_progression
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.distributions import (
@@ -129,25 +130,10 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.info(t("ts_col_missing_cumul"))
         return
 
-    # ── Contrôles ────────────────────────────────────────────────────────────
-    col_alpha, col_outcome = st.columns([3, 1])
-    with col_alpha:
-        alpha = st.slider(
-            t("ts_ewma_alpha_label"),
-            min_value=0.10,
-            max_value=0.50,
-            value=0.20,
-            step=0.05,
-            help=t("ts_ewma_alpha_help"),
-        )
-    with col_outcome:
-        show_outcomes = st.checkbox(t("ts_show_outcome_markers"), value=True)
-
+    alpha = 0.20
     outcome_values: list[int | None] | None = None
-    if show_outcomes and "outcome" in dff.columns:
+    if "outcome" in dff.columns:
         outcome_values = dff.sort("start_time")["outcome"].to_list()
-
-    # ── Section : Bilan cumulatif ─────────────────────────────────────────────
     st.markdown(f"#### {t('ts_section_cumulative')}")
 
     nph_data = TimeseriesService.compute_rolling_net_score_per_hour(dff)
@@ -164,14 +150,17 @@ def _render_cumulative_performance(dff: pl.DataFrame, lang: str = "fr") -> None:
         st.info(t("ts_nph_unavailable"))
 
     ci_data = TimeseriesService.compute_cumulative_kd_with_ci(dff)
-    with safe_chart_render():
-        fig_ci = plot_cumulative_kd_with_ci(
-            ci_data,
-            lang=lang,
-            outcome_values=outcome_values,
-        )
-        st.plotly_chart(fig_ci, width="stretch", config=PLOTLY_CLEAN_CONFIG)
-    _render_note(t("ts_note_ci"))
+    if ci_data is not None:
+        with safe_chart_render():
+            fig_ci = plot_cumulative_kd_with_ci(
+                ci_data,
+                lang=lang,
+                outcome_values=outcome_values,
+            )
+            st.plotly_chart(fig_ci, width="stretch", config=PLOTLY_CLEAN_CONFIG)
+        _render_note(t("ts_note_ci"))
+    else:
+        st.info(t("ts_ci_unavailable"))
 
     # ── Section : Forme récente ───────────────────────────────────────────────
     st.markdown(f"#### {t('ts_section_recent')}")
@@ -420,6 +409,7 @@ def render_timeseries_page(
         _render_kda_section(dff, lang=lang, db_path=db_path, xuid=xuid)
 
     with _tab_prog:
+        render_skill_rank_progression(dff, db_path, xuid, lang=lang)
         _render_cumulative_performance(dff, lang=lang)
 
     with _tab_dist:

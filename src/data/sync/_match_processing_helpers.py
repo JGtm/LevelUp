@@ -7,6 +7,7 @@ la taille du module ≤ 500L (règle project).
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 import duckdb
 
 from src.data.sync.migrations import BACKFILL_FLAGS
-from src.data.sync.models import SyncOptions
+from src.data.sync.models import SyncOptions, SyncResult
 from src.data.sync.transformers import (
     extract_personal_score_awards,
     extract_xuids_from_match,
@@ -271,3 +272,37 @@ class MatchProcessingHelpersMixin:
         if options.with_assets:
             bf_mask |= BACKFILL_FLAGS["assets"]
         return bf_mask
+
+    def _report_progress(
+        self: _SyncProtocol,
+        result: SyncResult,
+        options: SyncOptions,
+        remaining: int,
+        progress_callback: Callable[[int, int], None] | None,
+    ) -> None:
+        """Appelle le callback de progression et logue si milestone atteint."""
+        if progress_callback:
+            progress_callback(options.max_matches - remaining, options.max_matches)
+        if result.matches_inserted > 0 and result.matches_inserted % 10 == 0:
+            logger.info("Importé %s matchs...", result.matches_inserted)
+
+    def _accumulate_match_result(
+        self: _SyncProtocol,
+        result: SyncResult,
+        match_result: dict[str, Any],
+    ) -> None:
+        """Accumule les compteurs d'un match traité dans result."""
+        result.matches_inserted += 1
+        result.highlight_events_inserted += match_result.get("events", 0)
+        result.skill_records_inserted += match_result.get("skill", 0)
+        result.aliases_updated += match_result.get("aliases", 0)
+        result.weapon_kills_inserted += match_result.get("weapon_kills", 0)
+        if mid := match_result.get("match_id"):
+            result.inserted_match_ids.append(str(mid))
+
+    def _maybe_batch_commit(self: _SyncProtocol, n_inserted: int, batch_size: int) -> None:
+        """Effectue un commit intermédiaire si le batch_size est atteint."""
+        if batch_size > 0 and n_inserted % batch_size == 0:
+            conn = self._get_connection()
+            conn.commit()
+            logger.debug("Commit intermédiaire après %s matchs", n_inserted)

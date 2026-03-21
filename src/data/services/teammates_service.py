@@ -15,9 +15,10 @@ from typing import Any
 
 import polars as pl
 
-logger = logging.getLogger(__name__)
+from src.data.services._teammates_impact_queries import _collect_impact_data
+from src.data.services._teammates_perf_queries import load_perf_enrichment_with_session
 
-# ─── Dataclasses retour ────────────────────────────────────────────────
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -64,103 +65,34 @@ class ImpactData:
     """True si des événements d'impact ont été trouvés."""
 
 
-def _query_impact_events(conn: object, match_ids: list[str], placeholders: str) -> list:
-    """Récupère les événements highlight depuis shared.highlight_events."""
-    query = f"""
-        SELECT
-            match_id,
-            CASE WHEN event_type IN ('kill', 'Kill') THEN killer_xuid::TEXT
-                 WHEN event_type IN ('death', 'Death') THEN victim_xuid::TEXT
-                 ELSE COALESCE(killer_xuid, victim_xuid)::TEXT
-            END AS xuid,
-            CASE WHEN event_type IN ('kill', 'Kill') THEN COALESCE(killer_gamertag, killer_xuid::TEXT)
-                 WHEN event_type IN ('death', 'Death') THEN COALESCE(victim_gamertag, victim_xuid::TEXT)
-                 ELSE COALESCE(killer_gamertag, victim_gamertag, 'Unknown')
-            END AS gamertag,
-            event_type,
-            COALESCE(time_ms, 0) AS time_ms
-        FROM shared.highlight_events
-        WHERE match_id IN ({placeholders})
-    """
-    return conn.execute(query, match_ids).fetchall()
-
-
-def _query_match_outcomes(conn: object, match_ids: list[str], xuid: str, placeholders: str) -> list:
-    """Récupère les outcomes depuis shared.match_participants (avec fallback local)."""
-    result = conn.execute(
-        f"SELECT match_id, outcome FROM shared.match_participants"
-        f" WHERE match_id IN ({placeholders}) AND xuid = ?",
-        [*match_ids, xuid.strip()],
-    ).fetchall()
-    if not result:
-        try:
-            result = conn.execute(
-                f"SELECT match_id, outcome FROM match_stats WHERE match_id IN ({placeholders})",
-                match_ids,
-            ).fetchall()
-        except Exception:
-            result = []
-    return result
-
-
-def _collect_impact_data(
-    conn: object,
-    match_ids: list[str],
-    xuid: str,
-    friend_xuids: set[str],
-    placeholders: str,
-) -> tuple | None:
-    """Construit DataFrames events/matches et calcule les événements d'impact.
-
-    Returns:
-        Tuple (first_bloods, clutch_finishers, last_casualties,
-        last_group_kills, first_group_deaths, scores) ou None si aucun événement.
-    """
-    from src.analysis.friends_impact import get_all_impact_events
-
-    events_result = _query_impact_events(conn, match_ids, placeholders)
-    if not events_result:
-        return None
-
-    events_df = pl.DataFrame(
-        {
-            "match_id": [str(r[0]) for r in events_result],
-            "xuid": [str(r[1]) for r in events_result],
-            "gamertag": [r[2] or "Unknown" for r in events_result],
-            "event_type": [r[3] for r in events_result],
-            "time_ms": [int(r[4] or 0) for r in events_result],
-        }
-    )
-    matches_result = _query_match_outcomes(conn, match_ids, xuid, placeholders)
-    matches_df = pl.DataFrame(
-        {
-            "match_id": [str(r[0]) for r in matches_result],
-            "outcome": [int(r[1] or 0) for r in matches_result],
-        }
-    )
-    return get_all_impact_events(events_df, matches_df, friend_xuids=friend_xuids)
-
-
 def _resolve_xuid_from_shared(conn: object, gamertag: str) -> str | None:
-    """Résout gamertag → xuid via shared.xuid_aliases puis shared.match_participants."""
+    """Résout gamertag → xuid via shared.v_gamertag_lookup (vue centralisée v6)."""
     try:
-        row = conn.execute(
-            "SELECT xuid FROM shared.xuid_aliases WHERE gamertag = ?",
+        row = conn.execute(  # type: ignore[union-attr]
+            "SELECT xuid FROM shared.v_gamertag_lookup WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
             [gamertag],
         ).fetchone()
         if row:
             return str(row[0]).strip()
     except Exception:
         pass
-    try:
-        row = conn.execute(
-            "SELECT DISTINCT xuid FROM shared.match_participants WHERE gamertag = ? LIMIT 1",
+    # Fallback pré-vue : xuid_aliases puis match_participants
+    for query, params in [
+        (
+            "SELECT xuid FROM shared.xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
             [gamertag],
-        ).fetchone()
-        if row:
-            return str(row[0]).strip()
-    except Exception:
-        pass
+        ),
+        (
+            "SELECT DISTINCT xuid FROM shared.match_participants WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
+            [gamertag],
+        ),
+    ]:
+        try:
+            row = conn.execute(query, params).fetchone()  # type: ignore[union-attr]
+            if row:
+                return str(row[0]).strip()
+        except Exception:
+            pass
     return None
 
 
@@ -179,10 +111,7 @@ def _query_teammate_shared_stats(
             r.pair_id, COALESCE(r.pair_name, '') AS pair_name,
             r.game_variant_id, COALESCE(r.game_variant_name, '') AS game_variant_name,
             p.outcome, p.team_id,
-            CASE WHEN p.deaths > 0
-                THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0) / CAST(p.deaths AS FLOAT)
-                ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
-            END AS ratio,
+            p.kda AS ratio,
             COALESCE(p.max_killing_spree, 0) AS max_killing_spree,
             COALESCE(p.headshot_kills, 0) AS headshot_kills,
             COALESCE(p.avg_life_seconds, 0) AS average_life_seconds,
@@ -198,7 +127,13 @@ def _query_teammate_shared_stats(
             p.score AS personal_score,
             COALESCE(r.is_firefight, FALSE) AS is_firefight,
             COALESCE(r.is_ranked, FALSE) AS is_ranked,
-            p.xuid
+            p.xuid,
+            p.team_mmr AS team_mmr,
+            p.enemy_mmr AS enemy_mmr,
+            CASE WHEN COALESCE(r.duration_seconds, 0) > 0
+                THEN CAST(COALESCE(p.kills, 0) AS FLOAT) * 60.0 / CAST(r.duration_seconds AS FLOAT)
+                ELSE NULL
+            END AS kills_per_min
         FROM shared.match_participants p
         JOIN shared.match_registry r ON p.match_id = r.match_id
         WHERE p.xuid = ?
@@ -273,9 +208,6 @@ def _extract_match_row_from_df(df_player: Any) -> dict[str, Any]:
     return {"deaths": deaths, "time_played_seconds": tps, "pair_name": pair}
 
 
-# ─── Service ───────────────────────────────────────────────────────────
-
-
 class TeammatesService:
     """Service d'agrégation pour la page Coéquipiers.
 
@@ -332,8 +264,39 @@ class TeammatesService:
             logger.debug("Erreur load_teammate_stats shared: %s", e)
             return _empty
 
-    # 8bis.A7 : _load_teammate_stats_legacy supprimé (v5.1)
-    # Toutes les données coéquipiers sont dans shared_matches.duckdb
+    @staticmethod
+    def enrich_with_performance_score(
+        df: pl.DataFrame,
+        gamertag: str,
+        reference_db_path: str,
+        *,
+        is_main: bool = False,
+    ) -> pl.DataFrame:
+        """Ajoute performance_score, session_id et session_label depuis player_match_enrichment."""
+        if df.is_empty() or "match_id" not in df.columns:
+            return df
+        base_dir = Path(reference_db_path).parent.parent
+        player_db = reference_db_path if is_main else str(base_dir / gamertag / "stats.duckdb")
+        m_ids = df["match_id"].cast(pl.Utf8)
+        match_ids = m_ids.to_list()
+        enrichment = load_perf_enrichment_with_session(player_db, match_ids)
+        if not enrichment:
+            return df
+        perf = m_ids.map_elements(
+            lambda m: enrichment.get(m, {}).get("perf"), return_dtype=pl.Float64
+        )
+        session_id_col = m_ids.map_elements(
+            lambda m: enrichment.get(m, {}).get("session_id"), return_dtype=pl.Utf8
+        )
+        session_label_col = m_ids.map_elements(
+            lambda m: enrichment.get(m, {}).get("session_label"), return_dtype=pl.Utf8
+        )
+        updates = {"performance_score": perf}
+        if "session_id" not in df.columns:
+            updates["session_id"] = session_id_col
+        if "session_label" not in df.columns:
+            updates["session_label"] = session_label_col
+        return df.with_columns(**updates)
 
     @staticmethod
     def enrich_series_with_perfect_kills(
@@ -459,7 +422,7 @@ class TeammatesService:
                 )
                 profiles.append(profile)
             except Exception:
-                pass
+                logger.warning("Échec construction profil coéquipier %s", name, exc_info=True)
 
         return profiles
 

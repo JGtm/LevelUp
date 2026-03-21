@@ -117,6 +117,32 @@ def build_thumbnail_html(  # noqa: PLR0913
     )
 
     # Ratio 16:9 pour toutes les captures (grille alignée), contenu recadré
+    return _build_thumbnail_container_html(
+        container_id=container_id,
+        width=width,
+        static_id=static_id,
+        safe_static=safe_static,
+        hover_img=hover_img,
+        lightbox_html=lightbox_html,
+        hover_id=hover_id,
+        overlay_id=overlay_id,
+        hover_js=hover_js,
+    )
+
+
+def _build_thumbnail_container_html(  # noqa: PLR0913
+    *,
+    container_id: str,
+    width: int,
+    static_id: str,
+    safe_static: str,
+    hover_img: str,
+    lightbox_html: str,
+    hover_id: str,
+    overlay_id: str,
+    hover_js: str,
+) -> str:
+    """Génère le HTML complet du conteneur thumbnail + lightbox + JS."""
     return f"""
 <div id="{container_id}" class="media-thumb-container" style="
   width: 100%;

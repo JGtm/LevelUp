@@ -272,3 +272,79 @@ class TestBuildRelease:
         assert "python\\python.exe" in content
         assert ".deps_installed" in content
         assert "launcher.py run" in content
+
+
+# ---------------------------------------------------------------------------
+# get_shared_matches_path_from_player — fallback v2 / v1
+# ---------------------------------------------------------------------------
+
+
+class TestGetSharedMatchesPathFromPlayer:
+    """Tests pour la résolution du chemin shared_matches depuis un path joueur."""
+
+    def test_returns_v2_when_both_exist(self, tmp_path: Path) -> None:
+        """shared_matches_v2.duckdb est retourné en priorité si les deux existent."""
+        from src.utils.paths import get_shared_matches_path_from_player
+
+        warehouse = tmp_path / "warehouse"
+        warehouse.mkdir()
+        (warehouse / "shared_matches_v2.duckdb").touch()
+        (warehouse / "shared_matches.duckdb").touch()
+        player_db = tmp_path / "players" / "GT" / "stats.duckdb"
+        player_db.parent.mkdir(parents=True)
+        player_db.touch()
+
+        result = get_shared_matches_path_from_player(player_db)
+        assert result is not None
+        assert result.name == "shared_matches_v2.duckdb"
+
+    def test_falls_back_to_v1_when_v2_absent(self, tmp_path: Path) -> None:
+        """Retourne shared_matches.duckdb si v2 est absent."""
+        from src.utils.paths import get_shared_matches_path_from_player
+
+        warehouse = tmp_path / "warehouse"
+        warehouse.mkdir()
+        (warehouse / "shared_matches.duckdb").touch()
+        player_db = tmp_path / "players" / "GT" / "stats.duckdb"
+        player_db.parent.mkdir(parents=True)
+        player_db.touch()
+
+        result = get_shared_matches_path_from_player(player_db)
+        assert result is not None
+        assert result.name == "shared_matches.duckdb"
+
+    def test_returns_none_when_neither_exists(self, tmp_path: Path) -> None:
+        """Retourne None si aucune des deux DBs n'existe."""
+        from src.utils.paths import get_shared_matches_path_from_player
+
+        player_db = tmp_path / "players" / "GT" / "stats.duckdb"
+        player_db.parent.mkdir(parents=True)
+        player_db.touch()
+
+        result = get_shared_matches_path_from_player(player_db)
+        assert result is None
+
+    def test_returns_none_when_no_players_in_path(self, tmp_path: Path) -> None:
+        """Retourne None si le chemin ne contient pas 'players'."""
+        from src.utils.paths import get_shared_matches_path_from_player
+
+        arbitrary_path = tmp_path / "stats.duckdb"
+        arbitrary_path.touch()
+
+        result = get_shared_matches_path_from_player(arbitrary_path)
+        assert result is None
+
+    def test_accepts_string_path(self, tmp_path: Path) -> None:
+        """Accepte un chemin en string (pas seulement Path)."""
+        from src.utils.paths import get_shared_matches_path_from_player
+
+        warehouse = tmp_path / "warehouse"
+        warehouse.mkdir()
+        (warehouse / "shared_matches_v2.duckdb").touch()
+        player_db = tmp_path / "players" / "GT" / "stats.duckdb"
+        player_db.parent.mkdir(parents=True)
+        player_db.touch()
+
+        result = get_shared_matches_path_from_player(str(player_db))
+        assert result is not None
+        assert result.name == "shared_matches_v2.duckdb"

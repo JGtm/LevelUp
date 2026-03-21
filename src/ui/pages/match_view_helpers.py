@@ -238,7 +238,7 @@ def _render_media_from_indexed_db(
     return True
 
 
-def _render_media_legacy(  # noqa: C901, PLR0912
+def _render_media_legacy(
     *,
     row: dict[str, Any],
     settings: AppSettings,
@@ -247,13 +247,13 @@ def _render_media_legacy(  # noqa: C901, PLR0912
     gamertag: str | None,
 ) -> None:
     """Rendu legacy : scan de dossiers par fenêtre temporelle du match."""
-    tol = int(getattr(settings, "media_tolerance_minutes", 0) or 0)
+    tol = settings.media_tolerance_minutes
     t0, t1, duration_known = match_time_window(row, tolerance_minutes=tol, paris_tz=paris_tz)
     if t0 is None or t1 is None:
         return
 
-    screens_dir = str(getattr(settings, "media_screens_dir", "") or "").strip()
-    videos_dir = str(getattr(settings, "media_videos_dir", "") or "").strip()
+    screens_dir = settings.media_screens_dir.strip()
+    videos_dir = settings.media_videos_dir.strip()
 
     if not screens_dir and not videos_dir:
         return
@@ -267,28 +267,12 @@ def _render_media_legacy(  # noqa: C901, PLR0912
     if t0_epoch is None or t1_epoch is None:
         return
 
-    img_hits: pl.DataFrame | None = None
-    vid_hits: pl.DataFrame | None = None
-
-    if screens_dir and os.path.isdir(screens_dir):
-        img_df = index_media_dir(screens_dir, ("png", "jpg", "jpeg", "webp"))
-        if not img_df.is_empty():
-            img_df = _filter_media_by_gamertag(img_df, gamertag)
-            img_hits = img_df.filter(
-                (pl.col("mtime") >= t0_epoch) & (pl.col("mtime") <= t1_epoch)
-            ).head(24)
-            if img_hits.is_empty():
-                img_hits = None
-
-    if videos_dir and os.path.isdir(videos_dir):
-        vid_df = index_media_dir(videos_dir, ("mp4", "webm", "mkv", "mov"))
-        if not vid_df.is_empty():
-            vid_df = _filter_media_by_gamertag(vid_df, gamertag)
-            vid_hits = vid_df.filter(
-                (pl.col("mtime") >= t0_epoch) & (pl.col("mtime") <= t1_epoch)
-            ).head(10)
-            if vid_hits.is_empty():
-                vid_hits = None
+    img_hits = _scan_media_in_window(
+        screens_dir, ("png", "jpg", "jpeg", "webp"), t0_epoch, t1_epoch, gamertag, 24
+    )
+    vid_hits = _scan_media_in_window(
+        videos_dir, ("mp4", "webm", "mkv", "mov"), t0_epoch, t1_epoch, gamertag, 10
+    )
 
     if img_hits is None and vid_hits is None:
         return
@@ -308,24 +292,48 @@ def _render_media_legacy(  # noqa: C901, PLR0912
                 st.write(str(p))
 
     if vid_hits is not None:
-        st.caption(t("mv_videos_title"))
-        paths = [str(p) for p in vid_hits["path"].to_list() if p]
-        if paths:
-            labels = [os.path.basename(p) for p in paths]
-            picked = st.selectbox(
-                t("ml_video"),
-                options=list(range(len(paths))),
-                format_func=lambda i: labels[i],
-                index=0,
-                key=f"media_video_pick_{row.get('match_id', '')}",
-                label_visibility="collapsed",
-            )
-            p = paths[int(picked)]
-            try:
-                st.video(p)
-                st.caption(str(p))
-            except Exception:
-                st.write(str(p))
+        _render_legacy_video_selector(vid_hits, row.get("match_id", ""))
+
+
+def _scan_media_in_window(  # noqa: PLR0913
+    directory: str,
+    extensions: tuple[str, ...],
+    t0_epoch: float,
+    t1_epoch: float,
+    gamertag: str | None,
+    max_items: int,
+) -> pl.DataFrame | None:
+    """Scanne un dossier et filtre les fichiers dans la fenêtre temporelle."""
+    if not directory or not os.path.isdir(directory):
+        return None
+    df = index_media_dir(directory, extensions)
+    if df.is_empty():
+        return None
+    df = _filter_media_by_gamertag(df, gamertag)
+    hits = df.filter((pl.col("mtime") >= t0_epoch) & (pl.col("mtime") <= t1_epoch)).head(max_items)
+    return hits if not hits.is_empty() else None
+
+
+def _render_legacy_video_selector(vid_hits: pl.DataFrame, match_id: str) -> None:
+    """Affiche le sélecteur de vidéos legacy."""
+    st.caption(t("mv_videos_title"))
+    paths = [str(p) for p in vid_hits["path"].to_list() if p]
+    if paths:
+        labels = [os.path.basename(p) for p in paths]
+        picked = st.selectbox(
+            t("ml_video"),
+            options=list(range(len(paths))),
+            format_func=lambda i: labels[i],
+            index=0,
+            key=f"media_video_pick_{match_id}",
+            label_visibility="collapsed",
+        )
+        p = paths[int(picked)]
+        try:
+            st.video(p)
+            st.caption(str(p))
+        except Exception:
+            st.write(str(p))
 
 
 def render_media_section(  # noqa: PLR0913
@@ -344,7 +352,7 @@ def render_media_section(  # noqa: PLR0913
     les captures de tous les joueurs avec indication du propriétaire.
     Si la BDD ne retourne rien, fallback sur le scan de dossiers (legacy).
     """
-    if not bool(getattr(settings, "media_enabled", True)):
+    if not settings.media_enabled:
         return
 
     match_id = str(row.get("match_id") or "").strip()

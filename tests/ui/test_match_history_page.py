@@ -126,13 +126,19 @@ class TestRenderMatchHistoryPage:
         ms = mock_st(mod)
         dff = _make_history_df(15)
 
-        with patch.object(mod, "compute_performance_series") as mock_perf:
+        with (
+            patch.object(mod, "compute_performance_series") as mock_perf,
+            patch.object(
+                mod, "render_match_table_html", return_value="<table>ok</table>"
+            ) as mock_table,
+        ):
             mock_perf.return_value = pl.Series("performance", [50.0] * 15)
             mod.render_match_history_page(dff, "TestPlayer", "dummy.duckdb", "100", None)
 
         # Le tableau est rendu via st.markdown (HTML custom)
         ms.calls["markdown"].assert_called()
         ms.calls["subheader"].assert_called()
+        assert mock_table.call_args.kwargs["page_params"] == {"gamertag": "TestPlayer"}
         # Le bouton de téléchargement CSV est affiché
         ms.calls["download_button"].assert_called_once()
 

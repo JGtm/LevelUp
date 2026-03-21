@@ -27,15 +27,19 @@ import duckdb
 from src.data.repositories._archives_repo import ArchivesMixin
 from src.data.repositories._arrow_bridge import result_to_polars
 from src.data.repositories._awards_repo import AwardsMixin
+from src.data.repositories._career_encounters_repo import EncounterCareerMixin
+from src.data.repositories._career_repo import CareerMixin
 from src.data.repositories._diagnostic_repo import DiagnosticMixin
 from src.data.repositories._events_repo import EventsMixin
 from src.data.repositories._killer_victim_repo import KillerVictimMixin
 from src.data.repositories._legacy_compat import LegacyCompatMixin
 from src.data.repositories._match_queries import MatchQueriesMixin
+from src.data.repositories._match_relations import MatchRelationsMixin
 from src.data.repositories._materialized_views import MaterializedViewsMixin
 from src.data.repositories._medals_repo import MedalsMixin
+from src.data.repositories._media_repo import MediaLibraryMixin
 from src.data.repositories._metadata_resolution import MetadataResolutionMixin
-from src.data.repositories._roster_loader import RosterLoaderMixin
+from src.data.repositories._roster_loader import _SQL_NOT_GHOST, RosterLoaderMixin
 from src.data.repositories._schema_introspection import SchemaIntrospectionMixin
 from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
 from src.data.repositories._write_lease import (
@@ -144,6 +148,7 @@ def release_all_db_connections() -> int:
 class DuckDBRepository(
     MatchQueriesMixin,
     RosterLoaderMixin,
+    MatchRelationsMixin,
     MaterializedViewsMixin,
     KillerVictimMixin,
     MedalsMixin,
@@ -151,8 +156,11 @@ class DuckDBRepository(
     ArchivesMixin,
     SchemaIntrospectionMixin,
     MetadataResolutionMixin,
+    CareerMixin,
+    EncounterCareerMixin,
     DiagnosticMixin,
     AwardsMixin,
+    MediaLibraryMixin,
     LegacyCompatMixin,
     WeaponKillsMixin,
 ):
@@ -202,10 +210,17 @@ class DuckDBRepository(
         else:
             self._metadata_db_path = Path(metadata_db_path)
 
-        # Auto-détection du chemin shared_matches.duckdb (v5)
+        # Auto-détection du chemin shared_matches.duckdb (v5/v6)
         if shared_db_path is None:
-            data_dir = self._player_db_path.parent.parent.parent
-            self._shared_db_path = data_dir / "warehouse" / "shared_matches.duckdb"
+            from src.utils.paths import get_shared_matches_path, get_shared_matches_path_from_player
+
+            detected = get_shared_matches_path_from_player(self._player_db_path)
+            if detected is not None:
+                self._shared_db_path = detected
+            else:
+                # Fallback : chemin canonique dérivé du player, même si le fichier n'existe pas encore
+                data_dir = self._player_db_path.parent.parent.parent
+                self._shared_db_path = data_dir / "warehouse" / get_shared_matches_path().name
         else:
             self._shared_db_path = Path(shared_db_path)
 
@@ -405,7 +420,7 @@ class DuckDBRepository(
         """
         conn = self._get_connection()
 
-        if self._has_shared_table("match_participants"):
+        if self.has_shared:
             try:
                 result = conn.execute(
                     """
@@ -417,15 +432,24 @@ class DuckDBRepository(
                      AND mp1.xuid != mp2.xuid
                      AND mp1.team_id = mp2.team_id
                     WHERE mp1.xuid = ?
+                      AND NOT LOWER(CAST(mp2.xuid AS VARCHAR)) LIKE 'bid(%'
+                      AND """
+                    + _SQL_NOT_GHOST.format(p="mp2")
+                    + """
                     GROUP BY mp2.xuid
                     ORDER BY matches_together DESC
                     LIMIT ?
                     """,
                     [self._xuid, limit],
                 )
-                return [(row[0], row[1]) for row in result.fetchall()]
+                teammates = [(row[0], row[1]) for row in result.fetchall()]
+                logger.debug(
+                    "list_top_teammates: %d coéquipier(s) (bots/fantômes exclus)",
+                    len(teammates),
+                )
+                return teammates
             except Exception:
-                pass
+                logger.debug("Erreur chargement coéquipiers fréquents", exc_info=True)
         return []
 
     # =========================================================================

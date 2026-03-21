@@ -32,7 +32,6 @@ class LegacyCompatMixin:
 
         try:
             self._collect_xuids_shared(conn, xuids, limit)
-            self._collect_xuids_local(conn, xuids, limit)
             return list(xuids)[:limit]
         except Exception as e:
             logger.debug("Erreur list_other_player_xuids: %s", e)
@@ -40,7 +39,7 @@ class LegacyCompatMixin:
 
     def _collect_xuids_shared(self, conn, xuids: set[str], limit: int) -> None:
         """Collecte les XUIDs depuis shared.match_participants."""
-        if not self._has_shared_table("match_participants"):
+        if not self.has_shared:
             return
         try:
             rows = conn.execute(
@@ -57,28 +56,6 @@ class LegacyCompatMixin:
             xuids.update(str(row[0]) for row in rows if row[0])
         except Exception:
             pass
-
-    def _collect_xuids_local(  # noqa: PLR0913
-        self, conn, xuids: set[str], limit: int
-    ) -> None:
-        """Collecte les XUIDs depuis les tables locales."""
-        local_sources = [
-            ("highlight_events", "xuid", "xuid IS NOT NULL AND xuid != ?"),
-            ("match_participants", "xuid", "xuid IS NOT NULL AND xuid != ?"),
-            ("antagonists", "opponent_xuid", "opponent_xuid IS NOT NULL"),
-        ]
-        for table, col, where in local_sources:
-            if not self._has_table(table):
-                continue
-            try:
-                params = [self._xuid, limit] if "!= ?" in where else [limit]
-                rows = conn.execute(
-                    f"SELECT DISTINCT {col} FROM {table} WHERE {where} LIMIT ?",
-                    params,
-                ).fetchall()
-                xuids.update(str(row[0]) for row in rows if row[0])
-            except Exception:
-                continue
 
     def get_match_session_info(self, match_id: str) -> dict[str, Any] | None:
         """Retourne les infos de session pour un match.

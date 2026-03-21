@@ -217,8 +217,14 @@ class TestPlotTrioMetric4Players:
             colors_by_name=custom_colors,
         )
         bar_colors = [t.marker.color for t in fig.data if isinstance(t, go.Bar)]
-        assert "#FF0000" in bar_colors, "La couleur de P1 doit être #FF0000"
-        assert "#00FF00" in bar_colors, "La couleur de P2 doit être #00FF00"
+
+        # marker.color peut être un tuple/liste quand toutes les barres d'une trace ont la même couleur
+        def _first_color(c):
+            return c[0] if isinstance(c, (tuple, list)) else c
+
+        flat = [_first_color(c) for c in bar_colors]
+        assert "#FF0000" in flat, "La couleur de P1 doit être #FF0000"
+        assert "#00FF00" in flat, "La couleur de P2 doit être #00FF00"
 
     def test_colors_by_name_with_4_players(self, sample_df: pd.DataFrame) -> None:
         """colors_by_name fonctionne avec 4 joueurs."""
@@ -242,8 +248,14 @@ class TestPlotTrioMetric4Players:
             colors_by_name=custom_colors,
         )
         bar_colors = [t.marker.color for t in fig.data if isinstance(t, go.Bar)]
-        assert "#FF0000" in bar_colors
-        assert "#FFFF00" in bar_colors
+
+        # marker.color peut être un tuple/liste quand toutes les barres d'une trace ont la même couleur
+        def _first_color(c):
+            return c[0] if isinstance(c, (tuple, list)) else c
+
+        flat = [_first_color(c) for c in bar_colors]
+        assert "#FF0000" in flat
+        assert "#FFFF00" in flat
 
     def test_d_f3_none_same_as_3_players(self, sample_df: pd.DataFrame) -> None:
         """Sans d_f3 (None), le comportement est identique à 3 joueurs."""

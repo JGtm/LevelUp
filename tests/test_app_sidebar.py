@@ -121,16 +121,19 @@ class TestResolveXuidInput:
     def test_numeric_input(self):
         from src.app.data_loader import resolve_xuid_input
 
-        with patch("src.app.data_loader.parse_xuid_input", return_value="1234567890"):
+        with patch("src.app.profile.parse_xuid_input", return_value="1234567890"):
             result = resolve_xuid_input("1234567890", "")
         assert result == "1234567890"
 
     def test_empty_input_returns_empty_without_db(self):
         from src.app.data_loader import resolve_xuid_input
+        from src.app.profile import PlayerIdentity
 
         with (
-            patch("src.app.data_loader.parse_xuid_input", return_value=""),
-            patch("src.app.data_loader.default_identity_from_secrets", return_value=("", "", "")),
+            patch("src.app.profile.parse_xuid_input", return_value=""),
+            patch(
+                "src.app.profile.get_identity_from_secrets", return_value=PlayerIdentity("", "", "")
+            ),
         ):
             result = resolve_xuid_input("", "")
         assert result == ""

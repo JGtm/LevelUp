@@ -1,15 +1,7 @@
 """Service d'extraction des armes depuis les films SPNKr.
 
-Orchestre les ports (API), le domaine pur (weapon_parser) et le repo
-(weapon_kills) sans dépendre directement des implémentations concrètes.
-
-Architecture hexagonale : le service accepte un ``HaloAPIPort`` (Protocol)
-et un ``duckdb.DuckDBPyConnection`` pour les écritures.
-
-Algorithme v5.6 (FINDINGS §6a/b) :
-- Section 2 fire events  → attribution POV (avec confidence zones)
-- Formula A Section 1   → attribution T1 coéquipiers (snapshot)
-- Tous joueurs traités  → player_index via méthode acurtis (inv #26)
+Orchestre les ports (API), le domaine pur (weapon_parser) et le repo (weapon_kills).
+v3 — player_index = b5>>4 (inv134) : scan universel, claim-and-remove par pi.
 """
 
 from __future__ import annotations
@@ -17,466 +9,353 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import duckdb
 
+from src.analysis._global_correlation import correlate_kills_global
+from src.analysis._kill_attribution import KillAttribution
+from src.analysis._parser_logging import MatchLogCollector
 from src.analysis.packet_index import (
     detect_pi_from_metadata,
     extract_metadata_payload,
     index_chunk,
 )
+from src.analysis.reconciliation import reconcile_api_aggregates
 from src.analysis.weapon_parser import (
     KILL_WINDOW_MS,
-    build_weapon_timeline,
-    correlate_kills_to_weapons,
+    build_weapon_timelines,
     detect_player_indices,
-    find_chunk_at_time,
-    scan_fire_events,
+    scan_fire_events_all,
 )
 from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
-from src.data.sync.api_port import HaloAPIPort
+from src.data.services._film_manifest_cache import (
+    compute_needed_chunks,
+    load_manifest_cache,
+    write_manifest_cache,
+)
+from src.ports.api import HaloAPIPort
 
 logger = logging.getLogger(__name__)
 
 
 _CHUNK_TIMEOUT_S = 30.0
-_MAX_CONCURRENT_CHUNKS = 5
+_MAX_CONCURRENT_CHUNKS = 50
 
 
-def _attribution_row(kill: dict, weapon_id: int | None, confidence: str = "none") -> dict:
-    """Construit une ligne d'attribution (weapon_id, confidence) depuis un kill brut."""
-    return {
-        **kill,
-        "weapon_id": weapon_id,
-        "delta_ms": None,
-        "confidence": confidence,
-        "swap_detected": False,
-        "delayed_damage": False,
-    }
+@dataclass
+class MatchProcessingResult:
+    """Résultat du traitement d'un match."""
+
+    match_id: str
+    kills_total: int = 0
+    kills_attributed: int = 0
+    rows_inserted: int = 0
+    players_processed: int = 0
+    log_summary: dict = field(default_factory=dict)
+    error: str | None = None
+
+    @classmethod
+    def empty(cls, match_id: str) -> MatchProcessingResult:
+        """Résultat vide (aucun kill trouvé)."""
+        return cls(match_id=match_id)
 
 
-def _inject_missing_sentinels(  # noqa: PLR0913
-    kill_rows: list[dict],
-    api_melee: int,
-    api_grenade: int,
-    melee_id: int,
-    grenade_id: int,
-    excluded_ids: frozenset,
-    match_id: str,
-    xuid_str: str,
-) -> None:
-    """Step 4b — reclassifie les kills weapon les moins certains en melee/grenade.
+@dataclass
+class ScanResult:
+    """Résultat de la phase Scan multi-chunks."""
 
-    Appelé quand les médailles contextuelles sont absentes de highlight_events et
-    que le nombre de sentinelles détectées est inférieur aux agrégats API.
-    Modifie kill_rows en place.
-    """
-    detected_melee = sum(1 for r in kill_rows if r.get("weapon_id") == melee_id)
-    detected_grenade = sum(1 for r in kill_rows if r.get("weapon_id") == grenade_id)
-    melee_deficit = api_melee - detected_melee
-    grenade_deficit = api_grenade - detected_grenade
-    if melee_deficit <= 0 and grenade_deficit <= 0:
-        return
-
-    def _uncertainty_key(r: dict) -> tuple:
-        conf = r.get("confidence", "none")
-        rank = {"low": 0, "none": 1, "medium": 2, "high": 3}.get(conf, 1)
-        if conf == "high" and r.get("swap_detected"):
-            rank = 2  # high+swap → traité comme medium
-        return (rank, -(r.get("delta_ms") or 0))
-
-    pool = iter(
-        sorted(
-            [r for r in kill_rows if r.get("weapon_id") not in excluded_ids | {None}],
-            key=_uncertainty_key,
-        )
-    )
-    for sentinel_id, deficit, label in [
-        (melee_id, melee_deficit, "melee"),
-        (grenade_id, grenade_deficit, "grenade"),
-    ]:
-        if deficit <= 0:
-            continue
-        logger.debug(
-            "_reconcile %s %s : step4b inject %d %s", match_id[:8], xuid_str[:8], deficit, label
-        )
-        for _ in range(deficit):
-            r = next(pool, None)
-            if r is None:
-                break
-            r["weapon_id"] = sentinel_id
-            r["confidence"] = "high"
-            r["swap_detected"] = False
-
-
-def _step4a_demote(
-    weapon_high: list[dict],
-    api_weapon_kills: int,
-    match_id: str,
-    xuid_str: str,
-) -> bool:
-    """Step 4a — demote les HIGH surnuméraires vers MEDIUM. Retourne True si appliqué."""
-    if len(weapon_high) <= api_weapon_kills:
-        return False
-    excess = len(weapon_high) - api_weapon_kills
-    logger.debug(
-        "_reconcile %s %s : step4a demote %d→%d (−%d)",
-        match_id[:8],
-        xuid_str[:8],
-        len(weapon_high),
-        api_weapon_kills,
-        excess,
-    )
-    for r in sorted(weapon_high, key=lambda x: x.get("delta_ms") or 0, reverse=True)[:excess]:
-        r["confidence"] = "medium"
-    return True
-
-
-def _step4c_promote(
-    kill_rows: list[dict],
-    api_weapon_kills: int,
-    excluded_ids: frozenset,
-    match_id: str,
-    xuid_str: str,
-) -> None:
-    """Step 4c — promeut des MEDIUM en HIGH pour combler un déficit de weapon kills."""
-    high_after = sum(
-        1
-        for r in kill_rows
-        if r.get("confidence") == "high"
-        and r.get("weapon_id") is not None
-        and r.get("weapon_id") not in excluded_ids
-    )
-    if high_after >= api_weapon_kills:
-        return
-    deficit = api_weapon_kills - high_after
-    logger.debug(
-        "_reconcile %s %s : step4c promote %d→%d (+%d)",
-        match_id[:8],
-        xuid_str[:8],
-        high_after,
-        api_weapon_kills,
-        deficit,
-    )
-    medium_kills = sorted(
-        [
-            r
-            for r in kill_rows
-            if r.get("confidence") == "medium"
-            and r.get("weapon_id") is not None
-            and r.get("weapon_id") not in excluded_ids
-        ],
-        key=lambda x: x.get("delta_ms") or 0,
-    )
-    for r in medium_kills[:deficit]:
-        r["confidence"] = "high"
+    fire_events_global: list[dict]
+    timeline: dict[int, dict[int, bytes]]
+    timeline_ns: dict[int, dict[int, bytes]]
+    swap_pis: dict[int, set[int]]
+    timing: list[tuple[int, int]]
+    chunks_sorted: list[int]
 
 
 class WeaponExtractionService:
-    """Orchestre l'extraction d'armes pour un match donné."""
+    """Orchestre l'extraction d'armes v2 pour un match donné."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         api: HaloAPIPort,
         conn: duckdb.DuckDBPyConnection,
         cache_dir: Path,
         *,
+        manifest_dir: Path | None = None,
         write_lock: asyncio.Lock | None = None,
     ) -> None:
         self._api = api
         self._conn = conn
         self._cache_dir = cache_dir
+        self._manifest_dir = manifest_dir or cache_dir.parent / "film_manifests"
         self._chunk_sem = asyncio.Semaphore(_MAX_CONCURRENT_CHUNKS)
-        # Sérialiseur d'écritures DuckDB (requis si plusieurs matchs en parallèle)
         self._write_lock: asyncio.Lock | contextlib.AbstractAsyncContextManager = (
             write_lock if write_lock is not None else contextlib.nullcontext()
         )
 
-    async def _mark_done(self, match_id: str, *, no_film: bool) -> None:
-        """Pose le bit approprié selon que le film était disponible ou non."""
-        async with self._write_lock:
-            if no_film:
-                WeaponKillsMixin.mark_weapon_no_film(self._conn, match_id)
-            else:
-                WeaponKillsMixin.mark_weapon_backfill_done(self._conn, match_id)
+    # ── Point d'entrée principal ─────────────────────────────────────────
 
-    async def process_match(
+    async def process_match(  # noqa: PLR0913
         self,
         match_id: str,
         gamertag: str,
         xuid: str,
         *,
         dry_run: bool = False,
-    ) -> dict:
-        """Traite un match : télécharge chunks, corrèle kills → armes, upsert.
-
-        Utilise Section 2 (fire events) pour le POV et Formula A (Section 1)
-        pour les coéquipiers T1. Tous joueurs dont le player_index est
-        détectable via acurtis sont traités. Retourne un dict résumé
-        {match_id, kills_total, kills_attributed, rows_inserted, error?}.
-        """
-        summary: dict = {
-            "match_id": match_id,
-            "kills_total": 0,
-            "kills_attributed": 0,
-            "rows_inserted": 0,
-            "players_processed": 0,
-        }
+        enable_reconciliation: bool = True,
+        log_collector: MatchLogCollector | None = None,
+    ) -> MatchProcessingResult:
+        """Traite un match : télécharge chunks, corrèle kills → armes, upsert."""
+        log = log_collector or MatchLogCollector(match_id)
+        result = MatchProcessingResult(match_id=match_id)
         try:
-            logger.debug("process_match %s (pov=%s)", match_id[:8], xuid[:8] if xuid else "?")
-            all_participants = self._load_participants(match_id)
-            if xuid and xuid not in all_participants:
-                all_participants[xuid] = gamertag
-
-            kill_times_all = self._load_all_kill_times(match_id, list(all_participants))
-            if not kill_times_all:
-                await self._mark_done(match_id, no_film=False)
-                summary["error"] = "aucun kill trouvé"
-                return summary
-
-            chunks = await self._download_needed_chunks(
-                match_id, [t for times in kill_times_all.values() for t in times]
-            )
-            if not chunks:
-                await self._mark_done(match_id, no_film=True)
-                summary["error"] = "aucun chunk téléchargé (404 ou expiré)"
-                return summary
-
-            logger.debug("Match %s : %d chunks", match_id[:8], len(chunks))
-            (
-                xuid_int_to_pi,
-                timeline,
-                swap_pis,
-                timing,
-                all_kills_by_xuid,
-            ) = await self._prepare_match_data(match_id, chunks, all_participants)
-            chunks_sorted = sorted(chunks.keys())
-            # Le joueur cible (xuid) est celui pour qui on fait la Section 2 (POV pi=1).
-            # L'espace pi Section 2 est indépendant de l'acurtis pi — ne pas confondre.
-            kt, ka, rt = await self._attribute_all_players(
+            result = await self._process_match_inner(
                 match_id,
-                all_participants,
+                gamertag,
                 xuid,
-                chunks,
-                chunks_sorted,
-                timeline,
-                swap_pis,
-                timing,
-                xuid_int_to_pi,
-                all_kills_by_xuid,
                 dry_run,
+                enable_reconciliation,
+                log,
             )
-            if not dry_run:
-                async with self._write_lock:
-                    WeaponKillsMixin.mark_weapon_backfill_done(self._conn, match_id)
-
-            summary["kills_total"] = kt
-            summary["kills_attributed"] = ka
-            summary["rows_inserted"] = rt
-
         except Exception as exc:
             logger.warning("Erreur match %s : %s", match_id[:8], exc)
-            summary["error"] = str(exc)
+            result.error = str(exc)
+        log.flush()
+        result.log_summary = log.summary()
+        return result
 
-        return summary
-
-    async def _prepare_match_data(
+    async def _process_match_inner(  # noqa: PLR0913
         self,
         match_id: str,
-        chunks: dict,
-        all_participants: dict[str, str],
-    ) -> tuple[dict, dict, dict, list, dict]:
-        """Résout player_indices, construit la timeline et charge les kills batch.
+        gamertag: str,
+        xuid: str,
+        dry_run: bool,
+        enable_reconciliation: bool,
+        log: MatchLogCollector,
+    ) -> MatchProcessingResult:
+        """Pipeline interne : load → download → scan → correlate → write."""
+        participants = self._load_participants(match_id)
+        if xuid and xuid not in participants:
+            participants[xuid] = gamertag
 
-        CPU-bound (bitstring) offloadé sur thread pool pour libérer l'event loop.
-        Batch SQL : 2 requêtes pour tous les joueurs (Phase 2 + Phase 4).
-        """
-        xuid_int_to_pi = await asyncio.to_thread(
-            self._resolve_player_indices, chunks, all_participants
-        )
-        timeline, swap_pis, timing = await asyncio.to_thread(build_weapon_timeline, chunks)
-        all_kills_by_xuid = WeaponKillsMixin.load_all_kills_for_match(self._conn, match_id)
-        logger.debug(
-            "Match %s : %d pi résolus, %d chunks timeline, %d joueurs avec kills",
-            match_id[:8],
-            len(xuid_int_to_pi),
-            len(timeline),
-            len(all_kills_by_xuid),
-        )
-        return xuid_int_to_pi, timeline, swap_pis, timing, all_kills_by_xuid
+        all_kills = WeaponKillsMixin.load_all_kills_for_match(self._conn, match_id)
+        log.record_step("load_data", kills_total=sum(len(v) for v in all_kills.values()))
 
-    def _resolve_player_indices(
+        if not any(all_kills.values()):
+            await self._mark_done(match_id, no_film=False)
+            return MatchProcessingResult(match_id=match_id)
+
+        all_kill_times = [t for kills in all_kills.values() for k in kills for t in [k["time_ms"]]]
+        chunks = await self._download_needed_chunks(match_id, all_kill_times)
+        log.record_step("download", chunks_downloaded=len(chunks))
+
+        if not chunks:
+            await self._mark_done(match_id, no_film=True)
+            return MatchProcessingResult(match_id=match_id, error="aucun chunk (404/expiré)")
+
+        # Scan Phase : fire events + timelines + résolution player_index (passe unique CPU)
+        scan, pi_map = await asyncio.to_thread(self._run_scan_phase, chunks, participants, log)
+
+        # Le joueur POV a pi=0 dans le système fire_seq — l'ajouter si absent
+        if xuid and xuid.isdigit():
+            pi_map.setdefault(int(xuid), 0)
+
+        # Correlation Phase : claim-and-remove par joueur
+        all_attributions = self._correlate_all_players(
+            match_id,
+            all_kills,
+            pi_map,
+            scan,
+            log,
+        )
+
+        # Réconciliation API optionnelle
+        if enable_reconciliation:
+            api_counts = self._load_api_weapon_counts(match_id, list(all_kills.keys()))
+            for xuid_str, counts in api_counts.items():
+                player_attrs = [a for a in all_attributions if a.xuid == xuid_str]
+                if player_attrs and counts:
+                    reconciled = reconcile_api_aggregates(
+                        player_attrs,
+                        counts,
+                        log_collector=log,
+                    )
+                    # Remplacer dans la liste globale
+                    attr_set = {id(a) for a in player_attrs}
+                    all_attributions = [
+                        a for a in all_attributions if id(a) not in attr_set
+                    ] + reconciled
+
+        # Écriture DB
+        rows = 0
+        if not dry_run and all_attributions:
+            async with self._write_lock:
+                rows = WeaponKillsMixin.insert_weapon_kill_rows_v2(
+                    self._conn,
+                    match_id,
+                    all_attributions,
+                )
+                WeaponKillsMixin.mark_weapon_backfill_done(self._conn, match_id)
+            log.record_step("write_db", rows_inserted=rows)
+
+        return MatchProcessingResult(
+            match_id=match_id,
+            kills_total=len(all_attributions),
+            kills_attributed=sum(1 for a in all_attributions if a.weapon_id is not None),
+            rows_inserted=rows,
+            players_processed=len(all_kills),
+        )
+
+    # ── Scan Phase ───────────────────────────────────────────────────────
+
+    def _run_scan_phase(
         self,
-        chunks: dict,
+        chunks: dict[int, tuple[bytes, int, int]],
+        all_participants: dict[str, str],
+        log: MatchLogCollector,
+    ) -> tuple[ScanResult, dict[int, int]]:
+        """Scanne fire events + timelines et résout player_index en une seule passe CPU.
+
+        Évite le double index_chunk sur le chunk 0 : les packets indexés lors
+        du scan sont réutilisés directement pour la résolution XUID → pi.
+
+        Returns:
+            (ScanResult, pi_map) où pi_map = {xuid_int: player_index}
+        """
+        all_raw_events: list[dict] = []
+        timing: list[tuple[int, int]] = []
+        chunks_sorted: list[int] = []
+        first_data: bytes = b""
+        first_packets: list = []
+
+        for idx in sorted(chunks):
+            data, start_ms, dur_ms = chunks[idx]
+            try:
+                packets = index_chunk(data)
+            except Exception as exc:
+                log.warn("index_chunk_failed", chunk=idx, error=str(exc))
+                packets = []
+            if not chunks_sorted:
+                # Conserver le premier chunk indexé pour la résolution XUID → pi
+                first_data = data
+                first_packets = packets
+            chunks_sorted.append(idx)
+            timing.append((start_ms, start_ms + dur_ms))
+
+            events = scan_fire_events_all(data, start_ms, dur_ms, packets=packets)
+            all_raw_events.extend(events)
+            log.record_step("scan_fire", chunk=idx, events=len(events))
+
+        all_raw_events.sort(key=lambda e: e["timestamp_ms"])
+
+        # Timelines Section 1 (raw + NS) — passe unique
+        timeline, timeline_ns, swap_pis, _ = build_weapon_timelines(chunks)
+
+        scan = ScanResult(
+            fire_events_global=all_raw_events,
+            timeline=timeline,
+            timeline_ns=timeline_ns,
+            swap_pis=swap_pis,
+            timing=timing,
+            chunks_sorted=chunks_sorted,
+        )
+
+        # Résolution player_index — réutilise first_packets déjà indexés
+        pi_map = self._resolve_from_chunk(first_data, first_packets, all_participants)
+        log.record_step("resolve_pi", resolved=len(pi_map), total=len(all_participants))
+
+        return scan, pi_map
+
+    # ── Correlation Phase ────────────────────────────────────────────────
+
+    def _correlate_all_players(  # noqa: PLR0913
+        self,
+        match_id: str,
+        all_kills: dict[str, list[dict]],
+        pi_map: dict[int, int],
+        scan: ScanResult,
+        log: MatchLogCollector,
+    ) -> list[KillAttribution]:
+        """Corrèle tous les kills via claim-and-remove par joueur.
+
+        Chaque kill ne consomme que les fire events dont player_index == pi du tueur
+        (player_index = b5>>4, extrait directement lors du scan — inv134).
+        """
+        xuid_to_pi = {str(xuid_int): pi for xuid_int, pi in pi_map.items()}
+
+        for xuid_str, kills in all_kills.items():
+            if kills and xuid_str not in xuid_to_pi:
+                log.warn("unresolved_player", xuid=xuid_str, kills=len(kills))
+
+        kills_flat = [k for kills in all_kills.values() for k in kills]
+        return correlate_kills_global(
+            kills=kills_flat,
+            fire_events_all=scan.fire_events_global,
+            xuid_to_pi=xuid_to_pi,
+            timeline=scan.timeline,
+            swap_pis=scan.swap_pis,
+            timing=scan.timing,
+            chunks_sorted=scan.chunks_sorted,
+            match_id=match_id,
+            timeline_ns=scan.timeline_ns,
+            log_collector=log,
+        )
+
+    # ── Résolution player_index ──────────────────────────────────────────
+
+    def _resolve_from_chunk(
+        self,
+        first_chunk_data: bytes,
+        first_packets: list,
         all_participants: dict[str, str],
     ) -> dict[int, int]:
-        """Résout XUID → player_index via METADATA packet puis fallback acurtis.
+        """Résout XUID → player_index depuis les packets déjà indexés du premier chunk.
 
-        Ordre de résolution (inv #130) :
-        1. PLAYER_METADATA packet (~25KB) — rapide et fiable
-        2. Fallback méthode acurtis (inv #26) sur le chunk complet (~700KB)
+        Méthode 1 : PLAYER_METADATA packet (précis, 16 joueurs).
+        Fallback   : acurtis detect_player_indices (heuristique).
         """
-        first_chunk_data = next(iter(v[0] for v in chunks.values()))
+        if not first_chunk_data:
+            return {}
+
         xuid_int_map = {int(x): x for x in all_participants if x.isdigit()}
 
-        # Méthode 1 : PLAYER_METADATA packet (inv #130)
-        packets = index_chunk(first_chunk_data)
-        metadata = extract_metadata_payload(first_chunk_data, packets)
+        try:
+            metadata = extract_metadata_payload(first_chunk_data, first_packets)
+        except Exception as exc:
+            logger.debug("resolve_pi: metadata failed: %s", exc)
+            metadata = None
+
         if metadata is not None:
             pi_to_xuid_int = detect_pi_from_metadata(metadata, xuid_int_map)
             if pi_to_xuid_int:
+                # Résoudre les joueurs absents du METADATA (joueur POV → pi=0)
+                # Le joueur POV n'a que des occurrences pi=0 dans METADATA donc
+                # detect_pi_from_metadata ne le retourne pas. On le résout via
+                # acurtis qui trouve son XUID avec pi=0 dans les données brutes.
+                resolved = set(pi_to_xuid_int.values())
+                missing = {x: g for x, g in xuid_int_map.items() if x not in resolved}
+                if missing:
+                    pov_result = detect_player_indices(first_chunk_data, missing)
+                    pi_to_xuid_int.update(pov_result)
+                    logger.debug(
+                        "resolve_pi: POV résolu via acurtis (%d/%d)",
+                        len(pov_result),
+                        len(missing),
+                    )
+                logger.debug("resolve_pi: metadata OK (%d joueurs)", len(pi_to_xuid_int))
                 return {v: k for k, v in pi_to_xuid_int.items()}
 
-        # Fallback : méthode acurtis (inv #26) sur chunk complet
+        # Fallback : méthode acurtis (metadata absente ou vide)
+        logger.debug("resolve_pi: fallback acurtis (metadata=%s)", metadata is not None)
         pi_to_xuid_int = detect_player_indices(first_chunk_data, xuid_int_map)
         return {v: k for k, v in pi_to_xuid_int.items()}
 
-    async def _attribute_all_players(  # noqa: PLR0913
-        self,
-        match_id: str,
-        all_participants: dict[str, str],
-        pov_xuid: str,
-        chunks: dict,
-        chunks_sorted: list[int],
-        timeline: dict,
-        swap_pis: dict[int, set[int]],
-        timing: list,
-        xuid_int_to_pi: dict[int, int],
-        all_kills_by_xuid: dict[str, list[dict]],
-        dry_run: bool,
-    ) -> tuple[int, int, int]:
-        """Itère sur tous les participants, attribue les kills, écrit en DB.
-
-        Returns:
-            (kills_total, kills_attributed, rows_inserted)
-        """
-        kills_total = kills_attributed = rows_total = 0
-        for xuid_str, gt in all_participants.items():
-            xuid_i = int(xuid_str) if xuid_str.isdigit() else None
-            if xuid_i is None:
-                continue
-            player_index = xuid_int_to_pi.get(xuid_i)
-            is_target = xuid_str == pov_xuid
-            if player_index is None and not is_target:
-                logger.debug("Match %s : pi inconnu pour %s", match_id[:8], gt)
-                continue
-            if player_index is None:
-                player_index = 0  # dummy : non utilisé pour Section 2 (pi=1 invariant)
-
-            kills = all_kills_by_xuid.get(xuid_str, [])
-            if not kills:
-                continue
-
-            kill_rows = await self._attribute_kills(
-                kills,
-                chunks,
-                chunks_sorted,
-                timeline,
-                swap_pis,
-                timing,
-                player_index,
-                xuid_str,
-                pov_xuid,
-            )
-            if xuid_str == pov_xuid:
-                kill_rows = self._reconcile_api_aggregates(
-                    kill_rows, self._conn, match_id, xuid_str
-                )
-            kills_total += len(kills)
-            kills_attributed += sum(1 for r in kill_rows if r["weapon_id"] is not None)
-            if not dry_run and kill_rows:
-                async with self._write_lock:
-                    rows = WeaponKillsMixin.insert_weapon_kill_rows(
-                        self._conn, match_id, xuid_str, kill_rows
-                    )
-                rows_total += rows
-                logger.debug(
-                    "Match %s %s (pi=%d) : %d lignes", match_id[:8], gt, player_index, rows
-                )
-        return kills_total, kills_attributed, rows_total
-
-    # ── Attribution ───────────────────────────────────────────────────────
-
-    async def _attribute_kills(  # noqa: PLR0913
-        self,
-        kills: list[dict],
-        chunks: dict,
-        chunks_sorted: list[int],
-        timeline: dict,
-        swap_pis: dict[int, set[int]],
-        timing: list,
-        player_index: int,
-        xuid_str: str,
-        pov_xuid: str,
-    ) -> list[dict]:
-        """Attribution POV (fire events §6a) ou T1 (Formula A §6b)."""
-        is_pov = xuid_str == pov_xuid
-        if is_pov:
-            # Section 2 : le POV est TOUJOURS à pi=1 (inv §6a / inv #6/#23/#27/#41)
-            # L'espace pi Section 2 est indépendant du pi acurtis — ne pas utiliser player_index
-            # CPU-bound bitstring : offload sur thread pour libérer l'event loop (Phase 4)
-            fire_events = await asyncio.to_thread(self._scan_player_chunks, chunks, 1)
-            return correlate_kills_to_weapons(kills, fire_events)
-        return self._attribute_t1_kills(
-            kills, chunks_sorted, timeline, swap_pis, timing, player_index
-        )
-
-    @staticmethod
-    def _attribute_t1_kills(  # noqa: PLR0913
-        kills: list[dict],
-        chunks_sorted: list[int],
-        timeline: dict,
-        swap_pis: dict[int, set[int]],
-        timing: list,
-        player_index: int,
-    ) -> list[dict]:
-        """Attribution T1 via Formula A snapshot (FINDINGS §6b).
-
-        Pour chaque kill à T : chunk couvrant T → weapon_A[chunk][pi].
-        Fallback chunk-1 si aucune MAJ dans ce chunk.
-        Produit weapon_id (int) au lieu de weapon_name.
-        """
-        from src.analysis._weapon_data import GRENADE_WEAPON_ID, MELEE_WEAPON_ID, WEAPON_ID_MAP
-
-        results = []
-        for kill in kills:
-            if kill.get("is_melee"):
-                results.append(_attribution_row(kill, MELEE_WEAPON_ID))
-                continue
-            if kill.get("is_grenade"):
-                results.append(_attribution_row(kill, GRENADE_WEAPON_ID))
-                continue
-
-            t_ms = kill["time_ms"]
-            ck = find_chunk_at_time(chunks_sorted, timing, t_ms)
-            wid_bytes = timeline.get(ck, {}).get(player_index) or timeline.get(ck - 1, {}).get(
-                player_index
-            )
-            if wid_bytes is None:
-                results.append(_attribution_row(kill, None))
-                continue
-
-            wid_int = int.from_bytes(wid_bytes, byteorder="big")
-            conf = "high" if wid_bytes in WEAPON_ID_MAP else "low"
-            # MEDIUM si ce pi a eu plusieurs armes distinctes dans ce chunk
-            # (swap intra-chunk ~19s — FINDINGS §6b Step 3)
-            if player_index in swap_pis.get(ck, set()) and conf == "high":
-                conf = "medium"
-            results.append(_attribution_row(kill, wid_int, conf))
-        n_none = sum(1 for r in results if r["weapon_id"] is None)
-        if n_none:
-            logger.debug(
-                "_attribute_t1 pi=%d : %d kills, %d unresolved",
-                player_index,
-                len(results),
-                n_none,
-            )
-        return results
-
-    # ── Privées ──────────────────────────────────────────────────────────
+    # ── Chargement données ───────────────────────────────────────────────
 
     def _load_participants(self, match_id: str) -> dict[str, str]:
+        """Charge les participants du match (xuid → gamertag)."""
         try:
             rows = self._conn.execute(
                 "SELECT mp.xuid, COALESCE(xa.gamertag, mp.xuid) "
@@ -490,52 +369,72 @@ class WeaponExtractionService:
             logger.debug("_load_participants %s : %s", match_id[:8], exc)
             return {}
 
-    def _load_all_kill_times(self, match_id: str, xuids: list[str]) -> dict[str, list[int]]:
+    def _load_api_weapon_counts(
+        self,
+        match_id: str,
+        xuids: list[str],
+    ) -> dict[str, dict[int, int]]:
+        """Charge les agrégats weapon kills API pour la réconciliation."""
+        result: dict[str, dict[int, int]] = {}
         if not xuids:
-            return {}
+            return result
         try:
             placeholders = ", ".join("?" for _ in xuids)
             rows = self._conn.execute(
-                f"SELECT xuid, time_ms FROM highlight_events "
-                f"WHERE match_id = ? AND event_type = 'kill' AND xuid IN ({placeholders}) "
-                f"ORDER BY time_ms",
+                f"SELECT xuid, COALESCE(grenade_kills, 0), COALESCE(melee_kills, 0), "
+                f"COALESCE(kills, 0) "
+                f"FROM match_participants WHERE match_id = ? AND xuid IN ({placeholders})",
                 [match_id, *xuids],
             ).fetchall()
-            result: dict[str, list[int]] = {}
-            for xuid, t in rows:
-                result.setdefault(xuid, []).append(t)
-            return result
-        except Exception as exc:
-            logger.debug("_load_all_kill_times %s : %s", match_id[:8], exc)
-            return {}
+            from src.analysis._weapon_data import GRENADE_WEAPON_ID, MELEE_WEAPON_ID
 
-    async def _download_needed_chunks(  # noqa: C901, PLR0912
+            for xuid, grenade_k, melee_k, _total_k in rows:
+                counts: dict[int, int] = {}
+                if grenade_k > 0:
+                    counts[GRENADE_WEAPON_ID] = grenade_k
+                if melee_k > 0:
+                    counts[MELEE_WEAPON_ID] = melee_k
+                if counts:
+                    result[xuid] = counts
+        except Exception as exc:
+            logger.debug("_load_api_weapon_counts %s : %s", match_id[:8], exc)
+        return result
+
+    async def _mark_done(self, match_id: str, *, no_film: bool) -> None:
+        """Pose le bit approprié selon que le film était disponible ou non."""
+        async with self._write_lock:
+            if no_film:
+                WeaponKillsMixin.mark_weapon_no_film(self._conn, match_id)
+            else:
+                WeaponKillsMixin.mark_weapon_backfill_done(self._conn, match_id)
+
+    # ── Téléchargement chunks ────────────────────────────────────────────
+
+    async def _download_needed_chunks(  # noqa: PLR0912
         self,
         match_id: str,
         kill_times_ms: list[int],
     ) -> dict[int, tuple[bytes, int, int]]:
-        """Télécharge les chunks REPLICATION_DATA couvrant les kill_times."""
+        """Télécharge les chunks REPLICATION_DATA couvrant les kill_times.
+
+        Le manifest (blob_prefix + chunk metadata) est mis en cache dans
+        manifest.json pour éviter un appel API par match sur les re-runs.
+        """
         match_cache = self._cache_dir / match_id[:8]
         match_cache.mkdir(parents=True, exist_ok=True)
 
-        film = await self._api.get_film_by_match_id(match_id)
-        if film is None:
-            return {}
+        cached = load_manifest_cache(self._manifest_dir, match_id)
+        if cached is not None:
+            blob_prefix, chunks_meta = cached
+        else:
+            film = await self._api.get_film_by_match_id(match_id)
+            if film is None:
+                return {}
+            blob_prefix = film.blob_storage_path_prefix
+            chunks_meta = film.custom_data.chunks
+            write_manifest_cache(self._manifest_dir, match_id, blob_prefix, chunks_meta)
 
-        blob_prefix = film.blob_storage_path_prefix
-        chunks_meta = film.custom_data.chunks
-
-        needed: set[int] = set()
-        for kill_t in kill_times_ms:
-            window_start = kill_t - KILL_WINDOW_MS
-            for ch in chunks_meta:
-                if ch.chunk_type.value != 2:
-                    continue
-                ch_start = ch.chunk_start_time_offset_milliseconds
-                ch_end = ch_start + ch.duration_milliseconds
-                if ch_end >= window_start and ch_start <= kill_t:
-                    needed.add(ch.index)
-
+        needed = compute_needed_chunks(kill_times_ms, chunks_meta, KILL_WINDOW_MS)
         result: dict[int, tuple[bytes, int, int]] = {}
         to_download = []
 
@@ -554,16 +453,18 @@ class WeaponExtractionService:
                 to_download.append(ch)
 
         if to_download:
-            tasks = [
-                self._download_chunk_with_sem(ch, blob_prefix, match_cache) for ch in to_download
-            ]
+            tasks = [self._download_chunk(ch, blob_prefix, match_cache) for ch in to_download]
             try:
                 gathered = await asyncio.wait_for(
                     asyncio.gather(*tasks, return_exceptions=True),
                     timeout=_CHUNK_TIMEOUT_S * len(to_download),
                 )
             except TimeoutError:
-                logger.warning("Match %s : timeout chunks (%ds)", match_id[:8], _CHUNK_TIMEOUT_S)
+                logger.warning(
+                    "Match %s : timeout chunks (%ds)",
+                    match_id[:8],
+                    _CHUNK_TIMEOUT_S,
+                )
                 return result
             for item in gathered:
                 if isinstance(item, Exception):
@@ -575,91 +476,21 @@ class WeaponExtractionService:
 
         return result
 
-    async def _download_chunk_with_sem(
-        self, ch, blob_prefix: str, match_cache: Path
+    async def _download_chunk(
+        self,
+        ch,
+        blob_prefix: str,
+        match_cache: Path,
     ) -> tuple[int, bytes | None, int, int]:
         async with self._chunk_sem:
-            return await self._download_chunk(ch, blob_prefix, match_cache)
-
-    async def _download_chunk(
-        self, ch, blob_prefix: str, match_cache: Path
-    ) -> tuple[int, bytes | None, int, int]:
-        url = blob_prefix + ch.file_relative_path.lstrip("/")
-        data = await self._api.download_film_chunk(url)
-        if data is not None:
-            cache_path = match_cache / f"chunk_{ch.index:02d}.bin"
-            cache_path.write_bytes(data)
-        return (
-            ch.index,
-            data,
-            ch.chunk_start_time_offset_milliseconds,
-            ch.duration_milliseconds,
-        )
-
-    @staticmethod
-    def _reconcile_api_aggregates(
-        kill_rows: list[dict],
-        conn: duckdb.DuckDBPyConnection,
-        match_id: str,
-        xuid_str: str,
-    ) -> list[dict]:
-        """Réconcilie la confidence POV avec les agrégats API (FINDINGS §6a Step 4).
-
-        Délègue à _inject_missing_sentinels (4b), _step4a_demote (4a), _step4c_promote (4c).
-        """
-        try:
-            row = conn.execute(
-                "SELECT COALESCE(grenade_kills, 0), COALESCE(melee_kills, 0) "
-                "FROM match_participants WHERE match_id = ? AND xuid = ?",
-                (match_id, xuid_str),
-            ).fetchone()
-        except Exception:
-            return kill_rows
-        if row is None:
-            return kill_rows
-        api_grenade = int(row[0])
-        api_melee = int(row[1])
-        api_weapon_kills = max(len(kill_rows) - api_grenade - api_melee, 0)
-        from src.analysis._weapon_data import (
-            EXCLUDED_WEAPON_IDS,
-            GRENADE_WEAPON_ID,
-            MELEE_WEAPON_ID,
-        )
-
-        # Step 4b — reclassification melee/grenade manquants (médailles absentes)
-        _inject_missing_sentinels(
-            kill_rows,
-            api_melee,
-            api_grenade,
-            MELEE_WEAPON_ID,
-            GRENADE_WEAPON_ID,
-            EXCLUDED_WEAPON_IDS,
-            match_id,
-            xuid_str,
-        )
-        weapon_high = [
-            r
-            for r in kill_rows
-            if r.get("confidence") == "high"
-            and r.get("weapon_id") is not None
-            and r.get("weapon_id") not in EXCLUDED_WEAPON_IDS
-        ]
-        # Steps 4a/4c — ajustement niveau weapon kills
-        if _step4a_demote(weapon_high, api_weapon_kills, match_id, xuid_str):
-            return kill_rows
-        _step4c_promote(kill_rows, api_weapon_kills, EXCLUDED_WEAPON_IDS, match_id, xuid_str)
-        return kill_rows
-
-    @staticmethod
-    def _scan_player_chunks(
-        chunks: dict[int, tuple[bytes, int, int]],
-        player_index: int,
-    ) -> list[dict]:
-        all_events: list[dict] = []
-        for _idx, (chunk_data, start_ms, dur_ms) in sorted(chunks.items()):
-            packets = index_chunk(chunk_data)
-            all_events.extend(
-                scan_fire_events(chunk_data, player_index, start_ms, dur_ms, packets=packets)
+            url = blob_prefix + ch.file_relative_path.lstrip("/")
+            data = await self._api.download_film_chunk(url)
+            if data is not None:
+                cache_path = match_cache / f"chunk_{ch.index:02d}.bin"
+                cache_path.write_bytes(data)
+            return (
+                ch.index,
+                data,
+                ch.chunk_start_time_offset_milliseconds,
+                ch.duration_milliseconds,
             )
-        all_events.sort(key=lambda e: e["timestamp_ms"])
-        return all_events

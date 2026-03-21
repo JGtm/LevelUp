@@ -225,7 +225,7 @@ class TimeseriesService:
 
         return RollingWinRateData(
             values=win_rate_clean,
-            has_data=len(win_rate_clean) > 5,
+            has_data=len(win_rate_clean) > 0,
             missing_column=False,
             not_enough_matches=False,
         )

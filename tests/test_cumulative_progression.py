@@ -316,6 +316,29 @@ class TestComputeLinearRegressionKd:
         result = compute_linear_regression_kd(df)
         assert "win_rate_slope" not in result
 
+    def test_wr_relative_change_borne_session_mauvaise(self) -> None:
+        """wr_relative_change doit rester dans [-1, 1] même pour une mauvaise session.
+
+        Régression #bug : avec l'ancienne formule (slope * n / mean_wins), une session
+        avec 1 victoire sur 10 matchs donnait wr_relative_change > 3 → 200% clampé.
+        """
+        from src.analysis.cumulative_progression import compute_linear_regression_kd
+        from src.data.domain.refdata import Outcome
+
+        # Session mauvaise : 9 défaites + 1 victoire en fin de session
+        df = pl.DataFrame(
+            {
+                "start_time": [datetime(2026, 3, 18, i) for i in range(10)],
+                "ewma_kd": [0.5] * 10,
+                "outcome": [Outcome.LOSS] * 9 + [Outcome.WIN],
+            }
+        )
+        result = compute_linear_regression_kd(df)
+        assert "wr_relative_change" in result
+        assert (
+            abs(result["wr_relative_change"]) <= 1.0
+        ), f"wr_relative_change={result['wr_relative_change']} dépasse ±1.0 (±100 pp)"
+
     def test_is_significant_seuil_r2(self) -> None:
         """is_significant = True ssi R² ≥ 0.3."""
         from src.analysis.cumulative_progression import compute_linear_regression_kd

@@ -13,21 +13,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Cumulative performance & trend",
     },
     "ts_cumulative_caption": {
-        "fr": "Efficacité (net score/heure), F/D cumulé avec intervalle de confiance à 90 %, F/D lissé EWMA et indicateurs de régression.",
-        "en": "Efficiency (net score/hour), cumulative K/D with 90 % CI, EWMA smoothed K/D, and regression indicators.",
-    },
-    # ── Contrôles section Progression ────────────────────────────────────────
-    "ts_ewma_alpha_label": {
-        "fr": "Réactivité du lissage (α)",
-        "en": "Smoothing reactivity (α)",
-    },
-    "ts_ewma_alpha_help": {
-        "fr": "Petit α (0.10) = très lissé, tend vers la moyenne de long terme.\nGrand α (0.50) = très réactif, reflète ta forme récente.",
-        "en": "Small α (0.10) = very smooth, tends toward long-term average.\nLarge α (0.50) = very reactive, reflects recent form.",
-    },
-    "ts_show_outcome_markers": {
-        "fr": "Afficher V/D sur l'axe",
-        "en": "Show W/L on axis",
+        "fr": "Efficacité (net score/heure), F/D cumulé avec sa zone de stabilité, courbe lissée et droite de tendance.",
+        "en": "Efficiency (net score/hour), cumulative K/D with stability band, smoothed curve, and trend line.",
     },
     "ts_section_cumulative": {
         "fr": "Bilan cumulatif",
@@ -66,8 +53,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Distribution of timestamps for your first kill and first death. See how fast you get your first kill vs your first death.",
     },
     "ts_first_event_no_data": {
-        "fr": "Données d'événements non disponibles (premier frag / première mort). L'**Actualiser** récupère déjà ces données pour les **nouveaux** matchs. Pour les matchs déjà en base sans événements film, active dans **Paramètres** → **Options du bouton Actualiser** l'option **Backfill events**, puis **Actualiser**.",
-        "en": "Event data is not available (first kill / first death). **Refresh** already fetches these for **new** matches. For existing matches without film events, enable **Backfill events** in **Settings** → **Refresh button options**, then **Refresh**.",
+        "fr": "Données d'événements non disponibles (premier frag / première mort). L'**Actualiser** récupère déjà ces données pour les **nouveaux** matchs. Pour les matchs déjà en base sans événements film : coche **Événements** dans **Paramètres** → **Options du bouton Actualiser**, sauvegarde, puis clique **Actualiser**.",
+        "en": "Event data is not available (first kill / first death). **Refresh** already fetches these for **new** matches. For existing matches without film events: check **Events** in **Settings** → **Refresh button options**, save, then click **Refresh**.",
     },
     "ts_performance": "col_performance",  # alias → common
     "ts_assists": "col_assists",  # alias → common
@@ -114,40 +101,41 @@ STRINGS: dict[str, dict[str, str] | str] = {
     },
     # ── Notes explicatives sous les graphes de progression ───────────────────
     "ts_note_nph": {
-        "fr": "- Courbe qui **monte** → tu crées plus de valeur que tu n'en perds — bonne dynamique\n"
-        "- **En dessous de 0** → tu meurs plus vite que tu ne fragges\n"
+        "fr": "- 🟢 **Zone verte** → tu fragges plus que tu ne meurs\n"
+        "- 🟠 **Zone orange** → tu meurs plus que tu ne fragges\n"
+        "- Courbe qui **monte** → ta dynamique s'améliore au fil de la session\n"
         "- Un pic isolé ne dit rien ; c'est la direction générale sur plusieurs matchs qui compte",
-        "en": "- **Rising** → you generate more value than you lose — good momentum\n"
-        "- **Below 0** → you die faster than you score kills\n"
+        "en": "- 🟢 **Green area** → you kill more than you die\n"
+        "- 🟠 **Orange area** → you die more than you kill\n"
+        "- **Rising curve** → your momentum is improving across the session\n"
         "- An isolated spike means nothing; the overall direction over several games is what matters",
     },
     "ts_note_ci": {
         "fr": "- Courbe en hausse en fin de session → tu t'es vraiment amélioré par rapport au début\n"
-        "- **Bande étroite** → niveau stable et reproductible ; **bande large** → trop tôt pour conclure\\n"
+        "- **Bande étroite** → ton F/D est stable et fiable ; **bande large** → tes résultats varient trop pour savoir quel est ton vrai niveau\n"
         "- Cercle très éloigné de la courbe → partie atypique qui tire la moyenne",
         "en": "- Rising curve toward session end → genuine improvement relative to your start\n"
-        "- **Narrow CI** → stable, reproducible level; **wide CI** → too early to draw conclusions\n"
+        "- **Narrow band** → your K/D is stable and reliable; **wide band** → results vary too much to know your true level\n"
         "- Circle far from the curve → atypical game skewing the average",
     },
     "ts_note_ewma": {
         "fr": "- Regarde la **direction générale** de la courbe lissée, pas les sommets ou creux individuels\n"
-        "- La droite pointillée confirme une **vraie tendance** si R² ≥ 0,3 — en dessous, c'est du bruit\n"
-        "- α élevé : utile pour détecter rapidement une rupture de forme dans la session",
+        "- La droite pointillée confirme une vraie tendance si la courbe lissée la suit de près — sinon les résultats sont trop irréguliers",
         "en": "- Focus on the **general direction** of the smoothed curve, not individual peaks or dips\n"
-        "- The dotted line confirms a **real trend** if R² ≥ 0.3 — below that threshold, it's noise\n"
-        "- High α: useful for quickly detecting a shift in form during the session",
+        "- The dotted line confirms a real trend if the smoothed curve follows it closely — otherwise results are too irregular",
     },
     "ts_note_regression": {
-        "fr": "- **Pente positive + R² ≥ 0,3** → progression réelle sur la session, pas un hasard\n"
-        "- **R² < 0,3** → résultats trop éparpillés, impossible de tirer une conclusion fiable\n"
-        "- Win rate en hausse + pente positive → double confirmation que la forme et les résultats s'alignent",
-        "en": "- **Positive slope + R² ≥ 0.3** → genuine improvement across the session, not luck\n"
-        "- **R² < 0.3** → results too scattered, no reliable conclusion possible\n"
-        "- Rising win rate + positive slope → double confirmation that form and results align",
+        "fr": "- **F/D en hausse** → tu progresses sur la session, pas juste de la chance\n"
+        "- **Confirmation de la tendance** : proche de 100 % → direction nette et fiable · proche de 0 % → résultats de la session trop incohérents pour conclure\n"
+        "- Taux de victoire en hausse + F/D en hausse → les deux s'accordent, forme et résultats s'alignent",
+        "en": "- **K/D improving** → you're getting better across the session, not just getting lucky\n"
+        "- **Trend confirmation**: near 100 % → clear and reliable direction · near 0 % → too chaotic to draw any conclusion\n"
+        "- **Results too scattered** → the session is too irregular to draw any conclusion\n"
+        "- Rising win rate + improving K/D → both agree, form and results are aligned",
     },
     "ts_regression_subheader": {
-        "fr": "Tendance (régression linéaire)",
-        "en": "Trend (linear regression)",
+        "fr": "Tendance",
+        "en": "Trend",
     },
     # ── Page Coéquipiers ─────────────────────────────────────────────────────
     "ts_computing": {
@@ -241,8 +229,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "ts_mmr_team": {"fr": "MMR Équipe", "en": "Team MMR"},
     "ts_mmr_enemy": {"fr": "MMR Adversaire", "en": "Enemy MMR"},
     "ts_events_unavailable": {
-        "fr": "Données d'événements non disponibles. Lance un backfill events.",
-        "en": "Event data not available. Run an events backfill.",
+        "fr": "Données d'événements non disponibles. Coche **Événements** dans **Paramètres** → **Options du bouton Actualiser**, sauvegarde, puis **Actualiser**.",
+        "en": "Event data not available. Check **Events** in **Settings** → **Refresh button options**, save, then **Refresh**.",
     },
     "ts_not_enough_dist": {
         "fr": "Pas assez de données ({count} matchs). Il en faut au moins {min} pour la distribution.",
@@ -257,6 +245,12 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Outils de destruction",
         "en": "Tools of destruction",
     },
+    # ── Skill rank (LUSR/CSR)
+    "ts_skill_rank_evolution": {
+        "fr": "Évolution du rating (LUSR / CSR)",
+        "en": "Rating evolution (LUSR / CSR)",
+    },
+    "ts_skill_rank_type": {"fr": "Type de rating :", "en": "Rating type:"},
     # ── Onglets (navigation)
     "ts_tab_kda": {"fr": "⚔️ F/D/A", "en": "⚔️ K/D/A"},
     "ts_tab_progression": {"fr": "📈 Progression", "en": "📈 Progression"},

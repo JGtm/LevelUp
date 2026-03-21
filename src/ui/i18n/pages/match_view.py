@@ -106,6 +106,46 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Tableau des scores",
         "en": "Scoreboard",
     },
+    "mv_scoreboard_detail_click_hint": {
+        "fr": "Clique sur une ligne pour afficher les détails inline.",
+        "en": "Click a row to expand inline details.",
+    },
+    "mv_scoreboard_detail_weapons": {
+        "fr": "Armes",
+        "en": "Weapons",
+    },
+    "mv_scoreboard_detail_antagonist": {
+        "fr": "Antagoniste",
+        "en": "Antagonist",
+    },
+    "mv_scoreboard_detail_nemesis": {
+        "fr": "Némésis",
+        "en": "Nemesis",
+    },
+    "mv_scoreboard_detail_bully": {
+        "fr": "Souffre-douleur",
+        "en": "Punching Bag",
+    },
+    "mv_scoreboard_detail_local": {
+        "fr": "Enrichissements",
+        "en": "Enrichments",
+    },
+    "mv_scoreboard_detail_player_db": {
+        "fr": "DB joueur disponible",
+        "en": "Player DB available",
+    },
+    "mv_scoreboard_detail_shared_only": {
+        "fr": "Données shared uniquement",
+        "en": "Shared data only",
+    },
+    "mv_scoreboard_detail_explore_player": {
+        "fr": "Explorer les matchs avec {player}",
+        "en": "Explore matches with {player}",
+    },
+    "mv_scoreboard_detail_bot_note": {
+        "fr": "Contexte",
+        "en": "Context",
+    },
     "mv_scoreboard_no_data": {
         "fr": "Statistiques des joueurs indisponibles pour ce match.",
         "en": "Player stats unavailable for this match.",
@@ -233,8 +273,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Indisponible : la DB ne contient pas les highlight events. Si tu utilises une DB SPNKr, relance l'import avec `--with-highlight-events`.",
         "en": "Unavailable: the DB does not contain highlight events. If you are using a SPNKr DB, re-run the import with `--with-highlight-events`.",
     },
-    "mv_deaths_count": {"fr": "{prefix}{n} morts", "en": "{prefix}{n} deaths"},
-    "mv_killed_count": {"fr": "{prefix}Tué {n} fois", "en": "{prefix}Killed {n} times"},
+    "mv_deaths_count": {
+        "fr": "{prefix}T'a victimisé {n} fois",
+        "en": "{prefix}Eliminated you {n} times",
+    },
+    "mv_killed_count": {
+        "fr": "{prefix}Tu l'as persécuté {n} fois",
+        "en": "{prefix}You bullied them {n} times",
+    },
     "mv_team_n": {"fr": "Équipe {n}", "en": "Team {n}"},
     "mv_team_unknown": {"fr": "Équipe inconnue", "en": "Unknown team"},
     "mv_team_label": {"fr": "Équipe {name}", "en": "Team {name}"},

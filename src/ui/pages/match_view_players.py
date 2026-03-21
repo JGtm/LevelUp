@@ -23,6 +23,9 @@ from src.ui.pages.match_view_helpers import os_card
 from src.ui.pages.match_view_players_data import (
     has_table_duckdb as _has_table_duckdb,
 )
+from src.ui.pages.match_view_players_data import (
+    load_match_players_stats as _load_match_players_stats,
+)
 from src.ui.pages.match_view_players_nemesis import render_nemesis_section  # noqa: F401
 from src.ui.pages.match_view_players_timeline import (  # noqa: F401
     render_kd_timeline_section,
@@ -218,8 +221,24 @@ def render_match_impact_section(  # noqa: PLR0913
     me_xuid = str(parse_xuid_input(str(xuid or "").strip()) or str(xuid or "").strip()).strip()
     gt_map = load_match_gamertags_fn(db_path, match_id.strip(), db_key=db_key)
 
-    # Identifier les événements d'impact
-    impact_events = compute_single_match_impact(he, me_xuid, outcome=outcome)
+    # Résoudre les xuids de l'équipe alliée pour filtrer les events d'impact
+    team_xuids: set[str] | None = None
+    all_players = _load_match_players_stats(db_path, match_id.strip())
+    if all_players:
+        xuid_to_team = {
+            str(p.get("xuid", "")).strip(): p.get("team_id") for p in all_players if p.get("xuid")
+        }
+        my_team_id = xuid_to_team.get(me_xuid)
+        if my_team_id is not None:
+            team_xuids = {xu for xu, tid in xuid_to_team.items() if tid == my_team_id}
+
+    # Identifier les événements d'impact (filtrés par équipe alliée)
+    impact_events = compute_single_match_impact(
+        he,
+        me_xuid,
+        outcome=outcome,
+        team_xuids=team_xuids,
+    )
 
     # Enrichir les gamertags via gt_map
     if gt_map and isinstance(gt_map, dict):

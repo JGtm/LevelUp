@@ -39,11 +39,15 @@ def _index_media_for_player(
     with db_write_lease(db_file):
         release_db_connections(db_file)
         n_thumb_gen, _n_thumb_err = indexer.generate_thumbnails_for_new(
-            videos_dir=captures_dir, screens_dir=captures_dir,
+            videos_dir=captures_dir,
+            screens_dir=captures_dir,
         )
     logger.info(
         "✅ %s: %d médias, %d assoc., %d thumbs",
-        gamertag, result.n_new + result.n_updated, n_associated, n_thumb_gen,
+        gamertag,
+        result.n_new + result.n_updated,
+        n_associated,
+        n_thumb_gen,
     )
 
 
@@ -64,7 +68,9 @@ def _index_media_legacy(db_path: str, videos_dir: str, screens_dir: str, toleran
         release_db_connections(legacy_db_file)
         indexer = MediaIndexer(legacy_db_file)
         result = indexer.scan_and_index(
-            videos_dir=videos_path, screens_dir=screens_path, force_rescan=False,
+            videos_dir=videos_path,
+            screens_dir=screens_path,
+            force_rescan=False,
         )
         n_associated = indexer.associate_with_matches(tolerance_minutes=tolerance)
 
@@ -72,11 +78,14 @@ def _index_media_legacy(db_path: str, videos_dir: str, screens_dir: str, toleran
     with db_write_lease(legacy_db_file):
         release_db_connections(legacy_db_file)
         n_thumb_gen, _n_thumb_err = indexer.generate_thumbnails_for_new(
-            videos_dir=videos_path, screens_dir=screens_path,
+            videos_dir=videos_path,
+            screens_dir=screens_path,
         )
     logger.info(
         "✅ Scan: %d scannés, %d assoc., %d thumbs",
-        result.n_scanned, n_associated, n_thumb_gen,
+        result.n_scanned,
+        n_associated,
+        n_thumb_gen,
     )
 
 
@@ -98,14 +107,14 @@ def background_media_indexing(settings, db_path: str) -> None:
 
     Dossier par joueur : base_dir/{gamertag}/. Indexe tous les joueurs connus.
     """
-    if not bool(getattr(settings, "media_enabled", True)):
+    if not settings.media_enabled:
         logger.debug("Indexation médias désactivée dans les paramètres")
         return
 
-    base_dir = str(getattr(settings, "media_captures_base_dir", "") or "").strip()
+    base_dir = settings.media_captures_base_dir.strip()
     if not base_dir:
-        videos_dir = str(getattr(settings, "media_videos_dir", "") or "").strip()
-        screens_dir = str(getattr(settings, "media_screens_dir", "") or "").strip()
+        videos_dir = settings.media_videos_dir.strip()
+        screens_dir = settings.media_screens_dir.strip()
         if not videos_dir and not screens_dir:
             logger.debug("Aucun dossier média configuré - indexation ignorée")
             return
@@ -125,7 +134,7 @@ def background_media_indexing(settings, db_path: str) -> None:
 
     def worker() -> None:
         try:
-            tolerance = int(getattr(settings, "media_tolerance_minutes", 5) or 5)
+            tolerance = settings.media_tolerance_minutes
             base_path = Path(base_dir) if base_dir else None
 
             if base_path is not None and base_path.exists():

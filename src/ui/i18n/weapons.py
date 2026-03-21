@@ -1,8 +1,7 @@
-"""Traductions des armes Halo Infinite (weapon_id → nom localisé).
+"""Helpers d'affichage des armes Halo Infinite.
 
-Les données sont stockées dans ``static/i18n/weapons_{lang}.json``.
-Chaque entrée mappe un ``weapon_id`` (entier sérialisé en clé string)
-vers ``{"name": "...", "faction": "..."}``.
+``get_weapon_label``  — nom localisé (délègue à resolve_weapon_display).
+``get_weapon_faction`` — faction via weapons_{lang}.json (données non en DB).
 """
 
 from __future__ import annotations
@@ -35,71 +34,23 @@ def _load_weapons_json(lang: str = "fr") -> dict[str, dict[str, str]]:
 
 
 def get_weapon_label(weapon_id: int, lang: str = "fr") -> str:
-    """Retourne le nom localisé d'une arme, ou le nom film (WEAPON_INT_TO_NAME).
+    """Retourne le nom localisé d'une arme.
 
-    Priorité : weapons_{lang}.json → WEAPON_INT_TO_NAME → ``weapon_{id}``.
-    Les IDs film (uint64) sont reconnus via WEAPON_INT_TO_NAME sans mise à jour
-    du JSON.
+    Délègue à resolve_weapon_display (metadata.duckdb → dicts Python).
     """
-    data = _load_weapons_json(lang)
-    entry = data.get(str(weapon_id))
-    if entry and "name" in entry:
-        return entry["name"]
-    # Fallback : ID film direct (uint64 → nom depuis WEAPON_ID_MAP)
-    try:
-        from src.analysis.weapon_parser import WEAPON_INT_TO_NAME
+    from src.analysis._weapon_data import resolve_weapon_display
 
-        name = WEAPON_INT_TO_NAME.get(weapon_id)
-        if name:
-            return name.split(" (")[0]  # retire "(alt)", "(state-block)"
-    except Exception:
-        pass
-    return f"weapon_{weapon_id}"
+    return resolve_weapon_display(weapon_id, lang) or f"weapon_{weapon_id}"
 
 
 def get_weapon_faction(weapon_id: int, lang: str = "fr") -> str:
-    """Retourne la faction d'une arme, ou ``Unknown``."""
+    """Retourne la faction d'une arme, ou ``Unknown``.
+
+    Source : weapons_{lang}.json (les IDs sont des clés API courtes,
+    différentes des IDs filmshell — lookup sur str(weapon_id)).
+    """
     data = _load_weapons_json(lang)
     entry = data.get(str(weapon_id))
     if entry and "faction" in entry:
         return entry["faction"]
     return "Unknown"
-
-
-def get_all_weapon_ids(lang: str = "fr") -> list[int]:
-    """Retourne la liste de tous les weapon_id connus."""
-    data = _load_weapons_json(lang)
-    result: list[int] = []
-    for key in data:
-        try:
-            result.append(int(key))
-        except ValueError:
-            continue
-    return result
-
-
-def get_weapon_ids_by_faction(faction: str, lang: str = "fr") -> list[int]:
-    """Retourne les weapon_id d'une faction donnée (ex : 'UNSC')."""
-    data = _load_weapons_json(lang)
-    result: list[int] = []
-    for key, entry in data.items():
-        if entry.get("faction") == faction:
-            try:
-                result.append(int(key))
-            except ValueError:
-                continue
-    return result
-
-
-def translate_weapon_name(name: str, lang: str = "fr") -> str:
-    """Traduit un nom canonique filmshell EN vers la langue demandée.
-
-    Applique d'abord WEAPON_FUSION_MAP, puis WEAPON_NAME_FR si lang='fr'.
-    Retourne le nom original si aucune traduction trouvée.
-    """
-    from src.analysis._weapon_data import WEAPON_FUSION_MAP, WEAPON_NAME_FR
-
-    canonical = WEAPON_FUSION_MAP.get(name, name)
-    if lang == "fr":
-        return WEAPON_NAME_FR.get(canonical, canonical)
-    return canonical

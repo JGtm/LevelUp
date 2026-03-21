@@ -20,7 +20,6 @@ from src.analysis import mark_firefight
 from src.app.data_loader import (
     default_identity_from_secrets,
     propagate_identity_env,
-    resolve_xuid_input,
 )
 from src.ui import (
     display_name_from_xuid,
@@ -82,35 +81,20 @@ def validate_and_fix_db_path(db_path: str, default_db: str) -> str:
     return db_path
 
 
-def resolve_xuid_from_input(xuid_input: str, db_path: str) -> str:
-    """Résout le XUID depuis l'entrée utilisateur.
-
-    Délègue à ``data_loader.resolve_xuid_input`` (implémentation unique).
-    """
-    return resolve_xuid_input(xuid_input, db_path)
-
-
 def _load_spartan_id_from_db(db_path: str, xuid: str) -> str | None:
-    """Charge le dernier spartan_id depuis career_progression.
+    """Charge le dernier spartan_id depuis career_progression via le repository.
 
     Retourne None si la colonne n'existe pas, la table est vide, ou toute erreur.
     """
     try:
-        from src.utils.db import duckdb_read_only
+        from src.ui._cache_core import get_cached_repository_st
 
-        with duckdb_read_only(db_path) as conn:
-            row = conn.execute(
-                """
-                SELECT spartan_id FROM career_progression
-                WHERE xuid = ?
-                ORDER BY recorded_at DESC LIMIT 1
-                """,
-                (xuid,),
-            ).fetchone()
-            if row and row[0] is not None:
-                return str(row[0]).strip() or None
+        career = get_cached_repository_st(db_path, xuid).load_career_data()
+        if career:
+            val = career.get("spartan_id")
+            return str(val).strip() or None if val is not None else None
     except Exception:
-        pass
+        logger.debug("_load_spartan_id_from_db: échec pour xuid=%s", xuid, exc_info=True)
     return None
 
 
@@ -125,8 +109,8 @@ def load_profile_api(
     Returns:
         (api_appearance, error_message)
     """
-    api_enabled = bool(getattr(settings, "profile_api_enabled", False))
-    api_refresh_h = int(getattr(settings, "profile_api_auto_refresh_hours", 0) or 0)
+    api_enabled = settings.profile_api_enabled
+    api_refresh_h = settings.profile_api_auto_refresh_hours
     api_app = None
     api_err = None
 
@@ -181,7 +165,7 @@ def _needs_halo_auth(url: str) -> bool:
     )
 
 
-def render_profile_hero(
+def render_profile_hero(  # noqa: C901
     xuid: str,
     settings: AppSettings,
     api_app: object | None,
@@ -194,51 +178,58 @@ def render_profile_hero(
         else t("app_player_default")
     )
 
-    dl_enabled = bool(getattr(settings, "profile_assets_download_enabled", False)) or bool(
-        getattr(settings, "profile_api_enabled", False)
-    )
-    refresh_h = int(getattr(settings, "profile_assets_auto_refresh_hours", 0) or 0)
+    dl_enabled = settings.profile_assets_download_enabled or settings.profile_api_enabled
+    refresh_h = settings.profile_assets_auto_refresh_hours
 
     # Valeurs manuelles (prioritaires) / sinon auto depuis API
-    banner_value = str(getattr(settings, "profile_banner", "") or "").strip()
-    emblem_value = str(getattr(settings, "profile_emblem", "") or "").strip() or (
+    banner_value = settings.profile_banner.strip()
+    emblem_value = settings.profile_emblem.strip() or (
         getattr(api_app, "emblem_image_url", None) if api_app else ""
     )
-    backdrop_value = str(getattr(settings, "profile_backdrop", "") or "").strip() or (
+    backdrop_value = settings.profile_backdrop.strip() or (
         getattr(api_app, "backdrop_image_url", None) if api_app else ""
     )
-    nameplate_value = str(getattr(settings, "profile_nameplate", "") or "").strip() or (
+    nameplate_value = settings.profile_nameplate.strip() or (
         getattr(api_app, "nameplate_image_url", None) if api_app else ""
     )
-    service_tag_value = str(getattr(settings, "profile_service_tag", "") or "").strip() or (
+    service_tag_value = settings.profile_service_tag.strip() or (
         getattr(api_app, "service_tag", None) if api_app else ""
     )
-    rank_label_value = str(getattr(settings, "profile_rank_label", "") or "").strip() or (
+    rank_label_value = settings.profile_rank_label.strip() or (
         getattr(api_app, "rank_label", None) if api_app else ""
     )
-    rank_subtitle_value = str(getattr(settings, "profile_rank_subtitle", "") or "").strip() or (
+    rank_subtitle_value = settings.profile_rank_subtitle.strip() or (
         getattr(api_app, "rank_subtitle", None) if api_app else ""
     )
     rank_icon_value = (getattr(api_app, "rank_image_url", None) if api_app else "") or ""
     adornment_value = (getattr(api_app, "adornment_image_url", None) if api_app else "") or ""
 
-    # Fallback : adornment_path issu de la dernière sync career rank (DB)
+    # Fallback : adornment_path + rank_label issus de la dernière sync career rank (DB)
     # Utile quand l'API profile est désactivée ou le cache froid.
-    if not adornment_value and db_path and str(xuid or "").strip():
+    _needs_db_career = (not adornment_value or not rank_label_value) and db_path and str(xuid or "").strip()
+    if _needs_db_career:
         with contextlib.suppress(Exception):
-            from src.utils.db import duckdb_read_only
+            from src.ui._cache_core import get_cached_repository_st
+            from src.ui.career_ranks import format_career_rank_label_fr
+            from src.ui.career_ranks import get_rank_info as _get_meta_rank_info
 
-            with duckdb_read_only(db_path) as _conn:
-                _row = _conn.execute(
-                    "SELECT adornment_path FROM career_progression "
-                    "WHERE xuid = ? AND adornment_path IS NOT NULL "
-                    "ORDER BY recorded_at DESC LIMIT 1",
-                    (str(xuid).strip(),),
-                ).fetchone()
-                if _row and _row[0]:
-                    adornment_value = str(_row[0]).strip()
+            career = get_cached_repository_st(db_path, str(xuid).strip()).load_career_data()
+            if career:
+                if not adornment_value and career.get("adornment_path"):
+                    adornment_value = str(career["adornment_path"]).strip()
+                if not rank_label_value and career.get("rank"):
+                    _meta = _get_meta_rank_info(int(career["rank"]))
+                    if _meta:
+                        rank_label_value = _meta.full_label_fr or ""
+                    if not rank_label_value:
+                        rank_label_value = format_career_rank_label_fr(
+                            tier=str(career.get("rank_tier") or ""),
+                            title=str(career.get("rank_name") or ""),
+                            grade=None,
+                        )
 
-    # Tokens Halo si nécessaire
+    # Tokens Halo si nécessaire (gamertag transmis pour les refresh tokens per-player)
+    _gamertag_for_tokens = str(me_name or "").strip() or None
     if (
         dl_enabled
         and (not str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip())
@@ -249,7 +240,7 @@ def render_profile_hero(
             or _needs_halo_auth(adornment_value)
         )
     ):
-        ensure_spnkr_tokens(timeout_seconds=12)
+        ensure_spnkr_tokens(timeout_seconds=12, db_path=db_path, gamertag=_gamertag_for_tokens)
 
     # Résolution des chemins locaux
     banner_path = ensure_local_image_path(
@@ -313,10 +304,7 @@ def render_profile_hero(
             banner_path=banner_path,
             backdrop_path=backdrop_path,
             nameplate_path=nameplate_path,
-            id_badge_text_color=str(
-                getattr(settings, "profile_id_badge_text_color", "") or ""
-            ).strip()
-            or None,
+            id_badge_text_color=settings.profile_id_badge_text_color.strip() or None,
             emblem_path=emblem_path,
             spartan_id=spartan_id_value,
         ),

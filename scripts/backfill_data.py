@@ -73,11 +73,11 @@ setup_script_logging(sync_log=True)
 
 logger = logging.getLogger(__name__)
 
-_SHARED_DB = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
-
 
 def _open_shared_conn() -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(str(_SHARED_DB))
+    from src.utils.paths import get_shared_matches_path
+
+    return duckdb.connect(str(get_shared_matches_path()))
 
 
 def main() -> int:  # noqa: C901, PLR0912, PLR0915
@@ -306,6 +306,83 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             logger.error(f"Erreur --bot-detection : {e}")
         return 0
 
+    # --aliases-from-events : backfille xuid_aliases depuis highlight_events.raw_json
+    _aliases_from_events = getattr(args, "aliases_from_events", False)
+    _force_aliases = getattr(args, "force_aliases_from_events", False)
+    if _aliases_from_events or _force_aliases:
+        try:
+            from scripts.backfill.strategies import backfill_xuid_aliases_from_events
+
+            shared_conn = _open_shared_conn()
+            n = backfill_xuid_aliases_from_events(shared_conn, force=_force_aliases)
+            shared_conn.close()
+            logger.info(f"Aliases depuis events : {n} alias insérés/mis à jour")
+        except Exception as e:
+            logger.error(f"Erreur --aliases-from-events : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
+    # --dominance : calcule dominance_flag depuis medals_earned + match_participants
+    _dominance = getattr(args, "dominance", False) or getattr(args, "force_dominance", False)
+    _force_dom = getattr(args, "force_dominance", False)
+    if _dominance:
+        try:
+            from src.data.dominance_backfill import compute_dominance_for_player
+            from src.ui.multiplayer import list_duckdb_v4_players
+
+            _SHARED_DB_DOM = REPO_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+            if not _SHARED_DB_DOM.exists():
+                logger.error("shared_matches.duckdb introuvable pour --dominance")
+                return 1
+
+            shared_conn = duckdb.connect(str(_SHARED_DB_DOM), read_only=True)
+            _players_list = list_duckdb_v4_players()
+            total_dom_updated = 0
+
+            for _gt_info in _players_list:
+                _gt = _gt_info.gamertag
+                _db = _gt_info.db_path
+                if not _db.exists():
+                    continue
+                try:
+                    _pconn = duckdb.connect(str(_db), read_only=False)
+                    if _gt_info.xuid:
+                        _xuid = _gt_info.xuid
+                    else:
+                        _xuid_row = _pconn.execute(
+                            "SELECT value FROM sync_meta WHERE key = 'xuid' LIMIT 1"
+                        ).fetchone()
+                        if not _xuid_row:
+                            _pconn.close()
+                            continue
+                        _xuid = _xuid_row[0]
+
+                    result = compute_dominance_for_player(
+                        _pconn, shared_conn, _xuid, force=_force_dom
+                    )
+                    total_dom_updated += result["processed"]
+                    logger.info(
+                        "[%s] dominance: %d matchs traités (domination: %d, humiliation: %d)",
+                        _gt,
+                        result["processed"],
+                        result["domination"],
+                        result["humiliation"],
+                    )
+                    _pconn.close()
+                except Exception as _e:
+                    logger.warning("[%s] Erreur --dominance : %s", _gt, _e)
+
+            shared_conn.close()
+            logger.info(
+                "Dominance terminée : %d ligne(s) mise(s) à jour au total",
+                total_dom_updated,
+            )
+        except Exception as e:
+            logger.error("Erreur --dominance : %s", e)
+        return 0
+
     # --enable-pve-citations : active les citations PVE désactivées dans metadata.duckdb
     enable_pve_citations = getattr(args, "enable_pve_citations", False)
     if enable_pve_citations:
@@ -358,6 +435,43 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             logger.info(f"xp_total recalculé pour {total_updated} snapshot(s) au total")
         except Exception as e:
             logger.error(f"Erreur --xp-total : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
+    # --avenger / --force-avenger : médaille Vengeur (revenge kill) — local, sans API
+    _avenger = getattr(args, "avenger", False) or getattr(args, "force_avenger", False)
+    _force_avenger = getattr(args, "force_avenger", False)
+    if _avenger:
+        try:
+            from scripts.backfill.strategies import backfill_avenger_medal
+
+            shared_conn = _open_shared_conn()
+            n = backfill_avenger_medal(shared_conn, force=_force_avenger)
+            shared_conn.close()
+            logger.info(f"Vengeur : {n} médaille(s) insérée(s)/mise(s) à jour")
+        except Exception as e:
+            logger.error(f"Erreur --avenger : {e}")
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
+    # --medal-metadata : peuple medal_definitions dans metadata.duckdb (one-shot)
+    _medal_metadata = getattr(args, "medal_metadata", False)
+    if _medal_metadata:
+        try:
+            from scripts.populate_medal_metadata import populate_medal_definitions
+
+            _force_mm = getattr(args, "force", False)
+            n = populate_medal_definitions(
+                dry_run=getattr(args, "dry_run", False),
+                force=_force_mm,
+            )
+            logger.info(f"Medal metadata : {n} médaille(s) insérée(s)/mise(s) à jour")
+        except Exception as e:
+            logger.error(f"Erreur --medal-metadata : {e}")
             import traceback
 
             traceback.print_exc()
@@ -506,14 +620,32 @@ def _print_totals(totals: dict, scope: object) -> None:  # noqa: C901, PLR0912
     has_force = any(getattr(scope, f, False) for f in dir(scope) if f.startswith("force_"))
     # scope_is_default : True si aucun flag "spécifique" n'est activé (= backfill standard)
     _specific_fields = [
-        "accuracy", "shots", "enemy_mmr", "assets", "participants",
-        "participants_scores", "participants_kda", "participants_shots",
-        "participants_damage", "participants_avg_life", "killer_victim",
-        "end_time", "sessions", "citations", "teammates_sig",
-        "participants_enrich", "weapons", "team_scores", "pve_stats",
+        "accuracy",
+        "shots",
+        "enemy_mmr",
+        "assets",
+        "participants",
+        "participants_scores",
+        "participants_kda",
+        "participants_shots",
+        "participants_damage",
+        "participants_avg_life",
+        "killer_victim",
+        "end_time",
+        "sessions",
+        "citations",
+        "teammates_sig",
+        "participants_enrich",
+        "weapons",
+        "team_scores",
+        "pve_stats",
     ]
     scope_is_default = not any(getattr(scope, f, False) for f in _specific_fields)
-    missing_label = "Matchs sélectionnés (force)" if has_force and missing == checked else "Matchs avec données manquantes"
+    missing_label = (
+        "Matchs sélectionnés (force)"
+        if has_force and missing == checked
+        else "Matchs avec données manquantes"
+    )
     logger.info(f"Matchs vérifiés: {checked}")
     logger.info(f"{missing_label}: {missing}")
     # Types "core" : affichés seulement si demandés ou si valeur > 0

@@ -249,30 +249,23 @@ class TestEnrichForTable:
 class TestExplorerData:
     """Tests de l'accès données Explorer."""
 
-    def test_shared_db_path_derivation(self) -> None:
-        from src.ui.pages.explorer_data import _shared_db_path
-
-        path = _shared_db_path("/data/players/TestGT/stats.duckdb")
-        assert path.name == "shared_matches.duckdb"
-        assert "warehouse" in str(path)
-
     def test_load_is_with_friends_empty(self) -> None:
         from src.ui.pages.explorer_data import load_is_with_friends
 
-        # Pas de match_ids → dict vide
-        assert load_is_with_friends("nonexistent.duckdb", []) == {}
+        # Pas de match_ids → dict vide (sans appel DB)
+        assert load_is_with_friends("nonexistent.duckdb", "xuid123", []) == {}
 
     def test_get_all_gamertags_file_missing(self) -> None:
         from src.ui.pages.explorer_data import get_all_gamertags
 
-        # DB inexistante → liste vide (avec warning)
-        result = get_all_gamertags("/nonexistent/path/stats.duckdb")
+        # DB inexistante → liste vide (dégradation gracieuse)
+        result = get_all_gamertags("/nonexistent/path/stats.duckdb", "xuid123")
         assert result == []
 
     def test_resolve_gamertag_file_missing(self) -> None:
         from src.ui.pages.explorer_data import resolve_gamertag_to_xuid
 
-        result = resolve_gamertag_to_xuid("/nonexistent/path/stats.duckdb", "TestGT")
+        result = resolve_gamertag_to_xuid("/nonexistent/path/stats.duckdb", "xuid123", "TestGT")
         assert result is None
 
     def test_load_common_matches_file_missing(self) -> None:
@@ -315,7 +308,7 @@ class TestMatchTableHTML:
         assert "Test Player" in html
         assert "gamertag=Test" in html
         assert "<a " in html
-        assert "target='_blank'" in html
+        assert "target='_self'" in html
 
     def test_gamertag_link_escapes_html(self) -> None:
         from src.ui.pages.match_table_html import gamertag_link
@@ -396,8 +389,43 @@ class TestMatchTableHTML:
         html = render_match_table_html(df, waypoint_player="TestGT")
         assert "<table" in html
         assert "os-table" in html
+        assert "os-table-wrap--map-hover" in html
         assert "Aquarius" in html
         assert "abc123" in html
+
+    def test_render_match_table_html_page_params(self) -> None:
+        from src.ui.pages.match_table_html import render_match_table_html
+
+        df = pl.DataFrame(
+            {
+                "match_id": ["abc123"],
+                "start_time": [datetime(2025, 1, 10, 14, 0)],
+                "start_time_fr": ["10/01/2025 14:00"],
+                "map_name": ["Aquarius"],
+                "playlist_fr": ["Quick Play"],
+                "mode_ui": ["Slayer"],
+                "outcome": [2],
+                "outcome_label": ["Victoire"],
+                "score": ["50 - 40"],
+                "performance": [85],
+                "team_mmr": [1200.0],
+                "enemy_mmr": [1150.0],
+                "delta_mmr": [50.0],
+                "kda": [2.5],
+                "kills": [15],
+                "deaths": [6],
+                "max_killing_spree": [5],
+                "headshot_kills": [8],
+                "average_life_mmss": ["1:30"],
+                "assists": [3],
+                "accuracy": [0.45],
+                "ratio": [2.5],
+            }
+        )
+
+        html = render_match_table_html(df, page_params={"gamertag": "TestGT"})
+
+        assert "gamertag=TestGT" in html
 
     def test_render_match_table_html_empty(self) -> None:
         from src.ui.pages.match_table_html import render_match_table_html
@@ -485,7 +513,7 @@ class TestMatchTableHTML:
         match_table_html._build_map_url_index.cache_clear()
 
     def test_render_map_name_cell_with_thumb(self) -> None:
-        """_render_cell avec map_name connu → contient data-thumb-url et map-cell."""
+        """_render_cell avec map_name connu → contient map-hover et map-popup."""
         from datetime import datetime
         from unittest.mock import patch
 
@@ -521,6 +549,6 @@ class TestMatchTableHTML:
         )
         with patch.object(match_table_html, "_build_map_url_index", return_value=fake_index):
             html = match_table_html.render_match_table_html(df, waypoint_player="TestGT")
-        assert "map-cell" in html
-        assert "data-thumb-url" in html
+        assert "map-hover" in html
+        assert "map-popup" in html
         assert "Aquarius" in html

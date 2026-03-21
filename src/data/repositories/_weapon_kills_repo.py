@@ -1,18 +1,25 @@
 """Mixin – requêtes weapon_kills (shared_matches.duckdb).
 
-Schéma v5.7 per-kill : (match_id, xuid, time_ms, weapon_id, delta_ms,
-confidence, swap_detected, delayed_damage).
-weapon_id est un UBIGINT (uint64 filmshell), NULL si non résolu.
+Schéma v5.7+ per-kill : (match_id, xuid, time_ms, weapon_id, delta_ms,
+confidence, swap_detected, delayed_damage, reconciled_as, attribution_path,
+player_index).
+weapon_id est un UBIGINT (uint64 film), NULL si non résolu.
+reconciled_as stocke le sentinel API sans écraser weapon_id (v2).
 """
 
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import duckdb
 import polars as pl
 
 from src.data.repositories._arrow_bridge import result_to_polars
+from src.utils.xuid import lookup_xuid_for_gamertag
+
+if TYPE_CHECKING:
+    from src.analysis._kill_attribution import KillAttribution
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +42,11 @@ class WeaponKillsMixin:
         try:
             conn = self._get_connection()
             result = conn.execute(
-                "SELECT xuid, weapon_id, COUNT(*)::INTEGER AS kills "
-                "FROM shared.weapon_kills "
-                "WHERE match_id = ? AND weapon_id IS NOT NULL "
-                "GROUP BY xuid, weapon_id "
+                "SELECT xuid, effective_weapon_id AS weapon_id, "
+                "COUNT(*)::INTEGER AS kills "
+                "FROM shared.v_weapon_kills "
+                "WHERE match_id = ? AND effective_weapon_id IS NOT NULL "
+                "GROUP BY xuid, effective_weapon_id "
                 "ORDER BY kills DESC",
                 (match_id,),
             )
@@ -57,11 +65,12 @@ class WeaponKillsMixin:
             conn = self._get_connection()
             rows = conn.execute(
                 "SELECT xuid, weapon_id, kills FROM ("
-                "  SELECT xuid, weapon_id, COUNT(*)::INTEGER AS kills,"
+                "  SELECT xuid, effective_weapon_id AS weapon_id, "
+                "    COUNT(*)::INTEGER AS kills,"
                 "    ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn"
-                "  FROM shared.weapon_kills"
-                "  WHERE match_id = ? AND weapon_id IS NOT NULL"
-                "  GROUP BY xuid, weapon_id"
+                "  FROM shared.v_weapon_kills"
+                "  WHERE match_id = ? AND effective_weapon_id IS NOT NULL"
+                "  GROUP BY xuid, effective_weapon_id"
                 ") sub WHERE rn = 1",
                 (match_id,),
             ).fetchall()
@@ -85,20 +94,22 @@ class WeaponKillsMixin:
             if match_ids:
                 placeholders = ", ".join("?" for _ in match_ids)
                 result = conn.execute(
-                    f"SELECT match_id, weapon_id, COUNT(*)::INTEGER AS kills "
-                    f"FROM shared.weapon_kills "
+                    f"SELECT match_id, effective_weapon_id AS weapon_id, "
+                    f"COUNT(*)::INTEGER AS kills "
+                    f"FROM shared.v_weapon_kills "
                     f"WHERE xuid = ? AND match_id IN ({placeholders}) "
-                    f"AND weapon_id IS NOT NULL "
-                    f"GROUP BY match_id, weapon_id "
+                    f"AND effective_weapon_id IS NOT NULL "
+                    f"GROUP BY match_id, effective_weapon_id "
                     f"ORDER BY match_id, kills DESC",
                     [xuid, *match_ids],
                 )
             else:
                 result = conn.execute(
-                    "SELECT match_id, weapon_id, COUNT(*)::INTEGER AS kills "
-                    "FROM shared.weapon_kills "
-                    "WHERE xuid = ? AND weapon_id IS NOT NULL "
-                    "GROUP BY match_id, weapon_id "
+                    "SELECT match_id, effective_weapon_id AS weapon_id, "
+                    "COUNT(*)::INTEGER AS kills "
+                    "FROM shared.v_weapon_kills "
+                    "WHERE xuid = ? AND effective_weapon_id IS NOT NULL "
+                    "GROUP BY match_id, effective_weapon_id "
                     "ORDER BY match_id, kills DESC",
                     (xuid,),
                 )
@@ -122,25 +133,80 @@ class WeaponKillsMixin:
             if match_ids:
                 placeholders = ", ".join("?" for _ in match_ids)
                 result = conn.execute(
-                    f"SELECT weapon_id, COUNT(*)::INTEGER AS total_kills "
-                    f"FROM shared.weapon_kills "
+                    f"SELECT effective_weapon_id AS weapon_id, "
+                    f"COUNT(*)::INTEGER AS total_kills "
+                    f"FROM shared.v_weapon_kills "
                     f"WHERE xuid = ? AND match_id IN ({placeholders}) "
-                    f"AND weapon_id IS NOT NULL "
-                    f"GROUP BY weapon_id ORDER BY total_kills DESC",
+                    f"AND effective_weapon_id IS NOT NULL "
+                    f"GROUP BY effective_weapon_id ORDER BY total_kills DESC",
                     [xuid, *match_ids],
                 )
             else:
                 result = conn.execute(
-                    "SELECT weapon_id, COUNT(*)::INTEGER AS total_kills "
-                    "FROM shared.weapon_kills "
-                    "WHERE xuid = ? AND weapon_id IS NOT NULL "
-                    "GROUP BY weapon_id ORDER BY total_kills DESC",
+                    "SELECT effective_weapon_id AS weapon_id, "
+                    "COUNT(*)::INTEGER AS total_kills "
+                    "FROM shared.v_weapon_kills "
+                    "WHERE xuid = ? AND effective_weapon_id IS NOT NULL "
+                    "GROUP BY effective_weapon_id ORDER BY total_kills DESC",
                     (xuid,),
                 )
             return result_to_polars(result)
         except Exception as exc:
             logger.debug("weapon_kills_agg player %s : %s", xuid, exc)
             return pl.DataFrame(schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32})
+
+    def load_total_kills_for_player(self, xuid: str, match_ids: list[str]) -> int:
+        """Retourne le total de kills API (match_participants) pour un joueur sur des matchs."""
+        try:
+            conn = self._get_connection()
+            xuid_str = str(xuid).strip()
+            placeholders = ", ".join("?" * len(match_ids))
+            row = conn.execute(
+                f"SELECT COALESCE(SUM(kills), 0) "
+                f"FROM shared.match_participants "
+                f"WHERE xuid = ? AND match_id IN ({placeholders})",
+                [xuid_str, *match_ids],
+            ).fetchone()
+            return int(row[0]) if row else 0
+        except Exception as exc:
+            logger.debug("load_total_kills_for_player xuid=%s : %s", xuid, exc)
+            return 0
+
+    def load_grenade_melee_kills(
+        self, xuid: str, match_ids: list[str] | None = None
+    ) -> tuple[int, int]:
+        """Retourne (grenade_kills, melee_kills) depuis shared.match_participants.
+
+        Agrège sur un ensemble de matchs si match_ids est fourni, sinon sur tous
+        les matchs du joueur. Utilisé par l'UI pour enrichir les tableaux d'armes.
+
+        Returns:
+            Tuple (grenade_kills, melee_kills).
+        """
+        try:
+            conn = self._get_connection()
+            xuid_str = str(xuid).strip()
+            if match_ids:
+                placeholders = ", ".join("?" * len(match_ids))
+                row = conn.execute(
+                    f"SELECT COALESCE(SUM(grenade_kills), 0), "
+                    f"COALESCE(SUM(melee_kills), 0) "
+                    f"FROM shared.match_participants "
+                    f"WHERE xuid = ? AND match_id IN ({placeholders})",
+                    [xuid_str, *match_ids],
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT COALESCE(SUM(grenade_kills), 0), "
+                    "COALESCE(SUM(melee_kills), 0) "
+                    "FROM shared.match_participants WHERE xuid = ?",
+                    [xuid_str],
+                ).fetchone()
+            if row:
+                return int(row[0]), int(row[1])
+        except Exception as exc:
+            logger.debug("load_grenade_melee_kills xuid=%s : %s", xuid, exc)
+        return 0, 0
 
     # ── Write operations (accept explicit connection) ────────────────────
 
@@ -162,6 +228,8 @@ class WeaponKillsMixin:
             return 0
         new_good = sum(1 for r in kill_rows if r.get("weapon_id") is not None)
         if new_good < len(kill_rows):
+            # weapon_kills brute légitime : les méthodes insert_* et delete_* opèrent
+            # sur la table source. v_weapon_kills est réservée aux lectures.
             existing_good = conn.execute(
                 "SELECT COUNT(*) FROM weapon_kills WHERE match_id = ? AND xuid = ?"
                 " AND weapon_id IS NOT NULL",
@@ -203,6 +271,94 @@ class WeaponKillsMixin:
             "insert_weapon_kill_rows %s %s : %d lignes", match_id[:8], xuid[:8], len(kill_rows)
         )
         return len(kill_rows)
+
+    @staticmethod
+    def insert_weapon_kill_rows_v2(
+        conn: duckdb.DuckDBPyConnection,
+        match_id: str,
+        attributions: list[KillAttribution],
+    ) -> int:
+        """Insertion batch v2 avec reconciled_as, attribution_path, player_index.
+
+        Idempotent : DELETE + INSERT pour match_id.
+        Quality gate : n'écrase pas si existing_good > new_good.
+        """
+        if not attributions:
+            return 0
+
+        new_good = sum(1 for a in attributions if a.weapon_id is not None)
+        existing_good = conn.execute(
+            "SELECT COUNT(*) FROM weapon_kills WHERE match_id = ? AND weapon_id IS NOT NULL",
+            (match_id,),
+        ).fetchone()[0]
+        if existing_good > 0 and new_good <= existing_good:
+            logger.debug(
+                "insert_v2 %s : skip (new_good=%d <= existing_good=%d)",
+                match_id[:8],
+                new_good,
+                existing_good,
+            )
+            return 0
+
+        if existing_good > 0:
+            logger.info(
+                "insert_v2 %s : replacing %d existing with %d new (better quality)",
+                match_id[:8],
+                existing_good,
+                new_good,
+            )
+        conn.execute("DELETE FROM weapon_kills WHERE match_id = ?", (match_id,))
+        conn.executemany(
+            "INSERT INTO weapon_kills "
+            "(match_id, xuid, time_ms, weapon_id, delta_ms, confidence, "
+            " swap_detected, delayed_damage, reconciled_as, attribution_path, "
+            " player_index) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    match_id,
+                    a.xuid,
+                    a.time_ms,
+                    a.weapon_id,
+                    a.delta_ms,
+                    a.confidence,
+                    a.swap_detected,
+                    a.delayed_damage,
+                    a.reconciled_as,
+                    a.attribution_path,
+                    a.player_index,
+                )
+                for a in attributions
+            ],
+        )
+        # Quality threshold logging (Task H)
+        total = len(attributions)
+        null_wid = sum(1 for a in attributions if a.weapon_id is None)
+        formula_a_null = sum(
+            1
+            for a in attributions
+            if a.weapon_id is None and getattr(a, "attribution_path", "") == "formula_a"
+        )
+        null_ratio = null_wid / total if total else 0.0
+        if null_ratio > 0.5:
+            logger.warning(
+                "insert_v2 %s : %d/%d weapon_id=NULL (%.0f%%) — "
+                "%d via formula_a ; données partielles",
+                match_id[:8],
+                null_wid,
+                total,
+                null_ratio * 100,
+                formula_a_null,
+            )
+        else:
+            logger.debug(
+                "insert_v2 %s : %d lignes (%d joueurs, %d NULL wid)",
+                match_id[:8],
+                total,
+                len({a.xuid for a in attributions}),
+                null_wid,
+            )
+        return total
 
     @staticmethod
     def mark_weapon_backfill_done(
@@ -290,12 +446,8 @@ class WeaponKillsMixin:
         conn: duckdb.DuckDBPyConnection,
         gamertag: str,
     ) -> str | None:
-        """Résout un gamertag vers son xuid."""
-        row = conn.execute(
-            "SELECT xuid FROM xuid_aliases WHERE gamertag ILIKE ? LIMIT 1",
-            (gamertag,),
-        ).fetchone()
-        return str(row[0]) if row else None
+        """Résout un gamertag vers son xuid via v_gamertag_lookup."""
+        return lookup_xuid_for_gamertag(conn, gamertag)
 
     @staticmethod
     def load_player_kills_for_match(
@@ -311,8 +463,9 @@ class WeaponKillsMixin:
         """
         from src.analysis.weapon_parser import GRENADE_MEDALS, MELEE_MEDALS
 
+        # highlight_events.gamertag supprimé en v6 (migration drop_highlight_events_gamertag)
         kill_rows = conn.execute(
-            "SELECT he.time_ms, he.gamertag, he.xuid "
+            "SELECT he.time_ms, NULL AS gamertag, he.xuid "
             "FROM highlight_events he "
             "WHERE he.match_id = ? AND he.xuid = ? "
             "AND he.event_type = 'kill' "
@@ -353,7 +506,7 @@ class WeaponKillsMixin:
         conn: duckdb.DuckDBPyConnection,
         match_id: str,
     ) -> dict[str, list[dict]]:
-        """Charge kills + médailles de TOUS les joueurs en 2 requêtes.
+        """Charge kills + médailles de TOUS les joueurs en un seul LEFT JOIN DuckDB.
 
         Remplace N appels à load_player_kills_for_match pour un traitement batch.
 
@@ -363,42 +516,41 @@ class WeaponKillsMixin:
         """
         from src.analysis.weapon_parser import GRENADE_MEDALS, MELEE_MEDALS
 
+        # highlight_events.gamertag supprimé en v6 (migration drop_highlight_events_gamertag)
         try:
-            kill_rows = conn.execute(
-                "SELECT he.time_ms, he.gamertag, he.xuid "
-                "FROM highlight_events he "
-                "WHERE he.match_id = ? AND he.event_type = 'kill' "
-                "ORDER BY he.xuid, he.time_ms",
-                (match_id,),
-            ).fetchall()
-
-            medal_rows = conn.execute(
-                "SELECT he.xuid, he.time_ms, "
-                "json_extract_string(he.raw_json, '$.medal_name') AS medal_name "
-                "FROM highlight_events he "
-                "WHERE he.match_id = ? AND he.event_type = 'medal' "
-                "AND json_extract_string(he.raw_json, '$.is_medal') = 'true' "
-                "ORDER BY he.xuid, he.time_ms",
-                (match_id,),
+            rows = conn.execute(
+                """
+                SELECT
+                    k.time_ms,
+                    k.xuid,
+                    list(m.medal_name) FILTER (WHERE m.medal_name IS NOT NULL) AS medals_nearby
+                FROM highlight_events k
+                LEFT JOIN (
+                    SELECT
+                        xuid,
+                        time_ms,
+                        json_extract_string(raw_json, '$.medal_name') AS medal_name
+                    FROM highlight_events
+                    WHERE match_id = ? AND event_type = 'medal'
+                      AND json_extract_string(raw_json, '$.is_medal') = 'true'
+                ) m ON m.xuid = k.xuid AND ABS(m.time_ms - k.time_ms) <= 500
+                WHERE k.match_id = ? AND k.event_type = 'kill'
+                GROUP BY k.xuid, k.time_ms
+                ORDER BY k.xuid, k.time_ms
+                """,
+                (match_id, match_id),
             ).fetchall()
         except Exception as exc:
             logger.debug("load_all_kills_for_match %s : %s", match_id[:8], exc)
             return {}
 
-        medals_by_xuid: dict[str, list[tuple[int, str]]] = {}
-        for xuid, t, name in medal_rows:
-            if name:
-                medals_by_xuid.setdefault(xuid, []).append((t, name))
-
         result: dict[str, list[dict]] = {}
-        for time_ms, gt, xuid in kill_rows:
-            nearby = [
-                name for (mt, name) in medals_by_xuid.get(xuid, []) if abs(mt - time_ms) <= 500
-            ]
+        for time_ms, xuid, medals_raw in rows:
+            nearby: list[str] = medals_raw if medals_raw else []
             result.setdefault(xuid, []).append(
                 {
                     "time_ms": time_ms,
-                    "gamertag": gt,
+                    "gamertag": None,
                     "xuid": xuid,
                     "medals_nearby": nearby,
                     "is_melee": any(m in MELEE_MEDALS for m in nearby),
@@ -408,7 +560,7 @@ class WeaponKillsMixin:
         logger.debug(
             "load_all_kills_for_match %s : %d kills pour %d joueurs",
             match_id[:8],
-            len(kill_rows),
+            sum(len(v) for v in result.values()),
             len(result),
         )
         return result

@@ -12,12 +12,17 @@ from typing import Any
 from src.data.domain.refdata import Outcome
 from src.ui.i18n.viz import viz_t
 
+# Seuil de kills pour le badge Top Gun
+TOP_GUN_KILL_THRESHOLD = 10
+
 
 @dataclass(frozen=True)
 class MatchImpactEvent:
     """Événement d'impact identifié dans un match unique."""
 
-    event_type: str  # "first_blood", "clutch_finisher", "last_group_kill", "first_group_death"
+    event_type: (
+        str  # "first_blood", "clutch_finisher", "last_group_kill", "first_group_death", "top_gun"
+    )
     xuid: str
     gamertag: str
     time_ms: int
@@ -32,23 +37,51 @@ def get_impact_labels(lang: str = "fr") -> dict[str, tuple[str, str]]:
         "last_casualty": ("💀", viz_t("impact_last_casualty", lang)),
         "last_group_kill": ("🐌", viz_t("impact_last_group_kill", lang)),
         "first_group_death": ("🪦", viz_t("impact_first_group_death", lang)),
+        "top_gun": ("🔫", viz_t("impact_top_gun", lang)),
     }
 
 
-def compute_single_match_impact(
+def _find_top_gun_event(
+    kills: list[dict[str, Any]],
+    me_xuid: str,
+) -> MatchImpactEvent | None:
+    """Retourne l'événement Top Gun (premier à atteindre TOP_GUN_KILL_THRESHOLD kills), ou None."""
+    kills_sorted = sorted(kills, key=lambda e: int(e["time_ms"]))
+    kill_count_by_player: dict[str, int] = {}
+    threshold_kill_by_player: dict[str, dict[str, Any]] = {}
+    for k in kills_sorted:
+        xu = str(k.get("xuid", "")).strip()
+        if not xu:
+            continue
+        kill_count_by_player[xu] = kill_count_by_player.get(xu, 0) + 1
+        if kill_count_by_player[xu] == TOP_GUN_KILL_THRESHOLD:
+            threshold_kill_by_player[xu] = k
+    if not threshold_kill_by_player:
+        return None
+    top_gun_kill = min(threshold_kill_by_player.values(), key=lambda e: int(e["time_ms"]))
+    xu = str(top_gun_kill.get("xuid", "")).strip()
+    return MatchImpactEvent(
+        event_type="top_gun",
+        xuid=xu,
+        gamertag=top_gun_kill.get("gamertag") or "?",
+        time_ms=int(top_gun_kill["time_ms"]),
+        is_me=(xu == me_xuid),
+    )
+
+
+def compute_single_match_impact(  # noqa: C901, PLR0912 — complexité inhérente au scoring
     highlight_events: list[dict[str, Any]],
     me_xuid: str,
     outcome: int | None = None,
+    team_xuids: set[str] | None = None,
 ) -> list[MatchImpactEvent]:
     """Identifie les événements d'impact pour un match unique.
-
-    Contrairement à friends_impact.py (multi-matchs, multi-joueurs),
-    cette fonction travaille sur un seul match et tous les joueurs présents.
 
     Args:
         highlight_events: Liste de dicts {event_type, time_ms, xuid, gamertag, ...}.
         me_xuid: XUID du joueur principal.
         outcome: Code outcome (2=win, 3=loss) pour le clutch_finisher.
+        team_xuids: Si fourni, filtre les events pour ne garder que l'équipe alliée.
 
     Returns:
         Liste de MatchImpactEvent identifiés.
@@ -58,6 +91,12 @@ def compute_single_match_impact(
 
     me_xuid = str(me_xuid).strip()
     events: list[MatchImpactEvent] = []
+
+    # Filtrer par équipe si team_xuids est fourni
+    if team_xuids:
+        highlight_events = [
+            e for e in highlight_events if str(e.get("xuid", "")).strip() in team_xuids
+        ]
 
     # Séparer kills et deaths
     kills = [
@@ -82,7 +121,7 @@ def compute_single_match_impact(
             MatchImpactEvent(
                 event_type="first_blood",
                 xuid=xu,
-                gamertag=str(first_kill.get("gamertag", "?")),
+                gamertag=first_kill.get("gamertag") or "?",
                 time_ms=int(first_kill["time_ms"]),
                 is_me=(xu == me_xuid),
             )
@@ -96,7 +135,7 @@ def compute_single_match_impact(
             MatchImpactEvent(
                 event_type="clutch_finisher",
                 xuid=xu,
-                gamertag=str(last_kill.get("gamertag", "?")),
+                gamertag=last_kill.get("gamertag") or "?",
                 time_ms=int(last_kill["time_ms"]),
                 is_me=(xu == me_xuid),
             )
@@ -110,7 +149,7 @@ def compute_single_match_impact(
             MatchImpactEvent(
                 event_type="last_casualty",
                 xuid=xu,
-                gamertag=str(last_death.get("gamertag", "?")),
+                gamertag=last_death.get("gamertag") or "?",
                 time_ms=int(last_death["time_ms"]),
                 is_me=(xu == me_xuid),
             )
@@ -137,7 +176,7 @@ def compute_single_match_impact(
                 MatchImpactEvent(
                     event_type="last_group_kill",
                     xuid=xu,
-                    gamertag=str(slowest.get("gamertag", "?")),
+                    gamertag=slowest.get("gamertag") or "?",
                     time_ms=int(slowest["time_ms"]),
                     is_me=(xu == me_xuid),
                 )
@@ -151,10 +190,16 @@ def compute_single_match_impact(
             MatchImpactEvent(
                 event_type="first_group_death",
                 xuid=xu,
-                gamertag=str(first_death.get("gamertag", "?")),
+                gamertag=first_death.get("gamertag") or "?",
                 time_ms=int(first_death["time_ms"]),
                 is_me=(xu == me_xuid),
             )
         )
+
+    # --- Top Gun : premier joueur de l'équipe à atteindre le seuil de kills ---
+    if kills:
+        top_gun = _find_top_gun_event(kills, me_xuid)
+        if top_gun is not None:
+            events.append(top_gun)
 
     return events

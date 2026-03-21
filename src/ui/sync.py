@@ -369,7 +369,8 @@ def sync_all_players_duckdb(  # noqa: PLR0913
     try:
         from src.utils.sync_lock import SyncAlreadyRunning, SyncLock
 
-        with SyncLock(timeout=0):
+        lock_file = repo_root / "data" / ".sync.lock"
+        with SyncLock(timeout=0, lock_file=lock_file):
             return _sync_all_players_loop(
                 profiles=profiles,
                 delta=delta,

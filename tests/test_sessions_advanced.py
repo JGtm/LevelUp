@@ -303,5 +303,157 @@ def test_compute_sessions_consistency():
     assert result1["session_label"].to_list() == result2["session_label"].to_list()
 
 
+# =============================================================================
+# Tests : coupure classé / non-classé
+# =============================================================================
+
+
+def test_ranked_to_unranked_creates_new_session():
+    """Transition ranked→non-classé doit créer une nouvelle session."""
+    base_time = datetime(2026, 3, 19, 20, 0, 0, tzinfo=timezone.utc)
+
+    df = pl.DataFrame(
+        {
+            "match_id": ["m1", "m2", "m3", "m4"],
+            "start_time": [
+                base_time,
+                base_time + timedelta(minutes=10),
+                base_time + timedelta(minutes=20),  # transition ici
+                base_time + timedelta(minutes=30),
+            ],
+            "teammates_signature": ["xuid1,xuid2"] * 4,
+            "is_ranked": [True, True, False, False],
+        }
+    )
+
+    result = compute_sessions_with_context_polars(df, gap_minutes=120, ranked_column="is_ranked")
+    sessions = result.sort("match_id").get_column("session_id").to_list()
+
+    assert sessions[0] == sessions[1], "m1 et m2 (ranked) = même session"
+    assert sessions[1] != sessions[2], "transition ranked→non-classé = nouvelle session"
+    assert sessions[2] == sessions[3], "m3 et m4 (unranked) = même session"
+
+
+def test_unranked_to_ranked_creates_new_session():
+    """Transition non-classé→ranked doit créer une nouvelle session."""
+    base_time = datetime(2026, 3, 19, 20, 0, 0, tzinfo=timezone.utc)
+
+    df = pl.DataFrame(
+        {
+            "match_id": ["m1", "m2", "m3"],
+            "start_time": [
+                base_time,
+                base_time + timedelta(minutes=10),
+                base_time + timedelta(minutes=20),
+            ],
+            "teammates_signature": ["xuid1,xuid2"] * 3,
+            "is_ranked": [False, False, True],
+        }
+    )
+
+    result = compute_sessions_with_context_polars(df, gap_minutes=120, ranked_column="is_ranked")
+    sessions = result.sort("match_id").get_column("session_id").to_list()
+
+    assert sessions[0] == sessions[1], "m1 et m2 (unranked) = même session"
+    assert sessions[1] != sessions[2], "transition non-classé→ranked = nouvelle session"
+
+
+def test_all_ranked_no_extra_break():
+    """Tous les matchs ranked = pas de coupure supplémentaire due au ranking."""
+    base_time = datetime(2026, 3, 19, 20, 0, 0, tzinfo=timezone.utc)
+
+    df = pl.DataFrame(
+        {
+            "match_id": ["m1", "m2", "m3"],
+            "start_time": [
+                base_time,
+                base_time + timedelta(minutes=10),
+                base_time + timedelta(minutes=20),
+            ],
+            "teammates_signature": ["xuid1,xuid2"] * 3,
+            "is_ranked": [True, True, True],
+        }
+    )
+
+    result = compute_sessions_with_context_polars(df, gap_minutes=120, ranked_column="is_ranked")
+    sessions = result.sort("match_id").get_column("session_id").to_list()
+
+    assert sessions[0] == sessions[1] == sessions[2], "tous ranked = une seule session"
+
+
+def test_null_is_ranked_treated_as_false():
+    """NULL is_ranked est traité comme non-classé (False) → pas de coupure entre NULL et False."""
+    base_time = datetime(2026, 3, 19, 20, 0, 0, tzinfo=timezone.utc)
+
+    df = pl.DataFrame(
+        {
+            "match_id": ["m1", "m2", "m3"],
+            "start_time": [
+                base_time,
+                base_time + timedelta(minutes=10),
+                base_time + timedelta(minutes=20),
+            ],
+            "teammates_signature": ["xuid1,xuid2"] * 3,
+            "is_ranked": [None, False, None],
+        }
+    )
+
+    result = compute_sessions_with_context_polars(df, gap_minutes=120, ranked_column="is_ranked")
+    sessions = result.sort("match_id").get_column("session_id").to_list()
+
+    assert sessions[0] == sessions[1] == sessions[2], "NULL et False = même valeur → même session"
+
+
+def test_ranked_split_disabled_via_config():
+    """split_on_ranked_change=False dans SESSION_CONFIG désactive la coupure ranked."""
+    from unittest.mock import patch
+
+    from src.config import SessionConfig
+
+    base_time = datetime(2026, 3, 19, 20, 0, 0, tzinfo=timezone.utc)
+
+    df = pl.DataFrame(
+        {
+            "match_id": ["m1", "m2"],
+            "start_time": [base_time, base_time + timedelta(minutes=10)],
+            "teammates_signature": ["xuid1,xuid2"] * 2,
+            "is_ranked": [True, False],
+        }
+    )
+
+    cfg_no_split = SessionConfig(split_on_ranked_change=False)
+    with patch("src.analysis.sessions.SESSION_CONFIG", cfg_no_split):
+        result = compute_sessions_with_context_polars(
+            df, gap_minutes=120, ranked_column="is_ranked"
+        )
+
+    sessions = result.sort("match_id").get_column("session_id").to_list()
+    assert sessions[0] == sessions[1], "split_on_ranked_change=False → pas de coupure ranked"
+
+
+def test_ranked_break_combined_with_gap():
+    """Coupure ranked + gap simultanés → toujours une seule coupure (pas de doublon)."""
+    base_time = datetime(2026, 3, 19, 20, 0, 0, tzinfo=timezone.utc)
+
+    df = pl.DataFrame(
+        {
+            "match_id": ["m1", "m2"],
+            "start_time": [
+                base_time,
+                base_time + timedelta(hours=3),  # > 120 min ET transition ranked
+            ],
+            "teammates_signature": ["xuid1,xuid2"] * 2,
+            "is_ranked": [False, True],
+        }
+    )
+
+    result = compute_sessions_with_context_polars(df, gap_minutes=120, ranked_column="is_ranked")
+    sessions = result.sort("match_id").get_column("session_id").to_list()
+
+    assert sessions[0] != sessions[1], "coupure attendue (gap + ranked)"
+    # Session IDs consécutifs — la coupure ne comptabilise pas deux fois
+    assert sessions[1] - sessions[0] == 1, "une seule incrémentation de session_id"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

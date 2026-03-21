@@ -10,10 +10,14 @@ import contextlib
 import gc
 import logging
 import time
+from pathlib import Path
 
 import duckdb
 
 logger = logging.getLogger(__name__)
+
+# Guard process-level : évite de relancer les migrations shared à chaque SyncEngine
+_SHARED_MIGRATIONS_DONE: set[str] = set()
 
 
 # =============================================================================
@@ -34,6 +38,7 @@ CREATE TABLE IF NOT EXISTS match_registry (
     is_firefight BOOLEAN DEFAULT FALSE,
     duration_seconds INTEGER,
     team_0_score SMALLINT, team_1_score SMALLINT,
+    team_0_ps_score INTEGER, team_1_ps_score INTEGER,
     backfill_completed INTEGER DEFAULT 0,
     participants_loaded BOOLEAN DEFAULT FALSE,
     events_loaded BOOLEAN DEFAULT FALSE,
@@ -58,7 +63,7 @@ CREATE TABLE IF NOT EXISTS highlight_events (
     id INTEGER PRIMARY KEY DEFAULT nextval('highlight_events_id_seq'),
     match_id VARCHAR NOT NULL, event_type VARCHAR NOT NULL,
     time_ms INTEGER,
-    xuid VARCHAR, gamertag VARCHAR,
+    xuid VARCHAR,
     type_hint INTEGER, raw_json VARCHAR,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -187,36 +192,63 @@ class ConnectionMixin:
 
         self._shared_connection.execute("SET enable_object_cache = true")
 
-        # Migrations shared
+        self._run_shared_migrations(self._shared_connection, self._shared_db_path)
+
+        return self._shared_connection
+
+    @staticmethod
+    def _run_shared_migrations(  # noqa: PLR0912
+        conn: duckdb.DuckDBPyConnection,
+        db_path: Path | None = None,
+    ) -> None:
+        """Applique les migrations sur la connexion shared."""
+        # Guard process-level : clé = chemin résolu pour éviter collision entre
+        # fichiers différents portant le même nom (ex. fixtures de test)
+        db_key: str | None = None
+        if db_path is not None:
+            with contextlib.suppress(Exception):
+                db_key = str(Path(db_path).resolve())
+        if not db_key:
+            with contextlib.suppress(Exception):
+                db_key = conn.execute("SELECT current_database()").fetchone()[0]  # type: ignore[index]
+        if db_key and db_key in _SHARED_MIGRATIONS_DONE:
+            return
+        if db_key:
+            _SHARED_MIGRATIONS_DONE.add(db_key)
         try:
             from src.data.sync.migrations import ensure_match_participants_columns
 
-            ensure_match_participants_columns(self._shared_connection)
+            ensure_match_participants_columns(conn)
         except Exception as e:
             logger.debug("Migration match_participants shared: %s", e)
 
         try:
             from src.data.sync.migrations import ensure_performance_indexes
 
-            ensure_performance_indexes(self._shared_connection)
+            ensure_performance_indexes(conn)
         except Exception as e:
             logger.debug("Index performance shared: %s", e)
 
         try:
             from src.data.sync.migrations import ensure_match_registry_spnkr_version
 
-            ensure_match_registry_spnkr_version(self._shared_connection)
+            ensure_match_registry_spnkr_version(conn)
         except Exception as e:
             logger.debug("Migration sync_spnkr_version shared: %s", e)
 
         try:
             from src.data.sync.migrations import ensure_weapon_kills_table
 
-            ensure_weapon_kills_table(self._shared_connection)
+            ensure_weapon_kills_table(conn)
         except Exception as e:
             logger.debug("Migration weapon_kills shared: %s", e)
 
-        return self._shared_connection
+        try:
+            from src.data.sync.migrations import ensure_resolution_views
+
+            ensure_resolution_views(conn)
+        except Exception as e:
+            logger.debug("ensure_resolution_views shared: %s", e)
 
     def _get_pve_connection(self) -> duckdb.DuckDBPyConnection:
         """Retourne (lazy) la connexion vers shared_pve.duckdb."""
@@ -264,21 +296,19 @@ class ConnectionMixin:
                 except Exception:
                     pass
 
-                # 2. xuid_aliases via shared_matches.duckdb (v5.1)
+                # 2. v_gamertag_lookup via shared_matches.duckdb (v5.8)
                 if self._gamertag:
                     try:
                         from src.utils.paths import get_shared_matches_path_from_player
+                        from src.utils.xuid import lookup_xuid_for_gamertag
 
                         shared_path = get_shared_matches_path_from_player(self._player_db_path)
                         if shared_path and shared_path.exists():
                             with duckdb.connect(str(shared_path), read_only=True) as shared_conn:
-                                r = shared_conn.execute(
-                                    "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1",
-                                    [self._gamertag],
-                                ).fetchone()
-                                if r and r[0] and str(r[0]).strip():
-                                    xuid = str(r[0]).strip()
-                                    logger.info("XUID résolu depuis shared.xuid_aliases: %s", xuid)
+                                resolved = lookup_xuid_for_gamertag(shared_conn, self._gamertag)
+                                if resolved:
+                                    xuid = resolved
+                                    logger.info("XUID résolu depuis v_gamertag_lookup: %s", xuid)
                                     return xuid
                     except Exception:
                         pass
@@ -286,6 +316,10 @@ class ConnectionMixin:
         except Exception as e:
             logger.debug("Impossible de résoudre le XUID depuis la DB: %s", e)
 
+        logger.warning(
+            "XUID non résolu après tous les fallbacks (sync_meta + v_gamertag_lookup) pour %s",
+            self._player_db_path,
+        )
         return ""
 
     def _load_existing_match_ids(self) -> set[str]:
@@ -362,6 +396,21 @@ class ConnectionMixin:
 
         self._existing_match_ids = ids
         return ids
+
+    def _get_latest_match_id_in_db(self) -> str | None:
+        """Retourne le match_id le plus récent du joueur en DB (sans charger tous les IDs)."""
+        shared_conn = self._get_shared_connection()
+        if shared_conn is None or not self._xuid:
+            return None
+        with contextlib.suppress(Exception):
+            row = shared_conn.execute(
+                "SELECT mr.match_id FROM match_registry mr "
+                "JOIN match_participants mp ON mr.match_id = mp.match_id "
+                "WHERE mp.xuid = ? ORDER BY mr.start_time DESC LIMIT 1",
+                [self._xuid],
+            ).fetchone()
+            return str(row[0]) if row else None
+        return None
 
     # =========================================================================
     # Fermeture

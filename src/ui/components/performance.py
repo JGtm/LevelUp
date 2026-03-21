@@ -106,13 +106,15 @@ def render_performance_score_card(
     label: str,
     perf: dict,
     is_better: bool | None = None,
+    compact: bool = False,
 ) -> None:
-    """Affiche une grande carte avec le score de performance.
+    """Affiche une carte avec le score de performance.
 
     Args:
         label: Titre de la carte (ex: "Session A").
         perf: Dict retourné par compute_session_performance_score.
         is_better: True si cette session est meilleure, False si pire, None si pas de comparaison.
+        compact: Si True, affichage réduit sans nb de matchs.
     """
     from src.ui.i18n import get_lang, t
 
@@ -129,19 +131,112 @@ def render_performance_score_card(
     elif is_better is False:
         badge = "<span class='text-negative text-lg' style='margin-left: 8px;'>▼</span>"
 
-    matches_label = t("perf_matches_count", lang=lang)
+    compact_class = " os-perf-card--compact" if compact else ""
+    meta_html = (
+        ""
+        if compact
+        else (
+            f"<div class='os-perf-card__meta'>"
+            f"{perf.get('matches', 0)} {t('perf_matches_count', lang=lang)}"
+            f"</div>"
+        )
+    )
 
     st.markdown(
         f"""
-        <div class="os-perf-card">
+        <div class="os-perf-card{compact_class}">
             <div class="os-perf-card__label">{html_mod.escape(str(label))}</div>
             <div class="os-perf-card__score {score_class}">{score_display}{badge}</div>
             <div class="os-perf-card__status {score_class}">{score_label}</div>
-            <div class="os-perf-card__meta">{perf.get("matches", 0)} {matches_label}</div>
+            {meta_html}
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def _render_squad_score_block(squad_result: dict, lang: str | None) -> None:
+    """Affiche le bloc score d'équipe + grade (sans Streamlit dans compute_*)."""
+    from src.ui.i18n import t
+
+    score = squad_result.get("score")
+    grade = squad_result.get("grade", "N/A")
+    score_class = get_score_class(score)
+    score_display = f"{score:.0f}" if score is not None else "—"
+
+    st.markdown(
+        f"""
+        <div class="os-perf-card" style="margin-top:1rem;">
+            <div class="os-perf-card__label">{t("squad_score_header", lang=lang)}</div>
+            <div class="os-perf-card__score {score_class}">{score_display}</div>
+            <div class="os-perf-card__status {score_class}"
+                 style="font-size:1.6rem;font-weight:700;letter-spacing:.05em;">
+                {html_mod.escape(grade)}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_compact_team_card(team_perf: dict, grade: str, lang: str | None) -> None:
+    """Affiche la carte équipe compacte (score + grade) dans la rangée des joueurs."""
+    from src.ui.i18n import t
+
+    score = team_perf.get("score")
+    score_class = get_score_class(score)
+    score_display = f"{score:.0f}" if score is not None else "—"
+
+    st.markdown(
+        f"""
+        <div class="os-perf-card os-perf-card--compact">
+            <div class="os-perf-card__label">{t("squad_score_header", lang=lang)}</div>
+            <div class="os-perf-card__score {score_class}">{score_display}</div>
+            <div class="os-perf-card__status {score_class}">{html_mod.escape(grade)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_squad_session_header(
+    players_data: list[tuple[str, object]],
+    lang: str | None = None,
+) -> None:
+    """Affiche l'en-tête de session escouade : cartes individuelles + score collectif.
+
+    Args:
+        players_data: liste de (name, df_session) pour chaque joueur.
+        lang: langue active pour les traductions.
+    """
+
+    from src.analysis._performance_squad import compute_squad_performance_score
+    from src.visualization._compat import ensure_polars
+
+    perf_list = [
+        (name, compute_session_performance_score_v2_ui(ensure_polars(df)))
+        for name, df in players_data
+        if df is not None
+    ]
+    if not perf_list:
+        return
+
+    squad_result = compute_squad_performance_score([p for _, p in perf_list])
+    avg_score = squad_result.get("score")
+    grade = squad_result.get("grade", "N/A")
+
+    cols = st.columns(len(perf_list) + 1)
+    with cols[0]:
+        team_perf = {**squad_result, "score": avg_score}
+        _render_compact_team_card(team_perf, grade, lang)
+
+    for col, (name, perf) in zip(cols[1:], perf_list, strict=False):
+        with col:
+            player_score = perf.get("score")
+            is_better: bool | None = None
+            if avg_score is not None and player_score is not None:
+                is_better = player_score > avg_score
+            render_performance_score_card(label=name, perf=perf, is_better=is_better, compact=True)
 
 
 def render_metric_comparison_row(
