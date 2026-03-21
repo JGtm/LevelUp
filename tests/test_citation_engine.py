@@ -164,7 +164,7 @@ def _insert_sample_data(db_path: Path) -> None:
 
 
 def _create_shared_db(path: Path) -> None:
-    """Crée une shared_matches.duckdb minimale pour les tests de citations."""
+    """Crée une shared_matches_v2.duckdb minimale pour les tests de citations."""
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(str(path))
 
@@ -248,7 +248,7 @@ def engine_dir(tmp_path: Path) -> Path:
     player_dir.mkdir(parents=True)
 
     _create_metadata_db(warehouse / "metadata.duckdb")
-    _create_shared_db(warehouse / "shared_matches.duckdb")
+    _create_shared_db(warehouse / "shared_matches_v2.duckdb")
     _create_player_db(player_dir / "stats.duckdb")
     _insert_sample_data(player_dir / "stats.duckdb")
 
@@ -518,7 +518,7 @@ class TestReadConnSharedBranch:
         """Quand shared_conn est fourni, _read_conn le réutilise sans le fermer."""
         player_db = engine_dir / "data" / "players" / "TestPlayer" / "stats.duckdb"
         metadata_db = engine_dir / "data" / "warehouse" / "metadata.duckdb"
-        shared_db = engine_dir / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = engine_dir / "data" / "warehouse" / "shared_matches_v2.duckdb"
 
         shared_conn = duckdb.connect(str(player_db), read_only=True)
         try:
@@ -651,10 +651,10 @@ class TestEnabledColumn:
 
 
 class TestV5SharedSupport:
-    """Tests pour la lecture depuis shared_matches.duckdb."""
+    """Tests pour la lecture depuis shared_matches_v2.duckdb."""
 
     def _create_shared_db(self, shared_path: Path) -> None:
-        """Crée une shared_matches.duckdb de test."""
+        """Crée une shared_matches_v2.duckdb de test."""
         conn = duckdb.connect(str(shared_path))
         conn.execute("""
             CREATE TABLE medals_earned (
@@ -757,13 +757,13 @@ class TestV5SharedSupport:
 
         _create_metadata_db(warehouse / "metadata.duckdb")
         _create_player_db(player_dir / "stats.duckdb")
-        self._create_shared_db(warehouse / "shared_matches.duckdb")
+        self._create_shared_db(warehouse / "shared_matches_v2.duckdb")
 
         engine = CitationEngine(
             db_path=player_dir / "stats.duckdb",
             xuid="12345",
             metadata_db_path=warehouse / "metadata.duckdb",
-            shared_db_path=warehouse / "shared_matches.duckdb",
+            shared_db_path=warehouse / "shared_matches_v2.duckdb",
         )
         medals = engine.load_match_medals("m-shared-1")
         # Doit retourner uniquement les médailles du xuid 12345
@@ -778,13 +778,13 @@ class TestV5SharedSupport:
 
         _create_metadata_db(warehouse / "metadata.duckdb")
         _create_player_db(player_dir / "stats.duckdb")
-        self._create_shared_db(warehouse / "shared_matches.duckdb")
+        self._create_shared_db(warehouse / "shared_matches_v2.duckdb")
 
         engine = CitationEngine(
             db_path=player_dir / "stats.duckdb",
             xuid="12345",
             metadata_db_path=warehouse / "metadata.duckdb",
-            shared_db_path=warehouse / "shared_matches.duckdb",
+            shared_db_path=warehouse / "shared_matches_v2.duckdb",
         )
         stats = engine.load_match_stats("m-shared-1")
         assert stats["kills"] == 20
@@ -806,7 +806,7 @@ class TestV5SharedSupport:
         _create_metadata_db(warehouse / "metadata.duckdb")
         _create_player_db(player_dir / "stats.duckdb")
         _insert_sample_data(player_dir / "stats.duckdb")
-        self._create_shared_db(warehouse / "shared_matches.duckdb")
+        self._create_shared_db(warehouse / "shared_matches_v2.duckdb")
 
         engine = CitationEngine(
             db_path=player_dir / "stats.duckdb",
@@ -821,7 +821,7 @@ class TestV5SharedSupport:
         assert medals[3169118333] == 2
 
     def test_has_shared_property(self, tmp_path: Path) -> None:
-        """has_shared renvoie True quand shared_matches.duckdb existe."""
+        """has_shared renvoie True quand shared_matches_v2.duckdb existe."""
         warehouse = tmp_path / "data" / "warehouse"
         warehouse.mkdir(parents=True)
         player_dir = tmp_path / "data" / "players" / "TestPlayer"
@@ -829,7 +829,7 @@ class TestV5SharedSupport:
 
         _create_metadata_db(warehouse / "metadata.duckdb")
         _create_player_db(player_dir / "stats.duckdb")
-        self._create_shared_db(warehouse / "shared_matches.duckdb")
+        self._create_shared_db(warehouse / "shared_matches_v2.duckdb")
 
         engine = CitationEngine(
             db_path=player_dir / "stats.duckdb",

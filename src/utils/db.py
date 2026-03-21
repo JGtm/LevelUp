@@ -199,9 +199,20 @@ def ensure_shared_attached(
                     return db_name
 
     # Tentative d'attachement READ_ONLY
+    import logging
+
+    _logger = logging.getLogger(__name__)
+    last_err: Exception | None = None
     for alias in aliases:
-        with contextlib.suppress(Exception):
+        try:
             conn.execute(f"ATTACH '{shared_path}' AS {alias} (READ_ONLY)")
             return alias
-
+        except Exception as e:
+            last_err = e
+    _logger.warning(
+        "ensure_shared_attached: impossible d'attacher %s (aliases=%s): %s",
+        shared_path,
+        aliases,
+        last_err,
+    )
     return None

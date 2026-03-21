@@ -836,14 +836,14 @@ class TestCountMatchesMissingData:
     MATCH_C = "match-charlie-003"
 
     def _setup_db(self, tmp_path: Path, rows: list[dict]) -> Path:
-        """Crée un shared_matches.duckdb minimal avec les lignes fournies.
+        """Crée un shared_matches_v2.duckdb minimal avec les lignes fournies.
 
         Chaque dict dans rows contient :
             match_id, medals_loaded, events_loaded, backfill_completed
         """
         import duckdb
 
-        db = tmp_path / "shared_matches.duckdb"
+        db = tmp_path / "shared_matches_v2.duckdb"
         conn = duckdb.connect(str(db))
         conn.execute(
             """

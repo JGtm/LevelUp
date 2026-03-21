@@ -77,14 +77,14 @@ def test_aliases_table_and_columns_exist(assets_aliases_contract_db) -> None:
 
 
 def test_load_aliases_from_db_reads_non_empty_aliases(tmp_path) -> None:
-    """8bis: En v5.1, load_aliases_from_db lit depuis shared_matches.duckdb.
+    """8bis: En v5.1, load_aliases_from_db lit depuis shared_matches_v2.duckdb.
 
     Ce test crée la structure complète (shared + player) pour valider.
     """
-    # Structure v5.1 : créer shared_matches.duckdb avec xuid_aliases
+    # Structure v5.1 : créer shared_matches_v2.duckdb avec xuid_aliases
     warehouse = tmp_path / "data" / "warehouse"
     warehouse.mkdir(parents=True, exist_ok=True)
-    shared_db = warehouse / "shared_matches.duckdb"
+    shared_db = warehouse / "shared_matches_v2.duckdb"
 
     conn = duckdb.connect(str(shared_db))
     conn.execute("""

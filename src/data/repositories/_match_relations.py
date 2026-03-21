@@ -78,7 +78,9 @@ class MatchRelationsMixin(GamertagResolverMixin):
             dfr = result.pl()
             return dfr if not dfr.is_empty() else pl.DataFrame(schema=_empty_schema)
         except Exception:
-            logger.debug("load_friend_match_details: erreur friend=%s", friend_xuid, exc_info=True)
+            logger.warning(
+                "load_friend_match_details: erreur friend=%s", friend_xuid, exc_info=True
+            )
             return pl.DataFrame(schema=_empty_schema)
 
     def load_common_matches_df(self, target_xuid: str) -> pl.DataFrame:
@@ -123,5 +125,5 @@ class MatchRelationsMixin(GamertagResolverMixin):
             )
             return result.pl()
         except Exception:
-            logger.debug("load_common_matches_df: erreur target=%s", target_xuid, exc_info=True)
+            logger.warning("load_common_matches_df: erreur target=%s", target_xuid, exc_info=True)
             return pl.DataFrame()

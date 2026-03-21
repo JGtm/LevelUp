@@ -38,7 +38,7 @@ def sample_duckdb(tmp_path):
     conn.close()
 
     # Shared DB : match_registry + match_participants + mv_player_matches
-    shared_path = str(tmp_path / "shared" / "shared_matches.duckdb")
+    shared_path = str(tmp_path / "shared" / "shared_matches_v2.duckdb")
     Path(shared_path).parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(shared_path)
 

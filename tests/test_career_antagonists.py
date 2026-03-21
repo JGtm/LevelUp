@@ -1,4 +1,4 @@
-"""Tests pour le chargement des antagonistes depuis shared_matches.duckdb.
+"""Tests pour le chargement des antagonistes depuis shared_matches_v2.duckdb.
 
 Vérifie que _load_top_nemeses, _load_top_victims et _load_top_encountered
 requêtent correctement killer_victim_pairs et match_participants.
@@ -18,8 +18,8 @@ XUID_ME = "XUID_ME"
 
 @pytest.fixture()
 def shared_db(tmp_path: Path) -> Path:
-    """Crée une base shared_matches.duckdb temporaire avec données de test."""
-    db_path = tmp_path / "shared_matches.duckdb"
+    """Crée une base shared_matches_v2.duckdb temporaire avec données de test."""
+    db_path = tmp_path / "shared_matches_v2.duckdb"
     with duckdb.connect(str(db_path)) as conn:
         conn.execute("""
             CREATE TABLE killer_victim_pairs (

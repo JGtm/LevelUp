@@ -27,8 +27,8 @@ GAMERTAG = "TestPlayer"
 
 
 def _make_shared_db(tmp_path: Path, xuid: str = XUID, n_matches: int = 0) -> Path:
-    """Cree shared_matches.duckdb avec match_registry + match_participants (schema V5)."""
-    db_path = tmp_path / "warehouse" / "shared_matches.duckdb"
+    """Cree shared_matches_v2.duckdb avec match_registry + match_participants (schema V5)."""
+    db_path = tmp_path / "warehouse" / "shared_matches_v2.duckdb"
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = duckdb.connect(str(db_path))

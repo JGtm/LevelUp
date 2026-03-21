@@ -65,7 +65,7 @@ _START = datetime(2025, 1, 15, 20, 0, 0)
 
 
 def _create_shared_db(path: Path) -> None:
-    """Crée un shared_matches.duckdb minimal dans *path*."""
+    """Crée un shared_matches_v2.duckdb minimal dans *path*."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with duckdb.connect(str(path)) as conn:
         for stmt in _SCHEMA.strip().split(";"):
@@ -76,17 +76,17 @@ def _create_shared_db(path: Path) -> None:
 
 def _player_db_path(tmp_path: Path) -> Path:
     """Chemin fictif du stats.duckdb joueur, cohérent avec _get_shared_db_path."""
-    # _get_shared_db_path remonte 3 niveaux puis descend warehouse/shared_matches.duckdb
+    # _get_shared_db_path remonte 3 niveaux puis descend warehouse/shared_matches_v2.duckdb
     return tmp_path / "players" / "testplayer" / "stats.duckdb"
 
 
 def _shared_db_path(tmp_path: Path) -> Path:
-    return tmp_path / "warehouse" / "shared_matches.duckdb"
+    return tmp_path / "warehouse" / "shared_matches_v2.duckdb"
 
 
 @pytest.fixture()
 def shared_db(tmp_path: Path) -> Path:
-    """Crée et retourne le chemin du shared_matches.duckdb de test."""
+    """Crée et retourne le chemin du shared_matches_v2.duckdb de test."""
     path = _shared_db_path(tmp_path)
     _create_shared_db(path)
     return path

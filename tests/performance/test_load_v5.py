@@ -114,7 +114,7 @@ def _create_large_player_db(db_path: Path, n_matches: int = N_MATCHES_LARGE) -> 
 
 
 def _create_large_shared_db(db_path: Path, n_matches: int = N_MATCHES_LARGE) -> None:
-    """Crée une shared_matches.duckdb avec N matchs."""
+    """Crée une shared_matches_v2.duckdb avec N matchs."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(str(db_path))
 
@@ -329,7 +329,7 @@ class TestLoadPerformance:
         """Crée un repo avec 1000 matchs (shared + player)."""
         tmp = tmp_path_factory.mktemp("perf")
         player_db = tmp / "player" / "stats.duckdb"
-        shared_db = tmp / "shared_matches.duckdb"
+        shared_db = tmp / "shared_matches_v2.duckdb"
 
         _create_large_player_db(player_db, N_MATCHES_LARGE)
         _create_large_shared_db(shared_db, N_MATCHES_LARGE)
@@ -421,7 +421,7 @@ class TestLoadPerformanceV4Fallback:
         """En v6, load_matches sans shared DB lève RuntimeError."""
         import pytest
 
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             v4_repo.load_matches()
 
     def test_match_count_v4(self, v4_repo: DuckDBRepository) -> None:
