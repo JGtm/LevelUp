@@ -84,10 +84,10 @@ SCORE_THRESHOLDS = {
 # Labels associés aux seuils
 SCORE_LABELS = {
     "excellent": "Excellent",
-    "good": "Bon",
-    "average": "Moyen",
-    "below_average": "Faible",
-    "bad": "Difficile",
+    "good": "Solide",
+    "average": "Correct",
+    "below_average": "Mauvais",
+    "bad": "Catastrophique",
 }
 
 
