@@ -257,6 +257,8 @@ WEAPON_CITATIONS: list[tuple] = [
      _WP + "H5G_citation_Marteau_antigrav.png", "Arme", "Éliminez des Spartans avec le Marteau antigravité.", "10,20,40,80,200", "Paria"),
     ("pulse_carbine_mastery", "Maîtrise de la Carabine à impulsion", "weapon_stat", None, None, "weapon_kills:Pulse Carbine", None, None, None, None, "high", "Kills avec Carabine à impulsion", True,
      _WP_HI + "HI_Commendations_Carabine.png", "Arme", "Éliminez des Spartans avec la Carabine à impulsion.", "10,25,50,100,250", "Paria"),
+    ("ravager_mastery", "Maîtrise du Ravageur", "weapon_stat", None, None, "weapon_kills:Ravager", None, None, None, None, "high", "Kills avec Ravageur", True,
+     _WP_HI + "HI_Commendations_Ravager.png", "Arme", "Éliminez des Spartans avec le Ravageur.", "5,10,20,40,100", "Paria"),
     # Forerunner
     ("heatwave_mastery", "Maîtrise du Calcineur", "weapon_stat", None, None, "weapon_kills:Heatwave", None, None, None, None, "high", "Kills avec Calcineur", True,
      _WP_HI + "HI_Commendations_Heatwave.png", "Arme", "Éliminez des Spartans avec le Calcineur.", "10,25,50,100,250", "Forerunner"),
@@ -288,6 +290,7 @@ _PARIA_WEAPON_CHILDREN = [
     "skewer_mastery",
     "gravity_hammer_mastery",
     "pulse_carbine_mastery",
+    "ravager_mastery",
 ]
 _FORERUNNER_WEAPON_CHILDREN = [
     "heatwave_mastery",
