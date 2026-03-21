@@ -7,23 +7,6 @@
 
 ## Journal
 
-### [2026-03-21] — Citation Ravager/Ravageur manquante — Complété
-
-**Tâche** : Ajouter la citation `ravager_mastery` absente du système de commendations
-
-**Décision technique** :
-- Cause : simple omission dans `scripts/populate_citation_mappings.py` (WEAPON_CITATIONS + _PARIA_WEAPON_CHILDREN)
-- Image déjà présente : `static/commendations/hi/HI_Commendations_Ravager.png`
-- `stat_name` = `weapon_kills:Ravager` (nom canonique existant dans `_weapon_data.py`)
-- Seuils choisis : `5,10,20,40,100` (cohérent avec Skewer/Hydra — arme de lancement spécialisée)
-- Faction : Paria (Banished launcher)
-
-**Résultats** :
-- 21 weapon_stat citations (était 20)
-- Entrée DB vérifiée dans `metadata.duckdb`
-
-**Prochaine étape** : PR sur `main`
-
 ### [2026-03-22] — i18n FR/EN complète du launcher — Complété
 
 **Tâche** : Internationaliser toutes les chaînes UI de `launcher.py` (détection langue système)
