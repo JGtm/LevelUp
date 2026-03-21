@@ -85,22 +85,31 @@ def parse_career_rank(xuid: str, data: dict[str, Any]) -> CareerRankData:
     display_rank = rank if is_max else rank + 1
     rank_info = get_rank_info(display_rank)
 
-    # xp_for_next_rank : utiliser les vraies valeurs depuis metadata.duckdb
+    # Priorité : noms et XP depuis metadata.duckdb (career_ranks) ; fallback formule.
     xp_for_next = rank_info.get("xp_required", 0)
+    rank_name = rank_info.get("name", f"Rank {display_rank}")
+    rank_tier = rank_info.get("tier", "")
     try:
         from src.ui.career_ranks import get_rank_info as _get_meta
 
         meta = _get_meta(display_rank)
         if meta is not None:
             xp_for_next = meta.xp_required
+            rank_tier = meta.subtitle or rank_tier
+            parts = [meta.title]
+            if meta.subtitle:
+                parts.append(meta.subtitle)
+            if meta.tier:
+                parts.append(str(meta.tier))
+            rank_name = " ".join(parts)
     except Exception:
         pass
 
     return CareerRankData(
         xuid=xuid,
         current_rank=display_rank,
-        current_rank_name=rank_info.get("name", f"Rank {display_rank}"),
-        current_rank_tier=rank_info.get("tier", ""),
+        current_rank_name=rank_name,
+        current_rank_tier=rank_tier,
         current_xp=partial_xp,
         xp_for_next_rank=xp_for_next,
         xp_total=compute_total_xp(display_rank, partial_xp),
