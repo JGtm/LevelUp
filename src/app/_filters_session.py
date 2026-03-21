@@ -103,9 +103,13 @@ def _classify_sessions_solo_squad(  # noqa: C901, PLR0912
             for expr in friend_exprs[1:]:
                 has_friend_from_sig = has_friend_from_sig | expr
 
-            has_friend_expr = pl.when(pl.col("is_with_friends").fill_null(False)).then(True).when(
-                pl.col("is_with_friends").is_null()
-            ).then(has_friend_from_sig).otherwise(False)
+            has_friend_expr = (
+                pl.when(pl.col("is_with_friends").fill_null(False))
+                .then(True)
+                .when(pl.col("is_with_friends").is_null())
+                .then(has_friend_from_sig)
+                .otherwise(False)
+            )
         else:
             has_friend_expr = pl.col("is_with_friends").fill_null(False).cast(pl.Boolean)
 
@@ -255,6 +259,11 @@ def _load_session_context(  # noqa: PLR0913
     friends_xuids = frozenset(
         friends_opts_map[lbl] for lbl in ui_picked_labels if lbl in friends_opts_map
     )
+    # Fallback : si aucun label ne matche (ex. mismatch de format entre
+    # build_teammates_opts_map (gamertag seul) et friends_opts_map (gamertag — xuid)),
+    # utiliser les XUIDs par défaut déjà calculés dans friends_tuple.
+    if not friends_xuids and friends_tuple:
+        friends_xuids = frozenset(friends_tuple)
 
     solo_options, squad_options = _classify_sessions_solo_squad(base_s_raw, friends_xuids)
     return base_s_ui, solo_options, squad_options, friends_tuple, friends_xuids
@@ -472,7 +481,7 @@ def _render_session_filter(  # noqa: PLR0913
 
     pre_solo, pre_squad = _init_session_state_keys(solo_options, squad_options)
     _render_solo_section(solo_options, pre_solo)
-    _render_squad_section(squad_options, no_friends=len(friends_xuids) == 0, pre_squad=pre_squad)
+    _render_squad_section(squad_options, no_friends=len(friends_tuple) == 0, pre_squad=pre_squad)
     _, picked_session_labels = _consolidate_active_selection()
 
     return GAP_MINUTES_FIXED, picked_session_labels, base_s_ui, friends_tuple
