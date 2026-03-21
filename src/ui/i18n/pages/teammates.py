@@ -201,6 +201,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tm_session_trend": {"fr": "Tendance de session", "en": "Session trend"},
     # ── En-tête session escouade ──────────────────────────────────────────────
     "squad_score_header": {"fr": "Score d'équipe", "en": "Squad Score"},
+    "squad_legend": {
+        "fr": "▲ au-dessus de la moyenne d'équipe · ▼ en dessous",
+        "en": "▲ above squad average · ▼ below",
+    },
     "squad_grade_legendaire": {"fr": "LEGENDAIRE", "en": "LEGENDARY"},
     "squad_grade_carnage": {"fr": "CARNAGE", "en": "CARNAGE"},
     "squad_grade_solide": {"fr": "SOLIDE", "en": "SOLID"},

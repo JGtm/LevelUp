@@ -231,6 +231,25 @@
     margin-top: 12px;
 }
 
+.os-perf-card--compact {
+    padding: 12px 16px;
+}
+
+.os-perf-card--compact .os-perf-card__label {
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+}
+
+.os-perf-card--compact .os-perf-card__score {
+    font-size: 2rem;
+    line-height: 1.1;
+}
+
+.os-perf-card--compact .os-perf-card__status {
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
 /* Metric comparison row */
 .os-metric-value {
     font-weight: 600;
