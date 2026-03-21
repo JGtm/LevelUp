@@ -21,9 +21,9 @@ from src.utils.paths import get_shared_matches_path_from_player
 from src.visualization.friends_impact_heatmap import (
     build_impact_ranking_df,
     count_events_by_player,
-    plot_friends_impact_heatmap,
     render_impact_summary_stats,
 )
+from src.visualization.friends_impact_scatter import plot_friends_impact_scatter
 
 
 def _load_highlight_events(
@@ -234,28 +234,12 @@ def _render_impact_from_events(
     )
 
     st.subheader(t("tm_impact_heatmap"))
-    viz_mode = st.radio(
-        "viz_mode",
-        options=["heatmap", "scatter"],
-        format_func=lambda x: t(f"tmi_viz_{x}"),
-        horizontal=True,
-        key="impact_viz_mode",
-        label_visibility="collapsed",
+    fig = plot_friends_impact_scatter(
+        impact_matrix,
+        title=None,
+        max_matches=len(sorted_match_ids),
+        match_ids_order=sorted_match_ids,
     )
-    if viz_mode == "scatter":
-        from src.visualization.friends_impact_scatter import plot_friends_impact_scatter
-
-        fig = plot_friends_impact_scatter(
-            impact_matrix,
-            title=None,
-            max_matches=len(sorted_match_ids),
-        )
-    else:
-        fig = plot_friends_impact_heatmap(
-            impact_matrix,
-            title=None,
-            max_matches=len(sorted_match_ids),
-        )
     st.plotly_chart(fig, width="stretch", config=PLOTLY_STATIC_CONFIG)
     _render_impact_ranking_section(scores, first_bloods, clutch_finishers, last_casualties)
 

@@ -1,7 +1,7 @@
-"""Scatter plot d'impact des coéquipiers — alternative sans emojis à la heatmap.
+"""Scatter plot d'impact des coéquipiers — version points avec emojis.
 
 Chaque type d'événement est une trace Plotly distincte avec son propre
-symbole de marqueur (triangle, étoile, x, cercle, losange). Les outcomes
+signe emoji. Les outcomes
 sont représentés par des rectangles de fond colorés (vert/rouge/mauve).
 
 Usage::
@@ -21,13 +21,13 @@ from src.ui.i18n.viz import viz_t
 from src.visualization.friends_impact_heatmap import OUTCOME_COLORS
 from src.visualization.theme import apply_halo_plot_style
 
-# (event_type, label_fr, color, plotly_marker_symbol)
+# (event_type, label_fr, color, emoji)
 _EVENT_SCATTER_CONFIG: list[tuple[str, str, str, str]] = [
-    ("first_blood", "Premier sang", "#009E73", "triangle-up"),
-    ("clutch_finisher", "Finisseur", "#E69F00", "star"),
-    ("last_casualty", "Boulet", "#D55E00", "x-thin"),
-    ("last_group_kill", "Touriste", "#56B4E9", "circle-open"),
-    ("first_group_death", "1ère victime", "#CC79A7", "diamond"),
+    ("first_blood", "Premier sang", "#009E73", "⚡"),
+    ("clutch_finisher", "Finisseur", "#E69F00", "🎯"),
+    ("last_casualty", "Boulet", "#D55E00", "💀"),
+    ("last_group_kill", "Touriste", "#56B4E9", "🐌"),
+    ("first_group_death", "1ère victime", "#CC79A7", "🪦"),
 ]
 
 _EVENT_TYPE_SET: frozenset[str] = frozenset(et for et, *_ in _EVENT_SCATTER_CONFIG)
@@ -125,18 +125,18 @@ def _add_scatter_traces(
     n_matches: int,
     n_players: int,
 ) -> None:
-    """Ajoute la grille fantôme et les traces d'événements au scatter."""
+    """Ajoute la grille fantôme et les traces d'événements emoji."""
     fig.add_trace(
         go.Scatter(
             x=[i for i in range(n_matches) for _ in range(n_players)],
             y=[j for _ in range(n_matches) for j in range(n_players)],
             mode="markers",
-            marker={"size": 30, "color": "rgba(0,0,0,0)"},
+            marker={"size": 34, "color": "rgba(0,0,0,0)"},
             showlegend=False,
             hoverinfo="skip",
         )
     )
-    for event_type, label, color, symbol in _EVENT_SCATTER_CONFIG:
+    for event_type, label, color, emoji in _EVENT_SCATTER_CONFIG:
         xs, ys, hovers = coords[event_type]
         if not xs:
             continue
@@ -144,15 +144,15 @@ def _add_scatter_traces(
             go.Scatter(
                 x=xs,
                 y=ys,
-                mode="markers",
-                name=label,
+                mode="text",
+                name=f"{emoji} {label}",
                 hovertext=hovers,
                 hoverinfo="text",
-                marker={
-                    "size": 15,
-                    "symbol": symbol,
+                text=[emoji] * len(xs),
+                textposition="middle center",
+                textfont={
+                    "size": 19,
                     "color": color,
-                    "line": {"width": 1.5, "color": "white"},
                 },
             )
         )
@@ -173,23 +173,26 @@ def _apply_scatter_layout(  # noqa: PLR0913
     fig.update_layout(
         shapes=shapes,
         height=calc_height,
-        margin={"l": 120, "r": 40, "t": 60 if title else 30, "b": 50},
+        showlegend=False,
+        margin={"l": 130, "r": 40, "t": 64 if title else 34, "b": 50},
         xaxis={
             "title": viz_t("axis_matches", lang),
             "tickvals": list(range(n_matches)),
             "ticktext": [f"#{i + 1}" for i in range(n_matches)],
             "showgrid": True,
             "gridcolor": "rgba(200,200,200,0.3)",
+            "zeroline": False,
             "range": [-0.5, n_matches - 0.5],
         },
         yaxis={
             "tickvals": list(range(n_players)),
             "ticktext": gamertags,
-            "showgrid": False,
+            "showgrid": True,
+            "gridcolor": "rgba(160,160,160,0.16)",
+            "zeroline": False,
             "range": [-0.5, n_players - 0.5],
         },
-        plot_bgcolor="rgba(245,245,245,0.5)",
-        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
+        plot_bgcolor="rgba(248,250,252,0.92)",
     )
 
 
@@ -199,22 +202,11 @@ def plot_friends_impact_scatter(
     title: str | None = None,
     max_matches: int = 50,
     height: int | None = None,
-    lang: str = "fr",
+    match_ids_order: list[str] | None = None,
 ) -> go.Figure:
-    """Scatter plot des événements d'impact par joueur × match.
-
-    Alternative à ``plot_friends_impact_heatmap`` : aucun emoji,
-    chaque type d'événement est une trace Plotly avec un symbole distinct.
-    Les outcomes (victoire/défaite/égalité) colorent les colonnes en fond.
-
-    Args:
-        impact_matrix: DataFrame au format ``build_impact_matrix()``.
-        title: Titre optionnel.
-        max_matches: Nombre maximum de matchs affichés (les plus récents).
-        height: Hauteur en pixels (calculée dynamiquement si None).
-        lang: Langue pour les labels d'axes.
-    """
+    """Trace la matrice d'impact joueur × match en vue emoji."""
     colors = HALO_COLORS.as_dict()
+    lang = "fr"
 
     if impact_matrix.is_empty():
         fig = go.Figure()
@@ -231,7 +223,18 @@ def plot_friends_impact_scatter(
 
     all_gt = sorted(impact_matrix["gamertag"].unique().to_list())
     gamertags = [g for g in all_gt if g != "Résultat"]
-    match_ids = impact_matrix["match_id"].unique().to_list()
+    available_match_ids = {str(m) for m in impact_matrix["match_id"].to_list()}
+    if match_ids_order:
+        match_ids = [str(m) for m in match_ids_order if str(m) in available_match_ids]
+    else:
+        # Fallback deterministe: ordre d'apparition dans la matrice.
+        match_ids = []
+        seen: set[str] = set()
+        for mid in impact_matrix["match_id"].to_list():
+            mid_s = str(mid)
+            if mid_s not in seen:
+                seen.add(mid_s)
+                match_ids.append(mid_s)
     match_outcomes_map = _extract_outcomes(impact_matrix, all_gt)
 
     if len(match_ids) > max_matches:
