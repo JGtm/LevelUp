@@ -246,7 +246,7 @@ def test_impact_tab_renders_heatmap_and_ranking(monkeypatch) -> None:
         ),
     )
     monkeypatch.setattr(
-        teammates, "plot_friends_impact_heatmap", lambda *_args, **_kwargs: object()
+        teammates, "plot_friends_impact_scatter", lambda *_args, **_kwargs: MagicMock()
     )
     monkeypatch.setattr(
         teammates, "count_events_by_player", lambda events: {"Alice": 1} if events else {}
