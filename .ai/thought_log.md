@@ -7,6 +7,31 @@
 
 ## Journal
 
+### [2026-03-21] — Nettoyage scripts et tests obsolètes post-v5/v6 — Complété
+
+**Statut** : Complété (commit `775e9a8`)
+
+**Décision technique** :
+Audit complet de `scripts/` et `tests/`. Deux passes de nettoyage :
+
+1. **Scripts archivés** → `scripts/_archive/` :
+   - `scripts/migration/*` (17 scripts, tous déclarés OBSOLETE dans leur README ; `remove_compat_views.py` conservé car référencé par `tests/test_v5_match_queries.py`)
+   - `scripts/_fix_weapon_kills_sentinel.py` + `fix_null_metadata.sql` (one-shots exécutés)
+   - `scripts/recompute_performance_scores_duckdb.py` (couvert par `backfill_data.py --performance-scores`)
+   - `scripts/investigation/benchmark_v4_vs_v5.py`, `demo_regression_detection.py`, `_verify_weapon_kills.py`
+
+2. **Tests archivés** → `tests/_archive/` :
+   - `tests/migration/` (3 tests couplés aux scripts migration archivés)
+   - `tests/test_migration_technical_ids.py` (couplé à `migrate_to_technical_ids.py`)
+
+3. **Fix règle pandas** : `tests/test_phase6_refactoring.py` — `import pandas as pd` supprimé, `pd.Timestamp` → `datetime(…, tzinfo=timezone.utc)`, `pd.Series({…})` → `dict` native.
+
+**Résultats** : 66 tests passent (test_phase6_refactoring + test_v5_match_queries). Pre-commit hooks OK. 28 fichiers renommés.
+
+**Conclusion** : ~5 900 lignes de dead code retiré du chemin actif, historique préservé dans `_archive/`.
+
+---
+
 ### [2026-03-21] — Vérification finale + nettoyage BACKLOG — Complété
 
 **Statut** : Complété
