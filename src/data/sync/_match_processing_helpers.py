@@ -6,6 +6,8 @@ la taille du module ≤ 500L (règle project).
 
 from __future__ import annotations
 
+import asyncio
+import functools
 import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
@@ -21,6 +23,7 @@ from src.data.sync.transformers import (
     extract_personal_score_awards,
     extract_xuids_from_match,
     transform_all_skill_stats,
+    transform_match_stats,
     transform_personal_score_awards,
     transform_skill_stats,
 )
@@ -30,6 +33,22 @@ logger = logging.getLogger(__name__)
 
 class MatchProcessingHelpersMixin:
     """Helpers de fetch/transform/write extraits de MatchProcessingMixin."""
+
+    async def _transform_match_stats_async(
+        self: _SyncProtocol,
+        stats_json: dict,
+        skill_json: dict | None,
+    ) -> Any:
+        """Axe 5 : exécute transform_match_stats dans un thread (CPU-bound)."""
+        loop = asyncio.get_running_loop()
+        fn = functools.partial(
+            transform_match_stats,
+            stats_json,
+            self._xuid,
+            skill_json=skill_json,
+            metadata_resolver=self._metadata_resolver,
+        )
+        return await loop.run_in_executor(None, fn)
 
     @staticmethod
     def _make_result(mode: str) -> dict[str, Any]:

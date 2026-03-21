@@ -166,11 +166,11 @@ class TestSyncOptions:
         assert opts.max_matches == 200
         assert opts.with_highlight_events is True
         assert opts.with_skill is True
-        # Sprint 6 : valeurs augmentées
-        assert opts.parallel_matches == 5
-        assert opts.requests_per_second == 10
+        # Sprint 6 → benchmark Run 3 : valeurs optimales
+        assert opts.parallel_matches == 10
+        assert opts.requests_per_second == 15
         assert opts.defer_performance_score is True
-        assert opts.batch_commit_size == 10
+        assert opts.batch_commit_size == -1  # Axe 7 : auto-tune par défaut
 
     def test_custom_values(self):
         """Vérifie les valeurs personnalisées."""

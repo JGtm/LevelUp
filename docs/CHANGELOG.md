@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [6.1.0] - 2026-03-21
+
+### Performance
+
+- **Sync 7-axis optimization** — full rework of the sync pipeline throughput:
+  - **Axe 1 — Partial parallel post-sync** — citation backfill runs in a background thread while player DB writes are serialized; eliminates citation/write contention
+  - **Axe 2 — shared_matches R/O direct** — shared DB opened read-only without ATTACH on the player connection; removes cross-DB locking; total sync time reduced ~30–40 %
+  - **Axe 3 — parallel_fetch pipelining** — match history fetch and individual match detail requests overlapped via asyncio semaphore (`fetch_slots` tuned to 15)
+  - **Axe 4 — Citations bulk SQL** — citation computation collapsed from N individual queries to 6 bulk SQL statements + `executemany`; sub-second for 50-match batches
+  - **Axe 5 — CPU-bound transforms via `run_in_executor`** — match parsing offloaded from the event loop; no longer blocks async I/O
+  - **Axe 6 — LUSR batch UPSERT vectorized** — `executemany` batch replaces individual per-match inserts; ~10× faster for large LUSR backlogs
+  - **Axe 7 — Adaptive `batch_commit_size`** — commit interval auto-tuned to `max_matches / 10` (floor 20, cap 100) to reduce WAL pressure on large syncs
+- **Timing logs** — `post_sync` now logs elapsed time and per-task counts (perf/sessions/citations) at INFO level
+
+### Fixed
+
+- **`refresh_materialized_views` Binder Error** — `GROUP BY mode_category` (alias) replaced by `GROUP BY 1`; DuckDB 1.4.4 couldn't resolve the alias when the CASE expression references a joined column (`mr.pair_name`)
+- **shared_matches handle conflict in post-sync** — `batch_compute_performance_scores` now falls back to the player connection (`shared.*` prefix) when `shared_conn` is unavailable due to a file handle conflict; eliminates the "0 performance scores batch" warning; logic split into `_load_matches_for_perf()` + `_compute_perf_updates()` helpers (≤ 80 L each)
+- **Career rank name stored incorrectly** — `parse_career_rank()` now reads `rank_name` and `rank_tier` from `metadata.duckdb` (via `career_ranks`) instead of the approximate formula; fixes wrong display (e.g. "Silver 3 (VI)" instead of "Lance Corporal Diamond 1") in logs and `career_progression` table
+
+### Tests
+
+- 6 new tests covering timing log format and post-sync parallel execution (`tests/perf/test_post_sync_parallel.py`, `tests/perf/test_dual_semaphore.py`)
+- **4 799 tests total, 0 failures**
+
+---
+
 ## [6.0.0] - 2026-03-15
 
 > ⚠️ **Weapon extraction still in beta** — attribution accuracy not guaranteed in all cases (estimated coverage 70–100 % depending on matches); weapon catalog in progress.

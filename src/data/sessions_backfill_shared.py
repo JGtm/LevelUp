@@ -101,3 +101,56 @@ def _load_matches_from_shared(
         f" WHERE mr.start_time IS NOT NULL ORDER BY mr.start_time ASC",
         [xuid, xuid, xuid],
     ).pl()
+
+
+def _load_matches_split(
+    player_conn: duckdb.DuckDBPyConnection,
+    shared_ro: duckdb.DuckDBPyConnection,
+    xuid: str,
+) -> pl.DataFrame:
+    """Charge les matchs via deux connexions séparées (Option A — pas d'ATTACH).
+
+    Équivalent de _load_matches_from_shared mais avec shared_ro direct au lieu d'ATTACH.
+    Élimine le conflit de handle entre la connexion R/W shared et un ATTACH R/O.
+    """
+    try:
+        df_pme = player_conn.execute(
+            "SELECT match_id, session_id, teammates_signature FROM player_match_enrichment"
+        ).pl()
+    except Exception:
+        return pl.DataFrame()
+    if df_pme.is_empty():
+        return pl.DataFrame()
+
+    df_shared = shared_ro.execute(
+        "SELECT DISTINCT mp.match_id, mr.start_time,"
+        " COALESCE(mr.is_ranked, FALSE) AS is_ranked,"
+        " (SELECT string_agg(o.xuid ORDER BY o.xuid)"
+        "  FROM match_participants me"
+        "  JOIN match_participants o ON o.match_id=me.match_id"
+        "   AND o.team_id=me.team_id AND o.xuid<>?"
+        "  WHERE me.match_id=mr.match_id AND me.xuid=?) AS teammates_same_team,"
+        " (SELECT string_agg(o.xuid ORDER BY o.xuid)"
+        "  FROM match_participants o"
+        "  WHERE o.match_id=mr.match_id AND o.xuid<>?) AS teammates_all"
+        " FROM match_participants mp"
+        " JOIN match_registry mr ON mr.match_id=mp.match_id"
+        " WHERE mp.xuid=? AND mr.start_time IS NOT NULL"
+        " ORDER BY mr.start_time ASC",
+        [xuid, xuid, xuid, xuid],
+    ).pl()
+
+    if df_shared.is_empty():
+        return pl.DataFrame()
+
+    df = df_pme.join(df_shared, on="match_id", how="inner")
+    df = df.with_columns(
+        pl.coalesce(
+            pl.col("teammates_signature"),
+            pl.col("teammates_same_team"),
+            pl.col("teammates_all"),
+        ).alias("teammates_signature")
+    )
+    return df.select(
+        ["match_id", "start_time", "is_ranked", "session_id", "teammates_signature"]
+    ).sort("start_time")

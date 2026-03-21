@@ -26,7 +26,6 @@ from src.data.sync.transformers import (
     extract_match_registry_data,
     extract_participants,
     transform_highlight_events,
-    transform_match_stats,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,7 +69,17 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
 
         start = 0
         remaining = options.max_matches
-        semaphore = asyncio.Semaphore(options.parallel_matches)
+        # Axe 3 : parallel_fetch contrôle l'I/O réseau (large), parallel_matches
+        # contrôle l'écriture DB (étroit). On prend le max pour permettre plus de
+        # matchs "en vol" (fetch + transform) pendant que d'autres font du DB.
+        fetch_slots = max(options.parallel_fetch, options.parallel_matches)
+        semaphore = asyncio.Semaphore(fetch_slots)
+        logger.debug(
+            "_process_matches: fetch_slots=%d (parallel_fetch=%d, parallel_matches=%d)",
+            fetch_slots,
+            options.parallel_fetch,
+            options.parallel_matches,
+        )
 
         while remaining > 0:
             # Récupérer un batch d'historique
@@ -224,11 +233,9 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                 result["error"] = f"Impossible de récupérer {match_id}"
                 return result
 
-            match_row = transform_match_stats(
+            match_row = await self._transform_match_stats_async(
                 stats_json,
-                self._xuid,
-                skill_json=skill_json,
-                metadata_resolver=self._metadata_resolver,
+                skill_json,
             )
             if match_row is None:
                 result["error"] = f"Transformation échouée pour {match_id}"
@@ -446,11 +453,9 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
         result: dict[str, Any],
     ) -> bool:
         """Transforme et persiste les données joueur pour un nouveau match."""
-        match_row = transform_match_stats(
+        match_row = await self._transform_match_stats_async(
             stats_json,
-            self._xuid,
-            skill_json=skill_json,
-            metadata_resolver=self._metadata_resolver,
+            skill_json,
         )
         if match_row is None:
             result["error"] = f"Transformation match_stats échouée pour {match_id}"

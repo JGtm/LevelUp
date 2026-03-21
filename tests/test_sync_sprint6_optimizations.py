@@ -157,10 +157,10 @@ class TestAPIParallelization:
     def test_sync_options_defaults_sprint6(self):
         """Les valeurs par défaut Sprint 6 sont correctes."""
         opts = SyncOptions()
-        assert opts.requests_per_second == 10, "Rate limit devrait être 10 req/s"
-        assert opts.parallel_matches == 5, "parallel_matches devrait être 5"
+        assert opts.requests_per_second == 15, "Rate limit devrait être 15 req/s (benchmark Run 3)"
+        assert opts.parallel_matches == 10, "parallel_matches devrait être 10 (benchmark Run 3)"
         assert opts.defer_performance_score is True, "defer_perf_score devrait être True"
-        assert opts.batch_commit_size == 10, "batch_commit_size devrait être 10"
+        assert opts.batch_commit_size == -1, "batch_commit_size devrait être -1 (auto)"
 
 
 # =============================================================================
@@ -302,15 +302,15 @@ class TestBatchCommitSize:
 class TestRateLimitIncreased:
     """Tests pour l'augmentation du rate limit."""
 
-    def test_default_rate_limit_is_10(self):
-        """Le rate limit par défaut est 10 req/s."""
+    def test_default_rate_limit_is_15(self):
+        """Le rate limit par défaut est 15 req/s (benchmark Run 3)."""
         opts = SyncOptions()
-        assert opts.requests_per_second == 10
+        assert opts.requests_per_second == 15
 
-    def test_default_parallel_matches_is_5(self):
-        """Le nombre de matchs parallèles par défaut est 5."""
+    def test_default_parallel_matches_is_10(self):
+        """Le nombre de matchs parallèles par défaut est 10 (benchmark Run 3)."""
         opts = SyncOptions()
-        assert opts.parallel_matches == 5
+        assert opts.parallel_matches == 10
 
     def test_custom_rate_limit(self):
         """On peut personnaliser le rate limit."""
