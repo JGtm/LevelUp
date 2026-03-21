@@ -119,18 +119,32 @@ def _render_weapon_table(df: pl.DataFrame) -> None:
 def _enrich_with_grenade_melee(
     df: pl.DataFrame, repo: DuckDBRepository, match_id: str, xuid: str
 ) -> pl.DataFrame:
-    """Ajoute grenade_kills et melee_kills (API) comme lignes dans le df weapon_name/kills."""
+    """Ajoute grenade_kills et melee_kills (API) comme lignes dans le df weapon_name/kills.
+
+    Limite les kills ajoutés au remainder (api_total - film_kills) pour éviter le
+    double-comptage des melee kills filmés sous le weapon_id de l'arme tenue.
+    """
     try:
         grenade, melee = repo.load_grenade_melee_kills(str(xuid).strip(), [match_id])
     except Exception as exc:
         logger.debug("_enrich_with_grenade_melee match=%s xuid=%s : %s", match_id, xuid, exc)
         return df
 
+    if grenade == 0 and melee == 0:
+        return df
+
+    film_kills = int(df["kills"].sum()) if not df.is_empty() else 0
+    api_total = repo.load_total_kills_for_player(str(xuid).strip(), [match_id])
+    remainder = max(0, api_total - film_kills)
+
+    melee_net = min(melee, remainder)
+    grenade_net = min(grenade, max(0, remainder - melee_net))
+
     extras = []
-    if grenade > 0:
-        extras.append({"weapon_name": t("col_grenade_kills"), "kills": grenade})
-    if melee > 0:
-        extras.append({"weapon_name": t("col_melee"), "kills": melee})
+    if grenade_net > 0:
+        extras.append({"weapon_name": t("col_grenade_kills"), "kills": grenade_net})
+    if melee_net > 0:
+        extras.append({"weapon_name": t("col_melee"), "kills": melee_net})
     if not extras:
         return df
     return pl.concat([df, pl.DataFrame(extras, schema={"weapon_name": pl.Utf8, "kills": pl.Int32})])

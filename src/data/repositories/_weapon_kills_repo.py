@@ -155,6 +155,23 @@ class WeaponKillsMixin:
             logger.debug("weapon_kills_agg player %s : %s", xuid, exc)
             return pl.DataFrame(schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32})
 
+    def load_total_kills_for_player(self, xuid: str, match_ids: list[str]) -> int:
+        """Retourne le total de kills API (match_participants) pour un joueur sur des matchs."""
+        try:
+            conn = self._get_connection()
+            xuid_str = str(xuid).strip()
+            placeholders = ", ".join("?" * len(match_ids))
+            row = conn.execute(
+                f"SELECT COALESCE(SUM(kills), 0) "
+                f"FROM shared.match_participants "
+                f"WHERE xuid = ? AND match_id IN ({placeholders})",
+                [xuid_str, *match_ids],
+            ).fetchone()
+            return int(row[0]) if row else 0
+        except Exception as exc:
+            logger.debug("load_total_kills_for_player xuid=%s : %s", xuid, exc)
+            return 0
+
     def load_grenade_melee_kills(
         self, xuid: str, match_ids: list[str] | None = None
     ) -> tuple[int, int]:

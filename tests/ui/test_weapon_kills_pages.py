@@ -238,9 +238,20 @@ class TestAppendGrenadeMelee:
 class TestEnrichWithGrenadeMelee:
     """Tests — le repo est passé directement, pas de création interne."""
 
-    def _mock_repo(self, grenade_kills: int, melee_kills: int) -> Any:
+    def _mock_repo(
+        self,
+        grenade_kills: int,
+        melee_kills: int,
+        api_total: int | None = None,
+    ) -> Any:
+        """Crée un mock repo. api_total par défaut = film_kills + grenade + melee (pas de limite)."""
         mock_repo = MagicMock()
         mock_repo.load_grenade_melee_kills.return_value = (grenade_kills, melee_kills)
+        # _weapons_df_with_rows() a 18 kills ; par défaut on laisse tout passer
+        default_total = 18 + grenade_kills + melee_kills
+        mock_repo.load_total_kills_for_player.return_value = (
+            api_total if api_total is not None else default_total
+        )
         return mock_repo
 
     def test_adds_grenade_row_to_df(self) -> None:
@@ -306,6 +317,41 @@ class TestEnrichWithGrenadeMelee:
         )
 
         assert len(result) == 2  # inchangé
+
+    def test_no_double_count_when_film_covers_melee(self) -> None:
+        """Si le film couvre déjà tous les kills (api_total = film_kills), melee=0 ajouté."""
+        from src.ui.pages.match_view_weapon_kills import _enrich_with_grenade_melee
+
+        # film = 18, api_total = 18 → remainder = 0 → melee_net = 0
+        result = _enrich_with_grenade_melee(
+            _weapons_df_with_rows(),
+            self._mock_repo(grenade_kills=0, melee_kills=7, api_total=18),
+            "match_001",
+            "xuid_test",
+        )
+
+        assert len(result) == 2  # aucune ligne melee ajoutée (déjà dans le film)
+        kills_total = result["kills"].sum()
+        assert kills_total == 18
+
+    def test_partial_melee_added_when_film_partially_covers(self) -> None:
+        """Si film=18, api_total=21, melee=7 → remainder=3 → melee_net=3 seulement."""
+        from src.ui.pages.match_view_weapon_kills import _enrich_with_grenade_melee
+
+        result = _enrich_with_grenade_melee(
+            _weapons_df_with_rows(),
+            self._mock_repo(grenade_kills=0, melee_kills=7, api_total=21),
+            "match_001",
+            "xuid_test",
+        )
+
+        melee_row = [
+            r
+            for r in result.iter_rows(named=True)
+            if "corps" in r["weapon_name"].lower() or "melee" in r["weapon_name"].lower()
+        ]
+        assert melee_row, "Une ligne mêlée doit être ajoutée"
+        assert melee_row[0]["kills"] == 3  # min(7, 21-18)=3
 
 
 # =============================================================================
