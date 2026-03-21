@@ -118,7 +118,7 @@ SAMPLE_MATCH_JSON: dict[str, Any] = {
 
 
 def _create_shared_db(db_path: Path) -> None:
-    """Crée une shared_matches.duckdb minimale."""
+    """Crée une shared_matches_v2.duckdb minimale."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(str(db_path))
     conn.execute("""
@@ -236,7 +236,7 @@ def _create_shared_db(db_path: Path) -> None:
 
 @pytest.fixture
 def tmp_shared_db(tmp_path: Path) -> Path:
-    db_path = tmp_path / "warehouse" / "shared_matches.duckdb"
+    db_path = tmp_path / "warehouse" / "shared_matches_v2.duckdb"
     _create_shared_db(db_path)
     return db_path
 

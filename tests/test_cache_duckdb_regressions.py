@@ -23,7 +23,7 @@ def temp_duckdb(tmp_path):
 
     Structure de répertoires compatible avec l'auto-détection shared_matches :
     {tmp_path}/data/players/test/stats.duckdb  (player DB)
-    {tmp_path}/data/warehouse/shared_matches.duckdb  (shared DB)
+    {tmp_path}/data/warehouse/shared_matches_v2.duckdb  (shared DB)
     """
     import gc
 
@@ -34,7 +34,7 @@ def temp_duckdb(tmp_path):
     warehouse_dir.mkdir(parents=True, exist_ok=True)
 
     db_path = player_dir / "stats.duckdb"
-    shared_db_path = warehouse_dir / "shared_matches.duckdb"
+    shared_db_path = warehouse_dir / "shared_matches_v2.duckdb"
 
     xuid_self = "2533274823110022"
     xuid_friend = "2533274823110023"

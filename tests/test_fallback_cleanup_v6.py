@@ -22,8 +22,8 @@ import pytest
 
 
 def _shared_db_with_view(tmp_path: Path) -> Path:
-    """Crée un shared_matches.duckdb minimal avec v_gamertag_lookup + v_killer_victim_full."""
-    db = tmp_path / "shared_matches.duckdb"
+    """Crée un shared_matches_v2.duckdb minimal avec v_gamertag_lookup + v_killer_victim_full."""
+    db = tmp_path / "shared_matches_v2.duckdb"
     conn = duckdb.connect(str(db))
     conn.execute("CREATE TABLE xuid_aliases (xuid VARCHAR PRIMARY KEY, gamertag VARCHAR)")
     conn.execute(
@@ -312,7 +312,7 @@ class TestMatchQueriesV6:
             read_only=False,
         )
         conn = repo._get_connection()
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             repo._get_match_source(conn)
 
     def test_get_match_count_no_triple_guard(self) -> None:

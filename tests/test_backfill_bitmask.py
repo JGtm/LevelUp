@@ -28,7 +28,7 @@ XUID = "2535469190789936"
 
 @pytest.fixture()
 def shared_conn():
-    """Crée une base DuckDB en mémoire simulant shared_matches.duckdb (V5)."""
+    """Crée une base DuckDB en mémoire simulant shared_matches_v2.duckdb (V5)."""
     c = duckdb.connect(":memory:")
     c.execute("""
         CREATE TABLE match_registry (

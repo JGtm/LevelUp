@@ -413,7 +413,7 @@ class TestMissingDataHandling:
         # Créer shared DB avec match_participants (MMR NULL)
         warehouse = tmp_path / "data" / "warehouse"
         warehouse.mkdir(parents=True)
-        shared_conn = duckdb.connect(str(warehouse / "shared_matches.duckdb"))
+        shared_conn = duckdb.connect(str(warehouse / "shared_matches_v2.duckdb"))
         shared_conn.execute("""
             CREATE TABLE match_participants (
                 match_id VARCHAR, xuid VARCHAR,
@@ -464,7 +464,7 @@ class TestMissingDataHandling:
         # Créer shared DB avec match_participants (MMR renseignés)
         warehouse = tmp_path / "data" / "warehouse"
         warehouse.mkdir(parents=True)
-        shared_conn = duckdb.connect(str(warehouse / "shared_matches.duckdb"))
+        shared_conn = duckdb.connect(str(warehouse / "shared_matches_v2.duckdb"))
         shared_conn.execute("""
             CREATE TABLE match_participants (
                 match_id VARCHAR, xuid VARCHAR,

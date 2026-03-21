@@ -44,8 +44,8 @@ _NOW = datetime(2088, 3, 17, 12, 0, 0, tzinfo=timezone.utc)
 
 @pytest.fixture
 def shared_db(tmp_path: Path) -> Path:
-    """shared_matches.duckdb minimale avec toutes les tables + vues v6."""
-    db_path = tmp_path / "shared_matches.duckdb"
+    """shared_matches_v2.duckdb minimale avec toutes les tables + vues v6."""
+    db_path = tmp_path / "shared_matches_v2.duckdb"
     conn = duckdb.connect(str(db_path))
     try:
         conn.execute("""

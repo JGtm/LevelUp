@@ -32,7 +32,7 @@ def _make_repo(player_db: Path, shared_db: Path | None, xuid: str):
     if shared_db is not None:
         kwargs["shared_db_path"] = shared_db
     else:
-        kwargs["shared_db_path"] = player_db.parent / "shared_matches.duckdb"  # inexistant
+        kwargs["shared_db_path"] = player_db.parent / "shared_matches_v2.duckdb"  # inexistant
     return DuckDBRepository(**kwargs)
 
 
@@ -115,7 +115,7 @@ def player_db_with_media(tmp_path: Path) -> Path:
 @pytest.fixture()
 def shared_db_with_registry(tmp_path: Path) -> Path:
     """Shared DB avec match_registry."""
-    db_path = tmp_path / "shared_matches.duckdb"
+    db_path = tmp_path / "shared_matches_v2.duckdb"
     with duckdb.connect(str(db_path)) as conn:
         conn.execute("""
             CREATE TABLE match_registry (

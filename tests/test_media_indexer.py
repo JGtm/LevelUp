@@ -236,7 +236,7 @@ def test_associate_with_matches(temp_db: Path, temp_media_dir: Path) -> None:
 
 
 def _create_shared_db(shared_path: Path, matches: list[tuple]) -> None:
-    """Helper : crée une shared_matches.duckdb v5.1 de test.
+    """Helper : crée une shared_matches_v2.duckdb v5.1 de test.
 
     matches: [(match_id, start_time_str, duration_seconds, map_id, map_name, xuid), ...]
     """
@@ -276,7 +276,7 @@ def _create_shared_db(shared_path: Path, matches: list[tuple]) -> None:
 def test_associate_with_matches_explicit_timestamps(tmp_path: Path) -> None:
     """Test l'association avec des timestamps explicits (epoch UTC)."""
     db_path = tmp_path / "stats.duckdb"
-    shared_path = tmp_path / "shared_matches.duckdb"
+    shared_path = tmp_path / "shared_matches_v2.duckdb"
 
     # Créer la shared DB v5.1
     _create_shared_db(
@@ -398,7 +398,7 @@ def test_get_file_metadata(temp_db: Path, tmp_path: Path) -> None:
 def test_association_closest_match_when_multiple_candidates(tmp_path: Path) -> None:
     """Test que l'association choisit le match LE PLUS PROCHE quand plusieurs candidats."""
     db_path = tmp_path / "stats.duckdb"
-    shared_path = tmp_path / "shared_matches.duckdb"
+    shared_path = tmp_path / "shared_matches_v2.duckdb"
 
     # 2 matchs : match_A à 17:00, match_B à 17:10 (10 min plus tard)
     _create_shared_db(
@@ -481,7 +481,7 @@ def test_association_multi_players_same_media(tmp_path: Path) -> None:
     db_b = tmp_path / "player_b" / "stats.duckdb"
     db_a.parent.mkdir(parents=True)
     db_b.parent.mkdir(parents=True)
-    shared_path = tmp_path / "shared_matches.duckdb"
+    shared_path = tmp_path / "shared_matches_v2.duckdb"
 
     epoch = datetime(2026, 2, 3, 17, 0, 0, tzinfo=timezone.utc).timestamp()
     media_epoch = epoch + 60
@@ -564,7 +564,7 @@ def test_association_multi_players_same_media(tmp_path: Path) -> None:
 def test_association_map_id_map_name_stored(tmp_path: Path) -> None:
     """Test que map_id et map_name sont bien stockés dans les associations."""
     db_path = tmp_path / "stats.duckdb"
-    shared_path = tmp_path / "shared_matches.duckdb"
+    shared_path = tmp_path / "shared_matches_v2.duckdb"
 
     _create_shared_db(
         shared_path,
@@ -721,7 +721,7 @@ def test_association_search_all_player_dbs(tmp_path: Path) -> None:
     db_other = tmp_path / "other" / "stats.duckdb"
     db_current.parent.mkdir(parents=True)
     db_other.parent.mkdir(parents=True)
-    shared_path = tmp_path / "shared_matches.duckdb"
+    shared_path = tmp_path / "shared_matches_v2.duckdb"
 
     epoch = datetime(2026, 2, 3, 17, 0, 0, tzinfo=timezone.utc).timestamp()
     media_epoch = epoch + 120

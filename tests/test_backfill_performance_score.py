@@ -27,7 +27,7 @@ _PERF_BIT = 16  # BACKFILL_FLAGS["performance_scores"]
 def _create_shared_conn(
     tmp_path: Path, *, with_backfill_col: bool = True
 ) -> duckdb.DuckDBPyConnection:
-    """Crée shared_matches.duckdb avec match_registry + match_participants.
+    """Crée shared_matches_v2.duckdb avec match_registry + match_participants.
 
     25 matchs : match-000 à match-024.
     match-020 à match-024 ont backfill_completed = 16 (performance_scores bit).

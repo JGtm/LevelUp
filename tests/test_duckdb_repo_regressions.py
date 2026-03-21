@@ -15,7 +15,7 @@ from src.data.repositories.duckdb_repo import DuckDBRepository
 def repo_with_data(tmp_path):
     """Crée un repository DuckDB avec des données de test."""
     db_path = tmp_path / "test_repo.duckdb"
-    shared_db_path = tmp_path / "shared_matches.duckdb"
+    shared_db_path = tmp_path / "shared_matches_v2.duckdb"
     conn = duckdb.connect(str(db_path))
 
     # Créer les tables

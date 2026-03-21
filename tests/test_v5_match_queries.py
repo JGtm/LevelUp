@@ -90,7 +90,7 @@ def _create_player_db(db_path: Path, *, with_match_stats: bool = True) -> None:
 
 
 def _create_shared_db(db_path: Path) -> None:
-    """Crée une shared_matches.duckdb avec données de test."""
+    """Crée une shared_matches_v2.duckdb avec données de test."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(str(db_path))
 
@@ -255,8 +255,8 @@ def tmp_player_db_no_ms(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def tmp_shared_db(tmp_path: Path) -> Path:
-    """shared_matches.duckdb avec données de test."""
-    db_path = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+    """shared_matches_v2.duckdb avec données de test."""
+    db_path = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
     _create_shared_db(db_path)
     return db_path
 
@@ -291,7 +291,7 @@ def repo_v4(tmp_player_db: Path) -> DuckDBRepository:
     return DuckDBRepository(
         player_db_path=tmp_player_db,
         xuid=PLAYER_XUID,
-        shared_db_path=Path("/nonexistent/shared_matches.duckdb"),
+        shared_db_path=Path("/nonexistent/shared_matches_v2.duckdb"),
         gamertag="TestPlayer",
         read_only=True,
     )
@@ -303,7 +303,7 @@ def repo_v4(tmp_player_db: Path) -> DuckDBRepository:
 
 
 class TestLoadMatchesShared:
-    """Tests load_matches() avec shared_matches.duckdb."""
+    """Tests load_matches() avec shared_matches_v2.duckdb."""
 
     def test_load_matches_via_shared_returns_all(self, repo_v5: DuckDBRepository):
         """load_matches v5 retourne les 3 matchs (incluant match_003 non local)."""
@@ -384,7 +384,7 @@ class TestLoadMatchesV4Fallback:
         """Sans shared, load_matches lève RuntimeError (architecture v6)."""
         import pytest
 
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             repo_v4.load_matches()
 
     def test_get_match_source_raises_without_shared(self, repo_v4: DuckDBRepository):
@@ -392,7 +392,7 @@ class TestLoadMatchesV4Fallback:
         import pytest
 
         conn = repo_v4._get_connection()
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             repo_v4._get_match_source(conn)
 
 
@@ -478,7 +478,7 @@ class TestLoadRecentMatches:
         """load_recent_matches lève RuntimeError sans shared (v6)."""
         import pytest
 
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             repo_v4.load_recent_matches(limit=1)
 
 
@@ -539,7 +539,7 @@ class TestLoadMatchesAsPolars:
         """load_matches_as_polars lève RuntimeError sans shared (v6)."""
         import pytest
 
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             repo_v4.load_matches_as_polars()
 
 
@@ -570,7 +570,7 @@ class TestLoadMatchStatsAsPolars:
         """load_match_stats_as_polars lève RuntimeError sans shared (v6)."""
         import pytest
 
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             repo_v4.load_match_stats_as_polars()
 
 
@@ -597,7 +597,7 @@ class TestGetMatchSource:
         import pytest
 
         conn = repo_v4._get_connection()
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             repo_v4._get_match_source(conn)
 
     def test_v5_no_ms_returns_subquery(self, repo_v5_no_ms: DuckDBRepository):

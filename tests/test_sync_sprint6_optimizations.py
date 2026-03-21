@@ -63,8 +63,8 @@ def temp_duckdb(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def temp_shared_db(tmp_path: Path) -> Path:
-    """Crée shared_matches.duckdb avec match_registry + match_participants (schéma V5)."""
-    db_path = tmp_path / "warehouse" / "shared_matches.duckdb"
+    """Crée shared_matches_v2.duckdb avec match_registry + match_participants (schéma V5)."""
+    db_path = tmp_path / "warehouse" / "shared_matches_v2.duckdb"
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = duckdb.connect(str(db_path))

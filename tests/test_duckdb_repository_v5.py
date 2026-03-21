@@ -1,7 +1,7 @@
 """Tests unitaires pour DuckDBRepository v5 — shared_matches.
 
 Teste le refactoring Sprint 4 :
-- ATTACH de shared_matches.duckdb en READ_ONLY
+- ATTACH de shared_matches_v2.duckdb en READ_ONLY
 - Lecture depuis shared.match_participants, shared.medals_earned, shared.highlight_events
 - Fallback sur tables locales si shared indisponible
 - Résolution de gamertags avec cascade shared → local
@@ -133,7 +133,7 @@ def _create_player_db(db_path: Path) -> None:
 
 
 def _create_shared_db(db_path: Path) -> None:
-    """Crée une shared_matches.duckdb avec le schéma v5."""
+    """Crée une shared_matches_v2.duckdb avec le schéma v5."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(str(db_path))
 
@@ -368,8 +368,8 @@ def tmp_player_db(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def tmp_shared_db(tmp_path: Path) -> Path:
-    """Crée une shared_matches.duckdb temporaire."""
-    db_path = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+    """Crée une shared_matches_v2.duckdb temporaire."""
+    db_path = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
     _create_shared_db(db_path)
     return db_path
 
@@ -392,7 +392,7 @@ def repo_v4(tmp_player_db: Path) -> DuckDBRepository:
     return DuckDBRepository(
         player_db_path=tmp_player_db,
         xuid=PLAYER_XUID,
-        shared_db_path=Path("/nonexistent/shared_matches.duckdb"),
+        shared_db_path=Path("/nonexistent/shared_matches_v2.duckdb"),
         gamertag="TestPlayer",
         read_only=True,
     )
@@ -404,10 +404,10 @@ def repo_v4(tmp_player_db: Path) -> DuckDBRepository:
 
 
 class TestSharedAttach:
-    """Tests de l'attachement de shared_matches.duckdb."""
+    """Tests de l'attachement de shared_matches_v2.duckdb."""
 
     def test_has_shared_true_when_attached(self, repo_v5: DuckDBRepository):
-        """shared_matches.duckdb est attaché correctement."""
+        """shared_matches_v2.duckdb est attaché correctement."""
         repo_v5._get_connection()  # Initialise la connexion
         assert repo_v5.has_shared is True
 
@@ -417,7 +417,7 @@ class TestSharedAttach:
         assert repo_v4.has_shared is False
 
     def test_shared_db_path_auto_detection(self, tmp_path: Path):
-        """Auto-détection de shared_matches.duckdb depuis le chemin joueur."""
+        """Auto-détection de shared_matches_v2.duckdb depuis le chemin joueur."""
         db_path = tmp_path / "data" / "players" / "TestPlayer" / "stats.duckdb"
         _create_player_db(db_path)
         repo = DuckDBRepository(
@@ -692,7 +692,7 @@ class TestV4Fallback:
 
     def test_load_matches_raises_without_shared(self, repo_v4: DuckDBRepository):
         """En v6, load_matches sans shared DB disponible lève RuntimeError."""
-        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+        with pytest.raises(RuntimeError, match="shared_matches_v2.duckdb indisponible"):
             repo_v4.load_matches()
 
     def test_get_match_count_returns_zero_without_shared(self, repo_v4: DuckDBRepository):
