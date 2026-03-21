@@ -13,7 +13,10 @@ Prérequis de l'app :
 from __future__ import annotations
 
 # Application (client) ID de l'app "LevelUp Halo" (Azure App Registration)
-LEVELUP_CLIENT_ID: str = "159544f8-3de6-4d5e-acef-82ef1cdc2832"  # pragma: allowlist secret
+LEVELUP_CLIENT_ID: str = "e1cb35ab-c41a-4ee5-a7a1-22ea4e94cdca"  # pragma: allowlist secret
+# Fallback SPNKR_AZURE_CLIENT_ID (désactivé — réactiver si l'app Azure doit être surchargée) :
+# import os
+# LEVELUP_CLIENT_ID = os.environ.get("SPNKR_AZURE_CLIENT_ID", LEVELUP_CLIENT_ID) or LEVELUP_CLIENT_ID
 
 # Authority Microsoft pour les comptes personnels (Xbox Live)
 MSAL_AUTHORITY: str = "https://login.microsoftonline.com/consumers"
