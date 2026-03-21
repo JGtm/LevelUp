@@ -8,29 +8,29 @@ from src.ui.i18n.viz import viz_t
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
-# Couleurs "négatives" : version assombrie (~50% luminosité) de chaque couleur Okabe-Ito.
-# Chaque slot garde sa teinte → le joueur reste reconnaissable par rapport à sa ligne lissée.
-# Fonctionne pour tous les types de daltonisme (la teinte est préservée, seule la luminosité baisse).
-# Calcul : RGB × 0.5 arrondi.
-# Slot 0 (Sky Blue  #56B4E9) → bleu marine foncé
-# Slot 1 (Orange    #E69F00) → ambre foncé
-# Slot 2 (Bl.Green  #009E73) → sarcelle foncée
-# Slot 3 (Rd.Purple #CC79A7) → mauve foncé
-# Slot 4 (Vermilion #D55E00) → brun-sienna foncé
+# Couleurs "négatives" : famille rouge, luminance HSL bien espacée (~13-15% d'écart)
+# → distinguables en deutéranopie (où la teinte varie peu, mais la luminance est préservée).
+# → lisibles sur fond sombre (L min = 18%).
+# Slot 0 (Sky Blue  #56B4E9) → rouge saumon     L=70%
+# Slot 1 (Orange    #E69F00) → rouge franc       L=55%
+# Slot 2 (Bl.Green  #009E73) → rouge profond     L=41%
+# Slot 3 (Rd.Purple #CC79A7) → rouge sombre      L=27%
+# Slot 4 (Vermilion #D55E00) → rouge quasi-noir  L=18%
 _OKABE_NEGATIVE_COLORS: dict[str, str] = {
-    "#56B4E9": "#2b5a74",  # bleu marine foncé
-    "#E69F00": "#734f00",  # ambre foncé
-    "#009E73": "#004f39",  # sarcelle foncée
-    "#CC79A7": "#663c53",  # mauve foncé
-    "#D55E00": "#6a2f00",  # brun-sienna foncé
+    "#56B4E9": "#ff6666",  # rouge saumon     (L=70%)
+    "#E69F00": "#e63333",  # rouge franc      (L=55%)
+    "#009E73": "#b31c1c",  # rouge profond    (L=41%)
+    "#CC79A7": "#7a1111",  # rouge sombre     (L=27%)
+    "#D55E00": "#500a0a",  # rouge quasi-noir (L=18%)
 }
-_NEGATIVE_FALLBACK = "#5a2020"
+_NEGATIVE_FALLBACK = "#b31c1c"
 
 
 def _negative_color(hex_color: str) -> str:
-    """Retourne la version assombrie (~50% luminosité) de la couleur Okabe-Ito.
+    """Retourne la couleur négative (rouge) associée à une couleur Okabe-Ito.
 
-    Préserve la teinte du joueur → distinguable pour tous les types de daltonisme.
+    5 niveaux de luminance bien espacés (L = 70/55/41/27/18%) →
+    distinguables en deutéranopie et lisibles sur fond sombre.
     """
     return _OKABE_NEGATIVE_COLORS.get(hex_color, _NEGATIVE_FALLBACK)
 
