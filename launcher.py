@@ -1205,6 +1205,26 @@ def _transfer_msal_cache(source: Path, target: Path) -> None:
     logger.info("_transfer_msal_cache: cache MSAL transféré vers %s", target.name)
 
 
+def _print_device_code(user_code: str, verification_url: str, expires_in: int) -> None:
+    """Affiche le code Device Code Flow de façon bien visible (encadré)."""
+    print()
+    print("  ╔══════════════════════════════════════════════════════════╗")
+    print("  ║         🔑 CODE À ENTRER SUR MICROSOFT                  ║")
+    print("  ╠══════════════════════════════════════════════════════════╣")
+    print(f"  ║  URL  : {verification_url:<49}║")
+    print(f"  ║  Code : {user_code:<49}║")
+    print(f"  ║  Expire dans : {expires_in // 60} min{' ' * (44 - len(str(expires_in // 60)))}║")
+    print("  ╚══════════════════════════════════════════════════════════╝")
+    print()
+    # Copier le code dans le presse-papiers Windows si possible
+    import subprocess  # noqa: PLC0415
+
+    with contextlib.suppress(Exception):
+        subprocess.run(["clip"], input=user_code.encode(), check=False)  # noqa: S603, S607
+        print("  📋 Code copié dans le presse-papiers.")
+    print()
+
+
 def _wizard_oauth_token(gamertag: str, client_id: str = "") -> bool:  # noqa: ARG001
     """Wizard interactif : connexion Xbox via MSAL Device Code Flow.
 
@@ -1246,13 +1266,11 @@ def _wizard_oauth_token(gamertag: str, client_id: str = "") -> bool:  # noqa: AR
         print(f"  ❌ Erreur : {code} — {detail}")
         return False
 
-    print()
-    print(f"  1) Visite : {pending.verification_url}")
-    print(f"  2) Entre le code : {pending.user_code}")
-    print(f"     (expire dans {pending.expires_in // 60} min)")
-    print()
+    _print_device_code(pending.user_code, pending.verification_url, pending.expires_in)
     with contextlib.suppress(Exception):
         webbrowser.open(pending.verification_url)
+    # Rappel après ouverture du navigateur (la fenêtre peut être passée en arrière-plan)
+    print(f"  ↑ Revenez ici si besoin — Code : {pending.user_code}")
     print("  En attente de votre connexion Xbox… (ne fermez pas cette fenêtre)")
     print()
 
@@ -1310,13 +1328,11 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
         print(f"  ❌ Erreur : {getattr(exc, 'code', 'unknown')} — {getattr(exc, 'detail', exc)}")
         return 2
 
-    print()
-    print(f"  1) Visite : {pending.verification_url}")
-    print(f"  2) Entre le code : {pending.user_code}")
-    print(f"     (expire dans {pending.expires_in // 60} min)")
-    print()
+    _print_device_code(pending.user_code, pending.verification_url, pending.expires_in)
     with contextlib.suppress(Exception):
         webbrowser.open(pending.verification_url)
+    # Rappel après ouverture du navigateur (la fenêtre peut être passée en arrière-plan)
+    print(f"  ↑ Revenez ici si besoin — Code : {pending.user_code}")
     print("  En attente de votre connexion Xbox… (ne fermez pas cette fenêtre)")
     print()
 
