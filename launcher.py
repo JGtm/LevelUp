@@ -376,7 +376,12 @@ def _classify_sync_error(err: str, gamertag: str) -> str:
             "  ⚠ Impossible de joindre les serveurs Halo.\n"
             "  → Vérifie ta connexion internet et réessaie."
         )
-    return f"  ⚠ Erreur sync ({gamertag}) : {err}"
+    # Erreur inconnue — afficher le message complet pour faciliter le diagnostic
+    return (
+        f"  ⚠ Erreur inattendue pour {gamertag} :\n"
+        f"  {err}\n"
+        "  → Pour obtenir de l'aide, transmets ce message complet."
+    )
 
 
 async def _sync_player_duckdb_async(
@@ -1409,7 +1414,7 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
         try:
             before, after = _sync_player_duckdb(gamertag, delta=False, max_matches=10)
         except Exception as e:
-            test_error = _classify_sync_error(str(e), gamertag)
+            test_error = _classify_sync_error(f"{type(e).__name__}: {e}", gamertag)
 
         new_matches = after - before
 
