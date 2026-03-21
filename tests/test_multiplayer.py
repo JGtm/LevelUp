@@ -229,7 +229,7 @@ class TestResolveXuidFromPlayerDb:
 
 class TestResolveFromShared:
     def _make_shared_db(self, path: Path) -> None:
-        """Crée une shared_matches.duckdb minimale pour les tests."""
+        """Crée une shared_matches_v2.duckdb minimale pour les tests."""
         with duckdb.connect(str(path)) as conn:
             conn.execute("CREATE TABLE xuid_aliases (xuid TEXT, gamertag TEXT)")
             conn.execute("CREATE TABLE match_participants (match_id TEXT, xuid TEXT)")
@@ -242,7 +242,7 @@ class TestResolveFromShared:
 
     def test_resolves_xuid_and_count_from_shared(self, tmp_path: Path) -> None:
         """Si xuid=None et total_matches=0, résout les deux depuis shared."""
-        shared_path = tmp_path / "shared_matches.duckdb"
+        shared_path = tmp_path / "shared_matches_v2.duckdb"
         self._make_shared_db(shared_path)
         db_path = tmp_path / "Chocoboflor" / "stats.duckdb"
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -257,7 +257,7 @@ class TestResolveFromShared:
 
     def test_uses_xuid_if_provided(self, tmp_path: Path) -> None:
         """Si xuid est déjà connu, l'utilise directement."""
-        shared_path = tmp_path / "shared_matches.duckdb"
+        shared_path = tmp_path / "shared_matches_v2.duckdb"
         self._make_shared_db(shared_path)
         db_path = tmp_path / "player" / "stats.duckdb"
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -272,7 +272,7 @@ class TestResolveFromShared:
 
     def test_gamertag_join_when_no_xuid(self, tmp_path: Path) -> None:
         """Fallback gamertag→xuid→count via JOIN quand xuid inconnu et absent de xuid_aliases."""
-        shared_path = tmp_path / "shared_matches.duckdb"
+        shared_path = tmp_path / "shared_matches_v2.duckdb"
         with duckdb.connect(str(shared_path)) as conn:
             conn.execute("CREATE TABLE xuid_aliases (xuid TEXT, gamertag TEXT)")
             conn.execute("CREATE TABLE match_participants (match_id TEXT, xuid TEXT)")

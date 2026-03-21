@@ -20,7 +20,7 @@ import pytest
 
 
 def _create_shared_db(path: Path) -> None:
-    """Crée un shared_matches.duckdb minimal avec les 3 tables du scoreboard."""
+    """Crée un shared_matches_v2.duckdb minimal avec les 3 tables du scoreboard."""
     conn = duckdb.connect(str(path))
     conn.execute(
         """
@@ -301,7 +301,7 @@ class TestLoadMatchScoreboard:
 
     @pytest.fixture
     def shared_path(self, tmp_path: Path) -> Path:
-        path = tmp_path / "shared_matches.duckdb"
+        path = tmp_path / "shared_matches_v2.duckdb"
         _create_shared_db(path)
         return path
 
@@ -427,7 +427,7 @@ class TestTopWeaponIdScoreboard:
 
     @pytest.fixture
     def shared_path(self, tmp_path: Path) -> Path:
-        path = tmp_path / "shared_matches.duckdb"
+        path = tmp_path / "shared_matches_v2.duckdb"
         _create_shared_db(path)
         return path
 

@@ -193,8 +193,10 @@ def _resolve_player_xuid(db_path: str) -> str:
                 result = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid'").fetchone()
                 if result and result[0] and str(result[0]).strip():
                     return str(result[0]).strip()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "_resolve_player_xuid: sync_meta indisponible, tentative xuid_aliases: %s", e
+                )
 
         # Stratégie 2 : xuid_aliases via shared_matches.duckdb (v5.1)
         try:
@@ -211,10 +213,10 @@ def _resolve_player_xuid(db_path: str) -> str:
                     resolved = lookup_xuid_for_gamertag(shared_con, gamertag)
                     if resolved:
                         return resolved
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("_resolve_player_xuid: xuid_aliases indisponible: %s", e)
 
     except Exception as e:
-        logger.debug("_resolve_player_xuid: résolution XUID échouée pour %s: %s", db_path, e)
+        logger.warning("_resolve_player_xuid: résolution XUID échouée pour %s: %s", db_path, e)
 
     return ""

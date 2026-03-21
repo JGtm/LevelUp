@@ -255,7 +255,7 @@ class TestLoadTopMatchesDuckDB:
         """Crée une DB shared sur disque avec la vue mv_player_matches, attachée comme 'shared'."""
         import pathlib
 
-        shared_path = str(pathlib.Path(str(tmp_path)) / "shared_matches.duckdb")
+        shared_path = str(pathlib.Path(str(tmp_path)) / "shared_matches_v2.duckdb")
         shared_db = duckdb.connect(shared_path)
         shared_db.execute("""
             CREATE TABLE match_registry (

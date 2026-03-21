@@ -24,8 +24,8 @@ import pytest
 
 @pytest.fixture
 def shared_db(tmp_path: Path) -> duckdb.DuckDBPyConnection:
-    """Crée une shared_matches.duckdb temporaire avec le schéma minimal."""
-    db_path = tmp_path / "warehouse" / "shared_matches.duckdb"
+    """Crée une shared_matches_v2.duckdb temporaire avec le schéma minimal."""
+    db_path = tmp_path / "warehouse" / "shared_matches_v2.duckdb"
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = duckdb.connect(str(db_path))
@@ -322,7 +322,7 @@ class TestEngineSpnkrVersion:
         """L'engine détecte la version SPNKr installée."""
         player_db = tmp_path / "players" / "TestGT" / "stats.duckdb"
         player_db.parent.mkdir(parents=True, exist_ok=True)
-        shared_db = tmp_path / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "warehouse" / "shared_matches_v2.duckdb"
         shared_db.parent.mkdir(parents=True, exist_ok=True)
 
         with patch("importlib.metadata.version", return_value="0.10.1"):

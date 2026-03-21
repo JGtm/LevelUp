@@ -31,7 +31,7 @@ def _make_engine(tmp_path: Path) -> DuckDBSyncEngine:
     player_db.touch()
     engine = DuckDBSyncEngine.__new__(DuckDBSyncEngine)
     engine._player_db_path = player_db
-    engine._shared_db_path = tmp_path / "shared_matches.duckdb"
+    engine._shared_db_path = tmp_path / "shared_matches_v2.duckdb"
     engine._xuid = "xuid_test_123"
     engine._shared_connection = None
     engine._tokens = None

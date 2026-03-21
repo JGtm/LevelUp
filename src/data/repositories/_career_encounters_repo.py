@@ -203,7 +203,7 @@ class EncounterCareerMixin:
                 [xuid, since, since, xuid, xuid, xuid, xuid, xuid, xuid, sql_limit],
             ).fetchall()
         except Exception:
-            logger.debug("load_top_encountered: erreur", exc_info=True)
+            logger.warning("load_top_encountered: erreur", exc_info=True)
             return []
         cols = (
             "xuid",
@@ -258,7 +258,7 @@ class EncounterCareerMixin:
                 [since, since, xuid, xuid, xuid, xuid, xuid, xuid, limit + extra],
             ).fetchall()
         except Exception:
-            logger.debug("load_antagonists: erreur (mode=%s)", mode, exc_info=True)
+            logger.warning("load_antagonists: erreur (mode=%s)", mode, exc_info=True)
             return []
         cols = (
             "opponent_xuid",

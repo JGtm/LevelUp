@@ -51,9 +51,9 @@ class TestMaterializedViews:
         import uuid
 
         player_db_path = tmp_path / f"test_stats_{uuid.uuid4().hex[:8]}.duckdb"
-        shared_db_path = tmp_path / "shared_matches.duckdb"
+        shared_db_path = tmp_path / "shared_matches_v2.duckdb"
 
-        # ── shared_matches.duckdb ──────────────────────────────────────────────
+        # ── shared_matches_v2.duckdb ──────────────────────────────────────────────
         shared_conn = duckdb.connect(str(shared_db_path))
         try:
             shared_conn.execute("""
@@ -315,7 +315,7 @@ class TestBatchMmrLoading:
         import uuid
 
         player_db_path = tmp_path / f"test_mmr_{uuid.uuid4().hex[:8]}.duckdb"
-        shared_db_path = tmp_path / "shared_matches.duckdb"
+        shared_db_path = tmp_path / "shared_matches_v2.duckdb"
 
         shared_conn = duckdb.connect(str(shared_db_path))
         try:
@@ -424,7 +424,7 @@ class TestPerformanceComparison:
         import uuid
 
         player_db_path = tmp_path / f"test_perf_{uuid.uuid4().hex[:8]}.duckdb"
-        shared_db_path = tmp_path / "shared_matches.duckdb"
+        shared_db_path = tmp_path / "shared_matches_v2.duckdb"
 
         shared_conn = duckdb.connect(str(shared_db_path))
 

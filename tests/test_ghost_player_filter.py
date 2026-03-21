@@ -24,7 +24,7 @@ import pytest
 
 
 def _create_shared_db(path: Path) -> None:
-    """Crée un shared_matches.duckdb minimal pour les tests ghost."""
+    """Crée un shared_matches_v2.duckdb minimal pour les tests ghost."""
     conn = duckdb.connect(str(path))
     conn.execute("""
         CREATE TABLE match_participants (
@@ -258,7 +258,7 @@ class TestScoreboardGhostFiltering:
 
     @pytest.fixture()
     def shared_path(self, tmp_path: Path) -> Path:
-        path = tmp_path / "shared_matches.duckdb"
+        path = tmp_path / "shared_matches_v2.duckdb"
         _create_shared_db(path)
         return path
 
@@ -325,7 +325,7 @@ class TestPlayersStatsGhostFiltering:
 
     @pytest.fixture()
     def shared_path(self, tmp_path: Path) -> Path:
-        path = tmp_path / "shared_matches.duckdb"
+        path = tmp_path / "shared_matches_v2.duckdb"
         _create_shared_db(path)
         return path
 
@@ -362,7 +362,7 @@ class TestTopTeammatesGhostFiltering:
 
     @pytest.fixture()
     def shared_path(self, tmp_path: Path) -> Path:
-        path = tmp_path / "shared_matches.duckdb"
+        path = tmp_path / "shared_matches_v2.duckdb"
         _create_shared_db(path)
         return path
 
@@ -428,7 +428,7 @@ class TestTopEncounteredGhostFiltering:
 
     @pytest.fixture()
     def shared_path(self, tmp_path: Path) -> Path:
-        path = tmp_path / "shared_matches.duckdb"
+        path = tmp_path / "shared_matches_v2.duckdb"
         _create_shared_db(path)
         return path
 

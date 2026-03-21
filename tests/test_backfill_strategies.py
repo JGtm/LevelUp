@@ -18,7 +18,7 @@ import pytest
 
 @pytest.fixture()
 def shared_conn():
-    """Connexion DuckDB in-memory simulant shared_matches.duckdb (match_registry + match_participants)."""
+    """Connexion DuckDB in-memory simulant shared_matches_v2.duckdb (match_registry + match_participants)."""
     c = duckdb.connect(":memory:")
     c.execute("""
         CREATE TABLE match_registry (

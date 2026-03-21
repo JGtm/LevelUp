@@ -111,7 +111,7 @@ def temp_player_db(tmp_path: Path):
     # Créer shared DB (v5.1 — get_match_count requiert shared.match_participants)
     warehouse = tmp_path / "warehouse"
     warehouse.mkdir(parents=True)
-    shared_conn = duckdb.connect(str(warehouse / "shared_matches.duckdb"))
+    shared_conn = duckdb.connect(str(warehouse / "shared_matches_v2.duckdb"))
     try:
         shared_conn.execute("""
             CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP)

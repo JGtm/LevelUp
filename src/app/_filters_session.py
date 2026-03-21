@@ -327,7 +327,6 @@ def _init_session_state_keys(
 def _render_solo_section(solo_options: list[str], pre_solo: str) -> None:
     """Rend la sous-section En solo (boutons + selectbox + détection changement)."""
     st.subheader(t("filter_solo_title"))
-    st.divider()
     solo_cols = st.columns(2)
     if solo_cols[0].button(t("filter_last_session"), width="stretch", key="btn_solo_last"):
         _select_solo_via_button(solo_options[0] if solo_options else "(toutes)")
@@ -367,7 +366,6 @@ def _render_squad_section(
 ) -> None:
     """Rend la sous-section Mon escouade (boutons + selectbox + détection changement)."""
     st.subheader(t("filter_squad_title"))
-    st.divider()
     no_squad_sessions = not squad_options
 
     if no_friends:

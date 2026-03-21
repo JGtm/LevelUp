@@ -86,8 +86,8 @@ def test_sessions_columns_are_non_empty_for_loaded_rows(sessions_contract_db) ->
 
 def test_cached_compute_sessions_db_returns_expected_contract(tmp_path) -> None:
     """Le calcul de sessions doit fournir les colonnes attendues et des labels cohérents (v5)."""
-    # Crée la structure v5 : shared_matches.duckdb + player stats.duckdb
-    shared_path = tmp_path / "shared_matches.duckdb"
+    # Crée la structure v5 : shared_matches_v2.duckdb + player stats.duckdb
+    shared_path = tmp_path / "shared_matches_v2.duckdb"
     t0 = datetime.now(timezone.utc) - timedelta(days=3)
     shared_conn = duckdb.connect(str(shared_path))
     try:

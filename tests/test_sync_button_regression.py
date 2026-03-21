@@ -114,7 +114,7 @@ def _create_player_db(db_path: Path, *, with_match_stats: bool = False) -> None:
 
 
 def _create_shared_db(db_path: Path) -> None:
-    """Crée une shared_matches.duckdb minimale pour les tests."""
+    """Crée une shared_matches_v2.duckdb minimale pour les tests."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(str(db_path))
 
@@ -246,10 +246,10 @@ class TestResolveXuidFromDb:
 
     def test_resolve_from_xuid_aliases(self, tmp_path: Path) -> None:
         """8bis: Stratégie 3 en v5.1 — XUID depuis shared.xuid_aliases via gamertag."""
-        # Structure v5.1 : créer shared_matches.duckdb avec xuid_aliases
+        # Structure v5.1 : créer shared_matches_v2.duckdb avec xuid_aliases
         warehouse = tmp_path / "data" / "warehouse"
         warehouse.mkdir(parents=True, exist_ok=True)
-        shared_db = warehouse / "shared_matches.duckdb"
+        shared_db = warehouse / "shared_matches_v2.duckdb"
         _create_shared_db(shared_db)  # Contient déjà l'alias
 
         # Player DB sans xuid local
@@ -295,7 +295,7 @@ class TestLoadExistingMatchIds:
         dans shared.match_participants ET dans player_match_enrichment.
         Les matchs présents dans shared mais non enrichis seront re-traités.
         """
-        # Créer la structure data/players/{gt}/stats.duckdb + data/warehouse/shared_matches.duckdb
+        # Créer la structure data/players/{gt}/stats.duckdb + data/warehouse/shared_matches_v2.duckdb
         players_dir = tmp_path / "data" / "players" / PLAYER_GAMERTAG
         db = players_dir / "stats.duckdb"
         db.parent.mkdir(parents=True, exist_ok=True)
@@ -321,7 +321,7 @@ class TestLoadExistingMatchIds:
         conn.close()
 
         # Shared DB avec 3 matchs (tous dans match_participants)
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
         _create_shared_db(shared_db)
 
         from src.data.sync.engine import DuckDBSyncEngine
@@ -389,7 +389,7 @@ class TestLoadExistingMatchIds:
 
         # Shared DB : MATCH_ID_1 et MATCH_ID_2 avec personal_score > 0
         #             MATCH_ID_3 avec personal_score = 0 (légitimement vide)
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
         _create_shared_db(shared_db)
         # Mettre personal_score > 0 pour MATCH_ID_2 (prouve qu'il devrait avoir des awards)
         shared_conn = duckdb.connect(str(shared_db))
@@ -452,7 +452,7 @@ class TestLoadExistingMatchIds:
         conn.execute("INSERT INTO player_match_enrichment (match_id) VALUES (?)", (MATCH_ID_1,))
         conn.close()
 
-        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
         _create_shared_db(shared_db)
         # personal_score reste à 0 pour MATCH_ID_1 (défaut du helper)
 

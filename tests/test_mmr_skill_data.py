@@ -104,7 +104,7 @@ def _create_shared_db_with_mmr(db_path: Path) -> None:
 
 @pytest.fixture()
 def shared_db_path(tmp_path: Path) -> Path:
-    p = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+    p = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
     _create_shared_db_with_mmr(p)
     return p
 
@@ -268,7 +268,7 @@ class TestDbCacheKeyWal:
         assert key_after_checkpoint[4] == 0
 
     def test_key_changes_on_shared_mtime(self, player_db_path: Path, shared_db_path: Path) -> None:
-        """La clé change quand shared_matches.duckdb est modifié (checkpoint)."""
+        """La clé change quand shared_matches_v2.duckdb est modifié (checkpoint)."""
         from src.ui._cache_core import db_cache_key
 
         key_before = db_cache_key(str(player_db_path))
