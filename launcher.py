@@ -1366,24 +1366,108 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
 
     # ── Étape 3 : Synchronisation ─────────────────────────────────────────────
     print()
-    print(f"  → Synchronisation de « {gamertag} » (premier chargement, quelques minutes)…")
+    print("  Comment veux-tu démarrer la synchronisation ?")
+    print()
+    print("  1) Test rapide   — 10 matchs  (recommandé pour vérifier que tout fonctionne)")
+    print("  2) Sync complet  — 200 matchs d'un coup")
     print()
 
     try:
-        before, after = _sync_player_duckdb(gamertag, delta=False, max_matches=200)
+        sync_choice = input("  Ton choix (1/2) [1] : ").strip() or "1"
+    except (EOFError, KeyboardInterrupt):
+        sync_choice = "1"
+
+    if sync_choice == "2":
+        # Sync complet direct
+        print()
+        print(f"  → Synchronisation de « {gamertag} » (200 matchs)…")
+        print()
+        try:
+            before, after = _sync_player_duckdb(gamertag, delta=False, max_matches=200)
+        except Exception as e:
+            print(_classify_sync_error(str(e), gamertag))
+            return 2
+        new_matches = after - before
+        if new_matches > 0:
+            print(f"\n  OK  {new_matches} match(s) synchronise(s) pour {gamertag}")
+        elif after > 0:
+            print(f"\n  OK  {after} match(s) deja presents pour {gamertag}")
+        else:
+            print("\n  Aucun match recupere. Verifie ton token ou ta connexion.")
+            return 2
+        return 0
+
+    # ── Test 10 matchs ────────────────────────────────────────────────────────
+    print()
+    print(f"  → Test : synchronisation de 10 matchs pour « {gamertag} »…")
+    print()
+    try:
+        before, after = _sync_player_duckdb(gamertag, delta=False, max_matches=10)
     except Exception as e:
         print(_classify_sync_error(str(e), gamertag))
         return 2
 
     new_matches = after - before
     if new_matches > 0:
-        print(f"\n  ✅ {new_matches} match(s) synchronisé(s) pour {gamertag}")
+        print(f"\n  OK  {new_matches} match(s) synchronise(s) — le test est concluant !")
     elif after > 0:
-        print(f"\n  ✅ {after} match(s) déjà présents pour {gamertag}")
+        print(f"\n  OK  {after} match(s) deja presents (rien de nouveau sur 10 matchs)")
     else:
-        print("\n  ⚠ Aucun match récupéré. Vérifie ton token ou ta connexion.")
+        print("\n  Aucun match recupere. Verifie ton token ou ta connexion.")
         return 2
 
+    # ── Proposition de poursuivre ─────────────────────────────────────────────
+    print()
+    print("  Veux-tu recuperer plus de matchs maintenant ?")
+    print()
+    print("  1) Oui, continuer par batch de 200 matchs")
+    print("  2) Non, lancer le dashboard avec les matchs actuels")
+    print()
+
+    try:
+        continue_choice = input("  Ton choix (1/2) [1] : ").strip() or "1"
+    except (EOFError, KeyboardInterrupt):
+        continue_choice = "2"
+
+    if continue_choice != "1":
+        return 0
+
+    # ── Batches de 200 ────────────────────────────────────────────────────────
+    total_new = new_matches
+    batch_num = 1
+    while True:
+        print()
+        print(f"  → Batch {batch_num} : synchronisation de 200 matchs supplementaires…")
+        print()
+        try:
+            before_b, after_b = _sync_player_duckdb(gamertag, delta=False, max_matches=200)
+        except Exception as e:
+            print(_classify_sync_error(str(e), gamertag))
+            break
+
+        gained = after_b - before_b
+        total_new += gained
+        print(f"\n  OK  {gained} nouveau(x) match(s) — total : {after_b} matchs")
+
+        if gained == 0:
+            print("  Tous les matchs disponibles ont ete recuperes.")
+            break
+
+        print()
+        print("  Continuer avec un nouveau batch de 200 ?")
+        print()
+        print("  1) Oui, continuer")
+        print("  2) Non, lancer le dashboard")
+        print()
+        try:
+            again = input("  Ton choix (1/2) [1] : ").strip() or "1"
+        except (EOFError, KeyboardInterrupt):
+            again = "2"
+        if again != "1":
+            break
+        batch_num += 1
+
+    print(f"\n  Synchronisation terminee — {total_new} match(s) recupere(s) au total.")
     return 0
 
 
