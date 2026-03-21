@@ -259,6 +259,8 @@ WEAPON_CITATIONS: list[tuple] = [
      _WP_HI + "HI_Commendations_Carabine.png", "Arme", "Éliminez des Spartans avec la Carabine à impulsion.", "10,25,50,100,250", "Paria"),
     ("ravager_mastery", "Maîtrise du Ravageur", "weapon_stat", None, None, "weapon_kills:Ravager", None, None, None, None, "high", "Kills avec Ravageur", True,
      _WP_HI + "HI_Commendations_Ravager.png", "Arme", "Éliminez des Spartans avec le Ravageur.", "5,10,20,40,100", "Paria"),
+    ("plasma_pistol_mastery", "Maîtrise du Pistolet à plasma", "weapon_stat", None, None, "weapon_kills:Plasma Pistol", None, None, None, None, "high", "Kills avec Pistolet à plasma", True,
+     _WP_HI + "HI_Commendations_Plasma.png", "Arme", "Éliminez des Spartans avec le Pistolet à plasma.", "10,25,50,100,250", "Paria"),
     # Forerunner
     ("heatwave_mastery", "Maîtrise du Calcineur", "weapon_stat", None, None, "weapon_kills:Heatwave", None, None, None, None, "high", "Kills avec Calcineur", True,
      _WP_HI + "HI_Commendations_Heatwave.png", "Arme", "Éliminez des Spartans avec le Calcineur.", "10,25,50,100,250", "Forerunner"),
@@ -266,6 +268,10 @@ WEAPON_CITATIONS: list[tuple] = [
      _WP_HI + "HI_Commendations_Cremator.png", "Arme", "Éliminez des Spartans avec le Crémateur.", "10,20,40,80,200", "Forerunner"),
     ("sentinel_beam_mastery", "Maîtrise du Rayon de Sentinelle", "weapon_stat", None, None, "weapon_kills:Sentinel Beam", None, None, None, None, "high", "Kills avec Rayon de Sentinelle", True,
      _WP_HI + "HI_Commendations_Sentinel.png", "Arme", "Éliminez des Spartans avec le Rayon de Sentinelle.", "10,25,50,100,250", "Forerunner"),
+    ("disruptor_mastery", "Maîtrise du Disrupteur", "weapon_stat", None, None, "weapon_kills:Disruptor", None, None, None, None, "high", "Kills avec Disrupteur", True,
+     _WP_HI + "HI_Commendations_Disruptor.png", "Arme", "Éliminez des Spartans avec le Disrupteur.", "10,25,50,100,250", "Forerunner"),
+    ("shock_rifle_mastery", "Maîtrise du Fusil électrique", "weapon_stat", None, None, "weapon_kills:Shock Rifle", None, None, None, None, "high", "Kills avec Fusil électrique", True,
+     _WP_HI + "HI_Commendations_Shock.png", "Arme", "Éliminez des Spartans avec le Fusil électrique.", "10,25,50,100,250", "Forerunner"),
 ]
 # fmt: on
 
@@ -291,11 +297,14 @@ _PARIA_WEAPON_CHILDREN = [
     "gravity_hammer_mastery",
     "pulse_carbine_mastery",
     "ravager_mastery",
+    "plasma_pistol_mastery",
 ]
 _FORERUNNER_WEAPON_CHILDREN = [
     "heatwave_mastery",
     "cindershot_mastery",
     "sentinel_beam_mastery",
+    "disruptor_mastery",
+    "shock_rifle_mastery",
 ]
 _ALL_WEAPON_MASTERY_CHILDREN = [
     "human_weapons_mastery",
