@@ -216,6 +216,7 @@ class PageContext(NamedTuple):
     me_name: str
     gap_minutes: int
     picked_session_labels: Any
+    base_s_ui: Any  # DataFrame sessions (source de vérité = filter_state.base_s_ui)
     match_view_params: dict[str, Any]
 
 
@@ -696,6 +697,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
 
     gap_minutes = filter_state.gap_minutes
     picked_session_labels = filter_state.picked_session_labels
+    base_s_ui = filter_state.base_s_ui
 
     # KPIs
     render_kpis_section(dff)
@@ -735,6 +737,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
         me_name=me_name,
         gap_minutes=gap_minutes,
         picked_session_labels=picked_session_labels,
+        base_s_ui=base_s_ui,
         match_view_params=_match_view_params,
     )
 
@@ -855,6 +858,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
             aliases_key=ctx.aliases_key,
             settings=ctx.settings,
             picked_session_labels=ctx.picked_session_labels,
+            base_s_ui=ctx.base_s_ui,
             include_firefight=True,
             waypoint_player=ctx.waypoint_player,
             build_friends_opts_map_fn=build_friends_opts_map,

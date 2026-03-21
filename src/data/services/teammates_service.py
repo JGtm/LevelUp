@@ -22,8 +22,6 @@ from src.data.services._teammates_perf_queries import (
 
 logger = logging.getLogger(__name__)
 
-# ─── Dataclasses retour ────────────────────────────────────────────────
-
 
 @dataclass(frozen=True)
 class TeammateStats:
@@ -131,7 +129,13 @@ def _query_teammate_shared_stats(
             p.score AS personal_score,
             COALESCE(r.is_firefight, FALSE) AS is_firefight,
             COALESCE(r.is_ranked, FALSE) AS is_ranked,
-            p.xuid
+            p.xuid,
+            p.team_mmr AS team_mmr,
+            p.enemy_mmr AS enemy_mmr,
+            CASE WHEN COALESCE(r.duration_seconds, 0) > 0
+                THEN CAST(COALESCE(p.kills, 0) AS FLOAT) * 60.0 / CAST(r.duration_seconds AS FLOAT)
+                ELSE NULL
+            END AS kills_per_min
         FROM shared.match_participants p
         JOIN shared.match_registry r ON p.match_id = r.match_id
         WHERE p.xuid = ?
@@ -206,9 +210,6 @@ def _extract_match_row_from_df(df_player: Any) -> dict[str, Any]:
     return {"deaths": deaths, "time_played_seconds": tps, "pair_name": pair}
 
 
-# ─── Service ───────────────────────────────────────────────────────────
-
-
 class TeammatesService:
     """Service d'agrégation pour la page Coéquipiers.
 
@@ -264,9 +265,6 @@ class TeammatesService:
         except Exception as e:
             logger.debug("Erreur load_teammate_stats shared: %s", e)
             return _empty
-
-    # 8bis.A7 : _load_teammate_stats_legacy supprimé (v5.1)
-    # Toutes les données coéquipiers sont dans shared_matches.duckdb
 
     @staticmethod
     def enrich_with_performance_score(
