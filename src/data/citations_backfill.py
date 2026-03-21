@@ -23,6 +23,7 @@ from typing import Any
 import duckdb
 
 from src.utils.db import duckdb_read_write, ensure_shared_attached
+from src.utils.paths import get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
 
@@ -95,11 +96,13 @@ def backfill_citations_for_player(
     Ne génère aucun appel API.
     """
     db_path = Path(db_path) if not isinstance(db_path, Path) else db_path
-    shared_path = db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+    shared_path = get_shared_matches_path_from_player(db_path)
 
-    if not shared_path.exists():
+    if shared_path is None:
         logger.debug("citations_backfill: shared_matches.duckdb absent, skip")
         return dict(_EMPTY_RESULT)
+
+    logger.debug("citations_backfill: shared_matches résolu → %s", shared_path)
 
     ctx = duckdb_read_write(str(db_path)) if conn is None else nullcontext(conn)
     with ctx as conn:

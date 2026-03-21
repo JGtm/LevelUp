@@ -126,21 +126,6 @@ def _create_player_db(path: Path) -> None:
         )
     """)
 
-    # Table match_stats
-    conn.execute("""
-        CREATE TABLE match_stats (
-            match_id TEXT PRIMARY KEY,
-            kills INTEGER DEFAULT 0,
-            deaths INTEGER DEFAULT 0,
-            assists INTEGER DEFAULT 0,
-            headshot_kills INTEGER DEFAULT 0,
-            outcome INTEGER DEFAULT 0,
-            playlist_name TEXT,
-            game_variant_name TEXT,
-            start_time TIMESTAMP
-        )
-    """)
-
     # Table personal_score_awards
     conn.execute("""
         CREATE TABLE personal_score_awards (
@@ -159,11 +144,7 @@ def _insert_sample_data(db_path: Path) -> None:
     """Insère des données de test dans la DB joueur."""
     conn = duckdb.connect(str(db_path))
 
-    # Match m1 : match Slayer standard
-    conn.execute(
-        "INSERT INTO match_stats VALUES "
-        "('m1', 15, 5, 8, 3, 2, 'Ranked Slayer', 'Slayer', '2026-01-01 12:00:00')"
-    )
+    # Match m1 : médailles et awards
     conn.execute("INSERT INTO medals_earned VALUES ('m1', 3169118333, 2), ('m1', 221693153, 1)")
     conn.execute(
         "INSERT INTO personal_score_awards VALUES "
@@ -171,11 +152,7 @@ def _insert_sample_data(db_path: Path) -> None:
         "('m1', 'Zone Capture', 'objective', 5, 250)"
     )
 
-    # Match m2 : match CTF
-    conn.execute(
-        "INSERT INTO match_stats VALUES "
-        "('m2', 10, 8, 12, 2, 2, 'Quick Play', 'CTF', '2026-01-02 14:00:00')"
-    )
+    # Match m2
     conn.execute("INSERT INTO medals_earned VALUES ('m2', 3169118333, 1)")
     conn.execute(
         "INSERT INTO personal_score_awards VALUES "
@@ -183,10 +160,75 @@ def _insert_sample_data(db_path: Path) -> None:
         "('m2', 'Zone Capture', 'objective', 2, 100)"
     )
 
-    # Match m3 : match sans médailles
+    conn.close()
+
+
+def _create_shared_db(path: Path) -> None:
+    """Crée une shared_matches.duckdb minimale pour les tests de citations."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = duckdb.connect(str(path))
+
+    conn.execute("""
+        CREATE TABLE match_registry (
+            match_id TEXT PRIMARY KEY,
+            start_time TIMESTAMP,
+            duration_seconds INTEGER,
+            map_id TEXT, map_name TEXT,
+            playlist_id TEXT, playlist_name TEXT,
+            pair_id TEXT, pair_name TEXT,
+            game_variant_id TEXT, game_variant_name TEXT,
+            is_firefight BOOLEAN DEFAULT FALSE,
+            is_ranked BOOLEAN DEFAULT FALSE
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE match_participants (
+            match_id TEXT NOT NULL,
+            xuid TEXT NOT NULL,
+            team_id INTEGER,
+            outcome INTEGER,
+            gamertag TEXT,
+            kills INTEGER DEFAULT 0,
+            deaths INTEGER DEFAULT 0,
+            assists INTEGER DEFAULT 0,
+            headshot_kills INTEGER DEFAULT 0,
+            score INTEGER DEFAULT 0,
+            time_played_seconds INTEGER DEFAULT 0,
+            PRIMARY KEY (match_id, xuid)
+        )
+    """)
+
+    # Match m1
     conn.execute(
-        "INSERT INTO match_stats VALUES "
-        "('m3', 3, 10, 1, 0, 0, 'Quick Play', 'Oddball', '2026-01-03 16:00:00')"
+        "INSERT INTO match_registry VALUES "
+        "('m1', '2026-01-01 12:00:00', 600, 'map1', 'Aquarius', "
+        "'pl1', 'Ranked Slayer', 'pair1', 'Slayer', 'gv1', 'Slayer', FALSE, TRUE)"
+    )
+    conn.execute(
+        "INSERT INTO match_participants VALUES "
+        "('m1', '12345', 0, 2, 'TestPlayer', 15, 5, 8, 3, 2000, 600)"
+    )
+
+    # Match m2
+    conn.execute(
+        "INSERT INTO match_registry VALUES "
+        "('m2', '2026-01-02 14:00:00', 600, 'map1', 'Aquarius', "
+        "'pl2', 'Quick Play', 'pair2', 'CTF', 'gv2', 'CTF', FALSE, FALSE)"
+    )
+    conn.execute(
+        "INSERT INTO match_participants VALUES "
+        "('m2', '12345', 0, 2, 'TestPlayer', 10, 8, 12, 2, 1500, 600)"
+    )
+
+    # Match m3
+    conn.execute(
+        "INSERT INTO match_registry VALUES "
+        "('m3', '2026-01-03 16:00:00', 600, 'map1', 'Aquarius', "
+        "'pl2', 'Quick Play', 'pair3', 'Oddball', 'gv3', 'Oddball', FALSE, FALSE)"
+    )
+    conn.execute(
+        "INSERT INTO match_participants VALUES "
+        "('m3', '12345', 0, 0, 'TestPlayer', 3, 10, 1, 0, 500, 600)"
     )
 
     conn.close()
@@ -206,6 +248,7 @@ def engine_dir(tmp_path: Path) -> Path:
     player_dir.mkdir(parents=True)
 
     _create_metadata_db(warehouse / "metadata.duckdb")
+    _create_shared_db(warehouse / "shared_matches.duckdb")
     _create_player_db(player_dir / "stats.duckdb")
     _insert_sample_data(player_dir / "stats.duckdb")
 
@@ -475,9 +518,13 @@ class TestReadConnSharedBranch:
         """Quand shared_conn est fourni, _read_conn le réutilise sans le fermer."""
         player_db = engine_dir / "data" / "players" / "TestPlayer" / "stats.duckdb"
         metadata_db = engine_dir / "data" / "warehouse" / "metadata.duckdb"
+        shared_db = engine_dir / "data" / "warehouse" / "shared_matches.duckdb"
 
         shared_conn = duckdb.connect(str(player_db), read_only=True)
         try:
+            # Attacher la shared DB pour que _get_shared_alias la trouve
+            shared_conn.execute(f"ATTACH '{shared_db}' AS shared (READ_ONLY)")
+
             eng = CitationEngine(
                 db_path=player_db,
                 xuid="12345",

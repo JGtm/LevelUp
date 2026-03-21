@@ -22,6 +22,7 @@ from src.data.sessions_backfill_shared import (
     _resolve_shared_db_path,
 )
 from src.utils.db import duckdb_read_only, duckdb_read_write
+from src.utils.paths import get_shared_matches_path_from_player
 
 
 def get_friends_xuids_for_backfill(  # noqa: C901, PLR0912
@@ -114,9 +115,9 @@ def get_top_two_teammate_xuids(
     if not path.exists():
         return frozenset()
 
-    # Trouver shared_matches.duckdb
-    shared_db = path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
-    if not shared_db.exists():
+    # Trouver shared_matches
+    shared_db = get_shared_matches_path_from_player(path)
+    if shared_db is None:
         return frozenset()
 
     ctx = duckdb_read_only(str(path)) if conn is None else nullcontext(conn)
@@ -329,10 +330,14 @@ def backfill_sessions_for_player(  # noqa: PLR0913
         if not force and df.filter(pl.col("session_id").is_null()).is_empty():
             return results
 
+        cols = ["match_id", "start_time", "teammates_signature"]
+        if "is_ranked" in df.columns:
+            cols.append("is_ranked")
         df_sessions = compute_sessions_with_context_polars(
-            df.select(["match_id", "start_time", "teammates_signature"]),
+            df.select(cols),
             gap_minutes=gap_minutes,
             friends_xuids=friends_set if friends_set else None,
+            ranked_column="is_ranked" if "is_ranked" in df.columns else None,
         )
 
         now = datetime.now(timezone.utc)

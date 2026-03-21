@@ -138,6 +138,81 @@ def build_friends_opts_map(
     return opts_map, default_labels
 
 
+@st.cache_data(show_spinner=False)
+def build_teammates_opts_map(
+    db_path: str,
+    self_xuid: str,
+    db_key: tuple[int, int] | None,
+    aliases_key: int | None,
+    min_count: int = 2,
+) -> tuple[dict[str, str], list[str]]:
+    """Construit le mapping d'options pour la page Coéquipiers.
+
+    Retourne uniquement les joueurs ayant joué au moins ``min_count`` matchs
+    dans la même équipe. Les labels sont les gamertags seuls (sans XUID) pour
+    faciliter la recherche.
+
+    Args:
+        db_path: Chemin vers la base de données.
+        self_xuid: XUID du joueur principal.
+        db_key: Clé de cache DB.
+        aliases_key: Clé de cache des alias.
+        min_count: Nombre minimal de matchs en équipe pour apparaître.
+
+    Returns:
+        Tuple (opts_map {gamertag: xuid}, default_labels).
+    """
+    top = cached_list_top_teammates(db_path, self_xuid, db_key=db_key, limit=500)
+    filtered = [(xuid, cnt) for xuid, cnt in top if cnt >= min_count]
+
+    # Labels = gamertag uniquement, avec déduplication si collision
+    opts_map: dict[str, str] = {}
+    seen_names: dict[str, int] = {}
+    for xuid, _cnt in filtered:
+        name = str(display_name_from_xuid(xuid, db_path=db_path) or xuid).strip()
+        if name in seen_names:
+            seen_names[name] += 1
+            opts_map[f"{name} ({seen_names[name]})"] = xuid
+        else:
+            seen_names[name] = 1
+            opts_map[name] = xuid
+
+    opts_map = dict(sorted(opts_map.items(), key=lambda kv: kv[0].casefold()))
+
+    # Defaults: top 2 parmi les filtrés, avec override local
+    default_xuids = [xuid for xuid, _ in filtered[:2]]
+    try:
+        overrides = _load_local_friends_defaults().get(str(self_xuid).strip())
+        if overrides:
+            ordered_xuids = [xuid for xuid, _ in filtered]
+            name_to_xuid = {
+                str(display_name_from_xuid(xu, db_path=db_path) or "").strip().casefold(): str(
+                    xu
+                ).strip()
+                for xu in ordered_xuids
+            }
+            chosen: list[str] = []
+            for ident in overrides:
+                s = str(ident or "").strip()
+                if not s:
+                    continue
+                if s.isdigit() and s in ordered_xuids:
+                    chosen.append(s)
+                    continue
+                xu = name_to_xuid.get(s.casefold())
+                if xu:
+                    chosen.append(xu)
+            chosen = [x for x in chosen if x]
+            if len(chosen) >= 2:
+                default_xuids = chosen[:2]
+    except Exception:
+        pass
+
+    label_by_xuid = {v: k for k, v in opts_map.items()}
+    default_labels = [label_by_xuid[x] for x in default_xuids if x in label_by_xuid]
+    return opts_map, default_labels
+
+
 def get_friends_xuids_for_sessions(
     db_path: str,
     self_xuid: str,

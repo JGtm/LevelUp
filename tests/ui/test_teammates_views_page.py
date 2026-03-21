@@ -188,6 +188,19 @@ class TestRenderSingleTeammateView:
             }
         )
 
+        import src.ui.pages.teammates_map_charts as _tmc
+
+        _bd_mock = pl.DataFrame(
+            {
+                "map_name": ["Streets"],
+                "matches": [5],
+                "win_rate": [0.6],
+                "loss_rate": [0.4],
+                "ratio_global": [1.5],
+                "accuracy_avg": [45.0],
+                "performance_avg": [0.2],
+            }
+        )
         with (
             patch.object(mod, "cached_friend_matches_df", return_value=shared_df),
             patch.object(mod, "render_outcome_bar_chart"),
@@ -198,10 +211,9 @@ class TestRenderSingleTeammateView:
             patch.object(
                 mod,
                 "compute_map_breakdown",
-                return_value=MagicMock(
-                    breakdown=pl.DataFrame({"map_name": ["Streets"], "matches": [5]})
-                ),
+                return_value=MagicMock(breakdown=_bd_mock),
             ),
+            patch.object(_tmc, "compute_map_breakdown", return_value=_bd_mock),
         ):
             mod.render_single_teammate_view(
                 df=df,

@@ -23,7 +23,7 @@ from src.analysis.citations._data_loader import CitationDataLoaderMixin
 from src.analysis.citations.composite import _apply_composite_citations
 from src.analysis.citations.custom_rules import CUSTOM_FUNCTIONS
 from src.utils.db import duckdb_read_write
-from src.utils.paths import get_pve_db_path_from_player
+from src.utils.paths import get_pve_db_path_from_player, get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +75,7 @@ class CitationEngine(CitationDataLoaderMixin):
         elif shared_db_path is not None:
             self._shared_db_path = Path(shared_db_path)  # type: ignore[arg-type]
         else:
-            candidate = self._db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb"
-            self._shared_db_path = candidate if candidate.exists() else None
+            self._shared_db_path = get_shared_matches_path_from_player(self._db_path)
 
         self._mappings: dict[str, dict[str, Any]] | None = None
         self._attached_shared: bool = False
@@ -131,7 +130,7 @@ class CitationEngine(CitationDataLoaderMixin):
         try:
             dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
             for db_name, db_path_val in dbs:
-                if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
+                if db_path_val and "shared_matches" in str(db_path_val).lower():
                     self._cached_shared_alias = db_name
                     return db_name
                 if db_name and "shared" in db_name.lower():
@@ -300,6 +299,11 @@ class CitationEngine(CitationDataLoaderMixin):
                 try:
                     return func(df_match) if df_match is not None else 0
                 except Exception:
+                    logger.debug(
+                        "compute_citation_for_match: fonction custom '%s' a échoué",
+                        func_name,
+                        exc_info=True,
+                    )
                     return 0
 
         return 0

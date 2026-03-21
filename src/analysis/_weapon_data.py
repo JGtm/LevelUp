@@ -5,12 +5,21 @@ Séparé de weapon_parser.py pour respecter la limite de 500 lignes par module.
 
 from __future__ import annotations
 
+import logging
+from functools import lru_cache
+
+from src.utils.paths import get_metadata_db_path
+
+logger = logging.getLogger(__name__)
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Weapon IDs (8 bytes, format filmshell Andy Curtis)
 # ══════════════════════════════════════════════════════════════════════════════
 
 WEAPON_ID_MAP: dict[bytes, str] = {
-    # ── Armes confirmées (liste maître 2026-03-10) ───────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    # CONFIRMÉES (liste maître 2026-03-11)
+    # ══════════════════════════════════════════════════════════════════════
     bytes.fromhex("6acdc44d42c9679f"): "Bandit Evo",  # pragma: allowlist secret
     bytes.fromhex("2b1824d542c9679f"): "BR75",  # pragma: allowlist secret  (= BR75 Ranked, même ID)
     bytes.fromhex("230447b142c9679f"): "Cindershot",  # pragma: allowlist secret
@@ -22,7 +31,9 @@ WEAPON_ID_MAP: dict[bytes, str] = {
     bytes.fromhex("71ab0a2c42c9679f"): "M41 SPNKr",  # pragma: allowlist secret
     bytes.fromhex("2fb21c8742c9679f"): "M392 Bandit",  # pragma: allowlist secret
     bytes.fromhex("48c19d2d42c9679f"): "MA40 AR",  # pragma: allowlist secret
-    bytes.fromhex("f5c335dfe7232c0f"): "MA5K Avenger",  # pragma: allowlist secret
+    bytes.fromhex(
+        "f5c335dfe7232c0f"
+    ): "MA5K Avenger",  # pragma: allowlist secret  (NB: tables 1&2 indiquent 0x...0B — à reverifier)
     bytes.fromhex("80977ba542c9679f"): "Mangler",  # pragma: allowlist secret
     bytes.fromhex("767db96d42c9679f"): "MLRS-2 Hydra",  # pragma: allowlist secret
     bytes.fromhex("f408190f42c9679f"): "Mk51 Sidekick",  # pragma: allowlist secret
@@ -49,27 +60,12 @@ WEAPON_ID_MAP: dict[bytes, str] = {
     # ── Gravity Hammer family ─────────────────────────────────────────────
     bytes.fromhex("841ac5e5a730e49f"): "Diminisher of Hope",  # pragma: allowlist secret
     bytes.fromhex("841ac5e5d8d07ca1"): "Rushdown Hammer",  # pragma: allowlist secret
-    # ── Grenades (Formula A / état inventaire) ────────────────────────────
+    # ══════════════════════════════════════════════════════════════════════
+    # NON CONFIRMÉES — grenades (IDs non vérifiés en filmshell)
+    # ══════════════════════════════════════════════════════════════════════
     bytes.fromhex("b6dbead842c9679f"): "Frag Grenade",  # pragma: allowlist secret
     bytes.fromhex("c1e1bab042c9679f"): "Plasma Grenade",  # pragma: allowlist secret
-    # 6683257c42c9679f → association "Spike Grenade" REJETÉE (faible confiance — state-block uniquement)
-    # ab879f1e42c9679f → association "Spike Grenade (alt)" REJETÉE (faible confiance — non vérifiée)
     bytes.fromhex("3ad55da442c9679f"): "Dynamo Grenade",  # pragma: allowlist secret
-    bytes.fromhex("e3a0a51842c9679f"): "Dynamo Grenade (alt)",  # pragma: allowlist secret
-    bytes.fromhex("18e1fea042c9679f"): "Dynamo Grenade (proj)",  # pragma: allowlist secret
-    # ── Variantes / skins (suffixe standard confirmé) ────────────────────
-    bytes.fromhex("7e53b3c642c9679f"): "Pulse Carbine (alt)",  # pragma: allowlist secret
-    bytes.fromhex("04e7f00b42c9679f"): "Plasma Pistol (alt)",  # pragma: allowlist secret
-    bytes.fromhex("3d34488542c9679f"): "Heatwave (alt)",  # pragma: allowlist secret
-    bytes.fromhex("f5ef3bdb42c9679f"): "Stalker Rifle (alt)",  # pragma: allowlist secret
-    bytes.fromhex("fcc6aa7642c9679f"): "Shock Rifle (alt)",  # pragma: allowlist secret
-    bytes.fromhex("7deb133f42c9679f"): "Mangler (alt)",  # pragma: allowlist secret
-    bytes.fromhex("cb30ec5e42c9679f"): "Disruptor (alt)",  # pragma: allowlist secret
-    bytes.fromhex("2b1d61e442c9679f"): "Ravager (alt)",  # pragma: allowlist secret
-    bytes.fromhex("7a11aeef42c9679f"): "Skewer (alt)",  # pragma: allowlist secret
-    bytes.fromhex("c2a6d5e042c9679f"): "Cindershot (alt)",  # pragma: allowlist secret
-    bytes.fromhex("1f6ae65542c9679f"): "MLRS-2 Hydra (alt)",  # pragma: allowlist secret
-    bytes.fromhex("6d32c7dc42c9679f"): "Dynamo Grenade (state)",  # pragma: allowlist secret
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -107,8 +103,6 @@ WEAPON_FUSION_MAP: dict[str, str] = {
     "M392 Bandit": "Bandit Evo",
     # SPNKr : variante Fuel Rod comptée avec le SPNKr de base
     "Fuel Rod SPNKr": "M41 SPNKr",
-    # Hydra : variante alt fusionnée avec la canonique
-    "MLRS-2 Hydra (alt)": "MLRS-2 Hydra",
 }
 
 # Fusion par weapon_id (int → int canonique)
@@ -153,7 +147,7 @@ WEAPON_NAME_FR: dict[str, str] = {
 # ══════════════════════════════════════════════════════════════════════════════
 
 MELEE_MEDALS: frozenset[str] = frozenset(
-    {"Pummel", "Assassination", "Back Smack", "Melee", "Quigley"}
+    {"Pummel", "Assassination", "Back Smack", "Melee", "Quigley", "Ninja", "Pancake"}
 )
 
 GRENADE_MEDALS: frozenset[str] = frozenset(
@@ -169,40 +163,28 @@ GRENADE_MEDALS: frozenset[str] = frozenset(
 WEAPON_TIMING: dict[str, tuple[int, int]] = {
     "Mk51 Sidekick": (400, 300),
     "Plasma Pistol": (450, 300),
-    "Plasma Pistol (alt)": (450, 300),
     "MA40 AR": (650, 500),
     "BR75": (650, 500),
     "Bandit Evo": (650, 500),
     "M392 Bandit": (650, 500),
-    "M392 Bandit (alt)": (650, 500),
     "CQS48 Bulldog": (650, 500),
     "VK78 Commando": (650, 500),
     "Vestige Carbine": (650, 500),
     "Shock Rifle": (650, 500),
     "Shock Rifle (Ranked)": (650, 500),
-    "Shock Rifle (alt)": (650, 500),
     "Mangler": (650, 500),
-    "Mangler (alt)": (650, 500),
     "Pulse Carbine": (650, 500),
-    "Pulse Carbine (alt)": (650, 500),
     "Disruptor": (650, 5000),
-    "Disruptor (alt)": (650, 5000),
     "Heatwave": (650, 2000),
-    "Heatwave (alt)": (650, 2000),
     "Needler": (650, 2000),
     "MLRS-2 Hydra": (650, 2000),
-    "MLRS-2 Hydra (alt)": (650, 2000),
     "Ravager": (650, 5000),
-    "Ravager (alt)": (650, 5000),
     "S7 Sniper": (900, 300),
     "Stalker Rifle": (900, 300),
-    "Stalker Rifle (alt)": (900, 300),
     "Mutilator": (900, 300),
     "Skewer": (900, 3000),
-    "Skewer (alt)": (900, 3000),
     "Sentinel Beam": (900, 500),
     "Cindershot": (900, 5000),
-    "Cindershot (alt)": (900, 5000),
     "M41 SPNKr": (1100, 2000),
     "Fuel Rod SPNKr": (1100, 2000),
     "Gravity Hammer": (1100, 1400),
@@ -215,8 +197,6 @@ WEAPON_TIMING: dict[str, tuple[int, int]] = {
     "Frag Grenade": (950, 1650),
     "Plasma Grenade": (950, 1350),
     "Dynamo Grenade": (950, 1500),
-    "Dynamo Grenade (alt)": (950, 1500),
-    "Dynamo Grenade (proj)": (950, 1500),
 }
 
 # Timing indexé par weapon_id (int) — pour lookups dans weapon_parser
@@ -236,10 +216,47 @@ EXCLUDED_WEAPON_IDS: frozenset[int] = frozenset(
 )
 
 
+def _resolve_weapon_from_db(weapon_id: int, lang: str) -> str | None:
+    """Résout un weapon_id depuis weapon_labels dans metadata.duckdb.
+
+    Retourne None si la table n'existe pas ou si l'ID est inconnu.
+    """
+    try:
+        import duckdb
+
+        db_path = get_metadata_db_path()
+        if not db_path.exists():
+            return None
+        col = "name_fr" if lang == "fr" else "name_en"
+        with duckdb.connect(str(db_path), read_only=True) as conn:
+            has_table = conn.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_name = 'weapon_labels' LIMIT 1"
+            ).fetchone()
+            if not has_table:
+                return None
+            row = conn.execute(
+                f"SELECT {col} FROM weapon_labels WHERE weapon_id = ?",
+                [weapon_id],
+            ).fetchone()
+            if row and row[0]:
+                return str(row[0]).strip() or None
+    except Exception as exc:
+        logger.debug("_resolve_weapon_from_db(%s, %s) : %s", weapon_id, lang, exc)
+    return None
+
+
+@lru_cache(maxsize=512)
+def _resolve_weapon_cached(weapon_id: int, lang: str) -> str | None:
+    """Wrapper mis en cache de _resolve_weapon_from_db."""
+    return _resolve_weapon_from_db(weapon_id, lang)
+
+
 def resolve_weapon_display(weapon_id: int | None, lang: str = "fr") -> str | None:
     """Résout un weapon_id en nom d'affichage localisé.
 
-    Chaîne : weapon_id → WEAPON_INT_TO_NAME → WEAPON_FUSION_MAP → WEAPON_NAME_FR.
+    Priorité : fusion → weapon_labels (metadata.duckdb) → dicts Python statiques.
+    La fusion est appliquée en premier pour que les variantes (ex. M392 Bandit)
+    soient toujours regroupées sous leur nom canonique (ex. Bandit Evo).
     Retourne None si weapon_id est None (kill non résolu).
     """
     if weapon_id is None:
@@ -251,13 +268,19 @@ def resolve_weapon_display(weapon_id: int | None, lang: str = "fr") -> str | Non
         return "Grenade"
     if weapon_id == VEHICLE_WEAPON_ID:
         return "Véhicule" if lang == "fr" else "Vehicle"
-    # Nom filmshell
+    # 0. Fusion : redirecter vers l'ID canonique avant tout lookup
+    canonical_id = WEAPON_FUSION_MAP_ID.get(weapon_id, weapon_id)
+    if canonical_id != weapon_id:
+        return resolve_weapon_display(canonical_id, lang)
+    # 1. Source DB (lazy, mis en cache)
+    db_label = _resolve_weapon_cached(weapon_id, lang)
+    if db_label is not None:
+        return db_label
+    # 2. Fallback dicts Python
     name = WEAPON_INT_TO_NAME.get(weapon_id)
     if name is None:
         return f"weapon_{weapon_id}"
-    # Fusion variantes
     canonical = WEAPON_FUSION_MAP.get(name, name)
-    # Traduction
     if lang == "fr":
         return WEAPON_NAME_FR.get(canonical, canonical)
     return canonical

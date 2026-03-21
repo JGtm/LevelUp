@@ -35,9 +35,10 @@ class MediaFilterState:
 
 def coerce_dirs(settings: AppSettings) -> _MediaDirs:
     """Extrait et nettoie les répertoires médias depuis les settings."""
-    screens_dir = str(getattr(settings, "media_screens_dir", "") or "").strip()
-    videos_dir = str(getattr(settings, "media_videos_dir", "") or "").strip()
-    return _MediaDirs(screens_dir=screens_dir, videos_dir=videos_dir)
+    return _MediaDirs(
+        screens_dir=settings.media_screens_dir.strip(),
+        videos_dir=settings.media_videos_dir.strip(),
+    )
 
 
 def render_media_filters(
@@ -124,7 +125,7 @@ def _handle_rescan_button(settings: AppSettings, dirs: _MediaDirs, db_path: str)
                         screens_dir=screens_path,
                         force_rescan=True,
                     )
-                    tolerance = int(getattr(settings, "media_tolerance_minutes", 5) or 5)
+                    tolerance = settings.media_tolerance_minutes
                     n_associated = indexer.associate_with_matches(tolerance_minutes=tolerance)
                     n_thumb_gen, n_thumb_err = 0, 0
                     if videos_path:

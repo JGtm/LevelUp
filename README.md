@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-5.6.0--beta-orange.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v5.6.0-beta)
+[![Version](https://img.shields.io/badge/Version-6.0.0-blue.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v6.0.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -12,6 +12,23 @@
 ---
 
 ## What's new
+
+**v6.0 — Zero-config auth, ID resolution layer & weapon catalog**
+- **Zero Azure configuration** — `LEVELUP_CLIENT_ID` bundled in the app; first launch: enter gamertag → Device Code on xbox.com/activate → done
+- **Gamertag auto-detection** from Microsoft login via Halo API; launcher cleaned up (−652 lines of Azure/OAuth dead code)
+- **ID resolution layer** — three SQL views (`v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`) consolidate all gamertag/match/kill lookups into reliable single-JOIN queries
+- **`weapon_labels` in `metadata.duckdb`** — DB-first weapon name resolution (EN/FR) with automatic migration; drops hardcoded dicts
+- **i18n fully in DuckDB** — mode translations migrated from JSON files to `metadata.duckdb`; playlists/game_variants seeded with i18n columns
+- **Last Match navigation** — `◀ Previous` / `Next ▶` buttons to browse filtered matches
+- **Weapon parser accuracy** — global fire_event match rate corrected from 15 % → 95 %
+- **Custom medal: Avenger** — detects revenge kills (you kill the opponent who last killed you) via `killer_victim_pairs`; backfill with `--avenger`
+- **Top Gun label** — 🔫 badge on the Impact timeline for the first player on your team to reach 10 kills in a match
+
+**v5.7 — Bilingual launchers, map hover thumbnails & Polars cleanup**
+- `LevelUp.sh` and `LevelUp.bat` now detect the system language (FR/EN) and display launcher messages accordingly
+- **Map hover thumbnails** — CSS-only hover popups on map names in all HTML tables (replaces the sandboxed JS approach)
+- French translations for all Halo rank names (career ranks + CSR tiers) used in metadata and the Career page
+- Pandas eliminated from UI/viz modules — Polars native end-to-end (7 `.to_pandas()` calls removed)
 
 **v5.6 (beta) — MSAL Device Code Flow & Weapon Extraction**
 - Token acquisition replaced with **MSAL Device Code Flow** — enter a code on xbox.com/activate, no redirect URI or client secret required
@@ -124,7 +141,7 @@
 
 | Last match | Scoreboard |
 |:-:|:-:|
-| ![Summary](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/Scorebard-commendations.png) |
+| ![Summary](docs/screenshots/last-match.png) | ![Scoreboard Commendations](docs/screenshots/scoreboard.png) |
 | Impact & Dominance | Antagonists |
 | ![Impact & Dominance](docs/screenshots/impact-dominance.png) | ![Antagonists](docs/screenshots/antagonist.png) |
 
@@ -146,9 +163,10 @@
 
 ### Career progression, Ranks & Path to Hero
 
-| Career | Ranks (LUSR/CSR) | Path to Hero |
-|:-:|:-:|:-:|
-| ![Career](docs/screenshots/career.png) | ![Ranks](docs/screenshots/LUSRs.png) | ![Path to Hero](docs/screenshots/path-hero.png) |
+| Career | Ranks (LUSR/CSR) |
+|:-:|:-:|
+| ![Career](docs/screenshots/career.png) | ![Ranks](docs/screenshots/LUSRs.png) |
+| ![Path to Hero](docs/screenshots/path-hero.png) | ![Memorable Matches](docs/screenshots/memorable-matches.png) |
 
 *Rank history, progression to Hero, LUSR/CSR per playlist group*
 
@@ -176,62 +194,78 @@
 
 ## Quick start
 
-**Prerequisites**: Python 3.12+ recommended (3.10 minimum). Windows note: avoid Python 3.14 if you hit native crashes during `pytest`.
+**Prerequisites**: Python 3.12+ recommended (3.10 minimum).
+
+### Windows (no technical knowledge required)
+
+```
+1. Download and extract the ZIP (or git clone)
+2. Double-click LevelUp.bat
+   → Python is installed automatically if missing
+   → .venv created, dependencies installed
+   → browser opens at http://localhost:8501
+3. In the browser: enter your gamertag
+4. Go to https://xbox.com/activate and enter the displayed code
+   → LevelUp retrieves your profile and starts the initial sync
+```
+
+**No Azure configuration required** — the app bundles its own client ID.
+
+### macOS / Linux
 
 ```bash
-# Clone the repo
 git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
 cd LevelUp_with_SPNKr
-
-# Create a virtual environment
-python -m venv .venv
-
-# Activate (Windows)
-.venv\Scripts\activate
-
-# Activate (Linux/macOS)
-source .venv/bin/activate
-
-# Install dependencies
-pip install -e .
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[spnkr]"
+python launcher.py run
 ```
+
+Then follow the in-browser wizard (same 2-step flow).
 
 **Detailed docs**: [docs/INSTALL.md](docs/INSTALL.md)
 
-**French README (archived)**: [docs/FR/README.md](docs/FR/README.md)
+**French README**: [docs/FR/README.md](docs/FR/README.md)
 
 ---
 
 ## Configuration
 
-### 1. Copy the environment file
+**v6 — Zero configuration.** LevelUp bundles its own Azure client ID.
+Just launch the app, enter your gamertag, and authenticate via Device Code Flow
+(`https://xbox.com/activate`). No `.env.local` file or Azure account required.
 
-```bash
-cp .env.example .env.local
-```
+### Refresh token (advanced / headless)
 
-### 2. Configure your Azure Client ID
-
-```env
-SPNKR_AZURE_CLIENT_ID=your_client_id
-```
-
-> `client_secret` and `redirect_uri` are no longer required — authentication uses MSAL Device Code Flow.
-
-### 3. Obtain your refresh token (Device Code Flow)
+If you cannot use the interactive wizard (e.g. server/headless setup):
 
 ```bash
 python scripts/spnkr_get_refresh_token.py --device-code
-# Or use the in-app Setup Wizard (recommended)
 ```
 
-**Detailed docs**: [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+This prints a code to enter at `https://xbox.com/activate`, then saves the token
+automatically to `.env.local`.
+
+### Note for forks / developers
+
+The bundled `LEVELUP_CLIENT_ID` is an Azure App Registration tied to this project.
+**If you fork LevelUp**, please create your own free Azure App Registration
+(see [docs/CONFIGURATION.md](docs/CONFIGURATION.md)) and set:
+
+```env
+# .env.local
+SPNKR_AZURE_CLIENT_ID=your_own_client_id
+```
+
+This env var takes precedence over the bundled ID.
+
+**Full configuration reference**: [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 
 ---
 
 ## Architecture
 
-### Data layout (v5.4)
+### Data layout (v6)
 
 ```
 data/

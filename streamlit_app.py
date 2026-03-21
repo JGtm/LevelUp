@@ -37,6 +37,7 @@ from src.app.cache_control import invalidate_after_sync
 from src.app.data_loader import (
     ensure_h5g_commendations_repo,
     init_source_state,
+    resolve_xuid_input,
 )
 from src.app.filters import (
     build_friends_opts_map,
@@ -66,7 +67,6 @@ from src.app.main_helpers import (
     load_profile_api,
     propagate_identity_to_env,
     render_profile_hero,
-    resolve_xuid_from_input,
     validate_and_fix_db_path,
 )
 from src.app.media_background import background_media_indexing
@@ -126,7 +126,7 @@ from src.ui.multiplayer import (
 )
 
 # render_match_view est toujours nécessaire pour build_match_view_params
-from src.ui.pages import render_match_view
+from src.ui.pages.match_view import render_match_view
 from src.ui.perf import perf_reset_run, perf_section
 from src.ui.sync import (
     cleanup_orphan_tmp_dbs,
@@ -216,6 +216,7 @@ class PageContext(NamedTuple):
     me_name: str
     gap_minutes: int
     picked_session_labels: Any
+    base_s_ui: Any  # DataFrame sessions (source de vérité = filter_state.base_s_ui)
     match_view_params: dict[str, Any]
 
 
@@ -236,7 +237,7 @@ def _tailscale_worker() -> None:
         print(f"[Tailscale] worker erreur inattendue : {_e}", flush=True)
 
 
-def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
+def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:  # noqa: PLR0912
     """Configure la page Streamlit, charge les settings et valide la config.
 
     Returns:
@@ -263,6 +264,14 @@ def _initialize_app() -> tuple[AppSettings, str, list[str], list[str]]:
     settings: AppSettings = load_settings()
     st.session_state[SK.APP_SETTINGS] = settings
     logger.info("Settings chargées: lang=%s", getattr(settings, "lang", "fr"))
+
+    # Appliquer la méthode d'auth préférée issue d'app_settings.json
+    try:
+        from src.auth.provider import set_preferred_auth_method
+
+        set_preferred_auth_method(getattr(settings, "auth_method", "refresh_token"))
+    except Exception:
+        pass
 
     # Chargement des secrets (Doppler ou .env.local) — une seule fois par session
     if not st.session_state.get("_secrets_loaded"):
@@ -593,7 +602,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
     db_path = validate_and_fix_db_path(db_path, DEFAULT_DB)
 
     # Résolution du XUID
-    xuid = resolve_xuid_from_input(xuid, db_path)
+    xuid = resolve_xuid_input(xuid, db_path)
 
     me_name = (
         display_name_from_xuid(xuid.strip(), db_path=db_path)
@@ -688,6 +697,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
 
     gap_minutes = filter_state.gap_minutes
     picked_session_labels = filter_state.picked_session_labels
+    base_s_ui = filter_state.base_s_ui
 
     # KPIs
     render_kpis_section(dff)
@@ -727,6 +737,7 @@ def _load_and_prepare_data(  # noqa: PLR0913
         me_name=me_name,
         gap_minutes=gap_minutes,
         picked_session_labels=picked_session_labels,
+        base_s_ui=base_s_ui,
         match_view_params=_match_view_params,
     )
 
@@ -737,7 +748,7 @@ def _dispatch_pages(ctx: PageContext) -> None:
     _dispatch_navigation(ctx)
 
 
-def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
+def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901, PLR0915
     """Dispatch via st.navigation (Streamlit ≥ 1.36) avec lazy-loading."""
 
     def _page_timeseries() -> None:
@@ -765,7 +776,9 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
             friends_xuids=friends_tuple,
         )
         all_sessions_pl = _to_polars(all_sessions_df)
-        df_pl = _to_polars(ctx.dff)
+        # Utiliser ctx.df (tous les matchs, non filtrés) pour que la page de comparaison
+        # dispose de toutes les sessions même si une seule session est active dans la sidebar.
+        df_pl = _to_polars(ctx.df)
         if (
             not all_sessions_pl.is_empty()
             and "match_id" in df_pl.columns
@@ -779,6 +792,15 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
                 on="match_id",
                 how="inner",
             )
+            # Fallback : si le join élimine trop de sessions, utiliser all_sessions_pl
+            n_sessions = (
+                sessions_for_compare.select("session_label").n_unique()
+                if "session_label" in sessions_for_compare.columns
+                and not sessions_for_compare.is_empty()
+                else 0
+            )
+            if n_sessions < 2:
+                sessions_for_compare = all_sessions_pl
         else:
             sessions_for_compare = all_sessions_pl
         render_session_comparison_page(sessions_for_compare, df_full=ctx.dff)
@@ -836,6 +858,7 @@ def _dispatch_navigation(ctx: PageContext) -> None:  # noqa: C901
             aliases_key=ctx.aliases_key,
             settings=ctx.settings,
             picked_session_labels=ctx.picked_session_labels,
+            base_s_ui=ctx.base_s_ui,
             include_firefight=True,
             waypoint_player=ctx.waypoint_player,
             build_friends_opts_map_fn=build_friends_opts_map,

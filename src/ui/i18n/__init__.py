@@ -146,15 +146,7 @@ def reset_registry() -> None:
 
 __all__ = ["t", "get_lang", "set_lang", "reset_registry", "get_outcome_map", "get_weekdays"]
 
-
-def get_outcome_map(lang: str | None = None) -> dict[int, str]:
-    """Retourne le mapping code résultat → label traduit."""
-    return {
-        2: t("outcome_win", lang=lang),
-        3: t("outcome_loss", lang=lang),
-        1: t("outcome_draw", lang=lang),
-        4: t("outcome_dnf", lang=lang),
-    }
+from src.data.domain._refdata_outcomes import get_outcome_map  # noqa: E402 — re-export
 
 
 def get_weekdays(lang: str | None = None) -> dict[int, str]:

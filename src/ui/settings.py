@@ -106,6 +106,11 @@ class AppSettings(BaseModel):
     # Tailscale funnel (opt-in)
     tailscale_funnel_enabled: bool = False  # Exposer l'app via Tailscale au démarrage
 
+    # Authentification
+    auth_method: Literal["refresh_token", "msal"] = (
+        "refresh_token"  # refresh_token = OAuth v2 direct ; msal = Device Code Flow Azure
+    )
+
     # Internationalisation
     lang: Literal["fr", "en"] = "fr"  # Langue de l'UI
     discord_lang: Literal["fr", "en"] = "fr"  # Langue des messages Discord
@@ -130,6 +135,13 @@ class AppSettings(BaseModel):
         """Normalise le type de match en minuscules avec fallback."""
         s = str(v).strip().lower()
         return s if s in {"all", "matchmaking", "custom", "local"} else "matchmaking"
+
+    @field_validator("auth_method", mode="before")
+    @classmethod
+    def _normalize_auth_method(cls, v: Any) -> str:
+        """Normalise la méthode d'auth avec fallback sur 'refresh_token'."""
+        s = str(v).strip().lower()
+        return s if s in {"refresh_token", "msal"} else "refresh_token"
 
     @field_validator("lang", "discord_lang", "cli_lang", mode="before")
     @classmethod

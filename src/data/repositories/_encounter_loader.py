@@ -10,11 +10,25 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import duckdb
 import polars as pl
 
 from src.utils.db import duckdb_read_only
+from src.utils.paths import get_shared_matches_path, get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
+
+
+def _has_view(conn: duckdb.DuckDBPyConnection, view_name: str) -> bool:
+    """Vérifie si une vue existe dans la connexion courante."""
+    try:
+        result = conn.execute(
+            "SELECT view_name FROM duckdb_views() WHERE view_name = ?",
+            [view_name],
+        ).fetchone()
+        return result is not None
+    except Exception:
+        return False
 
 
 def _get_shared_db_path(db_path: str) -> Path:
@@ -26,37 +40,43 @@ def _get_shared_db_path(db_path: str) -> Path:
     Returns:
         Chemin résolu vers data/warehouse/shared_matches.duckdb.
     """
-    return Path(db_path).resolve().parent.parent.parent / "warehouse" / "shared_matches.duckdb"
+    return (
+        get_shared_matches_path_from_player(db_path)
+        or Path(db_path).resolve().parent.parent.parent
+        / "warehouse"
+        / get_shared_matches_path().name
+    )
 
 
-def _build_encounter_sql(n_targets: int) -> str:
+def _build_encounter_sql(n_targets: int, *, has_gamertag_lookup: bool = True) -> str:
     """Construit la requête SQL d'historique des rencontres.
 
-    Génère 4n+6 placeholders pour les paramètres DuckDB.
+    Génère 3n+6 placeholders pour les paramètres DuckDB.
 
     Args:
         n_targets: Nombre de XUIDs cibles (len(target_xuids)).
+        has_gamertag_lookup: True si la vue v_gamertag_lookup est disponible (v6+).
 
     Returns:
         Chaîne SQL complète avec placeholders positionnels.
     """
     ph = ", ".join(["?"] * n_targets)
+    if has_gamertag_lookup:
+        gamertag_expr = "MAX(COALESCE(vg.gamertag, p.gamertag)) AS gamertag"
+        gamertag_join = "LEFT JOIN  v_gamertag_lookup vg ON vg.xuid = p.xuid"
+    else:
+        gamertag_expr = "MAX(p.gamertag) AS gamertag"
+        gamertag_join = ""
     return f"""
     WITH my_matches AS (
         SELECT match_id, team_id, outcome
         FROM match_participants
         WHERE xuid = ?
     ),
-    he_gamertags AS (
-        SELECT xuid, MAX(gamertag) AS gamertag
-        FROM highlight_events
-        WHERE xuid IN ({ph}) AND gamertag IS NOT NULL AND gamertag != ''
-        GROUP BY xuid
-    ),
     encounters AS (
         SELECT
             p.xuid,
-            MAX(COALESCE(a.gamertag, p.gamertag, he.gamertag)) AS gamertag,
+            {gamertag_expr},
             COUNT(*)                                AS total_encounters,
             SUM(CASE WHEN p.team_id = m.team_id   THEN 1 ELSE 0 END) AS ally_count,
             SUM(CASE WHEN p.team_id != m.team_id  THEN 1 ELSE 0 END) AS enemy_count,
@@ -74,8 +94,7 @@ def _build_encounter_sql(n_targets: int) -> str:
         FROM match_participants p
         INNER JOIN my_matches m  ON m.match_id = p.match_id
         INNER JOIN match_registry r ON r.match_id = p.match_id
-        LEFT JOIN  xuid_aliases a ON a.xuid = p.xuid
-        LEFT JOIN  he_gamertags he ON he.xuid = p.xuid
+        {gamertag_join}
         WHERE p.xuid IN ({ph})
         GROUP BY p.xuid
     ),
@@ -140,11 +159,15 @@ def load_encounter_stats(
 
     n = len(target_xuids)
     logger.debug("load_encounter_stats: %d cible(s) pour xuid=%s", n, self_xuid)
-    sql = _build_encounter_sql(n)
+    try:
+        with duckdb_read_only(shared_path) as _probe:
+            has_lookup = _has_view(_probe, "v_gamertag_lookup")
+    except Exception:
+        has_lookup = False
+    sql = _build_encounter_sql(n, has_gamertag_lookup=has_lookup)
     # Ordre des paramètres : voir _build_encounter_sql docstring — 3n+6 total
     params: list[str] = (
         [self_xuid]  # my_matches WHERE xuid = ?
-        + target_xuids  # he_gamertags WHERE xuid IN (...)
         + target_xuids  # encounters WHERE p.xuid IN (...)
         + [self_xuid] * 3  # kvp CASE + SUM kills + SUM deaths
         + [self_xuid]  # kvp WHERE killer = ?

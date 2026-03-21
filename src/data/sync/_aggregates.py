@@ -19,13 +19,15 @@ logger = logging.getLogger(__name__)
 class AggregatesMixin:
     """Méthodes de rafraîchissement des agrégats post-sync."""
 
-    async def _refresh_aggregates_async(self) -> None:
+    async def _refresh_aggregates_async(self, new_ids: list[str] | None = None) -> None:
         """Rafraîchit les agrégats après sync (async wrapper)."""
         # Exécuter dans un thread pour ne pas bloquer l'event loop
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self.refresh_aggregates)
+        await loop.run_in_executor(None, lambda: self.refresh_aggregates(new_ids=new_ids))
 
-    def refresh_aggregates(self: _SyncProtocol) -> dict[str, int]:
+    def refresh_aggregates(  # noqa: PLR0912
+        self: _SyncProtocol, *, new_ids: list[str] | None = None
+    ) -> dict[str, int]:
         """Recalcule les tables d'agrégats après sync.
 
         Met à jour :
@@ -51,15 +53,29 @@ class AggregatesMixin:
             # Appeler refresh_materialized_views si disponible
             # (implémenté dans DuckDBRepository)
             try:
-                from src.data.repositories.duckdb_repo import DuckDBRepository
-
-                repo = DuckDBRepository(
-                    self._player_db_path,
-                    self._xuid,
-                    read_only=False,
+                from src.data.repositories.duckdb_repo import (
+                    DuckDBRepository,
+                    begin_sync_mode,
+                    end_sync_mode,
                 )
+
+                # shared_connection est fermé : désactiver brièvement sync_mode
+                # pour permettre au DuckDBRepository d'attacher shared_matches.duckdb
+                end_sync_mode()
                 try:
-                    repo.refresh_materialized_views()
+                    repo = DuckDBRepository(
+                        self._player_db_path,
+                        self._xuid,
+                        read_only=False,
+                    )
+                    # Forcer l'initialisation de la connexion ET l'ATTACH de shared
+                    # pendant que sync_mode est encore désactivé (connexion lazy).
+                    repo._get_connection()
+                finally:
+                    begin_sync_mode()  # Rétablir après que la connexion est établie
+
+                try:
+                    repo.refresh_materialized_views(new_ids=new_ids)
                     result["materialized_views"] = 1
                 finally:
                     # CRITIQUE : fermer repo même si refresh_materialized_views lève une

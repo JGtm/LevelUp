@@ -53,6 +53,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "moy=%{y:.2f}<extra></extra>",
         "en": "avg=%{y:.2f}<extra></extra>",
     },
+    # hover_avg_abs : utilisé quand y est négatif (morts sous l'axe) ; customdata = valeur absolue
+    "hover_avg_abs": {
+        "fr": "moy=%{customdata:.2f}<extra></extra>",
+        "en": "avg=%{customdata:.2f}<extra></extra>",
+    },
     "hover_avg0": {
         "fr": "moy=%{y:.0f}<extra></extra>",
         "en": "avg=%{y:.0f}<extra></extra>",
@@ -64,6 +69,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "hover_dpm": {
         "fr": "morts/min=%{y:.2f}<br>temps joué=%{customdata[0]:.0f}s (morts=%{customdata[2]:.0f})<extra></extra>",
         "en": "deaths/min=%{y:.2f}<br>time played=%{customdata[0]:.0f}s (deaths=%{customdata[2]:.0f})<extra></extra>",
+    },
+    # hover_dpm_neg : utilisé quand deaths sont tracées en négatif (customdata[5] = valeur absolue)
+    "hover_dpm_neg": {
+        "fr": "morts/min=%{customdata[5]:.2f}<br>temps joué=%{customdata[0]:.0f}s (morts=%{customdata[2]:.0f})<extra></extra>",
+        "en": "deaths/min=%{customdata[5]:.2f}<br>time played=%{customdata[0]:.0f}s (deaths=%{customdata[2]:.0f})<extra></extra>",
     },
     "hover_apm": {
         "fr": "assist./min=%{y:.2f}<br>temps joué=%{customdata[0]:.0f}s (assistances=%{customdata[3]:.0f})<extra></extra>",
@@ -106,7 +116,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "hit=%{y:.0f}<extra></extra>",
     },
     "hover_net_kd_cumul": {
-        "fr": "Min %{x}<br>Net K/D cumulé: %{y:+d}<extra></extra>",
+        "fr": "Min %{x}<br>Net F/D cumulé: %{y:+d}<extra></extra>",
         "en": "Round %{x}<br>Net K/D cumul: %{y:+d}<extra></extra>",
     },
     "hover_killed_by": {
@@ -134,15 +144,15 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "<b>%{x}</b><br>Cumul: %{y:+d}<extra></extra>",
     },
     "hover_kd_cumul_line": {
-        "fr": "<b>%{x}</b><br>K/D Cumulé: %{y:.2f}<extra></extra>",
+        "fr": "<b>%{x}</b><br>F/D Cumulé: %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>K/D Cumul: %{y:.2f}<extra></extra>",
     },
     "hover_kd_rolling_line": {
-        "fr": "<b>%{x}</b><br>K/D Glissant: %{y:.2f}<extra></extra>",
+        "fr": "<b>%{x}</b><br>F/D Glissant: %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>Rolling K/D: %{y:.2f}<extra></extra>",
     },
     "hover_kd_ewma": {
-        "fr": "<b>%{x}</b><br>K/D Lissé (EWMA): %{y:.2f}<extra></extra>",
+        "fr": "<b>%{x}</b><br>F/D Lissé (EWMA): %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>Smoothed K/D (EWMA): %{y:.2f}<extra></extra>",
     },
     "hover_nph_raw": {
@@ -154,7 +164,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "<b>%{x}</b><br>Smoothed Net/h: %{y:+.1f}<extra></extra>",
     },
     "hover_kd_match": {
-        "fr": "<b>%{x}</b><br>K/D Match: %{y:.2f}<extra></extra>",
+        "fr": "<b>%{x}</b><br>F/D Match: %{y:.2f}<extra></extra>",
         "en": "<b>%{x}</b><br>Match K/D: %{y:.2f}<extra></extra>",
     },
     "hover_trend_smooth": {

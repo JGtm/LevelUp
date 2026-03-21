@@ -79,6 +79,14 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "Matrice d'Impact",
         "en": "Impact heatmap",
     },
+    "tmi_viz_heatmap": {
+        "fr": "Matrice (original)",
+        "en": "Matrix (original)",
+    },
+    "tmi_viz_scatter": {
+        "fr": "Points (symboles)",
+        "en": "Dots (symbols)",
+    },
     "tm_impact_ranking": {
         "fr": "🏆 Classement",
         "en": "🏆 Ranking",
@@ -189,7 +197,20 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "Toggle rolling average curves over the entire period.",
     },
     "tm_select_teammates": {"fr": "Coéquipiers", "en": "Teammates"},
+    "tm_search_placeholder": {"fr": "Taper pour filtrer...", "en": "Type to filter..."},
     "tm_session_trend": {"fr": "Tendance de session", "en": "Session trend"},
+    # ── En-tête session escouade ──────────────────────────────────────────────
+    "squad_score_header": {"fr": "Score d'équipe", "en": "Squad Score"},
+    "squad_legend": {
+        "fr": "▲ au-dessus de la moyenne d'équipe · ▼ en dessous",
+        "en": "▲ above squad average · ▼ below",
+    },
+    "squad_grade_legendaire": {"fr": "LEGENDAIRE", "en": "LEGENDARY"},
+    "squad_grade_carnage": {"fr": "CARNAGE", "en": "CARNAGE"},
+    "squad_grade_solide": {"fr": "SOLIDE", "en": "SOLID"},
+    "squad_grade_moyen": {"fr": "MOYEN", "en": "AVERAGE"},
+    "squad_grade_difficile": {"fr": "DIFFICILE", "en": "ROUGH"},
+    "squad_grade_catastrophique": {"fr": "CATASTROPHIQUE", "en": "CATASTROPHIC"},
     "tm_solo_session_info": {
         "fr": "Cette session est en solo — les stats de coéquipiers ne sont pas disponibles.",
         "en": "You played solo this session — teammate stats are not available.",
@@ -203,10 +224,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "tmi_col_rank": "col_rank",  # alias → common
     "tmi_col_player": "col_player",  # alias → common
     "tmi_col_score": "col_score",  # alias → common
-    "tmi_col_first_blood": {"fr": "⚡ Premier Sang", "en": "⚡ First Blood"},
-    "tmi_col_finisher": {"fr": "🎯 Finisseur", "en": "🎯 Finisher"},
-    "tmi_col_casualty": {"fr": "💀 Boulet", "en": "💀 Liability"},
-    "tmi_mvp_label": {"fr": "🏆 Brute de la Soirée : {mvp}", "en": "🏆 MVP of the Night: {mvp}"},
+    "tmi_col_first_blood": {"fr": "⚡", "en": "⚡"},
+    "tmi_col_finisher": {"fr": "🎯", "en": "🎯"},
+    "tmi_col_casualty": {"fr": "💀", "en": "💀"},
+    "tmi_mvp_label": {"fr": "🏆 Champion : {mvp}", "en": "🏆 MVP of the Night: {mvp}"},
     "tmi_boulet_label": {"fr": "🍌 Maillon Faible : {boulet}", "en": "🍌 Weak Link: {boulet}"},
     "tmi_no_shared_db": {
         "fr": "Impossible d'accéder à shared_matches.duckdb pour les événements.",
@@ -243,4 +264,29 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "{player} — Life span (with {partner})",
     },
     # ── Historique des rencontres (v5.4) ─────────────────────────────────────
+    # ── Nouveaux graphiques par carte (coéquipiers) ──────────────────────────
+    "tm_map_lollipop_title": {
+        "fr": "V/D par carte",
+        "en": "W/L by map",
+    },
+    "tm_map_timeline_title": {
+        "fr": "Évolution chronologique par carte",
+        "en": "Chronological map evolution",
+    },
+    "tm_map_timeline_caption": {
+        "fr": "Chaque cercle = 1 match ensemble. La sélection courante est mise en évidence.",
+        "en": "Each dot = 1 match together. Current selection highlighted.",
+    },
+    "tm_map_bullet_title": {
+        "fr": "Taux de victoires vs historique",
+        "en": "Session win rate vs history",
+    },
+    "tm_perf_vs_history_title": {
+        "fr": "Performance vs historique",
+        "en": "Performance vs history",
+    },
+    "tm_map_squad_heatmap_title": {
+        "fr": "Performance par joueur × carte",
+        "en": "Performance by player × map",
+    },
 }

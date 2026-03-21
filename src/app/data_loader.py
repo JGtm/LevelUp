@@ -9,32 +9,25 @@ Ce module gère :
 
 from __future__ import annotations
 
+import logging
 import os
-from collections.abc import Mapping
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
 import streamlit as st
 
-from src.config import (
-    DEFAULT_PLAYER_GAMERTAG,
-    DEFAULT_PLAYER_XUID,
-    DEFAULT_WAYPOINT_PLAYER,
-    get_repo_root,
-)
 from src.ui import AppSettings
 from src.ui.cache import db_cache_key, load_df_optimized
 from src.ui.sync import is_spnkr_db_path, pick_latest_spnkr_db_if_any
 from src.utils import (
     guess_xuid_from_db_path,
     infer_spnkr_player_from_db_path,
-    parse_xuid_input,
-    resolve_xuid_from_db,
 )
 
 if TYPE_CHECKING:
     from src.data.repositories.duckdb_repo import DuckDBRepository
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Identité joueur depuis secrets/env
@@ -52,31 +45,10 @@ def default_identity_from_secrets() -> tuple[str, str, str]:
     Returns:
         Tuple (xuid_or_gamertag, xuid_fallback, waypoint_player).
     """
-    # Secrets Streamlit: .streamlit/secrets.toml
-    try:
-        player = st.secrets.get("player", {})
-        if isinstance(player, Mapping):
-            gt = str(player.get("gamertag") or "").strip()
-            xu = str(player.get("xuid") or "").strip()
-            wp = str(player.get("waypoint_player") or "").strip()
-        else:
-            gt = xu = wp = ""
-    except Exception:
-        gt = xu = wp = ""
+    from src.app.profile import get_identity_from_secrets
 
-    # Env vars (utile Docker/CLI)
-    gt = gt or str(os.environ.get("LEVELUP_DEFAULT_GAMERTAG") or "").strip()
-    xu = xu or str(os.environ.get("LEVELUP_DEFAULT_XUID") or "").strip()
-    wp = wp or str(os.environ.get("LEVELUP_DEFAULT_WAYPOINT_PLAYER") or "").strip() or gt
-
-    # Fallback constants
-    gt = gt or str(DEFAULT_PLAYER_GAMERTAG or "").strip()
-    xu = xu or str(DEFAULT_PLAYER_XUID or "").strip()
-    wp = wp or str(DEFAULT_WAYPOINT_PLAYER or "").strip() or gt
-
-    # UI: on préfère afficher le gamertag, tout en conservant xuid en fallback.
-    xuid_or_gt = gt or xu
-    return xuid_or_gt, xu, wp
+    identity = get_identity_from_secrets()
+    return identity.gamertag, identity.xuid, identity.waypoint_player
 
 
 def propagate_identity_env(xuid_or_gt: str, xuid_fallback: str, wp: str) -> None:
@@ -97,69 +69,6 @@ def propagate_identity_env(xuid_or_gt: str, xuid_fallback: str, wp: str) -> None
 
 
 # =============================================================================
-# DuckDB v4 Player Detection
-# =============================================================================
-
-
-def _get_duckdb_v4_players_dir() -> Path:
-    """Retourne le chemin vers data/players/."""
-    return Path(get_repo_root(__file__)) / "data" / "players"
-
-
-def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
-    """Détecte le meilleur joueur DuckDB v5.1 disponible.
-
-    Returns:
-        Tuple (db_path, gamertag) du joueur avec le plus de matchs, ou None.
-    """
-    from src.utils.db import duckdb_read_only
-
-    players_dir = _get_duckdb_v4_players_dir()
-    if not players_dir.exists():
-        return None
-
-    best_player = None
-    best_count = -1
-
-    for player_dir in players_dir.iterdir():
-        if not player_dir.is_dir():
-            continue
-
-        db_path = player_dir / "stats.duckdb"
-        if not db_path.exists():
-            continue
-
-        gamertag = player_dir.name
-        try:
-            with duckdb_read_only(db_path) as con:
-                # V5.1: player_match_enrichment est la seule table match locale
-                # Fallback sur v_match_stats (vue vers shared) si enrichment absente
-                result = con.execute(
-                    """
-                    SELECT COUNT(*) FROM (
-                        SELECT 1 FROM information_schema.tables
-                        WHERE table_name = 'player_match_enrichment'
-                    )
-                    """
-                ).fetchone()
-                if result and result[0] > 0:
-                    count_result = con.execute(
-                        "SELECT COUNT(*) FROM player_match_enrichment"
-                    ).fetchone()
-                else:
-                    count_result = con.execute("SELECT COUNT(*) FROM v_match_stats").fetchone()
-                count = count_result[0] if count_result else 0
-
-            if count > best_count:
-                best_count = count
-                best_player = (str(db_path), gamertag)
-        except Exception:
-            continue
-
-    return best_player
-
-
-# =============================================================================
 # Initialisation source state
 # =============================================================================
 
@@ -167,48 +76,36 @@ def _pick_best_duckdb_v4_player() -> tuple[str, str] | None:
 def init_source_state(default_db: str, settings: AppSettings) -> None:
     """Initialise l'état source (DB path, xuid, waypoint) en session_state.
 
-    Architecture DuckDB v5.1 uniquement :
-    - stats.duckdb par joueur : data/players/{gamertag}/stats.duckdb
-    - shared_matches.duckdb : data/warehouse/shared_matches.duckdb
-    - metadata.duckdb : data/warehouse/metadata.duckdb
+    Priorité pour la DB :
+    1. ``LEVELUP_DB`` / ``LEVELUP_DB_PATH`` (env) — forcé, immuable
+    2. SPNKr DB si ``prefer_spnkr_db_if_available`` est activé dans les settings
+    3. ``default_db`` (premier joueur alphabétique fourni par ``get_default_db_path()``)
+
+    Note : ``?gamertag=`` dans l'URL est un paramètre de navigation vers Explorer,
+    PAS un switch de joueur. Il est consommé par ``_parse_query_params()`` →
+    ``PENDING_GAMERTAG``. L'initialisation ne doit jamais en tenir compte.
 
     Args:
-        default_db: Chemin par défaut de la DB.
+        default_db: Chemin par défaut de la DB (résultat de ``get_default_db_path()``).
         settings: Paramètres de l'application.
     """
     if "db_path" not in st.session_state:
         chosen = str(default_db or "")
 
-        # Si l'utilisateur force une DB via env, ne pas l'écraser
         forced_env_db = str(
             os.environ.get("LEVELUP_DB") or os.environ.get("LEVELUP_DB_PATH") or ""
         ).strip()
 
-        if not forced_env_db:
-            # 0. Deep link : si l'URL contient gamertag=X, utiliser ce joueur
-            #    directement (navigation depuis l'historique, lien partagé, etc.).
-            #    On lit st.query_params ici car _parse_query_params() s'exécute
-            #    après init_source_state dans main().
-            _url_gt = str(st.query_params.get("gamertag") or "").strip()
-            _url_db = _get_duckdb_v4_players_dir() / _url_gt / "stats.duckdb" if _url_gt else None
-            if _url_gt and _url_db and _url_db.exists():
-                chosen = str(_url_db)
-                st.session_state["_v4_gamertag"] = _url_gt
+        if forced_env_db:
+            chosen = forced_env_db
+            logger.debug("init_source_state: DB forcée via env → %s", forced_env_db)
+        elif settings.prefer_spnkr_db_if_available:
+            spnkr = pick_latest_spnkr_db_if_any()
+            if spnkr and os.path.exists(spnkr) and os.path.getsize(spnkr) > 0:
+                chosen = spnkr
+                logger.debug("init_source_state: SPNKr DB sélectionnée → %s", spnkr)
 
-            # 1. Sinon, essayer DuckDB v4 (joueur avec le plus d'entrées)
-            elif not st.session_state.get("_v4_gamertag"):
-                v4_player = _pick_best_duckdb_v4_player()
-                if v4_player:
-                    chosen, gamertag = v4_player
-                    # Pré-remplir aussi le gamertag
-                    st.session_state["_v4_gamertag"] = gamertag
-
-            # 2. Sinon, essayer SPNKr DB si préféré
-            elif bool(getattr(settings, "prefer_spnkr_db_if_available", False)):
-                spnkr = pick_latest_spnkr_db_if_any()
-                if spnkr and os.path.exists(spnkr) and os.path.getsize(spnkr) > 0:
-                    chosen = spnkr
-
+        logger.debug("init_source_state: db_path=%s", chosen or "(vide)")
         st.session_state["db_path"] = chosen
 
     if "xuid_input" not in st.session_state:
@@ -216,20 +113,39 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
         guessed = guess_xuid_from_db_path(st.session_state.get("db_path", "") or "") or ""
         xuid_or_gt, _xuid_fallback, _wp = default_identity_from_secrets()
 
-        # Pour DuckDB v4, utiliser le gamertag détecté
-        v4_gamertag = str(st.session_state.get("_v4_gamertag", "") or "").strip()
-
         # Pour les DB SPNKr, pré-remplir avec le joueur déduit du nom de DB.
         inferred = (
             infer_spnkr_player_from_db_path(str(st.session_state.get("db_path", "") or "")) or ""
         )
-        st.session_state["xuid_input"] = legacy or v4_gamertag or inferred or guessed or xuid_or_gt
+        xuid_input = legacy or inferred or guessed or xuid_or_gt
+
+        # Si l'entrée n'est pas un XUID numérique, tenter de résoudre depuis sync_meta
+        # (même logique que render_player_selector_unified au switch de joueur).
+        _current_db = str(st.session_state.get("db_path", "") or "").strip()
+        if xuid_input and not xuid_input.isdigit() and _current_db and os.path.exists(_current_db):
+            try:
+                from src.ui._cache_core import _resolve_player_xuid
+
+                resolved = _resolve_player_xuid(_current_db)
+                if resolved:
+                    xuid_input = resolved
+                    logger.debug("init_source_state: XUID résolu depuis sync_meta → %s", resolved)
+            except Exception:
+                pass
+
+        logger.debug(
+            "init_source_state: xuid_input=%s (legacy=%r inferred=%r guessed=%r)",
+            xuid_input or "(vide)",
+            bool(legacy),
+            bool(inferred),
+            bool(guessed),
+        )
+        st.session_state["xuid_input"] = xuid_input
 
     if "waypoint_player" not in st.session_state:
         _xuid_or_gt, _xuid_fallback, wp = default_identity_from_secrets()
-        # Pour DuckDB v4, utiliser le gamertag
-        v4_gamertag = str(st.session_state.get("_v4_gamertag", "") or "").strip()
-        st.session_state["waypoint_player"] = v4_gamertag or wp
+        logger.debug("init_source_state: waypoint_player=%s", wp or "(vide)")
+        st.session_state["waypoint_player"] = wp
 
 
 def resolve_xuid_input(xuid_input: str, db_path: str) -> str:
@@ -242,34 +158,9 @@ def resolve_xuid_input(xuid_input: str, db_path: str) -> str:
     Returns:
         XUID résolu ou chaîne vide.
     """
-    xraw = (xuid_input or "").strip()
-    xuid_resolved = parse_xuid_input(xraw) or ""
+    from src.app.profile import get_identity_from_secrets, resolve_xuid
 
-    if not xuid_resolved and xraw and not xraw.isdigit() and db_path:
-        xuid_resolved = resolve_xuid_from_db(db_path, xraw) or ""
-        # Fallback: si la DB ne permet pas de résoudre,
-        # utiliser les defaults quand l'entrée correspond au gamertag par défaut.
-        if not xuid_resolved:
-            try:
-                xuid_or_gt, xuid_fallback, _wp = default_identity_from_secrets()
-                if (
-                    xuid_or_gt
-                    and xuid_fallback
-                    and (not str(xuid_or_gt).strip().isdigit())
-                    and str(xuid_or_gt).strip().casefold() == str(xraw).strip().casefold()
-                ):
-                    xuid_resolved = str(xuid_fallback).strip()
-            except Exception:
-                pass
-
-    if not xuid_resolved and not xraw and db_path:
-        xuid_or_gt, xuid_fallback, _wp = default_identity_from_secrets()
-        if xuid_or_gt and not xuid_or_gt.isdigit():
-            xuid_resolved = resolve_xuid_from_db(db_path, xuid_or_gt) or xuid_fallback
-        else:
-            xuid_resolved = xuid_or_gt or xuid_fallback
-
-    return xuid_resolved or ""
+    return resolve_xuid(xuid_input, db_path, identity=get_identity_from_secrets())
 
 
 def validate_db_path(db_path: str, default_db: str) -> str:

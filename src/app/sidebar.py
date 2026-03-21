@@ -205,10 +205,8 @@ def render_sync_button(  # noqa: C901, PLR0912
     ):
         with st.spinner(t("syncing")):
             ok, msg = sync_all_players_duckdb(
-                match_type=str(
-                    getattr(settings, "spnkr_refresh_match_type", "matchmaking") or "matchmaking"
-                ),
-                max_matches=int(getattr(settings, "spnkr_refresh_max_matches", 200) or 200),
+                match_type=settings.spnkr_refresh_match_type,
+                max_matches=settings.spnkr_refresh_max_matches,
                 with_highlight_events=True,
                 with_aliases=True,
                 delta=True,
@@ -219,18 +217,18 @@ def render_sync_button(  # noqa: C901, PLR0912
             st.success(msg)
 
             # Backfill après synchronisation si activé
-            backfill_enabled = bool(getattr(settings, "spnkr_refresh_with_backfill", False))
+            backfill_enabled = settings.spnkr_refresh_with_backfill
             # Vérifier aussi si au moins une option de backfill est activée individuellement
             has_any_backfill_option = any(
                 [
-                    bool(getattr(settings, "spnkr_refresh_backfill_medals", False)),
-                    bool(getattr(settings, "spnkr_refresh_backfill_events", False)),
-                    bool(getattr(settings, "spnkr_refresh_backfill_skill", False)),
-                    bool(getattr(settings, "spnkr_refresh_backfill_personal_scores", False)),
-                    bool(getattr(settings, "spnkr_refresh_backfill_performance_scores", True)),
-                    bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
-                    bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
-                    bool(getattr(settings, "spnkr_refresh_backfill_weapons", False)),
+                    settings.spnkr_refresh_backfill_medals,
+                    settings.spnkr_refresh_backfill_events,
+                    settings.spnkr_refresh_backfill_skill,
+                    settings.spnkr_refresh_backfill_personal_scores,
+                    settings.spnkr_refresh_backfill_performance_scores,
+                    settings.spnkr_refresh_backfill_aliases,
+                    settings.spnkr_refresh_backfill_lusr,
+                    settings.spnkr_refresh_backfill_weapons,
                 ]
             )
 
@@ -241,18 +239,14 @@ def render_sync_button(  # noqa: C901, PLR0912
                 from src.data.sync.scope import SyncScope
 
                 _backfill_scope = SyncScope(
-                    medals=bool(getattr(settings, "spnkr_refresh_backfill_medals", False)),
-                    events=bool(getattr(settings, "spnkr_refresh_backfill_events", False)),
-                    skill=bool(getattr(settings, "spnkr_refresh_backfill_skill", False)),
-                    personal_scores=bool(
-                        getattr(settings, "spnkr_refresh_backfill_personal_scores", False)
-                    ),
-                    performance_scores=bool(
-                        getattr(settings, "spnkr_refresh_backfill_performance_scores", True)
-                    ),
-                    aliases=bool(getattr(settings, "spnkr_refresh_backfill_aliases", False)),
-                    lusr=bool(getattr(settings, "spnkr_refresh_backfill_lusr", True)),
-                    weapons=bool(getattr(settings, "spnkr_refresh_backfill_weapons", False)),
+                    medals=settings.spnkr_refresh_backfill_medals,
+                    events=settings.spnkr_refresh_backfill_events,
+                    skill=settings.spnkr_refresh_backfill_skill,
+                    personal_scores=settings.spnkr_refresh_backfill_personal_scores,
+                    performance_scores=settings.spnkr_refresh_backfill_performance_scores,
+                    aliases=settings.spnkr_refresh_backfill_aliases,
+                    lusr=settings.spnkr_refresh_backfill_lusr,
+                    weapons=settings.spnkr_refresh_backfill_weapons,
                     all_data=backfill_enabled,
                 )
                 _backfill_scope.resolve()

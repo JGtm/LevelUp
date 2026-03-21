@@ -1,66 +1,26 @@
 """Traductions UI — bilingue FR/EN.
 
-Centralise les mappings de libellés (playlist, mode/pair) afin de :
-- réduire la liste de valeurs distinctes dans l'UI
-- afficher des labels localisés (FR par défaut, EN optionnel)
+Centralise les fonctions de traduction de libellés (playlist, mode/pair).
+
+Depuis v6 : la source de vérité est ``metadata.duckdb`` :
+- Playlists  : colonnes ``name_fr`` / ``name_en`` exposées via ``v_match_full``.
+- Modes/pairs : 4 tables ``mode_prefix_names``, ``mode_name_tr``,
+  ``mode_pair_overrides``, ``mode_lang_settings``.
 
 Toutes les fonctions publiques acceptent un paramètre ``lang: str = "fr"``.
 La valeur ``"fr"`` est le défaut pour assurer la rétrocompatibilité.
-
-Source de vérité : fichiers JSON ``static/i18n/playlists_{lang}.json`` et
-``static/i18n/modes_{lang}.json``.  Les dictionnaires hardcodés ci-dessous
-servent de **fallback** historique.
 """
 
 from __future__ import annotations
 
-from src.ui.i18n.data_labels import label, load_domain
+import logging
+from functools import lru_cache
 
-PLAYLIST_FR: dict[str, str] = {
-    "Big Team Battle": "Grande bataille en équipe",
-    "Big Team Battle: Refresh": "Grande bataille en équipe",
-    "Big Team Social": "Grande bataille sociale",
-    "Firefight": "Baptême du feu",
-    "Firefight: Heroic King of the Hill": "Baptême du feu : Roi de la colline héroïque",
-    "Firefight: Legendary King of the Hill": "Baptême du feu : Roi de la colline légendaire",
-    "Quick Play": "Partie rapide",
-    "Ranked Arena": "Arène classée",
-    "Ranked Slayer": "Assassin classé",
-    "Rumble Pit": "Mêlée générale",
-    "SURVIVE THE UNDEAD": "Survivre aux morts-vivants",
-    "Squad Battle": "Combat d'escouade",
-    "Super Fiesta": "Super Fiesta",
-    "Team Snipers": "Snipers en équipe",
-    # IDs de playlists "Partie rapide" (fallback si nom non résolu)
-    "a446725e-b281-414c-a21e": "Partie rapide",
-    "bdceefb3-1c52-4848-a6b7": "Partie rapide",
-}
+logger = logging.getLogger(__name__)
 
-# Mappings EN — nettoyage des noms de playlists (variants, UUIDs, etc.)
-PLAYLIST_EN: dict[str, str] = {
-    "Big Team Battle": "Big Team Battle",
-    "Big Team Battle: Refresh": "Big Team Battle",
-    "Big Team Social": "Big Team Social",
-    "Firefight": "Firefight",
-    "Firefight: Heroic King of the Hill": "Firefight",
-    "Firefight: Legendary King of the Hill": "Firefight",
-    "Quick Play": "Quick Play",
-    "Ranked Arena": "Ranked Arena",
-    "Ranked Slayer": "Ranked Slayer",
-    "Rumble Pit": "Rumble Pit",
-    "SURVIVE THE UNDEAD": "Survive the Undead",
-    "Squad Battle": "Squad Battle",
-    "Super Fiesta": "Super Fiesta",
-    "Team Snipers": "Team Snipers",
-    "a446725e-b281-414c-a21e": "Quick Play",
-    "bdceefb3-1c52-4848-a6b7": "Quick Play",
-}
-
-
-# NOTE: PAIR_FR est vide — les traductions sont désormais dans
-# static/i18n/modes_fr.json (_pairs pour les overrides, combinateur _prefixes+mode
-# pour le reste). Conserver pour rétrocompatibilité des imports externes.
-PAIR_FR: dict[str, str] = {}
+# Labels de fallback pour UUIDs non résolus (metadata.duckdb incomplet)
+_UNKNOWN_PLAYLIST: dict[str, str] = {"fr": "Inconnue", "en": "Unknown"}
+_UNKNOWN_MODE: dict[str, str] = {"fr": "Mode inconnu", "en": "Unknown mode"}
 
 
 def _is_uuid_like(s: str) -> bool:
@@ -72,37 +32,35 @@ def _is_uuid_like(s: str) -> bool:
 
 
 def translate_playlist_name(name: str | None, lang: str = "fr") -> str | None:
-    """Traduit un nom de playlist dans la langue demandée.
+    """Traduit un nom de playlist via les fichiers JSON i18n (``static/i18n/playlists_*.json``).
 
-    Résolution : JSON i18n → dicts hardcodés → valeur brute.
+    Résolution en 3 étapes :
+    1. UUID brut → label "Inconnue"/"Unknown"
+    2. Lookup dans ``static/i18n/playlists_{lang}.json`` via ``label()``
+    3. Passthrough (retourne le nom tel quel si aucune traduction trouvée)
 
     Args:
         name: Nom de playlist brut (peut être ``None``).
         lang: ``"fr"`` (défaut) ou ``"en"``.
 
     Returns:
-        Label localisé, ou ``None`` si ``name`` est vide/None.
+        Nom traduit, ou label "inconnue" pour les UUIDs bruts.
     """
     if name is None:
         return None
     s = str(name).strip()
     if not s:
         return None
-    # Détection des UUIDs non résolus
     if _is_uuid_like(s):
-        # Vérifier d'abord dans le JSON (les UUIDs peuvent y être mappés)
-        json_val = label("playlists", s, lang=lang)
-        if json_val != s:
-            return json_val
-        return label("playlists", "_unknown", lang=lang)
-    # 1) JSON i18n
-    json_val = label("playlists", s, lang=lang)
-    if json_val != s:
-        return json_val
-    # 2) Fallback dicts hardcodés
-    if lang == "en":
-        return PLAYLIST_EN.get(s, s)
-    return PLAYLIST_FR.get(s, s)
+        logger.warning("playlist_name non résolu (UUID brut) : %s — metadata.duckdb incomplet ?", s)
+        return _UNKNOWN_PLAYLIST.get(lang, s)
+    # Lookup i18n (static/i18n/playlists_{lang}.json)
+    from src.ui.i18n.data_labels import label as _label
+
+    translated = _label("playlists", s, lang=lang)
+    if translated != s:
+        return translated
+    return s
 
 
 def _normalize_pair_case(s: str) -> str:
@@ -133,63 +91,99 @@ def _normalize_pair_case(s: str) -> str:
     return f"{prefix}:{rest}" if prefix else rest
 
 
-def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:  # noqa: C901
-    """Traduit un nom de mode/pair dans la langue demandée.
+def translate_pair_name(name: str | None, lang: str = "fr") -> str | None:
+    """Traduit un pair_name depuis metadata.duckdb.
 
-    Stratégie (source de vérité : static/i18n/modes_{lang}.json) :
-    1. Override exact depuis ``_pairs`` (renommages spéciaux ou carte-spécifiques)
-    2. Normalisation douce de la casse + retry ``_pairs``
-    3. Strip " on <carte>" + retry ``_pairs``
-    4. Combinateur ``_prefixes`` + clé mode (logique générique)
-    5. Mode seul (pas de préfixe)
-    6. UUID non résolu → "Mode inconnu" / "Unknown mode"
+    Résolution en 3 étapes :
+    1. Override exact (``mode_pair_overrides``) pour les cas non combinatoires
+    2. Combinatoire générique : préfixe localisé + séparateur + mode localisé
+    3. Mode seul (sans catégorie)
 
     Args:
         name: Nom de pair brut (peut être ``None``).
         lang: ``"fr"`` (défaut) ou ``"en"``.
     """
-    if name is None:
+    if not name:
         return None
     s = str(name).strip()
     if not s:
         return None
-
-    # UUID non résolu
     if _is_uuid_like(s):
-        return label("modes", "_unknown", lang=lang)
+        logger.warning("pair_name UUID non résolu : %s", s)
+        return _UNKNOWN_MODE.get(lang, "Unknown mode")
 
-    # Charger le domaine une seule fois (mis en cache par load_domain)
-    modes_data = load_domain("modes", lang)
-    pairs = modes_data.get("_pairs", {})
-    prefixes = modes_data.get("_prefixes", {})
-    separator = modes_data.get("_separator", ": ")
+    no_map = s.split(" on ", 1)[0].strip()
+    candidate = _normalize_pair_case(no_map)
 
     # 1) Override exact
-    if s in pairs:
-        return pairs[s]
+    if result := _mode_db_lookup("mode_pair_overrides", candidate, lang):
+        return result
 
-    # 2) Normalisation douce de la casse
-    candidate = _normalize_pair_case(s)
-    if candidate in pairs:
-        return pairs[candidate]
+    # 2) Combinatoire préfixe + mode
+    if ":" in candidate:
+        prefix_en, mode_en = candidate.split(":", 1)
+        sep = _mode_sep(lang)
+        prefix_loc = (
+            _mode_db_lookup("mode_prefix_names", prefix_en.strip(), lang) or prefix_en.strip()
+        )
+        mode_loc = _mode_db_lookup("mode_name_tr", mode_en.strip(), lang) or mode_en.strip()
+        return f"{prefix_loc}{sep}{mode_loc}"
 
-    # 3) Strip " on <carte>" + retry _pairs
-    mode_without_map = candidate
-    if " on " in candidate:
-        mode_without_map = candidate.split(" on ", 1)[0].strip()
-        if mode_without_map in pairs:
-            return pairs[mode_without_map]
+    # 3) Mode seul
+    return _mode_db_lookup("mode_name_tr", candidate, lang) or candidate
 
-    # 4) Combinateur : _prefixes + clé mode
-    if ":" in mode_without_map:
-        prefix_raw, mode_part = mode_without_map.split(":", 1)
-        prefix_loc = prefixes.get(prefix_raw.strip(), prefix_raw.strip())
-        mode_loc = modes_data.get(mode_part.strip(), mode_part.strip())
-        return f"{prefix_loc}{separator}{mode_loc}"
 
-    # 5) Mode seul
-    mode_loc = modes_data.get(mode_without_map)
-    if mode_loc and not isinstance(mode_loc, dict):
-        return str(mode_loc)
+@lru_cache(maxsize=8)
+def _load_mode_tables(lang: str) -> dict[str, object]:
+    """Charge les tables modes depuis metadata.duckdb (cache process-level)."""
+    from src.utils.db import duckdb_read_only
+    from src.utils.paths import get_metadata_db_path
 
-    return s
+    _empty: dict[str, object] = {
+        "mode_prefix_names": {},
+        "mode_name_tr": {},
+        "mode_pair_overrides": {},
+        "separator": " : ",
+    }
+    db_path = get_metadata_db_path()
+    if not db_path.exists():
+        logger.warning("metadata.duckdb introuvable — translate_pair_name en mode dégradé")
+        return _empty
+    try:
+        with duckdb_read_only(str(db_path)) as conn:
+            return {
+                "mode_prefix_names": dict(
+                    conn.execute(
+                        "SELECT prefix_en, name FROM mode_prefix_names WHERE lang=?", [lang]
+                    ).fetchall()
+                ),
+                "mode_name_tr": dict(
+                    conn.execute(
+                        "SELECT mode_en, name FROM mode_name_tr WHERE lang=?", [lang]
+                    ).fetchall()
+                ),
+                "mode_pair_overrides": dict(
+                    conn.execute(
+                        "SELECT pattern, name FROM mode_pair_overrides WHERE lang=?", [lang]
+                    ).fetchall()
+                ),
+                "separator": (
+                    conn.execute(
+                        "SELECT separator FROM mode_lang_settings WHERE lang=?", [lang]
+                    ).fetchone()
+                    or (" : ",)
+                )[0],
+            }
+    except Exception as exc:
+        logger.warning("Erreur chargement mode tables (%s): %s", lang, exc)
+        return _empty
+
+
+def _mode_db_lookup(table: str, key: str, lang: str) -> str | None:
+    """Recherche une clé dans les tables modes cachées."""
+    return _load_mode_tables(lang).get(table, {}).get(key)  # type: ignore[union-attr]
+
+
+def _mode_sep(lang: str) -> str:
+    """Retourne le séparateur préfixe+mode selon la langue."""
+    return _load_mode_tables(lang).get("separator", ": ")  # type: ignore[return-value]

@@ -270,20 +270,18 @@ def _create_shared_db(db_path: Path) -> None:
         ('{MATCH_ID_2}', '{PLAYER_XUID}', 100000001, 2)
     """)
 
-    # Highlight events (v5.1 structure: xuid/gamertag directly)
-    # Un kill = event_type='kill' avec xuid du killer
-    # Une death = event_type='death' avec xuid de la victime
+    # Highlight events (v6 structure: gamertag supprimé, résolution via v_gamertag_lookup)
     conn.execute(f"""
-        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
-        VALUES ('{MATCH_ID_1}', 'kill', 5000, '{PLAYER_XUID}', 'PlayerOne')
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
+        VALUES ('{MATCH_ID_1}', 'kill', 5000, '{PLAYER_XUID}')
     """)
     conn.execute(f"""
-        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
-        VALUES ('{MATCH_ID_1}', 'death', 8000, '{PLAYER_XUID}', 'PlayerOne')
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
+        VALUES ('{MATCH_ID_1}', 'death', 8000, '{PLAYER_XUID}')
     """)
     conn.execute(f"""
-        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
-        VALUES ('{MATCH_ID_1}', 'kill', 12000, '{PLAYER_XUID}', 'PlayerOne')
+        INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
+        VALUES ('{MATCH_ID_1}', 'kill', 12000, '{PLAYER_XUID}')
     """)
 
     # xuid_aliases
@@ -293,6 +291,21 @@ def _create_shared_db(db_path: Path) -> None:
         ('{TEAMMATE_XUID}', 'TeammateTwo', 'api'),
         ('xuid_enemy_1', 'EnemyAlpha', 'api'),
         ('xuid_enemy_2', 'EnemyBeta', 'api')
+    """)
+
+    # Vue v_gamertag_lookup (requis par les queries v6)
+    conn.execute("""
+        CREATE OR REPLACE VIEW v_gamertag_lookup AS
+        SELECT COALESCE(xa.xuid, mp.xuid) AS xuid,
+               COALESCE(xa.gamertag, mp.gamertag) AS gamertag
+        FROM xuid_aliases xa
+        FULL OUTER JOIN (
+            SELECT xuid, MAX(gamertag) AS gamertag
+            FROM match_participants
+            WHERE gamertag IS NOT NULL
+            GROUP BY xuid
+        ) mp ON xa.xuid = mp.xuid
+        WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL
     """)
 
     # 8bis.A5 : Création de mv_player_matches (requis en v5.1)
@@ -411,7 +424,7 @@ class TestSharedAttach:
             player_db_path=db_path,
             xuid=PLAYER_XUID,
         )
-        expected = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
+        expected = tmp_path / "data" / "warehouse" / "shared_matches_v2.duckdb"
         assert repo._shared_db_path == expected
 
     def test_has_shared_table_true(self, repo_v5: DuckDBRepository):
@@ -675,17 +688,16 @@ class TestFactoryShared:
 
 
 class TestV4Fallback:
-    """Tests que le mode v4 (sans shared) fonctionne toujours."""
+    """Tests que le mode v4 (sans shared) se comporte correctement."""
 
-    def test_load_matches_still_works(self, repo_v4: DuckDBRepository):
-        """load_matches fonctionne sans shared (lecture match_stats locale)."""
-        matches = repo_v4.load_matches()
-        assert len(matches) == 2
-        assert matches[0].match_id == MATCH_ID_1
+    def test_load_matches_raises_without_shared(self, repo_v4: DuckDBRepository):
+        """En v6, load_matches sans shared DB disponible lève RuntimeError."""
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            repo_v4.load_matches()
 
-    def test_get_match_count_still_works(self, repo_v4: DuckDBRepository):
-        """get_match_count fonctionne sans shared."""
-        assert repo_v4.get_match_count() == 2
+    def test_get_match_count_returns_zero_without_shared(self, repo_v4: DuckDBRepository):
+        """get_match_count retourne 0 sans shared (v5.1 — pas de fallback local)."""
+        assert repo_v4.get_match_count() == 0
 
     def test_load_matches_v5_still_reads_match_stats(self, repo_v5: DuckDBRepository):
         """load_matches lit toujours depuis match_stats (pas modifié en Sprint 4)."""

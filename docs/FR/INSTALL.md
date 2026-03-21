@@ -36,29 +36,39 @@ Choisissez votre parcours :
 
 #### 🎮 Xbox Express (recommandé — 2 étapes)
 
-Le parcours le plus simple. Seule contrainte inévitable : créer une application Azure gratuite
-(Microsoft l'exige pour l'accès à l'API Halo Infinite officielle).
+Le parcours le plus simple.
 
-**Étape 1 du wizard — Créer une application Azure (gratuit, aucun frais)**
+**Étape 1 du wizard — Application Azure (automatique ou manuelle)**
 
 > Azure est le service cloud Microsoft qui gère l'authentification Xbox.
 > LevelUp a besoin d'une « clé d'accès » propre à chaque utilisateur.
 > L'inscription est gratuite ; LevelUp n'utilise aucun service payant Azure.
+
+**Option A — Automatique (recommandée) : avec Azure CLI**
+
+Si [Azure CLI](https://aka.ms/installazurecli) est installé sur votre machine, LevelUp
+crée l'application automatiquement **sans visiter le portail Azure** :
+
+1. Double-cliquez sur `LevelUp.bat` (ou `./LevelUp.sh` sous macOS/Linux)
+2. LevelUp détecte `az` CLI et vous propose de se connecter (`az login`)
+3. L'application « LevelUp Halo » est créée automatiquement
+4. Le wizard passe directement à la connexion Xbox
+
+**Option B — Manuelle : sans Azure CLI**
+
+Si Azure CLI n'est pas installé, LevelUp ouvre portal.azure.com et vous demande de saisir
+uniquement le **Client ID** (pas de client secret requis) :
 
 1. Allez sur [portal.azure.com](https://portal.azure.com) — connectez-vous avec votre compte Microsoft/Xbox
 2. Cherchez **Microsoft Entra ID** → **App registrations** → **New registration**
 3. Remplissez :
    - Nom : `LevelUp Halo`
    - Type de compte : *Personal Microsoft accounts only*
-   - Redirect URI → **Web** → `http://localhost:8501`
-4. Cliquez **Register**
-5. Sur la page **Overview** : copiez l'**Application (client) ID** (format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
-6. Allez dans **Certificates & secrets** → **New client secret** → donnez un nom → **Add**
-   → copiez immédiatement la colonne **Value** (elle disparaît si vous naviguez ailleurs)
-7. Allez dans **API permissions** → **Add a permission** → **Microsoft Graph** :
-   ajoutez `offline_access` et `User.Read`
+   - Laisser Redirect URI vide → **Register**
+4. Sur la page **Overview** : copiez l'**Application (client) ID** (format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)
+5. Dans **Authentication** → **Advanced settings** → mettez **Allow public client flows** à **Yes** → **Save**
 
-Collez le Client ID et la Value dans le wizard → LevelUp sauvegarde tout automatiquement.
+Collez uniquement le Client ID dans le wizard (plus de secret requis).
 
 **Étape 2 du wizard — Connexion Xbox en 1 clic**
 
@@ -72,10 +82,11 @@ Même configuration Azure qu'au-dessus, mais le refresh token est obtenu manuell
 (à utiliser si le flux Xbox automatique pose problème, ex. reverse proxy) :
 
 ```bash
-python scripts/spnkr_get_refresh_token.py
+python scripts/spnkr_get_refresh_token.py --device-code
 ```
 
-Ce script ouvre un navigateur, vous authentifie et affiche le token à copier dans `.env.local`.
+Ce script affiche un code court à entrer sur https://microsoft.com/devicelogin et sauvegarde
+le token automatiquement dans `.env.local`.
 
 ### Étape 4 — Smoke test (vérification automatique sur 20 matchs)
 

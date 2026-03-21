@@ -378,23 +378,22 @@ class TestLoadMatchesShared:
 
 
 class TestLoadMatchesV4Fallback:
-    """Tests du fallback v4 (sans shared)."""
+    """Tests confirmant que le fallback v4 (sans shared) est supprimé en v6."""
 
-    def test_load_matches_v4_returns_local_only(self, repo_v4: DuckDBRepository):
-        """Sans shared, load_matches lit uniquement match_stats locale."""
-        matches = repo_v4.load_matches()
-        assert len(matches) == 2
-        assert all(m.match_id in {MATCH_ID_1, MATCH_ID_2} for m in matches)
+    def test_load_matches_raises_without_shared(self, repo_v4: DuckDBRepository):
+        """Sans shared, load_matches lève RuntimeError (architecture v6)."""
+        import pytest
 
-    def test_load_matches_v4_preserves_all_fields(self, repo_v4: DuckDBRepository):
-        """Tous les champs MatchRow sont remplis en mode v4."""
-        matches = repo_v4.load_matches()
-        m1 = next(m for m in matches if m.match_id == MATCH_ID_1)
-        assert m1.kills == 15
-        assert m1.deaths == 6
-        assert m1.kda == 2.5
-        assert m1.map_name == "Aquarius"
-        assert m1.my_team_score == 50
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            repo_v4.load_matches()
+
+    def test_get_match_source_raises_without_shared(self, repo_v4: DuckDBRepository):
+        """_get_match_source lève RuntimeError si shared est absent (v6)."""
+        import pytest
+
+        conn = repo_v4._get_connection()
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            repo_v4._get_match_source(conn)
 
 
 class TestLoadMatchesSharedNoLocalMS:
@@ -455,9 +454,9 @@ class TestGetMatchCount:
         """get_match_count retourne le count shared (3 matchs)."""
         assert repo_v5.get_match_count() == 3
 
-    def test_count_v4_fallback(self, repo_v4: DuckDBRepository):
-        """get_match_count retourne le count local (2 matchs) sans shared."""
-        assert repo_v4.get_match_count() == 2
+    def test_count_v4_returns_zero(self, repo_v4: DuckDBRepository):
+        """get_match_count retourne 0 sans shared (v5.1)."""
+        assert repo_v4.get_match_count() == 0
 
 
 # =============================================================================
@@ -476,10 +475,11 @@ class TestLoadRecentMatches:
         assert matches[0].match_id == MATCH_ID_3
 
     def test_recent_matches_v4(self, repo_v4: DuckDBRepository):
-        """load_recent_matches fonctionne en mode v4."""
-        matches = repo_v4.load_recent_matches(limit=1)
-        assert len(matches) == 1
-        assert matches[0].match_id == MATCH_ID_2
+        """load_recent_matches lève RuntimeError sans shared (v6)."""
+        import pytest
+
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            repo_v4.load_recent_matches(limit=1)
 
 
 # =============================================================================
@@ -536,9 +536,11 @@ class TestLoadMatchesAsPolars:
         assert set(df.columns) == {"match_id", "kills", "deaths"}
 
     def test_polars_v4_fallback(self, repo_v4: DuckDBRepository):
-        """load_matches_as_polars fonctionne en mode v4."""
-        df = repo_v4.load_matches_as_polars()
-        assert df.shape[0] == 2
+        """load_matches_as_polars lève RuntimeError sans shared (v6)."""
+        import pytest
+
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            repo_v4.load_matches_as_polars()
 
 
 # =============================================================================
@@ -565,9 +567,11 @@ class TestLoadMatchStatsAsPolars:
         assert df.shape[0] == 1
 
     def test_stats_polars_v4(self, repo_v4: DuckDBRepository):
-        """load_match_stats_as_polars en mode v4."""
-        df = repo_v4.load_match_stats_as_polars()
-        assert df.shape[0] == 2
+        """load_match_stats_as_polars lève RuntimeError sans shared (v6)."""
+        import pytest
+
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            repo_v4.load_match_stats_as_polars()
 
 
 # =============================================================================
@@ -589,12 +593,12 @@ class TestGetMatchSource:
         assert uses_mv is True
 
     def test_v4_returns_match_stats(self, repo_v4: DuckDBRepository):
-        """En mode v4, retourne 'match_stats' sans paramètres."""
+        """Sans shared, _get_match_source lève RuntimeError (architecture v6)."""
+        import pytest
+
         conn = repo_v4._get_connection()
-        source, params, uses_mv = repo_v4._get_match_source(conn)
-        assert source == "match_stats"
-        assert params == []
-        assert uses_mv is False
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            repo_v4._get_match_source(conn)
 
     def test_v5_no_ms_returns_subquery(self, repo_v5_no_ms: DuckDBRepository):
         """8bis.A5: En mode v5.1 sans match_stats locale, utilise mv_player_matches."""

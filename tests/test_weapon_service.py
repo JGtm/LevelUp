@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import duckdb
+import polars as pl
 import pytest
 
 from src.data.services.weapon_extraction_service import WeaponExtractionService
@@ -51,16 +52,27 @@ def _make_film(*, n_chunks: int = 2, chunk_duration_ms: int = 5000):
 def _weapon_kills_ddl() -> str:
     return """
     CREATE TABLE weapon_kills (
-        match_id       VARCHAR  NOT NULL,
-        xuid           VARCHAR  NOT NULL,
-        time_ms        INTEGER  NOT NULL,
-        weapon_id      UBIGINT,
-        delta_ms       INTEGER,
-        confidence     VARCHAR  NOT NULL DEFAULT 'none',
-        swap_detected  BOOLEAN  NOT NULL DEFAULT FALSE,
-        delayed_damage BOOLEAN  NOT NULL DEFAULT FALSE
+        match_id         VARCHAR  NOT NULL,
+        xuid             VARCHAR  NOT NULL,
+        time_ms          INTEGER  NOT NULL,
+        weapon_id        UBIGINT,
+        delta_ms         INTEGER,
+        confidence       VARCHAR  NOT NULL DEFAULT 'none',
+        swap_detected    BOOLEAN  NOT NULL DEFAULT FALSE,
+        delayed_damage   BOOLEAN  NOT NULL DEFAULT FALSE,
+        reconciled_as    UBIGINT,
+        attribution_path VARCHAR  NOT NULL DEFAULT 'none',
+        player_index     INTEGER
     )
     """
+
+
+def _create_weapon_kills_view(conn: duckdb.DuckDBPyConnection) -> None:
+    conn.execute(
+        "CREATE OR REPLACE VIEW v_weapon_kills AS "
+        "SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id "
+        "FROM weapon_kills"
+    )
 
 
 @pytest.fixture()
@@ -74,6 +86,7 @@ def tmp_cache(tmp_path):
 def in_memory_conn():
     conn = duckdb.connect(":memory:")
     conn.execute(_weapon_kills_ddl())
+    _create_weapon_kills_view(conn)
     conn.execute(
         "CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, "
         "backfill_completed INTEGER DEFAULT 0)"
@@ -95,13 +108,12 @@ def in_memory_conn():
 
 
 class TestWeaponExtractionService:
-    def test_no_kills_returns_error(self, in_memory_conn, tmp_cache):
-        """Si aucun kill dans aucun highlight_event, erreur renvoyée."""
+    def test_no_kills_returns_empty(self, in_memory_conn, tmp_cache):
+        """Si aucun kill dans aucun highlight_event, résultat vide."""
         api = FakeAPIPort()
         service = WeaponExtractionService(api, in_memory_conn, tmp_cache)
         summary = asyncio.run(service.process_match("m1234567", "TestPlayer", "xuid123"))
-        assert "error" in summary
-        assert summary["kills_total"] == 0
+        assert summary.kills_total == 0
 
     def test_no_film_returns_error(self, in_memory_conn, tmp_cache):
         """Si le film n'est pas disponible, erreur 'aucun chunk'."""
@@ -111,7 +123,7 @@ class TestWeaponExtractionService:
         )
         service = WeaponExtractionService(api, in_memory_conn, tmp_cache)
         summary = asyncio.run(service.process_match("m1234567", "TestPlayer", "xuid123"))
-        assert summary["error"] == "aucun chunk téléchargé (404 ou expiré)"
+        assert summary.error == "aucun chunk (404/expiré)"
 
     def test_dry_run_no_write(self, in_memory_conn, tmp_cache):
         """En dry_run, aucune écriture DB."""
@@ -124,7 +136,7 @@ class TestWeaponExtractionService:
         summary = asyncio.run(
             service.process_match("m1234567", "TestPlayer", "xuid123", dry_run=True)
         )
-        assert summary["rows_inserted"] == 0
+        assert summary.rows_inserted == 0
         count = in_memory_conn.execute("SELECT COUNT(*) FROM weapon_kills").fetchone()[0]
         assert count == 0
 
@@ -142,8 +154,8 @@ class TestWeaponExtractionService:
         )
         service = WeaponExtractionService(api, in_memory_conn, tmp_cache)
         summary = asyncio.run(service.process_match("m1234567", "TestPlayer", xuid))
-        assert summary["kills_total"] == 1
-        assert summary["rows_inserted"] == 1
+        assert summary.kills_total == 1
+        assert summary.rows_inserted == 1
         row = in_memory_conn.execute(
             "SELECT weapon_id, confidence FROM weapon_kills WHERE match_id='m1234567'"
         ).fetchone()
@@ -170,8 +182,8 @@ class TestWeaponExtractionService:
         service = WeaponExtractionService(api, in_memory_conn, tmp_cache)
         with patch.object(service, "_load_participants", side_effect=RuntimeError("DB inacc.")):
             summary = asyncio.run(service.process_match("m1234567", "TestPlayer", "xuid123"))
-        assert "error" in summary
-        assert "DB inacc." in summary["error"]
+        assert summary.error is not None
+        assert "DB inacc." in summary.error
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -320,172 +332,84 @@ class TestWeaponKillsMixinRepo:
 
         assert WeaponKillsMixin.get_xuid_by_gamertag(conn, "UnknownPlayer") is None
 
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Tests _reconcile_api_aggregates (FINDINGS §6a Steps 4a/4c)
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-class TestReconcileApiAggregates:
-    """Tests unitaires directs de la méthode statique _reconcile_api_aggregates."""
-
-    @pytest.fixture()
-    def conn(self):
-        c = duckdb.connect(":memory:")
-        c.execute(
-            "CREATE TABLE match_participants ("
-            "match_id VARCHAR, xuid VARCHAR, "
-            "grenade_kills INTEGER, melee_kills INTEGER)"
+    def test_mark_weapon_no_film(self, conn):
+        from src.data.repositories._weapon_kills_repo import (
+            _WEAPON_KILLS_NO_FILM_BIT,
+            WeaponKillsMixin,
         )
-        return c
 
-    @staticmethod
-    def _weapon_rows(n: int, conf: str = "high", base_delta: int = 100) -> list[dict]:
-        from src.analysis._weapon_data import WEAPON_NAME_TO_INT
+        conn.execute("INSERT INTO match_registry (match_id) VALUES ('mf_test')")
+        WeaponKillsMixin.mark_weapon_no_film(conn, "mf_test")
+        val = conn.execute(
+            "SELECT backfill_completed FROM match_registry WHERE match_id='mf_test'"
+        ).fetchone()[0]
+        assert val & _WEAPON_KILLS_NO_FILM_BIT == _WEAPON_KILLS_NO_FILM_BIT
 
-        br75_id = WEAPON_NAME_TO_INT["BR75"]
-        return [
-            {
-                "weapon_id": br75_id,
-                "confidence": conf,
-                "delta_ms": base_delta * (i + 1),
-                "swap_detected": False,
-                "delayed_damage": False,
-            }
-            for i in range(n)
-        ]
+    def test_load_weapon_kills_for_match(self, conn):
+        """load_weapon_kills_for_match agrège correctement par arme."""
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
 
-    def test_no_participant_row_returns_unchanged(self, conn):
-        """Sans ligne dans match_participants, kill_rows retourné inchangé."""
-        rows = self._weapon_rows(3)
-        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
-        assert result is rows  # même objet
-        assert all(r["confidence"] == "high" for r in result)
-
-    def test_db_exception_returns_unchanged(self, conn):
-        """Exception DB → retourne kill_rows sans modification."""
-        # Supprimer la table pour provoquer une erreur
-        conn.execute("DROP TABLE match_participants")
-        rows = self._weapon_rows(2)
-        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
-        assert all(r["confidence"] == "high" for r in result)
-
-    def test_step4b_handles_grenade_deficit_before_step4a(self, conn):
-        """Avec grenade_kills=2 API et 0 détectés, step4b injecte 2 GRENADE avant step4a.
-
-        Avant step4b, on aurait demoted 2 kills en MEDIUM. Maintenant, step4b
-        les reclassifie correctement en GRENADE — résultat plus précis.
-        """
-        from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS, GRENADE_WEAPON_ID
-
-        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',2,0)")
-        rows = self._weapon_rows(5, "high", base_delta=100)
-        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
-        grenade_count = sum(1 for r in result if r["weapon_id"] == GRENADE_WEAPON_ID)
-        weapon_high = sum(
-            1
-            for r in result
-            if r["confidence"] == "high"
-            and r["weapon_id"] is not None
-            and r["weapon_id"] not in EXCLUDED_WEAPON_IDS
+        conn.execute("CREATE SCHEMA IF NOT EXISTS shared")
+        conn.execute(
+            "CREATE OR REPLACE VIEW shared.v_weapon_kills AS "
+            "SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id "
+            "FROM weapon_kills"
         )
-        assert grenade_count == 2  # step4b a injecté exactement 2 GRENADE
-        assert weapon_high == 3  # api_weapon_kills = max(5-2-0,0) = 3
-
-    def test_step4b_handles_grenade_largest_delta_first(self, conn):
-        """Step4b prend les kills avec le plus grand delta_ms en premier (moins certains)."""
-        from src.analysis._weapon_data import GRENADE_WEAPON_ID, WEAPON_NAME_TO_INT
-
-        br75_id = WEAPON_NAME_TO_INT["BR75"]
-        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',1,0)")
-        rows = [
-            {
-                "weapon_id": br75_id,
-                "confidence": "high",
-                "delta_ms": 100,
-                "swap_detected": False,
-                "delayed_damage": False,
-            },
-            {
-                "weapon_id": br75_id,
-                "confidence": "high",
-                "delta_ms": 200,
-                "swap_detected": False,
-                "delayed_damage": False,
-            },
-            {
-                "weapon_id": br75_id,
-                "confidence": "high",
-                "delta_ms": 999,
-                "swap_detected": False,
-                "delayed_damage": False,
-            },
-        ]
-        # grenade_kills=1 → step4b injecte 1 GRENADE depuis le kill avec delta=999
-        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
-        assert result[2]["weapon_id"] == GRENADE_WEAPON_ID  # delta=999, le plus incertain
-        assert result[0]["weapon_id"] == br75_id
-        assert result[1]["weapon_id"] == br75_id
-
-    def test_step4c_promotes_medium_to_high(self, conn):
-        """Moins de HIGH que api_weapon_kills → promouvoir les MEDIUM (petit delta en premier)."""
-        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',0,0)")
-        # 3 HIGH + 2 MEDIUM → api_weapon=max(5-0-0,0)=5 → promote 2 MEDIUM
-        rows = self._weapon_rows(3, "high", base_delta=100) + self._weapon_rows(
-            2, "medium", base_delta=700
+        br75 = int.from_bytes(bytes.fromhex("2b1824d542c9679f"), "big")
+        conn.execute(
+            "INSERT INTO weapon_kills "
+            "(match_id, xuid, time_ms, weapon_id, confidence) VALUES "
+            "('m1', 'x1', 1000, ?, 'high'), "
+            "('m1', 'x1', 2000, ?, 'high'), "
+            "('m1', 'x2', 3000, ?, 'medium')",
+            (br75, br75, br75),
         )
-        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
-        from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS
 
-        high_count = sum(
-            1
-            for r in result
-            if r.get("confidence") == "high"
-            and r.get("weapon_id") is not None
-            and r.get("weapon_id") not in EXCLUDED_WEAPON_IDS
+        class Repo(WeaponKillsMixin):
+            def __init__(self, c):
+                self._conn = c
+
+            def _get_connection(self):
+                return self._conn
+
+        repo = Repo(conn)
+        df = repo.load_weapon_kills_for_match("m1")
+        assert len(df) == 2  # 2 xuids
+        assert df["kills"].sum() == 3
+
+    def test_load_weapon_kills_aggregated(self, conn):
+        """load_weapon_kills_aggregated totalise par arme sur plusieurs matchs."""
+        from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+        conn.execute("CREATE SCHEMA IF NOT EXISTS shared")
+        conn.execute(
+            "CREATE OR REPLACE VIEW shared.v_weapon_kills AS "
+            "SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id "
+            "FROM weapon_kills"
         )
-        assert high_count == 5
+        br75 = int.from_bytes(bytes.fromhex("2b1824d542c9679f"), "big")
+        sidekick = int.from_bytes(bytes.fromhex("f408190f42c9679f"), "big")
+        conn.execute(
+            "INSERT INTO weapon_kills "
+            "(match_id, xuid, time_ms, weapon_id, confidence) VALUES "
+            "('m1', 'x1', 1000, ?, 'high'), "
+            "('m2', 'x1', 2000, ?, 'high'), "
+            "('m2', 'x1', 3000, ?, 'medium')",
+            (br75, br75, sidekick),
+        )
 
-    def test_no_change_when_counts_match(self, conn):
-        """Exact match api_weapon_kills == len(HIGH) → aucune modification."""
-        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',0,0)")
-        rows = self._weapon_rows(3, "high", base_delta=100)
-        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
-        assert all(r["confidence"] == "high" for r in result)
+        class Repo(WeaponKillsMixin):
+            def __init__(self, c):
+                self._conn = c
 
-    def test_excluded_names_not_counted(self, conn):
-        """MELEE et GRENADE ne comptent pas dans weapon_high."""
-        from src.analysis._weapon_data import GRENADE_WEAPON_ID, MELEE_WEAPON_ID, WEAPON_NAME_TO_INT
+            def _get_connection(self):
+                return self._conn
 
-        br75_id = WEAPON_NAME_TO_INT["BR75"]
-        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',0,0)")
-        rows = [
-            {
-                "weapon_id": MELEE_WEAPON_ID,
-                "confidence": "none",
-                "delta_ms": None,
-                "swap_detected": False,
-                "delayed_damage": False,
-            },
-            {
-                "weapon_id": GRENADE_WEAPON_ID,
-                "confidence": "none",
-                "delta_ms": None,
-                "swap_detected": False,
-                "delayed_damage": False,
-            },
-            {
-                "weapon_id": br75_id,
-                "confidence": "high",
-                "delta_ms": 200,
-                "swap_detected": False,
-                "delayed_damage": False,
-            },
-        ]
-        # api_weapon = max(3-0-0,0) = 3; weapon_high = 1 (seulement BR75); 1 < 3 → step4c
-        # Pas de MEDIUM à promouvoir → résultat inchangé
-        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
-        assert result[2]["confidence"] == "high"
+        repo = Repo(conn)
+        df = repo.load_weapon_kills_aggregated("x1")
+        assert len(df) == 2  # BR75 + Sidekick
+        br75_kills = df.filter(pl.col("weapon_id") == br75)["total_kills"][0]
+        assert br75_kills == 2
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -519,7 +443,7 @@ class TestLoadAllKillsForMatch:
         assert list(result.keys()) == ["x1"]
         k = result["x1"][0]
         assert k["time_ms"] == 5000
-        assert k["gamertag"] == "P1"
+        assert k["gamertag"] is None  # highlight_events.gamertag supprimé en v6
         assert k["xuid"] == "x1"
         assert k["is_melee"] is False
         assert k["is_grenade"] is False
@@ -651,7 +575,7 @@ class TestWriteLock:
         api = FakeAPIPort()
         service = WeaponExtractionService(api, in_memory_conn, tmp_cache)
         summary = asyncio.run(service.process_match("m1234567", "P", "xuid123"))
-        assert "error" in summary  # aucun kill → erreur attendue
+        assert summary.kills_total == 0  # aucun kill → résultat vide
 
     def test_write_lock_explicit_accepted(self, in_memory_conn, tmp_cache):
         """write_lock=Lock() est accepté sans erreur."""
@@ -659,7 +583,7 @@ class TestWriteLock:
         api = FakeAPIPort()
         service = WeaponExtractionService(api, in_memory_conn, tmp_cache, write_lock=lock)
         summary = asyncio.run(service.process_match("m1234567", "P", "xuid123"))
-        assert "error" in summary  # aucun kill → erreur attendue
+        assert summary.kills_total == 0  # aucun kill → résultat vide
 
     def test_write_lock_isolates_concurrent_writes(self, tmp_cache):
         """Deux process_match concurrents avec write_lock partagé n'écrivent pas en double."""
@@ -668,8 +592,11 @@ class TestWriteLock:
         conn.execute(
             "CREATE TABLE weapon_kills (match_id VARCHAR, xuid VARCHAR, time_ms INTEGER, "
             "weapon_id UBIGINT, delta_ms INTEGER, confidence VARCHAR DEFAULT 'none', "
-            "swap_detected BOOLEAN DEFAULT FALSE, delayed_damage BOOLEAN DEFAULT FALSE)"
+            "swap_detected BOOLEAN DEFAULT FALSE, delayed_damage BOOLEAN DEFAULT FALSE, "
+            "reconciled_as UBIGINT, attribution_path VARCHAR DEFAULT 'none', "
+            "player_index INTEGER)"
         )
+        _create_weapon_kills_view(conn)
         conn.execute(
             "CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, "
             "backfill_completed INTEGER DEFAULT 0)"
@@ -786,12 +713,15 @@ class TestBackfillWeaponKillsGuard:
         from unittest.mock import AsyncMock, MagicMock, patch
 
         from scripts.backfill.orchestrator import _backfill_weapon_kills_for_match
+        from src.data.services.weapon_extraction_service import MatchProcessingResult
 
         # Bit posé, mais force=True doit ignorer le guard
         conn = self._make_shared_conn(bit_set=True)
         # process_match retourne 0 lignes insérées (match vide suffit)
         mock_instance = MagicMock()
-        mock_instance.process_match = AsyncMock(return_value={"rows_inserted": 0})
+        mock_instance.process_match = AsyncMock(
+            return_value=MatchProcessingResult(match_id="test", rows_inserted=0)
+        )
         mock_cls = MagicMock(return_value=mock_instance)
 
         with (
@@ -829,13 +759,16 @@ class TestBackfillWeaponKillsGuard:
         from unittest.mock import AsyncMock, MagicMock, patch
 
         from scripts.backfill.orchestrator import _backfill_weapon_kills_for_match
+        from src.data.services.weapon_extraction_service import MatchProcessingResult
 
         conn = MagicMock()
         # Simuler une erreur DB sur le guard
         conn.execute.side_effect = Exception("DB error")
 
         mock_instance = MagicMock()
-        mock_instance.process_match = AsyncMock(return_value={"rows_inserted": 3})
+        mock_instance.process_match = AsyncMock(
+            return_value=MatchProcessingResult(match_id="test", rows_inserted=3)
+        )
         mock_cls = MagicMock(return_value=mock_instance)
 
         with (
@@ -899,11 +832,14 @@ class TestRunWeaponKillsBackfillGuard:
         from unittest.mock import AsyncMock, MagicMock, patch
 
         from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
+        from src.data.services.weapon_extraction_service import MatchProcessingResult
 
         conn = self._make_conn_with_bit(bit_set=True)
 
         mock_service = MagicMock()
-        mock_service.process_match = AsyncMock(return_value={"rows_inserted": 99})
+        mock_service.process_match = AsyncMock(
+            return_value=MatchProcessingResult(match_id="test", rows_inserted=99)
+        )
         mock_api_instance = AsyncMock()
 
         # Imports locaux à la fonction → patcher à la source
@@ -934,11 +870,14 @@ class TestRunWeaponKillsBackfillGuard:
         from unittest.mock import AsyncMock, MagicMock, patch
 
         from scripts.backfill._weapon_kills_logic import run_weapon_kills_backfill
+        from src.data.services.weapon_extraction_service import MatchProcessingResult
 
         conn = self._make_conn_with_bit(bit_set=True)
 
         mock_service = MagicMock()
-        mock_service.process_match = AsyncMock(return_value={"rows_inserted": 5})
+        mock_service.process_match = AsyncMock(
+            return_value=MatchProcessingResult(match_id="test", rows_inserted=5)
+        )
 
         with (
             patch(
@@ -964,226 +903,109 @@ class TestRunWeaponKillsBackfillGuard:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Tests directs _step4a_demote / _step4c_promote
+# Tests _resolve_from_chunk
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-class TestStep4aStep4cHelpers:
-    """Tests unitaires des helpers _step4a_demote et _step4c_promote."""
+class TestResolveFromChunk:
+    """Tests unitaires de WeaponExtractionService._resolve_from_chunk."""
 
-    @pytest.fixture(autouse=True)
-    def _imports(self):
-        from src.analysis._weapon_data import EXCLUDED_WEAPON_IDS, WEAPON_NAME_TO_INT
-        from src.data.services.weapon_extraction_service import _step4a_demote, _step4c_promote
-
-        self.step4a = _step4a_demote
-        self.step4c = _step4c_promote
-        self.EXCLUDED = EXCLUDED_WEAPON_IDS
-        self.BR75 = WEAPON_NAME_TO_INT["BR75"]
-        self.MA40 = WEAPON_NAME_TO_INT["MA40 AR"]
-
-    def _weapon_high_rows(self, n, base_delta=100):
-        return [
-            {
-                "weapon_id": self.BR75,
-                "confidence": "high",
-                "delta_ms": base_delta * (i + 1),
-                "swap_detected": False,
-            }
-            for i in range(n)
-        ]
-
-    def test_step4a_noop_when_exact(self):
-        rows = self._weapon_high_rows(3)
-        fired = self.step4a(rows, 3, "mX", "xX")
-        assert fired is False
-        assert all(r["confidence"] == "high" for r in rows)
-
-    def test_step4a_demotes_excess_and_returns_true(self):
-        rows = self._weapon_high_rows(5, base_delta=100)  # delta: 100,200,300,400,500
-        fired = self.step4a(rows, 3, "mX", "xX")
-        assert fired is True
-        high_c = sum(1 for r in rows if r["confidence"] == "high")
-        medium_c = sum(1 for r in rows if r["confidence"] == "medium")
-        assert high_c == 3
-        assert medium_c == 2
-
-    def test_step4a_demotes_largest_delta_first(self):
-        rows = [
-            {"weapon_id": self.BR75, "confidence": "high", "delta_ms": 100, "swap_detected": False},
-            {"weapon_id": self.BR75, "confidence": "high", "delta_ms": 999, "swap_detected": False},
-            {"weapon_id": self.BR75, "confidence": "high", "delta_ms": 50, "swap_detected": False},
-        ]
-        self.step4a(rows, 2, "mX", "xX")
-        assert rows[1]["confidence"] == "medium"  # delta=999 dégradé en premier
-        assert rows[0]["confidence"] == "high"
-        assert rows[2]["confidence"] == "high"
-
-    def test_step4c_noop_when_exact(self):
-        rows = [
-            {"weapon_id": self.BR75, "confidence": "high", "delta_ms": 100, "swap_detected": False},
-            {"weapon_id": self.MA40, "confidence": "high", "delta_ms": 200, "swap_detected": False},
-        ]
-        self.step4c(rows, 2, self.EXCLUDED, "mX", "xX")
-        assert all(r["confidence"] == "high" for r in rows)
-
-    def test_step4c_promotes_medium_smallest_delta_first(self):
-        rows = [
-            {"weapon_id": self.BR75, "confidence": "high", "delta_ms": 100, "swap_detected": False},
-            {
-                "weapon_id": self.MA40,
-                "confidence": "medium",
-                "delta_ms": 700,
-                "swap_detected": False,
-            },
-            {
-                "weapon_id": self.BR75,
-                "confidence": "medium",
-                "delta_ms": 300,
-                "swap_detected": False,
-            },
-        ]
-        self.step4c(rows, 3, self.EXCLUDED, "mX", "xX")
-        high_ids = [r["weapon_id"] for r in rows if r["confidence"] == "high"]
-        assert self.BR75 in high_ids  # delta=300, promu en premier
-        assert len(high_ids) == 3
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Tests _inject_missing_sentinels (Step 4b — fix Chocoboflor)
-# ═══════════════════════════════════════════════════════════════════════════
-
-
-class TestInjectMissingSentinels:
-    """Vérifie la reclassification melee/grenade quand les médailles sont absentes."""
-
-    @pytest.fixture(autouse=True)
-    def _imports(self):
-        from src.analysis._weapon_data import (
-            EXCLUDED_WEAPON_IDS,
-            GRENADE_WEAPON_ID,
-            MELEE_WEAPON_ID,
-            WEAPON_NAME_TO_INT,
-        )
-        from src.data.services.weapon_extraction_service import _inject_missing_sentinels
-
-        self.fn = _inject_missing_sentinels
-        self.MELEE = MELEE_WEAPON_ID
-        self.GRENADE = GRENADE_WEAPON_ID
-        self.EXCLUDED = EXCLUDED_WEAPON_IDS
-        self.BR75 = WEAPON_NAME_TO_INT["BR75"]
-        self.SIDEKICK = WEAPON_NAME_TO_INT["Mk51 Sidekick"]
-        self.MA40 = WEAPON_NAME_TO_INT["MA40 AR"]
-
-    def _row(self, weapon_id, conf="high", delta=200, swap=False):
-        return {
-            "weapon_id": weapon_id,
-            "confidence": conf,
-            "delta_ms": delta,
-            "swap_detected": swap,
-            "delayed_damage": False,
-        }
-
-    def test_no_deficit_is_noop(self):
-        """Aucun déficit → kill_rows non modifié."""
-        rows = [self._row(self.MELEE), self._row(self.BR75)]
-        snapshot = [dict(r) for r in rows]
-        self.fn(rows, 1, 0, self.MELEE, self.GRENADE, self.EXCLUDED, "mABC", "xABC")
-        assert rows == snapshot
-
-    def test_melee_deficit_reclassifies_least_certain(self):
-        """2 melee_kills API, 0 détectés → 2 kills weapon reclassifiés en MELEE."""
-        rows = [
-            self._row(self.SIDEKICK, conf="high", delta=500),
-            self._row(self.MA40, conf="high", delta=200),
-            self._row(self.BR75, conf="high", delta=100),
-        ]
-        self.fn(rows, 2, 0, self.MELEE, self.GRENADE, self.EXCLUDED, "m1234567", "x1234567")
-        melee_count = sum(1 for r in rows if r["weapon_id"] == self.MELEE)
-        assert melee_count == 2
-        # Les 2 kills avec les plus grands delta sont reclassifiés (500, 200) → MELEE
-        melee_rows = [r for r in rows if r["weapon_id"] == self.MELEE]
-        assert all(r["confidence"] == "high" for r in melee_rows)
-        assert all(r["swap_detected"] is False for r in melee_rows)
-
-    def test_grenade_deficit_reclassifies_least_certain(self):
-        """1 grenade_kill API, 0 détectés → 1 kill reclassifié en GRENADE."""
-        rows = [
-            self._row(self.SIDEKICK, conf="high", delta=800),
-            self._row(self.MA40, conf="high", delta=150),
-        ]
-        self.fn(rows, 0, 1, self.MELEE, self.GRENADE, self.EXCLUDED, "m1234567", "x1234567")
-        grenade_count = sum(1 for r in rows if r["weapon_id"] == self.GRENADE)
-        assert grenade_count == 1
-        # Le plus grand delta (800) reclassifié
-        assert rows[0]["weapon_id"] == self.GRENADE
-
-    def test_chocoboflor_scenario(self):
-        """Reproduce le bug Chocoboflor : 12 kills weapon, api_melee=2, api_grenade=1."""
-        # Tous les kills étaient weapon HIGH, sans aucune sentinelle détectée
-        rows = [
-            self._row(self.SIDEKICK, conf="high", delta=d)
-            for d in [100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650]
-        ]
-        self.fn(rows, 2, 1, self.MELEE, self.GRENADE, self.EXCLUDED, "20fd2c23", "25354691")
-        melee_count = sum(1 for r in rows if r["weapon_id"] == self.MELEE)
-        grenade_count = sum(1 for r in rows if r["weapon_id"] == self.GRENADE)
-        weapon_count = sum(1 for r in rows if r["weapon_id"] == self.SIDEKICK)
-        assert melee_count == 2
-        assert grenade_count == 1
-        assert weapon_count == 9
-
-    def test_priority_low_before_none_before_medium_before_high(self):
-        """Ordre de reclassification : low < none < medium < high."""
-        rows = [
-            self._row(self.BR75, conf="high", delta=100),
-            self._row(self.MA40, conf="medium", delta=100),
-            self._row(self.SIDEKICK, conf="none", delta=100),
-            self._row(self.BR75, conf="low", delta=100),
-        ]
-        # 1 melee déficit → doit prendre le "low" en premier
-        self.fn(rows, 1, 0, self.MELEE, self.GRENADE, self.EXCLUDED, "mX", "xX")
-        assert rows[3]["weapon_id"] == self.MELEE  # la ligne "low"
-        assert rows[0]["weapon_id"] == self.BR75  # "high" → non touché
-        assert rows[1]["weapon_id"] == self.MA40  # "medium" → non touché
-        assert rows[2]["weapon_id"] == self.SIDEKICK  # "none" → non touché (low pris en premier)
-
-    def test_high_swap_treated_before_high_no_swap(self):
-        """high+swap est reclassifié avant high sans swap (rank équivalent à medium)."""
-        rows = [
-            self._row(self.BR75, conf="high", delta=100, swap=False),
-            self._row(self.MA40, conf="high", delta=100, swap=True),
-        ]
-        # 1 melee déficit → doit prendre le high+swap en premier
-        self.fn(rows, 1, 0, self.MELEE, self.GRENADE, self.EXCLUDED, "mX", "xX")
-        assert rows[1]["weapon_id"] == self.MELEE  # high+swap reclassifié
-        assert rows[0]["weapon_id"] == self.BR75  # high non touché
-
-    def test_step4b_via_reconcile_flow(self):
-        """Intégration : _reconcile_api_aggregates appelle correctement step4b."""
-        import duckdb
-
+    @pytest.fixture()
+    def service(self, tmp_path):
+        api = FakeAPIPort()
         conn = duckdb.connect(":memory:")
-        conn.execute(
-            "CREATE TABLE match_participants "
-            "(match_id VARCHAR, xuid VARCHAR, grenade_kills INTEGER, melee_kills INTEGER)"
-        )
-        conn.execute("INSERT INTO match_participants VALUES ('m1','x1',1,2)")
-        # 5 weapon kills tous HIGH, aucune sentinelle détectée
-        rows = [
-            self._row(wid, conf="high", delta=d)
-            for wid, d in [
-                (self.SIDEKICK, 673),
-                (self.SIDEKICK, 557),
-                (self.MA40, 300),
-                (self.MA40, 200),
-                (self.SIDEKICK, 288),
-            ]
-        ]
-        result = WeaponExtractionService._reconcile_api_aggregates(rows, conn, "m1", "x1")
-        melee_count = sum(1 for r in result if r["weapon_id"] == self.MELEE)
-        grenade_count = sum(1 for r in result if r["weapon_id"] == self.GRENADE)
-        weapon_count = sum(1 for r in result if r["weapon_id"] not in self.EXCLUDED)
-        assert melee_count == 2
-        assert grenade_count == 1
-        assert weapon_count == 2  # api_weapon_kills = max(5-1-2,0) = 2
+        return WeaponExtractionService(api, conn, tmp_path)
+
+    def test_empty_data_returns_empty(self, service):
+        """Pas de données → dict vide sans lever d'exception."""
+        result = service._resolve_from_chunk(b"", [], {})
+        assert result == {}
+
+    def test_non_digit_xuids_filtered(self, service):
+        """Les XUIDs non numériques (ex: 'bid(...)') sont ignorés."""
+        participants = {"bid(SomePlayer)": "SomePlayer", "not-a-number": "Other"}
+        result = service._resolve_from_chunk(b"\x00" * 100, [], participants)
+        assert result == {}
+
+    def test_all_zeros_chunk_returns_empty_resolve(self, service):
+        """Données zéro → aucun PLAYER_METADATA, fallback acurtis → aucun mapping."""
+        participants = {"123456789": "Player1"}
+        result = service._resolve_from_chunk(b"\x00" * 200, [], participants)
+        # Pas de metadata ET acurtis ne trouve pas de mapping dans des zéros → {}
+        assert isinstance(result, dict)
+
+    def test_returns_xuid_int_to_pi_mapping(self, service):
+        """Le résultat est bien un dict[int, int] = {xuid_int: player_index}."""
+        result = service._resolve_from_chunk(b"\x00" * 100, [], {"100": "P1", "200": "P2"})
+        assert all(isinstance(k, int) for k in result)
+        assert all(isinstance(v, int) for v in result.values())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Tests _run_scan_phase
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestRunScanPhase:
+    """Tests unitaires de WeaponExtractionService._run_scan_phase."""
+
+    @pytest.fixture()
+    def service(self, tmp_path):
+        api = FakeAPIPort()
+        conn = duckdb.connect(":memory:")
+        return WeaponExtractionService(api, conn, tmp_path)
+
+    def _make_log(self):
+        from src.analysis._parser_logging import MatchLogCollector
+
+        return MatchLogCollector("test-match-id")
+
+    def test_empty_chunks_returns_empty_scan_and_pi_map(self, service):
+        """Aucun chunk → ScanResult vide, pi_map vide."""
+        from src.data.services.weapon_extraction_service import ScanResult
+
+        log = self._make_log()
+        scan, pi_map = service._run_scan_phase({}, {}, log)
+        assert isinstance(scan, ScanResult)
+        assert scan.fire_events_global == []
+        assert scan.timeline == {}
+        assert scan.chunks_sorted == []
+        assert pi_map == {}
+
+    def test_single_chunk_scan_returns_scan_result(self, service):
+        """Un seul chunk all-zero → ScanResult avec chunk dans timeline."""
+        from src.data.services.weapon_extraction_service import ScanResult
+
+        log = self._make_log()
+        chunks = {0: (b"\x00" * 200, 0, 5000)}
+        scan, pi_map = service._run_scan_phase(chunks, {}, log)
+        assert isinstance(scan, ScanResult)
+        assert 0 in scan.timeline
+        assert isinstance(scan.timeline_ns, dict)
+        assert 0 in scan.timeline_ns  # chunk 0 présent dans timeline_ns
+        assert scan.chunks_sorted == [0]
+        assert len(scan.timing) == 1
+        assert scan.timing[0] == (0, 5000)
+
+    def test_chunks_sorted_by_index(self, service):
+        """Les chunks insérés dans un ordre quelconque sont triés dans chunks_sorted."""
+        log = self._make_log()
+        chunks = {
+            5: (b"\x00" * 200, 50000, 5000),
+            1: (b"\x00" * 200, 10000, 5000),
+            3: (b"\x00" * 200, 30000, 5000),
+        }
+        scan, _ = service._run_scan_phase(chunks, {}, log)
+        assert scan.chunks_sorted == [1, 3, 5]
+        # timing dans l'ordre chunk 1, 3, 5
+        assert scan.timing[0] == (10000, 15000)
+        assert scan.timing[1] == (30000, 35000)
+        assert scan.timing[2] == (50000, 55000)
+
+    def test_pi_map_empty_for_non_digit_participants(self, service):
+        """Participants non numériques → pi_map vide."""
+        log = self._make_log()
+        chunks = {0: (b"\x00" * 200, 0, 5000)}
+        participants = {"bid(Foo)": "Foo", "bar": "bar"}
+        _, pi_map = service._run_scan_phase(chunks, participants, log)
+        assert pi_map == {}

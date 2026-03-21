@@ -51,7 +51,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "en": "K/D",
     },
     "label_kd_ref": {
-        "fr": "K/D = 1.0",
+        "fr": "F/D = 1.0",
         "en": "K/D = 1.0",
     },
     # ── Labels supplémentaires ────────────────────────────────────────────────
@@ -110,6 +110,7 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "impact_last_group_kill": {"fr": "Touriste", "en": "Tourist"},
     "impact_first_group_death": {"fr": "Première victime", "en": "First Casualty"},
     "impact_last_casualty": {"fr": "Boulet", "en": "Weakest Link"},
+    "impact_top_gun": {"fr": "As de la gâchette", "en": "Top Gun"},
     # ── Messages vides ────────────────────────────────────────────────────────
     "empty_no_data": "no_data",
     "empty_no_duel": {"fr": "Aucun duel trouvé.", "en": "No duel found."},
@@ -160,10 +161,10 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "suffix_smoothed": {"fr": "(lissée)", "en": "(smoothed)"},
     "suffix_per_10_matches": {"fr": "/10 matchs", "en": "/10 matches"},
     # ── Régression ────────────────────────────────────────────────────────────
-    "label_kd_slope": {"fr": "Pente K/D", "en": "K/D Slope"},
-    "label_win_rate_slope": {"fr": "Pente Win Rate", "en": "Win Rate Slope"},
-    "label_r_squared": {"fr": "R² (solidité)", "en": "R² (strength)"},
-    "label_not_significant": {"fr": "⚠ non significatif", "en": "⚠ not significant"},
+    "label_kd_slope": {"fr": "Progression F/D (session)", "en": "K/D Progression (session)"},
+    "label_win_rate_slope": {"fr": "Progression taux de victoires (session)", "en": "Win Rate Progression (session)"},
+    "label_r_squared": {"fr": "Confirmation de la tendance", "en": "Trend confirmation"},
+    "label_not_significant": {"fr": "⚠ trop variable", "en": "⚠ too variable"},
     # ── Texte divers ──────────────────────────────────────────────────────────
     "text_kills_count": {
         "fr": "{k} frags",

@@ -15,6 +15,7 @@ import duckdb
 from src.data.sync.batch_insert import ALIAS_COLUMNS, PARTICIPANT_COLUMNS, batch_upsert_rows
 from src.data.sync.migrations import BACKFILL_FLAGS
 from src.data.sync.transformers import transform_highlight_events
+from src.data.sync.transformers._helpers import _normalize_gamertag
 
 if TYPE_CHECKING:
     from src.data.sync._protocol import _SyncProtocol
@@ -268,18 +269,68 @@ class SharedWritesMixin:
         self,
         shared_conn: duckdb.DuckDBPyConnection,
         event_rows: list,
-    ) -> None:
+    ) -> int:
         """Insère les highlight events dans shared.highlight_events.
+
+        Peuple aussi xuid_aliases avec les gamertags extraits des events
+        (source réelle des gamertags : film analysis, pas l'API stats).
 
         Args:
             shared_conn: Connexion vers shared_matches.duckdb.
             event_rows: Liste de HighlightEventRow.
+
+        Returns:
+            Nombre de lignes effectivement insérées.
         """
         if not event_rows:
-            return
+            return 0
         from src.data.sync.batch_insert import HIGHLIGHT_EVENT_COLUMNS, batch_insert_rows
 
-        batch_insert_rows(shared_conn, "highlight_events", event_rows, HIGHLIGHT_EVENT_COLUMNS)
+        n_inserted = batch_insert_rows(
+            shared_conn, "highlight_events", event_rows, HIGHLIGHT_EVENT_COLUMNS
+        )
+        self._upsert_event_aliases(shared_conn, event_rows)
+        return n_inserted
+
+    def _upsert_event_aliases(
+        self,
+        shared_conn: duckdb.DuckDBPyConnection,
+        event_rows: list,
+    ) -> None:
+        """Extrait les paires xuid→gamertag des highlight events et met à jour xuid_aliases.
+
+        L'API stats Halo (/hi/matches/{id}/stats) ne retourne pas PlayerGamertag.
+        La source fiable des gamertags est le JSON des highlight events (film analysis).
+        Cette méthode comble ce manque en peuplant xuid_aliases à partir des events.
+
+        Args:
+            shared_conn: Connexion vers shared_matches.duckdb.
+            event_rows: Liste de HighlightEventRow avec xuid et gamertag.
+        """
+        from src.data.sync.models import XuidAliasRow
+
+        now = datetime.now(timezone.utc)
+        seen: set[str] = set()
+        alias_rows: list[XuidAliasRow] = []
+        for e in event_rows:
+            xuid = getattr(e, "xuid", None)
+            gamertag_raw = getattr(e, "gamertag", None)
+            if not xuid or xuid in seen:
+                continue
+            gt = _normalize_gamertag(gamertag_raw)
+            if not gt:
+                continue
+            seen.add(xuid)
+            alias_rows.append(
+                XuidAliasRow(
+                    xuid=xuid,
+                    gamertag=gt,
+                    last_seen=now,
+                    source="highlight_events",
+                )
+            )
+        if alias_rows:
+            self._insert_shared_aliases(shared_conn, alias_rows)
 
     def _insert_shared_medals(
         self,
@@ -333,16 +384,17 @@ class SharedWritesMixin:
     ) -> int:
         """Insère events + killer/victim + marque flags dans match_registry."""
         event_rows = transform_highlight_events(highlight_events, match_id)
-        self._insert_shared_events(shared_conn, event_rows)
-        self._insert_shared_killer_victim_pairs(shared_conn, match_id, highlight_events)
-        shared_conn.execute(
-            "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = ?",
-            (match_id,),
-        )
-        shared_conn.execute(
-            "UPDATE match_registry "
-            "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
-            "WHERE match_id = ?",
-            (BACKFILL_FLAGS["events"], match_id),
-        )
-        return len(event_rows)
+        n_inserted = self._insert_shared_events(shared_conn, event_rows)
+        if n_inserted > 0:
+            self._insert_shared_killer_victim_pairs(shared_conn, match_id, highlight_events)
+            shared_conn.execute(
+                "UPDATE match_registry SET events_loaded = TRUE WHERE match_id = ?",
+                (match_id,),
+            )
+            shared_conn.execute(
+                "UPDATE match_registry "
+                "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                "WHERE match_id = ?",
+                (BACKFILL_FLAGS["events"], match_id),
+            )
+        return n_inserted

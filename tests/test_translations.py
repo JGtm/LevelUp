@@ -130,12 +130,15 @@ class TestTranslatePairNameEN:
 
 
 class TestTranslatePlaylistNameFR:
-    def test_known_playlist(self) -> None:
+    def test_known_playlist_fr(self) -> None:
+        """Playlists connues traduites en FR via static/i18n/playlists_fr.json."""
         assert translate_playlist_name("Quick Play") == "Partie rapide"
+        assert translate_playlist_name("Ranked Arena") == "Arène classée"
 
-    def test_uuid_playlist(self) -> None:
-        result = translate_playlist_name("a446725e-b281-414c-a21e")
-        assert result == "Partie rapide"
+    def test_uuid_playlist_returns_inconnue(self) -> None:
+        """UUID brut → 'Inconnue' (metadata.duckdb incomplet)."""
+        result = translate_playlist_name("a446725e-b281-414c-a21e-1234567890ab")
+        assert result == "Inconnue"
 
     def test_none_returns_none(self) -> None:
         assert translate_playlist_name(None) is None

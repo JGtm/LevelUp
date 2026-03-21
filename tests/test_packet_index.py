@@ -6,10 +6,6 @@ extract_metadata_payload, detect_pi_from_metadata.
 
 from __future__ import annotations
 
-import struct
-
-import pytest
-
 from src.analysis.packet_index import (
     HEADER_STRUCT,
     Packet,
@@ -20,14 +16,16 @@ from src.analysis.packet_index import (
     index_chunk,
 )
 
-
 # ═══════════════════════════════════════════════════════════════════════════
 # Helpers
 # ═══════════════════════════════════════════════════════════════════════════
 
 
 def _make_packet_bytes(
-    pkt_type: int, size: int, microseconds: int, payload: bytes = b"",
+    pkt_type: int,
+    size: int,
+    microseconds: int,
+    payload: bytes = b"",
 ) -> bytes:
     """Construit un paquet (header 16B + payload)."""
     header = HEADER_STRUCT.pack(pkt_type, 0, 0, size, microseconds)
@@ -97,11 +95,13 @@ class TestIndexChunk:
 
     def test_minimal_chunk_structure(self):
         """START_CHUNK → FRAME → END_CHUNK."""
-        data = _make_chunk([
-            (PacketType.START_CHUNK, 4, 100, b"\x00" * 4),
-            (PacketType.FRAME, 16, 200, b"\xff" * 16),
-            (PacketType.END_CHUNK, 0, 300, b""),
-        ])
+        data = _make_chunk(
+            [
+                (PacketType.START_CHUNK, 4, 100, b"\x00" * 4),
+                (PacketType.FRAME, 16, 200, b"\xff" * 16),
+                (PacketType.END_CHUNK, 0, 300, b""),
+            ]
+        )
         packets = index_chunk(data)
         assert len(packets) == 3
         assert packets[0].type == PacketType.START_CHUNK
@@ -109,45 +109,53 @@ class TestIndexChunk:
         assert packets[2].type == PacketType.END_CHUNK
 
     def test_packet_offsets_correct(self):
-        data = _make_chunk([
-            (PacketType.START_CHUNK, 10, 100, b"\x00" * 10),
-            (PacketType.FRAME, 20, 200, b"\xff" * 20),
-            (PacketType.END_CHUNK, 0, 300, b""),
-        ])
+        data = _make_chunk(
+            [
+                (PacketType.START_CHUNK, 10, 100, b"\x00" * 10),
+                (PacketType.FRAME, 20, 200, b"\xff" * 20),
+                (PacketType.END_CHUNK, 0, 300, b""),
+            ]
+        )
         packets = index_chunk(data)
-        assert packets[0].offset == 16       # header size
+        assert packets[0].offset == 16  # header size
         assert packets[1].offset == 16 + 10 + 16  # prev header + payload + this header
         assert packets[2].offset == 16 + 10 + 16 + 20 + 16
 
     def test_microseconds_preserved(self):
-        data = _make_chunk([
-            (PacketType.FRAME, 4, 999_888_777, b"\x00" * 4),
-            (PacketType.END_CHUNK, 0, 999_888_800, b""),
-        ])
+        data = _make_chunk(
+            [
+                (PacketType.FRAME, 4, 999_888_777, b"\x00" * 4),
+                (PacketType.END_CHUNK, 0, 999_888_800, b""),
+            ]
+        )
         packets = index_chunk(data)
         assert packets[0].microseconds == 999_888_777
 
     def test_stops_at_end_chunk(self):
         """Data after END_CHUNK is ignored."""
-        chunk = _make_chunk([
-            (PacketType.FRAME, 4, 100, b"\x00" * 4),
-            (PacketType.END_CHUNK, 0, 200, b""),
-        ])
+        chunk = _make_chunk(
+            [
+                (PacketType.FRAME, 4, 100, b"\x00" * 4),
+                (PacketType.END_CHUNK, 0, 200, b""),
+            ]
+        )
         data = chunk + b"\x00" * 100  # trailing garbage
         packets = index_chunk(data)
         assert len(packets) == 2
 
     def test_realistic_types(self):
         """Simule la structure réelle : START → TYPE_2 → METADATA → FRAME×3 → END."""
-        data = _make_chunk([
-            (PacketType.START_CHUNK, 4, 1000, b"\x00" * 4),
-            (PacketType.INIT_STATE, 100, 1000, b"\xab" * 100),
-            (PacketType.PLAYER_METADATA, 50, 1000, b"\xcd" * 50),
-            (PacketType.FRAME, 32, 2000, b"\x01" * 32),
-            (PacketType.FRAME, 32, 18000, b"\x02" * 32),
-            (PacketType.FRAME, 32, 34000, b"\x03" * 32),
-            (PacketType.END_CHUNK, 0, 50000, b""),
-        ])
+        data = _make_chunk(
+            [
+                (PacketType.START_CHUNK, 4, 1000, b"\x00" * 4),
+                (PacketType.INIT_STATE, 100, 1000, b"\xab" * 100),
+                (PacketType.PLAYER_METADATA, 50, 1000, b"\xcd" * 50),
+                (PacketType.FRAME, 32, 2000, b"\x01" * 32),
+                (PacketType.FRAME, 32, 18000, b"\x02" * 32),
+                (PacketType.FRAME, 32, 34000, b"\x03" * 32),
+                (PacketType.END_CHUNK, 0, 50000, b""),
+            ]
+        )
         packets = index_chunk(data)
         assert len(packets) == 7
         types = [p.type for p in packets]
@@ -195,8 +203,8 @@ class TestBuildPacketEstimator:
             Packet(type=PacketType.END_CHUNK, size=0, microseconds=48000, offset=214),
         ]
         est = build_packet_estimator(packets, chunk_start_ms=0.0)
-        t1 = est(20)   # in frame 1
-        t2 = est(90)   # in frame 2
+        t1 = est(20)  # in frame 1
+        t2 = est(90)  # in frame 2
         t3 = est(160)  # in frame 3
         assert t1 < t2 < t3
 
@@ -218,31 +226,37 @@ class TestBuildPacketEstimator:
 
 class TestExtractMetadataPayload:
     def test_no_metadata_returns_none(self):
-        data = _make_chunk([
-            (PacketType.FRAME, 10, 0, b"\x00" * 10),
-            (PacketType.END_CHUNK, 0, 100, b""),
-        ])
+        data = _make_chunk(
+            [
+                (PacketType.FRAME, 10, 0, b"\x00" * 10),
+                (PacketType.END_CHUNK, 0, 100, b""),
+            ]
+        )
         packets = index_chunk(data)
         assert extract_metadata_payload(data, packets) is None
 
     def test_extracts_correct_payload(self):
-        metadata_content = b"\xAB\xCD\xEF" * 10  # 30 bytes
-        data = _make_chunk([
-            (PacketType.START_CHUNK, 4, 0, b"\x00" * 4),
-            (PacketType.PLAYER_METADATA, 30, 0, metadata_content),
-            (PacketType.END_CHUNK, 0, 100, b""),
-        ])
+        metadata_content = b"\xab\xcd\xef" * 10  # 30 bytes
+        data = _make_chunk(
+            [
+                (PacketType.START_CHUNK, 4, 0, b"\x00" * 4),
+                (PacketType.PLAYER_METADATA, 30, 0, metadata_content),
+                (PacketType.END_CHUNK, 0, 100, b""),
+            ]
+        )
         packets = index_chunk(data)
         payload = extract_metadata_payload(data, packets)
         assert payload == metadata_content
 
     def test_returns_first_metadata(self):
         """Si multiple METADATA (théoriquement impossible), retourne le premier."""
-        data = _make_chunk([
-            (PacketType.PLAYER_METADATA, 4, 0, b"\x01\x02\x03\x04"),
-            (PacketType.PLAYER_METADATA, 4, 100, b"\x05\x06\x07\x08"),
-            (PacketType.END_CHUNK, 0, 200, b""),
-        ])
+        data = _make_chunk(
+            [
+                (PacketType.PLAYER_METADATA, 4, 0, b"\x01\x02\x03\x04"),
+                (PacketType.PLAYER_METADATA, 4, 100, b"\x05\x06\x07\x08"),
+                (PacketType.END_CHUNK, 0, 200, b""),
+            ]
+        )
         packets = index_chunk(data)
         payload = extract_metadata_payload(data, packets)
         assert payload == b"\x01\x02\x03\x04"

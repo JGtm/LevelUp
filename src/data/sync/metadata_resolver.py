@@ -117,12 +117,12 @@ class MetadataResolver:
 
         # Déterminer la table selon le type
         table_map = {
-            "playlist": ["playlists", "playlist_translations"],
+            "playlist": ["playlists"],
             "map": ["maps"],
             "pair": [
                 "map_mode_pairs",
                 "playlist_map_mode_pairs",
-            ],  # Essayer les deux noms possibles
+            ],
             "game_variant": ["game_variants"],
         }
 
@@ -159,6 +159,9 @@ class MetadataResolver:
     def _resolve_from_table(self, table_name: str, asset_id: str) -> str | None:
         """Résout un asset_id depuis une table spécifique.
 
+        Priorité : colonne ``name_en`` (schéma v6), fallback sur ``public_name``
+        (compatibilité tables créées sans la colonne ``name_en``).
+
         Args:
             table_name: Nom de la table à interroger.
             asset_id: ID de l'asset.
@@ -168,58 +171,25 @@ class MetadataResolver:
         """
         if not self._conn:
             return None
-
-        try:
-            # Détecter dynamiquement la colonne ID (asset_id ou uuid)
-            id_column = None
-            for col_candidate in ["asset_id", "uuid"]:
-                try:
-                    self._conn.execute(
-                        f"SELECT {col_candidate} FROM {table_name} LIMIT 1"
-                    ).fetchone()
-                    id_column = col_candidate
-                    break
-                except Exception:
-                    continue
-
-            if not id_column:
-                logger.debug(
-                    "Aucune colonne ID trouvée dans %s (essayé asset_id, uuid)", table_name
-                )
+        for name_col in ("name_en", "public_name"):
+            try:
+                result = self._conn.execute(
+                    f"SELECT {name_col} FROM {table_name} WHERE asset_id = ?",
+                    [asset_id],
+                ).fetchone()
+                if result and result[0]:
+                    name = str(result[0])
+                    logger.debug(
+                        "Résolu %s → %s depuis %s.%s", asset_id, name, table_name, name_col
+                    )
+                    return name
+                # Colonne existe mais valeur NULL — ne pas essayer public_name
                 return None
-
-            # Détecter dynamiquement la colonne de nom (public_name, name_fr, name_en, name)
-            name_column = None
-            for col_candidate in ["public_name", "name_fr", "name_en", "name"]:
-                try:
-                    self._conn.execute(
-                        f"SELECT {col_candidate} FROM {table_name} LIMIT 1"
-                    ).fetchone()
-                    name_column = col_candidate
-                    break
-                except Exception:
-                    continue
-
-            if not name_column:
-                logger.debug("Aucune colonne de nom trouvée dans %s", table_name)
-                return None
-
-            # Requête pour récupérer le nom avec les colonnes détectées
-            result = self._conn.execute(
-                f"SELECT {name_column} FROM {table_name} WHERE {id_column} = ?",
-                [asset_id],
-            ).fetchone()
-
-            if result and result[0]:
-                name = str(result[0])
-                logger.debug("Résolu %s → %s depuis %s.%s", asset_id, name, table_name, name_column)
-                return name
-
-            return None
-
-        except Exception as e:
-            logger.debug("Erreur résolution depuis %s: %s", table_name, e)
-            return None
+            except Exception:
+                # Colonne absente — essayer le suivant
+                continue
+        logger.debug("Aucune colonne de nom trouvée dans %s pour %s", table_name, asset_id)
+        return None
 
     def close(self) -> None:
         """Ferme la connexion DuckDB."""

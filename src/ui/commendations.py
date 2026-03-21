@@ -20,13 +20,9 @@ from typing import Any
 import streamlit as st
 
 from src.ui.i18n import get_lang, t
-from src.ui.i18n.data_labels import label_obj
 from src.utils.paths import REPO_ROOT
 
 logger = logging.getLogger(__name__)
-
-# ── Chemin vers metadata.duckdb ─────────────────────────────────────────────
-_METADATA_DB_REL = os.path.join("data", "warehouse", "metadata.duckdb")
 
 
 # ── Utilitaires internes ────────────────────────────────────────────────────
@@ -74,40 +70,14 @@ def _parse_tier_targets(csv_targets: str | None) -> list[dict[str, Any]]:
 
 @st.cache_data(show_spinner=False, ttl=300)
 def _load_citations_from_db() -> list[dict[str, Any]]:
-    """Charge toutes les citations activées depuis ``citation_mappings``."""
-    db_path = _abs_from_repo(_METADATA_DB_REL)
-    if not os.path.exists(db_path):
-        logger.warning("metadata.duckdb introuvable : %s", db_path)
-        return []
+    """Charge toutes les citations activées depuis ``citation_mappings``.
 
-    from src.utils.db import duckdb_read_only
+    Délègue à ``src.data.citation_definitions.load_citation_definitions()``
+    avec un cache Streamlit (TTL 300s).
+    """
+    from src.data.citation_definitions import load_citation_definitions
 
-    with duckdb_read_only(db_path) as conn:
-        try:
-            rows = conn.execute(
-                "SELECT citation_name_norm, citation_name_display, mapping_type, "
-                "       image_path, category, description, tier_targets, "
-                "       composite_children, subcategory "
-                "FROM citation_mappings "
-                "WHERE enabled IS NOT FALSE "
-                "ORDER BY category, CASE WHEN mapping_type = 'composite' THEN 0 ELSE 1 END, citation_name_display"
-            ).fetchall()
-
-            columns = [
-                "citation_name_norm",
-                "citation_name_display",
-                "mapping_type",
-                "image_path",
-                "category",
-                "description",
-                "tier_targets",
-                "composite_children",
-                "subcategory",
-            ]
-            return [dict(zip(columns, row, strict=False)) for row in rows]
-        except Exception:
-            logger.exception("Erreur chargement citation_mappings")
-            return []
+    return load_citation_definitions()
 
 
 # ── Mastery / progression ───────────────────────────────────────────────────
@@ -360,11 +330,10 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
     lang = get_lang()
     for cit in citations_db:
         norm = cit["citation_name_norm"]
-        # Résolution i18n : labels depuis JSON, fallback sur DB
-        i18n = label_obj("citations", norm, lang=lang)
-        name = i18n.get("name", cit["citation_name_display"])
-        desc = i18n.get("description", cit.get("description") or "")
-        category = i18n.get("category", cit.get("category") or "")
+        # Données i18n directement depuis la DB (citation_mappings)
+        name = cit["citation_name_display"]
+        desc = cit.get("description") or ""
+        category = cit.get("category") or ""
         image_path = cit.get("image_path")
         tier_targets = cit.get("tier_targets")
         composite_children = cit.get("composite_children")
@@ -451,7 +420,8 @@ def render_h5g_commendations_section(  # noqa: C901, PLR0912, PLR0915
 
         if cat in _SUBCAT_ORDER:
             _SUBCAT_DISPLAY: dict[str, dict[str, str]] = {
-                "en": {"Général": "General"},
+                "en": {"Général": "General", "Paria": "Banished"},
+                "fr": {"Paria": "Parias"},
             }
             ordered_keys = _SUBCAT_ORDER[cat]
             extra_keys = sorted(k for k in subcats_dict if k not in ordered_keys and k is not None)

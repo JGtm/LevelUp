@@ -5,10 +5,8 @@ Ce module contient la logique principale de backfill :
 - backfill_all_players  : itération sur tous les joueurs DuckDB
 
 Note architecture (v5.2+) :
-    Les fonctions publiques acceptent un paramètre ``scope: SyncScope``
-    qui remplace les 30+ kwargs individuels.  Les kwargs sont conservés
-    temporairement pour rétro-compatibilité (marqués ``LEGACY``).
-    Nouveau code : toujours passer ``scope=SyncScope(...)``.
+    Les fonctions publiques et privées acceptent ``scope: SyncScope``.
+    Les 30+ kwargs individuels legacy ont été supprimés (nettoyage v6).
 """
 
 from __future__ import annotations
@@ -49,15 +47,17 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _PARALLEL_WEAPON_KILLS_IN_SYNC: bool = True
 
 
-def _get_shared_connection(db_path: Path) -> Any | None:
+def _get_shared_connection() -> Any | None:
     """Ouvre une connexion vers shared_matches.duckdb (v5).
 
-    Le chemin est dérivé depuis la racine du projet.
+    Le chemin est dérivé depuis la racine du projet via get_shared_matches_path().
     Retourne None si la base n'existe pas.
     """
     import duckdb
 
-    shared_path = _PROJECT_ROOT / "data" / "warehouse" / "shared_matches.duckdb"
+    from src.utils.paths import get_shared_matches_path
+
+    shared_path = get_shared_matches_path()
     if not shared_path.exists():
         logger.warning(f"shared_matches.duckdb introuvable: {shared_path}")
         return None
@@ -179,7 +179,7 @@ async def backfill_player_data(
     conn = duckdb.connect(str(db_path), read_only=False)
 
     # V5 FINAL : Toujours ouvrir shared_conn (source principale depuis migration V5)
-    shared_conn_for_detection = _get_shared_connection(db_path)
+    shared_conn_for_detection = _get_shared_connection()
     if shared_conn_for_detection is None:
         logger.error(
             f"❌ {gamertag}: shared_matches.duckdb introuvable — "
@@ -330,10 +330,18 @@ async def backfill_all_players(
 ) -> dict[str, Any]:
     """Backfill pour tous les joueurs DuckDB.
 
+    Avec la v2 du parser weapon, un match partagé (escouade) n'est traité
+    qu'une seule fois pour tous les joueurs. Quand ``scope.weapons=True``,
+    la boucle principale tourne *sans* weapons, puis une phase dédiée
+    collecte l'union dédupliquée des match_ids de tous les joueurs et
+    appelle ``run_weapon_kills_backfill`` une seule fois.
+
     Args:
         scope: Périmètre de données (SyncScope). Obligatoire en pratique ;
                si ``None``, un scope vide est créé (aucune action).
     """
+    import dataclasses
+
     # ── Construire le scope si non fourni ──
     if scope is None:
         scope = SyncScope()
@@ -348,6 +356,15 @@ async def backfill_all_players(
 
     logger.info(f"Trouvé {len(players)} joueur(s) DuckDB")
 
+    # Weapons : déléguer à un batch global dédupliqué après la boucle.
+    # La v2 du parser traite tous les joueurs d'un match en une passe
+    # → re-traiter le même match par joueur = N téléchargements inutiles.
+    _weapons_all = getattr(scope, "weapons", False)
+    _force_weapons = getattr(scope, "force_weapons", False)
+    scope_for_loop = (
+        dataclasses.replace(scope, weapons=False, force_weapons=False) if _weapons_all else scope
+    )
+
     total_results = _empty_result()
     per_player_results: dict[str, Any] = {}
 
@@ -358,12 +375,48 @@ async def backfill_all_players(
 
         result = await backfill_player_data(
             player_info.gamertag,
-            scope=scope,
+            scope=scope_for_loop,
         )
 
         for key in total_results:
             total_results[key] += result.get(key, 0)
         per_player_results[player_info.gamertag] = result
+
+    # ── Phase weapons globale dédupliquée ────────────────────────────────
+    if _weapons_all:
+        from scripts.backfill._weapon_kills_logic import (
+            collect_weapon_match_ids_all_players,
+            run_weapon_kills_backfill,
+        )
+
+        shared_conn = _get_shared_connection()
+        if shared_conn is not None:
+            try:
+                all_match_ids = await collect_weapon_match_ids_all_players(
+                    players, shared_conn, force=_force_weapons
+                )
+                if all_match_ids:
+                    logger.info(
+                        "Weapons --all : %d matchs uniques à traiter (dédupliqués, %d joueur(s))",
+                        len(all_match_ids),
+                        len(players),
+                    )
+                    n = await run_weapon_kills_backfill(
+                        "",
+                        "",
+                        all_match_ids,
+                        shared_conn,
+                        force=_force_weapons,
+                    )
+                    total_results["weapon_kills_inserted"] = (
+                        total_results.get("weapon_kills_inserted", 0) + n
+                    )
+                else:
+                    logger.info("Weapons --all : aucun match à traiter")
+            finally:
+                shared_conn.close()
+        else:
+            logger.warning("Weapons --all : shared_conn introuvable, weapons ignorés")
 
     return {
         "players_processed": len(players),
@@ -452,6 +505,7 @@ def _apply_schema_migrations(
         ensure_match_participants_backfill_bits,
         ensure_match_participants_columns,
         ensure_medals_earned_bigint,
+        ensure_weapon_kills_reconciled_as,
     )
 
     # Migration medals_earned INT32 → BIGINT (shared)
@@ -473,6 +527,10 @@ def _apply_schema_migrations(
     # Colonne backfill_completed dans match_registry (shared)
     with contextlib.suppress(Exception):
         ensure_backfill_completed_column(shared_conn)
+
+    # Colonnes weapon_kills : reconciled_as, attribution_path, player_index
+    with contextlib.suppress(Exception):
+        ensure_weapon_kills_reconciled_as(shared_conn)
 
 
 def _backfill_local_only(
@@ -500,7 +558,7 @@ def _backfill_local_only(
     if killer_victim:
         logger.info("Backfill des paires killer/victim depuis highlight_events...")
         # Ouvrir une connexion vers shared_matches.duckdb (v5)
-        shared_conn = _get_shared_connection(db_path)
+        shared_conn = _get_shared_connection()
         n = backfill_killer_victim_pairs(conn, xuid, shared_conn=shared_conn)
         if shared_conn is not None:
             shared_conn.close()
@@ -512,7 +570,7 @@ def _backfill_local_only(
 
     if end_time:
         logger.info("Backfill de l'heure de fin des matchs (end_time)...")
-        shared_conn = _get_shared_connection(db_path)
+        shared_conn = _get_shared_connection()
         n = backfill_end_time(conn, force=force_end_time, shared_conn=shared_conn)
         if shared_conn is not None:
             shared_conn.close()
@@ -601,89 +659,15 @@ async def _backfill_with_api(
     xuid: str,
     match_ids: list[str],
     *,
-    scope: SyncScope | None = None,
-    # ── LEGACY kwargs (v5.1) ──────────────────────────────────────────────
-    # TODO(cleanup): supprimer ces kwargs quand tous les appelants
-    #   utilisent SyncScope.
-    # ─────────────────────────────────────────────────────────────────────
-    requests_per_second: int = 5,
-    medals: bool = False,
-    events: bool = False,
-    skill: bool = False,
-    personal_scores: bool = False,
-    performance_scores: bool = False,
-    aliases: bool = False,
-    accuracy: bool = False,
-    enemy_mmr: bool = False,
-    assets: bool = False,
-    participants: bool = False,
-    participants_scores: bool = False,
-    participants_kda: bool = False,
-    participants_shots: bool = False,
-    participants_damage: bool = False,
-    participants_avg_life: bool = False,
-    killer_victim: bool = False,
-    end_time: bool = False,
-    sessions: bool = False,
-    force_medals: bool = False,
-    force_accuracy: bool = False,
-    force_shots: bool = False,
-    force_performance_scores: bool = False,
-    force_enemy_mmr: bool = False,
-    force_end_time: bool = False,
-    force_sessions: bool = False,
-    force_participants_shots: bool = False,
-    force_participants_damage: bool = False,
-    force_participants_avg_life: bool = False,
-    shots: bool = False,
-    citations: bool = False,
-    force_citations: bool = False,
+    scope: SyncScope,
     gamertag: str = "",
-    dry_run: bool = False,
     existing_shared_conn: Any | None = None,
 ) -> dict[str, int]:
     """Traitement des matchs via l'API SPNKr.
 
-    .. deprecated:: v5.2
-        Passer ``scope=SyncScope(...)`` au lieu des kwargs individuels.
+    Args:
+        scope: Périmètre de backfill (SyncScope résolu).
     """
-    # ── Construire / résoudre le scope ──
-    if scope is None:
-        scope = SyncScope(
-            dry_run=dry_run,
-            requests_per_second=requests_per_second,
-            medals=medals,
-            events=events,
-            skill=skill,
-            personal_scores=personal_scores,
-            performance_scores=performance_scores,
-            aliases=aliases,
-            accuracy=accuracy,
-            enemy_mmr=enemy_mmr,
-            assets=assets,
-            participants=participants,
-            participants_scores=participants_scores,
-            participants_kda=participants_kda,
-            participants_shots=participants_shots,
-            participants_damage=participants_damage,
-            participants_avg_life=participants_avg_life,
-            killer_victim=killer_victim,
-            end_time=end_time,
-            sessions=sessions,
-            shots=shots,
-            citations=citations,
-            force_medals=force_medals,
-            force_accuracy=force_accuracy,
-            force_shots=force_shots,
-            force_performance_scores=force_performance_scores,
-            force_participants_shots=force_participants_shots,
-            force_participants_damage=force_participants_damage,
-            force_participants_avg_life=force_participants_avg_life,
-            force_enemy_mmr=force_enemy_mmr,
-            force_end_time=force_end_time,
-            force_sessions=force_sessions,
-            force_citations=force_citations,
-        )
     scope.resolve()
 
     # Extraire les valeurs résolues en variables locales
@@ -709,7 +693,6 @@ async def _backfill_with_api(
     sessions = scope.sessions
     shots = scope.shots
     citations = scope.citations
-    force_medals = scope.force_medals
     force_accuracy = scope.force_accuracy
     force_shots = scope.force_shots
     # force_skill est utilisé via scope dans find_matches_missing_data()
@@ -743,7 +726,7 @@ async def _backfill_with_api(
         return _empty_result()
 
     # Réutiliser la connexion shared existante ou en ouvrir une nouvelle
-    shared_conn = existing_shared_conn or _get_shared_connection(db_path)
+    shared_conn = existing_shared_conn or _get_shared_connection()
     owns_shared_conn = existing_shared_conn is None  # True si on a ouvert nous-même
     if shared_conn is not None:
         from src.data.sync.migrations import ensure_match_participants_columns as _ensure_mp
@@ -1074,7 +1057,7 @@ async def _backfill_with_api(
     # ── Backfill local post-API ──
     if killer_victim:
         logger.info("Backfill des paires killer/victim depuis highlight_events...")
-        kv_shared = shared_conn or _get_shared_connection(db_path)
+        kv_shared = shared_conn or _get_shared_connection()
         n = backfill_killer_victim_pairs(conn, xuid, shared_conn=kv_shared)
         if kv_shared is not shared_conn and kv_shared is not None:
             kv_shared.close()
@@ -1123,7 +1106,7 @@ async def _backfill_with_api(
 
         logger.info("Calcul du LUSR (LevelUp Skill Rank) pour les matchs non classés...")
         # Ouvrir shared_conn si fermé (citations l'a peut-être fermé)
-        _lusr_shared = _get_shared_connection(db_path) if shared_conn is None else shared_conn
+        _lusr_shared = _get_shared_connection() if shared_conn is None else shared_conn
         n = compute_lusr_for_player(
             conn, db_path, xuid, force=force_lusr_flag, shared_conn=_lusr_shared
         )
@@ -1391,8 +1374,7 @@ async def _backfill_weapon_kills_for_match(
     if not force:
         try:
             row = shared_conn.execute(
-                "SELECT COALESCE(backfill_completed, 0) & ? "
-                "FROM match_registry WHERE match_id = ?",
+                "SELECT COALESCE(backfill_completed, 0) & ? FROM match_registry WHERE match_id = ?",
                 (MatchBits.WEAPON_KILLS, match_id),
             ).fetchone()
             if row and row[0]:
@@ -1406,7 +1388,7 @@ async def _backfill_weapon_kills_for_match(
         cache_dir = _resolve_cache_dir(db_path)
         service = WeaponExtractionService(client, shared_conn, cache_dir)
         summary = await service.process_match(match_id, gamertag, xuid)
-        rows = summary.get("rows_inserted", 0)
+        rows = summary.rows_inserted
         if rows > 0:
             try:
                 shared_conn.execute(
@@ -1417,8 +1399,8 @@ async def _backfill_weapon_kills_for_match(
                 )
             except Exception as e:
                 logger.debug("Guard WEAPON_KILLS pour %s : %s", match_id[:8], e)
-        elif "error" in summary:
-            logger.debug("weapon_kills %s : %s", match_id[:8], summary["error"])
+        elif summary.error:
+            logger.debug("weapon_kills %s : %s", match_id[:8], summary.error)
         return rows
     except Exception as exc:
         logger.debug("_backfill_weapon_kills_for_match %s (non bloquant) : %s", match_id[:8], exc)

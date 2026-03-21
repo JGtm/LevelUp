@@ -14,6 +14,7 @@ from typing import Any
 
 import streamlit as st
 
+from src.config import get_bot_name
 from src.data.repositories._encounter_loader import load_encounter_stats
 from src.data.repositories.duckdb_repo import DuckDBRepository
 from src.ui.i18n import t
@@ -27,7 +28,6 @@ from src.ui.pages.match_view_encounters_logic import (
     filter_encounter_xuids,
     ordinal,
 )
-from src.utils.db import duckdb_read_only
 
 logger = logging.getLogger(__name__)
 
@@ -200,25 +200,6 @@ def _build_encounter_table_html(rows_html: list[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Chargement des friends_xuids depuis player_match_enrichment
-# ---------------------------------------------------------------------------
-
-
-def _fetch_friends_xuids_csv(db_path: str, match_id: str) -> str | None:
-    """Lit la colonne friends_xuids depuis player_match_enrichment pour ce match."""
-    try:
-        with duckdb_read_only(db_path) as conn:
-            row = conn.execute(
-                "SELECT friends_xuids FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
-                [match_id],
-            ).fetchone()
-        return str(row[0]) if row and row[0] else None
-    except Exception:
-        logger.debug("Lecture friends_xuids échouée pour match %s", match_id)
-        return None
-
-
-# ---------------------------------------------------------------------------
 # Point d'entrée public
 # ---------------------------------------------------------------------------
 
@@ -247,7 +228,10 @@ def _build_encounter_rows(
     rows: list[str] = []
     for record in records:
         xuid = str(record.get("xuid") or "").strip()
-        gamertag = str(record.get("gamertag") or xuid[:8] or "—").strip()
+        raw_gt = record.get("gamertag")
+        if not raw_gt and xuid.lower().startswith("bid("):
+            raw_gt = get_bot_name(xuid)
+        gamertag = str(raw_gt or xuid[:8] or "—").strip()
         total = int(record.get("total_encounters") or 0)
         side = "allié" if xuid_to_team.get(xuid) == my_team_id else "ennemi"
 
@@ -314,7 +298,7 @@ def render_encounter_section(
     if not players:
         return
 
-    friends_csv = _fetch_friends_xuids_csv(db_path, match_id)
+    friends_csv = repo.load_friends_xuids_csv(match_id)
     friends_set = build_friends_set(self_xuid, friends_csv)
     target_xuids = filter_encounter_xuids(players, self_xuid, friends_set)
     if not target_xuids:

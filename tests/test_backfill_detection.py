@@ -80,8 +80,7 @@ def shared_conn():
             match_id VARCHAR,
             event_type VARCHAR,
             time_ms INTEGER,
-            xuid VARCHAR,
-            gamertag VARCHAR
+            xuid VARCHAR
         )
     """)
     # Insert test matches in match_registry
@@ -110,7 +109,7 @@ def shared_conn():
     """)
     # m2 has medals, events
     c.execute("INSERT INTO medals_earned VALUES ('m2', 'double_kill', 1, '1234567890123456')")
-    c.execute("INSERT INTO highlight_events VALUES ('m2', 'Kill', 0, '1234567890123456', 'GT')")
+    c.execute("INSERT INTO highlight_events VALUES ('m2', 'Kill', 0, '1234567890123456')")
     yield c
     c.close()
 

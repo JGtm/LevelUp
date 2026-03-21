@@ -1,21 +1,17 @@
 """Résolution centralisée des labels i18n pour les données de référence.
 
-Chaque domaine (citations, awards, playlists, modes, ranks) est stocké dans
-des fichiers JSON sous ``static/i18n/``, suivant la convention déjà en place
-pour les médailles (``static/medals/medals_fr.json``).
+Domaines supportés : awards, playlists, modes, ranks (fichiers JSON sous
+``static/i18n/``). Les citations sont chargées depuis ``citation_mappings``
+dans ``metadata.duckdb`` via ``src.data.citation_definitions``.
+Les médailles sont chargées depuis ``medal_definitions`` dans
+``metadata.duckdb`` via ``medals.py::load_medal_name_maps()``.
 
 Usage::
 
-    from src.ui.i18n.data_labels import label, label_obj
+    from src.ui.i18n.data_labels import label
 
     # Label simple (retourne une chaîne)
     label("playlists", "Quick Play", lang="fr")  # → "Partie rapide"
-
-    # Label objet (citations : name + description + category)
-    obj = label_obj("citations", "defenseur du drapeau", lang="en")
-    obj["name"]        # → "Flag Defender"
-    obj["description"] # → "Protect your team's flag..."
-    obj["category"]    # → "Game mode"
 
     # Fallback : lang demandée → "en" → clé brute
 """
@@ -124,55 +120,6 @@ def label(domain: str, key: str, *, lang: str | None = None) -> str:
             return str(val_fr)
 
     return key
-
-
-def label_obj(domain: str, key: str, *, lang: str | None = None) -> dict[str, str]:
-    """Résout un label structuré (dict) pour un domaine donné.
-
-    Utile pour les domaines riches comme ``"citations"`` qui ont
-    ``name``, ``description``, ``category``.
-
-    Args:
-        domain: Nom du domaine.
-        key: Clé de l'entrée.
-        lang: Code langue.
-
-    Returns:
-        Dict avec les champs disponibles. Si la valeur est une chaîne simple,
-        retourne ``{"name": valeur}``. Si aucune traduction, ``{"name": key}``.
-    """
-    if lang is None:
-        from src.ui.i18n import get_lang
-
-        lang = get_lang()
-
-    data = load_domain(domain, lang)
-    val = data.get(key)
-
-    if val is not None:
-        if isinstance(val, dict):
-            return val
-        return {"name": str(val)}
-
-    # Fallback EN
-    if lang != _FALLBACK_LANG:
-        data_fb = load_domain(domain, _FALLBACK_LANG)
-        val_fb = data_fb.get(key)
-        if val_fb is not None:
-            if isinstance(val_fb, dict):
-                return val_fb
-            return {"name": str(val_fb)}
-
-    # Fallback FR
-    if lang != "fr" and _FALLBACK_LANG != "fr":
-        data_fr = load_domain(domain, "fr")
-        val_fr = data_fr.get(key)
-        if val_fr is not None:
-            if isinstance(val_fr, dict):
-                return val_fr
-            return {"name": str(val_fr)}
-
-    return {"name": key}
 
 
 def clear_cache() -> None:

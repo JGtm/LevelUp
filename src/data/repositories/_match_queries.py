@@ -34,71 +34,26 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
     # Source de données matchs (v5 shared / v4 local)
     # =========================================================================
 
-    def _get_match_table_name(self, conn) -> str | None:
-        """Détecte la table de matchs disponible (avec cache).
+    def _get_match_source(self, _conn) -> tuple[str, list[str], bool]:
+        """Retourne l'expression FROM pour les matchs (v6 shared uniquement).
 
-        Returns:
-            Nom de la table "match_stats" si elle existe localement, None sinon (v5.1+).
-        """
-        cache_key = "local_table:match_stats"
-        if hasattr(self, "_table_cache") and cache_key in self._table_cache:
-            return "match_stats" if self._table_cache[cache_key] else None
-
-        try:
-            result = conn.execute(
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = 'main' AND table_name = 'match_stats'"
-            ).fetchone()
-            if result and result[0] > 0:
-                if hasattr(self, "_table_cache"):
-                    self._table_cache[cache_key] = True
-                return "match_stats"
-        except Exception:
-            pass
-
-        if hasattr(self, "_table_cache"):
-            self._table_cache[cache_key] = False
-        return None
-
-    def _get_match_source(self, conn) -> tuple[str, list[str], bool]:  # noqa: C901
-        """Retourne l'expression FROM pour les matchs (v5 shared ou v4 local).
+        La vue mv_player_matches dans shared_matches.duckdb est garantie présente
+        en architecture v6. L'utilisation de tables locales match_stats (v4/v3)
+        n'est plus supportée depuis v5.1.
 
         Returns:
             Tuple (from_expression, params, uses_mv).
         """
-        # Forcer mode local si XUID vide ou None (DBs v3/legacy)
         if not self._xuid or self._xuid.strip() == "":
-            match_table = self._get_match_table_name(conn)
-            if match_table is None:
-                raise RuntimeError(
-                    "Table match_stats absente (v5.1+) et XUID vide. "
-                    "Impossible de charger les matchs."
-                )
-            logger.debug("Mode v4/v3 (XUID vide) : requête via table locale %s", match_table)
-            if match_table == "match_stats":
-                return match_table, [], False
-            return f"{match_table} AS match_stats", [], False
-
-        # Forcer mode local si tables shared absentes
-        if not (
-            self.has_shared
-            and self._has_shared_table("match_registry")
-            and self._has_shared_table("match_participants")
-        ):
-            match_table = self._get_match_table_name(conn)
-            if match_table is None:
-                raise RuntimeError(
-                    "shared_matches.duckdb indisponible et table locale match_stats absente. "
-                    "Fermez les scripts en cours puis relancez l'app."
-                )
-            logger.debug("Mode v4/v3 : requête via table locale %s", match_table)
-            if match_table == "match_stats":
-                return match_table, [], False
-            return f"{match_table} AS match_stats", [], False
-
-        # Mode v5.1 : vue mv_player_matches (optimisé)
-        if self._has_shared_view("mv_player_matches"):
-            source = """(SELECT
+            raise RuntimeError(
+                "XUID manquant. Impossible de charger les matchs (architecture v6 requiert un XUID)."
+            )
+        if not self.has_shared:
+            raise RuntimeError(
+                "shared_matches.duckdb indisponible. "
+                "Fermez les scripts en cours puis relancez l'app."
+            )
+        source = """(SELECT
             match_id, start_time, map_id, map_name,
             playlist_id, playlist_name, pair_id, pair_name,
             game_variant_id, game_variant_name, outcome, team_id,
@@ -110,13 +65,8 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
         FROM shared.mv_player_matches
         WHERE xuid = ?
         ) AS match_stats"""
-            logger.debug("Mode v5.1 : requête via vue mv_player_matches")
-            return source, [self._xuid], True
-
-        raise RuntimeError(
-            "Vue mv_player_matches non trouvée dans shared_matches.duckdb. "
-            "Exécutez 'python scripts/rebuild_shared_views.py' pour créer les vues."
-        )
+        logger.debug("Mode v6 : requête via vue mv_player_matches")
+        return source, [self._xuid], True
 
     # =========================================================================
     # Chargement des matchs
@@ -211,17 +161,14 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
     def get_match_count(self) -> int:
         """Retourne le nombre total de matchs."""
         conn = self._get_connection()
-        if (
-            self.has_shared
-            and self._has_shared_table("match_registry")
-            and self._has_shared_table("match_participants")
-        ):
+        try:
             result = conn.execute(
                 "SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?",
                 [self._xuid],
             ).fetchone()
-        else:
-            result = conn.execute("SELECT COUNT(*) FROM match_stats").fetchone()
+        except Exception:
+            logger.debug("get_match_count: erreur shared.match_participants", exc_info=True)
+            return 0
         return result[0] if result else 0
 
     # =========================================================================
@@ -306,7 +253,7 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
         conn = self._get_connection()
         placeholders = ", ".join(["?" for _ in match_ids])
 
-        if self._has_shared_table("match_participants"):
+        if self.has_shared:
             try:
                 result = conn.execute(
                     f"""
@@ -325,39 +272,13 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
                     "load_match_mmr_batch: échec requête shared.match_participants", exc_info=True
                 )
 
-        try:
-            has_pms = self._has_table_cached(conn, "player_match_stats")
-            if has_pms:
-                result = conn.execute(
-                    f"""
-                    SELECT ms.match_id,
-                           COALESCE(ms.team_mmr, pms.team_mmr) as team_mmr,
-                           COALESCE(ms.enemy_mmr, pms.enemy_mmr) as enemy_mmr
-                    FROM match_stats ms
-                    LEFT JOIN player_match_stats pms ON ms.match_id = pms.match_id
-                    WHERE ms.match_id IN ({placeholders})
-                    """,
-                    match_ids,
-                )
-            else:
-                result = conn.execute(
-                    f"""
-                    SELECT match_id, team_mmr, enemy_mmr
-                    FROM match_stats
-                    WHERE match_id IN ({placeholders})
-                    """,
-                    match_ids,
-                )
-            return {row[0]: (row[1], row[2]) for row in result.fetchall()}
-        except Exception:
-            logger.warning("load_match_mmr_batch: échec requête locale", exc_info=True)
-            return {}
+        return {}
 
     def load_match_skill_data(self, match_id: str) -> dict[str, Any] | None:
         """Charge team_mmr, enemy_mmr et kills/deaths/assists expected/stddev."""
         conn = self._get_connection()
 
-        if not self._has_shared_table("match_participants"):
+        if not self.has_shared:
             return None
 
         try:
@@ -451,3 +372,72 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
                 exc_info=True,
             )
         return team_mmr, enemy_mmr
+
+    # =========================================================================
+    # Enrichissement joueur + détection match abandonné
+    # =========================================================================
+
+    def load_player_match_enrichment(self, match_id: str) -> tuple[bool, float | None, int | None]:
+        """Charge had_bot_teammate, performance_score et dominance_flag.
+
+        Lit depuis la table ``player_match_enrichment`` de la DB joueur.
+
+        Returns:
+            Tuple (had_bot_teammate, performance_score, dominance_flag).
+        """
+        had_bot = False
+        stored_perf: float | None = None
+        dominance_flag: int | None = None
+        try:
+            conn = self._get_connection()
+            pme_row = conn.execute(
+                "SELECT had_bot_teammate, performance_score, dominance_flag"
+                " FROM player_match_enrichment WHERE match_id = ? LIMIT 1",
+                [match_id],
+            ).fetchone()
+            if pme_row:
+                had_bot = bool(pme_row[0])
+                if pme_row[1] is not None:
+                    stored_perf = float(pme_row[1])
+                if pme_row[2] is not None:
+                    dominance_flag = int(pme_row[2])
+        except Exception:
+            logger.debug(
+                "load_player_match_enrichment: introuvable match=%s", match_id, exc_info=True
+            )
+        return had_bot, stored_perf, dominance_flag
+
+    def is_abandoned_match(self, match_id: str) -> bool:
+        """Retourne True si tous les participants du match ont kills=deaths=score=0.
+
+        Interroge ``shared.match_participants`` pour détecter un match terminé
+        sans qu'aucun joueur n'ait enregistré de points (crash serveur, partie
+        non disputée).
+        """
+        conn = self._get_connection()
+        if not self.has_shared:
+            return False
+        try:
+            result = conn.execute(
+                "SELECT COUNT(*) AS n,"
+                " COALESCE(SUM(kills), 0) AS k,"
+                " COALESCE(SUM(deaths), 0) AS d,"
+                " COALESCE(SUM(score), 0) AS s"
+                " FROM shared.match_participants WHERE match_id = ?",
+                [match_id],
+            ).fetchone()
+            if result and result[0] > 0:
+                abandoned = result[1] == 0 and result[2] == 0 and result[3] == 0
+                if abandoned:
+                    logger.debug(
+                        "is_abandoned_match: match=%s abandonné (%d participants, k=%s d=%s s=%s)",
+                        match_id,
+                        result[0],
+                        result[1],
+                        result[2],
+                        result[3],
+                    )
+                return abandoned
+        except Exception:
+            logger.debug("is_abandoned_match: erreur pour match=%s", match_id, exc_info=True)
+        return False

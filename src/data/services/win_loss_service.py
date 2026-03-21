@@ -176,19 +176,23 @@ class WinLossService:
     def compute_map_breakdown(
         base_scope: pl.DataFrame,
         min_matches: int = 1,
+        df_history: pl.DataFrame | None = None,
     ) -> MapBreakdownResult:
         """Calcule le breakdown statistique par carte.
 
         Args:
-            base_scope: DataFrame Polars à analyser.
+            base_scope: DataFrame Polars à analyser (session ou filtre courant).
             min_matches: Nombre minimum de matchs par carte.
+            df_history: Historique complet pour le calcul du score relatif.
+                Si None, utilise base_scope comme référence (moins précis pour les
+                petites sessions).
 
         Returns:
             MapBreakdownResult avec le breakdown filtré.
         """
         from src.analysis import compute_map_breakdown
 
-        breakdown = compute_map_breakdown(base_scope)
+        breakdown = compute_map_breakdown(base_scope, df_history=df_history)
         breakdown = breakdown.filter(pl.col("matches") >= int(min_matches))
 
         return MapBreakdownResult(

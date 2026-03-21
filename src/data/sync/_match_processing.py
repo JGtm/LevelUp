@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 
 from src.data.sync._match_processing_helpers import MatchProcessingHelpersMixin
+from src.data.sync.migrations import BACKFILL_FLAGS
 from src.data.sync.models import SyncOptions, SyncResult
 from src.data.sync.transformers import (
     extract_aliases,
@@ -47,6 +48,26 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
         result = SyncResult()
         result.started_at = datetime.now(timezone.utc)
 
+        # ─ Early-exit delta : HEAD check 1 appel API  ────────────────────────
+        # Si le match le plus récent de l'API est déjà en DB → joueur à jour,
+        # on évite de charger existing_ids + paginer l'historique complet.
+        if delta_mode and existing_ids:
+            head = await client.get_match_history(
+                self._gamertag,
+                match_type=options.match_type,
+                start=0,
+                count=1,
+            )
+            if head:
+                latest_db = self._get_latest_match_id_in_db()
+                if latest_db and head[0].match_id == latest_db:
+                    logger.info(
+                        "[DELTA] %s : aucun nouveau match (HEAD %s = DB) — skip total",
+                        self._gamertag,
+                        head[0].match_id[:8],
+                    )
+                    return result
+
         start = 0
         remaining = options.max_matches
         semaphore = asyncio.Semaphore(options.parallel_matches)
@@ -66,66 +87,54 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                 break
 
             # Traiter les matchs
+            # ─ Phase 1 : collecter les IDs nouveaux du batch (détection delta séquentielle)
+            new_ids: list[str] = []
+            delta_stop = False
             for item in history:
                 if remaining <= 0:
                     break
-
                 match_id = item.match_id
-
-                # Vérifier si le match existe déjà
                 if match_id in existing_ids:
                     if delta_mode:
                         logger.info("[DELTA] Match %s déjà connu — arrêt", match_id)
-                        return result
-                    else:
-                        result.matches_skipped += 1
-                        remaining -= 1
-                        start += 1
-                        continue
+                        delta_stop = True
+                        break
+                    result.matches_skipped += 1
+                    start += 1
+                    remaining -= 1
+                    continue
+                new_ids.append(match_id)
+                remaining -= 1
 
-                # Récupérer et traiter le match
+            if not new_ids and delta_stop:
+                return result
+
+            # ─ Phase 2 : traiter les matchs nouveaux en parallèle (I/O overlap)
+            async def _bounded(mid: str) -> dict:
                 async with semaphore:
-                    match_result = await self._process_single_match(
-                        client,
-                        match_id,
-                        options,
-                    )
+                    return await self._process_single_match(client, mid, options)
 
+            batch_results = await asyncio.gather(
+                *(_bounded(mid) for mid in new_ids),
+                return_exceptions=True,
+            )
+
+            for i, match_result in enumerate(batch_results):
+                if isinstance(match_result, BaseException):
+                    result.warnings.append(str(match_result))
+                    start += 1
+                    continue
                 if match_result.get("inserted"):
-                    result.matches_inserted += 1
-                    result.highlight_events_inserted += match_result.get("events", 0)
-                    result.skill_records_inserted += match_result.get("skill", 0)
-                    result.aliases_updated += match_result.get("aliases", 0)
-                    result.weapon_kills_inserted += match_result.get("weapon_kills", 0)
-                    existing_ids.add(match_id)
-
-                    # Sprint 6 : Commit intermédiaire tous les N matchs
-                    if (
-                        options.batch_commit_size > 0
-                        and result.matches_inserted % options.batch_commit_size == 0
-                    ):
-                        conn = self._get_connection()
-                        conn.commit()
-                        logger.debug(
-                            "Commit intermédiaire après %s matchs", result.matches_inserted
-                        )
-
+                    self._accumulate_match_result(result, match_result)
+                    existing_ids.add(new_ids[i])
+                    self._maybe_batch_commit(result.matches_inserted, options.batch_commit_size)
                 if match_result.get("error"):
                     result.warnings.append(match_result["error"])
-
-                remaining -= 1
                 start += 1
+                self._report_progress(result, options, remaining, progress_callback)
 
-                # Callback de progression
-                if progress_callback:
-                    progress_callback(
-                        options.max_matches - remaining,
-                        options.max_matches,
-                    )
-
-                # Log de progression
-                if result.matches_inserted > 0 and result.matches_inserted % 10 == 0:
-                    logger.info("Importé %s matchs...", result.matches_inserted)
+            if delta_stop:
+                return result
 
             # Fin du batch
             if len(history) < batch_size:
@@ -253,15 +262,29 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             shared_conn = self._get_shared_connection()
             await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
             if options.with_weapons:
-                result["weapon_kills"] = await self._try_extract_weapon_kills(
-                    client, match_id, shared_conn
-                )
+                wk_rows = await self._try_extract_weapon_kills(client, match_id, shared_conn)
+                result["weapon_kills"] = wk_rows
+                logger.debug("weapon_kills extraits pour %s : %d", match_id, wk_rows)
             result["inserted"] = True
+            result["match_id"] = match_id
 
         except Exception as e:
             result["error"] = f"Erreur traitement known {match_id}: {e}"
             logger.warning(result["error"])
         return result
+
+    def _local_xuid_in_participants(
+        self: _SyncProtocol,
+        shared_conn: Any,
+        match_id: str,
+    ) -> bool:
+        """Guard E : vérifie que le joueur local est bien dans match_participants."""
+        return bool(
+            shared_conn.execute(
+                "SELECT COUNT(*) FROM match_participants WHERE match_id = ? AND xuid = ?",
+                (match_id, self._xuid),
+            ).fetchone()[0]
+        )
 
     async def _backfill_known_match_shared(  # noqa: PLR0913
         self: _SyncProtocol,
@@ -286,16 +309,24 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             if not participants_loaded:
                 participants = extract_participants(stats_json)
                 inserted = self._insert_shared_participants(shared_conn, participants)
-                if inserted > 0:
+                if inserted > 0 and self._local_xuid_in_participants(shared_conn, match_id):
                     shared_conn.execute(
                         "UPDATE match_registry SET participants_loaded = TRUE WHERE match_id = ?",
                         (match_id,),
                     )
                     backfill_needed.append("participants")
+                elif inserted > 0:
+                    logger.error(
+                        "%s (xuid=%s) absent match_participants après %d inserts match=%s "
+                        "— participants_loaded NON marqué",
+                        self._gamertag,
+                        self._xuid,
+                        inserted,
+                        match_id,
+                    )
                 elif participants:
                     logger.warning(
-                        "_backfill_known_match_shared: 0/%d participants insérés pour "
-                        "match=%s — participants_loaded NON marqué, backfill relancé au prochain sync",
+                        "0/%d participants insérés pour match=%s — participants_loaded NON marqué",
                         len(participants),
                         match_id,
                     )
@@ -387,17 +418,20 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             shared_conn = self._get_shared_connection()
             await self._try_insert_pve_stats(stats_json, match_id, shared_conn)
             if options.with_weapons:
-                result["weapon_kills"] = await self._try_extract_weapon_kills(
+                wk_rows = await self._try_extract_weapon_kills(
                     client,
                     match_id,
                     shared_conn,
                     is_firefight=bool(getattr(registry_data, "is_firefight", False)),
                 )
+                result["weapon_kills"] = wk_rows
+                logger.debug("weapon_kills extraits pour %s : %d", match_id, wk_rows)
 
             ok = await self._save_player_data_new_match(match_id, stats_json, skill_json, result)
             if not ok:
                 return result
             result["inserted"] = True
+            result["match_id"] = match_id
 
         except Exception as e:
             result["error"] = f"Erreur traitement new {match_id}: {e}"
@@ -451,21 +485,37 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
             inserted = self._insert_shared_participants(shared_conn, participants)
             if inserted == 0 and participants:
                 logger.warning(
-                    "_insert_new_match_shared: 0/%d participants insérés pour match=%s "
-                    "— participants_loaded reste FALSE",
+                    "0/%d participants insérés pour match=%s — participants_loaded reste FALSE",
                     len(participants),
                     match_id,
                 )
+            elif inserted > 0 and not self._local_xuid_in_participants(shared_conn, match_id):
+                logger.error(
+                    "%s (xuid=%s) absent match_participants après %d inserts match=%s",
+                    self._gamertag,
+                    self._xuid,
+                    inserted,
+                    match_id,
+                )
+                inserted = 0  # Bloquer participants_loaded=TRUE
             self._insert_shared_medals(shared_conn, medals_all)
 
+            n_events = 0
             if event_rows:
-                self._insert_shared_events(shared_conn, event_rows)
-                result["events"] = len(event_rows)
-                self._insert_shared_killer_victim_pairs(
-                    shared_conn,
-                    match_id,
-                    highlight_events,
-                )
+                n_events = self._insert_shared_events(shared_conn, event_rows)
+                result["events"] = n_events
+                if n_events > 0:
+                    self._insert_shared_killer_victim_pairs(
+                        shared_conn,
+                        match_id,
+                        highlight_events,
+                    )
+                    shared_conn.execute(
+                        "UPDATE match_registry "
+                        "SET backfill_completed = COALESCE(backfill_completed, 0) | ? "
+                        "WHERE match_id = ?",
+                        (BACKFILL_FLAGS["events"], match_id),
+                    )
 
             if alias_rows:
                 self._insert_shared_aliases(shared_conn, alias_rows)
@@ -481,7 +531,7 @@ class MatchProcessingMixin(MatchProcessingHelpersMixin):
                     first_sync_at = ?,
                     player_count = 1
                 WHERE match_id = ?""",
-                (inserted > 0, len(event_rows) > 0, self._gamertag, _utc_now, match_id),
+                (inserted > 0, n_events > 0, self._gamertag, _utc_now, match_id),
             )
             bf_mask = self._compute_backfill_mask(options)
             shared_conn.execute(

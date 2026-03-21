@@ -277,7 +277,7 @@ class TestNormalizedReturns:
 
     def test_matches_to_polars_empty(self) -> None:
         """Retourne un pl.DataFrame vide pour une liste vide."""
-        from src.data.integration.streamlit_bridge import matches_to_polars
+        from src.data.repositories.factory import matches_to_polars
 
         result = matches_to_polars([])
         assert isinstance(result, pl.DataFrame)
@@ -286,7 +286,7 @@ class TestNormalizedReturns:
     def test_matches_to_polars_columns(self) -> None:
         """Vérifie les colonnes du DataFrame Polars retourné."""
         from src.data.domain.models.stats import MatchRow
-        from src.data.integration.streamlit_bridge import matches_to_polars
+        from src.data.repositories.factory import matches_to_polars
 
         match = MatchRow(
             match_id="test_m1",

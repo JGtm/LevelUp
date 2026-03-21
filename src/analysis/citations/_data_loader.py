@@ -61,7 +61,8 @@ class CitationDataLoaderMixin:
                     [match_id],
                 ).fetchall()
                 return {int(row[0]): int(row[1]) for row in rows}
-            except Exception:
+            except Exception as e:
+                logger.debug("load_match_medals: erreur pour match_id=%s: %s", match_id, e)
                 return {}
 
     # ------------------------------------------------------------------
@@ -71,8 +72,8 @@ class CitationDataLoaderMixin:
     def load_match_stats(self, match_id: str) -> dict[str, Any]:
         """Charge les stats d'un match.
 
-        En V5, joint ``shared.match_participants`` et ``shared.match_registry``.
-        Sinon, lit depuis la table locale ``match_stats``.
+        Joint ``shared.match_participants`` et ``shared.match_registry``.
+        Retourne ``{}`` si shared est indisponible.
 
         Returns:
             Dict avec les colonnes de stats pour ce match.
@@ -84,11 +85,17 @@ class CitationDataLoaderMixin:
             try:
                 shared_alias = self._get_shared_alias(conn)
                 if shared_alias and self._shared_has_table(conn, "match_participants"):
+                    _mr = f"{shared_alias}.match_registry"
+                    try:
+                        conn.execute(f"SELECT 1 FROM {shared_alias}.v_match_full LIMIT 1")
+                        _mr = f"{shared_alias}.v_match_full"
+                    except Exception:
+                        pass
                     result = conn.execute(
                         f"SELECT p.*, r.map_name, r.playlist_name, r.game_variant_name, "
                         f"r.start_time "
                         f"FROM {shared_alias}.match_participants p "
-                        f"LEFT JOIN {shared_alias}.match_registry r ON p.match_id = r.match_id "
+                        f"LEFT JOIN {_mr} r ON p.match_id = r.match_id "
                         f"WHERE p.match_id = ? AND p.xuid = ?",
                         [match_id, self._xuid],
                     )
@@ -97,16 +104,24 @@ class CitationDataLoaderMixin:
                         columns = [desc[0] for desc in result.description]
                         return dict(zip(columns, row, strict=False))
 
-                result = conn.execute(
-                    "SELECT * FROM match_stats WHERE match_id = ?",
-                    [match_id],
-                )
-                row = result.fetchone()
-                if row is None:
-                    return {}
-                columns = [desc[0] for desc in result.description]
-                return dict(zip(columns, row, strict=False))
+                # Fallback : table match_stats locale (tests / environnements sans shared)
+                tables = conn.execute(
+                    "SELECT table_name FROM information_schema.tables "
+                    "WHERE table_schema = 'main' AND table_name = 'match_stats'"
+                ).fetchall()
+                if tables:
+                    result = conn.execute(
+                        "SELECT * FROM match_stats WHERE match_id = ? LIMIT 1",
+                        [match_id],
+                    )
+                    row = result.fetchone()
+                    if row is not None:
+                        columns = [desc[0] for desc in result.description]
+                        return dict(zip(columns, row, strict=False))
+
+                return {}
             except Exception:
+                logger.debug("load_match_stats: erreur pour match_id=%s", match_id, exc_info=True)
                 return {}
 
     # ------------------------------------------------------------------
@@ -134,7 +149,8 @@ class CitationDataLoaderMixin:
                     return {}
                 columns = [desc[0] for desc in result.description]
                 return dict(zip(columns, row, strict=False))
-        except Exception:
+        except Exception as e:
+            logger.debug("load_match_pve_stats: erreur pour match_id=%s: %s", match_id, e)
             return {}
 
     # ------------------------------------------------------------------
@@ -167,7 +183,8 @@ class CitationDataLoaderMixin:
                     [match_id],
                 ).fetchall()
                 return {str(row[0]): int(row[1]) for row in rows}
-            except Exception:
+            except Exception as e:
+                logger.debug("load_match_awards: erreur pour match_id=%s: %s", match_id, e)
                 return {}
 
     # ------------------------------------------------------------------
@@ -187,11 +204,17 @@ class CitationDataLoaderMixin:
             try:
                 shared_alias = self._get_shared_alias(conn)
                 if shared_alias and self._shared_has_table(conn, "match_participants"):
+                    _mr = f"{shared_alias}.match_registry"
+                    try:
+                        conn.execute(f"SELECT 1 FROM {shared_alias}.v_match_full LIMIT 1")
+                        _mr = f"{shared_alias}.v_match_full"
+                    except Exception:
+                        pass
                     result = conn.execute(
                         f"SELECT p.*, r.map_name, r.playlist_name, r.game_variant_name, "
                         f"r.start_time "
                         f"FROM {shared_alias}.match_participants p "
-                        f"LEFT JOIN {shared_alias}.match_registry r ON p.match_id = r.match_id "
+                        f"LEFT JOIN {_mr} r ON p.match_id = r.match_id "
                         f"WHERE p.match_id = ? AND p.xuid = ?",
                         [match_id, self._xuid],
                     )
@@ -207,21 +230,9 @@ class CitationDataLoaderMixin:
                                 {col: [row[i] for row in rows] for i, col in enumerate(columns)}
                             )
 
-                result = conn.execute(
-                    "SELECT * FROM match_stats WHERE match_id = ?",
-                    [match_id],
-                )
-                try:
-                    return result.pl()
-                except Exception:
-                    columns = [desc[0] for desc in result.description]
-                    rows = result.fetchall()
-                    if not rows:
-                        return pl.DataFrame()
-                    return pl.DataFrame(
-                        {col: [row[i] for row in rows] for i, col in enumerate(columns)}
-                    )
+                return pl.DataFrame()
             except Exception:
+                logger.debug("load_match_df: erreur pour match_id=%s", match_id, exc_info=True)
                 return pl.DataFrame()
 
     # ------------------------------------------------------------------
@@ -255,6 +266,9 @@ class CitationDataLoaderMixin:
                     return [(int(r[0]), str(r[1])) for r in rows]
                 return []
             except Exception:
+                logger.debug(
+                    "load_match_highlight_events: erreur pour match_id=%s", match_id, exc_info=True
+                )
                 return []
 
     # ------------------------------------------------------------------
@@ -276,11 +290,11 @@ class CitationDataLoaderMixin:
                 if not shared_alias:
                     return {}
                 rows = conn.execute(
-                    f"SELECT weapon_id, COUNT(*) AS kills "
-                    f"FROM {shared_alias}.weapon_kills "
+                    f"SELECT effective_weapon_id AS weapon_id, COUNT(*) AS kills "
+                    f"FROM {shared_alias}.v_weapon_kills "
                     "WHERE match_id = ? AND xuid = ? "
-                    "AND weapon_id IS NOT NULL "
-                    "GROUP BY weapon_id",
+                    "AND effective_weapon_id IS NOT NULL "
+                    "GROUP BY effective_weapon_id",
                     [match_id, self._xuid],
                 ).fetchall()
                 from src.analysis._weapon_data import (
@@ -300,4 +314,7 @@ class CitationDataLoaderMixin:
                     result[name] = result.get(name, 0) + int(kills)
                 return result
             except Exception:
+                logger.debug(
+                    "load_match_weapon_kills: erreur pour match_id=%s", match_id, exc_info=True
+                )
                 return {}

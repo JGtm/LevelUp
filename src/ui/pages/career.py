@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import logging
 from datetime import datetime
+from pathlib import Path
 
 import streamlit as st
 
@@ -39,6 +41,7 @@ from src.ui.pages.career_logic import (
     _compute_hero_projections,
 )
 from src.ui.pages.career_lusr import _render_lusr_section
+from src.ui.pages.career_top_matches_render import render_top_matches_section
 from src.ui.player_assets import ensure_local_image_path
 from src.ui.streamlit_modern import PLOTLY_CLEAN_CONFIG, PLOTLY_STATIC_CONFIG, fragment_if_available
 
@@ -100,7 +103,7 @@ def _render_rank_section(  # noqa: C901, PLR0912, PLR0915
     _render_xp_history(db_path, xuid, is_max, xp_total)
 
 
-def _render_rank_header(  # noqa: PLR0913
+def _render_rank_header(  # noqa: PLR0913, PLR0912
     career_data: dict,
     rank_number: int,
     rank_label_fr: str,
@@ -121,17 +124,44 @@ def _render_rank_header(  # noqa: PLR0913
                 adornment_db_path,
                 prefix="adornment",
                 download_enabled=True,
-                auto_refresh_hours=0,
+                auto_refresh_hours=24,
             )
             if local_adornment:
-                st.image(local_adornment, width=140)
-                displayed_icon = True
+                # data URI base64 : stable entre re-runs (pas d'ID éphémère Streamlit)
+                try:
+                    data = base64.b64encode(Path(local_adornment).read_bytes()).decode()
+                    st.markdown(
+                        f'<img src="data:image/png;base64,{data}" width="140">',
+                        unsafe_allow_html=True,
+                    )
+                    displayed_icon = True
+                except Exception:
+                    logger.debug("career: lecture adornment échouée, fallback st.image")
+                    st.image(local_adornment, width=140)
+                    displayed_icon = True
         if not displayed_icon:
             icon_path = get_rank_icon_path(rank_number) if rank_number else None
             if icon_path and icon_path.exists():
-                st.image(str(icon_path), width=120)
+                try:
+                    data = base64.b64encode(icon_path.read_bytes()).decode()
+                    st.markdown(
+                        f'<img src="data:image/png;base64,{data}" width="120">',
+                        unsafe_allow_html=True,
+                    )
+                except Exception:
+                    logger.debug("career: lecture rank icon échouée, fallback st.image")
+                    st.image(str(icon_path), width=120)
             else:
                 st.markdown(f"### {rank_number}")
+        recorded_at = career_data.get("recorded_at")
+        if isinstance(recorded_at, datetime):
+            try:
+                from src.ui.tz import utc_to_local
+
+                local_dt = utc_to_local(recorded_at)
+                st.caption(f"Données du {local_dt.strftime('%d/%m/%Y %H:%M')}")
+            except Exception:
+                logger.debug("Conversion TZ recorded_at échouée", exc_info=True)
 
     with col_info:
         st.subheader(rank_label_fr)
@@ -315,6 +345,9 @@ def render_career_page(  # noqa: C901, PLR0912, PLR0915
 
     st.divider()
     _render_lusr_section(db_path=db_path, xuid=xuid)
+
+    st.divider()
+    render_top_matches_section(db_path=db_path, xuid=xuid)
 
     st.divider()
     render_encounters_section(db_path=db_path, xuid=xuid)

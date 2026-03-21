@@ -10,6 +10,8 @@ from pathlib import Path
 
 import polars as pl
 
+from src.utils.paths import get_shared_matches_path, get_shared_matches_path_from_player
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,12 +23,16 @@ def _detect_shared_db(db_path: Path, explicit_path: str | Path | None) -> Path:
             raise FileNotFoundError(
                 "shared_matches.duckdb introuvable. Vérifiez le chemin ou utilisez --shared-db."
             )
+        logger.debug("_detect_shared_db: chemin explicite → %s", p)
         return p
-    candidates_paths = [
-        db_path.parent.parent.parent / "warehouse" / "shared_matches.duckdb",
-        Path(__file__).resolve().parents[2] / "data" / "warehouse" / "shared_matches.duckdb",
-    ]
-    found = next((p for p in candidates_paths if p.exists()), None)
+    found = get_shared_matches_path_from_player(db_path)
+    if found is None:
+        p = get_shared_matches_path()
+        found = p if p.exists() else None
+        if found is not None:
+            logger.debug("_detect_shared_db: fallback global → %s", found)
+    else:
+        logger.debug("_detect_shared_db: détecté depuis player → %s", found)
     if found is None:
         raise FileNotFoundError(
             "shared_matches.duckdb introuvable. Vérifiez le chemin ou utilisez --shared-db."
@@ -35,20 +41,14 @@ def _detect_shared_db(db_path: Path, explicit_path: str | Path | None) -> Path:
 
 
 def _resolve_xuid_from_gamertag(gamertag: str, shared_db: Path) -> str | None:
-    """Résout le XUID depuis le gamertag via xuid_aliases."""
+    """Résout le XUID depuis le gamertag via v_gamertag_lookup."""
     from src.utils.db import duckdb_read_only
+    from src.utils.xuid import lookup_xuid_for_gamertag
 
     if not shared_db.exists():
         return None
     with duckdb_read_only(shared_db) as conn:
-        try:
-            row = conn.execute(
-                "SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?) LIMIT 1",
-                [gamertag],
-            ).fetchone()
-            return str(row[0]) if row and row[0] else None
-        except Exception:
-            return None
+        return lookup_xuid_for_gamertag(conn, gamertag)
 
 
 def _compute_individual_mmr_map(

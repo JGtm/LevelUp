@@ -11,13 +11,12 @@ from typing import TYPE_CHECKING
 
 import streamlit as st
 
+from src.ui.formatting import PARIS_TZ_NAME  # noqa: F401
+
 if TYPE_CHECKING:
     from src.data.repositories.duckdb_repo import DuckDBRepository
 
 logger = logging.getLogger(__name__)
-
-# Timezone Paris pour les conversions
-PARIS_TZ_NAME = "Europe/Paris"
 
 
 class SharedDBUnavailableError(RuntimeError):
@@ -102,6 +101,7 @@ COLUMNS_COMMON: list[str] = [
     "enemy_team_score",
     "team_mmr",
     "enemy_mmr",
+    "performance_score",  # pré-calculé all-time depuis player_match_enrichment
 ]
 
 # Colonnes calculées ajoutées par _enrich_matches_df (post-chargement)
@@ -179,8 +179,7 @@ def _resolve_player_xuid(db_path: str) -> str:
 
     Stratégie de fallback :
     1. sync_meta (key='xuid') — source canonique v5
-    2. player_match_stats.xuid — source legacy v3/v4 (toujours présente)
-    3. shared.xuid_aliases via gamertag — dernier recours
+    2. shared.xuid_aliases via gamertag — fallback v5.1
 
     Returns:
         XUID en string, ou "" si introuvable.
@@ -197,17 +196,7 @@ def _resolve_player_xuid(db_path: str) -> str:
             except Exception:
                 pass
 
-            # Stratégie 2 : player_match_stats.xuid (legacy v3/v4)
-            try:
-                result = conn.execute(
-                    "SELECT DISTINCT xuid FROM player_match_stats WHERE xuid IS NOT NULL LIMIT 1"
-                ).fetchone()
-                if result and result[0] and str(result[0]).strip():
-                    return str(result[0]).strip()
-            except Exception:
-                pass
-
-        # Stratégie 3 : xuid_aliases via shared_matches.duckdb (v5.1)
+        # Stratégie 2 : xuid_aliases via shared_matches.duckdb (v5.1)
         try:
             from pathlib import Path
 
@@ -217,15 +206,15 @@ def _resolve_player_xuid(db_path: str) -> str:
             shared_path = get_shared_matches_path_from_player(db_path)
             if shared_path and shared_path.exists():
                 with duckdb_read_only(shared_path) as shared_con:
-                    result = shared_con.execute(
-                        "SELECT xuid FROM xuid_aliases WHERE gamertag = ? LIMIT 1", [gamertag]
-                    ).fetchone()
-                    if result and result[0] and str(result[0]).strip():
-                        return str(result[0]).strip()
+                    from src.utils.xuid import lookup_xuid_for_gamertag
+
+                    resolved = lookup_xuid_for_gamertag(shared_con, gamertag)
+                    if resolved:
+                        return resolved
         except Exception:
             pass
 
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("_resolve_player_xuid: résolution XUID échouée pour %s: %s", db_path, e)
 
     return ""

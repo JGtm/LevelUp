@@ -19,6 +19,26 @@ from src.utils.polars_compat import ensure_polars as _to_polars
 logger = logging.getLogger(__name__)
 
 
+def _warn_session_filter_empty(
+    labels: list[str],
+    base_s: pl.DataFrame,
+    dff: pl.DataFrame,
+) -> None:
+    """Journalise l'incohérence quand le filtre session retourne un candidat vide.
+
+    Indique que base_s_ui contient le label demandé mais que les match_ids
+    correspondants sont absents de dff (désynchronisation de cache).
+    La navigation sera corrigée via la clé session_key dans _resolve_nav_index.
+    """
+    logger.warning(
+        "Filtre session vide pour labels=%s (base_s=%d lignes, dff=%d matchs). "
+        "L'index de navigation sera réinitialisé via session_key.",
+        labels,
+        len(base_s),
+        len(dff),
+    )
+
+
 def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
     dff: pl.DataFrame,
     filter_state: FilterState,  # noqa: F821 — forward ref, importé lazy
@@ -108,7 +128,8 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 )
                 if not candidate.is_empty():
                     dff = candidate
-                # else : dff reste inchangé (tous les matchs) — cas anormal
+                elif filter_state.picked_session_labels:
+                    _warn_session_filter_empty(filter_state.picked_session_labels, base_s, dff)
         else:
             dff = dff.clone()
 
@@ -142,7 +163,11 @@ def apply_filters(  # noqa: C901, PLR0912, PLR0913, PLR0915
             if "playlist_ui" in dff.columns
             else []
         )
-        dff = _apply_experience_filter(dff, filter_state.experience_types_selected, _exp_all_pls)
+        _cand_exp = _apply_experience_filter(
+            dff, filter_state.experience_types_selected, _exp_all_pls
+        )
+        if not _cand_exp.is_empty():
+            dff = _cand_exp
         _dff_after_experience = len(dff)
 
     # Conversion explicite set→list pour compatibilité Polars is_in()

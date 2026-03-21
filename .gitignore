@@ -68,6 +68,7 @@ out/
 nul
 *.spec
 app_settings.json
+db_profiles.json
 data/xuid_aliases.json
 GT-XUID.txt
 data/*.db
@@ -92,6 +93,7 @@ data/warehouse/metadata.db
 # Fichiers temporaires d'import SPNKr
 *.tmp.*.db
 data/*.tmp.*
+*.tmp.*
 
 # Documentation locale (non trackée)
 ROADMAP_*.md
@@ -118,3 +120,10 @@ To do.txt
 
 # Logs locaux (non trackés)
 data/logs/*
+
+# Scripts temporaires / de débogage locaux
+*_tmp.py
+query_weapons_tmp.py
+kill_python.bat
+data/.sync.lock
+data/warehouse/archive/shared_matches.duckdb

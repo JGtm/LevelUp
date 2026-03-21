@@ -267,8 +267,7 @@ class TestWeaponKillsMigration:
         cols = {
             r[0]
             for r in conn.execute(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name='weapon_kills'"
+                "SELECT column_name FROM information_schema.columns WHERE table_name='weapon_kills'"
             ).fetchall()
         }
         assert "weapon_id" in cols
@@ -307,8 +306,7 @@ class TestWeaponKillsMigration:
         cols = {
             r[0]
             for r in conn.execute(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_name='weapon_kills'"
+                "SELECT column_name FROM information_schema.columns WHERE table_name='weapon_kills'"
             ).fetchall()
         }
         assert "weapon_id" in cols
@@ -403,3 +401,116 @@ class TestFusionEndToEnd:
         canonical_id = WEAPON_FUSION_MAP_ID[fr_spnkr_id]
         name_fr = resolve_weapon_display(canonical_id, lang="fr")
         assert name_fr == "M41 SPNKr"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# weapon_labels DB lookup
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+class TestResolveWeaponFromDb:
+    """Tests resolve_weapon_display avec weapon_labels dans metadata.duckdb."""
+
+    def test_db_label_used_when_table_exists(self, tmp_path) -> None:
+        """Si weapon_labels existe, le label DB est utilisé en priorité."""
+        from unittest.mock import patch
+
+        from src.analysis._weapon_data import _resolve_weapon_from_db
+
+        db_file = tmp_path / "metadata.duckdb"
+        import duckdb as _ddb
+
+        with _ddb.connect(str(db_file)) as conn:
+            conn.execute(
+                "CREATE TABLE weapon_labels "
+                "(weapon_id UBIGINT PRIMARY KEY, name_en VARCHAR, name_fr VARCHAR)"
+            )
+            conn.execute("INSERT INTO weapon_labels VALUES (9999, 'TestEN', 'TestFR')")
+
+        with patch("src.analysis._weapon_data.get_metadata_db_path", return_value=db_file):
+            assert _resolve_weapon_from_db(9999, "fr") == "TestFR"
+            assert _resolve_weapon_from_db(9999, "en") == "TestEN"
+
+    def test_db_returns_none_when_no_table(self, tmp_path) -> None:
+        """Sans table weapon_labels → None (fallback Python)."""
+        from unittest.mock import patch
+
+        from src.analysis._weapon_data import _resolve_weapon_from_db
+
+        db_file = tmp_path / "metadata.duckdb"
+        import duckdb as _ddb
+
+        with _ddb.connect(str(db_file)) as conn:
+            conn.execute("CREATE TABLE career_ranks (id INTEGER)")
+
+        with patch("src.analysis._weapon_data.get_metadata_db_path", return_value=db_file):
+            assert _resolve_weapon_from_db(9999, "fr") is None
+
+    def test_db_returns_none_when_file_missing(self, tmp_path) -> None:
+        """Fichier absent → None (pas d'exception levée)."""
+        from unittest.mock import patch
+
+        from src.analysis._weapon_data import _resolve_weapon_from_db
+
+        absent = tmp_path / "absent.duckdb"
+        with patch("src.analysis._weapon_data.get_metadata_db_path", return_value=absent):
+            assert _resolve_weapon_from_db(9999, "fr") is None
+
+    def test_resolve_weapon_display_fallback_without_db(self) -> None:
+        """Sans DB, resolve_weapon_display utilise les dicts Python."""
+        from unittest.mock import patch
+
+        from src.analysis._weapon_data import _resolve_weapon_cached
+
+        with patch(
+            "src.analysis._weapon_data._resolve_weapon_from_db", return_value=None
+        ) as mock_db:
+            _resolve_weapon_cached.cache_clear()
+            cindershot_id = WEAPON_NAME_TO_INT["Cindershot"]
+            result = resolve_weapon_display(cindershot_id, lang="fr")
+            assert result == "Crémateur"
+            mock_db.assert_called()
+        _resolve_weapon_cached.cache_clear()  # Nettoyage
+
+    def test_resolve_weapon_display_uses_db_label(self, tmp_path) -> None:
+        """resolve_weapon_display retourne le label DB quand il existe (chemin DB)."""
+        from unittest.mock import patch
+
+        from src.analysis._weapon_data import _resolve_weapon_cached
+
+        db_file = tmp_path / "metadata.duckdb"
+        with duckdb.connect(str(db_file)) as conn:
+            conn.execute(
+                "CREATE TABLE weapon_labels "
+                "(weapon_id UBIGINT PRIMARY KEY, name_en VARCHAR, name_fr VARCHAR)"
+            )
+            conn.execute("INSERT INTO weapon_labels VALUES (8888, 'DbEN', 'DbFR')")
+
+        _resolve_weapon_cached.cache_clear()
+        try:
+            with patch("src.analysis._weapon_data.get_metadata_db_path", return_value=db_file):
+                result_fr = resolve_weapon_display(8888, lang="fr")
+                result_en = resolve_weapon_display(8888, lang="en")
+            assert result_fr == "DbFR"
+            assert result_en == "DbEN"
+        finally:
+            _resolve_weapon_cached.cache_clear()
+
+    def test_exception_in_db_returns_none_and_logs_debug(self, tmp_path, caplog) -> None:
+        """Une exception pendant la résolution DB log en debug et retourne None."""
+        import logging
+        from unittest.mock import patch
+
+        from src.analysis._weapon_data import _resolve_weapon_from_db
+
+        db_file = tmp_path / "corrupt.duckdb"
+        db_file.write_bytes(b"not a valid duckdb file")
+
+        with (
+            patch("src.analysis._weapon_data.get_metadata_db_path", return_value=db_file),
+            caplog.at_level(logging.DEBUG, logger="src.analysis._weapon_data"),
+        ):
+            result = _resolve_weapon_from_db(9999, "fr")
+
+        assert result is None
+        assert any("_resolve_weapon_from_db" in r.message for r in caplog.records)

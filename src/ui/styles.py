@@ -3,48 +3,12 @@
 from __future__ import annotations
 
 import html
+import logging
 import os
 
 from src.ui.player_assets import file_to_data_url
 
-# ---------------------------------------------------------------------------
-# Tooltip JS — injecté une fois avec le CSS, position:fixed pour échapper
-# à l'overflow-x:auto des conteneurs de tableaux.
-# ---------------------------------------------------------------------------
-_MAP_TOOLTIP_SCRIPT = """
-<script>
-(function() {
-    if (document.getElementById('_lvl_map_tip')) return;
-    var tip = document.createElement('div');
-    tip.id = '_lvl_map_tip';
-    tip.style.cssText = 'position:fixed;display:none;pointer-events:none;z-index:9999;';
-    var img = document.createElement('img');
-    img.style.cssText = 'width:220px;border-radius:6px;border:1px solid rgba(255,255,255,0.18);box-shadow:0 4px 20px rgba(0,0,0,0.75);';
-    tip.appendChild(img);
-    document.body.appendChild(tip);
-    document.addEventListener('mouseover', function(e) {
-        var cell = e.target.closest('.map-cell');
-        if (!cell) return;
-        var url = cell.getAttribute('data-thumb-url');
-        if (!url) return;
-        tip.querySelector('img').src = url;
-        tip.style.display = 'block';
-    });
-    document.addEventListener('mousemove', function(e) {
-        if (tip.style.display === 'none') return;
-        tip.style.left = Math.max(0, e.clientX - 110) + 'px';
-        tip.style.top  = Math.max(0, e.clientY - 250) + 'px';
-    });
-    document.addEventListener('mouseout', function(e) {
-        var cell = e.target.closest('.map-cell');
-        if (!cell) return;
-        var to = e.relatedTarget;
-        if (to && to.closest('.map-cell') === cell) return;
-        tip.style.display = 'none';
-    });
-})();
-</script>
-"""
+_log = logging.getLogger(__name__)
 
 
 def get_css_path() -> str:
@@ -68,8 +32,9 @@ def load_css() -> str:
     try:
         with open(css_path, encoding="utf-8") as f:
             css_content = f.read()
-        return f"<style>\n{css_content}\n</style>\n{_MAP_TOOLTIP_SCRIPT}"
+        return f"<style>\n{css_content}\n</style>"
     except FileNotFoundError:
+        _log.warning("CSS introuvable: %s — fallback minimal", css_path)
         # Fallback: CSS minimal si le fichier n'existe pas
         return """
         <style>

@@ -6,6 +6,7 @@ Sprint 8.2 - Visualise la contribution au score :
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import plotly.graph_objects as go
@@ -25,6 +26,8 @@ from src.visualization.theme import apply_halo_plot_style
 
 if TYPE_CHECKING:
     import polars as pl
+
+_log = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -60,32 +63,39 @@ def plot_participation_pie(
         .sort("total_score", descending=True)
     )
 
-    # Convertir en pandas pour Plotly
-    pdf = agg.to_pandas()
-
-    # Mapper les labels et couleurs
-    pdf["label"] = pdf["award_category"].map(
-        lambda x: cat_labels.get(x, x.capitalize() if x else viz_t("cat_label_other", lang))
-    )
-    pdf["color"] = pdf["award_category"].map(
-        lambda x: CATEGORY_COLORS.get(x, CATEGORY_COLORS["other"])
+    # Mapper les labels et couleurs (Polars natif)
+    agg = agg.with_columns(
+        pl.col("award_category")
+        .map_elements(
+            lambda x: cat_labels.get(x, x.capitalize() if x else viz_t("cat_label_other", lang)),
+            return_dtype=pl.Utf8,
+        )
+        .alias("label"),
+        pl.col("award_category")
+        .map_elements(
+            lambda x: CATEGORY_COLORS.get(x, CATEGORY_COLORS["other"]),
+            return_dtype=pl.Utf8,
+        )
+        .alias("color"),
     )
 
     # Filtrer les valeurs négatives pour le pie (pénalités)
-    # On les affiche séparément dans l'annotation
-    penalties = pdf[pdf["total_score"] < 0]["total_score"].sum()
-    pdf_positive = pdf[pdf["total_score"] > 0].copy()
+    penalties = agg.filter(pl.col("total_score") < 0)["total_score"].sum() or 0
+    agg_positive = agg.filter(pl.col("total_score") > 0)
+
+    if agg_positive.is_empty():
+        _log.debug("plot_participation_pie: aucune catégorie positive")
 
     fig = go.Figure()
 
-    if not pdf_positive.empty:
+    if not agg_positive.is_empty():
         text_info = "percent+value" if show_values else "percent"
 
         fig.add_trace(
             go.Pie(
-                labels=pdf_positive["label"],
-                values=pdf_positive["total_score"],
-                marker={"colors": pdf_positive["color"].tolist()},
+                labels=agg_positive["label"].to_list(),
+                values=agg_positive["total_score"].to_list(),
+                marker={"colors": agg_positive["color"].to_list()},
                 textinfo=text_info,
                 texttemplate="%{label}<br>%{value:,.0f} pts<br>(%{percent})"
                 if show_values
@@ -96,7 +106,7 @@ def plot_participation_pie(
         )
 
     # Annotation centrale avec le total
-    total_positive = pdf_positive["total_score"].sum()
+    total_positive = agg_positive["total_score"].sum() or 0
     total_net = total_positive + penalties
 
     fig.update_layout(
@@ -167,13 +177,20 @@ def plot_participation_bars(
         .head(top_n)
     )
 
-    # Convertir en pandas
-    pdf = agg.to_pandas()
+    # Traduire les award_name techniques en labels localisés (Polars natif)
+    agg = agg.with_columns(
+        pl.col("award_name")
+        .map_elements(lambda x: i18n_label("awards", x, lang=lang) or x, return_dtype=pl.Utf8)
+        .alias("award_label"),
+        pl.col("award_category")
+        .map_elements(
+            lambda x: CATEGORY_COLORS.get(x, CATEGORY_COLORS["other"]),
+            return_dtype=pl.Utf8,
+        )
+        .alias("color"),
+    )
 
-    # Traduire les award_name techniques en labels localisés
-    pdf["award_label"] = pdf["award_name"].map(lambda x: i18n_label("awards", x, lang=lang) or x)
-
-    if pdf.empty:
+    if agg.is_empty():
         fig = go.Figure()
         fig.add_annotation(
             text=viz_t("empty_no_data", lang),
@@ -185,28 +202,25 @@ def plot_participation_bars(
         )
         return apply_halo_plot_style(fig)
 
-    # Mapper les couleurs
-    pdf["color"] = pdf["award_category"].map(
-        lambda x: CATEGORY_COLORS.get(x, CATEGORY_COLORS["other"])
-    )
-
     # Inverser pour afficher du haut vers le bas
     if orientation == "h":
-        pdf = pdf.iloc[::-1]
+        agg = agg.reverse()
 
     fig = go.Figure()
+
+    labels = agg["award_label"].to_list()
+    scores = agg["score"].to_list()
+    counts = agg["count"].to_list()
+    colors = agg["color"].to_list()
 
     if orientation == "h":
         fig.add_trace(
             go.Bar(
-                y=pdf["award_label"],
-                x=pdf["score"],
+                y=labels,
+                x=scores,
                 orientation="h",
-                marker={"color": pdf["color"].tolist()},
-                text=[
-                    f"{int(s):,} pts ({int(c)}x)"
-                    for s, c in zip(pdf["score"], pdf["count"], strict=False)
-                ],
+                marker={"color": colors},
+                text=[f"{int(s):,} pts ({int(c)}x)" for s, c in zip(scores, counts, strict=False)],
                 textposition="outside",
                 hovertemplate=viz_t("hover_score_pts_h", lang),
             )
@@ -218,10 +232,10 @@ def plot_participation_bars(
     else:
         fig.add_trace(
             go.Bar(
-                x=pdf["award_label"],
-                y=pdf["score"],
-                marker={"color": pdf["color"].tolist()},
-                text=[f"{int(s):,}" for s in pdf["score"]],
+                x=labels,
+                y=scores,
+                marker={"color": colors},
+                text=[f"{int(s):,}" for s in scores],
                 textposition="outside",
                 hovertemplate=viz_t("hover_score_pts_v", lang),
             )
@@ -283,22 +297,19 @@ def plot_participation_by_match(
     if pivoted.height > last_n:
         pivoted = pivoted.tail(last_n)
 
-    # Convertir en pandas
-    pdf = pivoted.to_pandas()
-
     fig = go.Figure()
 
     # Ordre des catégories pour le stacking
     categories_order = ["kill", "assist", "objective", "vehicle", "other", "penalty"]
 
     for cat in categories_order:
-        if cat in pdf.columns:
+        if cat in pivoted.columns:
             cat_labels = get_category_labels(lang)
             fig.add_trace(
                 go.Bar(
                     name=cat_labels.get(cat, cat.capitalize()),
-                    x=pdf["match_id"],
-                    y=pdf[cat],
+                    x=pivoted["match_id"].to_list(),
+                    y=pivoted[cat].to_list(),
                     marker={"color": CATEGORY_COLORS.get(cat, CATEGORY_COLORS["other"])},
                     hovertemplate=f"<b>{cat_labels.get(cat, cat)}</b><br>"
                     + "%{y:,.0f} pts<extra></extra>",

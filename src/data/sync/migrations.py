@@ -337,7 +337,6 @@ def _recreate_highlight_events_with_sequence(conn: duckdb.DuckDBPyConnection, ma
             event_type VARCHAR NOT NULL,
             time_ms INTEGER,
             xuid VARCHAR,
-            gamertag VARCHAR,
             type_hint INTEGER,
             raw_json VARCHAR
         )
@@ -345,7 +344,11 @@ def _recreate_highlight_events_with_sequence(conn: duckdb.DuckDBPyConnection, ma
 
     # 4) Restaurer les données
     if table_exists(conn, "highlight_events_backup"):
-        conn.execute("INSERT INTO highlight_events SELECT * FROM highlight_events_backup")
+        conn.execute("""
+            INSERT INTO highlight_events (id, match_id, event_type, time_ms, xuid, type_hint, raw_json)
+            SELECT id, match_id, event_type, time_ms, xuid, type_hint, raw_json
+            FROM highlight_events_backup
+        """)
         conn.execute("DROP TABLE highlight_events_backup")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_highlight_match ON highlight_events(match_id)")
@@ -493,9 +496,22 @@ BACKFILL_FLAGS: dict[str, int] = {
     "participants_damage": 1 << 13,  # 8192
     "aliases": 1 << 14,  # 16384
     "participants_avg_life": 1 << 15,  # 32768 - Ajouté pour éviter détection infinie
-    # ── LUSR / CSR (v5.3) ──
-    "lusr": 1 << 16,  # 65536  — LUSR calculé localement (non classé)
-    "csr": 1 << 17,  # 131072 — CSR récupéré via API (classé)
+    # ── LUSR / CSR (v5.3) — non écrits en production ──
+    # ⚠️ Conflit potentiel avec MatchBits.EVENTS/ASSETS (bits 16-17) de constants.py.
+    # Ces entrées ne sont jamais posées sur match_registry.backfill_completed.
+    # Conservées pour rétrocompatibilité des tests uniquement.
+    "lusr": 1 << 16,  # 65536  — non utilisé en production
+    "csr": 1 << 17,  # 131072 — non utilisé en production
+    # ── Weapon kills (v5.5) — OBSOLÈTE ──
+    # Ce bit (18 = 262144) n'est jamais posé en production.
+    # Source de vérité : MatchBits.WEAPON_KILLS = 1 << 21 dans constants.py.
+    # Conservé pour rétrocompatibilité des tests uniquement.
+    "weapon_kills": 1 << 18,  # 262144 — OBSOLÈTE, voir MatchBits.WEAPON_KILLS (1<<21)
+    # ── Bits 19-22 : définis dans src.data.sync.constants.MatchBits ──
+    # KILLER_VICTIM_LOADED = 1 << 19  (524288)
+    # PVE_STATS            = 1 << 20  (1048576)
+    # WEAPON_KILLS         = 1 << 21  (2097152) ← source de vérité weapon_kills
+    # WEAPON_KILLS_NO_FILM = 1 << 22  (4194304)
 }
 
 
@@ -616,6 +632,14 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
     # au fichier (database_name = nom du fichier), pas de prefix.
     prefix = "shared." if catalog == "shared" else ""
 
+    # Utiliser v_match_full (v6) si disponible, sinon match_registry
+    match_source = f"{prefix}match_registry"
+    try:
+        conn.execute(f"SELECT 1 FROM {prefix}v_match_full LIMIT 1")
+        match_source = f"{prefix}v_match_full"
+    except Exception:
+        pass
+
     # Vérifier si la colonne enemy_mmr existe dans match_participants
     # (peut manquer dans les anciennes DBs ou les tests)
     # Note v5.1 : enemy_mmr est désormais correctement peuplé par le pipeline
@@ -678,6 +702,13 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             CASE WHEN p.team_id = 0 THEN r.team_1_score
                  ELSE r.team_0_score END AS enemy_team_score,
 
+            -- Somme des scores personnels par équipe (toujours cohérente entre équipes)
+            -- Fiable même quand CoreStats.Score de l'API mélange score objectif et somme perso
+            CASE WHEN p.team_id = 0 THEN r.team_0_ps_score
+                 ELSE r.team_1_ps_score END AS my_team_ps_score,
+            CASE WHEN p.team_id = 0 THEN r.team_1_ps_score
+                 ELSE r.team_0_ps_score END AS enemy_team_ps_score,
+
             -- MMR (enrichi depuis skill API)
             p.team_mmr,
             {enemy_mmr_expr},
@@ -692,7 +723,7 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             COALESCE(r.is_firefight, FALSE) AS is_firefight,
             COALESCE(r.is_ranked, FALSE) AS is_ranked
 
-        FROM {prefix}match_registry r
+        FROM {match_source} r
         JOIN {prefix}match_participants p
             ON r.match_id = p.match_id
     """)
@@ -1077,6 +1108,27 @@ def ensure_bot_teammate_column(conn: duckdb.DuckDBPyConnection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Migration player_match_enrichment : colonne dominance_flag (v5.7)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_dominance_flag_column(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute la colonne dominance_flag à player_match_enrichment si absente.
+
+    Qualifie le degré de domination d'un match :
+    - NULL : données médailles absentes (medals_loaded=FALSE)
+    - 0 : match normal (pas de Steaktacular)
+    - 1 : domination totale (notre équipe a obtenu Steaktacular)
+    - 2 : humiliation totale (l'équipe ennemie a obtenu Steaktacular)
+
+    Voir ``src.analysis._medal_verdicts.DominanceFlag``.
+    """
+    if not table_exists(conn, "player_match_enrichment"):
+        return
+    _add_column_if_missing(conn, "player_match_enrichment", "dominance_flag", "TINYINT")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Correction bot XIDs (bug legacy migrate_sqlite) — shared_matches.duckdb
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1106,6 +1158,28 @@ def ensure_fix_bot_xuid_shared(conn: duckdb.DuckDBPyConnection) -> None:
         )
     except Exception as e:
         logger.warning("ensure_fix_bot_xuid_shared : erreur non fatale : %s", e)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Scores PS (personal score sums) — shared_matches.duckdb
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def ensure_team_ps_scores(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute team_0_ps_score / team_1_ps_score à match_registry.
+
+    Ces colonnes stockent la somme des scores personnels de chaque équipe
+    calculée depuis match_participants, indépendamment du champ API
+    team_0_score / team_1_score (CoreStats.Score) qui peut mélanger le score
+    objectif et la somme des scores perso selon les versions de l'API Halo.
+
+    Idempotente : utilise ADD COLUMN IF NOT EXISTS.
+    """
+    if not table_exists(conn, "match_registry"):
+        return
+    _add_column_if_missing(conn, "match_registry", "team_0_ps_score", "INTEGER")
+    _add_column_if_missing(conn, "match_registry", "team_1_ps_score", "INTEGER")
+    logger.info("✅ ensure_team_ps_scores : colonnes team_0/1_ps_score présentes")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1163,8 +1237,7 @@ def _convert_weapon_name_to_id(conn: duckdb.DuckDBPyConnection) -> None:
     cols = {
         r[0]
         for r in conn.execute(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = 'weapon_kills'"
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'weapon_kills'"
         ).fetchall()
     }
 
@@ -1263,3 +1336,304 @@ def ensure_weapon_kills_table(conn: duckdb.DuckDBPyConnection) -> None:
         logger.debug("Table weapon_kills initialisée (shared_matches.duckdb)")
     except Exception as e:
         logger.error("Impossible d'initialiser weapon_kills : %s", e)
+
+
+def ensure_weapon_kills_reconciled_as(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ajoute les colonnes reconciled_as, attribution_path, player_index à weapon_kills.
+
+    Parser v2 : reconciled_as stocke le sentinel API sans écraser weapon_id,
+    attribution_path trace la source (fire_event/formula_a/none),
+    player_index identifie le joueur dans le film.
+    Idempotente.
+    """
+    _add_column_if_missing(conn, "weapon_kills", "reconciled_as", "UBIGINT")
+    _add_column_if_missing(conn, "weapon_kills", "attribution_path", "VARCHAR DEFAULT 'none'")
+    _add_column_if_missing(conn, "weapon_kills", "player_index", "INTEGER")
+
+    # Vue v_weapon_kills : COALESCE(reconciled_as, weapon_id)
+    conn.execute(
+        "CREATE OR REPLACE VIEW v_weapon_kills AS "
+        "SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id "
+        "FROM weapon_kills"
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# v6 — Vues de résolution d'IDs (abstraction couche SQL)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _detect_shared_prefix(conn: duckdb.DuckDBPyConnection, table: str) -> str | None:
+    """Retourne le préfixe catalog ("shared." ou "") pour une table dans shared.
+
+    Retourne None si la table n'est pas trouvée.
+    """
+    try:
+        rows = conn.execute(
+            "SELECT database_name FROM duckdb_tables() WHERE table_name = ?",
+            [table],
+        ).fetchall()
+        for row in rows:
+            db_name = row[0]
+            if db_name == "shared":
+                return "shared."
+            if db_name:
+                return ""
+    except Exception:
+        pass
+    return None
+
+
+def _create_v_gamertag_lookup(conn: duckdb.DuckDBPyConnection, prefix: str) -> None:
+    """Crée la vue v_gamertag_lookup dans shared_matches.duckdb.
+
+    Résolution XUID → gamertag courant.
+    Priorité : xuid_aliases > match_participants (FULL OUTER JOIN).
+    Filtre les lignes dont le gamertag est NULL.
+    """
+    conn.execute(f"""
+        CREATE OR REPLACE VIEW {prefix}v_gamertag_lookup AS
+        SELECT
+            COALESCE(xa.xuid, mp.xuid) AS xuid,
+            COALESCE(xa.gamertag, mp.gamertag) AS gamertag
+        FROM {prefix}xuid_aliases xa
+        FULL OUTER JOIN (
+            SELECT xuid, MAX(gamertag) AS gamertag
+            FROM {prefix}match_participants
+            WHERE gamertag IS NOT NULL
+            GROUP BY xuid
+        ) mp ON xa.xuid = mp.xuid
+        WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL
+    """)
+    logger.info("✅ Vue v_gamertag_lookup créée/mise à jour")
+
+
+def _create_v_match_full(
+    conn: duckdb.DuckDBPyConnection,
+    prefix: str,
+    meta_alias: str | None,
+) -> None:
+    """Crée la vue v_match_full dans shared_matches.duckdb.
+
+    Résout les noms d'assets depuis metadata.duckdb (via meta_alias) si disponible.
+    Si meta_alias est None, les colonnes *_fr et mode_* sont NULL,
+    et les colonnes EN tombent en fallback sur match_registry (comportement actuel).
+    """
+    if meta_alias:
+        map_en = "COALESCE(m.name_en, mr.map_name)"
+        pl_en = "COALESCE(p.name_en, mr.playlist_name)"
+        pp_en = "COALESCE(pp.name_en, mr.pair_name)"
+        gv_en = "COALESCE(gv.name_en, mr.game_variant_name)"
+        joins = f"""
+        LEFT JOIN {meta_alias}.maps m ON mr.map_id = m.asset_id
+        LEFT JOIN {meta_alias}.playlists p ON mr.playlist_id = p.asset_id
+        LEFT JOIN {meta_alias}.playlist_map_mode_pairs pp ON mr.pair_id = pp.asset_id
+        LEFT JOIN {meta_alias}.game_variants gv ON mr.game_variant_id = gv.asset_id"""
+        fr_cols = """
+        m.name_fr                                    AS map_name_fr,
+        p.name_fr                                    AS playlist_name_fr,
+        pp.name_fr                                   AS pair_name_fr,
+        gv.name_fr                                   AS game_variant_name_fr,
+        gv.mode_name                                 AS mode_name,
+        gv.mode_name_fr                              AS mode_name_fr,
+        p.playlist_canonical_en                      AS playlist_canonical_en,
+        p.playlist_canonical_fr                      AS playlist_canonical_fr"""
+    else:
+        map_en = "mr.map_name"
+        pl_en = "mr.playlist_name"
+        pp_en = "mr.pair_name"
+        gv_en = "mr.game_variant_name"
+        joins = ""
+        fr_cols = """
+        NULL AS map_name_fr,
+        NULL AS playlist_name_fr,
+        NULL AS pair_name_fr,
+        NULL AS game_variant_name_fr,
+        NULL AS mode_name,
+        NULL AS mode_name_fr,
+        NULL AS playlist_canonical_en,
+        NULL AS playlist_canonical_fr"""
+
+    conn.execute(f"""
+        CREATE OR REPLACE VIEW {prefix}v_match_full AS
+        SELECT
+            mr.match_id,
+            mr.start_time,
+            mr.duration_seconds,
+            mr.map_id,
+            mr.playlist_id,
+            mr.pair_id,
+            mr.game_variant_id,
+            mr.team_0_score,
+            mr.team_1_score,
+            mr.team_0_ps_score,
+            mr.team_1_ps_score,
+            mr.is_firefight,
+            mr.is_ranked,
+            mr.backfill_completed,
+            mr.events_loaded,
+            mr.medals_loaded,
+            mr.participants_loaded,
+            mr.sync_spnkr_version,
+            {map_en}                                 AS map_name,
+            {pl_en}                                  AS playlist_name,
+            {pp_en}                                  AS pair_name,
+            {gv_en}                                  AS game_variant_name,
+            {fr_cols}
+        FROM {prefix}match_registry mr{joins}
+    """)
+    logger.info("✅ Vue v_match_full créée/mise à jour (meta_alias=%s)", meta_alias)
+
+
+def _create_v_killer_victim_full(conn: duckdb.DuckDBPyConnection, prefix: str) -> None:
+    """Crée la vue v_killer_victim_full dans shared_matches.duckdb.
+
+    Résout killer_gamertag / victim_gamertag via v_gamertag_lookup.
+    Chaîne : vue (courant) > snapshot figé > xuid brut.
+    """
+    conn.execute(f"""
+        CREATE OR REPLACE VIEW {prefix}v_killer_victim_full AS
+        SELECT
+            kv.match_id,
+            kv.killer_xuid,
+            COALESCE(vk.gamertag, kv.killer_gamertag, kv.killer_xuid) AS killer_gamertag,
+            kv.victim_xuid,
+            COALESCE(vv.gamertag, kv.victim_gamertag, kv.victim_xuid) AS victim_gamertag,
+            kv.kill_count,
+            kv.time_ms,
+            kv.is_validated
+        FROM {prefix}killer_victim_pairs kv
+        LEFT JOIN {prefix}v_gamertag_lookup vk ON kv.killer_xuid = vk.xuid
+        LEFT JOIN {prefix}v_gamertag_lookup vv ON kv.victim_xuid = vv.xuid
+    """)
+    logger.info("✅ Vue v_killer_victim_full créée/mise à jour")
+
+
+def ensure_resolution_views(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée ou met à jour les 3 vues de résolution d'IDs dans shared_matches.duckdb.
+
+    Vues créées (idempotentes via CREATE OR REPLACE VIEW) :
+    - v_gamertag_lookup : XUID → gamertag courant
+    - v_match_full      : match_registry + noms résolus depuis metadata.duckdb
+    - v_killer_victim_full : killer_victim_pairs + gamertags résolus
+
+    Précondition : la connexion doit pointer sur shared_matches.duckdb
+    (directement ou via ATTACH AS shared).
+    """
+    prefix = _detect_shared_prefix(conn, "match_registry")
+    if prefix is None:
+        logger.warning("ensure_resolution_views: match_registry introuvable, vues non créées")
+        return
+
+    _create_v_gamertag_lookup(conn, prefix)
+
+    meta_alias = _try_attach_meta_for_views(conn)
+    _create_v_match_full(conn, prefix, meta_alias)
+    _create_v_killer_victim_full(conn, prefix)
+
+    logger.info("✅ Vues de résolution v6 créées/mises à jour")
+
+
+def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
+    """Tente d'attacher metadata.duckdb pour que v_match_full puisse résoudre les noms FR.
+
+    Retourne l'alias si réussi ET que la table maps existe, None sinon.
+    """
+    import contextlib
+
+    from src.utils.db import ensure_metadata_attached
+
+    alias = None
+    with contextlib.suppress(Exception):
+        alias = ensure_metadata_attached(conn)
+
+    if alias is None:
+        return None
+
+    # Vérifier que les tables i18n sont bien peuplées (Commit 0 requis)
+    with contextlib.suppress(Exception):
+        rows = conn.execute(
+            "SELECT table_name FROM duckdb_tables() WHERE table_name = 'maps'"
+        ).fetchall()
+        for _row in rows:
+            # Si la table est dans le bon catalog
+            db_name_rows = conn.execute(
+                "SELECT database_name FROM duckdb_tables() WHERE table_name = 'maps'"
+            ).fetchall()
+            if any(r[0] == alias for r in db_name_rows):
+                return alias
+    return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# metadata.duckdb — Référentiel weapon_labels
+# ─────────────────────────────────────────────────────────────────────────────
+
+_WEAPON_LABELS_DDL = """
+CREATE TABLE IF NOT EXISTS weapon_labels (
+    weapon_id UBIGINT PRIMARY KEY,
+    name_en   VARCHAR NOT NULL,
+    name_fr   VARCHAR NOT NULL
+)
+"""
+
+
+def ensure_weapon_labels(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée et peuple ``weapon_labels`` dans metadata.duckdb (idempotente).
+
+    Stocke les labels EN/FR pour chaque weapon_id filmshell (UBIGINT) et les
+    3 IDs sentinelles (0=Grenade, 1=Melee, 2=Vehicle).
+    Les lignes existantes ne sont jamais écrasées (INSERT OR IGNORE).
+    """
+    from src.analysis._weapon_data import (
+        WEAPON_FUSION_MAP,
+        WEAPON_INT_TO_NAME,
+        WEAPON_NAME_FR,
+    )
+
+    conn.execute(_WEAPON_LABELS_DDL)
+
+    rows: list[tuple[int, str, str]] = [
+        # Sentinelles
+        (0, "Grenade", "Grenade"),
+        (1, "Melee", "Corps à corps"),
+        (2, "Vehicle", "Véhicule"),
+    ]
+
+    for wid, name_en in WEAPON_INT_TO_NAME.items():
+        canonical = WEAPON_FUSION_MAP.get(name_en, name_en)
+        name_fr = WEAPON_NAME_FR.get(canonical, canonical)
+        rows.append((wid, name_en, name_fr))
+
+    conn.executemany(
+        "INSERT OR IGNORE INTO weapon_labels (weapon_id, name_en, name_fr) VALUES (?, ?, ?)",
+        rows,
+    )
+    logger.debug("weapon_labels : %d lignes insérées/ignorées", len(rows))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# metadata.duckdb — Référentiel medal_definitions
+# ─────────────────────────────────────────────────────────────────────────────
+
+_MEDAL_DEFINITIONS_DDL = """
+CREATE TABLE IF NOT EXISTS medal_definitions (
+    medal_name_id  BIGINT PRIMARY KEY,
+    name_fr        VARCHAR NOT NULL,
+    name_en        VARCHAR NOT NULL,
+    description_fr VARCHAR DEFAULT '',
+    description_en VARCHAR DEFAULT '',
+    is_custom      BOOLEAN DEFAULT FALSE
+)
+"""
+
+_CUSTOM_MEDAL_THRESHOLD = 9_000_000_000
+
+
+def ensure_medal_definitions_table(conn: duckdb.DuckDBPyConnection) -> None:
+    """Crée la table ``medal_definitions`` dans metadata.duckdb (idempotente).
+
+    Seul le schéma est créé ici. La population depuis les JSON est assurée
+    par ``scripts/populate_medal_metadata.py``.
+    """
+    conn.execute(_MEDAL_DEFINITIONS_DDL)

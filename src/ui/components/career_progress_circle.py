@@ -16,6 +16,73 @@ XP_HERO_TOTAL: int = 9_319_350  # XP cumulée pour atteindre le rang 272 (offici
 RANK_MAX: int = 272  # Rang maximum (Héros)
 
 
+def _progress_bar_color(pct: float) -> str:
+    """Retourne la couleur de barre selon le pourcentage de progression."""
+    if pct >= 75:
+        return "#00ff88"
+    if pct >= 50:
+        return THEME_COLORS.accent
+    if pct >= 25:
+        return "#ffaa00"
+    return "#ff6666"
+
+
+def _build_progress_gauge(
+    *,
+    value: float,
+    title_html: str,
+    subtitle: str,
+    bar_color: str,
+    height: int,
+) -> go.Figure:
+    """Construit un indicateur gauge de progression XP générique."""
+    bg_rgb = THEME_COLORS.bg_plot
+    bg_color = f"rgb({bg_rgb[0]}, {bg_rgb[1]}, {bg_rgb[2]})"
+
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=value,
+            number={"suffix": "%", "font": {"size": 36, "color": "white"}},
+            title={
+                "text": f"<b>{title_html}</b><br><span style='font-size:12px;color:#aaa'>{subtitle}</span>",
+                "font": {"size": 16, "color": "white"},
+            },
+            gauge={
+                "axis": {
+                    "range": [0, 100],
+                    "tickwidth": 0,
+                    "tickcolor": "rgba(0,0,0,0)",
+                    "dtick": 25,
+                    "tickfont": {"size": 10, "color": "#666"},
+                },
+                "bar": {"color": bar_color, "thickness": 0.7},
+                "bgcolor": "rgba(50, 60, 70, 0.3)",
+                "borderwidth": 0,
+                "steps": [
+                    {"range": [0, 25], "color": "rgba(255, 102, 102, 0.08)"},
+                    {"range": [25, 50], "color": "rgba(255, 170, 0, 0.08)"},
+                    {"range": [50, 75], "color": "rgba(51, 214, 255, 0.08)"},
+                    {"range": [75, 100], "color": "rgba(0, 255, 136, 0.08)"},
+                ],
+                "threshold": {
+                    "line": {"color": "white", "width": 2},
+                    "thickness": 0.8,
+                    "value": value,
+                },
+            },
+        )
+    )
+    fig.update_layout(
+        paper_bgcolor=bg_color,
+        plot_bgcolor=bg_color,
+        font={"color": "white"},
+        height=height,
+        margin={"t": 80, "b": 20, "l": 30, "r": 30},
+    )
+    return fig
+
+
 def create_career_progress_gauge(  # noqa: PLR0913
     current_xp: int,
     xp_for_next_rank: int,
@@ -44,63 +111,13 @@ def create_career_progress_gauge(  # noqa: PLR0913
     else:
         subtitle = f"{current_xp:,} / {xp_for_next_rank:,} XP"
 
-    # Couleur de la barre selon la progression
-    if progress_pct >= 75:
-        bar_color = "#00ff88"  # Vert vif
-    elif progress_pct >= 50:
-        bar_color = THEME_COLORS.accent  # Cyan Halo
-    elif progress_pct >= 25:
-        bar_color = "#ffaa00"  # Ambre
-    else:
-        bar_color = "#ff6666"  # Rouge doux
-
-    bg_rgb = THEME_COLORS.bg_plot
-    bg_color = f"rgb({bg_rgb[0]}, {bg_rgb[1]}, {bg_rgb[2]})"
-
-    fig = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=progress_pct,
-            number={"suffix": "%", "font": {"size": 36, "color": "white"}},
-            title={
-                "text": f"<b>{rank_name_fr}</b><br><span style='font-size:12px;color:#aaa'>{subtitle}</span>",
-                "font": {"size": 16, "color": "white"},
-            },
-            gauge={
-                "axis": {
-                    "range": [0, 100],
-                    "tickwidth": 0,
-                    "tickcolor": "rgba(0,0,0,0)",
-                    "dtick": 25,
-                    "tickfont": {"size": 10, "color": "#666"},
-                },
-                "bar": {"color": bar_color, "thickness": 0.7},
-                "bgcolor": "rgba(50, 60, 70, 0.3)",
-                "borderwidth": 0,
-                "steps": [
-                    {"range": [0, 25], "color": "rgba(255, 102, 102, 0.08)"},
-                    {"range": [25, 50], "color": "rgba(255, 170, 0, 0.08)"},
-                    {"range": [50, 75], "color": "rgba(51, 214, 255, 0.08)"},
-                    {"range": [75, 100], "color": "rgba(0, 255, 136, 0.08)"},
-                ],
-                "threshold": {
-                    "line": {"color": "white", "width": 2},
-                    "thickness": 0.8,
-                    "value": progress_pct,
-                },
-            },
-        )
-    )
-
-    fig.update_layout(
-        paper_bgcolor=bg_color,
-        plot_bgcolor=bg_color,
-        font={"color": "white"},
+    return _build_progress_gauge(
+        value=progress_pct,
+        title_html=rank_name_fr,
+        subtitle=subtitle,
+        bar_color=_progress_bar_color(progress_pct),
         height=height,
-        margin={"t": 80, "b": 20, "l": 30, "r": 30},
     )
-
-    return fig
 
 
 def compute_hero_progress(xp_total: int, rank: int, is_max_rank: bool) -> dict:
@@ -159,63 +176,10 @@ def create_hero_progress_gauge(
     else:
         subtitle = f"{xp_total:,} / {XP_HERO_TOTAL:,} XP"
 
-    # Couleur de la barre selon la progression
-    if hero_pct >= 75:
-        bar_color = "#00ff88"  # Vert vif
-    elif hero_pct >= 50:
-        bar_color = THEME_COLORS.accent  # Cyan Halo
-    elif hero_pct >= 25:
-        bar_color = "#ffaa00"  # Ambre
-    else:
-        bar_color = "#ff6666"  # Rouge doux
-
-    bg_rgb = THEME_COLORS.bg_plot
-    bg_color = f"rgb({bg_rgb[0]}, {bg_rgb[1]}, {bg_rgb[2]})"
-
-    fig = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=hero_pct,
-            number={"suffix": "%", "font": {"size": 36, "color": "white"}},
-            title={
-                "text": (
-                    f"<b>{t('career_progression_to_hero')}</b><br>"
-                    f"<span style='font-size:12px;color:#aaa'>{subtitle}</span>"
-                ),
-                "font": {"size": 16, "color": "white"},
-            },
-            gauge={
-                "axis": {
-                    "range": [0, 100],
-                    "tickwidth": 0,
-                    "tickcolor": "rgba(0,0,0,0)",
-                    "dtick": 25,
-                    "tickfont": {"size": 10, "color": "#666"},
-                },
-                "bar": {"color": bar_color, "thickness": 0.7},
-                "bgcolor": "rgba(50, 60, 70, 0.3)",
-                "borderwidth": 0,
-                "steps": [
-                    {"range": [0, 25], "color": "rgba(255, 102, 102, 0.08)"},
-                    {"range": [25, 50], "color": "rgba(255, 170, 0, 0.08)"},
-                    {"range": [50, 75], "color": "rgba(51, 214, 255, 0.08)"},
-                    {"range": [75, 100], "color": "rgba(0, 255, 136, 0.08)"},
-                ],
-                "threshold": {
-                    "line": {"color": "white", "width": 2},
-                    "thickness": 0.8,
-                    "value": hero_pct,
-                },
-            },
-        )
-    )
-
-    fig.update_layout(
-        paper_bgcolor=bg_color,
-        plot_bgcolor=bg_color,
-        font={"color": "white"},
+    return _build_progress_gauge(
+        value=hero_pct,
+        title_html=t("career_progression_to_hero"),
+        subtitle=subtitle,
+        bar_color=_progress_bar_color(hero_pct),
         height=height,
-        margin={"t": 80, "b": 20, "l": 30, "r": 30},
     )
-
-    return fig

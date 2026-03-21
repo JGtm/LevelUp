@@ -205,6 +205,9 @@ class KillerVictimPairRow:
     victim_gamertag: str | None = None
     kill_count: int = 1
     time_ms: int | None = None
+    # Note : is_validated est toujours False à l'insertion (stub DB non implémenté).
+    # La validation réelle se fait en mémoire via _validate_against_official()
+    # dans src.analysis.killer_victim → AntagonistsResult.is_validated.
     is_validated: bool = False
 
 

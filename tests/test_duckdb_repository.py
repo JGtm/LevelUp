@@ -367,13 +367,21 @@ class TestLoadDbProfiles:
         assert "profiles" in profiles
 
     def test_profiles_version_2(self):
-        """Vérifie que la version est >= 2.0 pour DuckDB."""
+        """Vérifie que la version est >= 2.0 pour DuckDB (skip si fichier absent)."""
+        from pathlib import Path
+
+        import pytest
+
         from src.data.repositories.factory import load_db_profiles
+
+        profiles_file = Path(__file__).parent.parent / "db_profiles.json"
+        if not profiles_file.exists():
+            pytest.skip("db_profiles.json absent sur cette machine")
 
         profiles = load_db_profiles()
         version = profiles.get("version", "1.0")
 
-        assert version >= "2.0", "db_profiles.json devrait être en version 2.0+"
+        assert float(version) >= 2.0, "db_profiles.json devrait être en version 2.0+"
 
     def test_profiles_contain_duckdb_paths(self):
         """Vérifie que les profils pointent vers des fichiers .duckdb."""
@@ -384,27 +392,6 @@ class TestLoadDbProfiles:
         for gamertag, profile in profiles.get("profiles", {}).items():
             db_path = profile.get("db_path", "")
             assert db_path.endswith(".duckdb"), f"{gamertag} devrait avoir un chemin .duckdb"
-
-
-class TestStreamlitBridge:
-    """Tests pour l'intégration Streamlit."""
-
-    def test_import_get_repository_for_player(self):
-        """Vérifie que get_repository_for_player est exporté."""
-        from src.data.integration import get_repository_for_player
-
-        assert callable(get_repository_for_player)
-
-    def test_mode_detection_returns_duckdb(self):
-        """Vérifie que l'auto-détection retourne DUCKDB pour v2.0."""
-        from src.data.integration import get_repository_mode_from_settings
-        from src.data.repositories.factory import RepositoryMode
-
-        # Sans variable d'environnement et avec db_profiles v2.0
-        # devrait retourner DUCKDB
-        mode = get_repository_mode_from_settings()
-
-        assert mode == RepositoryMode.DUCKDB
 
 
 def _has_player_match_enrichment_table() -> bool:
@@ -437,6 +424,14 @@ class TestDuckDBRepositoryWithRealData:
     def repo(self):
         """Crée un repository avec des vraies données."""
         from src.data.repositories.duckdb_repo import DuckDBRepository
+
+        shared_v2 = Path("data/warehouse/shared_matches_v2.duckdb")
+        if shared_v2.exists():
+            try:
+                conn = duckdb.connect(str(shared_v2), read_only=True)
+                conn.close()
+            except duckdb.IOException:
+                pytest.skip("shared_matches_v2.duckdb verrouillé par un autre processus")
 
         repo = DuckDBRepository(
             player_db_path="data/players/JGtm/stats.duckdb",

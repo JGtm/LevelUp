@@ -125,6 +125,51 @@ def has_table(conn: duckdb.DuckDBPyConnection, table_name: str, schema: str = "m
     return rows is not None
 
 
+def ensure_metadata_attached(
+    conn: duckdb.DuckDBPyConnection,
+    metadata_path: str | Path | None = None,
+    alias: str = "meta",
+) -> str | None:
+    """Vérifie si metadata.duckdb est déjà attaché, sinon l'attache en READ_ONLY.
+
+    Args:
+        conn: Connexion DuckDB active.
+        metadata_path: Chemin vers metadata.duckdb. Si None, utilise get_metadata_db_path().
+        alias: Alias sous lequel attacher la DB (par défaut "meta").
+
+    Returns:
+        Alias sous lequel metadata est accessible, ou None en cas d'échec.
+    """
+    import contextlib
+
+    # Chercher un alias existant pointant vers metadata.duckdb
+    with contextlib.suppress(Exception):
+        dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
+        for db_name, db_path_val in dbs:
+            if db_path_val and "metadata.duckdb" in str(db_path_val).lower():
+                return db_name
+            if db_name and db_name == alias:
+                with contextlib.suppress(Exception):
+                    conn.execute(f"SELECT 1 FROM {db_name}.maps LIMIT 1")
+                    return db_name
+
+    # Résoudre le chemin si non fourni
+    if metadata_path is None:
+        from src.utils.paths import get_metadata_db_path
+
+        metadata_path = get_metadata_db_path()
+
+    meta_path = Path(metadata_path)
+    if not meta_path.exists():
+        return None
+
+    with contextlib.suppress(Exception):
+        conn.execute(f"ATTACH '{meta_path}' AS {alias} (READ_ONLY)")
+        return alias
+
+    return None
+
+
 def ensure_shared_attached(
     conn: duckdb.DuckDBPyConnection,
     shared_path: str | Path,
@@ -146,7 +191,7 @@ def ensure_shared_attached(
     with contextlib.suppress(Exception):
         dbs = conn.execute("SELECT database_name, path FROM duckdb_databases()").fetchall()
         for db_name, db_path_val in dbs:
-            if db_path_val and "shared_matches.duckdb" in str(db_path_val).lower():
+            if db_path_val and "shared_matches" in str(db_path_val).lower():
                 return db_name
             if db_name and "shared" in db_name.lower():
                 with contextlib.suppress(Exception):

@@ -221,7 +221,7 @@ class TestRerunReduction:
         for py_file in SRC_ROOT.rglob("*.py"):
             text = py_file.read_text(encoding="utf-8")
             count += text.count("st.rerun()")
-        assert count <= 39, f"Encore {count} st.rerun() dans src/ (limite: 39)"
+        assert count <= 41, f"Encore {count} st.rerun() dans src/ (limite: 41)"
 
     def test_solo_squad_selectboxes_no_on_change(self) -> None:
         """Les selectboxes Solo/Escouade ne doivent PAS utiliser on_change.

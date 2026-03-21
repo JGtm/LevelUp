@@ -14,24 +14,40 @@
 
 ## Setup Wizard (recommandé)
 
-**LevelUp configure tout automatiquement via un wizard intégré.**
-Après avoir double-cliqué sur `LevelUp.bat`, le wizard s'ouvre dans le navigateur et guide les étapes suivantes :
+**v6 — Zéro configuration pour les utilisateurs standard.** LevelUp intègre son propre client ID Azure.
+Le wizard ne demande que deux choses :
 
-| Étape | Parcours Xbox Express | Parcours Azure manuel |
-|-------|----------------------|----------------------|
-| 1 | Saisir le Client ID Azure (sans secret) | Saisir le Client ID Azure |
-| 2 | Cliquer “Se connecter avec Xbox” (device code automatique) | Lancer `spnkr_get_refresh_token.py --device-code` + coller le token |
-| 3 | *(automatique)* gamertag + XUID résolus, profil créé | Saisir le gamertag manuellement |
+1. **Votre gamertag** — saisi dans l'interface du wizard
+2. **Authentification Device Code** — ouvrir `https://xbox.com/activate` et entrer le code affiché
+
+Aucun compte Azure, aucune App Registration, aucun fichier `.env.local` requis pour une utilisation normale.
+
+| | 🎮 Xbox Express (défaut v6) | ☁️ Azure Manuel (avancé) |
+|-|------------------------------|--------------------------|
+| App Registration Azure | **Non requise** (intégrée) | Requise (la vôtre) |
+| Refresh token | **Auto** (Device Code) | Manuel (script) |
+| gamertag + XUID | **Auto** (résolu via OAuth) | Manuel |
+| Profil joueur dans `db_profiles.json` | **Auto** (créé par le wizard) | Manuel |
+| Stockage du token | `stats.duckdb` (sync_meta) | `.env.local` |
+| Étapes dans le wizard | **2** | **3** |
 
 **Le wizard gère automatiquement :**
-- Création de `.env.local` avec les credentials
 - Obtention et stockage du refresh token OAuth (dans `stats.duckdb/sync_meta`)
 - Création du profil joueur dans `db_profiles.json`
 - Smoke test de vérification sur 20 matchs
 
-> Si le wizard ne s'affiche pas, c'est que la configuration est déjà complète.
-> Pour forcer son réaffichage : supprimer `.env.local` ou `db_profiles.json`.
+### Note pour les forks / développeurs
 
+Le `LEVELUP_CLIENT_ID` intégré est lié à l'App Registration Azure de ce projet.
+**Si vous forkez LevelUp**, créez votre propre App Registration Azure gratuite
+(voir [§ Configuration Azure détaillée](#configuration-azure-détaillée) ci-dessous) et définissez :
+
+```env
+# .env.local
+SPNKR_AZURE_CLIENT_ID=votre_propre_client_id
+```
+
+Cette variable est prioritaire sur le client ID intégré (`LEVELUP_CLIENT_ID` dans `src/auth/_constants.py`).
 ---
 
 ## Configuration Azure détaillée

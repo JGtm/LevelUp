@@ -77,10 +77,10 @@ async def get_tokens(  # noqa: C901, PLR0915
     if not oauth_refresh_token and gamertag:
         oauth_refresh_token = _load_refresh_token_from_db(gamertag) or oauth_refresh_token
 
-    if not (azure_client_id and azure_client_secret and oauth_refresh_token):
+    if not (azure_client_id and oauth_refresh_token):
         raise RuntimeError(
             "Tokens manquants: définis soit SPNKR_SPARTAN_TOKEN + SPNKR_CLEARANCE_TOKEN, "
-            "soit SPNKR_AZURE_CLIENT_ID + SPNKR_AZURE_CLIENT_SECRET + SPNKR_OAUTH_REFRESH_TOKEN."
+            "soit SPNKR_AZURE_CLIENT_ID + SPNKR_OAUTH_REFRESH_TOKEN (ou SPNKR_OAUTH_REFRESH_TOKEN_<GT>)."
         )
 
     from src.data.sync._auth import refresh_halo_tokens
@@ -112,11 +112,23 @@ def _load_refresh_token_from_db(gamertag: str) -> str:
     return ""
 
 
-def ensure_spnkr_tokens(*, timeout_seconds: int = 12) -> tuple[bool, str | None]:
+def ensure_spnkr_tokens(
+    *, timeout_seconds: int = 12, db_path: str | None = None, gamertag: str | None = None
+) -> tuple[bool, str | None]:
     """Best-effort: s'assure que SPNKR_SPARTAN_TOKEN + SPNKR_CLEARANCE_TOKEN sont disponibles.
 
     Utile quand on utilise le cache d'apparence (donc pas d'appel API au run courant),
     mais qu'on veut quand même télécharger des assets /hi/Images/file/ qui exigent une auth.
+
+    Stratégie (ordre de priorité) :
+    1. Tokens déjà en env (réutilisation directe)
+    2. SPNKR_AZURE_CLIENT_ID + SPNKR_OAUTH_REFRESH_TOKEN[_<GT>] (méthode legacy)
+    3. LevelUp MSAL (cache process ou silent refresh via db_path)
+
+    Args:
+        db_path: Chemin vers stats.duckdb du joueur — nécessaire pour le fallback
+            LevelUp MSAL (cache process ou silent refresh).
+        gamertag: Gamertag du joueur pour résolution du token per-player.
 
     Returns:
         Tuple (ok, error_message).
@@ -137,6 +149,7 @@ def ensure_spnkr_tokens(*, timeout_seconds: int = 12) -> tuple[bool, str | None]
                 spartan_token=st,
                 clearance_token=ct,
                 timeout_seconds=int(timeout_seconds),
+                gamertag=gamertag,
             )
 
     try:
@@ -145,6 +158,24 @@ def ensure_spnkr_tokens(*, timeout_seconds: int = 12) -> tuple[bool, str | None]
         ct = str(os.environ.get("SPNKR_CLEARANCE_TOKEN") or "").strip()
         if st and ct:
             return True, None
-        return False, "Tokens SPNKr introuvables (env et Azure refresh non configurés)."
-    except Exception as e:
-        return False, str(e)
+    except Exception:
+        pass
+
+    # Fallback : LevelUp MSAL (cache process ou silent refresh)
+    if db_path:
+        try:
+            from pathlib import Path
+
+            from src.auth.provider import AuthRequiredError, get_halo_tokens_or_raise
+
+            tokens = _run_sync(
+                get_halo_tokens_or_raise(Path(db_path)),
+                timeout=float(timeout_seconds) + 20.0,
+            )
+            os.environ["SPNKR_SPARTAN_TOKEN"] = tokens.spartan_token
+            os.environ["SPNKR_CLEARANCE_TOKEN"] = tokens.clearance_token
+            return True, None
+        except (AuthRequiredError, Exception):
+            pass
+
+    return False, "Tokens SPNKr introuvables (env, Azure refresh, et LevelUp MSAL non configurés)."

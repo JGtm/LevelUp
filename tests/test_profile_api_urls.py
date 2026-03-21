@@ -162,7 +162,7 @@ class TestResolveInventoryPngViaApi:
         return session
 
     def test_none_path(self):
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             resolve_inventory_png_via_api(
                 MagicMock(), None, spartan_token="st", clearance_token="ct"
             )
@@ -170,7 +170,7 @@ class TestResolveInventoryPngViaApi:
         assert result is None
 
     def test_not_inventory_path(self):
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             resolve_inventory_png_via_api(
                 MagicMock(), "Other/path.json", spartan_token="st", clearance_token="ct"
             )
@@ -197,7 +197,7 @@ class TestResolveInventoryPngViaApi:
         session = MagicMock()
         session.get = MagicMock(return_value=resp_mock)
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             resolve_inventory_png_via_api(
                 session,
                 "Inventory/Spartan/BackdropImages/x.json",
@@ -217,7 +217,7 @@ class TestResolveInventoryPngViaApi:
         session = MagicMock()
         session.get = MagicMock(return_value=resp_mock)
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             resolve_inventory_png_via_api(
                 session,
                 "Inventory/Spartan/BackdropImages/x.json",
@@ -247,7 +247,7 @@ class TestResolveInventoryPngViaApi:
         session = MagicMock()
         session.get = MagicMock(return_value=resp_mock)
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             resolve_inventory_png_via_api(
                 session, "Inventory/Spartan/x.json", spartan_token="st", clearance_token="ct"
             )
@@ -271,7 +271,7 @@ class TestResolveInventoryPngViaApi:
         session = MagicMock()
         session.get = MagicMock(return_value=resp_mock)
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             resolve_inventory_png_via_api(
                 session, "Inventory/item.json", spartan_token="st", clearance_token="ct"
             )
@@ -291,7 +291,7 @@ class TestResolveInventoryPngViaApi:
         session = MagicMock()
         session.get = MagicMock(return_value=resp_mock)
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             resolve_inventory_png_via_api(
                 session, "Inventory/item.json", spartan_token="st", clearance_token="ct"
             )

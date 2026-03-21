@@ -31,8 +31,7 @@ class KillerVictimMixin:
     ):
         """Charge les paires killer→victim en DataFrame Polars.
 
-        Lit depuis shared.killer_victim_pairs (v5) avec fallback
-        sur la table locale killer_victim_pairs (compat v4).
+        Lit depuis shared.v_killer_victim_full (v6, vue garantie présente).
 
         Args:
             match_id: Filtrer par un match spécifique.
@@ -61,10 +60,8 @@ class KillerVictimMixin:
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
         limit_sql = f"LIMIT {int(limit)}" if limit else ""
 
-        # Déterminer la source : shared (v5) ou locale (compat)
-        table_ref = "killer_victim_pairs"
-        if self._has_shared_table("killer_victim_pairs"):
-            table_ref = "shared.killer_victim_pairs"
+        # Vue v6 garantie présente
+        table_ref = "shared.v_killer_victim_full"
 
         sql = f"""
             SELECT
@@ -147,26 +144,17 @@ class KillerVictimMixin:
         }
 
     def has_killer_victim_pairs(self) -> bool:
-        """Vérifie si killer_victim_pairs existe et contient des données.
+        """Vérifie si v_killer_victim_full contient des données.
 
-        Cherche dans shared (v5) puis locale (compat).
+        Vue v6 garantie présente — aucun fallback nécessaire.
 
         Returns:
             True si des paires sont disponibles.
         """
         conn = self._get_connection()
-
-        # Vérifier shared d'abord (v5)
-        if self._has_shared_table("killer_victim_pairs"):
-            try:
-                row = conn.execute("SELECT 1 FROM shared.killer_victim_pairs LIMIT 1").fetchone()
-                return row is not None
-            except Exception:
-                return False
-
-        # Fallback table locale (compat v4)
         try:
-            row = conn.execute("SELECT 1 FROM killer_victim_pairs LIMIT 1").fetchone()
+            row = conn.execute("SELECT 1 FROM shared.v_killer_victim_full LIMIT 1").fetchone()
             return row is not None
         except Exception:
+            logger.warning("has_killer_victim_pairs: erreur v_killer_victim_full", exc_info=True)
             return False

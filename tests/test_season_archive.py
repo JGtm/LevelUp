@@ -108,6 +108,65 @@ def temp_player_db(tmp_path: Path):
         del conn
         gc.collect()
 
+    # Créer shared DB (v5.1 — get_match_count requiert shared.match_participants)
+    warehouse = tmp_path / "warehouse"
+    warehouse.mkdir(parents=True)
+    shared_conn = duckdb.connect(str(warehouse / "shared_matches.duckdb"))
+    try:
+        shared_conn.execute("""
+            CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP)
+        """)
+        shared_conn.execute("""
+            CREATE TABLE match_participants (
+                match_id VARCHAR, xuid VARCHAR,
+                outcome INTEGER DEFAULT 2, team_id INTEGER DEFAULT 0,
+                kills SMALLINT, deaths SMALLINT, assists SMALLINT,
+                shots_fired INTEGER DEFAULT 200, shots_hit INTEGER DEFAULT 90,
+                avg_life_seconds FLOAT DEFAULT 45.0, score INTEGER DEFAULT 1500,
+                PRIMARY KEY (match_id, xuid)
+            )
+        """)
+        for match_id, start_time, _map_id, _map_name, kills, deaths, assists in matches:
+            shared_conn.execute("INSERT INTO match_registry VALUES (?, ?)", [match_id, start_time])
+            shared_conn.execute(
+                "INSERT INTO match_participants (match_id, xuid, kills, deaths, assists) "
+                "VALUES (?, 'xuid123', ?, ?, ?)",
+                [match_id, kills, deaths, assists],
+            )
+        shared_conn.execute("""
+            CREATE OR REPLACE VIEW mv_player_matches AS
+            SELECT
+                r.match_id, r.start_time,
+                NULL AS map_id, NULL AS map_name,
+                NULL AS playlist_id, NULL AS playlist_name,
+                NULL AS pair_id, NULL AS pair_name,
+                NULL AS game_variant_id, NULL AS game_variant_name,
+                p.outcome, p.team_id,
+                CASE WHEN p.deaths > 0
+                    THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
+                         / CAST(p.deaths AS FLOAT)
+                    ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
+                END AS kda,
+                0 AS max_killing_spree, 0 AS headshot_kills,
+                COALESCE(p.avg_life_seconds, 0) AS avg_life_seconds,
+                600 AS time_played_seconds,
+                COALESCE(p.kills, 0) AS kills,
+                COALESCE(p.deaths, 0) AS deaths,
+                COALESCE(p.assists, 0) AS assists,
+                NULL AS accuracy,
+                50 AS my_team_score, 45 AS enemy_team_score,
+                1500.0 AS team_mmr, 1480.0 AS enemy_mmr,
+                p.score AS personal_score,
+                FALSE AS is_firefight, FALSE AS is_ranked,
+                p.xuid
+            FROM match_registry r
+            JOIN match_participants p ON r.match_id = p.match_id
+        """)
+    finally:
+        shared_conn.close()
+        del shared_conn
+        gc.collect()
+
     return db_path
 
 

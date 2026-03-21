@@ -1,17 +1,20 @@
 """Gestion des médailles : labels, icônes et affichage en grille.
 
-Ce module centralise les fonctions liées aux médailles Halo Infinite :
-- Chargement des fichiers de traduction (FR/EN)
+Ce module centralise les fonctions UI liées aux médailles Halo Infinite :
+- Chargement des labels depuis ``medal_definitions`` (metadata.duckdb)
 - Récupération des icônes embarquées (static/medals/icons/)
 - Affichage d'une grille de médailles dans Streamlit
 """
 
 from __future__ import annotations
 
-import json
+import base64
+import logging
 import os
 
 import streamlit as st
+
+from src.data.medal_definitions import load_medal_name_maps as _load_medal_name_maps
 
 __all__ = [
     "load_medal_name_maps",
@@ -22,69 +25,19 @@ __all__ = [
     "render_medals_grid",
 ]
 
-
-def _medals_json_mtime() -> float:
-    """Date de modification des JSON médailles (pour invalider le cache)."""
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    base = os.path.join(repo_root, "static", "medals")
-    t = 0.0
-    for name in ("medals_fr.json", "medals_en.json"):
-        p = os.path.join(base, name)
-        if os.path.exists(p):
-            t = max(t, os.path.getmtime(p))
-    return t
+logger = logging.getLogger(__name__)
 
 
 @st.cache_data(show_spinner=False)
-def load_medal_name_maps(_json_mtime: float = 0.0) -> tuple[dict[str, str], dict[str, str]]:
-    """Charge les labels de médailles.
+def load_medal_name_maps() -> tuple[dict[str, str], dict[str, str]]:
+    """Charge les labels de médailles (wrapper Streamlit cache).
 
-    Le cache est invalidé quand les fichiers JSON sont modifiés (via _json_mtime).
+    Délègue à ``src.data.medal_definitions.load_medal_name_maps()``.
 
     Returns:
         Tuple (fr_map, en_map) où chaque map est {str(NameId): "Label"}.
-
-    Notes:
-        - Priorité au fichier FR: static/medals/medals_fr.json
-        - Fallback: static/medals/medals_en.json
-
-    Formats acceptés:
-        {"<NameId>": "Nom"}
-        {"<NameId>": {"name": "...", "label": "...", "fr": "...", "name_fr": "..."}}
     """
-
-    def _load(path: str) -> dict[str, str]:
-        if not os.path.exists(path):
-            return {}
-        try:
-            with open(path, encoding="utf-8") as f:
-                raw = json.load(f) or {}
-        except Exception:
-            return {}
-        if not isinstance(raw, dict):
-            return {}
-
-        out: dict[str, str] = {}
-        for k, v in raw.items():
-            kid = str(k)
-            if isinstance(v, str) and v.strip():
-                out[kid] = v.strip()
-                continue
-            if isinstance(v, dict):
-                for key in ("fr", "name_fr", "nameFr", "label_fr", "labelFr", "label", "name"):
-                    val = v.get(key)
-                    if isinstance(val, str) and val.strip():
-                        out[kid] = val.strip()
-                        break
-        return out
-
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    fr_map = _load(os.path.join(repo_root, "static", "medals", "medals_fr.json"))
-    # Fallback EN : nouveau fichier généré (et compat avec un éventuel ancien medals.json)
-    en_map = _load(os.path.join(repo_root, "static", "medals", "medals_en.json"))
-    if not en_map:
-        en_map = _load(os.path.join(repo_root, "static", "medals", "medals.json"))
-    return fr_map, en_map
+    return _load_medal_name_maps()
 
 
 def get_local_medals_icons_dir() -> str:
@@ -106,7 +59,7 @@ def medal_has_known_label(nid: int) -> bool:
     Returns:
         True si un label existe, False sinon.
     """
-    fr_map, en_map = load_medal_name_maps(_json_mtime=_medals_json_mtime())
+    fr_map, en_map = load_medal_name_maps()
     key = str(int(nid))
     return key in fr_map or key in en_map
 
@@ -121,11 +74,28 @@ def medal_label(nid: int, lang: str = "fr") -> str:
     Returns:
         Label de la médaille ou générique si inconnu.
     """
-    fr_map, en_map = load_medal_name_maps(_json_mtime=_medals_json_mtime())
+    fr_map, en_map = load_medal_name_maps()
     key = str(int(nid))
     if lang == "en":
         return en_map.get(key) or fr_map.get(key) or f"Medal #{nid}"
     return fr_map.get(key) or en_map.get(key) or f"Médaille #{nid}"
+
+
+@st.cache_data(show_spinner=False)
+def _medal_icon_b64(path: str) -> str:
+    """Encode une icône PNG en data URI base64 (mis en cache)."""
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+
+def _medal_icon_html(path: str) -> str:
+    """Retourne le HTML d'une icône médaille avec wrapper carré uniforme."""
+    b64 = _medal_icon_b64(path)
+    return (
+        "<div class='os-medal-icon-wrap'>"
+        f"<img class='os-medal-icon' src='data:image/png;base64,{b64}' alt=''>"
+        "</div>"
+    )
 
 
 def medal_icon_path(nid: int) -> str | None:
@@ -188,7 +158,7 @@ def render_medals_grid(
         icon = medal_icon_path(nid)
 
         if icon:
-            col.image(icon, width="stretch")
+            col.markdown(_medal_icon_html(icon), unsafe_allow_html=True)
         else:
             col.markdown(
                 f"<div class='os-medal-missing'>#{nid}</div>",

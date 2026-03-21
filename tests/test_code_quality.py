@@ -25,10 +25,10 @@ def test_no_new_size_violations() -> None:
 
     Fonctionne en mode ratchet : les violations existantes (baseline) sont tolérées,
     seules les NOUVELLES violations font échouer le test.
-    Mettre à jour le baseline après un refactoring : python scripts/check_code_size.py --update
+    Mettre à jour le baseline après un refactoring : python scripts/enforce_size_limits.py --update
     """
     result = subprocess.run(
-        [sys.executable, "scripts/check_code_size.py"],
+        [sys.executable, "scripts/enforce_size_limits.py"],
         capture_output=True,
         text=True,
     )
@@ -36,7 +36,7 @@ def test_no_new_size_violations() -> None:
         f"Nouvelles violations de taille detectees :\n{result.stdout}\n"
         "Options :\n"
         "  1. Corriger la violation (split de la fonction/module)\n"
-        "  2. Apres refactoring : python scripts/check_code_size.py --update"
+        "  2. Apres refactoring : python scripts/enforce_size_limits.py --update"
     )
 
 
@@ -111,5 +111,8 @@ _SRP_EXCEPTIONS: frozenset[str] = frozenset(
         "compute_and_store_for_match",  # citations/engine.py — calcul + écriture citations (atomique)
         # _compute_and_update_performance_score — découpé en _compute + _update (Phase P5)
         "_render_map_and_rank",  # match_view.py — composant UI composite (carte + rang côte à côte)
+        "_exchange_and_cache",  # auth/provider.py — échange access_token → Halo tokens + mise en cache (atomique)
+        "_run_engine_and_cleanup",  # _sync_duckdb_ops.py — exécute sync + engine.close() (try/finally atomique)
+        "_render_single_teammate_weapon_and_map",  # teammates_views.py — composant UI composite (armes + carte, toujours affichés ensemble)
     }
 )

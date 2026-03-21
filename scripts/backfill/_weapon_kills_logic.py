@@ -4,25 +4,28 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_DEFAULT_CACHE_DIR = _PROJECT_ROOT / "data" / "investigation" / "chunks"
+_DEFAULT_CACHE_DIR = _PROJECT_ROOT / "data" / "cache" / "film_chunks"
 
 # Nombre de matchs traités en parallèle (limité pour ne pas saturer l'API SPNKr)
 _MATCH_CONCURRENCY = 4
 
-# Intervalle d'affichage progression (tous les N matchs)
-_PROGRESS_INTERVAL = 25
+# Intervalle d'affichage progression (toutes les N secondes)
+_PROGRESS_INTERVAL_SECS = 10.0
 
 
 def _log_weapon_progress(progress: dict, total: int) -> None:
-    """Affiche la progression du backfill weapon_kills tous les _PROGRESS_INTERVAL matchs."""
+    """Affiche la progression du backfill weapon_kills toutes les _PROGRESS_INTERVAL_SECS secondes."""
     done = progress["done"]
-    if done % _PROGRESS_INTERVAL == 0 or done == total:
+    is_final = done == total
+    now = time.monotonic()
+    if is_final or (now - progress["last_log"]) >= _PROGRESS_INTERVAL_SECS:
         pct = done * 100 // total if total else 100
         logger.info(
             "⚔️  Weapon kills : %d/%d matchs (%d%%) — %d lignes, %d skips, %d erreurs",
@@ -33,6 +36,62 @@ def _log_weapon_progress(progress: dict, total: int) -> None:
             progress["skipped"],
             progress["errors"],
         )
+        progress["last_log"] = now
+
+
+async def collect_weapon_match_ids_all_players(
+    players: list,
+    shared_conn: Any,
+    *,
+    force: bool = False,
+    limit_per_player: int = 5000,
+) -> list[str]:
+    """Collecte l'union dédupliquée des match_ids weapons pour tous les joueurs.
+
+    Avec la v2 du parser (scan_fire_events_all + correlate_all_players), un
+    match est traité pour **tous les joueurs en une seule passe**. Appeler
+    run_weapon_kills_backfill par joueur causerait N re-téléchargements inutiles
+    des mêmes films pour les matchs partagés (escouade).
+
+    Cette fonction collecte les match_ids manquants de chaque joueur et les
+    déduplique avant de passer l'union à run_weapon_kills_backfill.
+
+    Args:
+        players: Liste de DuckDBPlayerInfo (champ xuid optionnel).
+        shared_conn: Connexion ouverte vers shared_matches.duckdb.
+        force: Si True, inclure aussi les matchs déjà traités.
+        limit_per_player: Limite de matchs par joueur (garde-fou).
+
+    Returns:
+        Liste de match_ids uniques, sans ordre garanti.
+    """
+    from src.data.repositories._weapon_kills_repo import WeaponKillsMixin
+
+    all_ids: set[str] = set()
+    n_players = 0
+
+    for player_info in players:
+        xuid = getattr(player_info, "xuid", None)
+        if not xuid:
+            xuid = WeaponKillsMixin.get_xuid_by_gamertag(shared_conn, player_info.gamertag)
+        if not xuid:
+            logger.warning(
+                "collect_weapon_match_ids : xuid introuvable pour %s — ignoré",
+                player_info.gamertag,
+            )
+            continue
+        ids = WeaponKillsMixin.get_matches_missing_weapons(
+            shared_conn, xuid, limit=limit_per_player, force=force
+        )
+        all_ids.update(ids)
+        n_players += 1
+
+    logger.info(
+        "collect_weapon_match_ids : %d match_ids uniques issus de %d joueur(s)",
+        len(all_ids),
+        n_players,
+    )
+    return list(all_ids)
 
 
 async def run_weapon_kills_backfill(
@@ -78,8 +137,9 @@ async def run_weapon_kills_backfill(
 
     async with SPNKrAPIClient(tokens=tokens) as api:
         service = WeaponExtractionService(api, shared_conn, cache, write_lock=write_lock)
-        progress = {"done": 0, "rows": 0, "skipped": 0, "errors": 0}
         total_matches = len(match_ids)
+        logger.info("⚔️  Weapon kills : démarrage — %d matchs à traiter", total_matches)
+        progress = {"done": 0, "rows": 0, "skipped": 0, "errors": 0, "last_log": time.monotonic()}
 
         async def _process_one(match_id: str) -> int:
             async with match_sem:
@@ -104,7 +164,7 @@ async def run_weapon_kills_backfill(
                         logger.debug("weapon_kills guard batch %s : %s", match_id[:8], exc)
                 try:
                     summary = await service.process_match(match_id, gamertag, xuid)
-                    rows = summary.get("rows_inserted", 0)
+                    rows = summary.rows_inserted
                     progress["done"] += 1
                     progress["rows"] += rows
                     if rows > 0:
@@ -112,11 +172,11 @@ async def run_weapon_kills_backfill(
                             "weapon_kills backfill %s : %d lignes (%d/%d kills)",
                             match_id[:8],
                             rows,
-                            summary.get("kills_attributed", 0),
-                            summary.get("kills_total", 0),
+                            summary.kills_attributed,
+                            summary.kills_total,
                         )
-                    elif "error" in summary:
-                        logger.debug("weapon_kills %s : %s", match_id[:8], summary["error"])
+                    elif summary.error:
+                        logger.debug("weapon_kills %s : %s", match_id[:8], summary.error)
                     else:
                         logger.debug(
                             "weapon_kills %s : 0 lignes (match sans kills attribuables)",
@@ -136,7 +196,4 @@ async def run_weapon_kills_backfill(
         results = await asyncio.gather(*[_process_one(mid) for mid in match_ids])
         total = sum(r for r in results if isinstance(r, int))
 
-    logger.info(
-        "weapon_kills backfill terminé : %d lignes insérées (%d matchs)", total, len(match_ids)
-    )
     return total

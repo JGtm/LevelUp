@@ -84,7 +84,17 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
                             SELECT
                                 r.match_id,
                                 r.start_time,
-                                e.teammates_signature,
+                                COALESCE(
+                                    e.teammates_signature,
+                                    (
+                                        SELECT string_agg(sp.xuid, ',' ORDER BY sp.xuid)
+                                        FROM shared.match_participants sp
+                                        WHERE sp.match_id = r.match_id
+                                          AND sp.xuid IS NOT NULL
+                                          AND sp.xuid <> p.xuid
+                                    )
+                                ) AS teammates_signature,
+                                e.is_with_friends,
                                 e.session_id,
                                 e.session_label
                             FROM shared.match_registry r
@@ -119,6 +129,7 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
                             "match_id": pl.Utf8,
                             "start_time": pl.Datetime,
                             "teammates_signature": pl.Utf8,
+                            "is_with_friends": pl.Boolean,
                             "session_id": pl.Utf8,
                             "session_label": pl.Utf8,
                         }
@@ -130,6 +141,7 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
                     schema={
                         "match_id": pl.Utf8,
                         "start_time": pl.Datetime,
+                        "is_with_friends": pl.Boolean,
                         "session_id": pl.Utf8,
                         "session_label": pl.Utf8,
                     }
@@ -149,18 +161,30 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 cols_cas_a = ["match_id", "start_time", "session_id", "session_label"]
                 if "teammates_signature" in df_pl.columns:
                     cols_cas_a.append("teammates_signature")
+                if "is_with_friends" in df_pl.columns:
+                    cols_cas_a.append("is_with_friends")
                 return df_pl.select(cols_cas_a)
 
             # Cas B : calcul complet à la volée
+            meta_cols = ["match_id"]
+            if "is_with_friends" in df_pl.columns:
+                meta_cols.append("is_with_friends")
+            meta_df = df_pl.select(meta_cols).unique(subset=["match_id"])
+
             df_pl = compute_sessions_with_context_polars(
                 df_pl.select(["match_id", "start_time", "teammates_signature"]),
                 gap_minutes=gap_minutes,
                 teammates_column="teammates_signature",
                 friends_xuids=friends_set,
             )
+            if "is_with_friends" in meta_df.columns:
+                df_pl = df_pl.join(meta_df, on="match_id", how="left")
+
             cols_cas_b = ["match_id", "start_time", "session_id", "session_label"]
             if "teammates_signature" in df_pl.columns:
                 cols_cas_b.append("teammates_signature")
+            if "is_with_friends" in df_pl.columns:
+                cols_cas_b.append("is_with_friends")
             return df_pl.select(cols_cas_b)
 
         except Exception as e:
@@ -178,6 +202,8 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 cols_err = ["match_id", "start_time", "session_id", "session_label"]
                 if "teammates_signature" in df_pl.columns:
                     cols_err.append("teammates_signature")
+                if "is_with_friends" in df_pl.columns:
+                    cols_err.append("is_with_friends")
                 return df_pl.select(cols_err)
 
     # Si on arrive ici, c'est qu'on n'a pas de données v5
@@ -186,6 +212,7 @@ def cached_compute_sessions_db(  # noqa: C901, PLR0912, PLR0913, PLR0915
         schema={
             "match_id": pl.Utf8,
             "start_time": pl.Datetime,
+            "is_with_friends": pl.Boolean,
             "session_id": pl.Utf8,
             "session_label": pl.Utf8,
         }

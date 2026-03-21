@@ -140,9 +140,28 @@
     text-decoration: underline;
 }
 
-/* Miniature carte au survol (tooltip JS position:fixed) */
-.map-cell {
+/* ── Map thumbnail hover (CSS-only, pas de JS) ── */
+.map-hover {
+    position: relative;
     cursor: default;
+}
+.map-hover .map-popup {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: min(61vw, 500px) !important;
+    max-width: none !important;
+    height: auto !important;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.75);
+    pointer-events: none;
+}
+.map-hover:hover .map-popup {
+    display: block;
 }
 
 /* Session history table (variante) */
@@ -212,6 +231,25 @@
     margin-top: 12px;
 }
 
+.os-perf-card--compact {
+    padding: 12px 16px;
+}
+
+.os-perf-card--compact .os-perf-card__label {
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+}
+
+.os-perf-card--compact .os-perf-card__score {
+    font-size: 2rem;
+    line-height: 1.1;
+}
+
+.os-perf-card--compact .os-perf-card__status {
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
 /* Metric comparison row */
 .os-metric-value {
     font-weight: 600;
@@ -227,6 +265,20 @@
 
 .os-metric-value--neutral {
     color: #E0E0E0;
+}
+
+/* =============================================================================
+   Fond spatial — image panoramique avec effet parallax
+   ============================================================================= */
+
+.stApp {
+    background-image:
+        linear-gradient(rgba(5, 8, 14, 0.88), rgba(5, 8, 14, 0.88)),
+        url('/app/static/bg_space.webp');
+    background-size: auto, cover;
+    background-position: center center, center center;
+    background-attachment: fixed, fixed;
+    background-repeat: no-repeat, no-repeat;
 }
 
 /* =============================================================================
@@ -287,8 +339,8 @@ h4, .stMarkdown h4 {
 }
 
 section.main {
-    /* Fond global : utilise la variable centralisée */
-    background: var(--bg-main);
+    /* Fond semi-transparent pour laisser transparaître l'image de fond */
+    background: rgba(10, 15, 22, 0.74);
     color: var(--text);
     position: relative;
     z-index: 1;
@@ -1074,6 +1126,17 @@ div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     border-color: rgba(142, 108, 255, 0.20);
 }
 
+.os-top-chip--count {
+    border-color: rgba(100, 160, 255, 0.30);
+    background: rgba(100, 160, 255, 0.08);
+}
+.os-top-chip--count .os-top-chip__value {
+    font-size: 14px;
+    font-weight: 900;
+    background: rgba(100, 160, 255, 0.10);
+    border-color: rgba(100, 160, 255, 0.20);
+}
+
 /* =============================================================================
    KPI du haut (même style que le bandeau résumé)
    ============================================================================= */
@@ -1418,6 +1481,43 @@ div[data-testid="stNumberInput"] input:focus {
     text-decoration: underline;
 }
 
+.os-table-wrap--map-hover {
+    overflow-x: visible;
+    overflow-y: visible;
+    max-height: none;
+    clip-path: none;
+    isolation: isolate;
+    z-index: 4;
+}
+
+.os-table-wrap--map-hover::before {
+    clip-path: none;
+    border-radius: 10px;
+}
+
+.os-table-wrap--map-hover .map-hover {
+    display: inline-flex;
+    align-items: center;
+}
+
+.os-table-wrap--map-hover .map-hover .map-popup {
+    display: block;
+    bottom: calc(100% + 10px);
+    width: min(61vw, 500px) !important;
+    max-width: none !important;
+    height: auto !important;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 120ms ease, visibility 120ms ease;
+    background: rgba(10, 14, 20, 0.96);
+}
+
+.os-table-wrap--map-hover .map-hover:hover .map-popup,
+.os-table-wrap--map-hover .map-hover:focus-within .map-popup {
+    opacity: 1;
+    visibility: visible;
+}
+
 /* =============================================================================
    Roster (Mon équipe vs adverse)
    ============================================================================= */
@@ -1518,7 +1618,7 @@ div[data-testid="stNumberInput"] input:focus {
     background: rgba(10, 14, 20, 0.80);
     color: rgba(182, 196, 214, 0.80);
     font-family: var(--font-body);
-    font-size: 0.72rem;
+    font-size: 0.68em;
     font-weight: 600;
     text-align: center;
     padding: 5px 8px;
@@ -1598,6 +1698,198 @@ div[data-testid="stNumberInput"] input:focus {
 .os-table.os-scoreboard tr.os-sb-row--lvp td.os-sb-td:first-child {
     border: 2px solid rgba(213, 94, 0, 0.75);
     border-left: 4px solid rgba(213, 94, 0, 0.85);
+}
+
+.os-table.os-scoreboard tbody.os-sb-player .os-sb-detail-row {
+    display: none;
+}
+
+.os-table.os-scoreboard tbody.os-sb-player:has(.os-sb-toggle:checked) .os-sb-detail-row {
+    display: table-row;
+}
+
+.os-table.os-scoreboard tbody.os-sb-player:has(.os-sb-toggle:checked) tr.os-sb-row td.os-sb-td {
+    background: rgba(65, 214, 255, 0.08);
+}
+
+.os-table.os-scoreboard tbody.os-sb-player:has(.os-sb-toggle:checked) tr.os-sb-row td.os-sb-td:first-child {
+    color: #7ee7ff;
+}
+
+.os-table.os-scoreboard td.os-sb-detail-cell {
+    padding: 0;
+    border-top: 0;
+}
+
+.os-sb-toggle {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.os-sb-hit {
+    display: block;
+    width: 100%;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.os-sb-detail-panel {
+    padding: 14px 16px 16px;
+    background:
+        linear-gradient(180deg, rgba(18, 24, 34, 0.96), rgba(11, 16, 24, 0.98)),
+        radial-gradient(circle at top right, rgba(65, 214, 255, 0.10), transparent 45%);
+    border-top: 1px solid rgba(65, 214, 255, 0.18);
+    border-bottom: 1px solid rgba(65, 214, 255, 0.10);
+}
+
+.os-sb-detail-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(126, 231, 255, 0.24);
+    background: rgba(65, 214, 255, 0.08);
+    font-size: 0.72rem;
+    color: rgba(205, 238, 255, 0.86);
+}
+
+.os-sb-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.os-sb-detail-section {
+    padding: 12px;
+    border: 1px solid rgba(126, 231, 255, 0.10);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.os-sb-detail-title {
+    margin-bottom: 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #ffffff;
+}
+
+.os-sb-detail-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.os-sb-detail-list--weapons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
+    row-gap: 8px;
+}
+
+.os-sb-detail-item,
+.os-sb-detail-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.os-sb-detail-item--medal {
+    min-height: 36px;
+    padding: 2px 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+}
+
+.os-sb-detail-item--weapon {
+    min-height: 36px;
+    min-width: 0;
+    padding: 2px 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+}
+
+.os-sb-detail-medal-icon-wrap {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.os-sb-detail-medal-icon {
+    max-width: 32px;
+    max-height: 32px;
+    object-fit: contain;
+    border-radius: 6px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+.os-sb-detail-weapon-asset {
+    width: auto;
+    height: auto;
+    max-width: 30px;
+    max-height: 30px;
+    flex: 0 0 42px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+}
+
+.os-sb-detail-weapon-fallback {
+    font-size: 0.73rem;
+    color: rgba(182, 196, 214, 0.76);
+}
+
+.os-sb-detail-item-label {
+    font-size: 0.73rem;
+    color: rgba(182, 196, 214, 0.76);
+}
+
+.os-sb-detail-item-value,
+.os-sb-detail-pill-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #edf7ff;
+}
+
+.os-sb-detail-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.os-sb-detail-link {
+    color: #ffffff;
+    text-decoration: underline;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.os-sb-detail-link:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+    .os-sb-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .os-sb-detail-footer {
+        justify-content: flex-start;
+    }
 }
 
 /* Citations (Halo 5) */
@@ -1697,6 +1989,21 @@ div[data-testid="stNumberInput"] input:focus {
 }
 
 /* --- Medals grid (Streamlit columns) --- */
+.os-medal-icon-wrap {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.os-medal-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 .os-medal-caption {
     text-align: center;
     font-size: 0.85rem;

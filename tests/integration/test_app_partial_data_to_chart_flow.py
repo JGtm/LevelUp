@@ -13,7 +13,10 @@ pl = pytest.importorskip("polars")
 
 @pytest.fixture
 def app_partial_flow_db(tmp_path):
-    """Crée une DB temporaire volontairement partielle mais cohérente."""
+    """Crée une structure v6 : player DB partielle + shared DB minimale."""
+    now = datetime.now(timezone.utc)
+
+    # ===== Player DB (données partielles intentionnelles) =====
     db_path = tmp_path / "app_partial_flow.duckdb"
     conn = duckdb.connect(str(db_path))
     try:
@@ -54,13 +57,10 @@ def app_partial_flow_db(tmp_path):
                 match_id VARCHAR,
                 event_type VARCHAR,
                 time_ms INTEGER,
-                xuid VARCHAR,
-                gamertag VARCHAR
+                xuid VARCHAR
             )
             """
         )
-
-        now = datetime.now(timezone.utc)
         conn.execute(
             """
             INSERT INTO match_stats (
@@ -77,19 +77,93 @@ def app_partial_flow_db(tmp_path):
             """,
             [now, now],
         )
-
         conn.execute(
             """
-            INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, gamertag)
+            INSERT INTO highlight_events (match_id, event_type, time_ms, xuid)
             VALUES
-                ('m1', 'Kill', 1200, 'x_me', 'Me'),
-                ('m2', 'Death', 1800, 'x_me', 'Me')
+                ('m1', 'Kill', 1200, 'x_me'),
+                ('m2', 'Death', 1800, 'x_me')
             """
         )
     finally:
         conn.close()
 
-    return db_path
+    # ===== Shared DB (v6 — requis par DuckDBRepository) =====
+    shared_path = tmp_path / "shared_matches.duckdb"
+    conn_shared = duckdb.connect(str(shared_path))
+    try:
+        conn_shared.execute("""
+            CREATE TABLE match_registry (
+                match_id VARCHAR PRIMARY KEY,
+                start_time TIMESTAMP WITH TIME ZONE,
+                map_id VARCHAR, map_name VARCHAR,
+                playlist_id VARCHAR, playlist_name VARCHAR,
+                pair_id VARCHAR, pair_name VARCHAR,
+                game_variant_id VARCHAR, game_variant_name VARCHAR,
+                team_0_score INTEGER DEFAULT 0, team_1_score INTEGER DEFAULT 0,
+                duration_seconds INTEGER DEFAULT 600,
+                is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE
+            )
+        """)
+        conn_shared.execute("""
+            INSERT INTO match_registry (match_id, start_time, map_id, map_name,
+                playlist_id, playlist_name, pair_id, pair_name,
+                game_variant_id, game_variant_name, team_0_score, team_1_score) VALUES
+                ('m1', '2025-01-01 12:00:00+00', 'map1', 'Recharge',
+                 'pl1', 'Ranked Arena', 'pair1', 'Slayer', 'gv1', 'Slayer', 50, 41),
+                ('m2', '2025-01-01 12:20:00+00', 'map2', 'Live Fire',
+                 'pl2', 'Quick Play', 'pair2', 'Oddball', 'gv2', 'Oddball', 38, 45)
+        """)
+        conn_shared.execute("""
+            CREATE TABLE match_participants (
+                match_id VARCHAR, xuid VARCHAR,
+                gamertag VARCHAR, team_id INTEGER,
+                rank INTEGER, score INTEGER,
+                kills INTEGER, deaths INTEGER, assists INTEGER,
+                PRIMARY KEY (match_id, xuid)
+            )
+        """)
+        conn_shared.execute("""
+            INSERT INTO match_participants (match_id, xuid, gamertag, team_id, rank, score, kills, deaths, assists)
+            VALUES
+                ('m1', 'x_me', 'Me', 1, 1, 1400, 14, 8, 6),
+                ('m2', 'x_me', 'Me', 1, 1, 900, 9, 11, 4)
+        """)
+        conn_shared.execute("""
+            CREATE TABLE xuid_aliases (xuid VARCHAR PRIMARY KEY, gamertag VARCHAR)
+        """)
+        conn_shared.execute("""
+            CREATE VIEW v_gamertag_lookup AS
+            SELECT COALESCE(xa.xuid, mp.xuid) AS xuid,
+                   COALESCE(xa.gamertag, mp.gamertag) AS gamertag
+            FROM xuid_aliases xa
+            FULL OUTER JOIN (
+                SELECT xuid, MAX(gamertag) AS gamertag
+                FROM match_participants WHERE gamertag IS NOT NULL GROUP BY xuid
+            ) mp ON xa.xuid = mp.xuid
+            WHERE COALESCE(xa.gamertag, mp.gamertag) IS NOT NULL
+        """)
+        conn_shared.execute("""
+            CREATE VIEW mv_player_matches AS
+            SELECT r.match_id, r.start_time,
+                   r.map_id, r.map_name, r.playlist_id, r.playlist_name,
+                   r.pair_id, r.pair_name, r.game_variant_id, r.game_variant_name,
+                   p.xuid, 2 AS outcome, 0 AS team_id,
+                   0.0 AS kda, 0 AS max_killing_spree, 0 AS headshot_kills,
+                   0.0 AS avg_life_seconds, 0.0 AS time_played_seconds,
+                   COALESCE(p.kills, 0) AS kills, COALESCE(p.deaths, 0) AS deaths,
+                   COALESCE(p.assists, 0) AS assists, NULL AS accuracy,
+                   r.team_0_score AS my_team_score, r.team_1_score AS enemy_team_score,
+                   NULL AS team_mmr, NULL AS enemy_mmr,
+                   COALESCE(p.score, 0) AS personal_score,
+                   FALSE AS is_firefight, FALSE AS is_ranked
+            FROM match_registry r
+            JOIN match_participants p ON r.match_id = p.match_id
+        """)
+    finally:
+        conn_shared.close()
+
+    return db_path, shared_path
 
 
 def test_app_partial_data_to_chart_flow_graceful(app_partial_flow_db) -> None:
@@ -100,7 +174,10 @@ def test_app_partial_data_to_chart_flow_graceful(app_partial_flow_db) -> None:
     from src.visualization.friends_impact_heatmap import plot_friends_impact_heatmap
     from src.visualization.timeseries import plot_timeseries
 
-    repo = DuckDBRepository(str(app_partial_flow_db), xuid="x_me", read_only=True)
+    player_db, shared_db = app_partial_flow_db
+    repo = DuckDBRepository(
+        str(player_db), xuid="x_me", shared_db_path=str(shared_db), read_only=True
+    )
     try:
         stats_df = repo.load_match_stats_as_polars()
         assert not stats_df.is_empty()
@@ -116,11 +193,11 @@ def test_app_partial_data_to_chart_flow_graceful(app_partial_flow_db) -> None:
         assert len(fig_timeseries.data) >= 1
         assert len(fig_win_ratio.data) >= 1
 
-        # Flux impact avec données partielles
-        conn = duckdb.connect(str(app_partial_flow_db), read_only=True)
+        # Flux impact avec données partielles (depuis player DB)
+        conn = duckdb.connect(str(player_db), read_only=True)
         try:
             events_rows = conn.execute(
-                "SELECT match_id, xuid, gamertag, event_type, time_ms FROM highlight_events"
+                "SELECT match_id, xuid, NULL AS gamertag, event_type, time_ms FROM highlight_events"
             ).fetchall()
             match_rows = conn.execute("SELECT match_id, outcome FROM match_stats").fetchall()
         finally:

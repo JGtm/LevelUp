@@ -418,17 +418,19 @@ class TestLazyLoadingIntegration:
 
     @pytest.fixture
     def temp_duckdb(self, tmp_path):
-        """Crée une DB DuckDB temporaire avec des données de test."""
+        """Crée une DB DuckDB temporaire avec des données de test (v5.1)."""
         import gc
-        import uuid
 
         import duckdb
 
-        db_path = tmp_path / f"test_stats_{uuid.uuid4().hex[:8]}.duckdb"
+        # Structure v5.1 : players/TestPlayer/stats.duckdb + warehouse/shared
+        player_dir = tmp_path / "players" / "TestPlayer"
+        player_dir.mkdir(parents=True)
+        db_path = player_dir / "stats.duckdb"
         conn = duckdb.connect(str(db_path))
 
         try:
-            # Créer la table match_stats
+            # Créer la table match_stats (utilisée par _get_match_source fallback)
             conn.execute("""
                 CREATE TABLE match_stats (
                     match_id VARCHAR PRIMARY KEY,
@@ -505,6 +507,70 @@ class TestLazyLoadingIntegration:
         finally:
             conn.close()
             del conn
+            gc.collect()
+
+        # Créer shared DB (v5.1 — get_match_count requiert shared.match_participants)
+        warehouse = tmp_path / "warehouse"
+        warehouse.mkdir(parents=True)
+        shared_conn = duckdb.connect(str(warehouse / "shared_matches.duckdb"))
+        try:
+            shared_conn.execute(
+                "CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP)"
+            )
+            shared_conn.execute("""
+                CREATE TABLE match_participants (
+                    match_id VARCHAR, xuid VARCHAR,
+                    outcome INTEGER, team_id INTEGER,
+                    kills SMALLINT, deaths SMALLINT, assists SMALLINT,
+                    shots_fired INTEGER DEFAULT 200, shots_hit INTEGER DEFAULT 90,
+                    avg_life_seconds FLOAT DEFAULT 45.0, score INTEGER DEFAULT 1500,
+                    PRIMARY KEY (match_id, xuid)
+                )
+            """)
+            for i in range(100):
+                shared_conn.execute(
+                    "INSERT INTO match_registry VALUES (?, ?)",
+                    [f"match_{i}", datetime(2026, 2, 1, i % 24, i % 60, i % 60)],
+                )
+                shared_conn.execute(
+                    "INSERT INTO match_participants VALUES (?, '12345', ?, 0, ?, ?, ?, 200, 90, 45.0, 1500)",
+                    [f"match_{i}", 2 if i % 2 == 0 else 3, 10 + i % 5, 5 + i % 3, 3 + i % 4],
+                )
+            shared_conn.execute("""
+                CREATE OR REPLACE VIEW mv_player_matches AS
+                SELECT
+                    r.match_id, r.start_time,
+                    NULL AS map_id, NULL AS map_name,
+                    NULL AS playlist_id, NULL AS playlist_name,
+                    NULL AS pair_id, NULL AS pair_name,
+                    NULL AS game_variant_id, NULL AS game_variant_name,
+                    p.outcome, p.team_id,
+                    CASE WHEN p.deaths > 0
+                        THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
+                             / CAST(p.deaths AS FLOAT)
+                        ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
+                    END AS kda,
+                    0 AS max_killing_spree, 0 AS headshot_kills,
+                    COALESCE(p.avg_life_seconds, 0) AS avg_life_seconds,
+                    600 AS time_played_seconds,
+                    COALESCE(p.kills, 0) AS kills,
+                    COALESCE(p.deaths, 0) AS deaths,
+                    COALESCE(p.assists, 0) AS assists,
+                    CASE WHEN p.shots_fired > 0
+                        THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT)
+                        ELSE NULL
+                    END AS accuracy,
+                    50 AS my_team_score, 45 AS enemy_team_score,
+                    NULL AS team_mmr, NULL AS enemy_mmr,
+                    p.score AS personal_score,
+                    FALSE AS is_firefight, FALSE AS is_ranked,
+                    p.xuid
+                FROM match_registry r
+                JOIN match_participants p ON r.match_id = p.match_id
+            """)
+        finally:
+            shared_conn.close()
+            del shared_conn
             gc.collect()
 
         return db_path

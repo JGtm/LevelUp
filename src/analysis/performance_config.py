@@ -84,10 +84,10 @@ SCORE_THRESHOLDS = {
 # Labels associés aux seuils
 SCORE_LABELS = {
     "excellent": "Excellent",
-    "good": "Bon",
-    "average": "Moyen",
-    "below_average": "Faible",
-    "bad": "Difficile",
+    "good": "Solide",
+    "average": "Correct",
+    "below_average": "Mauvais",
+    "bad": "Catastrophique",
 }
 
 
@@ -280,6 +280,32 @@ class PerformanceScoreResult:
         if self.score >= SCORE_THRESHOLDS["below_average"]:
             return "perf-below"
         return "perf-bad"
+
+
+# =============================================================================
+# Grades d'escouade
+# =============================================================================
+
+# Seuils pour le grade collectif (score escouade 0-100).
+# Chaque tuple : (score_minimum, grade_key_i18n)
+SQUAD_GRADE_THRESHOLDS: list[tuple[int, str]] = [
+    (88, "squad_grade_legendaire"),
+    (75, "squad_grade_carnage"),
+    (60, "squad_grade_solide"),
+    (45, "squad_grade_moyen"),
+    (30, "squad_grade_difficile"),
+    (0, "squad_grade_catastrophique"),
+]
+
+
+def resolve_squad_grade(score: float | None, lang: str | None = None) -> str:
+    """Retourne la clé i18n du grade escouade selon le score."""
+    if score is None:
+        return "N/A"
+    for threshold, key in SQUAD_GRADE_THRESHOLDS:
+        if score >= threshold:
+            return _t(key, lang=lang)
+    return _t("squad_grade_catastrophique", lang=lang)
 
 
 def get_score_interpretation(score: float | None, lang: str | None = None) -> str:

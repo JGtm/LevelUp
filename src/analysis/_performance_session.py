@@ -303,7 +303,7 @@ def compute_session_performance_score_v1(df_session: pl.DataFrame | Any) -> dict
 # =============================================================================
 
 _SESSION_COMPONENTS: list[ScoreComponent] = [
-    ScoreComponent(key="kd", label="K/D", weight=0.20, compute=_compute_kd_component),
+    ScoreComponent(key="kd", label="F/D", weight=0.20, compute=_compute_kd_component),
     ScoreComponent(key="win", label="Victoires", weight=0.15, compute=_compute_win_component),
     ScoreComponent(key="acc", label="Précision", weight=0.15, compute=_compute_accuracy_component),
     ScoreComponent(key="kpm", label="Kills/min", weight=0.15, compute=_compute_kpm_component),
@@ -378,6 +378,46 @@ def compute_session_performance_score_v2(
     confidence_label = "faible" if n_matches < 4 else ("moyenne" if n_matches < 10 else "élevée")
     obj_meta = component_meta.get("obj", {})
 
+    return _build_v2_result(
+        final_score=final_score,
+        kd_ratio=kd_ratio,
+        kda=kda,
+        accuracy=accuracy,
+        avg_life_seconds=avg_life_seconds,
+        n_matches=n_matches,
+        total_kills=total_kills,
+        total_deaths=total_deaths,
+        total_assists=total_assists,
+        mmr=mmr,
+        obj_meta=obj_meta,
+        computed_scores=computed_scores,
+        weights_used=weights_used,
+        confidence=confidence,
+        confidence_label=confidence_label,
+        component_meta=component_meta,
+    )
+
+
+def _build_v2_result(  # noqa: PLR0913
+    *,
+    final_score: float | None,
+    kd_ratio: float,
+    kda: float,
+    accuracy: float | None,
+    avg_life_seconds: float | None,
+    n_matches: int,
+    total_kills: int,
+    total_deaths: int,
+    total_assists: int,
+    mmr: dict,
+    obj_meta: dict,
+    computed_scores: dict[str, float],
+    weights_used: dict[str, float],
+    confidence: float,
+    confidence_label: str,
+    component_meta: dict,
+) -> dict[str, Any]:
+    """Construit le dict résultat v2."""
     return {
         "score": round(final_score, 1) if final_score is not None else None,
         "kd_ratio": round(kd_ratio, 2),

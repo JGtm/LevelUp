@@ -24,32 +24,32 @@ class TestToFloat:
     """Tests pour _to_float."""
 
     def test_none(self) -> None:
-        from src.ui.pages.win_loss import _to_float
+        from src.ui.pages.win_loss_table_style import _to_float
 
         assert _to_float(None) is None
 
     def test_int(self) -> None:
-        from src.ui.pages.win_loss import _to_float
+        from src.ui.pages.win_loss_table_style import _to_float
 
         assert _to_float(42) == 42.0
 
     def test_float(self) -> None:
-        from src.ui.pages.win_loss import _to_float
+        from src.ui.pages.win_loss_table_style import _to_float
 
         assert _to_float(3.14) == pytest.approx(3.14)
 
     def test_string_invalid(self) -> None:
-        from src.ui.pages.win_loss import _to_float
+        from src.ui.pages.win_loss_table_style import _to_float
 
         assert _to_float("not_a_number") is None
 
     def test_string_numeric(self) -> None:
-        from src.ui.pages.win_loss import _to_float
+        from src.ui.pages.win_loss_table_style import _to_float
 
         assert _to_float("42.5") == pytest.approx(42.5)
 
     def test_nan(self) -> None:
-        from src.ui.pages.win_loss import _to_float
+        from src.ui.pages.win_loss_table_style import _to_float
 
         assert _to_float(float("nan")) is None
 
@@ -60,7 +60,7 @@ class TestStylerMap:
     def test_returns_styled(self) -> None:
         import pandas as pd
 
-        from src.ui.pages.win_loss import _styler_map
+        from src.ui.pages.win_loss_table_style import _styler_map
 
         df = pd.DataFrame({"a": [1, 2]})
         styler = df.style

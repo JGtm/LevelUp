@@ -367,7 +367,9 @@ class MediaIndexer:
         with duckdb.connect(str(self.db_path), read_only=False) as conn:
             try:
                 media_rows = conn.execute(
-                    "SELECT mf.file_path, mf.mtime FROM media_files mf "
+                    "SELECT mf.file_path, "
+                    "COALESCE(epoch(mf.capture_end_utc), mf.mtime_paris_epoch, mf.mtime) "
+                    "FROM media_files mf "
                     "WHERE mf.status = 'active' ORDER BY mf.mtime DESC"
                 ).fetchall()
             except Exception:

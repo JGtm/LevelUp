@@ -35,41 +35,55 @@ def _resolve_weapon_name(wid: int, lang: str) -> str:
 
 
 def _append_grenade_melee(
-    conn: Any, xuid: str, match_ids: list[str], df: pl.DataFrame
+    conn: Any,
+    xuid: str,
+    match_ids: list[str],
+    df: pl.DataFrame,
 ) -> pl.DataFrame:
-    """Ajoute grenade_kills et melee_kills depuis shared.match_participants."""
+    """Réinjecte les kills grenade/mêlée depuis shared.match_participants.
+
+    Args:
+        conn: Connexion DuckDB (schéma shared doit contenir match_participants).
+        xuid: XUID du joueur.
+        match_ids: Matchs à considérer (vide = tous les matchs du joueur).
+        df: DataFrame existant (weapon_id: UInt64, total_kills: Int32).
+
+    Returns:
+        DataFrame enrichi avec les lignes grenade/mêlée si leurs totaux > 0.
+    """
     try:
-        xuid_str = str(xuid).strip()
         if match_ids:
             placeholders = ", ".join("?" * len(match_ids))
             row = conn.execute(
                 f"SELECT COALESCE(SUM(grenade_kills), 0), COALESCE(SUM(melee_kills), 0) "
                 f"FROM shared.match_participants "
                 f"WHERE xuid = ? AND match_id IN ({placeholders})",
-                [xuid_str, *match_ids],
+                [xuid, *match_ids],
             ).fetchone()
         else:
             row = conn.execute(
                 "SELECT COALESCE(SUM(grenade_kills), 0), COALESCE(SUM(melee_kills), 0) "
                 "FROM shared.match_participants WHERE xuid = ?",
-                [xuid_str],
+                [xuid],
             ).fetchone()
-    except Exception:
-        return df
-
-    if not row:
-        return df
-
-    extras = []
-    if row[0] > 0:
-        extras.append({"weapon_id": _GRENADE_WEAPON_ID, "total_kills": int(row[0])})
-    if row[1] > 0:
-        extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": int(row[1])})
-    if not extras:
-        return df
-    return pl.concat(
-        [df, pl.DataFrame(extras, schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32})]
-    )
+        if not row:
+            return df
+        grenade, melee = int(row[0]), int(row[1])
+        extras = []
+        if grenade > 0:
+            extras.append({"weapon_id": _GRENADE_WEAPON_ID, "total_kills": grenade})
+        if melee > 0:
+            extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": melee})
+        if extras:
+            return pl.concat(
+                [
+                    df,
+                    pl.DataFrame(extras, schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32}),
+                ]
+            )
+    except Exception as exc:
+        logger.debug("_append_grenade_melee xuid=%s : %s", xuid, exc)
+    return df
 
 
 def render_weapon_kills_table(
@@ -102,11 +116,26 @@ def render_weapon_kills_table(
     if df.is_empty():
         return
 
-    # Retirer les entrées film pour grenade/mêlée, réinjecter depuis l'API
+    # Retirer les entrées film pour grenade/mêlée, réinjecter depuis l'API.
+    # Limité au remainder (api_total - film_kills) pour éviter le double-comptage
+    # des melee kills filmés sous le weapon_id de l'arme tenue.
     df = df.filter(~pl.col("weapon_id").is_in(list(_FILM_EXCLUDED_IDS)))
     try:
-        conn = repo._get_connection()
-        df = _append_grenade_melee(conn, xuid, match_ids, df)
+        grenade, melee = repo.load_grenade_melee_kills(xuid, match_ids)
+        film_kills = int(df["total_kills"].sum()) if not df.is_empty() else 0
+        api_total = repo.load_total_kills_for_player(xuid, match_ids)
+        remainder = max(0, api_total - film_kills)
+        melee_net = min(melee, remainder)
+        grenade_net = min(grenade, max(0, remainder - melee_net))
+        extras = []
+        if grenade_net > 0:
+            extras.append({"weapon_id": _GRENADE_WEAPON_ID, "total_kills": grenade_net})
+        if melee_net > 0:
+            extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": melee_net})
+        if extras:
+            df = pl.concat(
+                [df, pl.DataFrame(extras, schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32})]
+            )
     except Exception as exc:
         logger.debug(
             "render_weapon_kills_table: grenade/melee enrich failed xuid=%s : %s", xuid, exc
@@ -118,6 +147,11 @@ def render_weapon_kills_table(
     from src.ui.i18n import get_lang
 
     lang = get_lang()
+    st.markdown(_build_weapon_table_html(df, lang), unsafe_allow_html=True)
+
+
+def _build_weapon_table_html(df: pl.DataFrame, lang: str) -> str:
+    """Construit le HTML du tableau d'armes trié par kills décroissants."""
     rows: list[dict[str, Any]] = []
     for row in df.iter_rows(named=True):
         rows.append(
@@ -127,7 +161,6 @@ def render_weapon_kills_table(
                 "kills": int(row["total_kills"]),
             }
         )
-
     rows.sort(key=lambda r: r["kills"], reverse=True)
 
     col_weapon = html.escape(t("col_weapon_name"))
@@ -138,18 +171,14 @@ def render_weapon_kills_table(
     for r in rows:
         name_esc = html.escape(r["name"])
         faction_esc = html.escape(r["faction"])
-        body.append(
-            f"<tr><td>{name_esc}</td>" f"<td>{faction_esc}</td>" f"<td>{r['kills']}</td></tr>"
-        )
-
-    table_html = (
+        body.append(f"<tr><td>{name_esc}</td><td>{faction_esc}</td><td>{r['kills']}</td></tr>")
+    return (
         "<div class='os-table-wrap'>"
         "<table class='os-table'>"
         f"<thead><tr>{th}</tr></thead>"
         f"<tbody>{''.join(body)}</tbody>"
         "</table></div>"
     )
-    st.markdown(table_html, unsafe_allow_html=True)
 
 
 _TOP_N_WEAPONS = 12
@@ -173,14 +202,33 @@ def load_weapon_kills_data(
     data: list[tuple[str, pl.DataFrame]] = []
     try:
         repo = DuckDBRepository(db_path, xuid="", read_only=True)
-        conn = repo._get_connection()
         for name, xuid, match_ids in player_infos:
             df = repo.load_weapon_kills_aggregated(xuid, match_ids or [])
             # Retirer les entrées film (incomplètes) pour grenade/mêlée
             df = df.filter(~pl.col("weapon_id").is_in(list(_FILM_EXCLUDED_IDS)))
             df = df.head(_TOP_N_WEAPONS)
-            # Réinjecter depuis l'API (fiable)
-            df = _append_grenade_melee(conn, xuid, match_ids or [], df)
+            # Réinjecter depuis l'API, limité au remainder pour éviter le double-comptage
+            # des melee kills filmés sous le weapon_id de l'arme tenue.
+            grenade, melee = repo.load_grenade_melee_kills(xuid, match_ids or [])
+            film_kills = int(df["total_kills"].sum()) if not df.is_empty() else 0
+            api_total = repo.load_total_kills_for_player(xuid, match_ids or [])
+            remainder = max(0, api_total - film_kills)
+            melee_net = min(melee, remainder)
+            grenade_net = min(grenade, max(0, remainder - melee_net))
+            extras = []
+            if grenade_net > 0:
+                extras.append({"weapon_id": _GRENADE_WEAPON_ID, "total_kills": grenade_net})
+            if melee_net > 0:
+                extras.append({"weapon_id": _MELEE_WEAPON_ID, "total_kills": melee_net})
+            if extras:
+                df = pl.concat(
+                    [
+                        df,
+                        pl.DataFrame(
+                            extras, schema={"weapon_id": pl.UInt64, "total_kills": pl.Int32}
+                        ),
+                    ]
+                )
             if not df.is_empty():
                 data.append((name, df))
     except Exception as exc:

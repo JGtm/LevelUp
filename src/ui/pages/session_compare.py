@@ -31,9 +31,11 @@ from src.ui.pages.session_compare_charts import (
     render_session_history_table,
 )
 from src.ui.pages.session_compare_logic import (
+    _get_category_fr,
     build_skill_series,
     compute_historical_context,
     compute_similar_sessions_average,  # noqa: F401 — re-exported
+    find_best_matching_previous_session,
     format_seconds_to_mmss,
     get_session_friends_signature,  # noqa: F401 — re-exported
     infer_session_dominant_category,
@@ -46,18 +48,6 @@ from src.visualization._compat import (
     ensure_polars,
 )
 from src.visualization.performance import plot_cumulative_comparison
-
-
-def _get_category_fr() -> dict[str, str]:
-    """Retourne les labels de catégories traduits."""
-    return {
-        "Assassin": "Assassin",
-        "Fiesta": "Fiesta",
-        "BTB": t("cat_btb"),
-        "Ranked": t("cat_ranked"),
-        "Firefight": t("cat_firefight"),
-        "Other": t("cat_other"),
-    }
 
 
 def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PLR0912
@@ -103,6 +93,8 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PL
                 from src.ui.cache_loaders import get_cached_repository_st
 
                 repo = get_cached_repository_st(db_path, xuid)
+                # _get_connection() légitime : accès à la table `friends` (domaine
+                # joueur isolé, pas shared). Aucun équivalent dans le repo pattern.
                 conn = repo._get_connection()
                 # Vérifier si la table existe
                 from src.utils.db import has_table
@@ -132,12 +124,27 @@ def _get_friends_names(df_session: DataFrameLike) -> set[str]:  # noqa: C901, PL
     return names
 
 
-def _select_sessions(session_labels: list[str]) -> tuple[str, str]:
+def _build_ranked_badge_map(all_sessions_df: pl.DataFrame) -> dict[str, bool]:
+    """Retourne un mapping session_label → True si la session est classée."""
+    if "is_ranked" not in all_sessions_df.columns or "session_label" not in all_sessions_df.columns:
+        return {}
+    return dict(
+        all_sessions_df.group_by("session_label")
+        .agg(pl.col("is_ranked").fill_null(False).any().alias("ranked"))
+        .iter_rows()
+    )
+
+
+def _select_sessions(
+    session_labels: list[str],
+    all_sessions_df: pl.DataFrame,
+) -> tuple[str, str]:
     """Affiche les sélecteurs de sessions A et B et retourne les labels choisis.
 
     Si une session est sélectionnée dans la sidebar, pré-sélectionne :
     - Session B = la session active de la sidebar
-    - Session A = la session précédente (la suivante dans la liste, ordre décroissant)
+    - Session A = la session précédente la plus similaire (même catégorie, même
+      statut ami/solo, mêmes amis si possible) — fallback chronologique.
     """
     picked = st.session_state.get("picked_session_label", "(toutes)")
     last_picked = st.session_state.get("_last_picked_for_compare")
@@ -150,39 +157,44 @@ def _select_sessions(session_labels: list[str]) -> tuple[str, str]:
 
     # Calculer les defaults selon la session active
     if picked and picked != "(toutes)" and picked in session_labels:
-        idx_b = session_labels.index(picked)
-        default_b = session_labels[idx_b]
-        # Session A = la précédente chronologiquement (indice supérieur = plus ancienne)
-        idx_a = idx_b + 1 if idx_b + 1 < len(session_labels) else idx_b
-        default_a = session_labels[idx_a]
+        default_b = picked
+        # Session A = session antérieure la plus similaire (catégorie + amis)
+        default_a = find_best_matching_previous_session(all_sessions_df, picked, session_labels)
     else:
         default_b = session_labels[0]
-        default_a = session_labels[1] if len(session_labels) > 1 else session_labels[0]
+        default_a = (
+            find_best_matching_previous_session(all_sessions_df, default_b, session_labels)
+            if len(session_labels) > 1
+            else session_labels[0]
+        )
 
     # Injecter les defaults dans session_state uniquement si pas encore initialisés
-    if "compare_session_b" not in st.session_state:
+    # ou si la valeur stockée n'est plus dans les options disponibles
+    if st.session_state.get("compare_session_b") not in session_labels:
         st.session_state["compare_session_b"] = default_b
-    if "compare_session_a" not in st.session_state:
+    if st.session_state.get("compare_session_a") not in session_labels:
         st.session_state["compare_session_a"] = default_a
+
+    ranked_map = _build_ranked_badge_map(all_sessions_df)
+
+    def _fmt(label: str) -> str:
+        return f"[Classé] {label}" if ranked_map.get(label) else label
 
     col_sel_a, col_sel_b = st.columns(2)
     with col_sel_a:
+        # Pas d'index= : session_state est déjà initialisé, évite le warning Streamlit
         session_a_label = st.selectbox(
             t("sc_session_a_ref"),
             options=session_labels,
-            index=session_labels.index(st.session_state["compare_session_a"])
-            if st.session_state.get("compare_session_a") in session_labels
-            else session_labels.index(default_a),
             key="compare_session_a",
+            format_func=_fmt,
         )
     with col_sel_b:
         session_b_label = st.selectbox(
             t("sc_session_b_cmp"),
             options=session_labels,
-            index=session_labels.index(st.session_state["compare_session_b"])
-            if st.session_state.get("compare_session_b") in session_labels
-            else session_labels.index(default_b),
             key="compare_session_b",
+            format_func=_fmt,
         )
     return session_a_label, session_b_label
 
@@ -312,12 +324,13 @@ def _render_mmr_comparison(perf_a: dict, perf_b: dict) -> None:
 
 
 @fragment_if_available
-def _render_cumulative_section(
+def _render_cumulative_section(  # noqa: PLR0913 — 2 sessions + labels + db_path + xuid
     df_session_a: DataFrameLike,
     df_session_b: DataFrameLike,
     session_a_label: str,
     session_b_label: str,
     db_path: str | None = None,
+    xuid: str | None = None,
 ) -> None:
     """Affiche la section du net score cumulé par session."""
     df_session_a = ensure_polars(df_session_a)
@@ -334,8 +347,8 @@ def _render_cumulative_section(
         pl_a = sorted_a.select(_req)
         pl_b = sorted_b.select(_req)
 
-        rank_a, label_a = build_skill_series(sorted_a, db_path)
-        rank_b, label_b = build_skill_series(sorted_b, db_path)
+        rank_a, label_a = build_skill_series(sorted_a, db_path, xuid)
+        rank_b, label_b = build_skill_series(sorted_b, db_path, xuid)
         rank_label = label_a if rank_a else label_b
 
         def _perf_series(df: pl.DataFrame) -> list[float | None] | None:
@@ -359,8 +372,8 @@ def _render_cumulative_section(
                     label_a=session_a_label,
                     label_b=session_b_label,
                     title="",
-                    rank_a=rank_a,
-                    rank_b=rank_b,
+                    rank_a=None,
+                    rank_b=None,
                     rank_label=rank_label,
                     perf_a=perf_a,
                     perf_b=perf_b,
@@ -485,7 +498,7 @@ def render_session_comparison_page(
         st.warning(t("sc_need_two_sessions"))
         return
 
-    session_a_label, session_b_label = _select_sessions(session_labels)
+    session_a_label, session_b_label = _select_sessions(session_labels, all_sessions_df)
     df_session_a = all_sessions_df.filter(pl.col("session_label") == session_a_label)
     df_session_b = all_sessions_df.filter(pl.col("session_label") == session_b_label)
 
@@ -508,7 +521,7 @@ def render_session_comparison_page(
 
     _render_comparative_charts(perf_a, perf_b, hist_avg, session_type_label, compare_label)
     _render_cumulative_section(
-        df_session_a, df_session_b, session_a_label, session_b_label, db_path=db_path
+        df_session_a, df_session_b, session_a_label, session_b_label, db_path=db_path, xuid=xuid
     )
     render_kd_progression(df_session_a, df_session_b, session_a_label, session_b_label)
     render_modes_breakdown(df_session_a, df_session_b)

@@ -375,8 +375,12 @@ class TestRepositoryContextManager:
 
     def test_with_statement(self, tmp_path: Path) -> None:
         player_db = tmp_path / "player" / "stats.duckdb"
+        shared_db = tmp_path / "data" / "warehouse" / "shared_matches.duckdb"
         _create_player_db(player_db)
-        with DuckDBRepository(player_db, PLAYER_XUID, gamertag="Test") as repo:
+        _create_shared_db(shared_db)
+        with DuckDBRepository(
+            player_db, PLAYER_XUID, gamertag="Test", shared_db_path=shared_db
+        ) as repo:
             count = repo.get_match_count()
             assert count == 5
 
@@ -443,12 +447,16 @@ class TestLoadMatchesShared:
 class TestLoadMatchesFallbackV4:
     """Tests chargement en mode v4 (sans shared)."""
 
-    def test_load_all_v4(self, repo_v4_only: DuckDBRepository) -> None:
-        matches = repo_v4_only.load_matches()
-        assert len(matches) == 5
+    def test_load_raises_without_shared(self, repo_v4_only: DuckDBRepository) -> None:
+        """En v6, sans shared DB, load_matches lève RuntimeError."""
+        with pytest.raises(RuntimeError, match="shared_matches.duckdb indisponible"):
+            repo_v4_only.load_matches()
 
-    def test_get_match_count_v4(self, repo_v4_only: DuckDBRepository) -> None:
-        assert repo_v4_only.get_match_count() == 5
+    def test_get_match_count_returns_zero_without_shared(
+        self, repo_v4_only: DuckDBRepository
+    ) -> None:
+        """get_match_count retourne 0 sans shared (v5.1)."""
+        assert repo_v4_only.get_match_count() == 0
 
 
 # =============================================================================

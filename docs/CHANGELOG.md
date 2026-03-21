@@ -6,6 +6,139 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [6.0.0] - 2026-03-15
+
+> ⚠️ **Weapon extraction still in beta** — attribution accuracy not guaranteed in all cases (estimated coverage 70–100 % depending on matches); weapon catalog in progress.
+
+### Added
+
+- **ID resolution layer** — three SQL views in `shared_matches.duckdb` replacing all ad-hoc 5-source gamertag cascades:
+  - `v_gamertag_lookup` — FULL OUTER JOIN `xuid_aliases` + `match_participants` with deduplication and priority
+  - `v_match_full` — `match_registry` enriched with i18n metadata (maps, playlists, game variants)
+  - `v_killer_victim_full` — killer/victim pairs with resolved gamertags
+  - `ensure_metadata_attached(conn)` helper added to `src/utils/db.py`
+
+- **`weapon_labels` table** in `metadata.duckdb` (`src/data/migration/steps/add_weapon_labels.py`)
+  - Schema: `weapon_labels(weapon_id UBIGINT PK, name_en VARCHAR, name_fr VARCHAR)`
+  - DB-first resolution: `_resolve_weapon_from_db()` with `@lru_cache` + Python dict fallback
+  - Automatic migration `add_weapon_labels` (`target_db="metadata"`) registered in the migration system
+  - `src/ui/i18n/weapons.py` cleaned up: `get_all_weapon_ids`, `get_weapon_ids_by_faction`, `translate_weapon_name` removed
+
+- **`src/auth/` package** — new auth layer replacing all manual Azure/env configuration:
+  - `LEVELUP_CLIENT_ID` hardcoded — no Azure portal setup required for end users
+  - `_msal.py`: `SerializableTokenCache` persisted in DuckDB (`sync_meta`) via MSAL
+  - `provider.py`: single entry point — process cache (4 h TTL), MSAL silent refresh, `AuthRequiredError`, `start/complete_device_flow`
+  - `_halo_exchange.py`: stateless `access_token → (spartan, clearance)` exchange via spnkr.auth
+
+- **Launcher — SSO auto-detection** (`launcher.py`)
+  - Gamertag automatically resolved from Microsoft login via Halo API (no manual entry required)
+  - New first-launch flow: Device Code → DuckDB MSAL → sync → Streamlit (zero manual configuration)
+  - Recovery menu simplified to Device Code Flow only
+
+- **`resolve_medal_name` helper** (`src/analysis/`) — medal name resolution from `metadata.duckdb`, no hardcoded dicts
+
+- **Last Match — previous/next navigation** — `◀ Previous` / `Next ▶` buttons to navigate between all filtered matches without reloading data
+
+- **`populate_metadata_from_discovery.py` rewritten** for v5.1+
+  - Reads `match_registry` from `shared_matches.duckdb` (replaces deprecated `match_stats`)
+  - Extended DDL with i18n columns (`name_en`, `name_fr`, `mode_name`, `playlist_canonical_*`)
+  - Logic extracted into `scripts/_metadata_db.py` (DDL + i18n enrichment)
+
+- **`WeaponKillsMixin.load_grenade_melee_kills(xuid, match_ids)`** — new repo method querying
+  `shared.match_participants` for grenade/melee totals. Replaces all direct `_get_connection()`
+  calls in UI code (`_timeseries_weapons.py`, `match_view_weapon_kills.py`, `teammates_weapons.py`).
+
+- **Custom medal: Avenger** — detects revenge kills (you kill the opponent who last killed you) via `killer_victim_pairs`
+  - Custom ID `9 000 000 001` (beyond official Halo medal range)
+  - Global backfill via correlated subquery on `killer_victim_pairs`: for each kill, checks if the victim is the killer from the player's previous death
+  - CLI: `python scripts/backfill_data.py --avenger` (or `--force-avenger` for full recompute)
+  - Names (`medals_fr/en.json`) and descriptions (`medals_descriptions_fr/en.json`) in static JSON files
+  - `resolve_medal_description()` enhanced with JSON fallback when `metadata.duckdb` has no `medals` table
+  - 18 tests (12 backfill + 6 description)
+
+- **Top Gun label** 🔫 — badge on the Impact timeline for the first player on your team to reach 10 kills in a match
+  - Constant `TOP_GUN_KILL_THRESHOLD = 10`; `_find_top_gun_event()` scans `highlight_events` chronologically
+  - Integrated into the existing impact events pipeline (no UI caller changes needed)
+  - Bilingual labels: "As de la gâchette" (FR) / "Top Gun" (EN)
+
+### Changed
+
+- **Gamertag resolver** (`src/data/sync/_gamertag_resolver.py`) — 5-source cascade replaced by a single `v_gamertag_lookup` JOIN; `load_match_player_gamertags()` reduced from 4 sequential queries to 1
+- **`match_registry` consumers** migrated to `v_match_full` (asset loader, career encounters, etc.)
+- **`killer_victim_repo`** and `career_encounters_data` migrate to `v_killer_victim_full`
+- **i18n DuckDB migration** — `modes_fr/en.json` migrated to `metadata.duckdb`; playlist and game_variant JSON dicts removed from source code
+- **`get_tokens_from_env()`** (sync) — deprecated wrapper delegating to `src.auth`; internal callers updated
+- **Weapon parser — global correlation** — fire_event match rate corrected from 15 % to 95 % after fixing `b2_dispatch` routing; compact COMPLETE logs with sentinel / no_weapon distinction and `b2_dispatch` drop rate exposed
+- **Backfill `--weapons --all`** — match_ids deduplicated across all players so each film is downloaded only once
+- **`v_weapon_kills` view enforced app-wide** — all read queries now use `shared.v_weapon_kills`
+  (exposes `effective_weapon_id = COALESCE(reconciled_as, weapon_id)`) instead of the raw
+  `weapon_kills` table. Affected: `match_view_weapon_kills.py`, `citations/_data_loader.py`,
+  `_roster_loader.py` (scoreboard top-weapon subquery).
+- **`load_weapon_kills_for_player` replaces `load_weapon_kills_for_match`** in
+  `match_view_weapon_kills.py` — SQL-level filter by `xuid` instead of Python post-filter.
+- **`v_gamertag_lookup` enforced app-wide** — all remaining `LEFT JOIN xuid_aliases` patterns
+  replaced; guards `_has_shared_view` / `_has_shared_table` removed (view guaranteed present
+  in v6). Affected: `_encounter_loader.py`, `_career_encounters_repo.py`, `_roster_loader.py`,
+  `_events_repo.py`, `_discord_queries.py`.
+- **`load_match_roster()` simplified** — two redundant Python gamertag enrichment passes
+  (inline `xuid_aliases` + `v_gamertag_lookup` queries with dead guards) removed; enrichment
+  delegated exclusively to `resolve_gamertags_batch()`. ~45 lines removed.
+
+### Removed
+
+- **`highlight_events.gamertag` column** — migration `drop_highlight_events_gamertag`; gamertag resolved via `v_gamertag_lookup` instead
+- **`resolve_xuid_from_input` wrapper** — dead code removed
+- **`get_outcome_name_fr`** and `_refdata_outcomes` — replaced by metadata.duckdb lookup
+- **14 Azure/OAuth functions** in `launcher.py` (−652 lines net): Azure wizard, `has_client_id`, `config-az`/`paste-id` recovery options, environment variable `SPNKR_AZURE_CLIENT_ID` no longer required
+- **`_has_gamertag_column()`** helper in `_weapon_kills_repo.py` — dead code since `drop_highlight_events_gamertag`
+- **Dead guards** `_has_shared_view("v_gamertag_lookup")` in `teammates_impact.py` and `_events_repo.py` — `else` branches returning `NULL AS gamertag` removed
+- **`_append_grenade_melee()`** helper in `teammates_weapons.py` — replaced by `load_grenade_melee_kills()`
+
+### Tests
+
+- `tests/test_resolution_views.py` — 11 tests: view priority, alias/participant fallback, NULL filter, deduplication, EN columns always populated, FR columns NULL without metadata, idempotence, gamertag resolution for killer/victim
+- `tests/test_global_correlation.py` — 19 tests: **100 % coverage** on `_global_correlation.py` (38/38 stmts, 12/12 branches)
+- `_parser_logging.py` — **100 % coverage** (57/57 stmts, 10/10 branches)
+- **4 719 tests total, 0 failures**
+
+---
+
+## [5.7.0] - 2026-03-13
+
+### Added
+
+- **Traductions FR des rangs Halo** (`src/ui/i18n/ranks.py`)
+  - 17 rangs de carrière (Recruit→Recrue, General→Général, Hero→Héros…) + 6 tiers CSR (Silver→Argent, Gold→Or…)
+  - Helper `translate_rank()` avec fallback sur le nom anglais original
+  - Intégré dans le script de migration metadata (`migrate_metadata_to_duckdb.py`)
+
+- **Launchers bilingues FR/EN** (`LevelUp.sh`, `LevelUp.bat`)
+  - Détection automatique de la langue système (POSIX `LC_ALL`/`LANG`, Windows Registry `LocaleName`)
+  - ~30 messages localisés dans chaque launcher (premier lancement, erreurs, winget, etc.)
+
+### Changed
+
+- **Pandas→Polars** : suppression de 7 appels `.to_pandas()` dans les modules UI/viz
+  - `participation_charts.py` (pie, bars, stacked) : Polars natif bout en bout
+  - `participation_charts_extra.py` (sunburst) : `.to_pandas()` conservé uniquement à la frontière `px.sunburst`
+  - `objective_analysis.py` (3 tables assist/awards) : `st.dataframe` Polars natif
+  - `duckdb_analytics.py` (KDA trend) : `st.line_chart` avec `x=`/`y=` Polars natif
+
+- **CSS-only map thumbnails** : remplacement du script JS sandboxé (non fonctionnel) par un système hover CSS pur
+  - Suppression de `_MAP_TOOLTIP_SCRIPT` dans `styles.py` (38 lignes JS)
+  - Classes `.map-hover` + `.map-popup` dans `static/styles.css`
+  - `match_table_html.py` et `win_loss_table_style.py` mis à jour
+  - `_build_map_url_index()` amélioré : `lru_cache(maxsize=None)`, normalisation Unicode
+
+### Removed
+
+- Guard `was_pandas` dans `_performance_relative.py` : `compute_performance_series()` accepte désormais uniquement `pl.DataFrame`
+
+### Tests
+
+- `TestHighlightEventsSequenceIdempotent` ajouté dans `test_migrations.py` (couverture A.4)
+- 45/45 tests migrations passants
+
 ## [5.6.0-beta] - 2026-03-10
 
 > ⚠️ **Beta** — weapon attribution accuracy not yet guaranteed in all cases (estimated coverage 70–100 % depending on matches); weapon catalog in progress.

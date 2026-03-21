@@ -7,8 +7,6 @@ from pathlib import Path
 
 from src.analysis.filters import is_allowed_playlist_name
 from src.ui.translations import (
-    PAIR_FR,
-    PLAYLIST_FR,
     translate_pair_name,
     translate_playlist_name,
 )
@@ -19,16 +17,21 @@ from src.ui.translations import (
 
 
 class TestTranslatePlaylistName:
-    """Tests pour translate_playlist_name."""
+    """Tests pour translate_playlist_name (traduction via i18n/playlists_*.json)."""
 
-    def test_known_playlist(self):
-        """Test avec une playlist connue."""
-        assert translate_playlist_name("Quick Play") == "Partie rapide"
-        assert translate_playlist_name("Ranked Arena") == "Arène classée"
-        assert translate_playlist_name("Big Team Battle") == "Grande bataille en équipe"
+    def test_known_playlist_fr(self):
+        """Playlists connues traduites en FR via static/i18n/playlists_fr.json."""
+        assert translate_playlist_name("Quick Play", lang="fr") == "Partie rapide"
+        assert translate_playlist_name("Ranked Arena", lang="fr") == "Arène classée"
+        assert translate_playlist_name("Big Team Battle", lang="fr") == "Grande Bataille en Équipe"
+
+    def test_known_playlist_en(self):
+        """Playlists connues restent identiques en EN."""
+        assert translate_playlist_name("Quick Play", lang="en") == "Quick Play"
+        assert translate_playlist_name("Ranked Arena", lang="en") == "Ranked Arena"
 
     def test_unknown_playlist(self):
-        """Test avec une playlist inconnue - retourne l'original."""
+        """Test avec une playlist inconnue - retourne l'original (passthrough)."""
         assert translate_playlist_name("Unknown Playlist") == "Unknown Playlist"
 
     def test_none_value(self):
@@ -36,8 +39,18 @@ class TestTranslatePlaylistName:
         assert translate_playlist_name(None) is None
 
     def test_whitespace_handling(self):
-        """Test avec espaces autour."""
+        """Test avec espaces autour — strip appliqué puis traduit."""
         assert translate_playlist_name("  Quick Play  ") == "Partie rapide"
+
+    def test_uuid_returns_inconnue(self):
+        """UUID brut → label 'Inconnue' + warning loggé."""
+        result = translate_playlist_name("a446725e-b281-414c-a21e-1234567890ab")
+        assert result == "Inconnue"
+
+    def test_uuid_en_label(self):
+        """UUID brut en anglais → 'Unknown'."""
+        result = translate_playlist_name("a446725e-b281-414c-a21e-1234567890ab", lang="en")
+        assert result == "Unknown"
 
 
 class TestTranslatePairName:
@@ -86,35 +99,32 @@ class TestTranslatePairName:
 
 
 class TestTranslationCompleteness:
-    """Tests de complétude des traductions."""
+    """Tests de complétude des traductions modes (metadata.duckdb)."""
 
-    def test_playlist_fr_not_empty(self):
-        """Vérifie que PLAYLIST_FR contient des entrées."""
-        assert len(PLAYLIST_FR) >= 10
+    def test_mode_pair_overrides_not_empty(self):
+        """Les overrides mode_pair_overrides sont présents dans metadata.duckdb.
 
-    def test_pair_fr_not_empty(self):
-        """Depuis backlog N, PAIR_FR est vide : la source de vérité est modes_fr.json._pairs.
-
-        On vérifie que le JSON contient bien des overrides.
-        Seuil = 8 (au moins quelques entrées _pairs dans modes_fr.json).
+        Seuil = 8 (au moins quelques entrées pour FR).
         """
-        import json
-        import pathlib
+        import duckdb
 
-        modes_fr = json.loads(
-            (pathlib.Path("static/i18n/modes_fr.json")).read_text(encoding="utf-8")
-        )
-        assert len(modes_fr.get("_pairs", {})) >= 8
+        from src.utils.paths import get_metadata_db_path
 
-    def test_all_playlists_have_french(self):
-        """Vérifie que toutes les playlists ont une traduction non vide."""
-        for en, fr in PLAYLIST_FR.items():
-            assert fr, f"Playlist '{en}' a une traduction vide"
+        db_path = get_metadata_db_path()
+        if not db_path.exists():
+            import pytest
 
-    def test_all_pairs_have_french(self):
-        """Vérifie que tous les modes ont une traduction non vide."""
-        for en, fr in PAIR_FR.items():
-            assert fr, f"Mode '{en}' a une traduction vide"
+            pytest.skip("metadata.duckdb introuvable")
+        try:
+            with duckdb.connect(str(db_path), read_only=True) as conn:
+                count = conn.execute(
+                    "SELECT COUNT(*) FROM mode_pair_overrides WHERE lang='fr'"
+                ).fetchone()[0]
+        except Exception:
+            import pytest
+
+            pytest.skip("table mode_pair_overrides absente (migration requise)")
+        assert count >= 8
 
 
 # =============================================================================
