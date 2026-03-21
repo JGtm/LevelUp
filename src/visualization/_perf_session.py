@@ -398,14 +398,14 @@ def _r2_indicator(r_sq: float, is_sig: bool, lang: str) -> go.Indicator:
 
 
 def _wr_progression_indicator(wr_relative_change: float, lang: str) -> go.Indicator:
-    """Indicateur de progression taux de victoires sur la session (variation relative en %)."""
+    """Indicateur de progression taux de victoires sur la session (variation absolue en pp)."""
     if wr_relative_change > 0.05:
         color = PERFORMANCE_COLORS["trend_up"]
     elif wr_relative_change < -0.05:
         color = PERFORMANCE_COLORS["trend_down"]
     else:
         color = PERFORMANCE_COLORS["baseline"]
-    pct = max(-200.0, min(200.0, round(wr_relative_change * 100, 1)))
+    pct = max(-100.0, min(100.0, round(wr_relative_change * 100, 1)))
     return go.Indicator(
         mode="number+delta",
         value=pct,

@@ -228,8 +228,10 @@ def compute_linear_regression_kd(
     if "outcome" in df.columns:
         wins = [1.0 if v == Outcome.WIN else 0.0 for v in df["outcome"].to_list()]
         wr_slope, _, wr_y_hat, wr_r2 = _ols(wins)
-        mean_wins = sum(wins) / n
-        wr_relative_change = round(wr_slope * n / mean_wins, 4) if mean_wins > 0 else 0.0
+        mean_wins = sum(wins) / n  # noqa: F841 (conservé pour lisibilité)
+        # Variation absolue (pp) — pas relative : diviser par mean_wins amplifiait
+        # démesurément les sessions avec peu de victoires (ex : 1W/10 → 200%).
+        wr_relative_change = round(wr_slope * n, 4)
         result["win_rate_slope"] = round(wr_slope, 4)
         result["win_rate_r2"] = round(wr_r2, 3)
         result["win_y_hat"] = wr_y_hat
