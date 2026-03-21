@@ -25,10 +25,10 @@ def test_no_new_size_violations() -> None:
 
     Fonctionne en mode ratchet : les violations existantes (baseline) sont tolérées,
     seules les NOUVELLES violations font échouer le test.
-    Mettre à jour le baseline après un refactoring : python scripts/check_code_size.py --update
+    Mettre à jour le baseline après un refactoring : python scripts/enforce_size_limits.py --update
     """
     result = subprocess.run(
-        [sys.executable, "scripts/check_code_size.py"],
+        [sys.executable, "scripts/enforce_size_limits.py"],
         capture_output=True,
         text=True,
     )
@@ -36,7 +36,7 @@ def test_no_new_size_violations() -> None:
         f"Nouvelles violations de taille detectees :\n{result.stdout}\n"
         "Options :\n"
         "  1. Corriger la violation (split de la fonction/module)\n"
-        "  2. Apres refactoring : python scripts/check_code_size.py --update"
+        "  2. Apres refactoring : python scripts/enforce_size_limits.py --update"
     )
 
 

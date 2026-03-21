@@ -134,7 +134,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Check code size limits
-        run: python scripts/check_code_size.py
+        run: python scripts/enforce_size_limits.py
 
       - name: Check imports health
-        run: python scripts/check_imports.py || true
+        run: python scripts/validate_imports.py || true
