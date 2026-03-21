@@ -87,9 +87,9 @@ FUNC:src/visualization/participation_charts.py:38:plot_participation_pie:101L
 FUNC:src/visualization/participation_charts_extra.py:69:create_participation_indicator:97L
 FUNC:src/visualization/team_dominance_timeline.py:101:detect_streaks:99L
 FUNC:src/visualization/team_dominance_timeline.py:208:plot_dominance_chart:135L
-FUNC:src/visualization/timeseries.py:326:plot_per_minute_timeseries:128L
+FUNC:src/visualization/timeseries.py:328:plot_per_minute_timeseries:128L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
-FUNC:src/visualization/trio.py:38:plot_trio_metric:183L
+FUNC:src/visualization/trio.py:38:plot_trio_metric:205L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
 MODULE:src/data/sync/_match_processing.py:544L
@@ -97,4 +97,4 @@ MODULE:src/data/sync/api_client.py:521L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/session_compare.py:536L
 MODULE:src/visualization/maps_outcome.py:587L
-MODULE:src/visualization/timeseries.py:501L
+MODULE:src/visualization/timeseries.py:503L

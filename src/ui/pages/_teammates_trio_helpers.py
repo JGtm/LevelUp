@@ -23,6 +23,7 @@ from src.ui.pages.teammates_charts import render_trio_charts
 from src.ui.streamlit_modern import PLOTLY_STATIC_CONFIG
 from src.visualization._compat import DataFrameLike, ensure_polars
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
+from src.visualization.trio import _negative_color
 
 # ---------------------------------------------------------------------------
 # Session trio
@@ -128,25 +129,20 @@ def _render_per_minute_stats(  # noqa: PLR0913
     st.subheader(t("tm_per_minute"))
     fig_pm = go.Figure()
     for _pm_name, _pm_st, _pm_color in _pm_players:
-        _pm_vals = [
-            round(float(_pm_st.kills_per_minute), 2) if _pm_st.kills_per_minute else 0,
-            round(float(_pm_st.deaths_per_minute), 2) if _pm_st.deaths_per_minute else 0,
-            round(float(_pm_st.assists_per_minute), 2) if _pm_st.assists_per_minute else 0,
-        ]
+        _kpm = round(float(_pm_st.kills_per_minute), 2) if _pm_st.kills_per_minute else 0
+        _dpm = round(float(_pm_st.deaths_per_minute), 2) if _pm_st.deaths_per_minute else 0
+        _apm = round(float(_pm_st.assists_per_minute), 2) if _pm_st.assists_per_minute else 0
+        _pm_y = [_kpm, -_dpm, _apm]  # morts sous l'axe X
+        _pm_text = [f"{_kpm:.2f}", f"{_dpm:.2f}", f"{_apm:.2f}"]  # labels absolus
+        # Frags/Assists → couleur normale ; Morts → teinte négative Okabe-Ito du joueur
+        _bar_colors = [_pm_color, _negative_color(_pm_color), _pm_color]
         fig_pm.add_trace(
             go.Bar(
                 name=_pm_name,
                 x=_pm_metrics,
-                y=_pm_vals,
-                marker={
-                    "color": _pm_color,
-                    "pattern": {
-                        "shape": ["", "/", ""],
-                        "fgcolor": "rgba(255, 80, 80, 0.5)",
-                        "solidity": 0.15,
-                    },
-                },
-                text=[f"{v:.2f}" for v in _pm_vals],
+                y=_pm_y,
+                marker_color=_bar_colors,
+                text=_pm_text,
                 textposition="auto",
             )
         )

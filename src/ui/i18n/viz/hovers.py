@@ -53,6 +53,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "moy=%{y:.2f}<extra></extra>",
         "en": "avg=%{y:.2f}<extra></extra>",
     },
+    # hover_avg_abs : utilisé quand y est négatif (morts sous l'axe) ; customdata = valeur absolue
+    "hover_avg_abs": {
+        "fr": "moy=%{customdata:.2f}<extra></extra>",
+        "en": "avg=%{customdata:.2f}<extra></extra>",
+    },
     "hover_avg0": {
         "fr": "moy=%{y:.0f}<extra></extra>",
         "en": "avg=%{y:.0f}<extra></extra>",
