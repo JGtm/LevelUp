@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-6.1.0-blue.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v6.1.0)
+[![Version](https://img.shields.io/badge/Version-6.1.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v6.1.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -211,8 +211,8 @@
 ### macOS / Linux
 
 ```bash
-git clone https://github.com/JGtm/LevelUp_with_SPNKr.git
-cd LevelUp_with_SPNKr
+git clone https://github.com/JGtm/LevelUp.git
+cd LevelUp
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[spnkr]"
 python launcher.py run
