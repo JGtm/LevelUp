@@ -26,3 +26,6 @@ from src.analysis._performance_session import (  # noqa: F401
     compute_session_performance_score_v1,
     compute_session_performance_score_v2,
 )
+
+# ── Re-exports : score escouade ───────────────────────────────────────────────
+from src.analysis._performance_squad import compute_squad_performance_score  # noqa: F401

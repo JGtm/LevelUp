@@ -6,7 +6,6 @@
 #
 FUNC:src/ai/mcp_server.py:257:run_stdio_server:103L
 FUNC:src/analysis/killer_victim.py:220:compute_killer_victim_pairs:91L
-FUNC:src/analysis/maps.py:15:compute_map_breakdown:112L
 FUNC:src/analysis/participation_radar.py:307:compute_participation_profile:109L
 FUNC:src/analysis/participation_radar.py:48:compute_global_radar_thresholds:146L
 FUNC:src/analysis/sessions.py:168:compute_sessions_with_context_polars:155L
@@ -60,9 +59,8 @@ FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
 FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
-FUNC:src/ui/pages/teammates.py:74:render_teammates_page:181L
+FUNC:src/ui/pages/teammates.py:73:render_teammates_page:147L
 FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
-FUNC:src/ui/pages/teammates_views.py:58:render_single_teammate_view:142L
 FUNC:src/ui/styles.py:48:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L
 FUNC:src/visualization/_antagonist_duels.py:17:plot_duel_history:105L
@@ -77,7 +75,6 @@ FUNC:src/visualization/distributions.py:32:plot_kda_distribution:87L
 FUNC:src/visualization/distributions_outcomes.py:173:plot_win_ratio_heatmap:105L
 FUNC:src/visualization/distributions_outcomes.py:286:plot_matches_at_top_by_week:117L
 FUNC:src/visualization/distributions_outcomes.py:28:plot_outcomes_over_time:90L
-FUNC:src/visualization/friends_impact_heatmap.py:364:plot_squad_map_heatmap:82L
 FUNC:src/visualization/friends_impact_heatmap.py:62:plot_friends_impact_heatmap:188L
 FUNC:src/visualization/match_bars.py:129:plot_multi_metric_bars_by_match:226L
 FUNC:src/visualization/match_bars.py:18:plot_metric_bars_by_match:108L
