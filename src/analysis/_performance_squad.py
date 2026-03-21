@@ -6,8 +6,12 @@ avec des bonus pour le win rate d'équipe, la cohésion K/D et l'équilibre des 
 
 from __future__ import annotations
 
+import logging
+
 from src.analysis.performance_config import SQUAD_GRADE_THRESHOLDS, resolve_squad_grade
 from src.utils.safe_types import clamp as _clamp
+
+logger = logging.getLogger(__name__)
 
 
 def compute_squad_performance_score(scores: list[dict]) -> dict:
@@ -22,11 +26,19 @@ def compute_squad_performance_score(scores: list[dict]) -> dict:
     """
     valid = [s for s in scores if s.get("score") is not None]
     if not valid:
+        logger.debug("compute_squad_performance_score: no valid scores → returning None")
         return {"score": None, "grade": "N/A", "components": {}}
 
     base = sum(s["score"] for s in valid) / len(valid)
     bonuses, comps = _compute_squad_bonuses(valid)
     final = _clamp(base + bonuses, lo=0.0, hi=100.0)
+    logger.debug(
+        "Squad score: base=%.1f bonuses=%.1f final=%.1f grade=%s",
+        base,
+        bonuses,
+        final,
+        comps,
+    )
     return {
         "score": round(final, 1),
         "grade": resolve_squad_grade(final),
