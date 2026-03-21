@@ -64,6 +64,70 @@ from src.utils.paths import (
 )
 
 # =============================================================================
+# i18n — Détection de la langue système et traductions
+# =============================================================================
+
+
+def _detect_lang() -> str:
+    """Détecte la langue système → 'fr' ou 'en' (défaut 'en').
+
+    Ordre de priorité :
+    1. Variable d'env LEVELUP_LANG (override explicite)
+    2. locale.getlocale() / getdefaultlocale()
+    3. Variables d'env LANG / LC_ALL / LC_MESSAGES / LANGUAGE
+    4. Registre Windows (Control Panel\\International\\LocaleName)
+    """
+    forced = os.environ.get("LEVELUP_LANG", "").strip().lower()
+    if forced in ("fr", "en"):
+        return forced
+
+    import locale as _locale
+
+    candidates: list[str] = []
+    try:
+        lc = _locale.getlocale()[0]
+        if lc:
+            candidates.append(lc.lower())
+    except Exception:
+        pass
+    try:
+        lc = _locale.getdefaultlocale()[0]  # deprecated but broader support
+        if lc:
+            candidates.append(lc.lower())
+    except Exception:
+        pass
+    for var in ("LANG", "LC_ALL", "LC_MESSAGES", "LANGUAGE"):
+        val = os.environ.get(var, "")
+        if val and not val.upper().startswith("C"):
+            candidates.append(val.lower().split(".")[0].split("@")[0])
+    if sys.platform == "win32":
+        try:
+            import winreg  # noqa: PLC0415
+
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Control Panel\International") as _k:
+                _locale_name = winreg.QueryValueEx(_k, "LocaleName")[0]
+                if _locale_name:
+                    candidates.append(_locale_name.lower())
+        except Exception:
+            pass
+    for _c in candidates:
+        if _c.startswith("fr"):
+            return "fr"
+    return "en"
+
+
+try:
+    from src.utils.launcher_i18n import t as _t
+except ImportError:
+
+    def _t(key: str, lang: str = "fr", **kwargs: object) -> str:  # type: ignore[misc]
+        """Fallback no-op quand le module i18n n'est pas encore disponible."""
+        return key
+
+
+_LANG: str = _detect_lang()
+
+# =============================================================================
 # Gestion propre du Ctrl+C
 # =============================================================================
 
@@ -113,10 +177,10 @@ def _signal_handler(signum: int, frame) -> None:
 
         if count == 1:
             _shutdown_event.set()
-            print("\n⏹ Arrêt en cours (Ctrl+C à nouveau pour forcer)...", flush=True)
+            print(_t("shutdown_in_progress", _LANG), flush=True)
             _kill_active_process()
         elif count >= 2:
-            print("\n⚠ Arrêt forcé.", flush=True)
+            print(_t("shutdown_forced", _LANG), flush=True)
             _kill_active_process()
             os._exit(1)
 
@@ -179,9 +243,9 @@ def _require_module(name: str, *, install_hint: str) -> None:
     try:
         __import__(name)
     except Exception as e:
-        print(f"Dépendance manquante: {name}")
-        print("Détail:", e)
-        print("Installe-la puis relance:")
+        print(_t("dep_missing", _LANG, name=name))
+        print(_t("dep_detail", _LANG), e)
+        print(_t("dep_install_hint", _LANG))
         print(f"  {install_hint}")
         raise SystemExit(2) from e
 
@@ -205,7 +269,7 @@ def _import_duckdb():
 
         return duckdb
     except ImportError as err:
-        print("❌ DuckDB non installé. Exécute:")
+        print(_t("duckdb_not_installed", _LANG))
         print("   pip install duckdb")
         raise SystemExit(2) from err
 
@@ -287,7 +351,7 @@ def _list_players() -> list[PlayerInfo]:
             )
         )
         if not db_readable:
-            print(f"  ⚠ {gamertag}/stats.duckdb illisible (fichier corrompu ?)")
+            print(_t("db_unreadable", _LANG, gamertag=gamertag))
 
     # Trier par nombre de matchs décroissant
     players.sort(key=lambda p: p.total_matches, reverse=True)
@@ -343,10 +407,7 @@ def _classify_sync_error(err: str, gamertag: str) -> str:
     """Retourne un message d'erreur de sync actionnable selon le type d'échec."""
     s = err.lower()
     if "invalid_grant" in s or "aadsts" in s or ("expir" in s and ("token" in s or "refresh" in s)):
-        return (
-            f"  ⚠ Token OAuth expiré pour {gamertag}\n"
-            "  → Relance LevelUp puis choisis « Ajouter un joueur » pour renouveler le token."
-        )
+        return _t("sync_error_token", _LANG, gamertag=gamertag)
     if any(
         kw in s
         for kw in (
@@ -356,10 +417,7 @@ def _classify_sync_error(err: str, gamertag: str) -> str:
             "being used by another process",
         )
     ):
-        return (
-            "  ⚠ Base de données verrouillée.\n"
-            "  → Ferme le dashboard LevelUp (Streamlit) avant de synchroniser."
-        )
+        return _t("sync_error_locked", _LANG)
     if any(
         kw in s
         for kw in (
@@ -372,16 +430,9 @@ def _classify_sync_error(err: str, gamertag: str) -> str:
             "connection refused",
         )
     ):
-        return (
-            "  ⚠ Impossible de joindre les serveurs Halo.\n"
-            "  → Vérifie ta connexion internet et réessaie."
-        )
+        return _t("sync_error_network", _LANG)
     # Erreur inconnue — afficher le message complet pour faciliter le diagnostic
-    return (
-        f"  ⚠ Erreur inattendue pour {gamertag} :\n"
-        f"  {err}\n"
-        "  → Pour obtenir de l'aide, transmets ce message complet."
-    )
+    return _t("sync_error_unknown", _LANG, gamertag=gamertag, err=err)
 
 
 async def _sync_player_duckdb_async(
@@ -474,7 +525,7 @@ def _fetch_profile_assets(gamertag: str) -> None:
     except ImportError:
         return
 
-    print("  → Fetch assets profil...")
+    print(_t("fetch_profile_assets", _LANG))
 
     player_str = str(gamertag).strip()
     xuid = None
@@ -571,18 +622,18 @@ def _find_system_python() -> str | None:
 def _install_python_via_winget() -> bool:
     """Installe Python 3.12 via winget (Windows uniquement)."""
     if sys.platform != "win32":
-        print("  ⚠ Installation automatique uniquement disponible sur Windows.")
-        print("  Installez Python manuellement: https://www.python.org/downloads/")
+        print(_t("winget_windows_only", _LANG))
+        print(_t("python_manual_install", _LANG))
         return False
 
     import shutil
 
     if not shutil.which("winget"):
-        print("  ⚠ winget non disponible sur ce système.")
-        print("  Installez Python manuellement: https://www.python.org/downloads/")
+        print(_t("winget_unavailable", _LANG))
+        print(_t("python_manual_install", _LANG))
         return False
 
-    print("  → Installation de Python 3.12 via winget...")
+    print(_t("winget_installing", _LANG))
     try:
         result = subprocess.run(
             [
@@ -599,7 +650,7 @@ def _install_python_via_winget() -> bool:
         )
         return result.returncode == 0
     except Exception as e:
-        print(f"  ⚠ Erreur winget: {e}")
+        print(_t("winget_error", _LANG, err=e))
         return False
 
 
@@ -608,7 +659,7 @@ def _cmd_setup(args: argparse.Namespace) -> int:
     update_mode = getattr(args, "update", False)
 
     print("=" * 60)
-    print("⚙️  LEVELUP — SETUP" + (" (mise à jour)" if update_mode else ""))
+    print(_t("setup_title_update" if update_mode else "setup_title", _LANG))
     print("=" * 60)
 
     venv_python = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
@@ -619,40 +670,40 @@ def _cmd_setup(args: argparse.Namespace) -> int:
 
     # ── 1. Vérifier/créer le venv ──
     if venv_python.exists() and not update_mode:
-        print("\n[1/3] Environnement .venv déjà présent ✓")
+        print(_t("setup_venv_exists", _LANG))
         py = str(venv_python)
     else:
-        print("\n[1/3] Recherche de Python...")
+        print(_t("setup_step1_searching", _LANG))
 
         py = _find_system_python()
         if not py:
-            print("  Python 3.10+ non trouvé sur le système.")
+            print(_t("setup_python_not_found", _LANG))
             if _install_python_via_winget():
                 py = _find_system_python()
 
         if not py:
-            print("\n  ❌ Impossible de trouver Python 3.10+.")
-            print("  Installez-le depuis https://www.python.org/downloads/")
+            print(_t("setup_python_impossible", _LANG))
+            print(_t("setup_python_install_url", _LANG))
             return 1
 
-        print(f"  Python trouvé: {py}")
+        print(_t("setup_python_found", _LANG, py=py))
 
         if not venv_python.exists():
-            print("\n[2/3] Création de l'environnement virtuel...")
+            print(_t("setup_step2_creating_venv", _LANG))
             result = subprocess.run([py, "-m", "venv", str(REPO_ROOT / ".venv")])
             if result.returncode != 0:
-                print("  ❌ Impossible de créer le venv.")
+                print(_t("setup_venv_create_failed", _LANG))
                 return 1
-            print("  ✓ .venv créé")
+            print(_t("setup_venv_created", _LANG))
             created_venv = True
         else:
-            print("\n[2/3] Environnement .venv existant ✓")
+            print(_t("setup_step2_venv_exists", _LANG))
 
         py = str(venv_python)
 
     # ── 2. Installer/mettre à jour les dépendances ──
     step = "3/3" if created_venv else "2/2"
-    print(f"\n[{step}] Installation des dépendances...")
+    print(_t("setup_step_deps", _LANG, step=step))
 
     subprocess.run([py, "-m", "pip", "install", "--upgrade", "pip", "-q"])
     pip_cmd = [py, "-m", "pip", "install", "-e", ".[spnkr]", "-q"]
@@ -661,13 +712,13 @@ def _cmd_setup(args: argparse.Namespace) -> int:
 
     result = subprocess.run(pip_cmd)
     if result.returncode != 0:
-        print("  ❌ L'installation des dépendances a échoué.")
-        print("  Causes possibles :")
-        print("  - Pas de connexion internet")
-        print("  - Dossier en lecture seule (déplace LevelUp dans Documents)")
-        print("  - Espace disque insuffisant")
+        print(_t("setup_deps_failed", _LANG))
+        print(_t("setup_deps_causes", _LANG))
+        print(_t("setup_deps_no_internet", _LANG))
+        print(_t("setup_deps_readonly", _LANG))
+        print(_t("setup_deps_diskspace", _LANG))
         return 1
-    print("  ✓ Dépendances installées")
+    print(_t("setup_deps_ok", _LANG))
 
     # ── 3. Vérification rapide ──
     check = subprocess.run(
@@ -676,16 +727,16 @@ def _cmd_setup(args: argparse.Namespace) -> int:
         text=True,
     )
     if check.returncode != 0:
-        print("  ⚠ Packages critiques manquants après installation.")
+        print(_t("setup_critical_missing", _LANG))
         return 1
 
     print("\n" + "=" * 60)
-    print("✅ SETUP TERMINÉ")
+    print(_t("setup_done", _LANG))
     print("=" * 60)
-    print(f"\n  Python: {py}")
-    print("  Commandes utiles:")
-    print("    python launcher.py run     # Lancer le dashboard")
-    print("    python launcher.py doctor  # Vérifier l'environnement")
+    print(_t("setup_python_path", _LANG, py=py))
+    print(_t("setup_useful_cmds", _LANG))
+    print(_t("setup_cmd_run", _LANG))
+    print(_t("setup_cmd_doctor", _LANG))
     return 0
 
 
@@ -719,9 +770,11 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
         if _venv_py is not None:
             exe_r = Path(sys.executable).resolve()
             if exe_r != _venv_py.resolve():
-                errors.append(f"Mauvais interpréteur: {exe_r} (attendu {_venv_py.resolve()})")
+                errors.append(
+                    _t("doctor_wrong_interpreter", _LANG, exe=exe_r, expected=_venv_py.resolve())
+                )
     else:
-        errors.append("Dossier .venv introuvable — lancez: python launcher.py setup")
+        errors.append(_t("doctor_no_venv", _LANG))
 
     # Vérifier les versions des packages critiques
     expected_packages = {
@@ -737,41 +790,49 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
             status = "✓"
             if expected_ver and actual != expected_ver:
                 status = "⚠"
-                warnings.append(f"{pkg}: {actual} (attendu {expected_ver})")
+                warnings.append(
+                    _t(
+                        "doctor_pkg_version_mismatch",
+                        _LANG,
+                        pkg=pkg,
+                        actual=actual,
+                        expected=expected_ver,
+                    )
+                )
             print(f"  {status} {pkg}=={actual}")
         except importlib_metadata.PackageNotFoundError:
             print(f"  ✗ {pkg} — MANQUANT")
-            errors.append(f"Package manquant: {pkg}")
+            errors.append(_t("doctor_pkg_missing", _LANG, pkg=pkg))
 
     # Vérifier les données
     print()
     players = _list_players()
     if players:
         total = sum(p.total_matches for p in players)
-        print(f"  📊 {len(players)} joueur(s), {total} matchs")
+        print(_t("doctor_players_info", _LANG, count=len(players), total=total))
     else:
-        warnings.append("Aucune donnée joueur trouvée dans data/players/")
+        warnings.append(_t("doctor_no_players", _LANG))
 
     meta_path = WAREHOUSE_DIR / METADATA_DB_FILENAME
     if meta_path.exists():
         print(f"  ✓ metadata.duckdb ({meta_path.stat().st_size / 1024 / 1024:.1f} MB)")
     else:
-        warnings.append("metadata.duckdb manquant")
+        warnings.append(_t("doctor_no_metadata", _LANG))
 
     # Résultats
     if warnings:
-        print("\n⚠ Avertissements:")
+        print(_t("doctor_warnings", _LANG))
         for w in warnings:
             print(f"  - {w}")
 
     if errors:
-        print("\n❌ Erreurs:")
+        print(_t("doctor_errors", _LANG))
         for e in errors:
             print(f"  - {e}")
-        print("\n  → Corrigez avec: python launcher.py setup")
+        print(_t("doctor_fix_hint", _LANG))
         return 1
 
-    print("\n✅ Environnement OK")
+    print(_t("doctor_ok", _LANG))
     return 0
 
 
@@ -798,7 +859,7 @@ def _run_migrations() -> None:
     if not players and not shared_path.exists():
         return
 
-    print("\n🔧 Vérification du schéma de données…", flush=True)
+    print(_t("migrations_checking", _LANG), flush=True)
 
     total_schemas = 0
     total_backfills = 0
@@ -834,15 +895,15 @@ def _run_migrations() -> None:
             errors.append(f"{player.gamertag}: {e}")
 
     if total_schemas == 0 and total_backfills == 0:
-        print("   ✓ Schéma à jour", flush=True)
+        print(_t("migrations_up_to_date", _LANG), flush=True)
     else:
         if total_schemas:
-            print(f"   ✓ {total_schemas} migration(s) de schéma appliquée(s)", flush=True)
+            print(_t("migrations_schemas_applied", _LANG, n=total_schemas), flush=True)
         if total_backfills:
-            print(f"   ✓ {total_backfills} backfill(s) exécuté(s)", flush=True)
+            print(_t("migrations_backfills_applied", _LANG, n=total_backfills), flush=True)
 
     if errors:
-        print(f"   ⚠ {len(errors)} erreur(s) non-bloquante(s):", flush=True)
+        print(_t("migrations_non_blocking_errors", _LANG, n=len(errors)), flush=True)
         for err in errors[:5]:
             print(f"     - {err}", flush=True)
 
@@ -889,10 +950,10 @@ def _launch_streamlit(
     # Appliquer les migrations de schéma avant le lancement
     _run_migrations()
 
-    print("\n\ud83d\ude80 Lancement du dashboard\u2026", flush=True)
-    print(f"   URL: {url}", flush=True)
-    print("   Architecture: DuckDB v5", flush=True)
-    print(f"   Donn\u00e9es: {_display_path(PLAYERS_DIR)}", flush=True)
+    print(_t("launching_dashboard", _LANG), flush=True)
+    print(_t("launching_url", _LANG, url=url), flush=True)
+    print(_t("launching_arch", _LANG), flush=True)
+    print(_t("launching_data", _LANG, path=_display_path(PLAYERS_DIR)), flush=True)
 
     global _active_process
     # Ne pas hériter stdin pour éviter que le sous-processus bloque (ex. Cursor/IDE)
@@ -929,11 +990,11 @@ def _cmd_run(args: argparse.Namespace) -> int:
     players = _list_players()
 
     if not players:
-        print("❌ Aucune donnée joueur trouvée")
+        print(_t("run_no_data", _LANG))
         print()
         if sys.stdin.isatty():
             try:
-                go = input("  Configurer un premier joueur maintenant ? [O/n] : ").strip().lower()
+                go = input(_t("run_configure_prompt", _LANG)).strip().lower()
             except (EOFError, KeyboardInterrupt):
                 return 2
             if go in ("", "o", "oui", "y", "yes"):
@@ -945,17 +1006,14 @@ def _cmd_run(args: argparse.Namespace) -> int:
                             db_path=None, port=args.port, no_browser=args.no_browser
                         )
         else:
-            print("   Lance : python launcher.py add-player --gamertag <gamertag>")
+            print(_t("run_no_tty_hint", _LANG))
         return 2
 
     # Afficher les infos
     total_matches = sum(p.total_matches for p in players)
-    print(
-        f"\n\ud83d\udcca Architecture DuckDB v5: {len(players)} joueur(s), {total_matches} matchs",
-        flush=True,
-    )
+    print(_t("run_stats", _LANG, count=len(players), total=total_matches), flush=True)
     for p in players:
-        print(f"   - {p.gamertag}: {p.total_matches} matchs", flush=True)
+        print(_t("run_player_row", _LANG, gamertag=p.gamertag, matches=p.total_matches), flush=True)
 
     return _launch_streamlit(db_path=None, port=args.port, no_browser=args.no_browser)
 
@@ -967,21 +1025,21 @@ def _cmd_sync(args: argparse.Namespace) -> int:
     players = _list_players()
 
     if not players:
-        print("❌ Aucun joueur trouvé dans data/players/")
-        print("\n   Pour synchroniser un premier joueur :")
+        print(_t("sync_no_players", _LANG))
+        print(_t("sync_no_players_hint1", _LANG))
         print("   python launcher.py add-player")
-        print("\n   Ou directement en ligne de commande :")
+        print(_t("sync_no_players_hint3", _LANG))
         print("   python scripts/sync.py --delta --gamertag <gamertag>")
         return 2
 
     print("=" * 60)
-    print("🔄 SYNCHRONISATION (DuckDB v5)")
+    print(_t("sync_title", _LANG))
     print("=" * 60)
-    print(f"\n   {len(players)} joueur(s) détecté(s):")
+    print(_t("sync_players_detected", _LANG, count=len(players)))
     for p in players:
-        print(f"   - {p.gamertag}: {p.total_matches} matchs")
+        print(_t("sync_player_row", _LANG, gamertag=p.gamertag, matches=p.total_matches))
 
-    print("\n📥 Synchronisation en cours...")
+    print(_t("sync_in_progress", _LANG))
 
     delta_mode = not getattr(args, "full", False)
     max_matches = int(getattr(args, "max_matches", 100))
@@ -994,7 +1052,7 @@ def _cmd_sync(args: argparse.Namespace) -> int:
             return 0
 
         print(f"\n[{player.gamertag}]")
-        print(f"  → Sync {'delta' if delta_mode else 'complète'}...")
+        print(_t("sync_mode_delta" if delta_mode else "sync_mode_full", _LANG))
 
         try:
             before, after = _sync_player_duckdb(
@@ -1007,9 +1065,9 @@ def _cmd_sync(args: argparse.Namespace) -> int:
             total_new += new_matches
 
             if new_matches > 0:
-                print(f"  ✓ {new_matches} nouveau(x) match(s)")
+                print(_t("sync_new_matches", _LANG, n=new_matches))
             else:
-                print(f"  ✓ À jour ({after} matchs)")
+                print(_t("sync_up_to_date", _LANG, n=after))
 
             # Fetch assets profil
             _fetch_profile_assets(player.gamertag)
@@ -1022,18 +1080,18 @@ def _cmd_sync(args: argparse.Namespace) -> int:
         return 0
 
     print("\n" + "=" * 60)
-    print("✅ SYNCHRONISATION TERMINÉE")
+    print(_t("sync_done", _LANG))
     print("=" * 60)
 
     # Afficher le résumé
     players_after = _list_players()
     total_matches = sum(p.total_matches for p in players_after)
-    print(f"\n   Joueurs: {len(players_after)}")
-    print(f"   Total matchs: {total_matches}")
+    print(_t("sync_summary_players", _LANG, n=len(players_after)))
+    print(_t("sync_summary_total", _LANG, n=total_matches))
     if total_new > 0:
-        print(f"   Nouveaux: +{total_new}")
+        print(_t("sync_summary_new", _LANG, n=total_new))
     if failures > 0:
-        print(f"   ⚠ Échecs: {failures}")
+        print(_t("sync_summary_failures", _LANG, n=failures))
 
     # Lancer le dashboard si demandé
     if getattr(args, "run", False):
@@ -1047,31 +1105,33 @@ def _cmd_info(args: argparse.Namespace) -> int:
     players = _list_players()
 
     if not players:
-        print("❌ Aucun joueur trouvé dans data/players/")
+        print(_t("sync_no_players", _LANG))
         return 2
 
     print("=" * 60)
-    print("📊 INFORMATIONS (DuckDB v5)")
+    print(_t("info_title", _LANG))
     print("=" * 60)
 
     total_matches = sum(p.total_matches for p in players)
 
-    print(f"\n   Dossier: {_display_path(PLAYERS_DIR)}")
-    print(f"   Joueurs: {len(players)}")
-    print(f"   Total matchs: {total_matches}")
+    print(_t("info_dir", _LANG, path=_display_path(PLAYERS_DIR)))
+    print(_t("info_players", _LANG, n=len(players)))
+    print(_t("info_total_matches", _LANG, n=total_matches))
 
-    print("\n   Détail par joueur:")
+    print(_t("info_players_detail", _LANG))
     for p in players:
         size_mb = p.db_path.stat().st_size / (1024 * 1024) if p.db_path.exists() else 0
-        print(f"   - {p.gamertag}: {p.total_matches} matchs ({size_mb:.1f} MB)")
+        print(
+            _t("info_player_row", _LANG, gamertag=p.gamertag, matches=p.total_matches, size=size_mb)
+        )
 
     # Vérifier metadata.duckdb
     metadata_path = WAREHOUSE_DIR / METADATA_DB_FILENAME
     if metadata_path.exists():
         size_mb = metadata_path.stat().st_size / (1024 * 1024)
-        print(f"\n   Métadonnées: {_display_path(metadata_path)} ({size_mb:.1f} MB)")
+        print(_t("info_metadata", _LANG, path=_display_path(metadata_path), size=size_mb))
     else:
-        print(f"\n   ⚠ Métadonnées non trouvées: {_display_path(metadata_path)}")
+        print(_t("info_no_metadata", _LANG, path=_display_path(metadata_path)))
 
     return 0
 
@@ -1091,9 +1151,9 @@ def _ensure_warehouse_dbs() -> None:
             from src.data.sync._engine_connections import _bootstrap_shared_matches_db
 
             _bootstrap_shared_matches_db(shared_path)
-            print("  ✓ shared_matches.duckdb initialisé", flush=True)
+            print(_t("warehouse_shared_init", _LANG), flush=True)
         except Exception as exc:
-            print(f"  ⚠ Impossible d'initialiser shared_matches.duckdb : {exc}", flush=True)
+            print(_t("warehouse_shared_init_fail", _LANG, err=exc), flush=True)
 
     meta_path = WAREHOUSE_DIR / "metadata.duckdb"
     if not meta_path.exists():
@@ -1102,9 +1162,9 @@ def _ensure_warehouse_dbs() -> None:
 
             _conn = _duckdb.connect(str(meta_path))
             _conn.close()
-            print("  ✓ metadata.duckdb initialisé", flush=True)
+            print(_t("warehouse_meta_init", _LANG), flush=True)
         except Exception as exc:
-            print(f"  ⚠ Impossible d'initialiser metadata.duckdb : {exc}", flush=True)
+            print(_t("warehouse_meta_init_fail", _LANG, err=exc), flush=True)
 
 
 def _load_dotenv_for_launcher() -> None:
@@ -1217,20 +1277,19 @@ def _print_device_code(user_code: str, verification_url: str, expires_in: int) -
 
     print(flush=True)
     print("  +----------------------------------------------------------+", flush=True)
-    print("  |         CODE A ENTRER SUR MICROSOFT                      |", flush=True)
+    print(_t("dcf_box_title_line", _LANG), flush=True)
     print("  +----------------------------------------------------------+", flush=True)
     print(f"  |  URL  : {verification_url:<49}|", flush=True)
     print(f"  |  Code : {user_code:<49}|", flush=True)
-    print(
-        f"  |  Expire dans : {expires_in // 60} min{' ' * (44 - len(str(expires_in // 60)))}|",
-        flush=True,
-    )
+    _n_min = expires_in // 60
+    _exp_label = _t("dcf_box_expires_label", _LANG)
+    print(f"  |  {_exp_label}: {_n_min} min{' ' * (44 - len(str(_n_min)))}|", flush=True)
     print("  +----------------------------------------------------------+", flush=True)
     print(flush=True)
     # Copier le code dans le presse-papiers Windows si possible
     with contextlib.suppress(Exception):
         subprocess.run(["clip"], input=user_code.encode(), check=False)  # noqa: S603, S607
-        print("  >> Code copie dans le presse-papiers (Ctrl+V pour coller).", flush=True)
+        print(_t("dcf_clipboard", _LANG), flush=True)
     print(flush=True)
 
 
@@ -1253,34 +1312,34 @@ def _wizard_oauth_token(gamertag: str, client_id: str = "") -> bool:  # noqa: AR
 
     print()
     print("  ┌────────────────────────────────────────────────────────┐")
-    print("  │       Connexion Xbox Live — Device Code Flow           │")
+    print(f"  │       {_t('wizard_title_text', _LANG):<49}│")
     print("  └────────────────────────────────────────────────────────┘")
     print()
 
     try:
         from src.auth.provider import DeviceCodePending, start_device_flow
     except ImportError:
-        print("  ❌ Module src.auth introuvable.")
+        print(_t("wizard_module_missing", _LANG))
         return False
 
     db_path = _get_player_db_path(gamertag)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    print("  Initialisation du Device Code Flow…")
+    print(_t("wizard_dcf_init", _LANG))
     try:
         pending: DeviceCodePending = start_device_flow(db_path)
     except Exception as exc:  # noqa: BLE001
         code = getattr(exc, "code", "unknown")
         detail = getattr(exc, "detail", str(exc))
-        print(f"  ❌ Erreur : {code} — {detail}")
+        print(_t("wizard_dcf_error", _LANG, code=code, detail=detail))
         return False
 
     _print_device_code(pending.user_code, pending.verification_url, pending.expires_in)
     with contextlib.suppress(Exception):
         webbrowser.open(pending.verification_url)
     # Rappel après ouverture du navigateur (la fenêtre peut être passée en arrière-plan)
-    print(f"  ↑ Revenez ici si besoin — Code : {pending.user_code}")
-    print("  En attente de votre connexion Xbox… (ne fermez pas cette fenêtre)")
+    print(_t("wizard_dcf_reminder", _LANG, code=pending.user_code))
+    print(_t("wizard_dcf_waiting", _LANG))
     print()
 
     async def _wait() -> tuple[str, str]:
@@ -1290,13 +1349,13 @@ def _wizard_oauth_token(gamertag: str, client_id: str = "") -> bool:  # noqa: AR
 
     try:
         resolved_gamertag, xuid = asyncio.run(_wait())
-        print(f"  ✅ Connecté : {resolved_gamertag} ({xuid})")
-        print("     Token sauvegardé dans stats.duckdb (renouvellement automatique).")
+        print(_t("wizard_dcf_connected", _LANG, gamertag=resolved_gamertag, xuid=xuid))
+        print(_t("wizard_dcf_token_saved", _LANG))
         return True
     except Exception as exc:  # noqa: BLE001
         code = getattr(exc, "code", "unknown")
         detail = getattr(exc, "detail", str(exc))
-        print(f"  ❌ Échec : {code} — {detail}")
+        print(_t("wizard_dcf_failed", _LANG, code=code, detail=detail))
         return False
 
 
@@ -1311,13 +1370,13 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
     """
     print()
     print("  ┌────────────────────────────────────────────────────────┐")
-    print("  │       LevelUp — Configuration du premier joueur        │")
+    print(f"  │       {_t('onboard_title_text', _LANG):<49}│")
     print("  └────────────────────────────────────────────────────────┘")
     print()
 
     if not sys.stdin.isatty():
-        print("  Terminal non interactif — impossible de procéder.")
-        print("  Lance : python launcher.py add-player --gamertag <gamertag>")
+        print(_t("onboard_non_tty", _LANG))
+        print(_t("onboard_non_tty_hint", _LANG))
         return 2
 
     _load_dotenv_for_launcher()
@@ -1326,31 +1385,45 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
     try:
         from src.auth.provider import DeviceCodePending, complete_device_flow, start_device_flow
     except ImportError:
-        print("  ❌ Module src.auth introuvable.")
+        print(_t("wizard_module_missing", _LANG))
         return 2
 
     _BOOTSTRAP_AUTH_DB.parent.mkdir(parents=True, exist_ok=True)
-    print("  Initialisation du Device Code Flow…")
+    print(_t("wizard_dcf_init", _LANG))
     try:
         pending: DeviceCodePending = start_device_flow(_BOOTSTRAP_AUTH_DB)
     except Exception as exc:  # noqa: BLE001
-        print(f"  ❌ Erreur : {getattr(exc, 'code', 'unknown')} — {getattr(exc, 'detail', exc)}")
+        print(
+            _t(
+                "wizard_dcf_error",
+                _LANG,
+                code=getattr(exc, "code", "unknown"),
+                detail=getattr(exc, "detail", exc),
+            )
+        )
         return 2
 
     _print_device_code(pending.user_code, pending.verification_url, pending.expires_in)
     with contextlib.suppress(Exception):
         webbrowser.open(pending.verification_url)
     # Rappel après ouverture du navigateur (la fenêtre peut être passée en arrière-plan)
-    print(f"  ↑ Revenez ici si besoin — Code : {pending.user_code}")
-    print("  En attente de votre connexion Xbox… (ne fermez pas cette fenêtre)")
+    print(_t("wizard_dcf_reminder", _LANG, code=pending.user_code))
+    print(_t("wizard_dcf_waiting", _LANG))
     print()
 
     try:
         gamertag, xuid = asyncio.run(complete_device_flow(_BOOTSTRAP_AUTH_DB, pending))
-        print(f"  ✅ Connecté : {gamertag}  ({xuid})")
+        print(_t("wizard_dcf_connected", _LANG, gamertag=gamertag, xuid=xuid))
         print()
     except Exception as exc:  # noqa: BLE001
-        print(f"  ❌ Échec : {getattr(exc, 'code', 'unknown')} — {getattr(exc, 'detail', exc)}")
+        print(
+            _t(
+                "wizard_dcf_failed",
+                _LANG,
+                code=getattr(exc, "code", "unknown"),
+                detail=getattr(exc, "detail", exc),
+            )
+        )
         _BOOTSTRAP_AUTH_DB.unlink(missing_ok=True)
         return 2
 
@@ -1360,7 +1433,7 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
     try:
         _transfer_msal_cache(_BOOTSTRAP_AUTH_DB, real_db_path)
     except Exception as exc:
-        print(f"  ⚠ Transfert cache MSAL : {exc}")
+        print(_t("onboard_msal_transfer_fail", _LANG, err=exc))
     finally:
         _BOOTSTRAP_AUTH_DB.unlink(missing_ok=True)
 
@@ -1371,21 +1444,21 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
 
     # ── Étape 3 : Synchronisation ─────────────────────────────────────────────
     print()
-    print("  Comment veux-tu démarrer la synchronisation ?")
+    print(_t("onboard_sync_how", _LANG))
     print()
-    print("  1) Test rapide   — 10 matchs  (recommandé pour vérifier que tout fonctionne)")
-    print("  2) Sync complet  — 200 matchs d'un coup")
+    print(_t("onboard_sync_choice1", _LANG))
+    print(_t("onboard_sync_choice2", _LANG))
     print()
 
     try:
-        sync_choice = input("  Ton choix (1/2) [1] : ").strip() or "1"
+        sync_choice = input(_t("onboard_sync_prompt", _LANG)).strip() or "1"
     except (EOFError, KeyboardInterrupt):
         sync_choice = "1"
 
     if sync_choice == "2":
         # Sync complet direct
         print()
-        print(f"  → Synchronisation de « {gamertag} » (200 matchs)…")
+        print(_t("onboard_sync_full_starting", _LANG, gamertag=gamertag))
         print()
         try:
             before, after = _sync_player_duckdb(gamertag, delta=False, max_matches=200)
@@ -1394,11 +1467,11 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
             return 2
         new_matches = after - before
         if new_matches > 0:
-            print(f"\n  OK  {new_matches} match(s) synchronise(s) pour {gamertag}")
+            print(_t("onboard_sync_ok", _LANG, n=new_matches, gamertag=gamertag))
         elif after > 0:
-            print(f"\n  OK  {after} match(s) deja presents pour {gamertag}")
+            print(_t("onboard_sync_already", _LANG, n=after, gamertag=gamertag))
         else:
-            print("\n  Aucun match recupere. Verifie ton token ou ta connexion.")
+            print(_t("onboard_sync_no_matches", _LANG))
             return 2
         return 0
 
@@ -1407,7 +1480,7 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
     after = 0
     while True:
         print()
-        print(f"  → Test : synchronisation de 10 matchs pour « {gamertag} »…")
+        print(_t("onboard_test_starting", _LANG, gamertag=gamertag))
         print()
         test_error: str | None = None
         before = after = 0
@@ -1420,18 +1493,18 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
 
         if test_error or (new_matches == 0 and after == 0):
             if test_error:
-                print(f"\n  Echec du test : {test_error}")
+                print(_t("onboard_test_failed", _LANG, err=test_error))
             else:
-                print("\n  Aucun match recupere. Verifie ton token ou ta connexion.")
+                print(_t("onboard_sync_no_matches", _LANG))
             print()
-            print("  Que veux-tu faire ?")
+            print(_t("onboard_test_what_now", _LANG))
             print()
-            print("  1) Reessayer le test")
-            print("  2) Lancer le dashboard quand meme (synchronisation plus tard)")
-            print("  Q) Quitter")
+            print(_t("onboard_test_retry", _LANG))
+            print(_t("onboard_test_launch_anyway", _LANG))
+            print(_t("onboard_quit", _LANG))
             print()
             try:
-                fail_choice = input("  Ton choix (1/2/Q) [2] : ").strip().lower() or "2"
+                fail_choice = input(_t("onboard_test_prompt", _LANG)).strip().lower() or "2"
             except (EOFError, KeyboardInterrupt):
                 fail_choice = "q"
 
@@ -1443,21 +1516,21 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
 
         # Test concluant
         if new_matches > 0:
-            print(f"\n  OK  {new_matches} match(s) synchronise(s) — le test est concluant !")
+            print(_t("onboard_test_ok", _LANG, n=new_matches))
         else:
-            print(f"\n  OK  {after} match(s) deja presents (rien de nouveau sur 10 matchs)")
+            print(_t("onboard_test_existing", _LANG, n=after))
         break
 
     # ── Proposition de poursuivre ─────────────────────────────────────────────
     print()
-    print("  Veux-tu recuperer plus de matchs maintenant ?")
+    print(_t("onboard_more_matches", _LANG))
     print()
-    print("  1) Oui, continuer par batch de 200 matchs")
-    print("  2) Non, lancer le dashboard avec les matchs actuels")
+    print(_t("onboard_more_continue", _LANG))
+    print(_t("onboard_more_launch", _LANG))
     print()
 
     try:
-        continue_choice = input("  Ton choix (1/2) [1] : ").strip() or "1"
+        continue_choice = input(_t("onboard_more_prompt", _LANG)).strip() or "1"
     except (EOFError, KeyboardInterrupt):
         continue_choice = "2"
 
@@ -1469,7 +1542,7 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
     batch_num = 1
     while True:
         print()
-        print(f"  → Batch {batch_num} : synchronisation de 200 matchs supplementaires…")
+        print(_t("onboard_batch_starting", _LANG, n=batch_num))
         print()
         try:
             before_b, after_b = _sync_player_duckdb(gamertag, delta=False, max_matches=200)
@@ -1479,27 +1552,27 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
 
         gained = after_b - before_b
         total_new += gained
-        print(f"\n  OK  {gained} nouveau(x) match(s) — total : {after_b} matchs")
+        print(_t("onboard_batch_ok", _LANG, gained=gained, total=after_b))
 
         if gained == 0:
-            print("  Tous les matchs disponibles ont ete recuperes.")
+            print(_t("onboard_batch_done", _LANG))
             break
 
         print()
-        print("  Continuer avec un nouveau batch de 200 ?")
+        print(_t("onboard_batch_continue", _LANG))
         print()
-        print("  1) Oui, continuer")
-        print("  2) Non, lancer le dashboard")
+        print(_t("onboard_batch_yes", _LANG))
+        print(_t("onboard_batch_no", _LANG))
         print()
         try:
-            again = input("  Ton choix (1/2) [1] : ").strip() or "1"
+            again = input(_t("onboard_more_prompt", _LANG)).strip() or "1"
         except (EOFError, KeyboardInterrupt):
             again = "2"
         if again != "1":
             break
         batch_num += 1
 
-    print(f"\n  Synchronisation terminee — {total_new} match(s) recupere(s) au total.")
+    print(_t("onboard_sync_total", _LANG, n=total_new))
     return 0
 
 
@@ -1510,19 +1583,19 @@ def _cmd_add_player(args: argparse.Namespace) -> int:
     if not gamertag:
         return _onboard_first_player()
 
-    print(f"  → Synchronisation de « {gamertag} »…")
+    print(_t("add_player_sync_starting", _LANG, gamertag=gamertag))
 
     _load_dotenv_for_launcher()
     env_info = _env_check_for_player(gamertag)
 
     if not env_info["player_token"]:
-        print(f"  ❌ Connexion Xbox manquante pour {gamertag}")
+        print(_t("add_player_no_token", _LANG, gamertag=gamertag))
         if sys.stdin.isatty():
             ok = _wizard_oauth_token(gamertag)
             if not ok:
                 return 2
         else:
-            print("     Lance : python launcher.py add-player --gamertag" + gamertag)
+            print(_t("add_player_no_tty_hint", _LANG, gamertag=gamertag))
             return 2
 
     full_sync = getattr(args, "full", False)
@@ -1538,9 +1611,9 @@ def _cmd_add_player(args: argparse.Namespace) -> int:
 
     new_matches = after - before
     if new_matches > 0:
-        print(f"  ✅ {new_matches} nouveau(x) match(s) pour {gamertag}")
+        print(_t("add_player_new_matches", _LANG, n=new_matches, gamertag=gamertag))
     else:
-        print(f"  ✅ À jour ({after} matchs) pour {gamertag}")
+        print(_t("add_player_up_to_date", _LANG, n=after, gamertag=gamertag))
     return 0
 
 
@@ -1555,15 +1628,15 @@ def _cmd_reauth(args: argparse.Namespace) -> int:
     _load_dotenv_for_launcher()
 
     print()
-    print(f"  Renouvellement du token OAuth pour « {gamertag} »…")
+    print(_t("reauth_starting", _LANG, gamertag=gamertag))
     print()
 
     ok = _wizard_oauth_token(gamertag)
     if not ok:
-        print("  ❌ Échec du renouvellement.")
+        print(_t("reauth_failed", _LANG))
         return 2
 
-    print(f"  ✅ Token renouvelé pour {gamertag}")
+    print(_t("reauth_ok", _LANG, gamertag=gamertag))
     return 0
 
 
@@ -1625,19 +1698,19 @@ def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
     """
     print()
     print("  ┌────────────────────────────────────────────────────────┐")
-    print("  │         ⚠  Configuration incomplète détectée          │")
+    print(f"  │       {_t('recovery_title_text', _LANG):<49}│")
     print("  └────────────────────────────────────────────────────────┘")
     print()
 
     if state.players_missing_token:
         missing = ", ".join(state.players_missing_token)
-        print(f"  ✗ Accès Halo expiré ou manquant pour : {missing}")
+        print(_t("recovery_missing_token", _LANG, missing=missing))
     print()
 
     if not sys.stdin.isatty():
-        print("  Terminal non interactif — impossible de procéder.")
-        print("  → python launcher.py add-player   (reconfigurer)")
-        print("  → python launcher.py reauth --gamertag <GT>  (renouveler token)")
+        print(_t("onboard_non_tty", _LANG))
+        print(_t("recovery_non_tty_hint1", _LANG))
+        print(_t("recovery_non_tty_hint2", _LANG))
         return 2
 
     # ── Construire les options selon l'état ───────────────────────────────────
@@ -1648,13 +1721,13 @@ def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
         options.append(
             (
                 f"reauth:{gt}",
-                f"🔑 MSAL Device Code Flow  (code court sur microsoft.com/devicelogin pour {gt})",
+                _t("recovery_option_reauth", _LANG, gt=gt),
             )
         )
-    options.append(("launch", "🚀 Lancer quand même  (tu synchroniseras plus tard)"))
+    options.append(("launch", _t("recovery_option_launch", _LANG)))
 
     # Quitter toujours en dernier
-    options.append(("quit", "Quitter"))
+    options.append(("quit", _t("recovery_option_quit", _LANG)))
 
     for i, (_, label) in enumerate(options[:-1], 1):
         print(f"  {i}) {label}")
@@ -1664,7 +1737,7 @@ def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
 
     keys_str = "/".join(str(i) for i in range(1, len(options))) + "/Q"
     try:
-        choice = input(f"Ton choix ({keys_str}): ").strip().lower()
+        choice = input(_t("recovery_prompt", _LANG, keys=keys_str)).strip().lower()
     except (EOFError, KeyboardInterrupt):
         return 2
 
@@ -1674,28 +1747,28 @@ def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
     try:
         idx = int(choice) - 1
     except ValueError:
-        print("  Choix invalide.")
+        print(_t("recovery_invalid_choice", _LANG))
         return 2
 
     if not (0 <= idx < len(options) - 1):
-        print("  Choix invalide.")
+        print(_t("recovery_invalid_choice", _LANG))
         return 2
 
     action, _ = options[idx]
 
     if action.startswith("reauth:"):
         gt = action.split(":", 1)[1]
-        print(f"\n  🔄 Renouvellement du token pour « {gt} »…")
+        print(_t("recovery_renewing", _LANG, gt=gt))
         ok = _wizard_oauth_token(gt)
         if not ok:
-            print("  ❌ Échec du renouvellement.")
+            print(_t("reauth_failed", _LANG))
             return 2
         return _interactive()
 
     if action == "launch":
         return _launch_streamlit(db_path=None, port=None, no_browser=False)
 
-    print("  Choix invalide.")
+    print(_t("recovery_invalid_choice", _LANG))
     return 2
 
 
@@ -1708,30 +1781,30 @@ def _interactive() -> int:
     - Tout OK → lancement direct de Streamlit
     """
     print("=" * 60)
-    print("        LevelUp - Dashboard Halo Infinite")
-    print("        Architecture DuckDB v5")
+    print(_t("interactive_title", _LANG))
+    print(_t("interactive_arch", _LANG))
     print("=" * 60)
 
     state = _detect_config_state()
 
     # ── Premier lancement ──────────────────────────────────────────────────────
     if state.is_first_launch:
-        print("\n📊 État actuel:")
-        print("   ❌ Aucun joueur trouvé — premier démarrage")
+        print(_t("interactive_state_header", _LANG))
+        print(_t("interactive_no_player", _LANG))
         print("\n" + "-" * 60)
-        print("Choisis une action:\n")
-        print("  1) ➕ Ajouter un joueur               [premier démarrage]")
-        print("     Configure et synchronise ton compte")
+        print(_t("interactive_choose_action", _LANG))
+        print(_t("interactive_add_player_option", _LANG))
+        print(_t("interactive_add_player_desc", _LANG))
         print()
-        print("  Q) Quitter")
+        print(_t("interactive_quit_option", _LANG))
         print()
 
         if not sys.stdin.isatty():
-            print("⚠ Terminal non interactif → python launcher.py add-player --gamertag <gt>")
+            print(_t("interactive_non_tty", _LANG))
             return 2
 
         try:
-            choice = input("Ton choix (1/Q): ").strip().lower()
+            choice = input(_t("interactive_choice_prompt", _LANG)).strip().lower()
         except (EOFError, KeyboardInterrupt):
             return 2
 
@@ -1747,35 +1820,35 @@ def _interactive() -> int:
                 return 2
             print()
             try:
-                go = input("  Lancer le dashboard maintenant ? [O/n] : ").strip().lower()
+                go = input(_t("interactive_launch_prompt", _LANG)).strip().lower()
             except (EOFError, KeyboardInterrupt):
                 return 0
             if go not in ("n", "non", "no"):
                 return _launch_streamlit(db_path=None, port=None, no_browser=False)
             return 0
 
-        print("Choix invalide.")
+        print(_t("interactive_invalid_choice", _LANG))
         return 2
 
     # ── Afficher l'état des joueurs ────────────────────────────────────────────
-    print("\n📊 État actuel:")
+    print(_t("interactive_state_header", _LANG))
     total_matches = sum(p.total_matches for p in state.players)
-    print(f"   Stockage: {_display_path(PLAYERS_DIR)}")
-    print(f"   Joueurs: {len(state.players)}")
+    print(_t("interactive_storage", _LANG, path=_display_path(PLAYERS_DIR)))
+    print(_t("interactive_players_count", _LANG, n=len(state.players)))
     for p in state.players:
-        print(f"      - {p.gamertag}: {p.total_matches} matchs")
-    print(f"   Total: {total_matches} matchs")
+        print(_t("interactive_player_row", _LANG, gamertag=p.gamertag, matches=p.total_matches))
+    print(_t("interactive_total_matches", _LANG, n=total_matches))
     if _metadata_db_exists():
-        print("   Métadonnées: ✅")
+        print(_t("interactive_metadata_ok", _LANG))
     else:
-        print("   Métadonnées: ⚠ Non trouvées")
+        print(_t("interactive_metadata_missing", _LANG))
 
     # ── Config incomplète → menu de récupération ───────────────────────────────
     if state.is_partial:
         return _recovery_menu(state)
 
     # ── Tout OK → lancement direct ─────────────────────────────────────────────
-    print("\n  ✅ Configuration complète — lancement du dashboard…")
+    print(_t("interactive_all_ok", _LANG))
     return _launch_streamlit(db_path=None, port=None, no_browser=False)
 
 
