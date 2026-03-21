@@ -7,6 +7,130 @@
 
 ## Journal
 
+### [2026-03-21] — Harmonisation libellés score de performance — Complété
+
+**Statut** : Complété
+
+**Décision technique** : Aligner les libellés métier entre la config d'analyse et l'i18n partagée pour éviter les écarts UI/calculs (`Bon/Moyen/Faible/Difficile` vs `Solide/Correct/Mauvais/Catastrophique`).
+
+**Fichiers modifiés** :
+- `src/analysis/performance_config.py`
+- `src/ui/i18n/pages/shared.py`
+
+**Résultats observés** : libellés de score cohérents entre cartes, interprétations et seuils métier.
+
+### [2026-03-21] — Win rate rolling affiché dès le premier match — Complété
+
+**Statut** : Complété
+
+**Décision technique** : Dans `TimeseriesService`, considérer qu'une série de win rate a des données dès qu'au moins une valeur nettoyée est disponible (`> 0` au lieu de `> 5`). La contrainte de lissage reste gérée ailleurs; ce flag ne doit pas masquer les cas courts.
+
+**Fichiers modifiés** :
+- `src/data/services/timeseries_service.py`
+
+**Résultats observés** : les vues dépendantes peuvent afficher un état utile dès les premières parties au lieu de basculer à tort sur « pas de données ».
+
+### [2026-03-21] — Cartes performance compactes (page teammates) — Complété
+
+**Décision technique** : Option D — cartes 2× plus petites, toute la rangée (joueurs + équipe) sur une seule ligne de colonnes.
+- Ajout classe CSS `.os-perf-card--compact` (padding 12px, score 2rem vs 4rem, status 0.85rem)
+- `render_performance_score_card()` : nouveau param `compact=False` (backward-compat), supprime `__meta` en mode compact
+- `_render_compact_team_card()` : nouvelle fonction privée pour la carte équipe dans la rangée
+- `render_squad_session_header()` : `st.columns(n+1)`, cartes joueurs en `compact=True`, carte équipe en dernière colonne ; suppression du `_render_squad_score_block()` et `st.caption()` séparés
+- `session_compare.py` non impacté (utilise `compact=False` par défaut)
+
+**Résultat** : hauteur estimée ~90-110px vs 250-400px avant. Contenu affiché : nom joueur, score, ▲/▼, évaluation texte.
+
+### [2026-03-22] — Fix score escouade : colonnes manquantes coéquipiers + scope session JGtm — Complété
+
+**Statut** : Complété
+**Décision technique** :
+Deux causes racines identifiées expliquant le delta score (37 page Session vs 31 page Escouade pour JGtm) :
+
+1. **Cause 1 — colonnes manquantes coéquipiers** : `_query_teammate_shared_stats` ne retournait pas `team_mmr`, `enemy_mmr`, `kills_per_min`. L'analyse v2 skipait silencieusement ces composantes et renormalisait les poids sur 0.70 au lieu de 1.00 → amplification ×1.43 pour tous les coéquipiers.
+
+2. **Cause 2 — scope trop filtré pour JGtm** : `dff` (utilisé pour l'en-tête escouade) a les filtres mode/playlist/carte appliqués en plus du filtre session, alors que la page Session utilise `df` filtré par session uniquement.
+
+**Fichiers modifiés** :
+- `src/data/services/teammates_service.py` : ajout `p.team_mmr`, `p.enemy_mmr`, et calcul `kills_per_min` dans `_query_teammate_shared_stats`
+- `src/ui/pages/teammates.py` : ajout helper `_get_squad_header_df` + mise à jour du bloc en-tête escouade
+
+**Résultat observé** : 33 tests passent, 0 erreur lint
+**Conclusion** : JGtm et coéquipiers utilisent maintenant la même formule complète (7 composantes, poids total = 1.00) sur le bon périmètre de matchs.
+
+### [2026-03-21] — Matrice d'impact escouade : ordre des matchs corrigé — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+- La vue points/emojis reconstruisait l'axe X via `unique()` sur `match_id`, ce qui pouvait perturber l'ordre de session (#1..#N).
+- Ajout d'un paramètre `match_ids_order` dans `plot_friends_impact_scatter()` pour imposer l'ordre source.
+- Passage de `sorted_match_ids` depuis `teammates_impact.py` vers le scatter.
+
+**Résultats observés** :
+- Les index `#1` à `#N` respectent désormais l'ordre réel de la session.
+- Vérification statique OK + `tests/test_friends_impact_viz.py` vert (17/17).
+
+**Conclusion / prochaine étape** :
+- Le match gagnant de fin de session est maintenant affiché sur la bonne colonne (ex: `#8` et non `#4`).
+
+### [2026-03-21] — Page Escouade : matrice d'impact en version unique emojis — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+- Suppression du switch de visualisation dans `teammates_impact.py` (`heatmap` vs `scatter`) pour ne conserver qu'une seule version.
+- Conservation de la version la plus récente basée sur des points, mais remplacement des symboles Plotly (triangle/étoile/x...) par des emojis métier (⚡ 🎯 💀 🐌 🪦) dans `friends_impact_scatter.py`.
+- Ajustements de layout (grille plus lisible, fond, légende) pour corriger le design sans changer les données calculées.
+
+**Résultats observés** :
+- Vérification statique OK sur les fichiers modifiés.
+- `tests/test_friends_impact_viz.py` : 17 tests passés, 0 échec.
+
+**Conclusion / prochaine étape** :
+- La page escouade affiche désormais une seule matrice d'impact “points + emojis”, plus lisible et cohérente avec la légende.
+- Prochaine étape éventuelle : harmoniser le libellé i18n pour refléter explicitement “Points (emojis)” si souhaité.
+
+### [2026-03-21] — Fix progression taux de victoire à 200% — Complété
+
+**Problème** : L'indicateur "Progression du taux de victoire" affichait 200% (valeur clampée) pour la session du 18 mars, une session pourtant mauvaise.
+
+**Cause racine** : Formule `wr_slope * n / mean_wins` dans `compute_linear_regression_kd`. Avec une mauvaise session (peu de victoires → `mean_wins` faible), la division amplifie démesurément la pente OLS. Ex : 1W/10 = `mean_wins=0.1` → multiplied by 10. La valeur atteignait 300-500%, clampée arbitrairement à ±200%.
+
+**Décision technique** : Supprimer la division par `mean_wins`. On passe d'une variation **relative** (% du taux de base) à une variation **absolue** (en points de pourcentage). Formule corrigée : `wr_slope * n`. Naturellement borné à ±1.0 (±100 pp), sans clamp artificiel. Clamp dans `_perf_session.py` ajusté ±200 → ±100 cohérent.
+
+**Fichiers modifiés** :
+- `src/analysis/cumulative_progression.py` : suppression de `/ mean_wins`
+- `src/visualization/_perf_session.py` : clamp ±200 → ±100
+- `tests/test_cumulative_progression.py` : test régressif `test_wr_relative_change_borne_session_mauvaise`
+
+**Résultats** : 36 tests passent (35 + 1 nouveau test régressif).
+
+**Conclusion** : Session mauvaise affichera maintenant un indicateur borné et cohérent (ex : "+20 pp" si la seule victoire était en fin de session).
+
+### [2026-03-21] — Fix graphe stats/min : ligne morts sous l'axe — Complété
+
+**Statut** : Complété
+
+**Décision technique** :
+- Les barres DPM utilisaient déjà `dpm_neg` (valeurs négatives) → correctement sous l'axe
+- Mais `_add_permin_rolling_lines` recevait `dpm` (positif) → la **ligne de moyenne mobile** restait au-dessus de l'axe
+- Dans `plot_trio_metric`, `is_inverse=True` ne négativait pas les valeurs → barres morts au-dessus de l'axe dans la page teammates
+
+**Fix** :
+1. `timeseries.py` : passer `-dpm` à `_add_permin_rolling_lines`
+2. `_add_permin_rolling_lines` : passer `customdata=[abs(v) for v in dpm_rolling]` + template `hover_avg_abs` (tooltip affiche valeur absolue malgré y négatif)
+3. `src/ui/i18n/viz/hovers.py` : ajout du template `hover_avg_abs` → `%{customdata:.2f}`
+4. `trio.py` : quand `is_inverse=True`, négater `series_lists`/`series_cols`/`avg_all` ; hover avec valeurs absolues via `customdata`
+5. `_teammates_trio_helpers.py` : `_render_per_minute_stats` — morts négatives (`-_dpm`), texte label absolu, suppression des hachures
+6. `trio.py` : `bar_colors` pour `is_inverse` = `[color] * n` (couleur du joueur), plus de `_negative_color` ni de pattern hachures
+
+**Résultats** : Barres ET lignes de moyenne mobile des morts sous l'axe dans tous les graphes teammates. Couleurs distinctes par joueur, sans hachures. Tooltips affichent des valeurs positives.
+
+**Prochaine étape** : RAS
+
+---
+
 ### [2026-03-21] — Bug frags vs. détail armes (double-comptage melee) — Complété
 
 **Statut** : Complété
