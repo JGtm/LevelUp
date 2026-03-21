@@ -302,7 +302,7 @@ class MaterializedViewsMixin:
             FROM shared.match_participants mp
             JOIN shared.match_registry mr ON mr.match_id = mp.match_id
             WHERE mp.xuid = ?
-            GROUP BY mode_category
+            GROUP BY 1
         """
         if new_ids:
             placeholders = ", ".join("?" * len(new_ids))

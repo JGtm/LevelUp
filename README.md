@@ -2,7 +2,7 @@
 
 > **Analyze your Halo Infinite performance with advanced visualizations and an ultra-fast DuckDB architecture.**
 
-[![Version](https://img.shields.io/badge/Version-6.0.0-blue.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v6.0.0)
+[![Version](https://img.shields.io/badge/Version-6.1.0-blue.svg)](https://github.com/JGtm/LevelUp_with_SPNKr/releases/tag/v6.1.0)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-FF4B4B.svg)](https://streamlit.io/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
@@ -12,6 +12,12 @@
 ---
 
 ## What's new
+
+**v6.1 — Sync performance & post-sync bug fixes**
+- **7-axis sync optimization** — parallel post-sync, shared_matches R/O direct, parallel_fetch pipelining, citations bulk SQL, CPU-bound transforms via executor, LUSR batch UPSERT, adaptive commit size; overall sync time reduced ~30–40 %
+- **`refresh_materialized_views` Binder Error fixed** — `GROUP BY 1` replaces broken alias reference
+- **Performance scores no longer silently skipped** — fallback to player connection when shared_matches handle conflict occurs in post-sync
+- **Career rank name corrected** — now read from `metadata.duckdb` instead of approximate formula (e.g. "Lance Corporal Diamond 1" instead of "Silver 3 (VI)")
 
 **v6.0 — Zero-config auth, ID resolution layer & weapon catalog**
 - **Zero Azure configuration** — `LEVELUP_CLIENT_ID` bundled in the app; first launch: enter gamertag → Device Code on xbox.com/activate → done
@@ -43,15 +49,6 @@
 - **Session Comparison page revamped** — outcomes donuts, F/D + accuracy curve, match highlights, mode & map breakdowns, LUSR/CSR rating overlay on cumulative net score
 - **XP & Hero rank comparison** — Career page now overlays XP curves and Hero projections for all players with a refresh token; precision scales with available data (real delta between syncs → global average fallback)
 
-**v5.4 — Explorer & Encounter History**
-- New **Explorer** page: search any match with cascade filters (date, squad, map, mode…) and deep links
-- **Encounter History**: rivalry/alliance stats with any player — K/D, win rates, auto-badges (*Rival*, *Good Ally*, *Hard to Kill*)
-
-**v5.3 — Skill Rating, i18n & Sessions**
-- TrueSkill 2 skill rating (LUSR) per playlist type (ranked, arena, BTB…)
-- Full French 🇫🇷 / English 🇬🇧 interface, switchable from the sidebar
-- Solo / Squad session filter in the sidebar
-- Discord notifications after sync
 ---
 
 ## Features

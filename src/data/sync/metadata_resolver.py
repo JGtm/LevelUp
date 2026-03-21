@@ -7,6 +7,7 @@ depuis metadata.duckdb ou depuis Discovery UGC en temps réel.
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -50,6 +51,7 @@ class MetadataResolver:
         self.metadata_db_path = metadata_db_path
         self._conn: duckdb.DuckDBPyConnection | None = None
         self._cache: dict[tuple[str, str], str | None] = {}
+        self._lock = threading.RLock()  # Thread-safety pour run_in_executor (Axe 5)
 
         # Créer le dossier parent si nécessaire
         if create_if_missing:
@@ -88,19 +90,21 @@ class MetadataResolver:
 
         # Vérifier le cache
         cache_key = (asset_type, asset_id)
-        if cache_key in self._cache:
-            return self._cache[cache_key]
+        with self._lock:
+            if cache_key in self._cache:
+                return self._cache[cache_key]
 
         # Résoudre depuis metadata.duckdb si disponible
-        if self._conn:
-            name = self._resolve_from_db(asset_type, asset_id)
-            if name:
-                self._cache[cache_key] = name
-                return name
+        with self._lock:
+            if self._conn:
+                name = self._resolve_from_db(asset_type, asset_id)
+                if name:
+                    self._cache[cache_key] = name
+                    return name
 
-        # Non trouvé
-        self._cache[cache_key] = None
-        return None
+            # Non trouvé
+            self._cache[cache_key] = None
+            return None
 
     def _resolve_from_db(self, asset_type: str, asset_id: str) -> str | None:
         """Résout depuis metadata.duckdb.

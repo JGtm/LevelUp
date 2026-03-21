@@ -24,8 +24,8 @@ FUNC:src/data/media_indexer.py:94:ensure_schema:138L
 FUNC:src/data/repositories/_archives_repo.py:135:load_matches_from_archives:102L
 FUNC:src/data/repositories/_weapon_kills_repo.py:276:insert_weapon_kill_rows_v2:85L
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
-FUNC:src/data/sync/_match_processing.py:289:_backfill_known_match_shared:82L
-FUNC:src/data/sync/_match_processing.py:38:_process_matches:105L
+FUNC:src/data/sync/_match_processing.py:296:_backfill_known_match_shared:82L
+FUNC:src/data/sync/_match_processing.py:37:_process_matches:115L
 FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
 FUNC:src/data/sync/transformers/_match.py:284:extract_participants:141L
 FUNC:src/data/sync/transformers/_match.py:428:extract_match_registry_data:105L
@@ -92,8 +92,9 @@ FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:38:plot_trio_metric:205L
 MODULE:src/analysis/weapon_parser.py:502L
 MODULE:src/data/repositories/_weapon_kills_repo.py:567L
-MODULE:src/data/sync/_match_processing.py:544L
+MODULE:src/data/sync/_match_processing.py:549L
 MODULE:src/data/sync/api_client.py:521L
+MODULE:src/data/sync/engine.py:513L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/session_compare.py:536L
 MODULE:src/visualization/maps_outcome.py:587L
