@@ -15,6 +15,7 @@ from src.visualization._compat import (
     ensure_polars_series,
     smart_scatter,
 )
+from src.visualization._permin_helpers import build_symmetric_abs_ticks
 from src.visualization.theme import apply_halo_plot_style, get_legend_horizontal_bottom
 
 
@@ -383,6 +384,9 @@ def plot_per_minute_timeseries(
     kpm = d["kills_per_min"].cast(pl.Float64, strict=False)
     dpm = d["deaths_per_min"].cast(pl.Float64, strict=False)
     apm = d["assists_per_min"].cast(pl.Float64, strict=False)
+    dpm_neg = (-dpm).to_list()  # morts sous l'axe X ; abs conservée en customdata[5]
+    customdata_with_dpm = [(*row, a) for row, a in zip(customdata, dpm.to_list(), strict=False)]
+
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
@@ -391,19 +395,19 @@ def plot_per_minute_timeseries(
             name=viz_t("trace_kills_per_min", lang),
             marker_color=colors["cyan"],
             opacity=PLOT_CONFIG.bar_opacity,
-            customdata=customdata,
+            customdata=customdata_with_dpm,
             hovertemplate=viz_t("hover_kpm", lang),
         )
     )
     fig.add_trace(
         go.Bar(
             x=x_idx,
-            y=dpm.to_list(),
+            y=dpm_neg,
             name=viz_t("trace_deaths_per_min", lang),
             marker_color=colors["red"],
-            opacity=PLOT_CONFIG.bar_opacity_secondary,
-            customdata=customdata,
-            hovertemplate=viz_t("hover_dpm", lang),
+            opacity=0.4,  # version désaturée pour indiquer la valeur négative
+            customdata=customdata_with_dpm,
+            hovertemplate=viz_t("hover_dpm_neg", lang),
         )
     )
     fig.add_trace(
@@ -413,13 +417,17 @@ def plot_per_minute_timeseries(
             name=viz_t("trace_assists_per_min", lang),
             marker_color=colors["violet"],
             opacity=PLOT_CONFIG.bar_opacity_secondary,
-            customdata=customdata,
+            customdata=customdata_with_dpm,
             hovertemplate=viz_t("hover_apm", lang),
         )
     )
 
     _add_permin_rolling_lines(fig, x_idx, kpm, dpm, apm, colors, lang=lang)
 
+    tickvals, ticktext = build_symmetric_abs_ticks(
+        max(max(kpm.to_list(), default=0.1), max(apm.to_list(), default=0.1)),
+        max((abs(v) for v in dpm_neg), default=0.1),
+    )
     fig.update_layout(
         title=title,
         margin={"l": 40, "r": 20, "t": 60, "b": 90},
@@ -429,7 +437,11 @@ def plot_per_minute_timeseries(
         bargap=0.15,
         bargroupgap=0.06,
     )
-    fig.update_yaxes(title_text=viz_t("axis_per_minute", lang), rangemode="tozero")
+    fig.update_yaxes(
+        title_text=viz_t("axis_per_minute", lang),
+        tickvals=tickvals,
+        ticktext=ticktext,
+    )
     fig.update_xaxes(
         title_text=viz_t("axis_match_number", lang),
         tickmode="array",

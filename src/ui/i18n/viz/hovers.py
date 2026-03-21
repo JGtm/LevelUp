@@ -65,6 +65,11 @@ STRINGS: dict[str, dict[str, str] | str] = {
         "fr": "morts/min=%{y:.2f}<br>temps joué=%{customdata[0]:.0f}s (morts=%{customdata[2]:.0f})<extra></extra>",
         "en": "deaths/min=%{y:.2f}<br>time played=%{customdata[0]:.0f}s (deaths=%{customdata[2]:.0f})<extra></extra>",
     },
+    # hover_dpm_neg : utilisé quand deaths sont tracées en négatif (customdata[5] = valeur absolue)
+    "hover_dpm_neg": {
+        "fr": "morts/min=%{customdata[5]:.2f}<br>temps joué=%{customdata[0]:.0f}s (morts=%{customdata[2]:.0f})<extra></extra>",
+        "en": "deaths/min=%{customdata[5]:.2f}<br>time played=%{customdata[0]:.0f}s (deaths=%{customdata[2]:.0f})<extra></extra>",
+    },
     "hover_apm": {
         "fr": "assist./min=%{y:.2f}<br>temps joué=%{customdata[0]:.0f}s (assistances=%{customdata[3]:.0f})<extra></extra>",
         "en": "assists/min=%{y:.2f}<br>time played=%{customdata[0]:.0f}s (assists=%{customdata[3]:.0f})<extra></extra>",
