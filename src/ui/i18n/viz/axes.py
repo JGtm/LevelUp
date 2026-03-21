@@ -117,4 +117,8 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "axis_kd_score": {"fr": "Score Frags-Décès", "en": "K/D Score"},
     # ── Progression avancée ───────────────────────────────────────────────────
     "axis_net_per_hour": {"fr": "Net Score / heure", "en": "Net Score / hour"},
+    # ── Axes squad timeline ───────────────────────────────────────────────────
+    "axis_performance": {"fr": "Performance (0-100)", "en": "Performance (0-100)"},
+    "axis_team_mmr": {"fr": "MMR Équipe", "en": "Team MMR"},
+    "axis_sessions": {"fr": "Sessions", "en": "Sessions"},
 }

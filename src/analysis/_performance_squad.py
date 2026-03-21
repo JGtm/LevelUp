@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import logging
 
-from src.analysis.performance_config import SQUAD_GRADE_THRESHOLDS, resolve_squad_grade
+import polars as pl
+
+from src.analysis.performance_config import resolve_squad_grade
 from src.utils.safe_types import clamp as _clamp
 
 logger = logging.getLogger(__name__)
@@ -82,4 +84,120 @@ def _compute_squad_bonuses(scores: list[dict]) -> tuple[float, dict]:
     return bonus, comps
 
 
-__all__ = ["compute_squad_performance_score", "SQUAD_GRADE_THRESHOLDS"]
+def _build_base_cols(df: pl.DataFrame) -> list:
+    """Sélectionne les colonnes contextuelles disponibles dans df."""
+    _CASTS: dict[str, object] = {
+        "team_mmr": pl.Float64,
+        "session_label": pl.Utf8,
+    }
+    cols: list = [pl.col("match_id").cast(pl.Utf8)]
+    for name in ("start_time", "session_id", "session_label", "team_mmr"):
+        if name in df.columns:
+            dtype = _CASTS.get(name)
+            cols.append(pl.col(name).cast(dtype, strict=False) if dtype else pl.col(name))
+    return cols
+
+
+def _join_perf_frames(dfs: list[pl.DataFrame]) -> pl.DataFrame:
+    """Joint les DataFrames des joueurs sur match_id et calcule squad_perf moyen."""
+    joined = dfs[0].select(
+        *_build_base_cols(dfs[0]),
+        pl.col("performance_score").cast(pl.Float64, strict=False).alias("perf_0"),
+    )
+    joined = joined.filter(pl.col("perf_0").is_not_null())
+    for i, df in enumerate(dfs[1:], 1):
+        part = df.select(
+            pl.col("match_id").cast(pl.Utf8),
+            pl.col("performance_score").cast(pl.Float64, strict=False).alias(f"perf_{i}"),
+        ).filter(pl.col(f"perf_{i}").is_not_null())
+        joined = joined.join(part, on="match_id", how="inner")
+    if joined.is_empty():
+        return pl.DataFrame()
+    if "team_mmr" not in joined.columns:
+        joined = joined.with_columns(pl.lit(None).cast(pl.Float64).alias("team_mmr"))
+    perf_cols = [f"perf_{i}" for i in range(len(dfs))]
+    return joined.with_columns(
+        pl.concat_list([pl.col(c) for c in perf_cols]).list.mean().alias("squad_perf")
+    )
+
+
+def _group_by_session(joined: pl.DataFrame) -> pl.DataFrame | None:
+    """Regroupe par session_id (1 barre par session). Retourne None si pas de session_id."""
+    if "session_id" not in joined.columns or joined["session_id"].drop_nulls().len() == 0:
+        return None
+    has_label = "session_label" in joined.columns
+    # Extraire JJ/MM (5 premiers caractères du format "DD/MM/YYYY HH:MM–HH:MM (n)")
+    label_expr = (
+        pl.col("session_label").first().str.slice(0, 5)
+        if has_label
+        else pl.col("session_id").first().cast(pl.Utf8)
+    ).alias("bucket_label")
+    return (
+        joined.group_by("session_id")
+        .agg(
+            [
+                pl.col("squad_perf").mean(),
+                pl.col("team_mmr").mean().alias("team_mmr_avg"),
+                pl.len().alias("match_count"),
+                pl.col("session_id").cast(pl.Int64, strict=False).min().alias("_sort"),
+                label_expr,
+            ]
+        )
+        .sort("_sort")
+        .select("bucket_label", "squad_perf", "team_mmr_avg", "match_count")
+    )
+
+
+def _group_by_time_period(joined: pl.DataFrame, max_buckets: int) -> pl.DataFrame:
+    """Regroupe par période temporelle (fallback). Nécessite start_time."""
+    for trunc in ("1d", "1w", "1mo"):
+        grouped = (
+            joined.with_columns(pl.col("start_time").dt.truncate(trunc).alias("bucket"))
+            .group_by("bucket")
+            .agg(
+                pl.col("squad_perf").mean(),
+                pl.col("team_mmr").mean().alias("team_mmr_avg"),
+                pl.len().alias("match_count"),
+            )
+            .sort("bucket")
+        )
+        if len(grouped) <= max_buckets:
+            fmt = "%d/%m" if trunc in ("1d", "1w") else "%m/%Y"
+            return grouped.with_columns(
+                pl.col("bucket").dt.strftime(fmt).alias("bucket_label")
+            ).select("bucket_label", "squad_perf", "team_mmr_avg", "match_count")
+    return grouped.with_columns(pl.col("bucket").dt.strftime("%m/%Y").alias("bucket_label")).select(
+        "bucket_label", "squad_perf", "team_mmr_avg", "match_count"
+    )
+
+
+def compute_squad_timeseries(
+    series: list[tuple[str, pl.DataFrame]],
+    *,
+    max_buckets: int = 20,
+) -> pl.DataFrame:
+    """Agrège la performance d'escouade par session ou période de temps.
+
+    Args:
+        series: Liste de (nom, DataFrame). Premier élément = joueur principal.
+                Tous doivent avoir match_id + performance_score.
+        max_buckets: Nombre max de buckets pour le fallback temporel.
+
+    Returns:
+        DataFrame avec: bucket_label, squad_perf, team_mmr_avg, match_count.
+    """
+    dfs = [df for _, df in series if not df.is_empty() and "performance_score" in df.columns]
+    if len(dfs) < 2:
+        return pl.DataFrame()
+    joined = _join_perf_frames(dfs)
+    if joined.is_empty():
+        return pl.DataFrame()
+    by_session = _group_by_session(joined)
+    if by_session is not None:
+        return by_session
+    if "start_time" not in joined.columns:
+        return pl.DataFrame()
+    return _group_by_time_period(joined.sort("start_time"), max_buckets)
+
+
+__all__ = ["compute_squad_performance_score", "compute_squad_timeseries"]

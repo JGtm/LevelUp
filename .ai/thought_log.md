@@ -7,6 +7,24 @@
 
 ## Journal
 
+### [2026-03-21] — Timeline escouade : chargement DB-direct (historique complet) — Complété
+
+**Statut** : Complété
+
+**Décision technique** : La timeline ne montrait qu'une seule session car `series` passé à `render_squad_timeline` contenait des DataFrames filtrés sur la session courante. Fix : `render_squad_timeline` reçoit maintenant `(db_path, me_name, friend_names, all_match_ids, lang)` et charge directement depuis `player_match_enrichment` via `load_perf_enrichment_with_session` avec l'ensemble des match_ids all-time.
+
+**Fichiers modifiés** :
+- `src/ui/pages/teammates_map_charts.py` : nouvelle signature + chargement DB-direct ; ajout `from pathlib import Path`
+- `src/analysis/_performance_squad.py` : refactoring en 4 fonctions (`_build_base_cols`, `_join_perf_frames`, `_group_by_session`, `_group_by_time_period`) pour réduire complexité cyclomatique (<12) ; `start_time` plus requis (tri par `session_id` numérique)
+- `src/ui/pages/teammates_views.py` : 2 call sites mis à jour (single + multi) avec `all_match_ids=list(shared_ids/all_match_ids)`
+- `src/ui/pages/_teammates_trio.py` : call site mis à jour avec `all_match_ids=list(radar_squad_ids)` (intersection pré-filtre all-time)
+
+**Résultats** : ruff 100% propre, imports OK.
+
+**Conclusion** : La timeline affiche désormais toutes les sessions historiques avec les amis, pas seulement la session active.
+
+---
+
 ### [2026-03-21] — Prévention god __init__ — hook pre-commit + règle CLAUDE.md — Complété
 
 **Statut** : Complété
