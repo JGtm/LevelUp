@@ -21,7 +21,6 @@ from src.config import (
     DEFAULT_PLAYER_XUID,
     DEFAULT_WAYPOINT_PLAYER,
 )
-from src.utils import guess_xuid_from_db_path, infer_spnkr_player_from_db_path
 
 if TYPE_CHECKING:
     from src.ui.settings import AppSettings
@@ -211,32 +210,11 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
 
         st.session_state[SK.DB_PATH] = chosen
 
-    # XUID input
+    # XUID input — seul mécanisme valide : extraire le gamertag depuis
+    # data/players/{gamertag}/stats.duckdb (répertoire parent).
     if "xuid_input" not in st.session_state:
-        legacy = str(st.session_state.get("xuid", "") or "").strip()
-        guessed = guess_xuid_from_db_path(st.session_state.get("db_path", "") or "") or ""
-        identity = get_default_identity()
-
-        # Pour les DB SPNKr, on pré-remplit avec le joueur déduit du nom de DB
-        inferred = (
-            infer_spnkr_player_from_db_path(str(st.session_state.get("db_path", "") or "")) or ""
-        )
-
-        # Pour les DB v5 LevelUp (data/players/{gamertag}/stats.duckdb),
-        # le gamertag est dans le répertoire parent — guess_xuid_from_db_path
-        # ne le trouve pas car le fichier s'appelle "stats.duckdb".
         db_candidate = str(st.session_state.get("db_path", "") or "")
-        levelup_gt = _infer_gamertag_from_v5_path(db_candidate)
-
-        if levelup_gt:
-            # DB v5 LevelUp — le gamertag dans le répertoire parent est
-            # le seul mécanisme valide ; on ignore les heuristiques SPNKr/env.
-            st.session_state[SK.XUID_INPUT] = levelup_gt
-        else:
-            # DB SPNKr ou autre format — heuristiques existantes.
-            st.session_state[SK.XUID_INPUT] = (
-                legacy or inferred or guessed or identity.xuid_or_gamertag
-            )
+        st.session_state[SK.XUID_INPUT] = _infer_gamertag_from_v5_path(db_candidate)
 
     # Waypoint player
     if "waypoint_player" not in st.session_state:
