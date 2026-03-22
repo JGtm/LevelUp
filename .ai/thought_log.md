@@ -34,6 +34,37 @@ Device Code Flow pour l'auth Xbox.
 
 ---
 
+### [2026-03-22] — Bugfixes robustesse premier lancement (VM test) — Complété
+
+**Problèmes signalés (logs VM utilisateur) :**
+1. `WARNING streamlit.runtime.caching.cache_data_api` — 2× à chaque sync
+2. `'SyncResult' object has no attribute 'error'` — crash bloquant
+3. `'MatchLogCollector' object has no attribute 'debug'` — crash silencieux
+4. "Aucun match récupéré" — faux négatif même quand la sync réussissait
+5. Logs parasites : `unresolved_player`, `conflit de handle shared_matches`
+
+**Causes racines et corrections (3 commits consolidés) :**
+
+`fix(launcher): robustesse premier lancement` — `launcher.py`
+- `_store_xuid_in_player_db` : persistait pas le xuid dans sync_meta après auth MSAL
+- `setup_script_logging()` jamais appelé depuis `main()` → loggers Streamlit non silencés
+- `result.error` → `result.errors[0]` : `SyncResult` n'a pas d'attribut `.error` (c'est `.errors`)
+- `_count_matches_duckdb` requêtait `match_stats` (supprimée v5.1) → retournait toujours 0
+
+`fix(logging): silencer logs verbeux en contexte CLI` — 3 fichiers
+- `log_config.py` : `_NOISY_LOGGERS` appliqué dans `setup_script_logging()` (manquait, était seulement dans `setup_app_logging`)
+- `_engine_connections.py` : warning→debug pour conflit handle + XUID non résolu
+- `weapon_extraction_service.py` : warn→debug pour unresolved_player
+
+`fix(sync): attributs manquants SyncResult et MatchLogCollector` — 2 fichiers
+- `models_sync.py` : property `SyncResult.error` (alias rétrocompat de `errors[0]`)
+- `_parser_logging.py` : méthode `MatchLogCollector.debug()` manquante (appelée dans `_correlate_all_players` mais absente de la classe)
+
+**Consolidation :** 14 commits intermédiaires (branche + merge × 7) squashés en 3 via
+`git reset --soft a916ba9` + force push après désactivation temporaire de la protection `main`.
+
+---
+
 ### [2026-03-22] — Win Rate sur graphe "Évolution de la performance d'escouade" — Complété
 
 **Tâche** : Ajouter le win rate et le détail victoires/défaites par session sur la timeline escouade (onglet Teammates).
