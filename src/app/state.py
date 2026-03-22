@@ -184,27 +184,6 @@ def _infer_gamertag_from_v5_path(db_path: str) -> str:
     return ""
 
 
-def _read_xuid_from_sync_meta(db_path: str) -> str:
-    """Lit le XUID depuis sync_meta (stocké par engine après chaque sync).
-
-    C'est la source canonique : engine._update_sync_meta("xuid", xuid)
-    est appelé à chaque sync réussi.
-    Retourne une chaîne vide si la table n'existe pas ou le XUID absent.
-    """
-    import os
-
-    if not db_path or not os.path.exists(db_path):
-        return ""
-    try:
-        from src.utils.db import duckdb_read_only
-
-        with duckdb_read_only(db_path) as conn:
-            row = conn.execute("SELECT value FROM sync_meta WHERE key = 'xuid' LIMIT 1").fetchone()
-            return str(row[0]).strip() if row and row[0] else ""
-    except Exception:
-        return ""
-
-
 def init_source_state(default_db: str, settings: AppSettings) -> None:
     """Initialise le session_state avec les valeurs par défaut.
 
@@ -231,14 +210,9 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
 
         st.session_state[SK.DB_PATH] = chosen
 
-    # XUID input — lire depuis sync_meta (source canonique post-sync).
-    # Fallback : gamertag depuis le chemin si sync_meta vide (premier lancement).
+    # XUID input
     if "xuid_input" not in st.session_state:
-        db_candidate = str(st.session_state.get("db_path", "") or "")
-        xuid = _read_xuid_from_sync_meta(db_candidate)
-        if not xuid:
-            xuid = _infer_gamertag_from_v5_path(db_candidate)
-        st.session_state[SK.XUID_INPUT] = xuid
+        st.session_state[SK.XUID_INPUT] = ""
 
     # Waypoint player
     if "waypoint_player" not in st.session_state:
