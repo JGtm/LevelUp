@@ -89,9 +89,10 @@ def _build_base_cols(df: pl.DataFrame) -> list:
     _CASTS: dict[str, object] = {
         "team_mmr": pl.Float64,
         "session_label": pl.Utf8,
+        "outcome": pl.Int32,
     }
     cols: list = [pl.col("match_id").cast(pl.Utf8)]
-    for name in ("start_time", "session_id", "session_label", "team_mmr"):
+    for name in ("start_time", "session_id", "session_label", "team_mmr", "outcome"):
         if name in df.columns:
             dtype = _CASTS.get(name)
             cols.append(pl.col(name).cast(dtype, strict=False) if dtype else pl.col(name))
@@ -126,49 +127,96 @@ def _group_by_session(joined: pl.DataFrame) -> pl.DataFrame | None:
     if "session_id" not in joined.columns or joined["session_id"].drop_nulls().len() == 0:
         return None
     has_label = "session_label" in joined.columns
+    has_outcome = "outcome" in joined.columns
     # Extraire JJ/MM (5 premiers caractères du format "DD/MM/YYYY HH:MM–HH:MM (n)")
     label_expr = (
         pl.col("session_label").first().str.slice(0, 5)
         if has_label
         else pl.col("session_id").first().cast(pl.Utf8)
     ).alias("bucket_label")
-    return (
-        joined.group_by("session_id")
-        .agg(
-            [
-                pl.col("squad_perf").mean(),
-                pl.col("team_mmr").mean().alias("team_mmr_avg"),
-                pl.len().alias("match_count"),
-                pl.col("session_id").cast(pl.Int64, strict=False).min().alias("_sort"),
-                label_expr,
-            ]
+    # Outcome.WIN=2, Outcome.LOSS=3 (src.data.domain.refdata.Outcome)
+    _WIN, _LOSS = 2, 3
+    agg_exprs: list = [
+        pl.col("squad_perf").mean(),
+        pl.col("team_mmr").mean().alias("team_mmr_avg"),
+        pl.len().alias("match_count"),
+        pl.col("session_id").cast(pl.Int64, strict=False).min().alias("_sort"),
+        label_expr,
+    ]
+    if has_outcome:
+        agg_exprs += [
+            (pl.col("outcome") == _WIN).sum().cast(pl.Int32).alias("wins"),
+            (pl.col("outcome") == _LOSS).sum().cast(pl.Int32).alias("losses"),
+        ]
+    result = joined.group_by("session_id").agg(agg_exprs).sort("_sort")
+    select_cols = ["bucket_label", "squad_perf", "team_mmr_avg", "match_count"]
+    if has_outcome:
+        result = result.with_columns(
+            pl.when((pl.col("wins") + pl.col("losses")) > 0)
+            .then(
+                (
+                    pl.col("wins").cast(pl.Float64)
+                    / (pl.col("wins") + pl.col("losses")).cast(pl.Float64)
+                    * 100.0
+                ).round(1)
+            )
+            .otherwise(pl.lit(None).cast(pl.Float64))
+            .alias("win_rate")
         )
-        .sort("_sort")
-        .select("bucket_label", "squad_perf", "team_mmr_avg", "match_count")
-    )
+        select_cols += ["wins", "losses", "win_rate"]
+    return result.select(select_cols)
 
 
 def _group_by_time_period(joined: pl.DataFrame, max_buckets: int) -> pl.DataFrame:
     """Regroupe par période temporelle (fallback). Nécessite start_time."""
+    has_outcome = "outcome" in joined.columns
+    _WIN, _LOSS = 2, 3
+    base_aggs: list = [
+        pl.col("squad_perf").mean(),
+        pl.col("team_mmr").mean().alias("team_mmr_avg"),
+        pl.len().alias("match_count"),
+    ]
+    if has_outcome:
+        base_aggs += [
+            (pl.col("outcome") == _WIN).sum().cast(pl.Int32).alias("wins"),
+            (pl.col("outcome") == _LOSS).sum().cast(pl.Int32).alias("losses"),
+        ]
+
+    def _add_win_rate(df: pl.DataFrame) -> pl.DataFrame:
+        return df.with_columns(
+            pl.when((pl.col("wins") + pl.col("losses")) > 0)
+            .then(
+                (
+                    pl.col("wins").cast(pl.Float64)
+                    / (pl.col("wins") + pl.col("losses")).cast(pl.Float64)
+                    * 100.0
+                ).round(1)
+            )
+            .otherwise(pl.lit(None).cast(pl.Float64))
+            .alias("win_rate")
+        )
+
+    select_cols = ["bucket_label", "squad_perf", "team_mmr_avg", "match_count"]
+    if has_outcome:
+        select_cols += ["wins", "losses", "win_rate"]
+
     for trunc in ("1d", "1w", "1mo"):
         grouped = (
             joined.with_columns(pl.col("start_time").dt.truncate(trunc).alias("bucket"))
             .group_by("bucket")
-            .agg(
-                pl.col("squad_perf").mean(),
-                pl.col("team_mmr").mean().alias("team_mmr_avg"),
-                pl.len().alias("match_count"),
-            )
+            .agg(base_aggs)
             .sort("bucket")
         )
         if len(grouped) <= max_buckets:
             fmt = "%d/%m" if trunc in ("1d", "1w") else "%m/%Y"
-            return grouped.with_columns(
-                pl.col("bucket").dt.strftime(fmt).alias("bucket_label")
-            ).select("bucket_label", "squad_perf", "team_mmr_avg", "match_count")
-    return grouped.with_columns(pl.col("bucket").dt.strftime("%m/%Y").alias("bucket_label")).select(
-        "bucket_label", "squad_perf", "team_mmr_avg", "match_count"
-    )
+            result = grouped.with_columns(pl.col("bucket").dt.strftime(fmt).alias("bucket_label"))
+            if has_outcome:
+                result = _add_win_rate(result)
+            return result.select(select_cols)
+    result = grouped.with_columns(pl.col("bucket").dt.strftime("%m/%Y").alias("bucket_label"))
+    if has_outcome:
+        result = _add_win_rate(result)
+    return result.select(select_cols)
 
 
 def compute_squad_timeseries(
