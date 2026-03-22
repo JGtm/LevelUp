@@ -7,6 +7,33 @@
 
 ## Journal
 
+### [2026-03-22] — Fix premier lancement : stdin fantôme + msal manquant — Complété
+
+**Problèmes signalés :**
+1. Menu interactif (choix 1/Q) s'auto-répondait immédiatement → code 2 → relance nécessaire
+2. MSAL non installé avec les dépendances → auth Xbox bloquée pour les nouveaux utilisateurs
+
+**Cause racine #1 :** Buffer console Windows. Pendant `pip install`, les frappes clavier
+(impatience utilisateur, ou touche pressée après `choice /C` pour winget) restent dans le
+buffer du terminal. La première `input()` du launcher les consomme avant que l'utilisateur lise
+le menu → réponse vide/invalide → `return 2`.
+
+**Décision #1 :** Ajout de `_flush_stdin()` dans `launcher.py` (drain via `msvcrt.getwch()`
+en boucle sur `kbhit()`) appelée avant chaque `input()` dans `_interactive()` et
+`_recovery_menu()`. Non-op sur Linux/macOS.
+
+**Cause racine #2 :** `msal>=1.28.0` était dans l'extra optionnel `[msal]` jamais installé
+par `LevelUp.bat` (qui fait `pip install -e ".[spnkr]"`). Or MSAL est indispensable au
+Device Code Flow pour l'auth Xbox.
+
+**Décision #2 :** `msal>=1.28.0` déplacé vers les `dependencies` principales de
+`pyproject.toml`. L'extra `[msal]` vidé conservé pour rétro-compatibilité.
+
+**Résultat :** 2 fichiers modifiés, pre-commit passé, commit `4f39fa6` sur
+`fix/first-launch-stdin-msal`.
+
+---
+
 ### [2026-03-22] — Win Rate sur graphe "Évolution de la performance d'escouade" — Complété
 
 **Tâche** : Ajouter le win rate et le détail victoires/défaites par session sur la timeline escouade (onglet Teammates).
