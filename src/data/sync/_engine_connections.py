@@ -316,7 +316,9 @@ class ConnectionMixin:
         except Exception as e:
             logger.debug("Impossible de résoudre le XUID depuis la DB: %s", e)
 
-        logger.warning(
+        # Normal au premier lancement (sync_meta et shared_matches non encore peuplés).
+        # Le XUID sera résolu et persisté lors du premier sync via l'API.
+        logger.debug(
             "XUID non résolu après tous les fallbacks (sync_meta + v_gamertag_lookup) pour %s",
             self._player_db_path,
         )
