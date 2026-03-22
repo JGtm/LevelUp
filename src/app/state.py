@@ -171,6 +171,20 @@ def get_default_identity() -> PlayerIdentity:
     )
 
 
+def _infer_gamertag_from_v5_path(db_path: str) -> str:
+    """Extrait le gamertag depuis une DB v5 LevelUp.
+
+    Convention : data/players/{gamertag}/stats.duckdb
+    Retourne une chaîne vide si la structure ne correspond pas.
+    """
+    from pathlib import Path
+
+    p = Path(db_path)
+    if p.name == "stats.duckdb" and p.parent.parent.name.lower() == "players":
+        return p.parent.name
+    return ""
+
+
 def init_source_state(default_db: str, settings: AppSettings) -> None:
     """Initialise le session_state avec les valeurs par défaut.
 
@@ -208,7 +222,21 @@ def init_source_state(default_db: str, settings: AppSettings) -> None:
             infer_spnkr_player_from_db_path(str(st.session_state.get("db_path", "") or "")) or ""
         )
 
-        st.session_state[SK.XUID_INPUT] = legacy or inferred or guessed or identity.xuid_or_gamertag
+        # Pour les DB v5 LevelUp (data/players/{gamertag}/stats.duckdb),
+        # le gamertag est dans le répertoire parent — guess_xuid_from_db_path
+        # ne le trouve pas car le fichier s'appelle "stats.duckdb".
+        db_candidate = str(st.session_state.get("db_path", "") or "")
+        levelup_gt = _infer_gamertag_from_v5_path(db_candidate)
+
+        if levelup_gt:
+            # DB v5 LevelUp — le gamertag dans le répertoire parent est
+            # le seul mécanisme valide ; on ignore les heuristiques SPNKr/env.
+            st.session_state[SK.XUID_INPUT] = levelup_gt
+        else:
+            # DB SPNKr ou autre format — heuristiques existantes.
+            st.session_state[SK.XUID_INPUT] = (
+                legacy or inferred or guessed or identity.xuid_or_gamertag
+            )
 
     # Waypoint player
     if "waypoint_player" not in st.session_state:
