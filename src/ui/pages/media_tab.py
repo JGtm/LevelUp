@@ -162,19 +162,16 @@ def render_media_tab(  # noqa: C901, PLR0912, PLR0915
     xuid_input = st.session_state.get("xuid_input", "")
 
     try:
-        from src.app.profile import resolve_xuid
-        from src.app.state import get_default_identity
+        from src.app.profile import get_identity_from_secrets, resolve_xuid
     except ImportError:
         resolve_xuid = None
-        get_default_identity = None
+        get_identity_from_secrets = None
 
     current_xuid = None
-    if get_default_identity and resolve_xuid:
-        identity = get_default_identity()
+    if get_identity_from_secrets and resolve_xuid:
+        identity = get_identity_from_secrets()
         current_xuid = (
-            resolve_xuid(xuid_input or identity.xuid_or_gamertag or "", db_path, identity)
-            or identity.xuid
-            or identity.xuid_fallback
+            resolve_xuid(xuid_input or identity.gamertag or "", db_path, identity) or identity.xuid
         )
 
     if not db_path or not str(db_path).endswith(".duckdb"):

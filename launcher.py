@@ -388,23 +388,15 @@ def _player_db_exists(gamertag: str) -> bool:
 
 
 def _count_matches_duckdb(db_path: Path) -> int:
-    """Compte les matchs dans une DB DuckDB joueur.
-
-    Tente player_match_enrichment (v5.1+) puis match_stats (legacy).
-    """
+    """Compte les matchs dans player_match_enrichment (stats.duckdb v5.1+)."""
     if not db_path.exists():
         return 0
     try:
         duckdb = _import_duckdb()
         con = duckdb.connect(str(db_path), read_only=True)
         try:
-            for table in ("player_match_enrichment", "match_stats"):
-                try:
-                    row = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()  # noqa: S608
-                    return row[0] if row else 0
-                except Exception:
-                    continue
-            return 0
+            row = con.execute("SELECT COUNT(*) FROM player_match_enrichment").fetchone()
+            return row[0] if row else 0
         finally:
             con.close()
     except Exception:
@@ -522,8 +514,9 @@ async def _sync_player_duckdb_async(
         print(_classify_sync_error(str(e), gamertag))
         return (matches_before, matches_before)
 
-    # Compter les matchs après
-    matches_after = _count_matches_duckdb(db_path)
+    # Compter les matchs après : result.matches_inserted évite de rouvrir
+    # le fichier pendant que l'engine tient encore sa connexion ouverte.
+    matches_after = matches_before + result.matches_inserted
 
     return (matches_before, matches_after)
 
