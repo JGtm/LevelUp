@@ -167,7 +167,7 @@ class ConnectionMixin:
         except duckdb.Error as e:
             err = str(e).lower()
             if "unique file handle conflict" in err or "already attached" in err:
-                logger.warning(
+                logger.debug(
                     "shared_matches.duckdb conflit de handle, libération et retry… (%s)", e
                 )
                 try:
@@ -183,7 +183,7 @@ class ConnectionMixin:
                 except duckdb.Error as e2:
                     # 2ème tentative aussi échouée : log + return None
                     # pour éviter de faire remonter le Binder Error dans result.errors.
-                    logger.warning(
+                    logger.debug(
                         "shared_matches.duckdb : retry échoué (%s) — shared non disponible", e2
                     )
                     return None
@@ -316,7 +316,9 @@ class ConnectionMixin:
         except Exception as e:
             logger.debug("Impossible de résoudre le XUID depuis la DB: %s", e)
 
-        logger.warning(
+        # Normal au premier lancement (sync_meta et shared_matches non encore peuplés).
+        # Le XUID sera résolu et persisté lors du premier sync via l'API.
+        logger.debug(
             "XUID non résolu après tous les fallbacks (sync_meta + v_gamertag_lookup) pour %s",
             self._player_db_path,
         )
