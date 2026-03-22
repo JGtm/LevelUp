@@ -13,22 +13,17 @@
 
 ## What's new
 
-**v6.1 — Sync performance & post-sync bug fixes**
-- **7-axis sync optimization** — parallel post-sync, shared_matches R/O direct, parallel_fetch pipelining, citations bulk SQL, CPU-bound transforms via executor, LUSR batch UPSERT, adaptive commit size; overall sync time reduced ~30–40 %
-- **`refresh_materialized_views` Binder Error fixed** — `GROUP BY 1` replaces broken alias reference
-- **Performance scores no longer silently skipped** — fallback to player connection when shared_matches handle conflict occurs in post-sync
-- **Career rank name corrected** — now read from `metadata.duckdb` instead of approximate formula (e.g. "Lance Corporal Diamond 1" instead of "Silver 3 (VI)")
+**v6.1 — Sync faster, bugs fixed**
+- **Sync ~30–40 % faster** — each sync now completes significantly quicker
+- **Career rank names corrected** — displays the actual rank name (e.g. "Lance Corporal Diamond 1") instead of an approximation
+- Bug fixes: performance scores and materialized views now always update correctly
 
-**v6.0 — Zero-config auth, ID resolution layer & weapon catalog**
-- **Zero Azure configuration** — `LEVELUP_CLIENT_ID` bundled in the app; first launch: enter gamertag → Device Code on xbox.com/activate → done
-- **Gamertag auto-detection** from Microsoft login via Halo API; launcher cleaned up (−652 lines of Azure/OAuth dead code)
-- **ID resolution layer** — three SQL views (`v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full`) consolidate all gamertag/match/kill lookups into reliable single-JOIN queries
-- **`weapon_labels` in `metadata.duckdb`** — DB-first weapon name resolution (EN/FR) with automatic migration; drops hardcoded dicts
-- **i18n fully in DuckDB** — mode translations migrated from JSON files to `metadata.duckdb`; playlists/game_variants seeded with i18n columns
-- **Last Match navigation** — `◀ Previous` / `Next ▶` buttons to browse filtered matches
-- **Weapon parser accuracy** — global fire_event match rate corrected from 15 % → 95 %
-- **Custom medal: Avenger** — detects revenge kills (you kill the opponent who last killed you) via `killer_victim_pairs`; backfill with `--avenger`
-- **Top Gun label** — 🔫 badge on the Impact timeline for the first player on your team to reach 10 kills in a match
+**v6.0 — Zero configuration, weapon accuracy & new medals**
+- **No setup required** — the app gives you a one-time code to enter at Microsoft.com/activate; your gamertag is detected automatically from your Microsoft account; no Azure account, no config file
+- **Navigate between matches** — `◀ Previous` / `Next ▶` buttons to browse your filtered match history
+- **Weapon kill attribution** — accuracy jumped from ~15 % to ~95 % of kills correctly attributed to a weapon
+- **New medal: Avenger** — awarded when you eliminate the opponent who last killed you
+- **Top Gun badge** — 🔫 shown on the Impact timeline for the first player on your team to reach 10 kills
 
 **v5.7 — Bilingual launchers, map hover thumbnails & Polars cleanup**
 - `LevelUp.sh` and `LevelUp.bat` now detect the system language (FR/EN) and display launcher messages accordingly
