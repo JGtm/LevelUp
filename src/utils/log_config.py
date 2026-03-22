@@ -153,7 +153,6 @@ def setup_script_logging(level: str = "INFO", sync_log: bool = False) -> None:
         sync_handler.setFormatter(formatter)
         root.addHandler(sync_handler)
 
-    # Silencer les loggers bruyants (Streamlit, urllib3, etc.)
     for logger_name, logger_level in _NOISY_LOGGERS.items():
         logging.getLogger(logger_name).setLevel(logger_level)
 

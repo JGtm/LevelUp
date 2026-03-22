@@ -287,7 +287,7 @@ class WeaponExtractionService:
 
         for xuid_str, kills in all_kills.items():
             if kills and xuid_str not in xuid_to_pi:
-                log.debug("unresolved_player", xuid=xuid_str, kills=len(kills))
+                log.warn("unresolved_player", xuid=xuid_str, kills=len(kills))
 
         kills_flat = [k for kills in all_kills.values() for k in kills]
         return correlate_kills_global(
