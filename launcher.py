@@ -1991,6 +1991,15 @@ def main(argv: list[str] | None = None) -> int:
     """Point d'entrée principal."""
     _install_signal_handler()
 
+    # Silencer les loggers bruyants de Streamlit (cache_data_api tiers)
+    # dès le lancement — avant toute import de module Streamlit.
+    try:
+        from src.utils.log_config import setup_script_logging  # noqa: PLC0415
+
+        setup_script_logging(level="WARNING")
+    except Exception:
+        pass
+
     argv = list(sys.argv[1:] if argv is None else argv)
     _maybe_reexec_into_venv(argv)
 
