@@ -90,6 +90,11 @@ class SyncResult:
     finished_at: datetime | None = None
 
     @property
+    def error(self) -> str | None:
+        """Première erreur (rétrocompatibilité — préférer .errors)."""
+        return self.errors[0] if self.errors else None
+
+    @property
     def success(self) -> bool:
         """True si la sync a réussi (même partiellement)."""
         # Succès si au moins un match inséré ou aucune erreur fatale
