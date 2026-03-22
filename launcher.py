@@ -1525,6 +1525,8 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
         else:
             print(_t("onboard_sync_no_matches", _LANG))
             return 2
+        # Appliquer les migrations post-sync (vue mv_player_matches, etc.)
+        _run_migrations()
         return 0
 
     # ── Test 10 matchs (avec retry) ──────────────────────────────────────────
@@ -1572,6 +1574,9 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
         else:
             print(_t("onboard_test_existing", _LANG, n=after))
         break
+
+    # Appliquer les migrations post-sync (vue mv_player_matches, etc.)
+    _run_migrations()
 
     # ── Proposition de poursuivre ─────────────────────────────────────────────
     print()
