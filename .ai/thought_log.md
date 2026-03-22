@@ -7122,6 +7122,30 @@ Axe 1 validé. Prochaines étapes : Axe 5 (run_in_executor MetadataResolver) pui
 
 ---
 
+### [2025-07-19] — Fix xuid_input : lire depuis sync_meta — Complété
+
+**Problème :** `init_source_state` peuplait `xuid_input` avec le gamertag extrait du chemin
+(`_infer_gamertag_from_v5_path` → `"JGtm"`). Mais `resolve_xuid_input("JGtm", db_path)` ne
+trouvait pas le XUID numérique → `xuid = ""` → condition `load_match_dataframe` échouait →
+message "Configure une DB et un joueur dans Paramètres" affiché au lieu du dashboard.
+
+**Cause racine :** La fonction de résolution `resolve_xuid_input` doit pouvoir trouver le XUID
+via xuid_aliases ou sync_meta, mais si `xuid_aliases` ne contient pas le gamertag (premier
+lancement après sync, ou gamertag incohérent), elle retourne `""`.
+
+**Fix (`src/app/state.py`):**
+- Ajout de `_read_xuid_from_sync_meta(db_path)` : lit directement `sync_meta WHERE key='xuid'`
+  → retourne `"2535469190789936"` (XUID numérique valide, pas de résolution nécessaire)
+- `init_source_state` : appelle `_read_xuid_from_sync_meta` en priorité, fallback sur
+  `_infer_gamertag_from_v5_path` (avant premier sync, sync_meta est vide)
+
+**Résultat :** `xuid_input = "2535469190789936"` → `str(xuid or "").strip()` ≠ `""` → dashboard
+s'affiche correctement.
+
+**Commit :** `7ae483a` sur branche `fix/count-matches-use-syncresult`
+
+---
+
 ### [2025-07-18] — Axe 5 : Transformations CPU-bound via run_in_executor (Phase 3 perf/sync)
 **Statut** : Complété ✅
 
