@@ -61,15 +61,10 @@ def render_media_library_page(*, df_full: DataFrameLike, settings: AppSettings) 
     db_path = st.session_state.get("db_path", "")
     xuid_input = st.session_state.get("xuid_input", "")
 
-    from src.app.profile import resolve_xuid
-    from src.app.state import get_default_identity
+    from src.app.profile import get_identity_from_secrets, resolve_xuid
 
-    identity = get_default_identity()
-    xuid = (
-        resolve_xuid(xuid_input or "SpartanC", db_path, identity)
-        or identity.xuid
-        or identity.xuid_fallback
-    )
+    identity = get_identity_from_secrets()
+    xuid = resolve_xuid(xuid_input or "SpartanC", db_path, identity) or identity.xuid
 
     # Filtres et options
     filters = render_media_filters(settings, dirs, db_path)

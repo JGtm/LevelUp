@@ -326,14 +326,13 @@ class TestCacheInvalidation:
         assert key is None
 
     def test_state_delegates_to_cache_loaders(self, sample_duckdb):
-        """get_db_cache_key dans state.py délègue à db_cache_key dans cache_loaders."""
-        from src.app.state import get_db_cache_key
+        """db_cache_key retourne un tuple cohérent."""
         from src.ui.cache_loaders import db_cache_key
 
         player_db, _shared_db = sample_duckdb
-        key_state = get_db_cache_key(player_db)
-        key_cache = db_cache_key(player_db)
-        assert key_state == key_cache
+        key = db_cache_key(player_db)
+        assert key is not None
+        assert isinstance(key, tuple)
 
 
 # ─────────────────────────────────────────────────────────────────────
