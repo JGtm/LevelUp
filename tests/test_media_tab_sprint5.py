@@ -43,11 +43,11 @@ def test_render_media_tab_no_db_path() -> None:
     mock_identity = type(
         "Identity",
         (),
-        {"xuid": "", "xuid_or_gamertag": "", "xuid_fallback": ""},
+        {"xuid": "", "gamertag": "", "waypoint_player": ""},
     )()
     with (
         patch("src.ui.pages.media_tab.st") as m_st,
-        patch("src.app.state.get_default_identity", return_value=mock_identity),
+        patch("src.app.profile.get_identity_from_secrets", return_value=mock_identity),
         patch("src.app.profile.resolve_xuid", return_value=None),
     ):
         m_st.session_state = {"db_path": "", "xuid_input": ""}
@@ -75,7 +75,7 @@ def test_render_media_tab_empty_media(tmp_path: Path) -> None:
     mock_identity = type(
         "Identity",
         (),
-        {"xuid": "x1", "xuid_or_gamertag": "Test", "xuid_fallback": "x1"},
+        {"xuid": "x1", "gamertag": "Test", "waypoint_player": "Test"},
     )()
 
     with (
@@ -84,7 +84,7 @@ def test_render_media_tab_empty_media(tmp_path: Path) -> None:
             "src.ui.pages.media_tab.MediaIndexer.load_media_for_ui",
             return_value=pl.DataFrame(),
         ),
-        patch("src.app.state.get_default_identity", return_value=mock_identity),
+        patch("src.app.profile.get_identity_from_secrets", return_value=mock_identity),
         patch("src.app.profile.resolve_xuid", return_value="x1"),
     ):
         m_st.session_state = {"db_path": str(db_path), "xuid_input": ""}
