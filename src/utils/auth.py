@@ -64,18 +64,20 @@ def get_auth_status() -> AuthStatus:
     load_dotenv_if_present()
 
     has_env = _env_local_path().exists()
-    client_id = os.environ.get("SPNKR_AZURE_CLIENT_ID", "").strip()
     refresh_token = os.environ.get("SPNKR_OAUTH_REFRESH_TOKEN", "").strip()
 
+    # LEVELUP_CLIENT_ID est toujours intégré dans l'app (src/auth/_constants.py) —
+    # l'utilisateur n'a plus besoin de configurer Azure.
+    # SPNKR_AZURE_CLIENT_ID reste supporté comme surcharge backend optionnelle.
+    has_client_id = True
+
     missing: list[str] = []
-    if not client_id:
-        missing.append("SPNKR_AZURE_CLIENT_ID")
     if not refresh_token:
         missing.append("SPNKR_OAUTH_REFRESH_TOKEN")
 
     return AuthStatus(
         has_env_file=has_env,
-        has_client_id=bool(client_id),
+        has_client_id=has_client_id,
         has_refresh_token=bool(refresh_token),
         missing_keys=missing,
     )
