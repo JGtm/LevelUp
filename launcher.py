@@ -388,16 +388,15 @@ def _player_db_exists(gamertag: str) -> bool:
 
 
 def _count_matches_duckdb(db_path: Path) -> int:
-    """Compte les matchs dans une DB DuckDB."""
+    """Compte les matchs dans player_match_enrichment (stats.duckdb v5.1+)."""
     if not db_path.exists():
         return 0
     try:
         duckdb = _import_duckdb()
         con = duckdb.connect(str(db_path), read_only=True)
         try:
-            result = con.execute("SELECT COUNT(*) FROM match_stats").fetchone()
-            count = result[0] if result else 0
-            return count
+            row = con.execute("SELECT COUNT(*) FROM player_match_enrichment").fetchone()
+            return row[0] if row else 0
         finally:
             con.close()
     except Exception:
@@ -508,8 +507,8 @@ async def _sync_player_duckdb_async(
         else:
             result = await engine.sync_full(options)
 
-        if result.error:
-            print(_classify_sync_error(str(result.error), gamertag))
+        if result.errors:
+            print(_classify_sync_error(result.errors[0], gamertag))
 
     except Exception as e:
         print(_classify_sync_error(str(e), gamertag))
@@ -1254,6 +1253,31 @@ _BOOTSTRAP_AUTH_DB = WAREHOUSE_DIR / "bootstrap_auth.duckdb"
 # avant que le gamertag soit connu. Supprimée après transfert vers stats.duckdb.
 
 
+def _store_xuid_in_player_db(db_path: Path, xuid: str, gamertag: str) -> None:
+    """Persiste xuid et gamertag dans sync_meta de la DB joueur.
+
+    Appelé juste après _transfer_msal_cache() pour que le moteur de sync
+    trouve le XUID dès sa première instanciation (évite le warning
+    «XUID non résolu» au premier lancement).
+    """
+    from src.utils.db import duckdb_read_write  # noqa: PLC0415
+
+    ddl = (
+        "CREATE TABLE IF NOT EXISTS sync_meta ("
+        "key VARCHAR PRIMARY KEY, value VARCHAR, "
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+    )
+    with duckdb_read_write(db_path) as conn:
+        conn.execute(ddl)
+        for k, v in (("xuid", xuid), ("gamertag", gamertag)):
+            if v:
+                conn.execute(
+                    "INSERT OR REPLACE INTO sync_meta (key, value, updated_at)"
+                    " VALUES (?, ?, CURRENT_TIMESTAMP)",
+                    (k, v),
+                )
+
+
 def _transfer_msal_cache(source: Path, target: Path) -> None:
     """Transfère le cache MSAL depuis la DB source vers la DB target.
 
@@ -1455,6 +1479,14 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
         print(_t("onboard_msal_transfer_fail", _LANG, err=exc))
     finally:
         _BOOTSTRAP_AUTH_DB.unlink(missing_ok=True)
+
+    # Persister le xuid résolu par MSAL dès maintenant pour éviter le warning
+    # «XUID non résolu» lors du premier appel à DuckDBSyncEngine.
+    if xuid:
+        try:
+            _store_xuid_in_player_db(real_db_path, xuid, gamertag)
+        except Exception as exc:
+            logger.debug("_store_xuid_in_player_db: %s", exc)
 
     # ── Étape 2 : Initialisation des bases de données ─────────────────────────
     print()
@@ -1957,6 +1989,15 @@ Architecture v5:
 def main(argv: list[str] | None = None) -> int:
     """Point d'entrée principal."""
     _install_signal_handler()
+
+    # Silencer les loggers bruyants de Streamlit (cache_data_api tiers)
+    # dès le lancement — avant toute import de module Streamlit.
+    try:
+        from src.utils.log_config import setup_script_logging  # noqa: PLC0415
+
+        setup_script_logging(level="WARNING")
+    except Exception:
+        pass
 
     argv = list(sys.argv[1:] if argv is None else argv)
     _maybe_reexec_into_venv(argv)
