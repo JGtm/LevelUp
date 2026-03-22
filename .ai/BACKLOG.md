@@ -1,6 +1,6 @@
 — Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-21.
+> Mis à jour le 2026-03-22.
 
 ---
 
@@ -58,3 +58,23 @@
 ---
 
 ## 📋 Backlog
+
+### Kills environnementaux — catégorie dédiée (v7+)
+
+**Contexte** : La médaille **Kong** (kill via baril projeté) est actuellement comptée dans `GRENADE_MEDALS` faute d'une meilleure catégorie. Ce classement est approximatif — il est impossible de savoir avec certitude si l'API inclut ces kills dans `GrenadeKills` ou non.
+
+**Idée** : Créer une catégorie `environmental_kills` (ou `environmental`) pour regrouper les kills causés par l'environnement sans arme tenue :
+- Baril projeté (médaille **Kong**)
+- Potentiellement : chutes provoquées, explosions de véhicules, etc.
+
+**Ce que ça impliquerait** :
+1. Nouvelle colonne `environmental_kills` dans `match_participants` (migration DuckDB)
+2. Nouveau bit `ParticipantBits.ENVIRONMENTAL_KILLS` dans `constants.py`
+3. Retirer `Kong` de `GRENADE_MEDALS` → nouvel ensemble `ENVIRONMENTAL_MEDALS`
+4. Logique de réconciliation filmshell dédiée dans `_weapon_kills_repo.py`
+5. Backfill pour l'historique existant
+6. Affichage UI éventuel
+
+**Complexité estimée** : Moyenne (surtout le backfill + validation que l'API expose bien des compteurs séparés)
+
+**Priorité** : Basse — les barrel kills sont extrêmement rares, l'impact sur les stats est négligeable. À faire uniquement si on veut une exhaustivité totale des catégories de kills.
