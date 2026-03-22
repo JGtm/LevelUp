@@ -398,12 +398,14 @@ class TestMvPlayerMatchesView:
 
         conn.close()
 
-    def test_view_no_match_registry_skips(self, tmp_path: Path):
-        """Si match_registry n'existe pas, la vue n'est pas créée."""
+    def test_view_no_match_registry_raises(self, tmp_path: Path):
+        """Si match_registry n'existe pas, la migration lève RuntimeError."""
         db_path = tmp_path / "empty.duckdb"
         conn = duckdb.connect(str(db_path))
         conn.execute("CREATE TABLE dummy (x INTEGER)")
-        ensure_mv_player_matches_view(conn)
+
+        with pytest.raises(RuntimeError, match="match_registry introuvable"):
+            ensure_mv_player_matches_view(conn)
 
         result = conn.execute("""
             SELECT COUNT(*) FROM duckdb_views()
