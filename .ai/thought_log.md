@@ -34,6 +34,25 @@ Device Code Flow pour l'auth Xbox.
 
 ---
 
+### [2026-03-22] — Fix wizard affiché au lieu du dashboard — Complété
+
+**Problème :** Au lancement du dashboard Streamlit, le wizard de setup s'affichait systématiquement
+même après avoir configuré un joueur et synced des matchs.
+
+**Cause racine :** `get_auth_status()` dans `src/utils/auth.py` conditionnait `has_client_id` à la
+présence de `SPNKR_AZURE_CLIENT_ID` dans l'environnement. Or depuis la v6, `LEVELUP_CLIENT_ID` est
+hardcodé dans `src/auth/_constants.py` — les utilisateurs n'ont plus besoin de configurer Azure.
+Résultat : `has_client_id = False` toujours → `has_credentials = False` → `needs_setup = True`
+→ wizard affiché, quel que soit l'état réel.
+
+**Fix :** `src/utils/auth.py` : `has_client_id = True` systématiquement car `LEVELUP_CLIENT_ID`
+est toujours intégré. `SPNKR_AZURE_CLIENT_ID` reste supporté comme surcharge backend optionnelle.
+`tests/test_auth.py` mis à jour pour refléter le nouveau comportement.
+
+**Commit :** `35ec5b7` sur `fix/count-matches-use-syncresult`
+
+---
+
 ### [2026-03-22] — Fix "Aucun match récupéré" : conflit connexion DuckDB — Complété
 
 **Problème :** Même après avoir corrigé le nom de table (`match_stats` → `player_match_enrichment`),
