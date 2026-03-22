@@ -508,8 +508,8 @@ async def _sync_player_duckdb_async(
         else:
             result = await engine.sync_full(options)
 
-        if result.error:
-            print(_classify_sync_error(str(result.error), gamertag))
+        if result.errors:
+            print(_classify_sync_error(result.errors[0], gamertag))
 
     except Exception as e:
         print(_classify_sync_error(str(e), gamertag))
