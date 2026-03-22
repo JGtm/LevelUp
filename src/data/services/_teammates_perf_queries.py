@@ -63,6 +63,36 @@ def load_team_mmr_by_match(
         return {}
 
 
+def load_outcome_by_match(
+    shared_db_path: str, gamertag: str, match_ids: list[str]
+) -> dict[str, int]:
+    """Charge l'outcome depuis shared.match_participants pour un gamertag et des match_ids.
+
+    Returns:
+        Mapping match_id → outcome (int : 2=Victoire, 3=Défaite, 1=Égalité, 4=DNF).
+    """
+    from src.utils.db import duckdb_read_only
+
+    if not match_ids or not Path(shared_db_path).exists():
+        return {}
+    try:
+        ph = ", ".join(["?"] * len(match_ids))
+        with duckdb_read_only(shared_db_path) as conn:
+            rows = conn.execute(
+                f"SELECT mp.match_id, mp.outcome"
+                f" FROM match_participants mp"
+                f" JOIN xuid_aliases xa ON mp.xuid = xa.xuid"
+                f" WHERE xa.gamertag = ?"
+                f" AND mp.match_id IN ({ph})"
+                f" AND mp.outcome IS NOT NULL",
+                [gamertag, *match_ids],
+            ).fetchall()
+        return {str(mid): int(outcome) for mid, outcome in rows}
+    except Exception as e:
+        logger.debug("Erreur outcome depuis %s pour %s: %s", shared_db_path, gamertag, e)
+        return {}
+
+
 def _load_perf_enrichment(db_path: str, match_ids: list[str]) -> list[tuple]:
     """Charge performance_score, session_id, session_label depuis player_match_enrichment.
 
