@@ -167,7 +167,7 @@ class ConnectionMixin:
         except duckdb.Error as e:
             err = str(e).lower()
             if "unique file handle conflict" in err or "already attached" in err:
-                logger.warning(
+                logger.debug(
                     "shared_matches.duckdb conflit de handle, libération et retry… (%s)", e
                 )
                 try:
@@ -183,7 +183,7 @@ class ConnectionMixin:
                 except duckdb.Error as e2:
                     # 2ème tentative aussi échouée : log + return None
                     # pour éviter de faire remonter le Binder Error dans result.errors.
-                    logger.warning(
+                    logger.debug(
                         "shared_matches.duckdb : retry échoué (%s) — shared non disponible", e2
                     )
                     return None
