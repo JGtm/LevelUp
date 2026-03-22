@@ -177,6 +177,35 @@ def render_single_map_section(
     render_squad_heatmap(series, lang=lang)
 
 
+def _enrich_me_df_from_shared(
+    me_df: pl.DataFrame,
+    shared_path: str,
+    me_name: str,
+    all_match_ids: list[str],
+) -> pl.DataFrame:
+    """Enrichit me_df avec team_mmr et outcome depuis shared_matches."""
+    from src.data.services._teammates_perf_queries import (
+        load_outcome_by_match,
+        load_team_mmr_by_match,
+    )
+
+    mmr_by_match = load_team_mmr_by_match(shared_path, me_name, all_match_ids)
+    if mmr_by_match:
+        mmr_df = pl.DataFrame(
+            [{"match_id": k, "team_mmr": v} for k, v in mmr_by_match.items()],
+            schema={"match_id": pl.Utf8, "team_mmr": pl.Float64},
+        )
+        me_df = me_df.join(mmr_df, on="match_id", how="left")
+    outcome_by_match = load_outcome_by_match(shared_path, me_name, all_match_ids)
+    if outcome_by_match:
+        outcome_df = pl.DataFrame(
+            [{"match_id": k, "outcome": v} for k, v in outcome_by_match.items()],
+            schema={"match_id": pl.Utf8, "outcome": pl.Int32},
+        )
+        me_df = me_df.join(outcome_df, on="match_id", how="left")
+    return me_df
+
+
 def render_squad_timeline(
     db_path: str,
     me_name: str,
@@ -191,7 +220,6 @@ def render_squad_timeline(
     from src.analysis._performance_squad import compute_squad_timeseries
     from src.data.services._teammates_perf_queries import (
         load_perf_enrichment_with_session,
-        load_team_mmr_by_match,
     )
     from src.utils.paths import get_shared_matches_path_from_player
 
@@ -226,16 +254,10 @@ def render_squad_timeline(
     if me_df.is_empty():
         return
 
-    # Enrichir me_df avec team_mmr depuis shared_matches
+    # Enrichir me_df avec team_mmr et outcome depuis shared_matches
     shared_path = get_shared_matches_path_from_player(db_path)
     if shared_path:
-        mmr_by_match = load_team_mmr_by_match(str(shared_path), me_name, all_match_ids)
-        if mmr_by_match:
-            mmr_df = pl.DataFrame(
-                [{"match_id": k, "team_mmr": v} for k, v in mmr_by_match.items()],
-                schema={"match_id": pl.Utf8, "team_mmr": pl.Float64},
-            )
-            me_df = me_df.join(mmr_df, on="match_id", how="left")
+        me_df = _enrich_me_df_from_shared(me_df, str(shared_path), me_name, all_match_ids)
 
     series: list[tuple[str, pl.DataFrame]] = [(me_name, me_df)]
     for fname in friend_names:

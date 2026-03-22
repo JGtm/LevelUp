@@ -195,4 +195,5 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "trace_squad_perf": {"fr": "Perf. escouade", "en": "Squad perf."},
     "trace_team_mmr": {"fr": "MMR équipe", "en": "Team MMR"},
     "trace_match_count": {"fr": "Matchs", "en": "Matches"},
+    "trace_squad_win_rate": {"fr": "Taux de victoires", "en": "Win Rate"},
 }

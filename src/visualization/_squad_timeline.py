@@ -39,18 +39,50 @@ def _build_hover_texts(
     perf: list[float | None],
     counts: list[int],
     lang: str,
+    wl: tuple[list[int], list[int]] | None = None,
 ) -> list[str]:
-    """Textes de survol des barres de la timeline escouade."""
-    return [
-        (
-            f"<b>{x_labels[i]}</b><br>"
-            f"{viz_t('trace_squad_perf', lang)}: {perf[i]:.1f}<br>"
-            f"{viz_t('trace_match_count', lang)}: {counts[i]}"
-        )
-        if perf[i] is not None
-        else ""
-        for i in range(len(x_labels))
-    ]
+    """Textes de survol des barres de la timeline escouade.
+
+    Args:
+        wl: Tuple (wins, losses) si les données de résultat sont disponibles.
+    """
+    texts = []
+    for i in range(len(x_labels)):
+        if perf[i] is None:
+            texts.append("")
+            continue
+        parts = [
+            f"<b>{x_labels[i]}</b>",
+            f"{viz_t('trace_squad_perf', lang)}: {perf[i]:.1f}",
+            f"{viz_t('trace_match_count', lang)}: {counts[i]}",
+        ]
+        if wl is not None:
+            w, l_ = wl[0][i], wl[1][i]
+            parts.append(f"{viz_t('hover_wins', lang)}: {w} — {viz_t('hover_losses', lang)}: {l_}")
+        texts.append("<br>".join(parts))
+    return texts
+
+
+def _add_winrate_trace(
+    fig: go.Figure, win_rates: list[float | None], x_idx: list[int], lang: str
+) -> None:
+    """Ajoute la courbe Win Rate (%) sur l'axe principal (0-100)."""
+    fig.add_trace(
+        go.Scatter(
+            x=x_idx,
+            y=win_rates,
+            name=viz_t("trace_squad_win_rate", lang),
+            mode="lines+markers",
+            line={
+                "color": COLORS.get("green", "#10B981"),
+                "width": PLOT_CONFIG.line_width,
+                "dash": "dot",
+            },
+            marker={"size": 7, "symbol": "diamond"},
+            hovertemplate=f"{viz_t('trace_squad_win_rate', lang)}: %{{y:.0f}}%<extra></extra>",
+        ),
+        secondary_y=False,
+    )
 
 
 def _add_mmr_trace(fig: go.Figure, d: pl.DataFrame, x_idx: list[int], lang: str) -> None:
@@ -127,9 +159,15 @@ def plot_squad_performance_timeline(
     perf = d["squad_perf"].cast(pl.Float64, strict=False).to_list()
     counts = d["match_count"].to_list() if "match_count" in d.columns else [1] * len(x_idx)
     has_mmr = "team_mmr_avg" in d.columns and d["team_mmr_avg"].drop_nulls().len() > 0
+    has_winrate = "win_rate" in d.columns and d["win_rate"].drop_nulls().len() > 0
+
+    wins = d["wins"].to_list() if "wins" in d.columns else None
+    losses = d["losses"].to_list() if "losses" in d.columns else None
+    win_rates = d["win_rate"].cast(pl.Float64, strict=False).to_list() if has_winrate else None
+    wl = (wins, losses) if wins is not None and losses is not None else None
 
     bar_colors = [_bar_color(v) for v in perf]
-    hover_texts = _build_hover_texts(x_labels, perf, counts, lang)
+    hover_texts = _build_hover_texts(x_labels, perf, counts, lang, wl)
 
     fig = make_subplots(specs=[[{"secondary_y": has_mmr}]])
     fig.add_trace(
@@ -144,6 +182,8 @@ def plot_squad_performance_timeline(
         ),
         secondary_y=False,
     )
+    if has_winrate:
+        _add_winrate_trace(fig, win_rates, x_idx, lang)
     if has_mmr:
         _add_mmr_trace(fig, d, x_idx, lang)
 
