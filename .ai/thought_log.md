@@ -7176,3 +7176,29 @@ dans le thread pool default (libère l'event loop 50-200ms par match).
 
 **Conclusion** :
 Axe 5 validé. Prochaine étape : Axe 3 (dual semaphore fetch/CPU — le plus complexe).
+
+---
+
+## [2026-03-22] Fix fresh install : mv_player_matches jamais créée
+
+**Statut** : Complété
+
+**Problème** : Sur une fresh install (VM), après l'onboarding (sync 10 matchs),
+l'app affichait "Aucun match trouvé" alors que les matchs étaient bien dans
+`shared_matches_v2.duckdb`.
+
+**Diagnostic** : `ensure_mv_player_matches_view()` était définie dans
+`migrations.py` mais n'était appelée **nulle part** dans le code de production
+(seulement dans les tests). La vue `mv_player_matches` n'existait donc jamais sur
+une fresh install. `_get_match_source()` tente `FROM shared.mv_player_matches` →
+exception → fallback `pl.DataFrame()` vide → message "Aucun match trouvé".
+
+**Décision** : Créer une migration formelle dans le système de migration, pattern
+identique aux autres migrations `target_db="shared"`. Elle sera appliquée
+automatiquement par `launcher.py → _run_migrations()` au prochain lancement.
+
+**Fichiers** :
+- `src/data/migration/steps/add_mv_player_matches_view.py` (nouveau)
+- `src/data/migration/steps/__init__.py` (+1 import + 1 entrée `__all__`)
+
+**Tests** : 30/30 passed (`test_performance_optimizations.py`)
