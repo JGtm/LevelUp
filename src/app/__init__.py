@@ -12,7 +12,7 @@ Ce module contient la logique d'orchestration extraite de streamlit_app.py :
 - navigation.py : Rendu des pages
 
 Importer directement depuis le sous-module voulu :
-    from src.app.state import AppState          # ✅
+    from src.app.state import AppState          # \u2705
     from src.app import AppState                # ❌ charge tout le package
 """
 
