@@ -34,6 +34,24 @@ Device Code Flow pour l'auth Xbox.
 
 ---
 
+### [2026-03-22] — Fix "Aucun match récupéré" : conflit connexion DuckDB — Complété
+
+**Problème :** Même après avoir corrigé le nom de table (`match_stats` → `player_match_enrichment`),
+`_count_matches_duckdb` retournait toujours 0 après un sync réussi.
+
+**Cause racine :** `DuckDBSyncEngine.sync_full()` garde `self._connection` (mode write) ouvert sur
+`stats.duckdb` jusqu'à la destruction GC de l'objet. Immédiatement après le sync, `_count_matches_duckdb`
+tentait d'ouvrir le même fichier avec `read_only=True` via une nouvelle connexion → DuckDB lève un
+conflit de handle → attrapé par `except Exception: return 0` → message "Aucun match récupéré".
+
+**Fix :** Dans `_sync_player_duckdb_async`, remplacer `matches_after = _count_matches_duckdb(db_path)`
+par `matches_after = matches_before + result.matches_inserted`. `result.matches_inserted` est
+incrémenté dans `_match_processing_helpers.py` à chaque match inséré → fiable et sans réouverture de fichier.
+
+**Commit :** `2d40db7` sur `fix/count-matches-use-syncresult`
+
+---
+
 ### [2026-03-22] — Bugfixes robustesse premier lancement (VM test) — Complété
 
 **Problèmes signalés (logs VM utilisateur) :**
