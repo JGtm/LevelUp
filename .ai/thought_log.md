@@ -7202,3 +7202,30 @@ automatiquement par `launcher.py → _run_migrations()` au prochain lancement.
 - `src/data/migration/steps/__init__.py` (+1 import + 1 entrée `__all__`)
 
 **Tests** : 30/30 passed (`test_performance_optimizations.py`)
+
+---
+
+## [2025-01-xx] fix(asyncio) — ConnectionResetError WinError 10054 Windows — Complété
+
+**Branche** : `fix/count-matches-player-enrichment` — commit `0811dda`
+
+**Problème** : Sur Windows, les logs étaient pollués massivement par :
+```
+_ProactorBasePipeTransport._call_connection_lost
+ConnectionResetError: [WinError 10054] Une connexion existante a dû être fermée par l'hôte distant
+```
+
+**Diagnostic** : Bug connu de `ProactorEventLoop` (défaut Windows Python 3.8+). Asyncio appelle
+`socket.shutdown(SHUT_RDWR)` sur des sockets déjà fermées par le serveur distant (MSAL device
+flow, Microsoft auth). L'erreur est purement cosmétique — aucune donnée perdue.
+
+**Décision** : Exception handler asyncio personnalisé qui absorbe silencieusement les
+`ConnectionResetError` (les autres exceptions sont délégués au handler par défaut).
+Installé dans `main()` du launcher via `suppress_asyncio_proactor_connection_reset()`.
+
+**Fichiers** :
+- `src/utils/log_config.py` — ajout de `suppress_asyncio_proactor_connection_reset()`
+- `launcher.py` — appel dans `main()` après `setup_script_logging`
+
+**Résultat** : Élimination du spam WinError 10054 dans les logs launcher sans impacter
+les vraies erreurs asyncio.
