@@ -342,7 +342,8 @@ def plot_per_minute_timeseries(
     title = title or viz_t("title_permin", lang)
     colors = HALO_COLORS.as_dict()
     d = df_pl.sort("start_time")
-    if "kills_per_min" not in d.columns:
+    _permin_cols = ("kills_per_min", "deaths_per_min", "assists_per_min")
+    if not all(c in d.columns for c in _permin_cols):
         _tps = pl.col("time_played_seconds").cast(pl.Float64, strict=False)
         d = d.with_columns(
             [

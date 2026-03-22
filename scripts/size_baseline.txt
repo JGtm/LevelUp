@@ -26,7 +26,6 @@ FUNC:src/data/repositories/_weapon_kills_repo.py:276:insert_weapon_kill_rows_v2:
 FUNC:src/data/services/win_loss_service.py:64:compute_period_table:109L
 FUNC:src/data/sync/_match_processing.py:296:_backfill_known_match_shared:82L
 FUNC:src/data/sync/_match_processing.py:37:_process_matches:115L
-FUNC:src/data/sync/_performance.py:139:batch_compute_performance_scores:124L
 FUNC:src/data/sync/transformers/_match.py:284:extract_participants:141L
 FUNC:src/data/sync/transformers/_match.py:428:extract_match_registry_data:105L
 FUNC:src/data/sync/transformers/_match.py:71:transform_match_stats:170L
@@ -68,7 +67,6 @@ FUNC:src/visualization/_distributions_advanced.py:151:plot_first_event_distribut
 FUNC:src/visualization/_distributions_advanced.py:18:plot_correlation_scatter:130L
 FUNC:src/visualization/_match_impact_events.py:72:compute_single_match_impact:133L
 FUNC:src/visualization/_perf_session.py:21:plot_session_trend:114L
-FUNC:src/visualization/_squad_timeline.py:37:plot_squad_performance_timeline:106L
 FUNC:src/visualization/_timeseries_progression.py:189:plot_lusr_timeseries:89L
 FUNC:src/visualization/distributions.py:183:plot_histogram:107L
 FUNC:src/visualization/distributions.py:32:plot_kda_distribution:87L
@@ -87,7 +85,7 @@ FUNC:src/visualization/participation_charts.py:38:plot_participation_pie:101L
 FUNC:src/visualization/participation_charts_extra.py:69:create_participation_indicator:97L
 FUNC:src/visualization/team_dominance_timeline.py:101:detect_streaks:99L
 FUNC:src/visualization/team_dominance_timeline.py:208:plot_dominance_chart:135L
-FUNC:src/visualization/timeseries.py:328:plot_per_minute_timeseries:128L
+FUNC:src/visualization/timeseries.py:328:plot_per_minute_timeseries:129L
 FUNC:src/visualization/timeseries_combat.py:89:plot_spree_headshots_accuracy:93L
 FUNC:src/visualization/trio.py:38:plot_trio_metric:205L
 MODULE:src/analysis/weapon_parser.py:502L
@@ -98,4 +96,4 @@ MODULE:src/data/sync/engine.py:513L
 MODULE:src/data/sync/transformers/_match.py:534L
 MODULE:src/ui/pages/session_compare.py:536L
 MODULE:src/visualization/maps_outcome.py:587L
-MODULE:src/visualization/timeseries.py:503L
+MODULE:src/visualization/timeseries.py:504L
