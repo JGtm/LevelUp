@@ -625,8 +625,10 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
         pass
 
     if catalog is None:
-        logger.debug("match_registry non trouvée, vue mv_player_matches non créée")
-        return
+        raise RuntimeError(
+            "match_registry introuvable — vue mv_player_matches non créée "
+            "(la migration réessaiera au prochain démarrage après le sync)."
+        )
 
     # Seul "shared" (ATTACH) nécessite un prefix ; pour une connexion directe
     # au fichier (database_name = nom du fichier), pas de prefix.

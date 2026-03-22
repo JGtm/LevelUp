@@ -57,7 +57,7 @@ FUNC:src/ui/pages/match_view_players_nemesis.py:170:render_nemesis_section:208L
 FUNC:src/ui/pages/match_view_players_nemesis.py:65:_render_antagonist_chart:101L
 FUNC:src/ui/pages/match_view_players_timeline.py:35:render_team_dominance_section:87L
 FUNC:src/ui/pages/match_view_rank.py:18:_build_match_rank_html:184L
-FUNC:src/ui/pages/media_tab.py:118:render_media_tab:157L
+FUNC:src/ui/pages/media_tab.py:118:render_media_tab:154L
 FUNC:src/ui/pages/teammates_charts.py:30:render_comparison_charts:119L
 FUNC:src/ui/styles.py:48:get_hero_html:146L
 FUNC:src/ui/sync.py:60:refresh_spnkr_db_via_api:86L

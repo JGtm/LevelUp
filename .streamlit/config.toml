@@ -1,6 +1,10 @@
 [server]
 port = 8501
 enableStaticServing = true
+showWarningOnDirectExecution = false
+
+[global]
+showWarningOnDirectExecution = false
 
 [theme]
 base = "dark"

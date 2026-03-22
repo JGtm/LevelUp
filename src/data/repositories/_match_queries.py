@@ -26,6 +26,54 @@ from src.data.repositories._match_queries_polars import _MatchQueriesPolarsMixin
 
 logger = logging.getLogger(__name__)
 
+# ─── Constantes SQL pour _get_match_source ──────────────────────────────────
+
+_MV_VIEW_SOURCE = """(SELECT
+    match_id, start_time, map_id, map_name,
+    playlist_id, playlist_name, pair_id, pair_name,
+    game_variant_id, game_variant_name, outcome, team_id,
+    kda, max_killing_spree, headshot_kills, avg_life_seconds,
+    time_played_seconds, kills, deaths, assists, accuracy,
+    my_team_score, enemy_team_score,
+    team_mmr, enemy_mmr,
+    personal_score, is_firefight, is_ranked
+FROM shared.mv_player_matches
+WHERE xuid = ?
+) AS match_stats"""
+
+_DIRECT_JOIN_SOURCE = """(SELECT
+    r.match_id, r.start_time, r.map_id, r.map_name,
+    r.playlist_id, r.playlist_name, r.pair_id, r.pair_name,
+    r.game_variant_id, r.game_variant_name,
+    p.outcome, p.team_id,
+    CASE WHEN p.deaths > 0
+        THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
+             / CAST(p.deaths AS FLOAT)
+        ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
+    END AS kda,
+    COALESCE(p.max_killing_spree, 0) AS max_killing_spree,
+    COALESCE(p.headshot_kills, 0) AS headshot_kills,
+    COALESCE(p.avg_life_seconds, 0) AS avg_life_seconds,
+    COALESCE(r.duration_seconds, 0) AS time_played_seconds,
+    COALESCE(p.kills, 0) AS kills,
+    COALESCE(p.deaths, 0) AS deaths,
+    COALESCE(p.assists, 0) AS assists,
+    CASE WHEN p.shots_fired > 0
+        THEN CAST(p.shots_hit AS FLOAT) * 100.0 / CAST(p.shots_fired AS FLOAT)
+        ELSE NULL
+    END AS accuracy,
+    CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
+    CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+    p.team_mmr,
+    p.enemy_mmr,
+    p.score AS personal_score,
+    COALESCE(r.is_firefight, FALSE) AS is_firefight,
+    COALESCE(r.is_ranked, FALSE) AS is_ranked
+FROM shared.match_registry r
+JOIN shared.match_participants p ON r.match_id = p.match_id
+WHERE p.xuid = ?
+) AS match_stats"""
+
 
 class MatchQueriesMixin(_MatchQueriesPolarsMixin):
     """Mixin fournissant les méthodes de requête de matchs pour DuckDBRepository."""
@@ -35,11 +83,11 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
     # =========================================================================
 
     def _get_match_source(self, _conn) -> tuple[str, list[str], bool]:
-        """Retourne l'expression FROM pour les matchs (v6 shared uniquement).
+        """Retourne l'expression FROM pour les matchs (v6 shared).
 
-        La vue mv_player_matches dans shared_matches.duckdb est garantie présente
-        en architecture v6. L'utilisation de tables locales match_stats (v4/v3)
-        n'est plus supportée depuis v5.1.
+        Tente d'abord la vue mv_player_matches. Si elle n'existe pas
+        (migration non encore appliquée — ex. fresh install avant premier
+        restart), fallback sur un JOIN direct match_registry/match_participants.
 
         Returns:
             Tuple (from_expression, params, uses_mv).
@@ -53,19 +101,26 @@ class MatchQueriesMixin(_MatchQueriesPolarsMixin):
                 "shared_matches_v2.duckdb indisponible. "
                 "Fermez les scripts en cours puis relancez l'app."
             )
-        source = """(SELECT
-            match_id, start_time, map_id, map_name,
-            playlist_id, playlist_name, pair_id, pair_name,
-            game_variant_id, game_variant_name, outcome, team_id,
-            kda, max_killing_spree, headshot_kills, avg_life_seconds,
-            time_played_seconds, kills, deaths, assists, accuracy,
-            my_team_score, enemy_team_score,
-            team_mmr, enemy_mmr,
-            personal_score, is_firefight, is_ranked
-        FROM shared.mv_player_matches
-        WHERE xuid = ?
-        ) AS match_stats"""
-        logger.debug("Mode v6 : requête via vue mv_player_matches")
+
+        # Vérifier si la vue existe (cache pour éviter le SELECT à chaque appel)
+        if not getattr(self, "_mv_view_checked", False):
+            try:
+                _conn.execute("SELECT 1 FROM shared.mv_player_matches LIMIT 0")
+                self._mv_view_available = True
+            except Exception:
+                self._mv_view_available = False
+                logger.warning(
+                    "Vue shared.mv_player_matches absente — fallback JOIN direct. "
+                    "La vue sera créée au prochain redémarrage via _run_migrations()."
+                )
+            self._mv_view_checked = True
+
+        if self._mv_view_available:
+            source = _MV_VIEW_SOURCE
+            logger.debug("Mode v6 : requête via vue mv_player_matches")
+        else:
+            source = _DIRECT_JOIN_SOURCE
+            logger.debug("Mode v6 : fallback JOIN direct (vue mv_player_matches absente)")
         return source, [self._xuid], True
 
     # =========================================================================

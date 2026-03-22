@@ -158,6 +158,35 @@ def setup_script_logging(level: str = "INFO", sync_log: bool = False) -> None:
         logging.getLogger(logger_name).setLevel(logger_level)
 
 
+def suppress_asyncio_proactor_connection_reset() -> None:
+    """Supprime l'erreur spurious ConnectionResetError [WinError 10054] sur Windows.
+
+    Sur Windows, ProactorEventLoop appelle socket.shutdown(SHUT_RDWR) sur des
+    sockets déjà fermées par l'hôte distant (MSAL device flow, aiohttp).
+    L'exception est inoffensive mais pollue les logs. Cette fonction installe
+    un exception handler asyncio qui l'absorbe silencieusement.
+
+    À appeler une seule fois avant asyncio.run() dans les scripts CLI/launcher.
+    """
+    import asyncio
+    import sys
+
+    if sys.platform != "win32":
+        return
+
+    def _handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:  # type: ignore[type-arg]
+        exc = context.get("exception")
+        if isinstance(exc, ConnectionResetError):
+            return  # absorber silencieusement
+        loop.default_exception_handler(context)
+
+    try:
+        loop = asyncio.get_event_loop_policy().get_event_loop()
+        loop.set_exception_handler(_handler)
+    except Exception:
+        pass
+
+
 @contextmanager
 def log_duration(
     name: str,

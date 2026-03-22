@@ -514,8 +514,9 @@ async def _sync_player_duckdb_async(
         print(_classify_sync_error(str(e), gamertag))
         return (matches_before, matches_before)
 
-    # Compter les matchs après
-    matches_after = _count_matches_duckdb(db_path)
+    # Compter les matchs après : result.matches_inserted évite de rouvrir
+    # le fichier pendant que l'engine tient encore sa connexion ouverte.
+    matches_after = matches_before + result.matches_inserted
 
     return (matches_before, matches_after)
 
@@ -1524,6 +1525,8 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
         else:
             print(_t("onboard_sync_no_matches", _LANG))
             return 2
+        # Appliquer les migrations post-sync (vue mv_player_matches, etc.)
+        _run_migrations()
         return 0
 
     # ── Test 10 matchs (avec retry) ──────────────────────────────────────────
@@ -1571,6 +1574,9 @@ def _onboard_first_player() -> int:  # noqa: PLR0912, PLR0915
         else:
             print(_t("onboard_test_existing", _LANG, n=after))
         break
+
+    # Appliquer les migrations post-sync (vue mv_player_matches, etc.)
+    _run_migrations()
 
     # ── Proposition de poursuivre ─────────────────────────────────────────────
     print()
@@ -1996,6 +2002,14 @@ def main(argv: list[str] | None = None) -> int:
         from src.utils.log_config import setup_script_logging  # noqa: PLC0415
 
         setup_script_logging(level="WARNING")
+    except Exception:
+        pass
+
+    # Supprimer les ConnectionResetError spurious de ProactorEventLoop sur Windows
+    try:
+        from src.utils.log_config import suppress_asyncio_proactor_connection_reset  # noqa: PLC0415
+
+        suppress_asyncio_proactor_connection_reset()
     except Exception:
         pass
 
