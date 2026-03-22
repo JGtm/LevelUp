@@ -79,9 +79,12 @@ class TestGetAuthStatus:
     )
     def test_empty_env_vars(self) -> None:
         status = get_auth_status()
-        assert status.has_client_id is False
+        # LEVELUP_CLIENT_ID est désormais hardcodé — has_client_id toujours True.
+        assert status.has_client_id is True
         assert status.has_refresh_token is False
-        assert len(status.missing_keys) == 2
+        # SPNKR_AZURE_CLIENT_ID est optionnel — seul SPNKR_OAUTH_REFRESH_TOKEN manquant.
+        assert len(status.missing_keys) == 1
+        assert "SPNKR_OAUTH_REFRESH_TOKEN" in status.missing_keys
 
     @patch.dict(
         os.environ,
@@ -172,9 +175,10 @@ class TestCheckCredentials:
 
     @patch.dict(os.environ, {"SPNKR_AZURE_CLIENT_ID": ""})
     def test_retourne_false_sans_client_id(self) -> None:
+        # LEVELUP_CLIENT_ID hardcodé → check_credentials() toujours True.
         from src.utils.auth import check_credentials
 
-        assert check_credentials() is False
+        assert check_credentials() is True
 
     @patch.dict(
         os.environ,
