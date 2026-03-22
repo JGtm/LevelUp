@@ -2000,6 +2000,14 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         pass
 
+    # Supprimer les ConnectionResetError spurious de ProactorEventLoop sur Windows
+    try:
+        from src.utils.log_config import suppress_asyncio_proactor_connection_reset  # noqa: PLC0415
+
+        suppress_asyncio_proactor_connection_reset()
+    except Exception:
+        pass
+
     argv = list(sys.argv[1:] if argv is None else argv)
     _maybe_reexec_into_venv(argv)
 
