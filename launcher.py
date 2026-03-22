@@ -388,16 +388,23 @@ def _player_db_exists(gamertag: str) -> bool:
 
 
 def _count_matches_duckdb(db_path: Path) -> int:
-    """Compte les matchs dans une DB DuckDB."""
+    """Compte les matchs dans une DB DuckDB joueur.
+
+    Tente player_match_enrichment (v5.1+) puis match_stats (legacy).
+    """
     if not db_path.exists():
         return 0
     try:
         duckdb = _import_duckdb()
         con = duckdb.connect(str(db_path), read_only=True)
         try:
-            result = con.execute("SELECT COUNT(*) FROM match_stats").fetchone()
-            count = result[0] if result else 0
-            return count
+            for table in ("player_match_enrichment", "match_stats"):
+                try:
+                    row = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()  # noqa: S608
+                    return row[0] if row else 0
+                except Exception:
+                    continue
+            return 0
         finally:
             con.close()
     except Exception:
