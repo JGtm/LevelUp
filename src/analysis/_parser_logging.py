@@ -96,6 +96,10 @@ class MatchLogCollector:
         self.warnings.append(entry)
         logger.warning("match=%s %s %s", self.match_id, message, context)
 
+    def debug(self, message: str, **context: object) -> None:
+        """Log un message debug (sans stocker — diagnostic léger)."""
+        logger.debug("match=%s %s %s", self.match_id, message, context)
+
     def summary(self) -> dict:
         """Résumé JSON-sérialisable du traitement."""
         return {
