@@ -36,6 +36,7 @@ dependencies = [
     "polars>=0.20.0",
     "duckdb>=0.10.0",
     "pydantic>=2.5.0",
+    "msal>=1.28.0",
 ]
 
 [project.optional-dependencies]
@@ -61,9 +62,9 @@ spnkr = [
     "aiohttp-client-cache>=0.11.0",
     "aiosqlite>=0.19.0",  # Backend SQLite pour aiohttp-client-cache
 ]
-msal = [
-    "msal>=1.28.0",
-]
+# msal est dans les dépendances principales — cet extra est conservé pour
+# la rétrocompatibilité (pip install levelup-halo[msal] continue de fonctionner)
+msal = []
 
 [project.scripts]
 levelup = "launcher:main"

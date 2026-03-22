@@ -197,6 +197,25 @@ def _check_shutdown() -> bool:
     return _shutdown_event.is_set()
 
 
+def _flush_stdin() -> None:
+    """Vide le buffer d'entrée console avant une saisie interactive (Windows).
+
+    Pendant l'installation initiale (pip, winget…) des frappes clavier
+    peuvent s'accumuler dans le buffer du terminal Windows. Sans ce drain,
+    la première ``input()`` les consomme instantanément, ce qui produit une
+    réponse invalide et un code de sortie 2 inattendu.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import msvcrt  # noqa: PLC0415
+
+        while msvcrt.kbhit():
+            msvcrt.getwch()
+    except Exception:
+        pass
+
+
 # =============================================================================
 # Helpers Python / venv
 # =============================================================================
@@ -1736,6 +1755,7 @@ def _recovery_menu(state: _ConfigState) -> int:  # noqa: PLR0912
     print()
 
     keys_str = "/".join(str(i) for i in range(1, len(options))) + "/Q"
+    _flush_stdin()
     try:
         choice = input(_t("recovery_prompt", _LANG, keys=keys_str)).strip().lower()
     except (EOFError, KeyboardInterrupt):
@@ -1803,6 +1823,7 @@ def _interactive() -> int:
             print(_t("interactive_non_tty", _LANG))
             return 2
 
+        _flush_stdin()
         try:
             choice = input(_t("interactive_choice_prompt", _LANG)).strip().lower()
         except (EOFError, KeyboardInterrupt):
