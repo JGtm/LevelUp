@@ -7,6 +7,21 @@
 
 ## Journal
 
+### [2026-03-22] — Win Rate sur graphe "Évolution de la performance d'escouade" — Complété
+
+**Tâche** : Ajouter le win rate et le détail victoires/défaites par session sur la timeline escouade (onglet Teammates).
+
+**Décision technique** :
+- `_teammates_perf_queries.py` : nouvelle fonction `load_outcome_by_match()` — requête `match_participants JOIN xuid_aliases` sur `shared_matches.duckdb` (même pattern que `load_team_mmr_by_match`)
+- `teammates_map_charts.py` : `render_squad_timeline()` enrichit `me_df` avec l'outcome (join gauche depuis shared) après le join MMR existant
+- `_performance_squad.py` : `_build_base_cols()` inclut maintenant `outcome` (cast `pl.Int32`) ; `_group_by_session()` et `_group_by_time_period()` agrègent `wins` (outcome==2) + `losses` (outcome==3) puis calculent `win_rate` (%) avec garde division par zéro ; colonnes optionnelles dans le SELECT final (rétrocompatible si outcome absent)
+- `_squad_timeline.py` : `_build_hover_texts()` accepte `wins/losses/win_rates` optionnels ; nouvelle fonction `_add_winrate_trace()` — ligne verte pointillée avec marqueurs diamant sur axe gauche (0-100) ; `plot_squad_performance_timeline()` détecte `win_rate` dans le DF et active hover + courbe automatiquement
+- `i18n/viz/traces.py` : clé `trace_squad_win_rate` FR/EN
+
+**Résultats** : 0 erreurs statiques. Rétrocompatible (si outcome non disponible dans shared, le graphique reste identique à l'existant).
+
+**Prochaine étape** : Commit + merge.
+
 ### [2026-03-22] — i18n FR/EN complète du launcher — Complété
 
 **Tâche** : Internationaliser toutes les chaînes UI de `launcher.py` (détection langue système)
