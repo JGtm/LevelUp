@@ -514,8 +514,9 @@ async def _sync_player_duckdb_async(
         print(_classify_sync_error(str(e), gamertag))
         return (matches_before, matches_before)
 
-    # Compter les matchs après
-    matches_after = _count_matches_duckdb(db_path)
+    # Compter les matchs après : result.matches_inserted évite de rouvrir
+    # le fichier pendant que l'engine tient encore sa connexion ouverte.
+    matches_after = matches_before + result.matches_inserted
 
     return (matches_before, matches_after)
 
