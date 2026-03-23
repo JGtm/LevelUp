@@ -464,7 +464,7 @@ class TestRenderWeaponKillsSection:
         import src.ui.pages.match_view_weapon_kills as mod
 
         ms = mock_st(mod)
-        ms.set_columns_dynamic()  # noqa: needed for col_chart, col_table = st.columns([3, 2])
+        ms.set_columns_dynamic()  # needed for col_chart, col_table = st.columns([3, 2])
 
         df = _weapons_df_with_rows()
         with (
