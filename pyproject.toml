@@ -109,6 +109,7 @@ exclude = [
     "scripts/_archive",      # Scripts archivés, non maintenus
     "scripts/migration",     # Scripts de migration legacy, non maintenus
     "scripts/experimental",  # Scripts de recherche/exploration, non soumis aux règles qualité
+    "tests/_archive",        # Tests archivés, non maintenus
 ]
 
 [tool.ruff.lint]

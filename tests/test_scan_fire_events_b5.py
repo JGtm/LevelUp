@@ -23,11 +23,11 @@ BR75_BYTES = bytes.fromhex("2b1824d542c9679f")
 SIDEKICK_BYTES = bytes.fromhex("f408190f42c9679f")
 
 _TS_CONST: float = 1000.0
-_TS_FN_CONST = lambda bp: _TS_CONST  # noqa: E731
+_TS_FN_CONST = lambda _: _TS_CONST  # noqa: E731
 _TS_FN_POS = lambda bp: float(bp) * 10  # noqa: E731
 
 
-def _make_event_chunk(
+def _make_event_chunk(  # noqa: PLR0913
     pi: int,
     weapon_bytes: bytes = BR75_BYTES,
     fire_seq: int = 1,
@@ -47,13 +47,13 @@ def _make_event_chunk(
     """
     ba = BitArray()
     ba.append(Bits(uint=0, length=prefix_bits))
-    ba.append(_UNIVERSAL_MARKER)                            # 11 bits
-    ba.append(Bits(uint=fire_seq, length=8))                # [event_start+8]
-    ba.append(Bits(uint=0x40, length=8))                    # [event_start+16] b3
-    ba.append(Bits(uint=fire_counter, length=8))            # [event_start+24] b4
-    ba.append(Bits(uint=(pi << 4) | slot, length=8))        # [event_start+32] b5
-    ba.append(Bits(bytes=weapon_bytes))                     # [event_start+40] weapon
-    ba.append(Bits(uint=0, length=32))                      # post_bytes
+    ba.append(_UNIVERSAL_MARKER)  # 11 bits
+    ba.append(Bits(uint=fire_seq, length=8))  # [event_start+8]
+    ba.append(Bits(uint=0x40, length=8))  # [event_start+16] b3
+    ba.append(Bits(uint=fire_counter, length=8))  # [event_start+24] b4
+    ba.append(Bits(uint=(pi << 4) | slot, length=8))  # [event_start+32] b5
+    ba.append(Bits(bytes=weapon_bytes))  # [event_start+40] weapon
+    ba.append(Bits(uint=0, length=32))  # post_bytes
     pad = (8 - len(ba) % 8) % 8
     if pad:
         ba.append(Bits(uint=0, length=pad))
@@ -129,10 +129,20 @@ class TestScanFireEventsB5PlayerIndex:
 
 class TestScanFireEventsB5WeaponFilter:
     def test_br75_accepted(self):
-        assert len(scan_fire_events_b5(_make_event_chunk(pi=1, weapon_bytes=BR75_BYTES), _TS_FN_CONST)) == 1
+        assert (
+            len(scan_fire_events_b5(_make_event_chunk(pi=1, weapon_bytes=BR75_BYTES), _TS_FN_CONST))
+            == 1
+        )
 
     def test_sidekick_accepted(self):
-        assert len(scan_fire_events_b5(_make_event_chunk(pi=1, weapon_bytes=SIDEKICK_BYTES), _TS_FN_CONST)) == 1
+        assert (
+            len(
+                scan_fire_events_b5(
+                    _make_event_chunk(pi=1, weapon_bytes=SIDEKICK_BYTES), _TS_FN_CONST
+                )
+            )
+            == 1
+        )
 
     def test_unknown_weapon_without_suffix_rejected(self):
         """Weapon inconnue sans COMMON_WEAPON_SUFFIX = filtré."""
@@ -140,7 +150,9 @@ class TestScanFireEventsB5WeaponFilter:
         assert scan_fire_events_b5(_make_event_chunk(pi=1, weapon_bytes=bad), _TS_FN_CONST) == []
 
     def test_weapon_bytes_in_output(self):
-        events = scan_fire_events_b5(_make_event_chunk(pi=1, weapon_bytes=SIDEKICK_BYTES), _TS_FN_CONST)
+        events = scan_fire_events_b5(
+            _make_event_chunk(pi=1, weapon_bytes=SIDEKICK_BYTES), _TS_FN_CONST
+        )
         assert events[0]["weapon_bytes"] == SIDEKICK_BYTES
 
 
@@ -156,9 +168,18 @@ class TestScanFireEventsB5Fields:
     def test_all_expected_keys_present(self):
         ev = self._event(pi=1)
         expected = {
-            "timestamp_ms", "player_index", "slot", "b5", "weapon_name",
-            "weapon_bytes", "fire_seq", "fire_counter", "byte_pos",
-            "post_bytes", "burst_end", "hit_likely",
+            "timestamp_ms",
+            "player_index",
+            "slot",
+            "b5",
+            "weapon_name",
+            "weapon_bytes",
+            "fire_seq",
+            "fire_counter",
+            "byte_pos",
+            "post_bytes",
+            "burst_end",
+            "hit_likely",
         }
         assert expected.issubset(ev.keys())
 
@@ -169,7 +190,7 @@ class TestScanFireEventsB5Fields:
         assert self._event(pi=1, fire_counter=200)["fire_counter"] == 200
 
     def test_timestamp_from_estimator(self):
-        events = scan_fire_events_b5(_make_event_chunk(pi=1), lambda bp: 42.5)
+        events = scan_fire_events_b5(_make_event_chunk(pi=1), lambda _: 42.5)
         assert events[0]["timestamp_ms"] == 42.5
 
     def test_byte_pos_is_int(self):

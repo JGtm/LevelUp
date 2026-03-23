@@ -7,6 +7,54 @@
 
 ## Journal
 
+### [2026-03-22] — scan_0802_loadout + carry-forward NS timeline — Complété
+
+**Tâche :** Les 5 kills NULL de JGtm (pi=5) dans `3e394746` persistaient après ajout de l'ID `a0955e9e2164b3cf` dans WEAPON_ID_MAP. Cause : la structure `0802` n'est pas parsée par `scan_formula_a` (pattern `200002` absent de certains chunks), et le NS scanner n'avait pas de carry-forward.
+
+**Diagnostic :**
+- `scan_formula_a` retourne 0 résultats pour pi=5 dans tout le match (chunk_08 n'a aucun pattern `200002`)
+- L'Arcane SB vit dans une structure `08 02 + weapon_id` (8B) avec `pi = data[p-2] & 0x07` — validé sur 169 matchs en cache, 255 occurrences
+- `scan_formula_a_ns` trouve pi=5 seulement aux chunks 23/24/26 (Energy Sword / Bulldog), mais PAS aux kills 306145ms et 361083ms (avant chunk_23)
+- Pas de carry-forward → kills à chunk sans entrée pi = conf=none
+
+**Décision technique :**
+- Nouveau `scan_0802_loadout` dans `_weapon_scanners.py` : cherche `0802` + weapon connu, extrait `pi = b[-2] & 0x07`
+- `build_weapon_timelines` : merge loadout 0802 dans `chunk_ns` (NS reste prioritaire si les deux coexistent)
+- `_fallback_formula_a` : carry-forward — remonte les chunks depuis `chunk_idx` jusqu'à trouver une entrée NS pour pi
+
+**Résultats observés :**
+- t=306145ms → Arcane Sentinel Beam (carry-fwd chunk_08, conf=medium) ✓
+- t=361083ms → Arcane Sentinel Beam (carry-fwd chunk_08, conf=medium) ✓
+- t=534090ms/544217ms/566840ms → CQS48 Bulldog (carry-fwd chunk_26 NS, conf=medium) ✓
+- 88/88 tests existants passent
+
+**Conclusion :** Le fix est général — bénéfice pour tous les matchs utilisant la structure `0802` (169 matchs déjà en cache). Le label `a0955e9e2164b3cf` n'est pas encore dans `weapon_labels` metadata, mais `weapon_id` est correct en base.
+
+---
+
+### [2026-03-22] — Ajout ID Arcane Sentinel Beam dans WEAPON_ID_MAP — Complété
+
+**Tâche :** JGtm avait 5 kills NULL (weapon_id=None, conf=none) dans le match `3e394746` (Super Fiesta, 22 mars 2026). L'arme Arcane Sentinel Beam (variante cosmétique) n'était pas reconnue.
+
+**Diagnostic :**
+- ID inconnu `a0955e9e2164b3cf` trouvé par scan brut du préfixe `a0955e9e` dans les 28 chunks du match
+- Les scanners (`scan_formula_a`, `scan_fire_events_b5`) filtraient silencieusement les suffixes non reconnus
+- L'ID n'est pas dans un snapshot Formula A standard pour ce match (distance 146k bytes du dernier marqueur FA, hors fenêtre ±68 bytes)
+
+**Décision :**
+- Ajouté `a0955e9e2164b3cf` → `"Arcane Sentinel Beam"` dans `WEAPON_ID_MAP`
+- Ajouté bloc `# ── Sentinel Beam family` dans `_weapon_data.py`
+- Ajouté `"Arcane Sentinel Beam": "Sentinel Beam"` dans `WEAPON_FUSION_MAP`
+- Vérifié que `WEAPON_FUSION_MAP_ID` résout bien Arcane → Sentinel Beam
+
+**Résultat :**
+- Pour les futurs matchs : l'Arcane SB sera correctement résolu si présent dans un snapshot FA ou fire_event
+- Pour le match `3e394746` : les 5 kills restent `weapon_id=NULL` — contrainte structurelle du film (l'ID n'apparaît pas dans un contexte FA associable aux kills spécifiques)
+
+**Conclusion :** Registre d'armes à jour. Les futurs matchs avec l'Arcane SB seront correctement attribués.
+
+---
+
 ### [2026-03-22] — Fix premier lancement : stdin fantôme + msal manquant — Complété
 
 **Problèmes signalés :**
