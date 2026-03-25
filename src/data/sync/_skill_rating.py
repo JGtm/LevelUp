@@ -265,6 +265,33 @@ class SkillRatingMixin:
             logger.info("LUSR batch : %s matchs mis à jour", updates)
         return updates
 
+    def _load_existing_lusr_states(self: _SyncProtocol, conn: Any) -> dict:
+        """Charge les derniers états LUSR (mu, sigma) par playlist_group depuis la DB."""
+        existing_states: dict = {}
+        try:
+            from src.analysis._trueskill_math import PlayerState as _PS
+            from src.analysis.skill_rating_config import INITIAL_SIGMA as _S0
+
+            last_rows = conn.execute(
+                """
+                SELECT msr.playlist_group, msr.rating_value, msr.rating_deviation
+                FROM match_skill_rank msr
+                JOIN (
+                    SELECT playlist_group, MAX(start_time) AS max_st
+                    FROM match_skill_rank
+                    WHERE rating_type = 'LUSR'
+                    GROUP BY playlist_group
+                ) last ON msr.playlist_group = last.playlist_group
+                        AND msr.start_time = last.max_st
+                WHERE msr.rating_type = 'LUSR'
+                """
+            ).fetchall()
+            for pg, rv, rd in last_rows:
+                existing_states[pg] = _PS(mu=rv, sigma=rd if rd is not None else _S0)
+        except Exception as _e:
+            logger.debug("Impossible de charger les états LUSR existants : %s", _e)
+        return existing_states
+
     def batch_compute_lusr(self: _SyncProtocol, *, force: bool = False) -> int:  # noqa: C901
         """Calcule le LUSR pour tous les matchs non classés sans rating LUSR.
 
@@ -320,8 +347,17 @@ class SkillRatingMixin:
                 except Exception:
                     existing_lusr_ids = set()
 
+            # Seed depuis les derniers ratings connus en DB pour le mode incrémental.
+            # Sans ce seed, chaque batch repart de INITIAL_MU=1500 et crée
+            # une discontinuité permanente par rapport aux matchs déjà stockés.
+            existing_states: dict = {} if force else self._load_existing_lusr_states(conn)
+
             # Calculer les ratings via TrueSkill 2 batch
-            ratings_df = compute_skill_ratings_batch(df_matches, df_participants)
+            ratings_df = compute_skill_ratings_batch(
+                df_matches,
+                df_participants,
+                existing_states=existing_states if existing_states else None,
+            )
             if ratings_df.is_empty():
                 return 0
 

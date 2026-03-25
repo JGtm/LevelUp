@@ -99,7 +99,11 @@ def _compute_perf_updates(
             "kills_expected": row.get("kills_expected"),
             "deaths_expected": row.get("deaths_expected"),
         }
-        score = compute_relative_performance_score(match_dict, all_matches_df.slice(0, i))
+        _window = 50
+        _start = max(0, i - _window)
+        score = compute_relative_performance_score(
+            match_dict, all_matches_df.slice(_start, i - _start)
+        )
         if score is not None:
             updates.append((match_ids[i], score, now))
 
@@ -109,14 +113,48 @@ def _compute_perf_updates(
 class PerformanceMixin:
     """Méthodes de calcul du score de performance."""
 
+    def _load_perf_history_df(
+        self: _SyncProtocol, match_id: str, current_start_time_str: str
+    ) -> pl.DataFrame | None:
+        """Charge les 50 derniers matchs d'historique pour le calcul de performance."""
+        shared_conn = self._get_shared_connection()
+        if shared_conn is None:
+            logger.debug("shared_connection indisponible pour calcul score")
+            return None
+        return shared_conn.execute(
+            """
+            SELECT match_id, start_time,
+                   kills, deaths, assists, kda, accuracy,
+                   time_played_seconds, avg_life_seconds,
+                   personal_score, damage_dealt,
+                   rank, team_mmr, enemy_mmr,
+                   kills_expected, deaths_expected
+            FROM (
+                SELECT
+                    mr.match_id, mr.start_time,
+                    mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
+                    mp.time_played_seconds, mp.avg_life_seconds,
+                    mp.personal_score, mp.damage_dealt,
+                    mp.rank, mp.team_mmr, mp.enemy_mmr,
+                    mp.kills_expected, mp.deaths_expected
+                FROM match_registry mr
+                JOIN match_participants mp ON mr.match_id = mp.match_id
+                WHERE mp.xuid = ?
+                  AND mr.match_id != ?
+                  AND mr.start_time IS NOT NULL
+                  AND mr.start_time < CAST(? AS TIMESTAMP)
+                ORDER BY mr.start_time DESC
+                LIMIT 50
+            ) sub
+            ORDER BY start_time ASC
+            """,
+            (self._xuid, match_id, current_start_time_str),
+        ).pl()
+
     def _compute_performance_score(
         self: _SyncProtocol, match_id: str, match_row: MatchStatsRow
     ) -> float | None:
         """Calcule le score de performance relatif pour un match.
-
-        Charge l'historique depuis shared.match_participants, construit
-        le vecteur de stats du match courant, et délègue le calcul à
-        ``compute_relative_performance_score``.
 
         Returns:
             Score relatif (float) ou None si données insuffisantes.
@@ -126,41 +164,20 @@ class PerformanceMixin:
             logger.debug("Pas de start_time pour %s, skip calcul score", match_id)
             return None
 
-        # Convertir datetime en format compatible avec DuckDB
         if isinstance(current_start_time, datetime):
             current_start_time_str = current_start_time.isoformat()
         else:
             current_start_time_str = str(current_start_time)
 
-        shared_conn = self._get_shared_connection()
-        if shared_conn is None:
-            logger.debug("shared_connection indisponible pour calcul score")
-            return None
-
-        history_df = shared_conn.execute(
-            """
-            SELECT
-                mr.match_id, mr.start_time,
-                mp.kills, mp.deaths, mp.assists, mp.kda, mp.accuracy,
-                mp.time_played_seconds, mp.avg_life_seconds,
-                mp.personal_score, mp.damage_dealt,
-                mp.rank, mp.team_mmr, mp.enemy_mmr,
-                mp.kills_expected, mp.deaths_expected
-            FROM match_registry mr
-            JOIN match_participants mp ON mr.match_id = mp.match_id
-            WHERE mp.xuid = ?
-              AND mr.match_id != ?
-              AND mr.start_time IS NOT NULL
-              AND mr.start_time < CAST(? AS TIMESTAMP)
-            ORDER BY mr.start_time ASC
-            """,
-            (self._xuid, match_id, current_start_time_str),
-        ).pl()
-
-        if history_df.is_empty() or len(history_df) < MIN_MATCHES_FOR_RELATIVE:
+        history_df = self._load_perf_history_df(match_id, current_start_time_str)
+        if (
+            history_df is None
+            or history_df.is_empty()
+            or len(history_df) < MIN_MATCHES_FOR_RELATIVE
+        ):
             logger.debug(
                 "Pas assez d'historique pour calculer le score (%s matchs)",
-                len(history_df),
+                0 if history_df is None else len(history_df),
             )
             return None
 
@@ -223,7 +240,7 @@ class PerformanceMixin:
             # Ne pas bloquer la synchronisation si le calcul échoue
             logger.warning("Erreur calcul score performance pour %s: %s", match_id, e)
 
-    def batch_compute_performance_scores(self: _SyncProtocol) -> int:  # noqa: C901, PLR0912
+    def batch_compute_performance_scores(self: _SyncProtocol, *, force: bool = False) -> int:  # noqa: C901, PLR0912
         """Calcule les performance_score pour tous les matchs où il est NULL.
 
         Exécuté post-sync pour ne pas bloquer l'insertion des matchs.
@@ -264,7 +281,7 @@ class PerformanceMixin:
 
             # 3-4. Identifier les matchs sans score et calculer
             match_ids = all_matches_df["match_id"].to_list()
-            existing_match_ids_set = set(existing_match_ids)
+            existing_match_ids_set = set() if force else set(existing_match_ids)
             updates = _compute_perf_updates(all_matches_df, match_ids, existing_match_ids_set)
 
             if updates is None:

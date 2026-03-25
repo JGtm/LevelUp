@@ -776,13 +776,36 @@ async def _backfill_with_api(
     # séquentielle ne ferait qu'appeler get_match_stats pour rien (les weapon kills
     # viennent des chunks film dans run_weapon_kills_backfill, pas de match_stats).
     # On alimente _pending_weapon_ids directement et on saute la boucle.
+    # Quand force_performance_scores=True, le batch post-boucle gère tout :
+    # on exclut performance_scores du calcul _loop_api_needed pour éviter
+    # d'appeler get_match_stats 1030 fois inutilement.
+    _perf_force_only = force_performance_scores and not any(
+        [
+            medals,
+            events,
+            skill,
+            personal_scores,
+            aliases,
+            accuracy,
+            enemy_mmr,
+            assets,
+            participants,
+            pve_stats,
+            shots,
+            participants_scores,
+            participants_kda,
+            participants_shots,
+            participants_damage,
+            participants_avg_life,
+        ]
+    )
     _loop_api_needed = any(
         [
             medals,
             events,
             skill,
             personal_scores,
-            performance_scores,
+            False if _perf_force_only else performance_scores,
             aliases,
             accuracy,
             enemy_mmr,
@@ -803,14 +826,18 @@ async def _backfill_with_api(
         logger.info(
             "Weapons-only : boucle séquentielle ignorée, %d matchs → batch direct", len(match_ids)
         )
+    if _perf_force_only:
+        logger.info(
+            "force-performance-scores uniquement : boucle séquentielle ignorée → batch vectorisé"
+        )
 
     async with create_api_client(
         tokens=tokens,
         requests_per_second=requests_per_second,
     ) as client:
         for i, match_id in enumerate(match_ids, 1):
-            if _weapons_only_shortcut:
-                continue  # _pending_weapon_ids déjà alimenté, pas d'appel API nécessaire
+            if _weapons_only_shortcut or _perf_force_only:
+                continue  # batch post-boucle gère tout, pas d'appel API nécessaire
             try:
                 logger.info(f"[{i}/{len(match_ids)}] Traitement {match_id}...")
 
@@ -951,12 +978,18 @@ async def _backfill_with_api(
                         totals["participants_inserted"] += n
 
                 # ── Performance scores (V5: player_match_enrichment) ──
-                if performance_scores and compute_performance_score_for_match(
-                    conn,
-                    match_id,
-                    shared_conn=shared_conn,
-                    xuid=xuid,
-                    force=force_performance_scores,
+                # Si force_performance_scores=True, la boucle est skippée :
+                # le batch post-boucle (_MinimalEngine) recalcule tout en une passe vectorisée.
+                if (
+                    performance_scores
+                    and not force_performance_scores
+                    and compute_performance_score_for_match(
+                        conn,
+                        match_id,
+                        shared_conn=shared_conn,
+                        xuid=xuid,
+                        force=False,
+                    )
                 ):
                     totals["performance_scores_inserted"] += 1
 
@@ -1116,6 +1149,40 @@ async def _backfill_with_api(
         totals["lusr_computed"] = n
         if n > 0:
             logger.info(f"✅ LUSR calculé pour {n} match(s)")
+
+    # ── Perf scores batch (force uniquement — mode incrémental géré en boucle) ─
+    # --force-performance-scores utilise le batch vectorisé (bien plus rapide
+    # que le per-match dans la boucle ci-dessus) pour recalculer tous les matchs.
+    if force_performance_scores:
+        from src.data.sync._performance import PerformanceMixin
+
+        logger.info("Recalcul batch des performance_scores (fenêtre 50 matchs)...")
+        # Instancier un objet minimal compatible PerformanceMixin
+        _perf_shared = _get_shared_connection() if shared_conn is None else shared_conn
+
+        class _MinimalEngine(PerformanceMixin):
+            def __init__(self):
+                self._xuid = xuid
+                self._player_db_path = db_path
+                self._conn = conn
+                self._shared_connection = _perf_shared
+
+            def _get_connection(self):
+                return self._conn
+
+            def _get_shared_connection(self):
+                return self._shared_connection
+
+        _eng = _MinimalEngine()
+        n_perf = _eng.batch_compute_performance_scores(force=True)
+        if _perf_shared is not shared_conn:
+            with contextlib.suppress(Exception):
+                _perf_shared.close()
+        totals["performance_scores_inserted"] = (
+            totals.get("performance_scores_inserted", 0) + n_perf
+        )
+        if n_perf > 0:
+            logger.info(f"✅ {n_perf} performance_score(s) recalculé(s)")
 
     # ── Snapshot CSR (fetch_csr) ─────────────────────────────────────────────
     fetch_csr_flag = getattr(scope, "fetch_csr", False)
