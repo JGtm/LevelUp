@@ -188,6 +188,8 @@ class SPNKrAPIClient:
     ) -> list[MatchHistoryItem]:
         """Récupère l'historique des matchs d'un joueur.
 
+        token_scope: any — un spartan_token global suffit.
+
         Args:
             player: Gamertag ou XUID du joueur.
             match_type: Type de matchs (all, matchmaking, custom, local).
@@ -222,7 +224,10 @@ class SPNKrAPIClient:
         return items
 
     async def get_match_stats(self, match_id: str) -> dict[str, Any] | None:
-        """Récupère les stats d'un match."""
+        """Récupère les stats d'un match.
+
+        token_scope: any — un spartan_token global suffit.
+        """
 
         async def _fetch():
             resp = await self.client.stats.get_match_stats(match_id)
@@ -240,7 +245,10 @@ class SPNKrAPIClient:
         match_id: str,
         xuids: list[int],
     ) -> dict[str, Any] | None:
-        """Récupère les stats skill (MMR) d'un match."""
+        """Récupère les stats skill (MMR) d'un match.
+
+        token_scope: any — un spartan_token global suffit.
+        """
         if not xuids:
             return None
 
@@ -255,7 +263,10 @@ class SPNKrAPIClient:
             return None
 
     async def get_highlight_events(self, match_id: str) -> list[Any]:
-        """Récupère les highlight events (film) d'un match."""
+        """Récupère les highlight events (film) d'un match.
+
+        token_scope: any — un spartan_token global suffit.
+        """
         if self._film_mod is None:
             return []
 
@@ -276,7 +287,10 @@ class SPNKrAPIClient:
         with_skill: bool = True,
         with_highlight_events: bool = True,
     ) -> MatchData | None:
-        """Récupère les données complètes d'un match (stats + skill + events)."""
+        """Récupère les données complètes d'un match (stats + skill + events).
+
+        token_scope: any — délègue à get_match_stats + get_skill_stats (all any-scoped).
+        """
         stats_json = await self.get_match_stats(match_id)
         if stats_json is None:
             return None
@@ -308,7 +322,10 @@ class SPNKrAPIClient:
         asset_id: str,
         version_id: str,
     ) -> dict[str, Any] | None:
-        """Récupère un asset (map, playlist, variant)."""
+        """Récupère un asset (map, playlist, variant).
+
+        token_scope: any — discovery_ugc ne nécessite pas de token joueur.
+        """
 
         async def _fetch():
             if asset_type == "Maps":
@@ -334,7 +351,11 @@ class SPNKrAPIClient:
     # =========================================================================
 
     async def get_career_rank_progression(self, xuid: str) -> CareerRankData | None:
-        """Récupère la progression du rang carrière d'un joueur."""
+        """Récupère la progression du rang carrière d'un joueur.
+
+        token_scope: player — endpoint economy qui exige les tokens du joueur cible.
+        Ne pas appeler avec un token global (retourne 401 ou données erronées).
+        """
         from src.data.sync._career_rank_api import get_career_rank_progression
 
         return await get_career_rank_progression(self._session, self._tokens, self._client, xuid)
@@ -376,7 +397,10 @@ class SPNKrAPIClient:
             return None
 
     async def get_player_customization(self, xuid: str) -> dict[str, Any] | None:
-        """Récupère les données de personnalisation Spartan."""
+        """Récupère les données de personnalisation Spartan.
+
+        token_scope: player — endpoint economy nécessitant le token du joueur cible.
+        """
         xuid_clean = clean_xuid(xuid)
 
         async def _fetch():
@@ -391,7 +415,10 @@ class SPNKrAPIClient:
             return None
 
     async def get_user_by_gamertag(self, gamertag: str) -> dict[str, Any] | None:
-        """Résout un gamertag vers un profil Xbox (xuid, gamertag canonique)."""
+        """Résout un gamertag vers un profil Xbox (xuid, gamertag canonique).
+
+        token_scope: any — endpoint profile accessible avec n'importe quel token valide.
+        """
         gt = str(gamertag or "").strip()
         if not gt:
             return None
@@ -412,7 +439,10 @@ class SPNKrAPIClient:
             return None
 
     async def get_users_by_id(self, xuids: list[str]) -> list[dict[str, Any]]:
-        """Résout une liste de XUIDs vers des profils Xbox."""
+        """Résout une liste de XUIDs vers des profils Xbox.
+
+        token_scope: any — endpoint profile accessible avec n'importe quel token valide.
+        """
         if not xuids:
             return []
         try:

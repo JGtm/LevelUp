@@ -10,7 +10,6 @@ et _run_lusr_post_sync() pour que shared_matches_v2.duckdb soit libre.
 
 from __future__ import annotations
 
-import contextlib
 import json
 import logging
 from pathlib import Path
@@ -159,6 +158,7 @@ class FanoutEnrichmentMixin:
             xuid=xuid,
             gamertag=gamertag,
             shared_db_path=shared_path,
+            shared_read_only=True,  # Fanout ne fait que lire shared (J.4)
         )
         try:
             perf_count = engine.batch_compute_performance_scores()
@@ -166,13 +166,19 @@ class FanoutEnrichmentMixin:
 
             # Libérer shared avant sessions/citations (évite le conflit R/W + ATTACH R/O)
             if engine._shared_connection is not None:
-                with contextlib.suppress(Exception):
+                try:
                     engine._shared_connection.close()
+                except Exception as e:
+                    logger.debug("event=shared_conn_close_failed step=fanout error=%s", e)
                 engine._shared_connection = None
 
             player_conn = engine._get_connection()
             self._run_other_sessions(gamertag, xuid, player_db_path, player_conn)
             self._run_other_citations(gamertag, xuid, player_db_path, player_conn)
+            self._run_other_dominance(gamertag, xuid, shared_path, player_conn)
+            lusr_count = engine.batch_compute_lusr(force=False)
+            if lusr_count > 0:
+                logger.info("fanout [%s]: %d LUSR calculé(s)", gamertag, lusr_count)
         finally:
             engine.close()
 
@@ -217,6 +223,30 @@ class FanoutEnrichmentMixin:
         except Exception as exc:
             logger.warning("fanout [%s]: citations échoué (non bloquant): %s", gamertag, exc)
 
+    def _run_other_dominance(
+        self: _SyncProtocol,
+        gamertag: str,
+        xuid: str,
+        shared_path: Path,
+        conn: duckdb.DuckDBPyConnection,
+    ) -> None:
+        """Calcule les dominance flags pour un autre joueur (fanout).
+
+        Ouvre shared en R/O pour éviter tout conflit avec le dashboard ouvert.
+        """
+        try:
+            from src.data.dominance_backfill import compute_dominance_for_player
+
+            with duckdb.connect(str(shared_path), read_only=True) as shared_ro:
+                result = compute_dominance_for_player(conn, shared_ro, xuid)
+            logger.info(
+                "fanout [%s]: dominance — %d traité(s)",
+                gamertag,
+                result.get("processed", 0),
+            )
+        except Exception as exc:
+            logger.warning("fanout [%s]: dominance échoué (non bloquant): %s", gamertag, exc)
+
     def _enrich_other_registered_players(
         self: _SyncProtocol,
         new_match_ids: list[str],
@@ -251,6 +281,4 @@ class FanoutEnrichmentMixin:
                     new_match_ids,
                 )
             except Exception as exc:
-                logger.warning(
-                    "fanout [%s]: erreur non bloquante: %s", player["gamertag"], exc
-                )
+                logger.warning("fanout [%s]: erreur non bloquante: %s", player["gamertag"], exc)

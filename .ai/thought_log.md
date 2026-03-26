@@ -7,6 +7,166 @@
 
 ## Journal
 
+### [2026-03-25] — Fix LUSR seed + perf fenêtre-50 + bypass boucle force — Complété
+
+**Statut :** Complété — commit `63e3187` sur `fix/sync-ui-hardening-plan`
+
+**Décision technique :**
+
+**Bug LUSR (Madina97294)** : La batch initiale (25/02) avait utilisé du code dev non commité (`PlayerState.from_csr(1410)` → mu₀=1940), alors que le code commité utilise `INITIAL_MU=1500`. Tous les syncs suivants redémarraient de 1500 → écart permanent de -433pts (Argent V au lieu de Platine VI).
+
+**Fix 1 — seed LUSR** (`_skill_rating.py::batch_compute_lusr`) : En mode incrémental (`not force`), la fonction charge maintenant les derniers `(rating_value, rating_deviation)` par `playlist_group` depuis `match_skill_rank` via `_load_existing_lusr_states()` et les passe à `compute_skill_ratings_batch(existing_states=...)`. Empêche tout redépart à `INITIAL_MU=1500`.
+
+**Fix 2 — fenêtre glissante 50 matchs** (`_performance.py`, `strategies.py`) : `_compute_perf_updates()`, `_compute_performance_score()` et `compute_performance_score_for_match` utilisent désormais `LIMIT 50 ORDER BY DESC` + outer `ORDER BY ASC` au lieu de l'historique complet.
+
+**Fix 3 — bypass boucle force** (`orchestrator.py`) : Quand `--force-performance-scores` est le seul flag actif (`_perf_force_only=True`), la boucle séquentielle `get_match_stats` est ignorée (comme `_weapons_only_shortcut`). Le batch vectorisé `_MinimalEngine.batch_compute_performance_scores(force=True)` s'exécute en post-boucle. Résultat : 23s pour 2058 matchs au lieu de ~17min.
+
+**Résultats prod (25/03/2026) :**
+- Madina97294 : 1354 (Argent V) → **1788 (Platine VI)** via `--force-lusr` (seed CSR=1400 → mu=1933)
+- JGtm : stable Or III/IV (~1493-1503)
+- Chocoboflor : stable Or II (~1450-1457)
+- XxDaemonGamerxX : stable Or III (~1480-1488)
+
+**Fichiers modifiés :** `_skill_rating.py`, `_performance.py`, `strategies.py`, `orchestrator.py`
+
+---
+
+### [2026-03-26] — Vérification finale + coverage tests/logs — Complété
+
+**Décision technique :**
+- Ajout `event=async_loop_end players=N ok=N failed=N` dans `_sync_all_players_loop_async` (symétrie avec `async_loop_start`).
+- Création `tests/test_sync_phase_g.py` (7 tests) : vérification absence dead code par grep, `_sync_all_players_loop_async` est bien `async def`, `event=async_loop_start` loggé 1 seule fois pour N joueurs, `event=async_loop_end` avec compteurs ok/failed, appel `sync_player_duckdb_async` par joueur, gestion DB introuvable sans crash.
+- Création `tests/test_sync_phase_i.py` (6 tests) : `_run_post_sync_pipeline` est `async def`, skip agrégats/post_compute si 0 matchs, LUSR toujours appelé, fan-out conditionnel, ordre d'appel contraint vérifié.
+
+**Résultats observés :**
+- 5144 tests passent, 0 fail, 4 skipped.
+- Couverture phases : A, B, C, E, F, G, H, I, J — toutes couvertes par suites dédiées.
+
+**Conclusion :** Plan complet + couverture de tests exhaustive. Prêt pour merge.
+
+---
+
+### [2026-03-25] — Sync UI Hardening Lots 6/7/8 — Phases G+H+I — Complété
+
+**Décision technique :**
+
+**Phase G.1 (event loop unique)** : Ajout de `_sync_all_players_loop_async()` dans `_sync_duckdb_ops.py`. `_sync_all_players_loop()` appelle désormais `asyncio.run(_sync_all_players_loop_async(...))` — un seul event loop pour N joueurs. Chaque joueur utilise `await sync_player_duckdb_async()` au lieu de `sync_player_duckdb()` (qui appelait `asyncio.run()` en interne). Log structuré `event=async_loop_start players=N`.
+
+**Phase G.3 (dead code)** : Suppression de `_sync_duckdb_player` + `_run_duckdb_player_sync_async` de `_sync_duckdb_ops.py`. Callers migrés : `refresh_spnkr_db_via_api` (sync.py) et `run_sync_smoke_test` (setup_smoke_test_logic.py) utilisent maintenant `sync_player_duckdb`. Tests mis à jour (`test_sync_ui.py` : patch cible changé de `_sync_duckdb_player` vers `sync_player_duckdb_async`).
+
+**Phase H (transactions batch)** : `_maybe_batch_commit` repurposé pour émettre COMMIT + BEGIN TRANSACTION sur la shared connexion (en plus du player DB commit). `_process_matches` ouvre `BEGIN TRANSACTION` sur shared avant la boucle, et garantit un COMMIT final via `try/finally`.
+
+**Phase I (extraction _run_post_sync_pipeline)** : Les 17 lignes post-process de `_sync_internal` (agrégats, career rank, metadata, commit, perf scores, LUSR, fan-out) extraites dans `async def _run_post_sync_pipeline()`. `_sync_internal` réduit, `_run_post_sync_pipeline` autonome et testable.
+
+**Résultats observés :**
+- 5131 tests passent, 0 fail, 4 skipped.
+- Phases G/H/I : tests dédiés (`test_sync_phase_h.py` : 6 tests, `tests/perf/test_dual_semaphore.py` : 7 tests).
+- `docs/SYNC_CALL_TREE.md` mis à jour avec toutes les phases A→J.
+
+**Conclusion :** Plan `PLAN_SYNC_UI_HARDENING_2026-03-24.md` complété. Toutes les phases implémentées et testées. Branche `fix/sync-ui-hardening-plan` prête pour review.
+
+---
+
+### [2026-03-25] — Sync UI Hardening Lot 3 — Phase B (delta HEAD-first + consolidation + fix remaining) — Complété
+
+**Décision technique :**
+- HEAD-first short-circuit déplacé de `_process_matches` vers `_sync_internal` : vérifie HEAD API vs DB **avant** de charger `existing_ids` (chargement lazy). Si HEAD == DB → return immédiat, 0 requête shared.
+- Consolidation `_load_existing_match_ids` : queries 2+3 (enrichment + awards séparées) remplacées par un seul LEFT JOIN `player_match_enrichment × personal_score_awards`. Réduit de 3→2 requêtes SQL + 3→1 intersections Python.
+- Fix `remaining` en mode full : `remaining -= 1` retiré du chemin "match skippé". Un skip n'épuise plus le quota — seuls les nouveaux matchs insérés le font.
+- Tests `test_match_processing_early_exit.py` mis à jour : HEAD check n'est plus dans `_process_matches`, les tests reflètent la nouvelle répartition.
+- Log structuré : `event=delta_head_check short_circuit=true|false`, `event=existing_ids_loaded source=sql_consolidated`, `event=delta_head_check_failed`.
+
+**Résultats observés :**
+- 5110 tests passent, 0 fail, 11 skip.
+- Phase B : 11 tests dans `test_sync_phase_b.py`, tous verts.
+
+**Prochaine étape :** Lot 4 — Phase C (annotations token_scope any/player).
+
+---
+
+### [2026-03-25] — Fix LUSR incrémental + perf score window=50 — Complété
+
+**Décision technique :**
+- `batch_compute_lusr` dans `_skill_rating.py` redémarrait à `INITIAL_MU=1500` à chaque sync incrémental, créant une discontinuité permanente. Fix : charge le dernier `(rating_value, rating_deviation)` par `playlist_group` depuis `match_skill_rank` et le passe via `existing_states` à `compute_skill_ratings_batch`.
+- `--force-lusr` (via `strategies.py::compute_lusr_for_player`) utilise `get_best_csr_for_player` → seed CSR correct ; pas besoin d'option spéciale pour corriger Madina.
+- Score de performance : passage de "historique complet" à "fenêtre glissante 50 matchs" dans les 3 chemins : `_compute_perf_updates`, `_compute_performance_score`, `compute_performance_score_for_match`.
+- `batch_compute_performance_scores` reçoit maintenant `force: bool = False` pour forcer le recalcul via `--force-performance-scores`.
+
+**Résultats observés (simulation) :**
+- Madina97294 avec `--force-lusr` → 1794.9 Platine VI (vs 1354.9 Argent V actuel, résultant du bug)
+- Perf score window=50 vs all-history : delta typique ±3-6 pts sur les matchs récents
+- 649 tests passent, 0 erreur
+
+**Prochaine étape :**
+```bash
+python scripts/backfill_data.py --player Madina97294 --force-lusr
+python scripts/backfill_data.py --all --force-performance-scores
+```
+
+---
+
+### [2026-03-25] — Suppression de `performance_scores` du bitmask BACKFILL_FLAGS — Complété
+
+**Tâche :** Mettre à jour 5 fichiers de tests qui référençaient `BACKFILL_FLAGS["performance_scores"]` devenu inexistant après sa suppression de `src/data/sync/migrations.py`.
+
+**Décision technique principale :** `performance_scores` est détecté via IS NULL dans `player_match_enrichment`, pas via bitmask. Sa clé a été retirée de `BACKFILL_FLAGS`. Les tests bitmask qui l'utilisaient ont été adaptés : ceux testant la mécanique générale du bitmask utilisent désormais `personal_scores` comme flag représentatif ; ceux testant la logique `force_performance_scores` conservent leur intention sans référencer le bitmask supprimé. Les références à `lusr` et `csr` (également supprimés) ont aussi été retirées de `test_backfill_bitmask.py`. La valeur combinée de tous les flags de base passe de 65535 à 65519 (65535 − 16).
+
+**Résultats observés :**
+- 87 tests passent sur les 5 fichiers modifiés (0 échec, 0 erreur).
+- Fichiers modifiés : `tests/test_sync_backfill_completed.py`, `tests/test_backfill_bitmask.py`, `tests/test_detection_integration.py`, `tests/test_force_performance_scores.py`, `tests/test_sync_shared_v5.py`.
+
+**Conclusion :** Tests alignés avec l'état actuel de `BACKFILL_FLAGS`. Aucune logique métier modifiée.
+
+### [2026-03-24] — Plan sync UI enrichi (niveau exécutable) — Complété
+
+**Tâche :** Aller nettement plus dans le détail du plan de hardening du sync UI, sans modifier le code applicatif.
+
+**Décision technique principale :** Étendre le plan avec une section d'implémentation exécutable par phase : work breakdown, fichiers cibles, pseudo-flux, cas limites, tests détaillés, tickets de livraison, critères Go/No-Go et procédure de rollback.
+
+**Résultats observés :**
+- `.ai/PLAN_SYNC_UI_HARDENING_2026-03-24.md` enrichi avec :
+  - sections 11.x (détail par phases A→F),
+  - section 12 (plan de livraison en tickets),
+  - section 13 (Go/No-Go),
+  - section 14 (rollback),
+  - focus renforcé sur la fraîcheur multi-joueurs "Mis à jour il y a XXX".
+
+**Conclusion / prochaine étape :** Le plan est désormais prêt à être exécuté en sprint avec découpage opérationnel et critères de validation explicites.
+
+### [2026-03-24] — Plan sync UI : ajout fraîcheur multi-joueurs — Complété
+
+**Tâche :** Mettre à jour le plan dédié pour intégrer explicitement le problème "Mis à jour il y a XXX" non cohérent sur les joueurs non actifs après un sync global.
+
+**Décision technique principale :** Ajouter une phase dédiée dans le plan (`Phase F`) pour imposer une source canonique `last_sync_at` par joueur, écrite dans la boucle de sync global, et lue de façon unifiée par l'indicateur UI.
+
+**Résultats observés :**
+- `.ai/PLAN_SYNC_UI_HARDENING_2026-03-24.md` réécrit en Markdown propre (suppression des séquences littérales `\n`).
+- Ajout d'une phase complète (problème, stratégie, critères d'acceptation, tests) sur la fraîcheur multi-joueurs.
+- Checklist, risques et rollout mis à jour pour inclure ce chantier.
+
+**Conclusion / prochaine étape :** Le plan couvre désormais le besoin utilisateur ; prochaine étape potentielle : implémentation du Lot 5 (Phase F) avec tests d'intégration multi-profils.
+
+### [2026-03-24] — Plan hardening sync UI (failles + optimisations) — Complété
+
+**Tâche :** Produire un plan détaillé dans un document dédié pour fiabiliser et optimiser le pipeline de sync déclenché depuis l'app Streamlit.
+
+**Décision technique principale :** Rédiger un plan exécutable par phases dans `.ai/PLAN_SYNC_UI_HARDENING_2026-03-24.md`, avec priorité sur :
+1) statut de sync explicite (succès/partiel/échec),
+2) optimisation delta HEAD-first,
+3) clarification des chemins auth,
+4) invalidation cache/mtime plus fine,
+5) observabilité (logs/KPIs).
+
+**Contrainte métier intégrée :** Conservation explicite des deux logiques d'accès aux données :
+- données récupérables sans auth spécifique au joueur cible,
+- données nécessitant une auth/token valide.
+
+**Résultats observés :**
+- Document de plan créé avec objectifs, non-objectifs, phases, critères d'acceptation, stratégie de tests, rollout et risques/mitigations.
+- Exigence auth utilisateur formalisée dans une section dédiée (double logique conservée, mieux distinguée).
+
+**Conclusion / prochaine étape :** Implémenter par lots (E+D, puis A, puis B, puis C) avec tests de non-régression sync multi-joueurs.
+
 ### [2026-03-22] — scan_0802_loadout + carry-forward NS timeline — Complété
 
 **Tâche :** Les 5 kills NULL de JGtm (pi=5) dans `3e394746` persistaient après ajout de l'ID `a0955e9e2164b3cf` dans WEAPON_ID_MAP. Cause : la structure `0802` n'est pas parsée par `scan_formula_a` (pattern `200002` absent de certains chunks), et le NS scanner n'avait pas de carry-forward.
