@@ -7,6 +7,28 @@
 
 ## Journal
 
+### [2026-03-26] — Fixes KDA/Encounters/Media/Squad + tests — Complété
+
+**Statut :** Complété — commits `8fc118d` + suite sur `fix/sync-ui-hardening-plan`
+
+**Décision technique :**
+
+4 bugs du backlog résolus + couverture tests complète (16 tests) :
+
+**Fix 1 — KDA COALESCE** (`migrations.py::ensure_mv_player_matches_view`) : La vue `mv_player_matches` utilisait `COALESCE(p.kda, formule)` de façon statique → erreur Binder sur schemas sans colonne `kda`. Correction : détection dynamique `has_kda_col` via `information_schema.columns` (même pattern que `has_enemy_mmr`). La vue génère soit `COALESCE(p.kda, fallback)` soit directement `fallback`.
+
+**Fix 2 — Encounters filter_past** (`_encounter_loader.py`) : La page match_view affichait des stats d'encounters incluant le match en cours. Ajout du paramètre `match_start_time`/`current_match_id` à `load_encounter_stats` + helper `_my_matches_cte(filter_past)` qui génère un CTE avec `INNER JOIN match_registry r2 ... AND r2.start_time < ? AND mp.match_id != ?`.
+
+**Fix 3 — Media EXIF naïf ignoré** (`media_helpers.py` + `media_indexer.py`) : Les timestamps EXIF sans timezone étaient traités comme UTC → mauvais tri chronologique. Fix : on ignore les EXIF sans tzinfo (= heure locale appareil) et on reste sur `mtime`. Le SQL corrige aussi `epoch(mf.capture_end_utc)` → `epoch(timezone('UTC', mf.capture_end_utc))`.
+
+**Fix 4 — Squad score bonus** (`performance.py` + i18n) : La carte équipe manquait le bonus collectif. Ajout du calcul `bonus = score - base_avg` et affichage conditionnel `"moy. X (+Y collectif)"`.
+
+**Résultats :** 16 tests passent, suite complète 5084 passed (0 failures, 4 skipped).
+
+**Prochaine étape :** Aucune — branche `fix/sync-ui-hardening-plan` prête pour PR.
+
+---
+
 ### [2026-03-25] — Fix LUSR seed + perf fenêtre-50 + bypass boucle force — Complété
 
 **Statut :** Complété — commit `63e3187` sur `fix/sync-ui-hardening-plan`
