@@ -657,6 +657,24 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
 
     enemy_mmr_expr = "p.enemy_mmr" if has_enemy_mmr else "NULL AS enemy_mmr"
 
+    # Vérifier si la colonne kda existe dans match_participants (absente sur anciens schémas/tests)
+    has_kda_col = False
+    try:
+        cols = conn.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'match_participants' AND column_name = 'kda'"
+        ).fetchall()
+        has_kda_col = len(cols) > 0
+    except Exception:
+        pass
+
+    _kda_fallback = (
+        "CASE WHEN p.deaths > 0"
+        " THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0) / CAST(p.deaths AS FLOAT)"
+        " ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0 END"
+    )
+    kda_expr = f"COALESCE(p.kda, {_kda_fallback})" if has_kda_col else _kda_fallback
+
     conn.execute(f"""
         CREATE OR REPLACE VIEW {prefix}mv_player_matches AS
         SELECT
@@ -674,15 +692,8 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             p.outcome,
             p.team_id,
 
-            -- KDA : valeur API officielle en priorité, recalcul local en fallback
-            -- (p.kda = NULL pour les anciens matchs importés avant v5)
-            COALESCE(p.kda,
-                CASE WHEN p.deaths > 0
-                THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
-                     / CAST(p.deaths AS FLOAT)
-                ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
-                END
-            ) AS kda,
+            -- KDA : valeur API officielle si disponible, recalcul local sinon
+            {kda_expr} AS kda,
 
             -- Stats de base
             COALESCE(p.max_killing_spree, 0) AS max_killing_spree,
