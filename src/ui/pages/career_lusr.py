@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import html
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import streamlit as st
@@ -133,7 +133,9 @@ def _render_lusr_rating_chart(db_path: str, xuid: str) -> None:
     _period_offsets = {"2y": 730, "1y": 365, "1m": 30, "1w": 7}
     _selected = selected_period or "all"
     if _selected in _period_offsets:
-        _since = datetime.utcnow() - timedelta(days=_period_offsets[_selected])
+        _since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+            days=_period_offsets[_selected]
+        )
         df_all = df_all.filter(pl.col("start_time") >= _since)
     _PERIOD_GRANULARITY: dict[str, str | None] = {
         "1w": None,

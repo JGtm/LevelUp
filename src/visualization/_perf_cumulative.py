@@ -163,8 +163,8 @@ def plot_cumulative_net_score(  # noqa: PLR0913
     if show_zero_line:
         fig.add_hline(
             y=0,
-            line_dash="dash",
-            line_color=PERFORMANCE_COLORS["baseline"],
+            line_width=2,
+            line_color="rgba(255,255,255,0.75)",
             annotation_text=viz_t("label_balance", lang),
             annotation_position="right",
         )

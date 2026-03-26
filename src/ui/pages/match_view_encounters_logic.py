@@ -102,9 +102,7 @@ def _relative_date(dt: datetime, lang: str | None = None) -> str:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     delta = now - dt
-    days = delta.days
-    if days < 0:
-        return t("rel_date_upcoming", lang=lang)
+    days = max(0, delta.days)  # guard horloge serveur (timestamp légèrement dans le futur)
     if days == 0:
         return t("rel_date_today", lang=lang)
     if days == 1:

@@ -353,16 +353,18 @@ STRINGS: dict[str, dict[str, str] | str] = {
     "col_wr_enemy": {"fr": "% Vict. ennemi", "en": "Win% (enemy)"},
     "col_kd_cross": {"fr": "Frags/Morts", "en": "Kills/Deaths"},
     "col_last_seen": {"fr": "Dernier match", "en": "Last match"},
+    "col_prev_encounter": {"fr": "Rencontre précédente", "en": "Previous encounter"},
+    "encounters_first_encounter": {"fr": "1ère rencontre", "en": "1st encounter"},
     "mv_encounter_legend": {
         "fr": (
             "**% Vict. allié / ennemi** — ton taux de victoires sur les matchs joués avec ou contre ce joueur  \n"
             "**Frags/Morts** — nombre de fois où tu l'as éliminé / où il t'a éliminé dans vos matchs communs  \n"
-            "**Dernier match** — date du dernier match partagé"
+            "**Rencontre précédente** — date du dernier match partagé avant celui-ci"
         ),
         "en": (
             "**Win% (ally/enemy)** — your win rate on shared matches by team side  \n"
             "**Kills/Deaths** — how many times you eliminated them / they eliminated you across shared matches  \n"
-            "**Last match** — date of the last shared match"
+            "**Previous encounter** — date of the last shared match before this one"
         ),
     },
     "legend_badge_tough_nut": {

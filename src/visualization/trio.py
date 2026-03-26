@@ -234,7 +234,7 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
     )
     fig.update_xaxes(tickmode="array", tickvals=xs, ticktext=ticktext, title_text="")
     fig.update_yaxes(
-        title_text=y_title, zeroline=True, zerolinecolor="rgba(255,255,255,0.3)", zerolinewidth=1
+        title_text=y_title, zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2
     )
 
     if y_suffix:

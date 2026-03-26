@@ -242,9 +242,9 @@ def get_file_metadata(file_path: Path) -> dict[str, Any] | None:  # noqa: PLR091
                 capture_start_utc = capture_end_utc
         else:
             exif_dt = get_image_exif_datetime(file_path)
-            if exif_dt:
-                if exif_dt.tzinfo is not None:
-                    exif_dt = exif_dt.astimezone(timezone.utc).replace(tzinfo=None)
+            # EXIF sans timezone = heure locale appareil (non UTC) → ignorer
+            if exif_dt and exif_dt.tzinfo is not None:
+                exif_dt = exif_dt.astimezone(timezone.utc).replace(tzinfo=None)
                 capture_end_utc = exif_dt
                 capture_start_utc = exif_dt
             else:

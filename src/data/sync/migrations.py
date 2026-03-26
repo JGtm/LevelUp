@@ -674,12 +674,15 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             p.outcome,
             p.team_id,
 
-            -- KDA pré-calculé
-            CASE WHEN p.deaths > 0
-            THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
-                 / CAST(p.deaths AS FLOAT)
-            ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
-            END AS kda,
+            -- KDA : valeur API officielle en priorité, recalcul local en fallback
+            -- (p.kda = NULL pour les anciens matchs importés avant v5)
+            COALESCE(p.kda,
+                CASE WHEN p.deaths > 0
+                THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
+                     / CAST(p.deaths AS FLOAT)
+                ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
+                END
+            ) AS kda,
 
             -- Stats de base
             COALESCE(p.max_killing_spree, 0) AS max_killing_spree,

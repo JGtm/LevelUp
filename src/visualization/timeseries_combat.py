@@ -258,7 +258,12 @@ def plot_streak_chart(
     if title is not None:
         layout_kwargs["title"] = title
     fig.update_layout(**layout_kwargs)
-    fig.update_yaxes(title_text=viz_t("axis_streak", lang), zeroline=True)
+    fig.update_yaxes(
+        title_text=viz_t("axis_streak", lang),
+        zeroline=True,
+        zerolinecolor="rgba(255,255,255,0.75)",
+        zerolinewidth=2,
+    )
     apply_chrono_xaxis(fig, x_idx, labels, step, lang)
 
     return apply_halo_plot_style(fig, height=PLOT_CONFIG.short_height)

@@ -246,8 +246,8 @@ def plot_cumulative_comparison(  # noqa: PLR0913
 
     fig.add_hline(
         y=0,
-        line_dash="dash",
-        line_color=PERFORMANCE_COLORS["baseline"],
+        line_width=2,
+        line_color="rgba(255,255,255,0.75)",
         annotation_text=viz_t("label_balance", lang),
         annotation_position="right",
     )
