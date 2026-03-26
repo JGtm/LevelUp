@@ -6,7 +6,6 @@ en mode async et sync.
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import os
 import time
@@ -29,8 +28,10 @@ def _finalize_sync_result(sync_result: Any, db_file: Path) -> tuple[bool, str]:
 
     # Forcer la mise à jour du mtime pour invalider les caches @st.cache_data
     for path in (str(db_file), str(_shared_path(db_file))):
-        with contextlib.suppress(Exception):
+        try:
             os.utime(path, None)
+        except Exception as e:
+            logger.debug("event=utime_failed path=%s error=%s", path, e)
 
     if sync_result is not None:
         return True, sync_result.to_message()
@@ -60,115 +61,6 @@ async def _run_engine_and_cleanup(
         except Exception:
             pass
     return _sync_result, _sync_error
-
-
-async def _run_duckdb_player_sync_async(
-    *,
-    db_path: str,
-    gamertag: str,
-    max_matches: int,
-    delta: bool,
-) -> tuple[bool, str]:
-    """Coroutine interne : exécute le sync DuckDB pour un joueur."""
-    try:
-        from src.data.sync.engine import DuckDBSyncEngine
-        from src.data.sync.models import SyncOptions
-    except ImportError as e:
-        return False, f"Module sync non disponible: {e}"
-
-    db_file = Path(db_path)
-
-    from src.ui.cache_loaders import _resolve_player_xuid
-
-    resolved_xuid = _resolve_player_xuid(str(db_file))
-
-    try:
-        from src.auth.provider import AuthRequiredError, get_halo_tokens_or_raise
-
-        tokens = await get_halo_tokens_or_raise(db_file)
-    except AuthRequiredError:
-        return (
-            False,
-            "Reconnexion Xbox requise. Utilisez le bouton 'Connexion Xbox' dans les paramètres.",
-        )
-    except Exception as e:
-        return False, f"Erreur tokens: {e}"
-
-    _activate_sync_mode()
-    try:
-        engine = DuckDBSyncEngine(
-            player_db_path=db_file,
-            xuid=resolved_xuid,
-            gamertag=gamertag,
-            tokens=tokens,
-        )
-        options = SyncOptions(
-            max_matches=max_matches,
-            with_highlight_events=True,
-            with_skill=True,
-            with_aliases=True,
-            with_participants=True,
-        )
-        _sync_result, _sync_error = await _run_engine_and_cleanup(
-            engine, options=options, delta=delta
-        )
-    except Exception as e:
-        return False, f"Erreur sync (init): {e}"
-    finally:
-        _deactivate_sync_mode()
-
-    if _sync_error is not None:
-        return False, f"Erreur sync: {_sync_error}"
-
-    return _finalize_sync_result(_sync_result, db_file)
-
-
-def _sync_duckdb_player(  # noqa: C901, PLR0915
-    *,
-    db_path: str,
-    gamertag: str,
-    max_matches: int = 100,
-    delta: bool = True,
-    timeout_seconds: int = 120,
-) -> tuple[bool, str]:
-    """Synchronise un joueur DuckDB via DuckDBSyncEngine.
-
-    Args:
-        db_path: Chemin vers le fichier stats.duckdb.
-        gamertag: Gamertag du joueur.
-        max_matches: Nombre max de matchs à synchroniser.
-        delta: Mode delta (arrêt au premier match connu).
-        timeout_seconds: Timeout en secondes.
-
-    Returns:
-        Tuple (succès, message).
-    """
-    import asyncio
-
-    try:
-        from src.utils.sync_lock import SyncAlreadyRunning, SyncLock
-
-        with SyncLock(timeout=0):
-            return asyncio.run(
-                asyncio.wait_for(
-                    _run_duckdb_player_sync_async(
-                        db_path=db_path,
-                        gamertag=gamertag,
-                        max_matches=max_matches,
-                        delta=delta,
-                    ),
-                    timeout=timeout_seconds,
-                )
-            )
-    except SyncAlreadyRunning:
-        return (
-            False,
-            "Un sync est déjà en cours (CLI ou autre onglet). Réessaie dans quelques instants.",
-        )
-    except asyncio.TimeoutError:
-        return False, f"Timeout après {timeout_seconds}s."
-    except Exception as e:
-        return False, f"Erreur: {e}"
 
 
 def _activate_sync_mode() -> None:
@@ -230,9 +122,11 @@ def _resolve_sync_player_db_path(gamertag: str, repo_root: Path) -> Path:
 def _touch_sync_mtime(player_db_path: Path) -> None:
     """Met à jour le mtime des DBs pour invalider les caches Streamlit."""
     for path in (str(player_db_path), str(_shared_path(player_db_path))):
-        with contextlib.suppress(Exception):
+        try:
             os.utime(path, None)
             logger.debug("_touch_sync_mtime: mtime mis à jour → %s", path)
+        except Exception as e:
+            logger.debug("event=utime_failed path=%s error=%s", path, e)
 
 
 async def _run_sync_engine(
@@ -275,13 +169,15 @@ async def _run_sync_engine(
         )
         return result.success, result.to_message()
     finally:
-        with contextlib.suppress(Exception):
+        try:
             engine.close()
             logger.debug(
                 "_run_sync_engine: engine.close() gamertag=%s durée_totale=%.1fs",
                 gamertag,
                 time.monotonic() - t0,
             )
+        except Exception as e:
+            logger.debug("event=engine_close_failed gamertag=%s error=%s", gamertag, e)
 
 
 async def sync_player_duckdb_async(  # noqa: PLR0913
@@ -353,7 +249,9 @@ async def sync_player_duckdb_async(  # noqa: PLR0913
             logger.info("sync_player_duckdb_async: succès gamertag=%s — %s", gamertag, msg)
         else:
             logger.warning("sync_player_duckdb_async: échec gamertag=%s — %s", gamertag, msg)
-        if _manage_sync_mode and not _already_active:
+        # Phase D : invalider les caches mtime uniquement si la sync a réussi (ok=True).
+        # Pas de rafraîchissement si l'échec précède toute écriture.
+        if ok and _manage_sync_mode and not _already_active:
             _touch_sync_mtime(player_db_path)
         return ok, msg
     except Exception as e:
@@ -450,3 +348,78 @@ def sync_player_duckdb(  # noqa: PLR0913
             _manage_sync_mode=_manage_sync_mode,
         )
     )
+
+
+async def _sync_all_players_loop_async(  # noqa: PLR0913
+    *,
+    profiles: dict,
+    delta: bool,
+    match_type: str,
+    max_matches: int,
+    with_highlight_events: bool,
+    with_aliases: bool,
+    repo_root: Path,
+) -> list[tuple[str, bool, str]]:
+    """Boucle async de sync pour tous les joueurs (event loop unique).
+
+    Appelée via un seul asyncio.run() depuis _sync_all_players_loop.
+    Utilise await sync_player_duckdb_async() pour éviter N event loops successives.
+    """
+    results: list[tuple[str, bool, str]] = []
+    player_count = len(profiles)
+    logger.info(
+        "event=async_loop_start players=%d mode=%s",
+        player_count,
+        "delta" if delta else "full",
+    )
+
+    _activate_sync_mode()
+    try:
+        for gamertag, profile in profiles.items():
+            xuid = profile.get("xuid", "")
+            player_db_path = repo_root / profile.get("db_path", "")
+
+            if not player_db_path.exists():
+                logger.warning("[App Sync] %s: DB introuvable (%s)", gamertag, player_db_path)
+                results.append((gamertag, False, f"DB introuvable: {player_db_path}"))
+                continue
+
+            ok, msg = await sync_player_duckdb_async(
+                gamertag=gamertag,
+                xuid=xuid,
+                delta=delta,
+                match_type=match_type,
+                max_matches=max_matches,
+                with_highlight_events=with_highlight_events,
+                with_skill=True,
+                with_aliases=with_aliases,
+                repo_root=repo_root,
+                _manage_sync_mode=False,
+            )
+
+            if ok:
+                for path in (str(player_db_path), str(_shared_path(player_db_path))):
+                    try:
+                        import os
+
+                        os.utime(path, None)
+                    except Exception as e:
+                        logger.debug("event=utime_failed path=%s error=%s", path, e)
+
+            if ok:
+                logger.info("[App Sync] %s: OK — %s", gamertag, msg)
+            else:
+                logger.error("[App Sync] %s: échec — %s", gamertag, msg)
+
+            results.append((gamertag, ok, msg))
+    finally:
+        _deactivate_sync_mode()
+
+    ok_count = sum(1 for _, ok, _ in results if ok)
+    logger.info(
+        "event=async_loop_end players=%d ok=%d failed=%d",
+        player_count,
+        ok_count,
+        player_count - ok_count,
+    )
+    return results

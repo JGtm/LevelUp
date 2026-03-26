@@ -214,7 +214,11 @@ def render_sync_button(  # noqa: C901, PLR0912
             )
 
         if ok:
-            st.success(msg)
+            # Phase A : partial_success → st.warning, success complet → st.success
+            if msg.startswith("⚠️"):
+                st.warning(msg)
+            else:
+                st.success(msg)
 
             # Backfill après synchronisation si activé
             backfill_enabled = settings.spnkr_refresh_with_backfill

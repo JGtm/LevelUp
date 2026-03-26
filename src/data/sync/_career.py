@@ -39,9 +39,9 @@ class CareerMixin:
             # Priorité : token propre au joueur (endpoint economy player-gated)
             player_tokens = await get_tokens_for_player(self._gamertag)
             if player_tokens is None:
-                logger.info(
-                    "Aucun token joueur pour '%s' — career rank skippé. "
-                    "Définir %s dans .env.local pour activer la sync.",
+                logger.warning(
+                    "event=player_gated_skip gamertag=%s step=career_rank"
+                    " reason=no_player_token hint=set %s in .env.local",
                     self._gamertag,
                     get_player_token_env_key(self._gamertag),
                 )

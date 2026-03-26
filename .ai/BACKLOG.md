@@ -59,7 +59,22 @@
 
 ## 📋 Backlog
 
-### 🔴 BUG RÉCURRENT CRITIQUE — Dernière session absente du graphe "Évolution de la performance d'escouade" (Page Coéquipiers)
+### � Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores
+
+**Noté le** : 2026-03-26
+**Priorité** : Basse (non bloquant — le chemin normal sync app est déjà vectorisé)
+
+**Contexte** : Quand `--force-performance-scores` est combiné avec d'autres flags backfill (ex. `--medals --performance-scores`), la boucle séquentielle de l'orchestrateur appelle `compute_performance_score_for_match()` une fois par match. Cette fonction fait une requête SQL individuelle à chaque itération pour charger l'historique des 50 derniers matchs → ~1 req/match → lent sur un grand historique.
+
+Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performance-scores` est le *seul* flag, mais pas quand combiné à d'autres.
+
+**Solution envisagée** : Pré-charger l'historique complet en une seule requête avant la boucle (comme `batch_compute_performance_scores`), le passer en contexte à `compute_performance_score_for_match()`, et supprimer la requête SQL interne per-match.
+
+**Impact** : Uniquement les backfills multi-flags. Le sync normal (`engine._run_post_sync_compute`) est déjà sur le chemin batch vectorisé.
+
+---
+
+### �🔴 BUG RÉCURRENT CRITIQUE — Dernière session absente du graphe "Évolution de la performance d'escouade" (Page Coéquipiers)
 
 **Signalé le** : 2026-03-25 (récurrent — déjà observé plusieurs fois après chaque sync)
 **Gravité** : Critique — le graphe est la principale feature de tracking escouade. La session la plus récente (la seule qui intéresse l'utilisateur après un sync) n'apparaît jamais.
@@ -396,3 +411,26 @@ if exif_dt.tzinfo is not None:
 - `src/data/sessions_backfill.py` — `get_friends_xuids_for_backfill`
 - `src/app/_filters_session.py` — `_classify_sessions_solo_squad`
 - `src/ui/_cache_queries.py` — `cached_query_matches_with_friend`
+
+---
+
+### 🔍 Piste — Crashes silencieux app (Page Coéquipiers · Top medals × 3 joueurs) — à surveiller si récurrence
+
+**Signalé le** : 2026-03-25 (observé le 2026-03-24 entre 23h et 23h50)
+**Priorité** : Maintien — à traiter seulement si le phénomène se reproduit.
+
+---
+
+**Observation** : 3 crashes silencieux (sans aucune exception loggée) entre 22h45 et 23h16 le 24 mars. À chaque fois, le processus Streamlit s'arrête brusquement en milieu de rendu de la page Coéquipiers.
+
+**Pattern commun** : La dernière ligne loggée avant chaque gap est systématiquement :
+```
+[DEBUG] src.ui._cache_queries | Top medals: N match_ids, route=cache
+```
+…répétée 3 fois (une par joueur de l'escouade). Gap de 19 min 30 s (23:05), 4 min 21 s (23:10) et 16 min 1 s (23:31) — arrêt sans exception = probable kill OOM (Windows Terminal, Chrome actif, DuckDB charge 3 connexions simultanées).
+
+**Contexte aggravant au même moment** : conflits de handle DuckDB `shared_matches_v2.duckdb` (retry échoué × 4 à 23h05 et 23h10) liés au bug fanout R/W → connexions zombies non libérées contribuant à la pression mémoire.
+
+**À surveiller** : si le crash se reproduit après le fix fanout R/O (voir bug "Session escouade absente"), investiguer la fuite mémoire sur `_cache_queries · Top medals` (chargement répété pour 3 joueurs).
+
+**Données** : logs `data/logs/app.log.1`, gaps constatés aux lignes 23548→23549, 25315→25316, 27152→27153.
