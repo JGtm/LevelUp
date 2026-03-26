@@ -58,13 +58,17 @@ class TestForcePerformanceScoresFlag:
     """Tests du flag --force-performance-scores."""
 
     def test_without_force_skips_completed_matches(self, shared_conn):
-        """Sans --force, les matchs avec bitmask actif sont ignorés."""
+        """Sans --force, les matchs avec bitmask actif sont ignorés.
+
+        Note : performance_scores n'est plus dans BACKFILL_FLAGS (détection via IS NULL).
+        Ce test utilise personal_scores pour valider la mécanique bitmask générale.
+        """
         player_xuid = "xuid-player"
 
-        # 2 matchs : 1 avec flag, 1 sans
+        # 2 matchs : 1 avec flag personal_scores, 1 sans
         shared_conn.execute(
             "INSERT INTO match_registry VALUES ('match-done', ?)",
-            [BACKFILL_FLAGS["performance_scores"]],
+            [BACKFILL_FLAGS["personal_scores"]],
         )
         shared_conn.execute("INSERT INTO match_registry VALUES ('match-todo', 0)")
 
@@ -77,7 +81,7 @@ class TestForcePerformanceScoresFlag:
             [player_xuid],
         )
 
-        # Query de détection SANS force
+        # Query de détection SANS force (bitmask personal_scores)
         result = shared_conn.execute(
             """
             SELECT DISTINCT m.match_id
@@ -86,7 +90,7 @@ class TestForcePerformanceScoresFlag:
             WHERE mp.xuid = ?
             AND (m.backfill_completed & ?) = 0
             """,
-            [player_xuid, BACKFILL_FLAGS["performance_scores"]],
+            [player_xuid, BACKFILL_FLAGS["personal_scores"]],
         ).fetchall()
 
         # Seulement match-todo
@@ -94,17 +98,21 @@ class TestForcePerformanceScoresFlag:
         assert result[0][0] == "match-todo"
 
     def test_with_force_includes_completed_matches(self, shared_conn):
-        """Avec --force, les matchs avec bitmask sont inclus."""
+        """Avec --force, les matchs avec bitmask sont inclus.
+
+        Note : performance_scores n'est plus dans BACKFILL_FLAGS (détection via IS NULL).
+        Ce test utilise personal_scores pour valider la mécanique bitmask générale.
+        """
         player_xuid = "xuid-player"
 
-        # 2 matchs : tous deux avec flag
+        # 2 matchs : tous deux avec flag personal_scores
         shared_conn.execute(
             "INSERT INTO match_registry VALUES ('match-001', ?)",
-            [BACKFILL_FLAGS["performance_scores"]],
+            [BACKFILL_FLAGS["personal_scores"]],
         )
         shared_conn.execute(
             "INSERT INTO match_registry VALUES ('match-002', ?)",
-            [BACKFILL_FLAGS["performance_scores"]],
+            [BACKFILL_FLAGS["personal_scores"]],
         )
 
         shared_conn.execute(
@@ -205,15 +213,20 @@ class TestForcePerformanceScoresFlag:
         assert result is not None, "Score existant détecté → skip"
 
     def test_force_flag_recomputes_all_scores(self, shared_conn, player_conn):
-        """Scénario complet : force recalcule tous les scores."""
+        """Scénario complet : force recalcule tous les scores.
+
+        Note : performance_scores n'est plus dans BACKFILL_FLAGS (détection via IS NULL).
+        Le bitmask utilisé ici est personal_scores pour valider la mécanique générale.
+        La détection réelle de performance_scores se fait via IS NULL dans player_match_enrichment.
+        """
         player_xuid = "xuid-player"
 
-        # 3 matchs avec flag performance_scores
+        # 3 matchs avec flag personal_scores (performance_scores supprimé du bitmask)
         for i in range(1, 4):
             match_id = f"match-{i:03d}"
             shared_conn.execute(
                 "INSERT INTO match_registry VALUES (?, ?)",
-                [match_id, BACKFILL_FLAGS["performance_scores"]],
+                [match_id, BACKFILL_FLAGS["personal_scores"]],
             )
             shared_conn.execute(
                 "INSERT INTO match_participants (match_id, xuid, kills, deaths, score) "
@@ -228,7 +241,7 @@ class TestForcePerformanceScoresFlag:
                 [match_id],
             )
 
-        # Sans force : 0 matchs détectés
+        # Sans force : 0 matchs détectés via bitmask personal_scores
         no_force = shared_conn.execute(
             """
             SELECT COUNT(DISTINCT m.match_id)
@@ -237,7 +250,7 @@ class TestForcePerformanceScoresFlag:
             WHERE mp.xuid = ?
             AND (m.backfill_completed & ?) = 0
             """,
-            [player_xuid, BACKFILL_FLAGS["performance_scores"]],
+            [player_xuid, BACKFILL_FLAGS["personal_scores"]],
         ).fetchone()[0]
 
         assert no_force == 0
@@ -303,11 +316,15 @@ class TestForcePerformanceScoresFlag:
         assert performance_scores is True
 
     def test_bitmask_not_updated_during_forced_backfill(self, shared_conn):
-        """Durant un forced backfill, le bitmask ne doit PAS être modifié."""
+        """Durant un forced backfill, le bitmask ne doit PAS être modifié.
+
+        Note : performance_scores n'est plus dans BACKFILL_FLAGS.
+        Ce test utilise personal_scores à la place pour valider la mécanique.
+        """
         match_id = "match-forced"
 
-        # Match avec flag déjà présent
-        initial_mask = BACKFILL_FLAGS["performance_scores"] | BACKFILL_FLAGS["medals"]
+        # Match avec flag déjà présent (personal_scores remplace performance_scores)
+        initial_mask = BACKFILL_FLAGS["personal_scores"] | BACKFILL_FLAGS["medals"]
         shared_conn.execute(
             "INSERT INTO match_registry VALUES (?, ?)",
             [match_id, initial_mask],

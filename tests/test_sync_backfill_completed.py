@@ -76,7 +76,6 @@ class TestSyncMarksBackfillCompleted:
         expected_mask = (
             BACKFILL_FLAGS["medals"]
             | BACKFILL_FLAGS["personal_scores"]
-            | BACKFILL_FLAGS["performance_scores"]
             | BACKFILL_FLAGS["accuracy"]
             | BACKFILL_FLAGS["shots"]
         )
@@ -95,7 +94,6 @@ class TestSyncMarksBackfillCompleted:
         assert result[0] == expected_mask
         assert result[0] & BACKFILL_FLAGS["medals"] != 0
         assert result[0] & BACKFILL_FLAGS["personal_scores"] != 0
-        assert result[0] & BACKFILL_FLAGS["performance_scores"] != 0
         assert result[0] & BACKFILL_FLAGS["accuracy"] != 0
         assert result[0] & BACKFILL_FLAGS["shots"] != 0
 
@@ -108,7 +106,6 @@ class TestSyncMarksBackfillCompleted:
         mask = (
             BACKFILL_FLAGS["medals"]
             | BACKFILL_FLAGS["personal_scores"]
-            | BACKFILL_FLAGS["performance_scores"]
             | BACKFILL_FLAGS["accuracy"]
             | BACKFILL_FLAGS["shots"]
             | BACKFILL_FLAGS["skill"]
@@ -177,9 +174,9 @@ class TestSyncMarksBackfillCompleted:
         assert result[0] & BACKFILL_FLAGS["participants_kda"] != 0
         assert result[0] & BACKFILL_FLAGS["participants_shots"] != 0
         assert result[0] & BACKFILL_FLAGS["participants_damage"] != 0
-        assert (
-            result[0] & BACKFILL_FLAGS["participants_avg_life"] != 0
-        ), "participants_avg_life DOIT être inclus pour éviter la boucle infinie"
+        assert result[0] & BACKFILL_FLAGS["participants_avg_life"] != 0, (
+            "participants_avg_life DOIT être inclus pour éviter la boucle infinie"
+        )
 
     def test_with_aliases_adds_aliases_flag(self, shared_conn):
         """Avec with_aliases=True, le flag aliases doit être marqué."""
@@ -245,18 +242,17 @@ class TestSyncMarksBackfillCompleted:
         assert result[0] & BACKFILL_FLAGS["medals"] != 0
         assert result[0] & BACKFILL_FLAGS["events"] != 0
 
-    def test_all_flags_combined_equals_65535(self, shared_conn):
-        """Tous les 16 flags activés = 65535 (0xFFFF)."""
+    def test_all_flags_combined_equals_65519(self, shared_conn):
+        """Tous les 15 flags activés = 65519 (65535 - 16, performance_scores supprimé)."""
         match_id = "test-match-all"
         shared_conn.execute("INSERT INTO match_registry (match_id) VALUES (?)", [match_id])
 
-        # Tous les flags
+        # Tous les flags (performance_scores supprimé — détection via IS NULL, pas bitmask)
         all_mask = (
             BACKFILL_FLAGS["medals"]  # 1
             | BACKFILL_FLAGS["events"]  # 2
             | BACKFILL_FLAGS["skill"]  # 4
             | BACKFILL_FLAGS["personal_scores"]  # 8
-            | BACKFILL_FLAGS["performance_scores"]  # 16
             | BACKFILL_FLAGS["accuracy"]  # 32
             | BACKFILL_FLAGS["shots"]  # 64
             | BACKFILL_FLAGS["enemy_mmr"]  # 128
@@ -270,7 +266,7 @@ class TestSyncMarksBackfillCompleted:
             | BACKFILL_FLAGS["participants_avg_life"]  # 32768
         )
 
-        assert all_mask == 65535, "Tous les 16 bits doivent donner 65535"
+        assert all_mask == 65519, "Les 15 bits (sans performance_scores=16) doivent donner 65519"
 
         shared_conn.execute(
             "UPDATE match_registry SET backfill_completed = ? WHERE match_id = ?",
@@ -282,7 +278,7 @@ class TestSyncMarksBackfillCompleted:
             [match_id],
         ).fetchone()
 
-        assert result[0] == 65535
+        assert result[0] == 65519
 
     def test_known_match_backfill_updates_bitmask(self, shared_conn):
         """Un known_match qui backfill des données doit mettre à jour le bitmask."""

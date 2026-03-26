@@ -90,12 +90,6 @@ def _detect_lang() -> str:
             candidates.append(lc.lower())
     except Exception:
         pass
-    try:
-        lc = _locale.getdefaultlocale()[0]  # deprecated but broader support
-        if lc:
-            candidates.append(lc.lower())
-    except Exception:
-        pass
     for var in ("LANG", "LC_ALL", "LC_MESSAGES", "LANGUAGE"):
         val = os.environ.get(var, "")
         if val and not val.upper().startswith("C"):

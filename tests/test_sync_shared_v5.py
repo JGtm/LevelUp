@@ -267,12 +267,15 @@ class TestComputeBackfillMask:
     """Tests pour _compute_backfill_mask."""
 
     def test_default_options_include_base_flags(self, engine_with_shared: DuckDBSyncEngine) -> None:
-        """Options par défaut → flags de base activés."""
+        """Options par défaut → flags de base activés.
+
+        Note : performance_scores supprimé du bitmask — détection via IS NULL dans
+        player_match_enrichment, pas via le bitmask match_registry.
+        """
         opts = SyncOptions()
         mask = engine_with_shared._compute_backfill_mask(opts)
         assert mask & BACKFILL_FLAGS["medals"]
         assert mask & BACKFILL_FLAGS["personal_scores"]
-        assert mask & BACKFILL_FLAGS["performance_scores"]
         assert mask & BACKFILL_FLAGS["accuracy"]
         assert mask & BACKFILL_FLAGS["shots"]
 
@@ -529,9 +532,9 @@ class TestExtractParticipants:
         assert len(participants) == 3
         for p in participants:
             # Le xuid doit être une clé valide de BOT_MAP (format canonique)
-            assert (
-                p.xuid in BOT_MAP
-            ), f"xuid '{p.xuid}' non trouvé dans BOT_MAP — vérifier la normalisation dans extract_participants"
+            assert p.xuid in BOT_MAP, (
+                f"xuid '{p.xuid}' non trouvé dans BOT_MAP — vérifier la normalisation dans extract_participants"
+            )
 
 
 # =============================================================================

@@ -90,10 +90,21 @@ class SyncResult:
     finished_at: datetime | None = None
 
     @property
+    def status(self) -> str:
+        """Statut de la sync : 'success', 'partial_success' ou 'failure'.
+
+        - failure       : erreurs présentes ET aucun match inséré
+        - partial_success : erreurs présentes ET au moins un match inséré
+        - success       : aucune erreur
+        """
+        if self.errors:
+            return "partial_success" if self.matches_inserted > 0 else "failure"
+        return "success"
+
+    @property
     def success(self) -> bool:
-        """True si la sync a réussi (même partiellement)."""
-        # Succès si au moins un match inséré ou aucune erreur fatale
-        return self.matches_inserted > 0 or len(self.errors) == 0
+        """True si la sync a réussi (success ou partial_success)."""
+        return self.status != "failure"
 
     @property
     def total_matches_processed(self) -> int:
@@ -101,8 +112,13 @@ class SyncResult:
         return self.matches_inserted + self.matches_updated + self.matches_skipped
 
     def to_message(self) -> str:
-        """Message de résumé pour l'UI."""
-        if not self.success:
+        """Message de résumé pour l'UI.
+
+        - failure       → "❌ Sync échouée: <erreurs>"
+        - partial_success → "⚠️ <matchs insérés> | erreurs: <résumé>"
+        - success       → "✅ <stats>"
+        """
+        if self.status == "failure":
             error_preview = ", ".join(self.errors[:2])
             return f"❌ Sync échouée: {error_preview}"
 
@@ -125,7 +141,11 @@ class SyncResult:
         if self.duration_seconds > 0:
             duration_str = f" ({self.duration_seconds:.1f}s)"
 
-        return f"✅ {', '.join(parts)}{duration_str}"
+        body = ", ".join(parts) + duration_str
+        if self.status == "partial_success":
+            error_preview = ", ".join(self.errors[:2])
+            return f"⚠️ {body} | erreurs: {error_preview}"
+        return f"✅ {body}"
 
     def to_dict(self) -> dict[str, Any]:
         """Convertit en dict pour sérialisation JSON."""
