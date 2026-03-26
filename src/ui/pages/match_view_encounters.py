@@ -15,7 +15,7 @@ from typing import Any
 import streamlit as st
 
 from src.config import get_bot_name
-from src.data.repositories._encounter_loader import load_encounter_stats
+from src.data.repositories._encounter_loader import _fetch_match_start_time, load_encounter_stats
 from src.data.repositories.duckdb_repo import DuckDBRepository
 from src.ui.i18n import t
 from src.ui.pages.match_table_html import gamertag_link
@@ -152,7 +152,11 @@ def _full_row_html(stats: EncounterStats, badges: list[Badge]) -> str:
     wr_ally = wr_cell_html(stats.winrate_as_ally, stats.ally_count)
     wr_enemy = wr_cell_html(stats.winrate_vs_enemy, stats.enemy_count)
     kd = kd_cell_html(stats.kills_dealt, stats.deaths_suffered)
-    last_str = html.escape(_relative_date(stats.last_seen)) if stats.last_seen else "—"
+    last_str = (
+        html.escape(_relative_date(stats.last_seen))
+        if stats.last_seen
+        else html.escape(t("encounters_first_encounter"))
+    )
 
     return (
         f"<tr class='os-sb-row'>"
@@ -180,7 +184,7 @@ def _build_encounter_table_html(rows_html: list[str]) -> str:
             t("col_wr_ally"),
             t("col_wr_enemy"),
             t("col_kd_cross"),
-            t("col_last_seen"),
+            t("col_prev_encounter"),
         ]
     )
     thead = (
@@ -304,7 +308,14 @@ def render_encounter_section(
     if not target_xuids:
         return
 
-    df = load_encounter_stats(self_xuid, target_xuids, db_path)
+    match_start_time = _fetch_match_start_time(match_id, db_path)
+    df = load_encounter_stats(
+        self_xuid,
+        target_xuids,
+        db_path,
+        match_start_time=match_start_time,
+        current_match_id=match_id,
+    )
     if df.is_empty():
         return
 

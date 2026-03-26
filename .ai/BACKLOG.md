@@ -1,6 +1,6 @@
 ﻿— Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-25.
+> Mis à jour le 2026-03-26.
 
 ---
 
@@ -8,6 +8,10 @@
 
 | Date | Item |
 |------|------|
+| 2026-03-26 | **Bug RÉCURRENT CRITIQUE — Session escouade absente du graphe "Évolution de la performance"** : root cause A (fanout ouvrait shared en R/W → conflit handle Streamlit) fixée via Phase J (`shared_read_only=True` dans `_engine_fanout.py`). Fix défensif LEFT JOIN dans `_performance_squad._join_perf_frames()`. Les deux chemins de fix documentés dans l'audit sont implémentés. |
+| 2026-03-26 | **Bug — Stats coéquipiers absentes (Page Teammates)** : résolu par le fix fanout R/O (Phase J). La root cause était identique au bug session escouade — fanout silencieux → PME coéquipier non créées. À revalider sur la prochaine session de jeu. |
+| 2026-03-26 | **Bug annexe — `get_sync_metadata` lit mauvaise DB** : `SELECT last_sync_at FROM meta.sync_meta WHERE xuid=?` → `SELECT value FROM sync_meta WHERE key='last_sync_at'` dans la player DB. Fix commité dans `_diagnostic_repo.py` (Phase F). |
+| 2026-03-26 | **Piste — Crashes silencieux (Page Coéquipiers · Top medals)** : source principale (connexions zombies fanout R/W) supprimée par Phase J. Si non récurrent → archivé. |
 | 2026-03-21 | **Bug — Frags vs. détail armes (double-comptage melee)** : melee kills filmés attribués à l'arme tenue + `melee_kills` API → double-comptage. Fix : remainder `api_total - film_kills` dans 3 fichiers + `load_total_kills_for_player()` + 2 nouveaux tests. |
 | 2026-03-21 | **UI — Graphe stats/min escouade : morts sous l'axe** — `plot_per_minute_timeseries` : deaths tracées en négatif (`dpm_neg`), `customdata[5]` = valeur absolue, `hover_dpm_neg` i18n, ticks Y absolus via `build_symmetric_abs_ticks` (extrait dans `src/visualization/_permin_helpers.py`). `timeseries.py` à exactement 500L. |
 | 2026-03-21 | **Maintenance — Nettoyage dossier `scripts/`** — 10 scripts investigation → `scripts/investigation/` + README ; `cleanup_legacy_tables.py` + `cleanup_player_dbs_v5.py` → `scripts/_archive/` ; `.tmp.*` supprimés. |
@@ -71,88 +75,6 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 **Solution envisagée** : Pré-charger l'historique complet en une seule requête avant la boucle (comme `batch_compute_performance_scores`), le passer en contexte à `compute_performance_score_for_match()`, et supprimer la requête SQL interne per-match.
 
 **Impact** : Uniquement les backfills multi-flags. Le sync normal (`engine._run_post_sync_compute`) est déjà sur le chemin batch vectorisé.
-
----
-
-### �🔴 BUG RÉCURRENT CRITIQUE — Dernière session absente du graphe "Évolution de la performance d'escouade" (Page Coéquipiers)
-
-**Signalé le** : 2026-03-25 (récurrent — déjà observé plusieurs fois après chaque sync)
-**Gravité** : Critique — le graphe est la principale feature de tracking escouade. La session la plus récente (la seule qui intéresse l'utilisateur après un sync) n'apparaît jamais.
-**Audité le** : 2026-03-25 (code vérifié en profondeur)
-
----
-
-**Symptôme exact** : Après un sync, le graphe "Évolution de la performance d'escouade" (rendu par `render_squad_timeline` → `compute_squad_timeseries` → `plot_squad_performance_timeline`) n'affiche pas la dernière session. Les sessions précédentes sont visibles. Le problème se résout automatiquement lors du **sync suivant** du coéquipier.
-
----
-
-**ROOT CAUSE CONFIRMÉE — Chemin A : conflit R/W sur `shared_matches.duckdb` dans le fanout**
-
-`_get_shared_connection()` ([src/data/sync/_engine_connections.py](src/data/sync/_engine_connections.py#L164)) ouvre **toujours** en `read_only=False` :
-
-```python
-def _open_shared() -> duckdb.DuckDBPyConnection:
-    return duckdb.connect(str(self._shared_db_path), read_only=False)  # ← TOUJOURS R/W
-```
-
-Or `batch_compute_performance_scores()` ([src/data/sync/_performance.py](src/data/sync/_performance.py#L158)) ne fait que des **SELECT** sur shared — il écrit exclusivement dans la player DB locale. Il n'a **aucun besoin du R/W**.
-
-**Scénario en conditions réelles (joueurs avec des centaines de matchs)** :
-1. On sync un joueur → insère dans shared (R/W) → fanout se déclenche
-2. Le fanout crée un nouveau `DuckDBSyncEngine` pour le coéquipier → tente d'ouvrir shared en R/W
-3. **Streamlit est actif** (dashboard ouvert pendant le sync — cas standard) → connexion R/O ouverte sur shared
-4. DuckDB interdit R/W + R/O simultané → `"unique file handle conflict"`
-5. `_get_shared_connection()` retente 1 fois après `gc.collect()` + `time.sleep(0.5)` → échoue aussi → retourne `None`
-6. `batch_compute_performance_scores()` : `if shared_conn is None: return 0` → **0 scores calculés, silencieusement** (log WARNING uniquement : `"shared_connection ou xuid manquant"`)
-7. Pas de lignes PME créées pour les matchs du coéquipier → `backfill_sessions` ne voit pas ces matchs → dernière session invisible
-
-**Pourquoi ça se résout au sync suivant** : quand le coéquipier sync lui-même (invocation séparée de `sync.py`), c'est un processus distinct qui ouvre shared en R/W sans conflit (Streamlit n'est pas forcément actif à ce moment ou le timing est différent).
-
-**Cascade amplificatrice** : le `_join_perf_frames()` ([src/analysis/_performance_squad.py](src/analysis/_performance_squad.py#L85)) utilise un INNER JOIN — si le coéquipier n'a pas de score, le match entier est supprimé du graphe, même si le joueur principal a un score valide.
-
----
-
-**Chemins secondaires (aggravants, pas root cause)** :
-
-**Chemin B — `backfill_sessions_for_player` early-exit** : conséquence du chemin A. Si aucune ligne PME n'est créée pour les nouveaux matchs (parce que `batch_compute_performance_scores()` a échoué silencieusement), `_load_matches_from_shared` ne les voit pas → sessions non recalculées.
-
-**Chemin C — Seuil `MIN_MATCHES_FOR_RELATIVE = 10`** : non pertinent ici car le bug est observé sur des joueurs avec des centaines de matchs. Néanmoins, pour un coéquipier avec < 10 matchs dans shared, `batch_compute_performance_scores()` ferait `continue` sans créer de ligne PME → même effet que chemin A.
-
----
-
-**Fix root cause — Ouvrir shared en R/O dans le fanout**
-
-Le `DuckDBSyncEngine` n'a actuellement pas de paramètre pour contrôler le mode de connexion shared. Le fix :
-
-1. **Ajouter `shared_read_only: bool = False`** au constructeur de `DuckDBSyncEngine` et le propager à `_get_shared_connection()`
-2. **Dans `_run_other_player_enrichment()`** ([src/data/sync/_engine_fanout.py](src/data/sync/_engine_fanout.py#L163)), passer `shared_read_only=True` :
-   ```python
-   engine = DuckDBSyncEngine(
-       player_db_path=player_db_path,
-       xuid=xuid, gamertag=gamertag,
-       shared_db_path=shared_path,
-       shared_read_only=True,  # ← le fanout ne fait que LIRE shared
-   )
-   ```
-3. **Dans `_get_shared_connection()`** ([src/data/sync/_engine_connections.py](src/data/sync/_engine_connections.py#L164)), utiliser `self._shared_read_only` :
-   ```python
-   def _open_shared() -> duckdb.DuckDBPyConnection:
-       return duckdb.connect(str(self._shared_db_path), read_only=self._shared_read_only)
-   ```
-
-**Fix défensif complémentaire — LEFT JOIN dans `_join_perf_frames()`**
-
-Indépendamment du fix R/O, le graphe devrait tolérer un score manquant chez un coéquipier au lieu de supprimer le match entier :
-- Remplacer `how="inner"` par `how="left"` dans le join
-- Supprimer le `.filter(pl.col(f"perf_{i}").is_not_null())` avant le join
-- `squad_perf = list.mean()` ignore les nulls automatiquement → le score escouade sera la moyenne des joueurs disponibles
-- Une session avec score partiel (2 joueurs sur 3) est **mieux** qu'une session invisible
-
-**Fichiers impliqués :**
-- [src/data/sync/_engine_connections.py](src/data/sync/_engine_connections.py) — `_get_shared_connection` : paramétrer `read_only`
-- [src/data/sync/engine.py](src/data/sync/engine.py) — `__init__` : ajouter `shared_read_only`
-- [src/data/sync/_engine_fanout.py](src/data/sync/_engine_fanout.py) — `_run_other_player_enrichment` : passer `shared_read_only=True`
-- [src/analysis/_performance_squad.py](src/analysis/_performance_squad.py) — `_join_perf_frames` : INNER → LEFT join
 
 ---
 
@@ -295,12 +217,7 @@ MAX(r.start_time) AS last_seen
 
 ---
 
-**Bug annexe #1 — `get_sync_metadata` lit une colonne inexistante (sync indicator toujours NULL)**
-
-- **Localisation** : [src/data/repositories/_diagnostic_repo.py](src/data/repositories/_diagnostic_repo.py#L18) — `get_sync_metadata()`
-- La requête actuelle : `SELECT last_sync_at FROM meta.sync_meta WHERE xuid = ?` — **incorrecte** : `sync_meta` est une table key-value `(key, value, updated_at)` dans la DB joueur (pas dans `meta`). L'Exception est silencieusement swallowée → `last_sync` vaut toujours `None`.
-- **Fix** : Lire via `SELECT value FROM sync_meta WHERE key = 'last_sync_at'` dans la connexion courante (DB joueur), puis parser la chaîne ISO.
-- **Fichier** : [src/data/repositories/_diagnostic_repo.py](src/data/repositories/_diagnostic_repo.py)
+**Bug annexe #1 — `get_sync_metadata` lit une colonne inexistante** ✅ *Résolu 2026-03-26 — `_diagnostic_repo.py` Phase F*
 
 ---
 
@@ -317,7 +234,6 @@ MAX(r.start_time) AS last_seen
 - [src/data/repositories/_encounter_loader.py](src/data/repositories/_encounter_loader.py) — `_build_encounter_sql` : filtrer `start_time < match_start_time`
 - [src/ui/pages/match_view_encounters_logic.py](src/ui/pages/match_view_encounters_logic.py) — `_relative_date` : paramètre `reference_dt`, guard `days < 0`
 - [src/ui/pages/match_view_encounters.py](src/ui/pages/match_view_encounters.py) — passer `match_start_time` au SQL + renommer colonne
-- [src/data/repositories/_diagnostic_repo.py](src/data/repositories/_diagnostic_repo.py) — `get_sync_metadata` (bug annexe #1)
 - [src/ui/pages/career_lusr.py](src/ui/pages/career_lusr.py) — `datetime.utcnow()` (bug annexe #2)
 - i18n : clés `encounters_col_prev_encounter`, `encounters_first_encounter`, `rel_date_same_day`, `rel_date_days_before`
 
@@ -386,51 +302,3 @@ if exif_dt.tzinfo is not None:
 - [src/data/media_indexer_matchers.py](src/data/media_indexer_matchers.py) — `_associate_single_media` : logique de fenêtre temporelle (pas à modifier)
 
 ---
-
-### 🐛 Bug — Stats coéquipiers absentes sur la session la plus récente (Page Teammates)
-
-**Signalé le** : 2026-03-25
-**Audité le** : 2026-03-25 — **probablement lié au bug "Session escouade absente" (conflit R/W fanout)**. À revalider après le fix fanout R/O.
-
----
-
-**Symptôme** : Après une session de jeu, les stats des amis/coéquipiers n'apparaissent pas dans la vue Teammates (graphe heatmap, comparaison, armes…). Les sessions précédentes fonctionnent normalement.
-
-**Lien avec le bug fanout** : si le fanout échoue silencieusement à cause du conflit R/W sur shared (voir bug "Session escouade absente" ci-dessus), les lignes PME du coéquipier ne sont pas créées → sessions non backfillées → session la plus récente invisible partout dans la page Teammates.
-
-**À revalider après le fix fanout R/O.** Si le problème persiste, les pistes ci-dessous restent pertinentes :
-
-**Piste #1 — `is_with_friends = NULL` dans `player_match_enrichment`**
-- Lors du sync, `_insert_enrichment_row` (`src/data/sync/_engine_writes.py`) tente de résoudre les amis via `get_friends_xuids_for_backfill()`. Si la résolution échoue, `is_with_friends` est écrit `NULL` → session classifiée "solo" dans `_classify_sessions_solo_squad`.
-
-**Piste #2 — Race condition cache / WAL DuckDB**
-- `cached_query_matches_with_friend` n'a pas de TTL. Si le WAL n'est pas checkpointé au moment de la visite → `shared_ids` incomplet → matchs récents invisibles.
-
-**Fichiers impliqués :**
-- `src/data/sync/_engine_writes.py` — `_insert_enrichment_row` / `_load_friends_lazy`
-- `src/data/sessions_backfill.py` — `get_friends_xuids_for_backfill`
-- `src/app/_filters_session.py` — `_classify_sessions_solo_squad`
-- `src/ui/_cache_queries.py` — `cached_query_matches_with_friend`
-
----
-
-### 🔍 Piste — Crashes silencieux app (Page Coéquipiers · Top medals × 3 joueurs) — à surveiller si récurrence
-
-**Signalé le** : 2026-03-25 (observé le 2026-03-24 entre 23h et 23h50)
-**Priorité** : Maintien — à traiter seulement si le phénomène se reproduit.
-
----
-
-**Observation** : 3 crashes silencieux (sans aucune exception loggée) entre 22h45 et 23h16 le 24 mars. À chaque fois, le processus Streamlit s'arrête brusquement en milieu de rendu de la page Coéquipiers.
-
-**Pattern commun** : La dernière ligne loggée avant chaque gap est systématiquement :
-```
-[DEBUG] src.ui._cache_queries | Top medals: N match_ids, route=cache
-```
-…répétée 3 fois (une par joueur de l'escouade). Gap de 19 min 30 s (23:05), 4 min 21 s (23:10) et 16 min 1 s (23:31) — arrêt sans exception = probable kill OOM (Windows Terminal, Chrome actif, DuckDB charge 3 connexions simultanées).
-
-**Contexte aggravant au même moment** : conflits de handle DuckDB `shared_matches_v2.duckdb` (retry échoué × 4 à 23h05 et 23h10) liés au bug fanout R/W → connexions zombies non libérées contribuant à la pression mémoire.
-
-**À surveiller** : si le crash se reproduit après le fix fanout R/O (voir bug "Session escouade absente"), investiguer la fuite mémoire sur `_cache_queries · Top medals` (chargement répété pour 3 joueurs).
-
-**Données** : logs `data/logs/app.log.1`, gaps constatés aux lignes 23548→23549, 25315→25316, 27152→27153.

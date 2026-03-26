@@ -180,12 +180,22 @@ def _render_squad_score_block(squad_result: dict, lang: str | None) -> None:
 
 
 def _render_compact_team_card(team_perf: dict, grade: str, lang: str | None) -> None:
-    """Affiche la carte équipe compacte (score + grade) dans la rangée des joueurs."""
+    """Affiche la carte équipe compacte (score + grade + détail bonus) dans la rangée des joueurs."""
     from src.ui.i18n import t
 
     score = team_perf.get("score")
     score_class = get_score_class(score)
     score_display = f"{score:.0f}" if score is not None else "—"
+
+    base_avg = team_perf.get("components", {}).get("base_avg")
+    bonus_html = ""
+    if score is not None and base_avg is not None:
+        bonus = round(score - base_avg)
+        if bonus > 0:
+            bonus_label = html_mod.escape(
+                t("squad_score_bonus", lang=lang, base=f"{base_avg:.0f}", bonus=bonus)
+            )
+            bonus_html = f"<div class='os-perf-card__detail'>{bonus_label}</div>"
 
     st.markdown(
         f"""
@@ -193,6 +203,7 @@ def _render_compact_team_card(team_perf: dict, grade: str, lang: str | None) -> 
             <div class="os-perf-card__label">{t("squad_score_header", lang=lang)}</div>
             <div class="os-perf-card__score {score_class}">{score_display}</div>
             <div class="os-perf-card__status {score_class}">{html_mod.escape(grade)}</div>
+            {bonus_html}
         </div>
         """,
         unsafe_allow_html=True,
