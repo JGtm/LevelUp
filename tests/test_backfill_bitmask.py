@@ -409,9 +409,9 @@ def test_full_scenario_single_run(shared_conn, player_conn):
     missing_rerun = find_matches_missing_data(
         player_conn, XUID, shared_conn=shared_conn, medals=True, events=True, skill=True
     )
-    assert (
-        missing_rerun == []
-    ), f"Le rerun devrait trouver 0 matchs manquants, trouvé: {missing_rerun}"
+    assert missing_rerun == [], (
+        f"Le rerun devrait trouver 0 matchs manquants, trouvé: {missing_rerun}"
+    )
 
 
 def test_full_scenario_incremental(shared_conn, player_conn):
@@ -529,10 +529,11 @@ class TestSyncEngineBackfillBitmask:
     def test_sync_bitmask_all_options_enabled(self):
         """Simule le calcul de bitmask quand toutes les SyncOptions sont True."""
         # Reproduit la logique de engine.py._process_single_match
+        # performance_scores supprimé : détection via IS NULL, pas bitmask
+        # lusr/csr supprimés : collisionnaient avec MatchBits (constants.py)
         bf_mask = 0
         bf_mask |= BACKFILL_FLAGS["medals"]
         bf_mask |= BACKFILL_FLAGS["personal_scores"]
-        bf_mask |= BACKFILL_FLAGS["performance_scores"]
         bf_mask |= BACKFILL_FLAGS["accuracy"]
         bf_mask |= BACKFILL_FLAGS["shots"]
         # with_skill=True
@@ -551,14 +552,10 @@ class TestSyncEngineBackfillBitmask:
         bf_mask |= BACKFILL_FLAGS["aliases"]
         # with_assets=True
         bf_mask |= BACKFILL_FLAGS["assets"]
-        # backfill-only : LUSR calculé via --lusr (non écrit par le sync engine)
-        bf_mask |= BACKFILL_FLAGS["lusr"]
-        # backfill-only : CSR écrit lors du sync pour les matchs classés
-        bf_mask |= BACKFILL_FLAGS["csr"]
         # weapon_kills : bit set après extraction réussie depuis les films SPNKr
         bf_mask |= BACKFILL_FLAGS["weapon_kills"]
 
-        # Tous les 18 bits doivent être activés
+        # Tous les flags actifs doivent être couverts
         expected_all = sum(BACKFILL_FLAGS.values())
         assert bf_mask == expected_all, f"Mask={bf_mask}, attendu={expected_all}"
 

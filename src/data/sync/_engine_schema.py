@@ -6,7 +6,6 @@ qui applique le schéma lors de la première connexion.
 
 from __future__ import annotations
 
-import contextlib
 import logging
 from typing import TYPE_CHECKING
 
@@ -105,8 +104,10 @@ class SchemaMixin:
             "backfill_status",
         ]
         for tbl in _LEGACY_PLAYER_TABLES:
-            with contextlib.suppress(Exception):
+            try:
                 conn.execute(f"DROP TABLE IF EXISTS {tbl} CASCADE")
+            except Exception as e:
+                logger.debug("event=drop_legacy_table_failed table=%s error=%s", tbl, e)
 
         # Tables de sync (player-only)
         for stmt in SYNC_SCHEMA_DDL.split(";"):

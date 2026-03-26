@@ -484,7 +484,8 @@ BACKFILL_FLAGS: dict[str, int] = {
     "events": 1 << 1,  # 2
     "skill": 1 << 2,  # 4
     "personal_scores": 1 << 3,  # 8
-    "performance_scores": 1 << 4,  # 16
+    # performance_scores supprimé : granularité joueur×match, pas par match.
+    # Jamais relu pour décider de recalculer (détection via IS NULL dans player_match_enrichment).
     "accuracy": 1 << 5,  # 32
     "shots": 1 << 6,  # 64
     "enemy_mmr": 1 << 7,  # 128
@@ -496,13 +497,10 @@ BACKFILL_FLAGS: dict[str, int] = {
     "participants_damage": 1 << 13,  # 8192
     "aliases": 1 << 14,  # 16384
     "participants_avg_life": 1 << 15,  # 32768 - Ajouté pour éviter détection infinie
-    # ── LUSR / CSR (v5.3) — non écrits en production ──
-    # ⚠️ Conflit potentiel avec MatchBits.EVENTS/ASSETS (bits 16-17) de constants.py.
-    # Ces entrées ne sont jamais posées sur match_registry.backfill_completed.
-    # Conservées pour rétrocompatibilité des tests uniquement.
-    "lusr": 1 << 16,  # 65536  — non utilisé en production
-    "csr": 1 << 17,  # 131072 — non utilisé en production
     # ── Weapon kills (v5.5) — OBSOLÈTE ──
+    # lusr/csr supprimés : collisionnaient avec MatchBits.EVENTS (1<<16) et
+    # MatchBits.ASSETS (1<<17) de constants.py. Jamais écrits en production.
+    # Supprimés pour éliminer le risque de corruption silencieuse (cf. plan E.5).
     # Ce bit (18 = 262144) n'est jamais posé en production.
     # Source de vérité : MatchBits.WEAPON_KILLS = 1 << 21 dans constants.py.
     # Conservé pour rétrocompatibilité des tests uniquement.
@@ -1541,19 +1539,19 @@ def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
 
     Retourne l'alias si réussi ET que la table maps existe, None sinon.
     """
-    import contextlib
-
     from src.utils.db import ensure_metadata_attached
 
     alias = None
-    with contextlib.suppress(Exception):
+    try:
         alias = ensure_metadata_attached(conn)
+    except Exception as e:
+        logger.debug("event=meta_attach_failed step=try_attach_meta_for_views error=%s", e)
 
     if alias is None:
         return None
 
     # Vérifier que les tables i18n sont bien peuplées (Commit 0 requis)
-    with contextlib.suppress(Exception):
+    try:
         rows = conn.execute(
             "SELECT table_name FROM duckdb_tables() WHERE table_name = 'maps'"
         ).fetchall()
@@ -1564,6 +1562,8 @@ def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
             ).fetchall()
             if any(r[0] == alias for r in db_name_rows):
                 return alias
+    except Exception as e:
+        logger.debug("event=meta_maps_check_failed step=try_attach_meta_for_views error=%s", e)
     return None
 
 
