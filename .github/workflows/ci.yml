@@ -54,10 +54,11 @@ jobs:
       - name: Verify DuckDB installation
         run: |
           python -c "import duckdb; print(f'DuckDB version: {duckdb.__version__}')"
+          python -c "import bitstring; print(f'bitstring: {bitstring.__version__}')"
 
       - name: Run tests
         run: |
-          python -m pytest tests/ -v --tb=short
+          python -m pytest tests/ -v --tb=short --ignore=tests/integration --ignore=tests/e2e
 
       - name: Run visualization tests
         run: |

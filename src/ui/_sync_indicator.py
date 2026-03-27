@@ -30,11 +30,24 @@ def render_sync_indicator(db_path: str, xuid: str | None = None) -> None:
         return
 
     meta = _get_sync_metadata_smart(db_path, xuid=xuid)
-    last_sync = meta.get("last_sync_at")
+    last_sync_raw = meta.get("last_sync_at")
     total_matches = meta.get("total_matches", 0)
 
     now = datetime.now(timezone.utc)
     sync_text = ""
+
+    last_sync: datetime | None = None
+    if isinstance(last_sync_raw, datetime):
+        last_sync = (
+            last_sync_raw if last_sync_raw.tzinfo else last_sync_raw.replace(tzinfo=timezone.utc)
+        )
+    elif isinstance(last_sync_raw, str):
+        try:
+            last_sync = datetime.fromisoformat(last_sync_raw)
+            if last_sync.tzinfo is None:
+                last_sync = last_sync.replace(tzinfo=timezone.utc)
+        except ValueError:
+            last_sync = None
 
     if last_sync:
         sync_text = _format_sync_time(now, last_sync, prefix="Sync")
