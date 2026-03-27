@@ -47,7 +47,11 @@ def _render_shared_stats_metrics(sub: DataFrameLike) -> None:
     total_out = max(1, rates_sub.total)
     win_rate_sub = rates_sub.wins / total_out
     loss_rate_sub = rates_sub.losses / total_out
-    global_ratio_sub = compute_global_ratio(sub)
+    sub_pl = ensure_polars(sub)
+    if "ratio" in sub_pl.columns and sub_pl["ratio"].drop_nulls().len() > 0:
+        global_ratio_sub: float | None = float(sub_pl["ratio"].drop_nulls().mean())
+    else:
+        global_ratio_sub = compute_global_ratio(sub)
 
     k = st.columns(3)
     k[0].metric(t("tm_metric_matches"), f"{len(sub)}")

@@ -69,7 +69,29 @@
 
 ## 📋 Backlog
 
-### � Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores
+### 🔴 Audit — Calculs KDA locaux dans `src/analysis/` à valider vs valeurs API
+
+**Noté le** : 2026-03-27
+**Priorité** : Moyenne
+
+**Contexte** : Suite au fix KDA (2026-03-27), les affichages per-match utilisent désormais exclusivement `p.kda` de l'API. Cependant, plusieurs modules dans `src/analysis/` calculent encore un KDA local à partir des totaux K/D/A pour des métriques agrégées (session, cumul, performance relative) :
+
+- `src/analysis/cumulative.py:72` — `(kills + assists) / max(1, deaths)`
+- `src/analysis/stats.py:102,180` — formules session
+- `src/analysis/_performance_relative.py:75,77` — KDA relatif
+- `src/analysis/_performance_relative_helpers.py:271` — KDA dérivé
+- `src/analysis/_performance_session.py:263,362` — KDA session
+- `src/data/domain/models/stats.py:54,103` — propriété calculée sur `MatchRow`
+
+**Question à trancher** : Pour ces métriques agrégées (ex: "KDA moyen sur la session"), doit-on :
+1. Continuer à calculer `sum(K+A/3)/sum(D)` depuis les totaux (cohérent avec les stats de session)
+2. Ou faire la moyenne des `kda` API per-match (plus fidèle à l'API, mais différente sémantique)
+
+**Action requise** : Décision utilisateur sur la stratégie, puis adapter le code en conséquence.
+
+---
+
+### 🟡 Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores
 
 **Noté le** : 2026-03-26
 **Priorité** : Basse (non bloquant — le chemin normal sync app est déjà vectorisé)
@@ -81,6 +103,33 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 **Solution envisagée** : Pré-charger l'historique complet en une seule requête avant la boucle (comme `batch_compute_performance_scores`), le passer en contexte à `compute_performance_score_for_match()`, et supprimer la requête SQL interne per-match.
 
 **Impact** : Uniquement les backfills multi-flags. Le sync normal (`engine._run_post_sync_compute`) est déjà sur le chemin batch vectorisé.
+
+---
+
+### Script d'analyse des kills par arme pour un match donné (v7++)
+
+**Noté le** : 2026-03-27
+**Priorité** : Basse
+
+**Contexte** : Outil de diagnostic/exploration permettant d'analyser en détail tous les kills d'un match donné, pour un joueur donné.
+
+**Entrée** : `match_id` + `gamertag`
+
+**Sortie** : Tableau avec, pour chaque kill :
+- `match_id`
+- Paire `killer` / `victim` (gamertag ou xuid si inconnu)
+- `timestamp` en format `mm:ss`
+- `weapon_id` (même si inconnu / non résolu)
+
+**Ce que ça impliquerait** :
+1. Requête sur `weapon_kills` (shared_matches_v2) jointure `killer_victim_pairs` + `xuid_aliases`
+2. Résolution des gamertags via `v_gamertag_lookup`
+3. Conversion `timestamp_ms` → `mm:ss`
+4. Affichage : script CLI + éventuellement widget UI dans la page d'un match
+
+**Complexité estimée** : Faible (données déjà disponibles dans `weapon_kills` + vues v6)
+
+**Priorité** : Basse — outil de debug / exploration, non bloquant pour les features v7
 
 ---
 

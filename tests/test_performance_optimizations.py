@@ -73,6 +73,7 @@ def _create_shared_with_data(db_path: Path) -> None:
             kills SMALLINT,
             deaths SMALLINT,
             assists SMALLINT,
+            kda FLOAT,
             shots_fired INTEGER,
             shots_hit INTEGER,
             damage_dealt FLOAT,
@@ -124,10 +125,10 @@ def _create_shared_with_data(db_path: Path) -> None:
         """)
         conn.execute(f"""
             INSERT INTO match_participants (match_id, xuid, gamertag, team_id, outcome,
-                rank, score, kills, deaths, assists, shots_fired, shots_hit,
+                rank, score, kills, deaths, assists, kda, shots_fired, shots_hit,
                 avg_life_seconds, headshot_kills, max_killing_spree, team_mmr)
             VALUES ('{mid}', '{PLAYER_XUID}', 'TestPerf', 0, 2,
-                1, 2500, 15, 6, 4, 200, 110,
+                1, 2500, 15, 6, 4, 2.722, 200, 110,
                 30.5, 5, 3, 1500.0)
         """)
         # Ajouter un adversaire
@@ -376,9 +377,8 @@ class TestMvPlayerMatchesView:
             [PLAYER_XUID],
         ).fetchone()
 
-        # kills=15, deaths=6, assists=4
-        # kda = (15 + 4/3) / 6 ≈ 2.722
-        expected_kda = (15 + 4 / 3.0) / 6
+        # kda = valeur API insérée directement (2.722)
+        expected_kda = 2.722
         assert abs(row[0] - expected_kda) < 0.01
 
         conn.close()
@@ -704,6 +704,6 @@ class TestPerformanceBenchmarks:
         time_cached = time.perf_counter() - start
 
         # Le cache devrait être significativement plus rapide
-        assert (
-            time_cached < time_no_cache
-        ), f"Cache pas plus rapide: {time_cached:.4f}s vs {time_no_cache:.4f}s"
+        assert time_cached < time_no_cache, (
+            f"Cache pas plus rapide: {time_cached:.4f}s vs {time_no_cache:.4f}s"
+        )

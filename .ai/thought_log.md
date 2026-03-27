@@ -7,6 +7,30 @@
 
 ## Journal
 
+### [2026-03-27] — Diagnostic et fixes régressions post-commits 8fc118d/03aeceb — Complété
+
+**Statut :** Complété (5 fixes appliqués + 2 backfills données exécutés)
+
+**Décision technique :**
+- **Problème 1 (tableau rencontres disparu)** : Bug causé par commit 8fc118d — filtre `start_time < ?` correct mais si tous adversaires = premières rencontres, df vide → tableau disparaît. Fix : fallback records `total_encounters=0` depuis `players` scoreboard dans `match_view_encounters.py`.
+- **Problème 2 (axe zéro absent sur graphes négatifs)** : `apply_halo_plot_style` (via `theme.py`) force `zeroline=False` sur tous les axes, écrasant tout config antérieure. Fix : déplacer `update_yaxes(zeroline=True, ...)` APRÈS l'appel dans `trio.py` ET `_teammates_trio_helpers.py`.
+- **Problème 3 (KDA/FDA recalculé au lieu de lire l'API)** : SQL de `teammates_service.py` avait `p.kda AS ratio` nu → NULL pour anciens matchs. Fix : COALESCE identique à `mv_player_matches`. De plus `compute_global_ratio` recalculait depuis les totaux → remplacé par lecture directe de la moyenne de `ratio` dans `teammates_views_shared.py`.
+- **Problème 4 (nombre matchs différent)** : Cache Streamlit — basse priorité, non traité.
+- **Problème 5 (sessions manquantes graphe perf)** : `session_id=NULL` pour 12 matchs JGtm et 12 matchs Madina97294 → `_group_by_session` retourne None. Fix : backfill `--sessions` exécuté.
+
+**Résultats :**
+- 5 fichiers modifiés : `match_view_encounters.py`, `trio.py`, `_teammates_trio_helpers.py`, `teammates_service.py`, `teammates_views_shared.py`
+- 282 tests passent, 0 failure
+- Backfill JGtm : 705 sessions mises à jour ✓
+- Backfill Madina97294 : 1030 sessions mises à jour ✓
+
+**Conclusion / prochaine étape :**
+Tous les problèmes réglés. Vérifier visuellement dans l'app que le graphe "Evolution de la performance d'escouade" affiche bien les sessions 18 mars et 24 mars pour JGtm, Chocoboflor et Madina97294.
+.venv/Scripts/python.exe scripts/backfill_data.py --player Madina97294 --sessions
+```
+
+---
+
 ### [2026-03-27] — Documentation grenade/melee (protocole acurtis) — Complété
 
 **Statut :** Complété

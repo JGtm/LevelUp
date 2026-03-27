@@ -657,7 +657,8 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
 
     enemy_mmr_expr = "p.enemy_mmr" if has_enemy_mmr else "NULL AS enemy_mmr"
 
-    # Vérifier si la colonne kda existe dans match_participants (absente sur anciens schémas/tests)
+    # KDA : valeur officielle de l'API (colonne p.kda de match_participants).
+    # Aucun recalcul local. Si la colonne est absente (schéma de test minimal), NULL.
     has_kda_col = False
     try:
         cols = conn.execute(
@@ -667,13 +668,7 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
         has_kda_col = len(cols) > 0
     except Exception:
         pass
-
-    _kda_fallback = (
-        "CASE WHEN p.deaths > 0"
-        " THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0) / CAST(p.deaths AS FLOAT)"
-        " ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0 END"
-    )
-    kda_expr = f"COALESCE(p.kda, {_kda_fallback})" if has_kda_col else _kda_fallback
+    kda_expr = "p.kda" if has_kda_col else "NULL"
 
     conn.execute(f"""
         CREATE OR REPLACE VIEW {prefix}mv_player_matches AS

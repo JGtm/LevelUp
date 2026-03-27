@@ -46,11 +46,7 @@ _DIRECT_JOIN_SOURCE = """(SELECT
     r.playlist_id, r.playlist_name, r.pair_id, r.pair_name,
     r.game_variant_id, r.game_variant_name,
     p.outcome, p.team_id,
-    CASE WHEN p.deaths > 0
-        THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
-             / CAST(p.deaths AS FLOAT)
-        ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
-    END AS kda,
+    p.kda,
     COALESCE(p.max_killing_spree, 0) AS max_killing_spree,
     COALESCE(p.headshot_kills, 0) AS headshot_kills,
     COALESCE(p.avg_life_seconds, 0) AS avg_life_seconds,
