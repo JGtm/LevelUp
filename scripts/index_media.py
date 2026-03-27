@@ -25,8 +25,17 @@ if sys.stdout.encoding and sys.stdout.encoding.lower().startswith("cp"):
 ROOT_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
+import duckdb
+
 from src.data.media_indexer import MediaIndexer
 from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR
+
+
+def _reset_associations(db_path: Path) -> None:
+    """Vide la table media_match_associations."""
+    with duckdb.connect(str(db_path), read_only=False) as conn:
+        conn.execute("DELETE FROM media_match_associations")
+        conn.commit()
 
 
 def load_settings() -> dict:
@@ -75,6 +84,11 @@ def main() -> int:
         help="Forcer le re-scan de tous les fichiers",
     )
     parser.add_argument(
+        "--reset-assoc",
+        action="store_true",
+        help="Supprimer toutes les associations existantes avant de les recalculer",
+    )
+    parser.add_argument(
         "--all",
         action="store_true",
         help="Indexer tous les joueurs ayant base_dir/gamertag",
@@ -120,6 +134,8 @@ def main() -> int:
                 player_captures_dir=player_captures,
                 force_rescan=args.force,
             )
+            if args.reset_assoc:
+                _reset_associations(db_file)
             n_assoc = indexer.associate_with_matches(tolerance_minutes=args.tolerance)
             n_thumb, _ = indexer.generate_thumbnails_for_new(
                 videos_dir=player_captures,
@@ -167,6 +183,8 @@ def main() -> int:
             player_captures_dir=player_captures,
             force_rescan=args.force,
         )
+        if args.reset_assoc:
+            _reset_associations(db_path_obj)
         n_assoc = indexer.associate_with_matches(tolerance_minutes=args.tolerance)
         n_thumb, _ = indexer.generate_thumbnails_for_new(
             videos_dir=player_captures,
@@ -188,6 +206,8 @@ def main() -> int:
             screens_dir=screens_path,
             force_rescan=args.force,
         )
+        if args.reset_assoc:
+            _reset_associations(db_path_obj)
         n_assoc = indexer.associate_with_matches(tolerance_minutes=args.tolerance)
         n_thumb, _ = indexer.generate_thumbnails_for_new(
             videos_dir=videos_path,

@@ -273,39 +273,40 @@ class TestLocalToUtc:
 
 
 class TestConvertTimezone:
-    """Tests pour _convert_timezone avec tz_name dynamique."""
+    """Tests pour _convert_timezone avec tz_name dynamique.
 
-    def test_convert_utc_to_paris(self):
-        """UTC 13:00 → Paris 14:00 (CET +1h)."""
+    DuckDB stocke les datetime(tzinfo=UTC) en heure locale CET (Europe/Paris sur la machine FR).
+    Les valeurs naïves lues depuis DuckDB représentent donc l'heure CET, pas UTC.
+    Ex : un match à 13:00 UTC est stocké comme "14:00" naïf (CET = UTC+1 en janvier).
+    """
+
+    def test_convert_cet_to_paris(self):
+        """CET 14:00 naïf (=13:00 UTC) → Paris 14:00 (même TZ, pas de conversion)."""
         from src.ui._cache_loading import _convert_timezone
 
-        df = pl.DataFrame({"start_time": [datetime(2024, 1, 15, 13, 0, 0)]}).with_columns(
-            pl.col("start_time").dt.replace_time_zone("UTC")
-        )
+        # Simule ce que DuckDB retourne : 14:00 naïf (CET, stocké pour un match à 13:00 UTC)
+        df = pl.DataFrame({"start_time": [datetime(2024, 1, 15, 14, 0, 0)]})
 
         result = _convert_timezone(df, "Europe/Paris")
-        # 13:00 UTC → 14:00 CET
+        # 14:00 CET → 14:00 Paris (pas de conversion, même TZ)
         assert result["start_time"][0].hour == 14
 
-    def test_convert_utc_to_new_york(self):
-        """UTC 13:00 → New York 08:00 (EST -5h)."""
+    def test_convert_cet_to_new_york(self):
+        """CET 14:00 naïf (=13:00 UTC) → New York 08:00 (EST = UTC-5)."""
         from src.ui._cache_loading import _convert_timezone
 
-        df = pl.DataFrame({"start_time": [datetime(2024, 1, 15, 13, 0, 0)]}).with_columns(
-            pl.col("start_time").dt.replace_time_zone("UTC")
-        )
+        # Simule ce que DuckDB retourne : 14:00 naïf (CET = 13:00 UTC en janvier)
+        df = pl.DataFrame({"start_time": [datetime(2024, 1, 15, 14, 0, 0)]})
 
         result = _convert_timezone(df, "America/New_York")
-        # 13:00 UTC → 08:00 EST
+        # 14:00 CET = 13:00 UTC → 08:00 EST (UTC-5)
         assert result["start_time"][0].hour == 8
 
     def test_convert_adds_date_column(self):
         """_convert_timezone ajoute la colonne 'date'."""
         from src.ui._cache_loading import _convert_timezone
 
-        df = pl.DataFrame({"start_time": [datetime(2024, 6, 1, 12, 0, 0)]}).with_columns(
-            pl.col("start_time").dt.replace_time_zone("UTC")
-        )
+        df = pl.DataFrame({"start_time": [datetime(2024, 6, 1, 12, 0, 0)]})
 
         result = _convert_timezone(df, "Europe/Paris")
         assert "date" in result.columns
@@ -314,9 +315,7 @@ class TestConvertTimezone:
         """Après conversion, start_time est naïf (pas de timezone attachée)."""
         from src.ui._cache_loading import _convert_timezone
 
-        df = pl.DataFrame({"start_time": [datetime(2024, 1, 15, 13, 0, 0)]}).with_columns(
-            pl.col("start_time").dt.replace_time_zone("UTC")
-        )
+        df = pl.DataFrame({"start_time": [datetime(2024, 1, 15, 14, 0, 0)]})
 
         result = _convert_timezone(df, "Europe/Paris")
         # Le dtype ne doit pas avoir un time_zone attaché
@@ -326,9 +325,7 @@ class TestConvertTimezone:
         """Le défaut de _convert_timezone est 'Europe/Paris'."""
         from src.ui._cache_loading import _convert_timezone
 
-        df = pl.DataFrame({"start_time": [datetime(2024, 1, 15, 13, 0, 0)]}).with_columns(
-            pl.col("start_time").dt.replace_time_zone("UTC")
-        )
+        df = pl.DataFrame({"start_time": [datetime(2024, 1, 15, 14, 0, 0)]})
 
         result_explicit = _convert_timezone(df.clone(), "Europe/Paris")
         result_default = _convert_timezone(df.clone())
@@ -338,7 +335,7 @@ class TestConvertTimezone:
         """_convert_timezone sur DataFrame vide ne lève pas d'exception."""
         from src.ui._cache_loading import _convert_timezone
 
-        df = pl.DataFrame({"start_time": pl.Series([], dtype=pl.Datetime("us", "UTC"))})
+        df = pl.DataFrame({"start_time": pl.Series([], dtype=pl.Datetime("us"))})
         result = _convert_timezone(df, "America/Tokyo")
         assert isinstance(result, pl.DataFrame)
 
