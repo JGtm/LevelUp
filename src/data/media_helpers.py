@@ -15,6 +15,7 @@ from typing import Any
 
 import duckdb
 
+from src.ui.tz import db_ts_to_utc
 from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR, get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ def match_start_to_epoch(start_time: datetime | str | float) -> float | None:
         else:
             return None
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = db_ts_to_utc(dt)
         return dt.timestamp()
     except Exception:
         return None
@@ -242,9 +243,9 @@ def get_file_metadata(file_path: Path) -> dict[str, Any] | None:  # noqa: PLR091
                 capture_start_utc = capture_end_utc
         else:
             exif_dt = get_image_exif_datetime(file_path)
-            if exif_dt:
-                if exif_dt.tzinfo is not None:
-                    exif_dt = exif_dt.astimezone(timezone.utc).replace(tzinfo=None)
+            # EXIF sans timezone = heure locale appareil (non UTC) → ignorer
+            if exif_dt and exif_dt.tzinfo is not None:
+                exif_dt = exif_dt.astimezone(timezone.utc).replace(tzinfo=None)
                 capture_end_utc = exif_dt
                 capture_start_utc = exif_dt
             else:

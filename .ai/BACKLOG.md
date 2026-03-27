@@ -1,6 +1,6 @@
-— Tâches et TODO centralisés
+﻿— Tâches et TODO centralisés
 
-> Mis à jour le 2026-03-22.
+> Mis à jour le 2026-03-27.
 
 ---
 
@@ -8,6 +8,16 @@
 
 | Date | Item |
 |------|------|
+| 2026-03-27 | **Bug — `index_media.py --force` levait `ConstraintError: Duplicate key`** : quand `force_rescan=True`, `existing` était laissé vide `{}` → toutes les entrées considérées "nouvelles" → INSERT sur des clés déjà présentes. Fix : `existing` est toujours chargé depuis la DB ; `force_rescan` contourne uniquement le filtre delta `mtime`. Ré-indexation JGtm (73 médias) exécutée avec succès après fix. |
+| 2026-03-26 | **Bug critique — `mv_player_matches` recalcule le KDA au lieu de lire la valeur API** : vue recréait `(kills + assists/3)/deaths` au lieu de `COALESCE(p.kda, fallback)`. Fix : détection dynamique `has_kda_col` (même pattern `has_enemy_mmr`) + génération SQL conditionnelle. |
+| 2026-03-26 | **UX — Score d'équipe supérieur aux scores individuels (En-tête Page Coéquipiers)** : carte équipe n'affichait pas les bonus collectifs. Fix : `_render_compact_team_card` calcule `bonus = score - base_avg` et affiche `"moy. X (+Y collectif)"` quand > 0. |
+| 2026-03-26 | **Bug — Colonne "Dernière rencontre" incohérente (Page Match · Encounters)** : SQL `MAX(start_time)` incluait le match courant et les matchs futurs. Fix : `filter_past` CTE + `_fetch_match_start_time` helper + guard `days = max(0, delta.days)` + colonne renommée "Précédente rencontre" + "1ère rencontre" pour les nouvelles têtes. |
+| 2026-03-26 | **Bug annexe — `datetime.utcnow()` déprécié dans `career_lusr.py`** : remplacé par `datetime.now(timezone.utc).replace(tzinfo=None)`. |
+| 2026-03-26 | **Bug — Médias mal rattachés aux matchs (décalage fuseau horaire)** : `epoch(capture_end_utc)` → `epoch(timezone('UTC', capture_end_utc))` dans `associate_with_matches()` + EXIF naïf ignoré (heure locale caméra, pas UTC). Ré-indexation requise (faite pour JGtm le 2026-03-27). |
+| 2026-03-26 | **Bug RÉCURRENT CRITIQUE — Session escouade absente du graphe "Évolution de la performance"** : root cause A (fanout ouvrait shared en R/W → conflit handle Streamlit) fixée via Phase J (`shared_read_only=True` dans `_engine_fanout.py`). Fix défensif LEFT JOIN dans `_performance_squad._join_perf_frames()`. Les deux chemins de fix documentés dans l'audit sont implémentés. |
+| 2026-03-26 | **Bug — Stats coéquipiers absentes (Page Teammates)** : résolu par le fix fanout R/O (Phase J). La root cause était identique au bug session escouade — fanout silencieux → PME coéquipier non créées. À revalider sur la prochaine session de jeu. |
+| 2026-03-26 | **Bug annexe — `get_sync_metadata` lit mauvaise DB** : `SELECT last_sync_at FROM meta.sync_meta WHERE xuid=?` → `SELECT value FROM sync_meta WHERE key='last_sync_at'` dans la player DB. Fix commité dans `_diagnostic_repo.py` (Phase F). |
+| 2026-03-26 | **Piste — Crashes silencieux (Page Coéquipiers · Top medals)** : source principale (connexions zombies fanout R/W) supprimée par Phase J. Si non récurrent → archivé. |
 | 2026-03-21 | **Bug — Frags vs. détail armes (double-comptage melee)** : melee kills filmés attribués à l'arme tenue + `melee_kills` API → double-comptage. Fix : remainder `api_total - film_kills` dans 3 fichiers + `load_total_kills_for_player()` + 2 nouveaux tests. |
 | 2026-03-21 | **UI — Graphe stats/min escouade : morts sous l'axe** — `plot_per_minute_timeseries` : deaths tracées en négatif (`dpm_neg`), `customdata[5]` = valeur absolue, `hover_dpm_neg` i18n, ticks Y absolus via `build_symmetric_abs_ticks` (extrait dans `src/visualization/_permin_helpers.py`). `timeseries.py` à exactement 500L. |
 | 2026-03-21 | **Maintenance — Nettoyage dossier `scripts/`** — 10 scripts investigation → `scripts/investigation/` + README ; `cleanup_legacy_tables.py` + `cleanup_player_dbs_v5.py` → `scripts/_archive/` ; `.tmp.*` supprimés. |
@@ -59,7 +69,151 @@
 
 ## 📋 Backlog
 
-### Kills environnementaux — catégorie dédiée (v7+)
+### 🟡 Feature — Badges Remontada / Effondrement / Contre-Remontada (v7+)
+
+**Noté le** : 2026-03-27
+**Priorité** : Moyenne
+
+#### Contexte
+
+Extension du système `DominanceFlag` (Domination / Humiliation) avec 3 nouveaux badges narratifs basés sur la progression du score *au cours du match*, et non plus uniquement sur le score final. Source de données : `killer_victim_pairs.time_ms` + `match_participants` (team mapping) + `match_registry` (scores finaux, mode).
+
+#### Badges définis
+
+| Badge | Nom FR envisagé | Condition déclencheur | Résultat final |
+|-------|-----------------|----------------------|----------------|
+| **Remontada** | Remontada | Déficit maximum ≥ 25–30 kills avant le kill #40 (80% du match) | WIN |
+| **Effondrement** / **Débandade** | À trancher | Avance maximum ≥ 25–30 kills avant le kill #35 (70% du match) | LOSS |
+| **Contre-Remontada** | Contre-Remontada | Lead ≥ 25–30 kills + ennemi comble ≥ 7 kills d'écart (revient à ≤ 5 de nous) | WIN |
+
+> **Seuils Slayer (objectif 50 kills)** — à normaliser pour BTB (objectif 100 : doubler) et les modes objectifs (CTF/Strongholds : étude séparée sur `highlight_events`).
+>
+> Le seuil 25–30 kills est calibré pour être rare et "beau" — à confirmer par le scan ci-dessous.
+
+#### Étape préalable obligatoire : scan du corpus
+
+Avant toute implémentation, exécuter une requête d'exploration sur `killer_victim_pairs` + `match_participants` + `match_registry` pour compter le nombre de matchs qui auraient déclenché chaque badge avec différents seuils (20 / 25 / 30 kills). Si les occurrences sont trop nombreuses → augmenter le seuil. Si trop rares (< 5 matchs sur le corpus total) → assouplir.
+
+**Requête cible (conceptuelle) :**
+```
+Pour chaque match Slayer :
+  1. Joindre killer_victim_pairs → match_participants → team_id du killer
+  2. Trier par time_ms, calculer le score cumulatif par équipe à chaque kill
+  3. Identifier le déficit/avance max pour notre équipe avant kill #40/#35
+  4. Croiser avec outcome (WIN/LOSS) depuis match_participants
+  5. Compter les matchs déclenchant le badge par seuil (20/25/30)
+```
+
+#### Architecture cible
+
+- **`src/analysis/_medal_verdicts.py`** : étendre `DominanceFlag` avec `REMONTADA = 3`, `EFFONDREMENT = 4`, `CONTRE_REMONTADA = 5`
+- **`src/analysis/comeback_analysis.py`** (nouveau, `analysis/` car stateless) : fonctions pures prenant un `pl.DataFrame` de kills triés → calcul des métriques de progression
+- **`src/data/comeback_backfill.py`** (nouveau) : orchestration backfill → écriture dans `player_match_enrichment.dominance_flag`
+- **`scripts/backfill_data.py`** : ajouter option `--comeback-badges`
+
+#### Couverture données
+
+- **Slayer 4v4** : couverture complète via `killer_victim_pairs`
+- **BTB Slayer** : idem, seuils × 2
+- **CTF / Strongholds** : nécessite une étude préalable des `event_type` dans `highlight_events` (captures / zone ticks) — hors scope v1
+- **Couverture `killer_victim_pairs`** : vérifier le % de matchs avec `time_ms` non-null avant de décider si un backfill ciblé est nécessaire
+
+#### Décisions ouvertes
+
+- Nom final du badge "honte" : **Effondrement** ou **Débandade** ?
+- Seuil exact : 25 ou 30 kills ? (à trancher après scan)
+- Faut-il stocker un nouveau champ dédié ou surcharger `dominance_flag` avec les valeurs 3/4/5 ?
+
+---
+
+### 🔴 Audit — Calculs KDA locaux dans `src/analysis/` à valider vs valeurs API  (v6+)
+
+**Noté le** : 2026-03-27
+**Priorité** : Moyenne
+
+**Contexte** : Suite au fix KDA (2026-03-27), les affichages per-match utilisent désormais exclusivement `p.kda` de l'API. Cependant, plusieurs modules dans `src/analysis/` calculent encore un KDA local à partir des totaux K/D/A pour des métriques agrégées (session, cumul, performance relative) :
+
+- `src/analysis/cumulative.py:72` — `(kills + assists) / max(1, deaths)`
+- `src/analysis/stats.py:102,180` — formules session
+- `src/analysis/_performance_relative.py:75,77` — KDA relatif
+- `src/analysis/_performance_relative_helpers.py:271` — KDA dérivé
+- `src/analysis/_performance_session.py:263,362` — KDA session
+- `src/data/domain/models/stats.py:54,103` — propriété calculée sur `MatchRow`
+
+**Question à trancher** : Pour ces métriques agrégées (ex: "KDA moyen sur la session"), doit-on :
+1. Continuer à calculer `sum(K+A/3)/sum(D)` depuis les totaux (cohérent avec les stats de session)
+2. Ou faire la moyenne des `kda` API per-match (plus fidèle à l'API, mais différente sémantique)
+
+**Action requise** : Décision utilisateur sur la stratégie, puis adapter le code en conséquence.
+
+---
+
+### 🟡 Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores (v7+)
+
+**Noté le** : 2026-03-26
+**Priorité** : Basse (non bloquant — le chemin normal sync app est déjà vectorisé)
+
+**Contexte** : Quand `--force-performance-scores` est combiné avec d'autres flags backfill (ex. `--medals --performance-scores`), la boucle séquentielle de l'orchestrateur appelle `compute_performance_score_for_match()` une fois par match. Cette fonction fait une requête SQL individuelle à chaque itération pour charger l'historique des 50 derniers matchs → ~1 req/match → lent sur un grand historique.
+
+Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performance-scores` est le *seul* flag, mais pas quand combiné à d'autres.
+
+**Solution envisagée** : Pré-charger l'historique complet en une seule requête avant la boucle (comme `batch_compute_performance_scores`), le passer en contexte à `compute_performance_score_for_match()`, et supprimer la requête SQL interne per-match.
+
+**Impact** : Uniquement les backfills multi-flags. Le sync normal (`engine._run_post_sync_compute`) est déjà sur le chemin batch vectorisé.
+
+---
+
+### Script d'analyse des kills par arme pour un match donné (v7+)
+
+**Noté le** : 2026-03-27
+**Priorité** : Basse
+
+**Contexte** : Outil de diagnostic/exploration permettant d'analyser en détail tous les kills d'un match donné, pour un joueur donné.
+
+**Entrée** : `match_id` + `gamertag`
+
+**Sortie** : Tableau avec, pour chaque kill :
+- `match_id`
+- Paire `killer` / `victim` (gamertag ou xuid si inconnu)
+- `timestamp` en format `mm:ss`
+- `weapon_id` (même si inconnu / non résolu)
+
+**Ce que ça impliquerait** :
+1. Requête sur `weapon_kills` (shared_matches_v2) jointure `killer_victim_pairs` + `xuid_aliases`
+2. Résolution des gamertags via `v_gamertag_lookup`
+3. Conversion `timestamp_ms` → `mm:ss`
+4. Affichage : script CLI + éventuellement widget UI dans la page d'un match
+
+**Complexité estimée** : Faible (données déjà disponibles dans `weapon_kills` + vues v6)
+
+**Priorité** : Basse — outil de debug / exploration, non bloquant pour les features v7
+
+---
+
+### UI — Graphe combiné Frags↑/Morts↓ (Page Coéquipiers · Vue Escouade) (v6+)
+
+**Noté le** : 2026-03-27
+**Priorité** : Basse
+
+**Idée** : Fusionner les deux graphes "Frags" et "Morts" de la vue escouade en un seul graphe divergent :
+- Kills au-dessus de l'axe X (couleurs joueur)
+- Morts en dessous de l'axe X (teintes rouges Okabe-Ito)
+- `barmode="group"` avec `offsetgroup=name` par joueur → kills et morts du même joueur alignés au même x
+- Lignes lissées kills (au-dessus) et morts (en dessous, `dash="dot"`)
+- Lignes de moyenne globale pour kills et morts (pointillées blanches)
+- Axe Y : "Frags ↑ | ↓ Morts" (FR) / "Kills ↑ | ↓ Deaths" (EN)
+
+**Implémentation envisagée** :
+1. `_prep_kd_df` + `_add_kd_player_traces` + `plot_trio_kills_deaths` dans `src/visualization/trio.py`
+2. Export dans `src/visualization/__init__.py`
+3. `tm_kills_deaths` clé i18n dans `src/ui/i18n/pages/teammates.py`
+4. `teammates_charts.py` : remplacer les entrées `kills` + `deaths` de `_TRIO_METRIC_SPECS` par un appel unique `_plot_trio_kills_deaths_chart`
+
+**Complexité estimée** : Faible (infrastructure déjà en place, `is_inverse=True` existe déjà)
+
+---
+
+### Kills environnementaux — catégorie dédiée (v7++)
 
 **Contexte** : La médaille **Kong** (kill via baril projeté) est actuellement comptée dans `GRENADE_MEDALS` faute d'une meilleure catégorie. Ce classement est approximatif — il est impossible de savoir avec certitude si l'API inclut ces kills dans `GrenadeKills` ou non.
 
@@ -78,3 +232,5 @@
 **Complexité estimée** : Moyenne (surtout le backfill + validation que l'API expose bien des compteurs séparés)
 
 **Priorité** : Basse — les barrel kills sont extrêmement rares, l'impact sur les stats est négligeable. À faire uniquement si on veut une exhaustivité totale des catégories de kills.
+
+---

@@ -210,7 +210,7 @@ def plot_kd_timeseries(
         showlegend=True,
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "center", "x": 0.5},
     )
-    fig.add_hline(y=0, line_width=1, line_color=colors["neutral"], line_dash="dash")
+    fig.add_hline(y=0, line_width=2, line_color="rgba(255,255,255,0.75)")
 
     return apply_halo_plot_style(fig, title=title, height=height)
 

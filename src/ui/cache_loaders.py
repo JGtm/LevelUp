@@ -152,14 +152,20 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
             try:
                 df = df.with_columns(
                     pl.col("start_time")
+                    .dt.replace_time_zone(PARIS_TZ_NAME)
                     .dt.convert_time_zone(_tz)
                     .dt.replace_time_zone(None)
                     .alias("start_time")
                 )
             except Exception:
+                logger.debug(
+                    "_enrich_matches_df: conversion timezone échouée (tz=%s), retry",
+                    _tz,
+                    exc_info=True,
+                )
                 df = df.with_columns(
                     pl.col("start_time")
-                    .dt.replace_time_zone("UTC")
+                    .dt.replace_time_zone(PARIS_TZ_NAME)
                     .dt.convert_time_zone(_tz)
                     .dt.replace_time_zone(None)
                     .alias("start_time")
@@ -167,7 +173,7 @@ def _enrich_matches_df(df: pl.DataFrame) -> pl.DataFrame:
         elif start_time_dtype == pl.Utf8:
             df = df.with_columns(
                 pl.col("start_time")
-                .str.to_datetime(time_zone="UTC")
+                .str.to_datetime(time_zone=PARIS_TZ_NAME)
                 .dt.convert_time_zone(_tz)
                 .dt.replace_time_zone(None)
                 .alias("start_time")

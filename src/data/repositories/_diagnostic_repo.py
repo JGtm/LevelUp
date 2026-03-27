@@ -16,19 +16,21 @@ class DiagnosticMixin:
     """Diagnostic de stockage et métadonnées de synchronisation."""
 
     def get_sync_metadata(self) -> dict[str, Any]:
-        """Récupère les métadonnées de synchronisation."""
+        """Récupère les métadonnées de synchronisation depuis la player DB locale.
+
+        Phase F : lit depuis sync_meta WHERE key='last_sync_at' (player DB locale),
+        et non plus depuis meta.sync_meta (mauvaise DB, mauvais schéma).
+        """
         conn = self._get_connection()
 
         last_sync = None
-        if "meta" in self._attached_dbs:
-            try:
-                result = conn.execute(
-                    "SELECT last_sync_at FROM meta.sync_meta WHERE xuid = ?",
-                    [self._xuid],
-                ).fetchone()
-                last_sync = result[0] if result else None
-            except Exception:
-                pass
+        try:
+            result = conn.execute(
+                "SELECT value FROM sync_meta WHERE key = 'last_sync_at'",
+            ).fetchone()
+            last_sync = result[0] if result else None
+        except Exception as e:
+            logger.debug("get_sync_metadata: lecture sync_meta échouée: %s", e)
 
         return {
             "last_sync_at": last_sync,

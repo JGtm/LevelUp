@@ -7,6 +7,323 @@
 
 ## Journal
 
+### [2026-03-27] — Backlog : spécification badges Remontada / Effondrement / Contre-Remontada — Complété
+
+**Statut** : Complété (spécification uniquement, implémentation en backlog)
+
+**Décision technique** : Extension future du système `DominanceFlag`. Badges basés sur `killer_victim_pairs.time_ms` (timeline de kills) + `match_participants` (team mapping). Seuil retenu : déficit/avance ≥ 25–30 kills (Slayer 50) — volontairement rare. Étape préalable obligatoire : scan corpus pour calibrer le seuil exact sur 3 valeurs (20/25/30). Contre-Remontada = Option A (on stoppe leur retour après avoir perdu une avance significative).
+
+**Résultats** : Item structuré ajouté dans `.ai/BACKLOG.md` avec architecture cible, requête d'exploration, et décisions ouvertes (nom "Effondrement" vs "Débandade", seuil exact, stockage dans DominanceFlag ou champ séparé).
+
+**Prochaine étape** : Scan SQL corpus avant toute ligne de code.
+
+---
+
+### [2026-03-27] — Fix radar "Complémentarité" : axe Objectifs quasi invisible sur sessions mixtes — Complété
+
+**Statut** : Complété
+
+**Problème** : Sur la page Teammates, le graphe "Complémentarité de l'escouade" affichait l'axe "Objectifs" à ~4% pour la session du 24 mars (quasi invisible).
+
+**Cause** : Dans `_compute_player_profile` (teammates_synergy.py:125-126), le seuil "objectifs" était multiplié par `n_matches` (12 au total), alors que `objective_score` ne peut être gagné que sur les matchs en mode objectif (CTF, Strongholds…). Pour la session du 24 mars : 4 matchs objectifs sur 12. Résultat : `745 / (1600 * 12) = 3.9%`.
+
+**Décision technique** : Exposer `_is_objective_mode_from_pair_name` en alias public `is_objective_mode_from_pair_name` dans `src/analysis/participation_radar.py`. Dans `_compute_player_profile`, calculer `n_obj_matches` = nombre de matchs en mode objectif dans la session, et scaler `scaled_th["objectifs"]` par `n_obj_matches` au lieu de `n_matches`.
+
+**Résultat** : Axe objectifs passe de 3.9% à 11.6% pour la session du 24 mars (4 matchs objectifs). Les axes combat/support/score conservent le scaling par `n_matches` total. 5183 tests passent.
+
+**Fichiers modifiés** : `src/analysis/participation_radar.py`, `src/ui/pages/teammates_synergy.py`
+
+---
+
+### [2026-03-27] — Diagnostic et fixes régressions post-commits 8fc118d/03aeceb — Complété
+
+**Statut :** Complété (5 fixes appliqués + 2 backfills données exécutés)
+
+**Décision technique :**
+- **Problème 1 (tableau rencontres disparu)** : Bug causé par commit 8fc118d — filtre `start_time < ?` correct mais si tous adversaires = premières rencontres, df vide → tableau disparaît. Fix : fallback records `total_encounters=0` depuis `players` scoreboard dans `match_view_encounters.py`.
+- **Problème 2 (axe zéro absent sur graphes négatifs)** : `apply_halo_plot_style` (via `theme.py`) force `zeroline=False` sur tous les axes, écrasant tout config antérieure. Fix : déplacer `update_yaxes(zeroline=True, ...)` APRÈS l'appel dans `trio.py` ET `_teammates_trio_helpers.py`.
+- **Problème 3 (KDA/FDA recalculé au lieu de lire l'API)** : SQL de `teammates_service.py` avait `p.kda AS ratio` nu → NULL pour anciens matchs. Fix : COALESCE identique à `mv_player_matches`. De plus `compute_global_ratio` recalculait depuis les totaux → remplacé par lecture directe de la moyenne de `ratio` dans `teammates_views_shared.py`.
+- **Problème 4 (nombre matchs différent)** : Cache Streamlit — basse priorité, non traité.
+- **Problème 5 (sessions manquantes graphe perf)** : `session_id=NULL` pour 12 matchs JGtm et 12 matchs Madina97294 → `_group_by_session` retourne None. Fix : backfill `--sessions` exécuté.
+
+**Résultats :**
+- 5 fichiers modifiés : `match_view_encounters.py`, `trio.py`, `_teammates_trio_helpers.py`, `teammates_service.py`, `teammates_views_shared.py`
+- 282 tests passent, 0 failure
+- Backfill JGtm : 705 sessions mises à jour ✓
+- Backfill Madina97294 : 1030 sessions mises à jour ✓
+
+**Conclusion / prochaine étape :**
+Tous les problèmes réglés. Vérifier visuellement dans l'app que le graphe "Evolution de la performance d'escouade" affiche bien les sessions 18 mars et 24 mars pour JGtm, Chocoboflor et Madina97294.
+.venv/Scripts/python.exe scripts/backfill_data.py --player Madina97294 --sessions
+```
+
+---
+
+### [2026-03-27] — Documentation grenade/melee (protocole acurtis) — Complété
+
+**Statut :** Complété
+
+**Décision technique :** Création de `docs/GRENADE_MELEE_DETECTION.md` comme référence technique
+pour les markers binaires grenade (`0x4c0c00`) et melee (`0b10100110010`) décrits par Andy Curtis.
+Aucune modification de code — document de référence uniquement, avec analyse des écarts vs
+l'implémentation actuelle (inférence médailles) et 5 pistes d'amélioration priorisées.
+
+**Résultats :** Écart principal identifié : notre marker fire events (`0b10100100110`) est distinct
+du marker melee d'Andy (`0b10100110010`). Les grenades actuelles sont des sentinels (type inconnu,
+kills seulement). Le WID frag 64 bits actuel (`0xb6dbead842c9679f`, marqué `unconfirmed`) ne
+correspond pas aux 4 premiers octets de l'ID 32 bits confirmé d'Andy (`0xB0171062`).
+
+**Conclusion :** Piste A (scanner grenade) évaluable après validation croisée sur 10–20 matchs.
+Piste E (harmonisation IDs 32/64 bits) à traiter en priorité avant toute écriture DB.
+
+---
+
+### [2026-03-27] — Fix médias : bouton "Ouvrir le match" perd le joueur actif — Complété
+
+**Statut :** Complété
+
+**Décision technique :** Dans `media_tab.py`, le bouton "Ouvrir le match" était une balise `<a href target="_blank">` → nouvel onglet = nouvelle session Streamlit = `db_path`/`xuid` réinitialisés au défaut. Fix : remplacé par `open_match_button()` de `media_library_render.py` qui utilise `st.button` + `_pending_page`/`_pending_match_id` (navigation dans le même onglet, session conservée).
+
+**Résultats :** Import `urllib.parse` supprimé (dead import). Le joueur actif est maintenant conservé lors de la navigation vers la page Match.
+
+**Conclusion :** Même pattern que la fix précédente sur historique/dernier match.
+
+---
+
+### [2026-03-27] — Fix systémique timezone DuckDB (6 fichiers) — Complété
+
+**Statut :** Complété
+
+**Décision technique :** Bug systémique : DuckDB 1.4.4 convertit les `datetime(tzinfo=UTC)` en heure locale CET (UTC+1) avant de stocker dans les colonnes `TIMESTAMP`. Résultat : toutes les heures de matchs stockées en base représentent l'heure locale Paris, pas UTC. Constat : une capture à 22:46 Paris apparaissait sur le match de 23:45 (Salvation) au lieu de 22:45 (Origin).
+
+**Décision architecturale :** Corriger à la couche lecture/affichage uniquement (pas de migration DB). Créer `db_ts_to_utc()` dans `src/ui/tz.py` comme couche d'abstraction.
+
+**6 fichiers modifiés :**
+1. `src/ui/tz.py` : ajout de `db_ts_to_utc()` — utilise `astimezone(UTC)` sur les naïfs (traite comme heure locale)
+2. `src/ui/_cache_loading.py::_convert_timezone()` : `replace_time_zone(PARIS_TZ_NAME)` (storage TZ) + `convert_time_zone(tz_name)` (display TZ) — supporte correctement un utilisateur en NY
+3. `src/ui/cache_loaders.py::_enrich_matches_df()` : même correction que _cache_loading
+4. `src/data/media_helpers.py::match_start_to_epoch()` : `db_ts_to_utc()` remplace `replace(tzinfo=UTC)`
+5. `src/ui/pages/match_view_encounters_logic.py::_relative_date()` : idem
+6. `src/analysis/sessions.py::is_session_potentially_active()` : idem
+
+**Tests :** 5160 passed. Baseline taille mise à jour. Tests timezone et media_indexer mis à jour pour refléter le nouveau contrat (inputs CET naïfs, pas UTC-aware).
+
+**Ré-indexation :** `python scripts/index_media.py --all --reset-assoc` exécuté — 90 associations recalculées pour JGtm.
+
+**Conclusion :** Les pages Explorer, Historique, Carrière, Dernier Match et Médias affichent désormais les heures correctes. Un utilisateur en NY verrait ses matchs à l'heure NY (conversion CET → NY via `convert_time_zone`).
+
+---
+
+### [2026-03-27] — Fix CI Python 3.10/3.11/3.12 — Complété
+
+**Statut :** Complété
+
+**Décision technique :** Diagnostic par simulation d'un environnement CI Ubuntu (venv avec duckdb 1.5.1, polars 1.39.3). 3 causes d'échec identifiées :
+1. `bitstring` non déclaré dans `pyproject.toml` → `ModuleNotFoundError` à la collection pytest (import top-level dans `src/analysis/_weapon_scanners.py`)
+2. `aiohttp/aiohttp-client-cache/aiosqlite/spnkr` absents de `[dev]` → `ImportError` dans `test_auth_provider.py`
+3. `lancedb` absent → 3 ERROR dans `tests/test_rag.py::TestHaloKnowledgeBase`
+4. CI exécutait `tests/integration/` (metadata.duckdb committée détectée comme présente)
+
+**Résultats :** 5144 passed, 7 skipped, 0 failed dans simulation CI (duckdb 1.5.1 + polars 1.39.3 + sans lancedb). Commit `aab80b0`.
+
+**Prochaine étape :** Pousser la branche, vérifier les CI runs GitHub Actions.
+
+---
+
+### [2026-03-27] — Fix TypeError sync indicator (datetime vs str) — Complété
+
+**Statut :** Complété
+
+**Décision technique :** `_get_sync_metadata_smart` retourne `last_sync_at` comme string ISO depuis `get_sync_metadata()`. La fonction `_format_sync_time` attendait un `datetime`, causant `TypeError: unsupported operand type(s) for -: 'datetime.datetime' and 'str'`. Correction dans `_sync_indicator.py` : parsing conditionnel de `last_sync_raw` (str → `datetime.fromisoformat()` avec ajout UTC si naive, datetime → ajout UTC si naive).
+
+**Résultats :** Erreur corrigée sans toucher au repo ni au schéma DB.
+
+**Prochaine étape :** RAS.
+
+---
+
+### [2026-03-26] — Fixes KDA/Encounters/Media/Squad + tests — Complété
+
+**Statut :** Complété — commits `8fc118d` + suite sur `fix/sync-ui-hardening-plan`
+
+**Décision technique :**
+
+4 bugs du backlog résolus + couverture tests complète (16 tests) :
+
+**Fix 1 — KDA COALESCE** (`migrations.py::ensure_mv_player_matches_view`) : La vue `mv_player_matches` utilisait `COALESCE(p.kda, formule)` de façon statique → erreur Binder sur schemas sans colonne `kda`. Correction : détection dynamique `has_kda_col` via `information_schema.columns` (même pattern que `has_enemy_mmr`). La vue génère soit `COALESCE(p.kda, fallback)` soit directement `fallback`.
+
+**Fix 2 — Encounters filter_past** (`_encounter_loader.py`) : La page match_view affichait des stats d'encounters incluant le match en cours. Ajout du paramètre `match_start_time`/`current_match_id` à `load_encounter_stats` + helper `_my_matches_cte(filter_past)` qui génère un CTE avec `INNER JOIN match_registry r2 ... AND r2.start_time < ? AND mp.match_id != ?`.
+
+**Fix 3 — Media EXIF naïf ignoré** (`media_helpers.py` + `media_indexer.py`) : Les timestamps EXIF sans timezone étaient traités comme UTC → mauvais tri chronologique. Fix : on ignore les EXIF sans tzinfo (= heure locale appareil) et on reste sur `mtime`. Le SQL corrige aussi `epoch(mf.capture_end_utc)` → `epoch(timezone('UTC', mf.capture_end_utc))`.
+
+**Fix 4 — Squad score bonus** (`performance.py` + i18n) : La carte équipe manquait le bonus collectif. Ajout du calcul `bonus = score - base_avg` et affichage conditionnel `"moy. X (+Y collectif)"`.
+
+**Résultats :** 16 tests passent, suite complète 5084 passed (0 failures, 4 skipped).
+
+**Prochaine étape :** Aucune — branche `fix/sync-ui-hardening-plan` prête pour PR.
+
+---
+
+### [2026-03-25] — Fix LUSR seed + perf fenêtre-50 + bypass boucle force — Complété
+
+**Statut :** Complété — commit `63e3187` sur `fix/sync-ui-hardening-plan`
+
+**Décision technique :**
+
+**Bug LUSR (Madina97294)** : La batch initiale (25/02) avait utilisé du code dev non commité (`PlayerState.from_csr(1410)` → mu₀=1940), alors que le code commité utilise `INITIAL_MU=1500`. Tous les syncs suivants redémarraient de 1500 → écart permanent de -433pts (Argent V au lieu de Platine VI).
+
+**Fix 1 — seed LUSR** (`_skill_rating.py::batch_compute_lusr`) : En mode incrémental (`not force`), la fonction charge maintenant les derniers `(rating_value, rating_deviation)` par `playlist_group` depuis `match_skill_rank` via `_load_existing_lusr_states()` et les passe à `compute_skill_ratings_batch(existing_states=...)`. Empêche tout redépart à `INITIAL_MU=1500`.
+
+**Fix 2 — fenêtre glissante 50 matchs** (`_performance.py`, `strategies.py`) : `_compute_perf_updates()`, `_compute_performance_score()` et `compute_performance_score_for_match` utilisent désormais `LIMIT 50 ORDER BY DESC` + outer `ORDER BY ASC` au lieu de l'historique complet.
+
+**Fix 3 — bypass boucle force** (`orchestrator.py`) : Quand `--force-performance-scores` est le seul flag actif (`_perf_force_only=True`), la boucle séquentielle `get_match_stats` est ignorée (comme `_weapons_only_shortcut`). Le batch vectorisé `_MinimalEngine.batch_compute_performance_scores(force=True)` s'exécute en post-boucle. Résultat : 23s pour 2058 matchs au lieu de ~17min.
+
+**Résultats prod (25/03/2026) :**
+- Madina97294 : 1354 (Argent V) → **1788 (Platine VI)** via `--force-lusr` (seed CSR=1400 → mu=1933)
+- JGtm : stable Or III/IV (~1493-1503)
+- Chocoboflor : stable Or II (~1450-1457)
+- XxDaemonGamerxX : stable Or III (~1480-1488)
+
+**Fichiers modifiés :** `_skill_rating.py`, `_performance.py`, `strategies.py`, `orchestrator.py`
+
+---
+
+### [2026-03-26] — Vérification finale + coverage tests/logs — Complété
+
+**Décision technique :**
+- Ajout `event=async_loop_end players=N ok=N failed=N` dans `_sync_all_players_loop_async` (symétrie avec `async_loop_start`).
+- Création `tests/test_sync_phase_g.py` (7 tests) : vérification absence dead code par grep, `_sync_all_players_loop_async` est bien `async def`, `event=async_loop_start` loggé 1 seule fois pour N joueurs, `event=async_loop_end` avec compteurs ok/failed, appel `sync_player_duckdb_async` par joueur, gestion DB introuvable sans crash.
+- Création `tests/test_sync_phase_i.py` (6 tests) : `_run_post_sync_pipeline` est `async def`, skip agrégats/post_compute si 0 matchs, LUSR toujours appelé, fan-out conditionnel, ordre d'appel contraint vérifié.
+
+**Résultats observés :**
+- 5144 tests passent, 0 fail, 4 skipped.
+- Couverture phases : A, B, C, E, F, G, H, I, J — toutes couvertes par suites dédiées.
+
+**Conclusion :** Plan complet + couverture de tests exhaustive. Prêt pour merge.
+
+---
+
+### [2026-03-25] — Sync UI Hardening Lots 6/7/8 — Phases G+H+I — Complété
+
+**Décision technique :**
+
+**Phase G.1 (event loop unique)** : Ajout de `_sync_all_players_loop_async()` dans `_sync_duckdb_ops.py`. `_sync_all_players_loop()` appelle désormais `asyncio.run(_sync_all_players_loop_async(...))` — un seul event loop pour N joueurs. Chaque joueur utilise `await sync_player_duckdb_async()` au lieu de `sync_player_duckdb()` (qui appelait `asyncio.run()` en interne). Log structuré `event=async_loop_start players=N`.
+
+**Phase G.3 (dead code)** : Suppression de `_sync_duckdb_player` + `_run_duckdb_player_sync_async` de `_sync_duckdb_ops.py`. Callers migrés : `refresh_spnkr_db_via_api` (sync.py) et `run_sync_smoke_test` (setup_smoke_test_logic.py) utilisent maintenant `sync_player_duckdb`. Tests mis à jour (`test_sync_ui.py` : patch cible changé de `_sync_duckdb_player` vers `sync_player_duckdb_async`).
+
+**Phase H (transactions batch)** : `_maybe_batch_commit` repurposé pour émettre COMMIT + BEGIN TRANSACTION sur la shared connexion (en plus du player DB commit). `_process_matches` ouvre `BEGIN TRANSACTION` sur shared avant la boucle, et garantit un COMMIT final via `try/finally`.
+
+**Phase I (extraction _run_post_sync_pipeline)** : Les 17 lignes post-process de `_sync_internal` (agrégats, career rank, metadata, commit, perf scores, LUSR, fan-out) extraites dans `async def _run_post_sync_pipeline()`. `_sync_internal` réduit, `_run_post_sync_pipeline` autonome et testable.
+
+**Résultats observés :**
+- 5131 tests passent, 0 fail, 4 skipped.
+- Phases G/H/I : tests dédiés (`test_sync_phase_h.py` : 6 tests, `tests/perf/test_dual_semaphore.py` : 7 tests).
+- `docs/SYNC_CALL_TREE.md` mis à jour avec toutes les phases A→J.
+
+**Conclusion :** Plan `PLAN_SYNC_UI_HARDENING_2026-03-24.md` complété. Toutes les phases implémentées et testées. Branche `fix/sync-ui-hardening-plan` prête pour review.
+
+---
+
+### [2026-03-25] — Sync UI Hardening Lot 3 — Phase B (delta HEAD-first + consolidation + fix remaining) — Complété
+
+**Décision technique :**
+- HEAD-first short-circuit déplacé de `_process_matches` vers `_sync_internal` : vérifie HEAD API vs DB **avant** de charger `existing_ids` (chargement lazy). Si HEAD == DB → return immédiat, 0 requête shared.
+- Consolidation `_load_existing_match_ids` : queries 2+3 (enrichment + awards séparées) remplacées par un seul LEFT JOIN `player_match_enrichment × personal_score_awards`. Réduit de 3→2 requêtes SQL + 3→1 intersections Python.
+- Fix `remaining` en mode full : `remaining -= 1` retiré du chemin "match skippé". Un skip n'épuise plus le quota — seuls les nouveaux matchs insérés le font.
+- Tests `test_match_processing_early_exit.py` mis à jour : HEAD check n'est plus dans `_process_matches`, les tests reflètent la nouvelle répartition.
+- Log structuré : `event=delta_head_check short_circuit=true|false`, `event=existing_ids_loaded source=sql_consolidated`, `event=delta_head_check_failed`.
+
+**Résultats observés :**
+- 5110 tests passent, 0 fail, 11 skip.
+- Phase B : 11 tests dans `test_sync_phase_b.py`, tous verts.
+
+**Prochaine étape :** Lot 4 — Phase C (annotations token_scope any/player).
+
+---
+
+### [2026-03-25] — Fix LUSR incrémental + perf score window=50 — Complété
+
+**Décision technique :**
+- `batch_compute_lusr` dans `_skill_rating.py` redémarrait à `INITIAL_MU=1500` à chaque sync incrémental, créant une discontinuité permanente. Fix : charge le dernier `(rating_value, rating_deviation)` par `playlist_group` depuis `match_skill_rank` et le passe via `existing_states` à `compute_skill_ratings_batch`.
+- `--force-lusr` (via `strategies.py::compute_lusr_for_player`) utilise `get_best_csr_for_player` → seed CSR correct ; pas besoin d'option spéciale pour corriger Madina.
+- Score de performance : passage de "historique complet" à "fenêtre glissante 50 matchs" dans les 3 chemins : `_compute_perf_updates`, `_compute_performance_score`, `compute_performance_score_for_match`.
+- `batch_compute_performance_scores` reçoit maintenant `force: bool = False` pour forcer le recalcul via `--force-performance-scores`.
+
+**Résultats observés (simulation) :**
+- Madina97294 avec `--force-lusr` → 1794.9 Platine VI (vs 1354.9 Argent V actuel, résultant du bug)
+- Perf score window=50 vs all-history : delta typique ±3-6 pts sur les matchs récents
+- 649 tests passent, 0 erreur
+
+**Prochaine étape :**
+```bash
+python scripts/backfill_data.py --player Madina97294 --force-lusr
+python scripts/backfill_data.py --all --force-performance-scores
+```
+
+---
+
+### [2026-03-25] — Suppression de `performance_scores` du bitmask BACKFILL_FLAGS — Complété
+
+**Tâche :** Mettre à jour 5 fichiers de tests qui référençaient `BACKFILL_FLAGS["performance_scores"]` devenu inexistant après sa suppression de `src/data/sync/migrations.py`.
+
+**Décision technique principale :** `performance_scores` est détecté via IS NULL dans `player_match_enrichment`, pas via bitmask. Sa clé a été retirée de `BACKFILL_FLAGS`. Les tests bitmask qui l'utilisaient ont été adaptés : ceux testant la mécanique générale du bitmask utilisent désormais `personal_scores` comme flag représentatif ; ceux testant la logique `force_performance_scores` conservent leur intention sans référencer le bitmask supprimé. Les références à `lusr` et `csr` (également supprimés) ont aussi été retirées de `test_backfill_bitmask.py`. La valeur combinée de tous les flags de base passe de 65535 à 65519 (65535 − 16).
+
+**Résultats observés :**
+- 87 tests passent sur les 5 fichiers modifiés (0 échec, 0 erreur).
+- Fichiers modifiés : `tests/test_sync_backfill_completed.py`, `tests/test_backfill_bitmask.py`, `tests/test_detection_integration.py`, `tests/test_force_performance_scores.py`, `tests/test_sync_shared_v5.py`.
+
+**Conclusion :** Tests alignés avec l'état actuel de `BACKFILL_FLAGS`. Aucune logique métier modifiée.
+
+### [2026-03-24] — Plan sync UI enrichi (niveau exécutable) — Complété
+
+**Tâche :** Aller nettement plus dans le détail du plan de hardening du sync UI, sans modifier le code applicatif.
+
+**Décision technique principale :** Étendre le plan avec une section d'implémentation exécutable par phase : work breakdown, fichiers cibles, pseudo-flux, cas limites, tests détaillés, tickets de livraison, critères Go/No-Go et procédure de rollback.
+
+**Résultats observés :**
+- `.ai/PLAN_SYNC_UI_HARDENING_2026-03-24.md` enrichi avec :
+  - sections 11.x (détail par phases A→F),
+  - section 12 (plan de livraison en tickets),
+  - section 13 (Go/No-Go),
+  - section 14 (rollback),
+  - focus renforcé sur la fraîcheur multi-joueurs "Mis à jour il y a XXX".
+
+**Conclusion / prochaine étape :** Le plan est désormais prêt à être exécuté en sprint avec découpage opérationnel et critères de validation explicites.
+
+### [2026-03-24] — Plan sync UI : ajout fraîcheur multi-joueurs — Complété
+
+**Tâche :** Mettre à jour le plan dédié pour intégrer explicitement le problème "Mis à jour il y a XXX" non cohérent sur les joueurs non actifs après un sync global.
+
+**Décision technique principale :** Ajouter une phase dédiée dans le plan (`Phase F`) pour imposer une source canonique `last_sync_at` par joueur, écrite dans la boucle de sync global, et lue de façon unifiée par l'indicateur UI.
+
+**Résultats observés :**
+- `.ai/PLAN_SYNC_UI_HARDENING_2026-03-24.md` réécrit en Markdown propre (suppression des séquences littérales `\n`).
+- Ajout d'une phase complète (problème, stratégie, critères d'acceptation, tests) sur la fraîcheur multi-joueurs.
+- Checklist, risques et rollout mis à jour pour inclure ce chantier.
+
+**Conclusion / prochaine étape :** Le plan couvre désormais le besoin utilisateur ; prochaine étape potentielle : implémentation du Lot 5 (Phase F) avec tests d'intégration multi-profils.
+
+### [2026-03-24] — Plan hardening sync UI (failles + optimisations) — Complété
+
+**Tâche :** Produire un plan détaillé dans un document dédié pour fiabiliser et optimiser le pipeline de sync déclenché depuis l'app Streamlit.
+
+**Décision technique principale :** Rédiger un plan exécutable par phases dans `.ai/PLAN_SYNC_UI_HARDENING_2026-03-24.md`, avec priorité sur :
+1) statut de sync explicite (succès/partiel/échec),
+2) optimisation delta HEAD-first,
+3) clarification des chemins auth,
+4) invalidation cache/mtime plus fine,
+5) observabilité (logs/KPIs).
+
+**Contrainte métier intégrée :** Conservation explicite des deux logiques d'accès aux données :
+- données récupérables sans auth spécifique au joueur cible,
+- données nécessitant une auth/token valide.
+
+**Résultats observés :**
+- Document de plan créé avec objectifs, non-objectifs, phases, critères d'acceptation, stratégie de tests, rollout et risques/mitigations.
+- Exigence auth utilisateur formalisée dans une section dédiée (double logique conservée, mieux distinguée).
+
+**Conclusion / prochaine étape :** Implémenter par lots (E+D, puis A, puis B, puis C) avec tests de non-régression sync multi-joueurs.
+
 ### [2026-03-22] — scan_0802_loadout + carry-forward NS timeline — Complété
 
 **Tâche :** Les 5 kills NULL de JGtm (pi=5) dans `3e394746` persistaient après ajout de l'ID `a0955e9e2164b3cf` dans WEAPON_ID_MAP. Cause : la structure `0802` n'est pas parsée par `scan_formula_a` (pattern `200002` absent de certains chunks), et le NS scanner n'avait pas de carry-forward.

@@ -269,7 +269,8 @@ class MatchProcessingHelpersMixin:
         bf_mask = 0
         bf_mask |= BACKFILL_FLAGS["medals"]
         bf_mask |= BACKFILL_FLAGS["personal_scores"]
-        bf_mask |= BACKFILL_FLAGS["performance_scores"]
+        # performance_scores supprimé : granularité joueur×match, incompatible avec
+        # un bit par match dans match_registry.backfill_completed (cf. plan E.5).
         bf_mask |= BACKFILL_FLAGS["accuracy"]
         bf_mask |= BACKFILL_FLAGS["shots"]
         if options.with_skill:
@@ -320,8 +321,15 @@ class MatchProcessingHelpersMixin:
             result.inserted_match_ids.append(str(mid))
 
     def _maybe_batch_commit(self: _SyncProtocol, n_inserted: int, batch_size: int) -> None:
-        """Effectue un commit intermédiaire si le batch_size est atteint."""
+        """Commit le batch courant et ouvre une nouvelle transaction (player + shared).
+
+        Phase H : repurposé comme gestionnaire transactionnel. Commit player DB
+        puis shared DB, puis rouvre une transaction sur shared pour le prochain batch.
+        """
         if batch_size > 0 and n_inserted % batch_size == 0:
-            conn = self._get_connection()
-            conn.commit()
-            logger.debug("Commit intermédiaire après %s matchs", n_inserted)
+            self._get_connection().commit()
+            _stc = self._get_shared_connection()
+            if _stc is not None:
+                _stc.execute("COMMIT")
+                _stc.execute("BEGIN TRANSACTION")
+            logger.debug("event=batch_commit count=%d", n_inserted)
