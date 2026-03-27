@@ -7,6 +7,34 @@
 
 ## Journal
 
+### [2026-03-27] — Backlog : spécification badges Remontada / Effondrement / Contre-Remontada — Complété
+
+**Statut** : Complété (spécification uniquement, implémentation en backlog)
+
+**Décision technique** : Extension future du système `DominanceFlag`. Badges basés sur `killer_victim_pairs.time_ms` (timeline de kills) + `match_participants` (team mapping). Seuil retenu : déficit/avance ≥ 25–30 kills (Slayer 50) — volontairement rare. Étape préalable obligatoire : scan corpus pour calibrer le seuil exact sur 3 valeurs (20/25/30). Contre-Remontada = Option A (on stoppe leur retour après avoir perdu une avance significative).
+
+**Résultats** : Item structuré ajouté dans `.ai/BACKLOG.md` avec architecture cible, requête d'exploration, et décisions ouvertes (nom "Effondrement" vs "Débandade", seuil exact, stockage dans DominanceFlag ou champ séparé).
+
+**Prochaine étape** : Scan SQL corpus avant toute ligne de code.
+
+---
+
+### [2026-03-27] — Fix radar "Complémentarité" : axe Objectifs quasi invisible sur sessions mixtes — Complété
+
+**Statut** : Complété
+
+**Problème** : Sur la page Teammates, le graphe "Complémentarité de l'escouade" affichait l'axe "Objectifs" à ~4% pour la session du 24 mars (quasi invisible).
+
+**Cause** : Dans `_compute_player_profile` (teammates_synergy.py:125-126), le seuil "objectifs" était multiplié par `n_matches` (12 au total), alors que `objective_score` ne peut être gagné que sur les matchs en mode objectif (CTF, Strongholds…). Pour la session du 24 mars : 4 matchs objectifs sur 12. Résultat : `745 / (1600 * 12) = 3.9%`.
+
+**Décision technique** : Exposer `_is_objective_mode_from_pair_name` en alias public `is_objective_mode_from_pair_name` dans `src/analysis/participation_radar.py`. Dans `_compute_player_profile`, calculer `n_obj_matches` = nombre de matchs en mode objectif dans la session, et scaler `scaled_th["objectifs"]` par `n_obj_matches` au lieu de `n_matches`.
+
+**Résultat** : Axe objectifs passe de 3.9% à 11.6% pour la session du 24 mars (4 matchs objectifs). Les axes combat/support/score conservent le scaling par `n_matches` total. 5183 tests passent.
+
+**Fichiers modifiés** : `src/analysis/participation_radar.py`, `src/ui/pages/teammates_synergy.py`
+
+---
+
 ### [2026-03-27] — Diagnostic et fixes régressions post-commits 8fc118d/03aeceb — Complété
 
 **Statut :** Complété (5 fixes appliqués + 2 backfills données exécutés)

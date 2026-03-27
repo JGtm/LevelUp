@@ -13,6 +13,7 @@ import streamlit as st
 
 logger = logging.getLogger(__name__)
 
+from src.analysis.participation_radar import is_objective_mode_from_pair_name
 from src.config import OKABE_ITO_PALETTE
 from src.data.repositories import DuckDBRepository
 from src.ui.chart_utils import safe_chart_render
@@ -121,8 +122,19 @@ def _compute_player_profile(  # noqa: PLR0913
 
     # Les seuils sont calibrés par match unique → scaler par n_matches pour les axes absolus
     # Les axes Impact et Survie sont des rates (pts/min, morts/min) → pas de scaling
+    # Pour "objectifs" : scaler uniquement par le nombre de matchs en mode objectif,
+    # car kill_score/assist_score sont gagnés dans tous les modes mais objective_score
+    # ne l'est que dans les matchs CTF/Strongholds/etc.
     scaled_th = dict(thresholds or RADAR_THRESHOLDS)
-    for _key in ("objectifs", "combat", "support", "score"):
+    if "pair_name" in df_player.columns:
+        n_obj_matches = sum(
+            1 for pn in df_player["pair_name"].to_list() if is_objective_mode_from_pair_name(pn)
+        )
+    else:
+        n_obj_matches = 0
+    n_obj_matches = max(1, n_obj_matches)
+    scaled_th["objectifs"] = scaled_th["objectifs"] * n_obj_matches
+    for _key in ("combat", "support", "score"):
         scaled_th[_key] = scaled_th[_key] * n_matches
 
     return compute_participation_profile(

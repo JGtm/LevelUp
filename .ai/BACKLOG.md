@@ -69,7 +69,64 @@
 
 ## 📋 Backlog
 
-### 🔴 Audit — Calculs KDA locaux dans `src/analysis/` à valider vs valeurs API
+### 🟡 Feature — Badges Remontada / Effondrement / Contre-Remontada (v7+)
+
+**Noté le** : 2026-03-27
+**Priorité** : Moyenne
+
+#### Contexte
+
+Extension du système `DominanceFlag` (Domination / Humiliation) avec 3 nouveaux badges narratifs basés sur la progression du score *au cours du match*, et non plus uniquement sur le score final. Source de données : `killer_victim_pairs.time_ms` + `match_participants` (team mapping) + `match_registry` (scores finaux, mode).
+
+#### Badges définis
+
+| Badge | Nom FR envisagé | Condition déclencheur | Résultat final |
+|-------|-----------------|----------------------|----------------|
+| **Remontada** | Remontada | Déficit maximum ≥ 25–30 kills avant le kill #40 (80% du match) | WIN |
+| **Effondrement** / **Débandade** | À trancher | Avance maximum ≥ 25–30 kills avant le kill #35 (70% du match) | LOSS |
+| **Contre-Remontada** | Contre-Remontada | Lead ≥ 25–30 kills + ennemi comble ≥ 7 kills d'écart (revient à ≤ 5 de nous) | WIN |
+
+> **Seuils Slayer (objectif 50 kills)** — à normaliser pour BTB (objectif 100 : doubler) et les modes objectifs (CTF/Strongholds : étude séparée sur `highlight_events`).
+>
+> Le seuil 25–30 kills est calibré pour être rare et "beau" — à confirmer par le scan ci-dessous.
+
+#### Étape préalable obligatoire : scan du corpus
+
+Avant toute implémentation, exécuter une requête d'exploration sur `killer_victim_pairs` + `match_participants` + `match_registry` pour compter le nombre de matchs qui auraient déclenché chaque badge avec différents seuils (20 / 25 / 30 kills). Si les occurrences sont trop nombreuses → augmenter le seuil. Si trop rares (< 5 matchs sur le corpus total) → assouplir.
+
+**Requête cible (conceptuelle) :**
+```
+Pour chaque match Slayer :
+  1. Joindre killer_victim_pairs → match_participants → team_id du killer
+  2. Trier par time_ms, calculer le score cumulatif par équipe à chaque kill
+  3. Identifier le déficit/avance max pour notre équipe avant kill #40/#35
+  4. Croiser avec outcome (WIN/LOSS) depuis match_participants
+  5. Compter les matchs déclenchant le badge par seuil (20/25/30)
+```
+
+#### Architecture cible
+
+- **`src/analysis/_medal_verdicts.py`** : étendre `DominanceFlag` avec `REMONTADA = 3`, `EFFONDREMENT = 4`, `CONTRE_REMONTADA = 5`
+- **`src/analysis/comeback_analysis.py`** (nouveau, `analysis/` car stateless) : fonctions pures prenant un `pl.DataFrame` de kills triés → calcul des métriques de progression
+- **`src/data/comeback_backfill.py`** (nouveau) : orchestration backfill → écriture dans `player_match_enrichment.dominance_flag`
+- **`scripts/backfill_data.py`** : ajouter option `--comeback-badges`
+
+#### Couverture données
+
+- **Slayer 4v4** : couverture complète via `killer_victim_pairs`
+- **BTB Slayer** : idem, seuils × 2
+- **CTF / Strongholds** : nécessite une étude préalable des `event_type` dans `highlight_events` (captures / zone ticks) — hors scope v1
+- **Couverture `killer_victim_pairs`** : vérifier le % de matchs avec `time_ms` non-null avant de décider si un backfill ciblé est nécessaire
+
+#### Décisions ouvertes
+
+- Nom final du badge "honte" : **Effondrement** ou **Débandade** ?
+- Seuil exact : 25 ou 30 kills ? (à trancher après scan)
+- Faut-il stocker un nouveau champ dédié ou surcharger `dominance_flag` avec les valeurs 3/4/5 ?
+
+---
+
+### 🔴 Audit — Calculs KDA locaux dans `src/analysis/` à valider vs valeurs API  (v6+)
 
 **Noté le** : 2026-03-27
 **Priorité** : Moyenne
@@ -91,7 +148,7 @@
 
 ---
 
-### 🟡 Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores
+### 🟡 Amélioration v7++ — Backfill multi-flags : vectoriser le calcul per-match des performance scores (v7+)
 
 **Noté le** : 2026-03-26
 **Priorité** : Basse (non bloquant — le chemin normal sync app est déjà vectorisé)
@@ -106,7 +163,7 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 
 ---
 
-### Script d'analyse des kills par arme pour un match donné (v7++)
+### Script d'analyse des kills par arme pour un match donné (v7+)
 
 **Noté le** : 2026-03-27
 **Priorité** : Basse
@@ -133,7 +190,30 @@ Le shortcut `_perf_force_only` (v6) bypasse cette boucle quand `--force-performa
 
 ---
 
-### Kills environnementaux — catégorie dédiée (v7+)
+### UI — Graphe combiné Frags↑/Morts↓ (Page Coéquipiers · Vue Escouade) (v6+)
+
+**Noté le** : 2026-03-27
+**Priorité** : Basse
+
+**Idée** : Fusionner les deux graphes "Frags" et "Morts" de la vue escouade en un seul graphe divergent :
+- Kills au-dessus de l'axe X (couleurs joueur)
+- Morts en dessous de l'axe X (teintes rouges Okabe-Ito)
+- `barmode="group"` avec `offsetgroup=name` par joueur → kills et morts du même joueur alignés au même x
+- Lignes lissées kills (au-dessus) et morts (en dessous, `dash="dot"`)
+- Lignes de moyenne globale pour kills et morts (pointillées blanches)
+- Axe Y : "Frags ↑ | ↓ Morts" (FR) / "Kills ↑ | ↓ Deaths" (EN)
+
+**Implémentation envisagée** :
+1. `_prep_kd_df` + `_add_kd_player_traces` + `plot_trio_kills_deaths` dans `src/visualization/trio.py`
+2. Export dans `src/visualization/__init__.py`
+3. `tm_kills_deaths` clé i18n dans `src/ui/i18n/pages/teammates.py`
+4. `teammates_charts.py` : remplacer les entrées `kills` + `deaths` de `_TRIO_METRIC_SPECS` par un appel unique `_plot_trio_kills_deaths_chart`
+
+**Complexité estimée** : Faible (infrastructure déjà en place, `is_inverse=True` existe déjà)
+
+---
+
+### Kills environnementaux — catégorie dédiée (v7++)
 
 **Contexte** : La médaille **Kong** (kill via baril projeté) est actuellement comptée dans `GRENADE_MEDALS` faute d'une meilleure catégorie. Ce classement est approximatif — il est impossible de savoir avec certitude si l'API inclut ces kills dans `GrenadeKills` ou non.
 
