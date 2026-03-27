@@ -233,11 +233,12 @@ def plot_trio_metric(  # noqa: PLR0912, PLR0913, PLR0915, C901 — graphe multi-
         barmode="group",
     )
     fig.update_xaxes(tickmode="array", tickvals=xs, ticktext=ticktext, title_text="")
-    fig.update_yaxes(
-        title_text=y_title, zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2
-    )
+    fig.update_yaxes(title_text=y_title)
 
     if y_suffix:
         fig.update_yaxes(ticksuffix=y_suffix)
 
-    return apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    fig = apply_halo_plot_style(fig, title=title, height=PLOT_CONFIG.default_height)
+    # Rétablir l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
+    fig.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
+    return fig

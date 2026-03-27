@@ -143,8 +143,8 @@ class TestKdaCoalesce:
         # Mais kda API = -1.5 → COALESCE doit retourner -1.5
         assert abs(row[0] - (-1.5)) < 0.01, f"Attendu -1.5 (API), obtenu {row[0]}"
 
-    def test_kda_fallback_when_api_value_is_null(self, tmp_path: Path) -> None:
-        """Si p.kda est NULL (ancien match), la vue recalcule avec la formule locale."""
+    def test_kda_null_when_api_value_is_null(self, tmp_path: Path) -> None:
+        """Si p.kda est NULL (ancien match sans valeur API), la vue retourne NULL — pas de recalcul."""
         from src.data.sync.migrations import ensure_mv_player_matches_view
 
         db = _make_shared_db(tmp_path, with_kda_col=True, kda_value=None)
@@ -154,11 +154,10 @@ class TestKdaCoalesce:
                 "SELECT kda FROM mv_player_matches WHERE xuid = ?", [_XUID]
             ).fetchone()
         assert row is not None
-        expected = (10 + 3 / 3.0) / 5  # kills=10, assists=3, deaths=5 → 2.2
-        assert abs(row[0] - expected) < 0.01, f"Attendu {expected} (fallback), obtenu {row[0]}"
+        assert row[0] is None, f"Attendu NULL (pas de recalcul local), obtenu {row[0]}"
 
-    def test_kda_fallback_when_column_absent(self, tmp_path: Path) -> None:
-        """Sans colonne kda dans match_participants, la formule locale est utilisée."""
+    def test_kda_null_when_column_absent(self, tmp_path: Path) -> None:
+        """Sans colonne kda dans match_participants (schéma minimal), la vue retourne NULL."""
         from src.data.sync.migrations import ensure_mv_player_matches_view
 
         db = _make_shared_db(tmp_path, with_kda_col=False)
@@ -168,8 +167,7 @@ class TestKdaCoalesce:
                 "SELECT kda FROM mv_player_matches WHERE xuid = ?", [_XUID]
             ).fetchone()
         assert row is not None
-        expected = (10 + 3 / 3.0) / 5
-        assert abs(row[0] - expected) < 0.01
+        assert row[0] is None, f"Attendu NULL (colonne absente), obtenu {row[0]}"
 
 
 # =============================================================================

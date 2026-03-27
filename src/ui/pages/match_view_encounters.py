@@ -308,17 +308,6 @@ def render_encounter_section(
     if not target_xuids:
         return
 
-    match_start_time = _fetch_match_start_time(match_id, db_path)
-    df = load_encounter_stats(
-        self_xuid,
-        target_xuids,
-        db_path,
-        match_start_time=match_start_time,
-        current_match_id=match_id,
-    )
-    if df.is_empty():
-        return
-
     self_norm = str(self_xuid).strip()
     my_team_id: Any = next(
         (p.get("team_id") for p in players if str(p.get("xuid") or "").strip() == self_norm),
@@ -328,7 +317,36 @@ def render_encounter_section(
         str(p.get("xuid") or "").strip(): p.get("team_id") for p in players
     }
 
-    rows_html = _build_encounter_rows(df.to_dicts(), xuid_to_team, my_team_id)
+    match_start_time = _fetch_match_start_time(match_id, db_path)
+    df = load_encounter_stats(
+        self_xuid,
+        target_xuids,
+        db_path,
+        match_start_time=match_start_time,
+        current_match_id=match_id,
+    )
+
+    if df.is_empty():
+        # Premières rencontres : aucun historique avec ces joueurs.
+        # Afficher quand même avec total_encounters=0 (ligne compacte "1ère rencontre").
+        players_by_xuid = {str(p.get("xuid") or "").strip(): p for p in players}
+        records: list[dict[str, Any]] = [
+            {
+                "xuid": xuid,
+                "gamertag": str(
+                    players_by_xuid.get(xuid, {}).get("gamertag") or xuid[:8] or "—"
+                ).strip(),
+                "total_encounters": 0,
+            }
+            for xuid in target_xuids
+            if xuid in players_by_xuid
+        ]
+        if not records:
+            return
+    else:
+        records = df.to_dicts()
+
+    rows_html = _build_encounter_rows(records, xuid_to_team, my_team_id)
     if rows_html:
         st.markdown(_build_encounter_table_html(rows_html), unsafe_allow_html=True)
         st.markdown(build_badge_legend_html(), unsafe_allow_html=True)

@@ -153,6 +153,8 @@ def _render_per_minute_stats(  # noqa: PLR0913
         legend=get_legend_horizontal_bottom(),
     )
     fig_pm = apply_halo_plot_style(fig_pm, title=None, height=None)
+    # Forcer l'axe zéro en gras blanc (apply_halo_plot_style le désactive via theme.py)
+    fig_pm.update_yaxes(zeroline=True, zerolinecolor="rgba(255,255,255,0.75)", zerolinewidth=2)
     with safe_chart_render():
         if fig_pm is not None:
             st.plotly_chart(fig_pm, width="stretch", config=PLOTLY_STATIC_CONFIG)
