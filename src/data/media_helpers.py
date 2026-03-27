@@ -15,6 +15,7 @@ from typing import Any
 
 import duckdb
 
+from src.ui.tz import db_ts_to_utc
 from src.utils.paths import PLAYER_DB_FILENAME, PLAYERS_DIR, get_shared_matches_path_from_player
 
 logger = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ def match_start_to_epoch(start_time: datetime | str | float) -> float | None:
         else:
             return None
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = db_ts_to_utc(dt)
         return dt.timestamp()
     except Exception:
         return None

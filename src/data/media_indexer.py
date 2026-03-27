@@ -368,7 +368,7 @@ class MediaIndexer:
             try:
                 media_rows = conn.execute(
                     "SELECT mf.file_path, "
-                    "COALESCE(epoch(timezone('UTC', mf.capture_end_utc)), mf.mtime_paris_epoch, mf.mtime) "
+                    "COALESCE(epoch(mf.capture_end_utc), mf.mtime_paris_epoch, mf.mtime) "
                     "FROM media_files mf "
                     "WHERE mf.status = 'active' ORDER BY mf.mtime DESC"
                 ).fetchall()

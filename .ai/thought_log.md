@@ -7,6 +7,61 @@
 
 ## Journal
 
+### [2026-03-27] — Documentation grenade/melee (protocole acurtis) — Complété
+
+**Statut :** Complété
+
+**Décision technique :** Création de `docs/GRENADE_MELEE_DETECTION.md` comme référence technique
+pour les markers binaires grenade (`0x4c0c00`) et melee (`0b10100110010`) décrits par Andy Curtis.
+Aucune modification de code — document de référence uniquement, avec analyse des écarts vs
+l'implémentation actuelle (inférence médailles) et 5 pistes d'amélioration priorisées.
+
+**Résultats :** Écart principal identifié : notre marker fire events (`0b10100100110`) est distinct
+du marker melee d'Andy (`0b10100110010`). Les grenades actuelles sont des sentinels (type inconnu,
+kills seulement). Le WID frag 64 bits actuel (`0xb6dbead842c9679f`, marqué `unconfirmed`) ne
+correspond pas aux 4 premiers octets de l'ID 32 bits confirmé d'Andy (`0xB0171062`).
+
+**Conclusion :** Piste A (scanner grenade) évaluable après validation croisée sur 10–20 matchs.
+Piste E (harmonisation IDs 32/64 bits) à traiter en priorité avant toute écriture DB.
+
+---
+
+### [2026-03-27] — Fix médias : bouton "Ouvrir le match" perd le joueur actif — Complété
+
+**Statut :** Complété
+
+**Décision technique :** Dans `media_tab.py`, le bouton "Ouvrir le match" était une balise `<a href target="_blank">` → nouvel onglet = nouvelle session Streamlit = `db_path`/`xuid` réinitialisés au défaut. Fix : remplacé par `open_match_button()` de `media_library_render.py` qui utilise `st.button` + `_pending_page`/`_pending_match_id` (navigation dans le même onglet, session conservée).
+
+**Résultats :** Import `urllib.parse` supprimé (dead import). Le joueur actif est maintenant conservé lors de la navigation vers la page Match.
+
+**Conclusion :** Même pattern que la fix précédente sur historique/dernier match.
+
+---
+
+### [2026-03-27] — Fix systémique timezone DuckDB (6 fichiers) — Complété
+
+**Statut :** Complété
+
+**Décision technique :** Bug systémique : DuckDB 1.4.4 convertit les `datetime(tzinfo=UTC)` en heure locale CET (UTC+1) avant de stocker dans les colonnes `TIMESTAMP`. Résultat : toutes les heures de matchs stockées en base représentent l'heure locale Paris, pas UTC. Constat : une capture à 22:46 Paris apparaissait sur le match de 23:45 (Salvation) au lieu de 22:45 (Origin).
+
+**Décision architecturale :** Corriger à la couche lecture/affichage uniquement (pas de migration DB). Créer `db_ts_to_utc()` dans `src/ui/tz.py` comme couche d'abstraction.
+
+**6 fichiers modifiés :**
+1. `src/ui/tz.py` : ajout de `db_ts_to_utc()` — utilise `astimezone(UTC)` sur les naïfs (traite comme heure locale)
+2. `src/ui/_cache_loading.py::_convert_timezone()` : `replace_time_zone(PARIS_TZ_NAME)` (storage TZ) + `convert_time_zone(tz_name)` (display TZ) — supporte correctement un utilisateur en NY
+3. `src/ui/cache_loaders.py::_enrich_matches_df()` : même correction que _cache_loading
+4. `src/data/media_helpers.py::match_start_to_epoch()` : `db_ts_to_utc()` remplace `replace(tzinfo=UTC)`
+5. `src/ui/pages/match_view_encounters_logic.py::_relative_date()` : idem
+6. `src/analysis/sessions.py::is_session_potentially_active()` : idem
+
+**Tests :** 5160 passed. Baseline taille mise à jour. Tests timezone et media_indexer mis à jour pour refléter le nouveau contrat (inputs CET naïfs, pas UTC-aware).
+
+**Ré-indexation :** `python scripts/index_media.py --all --reset-assoc` exécuté — 90 associations recalculées pour JGtm.
+
+**Conclusion :** Les pages Explorer, Historique, Carrière, Dernier Match et Médias affichent désormais les heures correctes. Un utilisateur en NY verrait ses matchs à l'heure NY (conversion CET → NY via `convert_time_zone`).
+
+---
+
 ### [2026-03-27] — Fix CI Python 3.10/3.11/3.12 — Complété
 
 **Statut :** Complété

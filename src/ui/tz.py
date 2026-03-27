@@ -99,11 +99,31 @@ def get_tz() -> ZoneInfo:
 # ─── Conversion UTC ↔ local ─────────────────────────────────────────────────
 
 
+def db_ts_to_utc(dt: datetime) -> datetime:
+    """Convertit un timestamp issu d'une colonne DuckDB TIMESTAMP en UTC-aware.
+
+    DuckDB convertit les datetime(tzinfo=UTC) en heure locale système (CET/CEST)
+    avant stockage dans les colonnes TIMESTAMP (sans timezone). Un datetime naïf
+    lu depuis DuckDB représente donc l'heure locale, pas UTC.
+
+    Comportement :
+    - Naïf  → astimezone() utilise la TZ locale système (CET) → UTC correct
+    - Aware → astimezone() convertit directement vers UTC
+
+    Args:
+        dt: Datetime naïf ou aware (typiquement issu d'une requête DuckDB).
+
+    Returns:
+        Datetime UTC-aware représentant le même instant.
+    """
+    return dt.astimezone(timezone.utc)
+
+
 def utc_to_local(dt: datetime) -> datetime:
     """Convertit un datetime UTC (naïf ou aware) en timezone utilisateur.
 
-    Convention DB : les timestamps sont stockés en UTC naïf.
     Convention UI : afficher en timezone utilisateur.
+    Pour les timestamps issus de DuckDB, utiliser db_ts_to_utc() en amont.
     """
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)

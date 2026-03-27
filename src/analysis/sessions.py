@@ -16,6 +16,7 @@ from datetime import datetime, time, timedelta, timezone
 import polars as pl
 
 from src.config import SESSION_CONFIG
+from src.ui.tz import db_ts_to_utc
 
 _log = logging.getLogger(__name__)
 
@@ -127,7 +128,7 @@ def is_session_potentially_active(
 
     # Convertir en aware datetime si nécessaire
     if last_match_time.tzinfo is None:
-        last_match_time = last_match_time.replace(tzinfo=timezone.utc)
+        last_match_time = db_ts_to_utc(last_match_time)
 
     # Si le dernier match est aujourd'hui
     if last_match_time.date() == now.date():
