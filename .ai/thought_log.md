@@ -7,6 +7,22 @@
 
 ## Journal
 
+### [2026-03-27] — Fix CI Python 3.10/3.11/3.12 — Complété
+
+**Statut :** Complété
+
+**Décision technique :** Diagnostic par simulation d'un environnement CI Ubuntu (venv avec duckdb 1.5.1, polars 1.39.3). 3 causes d'échec identifiées :
+1. `bitstring` non déclaré dans `pyproject.toml` → `ModuleNotFoundError` à la collection pytest (import top-level dans `src/analysis/_weapon_scanners.py`)
+2. `aiohttp/aiohttp-client-cache/aiosqlite/spnkr` absents de `[dev]` → `ImportError` dans `test_auth_provider.py`
+3. `lancedb` absent → 3 ERROR dans `tests/test_rag.py::TestHaloKnowledgeBase`
+4. CI exécutait `tests/integration/` (metadata.duckdb committée détectée comme présente)
+
+**Résultats :** 5144 passed, 7 skipped, 0 failed dans simulation CI (duckdb 1.5.1 + polars 1.39.3 + sans lancedb). Commit `aab80b0`.
+
+**Prochaine étape :** Pousser la branche, vérifier les CI runs GitHub Actions.
+
+---
+
 ### [2026-03-27] — Fix TypeError sync indicator (datetime vs str) — Complété
 
 **Statut :** Complété
