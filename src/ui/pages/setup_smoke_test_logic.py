@@ -70,14 +70,15 @@ def run_sync_smoke_test(
     max_matches: int = SMOKE_TEST_MATCHES,
 ) -> tuple[bool, str]:
     """Lance la sync initiale pour le smoke test."""
-    from src.ui._sync_duckdb_ops import _sync_duckdb_player
+    from src.ui._sync_duckdb_ops import sync_player_duckdb
+    from src.ui.cache_loaders import _resolve_player_xuid
 
-    return _sync_duckdb_player(
-        db_path=str(db_path),
+    xuid = _resolve_player_xuid(str(db_path))
+    return sync_player_duckdb(
         gamertag=gamertag,
+        xuid=xuid,
         max_matches=max_matches,
         delta=False,
-        timeout_seconds=180,
     )
 
 

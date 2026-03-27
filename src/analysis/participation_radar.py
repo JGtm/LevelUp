@@ -421,4 +421,10 @@ __all__ = [
     "compute_global_radar_thresholds",
     "compute_participation_profile",
     "get_radar_thresholds",
+    "is_objective_mode_from_pair_name",
 ]
+
+
+def is_objective_mode_from_pair_name(pair_name: str | None) -> bool:
+    """Alias public de _is_objective_mode_from_pair_name."""
+    return _is_objective_mode_from_pair_name(pair_name)

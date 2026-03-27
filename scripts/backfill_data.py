@@ -477,6 +477,65 @@ def main() -> int:  # noqa: C901, PLR0912, PLR0915
             traceback.print_exc()
         return 0
 
+    # --reset-lusr : réinitialise et recalcule le LUSR d'un joueur spécifique (seed CSR)
+    _reset_lusr = getattr(args, "reset_lusr", False)
+    if _reset_lusr:
+        _player_name = getattr(args, "player", None)
+        if not _player_name:
+            logger.error("--reset-lusr nécessite --player <gamertag>")
+            return 1
+        try:
+            from pathlib import Path
+
+            import duckdb as _ddb
+
+            from scripts.backfill.strategies import compute_lusr_for_player
+            from src.utils.paths import get_player_db_path, get_shared_matches_path
+
+            _db_path = get_player_db_path(_player_name)
+            if not Path(_db_path).exists():
+                logger.error("DB joueur introuvable : %s", _db_path)
+                return 1
+
+            _shared_path = get_shared_matches_path()
+            if not Path(_shared_path).exists():
+                logger.error("shared_matches.duckdb introuvable : %s", _shared_path)
+                return 1
+
+            # Récupérer le xuid
+            _pconn = _ddb.connect(str(_db_path), read_only=False)
+            _xuid_row = _pconn.execute(
+                "SELECT value FROM sync_meta WHERE key = 'xuid' LIMIT 1"
+            ).fetchone()
+            if not _xuid_row:
+                logger.error("xuid introuvable dans sync_meta pour %s", _player_name)
+                _pconn.close()
+                return 1
+            _xuid_val = _xuid_row[0]
+
+            # Supprimer les entrées LUSR existantes avant de recalculer
+            _deleted = _pconn.execute(
+                "DELETE FROM match_skill_rank WHERE rating_type = 'LUSR'"
+            ).rowcount
+            _pconn.commit()
+            logger.info(
+                "[%s] %d entrée(s) LUSR supprimée(s) avant reset", _player_name, _deleted or 0
+            )
+
+            _shared_conn = _ddb.connect(str(_shared_path), read_only=True)
+            n = compute_lusr_for_player(
+                _pconn, _db_path, _xuid_val, force=True, shared_conn=_shared_conn
+            )
+            _shared_conn.close()
+            _pconn.close()
+            logger.info("[%s] LUSR reset terminé : %d matchs recalculés", _player_name, n)
+        except Exception as e:
+            logger.error("Erreur --reset-lusr : %s", e)
+            import traceback
+
+            traceback.print_exc()
+        return 0
+
     # Validation
     if not args.all and not args.player:
         parser.error("--player ou --all est requis")

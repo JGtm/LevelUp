@@ -249,12 +249,12 @@ class MediaIndexer:
         now = datetime.now()
 
         with duckdb.connect(str(self.db_path), read_only=False) as conn:
-            existing = {}
-            if not force_rescan:
-                rows = conn.execute(
-                    "SELECT file_path, file_hash, mtime FROM media_files WHERE status != 'deleted'"
-                ).fetchall()
-                existing = {row[0]: {"hash": row[1], "mtime": row[2]} for row in rows}
+            # Toujours charger existing pour distinguer INSERT vs UPDATE ;
+            # force_rescan contourne uniquement le filtre delta sur mtime (ligne ci-dessous).
+            rows = conn.execute(
+                "SELECT file_path, file_hash, mtime FROM media_files WHERE status != 'deleted'"
+            ).fetchall()
+            existing = {row[0]: {"hash": row[1], "mtime": row[2]} for row in rows}
 
             paths_on_disk: set[str] = set()
             files_to_process: list[dict[str, Any]] = []

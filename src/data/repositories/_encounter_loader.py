@@ -8,6 +8,7 @@ cible, les métriques d'interactions historiques avec le joueur principal.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import duckdb
@@ -48,17 +49,57 @@ def _get_shared_db_path(db_path: str) -> Path:
     )
 
 
-def _build_encounter_sql(n_targets: int, *, has_gamertag_lookup: bool = True) -> str:
-    """Construit la requête SQL d'historique des rencontres.
-
-    Génère 3n+6 placeholders pour les paramètres DuckDB.
+def _fetch_match_start_time(match_id: str, db_path: str) -> datetime | None:
+    """Récupère le start_time d'un match depuis shared_matches.duckdb.
 
     Args:
-        n_targets: Nombre de XUIDs cibles (len(target_xuids)).
-        has_gamertag_lookup: True si la vue v_gamertag_lookup est disponible (v6+).
+        match_id: Identifiant du match.
+        db_path: Chemin vers stats.duckdb du joueur (pour dériver shared_db_path).
 
     Returns:
-        Chaîne SQL complète avec placeholders positionnels.
+        datetime UTC du début du match, ou None si introuvable.
+    """
+    shared_path = _get_shared_db_path(db_path)
+    if not shared_path.exists():
+        return None
+    try:
+        with duckdb_read_only(shared_path) as conn:
+            row = conn.execute(
+                "SELECT start_time FROM match_registry WHERE match_id = ? LIMIT 1",
+                [match_id],
+            ).fetchone()
+        if row and row[0]:
+            val = row[0]
+            return val if isinstance(val, datetime) else datetime.fromisoformat(str(val))
+    except Exception:
+        logger.debug("_fetch_match_start_time: échec pour match_id=%s", match_id)
+    return None
+
+
+def _my_matches_cte(filter_past: bool) -> str:
+    """Retourne le SELECT de la CTE my_matches (avec ou sans filtre temporel)."""
+    if filter_past:
+        return (
+            "SELECT mp.match_id, mp.team_id, mp.outcome"
+            " FROM match_participants mp"
+            " INNER JOIN match_registry r2 ON r2.match_id = mp.match_id"
+            " WHERE mp.xuid = ?"
+            "\n      AND r2.start_time < ?"  # match_start_time
+            "\n      AND mp.match_id != ?"  # current_match_id (belt+suspenders)
+        )
+    return "SELECT match_id, team_id, outcome FROM match_participants WHERE xuid = ?"
+
+
+def _build_encounter_sql(
+    n_targets: int,
+    *,
+    has_gamertag_lookup: bool = True,
+    filter_past: bool = False,
+) -> str:
+    """Construit la requête SQL d'historique des rencontres.
+
+    Params : 3n+6 sans filtre, 3n+8 avec filter_past=True
+    (2 params supplémentaires en tête : match_start_time, current_match_id).
     """
     ph = ", ".join(["?"] * n_targets)
     if has_gamertag_lookup:
@@ -67,11 +108,11 @@ def _build_encounter_sql(n_targets: int, *, has_gamertag_lookup: bool = True) ->
     else:
         gamertag_expr = "MAX(p.gamertag) AS gamertag"
         gamertag_join = ""
+
+    my_matches_from = _my_matches_cte(filter_past)
     return f"""
     WITH my_matches AS (
-        SELECT match_id, team_id, outcome
-        FROM match_participants
-        WHERE xuid = ?
+        {my_matches_from}
     ),
     encounters AS (
         SELECT
@@ -129,25 +170,23 @@ def load_encounter_stats(
     self_xuid: str,
     target_xuids: list[str],
     db_path: str,
+    *,
+    match_start_time: datetime | None = None,
+    current_match_id: str | None = None,
 ) -> pl.DataFrame:
-    """Charge les métriques d'historique des rencontres pour une liste de joueurs.
-
-    Pour chaque xuid dans target_xuids, calcule depuis shared_matches.duckdb :
-    - Nombre total de rencontres communes (tous matchs confondus)
-    - Répartition allié / ennemi
-    - Win rate quand allié, win rate quand ennemi (perspectives du joueur principal)
-    - Kills infligés / morts subies dans les duels directs (killer_victim_pairs)
-    - Date de dernière rencontre
+    """Charge l'historique des rencontres pour chaque xuid dans target_xuids.
 
     Args:
         self_xuid: XUID du joueur principal.
-        target_xuids: XUIDs des adversaires/alliés à analyser.
-        db_path: Chemin du stats.duckdb joueur (pour dériver shared_db_path).
+        target_xuids: XUIDs cibles (adversaires/alliés à analyser).
+        db_path: Chemin stats.duckdb joueur (pour dériver shared_db_path).
+        match_start_time: Si fourni + current_match_id, filtre aux matchs antérieurs.
+        current_match_id: Exclut ce match des rencontres comptabilisées.
 
     Returns:
-        DataFrame Polars avec colonnes : xuid, gamertag, total_encounters,
-        ally_count, enemy_count, winrate_as_ally, winrate_vs_enemy,
-        kills_dealt, deaths_suffered, last_seen. Vide si erreur ou no data.
+        DataFrame Polars (xuid, gamertag, total_encounters, ally_count, enemy_count,
+        winrate_as_ally, winrate_vs_enemy, kills_dealt, deaths_suffered, last_seen).
+        Vide si erreur ou aucune donnée.
     """
     if not target_xuids or not self_xuid:
         return pl.DataFrame()
@@ -157,17 +196,23 @@ def load_encounter_stats(
         logger.warning("shared_matches.duckdb introuvable : %s", shared_path)
         return pl.DataFrame()
 
+    filter_past = match_start_time is not None and current_match_id is not None
     n = len(target_xuids)
-    logger.debug("load_encounter_stats: %d cible(s) pour xuid=%s", n, self_xuid)
+    logger.debug(
+        "load_encounter_stats: %d cible(s) pour xuid=%s filter_past=%s", n, self_xuid, filter_past
+    )
     try:
         with duckdb_read_only(shared_path) as _probe:
             has_lookup = _has_view(_probe, "v_gamertag_lookup")
     except Exception:
         has_lookup = False
-    sql = _build_encounter_sql(n, has_gamertag_lookup=has_lookup)
-    # Ordre des paramètres : voir _build_encounter_sql docstring — 3n+6 total
-    params: list[str] = (
-        [self_xuid]  # my_matches WHERE xuid = ?
+    sql = _build_encounter_sql(n, has_gamertag_lookup=has_lookup, filter_past=filter_past)
+    # Ordre : 3n+6 sans filtre, 3n+8 avec filtre (2 params supplémentaires en tête)
+    head: list = [self_xuid]
+    if filter_past:
+        head += [match_start_time, current_match_id]
+    params: list = (
+        head  # my_matches WHERE + filtres optionnels
         + target_xuids  # encounters WHERE p.xuid IN (...)
         + [self_xuid] * 3  # kvp CASE + SUM kills + SUM deaths
         + [self_xuid]  # kvp WHERE killer = ?

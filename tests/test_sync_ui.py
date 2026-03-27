@@ -3,7 +3,7 @@
 Ce fichier teste les fonctionnalités de synchronisation UI :
 - Détection DuckDB vs SQLite
 - Extraction du gamertag depuis le chemin DuckDB v4
-- Fonction _sync_duckdb_player
+- Fonction sync_player_duckdb (ex-_sync_duckdb_player, supprimé Phase G.3)
 - Fonction sync_all_players avec support DuckDB
 """
 
@@ -94,93 +94,34 @@ class TestExtractGamertagFromDuckDBPath:
 
 
 # =============================================================================
-# Tests de _sync_duckdb_player (mocked)
+# Tests de sync_player_duckdb (mocked)
 # =============================================================================
 
 
 class TestSyncDuckDBPlayer:
-    """Tests pour _sync_duckdb_player."""
+    """Tests pour sync_player_duckdb (ex-_sync_duckdb_player, supprimé G.3)."""
 
-    @pytest.fixture
-    def mock_duckdb_env(self, tmp_path):
-        """Crée un environnement mock pour les tests DuckDB."""
-        import uuid
-
-        import duckdb
-
-        players_dir = tmp_path / "data" / "players" / f"TestPlayer_{uuid.uuid4().hex[:8]}"
-        players_dir.mkdir(parents=True)
-        db_path = players_dir / "stats.duckdb"
-
-        conn = duckdb.connect(str(db_path))
-        try:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS match_stats (
-                    match_id VARCHAR PRIMARY KEY,
-                    start_time TIMESTAMP,
-                    kills INTEGER
-                )
-            """)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS xuid_aliases (
-                    xuid VARCHAR PRIMARY KEY,
-                    gamertag VARCHAR,
-                    last_seen TIMESTAMP
-                )
-            """)
-            conn.execute("""
-                INSERT INTO xuid_aliases VALUES ('2535423456789', 'TestPlayer', CURRENT_TIMESTAMP)
-            """)
-        finally:
-            conn.close()
-
-        return str(db_path)
-
-    def test_sync_missing_tokens(self, mock_duckdb_env):
-        """Test sync avec tokens manquants."""
-
-        # Mock get_tokens_from_env pour retourner None
-        with patch("src.ui.sync._sync_duckdb_player") as mock_sync:
+    def test_sync_missing_tokens(self):
+        """Test sync avec tokens manquants — mock sync_player_duckdb."""
+        with patch("src.ui.sync.sync_player_duckdb") as mock_sync:
             mock_sync.return_value = (False, "Tokens SPNKr manquants.")
-
-            ok, msg = mock_sync(
-                db_path=mock_duckdb_env,
-                gamertag="TestPlayer",
-                max_matches=10,
-                delta=True,
-            )
-
+            ok, msg = mock_sync(gamertag="TestPlayer", xuid="", max_matches=10, delta=True)
             assert ok is False
             assert "Tokens" in msg or "manquants" in msg
 
-    def test_sync_success_with_new_matches(self, mock_duckdb_env):
+    def test_sync_success_with_new_matches(self):
         """Test sync réussie avec nouveaux matchs."""
-
-        with patch("src.ui.sync._sync_duckdb_player") as mock_sync:
+        with patch("src.ui.sync.sync_player_duckdb") as mock_sync:
             mock_sync.return_value = (True, "5 nouveau(x) match(s) synchronisé(s).")
-
-            ok, msg = mock_sync(
-                db_path=mock_duckdb_env,
-                gamertag="TestPlayer",
-                max_matches=100,
-                delta=True,
-            )
-
+            ok, msg = mock_sync(gamertag="TestPlayer", xuid="", max_matches=100, delta=True)
             assert ok is True
             assert "nouveau" in msg
 
-    def test_sync_already_up_to_date(self, mock_duckdb_env):
+    def test_sync_already_up_to_date(self):
         """Test sync quand déjà à jour."""
-
-        with patch("src.ui.sync._sync_duckdb_player") as mock_sync:
+        with patch("src.ui.sync.sync_player_duckdb") as mock_sync:
             mock_sync.return_value = (True, "À jour (150 matchs).")
-
-            ok, msg = mock_sync(
-                db_path=mock_duckdb_env,
-                gamertag="TestPlayer",
-                delta=True,
-            )
-
+            ok, msg = mock_sync(gamertag="TestPlayer", xuid="", delta=True)
             assert ok is True
             assert "À jour" in msg
 
@@ -257,11 +198,10 @@ class TestSyncAllPlayers:
         assert result[0] == "999888777666"
 
     def test_sync_all_players_uses_duckdb_sync(self, mock_duckdb_db):
-        """Test que sync_all_players utilise _sync_duckdb_player pour DuckDB."""
+        """Test que sync_all_players utilise sync_player_duckdb pour DuckDB (G.3)."""
         from src.ui.sync import sync_all_players
 
-        # Mock _sync_duckdb_player
-        with patch("src.ui.sync._sync_duckdb_player") as mock_sync:
+        with patch("src.ui.sync.sync_player_duckdb") as mock_sync:
             mock_sync.return_value = (True, "Sync OK")
 
             ok, msg = sync_all_players(
@@ -270,12 +210,11 @@ class TestSyncAllPlayers:
                 delta=True,
             )
 
-            # Vérifier que _sync_duckdb_player a été appelé
+            # Vérifier que sync_player_duckdb a été appelé
             mock_sync.assert_called_once()
             call_args = mock_sync.call_args
             # Le gamertag peut contenir un UUID pour éviter les conflits
             assert call_args.kwargs["gamertag"].startswith("MockPlayer")
-            assert call_args.kwargs["db_path"] == mock_duckdb_db
 
 
 # =============================================================================
@@ -496,9 +435,9 @@ class TestSyncModeHandleConflict:
         assert ok is False
         assert "activate" in calls, "sync mode doit être activé (_manage_sync_mode=True par défaut)"
         assert "deactivate" in calls, "sync mode doit être désactivé dans finally"
-        assert calls.index("activate") < calls.index(
-            "deactivate"
-        ), "activate doit précéder deactivate"
+        assert calls.index("activate") < calls.index("deactivate"), (
+            "activate doit précéder deactivate"
+        )
 
     def test_reentrant_sync_mode_not_deactivated_early(self, tmp_path):
         """Guard réentrance : _sync_mode.is_set() → _already_active=True → ni activate ni deactivate."""
@@ -562,9 +501,9 @@ class TestSyncModeHandleConflict:
             )
 
         assert ok is False
-        assert (
-            calls == []
-        ), f"_manage_sync_mode=False doit court-circuiter activate/deactivate, got {calls}"
+        assert calls == [], (
+            f"_manage_sync_mode=False doit court-circuiter activate/deactivate, got {calls}"
+        )
 
     def test_engine_closed_on_error(self, tmp_path):
         """engine.close() est appelé dans le finally de _run_sync_engine même si sync_delta lève."""
@@ -599,9 +538,9 @@ class TestSyncModeHandleConflict:
 
         assert ok is False
         assert "boom" in msg
-        assert (
-            "close" in close_calls
-        ), "engine.close() doit être appelé dans finally de _run_sync_engine"
+        assert "close" in close_calls, (
+            "engine.close() doit être appelé dans finally de _run_sync_engine"
+        )
 
     def test_sync_player_duckdb_async_logs_start_and_result(self, tmp_path, caplog):
         """sync_player_duckdb_async émet un log INFO au démarrage (gamertag, mode)."""
@@ -619,9 +558,9 @@ class TestSyncModeHandleConflict:
             asyncio.run(sync_player_duckdb_async(gamertag="TestLog", xuid="42", repo_root=tmp_path))
 
         messages = [r.message for r in caplog.records]
-        assert any(
-            "TestLog" in m and "démarrage" in m for m in messages
-        ), f"Log démarrage attendu, messages={messages}"
+        assert any("TestLog" in m and "démarrage" in m for m in messages), (
+            f"Log démarrage attendu, messages={messages}"
+        )
 
     def test_sync_all_players_duckdb_wraps_sync_mode(self, tmp_path):
         """sync_all_players_duckdb active le sync mode UNE FOIS autour de toute la boucle."""
@@ -656,16 +595,19 @@ class TestSyncModeHandleConflict:
                 "src.ui._sync_duckdb_ops._deactivate_sync_mode",
                 side_effect=lambda: calls.append("deactivate"),
             ),
-            patch("src.ui.sync.sync_player_duckdb", return_value=(True, "OK")),
+            patch(
+                "src.ui._sync_duckdb_ops.sync_player_duckdb_async",
+                return_value=(True, "OK"),
+            ),
         ):
             from src.ui.sync import sync_all_players_duckdb
 
             ok, msg = sync_all_players_duckdb(repo_root=tmp_path)
 
         assert ok is True
-        assert (
-            calls.count("activate") == 1
-        ), f"activate appelé {calls.count('activate')} fois (attendu 1)"
-        assert (
-            calls.count("deactivate") == 1
-        ), f"deactivate appelé {calls.count('deactivate')} fois (attendu 1)"
+        assert calls.count("activate") == 1, (
+            f"activate appelé {calls.count('activate')} fois (attendu 1)"
+        )
+        assert calls.count("deactivate") == 1, (
+            f"deactivate appelé {calls.count('deactivate')} fois (attendu 1)"
+        )

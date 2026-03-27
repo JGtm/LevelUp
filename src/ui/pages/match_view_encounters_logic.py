@@ -16,6 +16,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from src.ui.i18n import t
+from src.ui.tz import db_ts_to_utc
 
 logger = logging.getLogger(__name__)
 
@@ -100,11 +101,9 @@ def _relative_date(dt: datetime, lang: str | None = None) -> str:
     """Formate une datetime en texte relatif localisé."""
     now = datetime.now(tz=timezone.utc)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = db_ts_to_utc(dt)
     delta = now - dt
-    days = delta.days
-    if days < 0:
-        return t("rel_date_upcoming", lang=lang)
+    days = max(0, delta.days)  # guard horloge serveur (timestamp légèrement dans le futur)
     if days == 0:
         return t("rel_date_today", lang=lang)
     if days == 1:

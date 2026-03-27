@@ -64,13 +64,13 @@ class TestFindMatchesMissingDataIntegration:
     """Tests d'intégration de la vraie fonction find_matches_missing_data."""
 
     def test_detects_matches_without_bitmask(self, player_conn, shared_conn):
-        """Détecte les matchs sans flags performance_scores."""
+        """Détecte les matchs sans flags personal_scores (performance_scores supprimé du bitmask)."""
         xuid = "xuid-player"
 
         # 2 matchs : 1 avec flag, 1 sans
         shared_conn.execute(
             "INSERT INTO match_registry VALUES ('match-done', ?, FALSE, FALSE)",
-            [BACKFILL_FLAGS["performance_scores"]],
+            [BACKFILL_FLAGS["personal_scores"]],
         )
         shared_conn.execute("INSERT INTO match_registry VALUES ('match-todo', 0, FALSE, FALSE)")
 
@@ -99,11 +99,11 @@ class TestFindMatchesMissingDataIntegration:
         """Avec force=True, détecte même les matchs avec bitmask."""
         xuid = "xuid-player"
 
-        # 2 matchs avec flag
+        # 2 matchs avec flag (utiliser personal_scores — performance_scores supprimé du bitmask)
         for i in range(1, 3):
             shared_conn.execute(
                 "INSERT INTO match_registry VALUES (?, ?, FALSE, FALSE)",
-                [f"match-{i:03d}", BACKFILL_FLAGS["performance_scores"]],
+                [f"match-{i:03d}", BACKFILL_FLAGS["personal_scores"]],
             )
             shared_conn.execute(
                 "INSERT INTO match_participants (match_id, xuid) VALUES (?, ?)",
@@ -317,7 +317,7 @@ class TestFindMatchesMissingDataIntegration:
             [xuid2],
         )
 
-        # Scope
+        # Scope (performance_scores détecté via IS NULL, pas bitmask)
         scope = SyncScope(performance_scores=True)
 
         # Appeler
@@ -339,7 +339,7 @@ class TestFindMatchesMissingDataIntegration:
             [xuid],
         )
 
-        # Appeler avec legacy kwargs
+        # Appeler avec legacy kwargs (performance_scores détecté via IS NULL, pas bitmask)
         result = find_matches_missing_data(
             player_conn,
             xuid,

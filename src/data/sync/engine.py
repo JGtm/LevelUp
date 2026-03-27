@@ -34,7 +34,6 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 import time
 from collections.abc import Callable
@@ -76,6 +75,36 @@ logger = logging.getLogger(__name__)
 
 # Re-exports pour compatibilité (utilisé par les tests et scripts externes)
 __all__ = ["DuckDBSyncEngine", "get_tokens_for_player", "SPNKrAPIClient"]
+
+
+def _resolve_token_scope(gamertag: str) -> str:
+    """Détermine le scope de token disponible pour un joueur sans déclencher OAuth.
+
+    Vérifie uniquement la présence d'une env var ou d'un token DB — pas d'échange.
+
+    Returns:
+        "player" si un token per-joueur est configuré, "any" sinon.
+    """
+    import os
+
+    from src.utils.env import normalize_gamertag_for_env
+
+    env_key = f"SPNKR_OAUTH_REFRESH_TOKEN_{normalize_gamertag_for_env(gamertag)}"
+    if os.environ.get(env_key, "").strip():
+        return "player"
+    # Vérification DB cache (Xbox OAuth UI) — lecture uniquement, sans échange
+    try:
+        from src.utils.paths import PLAYERS_DIR
+
+        _db = PLAYERS_DIR / gamertag / "stats.duckdb"
+        if _db.exists():
+            from src.ui.xbox_oauth import load_refresh_token as _lrt
+
+            if _lrt(_db):
+                return "player"
+    except Exception:
+        pass
+    return "any"
 
 
 # =============================================================================
@@ -127,6 +156,7 @@ class DuckDBSyncEngine(
         metadata_db_path: Path | str | None = None,
         shared_db_path: Path | str | None = None,
         tokens: Tokens | None = None,
+        shared_read_only: bool = False,
     ) -> None:
         """
         Args:
@@ -136,6 +166,9 @@ class DuckDBSyncEngine(
             metadata_db_path: Chemin vers metadata.duckdb (auto-détecté si None).
             shared_db_path: Chemin vers shared_matches.duckdb (auto-détecté si None).
             tokens: Tokens SPNKr pré-fournis (sinon récupérés depuis env).
+            shared_read_only: Si True, ouvre shared_matches.duckdb en lecture seule.
+                Utiliser True pour le fanout (ne fait que lire shared), False (défaut)
+                pour le sync principal (écrit dans shared).
         """
         self._player_db_path = Path(player_db_path)
         self._xuid = xuid
@@ -168,6 +201,7 @@ class DuckDBSyncEngine(
 
         self._connection = None
         self._shared_connection = None
+        self._shared_read_only = shared_read_only
         self._db_lock = asyncio.Lock()
         self._shared_db_lock = asyncio.Lock()
         self._existing_match_ids: set[str] | None = None
@@ -291,16 +325,58 @@ class DuckDBSyncEngine(
             if self._tokens is None:
                 self._tokens = await get_tokens_from_env()
 
-            existing_ids = self._load_existing_match_ids()
-            logger.info("Matchs existants en DB: %d", len(existing_ids))
-
-            if delta_mode and not existing_ids:
-                logger.warning("Mode delta mais aucun match existant!")
+            # C: log token scope résolu — déterminé par présence d'un token per-joueur
+            # (sans déclencher d'échange OAuth — lecture env/DB uniquement).
+            _token_scope = _resolve_token_scope(self._gamertag)
+            logger.info(
+                "event=token_resolved gamertag=%s scope=%s mode=%s",
+                self._gamertag,
+                _token_scope,
+                "delta" if delta_mode else "full",
+            )
 
             async with create_api_client(
                 tokens=self._tokens,
                 requests_per_second=options.requests_per_second,
             ) as client:
+                # B.1: HEAD-first short-circuit en mode delta — évite de charger
+                # existing_ids si le joueur est déjà à jour (1 appel API suffisant).
+                if delta_mode:
+                    _latest_db = self._get_latest_match_id_in_db()
+                    try:
+                        _head = await client.get_match_history(
+                            self._gamertag,
+                            match_type=options.match_type,
+                            start=0,
+                            count=1,
+                        )
+                        if _head and _latest_db and _head[0].match_id == _latest_db:
+                            logger.info(
+                                "event=delta_head_check gamertag=%s short_circuit=true latest=%s",
+                                self._gamertag,
+                                _latest_db[:8],
+                            )
+                            result.finished_at = datetime.now(timezone.utc)
+                            result.duration_seconds = time.time() - start_time
+                            return result
+                        logger.debug(
+                            "event=delta_head_check gamertag=%s short_circuit=false latest_db=%s",
+                            self._gamertag,
+                            (_latest_db or "")[:8] or "none",
+                        )
+                    except Exception as _hce:
+                        logger.warning(
+                            "event=delta_head_check_failed gamertag=%s error=%s — pipeline normal",
+                            self._gamertag,
+                            _hce,
+                        )
+
+                existing_ids = self._load_existing_match_ids()
+                logger.info("Matchs existants en DB: %d", len(existing_ids))
+
+                if delta_mode and not existing_ids:
+                    logger.warning("Mode delta mais aucun match existant!")
+
                 result = await self._process_matches(
                     client,
                     options,
@@ -309,29 +385,7 @@ class DuckDBSyncEngine(
                     progress_callback=progress_callback,
                 )
 
-            if result.matches_inserted > 0:
-                await self._refresh_aggregates_async(new_ids=result.inserted_match_ids)
-
-            await self._run_career_rank_if_needed(options)
-
-            # Métadonnées de sync
-            self._save_sync_metadata(delta_mode, result.matches_inserted)
-
-            conn = self._get_connection()
-            conn.commit()
-
-            # Post-sync : performance scores, sessions, citations, LUSR
-            if result.matches_inserted > 0:
-                await self._run_post_sync_compute(options)
-
-            # LUSR toujours recalculé — même sans nouveaux matchs
-            # (rattrapage des ratings manquants suite à un sync partiel)
-            self._detach_shared_from_player_conn()
-            self._run_lusr_post_sync()
-
-            # Fan-out après detach — shared libéré (voir _engine_fanout.py)
-            if result.inserted_match_ids:
-                self._enrich_other_registered_players(result.inserted_match_ids)
+            await self._run_post_sync_pipeline(options, result, delta_mode=delta_mode)
 
         except Exception as e:
             result.errors.append(str(e))
@@ -349,6 +403,44 @@ class DuckDBSyncEngine(
             result.duration_seconds,
         )
         return result
+
+    async def _run_post_sync_pipeline(
+        self,
+        options: SyncOptions,
+        result: SyncResult,
+        *,
+        delta_mode: bool,
+    ) -> None:
+        """Pipeline post-traitement après insertion des matchs.
+
+        Ordre contraint (dépendances de données) :
+        1. Agrégats (shared → aggregates)
+        2. Career rank (player-gated, non bloquant)
+        3. Sync metadata + commit player DB
+        4. Perf scores, sessions, citations (lecture shared R/O si nouveaux matchs)
+        5. Detach shared + LUSR (toujours recalculé pour rattraper les ratings manquants)
+        6. Fan-out enrichissement autres joueurs (après detach shared)
+        """
+        if result.matches_inserted > 0:
+            await self._refresh_aggregates_async(new_ids=result.inserted_match_ids)
+
+        await self._run_career_rank_if_needed(options)
+
+        # 3. Métadonnées + commit player DB
+        self._save_sync_metadata(delta_mode, result.matches_inserted)
+        self._get_connection().commit()
+
+        # 4. Post-sync : performance scores, sessions, citations (si nouveaux matchs)
+        if result.matches_inserted > 0:
+            await self._run_post_sync_compute(options)
+
+        # 5. LUSR toujours recalculé (rattrapage des ratings manquants)
+        self._detach_shared_from_player_conn()
+        self._run_lusr_post_sync()
+
+        # 6. Fan-out après detach — shared libéré (voir _engine_fanout.py)
+        if result.inserted_match_ids:
+            self._enrich_other_registered_players(result.inserted_match_ids)
 
     async def _run_career_rank_if_needed(self, options: SyncOptions) -> None:
         """Synchronise le rang carrière si demandé dans les options (non bloquant)."""
@@ -379,8 +471,10 @@ class DuckDBSyncEngine(
             # Fermer la connexion shared si elle est encore ouverte,
             # pour qu'elle puisse être rouverte proprement dans batch_compute_lusr.
             if self._shared_connection is not None:
-                with contextlib.suppress(Exception):
+                try:
                     self._shared_connection.close()
+                except Exception as e:
+                    logger.debug("event=shared_conn_close_failed step=lusr_post_sync error=%s", e)
                 self._shared_connection = None
             lusr_count = self.batch_compute_lusr(force=False)
             if lusr_count > 0:
@@ -438,8 +532,10 @@ class DuckDBSyncEngine(
 
         loop = asyncio.get_running_loop()
         if self._shared_connection is not None:
-            with contextlib.suppress(Exception):
+            try:
                 self._shared_connection.close()
+            except Exception as e:
+                logger.debug("event=shared_conn_close_failed step=post_sync_compute error=%s", e)
             self._shared_connection = None
         cit_future = loop.run_in_executor(None, self._post_sync_citations_sync)
 
@@ -487,16 +583,17 @@ class DuckDBSyncEngine(
             from src.data.dominance_backfill import compute_dominance_for_player
 
             if self._shared_connection is not None:
-                with contextlib.suppress(Exception):
+                try:
                     self._shared_connection.close()
+                except Exception as e:
+                    logger.debug("event=shared_conn_close_failed step=dominance error=%s", e)
                 self._shared_connection = None
 
             import duckdb as _ddb
 
             shared_path = self._shared_db_path
             if shared_path and shared_path.exists():
-                _sconn = _ddb.connect(str(shared_path), read_only=True)
-                try:
+                with _ddb.connect(str(shared_path), read_only=True) as _sconn:
                     dom_result = compute_dominance_for_player(
                         self._get_connection(), _sconn, self._xuid or ""
                     )
@@ -506,7 +603,38 @@ class DuckDBSyncEngine(
                         dom_result["domination"],
                         dom_result["humiliation"],
                     )
-                finally:
-                    _sconn.close()
         except Exception as e:
             logger.warning("Erreur calcul dominance post-sync : %s", e)
+
+    def _verify_enrichment_completeness(self, inserted_ids: list[str]) -> None:
+        """Vérification post-pipeline : détecte les matchs sans enrichissement.
+
+        Ne relance pas les calculs — signale uniquement via les logs pour
+        permettre l'investigation sans masquer un bug de connexion sous-jacent.
+        """
+        if not inserted_ids:
+            return
+        conn = self._get_connection()
+        placeholders = ", ".join(["?" for _ in inserted_ids])
+        try:
+            missing_perf = conn.execute(
+                f"SELECT COUNT(*) FROM player_match_enrichment "
+                f"WHERE match_id IN ({placeholders}) AND performance_score IS NULL",
+                inserted_ids,
+            ).fetchone()[0]
+            missing_sess = conn.execute(
+                f"SELECT COUNT(*) FROM player_match_enrichment "
+                f"WHERE match_id IN ({placeholders}) AND session_id IS NULL",
+                inserted_ids,
+            ).fetchone()[0]
+            if missing_perf > 0 or missing_sess > 0:
+                logger.warning(
+                    "event=enrichment_incomplete perf_missing=%d sessions_missing=%d total=%d",
+                    missing_perf,
+                    missing_sess,
+                    len(inserted_ids),
+                )
+            else:
+                logger.info("event=enrichment_complete total=%d", len(inserted_ids))
+        except Exception as e:
+            logger.debug("_verify_enrichment_completeness: %s", e)

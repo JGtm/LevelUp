@@ -248,13 +248,21 @@ def _matches_to_dataframe(matches: list) -> pl.DataFrame:
 
 
 def _convert_timezone(df: pl.DataFrame, tz_name: str = "") -> pl.DataFrame:
-    """Convertit start_time UTC → timezone utilisateur (naïve) et ajoute colonne date."""
+    """Convertit start_time (heure locale DuckDB) → timezone utilisateur (naïve) et ajoute colonne date.
+
+    DuckDB stocke les datetime(tzinfo=UTC) en heure locale système (CET/CEST = Europe/Paris)
+    lors de l'insertion dans les colonnes TIMESTAMP. La valeur naïve lue représente donc
+    l'heure locale (Europe/Paris), pas UTC.
+    On labellise d'abord avec PARIS_TZ_NAME (la TZ de stockage), puis on convertit
+    vers la TZ d'affichage de l'utilisateur.
+    """
     if not tz_name:
         tz_name = _get_user_tz_name()
     try:
         df = df.with_columns(
             pl.col("start_time")
-            .cast(pl.Datetime("us", "UTC"))
+            .cast(pl.Datetime("us"))
+            .dt.replace_time_zone(PARIS_TZ_NAME)
             .dt.convert_time_zone(tz_name)
             .dt.replace_time_zone(None)
         )
@@ -265,7 +273,7 @@ def _convert_timezone(df: pl.DataFrame, tz_name: str = "") -> pl.DataFrame:
         with contextlib.suppress(Exception):
             df = df.with_columns(
                 pl.col("start_time")
-                .dt.replace_time_zone("UTC")
+                .dt.replace_time_zone(PARIS_TZ_NAME)
                 .dt.convert_time_zone(tz_name)
                 .dt.replace_time_zone(None)
             )

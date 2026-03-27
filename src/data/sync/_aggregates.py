@@ -6,7 +6,6 @@ Vues matérialisées, pré-calculs post-sync et métadonnées sync_meta.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -97,8 +96,12 @@ class AggregatesMixin:
             # Rouvrir la connexion shared si elle était ouverte avant
             if shared_was_open:
                 self._shared_connection = None  # Force réouverture au prochain appel
-                with contextlib.suppress(Exception):
+                try:
                     self._get_shared_connection()
+                except Exception as e:
+                    logger.debug(
+                        "event=shared_conn_reopen_failed step=refresh_aggregates error=%s", e
+                    )
 
         except Exception as e:
             logger.warning("Erreur refresh_aggregates: %s", e)
@@ -116,11 +119,13 @@ class AggregatesMixin:
             shared_conn = self._get_shared_connection()
             match_count = 0
             if shared_conn is not None and self._xuid:
-                with contextlib.suppress(Exception):
+                try:
                     match_count = shared_conn.execute(
                         "SELECT COUNT(DISTINCT match_id) FROM match_participants WHERE xuid = ?",
                         [self._xuid],
                     ).fetchone()[0]
+                except Exception as e:
+                    logger.debug("event=match_count_failed step=get_sync_status error=%s", e)
 
             # Récupérer les métadonnées
             last_sync = self._get_sync_meta("last_sync_at")

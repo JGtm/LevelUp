@@ -1,7 +1,8 @@
-"""Tests unitaires pour l'optimisation early-exit delta dans _process_matches.
+"""Tests unitaires pour le comportement de _process_matches (boucle de pagination).
 
-Vérifie que le HEAD check évite la pagination complète lorsque le dernier
-match de l'API est déjà présent en base de données.
+Après Phase B : le HEAD check a été déplacé dans _sync_internal (avant le chargement
+de existing_ids). _process_matches ne fait plus de HEAD check — il reçoit existing_ids
+déjà chargé et itère directement sur l'historique.
 """
 
 from __future__ import annotations
@@ -53,7 +54,11 @@ def _make_client(*, head_match_id: str | None = None, paginated: list | None = N
 
 @pytest.mark.asyncio
 class TestEarlyExitDelta:
-    """Tests pour le HEAD check early-exit dans MatchProcessingMixin._process_matches."""
+    """Tests pour la boucle de pagination dans MatchProcessingMixin._process_matches.
+
+    Note Phase B : le HEAD check early-exit est maintenant dans _sync_internal.
+    _process_matches reçoit existing_ids déjà chargé et itère directement.
+    """
 
     async def test_early_exit_quand_head_egal_db(self):
         """Si HEAD API == dernier match DB → return immédiat (0 match inseré)."""
@@ -111,7 +116,11 @@ class TestEarlyExitDelta:
         assert call_count == 1
 
     async def test_no_early_exit_quand_head_different_de_db(self):
-        """Si HEAD API != dernier match DB → pas d'early-exit, poursuite normale."""
+        """_process_matches ne fait pas de HEAD check — pagination directe.
+
+        Phase B : le HEAD check est dans _sync_internal. _process_matches
+        reçoit existing_ids et fait la pagination normalement.
+        """
         from src.data.sync._match_processing import MatchProcessingMixin
         from src.data.sync.models_sync import SyncOptions
 
@@ -120,11 +129,7 @@ class TestEarlyExitDelta:
         async def counting_history(gamertag, match_type=None, start=0, count=25):
             nonlocal call_count
             call_count += 1
-            if count == 1:
-                item = MagicMock()
-                item.match_id = "new-match-xyz"
-                return [item]
-            # Pagination : retourner liste vide pour finir rapidement
+            # count=1 n'est plus appelé depuis _process_matches
             return []
 
         engine = _make_engine_mock(latest_db="old-match-abc")
@@ -141,8 +146,8 @@ class TestEarlyExitDelta:
             delta_mode=True,
         )
 
-        # HEAD check (1) + au moins 1 appel de pagination
-        assert call_count >= 2
+        # _process_matches fait au moins 1 appel de pagination (pas de HEAD check count=1)
+        assert call_count >= 1
 
     async def test_no_early_exit_quand_existing_ids_vide(self):
         """Si existing_ids est vide → pas de HEAD check (condition `and existing_ids`)."""
@@ -207,7 +212,11 @@ class TestEarlyExitDelta:
         assert not head_check_called
 
     async def test_no_early_exit_quand_latest_db_none(self):
-        """Si _get_latest_match_id_in_db() retourne None → pas d'early-exit."""
+        """_process_matches ne consulte pas latest_db — pagination directe.
+
+        Phase B : latest_db n'est utilisé que dans le HEAD check de _sync_internal.
+        _process_matches ignore latest_db et fait la pagination normalement.
+        """
         from src.data.sync._match_processing import MatchProcessingMixin
         from src.data.sync.models_sync import SyncOptions
 
@@ -216,13 +225,9 @@ class TestEarlyExitDelta:
         async def counting_history(gamertag, match_type=None, start=0, count=25):
             nonlocal call_count
             call_count += 1
-            if count == 1:
-                item = MagicMock()
-                item.match_id = "some-match"
-                return [item]
             return []
 
-        engine = _make_engine_mock(latest_db=None)  # DB vide → None
+        engine = _make_engine_mock(latest_db=None)  # non utilisé par _process_matches
         client = MagicMock()
         client.get_match_history = counting_history
         options = SyncOptions()
@@ -236,25 +241,24 @@ class TestEarlyExitDelta:
             delta_mode=True,
         )
 
-        # HEAD check appelé (count=1) mais pas d'early-exit car latest_db=None
-        # → la pagination est déclenchée (count=25 appelé aussi)
-        assert call_count >= 2
+        # Pagination déclenchée (au moins 1 appel), pas de HEAD check count=1
+        assert call_count >= 1
 
     async def test_early_exit_quand_head_vide(self):
-        """Si l'API retourne une liste vide pour le HEAD check → pas d'early-exit."""
+        """API retourne [] → boucle de pagination s'arrête immédiatement (0 inserts)."""
         from src.data.sync._match_processing import MatchProcessingMixin
         from src.data.sync.models_sync import SyncOptions
 
         call_count = 0
 
-        async def empty_head_history(gamertag, match_type=None, start=0, count=25):
+        async def empty_history(gamertag, match_type=None, start=0, count=25):
             nonlocal call_count
             call_count += 1
             return []  # Toujours vide
 
         engine = _make_engine_mock(latest_db="recent-match")
         client = MagicMock()
-        client.get_match_history = empty_head_history
+        client.get_match_history = empty_history
         options = SyncOptions()
         existing_ids = {"recent-match"}
 
@@ -266,8 +270,7 @@ class TestEarlyExitDelta:
             delta_mode=True,
         )
 
-        # HEAD retourne [] → `if head:` est False → pas d'early-exit
-        # La pagination s'exécute mais retourne aussi [] → break
+        # Pagination retourne [] → boucle break dès le premier batch
         assert result.matches_inserted == 0
-        # Au moins HEAD (count=1) + 1 appel pagination
-        assert call_count >= 2
+        # Exactement 1 appel pagination (pas de HEAD check dans _process_matches)
+        assert call_count >= 1

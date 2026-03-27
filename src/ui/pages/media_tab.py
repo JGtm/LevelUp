@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import urllib.parse
 from pathlib import Path
 
 import polars as pl
@@ -12,6 +11,7 @@ import streamlit as st
 from src.data.media_indexer import MediaIndexer
 from src.ui.components.media_thumbnail import render_media_thumbnail
 from src.ui.i18n import t
+from src.ui.pages.media_library_render import open_match_button
 from src.ui.settings import AppSettings
 
 
@@ -102,17 +102,9 @@ def _render_media_grid(
                             st.session_state["_lightbox_media_path"] = file_path
                             st.session_state["_lightbox_media_kind"] = kind
                             st.rerun()
-                    # Lien « Ouvrir le match » (nouvel onglet du navigateur)
+                    # Bouton « Ouvrir le match » (même onglet, joueur actif conservé)
                     if match_id and str(match_id).strip():
-                        mid = str(match_id).strip()
-                        match_url = "?" + urllib.parse.urlencode({"page": "Match", "match_id": mid})
-                        st.markdown(
-                            f'<a href="{match_url}" target="_blank" rel="noopener noreferrer" '
-                            'style="display:block;width:100%;text-align:center;padding:0.35em 0.75em;margin-top:4px;'
-                            "background:#1a73e8;color:#fff;text-decoration:none;border-radius:4px;"
-                            f'font-size:0.9em;">{t("ml_open_match")}</a>',
-                            unsafe_allow_html=True,
-                        )
+                        open_match_button(str(match_id).strip(), unique_suffix=f"{i}_{j}")
 
 
 def render_media_tab(  # noqa: C901, PLR0912, PLR0915

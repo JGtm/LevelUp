@@ -111,7 +111,9 @@ def _join_perf_frames(dfs: list[pl.DataFrame]) -> pl.DataFrame:
             pl.col("match_id").cast(pl.Utf8),
             pl.col("performance_score").cast(pl.Float64, strict=False).alias(f"perf_{i}"),
         ).filter(pl.col(f"perf_{i}").is_not_null())
-        joined = joined.join(part, on="match_id", how="inner")
+        # LEFT JOIN défensif (J.7) : conserver le match même si le coéquipier
+        # n'a pas encore de performance_score. list.mean() ignore les nulls.
+        joined = joined.join(part, on="match_id", how="left")
     if joined.is_empty():
         return pl.DataFrame()
     if "team_mmr" not in joined.columns:

@@ -70,6 +70,7 @@ async def test_process_matches_creates_semaphore_with_fetch_slots():
 
     # Injecter les méthodes dépendantes nécessaires
     mixin._get_latest_match_id_in_db = MagicMock(return_value=None)
+    mixin._get_shared_connection = MagicMock(return_value=None)  # H.1: shared tx
     mixin._process_single_match = AsyncMock(return_value={"inserted": True, "match_id": "m1"})
     mixin._accumulate_match_result = MagicMock()
     mixin._maybe_batch_commit = MagicMock()
@@ -123,9 +124,9 @@ async def test_process_matches_creates_semaphore_with_fetch_slots():
 
     # Au moins 1 semaphore créé avec fetch_slots = max(20, 5) = 20
     assert len(created_semaphores) >= 1, "Aucun Semaphore créé"
-    assert (
-        20 in created_semaphores
-    ), f"Semaphore(20) attendu (fetch_slots=max(20,5)), got {created_semaphores}"
+    assert 20 in created_semaphores, (
+        f"Semaphore(20) attendu (fetch_slots=max(20,5)), got {created_semaphores}"
+    )
 
 
 @pytest.mark.asyncio
@@ -146,6 +147,7 @@ async def test_bounded_respects_semaphore_concurrency():
         return {"inserted": True, "match_id": args[1]}
 
     mixin._get_latest_match_id_in_db = MagicMock(return_value=None)
+    mixin._get_shared_connection = MagicMock(return_value=None)  # H.1: shared tx
     mixin._process_single_match = _counting_process
     mixin._accumulate_match_result = MagicMock()
     mixin._maybe_batch_commit = MagicMock()
@@ -171,9 +173,9 @@ async def test_bounded_respects_semaphore_concurrency():
     )
 
     # La concurrence max ne doit pas dépasser parallel_matches
-    assert (
-        concurrency_tracker["max"] <= 3
-    ), f"Concurrence max={concurrency_tracker['max']} > parallel_matches=3"
+    assert concurrency_tracker["max"] <= 3, (
+        f"Concurrence max={concurrency_tracker['max']} > parallel_matches=3"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -191,6 +193,7 @@ async def test_fetch_slots_logged_at_debug(caplog):
     mixin = MatchProcessingMixin.__new__(MatchProcessingMixin)
     mixin._gamertag = "TestPlayer"
     mixin._get_latest_match_id_in_db = MagicMock(return_value=None)
+    mixin._get_shared_connection = MagicMock(return_value=None)  # H.1: shared tx
     mixin._process_single_match = AsyncMock(return_value={"inserted": True, "match_id": "m1"})
     mixin._accumulate_match_result = MagicMock()
     mixin._maybe_batch_commit = MagicMock()
@@ -217,10 +220,10 @@ async def test_fetch_slots_logged_at_debug(caplog):
         )
 
     debug_messages = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
-    assert any(
-        "fetch_slots" in m for m in debug_messages
-    ), f"Log 'fetch_slots' introuvable dans les messages DEBUG : {debug_messages}"
+    assert any("fetch_slots" in m for m in debug_messages), (
+        f"Log 'fetch_slots' introuvable dans les messages DEBUG : {debug_messages}"
+    )
     # fetch_slots = max(12, 5) = 12 — vérifie que la valeur correcte est loggée
-    assert any(
-        "12" in m and "fetch_slots" in m for m in debug_messages
-    ), f"fetch_slots=12 introuvable dans les messages DEBUG : {debug_messages}"
+    assert any("12" in m and "fetch_slots" in m for m in debug_messages), (
+        f"fetch_slots=12 introuvable dans les messages DEBUG : {debug_messages}"
+    )

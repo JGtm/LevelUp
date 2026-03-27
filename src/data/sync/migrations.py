@@ -484,7 +484,8 @@ BACKFILL_FLAGS: dict[str, int] = {
     "events": 1 << 1,  # 2
     "skill": 1 << 2,  # 4
     "personal_scores": 1 << 3,  # 8
-    "performance_scores": 1 << 4,  # 16
+    # performance_scores supprimé : granularité joueur×match, pas par match.
+    # Jamais relu pour décider de recalculer (détection via IS NULL dans player_match_enrichment).
     "accuracy": 1 << 5,  # 32
     "shots": 1 << 6,  # 64
     "enemy_mmr": 1 << 7,  # 128
@@ -496,13 +497,10 @@ BACKFILL_FLAGS: dict[str, int] = {
     "participants_damage": 1 << 13,  # 8192
     "aliases": 1 << 14,  # 16384
     "participants_avg_life": 1 << 15,  # 32768 - Ajouté pour éviter détection infinie
-    # ── LUSR / CSR (v5.3) — non écrits en production ──
-    # ⚠️ Conflit potentiel avec MatchBits.EVENTS/ASSETS (bits 16-17) de constants.py.
-    # Ces entrées ne sont jamais posées sur match_registry.backfill_completed.
-    # Conservées pour rétrocompatibilité des tests uniquement.
-    "lusr": 1 << 16,  # 65536  — non utilisé en production
-    "csr": 1 << 17,  # 131072 — non utilisé en production
     # ── Weapon kills (v5.5) — OBSOLÈTE ──
+    # lusr/csr supprimés : collisionnaient avec MatchBits.EVENTS (1<<16) et
+    # MatchBits.ASSETS (1<<17) de constants.py. Jamais écrits en production.
+    # Supprimés pour éliminer le risque de corruption silencieuse (cf. plan E.5).
     # Ce bit (18 = 262144) n'est jamais posé en production.
     # Source de vérité : MatchBits.WEAPON_KILLS = 1 << 21 dans constants.py.
     # Conservé pour rétrocompatibilité des tests uniquement.
@@ -659,6 +657,19 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
 
     enemy_mmr_expr = "p.enemy_mmr" if has_enemy_mmr else "NULL AS enemy_mmr"
 
+    # KDA : valeur officielle de l'API (colonne p.kda de match_participants).
+    # Aucun recalcul local. Si la colonne est absente (schéma de test minimal), NULL.
+    has_kda_col = False
+    try:
+        cols = conn.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'match_participants' AND column_name = 'kda'"
+        ).fetchall()
+        has_kda_col = len(cols) > 0
+    except Exception:
+        pass
+    kda_expr = "p.kda" if has_kda_col else "NULL"
+
     conn.execute(f"""
         CREATE OR REPLACE VIEW {prefix}mv_player_matches AS
         SELECT
@@ -676,12 +687,8 @@ def ensure_mv_player_matches_view(conn: duckdb.DuckDBPyConnection) -> None:
             p.outcome,
             p.team_id,
 
-            -- KDA pré-calculé
-            CASE WHEN p.deaths > 0
-            THEN (CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0)
-                 / CAST(p.deaths AS FLOAT)
-            ELSE CAST(p.kills AS FLOAT) + CAST(p.assists AS FLOAT) / 3.0
-            END AS kda,
+            -- KDA : valeur API officielle si disponible, recalcul local sinon
+            {kda_expr} AS kda,
 
             -- Stats de base
             COALESCE(p.max_killing_spree, 0) AS max_killing_spree,
@@ -1541,19 +1548,19 @@ def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
 
     Retourne l'alias si réussi ET que la table maps existe, None sinon.
     """
-    import contextlib
-
     from src.utils.db import ensure_metadata_attached
 
     alias = None
-    with contextlib.suppress(Exception):
+    try:
         alias = ensure_metadata_attached(conn)
+    except Exception as e:
+        logger.debug("event=meta_attach_failed step=try_attach_meta_for_views error=%s", e)
 
     if alias is None:
         return None
 
     # Vérifier que les tables i18n sont bien peuplées (Commit 0 requis)
-    with contextlib.suppress(Exception):
+    try:
         rows = conn.execute(
             "SELECT table_name FROM duckdb_tables() WHERE table_name = 'maps'"
         ).fetchall()
@@ -1564,6 +1571,8 @@ def _try_attach_meta_for_views(conn: duckdb.DuckDBPyConnection) -> str | None:
             ).fetchall()
             if any(r[0] == alias for r in db_name_rows):
                 return alias
+    except Exception as e:
+        logger.debug("event=meta_maps_check_failed step=try_attach_meta_for_views error=%s", e)
     return None
 
 

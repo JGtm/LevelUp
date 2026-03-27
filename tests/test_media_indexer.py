@@ -279,10 +279,11 @@ def test_associate_with_matches_explicit_timestamps(tmp_path: Path) -> None:
     shared_path = tmp_path / "shared_matches_v2.duckdb"
 
     # Créer la shared DB v5.1
+    # DuckDB stocke les UTC datetime en CET (UTC+1) : match à 17:00 UTC → stocké "18:00"
     _create_shared_db(
         shared_path,
         [
-            ("match_1", "2026-02-03 17:00:00", 720, "", "", "test_xuid"),
+            ("match_1", "2026-02-03 18:00:00", 720, "", "", "test_xuid"),
         ],
     )
 
@@ -400,12 +401,13 @@ def test_association_closest_match_when_multiple_candidates(tmp_path: Path) -> N
     db_path = tmp_path / "stats.duckdb"
     shared_path = tmp_path / "shared_matches_v2.duckdb"
 
-    # 2 matchs : match_A à 17:00, match_B à 17:10 (10 min plus tard)
+    # 2 matchs : match_A à 17:00 UTC (18:00 CET), match_B à 17:10 UTC (18:10 CET)
+    # DuckDB stocke en CET (UTC+1) — les chaînes représentent l'heure CET
     _create_shared_db(
         shared_path,
         [
-            ("match_A", "2026-02-03 17:00:00", 720, "map1", "Aquarius", "xuid_1"),
-            ("match_B", "2026-02-03 17:10:00", 720, "map2", "Live Fire", "xuid_1"),
+            ("match_A", "2026-02-03 18:00:00", 720, "map1", "Aquarius", "xuid_1"),
+            ("match_B", "2026-02-03 18:10:00", 720, "map2", "Live Fire", "xuid_1"),
         ],
     )
 
@@ -487,12 +489,12 @@ def test_association_multi_players_same_media(tmp_path: Path) -> None:
     media_epoch = epoch + 60
     media_path = str(tmp_path / "shared" / "clip.mp4")
 
-    # Shared DB v5.1 : 2 matchs, un par joueur
+    # Shared DB v5.1 : 2 matchs, un par joueur (stocké en CET = UTC+1)
     _create_shared_db(
         shared_path,
         [
-            ("match_a", "2026-02-03 17:00:00", 720, "m1", "Aquarius", "xuid_a"),
-            ("match_b", "2026-02-03 17:00:00", 720, "m1", "Aquarius", "xuid_b"),
+            ("match_a", "2026-02-03 18:00:00", 720, "m1", "Aquarius", "xuid_a"),
+            ("match_b", "2026-02-03 18:00:00", 720, "m1", "Aquarius", "xuid_b"),
         ],
     )
 
@@ -569,7 +571,7 @@ def test_association_map_id_map_name_stored(tmp_path: Path) -> None:
     _create_shared_db(
         shared_path,
         [
-            ("m1", "2026-02-03 17:00:00", 720, "uuid-aquarius", "Aquarius", "u1"),
+            ("m1", "2026-02-03 18:00:00", 720, "uuid-aquarius", "Aquarius", "u1"),
         ],
     )
 
@@ -726,11 +728,11 @@ def test_association_search_all_player_dbs(tmp_path: Path) -> None:
     epoch = datetime(2026, 2, 3, 17, 0, 0, tzinfo=timezone.utc).timestamp()
     media_epoch = epoch + 120
 
-    # Shared DB : seul xuid_other a un match
+    # Shared DB : seul xuid_other a un match (stocké en CET = UTC+1)
     _create_shared_db(
         shared_path,
         [
-            ("match_other", "2026-02-03 17:00:00", 720, "", "", "xuid_other"),
+            ("match_other", "2026-02-03 18:00:00", 720, "", "", "xuid_other"),
         ],
     )
 

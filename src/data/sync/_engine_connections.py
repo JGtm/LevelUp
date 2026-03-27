@@ -6,7 +6,6 @@ et le chargement des match IDs existants.
 
 from __future__ import annotations
 
-import contextlib
 import gc
 import logging
 import time
@@ -141,8 +140,9 @@ class ConnectionMixin:
         return self._connection
 
     def _get_shared_connection(self) -> duckdb.DuckDBPyConnection | None:  # noqa: PLR0912, C901
-        """Retourne une connexion vers shared_matches.duckdb (R/W).
+        """Retourne une connexion vers shared_matches.duckdb.
 
+        Mode R/O si self._shared_read_only=True (fanout), R/W sinon (sync principal).
         Returns None si la base n'existe pas — l'initialisation est assurée
         par _ensure_warehouse_dbs() dans le launcher (jamais en mode silencieux ici).
 
@@ -159,8 +159,10 @@ class ConnectionMixin:
         if not self._shared_db_path.exists():
             return None
 
+        read_only: bool = getattr(self, "_shared_read_only", False)
+
         def _open_shared() -> duckdb.DuckDBPyConnection:
-            return duckdb.connect(str(self._shared_db_path), read_only=False)
+            return duckdb.connect(str(self._shared_db_path), read_only=read_only)
 
         try:
             self._shared_connection = _open_shared()
@@ -206,11 +208,15 @@ class ConnectionMixin:
         # fichiers différents portant le même nom (ex. fixtures de test)
         db_key: str | None = None
         if db_path is not None:
-            with contextlib.suppress(Exception):
+            try:
                 db_key = str(Path(db_path).resolve())
+            except Exception as e:
+                logger.debug("event=db_key_resolve_failed error=%s", e)
         if not db_key:
-            with contextlib.suppress(Exception):
+            try:
                 db_key = conn.execute("SELECT current_database()").fetchone()[0]  # type: ignore[index]
+            except Exception as e:
+                logger.debug("event=db_key_current_database_failed error=%s", e)
         if db_key and db_key in _SHARED_MIGRATIONS_DONE:
             return
         if db_key:
@@ -357,26 +363,29 @@ class ConnectionMixin:
                     len(shared_score_zero),
                 )
 
+                # Q2 (consolidée): player — enrichment + awards en une seule requête
+                # LEFT JOIN : évite 2 requêtes + 2 intersections Python séparées.
                 enriched_ids: set[str] = set()
                 scored_ids: set[str] = set()
                 conn = self._get_connection()
                 try:
-                    enr_result = conn.execute(
-                        "SELECT DISTINCT match_id FROM player_match_enrichment"
+                    player_rows = conn.execute(
+                        "SELECT pme.match_id, "
+                        "  MAX(CASE WHEN psa.match_id IS NOT NULL THEN 1 ELSE 0 END)"
+                        "    AS has_awards "
+                        "FROM player_match_enrichment pme "
+                        "LEFT JOIN personal_score_awards psa"
+                        "  ON pme.match_id = psa.match_id "
+                        "GROUP BY pme.match_id"
                     ).fetchall()
-                    enriched_ids = {str(r[0]) for r in enr_result if r[0]}
-                except Exception:
-                    pass
-
-                try:
-                    scored_result = conn.execute(
-                        "SELECT DISTINCT match_id FROM personal_score_awards"
-                    ).fetchall()
-                    scored_ids = {str(r[0]) for r in scored_result if r[0]}
-                except Exception:
-                    pass
+                    enriched_ids = {str(r[0]) for r in player_rows if r[0]}
+                    scored_ids = {str(r[0]) for r in player_rows if r[0] and r[1] == 1}
+                except Exception as e:
+                    logger.debug("_load_existing_match_ids: lecture player DB: %s", e)
 
                 # Un match est "terminé" s'il a enrichment ET (personal_score_awards OU score=0)
+                # Note : OR COALESCE(personal_score, 0) = 0 est intentionnel — les matchs
+                # légitimement sans awards (score nul) ne doivent pas être re-traités.
                 enriched_and_done = enriched_ids & (scored_ids | shared_score_zero)
                 ids = shared_ids & enriched_and_done
 
@@ -393,6 +402,11 @@ class ConnectionMixin:
                         "(personal_score > 0) → seront re-traités",
                         len(missing_personal_scores),
                     )
+                logger.debug(
+                    "event=existing_ids_loaded gamertag=%s count=%d source=sql_consolidated",
+                    getattr(self, "_gamertag", "?"),
+                    len(ids),
+                )
             except Exception as e:
                 logger.debug("Impossible de lire shared.match_participants: %s", e)
 
@@ -404,7 +418,7 @@ class ConnectionMixin:
         shared_conn = self._get_shared_connection()
         if shared_conn is None or not self._xuid:
             return None
-        with contextlib.suppress(Exception):
+        try:
             row = shared_conn.execute(
                 "SELECT mr.match_id FROM match_registry mr "
                 "JOIN match_participants mp ON mr.match_id = mp.match_id "
@@ -412,7 +426,9 @@ class ConnectionMixin:
                 [self._xuid],
             ).fetchone()
             return str(row[0]) if row else None
-        return None
+        except Exception as e:
+            logger.debug("event=latest_match_id_failed error=%s", e)
+            return None
 
     # =========================================================================
     # Fermeture
@@ -427,8 +443,12 @@ class ConnectionMixin:
         for attr in ("_connection", "_shared_connection", "_pve_connection"):
             conn = getattr(self, attr, None)
             if conn:
-                with contextlib.suppress(Exception):
+                try:
                     conn.execute("CHECKPOINT")
-                with contextlib.suppress(Exception):
+                except Exception as e:
+                    logger.warning("event=checkpoint_failed conn=%s error=%s", attr, e)
+                try:
                     conn.close()
+                except Exception as e:
+                    logger.debug("event=conn_close_failed conn=%s error=%s", attr, e)
                 setattr(self, attr, None)

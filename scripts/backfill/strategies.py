@@ -556,8 +556,7 @@ def compute_lusr_for_player(
                 for group in ("ranked", "arena", "btb", "tactical", "social", "fun")
             }
             logger.info(
-                f"LUSR seed depuis CSR={best_csr:.0f} → mu={seeded.mu:.1f} "
-                f"sigma={seeded.sigma:.1f}"
+                f"LUSR seed depuis CSR={best_csr:.0f} → mu={seeded.mu:.1f} sigma={seeded.sigma:.1f}"
             )
 
         # 5. Calcul TrueSkill 2 batch (séquentiel complet sur tout l'historique)
@@ -1020,22 +1019,30 @@ def compute_performance_score_for_match(
         if match_start_time is None:
             return False
 
-        # Historique depuis shared
+        # Historique depuis shared — fenêtre glissante de 50 matchs
         try:
             history_df = shared_conn.execute(
                 f"""
-                SELECT
-                    mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
-                    mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
-                    mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr,
-                    mp.enemy_mmr, mp.kills_expected, mp.deaths_expected
-                FROM match_participants mp
-                JOIN {_mr_src} mr ON mr.match_id = mp.match_id
-                WHERE mp.xuid = ?
-                  AND mp.match_id != ?
-                  AND mr.start_time IS NOT NULL
-                  AND mr.start_time < ?
-                ORDER BY mr.start_time ASC
+                SELECT match_id, start_time, kills, deaths, assists,
+                       kda, accuracy, time_played_seconds, avg_life_seconds,
+                       personal_score, damage_dealt, rank, team_mmr,
+                       enemy_mmr, kills_expected, deaths_expected
+                FROM (
+                    SELECT
+                        mp.match_id, mr.start_time, mp.kills, mp.deaths, mp.assists,
+                        mp.kda, mp.accuracy, mp.time_played_seconds, mp.avg_life_seconds,
+                        mp.personal_score, mp.damage_dealt, mp.rank, mp.team_mmr,
+                        mp.enemy_mmr, mp.kills_expected, mp.deaths_expected
+                    FROM match_participants mp
+                    JOIN {_mr_src} mr ON mr.match_id = mp.match_id
+                    WHERE mp.xuid = ?
+                      AND mp.match_id != ?
+                      AND mr.start_time IS NOT NULL
+                      AND mr.start_time < ?
+                    ORDER BY mr.start_time DESC
+                    LIMIT 50
+                ) sub
+                ORDER BY start_time ASC
                 """,
                 (xuid, match_id, match_start_time),
             ).pl()
